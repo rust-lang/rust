@@ -75,9 +75,6 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %tapeArg)
 ; CHECK-NEXT:   %"loaded'de" = alloca double
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"loaded'de"
-; TODO WHY are there two call allocations [one regular, one inverted pointer]
-; CHECK-NEXT:   %"call'de" = alloca double*
-; CHECK-NEXT:   store double* null, double** %"call'de"
 ; CHECK-NEXT:   %"call'ip_phi" = extractvalue { {}, double* } %1, 1
 ; CHECK-NEXT:   br label %invertentry
 
@@ -90,6 +87,5 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %[[add:.+]] = fadd fast double %[[ligep]], %[[loadde]]
 ; CHECK-NEXT:   store double %[[add]], double* %"call'ip_phi_fromtape_unwrap", align 8
 ; CHECK-NEXT:   %{{.+}} = call {} @diffegep(double* %a, double* %"a'", {} undef)
-; CHECK-NEXT:   store double* null, double** %"call'de"
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }

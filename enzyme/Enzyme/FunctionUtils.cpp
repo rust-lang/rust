@@ -574,7 +574,7 @@ Function *CloneFunctionWithReturns(bool topLevel, Function *&F, AAResults &AA, T
    if (!isconstant && ( !i->getType()->isFPOrFPVectorTy() ) ) {
      VMap[i] = j;
      hasPtrInput = true;
-     ptrInputs[j] = (j+1);
+     ptrInputs[i] = (j+1);
      if (F->hasParamAttribute(ii, Attribute::NoCapture)) {
        NewF->addParamAttr(jj, Attribute::NoCapture);
        NewF->addParamAttr(jj+1, Attribute::NoCapture);

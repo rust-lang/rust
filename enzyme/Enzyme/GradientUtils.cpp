@@ -271,43 +271,40 @@ DiffeGradientUtils* DiffeGradientUtils::CreateFromClone(bool topLevel, Function 
   return res;
 }
 
-Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
-    if (isa<ConstantPointerNull>(val)) {
-        return val;
-    } else if (isa<UndefValue>(val)) {
-        return val;
-    } else if (auto cint = dyn_cast<ConstantInt>(val)) {
+Value* GradientUtils::invertPointerM(Value* oval, IRBuilder<>& BuilderM) {
+    if (auto inst = dyn_cast<Instruction>(oval)) {
+      assert(inst->getParent()->getParent() == oldFunc);
+    }
+    if (auto arg = dyn_cast<Argument>(oval)) {
+      assert(arg->getParent() == oldFunc);
+    }
+
+
+    if (isa<ConstantPointerNull>(oval)) {
+        return oval;
+    } else if (isa<UndefValue>(oval)) {
+        return oval;
+    } else if (auto cint = dyn_cast<ConstantInt>(oval)) {
         if (cint->isZero()) return cint;
         if (cint->isOne()) return cint;
     }
 
-    Value* oval = getOriginal(val);
-
     if(isConstantValue(oval)) {
         //NOTE, this is legal and the correct resolution, however, our activity analysis honeypot no longer exists
-        return lookupM(val, BuilderM);
+        return lookupM(getNewFromOriginal(oval), BuilderM);
         llvm::errs() << *oldFunc << "\n";
-        llvm::errs() << *newFunc << "\n";
-        if (auto arg = dyn_cast<Instruction>(val)) {
-            llvm::errs() << *arg->getParent()->getParent() << "\n";
-        }
-        llvm::errs() << *val << "\n";
+        llvm::errs() << *oval << "\n";
     }
     assert(!isConstantValue(oval));
 
-    auto M = BuilderM.GetInsertBlock()->getParent()->getParent();
-    assert(val);
+    auto M = oldFunc->getParent();
+    assert(oval);
 
-    if (invertedPointers.find(val) != invertedPointers.end()) {
-        return lookupM(invertedPointers[val], BuilderM);
+    if (invertedPointers.find(oval) != invertedPointers.end()) {
+        return lookupM(invertedPointers[oval], BuilderM);
     }
 
-    #define SAFE(a, b) ({\
-      if (auto v = isOriginalT<typeof(*a)>(a)) cast<typeof(*a)>(getNewFromOriginal(v))->b;\
-      a->b;\
-    })
-
-    if (auto arg = dyn_cast<GlobalVariable>(val)) {
+    if (auto arg = dyn_cast<GlobalVariable>(oval)) {
       if (!hasMetadata(arg, "enzyme_shadow")) {
           llvm::errs() << *arg << "\n";
           assert(0 && "cannot compute with global variable that doesn't have marked shadow global");
@@ -324,8 +321,8 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
       assert(md2->getNumOperands() == 1);
       auto gvemd = cast<ConstantAsMetadata>(md2->getOperand(0));
       auto cs = gvemd->getValue();
-      return invertedPointers[val] = cs;
-    } else if (auto fn = dyn_cast<Function>(val)) {
+      return invertedPointers[oval] = cs;
+    } else if (auto fn = dyn_cast<Function>(oval)) {
       //! Todo allow tape propagation
       //  Note that specifically this should _not_ be called with topLevel=true (since it may not be valid to always assume we can recompute the augmented primal)
       //  However, in the absence of a way to pass tape data from an indirect augmented (and also since we dont presently allow indirect augmented calls), topLevel MUST be true
@@ -349,11 +346,11 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
       }
 
       return BuilderM.CreatePointerCast(GV, fn->getType());
-    } else if (auto arg = dyn_cast<CastInst>(val)) {
-      IRBuilder<> bb(arg);
-      invertedPointers[arg] = bb.CreateCast(arg->getOpcode(), invertPointerM(SAFE(arg,getOperand(0)), bb), arg->getDestTy(), arg->getName()+"'ipc");
+    } else if (auto arg = dyn_cast<CastInst>(oval)) {
+      IRBuilder<> bb(getNewFromOriginal(arg));
+      invertedPointers[arg] = bb.CreateCast(arg->getOpcode(), invertPointerM(arg->getOperand(0), bb), arg->getDestTy(), arg->getName()+"'ipc");
       return lookupM(invertedPointers[arg], BuilderM);
-    } else if (auto arg = dyn_cast<ConstantExpr>(val)) {
+    } else if (auto arg = dyn_cast<ConstantExpr>(oval)) {
       if (arg->isCast()) {
           auto result = ConstantExpr::getCast(arg->getOpcode(), cast<Constant>(invertPointerM(arg->getOperand(0), BuilderM)), arg->getType());
           return result;
@@ -362,48 +359,37 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
           return result;
       }
       goto end;
-    } else if (auto arg = dyn_cast<ExtractValueInst>(val)) {
-      IRBuilder<> bb(arg);
-      Value* op0 = SAFE(arg, getOperand(0));
-      if (tape) {
-        if(op0 == tape) {
-          llvm::errs() << "oldFunc: " << *oldFunc << "\n";
-          llvm::errs() << "newFunc: " << *newFunc << "\n";
-          llvm::errs() << "arg: " << *arg << "\n";
-        }
-        assert(op0 != tape);
-      }
-      auto result = bb.CreateExtractValue(invertPointerM(op0, bb), arg->getIndices(), arg->getName()+"'ipev");
+    } else if (auto arg = dyn_cast<ExtractValueInst>(oval)) {
+      IRBuilder<> bb(getNewFromOriginal(arg));
+      auto result = bb.CreateExtractValue(invertPointerM(arg->getOperand(0), bb), arg->getIndices(), arg->getName()+"'ipev");
       invertedPointers[arg] = result;
       return lookupM(invertedPointers[arg], BuilderM);
-    } else if (auto arg = dyn_cast<InsertValueInst>(val)) {
-      Value* op0 = SAFE(arg, getOperand(0));
-      Value* op1 = SAFE(arg, getOperand(1));
-      IRBuilder<> bb(arg);
-      auto result = bb.CreateInsertValue(invertPointerM(op0, bb), invertPointerM(op1, bb), arg->getIndices(), arg->getName()+"'ipiv");
+    } else if (auto arg = dyn_cast<InsertValueInst>(oval)) {
+      IRBuilder<> bb(getNewFromOriginal(arg));
+      auto result = bb.CreateInsertValue(invertPointerM(arg->getOperand(0), bb), invertPointerM(arg->getOperand(1), bb), arg->getIndices(), arg->getName()+"'ipiv");
       invertedPointers[arg] = result;
       return lookupM(invertedPointers[arg], BuilderM);
-    } else if (auto arg = dyn_cast<ExtractElementInst>(val)) {
-      IRBuilder<> bb(arg);
-      auto result = bb.CreateExtractElement(invertPointerM(SAFE(arg,getVectorOperand()), bb), SAFE(arg,getIndexOperand()), arg->getName()+"'ipee");
+    } else if (auto arg = dyn_cast<ExtractElementInst>(oval)) {
+      IRBuilder<> bb(getNewFromOriginal(arg));
+      auto result = bb.CreateExtractElement(invertPointerM(arg->getVectorOperand(), bb), getNewFromOriginal(arg->getIndexOperand()), arg->getName()+"'ipee");
       invertedPointers[arg] = result;
       return lookupM(invertedPointers[arg], BuilderM);
-    } else if (auto arg = dyn_cast<InsertElementInst>(val)) {
-      IRBuilder<> bb(arg);
-      Value* op0 = SAFE(arg, getOperand(0));
-      Value* op1 = SAFE(arg, getOperand(1));
-      Value* op2 = SAFE(arg, getOperand(2));
-      auto result = bb.CreateInsertElement(op0, op1, op2, arg->getName()+"'ipie");
+    } else if (auto arg = dyn_cast<InsertElementInst>(oval)) {
+      IRBuilder<> bb(getNewFromOriginal(arg));
+      Value* op0 = arg->getOperand(0);
+      Value* op1 = arg->getOperand(1);
+      Value* op2 = arg->getOperand(2);
+      auto result = bb.CreateInsertElement(invertPointerM(op0, bb), invertPointerM(op1,bb), getNewFromOriginal(op2), arg->getName()+"'ipie");
       invertedPointers[arg] = result;
       return lookupM(invertedPointers[arg], BuilderM);
-    } else if (auto arg = dyn_cast<SelectInst>(val)) {
-      IRBuilder<> bb(arg);
-      auto result = bb.CreateSelect(SAFE(arg,getCondition()), invertPointerM(SAFE(arg,getTrueValue()), bb), invertPointerM(SAFE(arg,getFalseValue()), bb), arg->getName()+"'ipse");
+    } else if (auto arg = dyn_cast<SelectInst>(oval)) {
+      IRBuilder<> bb(getNewFromOriginal(arg));
+      auto result = bb.CreateSelect(getNewFromOriginal(arg->getCondition()), invertPointerM(arg->getTrueValue(), bb), invertPointerM(arg->getFalseValue(), bb), arg->getName()+"'ipse");
       invertedPointers[arg] = result;
       return lookupM(invertedPointers[arg], BuilderM);
-    } else if (auto arg = dyn_cast<LoadInst>(val)) {
-      IRBuilder <> bb(arg);
-      Value* op0 = SAFE(arg, getOperand(0));
+    } else if (auto arg = dyn_cast<LoadInst>(oval)) {
+      IRBuilder <> bb(getNewFromOriginal(arg));
+      Value* op0 = arg->getOperand(0);
       auto li = bb.CreateLoad(invertPointerM(op0, bb), arg->getName()+"'ipl");
       li->setAlignment(arg->getAlignment());
       li->setVolatile(arg->isVolatile());
@@ -411,84 +397,69 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
       li->setSyncScopeID(arg->getSyncScopeID ());
       invertedPointers[arg] = li;
       return lookupM(invertedPointers[arg], BuilderM);
-    } else if (auto arg = dyn_cast<BinaryOperator>(val)) {
+    } else if (auto arg = dyn_cast<BinaryOperator>(oval)) {
  	  assert(arg->getType()->isIntOrIntVectorTy());
-      IRBuilder <> bb(arg);
+      IRBuilder <> bb(getNewFromOriginal(arg));
       Value* val0 = nullptr;
       Value* val1 = nullptr;
 
-      Value* op0 = SAFE(arg, getOperand(0));
-      Value* op1 = SAFE(arg, getOperand(1));
-
-
-      val0 = invertPointerM(op0, bb);
-      val1 = invertPointerM(op1, bb);
+      val0 = invertPointerM(arg->getOperand(0), bb);
+      val1 = invertPointerM(arg->getOperand(1), bb);
 
       auto li = bb.CreateBinOp(arg->getOpcode(), val0, val1, arg->getName());
       cast<BinaryOperator>(li)->copyIRFlags(arg);
       invertedPointers[arg] = li;
       return lookupM(invertedPointers[arg], BuilderM);
-    } else if (auto arg = dyn_cast<GetElementPtrInst>(val)) {
-      //if (arg->getParent() == &arg->getParent()->getParent()->getEntryBlock()) {
-        IRBuilder<> bb(arg);
-        SmallVector<Value*,4> invertargs;
-        for(unsigned i=0; i<arg->getNumIndices(); i++) {
-            Value* a = SAFE(arg, getOperand(1+i));
-            auto b = lookupM(a, bb);
-            invertargs.push_back(b);
-        }
-        auto result = bb.CreateGEP(invertPointerM(SAFE(arg,getPointerOperand()), bb), invertargs, arg->getName()+"'ipg");
-        if (auto gep = dyn_cast<GetElementPtrInst>(result))
-            gep->setIsInBounds(arg->isInBounds());
-        invertedPointers[arg] = result;
-        return lookupM(invertedPointers[arg], BuilderM);
-      //}
-      /*
+    } else if (auto arg = dyn_cast<GetElementPtrInst>(oval)) {
+      IRBuilder<> bb(getNewFromOriginal(arg));
       SmallVector<Value*,4> invertargs;
-      for(auto &a: arg->indices()) {
-          auto b = lookupM(a, BuilderM);
+      for(unsigned i=0; i<arg->getNumIndices(); i++) {
+          Value* b = getNewFromOriginal(arg->getOperand(1+i));
           invertargs.push_back(b);
       }
-
-      auto result = bb.CreateGEP(invertPointerM(arg->getPointerOperand(), BuilderM), invertargs, arg->getName()+"'ipg");
+      auto result = bb.CreateGEP(invertPointerM(arg->getPointerOperand(), bb), invertargs, arg->getName()+"'ipg");
       if (auto gep = dyn_cast<GetElementPtrInst>(result))
-        gep->setIsInBounds(arg->isInBounds());
+          gep->setIsInBounds(arg->isInBounds());
       invertedPointers[arg] = result;
       return lookupM(invertedPointers[arg], BuilderM);
-      */
-    } else if (auto inst = dyn_cast<AllocaInst>(val)) {
-        IRBuilder<> bb(inst);
-        Value* asize = SAFE(inst,getArraySize());
-        AllocaInst* antialloca = bb.CreateAlloca(inst->getAllocatedType(), inst->getType()->getPointerAddressSpace(), asize, inst->getName()+"'ipa");
-        invertedPointers[val] = antialloca;
-        antialloca->setAlignment(inst->getAlignment());
+    } else if (auto inst = dyn_cast<AllocaInst>(oval)) {
+      IRBuilder<> bb(getNewFromOriginal(inst));
+      Value* asize = getNewFromOriginal(inst->getArraySize());
+      AllocaInst* antialloca = bb.CreateAlloca(inst->getAllocatedType(), inst->getType()->getPointerAddressSpace(), asize, inst->getName()+"'ipa");
+      invertedPointers[inst] = antialloca;
+      antialloca->setAlignment(inst->getAlignment());
 
-        auto dst_arg = bb.CreateBitCast(antialloca,Type::getInt8PtrTy(val->getContext()));
-        auto val_arg = ConstantInt::get(Type::getInt8Ty(val->getContext()), 0);
-        auto len_arg = bb.CreateMul(bb.CreateZExtOrTrunc(asize,Type::getInt64Ty(val->getContext())), ConstantInt::get(Type::getInt64Ty(val->getContext()), M->getDataLayout().getTypeAllocSizeInBits(inst->getAllocatedType())/8), "", true, true);
-        auto volatile_arg = ConstantInt::getFalse(val->getContext());
+      auto dst_arg = bb.CreateBitCast(antialloca,Type::getInt8PtrTy(oval->getContext()));
+      auto val_arg = ConstantInt::get(Type::getInt8Ty(oval->getContext()), 0);
+      auto len_arg = bb.CreateMul(bb.CreateZExtOrTrunc(asize,Type::getInt64Ty(oval->getContext())), ConstantInt::get(Type::getInt64Ty(oval->getContext()), M->getDataLayout().getTypeAllocSizeInBits(inst->getAllocatedType())/8), "", true, true);
+      auto volatile_arg = ConstantInt::getFalse(oval->getContext());
 
 #if LLVM_VERSION_MAJOR == 6
-        auto align_arg = ConstantInt::get(Type::getInt32Ty(val->getContext()), antialloca->getAlignment());
-        Value *args[] = { dst_arg, val_arg, len_arg, align_arg, volatile_arg };
+      auto align_arg = ConstantInt::get(Type::getInt32Ty(val->getContext()), antialloca->getAlignment());
+      Value *args[] = { dst_arg, val_arg, len_arg, align_arg, volatile_arg };
 #else
-        Value *args[] = { dst_arg, val_arg, len_arg, volatile_arg };
+      Value *args[] = { dst_arg, val_arg, len_arg, volatile_arg };
 #endif
-        Type *tys[] = {dst_arg->getType(), len_arg->getType()};
-        auto memset = cast<CallInst>(bb.CreateCall(Intrinsic::getDeclaration(M, Intrinsic::memset, tys), args));
-        if (inst->getAlignment() != 0) {
-            memset->addParamAttr(0, Attribute::getWithAlignment(inst->getContext(), inst->getAlignment()));
-        }
-        memset->addParamAttr(0, Attribute::NonNull);
-        return lookupM(invertedPointers[inst], BuilderM);
-    } else if (auto phi = dyn_cast<PHINode>(val)) {
+      Type *tys[] = {dst_arg->getType(), len_arg->getType()};
+      auto memset = cast<CallInst>(bb.CreateCall(Intrinsic::getDeclaration(M, Intrinsic::memset, tys), args));
+      if (inst->getAlignment() != 0) {
+          memset->addParamAttr(0, Attribute::getWithAlignment(inst->getContext(), inst->getAlignment()));
+      }
+      memset->addParamAttr(0, Attribute::NonNull);
+      return lookupM(invertedPointers[inst], BuilderM);
+    } else if (auto phi = dyn_cast<PHINode>(oval)) {
+
+     if (phi->getNumIncomingValues() == 0) {
+      dumpMap(invertedPointers);
+      assert(0 && "illegal iv of phi");
+     }
      std::map<Value*,std::set<BasicBlock*>> mapped;
      for(unsigned int i=0; i<phi->getNumIncomingValues(); i++) {
-        mapped[SAFE(phi,getIncomingValue(i))].insert(phi->getIncomingBlock(i));
+        mapped[phi->getIncomingValue(i)].insert(phi->getIncomingBlock(i));
      }
 
      if (false && mapped.size() == 1) {
-        return invertPointerM(SAFE(phi,getIncomingValue(0)), BuilderM);
+        return invertPointerM(phi->getIncomingValue(0), BuilderM);
      }
 #if 0
      else if (false && mapped.size() == 2) {
@@ -514,15 +485,14 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
 #endif
 
      else {
-         IRBuilder <> bb(phi);
+         IRBuilder <> bb(getNewFromOriginal(phi));
          auto which = bb.CreatePHI(phi->getType(), phi->getNumIncomingValues());
-         invertedPointers[val] = which;
+         invertedPointers[phi] = which;
 
          for(unsigned int i=0; i<phi->getNumIncomingValues(); i++) {
-            IRBuilder <>pre(phi->getIncomingBlock(i)->getTerminator());
-            Value* ival = SAFE(phi, getIncomingValue(i));
-            Value* val = invertPointerM(ival, pre);
-            which->addIncoming(val, phi->getIncomingBlock(i));
+            IRBuilder <>pre(cast<BasicBlock>(getNewFromOriginal(phi->getIncomingBlock(i)))->getTerminator());
+            Value* val = invertPointerM(phi->getIncomingValue(i), pre);
+            which->addIncoming(val, cast<BasicBlock>(getNewFromOriginal(phi->getIncomingBlock(i))));
          }
 
          return lookupM(which, BuilderM);
@@ -532,8 +502,8 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
   end:;
     assert(BuilderM.GetInsertBlock());
     assert(BuilderM.GetInsertBlock()->getParent());
-    assert(val);
-    llvm::errs() << "fn:" << *BuilderM.GetInsertBlock()->getParent() << "\nval=" << *val << "\n";
+    assert(oval);
+    llvm::errs() << "fn:" << *BuilderM.GetInsertBlock()->getParent() << "\noval=" << *oval << "\n";
     for(auto z : invertedPointers) {
       llvm::errs() << "available inversion for " << *z.first << " of " << *z.second << "\n";
     }

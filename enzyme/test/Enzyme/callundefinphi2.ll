@@ -235,8 +235,8 @@ attributes #22 = { readnone speculatable }
 
 ; CHECK: define internal {} @diffe_ZL6matvecPKN5Eigen6MatrixIdLin1ELin1ELi0ELin1ELin1EEES3_(double* noalias %W, double* %"W'", double* noalias %M, double* %"M'", double %differeturn)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %call.i.i.i.i.i.i.i = call noalias i8* @malloc(i64 128) #8
-; CHECK-NEXT:   %"call.i.i.i.i.i.i.i'mi" = call noalias nonnull i8* @malloc(i64 128) #8
+; CHECK-NEXT:   %call.i.i.i.i.i.i.i = call noalias i8* @malloc(i64 128)
+; CHECK-NEXT:   %"call.i.i.i.i.i.i.i'mi" = call noalias nonnull i8* @malloc(i64 128)
 ; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull align 1 %"call.i.i.i.i.i.i.i'mi", i8 0, i64 128, i1 false)
 ; CHECK-NEXT:   %"'ipc" = bitcast i8* %"call.i.i.i.i.i.i.i'mi" to double*
 ; CHECK-NEXT:   %0 = bitcast i8* %call.i.i.i.i.i.i.i to double*
@@ -256,8 +256,8 @@ attributes #22 = { readnone speculatable }
 ; CHECK-NEXT:   br i1 %exitcond.i.i, label %_ZN5Eigen8internal26call_dense_assignment_loopINS_6MatrixIdLin1ELin1ELi0ELin1ELin1EEENS_13CwiseBinaryOpINS0_20scalar_difference_opIddEEKS3_S7_EENS0_9assign_opIddEEEEvRT_RKT0_RKT1_.exit, label %for.body.i.i
 
 ; CHECK: _ZN5Eigen8internal26call_dense_assignment_loopINS_6MatrixIdLin1ELin1ELi0ELin1ELin1EEENS_13CwiseBinaryOpINS0_20scalar_difference_opIddEEKS3_S7_EENS0_9assign_opIddEEEEvRT_RKT0_RKT1_.exit: ; preds = %for.body.i.i
-; CHECK-NEXT:   %call.i.i.i.i.i.i.i13 = call noalias i8* @malloc(i64 128) #8
-; CHECK-NEXT:   %"call.i.i.i.i.i.i.i13'mi" = call noalias nonnull i8* @malloc(i64 128) #8
+; CHECK-NEXT:   %call.i.i.i.i.i.i.i13 = call noalias i8* @malloc(i64 128)
+; CHECK-NEXT:   %"call.i.i.i.i.i.i.i13'mi" = call noalias nonnull i8* @malloc(i64 128)
 ; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull align 1 %"call.i.i.i.i.i.i.i13'mi", i8 0, i64 128, i1 false)
 ; CHECK-NEXT:   %"'ipc8" = bitcast i8* %"call.i.i.i.i.i.i.i13'mi" to double*
 ; CHECK-NEXT:   %3 = bitcast i8* %call.i.i.i.i.i.i.i13 to double*
@@ -268,9 +268,9 @@ attributes #22 = { readnone speculatable }
 ; CHECK-NEXT:   %iv1 = phi i64 [ %iv.next2, %for.body.i ], [ 0, %_ZN5Eigen8internal26call_dense_assignment_loopINS_6MatrixIdLin1ELin1ELi0ELin1ELin1EEENS_13CwiseBinaryOpINS0_20scalar_difference_opIddEEKS3_S7_EENS0_9assign_opIddEEEEvRT_RKT0_RKT1_.exit ]
 ; CHECK-NEXT:   %iv.next2 = add nuw nsw i64 %iv1, 1
 ; CHECK-NEXT:   %cmp.i = icmp eq i64 %iv.next2, 4
-; CHECK-NEXT:   br i1 %cmp.i, label %for.cond10.preheader.i, label %for.body.i
+; CHECK-NEXT:   br i1 %cmp.i, label %for.cond10.preheader, label %for.body.i
 
-; CHECK: for.cond10.preheader.i:                           ; preds = %for.cond.cleanup13.i, %for.body.i
+; CHECK: for.cond10.preheader:                           ; preds = %for.cond.cleanup13.i, %for.body.i
 ; CHECK-NEXT:   %iv3 = phi i64 [ %iv.next4, %for.cond.cleanup13.i ], [ 0, %for.body.i ]
 ; CHECK-NEXT:   %iv.next4 = add nuw nsw i64 %iv3, 1
 ; CHECK-NEXT:   br label %for.body14.i
@@ -280,7 +280,7 @@ attributes #22 = { readnone speculatable }
 ; CHECK-NEXT:   br i1 %cmp7.i, label %invertfor.cond.cleanup13.i, label %for.cond10.preheader.i
 
 ; CHECK: for.body14.i:                                     ; preds = %for.body14.i, %for.cond10.preheader.i
-; CHECK-NEXT:   %iv5 = phi i64 [ %iv.next6, %for.body14.i ], [ 0, %for.cond10.preheader.i ]
+; CHECK-NEXT:   %iv5 = phi i64 [ %iv.next6, %for.body14.i ], [ 0, %for.cond10.preheader ]
 ; CHECK-NEXT:   %iv.next6 = add nuw nsw i64 %iv5, 1
 ; CHECK-NEXT:   %cmp12.i = icmp eq i64 %iv.next6, 4
 ; CHECK-NEXT:   br i1 %cmp12.i, label %for.cond.cleanup13.i, label %for.body14.i

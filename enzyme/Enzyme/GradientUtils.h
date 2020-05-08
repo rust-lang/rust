@@ -387,7 +387,7 @@ public:
 
   Instruction* createAntiMalloc(CallInst *call, unsigned idx) {
     assert(call->getParent()->getParent() == newFunc);
-    PHINode* placeholder = cast<PHINode>(invertedPointers[call]);
+    PHINode* placeholder = cast<PHINode>(invertedPointers[getOriginal(call)]);
 
     assert(placeholder->getParent()->getParent() == newFunc);
 	placeholder->setName("");
@@ -405,14 +405,14 @@ public:
     cast<CallInst>(anti)->addAttribute(AttributeList::ReturnIndex, Attribute::NoAlias);
     cast<CallInst>(anti)->addAttribute(AttributeList::ReturnIndex, Attribute::NonNull);
 
-    invertedPointers[call] = anti;
+    invertedPointers[getOriginal(call)] = anti;
     assert(placeholder != anti);
     bb.SetInsertPoint(placeholder->getNextNode());
     replaceAWithB(placeholder, anti);
     erase(placeholder);
 
     anti = cast<Instruction>(addMalloc(bb, anti, idx));
-    invertedPointers[call] = anti;
+    invertedPointers[getOriginal(call)] = anti;
 
     if (tape == nullptr) {
         auto dst_arg = bb.CreateBitCast(anti,Type::getInt8PtrTy(call->getContext()));
@@ -569,10 +569,8 @@ public:
         }
         assert(malloc->getType() == ret->getType());
 
-        if (invertedPointers.find(malloc) != invertedPointers.end()) {
-  				invertedPointers[ret] = invertedPointers[malloc];
-	   			invertedPointers.erase(malloc);
-		  	}
+        if (auto orig = isOriginal(malloc))
+          originalToNewFn[orig] = ret;
 
         if (scopeMap.find(malloc) != scopeMap.end()) {
           // There already exists an alloaction for this, we should fully remove it
@@ -809,8 +807,14 @@ public:
   static GradientUtils* CreateFromClone(Function *todiff, TargetLibraryInfo &TLI, TypeAnalysis &TA, AAResults &AA, const std::set<unsigned> & constant_args, bool returnUsed, bool differentialReturn, std::map<AugmentedStruct, unsigned>& returnMapping);
 
   StoreInst* setPtrDiffe(Value* ptr, Value* newval, IRBuilder<> &BuilderM) {
-      ptr = invertPointerM(ptr, BuilderM);
-      return BuilderM.CreateStore(newval, ptr);
+    if (auto inst = dyn_cast<Instruction>(ptr)) {
+      assert(inst->getParent()->getParent() == oldFunc);
+    }
+    if (auto arg = dyn_cast<Argument>(ptr)) {
+      assert(arg->getParent() == oldFunc);
+    }
+    ptr = invertPointerM(ptr, BuilderM);
+    return BuilderM.CreateStore(newval, ptr);
   }
 
   void prepareForReverse() {
@@ -1021,7 +1025,7 @@ public:
             IRBuilder<> BuilderZ(getNextNonDebugInstruction(newi));
             BuilderZ.setFastMathFlags(getFast());
             PHINode* anti = BuilderZ.CreatePHI(inst->getType(), 1, inst->getName() + "'il_phi");
-            invertedPointers[newi] = anti;
+            invertedPointers[inst] = anti;
             continue;
         }
 
@@ -1047,10 +1051,10 @@ public:
         IRBuilder<> BuilderZ(getNextNonDebugInstruction(newi));
         BuilderZ.setFastMathFlags(getFast());
         PHINode* anti = BuilderZ.CreatePHI(op->getType(), 1, op->getName() + "'ip_phi");
-        invertedPointers[newi] = anti;
+        invertedPointers[inst] = anti;
 
   			if ( called && (called->getName() == "malloc" || called->getName() == "_Znwm")) {
-  				invertedPointers[newi]->setName(op->getName()+"'mi");
+  				invertedPointers[inst]->setName(op->getName()+"'mi");
   			}
       }
     }

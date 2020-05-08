@@ -1013,9 +1013,9 @@ public:
 
     //! Store inverted pointer loads that need to be cached for use in reverse pass
     if (!type->isEmptyTy() && !type->isFPOrFPVectorTy() && TR.query(&LI)[{}].isPossiblePointer()) {
-      PHINode* placeholder = cast<PHINode>(gutils->invertedPointers[newi]);
+      PHINode* placeholder = cast<PHINode>(gutils->invertedPointers[&LI]);
       assert(placeholder->getType() == type);
-      gutils->invertedPointers.erase(newi);
+      gutils->invertedPointers.erase(&LI);
 
       //TODO consider optimizing when you know it isnt a pointer and thus don't need to store
       if (!constantval) {
@@ -1026,7 +1026,7 @@ public:
 
           case DerivativeMode::Forward:
           case DerivativeMode::Both:{
-            newip = gutils->invertPointerM(newi, BuilderZ);
+            newip = gutils->invertPointerM(&LI, BuilderZ);
             assert(newip->getType() == type);
 
             if (mode == DerivativeMode::Forward && gutils->can_modref_map->find(&LI)->second) {
@@ -1034,7 +1034,7 @@ public:
             }
             placeholder->replaceAllUsesWith(newip);
             gutils->erase(placeholder);
-            gutils->invertedPointers[newi] = newip;
+            gutils->invertedPointers[&LI] = newip;
             break;
           }
 
@@ -1043,13 +1043,13 @@ public:
             if (gutils->can_modref_map->find(&LI)->second) {
               newip = gutils->addMalloc(BuilderZ, placeholder, getIndex(&LI, CacheType::Shadow));
               assert(newip->getType() == type);
-              gutils->invertedPointers[newi] = newip;
+              gutils->invertedPointers[&LI] = newip;
             } else {
-              newip = gutils->invertPointerM(newi, BuilderZ);
+              newip = gutils->invertPointerM(&LI, BuilderZ);
               assert(newip->getType() == type);
               placeholder->replaceAllUsesWith(newip);
               gutils->erase(placeholder);
-              gutils->invertedPointers[newi] = newip;
+              gutils->invertedPointers[&LI] = newip;
             }
             break;
           }
@@ -1109,8 +1109,7 @@ public:
       setDiffe(&LI, Constant::getNullValue(type), Builder2);
       //llvm::errs() << "  + doing load propagation: orig:" << *oorig << " inst:" << *inst << " prediff: " << *prediff << " inverted_operand: " << *inverted_operand << "\n";
 
-      Value* ptr  = gutils->getNewFromOriginal(LI.getPointerOperand());
-      Value* inverted_operand = gutils->invertPointerM(ptr, Builder2);
+      Value* inverted_operand = gutils->invertPointerM(LI.getPointerOperand(), Builder2);
       assert(inverted_operand);
       ((DiffeGradientUtils*)gutils)->addToInvertedPtrDiffe(inverted_operand, prediff, Builder2, alignment);
     }
@@ -1119,9 +1118,9 @@ public:
   void visitStoreInst(llvm::StoreInst &SI) {
     Value* orig_ptr = SI.getPointerOperand();
     Value* orig_val = SI.getValueOperand();
-    Value* ptr  = gutils->getNewFromOriginal(orig_ptr);
     Value* val  = gutils->getNewFromOriginal(orig_val);
     Type* valType = orig_val->getType();
+
 
     // Don't duplicate store in reverse pass
     if (mode == DerivativeMode::Reverse) {
@@ -1150,11 +1149,11 @@ public:
         IRBuilder<> Builder2 = getReverseBuilder(SI.getParent());
 
         if (gutils->isConstantValue(orig_val)) {
-          ts = setPtrDiffe(ptr, Constant::getNullValue(valType), Builder2);
+          ts = setPtrDiffe(orig_ptr, Constant::getNullValue(valType), Builder2);
         } else {
-          auto dif1 = Builder2.CreateLoad(gutils->invertPointerM(ptr, Builder2));
+          auto dif1 = Builder2.CreateLoad(gutils->invertPointerM(orig_ptr, Builder2));
           dif1->setAlignment(SI.getAlignment());
-          ts = setPtrDiffe(ptr, Constant::getNullValue(valType), Builder2);
+          ts = setPtrDiffe(orig_ptr, Constant::getNullValue(valType), Builder2);
           addToDiffe(orig_val, dif1, Builder2, FT);
         }
       }
@@ -1171,9 +1170,9 @@ public:
         if (gutils->isConstantValue(orig_val)) {
             valueop = val; //Constant::getNullValue(op->getValueOperand()->getType());
         } else {
-            valueop = gutils->invertPointerM(val, storeBuilder);
+            valueop = gutils->invertPointerM(orig_val, storeBuilder);
         }
-        ts = setPtrDiffe(ptr, valueop, storeBuilder);
+        ts = setPtrDiffe(orig_ptr, valueop, storeBuilder);
       }
 
     }
@@ -1524,7 +1523,6 @@ public:
     if (gutils->isConstantInstruction(&MS)) return;
 
     Value* orig_op0 = MS.getOperand(0);
-    Value* op0 = gutils->getNewFromOriginal(orig_op0);
     Value* orig_op1 = MS.getOperand(1);
     Value* op1 = gutils->getNewFromOriginal(orig_op1);
     Value* op2 = gutils->getNewFromOriginal(MS.getOperand(2));
@@ -1543,7 +1541,7 @@ public:
 
       SmallVector<Value*, 4> args;
       if (!gutils->isConstantValue(orig_op0)) {
-        args.push_back(gutils->invertPointerM(op0, BuilderZ));
+        args.push_back(gutils->invertPointerM(orig_op0, BuilderZ));
       } else {
         //If constant destination then no operation needs doing
         return;
@@ -1603,8 +1601,8 @@ public:
         SmallVector<Value*, 4> args;
         auto secretpt = PointerType::getUnqual(secretty);
 
-        args.push_back(Builder2.CreatePointerCast(gutils->invertPointerM(op0, Builder2), secretpt));
-        args.push_back(Builder2.CreatePointerCast(gutils->invertPointerM(op1, Builder2), secretpt));
+        args.push_back(Builder2.CreatePointerCast(gutils->invertPointerM(orig_op0, Builder2), secretpt));
+        args.push_back(Builder2.CreatePointerCast(gutils->invertPointerM(orig_op1, Builder2), secretpt));
         args.push_back(Builder2.CreateUDiv(lookup(op2, Builder2),
 
             ConstantInt::get(op2->getType(), Builder2.GetInsertBlock()->getParent()->getParent()->getDataLayout().getTypeAllocSizeInBits(secretty)/8)
@@ -1635,10 +1633,10 @@ public:
         //  to ensure that the differential tensor is well formed for use OUTSIDE the derivative generation (as enzyme doesn't need this), we should also perform the copy
         //  onto the differential. Future Optimization (not implemented): If dst can never escape Enzyme code, we may omit this copy.
         //no need to update pointers, even if dst is active
-        args.push_back(gutils->invertPointerM(op0, BuilderZ));
+        args.push_back(gutils->invertPointerM(orig_op0, BuilderZ));
 
         if (!gutils->isConstantValue(orig_op1))
-            args.push_back(gutils->invertPointerM(op1, BuilderZ));
+            args.push_back(gutils->invertPointerM(orig_op1, BuilderZ));
         else
             args.push_back(op1);
 
@@ -2101,9 +2099,9 @@ void DerivativeMaker<const AugmentedReturn*>::visitCallInst(llvm::CallInst &call
   }
 
   if (called && called->getName()=="free") {
-    if( gutils->invertedPointers.count(op) ) {
-        auto placeholder = cast<PHINode>(gutils->invertedPointers[op]);
-        gutils->invertedPointers.erase(op);
+    if( gutils->invertedPointers.count(orig) ) {
+        auto placeholder = cast<PHINode>(gutils->invertedPointers[orig]);
+        gutils->invertedPointers.erase(orig);
         gutils->erase(placeholder);
     }
 
@@ -2130,9 +2128,9 @@ void DerivativeMaker<const AugmentedReturn*>::visitCallInst(llvm::CallInst &call
   }
 
   if (called && (called->getName()=="_ZdlPv" || called->getName()=="_ZdlPvm")) {
-    if( gutils->invertedPointers.count(op) ) {
-        auto placeholder = cast<PHINode>(gutils->invertedPointers[op]);
-        gutils->invertedPointers.erase(op);
+    if( gutils->invertedPointers.count(orig) ) {
+        auto placeholder = cast<PHINode>(gutils->invertedPointers[orig]);
+        gutils->invertedPointers.erase(orig);
         gutils->erase(placeholder);
     }
 
@@ -2221,8 +2219,8 @@ void DerivativeMaker<const AugmentedReturn*>::visitCallInst(llvm::CallInst &call
         args.push_back(Constant::getNullValue(argType));
         pre_args.push_back(Constant::getNullValue(argType));
       } else {
-        args.push_back(gutils->invertPointerM(argops[i], Builder2));
-        pre_args.push_back(gutils->invertPointerM(argops[i], BuilderZ));
+        args.push_back(gutils->invertPointerM(orig->getArgOperand(i), Builder2));
+        pre_args.push_back(gutils->invertPointerM(orig->getArgOperand(i), BuilderZ));
       }
 
       //Note sometimes whattype mistakenly says something should be constant [because composed of integer pointers alone]
@@ -2274,7 +2272,7 @@ void DerivativeMaker<const AugmentedReturn*>::visitCallInst(llvm::CallInst &call
 
     if (!called) {
         IRBuilder<> pre(op);
-        newcalled = gutils->invertPointerM(gutils->getNewFromOriginal(orig->getCalledValue()), pre);
+        newcalled = gutils->invertPointerM(orig->getCalledValue(), pre);
 
         auto ft = cast<FunctionType>(cast<PointerType>(op->getCalledValue()->getType())->getElementType());
         auto res = getDefaultFunctionTypeForAugmentation(ft, /*returnUsed*/true, /*subdifferentialreturn*/true);
@@ -2381,9 +2379,9 @@ void DerivativeMaker<const AugmentedReturn*>::visitCallInst(llvm::CallInst &call
         }
 
         //llvm::errs() << "considering augmenting: " << *op << "\n";
-        if( gutils->invertedPointers.count(op) ) {
+        if( gutils->invertedPointers.count(orig) ) {
 
-            auto placeholder = cast<PHINode>(gutils->invertedPointers[op]);
+            auto placeholder = cast<PHINode>(gutils->invertedPointers[orig]);
             //llvm::errs() << " +  considering placeholder: " << *placeholder << "\n";
 
             bool subcheck = subdifferentialreturn && !op->getType()->isFPOrFPVectorTy() && !gutils->isConstantValue(orig);
@@ -2407,7 +2405,7 @@ void DerivativeMaker<const AugmentedReturn*>::visitCallInst(llvm::CallInst &call
                     newip = gutils->addMalloc(BuilderZ, placeholder, getIndex(orig, CacheType::Shadow) );
                 }
 
-                gutils->invertedPointers[op] = newip;
+                gutils->invertedPointers[orig] = newip;
 
                 if (topLevel) {
                     gutils->erase(placeholder);
@@ -2415,7 +2413,7 @@ void DerivativeMaker<const AugmentedReturn*>::visitCallInst(llvm::CallInst &call
                     /* don't need to erase if not toplevel since that is handled by addMalloc */
                 }
             } else {
-                gutils->invertedPointers.erase(op);
+                gutils->invertedPointers.erase(orig);
                 gutils->erase(placeholder);
             }
         }
@@ -2440,9 +2438,9 @@ void DerivativeMaker<const AugmentedReturn*>::visitCallInst(llvm::CallInst &call
         }
 
   } else {
-    if( gutils->invertedPointers.count(op) ) {
-      auto placeholder = cast<PHINode>(gutils->invertedPointers[op]);
-      gutils->invertedPointers.erase(op);
+    if( gutils->invertedPointers.count(orig) ) {
+      auto placeholder = cast<PHINode>(gutils->invertedPointers[orig]);
+      gutils->invertedPointers.erase(orig);
       gutils->erase(placeholder);
     }
     if (!topLevel && subretused && !op->doesNotAccessMemory()) {
@@ -2473,7 +2471,7 @@ void DerivativeMaker<const AugmentedReturn*>::visitCallInst(llvm::CallInst &call
 
     assert(!subtopLevel);
 
-    newcalled = gutils->invertPointerM(gutils->getNewFromOriginal(orig->getCalledValue()), Builder2);
+    newcalled = gutils->invertPointerM(orig->getCalledValue(), Builder2);
 
     auto ft = cast<FunctionType>(cast<PointerType>(op->getCalledValue()->getType())->getElementType());
     auto res = getDefaultFunctionTypeForGradient(ft, subdiffereturn);
@@ -2543,7 +2541,7 @@ badfn:;
   assert(cast<StructType>(diffes->getType())->getNumElements() == structidx);
 
   //TODO this shouldn't matter because this can't use itself, but setting null should be done before other sets but after load of diffe
-  if (!gutils->isConstantValue(orig))
+  if (!gutils->isConstantValue(orig) && op->getType()->isFPOrFPVectorTy())
     setDiffe(orig, Constant::getNullValue(op->getType()), Builder2);
 
   if (replaceFunction) {
@@ -2563,15 +2561,15 @@ badfn:;
     */
 
     //if a function is replaced for joint forward/reverse, handle inverted pointers
-    if (gutils->invertedPointers.count(op)) {
-        auto placeholder = cast<PHINode>(gutils->invertedPointers[op]);
-        gutils->invertedPointers.erase(op);
+    if (gutils->invertedPointers.count(orig)) {
+        auto placeholder = cast<PHINode>(gutils->invertedPointers[orig]);
+        gutils->invertedPointers.erase(orig);
         if (subdretptr) {
             dumpMap(gutils->invertedPointers);
             auto dretval = cast<Instruction>(Builder2.CreateExtractValue(diffes, {1}));
             /* todo handle this case later */
             assert(!subretused);
-            gutils->invertedPointers[op] = dretval;
+            gutils->invertedPointers[orig] = dretval;
         }
         gutils->erase(placeholder);
     }
@@ -2653,9 +2651,8 @@ badfn:;
       assert(dcall);
 
       if (!gutils->isConstantValue(orig)) {
+        gutils->originalToNewFn[orig] = dcall;
         if (!op->getType()->isFPOrFPVectorTy() && TR.query(orig)[{}].isPossiblePointer()) {
-          gutils->invertedPointers[dcall] = gutils->invertedPointers[op];
-          gutils->invertedPointers.erase(op);
         } else {
           ((DiffeGradientUtils*)gutils)->differentials[dcall] = ((DiffeGradientUtils*)gutils)->differentials[op];
           ((DiffeGradientUtils*)gutils)->differentials.erase(op);
@@ -2668,13 +2665,14 @@ badfn:;
       if (isa<Instruction>(dcall) && !isa<PHINode>(dcall)) {
         cast<Instruction>(dcall)->setName(name);
       }
+      gutils->erase(op);
     } else {
       if (augmentcall) {
         gutils->originalToNewFn[orig] = augmentcall;
       }
       eraseIfUnused(*orig, /*erase*/false, /*check*/false);
+      gutils->erase(op);
     }
-    gutils->erase(op);
 
   } else {
 
@@ -2860,7 +2858,7 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, const std::set<un
             // We need to still get even if not a constant value so the other end can handle all returns with a reasonable value
             //   That said, if we return a constant value (i.e. nullptr) we shouldn't try inverting the pointer and return undef instead (since it [hopefully] shouldn't be used)
             if (!gutils->isConstantValue(orig_oldval)) {
-                invertedRetPs[newri] = gutils->invertPointerM(oldval, ib);
+                invertedRetPs[newri] = gutils->invertPointerM(orig_oldval, ib);
             } else {
                 invertedRetPs[newri] = UndefValue::get(oldval->getType());
             }
@@ -3407,7 +3405,7 @@ void handleAugmentedCallInst(TypeResults &TR, CallInst* op, GradientUtils* const
         //if (!argType->isFPOrFPVectorTy() && TR.query(gutils->getOriginal(op->getArgOperand(i)))[{}].isPossiblePointer()) {
         if (!argType->isFPOrFPVectorTy()) {
             argsInverted.push_back(DIFFE_TYPE::DUP_ARG);
-            args.push_back(gutils->invertPointerM(gutils->getNewFromOriginal(orig->getArgOperand(i)), BuilderZ));
+            args.push_back(gutils->invertPointerM(orig->getArgOperand(i), BuilderZ));
 
             //Note sometimes whattype mistakenly says something should be constant [because composed of integer pointers alone]
             assert(whatType(argType) == DIFFE_TYPE::DUP_ARG || whatType(argType) == DIFFE_TYPE::CONSTANT);
@@ -3484,7 +3482,7 @@ void handleAugmentedCallInst(TypeResults &TR, CallInst* op, GradientUtils* const
         }
         IRBuilder<> pre(op);
         //TODO consider making called value use orig
-        newcalled = gutils->invertPointerM(op->getCalledValue(), pre);
+        newcalled = gutils->invertPointerM(orig->getCalledValue(), pre);
 
         auto ft = cast<FunctionType>(cast<PointerType>(op->getCalledValue()->getType())->getElementType());
         auto res = getDefaultFunctionTypeForAugmentation(ft, /*returnUsed*/true, /*subdifferentialreturn*/true);
@@ -3508,14 +3506,14 @@ void handleAugmentedCallInst(TypeResults &TR, CallInst* op, GradientUtils* const
         }
         gutils->addMalloc(BuilderZ, tp, getIndex(orig, CacheType::Tape) );
 
-        if (gutils->invertedPointers.count(op) != 0) {
-            auto placeholder = cast<PHINode>(gutils->invertedPointers[op]);
-            gutils->invertedPointers.erase(op);
+        if (gutils->invertedPointers.count(orig) != 0) {
+            auto placeholder = cast<PHINode>(gutils->invertedPointers[orig]);
+            gutils->invertedPointers.erase(orig);
 
             if (subdifferentialreturn) {
               auto antiptr = cast<Instruction>(BuilderZ.CreateExtractValue(augmentcall, {differeturnIdx}, "antiptr_" + op->getName() ));
               assert(antiptr->getType() == op->getType());
-              gutils->invertedPointers[op] = antiptr;
+              gutils->invertedPointers[orig] = antiptr;
               placeholder->replaceAllUsesWith(antiptr);
 
               if (hasNonReturnUse) {
@@ -3529,11 +3527,6 @@ void handleAugmentedCallInst(TypeResults &TR, CallInst* op, GradientUtils* const
           auto rv = cast<Instruction>(BuilderZ.CreateExtractValue(augmentcall, {returnIdx}));
           assert(rv->getType() == op->getType());
           assert(op->getType() == rv->getType());
-
-          if (gutils->invertedPointers.count(op) != 0) {
-              gutils->invertedPointers[rv] = gutils->invertedPointers[op];
-              gutils->invertedPointers.erase(op);
-          }
 
           if (hasNonReturnUse && is_value_needed_in_reverse(TR, gutils, orig, /*topLevel*/false)) {
             gutils->addMalloc(BuilderZ, rv, getIndex(orig, CacheType::Self) );
@@ -3832,12 +3825,11 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
       rb.setFastMathFlags(getFast());
 
       if (retAlloca) {
-        Value* retval = gutils->getNewFromOriginal(orig->getReturnValue());
-        StoreInst* si = rb.CreateStore(retval, retAlloca);
+        StoreInst* si = rb.CreateStore(gutils->getNewFromOriginal(orig->getReturnValue()), retAlloca);
         replacedReturns[orig] = si;
 
         if (dretAlloca && !gutils->isConstantValue(orig->getReturnValue())) {
-            rb.CreateStore(gutils->invertPointerM(retval, rb), dretAlloca);
+            rb.CreateStore(gutils->invertPointerM(orig->getReturnValue(), rb), dretAlloca);
         }
       }
 
