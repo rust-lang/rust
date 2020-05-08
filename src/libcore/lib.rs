@@ -253,6 +253,7 @@ pub mod unicode;
 /* Async */
 #[cfg(not(test))] // See #65860
 pub mod future;
+pub mod stream;
 pub mod task;
 
 /* Heap memory allocator trait */

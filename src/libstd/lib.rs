@@ -304,6 +304,7 @@
 #![feature(std_internals)]
 #![feature(stdsimd)]
 #![feature(stmt_expr_attributes)]
+#![feature(stream)]
 #![feature(str_internals)]
 #![feature(test)]
 #![feature(thread_local)]
@@ -431,6 +432,8 @@ pub use core::ptr;
 pub use core::raw;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::result;
+#[unstable(feature = "stream", issue = "none")]
+pub use core::stream;
 #[stable(feature = "i128", since = "1.26.0")]
 pub use core::u128;
 #[stable(feature = "rust1", since = "1.0.0")]

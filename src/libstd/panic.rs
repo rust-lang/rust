@@ -12,6 +12,7 @@ use crate::panicking;
 use crate::pin::Pin;
 use crate::ptr::{NonNull, Unique};
 use crate::rc::Rc;
+use crate::stream::Stream;
 use crate::sync::atomic;
 use crate::sync::{Arc, Mutex, RwLock};
 use crate::task::{Context, Poll};
@@ -333,6 +334,20 @@ impl<F: Future> Future for AssertUnwindSafe<F> {
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let pinned_field = unsafe { Pin::map_unchecked_mut(self, |x| &mut x.0) };
         F::poll(pinned_field, cx)
+    }
+}
+
+#[unstable(feature = "stream", issue = "none")]
+impl<S: Stream> Stream for AssertUnwindSafe<S> {
+    type Item = S::Item;
+
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let pinned_field = unsafe { Pin::map_unchecked_mut(self, |x| &mut x.0) };
+        S::poll_next(pinned_field, cx)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
     }
 }
 

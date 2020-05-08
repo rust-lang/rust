@@ -143,6 +143,7 @@ use core::ops::{
 };
 use core::pin::Pin;
 use core::ptr::{self, NonNull, Unique};
+use core::stream::Stream;
 use core::task::{Context, Poll};
 
 use crate::alloc::{self, AllocInit, AllocRef, Global};
@@ -1148,5 +1149,18 @@ impl<F: ?Sized + Future + Unpin> Future for Box<F> {
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         F::poll(Pin::new(&mut *self), cx)
+    }
+}
+
+#[unstable(feature = "stream", issue = "none")]
+impl<S: ?Sized + Stream + Unpin> Stream for Box<S> {
+    type Item = S::Item;
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        S::poll_next(Pin::new(&mut *self), cx)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (**self).size_hint()
     }
 }

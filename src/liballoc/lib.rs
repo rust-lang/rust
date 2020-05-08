@@ -111,6 +111,7 @@
 #![feature(specialization)]
 #![feature(staged_api)]
 #![feature(std_internals)]
+#![feature(stream)]
 #![feature(str_internals)]
 #![feature(trusted_len)]
 #![feature(try_reserve)]
