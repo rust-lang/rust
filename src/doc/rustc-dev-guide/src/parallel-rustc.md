@@ -34,7 +34,7 @@ However, there are two blockers:
 Here are some resources that can be used to learn more (note that some of them
 are a bit out of date):
 
-- [This IRLO thread by Zoxc, when of the pioneers of the effort][irlo0]
+- [This IRLO thread by Zoxc, one of the pioneers of the effort][irlo0]
 - [This list of interior mutability in the compiler by nikomatsakis][imlist]
 - [This IRLO thread by alexchricton about performance][irlo1]
 - [This tracking issue][tracking]
