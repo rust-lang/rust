@@ -2,11 +2,12 @@
 
 use crate::utils::span_lint_and_then;
 use crate::utils::sugg::DiagnosticBuilderExt;
-use rustc_ast::ast::{Attribute, Name};
+use rustc_ast::ast::Attribute;
 use rustc_errors::Applicability;
 use rustc_hir::{TraitFn, TraitItem, TraitItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::Symbol;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for `#[inline]` on trait methods without bodies
@@ -38,7 +39,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InlineFnWithoutBody {
     }
 }
 
-fn check_attrs(cx: &LateContext<'_, '_>, name: Name, attrs: &[Attribute]) {
+fn check_attrs(cx: &LateContext<'_, '_>, name: Symbol, attrs: &[Attribute]) {
     for attr in attrs {
         if !attr.check_name(sym!(inline)) {
             continue;

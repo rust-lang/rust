@@ -4,7 +4,7 @@ use crate::utils::{
     span_lint_and_help, span_lint_and_sugg, walk_ptrs_ty,
 };
 use if_chain::if_chain;
-use rustc_ast::ast::{Crate as AstCrate, ItemKind, LitKind, Name, NodeId};
+use rustc_ast::ast::{Crate as AstCrate, ItemKind, LitKind, NodeId};
 use rustc_ast::visit::FnKind;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
@@ -17,7 +17,7 @@ use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
 use rustc_middle::hir::map::Map;
 use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::{Span, Spanned};
-use rustc_span::symbol::SymbolStr;
+use rustc_span::symbol::{Symbol, SymbolStr};
 
 use std::borrow::{Borrow, Cow};
 
@@ -245,8 +245,8 @@ impl EarlyLintPass for ClippyLintsInternal {
 
 #[derive(Clone, Debug, Default)]
 pub struct LintWithoutLintPass {
-    declared_lints: FxHashMap<Name, Span>,
-    registered_lints: FxHashSet<Name>,
+    declared_lints: FxHashMap<Symbol, Span>,
+    registered_lints: FxHashSet<Symbol>,
 }
 
 impl_lint_pass!(LintWithoutLintPass => [DEFAULT_LINT, LINT_WITHOUT_LINT_PASS]);
@@ -357,7 +357,7 @@ fn is_lint_ref_type<'tcx>(cx: &LateContext<'_, 'tcx>, ty: &Ty<'_>) -> bool {
 }
 
 struct LintCollector<'a, 'tcx> {
-    output: &'a mut FxHashSet<Name>,
+    output: &'a mut FxHashSet<Symbol>,
     cx: &'a LateContext<'a, 'tcx>,
 }
 
