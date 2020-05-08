@@ -1188,7 +1188,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             hir_id: self.lower_node_id(constraint.id, constraint.span),
             ident: constraint.ident,
             kind,
-            span: constraint.span,
         }
     }
 

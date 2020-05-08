@@ -404,7 +404,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
 
         if position != GenericArgPosition::Type && !args.bindings.is_empty() {
-            AstConv::prohibit_assoc_ty_binding(tcx, args.bindings[0].span);
+            AstConv::prohibit_assoc_ty_binding(tcx, tcx.hir().span(args.bindings[0].hir_id));
         }
 
         let explicit_late_bound =

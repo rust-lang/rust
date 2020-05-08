@@ -1956,7 +1956,6 @@ pub struct TypeBinding<'hir> {
     #[stable_hasher(project(name))]
     pub ident: Ident,
     pub kind: TypeBindingKind<'hir>,
-    pub span: Span,
 }
 
 // Represents the two kinds of type bindings.

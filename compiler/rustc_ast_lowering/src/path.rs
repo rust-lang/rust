@@ -268,7 +268,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             .args
             .first()
             .map(|a| self.spans[a.id()])
-            .or_else(|| generic_args.bindings.first().map(|b| b.span));
+            .or_else(|| generic_args.bindings.first().map(|b| self.spans[b.hir_id]));
         if !generic_args.parenthesized && !has_lifetimes {
             generic_args.args = self
                 .elided_path_lifetimes(
@@ -425,6 +425,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     ) -> hir::TypeBinding<'hir> {
         let ident = Ident::with_dummy_span(hir::FN_OUTPUT_NAME);
         let kind = hir::TypeBindingKind::Equality { ty };
-        hir::TypeBinding { hir_id: self.next_id(span), span, ident, kind }
+        hir::TypeBinding { hir_id: self.next_id(span), ident, kind }
     }
 }
