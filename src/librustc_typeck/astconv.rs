@@ -342,7 +342,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
 
         if position != GenericArgPosition::Type && !args.bindings.is_empty() {
-            AstConv::prohibit_assoc_ty_binding(tcx, args.bindings[0].span);
+            AstConv::prohibit_assoc_ty_binding(tcx, tcx.hir().span(args.bindings[0].hir_id));
         }
 
         let explicit_late_bound =
@@ -911,7 +911,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         ConvertedBindingKind::Constraint(bounds)
                     }
                 };
-                ConvertedBinding { item_name: binding.ident, kind, span: binding.span }
+                ConvertedBinding {
+                    item_name: binding.ident,
+                    kind,
+                    span: tcx.hir().span(binding.hir_id),
+                }
             })
             .collect();
 
@@ -2505,7 +2509,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             // Only emit the first error to avoid overloading the user with error messages.
             if let [binding, ..] = segment.generic_args().bindings {
                 has_err = true;
-                Self::prohibit_assoc_ty_binding(self.tcx(), binding.span);
+                Self::prohibit_assoc_ty_binding(self.tcx(), self.tcx().hir().span(binding.hir_id));
             }
         }
         has_err
