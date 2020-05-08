@@ -615,7 +615,9 @@ fn compute_storage_conflicts(
             continue;
         }
 
-        for (statement_index, _) in data.statements.iter().enumerate() {
+        // Observe the dataflow state *before* all possible locations (statement or terminator) in
+        // each basic block...
+        for statement_index in 0..=data.statements.len() {
             let loc = Location { block, statement_index };
             trace!("record conflicts at {:?}", loc);
             init.seek_before_primary_effect(loc);
@@ -623,10 +625,9 @@ fn compute_storage_conflicts(
             record_conflicts_at_curr_loc(&mut local_conflicts, &init, &borrowed);
         }
 
-        // We need to look for conflicts at the end of the block as well, otherwise we would not
-        // observe the dataflow state after the terminator effect is applied. As long as neither
-        // `init` nor `borrowed` has a "before" effect, we will observe all possible dataflow
-        // states here or in the loop above.
+        // ...and then observe the state *after* the terminator effect is applied. As long as
+        // neither `init` nor `borrowed` has a "before" effect, we will observe all possible
+        // dataflow states here or in the loop above.
         trace!("record conflicts at end of {:?}", block);
         init.seek_to_block_end(block);
         borrowed.seek_to_block_end(block);
