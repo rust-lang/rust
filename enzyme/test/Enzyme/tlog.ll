@@ -93,12 +93,7 @@ attributes #8 = { noreturn nounwind }
 
 ; CHECK: for.body:                                         ; preds = %for.body, %entry
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %for.body ], [ 0, %entry ]
-; CHECK-NEXT:   %sum = phi double [ %add, %for.body ], [ 0.000000e+00, %entry ]
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
-; CHECK-NEXT:   %conv = sitofp i64 %iv.next to double
-; CHECK-NEXT:   %pow = tail call fast double @llvm.pow.f64(double %x, double %conv)
-; CHECK-NEXT:   %div = fdiv fast double %pow, %conv
-; CHECK-NEXT:   %add = fadd fast double %div, %sum
 ; CHECK-NEXT:   %exitcond = icmp eq i64 %iv.next, %SINCOSN
 ; CHECK-NEXT:   br i1 %exitcond, label %invertfor.cond.cleanup, label %for.body
 

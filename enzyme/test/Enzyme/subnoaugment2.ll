@@ -28,7 +28,8 @@ entry:
   store double %inp, double* %arr
   %call.i = call double* @sub(double* %arr)
   %a1 = load double, double* %call.i
-  ret double %inp
+  %mul = fmul double %a1, %a1
+  ret double %mul
 }
 
 define double* @sub(double* %a) {
@@ -81,8 +82,6 @@ attributes #3 = { readnone }
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 
-; TODO THIS IS WRONG!!!!
-
 ; CHECK: define internal { double } @diffemeta(double %inp, double %differeturn) #0 {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %"arr'ipa" = alloca double, align 8
@@ -90,20 +89,28 @@ attributes #3 = { readnone }
 ; CHECK-NEXT:   store i64 0, i64* %0, align 8
 ; CHECK-NEXT:   %arr = alloca double, align 8
 ; CHECK-NEXT:   store double %inp, double* %arr, align 8
-; CHECK-NEXT:   %call.i_augmented = call { {}, double* } @augmented_sub(double*{{( nonnull)?}} %arr, double*{{( nonnull)?}} %"arr'ipa")
-
-; CHECK-NEXT:   %1 = call {} @diffesub(double*{{( nonnull)?}} %arr, double*{{( nonnull)?}} %"arr'ipa", {} undef)
-; CHECK-NEXT:   %2 = load double, double* %"arr'ipa", align 8
+; CHECK-NEXT:   %call.i_augmented = call { {}, double*, double* } @augmented_sub(double*{{( nonnull)?}} %arr, double*{{( nonnull)?}} %"arr'ipa")
+; CHECK-NEXT:   %[[olddptr:.+]] = extractvalue { {}, double*, double* } %call.i_augmented, 2
+; CHECK-NEXT:   %[[oldptr:.+]] = extractvalue { {}, double*, double* } %call.i_augmented, 1
+; CHECK-NEXT:   %[[load:.+]] = load double, double* %[[oldptr]]
+; CHECK-NEXT:   %[[add:.+]] = fadd fast double %differeturn, %differeturn
+; CHECK-NEXT:   %[[mul:.+]] = fmul fast double %[[load]], %[[add]]
+; CHECK-NEXT:   %3 = load double, double* %"call.i'ac", align 8
+; CHECK-NEXT:   %4 = fadd fast double %3, %2
+; CHECK-NEXT:   store double %4, double* %"call.i'ac", align 8
+; CHECK-NEXT:   %{{.*}} = call {} @diffesub(double*{{( nonnull)?}} %arr, double*{{( nonnull)?}} %"arr'ipa", {} undef)
+; CHECK-NEXT:   %[[darr:.+]] = load double, double* %"arr'ipa", align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"arr'ipa", align 8
-; CHECK-NEXT:   %3 = fadd fast double %2, %differeturn
-; CHECK-NEXT:   %4 = insertvalue { double } undef, double %3, 0
-; CHECK-NEXT:   ret { double } %4
+; CHECK-NEXT:   %[[ret:.+]] = insertvalue { double } undef, double %[[darr]], 0
+; CHECK-NEXT:   ret { double } %[[ret]]
 ; CHECK-NEXT: }
 
-; CHECK: define internal { {}, double* } @augmented_sub(double* %a, double* %"a'") {
+; TODO don't need the diffe ret
+; CHECK: define internal { {}, double*, double* } @augmented_sub(double* %a, double* %"a'") {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %.fca.1.insert = insertvalue { {}, double* } undef, double* %a, 1
-; CHECK-NEXT:   ret { {}, double* } %.fca.1.insert
+; CHECK-NEXT:   %.fca.1.insert = insertvalue { {}, double*, double* } undef, double* %a, 1
+; CHECK-NEXT:   %.fca.2.insert = insertvalue { {}, double*, double* } %.fca.1.insert, double* %"a'", 2
+; CHECK-NEXT:   ret { {}, double*, double* } %.fca.2.insert
 ; CHECK-NEXT: }
 
 ; CHECK: define internal {} @diffesub(double* %a, double* %"a'", {} %tapeArg) {

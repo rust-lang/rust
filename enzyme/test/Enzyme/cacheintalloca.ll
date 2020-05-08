@@ -983,8 +983,8 @@ attributes #10 = { noreturn nounwind }
 ; CHECK: mid:                                              ; preds = %dfor
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 512)
 ; CHECK-NEXT:   %val_malloccache = bitcast i8* %malloccall to double*
-; CHECK-NEXT:   %malloccall7 = tail call noalias nonnull i8* @malloc(i64 128)
-; CHECK-NEXT:   %"tdoub'ipl_malloccache" = bitcast i8* %malloccall7 to i64*
+; CHECK-NEXT:   %[[malloccall7:.+]] = tail call noalias nonnull i8* @malloc(i64 128)
+; CHECK-NEXT:   %"tdoub'ipl_malloccache" = bitcast i8* %[[malloccall7]] to i64*
 ; CHECK-NEXT:   br label %for.cond1.preheader.i.i.i.i.i.i.i.i.i.i
 
 ; CHECK: for.cond1.preheader.i.i.i.i.i.i.i.i.i.i:          ; preds = %for.cond.cleanup4.i.i.i.i.i.i.i.i.i.i, %mid
@@ -1052,7 +1052,7 @@ attributes #10 = { noreturn nounwind }
 
 ; CHECK: invertmid:                                        ; preds = %invertfor.cond1.preheader.i.i.i.i.i.i.i.i.i.i
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %malloccall)
-; CHECK-NEXT:   tail call void @free(i8* nonnull %malloccall7)
+; CHECK-NEXT:   tail call void @free(i8* nonnull %[[malloccall7]])
 ; CHECK-NEXT:   br label %invertdfor
 
 ; CHECK: invertfor.cond1.preheader.i.i.i.i.i.i.i.i.i.i:    ; preds = %invertfor.body5.i.i.i.i.i.i.i.i.i.i

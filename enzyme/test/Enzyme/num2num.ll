@@ -79,12 +79,12 @@ attributes #14 = { nounwind }
 
 ; CHECK: define internal { double } @diffejulia_num2num_3(double, double %differeturn)
 ; CHECK-NEXT: top:
-; CHECK-NEXT:   %1 = fadd double %0, %0
-; CHECK-NEXT:   %2 = call double @llvm.pow.f64(double 1.031000e+01, double %1)
-; CHECK-NEXT:   %3 = fmul fast double %2, %differeturn
-; CHECK-NEXT:   %4 = fmul fast double %3, 0x4002AA37D43EE973
-; CHECK-NEXT:   %5 = fsub fast double %4, %differeturn
-; CHECK-NEXT:   %6 = fadd fast double %5, %4
-; CHECK-NEXT:   %7 = insertvalue { double } undef, double %6, 0
-; CHECK-NEXT:   ret { double } %7
+; CHECK-NEXT:   %[[x2:.+]] = fadd double %0, %0
+; CHECK-NEXT:   %[[pow:.+]] = call double @llvm.pow.f64(double 1.031000e+01, double %[[x2]])
+; CHECK-NEXT:   %[[dmul:.+]] = fmul fast double %[[pow]], %differeturn
+; CHECK-NEXT:   %[[cmul:.+]] = fmul fast double %[[dmul]], 0x4002AA37D43EE973
+; CHECK-NEXT:   %[[sub:.+]] = fsub fast double %[[cmul]], %differeturn
+; CHECK-NEXT:   %[[add:.+]] = fadd fast double %[[sub]], %[[cmul]]
+; CHECK-NEXT:   %[[res:.+]] = insertvalue { double } undef, double %[[add]], 0
+; CHECK-NEXT:   ret { double } %[[res]]
 ; CHECK-NEXT: }

@@ -123,29 +123,32 @@ bool GradientUtils::legalRecompute(Value* val, const ValueToValueMapTy& availabl
 
   if (auto li = dyn_cast<LoadInst>(val)) {
 
+    // If this is an already unwrapped value, legal to recompute again.
+    if (li->getMetadata("enzyme_unwrapped"))
+      return true;
 
-    //TODO this is more conservative than necessary
-    //if (isa<AllocaInst>(GetUnderlyingObject(li->getPointerOperand(), oldFunc->getParent()->getDataLayout(), 100))) {
-    //  return false;
-    //}
-
-    if (originalInstructions.find(li) != originalInstructions.end()) {
-        auto found = can_modref_map->find(getOriginal(li));
-        //llvm::errs() << "legality of recomputing: " << *li << " is " << !found->second << "\n";
-        if(found == can_modref_map->end()) {
-            llvm::errs() << "can_modref_map:\n";
-            for(auto& pair : *can_modref_map) {
-                llvm::errs() << " + " << *pair.first << ": " << pair.second << " of func " << pair.first->getParent()->getParent()->getName() << "\n";
-            }
-            llvm::errs() << "couldn't find in can_modref_map: " << *getOriginal(li) << " in fn: " << getOriginal(li)->getParent()->getParent()->getName();
-        }
-        assert(found != can_modref_map->end());
-        //llvm::errs() << " legal [ " << legalRecompute << " ] recompute of " << *inst << "\n";
-        return !found->second;
+    if (auto orig = isOriginal(li)) {
+      auto found = can_modref_map->find(orig);
+      //llvm::errs() << "legality of recomputing: " << *li << " is " << !found->second << "\n";
+      if(found == can_modref_map->end()) {
+          llvm::errs() << "can_modref_map:\n";
+          for(auto& pair : *can_modref_map) {
+              llvm::errs() << " + " << *pair.first << ": " << pair.second << " of func " << pair.first->getParent()->getParent()->getName() << "\n";
+          }
+          llvm::errs() << "couldn't find in can_modref_map: " << *getOriginal(li) << " in fn: " << orig->getParent()->getParent()->getName();
+      }
+      assert(found != can_modref_map->end());
+      //llvm::errs() << " legal [ " << legalRecompute << " ] recompute of " << *inst << "\n";
+      return !found->second;
     } else {
       if (auto dli = dyn_cast_or_null<LoadInst>(hasUninverted(li))) {
         return legalRecompute(dli, available);
       }
+
+      // TODO mark all the explicitly legal nodes (caches, etc)
+      return true;
+      llvm::errs() << *li << "\n";
+      llvm_unreachable("unknown load to redo!");
     }
   }
 
@@ -256,13 +259,14 @@ DiffeGradientUtils* DiffeGradientUtils::CreateFromClone(bool topLevel, Function 
   SmallPtrSet<Value*,2> returnvals;
   ValueToValueMapTy originalToNew;
   auto newFunc = CloneFunctionWithReturns(topLevel, todiff, AA, TLI, invertedPointers, constant_args, constants, nonconstant, returnvals, returnValue, differentialReturn, "diffe"+todiff->getName(), &originalToNew, /*diffeReturnArg*/true, additionalArg);
-    SmallPtrSet<Value*,4> constant_values;
-    SmallPtrSet<Value*,4> nonconstant_values;
-    if (differentialReturn) {
+  SmallPtrSet<Value*,4> constant_values;
+  SmallPtrSet<Value*,4> nonconstant_values;
+  if (differentialReturn) {
     for(auto a : returnvals) {
         nonconstant_values.insert(a);
     }
-    }
+  }
+  //llvm::errs() << "creating from clone: " << todiff->getName() << " differentialReturn: " << differentialReturn << " returnvals: " << returnvals.size() << " nonconstant_values: " << nonconstant_values.size() << "\n";
   auto res = new DiffeGradientUtils(newFunc, todiff, TLI, TA, AA, invertedPointers, constants, nonconstant, constant_values, nonconstant_values, originalToNew);
   return res;
 }
@@ -284,7 +288,6 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
         return lookupM(val, BuilderM);
         llvm::errs() << *oldFunc << "\n";
         llvm::errs() << *newFunc << "\n";
-        dumpSet(this->originalInstructions);
         if (auto arg = dyn_cast<Instruction>(val)) {
             llvm::errs() << *arg->getParent()->getParent() << "\n";
         }

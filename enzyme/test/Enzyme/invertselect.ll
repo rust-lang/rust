@@ -23,11 +23,10 @@ attributes #0 = { noinline }
 
 ; CHECK: define internal {{(dso_local )?}}{} @diffeman_max(float* %a, float* %"a'", float* %b, float* %"b'", float %[[differet:.+]])
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:  %0 = load float, float* %a, align 4
-; CHECK-NEXT:  %1 = load float, float* %b, align 4
-; CHECK-NEXT:  %cmp = fcmp ogt float %0, %1
-; CHECK-NEXT:  %a.b = select i1 %cmp, float* %a, float* %b
-; CHECK-NEXT:  %[[abp:.+]] = select i1 %cmp, float* %"a'", float* %"b'"
+; CHECK-NEXT:  %[[la:.+]] = load float, float* %a, align 4
+; CHECK-NEXT:  %[[lb:.+]] = load float, float* %b, align 4
+; CHECK-NEXT:  %[[cmp:.+]] = fcmp ogt float %[[la]], %[[lb]]
+; CHECK-NEXT:  %[[abp:.+]] = select i1 %[[cmp]], float* %"a'", float* %"b'"
 ; CHECK-NEXT:  %[[prep:.+]] = load float, float* %[[abp]]
 ; CHECK-NEXT:  %[[postp:.]] = fadd fast float %[[prep]], %[[differet]]
 ; CHECK-NEXT:  store float %[[postp]], float* %[[abp]]

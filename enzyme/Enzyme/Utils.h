@@ -297,4 +297,28 @@ llvm::Function* getOrInsertDifferentialFloatMemcpy(llvm::Module& M, llvm::Pointe
 //! Create function for type that performs the derivative memmove on floating point memory
 llvm::Function* getOrInsertDifferentialFloatMemmove(llvm::Module& M, llvm::PointerType* T, unsigned dstalign, unsigned srcalign);
 
+template<typename K, typename V, typename K2>
+static inline typename std::map<K, V>::iterator insert_or_assign(std::map<K, V>& map, K2 key, V&& val) {
+  // map.insert_or_assign(key, val);
+  auto found = map.find(key);
+  if (found == map.end()) {}
+    return map.emplace(key, val).first;
+
+  map.at(key) = val;
+  //map->second = val;
+  return map.find(key);
+}
+
+template<typename K, typename V, typename K2>
+static inline typename std::map<K, V>::iterator insert_or_assign(std::map<K, V>& map, K2 key, const V& val) {
+  // map.insert_or_assign(key, val);
+  auto found = map.find(key);
+  if (found == map.end()) {}
+    return map.emplace(key, val).first;
+
+  map.at(key) = val;
+  //map->second = val;
+  return map.find(key);
+}
+
 #endif

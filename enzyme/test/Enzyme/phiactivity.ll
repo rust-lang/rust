@@ -40,18 +40,18 @@ declare double @__enzyme_autodiff(i8*, double)
 ; CHECK-NEXT:   br label %while
 
 ; CHECK: while:
-; CHECK-NEXT:   %0 = phi i8* [ null, %entry ], [ %_realloccache, %while ]
+; CHECK-NEXT:   %[[prevalloc:.+]] = phi i8* [ null, %entry ], [ %_realloccache, %while ]
 ; CHECK-NEXT:   %iv = phi i64 [ 0, %entry ], [ %iv.next, %while ]
-; CHECK-NEXT:   %1 = phi double [ 1.000000e+00, %entry ], [ %mul2, %while ]
-; CHECK-NEXT:   %2 = trunc i64 %iv to i32
+; CHECK-NEXT:   %[[mphi:.+]] = phi double [ 1.000000e+00, %entry ], [ %mul2, %while ]
+; CHECK-NEXT:   %[[trunc:.+]] = trunc i64 %iv to i32
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
-; CHECK-NEXT:   %3 = shl nuw nsw i64 %iv.next, 3
-; CHECK-NEXT:   %_realloccache = call i8* @realloc(i8* %0, i64 %3)
+; CHECK-NEXT:   %[[size:.+]] = shl nuw nsw i64 %iv.next, 3
+; CHECK-NEXT:   %_realloccache = call i8* @realloc(i8* %[[prevalloc]], i64 %[[size]])
 ; CHECK-NEXT:   %_realloccast = bitcast i8* %_realloccache to double*
-; CHECK-NEXT:   %4 = getelementptr inbounds double, double* %_realloccast, i64 %iv
-; CHECK-NEXT:   store double %1, double* %4, align 8, !invariant.group !0
-; CHECK-NEXT:   %inc = add nuw nsw i32 %2, 1
-; CHECK-NEXT:   %mul2 = fmul fast double %1, %t
+; CHECK-NEXT:   %[[loc1:.+]] = getelementptr inbounds double, double* %_realloccast, i64 %iv
+; CHECK-NEXT:   store double %[[mphi]], double* %[[loc1]], align 8, !invariant.group !0
+; CHECK-NEXT:   %inc = add nuw nsw i32 %[[trunc]], 1
+; CHECK-NEXT:   %mul2 = fmul fast double %[[mphi]], %t
 ; CHECK-NEXT:   %conv = sitofp i32 %inc to double
 ; CHECK-NEXT:   %mul = fmul fast double %conv, %t
 ; CHECK-NEXT:   %cmp2 = fcmp fast ugt double %mul, 2.000000e+00
@@ -60,27 +60,27 @@ declare double @__enzyme_autodiff(i8*, double)
 ; CHECK: exit:
 ; CHECK-NEXT:   %a3 = zext i32 %inc to i64
 ; CHECK-NEXT:   %call2 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([46 x i8], [46 x i8]* @.str, i64 0, i64 0), double %t, double 0x400921FAFC8B007A, double -2.000000e-01, i64 %a3)
-; CHECK-NEXT:   %5 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([46 x i8], [46 x i8]* @.str, i64 0, i64 0), double %t, double 0x400921FAFC8B007A, double -2.000000e-01, i64 %a3)
+; CHECK-NEXT:   %{{.*}} = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([46 x i8], [46 x i8]* @.str, i64 0, i64 0), double %t, double 0x400921FAFC8B007A, double -2.000000e-01, i64 %a3)
 ; CHECK-NEXT:   br label %invertwhile
 
 ; CHECK: invertentry:                                      ; preds = %invertwhile
-; CHECK-NEXT:   %6 = insertvalue { double } undef, double %9, 0
+; CHECK-NEXT:   %[[res:.+]] = insertvalue { double } undef, double %9, 0
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %_realloccache)
-; CHECK-NEXT:   ret { double } %6
+; CHECK-NEXT:   ret { double } %[[res]]
 
 ; CHECK: invertwhile:                                      ; preds = %exit, %incinvertwhile
-; CHECK-NEXT:   %"t'de.0" = phi double [ 0.000000e+00, %exit ], [ %9, %incinvertwhile ]
+; CHECK-NEXT:   %"t'de.0" = phi double [ 0.000000e+00, %exit ], [ %[[dt2:.+]], %incinvertwhile ]
 ; CHECK-NEXT:   %"mul2'de.0" = phi double [ %differeturn, %exit ], [ %[[m0diffe:.+]], %incinvertwhile ]
-; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %iv, %exit ], [ %11, %incinvertwhile ]
-; CHECK-NEXT:   %7 = getelementptr inbounds double, double* %_realloccast, i64 %"iv'ac.0"
-; CHECK-NEXT:   %8 = load double, double* %7, align 8, !invariant.group !0
-; CHECK-NEXT:   %[[m1diffet:.+]] = fmul fast double %"mul2'de.0", %8
-; CHECK-NEXT:   %9 = fadd fast double %"t'de.0", %[[m1diffet]]
-; CHECK-NEXT:   %10 = icmp eq i64 %"iv'ac.0", 0
-; CHECK-NEXT:   br i1 %10, label %invertentry, label %incinvertwhile
+; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %iv, %exit ], [ %[[dinc:.+]], %incinvertwhile ]
+; CHECK-NEXT:   %[[philoc:.+]] = getelementptr inbounds double, double* %_realloccast, i64 %"iv'ac.0"
+; CHECK-NEXT:   %[[prevphi:.+]] = load double, double* %[[philoc]], align 8, !invariant.group !0
+; CHECK-NEXT:   %[[m1diffet:.+]] = fmul fast double %"mul2'de.0", %[[prevphi]]
+; CHECK-NEXT:   %[[dt2]] = fadd fast double %"t'de.0", %[[m1diffet]]
+; CHECK-NEXT:   %[[dcmp:.+]] = icmp eq i64 %"iv'ac.0", 0
+; CHECK-NEXT:   br i1 %[[dcmp]], label %invertentry, label %incinvertwhile
 
 ; CHECK: incinvertwhile:                                   ; preds = %invertwhile
 ; CHECK-NEXT:   %[[m0diffe]] = fmul fast double %"mul2'de.0", %t
-; CHECK-NEXT:   %11 = add nsw i64 %"iv'ac.0", -1
+; CHECK-NEXT:   %[[dinc]] = add nsw i64 %"iv'ac.0", -1
 ; CHECK-NEXT:   br label %invertwhile
 ; CHECK-NEXT: }

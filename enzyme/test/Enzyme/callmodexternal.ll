@@ -63,20 +63,18 @@ attributes #4 = { nounwind }
 
 ; CHECK: define internal {{(dso_local )?}}{ double } @diffefoo(double %x, double %differeturn)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %[[augsub:.+]] = call { { double }, double } @augmented_sub(double %x)
+; CHECK-NEXT:   %[[augsub:.+]] = call { { double } } @augmented_sub(double %x)
 ; CHECK-NEXT:   %call1 = tail call fast double @read2()
-; CHECK-NEXT:   %[[tape:.+]] = extractvalue { { double }, double } %[[augsub]], 0
+; CHECK-NEXT:   %[[tape:.+]] = extractvalue { { double } } %[[augsub]], 0
 ; CHECK-NEXT:   %[[result:.+]] = call { double } @diffesub(double %x, double %differeturn, { double } %[[tape]])
 ; CHECK-NEXT:   ret { double } %[[result]]
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{ { double }, double } @augmented_sub(double %x)
+; CHECK: define internal {{(dso_local )?}}{ { double } } @augmented_sub(double %x)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %call = tail call fast double @read()
-; CHECK-NEXT:   %mul = fmul fast double %call, %x
-; CHECK-NEXT:   %[[insertcache:.+]] = insertvalue { { double }, double } undef, double %call, 0, 0
-; CHECK-NEXT:   %[[insertreturn:.+]] = insertvalue { { double }, double } %[[insertcache]], double %mul, 1
-; CHECK-NEXT:   ret { { double }, double } %[[insertreturn]]
+; CHECK-NEXT:   %[[insertcache:.+]] = insertvalue { { double } } undef, double %call, 0, 0
+; CHECK-NEXT:   ret { { double } } %[[insertcache]]
 ; CHECK-NEXT: }
 
 ; CHECK: define internal {{(dso_local )?}}{ double } @diffesub(double %x, double %differeturn, { double } %tapeArg)

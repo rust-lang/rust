@@ -96,7 +96,6 @@ public:
   AssumptionCache AC;
   ScalarEvolution SE;
   std::map<Loop*, LoopContext> loopContexts;
-  SmallPtrSet<Instruction*, 10> originalInstructions;
   SmallVector<BasicBlock*, 12> originalBlocks;
   ValueMap<BasicBlock*,BasicBlock*> reverseBlocks;
   BasicBlock* inversionAllocs;
@@ -125,7 +124,7 @@ public:
     return f->second;
   }
 
-  Value* getNewFromOriginal(Value* originst) const {
+  Value* getNewFromOriginal(const Value* originst) const {
     assert(originst);
     auto f = originalToNewFn.find(originst);
     if (f == originalToNewFn.end()) {
@@ -150,7 +149,7 @@ public:
     assert(f->second);
     return f->second;
   }
-  Instruction* getNewFromOriginal(Instruction* newinst) const {
+  Instruction* getNewFromOriginal(const Instruction* newinst) const {
     return cast<Instruction>(getNewFromOriginal((Value*)newinst));
   }
 
@@ -178,9 +177,20 @@ public:
   }
 
   Value* getOriginal(Value* newinst) const {
+    if (auto inst = dyn_cast<Instruction>(newinst)) {
+      assert(inst->getParent()->getParent() == newFunc);
+    }
     for(auto v: originalToNewFn) {
         if (v.second == newinst) return const_cast<Value*>(v.first);
     }
+    dumpMap(originalToNewFn, [&](const Value* const& v) -> bool {
+          if (isa<Instruction>(newinst)) return isa<Instruction>(v);
+          if (isa<BasicBlock>(newinst)) return isa<BasicBlock>(v);
+          if (isa<Function>(newinst)) return isa<Function>(v);
+          if (isa<Argument>(newinst)) return isa<Argument>(v);
+          if (isa<Constant>(newinst)) return isa<Constant>(v);
+          return true;
+    });
     llvm::errs() << *newinst << "\n";
     assert(0 && "could not invert new inst");
     report_fatal_error("could not invert new inst");
@@ -223,6 +233,10 @@ public:
         invertedPointers[B] = invertedPointers[A];
         invertedPointers.erase(A);
     }
+    if (auto orig = isOriginal(A)) {
+      originalToNewFn[orig] = B;
+    }
+
     A->replaceAllUsesWith(B);
   }
 
@@ -233,7 +247,6 @@ public:
     constant_values.erase(I);
     nonconstant.erase(I);
     nonconstant_values.erase(I);
-    originalInstructions.erase(I);
     if (scopeMap.find(I) != scopeMap.end()) {
         scopeFrees.erase(cast<AllocaInst>(scopeMap[I]));
         scopeAllocs.erase(cast<AllocaInst>(scopeMap[I]));
@@ -477,11 +490,6 @@ public:
       assert(idx < cast<StructType>(tape->getType())->getNumElements());
       Instruction* ret = cast<Instruction>(BuilderQ.CreateExtractValue(tape, {idx}));
 
-      if (malloc && isa<Instruction>(malloc)) {
-        //llvm::errs() << "replacing " << *malloc << " with " << *ret << "\n";
-        originalInstructions.insert(ret);
-      }
-
       if (ret->getType()->isEmptyTy()) {
         if (auto inst = dyn_cast_or_null<Instruction>(malloc)) {
           if (inst->getType() != ret->getType()) {
@@ -495,8 +503,9 @@ public:
           inst->replaceAllUsesWith(UndefValue::get(ret->getType()));
           erase(inst);
         }
-
-        return UndefValue::get(ret->getType());
+        Type* retType = ret->getType();
+        erase(ret);
+        return UndefValue::get(retType);
       }
 
       BasicBlock* parent = BuilderQ.GetInsertBlock();
@@ -546,12 +555,8 @@ public:
         auto v = lookupValueFromCache(BuilderQ, BuilderQ.GetInsertBlock(), cache);
         if (malloc) {
           assert(v->getType() == malloc->getType());
-          if (auto inst = dyn_cast<Instruction>(malloc)) {
-            originalInstructions.insert(inst);
-          }
         }
         scopeMap[v] = cache;
-        originalInstructions.erase(ret);
         ret = cast<Instruction>(v);
       }
 
@@ -793,9 +798,6 @@ public:
         originalToNewFn.insert(originalToNewFn_.begin(), originalToNewFn_.end());
           for (BasicBlock &BB: *newFunc) {
             originalBlocks.emplace_back(&BB);
-            for(Instruction &I : BB) {
-                originalInstructions.insert(&I);
-            }
           }
         tape = nullptr;
         tapeidx = 0;
@@ -852,70 +854,28 @@ public:
 
   bool isConstantValueInternal(Value* val, AAResults &AA, TypeResults &TR) {
 	  cast<Value>(val);
+    if (auto inst = dyn_cast<Instruction>(val)) assert(inst->getParent()->getParent() == oldFunc);
     return isconstantValueM(TR, val, constants, nonconstant, constant_values, nonconstant_values, AA);
   };
 
   bool isConstantInstructionInternal(Instruction* val, AAResults &AA, TypeResults &TR) {
     cast<Instruction>(val);
+    assert(val->getParent()->getParent() == oldFunc);
     return isconstantM(TR, val, constants, nonconstant, constant_values, nonconstant_values, AA);
   }
 
-  void eraseStructuralStoresAndCalls() {
-
+  void eraseFictiousPHIs() {
       for(auto pp : fictiousPHIs) {
-        pp->replaceAllUsesWith(ConstantPointerNull::get(cast<PointerType>(pp->getType())));
+        if (pp->getNumUses() != 0) {
+          llvm::errs() << "oldFunc:" << *oldFunc << "\n";
+          llvm::errs() << "newFunc:" << *newFunc << "\n";
+          llvm::errs() << " pp: " << *pp << "\n";
+        }
+        assert(pp->getNumUses() == 0);
+        pp->replaceAllUsesWith(UndefValue::get(pp->getType()));
         erase(pp);
       }
       fictiousPHIs.clear();
-
-      for(BasicBlock* BB: this->originalBlocks) {
-        auto term = BB->getTerminator();
-        if (isa<UnreachableInst>(term)) continue;
-
-        for (auto I = BB->begin(), E = BB->end(); I != E;) {
-          Instruction* inst = &*I;
-          assert(inst);
-          I++;
-
-          if (originalInstructions.find(inst) == originalInstructions.end()) continue;
-
-          if (isa<StoreInst>(inst)) {
-            erase(inst);
-            continue;
-          }
-        }
-      }
-
-      for(BasicBlock* BB: this->originalBlocks) {
-        auto term = BB->getTerminator();
-        if (isa<UnreachableInst>(term)) continue;
-
-        for (auto I = BB->begin(), E = BB->end(); I != E;) {
-          Instruction* inst = &*I;
-          assert(inst);
-          I++;
-
-          if (isa<SwitchInst>(inst) || isa<BranchInst>(inst) || isa<ReturnInst>(inst)) continue;
-
-          if (originalInstructions.find(inst) == originalInstructions.end()) continue;
-
-          if (inst->getNumUses() == 0) {
-            if (isa<ExtractValueInst>(inst)) continue;
-            // TODO fix the need to getOriginal
-            if (!isConstantInstruction(getOriginal(inst)) && isConstantValue(getOriginal(inst)) ) {
-              erase(inst);
-			        continue;
-            }
-          }
-
-          if (auto inti = dyn_cast<IntrinsicInst>(inst)) {
-            if (inti->getIntrinsicID() == Intrinsic::memset || inti->getIntrinsicID() == Intrinsic::memcpy || inti->getIntrinsicID() == Intrinsic::memmove) {
-              erase(inst);
-              continue;
-            }
-          }
-        }
-      }
   }
 
   std::map<llvm::Value*, bool> internal_isConstantValue;
@@ -1023,8 +983,6 @@ public:
   }
 
   bool isConstantInstruction(Instruction* inst) const {
-
-    //if (originalInstructions.find(inst) == originalInstructions.end()) return true;
     assert(inst->getParent()->getParent() == oldFunc);
     if (internal_isConstantInstruction.find(inst) == internal_isConstantInstruction.end()) {
       llvm::errs() << *oldFunc << "\n";
@@ -1035,93 +993,67 @@ public:
     }
     assert(internal_isConstantInstruction.find(inst) != internal_isConstantInstruction.end());
     return internal_isConstantInstruction.find(inst)->second;
-    /*
-    if (MDNode* md = inst->getMetadata("enzyme_activity_inst")) {
-        auto res = cast<MDString>(md->getOperand(0))->getString();
-        if (res == "const") return true;
-        if (res == "active") return false;
-    }
-
-    llvm::errs() << *oldFunc << "\n";
-    llvm::errs() << *newFunc << "\n";
-    llvm::errs() << *inst << "\n";
-    llvm::errs() << "  unknown did status attribute\n";
-    assert(0 && "bad");
-    exit(1);
-    */
   }
 
 
   void forceAugmentedReturns(TypeResults &TR, const SmallPtrSetImpl<BasicBlock*>& guaranteedUnreachable) {
     assert(TR.info.function == oldFunc);
-      for(BasicBlock* BB: this->originalBlocks) {
-        LoopContext loopContext;
-        this->getContext(BB, loopContext);
 
-        // Don't create derivatives for code that results in termination
-        if (guaranteedUnreachable.find(getOriginal(BB)) != guaranteedUnreachable.end()) continue;
+    for(BasicBlock& oBB: *oldFunc) {
+      // Don't create derivatives for code that results in termination
+      if (guaranteedUnreachable.find(&oBB) != guaranteedUnreachable.end()) continue;
 
-        for (auto I = BB->begin(), E = BB->end(); I != E;) {
-          Instruction* inst = &*I;
-          assert(inst);
-          I++;
+      LoopContext loopContext;
+      getContext(cast<BasicBlock>(getNewFromOriginal(&oBB)), loopContext);
 
-          if (originalInstructions.find(inst) == originalInstructions.end()) {
-              continue;
-          }
-          if (this->invertedPointers.find(inst) != this->invertedPointers.end()) {
-              continue;
-          }
+      for (Instruction& I : oBB) {
+        Instruction* inst = &I;
 
-          if (inst->getType()->isEmptyTy()) continue;
+        if (inst->getType()->isEmptyTy()) continue;
 
-          if (inst->getType()->isFPOrFPVectorTy()) continue; //!op->getType()->isPointerTy() && !op->getType()->isIntegerTy()) {
+        if (inst->getType()->isFPOrFPVectorTy()) continue; //!op->getType()->isPointerTy() && !op->getType()->isIntegerTy()) {
 
-          if (!TR.query(getOriginal(inst))[{}].isPossiblePointer()) continue;
+        if (!TR.query(inst)[{}].isPossiblePointer()) continue;
 
-          if (isa<LoadInst>(inst)) {
-              IRBuilder<> BuilderZ(getNextNonDebugInstruction(inst));
-              BuilderZ.setFastMathFlags(getFast());
-              PHINode* anti = BuilderZ.CreatePHI(inst->getType(), 1, inst->getName() + "'il_phi");
-              invertedPointers[inst] = anti;
-              continue;
-          }
+        Instruction* newi = getNewFromOriginal(inst);
 
-          if (!isa<CallInst>(inst)) {
-              continue;
-          }
-
-          if (isa<IntrinsicInst>(inst)) {
-              continue;
-          }
-
-          CallInst* op = dyn_cast<CallInst>(inst);
-
-          if (isConstantValue(getOriginal(op))) {
-              continue;
-          }
-
-          Function *called = op->getCalledFunction();
-
-          if (called && isCertainPrintOrFree(called)) {
-              continue;
-          }
-
-          //if (!op->getType()->isPointerTy() && !op->getType()->isIntegerTy()) {
-          //    continue;
-          //}
-
-
-            IRBuilder<> BuilderZ(getNextNonDebugInstruction(op));
+        if (isa<LoadInst>(inst)) {
+            IRBuilder<> BuilderZ(getNextNonDebugInstruction(newi));
             BuilderZ.setFastMathFlags(getFast());
-            PHINode* anti = BuilderZ.CreatePHI(op->getType(), 1, op->getName() + "'ip_phi");
-            invertedPointers[op] = anti;
-
-			if ( called && (called->getName() == "malloc" || called->getName() == "_Znwm")) {
-				invertedPointers[op]->setName(op->getName()+"'mi");
-			}
+            PHINode* anti = BuilderZ.CreatePHI(inst->getType(), 1, inst->getName() + "'il_phi");
+            invertedPointers[newi] = anti;
+            continue;
         }
+
+        if (!isa<CallInst>(inst)) {
+            continue;
+        }
+
+        if (isa<IntrinsicInst>(inst)) {
+            continue;
+        }
+
+        if (isConstantValue(inst)) {
+            continue;
+        }
+
+        CallInst* op = cast<CallInst>(inst);
+        Function *called = op->getCalledFunction();
+
+        if (called && isCertainPrintOrFree(called)) {
+            continue;
+        }
+
+        IRBuilder<> BuilderZ(getNextNonDebugInstruction(newi));
+        BuilderZ.setFastMathFlags(getFast());
+        PHINode* anti = BuilderZ.CreatePHI(op->getType(), 1, op->getName() + "'ip_phi");
+        invertedPointers[newi] = anti;
+
+  			if ( called && (called->getName() == "malloc" || called->getName() == "_Znwm")) {
+  				invertedPointers[newi]->setName(op->getName()+"'mi");
+  			}
       }
+    }
   }
 
   //! if full unwrap, don't just unwrap this instruction, but also its operands, etc
@@ -1323,6 +1255,7 @@ public:
       toreturn->setOrdering(load->getOrdering());
       toreturn->setSyncScopeID(load->getSyncScopeID());
       toreturn->setMetadata(LLVMContext::MD_tbaa, load->getMetadata(LLVMContext::MD_tbaa));
+      toreturn->setMetadata("enzyme_unwrapped", MDNode::get(toreturn->getContext(), {}));
       //toreturn->setMetadata(LLVMContext::MD_invariant, load->getMetadata(LLVMContext::MD_invariant));
       toreturn->setMetadata(LLVMContext::MD_invariant_group, load->getMetadata(LLVMContext::MD_invariant_group));
       //TODO adding to cache only legal if no alias of any future writes
@@ -1335,16 +1268,24 @@ public:
             Value *args[] = {getOp(SAFE(op,getOperand(0)))};
             if (args[0] == nullptr) goto endCheck;
             Type *tys[] = {op->getOperand(0)->getType()};
-            auto toreturn = BuilderM.CreateCall(Intrinsic::getDeclaration(op->getParent()->getParent()->getParent(), Intrinsic::sin, tys), args);
-            if (auto newi = dyn_cast<Instruction>(toreturn)) newi->copyIRFlags(op);
+            auto toreturn = cast<CallInst>(BuilderM.CreateCall(Intrinsic::getDeclaration(op->getParent()->getParent()->getParent(), Intrinsic::sin, tys), args));
+            toreturn->copyIRFlags(op);
+            toreturn->setAttributes(op->getAttributes());
+            toreturn->setCallingConv(op->getCallingConv());
+            toreturn->setTailCallKind(op->getTailCallKind());
+            toreturn->setDebugLoc(op->getDebugLoc());
             return toreturn;
           }
           case Intrinsic::cos: {
             Value *args[] = {getOp(SAFE(op,getOperand(0)))};
             if (args[0] == nullptr) goto endCheck;
             Type *tys[] = {op->getOperand(0)->getType()};
-            auto toreturn = BuilderM.CreateCall(Intrinsic::getDeclaration(op->getParent()->getParent()->getParent(), Intrinsic::cos, tys), args);
-            if (auto newi = dyn_cast<Instruction>(toreturn)) newi->copyIRFlags(op);
+            auto toreturn = cast<CallInst>(BuilderM.CreateCall(Intrinsic::getDeclaration(op->getParent()->getParent()->getParent(), Intrinsic::cos, tys), args));
+            toreturn->copyIRFlags(op);
+            toreturn->setAttributes(op->getAttributes());
+            toreturn->setCallingConv(op->getCallingConv());
+            toreturn->setTailCallKind(op->getTailCallKind());
+            toreturn->setDebugLoc(op->getDebugLoc());
             return toreturn;
           }
           default:;

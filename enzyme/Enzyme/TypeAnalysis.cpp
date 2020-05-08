@@ -1719,7 +1719,6 @@ void TypeAnalyzer::visitIPOCall(CallInst& call, Function& fn) {
 		auto dt = getAnalysis(call.getArgOperand(argnum));
 		typeInfo.first.insert(std::pair<Argument*, ValueData>(&arg, dt));
         typeInfo.knownValues.insert(std::pair<Argument*, std::set<int64_t>>(&arg, fntypeinfo.isConstantInt(call.getArgOperand(argnum), DT, intseen)));
-
 		argnum++;
 	}
 
@@ -1751,6 +1750,14 @@ TypeResults TypeAnalysis::analyzeFunction(const NewFnTypeInfo& fn) {
 
         return TypeResults(*this, fn);
     }
+
+    /*
+    llvm::errs() << "analyzing: " << fn.function->getName() << " " << fn.second.str() << " [";
+    for(auto &pair : fn.first) {
+        llvm::errs() << pair.second.str() << " - " << to_string(fn.knownValues.find(pair.first)->second) << " |";
+    }
+    llvm::errs() << "]\n";
+    */
 
 	auto res = analyzedFunctions.emplace(fn, TypeAnalyzer(fn, *this));
 	auto& analysis = res.first->second;

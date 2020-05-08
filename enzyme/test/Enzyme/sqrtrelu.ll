@@ -51,25 +51,21 @@ attributes #3 = { nounwind }
 ; CHECK: define dso_local double @dsqrelu(double %x) local_unnamed_addr
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %cmp.i = fcmp fast ogt double %x, 0.000000e+00
-; CHECK-NEXT:   br i1 %cmp.i, label %cond.true.i, label %cond.end.i
-; CHECK: cond.true.i:                                      ; preds = %entry
-; CHECK-NEXT:   %0 = call fast double @llvm.sin.f64(double %x)
-; CHECK-NEXT:   %mul.i = fmul fast double %0, %x
-; CHECK-NEXT:   %1 = call fast double @llvm.sqrt.f64(double %mul.i)
-; CHECK-NEXT:   br label %cond.end.i
-; CHECK: cond.end.i:
-; CHECK-NEXT:   %_cache.0.i = phi double [ %1, %cond.true.i ], [ undef, %entry ]
 ; CHECK-NEXT:   br i1 %cmp.i, label %invertcond.true.i, label %diffesqrelu.exit
+
 ; CHECK: invertcond.true.i:
-; CHECK-NEXT:   %[[div:.+]] = fdiv fast double 5.000000e-01, %_cache.0.i
-; CHECK-NEXT:   %[[dmul0:.+]] = fmul fast double %[[div]], %x
 ; CHECK-NEXT:   %[[dsin:.+]] = call fast double @llvm.sin.f64(double %x)
+; CHECK-NEXT:   %[[mul:.+]] = fmul fast double %0, %x
+; CHECK-NEXT:   %[[sqrt:.+]] = call fast double @llvm.sqrt.f64(double %[[mul]])
+; CHECK-NEXT:   %[[div:.+]] = fdiv fast double 5.000000e-01, %[[sqrt]]
+; CHECK-NEXT:   %[[dmul0:.+]] = fmul fast double %[[div]], %x
 ; CHECK-NEXT:   %[[dmul1:.+]] = fmul fast double %[[div]], %[[dsin]]
 ; CHECK-NEXT:   %[[dcos:.+]] = call fast double @llvm.cos.f64(double %x)
 ; CHECK-NEXT:   %[[fmul:.+]] = fmul fast double %[[dmul0]], %[[dcos]]
 ; CHECK-NEXT:   %[[res:.+]] = fadd fast double %[[dmul1]], %[[fmul]]
 ; CHECK-NEXT:   br label %diffesqrelu.exit
+
 ; CHECK: diffesqrelu.exit: 
-; CHECK-NEXT:   %"x'de.0.i" = phi double [ %[[res]], %invertcond.true.i ], [ 0.000000e+00, %cond.end.i ]
+; CHECK-NEXT:   %"x'de.0.i" = phi double [ %[[res]], %invertcond.true.i ], [ 0.000000e+00, %entry ]
 ; CHECK-NEXT:   ret double %"x'de.0.i"
 ; CHECK-NEXT: }

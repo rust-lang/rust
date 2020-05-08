@@ -19,6 +19,7 @@
 #define ENZYME_FUNCTION_UTILS_H
 
 #include <set>
+#include <deque>
 
 #include "SCEV/ScalarEvolutionExpander.h"
 
@@ -109,5 +110,137 @@ static inline llvm::SmallVector<llvm::BasicBlock*, 3> getLatches(const llvm::Loo
         }
     }
     return Latches;
+}
+
+// TODO note this doesn't go through [loop, unreachable], and we could get more performance by doing this
+// can consider doing some domtree magic potentially
+static inline llvm::SmallPtrSet<llvm::BasicBlock*, 4> getGuaranteedUnreachable(llvm::Function* F) {
+  llvm::SmallPtrSet<llvm::BasicBlock*, 4> knownUnreachables;
+  std::deque<llvm::BasicBlock*> todo;
+  for(auto &BB : *F) { todo.push_back(&BB); }
+
+  while(!todo.empty()) {
+    llvm::BasicBlock* next = todo.front();
+    todo.pop_front();
+
+    if (knownUnreachables.find(next) != knownUnreachables.end()) continue;
+
+    if (llvm::isa<llvm::ReturnInst>(next->getTerminator())) continue;
+
+    if (llvm::isa<llvm::UnreachableInst>(next->getTerminator())) {
+      knownUnreachables.insert(next);
+      for (llvm::BasicBlock *Pred : predecessors(next)) {
+        todo.push_back(Pred);
+      }
+      continue;
+    }
+
+    bool unreachable = true;
+    for (llvm::BasicBlock *Succ : llvm::successors(next)) {
+      if (knownUnreachables.find(Succ) == knownUnreachables.end()) {
+        unreachable = false;
+        break;
+      }
+    }
+
+    if (!unreachable) continue;
+    knownUnreachables.insert(next);
+    for (llvm::BasicBlock *Pred : llvm::predecessors(next)) {
+      todo.push_back(Pred);
+    }
+    continue;
+  }
+
+  return knownUnreachables;
+}
+
+static inline void calculateUnusedValues(const llvm::Function& oldFunc, llvm::SmallPtrSetImpl<const llvm::Value*> &unnecessaryValues, llvm::SmallPtrSetImpl<const llvm::Instruction*> &unnecessaryInstructions, bool returnValue
+                                         , std::function<bool(const llvm::Value*)> valneeded, std::function<bool(const llvm::Instruction*)> instneeded) {
+
+  std::deque<const llvm::Instruction*> todo;
+
+  for(const llvm::BasicBlock &BB : oldFunc) {
+    if (auto ri = llvm::dyn_cast<llvm::ReturnInst>(BB.getTerminator())) {
+      if (!returnValue) {
+        unnecessaryInstructions.insert(ri);
+      }
+    }
+    for(auto & inst : BB) {
+        if (&inst == BB.getTerminator()) continue;
+        todo.push_back(&inst);
+    }
+  }
+
+  while (!todo.empty()) {
+    auto inst = todo.front();
+    todo.pop_front();
+
+    if (unnecessaryInstructions.count(inst)) {
+        assert(unnecessaryValues.count(inst));
+        continue;
+    }
+
+    if (unnecessaryValues.count(inst)) continue;
+
+    if (valneeded(inst)) continue;
+
+    bool necessaryUse = false;
+
+    llvm::SmallPtrSet<const llvm::Instruction*, 4> seen;
+    std::deque<const llvm::Instruction*> users;
+
+    for(auto user_dtx : inst->users()) {
+      if (auto cst = llvm::dyn_cast<llvm::Instruction>(user_dtx)) {
+        users.push_back(cst);
+      }
+    }
+
+    while (users.size()) {
+        auto val = users.front();
+        users.pop_front();
+
+        if (seen.count(val)) continue;
+        seen.insert(val);
+
+        if (unnecessaryInstructions.count(val)) continue;
+
+        if (llvm::isa<llvm::ReturnInst>(val) || llvm::isa<llvm::BranchInst>(val) || llvm::isa<llvm::SwitchInst>(val) || instneeded(val)) {
+            necessaryUse = true;
+            break;
+        }
+
+        for(auto user_dtx : val->users()) {
+          if (auto cst = llvm::dyn_cast<llvm::Instruction>(user_dtx)) {
+            users.push_back(cst);
+          }
+        }
+    }
+
+    if (necessaryUse) continue;
+
+    unnecessaryValues.insert(inst);
+
+    if (instneeded(inst)) continue;
+
+    unnecessaryInstructions.insert(inst);
+
+    for(auto &operand : inst->operands()) {
+      if (auto usedinst = llvm::dyn_cast<llvm::Instruction>(operand.get())) {
+        todo.push_back(usedinst);
+      }
+    }
+  }
+
+  #if 1
+  llvm::errs() << "Prepping values for: " << oldFunc.getName() << " returnValue: " << returnValue << "\n";
+  for(auto v : unnecessaryInstructions) {
+    llvm::errs() << "+ unnecessaryInstructions: " << *v << "\n";
+  }
+  for(auto v : unnecessaryValues) {
+    llvm::errs() << "+ unnecessaryValues: " << *v << "\n";
+  }
+  llvm::errs() << "</end>\n";
+  #endif
+
 }
 #endif

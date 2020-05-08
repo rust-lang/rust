@@ -58,19 +58,17 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*) local_unnamed
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 
-; TODO: there is no need to return the i1 here -- update the subretused in handleAugmented
-;    to be more aggresssive
-; CHECK: define internal {{(dso_local )?}}{ {}, i1 } @augmented_othermetasubf(double* nocapture %x, double* %"x'") 
+; CHECK: define internal {{(dso_local )?}}{ {} } @augmented_othermetasubf(double* nocapture %x, double* %"x'") 
 
-; CHECK: define internal {{(dso_local )?}}{ {}, i1 } @augmented_metasubf(double* nocapture %x, double* %"x'") 
+; CHECK: define internal {{(dso_local )?}}{ {} } @augmented_metasubf(double* nocapture %x, double* %"x'") 
 
 ; CHECK: define internal {{(dso_local )?}}{ { {}, {} } } @augmented_subf(double* nocapture %x, double* %"x'") 
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[loadx:.+]] = load double, double* %x, align 8
 ; CHECK-NEXT:   %mul = fmul fast double %0, 2.000000e+00
 ; CHECK-NEXT:   store double %mul, double* %x, align 8
-; CHECK-NEXT:   %[[metasubf:.+]] = call { {}, i1 } @augmented_metasubf(double* %x, double* %"x'")
-; CHECK-NEXT:   %[[othermetasubf:.+]] = call { {}, i1 } @augmented_othermetasubf(double* %x, double* %"x'")
+; CHECK-NEXT:   %[[metasubf:.+]] = call { {} } @augmented_metasubf(double* %x, double* %"x'")
+; CHECK-NEXT:   %[[othermetasubf:.+]] = call { {} } @augmented_othermetasubf(double* %x, double* %"x'")
 ; CHECK-NEXT:   ret { { {}, {} } } undef
 ; CHECK-NEXT: }
 

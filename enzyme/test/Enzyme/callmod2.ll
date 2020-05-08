@@ -68,24 +68,20 @@ attributes #4 = { nounwind }
 
 ; CHECK: define internal {{(dso_local )?}}{ double } @diffefoo(double %x, double %differeturn)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %[[augsub:.+]] = call { { float, double }, double } @augmented_sub(double %x)
+; CHECK-NEXT:   %[[augsub:.+]] = call { { float, double } } @augmented_sub(double %x)
 ; CHECK-NEXT:   %call1 = tail call fast double @read2()
-; CHECK-NEXT:   %[[tape:.+]] = extractvalue { { float, double }, double } %[[augsub]], 0
+; CHECK-NEXT:   %[[tape:.+]] = extractvalue { { float, double } } %[[augsub]], 0
 ; CHECK-NEXT:   %[[result:.+]] = call { double } @diffesub(double %x, double %differeturn, { float, double } %[[tape]])
 ; CHECK-NEXT:   ret { double } %[[result]]
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{ { float, double }, double } @augmented_sub(double %x)
+; CHECK: define internal {{(dso_local )?}}{ { float, double } } @augmented_sub(double %x)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %call = tail call fast double @read()
-; CHECK-NEXT:   %mul = fmul fast double %call, %x
 ; CHECK-NEXT:   %call1 = tail call fast float @flread()
-; CHECK-NEXT:   %conv = fpext float %call1 to double
-; CHECK-NEXT:   %mul2 = fmul fast double %mul, %conv
-; CHECK-NEXT:   %[[insertcache1:.+]] = insertvalue { { float, double }, double } undef, float %call1, 0, 0
-; CHECK-NEXT:   %[[insertcache2:.+]] = insertvalue { { float, double }, double } %[[insertcache1]], double %call, 0, 1
-; CHECK-NEXT:   %[[insertreturn:.+]] = insertvalue { { float, double }, double } %[[insertcache2]], double %mul2, 1
-; CHECK-NEXT:   ret { { float, double }, double } %[[insertreturn]]
+; CHECK-NEXT:   %[[insertcache1:.+]] = insertvalue { { float, double } } undef, float %call1, 0, 0
+; CHECK-NEXT:   %[[insertcache2:.+]] = insertvalue { { float, double } } %[[insertcache1]], double %call, 0, 1
+; CHECK-NEXT:   ret { { float, double } } %[[insertcache2]]
 ; CHECK-NEXT: }
 
 ; CHECK: define internal {{(dso_local )?}}{ double } @diffesub(double %x, double %differeturn, { float, double } %tapeArg)

@@ -233,7 +233,7 @@ attributes #10 = { cold }
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %for.body ], [ 0, %for.body.preheader ]
 ; CHECK-NEXT:   %0 = trunc i64 %iv to i32
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
-; CHECK-NEXT:   %call_augmented = call { {}, float } @augmented_lookup(float* %a, float* %"a'", i32 %0, i32 %bound)
+; CHECK-NEXT:   %call_augmented = call { {} } @augmented_lookup(float* %a, float* %"a'", i32 %0, i32 %bound)
 ; CHECK-NEXT:   %inc = add nuw nsw i32 %0, 1
 ; CHECK-NEXT:   %exitcond = icmp eq i32 %inc, %bound
 ; CHECK-NEXT:   br i1 %exitcond, label %invertfor.cond.cleanup, label %for.body
@@ -264,9 +264,8 @@ attributes #10 = { cold }
 ; CHECK-NEXT:   br label %invertfor.body
 ; CHECK-NEXT: }
 
-; CHECK: define internal { {}, float } @augmented_lookup(float* nocapture readonly %data, float* %"data'", i32 %i, i32 %bound)
+; CHECK: define internal { {} } @augmented_lookup(float* nocapture readonly %data, float* %"data'", i32 %i, i32 %bound)
 ; CHECK: entry:
-; CHECK-NEXT:   %0 = alloca { {}, float }
 ; CHECK-NEXT:   %cmp = icmp sge i32 %i, %bound
 ; CHECK-NEXT:   br i1 %cmp, label %if.then, label %if.end
 
@@ -275,13 +274,7 @@ attributes #10 = { cold }
 ; CHECK-NEXT:   unreachable
 
 ; CHECK: if.end:                                           ; preds = %entry
-; CHECK-NEXT:   %idxprom = sext i32 %i to i64
-; CHECK-NEXT:   %arrayidx = getelementptr inbounds float, float* %data, i64 %idxprom
-; CHECK-NEXT:   %1 = load float, float* %arrayidx, align 4, !tbaa !2
-; CHECK-NEXT:   %2 = getelementptr { {}, float }, { {}, float }* %0, i32 0, i32 1
-; CHECK-NEXT:   store float %1, float* %2
-; CHECK-NEXT:   %3 = load { {}, float }, { {}, float }* %0
-; CHECK-NEXT:   ret { {}, float } %3
+; CHECK-NEXT:   ret { {} } undef
 ; CHECK-NEXT: }
 
 ; CHECK: define internal {} @diffelookup(float* nocapture readonly %data, float* %"data'", i32 %i, i32 %bound, float %differeturn, {} %tapeArg)

@@ -901,11 +901,5 @@ attributes #11 = { cold }
 
 ; CHECK: define internal {} @diffefinal(double* %array, double* %"array'", i64 %finalsize, {} %tapeArg)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   br label %invertentry
-
-; CHECK: if.else:                                          ; No predecessors!
-; CHECK-NEXT:   br label %invertentry
-
-; CHECK: invertentry:                                      ; preds = %entry, %if.else
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
