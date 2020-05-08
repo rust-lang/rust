@@ -515,6 +515,10 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     #[track_caller]
+    /// Panics in case the `AllocId` is dangling. Since that is impossible for `AllocId`s in
+    /// constants (as all constants must pass interning and validation that check for dangling
+    /// ids), this function is frequently used throughout rustc, but should not be used within
+    /// the miri engine.
     pub fn global_alloc(&self, id: AllocId) -> GlobalAlloc<'tcx> {
         match self.get_global_alloc(id) {
             Some(alloc) => alloc,
