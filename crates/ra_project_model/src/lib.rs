@@ -398,8 +398,18 @@ impl ProjectWorkspace {
                             let edition = cargo[pkg].edition;
                             let cfg_options = {
                                 let mut opts = default_cfg_options.clone();
-                                opts.insert_features(cargo[pkg].features.iter().map(Into::into));
-                                opts.insert_cfgs(cargo[pkg].cfgs.iter().map(Into::into));
+                                for feature in cargo[pkg].features.iter() {
+                                    opts.insert_key_value("feature".into(), feature.into());
+                                }
+                                for cfg in cargo[pkg].cfgs.iter() {
+                                    match cfg.find('=') {
+                                        Some(split) => opts.insert_key_value(
+                                            cfg[..split].into(),
+                                            cfg[split + 1..].trim_matches('"').into(),
+                                        ),
+                                        None => opts.insert_atom(cfg.into()),
+                                    };
+                                }
                                 opts
                             };
                             let mut env = Env::default();
