@@ -19,6 +19,18 @@ pub fn target() -> TargetResult {
             eliminate_frame_pointer: false,
             max_atomic_width: Some(128),
             abi_blacklist: super::arm_base::abi_blacklist(),
+            forces_embed_bitcode: true,
+            // Taken from a clang build on Xcode 11.4.1.
+            // These arguments are not actually invoked - they just have
+            // to look right to pass App Store validation.
+            bitcode_llvm_cmdline: "-triple\0\
+                arm64-apple-ios11.0.0\0\
+                -emit-obj\0\
+                -disable-llvm-passes\0\
+                -target-abi\0\
+                darwinpcs\0\
+                -Os\0"
+                .to_string(),
             ..base
         },
     })
