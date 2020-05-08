@@ -2,8 +2,6 @@
 
 mod cfg_expr;
 
-use std::iter::IntoIterator;
-
 use ra_syntax::SmolStr;
 use rustc_hash::FxHashSet;
 
@@ -47,19 +45,5 @@ impl CfgOptions {
 
     pub fn insert_key_value(&mut self, key: SmolStr, value: SmolStr) {
         self.key_values.insert((key, value));
-    }
-
-    /// Shortcut to set features
-    pub fn insert_features(&mut self, iter: impl IntoIterator<Item = SmolStr>) {
-        iter.into_iter().for_each(|feat| self.insert_key_value("feature".into(), feat));
-    }
-
-    /// Shortcut to set cfgs
-    pub fn insert_cfgs(&mut self, iter: impl IntoIterator<Item = SmolStr>) {
-        iter.into_iter().for_each(|cfg| match cfg.find('=') {
-            Some(split) => self
-                .insert_key_value(cfg[0..split].into(), cfg[split + 1..].trim_matches('"').into()),
-            None => self.insert_atom(cfg),
-        });
     }
 }
