@@ -210,6 +210,7 @@ struct InferenceContext<'a> {
     /// closures, but currently this is the only field that will change there,
     /// so it doesn't make sense.
     return_ty: Ty,
+    diverges: Diverges,
 }
 
 impl<'a> InferenceContext<'a> {
@@ -224,6 +225,7 @@ impl<'a> InferenceContext<'a> {
             owner,
             body: db.body(owner),
             resolver,
+            diverges: Diverges::Maybe,
         }
     }
 
@@ -663,6 +665,44 @@ impl Expectation {
         } else {
             &self.ty
         }
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+enum Diverges {
+    Maybe,
+    Always,
+}
+
+impl Diverges {
+    fn is_always(self) -> bool {
+        self == Diverges::Always
+    }
+}
+
+impl std::ops::BitAnd for Diverges {
+    type Output = Self;
+    fn bitand(self, other: Self) -> Self {
+        std::cmp::min(self, other)
+    }
+}
+
+impl std::ops::BitOr for Diverges {
+    type Output = Self;
+    fn bitor(self, other: Self) -> Self {
+        std::cmp::max(self, other)
+    }
+}
+
+impl std::ops::BitAndAssign for Diverges {
+    fn bitand_assign(&mut self, other: Self) {
+        *self = *self & other;
+    }
+}
+
+impl std::ops::BitOrAssign for Diverges {
+    fn bitor_assign(&mut self, other: Self) {
+        *self = *self | other;
     }
 }
 
