@@ -6,6 +6,10 @@
 
 #![feature(or_patterns)]
 
+// FIXME(#56935): Work around ICEs during cross-compilation.
+#[allow(unused)]
+extern crate rustc_macros;
+
 mod builtin;
 
 pub use builtin::*;

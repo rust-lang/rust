@@ -17,6 +17,10 @@
 #![feature(associated_type_bounds)]
 #![feature(exhaustive_patterns)]
 
+// FIXME(#56935): Work around ICEs during cross-compilation.
+#[allow(unused)]
+extern crate rustc_macros;
+
 #[macro_use]
 extern crate log;
 
