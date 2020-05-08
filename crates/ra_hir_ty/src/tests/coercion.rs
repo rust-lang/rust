@@ -546,6 +546,48 @@ fn test() {
 }
 
 #[test]
+fn coerce_fn_items_in_match_arms() {
+    covers!(coerce_fn_reification);
+    assert_snapshot!(
+        infer_with_mismatches(r#"
+fn foo1(x: u32) -> isize { 1 }
+fn foo2(x: u32) -> isize { 2 }
+fn foo3(x: u32) -> isize { 3 }
+fn test() {
+    let x = match 1 {
+        1 => foo1,
+        2 => foo2,
+        _ => foo3,
+    };
+}
+"#, true),
+        @r###"
+    9..10 'x': u32
+    26..31 '{ 1 }': isize
+    28..29 '1': isize
+    40..41 'x': u32
+    57..62 '{ 2 }': isize
+    59..60 '2': isize
+    71..72 'x': u32
+    88..93 '{ 3 }': isize
+    90..91 '3': isize
+    104..193 '{     ...  }; }': ()
+    114..115 'x': fn(u32) -> isize
+    118..190 'match ...     }': fn(u32) -> isize
+    124..125 '1': i32
+    136..137 '1': i32
+    136..137 '1': i32
+    141..145 'foo1': fn foo1(u32) -> isize
+    155..156 '2': i32
+    155..156 '2': i32
+    160..164 'foo2': fn foo2(u32) -> isize
+    174..175 '_': i32
+    179..183 'foo3': fn foo3(u32) -> isize
+    "###
+    );
+}
+
+#[test]
 fn coerce_closure_to_fn_ptr() {
     assert_snapshot!(
         infer_with_mismatches(r#"

@@ -7,5 +7,6 @@ test_utils::marks!(
     impl_self_type_match_without_receiver
     match_ergonomics_ref
     coerce_merge_fail_fallback
+    coerce_fn_reification
     trait_self_implements_self
 );
