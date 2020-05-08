@@ -771,7 +771,7 @@ fn contains_illegal_self_type_reference<'tcx>(
         }
 
         fn visit_const(&mut self, _c: &ty::Const<'tcx>) -> bool {
-            // FIXME Look into the unevaluated constants for object safety violations.
+            // FIXME(#72219) Look into the unevaluated constants for object safety violations.
             // Do not walk substitutions of unevaluated consts, as they contain `Self`, even
             // though the const expression doesn't necessary use it. Currently type variables
             // inside array length expressions are forbidden, so they can't break the above

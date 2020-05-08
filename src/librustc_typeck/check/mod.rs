@@ -1651,7 +1651,7 @@ fn check_opaque_for_inheriting_lifetimes(tcx: TyCtxt<'tcx>, def_id: LocalDefId, 
 
         fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> bool {
             if let ty::ConstKind::Unevaluated(..) = c.val {
-                // FIXME(lazy_normalization_consts) We currenctly don't detect lifetimes within substs
+                // FIXME(#72219) We currenctly don't detect lifetimes within substs
                 // which would violate this check. Even though the particular substitution is not used
                 // within the const, this should still be fixed.
                 return false;

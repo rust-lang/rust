@@ -99,6 +99,8 @@ impl TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> {
         }
     }
 
+    // We don't have to worry about the equality of consts during borrow checking
+    // as consts always have a static lifetime.
     fn const_equate(&mut self, _a: &'tcx Const<'tcx>, _b: &'tcx Const<'tcx>) {}
 
     fn normalization() -> NormalizationStrategy {
