@@ -384,8 +384,9 @@ fn test_missing_module_code_action_in_json_project() {
             "root_module": path.join("src/lib.rs"),
             "deps": [],
             "edition": "2015",
-            "atom_cfgs": [],
-            "key_value_cfgs": {}
+            "cfg": [ "cfg_atom_1", "feature=cfg_1"],
+            "atom_cfgs": ["atom_2"],
+            "key_value_cfgs": { "feature": "key_value_feature", "other": "value"}
         } ]
     });
 
