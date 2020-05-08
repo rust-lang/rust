@@ -1262,7 +1262,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             ident: constraint.ident,
             gen_args,
             kind,
-            span: constraint.span,
         }
     }
 

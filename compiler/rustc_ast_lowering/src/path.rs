@@ -268,7 +268,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             .args
             .first()
             .map(|a| self.spans[a.id()])
-            .or_else(|| generic_args.bindings.first().map(|b| b.span));
+            .or_else(|| generic_args.bindings.first().map(|b| self.spans[b.hir_id]));
         if !generic_args.parenthesized && !has_lifetimes {
             generic_args.args = self
                 .elided_path_lifetimes(
@@ -428,6 +428,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let args = arena_vec![self;];
         let bindings = arena_vec![self;];
         let gen_args = self.arena.alloc(hir::GenericArgs { args, bindings, parenthesized: false });
-        hir::TypeBinding { hir_id: self.next_id(span), gen_args, span, ident, kind }
+        hir::TypeBinding { hir_id: self.next_id(span), gen_args, ident, kind }
     }
 }

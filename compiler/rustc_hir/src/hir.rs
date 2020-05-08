@@ -2131,7 +2131,6 @@ pub struct TypeBinding<'hir> {
     pub ident: Ident,
     pub gen_args: &'hir GenericArgs<'hir>,
     pub kind: TypeBindingKind<'hir>,
-    pub span: Span,
 }
 
 // Represents the two kinds of type bindings.

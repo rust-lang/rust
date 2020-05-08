@@ -572,7 +572,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     item_name: binding.ident,
                     kind,
                     gen_args: binding.gen_args,
-                    span: binding.span,
+                    span: tcx.hir().span(binding.hir_id),
                 }
             })
             .collect();
@@ -1897,7 +1897,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             // Only emit the first error to avoid overloading the user with error messages.
             if let [binding, ..] = segment.args().bindings {
                 has_err = true;
-                Self::prohibit_assoc_ty_binding(self.tcx(), binding.span);
+                Self::prohibit_assoc_ty_binding(self.tcx(), self.tcx().hir().span(binding.hir_id));
             }
         }
         has_err
