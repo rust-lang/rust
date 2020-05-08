@@ -1082,6 +1082,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "main_recursion",
     },
     Lint {
+        name: "manual_async_fn",
+        group: "style",
+        desc: "manual implementations of `async` functions can be simplified using the dedicated syntax",
+        deprecation: None,
+        module: "manual_async_fn",
+    },
+    Lint {
         name: "manual_memcpy",
         group: "perf",
         desc: "manually copying items between slices",

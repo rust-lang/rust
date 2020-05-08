@@ -247,6 +247,7 @@ mod literal_representation;
 mod loops;
 mod macro_use;
 mod main_recursion;
+mod manual_async_fn;
 mod manual_non_exhaustive;
 mod map_clone;
 mod map_unit_fn;
@@ -629,6 +630,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &loops::WHILE_LET_ON_ITERATOR,
         &macro_use::MACRO_USE_IMPORTS,
         &main_recursion::MAIN_RECURSION,
+        &manual_async_fn::MANUAL_ASYNC_FN,
         &manual_non_exhaustive::MANUAL_NON_EXHAUSTIVE,
         &map_clone::MAP_CLONE,
         &map_unit_fn::OPTION_MAP_UNIT_FN,
@@ -1067,6 +1069,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box if_let_mutex::IfLetMutex);
     store.register_late_pass(|| box match_on_vec_items::MatchOnVecItems);
     store.register_early_pass(|| box manual_non_exhaustive::ManualNonExhaustive);
+    store.register_late_pass(|| box manual_async_fn::ManualAsyncFn);
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),
@@ -1284,6 +1287,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&loops::WHILE_LET_LOOP),
         LintId::of(&loops::WHILE_LET_ON_ITERATOR),
         LintId::of(&main_recursion::MAIN_RECURSION),
+        LintId::of(&manual_async_fn::MANUAL_ASYNC_FN),
         LintId::of(&manual_non_exhaustive::MANUAL_NON_EXHAUSTIVE),
         LintId::of(&map_clone::MAP_CLONE),
         LintId::of(&map_unit_fn::OPTION_MAP_UNIT_FN),
@@ -1478,6 +1482,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&loops::NEEDLESS_RANGE_LOOP),
         LintId::of(&loops::WHILE_LET_ON_ITERATOR),
         LintId::of(&main_recursion::MAIN_RECURSION),
+        LintId::of(&manual_async_fn::MANUAL_ASYNC_FN),
         LintId::of(&manual_non_exhaustive::MANUAL_NON_EXHAUSTIVE),
         LintId::of(&map_clone::MAP_CLONE),
         LintId::of(&matches::INFALLIBLE_DESTRUCTURING_MATCH),
