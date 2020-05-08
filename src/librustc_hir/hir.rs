@@ -1291,6 +1291,53 @@ impl BodyOwnerKind {
     }
 }
 
+/// The kind of an item that requires const-checking.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ConstContext {
+    /// A `const fn`.
+    ConstFn,
+
+    /// A `static` or `static mut`.
+    Static(Mutability),
+
+    /// A `const`, associated `const`, or other const context.
+    ///
+    /// Other contexts include:
+    /// - Array length expressions
+    /// - Enum discriminants
+    /// - Const generics
+    ///
+    /// For the most part, other contexts are treated just like a regular `const`, so they are
+    /// lumped into the same category.
+    Const,
+}
+
+impl ConstContext {
+    /// A description of this const context that can appear between backticks in an error message.
+    ///
+    /// E.g. `const` or `static mut`.
+    pub fn keyword_name(self) -> &'static str {
+        match self {
+            Self::Const => "const",
+            Self::Static(Mutability::Not) => "static",
+            Self::Static(Mutability::Mut) => "static mut",
+            Self::ConstFn => "const fn",
+        }
+    }
+}
+
+/// A colloquial, trivially pluralizable description of this const context for use in error
+/// messages.
+impl fmt::Display for ConstContext {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            Self::Const => write!(f, "constant"),
+            Self::Static(_) => write!(f, "static"),
+            Self::ConstFn => write!(f, "constant function"),
+        }
+    }
+}
+
 /// A literal.
 pub type Lit = Spanned<LitKind>;
 

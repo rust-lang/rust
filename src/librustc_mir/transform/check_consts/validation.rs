@@ -1,7 +1,7 @@
 //! The `Visitor` responsible for actually checking a `mir::Body` for invalid operations.
 
 use rustc_errors::struct_span_err;
-use rustc_hir::lang_items;
+use rustc_hir::{self as hir, lang_items};
 use rustc_hir::{def_id::DefId, HirId};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
@@ -18,7 +18,7 @@ use std::ops::Deref;
 use super::ops::{self, NonConstOp};
 use super::qualifs::{self, CustomEq, HasMutInterior, NeedsDrop};
 use super::resolver::FlowSensitiveAnalysis;
-use super::{is_lang_panic_fn, ConstCx, ConstKind, Qualif};
+use super::{is_lang_panic_fn, ConstCx, Qualif};
 use crate::const_eval::{is_const_fn, is_unstable_const_fn};
 use crate::dataflow::impls::MaybeMutBorrowedLocals;
 use crate::dataflow::{self, Analysis};
@@ -145,17 +145,13 @@ impl Qualifs<'mir, 'tcx> {
             // We don't care whether a `const fn` returns a value that is not structurally
             // matchable. Functions calls are opaque and always use type-based qualification, so
             // this value should never be used.
-            ConstKind::ConstFn => true,
+            hir::ConstContext::ConstFn => true,
 
             // If we know that all values of the return type are structurally matchable, there's no
             // need to run dataflow.
-            ConstKind::Const | ConstKind::Static | ConstKind::StaticMut
-                if !CustomEq::in_any_value_of_ty(ccx, ccx.body.return_ty()) =>
-            {
-                false
-            }
+            _ if !CustomEq::in_any_value_of_ty(ccx, ccx.body.return_ty()) => false,
 
-            ConstKind::Const | ConstKind::Static | ConstKind::StaticMut => {
+            hir::ConstContext::Const | hir::ConstContext::Static(_) => {
                 let mut cursor = FlowSensitiveAnalysis::new(CustomEq, ccx)
                     .into_engine(ccx.tcx, &ccx.body, ccx.def_id)
                     .iterate_to_fixpoint()
@@ -198,7 +194,7 @@ impl Validator<'mir, 'tcx> {
     pub fn check_body(&mut self) {
         let ConstCx { tcx, body, def_id, const_kind, .. } = *self.ccx;
 
-        let use_min_const_fn_checks = (const_kind == Some(ConstKind::ConstFn)
+        let use_min_const_fn_checks = (const_kind == Some(hir::ConstContext::ConstFn)
             && crate::const_eval::is_min_const_fn(tcx, def_id))
             && !tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you;
 
@@ -222,8 +218,9 @@ impl Validator<'mir, 'tcx> {
         self.visit_body(&body);
 
         // Ensure that the end result is `Sync` in a non-thread local `static`.
-        let should_check_for_sync =
-            const_kind == Some(ConstKind::Static) && !tcx.is_thread_local_static(def_id);
+        let should_check_for_sync = const_kind
+            == Some(hir::ConstContext::Static(hir::Mutability::Not))
+            && !tcx.is_thread_local_static(def_id);
 
         if should_check_for_sync {
             let hir_id = tcx.hir().as_local_hir_id(def_id.expect_local());
@@ -351,7 +348,9 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                 let ty = place.ty(self.body, self.tcx).ty;
                 let is_allowed = match ty.kind {
                     // Inside a `static mut`, `&mut [...]` is allowed.
-                    ty::Array(..) | ty::Slice(_) if self.const_kind() == ConstKind::StaticMut => {
+                    ty::Array(..) | ty::Slice(_)
+                        if self.const_kind() == hir::ConstContext::Static(hir::Mutability::Mut) =>
+                    {
                         true
                     }
 
