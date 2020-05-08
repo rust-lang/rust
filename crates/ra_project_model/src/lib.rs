@@ -600,7 +600,12 @@ pub fn get_rustc_cfg_options(target: Option<&String>) -> CfgOptions {
 fn output(mut cmd: Command) -> Result<Output> {
     let output = cmd.output().with_context(|| format!("{:?} failed", cmd))?;
     if !output.status.success() {
-        bail!("{:?} failed, {}", cmd, output.status)
+        match String::from_utf8(output.stderr) {
+            Ok(stderr) if !stderr.is_empty() => {
+                bail!("{:?} failed, {}\nstderr:\n{}", cmd, output.status, stderr)
+            }
+            _ => bail!("{:?} failed, {}", cmd, output.status),
+        }
     }
     Ok(output)
 }
