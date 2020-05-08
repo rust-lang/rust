@@ -401,31 +401,6 @@ path = "lib.rs"
     }
 }
 
-fn main() {
-    // Check for version and help flags even when invoked as `cargo-miri`.
-    if std::env::args().any(|a| a == "--help" || a == "-h") {
-        show_help();
-        return;
-    }
-    if std::env::args().any(|a| a == "--version" || a == "-V") {
-        show_version();
-        return;
-    }
-
-    if let Some("miri") = std::env::args().nth(1).as_deref() {
-        // This arm is for when `cargo miri` is called. We call `cargo check` for each applicable target,
-        // but with the `RUSTC` env var set to the `cargo-miri` binary so that we come back in the other branch,
-        // and dispatch the invocations to `rustc` and `miri`, respectively.
-        in_cargo_miri();
-    } else if let Some("rustc") = std::env::args().nth(1).as_deref() {
-        // This arm is executed when `cargo-miri` runs `cargo check` with the `RUSTC_WRAPPER` env var set to itself:
-        // dependencies get dispatched to `rustc`, the final test/binary to `miri`.
-        inside_cargo_rustc();
-    } else {
-        show_error(format!("must be called with either `miri` or `rustc` as first argument."))
-    }
-}
-
 fn in_cargo_miri() {
     let (subcommand, skip) = match std::env::args().nth(2).as_deref() {
         Some("test") => (MiriCommand::Test, 3),
@@ -591,5 +566,30 @@ fn inside_cargo_rustc() {
                 std::process::exit(exit.code().unwrap_or(42));
             },
         Err(e) => panic!("error running {:?}:\n{:?}", command, e),
+    }
+}
+
+fn main() {
+    // Check for version and help flags even when invoked as `cargo-miri`.
+    if has_arg_flag("--help") || has_arg_flag("-h") {
+        show_help();
+        return;
+    }
+    if has_arg_flag("--version") || has_arg_flag("-V") {
+        show_version();
+        return;
+    }
+
+    if let Some("miri") = std::env::args().nth(1).as_deref() {
+        // This arm is for when `cargo miri` is called. We call `cargo check` for each applicable target,
+        // but with the `RUSTC` env var set to the `cargo-miri` binary so that we come back in the other branch,
+        // and dispatch the invocations to `rustc` and `miri`, respectively.
+        in_cargo_miri();
+    } else if let Some("rustc") = std::env::args().nth(1).as_deref() {
+        // This arm is executed when `cargo-miri` runs `cargo check` with the `RUSTC_WRAPPER` env var set to itself:
+        // dependencies get dispatched to `rustc`, the final test/binary to `miri`.
+        inside_cargo_rustc();
+    } else {
+        show_error(format!("must be called with either `miri` or `rustc` as first argument."))
     }
 }
