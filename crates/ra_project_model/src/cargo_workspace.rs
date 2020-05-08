@@ -11,7 +11,6 @@ use anyhow::{Context, Result};
 use cargo_metadata::{BuildScript, CargoOpt, Message, MetadataCommand, PackageId};
 use ra_arena::{Arena, Idx};
 use ra_db::Edition;
-use ra_env::get_path_for_executable;
 use rustc_hash::FxHashMap;
 
 /// `CargoWorkspace` represents the logical structure of, well, a Cargo
@@ -147,7 +146,7 @@ impl CargoWorkspace {
         cargo_features: &CargoConfig,
     ) -> Result<CargoWorkspace> {
         let mut meta = MetadataCommand::new();
-        meta.cargo_path(get_path_for_executable("cargo")?);
+        meta.cargo_path(ra_toolchain::cargo());
         meta.manifest_path(cargo_toml);
         if cargo_features.all_features {
             meta.features(CargoOpt::AllFeatures);
@@ -289,7 +288,7 @@ pub fn load_extern_resources(
     cargo_toml: &Path,
     cargo_features: &CargoConfig,
 ) -> Result<ExternResources> {
-    let mut cmd = Command::new(get_path_for_executable("cargo")?);
+    let mut cmd = Command::new(ra_toolchain::cargo());
     cmd.args(&["check", "--message-format=json", "--manifest-path"]).arg(cargo_toml);
     if cargo_features.all_features {
         cmd.arg("--all-features");

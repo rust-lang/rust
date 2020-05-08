@@ -958,14 +958,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ra_env"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "home",
-]
-
-[[package]]
 name = "ra_flycheck"
 version = "0.1.0"
 dependencies = [
@@ -975,7 +967,7 @@ dependencies = [
  "jod-thread",
  "log",
  "lsp-types",
- "ra_env",
+ "ra_toolchain",
  "serde_json",
 ]
 
@@ -1180,8 +1172,8 @@ dependencies = [
  "ra_arena",
  "ra_cfg",
  "ra_db",
- "ra_env",
  "ra_proc_macro",
+ "ra_toolchain",
  "rustc-hash",
  "serde",
  "serde_json",
@@ -1211,6 +1203,13 @@ name = "ra_text_edit"
 version = "0.1.0"
 dependencies = [
  "text-size",
+]
+
+[[package]]
+name = "ra_toolchain"
+version = "0.1.0"
+dependencies = [
+ "home",
 ]
 
 [[package]]
