@@ -39,7 +39,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{self, InferConst, Ty, TyCtxt};
+use rustc_middle::ty::{self, InferConst, Ty, TyCtxt, TypeFoldable};
 use rustc_middle::ty::{IntType, UintType};
 use rustc_span::{Span, DUMMY_SP};
 
@@ -165,11 +165,19 @@ impl<'infcx, 'tcx> InferCtxt<'infcx, 'tcx> {
                 return self.unify_const_variable(!a_is_expected, vid, a);
             }
             (ty::ConstKind::Unevaluated(..), _) if self.tcx.features().const_generics => {
-                relation.const_equate_obligation(a, b);
+                // FIXME(#59490): Need to remove the leak check to accomodate
+                // escaping bound variables here.
+                if !a.has_escaping_bound_vars() && !b.has_escaping_bound_vars() {
+                    relation.const_equate_obligation(a, b);
+                }
                 return Ok(b);
             }
             (_, ty::ConstKind::Unevaluated(..)) if self.tcx.features().const_generics => {
-                relation.const_equate_obligation(a, b);
+                // FIXME(#59490): Need to remove the leak check to accomodate
+                // escaping bound variables here.
+                if !a.has_escaping_bound_vars() && !b.has_escaping_bound_vars() {
+                    relation.const_equate_obligation(a, b);
+                }
                 return Ok(a);
             }
             _ => {}
