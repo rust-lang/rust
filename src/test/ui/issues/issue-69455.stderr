@@ -1,16 +1,8 @@
-error[E0284]: type annotations needed
+error[E0284]: type annotations needed: cannot satisfy `<u64 as Test<_>>::Output == _`
   --> $DIR/issue-69455.rs:29:26
    |
-LL |     type Output;
-   |     ------------ `<Self as Test<Rhs>>::Output` defined here
-...
 LL |     println!("{}", 23u64.test(xs.iter().sum()));
-   |                    ------^^^^-----------------
-   |                    |     |
-   |                    |     cannot infer type for type `u64`
-   |                    this method call resolves to `<Self as Test<Rhs>>::Output`
-   |
-   = note: cannot satisfy `<u64 as Test<_>>::Output == _`
+   |                          ^^^^ cannot satisfy `<u64 as Test<_>>::Output == _`
 
 error: aborting due to previous error
 

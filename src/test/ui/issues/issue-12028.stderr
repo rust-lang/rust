@@ -1,10 +1,8 @@
-error[E0284]: type annotations needed
+error[E0284]: type annotations needed: cannot satisfy `<_ as StreamHasher>::S == <H as StreamHasher>::S`
   --> $DIR/issue-12028.rs:27:14
    |
 LL |         self.input_stream(&mut stream);
-   |              ^^^^^^^^^^^^ cannot infer type for type parameter `H` declared on the trait `StreamHash`
-   |
-   = note: cannot satisfy `<_ as StreamHasher>::S == <H as StreamHasher>::S`
+   |              ^^^^^^^^^^^^ cannot satisfy `<_ as StreamHasher>::S == <H as StreamHasher>::S`
 
 error: aborting due to previous error
 

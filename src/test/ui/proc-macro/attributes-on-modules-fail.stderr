@@ -50,7 +50,7 @@ help: a type alias with a similar name exists
    |
 LL |     type A = A;
    |              ^
-help: possible candidate is found in another module, you can import it into scope
+help: consider importing this struct
    |
 LL |     use Y;
    |
@@ -65,7 +65,7 @@ help: a type alias with a similar name exists
    |
 LL | type A = A;
    |          ^
-help: possible candidate is found in another module, you can import it into scope
+help: consider importing this struct
    |
 LL | use m::X;
    |

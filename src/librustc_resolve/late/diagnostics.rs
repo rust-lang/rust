@@ -151,7 +151,11 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
             };
             (
                 format!("cannot find {} `{}` in {}{}", expected, item_str, mod_prefix, mod_str),
-                format!("not found in {}", mod_str),
+                if path_str == "async" && expected.starts_with("struct") {
+                    "`async` blocks are only allowed in the 2018 edition".to_string()
+                } else {
+                    format!("not found in {}", mod_str)
+                },
                 item_span,
                 false,
             )
@@ -873,7 +877,10 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                     let module_def_id = module.def_id().unwrap();
                     if module_def_id == def_id {
                         let path = Path { span: name_binding.span, segments: path_segments };
-                        result = Some((module, ImportSuggestion { did: Some(def_id), path }));
+                        result = Some((
+                            module,
+                            ImportSuggestion { did: Some(def_id), descr: "module", path },
+                        ));
                     } else {
                         // add the module to the lookup
                         if seen_modules.insert(module_def_id) {

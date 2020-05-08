@@ -1491,12 +1491,26 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
             ty::Predicate::Projection(ref data) => {
                 let trait_ref = data.to_poly_trait_ref(self.tcx);
                 let self_ty = trait_ref.self_ty();
+                let ty = data.skip_binder().ty;
                 if predicate.references_error() {
                     return;
                 }
-                let mut err = self.need_type_info_err(body_id, span, self_ty, ErrorCode::E0284);
-                err.note(&format!("cannot satisfy `{}`", predicate));
-                err
+                if self_ty.needs_infer() && ty.needs_infer() {
+                    // We do this for the `foo.collect()?` case to produce a suggestion.
+                    let mut err = self.need_type_info_err(body_id, span, self_ty, ErrorCode::E0284);
+                    err.note(&format!("cannot satisfy `{}`", predicate));
+                    err
+                } else {
+                    let mut err = struct_span_err!(
+                        self.tcx.sess,
+                        span,
+                        E0284,
+                        "type annotations needed: cannot satisfy `{}`",
+                        predicate,
+                    );
+                    err.span_label(span, &format!("cannot satisfy `{}`", predicate));
+                    err
+                }
             }
 
             _ => {

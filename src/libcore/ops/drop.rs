@@ -1,85 +1,139 @@
-/// Used to run some code when a value goes out of scope.
-/// This is sometimes called a 'destructor'.
+/// Custom code within the destructor.
 ///
-/// When a value goes out of scope, it will have its `drop` method called if
-/// its type implements `Drop`. Then, any fields the value contains will also
-/// be dropped recursively.
+/// When a value is no longer needed, Rust will run a "destructor" on that value.
+/// The most common way that a value is no longer needed is when it goes out of
+/// scope. Destructors may still run in other circumstances, but we're going to
+/// focus on scope for the examples here. To learn about some of those other cases,
+/// please see [the reference] section on destructors.
 ///
-/// Because of this recursive dropping, you do not need to implement this trait
-/// unless your type needs its own destructor logic.
+/// [the reference]: https://doc.rust-lang.org/reference/destructors.html
 ///
-/// Refer to [the chapter on `Drop` in *The Rust Programming Language*][book]
-/// for some more elaboration.
+/// This destructor consists of two components:
+/// - A call to `Drop::drop` for that value, if this special `Drop` trait is implemented for its type.
+/// - The automatically generated "drop glue" which recursively calls the destructors
+///     of the all fields of this value.
 ///
-/// [book]: ../../book/ch15-03-drop.html
+/// As Rust automatically calls the destructors of all contained fields,
+/// you don't have to implement `Drop` in most cases. But there are some cases where
+/// it is useful, for example for types which directly manage a resource.
+/// That resource may be memory, it may be a file descriptor, it may be a network socket.
+/// Once a value of that type is no longer going to be used, it should "clean up" its
+/// resource by freeing the memory or closing the file or socket. This is
+/// the job of a destructor, and therefore the job of `Drop::drop`.
 ///
-/// # Examples
+/// ## Examples
 ///
-/// ## Implementing `Drop`
+/// To see destructors in action, let's take a look at the following program:
 ///
-/// The `drop` method is called when `_x` goes out of scope, and therefore
-/// `main` prints `Dropping!`.
-///
-/// ```
+/// ```rust
 /// struct HasDrop;
 ///
 /// impl Drop for HasDrop {
 ///     fn drop(&mut self) {
-///         println!("Dropping!");
+///         println!("Dropping HasDrop!");
+///     }
+/// }
+///
+/// struct HasTwoDrops {
+///     one: HasDrop,
+///     two: HasDrop,
+/// }
+///
+/// impl Drop for HasTwoDrops {
+///     fn drop(&mut self) {
+///         println!("Dropping HasTwoDrops!");
 ///     }
 /// }
 ///
 /// fn main() {
-///     let _x = HasDrop;
+///     let _x = HasTwoDrops { one: HasDrop, two: HasDrop };
+///     println!("Running!");
 /// }
 /// ```
 ///
-/// ## Dropping is done recursively
+/// Rust will first call `Drop::drop` for `_x` and then for both `_x.one` and `_x.two`,
+/// meaning that running this will print
 ///
-/// When `outer` goes out of scope, the `drop` method will be called first for
-/// `Outer`, then for `Inner`. Therefore, `main` prints `Dropping Outer!` and
-/// then `Dropping Inner!`.
-///
+/// ```text
+/// Running!
+/// Dropping HasTwoDrops!
+/// Dropping HasDrop!
+/// Dropping HasDrop!
 /// ```
-/// struct Inner;
-/// struct Outer(Inner);
 ///
-/// impl Drop for Inner {
+/// Even if we remove the implementation of `Drop` for `HasTwoDrop`, the destructors of its fields are still called.
+/// This would result in
+///
+/// ```test
+/// Running!
+/// Dropping HasDrop!
+/// Dropping HasDrop!
+/// ```
+///
+/// ## You cannot call `Drop::drop` yourself
+///
+/// Because `Drop::drop` is used to clean up a value, it may be dangerous to use this value after
+/// the method has been called. As `Drop::drop` does not take ownership of its input,
+/// Rust prevents misuse by not allowing you to call `Drop::drop` directly.
+///
+/// In other words, if you tried to explicitly call `Drop::drop` in the above example, you'd get a compiler error.
+///
+/// If you'd like explicitly call the destructor of a value, [`std::mem::drop`] can be used instead.
+///
+/// [`std::mem::drop`]: ../../std/mem/fn.drop.html
+///
+/// ## Drop order
+///
+/// Which of our two `HasDrop` drops first, though? For structs, it's the same
+/// order that they're declared: first `one`, then `two`. If you'd like to try
+/// this yourself, you can modify `HasDrop` above to contain some data, like an
+/// integer, and then use it in the `println!` inside of `Drop`. This behavior is
+/// guaranteed by the language.
+///
+/// Unlike for structs, local variables are dropped in reverse order:
+///
+/// ```rust
+/// struct Foo;
+///
+/// impl Drop for Foo {
 ///     fn drop(&mut self) {
-///         println!("Dropping Inner!");
+///         println!("Dropping Foo!")
 ///     }
 /// }
 ///
-/// impl Drop for Outer {
+/// struct Bar;
+///
+/// impl Drop for Bar {
 ///     fn drop(&mut self) {
-///         println!("Dropping Outer!");
+///         println!("Dropping Bar!")
 ///     }
 /// }
 ///
 /// fn main() {
-///     let _x = Outer(Inner);
+///     let _foo = Foo;
+///     let _bar = Bar;
 /// }
 /// ```
 ///
-/// ## Variables are dropped in reverse order of declaration
+/// This will print
 ///
-/// `_first` is declared first and `_second` is declared second, so `main` will
-/// print `Declared second!` and then `Declared first!`.
-///
+/// ```text
+/// Dropping Bar!
+/// Dropping Foo!
 /// ```
-/// struct PrintOnDrop(&'static str);
 ///
-/// impl Drop for PrintOnDrop {
-///     fn drop(&mut self) {
-///         println!("{}", self.0);
-///     }
-/// }
+/// Please see [the reference] for the full rules.
 ///
-/// fn main() {
-///     let _first = PrintOnDrop("Declared first!");
-///     let _second = PrintOnDrop("Declared second!");
-/// }
-/// ```
+/// [the reference]: https://doc.rust-lang.org/reference/destructors.html
+///
+/// ## `Copy` and `Drop` are exclusive
+///
+/// You cannot implement both [`Copy`] and `Drop` on the same type. Types that
+/// are `Copy` get implicitly duplicated by the compiler, making it very
+/// hard to predict when, and how often destructors will be executed. As such,
+/// these types cannot have destructors.
+///
+/// [`Copy`]: ../../std/marker/trait.Copy.html
 #[lang = "drop"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Drop {
