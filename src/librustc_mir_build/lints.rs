@@ -114,9 +114,14 @@ impl<'mir, 'tcx> TriColorVisitor<&'mir Body<'tcx>> for Search<'mir, 'tcx> {
             | TerminatorKind::Unreachable
             | TerminatorKind::Yield { .. } => ControlFlow::Break(NonRecursive),
 
-            // FIXME(Amanieu): I am not 100% sure about this, but it triggers
-            // a spurious warning otherwise.
-            TerminatorKind::InlineAsm { .. } => ControlFlow::Break(NonRecursive),
+            // A diverging InlineAsm is treated as non-recursing
+            TerminatorKind::InlineAsm { destination, .. } => {
+                if destination.is_some() {
+                    ControlFlow::Continue
+                } else {
+                    ControlFlow::Break(NonRecursive)
+                }
+            }
 
             // These do not.
             TerminatorKind::Assert { .. }
