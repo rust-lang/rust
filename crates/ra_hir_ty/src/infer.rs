@@ -211,6 +211,12 @@ struct InferenceContext<'a> {
     /// so it doesn't make sense.
     return_ty: Ty,
     diverges: Diverges,
+    breakables: Vec<BreakableContext>,
+}
+
+#[derive(Clone, Debug)]
+struct BreakableContext {
+    pub may_break: bool,
 }
 
 impl<'a> InferenceContext<'a> {
@@ -226,6 +232,7 @@ impl<'a> InferenceContext<'a> {
             body: db.body(owner),
             resolver,
             diverges: Diverges::Maybe,
+            breakables: Vec::new(),
         }
     }
 

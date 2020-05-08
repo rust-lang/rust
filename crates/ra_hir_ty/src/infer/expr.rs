@@ -21,7 +21,10 @@ use crate::{
     Ty, TypeCtor, Uncertain,
 };
 
-use super::{BindingMode, Expectation, InferenceContext, InferenceDiagnostic, TypeMismatch, Diverges};
+use super::{
+    BindingMode, BreakableContext, Diverges, Expectation, InferenceContext, InferenceDiagnostic,
+    TypeMismatch,
+};
 
 impl<'a> InferenceContext<'a> {
     pub(super) fn infer_expr(&mut self, tgt_expr: ExprId, expected: &Expectation) -> Ty {
@@ -90,24 +93,43 @@ impl<'a> InferenceContext<'a> {
                 Ty::Unknown
             }
             Expr::Loop { body } => {
+                self.breakables.push(BreakableContext { may_break: false });
                 self.infer_expr(*body, &Expectation::has_type(Ty::unit()));
+
+                let ctxt = self.breakables.pop().expect("breakable stack broken");
+                if ctxt.may_break {
+                    self.diverges = Diverges::Maybe;
+                }
                 // FIXME handle break with value
-                Ty::simple(TypeCtor::Never)
+                if ctxt.may_break {
+                    Ty::unit()
+                } else {
+                    Ty::simple(TypeCtor::Never)
+                }
             }
             Expr::While { condition, body } => {
+                self.breakables.push(BreakableContext { may_break: false });
                 // while let is desugared to a match loop, so this is always simple while
                 self.infer_expr(*condition, &Expectation::has_type(Ty::simple(TypeCtor::Bool)));
                 self.infer_expr(*body, &Expectation::has_type(Ty::unit()));
+                let _ctxt = self.breakables.pop().expect("breakable stack broken");
+                // the body may not run, so it diverging doesn't mean we diverge
+                self.diverges = Diverges::Maybe;
                 Ty::unit()
             }
             Expr::For { iterable, body, pat } => {
                 let iterable_ty = self.infer_expr(*iterable, &Expectation::none());
 
+                self.breakables.push(BreakableContext { may_break: false });
                 let pat_ty =
                     self.resolve_associated_type(iterable_ty, self.resolve_into_iter_item());
 
                 self.infer_pat(*pat, &pat_ty, BindingMode::default());
+
                 self.infer_expr(*body, &Expectation::has_type(Ty::unit()));
+                let _ctxt = self.breakables.pop().expect("breakable stack broken");
+                // the body may not run, so it diverging doesn't mean we diverge
+                self.diverges = Diverges::Maybe;
                 Ty::unit()
             }
             Expr::Lambda { body, args, ret_type, arg_types } => {
@@ -210,6 +232,9 @@ impl<'a> InferenceContext<'a> {
                 if let Some(expr) = expr {
                     // FIXME handle break with value
                     self.infer_expr(*expr, &Expectation::none());
+                }
+                if let Some(ctxt) = self.breakables.last_mut() {
+                    ctxt.may_break = true;
                 }
                 Ty::simple(TypeCtor::Never)
             }

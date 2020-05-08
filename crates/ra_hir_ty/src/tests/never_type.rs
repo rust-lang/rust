@@ -361,8 +361,78 @@ fn test1() {
     // should give type mismatch
     let x: u32 = { loop { break; } };
 }
+fn test2() {
+    // should give type mismatch
+    let x: u32 = { for a in b { break; }; };
+    // should give type mismatch as well
+    let x: u32 = { for a in b {}; };
+    // should give type mismatch as well
+    let x: u32 = { for a in b { return; }; };
+}
+fn test3() {
+    // should give type mismatch
+    let x: u32 = { while true { break; }; };
+    // should give type mismatch as well -- there's an implicit break, even if it's never hit
+    let x: u32 = { while true {}; };
+    // should give type mismatch as well
+    let x: u32 = { while true { return; }; };
+}
 "#,
         true,
     );
-    assert_snapshot!(t, @r###""###);
+    assert_snapshot!(t, @r###"
+    25..99 '{     ...} }; }': ()
+    68..69 'x': u32
+    77..96 '{ loop...k; } }': ()
+    79..94 'loop { break; }': ()
+    84..94 '{ break; }': ()
+    86..91 'break': !
+    77..96: expected u32, got ()
+    79..94: expected u32, got ()
+    111..357 '{     ...; }; }': ()
+    154..155 'x': u32
+    163..189 '{ for ...; }; }': ()
+    165..186 'for a ...eak; }': ()
+    169..170 'a': {unknown}
+    174..175 'b': {unknown}
+    176..186 '{ break; }': ()
+    178..183 'break': !
+    240..241 'x': u32
+    249..267 '{ for ... {}; }': ()
+    251..264 'for a in b {}': ()
+    255..256 'a': {unknown}
+    260..261 'b': {unknown}
+    262..264 '{}': ()
+    318..319 'x': u32
+    327..354 '{ for ...; }; }': ()
+    329..351 'for a ...urn; }': ()
+    333..334 'a': {unknown}
+    338..339 'b': {unknown}
+    340..351 '{ return; }': ()
+    342..348 'return': !
+    163..189: expected u32, got ()
+    249..267: expected u32, got ()
+    327..354: expected u32, got ()
+    369..668 '{     ...; }; }': ()
+    412..413 'x': u32
+    421..447 '{ whil...; }; }': ()
+    423..444 'while ...eak; }': ()
+    429..433 'true': bool
+    434..444 '{ break; }': ()
+    436..441 'break': !
+    551..552 'x': u32
+    560..578 '{ whil... {}; }': ()
+    562..575 'while true {}': ()
+    568..572 'true': bool
+    573..575 '{}': ()
+    629..630 'x': u32
+    638..665 '{ whil...; }; }': ()
+    640..662 'while ...urn; }': ()
+    646..650 'true': bool
+    651..662 '{ return; }': ()
+    653..659 'return': !
+    421..447: expected u32, got ()
+    560..578: expected u32, got ()
+    638..665: expected u32, got ()
+    "###);
 }
