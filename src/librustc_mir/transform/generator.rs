@@ -580,6 +580,7 @@ fn record_conflicts_at_curr_loc(
         local_conflicts.union_row_with(&requires_storage, local);
     }
 
+    // `>1` because the `self` argument always requires storage.
     if requires_storage.count() > 1 {
         trace!("requires_storage={:?}", requires_storage);
     }
