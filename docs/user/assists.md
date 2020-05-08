@@ -241,6 +241,18 @@ fn main() {
 }
 ```
 
+## `change_return_type_to_result`
+
+Change the function's return type to Result.
+
+```rust
+// BEFORE
+fn foo() -> i32┃ { 42i32 }
+
+// AFTER
+fn foo() -> Result<i32, > { Ok(42i32) }
+```
+
 ## `change_visibility`
 
 Adds or changes existing visibility specifier.

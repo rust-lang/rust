@@ -1,6 +1,6 @@
 use ra_syntax::ast::{self, AstNode};
 
-use crate::{utils::invert_boolean_expression, Assist, AssistCtx, AssistId};
+use crate::{utils::invert_boolean_expression, AssistContext, AssistId, Assists};
 
 // Assist: apply_demorgan
 //
@@ -21,7 +21,7 @@ use crate::{utils::invert_boolean_expression, Assist, AssistCtx, AssistId};
 //     if !(x == 4 && y) {}
 // }
 // ```
-pub(crate) fn apply_demorgan(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let expr = ctx.find_node_at_offset::<ast::BinExpr>()?;
     let op = expr.op_kind()?;
     let op_range = expr.op_token()?.text_range();
@@ -39,7 +39,7 @@ pub(crate) fn apply_demorgan(ctx: AssistCtx) -> Option<Assist> {
     let rhs_range = rhs.syntax().text_range();
     let not_rhs = invert_boolean_expression(rhs);
 
-    ctx.add_assist(AssistId("apply_demorgan"), "Apply De Morgan's law", op_range, |edit| {
+    acc.add(AssistId("apply_demorgan"), "Apply De Morgan's law", op_range, |edit| {
         edit.replace(op_range, opposite_op);
         edit.replace(lhs_range, format!("!({}", not_lhs.syntax().text()));
         edit.replace(rhs_range, format!("{})", not_rhs.syntax().text()));

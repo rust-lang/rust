@@ -1,12 +1,12 @@
+use hir::HirDisplay;
+use ra_db::FileId;
 use ra_syntax::{
-    ast::{self, AstNode},
+    ast::{self, edit::IndentLevel, ArgListOwner, AstNode, ModuleItemOwner},
     SyntaxKind, SyntaxNode, TextSize,
 };
-
-use crate::{Assist, AssistCtx, AssistFile, AssistId};
-use ast::{edit::IndentLevel, ArgListOwner, ModuleItemOwner};
-use hir::HirDisplay;
 use rustc_hash::{FxHashMap, FxHashSet};
+
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: add_function
 //
@@ -33,7 +33,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 // }
 //
 // ```
-pub(crate) fn add_function(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn add_function(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let path_expr: ast::PathExpr = ctx.find_node_at_offset()?;
     let call = path_expr.syntax().parent().and_then(ast::CallExpr::cast)?;
     let path = path_expr.path()?;
@@ -58,7 +58,7 @@ pub(crate) fn add_function(ctx: AssistCtx) -> Option<Assist> {
     let function_builder = FunctionBuilder::from_call(&ctx, &call, &path, target_module)?;
 
     let target = call.syntax().text_range();
-    ctx.add_assist(AssistId("add_function"), "Add function", target, |edit| {
+    acc.add(AssistId("add_function"), "Add function", target, |edit| {
         let function_template = function_builder.render();
         edit.set_file(function_template.file);
         edit.set_cursor(function_template.cursor_offset);
@@ -70,7 +70,7 @@ struct FunctionTemplate {
     insert_offset: TextSize,
     cursor_offset: TextSize,
     fn_def: ast::SourceFile,
-    file: AssistFile,
+    file: FileId,
 }
 
 struct FunctionBuilder {
@@ -78,7 +78,7 @@ struct FunctionBuilder {
     fn_name: ast::Name,
     type_params: Option<ast::TypeParamList>,
     params: ast::ParamList,
-    file: AssistFile,
+    file: FileId,
     needs_pub: bool,
 }
 
@@ -86,13 +86,13 @@ impl FunctionBuilder {
     /// Prepares a generated function that matches `call` in `generate_in`
     /// (or as close to `call` as possible, if `generate_in` is `None`)
     fn from_call(
-        ctx: &AssistCtx,
+        ctx: &AssistContext,
         call: &ast::CallExpr,
         path: &ast::Path,
         target_module: Option<hir::InFile<hir::ModuleSource>>,
     ) -> Option<Self> {
         let needs_pub = target_module.is_some();
-        let mut file = AssistFile::default();
+        let mut file = ctx.frange.file_id;
         let target = if let Some(target_module) = target_module {
             let (in_file, target) = next_space_for_fn_in_module(ctx.sema.db, target_module)?;
             file = in_file;
@@ -151,7 +151,7 @@ fn fn_name(call: &ast::Path) -> Option<ast::Name> {
 
 /// Computes the type variables and arguments required for the generated function
 fn fn_args(
-    ctx: &AssistCtx,
+    ctx: &AssistContext,
     call: &ast::CallExpr,
 ) -> Option<(Option<ast::TypeParamList>, ast::ParamList)> {
     let mut arg_names = Vec::new();
@@ -218,7 +218,7 @@ fn fn_arg_name(fn_arg: &ast::Expr) -> Option<String> {
     }
 }
 
-fn fn_arg_type(ctx: &AssistCtx, fn_arg: &ast::Expr) -> Option<String> {
+fn fn_arg_type(ctx: &AssistContext, fn_arg: &ast::Expr) -> Option<String> {
     let ty = ctx.sema.type_of_expr(fn_arg)?;
     if ty.is_unknown() {
         return None;
@@ -253,9 +253,8 @@ fn next_space_for_fn_after_call_site(expr: &ast::CallExpr) -> Option<GeneratedFu
 fn next_space_for_fn_in_module(
     db: &dyn hir::db::AstDatabase,
     module: hir::InFile<hir::ModuleSource>,
-) -> Option<(AssistFile, GeneratedFunctionTarget)> {
+) -> Option<(FileId, GeneratedFunctionTarget)> {
     let file = module.file_id.original_file(db);
-    let assist_file = AssistFile::TargetFile(file);
     let assist_item = match module.value {
         hir::ModuleSource::SourceFile(it) => {
             if let Some(last_item) = it.items().last() {
@@ -272,7 +271,7 @@ fn next_space_for_fn_in_module(
             }
         }
     };
-    Some((assist_file, assist_item))
+    Some((file, assist_item))
 }
 
 #[cfg(test)]

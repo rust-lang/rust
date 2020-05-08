@@ -1,5 +1,7 @@
 //! FIXME: write short doc here
 
+// FIXME: this modules relies on strings and AST way too much, and it should be
+// rewritten (matklad 2020-05-07)
 use std::{
     convert::From,
     fmt::{self, Display},
@@ -202,7 +204,11 @@ impl From<&'_ ast::FnDef> for FunctionSignature {
 
                 res.extend(param_list.params().map(|param| param.syntax().text().to_string()));
                 res_types.extend(param_list.params().map(|param| {
-                    param.syntax().text().to_string().split(':').nth(1).unwrap()[1..].to_string()
+                    let param_text = param.syntax().text().to_string();
+                    match param_text.split(':').nth(1) {
+                        Some(it) => it[1..].to_string(),
+                        None => param_text,
+                    }
                 }));
             }
             (has_self_param, res, res_types)

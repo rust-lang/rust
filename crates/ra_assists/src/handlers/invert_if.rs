@@ -3,7 +3,11 @@ use ra_syntax::{
     T,
 };
 
-use crate::{utils::invert_boolean_expression, Assist, AssistCtx, AssistId};
+use crate::{
+    assist_context::{AssistContext, Assists},
+    utils::invert_boolean_expression,
+    AssistId,
+};
 
 // Assist: invert_if
 //
@@ -24,7 +28,7 @@ use crate::{utils::invert_boolean_expression, Assist, AssistCtx, AssistId};
 // }
 // ```
 
-pub(crate) fn invert_if(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn invert_if(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let if_keyword = ctx.find_token_at_offset(T![if])?;
     let expr = ast::IfExpr::cast(if_keyword.parent())?;
     let if_range = if_keyword.text_range();
@@ -40,21 +44,21 @@ pub(crate) fn invert_if(ctx: AssistCtx) -> Option<Assist> {
 
     let cond = expr.condition()?.expr()?;
     let then_node = expr.then_branch()?.syntax().clone();
+    let else_block = match expr.else_branch()? {
+        ast::ElseBranch::Block(it) => it,
+        ast::ElseBranch::IfExpr(_) => return None,
+    };
 
-    if let ast::ElseBranch::Block(else_block) = expr.else_branch()? {
-        let cond_range = cond.syntax().text_range();
-        let flip_cond = invert_boolean_expression(cond);
-        let else_node = else_block.syntax();
-        let else_range = else_node.text_range();
-        let then_range = then_node.text_range();
-        return ctx.add_assist(AssistId("invert_if"), "Invert if", if_range, |edit| {
-            edit.replace(cond_range, flip_cond.syntax().text());
-            edit.replace(else_range, then_node.text());
-            edit.replace(then_range, else_node.text());
-        });
-    }
-
-    None
+    let cond_range = cond.syntax().text_range();
+    let flip_cond = invert_boolean_expression(cond);
+    let else_node = else_block.syntax();
+    let else_range = else_node.text_range();
+    let then_range = then_node.text_range();
+    acc.add(AssistId("invert_if"), "Invert if", if_range, |edit| {
+        edit.replace(cond_range, flip_cond.syntax().text());
+        edit.replace(else_range, then_node.text());
+        edit.replace(then_range, else_node.text());
+    })
 }
 
 #[cfg(test)]

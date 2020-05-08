@@ -1,5 +1,6 @@
 use std::collections::BTreeSet;
 
+use either::Either;
 use hir::{
     AsAssocItem, AssocItemContainer, ModPath, Module, ModuleDef, PathResolution, Semantics, Trait,
     Type,
@@ -12,12 +13,7 @@ use ra_syntax::{
 };
 use rustc_hash::FxHashSet;
 
-use crate::{
-    assist_ctx::{Assist, AssistCtx},
-    utils::insert_use_statement,
-    AssistId,
-};
-use either::Either;
+use crate::{utils::insert_use_statement, AssistContext, AssistId, Assists, GroupLabel};
 
 // Assist: auto_import
 //
@@ -38,7 +34,7 @@ use either::Either;
 // }
 // # pub mod std { pub mod collections { pub struct HashMap { } } }
 // ```
-pub(crate) fn auto_import(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let auto_import_assets = AutoImportAssets::new(&ctx)?;
     let proposed_imports = auto_import_assets.search_for_imports(ctx.db);
     if proposed_imports.is_empty() {
@@ -46,13 +42,19 @@ pub(crate) fn auto_import(ctx: AssistCtx) -> Option<Assist> {
     }
 
     let range = ctx.sema.original_range(&auto_import_assets.syntax_under_caret).range;
-    let mut group = ctx.add_assist_group(auto_import_assets.get_import_group_message());
+    let group = auto_import_assets.get_import_group_message();
     for import in proposed_imports {
-        group.add_assist(AssistId("auto_import"), format!("Import `{}`", &import), range, |edit| {
-            insert_use_statement(&auto_import_assets.syntax_under_caret, &import, edit);
-        });
+        acc.add_group(
+            &group,
+            AssistId("auto_import"),
+            format!("Import `{}`", &import),
+            range,
+            |builder| {
+                insert_use_statement(&auto_import_assets.syntax_under_caret, &import, ctx, builder);
+            },
+        );
     }
-    group.finish()
+    Some(())
 }
 
 #[derive(Debug)]
@@ -63,7 +65,7 @@ struct AutoImportAssets {
 }
 
 impl AutoImportAssets {
-    fn new(ctx: &AssistCtx) -> Option<Self> {
+    fn new(ctx: &AssistContext) -> Option<Self> {
         if let Some(path_under_caret) = ctx.find_node_at_offset_with_descend::<ast::Path>() {
             Self::for_regular_path(path_under_caret, &ctx)
         } else {
@@ -71,7 +73,7 @@ impl AutoImportAssets {
         }
     }
 
-    fn for_method_call(method_call: ast::MethodCallExpr, ctx: &AssistCtx) -> Option<Self> {
+    fn for_method_call(method_call: ast::MethodCallExpr, ctx: &AssistContext) -> Option<Self> {
         let syntax_under_caret = method_call.syntax().to_owned();
         let module_with_name_to_import = ctx.sema.scope(&syntax_under_caret).module()?;
         Some(Self {
@@ -81,7 +83,7 @@ impl AutoImportAssets {
         })
     }
 
-    fn for_regular_path(path_under_caret: ast::Path, ctx: &AssistCtx) -> Option<Self> {
+    fn for_regular_path(path_under_caret: ast::Path, ctx: &AssistContext) -> Option<Self> {
         let syntax_under_caret = path_under_caret.syntax().to_owned();
         if syntax_under_caret.ancestors().find_map(ast::UseItem::cast).is_some() {
             return None;
@@ -104,8 +106,8 @@ impl AutoImportAssets {
         }
     }
 
-    fn get_import_group_message(&self) -> String {
-        match &self.import_candidate {
+    fn get_import_group_message(&self) -> GroupLabel {
+        let name = match &self.import_candidate {
             ImportCandidate::UnqualifiedName(name) => format!("Import {}", name),
             ImportCandidate::QualifierStart(qualifier_start) => {
                 format!("Import {}", qualifier_start)
@@ -116,7 +118,8 @@ impl AutoImportAssets {
             ImportCandidate::TraitMethod(_, trait_method_name) => {
                 format!("Import a trait for method {}", trait_method_name)
             }
-        }
+        };
+        GroupLabel(name)
     }
 
     fn search_for_imports(&self, db: &RootDatabase) -> BTreeSet<ModPath> {
@@ -383,7 +386,7 @@ mod tests {
             }
             ",
             r"
-            use PubMod1::PubStruct;
+            use PubMod3::PubStruct;
 
             PubSt<|>ruct
 

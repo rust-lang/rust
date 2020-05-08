@@ -1,0 +1,8 @@
+[package]
+edition = "2018"
+name = "ra_toolchain"
+version = "0.1.0"
+authors = ["rust-analyzer developers"]
+
+[dependencies]
+home = "0.5.3"

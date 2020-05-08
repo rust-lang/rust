@@ -3,7 +3,7 @@ use ra_syntax::{
     TextSize, T,
 };
 
-use crate::{Assist, AssistCtx, AssistId};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: remove_dbg
 //
@@ -20,7 +20,7 @@ use crate::{Assist, AssistCtx, AssistId};
 //     92;
 // }
 // ```
-pub(crate) fn remove_dbg(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn remove_dbg(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let macro_call = ctx.find_node_at_offset::<ast::MacroCall>()?;
 
     if !is_valid_macrocall(&macro_call, "dbg")? {
@@ -58,7 +58,7 @@ pub(crate) fn remove_dbg(ctx: AssistCtx) -> Option<Assist> {
     };
 
     let target = macro_call.syntax().text_range();
-    ctx.add_assist(AssistId("remove_dbg"), "Remove dbg!()", target, |edit| {
+    acc.add(AssistId("remove_dbg"), "Remove dbg!()", target, |edit| {
         edit.replace(macro_range, macro_content);
         edit.set_cursor(cursor_pos);
     })

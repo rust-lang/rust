@@ -8,7 +8,7 @@ use std::{
     fs::{read_dir, File, ReadDir},
     io::{self, BufReader},
     path::{Path, PathBuf},
-    process::Command,
+    process::{Command, Output},
 };
 
 use anyhow::{bail, Context, Result};
@@ -398,7 +398,18 @@ impl ProjectWorkspace {
                             let edition = cargo[pkg].edition;
                             let cfg_options = {
                                 let mut opts = default_cfg_options.clone();
-                                opts.insert_features(cargo[pkg].features.iter().map(Into::into));
+                                for feature in cargo[pkg].features.iter() {
+                                    opts.insert_key_value("feature".into(), feature.into());
+                                }
+                                for cfg in cargo[pkg].cfgs.iter() {
+                                    match cfg.find('=') {
+                                        Some(split) => opts.insert_key_value(
+                                            cfg[..split].into(),
+                                            cfg[split + 1..].trim_matches('"').into(),
+                                        ),
+                                        None => opts.insert_atom(cfg.into()),
+                                    };
+                                }
                                 opts
                             };
                             let mut env = Env::default();
@@ -556,25 +567,18 @@ pub fn get_rustc_cfg_options(target: Option<&String>) -> CfgOptions {
         }
     }
 
-    match (|| -> Result<String> {
+    let rustc_cfgs = || -> Result<String> {
         // `cfg(test)` and `cfg(debug_assertion)` are handled outside, so we suppress them here.
-        let mut cmd = Command::new("rustc");
+        let mut cmd = Command::new(ra_toolchain::rustc());
         cmd.args(&["--print", "cfg", "-O"]);
         if let Some(target) = target {
             cmd.args(&["--target", target.as_str()]);
         }
-        let output = cmd.output().context("Failed to get output from rustc --print cfg -O")?;
-        if !output.status.success() {
-            bail!(
-                "rustc --print cfg -O exited with exit code ({})",
-                output
-                    .status
-                    .code()
-                    .map_or(String::from("no exit code"), |code| format!("{}", code))
-            );
-        }
+        let output = output(cmd)?;
         Ok(String::from_utf8(output.stdout)?)
-    })() {
+    }();
+
+    match rustc_cfgs {
         Ok(rustc_cfgs) => {
             for line in rustc_cfgs.lines() {
                 match line.find('=') {
@@ -587,8 +591,16 @@ pub fn get_rustc_cfg_options(target: Option<&String>) -> CfgOptions {
                 }
             }
         }
-        Err(e) => log::error!("failed to get rustc cfgs: {}", e),
+        Err(e) => log::error!("failed to get rustc cfgs: {:#}", e),
     }
 
     cfg_options
+}
+
+fn output(mut cmd: Command) -> Result<Output> {
+    let output = cmd.output().with_context(|| format!("{:?} failed", cmd))?;
+    if !output.status.success() {
+        bail!("{:?} failed, {}", cmd, output.status)
+    }
+    Ok(output)
 }

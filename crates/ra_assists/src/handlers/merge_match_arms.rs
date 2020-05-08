@@ -6,7 +6,7 @@ use ra_syntax::{
     Direction, TextSize,
 };
 
-use crate::{Assist, AssistCtx, AssistId, TextRange};
+use crate::{AssistContext, AssistId, Assists, TextRange};
 
 // Assist: merge_match_arms
 //
@@ -32,7 +32,7 @@ use crate::{Assist, AssistCtx, AssistId, TextRange};
 //     }
 // }
 // ```
-pub(crate) fn merge_match_arms(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn merge_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let current_arm = ctx.find_node_at_offset::<ast::MatchArm>()?;
     // Don't try to handle arms with guards for now - can add support for this later
     if current_arm.guard().is_some() {
@@ -45,7 +45,7 @@ pub(crate) fn merge_match_arms(ctx: AssistCtx) -> Option<Assist> {
         InExpr(TextSize),
         InPat(TextSize),
     }
-    let cursor_pos = ctx.frange.range.start();
+    let cursor_pos = ctx.offset();
     let cursor_pos = if current_expr.syntax().text_range().contains(cursor_pos) {
         CursorPos::InExpr(current_text_range.end() - cursor_pos)
     } else {
@@ -70,7 +70,7 @@ pub(crate) fn merge_match_arms(ctx: AssistCtx) -> Option<Assist> {
         return None;
     }
 
-    ctx.add_assist(AssistId("merge_match_arms"), "Merge match arms", current_text_range, |edit| {
+    acc.add(AssistId("merge_match_arms"), "Merge match arms", current_text_range, |edit| {
         let pats = if arms_to_merge.iter().any(contains_placeholder) {
             "_".into()
         } else {

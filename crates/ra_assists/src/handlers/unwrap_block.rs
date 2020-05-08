@@ -1,4 +1,4 @@
-use crate::{Assist, AssistCtx, AssistId};
+use crate::{AssistContext, AssistId, Assists};
 
 use ast::LoopBodyOwner;
 use ra_fmt::unwrap_trivial_block;
@@ -21,7 +21,7 @@ use ra_syntax::{ast, match_ast, AstNode, TextRange, T};
 //     println!("foo");
 // }
 // ```
-pub(crate) fn unwrap_block(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn unwrap_block(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let l_curly_token = ctx.find_token_at_offset(T!['{'])?;
     let block = ast::BlockExpr::cast(l_curly_token.parent())?;
     let parent = block.syntax().parent()?;
@@ -58,7 +58,7 @@ pub(crate) fn unwrap_block(ctx: AssistCtx) -> Option<Assist> {
     };
 
     let target = expr_to_unwrap.syntax().text_range();
-    ctx.add_assist(AssistId("unwrap_block"), "Unwrap block", target, |edit| {
+    acc.add(AssistId("unwrap_block"), "Unwrap block", target, |edit| {
         edit.set_cursor(expr.syntax().text_range().start());
 
         let pat_start: &[_] = &[' ', '{', '\n'];

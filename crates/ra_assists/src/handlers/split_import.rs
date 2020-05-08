@@ -2,7 +2,7 @@ use std::iter::successors;
 
 use ra_syntax::{ast, AstNode, T};
 
-use crate::{Assist, AssistCtx, AssistId};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: split_import
 //
@@ -15,7 +15,7 @@ use crate::{Assist, AssistCtx, AssistId};
 // ```
 // use std::{collections::HashMap};
 // ```
-pub(crate) fn split_import(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn split_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let colon_colon = ctx.find_token_at_offset(T![::])?;
     let path = ast::Path::cast(colon_colon.parent())?.qualifier()?;
     let top_path = successors(Some(path.clone()), |it| it.parent_path()).last()?;
@@ -26,10 +26,10 @@ pub(crate) fn split_import(ctx: AssistCtx) -> Option<Assist> {
     if new_tree == use_tree {
         return None;
     }
-    let cursor = ctx.frange.range.start();
+    let cursor = ctx.offset();
 
     let target = colon_colon.text_range();
-    ctx.add_assist(AssistId("split_import"), "Split import", target, |edit| {
+    acc.add(AssistId("split_import"), "Split import", target, |edit| {
         edit.replace_ast(use_tree, new_tree);
         edit.set_cursor(cursor);
     })

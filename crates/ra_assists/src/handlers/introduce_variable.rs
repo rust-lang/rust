@@ -9,7 +9,7 @@ use ra_syntax::{
 use stdx::format_to;
 use test_utils::tested_by;
 
-use crate::{Assist, AssistCtx, AssistId};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: introduce_variable
 //
@@ -27,7 +27,7 @@ use crate::{Assist, AssistCtx, AssistId};
 //     var_name * 4;
 // }
 // ```
-pub(crate) fn introduce_variable(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn introduce_variable(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     if ctx.frange.range.is_empty() {
         return None;
     }
@@ -43,7 +43,7 @@ pub(crate) fn introduce_variable(ctx: AssistCtx) -> Option<Assist> {
         return None;
     }
     let target = expr.syntax().text_range();
-    ctx.add_assist(AssistId("introduce_variable"), "Extract into variable", target, move |edit| {
+    acc.add(AssistId("introduce_variable"), "Extract into variable", target, move |edit| {
         let mut buf = String::new();
 
         let cursor_offset = if wrap_in_block {

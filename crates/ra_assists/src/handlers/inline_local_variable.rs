@@ -5,7 +5,10 @@ use ra_syntax::{
 };
 use test_utils::tested_by;
 
-use crate::{assist_ctx::ActionBuilder, Assist, AssistCtx, AssistId};
+use crate::{
+    assist_context::{AssistContext, Assists},
+    AssistId,
+};
 
 // Assist: inline_local_variable
 //
@@ -23,7 +26,7 @@ use crate::{assist_ctx::ActionBuilder, Assist, AssistCtx, AssistId};
 //     (1 + 2) * 4;
 // }
 // ```
-pub(crate) fn inline_local_variable(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let let_stmt = ctx.find_node_at_offset::<ast::LetStmt>()?;
     let bind_pat = match let_stmt.pat()? {
         ast::Pat::BindPat(pat) => pat,
@@ -33,7 +36,7 @@ pub(crate) fn inline_local_variable(ctx: AssistCtx) -> Option<Assist> {
         tested_by!(test_not_inline_mut_variable);
         return None;
     }
-    if !bind_pat.syntax().text_range().contains_inclusive(ctx.frange.range.start()) {
+    if !bind_pat.syntax().text_range().contains_inclusive(ctx.offset()) {
         tested_by!(not_applicable_outside_of_bind_pat);
         return None;
     }
@@ -107,20 +110,14 @@ pub(crate) fn inline_local_variable(ctx: AssistCtx) -> Option<Assist> {
     let init_in_paren = format!("({})", &init_str);
 
     let target = bind_pat.syntax().text_range();
-    ctx.add_assist(
-        AssistId("inline_local_variable"),
-        "Inline variable",
-        target,
-        move |edit: &mut ActionBuilder| {
-            edit.delete(delete_range);
-            for (desc, should_wrap) in refs.iter().zip(wrap_in_parens) {
-                let replacement =
-                    if should_wrap { init_in_paren.clone() } else { init_str.clone() };
-                edit.replace(desc.file_range.range, replacement)
-            }
-            edit.set_cursor(delete_range.start())
-        },
-    )
+    acc.add(AssistId("inline_local_variable"), "Inline variable", target, move |builder| {
+        builder.delete(delete_range);
+        for (desc, should_wrap) in refs.iter().zip(wrap_in_parens) {
+            let replacement = if should_wrap { init_in_paren.clone() } else { init_str.clone() };
+            builder.replace(desc.file_range.range, replacement)
+        }
+        builder.set_cursor(delete_range.start())
+    })
 }
 
 #[cfg(test)]

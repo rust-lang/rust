@@ -6,7 +6,7 @@
 use ra_db::{FileId, FilePosition, RelativePathBuf, SourceRootId};
 use ra_text_edit::{TextEdit, TextSize};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SourceChange {
     /// For display in the undo log in the editor
     pub label: String,
@@ -90,13 +90,13 @@ impl SourceChange {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SourceFileEdit {
     pub file_id: FileId,
     pub edit: TextEdit,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum FileSystemEdit {
     CreateFile { source_root: SourceRootId, path: RelativePathBuf },
     MoveFile { src: FileId, dst_source_root: SourceRootId, dst_path: RelativePathBuf },

@@ -300,6 +300,11 @@
                     "default": true,
                     "markdownDescription": "Check with all features (will be passed as `--all-features`)"
                 },
+                "rust-analyzer.inlayHints.enable": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Disable all inlay hints"
+                },
                 "rust-analyzer.inlayHints.typeHints": {
                     "type": "boolean",
                     "default": true,
@@ -405,7 +410,7 @@
                         "ms-vscode.cpptools"
                     ],
                     "default": "auto",
-                    "description": "Preffered debug engine.",
+                    "description": "Preferred debug engine.",
                     "markdownEnumDescriptions": [
                         "First try to use [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb), if it's not installed try to use [MS C++ tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools).",
                         "Use [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb)",
@@ -599,8 +604,17 @@
                     "union": [
                         "entity.name.union"
                     ],
+                    "struct": [
+                        "entity.name.type.struct"
+                    ],
                     "keyword.unsafe": [
                         "keyword.other.unsafe"
+                    ],
+                    "keyword": [
+                        "keyword"
+                    ],
+                    "keyword.controlFlow": [
+                        "keyword.control"
                     ],
                     "variable.constant": [
                         "entity.name.constant"

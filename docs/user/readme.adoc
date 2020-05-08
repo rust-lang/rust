@@ -61,7 +61,7 @@ The server binary is stored in:
 
 * Linux: `~/.config/Code/User/globalStorage/matklad.rust-analyzer`
 * macOS: `~/Library/Application Support/Code/User/globalStorage/matklad.rust-analyzer`
-* Windows: `%APPDATA%\Code\User\globalStorage`
+* Windows: `%APPDATA%\Code\User\globalStorage\matklad.rust-analyzer`
 
 Note that we only support the latest version of VS Code.
 
@@ -139,17 +139,16 @@ If your editor can't find the binary even though the binary is on your `$PATH`, 
 
 ==== Arch Linux
 
-The `rust-analyzer` binary can be installed from AUR (Arch User Repository):
+The `rust-analyzer` binary can be installed from the repos or AUR (Arch User Repository):
 
-- https://aur.archlinux.org/packages/rust-analyzer-bin[`rust-analyzer-bin`] (binary from GitHub releases)
-- https://aur.archlinux.org/packages/rust-analyzer[`rust-analyzer`] (built from latest tagged source)
-- https://aur.archlinux.org/packages/rust-analyzer-git[`rust-analyzer-git`] (latest git version)
+- https://www.archlinux.org/packages/community/x86_64/rust-analyzer/[`rust-analyzer`] (built from latest tagged source)
+- https://aur.archlinux.org/packages/rust-analyzer-git[`rust-analyzer-git`] (latest Git version)
 
-Install it with AUR helper of your choice, for example:
+Install it with pacman, for example:
 
 [source,bash]
 ----
-$ yay -S rust-analyzer-bin
+$ pacman -S rust-analyzer
 ----
 
 === Emacs
@@ -187,7 +186,7 @@ The are several LSP client implementations for vim or neovim:
 
 1. Install LanguageClient-neovim by following the instructions
    https://github.com/autozimu/LanguageClient-neovim[here]
-   * The github project wiki has extra tips on configuration
+   * The GitHub project wiki has extra tips on configuration
 
 2. Configure by adding this to your vim/neovim config file (replacing the existing Rust-specific line if it exists):
 +
@@ -220,17 +219,11 @@ let g:ycm_language_server =
 
 ==== ALE
 
-To add the LSP server to https://github.com/dense-analysis/ale[ale]:
+To use the LSP server in https://github.com/dense-analysis/ale[ale]:
 
 [source,vim]
 ----
-call ale#linter#Define('rust', {
-\   'name': 'rust-analyzer',
-\   'lsp': 'stdio',
-\   'executable': 'rust-analyzer',
-\   'command': '%e',
-\   'project_root': '.',
-\})
+let g:ale_linters = {'rust': ['analyzer']}
 ----
 
 ==== nvim-lsp

@@ -6,7 +6,7 @@
 // FIXME: this badly needs rename/rewrite (matklad, 2020-02-06).
 
 use hir::{
-    Field, HasVisibility, ImplDef, Local, MacroDef, Module, ModuleDef, Name, PathResolution,
+    Adt, Field, HasVisibility, ImplDef, Local, MacroDef, Module, ModuleDef, Name, PathResolution,
     Semantics, TypeParam, Visibility,
 };
 use ra_prof::profile;
@@ -47,7 +47,13 @@ impl Definition {
         match self {
             Definition::Macro(_) => None,
             Definition::Field(sf) => Some(sf.visibility(db)),
-            Definition::ModuleDef(def) => module?.visibility_of(db, def),
+            Definition::ModuleDef(def) => match def {
+                ModuleDef::EnumVariant(id) => {
+                    let parent = id.parent_enum(db);
+                    module?.visibility_of(db, &ModuleDef::Adt(Adt::Enum(parent)))
+                }
+                _ => module?.visibility_of(db, def),
+            },
             Definition::SelfType(_) => None,
             Definition::Local(_) => None,
             Definition::TypeParam(_) => None,
