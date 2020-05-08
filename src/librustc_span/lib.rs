@@ -15,6 +15,7 @@
 #![feature(specialization)]
 
 // allow wasm target for rustc-ap-rustc_span
+#[allow(unused)]
 extern crate rustc_macros;
 
 use rustc_data_structures::AtomicRef;
