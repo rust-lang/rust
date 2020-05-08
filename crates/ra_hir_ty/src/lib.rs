@@ -731,10 +731,7 @@ impl Ty {
     }
 
     pub fn is_never(&self) -> bool {
-        match self {
-            Ty::Apply(ApplicationTy { ctor: TypeCtor::Never, .. }) => true,
-            _ => false,
-        }
+        matches!(self, Ty::Apply(ApplicationTy { ctor: TypeCtor::Never, .. }))
     }
 
     /// If this is a `dyn Trait` type, this returns the `Trait` part.
