@@ -1,9 +1,9 @@
 use super::_match::Usefulness::*;
 use super::_match::WitnessPreference::*;
 use super::_match::{expand_pattern, is_useful, MatchCheckCtxt, Matrix, PatStack};
-
 use super::{PatCtxt, PatKind, PatternError};
 
+use arena::TypedArena;
 use rustc_ast::ast::Mutability;
 use rustc_errors::{error_code, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
@@ -17,7 +17,6 @@ use rustc_session::lint::builtin::{IRREFUTABLE_LET_PATTERNS, UNREACHABLE_PATTERN
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
 use rustc_span::{sym, Span};
-
 use std::slice;
 
 crate fn check_match(tcx: TyCtxt<'_>, def_id: DefId) {
@@ -26,8 +25,12 @@ crate fn check_match(tcx: TyCtxt<'_>, def_id: DefId) {
         Some(id) => tcx.hir().body_owned_by(tcx.hir().as_local_hir_id(id)),
     };
 
-    let mut visitor =
-        MatchVisitor { tcx, tables: tcx.body_tables(body_id), param_env: tcx.param_env(def_id) };
+    let mut visitor = MatchVisitor {
+        tcx,
+        tables: tcx.body_tables(body_id),
+        param_env: tcx.param_env(def_id),
+        pattern_arena: TypedArena::default(),
+    };
     visitor.visit_body(tcx.hir().body(body_id));
 }
 
@@ -39,6 +42,7 @@ struct MatchVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
+    pattern_arena: TypedArena<super::Pat<'tcx>>,
 }
 
 impl<'tcx> Visitor<'tcx> for MatchVisitor<'_, 'tcx> {
@@ -143,9 +147,13 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
         (pattern, pattern_ty)
     }
 
-    fn check_in_cx(&self, hir_id: HirId, f: impl FnOnce(MatchCheckCtxt<'_, 'tcx>)) {
-        let module = self.tcx.parent_module(hir_id);
-        MatchCheckCtxt::create_and_enter(self.tcx, self.param_env, module.to_def_id(), |cx| f(cx));
+    fn new_cx(&self, hir_id: HirId) -> MatchCheckCtxt<'_, 'tcx> {
+        MatchCheckCtxt {
+            tcx: self.tcx,
+            param_env: self.param_env,
+            module: self.tcx.parent_module(hir_id).to_def_id(),
+            pattern_arena: &self.pattern_arena,
+        }
     }
 
     fn check_match(
@@ -159,91 +167,88 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
             self.check_patterns(arm.guard.is_some(), &arm.pat);
         }
 
-        self.check_in_cx(scrut.hir_id, |ref mut cx| {
-            let mut have_errors = false;
+        let mut cx = self.new_cx(scrut.hir_id);
 
-            let inlined_arms: Vec<_> = arms
-                .iter()
-                .map(|hir::Arm { pat, guard, .. }| {
-                    (self.lower_pattern(cx, pat, &mut have_errors).0, pat.hir_id, guard.is_some())
-                })
-                .collect();
+        let mut have_errors = false;
 
-            // Bail out early if inlining failed.
-            if have_errors {
-                return;
-            }
+        let inlined_arms: Vec<_> = arms
+            .iter()
+            .map(|hir::Arm { pat, guard, .. }| {
+                (self.lower_pattern(&mut cx, pat, &mut have_errors).0, pat.hir_id, guard.is_some())
+            })
+            .collect();
 
-            // Fourth, check for unreachable arms.
-            let matrix = check_arms(cx, &inlined_arms, source);
+        // Bail out early if inlining failed.
+        if have_errors {
+            return;
+        }
 
-            // Fifth, check if the match is exhaustive.
-            let scrut_ty = self.tables.node_type(scrut.hir_id);
-            // Note: An empty match isn't the same as an empty matrix for diagnostics purposes,
-            // since an empty matrix can occur when there are arms, if those arms all have guards.
-            let is_empty_match = inlined_arms.is_empty();
-            check_exhaustive(cx, scrut_ty, scrut.span, &matrix, scrut.hir_id, is_empty_match);
-        })
+        // Fourth, check for unreachable arms.
+        let matrix = check_arms(&mut cx, &inlined_arms, source);
+
+        // Fifth, check if the match is exhaustive.
+        let scrut_ty = self.tables.node_type(scrut.hir_id);
+        // Note: An empty match isn't the same as an empty matrix for diagnostics purposes,
+        // since an empty matrix can occur when there are arms, if those arms all have guards.
+        let is_empty_match = inlined_arms.is_empty();
+        check_exhaustive(&mut cx, scrut_ty, scrut.span, &matrix, scrut.hir_id, is_empty_match);
     }
 
     fn check_irrefutable(&self, pat: &'tcx Pat<'tcx>, origin: &str, sp: Option<Span>) {
-        self.check_in_cx(pat.hir_id, |ref mut cx| {
-            let (pattern, pattern_ty) = self.lower_pattern(cx, pat, &mut false);
-            let pats: Matrix<'_, '_> = vec![PatStack::from_pattern(pattern)].into_iter().collect();
+        let mut cx = self.new_cx(pat.hir_id);
 
-            let witnesses = match check_not_useful(cx, pattern_ty, &pats, pat.hir_id) {
-                Ok(_) => return,
-                Err(err) => err,
-            };
+        let (pattern, pattern_ty) = self.lower_pattern(&mut cx, pat, &mut false);
+        let pats: Matrix<'_, '_> = vec![PatStack::from_pattern(pattern)].into_iter().collect();
 
-            let joined_patterns = joined_uncovered_patterns(&witnesses);
-            let mut err = struct_span_err!(
-                self.tcx.sess,
-                pat.span,
-                E0005,
-                "refutable pattern in {}: {} not covered",
-                origin,
-                joined_patterns
+        let witnesses = match check_not_useful(&mut cx, pattern_ty, &pats, pat.hir_id) {
+            Ok(_) => return,
+            Err(err) => err,
+        };
+
+        let joined_patterns = joined_uncovered_patterns(&witnesses);
+        let mut err = struct_span_err!(
+            self.tcx.sess,
+            pat.span,
+            E0005,
+            "refutable pattern in {}: {} not covered",
+            origin,
+            joined_patterns
+        );
+        let suggest_if_let = match &pat.kind {
+            hir::PatKind::Path(hir::QPath::Resolved(None, path))
+                if path.segments.len() == 1 && path.segments[0].args.is_none() =>
+            {
+                const_not_var(&mut err, cx.tcx, pat, path);
+                false
+            }
+            _ => {
+                err.span_label(pat.span, pattern_not_covered_label(&witnesses, &joined_patterns));
+                true
+            }
+        };
+
+        if let (Some(span), true) = (sp, suggest_if_let) {
+            err.note(
+                "`let` bindings require an \"irrefutable pattern\", like a `struct` or \
+                 an `enum` with only one variant",
             );
-            let suggest_if_let = match &pat.kind {
-                hir::PatKind::Path(hir::QPath::Resolved(None, path))
-                    if path.segments.len() == 1 && path.segments[0].args.is_none() =>
-                {
-                    const_not_var(&mut err, cx.tcx, pat, path);
-                    false
-                }
-                _ => {
-                    err.span_label(
-                        pat.span,
-                        pattern_not_covered_label(&witnesses, &joined_patterns),
-                    );
-                    true
-                }
-            };
-
-            if let (Some(span), true) = (sp, suggest_if_let) {
-                err.note(
-                    "`let` bindings require an \"irrefutable pattern\", like a `struct` or \
-                     an `enum` with only one variant",
-                );
-                if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
-                    err.span_suggestion(
-                        span,
-                        "you might want to use `if let` to ignore the variant that isn't matched",
-                        format!("if {} {{ /* */ }}", &snippet[..snippet.len() - 1]),
-                        Applicability::HasPlaceholders,
-                    );
-                }
-                err.note(
-                    "for more information, visit \
-                     https://doc.rust-lang.org/book/ch18-02-refutability.html",
+            if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
+                err.span_suggestion(
+                    span,
+                    "you might want to use `if let` to ignore the variant that isn't matched",
+                    format!("if {} {{ /* */ }}", &snippet[..snippet.len() - 1]),
+                    Applicability::HasPlaceholders,
                 );
             }
+            err.note(
+                "for more information, visit \
+                 https://doc.rust-lang.org/book/ch18-02-refutability.html",
+            );
+        }
 
-            adt_defined_here(cx, &mut err, pattern_ty, &witnesses);
-            err.note(&format!("the matched value is of type `{}`", pattern_ty));
-            err.emit();
-        });
+        adt_defined_here(&mut cx, &mut err, pattern_ty, &witnesses);
+        err.note(&format!("the matched value is of type `{}`", pattern_ty));
+        err.emit();
     }
 }
 
