@@ -96,23 +96,21 @@ pub fn main_loop(ws_roots: Vec<PathBuf>, config: Config, connection: Connection)
     let mut world_state = {
         let workspaces = {
             // FIXME: support dynamic workspace loading.
-            let mut visited = FxHashSet::default();
-            let project_roots = ws_roots
+            let project_roots: FxHashSet<_> = ws_roots
                 .iter()
                 .filter_map(|it| ra_project_model::ProjectRoot::discover(it).ok())
                 .flatten()
-                .filter(|it| visited.insert(it.clone()))
-                .collect::<Vec<_>>();
+                .collect();
 
             if project_roots.is_empty() && config.notifications.cargo_toml_not_found {
                 show_message(
-                        req::MessageType::Error,
-                        format!(
-                            "rust-analyzer failed to discover workspace, no Cargo.toml found, dirs searched: {}",
-                            ws_roots.iter().format_with(", ", |it, f| f(&it.display()))
-                        ),
-                        &connection.sender,
-                    );
+                    req::MessageType::Error,
+                    format!(
+                        "rust-analyzer failed to discover workspace, no Cargo.toml found, dirs searched: {}",
+                        ws_roots.iter().format_with(", ", |it, f| f(&it.display()))
+                    ),
+                    &connection.sender,
+                );
             };
 
             project_roots
