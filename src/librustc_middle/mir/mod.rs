@@ -2410,13 +2410,9 @@ pub struct Constant<'tcx> {
 impl Constant<'tcx> {
     pub fn check_static_ptr(&self, tcx: TyCtxt<'_>) -> Option<DefId> {
         match self.literal.val.try_to_scalar() {
-            Some(Scalar::Ptr(ptr)) => match tcx.get_global_alloc(ptr.alloc_id) {
-                Some(GlobalAlloc::Static(def_id)) => Some(def_id),
-                Some(_) => None,
-                None => {
-                    tcx.sess.delay_span_bug(DUMMY_SP, "MIR cannot contain dangling const pointers");
-                    None
-                }
+            Some(Scalar::Ptr(ptr)) => match tcx.global_alloc(ptr.alloc_id) {
+                GlobalAlloc::Static(def_id) => Some(def_id),
+                _ => None,
             },
             _ => None,
         }

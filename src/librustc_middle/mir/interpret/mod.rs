@@ -197,7 +197,7 @@ pub fn specialized_encode_alloc_id<'tcx, E: Encoder>(
     tcx: TyCtxt<'tcx>,
     alloc_id: AllocId,
 ) -> Result<(), E::Error> {
-    match tcx.get_global_alloc(alloc_id).expect("no value for given alloc ID") {
+    match tcx.global_alloc(alloc_id) {
         GlobalAlloc::Memory(alloc) => {
             trace!("encoding {:?} with {:#?}", alloc_id, alloc);
             AllocDiscriminant::Alloc.encode(encoder)?;
@@ -511,6 +511,15 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn get_global_alloc(&self, id: AllocId) -> Option<GlobalAlloc<'tcx>> {
         self.alloc_map.lock().alloc_map.get(&id).cloned()
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn global_alloc(&self, id: AllocId) -> GlobalAlloc<'tcx> {
+        match self.get_global_alloc(id) {
+            Some(alloc) => alloc,
+            None => bug!("could not find allocation for {}", id),
+        }
     }
 
     /// Freezes an `AllocId` created with `reserve` by pointing it at an `Allocation`. Trying to
