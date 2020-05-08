@@ -518,3 +518,21 @@ fn missing_record_pat_field_no_diagnostic_if_not_exhaustive() {
 
     assert_snapshot!(diagnostics, @"");
 }
+
+#[test]
+fn break_outside_of_loop() {
+    let diagnostics = TestDB::with_files(
+        r"
+        //- /lib.rs
+        fn foo() {
+            break;
+        }
+        ",
+    )
+    .diagnostics()
+    .0;
+
+    assert_snapshot!(diagnostics, @r###""break": break outside of loop
+    "###
+    );
+}
