@@ -18,7 +18,7 @@ LL |         asm!("{:z}", in(reg) foo);
    |               |
    |               template modifier
    |
-   = note: the `reg` register class supports the following template modifiers: `l`, `h`, `x`, `e`, `r`
+   = note: the `reg` register class supports the following template modifiers: `l`, `x`, `e`, `r`
 
 error: invalid asm template modifier for this register class
   --> $DIR/bad-reg.rs:18:15
