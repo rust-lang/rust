@@ -11,7 +11,7 @@ use anyhow::{Context, Result};
 use cargo_metadata::{BuildScript, CargoOpt, Message, MetadataCommand, PackageId};
 use ra_arena::{Arena, Idx};
 use ra_db::Edition;
-use ra_env::get_path_for_executable;
+use ra_toolchain::get_path_for_executable;
 use rustc_hash::FxHashMap;
 
 /// `CargoWorkspace` represents the logical structure of, well, a Cargo

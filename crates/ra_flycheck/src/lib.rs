@@ -16,7 +16,7 @@ use lsp_types::{
     CodeAction, CodeActionOrCommand, Diagnostic, Url, WorkDoneProgress, WorkDoneProgressBegin,
     WorkDoneProgressEnd, WorkDoneProgressReport,
 };
-use ra_env::get_path_for_executable;
+use ra_toolchain::get_path_for_executable;
 
 use crate::conv::{map_rust_diagnostic_to_lsp, MappedRustDiagnostic};
 

@@ -1,14 +1,14 @@
 //! FIXME: write short doc here
 
-use anyhow::{bail, Context, Result};
 use std::{
     env, ops,
     path::{Path, PathBuf},
     process::{Command, Output},
 };
 
+use anyhow::{bail, Context, Result};
 use ra_arena::{Arena, Idx};
-use ra_env::get_path_for_executable;
+use ra_toolchain::get_path_for_executable;
 
 #[derive(Default, Debug, Clone)]
 pub struct Sysroot {

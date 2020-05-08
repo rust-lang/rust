@@ -14,7 +14,7 @@ use std::{
 use anyhow::{bail, Context, Result};
 use ra_cfg::CfgOptions;
 use ra_db::{CrateGraph, CrateName, Edition, Env, ExternSource, ExternSourceId, FileId};
-use ra_env::get_path_for_executable;
+use ra_toolchain::get_path_for_executable;
 use rustc_hash::FxHashMap;
 use serde_json::from_reader;
 

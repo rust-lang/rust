@@ -1,11 +1,13 @@
 //! This crate contains a single public function
 //! [`get_path_for_executable`](fn.get_path_for_executable.html).
 //! See docs there for more information.
+use std::{
+    env,
+    path::{Path, PathBuf},
+    process::Command,
+};
 
 use anyhow::{bail, Result};
-use std::env;
-use std::path::{Path, PathBuf};
-use std::process::Command;
 
 /// Return a `PathBuf` to use for the given executable.
 ///
