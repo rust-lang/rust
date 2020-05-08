@@ -269,9 +269,11 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
                     },
                     _,
                 )
-                | intravisit::FnKind::ItemFn(_, _, hir::FnHeader { abi: Abi::Rust, .. }, _) => {
-                    self.check_arg_number(cx, decl, span.with_hi(decl.output.span().hi()))
-                },
+                | intravisit::FnKind::ItemFn(_, _, hir::FnHeader { abi: Abi::Rust, .. }, _) => self.check_arg_number(
+                    cx,
+                    decl,
+                    span.with_hi(decl.output.span(|id| cx.tcx.hir().span(id)).hi()),
+                ),
                 _ => {},
             }
         }
@@ -286,7 +288,7 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
         if let hir::ItemKind::Fn(ref sig, ref _generics, ref body_id) = item.kind {
             let is_public = cx.access_levels.is_exported(item.hir_id());
             let item_span = cx.tcx.hir().span_with_body(item.hir_id());
-            let fn_header_span = item_span.with_hi(sig.decl.output.span().hi());
+            let fn_header_span = item_span.with_hi(sig.decl.output.span(|id| cx.tcx.hir().span(id)).hi());
             if is_public {
                 check_result_unit_err(cx, &sig.decl, item_span, fn_header_span);
             }
@@ -301,7 +303,7 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
                     cx.tcx.hir().body(*body_id),
                     item_span,
                     item.hir_id(),
-                    item_span.with_hi(sig.decl.output.span().hi()),
+                    item_span.with_hi(sig.decl.output.span(|id| cx.tcx.hir().span(id)).hi()),
                     "this function could have a `#[must_use]` attribute",
                 );
             }
@@ -312,7 +314,7 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
         if let hir::ImplItemKind::Fn(ref sig, ref body_id) = item.kind {
             let is_public = cx.access_levels.is_exported(item.hir_id());
             let item_span = cx.tcx.hir().span_with_body(item.hir_id());
-            let fn_header_span = item_span.with_hi(sig.decl.output.span().hi());
+            let fn_header_span = item_span.with_hi(sig.decl.output.span(|id| cx.tcx.hir().span(id)).hi());
             if is_public && trait_ref_of_method(cx, item.hir_id()).is_none() {
                 check_result_unit_err(cx, &sig.decl, item_span, fn_header_span);
             }
@@ -335,7 +337,7 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
                     cx.tcx.hir().body(*body_id),
                     item_span,
                     item.hir_id(),
-                    item_span.with_hi(sig.decl.output.span().hi()),
+                    item_span.with_hi(sig.decl.output.span(|id| cx.tcx.hir().span(id)).hi()),
                     "this method could have a `#[must_use]` attribute",
                 );
             }
@@ -348,10 +350,14 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
 
             // don't lint extern functions decls, it's not their fault
             if sig.header.abi == Abi::Rust {
-                self.check_arg_number(cx, &sig.decl, item_span.with_hi(sig.decl.output.span().hi()));
+                self.check_arg_number(
+                    cx,
+                    &sig.decl,
+                    item_span.with_hi(sig.decl.output.span(|id| cx.tcx.hir().span(id)).hi()),
+                );
             }
             let is_public = cx.access_levels.is_exported(item.hir_id());
-            let fn_header_span = item_span.with_hi(sig.decl.output.span().hi());
+            let fn_header_span = item_span.with_hi(sig.decl.output.span(|id| cx.tcx.hir().span(id)).hi());
             if is_public {
                 check_result_unit_err(cx, &sig.decl, item_span, fn_header_span);
             }
@@ -372,7 +378,7 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
                         body,
                         item_span,
                         item.hir_id(),
-                        item_span.with_hi(sig.decl.output.span().hi()),
+                        item_span.with_hi(sig.decl.output.span(|id| cx.tcx.hir().span(id)).hi()),
                         "this method could have a `#[must_use]` attribute",
                     );
                 }

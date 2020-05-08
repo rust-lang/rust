@@ -100,7 +100,7 @@ impl LateLintPass<'_> for VecInitThenPush {
                         local_id: id,
                         init: init_kind,
                         lhs_is_local: true,
-                        lhs_span: local.ty.map_or(local_pat_span, |t| local_pat_span.to(t.span)),
+                        lhs_span: local.ty.map_or(local_pat_span, |t| local_pat_span.to(cx.tcx.hir().span_with_body(t.hir_id))),
                         err_span: local_span,
                         found: 0,
                     });

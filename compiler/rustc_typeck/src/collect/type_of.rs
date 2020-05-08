@@ -267,7 +267,8 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
             TraitItemKind::Const(ref ty, body_id) => body_id
                 .and_then(|body_id| {
                     if is_suggestable_infer_ty(ty) {
-                        Some(infer_placeholder_type(tcx, def_id, body_id, ty.span, item.ident))
+                        let ty_span = tcx.hir().span(ty.hir_id);
+                        Some(infer_placeholder_type(tcx, def_id, body_id, ty_span, item.ident))
                     } else {
                         None
                     }
@@ -287,7 +288,8 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
             }
             ImplItemKind::Const(ref ty, body_id) => {
                 if is_suggestable_infer_ty(ty) {
-                    infer_placeholder_type(tcx, def_id, body_id, ty.span, item.ident)
+                    let ty_span = tcx.hir().span(ty.hir_id);
+                    infer_placeholder_type(tcx, def_id, body_id, ty_span, item.ident)
                 } else {
                     icx.to_ty(ty)
                 }
@@ -306,7 +308,8 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
             match item.kind {
                 ItemKind::Static(ref ty, .., body_id) | ItemKind::Const(ref ty, body_id) => {
                     if is_suggestable_infer_ty(ty) {
-                        infer_placeholder_type(tcx, def_id, body_id, ty.span, item.ident)
+                        let ty_span = tcx.hir().span(ty.hir_id);
+                        infer_placeholder_type(tcx, def_id, body_id, ty_span, item.ident)
                     } else {
                         icx.to_ty(ty)
                     }

@@ -333,14 +333,15 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
             }
             ty::Error(_) => {}
             _ => {
+                let ty_span = self.tcx.hir().span(ty.hir_id);
                 let mut err = struct_span_err!(
                     self.tcx.sess,
-                    ty.span,
+                    ty_span,
                     E0118,
                     "no nominal type found for inherent implementation"
                 );
 
-                err.span_label(ty.span, "impl requires a nominal type")
+                err.span_label(ty_span, "impl requires a nominal type")
                     .note("either implement a trait on it or create a newtype to wrap it instead");
 
                 if let ty::Ref(_, subty, _) = self_ty.kind() {

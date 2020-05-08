@@ -119,7 +119,8 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
                                     .emit();
                             })
                         } else {
-                            if ty.span.from_expansion() {
+                            let ty_span = cx.tcx.hir().span(ty.hir_id);
+                            if ty_span.from_expansion() {
                                 return;
                             }
                             if let Some(t) = is_ty_or_ty_ctxt(cx, ty) {
@@ -148,10 +149,11 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
                     }
                 }
                 if let Some(t) = is_ty_or_ty_ctxt(cx, &inner_ty) {
-                    cx.struct_span_lint(TY_PASS_BY_REFERENCE, ty.span, |lint| {
+                    let ty_span = cx.tcx.hir().span(ty.hir_id);
+                    cx.struct_span_lint(TY_PASS_BY_REFERENCE, ty_span, |lint| {
                         lint.build(&format!("passing `{}` by reference", t))
                             .span_suggestion(
-                                ty.span,
+                                ty_span,
                                 "try passing by value",
                                 t,
                                 // Changing type of function argument

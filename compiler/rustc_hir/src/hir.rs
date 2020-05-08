@@ -1793,10 +1793,10 @@ impl<'hir> QPath<'hir> {
 
     /// Returns the span of the qself of this `QPath`. For example, `()` in
     /// `<() as Trait>::method`.
-    pub fn qself_span(&self) -> Span {
+    pub fn qself_span(&self, get_span: impl Fn(HirId) -> Span) -> Span {
         match *self {
             QPath::Resolved(_, path) => path.span,
-            QPath::TypeRelative(qself, _) => qself.span,
+            QPath::TypeRelative(qself, _) => get_span(qself.hir_id),
             QPath::LangItem(_, span) => span,
         }
     }
@@ -2151,7 +2151,6 @@ impl TypeBinding<'_> {
 pub struct Ty<'hir> {
     pub hir_id: HirId,
     pub kind: TyKind<'hir>,
-    pub span: Span,
 }
 
 /// Not represented directly in the AST; referred to by name through a `ty_path`.
@@ -2476,10 +2475,10 @@ pub enum FnRetTy<'hir> {
 }
 
 impl FnRetTy<'_> {
-    pub fn span(&self) -> Span {
+    pub fn span(&self, get_span: impl Fn(HirId) -> Span) -> Span {
         match *self {
             Self::DefaultReturn(span) => span,
-            Self::Return(ref ty) => ty.span,
+            Self::Return(ref ty) => get_span(ty.hir_id),
         }
     }
 }
@@ -3038,7 +3037,7 @@ mod size_asserts {
     rustc_data_structures::static_assert_size!(super::Expr<'static>, 64);
     rustc_data_structures::static_assert_size!(super::Pat<'static>, 80);
     rustc_data_structures::static_assert_size!(super::QPath<'static>, 24);
-    rustc_data_structures::static_assert_size!(super::Ty<'static>, 72);
+    rustc_data_structures::static_assert_size!(super::Ty<'static>, 64);
 
     rustc_data_structures::static_assert_size!(super::Item<'static>, 176);
     rustc_data_structures::static_assert_size!(super::TraitItem<'static>, 120);

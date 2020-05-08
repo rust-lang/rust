@@ -151,8 +151,9 @@ impl<'tcx> LateLintPass<'tcx> for MacroUseImports {
         }
     }
     fn check_ty(&mut self, cx: &LateContext<'_>, ty: &hir::Ty<'_>) {
-        if in_macro(ty.span) {
-            self.push_unique_macro_pat_ty(cx, ty.span);
+        let ty_span = cx.tcx.hir().span(ty.hir_id);
+        if in_macro(ty_span) {
+            self.push_unique_macro_pat_ty(cx, ty_span);
         }
     }
     #[allow(clippy::too_many_lines)]

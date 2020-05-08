@@ -180,7 +180,7 @@ fn check_fn_inner<'tcx>(
         span_lint(
             cx,
             NEEDLESS_LIFETIMES,
-            span.with_hi(decl.output.span().hi()),
+            span.with_hi(decl.output.span(|id| cx.tcx.hir().span(id)).hi()),
             "explicit lifetimes given in parameter types where they could be elided \
              (or replaced with `'_` if needed by type declaration)",
         );

@@ -361,14 +361,14 @@ fn object_safety_violation_for_method(
             (MethodViolationCode::ReferencesSelfInput(arg), Some(node)) => node
                 .fn_decl()
                 .and_then(|decl| decl.inputs.get(arg + 1))
-                .map_or(method.ident.span, |arg| arg.span),
+                .map_or(method.ident.span, |arg| tcx.hir().span(arg.hir_id)),
             (MethodViolationCode::UndispatchableReceiver, Some(node)) => node
                 .fn_decl()
                 .and_then(|decl| decl.inputs.get(0))
-                .map_or(method.ident.span, |arg| arg.span),
-            (MethodViolationCode::ReferencesSelfOutput, Some(node)) => {
-                node.fn_decl().map_or(method.ident.span, |decl| decl.output.span())
-            }
+                .map_or(method.ident.span, |arg| tcx.hir().span(arg.hir_id)),
+            (MethodViolationCode::ReferencesSelfOutput, Some(node)) => node
+                .fn_decl()
+                .map_or(method.ident.span, |decl| decl.output.span(|id| tcx.hir().span(id))),
             _ => method.ident.span,
         };
         (v, span)

@@ -114,7 +114,7 @@ pub struct ItemCtxt<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 
 #[derive(Default)]
-crate struct PlaceholderHirTyCollector(crate Vec<Span>);
+crate struct PlaceholderHirTyCollector(crate Vec<hir::HirId>);
 
 impl<'v> Visitor<'v> for PlaceholderHirTyCollector {
     type Map = intravisit::ErasedMap<'v>;
@@ -124,7 +124,7 @@ impl<'v> Visitor<'v> for PlaceholderHirTyCollector {
     }
     fn visit_ty(&mut self, t: &'v hir::Ty<'v>) {
         if let hir::TyKind::Infer = t.kind {
-            self.0.push(t.span);
+            self.0.push(t.hir_id);
         }
         intravisit::walk_ty(self, t)
     }
@@ -141,7 +141,7 @@ crate fn placeholder_type_error(
     tcx: TyCtxt<'tcx>,
     span: Option<Span>,
     generics: &[hir::GenericParam<'_>],
-    placeholder_types: Vec<Span>,
+    placeholder_types: Vec<hir::HirId>,
     suggest: bool,
     hir_ty: Option<&hir::Ty<'_>>,
 ) {
@@ -150,8 +150,10 @@ crate fn placeholder_type_error(
     }
 
     let type_name = generics.next_type_param_name(None);
-    let mut sugg: Vec<_> =
-        placeholder_types.iter().map(|sp| (*sp, (*type_name).to_string())).collect();
+    let mut sugg: Vec<_> = placeholder_types
+        .iter()
+        .map(|sp| (tcx.hir().span(*sp), (*type_name).to_string()))
+        .collect();
 
     if generics.is_empty() {
         if let Some(span) = span {
@@ -175,6 +177,7 @@ crate fn placeholder_type_error(
         ));
     }
 
+    let placeholder_types = placeholder_types.into_iter().map(|id| tcx.hir().span(id)).collect();
     let mut err = bad_placeholder_type(tcx, placeholder_types);
 
     // Suggest, but only if it is not a function in const or static
@@ -1674,7 +1677,8 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
 
                     let mut visitor = PlaceholderHirTyCollector::default();
                     visitor.visit_ty(ty);
-                    let mut diag = bad_placeholder_type(tcx, visitor.0);
+                    let spans = visitor.0.into_iter().map(|id| tcx.hir().span(id)).collect();
+                    let mut diag = bad_placeholder_type(tcx, spans);
                     let ret_ty = fn_sig.output();
                     if ret_ty != tcx.ty_error() {
                         if !ret_ty.is_closure() {
@@ -1685,8 +1689,9 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
                                 ty::FnDef(..) => ret_ty.fn_sig(tcx).to_string(),
                                 _ => ret_ty.to_string(),
                             };
+                            let ty_span = tcx.hir().span(ty.hir_id);
                             diag.span_suggestion(
-                                ty.span,
+                                ty_span,
                                 "replace with the correct return type",
                                 ret_ty_str,
                                 Applicability::MaybeIncorrect,
@@ -2087,7 +2092,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                         // users who never wrote `where Type:,` themselves, to
                         // compiler/tooling bugs from not handling WF predicates.
                     } else {
-                        let span = bound_pred.bounded_ty.span;
+                        let span = tcx.hir().span(bound_pred.bounded_ty.hir_id);
                         let re_root_empty = tcx.lifetimes.re_root_empty;
                         let predicate = ty::Binder::bind(ty::PredicateKind::TypeOutlives(
                             ty::OutlivesPredicate(ty, re_root_empty),
@@ -2410,14 +2415,15 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
     {
         let check = |ast_ty: &hir::Ty<'_>, ty: Ty<'_>| {
             if ty.is_simd() {
+                let ty_span = tcx.hir().span(ast_ty.hir_id);
                 let snip = tcx
                     .sess
                     .source_map()
-                    .span_to_snippet(ast_ty.span)
+                    .span_to_snippet(ty_span)
                     .map_or_else(|_| String::new(), |s| format!(" `{}`", s));
                 tcx.sess
                     .struct_span_err(
-                        ast_ty.span,
+                        ty_span,
                         &format!(
                             "use of SIMD type{} in FFI is highly experimental and \
                              may result in invalid code",

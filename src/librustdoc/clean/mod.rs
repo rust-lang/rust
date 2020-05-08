@@ -1282,7 +1282,8 @@ impl Clean<Item> for ty::AssocItem {
 
 fn clean_qpath(hir_ty: &hir::Ty<'_>, cx: &mut DocContext<'_>) -> Type {
     use rustc_hir::GenericParamCount;
-    let hir::Ty { hir_id, span, ref kind } = *hir_ty;
+    let hir::Ty { hir_id, ref kind } = *hir_ty;
+    let span = cx.tcx.hir().span(hir_id);
     let qpath = match kind {
         hir::TyKind::Path(qpath) => qpath,
         _ => unreachable!(),

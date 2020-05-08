@@ -15,7 +15,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
             span_lint_and_sugg(
                 cx,
                 RC_BUFFER,
-                hir_ty.span,
+                cx.tcx.hir().span(hir_ty.hir_id),
                 "usage of `Rc<T>` when T is a buffer type",
                 "try",
                 format!("Rc<{}>", alternate),
@@ -27,14 +27,14 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
                 _ => return false,
             };
             let inner_span = match get_qpath_generic_tys(qpath).next() {
-                Some(ty) => ty.span,
+                Some(ty) => cx.tcx.hir().span(ty.hir_id),
                 None => return false,
             };
             let mut applicability = Applicability::MachineApplicable;
             span_lint_and_sugg(
                 cx,
                 RC_BUFFER,
-                hir_ty.span,
+                cx.tcx.hir().span(hir_ty.hir_id),
                 "usage of `Rc<T>` when T is a buffer type",
                 "try",
                 format!(
@@ -50,7 +50,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
             span_lint_and_sugg(
                 cx,
                 RC_BUFFER,
-                hir_ty.span,
+                cx.tcx.hir().span(hir_ty.hir_id),
                 "usage of `Arc<T>` when T is a buffer type",
                 "try",
                 format!("Arc<{}>", alternate),
@@ -62,14 +62,14 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
                 _ => return false,
             };
             let inner_span = match get_qpath_generic_tys(qpath).next() {
-                Some(ty) => ty.span,
+                Some(ty) => cx.tcx.hir().span(ty.hir_id),
                 None => return false,
             };
             let mut applicability = Applicability::MachineApplicable;
             span_lint_and_sugg(
                 cx,
                 RC_BUFFER,
-                hir_ty.span,
+                cx.tcx.hir().span(hir_ty.hir_id),
                 "usage of `Arc<T>` when T is a buffer type",
                 "try",
                 format!(

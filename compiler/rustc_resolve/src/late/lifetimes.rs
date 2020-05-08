@@ -513,7 +513,8 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 let (span, span_type) = if let Some(span) = lifetime_span {
                     (span.shrink_to_hi(), ForLifetimeSpanType::TypeTail)
                 } else {
-                    (ty.span.shrink_to_lo(), ForLifetimeSpanType::TypeEmpty)
+                    let ty_span = self.tcx.hir().span(ty.hir_id);
+                    (ty_span.shrink_to_lo(), ForLifetimeSpanType::TypeEmpty)
                 };
                 self.missing_named_lifetime_spots
                     .push(MissingLifetimeSpot::HigherRanked { span, span_type });
@@ -551,7 +552,8 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     LifetimeName::Implicit => {
                         // For types like `dyn Foo`, we should
                         // generate a special form of elided.
-                        span_bug!(ty.span, "object-lifetime-default expected, not implicit",);
+                        let ty_span = self.tcx.hir().span(ty.hir_id);
+                        span_bug!(ty_span, "object-lifetime-default expected, not implicit",);
                     }
                     LifetimeName::ImplicitObjectLifetimeDefault => {
                         // If the user does not write *anything*, we
@@ -1465,7 +1467,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     hir::TyKind::Rptr(lt, _) => {
                         if lt.name.ident() == name {
                             // include the trailing whitespace between the lifetime and type names
-                            let lt_through_ty_span = lifetime.span.to(input.span.shrink_to_hi());
+                            let input_span = self.tcx.hir().span(input.hir_id);
+                            let lt_through_ty_span = lifetime.span.to(input_span.shrink_to_hi());
                             remove_use = Some(
                                 self.tcx
                                     .sess
@@ -2267,12 +2270,13 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     possible_implied_output_region = gather.lifetimes.iter().cloned().next();
                 }
 
+                let input_span = self.tcx.hir().span(input.hir_id);
                 ElisionFailureInfo {
                     parent: body,
                     index: i,
                     lifetime_count: gather.lifetimes.len(),
                     have_bound_regions: gather.have_bound_regions,
-                    span: input.span,
+                    span: input_span,
                 }
             })
             .collect();

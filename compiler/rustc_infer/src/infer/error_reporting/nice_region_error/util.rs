@@ -154,7 +154,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             let late_bound_regions =
                 self.tcx().collect_referenced_late_bound_regions(&sig.output());
             if late_bound_regions.iter().any(|r| *r == br) {
-                return Some(decl.output.span());
+                return Some(decl.output.span(|id| self.tcx().hir().span(id)));
             }
         }
         None

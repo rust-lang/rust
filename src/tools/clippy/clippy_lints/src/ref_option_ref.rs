@@ -52,13 +52,15 @@ impl<'tcx> LateLintPass<'tcx> for RefOptionRef {
             if let TyKind::Rptr(_, _) = inner_ty.kind;
 
             then {
+                let ty_span = cx.tcx.hir().span(ty.hir_id);
+                let inner_ty_span = cx.tcx.hir().span(inner_ty.hir_id);
                 span_lint_and_sugg(
                     cx,
                     REF_OPTION_REF,
-                    ty.span,
+                    ty_span,
                     "since `&` implements the `Copy` trait, `&Option<&T>` can be simplified to `Option<&T>`",
                     "try",
-                    format!("Option<{}>", &snippet(cx, inner_ty.span, "..")),
+                    format!("Option<{}>", &snippet(cx, inner_ty_span, "..")),
                     Applicability::MaybeIncorrect,
                 );
             }

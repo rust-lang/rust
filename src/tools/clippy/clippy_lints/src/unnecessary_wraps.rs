@@ -133,7 +133,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
                 (
                     "this function's return value is unnecessary".to_string(),
                     "remove the return type...".to_string(),
-                    snippet(cx, fn_decl.output.span(), "..").to_string(),
+                    snippet(cx, fn_decl.output.span(|id| cx.tcx.hir().span(id)), "..").to_string(),
                     "...and then remove returned values",
                 )
             } else {
@@ -151,7 +151,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
             let span = cx.tcx.hir().span_with_body(hir_id);
             span_lint_and_then(cx, UNNECESSARY_WRAPS, span, lint_msg.as_str(), |diag| {
                 diag.span_suggestion(
-                    fn_decl.output.span(),
+                    fn_decl.output.span(|id| cx.tcx.hir().span(id)),
                     return_type_sugg_msg.as_str(),
                     return_type_sugg,
                     Applicability::MaybeIncorrect,

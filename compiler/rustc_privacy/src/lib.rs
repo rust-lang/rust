@@ -1188,7 +1188,7 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
     }
 
     fn visit_ty(&mut self, hir_ty: &'tcx hir::Ty<'tcx>) {
-        self.span = hir_ty.span;
+        self.span = self.tcx.hir().span(hir_ty.hir_id);
         if let Some(typeck_results) = self.maybe_typeck_results {
             // Types in bodies.
             if self.visit(typeck_results.node_type(hir_ty.hir_id)).is_break() {

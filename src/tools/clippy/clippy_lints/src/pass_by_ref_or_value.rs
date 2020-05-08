@@ -122,7 +122,7 @@ impl<'tcx> PassByRefOrValue {
         for (index, (input, &ty)) in decl.inputs.iter().zip(fn_sig.inputs()).enumerate() {
             // All spans generated from a proc-macro invocation are the same...
             match span {
-                Some(s) if s == input.span => return,
+                Some(s) if s == cx.tcx.hir().span(input.hir_id) => return,
                 _ => (),
             }
 
@@ -147,12 +147,14 @@ impl<'tcx> PassByRefOrValue {
                             let value_type = if is_self_ty(decl_ty) {
                                 "self".into()
                             } else {
-                                snippet(cx, decl_ty.span, "_").into()
+                                let decl_ty_span = cx.tcx.hir().span(decl_ty.hir_id);
+                                snippet(cx, decl_ty_span, "_").into()
                             };
+                            let input_span = cx.tcx.hir().span(input.hir_id);
                             span_lint_and_sugg(
                                 cx,
                                 TRIVIALLY_COPY_PASS_BY_REF,
-                                input.span,
+                                input_span,
                                 &format!("this argument ({} byte) is passed by reference, but would be more efficient if passed by value (limit: {} byte)", size, self.ref_min_size),
                                 "consider passing by value instead",
                                 value_type,
@@ -178,13 +180,14 @@ impl<'tcx> PassByRefOrValue {
                         if let Some(size) = cx.layout_of(ty).ok().map(|l| l.size.bytes());
                         if size > self.value_max_size;
                         then {
+                            let input_span = cx.tcx.hir().span(input.hir_id);
                             span_lint_and_sugg(
                                 cx,
                                 LARGE_TYPES_PASSED_BY_VALUE,
-                                input.span,
+                                input_span,
                                 &format!("this argument ({} byte) is passed by value, but might be more efficient if passed by reference (limit: {} byte)", size, self.value_max_size),
                                 "consider passing by reference instead",
-                                format!("&{}", snippet(cx, input.span, "_")),
+                                format!("&{}", snippet(cx, input_span, "_")),
                                 Applicability::MaybeIncorrect,
                             );
                         }

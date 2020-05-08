@@ -40,17 +40,17 @@ pub(super) fn check(
             });
             let ty_ty = hir_ty_to_ty(cx.tcx, boxed_ty);
             if !ty_ty.has_escaping_bound_vars();
-            if ty_ty.is_sized(cx.tcx.at(ty.span), cx.param_env);
+            if ty_ty.is_sized(cx.tcx.at(cx.tcx.hir().span(ty.hir_id)), cx.param_env);
             if let Ok(ty_ty_size) = cx.layout_of(ty_ty).map(|l| l.size.bytes());
             if ty_ty_size <= box_size_threshold;
             then {
                 span_lint_and_sugg(
                     cx,
                     VEC_BOX,
-                    hir_ty.span,
+                    cx.tcx.hir().span(hir_ty.hir_id),
                     "`Vec<T>` is already on the heap, the boxing is unnecessary",
                     "try",
-                    format!("Vec<{}>", snippet(cx, boxed_ty.span, "..")),
+                    format!("Vec<{}>", snippet(cx, cx.tcx.hir().span(boxed_ty.hir_id), "..")),
                     Applicability::MachineApplicable,
                 );
                 true

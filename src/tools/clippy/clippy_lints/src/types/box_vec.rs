@@ -13,7 +13,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
         span_lint_and_help(
             cx,
             BOX_VEC,
-            hir_ty.span,
+            cx.tcx.hir().span(hir_ty.hir_id),
             "you seem to be trying to use `Box<Vec<T>>`. Consider using just `Vec<T>`",
             None,
             "`Vec<T>` is already on the heap, `Box<Vec<T>>` makes an extra allocation",

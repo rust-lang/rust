@@ -75,10 +75,9 @@ impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {
 
     fn hash_hir_ty(&mut self, ty: &hir::Ty<'_>, hasher: &mut StableHasher) {
         self.while_hashing_hir_bodies(true, |hcx| {
-            let hir::Ty { hir_id: _, ref kind, ref span } = *ty;
+            let hir::Ty { hir_id: _, ref kind } = *ty;
 
             kind.hash_stable(hcx, hasher);
-            span.hash_stable(hcx, hasher);
         })
     }
 

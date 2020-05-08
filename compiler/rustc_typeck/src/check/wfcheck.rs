@@ -145,10 +145,12 @@ pub fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             check_item_fn(tcx, item.hir_id(), item.ident, sig.decl);
         }
         hir::ItemKind::Static(ref ty, ..) => {
-            check_item_type(tcx, item.hir_id(), ty.span, false);
+            let ty_span = tcx.hir().span(ty.hir_id);
+            check_item_type(tcx, item.hir_id(), ty_span, false);
         }
         hir::ItemKind::Const(ref ty, ..) => {
-            check_item_type(tcx, item.hir_id(), ty.span, false);
+            let ty_span = tcx.hir().span(ty.hir_id);
+            check_item_type(tcx, item.hir_id(), ty_span, false);
         }
         hir::ItemKind::ForeignMod { items, .. } => {
             for it in items.iter() {
@@ -158,7 +160,8 @@ pub fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                         check_item_fn(tcx, it.hir_id(), it.ident, decl)
                     }
                     hir::ForeignItemKind::Static(ref ty, ..) => {
-                        check_item_type(tcx, it.hir_id(), ty.span, true)
+                        let ty_span = tcx.hir().span(ty.hir_id);
+                        check_item_type(tcx, it.hir_id(), ty_span, true)
                     }
                     hir::ForeignItemKind::Type => (),
                 }
@@ -226,17 +229,20 @@ fn check_object_unsafe_self_trait_by_name(tcx: TyCtxt<'_>, item: &hir::TraitItem
         hir::TraitItemKind::Const(ty, _) | hir::TraitItemKind::Type(_, Some(ty))
             if could_be_self(trait_def_id, ty) =>
         {
-            trait_should_be_self.push(ty.span)
+            let ty_span = tcx.hir().span(ty.hir_id);
+            trait_should_be_self.push(ty_span)
         }
         hir::TraitItemKind::Fn(sig, _) => {
             for ty in sig.decl.inputs {
                 if could_be_self(trait_def_id, ty) {
-                    trait_should_be_self.push(ty.span);
+                    let ty_span = tcx.hir().span(ty.hir_id);
+                    trait_should_be_self.push(ty_span);
                 }
             }
             match sig.decl.output {
                 hir::FnRetTy::Return(ty) if could_be_self(trait_def_id, ty) => {
-                    trait_should_be_self.push(ty.span);
+                    let ty_span = tcx.hir().span(ty.hir_id);
+                    trait_should_be_self.push(ty_span);
                 }
                 _ => {}
             }
@@ -307,9 +313,10 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
                 }
             };
             if let Some(unsupported_type) = err {
+                let hir_ty_span = tcx.hir().span(hir_ty.hir_id);
                 if is_ptr {
                     tcx.sess.span_err(
-                        hir_ty.span,
+                        hir_ty_span,
                         &format!(
                             "using {} as const generic parameters is forbidden",
                             unsupported_type
@@ -318,7 +325,7 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
                 } else {
                     tcx.sess
                         .struct_span_err(
-                            hir_ty.span,
+                            hir_ty_span,
                             &format!(
                                 "{} is forbidden as the type of a const generic parameter",
                                 unsupported_type
@@ -336,20 +343,21 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
                 // We use the same error code in both branches, because this is really the same
                 // issue: we just special-case the message for type parameters to make it
                 // clearer.
+                let hir_ty_span = tcx.hir().span(hir_ty.hir_id);
                 if let ty::Param(_) = ty.peel_refs().kind() {
                     // Const parameters may not have type parameters as their types,
                     // because we cannot be sure that the type parameter derives `PartialEq`
                     // and `Eq` (just implementing them is not enough for `structural_match`).
                     struct_span_err!(
                         tcx.sess,
-                        hir_ty.span,
+                        hir_ty_span,
                         E0741,
                         "`{}` is not guaranteed to `#[derive(PartialEq, Eq)]`, so may not be \
                             used as the type of a const parameter",
                         ty,
                     )
                     .span_label(
-                        hir_ty.span,
+                        hir_ty_span,
                         format!("`{}` may not derive both `PartialEq` and `Eq`", ty),
                     )
                     .note(
@@ -360,14 +368,14 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
                 } else {
                     struct_span_err!(
                         tcx.sess,
-                        hir_ty.span,
+                        hir_ty_span,
                         E0741,
                         "`{}` must be annotated with `#[derive(PartialEq, Eq)]` to be used as \
                             the type of a const parameter",
                         ty,
                     )
                     .span_label(
-                        hir_ty.span,
+                        hir_ty_span,
                         format!("`{}` doesn't derive both `PartialEq` and `Eq`", ty),
                     )
                     .emit();
@@ -687,9 +695,10 @@ fn check_impl<'tcx>(
                 let self_ty = fcx.tcx.type_of(item.def_id);
                 let item_span = tcx.hir().span_with_body(item.hir_id());
                 let self_ty = fcx.normalize_associated_types_in(item_span, self_ty);
+                let self_ty_span = tcx.hir().span(ast_self_ty.hir_id);
                 fcx.register_wf_obligation(
                     self_ty.into(),
-                    ast_self_ty.span,
+                    self_ty_span,
                     ObligationCauseCode::MiscObligation,
                 );
             }
@@ -882,21 +891,29 @@ fn check_fn_or_method<'fcx, 'tcx>(
     let sig = fcx.normalize_associated_types_in(span, sig);
     let sig = fcx.tcx.liberate_late_bound_regions(def_id, sig);
 
-    for (&input_ty, span) in sig.inputs().iter().zip(hir_decl.inputs.iter().map(|t| t.span)) {
+    for (&input_ty, span) in
+        sig.inputs().iter().zip(hir_decl.inputs.iter().map(|t| tcx.hir().span(t.hir_id)))
+    {
         fcx.register_wf_obligation(input_ty.into(), span, ObligationCauseCode::MiscObligation);
     }
     implied_bounds.extend(sig.inputs());
 
     fcx.register_wf_obligation(
         sig.output().into(),
-        hir_decl.output.span(),
+        hir_decl.output.span(|id| tcx.hir().span(id)),
         ObligationCauseCode::ReturnType,
     );
 
     // FIXME(#25759) return types should not be implied bounds
     implied_bounds.push(sig.output());
 
-    check_where_clauses(tcx, fcx, span, def_id, Some((sig.output(), hir_decl.output.span())));
+    check_where_clauses(
+        tcx,
+        fcx,
+        span,
+        def_id,
+        Some((sig.output(), hir_decl.output.span(|id| tcx.hir().span(id)))),
+    );
 }
 
 /// Checks "defining uses" of opaque `impl Trait` types to ensure that they meet the restrictions
@@ -1054,7 +1071,7 @@ fn check_method_receiver<'fcx, 'tcx>(
         return;
     }
 
-    let span = fn_sig.decl.inputs[0].span;
+    let span = fcx.tcx.hir().span(fn_sig.decl.inputs[0].hir_id);
 
     let sig = fcx.tcx.fn_sig(method.def_id);
     let sig = fcx.normalize_associated_types_in(span, sig);
@@ -1398,11 +1415,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .fields()
             .iter()
             .map(|field| {
+                let span = self.tcx.hir().span(field.ty.hir_id);
                 let field_ty = self.tcx.type_of(self.tcx.hir().local_def_id(field.hir_id));
-                let field_ty = self.normalize_associated_types_in(field.ty.span, field_ty);
+                let field_ty = self.normalize_associated_types_in(span, field_ty);
                 let field_ty = self.resolve_vars_if_possible(field_ty);
                 debug!("non_enum_variant: type of field {:?} is {:?}", field, field_ty);
-                AdtField { ty: field_ty, span: field.ty.span }
+                AdtField { ty: field_ty, span }
             })
             .collect();
         AdtVariant { fields, explicit_discr: None }

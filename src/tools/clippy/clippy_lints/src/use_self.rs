@@ -235,7 +235,10 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
     }
 
     fn check_ty(&mut self, cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>) {
-        if in_macro(hir_ty.span) | in_impl(cx, hir_ty) | !meets_msrv(self.msrv.as_ref(), &USE_SELF_MSRV) {
+        if in_macro(cx.tcx.hir().span(hir_ty.hir_id))
+            | in_impl(cx, hir_ty)
+            | !meets_msrv(self.msrv.as_ref(), &USE_SELF_MSRV)
+        {
             return;
         }
 
@@ -270,8 +273,8 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
                     Some(Node::Expr(Expr {
                         kind: ExprKind::Path(QPath::TypeRelative(_, segment)),
                         ..
-                    })) => span_lint_until_last_segment(cx, hir_ty.span, segment),
-                    _ => span_lint(cx, hir_ty.span),
+                    })) => span_lint_until_last_segment(cx, cx.tcx.hir().span(hir_ty.hir_id), segment),
+                    _ => span_lint(cx, cx.tcx.hir().span(hir_ty.hir_id)),
                 }
             }
         }

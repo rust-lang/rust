@@ -214,6 +214,7 @@ impl UseDiagnostic<'_> {
 
 /// Suggest giving an appropriate return type to a closure expression.
 fn closure_return_type_suggestion(
+    tcx: TyCtxt<'_>,
     err: &mut DiagnosticBuilder<'_>,
     output: &FnRetTy<'_>,
     body: &Body<'_>,
@@ -224,9 +225,11 @@ fn closure_return_type_suggestion(
         _ => ("", ""),
     };
     let suggestion = match body.value.kind {
-        ExprKind::Block(..) => vec![(output.span(), format!("{}{}{}", arrow, ret, post))],
+        ExprKind::Block(..) => {
+            vec![(output.span(|id| tcx.hir().span(id)), format!("{}{}{}", arrow, ret, post))]
+        }
         _ => vec![
-            (output.span(), format!("{}{}{}{{ ", arrow, ret, post)),
+            (output.span(|id| tcx.hir().span(id)), format!("{}{}{}{{ ", arrow, ret, post)),
             (body.value.span.shrink_to_hi(), " }".to_string()),
         ],
     };
@@ -554,6 +557,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
                 if let Some((decl, body_id)) = closure_decl_and_body_id {
                     closure_return_type_suggestion(
+                        self.tcx,
                         &mut err,
                         &decl.output,
                         self.tcx.hir().body(body_id),

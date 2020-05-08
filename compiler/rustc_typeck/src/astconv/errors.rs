@@ -115,10 +115,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 hir::GenericArg::Type(ty) => match ty.kind {
                                     hir::TyKind::Tup(t) => t
                                         .iter()
-                                        .map(|e| sess.source_map().span_to_snippet(e.span))
+                                        .map(|e| sess
+                                            .source_map()
+                                            .span_to_snippet(self.tcx().hir().span(e.hir_id)))
                                         .collect::<Result<Vec<_>, _>>()
                                         .map(|a| a.join(", ")),
-                                    _ => sess.source_map().span_to_snippet(ty.span),
+                                    _ => sess
+                                        .source_map()
+                                        .span_to_snippet(self.tcx().hir().span(ty.hir_id)),
                                 }
                                 .map(|s| format!("({})", s))
                                 .ok(),
@@ -131,7 +135,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             .iter()
                             .find_map(|b| match (b.ident.name == sym::Output, &b.kind) {
                                 (true, hir::TypeBindingKind::Equality { ty }) => {
-                                    sess.source_map().span_to_snippet(ty.span).ok()
+                                    sess.source_map()
+                                        .span_to_snippet(self.tcx().hir().span(ty.hir_id))
+                                        .ok()
                                 }
                                 _ => None,
                             })

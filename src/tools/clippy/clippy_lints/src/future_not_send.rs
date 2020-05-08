@@ -75,7 +75,7 @@ impl<'tcx> LateLintPass<'tcx> for FutureNotSend {
             }
             if is_future {
                 let send_trait = cx.tcx.get_diagnostic_item(sym::send_trait).unwrap();
-                let span = decl.output.span();
+                let span = decl.output.span(|id| cx.tcx.hir().span(id));
                 let send_result = cx.tcx.infer_ctxt().enter(|infcx| {
                     let cause = traits::ObligationCause::misc(span, hir_id);
                     let mut fulfillment_cx = traits::FulfillmentContext::new();

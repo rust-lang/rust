@@ -181,7 +181,7 @@ fn msg_span_from_early_bound_and_free_regions(
         ty::ReFree(ref fr) => match fr.bound_region {
             ty::BrAnon(idx) => {
                 if let Some((ty, _)) = find_anon_type(tcx, region, &fr.bound_region) {
-                    ("the anonymous lifetime defined on".to_string(), ty.span)
+                    ("the anonymous lifetime defined on".to_string(), tcx.hir().span(ty.hir_id))
                 } else {
                     (
                         format!("the anonymous lifetime #{} defined on", idx + 1),

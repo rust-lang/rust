@@ -88,9 +88,13 @@ fn check_sig<'tcx>(cx: &LateContext<'tcx>, item_hir_id: hir::HirId, decl: &hir::
     let fn_def_id = cx.tcx.hir().local_def_id(item_hir_id);
     let fn_sig = cx.tcx.fn_sig(fn_def_id);
     for (hir_ty, ty) in decl.inputs.iter().zip(fn_sig.inputs().skip_binder().iter()) {
-        check_ty(cx, hir_ty.span, ty);
+        check_ty(cx, cx.tcx.hir().span(hir_ty.hir_id), ty);
     }
-    check_ty(cx, decl.output.span(), cx.tcx.erase_late_bound_regions(fn_sig.output()));
+    check_ty(
+        cx,
+        decl.output.span(|id| cx.tcx.hir().span(id)),
+        cx.tcx.erase_late_bound_regions(fn_sig.output()),
+    );
 }
 
 // We want to lint 1. sets or maps with 2. not immutable key types and 3. no unerased

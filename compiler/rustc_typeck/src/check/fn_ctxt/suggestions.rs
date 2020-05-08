@@ -460,7 +460,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Only point to return type if the expected type is the return type, as if they
                 // are not, the expectation must have been caused by something else.
                 debug!("suggest_missing_return_type: return type {:?} node {:?}", ty, ty.kind);
-                let sp = ty.span;
+                let sp = self.tcx.hir().span(ty.hir_id);
                 let ty = AstConv::ast_ty_to_ty(self, ty);
                 debug!("suggest_missing_return_type: return type {:?}", ty);
                 debug!("suggest_missing_return_type: expected type {:?}", ty);

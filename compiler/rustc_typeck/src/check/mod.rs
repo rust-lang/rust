@@ -703,9 +703,10 @@ fn binding_opaque_type_cycle_error(
                 ..
             }) => {
                 let pat_span = tcx.hir().span(pat.hir_id);
+                let ty_span = tcx.hir().span(ty.hir_id);
                 err.span_label(pat_span, "this binding might not have a concrete type");
                 err.span_suggestion_verbose(
-                    ty.span.shrink_to_hi(),
+                    ty_span.shrink_to_hi(),
                     "set the binding to a value for a concrete type to be resolved",
                     " = /* value */".to_string(),
                     Applicability::HasPlaceholders,

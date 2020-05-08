@@ -103,6 +103,8 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             None => String::new(),
         };
 
+        let ty_sub_span = self.tcx().hir().span(ty_sub.hir_id);
+        let ty_sup_span = self.tcx().hir().span(ty_sup.hir_id);
         let (span_1, span_2, main_label, span_label, future_return_type) =
             match (sup_is_ret_type, sub_is_ret_type) {
                 (None, None) => {
@@ -117,7 +119,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                             format!("...but data{} flows{} here", span_label_var1, span_label_var2),
                         )
                     };
-                    (ty_sup.span, ty_sub.span, main_label_1, span_label_1, None)
+                    (ty_sup_span, ty_sub_span, main_label_1, span_label_1, None)
                 }
 
                 (Some(ret_span), _) => {
@@ -129,7 +131,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                     };
 
                     (
-                        ty_sub.span,
+                        ty_sub_span,
                         ret_span,
                         format!(
                             "this parameter and the {} are declared with different lifetimes...",
@@ -148,7 +150,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                     };
 
                     (
-                        ty_sup.span,
+                        ty_sup_span,
                         ret_span,
                         format!(
                             "this parameter and the {} are declared with different lifetimes...",
@@ -167,11 +169,12 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         e.span_label(span, span_label);
 
         if let Some(t) = future_return_type {
+            let t_span = self.tcx().hir().span(t.hir_id);
             let snip = self
                 .tcx()
                 .sess
                 .source_map()
-                .span_to_snippet(t.span)
+                .span_to_snippet(t_span)
                 .ok()
                 .and_then(|s| match (&t.kind, s.as_str()) {
                     (rustc_hir::TyKind::Tup(&[]), "") => Some("()".to_string()),
@@ -181,7 +184,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 .unwrap_or("{unnamed_type}".to_string());
 
             e.span_label(
-                t.span,
+                t_span,
                 &format!("this `async fn` implicitly returns an `impl Future<Output = {}>`", snip),
             );
         }

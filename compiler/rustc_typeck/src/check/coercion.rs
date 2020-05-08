@@ -1527,7 +1527,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         sp: Span,
         fn_output: &hir::FnRetTy<'_>,
     ) {
-        let return_sp = fn_output.span();
+        let return_sp = fn_output.span(|id| fcx.tcx.hir().span(id));
         err.span_label(return_sp, "expected because this return type...");
         err.span_label(
             sp,

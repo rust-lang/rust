@@ -6,7 +6,7 @@ use crate::utils::last_path_segment;
 
 use if_chain::if_chain;
 
-pub(super) fn match_borrows_parameter(_cx: &LateContext<'_>, qpath: &QPath<'_>) -> Option<Span> {
+pub(super) fn match_borrows_parameter(cx: &LateContext<'_>, qpath: &QPath<'_>) -> Option<Span> {
     let last = last_path_segment(qpath);
     if_chain! {
         if let Some(ref params) = last.args;
@@ -17,7 +17,7 @@ pub(super) fn match_borrows_parameter(_cx: &LateContext<'_>, qpath: &QPath<'_>) 
         });
         if let TyKind::Rptr(..) = ty.kind;
         then {
-            return Some(ty.span);
+            return Some(cx.tcx.hir().span(ty.hir_id));
         }
     }
     None

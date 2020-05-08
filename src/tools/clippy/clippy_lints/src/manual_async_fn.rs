@@ -59,7 +59,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualAsyncFn {
             if let Some(closure_body) = desugared_async_block(cx, block);
             then {
                 let span = cx.tcx.hir().span(hir_id);
-                let header_span = span.with_hi(ret_ty.span.hi());
+                let header_span = span.with_hi(cx.tcx.hir().span(ret_ty.hir_id).hi());
 
                 span_lint_and_then(
                     cx,
@@ -195,7 +195,7 @@ fn suggested_ret(cx: &LateContext<'_>, output: &Ty<'_>) -> Option<(&'static str,
         },
         _ => {
             let sugg = "return the output of the future directly";
-            snippet_opt(cx, output.span).map(|snip| (sugg, format!(" -> {}", snip)))
+            snippet_opt(cx, cx.tcx.hir().span(output.hir_id)).map(|snip| (sugg, format!(" -> {}", snip)))
         },
     }
 }

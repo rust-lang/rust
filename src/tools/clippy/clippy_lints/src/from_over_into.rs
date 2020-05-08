@@ -69,7 +69,7 @@ impl LateLintPass<'_> for FromOverInto {
                 span_lint_and_help(
                     cx,
                     FROM_OVER_INTO,
-                    cx.tcx.sess.source_map().guess_head_span(cx.tcx.hir().span(item.hir_id())),
+                    cx.tcx.sess.source_map().guess_head_span(cx.tcx.hir().span_with_body(item.hir_id())),
                     "an implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true",
                     None,
                     "consider to implement `From` instead",

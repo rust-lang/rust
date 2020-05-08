@@ -1500,7 +1500,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 let output = self.erase_late_bound_regions(sig.output());
                 if output.is_impl_trait() {
                     let fn_decl = self.hir().fn_decl_by_hir_id(hir_id).unwrap();
-                    Some((output, fn_decl.output.span()))
+                    Some((output, fn_decl.output.span(|id| self.hir().span(id))))
                 } else {
                     None
                 }

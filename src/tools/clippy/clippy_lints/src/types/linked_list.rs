@@ -10,7 +10,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, def_id: DefId) -
         span_lint_and_help(
             cx,
             LINKEDLIST,
-            hir_ty.span,
+            cx.tcx.hir().span(hir_ty.hir_id),
             "you seem to be using a `LinkedList`! Perhaps you meant some other data structure?",
             None,
             "a `VecDeque` might work",

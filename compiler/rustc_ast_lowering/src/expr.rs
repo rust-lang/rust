@@ -655,7 +655,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         // Resume argument type. We let the compiler infer this to simplify the lowering. It is
         // fully constrained by `future::from_generator`.
-        let input_ty = hir::Ty { hir_id: self.next_id(span), kind: hir::TyKind::Infer, span };
+        let input_ty = hir::Ty { hir_id: self.next_id(span), kind: hir::TyKind::Infer };
 
         // The closure/generator `FnDecl` takes a single (resume) argument of type `input_ty`.
         let decl = self.arena.alloc(hir::FnDecl {

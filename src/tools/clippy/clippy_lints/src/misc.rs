@@ -323,7 +323,8 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
                         ("", sugg_init.addr())
                     };
                     let tyopt = if let Some(ref ty) = local.ty {
-                        format!(": &{mutopt}{ty}", mutopt=mutopt, ty=snippet(cx, ty.span, ".."))
+                        let ty_span = cx.tcx.hir().span(ty.hir_id);
+                        format!(": &{mutopt}{ty}", mutopt=mutopt, ty=snippet(cx, ty_span, ".."))
                     } else {
                         String::new()
                     };
@@ -694,7 +695,7 @@ fn check_cast(cx: &LateContext<'_>, span: Span, e: &Expr<'_>, ty: &hir::Ty<'_>) 
 
             let (sugg, appl) = if let TyKind::Infer = mut_ty.ty.kind {
                 (format!("{}()", sugg_fn), Applicability::MachineApplicable)
-            } else if let Some(mut_ty_snip) = snippet_opt(cx, mut_ty.ty.span) {
+            } else if let Some(mut_ty_snip) = snippet_opt(cx, cx.tcx.hir().span(mut_ty.ty.hir_id)) {
                 (format!("{}::<{}>()", sugg_fn, mut_ty_snip), Applicability::MachineApplicable)
             } else {
                 // `MaybeIncorrect` as type inference may not work with the suggested code

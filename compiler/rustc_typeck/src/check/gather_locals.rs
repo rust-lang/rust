@@ -59,7 +59,8 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
                 let o_ty = self.fcx.to_ty(&ty);
 
                 let revealed_ty = if self.fcx.tcx.features().impl_trait_in_bindings {
-                    self.fcx.instantiate_opaque_types_from_value(self.parent_id, o_ty, ty.span)
+                    let ty_span = self.fcx.tcx.hir().span(ty.hir_id);
+                    self.fcx.instantiate_opaque_types_from_value(self.parent_id, o_ty, ty_span)
                 } else {
                     o_ty
                 };

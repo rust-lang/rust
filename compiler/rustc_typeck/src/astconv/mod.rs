@@ -438,7 +438,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         if let (hir::TyKind::Infer, false) =
                             (&ty.kind, self.astconv.allow_ty_infer())
                         {
-                            self.inferred_params.push(ty.span);
+                            let ty_span = tcx.hir().span(ty.hir_id);
+                            self.inferred_params.push(ty_span);
                             tcx.ty_error().into()
                         } else {
                             self.astconv.ast_ty_to_ty(&ty).into()
@@ -1869,7 +1870,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         }
                         err_for_ty = true;
                         has_err = true;
-                        (ty.span, "type")
+                        let ty_span = self.tcx().hir().span(ty.hir_id);
+                        (ty_span, "type")
                     }
                     hir::GenericArg::Const(ct) => {
                         if err_for_ct {
@@ -2117,7 +2119,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         ..
                     })) = tcx.hir().get_if_local(def_id)
                     {
-                        err.span_note(impl_.self_ty.span, "not a concrete type");
+                        let self_ty_span = tcx.hir().span(impl_.self_ty.hir_id);
+                        err.span_note(self_ty_span, "not a concrete type");
                     }
                     err.emit();
                     tcx.ty_error()
@@ -2168,6 +2171,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         debug!("ast_ty_to_ty(id={:?}, ast_ty={:?} ty_ty={:?})", ast_ty.hir_id, ast_ty, ast_ty.kind);
 
         let tcx = self.tcx();
+        let ast_ty_span = tcx.hir().span(ast_ty.hir_id);
 
         let result_ty = match ast_ty.kind {
             hir::TyKind::Slice(ref ty) => tcx.mk_slice(self.ast_ty_to_ty(&ty)),
@@ -2185,7 +2189,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 tcx.mk_tup(fields.iter().map(|t| self.ast_ty_to_ty(&t)))
             }
             hir::TyKind::BareFn(ref bf) => {
-                require_c_abi_if_c_variadic(tcx, &bf.decl, bf.abi, ast_ty.span);
+                require_c_abi_if_c_variadic(tcx, &bf.decl, bf.abi, ast_ty_span);
 
                 tcx.mk_fn_ptr(self.ty_of_fn(
                     bf.unsafety,
@@ -2197,7 +2201,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 ))
             }
             hir::TyKind::TraitObject(ref bounds, ref lifetime) => {
-                self.conv_object_ty_poly_trait_ref(ast_ty.span, bounds, lifetime, borrowed)
+                self.conv_object_ty_poly_trait_ref(ast_ty_span, bounds, lifetime, borrowed)
             }
             hir::TyKind::Path(hir::QPath::Resolved(ref maybe_qself, ref path)) => {
                 debug!("ast_ty_to_ty: maybe_qself={:?} path={:?}", maybe_qself, path);
@@ -2224,7 +2228,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 } else {
                     Res::Err
                 };
-                self.associated_path_to_ty(ast_ty.hir_id, ast_ty.span, ty, res, segment, false)
+                self.associated_path_to_ty(ast_ty.hir_id, ast_ty_span, ty, res, segment, false)
                     .map(|(ty, _, _)| ty)
                     .unwrap_or_else(|_| tcx.ty_error())
             }
@@ -2245,10 +2249,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let length_def_id = tcx.hir().local_def_id(length.hir_id);
                 let length = ty::Const::from_anon_const(tcx, length_def_id);
                 let array_ty = tcx.mk_ty(ty::Array(self.ast_ty_to_ty(&ty), length));
-                self.normalize_ty(ast_ty.span, array_ty)
+                self.normalize_ty(ast_ty_span, array_ty)
             }
             hir::TyKind::Typeof(ref _e) => {
-                tcx.sess.emit_err(TypeofReservedKeywordUsed { span: ast_ty.span });
+                tcx.sess.emit_err(TypeofReservedKeywordUsed { span: ast_ty_span });
                 tcx.ty_error()
             }
             hir::TyKind::Infer => {
@@ -2256,14 +2260,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // values in a ExprKind::Closure, or as
                 // the type of local variables. Both of these cases are
                 // handled specially and will not descend into this routine.
-                self.ty_infer(None, ast_ty.span)
+                self.ty_infer(None, ast_ty_span)
             }
             hir::TyKind::Err => tcx.ty_error(),
         };
 
         debug!("ast_ty_to_ty: result_ty={:?}", result_ty);
 
-        self.record_ty(ast_ty.hir_id, result_ty, ast_ty.span);
+        self.record_ty(ast_ty.hir_id, result_ty, ast_ty_span);
         result_ty
     }
 
@@ -2319,7 +2323,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     pub fn ty_of_arg(&self, ty: &hir::Ty<'_>, expected_ty: Option<Ty<'tcx>>) -> Ty<'tcx> {
         match ty.kind {
             hir::TyKind::Infer if expected_ty.is_some() => {
-                self.record_ty(ty.hir_id, expected_ty.unwrap(), ty.span);
+                let ty_span = self.tcx().hir().span(ty.hir_id);
+                self.record_ty(ty.hir_id, expected_ty.unwrap(), ty_span);
                 expected_ty.unwrap()
             }
             _ => self.ast_ty_to_ty(ty),
@@ -2391,7 +2396,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         self.validate_late_bound_regions(late_bound_in_args, late_bound_in_ret, |br_name| {
             struct_span_err!(
                 tcx.sess,
-                decl.output.span(),
+                decl.output.span(|id| tcx.hir().span(id)),
                 E0581,
                 "return type references {}, which is not constrained by the fn input types",
                 br_name

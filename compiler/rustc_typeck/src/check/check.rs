@@ -89,11 +89,14 @@ pub(super) fn check_fn<'a, 'tcx>(
 
     let declared_ret_ty = fn_sig.output();
 
-    let revealed_ret_ty =
-        fcx.instantiate_opaque_types_from_value(fn_id, declared_ret_ty, decl.output.span());
+    let revealed_ret_ty = fcx.instantiate_opaque_types_from_value(
+        fn_id,
+        declared_ret_ty,
+        decl.output.span(|id| hir.span(id)),
+    );
     debug!("check_fn: declared_ret_ty: {}, revealed_ret_ty: {}", declared_ret_ty, revealed_ret_ty);
     fcx.ret_coercion = Some(RefCell::new(CoerceMany::new(revealed_ret_ty)));
-    fcx.ret_type_span = Some(decl.output.span());
+    fcx.ret_type_span = Some(decl.output.span(|id| hir.span(id)));
     if let ty::Opaque(..) = declared_ret_ty.kind() {
         fcx.ret_coercion_impl_trait = Some(declared_ret_ty);
     }
@@ -176,7 +179,7 @@ pub(super) fn check_fn<'a, 'tcx>(
     let inputs_fn = fn_sig.inputs().iter().copied();
     for (idx, (param_ty, param)) in inputs_fn.chain(maybe_va_list).zip(body.params).enumerate() {
         // Check the pattern.
-        let ty_span = try { inputs_hir?.get(idx)?.span };
+        let ty_span = try { hir.span(inputs_hir?.get(idx)?.hir_id) };
         fcx.check_pat_top(&param.pat, param_ty, ty_span, false);
 
         // Check that argument is Sized.
@@ -207,9 +210,17 @@ pub(super) fn check_fn<'a, 'tcx>(
         // the tail expression's type so that the suggestion will be correct, but ignore all other
         // possible cases.
         fcx.check_expr(&body.value);
-        fcx.require_type_is_sized(declared_ret_ty, decl.output.span(), traits::SizedReturnType);
+        fcx.require_type_is_sized(
+            declared_ret_ty,
+            decl.output.span(|id| tcx.hir().span(id)),
+            traits::SizedReturnType,
+        );
     } else {
-        fcx.require_type_is_sized(declared_ret_ty, decl.output.span(), traits::SizedReturnType);
+        fcx.require_type_is_sized(
+            declared_ret_ty,
+            decl.output.span(|id| hir.span(id)),
+            traits::SizedReturnType,
+        );
         fcx.check_return_expr(&body.value);
     }
     fcx.in_tail_expr = false;
@@ -273,7 +284,7 @@ pub(super) fn check_fn<'a, 'tcx>(
             if main_id == fn_id {
                 let substs = tcx.mk_substs_trait(declared_ret_ty, &[]);
                 let trait_ref = ty::TraitRef::new(term_id, substs);
-                let return_ty_span = decl.output.span();
+                let return_ty_span = decl.output.span(|id| hir.span(id));
                 let cause = traits::ObligationCause::new(
                     return_ty_span,
                     fn_id,
@@ -294,7 +305,7 @@ pub(super) fn check_fn<'a, 'tcx>(
         if panic_impl_did == hir.local_def_id(fn_id).to_def_id() {
             if let Some(panic_info_did) = tcx.lang_items().panic_info() {
                 if *declared_ret_ty.kind() != ty::Never {
-                    sess.span_err(decl.output.span(), "return type should be `!`");
+                    sess.span_err(decl.output.span(|id| hir.span(id)), "return type should be `!`");
                 }
 
                 let inputs = fn_sig.inputs();
@@ -313,7 +324,10 @@ pub(super) fn check_fn<'a, 'tcx>(
                     };
 
                     if !arg_is_panic_info {
-                        sess.span_err(decl.inputs[0].span, "argument should be `&PanicInfo`");
+                        sess.span_err(
+                            hir.span(decl.inputs[0].hir_id),
+                            "argument should be `&PanicInfo`",
+                        );
                     }
 
                     if let Node::Item(item) = hir.get(fn_id) {
@@ -338,7 +352,7 @@ pub(super) fn check_fn<'a, 'tcx>(
         if alloc_error_handler_did == hir.local_def_id(fn_id).to_def_id() {
             if let Some(alloc_layout_did) = tcx.lang_items().alloc_layout() {
                 if *declared_ret_ty.kind() != ty::Never {
-                    sess.span_err(decl.output.span(), "return type should be `!`");
+                    sess.span_err(decl.output.span(|id| hir.span(id)), "return type should be `!`");
                 }
 
                 let inputs = fn_sig.inputs();
@@ -350,7 +364,10 @@ pub(super) fn check_fn<'a, 'tcx>(
                     };
 
                     if !arg_is_alloc_layout {
-                        sess.span_err(decl.inputs[0].span, "argument should be `Layout`");
+                        sess.span_err(
+                            hir.span(decl.inputs[0].hir_id),
+                            "argument should be `Layout`",
+                        );
                     }
 
                     if let Node::Item(item) = hir.get(fn_id) {

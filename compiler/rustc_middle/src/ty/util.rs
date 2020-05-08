@@ -876,7 +876,7 @@ impl<'tcx> ty::TyS<'tcx> {
                             .map(|id| tcx.hir().local_def_id_to_hir_id(id))
                             .and_then(|id| tcx.hir().find(id))
                         {
-                            Some(hir::Node::Field(field)) => field.ty.span,
+                            Some(hir::Node::Field(field)) => tcx.hir().span(field.ty.hir_id),
                             _ => sp,
                         };
                         match is_type_structurally_recursive(

@@ -72,7 +72,7 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
                                 kind: Box::new(PatKind::AscribeUserType {
                                     ascription: thir::pattern::Ascription {
                                         user_ty: PatTyProj::from_user_type(user_ty),
-                                        user_ty_span: ty.span,
+                                        user_ty_span: self.tcx.hir().span(ty.hir_id),
                                         variance: ty::Variance::Covariant,
                                     },
                                     subpattern: pattern,

@@ -74,7 +74,8 @@ impl ItemLikeVisitor<'v> for OrphanChecker<'tcx> {
                         let msg = format!("{} is not defined in the current crate{}", ty, postfix);
                         if *is_target_ty {
                             // Point at `D<A>` in `impl<A, B> for C<B> in D<A>`
-                            err.span_label(self_ty.span, &msg);
+                            let self_ty_span = self.tcx.hir().span(self_ty.hir_id);
+                            err.span_label(self_ty_span, &msg);
                         } else {
                             // Point at `C<B>` in `impl<A, B> for C<B> in D<A>`
                             err.span_label(tr.path.span, &msg);

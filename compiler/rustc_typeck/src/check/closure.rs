@@ -499,26 +499,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .zip(expected_sigs.liberated_sig.inputs())
             // `liberated_sig` is E'.
             {
+                let ty_span = self.tcx.hir().span(hir_ty.hir_id);
                 // Instantiate (this part of..) S to S', i.e., with fresh variables.
                 let (supplied_ty, _) = self.infcx.replace_bound_vars_with_fresh_vars(
-                    hir_ty.span,
+                    ty_span,
                     LateBoundRegionConversionTime::FnCall,
                     supplied_sig.inputs().rebind(supplied_ty),
                 ); // recreated from (*) above
 
                 // Check that E' = S'.
-                let cause = self.misc(hir_ty.span);
+                let cause = self.misc(ty_span);
                 let InferOk { value: (), obligations } =
                     self.at(&cause, self.param_env).eq(*expected_ty, supplied_ty)?;
                 all_obligations.extend(obligations);
             }
 
             let (supplied_output_ty, _) = self.infcx.replace_bound_vars_with_fresh_vars(
-                decl.output.span(),
+                decl.output.span(|id| self.tcx.hir().span(id)),
                 LateBoundRegionConversionTime::FnCall,
                 supplied_sig.output(),
             );
-            let cause = &self.misc(decl.output.span());
+            let cause = &self.misc(decl.output.span(|id| self.tcx.hir().span(id)));
             let InferOk { value: (), obligations } = self
                 .at(cause, self.param_env)
                 .eq(expected_sigs.liberated_sig.output(), supplied_output_ty)?;
@@ -563,11 +564,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // easily (and locally) prove that we
                         // *have* reported an
                         // error. --nikomatsakis
-                        astconv.ty_infer(None, decl.output.span())
+                        astconv.ty_infer(None, decl.output.span(|id| self.tcx.hir().span(id)))
                     })
                 }
 
-                _ => astconv.ty_infer(None, decl.output.span()),
+                _ => astconv.ty_infer(None, decl.output.span(|id| self.tcx.hir().span(id))),
             },
         };
 

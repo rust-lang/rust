@@ -225,7 +225,8 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         let add_static_bound = "alternatively, add an explicit `'static` bound to this reference";
         let plus_lt = format!(" + {}", lifetime_name);
         for fn_return in fn_returns {
-            if fn_return.span.desugaring_kind().is_some() {
+            let fn_return_span = self.tcx().hir().span(fn_return.hir_id);
+            if fn_return_span.desugaring_kind().is_some() {
                 // Skip `async` desugaring `impl Future`.
                 continue;
             }
@@ -280,7 +281,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                     {
                     } else {
                         err.span_suggestion_verbose(
-                            fn_return.span.shrink_to_hi(),
+                            fn_return_span.shrink_to_hi(),
                             &format!(
                                 "{declare} `impl Trait` {captures}, {explicit}",
                                 declare = declare,
@@ -295,7 +296,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 TyKind::TraitObject(_, lt) => match lt.name {
                     LifetimeName::ImplicitObjectLifetimeDefault => {
                         err.span_suggestion_verbose(
-                            fn_return.span.shrink_to_hi(),
+                            fn_return_span.shrink_to_hi(),
                             &format!(
                                 "{declare} trait object {captures}, {explicit}",
                                 declare = declare,

@@ -59,7 +59,7 @@ impl_lint_pass!(LargeEnumVariant => [LARGE_ENUM_VARIANT]);
 
 impl<'tcx> LateLintPass<'tcx> for LargeEnumVariant {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
-        if in_external_macro(cx.tcx.sess, cx.tcx.hir().span(item.hir_id())) {
+        if in_external_macro(cx.tcx.sess, cx.tcx.hir().span_with_body(item.hir_id())) {
             return;
         }
         if let ItemKind::Enum(ref def, _) = item.kind {
@@ -113,7 +113,7 @@ impl<'tcx> LateLintPass<'tcx> for LargeEnumVariant {
                             if variant.fields.len() == 1 {
                                 let span = match def.variants[i].data {
                                     VariantData::Struct(ref fields, ..) | VariantData::Tuple(ref fields, ..) => {
-                                        fields[0].ty.span
+                                        cx.tcx.hir().span(fields[0].ty.hir_id)
                                     },
                                     VariantData::Unit(..) => unreachable!(),
                                 };

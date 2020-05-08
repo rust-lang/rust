@@ -202,11 +202,13 @@ fn extend_cause_with_original_assoc_item_obligation<'tcx>(
         Some(hir::Item { kind: hir::ItemKind::Impl(impl_), .. }) => impl_.items,
         _ => return,
     };
-    let fix_span =
-        |impl_item_ref: &hir::ImplItemRef<'_>| match tcx.hir().impl_item(impl_item_ref.id).kind {
-            hir::ImplItemKind::Const(ty, _) | hir::ImplItemKind::TyAlias(ty) => ty.span,
-            _ => tcx.hir().span(impl_item_ref.id.hir_id()),
+    let fix_span = |impl_item_ref: &hir::ImplItemRef<'_>| {
+        let hir_id = match tcx.hir().impl_item(impl_item_ref.id).kind {
+            hir::ImplItemKind::Const(ty, _) | hir::ImplItemKind::TyAlias(ty) => ty.hir_id,
+            _ => impl_item_ref.id.hir_id(),
         };
+        tcx.hir().span(hir_id)
+    };
 
     // It is fine to skip the binder as we don't care about regions here.
     match pred.kind().skip_binder() {
@@ -336,7 +338,8 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                         if let Some(hir::ItemKind::Impl(hir::Impl { self_ty, .. })) =
                             item.map(|i| &i.kind)
                         {
-                            new_cause.make_mut().span = self_ty.span;
+                            let self_ty_span = tcx.hir().span(self_ty.hir_id);
+                            new_cause.make_mut().span = self_ty_span;
                         }
                     }
                     traits::Obligation::with_depth(

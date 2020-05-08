@@ -2024,7 +2024,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 // We use a mix of the HIR and the Ty types to get information
                 // as the HIR doesn't have full types for closure arguments.
                 let return_ty = sig.output().skip_binder();
-                let mut return_span = fn_decl.output.span();
+                let mut return_span = fn_decl.output.span(|id| self.infcx.tcx.hir().span(id));
                 if let hir::FnRetTy::Return(ty) = &fn_decl.output {
                     if let hir::TyKind::Rptr(lifetime, _) = ty.kind {
                         return_span = lifetime.span;
@@ -2041,7 +2041,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 // This is case 2 from above but only for closures, return type is anonymous
                 // reference so we select
                 // the first argument.
-                let argument_span = fn_decl.inputs.first()?.span;
+                let argument_span = self.infcx.tcx.hir().span(fn_decl.inputs.first()?.hir_id);
                 let argument_ty = sig.inputs().skip_binder().first()?;
 
                 // Closure arguments are wrapped in a tuple, so we need to get the first
@@ -2061,10 +2061,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             ty::Ref(_, _, _) => {
                 // This is also case 2 from above but for functions, return type is still an
                 // anonymous reference so we select the first argument.
-                let argument_span = fn_decl.inputs.first()?.span;
+                let argument_span = self.infcx.tcx.hir().span(fn_decl.inputs.first()?.hir_id);
                 let argument_ty = sig.inputs().skip_binder().first()?;
 
-                let return_span = fn_decl.output.span();
+                let return_span = fn_decl.output.span(|id| self.infcx.tcx.hir().span(id));
                 let return_ty = sig.output().skip_binder();
 
                 // We expect the first argument to be a reference.

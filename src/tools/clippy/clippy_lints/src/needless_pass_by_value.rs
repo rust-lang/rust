@@ -144,7 +144,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
 
         for (idx, ((input, &ty), arg)) in decl.inputs.iter().zip(fn_sig.inputs()).zip(body.params).enumerate() {
             // All spans generated from a proc-macro invocation are the same...
-            if span == input.span {
+            if span == cx.tcx.hir().span(input.hir_id) {
                 return;
             }
 
@@ -215,9 +215,9 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                                     _ => None,
                                 }).unwrap());
                             then {
-                                let slice_ty = format!("&[{}]", snippet(cx, elem_ty.span, "_"));
+                                let slice_ty = format!("&[{}]", snippet(cx, cx.tcx.hir().span(elem_ty.hir_id), "_"));
                                 diag.span_suggestion(
-                                    input.span,
+                                    cx.tcx.hir().span(input.hir_id),
                                     "consider changing the type to",
                                     slice_ty,
                                     Applicability::Unspecified,
@@ -246,7 +246,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                             if let Some(clone_spans) =
                                 get_spans(cx, Some(body.id()), idx, &[("clone", ".to_string()"), ("as_str", "")]) {
                                 diag.span_suggestion(
-                                    input.span,
+                                    cx.tcx.hir().span(input.hir_id),
                                     "consider changing the type to",
                                     "&str".to_string(),
                                     Applicability::Unspecified,
@@ -270,7 +270,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                             }
                         }
 
-                        let mut spans = vec![(input.span, format!("&{}", snippet(cx, input.span, "_")))];
+                        let mut spans = vec![(cx.tcx.hir().span(input.hir_id), format!("&{}", snippet(cx, cx.tcx.hir().span(input.hir_id), "_")))];
 
                         // Suggests adding `*` to dereference the added reference.
                         if let Some(deref_span) = deref_span {
@@ -288,7 +288,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                     span_lint_and_then(
                         cx,
                         NEEDLESS_PASS_BY_VALUE,
-                        input.span,
+                        cx.tcx.hir().span(input.hir_id),
                         "this argument is passed by value, but not consumed in the function body",
                         sugg,
                     );

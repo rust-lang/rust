@@ -441,7 +441,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         qpath: &QPath<'_>,
         hir_id: hir::HirId,
     ) -> Option<(&'tcx ty::VariantDef, Ty<'tcx>)> {
-        let path_span = qpath.qself_span();
+        let path_span = qpath.qself_span(|id| self.tcx.hir().span(id));
         let (def, ty) = self.finish_resolving_struct_path(qpath, path_span, hir_id);
         let variant = match def {
             Res::Err => {
@@ -531,7 +531,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Does the expected pattern type originate from an expression and what is the span?
         let (origin_expr, ty_span) = match (local.ty, local.init) {
-            (Some(ty), _) => (false, Some(ty.span)), // Bias towards the explicit user type.
+            (Some(ty), _) => (false, Some(self.tcx.hir().span(ty.hir_id))), // Bias towards the explicit user type.
             (_, Some(init)) => (true, Some(init.span)), // No explicit type; so use the scrutinee.
             _ => (false, None), // We have `let $pat;`, so the expected type is unconstrained.
         };
@@ -675,7 +675,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let mut sp = self.tcx.hir().span(blk.hir_id);
                     let mut fn_span = None;
                     if let Some((decl, ident)) = self.get_parent_fn_decl(blk.hir_id) {
-                        let ret_sp = decl.output.span();
+                        let ret_sp = decl.output.span(|id| self.tcx.hir().span(id));
                         if let Some(block_sp) = self.parent_item_span(blk.hir_id) {
                             // HACK: on some cases (`ui/liveness/liveness-issue-2163.rs`) the
                             // output would otherwise be incorrect and even misleading. Make sure
@@ -1011,7 +1011,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         let ty = AstConv::ast_ty_to_ty(self, hir_ty);
                                         let ty = self.resolve_vars_if_possible(ty);
                                         if ty == predicate.self_ty() {
-                                            error.obligation.cause.make_mut().span = hir_ty.span;
+                                            error.obligation.cause.make_mut().span =
+                                                self.tcx.hir().span(hir_ty.hir_id);
                                         }
                                     }
                                 }

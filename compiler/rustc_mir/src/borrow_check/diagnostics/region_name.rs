@@ -497,7 +497,8 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                     if region.to_region_vid() == needle_fr {
                         // Just grab the first character, the `&`.
                         let source_map = self.infcx.tcx.sess.source_map();
-                        let ampersand_span = source_map.start_point(hir_ty.span);
+                        let hir_ty_span = self.infcx.tcx.hir().span(hir_ty.hir_id);
+                        let ampersand_span = source_map.start_point(hir_ty_span);
 
                         return Some(RegionNameHighlight::MatchedHirTy(ampersand_span));
                     }
@@ -695,7 +696,9 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                     hir::FnRetTy::DefaultReturn(_) => {
                         (tcx.sess.source_map().end_point(*span), None)
                     }
-                    hir::FnRetTy::Return(hir_ty) => (return_ty.output.span(), Some(hir_ty)),
+                    hir::FnRetTy::Return(hir_ty) => {
+                        (return_ty.output.span(|id| tcx.hir().span(id)), Some(hir_ty))
+                    }
                 };
                 let mir_description = match hir.body(*body_id).generator_kind {
                     Some(hir::GeneratorKind::Async(gen)) => match gen {
@@ -707,7 +710,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                                 .fn_decl()
                                 .expect("generator lowered from async fn should be in fn")
                                 .output;
-                            span = output.span();
+                            span = output.span(|id| tcx.hir().span(id));
                             if let hir::FnRetTy::Return(ret) = output {
                                 hir_ty = Some(self.get_future_inner_return_ty(*ret));
                             }
@@ -725,7 +728,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                         hir::FnRetTy::DefaultReturn(_) => None,
                         hir::FnRetTy::Return(ty) => Some(ty),
                     };
-                    (fn_decl.output.span(), "", hir_ty)
+                    (fn_decl.output.span(|id| tcx.hir().span(id)), "", hir_ty)
                 }
                 None => (self.body.span, "", None),
             },
@@ -787,14 +790,14 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                 ty
             } else {
                 span_bug!(
-                    hir_ty.span,
+                    hir.span(hir_ty.hir_id),
                     "bounds from lowered return type of async fn did not match expected format: {:?}",
                     opaque_ty
                 );
             }
         } else {
             span_bug!(
-                hir_ty.span,
+                hir.span(hir_ty.hir_id),
                 "lowered return type of async fn is not OpaqueDef: {:?}",
                 hir_ty
             );

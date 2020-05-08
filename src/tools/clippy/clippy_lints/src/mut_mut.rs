@@ -100,7 +100,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for MutVisitor<'a, 'tcx> {
                 span_lint(
                     self.cx,
                     MUT_MUT,
-                    ty.span,
+                    self.cx.tcx.hir().span(ty.hir_id),
                     "generally you want to avoid `&mut &mut _` if possible",
                 );
             }

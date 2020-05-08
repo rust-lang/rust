@@ -163,7 +163,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             if init.hir_id == expr.hir_id {
                 // Point at `let` assignment type.
-                err.span_label(ty.span, "expected due to this");
+                let ty_span = self.tcx.hir().span(ty.hir_id);
+                err.span_label(ty_span, "expected due to this");
             }
         }
     }

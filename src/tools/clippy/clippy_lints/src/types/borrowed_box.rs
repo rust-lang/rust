@@ -48,7 +48,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, lt: &Lifetime, m
                     // When trait objects or opaque types have lifetime or auto-trait bounds,
                     // we need to add parentheses to avoid a syntax error due to its ambiguity.
                     // Originally reported as the issue #3128.
-                    let inner_snippet = snippet(cx, inner.span, "..");
+                    let inner_snippet = snippet(cx, cx.tcx.hir().span(inner.hir_id), "..");
                     let suggestion = match &inner.kind {
                         TyKind::TraitObject(bounds, lt_bound) if bounds.len() > 1 || !lt_bound.is_elided() => {
                             format!("&{}({})", ltopt, &inner_snippet)
@@ -64,7 +64,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, lt: &Lifetime, m
                     span_lint_and_sugg(
                         cx,
                         BORROWED_BOX,
-                        hir_ty.span,
+                        cx.tcx.hir().span(hir_ty.hir_id),
                         "you seem to be trying to use `&Box<T>`. Consider using just `&T`",
                         "try",
                         suggestion,

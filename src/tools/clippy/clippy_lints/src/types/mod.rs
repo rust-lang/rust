@@ -310,7 +310,8 @@ impl Types {
     ///
     /// The parameter `is_local` distinguishes the context of the type.
     fn check_ty(&mut self, cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, is_local: bool) {
-        if hir_ty.span.from_expansion() {
+        let hir_ty_span = cx.tcx.hir().span(hir_ty.hir_id);
+        if hir_ty_span.from_expansion() {
             return;
         }
         match hir_ty.kind {
@@ -869,7 +870,7 @@ impl<'tcx> TypeComplexity {
     }
 
     fn check_type(&self, cx: &LateContext<'_>, ty: &hir::Ty<'_>) {
-        if ty.span.from_expansion() {
+        if cx.tcx.hir().span(ty.hir_id).from_expansion() {
             return;
         }
         let score = {
@@ -882,7 +883,7 @@ impl<'tcx> TypeComplexity {
             span_lint(
                 cx,
                 TYPE_COMPLEXITY,
-                ty.span,
+                cx.tcx.hir().span(ty.hir_id),
                 "very complex type used. Consider factoring parts into `type` definitions",
             );
         }
@@ -1520,16 +1521,16 @@ impl<'tcx> ImplicitHasherType<'tcx> {
 
             if is_type_diagnostic_item(cx, ty, sym::hashmap_type) && params_len == 2 {
                 Some(ImplicitHasherType::HashMap(
-                    hir_ty.span,
+                    cx.tcx.hir().span(hir_ty.hir_id),
                     ty,
-                    snippet(cx, params[0].span, "K"),
-                    snippet(cx, params[1].span, "V"),
+                    snippet(cx, cx.tcx.hir().span(params[0].hir_id), "K"),
+                    snippet(cx, cx.tcx.hir().span(params[1].hir_id), "V"),
                 ))
             } else if is_type_diagnostic_item(cx, ty, sym::hashset_type) && params_len == 1 {
                 Some(ImplicitHasherType::HashSet(
-                    hir_ty.span,
+                    cx.tcx.hir().span(hir_ty.hir_id),
                     ty,
-                    snippet(cx, params[0].span, "T"),
+                    snippet(cx, cx.tcx.hir().span(params[0].hir_id), "T"),
                 ))
             } else {
                 None

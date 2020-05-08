@@ -381,7 +381,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_type(&mut self, ty: &hir::Ty<'_>) {
-        self.maybe_print_comment(ty.span.lo());
+        self.maybe_print_comment(self.span(ty.hir_id).lo());
         self.ibox(0);
         match ty.kind {
             hir::TyKind::Slice(ref ty) => {
@@ -2205,7 +2205,7 @@ impl<'a> State<'a> {
         match decl.output {
             hir::FnRetTy::Return(ref ty) => {
                 self.print_type(&ty);
-                self.maybe_print_comment(ty.span.lo())
+                self.maybe_print_comment(self.span(ty.hir_id).lo())
             }
             hir::FnRetTy::DefaultReturn(..) => unreachable!(),
         }
@@ -2397,7 +2397,7 @@ impl<'a> State<'a> {
         self.end();
 
         if let hir::FnRetTy::Return(ref output) = decl.output {
-            self.maybe_print_comment(output.span.lo())
+            self.maybe_print_comment(self.span(output.hir_id).lo())
         }
     }
 

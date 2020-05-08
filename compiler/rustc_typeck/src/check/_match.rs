@@ -30,7 +30,7 @@ macro_rules! create_maybe_get_coercion_reason {
                     // check that the `if` expr without `else` is the fn body's expr
                     if expr.span == sp {
                         return self.get_fn_decl(hir_id).and_then(|(fn_decl, _)| {
-                            let span = fn_decl.output.span();
+                            let span = fn_decl.output.span(|id| self.tcx.hir().span(id));
                             let snippet = self.tcx.sess.source_map().span_to_snippet(span).ok()?;
                             Some((
                                 span,

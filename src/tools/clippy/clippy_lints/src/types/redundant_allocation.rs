@@ -17,7 +17,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
             span_lint_and_sugg(
                 cx,
                 REDUNDANT_ALLOCATION,
-                hir_ty.span,
+                cx.tcx.hir().span(hir_ty.hir_id),
                 "usage of `Box<&T>`",
                 "try",
                 snippet_with_applicability(cx, span, "..", &mut applicability).to_string(),
@@ -33,10 +33,10 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
             span_lint_and_sugg(
                 cx,
                 REDUNDANT_ALLOCATION,
-                hir_ty.span,
+                cx.tcx.hir().span(hir_ty.hir_id),
                 "usage of `Rc<Rc<T>>`",
                 "try",
-                snippet_with_applicability(cx, ty.span, "..", &mut applicability).to_string(),
+                snippet_with_applicability(cx, cx.tcx.hir().span(ty.hir_id), "..", &mut applicability).to_string(),
                 applicability,
             );
             true
@@ -46,14 +46,14 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
                 _ => return false,
             };
             let inner_span = match get_qpath_generic_tys(qpath).next() {
-                Some(ty) => ty.span,
+                Some(ty) => cx.tcx.hir().span(ty.hir_id),
                 None => return false,
             };
             let mut applicability = Applicability::MachineApplicable;
             span_lint_and_sugg(
                 cx,
                 REDUNDANT_ALLOCATION,
-                hir_ty.span,
+                cx.tcx.hir().span(hir_ty.hir_id),
                 "usage of `Rc<Box<T>>`",
                 "try",
                 format!(
@@ -69,7 +69,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
                 span_lint_and_sugg(
                     cx,
                     REDUNDANT_ALLOCATION,
-                    hir_ty.span,
+                    cx.tcx.hir().span(hir_ty.hir_id),
                     "usage of `Rc<&T>`",
                     "try",
                     snippet_with_applicability(cx, span, "..", &mut applicability).to_string(),

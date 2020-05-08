@@ -45,7 +45,8 @@ declare_lint_pass!(ZeroSizedMapValues => [ZERO_SIZED_MAP_VALUES]);
 impl LateLintPass<'_> for ZeroSizedMapValues {
     fn check_ty(&mut self, cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>) {
         if_chain! {
-            if !hir_ty.span.from_expansion();
+            let hir_ty_span = cx.tcx.hir().span(hir_ty.hir_id);
+            if !hir_ty_span.from_expansion();
             if !in_trait_impl(cx, hir_ty.hir_id);
             let ty = ty_from_hir_ty(cx, hir_ty);
             if is_type_diagnostic_item(cx, ty, sym::hashmap_type) || match_type(cx, ty, &paths::BTREEMAP);
@@ -56,7 +57,7 @@ impl LateLintPass<'_> for ZeroSizedMapValues {
             if let Ok(layout) = cx.layout_of(ty);
             if layout.is_zst();
             then {
-                span_lint_and_help(cx, ZERO_SIZED_MAP_VALUES, hir_ty.span, "map with zero-sized value type", None, "consider using a set instead");
+                span_lint_and_help(cx, ZERO_SIZED_MAP_VALUES, hir_ty_span, "map with zero-sized value type", None, "consider using a set instead");
             }
         }
     }

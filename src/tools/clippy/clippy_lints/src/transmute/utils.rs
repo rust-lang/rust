@@ -22,7 +22,7 @@ pub(super) fn get_type_snippet(cx: &LateContext<'_>, path: &QPath<'_>, to_ref_ty
         }).nth(1);
         if let TyKind::Rptr(_, ref to_ty) = to_ty.kind;
         then {
-            return snippet(cx, to_ty.ty.span, &to_ref_ty.to_string()).to_string();
+            return snippet(cx, cx.tcx.hir().span(to_ty.ty.hir_id), &to_ref_ty.to_string()).to_string();
         }
     }
 

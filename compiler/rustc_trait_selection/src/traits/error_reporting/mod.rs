@@ -822,7 +822,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     .iter()
                     .map(|arg| match arg.kind {
                         hir::TyKind::Tup(ref tys) => ArgKind::Tuple(
-                            Some(arg.span),
+                            Some(self.tcx.hir().span(arg.hir_id)),
                             vec![("_".to_owned(), "_".to_owned()); tys.len()],
                         ),
                         _ => ArgKind::empty(),
@@ -1777,6 +1777,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                             format!("this could be changed to `{}: ?Sized`...", param.name.ident()),
                         );
                         for sp in visitor.invalid_spans {
+                            let sp = self.tcx.hir().span(sp);
                             multispan.push_span_label(
                                 sp,
                                 format!(
@@ -1832,7 +1833,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
 /// `param: ?Sized` would be a valid constraint.
 struct FindTypeParam {
     param: rustc_span::Symbol,
-    invalid_spans: Vec<Span>,
+    invalid_spans: Vec<hir::HirId>,
     nested: bool,
 }
 
@@ -1856,7 +1857,7 @@ impl<'v> Visitor<'v> for FindTypeParam {
                 if path.segments.len() == 1 && path.segments[0].ident.name == self.param =>
             {
                 if !self.nested {
-                    self.invalid_spans.push(ty.span);
+                    self.invalid_spans.push(ty.hir_id);
                 }
             }
             hir::TyKind::Path(_) => {
