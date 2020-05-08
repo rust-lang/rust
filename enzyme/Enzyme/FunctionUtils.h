@@ -231,16 +231,16 @@ static inline void calculateUnusedValues(const llvm::Function& oldFunc, llvm::Sm
     }
   }
 
-  #if 1
-  llvm::errs() << "Prepping values for: " << oldFunc.getName() << " returnValue: " << returnValue << "\n";
-  for(auto v : unnecessaryInstructions) {
-    llvm::errs() << "+ unnecessaryInstructions: " << *v << "\n";
+  if (false && oldFunc.getName().endswith("E3sumEv")) {
+      llvm::errs() << "Prepping values for: " << oldFunc.getName() << " returnValue: " << returnValue << "\n";
+      for(auto v : unnecessaryInstructions) {
+        llvm::errs() << "+ unnecessaryInstructions: " << *v << "\n";
+      }
+      for(auto v : unnecessaryValues) {
+        llvm::errs() << "+ unnecessaryValues: " << *v << "\n";
+      }
+      llvm::errs() << "</end>\n";
   }
-  for(auto v : unnecessaryValues) {
-    llvm::errs() << "+ unnecessaryValues: " << *v << "\n";
-  }
-  llvm::errs() << "</end>\n";
-  #endif
 
 }
 #endif

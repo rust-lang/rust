@@ -76,12 +76,12 @@ attributes #0 = { noinline norecurse nounwind uwtable }
 ; CHECK-NEXT:   %"'de.0" = phi float [ %[[pdein:.+]], %invertwhile.body ], [ 0.000000e+00, %invertwhile.end.loopexit ]
 ; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %"iv'ac.1", %invertwhile.body ], [ %loopLimit_cache.0, %invertwhile.end.loopexit ]
 ; CHECK-NEXT:   %_unwrap = sext i32 %i to i64
-; CHECK-NEXT:   %_unwrap2 = sub i64 %_unwrap, %"iv'ac.0"
-; CHECK-NEXT:   %[[arrayidx2ipg:.+]] = getelementptr inbounds float, float* %"array'", i64 %_unwrap2
+; CHECK-NEXT:   %[[_unwrap2:.+]] = sub i64 %_unwrap, %"iv'ac.0"
+; CHECK-NEXT:   %[[arrayidx2ipg:.+]] = getelementptr inbounds float, float* %"array'", i64 %[[_unwrap2]]
 ; CHECK-NEXT:   %4 = load float, float* %[[arrayidx2ipg]], align 4
 ; CHECK-NEXT:   %5 = fadd fast float %4, %"'de.0"
 ; CHECK-NEXT:   store float %5, float* %[[arrayidx2ipg]], align 4
-; CHECK-NEXT:   %indvars.iv.next_unwrap = add nsw i64 %_unwrap2, -1
+; CHECK-NEXT:   %indvars.iv.next_unwrap = add nsw i64 %[[_unwrap2]], -1
 ; CHECK-NEXT:   %[[arrayidxipg:.+]] = getelementptr inbounds float, float* %"array'", i64 %indvars.iv.next_unwrap
 ; CHECK-NEXT:   %[[loade5:.+]] = load float, float* %[[arrayidxipg]], align 4
 ; CHECK-NEXT:   %[[adde5:.+]] = fadd fast float %[[loade5]], %[[de5]]
