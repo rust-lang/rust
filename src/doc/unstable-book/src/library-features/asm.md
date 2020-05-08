@@ -25,6 +25,7 @@ cannot be otherwise achieved. Accessing low level hardware primitives, e.g. in k
 Let us start with the simplest possible example:
 
 ```rust
+# #![feature(asm)]
 unsafe {
     asm!("nop");
 }
@@ -41,6 +42,7 @@ Now inserting an instruction that does nothing is rather boring. Let us do somet
 actually acts on data:
 
 ```rust
+# #![feature(asm)]
 let x: u64;
 unsafe {
     asm!("mov {}, 5", out(reg) x);
@@ -62,6 +64,7 @@ the template and will read the variable from there after the inline assembly fin
 Let us see another example that also uses an input:
 
 ```rust
+# #![feature(asm)]
 let i: u64 = 3;
 let o: u64;
 unsafe {
@@ -93,6 +96,7 @@ readability, and allows reordering instructions without changing the argument or
 We can further refine the above example to avoid the `mov` instruction:
 
 ```rust
+# #![feature(asm)]
 let mut x: u64 = 3;
 unsafe {
     asm!("add {0}, {number}", inout(reg) x, number = const 5);
@@ -106,6 +110,7 @@ This is different from specifying an input and output separately in that it is g
 It is also possible to specify different variables for the input and output parts of an `inout` operand:
 
 ```rust
+# #![feature(asm)]
 let x: u64 = 3;
 let y: u64;
 unsafe {
@@ -127,6 +132,7 @@ There is also a `inlateout` variant of this specifier.
 Here is an example where `inlateout` *cannot* be used:
 
 ```rust
+# #![feature(asm)]
 let mut a: u64 = 4;
 let b: u64 = 4;
 let c: u64 = 4;
@@ -144,6 +150,7 @@ Here the compiler is free to allocate the same register for inputs `b` and `c` s
 However the following example can use `inlateout` since the output is only modified after all input registers have been read:
 
 ```rust
+# #![feature(asm)]
 let mut a: u64 = 4;
 let b: u64 = 4;
 unsafe {
@@ -161,21 +168,24 @@ Therefore, Rust inline assembly provides some more specific constraint specifier
 While `reg` is generally available on any architecture, these are highly architecture specific. E.g. for x86 the general purpose registers `eax`, `ebx`, `ecx`, `edx`, `ebp`, `esi`, and `edi`
 among others can be addressed by their name.
 
-```rust
+```rust,no_run
+# #![feature(asm)]
+let cmd = 0xd1;
 unsafe {
-    asm!("out 0x64, rax", in("rax") cmd);
+    asm!("out 0x64, eax", in("eax") cmd);
 }
 ```
 
 In this example we call the `out` instruction to output the content of the `cmd` variable
-to port `0x64`. Since the `out` instruction only accepts `rax` (and its sub registers) as operand
-we had to use the `rax` constraint specifier.
+to port `0x64`. Since the `out` instruction only accepts `eax` (and its sub registers) as operand
+we had to use the `eax` constraint specifier.
 
 Note that unlike other operand types, explicit register operands cannot be used in the template string: you can't use `{}` and should write the register name directly instead. Also, they must appear at the end of the operand list after all other operand types.
 
 Consider this example which uses the x86 `mul` instruction:
 
 ```rust
+# #![feature(asm)]
 fn mul(a: u64, b: u64) -> u128 {
     let lo: u64;
     let hi: u64;
@@ -191,7 +201,7 @@ fn mul(a: u64, b: u64) -> u128 {
         );
     }
 
-    hi as u128 << 64 + lo as u128
+    (hi as u128) << 64 + lo as u128
 }
 ```
 
@@ -211,8 +221,9 @@ We need to tell the compiler about this since it may need to save and restore th
 around the inline assembly block.
 
 ```rust
-let ebx: u64;
-let ecx: u64;
+# #![feature(asm)]
+let ebx: u32;
+let ecx: u32;
 
 unsafe {
     asm!(
@@ -240,6 +251,7 @@ However we still need to tell the compiler that `eax` and `edx` have been modifi
 This can also be used with a general register class (e.g. `reg`) to obtain a scratch register for use inside the asm code:
 
 ```rust
+# #![feature(asm)]
 // Multiply x by 6 using shifts and adds
 let mut x: u64 = 4;
 unsafe {
@@ -259,6 +271,7 @@ A special operand type, `sym`, allows you to use the symbol name of a `fn` or `s
 This allows you to call a function or access a global variable without needing to keep its address in a register.
 
 ```rust
+# #![feature(asm)]
 extern "C" fn foo(arg: i32) {
     println!("arg = {}", arg);
 }
@@ -266,7 +279,7 @@ extern "C" fn foo(arg: i32) {
 fn call_foo(arg: i32) {
     unsafe {
         asm!(
-            "call {}"
+            "call {}",
             sym foo,
             // 1st argument in rdi, which is caller-saved
             inout("rdi") arg => _,
@@ -294,10 +307,11 @@ By default the compiler will always choose the name that refers to the full regi
 This default can be overriden by using modifiers on the template string operands, just like you would with format strings:
 
 ```rust
+# #![feature(asm)]
 let mut x: u16 = 0xab;
 
 unsafe {
-    asm!("mov {0:h}, {0:b}", inout(reg_abcd) x);
+    asm!("mov {0:h}, {0:l}", inout(reg_abcd) x);
 }
 
 assert_eq!(x, 0xabab);
@@ -306,7 +320,7 @@ assert_eq!(x, 0xabab);
 In this example, we use the `reg_abcd` register class to restrict the register allocator to the 4 legacy x86 register (`ax`, `bx`, `cx`, `dx`) of which the first two bytes can be addressed independently.
 
 Let us assume that the register allocator has chosen to allocate `x` in the `ax` register.
-The `h` modifier will emit the register name for the high byte of that register and the `b` modifier will emit the register name for the low byte. The asm code will therefore be expanded as `mov ah, al` which copies the low byte of the value into the high byte.
+The `h` modifier will emit the register name for the high byte of that register and the `l` modifier will emit the register name for the low byte. The asm code will therefore be expanded as `mov ah, al` which copies the low byte of the value into the high byte.
 
 If you use a smaller data type (e.g. `u16`) with an operand and forget the use template modifiers, the compiler will emit a warning and suggest the correct modifier to use.
 
@@ -317,6 +331,7 @@ By default, an inline assembly block is treated the same way as an external FFI 
 Let's take our previous example of an `add` instruction:
 
 ```rust
+# #![feature(asm)]
 let mut a: u64 = 4;
 let b: u64 = 4;
 unsafe {
@@ -348,7 +363,7 @@ When required, options are specified as the final argument.
 
 The following ABNF specifies the general syntax:
 
-```
+```ignore
 dir_spec := "in" / "out" / "lateout" / "inout" / "inlateout"
 reg_spec := <register class> / "<explicit register>"
 operand_expr := expr / "_" / expr "=>" expr / expr "=>" "_"
@@ -612,7 +627,7 @@ Currently the following options are defined:
 - `pure`: The `asm` block has no side effects, and its outputs depend only on its direct inputs (i.e. the values themselves, not what they point to) or values read from memory (unless the `nomem` options is also set). This allows the compiler to execute the `asm` block fewer times than specified in the program (e.g. by hoisting it out of a loop) or even eliminate it entirely if the outputs are not used.
 - `nomem`: The `asm` blocks does not read or write to any memory. This allows the compiler to cache the values of modified global variables in registers across the `asm` block since it knows that they are not read or written to by the `asm`.
 - `readonly`: The `asm` block does not write to any memory. This allows the compiler to cache the values of unmodified global variables in registers across the `asm` block since it knows that they are not written to by the `asm`.
-- `preserves_flags`: The `asm` block does not modify the flags register (defined in the [rules][rules] below). This allows the compiler to avoid recomputing the condition flags after the `asm` block.
+- `preserves_flags`: The `asm` block does not modify the flags register (defined in the rules below). This allows the compiler to avoid recomputing the condition flags after the `asm` block.
 - `noreturn`: The `asm` block never returns, and its return type is defined as `!` (never). Behavior is undefined if execution falls through past the end of the asm code. A `noreturn` asm block behaves just like a function which doesn't return; notably, local variables in scope are not dropped before it is invoked.
 - `nostack`: The `asm` block does not push data to the stack, or write to the stack red-zone (if supported by the target). If this option is *not* used then the stack pointer is guaranteed to be suitably aligned (according to the target ABI) for a function call.
 - `att_syntax`: This option is only valid on x86, and causes the assembler to use the `.att_syntax prefix` mode of the GNU assembler. Register operands are substituted in with a leading `%`.
@@ -624,7 +639,6 @@ The compiler performs some additional checks on options:
 - It is a compile-time error to specify `noreturn` on an asm block with outputs.
 
 ## Rules for inline assembly
-[rules]: #rules
 
 - Any registers not specified as inputs will contain an undefined value on entry to the asm block.
   - An "undefined value" in the context of inline assembly means that the register can (non-deterministically) have any one of the possible values allowed by the architecture. Notably it is not the same as an LLVM `undef` which can have a different value every time you read it (since such a concept does not exist in assembly code).
