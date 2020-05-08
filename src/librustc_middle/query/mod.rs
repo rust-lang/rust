@@ -89,6 +89,15 @@ rustc_queries! {
             desc { |tcx| "HIR owner items in `{}`", tcx.def_path_str(key.to_def_id()) }
         }
 
+        // Gives access to the HIR spans inside the HIR owner `key`.
+        //
+        // This can be conveniently accessed by methods on `tcx.hir()`.
+        // Avoid calling this query directly.
+        query hir_owner_spans(key: LocalDefId) -> &'tcx IndexVec<ItemLocalId, Option<Span>> {
+            eval_always
+            desc { |tcx| "HIR owner spans in `{}`", tcx.def_path_str(key.to_def_id()) }
+        }
+
         /// Records the type of every item.
         query type_of(key: DefId) -> Ty<'tcx> {
             desc { |tcx| "computing type of `{}`", tcx.def_path_str(key) }

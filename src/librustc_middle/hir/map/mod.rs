@@ -828,7 +828,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn span(&self, hir_id: HirId) -> Span {
-        self.tcx.index_hir(LOCAL_CRATE).map[hir_id.owner].spans[hir_id.local_id].unwrap()
+        self.tcx.hir_owner_spans(hir_id.owner)[hir_id.local_id].unwrap()
     }
 
     pub fn span_if_local(&self, id: DefId) -> Option<Span> {
