@@ -6,6 +6,13 @@ use crate::dataflow::{AnalysisDomain, Backward, BottomValue, GenKill, GenKillAna
 
 /// A [live-variable dataflow analysis][liveness].
 ///
+/// This analysis considers references as being used only at the point of the
+/// borrow. In other words, this analysis does not track uses because of references that already
+/// exist. See [this `mir-datalow` test][flow-test] for an example. You almost never want to use
+/// this analysis without also looking at the results of [`MaybeBorrowedLocals`].
+///
+/// [`MaybeBorrowedLocals`]: ../struct.MaybeBorrowedLocals.html
+/// [flow-test]: https://github.com/rust-lang/rust/blob/a08c47310c7d49cbdc5d7afb38408ba519967ecd/src/test/ui/mir-dataflow/liveness-ptr.rs
 /// [liveness]: https://en.wikipedia.org/wiki/Live_variable_analysis
 pub struct MaybeLiveLocals;
 

@@ -1,7 +1,7 @@
+use crate::borrow_check::def_use::{self, DefUse};
 use crate::borrow_check::location::{LocationIndex, LocationTable};
 use crate::dataflow::indexes::MovePathIndex;
 use crate::dataflow::move_paths::{LookupResult, MoveData};
-use crate::util::liveness::{categorize, DefUse};
 use rustc_middle::mir::visit::{MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{Body, Local, Location, Place};
 use rustc_middle::ty::subst::GenericArg;
@@ -56,7 +56,7 @@ impl UseFactsExtractor<'_> {
 
 impl Visitor<'tcx> for UseFactsExtractor<'_> {
     fn visit_local(&mut self, &local: &Local, context: PlaceContext, location: Location) {
-        match categorize(context) {
+        match def_use::categorize(context) {
             Some(DefUse::Def) => self.insert_def(local, location),
             Some(DefUse::Use) => self.insert_use(local, location),
             Some(DefUse::Drop) => self.insert_drop_use(local, location),

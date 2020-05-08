@@ -3,8 +3,7 @@ use rustc_index::vec::IndexVec;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::{Body, Local, Location};
 
-use crate::util::liveness::{categorize, DefUse};
-
+use crate::borrow_check::def_use::{self, DefUse};
 use crate::borrow_check::region_infer::values::{PointIndex, RegionValueElements};
 
 /// A map that cross references each local with the locations where it
@@ -160,7 +159,7 @@ impl LocalUseMapBuild<'_> {
 impl Visitor<'tcx> for LocalUseMapBuild<'_> {
     fn visit_local(&mut self, &local: &Local, context: PlaceContext, location: Location) {
         if self.locals_with_use_data[local] {
-            match categorize(context) {
+            match def_use::categorize(context) {
                 Some(DefUse::Def) => self.insert_def(local, location),
                 Some(DefUse::Use) => self.insert_use(local, location),
                 Some(DefUse::Drop) => self.insert_drop(local, location),
