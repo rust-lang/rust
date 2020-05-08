@@ -14,6 +14,9 @@
 #![feature(optin_builtin_traits)]
 #![feature(specialization)]
 
+// allow wasm target for rustc-ap-rustc_span
+extern crate rustc_macros;
+
 use rustc_data_structures::AtomicRef;
 use rustc_macros::HashStable_Generic;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
