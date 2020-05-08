@@ -729,6 +729,20 @@ impl<T: ?Sized, A: AllocRef> Box<T, A> {
         let reference = unsafe { &mut *manually_drop.0.as_ptr() };
         (reference, alloc)
     }
+
+    /// Returns a shared reference to the allocator backing this `Box`.
+    #[inline]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    pub fn alloc(&self) -> &A {
+        &self.1
+    }
+
+    /// Returns a mutable reference to the allocator backing this `Box`.
+    #[inline]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    pub fn alloc_mut(&mut self) -> &mut A {
+        &mut self.1
+    }
 }
 
 impl<T: ?Sized, A: AllocRef> Box<T, A> {
@@ -794,7 +808,7 @@ impl<T: Clone, A: AllocRef + Clone> Clone for Box<T, A> {
     #[rustfmt::skip]
     #[inline]
     fn clone(&self) -> Self {
-        Self::new_in((**self).clone(), self.1.clone())
+        Self::new_in((**self).clone(), self.alloc().clone())
     }
 
     /// Copies `source`'s contents into `self` without creating a new allocation.
@@ -825,7 +839,7 @@ impl<A: AllocRef + Clone> Clone for Box<str, A> {
     fn clone(&self) -> Self {
         let slice = self.as_bytes();
         let len = slice.len();
-        let buf = RawVec::with_capacity_in(len, self.1.clone());
+        let buf = RawVec::with_capacity_in(len, self.alloc().clone());
         unsafe {
             ptr::copy_nonoverlapping(slice.as_ptr(), buf.ptr(), len);
             from_boxed_utf8_unchecked(buf.into_box(slice.len()).assume_init())
@@ -1272,9 +1286,9 @@ impl<I> FromIterator<I> for Box<[I]> {
 }
 
 #[stable(feature = "box_slice_clone", since = "1.3.0")]
-impl<T: Clone> Clone for Box<[T]> {
+impl<T: Clone, A: AllocRef + Clone> Clone for Box<[T], A> {
     fn clone(&self) -> Self {
-        self.to_vec().into_boxed_slice()
+        self.to_vec_in(self.alloc().clone()).into_boxed_slice()
     }
 }
 
