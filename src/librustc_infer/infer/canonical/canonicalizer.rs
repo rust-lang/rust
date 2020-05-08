@@ -3,7 +3,7 @@
 //! For an overview of what canonicalization is and how it fits into
 //! rustc, check out the [chapter in the rustc dev guide][c].
 //!
-//! [c]: https://rustc-dev-guide.rust-lang.org/traits/canonicalization.html
+//! [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html
 
 use crate::infer::canonical::{
     Canonical, CanonicalTyVarKind, CanonicalVarInfo, CanonicalVarKind, Canonicalized,
@@ -35,7 +35,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     /// To get a good understanding of what is happening here, check
     /// out the [chapter in the rustc dev guide][c].
     ///
-    /// [c]: https://rustc-dev-guide.rust-lang.org/traits/canonicalization.html#canonicalizing-the-query
+    /// [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html#canonicalizing-the-query
     pub fn canonicalize_query<V>(
         &self,
         value: &V,
@@ -79,7 +79,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     /// To get a good understanding of what is happening here, check
     /// out the [chapter in the rustc dev guide][c].
     ///
-    /// [c]: https://rustc-dev-guide.rust-lang.org/traits/canonicalization.html#canonicalizing-the-query-result
+    /// [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html#canonicalizing-the-query-result
     pub fn canonicalize_response<V>(&self, value: &V) -> Canonicalized<'tcx, V>
     where
         V: TypeFoldable<'tcx>,
