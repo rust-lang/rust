@@ -1,4 +1,4 @@
-use super::{AllocId, Pointer, RawConst, ScalarMaybeUndef};
+use super::{AllocId, Pointer, RawConst, ScalarMaybeUninit};
 
 use crate::mir::interpret::ConstValue;
 use crate::ty::layout::LayoutError;
@@ -378,13 +378,13 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     /// Using a non-character `u32` as character.
     InvalidChar(u32),
     /// An enum discriminant was set to a value which was outside the range of valid values.
-    InvalidDiscriminant(ScalarMaybeUndef),
+    InvalidDiscriminant(ScalarMaybeUninit),
     /// Using a pointer-not-to-a-function as function pointer.
     InvalidFunctionPointer(Pointer),
     /// Using a string that is not valid UTF-8,
     InvalidStr(std::str::Utf8Error),
     /// Using uninitialized data where it is not allowed.
-    InvalidUndefBytes(Option<Pointer>),
+    InvalidUninitBytes(Option<Pointer>),
     /// Working with a local that is not currently live.
     DeadLocal,
     /// Data size is not equal to target size.
@@ -455,12 +455,12 @@ impl fmt::Display for UndefinedBehaviorInfo<'_> {
                 write!(f, "using {} as function pointer but it does not point to a function", p)
             }
             InvalidStr(err) => write!(f, "this string is not valid UTF-8: {}", err),
-            InvalidUndefBytes(Some(p)) => write!(
+            InvalidUninitBytes(Some(p)) => write!(
                 f,
                 "reading uninitialized memory at {}, but this operation requires initialized memory",
                 p
             ),
-            InvalidUndefBytes(None) => write!(
+            InvalidUninitBytes(None) => write!(
                 f,
                 "using uninitialized data, but this operation requires initialized memory"
             ),

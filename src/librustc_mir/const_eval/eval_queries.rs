@@ -3,7 +3,7 @@ use crate::interpret::eval_nullary_intrinsic;
 use crate::interpret::{
     intern_const_alloc_recursive, Allocation, ConstValue, GlobalId, Immediate, InternKind,
     InterpCx, InterpResult, MPlaceTy, MemoryKind, OpTy, RawConst, RefTracking, Scalar,
-    ScalarMaybeUndef, StackPopCleanup,
+    ScalarMaybeUninit, StackPopCleanup,
 };
 use rustc_hir::def::DefKind;
 use rustc_middle::mir;
@@ -100,9 +100,9 @@ pub(super) fn op_to_const<'tcx>(
 ) -> ConstValue<'tcx> {
     // We do not have value optimizations for everything.
     // Only scalars and slices, since they are very common.
-    // Note that further down we turn scalars of undefined bits back to `ByRef`. These can result
+    // Note that further down we turn scalars of uninitialized bits back to `ByRef`. These can result
     // from scalar unions that are initialized with one of their zero sized variants. We could
-    // instead allow `ConstValue::Scalar` to store `ScalarMaybeUndef`, but that would affect all
+    // instead allow `ConstValue::Scalar` to store `ScalarMaybeUninit`, but that would affect all
     // the usual cases of extracting e.g. a `usize`, without there being a real use case for the
     // `Undef` situation.
     let try_as_immediate = match op.layout.abi {
@@ -149,8 +149,8 @@ pub(super) fn op_to_const<'tcx>(
         // see comment on `let try_as_immediate` above
         Err(imm) => match *imm {
             Immediate::Scalar(x) => match x {
-                ScalarMaybeUndef::Scalar(s) => ConstValue::Scalar(s),
-                ScalarMaybeUndef::Undef => to_const_value(op.assert_mem_place(ecx)),
+                ScalarMaybeUninit::Scalar(s) => ConstValue::Scalar(s),
+                ScalarMaybeUninit::Uninit => to_const_value(op.assert_mem_place(ecx)),
             },
             Immediate::ScalarPair(a, b) => {
                 let (data, start) = match a.not_undef().unwrap() {

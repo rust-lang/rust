@@ -16,7 +16,7 @@ use rustc_target::abi::{VariantIdx, Variants};
 
 use super::{
     from_known_layout, sign_extend, truncate, ConstValue, GlobalId, InterpCx, InterpResult,
-    MPlaceTy, Machine, MemPlace, Place, PlaceTy, Pointer, Scalar, ScalarMaybeUndef,
+    MPlaceTy, Machine, MemPlace, Place, PlaceTy, Pointer, Scalar, ScalarMaybeUninit,
 };
 
 /// An `Immediate` represents a single immediate self-contained Rust value.
@@ -28,13 +28,13 @@ use super::{
 /// defined on `Immediate`, and do not have to work with a `Place`.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, HashStable, Hash)]
 pub enum Immediate<Tag = ()> {
-    Scalar(ScalarMaybeUndef<Tag>),
-    ScalarPair(ScalarMaybeUndef<Tag>, ScalarMaybeUndef<Tag>),
+    Scalar(ScalarMaybeUninit<Tag>),
+    ScalarPair(ScalarMaybeUninit<Tag>, ScalarMaybeUninit<Tag>),
 }
 
-impl<Tag> From<ScalarMaybeUndef<Tag>> for Immediate<Tag> {
+impl<Tag> From<ScalarMaybeUninit<Tag>> for Immediate<Tag> {
     #[inline(always)]
-    fn from(val: ScalarMaybeUndef<Tag>) -> Self {
+    fn from(val: ScalarMaybeUninit<Tag>) -> Self {
         Immediate::Scalar(val)
     }
 }
@@ -63,7 +63,7 @@ impl<'tcx, Tag> Immediate<Tag> {
     }
 
     #[inline]
-    pub fn to_scalar_or_undef(self) -> ScalarMaybeUndef<Tag> {
+    pub fn to_scalar_or_undef(self) -> ScalarMaybeUninit<Tag> {
         match self {
             Immediate::Scalar(val) => val,
             Immediate::ScalarPair(..) => bug!("Got a wide pointer where a scalar was expected"),
@@ -97,14 +97,14 @@ impl<Tag: Copy> std::fmt::Display for ImmTy<'tcx, Tag> {
         /// Helper function for printing a scalar to a FmtPrinter
         fn p<'a, 'tcx, F: std::fmt::Write, Tag>(
             cx: FmtPrinter<'a, 'tcx, F>,
-            s: ScalarMaybeUndef<Tag>,
+            s: ScalarMaybeUninit<Tag>,
             ty: Ty<'tcx>,
         ) -> Result<FmtPrinter<'a, 'tcx, F>, std::fmt::Error> {
             match s {
-                ScalarMaybeUndef::Scalar(s) => {
+                ScalarMaybeUninit::Scalar(s) => {
                     cx.pretty_print_const_scalar(s.erase_tag(), ty, true)
                 }
-                ScalarMaybeUndef::Undef => cx.typed_value(
+                ScalarMaybeUninit::Uninit => cx.typed_value(
                     |mut this| {
                         this.write_str("{undef ")?;
                         Ok(this)
@@ -319,7 +319,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn read_scalar(
         &self,
         op: OpTy<'tcx, M::PointerTag>,
-    ) -> InterpResult<'tcx, ScalarMaybeUndef<M::PointerTag>> {
+    ) -> InterpResult<'tcx, ScalarMaybeUninit<M::PointerTag>> {
         Ok(self.read_immediate(op)?.to_scalar_or_undef())
     }
 
@@ -644,7 +644,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let variants_end = niche_variants.end().as_u32();
                 let raw_discr = raw_discr
                     .not_undef()
-                    .map_err(|_| err_ub!(InvalidDiscriminant(ScalarMaybeUndef::Undef)))?;
+                    .map_err(|_| err_ub!(InvalidDiscriminant(ScalarMaybeUninit::Uninit)))?;
                 match raw_discr.to_bits_or_ptr(discr_val.layout.size, self) {
                     Err(ptr) => {
                         // The niche must be just 0 (which an inbounds pointer value never is)
