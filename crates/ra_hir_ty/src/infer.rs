@@ -717,11 +717,15 @@ mod diagnostics {
     use hir_def::{expr::ExprId, FunctionId};
     use hir_expand::diagnostics::DiagnosticSink;
 
-    use crate::{db::HirDatabase, diagnostics::NoSuchField};
+    use crate::{
+        db::HirDatabase,
+        diagnostics::{BreakOutsideOfLoop, NoSuchField},
+    };
 
     #[derive(Debug, PartialEq, Eq, Clone)]
     pub(super) enum InferenceDiagnostic {
         NoSuchField { expr: ExprId, field: usize },
+        BreakOutsideOfLoop { expr: ExprId },
     }
 
     impl InferenceDiagnostic {
@@ -736,6 +740,13 @@ mod diagnostics {
                     let (_, source_map) = db.body_with_source_map(owner.into());
                     let field = source_map.field_syntax(*expr, *field);
                     sink.push(NoSuchField { file: field.file_id, field: field.value })
+                }
+                InferenceDiagnostic::BreakOutsideOfLoop { expr } => {
+                    let (_, source_map) = db.body_with_source_map(owner.into());
+                    let ptr = source_map
+                        .expr_syntax(*expr)
+                        .expect("break outside of loop in synthetic syntax");
+                    sink.push(BreakOutsideOfLoop { file: ptr.file_id, expr: ptr.value })
                 }
             }
         }

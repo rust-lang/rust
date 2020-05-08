@@ -235,6 +235,10 @@ impl<'a> InferenceContext<'a> {
                 }
                 if let Some(ctxt) = self.breakables.last_mut() {
                     ctxt.may_break = true;
+                } else {
+                    self.push_diagnostic(InferenceDiagnostic::BreakOutsideOfLoop {
+                        expr: tgt_expr,
+                    });
                 }
                 Ty::simple(TypeCtor::Never)
             }
