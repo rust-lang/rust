@@ -428,7 +428,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         match *val {
             mir::interpret::ConstValue::Scalar(Scalar::Ptr(ref mut ptr)) => {
                 let alloc_id = ptr.alloc_id;
-                let alloc = this.tcx.alloc_map.lock().get(alloc_id);
+                let alloc = this.tcx.get_global_alloc(alloc_id);
                 let tcx = this.tcx;
                 let is_thread_local = |def_id| {
                     tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::THREAD_LOCAL)
@@ -489,13 +489,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 })?;
             let id = raw_const.alloc_id;
             // Extract the allocation from the query result.
-            let mut alloc_map = tcx.alloc_map.lock();
-            let allocation = alloc_map.unwrap_memory(id);
+            let allocation = tcx.global_alloc(id).unwrap_memory();
             // Create a new allocation id for the same allocation in this hacky
             // way. Internally, `alloc_map` deduplicates allocations, but this
             // is fine because Miri will make a copy before a first mutable
             // access.
-            let new_alloc_id = alloc_map.create_memory_alloc(allocation);
+            let new_alloc_id = tcx.create_memory_alloc(allocation);
             this.machine.threads.set_thread_local_alloc_id(def_id, new_alloc_id);
             Ok(new_alloc_id)
         }
