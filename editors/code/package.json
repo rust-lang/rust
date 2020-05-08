@@ -419,7 +419,7 @@
                         "/rustc/<id>": "${env:USERPROFILE}/.rustup/toolchains/<toolchain-id>/lib/rustlib/src/rust"
                     }
                 },
-                "rust-analyzer.debug.openUpDebugPane": {
+                "rust-analyzer.debug.openDebugPane": {
                     "description": "Whether to open up the Debug Pane on debugging start.",
                     "type": "boolean",
                     "default": false
