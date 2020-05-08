@@ -64,29 +64,20 @@ export function runSingle(ctx: Ctx): Cmd {
     };
 }
 
-function getLldbDebugConfig(config: ra.Runnable, sourceFileMap: Record<string, string>): vscode.DebugConfiguration {
+function getLldbDebugConfig(config: ra.Runnable, executable: string, sourceFileMap?: Record<string, string>): vscode.DebugConfiguration {
     return {
         type: "lldb",
         request: "launch",
         name: config.label,
-        cargo: {
-            args: config.args,
-        },
+        program: executable,
         args: config.extraArgs,
         cwd: config.cwd,
-        sourceMap: sourceFileMap
+        sourceMap: sourceFileMap,
+        sourceLanguages: ["rust"]
     };
 }
 
-const debugOutput = vscode.window.createOutputChannel("Debug");
-
-async function getCppvsDebugConfig(config: ra.Runnable, sourceFileMap: Record<string, string>): Promise<vscode.DebugConfiguration> {
-    debugOutput.clear();
-
-    const cargo = new Cargo(config.cwd || '.', debugOutput);
-    const executable = await cargo.executableFromArgs(config.args);
-
-    // if we are here, there were no compilation errors.
+function getCppvsDebugConfig(config: ra.Runnable, executable: string, sourceFileMap?: Record<string, string>): vscode.DebugConfiguration {
     return {
         type: (os.platform() === "win32") ? "cppvsdbg" : 'cppdbg',
         request: "launch",
@@ -98,39 +89,62 @@ async function getCppvsDebugConfig(config: ra.Runnable, sourceFileMap: Record<st
     };
 }
 
+const debugOutput = vscode.window.createOutputChannel("Debug");
+
+async function getDebugExecutable(config: ra.Runnable): Promise<string> {
+    const cargo = new Cargo(config.cwd || '.', debugOutput);
+    const executable = await cargo.executableFromArgs(config.args);
+
+    // if we are here, there were no compilation errors.
+    return executable;
+}
+
+type DebugConfigProvider = (config: ra.Runnable, executable: string, sourceFileMap?: Record<string, string>) => vscode.DebugConfiguration;
+
 export function debugSingle(ctx: Ctx): Cmd {
     return async (config: ra.Runnable) => {
         const editor = ctx.activeRustEditor;
         if (!editor) return;
 
-        const lldbId = "vadimcn.vscode-lldb";
-        const cpptoolsId = "ms-vscode.cpptools";
+        const knownEngines: Record<string, DebugConfigProvider> = {
+            "vadimcn.vscode-lldb": getLldbDebugConfig,
+            "ms-vscode.cpptools": getCppvsDebugConfig
+        };
+        const debugOptions = ctx.config.debug;
 
-        const debugEngineId = ctx.config.debug.engine;
         let debugEngine = null;
-        if (debugEngineId === "auto") {
-            debugEngine = vscode.extensions.getExtension(lldbId);
-            if (!debugEngine) {
-                debugEngine = vscode.extensions.getExtension(cpptoolsId);
+        if (debugOptions.engine === "auto") {
+            for (var engineId in knownEngines) {
+                debugEngine = vscode.extensions.getExtension(engineId);
+                if (debugEngine) break;
             }
         }
         else {
-            debugEngine = vscode.extensions.getExtension(debugEngineId);
+            debugEngine = vscode.extensions.getExtension(debugOptions.engine);
         }
 
         if (!debugEngine) {
-            vscode.window.showErrorMessage(
-                `Install [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=${lldbId}) ` +
-                `or [MS C++ tools](https://marketplace.visualstudio.com/items?itemName=${cpptoolsId}) ` +
-                `extension for debugging.`
-            );
+            vscode.window.showErrorMessage(`Install [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb)`
+                + ` or [MS C++ tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools) extension for debugging.`);
             return;
         }
 
-        const debugConfig = lldbId === debugEngine.id
-            ? getLldbDebugConfig(config, ctx.config.debug.sourceFileMap)
-            : await getCppvsDebugConfig(config, ctx.config.debug.sourceFileMap);
+        debugOutput.clear();
+        if (ctx.config.debug.openUpDebugPane) {
+            debugOutput.show(true);
+        }
 
+        const executable = await getDebugExecutable(config);
+        const debugConfig = knownEngines[debugEngine.id](config, executable, debugOptions.sourceFileMap);
+        if (debugConfig.type in debugOptions.engineSettings) {
+            const settingsMap = (debugOptions.engineSettings as any)[debugConfig.type];
+            for (var key in settingsMap) {
+                debugConfig[key] = settingsMap[key];
+            }
+        }
+
+        debugOutput.appendLine("Launching debug configuration:");
+        debugOutput.appendLine(JSON.stringify(debugConfig, null, 2));
         return vscode.debug.startDebugging(undefined, debugConfig);
     };
 }
