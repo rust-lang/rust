@@ -1,6 +1,7 @@
 import * as lc from "vscode-languageclient";
 import * as vscode from "vscode";
 import { strict as nativeAssert } from "assert";
+import { spawnSync } from "child_process";
 
 export function assert(condition: boolean, explanation: string): asserts condition {
     try {
@@ -81,4 +82,14 @@ export function isRustDocument(document: vscode.TextDocument): document is RustD
 
 export function isRustEditor(editor: vscode.TextEditor): editor is RustEditor {
     return isRustDocument(editor.document);
+}
+
+export function isValidExecutable(path: string): boolean {
+    log.debug("Checking availability of a binary at", path);
+
+    const res = spawnSync(path, ["--version"], { encoding: 'utf8' });
+
+    log.debug(res, "--version output:", res.output);
+
+    return res.status === 0;
 }

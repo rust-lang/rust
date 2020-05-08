@@ -14,6 +14,7 @@ use std::{
 use anyhow::{bail, Context, Result};
 use ra_cfg::CfgOptions;
 use ra_db::{CrateGraph, CrateName, Edition, Env, ExternSource, ExternSourceId, FileId};
+use ra_env::get_path_for_executable;
 use rustc_hash::FxHashMap;
 use serde_json::from_reader;
 
@@ -569,7 +570,7 @@ pub fn get_rustc_cfg_options(target: Option<&String>) -> CfgOptions {
 
     match (|| -> Result<String> {
         // `cfg(test)` and `cfg(debug_assertion)` are handled outside, so we suppress them here.
-        let mut cmd = Command::new("rustc");
+        let mut cmd = Command::new(get_path_for_executable("rustc")?);
         cmd.args(&["--print", "cfg", "-O"]);
         if let Some(target) = target {
             cmd.args(&["--target", target.as_str()]);

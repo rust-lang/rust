@@ -8,6 +8,7 @@ use std::{
 };
 
 use ra_arena::{Arena, Idx};
+use ra_env::get_path_for_executable;
 
 #[derive(Default, Debug, Clone)]
 pub struct Sysroot {
@@ -88,9 +89,14 @@ fn create_command_text(program: &str, args: &[&str]) -> String {
     format!("{} {}", program, args.join(" "))
 }
 
-fn run_command_in_cargo_dir(cargo_toml: &Path, program: &str, args: &[&str]) -> Result<Output> {
+fn run_command_in_cargo_dir(
+    cargo_toml: impl AsRef<Path>,
+    program: impl AsRef<Path>,
+    args: &[&str],
+) -> Result<Output> {
+    let program = program.as_ref().as_os_str().to_str().expect("Invalid Unicode in path");
     let output = Command::new(program)
-        .current_dir(cargo_toml.parent().unwrap())
+        .current_dir(cargo_toml.as_ref().parent().unwrap())
         .args(args)
         .output()
         .context(format!("{} failed", create_command_text(program, args)))?;
@@ -114,13 +120,15 @@ fn get_or_install_rust_src(cargo_toml: &Path) -> Result<PathBuf> {
     if let Ok(path) = env::var("RUST_SRC_PATH") {
         return Ok(path.into());
     }
-    let rustc_output = run_command_in_cargo_dir(cargo_toml, "rustc", &["--print", "sysroot"])?;
+    let rustc = get_path_for_executable("rustc")?;
+    let rustc_output = run_command_in_cargo_dir(cargo_toml, &rustc, &["--print", "sysroot"])?;
     let stdout = String::from_utf8(rustc_output.stdout)?;
     let sysroot_path = Path::new(stdout.trim());
     let src_path = sysroot_path.join("lib/rustlib/src/rust/src");
 
     if !src_path.exists() {
-        run_command_in_cargo_dir(cargo_toml, "rustup", &["component", "add", "rust-src"])?;
+        let rustup = get_path_for_executable("rustup")?;
+        run_command_in_cargo_dir(cargo_toml, &rustup, &["component", "add", "rust-src"])?;
     }
     if !src_path.exists() {
         bail!(

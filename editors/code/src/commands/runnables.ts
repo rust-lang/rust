@@ -119,8 +119,11 @@ export function debugSingle(ctx: Ctx): Cmd {
         }
 
         if (!debugEngine) {
-            vscode.window.showErrorMessage(`Install [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=${lldbId})`
-                + ` or [MS C++ tools](https://marketplace.visualstudio.com/items?itemName=${cpptoolsId}) extension for debugging.`);
+            vscode.window.showErrorMessage(
+                `Install [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=${lldbId}) ` +
+                `or [MS C++ tools](https://marketplace.visualstudio.com/items?itemName=${cpptoolsId}) ` +
+                `extension for debugging.`
+            );
             return;
         }
 
