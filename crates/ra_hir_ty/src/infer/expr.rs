@@ -501,8 +501,8 @@ impl<'a> InferenceContext<'a> {
                 }
                 Literal::ByteString(..) => {
                     let byte_type = Ty::simple(TypeCtor::Int(Uncertain::Known(IntTy::u8())));
-                    let slice_type = Ty::apply_one(TypeCtor::Slice, byte_type);
-                    Ty::apply_one(TypeCtor::Ref(Mutability::Shared), slice_type)
+                    let array_type = Ty::apply_one(TypeCtor::Array, byte_type);
+                    Ty::apply_one(TypeCtor::Ref(Mutability::Shared), array_type)
                 }
                 Literal::Char(..) => Ty::simple(TypeCtor::Char),
                 Literal::Int(_v, ty) => Ty::simple(TypeCtor::Int((*ty).into())),
