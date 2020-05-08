@@ -408,7 +408,7 @@ in [`rustc_span::hygiene`][hy].
 ## Producing Macro Output
 
 Above, we saw how the output of a macro is integrated into the AST for a crate,
-and we also saw how th e hygiene data for a crate is generated. But how do we
+and we also saw how the hygiene data for a crate is generated. But how do we
 actually produce the output of a macro? It depends on the type of macro.
 
 There are two types of macros in Rust:
