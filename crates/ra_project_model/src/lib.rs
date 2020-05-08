@@ -8,13 +8,12 @@ use std::{
     fs::{read_dir, File, ReadDir},
     io::{self, BufReader},
     path::{Path, PathBuf},
-    process::Command,
+    process::{Command, Output},
 };
 
 use anyhow::{bail, Context, Result};
 use ra_cfg::CfgOptions;
 use ra_db::{CrateGraph, CrateName, Edition, Env, ExternSource, ExternSourceId, FileId};
-use ra_toolchain::get_path_for_executable;
 use rustc_hash::FxHashMap;
 use serde_json::from_reader;
 
@@ -568,25 +567,18 @@ pub fn get_rustc_cfg_options(target: Option<&String>) -> CfgOptions {
         }
     }
 
-    match (|| -> Result<String> {
+    let rustc_cfgs = || -> Result<String> {
         // `cfg(test)` and `cfg(debug_assertion)` are handled outside, so we suppress them here.
-        let mut cmd = Command::new(get_path_for_executable("rustc")?);
+        let mut cmd = Command::new(ra_toolchain::rustc());
         cmd.args(&["--print", "cfg", "-O"]);
         if let Some(target) = target {
             cmd.args(&["--target", target.as_str()]);
         }
-        let output = cmd.output().context("Failed to get output from rustc --print cfg -O")?;
-        if !output.status.success() {
-            bail!(
-                "rustc --print cfg -O exited with exit code ({})",
-                output
-                    .status
-                    .code()
-                    .map_or(String::from("no exit code"), |code| format!("{}", code))
-            );
-        }
+        let output = output(cmd)?;
         Ok(String::from_utf8(output.stdout)?)
-    })() {
+    }();
+
+    match rustc_cfgs {
         Ok(rustc_cfgs) => {
             for line in rustc_cfgs.lines() {
                 match line.find('=') {
@@ -599,8 +591,16 @@ pub fn get_rustc_cfg_options(target: Option<&String>) -> CfgOptions {
                 }
             }
         }
-        Err(e) => log::error!("failed to get rustc cfgs: {}", e),
+        Err(e) => log::error!("failed to get rustc cfgs: {:#}", e),
     }
 
     cfg_options
+}
+
+fn output(mut cmd: Command) -> Result<Output> {
+    let output = cmd.output().with_context(|| format!("{:?} failed", cmd))?;
+    if !output.status.success() {
+        bail!("{:?} failed, {}", cmd, output.status)
+    }
+    Ok(output)
 }

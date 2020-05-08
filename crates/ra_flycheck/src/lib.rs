@@ -16,7 +16,6 @@ use lsp_types::{
     CodeAction, CodeActionOrCommand, Diagnostic, Url, WorkDoneProgress, WorkDoneProgressBegin,
     WorkDoneProgressEnd, WorkDoneProgressReport,
 };
-use ra_toolchain::get_path_for_executable;
 
 use crate::conv::{map_rust_diagnostic_to_lsp, MappedRustDiagnostic};
 
@@ -216,10 +215,10 @@ impl FlycheckThread {
 
         let mut cmd = match &self.config {
             FlycheckConfig::CargoCommand { command, all_targets, all_features, extra_args } => {
-                let mut cmd = Command::new(get_path_for_executable("cargo").unwrap());
+                let mut cmd = Command::new(ra_toolchain::cargo());
                 cmd.arg(command);
-                cmd.args(&["--workspace", "--message-format=json", "--manifest-path"]);
-                cmd.arg(self.workspace_root.join("Cargo.toml"));
+                cmd.args(&["--workspace", "--message-format=json", "--manifest-path"])
+                    .arg(self.workspace_root.join("Cargo.toml"));
                 if *all_targets {
                     cmd.arg("--all-targets");
                 }

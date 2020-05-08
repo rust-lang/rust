@@ -3,12 +3,13 @@
 use std::{
     env, ops,
     path::{Path, PathBuf},
-    process::{Command, Output},
+    process::Command,
 };
 
-use anyhow::{bail, Context, Result};
+use anyhow::{bail, Result};
 use ra_arena::{Arena, Idx};
-use ra_toolchain::get_path_for_executable;
+
+use crate::output;
 
 #[derive(Default, Debug, Clone)]
 pub struct Sysroot {
@@ -85,50 +86,22 @@ impl Sysroot {
     }
 }
 
-fn create_command_text(program: &str, args: &[&str]) -> String {
-    format!("{} {}", program, args.join(" "))
-}
-
-fn run_command_in_cargo_dir(
-    cargo_toml: impl AsRef<Path>,
-    program: impl AsRef<Path>,
-    args: &[&str],
-) -> Result<Output> {
-    let program = program.as_ref().as_os_str().to_str().expect("Invalid Unicode in path");
-    let output = Command::new(program)
-        .current_dir(cargo_toml.as_ref().parent().unwrap())
-        .args(args)
-        .output()
-        .context(format!("{} failed", create_command_text(program, args)))?;
-    if !output.status.success() {
-        match output.status.code() {
-            Some(code) => bail!(
-                "failed to run the command: '{}' exited with code {}",
-                create_command_text(program, args),
-                code
-            ),
-            None => bail!(
-                "failed to run the command: '{}' terminated by signal",
-                create_command_text(program, args)
-            ),
-        };
-    }
-    Ok(output)
-}
-
 fn get_or_install_rust_src(cargo_toml: &Path) -> Result<PathBuf> {
     if let Ok(path) = env::var("RUST_SRC_PATH") {
         return Ok(path.into());
     }
-    let rustc = get_path_for_executable("rustc")?;
-    let rustc_output = run_command_in_cargo_dir(cargo_toml, &rustc, &["--print", "sysroot"])?;
+    let current_dir = cargo_toml.parent().unwrap();
+    let mut rustc = Command::new(ra_toolchain::rustc());
+    rustc.current_dir(current_dir).args(&["--print", "sysroot"]);
+    let rustc_output = output(rustc)?;
     let stdout = String::from_utf8(rustc_output.stdout)?;
     let sysroot_path = Path::new(stdout.trim());
     let src_path = sysroot_path.join("lib/rustlib/src/rust/src");
 
     if !src_path.exists() {
-        let rustup = get_path_for_executable("rustup")?;
-        run_command_in_cargo_dir(cargo_toml, &rustup, &["component", "add", "rust-src"])?;
+        let mut rustup = Command::new(ra_toolchain::rustup());
+        rustup.current_dir(current_dir).args(&["component", "add", "rust-src"]);
+        let _output = output(rustup)?;
     }
     if !src_path.exists() {
         bail!(
