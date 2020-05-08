@@ -300,6 +300,11 @@
                     "default": true,
                     "markdownDescription": "Check with all features (will be passed as `--all-features`)"
                 },
+                "rust-analyzer.inlayHints.enable": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Disable all inlay hints"
+                },
                 "rust-analyzer.inlayHints.typeHints": {
                     "type": "boolean",
                     "default": true,

@@ -10,13 +10,13 @@ export function activateInlayHints(ctx: Ctx) {
     const maybeUpdater = {
         updater: null as null | HintsUpdater,
         async onConfigChange() {
-            if (
-                !ctx.config.inlayHints.typeHints &&
-                !ctx.config.inlayHints.parameterHints &&
-                !ctx.config.inlayHints.chainingHints
-            ) {
-                return this.dispose();
-            }
+            const anyEnabled = ctx.config.inlayHints.typeHints
+                || ctx.config.inlayHints.parameterHints
+                || ctx.config.inlayHints.chainingHints;
+            const enabled = ctx.config.inlayHints.enable && anyEnabled;
+
+            if (!enabled) return this.dispose();
+
             await sleep(100);
             if (this.updater) {
                 this.updater.syncCacheAndRenderHints();

@@ -94,6 +94,7 @@ export class Config {
 
     get inlayHints() {
         return {
+            enable: this.get<boolean>("inlayHints.enable"),
             typeHints: this.get<boolean>("inlayHints.typeHints"),
             parameterHints: this.get<boolean>("inlayHints.parameterHints"),
             chainingHints: this.get<boolean>("inlayHints.chainingHints"),
