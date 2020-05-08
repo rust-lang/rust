@@ -14,8 +14,8 @@
 //!   int)` and `rec(x=int, y=int, z=int)` will have the same `llvm::Type`.
 
 use crate::back::write::{
-    start_async_codegen, submit_codegened_module_to_llvm, submit_post_lto_module_to_llvm,
-    submit_pre_lto_module_to_llvm, OngoingCodegen,
+    compute_per_cgu_lto_type, start_async_codegen, submit_codegened_module_to_llvm,
+    submit_post_lto_module_to_llvm, submit_pre_lto_module_to_llvm, ComputedLtoType, OngoingCodegen,
 };
 use crate::common::{IntPredicate, RealPredicate, TypeKind};
 use crate::meth;
@@ -43,7 +43,7 @@ use rustc_middle::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_session::cgu_reuse_tracker::CguReuse;
-use rustc_session::config::{self, EntryFnType, Lto};
+use rustc_session::config::{self, EntryFnType};
 use rustc_session::Session;
 use rustc_span::Span;
 use rustc_symbol_mangling::test as symbol_names_test;
@@ -941,8 +941,18 @@ fn determine_cgu_reuse<'tcx>(tcx: TyCtxt<'tcx>, cgu: &CodegenUnit<'tcx>) -> CguR
     );
 
     if tcx.dep_graph.try_mark_green(tcx, &dep_node).is_some() {
-        // We can re-use either the pre- or the post-thinlto state
-        if tcx.sess.lto() != Lto::No { CguReuse::PreLto } else { CguReuse::PostLto }
+        // We can re-use either the pre- or the post-thinlto state. If no LTO is
+        // being performed then we can use post-LTO artifacts, otherwise we must
+        // reuse pre-LTO artifacts
+        match compute_per_cgu_lto_type(
+            &tcx.sess.lto(),
+            &tcx.sess.opts,
+            &tcx.sess.crate_types.borrow(),
+            ModuleKind::Regular,
+        ) {
+            ComputedLtoType::No => CguReuse::PostLto,
+            _ => CguReuse::PreLto,
+        }
     } else {
         CguReuse::No
     }
