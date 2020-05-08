@@ -69,7 +69,7 @@ scheduled in a [DropTree]. Later, before `in_breakable_scope` exits, the drops
 will be added to the CFG.
 
 Panics are handled in a similar fashion, except that the drops are added to the
-mir once the rest of the function has finished being lowered. If a terminator
+MIR once the rest of the function has finished being lowered. If a terminator
 can panic, call `diverge_from(block)` with the block containing the terminator
 `block`.
 
@@ -285,8 +285,8 @@ impl DropTree {
         blocks: &mut IndexVec<DropIdx, Option<BasicBlock>>,
     ) {
         // StorageDead statements can share blocks with each other and also with
-        // a Drop terminator. We iterate through the blocks to find which blocks
-        // need
+        // a Drop terminator. We iterate through the drops to find which drops
+        // need their own block.
         #[derive(Clone, Copy)]
         enum Block {
             // This drop is unreachable
@@ -295,7 +295,7 @@ impl DropTree {
             // specified index.
             Shares(DropIdx),
             // This drop has more than one way of being reached, or it is
-            // branched to from outside the tree, or it's predecessor is a
+            // branched to from outside the tree, or its predecessor is a
             // `Value` drop.
             Own,
         }
@@ -308,7 +308,7 @@ impl DropTree {
             needs_block[ROOT_NODE] = Block::Own;
         }
 
-        // Sort so that we only need to check the last
+        // Sort so that we only need to check the last value.
         let entry_points = &mut self.entry_points;
         entry_points.sort();
 
