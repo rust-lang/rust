@@ -1734,7 +1734,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                 // When `#![feature(unsized_locals)]` is not enabled,
                 // this check is done at `check_local`.
-                if self.tcx().features().unsized_locals {
+                if self.tcx().features().unsized_fn_params {
                     let span = term.source_info.span;
                     self.ensure_place_sized(dest_ty, span);
                 }

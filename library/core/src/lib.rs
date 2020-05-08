@@ -123,6 +123,7 @@
 #![feature(transparent_unions)]
 #![feature(unboxed_closures)]
 #![feature(unsized_locals)]
+#![cfg_attr(not(bootstrap), feature(unsized_fn_params))]
 #![feature(untagged_unions)]
 #![feature(unwind_attributes)]
 #![feature(variant_count)]
