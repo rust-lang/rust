@@ -1053,7 +1053,8 @@ fn typeck_tables_of_with_fallback<'tcx>(
             };
 
             // Gather locals in statics (because of block expressions).
-            GatherLocalsVisitor { fcx: &fcx, parent_id: id }.visit_body(body);
+            GatherLocalsVisitor { fcx: &fcx, parent_id: id, within_fn_param: false }
+                .visit_body(body);
 
             fcx.check_expr_coercable_to_type(&body.value, revealed_ty);
 
@@ -1156,6 +1157,10 @@ fn check_abi(tcx: TyCtxt<'_>, span: Span, abi: Abi) {
 struct GatherLocalsVisitor<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
     parent_id: hir::HirId,
+    // params are special cases of pats, but we want to handle them as
+    // *distinct* cases. so track when we are hitting a pat *within* an fn
+    // param.
+    within_fn_param: bool,
 }
 
 impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
@@ -1226,13 +1231,25 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
         intravisit::walk_local(self, local);
     }
 
+    fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
+        self.within_fn_param = true;
+        intravisit::walk_param(self, param);
+        self.within_fn_param = false;
+    }
+
     // Add pattern bindings.
     fn visit_pat(&mut self, p: &'tcx hir::Pat<'tcx>) {
         if let PatKind::Binding(_, _, ident, _) = p.kind {
             let var_ty = self.assign(p.span, p.hir_id, None);
 
-            if !self.fcx.tcx.features().unsized_locals {
-                self.fcx.require_type_is_sized(var_ty, p.span, traits::VariableType(p.hir_id));
+            if self.within_fn_param {
+                if !self.fcx.tcx.features().unsized_fn_params {
+                    self.fcx.require_type_is_sized(var_ty, p.span, traits::SizedArgumentType);
+                }
+            } else {
+                if !self.fcx.tcx.features().unsized_locals {
+                    self.fcx.require_type_is_sized(var_ty, p.span, traits::VariableType(p.hir_id));
+                }
             }
 
             debug!(
@@ -1332,7 +1349,8 @@ fn check_fn<'a, 'tcx>(
 
     let outer_def_id = tcx.closure_base_def_id(hir.local_def_id(fn_id).to_def_id());
     let outer_hir_id = hir.as_local_hir_id(outer_def_id.expect_local());
-    GatherLocalsVisitor { fcx: &fcx, parent_id: outer_hir_id }.visit_body(body);
+    GatherLocalsVisitor { fcx: &fcx, parent_id: outer_hir_id, within_fn_param: false }
+        .visit_body(body);
 
     // C-variadic fns also have a `VaList` input that's not listed in `fn_sig`
     // (as it's created inside the body itself, not passed in from outside).
@@ -1360,7 +1378,7 @@ fn check_fn<'a, 'tcx>(
         // The check for a non-trivial pattern is a hack to avoid duplicate warnings
         // for simple cases like `fn foo(x: Trait)`,
         // where we would error once on the parameter as a whole, and once on the binding `x`.
-        if param.pat.simple_ident().is_none() && !tcx.features().unsized_locals {
+        if param.pat.simple_ident().is_none() && !tcx.features().unsized_fn_params {
             fcx.require_type_is_sized(param_ty, param.pat.span, traits::SizedArgumentType);
         }
 

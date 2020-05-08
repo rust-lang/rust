@@ -1,4 +1,5 @@
-#![feature(unsized_locals)]
+#![allow(incomplete_features)]
+#![feature(unsized_locals, unsized_fn_params)]
 
 use std::fmt;
 
@@ -45,11 +46,7 @@ fn main() {
 
     {
         let x: fmt::Display = *gen_foo();
-        let x = if true {
-            x
-        } else {
-            *gen_foo()
-        };
+        let x = if true { x } else { *gen_foo() };
         foo(x);
     }
 }

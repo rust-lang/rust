@@ -118,6 +118,7 @@
 #![feature(unboxed_closures)]
 #![feature(unicode_internals)]
 #![feature(unsize)]
+#![cfg_attr(not(bootstrap), feature(unsized_fn_params))]
 #![feature(unsized_locals)]
 #![feature(allocator_internals)]
 #![feature(slice_partition_dedup)]

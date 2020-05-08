@@ -1,6 +1,6 @@
 // run-pass
 
-#![feature(unsized_locals)]
+#![feature(unsized_locals, unsized_fn_params)]
 
 pub fn f0(_f: dyn FnOnce()) {}
 pub fn f1(_s: str) {}

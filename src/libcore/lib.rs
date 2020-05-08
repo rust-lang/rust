@@ -117,6 +117,7 @@
 #![feature(track_caller)]
 #![feature(transparent_unions)]
 #![feature(unboxed_closures)]
+#![cfg_attr(not(bootstrap), feature(unsized_fn_params))]
 #![feature(unsized_locals)]
 #![feature(untagged_unions)]
 #![feature(unwind_attributes)]

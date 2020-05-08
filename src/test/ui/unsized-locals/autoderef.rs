@@ -1,6 +1,6 @@
 // run-pass
 
-#![feature(unsized_locals)]
+#![feature(unsized_locals, unsized_fn_params)]
 
 pub trait Foo {
     fn foo(self) -> String;
@@ -23,7 +23,6 @@ impl Foo for dyn FnMut() -> String {
         self()
     }
 }
-
 
 fn main() {
     let x = *(Box::new(['h', 'e', 'l', 'l', 'o']) as Box<[char]>);

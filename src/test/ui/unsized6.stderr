@@ -156,8 +156,8 @@ LL | fn g1<X: ?Sized>(x: X) {}
    |
    = help: the trait `std::marker::Sized` is not implemented for `X`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
-   = note: all local variables must have a statically known size
-   = help: unsized locals are gated as an unstable feature
+   = note: all function arguments must have a statically known size
+   = help: unsized fn params are gated as an unstable feature
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
   --> $DIR/unsized6.rs:40:22
@@ -169,8 +169,8 @@ LL | fn g2<X: ?Sized + T>(x: X) {}
    |
    = help: the trait `std::marker::Sized` is not implemented for `X`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
-   = note: all local variables must have a statically known size
-   = help: unsized locals are gated as an unstable feature
+   = note: all function arguments must have a statically known size
+   = help: unsized fn params are gated as an unstable feature
 
 error: aborting due to 13 previous errors
 

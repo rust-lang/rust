@@ -807,6 +807,7 @@ symbols! {
         unreachable_code,
         unrestricted_attribute_tokens,
         unsafe_no_drop_flag,
+        unsized_fn_params,
         unsized_locals,
         unsized_tuple_coercion,
         unstable,

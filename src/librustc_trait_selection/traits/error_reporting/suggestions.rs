@@ -1749,8 +1749,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
             ObligationCauseCode::SizedArgumentType => {
                 err.note("all function arguments must have a statically known size");
-                if !self.tcx.features().unsized_locals {
-                    err.help("unsized locals are gated as an unstable feature");
+                if !self.tcx.features().unsized_fn_params {
+                    err.help("unsized fn params are gated as an unstable feature");
                 }
             }
             ObligationCauseCode::SizedReturnType => {
