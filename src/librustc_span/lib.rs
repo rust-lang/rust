@@ -14,7 +14,7 @@
 #![feature(optin_builtin_traits)]
 #![feature(specialization)]
 
-// allow wasm target for rustc-ap-rustc_span
+// FIXME(#56935): Work around ICEs during cross-compilation.
 #[allow(unused)]
 extern crate rustc_macros;
 
