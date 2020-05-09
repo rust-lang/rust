@@ -462,6 +462,14 @@ fn in_cargo_miri() {
             }
             cmd.arg(arg);
         }
+        // We want to always run `cargo` with `--target`. This later helps us detect
+        // which crates are proc-macro/build-script (host crates) and which crates are
+        // needed for the program itself.
+        if get_arg_flag_value("--target").is_none() {
+            // When no `--target` is given, default to the host.
+            cmd.arg("--target");
+            cmd.arg(rustc_version::version_meta().unwrap().host);
+        }
 
         // Serialize the remaining args into a special environemt variable.
         // This will be read by `inside_cargo_rustc` when we go to invoke
@@ -491,24 +499,21 @@ fn in_cargo_miri() {
 }
 
 fn inside_cargo_rustc() {
-    /// Determines if we are being invoked (as rustc) to build a runnable
-    /// executable. We run "cargo check", so this should only happen when
-    /// we are trying to compile a build script or build script dependency,
-    /// which actually needs to be executed on the host platform.
+    /// Determines if we are being invoked (as rustc) to build a crate for
+    /// the "target" architecture, in contrast to the "host" architecture.
+    /// Host crates are for build scripts and proc macros and still need to
+    /// be built like normal; target crates need to be built for or interpreted
+    /// by Miri.
     ///
-    /// Currently, we detect this by checking for "--emit=link",
-    /// which indicates that Cargo instruced rustc to output
-    /// a native object.
+    /// Currently, we detect this by checking for "--target=", which flag is
+    /// never set for host crates. This matches what rustc bootstrap does,
+    /// which hopefully makes it "reliable enough".
     fn is_target_crate() -> bool {
-        // `--emit` is sometimes missing, e.g. cargo calls rustc for "--print".
-        // That is definitely not a target crate.
-        // If `--emit` is present, then host crates are built ("--emit=link,...),
-        // while the rest is only checked.
-        get_arg_flag_value("--emit").map_or(false, |emit| !emit.contains("link"))
+        get_arg_flag_value("--target").is_some()
     }
 
     /// Returns whether or not Cargo invoked the wrapper (this binary) to compile
-    /// the final, target crate (either a test for 'cargo test', or a binary for 'cargo run')
+    /// the final, binary crate (either a test for 'cargo test', or a binary for 'cargo run')
     /// Cargo does not give us this information directly, so we need to check
     /// various command-line flags.
     fn is_runnable_crate() -> bool {
