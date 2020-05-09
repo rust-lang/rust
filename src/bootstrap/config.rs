@@ -212,6 +212,8 @@ struct Build {
     host: Vec<String>,
     #[serde(default)]
     target: Vec<String>,
+    // This is ignored, the rust code always gets the build directory from the `BUILD_DIR` env variable
+    build_dir: Option<String>,
     cargo: Option<String>,
     rustc: Option<String>,
     rustfmt: Option<String>, /* allow bootstrap.py to use rustfmt key */
