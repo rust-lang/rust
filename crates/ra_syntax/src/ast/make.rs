@@ -300,7 +300,12 @@ pub fn add_pub_crate_modifier(fn_def: ast::FnDef) -> ast::FnDef {
 
 fn ast_from_text<N: AstNode>(text: &str) -> N {
     let parse = SourceFile::parse(text);
-    let node = parse.tree().syntax().descendants().find_map(N::cast).unwrap();
+    let node = match parse.tree().syntax().descendants().find_map(N::cast) {
+        Some(it) => it,
+        None => {
+            panic!("Failed to make ast node `{}` from text {}", std::any::type_name::<N>(), text)
+        }
+    };
     let node = node.syntax().clone();
     let node = unroot(node);
     let node = N::cast(node).unwrap();
