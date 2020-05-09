@@ -1,7 +1,11 @@
 use hir::HirDisplay;
 use ra_db::FileId;
 use ra_syntax::{
-    ast::{self, edit::IndentLevel, ArgListOwner, AstNode, ModuleItemOwner},
+    ast::{
+        self,
+        edit::{AstNodeEdit, IndentLevel},
+        ArgListOwner, AstNode, ModuleItemOwner,
+    },
     SyntaxKind, SyntaxNode, TextSize,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -116,17 +120,16 @@ impl FunctionBuilder {
         let (fn_def, insert_offset) = match self.target {
             GeneratedFunctionTarget::BehindItem(it) => {
                 let with_leading_blank_line = ast::make::add_leading_newlines(2, fn_def);
-                let indented = IndentLevel::from_node(&it).increase_indent(with_leading_blank_line);
+                let indented = with_leading_blank_line.indent(IndentLevel::from_node(&it));
                 (indented, it.text_range().end())
             }
             GeneratedFunctionTarget::InEmptyItemList(it) => {
                 let indent_once = IndentLevel(1);
                 let indent = IndentLevel::from_node(it.syntax());
-
                 let fn_def = ast::make::add_leading_newlines(1, fn_def);
-                let fn_def = indent_once.increase_indent(fn_def);
+                let fn_def = fn_def.indent(indent_once);
                 let fn_def = ast::make::add_trailing_newlines(1, fn_def);
-                let fn_def = indent.increase_indent(fn_def);
+                let fn_def = fn_def.indent(indent);
                 (fn_def, it.syntax().text_range().start() + TextSize::of('{'))
             }
         };

@@ -53,8 +53,7 @@ pub(crate) fn replace_let_with_if_let(acc: &mut Assists, ctx: &AssistContext) ->
             )
             .into(),
         };
-        let block =
-            IndentLevel::from_node(let_stmt.syntax()).increase_indent(make::block_expr(None, None));
+        let block = make::block_expr(None, None).indent(IndentLevel::from_node(let_stmt.syntax()));
         let if_ = make::expr_if(make::condition(init, Some(with_placeholder)), block);
         let stmt = make::expr_stmt(if_);
 

@@ -1,7 +1,11 @@
 use std::iter;
 
 use ra_syntax::{
-    ast::{self, edit::IndentLevel, make},
+    ast::{
+        self,
+        edit::{AstNodeEdit, IndentLevel},
+        make,
+    },
     AstNode,
 };
 
@@ -51,8 +55,8 @@ pub(crate) fn replace_unwrap_with_match(acc: &mut Assists, ctx: &AssistContext) 
         let err_arm = make::match_arm(iter::once(make::placeholder_pat().into()), unreachable_call);
 
         let match_arm_list = make::match_arm_list(vec![ok_arm, err_arm]);
-        let match_expr = make::expr_match(caller.clone(), match_arm_list);
-        let match_expr = IndentLevel::from_node(method_call.syntax()).increase_indent(match_expr);
+        let match_expr = make::expr_match(caller.clone(), match_arm_list)
+            .indent(IndentLevel::from_node(method_call.syntax()));
 
         edit.set_cursor(caller.syntax().text_range().start());
         edit.replace_ast::<ast::Expr>(method_call.into(), match_expr);

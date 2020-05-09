@@ -1,6 +1,10 @@
 use ra_fmt::unwrap_trivial_block;
 use ra_syntax::{
-    ast::{self, edit::IndentLevel, make},
+    ast::{
+        self,
+        edit::{AstNodeEdit, IndentLevel},
+        make,
+    },
     AstNode,
 };
 
@@ -61,9 +65,8 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext) 
                 make::match_arm(vec![pattern], else_expr)
             };
             make::expr_match(expr, make::match_arm_list(vec![then_arm, else_arm]))
+                .indent(IndentLevel::from_node(if_expr.syntax()))
         };
-
-        let match_expr = IndentLevel::from_node(if_expr.syntax()).increase_indent(match_expr);
 
         edit.set_cursor(if_expr.syntax().text_range().start());
         edit.replace_ast::<ast::Expr>(if_expr.into(), match_expr);

@@ -2,7 +2,11 @@ use std::{iter::once, ops::RangeInclusive};
 
 use ra_syntax::{
     algo::replace_children,
-    ast::{self, edit::IndentLevel, make},
+    ast::{
+        self,
+        edit::{AstNodeEdit, IndentLevel},
+        make,
+    },
     AstNode,
     SyntaxKind::{FN_DEF, LOOP_EXPR, L_CURLY, R_CURLY, WHILE_EXPR, WHITESPACE},
     SyntaxNode,
@@ -105,8 +109,7 @@ pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext) 
                     let then_branch =
                         make::block_expr(once(make::expr_stmt(early_expression).into()), None);
                     let cond = invert_boolean_expression(cond_expr);
-                    let e = make::expr_if(make::condition(cond, None), then_branch);
-                    if_indent_level.increase_indent(e)
+                    make::expr_if(make::condition(cond, None), then_branch).indent(if_indent_level)
                 };
                 replace(new_expr.syntax(), &then_block, &parent_block, &if_expr)
             }
@@ -140,7 +143,7 @@ pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext) 
                     make::bind_pat(make::name(&bound_ident.syntax().to_string())).into(),
                     Some(match_expr),
                 );
-                let let_stmt = if_indent_level.increase_indent(let_stmt);
+                let let_stmt = let_stmt.indent(if_indent_level);
                 replace(let_stmt.syntax(), &then_block, &parent_block, &if_expr)
             }
         };
@@ -153,7 +156,7 @@ pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext) 
             parent_block: &ast::BlockExpr,
             if_expr: &ast::IfExpr,
         ) -> SyntaxNode {
-            let then_block_items = IndentLevel::from(1).decrease_indent(then_block.clone());
+            let then_block_items = then_block.unindent(IndentLevel::from(1));
             let end_of_then = then_block_items.syntax().last_child_or_token().unwrap();
             let end_of_then =
                 if end_of_then.prev_sibling_or_token().map(|n| n.kind()) == Some(WHITESPACE) {
