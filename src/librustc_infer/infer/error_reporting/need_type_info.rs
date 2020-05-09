@@ -172,8 +172,19 @@ fn closure_args(fn_sig: &ty::PolyFnSig<'_>) -> String {
 }
 
 pub enum TypeAnnotationNeeded {
+    /// ```compile_fail,E0282
+    /// let x = "hello".chars().rev().collect();
+    /// ```
     E0282,
+    /// An implementation cannot be chosen unambiguously because of lack of information.
+    /// ```compile_fail,E0283
+    /// let _ = Default::default();
+    /// ```
     E0283,
+    /// ```compile_fail,E0284
+    /// let mut d: u64 = 2;
+    /// d = d % 1u32.into();
+    /// ```
     E0284,
 }
 
@@ -261,7 +272,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             printer.name_resolver = Some(Box::new(&getter));
             let _ = if let ty::FnDef(..) = ty.kind {
                 // We don't want the regular output for `fn`s because it includes its path in
-                // invalid pseduo-syntax, we want the `fn`-pointer output instead.
+                // invalid pseudo-syntax, we want the `fn`-pointer output instead.
                 ty.fn_sig(self.tcx).print(printer)
             } else {
                 ty.print(printer)
@@ -514,6 +525,36 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 InferCtxt::missing_type_msg(&name, &descr, parent_name, parent_descr),
             );
         }
+
+        err
+    }
+
+    // FIXME(const_generics): We should either try and merge this with `need_type_info_err`
+    // or improve the errors created here.
+    //
+    // Unlike for type inference variables, we don't yet store the origin of const inference variables.
+    // This is needed for to get a more relevant error span.
+    pub fn need_type_info_err_const(
+        &self,
+        body_id: Option<hir::BodyId>,
+        span: Span,
+        ct: &'tcx ty::Const<'tcx>,
+        error_code: TypeAnnotationNeeded,
+    ) -> DiagnosticBuilder<'tcx> {
+        let mut local_visitor = FindHirNodeVisitor::new(&self, ct.into(), span);
+        if let Some(body_id) = body_id {
+            let expr = self.tcx.hir().expect_expr(body_id.hir_id);
+            local_visitor.visit_expr(expr);
+        }
+
+        let error_code = error_code.into();
+        let mut err = self.tcx.sess.struct_span_err_with_code(
+            local_visitor.target_span,
+            &format!("type annotations needed"),
+            error_code,
+        );
+
+        err.note("unable to infer the value of a const parameter");
 
         err
     }
