@@ -286,7 +286,7 @@ impl<'tcx> LiteralExpander<'tcx> {
             (ConstValue::Scalar(p), x, y) if x == y => {
                 match p {
                     Scalar::Ptr(p) => {
-                        let alloc = self.tcx.alloc_map.lock().unwrap_memory(p.alloc_id);
+                        let alloc = self.tcx.global_alloc(p.alloc_id).unwrap_memory();
                         ConstValue::ByRef { alloc, offset: p.offset }
                     }
                     Scalar::Raw { .. } => {
@@ -305,7 +305,7 @@ impl<'tcx> LiteralExpander<'tcx> {
             (ConstValue::Scalar(Scalar::Ptr(p)), ty::Array(t, n), ty::Slice(u)) => {
                 assert_eq!(t, u);
                 ConstValue::Slice {
-                    data: self.tcx.alloc_map.lock().unwrap_memory(p.alloc_id),
+                    data: self.tcx.global_alloc(p.alloc_id).unwrap_memory(),
                     start: p.offset.bytes().try_into().unwrap(),
                     end: n.eval_usize(self.tcx, ty::ParamEnv::empty()).try_into().unwrap(),
                 }

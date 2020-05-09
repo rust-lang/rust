@@ -588,8 +588,7 @@ pub fn write_allocations<'tcx>(
                 write_allocation(tcx, alloc, w)
             };
         write!(w, "\n{}", id)?;
-        let alloc = tcx.alloc_map.lock().get(id);
-        match alloc {
+        match tcx.get_global_alloc(id) {
             // This can't really happen unless there are bugs, but it doesn't cost us anything to
             // gracefully handle it and allow buggy rustc to be debugged via allocation printing.
             None => write!(w, " (deallocated)")?,

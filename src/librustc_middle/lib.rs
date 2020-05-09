@@ -42,6 +42,7 @@
 #![feature(or_patterns)]
 #![feature(range_is_empty)]
 #![feature(specialization)]
+#![feature(track_caller)]
 #![feature(trusted_len)]
 #![feature(vec_remove_item)]
 #![feature(stmt_expr_attributes)]

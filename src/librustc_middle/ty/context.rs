@@ -979,7 +979,7 @@ pub struct GlobalCtxt<'tcx> {
     allocation_interner: ShardedHashMap<&'tcx Allocation, ()>,
 
     /// Stores memory for globals (statics/consts).
-    pub alloc_map: Lock<interpret::AllocMap<'tcx>>,
+    pub(crate) alloc_map: Lock<interpret::AllocMap<'tcx>>,
 
     layout_interner: ShardedHashMap<&'tcx Layout, ()>,
 
@@ -1017,7 +1017,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // Create an allocation that just contains these bytes.
         let alloc = interpret::Allocation::from_byte_aligned_bytes(bytes);
         let alloc = self.intern_const_alloc(alloc);
-        self.alloc_map.lock().create_memory_alloc(alloc)
+        self.create_memory_alloc(alloc)
     }
 
     pub fn intern_stability(self, stab: attr::Stability) -> &'tcx attr::Stability {

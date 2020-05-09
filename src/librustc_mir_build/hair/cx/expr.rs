@@ -740,7 +740,7 @@ fn convert_path_expr<'a, 'tcx>(
         // a constant reference (or constant raw pointer for `static mut`) in MIR
         Res::Def(DefKind::Static, id) => {
             let ty = cx.tcx.static_ptr_ty(id);
-            let ptr = cx.tcx.alloc_map.lock().create_static_alloc(id);
+            let ptr = cx.tcx.create_static_alloc(id);
             let temp_lifetime = cx.region_scope_tree.temporary_scope(expr.hir_id.local_id);
             ExprKind::Deref {
                 arg: Expr {

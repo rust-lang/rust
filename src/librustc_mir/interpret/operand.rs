@@ -549,7 +549,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let layout = from_known_layout(self.tcx, layout, || self.layout_of(val.ty))?;
         let op = match val_val {
             ConstValue::ByRef { alloc, offset } => {
-                let id = self.tcx.alloc_map.lock().create_memory_alloc(alloc);
+                let id = self.tcx.create_memory_alloc(alloc);
                 // We rely on mutability being set correctly in that allocation to prevent writes
                 // where none should happen.
                 let ptr = self.tag_global_base_pointer(Pointer::new(id, offset));
@@ -560,7 +560,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // We rely on mutability being set correctly in `data` to prevent writes
                 // where none should happen.
                 let ptr = Pointer::new(
-                    self.tcx.alloc_map.lock().create_memory_alloc(data),
+                    self.tcx.create_memory_alloc(data),
                     Size::from_bytes(start), // offset: `start`
                 );
                 Operand::Immediate(Immediate::new_slice(

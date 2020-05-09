@@ -91,7 +91,7 @@ fn intern_shallow<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>>(
             // If the pointer is dangling (neither in local nor global memory), we leave it
             // to validation to error. The `delay_span_bug` ensures that we don't forget such
             // a check in validation.
-            if tcx.alloc_map.lock().get(alloc_id).is_none() {
+            if tcx.get_global_alloc(alloc_id).is_none() {
                 tcx.sess.delay_span_bug(ecx.tcx.span, "tried to intern dangling pointer");
             }
             // treat dangling pointers like other statics
@@ -134,7 +134,7 @@ fn intern_shallow<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>>(
     // link the alloc id to the actual allocation
     let alloc = tcx.intern_const_alloc(alloc);
     leftover_allocations.extend(alloc.relocations().iter().map(|&(_, ((), reloc))| reloc));
-    tcx.alloc_map.lock().set_alloc_id_memory(alloc_id, alloc);
+    tcx.set_alloc_id_memory(alloc_id, alloc);
     Ok(None)
 }
 
@@ -389,7 +389,7 @@ where
                 }
             }
             let alloc = tcx.intern_const_alloc(alloc);
-            tcx.alloc_map.lock().set_alloc_id_memory(alloc_id, alloc);
+            tcx.set_alloc_id_memory(alloc_id, alloc);
             for &(_, ((), reloc)) in alloc.relocations().iter() {
                 if leftover_allocations.insert(reloc) {
                     todo.push(reloc);
@@ -398,7 +398,7 @@ where
         } else if ecx.memory.dead_alloc_map.contains_key(&alloc_id) {
             // dangling pointer
             throw_ub_format!("encountered dangling pointer in final constant")
-        } else if ecx.tcx.alloc_map.lock().get(alloc_id).is_none() {
+        } else if ecx.tcx.get_global_alloc(alloc_id).is_none() {
             // We have hit an `AllocId` that is neither in local or global memory and isn't marked
             // as dangling by local memory.
             span_bug!(ecx.tcx.span, "encountered unknown alloc id {:?}", alloc_id);

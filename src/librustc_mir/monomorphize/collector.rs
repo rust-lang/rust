@@ -1136,16 +1136,15 @@ fn create_mono_items_for_default_impls<'tcx>(
 
 /// Scans the miri alloc in order to find function calls, closures, and drop-glue.
 fn collect_miri<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut Vec<MonoItem<'tcx>>) {
-    let alloc_kind = tcx.alloc_map.lock().get(alloc_id);
-    match alloc_kind {
-        Some(GlobalAlloc::Static(def_id)) => {
+    match tcx.global_alloc(alloc_id) {
+        GlobalAlloc::Static(def_id) => {
             let instance = Instance::mono(tcx, def_id);
             if should_monomorphize_locally(tcx, &instance) {
                 trace!("collecting static {:?}", def_id);
                 output.push(MonoItem::Static(def_id));
             }
         }
-        Some(GlobalAlloc::Memory(alloc)) => {
+        GlobalAlloc::Memory(alloc) => {
             trace!("collecting {:?} with {:#?}", alloc_id, alloc);
             for &((), inner) in alloc.relocations().values() {
                 rustc_data_structures::stack::ensure_sufficient_stack(|| {
@@ -1153,13 +1152,12 @@ fn collect_miri<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut Vec<Mon
                 });
             }
         }
-        Some(GlobalAlloc::Function(fn_instance)) => {
+        GlobalAlloc::Function(fn_instance) => {
             if should_monomorphize_locally(tcx, &fn_instance) {
                 trace!("collecting {:?} with {:#?}", alloc_id, fn_instance);
                 output.push(create_fn_mono_item(fn_instance));
             }
         }
-        None => bug!("alloc id without corresponding allocation: {}", alloc_id),
     }
 }
 
