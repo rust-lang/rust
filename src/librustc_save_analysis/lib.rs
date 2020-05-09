@@ -24,6 +24,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_session::config::{CrateType, Input, OutputType};
 use rustc_session::output::{filename_for_metadata, out_filename};
 use rustc_span::source_map::Spanned;
+use rustc_span::symbol::Ident;
 use rustc_span::*;
 
 use std::cell::Cell;
@@ -405,7 +406,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
 
     // FIXME would be nice to take a MethodItem here, but the ast provides both
     // trait and impl flavours, so the caller must do the disassembly.
-    pub fn get_method_data(&self, id: ast::NodeId, ident: ast::Ident, span: Span) -> Option<Def> {
+    pub fn get_method_data(&self, id: ast::NodeId, ident: Ident, span: Span) -> Option<Def> {
         // The qualname for a method is the trait name or name of the struct in an impl in
         // which the method is declared in, followed by the method's name.
         let (qualname, parent_scope, decl_id, docs, attributes) = match self
@@ -914,7 +915,7 @@ fn make_signature(decl: &ast::FnDecl, generics: &ast::Generics) -> String {
 // variables (idents) from patterns.
 struct PathCollector<'l> {
     collected_paths: Vec<(NodeId, &'l ast::Path)>,
-    collected_idents: Vec<(NodeId, ast::Ident, ast::Mutability)>,
+    collected_idents: Vec<(NodeId, Ident, ast::Mutability)>,
 }
 
 impl<'l> PathCollector<'l> {

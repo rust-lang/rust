@@ -28,7 +28,7 @@ use rustc_middle::ty::{
 };
 use rustc_session::config::nightly_options;
 use rustc_session::lint;
-use rustc_span::{symbol::Symbol, Span, DUMMY_SP};
+use rustc_span::{symbol::Ident, Span, Symbol, DUMMY_SP};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::query::method_autoderef::MethodAutoderefBadTy;
 use rustc_trait_selection::traits::query::method_autoderef::{
@@ -55,7 +55,7 @@ struct ProbeContext<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
     span: Span,
     mode: Mode,
-    method_name: Option<ast::Ident>,
+    method_name: Option<Ident>,
     return_type: Option<Ty<'tcx>>,
 
     /// This is the OriginalQueryValues for the steps queries
@@ -268,7 +268,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         span: Span,
         mode: Mode,
-        item_name: ast::Ident,
+        item_name: Ident,
         is_suggestion: IsSuggestion,
         self_ty: Ty<'tcx>,
         scope_expr_id: hir::HirId,
@@ -295,7 +295,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &'a self,
         span: Span,
         mode: Mode,
-        method_name: Option<ast::Ident>,
+        method_name: Option<Ident>,
         return_type: Option<Ty<'tcx>>,
         is_suggestion: IsSuggestion,
         self_ty: Ty<'tcx>,
@@ -518,7 +518,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         fcx: &'a FnCtxt<'a, 'tcx>,
         span: Span,
         mode: Mode,
-        method_name: Option<ast::Ident>,
+        method_name: Option<Ident>,
         return_type: Option<Ty<'tcx>>,
         orig_steps_var_values: OriginalQueryValues<'tcx>,
         steps: Lrc<Vec<CandidateStep<'tcx>>>,
@@ -978,7 +978,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         Ok(())
     }
 
-    fn candidate_method_names(&self) -> Vec<ast::Ident> {
+    fn candidate_method_names(&self) -> Vec<Ident> {
         let mut set = FxHashSet::default();
         let mut names: Vec<_> = self
             .inherent_candidates

@@ -12,7 +12,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Namespace};
 use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
-use rustc_span::symbol::{kw, Symbol};
+use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_target::abi::{Integer, Size};
 use rustc_target::spec::abi::Abi;
 
@@ -956,9 +956,8 @@ pub trait PrettyPrinter<'tcx>:
             ) => {
                 let byte_str = self
                     .tcx()
-                    .alloc_map
-                    .lock()
-                    .unwrap_memory(ptr.alloc_id)
+                    .global_alloc(ptr.alloc_id)
+                    .unwrap_memory()
                     .get_bytes(&self.tcx(), ptr, Size::from_bytes(*data))
                     .unwrap();
                 p!(pretty_print_byte_str(byte_str));
@@ -1021,10 +1020,7 @@ pub trait PrettyPrinter<'tcx>:
                 )?;
             }
             (Scalar::Ptr(ptr), ty::FnPtr(_)) => {
-                let instance = {
-                    let alloc_map = self.tcx().alloc_map.lock();
-                    alloc_map.unwrap_fn(ptr.alloc_id)
-                };
+                let instance = self.tcx().global_alloc(ptr.alloc_id).unwrap_fn();
                 self = self.typed_value(
                     |this| this.print_value_path(instance.def_id(), instance.substs),
                     |this| this.print_type(ty),
@@ -1456,7 +1452,7 @@ impl<F: fmt::Write> Printer<'tcx> for FmtPrinter<'_, 'tcx, F> {
             if !self.empty_path {
                 write!(self, "::")?;
             }
-            if ast::Ident::from_str(&name).is_raw_guess() {
+            if Ident::from_str(&name).is_raw_guess() {
                 write!(self, "r#")?;
             }
             write!(self, "{}", name)?;

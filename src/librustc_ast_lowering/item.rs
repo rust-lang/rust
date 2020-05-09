@@ -12,7 +12,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
 use rustc_span::source_map::{respan, DesugaringKind};
-use rustc_span::symbol::{kw, sym};
+use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
 use rustc_target::spec::abi;
 

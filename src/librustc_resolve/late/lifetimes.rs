@@ -6,7 +6,6 @@
 //! way. Therefore, we break lifetime name resolution into a separate pass.
 
 use crate::late::diagnostics::{ForLifetimeSpanType, MissingLifetimeSpot};
-use rustc_ast::ast;
 use rustc_ast::attr;
 use rustc_ast::walk_list;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -22,7 +21,7 @@ use rustc_middle::middle::resolve_lifetime::*;
 use rustc_middle::ty::{self, DefIdTree, GenericParamDefKind, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
-use rustc_span::symbol::{kw, sym};
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 use std::borrow::Cow;
 use std::cell::Cell;
@@ -175,7 +174,7 @@ crate struct LifetimeContext<'a, 'tcx> {
     is_in_fn_syntax: bool,
 
     /// List of labels in the function/method currently under analysis.
-    labels_in_fn: Vec<ast::Ident>,
+    labels_in_fn: Vec<Ident>,
 
     /// Cache for cross-crate per-definition object lifetime defaults.
     xcrate_object_lifetime_defaults: DefIdMap<Vec<ObjectLifetimeDefault>>,
@@ -1064,7 +1063,7 @@ fn check_mixed_explicit_and_in_band_defs(tcx: TyCtxt<'_>, params: &[hir::Generic
     }
 }
 
-fn signal_shadowing_problem(tcx: TyCtxt<'_>, name: ast::Name, orig: Original, shadower: Shadower) {
+fn signal_shadowing_problem(tcx: TyCtxt<'_>, name: Symbol, orig: Original, shadower: Shadower) {
     let mut err = if let (ShadowKind::Lifetime, ShadowKind::Lifetime) = (orig.kind, shadower.kind) {
         // lifetime/lifetime shadowing is an error
         struct_span_err!(
@@ -1102,7 +1101,7 @@ fn extract_labels(ctxt: &mut LifetimeContext<'_, '_>, body: &hir::Body<'_>) {
     struct GatherLabels<'a, 'tcx> {
         tcx: TyCtxt<'tcx>,
         scope: ScopeRef<'a>,
-        labels_in_fn: &'a mut Vec<ast::Ident>,
+        labels_in_fn: &'a mut Vec<Ident>,
     }
 
     let mut gather =
@@ -1138,15 +1137,11 @@ fn extract_labels(ctxt: &mut LifetimeContext<'_, '_>, body: &hir::Body<'_>) {
         }
     }
 
-    fn expression_label(ex: &hir::Expr<'_>) -> Option<ast::Ident> {
+    fn expression_label(ex: &hir::Expr<'_>) -> Option<Ident> {
         if let hir::ExprKind::Loop(_, Some(label), _) = ex.kind { Some(label.ident) } else { None }
     }
 
-    fn check_if_label_shadows_lifetime(
-        tcx: TyCtxt<'_>,
-        mut scope: ScopeRef<'_>,
-        label: ast::Ident,
-    ) {
+    fn check_if_label_shadows_lifetime(tcx: TyCtxt<'_>, mut scope: ScopeRef<'_>, label: Ident) {
         loop {
             match *scope {
                 Scope::Body { s, .. }
@@ -1360,11 +1355,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
     /// helper method to determine the span to remove when suggesting the
     /// deletion of a lifetime
-    fn lifetime_deletion_span(
-        &self,
-        name: ast::Ident,
-        generics: &hir::Generics<'_>,
-    ) -> Option<Span> {
+    fn lifetime_deletion_span(&self, name: Ident, generics: &hir::Generics<'_>) -> Option<Span> {
         generics.params.iter().enumerate().find_map(|(i, param)| {
             if param.name.ident() == name {
                 let mut in_band = false;
@@ -2394,7 +2385,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         if let Some(params) = error {
             // If there's no lifetime available, suggest `'static`.
             if self.report_elision_failure(&mut err, params) && lifetime_names.is_empty() {
-                lifetime_names.insert(ast::Ident::from_str("'static"));
+                lifetime_names.insert(Ident::from_str("'static"));
             }
         }
         self.add_missing_lifetime_specifiers_label(

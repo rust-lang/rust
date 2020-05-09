@@ -165,6 +165,13 @@ pub fn target_machine_factory(
 
     let asm_comments = sess.asm_comments();
     let relax_elf_relocations = sess.target.target.options.relax_elf_relocations;
+
+    let use_init_array = !sess
+        .opts
+        .debugging_opts
+        .use_ctors_section
+        .unwrap_or(sess.target.target.options.use_ctors_section);
+
     Arc::new(move || {
         let tm = unsafe {
             llvm::LLVMRustCreateTargetMachine(
@@ -184,6 +191,7 @@ pub fn target_machine_factory(
                 asm_comments,
                 emit_stack_size_section,
                 relax_elf_relocations,
+                use_init_array,
             )
         };
 

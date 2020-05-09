@@ -181,7 +181,7 @@ use std::cell::RefCell;
 use std::iter;
 use std::vec;
 
-use rustc_ast::ast::{self, BinOpKind, EnumDef, Expr, Generics, Ident, PatKind};
+use rustc_ast::ast::{self, BinOpKind, EnumDef, Expr, Generics, PatKind};
 use rustc_ast::ast::{GenericArg, GenericParamKind, VariantData};
 use rustc_ast::ptr::P;
 use rustc_attr as attr;
@@ -189,7 +189,7 @@ use rustc_data_structures::map_in_place::MapInPlace;
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::respan;
-use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 
 use ty::{LifetimeBounds, Path, Ptr, PtrTy, Self_, Ty};
@@ -222,7 +222,7 @@ pub struct TraitDef<'a> {
 
     pub methods: Vec<MethodDef<'a>>,
 
-    pub associated_types: Vec<(ast::Ident, Ty<'a>)>,
+    pub associated_types: Vec<(Ident, Ty<'a>)>,
 }
 
 pub struct MethodDef<'a> {
@@ -336,14 +336,14 @@ pub fn combine_substructure(
 /// is not global and starts with `T`, or a `TyQPath`.
 fn find_type_parameters(
     ty: &ast::Ty,
-    ty_param_names: &[ast::Name],
+    ty_param_names: &[Symbol],
     cx: &ExtCtxt<'_>,
 ) -> Vec<P<ast::Ty>> {
     use rustc_ast::visit;
 
     struct Visitor<'a, 'b> {
         cx: &'a ExtCtxt<'b>,
-        ty_param_names: &'a [ast::Name],
+        ty_param_names: &'a [Symbol],
         types: Vec<P<ast::Ty>>,
     }
 
@@ -620,7 +620,7 @@ impl<'a> TraitDef<'a> {
                 .peekable();
 
             if ty_params.peek().is_some() {
-                let ty_param_names: Vec<ast::Name> =
+                let ty_param_names: Vec<Symbol> =
                     ty_params.map(|ty_param| ty_param.ident.name).collect();
 
                 for field_ty in field_tys {
@@ -1223,7 +1223,7 @@ impl<'a> MethodDef<'a> {
             .collect::<Vec<String>>();
 
         let self_arg_idents =
-            self_arg_names.iter().map(|name| cx.ident_of(name, sp)).collect::<Vec<ast::Ident>>();
+            self_arg_names.iter().map(|name| cx.ident_of(name, sp)).collect::<Vec<Ident>>();
 
         // The `vi_idents` will be bound, solely in the catch-all, to
         // a series of let statements mapping each self_arg to an int
@@ -1234,7 +1234,7 @@ impl<'a> MethodDef<'a> {
                 let vi_suffix = format!("{}_vi", &name[..]);
                 cx.ident_of(&vi_suffix[..], trait_.span)
             })
-            .collect::<Vec<ast::Ident>>();
+            .collect::<Vec<Ident>>();
 
         // Builds, via callback to call_substructure_method, the
         // delegated expression that handles the catch-all case,
@@ -1598,7 +1598,7 @@ impl<'a> TraitDef<'a> {
     fn create_subpatterns(
         &self,
         cx: &mut ExtCtxt<'_>,
-        field_paths: Vec<ast::Ident>,
+        field_paths: Vec<Ident>,
         mutbl: ast::Mutability,
         use_temporaries: bool,
     ) -> Vec<P<ast::Pat>> {
@@ -1670,7 +1670,7 @@ impl<'a> TraitDef<'a> {
     fn create_enum_variant_pattern(
         &self,
         cx: &mut ExtCtxt<'_>,
-        enum_ident: ast::Ident,
+        enum_ident: Ident,
         variant: &'a ast::Variant,
         prefix: &str,
         mutbl: ast::Mutability,

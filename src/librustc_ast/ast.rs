@@ -22,8 +22,6 @@ pub use crate::util::parser::ExprPrecedence;
 pub use GenericArgs::*;
 pub use UnsafeSource::*;
 
-pub use rustc_span::symbol::{Ident, Symbol as Name};
-
 use crate::ptr::P;
 use crate::token::{self, DelimToken};
 use crate::tokenstream::{DelimSpan, TokenStream, TokenTree};
@@ -34,7 +32,7 @@ use rustc_data_structures::thin_vec::ThinVec;
 use rustc_macros::HashStable_Generic;
 use rustc_serialize::{self, Decoder, Encoder};
 use rustc_span::source_map::{respan, Spanned};
-use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 
 use std::convert::TryFrom;
@@ -2451,7 +2449,7 @@ pub enum ItemKind {
     /// An `extern crate` item, with the optional *original* crate name if the crate was renamed.
     ///
     /// E.g., `extern crate foo` or `extern crate foo_bar as foo`.
-    ExternCrate(Option<Name>),
+    ExternCrate(Option<Symbol>),
     /// A use declaration item (`use`).
     ///
     /// E.g., `use foo;`, `use foo::bar;` or `use foo::bar as FooBar;`.

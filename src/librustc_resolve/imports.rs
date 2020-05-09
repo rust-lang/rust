@@ -9,7 +9,7 @@ use crate::{BindingKey, ModuleKind, ResolutionError, Resolver, Segment};
 use crate::{CrateLint, Module, ModuleOrUniformRoot, ParentScope, PerNS, ScopeSet, Weak};
 use crate::{NameBinding, NameBindingKind, PathResult, PrivacyError, ToNameBinding};
 
-use rustc_ast::ast::{Ident, Name, NodeId};
+use rustc_ast::ast::NodeId;
 use rustc_ast::unwrap_or;
 use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_data_structures::fx::FxHashSet;
@@ -24,7 +24,7 @@ use rustc_session::lint::builtin::{PUB_USE_OF_PRIVATE_EXTERN_CRATE, UNUSED_IMPOR
 use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::DiagnosticMessageId;
 use rustc_span::hygiene::ExpnId;
-use rustc_span::symbol::kw;
+use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::{MultiSpan, Span};
 
 use log::*;
@@ -57,7 +57,7 @@ pub enum ImportKind<'a> {
                                        // n.b. `max_vis` is only used in `finalize_import` to check for re-export errors.
     },
     ExternCrate {
-        source: Option<Name>,
+        source: Option<Symbol>,
         target: Ident,
     },
     MacroUse,

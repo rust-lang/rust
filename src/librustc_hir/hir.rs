@@ -3,7 +3,7 @@ use crate::def_id::DefId;
 crate use crate::hir_id::HirId;
 use crate::itemlikevisit;
 
-use rustc_ast::ast::{self, CrateSugar, Ident, LlvmAsmDialect, Name};
+use rustc_ast::ast::{self, CrateSugar, LlvmAsmDialect};
 use rustc_ast::ast::{AttrVec, Attribute, FloatTy, IntTy, Label, LitKind, StrStyle, UintTy};
 pub use rustc_ast::ast::{BorrowKind, ImplPolarity, IsAuto};
 pub use rustc_ast::ast::{CaptureBy, Movability, Mutability};
@@ -13,7 +13,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::{par_for_each_in, Send, Sync};
 use rustc_macros::HashStable_Generic;
 use rustc_span::source_map::{SourceMap, Spanned};
-use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
 
@@ -2443,7 +2443,7 @@ pub enum ItemKind<'hir> {
     /// An `extern crate` item, with optional *original* crate name if the crate was renamed.
     ///
     /// E.g., `extern crate foo` or `extern crate foo_bar as foo`.
-    ExternCrate(Option<Name>),
+    ExternCrate(Option<Symbol>),
 
     /// `use foo::bar::*;` or `use foo::bar::baz as quux;`
     ///
@@ -2611,7 +2611,7 @@ pub type TraitMap<ID = HirId> = NodeMap<Vec<TraitCandidate<ID>>>;
 
 // Map from the NodeId of a glob import to a list of items which are actually
 // imported.
-pub type GlobMap = NodeMap<FxHashSet<Name>>;
+pub type GlobMap = NodeMap<FxHashSet<Symbol>>;
 
 #[derive(Copy, Clone, Debug, HashStable_Generic)]
 pub enum Node<'hir> {

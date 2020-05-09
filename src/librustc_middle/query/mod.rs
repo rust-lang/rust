@@ -1,6 +1,7 @@
 use crate::dep_graph::SerializedDepNodeIndex;
 use crate::mir;
 use crate::mir::interpret::{GlobalId, LitToConstInput};
+use crate::traits;
 use crate::traits::query::{
     CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal,
     CanonicalTypeOpAscribeUserTypeGoal, CanonicalTypeOpEqGoal, CanonicalTypeOpNormalizeGoal,
@@ -639,7 +640,7 @@ rustc_queries! {
     }
 
     Other {
-        query fn_arg_names(_: DefId) -> &'tcx [ast::Name] {}
+        query fn_arg_names(_: DefId) -> &'tcx [Symbol] {}
         /// Gets the rendered value of the specified constant or associated constant.
         /// Used by rustdoc.
         query rendered_const(_: DefId) -> String {}
@@ -1052,7 +1053,7 @@ rustc_queries! {
             desc { "looking up all possibly unused extern crates" }
         }
         query names_imported_by_glob_use(def_id: LocalDefId)
-            -> &'tcx FxHashSet<ast::Name> {
+            -> &'tcx FxHashSet<Symbol> {
             eval_always
             desc { |tcx| "names_imported_by_glob_use for `{}`", tcx.def_path_str(def_id.to_def_id()) }
         }
@@ -1152,6 +1153,15 @@ rustc_queries! {
             goal: CanonicalPredicateGoal<'tcx>
         ) -> Result<traits::EvaluationResult, traits::OverflowError> {
             desc { "evaluating trait selection obligation `{}`", goal.value.value }
+        }
+
+        query evaluate_goal(
+            goal: traits::ChalkCanonicalGoal<'tcx>
+        ) -> Result<
+            &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, ()>>,
+            NoSolution
+        > {
+            desc { "evaluating trait selection obligation `{}`", goal.value }
         }
 
         /// Do not call this query directly: part of the `Eq` type-op

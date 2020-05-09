@@ -76,7 +76,6 @@ use TokenTreeOrTokenTreeSlice::*;
 
 use crate::mbe::{self, TokenTree};
 
-use rustc_ast::ast::Name;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, DocComment, Nonterminal, Token};
 use rustc_ast_pretty::pprust;
@@ -766,7 +765,7 @@ fn get_macro_ident(token: &Token) -> Option<(Ident, bool)> {
 ///
 /// Returning `false` is a *stability guarantee* that such a matcher will *never* begin with that
 /// token. Be conservative (return true) if not sure.
-fn may_begin_with(token: &Token, name: Name) -> bool {
+fn may_begin_with(token: &Token, name: Symbol) -> bool {
     /// Checks whether the non-terminal may contain a single (non-keyword) identifier.
     fn may_be_ident(nt: &token::Nonterminal) -> bool {
         match *nt {

@@ -8,7 +8,6 @@
 use crate::collect::PlaceholderHirTyCollector;
 use crate::middle::resolve_lifetime as rl;
 use crate::require_c_abi_if_c_variadic;
-use rustc_ast::ast;
 use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::ErrorReported;
@@ -27,7 +26,7 @@ use rustc_middle::ty::{GenericParamDef, GenericParamDefKind};
 use rustc_session::lint::builtin::{AMBIGUOUS_ASSOCIATED_ITEMS, LATE_BOUND_LIFETIME_ARGUMENTS};
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
-use rustc_span::symbol::sym;
+use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
 use rustc_target::spec::abi;
 use rustc_trait_selection::traits;
@@ -114,7 +113,7 @@ pub enum SizedByDefault {
 }
 
 struct ConvertedBinding<'a, 'tcx> {
-    item_name: ast::Ident,
+    item_name: Ident,
     kind: ConvertedBindingKind<'a, 'tcx>,
     span: Span,
 }
@@ -1183,11 +1182,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         )
     }
 
-    fn trait_defines_associated_type_named(
-        &self,
-        trait_def_id: DefId,
-        assoc_name: ast::Ident,
-    ) -> bool {
+    fn trait_defines_associated_type_named(&self, trait_def_id: DefId, assoc_name: Ident) -> bool {
         self.tcx()
             .associated_items(trait_def_id)
             .find_by_name_and_kind(self.tcx(), assoc_name, ty::AssocKind::Type, trait_def_id)
@@ -1938,7 +1933,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         span: Span,
         type_str: &str,
         trait_str: &str,
-        name: ast::Name,
+        name: Symbol,
     ) {
         let mut err = struct_span_err!(self.tcx().sess, span, E0223, "ambiguous associated type");
         if let (Some(_), Ok(snippet)) = (
@@ -1969,7 +1964,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     fn find_bound_for_assoc_item(
         &self,
         ty_param_def_id: LocalDefId,
-        assoc_name: ast::Ident,
+        assoc_name: Ident,
         span: Span,
     ) -> Result<ty::PolyTraitRef<'tcx>, ErrorReported> {
         let tcx = self.tcx();
@@ -2006,7 +2001,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         &self,
         all_candidates: impl Fn() -> I,
         ty_param_name: impl Fn() -> String,
-        assoc_name: ast::Ident,
+        assoc_name: Ident,
         span: Span,
         is_equality: impl Fn() -> Option<String>,
     ) -> Result<ty::PolyTraitRef<'tcx>, ErrorReported>
@@ -2124,7 +2119,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         &self,
         all_candidates: impl Fn() -> I,
         ty_param_name: &str,
-        assoc_name: ast::Ident,
+        assoc_name: Ident,
         span: Span,
     ) where
         I: Iterator<Item = ty::PolyTraitRef<'tcx>>,

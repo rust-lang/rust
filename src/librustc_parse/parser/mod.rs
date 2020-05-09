@@ -14,7 +14,7 @@ use crate::lexer::UnmatchedBrace;
 
 use log::debug;
 use rustc_ast::ast::DUMMY_NODE_ID;
-use rustc_ast::ast::{self, AttrStyle, AttrVec, Const, CrateSugar, Extern, Ident, Unsafe};
+use rustc_ast::ast::{self, AttrStyle, AttrVec, Const, CrateSugar, Extern, Unsafe};
 use rustc_ast::ast::{
     Async, MacArgs, MacDelimiter, Mutability, StrLit, Visibility, VisibilityKind,
 };
@@ -26,7 +26,7 @@ use rustc_ast_pretty::pprust;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, FatalError, PResult};
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::{respan, Span, DUMMY_SP};
-use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 
 use std::{cmp, mem, slice};
 
@@ -424,11 +424,11 @@ impl<'a> Parser<'a> {
     }
 
     // Public for rustfmt usage.
-    pub fn parse_ident(&mut self) -> PResult<'a, ast::Ident> {
+    pub fn parse_ident(&mut self) -> PResult<'a, Ident> {
         self.parse_ident_common(true)
     }
 
-    fn parse_ident_common(&mut self, recover: bool) -> PResult<'a, ast::Ident> {
+    fn parse_ident_common(&mut self, recover: bool) -> PResult<'a, Ident> {
         match self.token.ident() {
             Some((ident, is_raw)) => {
                 if !is_raw && ident.is_reserved() {

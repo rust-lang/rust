@@ -1,7 +1,7 @@
 use crate::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_ast::ast;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_span::symbol::SymbolStr;
+use rustc_span::symbol::{Ident, SymbolStr};
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 
@@ -155,7 +155,7 @@ impl EarlyLintPass for NonAsciiIdents {
                 .or_insert((symbol_str, sp));
         }
     }
-    fn check_ident(&mut self, cx: &EarlyContext<'_>, ident: ast::Ident) {
+    fn check_ident(&mut self, cx: &EarlyContext<'_>, ident: Ident) {
         use unicode_security::GeneralSecurityProfile;
         let name_str = ident.name.as_str();
         if name_str.is_ascii() {

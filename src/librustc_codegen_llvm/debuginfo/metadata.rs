@@ -19,7 +19,6 @@ use crate::llvm::debuginfo::{
 use crate::value::Value;
 
 use log::debug;
-use rustc_ast::ast;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::const_cstr;
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -93,7 +92,7 @@ pub const UNKNOWN_COLUMN_NUMBER: c_uint = 0;
 pub const NO_SCOPE_METADATA: Option<&DIScope> = None;
 
 #[derive(Copy, Debug, Hash, Eq, PartialEq, Clone)]
-pub struct UniqueTypeId(ast::Name);
+pub struct UniqueTypeId(Symbol);
 
 /// The `TypeMap` is where the `CrateDebugContext` holds the type metadata nodes
 /// created so far. The metadata nodes are indexed by `UniqueTypeId`, and, for
@@ -1300,7 +1299,7 @@ fn use_enum_fallback(cx: &CodegenCx<'_, '_>) -> bool {
 fn generator_layout_and_saved_local_names(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
-) -> (&'tcx GeneratorLayout<'tcx>, IndexVec<mir::GeneratorSavedLocal, Option<ast::Name>>) {
+) -> (&'tcx GeneratorLayout<'tcx>, IndexVec<mir::GeneratorSavedLocal, Option<Symbol>>) {
     let body = tcx.optimized_mir(def_id);
     let generator_layout = body.generator_layout.as_ref().unwrap();
     let mut generator_saved_local_names = IndexVec::from_elem(None, &generator_layout.field_tys);
@@ -1656,7 +1655,7 @@ enum VariantInfo<'a, 'tcx> {
     Generator {
         substs: SubstsRef<'tcx>,
         generator_layout: &'tcx GeneratorLayout<'tcx>,
-        generator_saved_local_names: &'a IndexVec<mir::GeneratorSavedLocal, Option<ast::Name>>,
+        generator_saved_local_names: &'a IndexVec<mir::GeneratorSavedLocal, Option<Symbol>>,
         variant_index: VariantIdx,
     },
 }

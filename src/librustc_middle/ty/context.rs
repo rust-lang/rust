@@ -93,6 +93,8 @@ pub struct CtxtInterners<'tcx> {
     projs: InternedSet<'tcx, List<ProjectionKind>>,
     place_elems: InternedSet<'tcx, List<PlaceElem<'tcx>>>,
     const_: InternedSet<'tcx, Const<'tcx>>,
+
+    chalk_environment_clause_list: InternedSet<'tcx, List<traits::ChalkEnvironmentClause<'tcx>>>,
 }
 
 impl<'tcx> CtxtInterners<'tcx> {
@@ -109,6 +111,8 @@ impl<'tcx> CtxtInterners<'tcx> {
             projs: Default::default(),
             place_elems: Default::default(),
             const_: Default::default(),
+
+            chalk_environment_clause_list: Default::default(),
         }
     }
 
@@ -376,7 +380,7 @@ pub struct TypeckTables<'tcx> {
 
     /// Records the reasons that we picked the kind of each closure;
     /// not all closures are present in the map.
-    closure_kind_origins: ItemLocalMap<(Span, ast::Name)>,
+    closure_kind_origins: ItemLocalMap<(Span, Symbol)>,
 
     /// For each fn, records the "liberated" types of its arguments
     /// and return type. Liberated means that all bound regions
@@ -621,11 +625,11 @@ impl<'tcx> TypeckTables<'tcx> {
         self.upvar_capture_map[&upvar_id]
     }
 
-    pub fn closure_kind_origins(&self) -> LocalTableInContext<'_, (Span, ast::Name)> {
+    pub fn closure_kind_origins(&self) -> LocalTableInContext<'_, (Span, Symbol)> {
         LocalTableInContext { hir_owner: self.hir_owner, data: &self.closure_kind_origins }
     }
 
-    pub fn closure_kind_origins_mut(&mut self) -> LocalTableInContextMut<'_, (Span, ast::Name)> {
+    pub fn closure_kind_origins_mut(&mut self) -> LocalTableInContextMut<'_, (Span, Symbol)> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.closure_kind_origins }
     }
 
@@ -941,10 +945,10 @@ pub struct GlobalCtxt<'tcx> {
     maybe_unused_extern_crates: Vec<(DefId, Span)>,
     /// A map of glob use to a set of names it actually imports. Currently only
     /// used in save-analysis.
-    glob_map: FxHashMap<LocalDefId, FxHashSet<ast::Name>>,
+    glob_map: FxHashMap<LocalDefId, FxHashSet<Symbol>>,
     /// Extern prelude entries. The value is `true` if the entry was introduced
     /// via `extern crate` item and not `--extern` option or compiler built-in.
-    pub extern_prelude: FxHashMap<ast::Name, bool>,
+    pub extern_prelude: FxHashMap<Symbol, bool>,
 
     // Internal cache for metadata decoding. No need to track deps on this.
     pub rcache: Lock<FxHashMap<ty::CReaderCacheKey, Ty<'tcx>>>,
@@ -975,7 +979,7 @@ pub struct GlobalCtxt<'tcx> {
     allocation_interner: ShardedHashMap<&'tcx Allocation, ()>,
 
     /// Stores memory for globals (statics/consts).
-    pub alloc_map: Lock<interpret::AllocMap<'tcx>>,
+    pub(crate) alloc_map: Lock<interpret::AllocMap<'tcx>>,
 
     layout_interner: ShardedHashMap<&'tcx Layout, ()>,
 
@@ -1013,7 +1017,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // Create an allocation that just contains these bytes.
         let alloc = interpret::Allocation::from_byte_aligned_bytes(bytes);
         let alloc = self.intern_const_alloc(alloc);
-        self.alloc_map.lock().create_memory_alloc(alloc)
+        self.create_memory_alloc(alloc)
     }
 
     pub fn intern_stability(self, stab: attr::Stability) -> &'tcx attr::Stability {
@@ -1997,6 +2001,14 @@ impl<'tcx> Borrow<Const<'tcx>> for Interned<'tcx, Const<'tcx>> {
     }
 }
 
+impl<'tcx> Borrow<[traits::ChalkEnvironmentClause<'tcx>]>
+    for Interned<'tcx, List<traits::ChalkEnvironmentClause<'tcx>>>
+{
+    fn borrow<'a>(&'a self) -> &'a [traits::ChalkEnvironmentClause<'tcx>] {
+        &self.0[..]
+    }
+}
+
 macro_rules! direct_interners {
     ($($name:ident: $method:ident($ty:ty)),+) => {
         $(impl<'tcx> PartialEq for Interned<'tcx, $ty> {
@@ -2044,7 +2056,9 @@ slice_interners!(
     existential_predicates: _intern_existential_predicates(ExistentialPredicate<'tcx>),
     predicates: _intern_predicates(Predicate<'tcx>),
     projs: _intern_projs(ProjectionKind),
-    place_elems: _intern_place_elems(PlaceElem<'tcx>)
+    place_elems: _intern_place_elems(PlaceElem<'tcx>),
+    chalk_environment_clause_list:
+        _intern_chalk_environment_clause_list(traits::ChalkEnvironmentClause<'tcx>)
 );
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -2430,6 +2444,13 @@ impl<'tcx> TyCtxt<'tcx> {
         if ts.is_empty() { List::empty() } else { self._intern_canonical_var_infos(ts) }
     }
 
+    pub fn intern_chalk_environment_clause_list(
+        self,
+        ts: &[traits::ChalkEnvironmentClause<'tcx>],
+    ) -> &'tcx List<traits::ChalkEnvironmentClause<'tcx>> {
+        if ts.is_empty() { List::empty() } else { self._intern_chalk_environment_clause_list(ts) }
+    }
+
     pub fn mk_fn_sig<I>(
         self,
         inputs: I,
@@ -2485,6 +2506,18 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn mk_substs_trait(self, self_ty: Ty<'tcx>, rest: &[GenericArg<'tcx>]) -> SubstsRef<'tcx> {
         self.mk_substs(iter::once(self_ty.into()).chain(rest.iter().cloned()))
+    }
+
+    pub fn mk_chalk_environment_clause_list<
+        I: InternAs<
+            [traits::ChalkEnvironmentClause<'tcx>],
+            &'tcx List<traits::ChalkEnvironmentClause<'tcx>>,
+        >,
+    >(
+        self,
+        iter: I,
+    ) -> I::Output {
+        iter.intern_with(|xs| self.intern_chalk_environment_clause_list(xs))
     }
 
     /// Walks upwards from `id` to find a node which might change lint levels with attributes.

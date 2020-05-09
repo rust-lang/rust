@@ -13,6 +13,7 @@ use rustc_middle::ty::subst::GenericArg;
 use rustc_middle::ty::{self, BindingMode, Ty, TypeFoldable};
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::{Span, Spanned};
+use rustc_span::symbol::Ident;
 use rustc_trait_selection::traits::{ObligationCause, Pattern};
 
 use std::cmp;
@@ -1133,7 +1134,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err.emit();
     }
 
-    fn error_field_already_bound(&self, span: Span, ident: ast::Ident, other_field: Span) {
+    fn error_field_already_bound(&self, span: Span, ident: Ident, other_field: Span) {
         struct_span_err!(
             self.tcx.sess,
             span,
@@ -1149,8 +1150,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn error_inexistent_fields(
         &self,
         kind_name: &str,
-        inexistent_fields: &[ast::Ident],
-        unmentioned_fields: &mut Vec<ast::Ident>,
+        inexistent_fields: &[Ident],
+        unmentioned_fields: &mut Vec<Ident>,
         variant: &ty::VariantDef,
     ) {
         let tcx = self.tcx;
@@ -1225,7 +1226,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn error_unmentioned_fields(
         &self,
         span: Span,
-        unmentioned_fields: &[ast::Ident],
+        unmentioned_fields: &[Ident],
         variant: &ty::VariantDef,
     ) {
         let field_names = if unmentioned_fields.len() == 1 {

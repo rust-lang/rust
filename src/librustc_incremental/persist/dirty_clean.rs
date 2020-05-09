@@ -499,7 +499,7 @@ fn check_config(tcx: TyCtxt<'_>, attr: &Attribute) -> bool {
     }
 }
 
-fn expect_associated_value(tcx: TyCtxt<'_>, item: &NestedMetaItem) -> ast::Name {
+fn expect_associated_value(tcx: TyCtxt<'_>, item: &NestedMetaItem) -> Symbol {
     if let Some(value) = item.value_str() {
         value
     } else {

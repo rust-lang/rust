@@ -17,7 +17,6 @@ use crate::{Module, ModuleData, ModuleKind, NameBinding, NameBindingKind, Segmen
 
 use rustc_ast::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind, NodeId};
 use rustc_ast::ast::{AssocItem, AssocItemKind, MetaItemKind, StmtKind};
-use rustc_ast::ast::{Ident, Name};
 use rustc_ast::token::{self, Token};
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
 use rustc_attr as attr;
@@ -34,7 +33,7 @@ use rustc_middle::middle::cstore::CrateStore;
 use rustc_middle::ty;
 use rustc_span::hygiene::{ExpnId, MacroKind};
 use rustc_span::source_map::{respan, Spanned};
-use rustc_span::symbol::{kw, sym};
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 
 use log::debug;
@@ -293,7 +292,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         self.insert_field_names(def_id, field_names);
     }
 
-    fn insert_field_names(&mut self, def_id: DefId, field_names: Vec<Spanned<Name>>) {
+    fn insert_field_names(&mut self, def_id: DefId, field_names: Vec<Spanned<Symbol>>) {
         if !field_names.is_empty() {
             self.r.field_names.insert(def_id, field_names);
         }
@@ -953,7 +952,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
 
     fn add_macro_use_binding(
         &mut self,
-        name: ast::Name,
+        name: Symbol,
         binding: &'a NameBinding<'a>,
         span: Span,
         allow_shadowing: bool,

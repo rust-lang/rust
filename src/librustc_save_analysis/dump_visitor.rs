@@ -26,6 +26,7 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::{self, DefIdTree, TyCtxt};
 use rustc_session::config::Input;
 use rustc_span::source_map::{respan, DUMMY_SP};
+use rustc_span::symbol::Ident;
 use rustc_span::*;
 
 use std::env;
@@ -264,7 +265,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         sig: &'l ast::FnSig,
         body: Option<&'l ast::Block>,
         id: ast::NodeId,
-        ident: ast::Ident,
+        ident: Ident,
         generics: &'l ast::Generics,
         vis: ast::Visibility,
         span: Span,
@@ -419,7 +420,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
     fn process_assoc_const(
         &mut self,
         id: ast::NodeId,
-        ident: ast::Ident,
+        ident: Ident,
         typ: &'l ast::Ty,
         expr: Option<&'l ast::Expr>,
         parent_id: DefId,

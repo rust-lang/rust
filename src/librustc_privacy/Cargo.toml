@@ -15,7 +15,6 @@ rustc_errors = { path = "../librustc_errors" }
 rustc_hir = { path = "../librustc_hir" }
 rustc_typeck = { path = "../librustc_typeck" }
 rustc_session = { path = "../librustc_session" }
-rustc_ast = { path = "../librustc_ast" }
 rustc_span = { path = "../librustc_span" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 log = "0.4"

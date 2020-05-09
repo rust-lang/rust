@@ -4,7 +4,7 @@ use super::{BlockMode, Parser, PathStyle, Restrictions, TokenType};
 use super::{SemiColonMode, SeqSep, TokenExpectType};
 use crate::maybe_recover_from_interpolated_ty_qpath;
 
-use rustc_ast::ast::{self, AttrStyle, AttrVec, CaptureBy, Field, Ident, Lit, UnOp, DUMMY_NODE_ID};
+use rustc_ast::ast::{self, AttrStyle, AttrVec, CaptureBy, Field, Lit, UnOp, DUMMY_NODE_ID};
 use rustc_ast::ast::{AnonConst, BinOp, BinOpKind, FnDecl, FnRetTy, MacCall, Param, Ty, TyKind};
 use rustc_ast::ast::{Arm, Async, BlockCheckMode, Expr, ExprKind, Label, Movability, RangeLimits};
 use rustc_ast::ptr::P;
@@ -15,7 +15,7 @@ use rustc_ast::util::parser::{prec_let_scrutinee_needs_par, AssocOp, Fixity};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, DiagnosticBuilder, PResult};
 use rustc_span::source_map::{self, Span, Spanned};
-use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use std::mem;
 
 /// Possibly accepts an `token::Interpolated` expression (a pre-parsed expression

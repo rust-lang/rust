@@ -19,7 +19,7 @@ use crate::check::intrinsic::intrinsic_operation_unsafety;
 use crate::constrained_generic_params as cgp;
 use crate::middle::resolve_lifetime as rl;
 use rustc_ast::ast;
-use rustc_ast::ast::{Ident, MetaItemKind};
+use rustc_ast::ast::MetaItemKind;
 use rustc_attr::{list_contains_name, mark_used, InlineAttr, OptimizeAttr};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -42,7 +42,7 @@ use rustc_middle::ty::{self, AdtKind, Const, ToPolyTraitRef, Ty, TyCtxt};
 use rustc_middle::ty::{ReprOptions, ToPredicate, WithConstness};
 use rustc_session::lint;
 use rustc_session::parse::feature_err;
-use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi;
 use rustc_trait_selection::traits::error_reporting::suggestions::NextTypeParamName;
@@ -813,7 +813,7 @@ fn convert_variant(
     adt_kind: ty::AdtKind,
     parent_did: LocalDefId,
 ) -> ty::VariantDef {
-    let mut seen_fields: FxHashMap<ast::Ident, Span> = Default::default();
+    let mut seen_fields: FxHashMap<Ident, Span> = Default::default();
     let hir_id = tcx.hir().as_local_hir_id(variant_did.unwrap_or(parent_did));
     let fields = def
         .fields()

@@ -1,28 +1,28 @@
 use crate::base::ExtCtxt;
 
-use rustc_ast::ast::{self, AttrVec, BlockCheckMode, Expr, Ident, PatKind, UnOp};
+use rustc_ast::ast::{self, AttrVec, BlockCheckMode, Expr, PatKind, UnOp};
 use rustc_ast::attr;
 use rustc_ast::ptr::P;
 use rustc_span::source_map::{respan, Spanned};
-use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 
 use rustc_span::Span;
 
 impl<'a> ExtCtxt<'a> {
-    pub fn path(&self, span: Span, strs: Vec<ast::Ident>) -> ast::Path {
+    pub fn path(&self, span: Span, strs: Vec<Ident>) -> ast::Path {
         self.path_all(span, false, strs, vec![])
     }
-    pub fn path_ident(&self, span: Span, id: ast::Ident) -> ast::Path {
+    pub fn path_ident(&self, span: Span, id: Ident) -> ast::Path {
         self.path(span, vec![id])
     }
-    pub fn path_global(&self, span: Span, strs: Vec<ast::Ident>) -> ast::Path {
+    pub fn path_global(&self, span: Span, strs: Vec<Ident>) -> ast::Path {
         self.path_all(span, true, strs, vec![])
     }
     pub fn path_all(
         &self,
         span: Span,
         global: bool,
-        mut idents: Vec<ast::Ident>,
+        mut idents: Vec<Ident>,
         args: Vec<ast::GenericArg>,
     ) -> ast::Path {
         assert!(!idents.is_empty());
@@ -63,7 +63,7 @@ impl<'a> ExtCtxt<'a> {
 
     // Might need to take bounds as an argument in the future, if you ever want
     // to generate a bounded existential trait type.
-    pub fn ty_ident(&self, span: Span, ident: ast::Ident) -> P<ast::Ty> {
+    pub fn ty_ident(&self, span: Span, ident: Ident) -> P<ast::Ty> {
         self.ty_path(self.path_ident(span, ident))
     }
 
@@ -74,7 +74,7 @@ impl<'a> ExtCtxt<'a> {
         }
     }
 
-    pub fn const_ident(&self, span: Span, ident: ast::Ident) -> ast::AnonConst {
+    pub fn const_ident(&self, span: Span, ident: Ident) -> ast::AnonConst {
         self.anon_const(span, ast::ExprKind::Path(None, self.path_ident(span, ident)))
     }
 
@@ -95,7 +95,7 @@ impl<'a> ExtCtxt<'a> {
     pub fn typaram(
         &self,
         span: Span,
-        ident: ast::Ident,
+        ident: Ident,
         attrs: Vec<ast::Attribute>,
         bounds: ast::GenericBounds,
         default: Option<P<ast::Ty>>,
@@ -129,14 +129,14 @@ impl<'a> ExtCtxt<'a> {
         )
     }
 
-    pub fn lifetime(&self, span: Span, ident: ast::Ident) -> ast::Lifetime {
+    pub fn lifetime(&self, span: Span, ident: Ident) -> ast::Lifetime {
         ast::Lifetime { id: ast::DUMMY_NODE_ID, ident: ident.with_span_pos(span) }
     }
 
     pub fn lifetime_def(
         &self,
         span: Span,
-        ident: ast::Ident,
+        ident: Ident,
         attrs: Vec<ast::Attribute>,
         bounds: ast::GenericBounds,
     ) -> ast::GenericParam {
@@ -155,13 +155,7 @@ impl<'a> ExtCtxt<'a> {
         ast::Stmt { id: ast::DUMMY_NODE_ID, span: expr.span, kind: ast::StmtKind::Expr(expr) }
     }
 
-    pub fn stmt_let(
-        &self,
-        sp: Span,
-        mutbl: bool,
-        ident: ast::Ident,
-        ex: P<ast::Expr>,
-    ) -> ast::Stmt {
+    pub fn stmt_let(&self, sp: Span, mutbl: bool, ident: Ident, ex: P<ast::Expr>) -> ast::Stmt {
         let pat = if mutbl {
             let binding_mode = ast::BindingMode::ByValue(ast::Mutability::Mut);
             self.pat_ident_binding_mode(sp, ident, binding_mode)
@@ -218,7 +212,7 @@ impl<'a> ExtCtxt<'a> {
         self.expr(path.span, ast::ExprKind::Path(None, path))
     }
 
-    pub fn expr_ident(&self, span: Span, id: ast::Ident) -> P<ast::Expr> {
+    pub fn expr_ident(&self, span: Span, id: Ident) -> P<ast::Expr> {
         self.expr_path(self.path_ident(span, id))
     }
     pub fn expr_self(&self, span: Span) -> P<ast::Expr> {
@@ -251,18 +245,13 @@ impl<'a> ExtCtxt<'a> {
     ) -> P<ast::Expr> {
         self.expr(span, ast::ExprKind::Call(expr, args))
     }
-    pub fn expr_call_ident(
-        &self,
-        span: Span,
-        id: ast::Ident,
-        args: Vec<P<ast::Expr>>,
-    ) -> P<ast::Expr> {
+    pub fn expr_call_ident(&self, span: Span, id: Ident, args: Vec<P<ast::Expr>>) -> P<ast::Expr> {
         self.expr(span, ast::ExprKind::Call(self.expr_ident(span, id), args))
     }
     pub fn expr_call_global(
         &self,
         sp: Span,
-        fn_path: Vec<ast::Ident>,
+        fn_path: Vec<Ident>,
         args: Vec<P<ast::Expr>>,
     ) -> P<ast::Expr> {
         let pathexpr = self.expr_path(self.path_global(sp, fn_path));
@@ -272,7 +261,7 @@ impl<'a> ExtCtxt<'a> {
         &self,
         span: Span,
         expr: P<ast::Expr>,
-        ident: ast::Ident,
+        ident: Ident,
         mut args: Vec<P<ast::Expr>>,
     ) -> P<ast::Expr> {
         args.insert(0, expr);
@@ -304,7 +293,7 @@ impl<'a> ExtCtxt<'a> {
     pub fn expr_struct_ident(
         &self,
         span: Span,
-        id: ast::Ident,
+        id: Ident,
         fields: Vec<ast::Field>,
     ) -> P<ast::Expr> {
         self.expr_struct(span, self.path_ident(span, id), fields)
@@ -405,7 +394,7 @@ impl<'a> ExtCtxt<'a> {
     pub fn pat_lit(&self, span: Span, expr: P<ast::Expr>) -> P<ast::Pat> {
         self.pat(span, PatKind::Lit(expr))
     }
-    pub fn pat_ident(&self, span: Span, ident: ast::Ident) -> P<ast::Pat> {
+    pub fn pat_ident(&self, span: Span, ident: Ident) -> P<ast::Pat> {
         let binding_mode = ast::BindingMode::ByValue(ast::Mutability::Not);
         self.pat_ident_binding_mode(span, ident, binding_mode)
     }
@@ -413,7 +402,7 @@ impl<'a> ExtCtxt<'a> {
     pub fn pat_ident_binding_mode(
         &self,
         span: Span,
-        ident: ast::Ident,
+        ident: Ident,
         bm: ast::BindingMode,
     ) -> P<ast::Pat> {
         let pat = PatKind::Ident(bm, ident.with_span_pos(span), None);
@@ -517,7 +506,7 @@ impl<'a> ExtCtxt<'a> {
         )
     }
 
-    pub fn lambda(&self, span: Span, ids: Vec<ast::Ident>, body: P<ast::Expr>) -> P<ast::Expr> {
+    pub fn lambda(&self, span: Span, ids: Vec<Ident>, body: P<ast::Expr>) -> P<ast::Expr> {
         let fn_decl = self.fn_decl(
             ids.iter().map(|id| self.param(span, *id, self.ty(span, ast::TyKind::Infer))).collect(),
             ast::FnRetTy::Default(span),
@@ -544,20 +533,15 @@ impl<'a> ExtCtxt<'a> {
         self.lambda(span, Vec::new(), body)
     }
 
-    pub fn lambda1(&self, span: Span, body: P<ast::Expr>, ident: ast::Ident) -> P<ast::Expr> {
+    pub fn lambda1(&self, span: Span, body: P<ast::Expr>, ident: Ident) -> P<ast::Expr> {
         self.lambda(span, vec![ident], body)
     }
 
-    pub fn lambda_stmts_1(
-        &self,
-        span: Span,
-        stmts: Vec<ast::Stmt>,
-        ident: ast::Ident,
-    ) -> P<ast::Expr> {
+    pub fn lambda_stmts_1(&self, span: Span, stmts: Vec<ast::Stmt>, ident: Ident) -> P<ast::Expr> {
         self.lambda1(span, self.expr_block(self.block(span, stmts)), ident)
     }
 
-    pub fn param(&self, span: Span, ident: ast::Ident, ty: P<ast::Ty>) -> ast::Param {
+    pub fn param(&self, span: Span, ident: Ident, ty: P<ast::Ty>) -> ast::Param {
         let arg_pat = self.pat_ident(span, ident);
         ast::Param {
             attrs: AttrVec::default(),
@@ -653,7 +637,7 @@ impl<'a> ExtCtxt<'a> {
         attr::mk_attr_outer(mi)
     }
 
-    pub fn meta_word(&self, sp: Span, w: ast::Name) -> ast::MetaItem {
+    pub fn meta_word(&self, sp: Span, w: Symbol) -> ast::MetaItem {
         attr::mk_word_item(Ident::new(w, sp))
     }
 }

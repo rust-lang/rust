@@ -9,7 +9,7 @@ use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_span::source_map::{respan, DesugaringKind, Span, Spanned};
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::{sym, Ident, Symbol};
 
 impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_exprs(&mut self, exprs: &[AstP<Expr>]) -> &'hir [hir::Expr<'hir>] {

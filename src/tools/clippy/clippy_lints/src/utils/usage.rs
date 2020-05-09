@@ -1,5 +1,4 @@
 use crate::utils::match_var;
-use rustc_ast::ast;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
@@ -8,7 +7,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty;
-use rustc_span::symbol::Ident;
+use rustc_span::symbol::{Ident, Symbol};
 use rustc_typeck::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, Place, PlaceBase};
 
 /// Returns a set of mutated local variable IDs, or `None` if mutations could not be determined.
@@ -78,7 +77,7 @@ impl<'tcx> Delegate<'tcx> for MutVarsDelegate {
 }
 
 pub struct UsedVisitor {
-    pub var: ast::Name, // var to look for
+    pub var: Symbol,    // var to look for
     pub used: bool,     // has the var been used otherwise?
 }
 

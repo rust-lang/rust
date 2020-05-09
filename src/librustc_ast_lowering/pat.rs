@@ -5,6 +5,7 @@ use rustc_ast::ptr::P;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
+use rustc_span::symbol::Ident;
 use rustc_span::{source_map::Spanned, Span};
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {

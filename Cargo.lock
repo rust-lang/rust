@@ -430,6 +430,77 @@ dependencies = [
 ]
 
 [[package]]
+name = "chalk-derive"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8d4620afad4d4d9e63f915cfa10c930b7a3c9c3ca5cd88dd771ff8e5bf04ea10"
+dependencies = [
+ "proc-macro2 1.0.3",
+ "quote 1.0.2",
+ "syn 1.0.11",
+ "synstructure 0.12.1",
+]
+
+[[package]]
+name = "chalk-engine"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6ca6e5cef10197789da0b4ec310eda58da4c55530613b2323432642a97372735"
+dependencies = [
+ "chalk-macros",
+ "rustc-hash",
+]
+
+[[package]]
+name = "chalk-ir"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d45df5fb6328527f976e8a32c9e1c9970084d937ebe93d0d34f5bbf4231cb956"
+dependencies = [
+ "chalk-derive",
+ "chalk-engine",
+ "chalk-macros",
+]
+
+[[package]]
+name = "chalk-macros"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9e4782d108e420a1fcf94d8a919cf248db33c5071678e87d9c2d4f20ed1feb32"
+dependencies = [
+ "lazy_static 1.4.0",
+]
+
+[[package]]
+name = "chalk-rust-ir"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a0ec96dbe0ab5fdbadfca4179ec2e1d35f0439c3b53a74988b1aec239c63eb08"
+dependencies = [
+ "chalk-derive",
+ "chalk-engine",
+ "chalk-ir",
+ "chalk-macros",
+]
+
+[[package]]
+name = "chalk-solve"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dfb99fa9530f0e101475fb60adc931f51bdea05b4642a48928b814d7f0141a6b"
+dependencies = [
+ "chalk-derive",
+ "chalk-engine",
+ "chalk-ir",
+ "chalk-macros",
+ "chalk-rust-ir",
+ "ena 0.13.1",
+ "itertools 0.9.0",
+ "petgraph",
+ "rustc-hash",
+]
+
+[[package]]
 name = "chrono"
 version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1101,6 +1172,12 @@ dependencies = [
  "redox_syscall",
  "winapi 0.3.8",
 ]
+
+[[package]]
+name = "fixedbitset"
+version = "0.1.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "86d4de0081402f5e88cdac65c8dcdcc73118c1a7a465e2a05f0da05843a8ea33"
 
 [[package]]
 name = "flate2"
@@ -2329,6 +2406,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "ordermap"
+version = "0.3.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a86ed3f5f244b372d6b1a00b72ef7f8876d0bc6a78a4c9985c53614041512063"
+
+[[package]]
 name = "ordslice"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2494,6 +2577,16 @@ dependencies = [
  "maplit",
  "pest",
  "sha-1",
+]
+
+[[package]]
+name = "petgraph"
+version = "0.4.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9c3659d1ee90221741f65dd128d9998311b0e40c5d3c23a62445938214abce4f"
+dependencies = [
+ "fixedbitset",
+ "ordermap",
 ]
 
 [[package]]
@@ -4002,6 +4095,7 @@ dependencies = [
  "arena",
  "bitflags",
  "byteorder",
+ "chalk-ir",
  "log",
  "measureme",
  "polonius-engine",
@@ -4132,7 +4226,6 @@ name = "rustc_privacy"
 version = "0.0.0"
 dependencies = [
  "log",
- "rustc_ast",
  "rustc_attr",
  "rustc_data_structures",
  "rustc_errors",
@@ -4301,10 +4394,14 @@ dependencies = [
 name = "rustc_traits"
 version = "0.0.0"
 dependencies = [
+ "chalk-ir",
+ "chalk-rust-ir",
+ "chalk-solve",
  "log",
  "rustc_ast",
  "rustc_data_structures",
  "rustc_hir",
+ "rustc_index",
  "rustc_infer",
  "rustc_middle",
  "rustc_span",

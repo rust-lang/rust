@@ -1,9 +1,7 @@
 use super::ty::AllowPlus;
 use super::{BlockMode, Parser, PathStyle, SemiColonMode, SeqSep, TokenExpectType, TokenType};
 
-use rustc_ast::ast::{
-    self, BinOpKind, BindingMode, BlockCheckMode, Expr, ExprKind, Ident, Item, Param,
-};
+use rustc_ast::ast::{self, BinOpKind, BindingMode, BlockCheckMode, Expr, ExprKind, Item, Param};
 use rustc_ast::ast::{AttrVec, ItemKind, Mutability, Pat, PatKind, PathSegment, QSelf, Ty, TyKind};
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Lit, LitKind, TokenKind};
@@ -13,7 +11,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{pluralize, struct_span_err};
 use rustc_errors::{Applicability, DiagnosticBuilder, Handler, PResult};
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::kw;
+use rustc_span::symbol::{kw, Ident};
 use rustc_span::{MultiSpan, Span, SpanSnippetError, DUMMY_SP};
 
 use log::{debug, trace};

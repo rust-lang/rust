@@ -13,8 +13,12 @@ log = { version = "0.4" }
 rustc_middle = { path = "../librustc_middle" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_hir = { path = "../librustc_hir" }
+rustc_index = { path = "../librustc_index" }
 rustc_ast = { path = "../librustc_ast" }
 rustc_span = { path = "../librustc_span" }
+chalk-ir = "0.10.0"
+chalk-rust-ir = "0.10.0"
+chalk-solve = "0.10.0"
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }
 rustc_infer = { path = "../librustc_infer" }
 rustc_trait_selection = { path = "../librustc_trait_selection" }

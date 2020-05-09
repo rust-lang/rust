@@ -17,7 +17,7 @@ pub use rustc_hir::def::{Namespace, PerNS};
 
 use Determinacy::*;
 
-use rustc_ast::ast::{self, FloatTy, Ident, IntTy, Name, NodeId, UintTy};
+use rustc_ast::ast::{self, FloatTy, IntTy, NodeId, UintTy};
 use rustc_ast::ast::{Crate, CRATE_NODE_ID};
 use rustc_ast::ast::{ItemKind, Path};
 use rustc_ast::attr;
@@ -47,7 +47,7 @@ use rustc_session::lint::{BuiltinLintDiagnostics, LintBuffer};
 use rustc_session::Session;
 use rustc_span::hygiene::{ExpnId, ExpnKind, MacroKind, SyntaxContext, Transparency};
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{kw, sym};
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 
 use log::debug;
@@ -147,7 +147,7 @@ impl<'a> ParentScope<'a> {
 
 #[derive(Eq)]
 struct BindingError {
-    name: Name,
+    name: Symbol,
     origin: BTreeSet<Span>,
     target: BTreeSet<Span>,
     could_be_path: bool,
@@ -176,23 +176,23 @@ enum ResolutionError<'a> {
     GenericParamsFromOuterFunction(Res, HasGenericParams),
     /// Error E0403: the name is already used for a type or const parameter in this generic
     /// parameter list.
-    NameAlreadyUsedInParameterList(Name, Span),
+    NameAlreadyUsedInParameterList(Symbol, Span),
     /// Error E0407: method is not a member of trait.
-    MethodNotMemberOfTrait(Name, &'a str),
+    MethodNotMemberOfTrait(Symbol, &'a str),
     /// Error E0437: type is not a member of trait.
-    TypeNotMemberOfTrait(Name, &'a str),
+    TypeNotMemberOfTrait(Symbol, &'a str),
     /// Error E0438: const is not a member of trait.
-    ConstNotMemberOfTrait(Name, &'a str),
+    ConstNotMemberOfTrait(Symbol, &'a str),
     /// Error E0408: variable `{}` is not bound in all patterns.
     VariableNotBoundInPattern(&'a BindingError),
     /// Error E0409: variable `{}` is bound in inconsistent ways within the same match arm.
-    VariableBoundWithDifferentMode(Name, Span),
+    VariableBoundWithDifferentMode(Symbol, Span),
     /// Error E0415: identifier is bound more than once in this parameter list.
     IdentifierBoundMoreThanOnceInParameterList(&'a str),
     /// Error E0416: identifier is bound more than once in the same pattern.
     IdentifierBoundMoreThanOnceInSamePattern(&'a str),
     /// Error E0426: use of undeclared label.
-    UndeclaredLabel(&'a str, Option<Name>),
+    UndeclaredLabel(&'a str, Option<Symbol>),
     /// Error E0429: `self` imports are only allowed within a `{ }` list.
     SelfImportsOnlyAllowedWithin,
     /// Error E0430: `self` import can only appear once in the list.
@@ -206,7 +206,7 @@ enum ResolutionError<'a> {
     /// Error E0435: attempt to use a non-constant value in a constant.
     AttemptToUseNonConstantValueInConstant,
     /// Error E0530: `X` bindings cannot shadow `Y`s.
-    BindingShadowsSomethingUnacceptable(&'a str, Name, &'a NameBinding<'a>),
+    BindingShadowsSomethingUnacceptable(&'a str, Symbol, &'a NameBinding<'a>),
     /// Error E0128: type parameters with a default cannot use forward-declared identifiers.
     ForwardDeclaredTyParam, // FIXME(const_generics:defaults)
     /// Error E0735: type parameters with a default cannot use `Self`
@@ -406,12 +406,12 @@ enum ModuleKind {
     /// * A normal module ‒ either `mod from_file;` or `mod from_block { }`.
     /// * A trait or an enum (it implicitly contains associated types, methods and variant
     ///   constructors).
-    Def(DefKind, DefId, Name),
+    Def(DefKind, DefId, Symbol),
 }
 
 impl ModuleKind {
     /// Get name of the module.
-    pub fn name(&self) -> Option<Name> {
+    pub fn name(&self) -> Option<Symbol> {
         match self {
             ModuleKind::Block(..) => None,
             ModuleKind::Def(.., name) => Some(*name),
@@ -786,7 +786,7 @@ impl<'a> NameBinding<'a> {
 /// All other types are defined somewhere and possibly imported, but the primitive ones need
 /// special handling, since they have no place of origin.
 struct PrimitiveTypeTable {
-    primitive_types: FxHashMap<Name, PrimTy>,
+    primitive_types: FxHashMap<Symbol, PrimTy>,
 }
 
 impl PrimitiveTypeTable {
@@ -838,7 +838,7 @@ pub struct Resolver<'a> {
 
     /// Names of fields of an item `DefId` accessible with dot syntax.
     /// Used for hints during error reporting.
-    field_names: FxHashMap<DefId, Vec<Spanned<Name>>>,
+    field_names: FxHashMap<DefId, Vec<Spanned<Symbol>>>,
 
     /// All imports known to succeed or fail.
     determined_imports: Vec<&'a Import<'a>>,
@@ -913,11 +913,11 @@ pub struct Resolver<'a> {
 
     crate_loader: CrateLoader<'a>,
     macro_names: FxHashSet<Ident>,
-    builtin_macros: FxHashMap<Name, SyntaxExtension>,
+    builtin_macros: FxHashMap<Symbol, SyntaxExtension>,
     registered_attrs: FxHashSet<Ident>,
     registered_tools: FxHashSet<Ident>,
-    macro_use_prelude: FxHashMap<Name, &'a NameBinding<'a>>,
-    all_macros: FxHashMap<Name, Res>,
+    macro_use_prelude: FxHashMap<Symbol, &'a NameBinding<'a>>,
+    all_macros: FxHashMap<Symbol, Res>,
     macro_map: FxHashMap<DefId, Lrc<SyntaxExtension>>,
     dummy_ext_bang: Lrc<SyntaxExtension>,
     dummy_ext_derive: Lrc<SyntaxExtension>,
@@ -947,7 +947,7 @@ pub struct Resolver<'a> {
     helper_attrs: FxHashMap<ExpnId, Vec<Ident>>,
 
     /// Avoid duplicated errors for "name already defined".
-    name_already_seen: FxHashMap<Name, Span>,
+    name_already_seen: FxHashMap<Symbol, Span>,
 
     potentially_unused_imports: Vec<&'a Import<'a>>,
 
@@ -956,7 +956,7 @@ pub struct Resolver<'a> {
     struct_constructors: DefIdMap<(Res, ty::Visibility)>,
 
     /// Features enabled for this crate.
-    active_features: FxHashSet<Name>,
+    active_features: FxHashSet<Symbol>,
 
     /// Stores enum visibilities to properly build a reduced graph
     /// when visiting the correspondent variants.
@@ -1044,8 +1044,8 @@ impl rustc_ast_lowering::Resolver for Resolver<'_> {
     fn resolve_str_path(
         &mut self,
         span: Span,
-        crate_root: Option<Name>,
-        components: &[Name],
+        crate_root: Option<Symbol>,
+        components: &[Symbol],
         ns: Namespace,
     ) -> (ast::Path, Res) {
         let root = if crate_root.is_some() { kw::PathRoot } else { kw::Crate };
@@ -2678,7 +2678,7 @@ impl<'a> Resolver<'a> {
     fn add_suggestion_for_rename_of_use(
         &self,
         err: &mut DiagnosticBuilder<'_>,
-        name: Name,
+        name: Symbol,
         import: &Import<'_>,
         binding_span: Span,
     ) {
@@ -2914,12 +2914,12 @@ impl<'a> Resolver<'a> {
     }
 
     // For rustdoc.
-    pub fn all_macros(&self) -> &FxHashMap<Name, Res> {
+    pub fn all_macros(&self) -> &FxHashMap<Symbol, Res> {
         &self.all_macros
     }
 }
 
-fn names_to_string(names: &[Name]) -> String {
+fn names_to_string(names: &[Symbol]) -> String {
     let mut result = String::new();
     for (i, name) in names.iter().filter(|name| **name != kw::PathRoot).enumerate() {
         if i > 0 {
@@ -2941,14 +2941,14 @@ fn path_names_to_string(path: &Path) -> String {
 fn module_to_string(module: Module<'_>) -> Option<String> {
     let mut names = Vec::new();
 
-    fn collect_mod(names: &mut Vec<Name>, module: Module<'_>) {
+    fn collect_mod(names: &mut Vec<Symbol>, module: Module<'_>) {
         if let ModuleKind::Def(.., name) = module.kind {
             if let Some(parent) = module.parent {
                 names.push(name);
                 collect_mod(names, parent);
             }
         } else {
-            names.push(Name::intern("<opaque>"));
+            names.push(Symbol::intern("<opaque>"));
             collect_mod(names, module.parent.unwrap());
         }
     }

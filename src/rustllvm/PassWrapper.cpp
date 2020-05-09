@@ -447,7 +447,8 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     bool Singlethread,
     bool AsmComments,
     bool EmitStackSizeSection,
-    bool RelaxELFRelocations) {
+    bool RelaxELFRelocations,
+    bool UseInitArray) {
 
   auto OptLevel = fromRust(RustOptLevel);
   auto RM = fromRust(RustReloc);
@@ -473,6 +474,7 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   Options.MCOptions.PreserveAsmComments = AsmComments;
   Options.MCOptions.ABIName = ABIStr;
   Options.RelaxELFRelocations = RelaxELFRelocations;
+  Options.UseInitArray = UseInitArray;
 
   if (TrapUnreachable) {
     // Tell LLVM to codegen `unreachable` into an explicit trap instruction.

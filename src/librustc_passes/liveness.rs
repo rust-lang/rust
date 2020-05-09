@@ -96,7 +96,6 @@
 use self::LiveNodeKind::*;
 use self::VarKind::*;
 
-use rustc_ast::ast;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -108,7 +107,7 @@ use rustc_middle::hir::map::Map;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint;
-use rustc_span::symbol::sym;
+use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 
 use std::collections::VecDeque;
@@ -245,13 +244,13 @@ struct CaptureInfo {
 #[derive(Copy, Clone, Debug)]
 struct LocalInfo {
     id: HirId,
-    name: ast::Name,
+    name: Symbol,
     is_shorthand: bool,
 }
 
 #[derive(Copy, Clone, Debug)]
 enum VarKind {
-    Param(HirId, ast::Name),
+    Param(HirId, Symbol),
     Local(LocalInfo),
     CleanExit,
 }

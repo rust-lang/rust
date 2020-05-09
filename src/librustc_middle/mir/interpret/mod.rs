@@ -197,9 +197,7 @@ pub fn specialized_encode_alloc_id<'tcx, E: Encoder>(
     tcx: TyCtxt<'tcx>,
     alloc_id: AllocId,
 ) -> Result<(), E::Error> {
-    let alloc: GlobalAlloc<'tcx> =
-        tcx.alloc_map.lock().get(alloc_id).expect("no value for given alloc ID");
-    match alloc {
+    match tcx.global_alloc(alloc_id) {
         GlobalAlloc::Memory(alloc) => {
             trace!("encoding {:?} with {:#?}", alloc_id, alloc);
             AllocDiscriminant::Alloc.encode(encoder)?;
@@ -294,7 +292,7 @@ impl<'s> AllocDecodingSession<'s> {
                         AllocDiscriminant::Alloc => {
                             // If this is an allocation, we need to reserve an
                             // `AllocId` so we can decode cyclic graphs.
-                            let alloc_id = decoder.tcx().alloc_map.lock().reserve();
+                            let alloc_id = decoder.tcx().reserve_alloc_id();
                             *entry =
                                 State::InProgress(TinyList::new_single(self.session_id), alloc_id);
                             Some(alloc_id)
@@ -338,7 +336,7 @@ impl<'s> AllocDecodingSession<'s> {
                     // We already have a reserved `AllocId`.
                     let alloc_id = alloc_id.unwrap();
                     trace!("decoded alloc {:?}: {:#?}", alloc_id, alloc);
-                    decoder.tcx().alloc_map.lock().set_alloc_id_same_memory(alloc_id, alloc);
+                    decoder.tcx().set_alloc_id_same_memory(alloc_id, alloc);
                     Ok(alloc_id)
                 }
                 AllocDiscriminant::Fn => {
@@ -346,7 +344,7 @@ impl<'s> AllocDecodingSession<'s> {
                     trace!("creating fn alloc ID");
                     let instance = ty::Instance::decode(decoder)?;
                     trace!("decoded fn alloc instance: {:?}", instance);
-                    let alloc_id = decoder.tcx().alloc_map.lock().create_fn_alloc(instance);
+                    let alloc_id = decoder.tcx().create_fn_alloc(instance);
                     Ok(alloc_id)
                 }
                 AllocDiscriminant::Static => {
@@ -354,7 +352,7 @@ impl<'s> AllocDecodingSession<'s> {
                     trace!("creating extern static alloc ID");
                     let did = DefId::decode(decoder)?;
                     trace!("decoded static def-ID: {:?}", did);
-                    let alloc_id = decoder.tcx().alloc_map.lock().create_static_alloc(did);
+                    let alloc_id = decoder.tcx().create_static_alloc(did);
                     Ok(alloc_id)
                 }
             }
@@ -381,7 +379,29 @@ pub enum GlobalAlloc<'tcx> {
     Memory(&'tcx Allocation),
 }
 
-pub struct AllocMap<'tcx> {
+impl GlobalAlloc<'tcx> {
+    /// Panics if the `GlobalAlloc` does not refer to an `GlobalAlloc::Memory`
+    #[track_caller]
+    #[inline]
+    pub fn unwrap_memory(&self) -> &'tcx Allocation {
+        match *self {
+            GlobalAlloc::Memory(mem) => mem,
+            _ => bug!("expected memory, got {:?}", self),
+        }
+    }
+
+    /// Panics if the `GlobalAlloc` is not `GlobalAlloc::Function`
+    #[track_caller]
+    #[inline]
+    pub fn unwrap_fn(&self) -> Instance<'tcx> {
+        match *self {
+            GlobalAlloc::Function(instance) => instance,
+            _ => bug!("expected function, got {:?}", self),
+        }
+    }
+}
+
+crate struct AllocMap<'tcx> {
     /// Maps `AllocId`s to their corresponding allocations.
     alloc_map: FxHashMap<AllocId, GlobalAlloc<'tcx>>,
 
@@ -397,16 +417,10 @@ pub struct AllocMap<'tcx> {
 }
 
 impl<'tcx> AllocMap<'tcx> {
-    pub fn new() -> Self {
+    crate fn new() -> Self {
         AllocMap { alloc_map: Default::default(), dedup: Default::default(), next_id: AllocId(0) }
     }
-
-    /// Obtains a new allocation ID that can be referenced but does not
-    /// yet have an allocation backing it.
-    ///
-    /// Make sure to call `set_alloc_id_memory` or `set_alloc_id_same_memory` before returning such
-    /// an `AllocId` from a query.
-    pub fn reserve(&mut self) -> AllocId {
+    fn reserve(&mut self) -> AllocId {
         let next = self.next_id;
         self.next_id.0 = self.next_id.0.checked_add(1).expect(
             "You overflowed a u64 by incrementing by 1... \
@@ -415,34 +429,46 @@ impl<'tcx> AllocMap<'tcx> {
         );
         next
     }
+}
+
+impl<'tcx> TyCtxt<'tcx> {
+    /// Obtains a new allocation ID that can be referenced but does not
+    /// yet have an allocation backing it.
+    ///
+    /// Make sure to call `set_alloc_id_memory` or `set_alloc_id_same_memory` before returning such
+    /// an `AllocId` from a query.
+    pub fn reserve_alloc_id(&self) -> AllocId {
+        self.alloc_map.lock().reserve()
+    }
 
     /// Reserves a new ID *if* this allocation has not been dedup-reserved before.
     /// Should only be used for function pointers and statics, we don't want
     /// to dedup IDs for "real" memory!
-    fn reserve_and_set_dedup(&mut self, alloc: GlobalAlloc<'tcx>) -> AllocId {
+    fn reserve_and_set_dedup(&self, alloc: GlobalAlloc<'tcx>) -> AllocId {
+        let mut alloc_map = self.alloc_map.lock();
         match alloc {
             GlobalAlloc::Function(..) | GlobalAlloc::Static(..) => {}
             GlobalAlloc::Memory(..) => bug!("Trying to dedup-reserve memory with real data!"),
         }
-        if let Some(&alloc_id) = self.dedup.get(&alloc) {
+        if let Some(&alloc_id) = alloc_map.dedup.get(&alloc) {
             return alloc_id;
         }
-        let id = self.reserve();
+        let id = alloc_map.reserve();
         debug!("creating alloc {:?} with id {}", alloc, id);
-        self.alloc_map.insert(id, alloc.clone());
-        self.dedup.insert(alloc, id);
+        alloc_map.alloc_map.insert(id, alloc.clone());
+        alloc_map.dedup.insert(alloc, id);
         id
     }
 
     /// Generates an `AllocId` for a static or return a cached one in case this function has been
     /// called on the same static before.
-    pub fn create_static_alloc(&mut self, static_id: DefId) -> AllocId {
+    pub fn create_static_alloc(&self, static_id: DefId) -> AllocId {
         self.reserve_and_set_dedup(GlobalAlloc::Static(static_id))
     }
 
     /// Generates an `AllocId` for a function.  Depending on the function type,
     /// this might get deduplicated or assigned a new ID each time.
-    pub fn create_fn_alloc(&mut self, instance: Instance<'tcx>) -> AllocId {
+    pub fn create_fn_alloc(&self, instance: Instance<'tcx>) -> AllocId {
         // Functions cannot be identified by pointers, as asm-equal functions can get deduplicated
         // by the linker (we set the "unnamed_addr" attribute for LLVM) and functions can be
         // duplicated across crates.
@@ -456,8 +482,9 @@ impl<'tcx> AllocMap<'tcx> {
         });
         if is_generic {
             // Get a fresh ID.
-            let id = self.reserve();
-            self.alloc_map.insert(id, GlobalAlloc::Function(instance));
+            let mut alloc_map = self.alloc_map.lock();
+            let id = alloc_map.reserve();
+            alloc_map.alloc_map.insert(id, GlobalAlloc::Function(instance));
             id
         } else {
             // Deduplicate.
@@ -470,8 +497,8 @@ impl<'tcx> AllocMap<'tcx> {
     /// Statics with identical content will still point to the same `Allocation`, i.e.,
     /// their data will be deduplicated through `Allocation` interning -- but they
     /// are different places in memory and as such need different IDs.
-    pub fn create_memory_alloc(&mut self, mem: &'tcx Allocation) -> AllocId {
-        let id = self.reserve();
+    pub fn create_memory_alloc(&self, mem: &'tcx Allocation) -> AllocId {
+        let id = self.reserve_alloc_id();
         self.set_alloc_id_memory(id, mem);
         id
     }
@@ -482,38 +509,35 @@ impl<'tcx> AllocMap<'tcx> {
     /// This function exists to allow const eval to detect the difference between evaluation-
     /// local dangling pointers and allocations in constants/statics.
     #[inline]
-    pub fn get(&self, id: AllocId) -> Option<GlobalAlloc<'tcx>> {
-        self.alloc_map.get(&id).cloned()
+    pub fn get_global_alloc(&self, id: AllocId) -> Option<GlobalAlloc<'tcx>> {
+        self.alloc_map.lock().alloc_map.get(&id).cloned()
     }
 
-    /// Panics if the `AllocId` does not refer to an `Allocation`
-    pub fn unwrap_memory(&self, id: AllocId) -> &'tcx Allocation {
-        match self.get(id) {
-            Some(GlobalAlloc::Memory(mem)) => mem,
-            _ => bug!("expected allocation ID {} to point to memory", id),
-        }
-    }
-
-    /// Panics if the `AllocId` does not refer to a function
-    pub fn unwrap_fn(&self, id: AllocId) -> Instance<'tcx> {
-        match self.get(id) {
-            Some(GlobalAlloc::Function(instance)) => instance,
-            _ => bug!("expected allocation ID {} to point to a function", id),
+    #[inline]
+    #[track_caller]
+    /// Panics in case the `AllocId` is dangling. Since that is impossible for `AllocId`s in
+    /// constants (as all constants must pass interning and validation that check for dangling
+    /// ids), this function is frequently used throughout rustc, but should not be used within
+    /// the miri engine.
+    pub fn global_alloc(&self, id: AllocId) -> GlobalAlloc<'tcx> {
+        match self.get_global_alloc(id) {
+            Some(alloc) => alloc,
+            None => bug!("could not find allocation for {}", id),
         }
     }
 
     /// Freezes an `AllocId` created with `reserve` by pointing it at an `Allocation`. Trying to
     /// call this function twice, even with the same `Allocation` will ICE the compiler.
-    pub fn set_alloc_id_memory(&mut self, id: AllocId, mem: &'tcx Allocation) {
-        if let Some(old) = self.alloc_map.insert(id, GlobalAlloc::Memory(mem)) {
+    pub fn set_alloc_id_memory(&self, id: AllocId, mem: &'tcx Allocation) {
+        if let Some(old) = self.alloc_map.lock().alloc_map.insert(id, GlobalAlloc::Memory(mem)) {
             bug!("tried to set allocation ID {}, but it was already existing as {:#?}", id, old);
         }
     }
 
     /// Freezes an `AllocId` created with `reserve` by pointing it at an `Allocation`. May be called
     /// twice for the same `(AllocId, Allocation)` pair.
-    fn set_alloc_id_same_memory(&mut self, id: AllocId, mem: &'tcx Allocation) {
-        self.alloc_map.insert_same(id, GlobalAlloc::Memory(mem));
+    fn set_alloc_id_same_memory(&self, id: AllocId, mem: &'tcx Allocation) {
+        self.alloc_map.lock().alloc_map.insert_same(id, GlobalAlloc::Memory(mem));
     }
 }
 

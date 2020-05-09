@@ -20,7 +20,7 @@ use rustc_parse::validate_attr;
 use rustc_session::lint::builtin::PATTERNS_IN_FNS_WITHOUT_BODY;
 use rustc_session::lint::LintBuffer;
 use rustc_session::Session;
-use rustc_span::symbol::{kw, sym};
+use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
 use std::mem;
 use std::ops::DerefMut;
