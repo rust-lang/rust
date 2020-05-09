@@ -1201,6 +1201,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "matches",
     },
     Lint {
+        name: "match_wildcard_for_single_variants",
+        group: "pedantic",
+        desc: "a wildcard enum match for a single variant",
+        deprecation: None,
+        module: "matches",
+    },
+    Lint {
         name: "maybe_infinite_iter",
         group: "pedantic",
         desc: "possible infinite iteration",

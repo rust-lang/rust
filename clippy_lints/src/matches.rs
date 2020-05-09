@@ -230,6 +230,40 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
+    /// **What it does:** Checks for wildcard enum matches for a single variant.
+    ///
+    /// **Why is this bad?** New enum variants added by library updates can be missed.
+    ///
+    /// **Known problems:** Suggested replacements may not use correct path to enum
+    /// if it's not present in the current scope.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// # enum Foo { A, B, C }
+    /// # let x = Foo::B;
+    /// match x {
+    ///     Foo::A => {},
+    ///     Foo::B => {},
+    ///     _ => {},
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// # enum Foo { A, B, C }
+    /// # let x = Foo::B;
+    /// match x {
+    ///     Foo::A => {},
+    ///     Foo::B => {},
+    ///     Foo::C => {},
+    /// }
+    /// ```
+    pub MATCH_WILDCARD_FOR_SINGLE_VARIANTS,
+    pedantic,
+    "a wildcard enum match for a single variant"
+}
+
+declare_clippy_lint! {
     /// **What it does:** Checks for wildcard pattern used with others patterns in same match arm.
     ///
     /// **Why is this bad?** Wildcard pattern already covers any other pattern as it will match anyway.
@@ -356,6 +390,7 @@ impl_lint_pass!(Matches => [
     MATCH_WILD_ERR_ARM,
     MATCH_AS_REF,
     WILDCARD_ENUM_MATCH_ARM,
+    MATCH_WILDCARD_FOR_SINGLE_VARIANTS,
     WILDCARD_IN_OR_PATTERNS,
     MATCH_SINGLE_BINDING,
     INFALLIBLE_DESTRUCTURING_MATCH,
@@ -765,6 +800,19 @@ fn check_wild_enum_match(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_
                 suggestion.push(String::from("_"));
             }
         }
+
+        if suggestion.len() == 1 {
+            // No need to check for non-exhaustive enum as in that case len would be greater than 1
+            span_lint_and_sugg(
+                cx,
+                MATCH_WILDCARD_FOR_SINGLE_VARIANTS,
+                wildcard_span,
+                message,
+                "try this",
+                suggestion[0].clone(),
+                Applicability::MachineApplicable,
+            )
+        };
 
         span_lint_and_sugg(
             cx,
