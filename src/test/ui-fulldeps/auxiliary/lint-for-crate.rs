@@ -29,8 +29,9 @@ impl<'tcx> LateLintPass<'tcx> for Pass {
     fn check_crate(&mut self, cx: &LateContext, krate: &rustc_hir::Crate) {
         if !cx.sess().contains_name(&krate.item.attrs, Symbol::intern("crate_okay")) {
             cx.lint(CRATE_NOT_OKAY, |lint| {
+                let span = cx.tcx.hir().span(rustc_hir::CRATE_HIR_ID);
                 lint.build("crate is not marked with #![crate_okay]")
-                    .set_span(krate.item.span)
+                    .set_span(span)
                     .emit()
             });
         }
