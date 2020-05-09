@@ -1510,6 +1510,7 @@ fn rewrite_type_prefix(
     prefix: &str,
     ident: symbol::Ident,
     generics: &ast::Generics,
+    generic_bounds_opt: Option<&ast::GenericBounds>,
 ) -> Option<String> {
     let mut result = String::with_capacity(128);
     result.push_str(prefix);
@@ -1525,6 +1526,19 @@ fn rewrite_type_prefix(
         let generics_str = rewrite_generics(context, ident_str, generics, g_shape)?;
         result.push_str(&generics_str);
     }
+
+    let type_bounds_str = if let Some(bounds) = generic_bounds_opt {
+        if bounds.is_empty() {
+            String::new()
+        } else {
+            // 2 = `: `
+            let shape = Shape::indented(indent, context.config).offset_left(result.len() + 2)?;
+            bounds.rewrite(context, shape).map(|s| format!(": {}", s))?
+        }
+    } else {
+        String::new()
+    };
+    result.push_str(&type_bounds_str);
 
     let where_budget = context.budget(last_line_width(&result));
     let option = WhereClauseOption::snuggled(&result);
@@ -1552,6 +1566,7 @@ fn rewrite_type_item<R: Rewrite>(
     ident: symbol::Ident,
     rhs: &R,
     generics: &ast::Generics,
+    generic_bounds_opt: Option<&ast::GenericBounds>,
     vis: &ast::Visibility,
 ) -> Option<String> {
     let mut result = String::with_capacity(128);
@@ -1561,6 +1576,7 @@ fn rewrite_type_item<R: Rewrite>(
         &format!("{}{} ", format_visibility(context, vis), prefix),
         ident,
         generics,
+        generic_bounds_opt,
     )?);
 
     if generics.where_clause.predicates.is_empty() {
@@ -1573,17 +1589,6 @@ fn rewrite_type_item<R: Rewrite>(
     // 1 = ";"
     let rhs_shape = Shape::indented(indent, context.config).sub_width(1)?;
     rewrite_assign_rhs(context, result, rhs, rhs_shape).map(|s| s + ";")
-}
-
-pub(crate) fn rewrite_type_alias(
-    context: &RewriteContext<'_>,
-    indent: Indent,
-    ident: symbol::Ident,
-    ty: &ast::Ty,
-    generics: &ast::Generics,
-    vis: &ast::Visibility,
-) -> Option<String> {
-    rewrite_type_item(context, indent, "type", " =", ident, ty, generics, vis)
 }
 
 pub(crate) fn rewrite_opaque_type(
@@ -1603,6 +1608,7 @@ pub(crate) fn rewrite_opaque_type(
         ident,
         &opaque_type_bounds,
         generics,
+        Some(generic_bounds),
         vis,
     )
 }
@@ -1824,39 +1830,39 @@ fn rewrite_static(
     }
 }
 
-pub(crate) fn rewrite_associated_type(
+pub(crate) fn rewrite_type_alias(
     ident: symbol::Ident,
     ty_opt: Option<&ptr::P<ast::Ty>>,
     generics: &ast::Generics,
     generic_bounds_opt: Option<&ast::GenericBounds>,
     context: &RewriteContext<'_>,
     indent: Indent,
+    vis: &ast::Visibility,
 ) -> Option<String> {
-    let ident_str = rewrite_ident(context, ident);
-    // 5 = "type "
-    let generics_shape = Shape::indented(indent, context.config).offset_left(5)?;
-    let generics_str = rewrite_generics(context, ident_str, generics, generics_shape)?;
-    let prefix = format!("type {}", generics_str);
-
-    let type_bounds_str = if let Some(bounds) = generic_bounds_opt {
-        if bounds.is_empty() {
-            String::new()
-        } else {
-            // 2 = ": ".len()
-            let shape = Shape::indented(indent, context.config).offset_left(prefix.len() + 2)?;
-            bounds.rewrite(context, shape).map(|s| format!(": {}", s))?
-        }
-    } else {
-        String::new()
-    };
+    let mut prefix = rewrite_type_prefix(
+        context,
+        indent,
+        &format!("{}type ", format_visibility(context, vis)),
+        ident,
+        generics,
+        generic_bounds_opt,
+    )?;
 
     if let Some(ty) = ty_opt {
         // 1 = `;`
         let shape = Shape::indented(indent, context.config).sub_width(1)?;
-        let lhs = format!("{}{} =", prefix, type_bounds_str);
+
+        // If there's a where clause, add a newline before the assignment. Otherwise just add a
+        // space.
+        if !generics.where_clause.predicates.is_empty() {
+            prefix.push_str(&indent.to_string_with_newline(context.config));
+        } else {
+            prefix.push(' ');
+        }
+        let lhs = format!("{}=", prefix);
         rewrite_assign_rhs(context, lhs, &**ty, shape).map(|s| s + ";")
     } else {
-        Some(format!("{}{};", prefix, type_bounds_str))
+        Some(format!("{};", prefix))
     }
 }
 
@@ -1900,13 +1906,14 @@ pub(crate) fn rewrite_opaque_impl_type(
 
 pub(crate) fn rewrite_associated_impl_type(
     ident: symbol::Ident,
+    vis: &ast::Visibility,
     defaultness: ast::Defaultness,
     ty_opt: Option<&ptr::P<ast::Ty>>,
     generics: &ast::Generics,
     context: &RewriteContext<'_>,
     indent: Indent,
 ) -> Option<String> {
-    let result = rewrite_associated_type(ident, ty_opt, generics, None, context, indent)?;
+    let result = rewrite_type_alias(ident, ty_opt, generics, None, context, indent, vis)?;
 
     match defaultness {
         ast::Defaultness::Default(..) => Some(format!("default {}", result)),
@@ -3088,7 +3095,7 @@ impl Rewrite for ast::ForeignItem {
         // FIXME: this may be a faulty span from libsyntax.
         let span = mk_sp(self.span.lo(), self.span.hi() - BytePos(1));
 
-        let item_str = match self.kind {
+        let item_str: String = match self.kind {
             ast::ForeignItemKind::Fn(_, ref fn_sig, ref generics, _) => rewrite_fn_base(
                 context,
                 shape.indent,
@@ -3112,14 +3119,20 @@ impl Rewrite for ast::ForeignItem {
                 // 1 = ;
                 rewrite_assign_rhs(context, prefix, &**ty, shape.sub_width(1)?).map(|s| s + ";")
             }
-            ast::ForeignItemKind::TyAlias(..) => {
-                let vis = format_visibility(context, &self.vis);
-                Some(format!(
-                    "{}type {};",
-                    vis,
-                    rewrite_ident(context, self.ident)
-                ))
-            }
+            ast::ForeignItemKind::TyAlias(
+                _,
+                ref generics,
+                ref generic_bounds,
+                ref type_default,
+            ) => rewrite_type_alias(
+                self.ident,
+                type_default.as_ref(),
+                generics,
+                Some(generic_bounds),
+                &context,
+                shape.indent,
+                &self.vis,
+            ),
             ast::ForeignItemKind::MacCall(ref mac) => {
                 rewrite_macro(mac, None, context, shape, MacroPosition::Item)
             }

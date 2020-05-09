@@ -11,9 +11,8 @@ use crate::config::{BraceStyle, Config};
 use crate::coverage::transform_missing_snippet;
 use crate::items::{
     format_impl, format_trait, format_trait_alias, is_mod_decl, is_use_item,
-    rewrite_associated_impl_type, rewrite_associated_type, rewrite_extern_crate,
-    rewrite_opaque_impl_type, rewrite_opaque_type, rewrite_type_alias, FnBraceStyle, FnSig,
-    StaticParts, StructParts,
+    rewrite_associated_impl_type, rewrite_extern_crate, rewrite_opaque_impl_type,
+    rewrite_opaque_type, rewrite_type_alias, FnBraceStyle, FnSig, StaticParts, StructParts,
 };
 use crate::macros::{macro_style, rewrite_macro, rewrite_macro_def, MacroPosition};
 use crate::modules::Module;
@@ -544,11 +543,12 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 ast::ItemKind::TyAlias(_, ref generics, ref generic_bounds, ref ty) => match ty {
                     Some(ty) => {
                         let rewrite = rewrite_type_alias(
+                            item.ident,
+                            Some(&*ty),
+                            generics,
+                            Some(generic_bounds),
                             &self.get_context(),
                             self.block_indent,
-                            item.ident,
-                            &*ty,
-                            generics,
                             &item.vis,
                         );
                         self.push_rewrite(item.span, rewrite);
@@ -619,13 +619,14 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 );
             }
             ast::AssocItemKind::TyAlias(_, ref generics, ref generic_bounds, ref type_default) => {
-                let rewrite = rewrite_associated_type(
+                let rewrite = rewrite_type_alias(
                     ti.ident,
                     type_default.as_ref(),
                     generics,
                     Some(generic_bounds),
                     &self.get_context(),
                     self.block_indent,
+                    &ti.vis,
                 );
                 self.push_rewrite(ti.span, rewrite);
             }
@@ -666,6 +667,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 let rewrite_associated = || {
                     rewrite_associated_impl_type(
                         ii.ident,
+                        &ii.vis,
                         defaultness,
                         ty.as_ref(),
                         &generics,
