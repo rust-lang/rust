@@ -565,6 +565,9 @@ declare_features! (
     /// Allow conditional compilation depending on rust version
     (active, cfg_version, "1.45.0", Some(64796), None),
 
+    /// Allows constants of reference type to have integers for the address.
+    (active, const_int_ref, "1.45.0", Some(63197), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------

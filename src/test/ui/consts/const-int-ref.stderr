@@ -1,0 +1,15 @@
+error[E0601]: `main` function not found in crate `const_int_ref`
+  --> $DIR/const-int-ref.rs:3:1
+   |
+LL | / #[repr(C)]
+LL | | union Transmute {
+LL | |     int: usize,
+LL | |     ptr: &'static i32
+LL | | }
+LL | |
+LL | | const GPIO: &i32 = unsafe { Transmute { int: 0x800 }.ptr };
+   | |___________________________________________________________^ consider adding a `main` function to `$DIR/const-int-ref.rs`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0601`.

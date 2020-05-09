@@ -382,14 +382,20 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             // alignment and size determined by the layout (size will be 0,
             // alignment should take attributes into account).
             .unwrap_or_else(|| (place.layout.size, place.layout.align.abi));
+        let ptr = self.ecx.memory.check_ptr_access_align(
+            place.ptr,
+            size,
+            Some(align),
+            CheckInAllocMsg::InboundsTest,
+        );
+        if let Err(InterpErrorInfo { kind: err_unsup!(ReadBytesAsPointer), ..}) = ptr {
+            if self.ecx.tcx.features().const_int_ref {
+                return Ok(());
+            }
+        }
         // Direct call to `check_ptr_access_align` checks alignment even on CTFE machines.
         let ptr: Option<_> = try_validation!(
-            self.ecx.memory.check_ptr_access_align(
-                place.ptr,
-                size,
-                Some(align),
-                CheckInAllocMsg::InboundsTest,
-            ),
+            ptr,
             self.path,
             err_ub!(AlignmentCheckFailed { required, has }) =>
                 {
@@ -405,7 +411,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             err_ub!(PointerOutOfBounds { .. }) =>
                 { "a dangling {} (going beyond the bounds of its allocation)", kind },
             err_unsup!(ReadBytesAsPointer) =>
-                { "a dangling {} (created from integer)", kind },
+                { "a dangling {} (created from integer). Add `#![feature(const_int_ref)]` to the crate attributes to enable", kind },
             // This cannot happen during const-eval (because interning already detects
             // dangling pointers), but it can happen in Miri.
             err_ub!(PointerUseAfterFree(..)) =>

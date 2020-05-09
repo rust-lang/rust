@@ -219,6 +219,7 @@ symbols! {
         const_generics,
         const_if_match,
         const_indexing,
+        const_int_ref,
         const_in_array_repeat_expressions,
         const_let,
         const_loop,
