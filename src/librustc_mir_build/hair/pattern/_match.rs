@@ -441,7 +441,7 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
         &self,
         cx: &mut MatchCheckCtxt<'p, 'tcx>,
         constructor: &Constructor<'tcx>,
-        ctor_wild_subpatterns: &'p [Pat<'tcx>],
+        ctor_wild_subpatterns: &Fields<'p, 'tcx>,
     ) -> Option<PatStack<'p, 'tcx>> {
         let new_heads = specialize_one_pattern(cx, self.head(), constructor, ctor_wild_subpatterns);
         new_heads.map(|mut new_head| {
@@ -503,7 +503,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         &self,
         cx: &mut MatchCheckCtxt<'p, 'tcx>,
         constructor: &Constructor<'tcx>,
-        ctor_wild_subpatterns: &'p [Pat<'tcx>],
+        ctor_wild_subpatterns: &Fields<'p, 'tcx>,
     ) -> Matrix<'p, 'tcx> {
         self.0
             .iter()
@@ -722,10 +722,12 @@ impl Slice {
     }
 }
 
+/// A value can be decomposed into a constructor applied to some fields. This struct represents
+/// the constructor. See also `Fields`.
 #[derive(Clone, Debug, PartialEq)]
 enum Constructor<'tcx> {
-    /// The constructor of all patterns that don't vary by constructor,
-    /// e.g., struct patterns and fixed-length arrays.
+    /// The constructor for patterns that have a single constructor, like tuples, struct patterns
+    /// and fixed-length arrays.
     Single,
     /// Enum variants.
     Variant(DefId),
@@ -1024,6 +1026,38 @@ impl<'tcx> Constructor<'tcx> {
     fn apply_wildcards<'a>(&self, cx: &MatchCheckCtxt<'a, 'tcx>, ty: Ty<'tcx>) -> Pat<'tcx> {
         let subpatterns = self.wildcard_subpatterns(cx, ty).into_iter();
         self.apply(cx, ty, subpatterns)
+    }
+}
+
+/// A value can be decomposed into a constructor applied to some fields. This struct represents
+/// those fields, generalized to allow patterns in each field. See also `Constructor`.
+#[derive(Debug, Clone)]
+enum Fields<'p, 'tcx> {
+    Slice(&'p [Pat<'tcx>]),
+}
+
+impl<'p, 'tcx> Fields<'p, 'tcx> {
+    /// Creates a new list of wildcard fields for a given constructor.
+    fn wildcards(
+        cx: &MatchCheckCtxt<'p, 'tcx>,
+        constructor: &Constructor<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> Self {
+        debug!("Fields::wildcards({:#?}, {:?})", constructor, ty);
+        let pats = cx.pattern_arena.alloc_from_iter(constructor.wildcard_subpatterns(cx, ty));
+        Fields::Slice(pats)
+    }
+
+    fn len(&self) -> usize {
+        match self {
+            Fields::Slice(pats) => pats.len(),
+        }
+    }
+
+    fn iter<'a>(&'a self) -> impl Iterator<Item = &'p Pat<'tcx>> + Captures<'a> {
+        match self {
+            Fields::Slice(pats) => pats.iter(),
+        }
     }
 }
 
@@ -1823,10 +1857,9 @@ fn is_useful_specialized<'p, 'tcx>(
 ) -> Usefulness<'tcx, 'p> {
     debug!("is_useful_specialized({:#?}, {:#?}, {:?})", v, ctor, lty);
 
-    let ctor_wild_subpatterns =
-        cx.pattern_arena.alloc_from_iter(ctor.wildcard_subpatterns(cx, lty));
-    let matrix = matrix.specialize_constructor(cx, &ctor, ctor_wild_subpatterns);
-    v.specialize_constructor(cx, &ctor, ctor_wild_subpatterns)
+    let ctor_wild_subpatterns = Fields::wildcards(cx, &ctor, lty);
+    let matrix = matrix.specialize_constructor(cx, &ctor, &ctor_wild_subpatterns);
+    v.specialize_constructor(cx, &ctor, &ctor_wild_subpatterns)
         .map(|v| is_useful(cx, &matrix, &v, witness_preference, hir_id, is_under_guard, false))
         .map(|u| u.apply_constructor(cx, &ctor, lty))
         .unwrap_or(NotUseful)
@@ -2295,7 +2328,7 @@ fn constructor_covered_by_range<'tcx>(
 fn patterns_for_variant<'p, 'tcx>(
     cx: &mut MatchCheckCtxt<'p, 'tcx>,
     subpatterns: &'p [FieldPat<'tcx>],
-    ctor_wild_subpatterns: &'p [Pat<'tcx>],
+    ctor_wild_subpatterns: &Fields<'p, 'tcx>,
     is_non_exhaustive: bool,
 ) -> PatStack<'p, 'tcx> {
     let mut result: SmallVec<_> = ctor_wild_subpatterns.iter().collect();
@@ -2326,7 +2359,7 @@ fn specialize_one_pattern<'p, 'tcx>(
     cx: &mut MatchCheckCtxt<'p, 'tcx>,
     pat: &'p Pat<'tcx>,
     constructor: &Constructor<'tcx>,
-    ctor_wild_subpatterns: &'p [Pat<'tcx>],
+    ctor_wild_subpatterns: &Fields<'p, 'tcx>,
 ) -> Option<PatStack<'p, 'tcx>> {
     if let NonExhaustive = constructor {
         // Only a wildcard pattern can match the special extra constructor
