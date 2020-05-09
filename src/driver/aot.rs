@@ -1,4 +1,4 @@
-use rustc_middle::dep_graph::{WorkProduct, WorkProductFileKind, WorkProductId};
+use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::middle::cstore::EncodedMetadata;
 use rustc_middle::mir::mono::CodegenUnit;
 use rustc_session::config::{DebugInfo, OutputType};
@@ -57,7 +57,7 @@ fn emit_module<B: Backend>(
         rustc_incremental::copy_cgu_workproducts_to_incr_comp_cache_dir(
             tcx.sess,
             &name,
-            &[(WorkProductFileKind::Object, tmp_file.clone())],
+            &[tmp_file.clone()],
         )
     };
 
@@ -80,17 +80,9 @@ fn reuse_workproduct_for_cgu(
     let incr_comp_session_dir = tcx.sess.incr_comp_session_dir();
     let mut object = None;
     let work_product = cgu.work_product(tcx);
-    for (kind, saved_file) in &work_product.saved_files {
-        let obj_out = match kind {
-            WorkProductFileKind::Object => {
-                let path = tcx.output_filenames(LOCAL_CRATE).temp_path(OutputType::Object, Some(&cgu.name().as_str()));
-                object = Some(path.clone());
-                path
-            }
-            WorkProductFileKind::Bytecode => {
-                panic!("cg_clif doesn't use bytecode");
-            }
-        };
+    for saved_file in &work_product.saved_files {
+        let obj_out = tcx.output_filenames(LOCAL_CRATE).temp_path(OutputType::Object, Some(&cgu.name().as_str()));
+        object = Some(obj_out.clone());
         let source_file = rustc_incremental::in_incr_comp_dir(&incr_comp_session_dir, &saved_file);
         if let Err(err) = rustc_fs_util::link_or_copy(&source_file, &obj_out) {
             tcx.sess.err(&format!(
@@ -160,7 +152,7 @@ pub(super) fn run_aot(
 
     if tcx.dep_graph.is_fully_enabled() {
         for cgu in &*cgus {
-            tcx.codegen_unit(cgu.name());
+            tcx.ensure().codegen_unit(cgu.name());
         }
     }
 
