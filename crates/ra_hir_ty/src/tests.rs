@@ -6,6 +6,7 @@ mod patterns;
 mod traits;
 mod method_resolution;
 mod macros;
+mod display_source_code;
 
 use std::sync::Arc;
 
@@ -16,7 +17,7 @@ use hir_def::{
     item_scope::ItemScope,
     keys,
     nameres::CrateDefMap,
-    AssocItemId, DefWithBodyId, LocalModuleId, Lookup, ModuleDefId,
+    AssocItemId, DefWithBodyId, LocalModuleId, Lookup, ModuleDefId, ModuleId,
 };
 use hir_expand::{db::AstDatabase, InFile};
 use insta::assert_snapshot;
@@ -37,6 +38,18 @@ use crate::{
 // update the snapshots.
 
 fn type_at_pos(db: &TestDB, pos: FilePosition) -> String {
+    type_at_pos_displayed(db, pos, |ty, _| ty.display(db).to_string())
+}
+
+fn displayed_source_at_pos(db: &TestDB, pos: FilePosition) -> String {
+    type_at_pos_displayed(db, pos, |ty, module_id| ty.display_source_code(db, module_id).unwrap())
+}
+
+fn type_at_pos_displayed(
+    db: &TestDB,
+    pos: FilePosition,
+    display_fn: impl FnOnce(&Ty, ModuleId) -> String,
+) -> String {
     let file = db.parse(pos.file_id).ok().unwrap();
     let expr = algo::find_node_at_offset::<ast::Expr>(file.syntax(), pos.offset).unwrap();
     let fn_def = expr.syntax().ancestors().find_map(ast::FnDef::cast).unwrap();
@@ -49,7 +62,7 @@ fn type_at_pos(db: &TestDB, pos: FilePosition) -> String {
     if let Some(expr_id) = source_map.node_expr(InFile::new(pos.file_id.into(), &expr)) {
         let infer = db.infer(func.into());
         let ty = &infer[expr_id];
-        return ty.display(db).to_string();
+        return display_fn(ty, module);
     }
     panic!("Can't find expression")
 }

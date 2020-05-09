@@ -43,16 +43,12 @@ pub(crate) fn add_function(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
         return None;
     }
 
-    let target_module = if let Some(qualifier) = path.qualifier() {
-        if let Some(hir::PathResolution::Def(hir::ModuleDef::Module(module))) =
-            ctx.sema.resolve_path(&qualifier)
-        {
-            Some(module.definition_source(ctx.sema.db))
-        } else {
-            return None;
-        }
-    } else {
-        None
+    let target_module = match path.qualifier() {
+        Some(qualifier) => match ctx.sema.resolve_path(&qualifier) {
+            Some(hir::PathResolution::Def(hir::ModuleDef::Module(module))) => Some(module),
+            _ => return None,
+        },
+        None => None,
     };
 
     let function_builder = FunctionBuilder::from_call(&ctx, &call, &path, target_module)?;
@@ -83,25 +79,29 @@ struct FunctionBuilder {
 }
 
 impl FunctionBuilder {
-    /// Prepares a generated function that matches `call` in `generate_in`
-    /// (or as close to `call` as possible, if `generate_in` is `None`)
+    /// Prepares a generated function that matches `call`.
+    /// The function is generated in `target_module` or next to `call`
     fn from_call(
         ctx: &AssistContext,
         call: &ast::CallExpr,
         path: &ast::Path,
-        target_module: Option<hir::InFile<hir::ModuleSource>>,
+        target_module: Option<hir::Module>,
     ) -> Option<Self> {
-        let needs_pub = target_module.is_some();
         let mut file = ctx.frange.file_id;
-        let target = if let Some(target_module) = target_module {
-            let (in_file, target) = next_space_for_fn_in_module(ctx.sema.db, target_module)?;
-            file = in_file;
-            target
-        } else {
-            next_space_for_fn_after_call_site(&call)?
+        let target = match &target_module {
+            Some(target_module) => {
+                let module_source = target_module.definition_source(ctx.db);
+                let (in_file, target) = next_space_for_fn_in_module(ctx.sema.db, &module_source)?;
+                file = in_file;
+                target
+            }
+            None => next_space_for_fn_after_call_site(&call)?,
         };
+        let needs_pub = target_module.is_some();
+        let target_module = target_module.or_else(|| ctx.sema.scope(target.syntax()).module())?;
         let fn_name = fn_name(&path)?;
-        let (type_params, params) = fn_args(ctx, &call)?;
+        let (type_params, params) = fn_args(ctx, target_module, &call)?;
+
         Some(Self { target, fn_name, type_params, params, file, needs_pub })
     }
 
@@ -144,6 +144,15 @@ enum GeneratedFunctionTarget {
     InEmptyItemList(ast::ItemList),
 }
 
+impl GeneratedFunctionTarget {
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            GeneratedFunctionTarget::BehindItem(it) => it,
+            GeneratedFunctionTarget::InEmptyItemList(it) => it.syntax(),
+        }
+    }
+}
+
 fn fn_name(call: &ast::Path) -> Option<ast::Name> {
     let name = call.segment()?.syntax().to_string();
     Some(ast::make::name(&name))
@@ -152,17 +161,17 @@ fn fn_name(call: &ast::Path) -> Option<ast::Name> {
 /// Computes the type variables and arguments required for the generated function
 fn fn_args(
     ctx: &AssistContext,
+    target_module: hir::Module,
     call: &ast::CallExpr,
 ) -> Option<(Option<ast::TypeParamList>, ast::ParamList)> {
     let mut arg_names = Vec::new();
     let mut arg_types = Vec::new();
     for arg in call.arg_list()?.args() {
-        let arg_name = match fn_arg_name(&arg) {
+        arg_names.push(match fn_arg_name(&arg) {
             Some(name) => name,
             None => String::from("arg"),
-        };
-        arg_names.push(arg_name);
-        arg_types.push(match fn_arg_type(ctx, &arg) {
+        });
+        arg_types.push(match fn_arg_type(ctx, target_module, &arg) {
             Some(ty) => ty,
             None => String::from("()"),
         });
@@ -218,12 +227,21 @@ fn fn_arg_name(fn_arg: &ast::Expr) -> Option<String> {
     }
 }
 
-fn fn_arg_type(ctx: &AssistContext, fn_arg: &ast::Expr) -> Option<String> {
+fn fn_arg_type(
+    ctx: &AssistContext,
+    target_module: hir::Module,
+    fn_arg: &ast::Expr,
+) -> Option<String> {
     let ty = ctx.sema.type_of_expr(fn_arg)?;
     if ty.is_unknown() {
         return None;
     }
-    Some(ty.display(ctx.sema.db).to_string())
+
+    if let Ok(rendered) = ty.display_source_code(ctx.db, target_module.into()) {
+        Some(rendered)
+    } else {
+        None
+    }
 }
 
 /// Returns the position inside the current mod or file
@@ -252,10 +270,10 @@ fn next_space_for_fn_after_call_site(expr: &ast::CallExpr) -> Option<GeneratedFu
 
 fn next_space_for_fn_in_module(
     db: &dyn hir::db::AstDatabase,
-    module: hir::InFile<hir::ModuleSource>,
+    module_source: &hir::InFile<hir::ModuleSource>,
 ) -> Option<(FileId, GeneratedFunctionTarget)> {
-    let file = module.file_id.original_file(db);
-    let assist_item = match module.value {
+    let file = module_source.file_id.original_file(db);
+    let assist_item = match &module_source.value {
         hir::ModuleSource::SourceFile(it) => {
             if let Some(last_item) = it.items().last() {
                 GeneratedFunctionTarget::BehindItem(last_item.syntax().clone())
@@ -599,8 +617,33 @@ fn bar(foo: impl Foo) {
     }
 
     #[test]
-    #[ignore]
-    // FIXME print paths properly to make this test pass
+    fn borrowed_arg() {
+        check_assist(
+            add_function,
+            r"
+struct Baz;
+fn baz() -> Baz { todo!() }
+
+fn foo() {
+    bar<|>(&baz())
+}
+",
+            r"
+struct Baz;
+fn baz() -> Baz { todo!() }
+
+fn foo() {
+    bar(&baz())
+}
+
+fn bar(baz: &Baz) {
+    <|>todo!()
+}
+",
+        )
+    }
+
+    #[test]
     fn add_function_with_qualified_path_arg() {
         check_assist(
             add_function,
@@ -609,10 +652,8 @@ mod Baz {
     pub struct Bof;
     pub fn baz() -> Bof { Bof }
 }
-mod Foo {
-    fn foo() {
-        <|>bar(super::Baz::baz())
-    }
+fn foo() {
+    <|>bar(Baz::baz())
 }
 ",
             r"
@@ -620,14 +661,12 @@ mod Baz {
     pub struct Bof;
     pub fn baz() -> Bof { Bof }
 }
-mod Foo {
-    fn foo() {
-        bar(super::Baz::baz())
-    }
+fn foo() {
+    bar(Baz::baz())
+}
 
-    fn bar(baz: super::Baz::Bof) {
-        <|>todo!()
-    }
+fn bar(baz: Baz::Bof) {
+    <|>todo!()
 }
 ",
         )
@@ -809,6 +848,40 @@ fn foo() {
     }
 
     #[test]
+    #[ignore]
+    // Ignored until local imports are supported.
+    // See https://github.com/rust-analyzer/rust-analyzer/issues/1165
+    fn qualified_path_uses_correct_scope() {
+        check_assist(
+            add_function,
+            "
+mod foo {
+    pub struct Foo;
+}
+fn bar() {
+    use foo::Foo;
+    let foo = Foo;
+    baz<|>(foo)
+}
+",
+            "
+mod foo {
+    pub struct Foo;
+}
+fn bar() {
+    use foo::Foo;
+    let foo = Foo;
+    baz(foo)
+}
+
+fn baz(foo: foo::Foo) {
+    <|>todo!()
+}
+",
+        )
+    }
+
+    #[test]
     fn add_function_in_module_containing_other_items() {
         check_assist(
             add_function,
@@ -916,21 +989,6 @@ fn foo() {
 
 fn bar(baz: ()) {}
 ",
-        )
-    }
-
-    #[test]
-    fn add_function_not_applicable_if_function_path_not_singleton() {
-        // In the future this assist could be extended to generate functions
-        // if the path is in the same crate (or even the same workspace).
-        // For the beginning, I think this is fine.
-        check_assist_not_applicable(
-            add_function,
-            r"
-fn foo() {
-    other_crate::bar<|>();
-}
-        ",
         )
     }
 
