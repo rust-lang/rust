@@ -882,6 +882,10 @@ pub struct TargetOptions {
 
     /// Additional arguments to pass to LLVM, similar to the `-C llvm-args` codegen option.
     pub llvm_args: Vec<String>,
+
+    /// Whether to use legacy .ctors initialization hooks rather than .init_array. Defaults
+    /// to false (uses .init_array).
+    pub use_ctors_section: bool,
 }
 
 impl Default for TargetOptions {
@@ -972,6 +976,7 @@ impl Default for TargetOptions {
             llvm_abiname: "".to_string(),
             relax_elf_relocations: false,
             llvm_args: vec![],
+            use_ctors_section: false,
         }
     }
 }
@@ -1312,6 +1317,7 @@ impl Target {
         key!(llvm_abiname);
         key!(relax_elf_relocations, bool);
         key!(llvm_args, list);
+        key!(use_ctors_section, bool);
 
         if let Some(array) = obj.find("abi-blacklist").and_then(Json::as_array) {
             for name in array.iter().filter_map(|abi| abi.as_string()) {
@@ -1541,6 +1547,7 @@ impl ToJson for Target {
         target_option_val!(llvm_abiname);
         target_option_val!(relax_elf_relocations);
         target_option_val!(llvm_args);
+        target_option_val!(use_ctors_section);
 
         if default.abi_blacklist != self.options.abi_blacklist {
             d.insert(
