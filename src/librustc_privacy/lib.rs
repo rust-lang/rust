@@ -941,19 +941,12 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
             return;
         }
 
-        let macro_module_def_id =
-            ty::DefIdTree::parent(self.tcx, self.tcx.hir().local_def_id(md.hir_id).to_def_id())
-                .unwrap();
-        // FIXME(#71104) Should really be using just `as_local_hir_id` but
-        // some `DefId` do not seem to have a corresponding HirId.
-        let hir_id = macro_module_def_id
-            .as_local()
-            .and_then(|def_id| self.tcx.hir().opt_local_def_id_to_hir_id(def_id));
-        let mut module_id = match hir_id {
-            Some(module_id) if self.tcx.hir().is_hir_id_module(module_id) => module_id,
+        let macro_module_def_id = self.tcx.hir().get_parent_did(md.hir_id);
+        let mut module_id = self.tcx.hir().as_local_hir_id(macro_module_def_id);
+        if !self.tcx.hir().is_hir_id_module(module_id) {
             // `module_id` doesn't correspond to a `mod`, return early (#63164, #65252).
-            _ => return,
-        };
+            return;
+        }
         let level = if md.vis.node.is_pub() { self.get(module_id) } else { None };
         let new_level = self.update(md.hir_id, level);
         if new_level.is_none() {
@@ -961,7 +954,8 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
         }
 
         loop {
-            let changed_reachability = self.update_macro_reachable(module_id, macro_module_def_id);
+            let changed_reachability =
+                self.update_macro_reachable(module_id, macro_module_def_id.to_def_id());
             if changed_reachability || module_id == hir::CRATE_HIR_ID {
                 break;
             }
