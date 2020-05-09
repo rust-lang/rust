@@ -176,10 +176,30 @@ mod super_imports {
         }
     }
 
-    mod inner {
-        fn test_should_pass() {
+    mod test_should_pass_inside_function {
+        fn with_super_inside_function() {
             use super::*;
             let _ = foofoo();
+        }
+    }
+
+    mod test_should_pass_further_inside {
+        fn insidefoo() {}
+        mod inner {
+            use super::*;
+            fn with_super() {
+                let _ = insidefoo();
+            }
+        }
+    }
+
+    mod should_be_replaced_futher_inside {
+        fn insidefoo() {}
+        mod inner {
+            use super::*;
+            fn with_super() {
+                let _ = insidefoo();
+            }
         }
     }
 

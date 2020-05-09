@@ -43,9 +43,14 @@ declare_clippy_lint! {
     ///
     /// This can lead to confusing error messages at best and to unexpected behavior at worst.
     ///
-    /// Note that this will not warn about wildcard imports from modules named `prelude`; many
-    /// crates (including the standard library) provide modules named "prelude" specifically
-    /// designed for wildcard import.
+    /// **Exceptions:**
+    ///
+    /// Wildcard imports are allowed from modules named `prelude`. Many crates (including the standard library)
+    /// provide modules named "prelude" specifically designed for wildcard import.
+    ///
+    /// `use super::*` is allowed in test modules. This is defined as any module with "test" in the name.
+    ///
+    /// These exceptions can be disabled using the `warn-on-all-wildcard-imports` configuration flag.
     ///
     /// **Known problems:** If macros are imported through the wildcard, this macro is not included
     /// by the suggestion and has to be added by hand.
@@ -198,5 +203,5 @@ fn is_super_only_import(segments: &[PathSegment<'_>]) -> bool {
 }
 
 fn is_test_module_or_function(item: &Item<'_>) -> bool {
-    matches!(item.kind, ItemKind::Fn(..) | ItemKind::Mod(..)) && item.ident.name.as_str().contains("test")
+    matches!(item.kind, ItemKind::Mod(..)) && item.ident.name.as_str().contains("test")
 }
