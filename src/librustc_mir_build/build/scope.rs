@@ -989,7 +989,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let resumeblk = self.cfg.start_new_cleanup_block();
             self.cfg.terminate(
                 resumeblk,
-                SourceInfo { scope: OUTERMOST_SOURCE_SCOPE, span: self.fn_span },
+                SourceInfo::outermost(self.fn_span),
                 TerminatorKind::Resume,
             );
             self.cached_resume_block = Some(resumeblk);

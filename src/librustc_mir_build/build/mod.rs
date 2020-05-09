@@ -708,15 +708,7 @@ fn construct_error<'a, 'tcx>(hir: Cx<'a, 'tcx>, body_id: hir::BodyId) -> Body<'t
     // Some MIR passes will expect the number of parameters to match the
     // function declaration.
     for _ in 0..num_params {
-        builder.local_decls.push(LocalDecl {
-            mutability: Mutability::Mut,
-            ty,
-            user_ty: UserTypeProjections::none(),
-            source_info,
-            internal: false,
-            local_info: LocalInfo::Other,
-            is_block_tail: None,
-        });
+        builder.local_decls.push(LocalDecl::with_source_info(ty, source_info));
     }
     builder.cfg.terminate(START_BLOCK, source_info, TerminatorKind::Unreachable);
     let mut body = builder.finish();
@@ -750,10 +742,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             guard_context: vec![],
             push_unsafe_count: 0,
             unpushed_unsafe: safety,
-            local_decls: IndexVec::from_elem_n(
-                LocalDecl::new_return_place(return_ty, return_span),
-                1,
-            ),
+            local_decls: IndexVec::from_elem_n(LocalDecl::new(return_ty, return_span), 1),
             canonical_user_type_annotations: IndexVec::new(),
             upvar_mutbls: vec![],
             var_indices: Default::default(),
@@ -804,19 +793,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) -> BlockAnd<()> {
         // Allocate locals for the function arguments
         for &ArgInfo(ty, _, arg_opt, _) in arguments.iter() {
-            let source_info = SourceInfo {
-                scope: OUTERMOST_SOURCE_SCOPE,
-                span: arg_opt.map_or(self.fn_span, |arg| arg.pat.span),
-            };
-            let arg_local = self.local_decls.push(LocalDecl {
-                mutability: Mutability::Mut,
-                ty,
-                user_ty: UserTypeProjections::none(),
-                source_info,
-                internal: false,
-                local_info: LocalInfo::Other,
-                is_block_tail: None,
-            });
+            let source_info =
+                SourceInfo::outermost(arg_opt.map_or(self.fn_span, |arg| arg.pat.span));
+            let arg_local = self.local_decls.push(LocalDecl::with_source_info(ty, source_info));
 
             // If this is a simple binding pattern, give debuginfo a nice name.
             if let Some(arg) = arg_opt {
@@ -885,10 +864,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     self.var_debug_info.push(VarDebugInfo {
                         name,
-                        source_info: SourceInfo {
-                            scope: OUTERMOST_SOURCE_SCOPE,
-                            span: tcx_hir.span(var_id),
-                        },
+                        source_info: SourceInfo::outermost(tcx_hir.span(var_id)),
                         place: Place {
                             local: closure_env_arg,
                             projection: tcx.intern_place_elems(&projs),
@@ -933,17 +909,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         self.local_decls[local].mutability = mutability;
                         self.local_decls[local].source_info.scope = self.source_scope;
                         self.local_decls[local].local_info = if let Some(kind) = self_binding {
-                            LocalInfo::User(ClearCrossCrate::Set(BindingForm::ImplicitSelf(*kind)))
+                            Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::ImplicitSelf(*kind))))
                         } else {
                             let binding_mode = ty::BindingMode::BindByValue(mutability);
-                            LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
+                            Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
                                 VarBindingForm {
                                     binding_mode,
                                     opt_ty_info,
                                     opt_match_place: Some((Some(place), span)),
                                     pat_span: span,
                                 },
-                            )))
+                            ))))
                         };
                         self.var_indices.insert(var, LocalsForNode::One(local));
                     }

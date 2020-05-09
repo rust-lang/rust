@@ -50,7 +50,7 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
             const_context,
             min_const_fn,
             violations: vec![],
-            source_info: SourceInfo { span: body.span, scope: OUTERMOST_SOURCE_SCOPE },
+            source_info: SourceInfo::outermost(body.span),
             tcx,
             param_env,
             used_unsafe: Default::default(),
@@ -218,7 +218,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
             if let [] = proj_base {
                 let decl = &self.body.local_decls[place.local];
                 if decl.internal {
-                    if let LocalInfo::StaticRef { def_id, .. } = decl.local_info {
+                    if let Some(box LocalInfo::StaticRef { def_id, .. }) = decl.local_info {
                         if self.tcx.is_mutable_static(def_id) {
                             self.require_unsafe(
                                 "use of mutable static",

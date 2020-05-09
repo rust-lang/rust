@@ -589,7 +589,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
                     // FIXME(66095): Because item.span is annotated with things
                     // like expansion data, and ident.span isn't, we use the
                     // def_span method if it's part of a macro invocation
-                    // (and thus has asource_callee set).
+                    // (and thus has a source_callee set).
                     // We should probably annotate ident.span with the macro
                     // context, but that's a larger change.
                     if item.span.source_callee().is_some() {
@@ -653,7 +653,17 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
             }
             hir::ImplItemKind::Fn(_, body_id) => {
                 if !self.symbol_is_live(impl_item.hir_id) {
-                    let span = self.tcx.sess.source_map().guess_head_span(impl_item.span);
+                    // FIXME(66095): Because impl_item.span is annotated with things
+                    // like expansion data, and ident.span isn't, we use the
+                    // def_span method if it's part of a macro invocation
+                    // (and thus has a source_callee set).
+                    // We should probably annotate ident.span with the macro
+                    // context, but that's a larger change.
+                    let span = if impl_item.span.source_callee().is_some() {
+                        self.tcx.sess.source_map().guess_head_span(impl_item.span)
+                    } else {
+                        impl_item.ident.span
+                    };
                     self.warn_dead_code(impl_item.hir_id, span, impl_item.ident.name, "used");
                 }
                 self.visit_nested_body(body_id)

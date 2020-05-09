@@ -202,7 +202,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 if self.body.local_decls[local].is_ref_to_static() =>
             {
                 let local_info = &self.body.local_decls[local].local_info;
-                if let LocalInfo::StaticRef { def_id, .. } = *local_info {
+                if let Some(box LocalInfo::StaticRef { def_id, .. }) = *local_info {
                     buf.push_str(&self.infcx.tcx.item_name(def_id).as_str());
                 } else {
                     unreachable!();

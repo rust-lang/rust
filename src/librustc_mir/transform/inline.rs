@@ -480,7 +480,7 @@ impl Inliner<'tcx> {
 
                     let ty = dest.ty(caller_body, self.tcx);
 
-                    let temp = LocalDecl::new_temp(ty, callsite.location.span);
+                    let temp = LocalDecl::new(ty, callsite.location.span);
 
                     let tmp = caller_body.local_decls.push(temp);
                     let tmp = Place::from(tmp);
@@ -631,7 +631,7 @@ impl Inliner<'tcx> {
 
         let ty = arg.ty(caller_body, self.tcx);
 
-        let arg_tmp = LocalDecl::new_temp(ty, callsite.location.span);
+        let arg_tmp = LocalDecl::new(ty, callsite.location.span);
         let arg_tmp = caller_body.local_decls.push(arg_tmp);
 
         let stmt = Statement {

@@ -10,8 +10,16 @@ use crate::{
 };
 
 mod future;
+mod pending;
+mod ready;
+
 #[stable(feature = "futures_api", since = "1.36.0")]
 pub use self::future::Future;
+
+#[unstable(feature = "future_readiness_fns", issue = "70921")]
+pub use pending::{pending, Pending};
+#[unstable(feature = "future_readiness_fns", issue = "70921")]
+pub use ready::{ready, Ready};
 
 /// This type is needed because:
 ///
