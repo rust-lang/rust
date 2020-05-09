@@ -500,7 +500,7 @@ fn inside_cargo_rustc() {
     /// be built like normal; target crates need to be built for or interpreted
     /// by Miri.
     ///
-    /// Currently, we detect this by checking for "--target=", which flag is
+    /// Currently, we detect this by checking for "--target=", which is
     /// never set for host crates. This matches what rustc bootstrap does,
     /// which hopefully makes it "reliable enough".
     fn is_target_crate() -> bool {
