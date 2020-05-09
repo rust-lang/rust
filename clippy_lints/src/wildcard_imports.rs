@@ -76,7 +76,6 @@ declare_clippy_lint! {
 #[derive(Default)]
 pub struct WildcardImports {
     warn_on_all: bool,
-    is_test_module: bool,
     test_modules_deep: u32,
 }
 
@@ -84,7 +83,6 @@ impl WildcardImports {
     pub fn new(warn_on_all: bool) -> Self {
         Self {
             warn_on_all,
-            is_test_module: false,
             test_modules_deep: 0,
         }
     }
@@ -97,8 +95,7 @@ impl LateLintPass<'_, '_> for WildcardImports {
         if item.vis.node.is_pub() || item.vis.node.is_pub_restricted() {
             return;
         }
-        if is_test_module(item) {
-            self.is_test_module = true;
+        if is_test_module_or_function(item) {
             self.test_modules_deep += 1;
         }
         if_chain! {
@@ -173,9 +170,8 @@ impl LateLintPass<'_, '_> for WildcardImports {
         }
     }
 
-    fn check_item_post(&mut self, _: &LateContext<'_, '_>, _: &Item<'_>) {
-        if self.is_test_module {
-            self.is_test_module = false;
+    fn check_item_post(&mut self, _: &LateContext<'_, '_>, item: &Item<'_>) {
+        if is_test_module_or_function(item) {
             self.test_modules_deep -= 1;
         }
     }
@@ -201,6 +197,6 @@ fn is_super_only_import(segments: &[PathSegment<'_>]) -> bool {
     segments.len() == 1 && segments[0].ident.as_str() == "super"
 }
 
-fn is_test_module(item: &Item<'_>) -> bool {
-    item.ident.name.as_str().contains("test")
+fn is_test_module_or_function(item: &Item<'_>) -> bool {
+    matches!(item.kind, ItemKind::Fn(..) | ItemKind::Mod(..)) && item.ident.name.as_str().contains("test")
 }
