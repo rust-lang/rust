@@ -100,9 +100,8 @@ fn run_server() -> Result<()> {
         if let Some(value) = &initialize_params.initialization_options {
             config.update(value);
         }
-        if let Some(caps) = &initialize_params.capabilities.text_document {
-            config.update_caps(caps);
-        }
+        config.update_caps(&initialize_params.capabilities);
+
         config
     };
 
