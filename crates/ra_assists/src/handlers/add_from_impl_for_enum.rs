@@ -1,8 +1,5 @@
 use ra_ide_db::RootDatabase;
-use ra_syntax::{
-    ast::{self, AstNode, NameOwner},
-    TextSize,
-};
+use ra_syntax::ast::{self, AstNode, NameOwner};
 use stdx::format_to;
 use test_utils::tested_by;
 
@@ -69,7 +66,6 @@ impl From<{0}> for {1} {{
                 variant_name
             );
             edit.insert(start_offset, buf);
-            edit.set_cursor(start_offset + TextSize::of("\n\n"));
         },
     )
 }
@@ -97,19 +93,20 @@ fn existing_from_impl(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use test_utils::covers;
 
     use crate::tests::{check_assist, check_assist_not_applicable};
-    use test_utils::covers;
+
+    use super::*;
 
     #[test]
     fn test_add_from_impl_for_enum() {
         check_assist(
             add_from_impl_for_enum,
             "enum A { <|>One(u32) }",
-            r#"enum A { One(u32) }
+            r#"enum A { <|>One(u32) }
 
-<|>impl From<u32> for A {
+impl From<u32> for A {
     fn from(v: u32) -> Self {
         A::One(v)
     }
@@ -121,10 +118,10 @@ mod tests {
     fn test_add_from_impl_for_enum_complicated_path() {
         check_assist(
             add_from_impl_for_enum,
-            "enum A { <|>One(foo::bar::baz::Boo) }",
-            r#"enum A { One(foo::bar::baz::Boo) }
+            r#"enum A { <|>One(foo::bar::baz::Boo) }"#,
+            r#"enum A { <|>One(foo::bar::baz::Boo) }
 
-<|>impl From<foo::bar::baz::Boo> for A {
+impl From<foo::bar::baz::Boo> for A {
     fn from(v: foo::bar::baz::Boo) -> Self {
         A::One(v)
     }
@@ -184,9 +181,9 @@ impl From<String> for A {
 pub trait From<T> {
     fn from(T) -> Self;
 }"#,
-            r#"enum A { One(u32), Two(String), }
+            r#"enum A { <|>One(u32), Two(String), }
 
-<|>impl From<u32> for A {
+impl From<u32> for A {
     fn from(v: u32) -> Self {
         A::One(v)
     }
