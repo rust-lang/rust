@@ -2390,7 +2390,10 @@ fn specialize_one_pattern<'p, 'tcx>(
 ) -> Option<Fields<'p, 'tcx>> {
     if let NonExhaustive = constructor {
         // Only a wildcard pattern can match the special extra constructor
-        return if pat.is_wildcard() { Some(Fields::empty()) } else { None };
+        if !pat.is_wildcard() {
+            return None;
+        }
+        return Some(Fields::empty());
     }
 
     let result = match *pat.kind {
@@ -2400,12 +2403,11 @@ fn specialize_one_pattern<'p, 'tcx>(
 
         PatKind::Variant { adt_def, variant_index, ref subpatterns, .. } => {
             let variant = &adt_def.variants[variant_index];
+            if constructor != &Variant(variant.def_id) {
+                return None;
+            }
             let is_non_exhaustive = cx.is_foreign_non_exhaustive_variant(pat.ty, variant);
-            Some(Variant(variant.def_id))
-                .filter(|variant_constructor| variant_constructor == constructor)
-                .map(|_| {
-                    patterns_for_variant(cx, subpatterns, ctor_wild_subpatterns, is_non_exhaustive)
-                })
+            Some(patterns_for_variant(cx, subpatterns, ctor_wild_subpatterns, is_non_exhaustive))
         }
 
         PatKind::Leaf { ref subpatterns } => {
@@ -2425,11 +2427,10 @@ fn specialize_one_pattern<'p, 'tcx>(
                     // Shortcut for `n == 0` where no matter what `alloc` and `offset` we produce,
                     // the result would be exactly what we early return here.
                     if n == 0 {
-                        if ctor_wild_subpatterns.len() as u64 == 0 {
-                            return Some(Fields::empty());
-                        } else {
+                        if ctor_wild_subpatterns.len() as u64 != n {
                             return None;
                         }
+                        return Some(Fields::empty());
                     }
                     match value.val {
                         ty::ConstKind::Value(ConstValue::ByRef { offset, alloc, .. }) => {
@@ -2463,25 +2464,23 @@ fn specialize_one_pattern<'p, 'tcx>(
                     constructor,
                 ),
             };
-            if ctor_wild_subpatterns.len() as u64 == n {
-                // convert a constant slice/array pattern to a list of patterns.
-                let layout = cx.tcx.layout_of(cx.param_env.and(ty)).ok()?;
-                let ptr = Pointer::new(AllocId(0), offset);
-                let pats = (0..n)
-                    .map(|i| {
-                        let ptr = ptr.offset(layout.size * i, &cx.tcx).ok()?;
-                        let scalar = alloc.read_scalar(&cx.tcx, ptr, layout.size).ok()?;
-                        let scalar = scalar.not_undef().ok()?;
-                        let value = ty::Const::from_scalar(cx.tcx, scalar, ty);
-                        let pattern =
-                            Pat { ty, span: pat.span, kind: box PatKind::Constant { value } };
-                        Some(&*cx.pattern_arena.alloc(pattern))
-                    })
-                    .collect::<Option<_>>()?;
-                Some(Fields::from_vec(pats))
-            } else {
-                None
+            if ctor_wild_subpatterns.len() as u64 != n {
+                return None;
             }
+            // Convert a constant slice/array pattern to a list of patterns.
+            let layout = cx.tcx.layout_of(cx.param_env.and(ty)).ok()?;
+            let ptr = Pointer::new(AllocId(0), offset);
+            let pats = (0..n)
+                .map(|i| {
+                    let ptr = ptr.offset(layout.size * i, &cx.tcx).ok()?;
+                    let scalar = alloc.read_scalar(&cx.tcx, ptr, layout.size).ok()?;
+                    let scalar = scalar.not_undef().ok()?;
+                    let value = ty::Const::from_scalar(cx.tcx, scalar, ty);
+                    let pattern = Pat { ty, span: pat.span, kind: box PatKind::Constant { value } };
+                    Some(&*cx.pattern_arena.alloc(pattern))
+                })
+                .collect::<Option<_>>()?;
+            Some(Fields::from_vec(pats))
         }
 
         PatKind::Constant { .. } | PatKind::Range { .. } => {
@@ -2489,50 +2488,42 @@ fn specialize_one_pattern<'p, 'tcx>(
             // - Single value: add a row if the pattern contains the constructor.
             // - Range: add a row if the constructor intersects the pattern.
             if let IntRange(ctor) = constructor {
-                match IntRange::from_pat(cx.tcx, cx.param_env, pat) {
-                    Some(pat) => ctor.intersection(cx.tcx, &pat).map(|_| {
-                        // Constructor splitting should ensure that all intersections we encounter
-                        // are actually inclusions.
-                        assert!(ctor.is_subrange(&pat));
-                        Fields::empty()
-                    }),
-                    _ => None,
-                }
+                let pat = IntRange::from_pat(cx.tcx, cx.param_env, pat)?;
+                ctor.intersection(cx.tcx, &pat)?;
+                // Constructor splitting should ensure that all intersections we encounter
+                // are actually inclusions.
+                assert!(ctor.is_subrange(&pat));
             } else {
                 // Fallback for non-ranges and ranges that involve
                 // floating-point numbers, which are not conveniently handled
                 // by `IntRange`. For these cases, the constructor may not be a
                 // range so intersection actually devolves into being covered
                 // by the pattern.
-                constructor_covered_by_range(cx.tcx, cx.param_env, constructor, pat)
-                    .map(|()| Fields::empty())
+                constructor_covered_by_range(cx.tcx, cx.param_env, constructor, pat)?;
             }
+            Some(Fields::empty())
         }
 
         PatKind::Array { ref prefix, ref slice, ref suffix }
         | PatKind::Slice { ref prefix, ref slice, ref suffix } => match *constructor {
             Slice(_) => {
+                // Number of subpatterns for this pattern
                 let pat_len = prefix.len() + suffix.len();
-                if let Some(slice_count) = ctor_wild_subpatterns.len().checked_sub(pat_len) {
-                    if slice_count == 0 || slice.is_some() {
-                        Some(Fields::from_vec(
-                            prefix
-                                .iter()
-                                .chain(
-                                    ctor_wild_subpatterns
-                                        .iter()
-                                        .skip(prefix.len())
-                                        .take(slice_count)
-                                        .chain(suffix.iter()),
-                                )
-                                .collect(),
-                        ))
-                    } else {
-                        None
-                    }
-                } else {
-                    None
+                // Number of subpatterns for this constructor
+                let arity = ctor_wild_subpatterns.len();
+
+                if slice.is_none() && arity != pat_len {
+                    return None;
                 }
+
+                // Number of subpatterns matched by the `..` subslice pattern (is 0 for a slice
+                // pattern of fixed length).
+                let subslice_count = arity.checked_sub(pat_len)?;
+                let subslice_pats =
+                    ctor_wild_subpatterns.iter().skip(prefix.len()).take(subslice_count);
+                Some(Fields::from_vec(
+                    prefix.iter().chain(subslice_pats).chain(suffix.iter()).collect(),
+                ))
             }
             ConstantValue(cv) => {
                 match slice_pat_covered_by_const(
