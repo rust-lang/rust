@@ -40,7 +40,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingWhitelistedAttrPass {
         _: intravisit::FnKind<'tcx>,
         _: &'tcx hir::FnDecl,
         _: &'tcx hir::Body,
-        span: source_map::Span,
         id: hir::HirId,
     ) {
         let item = match cx.tcx.hir().get(id) {
@@ -51,6 +50,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingWhitelistedAttrPass {
         let whitelisted = |attr| pprust::attribute_to_string(attr).contains("whitelisted_attr");
         if !item.attrs.iter().any(whitelisted) {
             cx.lint(MISSING_WHITELISTED_ATTR, |lint| {
+                let span = cx.tcx.hir().span(id);
                 lint.build("Missing 'whitelisted_attr' attribute").set_span(span).emit()
             });
         }
