@@ -186,8 +186,28 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
         // Fourth, check for unreachable arms.
         let matrix = check_arms(&mut cx, &inlined_arms, source);
 
-        // Fifth, check if the match is exhaustive.
+        // FIXME: getting the type using `node_type` means that if `f` has output type `!`, we
+        // get `scrut_ty = !` instead of `bool` in the following:
+        // ```
+        // fn from(never: !) -> usize {
+        //     match never {
+        //         true => 1,
+        //         false => 0,
+        //     }
+        // }
+        // ```
+        // If we use `expr_ty_adjusted` instead, then the following breaks, because we get
+        // `scrut_ty = ()` instead of `!`.
+        // ```
+        // fn from(never: !) -> usize {
+        //     match never {}
+        // }
+        // ```
+        // As a workaround, we retrieve the type from the match arms when possible.
         let scrut_ty = self.tables.node_type(scrut.hir_id);
+        let scrut_ty = inlined_arms.iter().map(|(p, _, _)| p.ty).next().unwrap_or(scrut_ty);
+
+        // Fifth, check if the match is exhaustive.
         // Note: An empty match isn't the same as an empty matrix for diagnostics purposes,
         // since an empty matrix can occur when there are arms, if those arms all have guards.
         let is_empty_match = inlined_arms.is_empty();

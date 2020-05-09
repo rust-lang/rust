@@ -242,7 +242,7 @@ use rustc_hir::{HirId, RangeEnd};
 use rustc_middle::mir::interpret::{truncate, AllocId, ConstValue, Pointer, Scalar};
 use rustc_middle::mir::Field;
 use rustc_middle::ty::layout::IntegerExt;
-use rustc_middle::ty::{self, Const, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, Const, Ty, TyCtxt};
 use rustc_session::lint;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{Integer, Size, VariantIdx};
@@ -1739,11 +1739,7 @@ impl<'tcx> fmt::Debug for MissingConstructors<'tcx> {
 /// to a set of such vectors `m` - this is defined as there being a set of
 /// inputs that will match `v` but not any of the sets in `m`.
 ///
-/// All the patterns at each column of the `matrix ++ v` matrix must
-/// have the same type, except that wildcard (PatKind::Wild) patterns
-/// with type `TyErr` are also allowed, even if the "type of the column"
-/// is not `TyErr`. That is used to represent private fields, as using their
-/// real type would assert that they are inhabited.
+/// All the patterns at each column of the `matrix ++ v` matrix must have the same type.
 ///
 /// This is used both for reachability checking (if a pattern isn't useful in
 /// relation to preceding patterns, it is not reachable) and exhaustiveness
@@ -1807,34 +1803,7 @@ crate fn is_useful<'p, 'tcx>(
         return if any_is_useful { Useful(unreachable_pats) } else { NotUseful };
     }
 
-    let (ty, span) = matrix
-        .heads()
-        .map(|r| (r.ty, r.span))
-        .find(|(ty, _)| !ty.references_error())
-        .unwrap_or((v.head().ty, v.head().span));
-    let pcx = PatCtxt {
-        // TyErr is used to represent the type of wildcard patterns matching
-        // against inaccessible (private) fields of structs, so that we won't
-        // be able to observe whether the types of the struct's fields are
-        // inhabited.
-        //
-        // If the field is truly inaccessible, then all the patterns
-        // matching against it must be wildcard patterns, so its type
-        // does not matter.
-        //
-        // However, if we are matching against non-wildcard patterns, we
-        // need to know the real type of the field so we can specialize
-        // against it. This primarily occurs through constants - they
-        // can include contents for fields that are inaccessible at the
-        // location of the match. In that case, the field's type is
-        // inhabited - by the constant - so we can just use it.
-        //
-        // FIXME: this might lead to "unstable" behavior with macro hygiene
-        // introducing uninhabited patterns for inaccessible fields. We
-        // need to figure out how to model that.
-        ty,
-        span,
-    };
+    let pcx = PatCtxt { ty: v.head().ty, span: v.head().span };
 
     debug!("is_useful_expand_first_col: pcx={:#?}, expanding {:#?}", pcx, v.head());
 
