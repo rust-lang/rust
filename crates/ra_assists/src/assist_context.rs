@@ -49,7 +49,7 @@ use crate::{Assist, AssistId, GroupLabel, ResolvedAssist};
 /// easier to just compute the edit eagerly :-)
 pub(crate) struct AssistContext<'a> {
     pub(crate) sema: Semantics<'a, RootDatabase>,
-    pub(super) db: &'a RootDatabase,
+    pub(crate) db: &'a RootDatabase,
     pub(crate) frange: FileRange,
     source_file: SourceFile,
 }

@@ -2,7 +2,7 @@ use hir::HasSource;
 use ra_syntax::{
     ast::{
         self,
-        edit::{self, IndentLevel},
+        edit::{self, AstNodeEdit, IndentLevel},
         make, AstNode, NameOwner,
     },
     SmolStr,
@@ -176,8 +176,7 @@ fn add_body(fn_def: ast::FnDef) -> ast::FnDef {
     if fn_def.body().is_some() {
         return fn_def;
     }
-    let body = make::block_expr(None, Some(make::expr_todo()));
-    let body = IndentLevel(1).increase_indent(body);
+    let body = make::block_expr(None, Some(make::expr_todo())).indent(IndentLevel(1));
     fn_def.with_body(body)
 }
 
