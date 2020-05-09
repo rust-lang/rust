@@ -3,12 +3,13 @@ use crate::utils::{
     span_lint_and_sugg, walk_ptrs_ty,
 };
 use if_chain::if_chain;
-use rustc_ast::ast::{Name, UintTy};
+use rustc_ast::ast::{UintTy};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::Symbol;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for naive byte counts
@@ -95,11 +96,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ByteCount {
     }
 }
 
-fn check_arg(name: Name, arg: Name, needle: &Expr<'_>) -> bool {
+fn check_arg(name: Symbol, arg: Symbol, needle: &Expr<'_>) -> bool {
     name == arg && !contains_name(name, needle)
 }
 
-fn get_path_name(expr: &Expr<'_>) -> Option<Name> {
+fn get_path_name(expr: &Expr<'_>) -> Option<Symbol> {
     match expr.kind {
         ExprKind::Box(ref e) | ExprKind::AddrOf(BorrowKind::Ref, _, ref e) | ExprKind::Unary(UnOp::UnDeref, ref e) => {
             get_path_name(e)

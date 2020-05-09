@@ -333,7 +333,7 @@ mod zero_div_zero;
 pub use crate::utils::conf::Conf;
 
 mod reexport {
-    pub use rustc_ast::ast::Name;
+    pub use rustc_span::Symbol as Name;
 }
 
 /// Register all pre expansion lints
