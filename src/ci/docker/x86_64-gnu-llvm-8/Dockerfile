@@ -45,6 +45,15 @@ ENV SCRIPT python2.7 ../x.py test --exclude src/tools/tidy && \
            # (we're only interested in the MIR output, so this doesn't matter)
            python2.7 ../x.py test src/test/mir-opt --pass=build \
                                   --target=armv5te-unknown-linux-gnueabi && \
+           # Run the UI test suite again, but in `--pass=check` mode
+           #
+           # This is intended to make sure that both `--pass=check` continues to
+           # work.
+           #
+           # FIXME: We ideally want to test this in 32-bit mode, but currently
+           # (due to the LLVM problems mentioned above) that isn't readily
+           # possible.
+           python2.7 ../x.py test src/test/ui --pass=check && \
            # Run tidy at the very end, after all the other tests.
            python2.7 ../x.py test src/tools/tidy
 
