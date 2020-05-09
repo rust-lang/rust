@@ -1,12 +1,12 @@
 //! Used by `rustc` when loading a plugin.
 
 use crate::Registry;
-use rustc_ast::ast::{Crate, Ident};
+use rustc_ast::ast::Crate;
 use rustc_errors::struct_span_err;
 use rustc_metadata::locator;
 use rustc_middle::middle::cstore::MetadataLoader;
 use rustc_session::Session;
-use rustc_span::symbol::sym;
+use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 
 use std::borrow::ToOwned;

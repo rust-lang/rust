@@ -34,8 +34,9 @@
 use crate::hir::*;
 use crate::hir_id::CRATE_HIR_ID;
 use crate::itemlikevisit::{ItemLikeVisitor, ParItemLikeVisitor};
-use rustc_ast::ast::{Attribute, Ident, Label, Name};
+use rustc_ast::ast::{Attribute, Label};
 use rustc_ast::walk_list;
+use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::Span;
 
 pub struct DeepVisitor<'v, V> {
@@ -317,7 +318,7 @@ pub trait Visitor<'v>: Sized {
     fn visit_id(&mut self, _hir_id: HirId) {
         // Nothing to do.
     }
-    fn visit_name(&mut self, _span: Span, _name: Name) {
+    fn visit_name(&mut self, _span: Span, _name: Symbol) {
         // Nothing to do.
     }
     fn visit_ident(&mut self, ident: Ident) {
@@ -395,7 +396,7 @@ pub trait Visitor<'v>: Sized {
     fn visit_variant_data(
         &mut self,
         s: &'v VariantData<'v>,
-        _: Name,
+        _: Symbol,
         _: &'v Generics<'v>,
         _parent_id: HirId,
         _: Span,

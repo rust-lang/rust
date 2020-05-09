@@ -10,7 +10,6 @@ use crate::build::ForGuard::{self, OutsideGuard, RefWithinGuard};
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use crate::build::{GuardFrame, GuardFrameLocal, LocalsForNode};
 use crate::hair::{self, *};
-use rustc_ast::ast::Name;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::HirId;
 use rustc_index::bit_set::BitSet;
@@ -18,6 +17,7 @@ use rustc_middle::middle::region;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty};
 use rustc_span::Span;
+use rustc_span::symbol::Symbol;
 use rustc_target::abi::VariantIdx;
 use smallvec::{smallvec, SmallVec};
 
@@ -570,7 +570,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         f: &mut impl FnMut(
             &mut Self,
             Mutability,
-            Name,
+            Symbol,
             BindingMode,
             HirId,
             Span,
@@ -737,7 +737,7 @@ fn traverse_candidate<'pat, 'tcx: 'pat, C, T, I>(
 struct Binding<'tcx> {
     span: Span,
     source: Place<'tcx>,
-    name: Name,
+    name: Symbol,
     var_id: HirId,
     var_ty: Ty<'tcx>,
     mutability: Mutability,
@@ -1924,7 +1924,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         source_info: SourceInfo,
         visibility_scope: SourceScope,
         mutability: Mutability,
-        name: Name,
+        name: Symbol,
         mode: BindingMode,
         var_id: HirId,
         var_ty: Ty<'tcx>,

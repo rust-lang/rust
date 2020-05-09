@@ -7,7 +7,7 @@ use crate::module::{parse_external_mod, push_directory, Directory, DirectoryOwne
 use crate::placeholders::{placeholder, PlaceholderExpander};
 use crate::proc_macro::collect_derives;
 
-use rustc_ast::ast::{self, AttrItem, Block, Ident, LitKind, NodeId, PatKind, Path};
+use rustc_ast::ast::{self, AttrItem, Block, LitKind, NodeId, PatKind, Path};
 use rustc_ast::ast::{ItemKind, MacArgs, MacStmtStyle, StmtKind};
 use rustc_ast::mut_visit::*;
 use rustc_ast::ptr::P;
@@ -25,7 +25,7 @@ use rustc_session::lint::builtin::UNUSED_DOC_COMMENTS;
 use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::parse::{feature_err, ParseSess};
 use rustc_span::source_map::respan;
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{FileName, Span, DUMMY_SP};
 
 use smallvec::{smallvec, SmallVec};

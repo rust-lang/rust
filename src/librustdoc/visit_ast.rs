@@ -11,7 +11,7 @@ use rustc_middle::middle::privacy::AccessLevel;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{kw, sym};
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{self, Span};
 
 use std::mem;
@@ -85,7 +85,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     fn visit_variant_data(
         &mut self,
         item: &'tcx hir::Item,
-        name: ast::Name,
+        name: Symbol,
         sd: &'tcx hir::VariantData,
         generics: &'tcx hir::Generics,
     ) -> Struct<'tcx> {
@@ -106,7 +106,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     fn visit_union_data(
         &mut self,
         item: &'tcx hir::Item,
-        name: ast::Name,
+        name: Symbol,
         sd: &'tcx hir::VariantData,
         generics: &'tcx hir::Generics,
     ) -> Union<'tcx> {
@@ -127,7 +127,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     fn visit_enum_def(
         &mut self,
         it: &'tcx hir::Item,
-        name: ast::Name,
+        name: Symbol,
         def: &'tcx hir::EnumDef,
         generics: &'tcx hir::Generics,
     ) -> Enum<'tcx> {
@@ -157,7 +157,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         &mut self,
         om: &mut Module<'tcx>,
         item: &'tcx hir::Item,
-        name: ast::Name,
+        name: Symbol,
         decl: &'tcx hir::FnDecl,
         header: hir::FnHeader,
         generics: &'tcx hir::Generics,
@@ -234,7 +234,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         vis: &'tcx hir::Visibility,
         id: hir::HirId,
         m: &'tcx hir::Mod<'tcx>,
-        name: Option<ast::Name>,
+        name: Option<Symbol>,
     ) -> Module<'tcx> {
         let mut om = Module::new(name, attrs, vis);
         om.where_outer = span;
@@ -264,7 +264,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         &mut self,
         id: hir::HirId,
         res: Res,
-        renamed: Option<ast::Ident>,
+        renamed: Option<Ident>,
         glob: bool,
         om: &mut Module<'tcx>,
         please_inline: bool,
@@ -375,12 +375,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         ret
     }
 
-    fn visit_item(
-        &mut self,
-        item: &'tcx hir::Item,
-        renamed: Option<ast::Ident>,
-        om: &mut Module<'tcx>,
-    ) {
+    fn visit_item(&mut self, item: &'tcx hir::Item, renamed: Option<Ident>, om: &mut Module<'tcx>) {
         debug!("visiting item {:?}", item);
         let ident = renamed.unwrap_or(item.ident);
 
@@ -593,7 +588,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     fn visit_foreign_item(
         &mut self,
         item: &'tcx hir::ForeignItem,
-        renamed: Option<ast::Ident>,
+        renamed: Option<Ident>,
         om: &mut Module<'tcx>,
     ) {
         // If inlining we only want to include public functions.
@@ -612,11 +607,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     }
 
     // Convert each `exported_macro` into a doc item.
-    fn visit_local_macro(
-        &self,
-        def: &'tcx hir::MacroDef,
-        renamed: Option<ast::Name>,
-    ) -> Macro<'tcx> {
+    fn visit_local_macro(&self, def: &'tcx hir::MacroDef, renamed: Option<Symbol>) -> Macro<'tcx> {
         debug!("visit_local_macro: {}", def.ident);
         let tts = def.ast.body.inner_tokens().trees().collect::<Vec<_>>();
         // Extract the spans of all matchers. They represent the "interface" of the macro.

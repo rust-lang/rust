@@ -21,7 +21,7 @@ use rustc_middle::ty::query::QueryConfig;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::{CrateDisambiguator, Session};
 use rustc_span::source_map::{self, Span, Spanned};
-use rustc_span::symbol::Symbol;
+use rustc_span::symbol::{Ident, Symbol};
 
 use rustc_data_structures::sync::Lrc;
 use smallvec::SmallVec;
@@ -419,7 +419,7 @@ impl CStore {
             .disambiguated_data
             .data
             .get_opt_name()
-            .map(ast::Ident::with_dummy_span) // FIXME: cross-crate hygiene
+            .map(Ident::with_dummy_span) // FIXME: cross-crate hygiene
             .expect("no name in load_macro");
 
         LoadedMacro::MacroDef(

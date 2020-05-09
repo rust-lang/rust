@@ -7,7 +7,7 @@ use crate::deriving::{path_local, path_std, pathvec_std};
 use rustc_ast::ast::{self, BinOpKind, Expr, MetaItem};
 use rustc_ast::ptr::P;
 use rustc_expand::base::{Annotatable, ExtCtxt};
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
 
 pub fn expand_deriving_partial_ord(
@@ -104,7 +104,7 @@ pub fn some_ordering_collapsed(
     cx: &mut ExtCtxt<'_>,
     span: Span,
     op: OrderingOp,
-    self_arg_tags: &[ast::Ident],
+    self_arg_tags: &[Ident],
 ) -> P<ast::Expr> {
     let lft = cx.expr_ident(span, self_arg_tags[0]);
     let rgt = cx.expr_addr_of(span, cx.expr_ident(span, self_arg_tags[1]));
@@ -119,7 +119,7 @@ pub fn some_ordering_collapsed(
 }
 
 pub fn cs_partial_cmp(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> P<Expr> {
-    let test_id = ast::Ident::new(sym::cmp, span);
+    let test_id = Ident::new(sym::cmp, span);
     let ordering = cx.path_global(span, cx.std_path(&[sym::cmp, sym::Ordering, sym::Equal]));
     let ordering_expr = cx.expr_path(ordering.clone());
     let equals_expr = cx.expr_some(span, ordering_expr);

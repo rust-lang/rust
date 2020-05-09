@@ -13,9 +13,9 @@ use crate::mir::interpret::ErrorHandled;
 use crate::ty::subst::SubstsRef;
 use crate::ty::{self, AdtKind, Ty, TyCtxt};
 
-use rustc_ast::ast;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
 use smallvec::SmallVec;
 
@@ -207,14 +207,14 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// Error derived when matching traits/impls; see ObligationCause for more details
     CompareImplMethodObligation {
-        item_name: ast::Name,
+        item_name: Symbol,
         impl_item_def_id: DefId,
         trait_item_def_id: DefId,
     },
 
     /// Error derived when matching traits/impls; see ObligationCause for more details
     CompareImplTypeObligation {
-        item_name: ast::Name,
+        item_name: Symbol,
         impl_item_def_id: DefId,
         trait_item_def_id: DefId,
     },
@@ -575,10 +575,10 @@ pub enum ObjectSafetyViolation {
     SupertraitSelf(SmallVec<[Span; 1]>),
 
     /// Method has something illegal.
-    Method(ast::Name, MethodViolationCode, Span),
+    Method(Symbol, MethodViolationCode, Span),
 
     /// Associated const.
-    AssocConst(ast::Name, Span),
+    AssocConst(Symbol, Span),
 }
 
 impl ObjectSafetyViolation {

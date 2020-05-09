@@ -10,7 +10,7 @@ use rustc_errors::Diagnostic;
 use rustc_parse::lexer::nfc_normalize;
 use rustc_parse::{nt_to_tokenstream, parse_stream_from_source_str};
 use rustc_session::parse::ParseSess;
-use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::symbol::{self, kw, sym, Symbol};
 use rustc_span::{BytePos, FileName, MultiSpan, Pos, SourceFile, Span};
 
 use pm::bridge::{server, TokenTree};
@@ -143,7 +143,7 @@ impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
             Ident(name, false) if name == kw::DollarCrate => tt!(Ident::dollar_crate()),
             Ident(name, is_raw) => tt!(Ident::new(sess, name, is_raw)),
             Lifetime(name) => {
-                let ident = ast::Ident::new(name, span).without_first_quote();
+                let ident = symbol::Ident::new(name, span).without_first_quote();
                 stack.push(tt!(Ident::new(sess, ident.name, false)));
                 tt!(Punct::new('\'', true))
             }

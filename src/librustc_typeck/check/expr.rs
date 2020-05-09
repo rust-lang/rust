@@ -37,7 +37,7 @@ use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::{AdtKind, Visibility};
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::Span;
-use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_trait_selection::traits::{self, ObligationCauseCode};
 
 use std::fmt::Display;
@@ -1411,7 +1411,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         find_best_match_for_name(names, field, None)
     }
 
-    fn available_field_names(&self, variant: &'tcx ty::VariantDef) -> Vec<ast::Name> {
+    fn available_field_names(&self, variant: &'tcx ty::VariantDef) -> Vec<Symbol> {
         variant
             .fields
             .iter()
@@ -1426,7 +1426,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .collect()
     }
 
-    fn name_series_display(&self, names: Vec<ast::Name>) -> String {
+    fn name_series_display(&self, names: Vec<Symbol>) -> String {
         // dynamic limit, to never omit just one field
         let limit = if names.len() == 6 { 6 } else { 5 };
         let mut display =
@@ -1443,7 +1443,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
         needs: Needs,
         base: &'tcx hir::Expr<'tcx>,
-        field: ast::Ident,
+        field: Ident,
     ) -> Ty<'tcx> {
         let expr_t = self.check_expr_with_needs(base, needs);
         let expr_t = self.structurally_resolved_type(base.span, expr_t);
@@ -1522,7 +1522,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn ban_nonexisting_field(
         &self,
-        field: ast::Ident,
+        field: Ident,
         base: &'tcx hir::Expr<'tcx>,
         expr: &'tcx hir::Expr<'tcx>,
         expr_t: Ty<'tcx>,
@@ -1560,7 +1560,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         expr: &hir::Expr<'_>,
         expr_t: Ty<'tcx>,
-        field: ast::Ident,
+        field: Ident,
         base_did: DefId,
     ) {
         let struct_path = self.tcx().def_path_str(base_did);
@@ -1589,7 +1589,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err.emit();
     }
 
-    fn ban_take_value_of_method(&self, expr: &hir::Expr<'_>, expr_t: Ty<'tcx>, field: ast::Ident) {
+    fn ban_take_value_of_method(&self, expr: &hir::Expr<'_>, expr_t: Ty<'tcx>, field: Ident) {
         let mut err = type_error_struct!(
             self.tcx().sess,
             field.span,
@@ -1636,7 +1636,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         err: &mut DiagnosticBuilder<'_>,
         def: &'tcx ty::AdtDef,
-        field: ast::Ident,
+        field: Ident,
     ) {
         if let Some(suggested_field_name) =
             Self::suggest_field_name(def.non_enum_variant(), &field.as_str(), vec![])
@@ -1665,7 +1665,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err: &mut DiagnosticBuilder<'_>,
         expr: &hir::Expr<'_>,
         base: &hir::Expr<'_>,
-        field: ast::Ident,
+        field: Ident,
         len: &ty::Const<'tcx>,
     ) {
         if let (Some(len), Ok(user_index)) =
@@ -1689,7 +1689,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err: &mut DiagnosticBuilder<'_>,
         expr: &hir::Expr<'_>,
         base: &hir::Expr<'_>,
-        field: ast::Ident,
+        field: Ident,
     ) {
         if let Ok(base) = self.tcx.sess.source_map().span_to_snippet(base.span) {
             let msg = format!("`{}` is a raw pointer; try dereferencing it", base);

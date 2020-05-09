@@ -1,11 +1,11 @@
 use crate::ich::{self, StableHashingContext};
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::{self, TyCtxt};
-use rustc_ast::ast::Ident;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_errors::ErrorReported;
 use rustc_hir::def_id::{DefId, DefIdMap};
+use rustc_span::symbol::Ident;
 
 /// A per-trait graph of impls in specialization order. At the moment, this
 /// graph forms a tree rooted with the trait itself, with all other nodes

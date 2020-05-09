@@ -1,12 +1,12 @@
 use super::ObjectSafetyViolation;
 
 use crate::infer::InferCtxt;
-use rustc_ast::ast;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::TyCtxt;
+use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 use std::fmt;
 
@@ -14,7 +14,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn report_extra_impl_obligation(
         &self,
         error_span: Span,
-        item_name: ast::Name,
+        item_name: Symbol,
         _impl_item_def_id: DefId,
         trait_item_def_id: DefId,
         requirement: &dyn fmt::Display,

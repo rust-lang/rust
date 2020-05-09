@@ -19,7 +19,6 @@ use rustc_target::abi::VariantIdx;
 
 use polonius_engine::Atom;
 pub use rustc_ast::ast::Mutability;
-use rustc_ast::ast::Name;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::dominators::{dominators, Dominators};
 use rustc_data_structures::graph::{self, GraphSuccessors};
@@ -968,7 +967,7 @@ impl<'tcx> LocalDecl<'tcx> {
 /// Debug information pertaining to a user variable.
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
 pub struct VarDebugInfo<'tcx> {
-    pub name: Name,
+    pub name: Symbol,
 
     /// Source info of the user variable, including the scope
     /// within which the variable is visible (to debuginfo)

@@ -1,4 +1,4 @@
-use rustc_ast::ast::{self, Ident};
+use rustc_ast::ast;
 use rustc_errors::Applicability;
 use rustc_expand::base::SyntaxExtensionKind;
 use rustc_feature::UnstableFeatures;
@@ -12,7 +12,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::ty;
 use rustc_resolve::ParentScope;
 use rustc_session::lint;
-use rustc_span::symbol::Symbol;
+use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::DUMMY_SP;
 
 use std::ops::Range;

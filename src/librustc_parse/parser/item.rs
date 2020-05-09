@@ -4,7 +4,7 @@ use super::{FollowedByType, Parser, PathStyle};
 
 use crate::maybe_whole;
 
-use rustc_ast::ast::{self, AttrStyle, AttrVec, Attribute, Ident, DUMMY_NODE_ID};
+use rustc_ast::ast::{self, AttrStyle, AttrVec, Attribute, DUMMY_NODE_ID};
 use rustc_ast::ast::{AssocItem, AssocItemKind, ForeignItemKind, Item, ItemKind, Mod};
 use rustc_ast::ast::{Async, Const, Defaultness, IsAuto, Mutability, Unsafe, UseTree, UseTreeKind};
 use rustc_ast::ast::{BindingMode, Block, FnDecl, FnSig, Param, SelfKind};
@@ -18,7 +18,7 @@ use rustc_ast_pretty::pprust;
 use rustc_errors::{struct_span_err, Applicability, PResult, StashKey};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{self, Span};
-use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 
 use log::debug;
 use std::convert::TryFrom;
@@ -804,7 +804,7 @@ impl<'a> Parser<'a> {
         if self.eat_keyword(kw::As) { self.parse_ident_or_underscore().map(Some) } else { Ok(None) }
     }
 
-    fn parse_ident_or_underscore(&mut self) -> PResult<'a, ast::Ident> {
+    fn parse_ident_or_underscore(&mut self) -> PResult<'a, Ident> {
         match self.token.ident() {
             Some((ident @ Ident { name: kw::Underscore, .. }, false)) => {
                 self.bump();
@@ -834,7 +834,7 @@ impl<'a> Parser<'a> {
         Ok((item_name, ItemKind::ExternCrate(orig_name)))
     }
 
-    fn parse_crate_name_with_dashes(&mut self) -> PResult<'a, ast::Ident> {
+    fn parse_crate_name_with_dashes(&mut self) -> PResult<'a, Ident> {
         let error_msg = "crate name using dashes are not valid in `extern crate` statements";
         let suggestion_msg = "if the original crate name uses dashes you need to use underscores \
                               in the code";

@@ -64,6 +64,7 @@ use rustc_session::lint::builtin::{
     INTRA_DOC_LINK_RESOLUTION_FAILURE, INVALID_CODEBLOCK_ATTRIBUTE, MISSING_DOC_CODE_EXAMPLES,
     PRIVATE_DOC_TESTS,
 };
+use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::Span;
 
 use array_into_iter::ArrayIntoIter;

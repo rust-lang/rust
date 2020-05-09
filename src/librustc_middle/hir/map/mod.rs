@@ -3,7 +3,7 @@ use self::collector::NodeCollector;
 use crate::hir::{Owner, OwnerNodes};
 use crate::ty::query::Providers;
 use crate::ty::TyCtxt;
-use rustc_ast::ast::{self, Name, NodeId};
+use rustc_ast::ast::{self, NodeId};
 use rustc_data_structures::svh::Svh;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
@@ -14,7 +14,7 @@ use rustc_hir::*;
 use rustc_index::vec::IndexVec;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::kw;
+use rustc_span::symbol::{kw, Symbol};
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 
@@ -452,7 +452,7 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn ty_param_name(&self, id: HirId) -> Name {
+    pub fn ty_param_name(&self, id: HirId) -> Symbol {
         match self.get(id) {
             Node::Item(&Item { kind: ItemKind::Trait(..) | ItemKind::TraitAlias(..), .. }) => {
                 kw::SelfUpper
@@ -824,7 +824,7 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn opt_name(&self, id: HirId) -> Option<Name> {
+    pub fn opt_name(&self, id: HirId) -> Option<Symbol> {
         Some(match self.get(id) {
             Node::Item(i) => i.ident.name,
             Node::ForeignItem(fi) => fi.ident.name,
@@ -840,7 +840,7 @@ impl<'hir> Map<'hir> {
         })
     }
 
-    pub fn name(&self, id: HirId) -> Name {
+    pub fn name(&self, id: HirId) -> Symbol {
         match self.opt_name(id) {
             Some(name) => name,
             None => bug!("no name for {}", self.node_to_string(id)),
@@ -952,42 +952,42 @@ impl<'hir> intravisit::Map<'hir> for Map<'hir> {
 }
 
 trait Named {
-    fn name(&self) -> Name;
+    fn name(&self) -> Symbol;
 }
 
 impl<T: Named> Named for Spanned<T> {
-    fn name(&self) -> Name {
+    fn name(&self) -> Symbol {
         self.node.name()
     }
 }
 
 impl Named for Item<'_> {
-    fn name(&self) -> Name {
+    fn name(&self) -> Symbol {
         self.ident.name
     }
 }
 impl Named for ForeignItem<'_> {
-    fn name(&self) -> Name {
+    fn name(&self) -> Symbol {
         self.ident.name
     }
 }
 impl Named for Variant<'_> {
-    fn name(&self) -> Name {
+    fn name(&self) -> Symbol {
         self.ident.name
     }
 }
 impl Named for StructField<'_> {
-    fn name(&self) -> Name {
+    fn name(&self) -> Symbol {
         self.ident.name
     }
 }
 impl Named for TraitItem<'_> {
-    fn name(&self) -> Name {
+    fn name(&self) -> Symbol {
         self.ident.name
     }
 }
 impl Named for ImplItem<'_> {
-    fn name(&self) -> Name {
+    fn name(&self) -> Symbol {
         self.ident.name
     }
 }

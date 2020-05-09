@@ -640,7 +640,7 @@ rustc_queries! {
     }
 
     Other {
-        query fn_arg_names(_: DefId) -> &'tcx [ast::Name] {}
+        query fn_arg_names(_: DefId) -> &'tcx [Symbol] {}
         /// Gets the rendered value of the specified constant or associated constant.
         /// Used by rustdoc.
         query rendered_const(_: DefId) -> String {}
@@ -1053,7 +1053,7 @@ rustc_queries! {
             desc { "looking up all possibly unused extern crates" }
         }
         query names_imported_by_glob_use(def_id: LocalDefId)
-            -> &'tcx FxHashSet<ast::Name> {
+            -> &'tcx FxHashSet<Symbol> {
             eval_always
             desc { |tcx| "names_imported_by_glob_use for `{}`", tcx.def_path_str(def_id.to_def_id()) }
         }

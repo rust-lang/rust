@@ -5,6 +5,7 @@ use rustc_ast::ast;
 use rustc_ast::mut_visit::*;
 use rustc_ast::ptr::P;
 use rustc_span::source_map::{dummy_spanned, DUMMY_SP};
+use rustc_span::symbol::Ident;
 
 use smallvec::{smallvec, SmallVec};
 
@@ -23,7 +24,7 @@ pub fn placeholder(
         }
     }
 
-    let ident = ast::Ident::invalid();
+    let ident = Ident::invalid();
     let attrs = Vec::new();
     let vis = vis.unwrap_or_else(|| dummy_spanned(ast::VisibilityKind::Inherited));
     let span = DUMMY_SP;

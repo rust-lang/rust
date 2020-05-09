@@ -215,7 +215,7 @@ crate struct CrateRoot<'tcx> {
 
 #[derive(RustcEncodable, RustcDecodable)]
 crate struct CrateDep {
-    pub name: ast::Name,
+    pub name: Symbol,
     pub hash: Svh,
     pub host_hash: Option<Svh>,
     pub kind: DepKind,
@@ -327,7 +327,7 @@ struct ModData {
 struct FnData {
     asyncness: hir::IsAsync,
     constness: hir::Constness,
-    param_names: Lazy<[ast::Name]>,
+    param_names: Lazy<[Symbol]>,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]

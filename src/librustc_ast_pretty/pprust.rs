@@ -12,7 +12,7 @@ use rustc_ast::util::parser::{self, AssocOp, Fixity};
 use rustc_ast::util::{classify, comments};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{SourceMap, Spanned};
-use rustc_span::symbol::{kw, sym, IdentPrinter};
+use rustc_span::symbol::{kw, sym, Ident, IdentPrinter, Symbol};
 use rustc_span::{BytePos, FileName, Span};
 
 use std::borrow::Cow;
@@ -26,8 +26,8 @@ pub enum MacHeader<'a> {
 }
 
 pub enum AnnNode<'a> {
-    Ident(&'a ast::Ident),
-    Name(&'a ast::Name),
+    Ident(&'a Ident),
+    Name(&'a Symbol),
     Block(&'a ast::Block),
     Item(&'a ast::Item),
     SubItem(ast::NodeId),
@@ -118,8 +118,8 @@ pub fn print_crate<'a>(
         // of the feature gate, so we fake them up here.
 
         // `#![feature(prelude_import)]`
-        let pi_nested = attr::mk_nested_word_item(ast::Ident::with_dummy_span(sym::prelude_import));
-        let list = attr::mk_list_item(ast::Ident::with_dummy_span(sym::feature), vec![pi_nested]);
+        let pi_nested = attr::mk_nested_word_item(Ident::with_dummy_span(sym::prelude_import));
+        let list = attr::mk_list_item(Ident::with_dummy_span(sym::feature), vec![pi_nested]);
         let fake_attr = attr::mk_attr_inner(list);
         s.print_attribute(&fake_attr);
 
@@ -127,7 +127,7 @@ pub fn print_crate<'a>(
         // root, so this is not needed, and actually breaks things.
         if edition == Edition::Edition2015 {
             // `#![no_std]`
-            let no_std_meta = attr::mk_word_item(ast::Ident::with_dummy_span(sym::no_std));
+            let no_std_meta = attr::mk_word_item(Ident::with_dummy_span(sym::no_std));
             let fake_attr = attr::mk_attr_inner(no_std_meta);
             s.print_attribute(&fake_attr);
         }
@@ -389,7 +389,7 @@ impl std::ops::DerefMut for State<'_> {
 
 pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::DerefMut {
     fn comments(&mut self) -> &mut Option<Comments<'a>>;
-    fn print_ident(&mut self, ident: ast::Ident);
+    fn print_ident(&mut self, ident: Ident);
     fn print_generic_args(&mut self, args: &ast::GenericArgs, colons_before_params: bool);
 
     fn strsep<T, F>(
@@ -671,7 +671,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         &mut self,
         header: Option<MacHeader<'_>>,
         has_bang: bool,
-        ident: Option<ast::Ident>,
+        ident: Option<Ident>,
         delim: DelimToken,
         tts: TokenStream,
         convert_dollar_crate: bool,
@@ -782,7 +782,7 @@ impl<'a> PrintState<'a> for State<'a> {
         &mut self.comments
     }
 
-    fn print_ident(&mut self, ident: ast::Ident) {
+    fn print_ident(&mut self, ident: Ident) {
         self.s.word(IdentPrinter::for_ast_ident(ident, ident.is_raw_guess()).to_string());
         self.ann.post(self, AnnNode::Ident(&ident))
     }
@@ -1001,7 +1001,7 @@ impl<'a> State<'a> {
 
     fn print_item_const(
         &mut self,
-        ident: ast::Ident,
+        ident: Ident,
         mutbl: Option<ast::Mutability>,
         ty: &ast::Ty,
         body: Option<&ast::Expr>,
@@ -1032,7 +1032,7 @@ impl<'a> State<'a> {
 
     fn print_associated_type(
         &mut self,
-        ident: ast::Ident,
+        ident: Ident,
         generics: &ast::Generics,
         bounds: &ast::GenericBounds,
         ty: Option<&ast::Ty>,
@@ -1281,7 +1281,7 @@ impl<'a> State<'a> {
         &mut self,
         enum_definition: &ast::EnumDef,
         generics: &ast::Generics,
-        ident: ast::Ident,
+        ident: Ident,
         span: rustc_span::Span,
         visibility: &ast::Visibility,
     ) {
@@ -1337,7 +1337,7 @@ impl<'a> State<'a> {
         &mut self,
         struct_def: &ast::VariantData,
         generics: &ast::Generics,
-        ident: ast::Ident,
+        ident: Ident,
         span: rustc_span::Span,
         print_finalizer: bool,
     ) {
@@ -2116,7 +2116,7 @@ impl<'a> State<'a> {
         self.s.word(i.to_string())
     }
 
-    crate fn print_name(&mut self, name: ast::Name) {
+    crate fn print_name(&mut self, name: Symbol) {
         self.s.word(name.to_string());
         self.ann.post(self, AnnNode::Name(&name))
     }
@@ -2322,7 +2322,7 @@ impl<'a> State<'a> {
     fn print_fn_full(
         &mut self,
         sig: &ast::FnSig,
-        name: ast::Ident,
+        name: Ident,
         generics: &ast::Generics,
         vis: &ast::Visibility,
         defaultness: ast::Defaultness,
@@ -2347,7 +2347,7 @@ impl<'a> State<'a> {
         &mut self,
         decl: &ast::FnDecl,
         header: ast::FnHeader,
-        name: Option<ast::Ident>,
+        name: Option<Ident>,
         generics: &ast::Generics,
     ) {
         self.print_fn_header_info(header);
@@ -2614,7 +2614,7 @@ impl<'a> State<'a> {
         ext: ast::Extern,
         unsafety: ast::Unsafe,
         decl: &ast::FnDecl,
-        name: Option<ast::Ident>,
+        name: Option<Ident>,
         generic_params: &[ast::GenericParam],
     ) {
         self.ibox(INDENT_UNIT);

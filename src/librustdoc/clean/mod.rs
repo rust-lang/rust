@@ -9,7 +9,7 @@ mod simplify;
 pub mod types;
 pub mod utils;
 
-use rustc_ast::ast::{self, Ident};
+use rustc_ast::ast;
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
@@ -24,7 +24,7 @@ use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::{self, AdtKind, Lift, Ty, TyCtxt};
 use rustc_mir::const_eval::is_min_const_fn;
 use rustc_span::hygiene::MacroKind;
-use rustc_span::symbol::{kw, sym};
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{self, Pos};
 use rustc_typeck::hir_ty_to_ty;
 
@@ -921,7 +921,7 @@ impl Clean<Item> for doctree::Function<'_> {
     }
 }
 
-impl<'a> Clean<Arguments> for (&'a [hir::Ty<'a>], &'a [ast::Ident]) {
+impl<'a> Clean<Arguments> for (&'a [hir::Ty<'a>], &'a [Ident]) {
     fn clean(&self, cx: &DocContext<'_>) -> Arguments {
         Arguments {
             values: self
@@ -2006,7 +2006,7 @@ impl Clean<String> for Ident {
     }
 }
 
-impl Clean<String> for ast::Name {
+impl Clean<String> for Symbol {
     #[inline]
     fn clean(&self, _: &DocContext<'_>) -> String {
         self.to_string()

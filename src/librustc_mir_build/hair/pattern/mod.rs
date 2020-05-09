@@ -24,7 +24,7 @@ use rustc_middle::ty::{self, AdtDef, DefIdTree, Region, Ty, TyCtxt, UserType};
 use rustc_middle::ty::{
     CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations,
 };
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{Span, Symbol, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
 
 use std::cmp::Ordering;
@@ -128,7 +128,7 @@ crate enum PatKind<'tcx> {
     /// `x`, `ref x`, `x @ P`, etc.
     Binding {
         mutability: Mutability,
-        name: ast::Name,
+        name: Symbol,
         mode: BindingMode,
         var: hir::HirId,
         ty: Ty<'tcx>,
@@ -932,7 +932,7 @@ macro_rules! CloneImpls {
 }
 
 CloneImpls! { <'tcx>
-    Span, Field, Mutability, ast::Name, hir::HirId, usize, ty::Const<'tcx>,
+    Span, Field, Mutability, Symbol, hir::HirId, usize, ty::Const<'tcx>,
     Region<'tcx>, Ty<'tcx>, BindingMode, &'tcx AdtDef,
     SubstsRef<'tcx>, &'tcx GenericArg<'tcx>, UserType<'tcx>,
     UserTypeProjection, PatTyProj<'tcx>

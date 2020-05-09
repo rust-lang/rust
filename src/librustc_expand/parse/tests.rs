@@ -1,6 +1,6 @@
 use crate::tests::{matches_codepattern, string_to_stream, with_error_checking_parse};
 
-use rustc_ast::ast::{self, Name, PatKind};
+use rustc_ast::ast::{self, PatKind};
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Token};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
@@ -100,12 +100,12 @@ fn string_to_tts_1() {
 
         let expected = TokenStream::new(vec![
             TokenTree::token(token::Ident(kw::Fn, false), sp(0, 2)).into(),
-            TokenTree::token(token::Ident(Name::intern("a"), false), sp(3, 4)).into(),
+            TokenTree::token(token::Ident(Symbol::intern("a"), false), sp(3, 4)).into(),
             TokenTree::Delimited(
                 DelimSpan::from_pair(sp(5, 6), sp(13, 14)),
                 token::DelimToken::Paren,
                 TokenStream::new(vec![
-                    TokenTree::token(token::Ident(Name::intern("b"), false), sp(6, 7)).into(),
+                    TokenTree::token(token::Ident(Symbol::intern("b"), false), sp(6, 7)).into(),
                     TokenTree::token(token::Colon, sp(8, 9)).into(),
                     TokenTree::token(token::Ident(sym::i32, false), sp(10, 13)).into(),
                 ])
@@ -116,7 +116,7 @@ fn string_to_tts_1() {
                 DelimSpan::from_pair(sp(15, 16), sp(20, 21)),
                 token::DelimToken::Brace,
                 TokenStream::new(vec![
-                    TokenTree::token(token::Ident(Name::intern("b"), false), sp(17, 18)).into(),
+                    TokenTree::token(token::Ident(Symbol::intern("b"), false), sp(17, 18)).into(),
                     TokenTree::token(token::Semi, sp(18, 19)).into(),
                 ])
                 .into(),

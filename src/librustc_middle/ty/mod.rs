@@ -17,7 +17,7 @@ use crate::traits::{self, Reveal};
 use crate::ty;
 use crate::ty::subst::{InternalSubsts, Subst, SubstsRef};
 use crate::ty::util::{Discr, IntTypeExt};
-use rustc_ast::ast::{self, Ident, Name};
+use rustc_ast::ast;
 use rustc_ast::node_id::{NodeId, NodeMap, NodeSet};
 use rustc_attr as attr;
 use rustc_data_structures::captures::Captures;
@@ -38,7 +38,7 @@ use rustc_macros::HashStable;
 use rustc_serialize::{self, Encodable, Encoder};
 use rustc_session::DataTypeKind;
 use rustc_span::hygiene::ExpnId;
-use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 use rustc_target::abi::{Align, VariantIdx};
 
@@ -128,7 +128,7 @@ pub struct ResolverOutputs {
     pub glob_map: GlobMap,
     /// Extern prelude entries. The value is `true` if the entry was introduced
     /// via `extern crate` item and not `--extern` option or compiler built-in.
-    pub extern_prelude: FxHashMap<Name, bool>,
+    pub extern_prelude: FxHashMap<Symbol, bool>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, HashStable)]

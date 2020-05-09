@@ -1069,7 +1069,7 @@ pub fn is_allowed(cx: &LateContext<'_, '_>, lint: &'static Lint, id: HirId) -> b
     cx.tcx.lint_level_at_node(lint, id).0 == Level::Allow
 }
 
-pub fn get_arg_name(pat: &Pat<'_>) -> Option<ast::Name> {
+pub fn get_arg_name(pat: &Pat<'_>) -> Option<Name> {
     match pat.kind {
         PatKind::Binding(.., ident, None) => Some(ident.name),
         PatKind::Ref(ref subpat, _) => get_arg_name(subpat),

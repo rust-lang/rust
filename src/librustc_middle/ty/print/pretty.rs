@@ -12,7 +12,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Namespace};
 use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
-use rustc_span::symbol::{kw, Symbol};
+use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_target::abi::{Integer, Size};
 use rustc_target::spec::abi::Abi;
 
@@ -1452,7 +1452,7 @@ impl<F: fmt::Write> Printer<'tcx> for FmtPrinter<'_, 'tcx, F> {
             if !self.empty_path {
                 write!(self, "::")?;
             }
-            if ast::Ident::from_str(&name).is_raw_guess() {
+            if Ident::from_str(&name).is_raw_guess() {
                 write!(self, "r#")?;
             }
             write!(self, "{}", name)?;
