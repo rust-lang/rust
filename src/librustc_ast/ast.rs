@@ -899,6 +899,15 @@ impl Stmt {
             _ => false,
         }
     }
+
+    pub fn as_expr(&self) -> Option<&Expr> {
+        match self.kind {
+            StmtKind::Local(ref l) => l.init.as_ref().map(|e| &**e),
+            StmtKind::Expr(ref e) => Some(e),
+            StmtKind::Semi(ref e) => Some(e),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]

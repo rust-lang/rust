@@ -6,4 +6,7 @@ fn main() {
     || {
         macro m() {}
     };
+    let _ = || {
+        macro n() {}
+    };
 }

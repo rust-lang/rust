@@ -719,6 +719,19 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
             }
         }
 
+        // We need to keep certain Expr nodes because they can contain
+        // exported macros. If we were to remove a parent of a MacroDef
+        // node, we would end up with in a case where the macro is properly
+        // lowered but not its parent, causing some surprising bug while
+        // trying to access the parent HirId. See issue #71820.
+        fn expr_to_keep(e: &ast::Expr) -> bool {
+            match e.kind {
+                ast::ExprKind::Closure(..) => true,
+                ast::ExprKind::Async(..) => true,
+                _ => false,
+            }
+        }
+
         let empty_block = stmt_to_block(BlockCheckMode::Default, None, self.resolver);
         let loop_expr = P(ast::Expr {
             kind: ast::ExprKind::Loop(P(empty_block), None),
@@ -741,7 +754,11 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
                 for s in b.stmts {
                     let old_blocks = self.nested_blocks.replace(vec![]);
 
-                    stmts.extend(self.flat_map_stmt(s).into_iter().filter(|s| s.is_item()));
+                    stmts.extend(
+                        self.flat_map_stmt(s).into_iter().filter(|s| {
+                            s.is_item() || s.as_expr().map_or(false, |e| expr_to_keep(e))
+                        }),
+                    );
 
                     // we put a Some in there earlier with that replace(), so this is valid
                     let new_blocks = self.nested_blocks.take().unwrap();
