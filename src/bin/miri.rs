@@ -61,7 +61,7 @@ fn init_early_loggers() {
     // If it is not set, we avoid initializing now so that we can initialize
     // later with our custom settings, and *not* log anything for what happens before
     // `miri` gets started.
-    if env::var("RUSTC_LOG").is_ok() {
+    if env::var_os("RUSTC_LOG").is_some() {
         rustc_driver::init_rustc_env_logger();
     }
 }
@@ -69,8 +69,9 @@ fn init_early_loggers() {
 fn init_late_loggers(tcx: TyCtxt<'_>) {
     // We initialize loggers right before we start evaluation. We overwrite the `RUSTC_LOG`
     // env var if it is not set, control it based on `MIRI_LOG`.
+    // (FIXE: use `var_os`, but then we need to manually concatenate instead of `format!`.)
     if let Ok(var) = env::var("MIRI_LOG") {
-        if env::var("RUSTC_LOG").is_err() {
+        if env::var_os("RUSTC_LOG").is_none() {
             // We try to be a bit clever here: if `MIRI_LOG` is just a single level
             // used for everything, we only apply it to the parts of rustc that are
             // CTFE-related. Otherwise, we use it verbatim for `RUSTC_LOG`.
@@ -90,8 +91,8 @@ fn init_late_loggers(tcx: TyCtxt<'_>) {
 
     // If `MIRI_BACKTRACE` is set and `RUSTC_CTFE_BACKTRACE` is not, set `RUSTC_CTFE_BACKTRACE`.
     // Do this late, so we ideally only apply this to Miri's errors.
-    if let Ok(val) = env::var("MIRI_BACKTRACE") {
-        let ctfe_backtrace = match &*val {
+    if let Some(val) = env::var_os("MIRI_BACKTRACE") {
+        let ctfe_backtrace = match &*val.to_string_lossy() {
             "immediate" => CtfeBacktrace::Immediate,
             "0" => CtfeBacktrace::Disabled,
             _ => CtfeBacktrace::Capture,
