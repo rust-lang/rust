@@ -555,7 +555,7 @@ pub trait AstNodeEdit: AstNode + Clone + Sized {
         Self::cast(indent.increase_indent(self.syntax().clone())).unwrap()
     }
     #[must_use]
-    fn unindent(&self, indent: IndentLevel) -> Self {
+    fn dedent(&self, indent: IndentLevel) -> Self {
         Self::cast(indent.decrease_indent(self.syntax().clone())).unwrap()
     }
 }

@@ -156,7 +156,7 @@ pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext) 
             parent_block: &ast::BlockExpr,
             if_expr: &ast::IfExpr,
         ) -> SyntaxNode {
-            let then_block_items = then_block.unindent(IndentLevel::from(1));
+            let then_block_items = then_block.dedent(IndentLevel::from(1));
             let end_of_then = then_block_items.syntax().last_child_or_token().unwrap();
             let end_of_then =
                 if end_of_then.prev_sibling_or_token().map(|n| n.kind()) == Some(WHITESPACE) {
