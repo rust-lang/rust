@@ -452,8 +452,42 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     // &[T; n] or &mut [T; n] -> &[T]
     // or &mut [T; n] -> &mut [T]
     // or &Concrete -> &Trait, etc.
-    fn coerce_unsized(&self, source: Ty<'tcx>, target: Ty<'tcx>) -> CoerceResult<'tcx> {
+    fn coerce_unsized(&self, mut source: Ty<'tcx>, mut target: Ty<'tcx>) -> CoerceResult<'tcx> {
         debug!("coerce_unsized(source={:?}, target={:?})", source, target);
+
+        source = self.shallow_resolve(source);
+        target = self.shallow_resolve(target);
+        debug!("coerce_unsized: resolved source={:?} target={:?}", source, target);
+
+        // These 'if' statements require some explanation.
+        // The `CoerceUnsized` trait is special - it is only
+        // possible to write `impl CoerceUnsized<B> for A` where
+        // A and B have 'matching' fields. This rules out the following
+        // two types of blanket impls:
+        //
+        // `impl<T> CoerceUnsized<T> for SomeType`
+        // `impl<T> CoerceUnsized<SomeType> for T`
+        //
+        // Both of these trigger a special `CoerceUnsized`-related error (E0376)
+        //
+        // We can take advantage of this fact to avoid performing unecessary work.
+        // If either `source` or `target` is a type variable, then any applicable impl
+        // would need to be generic over the self-type (`impl<T> CoerceUnsized<SomeType> for T`)
+        // or generic over the `CoerceUnsized` type parameter (`impl<T> CoerceUnsized<T> for
+        // SomeType`).
+        //
+        // However, these are exactly the kinds of impls which are forbidden by
+        // the compiler! Therefore, we can be sure that coercion will always fail
+        // when either the source or target type is a type variable. This allows us
+        // to skip performing any trait selection, and immediately bail out.
+        if source.is_ty_var() {
+            debug!("coerce_unsized: source is a TyVar, bailing out");
+            return Err(TypeError::Mismatch);
+        }
+        if target.is_ty_var() {
+            debug!("coerce_unsized: target is a TyVar, bailing out");
+            return Err(TypeError::Mismatch);
+        }
 
         let traits =
             (self.tcx.lang_items().unsize_trait(), self.tcx.lang_items().coerce_unsized_trait());
