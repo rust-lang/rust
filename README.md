@@ -223,7 +223,7 @@ Moreover, Miri recognizes some environment variables:
   passed to Miri.
 
 The following environment variables are internal, but used to communicate between
-different Miri binaries, and as such worht documenting:
+different Miri binaries, and as such worth documenting:
 
 * `MIRI_BE_RUSTC` when set to any value tells the Miri driver to actually not
   interpret the code but compile it like rustc would. This is useful to be sure
