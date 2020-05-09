@@ -1,6 +1,6 @@
-use std::{io, fs, env, path::PathBuf};
-use crate::spec::{LinkerFlavor, LldFlavor, LinkArgs, RelocModel};
+use crate::spec::{LinkArgs, LinkerFlavor, LldFlavor, RelocModel};
 use crate::spec::{Target, TargetOptions, TargetResult};
+use std::{env, fs, io, path::PathBuf};
 
 // The PSP has custom linker requirements.
 const LINKER_SCRIPT: &str = include_str!("./mipsel_sony_psp_linker_script.ld");
@@ -12,9 +12,7 @@ fn write_script() -> io::Result<PathBuf> {
 }
 
 pub fn target() -> TargetResult {
-    let script = write_script().map_err(|e| {
-        format!("failed to write link script: {}", e)
-    })?;
+    let script = write_script().map_err(|e| format!("failed to write link script: {}", e))?;
 
     let mut pre_link_args = LinkArgs::new();
     pre_link_args.insert(
@@ -49,9 +47,7 @@ pub fn target() -> TargetResult {
             features: "+single-float".to_string(),
 
             // PSP does not support trap-on-condition instructions.
-            llvm_args: vec![
-                "-mno-check-zero-division".to_string(),
-            ],
+            llvm_args: vec!["-mno-check-zero-division".to_string()],
             pre_link_args,
             ..Default::default()
         },
