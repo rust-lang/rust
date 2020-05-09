@@ -269,7 +269,7 @@ fn ask_to_run(mut cmd: Command, ask: bool, text: &str) {
 /// `MIRI_SYSROOT`. Skipped if `MIRI_SYSROOT` is already set, in which case we expect the user has
 /// done all this already.
 fn setup(subcommand: MiriCommand) {
-    if std::env::var("MIRI_SYSROOT").is_ok() {
+    if std::env::var_os("MIRI_SYSROOT").is_some() {
         if subcommand == MiriCommand::Setup {
             println!("WARNING: MIRI_SYSROOT already set, not doing anything.")
         }
@@ -282,7 +282,7 @@ fn setup(subcommand: MiriCommand) {
 
     // First, we need xargo.
     if xargo_version().map_or(true, |v| v < XARGO_MIN_VERSION) {
-        if std::env::var("XARGO_CHECK").is_ok() {
+        if std::env::var_os("XARGO_CHECK").is_some() {
             // The user manually gave us a xargo binary; don't do anything automatically.
             show_error(format!("Your xargo is too old; please upgrade to the latest version"))
         }
@@ -292,9 +292,9 @@ fn setup(subcommand: MiriCommand) {
     }
 
     // Determine where the rust sources are located.  `XARGO_RUST_SRC` env var trumps everything.
-    let rust_src = match std::env::var("XARGO_RUST_SRC") {
-        Ok(val) => PathBuf::from(val),
-        Err(_) => {
+    let rust_src = match std::env::var_os("XARGO_RUST_SRC") {
+        Some(val) => PathBuf::from(val),
+        None => {
             // Check for `rust-src` rustup component.
             let sysroot = rustc()
                 .args(&["--print", "sysroot"])
@@ -522,7 +522,7 @@ fn inside_cargo_rustc() {
         is_bin || is_test
     }
 
-    let verbose = std::env::var("MIRI_VERBOSE").is_ok();
+    let verbose = std::env::var_os("MIRI_VERBOSE").is_some();
     let target_crate = is_target_crate();
 
     // Figure out which arguments we need to pass.
@@ -531,6 +531,7 @@ fn inside_cargo_rustc() {
     // other args for target crates - that is, crates which are ultimately
     // going to get interpreted by Miri.
     if target_crate {
+        // FIXME: breaks for non-UTF-8 sysroots (use `var_os` instead).
         let sysroot =
             std::env::var("MIRI_SYSROOT").expect("The wrapper should have set MIRI_SYSROOT");
         args.push("--sysroot".to_owned());
@@ -545,6 +546,8 @@ fn inside_cargo_rustc() {
         // we want to interpret under Miri. We deserialize the user-provided arguments
         // from the special environment variable "MIRI_ARGS", and feed them
         // to the 'miri' binary.
+        //
+        // `env::var` is okay here, well-formed JSON is always UTF-8.
         let magic = std::env::var("MIRI_ARGS").expect("missing MIRI_ARGS");
         let mut user_args: Vec<String> =
             serde_json::from_str(&magic).expect("failed to deserialize MIRI_ARGS");
