@@ -97,11 +97,11 @@ impl_lint_pass!(WildcardImports => [ENUM_GLOB_USE, WILDCARD_IMPORTS]);
 
 impl LateLintPass<'_, '_> for WildcardImports {
     fn check_item(&mut self, cx: &LateContext<'_, '_>, item: &Item<'_>) {
-        if item.vis.node.is_pub() || item.vis.node.is_pub_restricted() {
-            return;
-        }
         if is_test_module_or_function(item) {
             self.test_modules_deep = self.test_modules_deep.saturating_add(1);
+        }
+        if item.vis.node.is_pub() || item.vis.node.is_pub_restricted() {
+            return;
         }
         if_chain! {
             if let ItemKind::Use(use_path, UseKind::Glob) = &item.kind;
