@@ -6,6 +6,7 @@ use std::io::{self, BufRead, Write};
 use std::ops::Not;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::ffi::OsString;
 
 const XARGO_MIN_VERSION: (u32, u32, u32) = (0, 3, 20);
 
@@ -85,29 +86,23 @@ fn get_arg_flag_value(name: &str) -> Option<String> {
     }
 }
 
-/// Returns the path to the `miri` binary
-fn find_miri() -> PathBuf {
+/// Returns a command for the right `miri` binary.
+fn miri() -> Command {
     let mut path = std::env::current_exe().expect("current executable path invalid");
     path.set_file_name("miri");
-    path
+    Command::new(path)
 }
 
 fn cargo() -> Command {
-    if let Ok(val) = std::env::var("CARGO") {
-        // Bootstrap tells us where to find cargo
-        Command::new(val)
-    } else {
-        Command::new("cargo")
-    }
+    Command::new(env::var_os("CARGO").unwrap_or_else(|| OsString::from("cargo")))
 }
 
 fn xargo_check() -> Command {
-    if let Ok(val) = std::env::var("XARGO_CHECK") {
-        // Bootstrap tells us where to find xargo
-        Command::new(val)
-    } else {
-        Command::new("xargo-check")
-    }
+    Command::new(env::var_os("XARGO_CHECK").unwrap_or_else(|| OsString::from("xargo-check")))
+}
+
+fn rustc() -> Command {
+    Command::new(env::var_os("RUSTC").unwrap_or_else(|| OsString::from("rustc")))
 }
 
 fn list_targets() -> impl Iterator<Item = cargo_metadata::Target> {
@@ -188,8 +183,8 @@ fn test_sysroot_consistency() {
         return;
     }
 
-    let rustc_sysroot = get_sysroot(Command::new("rustc"));
-    let miri_sysroot = get_sysroot(Command::new(find_miri()));
+    let rustc_sysroot = get_sysroot(rustc());
+    let miri_sysroot = get_sysroot(miri());
 
     if rustc_sysroot != miri_sysroot {
         show_error(format!(
@@ -301,7 +296,7 @@ fn setup(subcommand: MiriCommand) {
         Ok(val) => PathBuf::from(val),
         Err(_) => {
             // Check for `rust-src` rustup component.
-            let sysroot = Command::new("rustc")
+            let sysroot = rustc()
                 .args(&["--print", "sysroot"])
                 .output()
                 .expect("failed to get rustc sysroot")
@@ -554,9 +549,9 @@ fn inside_cargo_rustc() {
             serde_json::from_str(&magic).expect("failed to deserialize MIRI_ARGS");
         args.append(&mut user_args);
         // Run this in Miri.
-        Command::new(find_miri())
+        miri()
     } else {
-        Command::new("rustc")
+        rustc()
     };
 
     // Run it.
