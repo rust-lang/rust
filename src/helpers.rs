@@ -54,7 +54,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn eval_path_scalar(
         &mut self,
         path: &[&str],
-    ) -> InterpResult<'tcx, ScalarMaybeUndef<Tag>> {
+    ) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
         let this = self.eval_context_mut();
         let instance = this.resolve_path(path);
         let cid = GlobalId { instance, promoted: None };

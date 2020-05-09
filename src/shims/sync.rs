@@ -25,7 +25,7 @@ fn get_at_offset<'mir, 'tcx: 'mir>(
     offset: u64,
     layout: TyAndLayout<'tcx>,
     min_size: u64,
-) -> InterpResult<'tcx, ScalarMaybeUndef<Tag>> {
+) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
     // Ensure that the following read at an offset to the attr pointer is within bounds
     assert_ptr_target_min_size(ecx, op, min_size)?;
     let op_place = ecx.deref_operand(op)?;
@@ -37,7 +37,7 @@ fn set_at_offset<'mir, 'tcx: 'mir>(
     ecx: &mut MiriEvalContext<'mir, 'tcx>,
     op: OpTy<'tcx, Tag>,
     offset: u64,
-    value: impl Into<ScalarMaybeUndef<Tag>>,
+    value: impl Into<ScalarMaybeUninit<Tag>>,
     layout: TyAndLayout<'tcx>,
     min_size: u64,
 ) -> InterpResult<'tcx, ()> {
@@ -59,14 +59,14 @@ const PTHREAD_MUTEXATTR_T_MIN_SIZE: u64 = 4;
 fn mutexattr_get_kind<'mir, 'tcx: 'mir>(
     ecx: &MiriEvalContext<'mir, 'tcx>,
     attr_op: OpTy<'tcx, Tag>,
-) -> InterpResult<'tcx, ScalarMaybeUndef<Tag>> {
+) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
     get_at_offset(ecx, attr_op, 0, ecx.machine.layouts.i32, PTHREAD_MUTEXATTR_T_MIN_SIZE)
 }
 
 fn mutexattr_set_kind<'mir, 'tcx: 'mir>(
     ecx: &mut MiriEvalContext<'mir, 'tcx>,
     attr_op: OpTy<'tcx, Tag>,
-    kind: impl Into<ScalarMaybeUndef<Tag>>,
+    kind: impl Into<ScalarMaybeUninit<Tag>>,
 ) -> InterpResult<'tcx, ()> {
     set_at_offset(ecx, attr_op, 0, kind, ecx.machine.layouts.i32, PTHREAD_MUTEXATTR_T_MIN_SIZE)
 }
@@ -88,14 +88,14 @@ const PTHREAD_MUTEX_T_MIN_SIZE: u64 = 24;
 fn mutex_get_locked_count<'mir, 'tcx: 'mir>(
     ecx: &MiriEvalContext<'mir, 'tcx>,
     mutex_op: OpTy<'tcx, Tag>,
-) -> InterpResult<'tcx, ScalarMaybeUndef<Tag>> {
+) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
     get_at_offset(ecx, mutex_op, 4, ecx.machine.layouts.u32, PTHREAD_MUTEX_T_MIN_SIZE)
 }
 
 fn mutex_set_locked_count<'mir, 'tcx: 'mir>(
     ecx: &mut MiriEvalContext<'mir, 'tcx>,
     mutex_op: OpTy<'tcx, Tag>,
-    locked_count: impl Into<ScalarMaybeUndef<Tag>>,
+    locked_count: impl Into<ScalarMaybeUninit<Tag>>,
 ) -> InterpResult<'tcx, ()> {
     set_at_offset(ecx, mutex_op, 4, locked_count, ecx.machine.layouts.u32, PTHREAD_MUTEX_T_MIN_SIZE)
 }
@@ -103,14 +103,14 @@ fn mutex_set_locked_count<'mir, 'tcx: 'mir>(
 fn mutex_get_owner<'mir, 'tcx: 'mir>(
     ecx: &MiriEvalContext<'mir, 'tcx>,
     mutex_op: OpTy<'tcx, Tag>,
-) -> InterpResult<'tcx, ScalarMaybeUndef<Tag>> {
+) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
     get_at_offset(ecx, mutex_op, 8, ecx.machine.layouts.u32, PTHREAD_MUTEX_T_MIN_SIZE)
 }
 
 fn mutex_set_owner<'mir, 'tcx: 'mir>(
     ecx: &mut MiriEvalContext<'mir, 'tcx>,
     mutex_op: OpTy<'tcx, Tag>,
-    owner: impl Into<ScalarMaybeUndef<Tag>>,
+    owner: impl Into<ScalarMaybeUninit<Tag>>,
 ) -> InterpResult<'tcx, ()> {
     set_at_offset(ecx, mutex_op, 8, owner, ecx.machine.layouts.u32, PTHREAD_MUTEX_T_MIN_SIZE)
 }
@@ -118,7 +118,7 @@ fn mutex_set_owner<'mir, 'tcx: 'mir>(
 fn mutex_get_kind<'mir, 'tcx: 'mir>(
     ecx: &mut MiriEvalContext<'mir, 'tcx>,
     mutex_op: OpTy<'tcx, Tag>,
-) -> InterpResult<'tcx, ScalarMaybeUndef<Tag>> {
+) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
     let offset = if ecx.pointer_size().bytes() == 8 { 16 } else { 12 };
     get_at_offset(ecx, mutex_op, offset, ecx.machine.layouts.i32, PTHREAD_MUTEX_T_MIN_SIZE)
 }
@@ -126,7 +126,7 @@ fn mutex_get_kind<'mir, 'tcx: 'mir>(
 fn mutex_set_kind<'mir, 'tcx: 'mir>(
     ecx: &mut MiriEvalContext<'mir, 'tcx>,
     mutex_op: OpTy<'tcx, Tag>,
-    kind: impl Into<ScalarMaybeUndef<Tag>>,
+    kind: impl Into<ScalarMaybeUninit<Tag>>,
 ) -> InterpResult<'tcx, ()> {
     let offset = if ecx.pointer_size().bytes() == 8 { 16 } else { 12 };
     set_at_offset(ecx, mutex_op, offset, kind, ecx.machine.layouts.i32, PTHREAD_MUTEX_T_MIN_SIZE)
@@ -135,14 +135,14 @@ fn mutex_set_kind<'mir, 'tcx: 'mir>(
 fn mutex_get_blockset<'mir, 'tcx: 'mir>(
     ecx: &MiriEvalContext<'mir, 'tcx>,
     mutex_op: OpTy<'tcx, Tag>,
-) -> InterpResult<'tcx, ScalarMaybeUndef<Tag>> {
+) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
     get_at_offset(ecx, mutex_op, 20, ecx.machine.layouts.u32, PTHREAD_MUTEX_T_MIN_SIZE)
 }
 
 fn mutex_set_blockset<'mir, 'tcx: 'mir>(
     ecx: &mut MiriEvalContext<'mir, 'tcx>,
     mutex_op: OpTy<'tcx, Tag>,
-    blockset: impl Into<ScalarMaybeUndef<Tag>>,
+    blockset: impl Into<ScalarMaybeUninit<Tag>>,
 ) -> InterpResult<'tcx, ()> {
     set_at_offset(ecx, mutex_op, 20, blockset, ecx.machine.layouts.u32, PTHREAD_MUTEX_T_MIN_SIZE)
 }
@@ -180,14 +180,14 @@ const PTHREAD_RWLOCK_T_MIN_SIZE: u64 = 20;
 fn rwlock_get_readers<'mir, 'tcx: 'mir>(
     ecx: &MiriEvalContext<'mir, 'tcx>,
     rwlock_op: OpTy<'tcx, Tag>,
-) -> InterpResult<'tcx, ScalarMaybeUndef<Tag>> {
+) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
     get_at_offset(ecx, rwlock_op, 4, ecx.machine.layouts.u32, PTHREAD_RWLOCK_T_MIN_SIZE)
 }
 
 fn rwlock_set_readers<'mir, 'tcx: 'mir>(
     ecx: &mut MiriEvalContext<'mir, 'tcx>,
     rwlock_op: OpTy<'tcx, Tag>,
-    readers: impl Into<ScalarMaybeUndef<Tag>>,
+    readers: impl Into<ScalarMaybeUninit<Tag>>,
 ) -> InterpResult<'tcx, ()> {
     set_at_offset(ecx, rwlock_op, 4, readers, ecx.machine.layouts.u32, PTHREAD_RWLOCK_T_MIN_SIZE)
 }
@@ -195,14 +195,14 @@ fn rwlock_set_readers<'mir, 'tcx: 'mir>(
 fn rwlock_get_writers<'mir, 'tcx: 'mir>(
     ecx: &MiriEvalContext<'mir, 'tcx>,
     rwlock_op: OpTy<'tcx, Tag>,
-) -> InterpResult<'tcx, ScalarMaybeUndef<Tag>> {
+) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
     get_at_offset(ecx, rwlock_op, 8, ecx.machine.layouts.u32, PTHREAD_RWLOCK_T_MIN_SIZE)
 }
 
 fn rwlock_set_writers<'mir, 'tcx: 'mir>(
     ecx: &mut MiriEvalContext<'mir, 'tcx>,
     rwlock_op: OpTy<'tcx, Tag>,
-    writers: impl Into<ScalarMaybeUndef<Tag>>,
+    writers: impl Into<ScalarMaybeUninit<Tag>>,
 ) -> InterpResult<'tcx, ()> {
     set_at_offset(ecx, rwlock_op, 8, writers, ecx.machine.layouts.u32, PTHREAD_RWLOCK_T_MIN_SIZE)
 }
@@ -210,14 +210,14 @@ fn rwlock_set_writers<'mir, 'tcx: 'mir>(
 fn rwlock_get_writer_blockset<'mir, 'tcx: 'mir>(
     ecx: &MiriEvalContext<'mir, 'tcx>,
     rwlock_op: OpTy<'tcx, Tag>,
-) -> InterpResult<'tcx, ScalarMaybeUndef<Tag>> {
+) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
     get_at_offset(ecx, rwlock_op, 12, ecx.machine.layouts.u32, PTHREAD_RWLOCK_T_MIN_SIZE)
 }
 
 fn rwlock_set_writer_blockset<'mir, 'tcx: 'mir>(
     ecx: &mut MiriEvalContext<'mir, 'tcx>,
     rwlock_op: OpTy<'tcx, Tag>,
-    blockset: impl Into<ScalarMaybeUndef<Tag>>,
+    blockset: impl Into<ScalarMaybeUninit<Tag>>,
 ) -> InterpResult<'tcx, ()> {
     set_at_offset(ecx, rwlock_op, 12, blockset, ecx.machine.layouts.u32, PTHREAD_RWLOCK_T_MIN_SIZE)
 }
@@ -241,14 +241,14 @@ fn rwlock_get_or_create_writer_blockset<'mir, 'tcx: 'mir>(
 fn rwlock_get_reader_blockset<'mir, 'tcx: 'mir>(
     ecx: &MiriEvalContext<'mir, 'tcx>,
     rwlock_op: OpTy<'tcx, Tag>,
-) -> InterpResult<'tcx, ScalarMaybeUndef<Tag>> {
+) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
     get_at_offset(ecx, rwlock_op, 16, ecx.machine.layouts.u32, PTHREAD_RWLOCK_T_MIN_SIZE)
 }
 
 fn rwlock_set_reader_blockset<'mir, 'tcx: 'mir>(
     ecx: &mut MiriEvalContext<'mir, 'tcx>,
     rwlock_op: OpTy<'tcx, Tag>,
-    blockset: impl Into<ScalarMaybeUndef<Tag>>,
+    blockset: impl Into<ScalarMaybeUninit<Tag>>,
 ) -> InterpResult<'tcx, ()> {
     set_at_offset(ecx, rwlock_op, 16, blockset, ecx.machine.layouts.u32, PTHREAD_RWLOCK_T_MIN_SIZE)
 }
@@ -304,7 +304,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn pthread_mutexattr_destroy(&mut self, attr_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        mutexattr_set_kind(this, attr_op, ScalarMaybeUndef::Undef)?;
+        mutexattr_set_kind(this, attr_op, ScalarMaybeUninit::Uninit)?;
 
         Ok(0)
     }
@@ -458,9 +458,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             throw_ub_format!("destroyed a locked mutex");
         }
 
-        mutex_set_kind(this, mutex_op, ScalarMaybeUndef::Undef)?;
-        mutex_set_locked_count(this, mutex_op, ScalarMaybeUndef::Undef)?;
-        mutex_set_blockset(this, mutex_op, ScalarMaybeUndef::Undef)?;
+        mutex_set_kind(this, mutex_op, ScalarMaybeUninit::Uninit)?;
+        mutex_set_locked_count(this, mutex_op, ScalarMaybeUninit::Uninit)?;
+        mutex_set_blockset(this, mutex_op, ScalarMaybeUninit::Uninit)?;
 
         Ok(0)
     }
@@ -579,10 +579,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             throw_ub_format!("destroyed a locked rwlock");
         }
 
-        rwlock_set_readers(this, rwlock_op, ScalarMaybeUndef::Undef)?;
-        rwlock_set_writers(this, rwlock_op, ScalarMaybeUndef::Undef)?;
-        rwlock_set_reader_blockset(this, rwlock_op, ScalarMaybeUndef::Undef)?;
-        rwlock_set_writer_blockset(this, rwlock_op, ScalarMaybeUndef::Undef)?;
+        rwlock_set_readers(this, rwlock_op, ScalarMaybeUninit::Uninit)?;
+        rwlock_set_writers(this, rwlock_op, ScalarMaybeUninit::Uninit)?;
+        rwlock_set_reader_blockset(this, rwlock_op, ScalarMaybeUninit::Uninit)?;
+        rwlock_set_writer_blockset(this, rwlock_op, ScalarMaybeUninit::Uninit)?;
 
         Ok(0)
     }
