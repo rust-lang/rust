@@ -101,12 +101,11 @@ impl LateLintPass<'_, '_> for WildcardImports {
             return;
         }
         if is_test_module_or_function(item) {
-            self.test_modules_deep += 1;
+            self.test_modules_deep = self.test_modules_deep.saturating_add(1);
         }
         if_chain! {
-            if self.warn_on_all || !in_macro(item.span);
             if let ItemKind::Use(use_path, UseKind::Glob) = &item.kind;
-            if self.warn_on_all || !self.check_exceptions(use_path.segments);
+            if self.warn_on_all || !self.check_exceptions(item, use_path.segments);
             let used_imports = cx.tcx.names_imported_by_glob_use(item.hir_id.owner);
             if !used_imports.is_empty(); // Already handled by `unused_imports`
             then {
@@ -177,14 +176,16 @@ impl LateLintPass<'_, '_> for WildcardImports {
 
     fn check_item_post(&mut self, _: &LateContext<'_, '_>, item: &Item<'_>) {
         if is_test_module_or_function(item) {
-            self.test_modules_deep -= 1;
+            self.test_modules_deep = self.test_modules_deep.saturating_sub(1);
         }
     }
 }
 
 impl WildcardImports {
-    fn check_exceptions(&self, segments: &[PathSegment<'_>]) -> bool {
-        is_prelude_import(segments) || (is_super_only_import(segments) && self.test_modules_deep > 0)
+    fn check_exceptions(&self, item: &Item<'_>, segments: &[PathSegment<'_>]) -> bool {
+        in_macro(item.span)
+            || is_prelude_import(segments)
+            || (is_super_only_import(segments) && self.test_modules_deep > 0)
     }
 }
 
