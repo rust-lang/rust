@@ -23,6 +23,7 @@ use crate::{AssistContext, AssistId, Assists};
 // ```
 pub(crate) fn add_explicit_type(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let stmt = ctx.find_node_at_offset::<LetStmt>()?;
+    let module = ctx.sema.scope(stmt.syntax()).module()?;
     let expr = stmt.initializer()?;
     let pat = stmt.pat()?;
     // Must be a binding
@@ -57,17 +58,17 @@ pub(crate) fn add_explicit_type(acc: &mut Assists, ctx: &AssistContext) -> Optio
         return None;
     }
 
-    let db = ctx.db;
-    let new_type_string = ty.display_truncated(db, None).to_string();
+    let inferred_type = ty.display_source_code(ctx.db, module.into()).ok()?;
     acc.add(
         AssistId("add_explicit_type"),
-        format!("Insert explicit type '{}'", new_type_string),
+        format!("Insert explicit type '{}'", inferred_type),
         pat_range,
-        |edit| {
-            if let Some(ascribed_ty) = ascribed_ty {
-                edit.replace(ascribed_ty.syntax().text_range(), new_type_string);
-            } else {
-                edit.insert(name_range.end(), format!(": {}", new_type_string));
+        |builder| match ascribed_ty {
+            Some(ascribed_ty) => {
+                builder.replace(ascribed_ty.syntax().text_range(), inferred_type);
+            }
+            None => {
+                builder.insert(name_range.end(), format!(": {}", inferred_type));
             }
         },
     )
@@ -208,7 +209,7 @@ struct Test<K, T = u8> {
 }
 
 fn main() {
-    let test<|>: Test<i32> = Test { t: 23, k: 33 };
+    let test<|>: Test<i32, u8> = Test { t: 23, k: 33 };
 }"#,
         );
     }
