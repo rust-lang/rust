@@ -184,6 +184,16 @@ pub(super) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
         &format!("dbg!({})", receiver_text),
     )
     .add_to(acc);
+
+    postfix_snippet(
+        ctx,
+        cap,
+        &dot_receiver,
+        "call",
+        "function(expr)",
+        &format!("${{1}}({})", receiver_text),
+    )
+    .add_to(acc);
 }
 
 fn get_receiver_text(receiver: &ast::Expr, receiver_is_ambiguous_float_literal: bool) -> String {
@@ -254,6 +264,13 @@ mod tests {
                 delete: 85..89,
                 insert: "Box::new(bar)",
                 detail: "Box::new(expr)",
+            },
+            CompletionItem {
+                label: "call",
+                source_range: 89..89,
+                delete: 85..89,
+                insert: "${1}(bar)",
+                detail: "function(expr)",
             },
             CompletionItem {
                 label: "dbg",
@@ -335,6 +352,13 @@ mod tests {
                 detail: "Box::new(expr)",
             },
             CompletionItem {
+                label: "call",
+                source_range: 210..210,
+                delete: 206..210,
+                insert: "${1}(bar)",
+                detail: "function(expr)",
+            },
+            CompletionItem {
                 label: "dbg",
                 source_range: 210..210,
                 delete: 206..210,
@@ -414,6 +438,13 @@ mod tests {
                 detail: "Box::new(expr)",
             },
             CompletionItem {
+                label: "call",
+                source_range: 211..211,
+                delete: 207..211,
+                insert: "${1}(bar)",
+                detail: "function(expr)",
+            },
+            CompletionItem {
                 label: "dbg",
                 source_range: 211..211,
                 delete: 207..211,
@@ -488,6 +519,13 @@ mod tests {
                 detail: "Box::new(expr)",
             },
             CompletionItem {
+                label: "call",
+                source_range: 91..91,
+                delete: 87..91,
+                insert: "${1}(bar)",
+                detail: "function(expr)",
+            },
+            CompletionItem {
                 label: "dbg",
                 source_range: 91..91,
                 delete: 87..91,
@@ -545,6 +583,13 @@ mod tests {
                 delete: 49..52,
                 insert: "Box::new(42)",
                 detail: "Box::new(expr)",
+            },
+            CompletionItem {
+                label: "call",
+                source_range: 52..52,
+                delete: 49..52,
+                insert: "${1}(42)",
+                detail: "function(expr)",
             },
             CompletionItem {
                 label: "dbg",
@@ -608,6 +653,13 @@ mod tests {
                 detail: "Box::new(expr)",
             },
             CompletionItem {
+                label: "call",
+                source_range: 149..150,
+                delete: 145..150,
+                insert: "${1}(bar)",
+                detail: "function(expr)",
+            },
+            CompletionItem {
                 label: "dbg",
                 source_range: 149..150,
                 delete: 145..150,
@@ -665,6 +717,13 @@ mod tests {
                 delete: 49..56,
                 insert: "Box::new(&&&&42)",
                 detail: "Box::new(expr)",
+            },
+            CompletionItem {
+                label: "call",
+                source_range: 56..56,
+                delete: 49..56,
+                insert: "${1}(&&&&42)",
+                detail: "function(expr)",
             },
             CompletionItem {
                 label: "dbg",
