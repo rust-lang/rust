@@ -49,7 +49,7 @@ pub fn add_configuration(
 
     cfg.extend(codegen_backend.target_features(sess).into_iter().map(|feat| (tf, Some(feat))));
 
-    if sess.crt_static_feature(None) {
+    if sess.crt_static(None) {
         cfg.insert((tf, Some(Symbol::intern("crt-static"))));
     }
 }
