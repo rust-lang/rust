@@ -525,6 +525,7 @@ fn test_debugging_options_tracking_hash() {
     tracked!(always_encode_mir, true);
     tracked!(asm_comments, true);
     tracked!(binary_dep_depinfo, true);
+    tracked!(chalk, true);
     tracked!(codegen_backend, Some("abc".to_string()));
     tracked!(crate_attr, vec!["abc".to_string()]);
     tracked!(debug_macros, true);

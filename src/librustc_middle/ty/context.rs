@@ -93,6 +93,8 @@ pub struct CtxtInterners<'tcx> {
     projs: InternedSet<'tcx, List<ProjectionKind>>,
     place_elems: InternedSet<'tcx, List<PlaceElem<'tcx>>>,
     const_: InternedSet<'tcx, Const<'tcx>>,
+
+    chalk_environment_clause_list: InternedSet<'tcx, List<traits::ChalkEnvironmentClause<'tcx>>>,
 }
 
 impl<'tcx> CtxtInterners<'tcx> {
@@ -109,6 +111,8 @@ impl<'tcx> CtxtInterners<'tcx> {
             projs: Default::default(),
             place_elems: Default::default(),
             const_: Default::default(),
+
+            chalk_environment_clause_list: Default::default(),
         }
     }
 
@@ -1997,6 +2001,14 @@ impl<'tcx> Borrow<Const<'tcx>> for Interned<'tcx, Const<'tcx>> {
     }
 }
 
+impl<'tcx> Borrow<[traits::ChalkEnvironmentClause<'tcx>]>
+    for Interned<'tcx, List<traits::ChalkEnvironmentClause<'tcx>>>
+{
+    fn borrow<'a>(&'a self) -> &'a [traits::ChalkEnvironmentClause<'tcx>] {
+        &self.0[..]
+    }
+}
+
 macro_rules! direct_interners {
     ($($name:ident: $method:ident($ty:ty)),+) => {
         $(impl<'tcx> PartialEq for Interned<'tcx, $ty> {
@@ -2044,7 +2056,9 @@ slice_interners!(
     existential_predicates: _intern_existential_predicates(ExistentialPredicate<'tcx>),
     predicates: _intern_predicates(Predicate<'tcx>),
     projs: _intern_projs(ProjectionKind),
-    place_elems: _intern_place_elems(PlaceElem<'tcx>)
+    place_elems: _intern_place_elems(PlaceElem<'tcx>),
+    chalk_environment_clause_list:
+        _intern_chalk_environment_clause_list(traits::ChalkEnvironmentClause<'tcx>)
 );
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -2430,6 +2444,13 @@ impl<'tcx> TyCtxt<'tcx> {
         if ts.is_empty() { List::empty() } else { self._intern_canonical_var_infos(ts) }
     }
 
+    pub fn intern_chalk_environment_clause_list(
+        self,
+        ts: &[traits::ChalkEnvironmentClause<'tcx>],
+    ) -> &'tcx List<traits::ChalkEnvironmentClause<'tcx>> {
+        if ts.is_empty() { List::empty() } else { self._intern_chalk_environment_clause_list(ts) }
+    }
+
     pub fn mk_fn_sig<I>(
         self,
         inputs: I,
@@ -2485,6 +2506,18 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn mk_substs_trait(self, self_ty: Ty<'tcx>, rest: &[GenericArg<'tcx>]) -> SubstsRef<'tcx> {
         self.mk_substs(iter::once(self_ty.into()).chain(rest.iter().cloned()))
+    }
+
+    pub fn mk_chalk_environment_clause_list<
+        I: InternAs<
+            [traits::ChalkEnvironmentClause<'tcx>],
+            &'tcx List<traits::ChalkEnvironmentClause<'tcx>>,
+        >,
+    >(
+        self,
+        iter: I,
+    ) -> I::Output {
+        iter.intern_with(|xs| self.intern_chalk_environment_clause_list(xs))
     }
 
     /// Walks upwards from `id` to find a node which might change lint levels with attributes.

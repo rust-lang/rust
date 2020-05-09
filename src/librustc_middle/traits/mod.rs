@@ -2,11 +2,13 @@
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/resolution.html
 
+mod chalk;
 pub mod query;
 pub mod select;
 pub mod specialization_graph;
 mod structural_impls;
 
+use crate::infer::canonical::Canonical;
 use crate::mir::interpret::ErrorHandled;
 use crate::ty::subst::SubstsRef;
 use crate::ty::{self, AdtKind, Ty, TyCtxt};
@@ -23,9 +25,16 @@ use std::rc::Rc;
 
 pub use self::select::{EvaluationCache, EvaluationResult, OverflowError, SelectionCache};
 
+pub type ChalkCanonicalGoal<'tcx> = Canonical<'tcx, ChalkEnvironmentAndGoal<'tcx>>;
+
 pub use self::ObligationCauseCode::*;
 pub use self::SelectionError::*;
 pub use self::Vtable::*;
+
+pub use self::chalk::{
+    ChalkEnvironmentAndGoal, ChalkEnvironmentClause, RustDefId as ChalkRustDefId,
+    RustInterner as ChalkRustInterner,
+};
 
 /// Depending on the stage of compilation, we want projection to be
 /// more or less conservative.

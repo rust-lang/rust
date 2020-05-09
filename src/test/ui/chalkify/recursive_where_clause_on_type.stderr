@@ -1,0 +1,10 @@
+warning: Trait bound S: Foo does not depend on any type or lifetime parameters
+  --> $DIR/recursive_where_clause_on_type.rs:12:19
+   |
+LL | struct S where S: Foo;
+   |                   ^^^
+   |
+   = note: `#[warn(trivial_bounds)]` on by default
+
+warning: 1 warning emitted
+
