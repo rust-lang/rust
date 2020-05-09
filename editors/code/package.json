@@ -596,28 +596,28 @@
                         "support.type.primitive"
                     ],
                     "lifetime": [
-                        "entity.name.lifetime.rust"
+                        "entity.name.type.lifetime"
                     ],
                     "typeAlias": [
-                        "entity.name.typeAlias"
+                        "entity.name.type.typeAlias"
                     ],
                     "union": [
-                        "entity.name.union"
+                        "entity.name.type.union"
                     ],
                     "struct": [
                         "entity.name.type.struct"
                     ],
-                    "keyword.unsafe": [
-                        "keyword.other.unsafe"
-                    ],
                     "keyword": [
-                        "keyword"
+                        "keyword.other"
                     ],
                     "keyword.controlFlow": [
                         "keyword.control"
                     ],
                     "variable.constant": [
-                        "entity.name.constant"
+                        "variable.other.constant"
+                    ],
+                    "formatSpecifier": [
+                        "punctuation.section.embedded"
                     ]
                 }
             }
