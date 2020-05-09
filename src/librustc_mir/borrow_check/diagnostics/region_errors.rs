@@ -8,7 +8,7 @@ use rustc_infer::infer::{
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::{self, RegionVid, Ty};
 use rustc_span::symbol::kw;
-use rustc_span::Span;
+use rustc_span::SpanId;
 
 use crate::util::borrowck_errors;
 
@@ -59,7 +59,7 @@ crate enum RegionErrorKind<'tcx> {
     /// An unexpected hidden region for an opaque type.
     UnexpectedHiddenRegion {
         /// The span for the member constraint.
-        span: Span,
+        span: SpanId,
         /// The hidden type.
         hidden_ty: Ty<'tcx>,
         /// The unexpected region.
@@ -101,7 +101,7 @@ pub struct ErrorConstraintInfo {
 
     // Category and span for best blame constraint
     pub(super) category: ConstraintCategory,
-    pub(super) span: Span,
+    pub(super) span: SpanId,
 }
 
 impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
@@ -166,7 +166,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         self.infcx
                             .construct_generic_bound_failure(
                                 region_scope_tree,
-                                type_test_span,
+                                self.infcx.tcx.reify_span(type_test_span),
                                 None,
                                 type_test.generic_kind,
                                 lower_bound_region,
@@ -200,7 +200,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     unexpected_hidden_region_diagnostic(
                         self.infcx.tcx,
                         Some(region_scope_tree),
-                        span,
+                        self.infcx.tcx.reify_span(span),
                         named_ty,
                         named_region,
                     )
@@ -283,7 +283,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         debug!("report_region_error: category={:?} {:?}", category, span);
         // Check if we can use one of the "nice region errors".
         if let (Some(f), Some(o)) = (self.to_error_region(fr), self.to_error_region(outlived_fr)) {
-            let nice = NiceRegionError::new_from_span(self.infcx, span, o, f);
+            let nice =
+                NiceRegionError::new_from_span(self.infcx, self.infcx.tcx.reify_span(span), o, f);
             if let Some(diag) = nice.try_report_from_nll() {
                 diag.buffer(&mut self.errors_buffer);
                 return;

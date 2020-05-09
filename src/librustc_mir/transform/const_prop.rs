@@ -21,7 +21,7 @@ use rustc_middle::ty::layout::{HasTyCtxt, LayoutError, TyAndLayout};
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
 use rustc_middle::ty::{self, ConstKind, Instance, ParamEnv, Ty, TyCtxt, TypeFoldable};
 use rustc_session::lint;
-use rustc_span::{def_id::DefId, Span};
+use rustc_span::{def_id::DefId, SpanId};
 use rustc_target::abi::{HasDataLayout, LayoutOf, Size, TargetDataLayout};
 use rustc_trait_selection::traits;
 
@@ -132,7 +132,7 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
             Default::default(),
             body.arg_count,
             Default::default(),
-            tcx.real_def_span(source.def_id()),
+            tcx.def_span(source.def_id()),
             Default::default(),
             body.generator_kind,
         );
@@ -602,7 +602,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     }
 
     /// Creates a new `Operand::Constant` from a `Scalar` value
-    fn operand_from_scalar(&self, scalar: Scalar, ty: Ty<'tcx>, span: Span) -> Operand<'tcx> {
+    fn operand_from_scalar(&self, scalar: Scalar, ty: Ty<'tcx>, span: SpanId) -> Operand<'tcx> {
         Operand::Constant(Box::new(Constant {
             span,
             user_ty: None,

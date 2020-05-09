@@ -11,7 +11,7 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::print::Print;
 use rustc_middle::ty::{self, DefIdTree, Ty, TyCtxt};
-use rustc_span::{symbol::sym, Span};
+use rustc_span::{symbol::sym, SpanId};
 use rustc_target::abi::VariantIdx;
 
 use super::borrow_set::BorrowData;
@@ -311,7 +311,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     fn append_local_to_string(&self, local: Local, buf: &mut String) -> Result<(), ()> {
         let decl = &self.body.local_decls[local];
         match self.local_names[local] {
-            Some(name) if !decl.from_compiler_desugaring() => {
+            Some(name) if !decl.from_compiler_desugaring(self.infcx.tcx) => {
                 buf.push_str(&name.as_str());
                 Ok(())
             }
@@ -400,7 +400,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         err: &mut DiagnosticBuilder<'a>,
         place_desc: &str,
         ty: Ty<'tcx>,
-        span: Option<Span>,
+        span: Option<SpanId>,
     ) {
         let message = format!(
             "move occurs because {} has type `{}`, which does not implement the `Copy` trait",
@@ -533,22 +533,22 @@ pub(super) enum UseSpans {
         generator_kind: Option<GeneratorKind>,
         // The span of the args of the closure, including the `move` keyword if
         // it's present.
-        args_span: Span,
+        args_span: SpanId,
         // The span of the first use of the captured variable inside the closure.
-        var_span: Span,
+        var_span: SpanId,
     },
     // This access has a single span associated to it: common case.
-    OtherUse(Span),
+    OtherUse(SpanId),
 }
 
 impl UseSpans {
-    pub(super) fn args_or_use(self) -> Span {
+    pub(super) fn args_or_use(self) -> SpanId {
         match self {
             UseSpans::ClosureUse { args_span: span, .. } | UseSpans::OtherUse(span) => span,
         }
     }
 
-    pub(super) fn var_or_use(self) -> Span {
+    pub(super) fn var_or_use(self) -> SpanId {
         match self {
             UseSpans::ClosureUse { var_span: span, .. } | UseSpans::OtherUse(span) => span,
         }
@@ -743,7 +743,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// and its usage of the local assigned at `location`.
     /// This is done by searching in statements succeeding `location`
     /// and originating from `maybe_closure_span`.
-    pub(super) fn borrow_spans(&self, use_span: Span, location: Location) -> UseSpans {
+    pub(super) fn borrow_spans(&self, use_span: SpanId, location: Location) -> UseSpans {
         use self::UseSpans::*;
         debug!("borrow_spans: use_span={:?} location={:?}", use_span, location);
 
@@ -800,7 +800,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         def_id: DefId,
         target_place: PlaceRef<'tcx>,
         places: &Vec<Operand<'tcx>>,
-    ) -> Option<(Span, Option<GeneratorKind>, Span)> {
+    ) -> Option<(SpanId, Option<GeneratorKind>, SpanId)> {
         debug!(
             "closure_span: def_id={:?} target_place={:?} places={:?}",
             def_id, target_place, places
@@ -817,7 +817,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         debug!("closure_span: found captured local {:?}", place);
                         let body = self.infcx.tcx.hir().body(*body_id);
                         let generator_kind = body.generator_kind();
-                        return Some((*args_span, generator_kind, upvar.span));
+                        return Some(((*args_span).into(), generator_kind, upvar.span.into()));
                     }
                     _ => {}
                 }

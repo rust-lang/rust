@@ -17,7 +17,7 @@ use rustc_middle::ty::layout::{self, TyAndLayout};
 use rustc_middle::ty::{
     self, fold::BottomUpFolder, query::TyCtxtAt, subst::SubstsRef, Ty, TyCtxt, TypeFoldable,
 };
-use rustc_span::{SpanId, DUMMY_SP, DUMMY_SPID};
+use rustc_span::{SpanId, DUMMY_SPID};
 use rustc_target::abi::{Align, HasDataLayout, LayoutOf, Size, TargetDataLayout};
 
 use super::{
@@ -948,7 +948,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     mir::ClearCrossCrate::Clear => None,
                 }
             });
-            let span = source_info.map_or(DUMMY_SP, |source_info| source_info.span).into();
+            let span = source_info.map_or(DUMMY_SPID, |source_info| source_info.span).into();
 
             frames.push(FrameInfo { span, instance: frame.instance, lint_root });
         }

@@ -99,7 +99,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
         for (bb, bbdata) in mir.basic_blocks().iter_enumerated() {
             let terminator = bbdata.terminator();
 
-            if terminator.source_info.span.from_expansion() {
+            let span = cx.tcx.reify_span(terminator.source_info.span);
+            if span.from_expansion() {
                 continue;
             }
 
@@ -217,7 +218,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
             );
 
             if !used || !consumed_or_mutated {
-                let span = terminator.source_info.span;
                 let scope = terminator.source_info.scope;
                 let node = mir.source_scopes[scope]
                     .local_data

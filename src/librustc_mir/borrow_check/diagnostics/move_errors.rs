@@ -2,7 +2,7 @@ use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_middle::mir::*;
 use rustc_middle::ty;
 use rustc_span::source_map::DesugaringKind;
-use rustc_span::{Span, Symbol};
+use rustc_span::{SpanId, Symbol};
 
 use crate::borrow_check::diagnostics::UseSpans;
 use crate::borrow_check::prefixes::PrefixSet;
@@ -30,7 +30,7 @@ enum GroupedMoveError<'tcx> {
     // e.g., match x[0] { s => (), } where x: &[String]
     MovesFromPlace {
         original_path: Place<'tcx>,
-        span: Span,
+        span: SpanId,
         move_from: Place<'tcx>,
         kind: IllegalMoveOriginKind<'tcx>,
         binds_to: Vec<Local>,
@@ -39,7 +39,7 @@ enum GroupedMoveError<'tcx> {
     // e.g., match &String::new() { &x => (), }
     MovesFromValue {
         original_path: Place<'tcx>,
-        span: Span,
+        span: SpanId,
         move_from: MovePathIndex,
         kind: IllegalMoveOriginKind<'tcx>,
         binds_to: Vec<Local>,
@@ -146,8 +146,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         move_from: Place<'tcx>,
         bind_to: Local,
         match_place: Option<Place<'tcx>>,
-        match_span: Span,
-        statement_span: Span,
+        match_span: SpanId,
+        statement_span: SpanId,
     ) {
         debug!("append_binding_error(match_place={:?}, match_span={:?})", match_place, match_span);
 
@@ -221,7 +221,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     fn report(&mut self, error: GroupedMoveError<'tcx>) {
         let (mut err, err_span) = {
             let (span, use_spans, original_path, kind): (
-                Span,
+                SpanId,
                 Option<UseSpans>,
                 Place<'tcx>,
                 &IllegalMoveOriginKind<'_>,
@@ -269,7 +269,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     fn report_cannot_move_from_static(
         &mut self,
         place: Place<'tcx>,
-        span: Span,
+        span: SpanId,
     ) -> DiagnosticBuilder<'a> {
         let description = if place.projection.len() == 1 {
             format!("static item {}", self.describe_any_place(place.as_ref()))
@@ -290,7 +290,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         &mut self,
         move_place: Place<'tcx>,
         deref_target_place: Place<'tcx>,
-        span: Span,
+        span: SpanId,
         use_spans: Option<UseSpans>,
     ) -> DiagnosticBuilder<'a> {
         // Inspect the type of the content behind the
@@ -384,6 +384,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 }
             }
         };
+        let span = self.infcx.tcx.reify_span(span);
         if let Ok(snippet) = self.infcx.tcx.sess.source_map().span_to_snippet(span) {
             let def_id = match move_place.ty(self.body, self.infcx.tcx).ty.kind {
                 ty::Adt(self_def, _) => self_def.did,
@@ -427,11 +428,17 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         &self,
         error: GroupedMoveError<'tcx>,
         err: &mut DiagnosticBuilder<'a>,
-        span: Span,
+        span: SpanId,
     ) {
         match error {
             GroupedMoveError::MovesFromPlace { mut binds_to, move_from, .. } => {
-                if let Ok(snippet) = self.infcx.tcx.sess.source_map().span_to_snippet(span) {
+                if let Ok(snippet) = self
+                    .infcx
+                    .tcx
+                    .sess
+                    .source_map()
+                    .span_to_snippet(self.infcx.tcx.reify_span(span))
+                {
                     err.span_suggestion(
                         span,
                         "consider borrowing here",
@@ -479,14 +486,19 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     }
 
     fn add_move_error_suggestions(&self, err: &mut DiagnosticBuilder<'a>, binds_to: &[Local]) {
-        let mut suggestions: Vec<(Span, &str, String)> = Vec::new();
+        let mut suggestions: Vec<(SpanId, &str, String)> = Vec::new();
         for local in binds_to {
             let bind_to = &self.body.local_decls[*local];
             if let Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
                 VarBindingForm { pat_span, .. },
             )))) = bind_to.local_info
             {
-                if let Ok(pat_snippet) = self.infcx.tcx.sess.source_map().span_to_snippet(pat_span)
+                if let Ok(pat_snippet) = self
+                    .infcx
+                    .tcx
+                    .sess
+                    .source_map()
+                    .span_to_snippet(self.infcx.tcx.reify_span(pat_span))
                 {
                     if pat_snippet.starts_with('&') {
                         let pat_snippet = pat_snippet[1..].trim_start();

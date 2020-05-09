@@ -3,7 +3,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_index::vec::{Enumerated, IndexVec};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
-use rustc_span::Span;
+use rustc_span::SpanId;
 use smallvec::SmallVec;
 
 use std::fmt;
@@ -277,7 +277,7 @@ impl fmt::Debug for Init {
 }
 
 impl Init {
-    crate fn span<'tcx>(&self, body: &Body<'tcx>) -> Span {
+    crate fn span<'tcx>(&self, body: &Body<'tcx>) -> SpanId {
         match self.location {
             InitLocation::Argument(local) => body.local_decls[local].source_info.span,
             InitLocation::Statement(location) => body.source_info(location).span,

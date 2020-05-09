@@ -9,7 +9,7 @@ use std::ops::{Add, AddAssign, Deref, Mul, Range, RangeInclusive, Sub};
 
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable_Generic;
-use rustc_span::Span;
+use rustc_span::SpanId;
 
 pub mod call;
 
@@ -971,7 +971,7 @@ pub trait LayoutOf {
     type TyAndLayout;
 
     fn layout_of(&self, ty: Self::Ty) -> Self::TyAndLayout;
-    fn spanned_layout_of(&self, ty: Self::Ty, _span: Span) -> Self::TyAndLayout {
+    fn spanned_layout_of(&self, ty: Self::Ty, _span: SpanId) -> Self::TyAndLayout {
         self.layout_of(ty)
     }
 }

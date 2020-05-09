@@ -49,7 +49,7 @@ crate struct Cx<'a, 'tcx> {
     check_overflow: bool,
 
     /// See field with the same name on `mir::Body`.
-    control_flow_destroyed: Vec<(Span, String)>,
+    control_flow_destroyed: Vec<(SpanId, String)>,
 }
 
 impl<'a, 'tcx> Cx<'a, 'tcx> {
@@ -93,7 +93,7 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
         }
     }
 
-    crate fn control_flow_destroyed(self) -> Vec<(Span, String)> {
+    crate fn control_flow_destroyed(self) -> Vec<(SpanId, String)> {
         self.control_flow_destroyed
     }
 }
@@ -132,7 +132,7 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
         &mut self,
         lit: &'tcx ast::LitKind,
         ty: Ty<'tcx>,
-        sp: Span,
+        sp: SpanId,
         neg: bool,
     ) -> &'tcx ty::Const<'tcx> {
         trace!("const_eval_literal: {:#?}, {:?}, {:?}, {:?}", lit, ty, sp, neg);
@@ -204,8 +204,8 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
         self.check_overflow
     }
 
-    crate fn type_is_copy_modulo_regions(&self, ty: Ty<'tcx>, span: Span) -> bool {
-        self.infcx.type_is_copy_modulo_regions(self.param_env, ty, span)
+    crate fn type_is_copy_modulo_regions(&self, ty: Ty<'tcx>, span: SpanId) -> bool {
+        self.infcx.type_is_copy_modulo_regions(self.param_env, ty, self.infcx.tcx.reify_span(span))
     }
 }
 

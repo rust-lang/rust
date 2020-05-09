@@ -406,6 +406,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         self.set_debug_loc(&mut bx, terminator.source_info);
 
         // Get the location information.
+        let span = bx.tcx().reify_span(span);
         let location = self.get_caller_location(&mut bx, span).immediate();
 
         // Put together the arguments to the panic entry point.
@@ -606,6 +607,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             bug!("`miri_start_panic` should never end up in compiled code");
         }
 
+        let span = bx.tcx().reify_span(span);
         if self.codegen_panic_intrinsic(
             &helper,
             &mut bx,
@@ -670,7 +672,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             let c = self.eval_mir_constant(constant);
                             let (llval, ty) = self.simd_shuffle_indices(
                                 &bx,
-                                constant.span,
+                                bx.tcx().reify_span(constant.span),
                                 constant.literal.ty,
                                 c,
                             );
@@ -689,7 +691,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 &fn_abi,
                 &args,
                 dest,
-                terminator.source_info.span,
+                bx.tcx().reify_span(terminator.source_info.span),
             );
 
             if let ReturnDest::IndirectOperand(dst, _) = ret_dest {

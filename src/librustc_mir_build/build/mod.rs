@@ -15,7 +15,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_span::symbol::kw;
-use rustc_span::Span;
+use rustc_span::SpanId;
 use rustc_target::spec::abi::Abi;
 use rustc_target::spec::PanicStrategy;
 
@@ -107,7 +107,7 @@ fn mir_build(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Body<'_> {
                 let opt_ty_info;
                 let self_arg;
                 if let Some(ref fn_decl) = tcx.hir().fn_decl_by_hir_id(owner_id) {
-                    opt_ty_info = fn_decl.inputs.get(index).map(|ty| ty.span);
+                    opt_ty_info = fn_decl.inputs.get(index).map(|ty| ty.span.into());
                     self_arg = if index == 0 && fn_decl.implicit_self.has_implicit_self() {
                         match fn_decl.implicit_self {
                             hir::ImplicitSelfKind::Imm => Some(ImplicitSelfKind::Imm),
@@ -158,7 +158,7 @@ fn mir_build(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Body<'_> {
                 safety,
                 abi,
                 return_ty,
-                return_ty_span,
+                return_ty_span.into(),
                 body,
             );
             mir.yield_ty = yield_ty;
@@ -178,7 +178,7 @@ fn mir_build(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Body<'_> {
 
             let return_ty = cx.tables().node_type(id);
 
-            build::construct_const(cx, body_id, return_ty, return_ty_span)
+            build::construct_const(cx, body_id, return_ty, return_ty_span.into())
         };
 
         lints::check(tcx, &body, def_id);
@@ -243,8 +243,8 @@ enum BlockFrame {
         /// Example: `let _ = { STMT_1; EXPR };`
         tail_result_is_ignored: bool,
 
-        /// `Span` of the tail expression.
-        span: Span,
+        /// `SpanId` of the tail expression.
+        span: SpanId,
     },
 
     /// Generic mark meaning that the block occurred as a subexpression
@@ -278,7 +278,7 @@ struct Builder<'a, 'tcx> {
     hir: Cx<'a, 'tcx>,
     cfg: CFG<'tcx>,
 
-    fn_span: Span,
+    fn_span: SpanId,
     arg_count: usize,
     generator_kind: Option<GeneratorKind>,
 
@@ -545,7 +545,7 @@ fn should_abort_on_panic(tcx: TyCtxt<'_>, fn_def_id: LocalDefId, _abi: Abi) -> b
 
 struct ArgInfo<'tcx>(
     Ty<'tcx>,
-    Option<Span>,
+    Option<SpanId>,
     Option<&'tcx hir::Param<'tcx>>,
     Option<ImplicitSelfKind>,
 );
@@ -557,7 +557,7 @@ fn construct_fn<'a, 'tcx, A>(
     safety: Safety,
     abi: Abi,
     return_ty: Ty<'tcx>,
-    return_ty_span: Span,
+    return_ty_span: SpanId,
     body: &'tcx hir::Body<'tcx>,
 ) -> Body<'tcx>
 where
@@ -573,7 +573,7 @@ where
 
     let mut builder = Builder::new(
         hir,
-        span,
+        span.into(),
         arguments.len(),
         safety,
         return_ty,
@@ -585,12 +585,12 @@ where
         region::Scope { id: body.value.hir_id.local_id, data: region::ScopeData::CallSite };
     let arg_scope =
         region::Scope { id: body.value.hir_id.local_id, data: region::ScopeData::Arguments };
-    let source_info = builder.source_info(span);
+    let source_info = builder.source_info(span.into());
     let call_site_s = (call_site_scope, source_info);
     unpack!(builder.in_scope(call_site_s, LintLevel::Inherited, |builder| {
         let arg_scope_s = (arg_scope, source_info);
         // Attribute epilogue to function's closing brace
-        let fn_end = span.shrink_to_hi();
+        let fn_end = span.shrink_to_hi().into();
         let return_block =
             unpack!(builder.in_breakable_scope(None, Place::return_place(), fn_end, |builder| {
                 Some(builder.in_scope(arg_scope_s, LintLevel::Inherited, |builder| {
@@ -631,11 +631,11 @@ fn construct_const<'a, 'tcx>(
     hir: Cx<'a, 'tcx>,
     body_id: hir::BodyId,
     const_ty: Ty<'tcx>,
-    const_ty_span: Span,
+    const_ty_span: SpanId,
 ) -> Body<'tcx> {
     let tcx = hir.tcx();
     let owner_id = tcx.hir().body_owner(body_id);
-    let span = tcx.hir().span(owner_id);
+    let span = tcx.hir().span(owner_id).into();
     let mut builder = Builder::new(hir, span, 0, Safety::Safe, const_ty, const_ty_span, None);
 
     let mut block = START_BLOCK;
@@ -664,7 +664,7 @@ fn construct_const<'a, 'tcx>(
 fn construct_error<'a, 'tcx>(hir: Cx<'a, 'tcx>, body_id: hir::BodyId) -> Body<'tcx> {
     let tcx = hir.tcx();
     let owner_id = tcx.hir().body_owner(body_id);
-    let span = tcx.hir().span(owner_id);
+    let span = tcx.hir().span(owner_id).into();
     let ty = tcx.types.err;
     let num_params = match hir.body_owner_kind {
         hir::BodyOwnerKind::Fn => tcx.hir().fn_decl_by_hir_id(owner_id).unwrap().inputs.len(),
@@ -699,11 +699,11 @@ fn construct_error<'a, 'tcx>(hir: Cx<'a, 'tcx>, body_id: hir::BodyId) -> Body<'t
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn new(
         hir: Cx<'a, 'tcx>,
-        span: Span,
+        span: SpanId,
         arg_count: usize,
         safety: Safety,
         return_ty: Ty<'tcx>,
-        return_span: Span,
+        return_span: SpanId,
         generator_kind: Option<GeneratorKind>,
     ) -> Builder<'a, 'tcx> {
         let lint_level = LintLevel::Explicit(hir.root_lint_level);
@@ -770,7 +770,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // Allocate locals for the function arguments
         for &ArgInfo(ty, _, arg_opt, _) in arguments.iter() {
             let source_info =
-                SourceInfo::outermost(arg_opt.map_or(self.fn_span, |arg| arg.pat.span));
+                SourceInfo::outermost(arg_opt.map_or(self.fn_span, |arg| arg.pat.span.into()));
             let arg_local = self.local_decls.push(LocalDecl::with_source_info(ty, source_info));
 
             // If this is a simple binding pattern, give debuginfo a nice name.
@@ -840,7 +840,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     self.var_debug_info.push(VarDebugInfo {
                         name,
-                        source_info: SourceInfo::outermost(tcx_hir.span(var_id)),
+                        source_info: SourceInfo::outermost(tcx_hir.span(var_id).into()),
                         place: Place {
                             local: closure_env_arg,
                             projection: tcx.intern_place_elems(&projs),
@@ -862,7 +862,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             // Make sure we drop (parts of) the argument even when not matched on.
             self.schedule_drop(
-                arg_opt.as_ref().map_or(ast_body.span, |arg| arg.pat.span),
+                arg_opt.as_ref().map_or(ast_body.span, |arg| arg.pat.span).into(),
                 argument_scope,
                 local,
                 DropKind::Value,
@@ -902,7 +902,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     _ => {
                         scope = self.declare_bindings(
                             scope,
-                            ast_body.span,
+                            ast_body.span.into(),
                             &pattern,
                             matches::ArmHasGuard(false),
                             Some((Some(&place), span)),
@@ -927,7 +927,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         arg_hir_id: hir::HirId,
         original_source_scope: SourceScope,
-        pattern_span: Span,
+        pattern_span: SpanId,
     ) {
         let tcx = self.hir.tcx();
         let current_root = tcx.maybe_lint_level_root_bounded(arg_hir_id, self.hir.root_lint_level);

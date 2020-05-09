@@ -1,7 +1,7 @@
 use crate::mir::*;
 use crate::ty::subst::SubstsRef;
 use crate::ty::{CanonicalUserTypeAnnotation, Ty};
-use rustc_span::Span;
+use rustc_span::SpanId;
 
 // # The MIR Visitor
 //
@@ -163,7 +163,7 @@ macro_rules! make_mir_visitor {
             }
 
             fn visit_span(&mut self,
-                          span: & $($mutability)? Span) {
+                          span: & $($mutability)? SpanId) {
                 self.super_span(span);
             }
 
@@ -774,7 +774,7 @@ macro_rules! make_mir_visitor {
                 self.visit_const(literal, location);
             }
 
-            fn super_span(&mut self, _span: & $($mutability)? Span) {
+            fn super_span(&mut self, _span: & $($mutability)? SpanId) {
             }
 
             fn super_source_info(&mut self, source_info: & $($mutability)? SourceInfo) {
@@ -798,8 +798,8 @@ macro_rules! make_mir_visitor {
                 _index: UserTypeAnnotationIndex,
                 ty: & $($mutability)? CanonicalUserTypeAnnotation<'tcx>,
             ) {
-                self.visit_span(& $($mutability)? ty.span);
-                self.visit_ty(& $($mutability)? ty.inferred_ty, TyContext::UserTy(ty.span));
+                self.visit_span(& $($mutability)? ty.span.into());
+                self.visit_ty(& $($mutability)? ty.inferred_ty, TyContext::UserTy(ty.span.into()));
             }
 
             fn super_ty(&mut self, _ty: $(& $mutability)? Ty<'tcx>) {
@@ -1024,7 +1024,7 @@ pub enum TyContext {
     },
 
     /// The inferred type of a user type annotation.
-    UserTy(Span),
+    UserTy(SpanId),
 
     /// The return type of the function.
     ReturnTy(SourceInfo),

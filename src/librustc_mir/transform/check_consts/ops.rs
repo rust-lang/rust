@@ -6,7 +6,7 @@ use rustc_hir::def_id::DefId;
 use rustc_session::config::nightly_options;
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::sym;
-use rustc_span::{Span, Symbol};
+use rustc_span::{SpanId, Symbol};
 
 use super::ConstCx;
 
@@ -32,7 +32,7 @@ pub trait NonConstOp: std::fmt::Debug {
         Self::feature_gate().map_or(false, |gate| ccx.tcx.features().enabled(gate))
     }
 
-    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
+    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: SpanId) {
         let mut err = struct_span_err!(
             ccx.tcx.sess,
             span,
@@ -61,7 +61,7 @@ pub trait NonConstOp: std::fmt::Debug {
 #[derive(Debug)]
 pub struct FnCallIndirect;
 impl NonConstOp for FnCallIndirect {
-    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
+    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: SpanId) {
         let mut err =
             ccx.tcx.sess.struct_span_err(span, "function pointers are not allowed in const fn");
         err.emit();
@@ -72,7 +72,7 @@ impl NonConstOp for FnCallIndirect {
 #[derive(Debug)]
 pub struct FnCallNonConst(pub DefId);
 impl NonConstOp for FnCallNonConst {
-    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
+    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: SpanId) {
         let mut err = struct_span_err!(
             ccx.tcx.sess,
             span,
@@ -91,7 +91,7 @@ impl NonConstOp for FnCallNonConst {
 #[derive(Debug)]
 pub struct FnCallUnstable(pub DefId, pub Symbol);
 impl NonConstOp for FnCallUnstable {
-    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
+    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: SpanId) {
         let FnCallUnstable(def_id, feature) = *self;
 
         let mut err = ccx.tcx.sess.struct_span_err(
@@ -108,7 +108,7 @@ impl NonConstOp for FnCallUnstable {
 #[derive(Debug)]
 pub struct HeapAllocation;
 impl NonConstOp for HeapAllocation {
-    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
+    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: SpanId) {
         let mut err = struct_span_err!(
             ccx.tcx.sess,
             span,
@@ -136,7 +136,7 @@ impl NonConstOp for IfOrMatch {
         Some(sym::const_if_match)
     }
 
-    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
+    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: SpanId) {
         // This should be caught by the HIR const-checker.
         ccx.tcx.sess.delay_span_bug(span, "complex control flow is forbidden in a const context");
     }
@@ -149,7 +149,7 @@ impl NonConstOp for InlineAsm {}
 #[derive(Debug)]
 pub struct LiveDrop;
 impl NonConstOp for LiveDrop {
-    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
+    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: SpanId) {
         struct_span_err!(
             ccx.tcx.sess,
             span,
@@ -168,7 +168,7 @@ impl NonConstOp for Loop {
         Some(sym::const_loop)
     }
 
-    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
+    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: SpanId) {
         // This should be caught by the HIR const-checker.
         ccx.tcx.sess.delay_span_bug(span, "complex control flow is forbidden in a const context");
     }
@@ -177,7 +177,7 @@ impl NonConstOp for Loop {
 #[derive(Debug)]
 pub struct CellBorrow;
 impl NonConstOp for CellBorrow {
-    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
+    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: SpanId) {
         struct_span_err!(
             ccx.tcx.sess,
             span,
@@ -196,7 +196,7 @@ impl NonConstOp for MutBorrow {
         Some(sym::const_mut_refs)
     }
 
-    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
+    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: SpanId) {
         let mut err = feature_err(
             &ccx.tcx.sess.parse_sess,
             sym::const_mut_refs,
@@ -231,7 +231,7 @@ impl NonConstOp for MutAddressOf {
         Some(sym::const_mut_refs)
     }
 
-    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
+    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: SpanId) {
         feature_err(
             &ccx.tcx.sess.parse_sess,
             sym::const_mut_refs,
@@ -257,7 +257,7 @@ impl NonConstOp for Panic {
         Some(sym::const_panic)
     }
 
-    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
+    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: SpanId) {
         feature_err(
             &ccx.tcx.sess.parse_sess,
             sym::const_panic,
@@ -275,7 +275,7 @@ impl NonConstOp for RawPtrComparison {
         Some(sym::const_compare_raw_pointers)
     }
 
-    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
+    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: SpanId) {
         feature_err(
             &ccx.tcx.sess.parse_sess,
             sym::const_compare_raw_pointers,
@@ -293,7 +293,7 @@ impl NonConstOp for RawPtrDeref {
         Some(sym::const_raw_ptr_deref)
     }
 
-    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
+    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: SpanId) {
         feature_err(
             &ccx.tcx.sess.parse_sess,
             sym::const_raw_ptr_deref,
@@ -311,7 +311,7 @@ impl NonConstOp for RawPtrToIntCast {
         Some(sym::const_raw_ptr_to_usize_cast)
     }
 
-    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
+    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: SpanId) {
         feature_err(
             &ccx.tcx.sess.parse_sess,
             sym::const_raw_ptr_to_usize_cast,
@@ -330,7 +330,7 @@ impl NonConstOp for StaticAccess {
         matches!(ccx.const_kind(), hir::ConstContext::Static(_))
     }
 
-    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
+    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: SpanId) {
         let mut err = struct_span_err!(
             ccx.tcx.sess,
             span,
@@ -358,7 +358,7 @@ pub struct ThreadLocalAccess;
 impl NonConstOp for ThreadLocalAccess {
     const IS_SUPPORTED_IN_MIRI: bool = false;
 
-    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
+    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: SpanId) {
         struct_span_err!(
             ccx.tcx.sess,
             span,
@@ -383,7 +383,7 @@ impl NonConstOp for UnionAccess {
         Some(sym::const_fn_union)
     }
 
-    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
+    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: SpanId) {
         feature_err(
             &ccx.tcx.sess.parse_sess,
             sym::const_fn_union,

@@ -1,3 +1,4 @@
+use crate::rustc_middle::ty::layout::HasTyCtxt;
 use crate::traits::*;
 use rustc_hir::def_id::CrateNum;
 use rustc_index::vec::IndexVec;
@@ -60,23 +61,28 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     }
 
     pub fn debug_loc(&self, source_info: mir::SourceInfo) -> (Option<Bx::DIScope>, Span) {
+        let source_span = self.cx.tcx().reify_span(source_info.span);
+
         // Bail out if debug info emission is not enabled.
         match self.debug_context {
-            None => return (None, source_info.span),
+            None => return (None, source_span),
             Some(_) => {}
         }
 
         // In order to have a good line stepping behavior in debugger, we overwrite debug
         // locations of macro expansions with that of the outermost expansion site
         // (unless the crate is being compiled with `-Z debug-macros`).
-        if !source_info.span.from_expansion() || self.cx.sess().opts.debugging_opts.debug_macros {
-            let scope = self.scope_metadata_for_loc(source_info.scope, source_info.span.lo());
-            (scope, source_info.span)
+        if !source_span.from_expansion() || self.cx.sess().opts.debugging_opts.debug_macros {
+            let scope = self.scope_metadata_for_loc(source_info.scope, source_span.lo());
+            (scope, source_span)
         } else {
             // Walk up the macro expansion chain until we reach a non-expanded span.
             // We also stop at the function body level because no line stepping can occur
             // at the level above that.
-            let span = rustc_span::hygiene::walk_chain(source_info.span, self.mir.span.ctxt());
+            let span = rustc_span::hygiene::walk_chain(
+                source_span,
+                self.cx.tcx().reify_span(self.mir.span).ctxt(),
+            );
             let scope = self.scope_metadata_for_loc(source_info.scope, span.lo());
             // Use span of the outermost expansion site, while keeping the original lexical scope.
             (scope, span)
@@ -149,7 +155,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let (scope, span) = if full_debug_info {
                     self.debug_loc(decl.source_info)
                 } else {
-                    (None, decl.source_info.span)
+                    (None, self.cx.tcx().reify_span(decl.source_info.span))
                 };
                 let dbg_var = scope.map(|scope| {
                     // FIXME(eddyb) is this `+ 1` needed at all?
@@ -312,7 +318,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let (scope, span) = if full_debug_info {
                 self.debug_loc(var.source_info)
             } else {
-                (None, var.source_info.span)
+                (None, self.cx.tcx().reify_span(var.source_info.span))
             };
             let dbg_var = scope.map(|scope| {
                 let place = var.place;

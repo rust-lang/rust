@@ -8,7 +8,7 @@ use rustc_middle::mir::{BasicBlock, Body, Operand, TerminatorKind};
 use rustc_middle::ty::subst::{GenericArg, InternalSubsts};
 use rustc_middle::ty::{self, AssocItem, AssocItemContainer, Instance, TyCtxt};
 use rustc_session::lint::builtin::UNCONDITIONAL_RECURSION;
-use rustc_span::Span;
+use rustc_span::SpanId;
 
 crate fn check<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, def_id: LocalDefId) {
     let hir_id = tcx.hir().as_local_hir_id(def_id);
@@ -60,7 +60,7 @@ struct Search<'mir, 'tcx> {
     def_id: LocalDefId,
     trait_substs: &'tcx [GenericArg<'tcx>],
 
-    reachable_recursive_calls: Vec<Span>,
+    reachable_recursive_calls: Vec<SpanId>,
 }
 
 impl<'mir, 'tcx> Search<'mir, 'tcx> {

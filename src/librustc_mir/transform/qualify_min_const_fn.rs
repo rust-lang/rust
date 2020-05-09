@@ -5,10 +5,10 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, adjustment::PointerCast, Predicate, Ty, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
-use rustc_span::Span;
+use rustc_span::SpanId;
 use std::borrow::Cow;
 
-type McfResult = Result<(), (Span, Cow<'static, str>)>;
+type McfResult = Result<(), (SpanId, Cow<'static, str>)>;
 
 pub fn is_min_const_fn(tcx: TyCtxt<'tcx>, def_id: DefId, body: &'a Body<'tcx>) -> McfResult {
     // Prevent const trait methods from being annotated as `stable`.
@@ -51,7 +51,7 @@ pub fn is_min_const_fn(tcx: TyCtxt<'tcx>, def_id: DefId, body: &'a Body<'tcx>) -
 
                             let generics = tcx.generics_of(current);
                             let def = generics.type_param(p, tcx);
-                            let span = tcx.real_def_span(def.def_id);
+                            let span = tcx.def_span(def.def_id);
                             return Err((
                                 span,
                                 "trait bounds other than `Sized` \
@@ -92,7 +92,7 @@ pub fn is_min_const_fn(tcx: TyCtxt<'tcx>, def_id: DefId, body: &'a Body<'tcx>) -
     Ok(())
 }
 
-fn check_ty(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span, fn_def_id: DefId) -> McfResult {
+fn check_ty(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: SpanId, fn_def_id: DefId) -> McfResult {
     for arg in ty.walk() {
         let ty = match arg.unpack() {
             GenericArgKind::Type(ty) => ty,
@@ -150,7 +150,7 @@ fn check_rvalue(
     body: &Body<'tcx>,
     def_id: DefId,
     rvalue: &Rvalue<'tcx>,
-    span: Span,
+    span: SpanId,
 ) -> McfResult {
     match rvalue {
         Rvalue::Repeat(operand, _) | Rvalue::Use(operand) => {
@@ -262,7 +262,7 @@ fn check_statement(
 fn check_operand(
     tcx: TyCtxt<'tcx>,
     operand: &Operand<'tcx>,
-    span: Span,
+    span: SpanId,
     def_id: DefId,
     body: &Body<'tcx>,
 ) -> McfResult {
@@ -278,7 +278,7 @@ fn check_operand(
 fn check_place(
     tcx: TyCtxt<'tcx>,
     place: Place<'tcx>,
-    span: Span,
+    span: SpanId,
     def_id: DefId,
     body: &Body<'tcx>,
 ) -> McfResult {

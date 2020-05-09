@@ -29,7 +29,7 @@ use rustc_middle::ty::{
     self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, RegionVid, ToPolyTraitRef, Ty,
     TyCtxt, UserType, UserTypeAnnotationIndex,
 };
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{SpanId, DUMMY_SPID};
 use rustc_target::abi::VariantIdx;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::opaque_types::{GenerateMemberConstraints, InferCtxtExt};
@@ -246,7 +246,7 @@ fn translate_outlives_facts(typeck: &mut TypeChecker<'_, '_>) {
     }
 }
 
-fn mirbug(tcx: TyCtxt<'_>, span: Span, msg: &str) {
+fn mirbug(tcx: TyCtxt<'_>, span: SpanId, msg: &str) {
     // We sometimes see MIR failures (notably predicate failures) due to
     // the fact that we check rvalue sized predicates here. So use `delay_span_bug`
     // to avoid reporting bugs in those cases.
@@ -266,13 +266,13 @@ struct TypeVerifier<'a, 'b, 'tcx> {
     cx: &'a mut TypeChecker<'b, 'tcx>,
     body: &'b Body<'tcx>,
     promoted: &'b IndexVec<Promoted, Body<'tcx>>,
-    last_span: Span,
+    last_span: SpanId,
     mir_def_id: LocalDefId,
     errors_reported: bool,
 }
 
 impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
-    fn visit_span(&mut self, span: &Span) {
+    fn visit_span(&mut self, span: &SpanId) {
         if !span.is_dummy() {
             self.last_span = *span;
         }
@@ -806,7 +806,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 struct TypeChecker<'a, 'tcx> {
     infcx: &'a InferCtxt<'a, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    last_span: Span,
+    last_span: SpanId,
     body: &'a Body<'tcx>,
     /// User type annotations are shared between the main MIR and the MIR of
     /// all of the promoted items.
@@ -814,7 +814,7 @@ struct TypeChecker<'a, 'tcx> {
     mir_def_id: LocalDefId,
     region_bound_pairs: &'a RegionBoundPairs<'tcx>,
     implicit_region_bound: ty::Region<'tcx>,
-    reported_errors: FxHashSet<(Ty<'tcx>, Span)>,
+    reported_errors: FxHashSet<(Ty<'tcx>, SpanId)>,
     borrowck_context: &'a mut BorrowCheckContext<'a, 'tcx>,
     universal_region_relations: &'a UniversalRegionRelations<'tcx>,
     opaque_type_values: FxHashMap<DefId, ty::ResolvedOpaqueTy<'tcx>>,
@@ -865,7 +865,7 @@ crate struct MirTypeckRegionConstraints<'tcx> {
     crate member_constraints: MemberConstraintSet<'tcx, RegionVid>,
 
     crate closure_bounds_mapping:
-        FxHashMap<Location, FxHashMap<(RegionVid, RegionVid), (ConstraintCategory, Span)>>,
+        FxHashMap<Location, FxHashMap<(RegionVid, RegionVid), (ConstraintCategory, SpanId)>>,
 
     crate type_tests: Vec<TypeTest<'tcx>>,
 }
@@ -929,8 +929,8 @@ pub enum Locations {
     ///
     /// The span points to the place the constraint arose. For example,
     /// it points to the type in a user-given type annotation. If
-    /// there's no sensible span then it's DUMMY_SP.
-    All(Span),
+    /// there's no sensible span then it's DUMMY_SPID.
+    All(SpanId),
 
     /// An outlives constraint that only has to hold at a single location,
     /// usually it represents a point where references flow from one spot to
@@ -947,7 +947,7 @@ impl Locations {
     }
 
     /// Gets a span representing the location.
-    pub fn span(&self, body: &Body<'_>) -> Span {
+    pub fn span(&self, body: &Body<'_>) -> SpanId {
         match self {
             Locations::All(span) => *span,
             Locations::Single(l) => body.source_info(*l).span,
@@ -968,7 +968,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     ) -> Self {
         let mut checker = Self {
             infcx,
-            last_span: DUMMY_SP,
+            last_span: DUMMY_SPID,
             mir_def_id,
             body,
             user_type_annotations: &body.user_type_annotations,
@@ -994,6 +994,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             let CanonicalUserTypeAnnotation { span, ref user_ty, inferred_ty } = *user_annotation;
             let (annotation, _) =
                 self.infcx.instantiate_canonical_with_fresh_inference_vars(span, user_ty);
+            let span = span.into();
             match annotation {
                 UserType::Ty(mut ty) => {
                     ty = self.normalize(ty, Locations::All(span));
@@ -1251,7 +1252,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             dummy_body_id,
                             param_env,
                             &anon_ty,
-                            locations.span(body),
+                            infcx.tcx.reify_span(locations.span(body)),
                         ));
                     debug!(
                         "eq_opaque_type_and_type: \
@@ -1602,7 +1603,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
                 };
                 let (sig, map) = self.infcx.replace_bound_vars_with_fresh_vars(
-                    term.source_info.span,
+                    self.infcx.tcx.reify_span(term.source_info.span),
                     LateBoundRegionConversionTime::FnCall,
                     &sig,
                 );
@@ -1892,7 +1893,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
     }
 
-    fn ensure_place_sized(&mut self, ty: Ty<'tcx>, span: Span) {
+    fn ensure_place_sized(&mut self, ty: Ty<'tcx>, span: SpanId) {
         let tcx = self.tcx();
 
         // Erase the regions from `ty` to get a global type.  The
@@ -1987,7 +1988,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         // a required check to make sure that repeated elements implement `Copy`.
                         let span = body.source_info(location).span;
                         let ty = operand.ty(body, tcx);
-                        if !self.infcx.type_is_copy_modulo_regions(self.param_env, ty, span) {
+                        if !self.infcx.type_is_copy_modulo_regions(
+                            self.param_env,
+                            ty,
+                            self.infcx.tcx.reify_span(span),
+                        ) {
                             let ccx = ConstCx::new_with_param_env(
                                 tcx,
                                 self.mir_def_id,
@@ -2005,7 +2010,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             self.infcx.report_selection_error(
                                 &traits::Obligation::new(
                                     ObligationCause::new(
-                                        span,
+                                        self.infcx.tcx.reify_span(span),
                                         self.tcx().hir().local_def_id_to_hir_id(self.mir_def_id),
                                         traits::ObligationCauseCode::RepeatVec(should_suggest),
                                     ),
@@ -2293,7 +2298,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         let ty_right = right.ty(body, tcx);
                         let common_ty = self.infcx.next_ty_var(TypeVariableOrigin {
                             kind: TypeVariableOriginKind::MiscVariable,
-                            span: body.source_info(location).span,
+                            span: self.infcx.tcx.reify_span(body.source_info(location).span),
                         });
                         self.relate_types(
                             common_ty,

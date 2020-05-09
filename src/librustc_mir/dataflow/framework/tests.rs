@@ -6,7 +6,7 @@ use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::{self, BasicBlock, Location};
 use rustc_middle::ty;
-use rustc_span::DUMMY_SP;
+use rustc_span::DUMMY_SPID;
 
 use super::*;
 use crate::dataflow::BottomValue;
@@ -16,7 +16,7 @@ use crate::dataflow::BottomValue;
 /// This is the `Body` that will be used by the `MockAnalysis` below. The shape of its CFG is not
 /// important.
 fn mock_body() -> mir::Body<'static> {
-    let source_info = mir::SourceInfo::outermost(DUMMY_SP);
+    let source_info = mir::SourceInfo::outermost(DUMMY_SPID);
 
     let mut blocks = IndexVec::new();
     let mut block = |n, kind| {

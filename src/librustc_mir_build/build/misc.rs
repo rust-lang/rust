@@ -6,7 +6,7 @@ use crate::build::Builder;
 use rustc_middle::ty::{self, Ty};
 
 use rustc_middle::mir::*;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{SpanId, DUMMY_SPID};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Adds a new temporary value of type `ty` storing the result of
@@ -14,7 +14,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// N.B., **No cleanup is scheduled for this temporary.** You should
     /// call `schedule_drop` once the temporary is initialized.
-    crate fn temp(&mut self, ty: Ty<'tcx>, span: Span) -> Place<'tcx> {
+    crate fn temp(&mut self, ty: Ty<'tcx>, span: SpanId) -> Place<'tcx> {
         let temp = self.local_decls.push(LocalDecl::new(ty, span));
         let place = Place::from(temp);
         debug!("temp: created temp {:?} with type {:?}", place, self.local_decls[temp].ty);
@@ -25,7 +25,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// without any user type annotation.
     crate fn literal_operand(
         &mut self,
-        span: Span,
+        span: SpanId,
         literal: &'tcx ty::Const<'tcx>,
     ) -> Operand<'tcx> {
         let constant = box Constant { span, user_ty: None, literal };
@@ -34,7 +34,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     // Returns a zero literal operand for the appropriate type, works for
     // bool, char and integers.
-    crate fn zero_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
+    crate fn zero_literal(&mut self, span: SpanId, ty: Ty<'tcx>) -> Operand<'tcx> {
         let literal = ty::Const::from_bits(self.hir.tcx(), 0, ty::ParamEnv::empty().and(ty));
 
         self.literal_operand(span, literal)
@@ -64,7 +64,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     crate fn consume_by_copy_or_move(&self, place: Place<'tcx>) -> Operand<'tcx> {
         let tcx = self.hir.tcx();
         let ty = place.ty(&self.local_decls, tcx).ty;
-        if !self.hir.type_is_copy_modulo_regions(ty, DUMMY_SP) {
+        if !self.hir.type_is_copy_modulo_regions(ty, DUMMY_SPID) {
             Operand::Move(place)
         } else {
             Operand::Copy(place)

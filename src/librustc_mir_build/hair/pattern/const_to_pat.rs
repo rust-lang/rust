@@ -4,7 +4,7 @@ use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_middle::mir::Field;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::lint;
-use rustc_span::Span;
+use rustc_span::SpanId;
 use rustc_trait_selection::traits::predicate_for_trait_def;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{self, ObligationCause, PredicateObligation};
@@ -21,7 +21,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         &self,
         cv: &'tcx ty::Const<'tcx>,
         id: hir::HirId,
-        span: Span,
+        span: SpanId,
         mir_structural_match_violation: bool,
     ) -> Pat<'tcx> {
         debug!("const_to_pat: cv={:#?} id={:?}", cv, id);
@@ -36,7 +36,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
 struct ConstToPat<'a, 'tcx> {
     id: hir::HirId,
-    span: Span,
+    span: SpanId,
     param_env: ty::ParamEnv<'tcx>,
 
     // This tracks if we signal some hard error for a given const value, so that
@@ -54,7 +54,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
     fn new(
         pat_ctxt: &PatCtxt<'_, 'tcx>,
         id: hir::HirId,
-        span: Span,
+        span: SpanId,
         infcx: InferCtxt<'a, 'tcx>,
     ) -> Self {
         ConstToPat {
@@ -75,11 +75,16 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
         &self,
         ty: Ty<'tcx>,
     ) -> Option<traits::NonStructuralMatchTy<'tcx>> {
-        traits::search_for_structural_match_violation(self.id, self.span, self.tcx(), ty)
+        traits::search_for_structural_match_violation(
+            self.id,
+            self.tcx().reify_span(self.span),
+            self.tcx(),
+            ty,
+        )
     }
 
     fn type_marked_structural(&self, ty: Ty<'tcx>) -> bool {
-        traits::type_marked_structural(self.id, self.span, &self.infcx, ty)
+        traits::type_marked_structural(self.id, self.tcx().reify_span(self.span), &self.infcx, ty)
     }
 
     fn to_pat(
@@ -144,7 +149,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                     let obligation: PredicateObligation<'_> = predicate_for_trait_def(
                         self.tcx(),
                         self.param_env,
-                        ObligationCause::misc(self.span, self.id),
+                        ObligationCause::misc(self.tcx().reify_span(self.span), self.id),
                         partial_eq_trait_id,
                         0,
                         cv.ty,

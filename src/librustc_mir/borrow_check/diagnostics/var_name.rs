@@ -3,7 +3,7 @@ use crate::borrow_check::{nll::ToRegionVid, region_infer::RegionInferenceContext
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::mir::{Body, Local};
 use rustc_middle::ty::{RegionVid, TyCtxt};
-use rustc_span::source_map::Span;
+use rustc_span::source_map::SpanId;
 use rustc_span::symbol::Symbol;
 
 impl<'tcx> RegionInferenceContext<'tcx> {
@@ -14,7 +14,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         local_names: &IndexVec<Local, Option<Symbol>>,
         upvars: &[Upvar],
         fr: RegionVid,
-    ) -> Option<(Option<Symbol>, Span)> {
+    ) -> Option<(Option<Symbol>, SpanId)> {
         debug!("get_var_name_and_span_for_region(fr={:?})", fr);
         assert!(self.universal_regions().is_universal_region(fr));
 
@@ -61,12 +61,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         tcx: TyCtxt<'tcx>,
         upvars: &[Upvar],
         upvar_index: usize,
-    ) -> (Symbol, Span) {
+    ) -> (Symbol, SpanId) {
         let upvar_hir_id = upvars[upvar_index].var_hir_id;
         debug!("get_upvar_name_and_span_for_region: upvar_hir_id={:?}", upvar_hir_id);
 
         let upvar_name = tcx.hir().name(upvar_hir_id);
-        let upvar_span = tcx.hir().span(upvar_hir_id);
+        let upvar_span = tcx.hir().span(upvar_hir_id).into();
         debug!(
             "get_upvar_name_and_span_for_region: upvar_name={:?} upvar_span={:?}",
             upvar_name, upvar_span
@@ -111,7 +111,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         body: &Body<'tcx>,
         local_names: &IndexVec<Local, Option<Symbol>>,
         argument_index: usize,
-    ) -> (Option<Symbol>, Span) {
+    ) -> (Option<Symbol>, SpanId) {
         let implicit_inputs = self.universal_regions().defining_ty.implicit_inputs();
         let argument_local = Local::new(implicit_inputs + argument_index + 1);
         debug!("get_argument_name_and_span_for_region: argument_local={:?}", argument_local);

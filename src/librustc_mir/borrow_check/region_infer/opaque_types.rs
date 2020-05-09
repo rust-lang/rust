@@ -2,7 +2,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::ty::{self, TyCtxt, TypeFoldable};
-use rustc_span::Span;
+use rustc_span::SpanId;
 use rustc_trait_selection::opaque_types::InferCtxtExt;
 
 use super::RegionInferenceContext;
@@ -51,7 +51,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         infcx: &InferCtxt<'_, 'tcx>,
         opaque_ty_decls: FxHashMap<DefId, ty::ResolvedOpaqueTy<'tcx>>,
-        span: Span,
+        span: SpanId,
     ) -> FxHashMap<DefId, ty::ResolvedOpaqueTy<'tcx>> {
         opaque_ty_decls
             .into_iter()
@@ -119,7 +119,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     opaque_def_id,
                     universal_substs,
                     universal_concrete_type,
-                    span,
+                    infcx.tcx.reify_span(span),
                 );
                 (
                     opaque_def_id,

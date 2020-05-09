@@ -15,7 +15,7 @@ use rustc_middle::mir::{
     ConstraintCategory, Local, Location,
 };
 use rustc_middle::ty::{self, subst::SubstsRef, RegionVid, Ty, TyCtxt, TypeFoldable};
-use rustc_span::Span;
+use rustc_span::SpanId;
 
 use crate::borrow_check::{
     constraints::{
@@ -80,9 +80,9 @@ pub struct RegionInferenceContext<'tcx> {
     /// `member_region_scc`.
     member_constraints_applied: Vec<AppliedMemberConstraint>,
 
-    /// Map closure bounds to a `Span` that should be used for error reporting.
+    /// Map closure bounds to a `SpanId` that should be used for error reporting.
     closure_bounds_mapping:
-        FxHashMap<Location, FxHashMap<(RegionVid, RegionVid), (ConstraintCategory, Span)>>,
+        FxHashMap<Location, FxHashMap<(RegionVid, RegionVid), (ConstraintCategory, SpanId)>>,
 
     /// Contains the minimum universe of any variable within the same
     /// SCC. We will ensure that no SCC contains values that are not
@@ -251,7 +251,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         member_constraints_in: MemberConstraintSet<'tcx, RegionVid>,
         closure_bounds_mapping: FxHashMap<
             Location,
-            FxHashMap<(RegionVid, RegionVid), (ConstraintCategory, Span)>,
+            FxHashMap<(RegionVid, RegionVid), (ConstraintCategory, SpanId)>,
         >,
         type_tests: Vec<TypeTest<'tcx>>,
         liveness_constraints: LivenessValues<RegionVid>,
@@ -1690,7 +1690,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         body: &Body<'tcx>,
         constraint: &OutlivesConstraint,
-    ) -> (ConstraintCategory, bool, Span) {
+    ) -> (ConstraintCategory, bool, SpanId) {
         let loc = match constraint.locations {
             Locations::All(span) => return (constraint.category, false, span),
             Locations::Single(loc) => loc,
@@ -1712,7 +1712,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         fr1: RegionVid,
         fr1_origin: NLLRegionVariableOrigin,
         fr2: RegionVid,
-    ) -> (ConstraintCategory, Span) {
+    ) -> (ConstraintCategory, SpanId) {
         let (category, _, span) = self.best_blame_constraint(body, fr1, fr1_origin, |r| {
             self.provides_universal_region(r, fr1, fr2)
         });
@@ -1906,7 +1906,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         from_region: RegionVid,
         from_region_origin: NLLRegionVariableOrigin,
         target_test: impl Fn(RegionVid) -> bool,
-    ) -> (ConstraintCategory, bool, Span) {
+    ) -> (ConstraintCategory, bool, SpanId) {
         debug!(
             "best_blame_constraint(from_region={:?}, from_region_origin={:?})",
             from_region, from_region_origin
@@ -1928,7 +1928,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         );
 
         // Classify each of the constraints along the path.
-        let mut categorized_path: Vec<(ConstraintCategory, bool, Span)> = path
+        let mut categorized_path: Vec<(ConstraintCategory, bool, SpanId)> = path
             .iter()
             .map(|constraint| {
                 if constraint.category == ConstraintCategory::ClosureBounds {

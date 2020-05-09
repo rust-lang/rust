@@ -7,7 +7,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::BitMatrix;
 use rustc_index::vec::IndexVec;
-use rustc_span::{Span, Symbol};
+use rustc_span::{SpanId, Symbol};
 use rustc_target::abi::VariantIdx;
 use smallvec::SmallVec;
 
@@ -157,7 +157,7 @@ pub struct ClosureOutlivesRequirement<'tcx> {
     pub outlived_free_region: ty::RegionVid,
 
     // If not, report an error here ...
-    pub blame_span: Span,
+    pub blame_span: SpanId,
 
     // ... due to this reason.
     pub category: ConstraintCategory,

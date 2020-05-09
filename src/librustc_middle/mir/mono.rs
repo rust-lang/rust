@@ -10,7 +10,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::HirId;
 use rustc_session::config::OptLevel;
-use rustc_span::source_map::Span;
+use rustc_span::source_map::SpanId;
 use rustc_span::symbol::Symbol;
 use std::fmt;
 use std::hash::Hash;
@@ -195,7 +195,7 @@ impl<'tcx> MonoItem<'tcx> {
         }
     }
 
-    pub fn local_span(&self, tcx: TyCtxt<'tcx>) -> Option<Span> {
+    pub fn local_span(&self, tcx: TyCtxt<'tcx>) -> Option<SpanId> {
         match *self {
             MonoItem::Fn(Instance { def, .. }) => {
                 def.def_id().as_local().map(|def_id| tcx.hir().as_local_hir_id(def_id))
@@ -205,7 +205,7 @@ impl<'tcx> MonoItem<'tcx> {
             }
             MonoItem::GlobalAsm(hir_id) => Some(hir_id),
         }
-        .map(|hir_id| tcx.hir().span(hir_id))
+        .map(|hir_id| tcx.hir().span(hir_id).into())
     }
 }
 

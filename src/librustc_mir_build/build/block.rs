@@ -4,7 +4,7 @@ use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 use crate::hair::*;
 use rustc_hir as hir;
 use rustc_middle::mir::*;
-use rustc_span::Span;
+use rustc_span::SpanId;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     crate fn ast_block(
@@ -47,7 +47,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         destination: Place<'tcx>,
         mut block: BasicBlock,
-        span: Span,
+        span: SpanId,
         stmts: Vec<StmtRef<'tcx>>,
         expr: Option<ExprRef<'tcx>>,
         safety_mode: BlockSafety,
@@ -106,7 +106,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     // Declare the bindings, which may create a source scope.
                     let remainder_span =
-                        remainder_scope.span(this.hir.tcx(), &this.hir.region_scope_tree);
+                        remainder_scope.span(this.hir.tcx(), &this.hir.region_scope_tree).into();
 
                     let visibility_scope =
                         Some(this.new_source_scope(remainder_span, LintLevel::Inherited, None));
@@ -176,7 +176,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let tail_result_is_ignored =
                 destination_ty.is_unit() || this.block_context.currently_ignores_tail_results();
             let span = match expr {
-                ExprRef::Hair(expr) => expr.span,
+                ExprRef::Hair(expr) => expr.span.into(),
                 ExprRef::Mirror(ref expr) => expr.span,
             };
             this.block_context.push(BlockFrame::TailExpr { tail_result_is_ignored, span });
@@ -209,7 +209,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     /// If we are changing the safety mode, create a new source scope
-    fn update_source_scope_for_safety_mode(&mut self, span: Span, safety_mode: BlockSafety) {
+    fn update_source_scope_for_safety_mode(&mut self, span: SpanId, safety_mode: BlockSafety) {
         debug!("update_source_scope_for({:?}, {:?})", span, safety_mode);
         let new_unsafety = match safety_mode {
             BlockSafety::Safe => None,

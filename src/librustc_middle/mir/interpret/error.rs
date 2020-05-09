@@ -11,7 +11,7 @@ use rustc_hir as hir;
 use rustc_hir::definitions::DefPathData;
 use rustc_macros::HashStable;
 use rustc_session::CtfeBacktrace;
-use rustc_span::{def_id::DefId, Pos, Span, SpanId};
+use rustc_span::{def_id::DefId, Pos, SpanId};
 use rustc_target::abi::{Align, Size};
 use std::{any::Any, backtrace::Backtrace, fmt, mem};
 
@@ -44,7 +44,7 @@ pub struct ConstEvalErr<'tcx> {
 #[derive(Debug)]
 pub struct FrameInfo<'tcx> {
     pub instance: ty::Instance<'tcx>,
-    pub span: Span,
+    pub span: SpanId,
     pub lint_root: Option<hir::HirId>,
 }
 
@@ -59,7 +59,8 @@ impl<'tcx> fmt::Display for FrameInfo<'tcx> {
                 write!(f, "inside `{}`", self.instance)?;
             }
             if !self.span.is_dummy() {
-                let lo = tcx.sess.source_map().lookup_char_pos(self.span.lo());
+                let span = tcx.reify_span(self.span);
+                let lo = tcx.sess.source_map().lookup_char_pos(span.lo());
                 write!(f, " at {}:{}:{}", lo.file.name, lo.line, lo.col.to_usize() + 1)?;
             }
             Ok(())

@@ -421,7 +421,11 @@ impl Visitor<'tcx> for ExtraComments<'tcx> {
 }
 
 fn comment(tcx: TyCtxt<'_>, SourceInfo { span, scope }: SourceInfo) -> String {
-    format!("scope {} at {}", scope.index(), tcx.sess.source_map().span_to_string(span))
+    format!(
+        "scope {} at {}",
+        scope.index(),
+        tcx.sess.source_map().span_to_string(tcx.reify_span(span))
+    )
 }
 
 /// Prints local variables in a scope tree.

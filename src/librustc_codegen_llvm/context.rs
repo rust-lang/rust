@@ -18,7 +18,7 @@ use rustc_middle::ty::layout::{HasParamEnv, LayoutError, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_session::config::{CFGuard, CrateType, DebugInfo};
 use rustc_session::Session;
-use rustc_span::source_map::{Span, DUMMY_SP};
+use rustc_span::source_map::{SpanId, DUMMY_SPID};
 use rustc_span::symbol::Symbol;
 use rustc_target::abi::{HasDataLayout, LayoutOf, PointeeInfo, Size, TargetDataLayout, VariantIdx};
 use rustc_target::spec::{HasTargetSpec, RelocModel, Target, TlsModel};
@@ -820,10 +820,10 @@ impl LayoutOf for CodegenCx<'ll, 'tcx> {
     type TyAndLayout = TyAndLayout<'tcx>;
 
     fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyAndLayout {
-        self.spanned_layout_of(ty, DUMMY_SP)
+        self.spanned_layout_of(ty, DUMMY_SPID)
     }
 
-    fn spanned_layout_of(&self, ty: Ty<'tcx>, span: Span) -> Self::TyAndLayout {
+    fn spanned_layout_of(&self, ty: Ty<'tcx>, span: SpanId) -> Self::TyAndLayout {
         self.tcx.layout_of(ty::ParamEnv::reveal_all().and(ty)).unwrap_or_else(|e| {
             if let LayoutError::SizeOverflow(_) = e {
                 self.sess().span_fatal(span, &e.to_string())

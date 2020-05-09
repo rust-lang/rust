@@ -1,6 +1,6 @@
 use rustc_ast::ast;
 use rustc_span::symbol::sym;
-use rustc_span::Span;
+use rustc_span::SpanId;
 use rustc_target::spec::abi::Abi;
 
 use crate::transform::{MirPass, MirSource};
@@ -190,7 +190,7 @@ impl PeekCallKind {
 pub struct PeekCall {
     arg: Local,
     kind: PeekCallKind,
-    span: Span,
+    span: SpanId,
 }
 
 impl PeekCall {

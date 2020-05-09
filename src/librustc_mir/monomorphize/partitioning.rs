@@ -870,7 +870,11 @@ where
             // Deterministically select one of the spans for error reporting
             let span = match (span1, span2) {
                 (Some(span1), Some(span2)) => {
-                    Some(if span1.lo().0 > span2.lo().0 { span1 } else { span2 })
+                    Some(if tcx.reify_span(span1).lo().0 > tcx.reify_span(span2).lo().0 {
+                        span1
+                    } else {
+                        span2
+                    })
                 }
                 (span1, span2) => span1.or(span2),
             };

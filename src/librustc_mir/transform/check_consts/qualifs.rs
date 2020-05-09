@@ -128,7 +128,13 @@ impl Qualif for CustomEq {
         // `Option::<NonStructuralMatchTy>::Some`), in which case some values of this type may be
         // structural-match (`Option::None`).
         let id = cx.tcx.hir().local_def_id_to_hir_id(cx.def_id.as_local().unwrap());
-        traits::search_for_structural_match_violation(id, cx.body.span, cx.tcx, ty).is_some()
+        traits::search_for_structural_match_violation(
+            id,
+            cx.tcx.reify_span(cx.body.span),
+            cx.tcx,
+            ty,
+        )
+        .is_some()
     }
 
     fn in_adt_inherently(
@@ -138,9 +144,9 @@ impl Qualif for CustomEq {
     ) -> bool {
         let ty = cx.tcx.mk_ty(ty::Adt(adt, substs));
         let id = cx.tcx.hir().local_def_id_to_hir_id(cx.def_id.as_local().unwrap());
-        cx.tcx
-            .infer_ctxt()
-            .enter(|infcx| !traits::type_marked_structural(id, cx.body.span, &infcx, ty))
+        cx.tcx.infer_ctxt().enter(|infcx| {
+            !traits::type_marked_structural(id, cx.tcx.reify_span(cx.body.span), &infcx, ty)
+        })
     }
 }
 

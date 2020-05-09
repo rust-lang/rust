@@ -16,7 +16,7 @@ use rustc_session::lint::builtin::BINDINGS_WITH_VARIANT_NAME;
 use rustc_session::lint::builtin::{IRREFUTABLE_LET_PATTERNS, UNREACHABLE_PATTERNS};
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
-use rustc_span::{sym, Span};
+use rustc_span::{sym, SpanId};
 use std::slice;
 
 crate fn check_match(tcx: TyCtxt<'_>, def_id: DefId) {
@@ -34,7 +34,7 @@ crate fn check_match(tcx: TyCtxt<'_>, def_id: DefId) {
     visitor.visit_body(tcx.hir().body(body_id));
 }
 
-fn create_e0004(sess: &Session, sp: Span, error_message: String) -> DiagnosticBuilder<'_> {
+fn create_e0004(sess: &Session, sp: SpanId, error_message: String) -> DiagnosticBuilder<'_> {
     struct_span_err!(sess, sp, E0004, "{}", &error_message)
 }
 
@@ -64,7 +64,7 @@ impl<'tcx> Visitor<'tcx> for MatchVisitor<'_, 'tcx> {
         intravisit::walk_local(self, loc);
 
         let (msg, sp) = match loc.source {
-            hir::LocalSource::Normal => ("local binding", Some(loc.span)),
+            hir::LocalSource::Normal => ("local binding", Some(loc.span.into())),
             hir::LocalSource::ForLoopDesugar => ("`for` loop binding", None),
             hir::LocalSource::AsyncFn => ("async fn binding", None),
             hir::LocalSource::AwaitDesugar => ("`await` future binding", None),
@@ -81,7 +81,7 @@ impl<'tcx> Visitor<'tcx> for MatchVisitor<'_, 'tcx> {
 }
 
 impl PatCtxt<'_, '_> {
-    fn report_inlining_errors(&self, pat_span: Span) {
+    fn report_inlining_errors(&self, pat_span: SpanId) {
         for error in &self.errors {
             match *error {
                 PatternError::StaticInPattern(span) => {
@@ -112,7 +112,7 @@ impl PatCtxt<'_, '_> {
         }
     }
 
-    fn span_e0158(&self, span: Span, text: &str) {
+    fn span_e0158(&self, span: SpanId, text: &str) {
         struct_span_err!(self.tcx.sess, span, E0158, "{}", text).emit();
     }
 }
@@ -142,7 +142,7 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
         let pattern: &_ = cx.pattern_arena.alloc(expand_pattern(cx, pattern));
         if !patcx.errors.is_empty() {
             *have_errors = true;
-            patcx.report_inlining_errors(pat.span);
+            patcx.report_inlining_errors(pat.span.into());
         }
         (pattern, pattern_ty)
     }
@@ -191,10 +191,17 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
         // Note: An empty match isn't the same as an empty matrix for diagnostics purposes,
         // since an empty matrix can occur when there are arms, if those arms all have guards.
         let is_empty_match = inlined_arms.is_empty();
-        check_exhaustive(&mut cx, scrut_ty, scrut.span, &matrix, scrut.hir_id, is_empty_match);
+        check_exhaustive(
+            &mut cx,
+            scrut_ty,
+            scrut.span.into(),
+            &matrix,
+            scrut.hir_id,
+            is_empty_match,
+        );
     }
 
-    fn check_irrefutable(&self, pat: &'tcx Pat<'tcx>, origin: &str, sp: Option<Span>) {
+    fn check_irrefutable(&self, pat: &'tcx Pat<'tcx>, origin: &str, sp: Option<SpanId>) {
         let mut cx = self.new_cx(pat.hir_id);
 
         let (pattern, pattern_ty) = self.lower_pattern(&mut cx, pat, &mut false);
@@ -232,7 +239,9 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
                 "`let` bindings require an \"irrefutable pattern\", like a `struct` or \
                  an `enum` with only one variant",
             );
-            if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
+            if let Ok(snippet) =
+                self.tcx.sess.source_map().span_to_snippet(self.tcx.reify_span(span))
+            {
                 err.span_suggestion(
                     span,
                     "you might want to use `if let` to ignore the variant that isn't matched",
@@ -333,7 +342,7 @@ fn pat_is_catchall(pat: &super::Pat<'_>) -> bool {
     }
 }
 
-fn unreachable_pattern(tcx: TyCtxt<'_>, span: Span, id: HirId, catchall: Option<Span>) {
+fn unreachable_pattern(tcx: TyCtxt<'_>, span: SpanId, id: HirId, catchall: Option<SpanId>) {
     tcx.struct_span_lint_hir(UNREACHABLE_PATTERNS, id, span, |lint| {
         let mut err = lint.build("unreachable pattern");
         if let Some(catchall) = catchall {
@@ -345,7 +354,7 @@ fn unreachable_pattern(tcx: TyCtxt<'_>, span: Span, id: HirId, catchall: Option<
     });
 }
 
-fn irrefutable_let_pattern(tcx: TyCtxt<'_>, span: Span, id: HirId, source: hir::MatchSource) {
+fn irrefutable_let_pattern(tcx: TyCtxt<'_>, span: SpanId, id: HirId, source: hir::MatchSource) {
     tcx.struct_span_lint_hir(IRREFUTABLE_LET_PATTERNS, id, span, |lint| {
         let msg = match source {
             hir::MatchSource::IfLetDesugar { .. } => "irrefutable if-let pattern",
@@ -433,7 +442,7 @@ fn check_not_useful<'p, 'tcx>(
 fn check_exhaustive<'p, 'tcx>(
     cx: &mut MatchCheckCtxt<'p, 'tcx>,
     scrut_ty: Ty<'tcx>,
-    sp: Span,
+    sp: SpanId,
     matrix: &Matrix<'p, 'tcx>,
     hir_id: HirId,
     is_empty_match: bool,
@@ -535,7 +544,7 @@ fn adt_defined_here(
     }
 }
 
-fn maybe_point_at_variant(ty: Ty<'_>, patterns: &[super::Pat<'_>]) -> Vec<Span> {
+fn maybe_point_at_variant(ty: Ty<'_>, patterns: &[super::Pat<'_>]) -> Vec<SpanId> {
     let mut covered = vec![];
     if let ty::Adt(def, _) = ty.kind {
         // Don't point at variants that have already been covered due to other patterns to avoid
@@ -548,10 +557,10 @@ fn maybe_point_at_variant(ty: Ty<'_>, patterns: &[super::Pat<'_>]) -> Vec<Span> 
                 }
                 Variant { adt_def, variant_index, subpatterns, .. } if adt_def.did == def.did => {
                     let sp = def.variants[*variant_index].ident.span;
-                    if covered.contains(&sp) {
+                    if covered.contains(&sp.into()) {
                         continue;
                     }
-                    covered.push(sp);
+                    covered.push(sp.into());
 
                     let pats = subpatterns
                         .iter()
@@ -578,7 +587,7 @@ fn maybe_point_at_variant(ty: Ty<'_>, patterns: &[super::Pat<'_>]) -> Vec<Span> 
 }
 
 /// Check if a by-value binding is by-value. That is, check if the binding's type is not `Copy`.
-fn is_binding_by_move(cx: &MatchVisitor<'_, '_>, hir_id: HirId, span: Span) -> bool {
+fn is_binding_by_move(cx: &MatchVisitor<'_, '_>, hir_id: HirId, span: SpanId) -> bool {
     !cx.tables.node_type(hir_id).is_copy_modulo_regions(cx.tcx, cx.param_env, span.into())
 }
 
@@ -612,7 +621,7 @@ fn check_legality_of_move_bindings(cx: &mut MatchVisitor<'_, '_>, has_guard: boo
     pat.walk_always(|p| {
         if let hir::PatKind::Binding(.., sub) = &p.kind {
             if let Some(ty::BindByValue(_)) = tables.extract_binding_mode(sess, p.hir_id, p.span) {
-                if is_binding_by_move(cx, p.hir_id, p.span) {
+                if is_binding_by_move(cx, p.hir_id, p.span.into()) {
                     check_move(p, sub.as_deref());
                 }
             }
@@ -660,7 +669,7 @@ fn check_borrow_conflicts_in_at_patterns(cx: &MatchVisitor<'_, '_>, pat: &Pat<'_
 
     // Get the binding move, extract the mutability if by-ref.
     let mut_outer = match tables.extract_binding_mode(sess, pat.hir_id, pat.span) {
-        Some(ty::BindByValue(_)) if is_binding_by_move(cx, pat.hir_id, pat.span) => {
+        Some(ty::BindByValue(_)) if is_binding_by_move(cx, pat.hir_id, pat.span.into()) => {
             // We have `x @ pat` where `x` is by-move. Reject all borrows in `pat`.
             let mut conflicts_ref = Vec::new();
             sub.each_binding(|_, hir_id, span, _| {
@@ -699,7 +708,7 @@ fn check_borrow_conflicts_in_at_patterns(cx: &MatchVisitor<'_, '_>, pat: &Pat<'_
                 (Mutability::Mut, Mutability::Mut) => conflicts_mut_mut.push((span, name)), // 2x `ref mut`.
                 _ => conflicts_mut_ref.push((span, name)), // `ref` + `ref mut` in either direction.
             },
-            Some(ty::BindByValue(_)) if is_binding_by_move(cx, hir_id, span) => {
+            Some(ty::BindByValue(_)) if is_binding_by_move(cx, hir_id, span.into()) => {
                 conflicts_move.push((span, name)) // `ref mut?` + by-move conflict.
             }
             Some(ty::BindByValue(_)) | None => {} // `ref mut?` + by-copy is fine.

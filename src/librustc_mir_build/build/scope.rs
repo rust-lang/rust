@@ -88,7 +88,7 @@ use rustc_hir as hir;
 use rustc_index::vec::IndexVec;
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{SpanId, DUMMY_SPID};
 
 #[derive(Debug)]
 pub struct Scopes<'tcx> {
@@ -113,7 +113,7 @@ struct Scope {
     region_scope: region::Scope,
 
     /// the span of that region_scope
-    region_scope_span: Span,
+    region_scope_span: SpanId,
 
     /// set of places to drop when exiting this scope. This starts
     /// out empty but grows as variables are declared during the
@@ -240,7 +240,7 @@ impl DropTree {
         // The root node of the tree doesn't represent a drop, but instead
         // represents the block in the tree that should be jumped to once all
         // of the required drops have been performed.
-        let fake_source_info = SourceInfo::outermost(DUMMY_SP);
+        let fake_source_info = SourceInfo::outermost(DUMMY_SPID);
         let fake_data =
             DropData { source_info: fake_source_info, local: Local::MAX, kind: DropKind::Storage };
         let drop_idx = DropIdx::MAX;
@@ -380,8 +380,8 @@ impl DropTree {
                         // Diagnostics don't use this `Span` but debuginfo
                         // might. Since we don't want breakpoints to be placed
                         // here, especially when this is on an unwind path, we
-                        // use `DUMMY_SP`.
-                        let source_info = SourceInfo { span: DUMMY_SP, ..drop_data.0.source_info };
+                        // use `DUMMY_SPID`.
+                        let source_info = SourceInfo { span: DUMMY_SPID, ..drop_data.0.source_info };
                         let terminator = TerminatorKind::Goto { target };
                         cfg.terminate(block, source_info, terminator);
                     }
@@ -420,7 +420,7 @@ impl<'tcx> Scopes<'tcx> {
         scope
     }
 
-    fn scope_index(&self, region_scope: region::Scope, span: Span) -> usize {
+    fn scope_index(&self, region_scope: region::Scope, span: SpanId) -> usize {
         self.scopes
             .iter()
             .rposition(|scope| scope.region_scope == region_scope)
@@ -443,7 +443,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         loop_block: Option<BasicBlock>,
         break_destination: Place<'tcx>,
-        span: Span,
+        span: SpanId,
         f: F,
     ) -> BlockAnd<()>
     where
@@ -679,7 +679,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Creates a new source scope, nested in the current one.
     crate fn new_source_scope(
         &mut self,
-        span: Span,
+        span: SpanId,
         lint_level: LintLevel,
         safety: Option<Safety>,
     ) -> SourceScope {
@@ -710,7 +710,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     /// Given a span and the current source scope, make a SourceInfo.
-    crate fn source_info(&self, span: Span) -> SourceInfo {
+    crate fn source_info(&self, span: SpanId) -> SourceInfo {
         SourceInfo { span, scope: self.source_scope }
     }
 
@@ -753,7 +753,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     // ================
     crate fn schedule_drop_storage_and_value(
         &mut self,
-        span: Span,
+        span: SpanId,
         region_scope: region::Scope,
         local: Local,
     ) {
@@ -767,7 +767,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// place, or a function parameter.
     crate fn schedule_drop(
         &mut self,
-        span: Span,
+        span: SpanId,
         region_scope: region::Scope,
         local: Local,
         drop_kind: DropKind,
@@ -848,7 +848,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let region_scope_span =
                     region_scope.span(self.hir.tcx(), &self.hir.region_scope_tree);
                 // Attribute scope exit drops to scope's closing brace.
-                let scope_end = self.hir.tcx().sess.source_map().end_point(region_scope_span);
+                let scope_end = self.hir.tcx().sess.source_map().end_point(region_scope_span).into();
 
                 scope.drops.push(DropData {
                     source_info: SourceInfo { span: scope_end, scope: scope.source_scope },
@@ -1077,7 +1077,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     crate fn build_drop_and_replace(
         &mut self,
         block: BasicBlock,
-        span: Span,
+        span: SpanId,
         location: Place<'tcx>,
         value: Operand<'tcx>,
     ) -> BlockAnd<()> {
@@ -1103,7 +1103,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         cond: Operand<'tcx>,
         expected: bool,
         msg: AssertMessage<'tcx>,
-        span: Span,
+        span: SpanId,
     ) -> BasicBlock {
         let source_info = self.source_info(span);
         let success_block = self.cfg.start_new_block();
@@ -1311,7 +1311,7 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
     fn build_unwind_tree(
         cfg: &mut CFG<'tcx>,
         drops: &mut DropTree,
-        fn_span: Span,
+        fn_span: SpanId,
         should_abort: bool,
         resume_block: &mut Option<BasicBlock>,
     ) {

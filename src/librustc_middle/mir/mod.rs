@@ -27,7 +27,7 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable;
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::symbol::Symbol;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{SpanId, DUMMY_SPID};
 use std::borrow::Cow;
 use std::fmt::{self, Debug, Display, Formatter, Write};
 use std::ops::{Index, IndexMut};
@@ -148,10 +148,10 @@ pub struct Body<'tcx> {
     /// to change the value of `x`: `let mut x = 42; false && { x = 55; true };`
     ///
     /// List of places where control flow was destroyed. Used for error reporting.
-    pub control_flow_destroyed: Vec<(Span, String)>,
+    pub control_flow_destroyed: Vec<(SpanId, String)>,
 
     /// A span representing this MIR, for error reporting.
-    pub span: Span,
+    pub span: SpanId,
 
     /// Constants that are required to evaluate successfully for this MIR to be well-formed.
     /// We hold in this field all the constants we are not able to evaluate yet.
@@ -178,8 +178,8 @@ impl<'tcx> Body<'tcx> {
         user_type_annotations: CanonicalUserTypeAnnotations<'tcx>,
         arg_count: usize,
         var_debug_info: Vec<VarDebugInfo<'tcx>>,
-        span: Span,
-        control_flow_destroyed: Vec<(Span, String)>,
+        span: SpanId,
+        control_flow_destroyed: Vec<(SpanId, String)>,
         generator_kind: Option<GeneratorKind>,
     ) -> Self {
         // We need `arg_count` locals, and one for the return place.
@@ -228,7 +228,7 @@ impl<'tcx> Body<'tcx> {
             user_type_annotations: IndexVec::new(),
             arg_count: 0,
             spread_arg: None,
-            span: DUMMY_SP,
+            span: DUMMY_SPID,
             required_consts: Vec::new(),
             control_flow_destroyed: Vec::new(),
             generator_kind: None,
@@ -466,7 +466,7 @@ impl<T: Decodable> rustc_serialize::UseSpecializedDecodable for ClearCrossCrate<
 #[derive(Copy, Clone, Debug, Eq, PartialEq, RustcEncodable, RustcDecodable, Hash, HashStable)]
 pub struct SourceInfo {
     /// The source span for the AST pertaining to this MIR entity.
-    pub span: Span,
+    pub span: SpanId,
 
     /// The source scope, keeping track of which bindings can be
     /// seen by debuginfo, active lint levels, `unsafe {...}`, etc.
@@ -475,7 +475,7 @@ pub struct SourceInfo {
 
 impl SourceInfo {
     #[inline]
-    pub fn outermost(span: Span) -> Self {
+    pub fn outermost(span: SpanId) -> Self {
         SourceInfo { span, scope: OUTERMOST_SOURCE_SCOPE }
     }
 }
@@ -599,21 +599,21 @@ pub struct VarBindingForm<'tcx> {
     /// Is variable bound via `x`, `mut x`, `ref x`, or `ref mut x`?
     pub binding_mode: ty::BindingMode,
     /// If an explicit type was provided for this variable binding,
-    /// this holds the source Span of that type.
+    /// this holds the source SpanId of that type.
     ///
     /// NOTE: if you want to change this to a `HirId`, be wary that
     /// doing so breaks incremental compilation (as of this writing),
-    /// while a `Span` does not cause our tests to fail.
-    pub opt_ty_info: Option<Span>,
+    /// while a `SpanId` does not cause our tests to fail.
+    pub opt_ty_info: Option<SpanId>,
     /// Place of the RHS of the =, or the subject of the `match` where this
     /// variable is initialized. None in the case of `let PATTERN;`.
     /// Some((None, ..)) in the case of and `let [mut] x = ...` because
     /// (a) the right-hand side isn't evaluated as a place expression.
     /// (b) it gives a way to separate this case from the remaining cases
     ///     for diagnostics.
-    pub opt_match_place: Option<(Option<Place<'tcx>>, Span)>,
+    pub opt_match_place: Option<(Option<Place<'tcx>>, SpanId)>,
     /// The span of the pattern in which this variable was bound.
-    pub pat_span: Span,
+    pub pat_span: SpanId,
 }
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
@@ -679,8 +679,8 @@ pub struct BlockTailInfo {
     /// but not e.g., `let _x = { ...; tail };`
     pub tail_result_is_ignored: bool,
 
-    /// `Span` of the tail expression.
-    pub span: Span,
+    /// `SpanId` of the tail expression.
+    pub span: SpanId,
 }
 
 /// A MIR local.
@@ -817,7 +817,7 @@ pub struct LocalDecl<'tcx> {
 
 // `LocalDecl` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
-static_assert_size!(LocalDecl<'_>, 56);
+static_assert_size!(LocalDecl<'_>, 64);
 
 /// Extra information about a some locals that's used for diagnostics. (Not
 /// used for non-StaticRef temporaries, the return place, or anonymous function
@@ -917,17 +917,17 @@ impl<'tcx> LocalDecl<'tcx> {
     /// Returns `true` is the local is from a compiler desugaring, e.g.,
     /// `__next` from a `for` loop.
     #[inline]
-    pub fn from_compiler_desugaring(&self) -> bool {
-        self.source_info.span.desugaring_kind().is_some()
+    pub fn from_compiler_desugaring(&self, tcx: TyCtxt<'_>) -> bool {
+        tcx.reify_span(self.source_info.span).desugaring_kind().is_some()
     }
 
     /// Creates a new `LocalDecl` for a temporary: mutable, non-internal.
     #[inline]
-    pub fn new(ty: Ty<'tcx>, span: Span) -> Self {
+    pub fn new(ty: Ty<'tcx>, span: SpanId) -> Self {
         Self::with_source_info(ty, SourceInfo::outermost(span))
     }
 
-    /// Like `LocalDecl::new`, but takes a `SourceInfo` instead of a `Span`.
+    /// Like `LocalDecl::new`, but takes a `SourceInfo` instead of a `SpanId`.
     #[inline]
     pub fn with_source_info(ty: Ty<'tcx>, source_info: SourceInfo) -> Self {
         LocalDecl {
@@ -1402,7 +1402,7 @@ impl<'tcx> BasicBlockData<'tcx> {
         let mut gap = self.statements.len()..self.statements.len() + extra_stmts;
         self.statements.resize(
             gap.end,
-            Statement { source_info: SourceInfo::outermost(DUMMY_SP), kind: StatementKind::Nop },
+            Statement { source_info: SourceInfo::outermost(DUMMY_SPID), kind: StatementKind::Nop },
         );
         for (splice_start, new_stmts) in splices.into_iter().rev() {
             let splice_end = splice_start + new_stmts.size_hint().0;
@@ -1731,7 +1731,7 @@ pub enum FakeReadCause {
 pub struct LlvmInlineAsm<'tcx> {
     pub asm: hir::LlvmInlineAsmInner,
     pub outputs: Box<[Place<'tcx>]>,
-    pub inputs: Box<[(Span, Operand<'tcx>)]>,
+    pub inputs: Box<[(SpanId, Operand<'tcx>)]>,
 }
 
 impl Debug for Statement<'_> {
@@ -2012,7 +2012,7 @@ rustc_index::newtype_index! {
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
 pub struct SourceScopeData {
-    pub span: Span,
+    pub span: SpanId,
     pub parent_scope: Option<SourceScope>,
 
     /// Crate-local information for this source scope, that can't (and
@@ -2071,7 +2071,7 @@ impl<'tcx> Operand<'tcx> {
         tcx: TyCtxt<'tcx>,
         def_id: DefId,
         substs: SubstsRef<'tcx>,
-        span: Span,
+        span: SpanId,
     ) -> Self {
         let ty = tcx.type_of(def_id).subst(tcx, substs);
         Operand::Constant(box Constant {
@@ -2388,7 +2388,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 
 #[derive(Clone, Copy, PartialEq, RustcEncodable, RustcDecodable, HashStable)]
 pub struct Constant<'tcx> {
-    pub span: Span,
+    pub span: SpanId,
 
     /// Optional user-given type: for something like
     /// `collect::<Vec<_>>`, this would be present and would
@@ -2446,7 +2446,7 @@ impl Constant<'tcx> {
 /// &'static str`.
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
 pub struct UserTypeProjections {
-    pub contents: Vec<(UserTypeProjection, Span)>,
+    pub contents: Vec<(UserTypeProjection, SpanId)>,
 }
 
 impl<'tcx> UserTypeProjections {
@@ -2458,13 +2458,13 @@ impl<'tcx> UserTypeProjections {
         self.contents.is_empty()
     }
 
-    pub fn from_projections(projs: impl Iterator<Item = (UserTypeProjection, Span)>) -> Self {
+    pub fn from_projections(projs: impl Iterator<Item = (UserTypeProjection, SpanId)>) -> Self {
         UserTypeProjections { contents: projs.collect() }
     }
 
     pub fn projections_and_spans(
         &self,
-    ) -> impl Iterator<Item = &(UserTypeProjection, Span)> + ExactSizeIterator {
+    ) -> impl Iterator<Item = &(UserTypeProjection, SpanId)> + ExactSizeIterator {
         self.contents.iter()
     }
 
@@ -2472,7 +2472,7 @@ impl<'tcx> UserTypeProjections {
         self.contents.iter().map(|&(ref user_type, _span)| user_type)
     }
 
-    pub fn push_projection(mut self, user_ty: &UserTypeProjection, span: Span) -> Self {
+    pub fn push_projection(mut self, user_ty: &UserTypeProjection, span: SpanId) -> Self {
         self.contents.push((user_ty.clone(), span));
         self
     }

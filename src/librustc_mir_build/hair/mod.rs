@@ -13,7 +13,7 @@ use rustc_middle::mir::{BinOp, BorrowKind, Field, UnOp};
 use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{AdtDef, Const, Ty, UpvarSubsts, UserType};
-use rustc_span::Span;
+use rustc_span::SpanId;
 use rustc_target::abi::VariantIdx;
 
 crate mod constant;
@@ -36,7 +36,7 @@ crate struct Block<'tcx> {
     crate targeted_by_break: bool,
     crate region_scope: region::Scope,
     crate opt_destruction_scope: Option<region::Scope>,
-    crate span: Span,
+    crate span: SpanId,
     crate stmts: Vec<StmtRef<'tcx>>,
     crate expr: Option<ExprRef<'tcx>>,
     crate safety_mode: BlockSafety,
@@ -95,7 +95,7 @@ crate enum StmtKind<'tcx> {
 
 // `Expr` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
-rustc_data_structures::static_assert_size!(Expr<'_>, 168);
+rustc_data_structures::static_assert_size!(Expr<'_>, 176);
 
 /// The Hair trait implementor lowers their expressions (`&'tcx H::Expr`)
 /// into instances of this `Expr` enum. This lowering can be done
@@ -121,7 +121,7 @@ crate struct Expr<'tcx> {
     crate temp_lifetime: Option<region::Scope>,
 
     /// span of the expression in the source
-    crate span: Span,
+    crate span: SpanId,
 
     /// kind of expression
     crate kind: ExprKind<'tcx>,
@@ -312,7 +312,7 @@ crate struct Arm<'tcx> {
     crate body: ExprRef<'tcx>,
     crate lint_level: LintLevel,
     crate scope: region::Scope,
-    crate span: Span,
+    crate span: SpanId,
 }
 
 #[derive(Clone, Debug)]
@@ -327,9 +327,9 @@ crate enum LogicalOp {
 }
 
 impl<'tcx> ExprRef<'tcx> {
-    crate fn span(&self) -> Span {
+    crate fn span(&self) -> SpanId {
         match self {
-            ExprRef::Hair(expr) => expr.span,
+            ExprRef::Hair(expr) => expr.span.into(),
             ExprRef::Mirror(expr) => expr.span,
         }
     }

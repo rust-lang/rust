@@ -9,7 +9,7 @@ use rustc_middle::middle::region;
 use rustc_middle::mir::AssertKind;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, UpvarSubsts};
-use rustc_span::Span;
+use rustc_span::SpanId;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Returns an rvalue suitable for use until the end of the current
@@ -271,7 +271,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         mut block: BasicBlock,
         op: BinOp,
-        span: Span,
+        span: SpanId,
         ty: Ty<'tcx>,
         lhs: Operand<'tcx>,
         rhs: Operand<'tcx>,
@@ -368,7 +368,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     fn limit_capture_mutability(
         &mut self,
-        upvar_span: Span,
+        upvar_span: SpanId,
         upvar_ty: Ty<'tcx>,
         temp_lifetime: Option<region::Scope>,
         mut block: BasicBlock,
@@ -444,7 +444,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     // Helper to get a `-1` value of the appropriate type
-    fn neg_1_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
+    fn neg_1_literal(&mut self, span: SpanId, ty: Ty<'tcx>) -> Operand<'tcx> {
         let param_ty = ty::ParamEnv::empty().and(ty);
         let bits = self.hir.tcx().layout_of(param_ty).unwrap().size.bits();
         let n = (!0u128) >> (128 - bits);
@@ -454,7 +454,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     // Helper to get the minimum value of the appropriate type
-    fn minval_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
+    fn minval_literal(&mut self, span: SpanId, ty: Ty<'tcx>) -> Operand<'tcx> {
         assert!(ty.is_signed());
         let param_ty = ty::ParamEnv::empty().and(ty);
         let bits = self.hir.tcx().layout_of(param_ty).unwrap().size.bits();

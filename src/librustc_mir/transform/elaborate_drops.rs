@@ -14,7 +14,7 @@ use rustc_hir as hir;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_span::Span;
+use rustc_span::SpanId;
 use rustc_target::abi::VariantIdx;
 use std::fmt;
 
@@ -265,7 +265,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         self.env.param_env
     }
 
-    fn create_drop_flag(&mut self, index: MovePathIndex, span: Span) {
+    fn create_drop_flag(&mut self, index: MovePathIndex, span: SpanId) {
         let tcx = self.tcx;
         let patch = &mut self.patch;
         debug!("create_drop_flag({:?})", self.body.span);
@@ -465,7 +465,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         }
     }
 
-    fn constant_bool(&self, span: Span, val: bool) -> Rvalue<'tcx> {
+    fn constant_bool(&self, span: SpanId, val: bool) -> Rvalue<'tcx> {
         Rvalue::Use(Operand::Constant(Box::new(Constant {
             span,
             user_ty: None,

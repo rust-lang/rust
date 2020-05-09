@@ -21,7 +21,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Block<'tcx> {
             targeted_by_break: self.targeted_by_break,
             region_scope: region::Scope { id: self.hir_id.local_id, data: region::ScopeData::Node },
             opt_destruction_scope,
-            span: self.span,
+            span: self.span.into(),
             stmts,
             expr: self.expr.to_ref(),
             safety_mode: match self.rules {
@@ -73,7 +73,7 @@ fn mirror_stmts<'a, 'tcx>(
                             kind: Box::new(PatKind::AscribeUserType {
                                 ascription: hair::pattern::Ascription {
                                     user_ty: PatTyProj::from_user_type(user_ty),
-                                    user_ty_span: ty.span,
+                                    user_ty_span: ty.span.into(),
                                     variance: ty::Variance::Covariant,
                                 },
                                 subpattern: pattern,
@@ -110,7 +110,7 @@ crate fn to_expr_ref<'a, 'tcx>(
     let expr = Expr {
         ty: block_ty,
         temp_lifetime,
-        span: block.span,
+        span: block.span.into(),
         kind: ExprKind::Block { body: block },
     };
     expr.to_ref()

@@ -8,7 +8,7 @@ use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceC
 use rustc_middle::mir::*;
 use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::{self, Instance, InstanceDef, TyCtxt};
-use rustc_span::Span;
+use rustc_span::SpanId;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
 use rustc_trait_selection::traits::{self, TraitEngine};
 
@@ -175,7 +175,7 @@ pub struct Validator<'mir, 'tcx> {
     qualifs: Qualifs<'mir, 'tcx>,
 
     /// The span of the current statement.
-    span: Span,
+    span: SpanId,
 }
 
 impl Deref for Validator<'mir, 'tcx> {
@@ -234,7 +234,7 @@ impl Validator<'mir, 'tcx> {
 
     /// Emits an error at the given `span` if an expression cannot be evaluated in the current
     /// context.
-    pub fn check_op_spanned<O>(&mut self, op: O, span: Span)
+    pub fn check_op_spanned<O>(&mut self, op: O, span: SpanId)
     where
         O: NonConstOp,
     {
@@ -249,7 +249,7 @@ impl Validator<'mir, 'tcx> {
         let is_unleashable = O::IS_SUPPORTED_IN_MIRI;
 
         if is_unleashable && self.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
-            self.tcx.sess.miri_unleashed_feature(span, O::feature_gate());
+            self.tcx.sess.miri_unleashed_feature(self.tcx.reify_span(span), O::feature_gate());
             return;
         }
 
@@ -262,7 +262,7 @@ impl Validator<'mir, 'tcx> {
         self.check_op_spanned(op, span)
     }
 
-    fn check_static(&mut self, def_id: DefId, span: Span) {
+    fn check_static(&mut self, def_id: DefId, span: SpanId) {
         if self.tcx.is_thread_local_static(def_id) {
             self.check_op_spanned(ops::ThreadLocalAccess, span)
         } else {
@@ -567,7 +567,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                 } else if let Some(feature) = is_unstable_const_fn(self.tcx, def_id) {
                     // Exempt unstable const fns inside of macros with
                     // `#[allow_internal_unstable]`.
-                    if !self.span.allows_unstable(feature) {
+                    if !self.tcx.reify_span(self.span).allows_unstable(feature) {
                         self.check_op(ops::FnCallUnstable(def_id, feature));
                     }
                 } else {
@@ -620,7 +620,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
     }
 }
 
-fn error_min_const_fn_violation(tcx: TyCtxt<'_>, span: Span, msg: Cow<'_, str>) {
+fn error_min_const_fn_violation(tcx: TyCtxt<'_>, span: SpanId, msg: Cow<'_, str>) {
     struct_span_err!(tcx.sess, span, E0723, "{}", msg)
         .note(
             "see issue #57563 <https://github.com/rust-lang/rust/issues/57563> \
@@ -671,9 +671,10 @@ fn check_short_circuiting_in_const_local(ccx: &ConstCx<'_, 'tcx>) {
 fn check_return_ty_is_sync(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, hir_id: HirId) {
     let ty = body.return_ty();
     tcx.infer_ctxt().enter(|infcx| {
-        let cause = traits::ObligationCause::new(body.span, hir_id, traits::SharedStatic);
+        let body_span = tcx.reify_span(body.span);
+        let cause = traits::ObligationCause::new(body_span, hir_id, traits::SharedStatic);
         let mut fulfillment_cx = traits::FulfillmentContext::new();
-        let sync_def_id = tcx.require_lang_item(lang_items::SyncTraitLangItem, Some(body.span));
+        let sync_def_id = tcx.require_lang_item(lang_items::SyncTraitLangItem, Some(body_span));
         fulfillment_cx.register_bound(&infcx, ty::ParamEnv::empty(), ty, sync_def_id, cause);
         if let Err(err) = fulfillment_cx.select_all_or_error(&infcx) {
             infcx.report_fulfillment_errors(&err, None, false);

@@ -16,7 +16,7 @@ use rustc_index::bit_set::BitSet;
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty};
-use rustc_span::Span;
+use rustc_span::SpanId;
 use rustc_span::symbol::Symbol;
 use rustc_target::abi::VariantIdx;
 use smallvec::{smallvec, SmallVec};
@@ -84,7 +84,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     crate fn match_expr(
         &mut self,
         destination: Place<'tcx>,
-        span: Span,
+        span: SpanId,
         mut block: BasicBlock,
         scrutinee: ExprRef<'tcx>,
         arms: Vec<Arm<'tcx>>,
@@ -117,7 +117,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         mut block: BasicBlock,
         scrutinee: ExprRef<'tcx>,
-        scrutinee_span: Span,
+        scrutinee_span: SpanId,
     ) -> BlockAnd<Place<'tcx>> {
         let scrutinee_place = unpack!(block = self.as_place(block, scrutinee));
         // Matching on a `scrutinee_place` with an uninhabited type doesn't
@@ -168,7 +168,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn lower_match_tree<'pat>(
         &mut self,
         block: BasicBlock,
-        scrutinee_span: Span,
+        scrutinee_span: SpanId,
         match_has_guard: bool,
         candidates: &mut [&mut Candidate<'pat, 'tcx>],
     ) -> Vec<(Place<'tcx>, Local)> {
@@ -220,7 +220,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         destination: Place<'tcx>,
         scrutinee_place: Place<'tcx>,
-        scrutinee_span: Span,
+        scrutinee_span: SpanId,
         arm_candidates: Vec<(&'_ Arm<'tcx>, Candidate<'_, 'tcx>)>,
         outer_source_info: SourceInfo,
         fake_borrow_temps: Vec<(Place<'tcx>, Local)>,
@@ -284,7 +284,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         candidate: Candidate<'_, 'tcx>,
         guard: Option<&Guard<'tcx>>,
         fake_borrow_temps: &Vec<(Place<'tcx>, Local)>,
-        scrutinee_span: Span,
+        scrutinee_span: SpanId,
         arm_scope: Option<region::Scope>,
     ) -> BasicBlock {
         if candidate.subcandidates.is_empty() {
@@ -406,6 +406,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 let ty_source_info = self.source_info(user_ty_span);
                 let user_ty = pat_ascription_ty.user_ty(
+                    self.hir.tcx(),
                     &mut self.canonical_user_type_annotations,
                     place.ty(&self.local_decls, self.hir.tcx()).ty,
                     ty_source_info.span,
@@ -503,10 +504,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     crate fn declare_bindings(
         &mut self,
         mut visibility_scope: Option<SourceScope>,
-        scope_span: Span,
+        scope_span: SpanId,
         pattern: &Pat<'tcx>,
         has_guard: ArmHasGuard,
-        opt_match_place: Option<(Option<&Place<'tcx>>, Span)>,
+        opt_match_place: Option<(Option<&Place<'tcx>>, SpanId)>,
     ) -> Option<SourceScope> {
         debug!("declare_bindings: pattern={:?}", pattern);
         self.visit_primary_bindings(
@@ -541,7 +542,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         block: BasicBlock,
         var: HirId,
-        span: Span,
+        span: SpanId,
         for_guard: ForGuard,
         schedule_drop: bool,
     ) -> Place<'tcx> {
@@ -555,7 +556,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         Place::from(local_id)
     }
 
-    crate fn schedule_drop_for_binding(&mut self, var: HirId, span: Span, for_guard: ForGuard) {
+    crate fn schedule_drop_for_binding(&mut self, var: HirId, span: SpanId, for_guard: ForGuard) {
         let local_id = self.var_local_id(var, for_guard);
         let region_scope = self.hir.region_scope_tree.var_scope(var.local_id);
         self.schedule_drop(span, region_scope, local_id, DropKind::Value);
@@ -574,7 +575,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             Symbol,
             BindingMode,
             HirId,
-            Span,
+            SpanId,
             Ty<'tcx>,
             UserTypeProjections,
         ),
@@ -640,7 +641,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // Note that the variance doesn't apply here, as we are tracking the effect
                 // of `user_ty` on any bindings contained with subpattern.
                 let annotation = CanonicalUserTypeAnnotation {
-                    span: user_ty_span,
+                    span: self.hir.tcx().reify_span(user_ty_span),
                     user_ty: user_ty.user_ty,
                     inferred_ty: subpattern.ty,
                 };
@@ -682,8 +683,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
 #[derive(Debug)]
 struct Candidate<'pat, 'tcx> {
-    /// `Span` of the original pattern that gave rise to this candidate
-    span: Span,
+    /// `SpanId` of the original pattern that gave rise to this candidate
+    span: SpanId,
 
     /// This `Candidate` has a guard.
     has_guard: bool,
@@ -760,7 +761,7 @@ fn traverse_candidate<'pat, 'tcx: 'pat, C, T, I>(
 
 #[derive(Clone, Debug)]
 struct Binding<'tcx> {
-    span: Span,
+    span: SpanId,
     source: Place<'tcx>,
     name: Symbol,
     var_id: HirId,
@@ -774,7 +775,7 @@ struct Binding<'tcx> {
 /// influence region inference.
 #[derive(Clone, Debug)]
 struct Ascription<'tcx> {
-    span: Span,
+    span: SpanId,
     source: Place<'tcx>,
     user_ty: PatTyProj<'tcx>,
     variance: ty::Variance,
@@ -836,7 +837,7 @@ enum TestKind<'tcx> {
 
 #[derive(Debug)]
 crate struct Test<'tcx> {
-    span: Span,
+    span: SpanId,
     kind: TestKind<'tcx>,
 }
 
@@ -888,7 +889,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// `otherwise_block`.
     fn match_candidates<'pat>(
         &mut self,
-        span: Span,
+        span: SpanId,
         start_block: BasicBlock,
         otherwise_block: &mut Option<BasicBlock>,
         candidates: &mut [&mut Candidate<'pat, 'tcx>],
@@ -935,7 +936,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     fn match_simplified_candidates(
         &mut self,
-        span: Span,
+        span: SpanId,
         start_block: BasicBlock,
         otherwise_block: &mut Option<BasicBlock>,
         candidates: &mut [&mut Candidate<'_, 'tcx>],
@@ -1143,7 +1144,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// ```
     fn test_candidates_with_or(
         &mut self,
-        span: Span,
+        span: SpanId,
         candidates: &mut [&mut Candidate<'_, 'tcx>],
         block: BasicBlock,
         otherwise_block: &mut Option<BasicBlock>,
@@ -1201,7 +1202,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         candidate: &mut Candidate<'pat, 'tcx>,
         otherwise: &mut Option<BasicBlock>,
         pats: &'pat [Pat<'tcx>],
-        or_span: Span,
+        or_span: SpanId,
         place: Place<'tcx>,
         fake_borrows: &mut Option<FxHashSet<Place<'tcx>>>,
     ) {
@@ -1373,7 +1374,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// once.
     fn test_candidates<'pat, 'b, 'c>(
         &mut self,
-        span: Span,
+        span: SpanId,
         mut candidates: &'b mut [&'c mut Candidate<'pat, 'tcx>],
         block: BasicBlock,
         otherwise_block: &mut Option<BasicBlock>,
@@ -1523,7 +1524,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn calculate_fake_borrows<'b>(
         &mut self,
         fake_borrows: &'b FxHashSet<Place<'tcx>>,
-        temp_span: Span,
+        temp_span: SpanId,
     ) -> Vec<(Place<'tcx>, Local)> {
         let tcx = self.hir.tcx();
 
@@ -1590,7 +1591,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         parent_bindings: &[(Vec<Binding<'tcx>>, Vec<Ascription<'tcx>>)],
         guard: Option<&Guard<'tcx>>,
         fake_borrows: &Vec<(Place<'tcx>, Local)>,
-        scrutinee_span: Span,
+        scrutinee_span: SpanId,
         schedule_drops: bool,
     ) -> BasicBlock {
         debug!("bind_and_guard_matched_candidate(candidate={:?})", candidate);
@@ -1727,7 +1728,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 Guard::If(e) => self.hir.mirror(e.clone()),
             };
             let source_info = self.source_info(guard.span);
-            let guard_end = self.source_info(tcx.sess.source_map().end_point(guard.span));
+            let guard_end = self.source_info(tcx.sess.source_map().end_point(tcx.reify_span(guard.span)).into());
             let (post_guard_block, otherwise_post_guard_block) =
                 self.test_bool(block, guard, source_info);
             let guard_frame = self.guard_context.pop().unwrap();
@@ -1831,6 +1832,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             );
 
             let user_ty = ascription.user_ty.clone().user_ty(
+                self.hir.tcx(),
                 &mut self.canonical_user_type_annotations,
                 ascription.source.ty(&self.local_decls, self.hir.tcx()).ty,
                 source_info.span,
@@ -1950,8 +1952,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         var_ty: Ty<'tcx>,
         user_ty: UserTypeProjections,
         has_guard: ArmHasGuard,
-        opt_match_place: Option<(Option<Place<'tcx>>, Span)>,
-        pat_span: Span,
+        opt_match_place: Option<(Option<Place<'tcx>>, SpanId)>,
+        pat_span: SpanId,
     ) {
         debug!(
             "declare_binding(var_id={:?}, name={:?}, mode={:?}, var_ty={:?}, \

@@ -8,7 +8,7 @@ use rustc_middle::middle::region;
 use rustc_middle::mir::AssertKind::BoundsCheck;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty, TyCtxt, Variance};
-use rustc_span::Span;
+use rustc_span::SpanId;
 
 use rustc_index::vec::Idx;
 
@@ -180,7 +180,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 if let Some(user_ty) = user_ty {
                     let annotation_index =
                         this.canonical_user_type_annotations.push(CanonicalUserTypeAnnotation {
-                            span: source_info.span,
+                            span: this.hir.tcx().reify_span(source_info.span),
                             user_ty,
                             inferred_ty: expr.ty,
                         });
@@ -209,7 +209,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 if let Some(user_ty) = user_ty {
                     let annotation_index =
                         this.canonical_user_type_annotations.push(CanonicalUserTypeAnnotation {
-                            span: source_info.span,
+                            span: this.hir.tcx().reify_span(source_info.span),
                             user_ty,
                             inferred_ty: expr.ty,
                         });
@@ -286,7 +286,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         mutability: Mutability,
         fake_borrow_temps: Option<&mut Vec<Local>>,
         temp_lifetime: Option<region::Scope>,
-        expr_span: Span,
+        expr_span: SpanId,
         source_info: SourceInfo,
     ) -> BlockAnd<PlaceBuilder<'tcx>> {
         let lhs = self.hir.mirror(base);
@@ -331,7 +331,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         block: BasicBlock,
         slice: Place<'tcx>,
         index: Local,
-        expr_span: Span,
+        expr_span: SpanId,
         source_info: SourceInfo,
     ) -> BasicBlock {
         let usize_ty = self.hir.usize_ty();
@@ -359,7 +359,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         base_place: &PlaceBuilder<'tcx>,
         block: BasicBlock,
         fake_borrow_temps: &mut Vec<Local>,
-        expr_span: Span,
+        expr_span: SpanId,
         source_info: SourceInfo,
     ) {
         let tcx = self.hir.tcx();

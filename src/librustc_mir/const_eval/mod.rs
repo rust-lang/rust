@@ -4,7 +4,7 @@ use std::convert::TryFrom;
 
 use rustc_middle::mir;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_span::{source_map::DUMMY_SP, symbol::Symbol};
+use rustc_span::{source_map::DUMMY_SPID, symbol::Symbol};
 use rustc_target::abi::VariantIdx;
 
 use crate::interpret::{intern_const_alloc_recursive, ConstValue, InternKind, InterpCx};
@@ -30,7 +30,7 @@ pub(crate) fn const_field<'tcx>(
     value: &'tcx ty::Const<'tcx>,
 ) -> ConstValue<'tcx> {
     trace!("const_field: {:?}, {:?}", field, value);
-    let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, false);
+    let ecx = mk_eval_cx(tcx, DUMMY_SPID, param_env, false);
     // get the operand again
     let op = ecx.eval_const_to_op(value, None).unwrap();
     // downcast
@@ -50,7 +50,7 @@ pub(crate) fn const_caller_location(
     (file, line, col): (Symbol, u32, u32),
 ) -> ConstValue<'tcx> {
     trace!("const_caller_location: {}:{}:{}", file, line, col);
-    let mut ecx = mk_eval_cx(tcx, DUMMY_SP, ty::ParamEnv::reveal_all(), false);
+    let mut ecx = mk_eval_cx(tcx, DUMMY_SPID, ty::ParamEnv::reveal_all(), false);
 
     let loc_place = ecx.alloc_caller_location(file, line, col);
     intern_const_alloc_recursive(&mut ecx, InternKind::Constant, loc_place, false).unwrap();
@@ -65,7 +65,7 @@ pub(crate) fn destructure_const<'tcx>(
     val: &'tcx ty::Const<'tcx>,
 ) -> mir::DestructuredConst<'tcx> {
     trace!("destructure_const: {:?}", val);
-    let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, false);
+    let ecx = mk_eval_cx(tcx, DUMMY_SPID, param_env, false);
     let op = ecx.eval_const_to_op(val, None).unwrap();
 
     let variant = ecx.read_discriminant(op).unwrap().1;

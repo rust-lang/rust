@@ -289,7 +289,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let inferred_ty = expr.ty;
                 let user_ty = user_ty.map(|ty| {
                     this.canonical_user_type_annotations.push(CanonicalUserTypeAnnotation {
-                        span: source_info.span,
+                        span: this.hir.tcx().reify_span(source_info.span),
                         user_ty: ty,
                         inferred_ty,
                     })

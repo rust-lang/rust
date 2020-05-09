@@ -97,7 +97,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         &asm.asm,
                         outputs,
                         input_vals,
-                        statement.source_info.span,
+                        bx.tcx().reify_span(statement.source_info.span),
                     );
                     if !res {
                         struct_span_err!(

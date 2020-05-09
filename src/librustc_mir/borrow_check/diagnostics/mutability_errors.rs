@@ -6,7 +6,7 @@ use rustc_middle::mir::{Mutability, Place, PlaceRef, ProjectionElem};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::kw;
-use rustc_span::Span;
+use rustc_span::SpanId;
 
 use crate::borrow_check::diagnostics::BorrowedContentSource;
 use crate::borrow_check::MirBorrowckCtxt;
@@ -23,7 +23,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     pub(crate) fn report_mutability_error(
         &mut self,
         access_place: Place<'tcx>,
-        span: Span,
+        span: SpanId,
         the_place_err: PlaceRef<'tcx>,
         error_access: AccessKind,
         location: Location,
@@ -302,7 +302,13 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             // a local variable, then just suggest the user remove it.
             PlaceRef { local: _, projection: [] }
                 if {
-                    if let Ok(snippet) = self.infcx.tcx.sess.source_map().span_to_snippet(span) {
+                    if let Ok(snippet) = self
+                        .infcx
+                        .tcx
+                        .sess
+                        .source_map()
+                        .span_to_snippet(self.infcx.tcx.reify_span(span))
+                    {
                         snippet.starts_with("&mut ")
                     } else {
                         false
@@ -339,7 +345,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 };
 
                 match self.local_names[local] {
-                    Some(name) if !local_decl.from_compiler_desugaring() => {
+                    Some(name) if !local_decl.from_compiler_desugaring(self.infcx.tcx) => {
                         let label = match local_decl.local_info.as_ref().unwrap() {
                             box LocalInfo::User(ClearCrossCrate::Set(
                                 mir::BindingForm::ImplicitSelf(_),
@@ -362,7 +368,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                     .first()
                                     .map(|&location| self.body.source_info(location).span);
                                 let opt_desugaring_kind =
-                                    opt_assignment_rhs_span.and_then(|span| span.desugaring_kind());
+                                    opt_assignment_rhs_span.and_then(|span| {
+                                        self.infcx.tcx.reify_span(span).desugaring_kind()
+                                    });
                                 match opt_desugaring_kind {
                                     // on for loops, RHS points to the iterator part
                                     Some(DesugaringKind::ForLoop) => Some((
@@ -488,7 +496,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     }
 
     /// Targeted error when encountering an `FnMut` closure where an `Fn` closure was expected.
-    fn expected_fn_found_fn_mut_call(&self, err: &mut DiagnosticBuilder<'_>, sp: Span, act: &str) {
+    fn expected_fn_found_fn_mut_call(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        sp: SpanId,
+        act: &str,
+    ) {
         err.span_label(sp, format!("cannot {}", act));
 
         let hir = self.infcx.tcx.hir();
@@ -500,10 +513,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         // If we can detect the expression to be an `fn` call where the closure was an argument,
         // we point at the `fn` definition argument...
         if let hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Call(func, args), .. }) = node {
+            let body_span = self.infcx.tcx.reify_span(self.body.span);
             let arg_pos = args
                 .iter()
                 .enumerate()
-                .filter(|(_, arg)| arg.span == self.body.span)
+                .filter(|(_, arg)| arg.span == body_span)
                 .map(|(pos, _)| pos)
                 .next();
             let def_id = hir.local_def_id(item_id);
@@ -545,7 +559,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 if let Some(span) = arg {
                     err.span_label(span, "change this to accept `FnMut` instead of `Fn`");
                     err.span_label(func.span, "expects `Fn` instead of `FnMut`");
-                    if self.infcx.tcx.sess.source_map().is_multiline(self.body.span) {
+                    if self.infcx.tcx.sess.source_map().is_multiline(body_span) {
                         err.span_label(self.body.span, "in this closure");
                     }
                     look_at_return = false;
@@ -584,11 +598,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 fn suggest_ampmut_self<'tcx>(
     tcx: TyCtxt<'tcx>,
     local_decl: &mir::LocalDecl<'tcx>,
-) -> (Span, String) {
+) -> (SpanId, String) {
     let sp = local_decl.source_info.span;
     (
         sp,
-        match tcx.sess.source_map().span_to_snippet(sp) {
+        match tcx.sess.source_map().span_to_snippet(tcx.reify_span(sp)) {
             Ok(snippet) => {
                 let lt_pos = snippet.find('\'');
                 if let Some(lt_pos) = lt_pos {
@@ -620,11 +634,12 @@ fn suggest_ampmut_self<'tcx>(
 fn suggest_ampmut<'tcx>(
     tcx: TyCtxt<'tcx>,
     local_decl: &mir::LocalDecl<'tcx>,
-    opt_assignment_rhs_span: Option<Span>,
-    opt_ty_info: Option<Span>,
-) -> (Span, String) {
+    opt_assignment_rhs_span: Option<SpanId>,
+    opt_ty_info: Option<SpanId>,
+) -> (SpanId, String) {
     if let Some(assignment_rhs_span) = opt_assignment_rhs_span {
-        if let Ok(src) = tcx.sess.source_map().span_to_snippet(assignment_rhs_span) {
+        if let Ok(src) = tcx.sess.source_map().span_to_snippet(tcx.reify_span(assignment_rhs_span))
+        {
             if let (true, Some(ws_pos)) =
                 (src.starts_with("&'"), src.find(|c: char| -> bool { c.is_whitespace() }))
             {
@@ -648,7 +663,7 @@ fn suggest_ampmut<'tcx>(
         None => local_decl.source_info.span,
     };
 
-    if let Ok(src) = tcx.sess.source_map().span_to_snippet(highlight_span) {
+    if let Ok(src) = tcx.sess.source_map().span_to_snippet(tcx.reify_span(highlight_span)) {
         if let (true, Some(ws_pos)) =
             (src.starts_with("&'"), src.find(|c: char| -> bool { c.is_whitespace() }))
         {
@@ -685,7 +700,7 @@ fn annotate_struct_field(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
     field: &mir::Field,
-) -> Option<(Span, String)> {
+) -> Option<(SpanId, String)> {
     // Expect our local to be a reference to a struct of some kind.
     if let ty::Ref(_, ty, _) = ty.kind {
         if let ty::Adt(def, _) = ty.kind {
@@ -712,7 +727,7 @@ fn annotate_struct_field(
                     };
 
                     return Some((
-                        field.ty.span,
+                        field.ty.span.into(),
                         format!("&{}mut {}", lifetime_snippet, &*type_snippet,),
                     ));
                 }
@@ -724,8 +739,8 @@ fn annotate_struct_field(
 }
 
 /// If possible, suggest replacing `ref` with `ref mut`.
-fn suggest_ref_mut(tcx: TyCtxt<'_>, binding_span: Span) -> Option<String> {
-    let hi_src = tcx.sess.source_map().span_to_snippet(binding_span).ok()?;
+fn suggest_ref_mut(tcx: TyCtxt<'_>, binding_span: SpanId) -> Option<String> {
+    let hi_src = tcx.sess.source_map().span_to_snippet(tcx.reify_span(binding_span)).ok()?;
     if hi_src.starts_with("ref") && hi_src["ref".len()..].starts_with(rustc_lexer::is_whitespace) {
         let replacement = format!("ref mut{}", &hi_src["ref".len()..]);
         Some(replacement)

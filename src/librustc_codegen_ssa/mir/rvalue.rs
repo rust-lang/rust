@@ -751,7 +751,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::Rvalue::Aggregate(..) => {
                 let ty = rvalue.ty(self.mir, self.cx.tcx());
                 let ty = self.monomorphize(&ty);
-                self.cx.spanned_layout_of(ty, span).is_zst()
+                self.cx.spanned_layout_of(ty, span.into()).is_zst()
             }
         }
 

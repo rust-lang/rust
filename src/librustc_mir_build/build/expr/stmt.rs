@@ -151,7 +151,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 }
                             }
                             this.block_context
-                                .push(BlockFrame::TailExpr { tail_result_is_ignored: true, span: expr.span });
+                                .push(BlockFrame::TailExpr { tail_result_is_ignored: true, span: expr.span.into() });
                             return Some(expr.span);
                         }
                     }
@@ -162,7 +162,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     unpack!(block = this.as_temp(block, statement_scope, expr, Mutability::Not));
 
                 if let Some(span) = adjusted_span {
-                    this.local_decls[temp].source_info.span = span;
+                    this.local_decls[temp].source_info.span = span.into();
                     this.block_context.pop();
                 }
 

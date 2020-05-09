@@ -244,7 +244,7 @@ use rustc_middle::mir::Field;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{self, Const, Ty, TyCtxt, TypeFoldable, VariantDef};
 use rustc_session::lint;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{SpanId, DUMMY_SPID};
 use rustc_target::abi::{Integer, Size, VariantIdx};
 
 use arena::TypedArena;
@@ -1028,7 +1028,7 @@ impl<'tcx> Constructor<'tcx> {
             NonExhaustive => PatKind::Wild,
         };
 
-        Pat { ty, span: DUMMY_SP, kind: Box::new(pat) }
+        Pat { ty, span: DUMMY_SPID, kind: Box::new(pat) }
     }
 
     /// Like `apply`, but where all the subpatterns are wildcards `_`.
@@ -1135,7 +1135,7 @@ crate enum WitnessPreference {
 #[derive(Copy, Clone, Debug)]
 struct PatCtxt<'tcx> {
     ty: Ty<'tcx>,
-    span: Span,
+    span: SpanId,
 }
 
 /// A witness of non-exhaustiveness for error reporting, represented
@@ -1341,7 +1341,7 @@ fn all_constructors<'a, 'tcx>(
 struct IntRange<'tcx> {
     range: RangeInclusive<u128>,
     ty: Ty<'tcx>,
-    span: Span,
+    span: SpanId,
 }
 
 impl<'tcx> IntRange<'tcx> {
@@ -1385,7 +1385,7 @@ impl<'tcx> IntRange<'tcx> {
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         value: &Const<'tcx>,
-        span: Span,
+        span: SpanId,
     ) -> Option<IntRange<'tcx>> {
         if let Some((target_size, bias)) = Self::integral_size_and_signed_bias(tcx, value.ty) {
             let ty = value.ty;
@@ -1416,7 +1416,7 @@ impl<'tcx> IntRange<'tcx> {
         hi: u128,
         ty: Ty<'tcx>,
         end: &RangeEnd,
-        span: Span,
+        span: SpanId,
     ) -> Option<IntRange<'tcx>> {
         if Self::is_integral(ty) {
             // Perform a shift if the underlying types are signed,
@@ -1540,7 +1540,7 @@ impl<'tcx> IntRange<'tcx> {
         };
 
         // This is a brand new pattern, so we don't reuse `self.span`.
-        Pat { ty: self.ty, span: DUMMY_SP, kind: Box::new(kind) }
+        Pat { ty: self.ty, span: DUMMY_SPID, kind: Box::new(kind) }
     }
 }
 
@@ -1753,22 +1753,30 @@ crate fn is_useful<'p, 'tcx>(
 
         if missing_ctors.is_empty() {
             let (all_ctors, _) = missing_ctors.into_inner();
-            split_grouped_constructors(cx.tcx, cx.param_env, pcx, all_ctors, matrix, DUMMY_SP, None)
-                .into_iter()
-                .map(|c| {
-                    is_useful_specialized(
-                        cx,
-                        matrix,
-                        v,
-                        c,
-                        pcx.ty,
-                        witness_preference,
-                        hir_id,
-                        is_under_guard,
-                    )
-                })
-                .find(|result| result.is_useful())
-                .unwrap_or(NotUseful)
+            split_grouped_constructors(
+                cx.tcx,
+                cx.param_env,
+                pcx,
+                all_ctors,
+                matrix,
+                DUMMY_SPID,
+                None,
+            )
+            .into_iter()
+            .map(|c| {
+                is_useful_specialized(
+                    cx,
+                    matrix,
+                    v,
+                    c,
+                    pcx.ty,
+                    witness_preference,
+                    hir_id,
+                    is_under_guard,
+                )
+            })
+            .find(|result| result.is_useful())
+            .unwrap_or(NotUseful)
         } else {
             let matrix = matrix.specialize_wildcard();
             let v = v.to_tail();
@@ -1913,7 +1921,7 @@ fn pat_constructor<'tcx>(
 // second pattern to lint about unreachable match arms.
 fn slice_pat_covered_by_const<'tcx>(
     tcx: TyCtxt<'tcx>,
-    _span: Span,
+    _span: SpanId,
     const_val: &'tcx ty::Const<'tcx>,
     prefix: &[Pat<'tcx>],
     slice: &Option<Pat<'tcx>>,
@@ -2020,7 +2028,7 @@ fn split_grouped_constructors<'p, 'tcx>(
     pcx: PatCtxt<'tcx>,
     ctors: Vec<Constructor<'tcx>>,
     matrix: &Matrix<'p, 'tcx>,
-    span: Span,
+    span: SpanId,
     hir_id: Option<HirId>,
 ) -> Vec<Constructor<'tcx>> {
     let ty = pcx.ty;
@@ -2264,7 +2272,7 @@ fn lint_overlapping_patterns<'tcx>(
                         int_range.span,
                         &format!(
                             "this range overlaps on `{}`",
-                            IntRange { range: int_range.range, ty, span: DUMMY_SP }.to_pat(tcx),
+                            IntRange { range: int_range.range, ty, span: DUMMY_SPID }.to_pat(tcx),
                         ),
                     );
                 }

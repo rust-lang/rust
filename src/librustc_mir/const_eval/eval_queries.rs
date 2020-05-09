@@ -10,7 +10,7 @@ use rustc_middle::mir;
 use rustc_middle::mir::interpret::{ConstEvalErr, ErrorHandled};
 use rustc_middle::traits::Reveal;
 use rustc_middle::ty::{self, subst::Subst, TyCtxt};
-use rustc_span::source_map::Span;
+use rustc_span::source_map::SpanId;
 use rustc_target::abi::{Abi, LayoutOf};
 use std::convert::TryInto;
 
@@ -81,7 +81,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
 /// parameter. These bounds are passed to `mk_eval_cx` via the `ParamEnv` argument.
 pub(super) fn mk_eval_cx<'mir, 'tcx>(
     tcx: TyCtxt<'tcx>,
-    span: Span,
+    span: SpanId,
     param_env: ty::ParamEnv<'tcx>,
     can_access_statics: bool,
 ) -> CompileTimeEvalContext<'mir, 'tcx> {
@@ -180,8 +180,7 @@ fn validate_and_turn_into_const<'tcx>(
     let cid = key.value;
     let def_id = cid.instance.def.def_id();
     let is_static = tcx.is_static(def_id);
-    let ecx =
-        mk_eval_cx(tcx, tcx.real_def_span(key.value.instance.def_id()), key.param_env, is_static);
+    let ecx = mk_eval_cx(tcx, tcx.def_span(key.value.instance.def_id()), key.param_env, is_static);
     let val = (|| {
         let mplace = ecx.raw_const_to_mplace(constant)?;
 

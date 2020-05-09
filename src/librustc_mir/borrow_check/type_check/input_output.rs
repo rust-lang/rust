@@ -12,7 +12,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::Ty;
 
 use rustc_index::vec::Idx;
-use rustc_span::Span;
+use rustc_span::SpanId;
 
 use crate::borrow_check::universal_regions::UniversalRegions;
 
@@ -41,12 +41,14 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 match typeck_tables.user_provided_sigs.get(&self.mir_def_id.to_def_id()) {
                     None => None,
                     Some(user_provided_poly_sig) => {
+                        let body_span = self.tcx().reify_span(body.span);
+
                         // Instantiate the canonicalized variables from
                         // user-provided signature (e.g., the `_` in the code
                         // above) with fresh variables.
                         let (poly_sig, _) =
                             self.infcx.instantiate_canonical_with_fresh_inference_vars(
-                                body.span,
+                                body_span,
                                 &user_provided_poly_sig,
                             );
 
@@ -56,7 +58,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         Some(
                             self.infcx
                                 .replace_bound_vars_with_fresh_vars(
-                                    body.span,
+                                    body_span,
                                     LateBoundRegionConversionTime::FnCall,
                                     &poly_sig,
                                 )
@@ -161,7 +163,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
     }
 
-    fn equate_normalized_input_or_output(&mut self, a: Ty<'tcx>, b: Ty<'tcx>, span: Span) {
+    fn equate_normalized_input_or_output(&mut self, a: Ty<'tcx>, b: Ty<'tcx>, span: SpanId) {
         debug!("equate_normalized_input_or_output(a={:?}, b={:?})", a, b);
 
         if let Err(terr) =

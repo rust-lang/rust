@@ -207,7 +207,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx>> ValueVisitor<'mir
                     self.intern_shallow(vtable.alloc_id, Mutability::Not, None)?;
                 } else {
                     self.ecx().tcx.sess.delay_span_bug(
-                        rustc_span::DUMMY_SP,
+                        rustc_span::DUMMY_SPID,
                         "vtables pointers cannot be integer pointers",
                     );
                 }

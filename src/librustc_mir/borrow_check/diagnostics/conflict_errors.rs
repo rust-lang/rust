@@ -12,7 +12,7 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::{self, suggest_constraining_type_param, Ty};
 use rustc_span::source_map::DesugaringKind;
-use rustc_span::Span;
+use rustc_span::SpanId;
 
 use crate::dataflow::drop_flag_effects;
 use crate::dataflow::indexes::{MoveOutIndex, MovePathIndex};
@@ -51,7 +51,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         &mut self,
         location: Location,
         desired_action: InitializationRequiringAction,
-        (moved_place, used_place, span): (PlaceRef<'tcx>, PlaceRef<'tcx>, Span),
+        (moved_place, used_place, span): (PlaceRef<'tcx>, PlaceRef<'tcx>, SpanId),
         mpi: MovePathIndex,
     ) {
         debug!(
@@ -156,6 +156,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         format!("variable moved due to use{}", move_spans.describe()),
                     );
                 }
+                let move_span = self.infcx.tcx.reify_span(move_span);
                 if Some(DesugaringKind::ForLoop) == move_span.desugaring_kind() {
                     let sess = self.infcx.tcx.sess;
                     if let Ok(snippet) = sess.source_map().span_to_snippet(move_span) {
@@ -247,7 +248,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     pub(in crate::borrow_check) fn report_move_out_while_borrowed(
         &mut self,
         location: Location,
-        (place, span): (Place<'tcx>, Span),
+        (place, span): (Place<'tcx>, SpanId),
         borrow: &BorrowData<'tcx>,
     ) {
         debug!(
@@ -291,7 +292,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     pub(in crate::borrow_check) fn report_use_while_mutably_borrowed(
         &mut self,
         location: Location,
-        (place, _span): (Place<'tcx>, Span),
+        (place, _span): (Place<'tcx>, SpanId),
         borrow: &BorrowData<'tcx>,
     ) -> DiagnosticBuilder<'cx> {
         let borrow_spans = self.retrieve_borrow_spans(borrow);
@@ -330,7 +331,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     pub(in crate::borrow_check) fn report_conflicting_borrow(
         &mut self,
         location: Location,
-        (place, span): (Place<'tcx>, Span),
+        (place, span): (Place<'tcx>, SpanId),
         gen_borrow_kind: BorrowKind,
         issued_borrow: &BorrowData<'tcx>,
     ) -> DiagnosticBuilder<'cx> {
@@ -680,7 +681,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         &mut self,
         location: Location,
         borrow: &BorrowData<'tcx>,
-        place_span: (Place<'tcx>, Span),
+        place_span: (Place<'tcx>, SpanId),
         kind: Option<WriteKind>,
     ) {
         debug!(
@@ -824,7 +825,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         location: Location,
         name: &str,
         borrow: &BorrowData<'tcx>,
-        drop_span: Span,
+        drop_span: SpanId,
         borrow_spans: UseSpans,
         explanation: BorrowExplanation,
     ) -> DiagnosticBuilder<'cx> {
@@ -945,7 +946,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         &mut self,
         location: Location,
         borrow: &BorrowData<'tcx>,
-        (place, drop_span): (Place<'tcx>, Span),
+        (place, drop_span): (Place<'tcx>, SpanId),
         kind: Option<WriteKind>,
         dropped_ty: Ty<'tcx>,
     ) {
@@ -1007,8 +1008,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
     fn report_thread_local_value_does_not_live_long_enough(
         &mut self,
-        drop_span: Span,
-        borrow_span: Span,
+        drop_span: SpanId,
+        borrow_span: SpanId,
     ) -> DiagnosticBuilder<'cx> {
         debug!(
             "report_thread_local_value_does_not_live_long_enough(\
@@ -1032,9 +1033,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         &mut self,
         location: Location,
         borrow: &BorrowData<'tcx>,
-        drop_span: Span,
+        drop_span: SpanId,
         borrow_spans: UseSpans,
-        proper_span: Span,
+        proper_span: SpanId,
         explanation: BorrowExplanation,
     ) -> DiagnosticBuilder<'cx> {
         debug!(
@@ -1090,8 +1091,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     fn try_report_cannot_return_reference_to_local(
         &self,
         borrow: &BorrowData<'tcx>,
-        borrow_span: Span,
-        return_span: Span,
+        borrow_span: SpanId,
+        return_span: SpanId,
         category: ConstraintCategory,
         opt_place_desc: Option<&String>,
     ) -> Option<DiagnosticBuilder<'cx>> {
@@ -1162,28 +1163,29 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     fn report_escaping_closure_capture(
         &mut self,
         use_span: UseSpans,
-        var_span: Span,
+        var_span: SpanId,
         fr_name: &RegionName,
         category: ConstraintCategory,
-        constraint_span: Span,
+        constraint_span: SpanId,
         captured_var: &str,
     ) -> DiagnosticBuilder<'cx> {
         let tcx = self.infcx.tcx;
         let args_span = use_span.args_or_use();
 
-        let suggestion = match tcx.sess.source_map().span_to_snippet(args_span) {
-            Ok(mut string) => {
-                if string.starts_with("async ") {
-                    string.insert_str(6, "move ");
-                } else if string.starts_with("async|") {
-                    string.insert_str(5, " move");
-                } else {
-                    string.insert_str(0, "move ");
-                };
-                string
-            }
-            Err(_) => "move |<args>| <body>".to_string(),
-        };
+        let suggestion =
+            match tcx.sess.source_map().span_to_snippet(self.infcx.tcx.reify_span(args_span)) {
+                Ok(mut string) => {
+                    if string.starts_with("async ") {
+                        string.insert_str(6, "move ");
+                    } else if string.starts_with("async|") {
+                        string.insert_str(5, " move");
+                    } else {
+                        string.insert_str(0, "move ");
+                    };
+                    string
+                }
+                Err(_) => "move |<args>| <body>".to_string(),
+            };
         let kind = match use_span.generator_kind() {
             Some(generator_kind) => match generator_kind {
                 GeneratorKind::Async(async_kind) => match async_kind {
@@ -1229,11 +1231,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
     fn report_escaping_data(
         &mut self,
-        borrow_span: Span,
+        borrow_span: SpanId,
         name: &Option<String>,
-        upvar_span: Span,
+        upvar_span: SpanId,
         upvar_name: &str,
-        escape_span: Span,
+        escape_span: SpanId,
     ) -> DiagnosticBuilder<'cx> {
         let tcx = self.infcx.tcx;
 
@@ -1375,7 +1377,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     pub(in crate::borrow_check) fn report_illegal_mutation_of_borrowed(
         &mut self,
         location: Location,
-        (place, span): (Place<'tcx>, Span),
+        (place, span): (Place<'tcx>, SpanId),
         loan: &BorrowData<'tcx>,
     ) {
         let loan_spans = self.retrieve_borrow_spans(loan);
@@ -1428,8 +1430,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     pub(in crate::borrow_check) fn report_illegal_reassignment(
         &mut self,
         _location: Location,
-        (place, span): (Place<'tcx>, Span),
-        assigned_span: Span,
+        (place, span): (Place<'tcx>, SpanId),
+        assigned_span: SpanId,
         err_place: Place<'tcx>,
     ) {
         let (from_arg, local_decl, local_name) = match err_place.as_local() {
@@ -1824,7 +1826,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             if let hir::TyKind::Rptr(lifetime, _) = &fn_decl.inputs[index].kind {
                                 // With access to the lifetime, we can get
                                 // the span of it.
-                                arguments.push((*argument, lifetime.span));
+                                arguments.push((*argument, lifetime.span.into()));
                             } else {
                                 bug!("ty type is a ref but hir type is not");
                             }
@@ -1840,10 +1842,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 // We use a mix of the HIR and the Ty types to get information
                 // as the HIR doesn't have full types for closure arguments.
                 let return_ty = *sig.output().skip_binder();
-                let mut return_span = fn_decl.output.span();
+                let mut return_span = fn_decl.output.span().into();
                 if let hir::FnRetTy::Return(ty) = &fn_decl.output {
                     if let hir::TyKind::Rptr(lifetime, _) = ty.kind {
-                        return_span = lifetime.span;
+                        return_span = lifetime.span.into();
                     }
                 }
 
@@ -1857,7 +1859,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 // This is case 2 from above but only for closures, return type is anonymous
                 // reference so we select
                 // the first argument.
-                let argument_span = fn_decl.inputs.first()?.span;
+                let argument_span = fn_decl.inputs.first()?.span.into();
                 let argument_ty = sig.inputs().skip_binder().first()?;
 
                 // Closure arguments are wrapped in a tuple, so we need to get the first
@@ -1877,10 +1879,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             ty::Ref(_, _, _) => {
                 // This is also case 2 from above but for functions, return type is still an
                 // anonymous reference so we select the first argument.
-                let argument_span = fn_decl.inputs.first()?.span;
+                let argument_span = fn_decl.inputs.first()?.span.into();
                 let argument_ty = sig.inputs().skip_binder().first()?;
 
-                let return_span = fn_decl.output.span();
+                let return_span = fn_decl.output.span().into();
                 let return_ty = *sig.output().skip_binder();
 
                 // We expect the first argument to be a reference.
@@ -1908,19 +1910,19 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 #[derive(Debug)]
 enum AnnotatedBorrowFnSignature<'tcx> {
     NamedFunction {
-        arguments: Vec<(Ty<'tcx>, Span)>,
+        arguments: Vec<(Ty<'tcx>, SpanId)>,
         return_ty: Ty<'tcx>,
-        return_span: Span,
+        return_span: SpanId,
     },
     AnonymousFunction {
         argument_ty: Ty<'tcx>,
-        argument_span: Span,
+        argument_span: SpanId,
         return_ty: Ty<'tcx>,
-        return_span: Span,
+        return_span: SpanId,
     },
     Closure {
         argument_ty: Ty<'tcx>,
-        argument_span: Span,
+        argument_span: SpanId,
     },
 }
 

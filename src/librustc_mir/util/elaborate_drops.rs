@@ -877,8 +877,10 @@ where
     ) -> BasicBlock {
         let tcx = self.tcx();
         let unit_temp = Place::from(self.new_temp(tcx.mk_unit()));
-        let free_func =
-            tcx.require_lang_item(lang_items::BoxFreeFnLangItem, Some(self.source_info.span));
+        let free_func = tcx.require_lang_item(
+            lang_items::BoxFreeFnLangItem,
+            Some(tcx.reify_span(self.source_info.span)),
+        );
         let args = adt.variants[VariantIdx::new(0)]
             .fields
             .iter()

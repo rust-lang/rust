@@ -24,7 +24,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::Literal { literal, user_ty } => {
                 let user_ty = user_ty.map(|user_ty| {
                     this.canonical_user_type_annotations.push(CanonicalUserTypeAnnotation {
-                        span,
+                        span: this.hir.tcx().reify_span(span),
                         user_ty,
                         inferred_ty: ty,
                     })

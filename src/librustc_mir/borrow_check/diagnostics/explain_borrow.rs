@@ -13,7 +13,7 @@ use rustc_middle::mir::{
 use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::{self, RegionVid, TyCtxt};
 use rustc_span::symbol::Symbol;
-use rustc_span::Span;
+use rustc_span::SpanId;
 
 use crate::borrow_check::{
     borrow_set::BorrowData, nll::ConstraintDescription, region_infer::Cause, MirBorrowckCtxt,
@@ -24,8 +24,8 @@ use super::{find_use, RegionName, UseSpans};
 
 #[derive(Debug)]
 pub(in crate::borrow_check) enum BorrowExplanation {
-    UsedLater(LaterUseKind, Span),
-    UsedLaterInLoop(LaterUseKind, Span),
+    UsedLater(LaterUseKind, SpanId),
+    UsedLaterInLoop(LaterUseKind, SpanId),
     UsedLaterWhenDropped {
         drop_loc: Location,
         dropped_local: Local,
@@ -34,7 +34,7 @@ pub(in crate::borrow_check) enum BorrowExplanation {
     MustBeValidFor {
         category: ConstraintCategory,
         from_closure: bool,
-        span: Span,
+        span: SpanId,
         region_name: RegionName,
         opt_place_desc: Option<String>,
     },
@@ -64,7 +64,7 @@ impl BorrowExplanation {
         local_names: &IndexVec<Local, Option<Symbol>>,
         err: &mut DiagnosticBuilder<'_>,
         borrow_desc: &str,
-        borrow_span: Option<Span>,
+        borrow_span: Option<SpanId>,
     ) {
         match *self {
             BorrowExplanation::UsedLater(later_use_kind, var_or_use_span) => {
@@ -75,7 +75,10 @@ impl BorrowExplanation {
                     LaterUseKind::FakeLetRead => "stored here",
                     LaterUseKind::Other => "used here",
                 };
-                if !borrow_span.map(|sp| sp.overlaps(var_or_use_span)).unwrap_or(false) {
+                if !borrow_span
+                    .map(|sp| tcx.reify_span(sp).overlaps(tcx.reify_span(var_or_use_span)))
+                    .unwrap_or(false)
+                {
                     err.span_label(
                         var_or_use_span,
                         format!("{}borrow later {}", borrow_desc, message),
@@ -118,7 +121,7 @@ impl BorrowExplanation {
                 };
 
                 match local_names[dropped_local] {
-                    Some(local_name) if !local_decl.from_compiler_desugaring() => {
+                    Some(local_name) if !local_decl.from_compiler_desugaring(tcx) => {
                         let message = format!(
                             "{B}borrow might be used here, when `{LOC}` is dropped \
                              and runs the {DTOR} for {TYPE}",
@@ -156,9 +159,10 @@ impl BorrowExplanation {
                         err.span_label(body.source_info(drop_loc).span, message);
 
                         if let Some(info) = &local_decl.is_block_tail {
+                            let info_span = tcx.reify_span(info.span);
                             if info.tail_result_is_ignored {
                                 err.span_suggestion_verbose(
-                                    info.span.shrink_to_hi(),
+                                    info_span.shrink_to_hi(),
                                     "consider adding semicolon after the expression so its \
                                      temporaries are dropped sooner, before the local variables \
                                      declared by the block are dropped",
@@ -176,8 +180,8 @@ impl BorrowExplanation {
                                      local variable `x` and then make `x` be the expression at the \
                                      end of the block",
                                     vec![
-                                        (info.span.shrink_to_lo(), "let x = ".to_string()),
-                                        (info.span.shrink_to_hi(), "; x".to_string()),
+                                        (info_span.shrink_to_lo(), "let x = ".to_string()),
+                                        (info_span.shrink_to_hi(), "; x".to_string()),
                                     ],
                                     Applicability::MaybeIncorrect,
                                 );
@@ -217,16 +221,23 @@ impl BorrowExplanation {
                     );
                 };
 
-                self.add_lifetime_bound_suggestion_to_diagnostic(err, &category, span, region_name);
+                self.add_lifetime_bound_suggestion_to_diagnostic(
+                    tcx,
+                    err,
+                    &category,
+                    span,
+                    region_name,
+                );
             }
             _ => {}
         }
     }
     pub(in crate::borrow_check) fn add_lifetime_bound_suggestion_to_diagnostic(
         &self,
+        tcx: TyCtxt<'_>,
         err: &mut DiagnosticBuilder<'_>,
         category: &ConstraintCategory,
-        span: Span,
+        span: SpanId,
         region_name: &RegionName,
     ) {
         if let ConstraintCategory::OpaqueType = category {
@@ -240,7 +251,7 @@ impl BorrowExplanation {
             );
 
             err.span_suggestion_verbose(
-                span.shrink_to_hi(),
+                tcx.reify_span(span).shrink_to_hi(),
                 &msg,
                 format!(" + {}", suggestable_name),
                 Applicability::Unspecified,
@@ -254,7 +265,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         &self,
         borrow_region: RegionVid,
         outlived_region: RegionVid,
-    ) -> (ConstraintCategory, bool, Span, Option<RegionName>) {
+    ) -> (ConstraintCategory, bool, SpanId, Option<RegionName>) {
         let (category, from_closure, span) = self.regioncx.best_blame_constraint(
             &self.body,
             borrow_region,
@@ -503,7 +514,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         borrow: &BorrowData<'tcx>,
         use_spans: UseSpans,
         location: Location,
-    ) -> (LaterUseKind, Span) {
+    ) -> (LaterUseKind, SpanId) {
         match use_spans {
             UseSpans::ClosureUse { var_span, .. } => {
                 // Used in a closure.

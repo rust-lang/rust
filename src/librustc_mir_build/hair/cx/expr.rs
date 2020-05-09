@@ -13,7 +13,7 @@ use rustc_middle::ty::adjustment::{
 };
 use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
 use rustc_middle::ty::{self, AdtKind, Ty};
-use rustc_span::Span;
+use rustc_span::SpanId;
 
 impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr<'tcx> {
     type Output = Expr<'tcx>;
@@ -36,7 +36,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr<'tcx> {
         expr = Expr {
             temp_lifetime,
             ty: expr.ty,
-            span: self.span,
+            span: self.span.into(),
             kind: ExprKind::Scope {
                 region_scope: expr_scope,
                 value: expr.to_ref(),
@@ -50,7 +50,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr<'tcx> {
             expr = Expr {
                 temp_lifetime,
                 ty: expr.ty,
-                span: self.span,
+                span: self.span.into(),
                 kind: ExprKind::Scope {
                     region_scope,
                     value: expr.to_ref(),
@@ -85,7 +85,7 @@ fn apply_adjustment<'a, 'tcx>(
     let mut adjust_span = |expr: &mut Expr<'tcx>| {
         if let ExprKind::Block { body } = expr.kind {
             if let Some(ref last_expr) = body.expr {
-                span = last_expr.span;
+                span = last_expr.span.into();
                 expr.span = span;
             }
         }
@@ -141,7 +141,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
         // Here comes the interesting stuff:
         hir::ExprKind::MethodCall(_, method_span, ref args) => {
             // Rewrite a.b(c) into UFCS form like Trait::b(a, c)
-            let expr = method_callee(cx, expr, method_span, None);
+            let expr = method_callee(cx, expr, method_span.into(), None);
             let args = args.iter().map(|e| e.to_ref()).collect();
             ExprKind::Call { ty: expr.ty, fun: expr.to_ref(), args, from_hir_call: true }
         }
@@ -155,13 +155,13 @@ fn make_mirror_unadjusted<'a, 'tcx>(
 
                 // rewrite f(u, v) into FnOnce::call_once(f, (u, v))
 
-                let method = method_callee(cx, expr, fun.span, None);
+                let method = method_callee(cx, expr, fun.span.into(), None);
 
                 let arg_tys = args.iter().map(|e| cx.tables().expr_ty_adjusted(e));
                 let tupled_args = Expr {
                     ty: cx.tcx.mk_tup(arg_tys),
                     temp_lifetime,
-                    span: expr.span,
+                    span: expr.span.into(),
                     kind: ExprKind::Tuple { fields: args.iter().map(ToRef::to_ref).collect() },
                 };
 
@@ -243,7 +243,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
         }
 
         hir::ExprKind::Lit(ref lit) => ExprKind::Literal {
-            literal: cx.const_eval_literal(&lit.node, expr_ty, lit.span, false),
+            literal: cx.const_eval_literal(&lit.node, expr_ty, lit.span.into(), false),
             user_ty: None,
         },
 
@@ -257,13 +257,13 @@ fn make_mirror_unadjusted<'a, 'tcx>(
                     (hir::BinOpKind::And, hir::Constness::Const)
                         if !cx.tcx.features().const_if_match =>
                     {
-                        cx.control_flow_destroyed.push((op.span, "`&&` operator".into()));
+                        cx.control_flow_destroyed.push((op.span.into(), "`&&` operator".into()));
                         ExprKind::Binary { op: BinOp::BitAnd, lhs: lhs.to_ref(), rhs: rhs.to_ref() }
                     }
                     (hir::BinOpKind::Or, hir::Constness::Const)
                         if !cx.tcx.features().const_if_match =>
                     {
-                        cx.control_flow_destroyed.push((op.span, "`||` operator".into()));
+                        cx.control_flow_destroyed.push((op.span.into(), "`||` operator".into()));
                         ExprKind::Binary { op: BinOp::BitOr, lhs: lhs.to_ref(), rhs: rhs.to_ref() }
                     }
 
@@ -316,7 +316,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
             } else {
                 if let hir::ExprKind::Lit(ref lit) = arg.kind {
                     ExprKind::Literal {
-                        literal: cx.const_eval_literal(&lit.node, expr_ty, lit.span, true),
+                        literal: cx.const_eval_literal(&lit.node, expr_ty, lit.span.into(), true),
                         user_ty: None,
                     }
                 } else {
@@ -497,7 +497,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
                         Expr {
                             temp_lifetime,
                             ty: var_ty,
-                            span: expr.span,
+                            span: expr.span.into(),
                             kind: ExprKind::Literal { literal, user_ty: None },
                         }
                         .to_ref()
@@ -517,7 +517,8 @@ fn make_mirror_unadjusted<'a, 'tcx>(
                                 ty: var_ty,
                             }));
                             let bin = ExprKind::Binary { op: BinOp::Add, lhs, rhs: offset };
-                            Expr { temp_lifetime, ty: var_ty, span: expr.span, kind: bin }.to_ref()
+                            Expr { temp_lifetime, ty: var_ty, span: expr.span.into(), kind: bin }
+                                .to_ref()
                         }
                         None => offset,
                     }
@@ -531,7 +532,8 @@ fn make_mirror_unadjusted<'a, 'tcx>(
             if let Some(user_ty) = user_ty {
                 // NOTE: Creating a new Expr and wrapping a Cast inside of it may be
                 //       inefficient, revisit this when performance becomes an issue.
-                let cast_expr = Expr { temp_lifetime, ty: expr_ty, span: expr.span, kind: cast };
+                let cast_expr =
+                    Expr { temp_lifetime, ty: expr_ty, span: expr.span.into(), kind: cast };
                 debug!("make_mirror_unadjusted: (cast) user_ty={:?}", user_ty);
 
                 ExprKind::ValueTypeAscription {
@@ -561,7 +563,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
         hir::ExprKind::Err => unreachable!(),
     };
 
-    Expr { temp_lifetime, ty: expr_ty, span: expr.span, kind }
+    Expr { temp_lifetime, ty: expr_ty, span: expr.span.into(), kind }
 }
 
 fn user_substs_applied_to_res<'tcx>(
@@ -602,7 +604,7 @@ fn user_substs_applied_to_res<'tcx>(
 fn method_callee<'a, 'tcx>(
     cx: &mut Cx<'a, 'tcx>,
     expr: &hir::Expr<'_>,
-    span: Span,
+    span: SpanId,
     overloaded_callee: Option<(DefId, SubstsRef<'tcx>)>,
 ) -> Expr<'tcx> {
     let temp_lifetime = cx.region_scope_tree.temporary_scope(expr.hir_id.local_id);
@@ -665,7 +667,7 @@ fn convert_arm<'tcx>(cx: &mut Cx<'_, 'tcx>, arm: &'tcx hir::Arm<'tcx>) -> Arm<'t
         body: arm.body.to_ref(),
         lint_level: LintLevel::Explicit(arm.hir_id),
         scope: region::Scope { id: arm.hir_id.local_id, data: region::ScopeData::Node },
-        span: arm.span,
+        span: arm.span.into(),
     }
 }
 
@@ -746,7 +748,7 @@ fn convert_path_expr<'a, 'tcx>(
                 arg: Expr {
                     ty,
                     temp_lifetime,
-                    span: expr.span,
+                    span: expr.span.into(),
                     kind: ExprKind::StaticRef {
                         literal: ty::Const::from_scalar(cx.tcx, Scalar::Ptr(ptr.into()), ty),
                         def_id: id,
@@ -815,12 +817,12 @@ fn convert_var<'tcx>(
                         Expr {
                             ty: closure_ty,
                             temp_lifetime,
-                            span: expr.span,
+                            span: expr.span.into(),
                             kind: ExprKind::Deref {
                                 arg: Expr {
                                     ty: ref_closure_ty,
                                     temp_lifetime,
-                                    span: expr.span,
+                                    span: expr.span.into(),
                                     kind: ExprKind::SelfRef,
                                 }
                                 .to_ref(),
@@ -835,12 +837,12 @@ fn convert_var<'tcx>(
                         Expr {
                             ty: closure_ty,
                             temp_lifetime,
-                            span: expr.span,
+                            span: expr.span.into(),
                             kind: ExprKind::Deref {
                                 arg: Expr {
                                     ty: ref_closure_ty,
                                     temp_lifetime,
-                                    span: expr.span,
+                                    span: expr.span.into(),
                                     kind: ExprKind::SelfRef,
                                 }
                                 .to_ref(),
@@ -850,12 +852,17 @@ fn convert_var<'tcx>(
                     ty::ClosureKind::FnOnce => Expr {
                         ty: closure_ty,
                         temp_lifetime,
-                        span: expr.span,
+                        span: expr.span.into(),
                         kind: ExprKind::SelfRef,
                     },
                 }
             } else {
-                Expr { ty: closure_ty, temp_lifetime, span: expr.span, kind: ExprKind::SelfRef }
+                Expr {
+                    ty: closure_ty,
+                    temp_lifetime,
+                    span: expr.span.into(),
+                    kind: ExprKind::SelfRef,
+                }
             };
 
             // at this point we have `self.n`, which loads up the upvar
@@ -873,7 +880,7 @@ fn convert_var<'tcx>(
                             borrow.region,
                             ty::TypeAndMut { ty: var_ty, mutbl: borrow.kind.to_mutbl_lossy() },
                         ),
-                        span: expr.span,
+                        span: expr.span.into(),
                         kind: field_kind,
                     }
                     .to_ref(),
@@ -910,7 +917,7 @@ fn overloaded_operator<'a, 'tcx>(
     expr: &'tcx hir::Expr<'tcx>,
     args: Vec<ExprRef<'tcx>>,
 ) -> ExprKind<'tcx> {
-    let fun = method_callee(cx, expr, expr.span, None);
+    let fun = method_callee(cx, expr, expr.span.into(), None);
     ExprKind::Call { ty: fun.ty, fun: fun.to_ref(), args, from_hir_call: false }
 }
 
@@ -942,11 +949,11 @@ fn overloaded_place<'a, 'tcx>(
     // construct the complete expression `foo()` for the overloaded call,
     // which will yield the &T type
     let temp_lifetime = cx.region_scope_tree.temporary_scope(expr.hir_id.local_id);
-    let fun = method_callee(cx, expr, expr.span, overloaded_callee);
+    let fun = method_callee(cx, expr, expr.span.into(), overloaded_callee);
     let ref_expr = Expr {
         temp_lifetime,
         ty: ref_ty,
-        span: expr.span,
+        span: expr.span.into(),
         kind: ExprKind::Call { ty: fun.ty, fun: fun.to_ref(), args, from_hir_call: false },
     };
 
@@ -970,7 +977,7 @@ fn capture_upvar<'tcx>(
     let captured_var = Expr {
         temp_lifetime,
         ty: var_ty,
-        span: closure_expr.span,
+        span: closure_expr.span.into(),
         kind: convert_var(cx, closure_expr, var_hir_id),
     };
     match upvar_capture {
@@ -984,7 +991,7 @@ fn capture_upvar<'tcx>(
             Expr {
                 temp_lifetime,
                 ty: upvar_ty,
-                span: closure_expr.span,
+                span: closure_expr.span.into(),
                 kind: ExprKind::Borrow { borrow_kind, arg: captured_var.to_ref() },
             }
             .to_ref()

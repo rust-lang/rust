@@ -22,7 +22,7 @@ use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::{self, List, TyCtxt, TypeFoldable};
 use rustc_span::symbol::sym;
-use rustc_span::{Span, DUMMY_SPID};
+use rustc_span::{SpanId, DUMMY_SPID};
 
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_target::spec::abi::Abi;
@@ -144,7 +144,7 @@ struct Collector<'a, 'tcx> {
     ccx: &'a ConstCx<'a, 'tcx>,
     temps: IndexVec<Local, TempState>,
     candidates: Vec<Candidate>,
-    span: Span,
+    span: SpanId,
 }
 
 impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
@@ -785,7 +785,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         })
     }
 
-    fn assign(&mut self, dest: Local, rvalue: Rvalue<'tcx>, span: Span) {
+    fn assign(&mut self, dest: Local, rvalue: Rvalue<'tcx>, span: SpanId) {
         let last = self.promoted.basic_blocks().last().unwrap();
         let data = &mut self.promoted[last];
         data.statements.push(Statement {

@@ -3,7 +3,7 @@ use rustc_hir::def_id::DefId;
 use rustc_index::vec::IndexVec;
 use rustc_middle::infer::MemberConstraint;
 use rustc_middle::ty::{self, Ty};
-use rustc_span::Span;
+use rustc_span::SpanId;
 use std::hash::Hash;
 use std::ops::Index;
 
@@ -36,7 +36,7 @@ crate struct NllMemberConstraint<'tcx> {
     crate opaque_type_def_id: DefId,
 
     /// The span where the hidden type was instantiated.
-    crate definition_span: Span,
+    crate definition_span: SpanId,
 
     /// The hidden type in which `R0` appears. (Used in error reporting.)
     crate hidden_ty: Ty<'tcx>,
@@ -92,7 +92,7 @@ impl<'tcx> MemberConstraintSet<'tcx, ty::RegionVid> {
             next_constraint,
             member_region_vid,
             opaque_type_def_id: m_c.opaque_type_def_id,
-            definition_span: m_c.definition_span,
+            definition_span: m_c.definition_span.into(),
             hidden_ty: m_c.hidden_ty,
             start_index,
             end_index,

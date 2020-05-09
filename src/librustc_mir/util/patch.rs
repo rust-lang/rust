@@ -1,7 +1,7 @@
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::mir::*;
 use rustc_middle::ty::Ty;
-use rustc_span::Span;
+use rustc_span::SpanId;
 
 /// This struct represents a patch to MIR, which can add
 /// new statements and basic blocks and patch over block
@@ -80,14 +80,14 @@ impl<'tcx> MirPatch<'tcx> {
         Location { block: bb, statement_index: offset }
     }
 
-    pub fn new_temp(&mut self, ty: Ty<'tcx>, span: Span) -> Local {
+    pub fn new_temp(&mut self, ty: Ty<'tcx>, span: SpanId) -> Local {
         let index = self.next_local;
         self.next_local += 1;
         self.new_locals.push(LocalDecl::new(ty, span));
         Local::new(index as usize)
     }
 
-    pub fn new_internal(&mut self, ty: Ty<'tcx>, span: Span) -> Local {
+    pub fn new_internal(&mut self, ty: Ty<'tcx>, span: SpanId) -> Local {
         let index = self.next_local;
         self.next_local += 1;
         self.new_locals.push(LocalDecl::new(ty, span).internal());
