@@ -722,6 +722,11 @@ impl Slice {
 
 /// A value can be decomposed into a constructor applied to some fields. This struct represents
 /// the constructor. See also `Fields`.
+///
+/// `pat_constructor` retrieves the constructor corresponding to a pattern.
+/// `specialize_one_pattern` returns the list of fields corresponding to a pattern, given a
+/// constructor. `Constructor::apply` reconstructs the pattern from a pair of `Constructor` and
+/// `Fields`.
 #[derive(Clone, Debug, PartialEq)]
 enum Constructor<'tcx> {
     /// The constructor for patterns that have a single constructor, like tuples, struct patterns
@@ -850,96 +855,10 @@ impl<'tcx> Constructor<'tcx> {
         }
     }
 
-    /// This returns one wildcard pattern for each argument to this constructor.
-    ///
-    /// This must be consistent with `apply`, `specialize_one_pattern`, and `arity`.
-    fn wildcard_subpatterns<'a>(
-        &self,
-        cx: &MatchCheckCtxt<'a, 'tcx>,
-        ty: Ty<'tcx>,
-    ) -> Vec<Pat<'tcx>> {
-        debug!("wildcard_subpatterns({:#?}, {:?})", self, ty);
-
-        match self {
-            Single | Variant(_) => match ty.kind {
-                ty::Tuple(ref fs) => {
-                    fs.into_iter().map(|t| t.expect_ty()).map(Pat::wildcard_from_ty).collect()
-                }
-                ty::Ref(_, rty, _) => vec![Pat::wildcard_from_ty(rty)],
-                ty::Adt(adt, substs) => {
-                    if adt.is_box() {
-                        // Use T as the sub pattern type of Box<T>.
-                        vec![Pat::wildcard_from_ty(substs.type_at(0))]
-                    } else {
-                        let variant = &adt.variants[self.variant_index_for_adt(cx, adt)];
-                        let is_non_exhaustive = cx.is_foreign_non_exhaustive_variant(ty, variant);
-                        variant
-                            .fields
-                            .iter()
-                            .map(|field| {
-                                let ty = field.ty(cx.tcx, substs);
-                                let is_visible = adt.is_enum()
-                                    || field.vis.is_accessible_from(cx.module, cx.tcx);
-                                let is_inhabited = !cx.is_uninhabited(ty);
-                                // Treat all uninhabited non-visible fields as `TyErr`. They can't
-                                // appear in any other pattern from this match (because they are
-                                // private), so their type does not matter - but we don't want
-                                // to know they are uninhabited.
-                                // Also treat all uninhabited types in non-exhaustive variants as
-                                // `TyErr`.
-                                let allowed_to_inspect =
-                                    is_inhabited || (is_visible && !is_non_exhaustive);
-
-                                if allowed_to_inspect {
-                                    Pat::wildcard_from_ty(ty)
-                                } else {
-                                    Pat::wildcard_from_ty(cx.tcx.types.err)
-                                }
-                            })
-                            .collect()
-                    }
-                }
-                _ => vec![],
-            },
-            Slice(_) => match ty.kind {
-                ty::Slice(ty) | ty::Array(ty, _) => {
-                    let arity = self.arity(cx, ty);
-                    (0..arity).map(|_| Pat::wildcard_from_ty(ty)).collect()
-                }
-                _ => bug!("bad slice pattern {:?} {:?}", self, ty),
-            },
-            ConstantValue(..) | FloatRange(..) | IntRange(..) | NonExhaustive => vec![],
-        }
-    }
-
-    /// This computes the arity of a constructor. The arity of a constructor
-    /// is how many subpattern patterns of that constructor should be expanded to.
-    ///
-    /// For instance, a tuple pattern `(_, 42, Some([]))` has the arity of 3.
-    /// A struct pattern's arity is the number of fields it contains, etc.
-    ///
-    /// This must be consistent with `wildcard_subpatterns`, `specialize_one_pattern`, and `apply`.
-    fn arity<'a>(&self, cx: &MatchCheckCtxt<'a, 'tcx>, ty: Ty<'tcx>) -> u64 {
-        debug!("Constructor::arity({:#?}, {:?})", self, ty);
-        match self {
-            Single | Variant(_) => match ty.kind {
-                ty::Tuple(ref fs) => fs.len() as u64,
-                ty::Slice(..) | ty::Array(..) => bug!("bad slice pattern {:?} {:?}", self, ty),
-                ty::Ref(..) => 1,
-                ty::Adt(adt, _) => {
-                    adt.variants[self.variant_index_for_adt(cx, adt)].fields.len() as u64
-                }
-                _ => 0,
-            },
-            Slice(slice) => slice.arity(),
-            ConstantValue(..) | FloatRange(..) | IntRange(..) | NonExhaustive => 0,
-        }
-    }
-
     /// Apply a constructor to a list of patterns, yielding a new pattern. `pats`
     /// must have as many elements as this constructor's arity.
     ///
-    /// This must be consistent with `wildcard_subpatterns`, `specialize_one_pattern`, and `arity`.
+    /// This is roughly the inverse of `specialize_one_pattern`.
     ///
     /// Examples:
     /// `self`: `Constructor::Single`
@@ -951,13 +870,13 @@ impl<'tcx> Constructor<'tcx> {
     /// `ty`: `Option<bool>`
     /// `pats`: `[false]`
     /// returns `Some(false)`
-    fn apply<'a>(
+    fn apply<'p>(
         &self,
-        cx: &MatchCheckCtxt<'a, 'tcx>,
+        cx: &MatchCheckCtxt<'p, 'tcx>,
         ty: Ty<'tcx>,
-        pats: impl IntoIterator<Item = Pat<'tcx>>,
+        fields: Fields<'p, 'tcx>,
     ) -> Pat<'tcx> {
-        let mut subpatterns = pats.into_iter();
+        let mut subpatterns = fields.into_iter().cloned();
 
         let pat = match self {
             Single | Variant(_) => match ty.kind {
@@ -1022,8 +941,7 @@ impl<'tcx> Constructor<'tcx> {
 
     /// Like `apply`, but where all the subpatterns are wildcards `_`.
     fn apply_wildcards<'a>(&self, cx: &MatchCheckCtxt<'a, 'tcx>, ty: Ty<'tcx>) -> Pat<'tcx> {
-        let subpatterns = self.wildcard_subpatterns(cx, ty).into_iter();
-        self.apply(cx, ty, subpatterns)
+        self.apply(cx, ty, Fields::wildcards(cx, self, ty))
     }
 }
 
@@ -1050,6 +968,16 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
         Fields::Vec(pats)
     }
 
+    /// Convenience; internal use.
+    fn wildcards_from_tys(
+        cx: &MatchCheckCtxt<'p, 'tcx>,
+        tys: impl IntoIterator<Item = Ty<'tcx>>,
+    ) -> Self {
+        let wilds = tys.into_iter().map(Pat::wildcard_from_ty);
+        let pats = cx.pattern_arena.alloc_from_iter(wilds);
+        Fields::Slice(pats)
+    }
+
     /// Creates a new list of wildcard fields for a given constructor.
     fn wildcards(
         cx: &MatchCheckCtxt<'p, 'tcx>,
@@ -1057,8 +985,53 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
         ty: Ty<'tcx>,
     ) -> Self {
         debug!("Fields::wildcards({:#?}, {:?})", constructor, ty);
-        let pats = cx.pattern_arena.alloc_from_iter(constructor.wildcard_subpatterns(cx, ty));
-        Fields::Slice(pats)
+        let wildcard_from_ty = |ty| &*cx.pattern_arena.alloc(Pat::wildcard_from_ty(ty));
+
+        match constructor {
+            Single | Variant(_) => match ty.kind {
+                ty::Tuple(ref fs) => {
+                    Fields::wildcards_from_tys(cx, fs.into_iter().map(|ty| ty.expect_ty()))
+                }
+                ty::Ref(_, rty, _) => Fields::from_single_pattern(wildcard_from_ty(rty)),
+                ty::Adt(adt, substs) => {
+                    if adt.is_box() {
+                        // Use T as the sub pattern type of Box<T>.
+                        Fields::from_single_pattern(wildcard_from_ty(substs.type_at(0)))
+                    } else {
+                        let variant = &adt.variants[constructor.variant_index_for_adt(cx, adt)];
+                        let is_non_exhaustive = cx.is_foreign_non_exhaustive_variant(ty, variant);
+                        Fields::wildcards_from_tys(
+                            cx,
+                            variant.fields.iter().map(|field| {
+                                let ty = field.ty(cx.tcx, substs);
+                                let is_visible = adt.is_enum()
+                                    || field.vis.is_accessible_from(cx.module, cx.tcx);
+                                let is_inhabited = !cx.is_uninhabited(ty);
+                                // Treat all uninhabited non-visible fields as `TyErr`. They can't
+                                // appear in any other pattern from this match (because they are
+                                // private), so their type does not matter - but we don't want
+                                // to know they are uninhabited.
+                                // Also treat all uninhabited types in non-exhaustive variants as
+                                // `TyErr`.
+                                let allowed_to_inspect =
+                                    is_inhabited || (is_visible && !is_non_exhaustive);
+
+                                if allowed_to_inspect { ty } else { cx.tcx.types.err }
+                            }),
+                        )
+                    }
+                }
+                _ => Fields::empty(),
+            },
+            Slice(slice) => match ty.kind {
+                ty::Slice(ty) | ty::Array(ty, _) => {
+                    let arity = slice.arity();
+                    Fields::wildcards_from_tys(cx, (0..arity).map(|_| ty))
+                }
+                _ => bug!("bad slice pattern {:?} {:?}", constructor, ty),
+            },
+            ConstantValue(..) | FloatRange(..) | IntRange(..) | NonExhaustive => Fields::empty(),
+        }
     }
 
     fn len(&self) -> usize {
@@ -1068,12 +1041,59 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
         }
     }
 
-    fn iter(&self) -> impl Iterator<Item = &'p Pat<'tcx>> {
+    fn into_iter(self) -> impl Iterator<Item = &'p Pat<'tcx>> {
         let pats: SmallVec<_> = match self {
             Fields::Slice(pats) => pats.iter().collect(),
-            Fields::Vec(pats) => pats.clone(),
+            Fields::Vec(pats) => pats,
         };
         pats.into_iter()
+    }
+
+    /// Overrides some of the fields with the provided patterns.
+    fn replace_with_fieldpats(
+        &self,
+        cx: &MatchCheckCtxt<'p, 'tcx>,
+        new_pats: impl IntoIterator<Item = &'p FieldPat<'tcx>>,
+        is_non_exhaustive: bool,
+    ) -> Self {
+        self.replace_fields_indexed(
+            new_pats
+                .into_iter()
+                .map(|pat| (pat.field.index(), &pat.pattern))
+                .filter(|(_, pat)| !(is_non_exhaustive && cx.is_uninhabited(pat.ty))),
+        )
+    }
+
+    /// Overrides some of the fields with the provided patterns.
+    fn replace_fields_indexed(
+        &self,
+        new_pats: impl IntoIterator<Item = (usize, &'p Pat<'tcx>)>,
+    ) -> Self {
+        let mut fields = self.clone();
+        if let Fields::Slice(pats) = fields {
+            fields = Fields::Vec(pats.iter().collect());
+        }
+
+        match &mut fields {
+            Fields::Vec(pats) => {
+                for (i, pat) in new_pats {
+                    pats[i] = pat
+                }
+            }
+            Fields::Slice(_) => unreachable!(),
+        }
+        fields
+    }
+
+    /// Replaces contained fields with the given filtered list of patterns, e.g. taken from the
+    /// matrix. There must be `len()` patterns in `pats`.
+    fn replace_fields(
+        &self,
+        cx: &MatchCheckCtxt<'p, 'tcx>,
+        pats: impl IntoIterator<Item = Pat<'tcx>>,
+    ) -> Self {
+        let pats: &[_] = cx.pattern_arena.alloc_from_iter(pats);
+        Fields::Slice(pats)
     }
 
     fn push_on_patstack(self, stack: &[&'p Pat<'tcx>]) -> PatStack<'p, 'tcx> {
@@ -1114,15 +1134,16 @@ impl<'tcx, 'p> Usefulness<'tcx, 'p> {
 
     fn apply_constructor(
         self,
-        cx: &MatchCheckCtxt<'_, 'tcx>,
+        cx: &MatchCheckCtxt<'p, 'tcx>,
         ctor: &Constructor<'tcx>,
         ty: Ty<'tcx>,
+        ctor_wild_subpatterns: &Fields<'p, 'tcx>,
     ) -> Self {
         match self {
             UsefulWithWitness(witnesses) => UsefulWithWitness(
                 witnesses
                     .into_iter()
-                    .map(|witness| witness.apply_constructor(cx, &ctor, ty))
+                    .map(|witness| witness.apply_constructor(cx, &ctor, ty, ctor_wild_subpatterns))
                     .collect(),
             ),
             x => x,
@@ -1242,17 +1263,19 @@ impl<'tcx> Witness<'tcx> {
     ///
     /// left_ty: struct X { a: (bool, &'static str), b: usize}
     /// pats: [(false, "foo"), 42]  => X { a: (false, "foo"), b: 42 }
-    fn apply_constructor<'a>(
+    fn apply_constructor<'p>(
         mut self,
-        cx: &MatchCheckCtxt<'a, 'tcx>,
+        cx: &MatchCheckCtxt<'p, 'tcx>,
         ctor: &Constructor<'tcx>,
         ty: Ty<'tcx>,
+        ctor_wild_subpatterns: &Fields<'p, 'tcx>,
     ) -> Self {
-        let arity = ctor.arity(cx, ty);
         let pat = {
-            let len = self.0.len() as u64;
-            let pats = self.0.drain((len - arity) as usize..).rev();
-            ctor.apply(cx, ty, pats)
+            let len = self.0.len();
+            let arity = ctor_wild_subpatterns.len();
+            let pats = self.0.drain((len - arity)..).rev();
+            let fields = ctor_wild_subpatterns.replace_fields(cx, pats);
+            ctor.apply(cx, ty, fields)
         };
 
         self.0.push(pat);
@@ -1877,18 +1900,19 @@ fn is_useful_specialized<'p, 'tcx>(
     matrix: &Matrix<'p, 'tcx>,
     v: &PatStack<'p, 'tcx>,
     ctor: Constructor<'tcx>,
-    lty: Ty<'tcx>,
+    ty: Ty<'tcx>,
     witness_preference: WitnessPreference,
     hir_id: HirId,
     is_under_guard: bool,
 ) -> Usefulness<'tcx, 'p> {
-    debug!("is_useful_specialized({:#?}, {:#?}, {:?})", v, ctor, lty);
+    debug!("is_useful_specialized({:#?}, {:#?}, {:?})", v, ctor, ty);
 
-    let ctor_wild_subpatterns = Fields::wildcards(cx, &ctor, lty);
+    // We cache the result of `Fields::wildcards` because it is used a lot.
+    let ctor_wild_subpatterns = Fields::wildcards(cx, &ctor, ty);
     let matrix = matrix.specialize_constructor(cx, &ctor, &ctor_wild_subpatterns);
     v.specialize_constructor(cx, &ctor, &ctor_wild_subpatterns)
         .map(|v| is_useful(cx, &matrix, &v, witness_preference, hir_id, is_under_guard, false))
-        .map(|u| u.apply_constructor(cx, &ctor, lty))
+        .map(|u| u.apply_constructor(cx, &ctor, ty, &ctor_wild_subpatterns))
         .unwrap_or(NotUseful)
 }
 
@@ -2352,27 +2376,6 @@ fn constructor_covered_by_range<'tcx>(
     if intersects { Some(()) } else { None }
 }
 
-fn patterns_for_variant<'p, 'tcx>(
-    cx: &mut MatchCheckCtxt<'p, 'tcx>,
-    subpatterns: &'p [FieldPat<'tcx>],
-    ctor_wild_subpatterns: &Fields<'p, 'tcx>,
-    is_non_exhaustive: bool,
-) -> Fields<'p, 'tcx> {
-    let mut result: SmallVec<_> = ctor_wild_subpatterns.iter().collect();
-
-    for subpat in subpatterns {
-        if !is_non_exhaustive || !cx.is_uninhabited(subpat.pattern.ty) {
-            result[subpat.field.index()] = &subpat.pattern;
-        }
-    }
-
-    debug!(
-        "patterns_for_variant({:#?}, {:#?}) = {:#?}",
-        subpatterns, ctor_wild_subpatterns, result
-    );
-    Fields::from_vec(result)
-}
-
 /// This is the main specialization step. It expands the pattern
 /// into `arity` patterns based on the constructor. For most patterns, the step is trivial,
 /// for instance tuple patterns are flattened and box patterns expand into their inner pattern.
@@ -2382,6 +2385,8 @@ fn patterns_for_variant<'p, 'tcx>(
 /// different patterns.
 /// Structure patterns with a partial wild pattern (Foo { a: 42, .. }) have their missing
 /// fields filled with wild patterns.
+///
+/// This is roughly the inverse of `Constructor::apply`.
 fn specialize_one_pattern<'p, 'tcx>(
     cx: &mut MatchCheckCtxt<'p, 'tcx>,
     pat: &'p Pat<'tcx>,
@@ -2407,11 +2412,11 @@ fn specialize_one_pattern<'p, 'tcx>(
                 return None;
             }
             let is_non_exhaustive = cx.is_foreign_non_exhaustive_variant(pat.ty, variant);
-            Some(patterns_for_variant(cx, subpatterns, ctor_wild_subpatterns, is_non_exhaustive))
+            Some(ctor_wild_subpatterns.replace_with_fieldpats(cx, subpatterns, is_non_exhaustive))
         }
 
         PatKind::Leaf { ref subpatterns } => {
-            Some(patterns_for_variant(cx, subpatterns, ctor_wild_subpatterns, false))
+            Some(ctor_wild_subpatterns.replace_with_fieldpats(cx, subpatterns, false))
         }
 
         PatKind::Deref { ref subpattern } => Some(Fields::from_single_pattern(subpattern)),
@@ -2512,18 +2517,15 @@ fn specialize_one_pattern<'p, 'tcx>(
                 // Number of subpatterns for this constructor
                 let arity = ctor_wild_subpatterns.len();
 
-                if slice.is_none() && arity != pat_len {
+                if (slice.is_none() && arity != pat_len) || pat_len > arity {
                     return None;
                 }
 
-                // Number of subpatterns matched by the `..` subslice pattern (is 0 for a slice
-                // pattern of fixed length).
-                let subslice_count = arity.checked_sub(pat_len)?;
-                let subslice_pats =
-                    ctor_wild_subpatterns.iter().skip(prefix.len()).take(subslice_count);
-                Some(Fields::from_vec(
-                    prefix.iter().chain(subslice_pats).chain(suffix.iter()).collect(),
-                ))
+                // Replace the prefix and the suffix with the given patterns, leaving wildcards in
+                // the middle if there was a subslice pattern `..`.
+                let prefix = prefix.iter().enumerate();
+                let suffix = suffix.iter().enumerate().map(|(i, p)| (arity - suffix.len() + i, p));
+                Some(ctor_wild_subpatterns.replace_fields_indexed(prefix.chain(suffix)))
             }
             ConstantValue(cv) => {
                 match slice_pat_covered_by_const(
