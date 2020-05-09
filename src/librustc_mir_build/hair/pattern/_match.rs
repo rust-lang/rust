@@ -963,11 +963,12 @@ impl<'p, 'tcx> FilteredField<'p, 'tcx> {
 ///
 /// If a private or `non_exhaustive` field is uninhabited, the code mustn't observe that it is
 /// uninhabited. For that, we filter these fields out of the matrix. This is subtle because we
-/// still need to have those fields back when going to/from a `Pat`. Mot of this is handled
-/// automatically in `Fields`, but when constructing or deconstructing fields you need to use the
-/// correct method. As a rule, when going to/from the matrix, use the filtered field list; when
-/// going to/from `Pat`, use the full field list.
-/// This filtering is uncommon in practice, because uninhabited fields are rarely used.
+/// still need to have those fields back when going to/from a `Pat`. Most of this is handled
+/// automatically in `Fields`, but when constructing or deconstructing `Fields` you need to be
+/// careful. As a rule, when going to/from the matrix, use the filtered field list; when going
+/// to/from `Pat`, use the full field list.
+/// This filtering is uncommon in practice, because uninhabited fields are rarely used, so we avoid
+/// it when possible to preserve performance.
 #[derive(Debug, Clone)]
 enum Fields<'p, 'tcx> {
     /// Lists of patterns that don't contain any filtered fields.
