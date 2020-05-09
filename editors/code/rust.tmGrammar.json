@@ -600,7 +600,7 @@
 		},
 		"core_types": {
 			"comment": "Built-in/core type",
-			"name": "storage.type.core.rust",
+			"name": "entity.name.type.core.rust",
 			"match": "\\b(bool|char|usize|isize|u8|u16|u32|u64|u128|i8|i16|i32|i64|i128|f32|f64|str|Self|Option|Result)\\b"
 		},
 		"core_vars": {
@@ -610,22 +610,22 @@
 		},
 		"core_marker": {
 			"comment": "Core trait (marker)",
-			"name": "support.type.marker.rust",
+			"name": "entity.name.type.marker.rust",
 			"match": "\\b(Copy|Send|Sized|Sync)\\b"
 		},
 		"core_traits": {
 			"comment": "Core trait",
-			"name": "support.type.core.rust",
+			"name": "entity.name.type.core.rust",
 			"match": "\\b(Drop|Fn|FnMut|FnOnce|Clone|PartialEq|PartialOrd|Eq|Ord|AsRef|AsMut|Into|From|Default|Iterator|Extend|IntoIterator|DoubleEndedIterator|ExactSizeIterator)\\b"
 		},
 		"std_types": {
 			"comment": "Standard library type",
-			"name": "storage.class.std.rust",
+			"name": "entity.name.type.class.std.rust",
 			"match": "\\b(Box|String|Vec|Path|PathBuf)\\b"
 		},
 		"std_traits": {
 			"comment": "Standard library trait",
-			"name": "support.type.std.rust",
+			"name": "entity.name.type.std.rust",
 			"match": "\\b(ToOwned|ToString)\\b"
 		},
 		"type": {
