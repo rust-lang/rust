@@ -502,7 +502,8 @@ fn inside_cargo_rustc() {
     ///
     /// Currently, we detect this by checking for "--target=", which is
     /// never set for host crates. This matches what rustc bootstrap does,
-    /// which hopefully makes it "reliable enough".
+    /// which hopefully makes it "reliable enough". This relies on us always
+    /// invoking cargo itself with `--target`, which `in_cargo_miri` ensures.
     fn is_target_crate() -> bool {
         get_arg_flag_value("--target").is_some()
     }
