@@ -5317,22 +5317,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     item_def_id,
                 };
 
+                let cause = traits::ObligationCause::misc(sp, self.body_id);
+                let normalized_ty = self.fulfillment_cx.borrow_mut().normalize_projection_type(
+                    &self.infcx,
+                    self.param_env,
+                    projection_ty,
+                    cause,
+                );
+                debug!("suggest_missing_await: projection_type {:?}", normalized_ty);
+
                 let predicate =
                     ty::Predicate::Projection(ty::Binder::bind(ty::ProjectionPredicate {
                         projection_ty,
                         ty: expected,
                     }));
                 let obligation = traits::Obligation::new(self.misc(sp), self.param_env, predicate);
-                debug!("suggest_missing_await: trying obligation {:?}", obligation);
 
-                //let try_trait_def_id = self.tcx.require_lang_item(lang_items::TryTraitLangItem, None);
-                //let try_trait_ref = ty::TraitRef {
-                //    def_id: try_trait_def_id,
-                //    substs: self.tcx.mk_substs_trait(self.tcx.type_of(item_def_id), &[]),
-                //};
-                //let try_obligation = traits::Obligation::new(self.misc(sp), self.param_env, try_trait_ref.without_const().to_predicate());
-                //let try_trait_is_implemented = self.predicate_must_hold_modulo_regions(&try_obligation);
-                //debug!("suggest_missing_await: try trait is implemented {}", try_trait_is_implemented);
+                debug!("suggest_missing_await: trying obligation {:?}", obligation);
 
                 if self.infcx.predicate_may_hold(&obligation) {
                     debug!("suggest_missing_await: obligation held: {:?}", obligation);
