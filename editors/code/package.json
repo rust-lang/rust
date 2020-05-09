@@ -623,6 +623,12 @@
                     ],
                     "formatSpecifier": [
                         "punctuation.section.embedded.rust"
+                    ],
+                    "*.mutable": [
+                        "markup.underline"
+                    ],
+                    "*.static": [
+                        "markup.italic"
                     ]
                 }
             }
