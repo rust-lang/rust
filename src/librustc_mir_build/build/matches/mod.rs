@@ -470,9 +470,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 for binding in &candidate_ref.bindings {
                     let local = self.var_local_id(binding.var_id, OutsideGuard);
 
-                    if let LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
+                    if let Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
                         VarBindingForm { opt_match_place: Some((ref mut match_place, _)), .. },
-                    ))) = self.local_decls[local].local_info
+                    )))) = self.local_decls[local].local_info
                     {
                         *match_place = Some(initializer);
                     } else {
@@ -1539,7 +1539,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let fake_borrow_deref_ty = matched_place.ty(&self.local_decls, tcx).ty;
                 let fake_borrow_ty = tcx.mk_imm_ref(tcx.lifetimes.re_erased, fake_borrow_deref_ty);
                 let fake_borrow_temp =
-                    self.local_decls.push(LocalDecl::new_temp(fake_borrow_ty, temp_span));
+                    self.local_decls.push(LocalDecl::new(fake_borrow_ty, temp_span));
 
                 (matched_place, fake_borrow_temp)
             })
@@ -1949,11 +1949,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let local = LocalDecl::<'tcx> {
             mutability,
             ty: var_ty,
-            user_ty,
+            user_ty: if user_ty.is_empty() { None } else { Some(box user_ty) },
             source_info,
             internal: false,
             is_block_tail: None,
-            local_info: LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
+            local_info: Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
                 binding_mode,
                 // hypothetically, `visit_bindings` could try to unzip
                 // an outermost hir::Ty as we descend, matching up
@@ -1962,7 +1962,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 opt_ty_info: None,
                 opt_match_place,
                 pat_span,
-            }))),
+            })))),
         };
         let for_arm_body = self.local_decls.push(local);
         self.var_debug_info.push(VarDebugInfo {
@@ -1976,11 +1976,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // immutable to avoid the unused mut lint.
                 mutability: Mutability::Not,
                 ty: tcx.mk_imm_ref(tcx.lifetimes.re_erased, var_ty),
-                user_ty: UserTypeProjections::none(),
+                user_ty: None,
                 source_info,
                 internal: false,
                 is_block_tail: None,
-                local_info: LocalInfo::User(ClearCrossCrate::Set(BindingForm::RefForGuard)),
+                local_info: Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::RefForGuard))),
             });
             self.var_debug_info.push(VarDebugInfo {
                 name,

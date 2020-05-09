@@ -474,6 +474,13 @@ pub struct SourceInfo {
     pub scope: SourceScope,
 }
 
+impl SourceInfo {
+    #[inline]
+    pub fn outermost(span: Span) -> Self {
+        SourceInfo { span, scope: OUTERMOST_SOURCE_SCOPE }
+    }
+}
+
 ///////////////////////////////////////////////////////////////////////////
 // Borrow kinds
 
@@ -689,7 +696,7 @@ pub struct LocalDecl<'tcx> {
     pub mutability: Mutability,
 
     // FIXME(matthewjasper) Don't store in this in `Body`
-    pub local_info: LocalInfo<'tcx>,
+    pub local_info: Option<Box<LocalInfo<'tcx>>>,
 
     /// `true` if this is an internal local.
     ///
@@ -725,7 +732,7 @@ pub struct LocalDecl<'tcx> {
     /// borrow checker needs this information since it can affect
     /// region inference.
     // FIXME(matthewjasper) Don't store in this in `Body`
-    pub user_ty: UserTypeProjections,
+    pub user_ty: Option<Box<UserTypeProjections>>,
 
     /// The *syntactic* (i.e., not visibility) source scope the local is defined
     /// in. If the local was defined in a let-statement, this
@@ -809,7 +816,13 @@ pub struct LocalDecl<'tcx> {
     pub source_info: SourceInfo,
 }
 
-/// Extra information about a local that's used for diagnostics.
+// `LocalDecl` is used a lot. Make sure it doesn't unintentionally get bigger.
+#[cfg(target_arch = "x86_64")]
+static_assert_size!(LocalDecl<'_>, 56);
+
+/// Extra information about a some locals that's used for diagnostics. (Not
+/// used for non-StaticRef temporaries, the return place, or anonymous function
+/// parameters.)
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
 pub enum LocalInfo<'tcx> {
     /// A user-defined local variable or function parameter
@@ -820,8 +833,6 @@ pub enum LocalInfo<'tcx> {
     User(ClearCrossCrate<BindingForm<'tcx>>),
     /// A temporary created that references the static with the given `DefId`.
     StaticRef { def_id: DefId, is_thread_local: bool },
-    /// Any other temporary, the return place, or an anonymous function parameter.
-    Other,
 }
 
 impl<'tcx> LocalDecl<'tcx> {
@@ -833,16 +844,16 @@ impl<'tcx> LocalDecl<'tcx> {
     /// - or `match ... { C(x) => ... }`
     pub fn can_be_made_mutable(&self) -> bool {
         match self.local_info {
-            LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
+            Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
                 binding_mode: ty::BindingMode::BindByValue(_),
                 opt_ty_info: _,
                 opt_match_place: _,
                 pat_span: _,
-            }))) => true,
+            })))) => true,
 
-            LocalInfo::User(ClearCrossCrate::Set(BindingForm::ImplicitSelf(
+            Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::ImplicitSelf(
                 ImplicitSelfKind::Imm,
-            ))) => true,
+            )))) => true,
 
             _ => false,
         }
@@ -853,14 +864,14 @@ impl<'tcx> LocalDecl<'tcx> {
     /// mutable bindings, but the inverse does not necessarily hold).
     pub fn is_nonref_binding(&self) -> bool {
         match self.local_info {
-            LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
+            Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
                 binding_mode: ty::BindingMode::BindByValue(_),
                 opt_ty_info: _,
                 opt_match_place: _,
                 pat_span: _,
-            }))) => true,
+            })))) => true,
 
-            LocalInfo::User(ClearCrossCrate::Set(BindingForm::ImplicitSelf(_))) => true,
+            Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::ImplicitSelf(_)))) => true,
 
             _ => false,
         }
@@ -871,7 +882,7 @@ impl<'tcx> LocalDecl<'tcx> {
     #[inline]
     pub fn is_user_variable(&self) -> bool {
         match self.local_info {
-            LocalInfo::User(_) => true,
+            Some(box LocalInfo::User(_)) => true,
             _ => false,
         }
     }
@@ -881,7 +892,7 @@ impl<'tcx> LocalDecl<'tcx> {
     /// match arm.
     pub fn is_ref_for_guard(&self) -> bool {
         match self.local_info {
-            LocalInfo::User(ClearCrossCrate::Set(BindingForm::RefForGuard)) => true,
+            Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::RefForGuard))) => true,
             _ => false,
         }
     }
@@ -890,7 +901,7 @@ impl<'tcx> LocalDecl<'tcx> {
     /// access that static
     pub fn is_ref_to_static(&self) -> bool {
         match self.local_info {
-            LocalInfo::StaticRef { .. } => true,
+            Some(box LocalInfo::StaticRef { .. }) => true,
             _ => false,
         }
     }
@@ -899,7 +910,7 @@ impl<'tcx> LocalDecl<'tcx> {
     /// access that static
     pub fn is_ref_to_thread_local(&self) -> bool {
         match self.local_info {
-            LocalInfo::StaticRef { is_thread_local, .. } => is_thread_local,
+            Some(box LocalInfo::StaticRef { is_thread_local, .. }) => is_thread_local,
             _ => false,
         }
     }
@@ -911,10 +922,31 @@ impl<'tcx> LocalDecl<'tcx> {
         self.source_info.span.desugaring_kind().is_some()
     }
 
-    /// Creates a new `LocalDecl` for a temporary.
+    /// Creates a new `LocalDecl` for a temporary: mutable, non-internal.
     #[inline]
-    pub fn new_temp(ty: Ty<'tcx>, span: Span) -> Self {
-        Self::new_local(ty, Mutability::Mut, false, span)
+    pub fn new(ty: Ty<'tcx>, span: Span) -> Self {
+        Self::with_source_info(ty, SourceInfo::outermost(span))
+    }
+
+    /// Like `LocalDecl::new`, but takes a `SourceInfo` instead of a `Span`.
+    #[inline]
+    pub fn with_source_info(ty: Ty<'tcx>, source_info: SourceInfo) -> Self {
+        LocalDecl {
+            mutability: Mutability::Mut,
+            local_info: None,
+            internal: false,
+            is_block_tail: None,
+            ty,
+            user_ty: None,
+            source_info,
+        }
+    }
+
+    /// Converts `self` into same `LocalDecl` except tagged as internal.
+    #[inline]
+    pub fn internal(mut self) -> Self {
+        self.internal = true;
+        self
     }
 
     /// Converts `self` into same `LocalDecl` except tagged as immutable.
@@ -930,41 +962,6 @@ impl<'tcx> LocalDecl<'tcx> {
         assert!(self.is_block_tail.is_none());
         self.is_block_tail = Some(info);
         self
-    }
-
-    /// Creates a new `LocalDecl` for a internal temporary.
-    #[inline]
-    pub fn new_internal(ty: Ty<'tcx>, span: Span) -> Self {
-        Self::new_local(ty, Mutability::Mut, true, span)
-    }
-
-    #[inline]
-    fn new_local(ty: Ty<'tcx>, mutability: Mutability, internal: bool, span: Span) -> Self {
-        LocalDecl {
-            mutability,
-            ty,
-            user_ty: UserTypeProjections::none(),
-            source_info: SourceInfo { span, scope: OUTERMOST_SOURCE_SCOPE },
-            internal,
-            local_info: LocalInfo::Other,
-            is_block_tail: None,
-        }
-    }
-
-    /// Builds a `LocalDecl` for the return place.
-    ///
-    /// This must be inserted into the `local_decls` list as the first local.
-    #[inline]
-    pub fn new_return_place(return_ty: Ty<'_>, span: Span) -> LocalDecl<'_> {
-        LocalDecl {
-            mutability: Mutability::Mut,
-            ty: return_ty,
-            user_ty: UserTypeProjections::none(),
-            source_info: SourceInfo { span, scope: OUTERMOST_SOURCE_SCOPE },
-            internal: false,
-            is_block_tail: None,
-            local_info: LocalInfo::Other,
-        }
     }
 }
 
@@ -1406,10 +1403,7 @@ impl<'tcx> BasicBlockData<'tcx> {
         let mut gap = self.statements.len()..self.statements.len() + extra_stmts;
         self.statements.resize(
             gap.end,
-            Statement {
-                source_info: SourceInfo { span: DUMMY_SP, scope: OUTERMOST_SOURCE_SCOPE },
-                kind: StatementKind::Nop,
-            },
+            Statement { source_info: SourceInfo::outermost(DUMMY_SP), kind: StatementKind::Nop },
         );
         for (splice_start, new_stmts) in splices.into_iter().rev() {
             let splice_end = splice_start + new_stmts.size_hint().0;
@@ -2457,12 +2451,16 @@ impl Constant<'tcx> {
 /// &'static str`.
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
 pub struct UserTypeProjections {
-    pub(crate) contents: Vec<(UserTypeProjection, Span)>,
+    pub contents: Vec<(UserTypeProjection, Span)>,
 }
 
 impl<'tcx> UserTypeProjections {
     pub fn none() -> Self {
         UserTypeProjections { contents: vec![] }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.contents.is_empty()
     }
 
     pub fn from_projections(projs: impl Iterator<Item = (UserTypeProjection, Span)>) -> Self {

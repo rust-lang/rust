@@ -187,15 +187,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let ptr_ty = ptr.ty;
                     // Create an *internal* temp for the pointer, so that unsafety
                     // checking won't complain about the raw pointer assignment.
-                    let ptr_temp = this.local_decls.push(LocalDecl {
-                        mutability: Mutability::Mut,
-                        ty: ptr_ty,
-                        user_ty: UserTypeProjections::none(),
+                    let ptr_temp = this.local_decls.push(LocalDecl::with_source_info(
+                        ptr_ty,
                         source_info,
-                        internal: true,
-                        local_info: LocalInfo::Other,
-                        is_block_tail: None,
-                    });
+                    ).internal());
                     let ptr_temp = Place::from(ptr_temp);
                     let block = unpack!(this.into(ptr_temp, block, ptr));
                     this.into(this.hir.tcx().mk_place_deref(ptr_temp), block, val)
@@ -348,7 +343,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // value is Sized. Usually, this is caught in type checking, but
                 // in the case of box expr there is no such check.
                 if !destination.projection.is_empty() {
-                    this.local_decls.push(LocalDecl::new_temp(expr.ty, expr.span));
+                    this.local_decls.push(LocalDecl::new(expr.ty, expr.span));
                 }
 
                 debug_assert!(Category::of(&expr.kind) == Some(Category::Place));

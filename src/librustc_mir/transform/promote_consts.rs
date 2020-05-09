@@ -778,7 +778,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         self.promoted.basic_blocks_mut().push(BasicBlockData {
             statements: vec![],
             terminator: Some(Terminator {
-                source_info: SourceInfo { span, scope: OUTERMOST_SOURCE_SCOPE },
+                source_info: SourceInfo::outermost(span),
                 kind: TerminatorKind::Return,
             }),
             is_cleanup: false,
@@ -789,7 +789,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         let last = self.promoted.basic_blocks().last().unwrap();
         let data = &mut self.promoted[last];
         data.statements.push(Statement {
-            source_info: SourceInfo { span, scope: OUTERMOST_SOURCE_SCOPE },
+            source_info: SourceInfo::outermost(span),
             kind: StatementKind::Assign(box (Place::from(dest), rvalue)),
         });
     }
@@ -818,7 +818,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         }
 
         let num_stmts = self.source[loc.block].statements.len();
-        let new_temp = self.promoted.local_decls.push(LocalDecl::new_temp(
+        let new_temp = self.promoted.local_decls.push(LocalDecl::new(
             self.source.local_decls[temp].ty,
             self.source.local_decls[temp].source_info.span,
         ));
@@ -918,7 +918,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             let tcx = self.tcx;
             let mut promoted_operand = |ty, span| {
                 promoted.span = span;
-                promoted.local_decls[RETURN_PLACE] = LocalDecl::new_return_place(ty, span);
+                promoted.local_decls[RETURN_PLACE] = LocalDecl::new(ty, span);
 
                 Operand::Constant(Box::new(Constant {
                     span,
@@ -966,7 +966,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                             // Create a temp to hold the promoted reference.
                             // This is because `*r` requires `r` to be a local,
                             // otherwise we would use the `promoted` directly.
-                            let mut promoted_ref = LocalDecl::new_temp(ref_ty, span);
+                            let mut promoted_ref = LocalDecl::new(ref_ty, span);
                             promoted_ref.source_info = statement.source_info;
                             let promoted_ref = local_decls.push(promoted_ref);
                             assert_eq!(self.temps.push(TempState::Unpromotable), promoted_ref);
@@ -1084,8 +1084,7 @@ pub fn promote_candidates<'tcx>(
         }
 
         // Declare return place local so that `mir::Body::new` doesn't complain.
-        let initial_locals =
-            iter::once(LocalDecl::new_return_place(tcx.types.never, body.span)).collect();
+        let initial_locals = iter::once(LocalDecl::new(tcx.types.never, body.span)).collect();
 
         let mut promoted = Body::new(
             IndexVec::new(),
