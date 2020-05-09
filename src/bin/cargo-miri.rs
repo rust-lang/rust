@@ -86,11 +86,15 @@ fn get_arg_flag_value(name: &str) -> Option<String> {
     }
 }
 
-/// Returns a command for the right `miri` binary.
-fn miri() -> Command {
+/// Returns the path to the `miri` binary
+fn find_miri() -> PathBuf {
     let mut path = std::env::current_exe().expect("current executable path invalid");
     path.set_file_name("miri");
-    Command::new(path)
+    path
+}
+
+fn miri() -> Command {
+    Command::new(find_miri())
 }
 
 fn cargo() -> Command {
@@ -322,7 +326,8 @@ fn setup(subcommand: MiriCommand) {
         show_error(format!("Given Rust source directory `{}` does not exist.", rust_src.display()));
     }
 
-    // Next, we need our own libstd. We will do this work in whatever is a good cache dir for this platform.
+    // Next, we need our own libstd. Prepare a xargo project for that purpose.
+    // We will do this work in whatever is a good cache dir for this platform.
     let dirs = directories::ProjectDirs::from("org", "rust-lang", "miri").unwrap();
     let dir = dirs.cache_dir();
     if !dir.exists() {
@@ -360,20 +365,31 @@ path = "lib.rs"
         )
         .unwrap();
     File::create(dir.join("lib.rs")).unwrap();
-    // Prepare xargo invocation.
+
+    // Determine architectures.
+    // We always need to set a target so rustc bootstrap can tell apart host from target crates.
+    let host = rustc_version::version_meta().unwrap().host;
     let target = get_arg_flag_value("--target");
-    let print_sysroot = subcommand == MiriCommand::Setup
-        && has_arg_flag("--print-sysroot"); // whether we just print the sysroot path
+    let target = target.as_ref().unwrap_or(&host);
+    // Now invoke xargo.
     let mut command = xargo_check();
     command.arg("build").arg("-q");
+    command.arg("--target").arg(target);
     command.current_dir(&dir);
-    command.env("RUSTFLAGS", miri::miri_default_args().join(" "));
     command.env("XARGO_HOME", &dir);
     command.env("XARGO_RUST_SRC", &rust_src);
-    // Handle target flag.
-    if let Some(target) = &target {
-        command.arg("--target").arg(target);
+    // Use Miri as rustc to build a libstd compatible with us (and use the right flags).
+    // However, when we are running in bootstrap, we cannot just overwrite `RUSTC`,
+    // because we still need bootstrap to distinguish between host and target crates.
+    // In that case we overwrite `RUSTC_REAL` instead which determines the rustc used
+    // for target crates.
+    if env::var_os("RUSTC_STAGE").is_some() {
+        command.env("RUSTC_REAL", find_miri());
+    } else {
+        command.env("RUSTC", find_miri());
     }
+    command.env("MIRI_BE_RUSTC", "1");
+    command.env("RUSTFLAGS", miri::miri_default_args().join(" "));
     // Finally run it!
     if command.status().expect("failed to run xargo").success().not() {
         show_error(format!("Failed to run xargo"));
@@ -382,12 +398,11 @@ path = "lib.rs"
     // That should be it! But we need to figure out where xargo built stuff.
     // Unfortunately, it puts things into a different directory when the
     // architecture matches the host.
-    let is_host = match &target {
-        None => true,
-        Some(target) => target == &rustc_version::version_meta().unwrap().host,
-    };
-    let sysroot = if is_host { dir.join("HOST") } else { PathBuf::from(dir) };
+    let sysroot = if target == &host { dir.join("HOST") } else { PathBuf::from(dir) };
     std::env::set_var("MIRI_SYSROOT", &sysroot); // pass the env var to the processes we spawn, which will turn it into "--sysroot" flags
+    // Figure out what to print.
+    let print_sysroot = subcommand == MiriCommand::Setup
+        && has_arg_flag("--print-sysroot"); // whether we just print the sysroot path
     if print_sysroot {
         // Print just the sysroot and nothing else; this way we do not need any escaping.
         println!("{}", sysroot.display());
@@ -476,7 +491,7 @@ fn in_cargo_miri() {
 
         // Set `RUSTC_WRAPPER` to ourselves.  Cargo will prepend that binary to its usual invocation,
         // i.e., the first argument is `rustc` -- which is what we use in `main` to distinguish
-        // the two codepaths.
+        // the two codepaths. (That extra argument is why we prefer this over setting `RUSTC`.)
         let path = std::env::current_exe().expect("current executable path invalid");
         cmd.env("RUSTC_WRAPPER", path);
         if verbose {

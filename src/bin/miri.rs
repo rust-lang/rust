@@ -124,6 +124,12 @@ fn compile_time_sysroot() -> Option<String> {
 }
 
 fn main() {
+    // If the environment asks us to actually be rustc, then do that.
+    if env::var_os("MIRI_BE_RUSTC").is_some() {
+        eprintln!("miri-as-rustc called with args: {:?}", env::args());
+        return rustc_driver::main();
+    }
+
     init_early_loggers();
 
     // Parse our arguments and split them across `rustc` and `miri`.
