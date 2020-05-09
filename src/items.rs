@@ -1862,6 +1862,9 @@ pub(crate) fn rewrite_type_alias(
         let lhs = format!("{}=", prefix);
         rewrite_assign_rhs(context, lhs, &**ty, shape).map(|s| s + ";")
     } else {
+        if !generics.where_clause.predicates.is_empty() {
+            prefix.push_str(&indent.to_string_with_newline(context.config));
+        }
         Some(format!("{};", prefix))
     }
 }
