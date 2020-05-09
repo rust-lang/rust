@@ -242,7 +242,7 @@ use rustc_hir::{HirId, RangeEnd};
 use rustc_middle::mir::interpret::{truncate, AllocId, ConstValue, Pointer, Scalar};
 use rustc_middle::mir::Field;
 use rustc_middle::ty::layout::IntegerExt;
-use rustc_middle::ty::{self, Const, Ty, TyCtxt, TypeFoldable, VariantDef};
+use rustc_middle::ty::{self, Const, Ty, TyCtxt, TypeFoldable};
 use rustc_session::lint;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{Integer, Size, VariantIdx};
@@ -591,21 +591,12 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
         }
     }
 
-    // Returns whether the given type is an enum from another crate declared `#[non_exhaustive]`.
+    /// Returns whether the given type is an enum from another crate declared `#[non_exhaustive]`.
     crate fn is_foreign_non_exhaustive_enum(&self, ty: Ty<'tcx>) -> bool {
         match ty.kind {
             ty::Adt(def, ..) => {
                 def.is_enum() && def.is_variant_list_non_exhaustive() && !def.did.is_local()
             }
-            _ => false,
-        }
-    }
-
-    // Returns whether the given variant is from another crate and has its fields declared
-    // `#[non_exhaustive]`.
-    fn is_foreign_non_exhaustive_variant(&self, ty: Ty<'tcx>, variant: &VariantDef) -> bool {
-        match ty.kind {
-            ty::Adt(def, ..) => variant.is_field_list_non_exhaustive() && !def.did.is_local(),
             _ => false,
         }
     }
@@ -876,7 +867,7 @@ impl<'tcx> Constructor<'tcx> {
         ty: Ty<'tcx>,
         fields: Fields<'p, 'tcx>,
     ) -> Pat<'tcx> {
-        let mut subpatterns = fields.into_iter().cloned();
+        let mut subpatterns = fields.all_patterns();
 
         let pat = match self {
             Single | Variant(_) => match ty.kind {
@@ -945,12 +936,45 @@ impl<'tcx> Constructor<'tcx> {
     }
 }
 
+#[derive(Debug, Copy, Clone)]
+enum FilteredField<'p, 'tcx> {
+    Kept(&'p Pat<'tcx>),
+    Hidden(Ty<'tcx>),
+}
+
+impl<'p, 'tcx> FilteredField<'p, 'tcx> {
+    fn kept(self) -> Option<&'p Pat<'tcx>> {
+        match self {
+            FilteredField::Kept(p) => Some(p),
+            FilteredField::Hidden(_) => None,
+        }
+    }
+
+    fn to_pattern(self) -> Pat<'tcx> {
+        match self {
+            FilteredField::Kept(p) => p.clone(),
+            FilteredField::Hidden(ty) => Pat::wildcard_from_ty(ty),
+        }
+    }
+}
+
 /// A value can be decomposed into a constructor applied to some fields. This struct represents
 /// those fields, generalized to allow patterns in each field. See also `Constructor`.
+///
+/// If a private or `non_exhaustive` field is uninhabited, the code mustn't observe that it is
+/// uninhabited. For that, we filter these fields out of the matrix. This is subtle because we
+/// still need to have those fields back when going to/from a `Pat`. Mot of this is handled
+/// automatically in `Fields`, but when constructing or deconstructing fields you need to use the
+/// correct method. As a rule, when going to/from the matrix, use the filtered field list; when
+/// going to/from `Pat`, use the full field list.
+/// This filtering is uncommon in practice, because uninhabited fields are rarely used.
 #[derive(Debug, Clone)]
 enum Fields<'p, 'tcx> {
+    /// Lists of patterns that don't contain any filtered fields.
     Slice(&'p [Pat<'tcx>]),
     Vec(SmallVec<[&'p Pat<'tcx>; 2]>),
+    /// Patterns where some of the fields need to be hidden.
+    Filtered(SmallVec<[FilteredField<'p, 'tcx>; 2]>),
 }
 
 impl<'p, 'tcx> Fields<'p, 'tcx> {
@@ -964,7 +988,9 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
         Fields::Slice(std::slice::from_ref(pat))
     }
 
-    fn from_vec(pats: SmallVec<[&'p Pat<'tcx>; 2]>) -> Self {
+    /// Construct a new `Fields` from the given patterns. You must be sure those patterns can't
+    /// contain fields that need to be filtered out. When in doubt, prefer `replace_fields`.
+    fn from_vec_unfiltered(pats: SmallVec<[&'p Pat<'tcx>; 2]>) -> Self {
         Fields::Vec(pats)
     }
 
@@ -999,26 +1025,40 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                         Fields::from_single_pattern(wildcard_from_ty(substs.type_at(0)))
                     } else {
                         let variant = &adt.variants[constructor.variant_index_for_adt(cx, adt)];
-                        let is_non_exhaustive = cx.is_foreign_non_exhaustive_variant(ty, variant);
-                        Fields::wildcards_from_tys(
-                            cx,
-                            variant.fields.iter().map(|field| {
-                                let ty = field.ty(cx.tcx, substs);
-                                let is_visible = adt.is_enum()
-                                    || field.vis.is_accessible_from(cx.module, cx.tcx);
-                                let is_inhabited = !cx.is_uninhabited(ty);
-                                // Treat all uninhabited non-visible fields as `TyErr`. They can't
-                                // appear in any other pattern from this match (because they are
-                                // private), so their type does not matter - but we don't want
-                                // to know they are uninhabited.
-                                // Also treat all uninhabited types in non-exhaustive variants as
-                                // `TyErr`.
-                                let allowed_to_inspect =
-                                    is_inhabited || (is_visible && !is_non_exhaustive);
+                        // Whether we must not match the fields of this variant exhaustively.
+                        let is_non_exhaustive =
+                            variant.is_field_list_non_exhaustive() && !adt.did.is_local();
+                        let field_tys = variant.fields.iter().map(|field| field.ty(cx.tcx, substs));
+                        // In the following cases, we don't need to filter out any fields. This is
+                        // the vast majority of real cases, since uninhabited fields are uncommon.
+                        let has_no_hidden_fields = (adt.is_enum() && !is_non_exhaustive)
+                            || !field_tys.clone().any(|ty| cx.is_uninhabited(ty));
 
-                                if allowed_to_inspect { ty } else { cx.tcx.types.err }
-                            }),
-                        )
+                        if has_no_hidden_fields {
+                            Fields::wildcards_from_tys(cx, field_tys)
+                        } else {
+                            let fields = variant
+                                .fields
+                                .iter()
+                                .map(|field| {
+                                    let ty = field.ty(cx.tcx, substs);
+                                    let is_visible = adt.is_enum()
+                                        || field.vis.is_accessible_from(cx.module, cx.tcx);
+                                    let is_uninhabited = cx.is_uninhabited(ty);
+
+                                    // In the cases of either a `#[non_exhaustive]` field list
+                                    // or a non-public field, we hide uninhabited fields in
+                                    // order not to reveal the uninhabitedness of the whole
+                                    // variant.
+                                    if is_uninhabited && (!is_visible || is_non_exhaustive) {
+                                        FilteredField::Hidden(ty)
+                                    } else {
+                                        FilteredField::Kept(wildcard_from_ty(ty))
+                                    }
+                                })
+                                .collect();
+                            Fields::Filtered(fields)
+                        }
                     }
                 }
                 _ => Fields::empty(),
@@ -1038,13 +1078,19 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
         match self {
             Fields::Slice(pats) => pats.len(),
             Fields::Vec(pats) => pats.len(),
+            Fields::Filtered(fields) => fields.iter().filter(|p| p.kept().is_some()).count(),
         }
     }
 
-    fn into_iter(self) -> impl Iterator<Item = &'p Pat<'tcx>> {
-        let pats: SmallVec<_> = match self {
-            Fields::Slice(pats) => pats.iter().collect(),
-            Fields::Vec(pats) => pats,
+    /// Returns the complete list of patterns, including hidden fields.
+    fn all_patterns(self) -> impl Iterator<Item = Pat<'tcx>> {
+        let pats: SmallVec<[_; 2]> = match self {
+            Fields::Slice(pats) => pats.iter().cloned().collect(),
+            Fields::Vec(pats) => pats.into_iter().cloned().collect(),
+            Fields::Filtered(fields) => {
+                // We don't skip any fields here.
+                fields.into_iter().map(|p| p.to_pattern()).collect()
+            }
         };
         pats.into_iter()
     }
@@ -1052,15 +1098,10 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
     /// Overrides some of the fields with the provided patterns.
     fn replace_with_fieldpats(
         &self,
-        cx: &MatchCheckCtxt<'p, 'tcx>,
         new_pats: impl IntoIterator<Item = &'p FieldPat<'tcx>>,
-        is_non_exhaustive: bool,
     ) -> Self {
         self.replace_fields_indexed(
-            new_pats
-                .into_iter()
-                .map(|pat| (pat.field.index(), &pat.pattern))
-                .filter(|(_, pat)| !(is_non_exhaustive && cx.is_uninhabited(pat.ty))),
+            new_pats.into_iter().map(|pat| (pat.field.index(), &pat.pattern)),
         )
     }
 
@@ -1080,6 +1121,13 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                     pats[i] = pat
                 }
             }
+            Fields::Filtered(fields) => {
+                for (i, pat) in new_pats {
+                    if let FilteredField::Kept(p) = &mut fields[i] {
+                        *p = pat
+                    }
+                }
+            }
             Fields::Slice(_) => unreachable!(),
         }
         fields
@@ -1093,7 +1141,21 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
         pats: impl IntoIterator<Item = Pat<'tcx>>,
     ) -> Self {
         let pats: &[_] = cx.pattern_arena.alloc_from_iter(pats);
-        Fields::Slice(pats)
+
+        match self {
+            Fields::Filtered(fields) => {
+                let mut pats = pats.iter();
+                let mut fields = fields.clone();
+                for f in &mut fields {
+                    if let FilteredField::Kept(p) = f {
+                        // We take one input pattern for each `Kept` field, in order.
+                        *p = pats.next().unwrap();
+                    }
+                }
+                Fields::Filtered(fields)
+            }
+            _ => Fields::Slice(pats),
+        }
     }
 
     fn push_on_patstack(self, stack: &[&'p Pat<'tcx>]) -> PatStack<'p, 'tcx> {
@@ -1102,6 +1164,10 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
             Fields::Vec(mut pats) => {
                 pats.extend_from_slice(stack);
                 pats
+            }
+            Fields::Filtered(fields) => {
+                // We skip hidden fields here
+                fields.into_iter().filter_map(|p| p.kept()).chain(stack.iter().copied()).collect()
             }
         };
         PatStack::from_vec(pats)
@@ -2411,12 +2477,11 @@ fn specialize_one_pattern<'p, 'tcx>(
             if constructor != &Variant(variant.def_id) {
                 return None;
             }
-            let is_non_exhaustive = cx.is_foreign_non_exhaustive_variant(pat.ty, variant);
-            Some(ctor_wild_subpatterns.replace_with_fieldpats(cx, subpatterns, is_non_exhaustive))
+            Some(ctor_wild_subpatterns.replace_with_fieldpats(subpatterns))
         }
 
         PatKind::Leaf { ref subpatterns } => {
-            Some(ctor_wild_subpatterns.replace_with_fieldpats(cx, subpatterns, false))
+            Some(ctor_wild_subpatterns.replace_with_fieldpats(subpatterns))
         }
 
         PatKind::Deref { ref subpattern } => Some(Fields::from_single_pattern(subpattern)),
@@ -2485,7 +2550,7 @@ fn specialize_one_pattern<'p, 'tcx>(
                     Some(&*cx.pattern_arena.alloc(pattern))
                 })
                 .collect::<Option<_>>()?;
-            Some(Fields::from_vec(pats))
+            Some(Fields::from_vec_unfiltered(pats))
         }
 
         PatKind::Constant { .. } | PatKind::Range { .. } => {
