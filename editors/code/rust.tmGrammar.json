@@ -536,7 +536,7 @@
 		},
 		"sigils": {
 			"comment": "Sigil",
-			"name": "keyword.operator.sigil.rust",
+			"name": "keyword.other.sigil.rust",
 			"match": "[&*](?=[a-zA-Z0-9_\\(\\[\\|\\\"]+)"
 		},
 		"self": {
