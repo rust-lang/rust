@@ -990,8 +990,8 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
 
     /// Construct a new `Fields` from the given patterns. You must be sure those patterns can't
     /// contain fields that need to be filtered out. When in doubt, prefer `replace_fields`.
-    fn from_vec_unfiltered(pats: SmallVec<[&'p Pat<'tcx>; 2]>) -> Self {
-        Fields::Vec(pats)
+    fn from_slice_unfiltered(pats: &'p [Pat<'tcx>]) -> Self {
+        Fields::Slice(pats)
     }
 
     /// Convenience; internal use.
@@ -2537,20 +2537,23 @@ fn specialize_one_pattern<'p, 'tcx>(
             if ctor_wild_subpatterns.len() as u64 != n {
                 return None;
             }
+
             // Convert a constant slice/array pattern to a list of patterns.
             let layout = cx.tcx.layout_of(cx.param_env.and(ty)).ok()?;
             let ptr = Pointer::new(AllocId(0), offset);
-            let pats = (0..n)
-                .map(|i| {
-                    let ptr = ptr.offset(layout.size * i, &cx.tcx).ok()?;
-                    let scalar = alloc.read_scalar(&cx.tcx, ptr, layout.size).ok()?;
-                    let scalar = scalar.not_undef().ok()?;
-                    let value = ty::Const::from_scalar(cx.tcx, scalar, ty);
-                    let pattern = Pat { ty, span: pat.span, kind: box PatKind::Constant { value } };
-                    Some(&*cx.pattern_arena.alloc(pattern))
-                })
-                .collect::<Option<_>>()?;
-            Some(Fields::from_vec_unfiltered(pats))
+            let pats = cx.pattern_arena.alloc_from_iter((0..n).filter_map(|i| {
+                let ptr = ptr.offset(layout.size * i, &cx.tcx).ok()?;
+                let scalar = alloc.read_scalar(&cx.tcx, ptr, layout.size).ok()?;
+                let scalar = scalar.not_undef().ok()?;
+                let value = ty::Const::from_scalar(cx.tcx, scalar, ty);
+                let pattern = Pat { ty, span: pat.span, kind: box PatKind::Constant { value } };
+                Some(pattern)
+            }));
+            // Ensure none of the dereferences failed.
+            if pats.len() as u64 != n {
+                return None;
+            }
+            Some(Fields::from_slice_unfiltered(pats))
         }
 
         PatKind::Constant { .. } | PatKind::Range { .. } => {
