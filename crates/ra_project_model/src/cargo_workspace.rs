@@ -162,7 +162,7 @@ impl CargoWorkspace {
             meta.current_dir(parent);
         }
         if let Some(target) = cargo_features.target.as_ref() {
-            meta.other_options(&[String::from("--filter-platform"), target.clone()]);
+            meta.other_options(vec![String::from("--filter-platform"), target.clone()]);
         }
         let meta = meta.exec().with_context(|| {
             format!("Failed to run `cargo metadata --manifest-path {}`", cargo_toml.display())
@@ -305,19 +305,13 @@ pub fn load_extern_resources(
 
     let mut res = ExternResources::default();
 
-    for message in cargo_metadata::parse_messages(output.stdout.as_slice()) {
+    for message in cargo_metadata::Message::parse_stream(output.stdout.as_slice()) {
         if let Ok(message) = message {
             match message {
                 Message::BuildScriptExecuted(BuildScript { package_id, out_dir, cfgs, .. }) => {
                     res.out_dirs.insert(package_id.clone(), out_dir);
-                    res.cfgs.insert(
-                        package_id,
-                        // FIXME: Current `cargo_metadata` uses `PathBuf` instead of `String`,
-                        // change when https://github.com/oli-obk/cargo_metadata/pulls/112 reaches crates.io
-                        cfgs.iter().filter_map(|c| c.to_str().map(|s| s.to_owned())).collect(),
-                    );
+                    res.cfgs.insert(package_id, cfgs);
                 }
-
                 Message::CompilerArtifact(message) => {
                     if message.target.kind.contains(&"proc-macro".to_string()) {
                         let package_id = message.package_id;
@@ -330,6 +324,8 @@ pub fn load_extern_resources(
                 }
                 Message::CompilerMessage(_) => (),
                 Message::Unknown => (),
+                Message::BuildFinished(_) => {}
+                Message::TextLine(_) => {}
             }
         }
     }
