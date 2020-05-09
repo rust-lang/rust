@@ -127,7 +127,14 @@ bool GradientUtils::legalRecompute(Value* val, const ValueToValueMapTy& availabl
     if (li->getMetadata("enzyme_unwrapped"))
       return true;
 
-    if (auto orig = isOriginal(li)) {
+    Instruction* orig = nullptr;
+    if (li->getParent()->getParent() == oldFunc) {
+      orig = li;
+    } else {
+      orig = isOriginal(li);
+    }
+
+    if (orig) {
       auto found = can_modref_map->find(orig);
       //llvm::errs() << "legality of recomputing: " << *li << " is " << !found->second << "\n";
       if(found == can_modref_map->end()) {
@@ -147,7 +154,7 @@ bool GradientUtils::legalRecompute(Value* val, const ValueToValueMapTy& availabl
 
       // TODO mark all the explicitly legal nodes (caches, etc)
       return true;
-      llvm::errs() << *li << "\n";
+      llvm::errs() << *li << " parent: " << li->getParent()->getParent()->getName() << "\n";
       llvm_unreachable("unknown load to redo!");
     }
   }

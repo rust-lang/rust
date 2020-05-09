@@ -412,6 +412,13 @@ bool is_value_needed_in_reverse(TypeResults &TR, const GradientUtils* gutils, co
                 continue;
             }
 
+            if (auto II = dyn_cast<IntrinsicInst>(zu)) {
+              if (II->getIntrinsicID() == Intrinsic::lifetime_start || II->getIntrinsicID() == Intrinsic::lifetime_end ||
+                  II->getIntrinsicID() == Intrinsic::stacksave || II->getIntrinsicID() == Intrinsic::stackrestore) {
+                continue;
+              }
+            }
+
             if (isa<CallInst>(zu)) {
                 //llvm::errs() << " had to use in reverse since call use " << *zu << " of " << *inst << "\n";
                 return seen[inst] = true;
@@ -446,6 +453,14 @@ bool is_value_needed_in_reverse(TypeResults &TR, const GradientUtils* gutils, co
             continue;
         }
     }
+
+    if (auto II = dyn_cast<IntrinsicInst>(user)) {
+      if (II->getIntrinsicID() == Intrinsic::lifetime_start || II->getIntrinsicID() == Intrinsic::lifetime_end ||
+          II->getIntrinsicID() == Intrinsic::stacksave || II->getIntrinsicID() == Intrinsic::stackrestore) {
+        continue;
+      }
+    }
+
 
     if (auto op = dyn_cast<BinaryOperator>(user)) {
       if (op->getOpcode() == Instruction::FAdd || op->getOpcode() == Instruction::FSub) {
@@ -1989,7 +2004,7 @@ void DerivativeMaker<AugmentedReturn*>::visitCallInst(llvm::CallInst &call) {
   if (auto castinst = dyn_cast<ConstantExpr>(orig->getCalledValue())) {
       if (castinst->isCast())
       if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
-          if (fn->getName() == "malloc" || fn->getName() == "free" || fn->getName() == "_Znwm" || fn->getName() == "_ZdlPv" || fn->getName() == "_ZdlPvm") {
+          if (isAllocationFunction(*called, gutils->TLI) || isDeallocationFunction(*called, gutils->TLI)) {
               called = fn;
           }
       }
@@ -2008,7 +2023,7 @@ void DerivativeMaker<AugmentedReturn*>::visitCallInst(llvm::CallInst &call) {
     }
   }
 
-  if (called && (called->getName()=="malloc" || called->getName()=="_Znwm")) {
+  if (called && isAllocationFunction(*called, gutils->TLI)) {
       if (is_value_needed_in_reverse(TR, gutils, orig, /*topLevel*/false)) {
           IRBuilder<> BuilderZ(op);
           gutils->addMalloc(BuilderZ, op, getIndex(orig, CacheType::Self) );
@@ -2020,10 +2035,9 @@ void DerivativeMaker<AugmentedReturn*>::visitCallInst(llvm::CallInst &call) {
   }
 
   //Remove free's in forward pass so the memory can be used in the reverse pass
-  if (called && (called->getName()=="free" ||
-      called->getName()=="_ZdlPv" || called->getName()=="_ZdlPvm")) {
-      gutils->erase(op);
-      return;
+  if (called && isDeallocationFunction(*called, gutils->TLI)) {
+    eraseIfUnused(*orig, /*erase*/true, /*check*/false);
+    return;
   }
 
   bool subretused = unnecessaryValues.find(orig) == unnecessaryValues.end();
@@ -2313,7 +2327,7 @@ void DerivativeMaker<const AugmentedReturn*>::visitCallInst(llvm::CallInst &call
     return;
   }
 
-  if (called && called->getName()=="free") {
+  if (called && isDeallocationFunction(*called, gutils->TLI)) {
     if( gutils->invertedPointers.count(orig) ) {
         auto placeholder = cast<PHINode>(gutils->invertedPointers[orig]);
         gutils->invertedPointers.erase(orig);
@@ -2324,7 +2338,7 @@ void DerivativeMaker<const AugmentedReturn*>::visitCallInst(llvm::CallInst &call
     while(auto cast = dyn_cast<CastInst>(val)) val = cast->getOperand(0);
 
     if (auto dc = dyn_cast<CallInst>(val)) {
-      if (dc->getCalledFunction()->getName() == "malloc") {
+      if (dc->getCalledFunction() && isAllocationFunction(*dc->getCalledFunction(), gutils->TLI)) {
         //llvm::errs() << "erasing free(orig): " << *orig << "\n";
         eraseIfUnused(*orig, /*erase*/true, /*check*/false);
         return;
@@ -2340,28 +2354,6 @@ void DerivativeMaker<const AugmentedReturn*>::visitCallInst(llvm::CallInst &call
     //TODO HANDLE FREE
     llvm::errs() << "freeing without malloc " << *val << "\n";
     eraseIfUnused(*orig, /*erase*/true, /*check*/false);
-    return;
-  }
-
-  if (called && (called->getName()=="_ZdlPv" || called->getName()=="_ZdlPvm")) {
-    if( gutils->invertedPointers.count(orig) ) {
-        auto placeholder = cast<PHINode>(gutils->invertedPointers[orig]);
-        gutils->invertedPointers.erase(orig);
-        gutils->erase(placeholder);
-    }
-
-    llvm::Value* val = argops[0];
-    while(auto cast = dyn_cast<CastInst>(val)) val = gutils->getNewFromOriginal(gutils->getOriginal(cast)->getOperand(0));
-
-    if (auto dc = dyn_cast<CallInst>(val)) {
-      if (dc->getCalledFunction()->getName() == "_Znwm") {
-        gutils->erase(op);
-        return;
-      }
-    }
-    //TODO HANDLE DELETE
-    llvm::errs() << "deleting without new " << *val << "\n";
-    gutils->erase(op);
     return;
   }
 
@@ -3032,6 +3024,28 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, const std::set<un
   calculateUnusedValues(*gutils->oldFunc, unnecessaryValues, unnecessaryInstructions, returnUsed, [&](const Value* val) {
     return is_value_needed_in_reverse(TR, gutils, val, /*topLevel*/false);
   }, [&](const Instruction* inst) {
+    if (auto II = dyn_cast<IntrinsicInst>(inst)) {
+      if (II->getIntrinsicID() == Intrinsic::lifetime_start || II->getIntrinsicID() == Intrinsic::lifetime_end ||
+          II->getIntrinsicID() == Intrinsic::stacksave || II->getIntrinsicID() == Intrinsic::stackrestore) {
+        return false;
+      }
+    }
+
+    if (auto obj_op = dyn_cast<CallInst>(inst)) {
+      Function* called = obj_op->getCalledFunction();
+      if (auto castinst = dyn_cast<ConstantExpr>(obj_op->getCalledValue())) {
+        if (castinst->isCast()) {
+          if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
+            if (isDeallocationFunction(*fn, TLI)) {
+              return false;
+            }
+          }
+        }
+      }
+      if (called && isDeallocationFunction(*called, TLI)) {
+        return false;
+      }
+    }
     return inst->mayWriteToMemory() || is_value_needed_in_reverse(TR, gutils, inst, /*topLevel*/false);
   });
 
@@ -3836,6 +3850,29 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
   calculateUnusedValues(*gutils->oldFunc, unnecessaryValues, unnecessaryInstructions, returnValue, [&](const Value* val) {
     return is_value_needed_in_reverse(TR, gutils, val, /*topLevel*/topLevel);
   }, [&](const Instruction* inst) {
+    if (auto II = dyn_cast<IntrinsicInst>(inst)) {
+      if (II->getIntrinsicID() == Intrinsic::lifetime_start || II->getIntrinsicID() == Intrinsic::lifetime_end ||
+          II->getIntrinsicID() == Intrinsic::stacksave || II->getIntrinsicID() == Intrinsic::stackrestore) {
+        return false;
+      }
+    }
+
+    if (auto obj_op = dyn_cast<CallInst>(inst)) {
+      Function* called = obj_op->getCalledFunction();
+      if (auto castinst = dyn_cast<ConstantExpr>(obj_op->getCalledValue())) {
+        if (castinst->isCast()) {
+          if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
+            if (isDeallocationFunction(*fn, TLI)) {
+              return false;
+            }
+          }
+        }
+      }
+      if (called && isDeallocationFunction(*called, TLI)) {
+        return false;
+      }
+    }
+
     return (topLevel && inst->mayWriteToMemory()) || is_value_needed_in_reverse(TR, gutils, inst, /*topLevel*/topLevel);
   });
 

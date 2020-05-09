@@ -135,18 +135,19 @@ attributes #5 = { nounwind }
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:  %"array'ipa.i" = alloca double*, align 8
 ; CHECK-NEXT:  %array.i = alloca double*, align 8
-; CHECK-NEXT:  %0 = bitcast double** %"array'ipa.i" to i8*
-; CHECK-NEXT:  call void @llvm.lifetime.start.p0i8(i64 8, i8* nonnull %0)
-; CHECK-NEXT:  %1 = bitcast double** %"array'ipa.i" to i64*
-; CHECK-NEXT:  store i64 0, i64* %1, align 8
-; CHECK-NEXT:  %2 = bitcast double** %array.i to i8*
-; CHECK-NEXT:  call void @llvm.lifetime.start.p0i8(i64 8, i8* nonnull %2)
+; CHECK-NEXT:  %[[api8:.+]] = bitcast double** %"array'ipa.i" to i8*
+; CHECK-NEXT:  call void @llvm.lifetime.start.p0i8(i64 8, i8* nonnull %[[api8]])
+; CHECK-NEXT:  %[[ai8:.+]] = bitcast double** %array.i to i8*
+; CHECK-NEXT:  call void @llvm.lifetime.start.p0i8(i64 8, i8* nonnull %[[ai8]])
+; CHECK-NEXT:  %[[api64:.+]] = bitcast double** %"array'ipa.i" to i64*
+; CHECK-NEXT:  store i64 0, i64* %[[api64]], align 8
 ; CHECK-NEXT:  %[[aug:.+]] = call fastcc i8* @augmented_allocateAndSet(double** nonnull %array.i, double** nonnull %"array'ipa.i", double %x, i32 %n)
 ; CHECK-NEXT:  %[[oldret:.+]] = insertvalue { i8* } undef, i8* %[[aug]], 0
 ; CHECK-NEXT:  %"'ipl.i" = load double*, double** %"array'ipa.i", align 8
 ; CHECK-NEXT:  tail call fastcc void @diffeget(double* %"'ipl.i")
 ; CHECK-NEXT:  %[[ret:.+]] = tail call fastcc double @diffeallocateAndSet(i32 %n, { i8* } %[[oldret]])
-; CHECK-NEXT:  call void @llvm.lifetime.end.p0i8(i64 8, i8* nonnull %0)
+; CHECK-NEXT:  call void @llvm.lifetime.end.p0i8(i64 8, i8* nonnull %[[api8]])
+; CHECK-NEXT:  call void @llvm.lifetime.end.p0i8(i64 8, i8* nonnull %[[ai8]])
 ; CHECK-NEXT:  ret double %[[ret]]
 ; CHECK-NEXT:}
 
