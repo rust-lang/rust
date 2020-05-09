@@ -1029,14 +1029,6 @@ impl Build {
         self.rust_version()
     }
 
-    fn lldb_package_vers(&self) -> String {
-        self.package_vers(channel::CFG_RELEASE_NUM)
-    }
-
-    fn lldb_vers(&self) -> String {
-        self.rust_version()
-    }
-
     fn llvm_link_tools_dynamically(&self, target: Interned<String>) -> bool {
         target.contains("linux-gnu") || target.contains("apple-darwin")
     }

@@ -184,7 +184,7 @@ impl Step for Llvm {
         }
 
         // For distribution we want the LLVM tools to be *statically* linked to libstdc++
-        if builder.config.llvm_tools_enabled || builder.config.lldb_enabled {
+        if builder.config.llvm_tools_enabled {
             if !target.contains("msvc") {
                 if target.contains("apple") {
                     cfg.define("CMAKE_EXE_LINKER_FLAGS", "-static-libstdc++");
@@ -212,17 +212,9 @@ impl Step for Llvm {
             enabled_llvm_projects.push("compiler-rt");
         }
 
-        if builder.config.lldb_enabled {
-            enabled_llvm_projects.push("clang");
-            enabled_llvm_projects.push("lldb");
-            // For the time being, disable code signing.
-            cfg.define("LLDB_CODESIGN_IDENTITY", "");
-            cfg.define("LLDB_NO_DEBUGSERVER", "ON");
-        } else {
-            // LLDB requires libxml2; but otherwise we want it to be disabled.
-            // See https://github.com/rust-lang/rust/pull/50104
-            cfg.define("LLVM_ENABLE_LIBXML2", "OFF");
-        }
+        // We want libxml to be disabled.
+        // See https://github.com/rust-lang/rust/pull/50104
+        cfg.define("LLVM_ENABLE_LIBXML2", "OFF");
 
         if !enabled_llvm_projects.is_empty() {
             enabled_llvm_projects.sort();

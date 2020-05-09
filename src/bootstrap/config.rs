@@ -85,7 +85,6 @@ pub struct Config {
 
     pub use_lld: bool,
     pub lld_enabled: bool,
-    pub lldb_enabled: bool,
     pub llvm_tools_enabled: bool,
 
     pub llvm_cflags: Option<String>,
@@ -337,7 +336,6 @@ struct Rust {
     lld: Option<bool>,
     use_lld: Option<bool>,
     llvm_tools: Option<bool>,
-    lldb: Option<bool>,
     deny_warnings: Option<bool>,
     backtrace_on_ice: Option<bool>,
     verify_llvm_ir: Option<bool>,
@@ -585,7 +583,6 @@ impl Config {
             }
             set(&mut config.use_lld, rust.use_lld);
             set(&mut config.lld_enabled, rust.lld);
-            set(&mut config.lldb_enabled, rust.lldb);
             set(&mut config.llvm_tools_enabled, rust.llvm_tools);
             config.rustc_parallel = rust.parallel_compiler.unwrap_or(false);
             config.rustc_default_linker = rust.default_linker.clone();
