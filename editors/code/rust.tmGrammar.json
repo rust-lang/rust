@@ -586,23 +586,15 @@
 		},
 		"lifetime": {
 			"comment": "Named lifetime",
-			"name": "storage.modifier.lifetime.rust",
-			"match": "'([a-zA-Z_][a-zA-Z0-9_]*)\\b",
-			"captures": {
-				"1": {
-					"name": "entity.name.lifetime.rust"
-				}
-			}
+			"name": "entity.name.type.lifetime.rust",
+			"match": "'([a-zA-Z_][a-zA-Z0-9_]*)\\b"
 		},
 		"ref_lifetime": {
 			"comment": "Reference with named lifetime",
-			"match": "&('([a-zA-Z_][a-zA-Z0-9_]*))\\b",
+			"match": "&('[a-zA-Z_][a-zA-Z0-9_]*)\\b",
 			"captures": {
 				"1": {
-					"name": "storage.modifier.lifetime.rust"
-				},
-				"2": {
-					"name": "entity.name.lifetime.rust"
+					"name": "entity.name.type.lifetime.rust"
 				}
 			}
 		},
