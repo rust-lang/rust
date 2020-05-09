@@ -443,11 +443,9 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
         constructor: &Constructor<'tcx>,
         ctor_wild_subpatterns: &Fields<'p, 'tcx>,
     ) -> Option<PatStack<'p, 'tcx>> {
-        let new_heads = specialize_one_pattern(cx, self.head(), constructor, ctor_wild_subpatterns);
-        new_heads.map(|mut new_head| {
-            new_head.0.extend_from_slice(&self.0[1..]);
-            new_head
-        })
+        let new_fields =
+            specialize_one_pattern(cx, self.head(), constructor, ctor_wild_subpatterns)?;
+        Some(new_fields.push_on_patstack(&self.0[1..]))
     }
 }
 
@@ -1034,9 +1032,24 @@ impl<'tcx> Constructor<'tcx> {
 #[derive(Debug, Clone)]
 enum Fields<'p, 'tcx> {
     Slice(&'p [Pat<'tcx>]),
+    Vec(SmallVec<[&'p Pat<'tcx>; 2]>),
 }
 
 impl<'p, 'tcx> Fields<'p, 'tcx> {
+    fn empty() -> Self {
+        Fields::Slice(&[])
+    }
+
+    /// Construct a new `Fields` from the given pattern. Must not be used if the pattern is a field
+    /// of a struct/tuple/variant.
+    fn from_single_pattern(pat: &'p Pat<'tcx>) -> Self {
+        Fields::Slice(std::slice::from_ref(pat))
+    }
+
+    fn from_vec(pats: SmallVec<[&'p Pat<'tcx>; 2]>) -> Self {
+        Fields::Vec(pats)
+    }
+
     /// Creates a new list of wildcard fields for a given constructor.
     fn wildcards(
         cx: &MatchCheckCtxt<'p, 'tcx>,
@@ -1051,13 +1064,27 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
     fn len(&self) -> usize {
         match self {
             Fields::Slice(pats) => pats.len(),
+            Fields::Vec(pats) => pats.len(),
         }
     }
 
-    fn iter<'a>(&'a self) -> impl Iterator<Item = &'p Pat<'tcx>> + Captures<'a> {
-        match self {
-            Fields::Slice(pats) => pats.iter(),
-        }
+    fn iter(&self) -> impl Iterator<Item = &'p Pat<'tcx>> {
+        let pats: SmallVec<_> = match self {
+            Fields::Slice(pats) => pats.iter().collect(),
+            Fields::Vec(pats) => pats.clone(),
+        };
+        pats.into_iter()
+    }
+
+    fn push_on_patstack(self, stack: &[&'p Pat<'tcx>]) -> PatStack<'p, 'tcx> {
+        let pats: SmallVec<_> = match self {
+            Fields::Slice(pats) => pats.iter().chain(stack.iter().copied()).collect(),
+            Fields::Vec(mut pats) => {
+                pats.extend_from_slice(stack);
+                pats
+            }
+        };
+        PatStack::from_vec(pats)
     }
 }
 
@@ -2330,7 +2357,7 @@ fn patterns_for_variant<'p, 'tcx>(
     subpatterns: &'p [FieldPat<'tcx>],
     ctor_wild_subpatterns: &Fields<'p, 'tcx>,
     is_non_exhaustive: bool,
-) -> PatStack<'p, 'tcx> {
+) -> Fields<'p, 'tcx> {
     let mut result: SmallVec<_> = ctor_wild_subpatterns.iter().collect();
 
     for subpat in subpatterns {
@@ -2343,7 +2370,7 @@ fn patterns_for_variant<'p, 'tcx>(
         "patterns_for_variant({:#?}, {:#?}) = {:#?}",
         subpatterns, ctor_wild_subpatterns, result
     );
-    PatStack::from_vec(result)
+    Fields::from_vec(result)
 }
 
 /// This is the main specialization step. It expands the pattern
@@ -2360,16 +2387,16 @@ fn specialize_one_pattern<'p, 'tcx>(
     pat: &'p Pat<'tcx>,
     constructor: &Constructor<'tcx>,
     ctor_wild_subpatterns: &Fields<'p, 'tcx>,
-) -> Option<PatStack<'p, 'tcx>> {
+) -> Option<Fields<'p, 'tcx>> {
     if let NonExhaustive = constructor {
         // Only a wildcard pattern can match the special extra constructor
-        return if pat.is_wildcard() { Some(PatStack::default()) } else { None };
+        return if pat.is_wildcard() { Some(Fields::empty()) } else { None };
     }
 
     let result = match *pat.kind {
         PatKind::AscribeUserType { .. } => bug!(), // Handled by `expand_pattern`
 
-        PatKind::Binding { .. } | PatKind::Wild => Some(ctor_wild_subpatterns.iter().collect()),
+        PatKind::Binding { .. } | PatKind::Wild => Some(ctor_wild_subpatterns.clone()),
 
         PatKind::Variant { adt_def, variant_index, ref subpatterns, .. } => {
             let variant = &adt_def.variants[variant_index];
@@ -2385,7 +2412,7 @@ fn specialize_one_pattern<'p, 'tcx>(
             Some(patterns_for_variant(cx, subpatterns, ctor_wild_subpatterns, false))
         }
 
-        PatKind::Deref { ref subpattern } => Some(PatStack::from_pattern(subpattern)),
+        PatKind::Deref { ref subpattern } => Some(Fields::from_single_pattern(subpattern)),
 
         PatKind::Constant { value } if constructor.is_slice() => {
             // We extract an `Option` for the pointer because slices of zero
@@ -2399,7 +2426,7 @@ fn specialize_one_pattern<'p, 'tcx>(
                     // the result would be exactly what we early return here.
                     if n == 0 {
                         if ctor_wild_subpatterns.len() as u64 == 0 {
-                            return Some(PatStack::from_slice(&[]));
+                            return Some(Fields::empty());
                         } else {
                             return None;
                         }
@@ -2440,7 +2467,7 @@ fn specialize_one_pattern<'p, 'tcx>(
                 // convert a constant slice/array pattern to a list of patterns.
                 let layout = cx.tcx.layout_of(cx.param_env.and(ty)).ok()?;
                 let ptr = Pointer::new(AllocId(0), offset);
-                (0..n)
+                let pats = (0..n)
                     .map(|i| {
                         let ptr = ptr.offset(layout.size * i, &cx.tcx).ok()?;
                         let scalar = alloc.read_scalar(&cx.tcx, ptr, layout.size).ok()?;
@@ -2450,7 +2477,8 @@ fn specialize_one_pattern<'p, 'tcx>(
                             Pat { ty, span: pat.span, kind: box PatKind::Constant { value } };
                         Some(&*cx.pattern_arena.alloc(pattern))
                     })
-                    .collect()
+                    .collect::<Option<_>>()?;
+                Some(Fields::from_vec(pats))
             } else {
                 None
             }
@@ -2466,7 +2494,7 @@ fn specialize_one_pattern<'p, 'tcx>(
                         // Constructor splitting should ensure that all intersections we encounter
                         // are actually inclusions.
                         assert!(ctor.is_subrange(&pat));
-                        PatStack::default()
+                        Fields::empty()
                     }),
                     _ => None,
                 }
@@ -2477,7 +2505,7 @@ fn specialize_one_pattern<'p, 'tcx>(
                 // range so intersection actually devolves into being covered
                 // by the pattern.
                 constructor_covered_by_range(cx.tcx, cx.param_env, constructor, pat)
-                    .map(|()| PatStack::default())
+                    .map(|()| Fields::empty())
             }
         }
 
@@ -2487,7 +2515,7 @@ fn specialize_one_pattern<'p, 'tcx>(
                 let pat_len = prefix.len() + suffix.len();
                 if let Some(slice_count) = ctor_wild_subpatterns.len().checked_sub(pat_len) {
                     if slice_count == 0 || slice.is_some() {
-                        Some(
+                        Some(Fields::from_vec(
                             prefix
                                 .iter()
                                 .chain(
@@ -2498,7 +2526,7 @@ fn specialize_one_pattern<'p, 'tcx>(
                                         .chain(suffix.iter()),
                                 )
                                 .collect(),
-                        )
+                        ))
                     } else {
                         None
                     }
@@ -2516,7 +2544,7 @@ fn specialize_one_pattern<'p, 'tcx>(
                     suffix,
                     cx.param_env,
                 ) {
-                    Ok(true) => Some(PatStack::default()),
+                    Ok(true) => Some(Fields::empty()),
                     Ok(false) => None,
                     Err(ErrorReported) => None,
                 }
