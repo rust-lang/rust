@@ -264,7 +264,7 @@ fn semantic_token_type_and_modifiers(
         HighlightTag::Trait => lsp_types::SemanticTokenType::INTERFACE,
         HighlightTag::BuiltinType => semantic_tokens::BUILTIN_TYPE,
         HighlightTag::SelfType => lsp_types::SemanticTokenType::TYPE,
-        HighlightTag::Field => lsp_types::SemanticTokenType::MEMBER,
+        HighlightTag::Field => lsp_types::SemanticTokenType::PROPERTY,
         HighlightTag::Function => lsp_types::SemanticTokenType::FUNCTION,
         HighlightTag::Module => lsp_types::SemanticTokenType::NAMESPACE,
         HighlightTag::Constant => {
