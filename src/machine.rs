@@ -427,7 +427,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
     fn canonical_alloc_id(mem: &Memory<'mir, 'tcx, Self>, id: AllocId) -> AllocId {
         let tcx = mem.tcx;
         // Figure out if this is an extern static, and if yes, which one.
-        let def_id = match tcx.alloc_map.lock().get(id) {
+        let def_id = match tcx.get_global_alloc(id) {
             Some(GlobalAlloc::Static(def_id)) if tcx.is_foreign_item(def_id) => def_id,
             _ => {
                 // No need to canonicalize anything.
@@ -494,7 +494,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         if Some(id) == memory_extra.tracked_alloc_id {
             register_diagnostic(NonHaltingDiagnostic::FreedAlloc(id));
         }
-        
+
         Ok(())
     }
 
