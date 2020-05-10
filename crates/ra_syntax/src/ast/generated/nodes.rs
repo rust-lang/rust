@@ -1971,7 +1971,7 @@ impl LifetimeParam {
 /// where
 ///     T: ❰ Send ❱ + ❰ Sync ❱
 /// {
-///     type Baz: ❰ !Sync ❱ + ❰ Debug ❱;
+///     type Baz: ❰ !Sync ❱ + ❰ Debug ❱ + ❰ ?const Add ❱;
 /// }
 /// ```
 ///

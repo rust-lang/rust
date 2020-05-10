@@ -1640,8 +1640,6 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         /// [Reference](https://doc.rust-lang.org/reference/items/generics.html)
         struct LifetimeParam: AttrsOwner { T![lifetime] }
 
-        // TODO: better clarify where is the colon token and what `const` pertains to.
-        // TODO: add example with `const`
         /// Type bound declaration clause.
         ///
         /// ```
@@ -1651,12 +1649,12 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         /// where
         ///     T: ❰ Send ❱ + ❰ Sync ❱
         /// {
-        ///     type Baz: ❰ !Sync ❱ + ❰ Debug ❱;
+        ///     type Baz: ❰ !Sync ❱ + ❰ Debug ❱ + ❰ ?const Add ❱;
         /// }
         /// ```
         ///
         /// [Reference](https://doc.rust-lang.org/reference/trait-bounds.html)
-        struct TypeBound { T![lifetime], /* Question,  */ T![const], /* Question,  */ TypeRef }
+        struct TypeBound { T![lifetime], /* Question,  */ T![const], /* Question, */ TypeRef }
 
         /// Type bounds list.
         ///
