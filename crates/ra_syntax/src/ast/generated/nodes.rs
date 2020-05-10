@@ -2323,10 +2323,10 @@ impl ArgList {
 /// generic parameters.
 ///
 /// ```
-/// (0..10).❰ collect ❰ ::<Vec<_>> ❱ ❱();
-/// ❰ Vec ❰ ::<u8> ❰ ::with_capacity ❱ ❱ ❱(1024);
-/// ❰ <Foo as Bar> ❰ ::baz ❱ ❱();
-/// ❰ <bruh> ❰ ::bruuh ❱ ❱();
+/// (0..10).❰ ❰ collect ❱ ::<Vec<_>> ❱();
+/// ❰ ❰ ❰ Vec ❱ ::<u8> ❱ ::with_capacity ❱(1024);
+/// ❰ ❰ <❰ Foo ❱ as ❰ ❰ bar ❱ ::Bar ❱> ❱ ::baz ❱();
+/// ❰ ❰ <❰ bruh ❱> ❱ ::bruuh ❱();
 /// ```
 ///
 /// [Reference](https://doc.rust-lang.org/reference/paths.html)
@@ -2336,15 +2336,21 @@ pub struct Path {
 }
 impl Path {
     pub fn segment(&self) -> Option<PathSegment> { support::child(&self.syntax) }
+    pub fn coloncolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![::]) }
     pub fn qualifier(&self) -> Option<Path> { support::child(&self.syntax) }
 }
 /// Segment of the path to a symbol.
+/// Only path segment of an absolute path holds the `::` token,
+/// all other `::` tokens that connect path segments reside under `Path` itself.`
 ///
 /// ```
-/// (0..10).❰ collect ❱ ❰ ::<Vec<_>> ❱();
-/// ❰ Vec >| ❰ ::<u8> ❱ ❰ ::with_capacity ❱(1024);
-/// ❰ <Foo as Bar> ❱ ❰ ::baz ❱();
-/// ❰ <bruh> ❱ ❰ ::bruuh ❱();
+/// (0..10).❰ collect ❱ :: ❰ <Vec<_>> ❱();
+/// ❰ Vec ❱ :: ❰ <u8> ❱ :: ❰ with_capacity ❱(1024);
+/// ❰ <❰ Foo ❱ as ❰ bar ❱ :: ❰ Bar ❱> ❱ :: ❰ baz ❱();
+/// ❰ <❰ bruh ❱> ❱ :: ❰ bruuh ❱();
+///
+/// // Note that only in this case `::` token is inlcuded:
+/// ❰ ::foo ❱;
 /// ```
 ///
 /// [Reference](https://doc.rust-lang.org/reference/paths.html)

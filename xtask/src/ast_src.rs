@@ -1893,32 +1893,35 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             T![')']
         }
 
-        // TODO: correct the example
         /// Path to a symbol. Includes single identifier names and elaborate paths with
         /// generic parameters.
         ///
         /// ```
-        /// (0..10).❰ collect ❰ ::<Vec<_>> ❱ ❱();
-        /// ❰ Vec ❰ ::<u8> ❰ ::with_capacity ❱ ❱ ❱(1024);
-        /// ❰ <Foo as Bar> ❰ ::baz ❱ ❱();
-        /// ❰ <bruh> ❰ ::bruuh ❱ ❱();
+        /// (0..10).❰ ❰ collect ❱ ::<Vec<_>> ❱();
+        /// ❰ ❰ ❰ Vec ❱ ::<u8> ❱ ::with_capacity ❱(1024);
+        /// ❰ ❰ <❰ Foo ❱ as ❰ ❰ bar ❱ ::Bar ❱> ❱ ::baz ❱();
+        /// ❰ ❰ <❰ bruh ❱> ❱ ::bruuh ❱();
         /// ```
         ///
         /// [Reference](https://doc.rust-lang.org/reference/paths.html)
         struct Path {
             segment: PathSegment,
+            T![::],
             qualifier: Path,
         }
 
-        // TODO: verify the example
-        // TODO: what RetType is doing here? is this for Fn() -> T syntax?
         /// Segment of the path to a symbol.
+        /// Only path segment of an absolute path holds the `::` token,
+        /// all other `::` tokens that connect path segments reside under `Path` itself.`
         ///
         /// ```
-        /// (0..10).❰ collect ❱ ❰ ::<Vec<_>> ❱();
-        /// ❰ Vec >| ❰ ::<u8> ❱ ❰ ::with_capacity ❱(1024);
-        /// ❰ <Foo as Bar> ❱ ❰ ::baz ❱();
-        /// ❰ <bruh> ❱ ❰ ::bruuh ❱();
+        /// (0..10).❰ collect ❱ :: ❰ <Vec<_>> ❱();
+        /// ❰ Vec ❱ :: ❰ <u8> ❱ :: ❰ with_capacity ❱(1024);
+        /// ❰ <❰ Foo ❱ as ❰ bar ❱ :: ❰ Bar ❱> ❱ :: ❰ baz ❱();
+        /// ❰ <❰ bruh ❱> ❱ :: ❰ bruuh ❱();
+        ///
+        /// // Note that only in this case `::` token is inlcuded:
+        /// ❰ ::foo ❱;
         /// ```
         ///
         /// [Reference](https://doc.rust-lang.org/reference/paths.html)
@@ -1956,7 +1959,6 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         /// [Reference](https://doc.rust-lang.org/reference/paths.html#paths-in-expressions)
         struct TypeArg { TypeRef }
 
-        // TODO: verify inline type bounds example
         /// Associated type argument that is passed at generic instantiation site.
         /// ```
         /// use foo::<'a, u64, bool, ❰ Item = Bar ❱, 42>::baz;
