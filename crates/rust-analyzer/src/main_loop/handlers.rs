@@ -22,6 +22,7 @@ use ra_ide::{
     Assist, FileId, FilePosition, FileRange, Query, RangeInfo, Runnable, RunnableKind, SearchScope,
 };
 use ra_prof::profile;
+use ra_project_model::TargetKind;
 use ra_syntax::{AstNode, SyntaxKind, TextRange, TextSize};
 use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
@@ -31,18 +32,14 @@ use stdx::format_to;
 use crate::{
     cargo_target_spec::CargoTargetSpec,
     config::RustfmtConfig,
-    conv::{
-        to_call_hierarchy_item, to_location, Conv, ConvWith, FoldConvCtx, MapConvWith, TryConvWith,
-        TryConvWithToVec,
-    },
     diagnostics::DiagnosticTask,
-    from_json,
+    from_json, from_proto,
     req::{self, InlayHint, InlayHintsParams},
     semantic_tokens::SemanticTokensBuilder,
+    to_proto,
     world::WorldSnapshot,
     LspError, Result,
 };
-use ra_project_model::TargetKind;
 
 pub fn handle_analyzer_status(world: WorldSnapshot, _: ()) -> Result<String> {
     let _p = profile("handle_analyzer_status");
@@ -58,9 +55,9 @@ pub fn handle_analyzer_status(world: WorldSnapshot, _: ()) -> Result<String> {
 
 pub fn handle_syntax_tree(world: WorldSnapshot, params: req::SyntaxTreeParams) -> Result<String> {
     let _p = profile("handle_syntax_tree");
-    let id = params.text_document.try_conv_with(&world)?;
+    let id = from_proto::file_id(&world, &params.text_document.uri)?;
     let line_index = world.analysis().file_line_index(id)?;
-    let text_range = params.range.map(|p| p.conv_with(&line_index));
+    let text_range = params.range.map(|r| from_proto::text_range(&line_index, r));
     let res = world.analysis().syntax_tree(id, text_range)?;
     Ok(res)
 }
@@ -70,9 +67,9 @@ pub fn handle_expand_macro(
     params: req::ExpandMacroParams,
 ) -> Result<Option<req::ExpandedMacro>> {
     let _p = profile("handle_expand_macro");
-    let file_id = params.text_document.try_conv_with(&world)?;
+    let file_id = from_proto::file_id(&world, &params.text_document.uri)?;
     let line_index = world.analysis().file_line_index(file_id)?;
-    let offset = params.position.map(|p| p.conv_with(&line_index));
+    let offset = params.position.map(|p| from_proto::offset(&line_index, p));
 
     match offset {
         None => Ok(None),
@@ -88,16 +85,16 @@ pub fn handle_selection_range(
     params: req::SelectionRangeParams,
 ) -> Result<Option<Vec<req::SelectionRange>>> {
     let _p = profile("handle_selection_range");
-    let file_id = params.text_document.try_conv_with(&world)?;
+    let file_id = from_proto::file_id(&world, &params.text_document.uri)?;
     let line_index = world.analysis().file_line_index(file_id)?;
     let res: Result<Vec<req::SelectionRange>> = params
         .positions
         .into_iter()
-        .map_conv_with(&line_index)
         .map(|position| {
+            let offset = from_proto::offset(&line_index, position);
             let mut ranges = Vec::new();
             {
-                let mut range = TextRange::new(position, position);
+                let mut range = TextRange::new(offset, offset);
                 loop {
                     ranges.push(range);
                     let frange = FileRange { file_id, range };
@@ -110,12 +107,12 @@ pub fn handle_selection_range(
                 }
             }
             let mut range = req::SelectionRange {
-                range: ranges.last().unwrap().conv_with(&line_index),
+                range: to_proto::range(&line_index, *ranges.last().unwrap()),
                 parent: None,
             };
-            for r in ranges.iter().rev().skip(1) {
+            for &r in ranges.iter().rev().skip(1) {
                 range = req::SelectionRange {
-                    range: r.conv_with(&line_index),
+                    range: to_proto::range(&line_index, r),
                     parent: Some(Box::new(range)),
                 }
             }
@@ -131,22 +128,19 @@ pub fn handle_find_matching_brace(
     params: req::FindMatchingBraceParams,
 ) -> Result<Vec<Position>> {
     let _p = profile("handle_find_matching_brace");
-    let file_id = params.text_document.try_conv_with(&world)?;
+    let file_id = from_proto::file_id(&world, &params.text_document.uri)?;
     let line_index = world.analysis().file_line_index(file_id)?;
     let res = params
         .offsets
         .into_iter()
-        .map_conv_with(&line_index)
-        .map(|offset| {
-            if let Ok(Some(matching_brace_offset)) =
-                world.analysis().matching_brace(FilePosition { file_id, offset })
-            {
-                matching_brace_offset
-            } else {
-                offset
-            }
+        .map(|position| {
+            let offset = from_proto::offset(&line_index, position);
+            let offset = match world.analysis().matching_brace(FilePosition { file_id, offset }) {
+                Ok(Some(matching_brace_offset)) => matching_brace_offset,
+                Err(_) | Ok(None) => offset,
+            };
+            to_proto::position(&line_index, offset)
         })
-        .map_conv_with(&line_index)
         .collect();
     Ok(res)
 }
@@ -156,8 +150,9 @@ pub fn handle_join_lines(
     params: req::JoinLinesParams,
 ) -> Result<req::SourceChange> {
     let _p = profile("handle_join_lines");
-    let frange = (&params.text_document, params.range).try_conv_with(&world)?;
-    world.analysis().join_lines(frange)?.try_conv_with(&world)
+    let frange = from_proto::file_range(&world, params.text_document, params.range)?;
+    let source_change = world.analysis().join_lines(frange)?;
+    to_proto::source_change(&world, source_change)
 }
 
 pub fn handle_on_enter(
@@ -165,10 +160,10 @@ pub fn handle_on_enter(
     params: req::TextDocumentPositionParams,
 ) -> Result<Option<req::SourceChange>> {
     let _p = profile("handle_on_enter");
-    let position = params.try_conv_with(&world)?;
+    let position = from_proto::file_position(&world, params)?;
     match world.analysis().on_enter(position)? {
         None => Ok(None),
-        Some(edit) => Ok(Some(edit.try_conv_with(&world)?)),
+        Some(source_change) => to_proto::source_change(&world, source_change).map(Some),
     }
 }
 
@@ -178,7 +173,7 @@ pub fn handle_on_type_formatting(
     params: req::DocumentOnTypeFormattingParams,
 ) -> Result<Option<Vec<TextEdit>>> {
     let _p = profile("handle_on_type_formatting");
-    let mut position = params.text_document_position.try_conv_with(&world)?;
+    let mut position = from_proto::file_position(&world, params.text_document_position)?;
     let line_index = world.analysis().file_line_index(position.file_id)?;
     let line_endings = world.file_line_endings(position.file_id);
 
@@ -208,7 +203,7 @@ pub fn handle_on_type_formatting(
     // This should be a single-file edit
     let edit = edit.source_file_edits.pop().unwrap();
 
-    let change: Vec<TextEdit> = edit.edit.conv_with((&line_index, line_endings));
+    let change = to_proto::text_edit_vec(&line_index, line_endings, edit.edit);
     Ok(Some(change))
 }
 
@@ -217,9 +212,8 @@ pub fn handle_document_symbol(
     params: req::DocumentSymbolParams,
 ) -> Result<Option<req::DocumentSymbolResponse>> {
     let _p = profile("handle_document_symbol");
-    let file_id = params.text_document.try_conv_with(&world)?;
+    let file_id = from_proto::file_id(&world, &params.text_document.uri)?;
     let line_index = world.analysis().file_line_index(file_id)?;
-    let url = file_id.try_conv_with(&world)?;
 
     let mut parents: Vec<(DocumentSymbol, Option<usize>)> = Vec::new();
 
@@ -227,10 +221,10 @@ pub fn handle_document_symbol(
         let doc_symbol = DocumentSymbol {
             name: symbol.label,
             detail: symbol.detail,
-            kind: symbol.kind.conv(),
+            kind: to_proto::symbol_kind(symbol.kind),
             deprecated: Some(symbol.deprecated),
-            range: symbol.node_range.conv_with(&line_index),
-            selection_range: symbol.navigation_range.conv_with(&line_index),
+            range: to_proto::range(&line_index, symbol.node_range),
+            selection_range: to_proto::range(&line_index, symbol.navigation_range),
             children: None,
         };
         parents.push((doc_symbol, symbol.parent));
@@ -249,34 +243,35 @@ pub fn handle_document_symbol(
         }
     }
 
-    if world.config.client_caps.hierarchical_symbols {
-        Ok(Some(document_symbols.into()))
+    let res = if world.config.client_caps.hierarchical_symbols {
+        document_symbols.into()
     } else {
+        let url = to_proto::url(&world, file_id)?;
         let mut symbol_information = Vec::<SymbolInformation>::new();
         for symbol in document_symbols {
             flatten_document_symbol(&symbol, None, &url, &mut symbol_information);
         }
+        symbol_information.into()
+    };
+    return Ok(Some(res));
 
-        Ok(Some(symbol_information.into()))
-    }
-}
+    fn flatten_document_symbol(
+        symbol: &DocumentSymbol,
+        container_name: Option<String>,
+        url: &Url,
+        res: &mut Vec<SymbolInformation>,
+    ) {
+        res.push(SymbolInformation {
+            name: symbol.name.clone(),
+            kind: symbol.kind,
+            deprecated: symbol.deprecated,
+            location: Location::new(url.clone(), symbol.range),
+            container_name: container_name,
+        });
 
-fn flatten_document_symbol(
-    symbol: &DocumentSymbol,
-    container_name: Option<String>,
-    url: &Url,
-    res: &mut Vec<SymbolInformation>,
-) {
-    res.push(SymbolInformation {
-        name: symbol.name.clone(),
-        kind: symbol.kind,
-        deprecated: symbol.deprecated,
-        location: Location::new(url.clone(), symbol.range),
-        container_name: container_name,
-    });
-
-    for child in symbol.children.iter().flatten() {
-        flatten_document_symbol(child, Some(symbol.name.clone()), url, res);
+        for child in symbol.children.iter().flatten() {
+            flatten_document_symbol(child, Some(symbol.name.clone()), url, res);
+        }
     }
 }
 
@@ -313,8 +308,8 @@ pub fn handle_workspace_symbol(
         for nav in world.analysis().symbol_search(query)? {
             let info = SymbolInformation {
                 name: nav.name().to_string(),
-                kind: nav.kind().conv(),
-                location: nav.try_conv_with(world)?,
+                kind: to_proto::symbol_kind(nav.kind()),
+                location: to_proto::location(world, nav.file_range())?,
                 container_name: nav.container_name().map(|v| v.to_string()),
                 deprecated: None,
             };
@@ -329,12 +324,16 @@ pub fn handle_goto_definition(
     params: req::GotoDefinitionParams,
 ) -> Result<Option<req::GotoDefinitionResponse>> {
     let _p = profile("handle_goto_definition");
-    let position = params.text_document_position_params.try_conv_with(&world)?;
+    let position = from_proto::file_position(&world, params.text_document_position_params)?;
     let nav_info = match world.analysis().goto_definition(position)? {
         None => return Ok(None),
         Some(it) => it,
     };
-    let res = (position.file_id, nav_info).try_conv_with(&world)?;
+    let res = to_proto::goto_definition_response(
+        &world,
+        FileRange { file_id: position.file_id, range: nav_info.range },
+        nav_info.info,
+    )?;
     Ok(Some(res))
 }
 
@@ -343,12 +342,16 @@ pub fn handle_goto_implementation(
     params: req::GotoImplementationParams,
 ) -> Result<Option<req::GotoImplementationResponse>> {
     let _p = profile("handle_goto_implementation");
-    let position = params.text_document_position_params.try_conv_with(&world)?;
+    let position = from_proto::file_position(&world, params.text_document_position_params)?;
     let nav_info = match world.analysis().goto_implementation(position)? {
         None => return Ok(None),
         Some(it) => it,
     };
-    let res = (position.file_id, nav_info).try_conv_with(&world)?;
+    let res = to_proto::goto_definition_response(
+        &world,
+        FileRange { file_id: position.file_id, range: nav_info.range },
+        nav_info.info,
+    )?;
     Ok(Some(res))
 }
 
@@ -357,12 +360,16 @@ pub fn handle_goto_type_definition(
     params: req::GotoTypeDefinitionParams,
 ) -> Result<Option<req::GotoTypeDefinitionResponse>> {
     let _p = profile("handle_goto_type_definition");
-    let position = params.text_document_position_params.try_conv_with(&world)?;
+    let position = from_proto::file_position(&world, params.text_document_position_params)?;
     let nav_info = match world.analysis().goto_type_definition(position)? {
         None => return Ok(None),
         Some(it) => it,
     };
-    let res = (position.file_id, nav_info).try_conv_with(&world)?;
+    let res = to_proto::goto_definition_response(
+        &world,
+        FileRange { file_id: position.file_id, range: nav_info.range },
+        nav_info.info,
+    )?;
     Ok(Some(res))
 }
 
@@ -371,8 +378,13 @@ pub fn handle_parent_module(
     params: req::TextDocumentPositionParams,
 ) -> Result<Vec<Location>> {
     let _p = profile("handle_parent_module");
-    let position = params.try_conv_with(&world)?;
-    world.analysis().parent_module(position)?.iter().try_conv_with_to_vec(&world)
+    let position = from_proto::file_position(&world, params)?;
+    world
+        .analysis()
+        .parent_module(position)?
+        .into_iter()
+        .map(|it| to_proto::location(&world, it.file_range()))
+        .collect::<Result<Vec<_>>>()
 }
 
 pub fn handle_runnables(
@@ -380,9 +392,9 @@ pub fn handle_runnables(
     params: req::RunnablesParams,
 ) -> Result<Vec<req::Runnable>> {
     let _p = profile("handle_runnables");
-    let file_id = params.text_document.try_conv_with(&world)?;
+    let file_id = from_proto::file_id(&world, &params.text_document.uri)?;
     let line_index = world.analysis().file_line_index(file_id)?;
-    let offset = params.position.map(|it| it.conv_with(&line_index));
+    let offset = params.position.map(|it| from_proto::offset(&line_index, it));
     let mut res = Vec::new();
     let workspace_root = world.workspace_root_for(file_id);
     let cargo_spec = CargoTargetSpec::for_file(&world, file_id)?;
@@ -439,7 +451,7 @@ pub fn handle_completion(
     params: req::CompletionParams,
 ) -> Result<Option<req::CompletionResponse>> {
     let _p = profile("handle_completion");
-    let position = params.text_document_position.try_conv_with(&world)?;
+    let position = from_proto::file_position(&world, params.text_document_position)?;
     let completion_triggered_after_single_colon = {
         let mut res = false;
         if let Some(ctx) = params.context {
@@ -468,8 +480,10 @@ pub fn handle_completion(
     };
     let line_index = world.analysis().file_line_index(position.file_id)?;
     let line_endings = world.file_line_endings(position.file_id);
-    let items: Vec<CompletionItem> =
-        items.into_iter().map(|item| item.conv_with((&line_index, line_endings))).collect();
+    let items: Vec<CompletionItem> = items
+        .into_iter()
+        .map(|item| to_proto::completion_item(&line_index, line_endings, item))
+        .collect();
 
     Ok(Some(items.into()))
 }
@@ -479,17 +493,16 @@ pub fn handle_folding_range(
     params: FoldingRangeParams,
 ) -> Result<Option<Vec<FoldingRange>>> {
     let _p = profile("handle_folding_range");
-    let file_id = params.text_document.try_conv_with(&world)?;
+    let file_id = from_proto::file_id(&world, &params.text_document.uri)?;
     let folds = world.analysis().folding_ranges(file_id)?;
     let text = world.analysis().file_text(file_id)?;
     let line_index = world.analysis().file_line_index(file_id)?;
-    let ctx = FoldConvCtx {
-        text: &text,
-        line_index: &line_index,
-        line_folding_only: world.config.client_caps.line_folding_only,
-    };
-    let res = Some(folds.into_iter().map_conv_with(&ctx).collect());
-    Ok(res)
+    let line_folding_only = world.config.client_caps.line_folding_only;
+    let res = folds
+        .into_iter()
+        .map(|it| to_proto::folding_range(&*text, &line_index, line_folding_only, it))
+        .collect();
+    Ok(Some(res))
 }
 
 pub fn handle_signature_help(
@@ -497,34 +510,34 @@ pub fn handle_signature_help(
     params: req::SignatureHelpParams,
 ) -> Result<Option<req::SignatureHelp>> {
     let _p = profile("handle_signature_help");
-    let position = params.text_document_position_params.try_conv_with(&world)?;
-    if let Some(call_info) = world.analysis().call_info(position)? {
-        let concise = !world.config.call_info_full;
-        let mut active_parameter = call_info.active_parameter.map(|it| it as i64);
-        if concise && call_info.signature.has_self_param {
-            active_parameter = active_parameter.map(|it| it.saturating_sub(1));
-        }
-        let sig_info = call_info.signature.conv_with(concise);
-
-        Ok(Some(req::SignatureHelp {
-            signatures: vec![sig_info],
-            active_signature: Some(0),
-            active_parameter,
-        }))
-    } else {
-        Ok(None)
+    let position = from_proto::file_position(&world, params.text_document_position_params)?;
+    let call_info = match world.analysis().call_info(position)? {
+        None => return Ok(None),
+        Some(it) => it,
+    };
+    let concise = !world.config.call_info_full;
+    let mut active_parameter = call_info.active_parameter.map(|it| it as i64);
+    if concise && call_info.signature.has_self_param {
+        active_parameter = active_parameter.map(|it| it.saturating_sub(1));
     }
+    let sig_info = to_proto::signature_information(call_info.signature, concise);
+
+    Ok(Some(req::SignatureHelp {
+        signatures: vec![sig_info],
+        active_signature: Some(0),
+        active_parameter,
+    }))
 }
 
 pub fn handle_hover(world: WorldSnapshot, params: req::HoverParams) -> Result<Option<Hover>> {
     let _p = profile("handle_hover");
-    let position = params.text_document_position_params.try_conv_with(&world)?;
+    let position = from_proto::file_position(&world, params.text_document_position_params)?;
     let info = match world.analysis().hover(position)? {
         None => return Ok(None),
         Some(info) => info,
     };
     let line_index = world.analysis.file_line_index(position.file_id)?;
-    let range = info.range.conv_with(&line_index);
+    let range = to_proto::range(&line_index, info.range);
     let res = Hover {
         contents: HoverContents::Markup(MarkupContent {
             kind: MarkupKind::Markdown,
@@ -540,7 +553,7 @@ pub fn handle_prepare_rename(
     params: req::TextDocumentPositionParams,
 ) -> Result<Option<PrepareRenameResponse>> {
     let _p = profile("handle_prepare_rename");
-    let position = params.try_conv_with(&world)?;
+    let position = from_proto::file_position(&world, params)?;
 
     let optional_change = world.analysis().rename(position, "dummy")?;
     let range = match optional_change {
@@ -548,15 +561,14 @@ pub fn handle_prepare_rename(
         Some(it) => it.range,
     };
 
-    let file_id = params.text_document.try_conv_with(&world)?;
-    let line_index = world.analysis().file_line_index(file_id)?;
-    let range = range.conv_with(&line_index);
+    let line_index = world.analysis().file_line_index(position.file_id)?;
+    let range = to_proto::range(&line_index, range);
     Ok(Some(PrepareRenameResponse::Range(range)))
 }
 
 pub fn handle_rename(world: WorldSnapshot, params: RenameParams) -> Result<Option<WorkspaceEdit>> {
     let _p = profile("handle_rename");
-    let position = params.text_document_position.try_conv_with(&world)?;
+    let position = from_proto::file_position(&world, params.text_document_position)?;
 
     if params.new_name.is_empty() {
         return Err(LspError::new(
@@ -567,14 +579,13 @@ pub fn handle_rename(world: WorldSnapshot, params: RenameParams) -> Result<Optio
     }
 
     let optional_change = world.analysis().rename(position, &*params.new_name)?;
-    let change = match optional_change {
+    let source_change = match optional_change {
         None => return Ok(None),
         Some(it) => it.info,
     };
 
-    let source_change_req = change.try_conv_with(&world)?;
-
-    Ok(Some(source_change_req.workspace_edit))
+    let source_change = to_proto::source_change(&world, source_change)?;
+    Ok(Some(source_change.workspace_edit))
 }
 
 pub fn handle_references(
@@ -582,7 +593,7 @@ pub fn handle_references(
     params: req::ReferenceParams,
 ) -> Result<Option<Vec<Location>>> {
     let _p = profile("handle_references");
-    let position = params.text_document_position.try_conv_with(&world)?;
+    let position = from_proto::file_position(&world, params.text_document_position)?;
 
     let refs = match world.analysis().find_all_refs(position, None)? {
         None => return Ok(None),
@@ -591,33 +602,13 @@ pub fn handle_references(
 
     let locations = if params.context.include_declaration {
         refs.into_iter()
-            .filter_map(|reference| {
-                let line_index =
-                    world.analysis().file_line_index(reference.file_range.file_id).ok()?;
-                to_location(
-                    reference.file_range.file_id,
-                    reference.file_range.range,
-                    &world,
-                    &line_index,
-                )
-                .ok()
-            })
+            .filter_map(|reference| to_proto::location(&world, reference.file_range).ok())
             .collect()
     } else {
         // Only iterate over the references if include_declaration was false
         refs.references()
             .iter()
-            .filter_map(|reference| {
-                let line_index =
-                    world.analysis().file_line_index(reference.file_range.file_id).ok()?;
-                to_location(
-                    reference.file_range.file_id,
-                    reference.file_range.range,
-                    &world,
-                    &line_index,
-                )
-                .ok()
-            })
+            .filter_map(|reference| to_proto::location(&world, reference.file_range).ok())
             .collect()
     };
 
@@ -629,12 +620,12 @@ pub fn handle_formatting(
     params: DocumentFormattingParams,
 ) -> Result<Option<Vec<TextEdit>>> {
     let _p = profile("handle_formatting");
-    let file_id = params.text_document.try_conv_with(&world)?;
+    let file_id = from_proto::file_id(&world, &params.text_document.uri)?;
     let file = world.analysis().file_text(file_id)?;
     let crate_ids = world.analysis().crate_for(file_id)?;
 
     let file_line_index = world.analysis().file_line_index(file_id)?;
-    let end_position = TextSize::of(file.as_str()).conv_with(&file_line_index);
+    let end_position = to_proto::position(&file_line_index, TextSize::of(file.as_str()));
 
     let mut rustfmt = match &world.config.rustfmt {
         RustfmtConfig::Rustfmt { extra_args } => {
@@ -700,33 +691,14 @@ pub fn handle_formatting(
     }]))
 }
 
-fn create_single_code_action(assist: Assist, world: &WorldSnapshot) -> Result<CodeAction> {
-    let arg = to_value(assist.source_change.try_conv_with(world)?)?;
-    let title = assist.label;
-    let command = Command {
-        title: title.clone(),
-        command: "rust-analyzer.applySourceChange".to_string(),
-        arguments: Some(vec![arg]),
-    };
-
-    Ok(CodeAction {
-        title,
-        kind: Some(String::new()),
-        diagnostics: None,
-        edit: None,
-        command: Some(command),
-        is_preferred: None,
-    })
-}
-
 pub fn handle_code_action(
     world: WorldSnapshot,
     params: req::CodeActionParams,
 ) -> Result<Option<CodeActionResponse>> {
     let _p = profile("handle_code_action");
-    let file_id = params.text_document.try_conv_with(&world)?;
+    let file_id = from_proto::file_id(&world, &params.text_document.uri)?;
     let line_index = world.analysis().file_line_index(file_id)?;
-    let range = params.range.conv_with(&line_index);
+    let range = from_proto::text_range(&line_index, params.range);
 
     let diagnostics = world.analysis().diagnostics(file_id)?;
     let mut res = CodeActionResponse::default();
@@ -739,7 +711,7 @@ pub fn handle_code_action(
 
     for source_edit in fixes_from_diagnostics {
         let title = source_edit.label.clone();
-        let edit = source_edit.try_conv_with(&world)?;
+        let edit = to_proto::source_change(&world, source_edit)?;
 
         let command = Command {
             title,
@@ -758,7 +730,7 @@ pub fn handle_code_action(
     }
 
     for fix in world.check_fixes.get(&file_id).into_iter().flatten() {
-        let fix_range = fix.range.conv_with(&line_index);
+        let fix_range = from_proto::text_range(&line_index, fix.range);
         if fix_range.intersect(range).is_none() {
             continue;
         }
@@ -779,21 +751,21 @@ pub fn handle_code_action(
                 .1
                 .push(assist),
             None => {
-                res.push(create_single_code_action(assist, &world)?.into());
+                res.push(to_proto::code_action(&world, assist)?.into());
             }
         }
     }
 
     for (group_label, (idx, assists)) in grouped_assists {
         if assists.len() == 1 {
-            res[idx] =
-                create_single_code_action(assists.into_iter().next().unwrap(), &world)?.into();
+            res[idx] = to_proto::code_action(&world, assists.into_iter().next().unwrap())?.into();
         } else {
             let title = group_label;
 
             let mut arguments = Vec::with_capacity(assists.len());
             for assist in assists {
-                arguments.push(to_value(assist.source_change.try_conv_with(&world)?)?);
+                let source_change = to_proto::source_change(&world, assist.source_change)?;
+                arguments.push(to_value(source_change)?);
             }
 
             let command = Some(Command {
@@ -838,7 +810,7 @@ pub fn handle_code_lens(
     params: req::CodeLensParams,
 ) -> Result<Option<Vec<CodeLens>>> {
     let _p = profile("handle_code_lens");
-    let file_id = params.text_document.try_conv_with(&world)?;
+    let file_id = from_proto::file_id(&world, &params.text_document.uri)?;
     let line_index = world.analysis().file_line_index(file_id)?;
 
     let mut lenses: Vec<CodeLens> = Default::default();
@@ -902,7 +874,7 @@ pub fn handle_code_lens(
                 _ => false,
             })
             .map(|it| {
-                let range = it.node_range.conv_with(&line_index);
+                let range = to_proto::range(&line_index, it.node_range);
                 let pos = range.start;
                 let lens_params = req::GotoImplementationParams {
                     text_document_position_params: req::TextDocumentPositionParams::new(
@@ -979,34 +951,33 @@ pub fn handle_document_highlight(
     params: req::DocumentHighlightParams,
 ) -> Result<Option<Vec<DocumentHighlight>>> {
     let _p = profile("handle_document_highlight");
-    let file_id = params.text_document_position_params.text_document.try_conv_with(&world)?;
-    let line_index = world.analysis().file_line_index(file_id)?;
+    let position = from_proto::file_position(&world, params.text_document_position_params)?;
+    let line_index = world.analysis().file_line_index(position.file_id)?;
 
-    let refs = match world.analysis().find_all_refs(
-        params.text_document_position_params.try_conv_with(&world)?,
-        Some(SearchScope::single_file(file_id)),
-    )? {
+    let refs = match world
+        .analysis()
+        .find_all_refs(position, Some(SearchScope::single_file(position.file_id)))?
+    {
         None => return Ok(None),
         Some(refs) => refs,
     };
 
-    Ok(Some(
-        refs.into_iter()
-            .filter(|reference| reference.file_range.file_id == file_id)
-            .map(|reference| DocumentHighlight {
-                range: reference.file_range.range.conv_with(&line_index),
-                kind: reference.access.map(|it| it.conv()),
-            })
-            .collect(),
-    ))
+    let res = refs
+        .into_iter()
+        .filter(|reference| reference.file_range.file_id == position.file_id)
+        .map(|reference| DocumentHighlight {
+            range: to_proto::range(&line_index, reference.file_range.range),
+            kind: reference.access.map(to_proto::document_highlight_kind),
+        })
+        .collect();
+    Ok(Some(res))
 }
 
 pub fn handle_ssr(world: WorldSnapshot, params: req::SsrParams) -> Result<req::SourceChange> {
     let _p = profile("handle_ssr");
-    world
-        .analysis()
-        .structural_search_replace(&params.query, params.parse_only)??
-        .try_conv_with(&world)
+    let source_change =
+        world.analysis().structural_search_replace(&params.query, params.parse_only)??;
+    to_proto::source_change(&world, source_change)
 }
 
 pub fn publish_diagnostics(world: &WorldSnapshot, file_id: FileId) -> Result<DiagnosticTask> {
@@ -1017,8 +988,8 @@ pub fn publish_diagnostics(world: &WorldSnapshot, file_id: FileId) -> Result<Dia
         .diagnostics(file_id)?
         .into_iter()
         .map(|d| Diagnostic {
-            range: d.range.conv_with(&line_index),
-            severity: Some(d.severity.conv()),
+            range: to_proto::range(&line_index, d.range),
+            severity: Some(to_proto::diagnostic_severity(d.severity)),
             code: None,
             source: Some("rust-analyzer".to_string()),
             message: d.message,
@@ -1045,7 +1016,7 @@ fn to_lsp_runnable(
         RunnableKind::Bin => "run binary".to_string(),
     };
     Ok(req::Runnable {
-        range: runnable.range.conv_with(&line_index),
+        range: to_proto::range(&line_index, runnable.range),
         label,
         bin: "cargo".to_string(),
         args,
@@ -1064,13 +1035,13 @@ pub fn handle_inlay_hints(
     params: InlayHintsParams,
 ) -> Result<Vec<InlayHint>> {
     let _p = profile("handle_inlay_hints");
-    let file_id = params.text_document.try_conv_with(&world)?;
+    let file_id = from_proto::file_id(&world, &params.text_document.uri)?;
     let analysis = world.analysis();
     let line_index = analysis.file_line_index(file_id)?;
     Ok(analysis
         .inlay_hints(file_id, &world.config.inlay_hints)?
         .into_iter()
-        .map_conv_with(&line_index)
+        .map(|it| to_proto::inlay_int(&line_index, it))
         .collect())
 }
 
@@ -1079,21 +1050,19 @@ pub fn handle_call_hierarchy_prepare(
     params: CallHierarchyPrepareParams,
 ) -> Result<Option<Vec<CallHierarchyItem>>> {
     let _p = profile("handle_call_hierarchy_prepare");
-    let position = params.text_document_position_params.try_conv_with(&world)?;
-    let file_id = position.file_id;
+    let position = from_proto::file_position(&world, params.text_document_position_params)?;
 
     let nav_info = match world.analysis().call_hierarchy(position)? {
         None => return Ok(None),
         Some(it) => it,
     };
 
-    let line_index = world.analysis().file_line_index(file_id)?;
-    let RangeInfo { range, info: navs } = nav_info;
+    let RangeInfo { range: _, info: navs } = nav_info;
     let res = navs
         .into_iter()
         .filter(|it| it.kind() == SyntaxKind::FN_DEF)
-        .filter_map(|it| to_call_hierarchy_item(file_id, range, &world, &line_index, it).ok())
-        .collect();
+        .map(|it| to_proto::call_hierarchy_item(&world, it))
+        .collect::<Result<Vec<_>>>()?;
 
     Ok(Some(res))
 }
@@ -1106,7 +1075,7 @@ pub fn handle_call_hierarchy_incoming(
     let item = params.item;
 
     let doc = TextDocumentIdentifier::new(item.uri);
-    let frange: FileRange = (&doc, item.range).try_conv_with(&world)?;
+    let frange = from_proto::file_range(&world, doc, item.range)?;
     let fpos = FilePosition { file_id: frange.file_id, offset: frange.range.start() };
 
     let call_items = match world.analysis().incoming_calls(fpos)? {
@@ -1119,11 +1088,14 @@ pub fn handle_call_hierarchy_incoming(
     for call_item in call_items.into_iter() {
         let file_id = call_item.target.file_id();
         let line_index = world.analysis().file_line_index(file_id)?;
-        let range = call_item.target.range();
-        let item = to_call_hierarchy_item(file_id, range, &world, &line_index, call_item.target)?;
+        let item = to_proto::call_hierarchy_item(&world, call_item.target)?;
         res.push(CallHierarchyIncomingCall {
             from: item,
-            from_ranges: call_item.ranges.iter().map(|it| it.conv_with(&line_index)).collect(),
+            from_ranges: call_item
+                .ranges
+                .into_iter()
+                .map(|it| to_proto::range(&line_index, it))
+                .collect(),
         });
     }
 
@@ -1138,7 +1110,7 @@ pub fn handle_call_hierarchy_outgoing(
     let item = params.item;
 
     let doc = TextDocumentIdentifier::new(item.uri);
-    let frange: FileRange = (&doc, item.range).try_conv_with(&world)?;
+    let frange = from_proto::file_range(&world, doc, item.range)?;
     let fpos = FilePosition { file_id: frange.file_id, offset: frange.range.start() };
 
     let call_items = match world.analysis().outgoing_calls(fpos)? {
@@ -1151,11 +1123,14 @@ pub fn handle_call_hierarchy_outgoing(
     for call_item in call_items.into_iter() {
         let file_id = call_item.target.file_id();
         let line_index = world.analysis().file_line_index(file_id)?;
-        let range = call_item.target.range();
-        let item = to_call_hierarchy_item(file_id, range, &world, &line_index, call_item.target)?;
+        let item = to_proto::call_hierarchy_item(&world, call_item.target)?;
         res.push(CallHierarchyOutgoingCall {
             to: item,
-            from_ranges: call_item.ranges.iter().map(|it| it.conv_with(&line_index)).collect(),
+            from_ranges: call_item
+                .ranges
+                .into_iter()
+                .map(|it| to_proto::range(&line_index, it))
+                .collect(),
         });
     }
 
@@ -1168,19 +1143,20 @@ pub fn handle_semantic_tokens(
 ) -> Result<Option<SemanticTokensResult>> {
     let _p = profile("handle_semantic_tokens");
 
-    let file_id = params.text_document.try_conv_with(&world)?;
+    let file_id = from_proto::file_id(&world, &params.text_document.uri)?;
     let text = world.analysis().file_text(file_id)?;
     let line_index = world.analysis().file_line_index(file_id)?;
 
     let mut builder = SemanticTokensBuilder::default();
 
     for highlight_range in world.analysis().highlight(file_id)?.into_iter() {
-        let (token_index, modifier_bitset) = highlight_range.highlight.conv();
+        let (token_index, modifier_bitset) =
+            to_proto::token_type_index_modifiers_bitself(highlight_range.highlight);
         for mut range in line_index.lines(highlight_range.range) {
             if text[range].ends_with('\n') {
                 range = TextRange::new(range.start(), range.end() - TextSize::of('\n'));
             }
-            let range = range.conv_with(&line_index);
+            let range = to_proto::range(&line_index, range);
             builder.push(range, token_index, modifier_bitset);
         }
     }
@@ -1196,14 +1172,16 @@ pub fn handle_semantic_tokens_range(
 ) -> Result<Option<SemanticTokensRangeResult>> {
     let _p = profile("handle_semantic_tokens_range");
 
-    let frange = (&params.text_document, params.range).try_conv_with(&world)?;
+    let frange = from_proto::file_range(&world, params.text_document, params.range)?;
     let line_index = world.analysis().file_line_index(frange.file_id)?;
 
     let mut builder = SemanticTokensBuilder::default();
 
     for highlight_range in world.analysis().highlight_range(frange)?.into_iter() {
-        let (token_type, token_modifiers) = highlight_range.highlight.conv();
-        builder.push(highlight_range.range.conv_with(&line_index), token_type, token_modifiers);
+        let (token_type, token_modifiers) =
+            to_proto::token_type_index_modifiers_bitself(highlight_range.highlight);
+        let range = to_proto::range(&line_index, highlight_range.range);
+        builder.push(range, token_type, token_modifiers);
     }
 
     let tokens = builder.build();

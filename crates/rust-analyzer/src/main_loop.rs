@@ -37,8 +37,8 @@ use threadpool::ThreadPool;
 
 use crate::{
     config::{Config, FilesWatcher},
-    conv::{ConvWith, TryConvWith},
     diagnostics::DiagnosticTask,
+    from_proto,
     main_loop::{
         pending_requests::{PendingRequest, PendingRequests},
         subscriptions::Subscriptions,
@@ -584,7 +584,7 @@ fn on_notification(
         Ok(params) => {
             let DidChangeTextDocumentParams { text_document, content_changes } = params;
             let world = state.snapshot();
-            let file_id = text_document.try_conv_with(&world)?;
+            let file_id = from_proto::file_id(&world, &text_document.uri)?;
             let line_index = world.analysis().file_line_index(file_id)?;
             let uri = text_document.uri;
             let path = uri.to_file_path().map_err(|()| format!("invalid uri: {}", uri))?;
@@ -694,7 +694,7 @@ fn apply_document_changes(
                     line_index = Cow::Owned(LineIndex::new(&old_text));
                 }
                 index_valid = IndexValid::UpToLineExclusive(range.start.line);
-                let range = range.conv_with(&line_index);
+                let range = from_proto::text_range(&line_index, range);
                 let mut text = old_text.to_owned();
                 match std::panic::catch_unwind(move || {
                     text.replace_range(Range::<usize>::from(range), &change.text);

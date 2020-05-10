@@ -75,6 +75,7 @@ impl TextEdit {
         self.indels.is_empty()
     }
 
+    // FXME: impl IntoIter instead
     pub fn as_indels(&self) -> &[Indel] {
         &self.indels
     }
