@@ -1,11 +1,15 @@
-error[E0720]: opaque type expands to a recursive type
-  --> $DIR/issue-67166.rs:7:19
+error[E0106]: missing lifetime specifier
+  --> $DIR/issue-67166.rs:7:31
    |
-LL |     let _foo: Box<impl Copy + '_> = Box::new(()); // FIXME: The error doesn't much make sense.
-   |                   ^^^^^^^^^^^^^^ expands to a recursive type
+LL |     let _foo: Box<impl Copy + '_> = Box::new(());
+   |                               ^^ expected named lifetime parameter
    |
-   = note: type resolves to itself
+help: consider introducing a named lifetime parameter
+   |
+LL | pub fn run<'a>() {
+LL |     let _foo: Box<impl Copy + 'a> = Box::new(());
+   |
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0720`.
+For more information about this error, try `rustc --explain E0106`.
