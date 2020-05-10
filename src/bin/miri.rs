@@ -68,7 +68,7 @@ fn init_early_loggers() {
 fn init_late_loggers(tcx: TyCtxt<'_>) {
     // We initialize loggers right before we start evaluation. We overwrite the `RUSTC_LOG`
     // env var if it is not set, control it based on `MIRI_LOG`.
-    // (FIXE: use `var_os`, but then we need to manually concatenate instead of `format!`.)
+    // (FIXME: use `var_os`, but then we need to manually concatenate instead of `format!`.)
     if let Ok(var) = env::var("MIRI_LOG") {
         if env::var_os("RUSTC_LOG").is_none() {
             // We try to be a bit clever here: if `MIRI_LOG` is just a single level
@@ -123,7 +123,7 @@ fn compile_time_sysroot() -> Option<String> {
 }
 
 /// Execute a compiler with the given CLI arguments and callbacks.
-fn run_compiler(mut args: Vec<String>, callbacks: &mut (dyn rustc_driver::Callbacks + Send)) {
+fn run_compiler(mut args: Vec<String>, callbacks: &mut (dyn rustc_driver::Callbacks + Send)) -> ! {
     // Make sure we use the right default sysroot. The default sysroot is wrong,
     // because `get_or_default_sysroot` in `librustc_session` bases that on `current_exe`.
     //
@@ -152,7 +152,7 @@ fn run_compiler(mut args: Vec<String>, callbacks: &mut (dyn rustc_driver::Callba
         Ok(()) => rustc_driver::EXIT_SUCCESS,
         Err(_) => rustc_driver::EXIT_FAILURE,
     };
-    std::process::exit(exit_code);
+    std::process::exit(exit_code)
 }
 
 fn main() {
@@ -163,7 +163,7 @@ fn main() {
         rustc_driver::init_rustc_env_logger();
         // We cannot use `rustc_driver::main` as we need to adjust the CLI arguments.
         let mut callbacks = rustc_driver::TimePassesCallbacks::default();
-        return run_compiler(env::args().collect(), &mut callbacks);
+        run_compiler(env::args().collect(), &mut callbacks)
     }
 
     // Init loggers the Miri way.
@@ -285,5 +285,5 @@ fn main() {
         tracked_pointer_tag,
         tracked_alloc_id,
     };
-    return run_compiler(rustc_args, &mut MiriCompilerCalls { miri_config });
+    run_compiler(rustc_args, &mut MiriCompilerCalls { miri_config })
 }

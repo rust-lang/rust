@@ -479,10 +479,6 @@ fn inside_cargo_rustc() {
     fn is_runnable_crate() -> bool {
         let is_bin = get_arg_flag_value("--crate-type").as_deref() == Some("bin");
         let is_test = has_arg_flag("--test");
-
-        // The final runnable (under Miri) crate will either be a binary crate
-        // or a test crate. We make sure to exclude build scripts here, since
-        // they are also build with "--crate-type bin"
         is_bin || is_test
     }
 
@@ -494,7 +490,8 @@ fn inside_cargo_rustc() {
     cmd.args(std::env::args().skip(2)); // skip `cargo-miri rustc`
 
     // We make sure to only specify our custom Xargo sysroot for target crates - that is,
-    // crates which are ultimately going to get interpreted by Miri.
+    // crates which are needed for interpretation by Miri. proc-macros and build scripts
+    // should use the default sysroot.
     if target_crate {
         let sysroot =
             env::var_os("MIRI_SYSROOT").expect("The wrapper should have set MIRI_SYSROOT");
@@ -506,6 +503,7 @@ fn inside_cargo_rustc() {
     // otherwise we want Miri to behave like rustc and build the crate as usual.
     if target_crate && is_runnable_crate() {
         // This is the binary or test crate that we want to interpret under Miri.
+        // (Testing `target_crate` is needed to exclude build scripts.)
         // We deserialize the arguments that are meant for Miri from the special environment
         // variable "MIRI_ARGS", and feed them to the 'miri' binary.
         //
