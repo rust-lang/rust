@@ -2410,7 +2410,7 @@ impl TypeArg {
 }
 /// Associated type argument that is passed at generic instantiation site.
 /// ```
-/// use foo::<'a, u64, bool, ❰ Item = Bar ❱, 42>::baz;
+/// type Foo = Bar::<'a, u64, bool, ❰ Item = Baz ❱, 42>::Bruh;
 ///
 /// trait Bruh<T>: Iterator<❰ Item: Debug ❱> {}
 /// ```
