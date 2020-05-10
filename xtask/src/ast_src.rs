@@ -651,7 +651,6 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             T![;]
         }
 
-        // TODO: clarify whether this does include assoc type with bounds
         /// Type alias definition.
         /// Includes associated type clauses with type bounds.
         ///
@@ -1990,7 +1989,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         /// Constant value argument that is passed at generic instantiation site.
         ///
         /// ```
-        /// foo::<❰ u32 ❱, ❰ true ❱ >();
+        /// foo::<❰ u32 ❱, ❰ true ❱>();
         ///
         /// bar::<❰ { 2 + 2} ❱>();
         /// ```
