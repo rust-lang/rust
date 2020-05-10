@@ -1554,12 +1554,17 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         ///     }
         /// ❱
         ///
-        /// ❰ foo!() ❱
+        /// // semicolon is a part of `MacroCall` when it is used in item positions
+        /// ❰ foo!(); ❱
+        ///
+        /// fn main() {
+        ///     ❰ foo!() ❱; // macro call expression position doesn't include the semi
+        /// }
         /// ```
         ///
         /// [Reference](https://doc.rust-lang.org/reference/macros.html)
         struct MacroCall: NameOwner, AttrsOwner, DocCommentsOwner {
-            Path, T![!], TokenTree, T![;] // TODO: what is the meaning of the semicolon here?
+            Path, T![!], TokenTree, T![;]
         }
 
         /// Attribute.
