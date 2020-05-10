@@ -1,8 +1,8 @@
 error[E0277]: the trait bound `T: TraitWithAssoc` is not satisfied
-  --> $DIR/bound_reduction2.rs:10:1
+  --> $DIR/bound_reduction2.rs:10:15
    |
 LL | type Foo<V> = impl Trait<V>;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `TraitWithAssoc` is not implemented for `T`
+   |               ^^^^^^^^^^^^^ the trait `TraitWithAssoc` is not implemented for `T`
    |
 help: consider further restricting this bound
    |

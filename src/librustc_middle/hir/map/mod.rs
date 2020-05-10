@@ -672,6 +672,8 @@ impl<'hir> Map<'hir> {
             if let Node::Item(Item {
                 kind:
                     ItemKind::Fn(..)
+                    | ItemKind::Const(..)
+                    | ItemKind::Static(..)
                     | ItemKind::Mod(..)
                     | ItemKind::Enum(..)
                     | ItemKind::Struct(..)
@@ -700,11 +702,7 @@ impl<'hir> Map<'hir> {
                 return CRATE_HIR_ID;
             }
             match self.get(scope) {
-                Node::Item(Item {
-                    kind: ItemKind::OpaqueTy(OpaqueTy { impl_trait_fn: None, .. }),
-                    ..
-                })
-                | Node::Block(_) => {}
+                Node::Block(_) => {}
                 _ => break,
             }
         }

@@ -1,5 +1,5 @@
 use super::{AnonymousLifetimeMode, LoweringContext, ParamMode};
-use super::{ImplTraitContext, ImplTraitPosition, ImplTraitTypeIdVisitor};
+use super::{ImplTraitContext, ImplTraitPosition};
 use crate::Arena;
 
 use rustc_ast::ast::*;
@@ -165,13 +165,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             ItemKind::MacroDef(..) => SmallVec::new(),
             ItemKind::Fn(..) | ItemKind::Impl { of_trait: None, .. } => smallvec![i.id],
-            ItemKind::Static(ref ty, ..) | ItemKind::Const(_, ref ty, ..) => {
-                let mut ids = smallvec![i.id];
-                if self.sess.features_untracked().impl_trait_in_bindings {
-                    ImplTraitTypeIdVisitor { ids: &mut ids }.visit_ty(ty);
-                }
-                ids
-            }
             _ => smallvec![i.id],
         };
 
@@ -292,23 +285,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
             ItemKind::Mod(ref m) => hir::ItemKind::Mod(self.lower_mod(m)),
             ItemKind::ForeignMod(ref nm) => hir::ItemKind::ForeignMod(self.lower_foreign_mod(nm)),
             ItemKind::GlobalAsm(ref ga) => hir::ItemKind::GlobalAsm(self.lower_global_asm(ga)),
-            ItemKind::TyAlias(_, ref gen, _, Some(ref ty)) => match ty.kind.opaque_top_hack() {
-                None => {
-                    let ty = self.lower_ty(ty, ImplTraitContext::disallowed());
-                    let generics = self.lower_generics(gen, ImplTraitContext::disallowed());
-                    hir::ItemKind::TyAlias(ty, generics)
-                }
-                Some(bounds) => {
-                    let ctx = || ImplTraitContext::OpaqueTy(None, hir::OpaqueTyOrigin::Misc);
-                    let ty = hir::OpaqueTy {
-                        generics: self.lower_generics(gen, ctx()),
-                        bounds: self.lower_param_bounds(bounds, ctx()),
-                        impl_trait_fn: None,
-                        origin: hir::OpaqueTyOrigin::TypeAlias,
-                    };
-                    hir::ItemKind::OpaqueTy(ty)
-                }
-            },
+            ItemKind::TyAlias(_, ref gen, _, Some(ref ty)) => {
+                let ty =
+                    self.lower_ty(ty, ImplTraitContext::OpaqueTy(None, hir::OpaqueTyOrigin::Misc));
+                let generics = self.lower_generics(gen, ImplTraitContext::disallowed());
+                hir::ItemKind::TyAlias(ty, generics)
+            }
             ItemKind::TyAlias(_, ref generics, _, None) => {
                 let ty = self.arena.alloc(self.ty(span, hir::TyKind::Err));
                 let generics = self.lower_generics(generics, ImplTraitContext::disallowed());
@@ -844,16 +826,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         let ty = self.arena.alloc(self.ty(i.span, hir::TyKind::Err));
                         hir::ImplItemKind::TyAlias(ty)
                     }
-                    Some(ty) => match ty.kind.opaque_top_hack() {
-                        None => {
-                            let ty = self.lower_ty(ty, ImplTraitContext::disallowed());
-                            hir::ImplItemKind::TyAlias(ty)
-                        }
-                        Some(bs) => {
-                            let bs = self.lower_param_bounds(bs, ImplTraitContext::disallowed());
-                            hir::ImplItemKind::OpaqueTy(bs)
-                        }
-                    },
+                    Some(ty) => {
+                        let ty = self.lower_ty(
+                            ty,
+                            ImplTraitContext::OpaqueTy(None, hir::OpaqueTyOrigin::Misc),
+                        );
+                        hir::ImplItemKind::TyAlias(ty)
+                    }
                 };
                 (generics, kind)
             }
@@ -887,12 +866,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             defaultness,
             kind: match &i.kind {
                 AssocItemKind::Const(..) => hir::AssocItemKind::Const,
-                AssocItemKind::TyAlias(.., ty) => {
-                    match ty.as_deref().and_then(|ty| ty.kind.opaque_top_hack()) {
-                        None => hir::AssocItemKind::Type,
-                        Some(_) => hir::AssocItemKind::OpaqueTy,
-                    }
-                }
+                AssocItemKind::TyAlias(..) => hir::AssocItemKind::Type,
                 AssocItemKind::Fn(_, sig, ..) => {
                     hir::AssocItemKind::Fn { has_self: sig.decl.has_self() }
                 }

@@ -396,15 +396,12 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 let scope = Scope::Elision { elide: Elide::Exact(Region::Static), s: ROOT_SCOPE };
                 self.with(scope, |_, this| intravisit::walk_item(this, item));
             }
-            hir::ItemKind::OpaqueTy(hir::OpaqueTy { impl_trait_fn: Some(_), .. }) => {
-                // Currently opaque type declarations are just generated from `impl Trait`
-                // items. Doing anything on this node is irrelevant, as we currently don't need
-                // it.
+            hir::ItemKind::OpaqueTy(hir::OpaqueTy { .. }) => {
+                // Opaque types are visited when we visit the `TyKind::Def`, so
+                // that they have the lifetimes from their parent opaque_ty in
+                // scope.
             }
             hir::ItemKind::TyAlias(_, ref generics)
-            | hir::ItemKind::OpaqueTy(hir::OpaqueTy {
-                impl_trait_fn: None, ref generics, ..
-            })
             | hir::ItemKind::Enum(_, ref generics)
             | hir::ItemKind::Struct(_, ref generics)
             | hir::ItemKind::Union(_, ref generics)
@@ -563,17 +560,22 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 // `type MyAnonTy<'b> = impl MyTrait<'b>;`
                 //                 ^                  ^ this gets resolved in the scope of
                 //                                      the opaque_ty generics
-                let (generics, bounds) = match self.tcx.hir().expect_item(item_id.id).kind {
+                let opaque_ty = self.tcx.hir().expect_item(item_id.id);
+                let (generics, bounds) = match opaque_ty.kind {
                     // Named opaque `impl Trait` types are reached via `TyKind::Path`.
                     // This arm is for `impl Trait` in the types of statics, constants and locals.
                     hir::ItemKind::OpaqueTy(hir::OpaqueTy { impl_trait_fn: None, .. }) => {
                         intravisit::walk_ty(self, ty);
+                        intravisit::walk_item(this, opaque_ty);
                         return;
                     }
                     // RPIT (return position impl trait)
-                    hir::ItemKind::OpaqueTy(hir::OpaqueTy { ref generics, bounds, .. }) => {
-                        (generics, bounds)
-                    }
+                    hir::ItemKind::OpaqueTy(hir::OpaqueTy {
+                        impl_trait_fn: Some(_),
+                        ref generics,
+                        bounds,
+                        ..
+                    }) => (generics, bounds),
                     ref i => bug!("`impl Trait` pointed to non-opaque type?? {:#?}", i),
                 };
 
@@ -2667,8 +2669,9 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 // going to make a fresh name, so we cannot
                 // necessarily replace a single-use lifetime with
                 // `'_`.
-                Scope::Elision { elide: Elide::Exact(_), .. } => break false,
-                Scope::Elision { elide: Elide::Error(_), .. } => break false,
+                Scope::Elision {
+                    elide: Elide::Exact(_) | Elide::Error(_) | Elide::Forbid, ..
+                } => break false,
 
                 Scope::ObjectLifetimeDefault { s, .. } => scope = s,
             }
