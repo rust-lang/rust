@@ -154,11 +154,11 @@ pub trait InferCtxtExt<'tcx> {
     fn suggest_new_overflow_limit(&self, err: &mut DiagnosticBuilder<'_>);
 
     /// Suggest to await before try: future? => future.await?
-    fn suggest_await_befor_try(
+    fn suggest_await_before_try(
         &self,
         err: &mut DiagnosticBuilder<'_>,
         obligation: &PredicateObligation<'tcx>,
-        ty: Ty<'tcx>,
+        trait_ref: &ty::Binder<ty::TraitRef<'tcx>>,
         span: Span,
     );
 }
@@ -1777,21 +1777,23 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         ));
     }
 
-    fn suggest_await_befor_try(
+    fn suggest_await_before_try(
         &self,
         err: &mut DiagnosticBuilder<'_>,
         obligation: &PredicateObligation<'tcx>,
-        ty: Ty<'tcx>,
+        trait_ref: &ty::Binder<ty::TraitRef<'tcx>>,
         span: Span,
     ) {
-        debug!("suggest_await_befor_try: obligation={:?}, span={:?}", obligation, span);
+        debug!(
+            "suggest_await_befor_try: obligation={:?}, span={:?}, trait_ref={:?}",
+            obligation, span, trait_ref
+        );
         let body_hir_id = obligation.cause.body_id;
         let item_id = self.tcx.hir().get_parent_node(body_hir_id);
+
         if let Some(body_id) = self.tcx.hir().maybe_body_owned_by(item_id) {
             let body = self.tcx.hir().body(body_id);
             if let Some(hir::GeneratorKind::Async(_)) = body.generator_kind {
-                // Check for `Future` implementations by constructing a predicate to
-                // prove: `<T as Future>::Output == U`
                 let future_trait = self.tcx.lang_items().future_trait().unwrap();
                 let item_def_id = self
                     .tcx
@@ -1803,14 +1805,15 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 // `<T as Future>::Output`
                 let projection_ty = ty::ProjectionTy {
                     // `T`
-                    substs: self
-                        .tcx
-                        .mk_substs_trait(ty, self.fresh_substs_for_item(span, item_def_id)),
+                    substs: self.tcx.mk_substs_trait(
+                        trait_ref.self_ty(),
+                        self.fresh_substs_for_item(span, item_def_id),
+                    ),
                     // `Future::Output`
                     item_def_id,
                 };
 
-                let cause = ObligationCause::misc(span, body_hir_id);
+                //let cause = ObligationCause::misc(span, body_hir_id);
                 let mut selcx = SelectionContext::new(self);
 
                 let mut obligations = vec![];
@@ -1824,19 +1827,20 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 );
 
                 debug!("suggest_await_befor_try: normalized_projection_type {:?}", normalized_ty);
-                let try_trait_ref_id = self.tcx.lang_items().try_trait().unwrap();
-                if let Some(try_trait_ref) = self.tcx.impl_trait_ref(try_trait_ref_id) {
-                    let try_predicate = try_trait_ref.without_const().to_predicate();
-                    let try_obligation =
-                        Obligation::new(cause, obligation.param_env, try_predicate);
-                    debug!("suggest_await_befor_try: try_trait_obligation {:?}", try_obligation);
-                    if self.predicate_may_hold(&try_obligation) {
-                        debug!("try_obligation holds");
-                        if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
+                let try_obligation = self.mk_obligation_for_def_id(
+                    trait_ref.def_id(),
+                    normalized_ty,
+                    obligation.cause.clone(),
+                    obligation.param_env,
+                );
+                debug!("suggest_await_befor_try: try_trait_obligation {:?}", try_obligation);
+                if self.predicate_may_hold(&try_obligation) {
+                    if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
+                        if snippet.ends_with('?') {
                             err.span_suggestion(
                                 span,
                                 "consider using `.await` here",
-                                format!("{}.await", snippet),
+                                format!("{}.await?", snippet.trim_end_matches('?')),
                                 Applicability::MaybeIncorrect,
                             );
                         }
