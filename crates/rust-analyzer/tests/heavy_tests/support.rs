@@ -212,7 +212,7 @@ impl Server {
                     ProgressParams {
                         token: lsp_types::ProgressToken::String(ref token),
                         value: ProgressParamsValue::WorkDone(WorkDoneProgress::End(_)),
-                    } if token == "rustAnalyzer/startup" => true,
+                    } if token == "rustAnalyzer/workspaceAnalysis" => true,
                     _ => false,
                 }
             }

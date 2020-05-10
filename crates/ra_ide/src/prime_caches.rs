@@ -5,8 +5,13 @@
 
 use crate::{FileId, RootDatabase};
 
-pub(crate) fn prime_caches(db: &RootDatabase, files: Vec<FileId>) {
-    for file in files {
+pub(crate) fn prime_caches(
+    db: &RootDatabase,
+    files: Vec<FileId>,
+    mut report_progress: impl FnMut(usize),
+) {
+    for (i, file) in files.into_iter().enumerate() {
         let _ = crate::syntax_highlighting::highlight(db, file, None, false);
+        report_progress(i);
     }
 }
