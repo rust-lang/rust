@@ -156,7 +156,7 @@ Try deleting `~/.cache/miri`.
 This means the sysroot you are using was not compiled with Miri in mind.  This
 should never happen when you use `cargo miri` because that takes care of setting
 up the sysroot.  If you are using `miri` (the Miri driver) directly, see
-[below][testing-miri] for how to set up the sysroot.
+[CONTRIBUTING.md](CONTRIBUTING.md) for how to use `./miri`.
 
 
 ## Miri `-Z` flags and environment variables
