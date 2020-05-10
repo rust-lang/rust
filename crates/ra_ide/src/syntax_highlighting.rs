@@ -408,7 +408,8 @@ fn highlight_element(
                 | T![loop]
                 | T![match]
                 | T![return]
-                | T![while] => h | HighlightModifier::ControlFlow,
+                | T![while]
+                | T![in] => h | HighlightModifier::ControlFlow,
                 T![unsafe] => h | HighlightModifier::Unsafe,
                 _ => h,
             }

@@ -47,6 +47,10 @@ fn main() {
         STATIC_MUT = 1;
     }
 
+    for e in vec {
+        // Do nothing
+    }
+
     let mut x = 42;
     let y = &mut x;
     let z = &y;
