@@ -1586,10 +1586,6 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         /// [Reference](https://doc.rust-lang.org/reference/macros.html)
         struct TokenTree {}
 
-        // TODO: clarify this param vs arg i.e. delcaration vs instantiation
-        // TODO: arg vs param doesn't really make a difference, the naming here is very confusing
-        // This one is not so obvious as pattern vs template (@matklad)
-        //
         /// Generic lifetime, type and constants parameters list **declaration**.
         ///
         /// ```
