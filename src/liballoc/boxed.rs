@@ -370,7 +370,7 @@ impl<T, A: AllocRef> Box<[T], A> {
     /// Behaves like [`new_uninit_slice`] but generic over the allocator.
     ///
     /// [`new_uninit_slice`]: #method.new_uninit_slice
-    #[unstable(feature = "new_uninit", issue = "63291")]
+    #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn new_uninit_slice_in(len: usize, alloc: A) -> Box<[mem::MaybeUninit<T>], A> {
         unsafe { RawVec::with_capacity_in(len, alloc).into_box(len) }
     }
@@ -805,7 +805,6 @@ impl<T: Clone, A: AllocRef + Clone> Clone for Box<T, A> {
     /// // But they are unique objects
     /// assert_ne!(&*x as *const i32, &*y as *const i32);
     /// ```
-    #[rustfmt::skip]
     #[inline]
     fn clone(&self) -> Self {
         Self::new_in((**self).clone(), self.alloc().clone())
