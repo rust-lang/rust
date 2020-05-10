@@ -11,7 +11,7 @@ use test_utils::{
     RangeOrOffset,
 };
 
-use crate::{handlers::Handler, resolved_assists, AssistCtx};
+use crate::{handlers::Handler, Assist, AssistContext, Assists};
 
 pub(crate) fn with_single_file(text: &str) -> (RootDatabase, FileId) {
     let (mut db, file_id) = RootDatabase::with_single_file(text);
@@ -41,16 +41,16 @@ fn check_doc_test(assist_id: &str, before: &str, after: &str) {
     let (db, file_id) = crate::tests::with_single_file(&before);
     let frange = FileRange { file_id, range: selection.into() };
 
-    let mut assist = resolved_assists(&db, frange)
+    let mut assist = Assist::resolved(&db, frange)
         .into_iter()
-        .find(|assist| assist.label.id.0 == assist_id)
+        .find(|assist| assist.assist.id.0 == assist_id)
         .unwrap_or_else(|| {
             panic!(
                 "\n\nAssist is not applicable: {}\nAvailable assists: {}",
                 assist_id,
-                resolved_assists(&db, frange)
+                Assist::resolved(&db, frange)
                     .into_iter()
-                    .map(|assist| assist.label.id.0)
+                    .map(|assist| assist.assist.id.0)
                     .collect::<Vec<_>>()
                     .join(", ")
             )
@@ -71,7 +71,7 @@ enum ExpectedResult<'a> {
     Target(&'a str),
 }
 
-fn check(assist: Handler, before: &str, expected: ExpectedResult) {
+fn check(handler: Handler, before: &str, expected: ExpectedResult) {
     let (text_without_caret, file_with_caret_id, range_or_offset, db) = if before.contains("//-") {
         let (mut db, position) = RootDatabase::with_position(before);
         db.set_local_roots(Arc::new(vec![db.file_source_root(position.file_id)]));
@@ -90,17 +90,20 @@ fn check(assist: Handler, before: &str, expected: ExpectedResult) {
     let frange = FileRange { file_id: file_with_caret_id, range: range_or_offset.into() };
 
     let sema = Semantics::new(&db);
-    let assist_ctx = AssistCtx::new(&sema, frange, true);
-
-    match (assist(assist_ctx), expected) {
+    let ctx = AssistContext::new(sema, frange);
+    let mut acc = Assists::new_resolved(&ctx);
+    handler(&mut acc, &ctx);
+    let mut res = acc.finish_resolved();
+    let assist = res.pop();
+    match (assist, expected) {
         (Some(assist), ExpectedResult::After(after)) => {
-            let mut action = assist.0[0].source_change.clone().unwrap();
-            let change = action.source_file_edits.pop().unwrap();
+            let mut source_change = assist.source_change;
+            let change = source_change.source_file_edits.pop().unwrap();
 
             let mut actual = db.file_text(change.file_id).as_ref().to_owned();
             change.edit.apply(&mut actual);
 
-            match action.cursor_position {
+            match source_change.cursor_position {
                 None => {
                     if let RangeOrOffset::Offset(before_cursor_pos) = range_or_offset {
                         let off = change
@@ -116,7 +119,7 @@ fn check(assist: Handler, before: &str, expected: ExpectedResult) {
             assert_eq_text!(after, &actual);
         }
         (Some(assist), ExpectedResult::Target(target)) => {
-            let range = assist.0[0].label.target;
+            let range = assist.assist.target;
             assert_eq_text!(&text_without_caret[range], target);
         }
         (Some(_), ExpectedResult::NotApplicable) => panic!("assist should not be applicable!"),
@@ -133,14 +136,14 @@ fn assist_order_field_struct() {
     let (before_cursor_pos, before) = extract_offset(before);
     let (db, file_id) = with_single_file(&before);
     let frange = FileRange { file_id, range: TextRange::empty(before_cursor_pos) };
-    let assists = resolved_assists(&db, frange);
+    let assists = Assist::resolved(&db, frange);
     let mut assists = assists.iter();
 
     assert_eq!(
-        assists.next().expect("expected assist").label.label,
+        assists.next().expect("expected assist").assist.label,
         "Change visibility to pub(crate)"
     );
-    assert_eq!(assists.next().expect("expected assist").label.label, "Add `#[derive]`");
+    assert_eq!(assists.next().expect("expected assist").assist.label, "Add `#[derive]`");
 }
 
 #[test]
@@ -156,9 +159,9 @@ fn assist_order_if_expr() {
     let (range, before) = extract_range(before);
     let (db, file_id) = with_single_file(&before);
     let frange = FileRange { file_id, range };
-    let assists = resolved_assists(&db, frange);
+    let assists = Assist::resolved(&db, frange);
     let mut assists = assists.iter();
 
-    assert_eq!(assists.next().expect("expected assist").label.label, "Extract into variable");
-    assert_eq!(assists.next().expect("expected assist").label.label, "Replace with match");
+    assert_eq!(assists.next().expect("expected assist").assist.label, "Extract into variable");
+    assert_eq!(assists.next().expect("expected assist").assist.label, "Replace with match");
 }

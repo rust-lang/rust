@@ -94,6 +94,7 @@ export class Config {
 
     get inlayHints() {
         return {
+            enable: this.get<boolean>("inlayHints.enable"),
             typeHints: this.get<boolean>("inlayHints.typeHints"),
             parameterHints: this.get<boolean>("inlayHints.parameterHints"),
             chainingHints: this.get<boolean>("inlayHints.chainingHints"),
@@ -108,10 +109,14 @@ export class Config {
     }
 
     get debug() {
+        // "/rustc/<id>" used by suggestions only.
+        const { ["/rustc/<id>"]: _, ...sourceFileMap } = this.get<Record<string, string>>("debug.sourceFileMap");
+
         return {
             engine: this.get<string>("debug.engine"),
-            sourceFileMap: this.get<Record<string, string>>("debug.sourceFileMap"),
+            engineSettings: this.get<object>("debug.engineSettings"),
+            openUpDebugPane: this.get<boolean>("debug.openUpDebugPane"),
+            sourceFileMap: sourceFileMap,
         };
     }
-
 }

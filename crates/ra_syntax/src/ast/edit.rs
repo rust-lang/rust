@@ -453,11 +453,7 @@ impl IndentLevel {
         IndentLevel(0)
     }
 
-    pub fn increase_indent<N: AstNode>(self, node: N) -> N {
-        N::cast(self._increase_indent(node.syntax().clone())).unwrap()
-    }
-
-    fn _increase_indent(self, node: SyntaxNode) -> SyntaxNode {
+    fn increase_indent(self, node: SyntaxNode) -> SyntaxNode {
         let mut rewriter = SyntaxRewriter::default();
         node.descendants_with_tokens()
             .filter_map(|el| el.into_token())
@@ -478,11 +474,7 @@ impl IndentLevel {
         rewriter.rewrite(&node)
     }
 
-    pub fn decrease_indent<N: AstNode>(self, node: N) -> N {
-        N::cast(self._decrease_indent(node.syntax().clone())).unwrap()
-    }
-
-    fn _decrease_indent(self, node: SyntaxNode) -> SyntaxNode {
+    fn decrease_indent(self, node: SyntaxNode) -> SyntaxNode {
         let mut rewriter = SyntaxRewriter::default();
         node.descendants_with_tokens()
             .filter_map(|el| el.into_token())
@@ -521,7 +513,7 @@ fn prev_tokens(token: SyntaxToken) -> impl Iterator<Item = SyntaxToken> {
     iter::successors(Some(token), |token| token.prev_token())
 }
 
-pub trait AstNodeEdit: AstNode + Sized {
+pub trait AstNodeEdit: AstNode + Clone + Sized {
     #[must_use]
     fn insert_children(
         &self,
@@ -558,9 +550,17 @@ pub trait AstNodeEdit: AstNode + Sized {
         }
         rewriter.rewrite_ast(self)
     }
+    #[must_use]
+    fn indent(&self, indent: IndentLevel) -> Self {
+        Self::cast(indent.increase_indent(self.syntax().clone())).unwrap()
+    }
+    #[must_use]
+    fn dedent(&self, indent: IndentLevel) -> Self {
+        Self::cast(indent.decrease_indent(self.syntax().clone())).unwrap()
+    }
 }
 
-impl<N: AstNode> AstNodeEdit for N {}
+impl<N: AstNode + Clone> AstNodeEdit for N {}
 
 fn single_node(element: impl Into<SyntaxElement>) -> RangeInclusive<SyntaxElement> {
     let element = element.into();
@@ -580,7 +580,7 @@ fn test_increase_indent() {
     _ => (),
 }"
     );
-    let indented = IndentLevel(2).increase_indent(arm_list);
+    let indented = arm_list.indent(IndentLevel(2));
     assert_eq!(
         indented.syntax().to_string(),
         "{

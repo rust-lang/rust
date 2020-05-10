@@ -131,3 +131,31 @@ impl AstDiagnostic for MissingOkInTailExpr {
         ast::Expr::cast(node).unwrap()
     }
 }
+
+#[derive(Debug)]
+pub struct BreakOutsideOfLoop {
+    pub file: HirFileId,
+    pub expr: AstPtr<ast::Expr>,
+}
+
+impl Diagnostic for BreakOutsideOfLoop {
+    fn message(&self) -> String {
+        "break outside of loop".to_string()
+    }
+    fn source(&self) -> InFile<SyntaxNodePtr> {
+        InFile { file_id: self.file, value: self.expr.clone().into() }
+    }
+    fn as_any(&self) -> &(dyn Any + Send + 'static) {
+        self
+    }
+}
+
+impl AstDiagnostic for BreakOutsideOfLoop {
+    type AST = ast::Expr;
+
+    fn ast(&self, db: &impl AstDatabase) -> Self::AST {
+        let root = db.parse_or_expand(self.file).unwrap();
+        let node = self.source().value.to_node(&root);
+        ast::Expr::cast(node).unwrap()
+    }
+}

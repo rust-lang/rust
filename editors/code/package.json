@@ -300,6 +300,11 @@
                     "default": true,
                     "markdownDescription": "Check with all features (will be passed as `--all-features`)"
                 },
+                "rust-analyzer.inlayHints.enable": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Disable all inlay hints"
+                },
                 "rust-analyzer.inlayHints.typeHints": {
                     "type": "boolean",
                     "default": true,
@@ -418,6 +423,16 @@
                     "default": {
                         "/rustc/<id>": "${env:USERPROFILE}/.rustup/toolchains/<toolchain-id>/lib/rustlib/src/rust"
                     }
+                },
+                "rust-analyzer.debug.openDebugPane": {
+                    "description": "Whether to open up the Debug Pane on debugging start.",
+                    "type": "boolean",
+                    "default": false
+                },
+                "rust-analyzer.debug.engineSettings": {
+                    "type": "object",
+                    "default": {},
+                    "description": "Optional settings passed to the debug engine. Example:\n{ \"lldb\": { \"terminal\":\"external\"} }"
                 }
             }
         },
@@ -588,6 +603,9 @@
                     ],
                     "union": [
                         "entity.name.union"
+                    ],
+                    "struct": [
+                        "entity.name.type.struct"
                     ],
                     "keyword.unsafe": [
                         "keyword.other.unsafe"

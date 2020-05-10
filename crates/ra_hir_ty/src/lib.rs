@@ -683,6 +683,12 @@ impl Ty {
     pub fn unit() -> Self {
         Ty::apply(TypeCtor::Tuple { cardinality: 0 }, Substs::empty())
     }
+    pub fn fn_ptr(sig: FnSig) -> Self {
+        Ty::apply(
+            TypeCtor::FnPtr { num_args: sig.params().len() as u16 },
+            Substs(sig.params_and_return),
+        )
+    }
 
     pub fn as_reference(&self) -> Option<(&Ty, Mutability)> {
         match self {
@@ -728,6 +734,10 @@ impl Ty {
             }
             _ => None,
         }
+    }
+
+    pub fn is_never(&self) -> bool {
+        matches!(self, Ty::Apply(ApplicationTy { ctor: TypeCtor::Never, .. }))
     }
 
     /// If this is a `dyn Trait` type, this returns the `Trait` part.

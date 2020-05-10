@@ -1,7 +1,6 @@
 //! FIXME: write short doc here
 
 use std::{
-    env,
     ffi::OsStr,
     ops,
     path::{Path, PathBuf},
@@ -87,6 +86,7 @@ pub struct PackageData {
     pub dependencies: Vec<PackageDependency>,
     pub edition: Edition,
     pub features: Vec<String>,
+    pub cfgs: Vec<String>,
     pub out_dir: Option<PathBuf>,
     pub proc_macro_dylib_path: Option<PathBuf>,
 }
@@ -145,12 +145,8 @@ impl CargoWorkspace {
         cargo_toml: &Path,
         cargo_features: &CargoConfig,
     ) -> Result<CargoWorkspace> {
-        let _ = Command::new(cargo_binary())
-            .arg("--version")
-            .output()
-            .context("failed to run `cargo --version`, is `cargo` in PATH?")?;
-
         let mut meta = MetadataCommand::new();
+        meta.cargo_path(ra_toolchain::cargo());
         meta.manifest_path(cargo_toml);
         if cargo_features.all_features {
             meta.features(CargoOpt::AllFeatures);
@@ -172,10 +168,12 @@ impl CargoWorkspace {
         })?;
 
         let mut out_dir_by_id = FxHashMap::default();
+        let mut cfgs = FxHashMap::default();
         let mut proc_macro_dylib_paths = FxHashMap::default();
         if cargo_features.load_out_dirs_from_check {
             let resources = load_extern_resources(cargo_toml, cargo_features)?;
             out_dir_by_id = resources.out_dirs;
+            cfgs = resources.cfgs;
             proc_macro_dylib_paths = resources.proc_dylib_paths;
         }
 
@@ -201,6 +199,7 @@ impl CargoWorkspace {
                 edition,
                 dependencies: Vec::new(),
                 features: Vec::new(),
+                cfgs: cfgs.get(&id).cloned().unwrap_or_default(),
                 out_dir: out_dir_by_id.get(&id).cloned(),
                 proc_macro_dylib_path: proc_macro_dylib_paths.get(&id).cloned(),
             });
@@ -282,13 +281,14 @@ impl CargoWorkspace {
 pub struct ExternResources {
     out_dirs: FxHashMap<PackageId, PathBuf>,
     proc_dylib_paths: FxHashMap<PackageId, PathBuf>,
+    cfgs: FxHashMap<PackageId, Vec<String>>,
 }
 
 pub fn load_extern_resources(
     cargo_toml: &Path,
     cargo_features: &CargoConfig,
 ) -> Result<ExternResources> {
-    let mut cmd = Command::new(cargo_binary());
+    let mut cmd = Command::new(ra_toolchain::cargo());
     cmd.args(&["check", "--message-format=json", "--manifest-path"]).arg(cargo_toml);
     if cargo_features.all_features {
         cmd.arg("--all-features");
@@ -307,8 +307,14 @@ pub fn load_extern_resources(
     for message in cargo_metadata::parse_messages(output.stdout.as_slice()) {
         if let Ok(message) = message {
             match message {
-                Message::BuildScriptExecuted(BuildScript { package_id, out_dir, .. }) => {
-                    res.out_dirs.insert(package_id, out_dir);
+                Message::BuildScriptExecuted(BuildScript { package_id, out_dir, cfgs, .. }) => {
+                    res.out_dirs.insert(package_id.clone(), out_dir);
+                    res.cfgs.insert(
+                        package_id,
+                        // FIXME: Current `cargo_metadata` uses `PathBuf` instead of `String`,
+                        // change when https://github.com/oli-obk/cargo_metadata/pulls/112 reaches crates.io
+                        cfgs.iter().filter_map(|c| c.to_str().map(|s| s.to_owned())).collect(),
+                    );
                 }
 
                 Message::CompilerArtifact(message) => {
@@ -335,8 +341,4 @@ fn is_dylib(path: &Path) -> bool {
         None => false,
         Some(ext) => matches!(ext.as_str(), "dll" | "dylib" | "so"),
     }
-}
-
-fn cargo_binary() -> String {
-    env::var("CARGO").unwrap_or_else(|_| "cargo".to_string())
 }

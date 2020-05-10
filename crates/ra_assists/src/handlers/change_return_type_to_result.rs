@@ -1,11 +1,11 @@
 use ra_syntax::{
-    ast, AstNode,
+    ast::{self, BlockExpr, Expr, LoopBodyOwner},
+    AstNode,
     SyntaxKind::{COMMENT, WHITESPACE},
     SyntaxNode, TextSize,
 };
 
-use crate::{Assist, AssistCtx, AssistId};
-use ast::{BlockExpr, Expr, LoopBodyOwner};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: change_return_type_to_result
 //
@@ -18,7 +18,7 @@ use ast::{BlockExpr, Expr, LoopBodyOwner};
 // ```
 // fn foo() -> Result<i32, > { Ok(42i32) }
 // ```
-pub(crate) fn change_return_type_to_result(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn change_return_type_to_result(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let fn_def = ctx.find_node_at_offset::<ast::FnDef>();
     let fn_def = &mut fn_def?;
     let ret_type = &fn_def.ret_type()?.type_ref()?;
@@ -33,7 +33,7 @@ pub(crate) fn change_return_type_to_result(ctx: AssistCtx) -> Option<Assist> {
         return None;
     }
 
-    ctx.add_assist(
+    acc.add(
         AssistId("change_return_type_to_result"),
         "Change return type to Result",
         ret_type.syntax().text_range(),

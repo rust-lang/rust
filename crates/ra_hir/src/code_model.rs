@@ -22,8 +22,11 @@ use hir_expand::{
     MacroDefId, MacroDefKind,
 };
 use hir_ty::{
-    autoderef, display::HirFormatter, expr::ExprValidator, method_resolution, ApplicationTy,
-    Canonical, InEnvironment, Substs, TraitEnvironment, Ty, TyDefId, TypeCtor,
+    autoderef,
+    display::{HirDisplayError, HirFormatter},
+    expr::ExprValidator,
+    method_resolution, ApplicationTy, Canonical, InEnvironment, Substs, TraitEnvironment, Ty,
+    TyDefId, TypeCtor,
 };
 use ra_db::{CrateId, CrateName, Edition, FileId};
 use ra_prof::profile;
@@ -1341,7 +1344,7 @@ impl Type {
 }
 
 impl HirDisplay for Type {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> std::fmt::Result {
+    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
         self.ty.value.hir_fmt(f)
     }
 }

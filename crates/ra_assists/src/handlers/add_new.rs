@@ -7,7 +7,7 @@ use ra_syntax::{
 };
 use stdx::{format_to, SepBy};
 
-use crate::{Assist, AssistCtx, AssistId};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: add_new
 //
@@ -29,7 +29,7 @@ use crate::{Assist, AssistCtx, AssistId};
 // }
 //
 // ```
-pub(crate) fn add_new(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn add_new(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let strukt = ctx.find_node_at_offset::<ast::StructDef>()?;
 
     // We want to only apply this to non-union structs with named fields
@@ -42,7 +42,7 @@ pub(crate) fn add_new(ctx: AssistCtx) -> Option<Assist> {
     let impl_def = find_struct_impl(&ctx, &strukt)?;
 
     let target = strukt.syntax().text_range();
-    ctx.add_assist(AssistId("add_new"), "Add default constructor", target, |edit| {
+    acc.add(AssistId("add_new"), "Add default constructor", target, |edit| {
         let mut buf = String::with_capacity(512);
 
         if impl_def.is_some() {
@@ -123,7 +123,7 @@ fn generate_impl_text(strukt: &ast::StructDef, code: &str) -> String {
 //
 // FIXME: change the new fn checking to a more semantic approach when that's more
 // viable (e.g. we process proc macros, etc)
-fn find_struct_impl(ctx: &AssistCtx, strukt: &ast::StructDef) -> Option<Option<ast::ImplDef>> {
+fn find_struct_impl(ctx: &AssistContext, strukt: &ast::StructDef) -> Option<Option<ast::ImplDef>> {
     let db = ctx.db;
     let module = strukt.syntax().ancestors().find(|node| {
         ast::Module::can_cast(node.kind()) || ast::SourceFile::can_cast(node.kind())

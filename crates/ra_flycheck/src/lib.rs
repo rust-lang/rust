@@ -4,7 +4,6 @@
 mod conv;
 
 use std::{
-    env,
     io::{self, BufRead, BufReader},
     path::PathBuf,
     process::{Command, Stdio},
@@ -216,10 +215,10 @@ impl FlycheckThread {
 
         let mut cmd = match &self.config {
             FlycheckConfig::CargoCommand { command, all_targets, all_features, extra_args } => {
-                let mut cmd = Command::new(cargo_binary());
+                let mut cmd = Command::new(ra_toolchain::cargo());
                 cmd.arg(command);
-                cmd.args(&["--workspace", "--message-format=json", "--manifest-path"]);
-                cmd.arg(self.workspace_root.join("Cargo.toml"));
+                cmd.args(&["--workspace", "--message-format=json", "--manifest-path"])
+                    .arg(self.workspace_root.join("Cargo.toml"));
                 if *all_targets {
                     cmd.arg("--all-targets");
                 }
@@ -336,8 +335,4 @@ fn run_cargo(
     }
 
     Ok(())
-}
-
-fn cargo_binary() -> String {
-    env::var("CARGO").unwrap_or_else(|_| "cargo".to_string())
 }

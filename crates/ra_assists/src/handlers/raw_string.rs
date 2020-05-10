@@ -5,7 +5,7 @@ use ra_syntax::{
     TextSize,
 };
 
-use crate::{Assist, AssistCtx, AssistId};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: make_raw_string
 //
@@ -22,11 +22,11 @@ use crate::{Assist, AssistCtx, AssistId};
 //     r#"Hello, World!"#;
 // }
 // ```
-pub(crate) fn make_raw_string(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn make_raw_string(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let token = ctx.find_token_at_offset(STRING).and_then(ast::String::cast)?;
     let value = token.value()?;
     let target = token.syntax().text_range();
-    ctx.add_assist(AssistId("make_raw_string"), "Rewrite as raw string", target, |edit| {
+    acc.add(AssistId("make_raw_string"), "Rewrite as raw string", target, |edit| {
         let max_hash_streak = count_hashes(&value);
         let mut hashes = String::with_capacity(max_hash_streak + 1);
         for _ in 0..hashes.capacity() {
@@ -51,11 +51,11 @@ pub(crate) fn make_raw_string(ctx: AssistCtx) -> Option<Assist> {
 //     "Hello, \"World!\"";
 // }
 // ```
-pub(crate) fn make_usual_string(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn make_usual_string(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let token = ctx.find_token_at_offset(RAW_STRING).and_then(ast::RawString::cast)?;
     let value = token.value()?;
     let target = token.syntax().text_range();
-    ctx.add_assist(AssistId("make_usual_string"), "Rewrite as regular string", target, |edit| {
+    acc.add(AssistId("make_usual_string"), "Rewrite as regular string", target, |edit| {
         // parse inside string to escape `"`
         let escaped = value.escape_default().to_string();
         edit.replace(token.syntax().text_range(), format!("\"{}\"", escaped));
@@ -77,10 +77,10 @@ pub(crate) fn make_usual_string(ctx: AssistCtx) -> Option<Assist> {
 //     r##"Hello, World!"##;
 // }
 // ```
-pub(crate) fn add_hash(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn add_hash(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let token = ctx.find_token_at_offset(RAW_STRING)?;
     let target = token.text_range();
-    ctx.add_assist(AssistId("add_hash"), "Add # to raw string", target, |edit| {
+    acc.add(AssistId("add_hash"), "Add # to raw string", target, |edit| {
         edit.insert(token.text_range().start() + TextSize::of('r'), "#");
         edit.insert(token.text_range().end(), "#");
     })
@@ -101,7 +101,7 @@ pub(crate) fn add_hash(ctx: AssistCtx) -> Option<Assist> {
 //     r"Hello, World!";
 // }
 // ```
-pub(crate) fn remove_hash(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn remove_hash(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let token = ctx.find_token_at_offset(RAW_STRING)?;
     let text = token.text().as_str();
     if text.starts_with("r\"") {
@@ -109,7 +109,7 @@ pub(crate) fn remove_hash(ctx: AssistCtx) -> Option<Assist> {
         return None;
     }
     let target = token.text_range();
-    ctx.add_assist(AssistId("remove_hash"), "Remove hash from raw string", target, |edit| {
+    acc.add(AssistId("remove_hash"), "Remove hash from raw string", target, |edit| {
         let result = &text[2..text.len() - 1];
         let result = if result.starts_with('\"') {
             // FIXME: this logic is wrong, not only the last has has to handled specially

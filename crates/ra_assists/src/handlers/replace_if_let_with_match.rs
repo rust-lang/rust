@@ -1,10 +1,14 @@
 use ra_fmt::unwrap_trivial_block;
 use ra_syntax::{
-    ast::{self, edit::IndentLevel, make},
+    ast::{
+        self,
+        edit::{AstNodeEdit, IndentLevel},
+        make,
+    },
     AstNode,
 };
 
-use crate::{utils::TryEnum, Assist, AssistCtx, AssistId};
+use crate::{utils::TryEnum, AssistContext, AssistId, Assists};
 
 // Assist: replace_if_let_with_match
 //
@@ -32,7 +36,7 @@ use crate::{utils::TryEnum, Assist, AssistCtx, AssistId};
 //     }
 // }
 // ```
-pub(crate) fn replace_if_let_with_match(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let if_expr: ast::IfExpr = ctx.find_node_at_offset()?;
     let cond = if_expr.condition()?;
     let pat = cond.pat()?;
@@ -43,36 +47,30 @@ pub(crate) fn replace_if_let_with_match(ctx: AssistCtx) -> Option<Assist> {
         ast::ElseBranch::IfExpr(_) => return None,
     };
 
-    let sema = ctx.sema;
     let target = if_expr.syntax().text_range();
-    ctx.add_assist(
-        AssistId("replace_if_let_with_match"),
-        "Replace with match",
-        target,
-        move |edit| {
-            let match_expr = {
-                let then_arm = {
-                    let then_expr = unwrap_trivial_block(then_block);
-                    make::match_arm(vec![pat.clone()], then_expr)
-                };
-                let else_arm = {
-                    let pattern = sema
-                        .type_of_pat(&pat)
-                        .and_then(|ty| TryEnum::from_ty(sema, &ty))
-                        .map(|it| it.sad_pattern())
-                        .unwrap_or_else(|| make::placeholder_pat().into());
-                    let else_expr = unwrap_trivial_block(else_block);
-                    make::match_arm(vec![pattern], else_expr)
-                };
-                make::expr_match(expr, make::match_arm_list(vec![then_arm, else_arm]))
+    acc.add(AssistId("replace_if_let_with_match"), "Replace with match", target, move |edit| {
+        let match_expr = {
+            let then_arm = {
+                let then_expr = unwrap_trivial_block(then_block);
+                make::match_arm(vec![pat.clone()], then_expr)
             };
+            let else_arm = {
+                let pattern = ctx
+                    .sema
+                    .type_of_pat(&pat)
+                    .and_then(|ty| TryEnum::from_ty(&ctx.sema, &ty))
+                    .map(|it| it.sad_pattern())
+                    .unwrap_or_else(|| make::placeholder_pat().into());
+                let else_expr = unwrap_trivial_block(else_block);
+                make::match_arm(vec![pattern], else_expr)
+            };
+            make::expr_match(expr, make::match_arm_list(vec![then_arm, else_arm]))
+                .indent(IndentLevel::from_node(if_expr.syntax()))
+        };
 
-            let match_expr = IndentLevel::from_node(if_expr.syntax()).increase_indent(match_expr);
-
-            edit.set_cursor(if_expr.syntax().text_range().start());
-            edit.replace_ast::<ast::Expr>(if_expr.into(), match_expr);
-        },
-    )
+        edit.set_cursor(if_expr.syntax().text_range().start());
+        edit.replace_ast::<ast::Expr>(if_expr.into(), match_expr);
+    })
 }
 
 #[cfg(test)]

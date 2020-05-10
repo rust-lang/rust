@@ -14,8 +14,9 @@ rustc-hash = "1.1.0"
 cargo_metadata = "0.9.1"
 
 ra_arena = { path = "../ra_arena" }
-ra_db = { path = "../ra_db" }
 ra_cfg = { path = "../ra_cfg" }
+ra_db = { path = "../ra_db" }
+ra_toolchain = { path = "../ra_toolchain" }
 ra_proc_macro =  { path = "../ra_proc_macro" }
 
 serde = { version = "1.0.106", features = ["derive"] }

@@ -270,7 +270,7 @@ fn parse_fixture_checks_further_indented_metadata() {
 }
 
 #[test]
-fn parse_fixture_can_handle_unindented_first_line() {
+fn parse_fixture_can_handle_dedented_first_line() {
     let fixture = "//- /lib.rs
                    mod foo;
                    //- /foo.rs

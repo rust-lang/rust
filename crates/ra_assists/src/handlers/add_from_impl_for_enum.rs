@@ -1,12 +1,9 @@
 use ra_ide_db::RootDatabase;
-use ra_syntax::{
-    ast::{self, AstNode, NameOwner},
-    TextSize,
-};
+use ra_syntax::ast::{self, AstNode, NameOwner};
 use stdx::format_to;
-
-use crate::{utils::FamousDefs, Assist, AssistCtx, AssistId};
 use test_utils::tested_by;
+
+use crate::{utils::FamousDefs, AssistContext, AssistId, Assists};
 
 // Assist add_from_impl_for_enum
 //
@@ -25,7 +22,7 @@ use test_utils::tested_by;
 //     }
 // }
 // ```
-pub(crate) fn add_from_impl_for_enum(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn add_from_impl_for_enum(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let variant = ctx.find_node_at_offset::<ast::EnumVariant>()?;
     let variant_name = variant.name()?;
     let enum_name = variant.parent_enum().name()?;
@@ -42,13 +39,13 @@ pub(crate) fn add_from_impl_for_enum(ctx: AssistCtx) -> Option<Assist> {
         _ => return None,
     };
 
-    if existing_from_impl(ctx.sema, &variant).is_some() {
+    if existing_from_impl(&ctx.sema, &variant).is_some() {
         tested_by!(test_add_from_impl_already_exists);
         return None;
     }
 
     let target = variant.syntax().text_range();
-    ctx.add_assist(
+    acc.add(
         AssistId("add_from_impl_for_enum"),
         "Add From impl for this enum variant",
         target,
@@ -69,7 +66,6 @@ impl From<{0}> for {1} {{
                 variant_name
             );
             edit.insert(start_offset, buf);
-            edit.set_cursor(start_offset + TextSize::of("\n\n"));
         },
     )
 }
@@ -97,19 +93,20 @@ fn existing_from_impl(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use test_utils::covers;
 
     use crate::tests::{check_assist, check_assist_not_applicable};
-    use test_utils::covers;
+
+    use super::*;
 
     #[test]
     fn test_add_from_impl_for_enum() {
         check_assist(
             add_from_impl_for_enum,
             "enum A { <|>One(u32) }",
-            r#"enum A { One(u32) }
+            r#"enum A { <|>One(u32) }
 
-<|>impl From<u32> for A {
+impl From<u32> for A {
     fn from(v: u32) -> Self {
         A::One(v)
     }
@@ -121,10 +118,10 @@ mod tests {
     fn test_add_from_impl_for_enum_complicated_path() {
         check_assist(
             add_from_impl_for_enum,
-            "enum A { <|>One(foo::bar::baz::Boo) }",
-            r#"enum A { One(foo::bar::baz::Boo) }
+            r#"enum A { <|>One(foo::bar::baz::Boo) }"#,
+            r#"enum A { <|>One(foo::bar::baz::Boo) }
 
-<|>impl From<foo::bar::baz::Boo> for A {
+impl From<foo::bar::baz::Boo> for A {
     fn from(v: foo::bar::baz::Boo) -> Self {
         A::One(v)
     }
@@ -184,9 +181,9 @@ impl From<String> for A {
 pub trait From<T> {
     fn from(T) -> Self;
 }"#,
-            r#"enum A { One(u32), Two(String), }
+            r#"enum A { <|>One(u32), Two(String), }
 
-<|>impl From<u32> for A {
+impl From<u32> for A {
     fn from(v: u32) -> Self {
         A::One(v)
     }
