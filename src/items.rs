@@ -1504,22 +1504,23 @@ fn format_tuple_struct(
     Some(result)
 }
 
-fn rewrite_type_prefix(
+fn rewrite_type<R: Rewrite>(
     context: &RewriteContext<'_>,
     indent: Indent,
-    prefix: &str,
     ident: symbol::Ident,
+    vis: &ast::Visibility,
     generics: &ast::Generics,
     generic_bounds_opt: Option<&ast::GenericBounds>,
+    rhs: Option<&R>,
 ) -> Option<String> {
     let mut result = String::with_capacity(128);
-    result.push_str(prefix);
+    result.push_str(&format!("{}type ", format_visibility(context, vis)));
     let ident_str = rewrite_ident(context, ident);
 
-    // 2 = `= `
     if generics.params.is_empty() {
         result.push_str(ident_str)
     } else {
+        // 2 = `= `
         let g_shape = Shape::indented(indent, context.config)
             .offset_left(result.len())?
             .sub_width(2)?;
@@ -1527,21 +1528,20 @@ fn rewrite_type_prefix(
         result.push_str(&generics_str);
     }
 
-    let type_bounds_str = if let Some(bounds) = generic_bounds_opt {
-        if bounds.is_empty() {
-            String::new()
-        } else {
+    if let Some(bounds) = generic_bounds_opt {
+        if !bounds.is_empty() {
             // 2 = `: `
             let shape = Shape::indented(indent, context.config).offset_left(result.len() + 2)?;
-            bounds.rewrite(context, shape).map(|s| format!(": {}", s))?
+            let type_bounds = bounds.rewrite(context, shape).map(|s| format!(": {}", s))?;
+            result.push_str(&type_bounds);
         }
-    } else {
-        String::new()
-    };
-    result.push_str(&type_bounds_str);
+    }
 
     let where_budget = context.budget(last_line_width(&result));
-    let option = WhereClauseOption::snuggled(&result);
+    let mut option = WhereClauseOption::snuggled(&result);
+    if rhs.is_none() {
+        option.suppress_comma();
+    }
     let where_clause_str = rewrite_where_clause(
         context,
         &generics.where_clause,
@@ -1555,40 +1555,22 @@ fn rewrite_type_prefix(
     )?;
     result.push_str(&where_clause_str);
 
-    Some(result)
-}
+    if let Some(ty) = rhs {
+        // If there's a where clause, add a newline before the assignment. Otherwise just add a
+        // space.
+        if !generics.where_clause.predicates.is_empty() {
+            result.push_str(&indent.to_string_with_newline(context.config));
+        } else {
+            result.push(' ');
+        }
+        let lhs = format!("{}=", result);
 
-fn rewrite_type_item<R: Rewrite>(
-    context: &RewriteContext<'_>,
-    indent: Indent,
-    prefix: &str,
-    suffix: &str,
-    ident: symbol::Ident,
-    rhs: &R,
-    generics: &ast::Generics,
-    generic_bounds_opt: Option<&ast::GenericBounds>,
-    vis: &ast::Visibility,
-) -> Option<String> {
-    let mut result = String::with_capacity(128);
-    result.push_str(&rewrite_type_prefix(
-        context,
-        indent,
-        &format!("{}{} ", format_visibility(context, vis), prefix),
-        ident,
-        generics,
-        generic_bounds_opt,
-    )?);
-
-    if generics.where_clause.predicates.is_empty() {
-        result.push_str(suffix);
+        // 1 = `;`
+        let shape = Shape::indented(indent, context.config).sub_width(1)?;
+        rewrite_assign_rhs(context, lhs, &*ty, shape).map(|s| s + ";")
     } else {
-        result.push_str(&indent.to_string_with_newline(context.config));
-        result.push_str(suffix.trim_start());
+        Some(format!("{};", result))
     }
-
-    // 1 = ";"
-    let rhs_shape = Shape::indented(indent, context.config).sub_width(1)?;
-    rewrite_assign_rhs(context, result, rhs, rhs_shape).map(|s| s + ";")
 }
 
 pub(crate) fn rewrite_opaque_type(
@@ -1600,16 +1582,14 @@ pub(crate) fn rewrite_opaque_type(
     vis: &ast::Visibility,
 ) -> Option<String> {
     let opaque_type_bounds = OpaqueTypeBounds { generic_bounds };
-    rewrite_type_item(
+    rewrite_type(
         context,
         indent,
-        "type",
-        " =",
         ident,
-        &opaque_type_bounds,
+        vis,
         generics,
         Some(generic_bounds),
-        vis,
+        Some(&opaque_type_bounds),
     )
 }
 
@@ -1839,34 +1819,15 @@ pub(crate) fn rewrite_type_alias(
     indent: Indent,
     vis: &ast::Visibility,
 ) -> Option<String> {
-    let mut prefix = rewrite_type_prefix(
+    rewrite_type(
         context,
         indent,
-        &format!("{}type ", format_visibility(context, vis)),
         ident,
+        vis,
         generics,
         generic_bounds_opt,
-    )?;
-
-    if let Some(ty) = ty_opt {
-        // 1 = `;`
-        let shape = Shape::indented(indent, context.config).sub_width(1)?;
-
-        // If there's a where clause, add a newline before the assignment. Otherwise just add a
-        // space.
-        if !generics.where_clause.predicates.is_empty() {
-            prefix.push_str(&indent.to_string_with_newline(context.config));
-        } else {
-            prefix.push(' ');
-        }
-        let lhs = format!("{}=", prefix);
-        rewrite_assign_rhs(context, lhs, &**ty, shape).map(|s| s + ";")
-    } else {
-        if !generics.where_clause.predicates.is_empty() {
-            prefix.push_str(&indent.to_string_with_newline(context.config));
-        }
-        Some(format!("{};", prefix))
-    }
+        ty_opt,
+    )
 }
 
 struct OpaqueType<'a> {

@@ -3,13 +3,11 @@ extern "C" {
 
     type A<'a>
     where
-        'a: 'static,
-    ;
+        'a: 'static;
 
     type A<T: Ord>
     where
-        T: 'static,
-    ;
+        T: 'static;
 
     type A = u8;
 
