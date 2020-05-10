@@ -1380,7 +1380,7 @@ impl<'a, T> From<&'a Option<T>> for Option<&'a T> {
     /// so this technique uses `as_ref` to first take an `Option` to a reference
     /// to the value inside the original.
     ///
-    /// [`map`]: enum.Option.html#method.map
+    /// [`map`]: ../../std/option/enum.Option.html#method.map
     /// [`String`]: ../../std/string/struct.String.html
     /// [`usize`]: ../../std/primitive.usize.html
     ///
