@@ -624,7 +624,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &loops::NEEDLESS_COLLECT,
         &loops::NEEDLESS_RANGE_LOOP,
         &loops::NEVER_LOOP,
-        &loops::REVERSE_RANGE_LOOP,
         &loops::WHILE_IMMUTABLE_CONDITION,
         &loops::WHILE_LET_LOOP,
         &loops::WHILE_LET_ON_ITERATOR,
@@ -1284,7 +1283,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&loops::NEEDLESS_COLLECT),
         LintId::of(&loops::NEEDLESS_RANGE_LOOP),
         LintId::of(&loops::NEVER_LOOP),
-        LintId::of(&loops::REVERSE_RANGE_LOOP),
         LintId::of(&loops::WHILE_IMMUTABLE_CONDITION),
         LintId::of(&loops::WHILE_LET_LOOP),
         LintId::of(&loops::WHILE_LET_ON_ITERATOR),
@@ -1658,7 +1656,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&loops::FOR_LOOP_OVER_RESULT),
         LintId::of(&loops::ITER_NEXT_LOOP),
         LintId::of(&loops::NEVER_LOOP),
-        LintId::of(&loops::REVERSE_RANGE_LOOP),
         LintId::of(&loops::WHILE_IMMUTABLE_CONDITION),
         LintId::of(&mem_discriminant::MEM_DISCRIMINANT_NON_ENUM),
         LintId::of(&mem_replace::MEM_REPLACE_WITH_UNINIT),
@@ -1787,6 +1784,10 @@ fn register_removed_non_tool_lints(store: &mut rustc_lint::LintStore) {
     store.register_removed(
         "unsafe_vector_initialization",
         "the replacement suggested by this lint had substantially different behavior",
+    );
+    store.register_removed(
+        "reverse_range_loop",
+        "this lint is now included in reversed_empty_ranges",
     );
 }
 
