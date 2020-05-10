@@ -4,11 +4,11 @@
 mod handlers;
 mod subscriptions;
 pub(crate) mod pending_requests;
-mod progress;
 mod lsp_utils;
 
 use std::{
     borrow::Cow,
+    convert::TryFrom,
     env,
     error::Error,
     fmt,
@@ -20,12 +20,8 @@ use std::{
 
 use crossbeam_channel::{never, select, unbounded, RecvError, Sender};
 use lsp_server::{Connection, ErrorCode, Message, Notification, Request, RequestId, Response};
-use lsp_types::{
-    DidChangeTextDocumentParams, NumberOrString, TextDocumentContentChangeEvent, WorkDoneProgress,
-    WorkDoneProgressBegin, WorkDoneProgressCreateParams, WorkDoneProgressEnd,
-    WorkDoneProgressReport,
-};
-use ra_flycheck::{CheckTask, Status};
+use lsp_types::{DidChangeTextDocumentParams, NumberOrString, TextDocumentContentChangeEvent};
+use ra_flycheck::CheckTask;
 use ra_ide::{Canceled, FileId, LineIndex};
 use ra_prof::profile;
 use ra_project_model::{PackageRoot, ProjectWorkspace};
@@ -48,7 +44,12 @@ use crate::{
 };
 pub use lsp_utils::show_message;
 use lsp_utils::{is_canceled, notification_cast, notification_is, notification_new, request_new};
-use progress::{IsDone, PrimeCachesProgressNotifier, WorkspaceAnalysisProgressNotifier};
+use ra_progress::{
+    IsDone, ProgressStatus, U32Progress, U32ProgressReport, U32ProgressSource, U32ProgressStatus,
+};
+
+const FLYCHECK_PROGRESS_TOKEN: &str = "rustAnalyzer/flycheck";
+const ROOTS_SCANNED_PROGRESS_TOKEN: &str = "rustAnalyzer/rootsScanned";
 
 #[derive(Debug)]
 pub struct LspError {
@@ -95,7 +96,6 @@ pub fn main_loop(config: Config, connection: Connection) -> Result<()> {
     }
 
     let mut loop_state = LoopState::default();
-
     let mut global_state = {
         let workspaces = {
             if config.linked_projects.is_empty() && config.notifications.cargo_toml_not_found {
@@ -169,13 +169,16 @@ pub fn main_loop(config: Config, connection: Connection) -> Result<()> {
         GlobalState::new(workspaces, config.lru_capacity, &globs, config)
     };
 
-    loop_state.roots_total = global_state.vfs.read().n_roots();
+    loop_state.roots_total = u32::try_from(global_state.vfs.read().n_roots())
+        .expect("Wow, your project is so huge, that it cannot fit into u32...");
+
     loop_state.roots_scanned = 0;
-    loop_state.roots_progress = Some(WorkspaceAnalysisProgressNotifier::begin(
-        connection.sender.clone(),
-        loop_state.next_request_id(),
-        loop_state.roots_total,
-    ));
+    let mut roots_scanned_progress_receiver = {
+        let (recv, mut progress_src) =
+            U32ProgressSource::real_if(global_state.config.client_caps.work_done_progress);
+        loop_state.roots_progress = Some(progress_src.begin(0, loop_state.roots_total));
+        recv
+    };
 
     let pool = ThreadPool::default();
     let (task_sender, task_receiver) = unbounded::<Task>();
@@ -198,6 +201,18 @@ pub fn main_loop(config: Config, connection: Connection) -> Result<()> {
                 recv(global_state.flycheck.as_ref().map_or(&never(), |it| &it.task_recv)) -> task => match task {
                     Ok(task) => Event::CheckWatcher(task),
                     Err(RecvError) => return Err("check watcher died".into()),
+                },
+                recv(global_state.flycheck_progress_receiver) -> status => match status {
+                    Ok(status) => Event::ProgressReport(ProgressReport::Flycheck(status)),
+                    Err(RecvError) => return Err("check watcher died".into()),
+                },
+                recv(roots_scanned_progress_receiver) -> status => match status {
+                    Ok(status) => Event::ProgressReport(ProgressReport::RootsScanned(status)),
+                    Err(RecvError) => {
+                        // Roots analysis has finished, we no longer need this receiver
+                        roots_scanned_progress_receiver = never();
+                        continue;
+                    }
                 }
             };
             if let Event::Msg(Message::Request(req)) = &event {
@@ -228,7 +243,7 @@ pub fn main_loop(config: Config, connection: Connection) -> Result<()> {
 #[derive(Debug)]
 enum Task {
     Respond(Response),
-    Notify(Notification),
+    SendMessage(Message),
     Diagnostic(DiagnosticTask),
 }
 
@@ -237,6 +252,13 @@ enum Event {
     Task(Task),
     Vfs(VfsTask),
     CheckWatcher(CheckTask),
+    ProgressReport(ProgressReport),
+}
+
+#[derive(Debug)]
+enum ProgressReport {
+    Flycheck(ProgressStatus<(), String>),
+    RootsScanned(U32ProgressStatus),
 }
 
 impl fmt::Debug for Event {
@@ -253,7 +275,7 @@ impl fmt::Debug for Event {
                     return debug_verbose_not(not, f);
                 }
             }
-            Event::Task(Task::Notify(not)) => {
+            Event::Task(Task::SendMessage(Message::Notification(not))) => {
                 if notification_is::<lsp_types::notification::PublishDiagnostics>(not) {
                     return debug_verbose_not(not, f);
                 }
@@ -272,20 +294,21 @@ impl fmt::Debug for Event {
             Event::Task(it) => fmt::Debug::fmt(it, f),
             Event::Vfs(it) => fmt::Debug::fmt(it, f),
             Event::CheckWatcher(it) => fmt::Debug::fmt(it, f),
+            Event::ProgressReport(it) => fmt::Debug::fmt(it, f),
         }
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 struct LoopState {
     next_request_id: u64,
     pending_responses: FxHashSet<RequestId>,
     pending_requests: PendingRequests,
     subscriptions: Subscriptions,
     workspace_loaded: bool,
-    roots_progress: Option<WorkspaceAnalysisProgressNotifier>,
-    roots_scanned: usize,
-    roots_total: usize,
+    roots_progress: Option<U32Progress>,
+    roots_scanned: u32,
+    roots_total: u32,
     configuration_request_id: Option<RequestId>,
 }
 
@@ -326,6 +349,9 @@ fn loop_turn(
             global_state.vfs.write().handle_task(task);
         }
         Event::CheckWatcher(task) => on_check_task(task, global_state, task_sender)?,
+        Event::ProgressReport(report) => {
+            on_progress_report(report, task_sender, loop_state, global_state)
+        }
         Event::Msg(msg) => match msg {
             Message::Request(req) => on_request(
                 global_state,
@@ -384,7 +410,13 @@ fn loop_turn(
     }
 
     if show_progress {
-        send_workspace_analisys_progress(loop_state);
+        if let Some(progress) = &mut loop_state.roots_progress {
+            if loop_state.workspace_loaded
+                || progress.report(loop_state.roots_scanned) == IsDone(true)
+            {
+                loop_state.roots_progress = None;
+            }
+        }
     }
 
     if state_changed && loop_state.workspace_loaded {
@@ -397,22 +429,7 @@ fn loop_turn(
         pool.execute({
             let subs = loop_state.subscriptions.subscriptions();
             let snap = global_state.snapshot();
-
-            let total = subs.len();
-
-            let mut progress = PrimeCachesProgressNotifier::begin(
-                connection.sender.clone(),
-                loop_state.next_request_id(),
-                total,
-            );
-
-            move || {
-                snap.analysis()
-                    .prime_caches(subs, move |i| {
-                        progress.report(i + 1);
-                    })
-                    .unwrap_or_else(|_: Canceled| ());
-            }
+            move || snap.analysis().prime_caches(subs).unwrap_or_else(|_: Canceled| ())
         });
     }
 
@@ -431,6 +448,87 @@ fn loop_turn(
     Ok(())
 }
 
+fn on_progress_report(
+    report: ProgressReport,
+    task_sender: &Sender<Task>,
+    loop_state: &mut LoopState,
+    global_state: &GlobalState,
+) {
+    let end_report =
+        || lsp_types::WorkDoneProgress::End(lsp_types::WorkDoneProgressEnd { message: None });
+    let mut create_progress = |token: &'static str| {
+        let create_progress_req = request_new::<lsp_types::request::WorkDoneProgressCreate>(
+            loop_state.next_request_id(),
+            lsp_types::WorkDoneProgressCreateParams {
+                token: lsp_types::ProgressToken::String(token.to_string()),
+            },
+        );
+        task_sender.send(Task::SendMessage(create_progress_req.into())).unwrap();
+    };
+
+    let (token, progress) = match report {
+        ProgressReport::Flycheck(status) => {
+            let command = global_state
+                .config
+                .check
+                .as_ref()
+                .expect("There should be config, since flycheck is active");
+
+            let progress = match status {
+                ProgressStatus::Begin(()) => {
+                    create_progress(FLYCHECK_PROGRESS_TOKEN);
+                    lsp_types::WorkDoneProgress::Begin(lsp_types::WorkDoneProgressBegin {
+                        title: "".to_string(),
+                        cancellable: Some(false),
+                        message: Some(command.to_string()),
+                        percentage: None,
+                    })
+                }
+                ProgressStatus::Progress(target) => {
+                    lsp_types::WorkDoneProgress::Report(lsp_types::WorkDoneProgressReport {
+                        cancellable: Some(false),
+                        message: Some(format!("{} [{}]", command, target)),
+                        percentage: None,
+                    })
+                }
+                ProgressStatus::End => end_report(),
+            };
+            (FLYCHECK_PROGRESS_TOKEN, progress)
+        }
+        ProgressReport::RootsScanned(status) => {
+            fn to_message(report: &U32ProgressReport) -> String {
+                report.to_message("analyzing the workspace", "packages")
+            }
+            let progress = match status {
+                ProgressStatus::Begin(report) => {
+                    create_progress(ROOTS_SCANNED_PROGRESS_TOKEN);
+                    lsp_types::WorkDoneProgress::Begin(lsp_types::WorkDoneProgressBegin {
+                        title: "rust-analyzer".to_string(),
+                        cancellable: Some(false),
+                        message: Some(to_message(&report)),
+                        percentage: Some(report.percentage()),
+                    })
+                }
+                ProgressStatus::Progress(report) => {
+                    lsp_types::WorkDoneProgress::Report(lsp_types::WorkDoneProgressReport {
+                        cancellable: Some(false),
+                        message: Some(to_message(&report)),
+                        percentage: Some(report.percentage()),
+                    })
+                }
+                ProgressStatus::End => end_report(),
+            };
+            (ROOTS_SCANNED_PROGRESS_TOKEN, progress)
+        }
+    };
+    let params = lsp_types::ProgressParams {
+        token: lsp_types::ProgressToken::String(token.to_string()),
+        value: lsp_types::ProgressParamsValue::WorkDone(progress),
+    };
+    let not = notification_new::<lsp_types::notification::Progress>(params);
+    task_sender.send(Task::SendMessage(not.into())).unwrap()
+}
+
 fn on_task(
     task: Task,
     msg_sender: &Sender<Message>,
@@ -445,9 +543,7 @@ fn on_task(
                 msg_sender.send(response.into()).unwrap();
             }
         }
-        Task::Notify(n) => {
-            msg_sender.send(n.into()).unwrap();
-        }
+        Task::SendMessage(msg) => msg_sender.send(msg).unwrap(),
         Task::Diagnostic(task) => on_diagnostic_task(task, msg_sender, state),
     }
 }
@@ -718,42 +814,6 @@ fn on_check_task(
                 )))?;
             }
         }
-
-        CheckTask::Status(status) => {
-            if global_state.config.client_caps.work_done_progress {
-                let progress = match status {
-                    Status::Being => {
-                        lsp_types::WorkDoneProgress::Begin(lsp_types::WorkDoneProgressBegin {
-                            title: "Running `cargo check`".to_string(),
-                            cancellable: Some(false),
-                            message: None,
-                            percentage: None,
-                        })
-                    }
-                    Status::Progress(target) => {
-                        lsp_types::WorkDoneProgress::Report(lsp_types::WorkDoneProgressReport {
-                            cancellable: Some(false),
-                            message: Some(target),
-                            percentage: None,
-                        })
-                    }
-                    Status::End => {
-                        lsp_types::WorkDoneProgress::End(lsp_types::WorkDoneProgressEnd {
-                            message: None,
-                        })
-                    }
-                };
-
-                let params = lsp_types::ProgressParams {
-                    token: lsp_types::ProgressToken::String(
-                        "rustAnalyzer/cargoWatcher".to_string(),
-                    ),
-                    value: lsp_types::ProgressParamsValue::WorkDone(progress),
-                };
-                let not = notification_new::<lsp_types::notification::Progress>(params);
-                task_sender.send(Task::Notify(not)).unwrap();
-            }
-        }
     };
 
     Ok(())
@@ -768,15 +828,6 @@ fn on_diagnostic_task(task: DiagnosticTask, msg_sender: &Sender<Message>, state:
         let params = lsp_types::PublishDiagnosticsParams { uri: url, diagnostics, version: None };
         let not = notification_new::<lsp_types::notification::PublishDiagnostics>(params);
         msg_sender.send(not.into()).unwrap();
-    }
-}
-
-fn send_workspace_analisys_progress(loop_state: &mut LoopState) {
-    if let Some(progress) = &mut loop_state.roots_progress {
-        if loop_state.workspace_loaded || progress.report(loop_state.roots_scanned) == IsDone(true)
-        {
-            loop_state.roots_progress = None;
-        }
     }
 }
 

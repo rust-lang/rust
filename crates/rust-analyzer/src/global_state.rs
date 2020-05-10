@@ -26,14 +26,19 @@ use crate::{
     LspError, Result,
 };
 use ra_db::{CrateId, ExternSourceId};
+use ra_progress::{ProgressSource, ProgressStatus};
 use rustc_hash::{FxHashMap, FxHashSet};
 
-fn create_flycheck(workspaces: &[ProjectWorkspace], config: &FlycheckConfig) -> Option<Flycheck> {
+fn create_flycheck(
+    workspaces: &[ProjectWorkspace],
+    config: &FlycheckConfig,
+    progress_src: &ProgressSource<(), String>,
+) -> Option<Flycheck> {
     // FIXME: Figure out the multi-workspace situation
-    workspaces.iter().find_map(|w| match w {
+    workspaces.iter().find_map(move |w| match w {
         ProjectWorkspace::Cargo { cargo, .. } => {
             let cargo_project_root = cargo.workspace_root().to_path_buf();
-            Some(Flycheck::new(config.clone(), cargo_project_root))
+            Some(Flycheck::new(config.clone(), cargo_project_root, progress_src.clone()))
         }
         ProjectWorkspace::Json { .. } => {
             log::warn!("Cargo check watching only supported for cargo workspaces, disabling");
@@ -59,6 +64,8 @@ pub struct GlobalState {
     pub flycheck: Option<Flycheck>,
     pub diagnostics: DiagnosticCollection,
     pub proc_macro_client: ProcMacroClient,
+    pub flycheck_progress_src: ProgressSource<(), String>,
+    pub flycheck_progress_receiver: Receiver<ProgressStatus<(), String>>,
 }
 
 /// An immutable snapshot of the world's state at a point in time.
@@ -158,7 +165,12 @@ impl GlobalState {
         }
         change.set_crate_graph(crate_graph);
 
-        let flycheck = config.check.as_ref().and_then(|c| create_flycheck(&workspaces, c));
+        let (flycheck_progress_receiver, flycheck_progress_src) =
+            ProgressSource::real_if(config.client_caps.work_done_progress);
+        let flycheck = config
+            .check
+            .as_ref()
+            .and_then(|c| create_flycheck(&workspaces, c, &flycheck_progress_src));
 
         let mut analysis_host = AnalysisHost::new(lru_capacity);
         analysis_host.apply_change(change);
@@ -171,6 +183,8 @@ impl GlobalState {
             task_receiver,
             latest_requests: Default::default(),
             flycheck,
+            flycheck_progress_src,
+            flycheck_progress_receiver,
             diagnostics: Default::default(),
             proc_macro_client,
         }
@@ -179,8 +193,10 @@ impl GlobalState {
     pub fn update_configuration(&mut self, config: Config) {
         self.analysis_host.update_lru_capacity(config.lru_capacity);
         if config.check != self.config.check {
-            self.flycheck =
-                config.check.as_ref().and_then(|it| create_flycheck(&self.workspaces, it));
+            self.flycheck = config
+                .check
+                .as_ref()
+                .and_then(|it| create_flycheck(&self.workspaces, it, &self.flycheck_progress_src));
         }
 
         self.config = config;
@@ -188,7 +204,7 @@ impl GlobalState {
 
     /// Returns a vec of libraries
     /// FIXME: better API here
-    pub fn process_changes(&mut self, roots_scanned: &mut usize) -> bool {
+    pub fn process_changes(&mut self, roots_scanned: &mut u32) -> bool {
         let changes = self.vfs.write().commit_changes();
         if changes.is_empty() {
             return false;

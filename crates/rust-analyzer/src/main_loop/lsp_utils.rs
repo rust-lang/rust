@@ -1,10 +1,16 @@
+//! Utilities for LSP-related boilerplate code.
+
 use crossbeam_channel::Sender;
 use lsp_server::{Message, Notification, Request, RequestId};
 use ra_db::Canceled;
 use serde::{de::DeserializeOwned, Serialize};
 use std::error::Error;
 
-pub fn show_message(typ: lsp_types::MessageType, message: impl Into<String>, sender: &Sender<Message>) {
+pub fn show_message(
+    typ: lsp_types::MessageType,
+    message: impl Into<String>,
+    sender: &Sender<Message>,
+) {
     let message = message.into();
     let params = lsp_types::ShowMessageParams { typ, message };
     let not = notification_new::<lsp_types::notification::ShowMessage>(params);

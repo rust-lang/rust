@@ -963,6 +963,7 @@ dependencies = [
  "crossbeam-channel",
  "jod-thread",
  "log",
+ "ra_progress",
  "ra_toolchain",
  "serde_json",
 ]
@@ -1075,6 +1076,7 @@ dependencies = [
  "ra_hir",
  "ra_ide_db",
  "ra_prof",
+ "ra_progress",
  "ra_syntax",
  "ra_text_edit",
  "rand",
@@ -1160,6 +1162,13 @@ dependencies = [
  "jemallocator",
  "once_cell",
  "ra_arena",
+]
+
+[[package]]
+name = "ra_progress"
+version = "0.1.0"
+dependencies = [
+ "crossbeam-channel",
 ]
 
 [[package]]
@@ -1388,6 +1397,7 @@ dependencies = [
  "ra_mbe",
  "ra_proc_macro_srv",
  "ra_prof",
+ "ra_progress",
  "ra_project_model",
  "ra_syntax",
  "ra_text_edit",

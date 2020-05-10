@@ -241,11 +241,8 @@ impl Analysis {
         self.with_db(|db| status::status(&*db))
     }
 
-    pub fn prime_caches<P>(&self, files: Vec<FileId>, report_progress: P) -> Cancelable<()>
-    where
-        P: FnMut(usize) + std::panic::UnwindSafe,
-    {
-        self.with_db(|db| prime_caches::prime_caches(db, files, report_progress))
+    pub fn prime_caches(&self, files: Vec<FileId>) -> Cancelable<()> {
+        self.with_db(|db| prime_caches::prime_caches(db, files))
     }
 
     /// Gets the text of the source file.
