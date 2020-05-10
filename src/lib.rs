@@ -371,6 +371,7 @@ fn format_code_block(
         .rfind('}')
         .unwrap_or_else(|| formatted.snippet.len());
     let mut is_indented = true;
+    let indent_str = Indent::from_width(config, config.tab_spaces()).to_string(config);
     for (kind, ref line) in LineClasses::new(&formatted.snippet[FN_MAIN_PREFIX.len()..block_len]) {
         if !is_first {
             result.push('\n');
@@ -385,9 +386,8 @@ fn format_code_block(
             // are too long, or we have failed to format code block. We will be
             // conservative and just return `None` in this case.
             return None;
-        } else if line.len() > config.tab_spaces() {
+        } else if line.len() > indent_str.len() {
             // Make sure that the line has leading whitespaces.
-            let indent_str = Indent::from_width(config, config.tab_spaces()).to_string(config);
             if line.starts_with(indent_str.as_ref()) {
                 let offset = if config.hard_tabs() {
                     1
