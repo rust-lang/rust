@@ -580,22 +580,25 @@
 		},
 		"lifetime": {
 			"comment": "Named lifetime",
-			"name": "entity.name.type.lifetime.rust",
+			"name": "storage.modifier.lifetime.rust",
 			"match": "'([a-zA-Z_][a-zA-Z0-9_]*)\\b"
 		},
 		"ref_lifetime": {
 			"comment": "Reference with named lifetime",
-			"match": "&('[a-zA-Z_][a-zA-Z0-9_]*)\\b",
+			"match": "(&)('[a-zA-Z_][a-zA-Z0-9_]*)\\b",
 			"captures": {
 				"1": {
-					"name": "entity.name.type.lifetime.rust"
+					"name": "keyword.other.sigil.rust"
+				},
+				"2": {
+					"name": "storage.modifier.lifetime.rust"
 				}
 			}
 		},
 		"core_types": {
 			"comment": "Built-in/core type",
-			"name": "entity.name.type.core.rust",
-			"match": "\\b(bool|char|usize|isize|u8|u16|u32|u64|u128|i8|i16|i32|i64|i128|f32|f64|str|Self|Option|Result)\\b"
+			"name": "support.type.primitive",
+			"match": "\\b(bool|char|usize|isize|u8|u16|u32|u64|u128|i8|i16|i32|i64|i128|f32|f64|str|Self)\\b"
 		},
 		"core_vars": {
 			"comment": "Core type variant",
@@ -615,7 +618,7 @@
 		"std_types": {
 			"comment": "Standard library type",
 			"name": "entity.name.type.class.std.rust",
-			"match": "\\b(Box|String|Vec|Path|PathBuf)\\b"
+			"match": "\\b(Box|String|Vec|Path|PathBuf|Option|Result)\\b"
 		},
 		"std_traits": {
 			"comment": "Standard library trait",

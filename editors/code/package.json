@@ -601,7 +601,7 @@
                         "support.type.primitive"
                     ],
                     "lifetime": [
-                        "entity.name.type.lifetime"
+                        "storage.modifier.lifetime.rust"
                     ],
                     "typeAlias": [
                         "entity.name.type.typeAlias"
