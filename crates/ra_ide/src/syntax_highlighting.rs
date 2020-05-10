@@ -167,6 +167,19 @@ pub(crate) fn highlight(
                         binding_hash: None,
                     });
                 }
+                if let Some(name) = mc.is_macro_rules() {
+                    if let Some((highlight, binding_hash)) = highlight_element(
+                        &sema,
+                        &mut bindings_shadow_count,
+                        name.syntax().clone().into(),
+                    ) {
+                        stack.add(HighlightedRange {
+                            range: name.syntax().text_range(),
+                            highlight,
+                            binding_hash,
+                        });
+                    }
+                }
                 continue;
             }
             WalkEvent::Leave(Some(mc)) => {

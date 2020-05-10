@@ -33,11 +33,13 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="keyword">pub</span> <span class="field declaration">y</span>: <span class="builtin_type">i32</span>,
 }
 
+<span class="keyword">static</span> <span class="keyword">mut</span> <span class="static declaration mutable">STATIC_MUT</span>: <span class="builtin_type">i32</span> = <span class="numeric_literal">0</span>;
+
 <span class="keyword">fn</span> <span class="function declaration">foo</span>&lt;<span class="lifetime declaration">'a</span>, <span class="type_param declaration">T</span>&gt;() -&gt; <span class="type_param">T</span> {
     <span class="function">foo</span>::&lt;<span class="lifetime">'a</span>, <span class="builtin_type">i32</span>&gt;()
 }
 
-<span class="macro">macro_rules!</span> def_fn {
+<span class="macro">macro_rules!</span> <span class="macro declaration">def_fn</span> {
     ($($tt:tt)*) =&gt; {$($tt)*}
 }
 
