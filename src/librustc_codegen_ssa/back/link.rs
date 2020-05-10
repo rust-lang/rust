@@ -1180,12 +1180,7 @@ fn add_pre_link_args(
 }
 
 /// Add a link script embedded in the target, if applicable.
-fn add_link_script(
-    cmd: &mut dyn Linker,
-    sess: &Session,
-    tmpdir: &Path,
-    crate_type: CrateType,
-) {
+fn add_link_script(cmd: &mut dyn Linker, sess: &Session, tmpdir: &Path, crate_type: CrateType) {
     match (crate_type, &sess.target.target.options.link_script) {
         (CrateType::Cdylib | CrateType::Executable, Some(script)) => {
             if !sess.target.target.options.linker_is_gnu {
