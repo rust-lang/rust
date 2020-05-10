@@ -133,6 +133,9 @@ crate enum PatKind<'tcx> {
         var: hir::HirId,
         ty: Ty<'tcx>,
         subpattern: Option<Pat<'tcx>>,
+        /// Is this the leftmost occurance of the binding, i.e., is `var` the
+        /// `HirId` of this pattern?
+        is_primary: bool,
     },
 
     /// `Foo(...)` or `Foo{...}` or `Foo`, where `Foo` is a variant name from an ADT with
@@ -601,6 +604,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     var: id,
                     ty: var_ty,
                     subpattern: self.lower_opt_pattern(sub),
+                    is_primary: id == pat.hir_id,
                 }
             }
 
@@ -977,7 +981,7 @@ impl<'tcx> PatternFoldable<'tcx> for PatKind<'tcx> {
                     user_ty_span,
                 },
             },
-            PatKind::Binding { mutability, name, mode, var, ty, ref subpattern } => {
+            PatKind::Binding { mutability, name, mode, var, ty, ref subpattern, is_primary } => {
                 PatKind::Binding {
                     mutability: mutability.fold_with(folder),
                     name: name.fold_with(folder),
@@ -985,6 +989,7 @@ impl<'tcx> PatternFoldable<'tcx> for PatKind<'tcx> {
                     var: var.fold_with(folder),
                     ty: ty.fold_with(folder),
                     subpattern: subpattern.fold_with(folder),
+                    is_primary,
                 }
             }
             PatKind::Variant { adt_def, substs, variant_index, ref subpatterns } => {
