@@ -2461,12 +2461,8 @@ impl ConstArg {
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
     pub fn block_expr(&self) -> Option<BlockExpr> { support::child(&self.syntax) }
 }
-/// Macro items is a node that holds all the items created by expanding a macro.
-///
-/// ```
-/// foo!(); // expands into some items -v
-///         // ❰ struct Foo; impl Bar for Foo; ❱
-/// ```
+/// FIXME: (@edwin0cheng) Remove it to use ItemList instead
+/// https://github.com/rust-analyzer/rust-analyzer/pull/4083#discussion_r422666243
 ///
 /// [Reference](https://doc.rust-lang.org/reference/macros.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

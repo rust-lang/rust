@@ -1990,14 +1990,9 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         /// [RFC](https://github.com/rust-lang/rfcs/blob/master/text/2000-const-generics.md#declaring-a-const-parameter)
         struct ConstArg { Literal, T![=], BlockExpr }
 
-        // TODO: Idk what I am writing here, please don't believe these words.
-        // TODO: clarify @matklad @edwin0cheng
-        /// Macro items is a node that holds all the items created by expanding a macro.
-        ///
-        /// ```
-        /// foo!(); // expands into some items -v
-        ///         // ❰ struct Foo; impl Bar for Foo; ❱
-        /// ```
+
+        /// FIXME: (@edwin0cheng) Remove it to use ItemList instead
+        /// https://github.com/rust-analyzer/rust-analyzer/pull/4083#discussion_r422666243
         ///
         /// [Reference](https://doc.rust-lang.org/reference/macros.html)
         struct MacroItems: ModuleItemOwner { }
