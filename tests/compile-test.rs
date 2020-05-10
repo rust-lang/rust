@@ -44,7 +44,7 @@ fn third_party_crates() -> String {
     for entry in fs::read_dir(dep_dir).unwrap() {
         let path = match entry {
             Ok(entry) => entry.path(),
-            _ => continue,
+            Err(_) => continue,
         };
         if let Some(name) = path.file_name().and_then(OsStr::to_str) {
             for dep in CRATES {
