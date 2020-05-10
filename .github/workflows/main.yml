@@ -43,7 +43,7 @@ jobs:
       uses: actions/cache@v1.1.2
       with:
         path: target
-        key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('rust-toolchain') }}
+        key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('rust-toolchain', '**/Cargo.lock') }}
 
     - name: Prepare dependencies
       run: |
