@@ -17,6 +17,16 @@ struct Foo {
     pub y: i32,
 }
 
+trait Bar {
+    fn bar(&self) -> i32;
+}
+
+impl Bar for Foo {
+    fn bar(&self) -> i32 {
+        self.x
+    }
+}
+
 static mut STATIC_MUT: i32 = 0;
 
 fn foo<'a, T>() -> T {
