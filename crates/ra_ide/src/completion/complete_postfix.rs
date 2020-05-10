@@ -14,6 +14,7 @@ use crate::{
     },
     CompletionItem,
 };
+use ra_assists::utils::TryEnum;
 
 pub(super) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
     if !ctx.config.enable_postfix_completions {
@@ -38,46 +39,51 @@ pub(super) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
         None => return,
     };
 
-    if receiver_ty.is_option(ctx.db) {
-        postfix_snippet(
-            ctx,
-            cap,
-            &dot_receiver,
-            "ifl",
-            "if let Some {}",
-            &format!("if let Some($1) = {} {{\n    $0\n}}", receiver_text),
-        )
-        .add_to(acc);
+    if let Some(try_enum) = TryEnum::from_ty(&ctx.sema, &receiver_ty) {
+        match try_enum {
+            TryEnum::Result => {
+                postfix_snippet(
+                    ctx,
+                    cap,
+                    &dot_receiver,
+                    "ifl",
+                    "if let Ok {}",
+                    &format!("if let Ok($1) = {} {{\n    $0\n}}", receiver_text),
+                )
+                .add_to(acc);
 
-        postfix_snippet(
-            ctx,
-            cap,
-            &dot_receiver,
-            "while",
-            "while let Some {}",
-            &format!("while let Some($1) = {} {{\n    $0\n}}", receiver_text),
-        )
-        .add_to(acc);
-    } else if receiver_ty.is_result(ctx.db) {
-        postfix_snippet(
-            ctx,
-            cap,
-            &dot_receiver,
-            "ifl",
-            "if let Ok {}",
-            &format!("if let Ok($1) = {} {{\n    $0\n}}", receiver_text),
-        )
-        .add_to(acc);
+                postfix_snippet(
+                    ctx,
+                    cap,
+                    &dot_receiver,
+                    "while",
+                    "while let Ok {}",
+                    &format!("while let Ok($1) = {} {{\n    $0\n}}", receiver_text),
+                )
+                .add_to(acc);
+            }
+            TryEnum::Option => {
+                postfix_snippet(
+                    ctx,
+                    cap,
+                    &dot_receiver,
+                    "ifl",
+                    "if let Some {}",
+                    &format!("if let Some($1) = {} {{\n    $0\n}}", receiver_text),
+                )
+                .add_to(acc);
 
-        postfix_snippet(
-            ctx,
-            cap,
-            &dot_receiver,
-            "while",
-            "while let Ok {}",
-            &format!("while let Ok($1) = {} {{\n    $0\n}}", receiver_text),
-        )
-        .add_to(acc);
+                postfix_snippet(
+                    ctx,
+                    cap,
+                    &dot_receiver,
+                    "while",
+                    "while let Some {}",
+                    &format!("while let Some($1) = {} {{\n    $0\n}}", receiver_text),
+                )
+                .add_to(acc);
+            }
+        }
     } else if receiver_ty.is_bool() || receiver_ty.is_unknown() {
         postfix_snippet(
             ctx,

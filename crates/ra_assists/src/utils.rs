@@ -103,7 +103,7 @@ fn invert_special_case(expr: &ast::Expr) -> Option<ast::Expr> {
 }
 
 #[derive(Clone, Copy)]
-pub(crate) enum TryEnum {
+pub enum TryEnum {
     Result,
     Option,
 }
@@ -111,7 +111,7 @@ pub(crate) enum TryEnum {
 impl TryEnum {
     const ALL: [TryEnum; 2] = [TryEnum::Option, TryEnum::Result];
 
-    pub(crate) fn from_ty(sema: &Semantics<RootDatabase>, ty: &Type) -> Option<TryEnum> {
+    pub fn from_ty(sema: &Semantics<RootDatabase>, ty: &Type) -> Option<TryEnum> {
         let enum_ = match ty.as_adt() {
             Some(Adt::Enum(it)) => it,
             _ => return None,
