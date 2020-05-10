@@ -5,7 +5,7 @@ async fn foo() -> Result<(), ()> {
 }
 
 async fn bar() -> Result<(), ()> {
-    foo()?;
+    foo()?; //~ ERROR the `?` operator can only be applied to values that implement `std::ops::Try`
     Ok(())
 }
 

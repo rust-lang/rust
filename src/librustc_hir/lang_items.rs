@@ -194,6 +194,7 @@ language_item_table! {
     ShrAssignTraitLangItem,      "shr_assign",         shr_assign_trait,        Target::Trait;
     IndexTraitLangItem,          "index",              index_trait,             Target::Trait;
     IndexMutTraitLangItem,       "index_mut",          index_mut_trait,         Target::Trait;
+
     UnsafeCellTypeLangItem,      "unsafe_cell",        unsafe_cell_type,        Target::Struct;
     VaListTypeLangItem,          "va_list",            va_list,                 Target::Struct;
 

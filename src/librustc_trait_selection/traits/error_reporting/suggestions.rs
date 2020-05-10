@@ -1791,6 +1791,19 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         let body_hir_id = obligation.cause.body_id;
         let item_id = self.tcx.hir().get_parent_node(body_hir_id);
 
+        let mut is_future = false;
+        if let ty::Opaque(def_id, substs) = trait_ref.self_ty().kind {
+            let preds = self.tcx.predicates_of(def_id).instantiate(self.tcx, substs);
+            for p in preds.predicates {
+                if let Some(trait_ref) = p.to_opt_poly_trait_ref() {
+                    if Some(trait_ref.def_id()) == self.tcx.lang_items().future_trait() {
+                        is_future = true;
+                        break;
+                    }
+                }
+            }
+        }
+
         if let Some(body_id) = self.tcx.hir().maybe_body_owned_by(item_id) {
             let body = self.tcx.hir().body(body_id);
             if let Some(hir::GeneratorKind::Async(_)) = body.generator_kind {
@@ -1802,6 +1815,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     .next()
                     .unwrap()
                     .def_id;
+                debug!("trait_ref_self_ty: {:?}", trait_ref.self_ty());
                 // `<T as Future>::Output`
                 let projection_ty = ty::ProjectionTy {
                     // `T`
@@ -1813,7 +1827,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     item_def_id,
                 };
 
-                //let cause = ObligationCause::misc(span, body_hir_id);
                 let mut selcx = SelectionContext::new(self);
 
                 let mut obligations = vec![];
@@ -1826,7 +1839,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     &mut obligations,
                 );
 
-                debug!("suggest_await_befor_try: normalized_projection_type {:?}", normalized_ty);
+                debug!(
+                    "suggest_await_befor_try: normalized_projection_type {:?}",
+                    self.resolve_vars_if_possible(&normalized_ty)
+                );
                 let try_obligation = self.mk_obligation_for_def_id(
                     trait_ref.def_id(),
                     normalized_ty,
@@ -1834,7 +1850,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     obligation.param_env,
                 );
                 debug!("suggest_await_befor_try: try_trait_obligation {:?}", try_obligation);
-                if self.predicate_may_hold(&try_obligation) {
+                if self.predicate_may_hold(&try_obligation) && is_future {
                     if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
                         if snippet.ends_with('?') {
                             err.span_suggestion(
