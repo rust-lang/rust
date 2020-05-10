@@ -140,18 +140,24 @@ fn contains_return_break_continue<'tcx>(expression: &'tcx Expr<'tcx>) -> bool {
 /// this function returns an OptionIfLetElseOccurence struct with details if
 /// this construct is found, or None if this construct is not found.
 fn detect_option_if_let_else<'a>(cx: &LateContext<'_, 'a>, expr: &'a Expr<'a>) -> Option<OptionIfLetElseOccurence> {
-    //(String, String, String, String)> {
     if_chain! {
-        // if !utils::in_macro(expr.span); // Don't lint macros, because it behaves weirdly
+        if !utils::in_macro(expr.span); // Don't lint macros, because it behaves weirdly
         if let ExprKind::Match(let_body, arms, MatchSource::IfLetDesugar{contains_else_clause: true}) = &expr.kind;
         if arms.len() == 2;
-        if match_type(cx, &cx.tables.expr_ty(let_body), &paths::OPTION);
+        // if type_is_option(cx, &cx.tables.expr_ty(let_body).kind);
         if !is_result_ok(cx, let_body); // Don't lint on Result::ok because a different lint does it already
-        if let PatKind::TupleStruct(_, &[inner_pat], _) = &arms[0].pat.kind;
-        if let PatKind::Binding(_, _, id, _) = &inner_pat.kind;
+        if let PatKind::TupleStruct(struct_qpath, &[inner_pat], _) = &arms[0].pat.kind;
+        if utils::match_qpath(struct_qpath, &paths::OPTION_SOME);
+        if let PatKind::Binding(bind_annotation, _, id, _) = &inner_pat.kind;
         if !contains_return_break_continue(arms[0].body);
         if !contains_return_break_continue(arms[1].body);
         then {
+            let (capture_mut, capture_ref, capture_ref_mut) = match bind_annotation {
+                BindingAnnotation::Unannotated => (false, false, false),
+                BindingAnnotation::Mutable => (true, false, false),
+                BindingAnnotation::Ref => (false, true, false),
+                BindingAnnotation::RefMut => (false, false, true),
+            };
             let some_body = if let ExprKind::Block(Block { stmts: statements, expr: Some(expr), .. }, _)
                 = &arms[0].body.kind {
                 if let &[] = &statements {
@@ -189,7 +195,7 @@ fn detect_option_if_let_else<'a>(cx: &LateContext<'_, 'a>, expr: &'a Expr<'a>) -
                     }
                 }
             });
-            let parens_around_option = match &let_body.kind {
+            let (parens_around_option, as_ref, as_mut, let_body) = match &let_body.kind {
                 ExprKind::Call(..)
                         | ExprKind::MethodCall(..)
                         | ExprKind::Loop(..)
@@ -197,13 +203,15 @@ fn detect_option_if_let_else<'a>(cx: &LateContext<'_, 'a>, expr: &'a Expr<'a>) -
                         | ExprKind::Block(..)
                         | ExprKind::Field(..)
                         | ExprKind::Path(_)
-                    => false,
-                _ => true,
+                    => (false, capture_ref, capture_ref_mut, let_body),
+                ExprKind::Unary(UnOp::UnDeref, expr) => (false, capture_ref, capture_ref_mut, expr),
+                ExprKind::AddrOf(_, mutability, expr) => (false, mutability == &Mutability::Not, mutability == &Mutability::Mut, expr),
+                _ => (true, capture_ref, capture_ref_mut, let_body),
             };
             Some(OptionIfLetElseOccurence {
-                option: format!("{}{}{}", if parens_around_option { "(" } else { "" }, Sugg::hir(cx, let_body, ".."), if parens_around_option { ")" } else { "" }),
+                option: format!("{}{}{}{}", if parens_around_option { "(" } else { "" }, Sugg::hir(cx, let_body, ".."), if parens_around_option { ")" } else { "" }, if as_mut { ".as_mut()" } else if as_ref { ".as_ref()" } else { "" }),
                 method_sugg: format!("{}", method_sugg),
-                some_expr: format!("|{}| {}", capture_name, Sugg::hir(cx, some_body, "..")),
+                some_expr: format!("|{}{}{}| {}", if false { "ref " } else { "" }, if capture_mut { "mut " } else { "" }, capture_name, Sugg::hir(cx, some_body, "..")),
                 none_expr: format!("{}{}", if method_sugg == "map_or" { "" } else { "|| " }, Sugg::hir(cx, none_body, "..")),
                 wrap_braces,
             })

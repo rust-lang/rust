@@ -11,8 +11,22 @@ fn else_if_option(string: Option<&str>) -> Option<(bool, &str)> {
     } else { string.map_or(Some((false, "")), |x| Some((true, x))) }
 }
 
-fn unop_bad(string: &Option<&str>) -> usize {
-    (*string).map_or(0, |s| s.len())
+fn unop_bad(string: &Option<&str>, mut num: Option<i32>) {
+    let _ = string.map_or(0, |s| s.len());
+    let _ = num.as_ref().map_or(&0, |s| s);
+    let _ = num.as_mut().map_or(&mut 0, |s| {
+        *s += 1;
+        s
+    });
+    let _ = num.as_ref().map_or(&0, |s| s);
+    let _ = num.map_or(0, |mut s| {
+        s += 1;
+        s
+    });
+    let _ = num.as_mut().map_or(&mut 0, |s| {
+        *s += 1;
+        s
+    });
 }
 
 fn longer_body(arg: Option<u32>) -> u32 {
@@ -53,7 +67,7 @@ fn main() {
     let _ = optional.map_or(5, |x| x + 2);
     let _ = bad1(None);
     let _ = else_if_option(None);
-    let _ = unop_bad(&None);
+    unop_bad(&None, None);
     let _ = longer_body(None);
     test_map_or_else(None);
     let _ = negative_tests(None);

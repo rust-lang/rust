@@ -19,12 +19,40 @@ fn else_if_option(string: Option<&str>) -> Option<(bool, &str)> {
     }
 }
 
-fn unop_bad(string: &Option<&str>) -> usize {
-    if let Some(s) = *string {
+fn unop_bad(string: &Option<&str>, mut num: Option<i32>) {
+    let _ = if let Some(s) = *string {
         s.len()
     } else {
         0
-    }
+    };
+    let _ = if let Some(s) = &num {
+        s
+    } else {
+        &0
+    };
+    let _ = if let Some(s) = &mut num {
+        *s += 1;
+        s
+    } else {
+        &mut 0
+    };
+    let _ = if let Some(ref s) = num {
+        s
+    } else {
+        &0
+    };
+    let _ = if let Some(mut s) = num {
+        s += 1;
+        s
+    } else {
+        0
+    };
+    let _ = if let Some(ref mut s) = num {
+        *s += 1;
+        s
+    } else {
+        &mut 0
+    };
 }
 
 fn longer_body(arg: Option<u32>) -> u32 {
@@ -69,7 +97,7 @@ fn main() {
     let _ = if let Some(x) = optional { x + 2 } else { 5 };
     let _ = bad1(None);
     let _ = else_if_option(None);
-    let _ = unop_bad(&None);
+    unop_bad(&None, None);
     let _ = longer_body(None);
     test_map_or_else(None);
     let _ = negative_tests(None);
