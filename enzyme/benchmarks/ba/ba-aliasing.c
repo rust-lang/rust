@@ -64,7 +64,7 @@ void cross(double const* a, double const* b, double* out)
 //  n = w / theta;
 //  n_x = au_cross_matrix(n);
 //  R = eye(3) + n_x*sin(theta) + n_x*n_x*(1 - cos(theta));    
-void rodrigues_rotate_point(double const* __restrict rot, double const* __restrict pt, double *__restrict rotatedPt)
+void rodrigues_rotate_point(double const* rot, double const* pt, double *rotatedPt)
 {
     int i;
     double sqtheta = sqsum(3, rot);
@@ -118,7 +118,7 @@ void radial_distort(double const* rad_params, double *proj)
 
     
 
-void project(double const* __restrict cam, double const* __restrict X, double* __restrict proj)
+void project(double const* cam, double const* X, double* proj)
 {
     double const* C = &cam[3];
     double Xo[3], Xcam[3];
@@ -155,11 +155,11 @@ void project(double const* __restrict cam, double const* __restrict X, double* _
 // proj = distorted * f + principal_point
 // err = sqsum(proj - measurement)
 void compute_reproj_error(
-    double const* __restrict cam,
-    double const* __restrict X,
-    double const* __restrict w,
-    double const* __restrict feat,
-    double * __restrict err
+    double const* cam,
+    double const* X,
+    double const* w,
+    double const* feat,
+    double *err
 )
 {
     double proj[2];

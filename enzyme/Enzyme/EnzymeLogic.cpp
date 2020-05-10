@@ -781,6 +781,7 @@ bool legalCombinedForwardReverse(CallInst &ci, const std::map<ReturnInst*,StoreI
       return;
     }
     // Do not try moving an instruction that modifies memory, if we already moved it
+    if (!isa<StoreInst>(I) || unnecessaryInstructions.count(I) == 0)
     if (I->mayReadOrWriteMemory() && gutils->getNewFromOriginal(I)->getParent() != gutils->getNewFromOriginal(I->getParent())) {
       legal = false;
       if (called)
@@ -948,7 +949,7 @@ public:
   SmallPtrSet<Instruction*, 4> erased;
 
   void eraseIfUnused(llvm::Instruction &I, bool erase=true, bool check=true) {
-    bool used = unnecessaryValues.find(&I) == unnecessaryValues.end();
+    bool used = unnecessaryInstructions.find(&I) == unnecessaryInstructions.end();
 
     auto iload = gutils->getNewFromOriginal(&I);
 
@@ -1136,13 +1137,10 @@ public:
     Type* valType = orig_val->getType();
 
 
-    // Don't duplicate store in reverse pass
-    if (mode == DerivativeMode::Reverse) {
-      erased.insert(&SI);
-      gutils->erase(gutils->getNewFromOriginal(&SI));
+    if (gutils->isConstantValue(orig_ptr)) {
+      eraseIfUnused(SI);
+      return;
     }
-
-    if (gutils->isConstantValue(orig_ptr)) return;
 
     //TODO allow recognition of other types that could contain pointers [e.g. {void*, void*} or <2 x i64> ]
     StoreInst* ts = nullptr;
@@ -1197,6 +1195,7 @@ public:
       ts->setOrdering(SI.getOrdering());
       ts->setSyncScopeID(SI.getSyncScopeID());
     }
+    eraseIfUnused(SI);
   }
 
   void visitGetElementPtrInst(llvm::GetElementPtrInst &gep) {
@@ -1579,13 +1578,10 @@ public:
   }
 
   void visitMemTransferInst(llvm::MemTransferInst& MTI) {
-    // Don't duplicate copy in reverse pass
-    if (mode == DerivativeMode::Reverse) {
-      erased.insert(&MTI);
-      gutils->erase(gutils->getNewFromOriginal(&MTI));
+    if (gutils->isConstantInstruction(&MTI)) {
+      eraseIfUnused(MTI);
+      return;
     }
-
-    if (gutils->isConstantInstruction(&MTI)) return;
 
     Value* orig_op0 = MTI.getOperand(0);
     Value* op0 = gutils->getNewFromOriginal(orig_op0);
@@ -1595,7 +1591,10 @@ public:
     Value* op3 = gutils->getNewFromOriginal(MTI.getOperand(3));
 
     // copying into nullptr is invalid (not sure why it exists here), but we shouldn't do it in reverse pass or shadow
-    if (isa<ConstantPointerNull>(op0) || TR.query(orig_op0)[{}] == IntType::Anything) return;
+    if (isa<ConstantPointerNull>(op0) || TR.query(orig_op0)[{}] == IntType::Anything) {
+      eraseIfUnused(MTI);
+      return;
+    }
 
     size_t size = 1;
     if (auto ci = dyn_cast<ConstantInt>(op2)) {
@@ -1638,7 +1637,10 @@ public:
       //if represents pointer or integer type then only need to modify forward pass with the copy
       if (mode == DerivativeMode::Forward || mode == DerivativeMode::Both) {
         //It is questionable how the following case would even occur, but if the dst is constant, we shouldn't do anything extra
-        if (gutils->isConstantValue(orig_op0)) return;
+        if (gutils->isConstantValue(orig_op0)) {
+          eraseIfUnused(MTI);
+          return;
+        }
 
         SmallVector<Value*, 4> args;
         IRBuilder <>BuilderZ(gutils->getNewFromOriginal(&MTI));
@@ -1664,6 +1666,7 @@ public:
         cal->setTailCallKind(MTI.getTailCallKind());
       }
     }
+    eraseIfUnused(MTI);
   }
 
   void visitIntrinsicInst(llvm::IntrinsicInst &II) {
@@ -3084,6 +3087,25 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, DIFFE_TYPE retTyp
         return false;
       }
     }
+
+    if (auto si = dyn_cast<StoreInst>(inst)) {
+      auto at = GetUnderlyingObject(si->getPointerOperand(), gutils->oldFunc->getParent()->getDataLayout(), 100);
+      if (auto arg = dyn_cast<Argument>(at)) {
+        if (constant_args[arg->getArgNo()] == DIFFE_TYPE::DUP_NONEED) {
+          return false;
+        }
+      }
+    }
+
+    if (auto mti = dyn_cast<MemTransferInst>(inst)) {
+      auto at = GetUnderlyingObject(mti->getArgOperand(0), gutils->oldFunc->getParent()->getDataLayout(), 100);
+      if (auto arg = dyn_cast<Argument>(at)) {
+        if (constant_args[arg->getArgNo()] == DIFFE_TYPE::DUP_NONEED) {
+          return false;
+        }
+      }
+    }
+
     return inst->mayWriteToMemory() || is_value_needed_in_reverse(TR, gutils, inst, /*topLevel*/false);
   });
 
@@ -3923,6 +3945,24 @@ Function* CreatePrimalAndGradient(Function* todiff, DIFFE_TYPE retType, const st
       }
       if (called && isDeallocationFunction(*called, TLI)) {
         return false;
+      }
+    }
+
+    if (auto si = dyn_cast<StoreInst>(inst)) {
+      auto at = GetUnderlyingObject(si->getPointerOperand(), gutils->oldFunc->getParent()->getDataLayout(), 100);
+      if (auto arg = dyn_cast<Argument>(at)) {
+        if (constant_args[arg->getArgNo()] == DIFFE_TYPE::DUP_NONEED) {
+          return false;
+        }
+      }
+    }
+
+    if (auto mti = dyn_cast<MemTransferInst>(inst)) {
+      auto at = GetUnderlyingObject(mti->getArgOperand(0), gutils->oldFunc->getParent()->getDataLayout(), 100);
+      if (auto arg = dyn_cast<Argument>(at)) {
+        if (constant_args[arg->getArgNo()] == DIFFE_TYPE::DUP_NONEED) {
+          return false;
+        }
       }
     }
 
