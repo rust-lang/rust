@@ -11,7 +11,7 @@ use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKi
 use rustc_infer::infer::{self, InferCtxt, InferOk};
 use rustc_middle::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder, TypeVisitor};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, SubstsRef};
-use rustc_middle::ty::{self, GenericParamDefKind, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::config::nightly_options;
 use rustc_span::Span;
 
@@ -1059,21 +1059,10 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
                                     ),
                                     origin,
                                 ),
-                                _ => (def_scope_default(), hir::OpaqueTyOrigin::TypeAlias),
-                            },
-                            Some(Node::ImplItem(item)) => match item.kind {
-                                hir::ImplItemKind::OpaqueTy(_) => (
-                                    may_define_opaque_type(
-                                        tcx,
-                                        self.parent_def_id.expect_local(),
-                                        opaque_hir_id,
-                                    ),
-                                    hir::OpaqueTyOrigin::TypeAlias,
-                                ),
-                                _ => (def_scope_default(), hir::OpaqueTyOrigin::TypeAlias),
+                                _ => (def_scope_default(), hir::OpaqueTyOrigin::Misc),
                             },
                             _ => bug!(
-                                "expected (impl) item, found {}",
+                                "expected item, found {}",
                                 tcx.hir().node_to_string(opaque_hir_id),
                             ),
                         };

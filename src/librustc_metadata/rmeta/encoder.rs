@@ -874,7 +874,6 @@ impl EncodeContext<'tcx> {
                 }))
             }
             ty::AssocKind::Type => EntryKind::AssocType(container),
-            ty::AssocKind::OpaqueTy => span_bug!(ast_item.span, "opaque type in trait"),
         });
         record!(self.tables.visibility[def_id] <- trait_item.vis);
         record!(self.tables.span[def_id] <- ast_item.span);
@@ -892,7 +891,6 @@ impl EncodeContext<'tcx> {
                     self.encode_item_type(def_id);
                 }
             }
-            ty::AssocKind::OpaqueTy => unreachable!(),
         }
         if trait_item.kind == ty::AssocKind::Fn {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
@@ -957,7 +955,6 @@ impl EncodeContext<'tcx> {
                     has_self: impl_item.fn_has_self_parameter,
                 }))
             }
-            ty::AssocKind::OpaqueTy => EntryKind::AssocOpaqueTy(container),
             ty::AssocKind::Type => EntryKind::AssocType(container)
         });
         record!(self.tables.visibility[def_id] <- impl_item.vis);
@@ -989,7 +986,7 @@ impl EncodeContext<'tcx> {
                 let always_encode_mir = self.tcx.sess.opts.debugging_opts.always_encode_mir;
                 needs_inline || is_const_fn || always_encode_mir
             }
-            hir::ImplItemKind::OpaqueTy(..) | hir::ImplItemKind::TyAlias(..) => false,
+            hir::ImplItemKind::TyAlias(..) => false,
         };
         if mir {
             self.encode_optimized_mir(def_id.expect_local());
@@ -1786,7 +1783,7 @@ impl<'tcx, 'v> ParItemLikeVisitor<'v> for PrefetchVisitor<'tcx> {
                     self.prefetch_mir(def_id)
                 }
             }
-            hir::ImplItemKind::OpaqueTy(..) | hir::ImplItemKind::TyAlias(..) => (),
+            hir::ImplItemKind::TyAlias(..) => (),
         }
     }
 }

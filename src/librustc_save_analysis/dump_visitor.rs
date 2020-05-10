@@ -1102,7 +1102,6 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                     impl_item.span,
                 );
             }
-            hir::ImplItemKind::OpaqueTy(..) => {}
             hir::ImplItemKind::TyAlias(ref ty) => {
                 // FIXME: uses of the assoc type should ideally point to this
                 // 'def' and the name here should be a ref to the def in the

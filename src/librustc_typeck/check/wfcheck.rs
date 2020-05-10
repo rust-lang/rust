@@ -316,9 +316,6 @@ fn check_associated_item(
                     fcx.register_wf_obligation(ty.into(), span, code.clone());
                 }
             }
-            ty::AssocKind::OpaqueTy => {
-                // Do nothing: opaque types check themselves.
-            }
         }
 
         implied_bounds
@@ -900,102 +897,102 @@ fn check_opaque_types<'fcx, 'tcx>(
                 if !def_id.is_local() {
                     return ty;
                 }
-                    let opaque_hir_id = tcx.hir().as_local_hir_id(def_id.expect_local());
+                let opaque_hir_id = tcx.hir().as_local_hir_id(def_id.expect_local());
                 if let hir::ItemKind::OpaqueTy(hir::OpaqueTy { impl_trait_fn: Some(_), .. }) =
                     tcx.hir().expect_item(opaque_hir_id).kind
                 {
                     // Don't check return position impl trait.
                     return ty;
                 }
-                    if may_define_opaque_type(tcx, fn_def_id, opaque_hir_id) {
-                        trace!("check_opaque_types: may define, generics={:#?}", generics);
-                        let mut seen_params: FxHashMap<_, Vec<_>> = FxHashMap::default();
-                        for (i, arg) in substs.iter().enumerate() {
-                            let arg_is_param = match arg.unpack() {
-                                GenericArgKind::Type(ty) => matches!(ty.kind, ty::Param(_)),
+                if may_define_opaque_type(tcx, fn_def_id, opaque_hir_id) {
+                    trace!("check_opaque_types: may define, generics={:#?}", generics);
+                    let mut seen_params: FxHashMap<_, Vec<_>> = FxHashMap::default();
+                    for (i, arg) in substs.iter().enumerate() {
+                        let arg_is_param = match arg.unpack() {
+                            GenericArgKind::Type(ty) => matches!(ty.kind, ty::Param(_)),
 
-                                GenericArgKind::Lifetime(region) => {
-                                    if let ty::ReStatic = region {
-                                        tcx.sess
-                                            .struct_span_err(
-                                                span,
-                                                "non-defining opaque type use in defining scope",
-                                            )
-                                            .span_label(
-                                                tcx.def_span(generics.param_at(i, tcx).def_id),
-                                                "cannot use static lifetime; use a bound lifetime \
+                            GenericArgKind::Lifetime(region) => {
+                                if let ty::ReStatic = region {
+                                    tcx.sess
+                                        .struct_span_err(
+                                            span,
+                                            "non-defining opaque type use in defining scope",
+                                        )
+                                        .span_label(
+                                            tcx.def_span(generics.param_at(i, tcx).def_id),
+                                            "cannot use static lifetime; use a bound lifetime \
                                                  instead or remove the lifetime parameter from the \
                                                  opaque type",
-                                            )
-                                            .emit();
-                                        continue;
-                                    }
-
-                                    true
+                                        )
+                                        .emit();
+                                    continue;
                                 }
 
+                                true
+                            }
+
                             GenericArgKind::Const(ct) => matches!(ct.val, ty::ConstKind::Param(_)),
-                            };
+                        };
 
-                            if arg_is_param {
-                                seen_params.entry(arg).or_default().push(i);
-                            } else {
-                                // Prevent `fn foo() -> Foo<u32>` from being defining.
-                                let opaque_param = generics.param_at(i, tcx);
-                                tcx.sess
-                                    .struct_span_err(
-                                        span,
-                                        "non-defining opaque type use in defining scope",
-                                    )
-                                    .span_note(
-                                        tcx.def_span(opaque_param.def_id),
-                                        &format!(
-                                            "used non-generic {} `{}` for generic parameter",
-                                            opaque_param.kind.descr(),
-                                            arg,
-                                        ),
-                                    )
-                                    .emit();
-                            }
-                        } // for (arg, param)
-
-                        for (_, indices) in seen_params {
-                            if indices.len() > 1 {
-                                let descr = generics.param_at(indices[0], tcx).kind.descr();
-                                let spans: Vec<_> = indices
-                                    .into_iter()
-                                    .map(|i| tcx.def_span(generics.param_at(i, tcx).def_id))
-                                    .collect();
-                                tcx.sess
-                                    .struct_span_err(
-                                        span,
-                                        "non-defining opaque type use in defining scope",
-                                    )
-                                    .span_note(spans, &format!("{} used multiple times", descr))
-                                    .emit();
-                            }
+                        if arg_is_param {
+                            seen_params.entry(arg).or_default().push(i);
+                        } else {
+                            // Prevent `fn foo() -> Foo<u32>` from being defining.
+                            let opaque_param = generics.param_at(i, tcx);
+                            tcx.sess
+                                .struct_span_err(
+                                    span,
+                                    "non-defining opaque type use in defining scope",
+                                )
+                                .span_note(
+                                    tcx.def_span(opaque_param.def_id),
+                                    &format!(
+                                        "used non-generic {} `{}` for generic parameter",
+                                        opaque_param.kind.descr(),
+                                        arg,
+                                    ),
+                                )
+                                .emit();
                         }
-                    } // if may_define_opaque_type
+                    } // for (arg, param)
 
-                    // Now register the bounds on the parameters of the opaque type
-                    // so the parameters given by the function need to fulfill them.
-                    //
-                    //     type Foo<T: Bar> = impl Baz + 'static;
-                    //     fn foo<U>() -> Foo<U> { .. *}
-                    //
-                    // becomes
-                    //
-                    //     type Foo<T: Bar> = impl Baz + 'static;
-                    //     fn foo<U: Bar>() -> Foo<U> { .. *}
-                    let predicates = tcx.predicates_of(def_id);
-                    trace!("check_opaque_types: may define, predicates={:#?}", predicates,);
-                    for &(pred, _) in predicates.predicates {
-                        let substituted_pred = pred.subst(fcx.tcx, substs);
-                        // Avoid duplication of predicates that contain no parameters, for example.
-                        if !predicates.predicates.iter().any(|&(p, _)| p == substituted_pred) {
-                            substituted_predicates.push(substituted_pred);
+                    for (_, indices) in seen_params {
+                        if indices.len() > 1 {
+                            let descr = generics.param_at(indices[0], tcx).kind.descr();
+                            let spans: Vec<_> = indices
+                                .into_iter()
+                                .map(|i| tcx.def_span(generics.param_at(i, tcx).def_id))
+                                .collect();
+                            tcx.sess
+                                .struct_span_err(
+                                    span,
+                                    "non-defining opaque type use in defining scope",
+                                )
+                                .span_note(spans, &format!("{} used multiple times", descr))
+                                .emit();
                         }
                     }
+                } // if may_define_opaque_type
+
+                // Now register the bounds on the parameters of the opaque type
+                // so the parameters given by the function need to fulfill them.
+                //
+                //     type Foo<T: Bar> = impl Baz + 'static;
+                //     fn foo<U>() -> Foo<U> { .. *}
+                //
+                // becomes
+                //
+                //     type Foo<T: Bar> = impl Baz + 'static;
+                //     fn foo<U: Bar>() -> Foo<U> { .. *}
+                let predicates = tcx.predicates_of(def_id);
+                trace!("check_opaque_types: may define, predicates={:#?}", predicates,);
+                for &(pred, _) in predicates.predicates {
+                    let substituted_pred = pred.subst(fcx.tcx, substs);
+                    // Avoid duplication of predicates that contain no parameters, for example.
+                    if !predicates.predicates.iter().any(|&(p, _)| p == substituted_pred) {
+                        substituted_predicates.push(substituted_pred);
+                    }
+                }
             } // if let Opaque
             ty
         },

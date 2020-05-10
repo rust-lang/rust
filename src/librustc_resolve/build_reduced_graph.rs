@@ -916,8 +916,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 | DefKind::ForeignTy
                 | DefKind::OpaqueTy
                 | DefKind::TraitAlias
-                | DefKind::AssocTy
-                | DefKind::AssocOpaqueTy,
+                | DefKind::AssocTy,
                 _,
             )
             | Res::PrimTy(..)

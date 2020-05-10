@@ -379,7 +379,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
             TyKind::Path(ref path) => {
                 self.collect_anonymous_lifetimes(path, ty);
             },
-            TyKind::Def(item, _) => {
+            TyKind::OpaqueDef(item, _) => {
                 let map = self.cx.tcx.hir();
                 if let ItemKind::OpaqueTy(ref exist_ty) = map.expect_item(item.id).kind {
                     for bound in exist_ty.bounds {

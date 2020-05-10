@@ -668,7 +668,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
                 }
                 self.visit_nested_body(body_id)
             }
-            hir::ImplItemKind::OpaqueTy(..) | hir::ImplItemKind::TyAlias(..) => {}
+            hir::ImplItemKind::TyAlias(..) => {}
         }
     }
 

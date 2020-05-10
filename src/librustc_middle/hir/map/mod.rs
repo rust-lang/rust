@@ -228,7 +228,6 @@ impl<'hir> Map<'hir> {
                 ImplItemKind::Const(..) => DefKind::AssocConst,
                 ImplItemKind::Fn(..) => DefKind::AssocFn,
                 ImplItemKind::TyAlias(..) => DefKind::AssocTy,
-                ImplItemKind::OpaqueTy(..) => DefKind::AssocOpaqueTy,
             },
             Node::Variant(_) => DefKind::Variant,
             Node::Ctor(variant_data) => {
@@ -1022,9 +1021,6 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId) -> String {
             ImplItemKind::Fn(..) => format!("method {} in {}{}", ii.ident, path_str(), id_str),
             ImplItemKind::TyAlias(_) => {
                 format!("assoc type {} in {}{}", ii.ident, path_str(), id_str)
-            }
-            ImplItemKind::OpaqueTy(_) => {
-                format!("assoc opaque type {} in {}{}", ii.ident, path_str(), id_str)
             }
         },
         Some(Node::TraitItem(ti)) => {

@@ -64,13 +64,6 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     icx.to_ty(ty)
                 }
             }
-            ImplItemKind::OpaqueTy(_) => {
-                if tcx.impl_trait_ref(tcx.hir().get_parent_did(hir_id).to_def_id()).is_none() {
-                    report_assoc_ty_on_inherent_impl(tcx, item.span);
-                }
-
-                find_opaque_ty_constraints(tcx, def_id.expect_local())
-            }
             ImplItemKind::TyAlias(ref ty) => {
                 if tcx.impl_trait_ref(tcx.hir().get_parent_did(hir_id).to_def_id()).is_none() {
                     report_assoc_ty_on_inherent_impl(tcx, item.span);

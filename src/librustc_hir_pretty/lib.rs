@@ -1003,12 +1003,6 @@ impl<'a> State<'a> {
             hir::ImplItemKind::TyAlias(ref ty) => {
                 self.print_associated_type(ii.ident, &ii.generics, None, Some(ty));
             }
-            hir::ImplItemKind::OpaqueTy(bounds) => {
-                self.word_space("type");
-                self.print_ident(ii.ident);
-                self.print_bounds("= impl", bounds);
-                self.s.word(";");
-            }
         }
         self.ann.post(self, AnnNode::SubItem(ii.hir_id))
     }
