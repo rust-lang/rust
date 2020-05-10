@@ -506,7 +506,7 @@ impl TypeAliasDef {
 /// ```
 /// ❰
 ///     #[attr]
-///     unsafe impl<T> !Foo for Bar where T: Debug {
+///     unsafe impl<T> const !Foo for Bar where T: Debug {
 ///         #![inner_attr]
 ///         // ...
 ///     }
@@ -2440,7 +2440,7 @@ impl LifetimeArg {
 /// Constant value argument that is passed at generic instantiation site.
 ///
 /// ```
-/// foo::<❰ u32 ❱, ❰ true ❱ >();
+/// foo::<❰ u32 ❱, ❰ true ❱>();
 ///
 /// bar::<❰ { 2 + 2} ❱>();
 /// ```

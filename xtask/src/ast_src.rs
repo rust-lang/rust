@@ -683,7 +683,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         /// ```
         /// ❰
         ///     #[attr]
-        ///     unsafe impl<T> !Foo for Bar where T: Debug {
+        ///     unsafe impl<T> const !Foo for Bar where T: Debug {
         ///         #![inner_attr]
         ///         // ...
         ///     }
@@ -693,7 +693,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         /// [Reference](https://doc.rust-lang.org/reference/items/implementations.html)
         struct ImplDef: TypeParamsOwner, AttrsOwner, DocCommentsOwner {
             T![default],
-            T![const], // TODO: wat?
+            T![const],
             T![unsafe],
             T![impl],
             T![!],
