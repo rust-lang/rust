@@ -41,7 +41,7 @@
 #![feature(option_expect_none)]
 #![feature(or_patterns)]
 #![feature(range_is_empty)]
-#![feature(specialization)]
+#![feature(specialization)] // FIXME: min_specialization does not work
 #![feature(track_caller)]
 #![feature(trusted_len)]
 #![feature(vec_remove_item)]

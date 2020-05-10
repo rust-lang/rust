@@ -33,7 +33,7 @@
 #![feature(array_value_iter)]
 #![feature(crate_visibility_modifier)]
 #![feature(marker_trait_attr)]
-#![feature(specialization)]
+#![feature(specialization)] // FIXME: min_specialization does not work
 #![feature(or_patterns)]
 #![recursion_limit = "256"]
 
