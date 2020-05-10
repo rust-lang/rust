@@ -49,7 +49,7 @@ attributes #2 = { nounwind }
 !4 = !{!"omnipotent char", !5, i64 0}
 !5 = !{!"Simple C/C++ TBAA"}
 
-; CHECK: define internal {{(dso_local )?}}{} @diffestore(double* nocapture readonly %x, double* %"x'", double* nocapture %y, double* %"y'")
+; CHECK: define internal {{(dso_local )?}}{} @diffestore(double* nocapture readonly %x, double* nocapture %"x'", double* nocapture %y, double* nocapture %"y'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = bitcast double* %x to i64*
 ; CHECK-NEXT:   %1 = bitcast double* %y to i64*

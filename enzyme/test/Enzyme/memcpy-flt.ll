@@ -50,7 +50,7 @@ attributes #1 = { argmemonly nounwind }
 attributes #2 = { noinline nounwind uwtable }
 attributes #3 = { nounwind }
 
-; CHECK: define internal {{(dso_local )?}}{} @diffememcpy_float(double* nocapture %dst, double* %"dst'", double* nocapture readonly %src, double* %"src'", i64 %num) 
+; CHECK: define internal {{(dso_local )?}}{} @diffememcpy_float(double* nocapture %dst, double* nocapture %"dst'", double* nocapture readonly %src, double* nocapture %"src'", i64 %num) 
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = bitcast double* %dst to i8*
 ; CHECK-NEXT:   %1 = bitcast double* %src to i8*
@@ -82,7 +82,7 @@ attributes #3 = { nounwind }
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{} @diffememcpyaugment_float(double* nocapture %dst, double* %"dst'", double* nocapture readonly %src, double* %"src'", i64 %num) 
+; CHECK: define internal {{(dso_local )?}}{} @diffememcpyaugment_float(double* nocapture %dst, double* nocapture %"dst'", double* nocapture readonly %src, double* nocapture %"src'", i64 %num) 
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[augmemcpy:.+]] = call { {} } @augmented_submemcpy_float(double* %dst, double* %"dst'", double* %src, double* %"src'", i64 %num)
 ; CHECK-NEXT:   store double 0.000000e+00, double* %dst, align 8
@@ -91,7 +91,7 @@ attributes #3 = { nounwind }
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{ {} } @augmented_submemcpy_float(double* nocapture %smdst, double* %"smdst'", double* nocapture readonly %smsrc, double* %"smsrc'", i64 %num) 
+; CHECK: define internal {{(dso_local )?}}{ {} } @augmented_submemcpy_float(double* nocapture %smdst, double* nocapture %"smdst'", double* nocapture readonly %smsrc, double* nocapture %"smsrc'", i64 %num) 
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = bitcast double* %smdst to i8*
 ; CHECK-NEXT:   %1 = bitcast double* %smsrc to i8*
@@ -99,7 +99,7 @@ attributes #3 = { nounwind }
 ; CHECK-NEXT:   ret { {} } undef
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{} @diffesubmemcpy_float(double* nocapture %smdst, double* %"smdst'", double* nocapture readonly %smsrc, double* %"smsrc'", i64 %num, {} %tapeArg)
+; CHECK: define internal {{(dso_local )?}}{} @diffesubmemcpy_float(double* nocapture %smdst, double* nocapture %"smdst'", double* nocapture readonly %smsrc, double* nocapture %"smsrc'", i64 %num, {} %tapeArg)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = lshr i64 %num, 3
 ; CHECK-NEXT:   call void @__enzyme_memcpyadd_doubleda1sa1(double* %"smdst'", double* %"smsrc'", i64 %0)

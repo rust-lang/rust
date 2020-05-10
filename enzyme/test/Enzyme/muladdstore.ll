@@ -78,7 +78,7 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   ret double %1
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{ double, double } @diffefunction0(double %y, double %z, double* nocapture %x, double* %"x'") 
+; CHECK: define internal {{(dso_local )?}}{ double, double } @diffefunction0(double %y, double %z, double* nocapture %x, double* nocapture %"x'") 
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[aug_func:.+]] = call { {} } @augmented_function(double %y, double %z, double* %x, double* %"x'")
 ; CHECK-NEXT:   %[[dadd1:.+]] = call {} @diffeaddOne(double* %x, double* %"x'")
@@ -86,7 +86,7 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   ret { double, double } %[[result]]
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{} @diffeaddOne(double* nocapture %x, double* %"x'") 
+; CHECK: define internal {{(dso_local )?}}{} @diffeaddOne(double* nocapture %x, double* nocapture %"x'") 
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = load double, double* %x, align 8, !tbaa !2
 ; CHECK-NEXT:   %add = fadd fast double %0, 1.000000e+00
@@ -94,14 +94,14 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{ {} } @augmented_function(double %y, double %z, double* nocapture %x, double* %"x'") 
+; CHECK: define internal {{(dso_local )?}}{ {} } @augmented_function(double %y, double %z, double* nocapture %x, double* nocapture %"x'") 
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %mul = fmul fast double %z, %y
 ; CHECK-NEXT:   store double %mul, double* %x, align 8, !tbaa !2
 ; CHECK-NEXT:   ret { {} } undef
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{ double, double } @diffefunction(double %y, double %z, double* nocapture %x, double* %"x'", {} %tapeArg) 
+; CHECK: define internal {{(dso_local )?}}{ double, double } @diffefunction(double %y, double %z, double* nocapture %x, double* nocapture %"x'", {} %tapeArg) 
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = load double, double* %"x'"
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"x'"

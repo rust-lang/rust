@@ -45,7 +45,15 @@ double matvec_real(double* mat, double* vec) {
   return sum;
 }
 
-void matvec_real_b(double *mat, double *vec, double *vecb, double matvec_realb) {
+/*
+  Differentiation of matvec_real in reverse (adjoint) mode:
+   gradient     of useful results: alloc(*out) matvec_real *mat
+   with respect to varying inputs: alloc(*out) *mat
+   RW status of diff variables: alloc(*out):in-out matvec_real:in-killed
+                *mat:incr
+   Plus diff mem management of: mat:in
+*/
+void matvec_real_b(double *mat, double *matb, double *vec, double matvec_realb) {
     double *out;
     double *outb;
     int ii1;
@@ -57,17 +65,17 @@ void matvec_real_b(double *mat, double *vec, double *vecb, double matvec_realb) 
     //double *out = new double[N];
     for (int i = 0; i < N; ++i) {
         out[i] = 0;
-        for (int j = 0; j < M; ++j)
+        for (int j = 0; j < N; ++j)
             out[i] = out[i] + mat[i*M+j]*vec[j];
     }
     double sum = 0;
     double sumb = 0.0;
     sumb = matvec_realb;
-    for (int i = N-1; i > -1; --i)
+    for (int i = N; i > -1; --i)
         outb[i] = outb[i] + 2*out[i]*sumb;
-    for (int i = N-1; i > -1; --i) {
-        for (int j = M-1; j > -1; --j)
-            vecb[j] = vecb[j] + mat[i*M+j]*outb[i];
+    for (int i = N; i > -1; --i) {
+        for (int j = M; j > -1; --j)
+            matb[i*M + j] = matb[i*M + j] + vec[j]*outb[i];
         outb[i] = 0.0;
     }
     free(out);
@@ -82,12 +90,12 @@ adouble matvec(aMatrix& mat, Vector& vec) {
   //std::vector<adouble> out(N);
 
   aVector out = mat**vec;
-  
+
 #if 0
   for(int i=0; i<N; i++) {
     out[i] = 0;
     for(int j=0; j<M; j++) {
-        out[i] += 
+        out[i] +=
 //        out[i] += mat[i*M+j] * vec[j];
     }
   }
@@ -105,13 +113,13 @@ static
 void sincos_and_gradient(double *Min, double *Mout, double *vecin, double *vecout) {
     //adouble *mat = new adouble[N*M];
     //std::vector<adouble> mat(N*M);// = new adouble[N*M];
-    //adept::set_values(&mat[0], N*M, Min); 
+    //adept::set_values(&mat[0], N*M, Min);
     //for(int i=0; i<N*M; i++) mat[i] = Min[i];
     //adouble *vec = new adouble[M];
     //std::vector<adouble> vec(M);// = new adouble[M];
-    //adept::set_values(&vec[0], M, vecin); 
+    //adept::set_values(&vec[0], M, vecin);
     //for(int i=0; i<M; i++) vec[i] = vecin[i];
-    
+
     //aMatrix M = aMatrix(N,M);
     //for (int i = 0; i < N; i++) {
     //  for (int j = 0; j < M; j++) {
@@ -124,7 +132,7 @@ void sincos_and_gradient(double *Min, double *Mout, double *vecin, double *vecou
     adouble loss = matvec(&mat[0], &vec[0]);
     loss.set_gradient(1.0);
     stack.compute_adjoint();
-    
+
     adept::get_gradients(&mat[0], N*M, Mout);
     adept::get_gradients(&vec[0], M, vecout);
     //for(int i=0; i<N*M; i++) Mout[i] = mat[i].get_gradient();
@@ -144,7 +152,7 @@ static void adept_sincos(double *Min, double *Mout, double *Vin, double *Vout) {
 
   double res2 = 0;
   adept::Stack stack;
- 
+
     aMatrix mat(N,M);
     for(int i=0; i<N; i++) {
     for(int j=0; j<M; j++) {
@@ -173,7 +181,7 @@ static void adept_sincos(double *Min, double *Mout, double *Vin, double *Vout) {
   gettimeofday(&end, NULL);
   //gettimeofday(&end, NULL);
   printf("%0.6f res'=%f %f %f\n", tdiff(&start, &end), Mout[1], Mout[2], Mout[3]);
-    
+
   }
 
 
@@ -185,7 +193,7 @@ static void adept_sincos(double *Min, double *Mout, double *Vin, double *Vout) {
   double res2 = 0;
   {
   adept::Stack stack;
- 
+
     aMatrix mat(N,M);
     for(int i=0; i<N; i++) {
     for(int j=0; j<M; j++) {
@@ -216,7 +224,7 @@ static void adept_sincos(double *Min, double *Mout, double *Vin, double *Vout) {
      gettimeofday(&start, NULL);
   adouble resa = matvec(mat, vec);
   res2 = resa.value();
-    
+
     resa.set_gradient(1.0);
     stack.reverse();
     gettimeofday(&end, NULL);

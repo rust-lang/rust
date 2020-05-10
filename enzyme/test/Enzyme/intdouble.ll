@@ -78,7 +78,7 @@ attributes #5 = { nounwind "correctly-rounded-divide-sqrt-fp-math"="false" "disa
 !7 = !{!"any pointer", !4, i64 0}
 
 
-; CHECK: define internal {{(dso_local )?}}{} @diffeintcast(i64* nocapture readonly %x, i64* %"x'", double %differeturn)
+; CHECK: define internal {{(dso_local )?}}{} @diffeintcast(i64* nocapture readonly %x, i64* nocapture %"x'", double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %_unwrap = bitcast i64* %x to double*
 ; CHECK-NEXT:   %[[uw1:.+]] = load double, double* %_unwrap

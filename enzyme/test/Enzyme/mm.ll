@@ -94,7 +94,7 @@ attributes #3 = { argmemonly nounwind }
 !8 = !{!9, !9, i64 0}
 !9 = !{!"float", !4, i64 0}
 
-; CHECK: define internal {} @diffemat_mult(i64 %rows, i64 %cols, float** noalias nocapture readonly %lhs, float** %"lhs'", float** noalias nocapture readonly %rhs, float** %"rhs'", double** noalias nocapture %out, double** %"out'")
+; CHECK: define internal {} @diffemat_mult(i64 %rows, i64 %cols, float** noalias nocapture readonly %lhs, float** nocapture %"lhs'", float** noalias nocapture readonly %rhs, float** nocapture %"rhs'", double** noalias nocapture %out, double** nocapture %"out'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %lhs_data = load float*, float** %lhs, align 8, !tbaa !2, !invariant.group !10
 ; CHECK-NEXT:   %rhs_data = load float*, float** %rhs, align 8, !tbaa !2, !invariant.group !11

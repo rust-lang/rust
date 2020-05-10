@@ -38,7 +38,7 @@ declare double @__enzyme_autodiff(i8*, ...)
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 
-; CHECK: define internal {} @diffesub(float* readonly %a, float* %"a'", float* nocapture %ret, float* %"ret'") {
+; CHECK: define internal {} @diffesub(float* readonly %a, float* %"a'", float* nocapture %ret, float* nocapture %"ret'") {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %ld = load float, float* %a, align 4
 ; CHECK-NEXT:   store float %ld, float* %ret, align 4

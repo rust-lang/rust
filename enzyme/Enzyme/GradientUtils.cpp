@@ -273,6 +273,7 @@ DiffeGradientUtils* DiffeGradientUtils::CreateFromClone(bool topLevel, Function 
         nonconstant_values.insert(a);
     }
   }
+
   //llvm::errs() << "creating from clone: " << todiff->getName() << " differentialReturn: " << differentialReturn << " returnvals: " << returnvals.size() << " nonconstant_values: " << nonconstant_values.size() << "\n";
   auto res = new DiffeGradientUtils(newFunc, todiff, TLI, TA, AA, invertedPointers, constants, nonconstant, constant_values, nonconstant_values, originalToNew);
   return res;

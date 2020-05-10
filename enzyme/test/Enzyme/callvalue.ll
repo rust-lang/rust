@@ -67,7 +67,7 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   ret { double } %[[rv]]
 ; CHECK-NEXT: }
 
-; CHECK: define internal { double } @diffeindirect(double (double)* nocapture %callee, double (double)* %"callee'", double %x, double %differeturn)
+; CHECK: define internal { double } @diffeindirect(double (double)* nocapture %callee, double (double)* nocapture %"callee'", double %x, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[augloc:.+]] = bitcast double (double)* %"callee'" to { i8*, double } (double)**
 ; CHECK-NEXT:   %[[augmentptr:.+]] = load { i8*, double } (double)*, { i8*, double } (double)** %[[augloc]]

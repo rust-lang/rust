@@ -369,7 +369,7 @@ bool isconstantM(TypeResults &TR, Instruction* inst, SmallPtrSetImpl<Value*> &co
         return true;
     }
 
-	if (isa<LoadInst>(inst) || isa<StoreInst>(inst)) {
+	if (isa<StoreInst>(inst)) {
 		if (parseTBAA(inst).typeEnum == IntType::Integer) {
 			if (printconst)
 				llvm::errs() << " constant instruction from TBAA " << *inst << "\n";
@@ -377,16 +377,31 @@ bool isconstantM(TypeResults &TR, Instruction* inst, SmallPtrSetImpl<Value*> &co
 			return true;
 		}
 	}
-    if (auto li = dyn_cast<LoadInst>(inst)) {
-        if (constants.find(li->getPointerOperand()) != constants.end()) {
-            constants.insert(li);
-            return true;
+
+    if (directions & UP) {
+        if (auto li = dyn_cast<LoadInst>(inst)) {
+            if (constants.find(li->getPointerOperand()) != constants.end()) {
+                constants.insert(li);
+                return true;
+            }
         }
-    }
-    if (auto rmw = dyn_cast<AtomicRMWInst>(inst)) {
-        if (constants.find(rmw->getPointerOperand()) != constants.end()) {
-            constants.insert(rmw);
-            return true;
+        if (auto rmw = dyn_cast<AtomicRMWInst>(inst)) {
+            if (constants.find(rmw->getPointerOperand()) != constants.end()) {
+                constants.insert(rmw);
+                return true;
+            }
+        }
+        if (auto gep = dyn_cast<GetElementPtrInst>(inst)) {
+            if (constants.find(gep->getPointerOperand()) != constants.end()) {
+                constants.insert(gep);
+                return true;
+            }
+        }
+        if (auto cst = dyn_cast<CastInst>(inst)) {
+            if (constants.find(cst->getOperand(0)) != constants.end()) {
+                constants.insert(cst);
+                return true;
+            }
         }
     }
 
@@ -412,8 +427,7 @@ bool isconstantM(TypeResults &TR, Instruction* inst, SmallPtrSetImpl<Value*> &co
     //   * integers that we know are not pointers
     bool containsPointer = true;
     if (inst->getType()->isFPOrFPVectorTy()) containsPointer = false;
-    // TODO propagate typeInfo here so can do more aggressive constant analysis rather than using empty map {}
-    if (inst->getType()->isIntOrIntVectorTy() && !TR.intType(inst, /*errIfNotFound*/false).isPossiblePointer()) containsPointer = false;
+    if (!TR.intType(inst, /*errIfNotFound*/false).isPossiblePointer()) containsPointer = false;
 
     if (containsPointer) {
 
@@ -661,7 +675,7 @@ bool isconstantM(TypeResults &TR, Instruction* inst, SmallPtrSetImpl<Value*> &co
     }
 
     //TODO use typeInfo for more aggressive activity analysis
-	if (!(inst->getType()->isPointerTy() || (inst->getType()->isIntOrIntVectorTy() && TR.intType(inst, /*errIfNotFound*/false).isPossiblePointer()) ) && ( !inst->mayWriteToMemory() ) && (directions & DOWN) && (retvals.find(inst) == retvals.end()) ) {
+	if (!containsPointer && ( !inst->mayWriteToMemory() ) && (directions & DOWN) && (retvals.find(inst) == retvals.end()) ) {
 		//Proceed assuming this is constant, can we prove this should be constant otherwise
 		SmallPtrSet<Value*, 20> constants2;
 		constants2.insert(constants.begin(), constants.end());

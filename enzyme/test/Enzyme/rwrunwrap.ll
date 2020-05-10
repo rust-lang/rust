@@ -102,7 +102,7 @@ attributes #10 = { noreturn nounwind }
 !6 = !{!7, !7, i64 0}
 !7 = !{!"any pointer", !4, i64 0}
 
-; CHECK: define internal {} @differeadwriteread(double* noalias nocapture %x, double* %"x'", double* noalias nocapture %ret, double* %"ret'")
+; CHECK: define internal {} @differeadwriteread(double* noalias nocapture %x, double* nocapture %"x'", double* noalias nocapture %ret, double* nocapture %"ret'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = load double, double* %x, align 8, !tbaa !2
 ; CHECK-NEXT:   %mul.i.i = fmul double %0, %0

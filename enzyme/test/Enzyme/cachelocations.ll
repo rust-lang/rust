@@ -33,7 +33,7 @@ entry:
 
 declare dso_local double @__enzyme_autodiff(i8*, i1 zeroext, double*, double*)
 
-; CHECK: define internal {} @diffef(i1 zeroext %z, double* nocapture %x, double* %"x'") {
+; CHECK: define internal {} @diffef(i1 zeroext %z, double* nocapture %x, double* nocapture %"x'") {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[augsubf:.+]] = call { { double } } @augmented_subf(i1 %z, double* %x, double* %"x'")
 ; CHECK-NEXT:   %arrayidx = getelementptr inbounds double, double* %x, i64 1
@@ -45,7 +45,7 @@ declare dso_local double @__enzyme_autodiff(i8*, i1 zeroext, double*, double*)
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 
-; CHECK: define internal { { double } } @augmented_subf(i1 zeroext %z, double* nocapture %x, double* %"x'")
+; CHECK: define internal { { double } } @augmented_subf(i1 zeroext %z, double* nocapture %x, double* nocapture %"x'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   br i1 %z, label %if.then, label %if.end
 
@@ -61,7 +61,7 @@ declare dso_local double @__enzyme_autodiff(i8*, i1 zeroext, double*, double*)
 ; CHECK-NEXT:   ret { { double } } %[[toret]]
 ; CHECK-NEXT: }
 
-; CHECK: define internal {} @diffesubf(i1 zeroext %z, double* nocapture %x, double* %"x'", { double } %tapeArg)
+; CHECK: define internal {} @diffesubf(i1 zeroext %z, double* nocapture %x, double* nocapture %"x'", { double } %tapeArg)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   br i1 %z, label %invertif.then, label %invertentry
 

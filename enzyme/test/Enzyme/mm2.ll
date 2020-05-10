@@ -89,7 +89,7 @@ attributes #3 = { argmemonly nounwind }
 !8 = !{!9, !9, i64 0}
 !9 = !{!"double", !4, i64 0}
 
-; CHECK: define internal {} @diffemat_mult(i64 %rows, i64 %cols, double* noalias nocapture readonly %lhs_data, double* %"lhs_data'", double* noalias nocapture readonly %rhs_data, double* %"rhs_data'", double* noalias nocapture %out_data, double* %"out_data'")
+; CHECK: define internal {} @diffemat_mult(i64 %rows, i64 %cols, double* noalias nocapture readonly %lhs_data, double* nocapture %"lhs_data'", double* noalias nocapture readonly %rhs_data, double* nocapture %"rhs_data'", double* noalias nocapture %out_data, double* nocapture %"out_data'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = icmp sgt i64 %cols, 2
 ; CHECK-NEXT:   %smax = select i1 %0, i64 %cols, i64 2

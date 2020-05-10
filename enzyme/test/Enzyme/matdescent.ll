@@ -263,7 +263,7 @@ attributes #19 = { builtin nounwind }
 !167 = !{!164, !15, i64 8}
 !168 = !{!43, !15, i64 40}
 
-; CHECK: define internal void @diffe_Z11matvec_realPdS_(double* nocapture readonly %mat, double* %"mat'", double* nocapture readonly %vec)
+; CHECK: define internal void @diffe_Z11matvec_realPdS_(double* nocapture readonly %mat, double* nocapture %"mat'", double* nocapture readonly %vec)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %call = tail call noalias i8* @malloc(i64 16000) #3
 ; CHECK-NEXT:   %"call'mi" = tail call noalias nonnull i8* @malloc(i64 16000) #3
@@ -315,18 +315,11 @@ attributes #19 = { builtin nounwind }
 
 ; CHECK: invertfor.body4:                                  ; preds = %invertfor.cond.cleanup3, %incinvertfor.body4
 ; CHECK-NEXT:   %"iv1'ac.0" = phi i64 [ 1999, %invertfor.cond.cleanup3 ], [ %[[isub:.+]], %incinvertfor.body4 ]
-; CHECK-NEXT:   %i2000_unwrap = mul nuw nsw i64 %"iv'ac.0", 2000
-; CHECK-NEXT:   %a3_unwrap = add nuw nsw i64 %"iv1'ac.0", %i2000_unwrap
-; CHECK-NEXT:   %arrayidx6_unwrap = getelementptr inbounds double, double* %mat, i64 %a3_unwrap
-; CHECK-NEXT:   %a4_unwrap = load double, double* %arrayidx6_unwrap
-; CHECK-NEXT:   %m0diffea5 = fmul fast double %[[add12de:.+]], %a4_unwrap
 ; CHECK-NEXT:   %arrayidx8_unwrap = getelementptr inbounds double, double* %vec, i64 %"iv1'ac.0"
 ; CHECK-NEXT:   %a5_unwrap = load double, double* %arrayidx8_unwrap
-; CHECK-NEXT:   %m1diffea4 = fmul fast double %[[add12de]], %a5_unwrap
-; CHECK-NEXT:   %[[arrayidx8ipg:.+]] = getelementptr inbounds double, double* %vec, i64 %"iv1'ac.0"
-; CHECK-NEXT:   %[[l8:.+]] = load double, double* %[[arrayidx8ipg]], align 8
-; CHECK-NEXT:   %[[addl8:.+]] = fadd fast double %[[l8]], %m0diffea5
-; CHECK-NEXT:   store double %[[addl8]], double* %[[arrayidx8ipg]], align 8
+; CHECK-NEXT:   %m1diffea4 = fmul fast double %[[add12de:.+]], %a5_unwrap
+; CHECK-NEXT:   %i2000_unwrap = mul nuw nsw i64 %"iv'ac.0", 2000
+; CHECK-NEXT:   %a3_unwrap = add nuw nsw i64 %"iv1'ac.0", %i2000_unwrap
 ; CHECK-NEXT:   %[[arrayidx6ipg:.+]] = getelementptr inbounds double, double* %"mat'", i64 %a3_unwrap
 ; CHECK-NEXT:   %[[l8:.+]] = load double, double* %[[arrayidx6ipg]], align 8
 ; CHECK-NEXT:   %[[addl8:.+]] = fadd fast double %[[l8]], %m1diffea4

@@ -68,7 +68,7 @@ attributes #2 = { nounwind }
 !5 = !{!"Simple C/C++ TBAA"}
 
 
-; CHECK: define internal {{(dso_local )?}}void @diffeiterA(double* noalias nocapture readonly %x, double* %"x'", i64 %n)
+; CHECK: define internal {{(dso_local )?}}void @diffeiterA(double* noalias nocapture readonly %x, double* nocapture %"x'", i64 %n)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %exitcond11 = icmp eq i64 %n, 0
 ; CHECK-NEXT:   br i1 %exitcond11, label %invertentry, label %for.body.for.body_crit_edge.preheader

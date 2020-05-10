@@ -60,7 +60,7 @@ attributes #6 = { nounwind }
 !0 = !{i32 1, !"wchar_size", i32 4}
 !1 = !{!"clang version 7.1.0 "}
 
-; CHECK: define internal {} @diffefoo(float* nocapture %fdst, float* %"fdst'", float* nocapture readonly %fsrc, float* %"fsrc'", i32 %fN)
+; CHECK: define internal {} @diffefoo(float* nocapture %fdst, float* nocapture %"fdst'", float* nocapture readonly %fsrc, float* nocapture %"fsrc'", i32 %fN)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[uw:.+]] = bitcast float* %fdst to i8*
 ; CHECK-NEXT:   %[[ipc:.+]] = bitcast float* %"fdst'" to i8*
@@ -71,7 +71,7 @@ attributes #6 = { nounwind }
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 
-; CHECK: define internal {} @diffesubmemcpy(i8* nocapture %sdst, i8* %"sdst'", i8* nocapture readonly %ssrc, i8* %"ssrc'", i32 %sN) 
+; CHECK: define internal {} @diffesubmemcpy(i8* nocapture %sdst, i8* nocapture %"sdst'", i8* nocapture readonly %ssrc, i8* nocapture %"ssrc'", i32 %sN) 
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %conv = sext i32 %sN to i64
 ; CHECK-NEXT:   tail call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %sdst, i8* align 1 %ssrc, i64 %conv, i1 false)

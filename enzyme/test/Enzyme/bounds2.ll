@@ -221,7 +221,7 @@ attributes #10 = { cold }
 !6 = !{!7, !7, i64 0}
 !7 = !{!"any pointer", !4, i64 0}
 
-; CHECK: define internal {} @diffebounds(float* nocapture readonly %a, float* %"a'", i32 %bound, float %differeturn) #3 {
+; CHECK: define internal {} @diffebounds(float* nocapture readonly %a, float* nocapture %"a'", i32 %bound, float %differeturn) #3 {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %cmp7 = icmp sgt i32 %bound, 0
 ; CHECK-NEXT:   br i1 %cmp7, label %for.body.preheader, label %invertentry
@@ -264,7 +264,7 @@ attributes #10 = { cold }
 ; CHECK-NEXT:   br label %invertfor.body
 ; CHECK-NEXT: }
 
-; CHECK: define internal { {} } @augmented_lookup(float* nocapture readonly %data, float* %"data'", i32 %i, i32 %bound)
+; CHECK: define internal { {} } @augmented_lookup(float* nocapture readonly %data, float* nocapture %"data'", i32 %i, i32 %bound)
 ; CHECK: entry:
 ; CHECK-NEXT:   %cmp = icmp sge i32 %i, %bound
 ; CHECK-NEXT:   br i1 %cmp, label %if.then, label %if.end
@@ -277,7 +277,7 @@ attributes #10 = { cold }
 ; CHECK-NEXT:   ret { {} } undef
 ; CHECK-NEXT: }
 
-; CHECK: define internal {} @diffelookup(float* nocapture readonly %data, float* %"data'", i32 %i, i32 %bound, float %differeturn, {} %tapeArg)
+; CHECK: define internal {} @diffelookup(float* nocapture readonly %data, float* nocapture %"data'", i32 %i, i32 %bound, float %differeturn, {} %tapeArg)
 ; CHECK-NEXT: invertentry:
 ; CHECK-NEXT:   %cmp = icmp sge i32 %i, %bound
 ; CHECK-NEXT:   %0 = xor i1 %cmp, true

@@ -50,7 +50,7 @@ attributes #1 = { argmemonly nounwind }
 attributes #2 = { noinline nounwind uwtable }
 attributes #3 = { nounwind }
 
-; CHECK: define internal {{(dso_local )?}}{} @diffememcpy_ptr(double** nocapture %dst, double** %"dst'", double** nocapture readonly %src, double** %"src'", i64 %num)
+; CHECK: define internal {{(dso_local )?}}{} @diffememcpy_ptr(double** nocapture %dst, double** nocapture %"dst'", double** nocapture readonly %src, double** nocapture %"src'", i64 %num)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %"'ipc" = bitcast double** %"dst'" to i8*
 ; CHECK-NEXT:   %0 = bitcast double** %dst to i8*
@@ -61,7 +61,7 @@ attributes #3 = { nounwind }
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{} @diffememcpyaugment_ptr(double** nocapture %dst, double** %"dst'", double** nocapture readonly %src, double** %"src'", i64 %num)
+; CHECK: define internal {{(dso_local )?}}{} @diffememcpyaugment_ptr(double** nocapture %dst, double** nocapture %"dst'", double** nocapture readonly %src, double** nocapture %"src'", i64 %num)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[augmemcpy:.+]] = call { {} } @augmented_submemcpy_ptr(double** %dst, double** %"dst'", double** %src, double** %"src'", i64 %num)
 ; CHECK-NEXT:   store double* null, double** %"dst'"
@@ -70,7 +70,7 @@ attributes #3 = { nounwind }
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{ {} } @augmented_submemcpy_ptr(double** nocapture %dst, double** %"dst'", double** nocapture readonly %src, double** %"src'", i64 %num)
+; CHECK: define internal {{(dso_local )?}}{ {} } @augmented_submemcpy_ptr(double** nocapture %dst, double** nocapture %"dst'", double** nocapture readonly %src, double** nocapture %"src'", i64 %num)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %"'ipc" = bitcast double** %"dst'" to i8*
 ; CHECK-NEXT:   %0 = bitcast double** %dst to i8*
@@ -81,7 +81,7 @@ attributes #3 = { nounwind }
 ; CHECK-NEXT:   ret { {} } undef
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{} @diffesubmemcpy_ptr(double** nocapture %dst, double** %"dst'", double** nocapture readonly %src, double** %"src'", i64 %num, {} %tapeArg)
+; CHECK: define internal {{(dso_local )?}}{} @diffesubmemcpy_ptr(double** nocapture %dst, double** nocapture %"dst'", double** nocapture readonly %src, double** nocapture %"src'", i64 %num, {} %tapeArg)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }

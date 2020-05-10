@@ -1122,9 +1122,11 @@ public:
       setDiffe(&LI, Constant::getNullValue(type), Builder2);
       //llvm::errs() << "  + doing load propagation: orig:" << *oorig << " inst:" << *inst << " prediff: " << *prediff << " inverted_operand: " << *inverted_operand << "\n";
 
-      Value* inverted_operand = gutils->invertPointerM(LI.getPointerOperand(), Builder2);
-      assert(inverted_operand);
-      ((DiffeGradientUtils*)gutils)->addToInvertedPtrDiffe(inverted_operand, prediff, Builder2, alignment);
+      if (!gutils->isConstantValue(LI.getPointerOperand())) {
+        Value* inverted_operand = gutils->invertPointerM(LI.getPointerOperand(), Builder2);
+        assert(inverted_operand);
+        ((DiffeGradientUtils*)gutils)->addToInvertedPtrDiffe(inverted_operand, prediff, Builder2, alignment);
+      }
     }
   }
 

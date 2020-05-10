@@ -94,7 +94,7 @@ attributes #3 = { nounwind }
 ; CHECK-NEXT:   ret { double, double } %[[ret]]
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{} @diffeaddOne(double* nocapture %x, double* %"x'")
+; CHECK: define internal {{(dso_local )?}}{} @diffeaddOne(double* nocapture %x, double* nocapture %"x'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = load double, double* %x, align 8, !tbaa !2
 ; CHECK-NEXT:   %add = fadd fast double %0, 1.000000e+00

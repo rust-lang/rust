@@ -9,7 +9,7 @@ clean:
 	clang++ $(BENCH) $^ -ffast-math -O2 -fno-unroll-loops -fno-vectorize -o $@ -S -emit-llvm
 
 %-raw.ll: %-unopt.ll
-	opt $^ $(LOAD) -enzyme -mem2reg -o $@ -S
+	opt $^ $(LOAD) -enzyme -mem2reg -simplifycfg -early-cse -correlated-propagation -instcombine -adce -o $@ -S
 	
 %-opt.ll: %-raw.ll
 	opt $^ -O2 -o $@ -S

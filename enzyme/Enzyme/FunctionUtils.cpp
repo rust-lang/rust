@@ -555,54 +555,19 @@ Function *CloneFunctionWithReturns(bool topLevel, Function *&F, AAResults &AA, T
     I->setName("tapeArg");
  }
 
- bool hasPtrInput = false;
-
- unsigned ii = 0, jj = 0;
- for (auto i=F->arg_begin(), j=NewF->arg_begin(); i != F->arg_end(); ) {
-   bool isconstant = (constant_args.count(ii) > 0);
-
-   if (isconstant) {
-      constants.insert(i);
-      if (printconst)
-        llvm::errs() << "in new function " << NewF->getName() << " constant arg " << *j << "\n";
-   } else {
-      nonconstant.insert(i);
-      if (printconst)
-        llvm::errs() << "in new function " << NewF->getName() << " nonconstant arg " << *j << "\n";
-   }
-
-   if (!isconstant && ( !i->getType()->isFPOrFPVectorTy() ) ) {
-     VMap[i] = j;
-     hasPtrInput = true;
-     ptrInputs[i] = (j+1);
-     if (F->hasParamAttribute(ii, Attribute::NoCapture)) {
-       NewF->addParamAttr(jj, Attribute::NoCapture);
-       NewF->addParamAttr(jj+1, Attribute::NoCapture);
-     }
-     if (F->hasParamAttribute(ii, Attribute::NoAlias)) {
-       NewF->addParamAttr(jj, Attribute::NoAlias);
-       NewF->addParamAttr(jj+1, Attribute::NoAlias);
-     }
-
-     j->setName(i->getName());
-     j++;
-     j->setName(i->getName()+"'");
-     nonconstant.insert(j);
-     j++;
-     jj+=2;
-
-     i++;
-     ii++;
-
-   } else {
-     VMap[i] = j;
-     j->setName(i->getName());
-
-     j++;
-     jj++;
-     i++;
-     ii++;
-   }
+ {
+    unsigned ii = 0;
+    for (auto i=F->arg_begin(), j=NewF->arg_begin(); i != F->arg_end(); ) {
+       VMap[i] = j;
+       bool isconstant = (constant_args.count(ii) > 0);
+       auto itype = i->getType();
+       j++;
+       i++;
+       ii++;
+       if (!isconstant && ( !itype->isFPOrFPVectorTy() ) ) {
+         j++;
+       }
+    }
  }
 
  // Loop over the arguments, copying the names of the mapped arguments over...
@@ -618,6 +583,48 @@ Function *CloneFunctionWithReturns(bool topLevel, Function *&F, AAResults &AA, T
  CloneFunctionInto(NewF, F, VMap, F->getSubprogram() != nullptr, Returns, "",
                    nullptr);
  if (VMapO) VMapO->insert(VMap.begin(), VMap.end());
+
+
+ bool hasPtrInput = false;
+ unsigned ii = 0, jj = 0;
+ for (auto i=F->arg_begin(), j=NewF->arg_begin(); i != F->arg_end(); ) {
+   bool isconstant = (constant_args.count(ii) > 0);
+
+   if (isconstant) {
+      constants.insert(i);
+      if (printconst)
+        llvm::errs() << "in new function " << NewF->getName() << " constant arg " << *j << "\n";
+   } else {
+      nonconstant.insert(i);
+      if (printconst)
+        llvm::errs() << "in new function " << NewF->getName() << " nonconstant arg " << *j << "\n";
+   }
+
+   if (!isconstant && ( !i->getType()->isFPOrFPVectorTy() ) ) {
+     hasPtrInput = true;
+     ptrInputs[i] = (j+1);
+     if (F->hasParamAttribute(ii, Attribute::NoCapture)) {
+       NewF->addParamAttr(jj+1, Attribute::NoCapture);
+     }
+
+     j->setName(i->getName());
+     j++;
+     j->setName(i->getName()+"'");
+     nonconstant.insert(j);
+     j++;
+     jj+=2;
+
+     i++;
+     ii++;
+
+   } else {
+     j->setName(i->getName());
+     j++;
+     jj++;
+     i++;
+     ii++;
+   }
+ }
 
  if (hasPtrInput) {
     if (NewF->hasFnAttribute(Attribute::ReadNone)) {

@@ -152,7 +152,7 @@ attributes #5 = { nounwind }
 ; CHECK-NEXT:   ret double %[[result]]
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}void @diffeget(double* %"x'")
+; CHECK: define internal {{(dso_local )?}}void @diffeget(double* nocapture %"x'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[arrayidx:.+]] = getelementptr inbounds double, double* %"x'", i64 3
 ; CHECK-NEXT:   %0 = load double, double* %[[arrayidx]], align 8
@@ -161,7 +161,7 @@ attributes #5 = { nounwind }
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}i8* @augmented_allocateAndSet(double** nocapture %arrayp, double** %"arrayp'", double %x, i32 %n)
+; CHECK: define internal {{(dso_local )?}}i8* @augmented_allocateAndSet(double** nocapture %arrayp, double** nocapture %"arrayp'", double %x, i32 %n)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %conv = zext i32 %n to i64
 ; CHECK-NEXT:   %mul = shl nuw nsw i64 %conv, 3

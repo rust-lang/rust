@@ -116,7 +116,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   ret { double } %[[ret]]
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{} @diffeget(double** nocapture readonly %x, double** %"x'", i32 %i, double %differeturn)
+; CHECK: define internal {{(dso_local )?}}{} @diffeget(double** nocapture readonly %x, double** nocapture %"x'", i32 %i, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %idxprom = zext i32 %i to i64
 ; CHECK-NEXT:   %[[arrayidxipge:.+]] = getelementptr inbounds double*, double** %"x'", i64 %idxprom
@@ -127,7 +127,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{ { i8** } } @augmented_allocateAndSet(double** nocapture %arrayp, double** %"arrayp'", double %x, i32 %n)
+; CHECK: define internal {{(dso_local )?}}{ { i8** } } @augmented_allocateAndSet(double** nocapture %arrayp, double** nocapture %"arrayp'", double %x, i32 %n)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = add i32 %n, 1
 ; CHECK-NEXT:   %wide.trip.count = zext i32 %0 to i64
@@ -163,7 +163,7 @@ attributes #4 = { nounwind }
 
 
 ; CHECK: ; Function Attrs: noinline nounwind uwtable
-; CHECK-NEXT: define internal {{(dso_local )?}}{ double } @diffeallocateAndSet(double** nocapture %arrayp, double** %"arrayp'", double %x, i32 %n, { i8** } %tapeArg) local_unnamed_addr #0 {
+; CHECK-NEXT: define internal {{(dso_local )?}}{ double } @diffeallocateAndSet(double** nocapture %arrayp, double** nocapture %"arrayp'", double %x, i32 %n, { i8** } %tapeArg) local_unnamed_addr #0 {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = extractvalue { i8** } %tapeArg, 0
 ; CHECK-NEXT:   %1 = add i32 %n, 1
