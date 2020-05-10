@@ -1500,8 +1500,8 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     cmd.optimize();
 
     // OBJECT-FILES-NO, AUDIT-ORDER
-    // Pass debuginfo flags down to the linker.
-    cmd.debuginfo();
+    // Pass debuginfo and strip flags down to the linker.
+    cmd.debuginfo(sess.opts.debugging_opts.strip);
 
     // OBJECT-FILES-NO, AUDIT-ORDER
     // We want to prevent the compiler from accidentally leaking in any system libraries,

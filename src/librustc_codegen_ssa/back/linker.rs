@@ -14,7 +14,7 @@ use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::ty::TyCtxt;
 use rustc_serialize::{json, Encoder};
-use rustc_session::config::{self, CrateType, DebugInfo, LinkerPluginLto, Lto, OptLevel};
+use rustc_session::config::{self, CrateType, DebugInfo, LinkerPluginLto, Lto, OptLevel, Strip};
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::{LinkerFlavor, LldFlavor};
@@ -122,7 +122,7 @@ pub trait Linker {
     fn optimize(&mut self);
     fn pgo_gen(&mut self);
     fn control_flow_guard(&mut self);
-    fn debuginfo(&mut self);
+    fn debuginfo(&mut self, strip: Strip);
     fn no_default_libraries(&mut self);
     fn build_dylib(&mut self, out_filename: &Path);
     fn build_static_executable(&mut self);
@@ -392,15 +392,16 @@ impl<'a> Linker for GccLinker<'a> {
         self.sess.warn("Windows Control Flow Guard is not supported by this linker.");
     }
 
-    fn debuginfo(&mut self) {
-        if let DebugInfo::None = self.sess.opts.debuginfo {
-            // If we are building without debuginfo enabled and we were called with
-            // `-Zstrip-debuginfo-if-disabled=yes`, tell the linker to strip any debuginfo
-            // found when linking to get rid of symbols from libstd.
-            if self.sess.opts.debugging_opts.strip_debuginfo_if_disabled {
-                self.linker_arg("-S");
+    fn debuginfo(&mut self, strip: Strip) {
+        match strip {
+            Strip::None => {}
+            Strip::Debuginfo => {
+                self.linker_arg("--strip-debug");
             }
-        };
+            Strip::Symbols => {
+                self.linker_arg("--strip-all");
+            }
+        }
     }
 
     fn no_default_libraries(&mut self) {
@@ -686,28 +687,36 @@ impl<'a> Linker for MsvcLinker<'a> {
         self.cmd.arg("/guard:cf");
     }
 
-    fn debuginfo(&mut self) {
-        // This will cause the Microsoft linker to generate a PDB file
-        // from the CodeView line tables in the object files.
-        self.cmd.arg("/DEBUG");
+    fn debuginfo(&mut self, strip: Strip) {
+        match strip {
+            Strip::None => {
+                // This will cause the Microsoft linker to generate a PDB file
+                // from the CodeView line tables in the object files.
+                self.cmd.arg("/DEBUG");
 
-        // This will cause the Microsoft linker to embed .natvis info into the PDB file
-        let natvis_dir_path = self.sess.sysroot.join("lib\\rustlib\\etc");
-        if let Ok(natvis_dir) = fs::read_dir(&natvis_dir_path) {
-            for entry in natvis_dir {
-                match entry {
-                    Ok(entry) => {
-                        let path = entry.path();
-                        if path.extension() == Some("natvis".as_ref()) {
-                            let mut arg = OsString::from("/NATVIS:");
-                            arg.push(path);
-                            self.cmd.arg(arg);
+                // This will cause the Microsoft linker to embed .natvis info into the PDB file
+                let natvis_dir_path = self.sess.sysroot.join("lib\\rustlib\\etc");
+                if let Ok(natvis_dir) = fs::read_dir(&natvis_dir_path) {
+                    for entry in natvis_dir {
+                        match entry {
+                            Ok(entry) => {
+                                let path = entry.path();
+                                if path.extension() == Some("natvis".as_ref()) {
+                                    let mut arg = OsString::from("/NATVIS:");
+                                    arg.push(path);
+                                    self.cmd.arg(arg);
+                                }
+                            }
+                            Err(err) => {
+                                self.sess
+                                    .warn(&format!("error enumerating natvis directory: {}", err));
+                            }
                         }
                     }
-                    Err(err) => {
-                        self.sess.warn(&format!("error enumerating natvis directory: {}", err));
-                    }
                 }
+            }
+            Strip::Debuginfo | Strip::Symbols => {
+                self.cmd.arg("/DEBUG:NONE");
             }
         }
     }
@@ -889,7 +898,7 @@ impl<'a> Linker for EmLinker<'a> {
         self.sess.warn("Windows Control Flow Guard is not supported by this linker.");
     }
 
-    fn debuginfo(&mut self) {
+    fn debuginfo(&mut self, _strip: Strip) {
         // Preserve names or generate source maps depending on debug info
         self.cmd.arg(match self.sess.opts.debuginfo {
             DebugInfo::None => "-g0",
@@ -1081,7 +1090,17 @@ impl<'a> Linker for WasmLd<'a> {
 
     fn pgo_gen(&mut self) {}
 
-    fn debuginfo(&mut self) {}
+    fn debuginfo(&mut self, strip: Strip) {
+        match strip {
+            Strip::None => {}
+            Strip::Debuginfo => {
+                self.cmd.arg("--strip-debug");
+            }
+            Strip::Symbols => {
+                self.cmd.arg("--strip-all");
+            }
+        }
+    }
 
     fn control_flow_guard(&mut self) {
         self.sess.warn("Windows Control Flow Guard is not supported by this linker.");
@@ -1184,7 +1203,7 @@ impl<'a> Linker for PtxLinker<'a> {
         self.cmd.arg("-L").arg(path);
     }
 
-    fn debuginfo(&mut self) {
+    fn debuginfo(&mut self, _strip: Strip) {
         self.cmd.arg("--debug");
     }
 

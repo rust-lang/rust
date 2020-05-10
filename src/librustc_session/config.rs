@@ -69,6 +69,19 @@ impl FromStr for Sanitizer {
     }
 }
 
+/// The different settings that the `-Z strip` flag can have.
+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+pub enum Strip {
+    /// Do not strip at all.
+    None,
+
+    /// Strip debuginfo.
+    Debuginfo,
+
+    /// Strip all symbols.
+    Symbols,
+}
+
 /// The different settings that the `-Z control_flow_guard` flag can have.
 #[derive(Clone, Copy, PartialEq, Hash, Debug)]
 pub enum CFGuard {
