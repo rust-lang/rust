@@ -668,6 +668,9 @@ pub struct TargetOptions {
     /// Linker arguments that are unconditionally passed *after* any
     /// user-defined libraries.
     pub post_link_args: LinkArgs,
+    /// Optional LLD link script applied to `dylib` and `executable` crate
+    /// types. This is a string containing the script, not a path.
+    pub lld_link_script: Option<String>,
 
     /// Environment variables to be set for the linker invocation.
     pub link_env: Vec<(String, String)>,
@@ -897,6 +900,7 @@ impl Default for TargetOptions {
             pre_link_args: LinkArgs::new(),
             pre_link_args_crt: LinkArgs::new(),
             post_link_args: LinkArgs::new(),
+            lld_link_script: None,
             asm_args: Vec::new(),
             cpu: "generic".to_string(),
             features: String::new(),
@@ -1246,6 +1250,7 @@ impl Target {
         key!(post_link_objects, list);
         key!(post_link_objects_crt, list);
         key!(post_link_args, link_args);
+        key!(lld_link_script, optional);
         key!(link_env, env);
         key!(link_env_remove, list);
         key!(asm_args, list);
@@ -1475,6 +1480,7 @@ impl ToJson for Target {
         target_option_val!(post_link_objects);
         target_option_val!(post_link_objects_crt);
         target_option_val!(link_args - post_link_args);
+        target_option_val!(lld_link_script);
         target_option_val!(env - link_env);
         target_option_val!(link_env_remove);
         target_option_val!(asm_args);

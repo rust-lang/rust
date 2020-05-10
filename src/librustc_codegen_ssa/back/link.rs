@@ -1179,6 +1179,34 @@ fn add_pre_link_args(
     cmd.args(&sess.opts.debugging_opts.pre_link_args);
 }
 
+/// Add an LLD link script embedded in the target, if applicable.
+fn add_lld_link_script(
+    cmd: &mut dyn Linker,
+    sess: &Session,
+    flavor: LinkerFlavor,
+    tmpdir: &Path,
+    crate_type: CrateType,
+) {
+    match (flavor, crate_type, &sess.target.target.options.lld_link_script) {
+        (
+            LinkerFlavor::Lld(LldFlavor::Ld),
+            CrateType::Cdylib | CrateType::Executable,
+            Some(script),
+        ) => {
+            let file_name = ["rustc", &sess.target.target.llvm_target, "linkfile.ld"].join("-");
+
+            let path = tmpdir.join(file_name);
+            if let Err(e) = fs::write(&path, script) {
+                sess.fatal(&format!("failed to write link script to {}: {}", path.display(), e));
+            }
+
+            cmd.arg("--script");
+            cmd.arg(path);
+        }
+        _ => {}
+    }
+}
+
 /// Add arbitrary "user defined" args defined from command line and by `#[link_args]` attributes.
 /// FIXME: Determine where exactly these args need to be inserted.
 fn add_user_defined_link_args(
@@ -1420,6 +1448,9 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
 
     // NO-OPT-OUT, OBJECT-FILES-MAYBE, CUSTOMIZATION-POINT
     add_pre_link_args(cmd, sess, flavor, crate_type);
+
+    // NO-OPT-OUT
+    add_lld_link_script(cmd, sess, flavor, tmpdir, crate_type);
 
     // NO-OPT-OUT, OBJECT-FILES-NO, AUDIT-ORDER
     if sess.target.target.options.is_like_fuchsia {
