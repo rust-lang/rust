@@ -1238,7 +1238,7 @@ pub fn init_rustc_env_logger() {
     env_logger::init_from_env("RUSTC_LOG");
 }
 
-pub fn main() {
+pub fn main() -> ! {
     let start = Instant::now();
     init_rustc_env_logger();
     let mut callbacks = TimePassesCallbacks::default();
@@ -1259,5 +1259,5 @@ pub fn main() {
     });
     // The extra `\t` is necessary to align this label with the others.
     print_time_passes_entry(callbacks.time_passes, "\ttotal", start.elapsed());
-    process::exit(exit_code);
+    process::exit(exit_code)
 }
