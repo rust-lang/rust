@@ -5317,15 +5317,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     item_def_id,
                 };
 
-                let cause = traits::ObligationCause::misc(sp, self.body_id);
-                let normalized_ty = self.fulfillment_cx.borrow_mut().normalize_projection_type(
-                    &self.infcx,
-                    self.param_env,
-                    projection_ty,
-                    cause,
-                );
-                debug!("suggest_missing_await: projection_type {:?}", normalized_ty);
-
                 let predicate =
                     ty::Predicate::Projection(ty::Binder::bind(ty::ProjectionPredicate {
                         projection_ty,
