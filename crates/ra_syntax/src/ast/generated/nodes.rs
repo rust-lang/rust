@@ -2537,17 +2537,15 @@ impl MetaItem {
     pub fn attr_input(&self) -> Option<AttrInput> { support::child(&self.syntax) }
     pub fn nested_meta_items(&self) -> AstChildren<MetaItem> { support::children(&self.syntax) }
 }
-/// Macro definition.
-///
+/// Macro 2.0 definition.
+/// Their syntax is still WIP by rustc team...
 /// ```
 /// ❰
-///     macro_rules! foo {
-///         ($bar:tt) => {$bar}
-///     }
+///     macro foo { }
 /// ❱
 /// ```
 ///
-/// [Reference](https://doc.rust-lang.org/reference/macros-by-example.html)
+/// [RFC](https://github.com/rust-lang/rfcs/blob/master/text/1584-macros.md)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MacroDef {
     pub(crate) syntax: SyntaxNode,

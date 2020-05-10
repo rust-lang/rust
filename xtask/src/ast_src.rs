@@ -2049,19 +2049,15 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             Path, T![=], AttrInput, nested_meta_items: [MetaItem]
         }
 
-        // TODO: is this a special case of `MacroCall` where `Name` = `macro_rules`?
-        // It doesn't seem this ast node is used anywhere
-        /// Macro definition.
-        ///
+        /// Macro 2.0 definition.
+        /// Their syntax is still WIP by rustc team...
         /// ```
         /// ❰
-        ///     macro_rules! foo {
-        ///         ($bar:tt) => {$bar}
-        ///     }
+        ///     macro foo { }
         /// ❱
         /// ```
         ///
-        /// [Reference](https://doc.rust-lang.org/reference/macros-by-example.html)
+        /// [RFC](https://github.com/rust-lang/rfcs/blob/master/text/1584-macros.md)
         struct MacroDef {
             Name, TokenTree
         }
