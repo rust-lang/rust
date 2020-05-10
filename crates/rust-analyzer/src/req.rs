@@ -1,23 +1,10 @@
 //! Defines `rust-analyzer` specific custom messages.
 
+use lsp_types::request::Request;
 use lsp_types::{Location, Position, Range, TextDocumentIdentifier};
 use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 
-pub use lsp_types::{
-    notification::*, request::*, ApplyWorkspaceEditParams, CodeActionParams, CodeLens,
-    CodeLensParams, CompletionParams, CompletionResponse, ConfigurationItem, ConfigurationParams,
-    DiagnosticTag, DidChangeConfigurationParams, DidChangeWatchedFilesParams,
-    DidChangeWatchedFilesRegistrationOptions, DocumentHighlightParams,
-    DocumentOnTypeFormattingParams, DocumentSymbolParams, DocumentSymbolResponse,
-    FileSystemWatcher, GotoDefinitionParams, GotoDefinitionResponse, Hover, HoverParams,
-    InitializeResult, MessageType, PartialResultParams, ProgressParams, ProgressParamsValue,
-    ProgressToken, PublishDiagnosticsParams, ReferenceParams, Registration, RegistrationParams,
-    SelectionRange, SelectionRangeParams, SemanticTokensParams, SemanticTokensRangeParams,
-    SemanticTokensRangeResult, SemanticTokensResult, ServerCapabilities, ShowMessageParams,
-    SignatureHelp, SignatureHelpParams, SymbolKind, TextDocumentEdit, TextDocumentPositionParams,
-    TextEdit, WorkDoneProgressParams, WorkspaceEdit, WorkspaceSymbolParams,
-};
 use std::path::PathBuf;
 
 pub enum AnalyzerStatus {}
@@ -91,7 +78,7 @@ pub struct FindMatchingBraceParams {
 pub enum ParentModule {}
 
 impl Request for ParentModule {
-    type Params = TextDocumentPositionParams;
+    type Params = lsp_types::TextDocumentPositionParams;
     type Result = Vec<Location>;
     const METHOD: &'static str = "rust-analyzer/parentModule";
 }
@@ -114,7 +101,7 @@ pub struct JoinLinesParams {
 pub enum OnEnter {}
 
 impl Request for OnEnter {
-    type Params = TextDocumentPositionParams;
+    type Params = lsp_types::TextDocumentPositionParams;
     type Result = Option<SourceChange>;
     const METHOD: &'static str = "rust-analyzer/onEnter";
 }
@@ -150,8 +137,8 @@ pub struct Runnable {
 #[serde(rename_all = "camelCase")]
 pub struct SourceChange {
     pub label: String,
-    pub workspace_edit: WorkspaceEdit,
-    pub cursor_position: Option<TextDocumentPositionParams>,
+    pub workspace_edit: lsp_types::WorkspaceEdit,
+    pub cursor_position: Option<lsp_types::TextDocumentPositionParams>,
 }
 
 pub enum InlayHints {}

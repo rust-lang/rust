@@ -81,12 +81,12 @@ pub fn handle_expand_macro(
 
 pub fn handle_selection_range(
     world: WorldSnapshot,
-    params: req::SelectionRangeParams,
-) -> Result<Option<Vec<req::SelectionRange>>> {
+    params: lsp_types::SelectionRangeParams,
+) -> Result<Option<Vec<lsp_types::SelectionRange>>> {
     let _p = profile("handle_selection_range");
     let file_id = from_proto::file_id(&world, &params.text_document.uri)?;
     let line_index = world.analysis().file_line_index(file_id)?;
-    let res: Result<Vec<req::SelectionRange>> = params
+    let res: Result<Vec<lsp_types::SelectionRange>> = params
         .positions
         .into_iter()
         .map(|position| {
@@ -105,12 +105,12 @@ pub fn handle_selection_range(
                     }
                 }
             }
-            let mut range = req::SelectionRange {
+            let mut range = lsp_types::SelectionRange {
                 range: to_proto::range(&line_index, *ranges.last().unwrap()),
                 parent: None,
             };
             for &r in ranges.iter().rev().skip(1) {
-                range = req::SelectionRange {
+                range = lsp_types::SelectionRange {
                     range: to_proto::range(&line_index, r),
                     parent: Some(Box::new(range)),
                 }
@@ -156,7 +156,7 @@ pub fn handle_join_lines(
 
 pub fn handle_on_enter(
     world: WorldSnapshot,
-    params: req::TextDocumentPositionParams,
+    params: lsp_types::TextDocumentPositionParams,
 ) -> Result<Option<req::SourceChange>> {
     let _p = profile("handle_on_enter");
     let position = from_proto::file_position(&world, params)?;
@@ -169,7 +169,7 @@ pub fn handle_on_enter(
 // Don't forget to add new trigger characters to `ServerCapabilities` in `caps.rs`.
 pub fn handle_on_type_formatting(
     world: WorldSnapshot,
-    params: req::DocumentOnTypeFormattingParams,
+    params: lsp_types::DocumentOnTypeFormattingParams,
 ) -> Result<Option<Vec<TextEdit>>> {
     let _p = profile("handle_on_type_formatting");
     let mut position = from_proto::file_position(&world, params.text_document_position)?;
@@ -208,8 +208,8 @@ pub fn handle_on_type_formatting(
 
 pub fn handle_document_symbol(
     world: WorldSnapshot,
-    params: req::DocumentSymbolParams,
-) -> Result<Option<req::DocumentSymbolResponse>> {
+    params: lsp_types::DocumentSymbolParams,
+) -> Result<Option<lsp_types::DocumentSymbolResponse>> {
     let _p = profile("handle_document_symbol");
     let file_id = from_proto::file_id(&world, &params.text_document.uri)?;
     let line_index = world.analysis().file_line_index(file_id)?;
@@ -276,7 +276,7 @@ pub fn handle_document_symbol(
 
 pub fn handle_workspace_symbol(
     world: WorldSnapshot,
-    params: req::WorkspaceSymbolParams,
+    params: lsp_types::WorkspaceSymbolParams,
 ) -> Result<Option<Vec<SymbolInformation>>> {
     let _p = profile("handle_workspace_symbol");
     let all_symbols = params.query.contains('#');
@@ -320,8 +320,8 @@ pub fn handle_workspace_symbol(
 
 pub fn handle_goto_definition(
     world: WorldSnapshot,
-    params: req::GotoDefinitionParams,
-) -> Result<Option<req::GotoDefinitionResponse>> {
+    params: lsp_types::GotoDefinitionParams,
+) -> Result<Option<lsp_types::GotoDefinitionResponse>> {
     let _p = profile("handle_goto_definition");
     let position = from_proto::file_position(&world, params.text_document_position_params)?;
     let nav_info = match world.analysis().goto_definition(position)? {
@@ -338,8 +338,8 @@ pub fn handle_goto_definition(
 
 pub fn handle_goto_implementation(
     world: WorldSnapshot,
-    params: req::GotoImplementationParams,
-) -> Result<Option<req::GotoImplementationResponse>> {
+    params: lsp_types::request::GotoImplementationParams,
+) -> Result<Option<lsp_types::request::GotoImplementationResponse>> {
     let _p = profile("handle_goto_implementation");
     let position = from_proto::file_position(&world, params.text_document_position_params)?;
     let nav_info = match world.analysis().goto_implementation(position)? {
@@ -356,8 +356,8 @@ pub fn handle_goto_implementation(
 
 pub fn handle_goto_type_definition(
     world: WorldSnapshot,
-    params: req::GotoTypeDefinitionParams,
-) -> Result<Option<req::GotoTypeDefinitionResponse>> {
+    params: lsp_types::request::GotoTypeDefinitionParams,
+) -> Result<Option<lsp_types::request::GotoTypeDefinitionResponse>> {
     let _p = profile("handle_goto_type_definition");
     let position = from_proto::file_position(&world, params.text_document_position_params)?;
     let nav_info = match world.analysis().goto_type_definition(position)? {
@@ -374,7 +374,7 @@ pub fn handle_goto_type_definition(
 
 pub fn handle_parent_module(
     world: WorldSnapshot,
-    params: req::TextDocumentPositionParams,
+    params: lsp_types::TextDocumentPositionParams,
 ) -> Result<Vec<Location>> {
     let _p = profile("handle_parent_module");
     let position = from_proto::file_position(&world, params)?;
@@ -447,8 +447,8 @@ pub fn handle_runnables(
 
 pub fn handle_completion(
     world: WorldSnapshot,
-    params: req::CompletionParams,
-) -> Result<Option<req::CompletionResponse>> {
+    params: lsp_types::CompletionParams,
+) -> Result<Option<lsp_types::CompletionResponse>> {
     let _p = profile("handle_completion");
     let position = from_proto::file_position(&world, params.text_document_position)?;
     let completion_triggered_after_single_colon = {
@@ -506,8 +506,8 @@ pub fn handle_folding_range(
 
 pub fn handle_signature_help(
     world: WorldSnapshot,
-    params: req::SignatureHelpParams,
-) -> Result<Option<req::SignatureHelp>> {
+    params: lsp_types::SignatureHelpParams,
+) -> Result<Option<lsp_types::SignatureHelp>> {
     let _p = profile("handle_signature_help");
     let position = from_proto::file_position(&world, params.text_document_position_params)?;
     let call_info = match world.analysis().call_info(position)? {
@@ -521,14 +521,14 @@ pub fn handle_signature_help(
     }
     let sig_info = to_proto::signature_information(call_info.signature, concise);
 
-    Ok(Some(req::SignatureHelp {
+    Ok(Some(lsp_types::SignatureHelp {
         signatures: vec![sig_info],
         active_signature: Some(0),
         active_parameter,
     }))
 }
 
-pub fn handle_hover(world: WorldSnapshot, params: req::HoverParams) -> Result<Option<Hover>> {
+pub fn handle_hover(world: WorldSnapshot, params: lsp_types::HoverParams) -> Result<Option<Hover>> {
     let _p = profile("handle_hover");
     let position = from_proto::file_position(&world, params.text_document_position_params)?;
     let info = match world.analysis().hover(position)? {
@@ -549,7 +549,7 @@ pub fn handle_hover(world: WorldSnapshot, params: req::HoverParams) -> Result<Op
 
 pub fn handle_prepare_rename(
     world: WorldSnapshot,
-    params: req::TextDocumentPositionParams,
+    params: lsp_types::TextDocumentPositionParams,
 ) -> Result<Option<PrepareRenameResponse>> {
     let _p = profile("handle_prepare_rename");
     let position = from_proto::file_position(&world, params)?;
@@ -589,7 +589,7 @@ pub fn handle_rename(world: WorldSnapshot, params: RenameParams) -> Result<Optio
 
 pub fn handle_references(
     world: WorldSnapshot,
-    params: req::ReferenceParams,
+    params: lsp_types::ReferenceParams,
 ) -> Result<Option<Vec<Location>>> {
     let _p = profile("handle_references");
     let position = from_proto::file_position(&world, params.text_document_position)?;
@@ -692,7 +692,7 @@ pub fn handle_formatting(
 
 pub fn handle_code_action(
     world: WorldSnapshot,
-    params: req::CodeActionParams,
+    params: lsp_types::CodeActionParams,
 ) -> Result<Option<CodeActionResponse>> {
     let _p = profile("handle_code_action");
     let file_id = from_proto::file_id(&world, &params.text_document.uri)?;
@@ -806,7 +806,7 @@ pub fn handle_code_action(
 
 pub fn handle_code_lens(
     world: WorldSnapshot,
-    params: req::CodeLensParams,
+    params: lsp_types::CodeLensParams,
 ) -> Result<Option<Vec<CodeLens>>> {
     let _p = profile("handle_code_lens");
     let file_id = from_proto::file_id(&world, &params.text_document.uri)?;
@@ -875,8 +875,8 @@ pub fn handle_code_lens(
             .map(|it| {
                 let range = to_proto::range(&line_index, it.node_range);
                 let pos = range.start;
-                let lens_params = req::GotoImplementationParams {
-                    text_document_position_params: req::TextDocumentPositionParams::new(
+                let lens_params = lsp_types::request::GotoImplementationParams {
+                    text_document_position_params: lsp_types::TextDocumentPositionParams::new(
                         params.text_document.clone(),
                         pos,
                     ),
@@ -897,7 +897,7 @@ pub fn handle_code_lens(
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 enum CodeLensResolveData {
-    Impls(req::GotoImplementationParams),
+    Impls(lsp_types::request::GotoImplementationParams),
 }
 
 pub fn handle_code_lens_resolve(world: WorldSnapshot, code_lens: CodeLens) -> Result<CodeLens> {
@@ -908,9 +908,9 @@ pub fn handle_code_lens_resolve(world: WorldSnapshot, code_lens: CodeLens) -> Re
         Some(CodeLensResolveData::Impls(lens_params)) => {
             let locations: Vec<Location> =
                 match handle_goto_implementation(world, lens_params.clone())? {
-                    Some(req::GotoDefinitionResponse::Scalar(loc)) => vec![loc],
-                    Some(req::GotoDefinitionResponse::Array(locs)) => locs,
-                    Some(req::GotoDefinitionResponse::Link(links)) => links
+                    Some(lsp_types::GotoDefinitionResponse::Scalar(loc)) => vec![loc],
+                    Some(lsp_types::GotoDefinitionResponse::Array(locs)) => locs,
+                    Some(lsp_types::GotoDefinitionResponse::Link(links)) => links
                         .into_iter()
                         .map(|link| Location::new(link.target_uri, link.target_selection_range))
                         .collect(),
@@ -947,7 +947,7 @@ pub fn handle_code_lens_resolve(world: WorldSnapshot, code_lens: CodeLens) -> Re
 
 pub fn handle_document_highlight(
     world: WorldSnapshot,
-    params: req::DocumentHighlightParams,
+    params: lsp_types::DocumentHighlightParams,
 ) -> Result<Option<Vec<DocumentHighlight>>> {
     let _p = profile("handle_document_highlight");
     let position = from_proto::file_position(&world, params.text_document_position_params)?;
