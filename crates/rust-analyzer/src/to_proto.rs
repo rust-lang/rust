@@ -3,8 +3,8 @@ use ra_db::{FileId, FileRange};
 use ra_ide::{
     translate_offset_with_edit, Assist, CompletionItem, CompletionItemKind, Documentation,
     FileSystemEdit, Fold, FoldKind, FunctionSignature, Highlight, HighlightModifier, HighlightTag,
-    InlayHint, InlayKind, InsertTextFormat, LineIndex, NavigationTarget, ReferenceAccess, Severity,
-    SourceChange, SourceFileEdit,
+    HighlightedRange, InlayHint, InlayKind, InsertTextFormat, LineIndex, NavigationTarget,
+    ReferenceAccess, Severity, SourceChange, SourceFileEdit,
 };
 use ra_syntax::{SyntaxKind, TextRange, TextSize};
 use ra_text_edit::{Indel, TextEdit};
@@ -227,8 +227,30 @@ pub(crate) fn inlay_int(line_index: &LineIndex, inlay_hint: InlayHint) -> req::I
     }
 }
 
-// TODO: this is wrong
-pub(crate) fn token_type_index_modifiers_bitself(highlight: Highlight) -> (u32, u32) {
+pub(crate) fn semantic_tokens(
+    text: &str,
+    line_index: &LineIndex,
+    highlights: Vec<HighlightedRange>,
+) -> lsp_types::SemanticTokens {
+    let mut builder = semantic_tokens::SemanticTokensBuilder::default();
+
+    for highlight_range in highlights {
+        let (token_index, modifier_bitset) =
+            token_type_index_modifiers_bitself(highlight_range.highlight);
+        for mut text_range in line_index.lines(highlight_range.range) {
+            if text[text_range].ends_with('\n') {
+                text_range =
+                    TextRange::new(text_range.start(), text_range.end() - TextSize::of('\n'));
+            }
+            let range = range(&line_index, text_range);
+            builder.push(range, token_index, modifier_bitset);
+        }
+    }
+
+    builder.build()
+}
+
+fn token_type_index_modifiers_bitself(highlight: Highlight) -> (u32, u32) {
     let mut mods = semantic_tokens::ModifierSet::default();
     let type_ = match highlight.tag {
         HighlightTag::Struct => lsp_types::SemanticTokenType::STRUCT,

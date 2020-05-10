@@ -35,7 +35,6 @@ use crate::{
     diagnostics::DiagnosticTask,
     from_json, from_proto,
     req::{self, InlayHint, InlayHintsParams},
-    semantic_tokens::SemanticTokensBuilder,
     to_proto,
     world::WorldSnapshot,
     LspError, Result,
@@ -1147,23 +1146,9 @@ pub fn handle_semantic_tokens(
     let text = world.analysis().file_text(file_id)?;
     let line_index = world.analysis().file_line_index(file_id)?;
 
-    let mut builder = SemanticTokensBuilder::default();
-
-    for highlight_range in world.analysis().highlight(file_id)?.into_iter() {
-        let (token_index, modifier_bitset) =
-            to_proto::token_type_index_modifiers_bitself(highlight_range.highlight);
-        for mut range in line_index.lines(highlight_range.range) {
-            if text[range].ends_with('\n') {
-                range = TextRange::new(range.start(), range.end() - TextSize::of('\n'));
-            }
-            let range = to_proto::range(&line_index, range);
-            builder.push(range, token_index, modifier_bitset);
-        }
-    }
-
-    let tokens = builder.build();
-
-    Ok(Some(tokens.into()))
+    let highlights = world.analysis().highlight(file_id)?;
+    let semantic_tokens = to_proto::semantic_tokens(&text, &line_index, highlights);
+    Ok(Some(semantic_tokens.into()))
 }
 
 pub fn handle_semantic_tokens_range(
@@ -1173,18 +1158,10 @@ pub fn handle_semantic_tokens_range(
     let _p = profile("handle_semantic_tokens_range");
 
     let frange = from_proto::file_range(&world, params.text_document, params.range)?;
+    let text = world.analysis().file_text(frange.file_id)?;
     let line_index = world.analysis().file_line_index(frange.file_id)?;
 
-    let mut builder = SemanticTokensBuilder::default();
-
-    for highlight_range in world.analysis().highlight_range(frange)?.into_iter() {
-        let (token_type, token_modifiers) =
-            to_proto::token_type_index_modifiers_bitself(highlight_range.highlight);
-        let range = to_proto::range(&line_index, highlight_range.range);
-        builder.push(range, token_type, token_modifiers);
-    }
-
-    let tokens = builder.build();
-
-    Ok(Some(tokens.into()))
+    let highlights = world.analysis().highlight_range(frange)?;
+    let semantic_tokens = to_proto::semantic_tokens(&text, &line_index, highlights);
+    Ok(Some(semantic_tokens.into()))
 }
