@@ -1612,7 +1612,7 @@ impl SharedEmitterMain {
                     if let Some(code) = diag.code {
                         d.code(code);
                     }
-                    handler.emit_diagnostic(&d);
+                    handler.emit_diagnostic(d);
                 }
                 Ok(SharedEmitterMessage::InlineAsmError(cookie, msg)) => {
                     sess.span_err(ExpnId::from_u32(cookie).expn_data().call_site, &msg)

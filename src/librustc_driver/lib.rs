@@ -1173,7 +1173,7 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
     // it wants to print.
     if !info.payload().is::<rustc_errors::ExplicitBug>() {
         let d = rustc_errors::Diagnostic::new(rustc_errors::Level::Bug, "unexpected panic");
-        handler.emit_diagnostic(&d);
+        handler.emit_diagnostic(d);
     }
 
     let mut xs: Vec<Cow<'static, str>> = vec![

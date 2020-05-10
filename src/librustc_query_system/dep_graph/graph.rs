@@ -763,7 +763,7 @@ impl<K: DepKind> DepGraph<K> {
             let handle = tcx.diagnostic();
 
             for diagnostic in diagnostics {
-                handle.emit_diagnostic(&diagnostic);
+                handle.emit_diagnostic(diagnostic);
             }
 
             // Mark the node as green now that diagnostics are emitted

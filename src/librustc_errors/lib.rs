@@ -326,10 +326,12 @@ pub enum StashKey {
     ItemNoType,
 }
 
-fn default_track_diagnostic(_: &Diagnostic) {}
+fn default_track_diagnostic(d: Diagnostic) -> Diagnostic {
+    d
+}
 
-pub static TRACK_DIAGNOSTICS: AtomicRef<fn(&Diagnostic)> =
-    AtomicRef::new(&(default_track_diagnostic as fn(&_)));
+pub static TRACK_DIAGNOSTICS: AtomicRef<fn(Diagnostic) -> Diagnostic> =
+    AtomicRef::new(&(default_track_diagnostic as fn(_) -> _));
 
 #[derive(Copy, Clone, Default)]
 pub struct HandlerFlags {
@@ -359,8 +361,8 @@ impl Drop for HandlerInner {
         if !self.has_errors() {
             let bugs = std::mem::replace(&mut self.delayed_span_bugs, Vec::new());
             let has_bugs = !bugs.is_empty();
-            for bug in bugs {
-                self.emit_diagnostic(&bug);
+            for bug in bugs.into_iter() {
+                self.emit_diagnostic(bug);
             }
             if has_bugs {
                 panic!("no errors encountered even though `delay_span_bug` issued");
@@ -691,13 +693,14 @@ impl Handler {
         self.inner.borrow_mut().force_print_diagnostic(db)
     }
 
-    pub fn emit_diagnostic(&self, diagnostic: &Diagnostic) {
+    pub fn emit_diagnostic(&self, diagnostic: Diagnostic) {
         self.inner.borrow_mut().emit_diagnostic(diagnostic)
     }
 
     fn emit_diag_at_span(&self, mut diag: Diagnostic, sp: impl Into<MultiSpan>) {
         let mut inner = self.inner.borrow_mut();
-        inner.emit_diagnostic(diag.set_span(sp));
+        diag.set_span(sp);
+        inner.emit_diagnostic(diag);
     }
 
     pub fn emit_artifact_notification(&self, path: &Path, artifact_type: &str) {
@@ -721,10 +724,10 @@ impl HandlerInner {
     /// Emit all stashed diagnostics.
     fn emit_stashed_diagnostics(&mut self) {
         let diags = self.stashed_diagnostics.drain(..).map(|x| x.1).collect::<Vec<_>>();
-        diags.iter().for_each(|diag| self.emit_diagnostic(diag));
+        diags.into_iter().for_each(|diag| self.emit_diagnostic(diag));
     }
 
-    fn emit_diagnostic(&mut self, diagnostic: &Diagnostic) {
+    fn emit_diagnostic(&mut self, diagnostic: Diagnostic) {
         if diagnostic.cancelled() {
             return;
         }
@@ -733,7 +736,7 @@ impl HandlerInner {
             return;
         }
 
-        (*TRACK_DIAGNOSTICS)(diagnostic);
+        let diagnostic = (*TRACK_DIAGNOSTICS)(diagnostic);
 
         if let Some(ref code) = diagnostic.code {
             self.emitted_diagnostic_codes.insert(code.clone());
@@ -750,7 +753,7 @@ impl HandlerInner {
         // Only emit the diagnostic if we've been asked to deduplicate and
         // haven't already emitted an equivalent diagnostic.
         if !(self.flags.deduplicate_diagnostics && already_emitted(self)) {
-            self.emitter.emit_diagnostic(diagnostic);
+            self.emitter.emit_diagnostic(&diagnostic);
             if diagnostic.is_error() {
                 self.deduplicated_err_count += 1;
             } else if diagnostic.level == Warning {
@@ -789,7 +792,7 @@ impl HandlerInner {
 
         match (errors.len(), warnings.len()) {
             (0, 0) => return,
-            (0, _) => self.emit_diagnostic(&Diagnostic::new(Level::Warning, &warnings)),
+            (0, _) => self.emit_diagnostic(Diagnostic::new(Level::Warning, &warnings)),
             (_, 0) => {
                 let _ = self.fatal(&errors);
             }
@@ -865,7 +868,8 @@ impl HandlerInner {
     }
 
     fn emit_diag_at_span(&mut self, mut diag: Diagnostic, sp: impl Into<MultiSpan>) {
-        self.emit_diagnostic(diag.set_span(sp));
+        diag.set_span(sp);
+        self.emit_diagnostic(diag);
     }
 
     fn delay_span_bug(&mut self, sp: impl Into<MultiSpan>, msg: &str) {
@@ -882,7 +886,7 @@ impl HandlerInner {
     }
 
     fn failure(&mut self, msg: &str) {
-        self.emit_diagnostic(&Diagnostic::new(FailureNote, msg));
+        self.emit_diagnostic(Diagnostic::new(FailureNote, msg));
     }
 
     fn fatal(&mut self, msg: &str) -> FatalError {
@@ -899,17 +903,17 @@ impl HandlerInner {
         if self.treat_err_as_bug() {
             self.bug(msg);
         }
-        self.emit_diagnostic(&Diagnostic::new(level, msg));
+        self.emit_diagnostic(Diagnostic::new(level, msg));
     }
 
     fn bug(&mut self, msg: &str) -> ! {
-        self.emit_diagnostic(&Diagnostic::new(Bug, msg));
+        self.emit_diagnostic(Diagnostic::new(Bug, msg));
         panic!(ExplicitBug);
     }
 
     fn delay_as_bug(&mut self, diagnostic: Diagnostic) {
         if self.flags.report_delayed_bugs {
-            self.emit_diagnostic(&diagnostic);
+            self.emit_diagnostic(diagnostic.clone());
         }
         self.delayed_span_bugs.push(diagnostic);
     }

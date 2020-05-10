@@ -97,8 +97,8 @@ impl<'a> DerefMut for DiagnosticBuilder<'a> {
 impl<'a> DiagnosticBuilder<'a> {
     /// Emit the diagnostic.
     pub fn emit(&mut self) {
-        self.0.handler.emit_diagnostic(&self);
-        self.cancel();
+        let diag = std::mem::replace(&mut self.0.diagnostic, Diagnostic::new(Level::Cancelled, ""));
+        self.0.handler.emit_diagnostic(diag);
     }
 
     /// Emit the diagnostic unless `delay` is true,
@@ -179,8 +179,8 @@ impl<'a> DiagnosticBuilder<'a> {
     /// locally in whichever way makes the most sense.
     pub fn delay_as_bug(&mut self) {
         self.level = Level::Bug;
-        self.0.handler.delay_as_bug(self.0.diagnostic.clone());
-        self.cancel();
+        let diag = std::mem::replace(&mut self.0.diagnostic, Diagnostic::new(Level::Cancelled, ""));
+        self.0.handler.delay_as_bug(diag);
     }
 
     /// Adds a span/label to be included in the resulting snippet.

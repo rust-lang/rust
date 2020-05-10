@@ -42,7 +42,7 @@ macro_rules! panictry_buffer {
             Ok(e) => e,
             Err(errs) => {
                 for e in errs {
-                    $handler.emit_diagnostic(&e);
+                    $handler.emit_diagnostic(e);
                 }
                 FatalError.raise()
             }
@@ -176,7 +176,7 @@ fn file_to_source_file(sess: &ParseSess, path: &Path, spanopt: Option<Span>) -> 
     match try_file_to_source_file(sess, path, spanopt) {
         Ok(source_file) => source_file,
         Err(d) => {
-            sess.span_diagnostic.emit_diagnostic(&d);
+            sess.span_diagnostic.emit_diagnostic(d);
             FatalError.raise();
         }
     }

@@ -258,7 +258,7 @@ fn report_clippy_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
     // it wants to print.
     if !info.payload().is::<rustc_errors::ExplicitBug>() {
         let d = rustc_errors::Diagnostic::new(rustc_errors::Level::Bug, "unexpected panic");
-        handler.emit_diagnostic(&d);
+        handler.emit_diagnostic(d);
     }
 
     let version_info = rustc_tools_util::get_version_info!();
