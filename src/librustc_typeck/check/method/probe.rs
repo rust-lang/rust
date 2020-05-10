@@ -1556,7 +1556,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         match self.mode {
             Mode::MethodCall => item.fn_has_self_parameter,
             Mode::Path => match item.kind {
-                ty::AssocKind::OpaqueTy | ty::AssocKind::Type => false,
+                ty::AssocKind::Type => false,
                 ty::AssocKind::Fn | ty::AssocKind::Const => true,
             },
         }

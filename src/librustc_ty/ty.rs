@@ -85,7 +85,6 @@ fn associated_item_from_trait_item_ref(
         hir::AssocItemKind::Const => (ty::AssocKind::Const, false),
         hir::AssocItemKind::Fn { has_self } => (ty::AssocKind::Fn, has_self),
         hir::AssocItemKind::Type => (ty::AssocKind::Type, false),
-        hir::AssocItemKind::OpaqueTy => bug!("only impls can have opaque types"),
     };
 
     ty::AssocItem {
@@ -110,7 +109,6 @@ fn associated_item_from_impl_item_ref(
         hir::AssocItemKind::Const => (ty::AssocKind::Const, false),
         hir::AssocItemKind::Fn { has_self } => (ty::AssocKind::Fn, has_self),
         hir::AssocItemKind::Type => (ty::AssocKind::Type, false),
-        hir::AssocItemKind::OpaqueTy => (ty::AssocKind::OpaqueTy, false),
     };
 
     ty::AssocItem {

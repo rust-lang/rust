@@ -1919,14 +1919,12 @@ pub enum ImplItemKind<'hir> {
     Fn(FnSig<'hir>, BodyId),
     /// An associated type.
     TyAlias(&'hir Ty<'hir>),
-    /// An associated `type = impl Trait`.
-    OpaqueTy(GenericBounds<'hir>),
 }
 
 impl ImplItemKind<'_> {
     pub fn namespace(&self) -> Namespace {
         match self {
-            ImplItemKind::OpaqueTy(..) | ImplItemKind::TyAlias(..) => Namespace::TypeNS,
+            ImplItemKind::TyAlias(..) => Namespace::TypeNS,
             ImplItemKind::Const(..) | ImplItemKind::Fn(..) => Namespace::ValueNS,
         }
     }
@@ -2016,8 +2014,6 @@ pub struct OpaqueTy<'hir> {
 /// From whence the opaque type came.
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub enum OpaqueTyOrigin {
-    /// `type Foo = impl Trait;`
-    TypeAlias,
     /// `-> impl Trait`
     FnReturn,
     /// `async fn`
@@ -2614,7 +2610,6 @@ pub enum AssocItemKind {
     Const,
     Fn { has_self: bool },
     Type,
-    OpaqueTy,
 }
 
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]

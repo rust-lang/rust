@@ -814,7 +814,7 @@ fn foo(&self) -> Self::T { String::new() }
                 // FIXME: account for `#![feature(specialization)]`
                 for item in &items[..] {
                     match item.kind {
-                        hir::AssocItemKind::Type | hir::AssocItemKind::OpaqueTy => {
+                        hir::AssocItemKind::Type => {
                             // FIXME: account for returning some type in a trait fn impl that has
                             // an assoc type as a return type (#72076).
                             if let hir::Defaultness::Default { has_value: true } = item.defaultness
@@ -838,7 +838,7 @@ fn foo(&self) -> Self::T { String::new() }
             })) => {
                 for item in &items[..] {
                     match item.kind {
-                        hir::AssocItemKind::Type | hir::AssocItemKind::OpaqueTy => {
+                        hir::AssocItemKind::Type => {
                             if self.type_of(self.hir().local_def_id(item.id.hir_id)) == found {
                                 db.span_label(item.span, "expected this associated type");
                                 return true;

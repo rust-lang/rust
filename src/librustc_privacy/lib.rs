@@ -615,7 +615,6 @@ impl EmbargoVisitor<'tcx> {
             // public, or are not namespaced at all.
             DefKind::AssocConst
             | DefKind::AssocTy
-            | DefKind::AssocOpaqueTy
             | DefKind::ConstParam
             | DefKind::Ctor(_, _)
             | DefKind::Enum
@@ -1333,11 +1332,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
             _ => None,
         };
         let def = def.filter(|(kind, _)| match kind {
-            DefKind::AssocFn
-            | DefKind::AssocConst
-            | DefKind::AssocTy
-            | DefKind::AssocOpaqueTy
-            | DefKind::Static => true,
+            DefKind::AssocFn | DefKind::AssocConst | DefKind::AssocTy | DefKind::Static => true,
             _ => false,
         });
         if let Some((kind, def_id)) = def {
@@ -1602,9 +1597,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                             hir::ImplItemKind::Const(..) | hir::ImplItemKind::Fn(..) => {
                                 self.access_levels.is_reachable(impl_item_ref.id.hir_id)
                             }
-                            hir::ImplItemKind::OpaqueTy(..) | hir::ImplItemKind::TyAlias(_) => {
-                                false
-                            }
+                            hir::ImplItemKind::TyAlias(_) => false,
                         }
                     });
 
@@ -1952,9 +1945,6 @@ impl<'a, 'tcx> PrivateItemsInPublicInterfacesVisitor<'a, 'tcx> {
         let (check_ty, is_assoc_ty) = match assoc_item_kind {
             AssocItemKind::Const | AssocItemKind::Fn { .. } => (true, false),
             AssocItemKind::Type => (defaultness.has_value(), true),
-            // `ty()` for opaque types is the underlying type,
-            // it's not a part of interface, so we skip it.
-            AssocItemKind::OpaqueTy => (false, true),
         };
         check.in_assoc_ty = is_assoc_ty;
         check.generics().predicates();

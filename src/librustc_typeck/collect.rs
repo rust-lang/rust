@@ -742,7 +742,7 @@ fn convert_impl_item(tcx: TyCtxt<'_>, impl_item_id: hir::HirId) {
         hir::ImplItemKind::Fn(..) => {
             tcx.ensure().fn_sig(def_id);
         }
-        hir::ImplItemKind::TyAlias(_) | hir::ImplItemKind::OpaqueTy(_) => {
+        hir::ImplItemKind::TyAlias(_) => {
             // Account for `type T = _;`
             let mut visitor = PlaceholderHirTyCollector::default();
             visitor.visit_impl_item(impl_item);
@@ -1203,10 +1203,10 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
                 impl_trait_fn.or_else(|| {
                     let parent_id = tcx.hir().get_parent_item(hir_id);
                     assert!(parent_id != hir_id && parent_id != CRATE_HIR_ID);
-                        debug!("generics_of: parent of opaque ty {:?} is {:?}", def_id, parent_id);
+                    debug!("generics_of: parent of opaque ty {:?} is {:?}", def_id, parent_id);
                     // Opaque types are always nested within another item, and
                     // inherit the generics of the item.
-                            Some(tcx.hir().local_def_id(parent_id).to_def_id())
+                    Some(tcx.hir().local_def_id(parent_id).to_def_id())
                 })
             }
             _ => None,
@@ -1704,31 +1704,7 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
     let ast_generics = match node {
         Node::TraitItem(item) => &item.generics,
 
-        Node::ImplItem(item) => match item.kind {
-            ImplItemKind::OpaqueTy(ref bounds) => {
-                ty::print::with_no_queries(|| {
-                    let substs = InternalSubsts::identity_for_item(tcx, def_id);
-                    let opaque_ty = tcx.mk_opaque(def_id, substs);
-                    debug!(
-                        "explicit_predicates_of({:?}): created opaque type {:?}",
-                        def_id, opaque_ty
-                    );
-
-                    // Collect the bounds, i.e., the `A + B + 'c` in `impl A + B + 'c`.
-                    let bounds = AstConv::compute_bounds(
-                        &icx,
-                        opaque_ty,
-                        bounds,
-                        SizedByDefault::Yes,
-                        tcx.def_span(def_id),
-                    );
-
-                    predicates.extend(bounds.predicates(tcx, opaque_ty));
-                    &item.generics
-                })
-            }
-            _ => &item.generics,
-        },
+        Node::ImplItem(item) => &item.generics,
 
         Node::Item(item) => {
             match item.kind {
