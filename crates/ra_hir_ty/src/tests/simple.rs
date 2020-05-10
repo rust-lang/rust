@@ -1787,3 +1787,32 @@ fn main() {
     "###
     )
 }
+
+#[test]
+fn infer_generic_from_later_assignment() {
+    assert_snapshot!(
+        infer(r#"
+enum Option<T> { Some(T), None }
+use Option::*;
+
+fn test() {
+    let mut end = None;
+    loop {
+        end = Some(true);
+    }
+}
+"#),
+        @r###"
+    60..130 '{     ...   } }': ()
+    70..77 'mut end': Option<bool>
+    80..84 'None': Option<bool>
+    90..128 'loop {...     }': !
+    95..128 '{     ...     }': ()
+    105..108 'end': Option<bool>
+    105..121 'end = ...(true)': ()
+    111..115 'Some': Some<bool>(bool) -> Option<bool>
+    111..121 'Some(true)': Option<bool>
+    116..120 'true': bool
+    "###
+    );
+}

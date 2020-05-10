@@ -30,7 +30,8 @@ pub(super) fn binary_op_return_ty(op: BinaryOp, lhs_ty: Ty, rhs_ty: Ty) -> Ty {
 pub(super) fn binary_op_rhs_expectation(op: BinaryOp, lhs_ty: Ty) -> Ty {
     match op {
         BinaryOp::LogicOp(..) => Ty::simple(TypeCtor::Bool),
-        BinaryOp::Assignment { op: None } | BinaryOp::CmpOp(CmpOp::Eq { .. }) => match lhs_ty {
+        BinaryOp::Assignment { op: None } => lhs_ty,
+        BinaryOp::CmpOp(CmpOp::Eq { .. }) => match lhs_ty {
             Ty::Apply(ApplicationTy { ctor, .. }) => match ctor {
                 TypeCtor::Int(..)
                 | TypeCtor::Float(..)
