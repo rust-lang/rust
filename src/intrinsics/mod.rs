@@ -999,6 +999,16 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             }, x, y);
             ret.write_cvalue(fx, res);
         };
+        float_to_int_unchecked, (v f) {
+            let res = crate::cast::clif_int_or_float_cast(
+                fx,
+                f,
+                false,
+                fx.clif_type(ret.layout().ty).unwrap(),
+                type_sign(ret.layout().ty),
+            );
+            ret.write_cvalue(fx, CValue::by_val(res, ret.layout()));
+        };
     }
 
     if let Some((_, dest)) = destination {
