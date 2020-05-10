@@ -1722,9 +1722,11 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         /// ❰ (); ❱
         /// ❰ {}; ❱
         ///
-        /// // constructions with trailing curly brace can omit the semicolon // TODO: clarify
+        /// // constructions with trailing curly brace can omit the semicolon
+        /// // but only when there are satements immediately after them (this is important!)
         /// ❰ if bool_cond { } ❱
         /// ❰ loop {} ❱
+        /// ❰ somestatment; ❱
         /// ```
         ///
         /// [Reference](https://doc.rust-lang.org/reference/statements.html)
