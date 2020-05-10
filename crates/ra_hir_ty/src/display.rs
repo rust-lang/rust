@@ -136,6 +136,12 @@ enum DisplayTarget {
     SourceCode { module_id: ModuleId },
 }
 
+impl DisplayTarget {
+    fn is_source_code(&self) -> bool {
+        matches!(self, Self::SourceCode {..})
+    }
+}
+
 #[derive(Debug)]
 pub enum DisplaySourceCodeError {
     PathNotFound,
@@ -303,37 +309,40 @@ impl HirDisplay for ApplicationTy {
 
                 if self.parameters.len() > 0 {
                     let mut non_default_parameters = Vec::with_capacity(self.parameters.len());
-                    let parameters_to_write = if f.omit_verbose_types() {
-                        match self
-                            .ctor
-                            .as_generic_def()
-                            .map(|generic_def_id| f.db.generic_defaults(generic_def_id))
-                            .filter(|defaults| !defaults.is_empty())
-                        {
-                            None => self.parameters.0.as_ref(),
-                            Some(default_parameters) => {
-                                for (i, parameter) in self.parameters.iter().enumerate() {
-                                    match (parameter, default_parameters.get(i)) {
-                                        (&Ty::Unknown, _) | (_, None) => {
-                                            non_default_parameters.push(parameter.clone())
+                    let parameters_to_write =
+                        if f.display_target.is_source_code() || f.omit_verbose_types() {
+                            match self
+                                .ctor
+                                .as_generic_def()
+                                .map(|generic_def_id| f.db.generic_defaults(generic_def_id))
+                                .filter(|defaults| !defaults.is_empty())
+                            {
+                                None => self.parameters.0.as_ref(),
+                                Some(default_parameters) => {
+                                    for (i, parameter) in self.parameters.iter().enumerate() {
+                                        match (parameter, default_parameters.get(i)) {
+                                            (&Ty::Unknown, _) | (_, None) => {
+                                                non_default_parameters.push(parameter.clone())
+                                            }
+                                            (_, Some(default_parameter))
+                                                if parameter != default_parameter =>
+                                            {
+                                                non_default_parameters.push(parameter.clone())
+                                            }
+                                            _ => (),
                                         }
-                                        (_, Some(default_parameter))
-                                            if parameter != default_parameter =>
-                                        {
-                                            non_default_parameters.push(parameter.clone())
-                                        }
-                                        _ => (),
                                     }
+                                    &non_default_parameters
                                 }
-                                &non_default_parameters
                             }
-                        }
-                    } else {
-                        self.parameters.0.as_ref()
-                    };
-                    write!(f, "<")?;
-                    f.write_joined(parameters_to_write, ", ")?;
-                    write!(f, ">")?;
+                        } else {
+                            self.parameters.0.as_ref()
+                        };
+                    if !parameters_to_write.is_empty() {
+                        write!(f, "<")?;
+                        f.write_joined(parameters_to_write, ", ")?;
+                        write!(f, ">")?;
+                    }
                 }
             }
             TypeCtor::AssociatedType(type_alias) => {
