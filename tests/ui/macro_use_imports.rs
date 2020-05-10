@@ -22,7 +22,7 @@ mod a {
     #[derive(ClippyMiniMacroTest)]
     struct Test;
 
-    fn main() {
+    fn test() {
         pub_macro!();
         inner_mod_macro!();
         pub_in_private_macro!(_var);

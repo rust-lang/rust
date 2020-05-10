@@ -38,8 +38,8 @@ pub struct MacroRefData {
 }
 
 impl MacroRefData {
-    pub fn new(name: &str, span: Span, ecx: &LateContext<'_, '_>) -> Self {
-        let mut path = ecx.sess().source_map().span_to_filename(span).to_string();
+    pub fn new(name: &str, callee: Span, cx: &LateContext<'_, '_>) -> Self {
+        let mut path = cx.sess().source_map().span_to_filename(callee).to_string();
 
         // std lib paths are <::std::module::file type>
         // so remove brackets, space and type.
@@ -63,15 +63,37 @@ pub struct MacroUseImports {
     imports: Vec<(String, Span)>,
     /// the span of the macro reference, kept to ensure only one reference is used per macro call.
     collected: FxHashSet<Span>,
-    mac_refs: Vec<(Span, MacroRefData)>,
+    mac_refs: Vec<MacroRefData>,
 }
 
 impl_lint_pass!(MacroUseImports => [MACRO_USE_IMPORTS]);
 
+impl MacroUseImports {
+    fn push_unique_macro(&mut self, cx: &LateContext<'_, '_>, name: &str, call_site: Span, callee: Span) {
+        if !self.collected.contains(&call_site) {
+            let name = if name.contains("::") {
+                name.split("::").last().unwrap().to_string()
+            } else {
+                name.to_string()
+            };
+
+            self.mac_refs.push(MacroRefData::new(&name, callee, cx));
+            self.collected.insert(call_site);
+        }
+    }
+
+    fn push_unique_macro_pat_ty(&mut self, cx: &LateContext<'_, '_>, name: &str, call_site: Span, callee: Span) {
+        if !self.collected.contains(&call_site) {
+            self.mac_refs.push(MacroRefData::new(&name, callee, cx));
+            self.collected.insert(call_site);
+        }
+    }
+}
+
 impl<'l, 'txc> LateLintPass<'l, 'txc> for MacroUseImports {
-    fn check_item(&mut self, lcx: &LateContext<'_, '_>, item: &hir::Item<'_>) {
+    fn check_item(&mut self, cx: &LateContext<'_, '_>, item: &hir::Item<'_>) {
         if_chain! {
-                if lcx.sess().opts.edition == Edition::Edition2018;
+                if cx.sess().opts.edition == Edition::Edition2018;
                 if let hir::ItemKind::Use(path, _kind) = &item.kind;
                 if let Some(mac_attr) = item
                     .attrs
@@ -79,126 +101,88 @@ impl<'l, 'txc> LateLintPass<'l, 'txc> for MacroUseImports {
                     .find(|attr| attr.ident().map(|s| s.to_string()) == Some("macro_use".to_string()));
                 if let Res::Def(DefKind::Mod, id) = path.res;
                 then {
-                    for kid in lcx.tcx.item_children(id).iter() {
+                    for kid in cx.tcx.item_children(id).iter() {
                         if let Res::Def(DefKind::Macro(_mac_type), mac_id) = kid.res {
                             let span = mac_attr.span;
-                            self.imports.push((lcx.tcx.def_path_str(mac_id), span));
+                            self.imports.push((cx.tcx.def_path_str(mac_id), span));
                         }
                     }
                 } else {
-                if in_macro(item.span) {
-                    let call_site = item.span.source_callsite();
-                    let name = snippet(lcx, lcx.sess().source_map().span_until_char(call_site, '!'), "_");
-                    if let Some(callee) = item.span.source_callee() {
-                        if !self.collected.contains(&call_site) {
-                            self.mac_refs.push((call_site, MacroRefData::new(&name, callee.def_site, lcx)));
-                            self.collected.insert(call_site);
+                    if in_macro(item.span) {
+                        let call_site = item.span.source_callsite();
+                        let name = snippet(cx, cx.sess().source_map().span_until_char(call_site, '!'), "_");
+                        if let Some(callee) = item.span.source_callee() {
+                            if !self.collected.contains(&call_site) {
+                                self.mac_refs.push(MacroRefData::new(&name, callee.def_site, cx));
+                                self.collected.insert(call_site);
+                            }
                         }
                     }
-                }
             }
         }
     }
-    fn check_attribute(&mut self, lcx: &LateContext<'_, '_>, attr: &ast::Attribute) {
+    fn check_attribute(&mut self, cx: &LateContext<'_, '_>, attr: &ast::Attribute) {
         if in_macro(attr.span) {
             let call_site = attr.span.source_callsite();
-            let name = snippet(lcx, lcx.sess().source_map().span_until_char(call_site, '!'), "_");
+            let name = snippet(cx, cx.sess().source_map().span_until_char(call_site, '!'), "_");
             if let Some(callee) = attr.span.source_callee() {
-                if !self.collected.contains(&call_site) {
-                    let name = if name.contains("::") {
-                        name.split("::").last().unwrap().to_string()
-                    } else {
-                        name.to_string()
-                    };
-
-                    self.mac_refs
-                        .push((call_site, MacroRefData::new(&name, callee.def_site, lcx)));
-                    self.collected.insert(call_site);
-                }
+                self.push_unique_macro(cx, &name, call_site, callee.def_site);
             }
         }
     }
-    fn check_expr(&mut self, lcx: &LateContext<'_, '_>, expr: &hir::Expr<'_>) {
+    fn check_expr(&mut self, cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>) {
         if in_macro(expr.span) {
             let call_site = expr.span.source_callsite();
-            let name = snippet(lcx, lcx.sess().source_map().span_until_char(call_site, '!'), "_");
+            let name = snippet(cx, cx.sess().source_map().span_until_char(call_site, '!'), "_");
             if let Some(callee) = expr.span.source_callee() {
-                if !self.collected.contains(&call_site) {
-                    let name = if name.contains("::") {
-                        name.split("::").last().unwrap().to_string()
-                    } else {
-                        name.to_string()
-                    };
-
-                    self.mac_refs
-                        .push((call_site, MacroRefData::new(&name, callee.def_site, lcx)));
-                    self.collected.insert(call_site);
-                }
+                self.push_unique_macro(cx, &name, call_site, callee.def_site);
             }
         }
     }
-    fn check_stmt(&mut self, lcx: &LateContext<'_, '_>, stmt: &hir::Stmt<'_>) {
+    fn check_stmt(&mut self, cx: &LateContext<'_, '_>, stmt: &hir::Stmt<'_>) {
         if in_macro(stmt.span) {
             let call_site = stmt.span.source_callsite();
-            let name = snippet(lcx, lcx.sess().source_map().span_until_char(call_site, '!'), "_");
+            let name = snippet(cx, cx.sess().source_map().span_until_char(call_site, '!'), "_");
             if let Some(callee) = stmt.span.source_callee() {
-                if !self.collected.contains(&call_site) {
-                    let name = if name.contains("::") {
-                        name.split("::").last().unwrap().to_string()
-                    } else {
-                        name.to_string()
-                    };
-
-                    self.mac_refs
-                        .push((call_site, MacroRefData::new(&name, callee.def_site, lcx)));
-                    self.collected.insert(call_site);
-                }
+                self.push_unique_macro(cx, &name, call_site, callee.def_site);
             }
         }
     }
-    fn check_pat(&mut self, lcx: &LateContext<'_, '_>, pat: &hir::Pat<'_>) {
+    fn check_pat(&mut self, cx: &LateContext<'_, '_>, pat: &hir::Pat<'_>) {
         if in_macro(pat.span) {
             let call_site = pat.span.source_callsite();
-            let name = snippet(lcx, lcx.sess().source_map().span_until_char(call_site, '!'), "_");
+            let name = snippet(cx, cx.sess().source_map().span_until_char(call_site, '!'), "_");
             if let Some(callee) = pat.span.source_callee() {
-                if !self.collected.contains(&call_site) {
-                    self.mac_refs
-                        .push((call_site, MacroRefData::new(&name, callee.def_site, lcx)));
-                    self.collected.insert(call_site);
-                }
+                self.push_unique_macro_pat_ty(cx, &name, call_site, callee.def_site);
             }
         }
     }
-    fn check_ty(&mut self, lcx: &LateContext<'_, '_>, ty: &hir::Ty<'_>) {
+    fn check_ty(&mut self, cx: &LateContext<'_, '_>, ty: &hir::Ty<'_>) {
         if in_macro(ty.span) {
             let call_site = ty.span.source_callsite();
-            let name = snippet(lcx, lcx.sess().source_map().span_until_char(call_site, '!'), "_");
+            let name = snippet(cx, cx.sess().source_map().span_until_char(call_site, '!'), "_");
             if let Some(callee) = ty.span.source_callee() {
-                if !self.collected.contains(&call_site) {
-                    self.mac_refs
-                        .push((call_site, MacroRefData::new(&name, callee.def_site, lcx)));
-                    self.collected.insert(call_site);
-                }
+                self.push_unique_macro_pat_ty(cx, &name, call_site, callee.def_site);
             }
         }
     }
 
-    fn check_crate_post(&mut self, lcx: &LateContext<'_, '_>, _krate: &hir::Crate<'_>) {
+    fn check_crate_post(&mut self, cx: &LateContext<'_, '_>, _krate: &hir::Crate<'_>) {
         for (import, span) in &self.imports {
-            let matched = self.mac_refs.iter().any(|(_span, mac)| import.ends_with(&mac.name));
+            let matched = self.mac_refs.iter().any(|mac| import.ends_with(&mac.name));
 
             if matched {
-                self.mac_refs.retain(|(_span, mac)| !import.ends_with(&mac.name));
+                self.mac_refs.retain(|mac| !import.ends_with(&mac.name));
                 let msg = "`macro_use` attributes are no longer needed in the Rust 2018 edition";
                 let help = format!("use {}", import);
                 span_lint_and_sugg(
-                    lcx,
+                    cx,
                     MACRO_USE_IMPORTS,
                     *span,
                     msg,
                     "remove the attribute and import the macro directly, try",
                     help,
-                    Applicability::HasPlaceholders,
+                    Applicability::MaybeIncorrect,
                 )
             }
         }
