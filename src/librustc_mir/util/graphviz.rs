@@ -97,12 +97,17 @@ where
     write!(w, r#"<table border="0" cellborder="1" cellspacing="0">"#)?;
 
     // Basic block number at the top.
+    let (blk, color) = if data.is_cleanup {
+        (format!("{} (cleanup)", block.index()), "lightblue")
+    } else {
+        (format!("{}", block.index()), "gray")
+    };
     write!(
         w,
-        r#"<tr><td {attrs} colspan="{colspan}">{blk}</td></tr>"#,
-        attrs = r#"bgcolor="gray" align="center""#,
+        r#"<tr><td bgcolor="{color}" align="center" colspan="{colspan}">{blk}</td></tr>"#,
         colspan = num_cols,
-        blk = block.index()
+        blk = blk,
+        color = color
     )?;
 
     init(w)?;

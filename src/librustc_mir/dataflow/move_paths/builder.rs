@@ -361,16 +361,17 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
     fn gather_terminator(&mut self, term: &Terminator<'tcx>) {
         match term.kind {
             TerminatorKind::Goto { target: _ }
+            | TerminatorKind::FalseEdges { .. }
+            | TerminatorKind::FalseUnwind { .. }
+            // In some sense returning moves the return place into the current
+            // call's destination, however, since there are no statements after
+            // this that could possibly access the return place, this doesn't
+            // need recording.
+            | TerminatorKind::Return
             | TerminatorKind::Resume
             | TerminatorKind::Abort
             | TerminatorKind::GeneratorDrop
-            | TerminatorKind::FalseEdges { .. }
-            | TerminatorKind::FalseUnwind { .. }
             | TerminatorKind::Unreachable => {}
-
-            TerminatorKind::Return => {
-                self.gather_move(Place::return_place());
-            }
 
             TerminatorKind::Assert { ref cond, .. } => {
                 self.gather_operand(cond);

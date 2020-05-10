@@ -13,8 +13,4 @@ const <impl at $DIR/unusual-item-types.rs:9:1: 11:2>::ASSOCIATED_CONSTANT: i32 =
                                          // + literal: Const { ty: i32, val: Value(Scalar(0x00000002)) }
         return;                          // scope 0 at $DIR/unusual-item-types.rs:10:5: 10:40
     }
-
-    bb1 (cleanup): {
-        resume;                          // scope 0 at $DIR/unusual-item-types.rs:10:5: 10:40
-    }
 }
