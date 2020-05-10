@@ -530,7 +530,7 @@
 		},
 		"sigils": {
 			"comment": "Sigil",
-			"name": "keyword.other.sigil.rust",
+			"name": "keyword.operator.sigil.rust",
 			"match": "[&*](?=[a-zA-Z0-9_\\(\\[\\|\\\"]+)"
 		},
 		"self": {
@@ -588,7 +588,7 @@
 			"match": "(&)('[a-zA-Z_][a-zA-Z0-9_]*)\\b",
 			"captures": {
 				"1": {
-					"name": "keyword.other.sigil.rust"
+					"name": "keyword.operator.sigil.rust"
 				},
 				"2": {
 					"name": "storage.modifier.lifetime.rust"
