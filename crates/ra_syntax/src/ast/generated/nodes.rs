@@ -1834,7 +1834,7 @@ impl NameRef {}
 /// ❰ foo!(); ❱
 ///
 /// fn main() {
-///     ❰ foo!() ❱; // macro call expression position doesn't include the semi
+///     ❰ foo!() ❱; // macro call in expression positions doesn't include the semi
 /// }
 /// ```
 ///

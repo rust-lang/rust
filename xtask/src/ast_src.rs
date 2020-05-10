@@ -1558,7 +1558,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         /// ❰ foo!(); ❱
         ///
         /// fn main() {
-        ///     ❰ foo!() ❱; // macro call expression position doesn't include the semi
+        ///     ❰ foo!() ❱; // macro call in expression positions doesn't include the semi
         /// }
         /// ```
         ///
