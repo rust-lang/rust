@@ -37,6 +37,7 @@ struct OperandInfo {
 }
 
 fn analyze_operand(operand: &Expr<'_>, cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> Option<OperandInfo> {
+    #[allow(clippy::match_wildcard_for_single_variants)]
     match constant(cx, cx.tables, operand) {
         Some((Constant::Int(v), _)) => match cx.tables.expr_ty(expr).kind {
             ty::Int(ity) => {

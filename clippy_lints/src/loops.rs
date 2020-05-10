@@ -2154,7 +2154,7 @@ fn is_loop_nested(cx: &LateContext<'_, '_>, loop_expr: &Expr<'_>, iter_expr: &Ex
                 }
             },
             Some(Node::Stmt(_)) => (),
-            _ => {
+            Some(_) | None => {
                 return false;
             },
         }

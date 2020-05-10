@@ -139,6 +139,7 @@ impl Constant {
                 .find(|r| r.map_or(true, |o| o != Ordering::Equal))
                 .unwrap_or_else(|| Some(l.len().cmp(&r.len()))),
             (&Self::Repeat(ref lv, ref ls), &Self::Repeat(ref rv, ref rs)) => {
+                #[allow(clippy::match_wildcard_for_single_variants)]
                 match Self::partial_cmp(tcx, cmp_type, lv, rv) {
                     Some(Equal) => Some(ls.cmp(rs)),
                     x => x,
@@ -354,14 +355,14 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
             (Some(Constant::Vec(vec)), Some(Constant::Int(index))) => match vec.get(index as usize) {
                 Some(Constant::F32(x)) => Some(Constant::F32(*x)),
                 Some(Constant::F64(x)) => Some(Constant::F64(*x)),
-                _ => None,
+                Some(_) | None => None,
             },
             (Some(Constant::Vec(vec)), _) => {
                 if !vec.is_empty() && vec.iter().all(|x| *x == vec[0]) {
                     match vec.get(0) {
                         Some(Constant::F32(x)) => Some(Constant::F32(*x)),
                         Some(Constant::F64(x)) => Some(Constant::F64(*x)),
-                        _ => None,
+                        Some(_) | None => None,
                     }
                 } else {
                     None
@@ -532,7 +533,7 @@ pub fn miri_to_const(result: &ty::Const<'_>) -> Option<Constant> {
                         })
                         .collect::<Option<Vec<Constant>>>()
                         .map(Constant::Vec),
-                    _ => None,
+                    Some(_) | None => None,
                 },
                 ty::Float(FloatTy::F64) => match miri_to_const(len) {
                     Some(Constant::Int(len)) => alloc
@@ -546,7 +547,7 @@ pub fn miri_to_const(result: &ty::Const<'_>) -> Option<Constant> {
                         })
                         .collect::<Option<Vec<Constant>>>()
                         .map(Constant::Vec),
-                    _ => None,
+                    Some(_) | None => None,
                 },
                 // FIXME: implement other array type conversions.
                 _ => None,
