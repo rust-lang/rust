@@ -204,6 +204,8 @@ impl FlycheckThread {
             }
 
             CheckEvent::Msg(Message::BuildScriptExecuted(_msg)) => {}
+            CheckEvent::Msg(Message::BuildFinished(_)) => {}
+            CheckEvent::Msg(Message::TextLine(_)) => {}
             CheckEvent::Msg(Message::Unknown) => {}
         }
     }

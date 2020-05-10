@@ -18,7 +18,7 @@ memmap = "0.7"
 test_utils = { path = "../test_utils" }
 
 [dev-dependencies]
-cargo_metadata = "0.9.1"
+cargo_metadata = "0.10.0"
 difference = "2.0.0"
 # used as proc macro test target
-serde_derive = "=1.0.106"
+serde_derive = "1.0.106"

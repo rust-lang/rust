@@ -225,7 +225,7 @@ class AstInspector implements vscode.HoverProvider, vscode.DefinitionProvider, D
             return doc.positionAt(targetOffset);
         }
 
-        // Shitty workaround for crlf line endings
+        // Dirty workaround for crlf line endings
         // We are still in this prehistoric era of carriage returns here...
 
         let line = 0;

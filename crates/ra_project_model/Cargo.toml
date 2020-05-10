@@ -11,7 +11,7 @@ doctest = false
 log = "0.4.8"
 rustc-hash = "1.1.0"
 
-cargo_metadata = "0.9.1"
+cargo_metadata = "0.10.0"
 
 ra_arena = { path = "../ra_arena" }
 ra_cfg = { path = "../ra_cfg" }
