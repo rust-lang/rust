@@ -21,30 +21,26 @@ fn main() -> () {
                                          // + span: $DIR/issue-38669.rs:5:28: 5:33
                                          // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
         FakeRead(ForLet, _1);            // scope 0 at $DIR/issue-38669.rs:5:9: 5:25
-        goto -> bb2;                     // scope 1 at $DIR/issue-38669.rs:6:5: 11:6
+        goto -> bb1;                     // scope 1 at $DIR/issue-38669.rs:6:5: 11:6
     }
 
-    bb1 (cleanup): {
-        resume;                          // scope 0 at $DIR/issue-38669.rs:4:1: 12:2
+    bb1: {
+        falseUnwind -> [real: bb2, cleanup: bb6]; // scope 1 at $DIR/issue-38669.rs:6:5: 11:6
     }
 
     bb2: {
-        falseUnwind -> [real: bb3, cleanup: bb1]; // scope 1 at $DIR/issue-38669.rs:6:5: 11:6
-    }
-
-    bb3: {
         StorageLive(_3);                 // scope 1 at $DIR/issue-38669.rs:7:9: 9:10
         StorageLive(_4);                 // scope 1 at $DIR/issue-38669.rs:7:12: 7:24
         _4 = _1;                         // scope 1 at $DIR/issue-38669.rs:7:12: 7:24
         FakeRead(ForMatchedPlace, _4);   // scope 1 at $DIR/issue-38669.rs:7:12: 7:24
-        switchInt(_4) -> [false: bb5, otherwise: bb4]; // scope 1 at $DIR/issue-38669.rs:7:9: 9:10
+        switchInt(_4) -> [false: bb4, otherwise: bb3]; // scope 1 at $DIR/issue-38669.rs:7:9: 9:10
+    }
+
+    bb3: {
+        falseEdges -> [real: bb5, imaginary: bb4]; // scope 1 at $DIR/issue-38669.rs:7:9: 9:10
     }
 
     bb4: {
-        falseEdges -> [real: bb6, imaginary: bb5]; // scope 1 at $DIR/issue-38669.rs:7:9: 9:10
-    }
-
-    bb5: {
         _3 = const ();                   // scope 1 at $DIR/issue-38669.rs:7:9: 9:10
                                          // ty::Const
                                          // + ty: ()
@@ -68,10 +64,10 @@ fn main() -> () {
                                          // mir::Constant
                                          // + span: $DIR/issue-38669.rs:6:10: 11:6
                                          // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
-        goto -> bb2;                     // scope 1 at $DIR/issue-38669.rs:6:5: 11:6
+        goto -> bb1;                     // scope 1 at $DIR/issue-38669.rs:6:5: 11:6
     }
 
-    bb6: {
+    bb5: {
         _0 = const ();                   // scope 1 at $DIR/issue-38669.rs:8:13: 8:18
                                          // ty::Const
                                          // + ty: ()
@@ -83,5 +79,9 @@ fn main() -> () {
         StorageDead(_3);                 // scope 1 at $DIR/issue-38669.rs:9:9: 9:10
         StorageDead(_1);                 // scope 0 at $DIR/issue-38669.rs:12:1: 12:2
         return;                          // scope 0 at $DIR/issue-38669.rs:12:2: 12:2
+    }
+
+    bb6 (cleanup): {
+        resume;                          // scope 0 at $DIR/issue-38669.rs:4:1: 12:2
     }
 }
