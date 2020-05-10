@@ -1515,9 +1515,9 @@ impl ParenPat {
 ///
 /// ```
 /// let ❰ &mut foo ❱ = bar;
+///
+/// let ❰ & ❰ &mut ❰ &_ ❱ ❱ ❱ = baz;
 /// ```
-/// // TODO: clarify on the special case of double reference pattern
-/// // described in the link bellow
 ///
 /// [Reference](https://doc.rust-lang.org/reference/patterns.html#reference-patterns)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -2069,14 +2069,12 @@ pub struct Abi {
 }
 impl Abi {}
 /// Expression statement.
-/// Note: may be empty (i.e. only semicolon).
 ///
 /// ```
 /// ❰ 42; ❱
 /// ❰ foo(); ❱
 /// ❰ (); ❱
 /// ❰ {}; ❱
-/// ❰ /* empty */; ❱
 ///
 /// // constructions with trailing curly brace can omit the semicolon // TODO: clarify
 /// ❰ if bool_cond { } ❱
@@ -2707,6 +2705,8 @@ pub enum AttrInput {
     TokenTree(TokenTree),
 }
 /// Any kind of statement
+/// Note: there are no empty statements, these are just represented as
+/// bare semicolons without a dedicated statement ast node.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Stmt {
     LetStmt(LetStmt),

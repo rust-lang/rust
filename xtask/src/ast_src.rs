@@ -1349,9 +1349,9 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         ///
         /// ```
         /// let ❰ &mut foo ❱ = bar;
+        ///
+        /// let ❰ & ❰ &mut ❰ &_ ❱ ❱ ❱ = baz;
         /// ```
-        /// // TODO: clarify on the special case of double reference pattern
-        /// // described in the link bellow
         ///
         /// [Reference](https://doc.rust-lang.org/reference/patterns.html#reference-patterns)
         struct RefPat { T![&], T![mut], Pat }
@@ -1714,16 +1714,13 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         /// - [FFI function pointers reference](https://doc.rust-lang.org/reference/items/functions.html#functions)
         struct Abi { /*String*/ }
 
-        // TODO: clarify how empty statements are handled
         /// Expression statement.
-        /// Note: may be empty (i.e. only semicolon).
         ///
         /// ```
         /// ❰ 42; ❱
         /// ❰ foo(); ❱
         /// ❰ (); ❱
         /// ❰ {}; ❱
-        /// ❰ /* empty */; ❱
         ///
         /// // constructions with trailing curly brace can omit the semicolon // TODO: clarify
         /// ❰ if bool_cond { } ❱
@@ -2201,6 +2198,8 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         enum AttrInput { Literal, TokenTree }
 
         /// Any kind of statement
+        /// Note: there are no empty statements, these are just represented as
+        /// bare semicolons without a dedicated statement ast node.
         enum Stmt {
             LetStmt,
             ExprStmt,
