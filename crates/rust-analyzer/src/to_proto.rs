@@ -235,8 +235,10 @@ pub(crate) fn semantic_tokens(
     let mut builder = semantic_tokens::SemanticTokensBuilder::default();
 
     for highlight_range in highlights {
-        let (token_index, modifier_bitset) =
-            token_type_index_modifiers_bitself(highlight_range.highlight);
+        let (type_, mods) = semantic_token_type_and_modifiers(highlight_range.highlight);
+        let token_index = semantic_tokens::type_index(type_);
+        let modifier_bitset = mods.0;
+
         for mut text_range in line_index.lines(highlight_range.range) {
             if text[text_range].ends_with('\n') {
                 text_range =
@@ -250,7 +252,9 @@ pub(crate) fn semantic_tokens(
     builder.build()
 }
 
-fn token_type_index_modifiers_bitself(highlight: Highlight) -> (u32, u32) {
+fn semantic_token_type_and_modifiers(
+    highlight: Highlight,
+) -> (lsp_types::SemanticTokenType, semantic_tokens::ModifierSet) {
     let mut mods = semantic_tokens::ModifierSet::default();
     let type_ = match highlight.tag {
         HighlightTag::Struct => lsp_types::SemanticTokenType::STRUCT,
@@ -300,7 +304,7 @@ fn token_type_index_modifiers_bitself(highlight: Highlight) -> (u32, u32) {
         mods |= modifier;
     }
 
-    (semantic_tokens::type_index(type_), mods.0)
+    (type_, mods)
 }
 
 pub(crate) fn folding_range(
