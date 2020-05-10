@@ -434,3 +434,23 @@ fn test_array_from_slice() {
     let a: Result<Rc<[u32; 2]>, _> = r.clone().try_into();
     assert!(a.is_err());
 }
+
+#[test]
+fn test_fn() {
+    fn apply_fn_once<T>(v: T, f: impl FnOnce(T)) {
+        f(v)
+    }
+    fn apply_fn_mut<T>(v: T, mut f: impl FnMut(T)) {
+        f(v)
+    }
+    fn apply_fn<T>(v: T, f: impl Fn(T)) {
+        f(v)
+    }
+
+    let x = RefCell::new(0);
+    let f = Rc::new(|v: i32| *x.borrow_mut() += v);
+    apply_fn_once(1, f.clone());
+    apply_fn_mut(2, f.clone());
+    apply_fn(4, f.clone());
+    assert_eq!(*x.borrow(), 7);
+}
