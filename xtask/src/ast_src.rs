@@ -2010,21 +2010,6 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         /// [Reference](https://doc.rust-lang.org/reference/macros.html)
         struct MacroItems: ModuleItemOwner { }
 
-        // TODO: Idk what I am writing here, please don't believe these words.
-        // TODO: clarify @matklad @edwin0cheng
-        /// Macro statements is a node that holds an statements created by expanding a macro.
-        ///
-        /// ```
-        /// foo!(); // expands into some statements -v
-        ///         // ❰ foo_crate::bar(); ❱
-        /// ```
-        ///
-        /// [Reference](https://doc.rust-lang.org/reference/macros.html)
-        struct MacroStmts {
-            statements: [Stmt],
-            Expr,
-        }
-
         /// List of items in an extern block.
         ///
         /// ```
