@@ -1179,20 +1179,19 @@ fn add_pre_link_args(
     cmd.args(&sess.opts.debugging_opts.pre_link_args);
 }
 
-/// Add an LLD link script embedded in the target, if applicable.
-fn add_lld_link_script(
+/// Add a link script embedded in the target, if applicable.
+fn add_link_script(
     cmd: &mut dyn Linker,
     sess: &Session,
-    flavor: LinkerFlavor,
     tmpdir: &Path,
     crate_type: CrateType,
 ) {
-    match (flavor, crate_type, &sess.target.target.options.lld_link_script) {
-        (
-            LinkerFlavor::Lld(LldFlavor::Ld),
-            CrateType::Cdylib | CrateType::Executable,
-            Some(script),
-        ) => {
+    match (crate_type, &sess.target.target.options.link_script) {
+        (CrateType::Cdylib | CrateType::Executable, Some(script)) => {
+            if !sess.target.target.options.linker_is_gnu {
+                sess.fatal("can only use link script when linking with GNU-like linker");
+            }
+
             let file_name = ["rustc", &sess.target.target.llvm_target, "linkfile.ld"].join("-");
 
             let path = tmpdir.join(file_name);
@@ -1450,7 +1449,7 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     add_pre_link_args(cmd, sess, flavor, crate_type);
 
     // NO-OPT-OUT
-    add_lld_link_script(cmd, sess, flavor, tmpdir, crate_type);
+    add_link_script(cmd, sess, tmpdir, crate_type);
 
     // NO-OPT-OUT, OBJECT-FILES-NO, AUDIT-ORDER
     if sess.target.target.options.is_like_fuchsia {

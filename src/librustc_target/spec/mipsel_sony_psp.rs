@@ -27,6 +27,7 @@ pub fn target() -> TargetResult {
             cpu: "mips2".to_string(),
             executables: true,
             linker: Some("rust-lld".to_owned()),
+            linker_is_gnu: true,
             relocation_model: RelocModel::Static,
 
             // PSP FPU only supports single precision floats.
@@ -35,7 +36,7 @@ pub fn target() -> TargetResult {
             // PSP does not support trap-on-condition instructions.
             llvm_args: vec!["-mno-check-zero-division".to_string()],
             pre_link_args,
-            lld_link_script: Some(LINKER_SCRIPT.to_string()),
+            link_script: Some(LINKER_SCRIPT.to_string()),
             ..Default::default()
         },
     })
