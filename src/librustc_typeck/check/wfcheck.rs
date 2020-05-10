@@ -806,7 +806,11 @@ fn check_where_clauses<'tcx, 'fcx>(
 
     let mut predicates = predicates.instantiate_identity(fcx.tcx);
 
-    if let Some((return_ty, span)) = return_ty {
+    if let Some((mut return_ty, span)) = return_ty {
+        if return_ty.has_infer_types_or_consts() {
+            fcx.select_obligations_where_possible(false, |_| {});
+            return_ty = fcx.resolve_vars_if_possible(&return_ty);
+        }
         let opaque_types = check_opaque_types(tcx, fcx, def_id.expect_local(), span, return_ty);
         for _ in 0..opaque_types.len() {
             predicates.spans.push(span);
@@ -893,10 +897,16 @@ fn check_opaque_types<'fcx, 'tcx>(
                 trace!("check_opaque_types: opaque_ty, {:?}, {:?}", def_id, substs);
                 let generics = tcx.generics_of(def_id);
                 // Only check named `impl Trait` types defined in this crate.
-                // FIXME(eddyb) is  `generics.parent.is_none()` correct? It seems
-                // potentially risky wrt associated types in `impl`s.
-                if generics.parent.is_none() && def_id.is_local() {
+                if !def_id.is_local() {
+                    return ty;
+                }
                     let opaque_hir_id = tcx.hir().as_local_hir_id(def_id.expect_local());
+                if let hir::ItemKind::OpaqueTy(hir::OpaqueTy { impl_trait_fn: Some(_), .. }) =
+                    tcx.hir().expect_item(opaque_hir_id).kind
+                {
+                    // Don't check return position impl trait.
+                    return ty;
+                }
                     if may_define_opaque_type(tcx, fn_def_id, opaque_hir_id) {
                         trace!("check_opaque_types: may define, generics={:#?}", generics);
                         let mut seen_params: FxHashMap<_, Vec<_>> = FxHashMap::default();
@@ -924,9 +934,7 @@ fn check_opaque_types<'fcx, 'tcx>(
                                     true
                                 }
 
-                                GenericArgKind::Const(ct) => {
-                                    matches!(ct.val, ty::ConstKind::Param(_))
-                                }
+                            GenericArgKind::Const(ct) => matches!(ct.val, ty::ConstKind::Param(_)),
                             };
 
                             if arg_is_param {
@@ -988,7 +996,6 @@ fn check_opaque_types<'fcx, 'tcx>(
                             substituted_predicates.push(substituted_pred);
                         }
                     }
-                } // if is_named_opaque_type
             } // if let Opaque
             ty
         },
