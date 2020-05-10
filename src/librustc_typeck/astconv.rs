@@ -2839,8 +2839,26 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 self.res_to_ty(opt_self_ty, path, false)
             }
             hir::TyKind::Def(item_id, ref lifetimes) => {
-                let did = tcx.hir().local_def_id(item_id.id);
-                self.impl_trait_ty_to_ty(did.to_def_id(), lifetimes)
+                let opaque_ty = tcx.hir().expect_item(item_id.id);
+                let def_id = tcx.hir().local_def_id(item_id.id).to_def_id();
+
+                match opaque_ty.kind {
+                    // RPIT (return position impl trait)
+                    // Only lifetimes mentioned in the impl Trait predicate are
+                    // captured by the opaque type, so the lifetime parameters
+                    // from the parent item need to be replaced with `'static`.
+                    hir::ItemKind::OpaqueTy(hir::OpaqueTy { impl_trait_fn: Some(_), .. }) => {
+                        self.impl_trait_ty_to_ty(def_id, lifetimes)
+                    }
+                    // This arm is for `impl Trait` in the types of statics,
+                    // constants, locals and type aliases. These capture all
+                    // parent lifetimes, so they can use their identity subst.
+                    hir::ItemKind::OpaqueTy(hir::OpaqueTy { impl_trait_fn: None, .. }) => {
+                        let substs = InternalSubsts::identity_for_item(tcx, def_id);
+                        tcx.mk_opaque(def_id, substs)
+                    }
+                    ref i => bug!("`impl Trait` pointed to non-opaque type?? {:#?}", i),
+                }
             }
             hir::TyKind::Path(hir::QPath::TypeRelative(ref qself, ref segment)) => {
                 debug!("ast_ty_to_ty: qself={:?} segment={:?}", qself, segment);

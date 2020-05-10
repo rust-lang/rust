@@ -8,20 +8,20 @@ LL |     type Item = impl Bug;
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
 
 error[E0277]: the trait bound `(): Bug` is not satisfied
-  --> $DIR/issue-60371.rs:8:5
+  --> $DIR/issue-60371.rs:8:17
    |
 LL |     type Item = impl Bug;
-   |     ^^^^^^^^^^^^^^^^^^^^^ the trait `Bug` is not implemented for `()`
+   |                 ^^^^^^^^ the trait `Bug` is not implemented for `()`
    |
    = help: the following implementations were found:
              <&() as Bug>
    = note: the return type of a function must have a statically known size
 
 error: could not find defining uses
-  --> $DIR/issue-60371.rs:8:5
+  --> $DIR/issue-60371.rs:8:17
    |
 LL |     type Item = impl Bug;
-   |     ^^^^^^^^^^^^^^^^^^^^^
+   |                 ^^^^^^^^
 
 error: aborting due to 3 previous errors
 

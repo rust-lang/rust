@@ -1371,8 +1371,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         let hir_bounds = self.with_hir_id_owner(opaque_ty_node_id, lower_bounds);
 
-        let (lifetimes, lifetime_defs) =
-            self.lifetimes_from_impl_trait_bounds(opaque_ty_node_id, opaque_ty_def_id, &hir_bounds);
+        let (lifetimes, lifetime_defs): (&[_], &[_]) = if fn_def_id.is_some() {
+            self.lifetimes_from_impl_trait_bounds(opaque_ty_node_id, opaque_ty_def_id, &hir_bounds)
+        } else {
+            // Non return-position impl trait captures all of the lifetimes of
+            // the parent item.
+            (&[], &[])
+        };
 
         debug!("lower_opaque_impl_trait: lifetimes={:#?}", lifetimes,);
 

@@ -62,10 +62,10 @@ LL |     type U = impl Trait;
    |     -------------------- not a function or closure
 
 error: could not find defining uses
-  --> $DIR/inline-trait-and-foreign-items.rs:26:5
+  --> $DIR/inline-trait-and-foreign-items.rs:26:14
    |
 LL |     type U = impl Trait;
-   |     ^^^^^^^^^^^^^^^^^^^^
+   |              ^^^^^^^^^^
 
 error: aborting due to 6 previous errors; 2 warnings emitted
 
