@@ -33,7 +33,7 @@
 +                                          // + literal: Const { ty: &[&i32; 1], val: Unevaluated(DefId(0:6 ~ const_promotion_extern_static[317d]::BAR[0]), [], Some(promoted[0])) }
 +         _2 = &(*_6);                     // scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:35
           _1 = move _2 as &[&i32] (Pointer(Unsize)); // scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:35
-          _0 = const core::slice::<impl [&i32]>::as_ptr(move _1) -> [return: bb2, unwind: bb1]; // scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:44
+          _0 = const core::slice::<impl [&i32]>::as_ptr(move _1) -> [return: bb1, unwind: bb2]; // scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:44
                                            // ty::Const
                                            // + ty: for<'r> fn(&'r [&i32]) -> *const &i32 {core::slice::<impl [&i32]>::as_ptr}
                                            // + val: Value(Scalar(<ZST>))
@@ -42,14 +42,14 @@
                                            // + literal: Const { ty: for<'r> fn(&'r [&i32]) -> *const &i32 {core::slice::<impl [&i32]>::as_ptr}, val: Value(Scalar(<ZST>)) }
       }
   
-      bb1 (cleanup): {
-          resume;                          // scope 0 at $DIR/const-promotion-extern-static.rs:9:1: 9:45
-      }
-  
-      bb2: {
+      bb1: {
 -         StorageDead(_5);                 // scope 0 at $DIR/const-promotion-extern-static.rs:9:43: 9:44
 -         StorageDead(_3);                 // scope 0 at $DIR/const-promotion-extern-static.rs:9:43: 9:44
           return;                          // scope 0 at $DIR/const-promotion-extern-static.rs:9:1: 9:45
+      }
+  
+      bb2 (cleanup): {
+          resume;                          // scope 0 at $DIR/const-promotion-extern-static.rs:9:1: 9:45
       }
 - }
 - 

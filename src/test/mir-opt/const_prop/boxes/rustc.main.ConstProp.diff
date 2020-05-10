@@ -35,14 +35,10 @@
                                            // + span: $DIR/boxes.rs:12:25: 12:26
                                            // + literal: Const { ty: i32, val: Value(Scalar(0x00000000)) }
           StorageDead(_2);                 // scope 0 at $DIR/boxes.rs:12:25: 12:26
-          drop(_3) -> [return: bb2, unwind: bb1]; // scope 0 at $DIR/boxes.rs:12:26: 12:27
+          drop(_3) -> [return: bb1, unwind: bb2]; // scope 0 at $DIR/boxes.rs:12:26: 12:27
       }
   
-      bb1 (cleanup): {
-          resume;                          // scope 0 at $DIR/boxes.rs:11:1: 13:2
-      }
-  
-      bb2: {
+      bb1: {
           StorageDead(_3);                 // scope 0 at $DIR/boxes.rs:12:26: 12:27
           _0 = const ();                   // scope 0 at $DIR/boxes.rs:11:11: 13:2
                                            // ty::Const
@@ -53,6 +49,10 @@
                                            // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           StorageDead(_1);                 // scope 0 at $DIR/boxes.rs:13:1: 13:2
           return;                          // scope 0 at $DIR/boxes.rs:13:2: 13:2
+      }
+  
+      bb2 (cleanup): {
+          resume;                          // scope 0 at $DIR/boxes.rs:11:1: 13:2
       }
   }
   
