@@ -1,7 +1,7 @@
 ; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -instsimplify -adce -loop-deletion -correlated-propagation -simplifycfg -S | FileCheck %s
 
 ; XFAIL: *
-; NOTE THAT IN THIS VERSION THERE IS NO NEED TO CACHE (todo)
+; NOTE THAT IN THIS VERSION THERE IS NO NEED TO CACHE (todo propagate alias analysis information from caller context to callee)
 
 source_filename = "/mnt/Data/git/Enzyme/enzyme/test/Integration/eigensumsqdyn.cpp"
 target datalayout = "e-m:e-i64:64-f80:128-n8:16:32:64-S128"

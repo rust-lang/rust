@@ -1,5 +1,4 @@
 ; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -sroa -simplifycfg -instcombine -adce -S | FileCheck %s
-
 ; XFAIL: *
 ; note this fails because for some reason num_elems gep is considered constant and doesn't duplicate, etc, etc
 
@@ -39,7 +38,7 @@ declare void @__enzyme_autodiff(i8*, %struct.S*, %struct.S*, %struct.S*, %struct
 !8 = !{!3, !7, i64 8}
 !9 = !{!3, !7, i64 16}
 
-; CHECK: define internal {} @diffedup(%struct.S* nocapture readonly %from, %struct.S* %"from'", %struct.S* nocapture %to, %struct.S* %"to'") {
+; CHECK: define internal {} @diffedup(%struct.S* nocapture readonly %from, %struct.S* nocapture %"from'", %struct.S* nocapture %to, %struct.S* nocapture %"to'") {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %"num_elems'ipge" = getelementptr inbounds %struct.S, %struct.S* %"to'", i64 0, i32 0
 ; CHECK-NEXT:   %num_elems = getelementptr inbounds %struct.S, %struct.S* %to, i64 0, i32 0

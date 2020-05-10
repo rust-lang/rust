@@ -68,7 +68,7 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA) {//, Lo
   if (enzyme_print)
       llvm::errs() << "prefn:\n" << *fn << "\n";
 
-  std::set<unsigned> constants;
+  std::vector<DIFFE_TYPE> constants;
   SmallVector<Value*,2> args;
 
   unsigned truei = 0;
@@ -85,6 +85,8 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA) {//, Lo
         auto MS = cast<MDString>(av->getMetadata())->getString();
         if (MS == "diffe_dup") {
             ty = DIFFE_TYPE::DUP_ARG;
+        } else if(MS == "diffe_dupnoneed") {
+            ty = DIFFE_TYPE::DUP_NONEED;
         } else if(MS == "diffe_out") {
             llvm::errs() << "saw metadata for diffe_out\n";
             ty = DIFFE_TYPE::OUT_DIFF;
@@ -100,6 +102,10 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA) {//, Lo
         auto MS = gv->getName();
         if (MS == "diffe_dup") {
             ty = DIFFE_TYPE::DUP_ARG;
+            i++;
+            res = CI->getArgOperand(i);
+        } else if(MS == "diffe_dupnoneed") {
+            ty = DIFFE_TYPE::DUP_NONEED;
             i++;
             res = CI->getArgOperand(i);
         } else if(MS == "diffe_out") {
@@ -119,8 +125,7 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA) {//, Lo
 
     //llvm::errs() << "considering arg " << *res << " argnum " << truei << "\n";
 
-    if (ty == DIFFE_TYPE::CONSTANT)
-      constants.insert(truei);
+    constants.push_back(ty);
 
     assert(truei < FT->getNumParams());
     if (PTy != res->getType()) {
@@ -143,7 +148,7 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA) {//, Lo
     }
 
     args.push_back(res);
-    if (ty == DIFFE_TYPE::DUP_ARG) {
+    if (ty == DIFFE_TYPE::DUP_ARG || ty == DIFFE_TYPE::DUP_NONEED) {
       i++;
 
       Value* res = CI->getArgOperand(i);
@@ -181,6 +186,8 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA) {//, Lo
 
   bool differentialReturn = cast<Function>(fn)->getReturnType()->isFPOrFPVectorTy();
 
+  DIFFE_TYPE retType = whatType(cast<Function>(fn)->getReturnType());
+
   std::map<Argument*, bool> volatile_args;
   NewFnTypeInfo type_args(cast<Function>(fn));
   for(auto &a : type_args.function->args()) {
@@ -204,7 +211,7 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA) {//, Lo
   TypeAnalysis TA;
   type_args = TA.analyzeFunction(type_args).getAnalyzedTypeInfo();
 
-  auto newFunc = CreatePrimalAndGradient(cast<Function>(fn), constants, TLI, TA, AA, /*should return*/false, differentialReturn, /*dretPtr*/false, /*topLevel*/true, /*addedType*/nullptr, type_args, volatile_args, /*index mapping*/nullptr); //llvm::Optional<std::map<std::pair<Instruction*, std::string>, unsigned>>({}));
+  auto newFunc = CreatePrimalAndGradient(cast<Function>(fn), retType, constants, TLI, TA, AA, /*should return*/false, /*dretPtr*/false, /*topLevel*/true, /*addedType*/nullptr, type_args, volatile_args, /*index mapping*/nullptr); //llvm::Optional<std::map<std::pair<Instruction*, std::string>, unsigned>>({}));
 
   if (differentialReturn)
     args.push_back(ConstantFP::get(cast<Function>(fn)->getReturnType(), 1.0));

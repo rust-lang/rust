@@ -1,22 +1,23 @@
 ; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -sroa -instsimplify -simplifycfg -S | FileCheck %s
-; XFAIL: *
+
 declare double @__enzyme_autodiff(i8*, ...)
 
 ; Function Attrs: norecurse nounwind uwtable
-define void @derivative(double* %mat, double* %dmat) {
+define void @derivative(i32* %mat, i32* %dmat) {
 entry:
-  %call11 = call double (i8*, ...) @__enzyme_autodiff(i8* bitcast (double (double*)* @called to i8*), double* %mat, double* %dmat)
+  %call11 = call double (i8*, ...) @__enzyme_autodiff(i8* bitcast (double (i32*)* @called to i8*), metadata !"diffe_dup", i32* %mat, i32* %dmat)
   ret void
 }
 
 ; Function Attrs: inlinehint nounwind uwtable
-define linkonce_odr dso_local double @called(double* %mat) {
+define linkonce_odr dso_local double @called(i32* %z) {
 entry:
   %res = alloca double, align 8
-  %z = bitcast double* %mat to i32*
   %call6 = call i64 @zz(i32* %z)
-  %fp = uitofp i64 %call6 to double   
-  %call17 = call double @identity(double* %mat)
+  %fp = uitofp i64 %call6 to double 
+  %mat = bitcast i32* %z to double*
+  %mat1 = getelementptr inbounds double, double* %mat, i64 1
+  %call17 = call double @identity(double* %mat1)
   %mul = fmul double %call17, %fp
   ret double %mul
 }
@@ -65,3 +66,119 @@ entry:
 !7 = !{!"any pointer", !4, i64 0}
 !14 = !{!"_ZTSN5Eigen12DenseStorageIdLin1ELin1ELin1ELi0EEE", !7, i64 0, !9, i64 8, !9, i64 16}
 !15 = !{!14, !9, i64 16}
+
+; CHECK: define internal {} @diffecalled(i32* %z, i32* %"z'", double %differeturn) {
+; CHECK-ENZYME: entry:
+; CHECK-ENZYME:   %call6_augmented = call { { { { {}, {}, i8*, i8* } } }, i64 } @augmented_zz(i32* %z, i32* %"z'")
+; CHECK-ENZYME:   %call6 = extractvalue { { { { {}, {}, i8*, i8* } } }, i64 } %call6_augmented, 1
+; CHECK-ENZYME:   %fp_unwrap = uitofp i64 %call6 to double
+; CHECK-ENZYME:   %m0diffecall17 = fmul fast double %differeturn, %fp_unwrap
+; CHECK-ENZYME:   %mat_unwrap = bitcast i32* %z to double*
+; CHECK-ENZYME:   %mat1_unwrap = getelementptr inbounds double, double* %mat_unwrap, i64 1
+; CHECK-ENZYME:   %"mat'ipc_unwrap" = bitcast i32* %"z'" to double*
+; CHECK-ENZYME:   %"mat1'ipg_unwrap" = getelementptr inbounds double, double* %"mat'ipc_unwrap", i64 1
+; CHECK-ENZYME:   %0 = call {} @diffeidentity(double* %mat1_unwrap, double* %"mat1'ipg_unwrap", double %m0diffecall17)
+; CHECK-ENZYME:   %_unwrap = extractvalue { { { { {}, {}, i8*, i8* } } }, i64 } %call6_augmented, 0
+; CHECK-ENZYME:   %1 = call {} @diffezz(i32* %z, i32* %"z'", { { { {}, {}, i8*, i8* } } } %_unwrap)
+; CHECK-ENZYME:   ret {} undef
+; CHECK-ENZYME: }
+
+; CHECK: define internal {} @diffeidentity(double* %x, double* %"x'", double %differeturn) {
+; CHECK-ENZYME: entry:
+; CHECK-ENZYME:   %0 = load double, double* %"x'"
+; CHECK-ENZYME:   %1 = fadd fast double %0, %differeturn
+; CHECK-ENZYME:   store double %1, double* %"x'"
+; CHECK-ENZYME:   ret {} undef
+; CHECK-ENZYME: }
+
+; CHECK: define internal { {}, i64 } @augmented_cols(i64* %this, i64* %"this'") {
+; CHECK-ENZYME: entry:
+; CHECK-ENZYME:   %a0 = load i64, i64* %this, align 8, !tbaa !0
+; CHECK-ENZYME:   %.fca.1.insert = insertvalue { {}, i64 } undef, i64 %a0, 1
+; CHECK-ENZYME:   ret { {}, i64 } %.fca.1.insert
+; CHECK-ENZYME: }
+
+; CHECK: define internal { {}, i8*, i8* } @augmented_cast(i32* %this, i32* %"this'") {
+; CHECK-ENZYME: entry:
+; CHECK-ENZYME:   %"'ipc" = bitcast i32* %"this'" to i8*
+; CHECK-ENZYME:   %0 = bitcast i32* %this to i8*
+; CHECK-ENZYME:   %.fca.1.insert = insertvalue { {}, i8*, i8* } undef, i8* %0, 1
+; CHECK-ENZYME:   %.fca.2.insert = insertvalue { {}, i8*, i8* } %.fca.1.insert, i8* %"'ipc", 2
+; CHECK-ENZYME:   ret { {}, i8*, i8* } %.fca.2.insert
+; CHECK-ENZYME: }
+
+; CHECK: define internal { { {}, {}, i8*, i8* }, i64 } @augmented_foo(i32* %this, i32* %"this'") {
+; CHECK-ENZYME: entry:
+; CHECK-ENZYME:   %call_augmented = call { {}, i8*, i8* } @augmented_cast(i32* %this, i32* %"this'")
+; CHECK-ENZYME:   %antiptr_call = extractvalue { {}, i8*, i8* } %call_augmented, 2
+; CHECK-ENZYME:   %call = extractvalue { {}, i8*, i8* } %call_augmented, 1
+; CHECK-ENZYME:   %"'ipc" = bitcast i8* %antiptr_call to i64*
+; CHECK-ENZYME:   %0 = bitcast i8* %call to i64*
+; CHECK-ENZYME:   %call2_augmented = call { {}, i64 } @augmented_cols(i64* %0, i64* %"'ipc")
+; CHECK-ENZYME:   %call2 = extractvalue { {}, i64 } %call2_augmented, 1
+; CHECK-ENZYME:   %.fca.0.2.insert = insertvalue { { {}, {}, i8*, i8* }, i64 } undef, i8* %antiptr_call, 0, 2
+; CHECK-ENZYME:   %.fca.0.3.insert = insertvalue { { {}, {}, i8*, i8* }, i64 } %.fca.0.2.insert, i8* %call, 0, 3
+; CHECK-ENZYME:   %.fca.1.insert = insertvalue { { {}, {}, i8*, i8* }, i64 } %.fca.0.3.insert, i64 %call2, 1
+; CHECK-ENZYME:   ret { { {}, {}, i8*, i8* }, i64 } %.fca.1.insert
+; CHECK-ENZYME: }
+
+; CHECK: define internal { { { {}, {}, i8*, i8* } }, i64 } @augmented_sub(i32* %this, i32* %"this'") {
+; CHECK-ENZYME: entry:
+; CHECK-ENZYME:   %call_augmented = call { { {}, {}, i8*, i8* }, i64 } @augmented_foo(i32* %this, i32* %"this'")
+; CHECK-ENZYME:   %subcache = extractvalue { { {}, {}, i8*, i8* }, i64 } %call_augmented, 0
+; CHECK-ENZYME:   %subcache.fca.2.extract = extractvalue { {}, {}, i8*, i8* } %subcache, 2
+; CHECK-ENZYME:   %subcache.fca.3.extract = extractvalue { {}, {}, i8*, i8* } %subcache, 3
+; CHECK-ENZYME:   %call = extractvalue { { {}, {}, i8*, i8* }, i64 } %call_augmented, 1
+; CHECK-ENZYME:   %.fca.0.0.2.insert = insertvalue { { { {}, {}, i8*, i8* } }, i64 } undef, i8* %subcache.fca.2.extract, 0, 0, 2
+; CHECK-ENZYME:   %.fca.0.0.3.insert = insertvalue { { { {}, {}, i8*, i8* } }, i64 } %.fca.0.0.2.insert, i8* %subcache.fca.3.extract, 0, 0, 3
+; CHECK-ENZYME:   %.fca.1.insert = insertvalue { { { {}, {}, i8*, i8* } }, i64 } %.fca.0.0.3.insert, i64 %call, 1
+; CHECK-ENZYME:   ret { { { {}, {}, i8*, i8* } }, i64 } %.fca.1.insert
+; CHECK-ENZYME: }
+
+; CHECK: define internal { { { { {}, {}, i8*, i8* } } }, i64 } @augmented_zz(i32* %this, i32* %"this'") {
+; CHECK-ENZYME: entry:
+; CHECK-ENZYME:   %call_augmented = call { { { {}, {}, i8*, i8* } }, i64 } @augmented_sub(i32* %this, i32* %"this'")
+; CHECK-ENZYME:   %subcache = extractvalue { { { {}, {}, i8*, i8* } }, i64 } %call_augmented, 0
+; CHECK-ENZYME:   %subcache.fca.0.2.extract = extractvalue { { {}, {}, i8*, i8* } } %subcache, 0, 2
+; CHECK-ENZYME:   %subcache.fca.0.3.extract = extractvalue { { {}, {}, i8*, i8* } } %subcache, 0, 3
+; CHECK-ENZYME:   %call = extractvalue { { { {}, {}, i8*, i8* } }, i64 } %call_augmented, 1
+; CHECK-ENZYME:   %.fca.0.0.0.2.insert = insertvalue { { { { {}, {}, i8*, i8* } } }, i64 } undef, i8* %subcache.fca.0.2.extract, 0, 0, 0, 2
+; CHECK-ENZYME:   %.fca.0.0.0.3.insert = insertvalue { { { { {}, {}, i8*, i8* } } }, i64 } %.fca.0.0.0.2.insert, i8* %subcache.fca.0.3.extract, 0, 0, 0, 3
+; CHECK-ENZYME:   %.fca.1.insert = insertvalue { { { { {}, {}, i8*, i8* } } }, i64 } %.fca.0.0.0.3.insert, i64 %call, 1
+; CHECK-ENZYME:   ret { { { { {}, {}, i8*, i8* } } }, i64 } %.fca.1.insert
+; CHECK-ENZYME: }
+
+; CHECK: define internal {} @diffezz(i32* %this, i32* %"this'", { { { {}, {}, i8*, i8* } } } %tapeArg) {
+; CHECK-ENZYME: entry:
+; CHECK-ENZYME:   %_unwrap = extractvalue { { { {}, {}, i8*, i8* } } } %tapeArg, 0
+; CHECK-ENZYME:   %0 = call {} @diffesub(i32* %this, i32* %"this'", { { {}, {}, i8*, i8* } } %_unwrap)
+; CHECK-ENZYME:   ret {} undef
+; CHECK-ENZYME: }
+
+; CHECK: define internal {} @diffesub(i32* %this, i32* %"this'", { { {}, {}, i8*, i8* } } %tapeArg) {
+; CHECK-ENZYME: entry:
+; CHECK-ENZYME:   %_unwrap = extractvalue { { {}, {}, i8*, i8* } } %tapeArg, 0
+; CHECK-ENZYME:   %0 = call {} @diffefoo(i32* %this, i32* %"this'", { {}, {}, i8*, i8* } %_unwrap)
+; CHECK-ENZYME:   ret {} undef
+; CHECK-ENZYME: }
+
+; CHECK: define internal {} @diffefoo(i32* %this, i32* %"this'", { {}, {}, i8*, i8* } %tapeArg) {
+; CHECK-ENZYME: entry:
+; CHECK-ENZYME:   %call = extractvalue { {}, {}, i8*, i8* } %tapeArg, 3
+; CHECK-ENZYME:   %_unwrap = bitcast i8* %call to i64*
+; CHECK-ENZYME:   %"call'ip_phi_fromtape_unwrap" = extractvalue { {}, {}, i8*, i8* } %tapeArg, 2
+; CHECK-ENZYME:   %"'ipc_unwrap" = bitcast i8* %"call'ip_phi_fromtape_unwrap" to i64*
+; CHECK-ENZYME:   %0 = call {} @diffecols(i64* %_unwrap, i64* %"'ipc_unwrap", {} undef)
+; CHECK-ENZYME:   %1 = call {} @diffecast(i32* %this, i32* %"this'", {} undef)
+; CHECK-ENZYME:   ret {} undef
+; CHECK-ENZYME: }
+
+; CHECK: define internal {} @diffecols(i64* %this, i64* %"this'", {} %tapeArg) {
+; CHECK-ENZYME: entry:
+; CHECK-ENZYME:   ret {} undef
+; CHECK-ENZYME: }
+
+; CHECK: define internal {} @diffecast(i32* %this, i32* %"this'", {} %tapeArg) {
+; CHECK-ENZYME: entry:
+; CHECK-ENZYME:   ret {} undef
+; CHECK-ENZYME: }

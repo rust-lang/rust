@@ -204,7 +204,7 @@ bool GradientUtils::shouldRecompute(Value* val, const ValueToValueMapTy& availab
   return true;
 }
 
-GradientUtils* GradientUtils::CreateFromClone(Function *todiff, TargetLibraryInfo &TLI, TypeAnalysis &TA, AAResults &AA, const std::set<unsigned> & constant_args, bool returnUsed, bool differentialReturn, std::map<AugmentedStruct, unsigned> &returnMapping ) {
+GradientUtils* GradientUtils::CreateFromClone(Function *todiff, TargetLibraryInfo &TLI, TypeAnalysis &TA, AAResults &AA, DIFFE_TYPE retType, const std::vector<DIFFE_TYPE> & constant_args, bool returnUsed, std::map<AugmentedStruct, unsigned> &returnMapping ) {
     assert(!todiff->empty());
 
     // Since this is forward pass this should always return the tape (at index 0)
@@ -220,7 +220,7 @@ GradientUtils* GradientUtils::CreateFromClone(Function *todiff, TargetLibraryInf
     }
 
     // We don't need to differentially return something that we know is not a pointer (or somehow needed for shadow analysis)
-    if (differentialReturn && !todiff->getReturnType()->isFPOrFPVectorTy()) {
+    if (retType == DIFFE_TYPE::DUP_ARG || retType == DIFFE_TYPE::DUP_NONEED) {
         assert(!todiff->getReturnType()->isEmptyTy());
         assert(!todiff->getReturnType()->isVoidTy());
         assert(!todiff->getReturnType()->isFPOrFPVectorTy());
@@ -239,7 +239,8 @@ GradientUtils* GradientUtils::CreateFromClone(Function *todiff, TargetLibraryInf
     SmallPtrSet<Value*,20> nonconstant;
     SmallPtrSet<Value*,2> returnvals;
     ValueToValueMapTy originalToNew;
-    auto newFunc = CloneFunctionWithReturns(/*topLevel*/false, todiff, AA, TLI, invertedPointers, constant_args, constants, nonconstant, returnvals, /*returnValue*/returnValue, /*differentialReturn*/differentialReturn, "fakeaugmented_"+todiff->getName(), &originalToNew, /*diffeReturnArg*/false, /*additionalArg*/nullptr);
+
+    auto newFunc = CloneFunctionWithReturns(/*topLevel*/false, todiff, AA, TLI, invertedPointers, constant_args, constants, nonconstant, returnvals, /*returnValue*/returnValue, "fakeaugmented_"+todiff->getName(), &originalToNew, /*diffeReturnArg*/false, /*additionalArg*/nullptr);
     //llvm::errs() <<  "returnvals:" << todiff->getName() << " \n";
     //for (auto a : returnvals ) {
     //    llvm::errs() <<"   + " << *a << "\n";
@@ -248,29 +249,31 @@ GradientUtils* GradientUtils::CreateFromClone(Function *todiff, TargetLibraryInf
     SmallPtrSet<Value*,4> constant_values;
     SmallPtrSet<Value*,4> nonconstant_values;
 
-    if (differentialReturn) {
-        for(auto a : returnvals) {
-                nonconstant_values.insert(a);
-        }
+    if (retType != DIFFE_TYPE::CONSTANT) {
+      for(auto a : returnvals) {
+          nonconstant_values.insert(a);
+      }
     }
 
     auto res = new GradientUtils(newFunc, todiff, TLI, TA, AA, invertedPointers, constants, nonconstant, constant_values, nonconstant_values, originalToNew);
     return res;
 }
 
-DiffeGradientUtils* DiffeGradientUtils::CreateFromClone(bool topLevel, Function *todiff, TargetLibraryInfo &TLI, TypeAnalysis &TA, AAResults &AA, const std::set<unsigned> & constant_args, ReturnType returnValue, bool differentialReturn, Type* additionalArg) {
+DiffeGradientUtils* DiffeGradientUtils::CreateFromClone(bool topLevel, Function *todiff, TargetLibraryInfo &TLI, TypeAnalysis &TA, AAResults &AA, DIFFE_TYPE retType, const std::vector<DIFFE_TYPE>& constant_args, ReturnType returnValue, Type* additionalArg) {
   assert(!todiff->empty());
   ValueToValueMapTy invertedPointers;
   SmallPtrSet<Value*,4> constants;
   SmallPtrSet<Value*,20> nonconstant;
   SmallPtrSet<Value*,2> returnvals;
   ValueToValueMapTy originalToNew;
-  auto newFunc = CloneFunctionWithReturns(topLevel, todiff, AA, TLI, invertedPointers, constant_args, constants, nonconstant, returnvals, returnValue, differentialReturn, "diffe"+todiff->getName(), &originalToNew, /*diffeReturnArg*/true, additionalArg);
+
+  bool diffeReturnArg = retType == DIFFE_TYPE::OUT_DIFF;
+  auto newFunc = CloneFunctionWithReturns(topLevel, todiff, AA, TLI, invertedPointers, constant_args, constants, nonconstant, returnvals, returnValue, "diffe"+todiff->getName(), &originalToNew, /*diffeReturnArg*/diffeReturnArg, additionalArg);
   SmallPtrSet<Value*,4> constant_values;
   SmallPtrSet<Value*,4> nonconstant_values;
-  if (differentialReturn) {
+  if (retType != DIFFE_TYPE::CONSTANT) {
     for(auto a : returnvals) {
-        nonconstant_values.insert(a);
+      nonconstant_values.insert(a);
     }
   }
 
@@ -337,14 +340,27 @@ Value* GradientUtils::invertPointerM(Value* oval, IRBuilder<>& BuilderM) {
       //  otherwise subcalls will not be able to lookup the augmenteddata/subdata (triggering an assertion failure, among much worse)
       std::map<Argument*, bool> uncacheable_args;
       NewFnTypeInfo type_args(fn);
+
       //conservatively assume that we can only cache existing floating types (i.e. that all args are uncacheable)
+      std::vector<DIFFE_TYPE> types;
       for(auto &a : fn->args()) {
           uncacheable_args[&a] = !a.getType()->isFPOrFPVectorTy();
           type_args.first.insert(std::pair<Argument*, ValueData>(&a, DataType(IntType::Unknown)));
           type_args.knownValues.insert(std::pair<Argument*, std::set<int64_t>>(&a, {}));
+          DIFFE_TYPE typ;
+          if (a.getType()->isFPOrFPVectorTy()) {
+            typ = DIFFE_TYPE::OUT_DIFF;
+          } else {
+            typ = DIFFE_TYPE::DUP_ARG;
+          }
+          types.push_back(typ);
       }
-      auto& augdata = CreateAugmentedPrimal(fn, /*constant_args*/{}, TLI, TA, AA, /*differentialReturn*/fn->getReturnType()->isFPOrFPVectorTy(), /*returnUsed*/!fn->getReturnType()->isEmptyTy() && !fn->getReturnType()->isVoidTy(), type_args, uncacheable_args, /*forceAnonymousTape*/true);
-      auto newf = CreatePrimalAndGradient(fn, /*constant_args*/{}, TLI, TA, AA, /*returnValue*/false, /*differentialReturn*/fn->getReturnType()->isFPOrFPVectorTy(), /*dretPtr*/false, /*topLevel*/false, /*additionalArg*/Type::getInt8PtrTy(fn->getContext()), type_args, uncacheable_args, /*map*/&augdata); //llvm::Optional<std::map<std::pair<llvm::Instruction*, std::string>, unsigned int> >({}));
+
+      DIFFE_TYPE retType = fn->getReturnType()->isFPOrFPVectorTy() ? DIFFE_TYPE::OUT_DIFF : DIFFE_TYPE::DUP_ARG;
+      if (fn->getReturnType()->isVoidTy() || fn->getReturnType()->isEmptyTy()) retType = DIFFE_TYPE::CONSTANT;
+
+      auto& augdata = CreateAugmentedPrimal(fn, retType, /*constant_args*/types, TLI, TA, AA, /*returnUsed*/!fn->getReturnType()->isEmptyTy() && !fn->getReturnType()->isVoidTy(), type_args, uncacheable_args, /*forceAnonymousTape*/true);
+      auto newf = CreatePrimalAndGradient(fn, retType, /*constant_args*/types, TLI, TA, AA, /*returnValue*/false, /*dretPtr*/false, /*topLevel*/false, /*additionalArg*/Type::getInt8PtrTy(fn->getContext()), type_args, uncacheable_args, /*map*/&augdata); //llvm::Optional<std::map<std::pair<llvm::Instruction*, std::string>, unsigned int> >({}));
       auto cdata = ConstantStruct::get(StructType::get(newf->getContext(), {augdata.fn->getType(), newf->getType()}), {augdata.fn, newf});
       std::string globalname = ("_enzyme_" + fn->getName() + "'").str();
       auto GV = newf->getParent()->getNamedValue(globalname);

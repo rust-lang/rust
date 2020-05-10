@@ -475,10 +475,9 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
   return NewF;
 }
 
-Function *CloneFunctionWithReturns(bool topLevel, Function *&F, AAResults &AA, TargetLibraryInfo &TLI, ValueToValueMapTy& ptrInputs, const std::set<unsigned>& constant_args, SmallPtrSetImpl<Value*> &constants, SmallPtrSetImpl<Value*> &nonconstant, SmallPtrSetImpl<Value*> &returnvals, ReturnType returnValue, bool differentialReturn, Twine name, ValueToValueMapTy *VMapO, bool diffeReturnArg, llvm::Type* additionalArg) {
+Function *CloneFunctionWithReturns(bool topLevel, Function *&F, AAResults &AA, TargetLibraryInfo &TLI, ValueToValueMapTy& ptrInputs, const std::vector<DIFFE_TYPE>& constant_args, SmallPtrSetImpl<Value*> &constants, SmallPtrSetImpl<Value*> &nonconstant, SmallPtrSetImpl<Value*> &returnvals, ReturnType returnValue, Twine name, ValueToValueMapTy *VMapO, bool diffeReturnArg, llvm::Type* additionalArg) {
  assert(!F->empty());
  F = preprocessForClone(F, AA, TLI, topLevel);
- diffeReturnArg &= differentialReturn;
  std::vector<Type*> RetTypes;
  if (returnValue == ReturnType::ArgsWithReturn || returnValue == ReturnType::ArgsWithTwoReturns)
    RetTypes.push_back(F->getReturnType());
@@ -494,13 +493,9 @@ Function *CloneFunctionWithReturns(bool topLevel, Function *&F, AAResults &AA, T
  unsigned argno = 0;
  for (const Argument &I : F->args()) {
      ArgTypes.push_back(I.getType());
-     if (constant_args.count(argno)) {
-        argno++;
-        continue;
-     }
-     if (!I.getType()->isFPOrFPVectorTy()) {
+     if (constant_args[argno] == DIFFE_TYPE::DUP_ARG || constant_args[argno] == DIFFE_TYPE::DUP_NONEED) {
        ArgTypes.push_back(I.getType());
-     } else {
+     } else if (constant_args[argno] == DIFFE_TYPE::OUT_DIFF) {
        RetTypes.push_back(I.getType());
      }
      argno++;
@@ -516,7 +511,7 @@ Function *CloneFunctionWithReturns(bool topLevel, Function *&F, AAResults &AA, T
     }
   }
 
- if (diffeReturnArg && F->getReturnType()->isFPOrFPVectorTy()) {
+ if (diffeReturnArg) {
     assert(!F->getReturnType()->isVoidTy());
     ArgTypes.push_back(F->getReturnType());
  }
@@ -542,7 +537,7 @@ Function *CloneFunctionWithReturns(bool topLevel, Function *&F, AAResults &AA, T
 
  // Create the new function...
  Function *NewF = Function::Create(FTy, F->getLinkage(), name, F->getParent());
- if (diffeReturnArg && F->getReturnType()->isFPOrFPVectorTy()) {
+ if (diffeReturnArg) {
     auto I = NewF->arg_end();
     I--;
     if(additionalArg)
@@ -559,14 +554,12 @@ Function *CloneFunctionWithReturns(bool topLevel, Function *&F, AAResults &AA, T
     unsigned ii = 0;
     for (auto i=F->arg_begin(), j=NewF->arg_begin(); i != F->arg_end(); ) {
        VMap[i] = j;
-       bool isconstant = (constant_args.count(ii) > 0);
-       auto itype = i->getType();
        j++;
        i++;
-       ii++;
-       if (!isconstant && ( !itype->isFPOrFPVectorTy() ) ) {
+       if (constant_args[ii] == DIFFE_TYPE::DUP_ARG || constant_args[ii] == DIFFE_TYPE::DUP_NONEED) {
          j++;
        }
+       ii++;
     }
  }
 
@@ -588,9 +581,7 @@ Function *CloneFunctionWithReturns(bool topLevel, Function *&F, AAResults &AA, T
  bool hasPtrInput = false;
  unsigned ii = 0, jj = 0;
  for (auto i=F->arg_begin(), j=NewF->arg_begin(); i != F->arg_end(); ) {
-   bool isconstant = (constant_args.count(ii) > 0);
-
-   if (isconstant) {
+   if (constant_args[ii] == DIFFE_TYPE::CONSTANT) {
       constants.insert(i);
       if (printconst)
         llvm::errs() << "in new function " << NewF->getName() << " constant arg " << *j << "\n";
@@ -600,7 +591,7 @@ Function *CloneFunctionWithReturns(bool topLevel, Function *&F, AAResults &AA, T
         llvm::errs() << "in new function " << NewF->getName() << " nonconstant arg " << *j << "\n";
    }
 
-   if (!isconstant && ( !i->getType()->isFPOrFPVectorTy() ) ) {
+   if (constant_args[ii] == DIFFE_TYPE::DUP_ARG || constant_args[ii] == DIFFE_TYPE::DUP_NONEED) {
      hasPtrInput = true;
      ptrInputs[i] = (j+1);
      if (F->hasParamAttribute(ii, Attribute::NoCapture)) {
@@ -615,15 +606,14 @@ Function *CloneFunctionWithReturns(bool topLevel, Function *&F, AAResults &AA, T
      jj+=2;
 
      i++;
-     ii++;
 
    } else {
      j->setName(i->getName());
      j++;
      jj++;
      i++;
-     ii++;
    }
+   ii++;
  }
 
  if (hasPtrInput) {

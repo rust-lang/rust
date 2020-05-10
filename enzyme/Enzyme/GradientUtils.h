@@ -804,7 +804,7 @@ public:
     }
 
 public:
-  static GradientUtils* CreateFromClone(Function *todiff, TargetLibraryInfo &TLI, TypeAnalysis &TA, AAResults &AA, const std::set<unsigned> & constant_args, bool returnUsed, bool differentialReturn, std::map<AugmentedStruct, unsigned>& returnMapping);
+  static GradientUtils* CreateFromClone(Function *todiff, TargetLibraryInfo &TLI, TypeAnalysis &TA, AAResults &AA, DIFFE_TYPE retType, const std::vector<DIFFE_TYPE> & constant_args, bool returnUsed, std::map<AugmentedStruct, unsigned>& returnMapping);
 
   StoreInst* setPtrDiffe(Value* ptr, Value* newval, IRBuilder<> &BuilderM) {
     if (auto inst = dyn_cast<Instruction>(ptr)) {
@@ -1858,7 +1858,7 @@ class DiffeGradientUtils : public GradientUtils {
 
 public:
   ValueToValueMapTy differentials;
-  static DiffeGradientUtils* CreateFromClone(bool topLevel, Function *todiff, TargetLibraryInfo &TLI, TypeAnalysis &TA, AAResults &AA, const std::set<unsigned> & constant_args, ReturnType returnValue, bool differentialReturn, Type* additionalArg);
+  static DiffeGradientUtils* CreateFromClone(bool topLevel, Function *todiff, TargetLibraryInfo &TLI, TypeAnalysis &TA, AAResults &AA, DIFFE_TYPE retType, const std::vector<DIFFE_TYPE> & constant_args, ReturnType returnValue, Type* additionalArg);
 
 private:
   Value* getDifferential(Value *val) {

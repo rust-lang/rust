@@ -109,7 +109,8 @@ enum class ReturnType {
 enum class DIFFE_TYPE {
   OUT_DIFF=0, // add differential to output struct
   DUP_ARG=1,  // duplicate the argument and store differential inside
-  CONSTANT=2  // no differential
+  CONSTANT=2, // no differential
+  DUP_NONEED=3// duplicate this argument and store differential inside, but don't need the forward
 };
 
 static inline std::string tostring(DIFFE_TYPE t) {
@@ -120,6 +121,8 @@ static inline std::string tostring(DIFFE_TYPE t) {
         return "CONSTANT";
       case DIFFE_TYPE::DUP_ARG:
         return "DUP_ARG";
+      case DIFFE_TYPE::DUP_NONEED:
+        return "DUP_NONEED";
       default:
         assert(0 && "illegal diffetype");
         return "";
@@ -134,6 +137,10 @@ static inline DIFFE_TYPE whatType(llvm::Type* arg, std::set<llvm::Type*> seen = 
   if (seen.find(arg) != seen.end()) return DIFFE_TYPE::CONSTANT;
   seen.insert(arg);
 
+  if (arg->isVoidTy() || arg->isEmptyTy()) {
+    return DIFFE_TYPE::CONSTANT;
+  }
+
   if (arg->isPointerTy()) {
     switch(whatType(llvm::cast<llvm::PointerType>(arg)->getElementType(), seen)) {
       case DIFFE_TYPE::OUT_DIFF:
@@ -142,6 +149,8 @@ static inline DIFFE_TYPE whatType(llvm::Type* arg, std::set<llvm::Type*> seen = 
         return DIFFE_TYPE::CONSTANT;
       case DIFFE_TYPE::DUP_ARG:
         return DIFFE_TYPE::DUP_ARG;
+      case DIFFE_TYPE::DUP_NONEED:
+        llvm_unreachable("impossible case");
     }
     assert(arg);
     llvm::errs() << "arg: " << *arg << "\n";
@@ -165,6 +174,8 @@ static inline DIFFE_TYPE whatType(llvm::Type* arg, std::set<llvm::Type*> seen = 
                 case DIFFE_TYPE::DUP_ARG:
                   ty = DIFFE_TYPE::DUP_ARG;
                   return ty;
+                case DIFFE_TYPE::DUP_NONEED:
+                  llvm_unreachable("impossible case");
               }
         case DIFFE_TYPE::CONSTANT:
               switch(ty) {
@@ -176,9 +187,13 @@ static inline DIFFE_TYPE whatType(llvm::Type* arg, std::set<llvm::Type*> seen = 
                 case DIFFE_TYPE::DUP_ARG:
                   ty = DIFFE_TYPE::DUP_ARG;
                   return ty;
+                case DIFFE_TYPE::DUP_NONEED:
+                  llvm_unreachable("impossible case");
               }
         case DIFFE_TYPE::DUP_ARG:
             return DIFFE_TYPE::DUP_ARG;
+        case DIFFE_TYPE::DUP_NONEED:
+          llvm_unreachable("impossible case");
       }
     }
 
