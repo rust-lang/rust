@@ -3059,7 +3059,7 @@ impl Rewrite for ast::ForeignItem {
         // FIXME: this may be a faulty span from libsyntax.
         let span = mk_sp(self.span.lo(), self.span.hi() - BytePos(1));
 
-        let item_str: String = match self.kind {
+        let item_str = match self.kind {
             ast::ForeignItemKind::Fn(_, ref fn_sig, ref generics, _) => rewrite_fn_base(
                 context,
                 shape.indent,
