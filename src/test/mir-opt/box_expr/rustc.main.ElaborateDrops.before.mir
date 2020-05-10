@@ -25,7 +25,7 @@ fn main() -> () {
 
     bb1: {
         _1 = move _2;                    // scope 0 at $DIR/box_expr.rs:7:13: 7:25
-        drop(_2) -> bb2;                 // scope 0 at $DIR/box_expr.rs:7:24: 7:25
+        drop(_2) -> [return: bb2, unwind: bb6]; // scope 0 at $DIR/box_expr.rs:7:24: 7:25
     }
 
     bb2: {
