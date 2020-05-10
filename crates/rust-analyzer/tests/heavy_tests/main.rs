@@ -3,15 +3,16 @@ mod support;
 use std::{collections::HashMap, path::PathBuf, time::Instant};
 
 use lsp_types::{
-    CodeActionContext, DidOpenTextDocumentParams, DocumentFormattingParams, FormattingOptions,
-    GotoDefinitionParams, HoverParams, PartialResultParams, Position, Range, TextDocumentItem,
-    TextDocumentPositionParams, WorkDoneProgressParams,
+    notification::DidOpenTextDocument,
+    request::{
+        CodeActionRequest, Completion, Formatting, GotoDefinition, GotoTypeDefinition, HoverRequest,
+    },
+    CodeActionContext, CodeActionParams, CompletionParams, DidOpenTextDocumentParams,
+    DocumentFormattingParams, FormattingOptions, GotoDefinitionParams, HoverParams,
+    PartialResultParams, Position, Range, TextDocumentItem, TextDocumentPositionParams,
+    WorkDoneProgressParams,
 };
-use rust_analyzer::req::{
-    CodeActionParams, CodeActionRequest, Completion, CompletionParams, DidOpenTextDocument,
-    Formatting, GotoDefinition, GotoTypeDefinition, HoverRequest, OnEnter, Runnables,
-    RunnablesParams,
-};
+use rust_analyzer::lsp_ext::{OnEnter, Runnables, RunnablesParams};
 use serde_json::json;
 use tempfile::TempDir;
 use test_utils::skip_slow_tests;

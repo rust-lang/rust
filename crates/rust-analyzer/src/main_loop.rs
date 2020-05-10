@@ -37,13 +37,12 @@ use threadpool::ThreadPool;
 
 use crate::{
     config::{Config, FilesWatcher},
-    conv::{ConvWith, TryConvWith},
     diagnostics::DiagnosticTask,
+    from_proto, lsp_ext,
     main_loop::{
         pending_requests::{PendingRequest, PendingRequests},
         subscriptions::Subscriptions,
     },
-    req,
     world::{WorldSnapshot, WorldState},
     Result,
 };
@@ -104,7 +103,7 @@ pub fn main_loop(ws_roots: Vec<PathBuf>, config: Config, connection: Connection)
 
             if project_roots.is_empty() && config.notifications.cargo_toml_not_found {
                 show_message(
-                    req::MessageType::Error,
+                    lsp_types::MessageType::Error,
                     format!(
                         "rust-analyzer failed to discover workspace, no Cargo.toml found, dirs searched: {}",
                         ws_roots.iter().format_with(", ", |it, f| f(&it.display()))
@@ -124,7 +123,7 @@ pub fn main_loop(ws_roots: Vec<PathBuf>, config: Config, connection: Connection)
                     .map_err(|err| {
                         log::error!("failed to load workspace: {:#}", err);
                         show_message(
-                            req::MessageType::Error,
+                            lsp_types::MessageType::Error,
                             format!("rust-analyzer failed to load workspace: {:#}", err),
                             &connection.sender,
                         );
@@ -142,23 +141,25 @@ pub fn main_loop(ws_roots: Vec<PathBuf>, config: Config, connection: Connection)
             .collect::<std::result::Result<Vec<_>, _>>()?;
 
         if let FilesWatcher::Client = config.files.watcher {
-            let registration_options = req::DidChangeWatchedFilesRegistrationOptions {
+            let registration_options = lsp_types::DidChangeWatchedFilesRegistrationOptions {
                 watchers: workspaces
                     .iter()
                     .flat_map(ProjectWorkspace::to_roots)
                     .filter(PackageRoot::is_member)
                     .map(|root| format!("{}/**/*.rs", root.path().display()))
-                    .map(|glob_pattern| req::FileSystemWatcher { glob_pattern, kind: None })
+                    .map(|glob_pattern| lsp_types::FileSystemWatcher { glob_pattern, kind: None })
                     .collect(),
             };
-            let registration = req::Registration {
+            let registration = lsp_types::Registration {
                 id: "file-watcher".to_string(),
                 method: "workspace/didChangeWatchedFiles".to_string(),
                 register_options: Some(serde_json::to_value(registration_options).unwrap()),
             };
-            let params = req::RegistrationParams { registrations: vec![registration] };
-            let request =
-                request_new::<req::RegisterCapability>(loop_state.next_request_id(), params);
+            let params = lsp_types::RegistrationParams { registrations: vec![registration] };
+            let request = request_new::<lsp_types::request::RegisterCapability>(
+                loop_state.next_request_id(),
+                params,
+            );
             connection.sender.send(request.into()).unwrap();
         }
 
@@ -258,14 +259,14 @@ impl fmt::Debug for Event {
 
         match self {
             Event::Msg(Message::Notification(not)) => {
-                if notification_is::<req::DidOpenTextDocument>(not)
-                    || notification_is::<req::DidChangeTextDocument>(not)
+                if notification_is::<lsp_types::notification::DidOpenTextDocument>(not)
+                    || notification_is::<lsp_types::notification::DidChangeTextDocument>(not)
                 {
                     return debug_verbose_not(not, f);
                 }
             }
             Event::Task(Task::Notify(not)) => {
-                if notification_is::<req::PublishDiagnostics>(not) {
+                if notification_is::<lsp_types::notification::PublishDiagnostics>(not) {
                     return debug_verbose_not(not, f);
                 }
             }
@@ -450,7 +451,7 @@ fn loop_turn(
         log::error!("overly long loop turn: {:?}", loop_duration);
         if env::var("RA_PROFILE").is_ok() {
             show_message(
-                req::MessageType::Error,
+                lsp_types::MessageType::Error,
                 format!("overly long loop turn: {:?}", loop_duration),
                 &connection.sender,
             );
@@ -500,45 +501,51 @@ fn on_request(
         request_received,
     };
     pool_dispatcher
-        .on_sync::<req::CollectGarbage>(|s, ()| Ok(s.collect_garbage()))?
-        .on_sync::<req::JoinLines>(|s, p| handlers::handle_join_lines(s.snapshot(), p))?
-        .on_sync::<req::OnEnter>(|s, p| handlers::handle_on_enter(s.snapshot(), p))?
-        .on_sync::<req::SelectionRangeRequest>(|s, p| {
+        .on_sync::<lsp_ext::CollectGarbage>(|s, ()| Ok(s.collect_garbage()))?
+        .on_sync::<lsp_ext::JoinLines>(|s, p| handlers::handle_join_lines(s.snapshot(), p))?
+        .on_sync::<lsp_ext::OnEnter>(|s, p| handlers::handle_on_enter(s.snapshot(), p))?
+        .on_sync::<lsp_types::request::SelectionRangeRequest>(|s, p| {
             handlers::handle_selection_range(s.snapshot(), p)
         })?
-        .on_sync::<req::FindMatchingBrace>(|s, p| {
+        .on_sync::<lsp_ext::FindMatchingBrace>(|s, p| {
             handlers::handle_find_matching_brace(s.snapshot(), p)
         })?
-        .on::<req::AnalyzerStatus>(handlers::handle_analyzer_status)?
-        .on::<req::SyntaxTree>(handlers::handle_syntax_tree)?
-        .on::<req::ExpandMacro>(handlers::handle_expand_macro)?
-        .on::<req::OnTypeFormatting>(handlers::handle_on_type_formatting)?
-        .on::<req::DocumentSymbolRequest>(handlers::handle_document_symbol)?
-        .on::<req::WorkspaceSymbol>(handlers::handle_workspace_symbol)?
-        .on::<req::GotoDefinition>(handlers::handle_goto_definition)?
-        .on::<req::GotoImplementation>(handlers::handle_goto_implementation)?
-        .on::<req::GotoTypeDefinition>(handlers::handle_goto_type_definition)?
-        .on::<req::ParentModule>(handlers::handle_parent_module)?
-        .on::<req::Runnables>(handlers::handle_runnables)?
-        .on::<req::Completion>(handlers::handle_completion)?
-        .on::<req::CodeActionRequest>(handlers::handle_code_action)?
-        .on::<req::CodeLensRequest>(handlers::handle_code_lens)?
-        .on::<req::CodeLensResolve>(handlers::handle_code_lens_resolve)?
-        .on::<req::FoldingRangeRequest>(handlers::handle_folding_range)?
-        .on::<req::SignatureHelpRequest>(handlers::handle_signature_help)?
-        .on::<req::HoverRequest>(handlers::handle_hover)?
-        .on::<req::PrepareRenameRequest>(handlers::handle_prepare_rename)?
-        .on::<req::Rename>(handlers::handle_rename)?
-        .on::<req::References>(handlers::handle_references)?
-        .on::<req::Formatting>(handlers::handle_formatting)?
-        .on::<req::DocumentHighlightRequest>(handlers::handle_document_highlight)?
-        .on::<req::InlayHints>(handlers::handle_inlay_hints)?
-        .on::<req::CallHierarchyPrepare>(handlers::handle_call_hierarchy_prepare)?
-        .on::<req::CallHierarchyIncomingCalls>(handlers::handle_call_hierarchy_incoming)?
-        .on::<req::CallHierarchyOutgoingCalls>(handlers::handle_call_hierarchy_outgoing)?
-        .on::<req::SemanticTokensRequest>(handlers::handle_semantic_tokens)?
-        .on::<req::SemanticTokensRangeRequest>(handlers::handle_semantic_tokens_range)?
-        .on::<req::Ssr>(handlers::handle_ssr)?
+        .on::<lsp_ext::AnalyzerStatus>(handlers::handle_analyzer_status)?
+        .on::<lsp_ext::SyntaxTree>(handlers::handle_syntax_tree)?
+        .on::<lsp_ext::ExpandMacro>(handlers::handle_expand_macro)?
+        .on::<lsp_ext::ParentModule>(handlers::handle_parent_module)?
+        .on::<lsp_ext::Runnables>(handlers::handle_runnables)?
+        .on::<lsp_ext::InlayHints>(handlers::handle_inlay_hints)?
+        .on::<lsp_types::request::OnTypeFormatting>(handlers::handle_on_type_formatting)?
+        .on::<lsp_types::request::DocumentSymbolRequest>(handlers::handle_document_symbol)?
+        .on::<lsp_types::request::WorkspaceSymbol>(handlers::handle_workspace_symbol)?
+        .on::<lsp_types::request::GotoDefinition>(handlers::handle_goto_definition)?
+        .on::<lsp_types::request::GotoImplementation>(handlers::handle_goto_implementation)?
+        .on::<lsp_types::request::GotoTypeDefinition>(handlers::handle_goto_type_definition)?
+        .on::<lsp_types::request::Completion>(handlers::handle_completion)?
+        .on::<lsp_types::request::CodeActionRequest>(handlers::handle_code_action)?
+        .on::<lsp_types::request::CodeLensRequest>(handlers::handle_code_lens)?
+        .on::<lsp_types::request::CodeLensResolve>(handlers::handle_code_lens_resolve)?
+        .on::<lsp_types::request::FoldingRangeRequest>(handlers::handle_folding_range)?
+        .on::<lsp_types::request::SignatureHelpRequest>(handlers::handle_signature_help)?
+        .on::<lsp_types::request::HoverRequest>(handlers::handle_hover)?
+        .on::<lsp_types::request::PrepareRenameRequest>(handlers::handle_prepare_rename)?
+        .on::<lsp_types::request::Rename>(handlers::handle_rename)?
+        .on::<lsp_types::request::References>(handlers::handle_references)?
+        .on::<lsp_types::request::Formatting>(handlers::handle_formatting)?
+        .on::<lsp_types::request::DocumentHighlightRequest>(handlers::handle_document_highlight)?
+        .on::<lsp_types::request::CallHierarchyPrepare>(handlers::handle_call_hierarchy_prepare)?
+        .on::<lsp_types::request::CallHierarchyIncomingCalls>(
+            handlers::handle_call_hierarchy_incoming,
+        )?
+        .on::<lsp_types::request::CallHierarchyOutgoingCalls>(
+            handlers::handle_call_hierarchy_outgoing,
+        )?
+        .on::<lsp_types::request::SemanticTokensRequest>(handlers::handle_semantic_tokens)?
+        .on::<lsp_types::request::SemanticTokensRangeRequest>(
+            handlers::handle_semantic_tokens_range,
+        )?
+        .on::<lsp_ext::Ssr>(handlers::handle_ssr)?
         .finish();
     Ok(())
 }
@@ -549,7 +556,7 @@ fn on_notification(
     loop_state: &mut LoopState,
     not: Notification,
 ) -> Result<()> {
-    let not = match notification_cast::<req::Cancel>(not) {
+    let not = match notification_cast::<lsp_types::notification::Cancel>(not) {
         Ok(params) => {
             let id: RequestId = match params.id {
                 NumberOrString::Number(id) => id.into(),
@@ -567,7 +574,7 @@ fn on_notification(
         }
         Err(not) => not,
     };
-    let not = match notification_cast::<req::DidOpenTextDocument>(not) {
+    let not = match notification_cast::<lsp_types::notification::DidOpenTextDocument>(not) {
         Ok(params) => {
             let uri = params.text_document.uri;
             let path = uri.to_file_path().map_err(|()| format!("invalid uri: {}", uri))?;
@@ -580,11 +587,11 @@ fn on_notification(
         }
         Err(not) => not,
     };
-    let not = match notification_cast::<req::DidChangeTextDocument>(not) {
+    let not = match notification_cast::<lsp_types::notification::DidChangeTextDocument>(not) {
         Ok(params) => {
             let DidChangeTextDocumentParams { text_document, content_changes } = params;
             let world = state.snapshot();
-            let file_id = text_document.try_conv_with(&world)?;
+            let file_id = from_proto::file_id(&world, &text_document.uri)?;
             let line_index = world.analysis().file_line_index(file_id)?;
             let uri = text_document.uri;
             let path = uri.to_file_path().map_err(|()| format!("invalid uri: {}", uri))?;
@@ -595,7 +602,7 @@ fn on_notification(
         }
         Err(not) => not,
     };
-    let not = match notification_cast::<req::DidSaveTextDocument>(not) {
+    let not = match notification_cast::<lsp_types::notification::DidSaveTextDocument>(not) {
         Ok(_params) => {
             if let Some(flycheck) = &state.flycheck {
                 flycheck.update();
@@ -604,7 +611,7 @@ fn on_notification(
         }
         Err(not) => not,
     };
-    let not = match notification_cast::<req::DidCloseTextDocument>(not) {
+    let not = match notification_cast::<lsp_types::notification::DidCloseTextDocument>(not) {
         Ok(params) => {
             let uri = params.text_document.uri;
             let path = uri.to_file_path().map_err(|()| format!("invalid uri: {}", uri))?;
@@ -612,22 +619,22 @@ fn on_notification(
                 loop_state.subscriptions.remove_sub(FileId(file_id.0));
             }
             let params =
-                req::PublishDiagnosticsParams { uri, diagnostics: Vec::new(), version: None };
-            let not = notification_new::<req::PublishDiagnostics>(params);
+                lsp_types::PublishDiagnosticsParams { uri, diagnostics: Vec::new(), version: None };
+            let not = notification_new::<lsp_types::notification::PublishDiagnostics>(params);
             msg_sender.send(not.into()).unwrap();
             return Ok(());
         }
         Err(not) => not,
     };
-    let not = match notification_cast::<req::DidChangeConfiguration>(not) {
+    let not = match notification_cast::<lsp_types::notification::DidChangeConfiguration>(not) {
         Ok(_) => {
             // As stated in https://github.com/microsoft/language-server-protocol/issues/676,
             // this notification's parameters should be ignored and the actual config queried separately.
             let request_id = loop_state.next_request_id();
-            let request = request_new::<req::WorkspaceConfiguration>(
+            let request = request_new::<lsp_types::request::WorkspaceConfiguration>(
                 request_id.clone(),
-                req::ConfigurationParams {
-                    items: vec![req::ConfigurationItem {
+                lsp_types::ConfigurationParams {
+                    items: vec![lsp_types::ConfigurationItem {
                         scope_uri: None,
                         section: Some("rust-analyzer".to_string()),
                     }],
@@ -640,7 +647,7 @@ fn on_notification(
         }
         Err(not) => not,
     };
-    let not = match notification_cast::<req::DidChangeWatchedFiles>(not) {
+    let not = match notification_cast::<lsp_types::notification::DidChangeWatchedFiles>(not) {
         Ok(params) => {
             let mut vfs = state.vfs.write();
             for change in params.changes {
@@ -694,7 +701,7 @@ fn apply_document_changes(
                     line_index = Cow::Owned(LineIndex::new(&old_text));
                 }
                 index_valid = IndexValid::UpToLineExclusive(range.start.line);
-                let range = range.conv_with(&line_index);
+                let range = from_proto::text_range(&line_index, range);
                 let mut text = old_text.to_owned();
                 match std::panic::catch_unwind(move || {
                     text.replace_range(Range::<usize>::from(range), &change.text);
@@ -742,11 +749,11 @@ fn on_check_task(
         }
 
         CheckTask::Status(progress) => {
-            let params = req::ProgressParams {
-                token: req::ProgressToken::String("rustAnalyzer/cargoWatcher".to_string()),
-                value: req::ProgressParamsValue::WorkDone(progress),
+            let params = lsp_types::ProgressParams {
+                token: lsp_types::ProgressToken::String("rustAnalyzer/cargoWatcher".to_string()),
+                value: lsp_types::ProgressParamsValue::WorkDone(progress),
             };
-            let not = notification_new::<req::Progress>(params);
+            let not = notification_new::<lsp_types::notification::Progress>(params);
             task_sender.send(Task::Notify(not)).unwrap();
         }
     };
@@ -768,8 +775,8 @@ fn on_diagnostic_task(task: DiagnosticTask, msg_sender: &Sender<Message>, state:
         };
 
         let diagnostics = state.diagnostics.diagnostics_for(file_id).cloned().collect();
-        let params = req::PublishDiagnosticsParams { uri, diagnostics, version: None };
-        let not = notification_new::<req::PublishDiagnostics>(params);
+        let params = lsp_types::PublishDiagnosticsParams { uri, diagnostics, version: None };
+        let not = notification_new::<lsp_types::notification::PublishDiagnostics>(params);
         msg_sender.send(not.into()).unwrap();
     }
 }
@@ -782,10 +789,10 @@ fn send_startup_progress(sender: &Sender<Message>, loop_state: &mut LoopState) {
 
     match (prev, loop_state.workspace_loaded) {
         (None, false) => {
-            let work_done_progress_create = request_new::<req::WorkDoneProgressCreate>(
+            let work_done_progress_create = request_new::<lsp_types::request::WorkDoneProgressCreate>(
                 loop_state.next_request_id(),
                 WorkDoneProgressCreateParams {
-                    token: req::ProgressToken::String("rustAnalyzer/startup".into()),
+                    token: lsp_types::ProgressToken::String("rustAnalyzer/startup".into()),
                 },
             );
             sender.send(work_done_progress_create.into()).unwrap();
@@ -817,10 +824,11 @@ fn send_startup_progress(sender: &Sender<Message>, loop_state: &mut LoopState) {
     }
 
     fn send_startup_progress_notif(sender: &Sender<Message>, work_done_progress: WorkDoneProgress) {
-        let notif = notification_new::<req::Progress>(req::ProgressParams {
-            token: req::ProgressToken::String("rustAnalyzer/startup".into()),
-            value: req::ProgressParamsValue::WorkDone(work_done_progress),
-        });
+        let notif =
+            notification_new::<lsp_types::notification::Progress>(lsp_types::ProgressParams {
+                token: lsp_types::ProgressToken::String("rustAnalyzer/startup".into()),
+                value: lsp_types::ProgressParamsValue::WorkDone(work_done_progress),
+            });
         sender.send(notif.into()).unwrap();
     }
 }
@@ -842,7 +850,7 @@ impl<'a> PoolDispatcher<'a> {
         f: fn(&mut WorldState, R::Params) -> Result<R::Result>,
     ) -> Result<&mut Self>
     where
-        R: req::Request + 'static,
+        R: lsp_types::request::Request + 'static,
         R::Params: DeserializeOwned + panic::UnwindSafe + 'static,
         R::Result: Serialize + 'static,
     {
@@ -865,7 +873,7 @@ impl<'a> PoolDispatcher<'a> {
     /// Dispatches the request onto thread pool
     fn on<R>(&mut self, f: fn(WorldSnapshot, R::Params) -> Result<R::Result>) -> Result<&mut Self>
     where
-        R: req::Request + 'static,
+        R: lsp_types::request::Request + 'static,
         R::Params: DeserializeOwned + Send + 'static,
         R::Result: Serialize + 'static,
     {
@@ -891,7 +899,7 @@ impl<'a> PoolDispatcher<'a> {
 
     fn parse<R>(&mut self) -> Option<(RequestId, R::Params)>
     where
-        R: req::Request + 'static,
+        R: lsp_types::request::Request + 'static,
         R::Params: DeserializeOwned + 'static,
     {
         let req = self.req.take()?;
@@ -928,7 +936,7 @@ impl<'a> PoolDispatcher<'a> {
 
 fn result_to_task<R>(id: RequestId, result: Result<R::Result>) -> Task
 where
-    R: req::Request + 'static,
+    R: lsp_types::request::Request + 'static,
     R::Params: DeserializeOwned + 'static,
     R::Result: Serialize + 'static,
 {
@@ -984,10 +992,14 @@ fn update_file_notifications_on_threadpool(
     }
 }
 
-pub fn show_message(typ: req::MessageType, message: impl Into<String>, sender: &Sender<Message>) {
+pub fn show_message(
+    typ: lsp_types::MessageType,
+    message: impl Into<String>,
+    sender: &Sender<Message>,
+) {
     let message = message.into();
-    let params = req::ShowMessageParams { typ, message };
-    let not = notification_new::<req::ShowMessage>(params);
+    let params = lsp_types::ShowMessageParams { typ, message };
+    let not = notification_new::<lsp_types::notification::ShowMessage>(params);
     sender.send(not.into()).unwrap();
 }
 
