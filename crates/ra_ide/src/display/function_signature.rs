@@ -129,7 +129,6 @@ impl FunctionSignature {
         for field in variant.fields(db).into_iter() {
             let ty = field.signature_ty(db);
             let raw_param = format!("{}", ty.display(db));
-            dbg!(&raw_param);
             if let Some(param_type) = raw_param.split(':').nth(1).and_then(|it| it.get(1..)) {
                 parameter_types.push(param_type.to_string());
             } else {
