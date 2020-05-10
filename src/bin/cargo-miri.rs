@@ -342,7 +342,6 @@ path = "lib.rs"
         command.env("RUSTC", find_miri());
     }
     command.env("MIRI_BE_RUSTC", "1");
-    command.env("RUSTFLAGS", miri::miri_default_args().join(" "));
     // Finally run it!
     if command.status().expect("failed to run xargo").success().not() {
         show_error(format!("Failed to run xargo"));
