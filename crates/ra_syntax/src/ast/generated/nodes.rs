@@ -1872,7 +1872,8 @@ impl Attr {
     pub fn input(&self) -> Option<AttrInput> { support::child(&self.syntax) }
     pub fn r_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![']']) }
 }
-/// // TODO: clarify on this AST type @edwin0cheng
+/// Stores a list of lexer tokens and other `TokenTree`s.
+/// It appears in attributes, macro_rules and macro call (foo!)
 ///
 /// ```
 /// macro_call! ❰ { my syntax here } ❱;

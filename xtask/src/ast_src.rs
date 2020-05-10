@@ -1577,7 +1577,8 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         /// [Reference](https://doc.rust-lang.org/reference/attributes.html)
         struct Attr { T![#], T![!], T!['['], Path, T![=], input: AttrInput, T![']'] }
 
-        /// // TODO: clarify on this AST type @edwin0cheng
+        /// Stores a list of lexer tokens and other `TokenTree`s.
+        /// It appears in attributes, macro_rules and macro call (foo!)
         ///
         /// ```
         /// macro_call! ❰ { my syntax here } ❱;
