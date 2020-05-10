@@ -1,41 +1,40 @@
 language: generic
+os:
+- linux
+- osx
+dist: xenial
 cache:
   # Cache the global cargo directory, but NOT the local `target` directory which
   # we cannot reuse anyway when the nightly changes (and it grows quite large
   # over time).
   directories:
-    - $HOME/.cargo
-    - $HOME/.rustup
-
-os:
-- linux
-- osx
-dist: xenial
+  - $HOME/.cargo
+  - $HOME/.rustup
 
 # Run in PRs and for bors, but not on master.
+branches:
+  only:
+  - master
+  - auto
+  - try
 if: branch = auto OR branch = try OR type = pull_request OR type = cron
 
-env:
-  global:
-  - RUST_TEST_NOCAPTURE=1
-  - RUST_BACKTRACE=1
-  - CARGO_INCREMENTAL=0
-
 before_script:
-# Compute the rust version we use. We do not use "language: rust" to have more control here.
+# Compute the Rust version we use. We do not use "language: rust" to have more control here.
 - |
   if [[ "$TRAVIS_EVENT_TYPE" == cron ]]; then
     RUSTC_HASH=$(git ls-remote https://github.com/rust-lang/rust.git master | awk '{print $1}')
   else
     RUSTC_HASH=$(cat rust-version)
   fi
-# Install Rust ("stable" toolchain for better caching, it is just used to build rustup-toolchain-install-master)
-- curl https://build.travis-ci.org/files/rustup-init.sh -sSf | sh -s -- -y --default-toolchain stable --profile minimal
+# Install Rust. We use the "stable" toolchain for better caching, it is just used to build `rustup-toolchain-install-master`.
+# But we also need to take into account that the build cache might have a different, outdated default.
+- curl https://build.travis-ci.org/files/rustup-init.sh -sSf | sh -s -- -y --default-toolchain none --profile minimal
 - export PATH=$HOME/.cargo/bin:$PATH
 - rustup default stable
-- rustup toolchain uninstall beta
+- rustup toolchain uninstall beta nightly
 - rustup update
-# Install "master" toolchain
+# Install "master" toolchain.
 - cargo install rustup-toolchain-install-master
 - travis_retry rustup-toolchain-install-master -f -n master $RUSTC_HASH -c rust-src -c rustc-dev
 - rustup default master
@@ -43,10 +42,10 @@ before_script:
 - cargo --version
 
 script:
-- ./travis.sh
+- ./ci.sh
 
 before_cache:
-# Don't cache "master" toolchain, it's a waste
+# Don't cache "master" toolchain, it's a waste.
 - rustup default stable
 - rustup toolchain uninstall master
 
@@ -54,10 +53,5 @@ notifications:
   email:
     on_success: never
     recipients:
-      - post+travis@ralfj.de
-      - travis-miri@oli-obk.de
-branches:
-  only:
-  - master
-  - auto
-  - try
+    - post+travis@ralfj.de
+    - travis-miri@oli-obk.de
