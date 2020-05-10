@@ -159,7 +159,7 @@
 		{
 			"comment": "Keyword",
 			"name": "keyword.other.rust",
-			"match": "\\b(crate|extern|mod|let|ref|use|super|move)\\b"
+			"match": "\\b(crate|extern|mod|let|ref|use|super|move|as)\\b"
 		},
 		{
 			"comment": "Reserved keyword",
@@ -202,7 +202,7 @@
 		{
 			"comment": "Miscellaneous operator",
 			"name": "keyword.operator.misc.rust",
-			"match": "(=>|::|\\bas\\b)"
+			"match": "(=>|::)"
 		},
 		{
 			"comment": "Comparison operator",
