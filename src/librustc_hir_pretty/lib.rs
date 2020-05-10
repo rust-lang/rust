@@ -407,7 +407,7 @@ impl<'a> State<'a> {
                     &f.param_names[..],
                 );
             }
-            hir::TyKind::Def(..) => {}
+            hir::TyKind::Def(..) => self.s.word("/*impl Trait*/"),
             hir::TyKind::Path(ref qpath) => self.print_qpath(qpath, false),
             hir::TyKind::TraitObject(bounds, ref lifetime) => {
                 let mut first = true;
