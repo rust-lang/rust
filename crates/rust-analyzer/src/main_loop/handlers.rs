@@ -34,7 +34,7 @@ use crate::{
     config::RustfmtConfig,
     diagnostics::DiagnosticTask,
     from_json, from_proto,
-    req::{self, InlayHint, InlayHintsParams},
+    lsp_ext::{self, InlayHint, InlayHintsParams},
     to_proto,
     world::WorldSnapshot,
     LspError, Result,
@@ -52,7 +52,10 @@ pub fn handle_analyzer_status(world: WorldSnapshot, _: ()) -> Result<String> {
     Ok(buf)
 }
 
-pub fn handle_syntax_tree(world: WorldSnapshot, params: req::SyntaxTreeParams) -> Result<String> {
+pub fn handle_syntax_tree(
+    world: WorldSnapshot,
+    params: lsp_ext::SyntaxTreeParams,
+) -> Result<String> {
     let _p = profile("handle_syntax_tree");
     let id = from_proto::file_id(&world, &params.text_document.uri)?;
     let line_index = world.analysis().file_line_index(id)?;
@@ -63,8 +66,8 @@ pub fn handle_syntax_tree(world: WorldSnapshot, params: req::SyntaxTreeParams) -
 
 pub fn handle_expand_macro(
     world: WorldSnapshot,
-    params: req::ExpandMacroParams,
-) -> Result<Option<req::ExpandedMacro>> {
+    params: lsp_ext::ExpandMacroParams,
+) -> Result<Option<lsp_ext::ExpandedMacro>> {
     let _p = profile("handle_expand_macro");
     let file_id = from_proto::file_id(&world, &params.text_document.uri)?;
     let line_index = world.analysis().file_line_index(file_id)?;
@@ -74,7 +77,7 @@ pub fn handle_expand_macro(
         None => Ok(None),
         Some(offset) => {
             let res = world.analysis().expand_macro(FilePosition { file_id, offset })?;
-            Ok(res.map(|it| req::ExpandedMacro { name: it.name, expansion: it.expansion }))
+            Ok(res.map(|it| lsp_ext::ExpandedMacro { name: it.name, expansion: it.expansion }))
         }
     }
 }
@@ -124,7 +127,7 @@ pub fn handle_selection_range(
 
 pub fn handle_find_matching_brace(
     world: WorldSnapshot,
-    params: req::FindMatchingBraceParams,
+    params: lsp_ext::FindMatchingBraceParams,
 ) -> Result<Vec<Position>> {
     let _p = profile("handle_find_matching_brace");
     let file_id = from_proto::file_id(&world, &params.text_document.uri)?;
@@ -146,8 +149,8 @@ pub fn handle_find_matching_brace(
 
 pub fn handle_join_lines(
     world: WorldSnapshot,
-    params: req::JoinLinesParams,
-) -> Result<req::SourceChange> {
+    params: lsp_ext::JoinLinesParams,
+) -> Result<lsp_ext::SourceChange> {
     let _p = profile("handle_join_lines");
     let frange = from_proto::file_range(&world, params.text_document, params.range)?;
     let source_change = world.analysis().join_lines(frange)?;
@@ -157,7 +160,7 @@ pub fn handle_join_lines(
 pub fn handle_on_enter(
     world: WorldSnapshot,
     params: lsp_types::TextDocumentPositionParams,
-) -> Result<Option<req::SourceChange>> {
+) -> Result<Option<lsp_ext::SourceChange>> {
     let _p = profile("handle_on_enter");
     let position = from_proto::file_position(&world, params)?;
     match world.analysis().on_enter(position)? {
@@ -388,8 +391,8 @@ pub fn handle_parent_module(
 
 pub fn handle_runnables(
     world: WorldSnapshot,
-    params: req::RunnablesParams,
-) -> Result<Vec<req::Runnable>> {
+    params: lsp_ext::RunnablesParams,
+) -> Result<Vec<lsp_ext::Runnable>> {
     let _p = profile("handle_runnables");
     let file_id = from_proto::file_id(&world, &params.text_document.uri)?;
     let line_index = world.analysis().file_line_index(file_id)?;
@@ -419,7 +422,7 @@ pub fn handle_runnables(
     match cargo_spec {
         Some(spec) => {
             for &cmd in ["check", "test"].iter() {
-                res.push(req::Runnable {
+                res.push(lsp_ext::Runnable {
                     range: Default::default(),
                     label: format!("cargo {} -p {}", cmd, spec.package),
                     bin: "cargo".to_string(),
@@ -431,7 +434,7 @@ pub fn handle_runnables(
             }
         }
         None => {
-            res.push(req::Runnable {
+            res.push(lsp_ext::Runnable {
                 range: Default::default(),
                 label: "cargo check --workspace".to_string(),
                 bin: "cargo".to_string(),
@@ -972,7 +975,10 @@ pub fn handle_document_highlight(
     Ok(Some(res))
 }
 
-pub fn handle_ssr(world: WorldSnapshot, params: req::SsrParams) -> Result<req::SourceChange> {
+pub fn handle_ssr(
+    world: WorldSnapshot,
+    params: lsp_ext::SsrParams,
+) -> Result<lsp_ext::SourceChange> {
     let _p = profile("handle_ssr");
     let source_change =
         world.analysis().structural_search_replace(&params.query, params.parse_only)??;
@@ -1003,7 +1009,7 @@ fn to_lsp_runnable(
     world: &WorldSnapshot,
     file_id: FileId,
     runnable: Runnable,
-) -> Result<req::Runnable> {
+) -> Result<lsp_ext::Runnable> {
     let spec = CargoTargetSpec::for_file(world, file_id)?;
     let (args, extra_args) = CargoTargetSpec::runnable_args(spec, &runnable.kind)?;
     let line_index = world.analysis().file_line_index(file_id)?;
@@ -1014,7 +1020,7 @@ fn to_lsp_runnable(
         RunnableKind::DocTest { test_id, .. } => format!("doctest {}", test_id),
         RunnableKind::Bin => "run binary".to_string(),
     };
-    Ok(req::Runnable {
+    Ok(lsp_ext::Runnable {
         range: to_proto::range(&line_index, runnable.range),
         label,
         bin: "cargo".to_string(),

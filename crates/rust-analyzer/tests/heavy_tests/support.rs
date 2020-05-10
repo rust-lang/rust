@@ -13,15 +13,15 @@ use lsp_types::{
     request::Shutdown,
     DidOpenTextDocumentParams, TextDocumentIdentifier, TextDocumentItem, Url, WorkDoneProgress,
 };
+use lsp_types::{ProgressParams, ProgressParamsValue};
 use serde::Serialize;
 use serde_json::{to_string_pretty, Value};
 use tempfile::TempDir;
 use test_utils::{find_mismatch, parse_fixture};
 
-use req::{ProgressParams, ProgressParamsValue};
 use rust_analyzer::{
     config::{ClientCapsConfig, Config},
-    main_loop, req,
+    main_loop,
 };
 
 pub struct Project<'a> {
@@ -206,7 +206,7 @@ impl Server {
             Message::Notification(n) if n.method == "$/progress" => {
                 match n.clone().extract::<ProgressParams>("$/progress").unwrap() {
                     ProgressParams {
-                        token: req::ProgressToken::String(ref token),
+                        token: lsp_types::ProgressToken::String(ref token),
                         value: ProgressParamsValue::WorkDone(WorkDoneProgress::End(_)),
                     } if token == "rustAnalyzer/startup" => true,
                     _ => false,

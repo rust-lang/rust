@@ -1,11 +1,11 @@
-//! Defines `rust-analyzer` specific custom messages.
+//! rust-analyzer extensions to the LSP.
+
+use std::path::PathBuf;
 
 use lsp_types::request::Request;
 use lsp_types::{Location, Position, Range, TextDocumentIdentifier};
 use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
-
-use std::path::PathBuf;
 
 pub enum AnalyzerStatus {}
 

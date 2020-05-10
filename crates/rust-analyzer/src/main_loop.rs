@@ -38,12 +38,11 @@ use threadpool::ThreadPool;
 use crate::{
     config::{Config, FilesWatcher},
     diagnostics::DiagnosticTask,
-    from_proto,
+    from_proto, lsp_ext,
     main_loop::{
         pending_requests::{PendingRequest, PendingRequests},
         subscriptions::Subscriptions,
     },
-    req,
     world::{WorldSnapshot, WorldState},
     Result,
 };
@@ -502,26 +501,27 @@ fn on_request(
         request_received,
     };
     pool_dispatcher
-        .on_sync::<req::CollectGarbage>(|s, ()| Ok(s.collect_garbage()))?
-        .on_sync::<req::JoinLines>(|s, p| handlers::handle_join_lines(s.snapshot(), p))?
-        .on_sync::<req::OnEnter>(|s, p| handlers::handle_on_enter(s.snapshot(), p))?
+        .on_sync::<lsp_ext::CollectGarbage>(|s, ()| Ok(s.collect_garbage()))?
+        .on_sync::<lsp_ext::JoinLines>(|s, p| handlers::handle_join_lines(s.snapshot(), p))?
+        .on_sync::<lsp_ext::OnEnter>(|s, p| handlers::handle_on_enter(s.snapshot(), p))?
         .on_sync::<lsp_types::request::SelectionRangeRequest>(|s, p| {
             handlers::handle_selection_range(s.snapshot(), p)
         })?
-        .on_sync::<req::FindMatchingBrace>(|s, p| {
+        .on_sync::<lsp_ext::FindMatchingBrace>(|s, p| {
             handlers::handle_find_matching_brace(s.snapshot(), p)
         })?
-        .on::<req::AnalyzerStatus>(handlers::handle_analyzer_status)?
-        .on::<req::SyntaxTree>(handlers::handle_syntax_tree)?
-        .on::<req::ExpandMacro>(handlers::handle_expand_macro)?
+        .on::<lsp_ext::AnalyzerStatus>(handlers::handle_analyzer_status)?
+        .on::<lsp_ext::SyntaxTree>(handlers::handle_syntax_tree)?
+        .on::<lsp_ext::ExpandMacro>(handlers::handle_expand_macro)?
+        .on::<lsp_ext::ParentModule>(handlers::handle_parent_module)?
+        .on::<lsp_ext::Runnables>(handlers::handle_runnables)?
+        .on::<lsp_ext::InlayHints>(handlers::handle_inlay_hints)?
         .on::<lsp_types::request::OnTypeFormatting>(handlers::handle_on_type_formatting)?
         .on::<lsp_types::request::DocumentSymbolRequest>(handlers::handle_document_symbol)?
         .on::<lsp_types::request::WorkspaceSymbol>(handlers::handle_workspace_symbol)?
         .on::<lsp_types::request::GotoDefinition>(handlers::handle_goto_definition)?
         .on::<lsp_types::request::GotoImplementation>(handlers::handle_goto_implementation)?
         .on::<lsp_types::request::GotoTypeDefinition>(handlers::handle_goto_type_definition)?
-        .on::<req::ParentModule>(handlers::handle_parent_module)?
-        .on::<req::Runnables>(handlers::handle_runnables)?
         .on::<lsp_types::request::Completion>(handlers::handle_completion)?
         .on::<lsp_types::request::CodeActionRequest>(handlers::handle_code_action)?
         .on::<lsp_types::request::CodeLensRequest>(handlers::handle_code_lens)?
@@ -534,7 +534,6 @@ fn on_request(
         .on::<lsp_types::request::References>(handlers::handle_references)?
         .on::<lsp_types::request::Formatting>(handlers::handle_formatting)?
         .on::<lsp_types::request::DocumentHighlightRequest>(handlers::handle_document_highlight)?
-        .on::<req::InlayHints>(handlers::handle_inlay_hints)?
         .on::<lsp_types::request::CallHierarchyPrepare>(handlers::handle_call_hierarchy_prepare)?
         .on::<lsp_types::request::CallHierarchyIncomingCalls>(
             handlers::handle_call_hierarchy_incoming,
@@ -546,7 +545,7 @@ fn on_request(
         .on::<lsp_types::request::SemanticTokensRangeRequest>(
             handlers::handle_semantic_tokens_range,
         )?
-        .on::<req::Ssr>(handlers::handle_ssr)?
+        .on::<lsp_ext::Ssr>(handlers::handle_ssr)?
         .finish();
     Ok(())
 }

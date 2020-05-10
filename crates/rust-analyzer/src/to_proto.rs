@@ -10,7 +10,7 @@ use ra_syntax::{SyntaxKind, TextRange, TextSize};
 use ra_text_edit::{Indel, TextEdit};
 use ra_vfs::LineEndings;
 
-use crate::{req, semantic_tokens, world::WorldSnapshot, Result};
+use crate::{lsp_ext, semantic_tokens, world::WorldSnapshot, Result};
 
 pub(crate) fn position(line_index: &LineIndex, offset: TextSize) -> lsp_types::Position {
     let line_col = line_index.line_col(offset);
@@ -215,14 +215,14 @@ pub(crate) fn signature_information(
     lsp_types::SignatureInformation { label, documentation, parameters: Some(parameters) }
 }
 
-pub(crate) fn inlay_int(line_index: &LineIndex, inlay_hint: InlayHint) -> req::InlayHint {
-    req::InlayHint {
+pub(crate) fn inlay_int(line_index: &LineIndex, inlay_hint: InlayHint) -> lsp_ext::InlayHint {
+    lsp_ext::InlayHint {
         label: inlay_hint.label.to_string(),
         range: range(line_index, inlay_hint.range),
         kind: match inlay_hint.kind {
-            InlayKind::ParameterHint => req::InlayKind::ParameterHint,
-            InlayKind::TypeHint => req::InlayKind::TypeHint,
-            InlayKind::ChainingHint => req::InlayKind::ChainingHint,
+            InlayKind::ParameterHint => lsp_ext::InlayKind::ParameterHint,
+            InlayKind::TypeHint => lsp_ext::InlayKind::TypeHint,
+            InlayKind::ChainingHint => lsp_ext::InlayKind::ChainingHint,
         },
     }
 }
@@ -478,7 +478,7 @@ pub(crate) fn resource_op(
 pub(crate) fn source_change(
     world: &WorldSnapshot,
     source_change: SourceChange,
-) -> Result<req::SourceChange> {
+) -> Result<lsp_ext::SourceChange> {
     let cursor_position = match source_change.cursor_position {
         None => None,
         Some(pos) => {
@@ -513,7 +513,7 @@ pub(crate) fn source_change(
         changes: None,
         document_changes: Some(lsp_types::DocumentChanges::Operations(document_changes)),
     };
-    Ok(req::SourceChange { label: source_change.label, workspace_edit, cursor_position })
+    Ok(lsp_ext::SourceChange { label: source_change.label, workspace_edit, cursor_position })
 }
 
 pub fn call_hierarchy_item(

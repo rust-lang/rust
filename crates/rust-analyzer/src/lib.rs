@@ -24,8 +24,7 @@ mod to_proto;
 mod from_proto;
 mod main_loop;
 mod markdown;
-// TODO: rename to lsp_ext
-pub mod req;
+pub mod lsp_ext;
 pub mod config;
 mod world;
 mod diagnostics;
