@@ -2234,7 +2234,7 @@ impl UseItem {
 /// pub use ❰ foo::❰ * ❱ ❱;
 /// use ❰ bar as baz ❱;
 /// use ❰ bruh::bruuh::{ ❰ self ❱, ❰ blin ❱ } ❱;
-/// use ❰ { ❰ blin::blen ❱ } ❱ // TODO: clarify if top-level curlies are `UseTree`
+/// use ❰ { ❰ blin::blen ❱ } ❱
 /// ```
 ///
 /// [Reference](https://doc.rust-lang.org/reference/items/use-declarations.html)
@@ -2374,7 +2374,7 @@ impl PathSegment {
 /// List of type arguments that are passed at generic instantiation site.
 ///
 /// ```
-/// use foo ❰ ::<'a, u64, Item = Bar, 42, true> ❱::bar;
+/// type _ = Foo ❰ ::<'a, u64, Item = Bar, 42, {true}> ❱::Bar;
 ///
 /// Vec❰ ::<bool> ❱::();
 /// ```
@@ -2397,7 +2397,7 @@ impl TypeArgList {
 /// Type argument that is passed at generic instantiation site.
 ///
 /// ```
-/// use foo::<'a, ❰ u64 ❱, ❰ bool ❱, Item = Bar, 42>::baz;
+/// type _ = Foo::<'a, ❰ u64 ❱, ❰ bool ❱, Item = Bar, 42>::Baz;
 /// ```
 ///
 /// [Reference](https://doc.rust-lang.org/reference/paths.html#paths-in-expressions)

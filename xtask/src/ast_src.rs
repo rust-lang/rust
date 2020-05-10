@@ -1831,14 +1831,13 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             UseTree,
         }
 
-        // TODO: verify example correctness
         /// Use tree.
         ///
         /// ```
         /// pub use ❰ foo::❰ * ❱ ❱;
         /// use ❰ bar as baz ❱;
         /// use ❰ bruh::bruuh::{ ❰ self ❱, ❰ blin ❱ } ❱;
-        /// use ❰ { ❰ blin::blen ❱ } ❱ // TODO: clarify if top-level curlies are `UseTree`
+        /// use ❰ { ❰ blin::blen ❱ } ❱
         /// ```
         ///
         /// [Reference](https://doc.rust-lang.org/reference/items/use-declarations.html)
@@ -1929,11 +1928,10 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             T![::], T![crate], T![self], T![super], T![<], NameRef, TypeArgList, ParamList, RetType, PathType, T![>]
         }
 
-        // TODO: verify the example
         /// List of type arguments that are passed at generic instantiation site.
         ///
         /// ```
-        /// use foo ❰ ::<'a, u64, Item = Bar, 42, true> ❱::bar;
+        /// type _ = Foo ❰ ::<'a, u64, Item = Bar, 42, {true}> ❱::Bar;
         ///
         /// Vec❰ ::<bool> ❱::();
         /// ```
@@ -1953,7 +1951,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         /// Type argument that is passed at generic instantiation site.
         ///
         /// ```
-        /// use foo::<'a, ❰ u64 ❱, ❰ bool ❱, Item = Bar, 42>::baz;
+        /// type _ = Foo::<'a, ❰ u64 ❱, ❰ bool ❱, Item = Bar, 42>::Baz;
         /// ```
         ///
         /// [Reference](https://doc.rust-lang.org/reference/paths.html#paths-in-expressions)
