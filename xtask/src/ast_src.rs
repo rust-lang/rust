@@ -349,9 +349,9 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             T![fn],
             ParamList,
             RetType,
-            body: BlockExpr, // TODO: maybe it makes sense to make it `Block` instead,
-            T![;]            // Or what if there may be a posibility of tryblocks as function body?
-        }                    // But try blocks are not `BlockExpr`
+            body: BlockExpr,
+            T![;]
+        }
 
         /// Return type annotation.
         ///
