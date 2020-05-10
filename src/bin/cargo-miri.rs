@@ -8,6 +8,8 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::ffi::OsString;
 
+use rustc_version::VersionMeta;
+
 const XARGO_MIN_VERSION: (u32, u32, u32) = (0, 3, 20);
 
 const CARGO_MIRI_HELP: &str = r#"Interprets bin crates and tests in Miri
@@ -97,16 +99,16 @@ fn miri() -> Command {
     Command::new(find_miri())
 }
 
+fn version_info() -> VersionMeta {
+    VersionMeta::for_command(miri()).expect("failed to determine underlying rustc version of Miri")
+}
+
 fn cargo() -> Command {
     Command::new(env::var_os("CARGO").unwrap_or_else(|| OsString::from("cargo")))
 }
 
 fn xargo_check() -> Command {
     Command::new(env::var_os("XARGO_CHECK").unwrap_or_else(|| OsString::from("xargo-check")))
-}
-
-fn rustc() -> Command {
-    Command::new(env::var_os("RUSTC").unwrap_or_else(|| OsString::from("rustc")))
 }
 
 fn list_targets() -> impl Iterator<Item = cargo_metadata::Target> {
@@ -151,55 +153,6 @@ fn list_targets() -> impl Iterator<Item = cargo_metadata::Target> {
 
     // Finally we got the list of targets to build
     package.targets.into_iter()
-}
-
-/// Make sure that the `miri` and `rustc` binary are from the same sysroot.
-/// This can be violated e.g. when miri is locally built and installed with a different
-/// toolchain than what is used when `cargo miri` is run.
-fn test_sysroot_consistency() {
-    fn get_sysroot(mut cmd: Command) -> PathBuf {
-        let out = cmd
-            .arg("--print")
-            .arg("sysroot")
-            .output()
-            .expect("Failed to run rustc to get sysroot info");
-        let stdout = String::from_utf8(out.stdout).expect("stdout is not valid UTF-8");
-        let stderr = String::from_utf8(out.stderr).expect("stderr is not valid UTF-8");
-        assert!(
-            out.status.success(),
-            "Bad status code {} when getting sysroot info via {:?}.\nstdout:\n{}\nstderr:\n{}",
-            out.status,
-            cmd,
-            stdout,
-            stderr,
-        );
-        let stdout = stdout.trim();
-        PathBuf::from(stdout)
-            .canonicalize()
-            .unwrap_or_else(|_| panic!("Failed to canonicalize sysroot: {}", stdout))
-    }
-
-    // Do not check sysroots if we got built as part of a Rust distribution.
-    // During `bootstrap`, the sysroot does not match anyway, and then some distros
-    // play symlink tricks so the sysroots may be different even for the final stage
-    // (see <https://github.com/mozilla/nixpkgs-mozilla/issues/198>).
-    if option_env!("RUSTC_STAGE").is_some() {
-        return;
-    }
-
-    let rustc_sysroot = get_sysroot(rustc());
-    let miri_sysroot = get_sysroot(miri());
-
-    if rustc_sysroot != miri_sysroot {
-        show_error(format!(
-            "miri was built for a different sysroot than the rustc in your current toolchain.\n\
-             Make sure you use the same toolchain to run miri that you used to build it!\n\
-             rustc sysroot: `{}`\n\
-             miri sysroot: `{}`",
-            rustc_sysroot.display(),
-            miri_sysroot.display()
-        ));
-    }
 }
 
 fn xargo_version() -> Option<(u32, u32, u32)> {
@@ -300,10 +253,10 @@ fn setup(subcommand: MiriCommand) {
         Some(val) => PathBuf::from(val),
         None => {
             // Check for `rust-src` rustup component.
-            let sysroot = rustc()
+            let sysroot = miri()
                 .args(&["--print", "sysroot"])
                 .output()
-                .expect("failed to get rustc sysroot")
+                .expect("failed to determine sysroot")
                 .stdout;
             let sysroot = std::str::from_utf8(&sysroot).unwrap();
             let sysroot = Path::new(sysroot.trim_end_matches('\n'));
@@ -316,7 +269,7 @@ fn setup(subcommand: MiriCommand) {
                 ask_to_run(
                     cmd,
                     ask_user,
-                    "install the rustc-src component for the selected toolchain",
+                    "install the `rust-src` component for the selected toolchain",
                 );
             }
             rustup_src
@@ -368,7 +321,7 @@ path = "lib.rs"
 
     // Determine architectures.
     // We always need to set a target so rustc bootstrap can tell apart host from target crates.
-    let host = rustc_version::version_meta().unwrap().host;
+    let host = version_info().host;
     let target = get_arg_flag_value("--target");
     let target = target.as_ref().unwrap_or(&host);
     // Now invoke xargo.
@@ -424,9 +377,6 @@ fn in_cargo_miri() {
     };
     let verbose = has_arg_flag("-v");
 
-    // Some basic sanity checks
-    test_sysroot_consistency();
-
     // We always setup.
     setup(subcommand);
     if subcommand == MiriCommand::Setup {
@@ -478,7 +428,7 @@ fn in_cargo_miri() {
         if get_arg_flag_value("--target").is_none() {
             // When no `--target` is given, default to the host.
             cmd.arg("--target");
-            cmd.arg(rustc_version::version_meta().unwrap().host);
+            cmd.arg(version_info().host);
         }
 
         // Serialize the remaining args into a special environemt variable.
@@ -540,51 +490,46 @@ fn inside_cargo_rustc() {
     let verbose = std::env::var_os("MIRI_VERBOSE").is_some();
     let target_crate = is_target_crate();
 
-    // Figure out which arguments we need to pass.
-    let mut args: Vec<String> = std::env::args().skip(2).collect(); // skip `cargo-miri rustc`
-    // We make sure to only specify our custom Xargo sysroot and
-    // other args for target crates - that is, crates which are ultimately
-    // going to get interpreted by Miri.
+    let mut cmd = miri();
+    // Forward arguments.
+    cmd.args(std::env::args().skip(2)); // skip `cargo-miri rustc`
+
+    // We make sure to only specify our custom Xargo sysroot for target crates - that is,
+    // crates which are ultimately going to get interpreted by Miri.
     if target_crate {
-        // FIXME: breaks for non-UTF-8 sysroots (use `var_os` instead).
         let sysroot =
-            std::env::var("MIRI_SYSROOT").expect("The wrapper should have set MIRI_SYSROOT");
-        args.push("--sysroot".to_owned());
-        args.push(sysroot);
-        args.splice(0..0, miri::miri_default_args().iter().map(ToString::to_string));
+            env::var_os("MIRI_SYSROOT").expect("The wrapper should have set MIRI_SYSROOT");
+        cmd.arg("--sysroot");
+        cmd.arg(sysroot);
     }
 
-    // Figure out the binary we need to call. If this is a runnable target crate, we want to call
-    // Miri to start interpretation; otherwise we want to call rustc to build the crate as usual.
-    let mut command = if target_crate && is_runnable_crate() {
-        // This is the 'target crate' - the binary or test crate that
-        // we want to interpret under Miri. We deserialize the user-provided arguments
-        // from the special environment variable "MIRI_ARGS", and feed them
-        // to the 'miri' binary.
+    // If this is a runnable target crate, we want Miri to start interpretation;
+    // otherwise we want Miri to behave like rustc and build the crate as usual.
+    if target_crate && is_runnable_crate() {
+        // This is the binary or test crate that we want to interpret under Miri.
+        // We deserialize the arguments that are meant for Miri from the special environment
+        // variable "MIRI_ARGS", and feed them to the 'miri' binary.
         //
         // `env::var` is okay here, well-formed JSON is always UTF-8.
         let magic = std::env::var("MIRI_ARGS").expect("missing MIRI_ARGS");
-        let mut user_args: Vec<String> =
+        let miri_args: Vec<String> =
             serde_json::from_str(&magic).expect("failed to deserialize MIRI_ARGS");
-        args.append(&mut user_args);
-        // Run this in Miri.
-        miri()
+        cmd.args(miri_args);
     } else {
-        rustc()
+        // We want to compile, not interpret.
+        cmd.env("MIRI_BE_RUSTC", "1");
     };
 
     // Run it.
-    command.args(&args);
     if verbose {
-        eprintln!("+ {:?}", command);
+        eprintln!("+ {:?}", cmd);
     }
-
-    match command.status() {
+    match cmd.status() {
         Ok(exit) =>
             if !exit.success() {
                 std::process::exit(exit.code().unwrap_or(42));
             },
-        Err(e) => panic!("error running {:?}:\n{:?}", command, e),
+        Err(e) => panic!("error running {:?}:\n{:?}", cmd, e),
     }
 }
 
@@ -609,6 +554,6 @@ fn main() {
         // dependencies get dispatched to `rustc`, the final test/binary to `miri`.
         inside_cargo_rustc();
     } else {
-        show_error(format!("must be called with either `miri` or `rustc` as first argument."))
+        show_error(format!("`cargo-miri` must be called with either `miri` or `rustc` as first argument."))
     }
 }
