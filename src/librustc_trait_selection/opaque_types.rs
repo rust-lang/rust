@@ -413,7 +413,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
             // These opaque type inherit all lifetime parameters from their
             // parent.
-            hir::OpaqueTyOrigin::Misc => 0,
+            hir::OpaqueTyOrigin::Binding | hir::OpaqueTyOrigin::Misc => 0,
         };
 
         let span = tcx.def_span(def_id);
@@ -569,7 +569,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             hir::OpaqueTyOrigin::AsyncFn => return false,
 
             // Otherwise, generate the label we'll use in the error message.
-            hir::OpaqueTyOrigin::TypeAlias
+            hir::OpaqueTyOrigin::Binding
             | hir::OpaqueTyOrigin::FnReturn
             | hir::OpaqueTyOrigin::Misc => "impl Trait",
         };

@@ -2018,7 +2018,9 @@ pub enum OpaqueTyOrigin {
     FnReturn,
     /// `async fn`
     AsyncFn,
-    /// Impl trait in bindings, consts, statics, bounds.
+    /// `let _: impl Trait = ...`
+    Binding,
+    /// Impl trait in type aliases, consts, statics, bounds.
     Misc,
 }
 

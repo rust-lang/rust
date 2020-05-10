@@ -1619,15 +1619,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 visitor.visit_ty(ty);
             }
         }
-        let parent_def_id = self.current_hir_id_owner.last().unwrap().0;
         let ty = l.ty.as_ref().map(|t| {
             self.lower_ty(
                 t,
                 if self.sess.features_untracked().impl_trait_in_bindings {
-                    ImplTraitContext::OpaqueTy(
-                        Some(parent_def_id.to_def_id()),
-                        hir::OpaqueTyOrigin::Misc,
-                    )
+                    ImplTraitContext::OpaqueTy(None, hir::OpaqueTyOrigin::Binding)
                 } else {
                     ImplTraitContext::Disallowed(ImplTraitPosition::Binding)
                 },

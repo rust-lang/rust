@@ -258,6 +258,9 @@ enum Elide {
     Exact(Region),
     /// Less or more than one lifetime were found, error on unspecified.
     Error(Vec<ElisionFailureInfo>),
+    /// Forbid lifetime elision inside of a larger scope that does. For
+    /// example, in let position impl trait.
+    Forbid,
 }
 
 #[derive(Clone, Debug)]
@@ -566,7 +569,14 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     // This arm is for `impl Trait` in the types of statics, constants and locals.
                     hir::ItemKind::OpaqueTy(hir::OpaqueTy { impl_trait_fn: None, .. }) => {
                         intravisit::walk_ty(self, ty);
-                        intravisit::walk_item(this, opaque_ty);
+
+                        // Elided lifetimes are not allowed in non-return
+                        // position impl Trait
+                        let scope = Scope::Elision { elide: Elide::Forbid, s: self.scope };
+                        self.with(scope, |_, this| {
+                            intravisit::walk_item(this, opaque_ty);
+                        });
+
                         return;
                     }
                     // RPIT (return position impl trait)
@@ -2332,6 +2342,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                             }
                             break Some(e);
                         }
+                        Elide::Forbid => break None,
                     };
                     for lifetime_ref in lifetime_refs {
                         self.insert_lifetime(lifetime_ref, lifetime);
