@@ -808,7 +808,7 @@ impl Session {
                 let mut fuel = self.optimization_fuel.lock();
                 ret = fuel.remaining != 0;
                 if fuel.remaining == 0 && !fuel.out_of_fuel {
-                    eprintln!("optimization-fuel-exhausted: {}", msg());
+                    self.warn(&format!("optimization-fuel-exhausted: {}", msg()));
                     fuel.out_of_fuel = true;
                 } else if fuel.remaining > 0 {
                     fuel.remaining -= 1;
