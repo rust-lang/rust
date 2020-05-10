@@ -251,11 +251,6 @@ impl ConstData {
         Arc::new(ConstData::new(db, vis_default, node))
     }
 
-    pub(crate) fn static_data_query(db: &dyn DefDatabase, konst: StaticId) -> Arc<ConstData> {
-        let node = konst.lookup(db).source(db);
-        Arc::new(ConstData::new(db, RawVisibility::private(), node))
-    }
-
     fn new<N: NameOwner + TypeAscriptionOwner + VisibilityOwner>(
         db: &dyn DefDatabase,
         vis_default: RawVisibility,
@@ -267,6 +262,32 @@ impl ConstData {
         let visibility =
             RawVisibility::from_ast_with_default(db, vis_default, node.map(|n| n.visibility()));
         ConstData { name, type_ref, visibility }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StaticData {
+    pub name: Option<Name>,
+    pub type_ref: TypeRef,
+    pub visibility: RawVisibility,
+    pub mutable: bool,
+}
+
+impl StaticData {
+    pub(crate) fn static_data_query(db: &dyn DefDatabase, konst: StaticId) -> Arc<StaticData> {
+        let node = konst.lookup(db).source(db);
+        let ctx = LowerCtx::new(db, node.file_id);
+
+        let name = node.value.name().map(|n| n.as_name());
+        let type_ref = TypeRef::from_ast_opt(&ctx, node.value.ascribed_type());
+        let mutable = node.value.mut_token().is_some();
+        let visibility = RawVisibility::from_ast_with_default(
+            db,
+            RawVisibility::private(),
+            node.map(|n| n.visibility()),
+        );
+
+        Arc::new(StaticData { name, type_ref, visibility, mutable })
     }
 }
 

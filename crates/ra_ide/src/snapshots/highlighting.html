@@ -56,7 +56,10 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
         <span class="keyword">let</span> <span class="variable declaration">x</span> = <span class="numeric_literal">92</span>;
         <span class="variable mutable">vec</span>.<span class="unresolved_reference">push</span>(<span class="struct">Foo</span> { <span class="field">x</span>, <span class="field">y</span>: <span class="numeric_literal">1</span> });
     }
-    <span class="keyword unsafe">unsafe</span> { <span class="variable mutable">vec</span>.<span class="unresolved_reference">set_len</span>(<span class="numeric_literal">0</span>); }
+    <span class="keyword unsafe">unsafe</span> {
+        <span class="variable mutable">vec</span>.<span class="unresolved_reference">set_len</span>(<span class="numeric_literal">0</span>);
+        <span class="static mutable">STATIC_MUT</span> = <span class="numeric_literal">1</span>;
+    }
 
     <span class="keyword">let</span> <span class="keyword">mut</span> <span class="variable declaration mutable">x</span> = <span class="numeric_literal">42</span>;
     <span class="keyword">let</span> <span class="variable declaration mutable">y</span> = &<span class="keyword">mut</span> <span class="variable mutable">x</span>;

@@ -10,7 +10,7 @@ use crate::{
     adt::{EnumData, StructData},
     attr::Attrs,
     body::{scope::ExprScopes, Body, BodySourceMap},
-    data::{ConstData, FunctionData, ImplData, TraitData, TypeAliasData},
+    data::{ConstData, FunctionData, ImplData, StaticData, TraitData, TypeAliasData},
     docs::Documentation,
     generics::GenericParams,
     lang_item::{LangItemTarget, LangItems},
@@ -77,8 +77,8 @@ pub trait DefDatabase: InternDatabase + AstDatabase + Upcast<dyn AstDatabase> {
     #[salsa::invoke(ConstData::const_data_query)]
     fn const_data(&self, konst: ConstId) -> Arc<ConstData>;
 
-    #[salsa::invoke(ConstData::static_data_query)]
-    fn static_data(&self, konst: StaticId) -> Arc<ConstData>;
+    #[salsa::invoke(StaticData::static_data_query)]
+    fn static_data(&self, konst: StaticId) -> Arc<StaticData>;
 
     #[salsa::invoke(Body::body_with_source_map_query)]
     fn body_with_source_map(&self, def: DefWithBodyId) -> (Arc<Body>, Arc<BodySourceMap>);

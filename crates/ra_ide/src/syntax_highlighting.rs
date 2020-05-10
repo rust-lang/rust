@@ -431,10 +431,16 @@ fn highlight_name(db: &RootDatabase, def: Definition) -> Highlight {
             hir::ModuleDef::Adt(hir::Adt::Union(_)) => HighlightTag::Union,
             hir::ModuleDef::EnumVariant(_) => HighlightTag::EnumVariant,
             hir::ModuleDef::Const(_) => HighlightTag::Constant,
-            hir::ModuleDef::Static(_) => HighlightTag::Static,
             hir::ModuleDef::Trait(_) => HighlightTag::Trait,
             hir::ModuleDef::TypeAlias(_) => HighlightTag::TypeAlias,
             hir::ModuleDef::BuiltinType(_) => HighlightTag::BuiltinType,
+            hir::ModuleDef::Static(s) => {
+                let mut h = Highlight::new(HighlightTag::Static);
+                if s.is_mut(db) {
+                    h |= HighlightModifier::Mutable;
+                }
+                return h;
+            }
         },
         Definition::SelfType(_) => HighlightTag::SelfType,
         Definition::TypeParam(_) => HighlightTag::TypeParam,
