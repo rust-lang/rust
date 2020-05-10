@@ -2446,7 +2446,7 @@ impl LifetimeArg {
 /// Constant value argument that is passed at generic instantiation site.
 ///
 /// ```
-/// foo::<❰ u32 ❱, ❰ true ❱>();
+/// foo::<u32, ❰ { true } ❱>();
 ///
 /// bar::<❰ { 2 + 2} ❱>();
 /// ```

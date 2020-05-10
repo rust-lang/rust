@@ -1966,7 +1966,6 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         ///
         struct AssocTypeArg : TypeBoundsOwner { NameRef, T![=], TypeRef }
 
-        // TODO: verify?
         /// Lifetime argument that is passed at generic instantiation site.
         ///
         /// ```
@@ -1978,12 +1977,12 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         /// [Reference](https://doc.rust-lang.org/reference/paths.html#paths-in-expressions)
         struct LifetimeArg { T![lifetime] }
 
-        // TODO: does this peratain to const generics?
-        // What does equal sign do here?
+
+        // TODO: What does equal sign do here?
         /// Constant value argument that is passed at generic instantiation site.
         ///
         /// ```
-        /// foo::<❰ u32 ❱, ❰ true ❱>();
+        /// foo::<u32, ❰ { true } ❱>();
         ///
         /// bar::<❰ { 2 + 2} ❱>();
         /// ```
