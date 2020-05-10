@@ -53,10 +53,9 @@ fn lookup_in_path(exec: &str) -> bool {
     let paths = env::var_os("PATH").unwrap_or_default();
     let mut candidates = env::split_paths(&paths).flat_map(|path| {
         let candidate = path.join(&exec);
-        let with_exe = if env::consts::EXE_EXTENSION == "" {
-            None
-        } else {
-            Some(candidate.with_extension(env::consts::EXE_EXTENSION))
+        let with_exe = match env::consts::EXE_EXTENSION {
+            "" => None,
+            it => Some(candidate.with_extension(it)),
         };
         iter::once(candidate).chain(with_exe)
     });

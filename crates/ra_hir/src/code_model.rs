@@ -678,6 +678,10 @@ impl Static {
     pub fn name(self, db: &dyn HirDatabase) -> Option<Name> {
         db.static_data(self.id).name.clone()
     }
+
+    pub fn is_mut(self, db: &dyn HirDatabase) -> bool {
+        db.static_data(self.id).mutable
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

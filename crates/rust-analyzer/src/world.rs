@@ -137,15 +137,6 @@ impl WorldState {
             opts
         };
 
-        // Create crate graph from all the workspaces
-        let mut crate_graph = CrateGraph::default();
-        let mut load = |path: &std::path::Path| {
-            // Some path from metadata will be non canonicalized, e.g. /foo/../bar/lib.rs
-            let path = path.canonicalize().ok()?;
-            let vfs_file = vfs.load(&path);
-            vfs_file.map(|f| FileId(f.0))
-        };
-
         let proc_macro_client = match &config.proc_macro_srv {
             None => ProcMacroClient::dummy(),
             Some((path, args)) => match ProcMacroClient::extern_process(path.into(), args) {
@@ -161,19 +152,22 @@ impl WorldState {
             },
         };
 
-        workspaces
-            .iter()
-            .map(|ws| {
-                ws.to_crate_graph(
-                    &default_cfg_options,
-                    &extern_source_roots,
-                    &proc_macro_client,
-                    &mut load,
-                )
-            })
-            .for_each(|graph| {
-                crate_graph.extend(graph);
-            });
+        // Create crate graph from all the workspaces
+        let mut crate_graph = CrateGraph::default();
+        let mut load = |path: &Path| {
+            // Some path from metadata will be non canonicalized, e.g. /foo/../bar/lib.rs
+            let path = path.canonicalize().ok()?;
+            let vfs_file = vfs.load(&path);
+            vfs_file.map(|f| FileId(f.0))
+        };
+        for ws in workspaces.iter() {
+            crate_graph.extend(ws.to_crate_graph(
+                &default_cfg_options,
+                &extern_source_roots,
+                &proc_macro_client,
+                &mut load,
+            ));
+        }
         change.set_crate_graph(crate_graph);
 
         let flycheck = config.check.as_ref().and_then(|c| create_flycheck(&workspaces, c));

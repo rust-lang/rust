@@ -22,7 +22,7 @@ use rustc_hash::FxHashMap;
 
 use hir_def::{
     body::Body,
-    data::{ConstData, FunctionData},
+    data::{ConstData, FunctionData, StaticData},
     expr::{BindingAnnotation, ExprId, PatId},
     lang_item::LangItemTarget,
     path::{path, Path},
@@ -71,7 +71,7 @@ pub(crate) fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<Infer
     match def {
         DefWithBodyId::ConstId(c) => ctx.collect_const(&db.const_data(c)),
         DefWithBodyId::FunctionId(f) => ctx.collect_fn(&db.function_data(f)),
-        DefWithBodyId::StaticId(s) => ctx.collect_const(&db.static_data(s)),
+        DefWithBodyId::StaticId(s) => ctx.collect_static(&db.static_data(s)),
     }
 
     ctx.infer_body();
@@ -482,6 +482,10 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn collect_const(&mut self, data: &ConstData) {
+        self.return_ty = self.make_ty(&data.type_ref);
+    }
+
+    fn collect_static(&mut self, data: &StaticData) {
         self.return_ty = self.make_ty(&data.type_ref);
     }
 

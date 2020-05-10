@@ -174,7 +174,6 @@ pub fn main_loop(ws_roots: Vec<PathBuf>, config: Config, connection: Connection)
     };
 
     loop_state.roots_total = world_state.vfs.read().n_roots();
-    loop_state.roots_scanned = 0;
 
     let pool = ThreadPool::default();
     let (task_sender, task_receiver) = unbounded::<Task>();
@@ -401,10 +400,12 @@ fn loop_turn(
     }
 
     let max_in_flight_libs = pool.max_count().saturating_sub(2).max(1);
-    while loop_state.in_flight_libraries < max_in_flight_libs
-        && !loop_state.pending_libraries.is_empty()
-    {
-        let (root, files) = loop_state.pending_libraries.pop().unwrap();
+    while loop_state.in_flight_libraries < max_in_flight_libs {
+        let (root, files) = match loop_state.pending_libraries.pop() {
+            Some(it) => it,
+            None => break,
+        };
+
         loop_state.in_flight_libraries += 1;
         let sender = libdata_sender.clone();
         pool.execute(move || {

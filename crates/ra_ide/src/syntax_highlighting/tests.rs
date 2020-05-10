@@ -17,6 +17,8 @@ struct Foo {
     pub y: i32,
 }
 
+static mut STATIC_MUT: i32 = 0;
+
 fn foo<'a, T>() -> T {
     foo::<'a, i32>()
 }
@@ -40,7 +42,10 @@ fn main() {
         let x = 92;
         vec.push(Foo { x, y: 1 });
     }
-    unsafe { vec.set_len(0); }
+    unsafe {
+        vec.set_len(0);
+        STATIC_MUT = 1;
+    }
 
     let mut x = 42;
     let y = &mut x;

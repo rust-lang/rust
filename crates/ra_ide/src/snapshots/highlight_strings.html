@@ -27,13 +27,13 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .keyword.unsafe     { color: #BC8383; font-weight: bold; }
 .control            { font-style: italic; }
 </style>
-<pre><code><span class="macro">macro_rules!</span> println {
+<pre><code><span class="macro">macro_rules!</span> <span class="macro declaration">println</span> {
     ($($arg:tt)*) =&gt; ({
         $<span class="keyword">crate</span>::io::_print($<span class="keyword">crate</span>::format_args_nl!($($arg)*));
     })
 }
 #[rustc_builtin_macro]
-<span class="macro">macro_rules!</span> format_args_nl {
+<span class="macro">macro_rules!</span> <span class="macro declaration">format_args_nl</span> {
     ($fmt:expr) =&gt; {{ <span class="comment">/* compiler built-in */</span> }};
     ($fmt:expr, $($args:tt)*) =&gt; {{ <span class="comment">/* compiler built-in */</span> }};
 }
