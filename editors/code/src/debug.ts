@@ -57,8 +57,7 @@ export async function getDebugConfiguration(ctx: Ctx, config: ra.Runnable): Prom
             debugEngine = vscode.extensions.getExtension(engineId);
             if (debugEngine) break;
         }
-    }
-    else {
+    } else {
         debugEngine = vscode.extensions.getExtension(debugOptions.engine);
     }
 

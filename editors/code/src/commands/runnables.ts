@@ -3,7 +3,7 @@ import * as lc from 'vscode-languageclient';
 import * as ra from '../rust-analyzer-api';
 
 import { Ctx, Cmd } from '../ctx';
-import { startDebugSession } from '../debug';
+import { startDebugSession, getDebugConfiguration } from '../debug';
 
 async function selectRunnable(ctx: Ctx, prevRunnable: RunnableQuickPick | undefined): Promise<RunnableQuickPick | undefined> {
     const editor = ctx.activeRustEditor;
@@ -83,6 +83,34 @@ export function debug(ctx: Ctx): Cmd {
 export function debugSingle(ctx: Ctx): Cmd {
     return async (config: ra.Runnable) => {
         await startDebugSession(ctx, config);
+    };
+}
+
+export function newDebugConfig(ctx: Ctx): Cmd {
+    return async () => {
+        const scope = ctx.activeRustEditor?.document.uri;
+        if (!scope) return;
+
+        const item = await selectRunnable(ctx, undefined);
+        if (!item) return;
+
+        const debugConfig = await getDebugConfiguration(ctx, item.runnable);
+        if (!debugConfig) return;
+
+        const wsLaunchSection = vscode.workspace.getConfiguration("launch", scope);
+        const configurations = wsLaunchSection.get<any[]>("configurations") || [];
+
+        const index = configurations.findIndex(c => c.name === debugConfig.name);
+        if (index !== -1) {
+            const answer = await vscode.window.showErrorMessage(`Launch configuration '${debugConfig.name}' already exists!`, 'Cancel', 'Update');
+            if (answer === "Cancel") return;
+
+            configurations[index] = debugConfig;
+        } else {
+            configurations.push(debugConfig);
+        }
+
+        await wsLaunchSection.update("configurations", configurations);
     };
 }
 

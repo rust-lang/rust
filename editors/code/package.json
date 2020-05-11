@@ -126,6 +126,11 @@
                 "category": "Rust Analyzer"
             },
             {
+                "command": "rust-analyzer.newDebugConfig",
+                "title": "Generate launch configuration",
+                "category": "Rust Analyzer"
+            },
+            {
                 "command": "rust-analyzer.analyzerStatus",
                 "title": "Status",
                 "category": "Rust Analyzer"
