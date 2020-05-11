@@ -382,18 +382,23 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             // alignment and size determined by the layout (size will be 0,
             // alignment should take attributes into account).
             .unwrap_or_else(|| (place.layout.size, place.layout.align.abi));
+
+        // Direct call to `check_ptr_access_align` checks alignment even on CTFE machines.
         let ptr = self.ecx.memory.check_ptr_access_align(
             place.ptr,
             size,
             Some(align),
             CheckInAllocMsg::InboundsTest,
         );
-        if let Err(InterpErrorInfo { kind: err_unsup!(ReadBytesAsPointer), ..}) = ptr {
-            if self.ecx.tcx.features().const_int_ref {
-                return Ok(());
+        // In CTFE we allow integers as the address of references.
+        // See https://github.com/rust-lang/rust/issues/63197 for details.
+        if self.ref_tracking_for_consts.is_some() {
+            if let Err(InterpErrorInfo { kind: err_unsup!(ReadBytesAsPointer), ..}) = ptr {
+                if self.ecx.tcx.features().const_int_ref {
+                    return Ok(());
+                }
             }
         }
-        // Direct call to `check_ptr_access_align` checks alignment even on CTFE machines.
         let ptr: Option<_> = try_validation!(
             ptr,
             self.path,
@@ -410,8 +415,15 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 { "a dangling {} (address 0x{:x} is unallocated)", kind, i },
             err_ub!(PointerOutOfBounds { .. }) =>
                 { "a dangling {} (going beyond the bounds of its allocation)", kind },
-            err_unsup!(ReadBytesAsPointer) =>
-                { "a dangling {} (created from integer). Add `#![feature(const_int_ref)]` to the crate attributes to enable", kind },
+            err_unsup!(ReadBytesAsPointer) => {
+                "a dangling {} (created from integer).{}",
+                kind,
+                if self.ecx.tcx.sess.opts.unstable_features.is_nightly_build() {
+                    " Add `#![feature(const_int_ref)]` to the crate attributes to enable"
+                } else {
+                    ""
+                }
+            },
             // This cannot happen during const-eval (because interning already detects
             // dangling pointers), but it can happen in Miri.
             err_ub!(PointerUseAfterFree(..)) =>
