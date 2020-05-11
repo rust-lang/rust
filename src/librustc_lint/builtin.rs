@@ -1202,7 +1202,7 @@ declare_lint_pass!(
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TrivialConstraints {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::Item<'tcx>) {
         use rustc_middle::ty::fold::TypeFoldable;
-        use rustc_middle::ty::Predicate::*;
+        use rustc_middle::ty::PredicateKind::*;
 
         if cx.tcx.features().trivial_bounds {
             let def_id = cx.tcx.hir().local_def_id(item.hir_id);
@@ -1498,7 +1498,7 @@ impl ExplicitOutlivesRequirements {
         inferred_outlives
             .iter()
             .filter_map(|(pred, _)| match pred {
-                ty::Predicate::RegionOutlives(outlives) => {
+                ty::PredicateKind::RegionOutlives(outlives) => {
                     let outlives = outlives.skip_binder();
                     match outlives.0 {
                         ty::ReEarlyBound(ebr) if ebr.index == index => Some(outlives.1),
@@ -1517,7 +1517,7 @@ impl ExplicitOutlivesRequirements {
         inferred_outlives
             .iter()
             .filter_map(|(pred, _)| match pred {
-                ty::Predicate::TypeOutlives(outlives) => {
+                ty::PredicateKind::TypeOutlives(outlives) => {
                     let outlives = outlives.skip_binder();
                     outlives.0.is_param(index).then_some(outlives.1)
                 }

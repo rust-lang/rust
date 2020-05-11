@@ -231,8 +231,10 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
         let predicate_matches_closure = |p: &'_ Predicate<'tcx>| {
             let mut relator: SimpleEqRelation<'tcx> = SimpleEqRelation::new(tcx, self_param_env);
             match (predicate, p) {
-                (Predicate::Trait(a, _), Predicate::Trait(b, _)) => relator.relate(a, b).is_ok(),
-                (Predicate::Projection(a), Predicate::Projection(b)) => {
+                (ty::PredicateKind::Trait(a, _), ty::PredicateKind::Trait(b, _)) => {
+                    relator.relate(a, b).is_ok()
+                }
+                (ty::PredicateKind::Projection(a), ty::PredicateKind::Projection(b)) => {
                     relator.relate(a, b).is_ok()
                 }
                 _ => predicate == p,

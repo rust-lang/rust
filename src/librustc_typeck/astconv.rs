@@ -1597,7 +1597,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     obligation.predicate
                 );
                 match obligation.predicate {
-                    ty::Predicate::Trait(pred, _) => {
+                    ty::PredicateKind::Trait(pred, _) => {
                         associated_types.entry(span).or_default().extend(
                             tcx.associated_items(pred.def_id())
                                 .in_definition_order()
@@ -1605,7 +1605,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 .map(|item| item.def_id),
                         );
                     }
-                    ty::Predicate::Projection(pred) => {
+                    ty::PredicateKind::Projection(pred) => {
                         // A `Self` within the original bound will be substituted with a
                         // `trait_object_dummy_self`, so check for that.
                         let references_self =

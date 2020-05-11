@@ -644,7 +644,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .unwrap()
                     .def_id;
                 let predicate =
-                    ty::Predicate::Projection(ty::Binder::bind(ty::ProjectionPredicate {
+                    ty::PredicateKind::Projection(ty::Binder::bind(ty::ProjectionPredicate {
                         // `<T as Deref>::Output`
                         projection_ty: ty::ProjectionTy {
                             // `T`

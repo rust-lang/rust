@@ -671,7 +671,9 @@ fn prune_cache_value_obligations<'a, 'tcx>(
             // indirect obligations (e.g., we project to `?0`,
             // but we have `T: Foo<X = ?1>` and `?1: Bar<X =
             // ?0>`).
-            ty::Predicate::Projection(ref data) => infcx.unresolved_type_vars(&data.ty()).is_some(),
+            ty::PredicateKind::Projection(ref data) => {
+                infcx.unresolved_type_vars(&data.ty()).is_some()
+            }
 
             // We are only interested in `T: Foo<X = U>` predicates, whre
             // `U` references one of `unresolved_type_vars`. =)
@@ -928,7 +930,7 @@ fn assemble_candidates_from_predicates<'cx, 'tcx>(
     let infcx = selcx.infcx();
     for predicate in env_predicates {
         debug!("assemble_candidates_from_predicates: predicate={:?}", predicate);
-        if let ty::Predicate::Projection(data) = predicate {
+        if let ty::PredicateKind::Projection(data) = predicate {
             let same_def_id = data.projection_def_id() == obligation.predicate.item_def_id;
 
             let is_match = same_def_id
@@ -1164,7 +1166,7 @@ fn confirm_object_candidate<'cx, 'tcx>(
         // select only those projections that are actually projecting an
         // item with the correct name
         let env_predicates = env_predicates.filter_map(|o| match o.predicate {
-            ty::Predicate::Projection(data) => {
+            ty::PredicateKind::Projection(data) => {
                 if data.projection_def_id() == obligation.predicate.item_def_id {
                     Some(data)
                 } else {

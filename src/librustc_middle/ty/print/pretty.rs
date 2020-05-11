@@ -2032,28 +2032,28 @@ define_print_and_forward_display! {
 
     ty::Predicate<'tcx> {
         match *self {
-            ty::Predicate::Trait(ref data, constness) => {
+            ty::PredicateKind::Trait(ref data, constness) => {
                 if let hir::Constness::Const = constness {
                     p!(write("const "));
                 }
                 p!(print(data))
             }
-            ty::Predicate::Subtype(ref predicate) => p!(print(predicate)),
-            ty::Predicate::RegionOutlives(ref predicate) => p!(print(predicate)),
-            ty::Predicate::TypeOutlives(ref predicate) => p!(print(predicate)),
-            ty::Predicate::Projection(ref predicate) => p!(print(predicate)),
-            ty::Predicate::WellFormed(ty) => p!(print(ty), write(" well-formed")),
-            ty::Predicate::ObjectSafe(trait_def_id) => {
+            ty::PredicateKind::Subtype(ref predicate) => p!(print(predicate)),
+            ty::PredicateKind::RegionOutlives(ref predicate) => p!(print(predicate)),
+            ty::PredicateKind::TypeOutlives(ref predicate) => p!(print(predicate)),
+            ty::PredicateKind::Projection(ref predicate) => p!(print(predicate)),
+            ty::PredicateKind::WellFormed(ty) => p!(print(ty), write(" well-formed")),
+            ty::PredicateKind::ObjectSafe(trait_def_id) => {
                 p!(write("the trait `"),
                    print_def_path(trait_def_id, &[]),
                    write("` is object-safe"))
             }
-            ty::Predicate::ClosureKind(closure_def_id, _closure_substs, kind) => {
+            ty::PredicateKind::ClosureKind(closure_def_id, _closure_substs, kind) => {
                 p!(write("the closure `"),
                    print_value_path(closure_def_id, &[]),
                    write("` implements the trait `{}`", kind))
             }
-            ty::Predicate::ConstEvaluatable(def_id, substs) => {
+            ty::PredicateKind::ConstEvaluatable(def_id, substs) => {
                 p!(write("the constant `"),
                    print_value_path(def_id, substs),
                    write("` can be evaluated"))

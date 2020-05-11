@@ -574,7 +574,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let mut bound_spans = vec![];
                     let mut collect_type_param_suggestions =
                         |self_ty: Ty<'_>, parent_pred: &ty::Predicate<'_>, obligation: &str| {
-                            if let (ty::Param(_), ty::Predicate::Trait(p, _)) =
+                            if let (ty::Param(_), ty::PredicateKind::Trait(p, _)) =
                                 (&self_ty.kind, parent_pred)
                             {
                                 if let ty::Adt(def, _) = p.skip_binder().trait_ref.self_ty().kind {
@@ -628,7 +628,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     };
                     let mut format_pred = |pred| {
                         match pred {
-                            ty::Predicate::Projection(pred) => {
+                            ty::PredicateKind::Projection(pred) => {
                                 // `<Foo as Iterator>::Item = String`.
                                 let trait_ref =
                                     pred.skip_binder().projection_ty.trait_ref(self.tcx);
@@ -646,7 +646,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 bound_span_label(trait_ref.self_ty(), &obligation, &quiet);
                                 Some((obligation, trait_ref.self_ty()))
                             }
-                            ty::Predicate::Trait(poly_trait_ref, _) => {
+                            ty::PredicateKind::Trait(poly_trait_ref, _) => {
                                 let p = poly_trait_ref.skip_binder().trait_ref;
                                 let self_ty = p.self_ty();
                                 let path = p.print_only_trait_path();
@@ -949,8 +949,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 unsatisfied_predicates.iter().all(|(p, _)| match p {
                     // Hide traits if they are present in predicates as they can be fixed without
                     // having to implement them.
-                    ty::Predicate::Trait(t, _) => t.def_id() == info.def_id,
-                    ty::Predicate::Projection(p) => p.item_def_id() == info.def_id,
+                    ty::PredicateKind::Trait(t, _) => t.def_id() == info.def_id,
+                    ty::PredicateKind::Projection(p) => p.item_def_id() == info.def_id,
                     _ => false,
                 }) && (type_is_local || info.def_id.is_local())
                     && self

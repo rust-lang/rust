@@ -201,9 +201,9 @@ where
                     assert!(pos >= SHORTHAND_OFFSET);
                     let shorthand = pos - SHORTHAND_OFFSET;
 
-                    decoder.with_position(shorthand, ty::Predicate::decode)
+                    decoder.with_position(shorthand, ty::PredicateKind::decode)
                 } else {
-                    ty::Predicate::decode(decoder)
+                    ty::PredicateKind::decode(decoder)
                 }?;
                 Ok((predicate, Decodable::decode(decoder)?))
             })

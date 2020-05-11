@@ -206,7 +206,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     obligation.predicate
                 );
 
-                if let ty::Predicate::Projection(ref proj_predicate) = obligation.predicate {
+                if let ty::PredicateKind::Projection(ref proj_predicate) = obligation.predicate {
                     // Given a Projection predicate, we can potentially infer
                     // the complete signature.
                     self.deduce_sig_from_projection(Some(obligation.cause.span), proj_predicate)
@@ -526,7 +526,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 all_obligations.push(Obligation::new(
                     cause,
                     self.param_env,
-                    ty::Predicate::TypeOutlives(ty::Binder::dummy(ty::OutlivesPredicate(
+                    ty::PredicateKind::TypeOutlives(ty::Binder::dummy(ty::OutlivesPredicate(
                         supplied_ty,
                         closure_body_region,
                     ))),
@@ -641,7 +641,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // where R is the return type we are expecting. This type `T`
         // will be our output.
         let output_ty = self.obligations_for_self_ty(ret_vid).find_map(|(_, obligation)| {
-            if let ty::Predicate::Projection(ref proj_predicate) = obligation.predicate {
+            if let ty::PredicateKind::Projection(ref proj_predicate) = obligation.predicate {
                 self.deduce_future_output_from_projection(obligation.cause.span, proj_predicate)
             } else {
                 None

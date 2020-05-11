@@ -797,21 +797,21 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         // FIXME: do we want to commit to this behavior for param bounds?
 
         let bounds = self.param_env.caller_bounds.iter().filter_map(|predicate| match *predicate {
-            ty::Predicate::Trait(ref trait_predicate, _) => {
+            ty::PredicateKind::Trait(ref trait_predicate, _) => {
                 match trait_predicate.skip_binder().trait_ref.self_ty().kind {
                     ty::Param(ref p) if *p == param_ty => Some(trait_predicate.to_poly_trait_ref()),
                     _ => None,
                 }
             }
-            ty::Predicate::Subtype(..)
-            | ty::Predicate::Projection(..)
-            | ty::Predicate::RegionOutlives(..)
-            | ty::Predicate::WellFormed(..)
-            | ty::Predicate::ObjectSafe(..)
-            | ty::Predicate::ClosureKind(..)
-            | ty::Predicate::TypeOutlives(..)
-            | ty::Predicate::ConstEvaluatable(..)
-            | ty::Predicate::ConstEquate(..) => None,
+            ty::PredicateKind::Subtype(..)
+            | ty::PredicateKind::Projection(..)
+            | ty::PredicateKind::RegionOutlives(..)
+            | ty::PredicateKind::WellFormed(..)
+            | ty::PredicateKind::ObjectSafe(..)
+            | ty::PredicateKind::ClosureKind(..)
+            | ty::PredicateKind::TypeOutlives(..)
+            | ty::PredicateKind::ConstEvaluatable(..)
+            | ty::PredicateKind::ConstEquate(..) => None,
         });
 
         self.elaborate_bounds(bounds, |this, poly_trait_ref, item| {

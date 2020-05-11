@@ -615,7 +615,7 @@ impl<'tcx> Binder<ExistentialPredicate<'tcx>> {
                 Binder(tr).with_self_ty(tcx, self_ty).without_const().to_predicate()
             }
             ExistentialPredicate::Projection(p) => {
-                ty::Predicate::Projection(Binder(p.with_self_ty(tcx, self_ty)))
+                ty::PredicateKind::Projection(Binder(p.with_self_ty(tcx, self_ty)))
             }
             ExistentialPredicate::AutoTrait(did) => {
                 let trait_ref =

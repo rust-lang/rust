@@ -91,13 +91,13 @@ where
         let ty::GenericPredicates { parent: _, predicates } = predicates;
         for (predicate, _span) in predicates {
             match predicate {
-                ty::Predicate::Trait(poly_predicate, _) => {
+                ty::PredicateKind::Trait(poly_predicate, _) => {
                     let ty::TraitPredicate { trait_ref } = *poly_predicate.skip_binder();
                     if self.visit_trait(trait_ref) {
                         return true;
                     }
                 }
-                ty::Predicate::Projection(poly_predicate) => {
+                ty::PredicateKind::Projection(poly_predicate) => {
                     let ty::ProjectionPredicate { projection_ty, ty } =
                         *poly_predicate.skip_binder();
                     if ty.visit_with(self) {
@@ -107,13 +107,13 @@ where
                         return true;
                     }
                 }
-                ty::Predicate::TypeOutlives(poly_predicate) => {
+                ty::PredicateKind::TypeOutlives(poly_predicate) => {
                     let ty::OutlivesPredicate(ty, _region) = *poly_predicate.skip_binder();
                     if ty.visit_with(self) {
                         return true;
                     }
                 }
-                ty::Predicate::RegionOutlives(..) => {}
+                ty::PredicateKind::RegionOutlives(..) => {}
                 _ => bug!("unexpected predicate: {:?}", predicate),
             }
         }
