@@ -9,23 +9,11 @@ use colored::*;
 use compiletest_rs as compiletest;
 
 fn miri_path() -> PathBuf {
-    if rustc_test_suite().is_some() {
-        PathBuf::from(option_env!("MIRI_PATH").unwrap())
-    } else {
-        PathBuf::from(env!("CARGO_BIN_EXE_miri"))
-    }
-}
-
-fn rustc_test_suite() -> Option<PathBuf> {
-    option_env!("RUSTC_TEST_SUITE").map(PathBuf::from)
-}
-
-fn rustc_lib_path() -> PathBuf {
-    option_env!("RUSTC_LIB_PATH").unwrap().into()
+    PathBuf::from(option_env!("MIRI_PATH").unwrap_or(env!("CARGO_BIN_EXE_miri")))
 }
 
 fn run_tests(mode: &str, path: &str, target: &str) {
-    let in_rustc_test_suite = rustc_test_suite().is_some();
+    let in_rustc_test_suite = option_env!("RUSTC_STAGE").is_some();
     // Add some flags we always want.
     let mut flags = Vec::new();
     flags.push("--edition 2018".to_owned());
@@ -50,9 +38,9 @@ fn run_tests(mode: &str, path: &str, target: &str) {
     let mut config = compiletest::Config::default().tempdir();
     config.mode = mode.parse().expect("Invalid mode");
     config.rustc_path = miri_path();
-    if in_rustc_test_suite {
-        config.run_lib_path = rustc_lib_path();
-        config.compile_lib_path = rustc_lib_path();
+    if let Some(lib_path) = option_env!("RUSTC_LIB_PATH") {
+        config.run_lib_path = PathBuf::from(lib_path);
+        config.compile_lib_path = PathBuf::from(lib_path);
     }
     config.filter = env::args().nth(1);
     config.host = get_host();
@@ -65,12 +53,9 @@ fn run_tests(mode: &str, path: &str, target: &str) {
 fn compile_fail(path: &str, target: &str) {
     eprintln!(
         "{}",
-        format!(
-            "## Running compile-fail tests in {} against miri for target {}",
-            path, target
-        )
-        .green()
-        .bold()
+        format!("## Running compile-fail tests in {} against miri for target {}", path, target)
+            .green()
+            .bold()
     );
 
     run_tests("compile-fail", path, target);
@@ -79,27 +64,18 @@ fn compile_fail(path: &str, target: &str) {
 fn miri_pass(path: &str, target: &str) {
     eprintln!(
         "{}",
-        format!(
-            "## Running run-pass tests in {} against miri for target {}",
-            path, target
-        )
-        .green()
-        .bold()
+        format!("## Running run-pass tests in {} against miri for target {}", path, target)
+            .green()
+            .bold()
     );
 
     run_tests("ui", path, target);
 }
 
 fn get_host() -> String {
-    let rustc = rustc_test_suite().unwrap_or(PathBuf::from("rustc"));
-    let rustc_version = std::process::Command::new(rustc)
-        .arg("-vV")
-        .output()
-        .expect("rustc not found for -vV")
-        .stdout;
-    let rustc_version = std::str::from_utf8(&rustc_version).expect("rustc -vV is not utf8");
-    let version_meta = rustc_version::version_meta_for(&rustc_version)
-        .expect("failed to parse rustc version info");
+    let version_meta =
+        rustc_version::VersionMeta::for_command(std::process::Command::new(miri_path()))
+            .expect("failed to parse rustc version info");
     version_meta.host
 }
 
