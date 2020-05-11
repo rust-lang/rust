@@ -1,1 +1,4 @@
-optimization-fuel-exhausted: Reorder fields of "S2"
+warning: optimization-fuel-exhausted: Reorder fields of "S2"
+
+warning: 1 warning emitted
+
