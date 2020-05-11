@@ -136,6 +136,14 @@ mod tests {
                 lookup: "tfn",
             },
             CompletionItem {
+                label: "Test module",
+                source_range: 78..78,
+                delete: 78..78,
+                insert: "#[cfg(test)]\nmod tests {\n    use super::*;\n\n    #[test]\n    fn ${1:test_name}() {\n        $0\n    }\n}",
+                kind: Snippet,
+                lookup: "tmod",
+            },
+            CompletionItem {
                 label: "macro_rules",
                 source_range: 78..78,
                 delete: 78..78,
