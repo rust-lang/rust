@@ -1,9 +1,5 @@
 # Appendix C: Glossary
 
-The compiler uses a number of...idiosyncratic abbreviations and things. This
-glossary attempts to list them and give you a few pointers for understanding
-them better.
-
 Term                                     | Meaning
 -----------------------------------------|--------
 arena/arena allocation <div id="arena"/> |  An _arena_ is a large memory buffer from which other memory allocations are made. This style of allocation is called _arena allocation_. See [this chapter](../memory.md) for more info.
