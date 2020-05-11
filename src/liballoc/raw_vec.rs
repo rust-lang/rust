@@ -269,24 +269,6 @@ impl<T, A: AllocRef> RawVec<T, A> {
         }
     }
 
-    /// Attempts to double the size of the type's backing allocation in place. This is common
-    /// enough to want to do that it's easiest to just have a dedicated method. Slightly
-    /// more efficient logic can be provided for this than the general case.
-    ///
-    /// Returns `true` if the reallocation attempt has succeeded.
-    ///
-    /// # Panics
-    ///
-    /// * Panics if `T` is zero-sized on the assumption that you managed to exhaust
-    ///   all `usize::MAX` slots in your imaginary buffer.
-    /// * Panics on 32-bit platforms if the requested capacity exceeds
-    ///   `isize::MAX` bytes.
-    #[inline(never)]
-    #[cold]
-    pub fn double_in_place(&mut self) -> bool {
-        self.grow(Double, InPlace, Uninitialized).is_ok()
-    }
-
     /// Ensures that the buffer contains at least enough space to hold
     /// `used_capacity + needed_extra_capacity` elements. If it doesn't already have
     /// enough capacity, will reallocate enough space plus comfortable slack
