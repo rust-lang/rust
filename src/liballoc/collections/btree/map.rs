@@ -559,7 +559,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_btree_new", issue = "71835")]
     pub const fn new() -> BTreeMap<K, V> {
-        BTreeMap { root: None, length: 0, alloc: PhantomData }
+        BTreeMap { root: None, length: 0 }
     }
 
     /// Clears the map, removing all elements.
