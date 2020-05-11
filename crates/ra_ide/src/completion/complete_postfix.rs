@@ -14,6 +14,7 @@ use crate::{
     },
     CompletionItem,
 };
+use ra_assists::utils::TryEnum;
 
 pub(super) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
     if !ctx.config.enable_postfix_completions {
@@ -38,7 +39,52 @@ pub(super) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
         None => return,
     };
 
-    if receiver_ty.is_bool() || receiver_ty.is_unknown() {
+    if let Some(try_enum) = TryEnum::from_ty(&ctx.sema, &receiver_ty) {
+        match try_enum {
+            TryEnum::Result => {
+                postfix_snippet(
+                    ctx,
+                    cap,
+                    &dot_receiver,
+                    "ifl",
+                    "if let Ok {}",
+                    &format!("if let Ok($1) = {} {{\n    $0\n}}", receiver_text),
+                )
+                .add_to(acc);
+
+                postfix_snippet(
+                    ctx,
+                    cap,
+                    &dot_receiver,
+                    "while",
+                    "while let Ok {}",
+                    &format!("while let Ok($1) = {} {{\n    $0\n}}", receiver_text),
+                )
+                .add_to(acc);
+            }
+            TryEnum::Option => {
+                postfix_snippet(
+                    ctx,
+                    cap,
+                    &dot_receiver,
+                    "ifl",
+                    "if let Some {}",
+                    &format!("if let Some($1) = {} {{\n    $0\n}}", receiver_text),
+                )
+                .add_to(acc);
+
+                postfix_snippet(
+                    ctx,
+                    cap,
+                    &dot_receiver,
+                    "while",
+                    "while let Some {}",
+                    &format!("while let Some($1) = {} {{\n    $0\n}}", receiver_text),
+                )
+                .add_to(acc);
+            }
+        }
+    } else if receiver_ty.is_bool() || receiver_ty.is_unknown() {
         postfix_snippet(
             ctx,
             cap,
@@ -229,6 +275,164 @@ mod tests {
                 delete: 85..89,
                 insert: "while bar {\n$0\n}",
                 detail: "while expr {}",
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
+    fn postfix_completion_works_for_option() {
+        assert_debug_snapshot!(
+            do_postfix_completion(
+                r#"
+                enum Option<T> {
+                    Some(T),
+                    None,
+                }
+
+                fn main() {
+                    let bar = Option::Some(true);
+                    bar.<|>
+                }
+                "#,
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "box",
+                source_range: 210..210,
+                delete: 206..210,
+                insert: "Box::new(bar)",
+                detail: "Box::new(expr)",
+            },
+            CompletionItem {
+                label: "dbg",
+                source_range: 210..210,
+                delete: 206..210,
+                insert: "dbg!(bar)",
+                detail: "dbg!(expr)",
+            },
+            CompletionItem {
+                label: "ifl",
+                source_range: 210..210,
+                delete: 206..210,
+                insert: "if let Some($1) = bar {\n    $0\n}",
+                detail: "if let Some {}",
+            },
+            CompletionItem {
+                label: "match",
+                source_range: 210..210,
+                delete: 206..210,
+                insert: "match bar {\n    ${1:_} => {$0\\},\n}",
+                detail: "match expr {}",
+            },
+            CompletionItem {
+                label: "not",
+                source_range: 210..210,
+                delete: 206..210,
+                insert: "!bar",
+                detail: "!expr",
+            },
+            CompletionItem {
+                label: "ref",
+                source_range: 210..210,
+                delete: 206..210,
+                insert: "&bar",
+                detail: "&expr",
+            },
+            CompletionItem {
+                label: "refm",
+                source_range: 210..210,
+                delete: 206..210,
+                insert: "&mut bar",
+                detail: "&mut expr",
+            },
+            CompletionItem {
+                label: "while",
+                source_range: 210..210,
+                delete: 206..210,
+                insert: "while let Some($1) = bar {\n    $0\n}",
+                detail: "while let Some {}",
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
+    fn postfix_completion_works_for_result() {
+        assert_debug_snapshot!(
+            do_postfix_completion(
+                r#"
+                enum Result<T, E> {
+                    Ok(T),
+                    Err(E),
+                }
+
+                fn main() {
+                    let bar = Result::Ok(true);
+                    bar.<|>
+                }
+                "#,
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "box",
+                source_range: 211..211,
+                delete: 207..211,
+                insert: "Box::new(bar)",
+                detail: "Box::new(expr)",
+            },
+            CompletionItem {
+                label: "dbg",
+                source_range: 211..211,
+                delete: 207..211,
+                insert: "dbg!(bar)",
+                detail: "dbg!(expr)",
+            },
+            CompletionItem {
+                label: "ifl",
+                source_range: 211..211,
+                delete: 207..211,
+                insert: "if let Ok($1) = bar {\n    $0\n}",
+                detail: "if let Ok {}",
+            },
+            CompletionItem {
+                label: "match",
+                source_range: 211..211,
+                delete: 207..211,
+                insert: "match bar {\n    ${1:_} => {$0\\},\n}",
+                detail: "match expr {}",
+            },
+            CompletionItem {
+                label: "not",
+                source_range: 211..211,
+                delete: 207..211,
+                insert: "!bar",
+                detail: "!expr",
+            },
+            CompletionItem {
+                label: "ref",
+                source_range: 211..211,
+                delete: 207..211,
+                insert: "&bar",
+                detail: "&expr",
+            },
+            CompletionItem {
+                label: "refm",
+                source_range: 211..211,
+                delete: 207..211,
+                insert: "&mut bar",
+                detail: "&mut expr",
+            },
+            CompletionItem {
+                label: "while",
+                source_range: 211..211,
+                delete: 207..211,
+                insert: "while let Ok($1) = bar {\n    $0\n}",
+                detail: "while let Ok {}",
             },
         ]
         "###
