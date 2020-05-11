@@ -25,7 +25,7 @@ function run_tests {
   ./miri test --locked
   if ! [ -n "${MIRI_TEST_TARGET+exists}" ]; then
     # Only for host architecture: tests with MIR optimizations
-    MIRI_TEST_FLAGS="-Z mir-opt-level=3" ./miri test
+    MIRI_TEST_FLAGS="-Z mir-opt-level=3" ./miri test --locked
   fi
   # "miri test" has built the sysroot for us, now this should pass without
   # any interactive questions.
