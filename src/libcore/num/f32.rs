@@ -367,7 +367,7 @@ impl f32 {
     /// Infinity (∞).
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const INFINITY: f32 = 1.0_f32 / 0.0_f32;
-    /// Negative infinity (-∞).
+    /// Negative infinity (−∞).
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const NEG_INFINITY: f32 = -1.0_f32 / 0.0_f32;
 
