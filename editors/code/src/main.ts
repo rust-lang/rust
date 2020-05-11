@@ -77,6 +77,7 @@ export async function activate(context: vscode.ExtensionContext) {
     ctx.registerCommand('syntaxTree', commands.syntaxTree);
     ctx.registerCommand('expandMacro', commands.expandMacro);
     ctx.registerCommand('run', commands.run);
+    ctx.registerCommand('debug', commands.debug);
 
     defaultOnEnter.dispose();
     ctx.registerCommand('onEnter', commands.onEnter);
