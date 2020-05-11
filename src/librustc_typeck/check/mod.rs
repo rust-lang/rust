@@ -3434,7 +3434,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn add_obligations_for_parameters(
         &self,
         cause: traits::ObligationCause<'tcx>,
-        predicates: &ty::InstantiatedPredicates<'tcx>,
+        predicates: ty::InstantiatedPredicates<'tcx>,
     ) {
         assert!(!predicates.has_escaping_bound_vars());
 
@@ -4385,7 +4385,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let (bounds, _) = self.instantiate_bounds(path_span, did, substs);
             let cause =
                 traits::ObligationCause::new(path_span, self.body_id, traits::ItemObligation(did));
-            self.add_obligations_for_parameters(cause, &bounds);
+            self.add_obligations_for_parameters(cause, bounds);
 
             Some((variant, ty))
         } else {
@@ -5654,9 +5654,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         for (i, mut obligation) in traits::predicates_for_generics(
             traits::ObligationCause::new(span, self.body_id, traits::ItemObligation(def_id)),
             self.param_env,
-            &bounds,
+            bounds,
         )
-        .into_iter()
         .enumerate()
         {
             // This makes the error point at the bound, but we want to point at the argument

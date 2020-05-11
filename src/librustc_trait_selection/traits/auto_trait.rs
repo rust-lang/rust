@@ -281,7 +281,7 @@ impl AutoTraitFinder<'tcx> {
             },
         }));
 
-        let mut computed_preds: FxHashSet<_> = param_env.caller_bounds.iter().cloned().collect();
+        let computed_preds = param_env.caller_bounds.iter().cloned();
         let mut user_computed_preds: FxHashSet<_> =
             user_env.caller_bounds.iter().cloned().collect();
 
@@ -358,10 +358,11 @@ impl AutoTraitFinder<'tcx> {
                 _ => panic!("Unexpected error for '{:?}': {:?}", ty, result),
             };
 
-            computed_preds.extend(user_computed_preds.iter().cloned());
-            let normalized_preds =
-                elaborate_predicates(tcx, computed_preds.iter().cloned().collect())
-                    .map(|o| o.predicate);
+            let normalized_preds = elaborate_predicates(
+                tcx,
+                computed_preds.clone().chain(user_computed_preds.iter().cloned()),
+            )
+            .map(|o| o.predicate);
             new_env =
                 ty::ParamEnv::new(tcx.mk_predicates(normalized_preds), param_env.reveal, None);
         }
@@ -739,7 +740,7 @@ impl AutoTraitFinder<'tcx> {
                             if p.ty().skip_binder().has_infer_types() {
                                 if !self.evaluate_nested_obligations(
                                     ty,
-                                    v.clone().iter().cloned(),
+                                    v.into_iter(),
                                     computed_preds,
                                     fresh_preds,
                                     predicates,

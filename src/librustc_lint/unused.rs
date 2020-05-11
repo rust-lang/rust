@@ -16,7 +16,7 @@ use rustc_middle::ty::{self, Ty};
 use rustc_session::lint::builtin::UNUSED_ATTRIBUTES;
 use rustc_span::symbol::Symbol;
 use rustc_span::symbol::{kw, sym};
-use rustc_span::{BytePos, Span};
+use rustc_span::{BytePos, Span, DUMMY_SP};
 
 use log::debug;
 
@@ -415,6 +415,12 @@ trait UnusedDelimLint {
         msg: &str,
         keep_space: (bool, bool),
     ) {
+        // FIXME(flip1995): Quick and dirty fix for #70814. This should be fixed in rustdoc
+        // properly.
+        if span == DUMMY_SP {
+            return;
+        }
+
         cx.struct_span_lint(self.lint(), span, |lint| {
             let span_msg = format!("unnecessary {} around {}", Self::DELIM_STR, msg);
             let mut err = lint.build(&span_msg);
