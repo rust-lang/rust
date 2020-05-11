@@ -415,7 +415,8 @@ fn loop_turn(
         });
     }
 
-    let show_progress = !loop_state.workspace_loaded;
+    let show_progress =
+        !loop_state.workspace_loaded && world_state.config.client_caps.work_done_progress;
 
     if !loop_state.workspace_loaded
         && loop_state.roots_scanned == loop_state.roots_total
@@ -750,12 +751,16 @@ fn on_check_task(
         }
 
         CheckTask::Status(progress) => {
-            let params = lsp_types::ProgressParams {
-                token: lsp_types::ProgressToken::String("rustAnalyzer/cargoWatcher".to_string()),
-                value: lsp_types::ProgressParamsValue::WorkDone(progress),
-            };
-            let not = notification_new::<lsp_types::notification::Progress>(params);
-            task_sender.send(Task::Notify(not)).unwrap();
+            if world_state.config.client_caps.work_done_progress {
+                let params = lsp_types::ProgressParams {
+                    token: lsp_types::ProgressToken::String(
+                        "rustAnalyzer/cargoWatcher".to_string(),
+                    ),
+                    value: lsp_types::ProgressParamsValue::WorkDone(progress),
+                };
+                let not = notification_new::<lsp_types::notification::Progress>(params);
+                task_sender.send(Task::Notify(not)).unwrap();
+            }
         }
     };
 

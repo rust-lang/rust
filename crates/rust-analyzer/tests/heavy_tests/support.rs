@@ -80,6 +80,7 @@ impl<'a> Project<'a> {
             client_caps: ClientCapsConfig {
                 location_link: true,
                 code_action_literals: true,
+                work_done_progress: true,
                 ..Default::default()
             },
             with_sysroot: self.with_sysroot,
