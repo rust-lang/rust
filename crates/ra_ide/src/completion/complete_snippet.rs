@@ -36,6 +36,24 @@ pub(super) fn complete_item_snippet(acc: &mut Completions, ctx: &CompletionConte
     snippet(
         ctx,
         cap,
+        "Test module",
+        "\
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ${1:test_name}() {
+        $0
+    }
+}",
+    )
+    .lookup_by("tmod")
+    .add_to(acc);
+
+    snippet(
+        ctx,
+        cap,
         "Test function",
         "\
 #[test]
