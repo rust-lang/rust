@@ -657,7 +657,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     // be silent, as it causes a type mismatch later.
                 }
 
-                Ok(Some(vtable)) => queue.extend(vtable.nested_obligations()),
+                Ok(Some(impl_source)) => queue.extend(impl_source.nested_obligations()),
             }
         }
 

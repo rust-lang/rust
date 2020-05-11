@@ -20,11 +20,11 @@ pub fn custom_coerce_unsize_info<'tcx>(
     });
 
     match tcx.codegen_fulfill_obligation((ty::ParamEnv::reveal_all(), trait_ref)) {
-        Ok(traits::VtableImpl(traits::VtableImplData { impl_def_id, .. })) => {
+        Ok(traits::ImplSourceImpl(traits::ImplSourceImplData { impl_def_id, .. })) => {
             tcx.coerce_unsized_info(impl_def_id).custom_kind.unwrap()
         }
-        vtable => {
-            bug!("invalid `CoerceUnsized` vtable: {:?}", vtable);
+        impl_source => {
+            bug!("invalid `CoerceUnsized` impl_source: {:?}", impl_source);
         }
     }
 }

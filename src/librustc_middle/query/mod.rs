@@ -735,7 +735,7 @@ rustc_queries! {
     Codegen {
         query codegen_fulfill_obligation(
             key: (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>)
-        ) -> Result<Vtable<'tcx, ()>, ErrorReported> {
+        ) -> Result<ImplSource<'tcx, ()>, ErrorReported> {
             cache_on_disk_if { true }
             desc { |tcx|
                 "checking if `{}` fulfills its obligations",
