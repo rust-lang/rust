@@ -52,6 +52,7 @@ impl Definition {
                     let parent = id.parent_enum(db);
                     module?.visibility_of(db, &ModuleDef::Adt(Adt::Enum(parent)))
                 }
+                ModuleDef::Function(f) => Some(f.visibility(db)),
                 _ => module?.visibility_of(db, def),
             },
             Definition::SelfType(_) => None,
