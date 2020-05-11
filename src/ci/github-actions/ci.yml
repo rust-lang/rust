@@ -280,13 +280,26 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: dist-x86_64-linux
-            <<: *job-linux-xl
-
-          - name: dist-x86_64-linux-alt
+          - name: dist-x86_64-apple
             env:
-              IMAGE: dist-x86_64-linux
-            <<: *job-linux-xl
+              SCRIPT: ./x.py dist
+              RUST_CONFIGURE_ARGS: --target=aarch64-apple-ios,x86_64-apple-ios --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc
+              RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+              MACOSX_DEPLOYMENT_TARGET: 10.7
+              NO_LLVM_ASSERTIONS: 1
+              NO_DEBUG_ASSERTIONS: 1
+              DIST_REQUIRE_ALL_TOOLS: 1
+            <<: *job-macos-xl
+
+          - name: dist-x86_64-apple-alt
+            env:
+              SCRIPT: ./x.py dist
+              RUST_CONFIGURE_ARGS: --enable-extended --enable-profiler --set rust.jemalloc
+              RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+              MACOSX_DEPLOYMENT_TARGET: 10.7
+              NO_LLVM_ASSERTIONS: 1
+              NO_DEBUG_ASSERTIONS: 1
+            <<: *job-macos-xl
 
   auto:
     <<: *base-ci-job
