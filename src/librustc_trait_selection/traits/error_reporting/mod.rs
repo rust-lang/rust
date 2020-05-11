@@ -524,12 +524,12 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         )
                     }
 
-                    ty::PredicateKind::ObjectSafe(trait_def_id) => {
+                    &ty::PredicateKind::ObjectSafe(trait_def_id) => {
                         let violations = self.tcx.object_safety_violations(trait_def_id);
                         report_object_safety_error(self.tcx, span, trait_def_id, violations)
                     }
 
-                    ty::PredicateKind::ClosureKind(closure_def_id, closure_substs, kind) => {
+                    &ty::PredicateKind::ClosureKind(closure_def_id, closure_substs, kind) => {
                         let found_kind = self.closure_kind(closure_substs).unwrap();
                         let closure_span =
                             self.tcx.sess.source_map().guess_head_span(

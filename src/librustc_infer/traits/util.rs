@@ -11,42 +11,42 @@ pub fn anonymize_predicate<'tcx>(
     pred: &ty::Predicate<'tcx>,
 ) -> ty::Predicate<'tcx> {
     match pred.kind() {
-        ty::PredicateKind::Trait(ref data, constness) => {
+        &ty::PredicateKind::Trait(ref data, constness) => {
             ty::PredicateKind::Trait(tcx.anonymize_late_bound_regions(data), constness)
                 .to_predicate(tcx)
         }
 
-        ty::PredicateKind::RegionOutlives(ref data) => {
+        ty::PredicateKind::RegionOutlives(data) => {
             ty::PredicateKind::RegionOutlives(tcx.anonymize_late_bound_regions(data))
                 .to_predicate(tcx)
         }
 
-        ty::PredicateKind::TypeOutlives(ref data) => {
+        ty::PredicateKind::TypeOutlives(data) => {
             ty::PredicateKind::TypeOutlives(tcx.anonymize_late_bound_regions(data))
                 .to_predicate(tcx)
         }
 
-        ty::PredicateKind::Projection(ref data) => {
+        ty::PredicateKind::Projection(data) => {
             ty::PredicateKind::Projection(tcx.anonymize_late_bound_regions(data)).to_predicate(tcx)
         }
 
-        ty::PredicateKind::WellFormed(data) => {
+        &ty::PredicateKind::WellFormed(data) => {
             ty::PredicateKind::WellFormed(data).to_predicate(tcx)
         }
 
-        ty::PredicateKind::ObjectSafe(data) => {
+        &ty::PredicateKind::ObjectSafe(data) => {
             ty::PredicateKind::ObjectSafe(data).to_predicate(tcx)
         }
 
-        ty::PredicateKind::ClosureKind(closure_def_id, closure_substs, kind) => {
+        &ty::PredicateKind::ClosureKind(closure_def_id, closure_substs, kind) => {
             ty::PredicateKind::ClosureKind(closure_def_id, closure_substs, kind).to_predicate(tcx)
         }
 
-        ty::PredicateKind::Subtype(ref data) => {
+        ty::PredicateKind::Subtype(data) => {
             ty::PredicateKind::Subtype(tcx.anonymize_late_bound_regions(data)).to_predicate(tcx)
         }
 
-        ty::PredicateKind::ConstEvaluatable(def_id, substs) => {
+        &ty::PredicateKind::ConstEvaluatable(def_id, substs) => {
             ty::PredicateKind::ConstEvaluatable(def_id, substs).to_predicate(tcx)
         }
 

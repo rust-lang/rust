@@ -443,7 +443,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                 }
             }
 
-            ty::PredicateKind::ObjectSafe(trait_def_id) => {
+            &ty::PredicateKind::ObjectSafe(trait_def_id) => {
                 if !self.selcx.tcx().is_object_safe(trait_def_id) {
                     ProcessResult::Error(CodeSelectionError(Unimplemented))
                 } else {
@@ -451,7 +451,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                 }
             }
 
-            ty::PredicateKind::ClosureKind(_, closure_substs, kind) => {
+            &ty::PredicateKind::ClosureKind(_, closure_substs, kind) => {
                 match self.selcx.infcx().closure_kind(closure_substs) {
                     Some(closure_kind) => {
                         if closure_kind.extends(kind) {
@@ -464,7 +464,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                 }
             }
 
-            ty::PredicateKind::WellFormed(ty) => {
+            &ty::PredicateKind::WellFormed(ty) => {
                 match wf::obligations(
                     self.selcx.infcx(),
                     obligation.param_env,
@@ -481,7 +481,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                 }
             }
 
-            ty::PredicateKind::Subtype(ref subtype) => {
+            ty::PredicateKind::Subtype(subtype) => {
                 match self.selcx.infcx().subtype_predicate(
                     &obligation.cause,
                     obligation.param_env,
@@ -510,7 +510,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                 }
             }
 
-            ty::PredicateKind::ConstEvaluatable(def_id, substs) => {
+            &ty::PredicateKind::ConstEvaluatable(def_id, substs) => {
                 match self.selcx.infcx().const_eval_resolve(
                     obligation.param_env,
                     def_id,

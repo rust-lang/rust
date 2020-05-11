@@ -39,7 +39,7 @@ pub fn is_min_const_fn(tcx: TyCtxt<'tcx>, def_id: DefId, body: &'a Body<'tcx>) -
                 ty::PredicateKind::Subtype(_) => {
                     bug!("subtype predicate on function: {:#?}", predicate)
                 }
-                ty::PredicateKind::Trait(pred, constness) => {
+                &ty::PredicateKind::Trait(pred, constness) => {
                     if Some(pred.def_id()) == tcx.lang_items().sized_trait() {
                         continue;
                     }

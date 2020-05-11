@@ -73,28 +73,28 @@ pub fn predicate_obligations<'a, 'tcx>(
 
     // (*) ok to skip binders, because wf code is prepared for it
     match predicate.kind() {
-        ty::PredicateKind::Trait(ref t, _) => {
+        ty::PredicateKind::Trait(t, _) => {
             wf.compute_trait_ref(&t.skip_binder().trait_ref, Elaborate::None); // (*)
         }
         ty::PredicateKind::RegionOutlives(..) => {}
-        ty::PredicateKind::TypeOutlives(ref t) => {
+        ty::PredicateKind::TypeOutlives(t) => {
             wf.compute(t.skip_binder().0);
         }
-        ty::PredicateKind::Projection(ref t) => {
+        ty::PredicateKind::Projection(t) => {
             let t = t.skip_binder(); // (*)
             wf.compute_projection(t.projection_ty);
             wf.compute(t.ty);
         }
-        ty::PredicateKind::WellFormed(t) => {
+        &ty::PredicateKind::WellFormed(t) => {
             wf.compute(t);
         }
         ty::PredicateKind::ObjectSafe(_) => {}
         ty::PredicateKind::ClosureKind(..) => {}
-        ty::PredicateKind::Subtype(ref data) => {
+        ty::PredicateKind::Subtype(data) => {
             wf.compute(data.skip_binder().a); // (*)
             wf.compute(data.skip_binder().b); // (*)
         }
-        ty::PredicateKind::ConstEvaluatable(def_id, substs) => {
+        &ty::PredicateKind::ConstEvaluatable(def_id, substs) => {
             let obligations = wf.nominal_obligations(def_id, substs);
             wf.out.extend(obligations);
 

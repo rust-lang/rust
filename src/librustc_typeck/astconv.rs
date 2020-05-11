@@ -1605,7 +1605,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 .map(|item| item.def_id),
                         );
                     }
-                    ty::PredicateKind::Projection(pred) => {
+                    &ty::PredicateKind::Projection(pred) => {
                         // A `Self` within the original bound will be substituted with a
                         // `trait_object_dummy_self`, so check for that.
                         let references_self =

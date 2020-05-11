@@ -634,7 +634,7 @@ impl AutoTraitFinder<'tcx> {
             // We check this by calling is_of_param on the relevant types
             // from the various possible predicates
             match predicate.kind() {
-                ty::PredicateKind::Trait(p, _) => {
+                &ty::PredicateKind::Trait(p, _) => {
                     if self.is_param_no_infer(p.skip_binder().trait_ref.substs)
                         && !only_projections
                         && is_new_pred
@@ -643,7 +643,7 @@ impl AutoTraitFinder<'tcx> {
                     }
                     predicates.push_back(p);
                 }
-                ty::PredicateKind::Projection(p) => {
+                &ty::PredicateKind::Projection(p) => {
                     debug!(
                         "evaluate_nested_obligations: examining projection predicate {:?}",
                         predicate

@@ -414,13 +414,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         match obligation.predicate.kind() {
-            ty::PredicateKind::Trait(ref t, _) => {
+            ty::PredicateKind::Trait(t, _) => {
                 debug_assert!(!t.has_escaping_bound_vars());
                 let obligation = obligation.with(*t);
                 self.evaluate_trait_predicate_recursively(previous_stack, obligation)
             }
 
-            ty::PredicateKind::Subtype(ref p) => {
+            ty::PredicateKind::Subtype(p) => {
                 // Does this code ever run?
                 match self.infcx.subtype_predicate(&obligation.cause, obligation.param_env, p) {
                     Some(Ok(InferOk { mut obligations, .. })) => {
@@ -435,7 +435,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
-            ty::PredicateKind::WellFormed(ty) => match wf::obligations(
+            &ty::PredicateKind::WellFormed(ty) => match wf::obligations(
                 self.infcx,
                 obligation.param_env,
                 obligation.cause.body_id,
@@ -454,7 +454,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Ok(EvaluatedToOkModuloRegions)
             }
 
-            ty::PredicateKind::ObjectSafe(trait_def_id) => {
+            &ty::PredicateKind::ObjectSafe(trait_def_id) => {
                 if self.tcx().is_object_safe(trait_def_id) {
                     Ok(EvaluatedToOk)
                 } else {
@@ -462,7 +462,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
-            ty::PredicateKind::Projection(ref data) => {
+            ty::PredicateKind::Projection(data) => {
                 let project_obligation = obligation.with(*data);
                 match project::poly_project_and_unify_type(self, &project_obligation) {
                     Ok(Some(mut subobligations)) => {
@@ -483,7 +483,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
-            ty::PredicateKind::ClosureKind(_, closure_substs, kind) => {
+            &ty::PredicateKind::ClosureKind(_, closure_substs, kind) => {
                 match self.infcx.closure_kind(closure_substs) {
                     Some(closure_kind) => {
                         if closure_kind.extends(kind) {
@@ -496,7 +496,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
-            ty::PredicateKind::ConstEvaluatable(def_id, substs) => {
+            &ty::PredicateKind::ConstEvaluatable(def_id, substs) => {
                 match self.tcx().const_eval_resolve(
                     obligation.param_env,
                     def_id,
