@@ -796,7 +796,7 @@ themePicker.onblur = handleThemeButtonsBlur;
         if path.exists() {
             for line in BufReader::new(File::open(path)?).lines() {
                 let line = line?;
-                if !line.starts_with("\"") {
+                if !line.starts_with('"') {
                     continue;
                 }
                 if line.starts_with(&format!("\"{}\"", krate)) {
@@ -810,8 +810,7 @@ themePicker.onblur = handleThemeButtonsBlur;
                 }
                 krates.push(
                     line.split('"')
-                        .filter(|s| !s.is_empty())
-                        .next()
+                        .find(|s| !s.is_empty())
                         .map(|s| s.to_owned())
                         .unwrap_or_else(String::new),
                 );

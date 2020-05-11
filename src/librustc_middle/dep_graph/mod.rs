@@ -72,9 +72,9 @@ impl rustc_query_system::dep_graph::DepKind for DepKind {
         })
     }
 
-    fn read_deps<OP>(op: OP) -> ()
+    fn read_deps<OP>(op: OP)
     where
-        OP: for<'a> FnOnce(Option<&'a Lock<TaskDeps>>) -> (),
+        OP: for<'a> FnOnce(Option<&'a Lock<TaskDeps>>),
     {
         ty::tls::with_context_opt(|icx| {
             let icx = if let Some(icx) = icx { icx } else { return };

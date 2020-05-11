@@ -77,9 +77,9 @@ pub trait DepKind: Copy + fmt::Debug + Eq + Ord + Hash {
         OP: FnOnce() -> R;
 
     /// Access dependencies from current implicit context.
-    fn read_deps<OP>(op: OP) -> ()
+    fn read_deps<OP>(op: OP)
     where
-        OP: for<'a> FnOnce(Option<&'a Lock<TaskDeps<Self>>>) -> ();
+        OP: for<'a> FnOnce(Option<&'a Lock<TaskDeps<Self>>>);
 
     fn can_reconstruct_query_key(&self) -> bool;
 }

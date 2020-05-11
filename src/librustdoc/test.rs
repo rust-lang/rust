@@ -255,8 +255,7 @@ fn run_test(
 
     let rustc_binary = options
         .test_builder
-        .as_ref()
-        .map(|v| &**v)
+        .as_deref()
         .unwrap_or_else(|| rustc_interface::util::rustc_path().expect("found rustc"));
     let mut compiler = Command::new(&rustc_binary);
     compiler.arg("--crate-type").arg("bin");
