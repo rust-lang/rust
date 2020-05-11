@@ -10,10 +10,10 @@ error[E0277]: arrays only have std trait implementations for lengths 0..=32
   --> $DIR/derive-debug-array-wrapper.rs:6:5
    |
 LL |     a: [u32; N],
-   |     ^^^^^^^^^^^ the trait `std::array::LengthAtMost32` is not implemented for `[u32; _]`
+   |     ^^^^^^^^^^^ the trait `std::array::LengthAtMost32` is not implemented for `[u32; N]`
    |
-   = note: required because of the requirements on the impl of `std::fmt::Debug` for `[u32; _]`
-   = note: required because of the requirements on the impl of `std::fmt::Debug` for `&[u32; _]`
+   = note: required because of the requirements on the impl of `std::fmt::Debug` for `[u32; N]`
+   = note: required because of the requirements on the impl of `std::fmt::Debug` for `&[u32; N]`
    = note: required for the cast to the object type `dyn std::fmt::Debug`
    = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
