@@ -60,7 +60,7 @@ fn main() -> Result<()> {
 
 fn setup_logging() -> Result<()> {
     std::env::set_var("RUST_BACKTRACE", "short");
-    env_logger::try_init()?;
+    env_logger::try_init_from_env("RA_LOG")?;
     ra_prof::init();
     Ok(())
 }
