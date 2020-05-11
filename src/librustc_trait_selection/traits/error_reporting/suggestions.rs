@@ -691,6 +691,15 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
 
             if let ty::Ref(region, t_type, mutability) = trait_ref.skip_binder().self_ty().kind {
+                if region.is_late_bound() || t_type.has_escaping_bound_vars() {
+                    // Avoid debug assertion in `mk_obligation_for_def_id`.
+                    //
+                    // If the self type has escaping bound vars then it's not
+                    // going to be the type of an expression, so the suggestion
+                    // probably won't apply anyway.
+                    return;
+                }
+
                 let trait_type = match mutability {
                     hir::Mutability::Mut => self.tcx.mk_imm_ref(region, t_type),
                     hir::Mutability::Not => self.tcx.mk_mut_ref(region, t_type),
@@ -1854,7 +1863,7 @@ impl NextTypeParamName for &[hir::GenericParam<'_>] {
     fn next_type_param_name(&self, name: Option<&str>) -> String {
         // This is the whitelist of possible parameter names that we might suggest.
         let name = name.and_then(|n| n.chars().next()).map(|c| c.to_string().to_uppercase());
-        let name = name.as_ref().map(|s| s.as_str());
+        let name = name.as_deref();
         let possible_names = [name.unwrap_or("T"), "T", "U", "V", "X", "Y", "Z", "A", "B", "C"];
         let used_names = self
             .iter()

@@ -8,7 +8,7 @@
 #![feature(const_panic)]
 #![feature(in_band_lifetimes)]
 #![feature(or_patterns)]
-#![feature(specialization)]
+#![feature(min_specialization)]
 #![recursion_limit = "256"]
 
 #[macro_use]

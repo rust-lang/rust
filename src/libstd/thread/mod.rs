@@ -1272,7 +1272,7 @@ impl Thread {
     }
 
     fn cname(&self) -> Option<&CStr> {
-        self.inner.name.as_ref().map(|s| &**s)
+        self.inner.name.as_deref()
     }
 }
 

@@ -17,6 +17,8 @@ dist=$objdir/build/dist
 
 source "$ci_dir/shared.sh"
 
+CACHE_DOMAIN="${CACHE_DOMAIN:-ci-caches.rust-lang.org}"
+
 if [ -f "$docker_dir/$image/Dockerfile" ]; then
     if [ "$CI" != "" ]; then
       hash_key=/tmp/.docker-hash-key.txt
@@ -38,9 +40,7 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
       cksum=$(sha512sum $hash_key | \
         awk '{print $1}')
 
-      s3url="s3://$SCCACHE_BUCKET/docker/$cksum"
-      url="https://$SCCACHE_BUCKET.s3.amazonaws.com/docker/$cksum"
-      upload="aws s3 cp - $s3url"
+      url="https://$CACHE_DOMAIN/docker/$cksum"
 
       echo "Attempting to download $url"
       rm -f /tmp/rustci_docker_cache
@@ -65,7 +65,9 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
       -f "$dockerfile" \
       "$context"
 
-    if [ "$upload" != "" ]; then
+    if [ "$CI" != "" ]; then
+      s3url="s3://$SCCACHE_BUCKET/docker/$cksum"
+      upload="aws s3 cp - $s3url"
       digest=$(docker inspect rust-ci --format '{{.Id}}')
       echo "Built container $digest"
       if ! grep -q "$digest" <(echo "$loaded_images"); then

@@ -121,7 +121,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                         )
                     }
                     traits::NonStructuralMatchTy::Dynamic => {
-                        format!("trait objects cannot be used in patterns")
+                        "trait objects cannot be used in patterns".to_string()
                     }
                     traits::NonStructuralMatchTy::Param => {
                         bug!("use of constant whose type is a parameter inside a pattern")

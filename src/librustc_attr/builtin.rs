@@ -634,7 +634,7 @@ pub fn eval_condition(
                 [NestedMetaItem::Literal(Lit { span, .. })
                 | NestedMetaItem::MetaItem(MetaItem { span, .. })] => {
                     sess.span_diagnostic
-                        .struct_span_err(*span, &*format!("expected a version literal"))
+                        .struct_span_err(*span, "expected a version literal")
                         .emit();
                     return false;
                 }

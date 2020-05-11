@@ -10,7 +10,7 @@ Core encoding and decoding interfaces.
     test(attr(allow(unused_variables), deny(warnings)))
 )]
 #![feature(box_syntax)]
-#![feature(specialization)]
+#![feature(specialization)] // FIXME: min_specialization does not work
 #![feature(never_type)]
 #![feature(nll)]
 #![feature(associated_type_bounds)]
