@@ -1,5 +1,5 @@
 error: this loop could be written as a `for` loop
-  --> $DIR/while_let_on_iterator.rs:8:5
+  --> $DIR/while_let_on_iterator.rs:9:5
    |
 LL |     while let Option::Some(x) = iter.next() {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in iter`
@@ -7,22 +7,40 @@ LL |     while let Option::Some(x) = iter.next() {
    = note: `-D clippy::while-let-on-iterator` implied by `-D warnings`
 
 error: this loop could be written as a `for` loop
-  --> $DIR/while_let_on_iterator.rs:13:5
+  --> $DIR/while_let_on_iterator.rs:14:5
    |
 LL |     while let Some(x) = iter.next() {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in iter`
 
 error: this loop could be written as a `for` loop
-  --> $DIR/while_let_on_iterator.rs:18:5
+  --> $DIR/while_let_on_iterator.rs:19:5
    |
 LL |     while let Some(_) = iter.next() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for _ in iter`
 
 error: this loop could be written as a `for` loop
-  --> $DIR/while_let_on_iterator.rs:97:9
+  --> $DIR/while_let_on_iterator.rs:102:9
+   |
+LL |         while let Some([..]) = it.next() {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for [..] in it`
+
+error: this loop could be written as a `for` loop
+  --> $DIR/while_let_on_iterator.rs:109:9
+   |
+LL |         while let Some([_x]) = it.next() {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for [_x] in it`
+
+error: this loop could be written as a `for` loop
+  --> $DIR/while_let_on_iterator.rs:122:9
+   |
+LL |         while let Some(x @ [_]) = it.next() {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x @ [_] in it`
+
+error: this loop could be written as a `for` loop
+  --> $DIR/while_let_on_iterator.rs:154:9
    |
 LL |         while let Some(_) = y.next() {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for _ in y`
 
-error: aborting due to 4 previous errors
+error: aborting due to 7 previous errors
 

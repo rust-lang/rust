@@ -96,13 +96,13 @@ LL |     }
    = note: `std::rc::Rc<[u8]>` doesn't implement `std::marker::Sync`
 
 error: future cannot be sent between threads safely
-  --> $DIR/future_not_send.rs:49:37
+  --> $DIR/future_not_send.rs:50:37
    |
 LL | async fn generic_future<T>(t: T) -> T
    |                                     ^ future returned by `generic_future` is not `Send`
    |
 note: future is not `Send` as this value is used across an await
-  --> $DIR/future_not_send.rs:54:5
+  --> $DIR/future_not_send.rs:55:5
    |
 LL |     let rt = &t;
    |         -- has type `&T` which is not `Send`
@@ -114,7 +114,7 @@ LL | }
    = note: `T` doesn't implement `std::marker::Sync`
 
 error: future cannot be sent between threads safely
-  --> $DIR/future_not_send.rs:65:34
+  --> $DIR/future_not_send.rs:66:34
    |
 LL | async fn unclear_future<T>(t: T) {}
    |                                  ^
