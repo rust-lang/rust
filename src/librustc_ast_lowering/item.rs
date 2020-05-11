@@ -13,7 +13,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
 use rustc_span::source_map::{respan, DesugaringKind};
 use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi;
 
 use log::debug;
@@ -482,7 +482,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let mut resolutions = self.expect_full_res_from_use(id);
                 // We want to return *something* from this function, so hold onto the first item
                 // for later.
-                let ret_res = self.lower_res(resolutions.next().unwrap_or(Res::Err));
+                let ret_res = self.lower_res(resolutions.next().unwrap_or_else(|| {
+                    self.sess.delay_span_bug(
+                        DUMMY_SP,
+                        &format!("missing `ret_res` for use_tree: {:?}", tree),
+                    );
+                    Res::Err
+                }));
 
                 // Here, we are looping over namespaces, if they exist for the definition
                 // being imported. We only handle type and value namespaces because we

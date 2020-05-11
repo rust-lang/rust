@@ -146,20 +146,19 @@ impl Visitor<'tcx> for ExprVisitor<'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
-        let res = if let hir::ExprKind::Path(ref qpath) = expr.kind {
-            self.tables.qpath_res(qpath, expr.hir_id)
-        } else {
-            Res::Err
-        };
-        if let Res::Def(DefKind::Fn, did) = res {
-            if self.def_id_is_transmute(did) {
-                let typ = self.tables.node_type(expr.hir_id);
-                let sig = typ.fn_sig(self.tcx);
-                let from = sig.inputs().skip_binder()[0];
-                let to = *sig.output().skip_binder();
-                self.check_transmute(expr.span, from, to);
+        if let hir::ExprKind::Path(ref qpath) = expr.kind {
+            let res = self.tables.qpath_res(qpath, expr.hir_id);
+
+            if let Res::Def(DefKind::Fn, did) = res {
+                if self.def_id_is_transmute(did) {
+                    let typ = self.tables.node_type(expr.hir_id);
+                    let sig = typ.fn_sig(self.tcx);
+                    let from = sig.inputs().skip_binder()[0];
+                    let to = *sig.output().skip_binder();
+                    self.check_transmute(expr.span, from, to);
+                }
             }
-        }
+        };
 
         intravisit::walk_expr(self, expr);
     }
