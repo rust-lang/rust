@@ -593,6 +593,31 @@ mod tests {
         check_result(refs, "i BIND_PAT FileId(1) 36..37 Other", &["FileId(1) 51..52 Other Write"]);
     }
 
+    #[test]
+    fn test_find_struct_function_refs_outside_module() {
+        let code = r#"
+        mod foo {
+            pub struct Foo;
+
+            impl Foo {
+                pub fn new<|>() -> Foo {
+                    Foo
+                }
+            }
+        }
+
+        fn main() {
+            let _f = foo::Foo::new();
+        }"#;
+
+        let refs = get_all_refs(code);
+        check_result(
+            refs,
+            "new FN_DEF FileId(1) 87..150 94..97 Other",
+            &["FileId(1) 227..230 StructLiteral"],
+        );
+    }
+
     fn get_all_refs(text: &str) -> ReferenceSearchResult {
         let (analysis, position) = single_file_with_position(text);
         analysis.find_all_refs(position, None).unwrap().unwrap()

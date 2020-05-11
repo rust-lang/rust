@@ -148,6 +148,26 @@ impl ModuleDef {
             ModuleDef::BuiltinType(_) => None,
         }
     }
+
+    pub fn definition_visibility(&self, db: &dyn HirDatabase) -> Option<Visibility> {
+        let module = match self {
+            ModuleDef::Module(it) => it.parent(db)?,
+            ModuleDef::Function(it) => return Some(it.visibility(db)),
+            ModuleDef::Adt(it) => it.module(db),
+            ModuleDef::EnumVariant(it) => {
+                let parent = it.parent_enum(db);
+                let module = it.module(db);
+                return module.visibility_of(db, &ModuleDef::Adt(Adt::Enum(parent)));
+            }
+            ModuleDef::Const(it) => return Some(it.visibility(db)),
+            ModuleDef::Static(it) => it.module(db),
+            ModuleDef::Trait(it) => it.module(db),
+            ModuleDef::TypeAlias(it) => return Some(it.visibility(db)),
+            ModuleDef::BuiltinType(_) => return None,
+        };
+
+        module.visibility_of(db, self)
+    }
 }
 
 pub use hir_def::{
