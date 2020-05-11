@@ -33,8 +33,13 @@ pub trait Stream {
     ///
     /// # Panics
     ///
-    /// Once a stream is finished, i.e. `Ready(None)` has been returned, further calls may result in a panic or other
-    /// "bad behavior".
+    /// Once a stream has finished (returned `Ready(None)` from `poll_next`), calling its
+    /// `poll_next` method again may panic, block forever, or cause other kinds of
+    /// problems; the `Stream` trait places no requirements on the effects of
+    /// such a call. However, as the `poll_next` method is not marked `unsafe`,
+    /// Rust's usual rules apply: calls must never cause undefined behavior
+    /// (memory corruption, incorrect use of `unsafe` functions, or the like),
+    /// regardless of the stream's state.
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>>;
 
     /// Returns the bounds on the remaining length of the stream.
