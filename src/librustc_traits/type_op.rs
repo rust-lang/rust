@@ -7,8 +7,8 @@ use rustc_infer::traits::TraitEngineExt as _;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::{GenericArg, Subst, UserSelfTy, UserSubsts};
 use rustc_middle::ty::{
-    self, FnSig, Lift, ParamEnv, ParamEnvAnd, PolyFnSig, Predicate, Ty, TyCtxt, TypeFoldable,
-    Variance,
+    self, FnSig, Lift, ParamEnv, ParamEnvAnd, PolyFnSig, Predicate, ToPredicate, Ty, TyCtxt,
+    TypeFoldable, Variance,
 };
 use rustc_span::DUMMY_SP;
 use rustc_trait_selection::infer::InferCtxtBuilderExt;
@@ -141,7 +141,9 @@ impl AscribeUserTypeCx<'me, 'tcx> {
 
             self.relate(self_ty, Variance::Invariant, impl_self_ty)?;
 
-            self.prove_predicate(ty::PredicateKind::WellFormed(impl_self_ty));
+            self.prove_predicate(
+                ty::PredicateKind::WellFormed(impl_self_ty).to_predicate(self.tcx()),
+            );
         }
 
         // In addition to proving the predicates, we have to
@@ -155,7 +157,7 @@ impl AscribeUserTypeCx<'me, 'tcx> {
         // them?  This would only be relevant if some input
         // type were ill-formed but did not appear in `ty`,
         // which...could happen with normalization...
-        self.prove_predicate(ty::PredicateKind::WellFormed(ty));
+        self.prove_predicate(ty::PredicateKind::WellFormed(ty).to_predicate(self.tcx()));
         Ok(())
     }
 }

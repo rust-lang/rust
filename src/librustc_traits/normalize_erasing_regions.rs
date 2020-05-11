@@ -40,7 +40,7 @@ fn normalize_generic_arg_after_erasing_regions<'tcx>(
 }
 
 fn not_outlives_predicate(p: &ty::Predicate<'_>) -> bool {
-    match p {
+    match p.kind() {
         ty::PredicateKind::RegionOutlives(..) | ty::PredicateKind::TypeOutlives(..) => false,
         ty::PredicateKind::Trait(..)
         | ty::PredicateKind::Projection(..)

@@ -27,8 +27,8 @@ use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::{GenericArgKind, Subst, SubstsRef, UserSubsts};
 use rustc_middle::ty::{
-    self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, RegionVid, ToPolyTraitRef, Ty,
-    TyCtxt, UserType, UserTypeAnnotationIndex,
+    self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, RegionVid, ToPolyTraitRef,
+    ToPredicate, Ty, TyCtxt, UserType, UserTypeAnnotationIndex,
 };
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
@@ -1016,7 +1016,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
 
                     self.prove_predicate(
-                        ty::PredicateKind::WellFormed(inferred_ty),
+                        ty::PredicateKind::WellFormed(inferred_ty).to_predicate(self.tcx()),
                         Locations::All(span),
                         ConstraintCategory::TypeAnnotation,
                     );
@@ -1268,7 +1268,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     obligations.obligations.push(traits::Obligation::new(
                         ObligationCause::dummy(),
                         param_env,
-                        ty::PredicateKind::WellFormed(revealed_ty),
+                        ty::PredicateKind::WellFormed(revealed_ty).to_predicate(infcx.tcx),
                     ));
                     obligations.add(
                         infcx
@@ -2028,7 +2028,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                             ),
                                         }),
                                         hir::Constness::NotConst,
-                                    ),
+                                    )
+                                    .to_predicate(self.tcx()),
                                 ),
                                 &traits::SelectionError::Unimplemented,
                                 false,
@@ -2708,11 +2709,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
     fn prove_predicates(
         &mut self,
-        predicates: impl IntoIterator<Item = ty::Predicate<'tcx>>,
+        predicates: impl IntoIterator<Item = impl ToPredicate<'tcx>>,
         locations: Locations,
         category: ConstraintCategory,
     ) {
         for predicate in predicates {
+            let predicate = predicate.to_predicate(self.tcx());
             debug!("prove_predicates(predicate={:?}, locations={:?})", predicate, locations,);
 
             self.prove_predicate(predicate, locations, category);

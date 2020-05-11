@@ -204,7 +204,7 @@ fn unconstrained_parent_impl_substs<'tcx>(
     // the functions in `cgp` add the constrained parameters to a list of
     // unconstrained parameters.
     for (predicate, _) in impl_generic_predicates.predicates.iter() {
-        if let ty::PredicateKind::Projection(proj) = predicate {
+        if let ty::PredicateKind::Projection(proj) = predicate.kind() {
             let projection_ty = proj.skip_binder().projection_ty;
             let projected_ty = proj.skip_binder().ty;
 
@@ -368,7 +368,7 @@ fn check_predicates<'tcx>(
 
 fn check_specialization_on<'tcx>(tcx: TyCtxt<'tcx>, predicate: &ty::Predicate<'tcx>, span: Span) {
     debug!("can_specialize_on(predicate = {:?})", predicate);
-    match predicate {
+    match predicate.kind() {
         // Global predicates are either always true or always false, so we
         // are fine to specialize on.
         _ if predicate.is_global() => (),
@@ -401,7 +401,7 @@ fn trait_predicate_kind<'tcx>(
     tcx: TyCtxt<'tcx>,
     predicate: &ty::Predicate<'tcx>,
 ) -> Option<TraitSpecializationKind> {
-    match predicate {
+    match predicate.kind() {
         ty::PredicateKind::Trait(pred, hir::Constness::NotConst) => {
             Some(tcx.trait_def(pred.def_id()).specialization_kind)
         }

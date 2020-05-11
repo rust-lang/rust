@@ -322,7 +322,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
 
         let infcx = self.selcx.infcx();
 
-        match obligation.predicate {
+        match obligation.predicate.kind() {
             ty::PredicateKind::Trait(ref data, _) => {
                 let trait_obligation = obligation.with(*data);
 
@@ -523,7 +523,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                 }
             }
 
-            ty::Predicate::ConstEquate(c1, c2) => {
+            ty::PredicateKind::ConstEquate(c1, c2) => {
                 debug!("equating consts: c1={:?} c2={:?}", c1, c2);
 
                 let stalled_on = &mut pending_obligation.stalled_on;

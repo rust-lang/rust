@@ -29,7 +29,7 @@ impl<'tcx> ExplicitPredicatesMap<'tcx> {
 
             // process predicates and convert to `RequiredPredicates` entry, see below
             for &(predicate, span) in predicates.predicates {
-                match predicate {
+                match predicate.kind() {
                     ty::PredicateKind::TypeOutlives(predicate) => {
                         let OutlivesPredicate(ref ty, ref reg) = predicate.skip_binder();
                         insert_outlives_predicate(

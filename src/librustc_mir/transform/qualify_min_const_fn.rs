@@ -23,7 +23,7 @@ pub fn is_min_const_fn(tcx: TyCtxt<'tcx>, def_id: DefId, body: &'a Body<'tcx>) -
     loop {
         let predicates = tcx.predicates_of(current);
         for (predicate, _) in predicates.predicates {
-            match predicate {
+            match predicate.kind() {
                 ty::PredicateKind::RegionOutlives(_)
                 | ty::PredicateKind::TypeOutlives(_)
                 | ty::PredicateKind::WellFormed(_)
@@ -46,7 +46,7 @@ pub fn is_min_const_fn(tcx: TyCtxt<'tcx>, def_id: DefId, body: &'a Body<'tcx>) -
                     match pred.skip_binder().self_ty().kind {
                         ty::Param(ref p) => {
                             // Allow `T: ?const Trait`
-                            if *constness == hir::Constness::NotConst
+                            if constness == hir::Constness::NotConst
                                 && feature_allowed(tcx, def_id, sym::const_trait_bound_opt_out)
                             {
                                 continue;

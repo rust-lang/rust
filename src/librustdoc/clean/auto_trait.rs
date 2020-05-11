@@ -315,7 +315,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         tcx: TyCtxt<'tcx>,
         pred: ty::Predicate<'tcx>,
     ) -> FxHashSet<GenericParamDef> {
-        let regions = match pred {
+        let regions = match pred.kind() {
             ty::PredicateKind::Trait(poly_trait_pred, _) => {
                 tcx.collect_referenced_late_bound_regions(&poly_trait_pred)
             }
@@ -465,7 +465,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
             .iter()
             .filter(|p| {
                 !orig_bounds.contains(p)
-                    || match p {
+                    || match p.kind() {
                         ty::PredicateKind::Trait(pred, _) => pred.def_id() == sized_trait,
                         _ => false,
                     }

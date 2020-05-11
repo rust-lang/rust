@@ -575,7 +575,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let mut collect_type_param_suggestions =
                         |self_ty: Ty<'_>, parent_pred: &ty::Predicate<'_>, obligation: &str| {
                             if let (ty::Param(_), ty::PredicateKind::Trait(p, _)) =
-                                (&self_ty.kind, parent_pred)
+                                (&self_ty.kind, parent_pred.kind())
                             {
                                 if let ty::Adt(def, _) = p.skip_binder().trait_ref.self_ty().kind {
                                     let node = def.did.as_local().map(|def_id| {
@@ -626,8 +626,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             _ => {}
                         }
                     };
-                    let mut format_pred = |pred| {
-                        match pred {
+                    let mut format_pred = |pred: ty::Predicate<'tcx>| {
+                        match pred.kind() {
                             ty::PredicateKind::Projection(pred) => {
                                 // `<Foo as Iterator>::Item = String`.
                                 let trait_ref =
@@ -946,7 +946,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // this isn't perfect (that is, there are cases when
                 // implementing a trait would be legal but is rejected
                 // here).
-                unsatisfied_predicates.iter().all(|(p, _)| match p {
+                unsatisfied_predicates.iter().all(|(p, _)| match p.kind() {
                     // Hide traits if they are present in predicates as they can be fixed without
                     // having to implement them.
                     ty::PredicateKind::Trait(t, _) => t.def_id() == info.def_id,

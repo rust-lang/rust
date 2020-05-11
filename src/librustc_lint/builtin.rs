@@ -1208,7 +1208,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TrivialConstraints {
             let def_id = cx.tcx.hir().local_def_id(item.hir_id);
             let predicates = cx.tcx.predicates_of(def_id);
             for &(predicate, span) in predicates.predicates {
-                let predicate_kind_name = match predicate {
+                let predicate_kind_name = match predicate.kind() {
                     Trait(..) => "Trait",
                     TypeOutlives(..) |
                     RegionOutlives(..) => "Lifetime",
@@ -1497,7 +1497,7 @@ impl ExplicitOutlivesRequirements {
     ) -> Vec<ty::Region<'tcx>> {
         inferred_outlives
             .iter()
-            .filter_map(|(pred, _)| match pred {
+            .filter_map(|(pred, _)| match pred.kind() {
                 ty::PredicateKind::RegionOutlives(outlives) => {
                     let outlives = outlives.skip_binder();
                     match outlives.0 {
@@ -1516,7 +1516,7 @@ impl ExplicitOutlivesRequirements {
     ) -> Vec<ty::Region<'tcx>> {
         inferred_outlives
             .iter()
-            .filter_map(|(pred, _)| match pred {
+            .filter_map(|(pred, _)| match pred.kind() {
                 ty::PredicateKind::TypeOutlives(outlives) => {
                     let outlives = outlives.skip_binder();
                     outlives.0.is_param(index).then_some(outlives.1)

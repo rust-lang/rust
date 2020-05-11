@@ -10,40 +10,49 @@ pub fn anonymize_predicate<'tcx>(
     tcx: TyCtxt<'tcx>,
     pred: &ty::Predicate<'tcx>,
 ) -> ty::Predicate<'tcx> {
-    match *pred {
+    match pred.kind() {
         ty::PredicateKind::Trait(ref data, constness) => {
             ty::PredicateKind::Trait(tcx.anonymize_late_bound_regions(data), constness)
+                .to_predicate(tcx)
         }
 
         ty::PredicateKind::RegionOutlives(ref data) => {
             ty::PredicateKind::RegionOutlives(tcx.anonymize_late_bound_regions(data))
+                .to_predicate(tcx)
         }
 
         ty::PredicateKind::TypeOutlives(ref data) => {
             ty::PredicateKind::TypeOutlives(tcx.anonymize_late_bound_regions(data))
+                .to_predicate(tcx)
         }
 
         ty::PredicateKind::Projection(ref data) => {
-            ty::PredicateKind::Projection(tcx.anonymize_late_bound_regions(data))
+            ty::PredicateKind::Projection(tcx.anonymize_late_bound_regions(data)).to_predicate(tcx)
         }
 
-        ty::PredicateKind::WellFormed(data) => ty::PredicateKind::WellFormed(data),
+        ty::PredicateKind::WellFormed(data) => {
+            ty::PredicateKind::WellFormed(data).to_predicate(tcx)
+        }
 
-        ty::PredicateKind::ObjectSafe(data) => ty::PredicateKind::ObjectSafe(data),
+        ty::PredicateKind::ObjectSafe(data) => {
+            ty::PredicateKind::ObjectSafe(data).to_predicate(tcx)
+        }
 
         ty::PredicateKind::ClosureKind(closure_def_id, closure_substs, kind) => {
-            ty::PredicateKind::ClosureKind(closure_def_id, closure_substs, kind)
+            ty::PredicateKind::ClosureKind(closure_def_id, closure_substs, kind).to_predicate(tcx)
         }
 
         ty::PredicateKind::Subtype(ref data) => {
-            ty::PredicateKind::Subtype(tcx.anonymize_late_bound_regions(data))
+            ty::PredicateKind::Subtype(tcx.anonymize_late_bound_regions(data)).to_predicate(tcx)
         }
 
         ty::PredicateKind::ConstEvaluatable(def_id, substs) => {
-            ty::PredicateKind::ConstEvaluatable(def_id, substs)
+            ty::PredicateKind::ConstEvaluatable(def_id, substs).to_predicate(tcx)
         }
 
-        ty::PredicateKind::ConstEquate(c1, c2) => ty::Predicate::ConstEquate(c1, c2),
+        ty::PredicateKind::ConstEquate(c1, c2) => {
+            ty::PredicateKind::ConstEquate(c1, c2).to_predicate(tcx)
+        }
     }
 }
 
@@ -145,7 +154,7 @@ impl Elaborator<'tcx> {
 
     fn elaborate(&mut self, obligation: &PredicateObligation<'tcx>) {
         let tcx = self.visited.tcx;
-        match obligation.predicate {
+        match obligation.predicate.kind() {
             ty::PredicateKind::Trait(ref data, _) => {
                 // Get predicates declared on the trait.
                 let predicates = tcx.super_predicates_of(data.def_id());
@@ -250,8 +259,9 @@ impl Elaborator<'tcx> {
                                 None
                             }
                         })
-                        .filter(|p| visited.insert(p))
-                        .map(|p| predicate_obligation(p, None)),
+                        .map(|predicate_kind| predicate_kind.to_predicate(tcx))
+                        .filter(|predicate| visited.insert(predicate))
+                        .map(|predicate| predicate_obligation(predicate, None)),
                 );
             }
         }
@@ -317,7 +327,7 @@ impl<'tcx, I: Iterator<Item = PredicateObligation<'tcx>>> Iterator for FilterToT
 
     fn next(&mut self) -> Option<ty::PolyTraitRef<'tcx>> {
         while let Some(obligation) = self.base_iterator.next() {
-            if let ty::PredicateKind::Trait(data, _) = obligation.predicate {
+            if let ty::PredicateKind::Trait(data, _) = obligation.predicate.kind() {
                 return Some(data.to_poly_trait_ref());
             }
         }

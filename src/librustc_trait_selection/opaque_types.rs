@@ -1168,7 +1168,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
         debug!("instantiate_opaque_types: ty_var={:?}", ty_var);
 
         for predicate in &bounds.predicates {
-            if let ty::PredicateKind::Projection(projection) = &predicate {
+            if let ty::PredicateKind::Projection(projection) = predicate.kind() {
                 if projection.skip_binder().ty.references_error() {
                     // No point on adding these obligations since there's a type error involved.
                     return ty_var;
@@ -1269,7 +1269,7 @@ crate fn required_region_bounds(
     traits::elaborate_predicates(tcx, predicates)
         .filter_map(|obligation| {
             debug!("required_region_bounds(obligation={:?})", obligation);
-            match obligation.predicate {
+            match obligation.predicate.kind() {
                 ty::PredicateKind::Projection(..)
                 | ty::PredicateKind::Trait(..)
                 | ty::PredicateKind::Subtype(..)

@@ -1596,7 +1596,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     "conv_object_ty_poly_trait_ref: observing object predicate `{:?}`",
                     obligation.predicate
                 );
-                match obligation.predicate {
+                match obligation.predicate.kind() {
                     ty::PredicateKind::Trait(pred, _) => {
                         associated_types.entry(span).or_default().extend(
                             tcx.associated_items(pred.def_id())

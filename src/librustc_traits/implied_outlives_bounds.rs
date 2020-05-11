@@ -94,7 +94,7 @@ fn compute_implied_outlives_bounds<'tcx>(
         // region relationships.
         implied_bounds.extend(obligations.into_iter().flat_map(|obligation| {
             assert!(!obligation.has_escaping_bound_vars());
-            match obligation.predicate {
+            match obligation.predicate.kind() {
                 ty::PredicateKind::Trait(..)
                 | ty::PredicateKind::Subtype(..)
                 | ty::PredicateKind::Projection(..)

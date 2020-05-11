@@ -219,6 +219,12 @@ impl fmt::Debug for ty::ProjectionPredicate<'tcx> {
     }
 }
 
+impl fmt::Debug for ty::Predicate<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self.kind())
+    }
+}
+
 impl fmt::Debug for ty::PredicateKind<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
@@ -242,7 +248,7 @@ impl fmt::Debug for ty::PredicateKind<'tcx> {
             ty::PredicateKind::ConstEvaluatable(def_id, substs) => {
                 write!(f, "ConstEvaluatable({:?}, {:?})", def_id, substs)
             }
-            ty::Predicate::ConstEquate(c1, c2) => write!(f, "ConstEquate({:?}, {:?})", c1, c2),
+            ty::PredicateKind::ConstEquate(c1, c2) => write!(f, "ConstEquate({:?}, {:?})", c1, c2),
         }
     }
 }
@@ -469,8 +475,8 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ExistentialProjection<'a> {
     }
 }
 
-impl<'a, 'tcx> Lift<'tcx> for ty::Predicate<'a> {
-    type Lifted = ty::Predicate<'tcx>;
+impl<'a, 'tcx> Lift<'tcx> for ty::PredicateKind<'a> {
+    type Lifted = ty::PredicateKind<'tcx>;
     fn lift_to_tcx(&self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
         match *self {
             ty::PredicateKind::Trait(ref binder, constness) => {
@@ -500,8 +506,8 @@ impl<'a, 'tcx> Lift<'tcx> for ty::Predicate<'a> {
             ty::PredicateKind::ConstEvaluatable(def_id, substs) => {
                 tcx.lift(&substs).map(|substs| ty::PredicateKind::ConstEvaluatable(def_id, substs))
             }
-            ty::Predicate::ConstEquate(c1, c2) => {
-                tcx.lift(&(c1, c2)).map(|(c1, c2)| ty::Predicate::ConstEquate(c1, c2))
+            ty::PredicateKind::ConstEquate(c1, c2) => {
+                tcx.lift(&(c1, c2)).map(|(c1, c2)| ty::PredicateKind::ConstEquate(c1, c2))
             }
         }
     }

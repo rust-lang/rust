@@ -72,7 +72,7 @@ pub fn predicate_obligations<'a, 'tcx>(
     let mut wf = WfPredicates { infcx, param_env, body_id, span, out: vec![], item: None };
 
     // (*) ok to skip binders, because wf code is prepared for it
-    match *predicate {
+    match predicate.kind() {
         ty::PredicateKind::Trait(ref t, _) => {
             wf.compute_trait_ref(&t.skip_binder().trait_ref, Elaborate::None); // (*)
         }
@@ -102,7 +102,7 @@ pub fn predicate_obligations<'a, 'tcx>(
                 wf.compute(ty);
             }
         }
-        ty::Predicate::ConstEquate(c1, c2) => {
+        ty::PredicateKind::ConstEquate(c1, c2) => {
             wf.compute(c1.ty);
             wf.compute(c2.ty);
         }
@@ -170,7 +170,7 @@ fn extend_cause_with_original_assoc_item_obligation<'tcx>(
             hir::ImplItemKind::Const(ty, _) | hir::ImplItemKind::TyAlias(ty) => ty.span,
             _ => impl_item_ref.span,
         };
-    match pred {
+    match pred.kind() {
         ty::PredicateKind::Projection(proj) => {
             // The obligation comes not from the current `impl` nor the `trait` being
             // implemented, but rather from a "second order" obligation, like in
@@ -216,6 +216,10 @@ fn extend_cause_with_original_assoc_item_obligation<'tcx>(
 }
 
 impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.infcx.tcx
+    }
+
     fn cause(&mut self, code: traits::ObligationCauseCode<'tcx>) -> traits::ObligationCause<'tcx> {
         traits::ObligationCause::new(self.span, self.body_id, code)
     }
@@ -275,9 +279,14 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
             self.out.extend(obligations);
         }
 
+        let tcx = self.tcx();
         self.out.extend(trait_ref.substs.types().filter(|ty| !ty.has_escaping_bound_vars()).map(
             |ty| {
-                traits::Obligation::new(cause.clone(), param_env, ty::PredicateKind::WellFormed(ty))
+                traits::Obligation::new(
+                    cause.clone(),
+                    param_env,
+                    ty::PredicateKind::WellFormed(ty).to_predicate(tcx),
+                )
             },
         ));
     }
@@ -307,7 +316,8 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
             let obligations = self.nominal_obligations(def_id, substs);
             self.out.extend(obligations);
 
-            let predicate = ty::PredicateKind::ConstEvaluatable(def_id, substs);
+            let predicate =
+                ty::PredicateKind::ConstEvaluatable(def_id, substs).to_predicate(self.tcx());
             let cause = self.cause(traits::MiscObligation);
             self.out.push(traits::Obligation::new(cause, self.param_env, predicate));
         }
@@ -415,7 +425,8 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                             param_env,
                             ty::PredicateKind::TypeOutlives(ty::Binder::dummy(
                                 ty::OutlivesPredicate(rty, r),
-                            )),
+                            ))
+                            .to_predicate(self.tcx()),
                         ));
                     }
                 }
@@ -495,16 +506,17 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     // obligations that don't refer to Self and
                     // checking those
 
-                    let defer_to_coercion = self.infcx.tcx.features().object_safe_for_dispatch;
+                    let defer_to_coercion = self.tcx().features().object_safe_for_dispatch;
 
                     if !defer_to_coercion {
                         let cause = self.cause(traits::MiscObligation);
                         let component_traits = data.auto_traits().chain(data.principal_def_id());
+                        let tcx = self.tcx();
                         self.out.extend(component_traits.map(|did| {
                             traits::Obligation::new(
                                 cause.clone(),
                                 param_env,
-                                ty::PredicateKind::ObjectSafe(did),
+                                ty::PredicateKind::ObjectSafe(did).to_predicate(tcx),
                             )
                         }));
                     }
@@ -530,7 +542,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                         self.out.push(traits::Obligation::new(
                             cause,
                             param_env,
-                            ty::PredicateKind::WellFormed(ty),
+                            ty::PredicateKind::WellFormed(ty).to_predicate(self.tcx()),
                         ));
                     } else {
                         // Yes, resolved, proceed with the result.

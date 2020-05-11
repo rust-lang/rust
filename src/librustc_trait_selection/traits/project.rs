@@ -661,7 +661,7 @@ fn prune_cache_value_obligations<'a, 'tcx>(
     let mut obligations: Vec<_> = result
         .obligations
         .iter()
-        .filter(|obligation| match obligation.predicate {
+        .filter(|obligation| match obligation.predicate.kind() {
             // We found a `T: Foo<X = U>` predicate, let's check
             // if `U` references any unresolved type
             // variables. In principle, we only care if this
@@ -930,7 +930,7 @@ fn assemble_candidates_from_predicates<'cx, 'tcx>(
     let infcx = selcx.infcx();
     for predicate in env_predicates {
         debug!("assemble_candidates_from_predicates: predicate={:?}", predicate);
-        if let ty::PredicateKind::Projection(data) = predicate {
+        if let ty::PredicateKind::Projection(data) = predicate.kind() {
             let same_def_id = data.projection_def_id() == obligation.predicate.item_def_id;
 
             let is_match = same_def_id
@@ -1166,7 +1166,7 @@ fn confirm_object_candidate<'cx, 'tcx>(
 
         // select only those projections that are actually projecting an
         // item with the correct name
-        let env_predicates = env_predicates.filter_map(|o| match o.predicate {
+        let env_predicates = env_predicates.filter_map(|o| match o.predicate.kind() {
             ty::PredicateKind::Projection(data) => {
                 if data.projection_def_id() == obligation.predicate.item_def_id {
                     Some(data)
