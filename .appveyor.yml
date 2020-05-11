@@ -29,10 +29,8 @@ install:
 - rustup toolchain uninstall beta nightly
 - rustup update
 # Install "master" toolchain.
-# We need to install cargo here as well or else the DLL search path inside `cargo run`
-# will be for the wrong toolchain. (On Unix, `./miri` takes care of this, but not here.)
 - cargo install rustup-toolchain-install-master
-- rustup-toolchain-install-master -f -n master %RUSTC_HASH% -c rust-src -c rustc-dev -c cargo
+- rustup-toolchain-install-master -f -n master %RUSTC_HASH% -c rust-src -c rustc-dev
 - rustup default master
 - rustc --version
 - cargo --version
