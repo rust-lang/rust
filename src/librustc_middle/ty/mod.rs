@@ -1016,14 +1016,23 @@ impl<'tcx> GenericPredicates<'tcx> {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Lift)]
+#[derive(Clone, Copy, Hash, RustcEncodable, RustcDecodable, Lift)]
 #[derive(HashStable)]
 pub struct Predicate<'tcx> {
     kind: &'tcx PredicateKind<'tcx>,
 }
 
-impl Predicate<'tcx> {
-    pub fn kind(&self) -> &'tcx PredicateKind<'tcx> {
+impl<'tcx> PartialEq for Predicate<'tcx> {
+    fn eq(&self, other: &Self) -> bool {
+        // `self.kind` is always interned.
+        ptr::eq(self.kind, other.kind)
+    }
+}
+
+impl<'tcx> Eq for Predicate<'tcx> {}
+
+impl<'tcx> Predicate<'tcx> {
+    pub fn kind(self) -> &'tcx PredicateKind<'tcx> {
         self.kind
     }
 }
@@ -1098,7 +1107,7 @@ impl<'tcx> Predicate<'tcx> {
     /// substitution in terms of what happens with bound regions. See
     /// lengthy comment below for details.
     pub fn subst_supertrait(
-        &self,
+        self,
         tcx: TyCtxt<'tcx>,
         trait_ref: &ty::PolyTraitRef<'tcx>,
     ) -> ty::Predicate<'tcx> {
@@ -1369,7 +1378,7 @@ impl<'tcx> ToPredicate<'tcx> for PolyProjectionPredicate<'tcx> {
 }
 
 impl<'tcx> Predicate<'tcx> {
-    pub fn to_opt_poly_trait_ref(&self) -> Option<PolyTraitRef<'tcx>> {
+    pub fn to_opt_poly_trait_ref(self) -> Option<PolyTraitRef<'tcx>> {
         match self.kind() {
             &PredicateKind::Trait(ref t, _) => Some(t.to_poly_trait_ref()),
             PredicateKind::Projection(..)
@@ -1384,7 +1393,7 @@ impl<'tcx> Predicate<'tcx> {
         }
     }
 
-    pub fn to_opt_type_outlives(&self) -> Option<PolyTypeOutlivesPredicate<'tcx>> {
+    pub fn to_opt_type_outlives(self) -> Option<PolyTypeOutlivesPredicate<'tcx>> {
         match self.kind() {
             &PredicateKind::TypeOutlives(data) => Some(data),
             PredicateKind::Trait(..)
