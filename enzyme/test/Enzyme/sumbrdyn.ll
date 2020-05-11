@@ -64,7 +64,7 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   br i1 %[[cmp]], label %diffesum.exit, label %incinvertfor.body.i
 
 ; CHECK: incinvertfor.body.i:
-; CHECK-NEXT:   %[[sub]] = sub nuw nsw i64 %[[antivar]], 1
+; CHECK-NEXT:   %[[sub]] = add nsw i64 %[[antivar]], -1
 ; CHECK-NEXT:   br label %invertfor.body.i
 
 ; CHECK: diffesum.exit:                                    ; preds = %invertfor.body.i

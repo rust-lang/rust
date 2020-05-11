@@ -28,12 +28,11 @@ declare double @__enzyme_autodiff(i8*, ...)
 ; CHECK: define internal {} @diffecaller(float* readonly %a, float* %"a'", float %differeturn) {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %"res'ipa" = alloca float, align 4
-; CHECK-NEXT:   %0 = bitcast float* %"res'ipa" to i32*
-; CHECK-NEXT:   store i32 0, i32* %0, align 4
+; CHECK-NEXT:   store float 0.000000e+00, float* %"res'ipa", align 4
 ; CHECK-NEXT:   %res = alloca float, align 4
 ; CHECK-NEXT:   store float 0.000000e+00, float* %res, align 4
 ; CHECK-NEXT:   store float %differeturn, float* %"res'ipa", align 4
-; CHECK-NEXT:   %1 = call {} @diffesub(float* %a, float* %"a'", float* nonnull %res, float* nonnull %"res'ipa")
+; CHECK-NEXT:   %{{.+}} = call {} @diffesub(float* %a, float* %"a'", float* nonnull %res, float* nonnull %"res'ipa")
 ; CHECK-NEXT:   store float 0.000000e+00, float* %"res'ipa", align 4
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }

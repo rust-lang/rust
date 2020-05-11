@@ -101,7 +101,7 @@ declare double @__enzyme_autodiff(void (double*, double*, i64*)*, ...)
 ; CHECK-NEXT:   br i1 %7, label %invertentry, label %incinvertloop1
 
 ; CHECK: incinvertloop1:                                   ; preds = %invertloop1
-; CHECK-NEXT:   %8 = sub nuw nsw i64 %"iv'ac.0", 1
+; CHECK-NEXT:   %8 = add nsw i64 %"iv'ac.0", -1
 ; CHECK-NEXT:   br label %invertcleanup
 
 ; CHECK: invertloop2:                                      ; preds = %invertcleanup, %incinvertloop2
@@ -129,7 +129,7 @@ declare double @__enzyme_autodiff(void (double*, double*, i64*)*, ...)
 ; CHECK-NEXT:   br i1 %21, label %invertloop1, label %incinvertloop2
 
 ; CHECK: incinvertloop2:                                   ; preds = %invertloop2
-; CHECK-NEXT:   %22 = sub nuw nsw i64 %"iv1'ac.0", 1
+; CHECK-NEXT:   %22 = add nsw i64 %"iv1'ac.0", -1
 ; CHECK-NEXT:   br label %invertloop2
 
 ; CHECK: invertcleanup:                                    ; preds = %cleanup, %incinvertloop1

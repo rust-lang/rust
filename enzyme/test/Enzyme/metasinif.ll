@@ -75,8 +75,7 @@ attributes #8 = { noreturn nounwind }
 ; CHECK: define internal { double } @diffef(double %a, i32 %n, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %"a.addr'ipa" = alloca double, align 8
-; CHECK-NEXT:   %0 = bitcast double* %"a.addr'ipa" to i8*
-; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull align 8 %0, i8 0, i64 8, i1 false)
+; CHECK-NEXT:   store double 0.000000e+00, double* %"a.addr'ipa", align 8
 ; CHECK-NEXT:   %a.addr = alloca double, align 8
 ; CHECK-NEXT:   %cmp = icmp eq i32 %n, 2
 ; CHECK-NEXT:   br i1 %cmp, label %if.true, label %if.false
@@ -91,27 +90,27 @@ attributes #8 = { noreturn nounwind }
 ; CHECK-NEXT:   br label %invertend
 
 ; CHECK: invertentry:                                      ; preds = %invertif.false, %invertif.true
-; CHECK-NEXT:   %"a'de.0" = phi double [ %3, %invertif.true ], [ %6, %invertif.false ]
-; CHECK-NEXT:   %1 = insertvalue { double } undef, double %"a'de.0", 0
-; CHECK-NEXT:   ret { double } %1
+; CHECK-NEXT:   %"a'de.0" = phi double [ %[[prev1:.+]], %invertif.true ], [ %[[prev2:.+]], %invertif.false ]
+; CHECK-NEXT:   %[[ret:.+]] = insertvalue { double } undef, double %"a'de.0", 0
+; CHECK-NEXT:   ret { double } %[[ret]]
 
 ; CHECK: invertif.true:                                    ; preds = %invertend
-; CHECK-NEXT:   %2 = call {} @diffemetasin(double* nonnull %a.addr, double* nonnull %"a.addr'ipa", double %8)
-; CHECK-NEXT:   %3 = load double, double* %"a.addr'ipa", align 8
+; CHECK-NEXT:   %{{.+}} = call {} @diffemetasin(double* nonnull %a.addr, double* nonnull %"a.addr'ipa", double %[[drets:.+]])
+; CHECK-NEXT:   %[[prev1]] = load double, double* %"a.addr'ipa", align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"a.addr'ipa", align 8
 ; CHECK-NEXT:   br label %invertentry
 
 ; CHECK: invertif.false:                                   ; preds = %invertend
-; CHECK-NEXT:   %4 = call {} @diffemetasin(double* nonnull %a.addr, double* nonnull %"a.addr'ipa", double %7)
-; CHECK-NEXT:   %5 = load double, double* %"a.addr'ipa", align 8
+; CHECK-NEXT:   %{{.+}} = call {} @diffemetasin(double* nonnull %a.addr, double* nonnull %"a.addr'ipa", double %[[drets2:.+]])
+; CHECK-NEXT:   %[[pload:.+]] = load double, double* %"a.addr'ipa", align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"a.addr'ipa", align 8
-; CHECK-NEXT:   %m0diffea = fmul fast double %5, %a
-; CHECK-NEXT:   %6 = fadd fast double %m0diffea, %m0diffea
+; CHECK-NEXT:   %m0diffea = fmul fast double %[[pload]], %a
+; CHECK-NEXT:   %[[prev2]] = fadd fast double %m0diffea, %m0diffea
 ; CHECK-NEXT:   br label %invertentry
 
 ; CHECK: invertend:                                        ; preds = %if.true, %if.false
 ; TODO ensure propagation
-; CHECK-NEXT:   %7 = select{{( fast)?}} i1 %cmp, double 0.000000e+00, double %differeturn
-; CHECK-NEXT:   %8 = select{{( fast)?}} i1 %cmp, double %differeturn, double 0.000000e+00
+; CHECK-NEXT:   %[[drets2]] = select{{( fast)?}} i1 %cmp, double 0.000000e+00, double %differeturn
+; CHECK-NEXT:   %[[drets]] = select{{( fast)?}} i1 %cmp, double %differeturn, double 0.000000e+00
 ; CHECK-NEXT:   br i1 %cmp, label %invertif.true, label %invertif.false
 ; CHECK-NEXT: }

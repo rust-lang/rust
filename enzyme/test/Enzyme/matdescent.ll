@@ -310,7 +310,7 @@ attributes #19 = { builtin nounwind }
 ; CHECK-NEXT:   br i1 %0, label %invertentry, label %incinvertfor.body
 
 ; CHECK: incinvertfor.body:                                ; preds = %invertfor.body
-; CHECK-NEXT:   %1 = sub nuw nsw i64 %"iv'ac.0", 1
+; CHECK-NEXT:   %1 = add nsw i64 %"iv'ac.0", -1
 ; CHECK-NEXT:   br label %invertfor.cond.cleanup3
 
 ; CHECK: invertfor.body4:                                  ; preds = %invertfor.cond.cleanup3, %incinvertfor.body4
@@ -328,7 +328,7 @@ attributes #19 = { builtin nounwind }
 ; CHECK-NEXT:   br i1 %[[lcmp]], label %invertfor.body, label %incinvertfor.body4
 
 ; CHECK: incinvertfor.body4:                               ; preds = %invertfor.body4
-; CHECK-NEXT:   %[[isub]] = sub nuw nsw i64 %"iv1'ac.0", 1
+; CHECK-NEXT:   %[[isub]] = add nsw i64 %"iv1'ac.0", -1
 ; CHECK-NEXT:   br label %invertfor.body4
 
 ; CHECK: invertfor.cond.cleanup3:                          ; preds = %mergeinvertfor.body_for.body20.preheader, %incinvertfor.body
@@ -362,6 +362,6 @@ attributes #19 = { builtin nounwind }
 ; CHECK-NEXT:   br i1 %[[riv3cmp]], label %mergeinvertfor.body_for.body20.preheader, label %incinvertfor.body20
 
 ; CHECK: incinvertfor.body20:                              ; preds = %invertfor.body20
-; CHECK-NEXT:   %[[iv3sub1]] = sub nuw nsw i64 %"iv3'ac.0", 1
+; CHECK-NEXT:   %[[iv3sub1]] = add nsw i64 %"iv3'ac.0", -1
 ; CHECK-NEXT:   br label %invertfor.body20
 ; CHECK-NEXT: }

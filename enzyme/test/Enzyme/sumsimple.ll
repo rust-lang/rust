@@ -72,7 +72,7 @@ attributes #0 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   br i1 %[[cmp]], label %invertentry, label %incinvertfor.cond
 
 ; CHECK: incinvertfor.cond:
-; CHECK-NEXT:   %[[sub]] = sub nuw nsw i64 %[[ivp]], 1
+; CHECK-NEXT:   %[[sub]] = add nsw i64 %[[ivp]], -1
 ; CHECK-NEXT:   %8 = getelementptr inbounds double*, double** %[[antimallocs]], i64 %[[sub]]
 ; CHECK-NEXT:   %9 = load double*, double** %8, align 8, !invariant.group !0
 ; CHECK-NEXT:   %10 = load double, double* %9

@@ -44,8 +44,7 @@ entry:
 ; CHECK: define internal {} @diffetodiff(%"struct.std::array.6"* dereferenceable(16) %arr, %"struct.std::array.6"* %"arr'", i64 %identity) {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %"arr.i'ipa" = alloca %"struct.std::array.6", align 8
-; CHECK-NEXT:   %0 = bitcast %"struct.std::array.6"* %"arr.i'ipa" to i8*
-; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull align 8 %0, i8 0, i64 16, i1 false)
+; CHECK-NEXT:   store %"struct.std::array.6" zeroinitializer, %"struct.std::array.6"* %"arr.i'ipa", align 8
 ; CHECK-NEXT:   %arr.i = alloca %"struct.std::array.6", align 8
 ; CHECK-NEXT:   %agg.tmp.sroa.0.0..sroa_idx = getelementptr inbounds %"struct.std::array.6", %"struct.std::array.6"* %arr, i64 0, i32 0, i64 0
 ; CHECK-NEXT:   %agg.tmp.sroa.0.0.copyload = load i64, i64* %agg.tmp.sroa.0.0..sroa_idx, align 8, !tbaa !2

@@ -69,7 +69,8 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   br i1 %[[cmp]], label %diffeunknowniters.exit, label %[[incantiloop]]
 
 ; CHECK: [[incantiloop]]:
-; CHECK-NEXT:   %[[antiivnext]] = sub nuw nsw i64 %[[antiiv]], 1
+; TODO the following can have nuw on it because its known non 0
+; CHECK-NEXT:   %[[antiivnext]] = add nsw i64 %[[antiiv]], -1
 ; CHECK-NEXT:   br label %[[antiloop]]
 
 ; CHECK: diffeunknowniters.exit:

@@ -142,7 +142,7 @@ exit:                                             ; preds = %end2
 ; CHECK-NEXT:   br i1 %2, label %invertentry, label %incinvertfor1
 
 ; CHECK: incinvertfor1:                                    ; preds = %invertfor1
-; CHECK-NEXT:   %[[sub1:.+]] = sub nuw nsw i64 %"iv'ac.0", 1
+; CHECK-NEXT:   %[[sub1:.+]] = add nsw i64 %"iv'ac.0", -1
 ; CHECK-NEXT:   br label %invertend2
 
 ; CHECK: invertfor2:                                       ; preds = %invertend2, %incinvertfor2
@@ -165,7 +165,7 @@ exit:                                             ; preds = %end2
 ; CHECK-NEXT:   br i1 %[[cmp]], label %invertfor1, label %incinvertfor2
 
 ; CHECK: incinvertfor2:                                    ; preds = %invertfor2
-; CHECK-NEXT:   %[[sub]] = sub nuw nsw i64 %"iv1'ac.0", 1
+; CHECK-NEXT:   %[[sub]] = add nsw i64 %"iv1'ac.0", -1
 ; CHECK-NEXT:   br label %invertfor2
 
 ; CHECK: invertend2:                                       ; preds = %entry, %incinvertfor1

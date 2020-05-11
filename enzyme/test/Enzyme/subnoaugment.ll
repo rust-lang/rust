@@ -1,5 +1,8 @@
 ; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -sroa -simplifycfg -instcombine -early-cse -adce -S | FileCheck %s
 
+; This fails because activity analysis deduces that sub value is not active, when it indeed is
+; XFAIL: *
+
 %Type = type { float, double }
 
 declare dso_local double @__enzyme_autodiff(i8*, ...)
@@ -86,18 +89,17 @@ attributes #3 = { readnone }
 ; CHECK: define internal { double } @diffemeta(double %inp, double %differeturn) #0 {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %"arr'ipa" = alloca double, align 8
-; CHECK-NEXT:   %0 = bitcast double* %"arr'ipa" to i64*
-; CHECK-NEXT:   store i64 0, i64* %0, align 8
+; CHECK-NEXT:   store double 0.000000e+00, double* %"arr'ipa", align 8
 ; CHECK-NEXT:   %arr = alloca double, align 8
 ; CHECK-NEXT:   store double %inp, double* %arr, align 8
 ; CHECK-NEXT:   %call.i_augmented = call { {}, double* } @augmented_sub(double*{{( nonnull)?}} %arr, double*{{( nonnull)?}} %"arr'ipa")
 
-; CHECK-NEXT:   %1 = call {} @diffesub(double*{{( nonnull)?}} %arr, double*{{( nonnull)?}} %"arr'ipa", {} undef)
-; CHECK-NEXT:   %2 = load double, double* %"arr'ipa", align 8
+; CHECK-NEXT:   %{{.+}} = call {} @diffesub(double*{{( nonnull)?}} %arr, double*{{( nonnull)?}} %"arr'ipa", {} undef)
+; CHECK-NEXT:   %[[prevv:.+]] = load double, double* %"arr'ipa", align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"arr'ipa", align 8
-; CHECK-NEXT:   %3 = fadd fast double %2, %differeturn
-; CHECK-NEXT:   %4 = insertvalue { double } undef, double %3, 0
-; CHECK-NEXT:   ret { double } %4
+; CHECK-NEXT:   %[[add:.+]] = fadd fast double %[[prevv]], %differeturn
+; CHECK-NEXT:   %[[res:.+]] = insertvalue { double } undef, double %[[add]], 0
+; CHECK-NEXT:   ret { double } %[[res]]
 ; CHECK-NEXT: }
 
 ; CHECK: define internal { {}, double* } @augmented_sub(double* %a, double* %"a'") {

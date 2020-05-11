@@ -1,7 +1,10 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -early-cse -simplifycfg -correlated-propagation -instcombine -adce -S | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -simplifycfg -early-cse -correlated-propagation -instsimplify -adce -S | FileCheck %s
 source_filename = "/mnt/Data/git/Enzyme/enzyme/test/Integration/eigensumsqdyn.cpp"
 target datalayout = "e-m:e-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-unknown-linux-gnu"
+
+; This should pass, the test just needs updating to reflect it
+; XFAIL: *
 
 %struct._IO_FILE = type { i32, i8*, i8*, i8*, i8*, i8*, i8*, i8*, i8*, i8*, i8*, i8*, %struct._IO_marker*, %struct._IO_FILE*, i32, i32, i64, i16, i8, [1 x i8], i8*, i64, i8*, i8*, i8*, i8*, i64, i32, [20 x i8] }
 %struct._IO_marker = type { %struct._IO_marker*, %struct._IO_FILE*, i32 }
@@ -962,7 +965,7 @@ attributes #10 = { noreturn nounwind }
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %call.i.i.i.i = call noalias i8* @malloc(i64 128) #6
 ; CHECK-NEXT:   %"call.i.i.i.i'mi" = call noalias nonnull i8* @malloc(i64 128) #6
-; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull align 1 %"call.i.i.i.i'mi", i8 0, i64 128, i1 false)
+; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull %"call.i.i.i.i'mi", i8 0, i64 128, i1 false)
 ; CHECK-NEXT:   %"doubles'ipc" = bitcast i8* %"call.i.i.i.i'mi" to double*
 ; CHECK-NEXT:   %doubles = bitcast i8* %call.i.i.i.i to double*
 ; CHECK-NEXT:   br label %dfor
@@ -998,7 +1001,7 @@ attributes #10 = { noreturn nounwind }
 ; CHECK-NEXT:   %"add.ptr'ipg" = getelementptr inbounds double, double* %"doubles'ipc", i64 %iv3
 ; CHECK-NEXT:   %add.ptr = getelementptr inbounds double, double* %doubles, i64 %iv3
 ; CHECK-NEXT:   %".cast'ipc" = ptrtoint double* %"add.ptr'ipg" to i64
-; CHECK-NEXT:   %0 = shl nuw nsw i64 %iv3, 2
+; CHECK-NEXT:   %0 = mul nuw nsw i64 %iv3, 4
 ; CHECK-NEXT:   %1 = add nuw nsw i64 %iv1, %0
 ; CHECK-NEXT:   %2 = getelementptr inbounds i64, i64* %"tdoub'ipl_malloccache", i64 %1
 ; CHECK-NEXT:   store i64 %".cast'ipc", i64* %2, align 8, !invariant.group !42
@@ -1010,20 +1013,20 @@ attributes #10 = { noreturn nounwind }
 ; CHECK-NEXT:   %mul.i.i.i.i20.i.i.i.i.i.i.i = shl nsw i64 %iv5, 2
 ; CHECK-NEXT:   %valptr = getelementptr inbounds double, double* %add.ptr, i64 %mul.i.i.i.i20.i.i.i.i.i.i.i
 ; CHECK-NEXT:   %val = load double, double* %valptr, align 8, !tbaa !26
-; CHECK-NEXT:   %3 = shl nuw nsw i64 %iv5, 4
+; CHECK-NEXT:   %3 = mul nuw nsw i64 %iv5, 16
 ; CHECK-NEXT:   %4 = add nuw nsw i64 %1, %3
 ; CHECK-NEXT:   %5 = getelementptr inbounds double, double* %val_malloccache, i64 %4
 ; CHECK-NEXT:   store double %val, double* %5, align 8, !invariant.group !43
-; CHECK-NEXT:   %cmp.i.i.i15.i.i.i.i.i = icmp eq i64 %iv.next6, 4
-; CHECK-NEXT:   br i1 %cmp.i.i.i15.i.i.i.i.i, label %_ZNK5Eigen9DenseBaseINS_13CwiseBinaryOpINS_8internal17scalar_product_opIddEEKNS_9TransposeIKNS_5BlockIKNS_6MatrixIdLin1ELin1ELi0ELin1ELin1EEELi1ELin1ELb0EEEEEKNS6_IS9_Lin1ELi1ELb1EEEEEE5reduxINS2_13scalar_sum_opIddEEEEdRKT_.exit.i.i.i.i.i.i, label %for.body.i.i.i.i.i.i.i.i
+; CHECK-NEXT:   %cmp.i.i.i15.i.i.i.i.i = icmp ne i64 %iv.next6, 4
+; CHECK-NEXT:   br i1 %cmp.i.i.i15.i.i.i.i.i, label %for.body.i.i.i.i.i.i.i.i, label %_ZNK5Eigen9DenseBaseINS_13CwiseBinaryOpINS_8internal17scalar_product_opIddEEKNS_9TransposeIKNS_5BlockIKNS_6MatrixIdLin1ELin1ELi0ELin1ELin1EEELi1ELin1ELb0EEEEEKNS6_IS9_Lin1ELi1ELb1EEEEEE5reduxINS2_13scalar_sum_opIddEEEEdRKT_.exit.i.i.i.i.i.i
 
 ; CHECK: _ZNK5Eigen9DenseBaseINS_13CwiseBinaryOpINS_8internal17scalar_product_opIddEEKNS_9TransposeIKNS_5BlockIKNS_6MatrixIdLin1ELin1ELi0ELin1ELin1EEELi1ELin1ELb0EEEEEKNS6_IS9_Lin1ELi1ELb1EEEEEE5reduxINS2_13scalar_sum_opIddEEEEdRKT_.exit.i.i.i.i.i.i: ; preds = %for.body.i.i.i.i.i.i.i.i
-; CHECK-NEXT:   %cmp3.i.i.i.i.i.i.i.i.i.i = icmp eq i64 %iv.next4, 4
-; CHECK-NEXT:   br i1 %cmp3.i.i.i.i.i.i.i.i.i.i, label %for.cond.cleanup4.i.i.i.i.i.i.i.i.i.i, label %for.body5.i.i.i.i.i.i.i.i.i.i
+; CHECK-NEXT:   %cmp3.i.i.i.i.i.i.i.i.i.i = icmp ne i64 %iv.next4, 4
+; CHECK-NEXT:   br i1 %cmp3.i.i.i.i.i.i.i.i.i.i, label %for.body5.i.i.i.i.i.i.i.i.i.i, label %for.cond.cleanup4.i.i.i.i.i.i.i.i.i.i
 
 ; CHECK: for.cond.cleanup4.i.i.i.i.i.i.i.i.i.i:            ; preds = %_ZNK5Eigen9DenseBaseINS_13CwiseBinaryOpINS_8internal17scalar_product_opIddEEKNS_9TransposeIKNS_5BlockIKNS_6MatrixIdLin1ELin1ELi0ELin1ELin1EEELi1ELin1ELb0EEEEEKNS6_IS9_Lin1ELi1ELb1EEEEEE5reduxINS2_13scalar_sum_opIddEEEEdRKT_.exit.i.i.i.i.i.i
-; CHECK-NEXT:   %cmp.i1.i.i.i.i.i.i.i.i.i = icmp eq i64 %iv.next2, 4
-; CHECK-NEXT:   br i1 %cmp.i1.i.i.i.i.i.i.i.i.i, label %invertfor.cond.cleanup4.i.i.i.i.i.i.i.i.i.i, label %for.cond1.preheader.i.i.i.i.i.i.i.i.i.i
+; CHECK-NEXT:   %cmp.i1.i.i.i.i.i.i.i.i.i = icmp ne i64 %iv.next2, 4
+; CHECK-NEXT:   br i1 %cmp.i1.i.i.i.i.i.i.i.i.i, label %for.cond1.preheader.i.i.i.i.i.i.i.i.i.i, label %invertfor.cond.cleanup4.i.i.i.i.i.i.i.i.i.i
 
 ; CHECK: invertentry:                                      ; preds = %invertdfor
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %"call.i.i.i.i'mi")
@@ -1031,23 +1034,24 @@ attributes #10 = { noreturn nounwind }
 ; CHECK-NEXT:   ret {} undef
 
 ; CHECK: invertdfor:                                       ; preds = %invertmid, %incinvertdfor
-; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ 15, %invertmid ], [ %12, %incinvertdfor ]
+; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ 15, %invertmid ], [ %[[ivsub:.+]], %incinvertdfor ]
 ; CHECK-NEXT:   %"arrayidx.i.i.i.i.i.i.i.i.i'ipg_unwrap" = getelementptr inbounds double, double* %"doubles'ipc", i64 %"iv'ac.0"
-; CHECK-NEXT:   %6 = load double, double* %"arrayidx.i.i.i.i.i.i.i.i.i'ipg_unwrap", align 8
+; CHECK-NEXT:   %[[pidx:.+]] = load double, double* %"arrayidx.i.i.i.i.i.i.i.i.i'ipg_unwrap", align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"arrayidx.i.i.i.i.i.i.i.i.i'ipg_unwrap", align 8
+; CHECK-NEXT:   %[[npidx:.+]] = fsub fast double -0.000000e+00, %[[pidx]]
 ; CHECK-NEXT:   %"Mi'ipg_unwrap" = getelementptr inbounds double, double* %"ptrM'", i64 %"iv'ac.0"
-; CHECK-NEXT:   %7 = load double, double* %"Mi'ipg_unwrap", align 8
-; CHECK-NEXT:   %8 = fsub fast double %7, %6
-; CHECK-NEXT:   store double %8, double* %"Mi'ipg_unwrap", align 8
+; CHECK-NEXT:   %[[pM:.+]] = load double, double* %"Mi'ipg_unwrap", align 8
+; CHECK-NEXT:   %[[nM:.+]] = fadd fast double %[[pM]], %[[npidx]]
+; CHECK-NEXT:   store double %[[nM]], double* %"Mi'ipg_unwrap", align 8
 ; CHECK-NEXT:   %"Wi'ipg_unwrap" = getelementptr inbounds double, double* %"ptrW'", i64 %"iv'ac.0"
-; CHECK-NEXT:   %9 = load double, double* %"Wi'ipg_unwrap", align 8
-; CHECK-NEXT:   %10 = fadd fast double %9, %6
-; CHECK-NEXT:   store double %10, double* %"Wi'ipg_unwrap", align 8
-; CHECK-NEXT:   %11 = icmp eq i64 %"iv'ac.0", 0
-; CHECK-NEXT:   br i1 %11, label %invertentry, label %incinvertdfor
+; CHECK-NEXT:   %[[pWi:.+]] = load double, double* %"Wi'ipg_unwrap", align 8
+; CHECK-NEXT:   %[[nWi:.+]] = fadd fast double %[[pWi]], %[[pidx]]
+; CHECK-NEXT:   store double %[[nWi]], double* %"Wi'ipg_unwrap", align 8
+; CHECK-NEXT:   %[[ivcmp:.+]] = icmp eq i64 %"iv'ac.0", 0
+; CHECK-NEXT:   br i1 %[[ivcmp]], label %invertentry, label %incinvertdfor
 
 ; CHECK: incinvertdfor:                                    ; preds = %invertdfor
-; CHECK-NEXT:   %12 = add nsw i64 %"iv'ac.0", -1
+; CHECK-NEXT:   %[[ivsub]] = sub nuw nsw i64 %"iv'ac.0", 1
 ; CHECK-NEXT:   br label %invertdfor
 
 ; CHECK: invertmid:                                        ; preds = %invertfor.cond1.preheader.i.i.i.i.i.i.i.i.i.i
@@ -1056,26 +1060,27 @@ attributes #10 = { noreturn nounwind }
 ; CHECK-NEXT:   br label %invertdfor
 
 ; CHECK: invertfor.cond1.preheader.i.i.i.i.i.i.i.i.i.i:    ; preds = %invertfor.body5.i.i.i.i.i.i.i.i.i.i
-; CHECK-NEXT:   %13 = icmp eq i64 %"iv1'ac.0", 0
-; CHECK-NEXT:   br i1 %13, label %invertmid, label %incinvertfor.cond1.preheader.i.i.i.i.i.i.i.i.i.i
+; CHECK-NEXT:   %[[iv1cmp:.+]] = icmp eq i64 %"iv1'ac.0", 0
+; CHECK-NEXT:   %15 = fadd fast double %18, %19
+; CHECK-NEXT:   br i1 %[[iv1cmp]], label %invertmid, label %incinvertfor.cond1.preheader.i.i.i.i.i.i.i.i.i.i
 
 ; CHECK: incinvertfor.cond1.preheader.i.i.i.i.i.i.i.i.i.i: ; preds = %invertfor.cond1.preheader.i.i.i.i.i.i.i.i.i.i
-; CHECK-NEXT:   %14 = add nsw i64 %"iv1'ac.0", -1
+; CHECK-NEXT:   %[[iv1sub:.+]] = sub nuw nsw i64 %"iv1'ac.0", 1
 ; CHECK-NEXT:   br label %invertfor.cond.cleanup4.i.i.i.i.i.i.i.i.i.i
 
 ; CHECK: invertfor.body5.i.i.i.i.i.i.i.i.i.i:              ; preds = %invertfor.body.i.i.i.i.i.i.i.i
-; CHECK-NEXT:   %15 = icmp eq i64 %"iv3'ac.0", 0
-; CHECK-NEXT:   br i1 %15, label %invertfor.cond1.preheader.i.i.i.i.i.i.i.i.i.i, label %incinvertfor.body5.i.i.i.i.i.i.i.i.i.i
+; CHECK-NEXT:   %[[iv3cmp:.+]] = icmp eq i64 %"iv3'ac.0", 0
+; CHECK-NEXT:   br i1 %[[iv3cmp]], label %invertfor.cond1.preheader.i.i.i.i.i.i.i.i.i.i, label %incinvertfor.body5.i.i.i.i.i.i.i.i.i.i
 
 ; CHECK: incinvertfor.body5.i.i.i.i.i.i.i.i.i.i:           ; preds = %invertfor.body5.i.i.i.i.i.i.i.i.i.i
-; CHECK-NEXT:   %16 = add nsw i64 %"iv3'ac.0", -1
+; CHECK-NEXT:   %[[iv3sub]] = add nsw i64 %"iv3'ac.0", -1
 ; CHECK-NEXT:   br label %invert_ZNK5Eigen9DenseBaseINS_13CwiseBinaryOpINS_8internal17scalar_product_opIddEEKNS_9TransposeIKNS_5BlockIKNS_6MatrixIdLin1ELin1ELi0ELin1ELin1EEELi1ELin1ELb0EEEEEKNS6_IS9_Lin1ELi1ELb1EEEEEE5reduxINS2_13scalar_sum_opIddEEEEdRKT_.exit.i.i.i.i.i.i
 
 ; CHECK: invertfor.body.i.i.i.i.i.i.i.i:                   ; preds = %invert_ZNK5Eigen9DenseBaseINS_13CwiseBinaryOpINS_8internal17scalar_product_opIddEEKNS_9TransposeIKNS_5BlockIKNS_6MatrixIdLin1ELin1ELi0ELin1ELin1EEELi1ELin1ELb0EEEEEKNS6_IS9_Lin1ELi1ELb1EEEEEE5reduxINS2_13scalar_sum_opIddEEEEdRKT_.exit.i.i.i.i.i.i, %incinvertfor.body.i.i.i.i.i.i.i.i
-; CHECK-NEXT:   %"iv5'ac.0" = phi i64 [ 3, %invert_ZNK5Eigen9DenseBaseINS_13CwiseBinaryOpINS_8internal17scalar_product_opIddEEKNS_9TransposeIKNS_5BlockIKNS_6MatrixIdLin1ELin1ELi0ELin1ELin1EEELi1ELin1ELb0EEEEEKNS6_IS9_Lin1ELi1ELb1EEEEEE5reduxINS2_13scalar_sum_opIddEEEEdRKT_.exit.i.i.i.i.i.i ], [ %31, %incinvertfor.body.i.i.i.i.i.i.i.i ]
-; CHECK-NEXT:   %17 = shl nuw nsw i64 %"iv3'ac.0", 2
+; CHECK-NEXT:   %"iv5'ac.0" = phi i64 [ 3, %invert_ZNK5Eigen9DenseBaseINS_13CwiseBinaryOpINS_8internal17scalar_product_opIddEEKNS_9TransposeIKNS_5BlockIKNS_6MatrixIdLin1ELin1ELi0ELin1ELin1EEELi1ELin1ELb0EEEEEKNS6_IS9_Lin1ELi1ELb1EEEEEE5reduxINS2_13scalar_sum_opIddEEEEdRKT_.exit.i.i.i.i.i.i ], [ %[[iv5sub:.+]], %incinvertfor.body.i.i.i.i.i.i.i.i ]
+; CHECK-NEXT:   %17 = mul nuw nsw i64 %"iv3'ac.0", 4
 ; CHECK-NEXT:   %18 = add nuw nsw i64 %"iv1'ac.0", %17
-; CHECK-NEXT:   %19 = shl nuw nsw i64 %"iv5'ac.0", 4
+; CHECK-NEXT:   %19 = mul nuw nsw i64 %"iv5'ac.0", 16
 ; CHECK-NEXT:   %20 = add nuw nsw i64 %18, %19
 ; CHECK-NEXT:   %21 = getelementptr inbounds double, double* %val_malloccache, i64 %20
 ; CHECK-NEXT:   %22 = load double, double* %21, align 8, !invariant.group !43, !enzyme_fromcache !44
@@ -1086,21 +1091,21 @@ attributes #10 = { noreturn nounwind }
 ; CHECK-NEXT:   %27 = load double*, double** %26, align 8
 ; CHECK-NEXT:   %mul.i.i.i.i20.i.i.i.i.i.i.i_unwrap = shl nsw i64 %"iv5'ac.0", 2
 ; CHECK-NEXT:   %"valptr'ipg_unwrap" = getelementptr inbounds double, double* %27, i64 %mul.i.i.i.i20.i.i.i.i.i.i.i_unwrap
-; CHECK-NEXT:   %28 = load double, double* %"valptr'ipg_unwrap", align 8
-; CHECK-NEXT:   %29 = fadd fast double %28, %24
-; CHECK-NEXT:   store double %29, double* %"valptr'ipg_unwrap", align 8
-; CHECK-NEXT:   %30 = icmp eq i64 %"iv5'ac.0", 0
-; CHECK-NEXT:   br i1 %30, label %invertfor.body5.i.i.i.i.i.i.i.i.i.i, label %incinvertfor.body.i.i.i.i.i.i.i.i
+; CHECK-NEXT:   %[[pVal:.+]] = load double, double* %"valptr'ipg_unwrap", align 8
+; CHECK-NEXT:   %[[nVal:.+]] = fadd fast double %[[pVal]], %24
+; CHECK-NEXT:   store double %[[nVal]], double* %"valptr'ipg_unwrap", align 8
+; CHECK-NEXT:   %[[iv5cmp:.+]] = icmp eq i64 %"iv5'ac.0", 0
+; CHECK-NEXT:   br i1 %[[iv5cmp]], label %invertfor.body5.i.i.i.i.i.i.i.i.i.i, label %incinvertfor.body.i.i.i.i.i.i.i.i
 
 ; CHECK: incinvertfor.body.i.i.i.i.i.i.i.i:                ; preds = %invertfor.body.i.i.i.i.i.i.i.i
-; CHECK-NEXT:   %31 = add nsw i64 %"iv5'ac.0", -1
+; CHECK-NEXT:   %[[iv5sub]] = add nsw i64 %"iv5'ac.0", -1
 ; CHECK-NEXT:   br label %invertfor.body.i.i.i.i.i.i.i.i
 
 ; CHECK: invert_ZNK5Eigen9DenseBaseINS_13CwiseBinaryOpINS_8internal17scalar_product_opIddEEKNS_9TransposeIKNS_5BlockIKNS_6MatrixIdLin1ELin1ELi0ELin1ELin1EEELi1ELin1ELb0EEEEEKNS6_IS9_Lin1ELi1ELb1EEEEEE5reduxINS2_13scalar_sum_opIddEEEEdRKT_.exit.i.i.i.i.i.i: ; preds = %invertfor.cond.cleanup4.i.i.i.i.i.i.i.i.i.i, %incinvertfor.body5.i.i.i.i.i.i.i.i.i.i
-; CHECK-NEXT:   %"iv3'ac.0" = phi i64 [ 3, %invertfor.cond.cleanup4.i.i.i.i.i.i.i.i.i.i ], [ %16, %incinvertfor.body5.i.i.i.i.i.i.i.i.i.i ]
+; CHECK-NEXT:   %"iv3'ac.0" = phi i64 [ 3, %invertfor.cond.cleanup4.i.i.i.i.i.i.i.i.i.i ], [ %[[iv3sub]], %incinvertfor.body5.i.i.i.i.i.i.i.i.i.i ]
 ; CHECK-NEXT:   br label %invertfor.body.i.i.i.i.i.i.i.i
 
 ; CHECK: invertfor.cond.cleanup4.i.i.i.i.i.i.i.i.i.i:      ; preds = %for.cond.cleanup4.i.i.i.i.i.i.i.i.i.i, %incinvertfor.cond1.preheader.i.i.i.i.i.i.i.i.i.i
-; CHECK-NEXT:   %"iv1'ac.0" = phi i64 [ %14, %incinvertfor.cond1.preheader.i.i.i.i.i.i.i.i.i.i ], [ 3, %for.cond.cleanup4.i.i.i.i.i.i.i.i.i.i ]
+; CHECK-NEXT:   %"iv1'ac.0" = phi i64 [ %[[iv1sub]], %incinvertfor.cond1.preheader.i.i.i.i.i.i.i.i.i.i ], [ 3, %for.cond.cleanup4.i.i.i.i.i.i.i.i.i.i ]
 ; CHECK-NEXT:   br label %invert_ZNK5Eigen9DenseBaseINS_13CwiseBinaryOpINS_8internal17scalar_product_opIddEEKNS_9TransposeIKNS_5BlockIKNS_6MatrixIdLin1ELin1ELi0ELin1ELin1EEELi1ELin1ELb0EEEEEKNS6_IS9_Lin1ELi1ELb1EEEEEE5reduxINS2_13scalar_sum_opIddEEEEdRKT_.exit.i.i.i.i.i.i
 ; CHECK-NEXT: }

@@ -156,6 +156,6 @@ attributes #6 = { noreturn nounwind }
 ; CHECK-NEXT:   br i1 %[[lcond]], label %invertfor.body.preheader, label %incinvertfor.body.for.body_crit_edge
 
 ; CHECK: incinvertfor.body.for.body_crit_edge:
-; CHECK-NEXT:   %[[subd]] = sub nuw nsw i64 %[[antivar]], 1
+; CHECK-NEXT:   %[[subd]] = add nsw i64 %[[antivar]], -1
 ; CHECK-NEXT:   br label %invertfor.body.for.body_crit_edge
 ; CHECK-NEXT: }

@@ -1017,7 +1017,7 @@ attributes #9 = { noreturn nounwind }
 
 ; CHECK: invertmatfor2:                                    ; preds = %invertmatfor3
 ; CHECK-NEXT:   %[[endcmp:.+]] = icmp eq i64 %"iv3'ac.0", 0
-; CHECK-NEXT:   %[[cstfree:.+]] = bitcast double** %22 to i8**
+; CHECK-NEXT:   %[[cstfree:.+]] = bitcast double** %[[valPtr:.+]] to i8**
 ; CHECK-NEXT:   %[[tofree:.+]] = load i8*, i8** %[[cstfree]], align 8, !dereferenceable !43
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %[[tofree]])
 ; CHECK-NEXT:   br i1 %[[endcmp]], label %invertmatfor1, label %incinvertmatfor2
@@ -1027,32 +1027,32 @@ attributes #9 = { noreturn nounwind }
 ; CHECK-NEXT:   br label %invertscalar
 
 ; CHECK: invertmatfor3:                                    ; preds = %invertscalar, %incinvertmatfor3
-; CHECK-NEXT:   %"iv5'ac.0.in" = phi i64 [ %32, %invertscalar ], [ %"iv5'ac.0", %incinvertmatfor3 ]
+; CHECK-NEXT:   %"iv5'ac.0.in" = phi i64 [ %[[smax:.+]], %invertscalar ], [ %"iv5'ac.0", %incinvertmatfor3 ]
 ; CHECK-NEXT:   %"iv5'ac.0" = add i64 %"iv5'ac.0.in", -1
 ; CHECK-NEXT:   %m0diffemul26 = fmul fast double %"zadd'de.1", 4.000000e+00
-; CHECK-NEXT:   %21 = add nuw nsw i64 %"iv1'ac.0", %"iv3'ac.0"
-; CHECK-NEXT:   %22 = getelementptr inbounds double*, double** %val_malloccache, i64 %21
-; CHECK-NEXT:   %23 = load double*, double** %22, align 8, !dereferenceable !43, !invariant.group !44
-; CHECK-NEXT:   %24 = getelementptr inbounds double, double* %23, i64 %"iv5'ac.0"
-; CHECK-NEXT:   %25 = load double, double* %24, align 8, !invariant.group !45, !enzyme_fromcache !46
-; CHECK-NEXT:   %26 = fadd fast double %25, %25
-; CHECK-NEXT:   %27 = fmul fast double %m0diffemul26, %26
+; CHECK-NEXT:   %[[iv1p3:.+]] = add nuw nsw i64 %"iv1'ac.0", %"iv3'ac.0"
+; CHECK-NEXT:   %[[valPtr]] = getelementptr inbounds double*, double** %val_malloccache, i64 %[[iv1p3]]
+; CHECK-NEXT:   %[[vallc:.+]] = load double*, double** %[[valPtr]], align 8, !dereferenceable !43, !invariant.group !44
+; CHECK-NEXT:   %[[fvalptr:.+]] = getelementptr inbounds double, double* %[[vallc]], i64 %"iv5'ac.0"
+; CHECK-NEXT:   %[[ival:.+]] = load double, double* %[[fvalptr]], align 8, !invariant.group !45, !enzyme_fromcache !46
+; CHECK-NEXT:   %[[val2:.+]] = fadd fast double %[[ival]], %[[ival]]
+; CHECK-NEXT:   %[[mulval:.+]] = fmul fast double %m0diffemul26, %[[val2]]
 ; CHECK-NEXT:   %"add.ptr.Z'ipg_unwrap" = getelementptr inbounds [16 x double], [16 x double]* %".cast'ipa17", i64 0, i64 %"iv3'ac.0"
 ; CHECK-NEXT:   %mul.i.i.i.i20.i.i.i.i.i.i.i_unwrap = shl nsw i64 %"iv5'ac.0", 2
 ; CHECK-NEXT:   %"arrayidx'ipg_unwrap" = getelementptr inbounds double, double* %"add.ptr.Z'ipg_unwrap", i64 %mul.i.i.i.i20.i.i.i.i.i.i.i_unwrap
-; CHECK-NEXT:   %28 = load double, double* %"arrayidx'ipg_unwrap", align 8
-; CHECK-NEXT:   %29 = fadd fast double %28, %27
-; CHECK-NEXT:   store double %29, double* %"arrayidx'ipg_unwrap", align 8
-; CHECK-NEXT:   %30 = icmp eq i64 %"iv5'ac.0", 0
-; CHECK-NEXT:   br i1 %30, label %invertmatfor2, label %incinvertmatfor3
+; CHECK-NEXT:   %[[pidx:.+]] = load double, double* %"arrayidx'ipg_unwrap", align 8
+; CHECK-NEXT:   %[[padd:.+]] = fadd fast double %[[pidx]], %[[mulval]]
+; CHECK-NEXT:   store double %[[padd]], double* %"arrayidx'ipg_unwrap", align 8
+; CHECK-NEXT:   %[[ecmp:.+]] = icmp eq i64 %"iv5'ac.0", 0
+; CHECK-NEXT:   br i1 %[[ecmp]], label %invertmatfor2, label %incinvertmatfor3
 
 ; CHECK: incinvertmatfor3:                                 ; preds = %invertmatfor3
 ; CHECK-NEXT:   br label %invertmatfor3
 
 ; CHECK: invertscalar:                                     ; preds = %invertfor.cond.cleanup4, %incinvertmatfor2
 ; CHECK-NEXT:   %"iv3'ac.0" = phi i64 [ 3, %invertfor.cond.cleanup4 ], [ %20, %incinvertmatfor2 ]
-; CHECK-NEXT:   %31 = getelementptr inbounds i64, i64* %smax_malloccache, i64 %"iv1'ac.0"
-; CHECK-NEXT:   %32 = load i64, i64* %31, align 8, !invariant.group !42, !enzyme_fromcache !46
+; CHECK-NEXT:   %[[smax_gep:.+]] = getelementptr inbounds i64, i64* %smax_malloccache, i64 %"iv1'ac.0"
+; CHECK-NEXT:   %[[smax]] = load i64, i64* %[[smax_gep]], align 8, !invariant.group !42, !enzyme_fromcache !46
 ; CHECK-NEXT:   br label %invertmatfor3
 
 ; CHECK: invertfor.cond.cleanup4:                          ; preds = %scalar, %incinvertmatfor1

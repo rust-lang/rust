@@ -1,35 +1,35 @@
 ; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -inline -mem2reg -ipconstprop -deadargelim -O3 -S | FileCheck %s
 
 ; #include <math.h>
-; 
+;
 ; __attribute__((noinline))
 ; void allocateAndSet(double ** arrayp, const double x, unsigned int n) {
 ;     *arrayp = (double*)malloc(sizeof(double)*n);
 ;     (*arrayp)[3] = x;
 ; }
-; 
-; 
+;
+;
 ; __attribute__((noinline))
 ; void meta(double ** arrayp, const double x, unsigned int n) {
 ;     allocateAndSet(arrayp, x, n);
 ; }
-; 
+;
 ; __attribute__((noinline))
 ; double get(double* x, unsigned int i) {
 ;     return x[i];
 ; }
-; 
+;
 ; double function(const double x, unsigned int n) {
 ;     double *array;
 ;     meta(&array, x, n);
 ;     return get(array, 3);
 ; }
-; 
+;
 ; __attribute__((noinline))
 ; double derivative(const double x, unsigned int n) {
 ;     return __builtin_autodiff(function, x, n);
 ; }
-; 
+;
 ; #include <stdio.h>
 ; #include <stdlib.h>
 ; int main(int argc, char** argv) {
@@ -151,8 +151,7 @@ attributes #5 = { nounwind }
 ; CHECK-NEXT:   call void @llvm.lifetime.start.p0i8(i64 8, i8* nonnull %[[api8]])
 ; CHECK-NEXT:   %[[ai8:.+]] = bitcast double** %array.i to i8*
 ; CHECK-NEXT:   call void @llvm.lifetime.start.p0i8(i64 8, i8* nonnull %[[ai8]])
-; CHECK-NEXT:   %[[api64:.+]] = bitcast double** %"array'ipa.i" to i64*
-; CHECK-NEXT:   store i64 0, i64* %[[api64]], align 8
+; CHECK-NEXT:   store double* null, double** %"array'ipa.i", align 8
 ; CHECK-NEXT:   %[[aug:.+]] = call fastcc { i8* } @augmented_meta(double** nonnull %array.i, double** nonnull %"array'ipa.i", double %x, i32 %n)
 ; CHECK-NEXT:   %[[oldret:.+]] = insertvalue { { i8* } } undef, { i8* } %[[aug]], 0
 ; CHECK-NEXT:   %"'ipl.i" = load double*, double** %"array'ipa.i", align 8

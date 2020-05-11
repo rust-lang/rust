@@ -118,7 +118,7 @@ attributes #8 = { noreturn nounwind }
 ; CHECK-NEXT:   br i1 %6, label %invertentry, label %incinvertfor.body
 
 ; CHECK: incinvertfor.body:                                ; preds = %invertfor.body
-; CHECK-NEXT:   %8 = sub nuw nsw i64 %"iv'ac.0", 1
+; CHECK-NEXT:   %8 = add nsw i64 %"iv'ac.0", -1
 ; CHECK-NEXT:   br label %invertfor.body
 
 ; CHECK: invertfor.cond.cleanup:                           ; preds = %for.body

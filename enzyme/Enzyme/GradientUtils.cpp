@@ -62,7 +62,7 @@
         IRBuilder<> tbuild(incB);
 
         Value* av = tbuild.CreateLoad(lc.antivaralloc);
-        Value* sub = tbuild.CreateSub(av, ConstantInt::get(av->getType(), 1), "", true, true);
+        Value* sub = tbuild.CreateAdd(av, ConstantInt::get(av->getType(), -1), "", /*NUW*/false, /*NSW*/true);
         tbuild.CreateStore(sub, lc.antivaralloc);
         tbuild.CreateBr(reverseBlocks[BB]);
         return newBlocksForLoop_cache[tup] = incB;
@@ -452,6 +452,14 @@ Value* GradientUtils::invertPointerM(Value* oval, IRBuilder<>& BuilderM) {
       AllocaInst* antialloca = bb.CreateAlloca(inst->getAllocatedType(), inst->getType()->getPointerAddressSpace(), asize, inst->getName()+"'ipa");
       invertedPointers[inst] = antialloca;
       antialloca->setAlignment(inst->getAlignment());
+
+      if (auto ci = dyn_cast<ConstantInt>(asize)) {
+        if (ci->isOne()) {
+          auto st = bb.CreateStore(Constant::getNullValue(inst->getAllocatedType()), antialloca);
+          st->setAlignment(inst->getAlignment());
+          return lookupM(invertedPointers[inst], BuilderM);
+        }
+      }
 
       auto dst_arg = bb.CreateBitCast(antialloca,Type::getInt8PtrTy(oval->getContext()));
       auto val_arg = ConstantInt::get(Type::getInt8Ty(oval->getContext()), 0);

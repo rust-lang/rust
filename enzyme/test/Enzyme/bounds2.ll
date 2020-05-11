@@ -260,7 +260,7 @@ attributes #10 = { cold }
 ; CHECK-NEXT:   br i1 %3, label %invertentry, label %incinvertfor.body
 
 ; CHECK: incinvertfor.body:                                ; preds = %invertfor.body
-; CHECK-NEXT:   %5 = sub nuw nsw i64 %"iv'ac.0", 1
+; CHECK-NEXT:   %5 = add nsw i64 %"iv'ac.0", -1
 ; CHECK-NEXT:   br label %invertfor.body
 ; CHECK-NEXT: }
 

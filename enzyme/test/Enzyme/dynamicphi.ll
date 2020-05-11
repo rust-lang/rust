@@ -118,7 +118,7 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   br i1 %10, label %invertentry, label %incinvertfor.outerbody
 
 ; CHECK: incinvertfor.outerbody:                           ; preds = %invertfor.outerbody
-; CHECK-NEXT:   %11 = sub nuw nsw i64 %"iv'ac.0", 1
+; CHECK-NEXT:   %11 = add nsw i64 %"iv'ac.0", -1
 ; CHECK-NEXT:   %12 = getelementptr inbounds i64, i64* %loopLimit_realloccast, i64 %11
 ; CHECK-NEXT:   %13 = load i64, i64* %12, align 8, !invariant.group !0
 ; CHECK-NEXT:   %.phi.trans.insert = getelementptr inbounds double*, double** %phi_realloccast, i64 %11
@@ -146,6 +146,6 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   br i1 %21, label %invertfor.body.ph, label %incinvertfor.body
 
 ; CHECK: incinvertfor.body:                                ; preds = %invertfor.body
-; CHECK-NEXT:   %22 = sub nuw nsw i64 %"iv1'ac.0", 1
+; CHECK-NEXT:   %22 = add nsw i64 %"iv1'ac.0", -1
 ; CHECK-NEXT:   br label %invertfor.body
 ; CHECK-NEXT: }

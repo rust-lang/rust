@@ -100,7 +100,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %"arr'ipc" = bitcast i8* %"malloccall'mi" to i64*
 ; CHECK-NEXT:   %arr = bitcast i8* %malloccall to i64*
 ; CHECK-NEXT:   store i64 %arr.coerce0, i64* %arr, align 4
-; CHECK-NEXT:   %call.i_augmented = call { {}, i64*, i64* } @augmented_cast(i64* %arr, i64* %"arr'ipc")
+; CHECK-NEXT:   %call.i_augmented = call { {}, i64*, i64* } @augmented_cast(i64*{{( nonnull)?}} %arr, i64*{{( nonnull)?}} %"arr'ipc")
 ; CHECK-NEXT:   %antiptr_call.i = extractvalue { {}, i64*, i64* } %call.i_augmented, 2
 ; CHECK-NEXT:   %call.i = extractvalue { {}, i64*, i64* } %call.i_augmented, 1
 ; CHECK-NEXT:   %a2 = load i64, i64* %call.i, align 4, !tbaa !2

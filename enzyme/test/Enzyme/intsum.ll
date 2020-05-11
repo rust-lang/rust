@@ -71,6 +71,6 @@ declare double @__enzyme_autodiff(void (float*, float*)*, ...) #2
 ; CHECK-NEXT:   br i1 %5, label %invertentry, label %incinvertdo.body
 
 ; CHECK: incinvertdo.body:
-; CHECK-NEXT:   %7 = sub nuw nsw i64 %"iv'ac.0", 1
+; CHECK-NEXT:   %7 = add nsw i64 %"iv'ac.0", -1
 ; CHECK-NEXT:   br label %invertdo.body
 ; CHECK-NEXT: }

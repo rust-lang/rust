@@ -1,4 +1,4 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -sroa -simplifycfg -instcombine -early-cse -adce -S | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -sroa -simplifycfg -instsimplify -early-cse -adce -S | FileCheck %s
 
 %Type = type { float, double }
 
@@ -50,7 +50,7 @@ attributes #3 = { readnone }
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[dimsipge:.+]] = getelementptr inbounds %Type, %Type* %"evaluator.i.i'", i64 0, i32 1
 ; CHECK-NEXT:   %dims = getelementptr inbounds %Type, %Type* %evaluator.i.i, i64 0, i32 1
-; CHECK-NEXT:   %call_augmented = call { {}, double } @augmented_total(double* nonnull %dims, double* nonnull %[[dimsipge]])
+; CHECK-NEXT:   %call_augmented = call { {}, double } @augmented_total(double* %dims, double* %[[dimsipge]])
 ; CHECK-NEXT:   %call = extractvalue { {}, double } %call_augmented, 1
 ; CHECK-NEXT:   %flt = fptrunc double %call to float
 ; CHECK-NEXT:   %data = getelementptr inbounds %Type, %Type* %evaluator.i.i, i64 0, i32 0
@@ -59,13 +59,13 @@ attributes #3 = { readnone }
 ; CHECK-NEXT:   %0 = load float, float* %[[dataipge:.+]], align 4
 ; CHECK-NEXT:   store float 0.000000e+00, float* %[[dataipge:.+]], align 4
 ; CHECK-NEXT:   %1 = fpext float %0 to double
-; CHECK-NEXT:   %[[unused:.+]] = call {} @diffetotal(double* nonnull %dims, double* nonnull %[[dimsipge]], double %1, {} undef)
+; CHECK-NEXT:   %[[unused:.+]] = call {} @diffetotal(double* %dims, double* %[[dimsipge]], double %1, {} undef)
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 
 ; CHECK: define internal { {}, double } @augmented_total(double* %this, double* %"this'") {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %loaded = load double, double* %this, align 8
+; CHECK-NEXT:   %loaded = load double, double* %this
 ; CHECK-NEXT:   %mcall = tail call double @meta(double %loaded)
 ; CHECK-NEXT:   %.fca.1.insert = insertvalue { {}, double } undef, double %mcall, 1
 ; CHECK-NEXT:   ret { {}, double } %.fca.1.insert
@@ -73,34 +73,33 @@ attributes #3 = { readnone }
 
 ; CHECK: define internal {} @diffetotal(double* %this, double* %"this'", double %differeturn, {} %tapeArg) {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %[[loaded:.+]] = load double, double* %this, align 8
+; CHECK-NEXT:   %[[loaded:.+]] = load double, double* %this
 ; CHECK-NEXT:   %[[dmetastruct:.+]] = call { double } @diffemeta(double %[[loaded]], double %differeturn)
 ; CHECK-NEXT:   %[[dmeta:.+]] = extractvalue { double } %[[dmetastruct]], 0
-; CHECK-NEXT:   %[[prethis:.+]] = load double, double* %"this'", align 8
+; CHECK-NEXT:   %[[prethis:.+]] = load double, double* %"this'"
 ; CHECK-NEXT:   %[[postthis:.+]] = fadd fast double %[[prethis]], %[[dmeta]]
-; CHECK-NEXT:   store double %[[postthis:.+]], double* %"this'", align 8
+; CHECK-NEXT:   store double %[[postthis:.+]], double* %"this'"
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 
 ; CHECK: define internal { double } @diffemeta(double %inp, double %differeturn) #0 {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %"arr'ipa" = alloca double, align 8
-; CHECK-NEXT:   %0 = bitcast double* %"arr'ipa" to i64*
-; CHECK-NEXT:   store i64 0, i64* %0, align 8
-; CHECK-NEXT:   %arr = alloca double, align 8
-; CHECK-NEXT:   store double %inp, double* %arr, align 8
+; CHECK-NEXT:   %"arr'ipa" = alloca double
+; CHECK-NEXT:   store double 0.000000e+00, double* %"arr'ipa"
+; CHECK-NEXT:   %arr = alloca double
+; CHECK-NEXT:   store double %inp, double* %arr
 ; CHECK-NEXT:   %call.i_augmented = call { {}, double*, double* } @augmented_sub(double*{{( nonnull)?}} %arr, double*{{( nonnull)?}} %"arr'ipa")
 ; CHECK-NEXT:   %[[olddptr:.+]] = extractvalue { {}, double*, double* } %call.i_augmented, 2
 ; CHECK-NEXT:   %[[oldptr:.+]] = extractvalue { {}, double*, double* } %call.i_augmented, 1
 ; CHECK-NEXT:   %[[load:.+]] = load double, double* %[[oldptr]]
-; CHECK-NEXT:   %[[add:.+]] = fadd fast double %differeturn, %differeturn
-; CHECK-NEXT:   %[[mul:.+]] = fmul fast double %[[load]], %[[add]]
-; CHECK-NEXT:   %3 = load double, double* %"call.i'ac", align 8
-; CHECK-NEXT:   %4 = fadd fast double %3, %2
-; CHECK-NEXT:   store double %4, double* %"call.i'ac", align 8
+; CHECK-NEXT:   %[[mul:.+]] = fmul fast double %differeturn, %[[load]]
+; CHECK-NEXT:   %[[add:.+]] = fadd fast double %[[mul]], %[[mul]]
+; CHECK-NEXT:   %[[dcall:.+]] = load double, double* %"call.i'ac"
+; CHECK-NEXT:   %[[dadd:.+]] = fadd fast double %[[dcall]], %[[add]]
+; CHECK-NEXT:   store double %[[dadd]], double* %"call.i'ac"
 ; CHECK-NEXT:   %{{.*}} = call {} @diffesub(double*{{( nonnull)?}} %arr, double*{{( nonnull)?}} %"arr'ipa", {} undef)
-; CHECK-NEXT:   %[[darr:.+]] = load double, double* %"arr'ipa", align 8
-; CHECK-NEXT:   store double 0.000000e+00, double* %"arr'ipa", align 8
+; CHECK-NEXT:   %[[darr:.+]] = load double, double* %"arr'ipa"
+; CHECK-NEXT:   store double 0.000000e+00, double* %"arr'ipa"
 ; CHECK-NEXT:   %[[ret:.+]] = insertvalue { double } undef, double %[[darr]], 0
 ; CHECK-NEXT:   ret { double } %[[ret]]
 ; CHECK-NEXT: }

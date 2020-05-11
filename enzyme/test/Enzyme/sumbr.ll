@@ -33,11 +33,11 @@ entry:
 declare double @__enzyme_autodiff(double (double*, i64)*, ...) #2
 
 attributes #0 = { norecurse nounwind readonly uwtable }
-attributes #1 = { nounwind uwtable } 
+attributes #1 = { nounwind uwtable }
 attributes #2 = { nounwind }
 
 
-; CHECK: define dso_local void @dsum(double* %x, double* %xp, i64 %n) 
+; CHECK: define dso_local void @dsum(double* %x, double* %xp, i64 %n)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   br label %invertfor.body.i
 
@@ -48,10 +48,10 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   %[[fadd:.+]] = fadd fast double %[[load]], 1.000000e+00
 ; CHECK-NEXT:   store double %[[fadd]], double* %[[arrayidxipgi]]
 ; CHECK-NEXT:   %[[cmp:.+]] = icmp eq i64 %[[antivar]], 0
-; CHECK-NEXT:   br i1 %[[cmp]], label %diffesum.exit, label %incinvertfor.body.i 
+; CHECK-NEXT:   br i1 %[[cmp]], label %diffesum.exit, label %incinvertfor.body.i
 
 ; CHECK: incinvertfor.body.i:
-; CHECK-NEXT:   %[[sub]] = sub nuw nsw i64 %[[antivar]], 1
+; CHECK-NEXT:   %[[sub]] = add nsw i64 %[[antivar]], -1
 ; CHECK-NEXT:   br label %invertfor.body.i
 
 ; CHECK: diffesum.exit:                                    ; preds = %invertfor.body.i

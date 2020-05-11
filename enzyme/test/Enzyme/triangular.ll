@@ -97,7 +97,7 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   br i1 %[[done1]], label %invertentry, label %incinvertfor.cond3.preheader
 
 ; CHECK: incinvertfor.cond3.preheader:
-; CHECK-NEXT:   %[[subouter:.+]] = sub nuw nsw i64 %[[iv]], 1
+; CHECK-NEXT:   %[[subouter:.+]] = add nsw i64 %[[iv]], -1
 ; CHECK-NEXT:   br label %invertfor.cond.cleanup6
 
 ; CHECK: invertfor.body7:
@@ -111,7 +111,7 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   br i1 %[[done2]], label %invertfor.cond3.preheader, label %incinvertfor.body7
 
 ; CHECK: incinvertfor.body7:
-; CHECK-NEXT:   %[[subinner]] = sub nuw nsw i64 %[[iv1]], 1
+; CHECK-NEXT:   %[[subinner]] = add nsw i64 %[[iv1]], -1
 ; CHECK-NEXT:   br label %invertfor.body7
 
 ; CHECK: invertfor.cond.cleanup6:
