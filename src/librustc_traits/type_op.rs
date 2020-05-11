@@ -6,10 +6,8 @@ use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::TraitEngineExt as _;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::{GenericArg, Subst, UserSelfTy, UserSubsts};
-use rustc_middle::ty::{
-    self, FnSig, Lift, ParamEnv, ParamEnvAnd, PolyFnSig, Predicate, ToPredicate, Ty, TyCtxt,
-    TypeFoldable, Variance,
-};
+use rustc_middle::ty::{self, FnSig, Lift, PolyFnSig, Ty, TyCtxt, TypeFoldable, Variance};
+use rustc_middle::ty::{ParamEnv, ParamEnvAnd, Predicate, ToPredicate};
 use rustc_span::DUMMY_SP;
 use rustc_trait_selection::infer::InferCtxtBuilderExt;
 use rustc_trait_selection::infer::InferCtxtExt;

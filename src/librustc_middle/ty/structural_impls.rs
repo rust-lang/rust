@@ -987,6 +987,16 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Region<'tcx> {
     }
 }
 
+impl<'tcx> TypeFoldable<'tcx> for ty::Predicate<'tcx> {
+    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+        folder.tcx().mk_predicate(ty::PredicateKind::super_fold_with(self.kind, folder))
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        ty::PredicateKind::super_visit_with(self.kind, visitor)
+    }
+}
+
 impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<ty::Predicate<'tcx>> {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
         fold_list(*self, folder, |tcx, v| tcx.intern_predicates(v))
