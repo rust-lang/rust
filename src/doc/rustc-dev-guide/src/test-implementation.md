@@ -147,7 +147,7 @@ $ rustc my_mod.rs -Z unpretty=hir
 
 [test]: https://doc.rust-lang.org/test/index.html
 [TestDesc]: https://doc.rust-lang.org/test/struct.TestDesc.html
-[Symbol]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/ast/struct.Ident.html
-[Ident]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/ast/struct.Ident.html
+[Symbol]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/symbol/struct.Symbol.html
+[Ident]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/symbol/struct.Ident.html
 [eRFC]: https://github.com/rust-lang/rfcs/blob/master/text/2318-custom-test-frameworks.md
 [librustc_ast]: https://github.com/rust-lang/rust/tree/master/src/librustc_ast
