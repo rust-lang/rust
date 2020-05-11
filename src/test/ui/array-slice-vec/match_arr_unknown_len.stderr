@@ -13,7 +13,7 @@ LL |         [1, 2] => true,
    |         ^^^^^^ expected `2usize`, found `N`
    |
    = note: expected array `[u32; 2]`
-              found array `[u32; _]`
+              found array `[u32; N]`
 
 error: aborting due to previous error; 1 warning emitted
 
