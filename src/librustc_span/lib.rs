@@ -12,7 +12,7 @@
 #![feature(negative_impls)]
 #![feature(nll)]
 #![feature(optin_builtin_traits)]
-#![feature(specialization)]
+#![feature(min_specialization)]
 
 // FIXME(#56935): Work around ICEs during cross-compilation.
 #[allow(unused)]
