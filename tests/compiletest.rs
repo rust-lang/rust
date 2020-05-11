@@ -53,12 +53,9 @@ fn run_tests(mode: &str, path: &str, target: &str) {
 fn compile_fail(path: &str, target: &str) {
     eprintln!(
         "{}",
-        format!(
-            "## Running compile-fail tests in {} against miri for target {}",
-            path, target
-        )
-        .green()
-        .bold()
+        format!("## Running compile-fail tests in {} against miri for target {}", path, target)
+            .green()
+            .bold()
     );
 
     run_tests("compile-fail", path, target);
@@ -67,21 +64,18 @@ fn compile_fail(path: &str, target: &str) {
 fn miri_pass(path: &str, target: &str) {
     eprintln!(
         "{}",
-        format!(
-            "## Running run-pass tests in {} against miri for target {}",
-            path, target
-        )
-        .green()
-        .bold()
+        format!("## Running run-pass tests in {} against miri for target {}", path, target)
+            .green()
+            .bold()
     );
 
     run_tests("ui", path, target);
 }
 
 fn get_host() -> String {
-    let version_meta = rustc_version::VersionMeta::for_command(
-        std::process::Command::new(miri_path())
-    ).expect("failed to parse rustc version info");
+    let version_meta =
+        rustc_version::VersionMeta::for_command(std::process::Command::new(miri_path()))
+            .expect("failed to parse rustc version info");
     version_meta.host
 }
 
