@@ -1,5 +1,6 @@
 import * as os from "os";
 import * as vscode from 'vscode';
+import * as path from 'path';
 import * as ra from './rust-analyzer-api';
 
 import { Cargo } from './cargo';
@@ -72,13 +73,22 @@ export async function getDebugConfiguration(ctx: Ctx, config: ra.Runnable): Prom
         debugOutput.show(true);
     }
 
+    const wsFolder = path.normalize(vscode.workspace.workspaceFolders![0].uri.fsPath); // folder exists or RA is not active.
+    function simplifyPath(p: string): string {
+        return path.normalize(p).replace(wsFolder, '${workspaceRoot}');
+    }
+
     const executable = await getDebugExecutable(config);
-    const debugConfig = knownEngines[debugEngine.id](config, executable, debugOptions.sourceFileMap);
+    const debugConfig = knownEngines[debugEngine.id](config, simplifyPath(executable), debugOptions.sourceFileMap);
     if (debugConfig.type in debugOptions.engineSettings) {
         const settingsMap = (debugOptions.engineSettings as any)[debugConfig.type];
         for (var key in settingsMap) {
             debugConfig[key] = settingsMap[key];
         }
+    }
+
+    if (debugConfig.cwd) {
+        debugConfig.cwd = simplifyPath(debugConfig.cwd);
     }
 
     return debugConfig;
