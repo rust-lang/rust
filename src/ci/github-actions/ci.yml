@@ -37,6 +37,7 @@ x--expand-yaml-anchors--remove:
   - &public-variables
     SCCACHE_BUCKET: rust-lang-gha-caches
     TOOLSTATE_REPO: https://github.com/pietroalbini/rust-toolstate
+    CACHE_DOMAIN: ci-caches-gha.rust-lang.org
 
   - &prod-variables
     SCCACHE_BUCKET: rust-lang-gha-caches
@@ -51,6 +52,7 @@ x--expand-yaml-anchors--remove:
     # (caches, artifacts...).
     CACHES_AWS_ACCESS_KEY_ID: AKIA46X5W6CZOMUQATD5
     ARTIFACTS_AWS_ACCESS_KEY_ID: AKIA46X5W6CZH5AYXDVF
+    CACHE_DOMAIN: ci-caches-gha.rust-lang.org
 
   - &base-job
     env: {}
