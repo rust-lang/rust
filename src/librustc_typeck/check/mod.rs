@@ -1659,6 +1659,7 @@ fn check_opaque_for_inheriting_lifetimes(tcx: TyCtxt<'tcx>, def_id: LocalDefId, 
 
     let prohibit_opaque = match item.kind {
         ItemKind::OpaqueTy(hir::OpaqueTy {
+            bounds,
             origin: hir::OpaqueTyOrigin::AsyncFn | hir::OpaqueTyOrigin::FnReturn,
             ..
         }) => {
@@ -1671,6 +1672,9 @@ fn check_opaque_for_inheriting_lifetimes(tcx: TyCtxt<'tcx>, def_id: LocalDefId, 
             };
             debug!("check_opaque_for_inheriting_lifetimes: visitor={:?}", visitor);
 
+            for bound in bounds {
+                debug!("check_opaque_for_inheriting_lifetimes: {:?}", bound.trait_ref());
+            }
             tcx.predicates_of(def_id)
                 .predicates
                 .iter()
@@ -1695,7 +1699,7 @@ fn check_opaque_for_inheriting_lifetimes(tcx: TyCtxt<'tcx>, def_id: LocalDefId, 
             "`{}` return type cannot contain a projection or `Self` that references lifetimes from \
              a parent scope",
             if is_async { "async fn" } else { "impl Trait" },
-        ),
+        )
         );
     }
 }
