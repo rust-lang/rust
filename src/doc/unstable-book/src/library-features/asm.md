@@ -24,7 +24,7 @@ cannot be otherwise achieved. Accessing low level hardware primitives, e.g. in k
 
 Let us start with the simplest possible example:
 
-```rust
+```rust,allow_fail
 # #![feature(asm)]
 unsafe {
     asm!("nop");
@@ -41,7 +41,7 @@ in the first argument of the `asm!` macro as a string literal.
 Now inserting an instruction that does nothing is rather boring. Let us do something that
 actually acts on data:
 
-```rust
+```rust,allow_fail
 # #![feature(asm)]
 let x: u64;
 unsafe {
@@ -63,7 +63,7 @@ the template and will read the variable from there after the inline assembly fin
 
 Let us see another example that also uses an input:
 
-```rust
+```rust,allow_fail
 # #![feature(asm)]
 let i: u64 = 3;
 let o: u64;
@@ -95,7 +95,7 @@ readability, and allows reordering instructions without changing the argument or
 
 We can further refine the above example to avoid the `mov` instruction:
 
-```rust
+```rust,allow_fail
 # #![feature(asm)]
 let mut x: u64 = 3;
 unsafe {
@@ -109,7 +109,7 @@ This is different from specifying an input and output separately in that it is g
 
 It is also possible to specify different variables for the input and output parts of an `inout` operand:
 
-```rust
+```rust,allow_fail
 # #![feature(asm)]
 let x: u64 = 3;
 let y: u64;
@@ -131,7 +131,7 @@ There is also a `inlateout` variant of this specifier.
 
 Here is an example where `inlateout` *cannot* be used:
 
-```rust
+```rust,allow_fail
 # #![feature(asm)]
 let mut a: u64 = 4;
 let b: u64 = 4;
@@ -149,7 +149,7 @@ Here the compiler is free to allocate the same register for inputs `b` and `c` s
 
 However the following example can use `inlateout` since the output is only modified after all input registers have been read:
 
-```rust
+```rust,allow_fail
 # #![feature(asm)]
 let mut a: u64 = 4;
 let b: u64 = 4;
@@ -168,7 +168,7 @@ Therefore, Rust inline assembly provides some more specific constraint specifier
 While `reg` is generally available on any architecture, these are highly architecture specific. E.g. for x86 the general purpose registers `eax`, `ebx`, `ecx`, `edx`, `ebp`, `esi`, and `edi`
 among others can be addressed by their name.
 
-```rust,no_run
+```rust,allow_fail,no_run
 # #![feature(asm)]
 let cmd = 0xd1;
 unsafe {
@@ -184,7 +184,7 @@ Note that unlike other operand types, explicit register operands cannot be used 
 
 Consider this example which uses the x86 `mul` instruction:
 
-```rust
+```rust,allow_fail
 # #![feature(asm)]
 fn mul(a: u64, b: u64) -> u128 {
     let lo: u64;
@@ -220,7 +220,7 @@ This state is generally referred to as being "clobbered".
 We need to tell the compiler about this since it may need to save and restore this state
 around the inline assembly block.
 
-```rust
+```rust,allow_fail
 # #![feature(asm)]
 let ebx: u32;
 let ecx: u32;
@@ -250,7 +250,7 @@ However we still need to tell the compiler that `eax` and `edx` have been modifi
 
 This can also be used with a general register class (e.g. `reg`) to obtain a scratch register for use inside the asm code:
 
-```rust
+```rust,allow_fail
 # #![feature(asm)]
 // Multiply x by 6 using shifts and adds
 let mut x: u64 = 4;
@@ -270,7 +270,7 @@ assert_eq!(x, 4 * 6);
 A special operand type, `sym`, allows you to use the symbol name of a `fn` or `static` in inline assembly code.
 This allows you to call a function or access a global variable without needing to keep its address in a register.
 
-```rust
+```rust,allow_fail
 # #![feature(asm)]
 extern "C" fn foo(arg: i32) {
     println!("arg = {}", arg);
@@ -306,7 +306,7 @@ By default the compiler will always choose the name that refers to the full regi
 
 This default can be overriden by using modifiers on the template string operands, just like you would with format strings:
 
-```rust
+```rust,allow_fail
 # #![feature(asm)]
 let mut x: u16 = 0xab;
 
@@ -330,7 +330,7 @@ By default, an inline assembly block is treated the same way as an external FFI 
 
 Let's take our previous example of an `add` instruction:
 
-```rust
+```rust,allow_fail
 # #![feature(asm)]
 let mut a: u64 = 4;
 let b: u64 = 4;
