@@ -2281,7 +2281,10 @@ fn short_stability(item: &clean::Item, cx: &Context) -> Vec<String> {
             );
             message.push_str(&format!(": {}", html.to_string()));
         }
-        stability.push(format!("<div class='stab deprecated'>{}</div>", message));
+        stability.push(format!(
+            "<div class='stab deprecated'><span class='emoji'>👎</span> {}</div>",
+            message,
+        ));
     }
 
     if let Some(stab) = item.stability.as_ref().filter(|stab| stab.level == stability::Unstable) {
