@@ -53,6 +53,8 @@ impl Definition {
                     module?.visibility_of(db, &ModuleDef::Adt(Adt::Enum(parent)))
                 }
                 ModuleDef::Function(f) => Some(f.visibility(db)),
+                ModuleDef::Const(c) => Some(c.visibility(db)),
+                ModuleDef::TypeAlias(t) => Some(t.visibility(db)),
                 _ => module?.visibility_of(db, def),
             },
             Definition::SelfType(_) => None,
