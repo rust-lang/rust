@@ -29,7 +29,7 @@ function run_tests {
   fi
   # "miri test" has built the sysroot for us, now this should pass without
   # any interactive questions.
-  test-cargo-miri/run-test.py
+  ${PYTHON:-python3} test-cargo-miri/run-test.py
 
   echo
 }

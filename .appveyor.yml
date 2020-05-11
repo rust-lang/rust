@@ -38,6 +38,7 @@ install:
 - cargo --version
 
 test_script:
+- set PYTHON=C:\msys64\mingw64\bin\python3.exe
 - bash ci.sh
 
 after_test:
