@@ -403,12 +403,13 @@ fn highlight_element(
                 T![break]
                 | T![continue]
                 | T![else]
-                | T![for]
                 | T![if]
                 | T![loop]
                 | T![match]
                 | T![return]
-                | T![while] => h | HighlightModifier::ControlFlow,
+                | T![while]
+                | T![in] => h | HighlightModifier::ControlFlow,
+                T![for] if !is_child_of_impl(element) => h | HighlightModifier::ControlFlow,
                 T![unsafe] => h | HighlightModifier::Unsafe,
                 _ => h,
             }
@@ -429,6 +430,13 @@ fn highlight_element(
         }
 
         hash((name, shadow_count))
+    }
+}
+
+fn is_child_of_impl(element: SyntaxElement) -> bool {
+    match element.parent() {
+        Some(e) => e.kind() == IMPL_DEF,
+        _ => false,
     }
 }
 
