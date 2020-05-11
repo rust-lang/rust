@@ -80,7 +80,7 @@ impl<K: DepKind> DepNode<K> {
             }
         }
 
-        return dep_node;
+        dep_node
     }
 }
 

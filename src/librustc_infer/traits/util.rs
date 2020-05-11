@@ -112,8 +112,7 @@ pub fn elaborate_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
     predicates: impl Iterator<Item = ty::Predicate<'tcx>>,
 ) -> Elaborator<'tcx> {
-    let obligations =
-        predicates.into_iter().map(|predicate| predicate_obligation(predicate, None)).collect();
+    let obligations = predicates.map(|predicate| predicate_obligation(predicate, None)).collect();
     elaborate_obligations(tcx, obligations)
 }
 
@@ -149,7 +148,7 @@ impl Elaborator<'tcx> {
                 // Get predicates declared on the trait.
                 let predicates = tcx.super_predicates_of(data.def_id());
 
-                let obligations = predicates.predicates.into_iter().map(|(pred, span)| {
+                let obligations = predicates.predicates.iter().map(|(pred, span)| {
                     predicate_obligation(
                         pred.subst_supertrait(tcx, &data.to_poly_trait_ref()),
                         Some(*span),

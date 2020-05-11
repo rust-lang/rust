@@ -1863,7 +1863,7 @@ impl NextTypeParamName for &[hir::GenericParam<'_>] {
     fn next_type_param_name(&self, name: Option<&str>) -> String {
         // This is the whitelist of possible parameter names that we might suggest.
         let name = name.and_then(|n| n.chars().next()).map(|c| c.to_string().to_uppercase());
-        let name = name.as_ref().map(|s| s.as_str());
+        let name = name.as_deref();
         let possible_names = [name.unwrap_or("T"), "T", "U", "V", "X", "Y", "Z", "A", "B", "C"];
         let used_names = self
             .iter()

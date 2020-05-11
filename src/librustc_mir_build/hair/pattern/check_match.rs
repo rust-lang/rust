@@ -246,7 +246,7 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
             );
         }
 
-        adt_defined_here(&mut cx, &mut err, pattern_ty, &witnesses);
+        adt_defined_here(&cx, &mut err, pattern_ty, &witnesses);
         err.note(&format!("the matched value is of type `{}`", pattern_ty));
         err.emit();
     }
