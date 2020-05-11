@@ -549,12 +549,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         target_op: OpTy<'tcx, Tag>,
         linkpath_op: OpTy<'tcx, Tag>
     ) -> InterpResult<'tcx, i32> {
-        #[cfg(target_family = "unix")]
+        #[cfg(unix)]
         fn create_link(src: &Path, dst: &Path) -> std::io::Result<()> {
             std::os::unix::fs::symlink(src, dst)
         }
 
-        #[cfg(target_family = "windows")]
+        #[cfg(windows)]
         fn create_link(src: &Path, dst: &Path) -> std::io::Result<()> {
             use std::os::windows::fs;
             if src.is_dir() {
@@ -816,7 +816,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.check_no_isolation("mkdir")?;
 
-        let _mode = if this.tcx.sess.target.target.target_os == "macos" {
+        #[cfg_attr(not(unix), allow(unused_variables))]
+        let mode = if this.tcx.sess.target.target.target_os == "macos" {
             u32::from(this.read_scalar(mode_op)?.not_undef()?.to_u16()?)
         } else {
             this.read_scalar(mode_op)?.to_u32()?
@@ -824,14 +825,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let path = this.read_path_from_c_str(this.read_scalar(path_op)?.not_undef()?)?;
 
+        #[cfg_attr(not(unix), allow(unused_mut))]
         let mut builder = DirBuilder::new();
 
         // If the host supports it, forward on the mode of the directory
         // (i.e. permission bits and the sticky bit)
-        #[cfg(target_family = "unix")]
+        #[cfg(unix)]
         {
             use std::os::unix::fs::DirBuilderExt;
-            builder.mode(_mode.into());
+            builder.mode(mode.into());
         }
 
         let result = builder.create(path).map(|_| 0i32);
