@@ -2,7 +2,7 @@
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Diagnostic;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::mir::{
@@ -58,7 +58,7 @@ crate struct NllOutput<'tcx> {
 /// `compute_regions`.
 pub(in crate::borrow_check) fn replace_regions_in_mir<'cx, 'tcx>(
     infcx: &InferCtxt<'cx, 'tcx>,
-    def_id: DefId,
+    def_id: LocalDefId,
     param_env: ty::ParamEnv<'tcx>,
     body: &mut Body<'tcx>,
     promoted: &mut IndexVec<Promoted, Body<'tcx>>,
@@ -66,12 +66,12 @@ pub(in crate::borrow_check) fn replace_regions_in_mir<'cx, 'tcx>(
     debug!("replace_regions_in_mir(def_id={:?})", def_id);
 
     // Compute named region information. This also renumbers the inputs/outputs.
-    let universal_regions = UniversalRegions::new(infcx, def_id.expect_local(), param_env);
+    let universal_regions = UniversalRegions::new(infcx, def_id, param_env);
 
     // Replace all remaining regions with fresh inference variables.
     renumber::renumber_mir(infcx, body, promoted);
 
-    let source = MirSource::item(def_id);
+    let source = MirSource::item(def_id.to_def_id());
     mir_util::dump_mir(infcx.tcx, None, "renumber", &0, source, body, |_, _| Ok(()));
 
     universal_regions
