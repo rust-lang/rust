@@ -24,8 +24,25 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```ignore
-    /// let { a: _, b: ref b, c: _ } = ..
+    /// ```rust
+    /// # struct Foo {
+    /// #     a: i32,
+    /// #     b: i32,
+    /// #     c: i32,
+    /// # }
+    /// let f = Foo { a: 0, b: 0, c: 0 };
+    ///
+    /// // Bad
+    /// match f {
+    ///     Foo { a: _, b: 0, .. } => {},
+    ///     Foo { a: _, b: _, c: _ } => {},
+    /// }
+    ///
+    /// // Good
+    /// match f {
+    ///     Foo { b: 0, .. } => {},
+    ///     Foo { .. } => {},
+    /// }
     /// ```
     pub UNNEEDED_FIELD_PATTERN,
     restriction,
