@@ -34,6 +34,7 @@ jobs:
       CI_JOB_NAME: "${{ matrix.name }}"
       SCCACHE_BUCKET: rust-lang-gha-caches
       TOOLSTATE_REPO: "https://github.com/pietroalbini/rust-toolstate"
+      CACHE_DOMAIN: ci-caches-gha.rust-lang.org
     if: "github.event_name == 'pull_request'"
     strategy:
       matrix:
@@ -146,6 +147,7 @@ jobs:
       TOOLSTATE_PUBLISH: 1
       CACHES_AWS_ACCESS_KEY_ID: AKIA46X5W6CZOMUQATD5
       ARTIFACTS_AWS_ACCESS_KEY_ID: AKIA46X5W6CZH5AYXDVF
+      CACHE_DOMAIN: ci-caches-gha.rust-lang.org
     if: "github.event_name == 'push' && github.ref == 'refs/heads/try' && github.repository == 'rust-lang-ci/rust'"
     strategy:
       matrix:
@@ -255,6 +257,7 @@ jobs:
       TOOLSTATE_PUBLISH: 1
       CACHES_AWS_ACCESS_KEY_ID: AKIA46X5W6CZOMUQATD5
       ARTIFACTS_AWS_ACCESS_KEY_ID: AKIA46X5W6CZH5AYXDVF
+      CACHE_DOMAIN: ci-caches-gha.rust-lang.org
     if: "github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'rust-lang-ci/rust'"
     strategy:
       matrix:
@@ -606,6 +609,7 @@ jobs:
       TOOLSTATE_PUBLISH: 1
       CACHES_AWS_ACCESS_KEY_ID: AKIA46X5W6CZOMUQATD5
       ARTIFACTS_AWS_ACCESS_KEY_ID: AKIA46X5W6CZH5AYXDVF
+      CACHE_DOMAIN: ci-caches-gha.rust-lang.org
     if: "github.event_name == 'push' && github.ref == 'refs/heads/master' && github.repository == 'rust-lang-ci/rust'"
     steps:
       - name: checkout the source code
