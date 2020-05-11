@@ -691,6 +691,15 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
 
             if let ty::Ref(region, t_type, mutability) = trait_ref.skip_binder().self_ty().kind {
+                if region.is_late_bound() || t_type.has_escaping_bound_vars() {
+                    // Avoid debug assertion in `mk_obligation_for_def_id`.
+                    //
+                    // If the self type has escaping bound vars then it's not
+                    // going to be the type of an expression, so the suggestion
+                    // probably won't apply anyway.
+                    return;
+                }
+
                 let trait_type = match mutability {
                     hir::Mutability::Mut => self.tcx.mk_imm_ref(region, t_type),
                     hir::Mutability::Not => self.tcx.mk_mut_ref(region, t_type),
