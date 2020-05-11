@@ -7,13 +7,14 @@ LL | struct S<const C: u8>(C);
    | |                     help: a struct with a similar name exists: `S`
    | similarly named struct `S` defined here
 
-warning: the feature `const_generics` is incomplete and may cause the compiler to crash
+warning: the feature `const_generics` is incomplete and may not be safe to use and/or cause compiler crashes
   --> $DIR/struct-with-invalid-const-param.rs:1:12
    |
 LL | #![feature(const_generics)]
    |            ^^^^^^^^^^^^^^
    |
    = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #44580 <https://github.com/rust-lang/rust/issues/44580> for more information
 
 error: aborting due to previous error; 1 warning emitted
 

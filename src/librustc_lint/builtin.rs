@@ -28,8 +28,8 @@ use rustc_ast::visit::{FnCtxt, FnKind};
 use rustc_ast_pretty::pprust::{self, expr_to_string};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, DiagnosticBuilder};
-use rustc_feature::Stability;
 use rustc_feature::{deprecated_attributes, AttributeGate, AttributeTemplate, AttributeType};
+use rustc_feature::{GateIssue, Stability};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -1817,13 +1817,21 @@ impl EarlyLintPass for IncompleteFeatures {
             .map(|(name, span, _)| (name, span))
             .chain(features.declared_lib_features.iter().map(|(name, span)| (name, span)))
             .filter(|(name, _)| rustc_feature::INCOMPLETE_FEATURES.iter().any(|f| name == &f))
-            .for_each(|(name, &span)| {
+            .for_each(|(&name, &span)| {
                 cx.struct_span_lint(INCOMPLETE_FEATURES, span, |lint| {
-                    lint.build(&format!(
-                        "the feature `{}` is incomplete and may cause the compiler to crash",
+                    let mut builder = lint.build(&format!(
+                        "the feature `{}` is incomplete and may not be safe to use \
+                         and/or cause compiler crashes",
                         name,
-                    ))
-                    .emit()
+                    ));
+                    if let Some(n) = rustc_feature::find_feature_issue(name, GateIssue::Language) {
+                        builder.note(&format!(
+                            "see issue #{} <https://github.com/rust-lang/rust/issues/{}> \
+                             for more information",
+                            n, n,
+                        ));
+                    }
+                    builder.emit();
                 })
             });
     }

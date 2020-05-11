@@ -4,7 +4,7 @@
 
 #![feature(type_alias_impl_trait)]
 #![feature(const_generics)]
-//~^ WARN the feature `const_generics` is incomplete and may cause the compiler to crash
+//~^ WARN the feature `const_generics` is incomplete
 
 trait UnwrapItemsExt<'a, const C: usize> {
     type Iter;
