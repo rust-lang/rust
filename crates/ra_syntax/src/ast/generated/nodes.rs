@@ -1790,7 +1790,20 @@ impl Visibility {
     pub fn crate_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![crate]) }
 }
 /// Single identifier.
-/// // TODO: clarify the difference between Name and NameRef
+/// Note(@matklad): `Name` is for things that install a new name into the scope,
+/// `NameRef` is a usage of a name. Most of the time, this definition/reference
+/// distinction can be determined purely syntactically, ie in
+/// ```
+/// fn foo() { foo() }
+/// ```
+/// the first foo is `Name`, the second one is `NameRef`.
+/// The notable exception are patterns, where in
+/// ``
+/// let x = 92
+/// ```
+/// `x` can be semantically either a name or a name ref, depeding on
+/// wether there's an `x` constant in scope.
+/// We use `Name` for patterns, and disambiguate semantically (see `NameClass` in ide_db).
 ///
 /// ```
 /// let ❰ foo ❱ = bar;
@@ -1807,6 +1820,8 @@ impl Name {
     pub fn ident_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![ident]) }
 }
 /// Reference to a name.
+/// See the explanation on the difference between `Name` and `NameRef`
+/// in `Name` ast node docs.
 ///
 /// ```
 /// let foo = ❰ bar ❱(❰ Baz(❰ bruh ❱) ❱;
