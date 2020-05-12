@@ -181,6 +181,7 @@ fn get_linker(sess: &Session, linker: &Path, flavor: LinkerFlavor) -> Command {
                     "x86_64" => Some("x64".to_string()),
                     "x86" => Some("x86".to_string()),
                     "aarch64" => Some("arm64".to_string()),
+                    "arm" => Some("arm".to_string()),
                     _ => None,
                 };
                 if let Some(ref a) = arch {
