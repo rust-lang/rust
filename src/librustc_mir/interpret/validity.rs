@@ -15,7 +15,7 @@ use rustc_middle::mir::interpret::{InterpError, InterpErrorInfo};
 use rustc_middle::ty;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_span::symbol::{sym, Symbol};
-use rustc_target::abi::{Abi, LayoutOf, Scalar, VariantIdx, Variants};
+use rustc_target::abi::{Abi, LayoutOf, Scalar, Size, VariantIdx, Variants};
 
 use std::hash::Hash;
 
@@ -744,10 +744,11 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         match op.layout.ty.kind {
             ty::Str => {
                 let mplace = op.assert_mem_place(self.ecx); // strings are never immediate
+                let len = mplace.len(self.ecx)?;
                 try_validation!(
-                    self.ecx.read_str(mplace),
+                    self.ecx.memory.read_bytes(mplace.ptr, Size::from_bytes(len)),
                     self.path,
-                    err_ub!(InvalidStr(..)) => { "uninitialized or non-UTF-8 data in str" },
+                    err_ub!(InvalidUninitBytes(..)) => { "uninitialized data in `str`" },
                 );
             }
             ty::Array(tys, ..) | ty::Slice(tys)
