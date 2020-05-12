@@ -78,6 +78,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let source_info = this.source_info(span);
         for stmt in stmts {
+            debug!("ast_block_stmt({:?})", stmt);
+
             let Stmt { kind, opt_destruction_scope } = this.hir.mirror(stmt);
             match kind {
                 StmtKind::Expr { scope, expr } => {
@@ -96,8 +98,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     );
                 }
                 StmtKind::Let { remainder_scope, init_scope, pattern, initializer, lint_level } => {
-                    let ignores_expr_result =
-                        if let PatKind::Wild = *pattern.kind { true } else { false };
+                    let ignores_expr_result = matches!(*pattern.kind, PatKind::Wild);
                     this.block_context.push(BlockFrame::Statement { ignores_expr_result });
 
                     // Enter the remainder scope, i.e., the bindings' destruction scope.
