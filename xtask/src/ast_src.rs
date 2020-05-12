@@ -1555,7 +1555,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         /// ```
         ///
         /// [Reference](https://doc.rust-lang.org/reference/identifiers.html)
-        struct NameRef { /*NameRefToken*/ } // TODO: where is NameRefToken?
+        struct NameRef { }
 
         /// Macro call.
         /// Includes all of its attributes and doc comments.
