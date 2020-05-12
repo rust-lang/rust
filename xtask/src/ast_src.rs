@@ -2016,6 +2016,19 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         /// [Reference](https://doc.rust-lang.org/reference/macros.html)
         struct MacroItems: ModuleItemOwner { }
 
+        /// FIXME: (@edwin0cheng) add some documentation here. As per the writing
+        /// of this comment this ast node is not used.
+        ///
+        /// ```
+        /// // FIXME: example here
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/macros.html)
+        struct MacroStmts {
+            statements: [Stmt],
+            Expr,
+        }
+
         /// List of items in an extern block.
         ///
         /// ```

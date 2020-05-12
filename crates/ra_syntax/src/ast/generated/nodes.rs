@@ -2491,6 +2491,22 @@ pub struct MacroItems {
 }
 impl ast::ModuleItemOwner for MacroItems {}
 impl MacroItems {}
+/// FIXME: (@edwin0cheng) add some documentation here. As per the writing
+/// of this comment this ast node is not used.
+///
+/// ```
+/// // FIXME: example here
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/macros.html)
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct MacroStmts {
+    pub(crate) syntax: SyntaxNode,
+}
+impl MacroStmts {
+    pub fn statements(&self) -> AstChildren<Stmt> { support::children(&self.syntax) }
+    pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
+}
 /// List of items in an extern block.
 ///
 /// ```
@@ -4047,6 +4063,17 @@ impl AstNode for MacroItems {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
+impl AstNode for MacroStmts {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == MACRO_STMTS }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
 impl AstNode for ExternItemList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == EXTERN_ITEM_LIST }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -5475,6 +5502,11 @@ impl std::fmt::Display for ConstArg {
     }
 }
 impl std::fmt::Display for MacroItems {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for MacroStmts {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
