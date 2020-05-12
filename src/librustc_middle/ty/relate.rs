@@ -477,11 +477,6 @@ pub fn super_relate_tys<R: TypeRelation<'tcx>>(
             Ok(tcx.mk_fn_ptr(fty))
         }
 
-        (ty::UnnormalizedProjection(a_data), ty::UnnormalizedProjection(b_data)) => {
-            let projection_ty = relation.relate(a_data, b_data)?;
-            Ok(tcx.mk_ty(ty::UnnormalizedProjection(projection_ty)))
-        }
-
         // these two are already handled downstream in case of lazy normalization
         (ty::Projection(a_data), ty::Projection(b_data)) => {
             let projection_ty = relation.relate(a_data, b_data)?;

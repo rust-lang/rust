@@ -127,7 +127,7 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
                 stack.push(ty.into());
                 stack.push(lt.into());
             }
-            ty::Projection(data) | ty::UnnormalizedProjection(data) => {
+            ty::Projection(data) => {
                 stack.extend(data.substs.iter().copied().rev());
             }
             ty::Dynamic(obj, lt) => {

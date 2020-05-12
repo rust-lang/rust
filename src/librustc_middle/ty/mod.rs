@@ -555,7 +555,7 @@ bitflags! {
                                           | TypeFlags::HAS_CT_PLACEHOLDER.bits
                                           | TypeFlags::HAS_FREE_LOCAL_REGIONS.bits;
 
-        /// Does this have [Projection] or [UnnormalizedProjection]?
+        /// Does this have [Projection]?
         const HAS_TY_PROJECTION           = 1 << 10;
         /// Does this have [Opaque]?
         const HAS_TY_OPAQUE               = 1 << 11;

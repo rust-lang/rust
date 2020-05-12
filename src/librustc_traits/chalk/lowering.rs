@@ -353,7 +353,6 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
                 apply(chalk_ir::TypeName::Tuple(substs.len()), substs.lower_into(interner))
             }
             Projection(proj) => TyData::Alias(proj.lower_into(interner)).intern(interner),
-            UnnormalizedProjection(_proj) => unimplemented!(),
             Opaque(_def_id, _substs) => unimplemented!(),
             // This should have been done eagerly prior to this, and all Params
             // should have been substituted to placeholders

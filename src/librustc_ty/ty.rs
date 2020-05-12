@@ -47,8 +47,6 @@ fn sized_constraint_for_ty<'tcx>(
             vec![ty]
         }
 
-        UnnormalizedProjection(..) => bug!("only used with chalk-engine"),
-
         Param(..) => {
             // perf hack: if there is a `T: Sized` bound, then
             // we know that `T` is Sized and do not need to check
