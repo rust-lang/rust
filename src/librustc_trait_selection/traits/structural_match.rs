@@ -187,8 +187,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for Search<'a, 'tcx> {
             | ty::Uint(_)
             | ty::Float(_)
             | ty::Str
-            | ty::Never
-            | ty::Error => {
+            | ty::Never => {
                 // These primitive types are always structural match.
                 //
                 // `Never` is kind of special here, but as it is not inhabitable, this should be fine.
@@ -200,15 +199,23 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for Search<'a, 'tcx> {
             | ty::Ref(..)
             | ty::Closure(..)
             | ty::Generator(..)
-            | ty::GeneratorWitness(..)
             | ty::Tuple(..)
             | ty::Projection(..)
-            | ty::UnnormalizedProjection(..)
             | ty::Opaque(..)
-            | ty::Bound(..)
-            | ty::Placeholder(_)
-            | ty::Infer(_) => {
+            | ty::GeneratorWitness(..) => {
                 ty.super_visit_with(self);
+                return false;
+            }
+            | ty::Infer(_)
+            | ty::Placeholder(_)
+            | ty::UnnormalizedProjection(..)
+            | ty::Bound(..) => {
+                bug!("unexpected type during structural-match checking: {:?}", ty);
+            }
+            ty::Error => {
+                self.tcx().delay_span_bug(self.span, "ty::Error in structural-match check");
+                // We still want to check other types after encountering an error,
+                // as this may still emit relevant errors.
                 return false;
             }
         };
