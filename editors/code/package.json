@@ -595,34 +595,34 @@
                 "language": "rust",
                 "scopes": {
                     "attribute": [
-                        "meta.attribute"
+                        "meta.attribute.rust"
                     ],
                     "builtinType": [
-                        "support.type.primitive"
+                        "support.type.primitive.rust"
                     ],
                     "lifetime": [
                         "storage.modifier.lifetime.rust"
                     ],
                     "typeAlias": [
-                        "entity.name.type.typeAlias"
+                        "entity.name.type.typeAlias.rust"
                     ],
                     "union": [
-                        "entity.name.type.union"
+                        "entity.name.type.union.rust"
                     ],
                     "struct": [
-                        "entity.name.type.struct"
+                        "entity.name.type.struct.rust"
                     ],
                     "keyword": [
-                        "keyword.other"
+                        "keyword.other.rust"
                     ],
                     "keyword.controlFlow": [
-                        "keyword.control"
+                        "keyword.control.rust"
                     ],
                     "variable.constant": [
-                        "variable.other.constant"
+                        "variable.other.constant.rust"
                     ],
                     "formatSpecifier": [
-                        "punctuation.section.embedded"
+                        "punctuation.section.embedded.rust"
                     ]
                 }
             }
