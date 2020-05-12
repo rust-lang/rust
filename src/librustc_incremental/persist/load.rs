@@ -134,7 +134,7 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
 
             for swp in work_products {
                 let mut all_files_exist = true;
-                for file_name in swp.work_product.saved_files.iter() {
+                if let Some(ref file_name) = swp.work_product.saved_file {
                     let path = in_incr_comp_dir_sess(sess, file_name);
                     if !path.exists() {
                         all_files_exist = false;
