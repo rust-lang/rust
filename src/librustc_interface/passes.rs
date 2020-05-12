@@ -823,8 +823,6 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
                         //
                         // maybe move the check to a MIR pass?
                         let local_def_id = tcx.hir().local_def_id(module);
-
-                        tcx.ensure().check_mod_liveness(local_def_id);
                         tcx.ensure().check_mod_intrinsics(local_def_id);
                     });
                 });
