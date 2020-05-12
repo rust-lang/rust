@@ -179,18 +179,10 @@ fn should_wrap_in_braces(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
     })
 }
 
-fn format_option_in_sugg(
-    cx: &LateContext<'_, '_>,
-    cond_expr: &Expr<'_>,
-    parens_around_option: bool,
-    as_ref: bool,
-    as_mut: bool,
-) -> String {
+fn format_option_in_sugg(cx: &LateContext<'_, '_>, cond_expr: &Expr<'_>, as_ref: bool, as_mut: bool) -> String {
     format!(
-        "{}{}{}{}",
-        if parens_around_option { "(" } else { "" },
-        Sugg::hir(cx, cond_expr, ".."),
-        if parens_around_option { ")" } else { "" },
+        "{}{}",
+        Sugg::hir(cx, cond_expr, "..").maybe_par(),
         if as_mut {
             ".as_mut()"
         } else if as_ref {
@@ -230,28 +222,13 @@ fn detect_option_if_let_else<'a>(cx: &LateContext<'_, 'a>, expr: &'a Expr<'a>) -
                 ExprKind::AddrOf(_, Mutability::Mut, _) => (false, true),
                 _ => (bind_annotation == &BindingAnnotation::Ref, bind_annotation == &BindingAnnotation::RefMut),
             };
-            let parens_around_option = match &cond_expr.kind {
-                // Put parens around the option expression if not doing so might
-                // mess up the order of operations.
-                ExprKind::Call(..)
-                        | ExprKind::MethodCall(..)
-                        | ExprKind::Loop(..)
-                        | ExprKind::Match(..)
-                        | ExprKind::Block(..)
-                        | ExprKind::Field(..)
-                        | ExprKind::Path(_)
-                        | ExprKind::Unary(UnOp::UnDeref, _)
-                        | ExprKind::AddrOf(..)
-                    => false,
-                _ => true,
-            };
             let cond_expr = match &cond_expr.kind {
                 // Pointer dereferencing happens automatically, so we can omit it in the suggestion
-                ExprKind::Unary(UnOp::UnDeref, expr)|ExprKind::AddrOf(_, _, expr) => expr,
+                ExprKind::Unary(UnOp::UnDeref, expr) | ExprKind::AddrOf(_, _, expr) => expr,
                 _ => cond_expr,
             };
             Some(OptionIfLetElseOccurence {
-                option: format_option_in_sugg(cx, cond_expr, parens_around_option, as_ref, as_mut),
+                option: format_option_in_sugg(cx, cond_expr, as_ref, as_mut),
                 method_sugg: method_sugg.to_string(),
                 some_expr: format!("|{}{}| {}", capture_mut, capture_name, Sugg::hir(cx, some_body, "..")),
                 none_expr: format!("{}{}", if method_sugg == "map_or" { "" } else { "|| " }, Sugg::hir(cx, none_body, "..")),
