@@ -175,6 +175,11 @@ fn suggest_restriction(
     trait_ref: ty::PolyTraitRef<'_>,
     super_traits: Option<(&Ident, &hir::GenericBounds<'_>)>,
 ) {
+    // When we are dealing with a trait, `super_traits` will be `Some`:
+    // Given `trait T: A + B + C {}`
+    //              -  ^^^^^^^^^ GenericBounds
+    //              |
+    //              &Ident
     let span = generics.where_clause.span_for_predicates_or_empty_place();
     if span.from_expansion() || span.desugaring_kind().is_some() {
         return;
@@ -311,7 +316,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     ident,
                     kind: hir::ItemKind::Trait(_, _, generics, bounds, _),
                     ..
-                }) if param_ty && self_ty == self.tcx.types.self_param => {
+                }) if self_ty == self.tcx.types.self_param => {
+                    assert!(param_ty);
                     // Restricting `Self` for a single method.
                     suggest_restriction(
                         &generics,
@@ -329,7 +335,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     generics,
                     kind: hir::TraitItemKind::Fn(..),
                     ..
-                }) if param_ty && self_ty == self.tcx.types.self_param => {
+                }) if self_ty == self.tcx.types.self_param => {
+                    assert!(param_ty);
                     // Restricting `Self` for a single method.
                     suggest_restriction(
                         &generics, "`Self`", err, None, projection, trait_ref, None,
