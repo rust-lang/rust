@@ -514,7 +514,10 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                 self.check_op(ops::InlineAsm);
             }
 
-            StatementKind::FakeRead(FakeReadCause::ForLet | FakeReadCause::ForIndex, _)
+            StatementKind::FakeRead(
+                FakeReadCause::ForLet | FakeReadCause::ForIndex | FakeReadCause::ForLetUnderscore,
+                _,
+            )
             | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
             | StatementKind::Retag { .. }

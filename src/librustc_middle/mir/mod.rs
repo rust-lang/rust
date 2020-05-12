@@ -1717,6 +1717,14 @@ pub enum FakeReadCause {
     /// appropriate errors.
     ForLet,
 
+    /// This denotes the existence of a statement like
+    ///
+    /// `let _ = <expr>;`
+    ///
+    /// which would not otherwise be recorded in the MIR. This is required for to
+    /// implement the unused variable lint on the MIR. It should be ignored elsewhere.
+    ForLetUnderscore,
+
     /// If we have an index expression like
     ///
     /// (*x)[1][{ x = y; 4}]

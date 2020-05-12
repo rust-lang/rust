@@ -439,6 +439,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block.unit()
             }
 
+            // Handle bindings like `let _ = var;` by lowering them to a fake read of the RHS. This
+            // is needed by the unused variables lint pass.
+            PatKind::Wild => {
+                let place = unpack!(block = self.as_place(block, initializer));
+                debug!("expr_into_pattern(place = {:?}, PatKind::Wild)", place);
+
+                if place.as_local().is_some() {
+                    let source_info = self.source_info(irrefutable_pat.span);
+                    self.cfg.push_fake_read(block, source_info, FakeReadCause::ForLetUnderscore, place);
+                }
+
+                block.unit()
+            }
+
             _ => {
                 let place = unpack!(block = self.as_place(block, initializer));
                 self.place_into_pattern(block, irrefutable_pat, place, true)

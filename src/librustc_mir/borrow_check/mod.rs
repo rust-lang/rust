@@ -12,7 +12,7 @@ use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_middle::mir::{
-    traversal, Body, ClearCrossCrate, Local, Location, Mutability, Operand, Place, PlaceElem,
+    self, traversal, Body, ClearCrossCrate, Local, Location, Mutability, Operand, Place, PlaceElem,
     PlaceRef,
 };
 use rustc_middle::mir::{AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind};
@@ -571,6 +571,10 @@ impl<'cx, 'tcx> dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tc
 
                 self.mutate_place(location, (*lhs, span), Shallow(None), JustWrite, flow_state);
             }
+
+            // `ForLetUnderscore` is only intended for the unused variables lint.
+            StatementKind::FakeRead(mir::FakeReadCause::ForLetUnderscore, _) => {}
+
             StatementKind::FakeRead(_, box ref place) => {
                 // Read for match doesn't access any memory and is used to
                 // assert that a place is safe and live. So we don't have to
