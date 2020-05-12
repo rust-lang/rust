@@ -13,6 +13,7 @@ pub enum NonStructuralMatchTy<'tcx> {
     Adt(&'tcx AdtDef),
     Param,
     Dynamic,
+    Foreign,
 }
 
 /// This method traverses the structure of `ty`, trying to find an
@@ -143,6 +144,10 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for Search<'a, 'tcx> {
                 self.found = Some(NonStructuralMatchTy::Dynamic);
                 return true; // Stop visiting.
             }
+            ty::Foreign(_) => {
+                self.found = Some(NonStructuralMatchTy::Foreign);
+                return true; // Stop visiting
+            }
             ty::RawPtr(..) => {
                 // structural-match ignores substructure of
                 // `*const _`/`*mut _`, so skip `super_visit_with`.
@@ -163,7 +168,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for Search<'a, 'tcx> {
                 return false;
             }
             ty::FnDef(..) | ty::FnPtr(..) => {
-                // types of formals and return in `fn(_) -> _` are also irrelevant;
+                // Types of formals and return in `fn(_) -> _` are also irrelevant;
                 // so we do not recur into them via `super_visit_with`
                 //
                 // (But still tell caller to continue search.)
@@ -176,7 +181,33 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for Search<'a, 'tcx> {
                 // for empty array.
                 return false;
             }
-            _ => {
+            ty::Bool
+            | ty::Char
+            | ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Str
+            | ty::Never
+            | ty::Error => {
+                // These primitive types are always structural match.
+                //
+                // `Never` is kind of special here, but as it is not inhabitable, this should be fine.
+                return false;
+            }
+
+            ty::Array(..)
+            | ty::Slice(_)
+            | ty::Ref(..)
+            | ty::Closure(..)
+            | ty::Generator(..)
+            | ty::GeneratorWitness(..)
+            | ty::Tuple(..)
+            | ty::Projection(..)
+            | ty::UnnormalizedProjection(..)
+            | ty::Opaque(..)
+            | ty::Bound(..)
+            | ty::Placeholder(_)
+            | ty::Infer(_) => {
                 ty.super_visit_with(self);
                 return false;
             }
