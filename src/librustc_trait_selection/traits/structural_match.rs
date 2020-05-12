@@ -14,6 +14,9 @@ pub enum NonStructuralMatchTy<'tcx> {
     Param,
     Dynamic,
     Foreign,
+    Opaque,
+    Generator,
+    Projection,
 }
 
 /// This method traverses the structure of `ty`, trying to find an
@@ -148,6 +151,18 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for Search<'a, 'tcx> {
                 self.found = Some(NonStructuralMatchTy::Foreign);
                 return true; // Stop visiting
             }
+            ty::Opaque(..) => {
+                self.found = Some(NonStructuralMatchTy::Opaque);
+                return true;
+            }
+            ty::Projection(..) => {
+                self.found = Some(NonStructuralMatchTy::Projection);
+                return true;
+            }
+            ty::Generator(..) | ty::GeneratorWitness(..) => {
+                self.found = Some(NonStructuralMatchTy::Generator);
+                return true;
+            }
             ty::RawPtr(..) => {
                 // structural-match ignores substructure of
                 // `*const _`/`*mut _`, so skip `super_visit_with`.
@@ -181,39 +196,22 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for Search<'a, 'tcx> {
                 // for empty array.
                 return false;
             }
-            ty::Bool
-            | ty::Char
-            | ty::Int(_)
-            | ty::Uint(_)
-            | ty::Float(_)
-            | ty::Str
-            | ty::Never => {
+            ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Str | ty::Never => {
                 // These primitive types are always structural match.
                 //
                 // `Never` is kind of special here, but as it is not inhabitable, this should be fine.
                 return false;
             }
 
-            ty::Array(..)
-            | ty::Slice(_)
-            | ty::Ref(..)
-            | ty::Closure(..)
-            | ty::Generator(..)
-            | ty::Tuple(..)
-            | ty::Projection(..)
-            | ty::Opaque(..)
-            | ty::GeneratorWitness(..) => {
+            ty::Array(..) | ty::Slice(_) | ty::Ref(..) | ty::Tuple(..) => {
                 ty.super_visit_with(self);
                 return false;
             }
-            | ty::Infer(_)
-            | ty::Placeholder(_)
-            | ty::UnnormalizedProjection(..)
-            | ty::Bound(..) => {
+            ty::Closure(..) | ty::Infer(_) | ty::Placeholder(_) | ty::Bound(..) => {
                 bug!("unexpected type during structural-match checking: {:?}", ty);
             }
             ty::Error => {
-                self.tcx().delay_span_bug(self.span, "ty::Error in structural-match check");
+                self.tcx().sess.delay_span_bug(self.span, "ty::Error in structural-match check");
                 // We still want to check other types after encountering an error,
                 // as this may still emit relevant errors.
                 return false;
