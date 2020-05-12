@@ -893,6 +893,11 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                     // ```
                     // FIXME: we overzealously erase the entire local, because that's easier to
                     // implement.
+                    trace!(
+                        "propagation into {:?} failed.
+                        Nuking the entire site from orbit, it's the only way to be sure",
+                        place,
+                    );
                     Self::remove_const(&mut self.ecx, place.local);
                 }
             }
