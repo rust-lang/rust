@@ -1784,7 +1784,6 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         /// [While expression reference](https://doc.rust-lang.org/reference/expressions/loop-expr.html#predicate-loops)
         struct Condition { T![let], Pat, T![=], Expr }
 
-        // TODO: this one is used by closure expressions too, but hey use pipes instead of parens
         /// Parameter list **declaration**.
         ///
         /// ```
@@ -1797,7 +1796,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         /// ```
         ///
         /// [Reference](https://doc.rust-lang.org/reference/items/functions.html)ocs to codegen script
-        struct ParamList {
+        struct ParamList { // FIXME: this node is used by closure expressions too, but hey use pipes instead of parens...
             T!['('],
             SelfParam,
             params: [Param],
