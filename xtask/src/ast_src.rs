@@ -2150,16 +2150,14 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
 
         /// Any kind of item that may appear in an impl block
         ///
-        /// // TODO: is the following a fixme?
-        /// impl blocks can also contain MacroCall
+        /// // FIXME: impl blocks can also contain MacroCall
         enum AssocItem: NameOwner, AttrsOwner {
             FnDef, TypeAliasDef, ConstDef
         }
 
         /// Any kind of item that may appear in an extern block
         ///
-        /// // TODO: is the following a fixme?
-        /// extern blocks can also contain MacroCall
+        /// // FIXME: extern blocks can also contain MacroCall
         enum ExternItem: NameOwner, AttrsOwner, VisibilityOwner {
             FnDef, StaticDef
         }

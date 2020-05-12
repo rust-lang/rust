@@ -2650,8 +2650,7 @@ impl ast::AttrsOwner for ModuleItem {}
 impl ast::VisibilityOwner for ModuleItem {}
 /// Any kind of item that may appear in an impl block
 ///
-/// // TODO: is the following a fixme?
-/// impl blocks can also contain MacroCall
+/// // FIXME: impl blocks can also contain MacroCall
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AssocItem {
     FnDef(FnDef),
@@ -2662,8 +2661,7 @@ impl ast::NameOwner for AssocItem {}
 impl ast::AttrsOwner for AssocItem {}
 /// Any kind of item that may appear in an extern block
 ///
-/// // TODO: is the following a fixme?
-/// extern blocks can also contain MacroCall
+/// // FIXME: extern blocks can also contain MacroCall
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ExternItem {
     FnDef(FnDef),
