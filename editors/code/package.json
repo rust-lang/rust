@@ -21,7 +21,7 @@
         "Programming Languages"
     ],
     "engines": {
-        "vscode": "^1.44.0"
+        "vscode": "^1.45.0"
     },
     "enableProposedApi": true,
     "scripts": {
