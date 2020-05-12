@@ -8,13 +8,13 @@ fn main() -> () {
     bb0: {
         StorageLive(_1);                 // scope 0 at $DIR/const_allocation.rs:8:5: 8:8
         StorageLive(_2);                 // scope 0 at $DIR/const_allocation.rs:8:5: 8:8
-        _2 = const {alloc0+0x0: &&[(std::option::Option<i32>, &[&str])]}; // scope 0 at $DIR/const_allocation.rs:8:5: 8:8
+        _2 = const {alloc0: &&[(std::option::Option<i32>, &[&str])]}; // scope 0 at $DIR/const_allocation.rs:8:5: 8:8
                                          // ty::Const
                                          // + ty: &&[(std::option::Option<i32>, &[&str])]
-                                         // + val: Value(Scalar(alloc0+0x0))
+                                         // + val: Value(Scalar(alloc0))
                                          // mir::Constant
                                          // + span: $DIR/const_allocation.rs:8:5: 8:8
-                                         // + literal: Const { ty: &&[(std::option::Option<i32>, &[&str])], val: Value(Scalar(alloc0+0x0)) }
+                                         // + literal: Const { ty: &&[(std::option::Option<i32>, &[&str])], val: Value(Scalar(alloc0)) }
         _1 = (*_2);                      // scope 0 at $DIR/const_allocation.rs:8:5: 8:8
         StorageDead(_2);                 // scope 0 at $DIR/const_allocation.rs:8:8: 8:9
         StorageDead(_1);                 // scope 0 at $DIR/const_allocation.rs:8:8: 8:9
@@ -30,19 +30,19 @@ fn main() -> () {
 }
 
 alloc0 (static: FOO, size: 8, align: 4) {
-    ╾─a17+0x0─╼ 03 00 00 00                         │ ╾──╼....
+    ╾─alloc17─╼ 03 00 00 00                         │ ╾──╼....
 }
 
 alloc17 (size: 48, align: 4) {
-    0x00 │ 00 00 00 00 __ __ __ __ ╾─a4+0x0──╼ 00 00 00 00 │ ....░░░░╾──╼....
-    0x10 │ 00 00 00 00 __ __ __ __ ╾─a8+0x0──╼ 02 00 00 00 │ ....░░░░╾──╼....
-    0x20 │ 01 00 00 00 2a 00 00 00 ╾─a13+0x0─╼ 03 00 00 00 │ ....*...╾──╼....
+    0x00 │ 00 00 00 00 __ __ __ __ ╾─alloc4──╼ 00 00 00 00 │ ....░░░░╾──╼....
+    0x10 │ 00 00 00 00 __ __ __ __ ╾─alloc8──╼ 02 00 00 00 │ ....░░░░╾──╼....
+    0x20 │ 01 00 00 00 2a 00 00 00 ╾─alloc13─╼ 03 00 00 00 │ ....*...╾──╼....
 }
 
 alloc4 (size: 0, align: 4) {}
 
 alloc8 (size: 16, align: 4) {
-    ╾─a7+0x0──╼ 03 00 00 00 ╾─a9+0x0──╼ 03 00 00 00 │ ╾──╼....╾──╼....
+    ╾─alloc7──╼ 03 00 00 00 ╾─alloc9──╼ 03 00 00 00 │ ╾──╼....╾──╼....
 }
 
 alloc7 (size: 3, align: 1) {
@@ -54,8 +54,8 @@ alloc9 (size: 3, align: 1) {
 }
 
 alloc13 (size: 24, align: 4) {
-    0x00 │ ╾─a12+0x0─╼ 03 00 00 00 ╾─a14+0x0─╼ 03 00 00 00 │ ╾──╼....╾──╼....
-    0x10 │ ╾─a15+0x0─╼ 04 00 00 00                         │ ╾──╼....
+    0x00 │ ╾─alloc12─╼ 03 00 00 00 ╾─alloc14─╼ 03 00 00 00 │ ╾──╼....╾──╼....
+    0x10 │ ╾─alloc15─╼ 04 00 00 00                         │ ╾──╼....
 }
 
 alloc12 (size: 3, align: 1) {
