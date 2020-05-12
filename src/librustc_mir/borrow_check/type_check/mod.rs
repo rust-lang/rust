@@ -108,26 +108,22 @@ mod relate_tys;
 ///
 /// - `infcx` -- inference context to use
 /// - `param_env` -- parameter environment to use for trait solving
-/// - `mir` -- MIR to type-check
-/// - `mir_def_id` -- DefId from which the MIR is derived (must be local)
-/// - `region_bound_pairs` -- the implied outlives obligations between type parameters
-///   and lifetimes (e.g., `&'a T` implies `T: 'a`)
-/// - `implicit_region_bound` -- a region which all generic parameters are assumed
-///   to outlive; should represent the fn body
-/// - `input_tys` -- fully liberated, but **not** normalized, expected types of the arguments;
-///   the types of the input parameters found in the MIR itself will be equated with these
-/// - `output_ty` -- fully liberated, but **not** normalized, expected return type;
-///   the type for the RETURN_PLACE will be equated with this
-/// - `liveness` -- results of a liveness computation on the MIR; used to create liveness
-///   constraints for the regions in the types of variables
+/// - `body` -- MIR body to type-check
+/// - `promoted` -- map of promoted constants within `body`
+/// - `mir_def_id` -- `LocalDefId` from which the MIR is derived
+/// - `universal_regions` -- the universal regions from `body`s function signature
+/// - `location_table` -- MIR location map of `body`
+/// - `borrow_set` -- information about borrows occurring in `body`
+/// - `all_facts` -- when using Polonius, this is the generated set of Polonius facts
 /// - `flow_inits` -- results of a maybe-init dataflow analysis
 /// - `move_data` -- move-data constructed when performing the maybe-init dataflow analysis
+/// - `elements` -- MIR region map
 pub(crate) fn type_check<'mir, 'tcx>(
     infcx: &InferCtxt<'_, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     body: &Body<'tcx>,
     promoted: &IndexVec<Promoted, Body<'tcx>>,
-    mir_def_id: DefId,
+    mir_def_id: LocalDefId,
     universal_regions: &Rc<UniversalRegions<'tcx>>,
     location_table: &LocationTable,
     borrow_set: &BorrowSet<'tcx>,
@@ -191,7 +187,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
 
 fn type_check_internal<'a, 'tcx, R>(
     infcx: &'a InferCtxt<'a, 'tcx>,
-    mir_def_id: DefId,
+    mir_def_id: LocalDefId,
     param_env: ty::ParamEnv<'tcx>,
     body: &'a Body<'tcx>,
     promoted: &'a IndexVec<Promoted, Body<'tcx>>,
@@ -271,7 +267,7 @@ struct TypeVerifier<'a, 'b, 'tcx> {
     body: &'b Body<'tcx>,
     promoted: &'b IndexVec<Promoted, Body<'tcx>>,
     last_span: Span,
-    mir_def_id: DefId,
+    mir_def_id: LocalDefId,
     errors_reported: bool,
 }
 
@@ -815,7 +811,7 @@ struct TypeChecker<'a, 'tcx> {
     /// User type annotations are shared between the main MIR and the MIR of
     /// all of the promoted items.
     user_type_annotations: &'a CanonicalUserTypeAnnotations<'tcx>,
-    mir_def_id: DefId,
+    mir_def_id: LocalDefId,
     region_bound_pairs: &'a RegionBoundPairs<'tcx>,
     implicit_region_bound: ty::Region<'tcx>,
     reported_errors: FxHashSet<(Ty<'tcx>, Span)>,
@@ -963,7 +959,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     fn new(
         infcx: &'a InferCtxt<'a, 'tcx>,
         body: &'a Body<'tcx>,
-        mir_def_id: DefId,
+        mir_def_id: LocalDefId,
         param_env: ty::ParamEnv<'tcx>,
         region_bound_pairs: &'a RegionBoundPairs<'tcx>,
         implicit_region_bound: ty::Region<'tcx>,
@@ -1142,7 +1138,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // When you have `let x: impl Foo = ...` in a closure,
                 // the resulting inferend values are stored with the
                 // def-id of the base function.
-                let parent_def_id = self.tcx().closure_base_def_id(self.mir_def_id);
+                let parent_def_id = self.tcx().closure_base_def_id(self.mir_def_id.to_def_id());
                 return self.eq_opaque_type_and_type(sub, sup, parent_def_id, locations, category);
             } else {
                 return Err(terr);
@@ -1994,7 +1990,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         if !self.infcx.type_is_copy_modulo_regions(self.param_env, ty, span) {
                             let ccx = ConstCx::new_with_param_env(
                                 tcx,
-                                self.mir_def_id.expect_local(),
+                                self.mir_def_id,
                                 body,
                                 self.param_env,
                             );
@@ -2010,9 +2006,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                 &traits::Obligation::new(
                                     ObligationCause::new(
                                         span,
-                                        self.tcx()
-                                            .hir()
-                                            .local_def_id_to_hir_id(self.mir_def_id.expect_local()),
+                                        self.tcx().hir().local_def_id_to_hir_id(self.mir_def_id),
                                         traits::ObligationCauseCode::RepeatVec(should_suggest),
                                     ),
                                     self.param_env,
