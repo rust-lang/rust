@@ -626,9 +626,6 @@
                     ],
                     "*.mutable": [
                         "markup.underline"
-                    ],
-                    "*.static": [
-                        "markup.italic"
                     ]
                 }
             }
