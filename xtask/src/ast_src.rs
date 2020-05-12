@@ -1428,7 +1428,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         /// ```
         ///
         /// [Reference](https://doc.rust-lang.org/reference/patterns.html#range-patterns)
-        struct RangePat { /*RangeSeparator*/ } // TODO: where is RangeSeparator?
+        struct RangePat { } // FIXME(@matklad): here should be T![..], T![..=] I think, if we don't already have an accessor in expresions_ext
 
         /// Literal pattern.
         /// Includes only bool, number, char, and string literals.
