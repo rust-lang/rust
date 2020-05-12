@@ -9,6 +9,7 @@
 #![feature(const_panic)]
 #![feature(crate_visibility_modifier)]
 #![feature(bool_to_option)]
+#![feature(in_band_lifetimes)]
 #![feature(or_patterns)]
 #![recursion_limit = "256"]
 

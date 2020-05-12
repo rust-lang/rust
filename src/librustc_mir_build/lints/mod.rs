@@ -4,3 +4,4 @@
 //! user's code as possible.
 
 pub mod unconditional_recursion;
+pub mod unused_variables;
