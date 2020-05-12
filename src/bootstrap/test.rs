@@ -436,7 +436,6 @@ impl Step for Miri {
 
             // miri tests need to know about the stage sysroot
             cargo.env("MIRI_SYSROOT", miri_sysroot);
-            cargo.env("RUSTC_TEST_SUITE", builder.rustc(compiler));
             cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(compiler));
             cargo.env("MIRI_PATH", miri);
 
