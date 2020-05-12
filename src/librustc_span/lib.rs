@@ -239,7 +239,7 @@ impl Ord for Span {
     }
 }
 
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable)]
 #[derive(HashStable_Generic)]
 pub enum SpanId {
     Span(Span),
@@ -685,23 +685,33 @@ impl rustc_serialize::UseSpecializedDecodable for Span {
     }
 }
 
-pub fn default_span_debug(span: Span, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    f.debug_struct("Span")
-        .field("lo", &span.lo())
-        .field("hi", &span.hi())
-        .field("ctxt", &span.ctxt())
-        .finish()
+pub fn default_span_debug(span: SpanId, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    match span {
+        SpanId::Span(span) => f
+            .debug_struct("Span")
+            .field("lo", &span.lo())
+            .field("hi", &span.hi())
+            .field("ctxt", &span.ctxt())
+            .finish(),
+        SpanId::DefId(did) => f.debug_tuple("DefId").field(&did).finish(),
+    }
 }
 
 impl fmt::Debug for Span {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        (*SPAN_DEBUG)(*self, f)
+        (*SPAN_DEBUG)(SpanId::Span(*self), f)
     }
 }
 
 impl fmt::Debug for SpanData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        (*SPAN_DEBUG)(Span::new(self.lo, self.hi, self.ctxt), f)
+        (*SPAN_DEBUG)(SpanId::Span(Span::new(self.lo, self.hi, self.ctxt)), f)
+    }
+}
+
+impl fmt::Debug for SpanId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        (*SPAN_DEBUG)(*self, f)
     }
 }
 
@@ -1637,7 +1647,7 @@ pub struct FileLines {
     pub lines: Vec<LineInfo>,
 }
 
-pub static SPAN_DEBUG: AtomicRef<fn(Span, &mut fmt::Formatter<'_>) -> fmt::Result> =
+pub static SPAN_DEBUG: AtomicRef<fn(SpanId, &mut fmt::Formatter<'_>) -> fmt::Result> =
     AtomicRef::new(&(default_span_debug as fn(_, &mut fmt::Formatter<'_>) -> _));
 
 // _____________________________________________________________________________

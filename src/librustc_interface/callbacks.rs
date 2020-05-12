@@ -15,9 +15,10 @@ use std::fmt;
 
 /// This is a callback from librustc_ast as it cannot access the implicit state
 /// in librustc_middle otherwise.
-fn span_debug(span: rustc_span::Span, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+fn span_debug(span: rustc_span::SpanId, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     tls::with_opt(|tcx| {
         if let Some(tcx) = tcx {
+            let span = tcx.reify_span(span);
             write!(f, "{}", tcx.sess.source_map().span_to_string(span))
         } else {
             rustc_span::default_span_debug(span, f)
