@@ -91,6 +91,16 @@ impl<'tcx> MutVisitor<'tcx> for RenameLocalVisitor<'tcx> {
             *local = self.to;
         }
     }
+
+    fn visit_terminator_kind(&mut self, kind: &mut TerminatorKind<'tcx>, location: Location) {
+        match kind {
+            TerminatorKind::Return => {
+                // Do not replace the implicit `_0` access here, as that's not possible. The
+                // transform already handles `return` correctly.
+            }
+            _ => self.super_terminator_kind(kind, location),
+        }
+    }
 }
 
 struct DerefArgVisitor<'tcx> {

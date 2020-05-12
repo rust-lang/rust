@@ -732,7 +732,11 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
     }
 
     fn visit_terminator_kind(&mut self, kind: &mut TerminatorKind<'tcx>, loc: Location) {
-        self.super_terminator_kind(kind, loc);
+        // Don't try to modify the implicit `_0` access on return (`return` terminators are
+        // replaced down below anyways).
+        if !matches!(kind, TerminatorKind::Return) {
+            self.super_terminator_kind(kind, loc);
+        }
 
         match *kind {
             TerminatorKind::GeneratorDrop | TerminatorKind::Yield { .. } => bug!(),
