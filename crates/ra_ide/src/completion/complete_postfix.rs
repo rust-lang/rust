@@ -38,8 +38,8 @@ pub(super) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
         Some(it) => it,
         None => return,
     };
-
-    if let Some(try_enum) = TryEnum::from_ty(&ctx.sema, &receiver_ty) {
+    let try_enum = TryEnum::from_ty(&ctx.sema, &receiver_ty);
+    if let Some(try_enum) = &try_enum {
         match try_enum {
             TryEnum::Result => {
                 postfix_snippet(
@@ -104,7 +104,6 @@ pub(super) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
         )
         .add_to(acc);
     }
-
     // !&&&42 is a compiler error, ergo process it before considering the references
     postfix_snippet(ctx, cap, &dot_receiver, "not", "!expr", &format!("!{}", receiver_text))
         .add_to(acc);
@@ -126,16 +125,45 @@ pub(super) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
     let dot_receiver = include_references(dot_receiver);
     let receiver_text =
         get_receiver_text(&dot_receiver, ctx.dot_receiver_is_ambiguous_float_literal);
-
-    postfix_snippet(
-        ctx,
-        cap,
-        &dot_receiver,
-        "match",
-        "match expr {}",
-        &format!("match {} {{\n    ${{1:_}} => {{$0\\}},\n}}", receiver_text),
-    )
-    .add_to(acc);
+    match try_enum {
+        Some(try_enum) => {
+            match try_enum {
+                TryEnum::Result => {
+                    postfix_snippet(
+                    ctx,
+                    cap,
+                    &dot_receiver,
+                    "match",
+                    "match expr {}",
+                    &format!("match {} {{\n    Ok(${{1:_}}) => {{$2\\}},\n    Err(${{3:_}}) => {{$0\\}},\n}}", receiver_text),
+                )
+                .add_to(acc);
+                }
+                TryEnum::Option => {
+                    postfix_snippet(
+                    ctx,
+                    cap,
+                    &dot_receiver,
+                    "match",
+                    "match expr {}",
+                    &format!("match {} {{\n    Some(${{1:_}}) => {{$2\\}},\n    None => {{$0\\}},\n}}", receiver_text),
+                )
+                .add_to(acc);
+                }
+            }
+        }
+        None => {
+            postfix_snippet(
+                ctx,
+                cap,
+                &dot_receiver,
+                "match",
+                "match expr {}",
+                &format!("match {} {{\n    ${{1:_}} => {{$0\\}},\n}}", receiver_text),
+            )
+            .add_to(acc);
+        }
+    }
 
     postfix_snippet(
         ctx,
@@ -324,7 +352,7 @@ mod tests {
                 label: "match",
                 source_range: 210..210,
                 delete: 206..210,
-                insert: "match bar {\n    ${1:_} => {$0\\},\n}",
+                insert: "match bar {\n    Some(${1:_}) => {$2\\},\n    None => {$0\\},\n}",
                 detail: "match expr {}",
             },
             CompletionItem {
@@ -403,7 +431,7 @@ mod tests {
                 label: "match",
                 source_range: 211..211,
                 delete: 207..211,
-                insert: "match bar {\n    ${1:_} => {$0\\},\n}",
+                insert: "match bar {\n    Ok(${1:_}) => {$2\\},\n    Err(${3:_}) => {$0\\},\n}",
                 detail: "match expr {}",
             },
             CompletionItem {
