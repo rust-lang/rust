@@ -209,7 +209,7 @@ fn do_mir_borrowck<'a, 'tcx>(
         nll_errors,
     } = nll::compute_regions(
         infcx,
-        def_id.to_def_id(),
+        def_id,
         free_regions,
         body,
         &promoted,
