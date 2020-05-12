@@ -3,7 +3,6 @@
 //! This module provides facilities to record item correspondence of various kinds, as well as a
 //! map used to temporarily match up unsorted item sequences' elements by name.
 
-use rustc_ast::ast::Name;
 use rustc_hir::{
     def::Res,
     def_id::{CrateNum, DefId},
@@ -13,6 +12,7 @@ use rustc_middle::{
     hir::exports::Export,
     ty::{AssocKind, GenericParamDef, GenericParamDefKind},
 };
+use rustc_span::symbol::Symbol;
 use std::collections::{BTreeSet, HashMap, HashSet, VecDeque};
 use std::hash::{Hash, Hasher};
 
@@ -24,7 +24,7 @@ pub struct InherentEntry {
     /// The kind of the item.
     pub kind: AssocKind,
     /// The item's name.
-    pub name: Name,
+    pub name: Symbol,
 }
 
 impl Eq for InherentEntry {}
@@ -38,7 +38,7 @@ fn assert_inherent_entry_members_impl_eq() {
     // FIXME derive Eq again once AssocKind impls Eq again.
     // assert_impl_eq::<AssocKind>();
 
-    assert_impl_eq::<Name>();
+    assert_impl_eq::<Symbol>();
 }
 
 #[allow(clippy::derive_hash_xor_eq)]
@@ -210,7 +210,7 @@ impl IdMapping {
         &mut self,
         parent_def_id: DefId,
         kind: AssocKind,
-        name: Name,
+        name: Symbol,
         impl_def_id: DefId,
         item_def_id: DefId,
     ) {
@@ -340,11 +340,11 @@ type OptionalExport = Option<Export<HirId>>;
 #[cfg_attr(feature = "cargo-clippy", allow(clippy::module_name_repetitions))]
 pub struct NameMapping {
     /// The exports in the type namespace.
-    type_map: HashMap<Name, (OptionalExport, OptionalExport)>,
+    type_map: HashMap<Symbol, (OptionalExport, OptionalExport)>,
     /// The exports in the value namespace.
-    value_map: HashMap<Name, (OptionalExport, OptionalExport)>,
+    value_map: HashMap<Symbol, (OptionalExport, OptionalExport)>,
     /// The exports in the macro namespace.
-    macro_map: HashMap<Name, (OptionalExport, OptionalExport)>,
+    macro_map: HashMap<Symbol, (OptionalExport, OptionalExport)>,
 }
 
 impl NameMapping {
