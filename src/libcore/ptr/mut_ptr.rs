@@ -144,6 +144,7 @@ impl<T: ?Sized> *mut T {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use = "returns a new pointer rather than modifying its argument"]
     #[inline]
     pub unsafe fn offset(self, count: isize) -> *mut T
     where
@@ -201,6 +202,7 @@ impl<T: ?Sized> *mut T {
     /// assert_eq!(&data, &[0, 2, 0, 4, 0]);
     /// ```
     #[stable(feature = "ptr_wrapping_offset", since = "1.16.0")]
+    #[must_use = "returns a new pointer rather than modifying its argument"]
     #[inline]
     pub fn wrapping_offset(self, count: isize) -> *mut T
     where
@@ -436,6 +438,7 @@ impl<T: ?Sized> *mut T {
     /// }
     /// ```
     #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[must_use = "returns a new pointer rather than modifying its argument"]
     #[inline]
     pub unsafe fn add(self, count: usize) -> Self
     where
@@ -497,6 +500,7 @@ impl<T: ?Sized> *mut T {
     /// }
     /// ```
     #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[must_use = "returns a new pointer rather than modifying its argument"]
     #[inline]
     pub unsafe fn sub(self, count: usize) -> Self
     where
@@ -552,6 +556,7 @@ impl<T: ?Sized> *mut T {
     /// }
     /// ```
     #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[must_use = "returns a new pointer rather than modifying its argument"]
     #[inline]
     pub fn wrapping_add(self, count: usize) -> Self
     where
@@ -607,6 +612,7 @@ impl<T: ?Sized> *mut T {
     /// }
     /// ```
     #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[must_use = "returns a new pointer rather than modifying its argument"]
     #[inline]
     pub fn wrapping_sub(self, count: usize) -> Self
     where
