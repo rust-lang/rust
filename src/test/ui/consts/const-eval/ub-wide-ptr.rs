@@ -42,11 +42,11 @@ const MY_STR_LENGTH_PTR: &MyStr = unsafe { mem::transmute((&42u8, &3)) };
 const MY_STR_MUCH_TOO_LONG: &MyStr = unsafe { mem::transmute((&42u8, usize::MAX)) };
 //~^ ERROR it is undefined behavior to use this value
 
-// invalid UTF-8
-const STR_NO_UTF8: &str = unsafe { mem::transmute::<&[u8], _>(&[0xFF]) };
+// uninitialized byte
+const STR_NO_INIT: &str = unsafe { mem::transmute::<&[_], _>(&[MaybeUninit::<u8> { uninit: () }]) };
 //~^ ERROR it is undefined behavior to use this value
-// invalid UTF-8 in user-defined str-like
-const MYSTR_NO_UTF8: &MyStr = unsafe { mem::transmute::<&[u8], _>(&[0xFF]) };
+// uninitialized byte in user-defined str-like
+const MYSTR_NO_INIT: &MyStr = unsafe { mem::transmute::<&[_], _>(&[MaybeUninit::<u8> { uninit: () }]) };
 //~^ ERROR it is undefined behavior to use this value
 
 // # slice
