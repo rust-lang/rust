@@ -890,7 +890,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         ///
         /// [Reference](https://doc.rust-lang.org/reference/expressions/closure-expr.html)
         struct LambdaExpr: AttrsOwner {
-            // T![static], // TODO: what's this?
+            T![static], // Note(@matklad): I belive this is (used to be?) syntax for generators
             T![async],
             T![move],
             ParamList,

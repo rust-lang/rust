@@ -844,6 +844,7 @@ pub struct LambdaExpr {
 }
 impl ast::AttrsOwner for LambdaExpr {}
 impl LambdaExpr {
+    pub fn static_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![static]) }
     pub fn async_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![async]) }
     pub fn move_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![move]) }
     pub fn param_list(&self) -> Option<ParamList> { support::child(&self.syntax) }
