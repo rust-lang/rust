@@ -7,6 +7,7 @@ trait Trait<T = Self> {
 
     fn func(&self) -> Self::A;
     fn funk(&self, _: Self::A);
+    fn funq(&self) -> Self::A {} //~ ERROR mismatched types
 }
 
 fn foo(_: impl Trait, x: impl Trait) {
