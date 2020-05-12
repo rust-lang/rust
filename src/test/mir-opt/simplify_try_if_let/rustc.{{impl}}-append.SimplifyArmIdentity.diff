@@ -1,0 +1,127 @@
+- // MIR for `<impl at $DIR/simplify_try_if_let.rs:15:1: 34:2>::append` before SimplifyArmIdentity
++ // MIR for `<impl at $DIR/simplify_try_if_let.rs:15:1: 34:2>::append` after SimplifyArmIdentity
+  
+  fn <impl at $DIR/simplify_try_if_let.rs:15:1: 34:2>::append(_1: &mut LinkedList, _2: &mut LinkedList) -> () {
+      debug self => _1;                    // in scope 0 at $DIR/simplify_try_if_let.rs:20:19: 20:28
+      debug other => _2;                   // in scope 0 at $DIR/simplify_try_if_let.rs:20:30: 20:35
+      let mut _0: ();                      // return place in scope 0 at $DIR/simplify_try_if_let.rs:20:48: 20:48
+      let mut _3: isize;                   // in scope 0 at $DIR/simplify_try_if_let.rs:22:13: 22:17
+      let mut _4: std::ptr::NonNull<Node>; // in scope 0 at $DIR/simplify_try_if_let.rs:23:18: 23:26
+      let mut _5: std::option::Option<std::ptr::NonNull<Node>>; // in scope 0 at $DIR/simplify_try_if_let.rs:26:43: 26:60
+      let mut _6: &mut std::option::Option<std::ptr::NonNull<Node>>; // in scope 0 at $DIR/simplify_try_if_let.rs:26:43: 26:53
+      let mut _7: isize;                   // in scope 0 at $DIR/simplify_try_if_let.rs:26:24: 26:40
+      let mut _9: std::option::Option<std::ptr::NonNull<Node>>; // in scope 0 at $DIR/simplify_try_if_let.rs:28:46: 28:62
+      let mut _10: std::ptr::NonNull<Node>; // in scope 0 at $DIR/simplify_try_if_let.rs:28:51: 28:61
+      let mut _11: &mut Node;              // in scope 0 at $DIR/simplify_try_if_let.rs:28:25: 28:38
+      let mut _12: &mut std::ptr::NonNull<Node>; // in scope 0 at $DIR/simplify_try_if_let.rs:28:25: 28:29
+      scope 1 {
+          debug tail => _4;                // in scope 1 at $DIR/simplify_try_if_let.rs:23:18: 23:26
+          let _8: std::ptr::NonNull<Node>; // in scope 1 at $DIR/simplify_try_if_let.rs:26:29: 26:39
+          scope 2 {
+              debug other_head => _8;      // in scope 2 at $DIR/simplify_try_if_let.rs:26:29: 26:39
+              scope 3 {
+              }
+          }
+      }
+  
+      bb0: {
+          _3 = discriminant(((*_1).1: std::option::Option<std::ptr::NonNull<Node>>)); // scope 0 at $DIR/simplify_try_if_let.rs:22:13: 22:17
+          switchInt(move _3) -> [0isize: bb3, 1isize: bb1, otherwise: bb2]; // scope 0 at $DIR/simplify_try_if_let.rs:22:13: 22:17
+      }
+  
+      bb1: {
+          StorageLive(_4);                 // scope 0 at $DIR/simplify_try_if_let.rs:23:18: 23:26
+          _4 = ((((*_1).1: std::option::Option<std::ptr::NonNull<Node>>) as Some).0: std::ptr::NonNull<Node>); // scope 0 at $DIR/simplify_try_if_let.rs:23:18: 23:26
+          StorageLive(_5);                 // scope 1 at $DIR/simplify_try_if_let.rs:26:43: 26:60
+          StorageLive(_6);                 // scope 1 at $DIR/simplify_try_if_let.rs:26:43: 26:53
+          _6 = &mut ((*_2).0: std::option::Option<std::ptr::NonNull<Node>>); // scope 1 at $DIR/simplify_try_if_let.rs:26:43: 26:53
+          _5 = const std::option::Option::<std::ptr::NonNull<Node>>::take(move _6) -> bb4; // scope 1 at $DIR/simplify_try_if_let.rs:26:43: 26:60
+                                           // ty::Const
+                                           // + ty: for<'r> fn(&'r mut std::option::Option<std::ptr::NonNull<Node>>) -> std::option::Option<std::ptr::NonNull<Node>> {std::option::Option::<std::ptr::NonNull<Node>>::take}
+                                           // + val: Value(Scalar(<ZST>))
+                                           // mir::Constant
+                                           // + span: $DIR/simplify_try_if_let.rs:26:54: 26:58
+                                           // + literal: Const { ty: for<'r> fn(&'r mut std::option::Option<std::ptr::NonNull<Node>>) -> std::option::Option<std::ptr::NonNull<Node>> {std::option::Option::<std::ptr::NonNull<Node>>::take}, val: Value(Scalar(<ZST>)) }
+      }
+  
+      bb2: {
+          unreachable;                     // scope 0 at $DIR/simplify_try_if_let.rs:21:15: 21:24
+      }
+  
+      bb3: {
+          _0 = const ();                   // scope 0 at $DIR/simplify_try_if_let.rs:22:21: 22:24
+                                           // ty::Const
+                                           // + ty: ()
+                                           // + val: Value(Scalar(<ZST>))
+                                           // mir::Constant
+                                           // + span: $DIR/simplify_try_if_let.rs:22:21: 22:24
+                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
+          goto -> bb9;                     // scope 0 at $DIR/simplify_try_if_let.rs:21:9: 32:10
+      }
+  
+      bb4: {
+          StorageDead(_6);                 // scope 1 at $DIR/simplify_try_if_let.rs:26:59: 26:60
+          _7 = discriminant(_5);           // scope 1 at $DIR/simplify_try_if_let.rs:26:24: 26:40
+          switchInt(move _7) -> [1isize: bb6, otherwise: bb5]; // scope 1 at $DIR/simplify_try_if_let.rs:26:24: 26:40
+      }
+  
+      bb5: {
+          _0 = const ();                   // scope 1 at $DIR/simplify_try_if_let.rs:26:17: 30:18
+                                           // ty::Const
+                                           // + ty: ()
+                                           // + val: Value(Scalar(<ZST>))
+                                           // mir::Constant
+                                           // + span: $DIR/simplify_try_if_let.rs:26:17: 30:18
+                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
+          goto -> bb8;                     // scope 1 at $DIR/simplify_try_if_let.rs:26:17: 30:18
+      }
+  
+      bb6: {
+          StorageLive(_8);                 // scope 1 at $DIR/simplify_try_if_let.rs:26:29: 26:39
+          _8 = ((_5 as Some).0: std::ptr::NonNull<Node>); // scope 1 at $DIR/simplify_try_if_let.rs:26:29: 26:39
+          StorageLive(_9);                 // scope 3 at $DIR/simplify_try_if_let.rs:28:46: 28:62
+-         StorageLive(_10);                // scope 3 at $DIR/simplify_try_if_let.rs:28:51: 28:61
+-         _10 = _8;                        // scope 3 at $DIR/simplify_try_if_let.rs:28:51: 28:61
+-         ((_9 as Some).0: std::ptr::NonNull<Node>) = move _10; // scope 3 at $DIR/simplify_try_if_let.rs:28:46: 28:62
+-         discriminant(_9) = 1;            // scope 3 at $DIR/simplify_try_if_let.rs:28:46: 28:62
+-         StorageDead(_10);                // scope 3 at $DIR/simplify_try_if_let.rs:28:61: 28:62
++         _9 = move _5;                    // scope 3 at $DIR/simplify_try_if_let.rs:28:46: 28:62
+          StorageLive(_11);                // scope 3 at $DIR/simplify_try_if_let.rs:28:25: 28:38
+          StorageLive(_12);                // scope 3 at $DIR/simplify_try_if_let.rs:28:25: 28:29
+          _12 = &mut _4;                   // scope 3 at $DIR/simplify_try_if_let.rs:28:25: 28:29
+          _11 = const std::ptr::NonNull::<Node>::as_mut(move _12) -> bb7; // scope 3 at $DIR/simplify_try_if_let.rs:28:25: 28:38
+                                           // ty::Const
+                                           // + ty: for<'r> unsafe fn(&'r mut std::ptr::NonNull<Node>) -> &'r mut Node {std::ptr::NonNull::<Node>::as_mut}
+                                           // + val: Value(Scalar(<ZST>))
+                                           // mir::Constant
+                                           // + span: $DIR/simplify_try_if_let.rs:28:30: 28:36
+                                           // + literal: Const { ty: for<'r> unsafe fn(&'r mut std::ptr::NonNull<Node>) -> &'r mut Node {std::ptr::NonNull::<Node>::as_mut}, val: Value(Scalar(<ZST>)) }
+      }
+  
+      bb7: {
+          StorageDead(_12);                // scope 3 at $DIR/simplify_try_if_let.rs:28:37: 28:38
+          ((*_11).0: std::option::Option<std::ptr::NonNull<Node>>) = move _9; // scope 3 at $DIR/simplify_try_if_let.rs:28:25: 28:62
+          StorageDead(_9);                 // scope 3 at $DIR/simplify_try_if_let.rs:28:61: 28:62
+          StorageDead(_11);                // scope 3 at $DIR/simplify_try_if_let.rs:28:62: 28:63
+          _0 = const ();                   // scope 3 at $DIR/simplify_try_if_let.rs:27:21: 29:22
+                                           // ty::Const
+                                           // + ty: ()
+                                           // + val: Value(Scalar(<ZST>))
+                                           // mir::Constant
+                                           // + span: $DIR/simplify_try_if_let.rs:27:21: 29:22
+                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
+          StorageDead(_8);                 // scope 1 at $DIR/simplify_try_if_let.rs:30:17: 30:18
+          goto -> bb8;                     // scope 1 at $DIR/simplify_try_if_let.rs:26:17: 30:18
+      }
+  
+      bb8: {
+          StorageDead(_5);                 // scope 1 at $DIR/simplify_try_if_let.rs:31:13: 31:14
+          StorageDead(_4);                 // scope 0 at $DIR/simplify_try_if_let.rs:32:9: 32:10
+          goto -> bb9;                     // scope 0 at $DIR/simplify_try_if_let.rs:21:9: 32:10
+      }
+  
+      bb9: {
+          return;                          // scope 0 at $DIR/simplify_try_if_let.rs:33:6: 33:6
+      }
+  }
+  
