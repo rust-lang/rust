@@ -159,6 +159,10 @@ bool GradientUtils::legalRecompute(Value* val, const ValueToValueMapTy& availabl
     }
   }
 
+  if (auto inst = dyn_cast<Instruction>(val)) {
+    return !inst->mayReadOrWriteMemory();
+  }
+
   return true;
 }
 
@@ -172,9 +176,12 @@ bool GradientUtils::shouldRecompute(Value* val, const ValueToValueMapTy& availab
 
   if (isa<CastInst>(val) || isa<GetElementPtrInst>(val)) return true;
 
+  //llvm::errs() << " considering recompute of " << *val << "\n";
+
   // if this has operands that need to be loaded and haven't already been loaded (TODO), just cache this
   if (auto inst = dyn_cast<Instruction>(val)) {
     for(auto &op : inst->operands()) {
+      //llvm::errs() << "   + " << *op << " legalRecompute:" << legalRecompute(op, available) << "\n";
       if (!legalRecompute(op, available)) {
 
         // If this is a load from cache already, dont force a cache of this

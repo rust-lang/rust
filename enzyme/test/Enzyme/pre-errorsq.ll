@@ -80,9 +80,9 @@ exit:                                             ; preds = %end2
 ; CHECK: define internal { { i64, double* } } @augmented_subfn(double* %place, double* %"place'", i64* %m_rows) {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = alloca { { i64, double* } }
-; CHECK-NEXT:   %1 = getelementptr { { i64, double* } }, { { i64, double* } }* %0, i32 0, i32 0
+; CHECK-NEXT:   %1 = getelementptr inbounds { { i64, double* } }, { { i64, double* } }* %0, i32 0, i32 0
 ; CHECK-NEXT:   %rows = load i64, i64* %m_rows, align 8
-; CHECK-NEXT:   %2 = getelementptr { i64, double* }, { i64, double* }* %1, i32 0, i32 0
+; CHECK-NEXT:   %2 = getelementptr inbounds { i64, double* }, { i64, double* }* %1, i32 0, i32 0
 ; CHECK-NEXT:   store i64 %rows, i64* %2
 ; CHECK-NEXT:   %3 = add i64 %rows, -2
 ; CHECK-NEXT:   %4 = add nuw i64 %3, 1
@@ -90,7 +90,7 @@ exit:                                             ; preds = %end2
 ; CHECK-NEXT:   %mallocsize = mul i64 %5, 8
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 %mallocsize)
 ; CHECK-NEXT:   %loaded_malloccache = bitcast i8* %malloccall to double*
-; CHECK-NEXT:   %6 = getelementptr { i64, double* }, { i64, double* }* %1, i32 0, i32 1
+; CHECK-NEXT:   %6 = getelementptr inbounds { i64, double* }, { i64, double* }* %1, i32 0, i32 1
 ; CHECK-NEXT:   store double* %loaded_malloccache, double** %6
 ; CHECK-NEXT:   br label %for1
 

@@ -65,18 +65,18 @@ attributes #6 = { nounwind }
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %conv = bitcast double %inp to i64
 ; CHECK-NEXT:   %call_augmented = call { { i8* }, i64* } @augmented_substore(i64 %conv, i64 3)
+; CHECK-NEXT:   %[[tape:.+]] = extractvalue { { i8* }, i64* } %call_augmented, 0
 ; CHECK-NEXT:   %"call'ac" = extractvalue { { i8* }, i64* } %call_augmented, 1
 ; CHECK-NEXT:   %[[ipc:.+]] = bitcast i64* %"call'ac" to double*
 ; CHECK-NEXT:   %[[ldi1:.+]] = load double, double* %[[ipc]], align 8
 ; CHECK-NEXT:   %[[addf1:.+]] = fadd fast double %[[ldi1]], %differeturn
 ; CHECK-NEXT:   store double %[[addf1]], double* %[[ipc]], align 8
 ; CHECK-NEXT:   %conv_unwrap = bitcast double %inp to i64
-; CHECK-NEXT:   %[[tape:.+]] = extractvalue { { i8* }, i64* } %call_augmented, 0
 ; CHECK-NEXT:   %[[substore:.+]] = call { i64 } @diffesubstore(i64 %conv_unwrap, i64 3, { i8* } %[[tape]])
-; CHECK-NEXT:   %3 = extractvalue { i64 } %[[substore]], 0
-; CHECK-NEXT:   %4 = bitcast i64 %3 to double
-; CHECK-NEXT:   %5 = insertvalue { double } undef, double %4, 0
-; CHECK-NEXT:   ret { double } %5
+; CHECK-NEXT:   %[[ev0:.+]] = extractvalue { i64 } %[[substore]], 0
+; CHECK-NEXT:   %[[bc0:.+]] = bitcast i64 %[[ev0]] to double
+; CHECK-NEXT:   %[[ret:.+]] = insertvalue { double } undef, double %[[bc0]], 0
+; CHECK-NEXT:   ret { double } %[[ret]]
 ; CHECK-NEXT: }
 
 ; CHECK: define internal { { i8* }, i64* } @augmented_substore(i64 %flt, i64 %integral)

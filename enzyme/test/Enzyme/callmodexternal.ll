@@ -64,8 +64,8 @@ attributes #4 = { nounwind }
 ; CHECK: define internal {{(dso_local )?}}{ double } @diffefoo(double %x, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[augsub:.+]] = call { { double } } @augmented_sub(double %x)
-; CHECK-NEXT:   %call1 = tail call fast double @read2()
 ; CHECK-NEXT:   %[[tape:.+]] = extractvalue { { double } } %[[augsub]], 0
+; CHECK-NEXT:   %call1 = tail call fast double @read2()
 ; CHECK-NEXT:   %[[result:.+]] = call { double } @diffesub(double %x, double %differeturn, { double } %[[tape]])
 ; CHECK-NEXT:   ret { double } %[[result]]
 ; CHECK-NEXT: }

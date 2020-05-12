@@ -72,10 +72,10 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   %[[augloc:.+]] = bitcast double (double)* %"callee'" to { i8*, double } (double)**
 ; CHECK-NEXT:   %[[augmentptr:.+]] = load { i8*, double } (double)*, { i8*, double } (double)** %[[augloc]]
 ; CHECK-NEXT:   %call_augmented = call { i8*, double } %[[augmentptr]](double %x)
+; CHECK-NEXT:   %[[tape:.+]] = extractvalue { i8*, double } %call_augmented, 0
 ; CHECK-NEXT:   %[[dcst:.+]] = bitcast double (double)* %"callee'" to { double } (double, double, i8*)**
 ; CHECK-NEXT:   %[[dptrloc:.+]] = getelementptr { double } (double, double, i8*)*, { double } (double, double, i8*)** %[[dcst]], i64 1
 ; CHECK-NEXT:   %[[diffeptr:.+]] = load { double } (double, double, i8*)*, { double } (double, double, i8*)** %[[dptrloc]]
-; CHECK-NEXT:   %[[tape:.+]] = extractvalue { i8*, double } %call_augmented, 0
 ; CHECK-NEXT:   %[[ret:.+]] = call { double } %[[diffeptr]](double %x, double %differeturn, i8* %[[tape]])
 ; CHECK-NEXT:   ret { double } %[[ret:.+]]
 ; CHECK-NEXT: }

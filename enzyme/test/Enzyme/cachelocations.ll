@@ -36,11 +36,11 @@ declare dso_local double @__enzyme_autodiff(i8*, i1 zeroext, double*, double*)
 ; CHECK: define internal {} @diffef(i1 zeroext %z, double* nocapture %x, double* nocapture %"x'") {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[augsubf:.+]] = call { { double } } @augmented_subf(i1 %z, double* %x, double* %"x'")
+; CHECK-NEXT:   %[[subf:.+]] = extractvalue { { double } } %[[augsubf]], 0
 ; CHECK-NEXT:   %arrayidx = getelementptr inbounds double, double* %x, i64 1
 ; CHECK-NEXT:   store double 2.000000e+00, double* %arrayidx, align 8
 ; CHECK-NEXT:   %[[arrayidxipge:.+]] = getelementptr inbounds double, double* %"x'", i64 1
 ; CHECK-NEXT:   store double 0.000000e+00, double* %[[arrayidxipge]], align 8
-; CHECK-NEXT:   %[[subf:.+]] = extractvalue { { double } } %[[augsubf]], 0
 ; CHECK-NEXT:   %[[dsubf:.+]] = call {} @diffesubf(i1 %z, double* nonnull %x, double* %"x'", { double } %[[subf]])
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
@@ -57,7 +57,7 @@ declare dso_local double @__enzyme_autodiff(i8*, i1 zeroext, double*, double*)
 
 ; CHECK: if.end:                                           ; preds = %if.then, %entry
 ; CHECK-NEXT:   %[[val:.+]] = phi double [ %0, %if.then ], [ undef, %entry ]
-; CHECK-NEXT:   %[[toret:.+]] = insertvalue { { double } } undef, double %[[val]], 0, 0 
+; CHECK-NEXT:   %[[toret:.+]] = insertvalue { { double } } undef, double %[[val]], 0, 0
 ; CHECK-NEXT:   ret { { double } } %[[toret]]
 ; CHECK-NEXT: }
 

@@ -3306,13 +3306,16 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, DIFFE_TYPE retTyp
     };
     assert(malloccall);
     assert(ret);
-    ib.CreateStore(malloccall, ib.CreateGEP(ret, Idxs, ""));
+    auto gep = ib.CreateGEP(ret, Idxs, "");
+    cast<GetElementPtrInst>(gep)->setIsInBounds(true);
+    ib.CreateStore(malloccall, gep);
   } else {
     Value *Idxs[] = {
         ib.getInt32(0),
         ib.getInt32(returnMapping.find(AugmentedStruct::Tape)->second),
     };
     tapeMemory = ib.CreateGEP(ret, Idxs, "");
+    cast<GetElementPtrInst>(tapeMemory)->setIsInBounds(true);
   }
 
   unsigned i=0;
@@ -3325,6 +3328,7 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, DIFFE_TYPE retTyp
             ib.getInt32(i)
           };
           auto gep = ib.CreateGEP(tapeMemory, Idxs, "");
+          cast<GetElementPtrInst>(gep)->setIsInBounds(true);
           ib.CreateStore(VMap[v], gep);
       }
       i++;
@@ -3347,15 +3351,18 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, DIFFE_TYPE retTyp
             if (actualrv == nullptr) {
               actualrv = ib.CreateExtractValue(rv, {returnMapping.find(AugmentedStruct::Return)->second});
             }
-
-            ib.CreateStore(actualrv, ib.CreateConstGEP2_32(RetType, ret, 0, returnMapping.find(AugmentedStruct::Return)->second, ""));
+            auto gep = ib.CreateConstGEP2_32(RetType, ret, 0, returnMapping.find(AugmentedStruct::Return)->second, "");
+            cast<GetElementPtrInst>(gep)->setIsInBounds(true);
+            ib.CreateStore(actualrv, gep);
           }
 
           if (retType == DIFFE_TYPE::DUP_ARG || retType == DIFFE_TYPE::DUP_NONEED) {
               assert(invertedRetPs[ri]);
               if (!isa<UndefValue>(invertedRetPs[ri])) {
                 assert(VMap[invertedRetPs[ri]]);
-                ib.CreateStore( VMap[invertedRetPs[ri]], ib.CreateConstGEP2_32(RetType, ret, 0, returnMapping.find(AugmentedStruct::DifferentialReturn)->second, ""));
+                auto gep = ib.CreateConstGEP2_32(RetType, ret, 0, returnMapping.find(AugmentedStruct::DifferentialReturn)->second, "");
+                cast<GetElementPtrInst>(gep)->setIsInBounds(true);
+                ib.CreateStore( VMap[invertedRetPs[ri]], gep);
               }
           }
           ib.CreateRet(ib.CreateLoad(ret));

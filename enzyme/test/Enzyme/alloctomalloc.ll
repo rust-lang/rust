@@ -468,10 +468,10 @@ attributes #9 = { cold }
 ; CHECK-NEXT:   %[[Bdoubleipge:.+]] = getelementptr inbounds %"class.Eigen::Matrix.6", %"class.Eigen::Matrix.6"* %"b'", i64 0, i32 0, i32 0, i32 0, i32 0, i64 0
 ; CHECK-NEXT:   %Bdouble = getelementptr inbounds %"class.Eigen::Matrix.6", %"class.Eigen::Matrix.6"* %b, i64 0, i32 0, i32 0, i32 0, i32 0, i64 0
 ; CHECK-NEXT:   %_augmented = call { { double, <2 x double>, double, <2 x double>, {}, {}, <2 x double>*, i8*, i8* } } @augmented_subfn(<2 x double>* %a0, <2 x double>* %"a0'ipc", %"class.Eigen::Matrix"* %W, %"class.Eigen::Matrix"* %"W'", double* %Bdouble, double* %[[Bdoubleipge]]) #8
+; CHECK-NEXT:   %[[ev:.+]] = extractvalue { { double, <2 x double>, double, <2 x double>, {}, {}, <2 x double>*, i8*, i8* } } %_augmented, 0
 ; CHECK-NEXT:   %_unwrap = bitcast %"class.Eigen::Matrix.6"* %output to %"struct.Eigen::EigenBase.13"*
 ; CHECK-NEXT:   %[[ipc:.+]] = bitcast %"class.Eigen::Matrix.6"* %"output'" to %"struct.Eigen::EigenBase.13"*
 ; CHECK-NEXT:   %[[unused0:.+]] = call {} @diffecast(%"struct.Eigen::EigenBase.13"* %_unwrap, %"struct.Eigen::EigenBase.13"* %[[ipc]])
-; CHECK-NEXT:   %[[ev:.+]] = extractvalue { { double, <2 x double>, double, <2 x double>, {}, {}, <2 x double>*, i8*, i8* } } %_augmented, 0
 ; CHECK-NEXT:   %[[unused:.+]] = call {} @diffesubfn(<2 x double>* %a0, <2 x double>* %"a0'ipc", %"class.Eigen::Matrix"* %W, %"class.Eigen::Matrix"* %"W'", double* %Bdouble, double* %[[Bdoubleipge]], { double, <2 x double>, double, <2 x double>, {}, {}, <2 x double>*, i8*, i8* } %[[ev]]) #8
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }

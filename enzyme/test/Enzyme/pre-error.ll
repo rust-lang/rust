@@ -80,9 +80,9 @@ exit:                                             ; preds = %end2
 ; CHECK: define internal { { i64 } } @augmented_subfn(double* %place, double* %"place'", i64* %m_rows) {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = alloca { { i64 } }
-; CHECK-NEXT:   %1 = getelementptr { { i64 } }, { { i64 } }* %0, i32 0, i32 0
+; CHECK-NEXT:   %1 = getelementptr inbounds { { i64 } }, { { i64 } }* %0, i32 0, i32 0
 ; CHECK-NEXT:   %rows = load i64, i64* %m_rows, align 8
-; CHECK-NEXT:   %2 = getelementptr { i64 }, { i64 }* %1, i32 0, i32 0
+; CHECK-NEXT:   %2 = getelementptr inbounds { i64 }, { i64 }* %1, i32 0, i32 0
 ; CHECK-NEXT:   store i64 %rows, i64* %2
 ; CHECK-NEXT:   br label %for1
 
