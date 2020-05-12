@@ -1996,8 +1996,6 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         /// [Reference](https://doc.rust-lang.org/reference/paths.html#paths-in-expressions)
         struct LifetimeArg { T![lifetime] }
 
-
-        // TODO: What does equal sign do here?
         /// Constant value argument that is passed at generic instantiation site.
         ///
         /// ```
@@ -2007,7 +2005,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         /// ```
         ///
         /// [RFC](https://github.com/rust-lang/rfcs/blob/master/text/2000-const-generics.md#declaring-a-const-parameter)
-        struct ConstArg { Literal, T![=], BlockExpr }
+        struct ConstArg { Literal, BlockExpr }
 
 
         /// FIXME: (@edwin0cheng) Remove it to use ItemList instead

@@ -2479,7 +2479,6 @@ pub struct ConstArg {
 }
 impl ConstArg {
     pub fn literal(&self) -> Option<Literal> { support::child(&self.syntax) }
-    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
     pub fn block_expr(&self) -> Option<BlockExpr> { support::child(&self.syntax) }
 }
 /// FIXME: (@edwin0cheng) Remove it to use ItemList instead
