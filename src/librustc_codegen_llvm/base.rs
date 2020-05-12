@@ -97,6 +97,19 @@ fn new_global<'ll>(
     }
 }
 
+unsafe fn get_rva<'ll>(
+    llctx: &'ll llvm::Context,
+    llptr: &'ll llvm::Value,
+    llbase: &'ll llvm::Value,
+) -> &'ll llvm::Value {
+    let llrva_ty = llvm::LLVMInt32TypeInContext(llctx);
+
+    let llbase_val = llvm::LLVMConstPtrToInt(llbase, llrva_ty);
+    let llptr_val = llvm::LLVMConstPtrToInt(llptr, llrva_ty);
+
+    llvm::LLVMConstSub(llptr_val, llbase_val)
+}
+
 pub fn write_idata_sections<'tcx>(
     _tcx: TyCtxt<'tcx>,
     raw_dylibs: &[RawDylibImports],
@@ -108,17 +121,27 @@ pub fn write_idata_sections<'tcx>(
 
     // import directory table types
     let lldir_ty = unsafe {
-        let llint32 = llvm::LLVMInt32TypeInContext(idata_llctx);
         let lldir_ty_name = SmallCStr::new(".win32.image_import_desc");
         let lldir_ty = llvm::LLVMStructCreateNamed(idata_llctx, lldir_ty_name.as_ptr());
         llvm::LLVMStructSetBody(
             lldir_ty,
-            [llbyte_ptr, llint32, llint32, llbyte_ptr, llbyte_ptr].as_ptr(),
+            [llint32, llint32, llint32, llint32, llint32].as_ptr(),
             5,
             0,
         );
 
         lldir_ty
+    };
+
+    // image base constant for computing RVAs
+    let image_base = unsafe {
+        let llname = SmallCStr::new("__ImageBase");
+        let llty = llvm::LLVMInt8TypeInContext(idata_llctx);
+
+        let llglobal = llvm::LLVMAddGlobal(idata_llmod, llty, llname.as_ptr());
+        llvm::LLVMRustSetLinkage(llglobal, llvm::Linkage::ExternalLinkage);
+
+        llglobal
     };
 
     let mut dir_entries = vec![];
@@ -204,11 +227,11 @@ pub fn write_idata_sections<'tcx>(
             let lldir_entry = llvm::LLVMConstStructInContext(
                 idata_llctx,
                 [
-                    llvm::LLVMConstPointerCast(ll_lookup_table, llbyte_ptr),
+                    get_rva(idata_llctx, ll_lookup_table, image_base),
                     llzero,
                     llzero,
-                    llvm::LLVMConstPointerCast(lldll_name, llbyte_ptr),
-                    llvm::LLVMConstPointerCast(ll_addr_table, llbyte_ptr),
+                    get_rva(idata_llctx, lldll_name, image_base),
+                    get_rva(idata_llctx, ll_addr_table, image_base),
                 ]
                 .as_ptr(),
                 5,
@@ -227,7 +250,7 @@ pub fn write_idata_sections<'tcx>(
             &[".dllimport"],
             idata_llmod,
             lldir_table,
-            llvm::Linkage::AppendingLinkage,
+            llvm::Linkage::ExternalLinkage,
             "idata$2",
         );
         llvm::LLVMSetGlobalConstant(&lldir_table, 1);

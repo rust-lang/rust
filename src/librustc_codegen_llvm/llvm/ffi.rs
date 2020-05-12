@@ -848,6 +848,7 @@ extern "C" {
     pub fn LLVMConstVector(ScalarConstantVals: *const &Value, Size: c_uint) -> &Value;
 
     // Constant expressions
+    pub fn LLVMConstSub(LHS: &'a Value, RHS: &'a Value) -> &'a Value;
     pub fn LLVMConstInBoundsGEP(
         ConstantVal: &'a Value,
         ConstantIndices: *const &'a Value,
