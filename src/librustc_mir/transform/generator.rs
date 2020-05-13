@@ -505,6 +505,12 @@ fn locals_live_across_suspend_points(
 
         let mut live_locals = locals_live_across_yield_point(block);
 
+        // The combination of `MaybeInitializedLocals` and `MaybeBorrowedLocals` should be strictly
+        // more precise than `MaybeStorageLive` because they handle `StorageDead` themselves. This
+        // assumes that the MIR forbids locals from being initialized/borrowed before reaching
+        // `StorageLive`.
+        debug_assert!(storage_live.get().superset(&live_locals));
+
         // Ignore the generator's `self` argument since it is handled seperately.
         live_locals.remove(SELF_ARG);
         debug!("block = {:?}, live_locals = {:?}", block, live_locals);
@@ -570,6 +576,9 @@ fn record_conflicts_at_curr_loc(
     // becomes uninitialized if it is moved from, but is still considered "borrowed".
     //
     //     requires_storage := init | borrowed
+    //
+    // Just like when determining what locals are live at yield points, there is no need
+    // to look at storage liveness here, since `init | borrowed` is strictly more precise.
     //
     // FIXME: This function is called in a loop, so it might be better to pass in a temporary
     // bitset rather than cloning here.
