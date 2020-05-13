@@ -48,11 +48,11 @@ double logsumexp(double const* vect, int sz)
 // The LSTM model
 void lstm_model(
     int hsize,
-    double const* weight,
-    double const* bias,
-    double* hidden,
-    double* cell,
-    double const* input
+    double const* __restrict weight,
+    double const* __restrict bias,
+    double* __restrict hidden,
+    double* __restrict cell,
+    double const* __restrict input
 )
 {
     double* gates = (double*)malloc(4 * hsize * sizeof(double));
@@ -87,11 +87,11 @@ void lstm_model(
 void lstm_predict(
     int l,
     int b,
-    double const* w,
-    double const* w2,
-    double* s,
-    double const* x,
-    double* x2
+    double const* __restrict w,
+    double const* __restrict w2,
+    double* __restrict s,
+    double const* __restrict x,
+    double* __restrict x2
 )
 {
     int i;
@@ -118,11 +118,11 @@ void lstm_objective(
     int l,
     int c,
     int b,
-    double const* main_params,
-    double const* extra_params,
-    double* state,
-    double const* sequence,
-    double* loss
+    double const* __restrict main_params,
+    double const* __restrict extra_params,
+    double* __restrict state,
+    double const* __restrict sequence,
+    double* __restrict loss
 )
 {
     int i, t;
@@ -161,6 +161,7 @@ void lstm_objective(
 
 extern int diffe_const;
 extern int diffe_dup;
+extern int diffe_dupnoneed;
 void __enzyme_autodiff(void*, ...);
 
 // *      tapenade -b -o lstm_tapenade -head "lstm_objective(loss)/(main_params extra_params)" lstm.c
@@ -187,7 +188,7 @@ void dlstm_objective(
         diffe_dup, extra_params, dextra_params,
         diffe_const, state,
         diffe_const, sequence,
-        diffe_dup, loss, dloss
+        diffe_dupnoneed, loss, dloss
     );
 }
 

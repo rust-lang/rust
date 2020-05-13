@@ -147,7 +147,7 @@ void resize(Matrix* mat, int nrows, int ncols)
 
 
 // multiplies matricies
-void mat_mult(const Matrix* lhs, const Matrix* rhs, Matrix* out)
+void mat_mult(const Matrix* __restrict lhs, const Matrix* __restrict rhs, Matrix* __restrict out)
 {
     int i, j, k;
     resize(out, lhs->nrows, rhs->ncols);
@@ -348,8 +348,8 @@ void relatives_to_absolutes(
 
 
 void euler_angles_to_rotation_matrix(
-    double const* xzy,
-    Matrix* R
+    double const* __restrict xzy,
+    Matrix* __restrict R
 )
 {
     double tx = xzy[0];
@@ -392,9 +392,9 @@ void euler_angles_to_rotation_matrix(
 
 void get_posed_relatives(
     int bone_count,
-    const Matrix* base_relatives,
-    const Matrix* pose_params,
-    Matrix* relatives
+    const Matrix* __restrict base_relatives,
+    const Matrix* __restrict pose_params,
+    Matrix* __restrict relatives
 )
 {
     int i;
@@ -417,17 +417,17 @@ void get_posed_relatives(
 }
 
 
-
-void get_skinned_vertex_positions(
+__attribute__((alwaysinline))
+static inline void get_skinned_vertex_positions(
     int bone_count,
-    const Matrix* base_relatives,
+    const Matrix* __restrict base_relatives,
     const int* parents,
-    const Matrix* inverse_base_absolutes,
-    const Matrix* base_positions,
-    const Matrix* weights,
+    const Matrix* __restrict inverse_base_absolutes,
+    const Matrix* __restrict base_positions,
+    const Matrix* __restrict weights,
     int is_mirrored,
-    const Matrix* pose_params,
-    Matrix* positions,
+    const Matrix* __restrict pose_params,
+    Matrix* __restrict positions,
     int apply_global
 )
 {
@@ -495,9 +495,9 @@ void get_skinned_vertex_positions(
 //%       end) forearm
 void to_pose_params(
     int count,
-    double const* theta,
-    const char** bone_names,
-    Matrix* pose_params
+    double const* __restrict theta,
+    const char** __restrict bone_names,
+    Matrix* __restrict pose_params
 )
 {
     int i;
@@ -539,20 +539,20 @@ void to_pose_params(
 
 
 void hand_objective(
-    double const* theta,
+    double const* __restrict theta,
     int bone_count,
-    const char** bone_names,
-    const int* parents,
-    Matrix* base_relatives,
-    Matrix* inverse_base_absolutes,
-    Matrix* base_positions,
-    Matrix* weights,
-    const Triangle* triangles,
+    const char** __restrict bone_names,
+    const int* __restrict parents,
+    Matrix* __restrict base_relatives,
+    Matrix* __restrict inverse_base_absolutes,
+    Matrix* __restrict base_positions,
+    Matrix* __restrict weights,
+    const Triangle* __restrict triangles,
     int is_mirrored,
     int corresp_count,
-    const int* correspondences,
+    const int* __restrict correspondences,
     Matrix* points,
-    double* err
+    double* __restrict err
 )
 {
     Matrix* pose_params = get_new_empty_matrix();
@@ -602,7 +602,7 @@ void hand_objective_complicated(
     const Triangle* triangles,
     int is_mirrored,
     int corresp_count,
-    const int* correspondences,
+    const int* __restrict correspondences,
     Matrix* points,
     double* err
 )
@@ -645,8 +645,10 @@ void hand_objective_complicated(
 
 extern int diffe_const;
 extern int diffe_dup;
+extern int diffe_dupnoneed;
 void __enzyme_autodiff(void*, ...);
 
+// tapenade -o hand_tapenade -head "hand_objective(err)/(theta) hand_objective_complicated(err)/(theta us)" hand.c
 void dhand_objective(
     double const* theta,
     double* dtheta,
@@ -680,7 +682,7 @@ void dhand_objective(
         diffe_const, corresp_count,
         diffe_const, correspondences,
         diffe_const, points,
-        diffe_dup, err, derr
+        diffe_dupnoneed, err, derr
     );
 }
 
@@ -719,6 +721,6 @@ void dhand_objective_complicated(
         diffe_const, corresp_count,
         diffe_const, correspondences,
         diffe_const, points,
-        diffe_dup, err, derr
+        diffe_dupnoneed, err, derr
     );
 }

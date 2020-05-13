@@ -19,6 +19,7 @@
 
 #include "EnzymeLogic.h"
 #include "GradientUtils.h"
+#include "LibraryFuncs.h"
 
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/DerivedTypes.h"
@@ -242,7 +243,43 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
    if(autodiff_inline) {
       //llvm::errs() << "running inlining process\n";
       forceRecursiveInlining(NewF, F);
+   }
+}
 
+{
+    std::vector<Instruction*> freesToErase;
+    for(auto& BB : *NewF) {
+        for(auto & I : BB) {
+
+          if (auto CI = dyn_cast<CallInst>(&I)) {
+
+              Function *called = CI->getCalledFunction();
+              if (auto castinst = dyn_cast<ConstantExpr>(CI->getCalledValue())) {
+                if (castinst->isCast()) {
+                  if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
+                    if (isDeallocationFunction(*fn, TLI)) {
+                      called = fn;
+                    }
+                  }
+                }
+              }
+
+              if (called && isDeallocationFunction(*called, TLI)) {
+                freesToErase.push_back(CI);
+              }
+          }
+        }
+    }
+    for(auto f : freesToErase) {
+        f->eraseFromParent();
+    }
+}
+
+
+
+if (enzyme_preopt) {
+
+   if(autodiff_inline) {
       {
          DominatorTree DT(*NewF);
          AssumptionCache AC(*NewF);

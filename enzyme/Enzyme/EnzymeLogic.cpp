@@ -706,9 +706,9 @@ bool legalCombinedForwardReverse(CallInst &ci, const std::map<ReturnInst*,StoreI
 
   //Given a function I we know must be moved to the reverse for legality reasons
   auto propagate = [&](Instruction* I) {
-    //llvm::errs() << " propating: " << *I << "\n";
     // if only used in unneeded return, don't need to move this to reverse (unless this is the original function)
     if (usetree.count(I)) return;
+    //llvm::errs() << " propating: " << *I << "\n";
     if (auto ri = dyn_cast<ReturnInst>(I)) {
       auto find = replacedReturns.find(ri);
       if (find != replacedReturns.end()) {
