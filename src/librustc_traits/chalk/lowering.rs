@@ -352,7 +352,11 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
                 })
                 .intern(interner)
             }
-            Dynamic(_, _) => unimplemented!(),
+            // FIXME(chalk): add region
+            Dynamic(predicates, _region) => {
+                TyData::Dyn(chalk_ir::DynTy { bounds: predicates.lower_into(interner) })
+                    .intern(interner)
+            }
             Closure(_def_id, _) => unimplemented!(),
             Generator(_def_id, _substs, _) => unimplemented!(),
             GeneratorWitness(_) => unimplemented!(),
@@ -361,7 +365,13 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
                 apply(chalk_ir::TypeName::Tuple(substs.len()), substs.lower_into(interner))
             }
             Projection(proj) => TyData::Alias(proj.lower_into(interner)).intern(interner),
-            Opaque(_def_id, _substs) => unimplemented!(),
+            Opaque(def_id, substs) => {
+                TyData::Alias(chalk_ir::AliasTy::Opaque(chalk_ir::OpaqueTy {
+                    opaque_ty_id: chalk_ir::OpaqueTyId(RustDefId::Opaque(def_id)),
+                    substitution: substs.lower_into(interner),
+                }))
+                .intern(interner)
+            }
             // This should have been done eagerly prior to this, and all Params
             // should have been substituted to placeholders
             Param(_) => panic!("Lowering Param when not expected."),
@@ -376,7 +386,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
             })
             .intern(interner),
             Infer(_infer) => unimplemented!(),
-            Error(_) => unimplemented!(),
+            Error(_) => apply(chalk_ir::TypeName::Error, empty()),
         }
     }
 }
@@ -401,6 +411,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Lifetime<RustInterner<'tcx>>> for Region<'t
                 ty::BrEnv => unimplemented!(),
             },
             ReFree(_) => unimplemented!(),
+            // FIXME(chalk): need to handle ReStatic
             ReStatic => unimplemented!(),
             ReVar(_) => unimplemented!(),
             RePlaceholder(placeholder_region) => {
@@ -411,6 +422,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Lifetime<RustInterner<'tcx>>> for Region<'t
                 .intern(interner)
             }
             ReEmpty(_) => unimplemented!(),
+            // FIXME(chalk): need to handle ReErased
             ReErased => unimplemented!(),
         }
     }
@@ -469,6 +481,39 @@ impl<'tcx> LowerInto<'tcx, Option<chalk_ir::QuantifiedWhereClause<RustInterner<'
             | ty::PredicateKind::ConstEvaluatable(..)
             | ty::PredicateKind::ConstEquate(..) => bug!("unexpected predicate {}", &self),
         }
+    }
+}
+
+impl<'tcx> LowerInto<'tcx, chalk_ir::Binders<chalk_ir::QuantifiedWhereClauses<RustInterner<'tcx>>>>
+    for Binder<&'tcx ty::List<ty::ExistentialPredicate<'tcx>>>
+{
+    fn lower_into(
+        self,
+        interner: &RustInterner<'tcx>,
+    ) -> chalk_ir::Binders<chalk_ir::QuantifiedWhereClauses<RustInterner<'tcx>>> {
+        let (predicates, binders, _named_regions) =
+            collect_bound_vars(interner, interner.tcx, &self);
+        let where_clauses = predicates.into_iter().map(|predicate| match predicate {
+            ty::ExistentialPredicate::Trait(ty::ExistentialTraitRef { def_id, substs }) => {
+                chalk_ir::Binders::new(
+                    chalk_ir::ParameterKinds::new(interner),
+                    chalk_ir::WhereClause::Implemented(chalk_ir::TraitRef {
+                        trait_id: chalk_ir::TraitId(RustDefId::Trait(*def_id)),
+                        substitution: substs.lower_into(interner),
+                    }),
+                )
+            }
+            ty::ExistentialPredicate::Projection(_predicate) => unimplemented!(),
+            ty::ExistentialPredicate::AutoTrait(def_id) => chalk_ir::Binders::new(
+                chalk_ir::ParameterKinds::new(interner),
+                chalk_ir::WhereClause::Implemented(chalk_ir::TraitRef {
+                    trait_id: chalk_ir::TraitId(RustDefId::Trait(*def_id)),
+                    substitution: chalk_ir::Substitution::empty(interner),
+                }),
+            ),
+        });
+        let value = chalk_ir::QuantifiedWhereClauses::from(interner, where_clauses);
+        chalk_ir::Binders::new(binders, value)
     }
 }
 
