@@ -120,7 +120,7 @@ crate struct Cache {
 
     /// Aliases added through `#[doc(alias = "...")]`. Since a few items can have the same alias,
     /// we need the alias element to have an array of items.
-    pub(super) aliases: FxHashMap<String, Vec<usize>>,
+    pub(super) aliases: BTreeMap<String, Vec<usize>>,
 }
 
 impl Cache {
@@ -331,7 +331,7 @@ impl DocFolder for Cache {
                         for alias in item.attrs.get_doc_aliases() {
                             self.aliases
                                 .entry(alias.to_lowercase())
-                                .or_insert(Vec::with_capacity(1))
+                                .or_insert(Vec::new())
                                 .push(self.search_index.len() - 1);
                         }
                     }
@@ -553,10 +553,10 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
                 parent_idx: None,
                 search_type: get_index_search_type(&item),
             });
-            for alias in item.attrs.get_doc_aliases().into_iter() {
+            for alias in item.attrs.get_doc_aliases() {
                 aliases
                     .entry(alias.to_lowercase())
-                    .or_insert(Vec::with_capacity(1))
+                    .or_insert(Vec::new())
                     .push(search_index.len() - 1);
             }
         }
@@ -600,9 +600,6 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
         .map(|module| shorten(plain_summary_line(module.doc_value())))
         .unwrap_or(String::new());
 
-    let crate_aliases =
-        aliases.iter().map(|(k, values)| (k.clone(), values.clone())).collect::<Vec<_>>();
-
     #[derive(Serialize)]
     struct CrateData<'a> {
         doc: String,
@@ -614,7 +611,8 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
         //
         // To be noted: the `usize` elements are indexes to `items`.
         #[serde(rename = "a")]
-        aliases: Option<Vec<(String, Vec<usize>)>>,
+        #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+        aliases: &'a BTreeMap<String, Vec<usize>>,
     }
 
     // Collect the index into a string
@@ -625,7 +623,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
             doc: crate_doc,
             items: crate_items,
             paths: crate_paths,
-            aliases: if crate_aliases.is_empty() { None } else { Some(crate_aliases) },
+            aliases,
         })
         .expect("failed serde conversion")
         // All these `replace` calls are because we have to go through JS string for JSON content.

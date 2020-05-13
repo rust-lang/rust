@@ -1781,12 +1781,13 @@ function getSearchElement() {
                 if (aliases) {
                     ALIASES[crate] = {};
                     var j, local_aliases;
-                    for (i = 0; i < aliases.length; ++i) {
-                        var alias_name = aliases[i][0];
+                    for (var alias_name in aliases) {
+                        if (!aliases.hasOwnProperty(alias_name)) { continue; }
+
                         if (!ALIASES[crate].hasOwnProperty(alias_name)) {
                             ALIASES[crate][alias_name] = [];
                         }
-                        local_aliases = aliases[i][1];
+                        local_aliases = aliases[alias_name];
                         for (j = 0; j < local_aliases.length; ++j) {
                             ALIASES[crate][alias_name].push(local_aliases[j] + currentIndex);
                         }
