@@ -109,9 +109,11 @@ crate fn evaluate_goal<'tcx>(
                     let kind = match _data {
                         TyData::Apply(_application_ty) => match _application_ty.name {
                             chalk_ir::TypeName::Struct(_struct_id) => match _struct_id.0 {
+                                RustDefId::Adt(_) => unimplemented!(),
+                                RustDefId::Never => unimplemented!(),
                                 RustDefId::Array => unimplemented!(),
-                                RustDefId::Slice => unimplemented!(),
-                                _ => unimplemented!(),
+                                RustDefId::FnDef(_) => unimplemented!(),
+                                _ => panic!("Unexpected struct id"),
                             },
                             chalk_ir::TypeName::Scalar(scalar) => match scalar {
                                 chalk_ir::Scalar::Bool => ty::Bool,
@@ -138,6 +140,10 @@ crate fn evaluate_goal<'tcx>(
                                 },
                             },
                             chalk_ir::TypeName::Tuple(_size) => unimplemented!(),
+                            chalk_ir::TypeName::Slice => unimplemented!(),
+                            chalk_ir::TypeName::Raw(_) => unimplemented!(),
+                            chalk_ir::TypeName::Ref(_) => unimplemented!(),
+                            chalk_ir::TypeName::Str => unimplemented!(),
                             chalk_ir::TypeName::OpaqueType(_ty) => unimplemented!(),
                             chalk_ir::TypeName::AssociatedType(_assoc_ty) => unimplemented!(),
                             chalk_ir::TypeName::Error => unimplemented!(),

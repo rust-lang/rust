@@ -16,9 +16,12 @@ rustc_hir = { path = "../librustc_hir" }
 rustc_index = { path = "../librustc_index" }
 rustc_ast = { path = "../librustc_ast" }
 rustc_span = { path = "../librustc_span" }
-chalk-ir = "0.10.0"
-chalk-rust-ir = "0.10.0"
-chalk-solve = "0.10.0"
+#chalk-ir = "0.10.0"
+#chalk-rust-ir = "0.10.0"
+#chalk-solve = "0.10.0"
+chalk-solve =   { git = "https://github.com/rust-lang/chalk.git", rev = "3e9c2503ae9c5277c2acb74624dc267876dd89b3" }
+chalk-rust-ir = { git = "https://github.com/rust-lang/chalk.git", rev = "3e9c2503ae9c5277c2acb74624dc267876dd89b3" }
+chalk-ir =      { git = "https://github.com/rust-lang/chalk.git", rev = "3e9c2503ae9c5277c2acb74624dc267876dd89b3" }
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }
 rustc_infer = { path = "../librustc_infer" }
 rustc_trait_selection = { path = "../librustc_trait_selection" }

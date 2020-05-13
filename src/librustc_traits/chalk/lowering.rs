@@ -309,7 +309,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
                 apply(struct_ty(RustDefId::Adt(def.did)), substs.lower_into(interner))
             }
             Foreign(_def_id) => unimplemented!(),
-            Str => apply(struct_ty(RustDefId::Str), empty()),
+            Str => apply(chalk_ir::TypeName::Str, empty()),
             Array(ty, _) => apply(
                 struct_ty(RustDefId::Array),
                 chalk_ir::Substitution::from1(
@@ -318,25 +318,36 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
                 ),
             ),
             Slice(ty) => apply(
-                struct_ty(RustDefId::Slice),
+                chalk_ir::TypeName::Slice,
                 chalk_ir::Substitution::from1(
                     interner,
                     chalk_ir::ParameterKind::Ty(ty.lower_into(interner)).intern(interner),
                 ),
             ),
-            RawPtr(_) => apply(struct_ty(RustDefId::RawPtr), empty()),
-            Ref(region, ty, mutability) => apply(
-                struct_ty(RustDefId::Ref(mutability)),
-                chalk_ir::Substitution::from(
-                    interner,
-                    [
-                        chalk_ir::ParameterKind::Lifetime(region.lower_into(interner))
-                            .intern(interner),
-                        chalk_ir::ParameterKind::Ty(ty.lower_into(interner)).intern(interner),
-                    ]
-                    .iter(),
-                ),
-            ),
+            RawPtr(ptr) => {
+                let name = match ptr.mutbl {
+                    ast::Mutability::Mut => chalk_ir::TypeName::Raw(chalk_ir::Mutability::Mut),
+                    ast::Mutability::Not => chalk_ir::TypeName::Raw(chalk_ir::Mutability::Not),
+                };
+                apply(name, chalk_ir::Substitution::from1(interner, ptr.ty.lower_into(interner)))
+            }
+            Ref(region, ty, mutability) => {
+                let name = match mutability {
+                    ast::Mutability::Mut => chalk_ir::TypeName::Ref(chalk_ir::Mutability::Mut),
+                    ast::Mutability::Not => chalk_ir::TypeName::Ref(chalk_ir::Mutability::Not),
+                };
+                apply(
+                    name,
+                    chalk_ir::Substitution::from(
+                        interner,
+                        &[
+                            chalk_ir::ParameterKind::Lifetime(region.lower_into(interner))
+                                .intern(interner),
+                            chalk_ir::ParameterKind::Ty(ty.lower_into(interner)).intern(interner),
+                        ],
+                    ),
+                )
+            }
             FnDef(def_id, _) => apply(struct_ty(RustDefId::FnDef(def_id)), empty()),
             FnPtr(sig) => {
                 let (inputs_and_outputs, binders, _named_regions) =
