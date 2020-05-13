@@ -7,6 +7,7 @@ use rustc_trait_selection::traits::{self, ObligationCause};
 use rustc_ast::util::parser::PREC_POSTFIX;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
+use rustc_hir::lang_items::DerefTraitLangItem;
 use rustc_hir::{is_range_literal, Node};
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::{self, AssocItem, Ty, TypeAndMut};
@@ -634,7 +635,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ if sp == expr.span && !is_macro => {
                 // Check for `Deref` implementations by constructing a predicate to
                 // prove: `<T as Deref>::Output == U`
-                let deref_trait = self.tcx.lang_items().deref_trait().unwrap();
+                let deref_trait = self.tcx.require_lang_item(DerefTraitLangItem, Some(expr.span));
                 let item_def_id = self
                     .tcx
                     .associated_items(deref_trait)

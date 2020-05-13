@@ -382,7 +382,7 @@ fn make_generator_state_argument_indirect<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Bo
 fn make_generator_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let ref_gen_ty = body.local_decls.raw[1].ty;
 
-    let pin_did = tcx.require_lang_item(PinTypeLangItem, None);
+    let pin_did = tcx.require_lang_item(PinTypeLangItem, Some(body.span));
     let pin_adt_ref = tcx.adt_def(pin_did);
     let substs = tcx.intern_substs(&[ref_gen_ty.into()]);
     let pin_ref_gen_ty = tcx.mk_adt(pin_adt_ref, substs);

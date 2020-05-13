@@ -503,7 +503,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         if let PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) = context {
             let tcx = self.tcx();
             let trait_ref = ty::TraitRef {
-                def_id: tcx.require_lang_item(CopyTraitLangItem, None),
+                def_id: tcx.require_lang_item(CopyTraitLangItem, Some(self.last_span)),
                 substs: tcx.mk_substs_trait(place_ty.ty, &[]),
             };
 
@@ -1469,7 +1469,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 self.check_rvalue(body, rv, location);
                 if !self.tcx().features().unsized_locals {
                     let trait_ref = ty::TraitRef {
-                        def_id: tcx.require_lang_item(SizedTraitLangItem, None),
+                        def_id: tcx.require_lang_item(SizedTraitLangItem, Some(self.last_span)),
                         substs: tcx.mk_substs_trait(place_ty, &[]),
                     };
                     self.prove_trait_ref(
@@ -2014,8 +2014,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                     ty::Predicate::Trait(
                                         ty::Binder::bind(ty::TraitPredicate {
                                             trait_ref: ty::TraitRef::new(
-                                                self.tcx()
-                                                    .require_lang_item(CopyTraitLangItem, None),
+                                                self.tcx().require_lang_item(
+                                                    CopyTraitLangItem,
+                                                    Some(self.last_span),
+                                                ),
                                                 tcx.mk_substs_trait(ty, &[]),
                                             ),
                                         }),
@@ -2039,7 +2041,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
 
                 let trait_ref = ty::TraitRef {
-                    def_id: tcx.require_lang_item(SizedTraitLangItem, None),
+                    def_id: tcx.require_lang_item(SizedTraitLangItem, Some(self.last_span)),
                     substs: tcx.mk_substs_trait(ty, &[]),
                 };
 
@@ -2137,7 +2139,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     CastKind::Pointer(PointerCast::Unsize) => {
                         let &ty = ty;
                         let trait_ref = ty::TraitRef {
-                            def_id: tcx.require_lang_item(CoerceUnsizedTraitLangItem, None),
+                            def_id: tcx.require_lang_item(
+                                CoerceUnsizedTraitLangItem,
+                                Some(self.last_span),
+                            ),
                             substs: tcx.mk_substs_trait(op.ty(body, tcx), &[ty.into()]),
                         };
 
