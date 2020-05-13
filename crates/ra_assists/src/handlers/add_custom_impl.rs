@@ -49,7 +49,7 @@ pub(crate) fn add_custom_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<
     let start_offset = annotated.syntax().parent()?.text_range().end();
 
     let label =
-        format!("Add custom impl '{}' for '{}'", trait_token.text().as_str(), annotated_name);
+        format!("Add custom impl `{}` for `{}`", trait_token.text().as_str(), annotated_name);
 
     let target = attr.syntax().text_range();
     acc.add(AssistId("add_custom_impl"), label, target, |edit| {
