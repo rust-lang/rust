@@ -394,6 +394,7 @@ pub(crate) unsafe fn optimize_with_new_llvm_pass_manager(
         config.vectorize_slp,
         config.vectorize_loop,
         config.no_builtins,
+        config.emit_lifetime_markers,
         sanitizer_options.as_ref(),
         pgo_gen_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
         pgo_use_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
@@ -934,10 +935,10 @@ pub unsafe fn with_llvm_pmb(
             llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder, 25);
         }
         (llvm::CodeGenOptLevel::None, ..) => {
-            llvm::LLVMRustAddAlwaysInlinePass(builder, false);
+            llvm::LLVMRustAddAlwaysInlinePass(builder, config.emit_lifetime_markers);
         }
         (llvm::CodeGenOptLevel::Less, ..) => {
-            llvm::LLVMRustAddAlwaysInlinePass(builder, true);
+            llvm::LLVMRustAddAlwaysInlinePass(builder, config.emit_lifetime_markers);
         }
         (llvm::CodeGenOptLevel::Default, ..) => {
             llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder, 225);

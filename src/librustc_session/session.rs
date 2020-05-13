@@ -936,6 +936,16 @@ impl Session {
         // then try to skip it where possible.
         dbg_opts.plt.unwrap_or(needs_plt || !full_relro)
     }
+
+    /// Checks if LLVM lifetime markers should be emitted.
+    pub fn emit_lifetime_markers(&self) -> bool {
+        match self.opts.debugging_opts.sanitizer {
+            // AddressSanitizer uses lifetimes to detect use after scope bugs.
+            // MemorySanitizer uses lifetimes to detect use of uninitialized stack variables.
+            Some(Sanitizer::Address | Sanitizer::Memory) => true,
+            _ => self.opts.optimize != config::OptLevel::No,
+        }
+    }
 }
 
 pub fn build_session(
