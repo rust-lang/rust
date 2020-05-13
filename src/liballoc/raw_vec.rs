@@ -1,7 +1,7 @@
 #![unstable(feature = "raw_vec_internals", reason = "implementation detail", issue = "none")]
 #![doc(hidden)]
 
-use core::alloc::MemoryBlock;
+use core::alloc::{LayoutErr, MemoryBlock};
 use core::cmp;
 use core::mem::{self, ManuallyDrop, MaybeUninit};
 use core::ops::Drop;
@@ -211,82 +211,6 @@ impl<T, A: AllocRef> RawVec<T, A> {
         }
     }
 
-    /// Doubles the size of the type's backing allocation. This is common enough
-    /// to want to do that it's easiest to just have a dedicated method. Slightly
-    /// more efficient logic can be provided for this than the general case.
-    ///
-    /// This function is ideal for when pushing elements one-at-a-time because
-    /// you don't need to incur the costs of the more general computations
-    /// reserve needs to do to guard against overflow. You do however need to
-    /// manually check if your `len == capacity`.
-    ///
-    /// # Panics
-    ///
-    /// * Panics if `T` is zero-sized on the assumption that you managed to exhaust
-    ///   all `usize::MAX` slots in your imaginary buffer.
-    /// * Panics on 32-bit platforms if the requested capacity exceeds
-    ///   `isize::MAX` bytes.
-    ///
-    /// # Aborts
-    ///
-    /// Aborts on OOM
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # #![feature(raw_vec_internals)]
-    /// # extern crate alloc;
-    /// # use std::ptr;
-    /// # use alloc::raw_vec::RawVec;
-    /// struct MyVec<T> {
-    ///     buf: RawVec<T>,
-    ///     len: usize,
-    /// }
-    ///
-    /// impl<T> MyVec<T> {
-    ///     pub fn push(&mut self, elem: T) {
-    ///         if self.len == self.buf.capacity() { self.buf.double(); }
-    ///         // double would have aborted or panicked if the len exceeded
-    ///         // `isize::MAX` so this is safe to do unchecked now.
-    ///         unsafe {
-    ///             ptr::write(self.buf.ptr().add(self.len), elem);
-    ///         }
-    ///         self.len += 1;
-    ///     }
-    /// }
-    /// # fn main() {
-    /// #   let mut vec = MyVec { buf: RawVec::new(), len: 0 };
-    /// #   vec.push(1);
-    /// # }
-    /// ```
-    #[inline(never)]
-    #[cold]
-    pub fn double(&mut self) {
-        match self.grow(Double, MayMove, Uninitialized) {
-            Err(CapacityOverflow) => capacity_overflow(),
-            Err(AllocError { layout, .. }) => handle_alloc_error(layout),
-            Ok(()) => { /* yay */ }
-        }
-    }
-
-    /// Attempts to double the size of the type's backing allocation in place. This is common
-    /// enough to want to do that it's easiest to just have a dedicated method. Slightly
-    /// more efficient logic can be provided for this than the general case.
-    ///
-    /// Returns `true` if the reallocation attempt has succeeded.
-    ///
-    /// # Panics
-    ///
-    /// * Panics if `T` is zero-sized on the assumption that you managed to exhaust
-    ///   all `usize::MAX` slots in your imaginary buffer.
-    /// * Panics on 32-bit platforms if the requested capacity exceeds
-    ///   `isize::MAX` bytes.
-    #[inline(never)]
-    #[cold]
-    pub fn double_in_place(&mut self) -> bool {
-        self.grow(Double, InPlace, Uninitialized).is_ok()
-    }
-
     /// Ensures that the buffer contains at least enough space to hold
     /// `used_capacity + needed_extra_capacity` elements. If it doesn't already have
     /// enough capacity, will reallocate enough space plus comfortable slack
@@ -354,7 +278,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
         needed_extra_capacity: usize,
     ) -> Result<(), TryReserveError> {
         if self.needs_to_grow(used_capacity, needed_extra_capacity) {
-            self.grow(Amortized { used_capacity, needed_extra_capacity }, MayMove, Uninitialized)
+            self.grow_amortized(used_capacity, needed_extra_capacity, MayMove)
         } else {
             Ok(())
         }
@@ -381,8 +305,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
         // This is more readable than putting this in one line:
         // `!self.needs_to_grow(...) || self.grow(...).is_ok()`
         if self.needs_to_grow(used_capacity, needed_extra_capacity) {
-            self.grow(Amortized { used_capacity, needed_extra_capacity }, InPlace, Uninitialized)
-                .is_ok()
+            self.grow_amortized(used_capacity, needed_extra_capacity, InPlace).is_ok()
         } else {
             true
         }
@@ -423,7 +346,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
         needed_extra_capacity: usize,
     ) -> Result<(), TryReserveError> {
         if self.needs_to_grow(used_capacity, needed_extra_capacity) {
-            self.grow(Exact { used_capacity, needed_extra_capacity }, MayMove, Uninitialized)
+            self.grow_exact(used_capacity, needed_extra_capacity)
         } else {
             Ok(())
         }
@@ -448,14 +371,6 @@ impl<T, A: AllocRef> RawVec<T, A> {
     }
 }
 
-#[derive(Copy, Clone)]
-enum Strategy {
-    Double,
-    Amortized { used_capacity: usize, needed_extra_capacity: usize },
-    Exact { used_capacity: usize, needed_extra_capacity: usize },
-}
-use Strategy::*;
-
 impl<T, A: AllocRef> RawVec<T, A> {
     /// Returns if the buffer needs to grow to fulfill the needed extra capacity.
     /// Mainly used to make inlining reserve-calls possible without inlining `grow`.
@@ -473,68 +388,59 @@ impl<T, A: AllocRef> RawVec<T, A> {
         self.cap = Self::capacity_from_bytes(memory.size);
     }
 
-    /// Single method to handle all possibilities of growing the buffer.
-    fn grow(
+    // This method is usually instantiated many times. So we want it to be as
+    // small as possible, to improve compile times. But we also want as much of
+    // its contents to be statically computable as possible, to make the
+    // generated code run faster. Therefore, this method is carefully written
+    // so that all of the code that depends on `T` is within it, while as much
+    // of the code that doesn't depend on `T` as possible is in functions that
+    // are non-generic over `T`.
+    fn grow_amortized(
         &mut self,
-        strategy: Strategy,
+        used_capacity: usize,
+        needed_extra_capacity: usize,
         placement: ReallocPlacement,
-        init: AllocInit,
     ) -> Result<(), TryReserveError> {
-        let elem_size = mem::size_of::<T>();
-        if elem_size == 0 {
+        if mem::size_of::<T>() == 0 {
             // Since we return a capacity of `usize::MAX` when `elem_size` is
             // 0, getting to here necessarily means the `RawVec` is overfull.
             return Err(CapacityOverflow);
         }
-        let new_layout = match strategy {
-            Double => unsafe {
-                // Since we guarantee that we never allocate more than `isize::MAX` bytes,
-                // `elem_size * self.cap <= isize::MAX` as a precondition, so this can't overflow.
-                // Additionally the alignment will never be too large as to "not be satisfiable",
-                // so `Layout::from_size_align` will always return `Some`.
-                //
-                // TL;DR, we bypass runtime checks due to dynamic assertions in this module,
-                // allowing us to use `from_size_align_unchecked`.
-                let cap = if self.cap == 0 {
-                    // Skip to 4 because tiny `Vec`'s are dumb; but not if that would cause overflow.
-                    if elem_size > usize::MAX / 8 { 1 } else { 4 }
-                } else {
-                    self.cap * 2
-                };
-                Layout::from_size_align_unchecked(cap * elem_size, mem::align_of::<T>())
-            },
-            Amortized { used_capacity, needed_extra_capacity } => {
-                // Nothing we can really do about these checks, sadly.
-                let required_cap =
-                    used_capacity.checked_add(needed_extra_capacity).ok_or(CapacityOverflow)?;
-                // Cannot overflow, because `cap <= isize::MAX`, and type of `cap` is `usize`.
-                let double_cap = self.cap * 2;
-                // `double_cap` guarantees exponential growth.
-                let cap = cmp::max(double_cap, required_cap);
-                Layout::array::<T>(cap).map_err(|_| CapacityOverflow)?
-            }
-            Exact { used_capacity, needed_extra_capacity } => {
-                let cap =
-                    used_capacity.checked_add(needed_extra_capacity).ok_or(CapacityOverflow)?;
-                Layout::array::<T>(cap).map_err(|_| CapacityOverflow)?
-            }
-        };
-        alloc_guard(new_layout.size())?;
 
-        let memory = if let Some((ptr, old_layout)) = self.current_memory() {
-            debug_assert_eq!(old_layout.align(), new_layout.align());
-            unsafe {
-                self.alloc
-                    .grow(ptr, old_layout, new_layout.size(), placement, init)
-                    .map_err(|_| AllocError { layout: new_layout, non_exhaustive: () })?
-            }
-        } else {
-            match placement {
-                MayMove => self.alloc.alloc(new_layout, init),
-                InPlace => Err(AllocErr),
-            }
-            .map_err(|_| AllocError { layout: new_layout, non_exhaustive: () })?
-        };
+        // Nothing we can really do about these checks, sadly.
+        let required_cap =
+            used_capacity.checked_add(needed_extra_capacity).ok_or(CapacityOverflow)?;
+        // Cannot overflow, because `cap <= isize::MAX`, and type of `cap` is `usize`.
+        let double_cap = self.cap * 2;
+        // `double_cap` guarantees exponential growth.
+        let cap = cmp::max(double_cap, required_cap);
+        let new_layout = Layout::array::<T>(cap);
+
+        // `finish_grow` is non-generic over `T`.
+        let memory = finish_grow(new_layout, placement, self.current_memory(), &mut self.alloc)?;
+        self.set_memory(memory);
+        Ok(())
+    }
+
+    // The constraints on this method are much the same as those on
+    // `grow_amortized`, but this method is usually instantiated less often so
+    // it's less critical.
+    fn grow_exact(
+        &mut self,
+        used_capacity: usize,
+        needed_extra_capacity: usize,
+    ) -> Result<(), TryReserveError> {
+        if mem::size_of::<T>() == 0 {
+            // Since we return a capacity of `usize::MAX` when the type size is
+            // 0, getting to here necessarily means the `RawVec` is overfull.
+            return Err(CapacityOverflow);
+        }
+
+        let cap = used_capacity.checked_add(needed_extra_capacity).ok_or(CapacityOverflow)?;
+        let new_layout = Layout::array::<T>(cap);
+
+        // `finish_grow` is non-generic over `T`.
+        let memory = finish_grow(new_layout, MayMove, self.current_memory(), &mut self.alloc)?;
         self.set_memory(memory);
         Ok(())
     }
@@ -560,6 +466,38 @@ impl<T, A: AllocRef> RawVec<T, A> {
         self.set_memory(memory);
         Ok(())
     }
+}
+
+// This function is outside `RawVec` to minimize compile times. See the comment
+// above `RawVec::grow_amortized` for details. (The `A` parameter isn't
+// significant, because the number of different `A` types seen in practice is
+// much smaller than the number of `T` types.)
+fn finish_grow<A>(
+    new_layout: Result<Layout, LayoutErr>,
+    placement: ReallocPlacement,
+    current_memory: Option<(NonNull<u8>, Layout)>,
+    alloc: &mut A,
+) -> Result<MemoryBlock, TryReserveError>
+where
+    A: AllocRef,
+{
+    // Check for the error here to minimize the size of `RawVec::grow_*`.
+    let new_layout = new_layout.map_err(|_| CapacityOverflow)?;
+
+    alloc_guard(new_layout.size())?;
+
+    let memory = if let Some((ptr, old_layout)) = current_memory {
+        debug_assert_eq!(old_layout.align(), new_layout.align());
+        unsafe { alloc.grow(ptr, old_layout, new_layout.size(), placement, Uninitialized) }
+    } else {
+        match placement {
+            MayMove => alloc.alloc(new_layout, Uninitialized),
+            InPlace => Err(AllocErr),
+        }
+    }
+    .map_err(|_| AllocError { layout: new_layout, non_exhaustive: () })?;
+
+    Ok(memory)
 }
 
 impl<T> RawVec<T, Global> {

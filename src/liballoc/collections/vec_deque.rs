@@ -1354,7 +1354,9 @@ impl<T> VecDeque<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn push_front(&mut self, value: T) {
-        self.grow_if_necessary();
+        if self.is_full() {
+            self.grow();
+        }
 
         self.tail = self.wrap_sub(self.tail, 1);
         let tail = self.tail;
@@ -1377,7 +1379,9 @@ impl<T> VecDeque<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn push_back(&mut self, value: T) {
-        self.grow_if_necessary();
+        if self.is_full() {
+            self.grow();
+        }
 
         let head = self.head;
         self.head = self.wrap_add(self.head, 1);
@@ -1485,7 +1489,9 @@ impl<T> VecDeque<T> {
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
     pub fn insert(&mut self, index: usize, value: T) {
         assert!(index <= self.len(), "index out of bounds");
-        self.grow_if_necessary();
+        if self.is_full() {
+            self.grow();
+        }
 
         // Move the least number of elements in the ring buffer and insert
         // the given object
@@ -2003,11 +2009,13 @@ impl<T> VecDeque<T> {
     }
 
     // This may panic or abort
-    #[inline]
-    fn grow_if_necessary(&mut self) {
+    #[inline(never)]
+    fn grow(&mut self) {
         if self.is_full() {
             let old_cap = self.cap();
-            self.buf.double();
+            // Double the buffer size.
+            self.buf.reserve_exact(old_cap, old_cap);
+            assert!(self.cap() == old_cap * 2);
             unsafe {
                 self.handle_capacity_increase(old_cap);
             }
