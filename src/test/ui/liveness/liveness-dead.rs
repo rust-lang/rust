@@ -36,4 +36,22 @@ fn f6() {
     }
 }
 
+fn f7(x: i32) {
+    match x {
+        n if n > 22 => {} // no error
+        _ => {}
+    }
+}
+
+fn f8(x: Option<i32>) -> i32 {
+    match x {
+        None => 0,
+        Some(mut n) => {
+            //~^ ERROR: value assigned to `n` is never read
+            n = 42;
+            n
+        }
+    }
+}
+
 fn main() {}
