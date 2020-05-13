@@ -202,26 +202,24 @@ macro_rules! step_identical_methods {
 
         #[inline]
         fn forward(start: Self, n: usize) -> Self {
-            match Self::forward_checked(start, n) {
-                Some(result) => result,
-                None => {
-                    let result = Add::add(start, n as Self);
-                    // add one modular cycle to ensure overflow occurs
-                    Add::add(Add::add(result as $u, $u::MAX), 1) as Self
-                }
+            // In debug builds, trigger a panic on overflow.
+            // This should optimize completely out in release builds.
+            if Self::forward_checked(start, n).is_none() {
+                let _ = Add::add(Self::MAX, 1);
             }
+            // Do wrapping math to allow e.g. `Step::forward(-128u8, 255)`.
+            start.wrapping_add(n as Self) as Self
         }
 
         #[inline]
         fn backward(start: Self, n: usize) -> Self {
-            match Self::backward_checked(start, n) {
-                Some(result) => result,
-                None => {
-                    let result = Sub::sub(start, n as Self);
-                    // sub one modular cycle to ensure overflow occurs
-                    Sub::sub(Sub::sub(result as $u, $u::MAX), 1) as Self
-                }
+            // In debug builds, trigger a panic on overflow.
+            // This should optimize completely out in release builds.
+            if Self::backward_checked(start, n).is_none() {
+                let _ = Sub::sub(Self::MIN, 1);
             }
+            // Do wrapping math to allow e.g. `Step::backward(127u8, 255)`.
+            start.wrapping_sub(n as Self) as Self
         }
     };
 }
