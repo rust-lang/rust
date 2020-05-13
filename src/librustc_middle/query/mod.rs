@@ -430,10 +430,6 @@ rustc_queries! {
             desc { |tcx| "checking intrinsics in {}", describe_as_module(key, tcx) }
         }
 
-        query check_mod_liveness(key: DefId) -> () {
-            desc { |tcx| "checking liveness of variables in {}", describe_as_module(key, tcx) }
-        }
-
         query check_mod_impl_wf(key: DefId) -> () {
             desc { |tcx| "checking that impls are well-formed in {}", describe_as_module(key, tcx) }
         }

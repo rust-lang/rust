@@ -28,7 +28,6 @@ mod intrinsicck;
 mod lang_items;
 pub mod layout_test;
 mod lib_features;
-mod liveness;
 pub mod loops;
 mod reachable;
 mod region;
@@ -44,7 +43,6 @@ pub fn provide(providers: &mut Providers<'_>) {
     lang_items::provide(providers);
     lib_features::provide(providers);
     loops::provide(providers);
-    liveness::provide(providers);
     intrinsicck::provide(providers);
     reachable::provide(providers);
     region::provide(providers);
