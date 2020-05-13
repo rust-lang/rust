@@ -44,3 +44,6 @@
 [submodule "src/tools/rust-analyzer"]
 	path = src/tools/rust-analyzer
 	url = https://github.com/rust-analyzer/rust-analyzer.git
+[submodule "library/backtrace"]
+	path = library/backtrace
+	url = https://github.com/rust-lang/backtrace-rs.git

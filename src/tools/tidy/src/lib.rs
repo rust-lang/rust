@@ -51,6 +51,7 @@ pub mod unstable_book;
 fn filter_dirs(path: &Path) -> bool {
     let skip = [
         "src/llvm-project",
+        "library/backtrace",
         "library/stdarch",
         "src/tools/cargo",
         "src/tools/clippy",
