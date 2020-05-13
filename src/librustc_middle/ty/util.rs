@@ -778,6 +778,27 @@ impl<'tcx> ty::TyS<'tcx> {
         }
     }
 
+    /// Returns `true` if this type implements both `PartialStructuralEq` and `StructuralEq`.
+    ///
+    /// These marker traits are implemented along with `PartialEq` and `Eq` when implementations
+    /// for those traits are derived. They indicate that two values of this type are equal if all
+    /// of their fields are equal. A quirk of the marker traits is that their implementation is
+    /// never conditional on generic parameter bounds. For that reason, this helper function does
+    /// not take a `ParamEnv`.
+    ///
+    /// This function is "shallow" because it may return `true` for a type whose fields are not
+    /// `StructuralEq`. You will need to use a type visitor if you want to know whether a call to
+    /// `PartialEq::eq` will proceed structurally for a given type.
+    #[inline]
+    pub fn is_structural_eq_shallow(&'tcx self, tcx: TyCtxt<'tcx>) -> bool {
+        // Fast path for some builtin types
+        if self.is_primitive() || self.is_str() {
+            return true;
+        }
+
+        tcx.is_structural_eq_raw(self)
+    }
+
     pub fn same_type(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
         match (&a.kind, &b.kind) {
             (&Adt(did_a, substs_a), &Adt(did_b, substs_b)) => {

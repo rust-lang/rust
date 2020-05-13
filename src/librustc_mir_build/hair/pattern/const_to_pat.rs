@@ -80,7 +80,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
     }
 
     fn type_marked_structural(&self, ty: Ty<'tcx>) -> bool {
-        traits::type_marked_structural(self.id, self.span, &self.infcx, ty)
+        ty.is_structural_eq_shallow(self.infcx.tcx)
     }
 
     fn to_pat(
