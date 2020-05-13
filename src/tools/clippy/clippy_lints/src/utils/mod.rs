@@ -933,6 +933,7 @@ pub fn is_ctor_or_promotable_const_function(cx: &LateContext<'_, '_>, expr: &Exp
 }
 
 /// Returns `true` if a pattern is refutable.
+// TODO: should be implemented using rustc/mir_build/hair machinery
 pub fn is_refutable(cx: &LateContext<'_, '_>, pat: &Pat<'_>) -> bool {
     fn is_enum_variant(cx: &LateContext<'_, '_>, qpath: &QPath<'_>, id: HirId) -> bool {
         matches!(
@@ -946,27 +947,34 @@ pub fn is_refutable(cx: &LateContext<'_, '_>, pat: &Pat<'_>) -> bool {
     }
 
     match pat.kind {
-        PatKind::Binding(..) | PatKind::Wild => false,
+        PatKind::Wild => false,
+        PatKind::Binding(_, _, _, pat) => pat.map_or(false, |pat| is_refutable(cx, pat)),
         PatKind::Box(ref pat) | PatKind::Ref(ref pat, _) => is_refutable(cx, pat),
         PatKind::Lit(..) | PatKind::Range(..) => true,
         PatKind::Path(ref qpath) => is_enum_variant(cx, qpath, pat.hir_id),
-        PatKind::Or(ref pats) | PatKind::Tuple(ref pats, _) => are_refutable(cx, pats.iter().map(|pat| &**pat)),
+        PatKind::Or(ref pats) => {
+            // TODO: should be the honest check, that pats is exhaustive set
+            are_refutable(cx, pats.iter().map(|pat| &**pat))
+        },
+        PatKind::Tuple(ref pats, _) => are_refutable(cx, pats.iter().map(|pat| &**pat)),
         PatKind::Struct(ref qpath, ref fields, _) => {
-            if is_enum_variant(cx, qpath, pat.hir_id) {
-                true
-            } else {
-                are_refutable(cx, fields.iter().map(|field| &*field.pat))
-            }
+            is_enum_variant(cx, qpath, pat.hir_id) || are_refutable(cx, fields.iter().map(|field| &*field.pat))
         },
         PatKind::TupleStruct(ref qpath, ref pats, _) => {
-            if is_enum_variant(cx, qpath, pat.hir_id) {
-                true
-            } else {
-                are_refutable(cx, pats.iter().map(|pat| &**pat))
-            }
+            is_enum_variant(cx, qpath, pat.hir_id) || are_refutable(cx, pats.iter().map(|pat| &**pat))
         },
         PatKind::Slice(ref head, ref middle, ref tail) => {
-            are_refutable(cx, head.iter().chain(middle).chain(tail.iter()).map(|pat| &**pat))
+            match &cx.tables.node_type(pat.hir_id).kind {
+                ty::Slice(..) => {
+                    // [..] is the only irrefutable slice pattern.
+                    !head.is_empty() || middle.is_none() || !tail.is_empty()
+                },
+                ty::Array(..) => are_refutable(cx, head.iter().chain(middle).chain(tail.iter()).map(|pat| &**pat)),
+                _ => {
+                    // unreachable!()
+                    true
+                },
+            }
         },
     }
 }

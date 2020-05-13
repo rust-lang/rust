@@ -120,6 +120,27 @@ fn match_with_array() {
     }
 }
 
+fn match_with_endless_range() {
+    let arr = vec![0, 1, 2, 3];
+    let range = ..;
+
+    // Ok
+    match arr[range] {
+        [0, 1] => println!("0 1"),
+        [1, 2] => println!("1 2"),
+        [0, 1, 2, 3] => println!("0, 1, 2, 3"),
+        _ => {},
+    }
+
+    // Ok
+    match arr[..] {
+        [0, 1] => println!("0 1"),
+        [1, 2] => println!("1 2"),
+        [0, 1, 2, 3] => println!("0, 1, 2, 3"),
+        _ => {},
+    }
+}
+
 fn main() {
     match_with_wildcard();
     match_without_wildcard();
@@ -127,4 +148,5 @@ fn main() {
     match_vec_ref();
     match_with_get();
     match_with_array();
+    match_with_endless_range();
 }
