@@ -553,6 +553,7 @@ fn type_implements_trait<'tcx>(
 
 pub fn provide(providers: &mut ty::query::Providers<'_>) {
     object_safety::provide(providers);
+    structural_match::provide(providers);
     *providers = ty::query::Providers {
         specialization_graph_of: specialize::specialization_graph_provider,
         specializes: specialize::specializes,
