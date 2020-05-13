@@ -32,12 +32,10 @@ pub enum RustDefId {
     RawPtr,
 
     Trait(DefId),
-
     Impl(DefId),
-
     FnDef(DefId),
-
     AssocTy(DefId),
+    Opaque(DefId),
 }
 
 #[derive(Copy, Clone)]

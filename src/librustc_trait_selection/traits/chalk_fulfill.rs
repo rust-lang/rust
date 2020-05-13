@@ -87,7 +87,9 @@ fn environment<'tcx>(
         NodeKind::TraitImpl => {
             let trait_ref = tcx.impl_trait_ref(def_id).expect("not an impl");
 
-            inputs.extend(trait_ref.substs.iter().flat_map(|arg| arg.walk()));
+            // FIXME(chalk): this has problems because of late-bound regions
+            //inputs.extend(trait_ref.substs.iter().flat_map(|arg| arg.walk()));
+            inputs.extend(trait_ref.substs.iter());
         }
 
         // In an inherent impl, we assume that the receiver type and all its
@@ -136,6 +138,8 @@ fn in_environment(
     let environment = match obligation.param_env.def_id {
         Some(def_id) => environment(infcx.tcx, def_id),
         None if obligation.param_env.caller_bounds.is_empty() => ty::List::empty(),
+        // FIXME(chalk): this is hit in ui/where-clauses/where-clause-constraints-are-local-for-trait-impl
+        // and ui/generics/generic-static-methods
         _ => bug!("non-empty `ParamEnv` with no def-id"),
     };
 
