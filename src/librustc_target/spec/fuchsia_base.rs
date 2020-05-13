@@ -9,7 +9,14 @@ pub fn opts() -> TargetOptions {
             "--eh-frame-hdr".to_string(),
             "--hash-style=gnu".to_string(),
             "-z".to_string(),
+            "max-page-size=4096".to_string(),
+            "-z".to_string(),
+            "now".to_string(),
+            "-z".to_string(),
             "rodynamic".to_string(),
+            "-z".to_string(),
+            "separate-loadable-segments".to_string(),
+            "--pack-dyn-relocs=relr".to_string(),
         ],
     );
 
