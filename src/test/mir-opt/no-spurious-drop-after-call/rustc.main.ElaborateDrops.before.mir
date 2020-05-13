@@ -31,7 +31,7 @@ fn main() -> () {
 
     bb1: {
         StorageDead(_3);                 // scope 0 at $DIR/no-spurious-drop-after-call.rs:9:33: 9:34
-        _1 = const std::mem::drop::<std::string::String>(move _2) -> [return: bb2, unwind: bb3]; // scope 0 at $DIR/no-spurious-drop-after-call.rs:9:5: 9:35
+        _1 = const std::mem::drop::<std::string::String>(move _2) -> bb2; // scope 0 at $DIR/no-spurious-drop-after-call.rs:9:5: 9:35
                                          // ty::Const
                                          // + ty: fn(std::string::String) {std::mem::drop::<std::string::String>}
                                          // + val: Value(Scalar(<ZST>))
@@ -52,13 +52,5 @@ fn main() -> () {
                                          // + span: $DIR/no-spurious-drop-after-call.rs:8:11: 10:2
                                          // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         return;                          // scope 0 at $DIR/no-spurious-drop-after-call.rs:10:2: 10:2
-    }
-
-    bb3 (cleanup): {
-        drop(_2) -> bb4;                 // scope 0 at $DIR/no-spurious-drop-after-call.rs:9:34: 9:35
-    }
-
-    bb4 (cleanup): {
-        resume;                          // scope 0 at $DIR/no-spurious-drop-after-call.rs:8:1: 10:2
     }
 }
