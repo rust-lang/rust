@@ -78,24 +78,3 @@ fn main() {
 
     assert!(x.is_ok(), "{:?}", x.unwrap_err()); // ok, it's a common test pattern
 }
-
-mod issue_5579 {
-    trait IsErr {
-        fn is_err(&self, err: &str) -> bool;
-    }
-
-    impl<T> IsErr for Option<T> {
-        fn is_err(&self, _err: &str) -> bool {
-            true
-        }
-    }
-
-    #[allow(unused)]
-    fn boom() {
-        let t = Some(1);
-
-        if t.is_err("") {
-            t.unwrap();
-        }
-    }
-}
