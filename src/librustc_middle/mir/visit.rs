@@ -1184,9 +1184,34 @@ impl PlaceContext {
             PlaceContext::MutatingUse(
                 MutatingUseContext::Store
                 | MutatingUseContext::Call
+                | MutatingUseContext::Yield
                 | MutatingUseContext::AsmOutput,
             ) => true,
             _ => false,
         }
+    }
+
+    /// Returns `true` if this context could read the contents of the place.
+    pub fn is_read(&self) -> bool {
+        match *self {
+            PlaceContext::MutatingUse(
+                MutatingUseContext::Store | MutatingUseContext::Call | MutatingUseContext::Yield,
+            )
+            | PlaceContext::NonUse(_) => false,
+
+            PlaceContext::MutatingUse(_) | PlaceContext::NonMutatingUse(_) => true,
+        }
+    }
+
+    /// Returns `true` if this context does not read from this place but does write to it.
+    ///
+    /// This is relevant for inline assembly, which has read/write parameters.
+    pub fn is_write_only(&self) -> bool {
+        matches!(
+            self,
+            PlaceContext::MutatingUse(
+                MutatingUseContext::Store | MutatingUseContext::Call | MutatingUseContext::Yield
+            )
+        )
     }
 }
