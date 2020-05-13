@@ -1373,7 +1373,7 @@ impl<T> From<T> for Option<T> {
 
 #[stable(feature = "option_ref_from_ref_option", since = "1.30.0")]
 impl<'a, T> From<&'a Option<T>> for Option<&'a T> {
-    /// Converts from &Option<T> to Option<&T>
+    /// Converts from `&Option<T>` to `Option<&T>`.
     ///
     /// # Examples
     /// Converts an `Option<`[`String`]`>` into an `Option<`[`usize`]`>`, preserving the original.
