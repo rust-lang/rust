@@ -21,7 +21,7 @@ use rustc_errors::{DiagnosticId, FatalError, Handler, Level};
 use rustc_fs_util::link_or_copy;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_incremental::{
-    copy_cgu_workproducts_to_incr_comp_cache_dir, in_incr_comp_dir, in_incr_comp_dir_sess,
+    copy_cgu_workproduct_to_incr_comp_cache_dir, in_incr_comp_dir, in_incr_comp_dir_sess,
 };
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::middle::cstore::EncodedMetadata;
@@ -465,17 +465,13 @@ fn copy_all_cgu_workproducts_to_incr_comp_cache_dir(
         return work_products;
     }
 
-    let _timer = sess.timer("incr_comp_copy_cgu_workproducts");
+    let _timer = sess.timer("copy_all_cgu_workproducts_to_incr_comp_cache_dir");
 
     for module in compiled_modules.modules.iter().filter(|m| m.kind == ModuleKind::Regular) {
-        let mut files = vec![];
-
-        if let Some(ref path) = module.object {
-            files.push(path.clone());
-        }
+        let path = module.object.as_ref().map(|path| path.clone());
 
         if let Some((id, product)) =
-            copy_cgu_workproducts_to_incr_comp_cache_dir(sess, &module.name, &files)
+            copy_cgu_workproduct_to_incr_comp_cache_dir(sess, &module.name, &path)
         {
             work_products.insert(id, product);
         }
@@ -817,7 +813,7 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
 ) -> Result<WorkItemResult<B>, FatalError> {
     let incr_comp_session_dir = cgcx.incr_comp_session_dir.as_ref().unwrap();
     let mut object = None;
-    for saved_file in &module.source.saved_files {
+    if let Some(saved_file) = module.source.saved_file {
         let obj_out = cgcx.output_filenames.temp_path(OutputType::Object, Some(&module.name));
         object = Some(obj_out.clone());
         let source_file = in_incr_comp_dir(&incr_comp_session_dir, &saved_file);
