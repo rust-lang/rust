@@ -49,6 +49,9 @@ impl GenKillAnalysis<'tcx> for MaybeLiveLocals {
         statement: &mir::Statement<'tcx>,
         location: Location,
     ) {
+        if let mir::StatementKind::FakeRead(mir::FakeReadCause::ForLet, _) = statement.kind {
+            return;
+        }
         self.transfer_function(trans).visit_statement(statement, location);
     }
 
