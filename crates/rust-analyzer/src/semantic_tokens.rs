@@ -67,6 +67,7 @@ define_semantic_token_modifiers![
     (CONTROL_FLOW, "controlFlow"),
     (MUTABLE, "mutable"),
     (UNSAFE, "unsafe"),
+    (ATTRIBUTE_MODIFIER, "attribute"),
 ];
 
 #[derive(Default)]

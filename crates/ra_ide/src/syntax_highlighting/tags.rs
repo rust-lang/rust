@@ -45,8 +45,10 @@ pub enum HighlightTag {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[repr(u8)]
 pub enum HighlightModifier {
+    /// Used to differentiate individual elements within attributes.
+    Attribute = 0,
     /// Used with keywords like `if` and `break`.
-    ControlFlow = 0,
+    ControlFlow,
     /// `foo` in `fn foo(x: i32)` is a definition, `foo` in `foo(90 + 2)` is
     /// not.
     Definition,
@@ -95,6 +97,7 @@ impl fmt::Display for HighlightTag {
 
 impl HighlightModifier {
     const ALL: &'static [HighlightModifier] = &[
+        HighlightModifier::Attribute,
         HighlightModifier::ControlFlow,
         HighlightModifier::Definition,
         HighlightModifier::Mutable,
@@ -103,6 +106,7 @@ impl HighlightModifier {
 
     fn as_str(self) -> &'static str {
         match self {
+            HighlightModifier::Attribute => "attribute",
             HighlightModifier::ControlFlow => "control",
             HighlightModifier::Definition => "declaration",
             HighlightModifier::Mutable => "mutable",

@@ -361,7 +361,9 @@ fn highlight_element(
         }
 
         // Highlight references like the definitions they resolve to
-        NAME_REF if element.ancestors().any(|it| it.kind() == ATTR) => return None,
+        NAME_REF if element.ancestors().any(|it| it.kind() == ATTR) => {
+            Highlight::from(HighlightTag::Function) | HighlightModifier::Attribute
+        }
         NAME_REF => {
             let name_ref = element.into_node().and_then(ast::NameRef::cast).unwrap();
             match classify_name_ref(sema, &name_ref) {
