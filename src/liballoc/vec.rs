@@ -306,6 +306,14 @@ pub struct Vec<T> {
 // Inherent methods
 ////////////////////////////////////////////////////////////////////////////////
 
+#[cfg_attr(not(bootstrap), lang = "new_in_collector")]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[allow(missing_docs)]
+pub fn new_in_collector<T>() -> Vec<T> {
+    // Abort here until linkage fixed to prevent ./x.py check warnings
+    unsafe { core::intrinsics::abort() }
+}
+
 impl<T> Vec<T> {
     /// Constructs a new, empty `Vec<T>`.
     ///
