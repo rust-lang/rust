@@ -30,6 +30,7 @@ ignore = [
     "src/tools/rust-analyzer",
     "src/tools/rust-installer",
     "src/tools/rustfmt",
+    "src/backtrace",
 
     # We do not format this file as it is externally sourced and auto-generated.
     "src/libstd/sys/cloudabi/abi/cloudabi.rs",
