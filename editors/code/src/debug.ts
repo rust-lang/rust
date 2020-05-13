@@ -95,10 +95,27 @@ export async function getDebugConfiguration(ctx: Ctx, config: ra.Runnable): Prom
 }
 
 export async function startDebugSession(ctx: Ctx, config: ra.Runnable): Promise<boolean> {
-    const debugConfig = await getDebugConfiguration(ctx, config);
+    let debugConfig: vscode.DebugConfiguration | undefined = undefined;
+    let message = "";
+
+    if (ctx.config.debug.useLaunchJson) {
+        const wsLaunchSection = vscode.workspace.getConfiguration("launch");
+        const configurations = wsLaunchSection.get<any[]>("configurations") || [];
+
+        const index = configurations.findIndex(c => c.name === config.label);
+        if (-1 !== index) {
+            debugConfig = configurations[index];
+            message = " (from launch.json)";
+            debugOutput.clear();
+        }
+    }
+    if (!debugConfig) {
+        debugConfig = await getDebugConfiguration(ctx, config);
+    }
+
     if (!debugConfig) return false;
 
-    debugOutput.appendLine("Launching debug configuration:");
+    debugOutput.appendLine(`Launching debug configuration${message}:`);
     debugOutput.appendLine(JSON.stringify(debugConfig, null, 2));
     return vscode.debug.startDebugging(undefined, debugConfig);
 }

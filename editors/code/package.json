@@ -443,6 +443,11 @@
                     "type": "object",
                     "default": {},
                     "description": "Optional settings passed to the debug engine. Example:\n{ \"lldb\": { \"terminal\":\"external\"} }"
+                },
+                "rust-analyzer.debug.useLaunchJson": {
+                    "description": "Whether to use existing configurations from launch.json.",
+                    "type": "boolean",
+                    "default": false
                 }
             }
         },
