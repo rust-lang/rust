@@ -98,7 +98,7 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     ///
-    /// ```rust
+    /// ```rust,no_run
     /// fn main() {
     ///     (10..=0).for_each(|x| println!("{}", x));
     ///
