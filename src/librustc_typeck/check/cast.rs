@@ -115,7 +115,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::Foreign(..) => Some(PointerKind::Thin),
             // We should really try to normalize here.
             ty::Projection(ref pi) => Some(PointerKind::OfProjection(pi)),
-            ty::UnnormalizedProjection(..) => bug!("only used with chalk-engine"),
             ty::Opaque(def_id, substs) => Some(PointerKind::OfOpaque(def_id, substs)),
             ty::Param(ref p) => Some(PointerKind::OfParam(p)),
             // Insufficient type information.

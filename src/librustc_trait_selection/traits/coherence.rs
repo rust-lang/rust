@@ -567,9 +567,8 @@ fn ty_is_non_local_constructor(ty: Ty<'_>, in_crate: InCrate) -> Option<Ty<'_>> 
 
         ty::Error => None,
 
-        ty::UnnormalizedProjection(..)
-        | ty::Closure(..)
-        | ty::Generator(..)
-        | ty::GeneratorWitness(..) => bug!("ty_is_local invoked on unexpected type: {:?}", ty),
+        ty::Closure(..) | ty::Generator(..) | ty::GeneratorWitness(..) => {
+            bug!("ty_is_local invoked on unexpected type: {:?}", ty)
+        }
     }
 }

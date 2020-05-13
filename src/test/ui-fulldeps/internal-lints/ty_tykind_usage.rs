@@ -32,7 +32,6 @@ fn main() {
         TyKind::Never => (), //~ ERROR usage of `ty::TyKind::<kind>`
         TyKind::Tuple(..) => (), //~ ERROR usage of `ty::TyKind::<kind>`
         TyKind::Projection(..) => (), //~ ERROR usage of `ty::TyKind::<kind>`
-        TyKind::UnnormalizedProjection(..) => (), //~ ERROR usage of `ty::TyKind::<kind>`
         TyKind::Opaque(..) => (), //~ ERROR usage of `ty::TyKind::<kind>`
         TyKind::Param(..) => (), //~ ERROR usage of `ty::TyKind::<kind>`
         TyKind::Bound(..) => (), //~ ERROR usage of `ty::TyKind::<kind>`
