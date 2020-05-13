@@ -216,6 +216,7 @@ language_item_table! {
     EqTraitLangItem,             "eq",                 eq_trait,                Target::Trait;
     PartialOrdTraitLangItem,     "partial_ord",        partial_ord_trait,       Target::Trait;
 
+    ManageableContentsTraitLangItem, "manageable_contents", manageable_contents_trait, Target::Trait;
     // A number of panic-related lang items. The `panic` item corresponds to
     // divide-by-zero and various panic cases with `match`. The
     // `panic_bounds_check` item is for indexing arrays.

@@ -444,6 +444,9 @@ pub use core::u8;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::usize;
 
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::gc;
+
 pub mod f32;
 pub mod f64;
 

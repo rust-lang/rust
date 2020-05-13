@@ -259,6 +259,8 @@ pub mod task;
 #[allow(missing_docs)]
 pub mod alloc;
 
+pub mod gc;
+
 // note: does not need to be public
 mod bool;
 mod tuple;
