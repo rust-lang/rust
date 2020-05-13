@@ -333,7 +333,7 @@ pub trait Iterator {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn nth(&mut self, mut n: usize) -> Option<Self::Item> {
-        for x in self {
+        while let Some(x) = self.next() {
             if n == 0 {
                 return Some(x);
             }
