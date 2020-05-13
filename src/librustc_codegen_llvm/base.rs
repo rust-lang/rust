@@ -157,7 +157,7 @@ pub fn write_idata_sections<'tcx>(
             idata_llmod,
             llname,
             llvm::Linkage::PrivateLinkage,
-            "idata$7",
+            ".idata$7",
         );
 
         unsafe {
@@ -183,7 +183,7 @@ pub fn write_idata_sections<'tcx>(
                                 idata_llmod,
                                 llname,
                                 llvm::Linkage::PrivateLinkage,
-                                "idata$6",
+                                ".idata$6",
                             );
 
                             llvm::LLVMSetGlobalConstant(&llglobal, 1);
@@ -211,7 +211,7 @@ pub fn write_idata_sections<'tcx>(
                 idata_llmod,
                 lltable,
                 llvm::Linkage::PrivateLinkage,
-                "idata$4",
+                ".idata$4",
             );
 
             //import address table - filled in at runtime
@@ -220,7 +220,7 @@ pub fn write_idata_sections<'tcx>(
                 idata_llmod,
                 lltable,
                 llvm::Linkage::PrivateLinkage,
-                "idata$3",
+                ".idata$3",
             );
 
             let llzero = llvm::LLVMConstInt(llint32, 0, 0);
@@ -251,7 +251,7 @@ pub fn write_idata_sections<'tcx>(
             idata_llmod,
             lldir_table,
             llvm::Linkage::ExternalLinkage,
-            "idata$2",
+            ".idata$2",
         );
         llvm::LLVMSetGlobalConstant(&lldir_table, 1);
     }
