@@ -157,7 +157,7 @@ impl FlycheckThread {
             CheckEvent::Begin => {
                 task_send
                     .send(CheckTask::Status(WorkDoneProgress::Begin(WorkDoneProgressBegin {
-                        title: "Running 'cargo check'".to_string(),
+                        title: "Running `cargo check`".to_string(),
                         cancellable: Some(false),
                         message: None,
                         percentage: None,

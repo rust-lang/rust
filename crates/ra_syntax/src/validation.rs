@@ -54,7 +54,7 @@ fn rustc_unescape_error_to_string(err: unescape::EscapeError) -> &'static str {
             "Unicode escape must not be empty"
         }
         EE::UnclosedUnicodeEscape => {
-            "Missing '}' to terminate the unicode escape"
+            "Missing `}` to terminate the unicode escape"
         }
         EE::LeadingUnderscoreUnicodeEscape => {
             "Unicode escape code must not begin with an underscore"
