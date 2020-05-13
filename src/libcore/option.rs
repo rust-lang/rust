@@ -1411,6 +1411,7 @@ impl<'a, T> From<&'a mut Option<T>> for Option<&'a mut T> {
     ///     Some(t) => *t = String::from("Hello, Rustaceans!"),
     ///     None => (),
     /// }
+    ///
     /// assert_eq!(s, Some(String::from("Hello, Rustaceans!")));
     /// ```
     fn from(o: &'a mut Option<T>) -> Option<&'a mut T> {
