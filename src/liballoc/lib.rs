@@ -170,6 +170,9 @@ pub mod task;
 mod tests;
 pub mod vec;
 
+#[unstable(feature = "allocator_api", issue = "32838")]
+pub mod boehm;
+
 #[cfg(not(test))]
 mod std {
     pub use core::ops; // RangeFull
