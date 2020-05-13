@@ -1,5 +1,6 @@
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_hir::lang_items::FnMutTraitLangItem;
 use rustc_middle::mir::*;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
@@ -70,7 +71,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
             build_call_shim(tcx, instance, None, CallKind::Direct(def_id), None)
         }
         ty::InstanceDef::ClosureOnceShim { call_once: _ } => {
-            let fn_mut = tcx.lang_items().fn_mut_trait().unwrap();
+            let fn_mut = tcx.require_lang_item(FnMutTraitLangItem, None);
             let call_mut = tcx
                 .associated_items(fn_mut)
                 .in_definition_order()

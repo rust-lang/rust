@@ -20,6 +20,7 @@ use crate::traits::error_reporting::InferCtxtExt;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::ErrorReported;
 use rustc_hir::def_id::DefId;
+use rustc_hir::lang_items::{FnOnceTraitLangItem, GeneratorTraitLangItem};
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
 use rustc_middle::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, WithConstness};
@@ -1222,7 +1223,7 @@ fn confirm_generator_candidate<'cx, 'tcx>(
 
     let tcx = selcx.tcx();
 
-    let gen_def_id = tcx.lang_items().gen_trait().unwrap();
+    let gen_def_id = tcx.require_lang_item(GeneratorTraitLangItem, None);
 
     let predicate = super::util::generator_trait_ref_and_outputs(
         tcx,
@@ -1309,7 +1310,7 @@ fn confirm_callable_candidate<'cx, 'tcx>(
     debug!("confirm_callable_candidate({:?},{:?})", obligation, fn_sig);
 
     // the `Output` associated type is declared on `FnOnce`
-    let fn_once_def_id = tcx.lang_items().fn_once_trait().unwrap();
+    let fn_once_def_id = tcx.require_lang_item(FnOnceTraitLangItem, None);
 
     let predicate = super::util::closure_trait_ref_and_return_type(
         tcx,

@@ -1,6 +1,6 @@
 use crate::util::patch::MirPatch;
 use rustc_hir as hir;
-use rustc_hir::lang_items;
+use rustc_hir::lang_items::{BoxFreeFnLangItem, DropTraitLangItem};
 use rustc_index::vec::Idx;
 use rustc_middle::mir::*;
 use rustc_middle::traits::Reveal;
@@ -535,7 +535,7 @@ where
     fn destructor_call_block(&mut self, (succ, unwind): (BasicBlock, Unwind)) -> BasicBlock {
         debug!("destructor_call_block({:?}, {:?})", self, succ);
         let tcx = self.tcx();
-        let drop_trait = tcx.lang_items().drop_trait().unwrap();
+        let drop_trait = tcx.require_lang_item(DropTraitLangItem, None);
         let drop_fn = tcx.associated_items(drop_trait).in_definition_order().next().unwrap();
         let ty = self.place_ty(self.place);
         let substs = tcx.mk_substs_trait(ty, &[]);
@@ -877,8 +877,7 @@ where
     ) -> BasicBlock {
         let tcx = self.tcx();
         let unit_temp = Place::from(self.new_temp(tcx.mk_unit()));
-        let free_func =
-            tcx.require_lang_item(lang_items::BoxFreeFnLangItem, Some(self.source_info.span));
+        let free_func = tcx.require_lang_item(BoxFreeFnLangItem, Some(self.source_info.span));
         let args = adt.variants[VariantIdx::new(0)]
             .fields
             .iter()
