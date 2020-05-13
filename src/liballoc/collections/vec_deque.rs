@@ -2881,12 +2881,32 @@ impl<A> Extend<A> for VecDeque<A> {
             }
         }
     }
+
+    #[inline]
+    fn extend_one(&mut self, elem: A) {
+        self.push_back(elem);
+    }
+
+    #[inline]
+    fn extend_reserve(&mut self, additional: usize) {
+        self.reserve(additional);
+    }
 }
 
 #[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a, T: 'a + Copy> Extend<&'a T> for VecDeque<T> {
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         self.extend(iter.into_iter().cloned());
+    }
+
+    #[inline]
+    fn extend_one(&mut self, &elem: &T) {
+        self.push_back(elem);
+    }
+
+    #[inline]
+    fn extend_reserve(&mut self, additional: usize) {
+        self.reserve(additional);
     }
 }
 

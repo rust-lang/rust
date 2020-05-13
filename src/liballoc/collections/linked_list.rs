@@ -1748,6 +1748,11 @@ impl<T> Extend<T> for LinkedList<T> {
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
         <Self as SpecExtend<I>>::spec_extend(self, iter);
     }
+
+    #[inline]
+    fn extend_one(&mut self, elem: T) {
+        self.push_back(elem);
+    }
 }
 
 impl<I: IntoIterator> SpecExtend<I> for LinkedList<I::Item> {
@@ -1766,6 +1771,11 @@ impl<T> SpecExtend<LinkedList<T>> for LinkedList<T> {
 impl<'a, T: 'a + Copy> Extend<&'a T> for LinkedList<T> {
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         self.extend(iter.into_iter().cloned());
+    }
+
+    #[inline]
+    fn extend_one(&mut self, &elem: &'a T) {
+        self.push_back(elem);
     }
 }
 

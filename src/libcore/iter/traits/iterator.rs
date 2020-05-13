@@ -1711,9 +1711,9 @@ pub trait Iterator {
         ) -> impl FnMut((), T) + 'a {
             move |(), x| {
                 if f(&x) {
-                    left.extend(Some(x));
+                    left.extend_one(x);
                 } else {
-                    right.extend(Some(x));
+                    right.extend_one(x);
                 }
             }
         }
@@ -2686,13 +2686,19 @@ pub trait Iterator {
             us: &'a mut impl Extend<B>,
         ) -> impl FnMut((), (A, B)) + 'a {
             move |(), (t, u)| {
-                ts.extend(Some(t));
-                us.extend(Some(u));
+                ts.extend_one(t);
+                us.extend_one(u);
             }
         }
 
         let mut ts: FromA = Default::default();
         let mut us: FromB = Default::default();
+
+        let (lower_bound, _) = self.size_hint();
+        if lower_bound > 0 {
+            ts.extend_reserve(lower_bound);
+            us.extend_reserve(lower_bound);
+        }
 
         self.fold((), extend(&mut ts, &mut us));
 
