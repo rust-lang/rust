@@ -16,6 +16,7 @@ use rustc_index::bit_set::BitSet;
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty};
+use rustc_session::lint;
 use rustc_span::Span;
 use rustc_span::symbol::Symbol;
 use rustc_target::abi::VariantIdx;
@@ -1980,6 +1981,31 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             BindingMode::ByRef(_) => ty::BindingMode::BindByReference(mutability),
         };
         debug!("declare_binding: user_ty={:?}", user_ty);
+
+        let ref_for_guard = has_guard.0.then(|| {
+            let local = self.local_decls.push(LocalDecl::<'tcx> {
+                // This variable isn't mutated but has a name, so has to be
+                // immutable to avoid the unused mut lint.
+                mutability: Mutability::Not,
+                ty: tcx.mk_imm_ref(tcx.lifetimes.re_erased, var_ty),
+                user_ty: None,
+                source_info,
+                internal: false,
+                is_block_tail: None,
+                local_info: Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::RefForGuard))),
+            });
+            self.var_debug_info.push(VarDebugInfo {
+                name,
+                source_info: debug_source_info,
+                place: local.into(),
+            });
+            local
+        });
+
+        let name = tcx.hir().name(var_id);
+        let is_shorthand_field_binding = false;
+        let unused_variables_lint_level = tcx.lint_level_at_node(lint::builtin::UNUSED_VARIABLES, var_id);
+        let unused_assignments_lint_level = tcx.lint_level_at_node(lint::builtin::UNUSED_ASSIGNMENTS, var_id);
         let local = LocalDecl::<'tcx> {
             mutability,
             ty: var_ty,
@@ -1988,6 +2014,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             internal: false,
             is_block_tail: None,
             local_info: Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
+                unused_assignments_lint_level,
+                unused_variables_lint_level,
+                is_shorthand_field_binding,
+                counterpart_in_guard: ref_for_guard,
+                name,
                 binding_mode,
                 // hypothetically, `visit_primary_bindings` could try to unzip
                 // an outermost hir::Ty as we descend, matching up
@@ -2004,27 +2035,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             source_info: debug_source_info,
             place: for_arm_body.into(),
         });
-        let locals = if has_guard.0 {
-            let ref_for_guard = self.local_decls.push(LocalDecl::<'tcx> {
-                // This variable isn't mutated but has a name, so has to be
-                // immutable to avoid the unused mut lint.
-                mutability: Mutability::Not,
-                ty: tcx.mk_imm_ref(tcx.lifetimes.re_erased, var_ty),
-                user_ty: None,
-                source_info,
-                internal: false,
-                is_block_tail: None,
-                local_info: Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::RefForGuard))),
-            });
-            self.var_debug_info.push(VarDebugInfo {
-                name,
-                source_info: debug_source_info,
-                place: ref_for_guard.into(),
-            });
-            LocalsForNode::ForGuard { ref_for_guard, for_arm_body }
-        } else {
-            LocalsForNode::One(for_arm_body)
+
+        let locals = match ref_for_guard {
+            Some(ref_for_guard) => LocalsForNode::ForGuard { ref_for_guard, for_arm_body },
+            None => LocalsForNode::One(for_arm_body),
         };
+
         debug!("declare_binding: vars={:?}", locals);
         self.var_indices.insert(var_id, locals);
     }

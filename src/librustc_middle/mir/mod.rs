@@ -2,6 +2,7 @@
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/mir/index.html
 
+use crate::lint;
 use crate::mir::interpret::{GlobalAlloc, Scalar};
 use crate::mir::visit::MirVisitable;
 use crate::ty::adjustment::PointerCast;
@@ -14,7 +15,7 @@ use crate::ty::{
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self, GeneratorKind};
+use rustc_hir::GeneratorKind;
 use rustc_target::abi::VariantIdx;
 
 use polonius_engine::Atom;
@@ -596,6 +597,22 @@ pub enum LocalKind {
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
 pub struct VarBindingForm<'tcx> {
+    /// Bindings in match arms with guards are lowered to two distinct locals, one for inside the
+    /// guard and one for inside the match arm. If this local is the one used in the match arm,
+    /// `counterpart_in_guard` will be the local representing the same binding in the guard.
+    pub counterpart_in_guard: Option<Local>,
+
+    /// `true` if this variable was declared as a binding to a struct field with the same name
+    /// (e.g., `x` in `Foo { x }`).
+    pub is_shorthand_field_binding: bool,
+
+    /// The name of this variable.
+    pub name: Symbol,
+
+    pub unused_variables_lint_level: lint::LevelSource,
+
+    pub unused_assignments_lint_level: lint::LevelSource,
+
     /// Is variable bound via `x`, `mut x`, `ref x`, or `ref mut x`?
     pub binding_mode: ty::BindingMode,
     /// If an explicit type was provided for this variable binding,
@@ -845,9 +862,7 @@ impl<'tcx> LocalDecl<'tcx> {
         match self.local_info {
             Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
                 binding_mode: ty::BindingMode::BindByValue(_),
-                opt_ty_info: _,
-                opt_match_place: _,
-                pat_span: _,
+                ..
             })))) => true,
 
             Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::ImplicitSelf(
@@ -865,9 +880,7 @@ impl<'tcx> LocalDecl<'tcx> {
         match self.local_info {
             Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
                 binding_mode: ty::BindingMode::BindByValue(_),
-                opt_ty_info: _,
-                opt_match_place: _,
-                pat_span: _,
+                ..
             })))) => true,
 
             Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::ImplicitSelf(_)))) => true,

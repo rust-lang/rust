@@ -106,9 +106,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         if let Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
                             VarBindingForm {
                                 opt_match_place: Some((opt_match_place, match_span)),
-                                binding_mode: _,
-                                opt_ty_info: _,
-                                pat_span: _,
+                                ..
                             },
                         )))) = local_decl.local_info
                         {

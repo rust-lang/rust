@@ -8,7 +8,7 @@ use rustc_span::{sym, symbol::Ident, MultiSpan, Span, Symbol};
 pub mod builtin;
 
 /// Setting for how to handle a lint.
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash, RustcEncodable, RustcDecodable)]
 pub enum Level {
     Allow,
     Warn,

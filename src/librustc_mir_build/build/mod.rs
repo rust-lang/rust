@@ -14,6 +14,7 @@ use rustc_middle::middle::region;
 use rustc_middle::mir::*;
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc_session::lint;
 use rustc_span::symbol::kw;
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
@@ -888,8 +889,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::ImplicitSelf(*kind))))
                         } else {
                             let binding_mode = ty::BindingMode::BindByValue(mutability);
+                            let unused_variables_lint_level = tcx.lint_level_at_node(lint::builtin::UNUSED_VARIABLES, var);
+                            let unused_assignments_lint_level = tcx.lint_level_at_node(lint::builtin::UNUSED_ASSIGNMENTS, var);
+                            let is_shorthand_field_binding = false;
+                            let name = tcx_hir.name(var);
                             Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
                                 VarBindingForm {
+                                    is_shorthand_field_binding,
+                                    counterpart_in_guard: None,
+                                    name,
+                                    unused_variables_lint_level,
+                                    unused_assignments_lint_level,
                                     binding_mode,
                                     opt_ty_info,
                                     opt_match_place: Some((Some(place), span)),

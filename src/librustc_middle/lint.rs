@@ -12,7 +12,7 @@ use rustc_span::source_map::{DesugaringKind, ExpnKind, MultiSpan};
 use rustc_span::{Span, Symbol};
 
 /// How a lint level was set.
-#[derive(Clone, Copy, PartialEq, Eq, HashStable)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, HashStable, RustcEncodable, RustcDecodable)]
 pub enum LintSource {
     /// Lint is at the default level as declared
     /// in rustc or a plugin.
