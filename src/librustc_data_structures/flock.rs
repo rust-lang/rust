@@ -12,13 +12,12 @@ use std::path::Path;
 
 cfg_if! {
     if #[cfg(unix)] {
-        use std::ffi::{CString, OsStr};
-        use std::mem;
         use std::os::unix::prelude::*;
+        use std::fs::{File, OpenOptions};
 
         #[derive(Debug)]
         pub struct Lock {
-            fd: libc::c_int,
+            _file: File,
         }
 
         impl Lock {
@@ -27,63 +26,35 @@ cfg_if! {
                        create: bool,
                        exclusive: bool)
                        -> io::Result<Lock> {
-                let os: &OsStr = p.as_ref();
-                let buf = CString::new(os.as_bytes()).unwrap();
-                let open_flags = if create {
-                    libc::O_RDWR | libc::O_CREAT
+                let file = OpenOptions::new()
+                           .read(true)
+                           .write(true)
+                           .create(create)
+                           .mode(libc::S_IRWXU as u32)
+                           .open(p)?;
+
+                let mut operation = if exclusive {
+                    libc::LOCK_EX
                 } else {
-                    libc::O_RDWR
+                    libc::LOCK_SH
                 };
-
-                let fd = unsafe {
-                    libc::open(buf.as_ptr(), open_flags,
-                               libc::S_IRWXU as libc::c_int)
-                };
-
-                if fd < 0 {
-                    return Err(io::Error::last_os_error());
+                if !wait {
+                    operation |= libc::LOCK_NB
                 }
 
-                let lock_type = if exclusive {
-                    libc::F_WRLCK
-                } else {
-                    libc::F_RDLCK
-                };
-
-                let mut flock: libc::flock = unsafe { mem::zeroed() };
-                flock.l_type = lock_type as libc::c_short;
-                flock.l_whence = libc::SEEK_SET as libc::c_short;
-                flock.l_start = 0;
-                flock.l_len = 0;
-
-                let cmd = if wait { libc::F_SETLKW } else { libc::F_SETLK };
-                let ret = unsafe {
-                    libc::fcntl(fd, cmd, &flock)
-                };
+                let ret = unsafe { libc::flock(file.as_raw_fd(), operation) };
                 if ret == -1 {
                     let err = io::Error::last_os_error();
-                    unsafe { libc::close(fd); }
                     Err(err)
                 } else {
-                    Ok(Lock { fd })
+                    Ok(Lock { _file: file })
                 }
             }
         }
 
-        impl Drop for Lock {
-            fn drop(&mut self) {
-                let mut flock: libc::flock = unsafe { mem::zeroed() };
-                flock.l_type = libc::F_UNLCK as libc::c_short;
-                flock.l_whence = libc::SEEK_SET as libc::c_short;
-                flock.l_start = 0;
-                flock.l_len = 0;
-
-                unsafe {
-                    libc::fcntl(self.fd, libc::F_SETLK, &flock);
-                    libc::close(self.fd);
-                }
-            }
-        }
+        // Note that we don't need a Drop impl to execute `flock(fd, LOCK_UN)`. Lock acquired by
+        // `flock` is associated with the file descriptor and closing the file release it
+        // automatically.
     } else if #[cfg(windows)] {
         use std::mem;
         use std::os::windows::prelude::*;
