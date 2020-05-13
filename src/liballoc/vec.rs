@@ -2048,6 +2048,11 @@ impl<T> Extend<T> for Vec<T> {
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
         <Self as SpecExtend<T, I::IntoIter>>::spec_extend(self, iter.into_iter())
     }
+
+    #[inline]
+    fn with_capacity(capacity: usize) -> Self {
+        Self::with_capacity(capacity)
+    }
 }
 
 // Specialization trait used for Vec::from_iter and Vec::extend
@@ -2097,7 +2102,7 @@ where
         vector
     }
 
-    default fn spec_extend(&mut self, iterator: I) {
+    default fn spec_extend(&mut self, mut iterator: I) {
         // This is the case for a TrustedLen iterator.
         let (low, high) = iterator.size_hint();
         if let Some(high_value) = high {
@@ -2109,6 +2114,14 @@ where
             );
         }
         if let Some(additional) = high {
+            if additional == 1 {
+                // work around inefficiencies in generic vec.extend(Some(x))
+                if let Some(x) = iterator.next() {
+                    self.push(x);
+                }
+                return;
+            }
+
             self.reserve(additional);
             unsafe {
                 let mut ptr = self.as_mut_ptr().add(self.len());

@@ -2672,8 +2672,9 @@ pub trait Iterator {
             }
         }
 
-        let mut ts: FromA = Default::default();
-        let mut us: FromB = Default::default();
+        let cap = self.size_hint().0.saturating_add(1);
+        let mut ts: FromA = Extend::with_capacity(cap);
+        let mut us: FromB = Extend::with_capacity(cap);
 
         self.for_each(extend(&mut ts, &mut us));
 

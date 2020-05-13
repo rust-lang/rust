@@ -341,6 +341,12 @@ pub trait Extend<A> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn extend<T: IntoIterator<Item = A>>(&mut self, iter: T);
+
+    /// Creates this collection with a reserved capacity.
+    #[unstable(feature = "extend_with_capacity", issue = "none")]
+    fn with_capacity(_capacity: usize) -> Self where Self: Default {
+        Self::default()
+    }
 }
 
 #[stable(feature = "extend_for_unit", since = "1.28.0")]
