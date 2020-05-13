@@ -659,6 +659,19 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
     }
 
     #[inline]
+    fn fold<B, F>(mut self, init: B, f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B,
+    {
+        #[inline]
+        fn ok<B, T>(mut f: impl FnMut(B, T) -> B) -> impl FnMut(B, T) -> Result<B, !> {
+            move |acc, x| Ok(f(acc, x))
+        }
+
+        self.try_fold(init, ok(f)).unwrap()
+    }
+    #[inline]
     fn last(mut self) -> Option<A> {
         self.next_back()
     }

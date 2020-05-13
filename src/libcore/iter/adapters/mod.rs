@@ -512,6 +512,9 @@ where
             acc = self.iter.try_fold(acc, &mut f)?;
         }
     }
+
+    // No `fold` override, because `fold` doesn't make much sense for `Cycle`,
+    // and we can't do anything better than the default.
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -642,6 +645,25 @@ where
             }
         }
         from_fn(nth(&mut self.iter, self.step)).try_fold(acc, f)
+    }
+
+    fn fold<Acc, F>(mut self, mut acc: Acc, mut f: F) -> Acc
+    where
+        F: FnMut(Acc, Self::Item) -> Acc,
+    {
+        #[inline]
+        fn nth<I: Iterator>(iter: &mut I, step: usize) -> impl FnMut() -> Option<I::Item> + '_ {
+            move || iter.nth(step)
+        }
+
+        if self.first_take {
+            self.first_take = false;
+            match self.iter.next() {
+                None => return acc,
+                Some(x) => acc = f(acc, x),
+            }
+        }
+        from_fn(nth(&mut self.iter, self.step)).fold(acc, f)
     }
 }
 
@@ -1767,6 +1789,20 @@ where
             self.iter.try_fold(init, check(flag, p, fold)).into_try()
         }
     }
+
+    #[inline]
+    fn fold<Acc, Fold>(mut self, init: Acc, fold: Fold) -> Acc
+    where
+        Self: Sized,
+        Fold: FnMut(Acc, Self::Item) -> Acc,
+    {
+        #[inline]
+        fn ok<B, T>(mut f: impl FnMut(B, T) -> B) -> impl FnMut(B, T) -> Result<B, !> {
+            move |acc, x| Ok(f(acc, x))
+        }
+
+        self.try_fold(init, ok(fold)).unwrap()
+    }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -1837,6 +1873,20 @@ where
             None => LoopState::Break(Try::from_ok(acc)),
         })
         .into_try()
+    }
+
+    #[inline]
+    fn fold<Acc, Fold>(mut self, init: Acc, fold: Fold) -> Acc
+    where
+        Self: Sized,
+        Fold: FnMut(Acc, Self::Item) -> Acc,
+    {
+        #[inline]
+        fn ok<B, T>(mut f: impl FnMut(B, T) -> B) -> impl FnMut(B, T) -> Result<B, !> {
+            move |acc, x| Ok(f(acc, x))
+        }
+
+        self.try_fold(init, ok(fold)).unwrap()
     }
 }
 
@@ -2105,6 +2155,20 @@ where
             self.iter.try_fold(init, check(n, fold)).into_try()
         }
     }
+
+    #[inline]
+    fn fold<Acc, Fold>(mut self, init: Acc, fold: Fold) -> Acc
+    where
+        Self: Sized,
+        Fold: FnMut(Acc, Self::Item) -> Acc,
+    {
+        #[inline]
+        fn ok<B, T>(mut f: impl FnMut(B, T) -> B) -> impl FnMut(B, T) -> Result<B, !> {
+            move |acc, x| Ok(f(acc, x))
+        }
+
+        self.try_fold(init, ok(fold)).unwrap()
+    }
 }
 
 #[stable(feature = "double_ended_take_iterator", since = "1.38.0")]
@@ -2236,6 +2300,20 @@ where
         let state = &mut self.state;
         let f = &mut self.f;
         self.iter.try_fold(init, scan(state, f, fold)).into_try()
+    }
+
+    #[inline]
+    fn fold<Acc, Fold>(mut self, init: Acc, fold: Fold) -> Acc
+    where
+        Self: Sized,
+        Fold: FnMut(Acc, Self::Item) -> Acc,
+    {
+        #[inline]
+        fn ok<B, T>(mut f: impl FnMut(B, T) -> B) -> impl FnMut(B, T) -> Result<B, !> {
+            move |acc, x| Ok(f(acc, x))
+        }
+
+        self.try_fold(init, ok(fold)).unwrap()
     }
 }
 
@@ -2443,5 +2521,18 @@ where
                 }
             })
             .into_try()
+    }
+
+    fn fold<B, F>(mut self, init: B, fold: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B,
+    {
+        #[inline]
+        fn ok<B, T>(mut f: impl FnMut(B, T) -> B) -> impl FnMut(B, T) -> Result<B, !> {
+            move |acc, x| Ok(f(acc, x))
+        }
+
+        self.try_fold(init, ok(fold)).unwrap()
     }
 }
