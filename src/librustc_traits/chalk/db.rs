@@ -168,21 +168,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
                 });
                 struct_datum
             }
-            RustDefId::Ref(_) | RustDefId::RawPtr => Arc::new(chalk_rust_ir::StructDatum {
-                id: struct_id,
-                binders: chalk_ir::Binders::new(
-                    chalk_ir::ParameterKinds::from(
-                        &self.interner,
-                        vec![
-                            chalk_ir::ParameterKind::Lifetime(()),
-                            chalk_ir::ParameterKind::Ty(()),
-                        ],
-                    ),
-                    chalk_rust_ir::StructDatumBound { fields: vec![], where_clauses: vec![] },
-                ),
-                flags: chalk_rust_ir::StructFlags { upstream: false, fundamental: false },
-            }),
-            RustDefId::Array | RustDefId::Slice => Arc::new(chalk_rust_ir::StructDatum {
+            RustDefId::Array => Arc::new(chalk_rust_ir::StructDatum {
                 id: struct_id,
                 binders: chalk_ir::Binders::new(
                     chalk_ir::ParameterKinds::from(
@@ -193,16 +179,14 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
                 ),
                 flags: chalk_rust_ir::StructFlags { upstream: false, fundamental: false },
             }),
-            RustDefId::Str | RustDefId::Never | RustDefId::FnDef(_) => {
-                Arc::new(chalk_rust_ir::StructDatum {
-                    id: struct_id,
-                    binders: chalk_ir::Binders::new(
-                        chalk_ir::ParameterKinds::new(&self.interner),
-                        chalk_rust_ir::StructDatumBound { fields: vec![], where_clauses: vec![] },
-                    ),
-                    flags: chalk_rust_ir::StructFlags { upstream: false, fundamental: false },
-                })
-            }
+            RustDefId::Never | RustDefId::FnDef(_) => Arc::new(chalk_rust_ir::StructDatum {
+                id: struct_id,
+                binders: chalk_ir::Binders::new(
+                    chalk_ir::ParameterKinds::new(&self.interner),
+                    chalk_rust_ir::StructDatumBound { fields: vec![], where_clauses: vec![] },
+                ),
+                flags: chalk_rust_ir::StructFlags { upstream: false, fundamental: false },
+            }),
 
             v => bug!("Used not struct variant ({:?}) when expecting struct variant.", v),
         }
@@ -286,12 +270,8 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         // FIXME(chalk): this match can be removed when builtin types supported
         match struct_id.0 {
             RustDefId::Adt(_) => {}
-            RustDefId::Str => return false,
             RustDefId::Never => return false,
-            RustDefId::Slice => return false,
             RustDefId::Array => return false,
-            RustDefId::Ref(_) => return false,
-            RustDefId::RawPtr => return false,
             _ => bug!("Did not use `Adt` variant when expecting adt."),
         }
         let adt_def_id: DefId = match struct_id.0 {
@@ -388,7 +368,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
                     chalk_ir::TypeName::Struct(chalk_ir::StructId(rust_def_id)) => {
                         use rustc_middle::traits::ChalkRustDefId::*;
                         match rust_def_id {
-                            Never | Array | RawPtr | FnDef(_) | Ref(_) => Some(true),
+                            Never | Array | FnDef(_) => Some(true),
 
                             Adt(adt_def_id) => {
                                 let adt_def = self.tcx.adt_def(adt_def_id);
@@ -405,8 +385,6 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
                                 }
                             }
 
-                            Str | Slice => Some(false),
-
                             Trait(_) | Impl(_) | AssocTy(_) | Opaque(_) => panic!(),
                         }
                     }
@@ -421,7 +399,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
                     chalk_ir::TypeName::Struct(chalk_ir::StructId(rust_def_id)) => {
                         use rustc_middle::traits::ChalkRustDefId::*;
                         match rust_def_id {
-                            Never | RawPtr | Ref(_) | Str | Slice => Some(false),
+                            Never => Some(false),
                             FnDef(_) | Array => Some(true),
                             Adt(adt_def_id) => {
                                 let adt_def = self.tcx.adt_def(adt_def_id);
@@ -488,6 +466,14 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
                 .unwrap(),
         };
         Some(t)
+    }
+
+    fn is_object_safe(&self, trait_id: chalk_ir::TraitId<RustInterner<'tcx>>) -> bool {
+        let def_id: DefId = match trait_id.0 {
+            RustDefId::Trait(def_id) => def_id,
+            _ => bug!("Did not use `Trait` variant when expecting trait."),
+        };
+        self.tcx.is_object_safe(def_id)
     }
 }
 

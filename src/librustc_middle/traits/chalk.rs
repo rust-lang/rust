@@ -7,7 +7,6 @@
 
 use chalk_ir::{GoalData, Parameter};
 
-use rustc_middle::mir::Mutability;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
@@ -24,16 +23,12 @@ use std::hash::{Hash, Hasher};
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum RustDefId {
     Adt(DefId),
-    Str,
     Never,
-    Slice,
     Array,
-    Ref(Mutability),
-    RawPtr,
+    FnDef(DefId),
 
     Trait(DefId),
     Impl(DefId),
-    FnDef(DefId),
     AssocTy(DefId),
     Opaque(DefId),
 }
