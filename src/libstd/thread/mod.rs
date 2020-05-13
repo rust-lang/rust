@@ -737,6 +737,8 @@ pub fn panicking() -> bool {
 /// The thread may sleep longer than the duration specified due to scheduling
 /// specifics or platform-dependent functionality. It will never sleep less.
 ///
+/// This function is blocking, and should not be used in `async` functions.
+///
 /// # Platform-specific behavior
 ///
 /// On Unix platforms, the underlying syscall may be interrupted by a
@@ -762,6 +764,8 @@ pub fn sleep_ms(ms: u32) {
 ///
 /// The thread may sleep longer than the duration specified due to scheduling
 /// specifics or platform-dependent functionality. It will never sleep less.
+///
+/// This function is blocking, and should not be used in `async` functions.
 ///
 /// # Platform-specific behavior
 ///
