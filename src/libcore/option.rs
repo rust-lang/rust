@@ -1363,6 +1363,7 @@ impl<T> From<T> for Option<T> {
     ///
     /// ```
     /// let o: Option<u8> = Option::from(67);
+    ///
     /// assert_eq!(Some(67), o);
     /// ```
     fn from(val: T) -> Option<T> {
