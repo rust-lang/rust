@@ -2058,7 +2058,6 @@ public:
           }
           return;
         }
-
         default:
           if (gutils->isConstantInstruction(&II)) return;
           llvm::errs() << *gutils->oldFunc << "\n";
@@ -2111,6 +2110,22 @@ public:
     if (called) {
       auto n = called->getName();
 
+      if (called && (called->getName() == "asin" || called->getName() == "asinf" || called->getName() == "asinl")) {
+        if (gutils->isConstantValue(orig)) return;
+        
+        IRBuilder<> Builder2 = getReverseBuilder(call.getParent());
+        Value* x  = lookup(gutils->getNewFromOriginal(orig->getArgOperand(0)), Builder2);
+        Value* oneMx2 = Builder2.CreateFSub(ConstantFP::get(x->getType(), 1.0), Builder2.CreateFMul(x, x));
+
+        SmallVector<Value*, 1> args = { oneMx2 };
+        Type *tys[] = {x->getType()};
+        auto cal = cast<CallInst>(Builder2.CreateCall(Intrinsic::getDeclaration(called->getParent(), Intrinsic::sqrt, tys), args));
+
+        Value* dif0 = Builder2.CreateFDiv(diffe(orig, Builder2), cal);
+        addToDiffe(orig->getArgOperand(0), dif0, Builder2, x->getType());
+        return;
+      }
+
       if (called && (called->getName() == "tanhf" || called->getName() == "tanh")) {
         if (mode == DerivativeMode::Forward || gutils->isConstantValue(orig)) return;
 
@@ -2127,7 +2142,7 @@ public:
       }
 
       if (n == "lgamma" || n == "lgammaf" || n == "lgammal" || n == "lgamma_r" || n == "lgammaf_r" || n == "lgammal_r"
-        || n == "__lgamma_r_finite" || n == "__lgammaf_r_finite" || n == "__lgammal_r_finite") {
+        || n == "__lgamma_r_finite" || n == "__lgammaf_r_finite" || n == "__lgammal_r_finite" || n == "acos" || n == "atan") {
         if (mode == DerivativeMode::Forward || gutils->isConstantValue(orig)) {
           return;
         }

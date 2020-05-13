@@ -2106,6 +2106,9 @@ public:
       }
       assert(!val->getType()->isPointerTy());
       assert(!isConstantValue(val));
+      if (val->getType() != dif->getType()) {
+        llvm::errs() << "val: " << *val << " dif: " << *dif <<"\n";
+      }
       assert(val->getType() == dif->getType());
       auto old = diffe(val, BuilderM);
       assert(val->getType() == old->getType());
