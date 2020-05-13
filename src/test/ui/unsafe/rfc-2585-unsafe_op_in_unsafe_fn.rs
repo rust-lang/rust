@@ -21,6 +21,12 @@ unsafe fn baz() {
 #[allow(unsafe_op_in_unsafe_fn)]
 unsafe fn qux() {
     unsf(); // no error
+
+    unsafe { unsf() }
+    //~^ ERROR unnecessary `unsafe` block
 }
 
-fn main() {}
+fn main() {
+    unsf()
+    //~^ ERROR call to unsafe function is unsafe and requires unsafe function or block
+}

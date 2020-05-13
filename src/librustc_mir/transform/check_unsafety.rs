@@ -2,6 +2,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::hir_id::HirId;
 use rustc_hir::intravisit;
 use rustc_hir::Node;
 use rustc_middle::mir::visit::{MutatingUseContext, PlaceContext, Visitor};
@@ -10,6 +11,7 @@ use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint::builtin::{SAFE_PACKED_BORROWS, UNSAFE_OP_IN_UNSAFE_FN, UNUSED_UNSAFE};
+use rustc_session::lint::Level;
 use rustc_span::symbol::{sym, Symbol};
 
 use std::ops::Bound;
@@ -220,7 +222,18 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
 
         for (i, elem) in place.projection.iter().enumerate() {
             let proj_base = &place.projection[..i];
-            let old_source_info = self.source_info;
+            if context.is_borrow() {
+                if util::is_disaligned(self.tcx, self.body, self.param_env, *place) {
+                    self.require_unsafe(
+                        "borrow of packed field",
+                        "fields of packed structs might be misaligned: dereferencing a \
+                        misaligned pointer or even just creating a misaligned reference \
+                        is undefined behavior",
+                        UnsafetyViolationKind::BorrowPacked,
+                    );
+                }
+            }
+            let source_info = self.source_info;
             if let [] = proj_base {
                 let decl = &self.body.local_decls[place.local];
                 if decl.internal {
@@ -301,7 +314,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                 }
                 _ => {}
             }
-            self.source_info = old_source_info;
+            self.source_info = source_info;
         }
     }
 }
@@ -314,9 +327,15 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
         kind: UnsafetyViolationKind,
     ) {
         let source_info = self.source_info;
+        let lint_root = self.body.source_scopes[self.source_info.scope]
+            .local_data
+            .as_ref()
+            .assert_crate_local()
+            .lint_root;
         self.register_violations(
             &[UnsafetyViolation {
                 source_info,
+                lint_root,
                 description: Symbol::intern(description),
                 details: Symbol::intern(details),
                 kind,
@@ -343,7 +362,7 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                     match violation.kind {
                         UnsafetyViolationKind::GeneralAndConstFn
                         | UnsafetyViolationKind::General => {}
-                        UnsafetyViolationKind::BorrowPacked(_) => {
+                        UnsafetyViolationKind::BorrowPacked => {
                             if self.min_const_fn {
                                 // const fns don't need to be backwards compatible and can
                                 // emit these violations as a hard error instead of a backwards
@@ -351,7 +370,7 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                                 violation.kind = UnsafetyViolationKind::General;
                             }
                         }
-                        UnsafetyViolationKind::UnsafeFn(_) => {
+                        UnsafetyViolationKind::UnsafeFn => {
                             bug!("`UnsafetyViolationKind::UnsafeFn` in an `Safe` context")
                         }
                     }
@@ -365,14 +384,9 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
             Safety::FnUnsafe if self.tcx.features().unsafe_block_in_unsafe_fn => {
                 for violation in violations {
                     let mut violation = *violation;
-                    let lint_root = self.body.source_scopes[self.source_info.scope]
-                        .local_data
-                        .as_ref()
-                        .assert_crate_local()
-                        .lint_root;
 
                     // FIXME(LeSeulArtichaut): what to do with `UnsafetyViolationKind::BorrowPacked`?
-                    violation.kind = UnsafetyViolationKind::UnsafeFn(lint_root);
+                    violation.kind = UnsafetyViolationKind::UnsafeFn;
                     if !self.violations.contains(&violation) {
                         self.violations.push(violation)
                     }
@@ -394,7 +408,7 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                             UnsafetyViolationKind::GeneralAndConstFn => {}
                             // these things are forbidden in const fns
                             UnsafetyViolationKind::General
-                            | UnsafetyViolationKind::BorrowPacked(_) => {
+                            | UnsafetyViolationKind::BorrowPacked => {
                                 let mut violation = *violation;
                                 // const fns don't need to be backwards compatible and can
                                 // emit these violations as a hard error instead of a backwards
@@ -404,7 +418,7 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                                     self.violations.push(violation)
                                 }
                             }
-                            UnsafetyViolationKind::UnsafeFn(_) => bug!(
+                            UnsafetyViolationKind::UnsafeFn => bug!(
                                 "`UnsafetyViolationKind::UnsafeFn` in an `ExplicitUnsafe` context"
                             ),
                         }
@@ -657,10 +671,13 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: DefId) {
     let UnsafetyCheckResult { violations, unsafe_blocks } =
         tcx.unsafety_check_result(def_id.expect_local());
 
-    let or_block_msg = if tcx.features().unsafe_block_in_unsafe_fn { "" } else { " or block" };
-
-    for &UnsafetyViolation { source_info, description, details, kind } in violations.iter() {
+    for &UnsafetyViolation { source_info, lint_root, description, details, kind } in
+        violations.iter()
+    {
         // Report an error.
+        let unsafe_fn_msg =
+            if unsafe_op_in_unsafe_fn_allowed(tcx, lint_root) { "" } else { " function or" };
+
         match kind {
             UnsafetyViolationKind::GeneralAndConstFn | UnsafetyViolationKind::General => {
                 // once
@@ -668,26 +685,26 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: DefId) {
                     tcx.sess,
                     source_info.span,
                     E0133,
-                    "{} is unsafe and requires unsafe function{}",
+                    "{} is unsafe and requires unsafe{} block",
                     description,
-                    or_block_msg,
+                    unsafe_fn_msg,
                 )
                 .span_label(source_info.span, &*description.as_str())
                 .note(&details.as_str())
                 .emit();
             }
-            UnsafetyViolationKind::BorrowPacked(lint_hir_id) => {
+            UnsafetyViolationKind::BorrowPacked => {
                 if let Some(impl_def_id) = builtin_derive_def_id(tcx, def_id) {
                     tcx.ensure().unsafe_derive_on_repr_packed(impl_def_id);
                 } else {
                     tcx.struct_span_lint_hir(
                         SAFE_PACKED_BORROWS,
-                        lint_hir_id,
+                        lint_root,
                         source_info.span,
                         |lint| {
                             lint.build(&format!(
-                                "{} is unsafe and requires unsafe function{} (error E0133)",
-                                description, or_block_msg,
+                                "{} is unsafe and requires unsafe{} block (error E0133)",
+                                description, unsafe_fn_msg,
                             ))
                             .note(&details.as_str())
                             .emit()
@@ -695,9 +712,9 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: DefId) {
                     )
                 }
             }
-            UnsafetyViolationKind::UnsafeFn(lint_hir_id) => tcx.struct_span_lint_hir(
+            UnsafetyViolationKind::UnsafeFn => tcx.struct_span_lint_hir(
                 UNSAFE_OP_IN_UNSAFE_FN,
-                lint_hir_id,
+                lint_root,
                 source_info.span,
                 |lint| {
                     lint.build(&format!(
@@ -727,4 +744,8 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: DefId) {
     for &block_id in &unsafe_unused {
         report_unused_unsafe(tcx, &unsafe_used, block_id);
     }
+}
+
+fn unsafe_op_in_unsafe_fn_allowed(tcx: TyCtxt<'_>, id: HirId) -> bool {
+    tcx.lint_level_at_node(UNSAFE_OP_IN_UNSAFE_FN, id).0 == Level::Allow
 }

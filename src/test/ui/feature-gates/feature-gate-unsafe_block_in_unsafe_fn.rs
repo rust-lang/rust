@@ -1,11 +1,4 @@
-#![deny(unused_unsafe)]
-
-unsafe fn unsf() {}
-
-unsafe fn foo() {
-    unsafe { //~ ERROR unnecessary `unsafe` block
-        unsf()
-    }
-}
+#![deny(unsafe_op_in_unsafe_fn)]
+//~^ ERROR the `unsafe_op_in_unsafe_fn` lint is unstable
 
 fn main() {}

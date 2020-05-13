@@ -17,8 +17,8 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::{builtin, Level, Lint};
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
-use rustc_span::source_map::MultiSpan;
 use rustc_span::symbol::{sym, Symbol};
+use rustc_span::{source_map::MultiSpan, Span, DUMMY_SP};
 
 use std::cmp;
 
@@ -80,6 +80,8 @@ impl<'s> LintLevelsBuilder<'s> {
             let level = cmp::min(level, self.sets.lint_cap);
 
             let lint_flag_val = Symbol::intern(lint_name);
+            self.check_gated_lint(lint_flag_val, DUMMY_SP);
+
             let ids = match store.find_lints(&lint_name) {
                 Ok(ids) => ids,
                 Err(_) => continue, // errors handled in check_lint_name_cmdline above
@@ -211,6 +213,7 @@ impl<'s> LintLevelsBuilder<'s> {
                 let name = meta_item.path.segments.last().expect("empty lint name").ident.name;
                 match store.check_lint_name(&name.as_str(), tool_name) {
                     CheckLintNameResult::Ok(ids) => {
+                        self.check_gated_lint(name, attr.span);
                         let src = LintSource::Node(name, li.span(), reason);
                         for id in ids {
                             specs.insert(*id, (level, src));
@@ -381,6 +384,20 @@ impl<'s> LintLevelsBuilder<'s> {
         }
 
         BuilderPush { prev, changed: prev != self.cur }
+    }
+
+    fn check_gated_lint(&self, name: Symbol, span: Span) {
+        if name.as_str() == "unsafe_op_in_unsafe_fn"
+            && !self.sess.features_untracked().unsafe_block_in_unsafe_fn
+        {
+            feature_err(
+                &self.sess.parse_sess,
+                sym::unsafe_block_in_unsafe_fn,
+                span,
+                "the `unsafe_op_in_unsafe_fn` lint is unstable",
+            )
+            .emit();
+        }
     }
 
     /// Called after `push` when the scope of a set of attributes are exited.
