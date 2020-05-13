@@ -206,7 +206,7 @@ class AstInspector implements vscode.HoverProvider, vscode.DefinitionProvider, D
     }
 
     private parseRustTextRange(doc: vscode.TextDocument, astLine: string): undefined | vscode.Range {
-        const parsedRange = /\[(\d+); (\d+)\)/.exec(astLine);
+        const parsedRange = /(\d+)\.\.(\d+)/.exec(astLine);
         if (!parsedRange) return;
 
         const [begin, end] = parsedRange
