@@ -618,4 +618,54 @@ impl Foo for S {
 }"#,
         )
     }
+
+    #[test]
+    fn test_generic_single_default_parameter() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+trait Foo<T = Self> {
+    fn bar(&self, other: &T);
+}
+
+struct S;
+impl Foo for S { <|> }"#,
+            r#"
+trait Foo<T = Self> {
+    fn bar(&self, other: &T);
+}
+
+struct S;
+impl Foo for S {
+    <|>fn bar(&self, other: &Self) {
+        todo!()
+    }
+}"#,
+        )
+    }
+
+    #[test]
+    fn test_generic_default_parameter_is_second() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+trait Foo<T1, T2 = Self> {
+    fn bar(&self, this: &T1, that: &T2);
+}
+
+struct S<T>;
+impl Foo<T> for S<T> { <|> }"#,
+            r#"
+trait Foo<T1, T2 = Self> {
+    fn bar(&self, this: &T1, that: &T2);
+}
+
+struct S<T>;
+impl Foo<T> for S<T> {
+    <|>fn bar(&self, this: &T, that: &Self) {
+        todo!()
+    }
+}"#,
+        )
+    }
 }

@@ -989,6 +989,11 @@ impl TypeParam {
             ty: InEnvironment { value: ty, environment },
         }
     }
+
+    pub fn default(self, db: &dyn HirDatabase) -> Option<TypeRef> {
+        let params = db.generic_params(self.id.parent);
+        params.types[self.id.local_id].default.clone()
+    }
 }
 
 // FIXME: rename from `ImplDef` to `Impl`

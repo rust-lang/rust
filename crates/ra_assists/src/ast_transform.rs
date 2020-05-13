@@ -2,6 +2,7 @@
 use rustc_hash::FxHashMap;
 
 use hir::{PathResolution, SemanticsScope};
+use hir_def::type_ref::TypeRef;
 use ra_ide_db::RootDatabase;
 use ra_syntax::{
     algo::SyntaxRewriter,
@@ -51,7 +52,24 @@ impl<'a> SubstituteTypeParams<'a> {
             .into_iter()
             // this is a trait impl, so we need to skip the first type parameter -- this is a bit hacky
             .skip(1)
-            .zip(substs.into_iter())
+            // The actual list of trait type parameters may be longer than the one
+            // used in the `impl` block due to trailing default type parametrs.
+            // For that case we extend the `substs` with an empty iterator so we
+            // can still hit those trailing values and check if they actually have
+            // a default type. If they do, go for that type from `hir` to `ast` so
+            // the resulting change can be applied correctly.
+            .zip(substs.into_iter().map(Some).chain(std::iter::repeat(None)))
+            .filter_map(|(k, v)| match v {
+                Some(v) => Some((k, v)),
+                None => match k.default(source_scope.db)? {
+                    TypeRef::Path(path) => Some((
+                        k,
+                        ast::make::type_arg(&format!("{}", path.mod_path().as_ident()?))
+                            .type_ref()?,
+                    )),
+                    _ => None,
+                },
+            })
             .collect();
         return SubstituteTypeParams {
             source_scope,
