@@ -446,14 +446,16 @@ impl TypeId {
 /// # Note
 ///
 /// This is intended for diagnostic use. The exact contents and format of the
-/// string are not specified, other than being a best-effort description of the
-/// type. For example, `type_name::<Option<String>>()` could return the
-/// `"Option<String>"` or `"std::option::Option<std::string::String>"`, but not
-/// `"foobar"`. In addition, the output may change between versions of the
-/// compiler.
+/// string returned are not specified, other than being a best-effort
+/// description of the type. For example, amongst the strings
+/// that `type_name::<Option<String>>()` might return are `"Option<String>"` and
+/// `"std::option::Option<std::string::String>"`.
 ///
-/// The type name should not be considered a unique identifier of a type;
-/// multiple types may share the same type name.
+/// The returned string must not be considered to be a unique identifier of a
+/// type as multiple types may map to the same type name. Similarly, there is no
+/// guarantee that all parts of a type will appear in the returned string: for
+/// example, lifetime specifiers are currently not included. In addition, the
+/// output may change between versions of the compiler.
 ///
 /// The current implementation uses the same infrastructure as compiler
 /// diagnostics and debuginfo, but this is not guaranteed.
