@@ -15,7 +15,7 @@ use super::{FusedIterator, TrustedLen};
 /// This trait is `unsafe` because its implementation must be correct for
 /// the safety of `unsafe trait TrustedLen` implementations, and the results
 /// of using this trait can otherwise be trusted by `unsafe` code to be correct
-/// and fulful the listed obligations.
+/// and fulfill the listed obligations.
 #[unstable(feature = "step_trait", reason = "recently redesigned", issue = "42168")]
 pub unsafe trait Step: Clone + PartialOrd + Sized {
     /// Returns the number of *successor* steps required to get from `start` to `end`.
@@ -27,8 +27,8 @@ pub unsafe trait Step: Clone + PartialOrd + Sized {
     ///
     /// For any `a`, `b`, and `n`:
     ///
-    /// * `steps_between(&a, &b) == Some(n)` if and only if `Step::forward(&a, n) == Some(b)`
-    /// * `steps_between(&a, &b) == Some(n)` if and only if `Step::backward(&a, n) == Some(a)`
+    /// * `steps_between(&a, &b) == Some(n)` if and only if `Step::forward_checked(&a, n) == Some(b)`
+    /// * `steps_between(&a, &b) == Some(n)` if and only if `Step::backward_checked(&a, n) == Some(a)`
     /// * `steps_between(&a, &b) == Some(n)` only if `a <= b`
     ///   * Corollary: `steps_between(&a, &b) == Some(0)` if and only if `a == b`
     ///   * Note that `a <= b` does _not_ imply `steps_between(&a, &b) != None`;
