@@ -821,8 +821,8 @@ pub fn handle_code_lens(
     // Gather runnables
     for runnable in world.analysis().runnables(file_id)? {
         let title = match &runnable.kind {
-            RunnableKind::Test { .. } | RunnableKind::TestMod { .. } => "▶️\u{fe0e}Run Test",
-            RunnableKind::DocTest { .. } => "▶️\u{fe0e}Run Doctest",
+            RunnableKind::Test { .. } | RunnableKind::TestMod { .. } => "▶\u{fe0e} Run Test",
+            RunnableKind::DocTest { .. } => "▶\u{fe0e} Run Doctest",
             RunnableKind::Bench { .. } => "Run Bench",
             RunnableKind::Bin => {
                 // Do not suggest binary run on other target than binary
