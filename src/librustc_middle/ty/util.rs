@@ -745,8 +745,7 @@ impl<'tcx> ty::TyS<'tcx> {
             | ty::Opaque(..)
             | ty::Param(_)
             | ty::Placeholder(_)
-            | ty::Projection(_)
-            | ty::UnnormalizedProjection(_) => false,
+            | ty::Projection(_) => false,
         }
     }
 
@@ -1077,7 +1076,6 @@ pub fn needs_drop_components(
         // These require checking for `Copy` bounds or `Adt` destructors.
         ty::Adt(..)
         | ty::Projection(..)
-        | ty::UnnormalizedProjection(..)
         | ty::Param(_)
         | ty::Bound(..)
         | ty::Placeholder(..)

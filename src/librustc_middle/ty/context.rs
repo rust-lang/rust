@@ -1878,7 +1878,6 @@ impl<'tcx> TyCtxt<'tcx> {
             Bound,
             Param,
             Infer,
-            UnnormalizedProjection,
             Projection,
             Opaque,
             Foreign
