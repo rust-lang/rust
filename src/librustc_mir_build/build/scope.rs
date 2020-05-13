@@ -223,7 +223,7 @@ impl Scope {
     }
 }
 
-/// A trait that determined how [DropTree::lower_to_mir] creates its blocks and
+/// A trait that determined how [DropTree::build_mir] creates its blocks and
 /// links to any entry nodes.
 trait DropTreeBuilder<'tcx> {
     /// Create a new block for the tree. This should call either
