@@ -178,6 +178,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             let result = cx.enter_resolver(|resolver| {
                 resolver.resolve_str_path_error(DUMMY_SP, &path_str, ns, module_id)
             });
+            debug!("{} resolved to {:?} in namespace {:?}", path_str, ns, result);
             let result = match result {
                 Ok((_, Res::Err)) => Err(ErrorKind::ResolutionFailure),
                 _ => result.map_err(|_| ErrorKind::ResolutionFailure),
@@ -202,7 +203,11 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                         }
                         return Ok((res, Some(path_str.to_owned())));
                     }
-                    _ => return Ok((res, extra_fragment.clone())),
+                    other => {
+                        debug!("failed to resolve {} in namespace {:?} (got {:?})", path_str, ns, other);
+                        debug!("extra_fragment is {:?}", extra_fragment);
+                        return Ok((res, extra_fragment.clone()));
+                    }
                 };
 
                 if value != (ns == ValueNS) {
@@ -555,9 +560,11 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
             } else {
                 (parts[0].to_owned(), None)
             };
+            let resolved_self;
+            let mut path_str;
             let (res, fragment) = {
                 let mut kind = None;
-                let mut path_str = if let Some(prefix) =
+                path_str = if let Some(prefix) =
                     ["struct@", "enum@", "type@", "trait@", "union@"]
                         .iter()
                         .find(|p| link.starts_with(**p))
@@ -614,7 +621,6 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                 let base_node =
                     if item.is_mod() && item.attrs.inner_docs { None } else { parent_node };
 
-                let resolved_self;
                 // replace `Self` with suitable item's parent name
                 if path_str.starts_with("Self::") {
                     if let Some(ref name) = parent_name {
@@ -760,6 +766,24 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
             if let Res::PrimTy(_) = res {
                 item.attrs.links.push((ori_link, None, fragment));
             } else {
+                // ~~WRONG: TODO: I think this happens too late and we need to instead put this in `self.resolve`~~
+                debug!("item {:?} resolved to {:?}", item, res);
+                if let Some(local) = res.opt_def_id().and_then(|def_id| def_id.as_local()) {
+                    let hir_id = self.cx.tcx.hir().as_local_hir_id(local);
+                    if !self.cx.tcx.privacy_access_levels(rustc_hir::def_id::LOCAL_CRATE).is_exported(hir_id) {
+                        let item_name = item.name.as_deref().unwrap_or("<unknown>");
+                        build_diagnostic(
+                            cx,
+                            &item,
+                            path_str,
+                            &dox,
+                            link_range,
+                            &format!("public documentation for `{}` links to a private item", item_name),
+                            "this item is private",
+                            None,
+                        );
+                    }
+                }
                 let id = register_res(cx, res);
                 item.attrs.links.push((ori_link, Some(id), fragment));
             }

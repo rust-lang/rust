@@ -34,6 +34,7 @@ extern crate rustc_metadata;
 extern crate rustc_middle;
 extern crate rustc_mir;
 extern crate rustc_parse;
+extern crate rustc_privacy;
 extern crate rustc_resolve;
 extern crate rustc_session;
 extern crate rustc_span as rustc_span;
