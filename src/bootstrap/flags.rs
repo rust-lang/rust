@@ -503,6 +503,20 @@ Arguments:
             }
         };
 
+        if let Subcommand::Check { .. } = &cmd {
+            if matches.opt_str("stage").is_some() {
+                println!("{}", "--stage not supported for x.py check, always treated as stage 0");
+                process::exit(1);
+            }
+            if matches.opt_str("keep-stage").is_some() {
+                println!(
+                    "{}",
+                    "--keep-stage not supported for x.py check, only one stage available"
+                );
+                process::exit(1);
+            }
+        }
+
         Flags {
             verbose: matches.opt_count("verbose"),
             stage: matches.opt_str("stage").map(|j| j.parse().expect("`stage` should be a number")),
