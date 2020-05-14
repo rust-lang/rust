@@ -196,9 +196,6 @@ macro_rules! step_identical_methods {
         unsafe fn backward_unchecked(start: Self, n: usize) -> Self {
             start.unchecked_sub(n as Self)
         }
-    };
-    ( [$u:ident $i:ident] ) => {
-        step_identical_methods!();
 
         #[inline]
         fn forward(start: Self, n: usize) -> Self {
@@ -207,8 +204,8 @@ macro_rules! step_identical_methods {
             if Self::forward_checked(start, n).is_none() {
                 let _ = Add::add(Self::MAX, 1);
             }
-            // Do wrapping math to allow e.g. `Step::forward(-128u8, 255)`.
-            start.wrapping_add(n as Self) as Self
+            // Do wrapping math to allow e.g. `Step::forward(-128i8, 255)`.
+            start.wrapping_add(n as Self)
         }
 
         #[inline]
@@ -218,8 +215,8 @@ macro_rules! step_identical_methods {
             if Self::backward_checked(start, n).is_none() {
                 let _ = Sub::sub(Self::MIN, 1);
             }
-            // Do wrapping math to allow e.g. `Step::backward(127u8, 255)`.
-            start.wrapping_sub(n as Self) as Self
+            // Do wrapping math to allow e.g. `Step::backward(127i8, 255)`.
+            start.wrapping_sub(n as Self)
         }
     };
 }
@@ -235,7 +232,7 @@ macro_rules! step_integer_impls {
             #[allow(unreachable_patterns)]
             #[unstable(feature = "step_trait", reason = "recently redesigned", issue = "42168")]
             unsafe impl Step for $u_narrower {
-                step_identical_methods!( [ $u_narrower $i_narrower ] );
+                step_identical_methods!();
 
                 #[inline]
                 fn steps_between(start: &Self, end: &Self) -> Option<usize> {
@@ -267,7 +264,7 @@ macro_rules! step_integer_impls {
             #[allow(unreachable_patterns)]
             #[unstable(feature = "step_trait", reason = "recently redesigned", issue = "42168")]
             unsafe impl Step for $i_narrower {
-                step_identical_methods!( [ $u_narrower $i_narrower ] );
+                step_identical_methods!();
 
                 #[inline]
                 fn steps_between(start: &Self, end: &Self) -> Option<usize> {
@@ -348,18 +345,8 @@ macro_rules! step_integer_impls {
                 }
 
                 #[inline]
-                fn forward(start: Self, n: usize) -> Self {
-                    Add::add(start, n as Self)
-                }
-
-                #[inline]
                 fn backward_checked(start: Self, n: usize) -> Option<Self> {
                     start.checked_sub(n as Self)
-                }
-
-                #[inline]
-                fn backward(start: Self, n: usize) -> Self {
-                    Sub::sub(start, n as Self)
                 }
             }
 
@@ -388,18 +375,8 @@ macro_rules! step_integer_impls {
                 }
 
                 #[inline]
-                fn forward(start: Self, n: usize) -> Self {
-                    Add::add(start, n as Self)
-                }
-
-                #[inline]
                 fn backward_checked(start: Self, n: usize) -> Option<Self> {
                     start.checked_sub(n as Self)
-                }
-
-                #[inline]
-                fn backward(start: Self, n: usize) -> Self {
-                    Sub::sub(start, n as Self)
                 }
             }
         )+
