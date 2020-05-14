@@ -13,8 +13,8 @@ pub fn name_ref(text: &str) -> ast::NameRef {
     ast_from_text(&format!("fn f() {{ {}; }}", text))
 }
 
-pub fn type_arg(text: &str) -> ast::TypeArg {
-    ast_from_text(&format!("impl F<{}> for G {{}}", text))
+pub fn type_ref(text: &str) -> ast::TypeRef {
+    ast_from_text(&format!("impl {} for D {{}};", text))
 }
 
 pub fn path_segment(name_ref: ast::NameRef) -> ast::PathSegment {

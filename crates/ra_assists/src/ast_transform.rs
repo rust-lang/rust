@@ -64,12 +64,11 @@ impl<'a> SubstituteTypeParams<'a> {
                     let default = k.default(source_scope.db)?;
                     Some((
                         k,
-                        ast::make::type_arg(
+                        ast::make::type_ref(
                             &default
                                 .display_source_code(source_scope.db, source_scope.module()?.into())
                                 .ok()?,
                         )
-                        .type_ref()?,
                     ))
                 }
             })
