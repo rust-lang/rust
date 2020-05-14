@@ -1422,7 +1422,7 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     add_pre_link_args(cmd, sess, flavor, crate_type);
 
     // NO-OPT-OUT, OBJECT-FILES-NO, AUDIT-ORDER
-    if sess.target.target.options.is_like_fuchsia {
+    if sess.target.target.options.is_like_fuchsia && crate_type == CrateType::Executable {
         let prefix = match sess.opts.debugging_opts.sanitizer {
             Some(Sanitizer::Address) => "asan/",
             _ => "",
