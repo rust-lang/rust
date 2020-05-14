@@ -220,7 +220,7 @@ declare_clippy_lint! {
     /// # enum Foo { A(usize), B(usize) }
     /// # let x = Foo::B(1);
     /// match x {
-    ///     A => {},
+    ///     Foo::A(_) => {},
     ///     _ => {},
     /// }
     /// ```
