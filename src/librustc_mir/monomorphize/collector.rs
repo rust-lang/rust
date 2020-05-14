@@ -580,10 +580,8 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
             }
             mir::Rvalue::NullaryOp(mir::NullOp::Box, _) => {
                 let tcx = self.tcx;
-                let exchange_malloc_fn_def_id = tcx
-                    .lang_items()
-                    .require(ExchangeMallocFnLangItem)
-                    .unwrap_or_else(|e| tcx.sess.fatal(&e));
+                let exchange_malloc_fn_def_id =
+                    tcx.require_lang_item(ExchangeMallocFnLangItem, None);
                 let instance = Instance::mono(tcx, exchange_malloc_fn_def_id);
                 if should_monomorphize_locally(tcx, &instance) {
                     self.output.push(create_fn_mono_item(instance));

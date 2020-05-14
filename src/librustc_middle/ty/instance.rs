@@ -4,7 +4,7 @@ use crate::ty::{self, SubstsRef, Ty, TyCtxt, TypeFoldable};
 use rustc_errors::ErrorReported;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::{CrateNum, DefId};
-use rustc_hir::lang_items::DropInPlaceFnLangItem;
+use rustc_hir::lang_items::{DropInPlaceFnLangItem, FnOnceTraitLangItem};
 use rustc_macros::HashStable;
 
 use std::fmt;
@@ -375,7 +375,7 @@ impl<'tcx> Instance<'tcx> {
         substs: ty::SubstsRef<'tcx>,
     ) -> Instance<'tcx> {
         debug!("fn_once_adapter_shim({:?}, {:?})", closure_did, substs);
-        let fn_once = tcx.lang_items().fn_once_trait().unwrap();
+        let fn_once = tcx.require_lang_item(FnOnceTraitLangItem, None);
         let call_once = tcx
             .associated_items(fn_once)
             .in_definition_order()

@@ -283,6 +283,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             .unwrap_or(false);
                         let is_from = format!("{}", trait_ref.print_only_trait_path())
                             .starts_with("std::convert::From<");
+                        let is_unsize =
+                            { Some(trait_ref.def_id()) == self.tcx.lang_items().unsize_trait() };
                         let (message, note) = if is_try && is_from {
                             (
                                 Some(format!(
@@ -405,6 +407,17 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             return;
                         }
 
+                        if is_unsize {
+                            // If the obligation failed due to a missing implementation of the
+                            // `Unsize` trait, give a pointer to why that might be the case
+                            err.note(
+                                "all implementations of `Unsize` are provided \
+                                automatically by the compiler, see \
+                                <https://doc.rust-lang.org/stable/std/marker/trait.Unsize.html> \
+                                for more information",
+                            );
+                        }
+
                         // Try to report a help message
                         if !trait_ref.has_infer_types_or_consts()
                             && self.predicate_can_apply(obligation.param_env, trait_ref)
@@ -427,12 +440,16 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                 let impl_candidates = self.find_similar_impl_candidates(trait_ref);
                                 self.report_similar_impl_candidates(impl_candidates, &mut err);
                             }
-                            self.suggest_change_mut(
-                                &obligation,
-                                &mut err,
-                                &trait_ref,
-                                points_at_arg,
-                            );
+                            // Changing mutability doesn't make a difference to whether we have
+                            // an `Unsize` impl (Fixes ICE in #71036)
+                            if !is_unsize {
+                                self.suggest_change_mut(
+                                    &obligation,
+                                    &mut err,
+                                    &trait_ref,
+                                    points_at_arg,
+                                );
+                            }
                         }
 
                         // If this error is due to `!: Trait` not implemented but `(): Trait` is
