@@ -249,7 +249,7 @@ use core::mem::{self, align_of, align_of_val, forget, size_of_val};
 use core::ops::{CoerceUnsized, Deref, DispatchFromDyn, Receiver};
 use core::pin::Pin;
 use core::ptr::{self, NonNull};
-use core::slice::{self, from_raw_parts_mut};
+use core::slice::from_raw_parts_mut;
 
 use crate::alloc::{box_free, handle_alloc_error, AllocInit, AllocRef, Global, Layout};
 use crate::string::String;
@@ -1221,6 +1221,12 @@ impl<T: ?Sized + PartialEq> RcEqIdent<T> for Rc<T> {
     }
 }
 
+// Hack to allow specializing on `Eq` even though `Eq` has a method.
+#[rustc_unsafe_specialization_marker]
+pub(crate) trait MarkerEq: PartialEq<Self> {}
+
+impl<T: Eq> MarkerEq for T {}
+
 /// We're doing this specialization here, and not as a more general optimization on `&T`, because it
 /// would otherwise add a cost to all equality checks on refs. We assume that `Rc`s are used to
 /// store large values, that are slow to clone, but also heavy to check for equality, causing this
@@ -1229,7 +1235,7 @@ impl<T: ?Sized + PartialEq> RcEqIdent<T> for Rc<T> {
 ///
 /// We can only do this when `T: Eq` as a `PartialEq` might be deliberately irreflexive.
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized + Eq> RcEqIdent<T> for Rc<T> {
+impl<T: ?Sized + MarkerEq> RcEqIdent<T> for Rc<T> {
     #[inline]
     fn eq(&self, other: &Rc<T>) -> bool {
         Rc::ptr_eq(self, other) || **self == **other
@@ -1548,25 +1554,25 @@ impl<T> iter::FromIterator<T> for Rc<[T]> {
     /// # assert_eq!(&*evens, &*(0..10).collect::<Vec<_>>());
     /// ```
     fn from_iter<I: iter::IntoIterator<Item = T>>(iter: I) -> Self {
-        RcFromIter::from_iter(iter.into_iter())
+        ToRcSlice::to_rc_slice(iter.into_iter())
     }
 }
 
 /// Specialization trait used for collecting into `Rc<[T]>`.
-trait RcFromIter<T, I> {
-    fn from_iter(iter: I) -> Self;
+trait ToRcSlice<T>: Iterator<Item = T> + Sized {
+    fn to_rc_slice(self) -> Rc<[T]>;
 }
 
-impl<T, I: Iterator<Item = T>> RcFromIter<T, I> for Rc<[T]> {
-    default fn from_iter(iter: I) -> Self {
-        iter.collect::<Vec<T>>().into()
+impl<T, I: Iterator<Item = T>> ToRcSlice<T> for I {
+    default fn to_rc_slice(self) -> Rc<[T]> {
+        self.collect::<Vec<T>>().into()
     }
 }
 
-impl<T, I: iter::TrustedLen<Item = T>> RcFromIter<T, I> for Rc<[T]> {
-    default fn from_iter(iter: I) -> Self {
+impl<T, I: iter::TrustedLen<Item = T>> ToRcSlice<T> for I {
+    fn to_rc_slice(self) -> Rc<[T]> {
         // This is the case for a `TrustedLen` iterator.
-        let (low, high) = iter.size_hint();
+        let (low, high) = self.size_hint();
         if let Some(high) = high {
             debug_assert_eq!(
                 low,
@@ -1577,26 +1583,12 @@ impl<T, I: iter::TrustedLen<Item = T>> RcFromIter<T, I> for Rc<[T]> {
 
             unsafe {
                 // SAFETY: We need to ensure that the iterator has an exact length and we have.
-                Rc::from_iter_exact(iter, low)
+                Rc::from_iter_exact(self, low)
             }
         } else {
             // Fall back to normal implementation.
-            iter.collect::<Vec<T>>().into()
+            self.collect::<Vec<T>>().into()
         }
-    }
-}
-
-impl<'a, T: 'a + Clone> RcFromIter<&'a T, slice::Iter<'a, T>> for Rc<[T]> {
-    fn from_iter(iter: slice::Iter<'a, T>) -> Self {
-        // Delegate to `impl<T: Clone> From<&[T]> for Rc<[T]>`.
-        //
-        // In the case that `T: Copy`, we get to use `ptr::copy_nonoverlapping`
-        // which is even more performant.
-        //
-        // In the fall-back case we have `T: Clone`. This is still better
-        // than the `TrustedLen` implementation as slices have a known length
-        // and so we get to avoid calling `size_hint` and avoid the branching.
-        iter.as_slice().into()
     }
 }
 
