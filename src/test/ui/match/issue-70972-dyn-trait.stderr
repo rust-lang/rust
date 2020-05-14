@@ -1,4 +1,4 @@
-error: trait objects cannot be used in patterns
+error: `&dyn std::marker::Send` must implement `PartialEq` to be used in a pattern
   --> $DIR/issue-70972-dyn-trait.rs:6:9
    |
 LL |         F => panic!(),

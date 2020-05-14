@@ -13,7 +13,7 @@ const A: &[B] = &[];
 pub fn main() {
     match &[][..] {
         A => (),
-        //~^ ERROR must be annotated with `#[derive(PartialEq, Eq)]`
+        //~^ ERROR must implement `PartialEq`
         _ => (),
     }
 }
