@@ -178,7 +178,9 @@ pub(crate) fn completion_item(
     };
 
     if completion_item.score().is_some() {
-        res.preselect = Some(true)
+        res.preselect = Some(true);
+        // HACK: sort preselect items first
+        res.sort_text = Some(format!(" {}", completion_item.label()));
     }
 
     if completion_item.deprecated() {
