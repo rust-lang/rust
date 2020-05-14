@@ -1,6 +1,4 @@
-// FIXME: This still ICEs.
-//
-// ignore-test
+// This used to ICE in #65466.
 
 #![deny(indirect_structural_match)]
 
@@ -18,6 +16,7 @@ fn main() {
     let x = O::None;
     match &[x][..] {
         C => (),
+        //~^ must implement `PartialEq`
         _ => (),
     }
 }

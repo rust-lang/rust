@@ -1,15 +1,8 @@
-error[E0601]: `main` function not found in crate `issue_65466`
-  --> $DIR/issue-65466.rs:1:1
+error: `&[O<B>]` must implement `PartialEq` to be used in a pattern
+  --> $DIR/issue-65466.rs:18:9
    |
-LL | / #![deny(indirect_structural_match)]
-LL | |
-LL | | #[derive(PartialEq, Eq)]
-LL | | enum O<T> {
-...  |
-LL | |     }
-LL | | }
-   | |_^ consider adding a `main` function to `$DIR/issue-65466.rs`
+LL |         C => (),
+   |         ^
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0601`.
