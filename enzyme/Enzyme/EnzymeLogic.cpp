@@ -968,7 +968,7 @@ public:
     PHINode* pn = nullptr;
     if (!I.getType()->isVoidTy()) {
       IRBuilder<> BuilderZ(iload);
-      pn = BuilderZ.CreatePHI(iload->getType(), 1, (I.getName()+"_replacementA").str());
+      pn = BuilderZ.CreatePHI(I.getType(), 1, (I.getName()+"_replacementA").str());
       gutils->fictiousPHIs.push_back(pn);
 
 
@@ -2186,11 +2186,12 @@ void DerivativeMaker<AugmentedReturn*>::visitCallInst(llvm::CallInst &call) {
   }
 
     CallInst* augmentcall = BuilderZ.CreateCall(newcalled, args);
-    assert(augmentcall->getType()->isStructTy());
+    assert(augmentcall->getType()->isStructTy() || augmentcall->getType()->isVoidTy());
     augmentcall->setCallingConv(op->getCallingConv());
     augmentcall->setDebugLoc(op->getDebugLoc());
 
-    augmentcall->setName(op->getName()+"_augmented");
+    if (!augmentcall->getType()->isVoidTy())
+      augmentcall->setName(op->getName()+"_augmented");
 
     {
       if (tapeIdx != 0XDEADBEEF) {
@@ -2589,7 +2590,8 @@ void DerivativeMaker<const AugmentedReturn*>::visitCallInst(llvm::CallInst &call
           augmentcall->setCallingConv(op->getCallingConv());
           augmentcall->setDebugLoc(op->getDebugLoc());
 
-          augmentcall->setName(op->getName()+"_augmented");
+          if (!augmentcall->getType()->isVoidTy())
+            augmentcall->setName(op->getName()+"_augmented");
 
           if (tapeIdx != 0xDEADBEEF) {
             tape = BuilderZ.CreateExtractValue(augmentcall, {tapeIdx});
@@ -3266,7 +3268,10 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, DIFFE_TYPE retTyp
     RetTypes[returnMapping.find(AugmentedStruct::Tape)->second] = tapeType;
   }
 
+  bool noReturn = RetTypes.size() == 0;
   Type* RetType = StructType::get(nf->getContext(), RetTypes);
+  if (noReturn) RetType = Type::getVoidTy(RetType->getContext());
+  if (noReturn) assert(noTape);
 
  ValueToValueMapTy VMap;
  std::vector<Type*> ArgTypes;
@@ -3305,7 +3310,7 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, DIFFE_TYPE retTyp
 
   IRBuilder<> ib(NewF->getEntryBlock().getFirstNonPHI());
 
-  Value* ret = ib.CreateAlloca(RetType);
+  Value* ret = noReturn ? nullptr : ib.CreateAlloca(RetType);
 
   if (!noTape) {
     Value* tapeMemory;
@@ -3390,7 +3395,10 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, DIFFE_TYPE retTyp
                 ib.CreateStore( VMap[invertedRetPs[ri]], gep);
               }
           }
-          ib.CreateRet(ib.CreateLoad(ret));
+          if (noReturn)
+            ib.CreateRetVoid();
+          else
+            ib.CreateRet(ib.CreateLoad(ret));
           gutils->erase(cast<Instruction>(VMap[ri]));
       }
   }

@@ -50,35 +50,35 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*) local_unnamed
 
 ; CHECK: define internal {{(dso_local )?}}{} @diffef(double* nocapture %x, double* nocapture %"x'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %[[augsubf:.+]] = call {} @augmented_subf(double* %x, double* %"x'")
+; CHECK-NEXT:   call void @augmented_subf(double* %x, double* %"x'")
 ; CHECK-NEXT:   store double 2.000000e+00, double* %x, align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"x'", align 8
 ; CHECK-NEXT:   %[[dsubf:.+]] = call {} @diffesubf(double* nonnull %x, double* %"x'")
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{} @augmented_othermetasubf(double* nocapture %x, double* nocapture %"x'") 
+; CHECK: define internal {{(dso_local )?}}void @augmented_othermetasubf(double* nocapture %x, double* nocapture %"x'") 
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %arrayidx = getelementptr inbounds double, double* %x, i64 1
 ; CHECK-NEXT:   store double 4.000000e+00, double* %arrayidx, align 8
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{} @augmented_metasubf(double* nocapture %x, double* nocapture %"x'") 
+; CHECK: define internal {{(dso_local )?}}void @augmented_metasubf(double* nocapture %x, double* nocapture %"x'") 
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %arrayidx = getelementptr inbounds double, double* %x, i64 1
 ; CHECK-NEXT:   store double 3.000000e+00, double* %arrayidx, align 8
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{} @augmented_subf(double* nocapture %x, double* nocapture %"x'") 
+; CHECK: define internal {{(dso_local )?}}void @augmented_subf(double* nocapture %x, double* nocapture %"x'") 
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:  %[[xload:.+]] = load double, double* %x, align 8
 ; CHECK-NEXT:  %mul = fmul fast double %[[xload]], 2.000000e+00
 ; CHECK-NEXT:  store double %mul, double* %x, align 8
-; CHECK-NEXT:  %[[metasubf:.+]] = call {} @augmented_metasubf(double* %x, double* %"x'")
-; CHECK-NEXT:  %[[othermetasubf:.+]] = call {} @augmented_othermetasubf(double* %x, double* %"x'")
-; CHECK-NEXT:  ret {} undef
+; CHECK-NEXT:  call void @augmented_metasubf(double* %x, double* %"x'")
+; CHECK-NEXT:  call void @augmented_othermetasubf(double* %x, double* %"x'")
+; CHECK-NEXT:  ret void
 ; CHECK-NEXT: }
 
 

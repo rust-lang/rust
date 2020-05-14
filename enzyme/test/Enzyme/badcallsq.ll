@@ -50,11 +50,11 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:	ret {} undef
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{} @augmented_metasubf(double* nocapture %x, double* nocapture %"x'")
+; CHECK: define internal {{(dso_local )?}}void @augmented_metasubf(double* nocapture %x, double* nocapture %"x'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %arrayidx = getelementptr inbounds double, double* %x, i64 1
 ; CHECK-NEXT:   store double 3.000000e+00, double* %arrayidx, align 8
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
 ; CHECK: define internal {{(dso_local )?}}{ { double } } @augmented_subf(double* nocapture %x, double* nocapture %"x'")
@@ -66,7 +66,7 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:  store double %[[loadx]], double* %[[gep2]]
 ; CHECK-NEXT:  %mul = fmul fast double %[[loadx]], %[[loadx]]
 ; CHECK-NEXT:  store double %mul, double* %x, align 8
-; CHECK-NEXT:  %[[metasubf:.+]] = call {} @augmented_metasubf(double* %x, double* %"x'")
+; CHECK-NEXT:  call void @augmented_metasubf(double* %x, double* %"x'")
 ; CHECK-NEXT:  %[[ret:.+]] = load { { double } }, { { double } }* %[[alloca]]
 ; CHECK-NEXT:  ret { { double } } %[[ret]]
 ; CHECK-NEXT: }

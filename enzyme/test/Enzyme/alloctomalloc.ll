@@ -481,9 +481,9 @@ attributes #9 = { cold }
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 
-; CHECK: define internal {} @augmented_get2(%"class.Eigen::Matrix"* %this, %"class.Eigen::Matrix"* %"this'") {
+; CHECK: define internal void @augmented_get2(%"class.Eigen::Matrix"* %this, %"class.Eigen::Matrix"* %"this'") {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
 ; CHECK: define internal { <2 x double>*, <2 x double>* } @augmented_subcast(<2 x double>* %tmp.i, <2 x double>* %"tmp.i'") #7 {
@@ -503,7 +503,7 @@ attributes #9 = { cold }
 ; CHECK-NEXT:   %subcast_augmented = call { <2 x double>*, <2 x double>* } @augmented_subcast(<2 x double>* %tmp.i, <2 x double>*{{( nonnull)?}} %"tmp.i'ipc")
 ; CHECK-NEXT:   %antiptr_subcast = extractvalue { <2 x double>*, <2 x double>* } %subcast_augmented, 1
 ; CHECK-NEXT:   %subcast = extractvalue { <2 x double>*, <2 x double>* } %subcast_augmented, 0
-; CHECK-NEXT:   %unused_augmented = call {} @augmented_get2(%"class.Eigen::Matrix"* %W, %"class.Eigen::Matrix"* %"W'")
+; CHECK-NEXT:   call void @augmented_get2(%"class.Eigen::Matrix"* %W, %"class.Eigen::Matrix"* %"W'")
 ; CHECK-NEXT:   %W12p = bitcast %"class.Eigen::Matrix"* %W to <2 x double>*
 ; CHECK-NEXT:   %W12 = load <2 x double>, <2 x double>* %W12p, align 16
 ; CHECK-NEXT:   %B1 = load double, double* %B, align 8

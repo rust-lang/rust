@@ -80,7 +80,7 @@ attributes #2 = { nounwind }
 
 ; CHECK: define internal {{(dso_local )?}}{ double, double } @diffefunction0(double %y, double %z, double* nocapture %x, double* nocapture %"x'") 
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %[[aug_func:.+]] = call {} @augmented_function(double %y, double %z, double* %x, double* %"x'")
+; CHECK-NEXT:   call void @augmented_function(double %y, double %z, double* %x, double* %"x'")
 ; CHECK-NEXT:   %[[dadd1:.+]] = call {} @diffeaddOne(double* %x, double* %"x'")
 ; CHECK-NEXT:   %[[result:.+]] = call { double, double } @diffefunction(double %y, double %z, double* %x, double* %"x'")
 ; CHECK-NEXT:   ret { double, double } %[[result]]
@@ -94,11 +94,11 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{} @augmented_function(double %y, double %z, double* nocapture %x, double* nocapture %"x'") 
+; CHECK: define internal {{(dso_local )?}}void @augmented_function(double %y, double %z, double* nocapture %x, double* nocapture %"x'") 
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %mul = fmul fast double %z, %y
 ; CHECK-NEXT:   store double %mul, double* %x, align 8, !tbaa !2
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
 ; CHECK: define internal {{(dso_local )?}}{ double, double } @diffefunction(double %y, double %z, double* nocapture %x, double* nocapture %"x'") 

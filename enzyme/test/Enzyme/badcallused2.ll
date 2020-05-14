@@ -75,11 +75,11 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   ret { i1 } %3
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{} @augmented_omegasubf(double* nocapture %x, double* nocapture %"x'")
+; CHECK: define internal {{(dso_local )?}}void @augmented_omegasubf(double* nocapture %x, double* nocapture %"x'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %arrayidx = getelementptr inbounds double, double* %x, i64 1
 ; CHECK-NEXT:   store double 3.000000e+00, double* %arrayidx, align 8
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
 ; CHECK: define internal {{(dso_local )?}}{ i1 } @augmented_subf(double* nocapture %x, double* nocapture %"x'")
@@ -88,7 +88,7 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   %[[xload:.+]] = load double, double* %x, align 8
 ; CHECK-NEXT:   %mul = fmul fast double %[[xload]], 2.000000e+00
 ; CHECK-NEXT:   store double %mul, double* %x, align 8
-; CHECK-NEXT:   %[[augsubf:.+]] = call {} @augmented_omegasubf(double* %x, double* %"x'")
+; CHECK-NEXT:   call void @augmented_omegasubf(double* %x, double* %"x'")
 ; CHECK-NEXT:   %[[augmetasubf:.+]] = call { i1 } @augmented_metasubf(double* %x, double* %"x'")
 ; CHECK-NEXT:   %[[metasubf:.+]] = extractvalue { i1 } %[[augmetasubf]], 0
 ; CHECK-NEXT:   %[[gep:.+]] = getelementptr inbounds { i1 }, { i1 }* %0, i32 0, i32 0
