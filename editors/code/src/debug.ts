@@ -90,7 +90,7 @@ export async function getDebugConfiguration(ctx: Ctx, config: ra.Runnable): Prom
     if (debugConfig.name === "run binary") {
         // The LSP side: crates\rust-analyzer\src\main_loop\handlers.rs,
         // fn to_lsp_runnable(...) with RunnableKind::Bin
-        debugConfig.name = `run binary '${path.basename(executable)}'`;
+        debugConfig.name = `run ${path.basename(executable)}`;
     }
 
     if (debugConfig.cwd) {
