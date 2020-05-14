@@ -989,6 +989,17 @@ impl TypeParam {
             ty: InEnvironment { value: ty, environment },
         }
     }
+
+    pub fn default(self, db: &dyn HirDatabase) -> Option<Type> {
+        let params = db.generic_defaults(self.id.parent);
+        let local_idx = hir_ty::param_idx(db, self.id)?;
+        let resolver = self.id.parent.resolver(db.upcast());
+        let environment = TraitEnvironment::lower(db, &resolver);
+        params.get(local_idx).cloned().map(|ty| Type {
+            krate: self.id.parent.module(db.upcast()).krate,
+            ty: InEnvironment { value: ty, environment },
+        })
+    }
 }
 
 // FIXME: rename from `ImplDef` to `Impl`
