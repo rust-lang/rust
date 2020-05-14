@@ -1,4 +1,5 @@
 use rustc_hir as hir;
+use rustc_hir::lang_items::EqTraitLangItem;
 use rustc_index::vec::Idx;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_middle::mir::Field;
@@ -140,7 +141,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 // code at the moment, because types like `for <'a> fn(&'a ())` do
                 // not *yet* implement `PartialEq`. So for now we leave this here.
                 let ty_is_partial_eq: bool = {
-                    let partial_eq_trait_id = self.tcx().lang_items().eq_trait().unwrap();
+                    let partial_eq_trait_id = self.tcx().require_lang_item(EqTraitLangItem, None);
                     let obligation: PredicateObligation<'_> = predicate_for_trait_def(
                         self.tcx(),
                         self.param_env,
