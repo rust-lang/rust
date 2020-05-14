@@ -344,7 +344,7 @@ pub fn read_to_string<P: AsRef<Path>>(path: P) -> io::Result<String> {
 pub fn write<P: AsRef<Path>, C: AsRef<[u8]>>(path: P, contents: C) -> io::Result<()> {
     fn inner(path: &Path, contents: &[u8]) -> io::Result<()> {
         let mut file = File::create(path)?;
-        file.set_len(contents.len() as u64)?;
+        let _ = file.set_len(contents.len() as u64);
         file.write_all(contents)
     }
     inner(path.as_ref(), contents.as_ref())
