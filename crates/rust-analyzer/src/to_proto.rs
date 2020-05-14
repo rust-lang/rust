@@ -164,25 +164,25 @@ pub(crate) fn completion_item(
         additional_text_edits: Some(additional_text_edits),
         documentation: completion_item.documentation().map(documentation),
         deprecated: Some(completion_item.deprecated()),
-        command: if completion_item.trigger_call_info() {
-            let cmd = lsp_types::Command {
-                title: "triggerParameterHints".into(),
-                command: "editor.action.triggerParameterHints".into(),
-                arguments: None,
-            };
-            Some(cmd)
-        } else {
-            None
-        },
         ..Default::default()
     };
 
     if completion_item.score().is_some() {
-        res.preselect = Some(true)
+        res.preselect = Some(true);
+        // HACK: sort preselect items first
+        res.sort_text = Some(format!(" {}", completion_item.label()));
     }
 
     if completion_item.deprecated() {
         res.tags = Some(vec![lsp_types::CompletionItemTag::Deprecated])
+    }
+
+    if completion_item.trigger_call_info() {
+        res.command = Some(lsp_types::Command {
+            title: "triggerParameterHints".into(),
+            command: "editor.action.triggerParameterHints".into(),
+            arguments: None,
+        });
     }
 
     res.insert_text_format = Some(insert_text_format(completion_item.insert_text_format()));
