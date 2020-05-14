@@ -439,7 +439,6 @@ impl<'a> Builder<'a> {
                 dist::Clippy,
                 dist::Miri,
                 dist::LlvmTools,
-                dist::Lldb,
                 dist::Extended,
                 dist::HashSign
             ),

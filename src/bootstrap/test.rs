@@ -1096,20 +1096,15 @@ impl Step for Compiletest {
                     .to_string()
             })
         };
-        let lldb_exe = if builder.config.lldb_enabled {
-            // Test against the lldb that was just built.
-            builder.llvm_out(target).join("bin").join("lldb")
-        } else {
-            PathBuf::from("lldb")
-        };
-        let lldb_version = Command::new(&lldb_exe)
+        let lldb_exe = "lldb";
+        let lldb_version = Command::new(lldb_exe)
             .arg("--version")
             .output()
             .map(|output| String::from_utf8_lossy(&output.stdout).to_string())
             .ok();
         if let Some(ref vers) = lldb_version {
             cmd.arg("--lldb-version").arg(vers);
-            let lldb_python_dir = run(Command::new(&lldb_exe).arg("-P")).ok();
+            let lldb_python_dir = run(Command::new(lldb_exe).arg("-P")).ok();
             if let Some(ref dir) = lldb_python_dir {
                 cmd.arg("--lldb-python-dir").arg(dir);
             }
