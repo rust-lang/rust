@@ -1922,11 +1922,11 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "methods",
     },
     Lint {
-        name: "reverse_range_loop",
+        name: "reversed_empty_ranges",
         group: "correctness",
-        desc: "iteration over an empty range, such as `10..0` or `5..5`",
+        desc: "reversing the limits of range expressions, resulting in empty ranges",
         deprecation: None,
-        module: "loops",
+        module: "ranges",
     },
     Lint {
         name: "same_functions_in_if_condition",

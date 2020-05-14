@@ -624,7 +624,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &loops::NEEDLESS_COLLECT,
         &loops::NEEDLESS_RANGE_LOOP,
         &loops::NEVER_LOOP,
-        &loops::REVERSE_RANGE_LOOP,
         &loops::WHILE_IMMUTABLE_CONDITION,
         &loops::WHILE_LET_LOOP,
         &loops::WHILE_LET_ON_ITERATOR,
@@ -770,6 +769,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &ranges::RANGE_MINUS_ONE,
         &ranges::RANGE_PLUS_ONE,
         &ranges::RANGE_ZIP_WITH_LEN,
+        &ranges::REVERSED_EMPTY_RANGES,
         &redundant_clone::REDUNDANT_CLONE,
         &redundant_field_names::REDUNDANT_FIELD_NAMES,
         &redundant_pattern_matching::REDUNDANT_PATTERN_MATCHING,
@@ -1283,7 +1283,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&loops::NEEDLESS_COLLECT),
         LintId::of(&loops::NEEDLESS_RANGE_LOOP),
         LintId::of(&loops::NEVER_LOOP),
-        LintId::of(&loops::REVERSE_RANGE_LOOP),
         LintId::of(&loops::WHILE_IMMUTABLE_CONDITION),
         LintId::of(&loops::WHILE_LET_LOOP),
         LintId::of(&loops::WHILE_LET_ON_ITERATOR),
@@ -1384,6 +1383,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&question_mark::QUESTION_MARK),
         LintId::of(&ranges::RANGE_MINUS_ONE),
         LintId::of(&ranges::RANGE_ZIP_WITH_LEN),
+        LintId::of(&ranges::REVERSED_EMPTY_RANGES),
         LintId::of(&redundant_clone::REDUNDANT_CLONE),
         LintId::of(&redundant_field_names::REDUNDANT_FIELD_NAMES),
         LintId::of(&redundant_pattern_matching::REDUNDANT_PATTERN_MATCHING),
@@ -1656,7 +1656,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&loops::FOR_LOOP_OVER_RESULT),
         LintId::of(&loops::ITER_NEXT_LOOP),
         LintId::of(&loops::NEVER_LOOP),
-        LintId::of(&loops::REVERSE_RANGE_LOOP),
         LintId::of(&loops::WHILE_IMMUTABLE_CONDITION),
         LintId::of(&mem_discriminant::MEM_DISCRIMINANT_NON_ENUM),
         LintId::of(&mem_replace::MEM_REPLACE_WITH_UNINIT),
@@ -1675,6 +1674,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&open_options::NONSENSICAL_OPEN_OPTIONS),
         LintId::of(&option_env_unwrap::OPTION_ENV_UNWRAP),
         LintId::of(&ptr::MUT_FROM_REF),
+        LintId::of(&ranges::REVERSED_EMPTY_RANGES),
         LintId::of(&regex::INVALID_REGEX),
         LintId::of(&serde_api::SERDE_API_MISUSE),
         LintId::of(&suspicious_trait_impl::SUSPICIOUS_ARITHMETIC_IMPL),
@@ -1784,6 +1784,10 @@ fn register_removed_non_tool_lints(store: &mut rustc_lint::LintStore) {
     store.register_removed(
         "unsafe_vector_initialization",
         "the replacement suggested by this lint had substantially different behavior",
+    );
+    store.register_removed(
+        "reverse_range_loop",
+        "this lint is now included in reversed_empty_ranges",
     );
 }
 
