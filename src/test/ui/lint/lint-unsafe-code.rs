@@ -12,13 +12,19 @@ mod allowed_unsafe {
     unsafe fn also_allowed() {}
     unsafe trait AllowedUnsafe { }
     unsafe impl AllowedUnsafe for super::Bar {}
+    #[no_mangle] fn allowed2() {}
 }
 
 macro_rules! unsafe_in_macro {
-    () => {
+    () => {{
+        #[no_mangle] fn foo() {} //~ ERROR: declaration of a `no_mangle` function
+        #[no_mangle] static FOO: u32 = 5; //~ ERROR: declaration of a `no_mangle` static
         unsafe {} //~ ERROR: usage of an `unsafe` block
-    }
+    }}
 }
+
+#[no_mangle] fn foo() {} //~ ERROR: declaration of a `no_mangle` function
+#[no_mangle] static FOO: u32 = 5; //~ ERROR: declaration of a `no_mangle` static
 
 unsafe fn baz() {} //~ ERROR: declaration of an `unsafe` function
 unsafe trait Foo {} //~ ERROR: declaration of an `unsafe` trait
