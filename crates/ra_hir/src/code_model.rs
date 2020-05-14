@@ -992,8 +992,8 @@ impl TypeParam {
 
     pub fn default(self, db: &dyn HirDatabase) -> Option<Ty> {
         let params = db.generic_defaults(self.id.parent);
-        let local_idx: u32 = self.id.local_id.into_raw().into();
-        params.get(local_idx as usize).map(|d| d.clone())
+        let local_idx = hir_ty::param_idx(db, self.id)?;
+        params.get(local_idx).map(|d| d.clone())
     }
 }
 

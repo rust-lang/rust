@@ -427,6 +427,11 @@ impl Substs {
     }
 }
 
+/// Return an index of a parameter in the generic type parameter list by it's id.
+pub fn param_idx(db: &dyn HirDatabase, id: TypeParamId) -> Option<usize> {
+    generics(db.upcast(), id.parent).param_idx(id)
+}
+
 #[derive(Debug, Clone)]
 pub struct SubstsBuilder {
     vec: Vec<Ty>,
