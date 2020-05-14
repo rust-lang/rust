@@ -97,82 +97,67 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
 
         let inlined_const_as_pat = self.recur(cv);
 
-        if self.include_lint_checks && !self.saw_const_match_error.get() {
-            // If we were able to successfully convert the const to some pat,
-            // double-check that all types in the const implement `Structural`.
+        if self.saw_const_match_error.get() {
+            return inlined_const_as_pat;
+        }
 
-            let structural = self.search_for_structural_match_violation(cv.ty);
-            debug!(
-                "search_for_structural_match_violation cv.ty: {:?} returned: {:?}",
-                cv.ty, structural
-            );
+        // We eventually lower to a call to `PartialEq::eq` for this type, so ensure that this
+        // method actually exists.
+        if !self.ty_has_partial_eq_impl(cv.ty) {
+            let msg = if cv.ty.is_trait() {
+                "trait objects cannot be used in patterns".to_string()
+            } else {
+                format!("`{:?}` must implement `PartialEq` to be used in a pattern", cv.ty)
+            };
 
-            if structural.is_none() && mir_structural_match_violation {
-                bug!("MIR const-checker found novel structural match violation");
-            }
+            // Codegen will ICE if we continue compilation, so abort here.
+            self.tcx().sess.span_fatal(self.span, &msg);
+        }
 
-            if let Some(non_sm_ty) = structural {
-                let msg = match non_sm_ty {
-                    traits::NonStructuralMatchTy::Adt(adt_def) => {
-                        let path = self.tcx().def_path_str(adt_def.did);
-                        format!(
-                            "to use a constant of type `{}` in a pattern, \
+        if !self.include_lint_checks {
+            return inlined_const_as_pat;
+        }
+
+        // If we were able to successfully convert the const to some pat,
+        // double-check that all types in the const implement `Structural`.
+
+        let ty_violation = self.search_for_structural_match_violation(cv.ty);
+        debug!(
+            "search_for_structural_match_violation cv.ty: {:?} returned: {:?}",
+            cv.ty, ty_violation,
+        );
+
+        if mir_structural_match_violation {
+            let non_sm_ty =
+                ty_violation.expect("MIR const-checker found novel structural match violation");
+            let msg = match non_sm_ty {
+                traits::NonStructuralMatchTy::Adt(adt_def) => {
+                    let path = self.tcx().def_path_str(adt_def.did);
+                    format!(
+                        "to use a constant of type `{}` in a pattern, \
                              `{}` must be annotated with `#[derive(PartialEq, Eq)]`",
-                            path, path,
-                        )
-                    }
-                    traits::NonStructuralMatchTy::Dynamic => {
-                        "trait objects cannot be used in patterns".to_string()
-                    }
-                    traits::NonStructuralMatchTy::Param => {
-                        bug!("use of constant whose type is a parameter inside a pattern")
-                    }
-                };
-
-                // double-check there even *is* a semantic `PartialEq` to dispatch to.
-                //
-                // (If there isn't, then we can safely issue a hard
-                // error, because that's never worked, due to compiler
-                // using `PartialEq::eq` in this scenario in the past.)
-                //
-                // Note: To fix rust-lang/rust#65466, one could lift this check
-                // *before* any structural-match checking, and unconditionally error
-                // if `PartialEq` is not implemented. However, that breaks stable
-                // code at the moment, because types like `for <'a> fn(&'a ())` do
-                // not *yet* implement `PartialEq`. So for now we leave this here.
-                let ty_is_partial_eq: bool = {
-                    let partial_eq_trait_id =
-                        self.tcx().require_lang_item(EqTraitLangItem, Some(self.span));
-                    let obligation: PredicateObligation<'_> = predicate_for_trait_def(
-                        self.tcx(),
-                        self.param_env,
-                        ObligationCause::misc(self.span, self.id),
-                        partial_eq_trait_id,
-                        0,
-                        cv.ty,
-                        &[],
-                    );
-                    // FIXME: should this call a `predicate_must_hold` variant instead?
-                    self.infcx.predicate_may_hold(&obligation)
-                };
-
-                if !ty_is_partial_eq {
-                    // span_fatal avoids ICE from resolution of non-existent method (rare case).
-                    self.tcx().sess.span_fatal(self.span, &msg);
-                } else if mir_structural_match_violation {
-                    self.tcx().struct_span_lint_hir(
-                        lint::builtin::INDIRECT_STRUCTURAL_MATCH,
-                        self.id,
-                        self.span,
-                        |lint| lint.build(&msg).emit(),
-                    );
-                } else {
-                    debug!(
-                        "`search_for_structural_match_violation` found one, but `CustomEq` was \
-                          not in the qualifs for that `const`"
-                    );
+                        path, path,
+                    )
                 }
-            }
+                traits::NonStructuralMatchTy::Dynamic => {
+                    "trait objects cannot be used in patterns".to_string()
+                }
+                traits::NonStructuralMatchTy::Param => {
+                    bug!("use of constant whose type is a parameter inside a pattern")
+                }
+            };
+
+            self.tcx().struct_span_lint_hir(
+                lint::builtin::INDIRECT_STRUCTURAL_MATCH,
+                self.id,
+                self.span,
+                |lint| lint.build(&msg).emit(),
+            );
+        } else if ty_violation.is_some() {
+            debug!(
+                "`search_for_structural_match_violation` found one, but `CustomEq` was \
+                  not in the qualifs for that `const`"
+            );
         }
 
         inlined_const_as_pat
@@ -280,4 +265,81 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
 
         Pat { span, ty: cv.ty, kind: Box::new(kind) }
     }
+
+    fn ty_has_partial_eq_impl(&self, ty: Ty<'tcx>) -> bool {
+        let tcx = self.tcx();
+
+        let is_partial_eq = |ty| {
+            let partial_eq_trait_id = tcx.require_lang_item(EqTraitLangItem, Some(self.span));
+            let obligation: PredicateObligation<'_> = predicate_for_trait_def(
+                tcx,
+                self.param_env,
+                ObligationCause::misc(self.span, self.id),
+                partial_eq_trait_id,
+                0,
+                ty,
+                &[],
+            );
+
+            // FIXME: should this call a `predicate_must_hold` variant instead?
+            self.infcx.predicate_may_hold(&obligation)
+        };
+
+        // Higher-ranked function pointers, such as `for<'r> fn(&'r i32)` are allowed in patterns
+        // but do not satisfy `Self: PartialEq` due to shortcomings in the trait solver.
+        // Check for bare function pointers first since it is cheap to do so.
+        if let ty::FnPtr(_) = ty.kind {
+            return true;
+        }
+
+        // In general, types that appear in patterns need to implement `PartialEq`.
+        if is_partial_eq(ty) {
+            return true;
+        }
+
+        // HACK: The check for bare function pointers will miss generic types that are instantiated
+        // with a higher-ranked type (`for<'r> fn(&'r i32)`) as a parameter. To preserve backwards
+        // compatibility in this case, we must continue to allow types such as `Option<fn(&i32)>`.
+        //
+        //
+        // We accomplish this by replacing *all* late-bound lifetimes in the type with concrete
+        // ones. This leverages the fact that function pointers with no late-bound lifetimes do
+        // satisfy `PartialEq`. In other words, we transform `Option<for<'r> fn(&'r i32)>` to
+        // `Option<fn(&'erased i32)>` and again check whether `PartialEq` is satisfied.
+        // Obviously this is too permissive, but it is better than the old behavior, which
+        // allowed *all* types to reach codegen and caused issues like #65466.
+        let erased_ty = erase_all_late_bound_regions(tcx, ty);
+        if is_partial_eq(erased_ty) {
+            warn!("Non-function pointer only satisfied `PartialEq` after regions were erased");
+            return true;
+        }
+
+        false
+    }
+}
+
+/// Erase *all* late bound regions, ignoring their debruijn index.
+///
+/// This is a terrible hack. Do not use it elsewhere.
+fn erase_all_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
+    use ty::fold::TypeFoldable;
+
+    struct Eraser<'tcx> {
+        tcx: TyCtxt<'tcx>,
+    }
+
+    impl<'tcx> ty::fold::TypeFolder<'tcx> for Eraser<'tcx> {
+        fn tcx(&self) -> TyCtxt<'tcx> {
+            self.tcx
+        }
+
+        fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+            match r {
+                ty::ReLateBound(_, _) => &ty::ReErased,
+                r => r.super_fold_with(self),
+            }
+        }
+    }
+
+    ty.fold_with(&mut Eraser { tcx })
 }
