@@ -810,7 +810,7 @@ fn check_wild_enum_match(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_
                 message,
                 "try this",
                 suggestion[0].clone(),
-                Applicability::MachineApplicable,
+                Applicability::MaybeIncorrect,
             )
         };
 
@@ -821,7 +821,7 @@ fn check_wild_enum_match(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_
             message,
             "try this",
             suggestion.join(" | "),
-            Applicability::MachineApplicable,
+            Applicability::MaybeIncorrect,
         )
     }
 }
