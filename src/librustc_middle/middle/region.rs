@@ -4,7 +4,7 @@
 //! For more information about how MIR-based region-checking works,
 //! see the [rustc dev guide].
 //!
-//! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/mir/borrowck.html
+//! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/borrow_check.html
 
 use crate::ich::{NodeIdHashingMode, StableHashingContext};
 use crate::ty::{self, DefIdTree, TyCtxt};
@@ -181,7 +181,7 @@ impl Scope {
                 // `blk`; reuse span of `blk` and shift `lo`
                 // forward to end of indexed statement.
                 //
-                // (This is the special case aluded to in the
+                // (This is the special case alluded to in the
                 // doc-comment for this method)
 
                 let stmt_span = blk.stmts[first_statement_index.index()].span;
