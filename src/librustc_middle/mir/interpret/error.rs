@@ -6,7 +6,7 @@ use crate::ty::query::TyCtxtAt;
 use crate::ty::{self, layout, tls, FnSig, Ty};
 
 use rustc_data_structures::sync::Lock;
-use rustc_errors::{struct_span_err, DiagnosticBuilder, ErrorReported};
+use rustc_errors::{pluralize, struct_span_err, DiagnosticBuilder, ErrorReported};
 use rustc_hir as hir;
 use rustc_hir::definitions::DefPathData;
 use rustc_macros::HashStable;
@@ -327,6 +327,19 @@ impl fmt::Display for CheckInAllocMsg {
     }
 }
 
+/// Details of an access to uninitialized bytes where it is not allowed.
+#[derive(Debug)]
+pub struct UninitBytesAccess {
+    /// Location of the original memory access.
+    pub access_ptr: Pointer,
+    /// Size of the original memory access.
+    pub access_size: Size,
+    /// Location of the first uninitialized byte that was accessed.
+    pub uninit_ptr: Pointer,
+    /// Number of consecutive uninitialized bytes that were accessed.
+    pub uninit_size: Size,
+}
+
 /// Error information for when the program caused Undefined Behavior.
 pub enum UndefinedBehaviorInfo<'tcx> {
     /// Free-form case. Only for errors that are never caught!
@@ -384,7 +397,7 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     /// Using a string that is not valid UTF-8,
     InvalidStr(std::str::Utf8Error),
     /// Using uninitialized data where it is not allowed.
-    InvalidUninitBytes(Option<Pointer>),
+    InvalidUninitBytes(Option<Box<UninitBytesAccess>>),
     /// Working with a local that is not currently live.
     DeadLocal,
     /// Data size is not equal to target size.
@@ -455,10 +468,18 @@ impl fmt::Display for UndefinedBehaviorInfo<'_> {
                 write!(f, "using {} as function pointer but it does not point to a function", p)
             }
             InvalidStr(err) => write!(f, "this string is not valid UTF-8: {}", err),
-            InvalidUninitBytes(Some(p)) => write!(
+            InvalidUninitBytes(Some(access)) => write!(
                 f,
-                "reading uninitialized memory at {}, but this operation requires initialized memory",
-                p
+                "reading {} byte{} of memory starting at {}, \
+                 but {} byte{} {} uninitialized starting at {}, \
+                 and this operation requires initialized memory",
+                access.access_size.bytes(),
+                pluralize!(access.access_size.bytes()),
+                access.access_ptr,
+                access.uninit_size.bytes(),
+                pluralize!(access.uninit_size.bytes()),
+                if access.uninit_size.bytes() != 1 { "are" } else { "is" },
+                access.uninit_ptr,
             ),
             InvalidUninitBytes(None) => write!(
                 f,
@@ -556,6 +577,9 @@ impl dyn MachineStopType {
     }
 }
 
+#[cfg(target_arch = "x86_64")]
+static_assert_size!(InterpError<'_>, 40);
+
 pub enum InterpError<'tcx> {
     /// The program caused undefined behavior.
     UndefinedBehavior(UndefinedBehaviorInfo<'tcx>),
@@ -604,7 +628,10 @@ impl InterpError<'_> {
             InterpError::MachineStop(b) => mem::size_of_val::<dyn MachineStopType>(&**b) > 0,
             InterpError::Unsupported(UnsupportedOpInfo::Unsupported(_))
             | InterpError::UndefinedBehavior(UndefinedBehaviorInfo::ValidationFailure(_))
-            | InterpError::UndefinedBehavior(UndefinedBehaviorInfo::Ub(_)) => true,
+            | InterpError::UndefinedBehavior(UndefinedBehaviorInfo::Ub(_))
+            | InterpError::UndefinedBehavior(UndefinedBehaviorInfo::InvalidUninitBytes(Some(_))) => {
+                true
+            }
             _ => false,
         }
     }
