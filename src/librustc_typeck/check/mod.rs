@@ -831,13 +831,6 @@ fn primary_body_of(
 }
 
 fn has_typeck_tables(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    // FIXME(#71104) some `LocalDefId` do not seem to have a corresponding `HirId`.
-    if let Some(def_id) = def_id.as_local() {
-        if tcx.hir().opt_local_def_id_to_hir_id(def_id).is_none() {
-            return false;
-        }
-    }
-
     // Closures' tables come from their outermost function,
     // as they are part of the same "inference environment".
     let outer_def_id = tcx.closure_base_def_id(def_id);
