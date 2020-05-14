@@ -98,18 +98,15 @@ export async function startDebugSession(ctx: Ctx, config: ra.Runnable): Promise<
     let debugConfig: vscode.DebugConfiguration | undefined = undefined;
     let message = "";
 
-    if (ctx.config.debug.useLaunchJson) {
-        const wsLaunchSection = vscode.workspace.getConfiguration("launch");
-        const configurations = wsLaunchSection.get<any[]>("configurations") || [];
+    const wsLaunchSection = vscode.workspace.getConfiguration("launch");
+    const configurations = wsLaunchSection.get<any[]>("configurations") || [];
 
-        const index = configurations.findIndex(c => c.name === config.label);
-        if (-1 !== index) {
-            debugConfig = configurations[index];
-            message = " (from launch.json)";
-            debugOutput.clear();
-        }
-    }
-    if (!debugConfig) {
+    const index = configurations.findIndex(c => c.name === config.label);
+    if (-1 !== index) {
+        debugConfig = configurations[index];
+        message = " (from launch.json)";
+        debugOutput.clear();
+    } else {
         debugConfig = await getDebugConfiguration(ctx, config);
     }
 

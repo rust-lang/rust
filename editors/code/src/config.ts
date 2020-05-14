@@ -116,8 +116,7 @@ export class Config {
             engine: this.get<string>("debug.engine"),
             engineSettings: this.get<object>("debug.engineSettings"),
             openUpDebugPane: this.get<boolean>("debug.openUpDebugPane"),
-            sourceFileMap: sourceFileMap,
-            useLaunchJson: this.get<object>("debug.useLaunchJson"),
+            sourceFileMap: sourceFileMap
         };
     }
 }
