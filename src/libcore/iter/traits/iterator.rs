@@ -1697,8 +1697,8 @@ pub trait Iterator {
             mut f: impl FnMut(&T) -> bool + 'a,
             left: &'a mut B,
             right: &'a mut B,
-        ) -> impl FnMut(T) + 'a {
-            move |x| {
+        ) -> impl FnMut((), T) + 'a {
+            move |(), x| {
                 if f(&x) {
                     left.extend(Some(x));
                 } else {
@@ -1710,7 +1710,7 @@ pub trait Iterator {
         let mut left: B = Default::default();
         let mut right: B = Default::default();
 
-        self.for_each(extend(f, &mut left, &mut right));
+        self.fold((), extend(f, &mut left, &mut right));
 
         (left, right)
     }
@@ -2281,7 +2281,7 @@ pub trait Iterator {
         F: FnMut(&Self::Item) -> R,
         R: Try<Ok = bool, Error = E>,
     {
-        self.try_for_each(move |x| match f(&x).into_result() {
+        self.try_fold((), move |(), x| match f(&x).into_result() {
             Ok(false) => LoopState::Continue(()),
             Ok(true) => LoopState::Break(Ok(x)),
             Err(x) => LoopState::Break(Err(x)),
@@ -2673,8 +2673,8 @@ pub trait Iterator {
         fn extend<'a, A, B>(
             ts: &'a mut impl Extend<A>,
             us: &'a mut impl Extend<B>,
-        ) -> impl FnMut((A, B)) + 'a {
-            move |(t, u)| {
+        ) -> impl FnMut((), (A, B)) + 'a {
+            move |(), (t, u)| {
                 ts.extend(Some(t));
                 us.extend(Some(u));
             }
@@ -2683,7 +2683,7 @@ pub trait Iterator {
         let mut ts: FromA = Default::default();
         let mut us: FromB = Default::default();
 
-        self.for_each(extend(&mut ts, &mut us));
+        self.fold((), extend(&mut ts, &mut us));
 
         (ts, us)
     }
