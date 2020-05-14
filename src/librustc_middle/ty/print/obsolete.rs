@@ -148,7 +148,6 @@ impl DefPathBasedNames<'tcx> {
             | ty::Bound(..)
             | ty::Infer(_)
             | ty::Placeholder(..)
-            | ty::UnnormalizedProjection(..)
             | ty::Projection(..)
             | ty::Param(_)
             | ty::GeneratorWitness(_)

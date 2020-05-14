@@ -1241,11 +1241,9 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 tcx.layout_raw(param_env.and(normalized))?
             }
 
-            ty::Bound(..)
-            | ty::Placeholder(..)
-            | ty::UnnormalizedProjection(..)
-            | ty::GeneratorWitness(..)
-            | ty::Infer(_) => bug!("Layout::compute: unexpected type `{}`", ty),
+            ty::Bound(..) | ty::Placeholder(..) | ty::GeneratorWitness(..) | ty::Infer(_) => {
+                bug!("Layout::compute: unexpected type `{}`", ty)
+            }
 
             ty::Param(_) | ty::Error => {
                 return Err(LayoutError::Unknown(ty));
@@ -2138,7 +2136,6 @@ where
             }
 
             ty::Projection(_)
-            | ty::UnnormalizedProjection(..)
             | ty::Bound(..)
             | ty::Placeholder(..)
             | ty::Opaque(..)

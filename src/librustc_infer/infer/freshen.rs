@@ -204,7 +204,6 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
             | ty::Never
             | ty::Tuple(..)
             | ty::Projection(..)
-            | ty::UnnormalizedProjection(..)
             | ty::Foreign(..)
             | ty::Param(..)
             | ty::Closure(..)

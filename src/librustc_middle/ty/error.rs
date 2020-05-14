@@ -284,7 +284,6 @@ impl<'tcx> ty::TyS<'tcx> {
             ty::Infer(ty::FreshIntTy(_)) => "fresh integral type".into(),
             ty::Infer(ty::FreshFloatTy(_)) => "fresh floating-point type".into(),
             ty::Projection(_) => "associated type".into(),
-            ty::UnnormalizedProjection(_) => "non-normalized associated type".into(),
             ty::Param(p) => format!("type parameter `{}`", p).into(),
             ty::Opaque(..) => "opaque type".into(),
             ty::Error => "type error".into(),
@@ -323,7 +322,6 @@ impl<'tcx> ty::TyS<'tcx> {
             ty::Placeholder(..) => "higher-ranked type".into(),
             ty::Bound(..) => "bound type variable".into(),
             ty::Projection(_) => "associated type".into(),
-            ty::UnnormalizedProjection(_) => "associated type".into(),
             ty::Param(_) => "type parameter".into(),
             ty::Opaque(..) => "opaque type".into(),
         }

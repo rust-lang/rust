@@ -198,7 +198,6 @@ pub fn push_debuginfo_type_name<'tcx>(
         ty::Error
         | ty::Infer(_)
         | ty::Placeholder(..)
-        | ty::UnnormalizedProjection(..)
         | ty::Projection(..)
         | ty::Bound(..)
         | ty::Opaque(..)
