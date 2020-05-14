@@ -708,24 +708,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // For now, don't suggest casting with `as`.
         let can_cast = false;
 
-        let mut prefix = String::new();
-        if let Some(hir::Node::Expr(hir::Expr {
-            kind: hir::ExprKind::Struct(_, fields, _), ..
+        let prefix = if let Some(hir::Node::Expr(hir::Expr {
+            kind: hir::ExprKind::Struct(_, fields, _),
+            ..
         })) = self.tcx.hir().find(self.tcx.hir().get_parent_node(expr.hir_id))
         {
             // `expr` is a literal field for a struct, only suggest if appropriate
-            for field in *fields {
-                if field.expr.hir_id == expr.hir_id && field.is_shorthand {
-                    // This is a field literal
-                    prefix = format!("{}: ", field.ident);
-                    break;
-                }
-            }
-            if &prefix == "" {
+            match (*fields)
+                .iter()
+                .find(|field| field.expr.hir_id == expr.hir_id && field.is_shorthand)
+            {
+                // This is a field literal
+                Some(field) => format!("{}: ", field.ident),
                 // Likely a field was meant, but this field wasn't found. Do not suggest anything.
-                return false;
+                None => return false,
             }
-        }
+        } else {
+            String::new()
+        };
         if let hir::ExprKind::Call(path, args) = &expr.kind {
             if let (hir::ExprKind::Path(hir::QPath::TypeRelative(base_ty, path_segment)), 1) =
                 (&path.kind, args.len())
@@ -817,7 +817,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let suggest_to_change_suffix_or_into =
                 |err: &mut DiagnosticBuilder<'_>, is_fallible: bool| {
-                    let into_sugg = into_suggestion.clone();
                     err.span_suggestion(
                         expr.span,
                         if literal_is_ty_suffixed(expr) {
@@ -832,7 +831,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         } else if is_fallible {
                             try_into_suggestion
                         } else {
-                            into_sugg
+                            into_suggestion.clone()
                         },
                         Applicability::MachineApplicable,
                     );

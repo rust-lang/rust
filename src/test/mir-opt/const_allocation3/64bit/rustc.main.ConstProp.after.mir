@@ -8,13 +8,13 @@ fn main() -> () {
     bb0: {
         StorageLive(_1);                 // scope 0 at $DIR/const_allocation3.rs:5:5: 5:8
         StorageLive(_2);                 // scope 0 at $DIR/const_allocation3.rs:5:5: 5:8
-        _2 = const {alloc0+0x0: &&Packed}; // scope 0 at $DIR/const_allocation3.rs:5:5: 5:8
+        _2 = const {alloc0: &&Packed};   // scope 0 at $DIR/const_allocation3.rs:5:5: 5:8
                                          // ty::Const
                                          // + ty: &&Packed
-                                         // + val: Value(Scalar(alloc0+0x0))
+                                         // + val: Value(Scalar(alloc0))
                                          // mir::Constant
                                          // + span: $DIR/const_allocation3.rs:5:5: 5:8
-                                         // + literal: Const { ty: &&Packed, val: Value(Scalar(alloc0+0x0)) }
+                                         // + literal: Const { ty: &&Packed, val: Value(Scalar(alloc0)) }
         _1 = (*_2);                      // scope 0 at $DIR/const_allocation3.rs:5:5: 5:8
         StorageDead(_2);                 // scope 0 at $DIR/const_allocation3.rs:5:8: 5:9
         StorageDead(_1);                 // scope 0 at $DIR/const_allocation3.rs:5:8: 5:9
@@ -30,12 +30,12 @@ fn main() -> () {
 }
 
 alloc0 (static: FOO, size: 8, align: 8) {
-    ╾─────alloc9+0x0──────╼                         │ ╾──────╼
+    ╾───────alloc9────────╼                         │ ╾──────╼
 }
 
 alloc9 (size: 180, align: 1) {
     0x00 │ ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab │ ................
-    0x10 │ ab ab ab ab ab ab ab ab ab ab ab ab ╾alloc4+0x0 │ ............╾───
+    0x10 │ ab ab ab ab ab ab ab ab ab ab ab ab ╾──alloc4── │ ............╾───
     0x20 │ ──────────╼ 01 ef cd ab 00 00 00 00 00 00 00 00 │ ───╼............
     0x30 │ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 │ ................
     0x40 │ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 │ ................
@@ -43,7 +43,7 @@ alloc9 (size: 180, align: 1) {
     0x60 │ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 │ ................
     0x70 │ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 │ ................
     0x80 │ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ╾──── │ ..............╾─
-    0x90 │ ───alloc6+0x0───╼ 00 00 ╾─────alloc7+0x63─────╼ │ ─────╼..╾──────╼
+    0x90 │ ─────alloc6─────╼ 00 00 ╾─────alloc7+0x63─────╼ │ ─────╼..╾──────╼
     0xa0 │ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 │ ................
     0xb0 │ 00 00 00 00                                     │ ....
 }

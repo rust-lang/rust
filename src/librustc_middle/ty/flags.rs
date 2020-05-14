@@ -121,11 +121,6 @@ impl FlagComputation {
                 self.add_projection_ty(data);
             }
 
-            &ty::UnnormalizedProjection(ref data) => {
-                self.add_flags(TypeFlags::HAS_TY_PROJECTION);
-                self.add_projection_ty(data);
-            }
-
             &ty::Opaque(_, substs) => {
                 self.add_flags(TypeFlags::HAS_TY_OPAQUE);
                 self.add_substs(substs);

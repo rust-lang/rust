@@ -239,6 +239,9 @@ pub struct CodegenUnit<'tcx> {
     size_estimate: Option<usize>,
 }
 
+/// Specifies the linkage type for a `MonoItem`.
+///
+/// See https://llvm.org/docs/LangRef.html#linkage-types for more details about these variants.
 #[derive(Copy, Clone, PartialEq, Debug, RustcEncodable, RustcDecodable, HashStable)]
 pub enum Linkage {
     External,

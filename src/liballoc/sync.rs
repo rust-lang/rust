@@ -835,12 +835,14 @@ impl<T: ?Sized> Arc<T> {
     ///
     /// unsafe {
     ///     let ptr = Arc::into_raw(five);
-    ///     Arc::decr_strong_count(ptr);
+    ///     Arc::incr_strong_count(ptr);
     ///
-    ///     // This assertion is deterministic because we haven't shared
+    ///     // Those assertions are deterministic because we haven't shared
     ///     // the `Arc` between threads.
     ///     let five = Arc::from_raw(ptr);
-    ///     assert_eq!(0, Arc::strong_count(&five));
+    ///     assert_eq!(2, Arc::strong_count(&five));
+    ///     Arc::decr_strong_count(ptr);
+    ///     assert_eq!(1, Arc::strong_count(&five));
     /// }
     /// ```
     #[inline]
