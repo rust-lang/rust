@@ -29,11 +29,11 @@ entry:
 
 ; CHECK: define internal { double } @diffetodiff(double %lhs, double %differeturn) {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %call_augmented = call { {}, double } @augmented_f(double %lhs)
-; CHECK-NEXT:   %call = extractvalue { {}, double } %call_augmented, 1
+; CHECK-NEXT:   %call_augmented = call { double } @augmented_f(double %lhs)
+; CHECK-NEXT:   %call = extractvalue { double } %call_augmented, 0
 ; CHECK-NEXT:   %0 = call { double } @diffeg(double %call, double %differeturn)
 ; CHECK-NEXT:   %1 = extractvalue { double } %0, 0
-; CHECK-NEXT:   %2 = call { double } @diffef(double %lhs, double %1, {} undef)
+; CHECK-NEXT:   %2 = call { double } @diffef(double %lhs, double %1)
 ; CHECK-NEXT:   %3 = extractvalue { double } %2, 0
 ; CHECK-NEXT:   %4 = insertvalue { double } undef, double %3, 0
 ; CHECK-NEXT:   ret { double } %4
@@ -45,13 +45,13 @@ entry:
 ; CHECK-NEXT:   ret { double } %0
 ; CHECK-NEXT: }
 
-; CHECK: define internal { {}, double } @augmented_f(double %xpr) {
+; CHECK: define internal { double } @augmented_f(double %xpr) {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %.fca.1.insert = insertvalue { {}, double } undef, double %xpr, 1
-; CHECK-NEXT:   ret { {}, double } %.fca.1.insert
+; CHECK-NEXT:   %[[res:.+]] = insertvalue { double } undef, double %xpr, 0
+; CHECK-NEXT:   ret { double } %[[res]]
 ; CHECK-NEXT: }
 
-; CHECK: define internal { double } @diffef(double %xpr, double %differeturn, {} %tapeArg) {
+; CHECK: define internal { double } @diffef(double %xpr, double %differeturn) {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = insertvalue { double } undef, double %differeturn, 0
 ; CHECK-NEXT:   ret { double } %0

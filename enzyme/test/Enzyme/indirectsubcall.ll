@@ -46,22 +46,22 @@ entry:
 ; CHECK-NEXT:   ret { double } %0
 ; CHECK-NEXT: }
 
-; CHECK: define internal { {}, double*, double* } @augmented_bad(double* %this, double* %"this'") {
+; CHECK: define internal { double*, double* } @augmented_bad(double* %this, double* %"this'") {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %.fca.1.insert = insertvalue { {}, double*, double* } undef, double* %this, 1
-; CHECK-NEXT:   %.fca.2.insert = insertvalue { {}, double*, double* } %.fca.1.insert, double* %"this'", 2
-; CHECK-NEXT:   ret { {}, double*, double* } %.fca.2.insert
+; CHECK-NEXT:   %.fca.0.insert = insertvalue { double*, double* } undef, double* %this, 0
+; CHECK-NEXT:   %.fca.1.insert = insertvalue { double*, double* } %.fca.0.insert, double* %"this'", 1
+; CHECK-NEXT:   ret { double*, double* } %.fca.1.insert
 ; CHECK-NEXT: }
 
 ; CHECK: define internal { i8* } @augmented_indirect(double* %x, double* %"x'", double* %dxdt, double* %"dxdt'", double %t) {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 8)
 ; CHECK-NEXT:   %a1 = load double, double* %x, align 8
-; CHECK-NEXT:   %call1_augmented = call { {}, double*, double* } @augmented_bad(double* %dxdt, double* %"dxdt'")
-; CHECK-NEXT:   %antiptr_call1 = extractvalue { {}, double*, double* } %call1_augmented, 2
+; CHECK-NEXT:   %call1_augmented = call { double*, double* } @augmented_bad(double* %dxdt, double* %"dxdt'")
+; CHECK-NEXT:   %antiptr_call1 = extractvalue { double*, double* } %call1_augmented, 1
 ; CHECK-NEXT:   %0 = bitcast i8* %malloccall to double**
 ; CHECK-NEXT:   store double* %antiptr_call1, double** %0
-; CHECK-NEXT:   %call1 = extractvalue { {}, double*, double* } %call1_augmented, 1
+; CHECK-NEXT:   %call1 = extractvalue { double*, double* } %call1_augmented, 0
 ; CHECK-NEXT:   store double %a1, double* %call1, align 8
 ; CHECK-NEXT:   %.fca.0.insert = insertvalue { i8* } undef, i8* %malloccall, 0
 ; CHECK-NEXT:   ret { i8* } %.fca.0.insert
@@ -70,18 +70,18 @@ entry:
 ; CHECK: define internal { double } @diffeindirect(double* %x, double* %"x'", double* %dxdt, double* %"dxdt'", double %t, i8* %tapeArg) {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[elt1:.+]] = bitcast i8* %tapeArg to double**
-; CHECK-NEXT:   %.unpack2 = load double*, double** %[[elt1:.+]], align 8
+; CHECK-NEXT:   %.unpack = load double*, double** %[[elt1]], align 8
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %tapeArg)
-; CHECK-NEXT:   %[[loadc:.+]] = load double, double* %.unpack2, align 8
-; CHECK-NEXT:   store double 0.000000e+00, double* %.unpack2, align 8
-; CHECK-NEXT:   %[[null:.+]] = call {} @diffebad(double* %dxdt, double* %"dxdt'", {} undef)
+; CHECK-NEXT:   %[[loadc:.+]] = load double, double* %.unpack, align 8
+; CHECK-NEXT:   store double 0.000000e+00, double* %.unpack, align 8
+; CHECK-NEXT:   %[[null:.+]] = call {} @diffebad(double* %dxdt, double* %"dxdt'")
 ; CHECK-NEXT:   %[[xpl:.+]] = load double, double* %"x'", align 8
 ; CHECK-NEXT:   %[[fadd:.+]] = fadd fast double %[[xpl]], %[[loadc]]
 ; CHECK-NEXT:   store double %[[fadd]], double* %"x'", align 8
 ; CHECK-NEXT:   ret { double } zeroinitializer
 ; CHECK-NEXT: }
 
-; CHECK: define internal {} @diffebad(double* %this, double* %"this'", {} %tapeArg) {
+; CHECK: define internal {} @diffebad(double* %this, double* %"this'") {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }

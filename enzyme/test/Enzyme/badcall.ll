@@ -42,32 +42,32 @@ attributes #1 = { noinline nounwind uwtable }
 
 ; CHECK: define internal {{(dso_local )?}}{} @diffef(double* nocapture %x, double* nocapture %"x'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:	%[[augsubf:.+]] = call { { {} } } @augmented_subf(double* %x, double* %"x'")
+; CHECK-NEXT:	%[[augsubf:.+]] = call {} @augmented_subf(double* %x, double* %"x'")
 ; CHECK-NEXT:	store double 2.000000e+00, double* %x, align 8
 ; CHECK-NEXT:	store double 0.000000e+00, double* %"x'"
-; CHECK-NEXT:	%[[dsubf:.+]] = call {} @diffesubf(double* nonnull %x, double* %"x'", { {} } undef)
+; CHECK-NEXT:	%[[dsubf:.+]] = call {} @diffesubf(double* nonnull %x, double* %"x'")
 ; CHECK-NEXT:	ret {} undef
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{ {} } @augmented_metasubf(double* nocapture %x, double* nocapture %"x'") 
+; CHECK: define internal {{(dso_local )?}}{} @augmented_metasubf(double* nocapture %x, double* nocapture %"x'") 
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %arrayidx = getelementptr inbounds double, double* %x, i64 1
 ; CHECK-NEXT:   store double 3.000000e+00, double* %arrayidx, align 8
-; CHECK-NEXT:   ret { {} } undef
+; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{ { {} } } @augmented_subf(double* nocapture %x, double* nocapture %"x'") 
+; CHECK: define internal {{(dso_local )?}}{} @augmented_subf(double* nocapture %x, double* nocapture %"x'") 
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:  %[[loadx:.+]] = load double, double* %x, align 8
 ; CHECK-NEXT:  %mul = fmul fast double %[[loadx]], 2.000000e+00
 ; CHECK-NEXT:  store double %mul, double* %x, align 8
-; CHECK-NEXT:  %[[metasubf:.+]] = call { {} } @augmented_metasubf(double* %x, double* %"x'")
-; CHECK-NEXT:  ret { { {} } } undef
+; CHECK-NEXT:  %[[metasubf:.+]] = call {} @augmented_metasubf(double* %x, double* %"x'")
+; CHECK-NEXT:  ret {} undef
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{} @diffesubf(double* nocapture %x, double* nocapture %"x'", { {} } %tapeArg)
+; CHECK: define internal {{(dso_local )?}}{} @diffesubf(double* nocapture %x, double* nocapture %"x'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = call {} @diffemetasubf(double* %x, double* %"x'", {} undef)
+; CHECK-NEXT:   %0 = call {} @diffemetasubf(double* %x, double* %"x'")
 ; CHECK-NEXT:   %1 = load double, double* %"x'"
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"x'"
 ; CHECK-NEXT:   %m0diffe = fmul fast double %1, 2.000000e+00
@@ -77,7 +77,7 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{} @diffemetasubf(double* nocapture %x, double* nocapture %"x'", {} %tapeArg) 
+; CHECK: define internal {{(dso_local )?}}{} @diffemetasubf(double* nocapture %x, double* nocapture %"x'") 
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[tostore:.+]] = getelementptr inbounds double, double* %"x'", i64 1
 ; CHECK-NEXT:   store double 0.000000e+00, double* %[[tostore]], align 8

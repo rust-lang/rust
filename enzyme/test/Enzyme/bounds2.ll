@@ -233,7 +233,7 @@ attributes #10 = { cold }
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %for.body ], [ 0, %for.body.preheader ]
 ; CHECK-NEXT:   %0 = trunc i64 %iv to i32
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
-; CHECK-NEXT:   %call_augmented = call { {} } @augmented_lookup(float* %a, float* %"a'", i32 %0, i32 %bound)
+; CHECK-NEXT:   %call_augmented = call {} @augmented_lookup(float* %a, float* %"a'", i32 %0, i32 %bound)
 ; CHECK-NEXT:   %inc = add nuw nsw i32 %0, 1
 ; CHECK-NEXT:   %exitcond = icmp eq i32 %inc, %bound
 ; CHECK-NEXT:   br i1 %exitcond, label %invertfor.cond.cleanup, label %for.body
@@ -254,7 +254,7 @@ attributes #10 = { cold }
 ; CHECK-NEXT:   %"add'de.0" = phi float [ %1, %mergeinvertfor.body_for.cond.cleanup.loopexit ], [ %4, %incinvertfor.body ]
 ; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %_unwrap1, %mergeinvertfor.body_for.cond.cleanup.loopexit ], [ %5, %incinvertfor.body ]
 ; CHECK-NEXT:   %[[trunc:.+]] = trunc i64 %"iv'ac.0" to i32
-; CHECK-NEXT:   %2 = call {} @diffelookup(float* %a, float* %"a'", i32 %[[trunc]], i32 %bound, float %"add'de.0", {} undef)
+; CHECK-NEXT:   %2 = call {} @diffelookup(float* %a, float* %"a'", i32 %[[trunc]], i32 %bound, float %"add'de.0")
 ; CHECK-NEXT:   %3 = icmp eq i64 %"iv'ac.0", 0
 ; CHECK-NEXT:   %4 = select{{( fast)?}} i1 %3, float 0.000000e+00, float %"add'de.0"
 ; CHECK-NEXT:   br i1 %3, label %invertentry, label %incinvertfor.body
@@ -264,7 +264,7 @@ attributes #10 = { cold }
 ; CHECK-NEXT:   br label %invertfor.body
 ; CHECK-NEXT: }
 
-; CHECK: define internal { {} } @augmented_lookup(float* nocapture readonly %data, float* nocapture %"data'", i32 %i, i32 %bound)
+; CHECK: define internal {} @augmented_lookup(float* nocapture readonly %data, float* nocapture %"data'", i32 %i, i32 %bound)
 ; CHECK: entry:
 ; CHECK-NEXT:   %cmp = icmp sge i32 %i, %bound
 ; CHECK-NEXT:   br i1 %cmp, label %if.then, label %if.end
@@ -274,10 +274,10 @@ attributes #10 = { cold }
 ; CHECK-NEXT:   unreachable
 
 ; CHECK: if.end:                                           ; preds = %entry
-; CHECK-NEXT:   ret { {} } undef
+; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 
-; CHECK: define internal {} @diffelookup(float* nocapture readonly %data, float* nocapture %"data'", i32 %i, i32 %bound, float %differeturn, {} %tapeArg)
+; CHECK: define internal {} @diffelookup(float* nocapture readonly %data, float* nocapture %"data'", i32 %i, i32 %bound, float %differeturn)
 ; CHECK-NEXT: invertentry:
 ; CHECK-NEXT:   %cmp = icmp sge i32 %i, %bound
 ; CHECK-NEXT:   %0 = xor i1 %cmp, true

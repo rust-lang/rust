@@ -57,23 +57,23 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*, i64*)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %res_augmented = call { { i64, i64* }, double } @augmented_badfunc(double* %data, double* %"data'", i64* %a4)
 ; CHECK-NEXT:   %res = extractvalue { { i64, i64* }, double } %res_augmented, 1
-; CHECK-NEXT:   %res2_augmented = call { {} } @augmented_identity(double %res)
+; CHECK-NEXT:   %res2_augmented = call {} @augmented_identity(double %res)
 ; CHECK-NEXT:   store i64 0, i64* %a4, align 4
 ; CHECK-NEXT:   store double 0.000000e+00, double* %data, align 8
 ; CHECK-NEXT:   %[[resev:.+]] = extractvalue { { i64, i64* }, double } %res_augmented, 0
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"data'", align 8
-; CHECK-NEXT:   %[[identr:.+]] = call { double } @diffeidentity(double %res, double %differeturn, {} undef)
+; CHECK-NEXT:   %[[identr:.+]] = call { double } @diffeidentity(double %res, double %differeturn)
 ; CHECK-NEXT:   %[[iev:.+]] = extractvalue { double } %[[identr]], 0
 ; CHECK-NEXT:   %[[unused:.+]] = call {} @diffebadfunc(double* %data, double* %"data'", i64* %a4, double %[[iev]], { i64, i64* } %[[resev]])
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 
-; CHECK: define internal { {} } @augmented_identity(double %res) {
+; CHECK: define internal {} @augmented_identity(double %res) {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   ret { {} } undef
+; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 
-; CHECK: define internal { double } @diffeidentity(double %res, double %differeturn, {} %tapeArg) {
+; CHECK: define internal { double } @diffeidentity(double %res, double %differeturn) {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[drt:.+]] = insertvalue { double } undef, double %differeturn, 0
 ; CHECK-NEXT:   ret { double } %[[drt]]

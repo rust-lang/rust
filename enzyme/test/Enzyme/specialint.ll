@@ -54,8 +54,8 @@ attributes #3 = { readnone }
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[dimsipge:.+]] = getelementptr inbounds %Type, %Type* %"evaluator.i.i'", i64 0, i32 1
 ; CHECK-NEXT:   %dims = getelementptr inbounds %Type, %Type* %evaluator.i.i, i64 0, i32 1
-; CHECK-NEXT:   %call_augmented = call { {}, i64 } @augmented_total(i64* nonnull %dims, i64* nonnull %[[dimsipge]])
-; CHECK-NEXT:   %call = extractvalue { {}, i64 } %call_augmented, 1
+; CHECK-NEXT:   %call_augmented = call { i64 } @augmented_total(i64* nonnull %dims, i64* nonnull %[[dimsipge]])
+; CHECK-NEXT:   %call = extractvalue { i64 } %call_augmented, 0
 ; CHECK-NEXT:   %flt = uitofp i64 %call to float
 ; CHECK-NEXT:   %data = getelementptr inbounds %Type, %Type* %evaluator.i.i, i64 0, i32 0
 ; CHECK-NEXT:   store float %flt, float* %data, align 4
@@ -63,19 +63,19 @@ attributes #3 = { readnone }
 ; CHECK-NEXT:   store float 0.000000e+00, float* %[[dataipge]], align 4
 ; CHECK-NEXT:   %dims_unwrap = getelementptr inbounds %Type, %Type* %evaluator.i.i, i64 0, i32 1
 ; CHECK-NEXT:   %[[dimsipge_unwrap:.+]] = getelementptr inbounds %Type, %Type* %"evaluator.i.i'", i64 0, i32 1
-; CHECK-NEXT:   %[[unused:.+]] = call {} @diffetotal(i64* nonnull %dims_unwrap, i64* nonnull %[[dimsipge_unwrap]], {} undef)
+; CHECK-NEXT:   %[[unused:.+]] = call {} @diffetotal(i64* nonnull %dims_unwrap, i64* nonnull %[[dimsipge_unwrap]])
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 
-; CHECK: define internal { {}, i64 } @augmented_total(i64* %this, i64* %"this'") {
+; CHECK: define internal { i64 } @augmented_total(i64* %this, i64* %"this'") {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %loaded = load i64, i64* %this, align 4
 ; CHECK-NEXT:   %mcall = tail call i64 @meta(i64 %loaded)
-; CHECK-NEXT:   %.fca.1.insert = insertvalue { {}, i64 } undef, i64 %mcall, 1
-; CHECK-NEXT:   ret { {}, i64 } %.fca.1.insert
+; CHECK-NEXT:   %.fca.0.insert = insertvalue { i64 } undef, i64 %mcall, 0
+; CHECK-NEXT:   ret { i64 } %.fca.0.insert
 ; CHECK-NEXT: }
 
-; CHECK: define internal {} @diffetotal(i64* %this, i64* %"this'", {} %tapeArg) {
+; CHECK: define internal {} @diffetotal(i64* %this, i64* %"this'") {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }

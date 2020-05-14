@@ -70,22 +70,22 @@ attributes #4 = { nounwind }
 
 ; CHECK: define internal {} @diffebad(double* %a, double* %"a'", double %differeturn, i8* %tapeArg)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = bitcast i8* %tapeArg to { {}, double* }*
-; CHECK-NEXT:   %1 = load { {}, double* }, { {}, double* }* %0, !enzyme_mustcache !6
+; CHECK-NEXT:   %0 = bitcast i8* %tapeArg to { double* }*
+; CHECK-NEXT:   %1 = load { double* }, { double* }* %0, !enzyme_mustcache !6
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %tapeArg)
 ; CHECK-NEXT:   %"loaded'de" = alloca double
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"loaded'de"
-; CHECK-NEXT:   %"call'ip_phi" = extractvalue { {}, double* } %1, 1
+; CHECK-NEXT:   %"call'ip_phi" = extractvalue { double* } %1, 0
 ; CHECK-NEXT:   br label %invertentry
 
 ; CHECK: invertentry:                                      ; preds = %entry
 ; CHECK-NEXT:   store double %differeturn, double* %"loaded'de"
 ; CHECK-NEXT:   %[[loadde:.+]] = load double, double* %"loaded'de"
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"loaded'de"
-; CHECK-NEXT:   %"call'ip_phi_fromtape_unwrap" = extractvalue { {}, double* } %1, 1
+; CHECK-NEXT:   %"call'ip_phi_fromtape_unwrap" = extractvalue { double* } %1, 0
 ; CHECK-NEXT:   %[[ligep:.+]] = load double, double* %"call'ip_phi_fromtape_unwrap", align 8
 ; CHECK-NEXT:   %[[add:.+]] = fadd fast double %[[ligep]], %[[loadde]]
 ; CHECK-NEXT:   store double %[[add]], double* %"call'ip_phi_fromtape_unwrap", align 8
-; CHECK-NEXT:   %{{.+}} = call {} @diffegep(double* %a, double* %"a'", {} undef)
+; CHECK-NEXT:   %{{.+}} = call {} @diffegep(double* %a, double* %"a'")
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }

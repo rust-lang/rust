@@ -25,23 +25,23 @@ declare float @__enzyme_autodiff(float (float**)*, ...)
 
 ; CHECK: define internal {} @diffef(float** %this, float** %"this'", float %differeturn) {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %[[augsub:.+]] = call { {}, float* } @augmented_sub(float** %this, float** %"this'")
-; CHECK-NEXT:   %[[dsub:.+]] = extractvalue { {}, float* } %[[augsub]], 1
+; CHECK-NEXT:   %[[augsub:.+]] = call { float* } @augmented_sub(float** %this, float** %"this'")
+; CHECK-NEXT:   %[[dsub:.+]] = extractvalue { float* } %[[augsub]], 0
 ; CHECK-NEXT:   %[[loadsub:.+]] = load float, float* %[[dsub]]
 ; CHECK-NEXT:   %[[fadd:.+]] = fadd fast float %[[loadsub]], %differeturn
 ; CHECK-NEXT:   store float %[[fadd]], float* %[[dsub]]
-; CHECK-NEXT:   %[[dsub:.+]] = call {} @diffesub(float** %this, float** %"this'", {} undef)
+; CHECK-NEXT:   %[[dsub:.+]] = call {} @diffesub(float** %this, float** %"this'")
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 
-; CHECK: define internal { {}, float* } @augmented_sub(float** %this, float** %"this'") {
+; CHECK: define internal { float* } @augmented_sub(float** %this, float** %"this'") {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %"'ipl" = load float*, float** %"this'", align 8
-; CHECK-NEXT:   %[[ins2:.+]] = insertvalue { {}, float* } undef, float* %"'ipl", 1
-; CHECK-NEXT:   ret { {}, float* } %[[ins2]]
+; CHECK-NEXT:   %[[ins2:.+]] = insertvalue { float* } undef, float* %"'ipl", 0
+; CHECK-NEXT:   ret { float* } %[[ins2]]
 ; CHECK-NEXT: }
 
-; CHECK: define internal {} @diffesub(float** %this, float** %"this'", {} %tapeArg) {
+; CHECK: define internal {} @diffesub(float** %this, float** %"this'") {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }

@@ -42,41 +42,41 @@ attributes #1 = { noinline nounwind uwtable }
 
 ; CHECK: define internal {{(dso_local )?}}{} @diffef(double* nocapture %x, double* nocapture %"x'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:	%[[augsubf:.+]] = call { { {}, double } } @augmented_subf(double* %x, double* %"x'")
-; CHECK-NEXT: %[[augext:.+]] = extractvalue { { {}, double } } %[[augsubf]], 0
+; CHECK-NEXT:	%[[augsubf:.+]] = call { { double } } @augmented_subf(double* %x, double* %"x'")
+; CHECK-NEXT: %[[augext:.+]] = extractvalue { { double } } %[[augsubf]], 0
 ; CHECK-NEXT:	store double 2.000000e+00, double* %x, align 8
 ; CHECK-NEXT:	store double 0.000000e+00, double* %"x'", align 8
-; CHECK-NEXT:	%[[dsubf:.+]] = call {} @diffesubf(double* nonnull %x, double* %"x'", { {}, double } %[[augext]])
+; CHECK-NEXT:	%[[dsubf:.+]] = call {} @diffesubf(double* nonnull %x, double* %"x'", { double } %[[augext]])
 ; CHECK-NEXT:	ret {} undef
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{ {} } @augmented_metasubf(double* nocapture %x, double* nocapture %"x'")
+; CHECK: define internal {{(dso_local )?}}{} @augmented_metasubf(double* nocapture %x, double* nocapture %"x'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %arrayidx = getelementptr inbounds double, double* %x, i64 1
 ; CHECK-NEXT:   store double 3.000000e+00, double* %arrayidx, align 8
-; CHECK-NEXT:   ret { {} } undef
+; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{ { {}, double } } @augmented_subf(double* nocapture %x, double* nocapture %"x'")
+; CHECK: define internal {{(dso_local )?}}{ { double } } @augmented_subf(double* nocapture %x, double* nocapture %"x'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:  %[[alloca:.+]] = alloca { { {}, double } }
-; CHECK-NEXT:  %[[gep1:.+]] = getelementptr inbounds { { {}, double } }, { { {}, double } }* %[[alloca]], i32 0, i32 0
+; CHECK-NEXT:  %[[alloca:.+]] = alloca { { double } }
+; CHECK-NEXT:  %[[gep1:.+]] = getelementptr inbounds { { double } }, { { double } }* %[[alloca]], i32 0, i32 0
 ; CHECK-NEXT:  %[[loadx:.+]] = load double, double* %x, align 8
-; CHECK-NEXT:  %[[gep2:.+]] = getelementptr inbounds { {}, double }, { {}, double }* %[[gep1]], i32 0, i32 1
+; CHECK-NEXT:  %[[gep2:.+]] = getelementptr inbounds { double }, { double }* %[[gep1]], i32 0, i32 0
 ; CHECK-NEXT:  store double %[[loadx]], double* %[[gep2]]
 ; CHECK-NEXT:  %mul = fmul fast double %[[loadx]], %[[loadx]]
 ; CHECK-NEXT:  store double %mul, double* %x, align 8
-; CHECK-NEXT:  %[[metasubf:.+]] = call { {} } @augmented_metasubf(double* %x, double* %"x'")
-; CHECK-NEXT:  %[[ret:.+]] = load { { {}, double } }, { { {}, double } }* %[[alloca]]
-; CHECK-NEXT:  ret { { {}, double } } %[[ret]]
+; CHECK-NEXT:  %[[metasubf:.+]] = call {} @augmented_metasubf(double* %x, double* %"x'")
+; CHECK-NEXT:  %[[ret:.+]] = load { { double } }, { { double } }* %[[alloca]]
+; CHECK-NEXT:  ret { { double } } %[[ret]]
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{} @diffesubf(double* nocapture %x, double* nocapture %"x'", { {}, double } %tapeArg)
+; CHECK: define internal {{(dso_local )?}}{} @diffesubf(double* nocapture %x, double* nocapture %"x'", { double } %tapeArg)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = call {} @diffemetasubf(double* %x, double* %"x'", {} undef)
+; CHECK-NEXT:   %0 = call {} @diffemetasubf(double* %x, double* %"x'")
 ; CHECK-NEXT:   %1 = load double, double* %"x'"
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"x'"
-; CHECK-NEXT:   %[[nloadx:.+]] = extractvalue { {}, double } %tapeArg, 1
+; CHECK-NEXT:   %[[nloadx:.+]] = extractvalue { double } %tapeArg, 0
 ; CHECK-NEXT:   %m0diffe = fmul fast double %1, %[[nloadx]]
 ; CHECK-NEXT:   %m1diffe = fmul fast double %1, %[[nloadx]]
 ; CHECK-NEXT:   %[[diffe:.+]] = fadd fast double %m0diffe, %m1diffe
@@ -86,7 +86,7 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{} @diffemetasubf(double* nocapture %x, double* nocapture %"x'", {} %tapeArg)
+; CHECK: define internal {{(dso_local )?}}{} @diffemetasubf(double* nocapture %x, double* nocapture %"x'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[tostore:.+]] = getelementptr inbounds double, double* %"x'", i64 1
 ; CHECK-NEXT:   store double 0.000000e+00, double* %[[tostore]], align 8

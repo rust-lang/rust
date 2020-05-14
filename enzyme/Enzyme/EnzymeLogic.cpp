@@ -2192,13 +2192,12 @@ void DerivativeMaker<AugmentedReturn*>::visitCallInst(llvm::CallInst &call) {
 
     augmentcall->setName(op->getName()+"_augmented");
 
-    Value* tp = BuilderZ.CreateExtractValue(augmentcall, {tapeIdx}, "subcache");
-    if (tp->getType()->isEmptyTy()) {
-        auto tpt = tp->getType();
-        gutils->erase(cast<Instruction>(tp));
-        tp = UndefValue::get(tpt);
+    {
+      if (tapeIdx != 0XDEADBEEF) {
+        Value* tp = BuilderZ.CreateExtractValue(augmentcall, {tapeIdx}, "subcache");
+        gutils->addMalloc(BuilderZ, tp, getIndex(orig, CacheType::Tape) );
+      }
     }
-    gutils->addMalloc(BuilderZ, tp, getIndex(orig, CacheType::Tape) );
 
     if (gutils->invertedPointers.count(orig) != 0) {
         auto placeholder = cast<PHINode>(gutils->invertedPointers[orig]);
@@ -2592,14 +2591,20 @@ void DerivativeMaker<const AugmentedReturn*>::visitCallInst(llvm::CallInst &call
 
           augmentcall->setName(op->getName()+"_augmented");
 
-          tape = BuilderZ.CreateExtractValue(augmentcall, {tapeIdx});
-          if (tape->getType()->isEmptyTy()) {
-            auto tt = tape->getType();
-            gutils->erase(cast<Instruction>(tape));
-            tape = UndefValue::get(tt);
+          if (tapeIdx != 0xDEADBEEF) {
+            tape = BuilderZ.CreateExtractValue(augmentcall, {tapeIdx});
+            if (tape->getType()->isEmptyTy()) {
+              auto tt = tape->getType();
+              gutils->erase(cast<Instruction>(tape));
+              tape = UndefValue::get(tt);
+            }
           }
         } else {
-          tape = gutils->addMalloc(BuilderZ, tape, getIndex(orig, CacheType::Tape) );
+          assert(subdata);
+          if (subdata->returns.find(AugmentedStruct::Tape) == subdata->returns.end()) {
+          } else {
+            tape = gutils->addMalloc(BuilderZ, tape, getIndex(orig, CacheType::Tape) );
+          }
 
           if (!topLevel && subretused) {
             if (is_value_needed_in_reverse(TR, gutils, orig, topLevel)) {
@@ -2667,12 +2672,12 @@ void DerivativeMaker<const AugmentedReturn*>::visitCallInst(llvm::CallInst &call
         }
 
         if (fnandtapetype) {
-        if (!tape->getType()->isStructTy()) {
-          llvm::errs() << "gutils->oldFunc: " << *gutils->oldFunc << "\n";
-          llvm::errs() << "gutils->newFunc: " << *gutils->newFunc << "\n";
-          llvm::errs() << "tape: " << *tape << "\n";
-        }
-        assert(tape->getType()->isStructTy());
+          if (tape && !tape->getType()->isStructTy()) {
+            llvm::errs() << "gutils->oldFunc: " << *gutils->oldFunc << "\n";
+            llvm::errs() << "gutils->newFunc: " << *gutils->newFunc << "\n";
+            llvm::errs() << "tape: " << *tape << "\n";
+          }
+          assert(!tape || tape->getType()->isStructTy());
         }
 
   } else {
@@ -3235,8 +3240,27 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, DIFFE_TYPE retTyp
   StructType* tapeType = StructType::get(nf->getContext(), MallocTypes);
 
   bool recursive = cachedfunctions.find(tup)->second.fn->getNumUses() > 0 || forceAnonymousTape;
+  bool noTape = MallocTypes.size() == 0 && !forceAnonymousTape;
 
-  if (recursive) {
+  int oldretIdx = -1;
+  if (returnMapping.find(AugmentedStruct::Return) != returnMapping.end()) {
+    oldretIdx = returnMapping[AugmentedStruct::Return];
+  }
+
+  if (noTape) {
+    auto tidx = returnMapping.find(AugmentedStruct::Tape)->second;
+    returnMapping.erase(AugmentedStruct::Tape);
+    cachedfunctions.find(tup)->second.returns.erase(AugmentedStruct::Tape);
+    if (returnMapping.find(AugmentedStruct::Return) != returnMapping.end()) {
+      cachedfunctions.find(tup)->second.returns[AugmentedStruct::Return] -= ( returnMapping[AugmentedStruct::Return] > tidx ) ? 1 : 0;
+      returnMapping[AugmentedStruct::Return] -= ( returnMapping[AugmentedStruct::Return] > tidx ) ? 1 : 0;
+    }
+    if (returnMapping.find(AugmentedStruct::DifferentialReturn) != returnMapping.end()) {
+      cachedfunctions.find(tup)->second.returns[AugmentedStruct::DifferentialReturn] -= ( returnMapping[AugmentedStruct::DifferentialReturn] > tidx ) ? 1 : 0;
+      returnMapping[AugmentedStruct::DifferentialReturn] -= ( returnMapping[AugmentedStruct::DifferentialReturn] > tidx ) ? 1 : 0;
+    }
+    RetTypes.erase(RetTypes.begin() + tidx);
+  } else if (recursive) {
     assert(RetTypes[returnMapping.find(AugmentedStruct::Tape)->second] == Type::getInt8PtrTy(nf->getContext()));
   } else {
     RetTypes[returnMapping.find(AugmentedStruct::Tape)->second] = tapeType;
@@ -3283,57 +3307,58 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, DIFFE_TYPE retTyp
 
   Value* ret = ib.CreateAlloca(RetType);
 
-  Value* tapeMemory;
-  if (recursive) {
-      auto i64 = Type::getInt64Ty(NewF->getContext());
-      tapeMemory = CallInst::CreateMalloc(NewF->getEntryBlock().getFirstNonPHI(),
-                    i64,
-                    tapeType,
-                    ConstantInt::get(i64, NewF->getParent()->getDataLayout().getTypeAllocSizeInBits(tapeType)/8),
-                    nullptr,
-                    nullptr,
-                    "tapemem"
-                    );
-    CallInst* malloccall = dyn_cast<CallInst>(tapeMemory);
-    if (malloccall == nullptr) {
-        malloccall = cast<CallInst>(cast<Instruction>(tapeMemory)->getOperand(0));
-    }
-    malloccall->addAttribute(AttributeList::ReturnIndex, Attribute::NoAlias);
-    malloccall->addAttribute(AttributeList::ReturnIndex, Attribute::NonNull);
-    Value *Idxs[] = {
-        ib.getInt32(0),
-        ib.getInt32(returnMapping.find(AugmentedStruct::Tape)->second),
-    };
-    assert(malloccall);
-    assert(ret);
-    auto gep = ib.CreateGEP(ret, Idxs, "");
-    cast<GetElementPtrInst>(gep)->setIsInBounds(true);
-    ib.CreateStore(malloccall, gep);
-  } else {
-    Value *Idxs[] = {
-        ib.getInt32(0),
-        ib.getInt32(returnMapping.find(AugmentedStruct::Tape)->second),
-    };
-    tapeMemory = ib.CreateGEP(ret, Idxs, "");
-    cast<GetElementPtrInst>(tapeMemory)->setIsInBounds(true);
-  }
-
-  unsigned i=0;
-  for (auto v: gutils->getMallocs()) {
-      if (!isa<UndefValue>(v)) {
-          //llvm::errs() << "v: " << *v << "VMap[v]: " << *VMap[v] << "\n";
-          IRBuilder <>ib(cast<Instruction>(VMap[v])->getNextNode());
-          Value *Idxs[] = {
-            ib.getInt32(0),
-            ib.getInt32(i)
-          };
-          auto gep = ib.CreateGEP(tapeMemory, Idxs, "");
-          cast<GetElementPtrInst>(gep)->setIsInBounds(true);
-          ib.CreateStore(VMap[v], gep);
+  if (!noTape) {
+    Value* tapeMemory;
+    if (recursive) {
+        auto i64 = Type::getInt64Ty(NewF->getContext());
+        tapeMemory = CallInst::CreateMalloc(NewF->getEntryBlock().getFirstNonPHI(),
+                      i64,
+                      tapeType,
+                      ConstantInt::get(i64, NewF->getParent()->getDataLayout().getTypeAllocSizeInBits(tapeType)/8),
+                      nullptr,
+                      nullptr,
+                      "tapemem"
+                      );
+      CallInst* malloccall = dyn_cast<CallInst>(tapeMemory);
+      if (malloccall == nullptr) {
+          malloccall = cast<CallInst>(cast<Instruction>(tapeMemory)->getOperand(0));
       }
-      i++;
+      malloccall->addAttribute(AttributeList::ReturnIndex, Attribute::NoAlias);
+      malloccall->addAttribute(AttributeList::ReturnIndex, Attribute::NonNull);
+      Value *Idxs[] = {
+          ib.getInt32(0),
+          ib.getInt32(returnMapping.find(AugmentedStruct::Tape)->second),
+      };
+      assert(malloccall);
+      assert(ret);
+      auto gep = ib.CreateGEP(ret, Idxs, "");
+      cast<GetElementPtrInst>(gep)->setIsInBounds(true);
+      ib.CreateStore(malloccall, gep);
+    } else {
+      Value *Idxs[] = {
+          ib.getInt32(0),
+          ib.getInt32(returnMapping.find(AugmentedStruct::Tape)->second),
+      };
+      tapeMemory = ib.CreateGEP(ret, Idxs, "");
+      cast<GetElementPtrInst>(tapeMemory)->setIsInBounds(true);
+    }
+
+    unsigned i=0;
+    for (auto v: gutils->getMallocs()) {
+        if (!isa<UndefValue>(v)) {
+            //llvm::errs() << "v: " << *v << "VMap[v]: " << *VMap[v] << "\n";
+            IRBuilder <>ib(cast<Instruction>(VMap[v])->getNextNode());
+            Value *Idxs[] = {
+              ib.getInt32(0),
+              ib.getInt32(i)
+            };
+            auto gep = ib.CreateGEP(tapeMemory, Idxs, "");
+            cast<GetElementPtrInst>(gep)->setIsInBounds(true);
+            ib.CreateStore(VMap[v], gep);
+        }
+        i++;
+    }
   }
-  if (tapeMemory->hasNUses(0)) gutils->erase(cast<Instruction>(tapeMemory));
 
   for (inst_iterator I = inst_begin(nf), E = inst_end(nf); I != E; ++I) {
       if (ReturnInst* ri = dyn_cast<ReturnInst>(&*I)) {
@@ -3344,12 +3369,12 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, DIFFE_TYPE retTyp
             assert(rv);
             Value* actualrv = nullptr;
             if (auto iv = dyn_cast<InsertValueInst>(rv)) {
-              if (iv->getNumIndices() == 1 && iv->getIndices()[0] == returnMapping.find(AugmentedStruct::Return)->second) {
+              if (iv->getNumIndices() == 1 && iv->getIndices()[0] == oldretIdx) {
                 actualrv = iv->getInsertedValueOperand();
               }
             }
             if (actualrv == nullptr) {
-              actualrv = ib.CreateExtractValue(rv, {returnMapping.find(AugmentedStruct::Return)->second});
+              actualrv = ib.CreateExtractValue(rv, {oldretIdx});
             }
             auto gep = ib.CreateConstGEP2_32(RetType, ret, 0, returnMapping.find(AugmentedStruct::Return)->second, "");
             cast<GetElementPtrInst>(gep)->setIsInBounds(true);

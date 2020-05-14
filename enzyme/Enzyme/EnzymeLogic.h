@@ -43,6 +43,19 @@ enum class AugmentedStruct {
     DifferentialReturn
 };
 
+static inline std::string str(AugmentedStruct c) {
+    switch(c) {
+        case AugmentedStruct::Tape: return "tape";
+        case AugmentedStruct::Return: return "return";
+        case AugmentedStruct::DifferentialReturn: return "DifferentialReturn";
+        default: llvm_unreachable("unknown cache type");
+    }
+}
+
+static inline llvm::raw_ostream& operator<<(llvm::raw_ostream& o, AugmentedStruct c) {
+    return o << str(c);
+}
+
 enum class CacheType {
     Self,
     Shadow,

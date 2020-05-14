@@ -75,8 +75,8 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK: for.body7:                                        ; preds = %for.body7, %for.cond3.preheader
 ; CHECK-NEXT:   %iv1 = phi i64 [ %iv.next2, %for.body7 ], [ 0, %for.cond3.preheader ]
 ; CHECK-NEXT:   %iv.next2 = add nuw nsw i64 %iv1, 1
-; CHECK-NEXT:   %[[augmented:.+]] = call { {}, double } @augmented_get(double* %x, double* %"x'", i64 undef, i64 %iv1)
-; CHECK-NEXT:   %[[retval:.+]] = extractvalue { {}, double } %[[augmented]], 1
+; CHECK-NEXT:   %[[augmented:.+]] = call { double } @augmented_get(double* %x, double* %"x'", i64 undef, i64 %iv1)
+; CHECK-NEXT:   %[[retval:.+]] = extractvalue { double } %[[augmented]], 0
 ; CHECK-NEXT:   %[[mallocgep2:.+]] = getelementptr inbounds double, double* %call_malloccache5, i64 %iv1
 ; CHECK-NEXT:   store double %[[retval]], double* %[[mallocgep2]], align 8, !invariant.group !1
 ; CHECK-NEXT:   %exitcond = icmp eq i64 %iv1, %iv
@@ -106,7 +106,7 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   %[[cached:.+]] = load double, double* %[[invertedgep2]], align 8, !invariant.group !1
 ; CHECK-NEXT:   %m0diffecall = fmul fast double %differeturn, %[[cached]]
 ; CHECK-NEXT:   %[[innerdiffe:.+]] = fadd fast double %m0diffecall, %m0diffecall
-; CHECK-NEXT:   %[[dcall:.+]] = call {} @diffeget(double* %x, double* %"x'", i64 undef, i64 %[[iv1]], double %[[innerdiffe]], {} undef)
+; CHECK-NEXT:   %[[dcall:.+]] = call {} @diffeget(double* %x, double* %"x'", i64 undef, i64 %[[iv1]], double %[[innerdiffe]])
 ; CHECK-NEXT:   %[[done2:.+]] = icmp eq i64 %[[iv1]], 0
 ; CHECK-NEXT:   br i1 %[[done2]], label %invertfor.cond3.preheader, label %incinvertfor.body7
 
