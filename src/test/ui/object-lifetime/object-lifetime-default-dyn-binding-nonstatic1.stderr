@@ -6,3 +6,4 @@ LL | fn bar<'a>(x: &'a str) -> &'a dyn Foo<'a, Item = dyn Bar> { &() }
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0228`.
