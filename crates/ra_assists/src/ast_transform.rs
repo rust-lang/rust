@@ -68,7 +68,7 @@ impl<'a> SubstituteTypeParams<'a> {
                             &default
                                 .display_source_code(source_scope.db, source_scope.module()?.into())
                                 .ok()?,
-                        )
+                        ),
                     ))
                 }
             })
