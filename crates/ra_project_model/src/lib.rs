@@ -35,7 +35,7 @@ pub enum ProjectWorkspace {
 /// `PackageRoot` describes a package root folder.
 /// Which may be an external dependency, or a member of
 /// the current workspace.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct PackageRoot {
     /// Path to the root folder
     path: PathBuf,

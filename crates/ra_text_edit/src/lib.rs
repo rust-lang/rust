@@ -21,7 +21,7 @@ pub struct TextEdit {
     indels: Vec<Indel>,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct TextEditBuilder {
     indels: Vec<Indel>,
 }

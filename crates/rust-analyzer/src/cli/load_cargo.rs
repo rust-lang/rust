@@ -22,7 +22,7 @@ fn vfs_root_to_id(r: ra_vfs::VfsRoot) -> SourceRootId {
     SourceRootId(r.0)
 }
 
-pub(crate) fn load_cargo(
+pub fn load_cargo(
     root: &Path,
     load_out_dirs_from_check: bool,
     with_proc_macro: bool,

@@ -176,14 +176,10 @@ impl AnalysisHost {
     pub fn request_cancellation(&mut self) {
         self.db.request_cancellation();
     }
-    pub fn raw_database(
-        &self,
-    ) -> &(impl hir::db::HirDatabase + salsa::Database + ra_db::SourceDatabaseExt) {
+    pub fn raw_database(&self) -> &RootDatabase {
         &self.db
     }
-    pub fn raw_database_mut(
-        &mut self,
-    ) -> &mut (impl hir::db::HirDatabase + salsa::Database + ra_db::SourceDatabaseExt) {
+    pub fn raw_database_mut(&mut self) -> &mut RootDatabase {
         &mut self.db
     }
 }
