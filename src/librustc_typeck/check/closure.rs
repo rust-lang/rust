@@ -6,7 +6,7 @@ use crate::astconv::AstConv;
 use crate::middle::region;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_hir::lang_items;
+use rustc_hir::lang_items::{FutureTraitLangItem, GeneratorTraitLangItem};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::LateBoundRegionConversionTime;
 use rustc_infer::infer::{InferOk, InferResult};
@@ -245,7 +245,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let trait_ref = projection.to_poly_trait_ref(tcx);
 
         let is_fn = tcx.fn_trait_kind_from_lang_item(trait_ref.def_id()).is_some();
-        let gen_trait = tcx.require_lang_item(lang_items::GeneratorTraitLangItem, cause_span);
+        let gen_trait = tcx.require_lang_item(GeneratorTraitLangItem, cause_span);
         let is_gen = gen_trait == trait_ref.def_id();
         if !is_fn && !is_gen {
             debug!("deduce_sig_from_projection: not fn or generator");
@@ -678,7 +678,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Check that this is a projection from the `Future` trait.
         let trait_ref = predicate.projection_ty.trait_ref(self.tcx);
-        let future_trait = self.tcx.lang_items().future_trait().unwrap();
+        let future_trait = self.tcx.require_lang_item(FutureTraitLangItem, Some(cause_span));
         if trait_ref.def_id != future_trait {
             debug!("deduce_future_output_from_projection: not a future");
             return None;
