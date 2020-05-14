@@ -1985,6 +1985,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "slow_vector_initialization",
     },
     Lint {
+        name: "sort_by_key_reverse",
+        group: "complexity",
+        desc: "default lint description",
+        deprecation: None,
+        module: "sort_by_key_reverse",
+    },
+    Lint {
         name: "string_add",
         group: "restriction",
         desc: "using `x + ..` where x is a `String` instead of `push_str()`",

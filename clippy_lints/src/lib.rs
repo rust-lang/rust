@@ -304,6 +304,7 @@ mod serde_api;
 mod shadow;
 mod single_component_path_imports;
 mod slow_vector_initialization;
+mod sort_by_key_reverse;
 mod strings;
 mod suspicious_trait_impl;
 mod swap;
@@ -779,6 +780,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &shadow::SHADOW_UNRELATED,
         &single_component_path_imports::SINGLE_COMPONENT_PATH_IMPORTS,
         &slow_vector_initialization::SLOW_VECTOR_INITIALIZATION,
+        &sort_by_key_reverse::SORT_BY_KEY_REVERSE,
         &strings::STRING_ADD,
         &strings::STRING_ADD_ASSIGN,
         &strings::STRING_LIT_AS_BYTES,
@@ -1391,6 +1393,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&serde_api::SERDE_API_MISUSE),
         LintId::of(&single_component_path_imports::SINGLE_COMPONENT_PATH_IMPORTS),
         LintId::of(&slow_vector_initialization::SLOW_VECTOR_INITIALIZATION),
+        LintId::of(&sort_by_key_reverse::SORT_BY_KEY_REVERSE),
         LintId::of(&strings::STRING_LIT_AS_BYTES),
         LintId::of(&suspicious_trait_impl::SUSPICIOUS_ARITHMETIC_IMPL),
         LintId::of(&suspicious_trait_impl::SUSPICIOUS_OP_ASSIGN_IMPL),
@@ -1592,6 +1595,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&ranges::RANGE_ZIP_WITH_LEN),
         LintId::of(&reference::DEREF_ADDROF),
         LintId::of(&reference::REF_IN_DEREF),
+        LintId::of(&sort_by_key_reverse::SORT_BY_KEY_REVERSE),
         LintId::of(&swap::MANUAL_SWAP),
         LintId::of(&temporary_assignment::TEMPORARY_ASSIGNMENT),
         LintId::of(&transmute::CROSSPOINTER_TRANSMUTE),
