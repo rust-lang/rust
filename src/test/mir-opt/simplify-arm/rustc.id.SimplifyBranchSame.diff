@@ -1,0 +1,37 @@
+- // MIR for `id` before SimplifyBranchSame
++ // MIR for `id` after SimplifyBranchSame
+  
+  fn id(_1: std::option::Option<u8>) -> std::option::Option<u8> {
+      debug o => _1;                       // in scope 0 at $DIR/simplify-arm.rs:9:7: 9:8
+      let mut _0: std::option::Option<u8>; // return place in scope 0 at $DIR/simplify-arm.rs:9:25: 9:35
+      let mut _2: isize;                   // in scope 0 at $DIR/simplify-arm.rs:11:9: 11:16
+      let _3: u8;                          // in scope 0 at $DIR/simplify-arm.rs:11:14: 11:15
+      let mut _4: u8;                      // in scope 0 at $DIR/simplify-arm.rs:11:25: 11:26
+      scope 1 {
+          debug v => _3;                   // in scope 1 at $DIR/simplify-arm.rs:11:14: 11:15
+      }
+  
+      bb0: {
+          _2 = discriminant(_1);           // scope 0 at $DIR/simplify-arm.rs:11:9: 11:16
+          switchInt(move _2) -> [0isize: bb1, 1isize: bb3, otherwise: bb2]; // scope 0 at $DIR/simplify-arm.rs:11:9: 11:16
+      }
+  
+      bb1: {
+          discriminant(_0) = 0;            // scope 0 at $DIR/simplify-arm.rs:12:17: 12:21
+          goto -> bb4;                     // scope 0 at $DIR/simplify-arm.rs:10:5: 13:6
+      }
+  
+      bb2: {
+          unreachable;                     // scope 0 at $DIR/simplify-arm.rs:10:11: 10:12
+      }
+  
+      bb3: {
+          _0 = move _1;                    // scope 1 at $DIR/simplify-arm.rs:11:20: 11:27
+          goto -> bb4;                     // scope 0 at $DIR/simplify-arm.rs:10:5: 13:6
+      }
+  
+      bb4: {
+          return;                          // scope 0 at $DIR/simplify-arm.rs:14:2: 14:2
+      }
+  }
+  

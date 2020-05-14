@@ -11,9 +11,12 @@
 
 use crate::transform::{simplify, MirPass, MirSource};
 use itertools::Itertools as _;
+use rustc_index::vec::IndexVec;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_target::abi::VariantIdx;
+use std::iter::{Enumerate, Peekable};
+use std::slice::Iter;
 
 /// Simplifies arms of form `Variant(x) => Variant(x)` to just a move.
 ///
@@ -21,7 +24,8 @@ use rustc_target::abi::VariantIdx;
 ///
 /// ```rust
 /// _LOCAL_TMP = ((_LOCAL_1 as Variant ).FIELD: TY );
-/// ((_LOCAL_0 as Variant).FIELD: TY) = move _LOCAL_TMP;
+/// _TMP_2 = _LOCAL_TMP;
+/// ((_LOCAL_0 as Variant).FIELD: TY) = move _TMP_2;
 /// discriminant(_LOCAL_0) = VAR_IDX;
 /// ```
 ///
@@ -32,50 +36,320 @@ use rustc_target::abi::VariantIdx;
 /// ```
 pub struct SimplifyArmIdentity;
 
+#[derive(Debug)]
+struct ArmIdentityInfo<'tcx> {
+    /// Storage location for the variant's field
+    local_temp_0: Local,
+    /// Storage location holding the variant being read from
+    local_1: Local,
+    /// The variant field being read from
+    vf_s0: VarField<'tcx>,
+    /// Index of the statement which loads the variant being read
+    get_variant_field_stmt: usize,
+
+    /// Tracks each assignment to a temporary of the variant's field
+    field_tmp_assignments: Vec<(Local, Local)>,
+
+    /// Storage location holding the variant's field that was read from
+    local_tmp_s1: Local,
+    /// Storage location holding the enum that we are writing to
+    local_0: Local,
+    /// The variant field being written to
+    vf_s1: VarField<'tcx>,
+
+    /// Storage location that the discriminant is being written to
+    set_discr_local: Local,
+    /// The variant being written
+    set_discr_var_idx: VariantIdx,
+
+    /// Index of the statement that should be overwritten as a move
+    stmt_to_overwrite: usize,
+    /// SourceInfo for the new move
+    source_info: SourceInfo,
+
+    /// Indices of matching Storage{Live,Dead} statements encountered.
+    /// (StorageLive index,, StorageDead index, Local)
+    storage_stmts: Vec<(usize, usize, Local)>,
+
+    /// The statements that should be removed (turned into nops)
+    stmts_to_remove: Vec<usize>,
+}
+
+fn get_arm_identity_info<'a, 'tcx>(stmts: &'a [Statement<'tcx>]) -> Option<ArmIdentityInfo<'tcx>> {
+    // This can't possibly match unless there are at least 3 statements in the block
+    // so fail fast on tiny blocks.
+    if stmts.len() < 3 {
+        return None;
+    }
+
+    let mut tmp_assigns = Vec::new();
+    let mut nop_stmts = Vec::new();
+    let mut storage_stmts = Vec::new();
+    let mut storage_live_stmts = Vec::new();
+    let mut storage_dead_stmts = Vec::new();
+
+    type StmtIter<'a, 'tcx> = Peekable<Enumerate<Iter<'a, Statement<'tcx>>>>;
+
+    fn is_storage_stmt<'tcx>(stmt: &Statement<'tcx>) -> bool {
+        matches!(stmt.kind, StatementKind::StorageLive(_) | StatementKind::StorageDead(_))
+    }
+
+    /// Eats consecutive Statements which match `test`, performing the specified `action` for each.
+    /// The iterator `stmt_iter` is not advanced if none were matched.
+    fn try_eat<'a, 'tcx>(
+        stmt_iter: &mut StmtIter<'a, 'tcx>,
+        test: impl Fn(&'a Statement<'tcx>) -> bool,
+        mut action: impl FnMut(usize, &'a Statement<'tcx>) -> (),
+    ) {
+        while stmt_iter.peek().map(|(_, stmt)| test(stmt)).unwrap_or(false) {
+            let (idx, stmt) = stmt_iter.next().unwrap();
+
+            action(idx, stmt);
+        }
+    }
+
+    /// Eats consecutive `StorageLive` and `StorageDead` Statements.
+    /// The iterator `stmt_iter` is not advanced if none were found.
+    fn try_eat_storage_stmts<'a, 'tcx>(
+        stmt_iter: &mut StmtIter<'a, 'tcx>,
+        storage_live_stmts: &mut Vec<(usize, Local)>,
+        storage_dead_stmts: &mut Vec<(usize, Local)>,
+    ) {
+        try_eat(stmt_iter, is_storage_stmt, |idx, stmt| {
+            if let StatementKind::StorageLive(l) = stmt.kind {
+                storage_live_stmts.push((idx, l));
+            } else if let StatementKind::StorageDead(l) = stmt.kind {
+                storage_dead_stmts.push((idx, l));
+            }
+        })
+    }
+
+    fn is_tmp_storage_stmt<'tcx>(stmt: &Statement<'tcx>) -> bool {
+        use rustc_middle::mir::StatementKind::Assign;
+        if let Assign(box (place, Rvalue::Use(Operand::Copy(p) | Operand::Move(p)))) = &stmt.kind {
+            place.as_local().is_some() && p.as_local().is_some()
+        } else {
+            false
+        }
+    }
+
+    /// Eats consecutive `Assign` Statements.
+    // The iterator `stmt_iter` is not advanced if none were found.
+    fn try_eat_assign_tmp_stmts<'a, 'tcx>(
+        stmt_iter: &mut StmtIter<'a, 'tcx>,
+        tmp_assigns: &mut Vec<(Local, Local)>,
+        nop_stmts: &mut Vec<usize>,
+    ) {
+        try_eat(stmt_iter, is_tmp_storage_stmt, |idx, stmt| {
+            use rustc_middle::mir::StatementKind::Assign;
+            if let Assign(box (place, Rvalue::Use(Operand::Copy(p) | Operand::Move(p)))) =
+                &stmt.kind
+            {
+                tmp_assigns.push((place.as_local().unwrap(), p.as_local().unwrap()));
+                nop_stmts.push(idx);
+            }
+        })
+    }
+
+    fn find_storage_live_dead_stmts_for_local<'tcx>(
+        local: Local,
+        stmts: &[Statement<'tcx>],
+    ) -> Option<(usize, usize)> {
+        trace!("looking for {:?}", local);
+        let mut storage_live_stmt = None;
+        let mut storage_dead_stmt = None;
+        for (idx, stmt) in stmts.iter().enumerate() {
+            if stmt.kind == StatementKind::StorageLive(local) {
+                storage_live_stmt = Some(idx);
+            } else if stmt.kind == StatementKind::StorageDead(local) {
+                storage_dead_stmt = Some(idx);
+            }
+        }
+
+        Some((storage_live_stmt?, storage_dead_stmt.unwrap_or(usize::MAX)))
+    }
+
+    // Try to match the expected MIR structure with the basic block we're processing.
+    // We want to see something that looks like:
+    // ```
+    // (StorageLive(_) | StorageDead(_));*
+    // _LOCAL_INTO = ((_LOCAL_FROM as Variant).FIELD: TY);
+    // (StorageLive(_) | StorageDead(_));*
+    // (tmp_n+1 = tmp_n);*
+    // (StorageLive(_) | StorageDead(_));*
+    // (tmp_n+1 = tmp_n);*
+    // ((LOCAL_FROM as Variant).FIELD: TY) = move tmp;
+    // discriminant(LOCAL_FROM) = VariantIdx;
+    // (StorageLive(_) | StorageDead(_));*
+    // ```
+    let mut stmt_iter = stmts.iter().enumerate().peekable();
+
+    try_eat_storage_stmts(&mut stmt_iter, &mut storage_live_stmts, &mut storage_dead_stmts);
+
+    let (get_variant_field_stmt, stmt) = stmt_iter.next()?;
+    let (local_tmp_s0, local_1, vf_s0) = match_get_variant_field(stmt)?;
+
+    try_eat_storage_stmts(&mut stmt_iter, &mut storage_live_stmts, &mut storage_dead_stmts);
+
+    try_eat_assign_tmp_stmts(&mut stmt_iter, &mut tmp_assigns, &mut nop_stmts);
+
+    try_eat_storage_stmts(&mut stmt_iter, &mut storage_live_stmts, &mut storage_dead_stmts);
+
+    try_eat_assign_tmp_stmts(&mut stmt_iter, &mut tmp_assigns, &mut nop_stmts);
+
+    let (idx, stmt) = stmt_iter.next()?;
+    let (local_tmp_s1, local_0, vf_s1) = match_set_variant_field(stmt)?;
+    nop_stmts.push(idx);
+
+    let (idx, stmt) = stmt_iter.next()?;
+    let (set_discr_local, set_discr_var_idx) = match_set_discr(stmt)?;
+    let discr_stmt_source_info = stmt.source_info;
+    nop_stmts.push(idx);
+
+    try_eat_storage_stmts(&mut stmt_iter, &mut storage_live_stmts, &mut storage_dead_stmts);
+
+    for (live_idx, live_local) in storage_live_stmts {
+        if let Some(i) = storage_dead_stmts.iter().rposition(|(_, l)| *l == live_local) {
+            let (dead_idx, _) = storage_dead_stmts.swap_remove(i);
+            storage_stmts.push((live_idx, dead_idx, live_local));
+
+            if live_local == local_tmp_s0 {
+                nop_stmts.push(get_variant_field_stmt);
+            }
+        }
+    }
+
+    nop_stmts.sort();
+
+    // Use one of the statements we're going to discard between the point
+    // where the storage location for the variant field becomes live and
+    // is killed.
+    let (live_idx, dead_idx) = find_storage_live_dead_stmts_for_local(local_tmp_s0, stmts)?;
+    let stmt_to_overwrite =
+        nop_stmts.iter().find(|stmt_idx| live_idx < **stmt_idx && **stmt_idx < dead_idx);
+
+    Some(ArmIdentityInfo {
+        local_temp_0: local_tmp_s0,
+        local_1,
+        vf_s0,
+        get_variant_field_stmt,
+        field_tmp_assignments: tmp_assigns,
+        local_tmp_s1,
+        local_0,
+        vf_s1,
+        set_discr_local,
+        set_discr_var_idx,
+        stmt_to_overwrite: *stmt_to_overwrite?,
+        source_info: discr_stmt_source_info,
+        storage_stmts,
+        stmts_to_remove: nop_stmts,
+    })
+}
+
+fn optimization_applies<'tcx>(
+    opt_info: &ArmIdentityInfo<'tcx>,
+    local_decls: &IndexVec<Local, LocalDecl<'tcx>>,
+) -> bool {
+    trace!("testing if optimization applies...");
+
+    // FIXME(wesleywiser): possibly relax this restriction?
+    if opt_info.local_0 == opt_info.local_1 {
+        trace!("NO: moving into ourselves");
+        return false;
+    } else if opt_info.vf_s0 != opt_info.vf_s1 {
+        trace!("NO: the field-and-variant information do not match");
+        return false;
+    } else if local_decls[opt_info.local_0].ty != local_decls[opt_info.local_1].ty {
+        // FIXME(Centril,oli-obk): possibly relax to same layout?
+        trace!("NO: source and target locals have different types");
+        return false;
+    } else if (opt_info.local_0, opt_info.vf_s0.var_idx)
+        != (opt_info.set_discr_local, opt_info.set_discr_var_idx)
+    {
+        trace!("NO: the discriminants do not match");
+        return false;
+    }
+
+    // Verify the assigment chain consists of the form b = a; c = b; d = c; etc...
+    if opt_info.field_tmp_assignments.len() == 0 {
+        trace!("NO: no assignments found");
+    }
+    let mut last_assigned_to = opt_info.field_tmp_assignments[0].1;
+    let source_local = last_assigned_to;
+    for (l, r) in &opt_info.field_tmp_assignments {
+        if *r != last_assigned_to {
+            trace!("NO: found unexpected assignment {:?} = {:?}", l, r);
+            return false;
+        }
+
+        last_assigned_to = *l;
+    }
+
+    if source_local != opt_info.local_temp_0 {
+        trace!(
+            "NO: start of assignment chain does not match enum variant temp: {:?} != {:?}",
+            source_local,
+            opt_info.local_temp_0
+        );
+        return false;
+    } else if last_assigned_to != opt_info.local_tmp_s1 {
+        trace!(
+            "NO: end of assignemnt chain does not match written enum temp: {:?} != {:?}",
+            last_assigned_to,
+            opt_info.local_tmp_s1
+        );
+        return false;
+    }
+
+    trace!("SUCCESS: optimization applies!");
+    return true;
+}
+
 impl<'tcx> MirPass<'tcx> for SimplifyArmIdentity {
-    fn run_pass(&self, _: TyCtxt<'tcx>, _: MirSource<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass(&self, _: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
+        trace!("running SimplifyArmIdentity on {:?}", source);
         let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
         for bb in basic_blocks {
-            // Need 3 statements:
-            let (s0, s1, s2) = match &mut *bb.statements {
-                [s0, s1, s2] => (s0, s1, s2),
-                _ => continue,
-            };
-
-            // Pattern match on the form we want:
-            let (local_tmp_s0, local_1, vf_s0) = match match_get_variant_field(s0) {
-                None => continue,
-                Some(x) => x,
-            };
-            let (local_tmp_s1, local_0, vf_s1) = match match_set_variant_field(s1) {
-                None => continue,
-                Some(x) => x,
-            };
-            if local_tmp_s0 != local_tmp_s1
-                // Avoid moving into ourselves.
-                || local_0 == local_1
-                // The field-and-variant information match up.
-                || vf_s0 != vf_s1
-                // Source and target locals have the same type.
-                // FIXME(Centril | oli-obk): possibly relax to same layout?
-                || local_decls[local_0].ty != local_decls[local_1].ty
-                // We're setting the discriminant of `local_0` to this variant.
-                || Some((local_0, vf_s0.var_idx)) != match_set_discr(s2)
-            {
-                continue;
-            }
-
-            // Right shape; transform!
-            s0.source_info = s2.source_info;
-            match &mut s0.kind {
-                StatementKind::Assign(box (place, rvalue)) => {
-                    *place = local_0.into();
-                    *rvalue = Rvalue::Use(Operand::Move(local_1.into()));
+            if let Some(opt_info) = get_arm_identity_info(&bb.statements) {
+                trace!("got opt_info = {:#?}", opt_info);
+                if !optimization_applies(&opt_info, local_decls) {
+                    debug!("optimization skipped for {:?}", source);
+                    continue;
                 }
-                _ => unreachable!(),
+
+                // Also remove unused Storage{Live,Dead} statements which correspond
+                // to temps used previously.
+                for (live_idx, dead_idx, local) in &opt_info.storage_stmts {
+                    // The temporary that we've read the variant field into is scoped to this block,
+                    // so we can remove the assignment.
+                    if *local == opt_info.local_temp_0 {
+                        bb.statements[opt_info.get_variant_field_stmt].make_nop();
+                    }
+
+                    for (left, right) in &opt_info.field_tmp_assignments {
+                        if local == left || local == right {
+                            bb.statements[*live_idx].make_nop();
+                            bb.statements[*dead_idx].make_nop();
+                        }
+                    }
+                }
+
+                // Right shape; transform
+                for stmt_idx in opt_info.stmts_to_remove {
+                    bb.statements[stmt_idx].make_nop();
+                }
+
+                let stmt = &mut bb.statements[opt_info.stmt_to_overwrite];
+                stmt.source_info = opt_info.source_info;
+                stmt.kind = StatementKind::Assign(box (
+                    opt_info.local_0.into(),
+                    Rvalue::Use(Operand::Move(opt_info.local_1.into())),
+                ));
+
+                bb.statements.retain(|stmt| stmt.kind != StatementKind::Nop);
+
+                trace!("block is now {:?}", bb.statements);
             }
-            s1.make_nop();
-            s2.make_nop();
         }
     }
 }
@@ -129,7 +403,7 @@ fn match_set_discr<'tcx>(stmt: &Statement<'tcx>) -> Option<(Local, VariantIdx)> 
     }
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 struct VarField<'tcx> {
     field: Field,
     field_ty: Ty<'tcx>,
