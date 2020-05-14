@@ -17,12 +17,11 @@ use crate::{
 impl Completions {
     pub(crate) fn add_field(&mut self, ctx: &CompletionContext, field: hir::Field, ty: &Type) {
         let is_deprecated = is_deprecated(field, ctx.db);
-        let ty = ty.display(ctx.db).to_string();
         let name = field.name(ctx.db);
         let mut completion_item =
             CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name.to_string())
                 .kind(CompletionItemKind::Field)
-                .detail(ty.clone())
+                .detail(ty.display(ctx.db).to_string())
                 .set_documentation(field.docs(ctx.db))
                 .set_deprecated(is_deprecated);
 
@@ -106,6 +105,12 @@ impl Completions {
                 completion_item = completion_item.detail(ty.display(ctx.db).to_string());
             }
         };
+
+        if let ScopeDef::Local(local) = resolution {
+            if let Some(score) = compute_score(ctx, &local.ty(ctx.db), &local_name) {
+                completion_item = completion_item.set_score(score);
+            }
+        }
 
         // Add `<>` for generic types
         if ctx.is_path_type && !ctx.has_type_args && ctx.config.add_call_parenthesis {
@@ -319,10 +324,11 @@ impl Completions {
 
 pub(crate) fn compute_score(
     ctx: &CompletionContext,
-    // FIXME: this definitely should be a `Type`
-    ty: &str,
+    ty: &Type,
     name: &str,
 ) -> Option<CompletionScore> {
+    // FIXME: this should not fall back to string equality.
+    let ty = &ty.display(ctx.db).to_string();
     let (active_name, active_type) = if let Some(record_field) = &ctx.record_field_syntax {
         tested_by!(test_struct_field_completion_in_record_lit);
         let (struct_field, _local) = ctx.sema.resolve_record_field(record_field)?;
@@ -1399,6 +1405,50 @@ mod tests {
                 insert: "the_field",
                 kind: Field,
                 detail: "u32",
+                score: TypeAndNameMatch,
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
+    fn prioritize_exact_ref_match() {
+        assert_debug_snapshot!(
+        do_reference_completion(
+                r"
+                    struct WorldSnapshot { _f: () };
+                    fn go(world: &WorldSnapshot) {
+                        go(w<|>)
+                    }
+                    ",
+        ),
+            @r###"
+        [
+            CompletionItem {
+                label: "WorldSnapshot",
+                source_range: 132..133,
+                delete: 132..133,
+                insert: "WorldSnapshot",
+                kind: Struct,
+            },
+            CompletionItem {
+                label: "go(…)",
+                source_range: 132..133,
+                delete: 132..133,
+                insert: "go(${1:world})$0",
+                kind: Function,
+                lookup: "go",
+                detail: "fn go(world: &WorldSnapshot)",
+                trigger_call_info: true,
+            },
+            CompletionItem {
+                label: "world",
+                source_range: 132..133,
+                delete: 132..133,
+                insert: "world",
+                kind: Binding,
+                detail: "&WorldSnapshot",
                 score: TypeAndNameMatch,
             },
         ]

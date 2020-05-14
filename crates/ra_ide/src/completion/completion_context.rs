@@ -34,7 +34,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) record_pat_syntax: Option<ast::RecordPat>,
     pub(super) record_field_syntax: Option<ast::RecordField>,
     pub(super) impl_def: Option<ast::ImplDef>,
-    /// FIXME: `ActiveParameter` is string-based, which is very wrong
+    /// FIXME: `ActiveParameter` is string-based, which is very very wrong
     pub(super) active_parameter: Option<ActiveParameter>,
     pub(super) is_param: bool,
     /// If a name-binding or reference to a const in a pattern.
