@@ -12,7 +12,8 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::ty;
 use rustc_resolve::ParentScope;
 use rustc_session::lint;
-use rustc_span::symbol::{Ident, Symbol};
+use rustc_span::symbol::Ident;
+use rustc_span::symbol::Symbol;
 use rustc_span::DUMMY_SP;
 
 use std::ops::Range;
@@ -130,6 +131,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         current_item: &Option<String>,
         parent_id: Option<hir::HirId>,
         extra_fragment: &Option<String>,
+        item_opt: Option<&Item>,
     ) -> Result<(Res, Option<String>), ErrorKind> {
         let cx = self.cx;
 
@@ -230,16 +232,44 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     DefKind::Struct | DefKind::Union | DefKind::Enum | DefKind::TyAlias,
                     did,
                 ) => {
-                    let item = cx
-                        .tcx
-                        .inherent_impls(did)
-                        .iter()
-                        .flat_map(|imp| cx.tcx.associated_items(*imp).in_definition_order())
-                        .find(|item| item.ident.name == item_name);
+                    // We need item's parent to know if it's
+                    // trait impl or struct/enum/etc impl
+                    let item_parent = item_opt
+                        .and_then(|item| self.cx.as_local_hir_id(item.def_id))
+                        .and_then(|item_hir| {
+                            let parent_hir = self.cx.tcx.hir().get_parent_item(item_hir);
+                            self.cx.tcx.hir().find(parent_hir)
+                        });
+                    let item = match item_parent {
+                        Some(hir::Node::Item(hir::Item {
+                            kind: hir::ItemKind::Impl { of_trait: Some(_), self_ty, .. },
+                            ..
+                        })) => {
+                            // trait impl
+                            cx.tcx
+                                .associated_item_def_ids(self_ty.hir_id.owner)
+                                .iter()
+                                .map(|child| {
+                                    let associated_item = cx.tcx.associated_item(*child);
+                                    associated_item
+                                })
+                                .find(|child| child.ident.name == item_name)
+                        }
+                        _ => {
+                            // struct/enum/etc. impl
+                            cx.tcx
+                                .inherent_impls(did)
+                                .iter()
+                                .flat_map(|imp| cx.tcx.associated_items(*imp).in_definition_order())
+                                .find(|item| item.ident.name == item_name)
+                        }
+                    };
+
                     if let Some(item) = item {
                         let out = match item.kind {
                             ty::AssocKind::Fn if ns == ValueNS => "method",
                             ty::AssocKind::Const if ns == ValueNS => "associatedconstant",
+                            ty::AssocKind::Type if ns == ValueNS => "associatedtype",
                             _ => return self.variant_field(path_str, current_item, module_id),
                         };
                         if extra_fragment.is_some() {
@@ -484,8 +514,14 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
 
                 match kind {
                     Some(ns @ ValueNS) => {
-                        match self.resolve(path_str, ns, &current_item, base_node, &extra_fragment)
-                        {
+                        match self.resolve(
+                            path_str,
+                            ns,
+                            &current_item,
+                            base_node,
+                            &extra_fragment,
+                            None,
+                        ) {
                             Ok(res) => res,
                             Err(ErrorKind::ResolutionFailure) => {
                                 resolution_failure(cx, &item, path_str, &dox, link_range);
@@ -501,8 +537,14 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                         }
                     }
                     Some(ns @ TypeNS) => {
-                        match self.resolve(path_str, ns, &current_item, base_node, &extra_fragment)
-                        {
+                        match self.resolve(
+                            path_str,
+                            ns,
+                            &current_item,
+                            base_node,
+                            &extra_fragment,
+                            None,
+                        ) {
                             Ok(res) => res,
                             Err(ErrorKind::ResolutionFailure) => {
                                 resolution_failure(cx, &item, path_str, &dox, link_range);
@@ -526,6 +568,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                                 &current_item,
                                 base_node,
                                 &extra_fragment,
+                                None,
                             ) {
                                 Err(ErrorKind::AnchorFailure(msg)) => {
                                     anchor_failure(cx, &item, &ori_link, &dox, link_range, msg);
@@ -539,6 +582,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                                 &current_item,
                                 base_node,
                                 &extra_fragment,
+                                Some(&item),
                             ) {
                                 Err(ErrorKind::AnchorFailure(msg)) => {
                                     anchor_failure(cx, &item, &ori_link, &dox, link_range, msg);
