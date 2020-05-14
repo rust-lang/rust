@@ -12,6 +12,11 @@ use std::{
 use cargo_metadata::Message;
 use crossbeam_channel::{never, select, unbounded, Receiver, RecvError, Sender};
 
+pub use cargo_metadata::diagnostic::{
+    Applicability, Diagnostic, DiagnosticLevel, DiagnosticSpan,
+    DiagnosticSpanMacroExpansion,
+};
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum FlycheckConfig {
     CargoCommand { command: String, all_targets: bool, all_features: bool, extra_args: Vec<String> },
@@ -52,7 +57,7 @@ pub enum CheckTask {
     ClearDiagnostics,
 
     /// Request adding a diagnostic with fixes included to a file
-    AddDiagnostic { workspace_root: PathBuf, diagnostic: cargo_metadata::diagnostic::Diagnostic },
+    AddDiagnostic { workspace_root: PathBuf, diagnostic: Diagnostic },
 
     /// Request check progress notification to client
     Status(Status),
@@ -238,12 +243,6 @@ impl FlycheckThread {
         }))
     }
 }
-
-// #[derive(Debug)]
-// pub struct DiagnosticWithFixes {
-//     diagnostic: Diagnostic,
-//     fixes: Vec<CodeAction>,
-// }
 
 enum CheckEvent {
     Begin,

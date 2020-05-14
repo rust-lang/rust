@@ -1,19 +1,17 @@
 //! This module provides the functionality needed to convert diagnostics from
 //! `cargo check` json format to the LSP diagnostic format.
-use cargo_metadata::diagnostic::{
-    Applicability, Diagnostic as RustDiagnostic, DiagnosticLevel, DiagnosticSpan,
-    DiagnosticSpanMacroExpansion,
-};
-use lsp_types::{
-    CodeAction, Diagnostic, DiagnosticRelatedInformation, DiagnosticSeverity, DiagnosticTag,
-    Location, NumberOrString, Position, Range, TextEdit, Url, WorkspaceEdit,
-};
 use std::{
     collections::HashMap,
     fmt::Write,
     path::{Component, Path, PathBuf, Prefix},
     str::FromStr,
 };
+
+use lsp_types::{
+    CodeAction, Diagnostic, DiagnosticRelatedInformation, DiagnosticSeverity, DiagnosticTag,
+    Location, NumberOrString, Position, Range, TextEdit, Url, WorkspaceEdit,
+};
+use ra_flycheck::{Applicability, DiagnosticLevel, DiagnosticSpan, DiagnosticSpanMacroExpansion};
 
 /// Converts a Rust level string to a LSP severity
 fn map_level_to_severity(val: DiagnosticLevel) -> Option<DiagnosticSeverity> {
@@ -91,7 +89,7 @@ fn map_secondary_span_to_related(
 }
 
 /// Determines if diagnostic is related to unused code
-fn is_unused_or_unnecessary(rd: &RustDiagnostic) -> bool {
+fn is_unused_or_unnecessary(rd: &ra_flycheck::Diagnostic) -> bool {
     if let Some(code) = &rd.code {
         match code.code.as_str() {
             "dead_code" | "unknown_lints" | "unreachable_code" | "unused_attributes"
@@ -122,7 +120,7 @@ enum MappedRustChildDiagnostic {
 }
 
 fn map_rust_child_diagnostic(
-    rd: &RustDiagnostic,
+    rd: &ra_flycheck::Diagnostic,
     workspace_root: &PathBuf,
 ) -> MappedRustChildDiagnostic {
     let spans: Vec<&DiagnosticSpan> = rd.spans.iter().filter(|s| s.is_primary).collect();
@@ -179,7 +177,7 @@ pub(crate) struct MappedRustDiagnostic {
 ///
 /// If the diagnostic has no primary span this will return `None`
 pub(crate) fn map_rust_diagnostic_to_lsp(
-    rd: &RustDiagnostic,
+    rd: &ra_flycheck::Diagnostic,
     workspace_root: &PathBuf,
 ) -> Vec<MappedRustDiagnostic> {
     let primary_spans: Vec<&DiagnosticSpan> = rd.spans.iter().filter(|s| s.is_primary).collect();
