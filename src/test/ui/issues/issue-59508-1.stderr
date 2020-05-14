@@ -4,13 +4,14 @@ error: lifetime parameters must be declared prior to type parameters
 LL |     pub fn do_things<T, 'a, 'b: 'a>() {
    |                     ----^^--^^----- help: reorder the parameters: lifetimes, then types, then consts: `<'a, 'b: 'a, T>`
 
-warning: the feature `const_generics` is incomplete and may cause the compiler to crash
+warning: the feature `const_generics` is incomplete and may not be safe to use and/or cause compiler crashes
   --> $DIR/issue-59508-1.rs:2:12
    |
 LL | #![feature(const_generics)]
    |            ^^^^^^^^^^^^^^
    |
    = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #44580 <https://github.com/rust-lang/rust/issues/44580> for more information
 
 error: aborting due to previous error; 1 warning emitted
 
