@@ -87,6 +87,11 @@ export async function getDebugConfiguration(ctx: Ctx, config: ra.Runnable): Prom
         }
     }
 
+    if (debugConfig.name === "run binary") {
+        // A workaround for multiple binaries. It would be better to get proper names on the LSP side.
+        debugConfig.name = `run binary [${path.basename(executable)}]`;
+    }
+
     if (debugConfig.cwd) {
         debugConfig.cwd = simplifyPath(debugConfig.cwd);
     }
