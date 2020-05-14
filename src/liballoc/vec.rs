@@ -1619,8 +1619,8 @@ impl<T: Default> Vec<T> {
     #[unstable(feature = "vec_resize_default", issue = "41758")]
     #[rustc_deprecated(
         reason = "This is moving towards being removed in favor \
-        of `.resize_with(Default::default)`.  If you disagree, please comment \
-        in the tracking issue.",
+                  of `.resize_with(Default::default)`.  If you disagree, please comment \
+                  in the tracking issue.",
         since = "1.33.0"
     )]
     pub fn resize_default(&mut self, new_len: usize) {
@@ -1825,6 +1825,7 @@ impl<T: Clone + IsZero> SpecFromElem for T {
     }
 }
 
+#[rustc_specialization_trait]
 unsafe trait IsZero {
     /// Whether this value is zero
     fn is_zero(&self) -> bool;
@@ -1874,18 +1875,14 @@ unsafe impl<T> IsZero for *mut T {
     }
 }
 
-// `Option<&T>`, `Option<&mut T>` and `Option<Box<T>>` are guaranteed to represent `None` as null.
-// For fat pointers, the bytes that would be the pointer metadata in the `Some` variant
-// are padding in the `None` variant, so ignoring them and zero-initializing instead is ok.
+// `Option<&T>` and `Option<Box<T>>` are guaranteed to represent `None` as null.
+// For fat pointers, the bytes that would be the pointer metadata in the `Some`
+// variant are padding in the `None` variant, so ignoring them and
+// zero-initializing instead is ok.
+// `Option<&mut T>` never implements `Clone`, so there's no need for an impl of
+// `SpecFromElem`.
 
 unsafe impl<T: ?Sized> IsZero for Option<&T> {
-    #[inline]
-    fn is_zero(&self) -> bool {
-        self.is_none()
-    }
-}
-
-unsafe impl<T: ?Sized> IsZero for Option<&mut T> {
     #[inline]
     fn is_zero(&self) -> bool {
         self.is_none()

@@ -109,7 +109,7 @@
 #![feature(ptr_offset_from)]
 #![feature(rustc_attrs)]
 #![feature(receiver_trait)]
-#![feature(specialization)]
+#![feature(min_specialization)]
 #![feature(staged_api)]
 #![feature(std_internals)]
 #![feature(str_internals)]
