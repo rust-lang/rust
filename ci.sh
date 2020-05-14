@@ -42,6 +42,7 @@ if [ "${TRAVIS_OS_NAME:-}" == linux ]; then
   MIRI_TEST_TARGET=x86_64-apple-darwin run_tests
   MIRI_TEST_TARGET=i686-pc-windows-msvc run_tests
 elif [ "${TRAVIS_OS_NAME:-}" == osx ]; then
+  MIRI_TEST_TARGET=i686-unknown-linux-gnu run_tests
   MIRI_TEST_TARGET=x86_64-pc-windows-msvc run_tests
   MIRI_TEST_TARGET=i686-pc-windows-gnu run_tests
 elif [ "${CI_WINDOWS:-}" == True ]; then
