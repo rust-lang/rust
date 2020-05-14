@@ -297,7 +297,7 @@ impl X86InlineAsmReg {
                 _ => unreachable!(),
             }
         } else if self as u32 <= Self::di as u32 {
-            let root = ["si", "di"][self as usize - Self::si as usize];
+            let root = self.name();
             match modifier.unwrap_or(reg_default_modifier) {
                 'l' => write!(out, "{}l", root),
                 'x' => write!(out, "{}", root),
@@ -306,12 +306,12 @@ impl X86InlineAsmReg {
                 _ => unreachable!(),
             }
         } else if self as u32 <= Self::r15 as u32 {
-            let index = self as u32 - Self::r8 as u32 + 8;
+            let root = self.name();
             match modifier.unwrap_or(reg_default_modifier) {
-                'l' => write!(out, "r{}b", index),
-                'x' => write!(out, "r{}w", index),
-                'e' => write!(out, "r{}d", index),
-                'r' => write!(out, "r{}", index),
+                'l' => write!(out, "{}b", root),
+                'x' => write!(out, "{}w", root),
+                'e' => write!(out, "{}d", root),
+                'r' => out.write_str(root),
                 _ => unreachable!(),
             }
         } else if self as u32 <= Self::r15b as u32 {
@@ -329,8 +329,7 @@ impl X86InlineAsmReg {
             let index = self as u32 - Self::zmm0 as u32;
             write!(out, "{}{}", prefix, index)
         } else {
-            let index = self as u32 - Self::k1 as u32 + 1;
-            write!(out, "k{}", index)
+            out.write_str(self.name())
         }
     }
 
