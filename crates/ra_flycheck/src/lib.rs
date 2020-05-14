@@ -1,10 +1,9 @@
 //! cargo_check provides the functionality needed to run `cargo check` or
 //! another compatible command (f.x. clippy) in a background thread and provide
 //! LSP diagnostics based on the output of the command.
-mod conv;
 
 use std::{
-    io::{self, BufRead, BufReader},
+    io::{self, BufReader},
     path::PathBuf,
     process::{Command, Stdio},
     time::Instant,
@@ -12,14 +11,6 @@ use std::{
 
 use cargo_metadata::Message;
 use crossbeam_channel::{never, select, unbounded, Receiver, RecvError, Sender};
-use lsp_types::{
-    CodeAction, CodeActionOrCommand, Diagnostic, Url, WorkDoneProgress, WorkDoneProgressBegin,
-    WorkDoneProgressEnd, WorkDoneProgressReport,
-};
-
-use crate::conv::{map_rust_diagnostic_to_lsp, MappedRustDiagnostic};
-
-pub use crate::conv::url_from_path_with_drive_lowercasing;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum FlycheckConfig {
@@ -61,10 +52,17 @@ pub enum CheckTask {
     ClearDiagnostics,
 
     /// Request adding a diagnostic with fixes included to a file
-    AddDiagnostic { url: Url, diagnostic: Diagnostic, fixes: Vec<CodeActionOrCommand> },
+    AddDiagnostic { workspace_root: PathBuf, diagnostic: cargo_metadata::diagnostic::Diagnostic },
 
     /// Request check progress notification to client
-    Status(WorkDoneProgress),
+    Status(Status),
+}
+
+#[derive(Debug)]
+pub enum Status {
+    Being,
+    Progress(String),
+    End,
 }
 
 pub enum CheckCommand {
@@ -131,9 +129,7 @@ impl FlycheckThread {
 
     fn clean_previous_results(&self, task_send: &Sender<CheckTask>) {
         task_send.send(CheckTask::ClearDiagnostics).unwrap();
-        task_send
-            .send(CheckTask::Status(WorkDoneProgress::End(WorkDoneProgressEnd { message: None })))
-            .unwrap();
+        task_send.send(CheckTask::Status(Status::End)).unwrap();
     }
 
     fn should_recheck(&mut self) -> bool {
@@ -155,52 +151,24 @@ impl FlycheckThread {
     fn handle_message(&self, msg: CheckEvent, task_send: &Sender<CheckTask>) {
         match msg {
             CheckEvent::Begin => {
-                task_send
-                    .send(CheckTask::Status(WorkDoneProgress::Begin(WorkDoneProgressBegin {
-                        title: "Running `cargo check`".to_string(),
-                        cancellable: Some(false),
-                        message: None,
-                        percentage: None,
-                    })))
-                    .unwrap();
+                task_send.send(CheckTask::Status(Status::Being)).unwrap();
             }
 
             CheckEvent::End => {
-                task_send
-                    .send(CheckTask::Status(WorkDoneProgress::End(WorkDoneProgressEnd {
-                        message: None,
-                    })))
-                    .unwrap();
+                task_send.send(CheckTask::Status(Status::End)).unwrap();
             }
 
             CheckEvent::Msg(Message::CompilerArtifact(msg)) => {
-                task_send
-                    .send(CheckTask::Status(WorkDoneProgress::Report(WorkDoneProgressReport {
-                        cancellable: Some(false),
-                        message: Some(msg.target.name),
-                        percentage: None,
-                    })))
-                    .unwrap();
+                task_send.send(CheckTask::Status(Status::Progress(msg.target.name))).unwrap();
             }
 
             CheckEvent::Msg(Message::CompilerMessage(msg)) => {
-                let map_result = map_rust_diagnostic_to_lsp(&msg.message, &self.workspace_root);
-                if map_result.is_empty() {
-                    return;
-                }
-
-                for MappedRustDiagnostic { location, diagnostic, fixes } in map_result {
-                    let fixes = fixes
-                        .into_iter()
-                        .map(|fix| {
-                            CodeAction { diagnostics: Some(vec![diagnostic.clone()]), ..fix }.into()
-                        })
-                        .collect();
-
-                    task_send
-                        .send(CheckTask::AddDiagnostic { url: location.uri, diagnostic, fixes })
-                        .unwrap();
-                }
+                task_send
+                    .send(CheckTask::AddDiagnostic {
+                        workspace_root: self.workspace_root.clone(),
+                        diagnostic: msg.message,
+                    })
+                    .unwrap();
             }
 
             CheckEvent::Msg(Message::BuildScriptExecuted(_msg)) => {}
@@ -271,11 +239,11 @@ impl FlycheckThread {
     }
 }
 
-#[derive(Debug)]
-pub struct DiagnosticWithFixes {
-    diagnostic: Diagnostic,
-    fixes: Vec<CodeAction>,
-}
+// #[derive(Debug)]
+// pub struct DiagnosticWithFixes {
+//     diagnostic: Diagnostic,
+//     fixes: Vec<CodeAction>,
+// }
 
 enum CheckEvent {
     Begin,
@@ -300,15 +268,11 @@ fn run_cargo(
     // erroneus output.
     let stdout = BufReader::new(child.stdout.take().unwrap());
     let mut read_at_least_one_message = false;
-
-    for line in stdout.lines() {
-        let line = line?;
-
-        let message = serde_json::from_str::<cargo_metadata::Message>(&line);
+    for message in cargo_metadata::Message::parse_stream(stdout) {
         let message = match message {
             Ok(message) => message,
             Err(err) => {
-                log::error!("Invalid json from cargo check, ignoring ({}): {:?} ", err, line);
+                log::error!("Invalid json from cargo check, ignoring ({})", err);
                 continue;
             }
         };

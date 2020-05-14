@@ -1,5 +1,5 @@
 ---
-source: crates/ra_flycheck/src/conv/test.rs
+source: crates/rust-analyzer/src/diagnostics/to_proto.rs
 expression: diag
 ---
 [

@@ -1,4 +1,5 @@
 //! Book keeping for keeping diagnostics easily in sync with the client.
+pub(crate) mod to_proto;
 
 use std::{collections::HashMap, sync::Arc};
 
