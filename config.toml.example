@@ -314,6 +314,10 @@
 # library.
 #debug-assertions = false
 
+# Whether or not debug assertions are enabled for the standard library.
+# Overrides the `debug-assertions` option, if defined.
+#debug-assertions-std = false
+
 # Debuginfo level for most of Rust code, corresponds to the `-C debuginfo=N` option of `rustc`.
 # `0` - no debug info
 # `1` - line tables only
