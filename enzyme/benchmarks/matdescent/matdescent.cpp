@@ -65,7 +65,7 @@ void matvec_real_b(double *mat, double *matb, double *vec, double matvec_realb) 
     //double *out = new double[N];
     for (int i = 0; i < N; ++i) {
         out[i] = 0;
-        for (int j = 0; j < N; ++j)
+        for (int j = 0; j < M; ++j)
             out[i] = out[i] + mat[i*M+j]*vec[j];
     }
     double sum = 0;

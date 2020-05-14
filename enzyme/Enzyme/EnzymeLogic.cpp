@@ -374,7 +374,7 @@ bool is_value_needed_in_reverse(TypeResults &TR, const GradientUtils* gutils, co
     if (!topLevel) {
         //Proving that none of the uses (or uses' uses) are used in control flow allows us to safely not do this load
 
-        //TODO save loop latch for dynamic loop
+        //TODO save loop bounds for dynamic loop
 
         //TODO make this more aggressive and dont need to save loop latch
         if (isa<BranchInst>(use) || isa<SwitchInst>(use) || isa<CallInst>(use)) {

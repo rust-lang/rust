@@ -1907,6 +1907,16 @@ public:
 
     std::vector<SelectInst*> addedSelects;
 
+    auto faddForNeg = [&](Value* old, Value* inc) {
+      if (auto bi = dyn_cast<BinaryOperator>(inc))  {
+        if (auto ci = dyn_cast<ConstantFP>(bi->getOperand(0))) {
+          if (bi->getOpcode() == BinaryOperator::FSub && ci->isZero()) {
+            return BuilderM.CreateFSub(old, bi->getOperand(1));
+          }
+        }
+      }
+      return BuilderM.CreateFAdd(old, inc);
+    };
 
       auto faddForSelect = [&](Value* old, Value* dif) -> Value* {
 
@@ -1914,14 +1924,14 @@ public:
         if (SelectInst* select = dyn_cast<SelectInst>(dif)) {
             if (Constant* ci = dyn_cast<Constant>(select->getTrueValue())) {
                 if (ci->isZeroValue()) {
-                    SelectInst* res = cast<SelectInst>(BuilderM.CreateSelect(select->getCondition(), old, BuilderM.CreateFAdd(old, select->getFalseValue())));
+                    SelectInst* res = cast<SelectInst>(BuilderM.CreateSelect(select->getCondition(), old, faddForNeg(old, select->getFalseValue())));
                     addedSelects.emplace_back(res);
                     return res;
                 }
             }
             if (Constant* ci = dyn_cast<Constant>(select->getFalseValue())) {
                 if (ci->isZeroValue()) {
-                    SelectInst* res = cast<SelectInst>(BuilderM.CreateSelect(select->getCondition(), BuilderM.CreateFAdd(old, select->getTrueValue()), old));
+                    SelectInst* res = cast<SelectInst>(BuilderM.CreateSelect(select->getCondition(), faddForNeg(old, select->getTrueValue()), old));
                     addedSelects.emplace_back(res);
                     return res;
                 }
@@ -1933,14 +1943,14 @@ public:
             if (SelectInst* select = dyn_cast<SelectInst>(bc->getOperand(0))) {
                 if (Constant* ci = dyn_cast<Constant>(select->getTrueValue())) {
                     if (ci->isZeroValue()) {
-                        SelectInst* res = cast<SelectInst>(BuilderM.CreateSelect(select->getCondition(), old, BuilderM.CreateFAdd(old, BuilderM.CreateCast(bc->getOpcode(), select->getFalseValue(), bc->getDestTy()))));
+                        SelectInst* res = cast<SelectInst>(BuilderM.CreateSelect(select->getCondition(), old, faddForNeg(old, BuilderM.CreateCast(bc->getOpcode(), select->getFalseValue(), bc->getDestTy()))));
                         addedSelects.emplace_back(res);
                         return res;
                     }
                 }
                 if (Constant* ci = dyn_cast<Constant>(select->getFalseValue())) {
                     if (ci->isZeroValue()) {
-                        SelectInst* res = cast<SelectInst>(BuilderM.CreateSelect(select->getCondition(), BuilderM.CreateFAdd(old, BuilderM.CreateCast(bc->getOpcode(), select->getTrueValue(), bc->getDestTy())), old));
+                        SelectInst* res = cast<SelectInst>(BuilderM.CreateSelect(select->getCondition(), faddForNeg(old, BuilderM.CreateCast(bc->getOpcode(), select->getTrueValue(), bc->getDestTy())), old));
                         addedSelects.emplace_back(res);
                         return res;
                     }
@@ -1949,7 +1959,7 @@ public:
         }
 
         // fallback
-        return BuilderM.CreateFAdd(old, dif);
+        return faddForNeg(old, dif);
       };
 
       if (val->getType()->isPointerTy()) {

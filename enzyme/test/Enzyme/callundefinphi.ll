@@ -503,7 +503,7 @@ attributes #22 = { readnone speculatable }
 ; CHECK-NEXT:   %"Oi'ipg_unwrap" = getelementptr inbounds double, double* %"'ipc", i64 %"iv'ac.0"
 ; CHECK-NEXT:   %3 = load double, double* %"Oi'ipg_unwrap", align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"Oi'ipg_unwrap", align 8
-; CHECK-NEXT:   %[[neg:.+]] = fsub fast double -0.000000e+00, %3
+; CHECK-NEXT:   %[[neg:.+]] = fsub fast double 0.000000e+00, %3
 ; CHECK-NEXT:   %"arrayidx.i2.i.i.i.i'ipg_unwrap" = getelementptr inbounds double, double* %"M'", i64 %"iv'ac.0"
 ; CHECK-NEXT:   %[[prea:.+]] = load double, double* %"arrayidx.i2.i.i.i.i'ipg_unwrap", align 8
 ; CHECK-NEXT:   %[[posta:.+]] = fadd fast double %[[prea]], %[[neg]]
@@ -658,7 +658,7 @@ attributes #22 = { readnone speculatable }
 ; CHECK-NEXT:   %[[lde:.+]] = load double, double* %"arrayidx'ipg_unwrap", align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"arrayidx'ipg_unwrap", align 8
 ; CHECK-NEXT:   %[[fad:.+]] = fadd fast double %"call2.i.i.i'de.1", %[[lde]]
-; CHECK-NEXT:   %[[nv]] = select i1 %false, double %"call2.i.i.i'de.1", double %[[fad]]
+; CHECK-NEXT:   %[[nv]] = select{{( fast)?}} i1 %false, double %"call2.i.i.i'de.1", double %[[fad]]
 ; CHECK-NEXT:   br i1 %false, label %invertfor.body5, label %invertif.end.i.i
 
 ; CHECK: invertfor.cond.cleanup4:                          ; preds = %for.cond.cleanup4, %incinvertfor.cond1.preheader
