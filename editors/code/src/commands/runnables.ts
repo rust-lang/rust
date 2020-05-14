@@ -5,7 +5,9 @@ import * as ra from '../rust-analyzer-api';
 import { Ctx, Cmd } from '../ctx';
 import { startDebugSession, getDebugConfiguration } from '../debug';
 
-async function selectRunnable(ctx: Ctx, prevRunnable: RunnableQuickPick | undefined): Promise<RunnableQuickPick | undefined> {
+const quickPickButtons = [{ iconPath: new vscode.ThemeIcon("save"), tooltip: "Save as a launch.json configurtation." }];
+
+async function selectRunnable(ctx: Ctx, prevRunnable?: RunnableQuickPick, showButtons: boolean = true): Promise<RunnableQuickPick | undefined> {
     const editor = ctx.activeRustEditor;
     const client = ctx.client;
     if (!editor || !client) return;
@@ -33,7 +35,41 @@ async function selectRunnable(ctx: Ctx, prevRunnable: RunnableQuickPick | undefi
         }
         items.push(new RunnableQuickPick(r));
     }
-    return await vscode.window.showQuickPick(items);
+
+    return await new Promise((resolve) => {
+        const disposables: vscode.Disposable[] = [];
+        const close = (result?: RunnableQuickPick) => {
+            resolve(result);
+            disposables.forEach(d => d.dispose());
+        };
+
+        const quickPick = vscode.window.createQuickPick<RunnableQuickPick>();
+        quickPick.items = items;
+        quickPick.title = "Select Runnable";
+        if (showButtons) {
+            quickPick.buttons = quickPickButtons;
+        }
+        disposables.push(
+            quickPick.onDidHide(() => close()),
+            quickPick.onDidAccept(() => close(quickPick.selectedItems[0])),
+            quickPick.onDidTriggerButton((_button) => {
+                (async () => await makeDebugConfig(ctx, quickPick.activeItems[0]))();
+                close();
+            }),
+            quickPick.onDidChangeActive((active) => {
+                if (showButtons && active.length > 0) {
+                    if (active[0].label.startsWith('cargo')) {
+                        // save button makes no sense for `cargo test` or `cargo check`
+                        quickPick.buttons = [];
+                    } else if (quickPick.buttons.length === 0) {
+                        quickPick.buttons = quickPickButtons;
+                    }
+                }
+            }),
+            quickPick
+        );
+        quickPick.show();
+    });
 }
 
 export function run(ctx: Ctx): Cmd {
@@ -86,31 +122,35 @@ export function debugSingle(ctx: Ctx): Cmd {
     };
 }
 
+async function makeDebugConfig(ctx: Ctx, item: RunnableQuickPick): Promise<void> {
+    const scope = ctx.activeRustEditor?.document.uri;
+    if (!scope) return;
+
+    const debugConfig = await getDebugConfiguration(ctx, item.runnable);
+    if (!debugConfig) return;
+
+    const wsLaunchSection = vscode.workspace.getConfiguration("launch", scope);
+    const configurations = wsLaunchSection.get<any[]>("configurations") || [];
+
+    const index = configurations.findIndex(c => c.name === debugConfig.name);
+    if (index !== -1) {
+        const answer = await vscode.window.showErrorMessage(`Launch configuration '${debugConfig.name}' already exists!`, 'Cancel', 'Update');
+        if (answer === "Cancel") return;
+
+        configurations[index] = debugConfig;
+    } else {
+        configurations.push(debugConfig);
+    }
+
+    await wsLaunchSection.update("configurations", configurations);
+}
+
 export function newDebugConfig(ctx: Ctx): Cmd {
     return async () => {
-        const scope = ctx.activeRustEditor?.document.uri;
-        if (!scope) return;
-
-        const item = await selectRunnable(ctx, undefined);
+        const item = await selectRunnable(ctx, undefined, false);
         if (!item) return;
 
-        const debugConfig = await getDebugConfiguration(ctx, item.runnable);
-        if (!debugConfig) return;
-
-        const wsLaunchSection = vscode.workspace.getConfiguration("launch", scope);
-        const configurations = wsLaunchSection.get<any[]>("configurations") || [];
-
-        const index = configurations.findIndex(c => c.name === debugConfig.name);
-        if (index !== -1) {
-            const answer = await vscode.window.showErrorMessage(`Launch configuration '${debugConfig.name}' already exists!`, 'Cancel', 'Update');
-            if (answer === "Cancel") return;
-
-            configurations[index] = debugConfig;
-        } else {
-            configurations.push(debugConfig);
-        }
-
-        await wsLaunchSection.update("configurations", configurations);
+        await makeDebugConfig(ctx, item);
     };
 }
 
