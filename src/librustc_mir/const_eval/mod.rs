@@ -53,7 +53,7 @@ pub(crate) fn const_caller_location(
     let mut ecx = mk_eval_cx(tcx, DUMMY_SP, ty::ParamEnv::reveal_all(), false);
 
     let loc_place = ecx.alloc_caller_location(file, line, col);
-    intern_const_alloc_recursive(&mut ecx, InternKind::Constant, loc_place, false).unwrap();
+    intern_const_alloc_recursive(&mut ecx, InternKind::Constant, loc_place, false);
     ConstValue::Scalar(loc_place.ptr)
 }
 
