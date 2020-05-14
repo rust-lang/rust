@@ -28,6 +28,7 @@ pub mod generator;
 pub mod inline;
 pub mod instcombine;
 pub mod no_landing_pads;
+pub mod nrvo;
 pub mod promote_consts;
 pub mod qualify_min_const_fn;
 pub mod remove_noop_landing_pads;
@@ -324,6 +325,7 @@ fn run_optimization_passes<'tcx>(
         &remove_noop_landing_pads::RemoveNoopLandingPads,
         &simplify::SimplifyCfg::new("after-remove-noop-landing-pads"),
         &simplify::SimplifyCfg::new("final"),
+        &nrvo::RenameReturnPlace,
         &simplify::SimplifyLocals,
     ];
 
