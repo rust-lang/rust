@@ -1,8 +1,7 @@
 //! `AstTransformer`s are functions that replace nodes in an AST and can be easily combined.
 use rustc_hash::FxHashMap;
 
-use hir::{PathResolution, SemanticsScope};
-use hir_def::type_ref::TypeRef;
+use hir::{HirDisplay, PathResolution, SemanticsScope};
 use ra_ide_db::RootDatabase;
 use ra_syntax::{
     algo::SyntaxRewriter,
@@ -61,14 +60,18 @@ impl<'a> SubstituteTypeParams<'a> {
             .zip(substs.into_iter().map(Some).chain(std::iter::repeat(None)))
             .filter_map(|(k, v)| match v {
                 Some(v) => Some((k, v)),
-                None => match k.default(source_scope.db)? {
-                    TypeRef::Path(path) => Some((
+                None => {
+                    let default = k.default(source_scope.db)?;
+                    Some((
                         k,
-                        ast::make::type_arg(&format!("{}", path.mod_path().as_ident()?))
-                            .type_ref()?,
-                    )),
-                    _ => None,
-                },
+                        ast::make::type_arg(
+                            &default
+                                .display_source_code(source_scope.db, source_scope.module()?.into())
+                                .ok()?,
+                        )
+                        .type_ref()?,
+                    ))
+                }
             })
             .collect();
         return SubstituteTypeParams {

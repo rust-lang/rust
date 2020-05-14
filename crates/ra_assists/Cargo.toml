@@ -21,5 +21,4 @@ ra_prof = { path = "../ra_prof" }
 ra_db = { path = "../ra_db" }
 ra_ide_db = { path = "../ra_ide_db" }
 hir = { path = "../ra_hir", package = "ra_hir" }
-hir_def = { path = "../ra_hir_def", package = "ra_hir_def" }
 test_utils = { path = "../test_utils" }
