@@ -11,6 +11,7 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
+use rustc_hir::lang_items;
 use rustc_hir::{AsyncGeneratorKind, GeneratorKind, Node};
 use rustc_middle::ty::TypeckTables;
 use rustc_middle::ty::{
@@ -1785,29 +1786,30 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         span: Span,
     ) {
         debug!(
-            "suggest_await_befor_try: obligation={:?}, span={:?}, trait_ref={:?}",
-            obligation, span, trait_ref
+            "suggest_await_befor_try: obligation={:?}, span={:?}, trait_ref={:?}, trait_ref_self_ty={:?}",
+            obligation,
+            span,
+            trait_ref,
+            trait_ref.self_ty()
         );
         let body_hir_id = obligation.cause.body_id;
         let item_id = self.tcx.hir().get_parent_node(body_hir_id);
 
-        let mut is_future = false;
-        if let ty::Opaque(def_id, substs) = trait_ref.self_ty().kind {
-            let preds = self.tcx.predicates_of(def_id).instantiate(self.tcx, substs);
-            for p in preds.predicates {
-                if let Some(trait_ref) = p.to_opt_poly_trait_ref() {
-                    if Some(trait_ref.def_id()) == self.tcx.lang_items().future_trait() {
-                        is_future = true;
-                        break;
-                    }
-                }
-            }
-        }
-
         if let Some(body_id) = self.tcx.hir().maybe_body_owned_by(item_id) {
             let body = self.tcx.hir().body(body_id);
             if let Some(hir::GeneratorKind::Async(_)) = body.generator_kind {
-                let future_trait = self.tcx.lang_items().future_trait().unwrap();
+                let future_trait =
+                    self.tcx.require_lang_item(lang_items::FutureTraitLangItem, None);
+
+                let self_ty = self.resolve_vars_if_possible(&trait_ref.self_ty());
+
+                let impls_future = self.tcx.type_implements_trait((
+                    future_trait,
+                    self_ty,
+                    ty::List::empty(),
+                    obligation.param_env,
+                ));
+
                 let item_def_id = self
                     .tcx
                     .associated_items(future_trait)
@@ -1815,7 +1817,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     .next()
                     .unwrap()
                     .def_id;
-                debug!("trait_ref_self_ty: {:?}", trait_ref.self_ty());
                 // `<T as Future>::Output`
                 let projection_ty = ty::ProjectionTy {
                     // `T`
@@ -1850,7 +1851,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     obligation.param_env,
                 );
                 debug!("suggest_await_befor_try: try_trait_obligation {:?}", try_obligation);
-                if self.predicate_may_hold(&try_obligation) && is_future {
+                if self.predicate_may_hold(&try_obligation) && impls_future {
                     if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
                         if snippet.ends_with('?') {
                             err.span_suggestion(
