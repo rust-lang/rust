@@ -48,6 +48,10 @@ export class Cargo {
 
     async executableFromArgs(args: readonly string[]): Promise<string> {
         const cargoArgs = [...args, "--message-format=json"];
+        if( cargoArgs[0] == "run" ) {
+            // a runnable from the quick pick.
+            cargoArgs[0] = "build";
+        }
 
         const artifacts = await this.artifactsFromArgs(cargoArgs);
 
