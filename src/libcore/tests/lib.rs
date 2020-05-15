@@ -22,6 +22,7 @@
 #![feature(slice_partition_at_index)]
 #![feature(specialization)]
 #![feature(step_trait)]
+#![feature(step_trait_ext)]
 #![feature(str_internals)]
 #![feature(test)]
 #![feature(trusted_len)]
