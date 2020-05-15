@@ -49,7 +49,20 @@ export class Cargo {
     async executableFromArgs(args: readonly string[]): Promise<string> {
         const cargoArgs = [...args, "--message-format=json"];
 
-        const artifacts = await this.artifactsFromArgs(cargoArgs);
+        // arguments for a runnable from the quick pick should be updated.
+        // see crates\rust-analyzer\src\main_loop\handlers.rs, handle_code_lens
+        if (cargoArgs[0] === "run") {
+            cargoArgs[0] = "build";
+        } else if (cargoArgs.indexOf("--no-run") === -1) {
+            cargoArgs.push("--no-run");
+        }
+
+        let artifacts = await this.artifactsFromArgs(cargoArgs);
+        if (cargoArgs[0] === "test") {
+            // for instance, `crates\rust-analyzer\tests\heavy_tests\main.rs` tests
+            // produce 2 artifacts: {"kind": "bin"} and {"kind": "test"}
+            artifacts = artifacts.filter(a => a.isTest);
+        }
 
         if (artifacts.length === 0) {
             throw new Error('No compilation artifacts');

@@ -1,43 +1,82 @@
 import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
 import * as ra from '../rust-analyzer-api';
-import * as os from "os";
 
 import { Ctx, Cmd } from '../ctx';
-import { Cargo } from '../cargo';
+import { startDebugSession, getDebugConfiguration } from '../debug';
+
+const quickPickButtons = [{ iconPath: new vscode.ThemeIcon("save"), tooltip: "Save as a launch.json configurtation." }];
+
+async function selectRunnable(ctx: Ctx, prevRunnable?: RunnableQuickPick, showButtons: boolean = true): Promise<RunnableQuickPick | undefined> {
+    const editor = ctx.activeRustEditor;
+    const client = ctx.client;
+    if (!editor || !client) return;
+
+    const textDocument: lc.TextDocumentIdentifier = {
+        uri: editor.document.uri.toString(),
+    };
+
+    const runnables = await client.sendRequest(ra.runnables, {
+        textDocument,
+        position: client.code2ProtocolConverter.asPosition(
+            editor.selection.active,
+        ),
+    });
+    const items: RunnableQuickPick[] = [];
+    if (prevRunnable) {
+        items.push(prevRunnable);
+    }
+    for (const r of runnables) {
+        if (
+            prevRunnable &&
+            JSON.stringify(prevRunnable.runnable) === JSON.stringify(r)
+        ) {
+            continue;
+        }
+        items.push(new RunnableQuickPick(r));
+    }
+
+    return await new Promise((resolve) => {
+        const disposables: vscode.Disposable[] = [];
+        const close = (result?: RunnableQuickPick) => {
+            resolve(result);
+            disposables.forEach(d => d.dispose());
+        };
+
+        const quickPick = vscode.window.createQuickPick<RunnableQuickPick>();
+        quickPick.items = items;
+        quickPick.title = "Select Runnable";
+        if (showButtons) {
+            quickPick.buttons = quickPickButtons;
+        }
+        disposables.push(
+            quickPick.onDidHide(() => close()),
+            quickPick.onDidAccept(() => close(quickPick.selectedItems[0])),
+            quickPick.onDidTriggerButton((_button) => {
+                (async () => await makeDebugConfig(ctx, quickPick.activeItems[0]))();
+                close();
+            }),
+            quickPick.onDidChangeActive((active) => {
+                if (showButtons && active.length > 0) {
+                    if (active[0].label.startsWith('cargo')) {
+                        // save button makes no sense for `cargo test` or `cargo check`
+                        quickPick.buttons = [];
+                    } else if (quickPick.buttons.length === 0) {
+                        quickPick.buttons = quickPickButtons;
+                    }
+                }
+            }),
+            quickPick
+        );
+        quickPick.show();
+    });
+}
 
 export function run(ctx: Ctx): Cmd {
     let prevRunnable: RunnableQuickPick | undefined;
 
     return async () => {
-        const editor = ctx.activeRustEditor;
-        const client = ctx.client;
-        if (!editor || !client) return;
-
-        const textDocument: lc.TextDocumentIdentifier = {
-            uri: editor.document.uri.toString(),
-        };
-
-        const runnables = await client.sendRequest(ra.runnables, {
-            textDocument,
-            position: client.code2ProtocolConverter.asPosition(
-                editor.selection.active,
-            ),
-        });
-        const items: RunnableQuickPick[] = [];
-        if (prevRunnable) {
-            items.push(prevRunnable);
-        }
-        for (const r of runnables) {
-            if (
-                prevRunnable &&
-                JSON.stringify(prevRunnable.runnable) === JSON.stringify(r)
-            ) {
-                continue;
-            }
-            items.push(new RunnableQuickPick(r));
-        }
-        const item = await vscode.window.showQuickPick(items);
+        const item = await selectRunnable(ctx, prevRunnable);
         if (!item) return;
 
         item.detail = 'rerun';
@@ -64,88 +103,54 @@ export function runSingle(ctx: Ctx): Cmd {
     };
 }
 
-function getLldbDebugConfig(config: ra.Runnable, executable: string, sourceFileMap?: Record<string, string>): vscode.DebugConfiguration {
-    return {
-        type: "lldb",
-        request: "launch",
-        name: config.label,
-        program: executable,
-        args: config.extraArgs,
-        cwd: config.cwd,
-        sourceMap: sourceFileMap,
-        sourceLanguages: ["rust"]
+export function debug(ctx: Ctx): Cmd {
+    let prevDebuggee: RunnableQuickPick | undefined;
+
+    return async () => {
+        const item = await selectRunnable(ctx, prevDebuggee);
+        if (!item) return;
+
+        item.detail = 'restart';
+        prevDebuggee = item;
+        return await startDebugSession(ctx, item.runnable);
     };
 }
-
-function getCppvsDebugConfig(config: ra.Runnable, executable: string, sourceFileMap?: Record<string, string>): vscode.DebugConfiguration {
-    return {
-        type: (os.platform() === "win32") ? "cppvsdbg" : 'cppdbg',
-        request: "launch",
-        name: config.label,
-        program: executable,
-        args: config.extraArgs,
-        cwd: config.cwd,
-        sourceFileMap: sourceFileMap,
-    };
-}
-
-const debugOutput = vscode.window.createOutputChannel("Debug");
-
-async function getDebugExecutable(config: ra.Runnable): Promise<string> {
-    const cargo = new Cargo(config.cwd || '.', debugOutput);
-    const executable = await cargo.executableFromArgs(config.args);
-
-    // if we are here, there were no compilation errors.
-    return executable;
-}
-
-type DebugConfigProvider = (config: ra.Runnable, executable: string, sourceFileMap?: Record<string, string>) => vscode.DebugConfiguration;
 
 export function debugSingle(ctx: Ctx): Cmd {
     return async (config: ra.Runnable) => {
-        const editor = ctx.activeRustEditor;
-        if (!editor) return;
+        await startDebugSession(ctx, config);
+    };
+}
 
-        const knownEngines: Record<string, DebugConfigProvider> = {
-            "vadimcn.vscode-lldb": getLldbDebugConfig,
-            "ms-vscode.cpptools": getCppvsDebugConfig
-        };
-        const debugOptions = ctx.config.debug;
+async function makeDebugConfig(ctx: Ctx, item: RunnableQuickPick): Promise<void> {
+    const scope = ctx.activeRustEditor?.document.uri;
+    if (!scope) return;
 
-        let debugEngine = null;
-        if (debugOptions.engine === "auto") {
-            for (var engineId in knownEngines) {
-                debugEngine = vscode.extensions.getExtension(engineId);
-                if (debugEngine) break;
-            }
-        }
-        else {
-            debugEngine = vscode.extensions.getExtension(debugOptions.engine);
-        }
+    const debugConfig = await getDebugConfiguration(ctx, item.runnable);
+    if (!debugConfig) return;
 
-        if (!debugEngine) {
-            vscode.window.showErrorMessage(`Install [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb)`
-                + ` or [MS C++ tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools) extension for debugging.`);
-            return;
-        }
+    const wsLaunchSection = vscode.workspace.getConfiguration("launch", scope);
+    const configurations = wsLaunchSection.get<any[]>("configurations") || [];
 
-        debugOutput.clear();
-        if (ctx.config.debug.openUpDebugPane) {
-            debugOutput.show(true);
-        }
+    const index = configurations.findIndex(c => c.name === debugConfig.name);
+    if (index !== -1) {
+        const answer = await vscode.window.showErrorMessage(`Launch configuration '${debugConfig.name}' already exists!`, 'Cancel', 'Update');
+        if (answer === "Cancel") return;
 
-        const executable = await getDebugExecutable(config);
-        const debugConfig = knownEngines[debugEngine.id](config, executable, debugOptions.sourceFileMap);
-        if (debugConfig.type in debugOptions.engineSettings) {
-            const settingsMap = (debugOptions.engineSettings as any)[debugConfig.type];
-            for (var key in settingsMap) {
-                debugConfig[key] = settingsMap[key];
-            }
-        }
+        configurations[index] = debugConfig;
+    } else {
+        configurations.push(debugConfig);
+    }
 
-        debugOutput.appendLine("Launching debug configuration:");
-        debugOutput.appendLine(JSON.stringify(debugConfig, null, 2));
-        return vscode.debug.startDebugging(undefined, debugConfig);
+    await wsLaunchSection.update("configurations", configurations);
+}
+
+export function newDebugConfig(ctx: Ctx): Cmd {
+    return async () => {
+        const item = await selectRunnable(ctx, undefined, false);
+        if (!item) return;
+
+        await makeDebugConfig(ctx, item);
     };
 }
 
