@@ -11,7 +11,7 @@ use std::{
 use crossbeam_channel::{unbounded, Receiver};
 use lsp_types::Url;
 use parking_lot::RwLock;
-use ra_flycheck::{url_from_path_with_drive_lowercasing, Flycheck, FlycheckConfig};
+use ra_flycheck::{Flycheck, FlycheckConfig};
 use ra_ide::{
     Analysis, AnalysisChange, AnalysisHost, CrateGraph, FileId, LibraryData, SourceRootId,
 };
@@ -22,7 +22,9 @@ use stdx::format_to;
 
 use crate::{
     config::Config,
-    diagnostics::{CheckFixes, DiagnosticCollection},
+    diagnostics::{
+        to_proto::url_from_path_with_drive_lowercasing, CheckFixes, DiagnosticCollection,
+    },
     main_loop::pending_requests::{CompletedRequest, LatestRequests},
     vfs_glob::{Glob, RustPackageFilterBuilder},
     LspError, Result,

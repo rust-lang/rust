@@ -975,10 +975,8 @@ version = "0.1.0"
 dependencies = [
  "cargo_metadata",
  "crossbeam-channel",
- "insta",
  "jod-thread",
  "log",
- "lsp-types",
  "ra_toolchain",
  "serde_json",
 ]
@@ -1381,6 +1379,7 @@ dependencies = [
  "crossbeam-channel",
  "env_logger",
  "globset",
+ "insta",
  "itertools",
  "jod-thread",
  "log",

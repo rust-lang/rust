@@ -25,7 +25,7 @@ use lsp_types::{
     WorkDoneProgressBegin, WorkDoneProgressCreateParams, WorkDoneProgressEnd,
     WorkDoneProgressReport,
 };
-use ra_flycheck::{url_from_path_with_drive_lowercasing, CheckTask};
+use ra_flycheck::{CheckTask, Status};
 use ra_ide::{Canceled, FileId, LibraryData, LineIndex, SourceRootId};
 use ra_prof::profile;
 use ra_project_model::{PackageRoot, ProjectWorkspace};
@@ -37,7 +37,7 @@ use threadpool::ThreadPool;
 
 use crate::{
     config::{Config, FilesWatcher},
-    diagnostics::DiagnosticTask,
+    diagnostics::{to_proto::url_from_path_with_drive_lowercasing, DiagnosticTask},
     from_proto, lsp_ext,
     main_loop::{
         pending_requests::{PendingRequest, PendingRequests},
@@ -736,22 +736,61 @@ fn on_check_task(
             task_sender.send(Task::Diagnostic(DiagnosticTask::ClearCheck))?;
         }
 
-        CheckTask::AddDiagnostic { url, diagnostic, fixes } => {
-            let path = url.to_file_path().map_err(|()| format!("invalid uri: {}", url))?;
-            let file_id = match world_state.vfs.read().path2file(&path) {
-                Some(file) => FileId(file.0),
-                None => {
-                    log::error!("File with cargo diagnostic not found in VFS: {}", path.display());
-                    return Ok(());
-                }
-            };
+        CheckTask::AddDiagnostic { workspace_root, diagnostic } => {
+            let diagnostics = crate::diagnostics::to_proto::map_rust_diagnostic_to_lsp(
+                &diagnostic,
+                &workspace_root,
+            );
+            for diag in diagnostics {
+                let path = diag
+                    .location
+                    .uri
+                    .to_file_path()
+                    .map_err(|()| format!("invalid uri: {}", diag.location.uri))?;
+                let file_id = match world_state.vfs.read().path2file(&path) {
+                    Some(file) => FileId(file.0),
+                    None => {
+                        log::error!(
+                            "File with cargo diagnostic not found in VFS: {}",
+                            path.display()
+                        );
+                        return Ok(());
+                    }
+                };
 
-            task_sender
-                .send(Task::Diagnostic(DiagnosticTask::AddCheck(file_id, diagnostic, fixes)))?;
+                task_sender.send(Task::Diagnostic(DiagnosticTask::AddCheck(
+                    file_id,
+                    diag.diagnostic,
+                    diag.fixes.into_iter().map(|it| it.into()).collect(),
+                )))?;
+            }
         }
 
-        CheckTask::Status(progress) => {
+        CheckTask::Status(status) => {
             if world_state.config.client_caps.work_done_progress {
+                let progress = match status {
+                    Status::Being => {
+                        lsp_types::WorkDoneProgress::Begin(lsp_types::WorkDoneProgressBegin {
+                            title: "Running `cargo check`".to_string(),
+                            cancellable: Some(false),
+                            message: None,
+                            percentage: None,
+                        })
+                    }
+                    Status::Progress(target) => {
+                        lsp_types::WorkDoneProgress::Report(lsp_types::WorkDoneProgressReport {
+                            cancellable: Some(false),
+                            message: Some(target),
+                            percentage: None,
+                        })
+                    }
+                    Status::End => {
+                        lsp_types::WorkDoneProgress::End(lsp_types::WorkDoneProgressEnd {
+                            message: None,
+                        })
+                    }
+                };
+
                 let params = lsp_types::ProgressParams {
                     token: lsp_types::ProgressToken::String(
                         "rustAnalyzer/cargoWatcher".to_string(),

@@ -1,31 +1,31 @@
 ---
-source: crates/ra_flycheck/src/conv/test.rs
+source: crates/rust-analyzer/src/diagnostics/to_proto.rs
 expression: diag
 ---
 [
     MappedRustDiagnostic {
         location: Location {
-            uri: "file:///test/runtime/compiler_support.rs",
+            uri: "file:///test/compiler/ty/list_iter.rs",
             range: Range {
                 start: Position {
-                    line: 47,
-                    character: 64,
+                    line: 51,
+                    character: 4,
                 },
                 end: Position {
-                    line: 47,
-                    character: 69,
+                    line: 51,
+                    character: 47,
                 },
             },
         },
         diagnostic: Diagnostic {
             range: Range {
                 start: Position {
-                    line: 47,
-                    character: 64,
+                    line: 51,
+                    character: 4,
                 },
                 end: Position {
-                    line: 47,
-                    character: 69,
+                    line: 51,
+                    character: 47,
                 },
             },
             severity: Some(
@@ -33,13 +33,13 @@ expression: diag
             ),
             code: Some(
                 String(
-                    "E0308",
+                    "E0053",
                 ),
             ),
             source: Some(
                 "rustc",
             ),
-            message: "mismatched types\nexpected usize, found u32",
+            message: "method `next` has an incompatible type for trait\nexpected type `fn(&mut ty::list_iter::ListIterator<\'list, M>) -> std::option::Option<&ty::Ref<M>>`\n   found type `fn(&ty::list_iter::ListIterator<\'list, M>) -> std::option::Option<&\'list ty::Ref<M>>`",
             related_information: None,
             tags: None,
         },
