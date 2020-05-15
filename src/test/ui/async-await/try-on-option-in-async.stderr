@@ -7,14 +7,14 @@ LL | |         let x: Option<u32> = None;
 LL | |         x?;
    | |         ^^ cannot use the `?` operator in an async block that returns `{integer}`
 LL | |         22
-LL | |     }.await
+LL | |     }
    | |_____- this function should return `Result` or `Option` to accept `?`
    |
    = help: the trait `std::ops::Try` is not implemented for `{integer}`
    = note: required by `std::ops::Try::from_error`
 
 error[E0277]: the `?` operator can only be used in an async closure that returns `Result` or `Option` (or another type that implements `std::ops::Try`)
-  --> $DIR/try-on-option-in-async.rs:16:9
+  --> $DIR/try-on-option-in-async.rs:17:9
    |
 LL |       let async_closure = async || {
    |  __________________________________-
@@ -29,7 +29,7 @@ LL | |     };
    = note: required by `std::ops::Try::from_error`
 
 error[E0277]: the `?` operator can only be used in an async function that returns `Result` or `Option` (or another type that implements `std::ops::Try`)
-  --> $DIR/try-on-option-in-async.rs:25:5
+  --> $DIR/try-on-option-in-async.rs:26:5
    |
 LL |   async fn an_async_function() -> u32 {
    |  _____________________________________-

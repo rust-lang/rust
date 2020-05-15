@@ -40,15 +40,12 @@ use rustc_hir::{
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::map::Map;
-use rustc_middle::traits;
 use rustc_middle::ty::{self, layout::IntegerExt, subst::GenericArg, Binder, Ty, TyCtxt, TypeFoldable};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::original_sp;
 use rustc_span::symbol::{self, kw, Symbol};
 use rustc_span::{BytePos, Pos, Span, DUMMY_SP};
 use rustc_target::abi::Integer;
-use rustc_trait_selection::traits::predicate_for_trait_def;
-use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::query::normalize::AtExt;
 use smallvec::SmallVec;
 
@@ -326,19 +323,8 @@ pub fn implements_trait<'a, 'tcx>(
     trait_id: DefId,
     ty_params: &[GenericArg<'tcx>],
 ) -> bool {
-    let ty = cx.tcx.erase_regions(&ty);
-    let obligation = predicate_for_trait_def(
-        cx.tcx,
-        cx.param_env,
-        traits::ObligationCause::dummy(),
-        trait_id,
-        0,
-        ty,
-        ty_params,
-    );
-    cx.tcx
-        .infer_ctxt()
-        .enter(|infcx| infcx.predicate_must_hold_modulo_regions(&obligation))
+    let ty_params = cx.tcx.mk_substs(ty_params.iter());
+    cx.tcx.type_implements_trait((trait_id, ty, ty_params, cx.param_env))
 }
 
 /// Gets the `hir::TraitRef` of the trait the given method is implemented for.
