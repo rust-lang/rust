@@ -1,5 +1,5 @@
 error: declaration of a `no_mangle` function
-  --> $DIR/lint-unsafe-code.rs:26:14
+  --> $DIR/lint-unsafe-code.rs:31:14
    |
 LL | #[no_mangle] fn foo() {}
    |              ^^^^^^^^^^^
@@ -11,91 +11,103 @@ LL | #![deny(unsafe_code)]
    |         ^^^^^^^^^^^
 
 error: declaration of a `no_mangle` static
-  --> $DIR/lint-unsafe-code.rs:27:14
+  --> $DIR/lint-unsafe-code.rs:32:14
    |
 LL | #[no_mangle] static FOO: u32 = 5;
    |              ^^^^^^^^^^^^^^^^^^^^
 
+error: declaration of a function with `export_name`
+  --> $DIR/lint-unsafe-code.rs:34:24
+   |
+LL | #[export_name = "bar"] fn bar() {}
+   |                        ^^^^^^^^^^^
+
+error: declaration of a static with `export_name`
+  --> $DIR/lint-unsafe-code.rs:35:24
+   |
+LL | #[export_name = "BAR"] static BAR: u32 = 5;
+   |                        ^^^^^^^^^^^^^^^^^^^^
+
 error: declaration of an `unsafe` function
-  --> $DIR/lint-unsafe-code.rs:29:1
+  --> $DIR/lint-unsafe-code.rs:37:1
    |
 LL | unsafe fn baz() {}
    | ^^^^^^^^^^^^^^^^^^
 
 error: declaration of an `unsafe` trait
-  --> $DIR/lint-unsafe-code.rs:30:1
+  --> $DIR/lint-unsafe-code.rs:38:1
    |
 LL | unsafe trait Foo {}
    | ^^^^^^^^^^^^^^^^^^^
 
 error: implementation of an `unsafe` trait
-  --> $DIR/lint-unsafe-code.rs:31:1
+  --> $DIR/lint-unsafe-code.rs:39:1
    |
 LL | unsafe impl Foo for Bar {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: declaration of an `unsafe` method
-  --> $DIR/lint-unsafe-code.rs:34:5
+  --> $DIR/lint-unsafe-code.rs:42:5
    |
 LL |     unsafe fn baz(&self);
    |     ^^^^^^^^^^^^^^^^^^^^^
 
 error: implementation of an `unsafe` method
-  --> $DIR/lint-unsafe-code.rs:35:5
+  --> $DIR/lint-unsafe-code.rs:43:5
    |
 LL |     unsafe fn provided(&self) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: implementation of an `unsafe` method
-  --> $DIR/lint-unsafe-code.rs:36:5
+  --> $DIR/lint-unsafe-code.rs:44:5
    |
 LL |     unsafe fn provided_override(&self) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: implementation of an `unsafe` method
-  --> $DIR/lint-unsafe-code.rs:40:5
+  --> $DIR/lint-unsafe-code.rs:48:5
    |
 LL |     unsafe fn baz(&self) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: implementation of an `unsafe` method
-  --> $DIR/lint-unsafe-code.rs:41:5
+  --> $DIR/lint-unsafe-code.rs:49:5
    |
 LL |     unsafe fn provided_override(&self) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: implementation of an `unsafe` method
-  --> $DIR/lint-unsafe-code.rs:60:5
+  --> $DIR/lint-unsafe-code.rs:68:5
    |
 LL |     unsafe fn provided_override(&self) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: implementation of an `unsafe` method
-  --> $DIR/lint-unsafe-code.rs:71:5
+  --> $DIR/lint-unsafe-code.rs:79:5
    |
 LL |     unsafe fn provided(&self) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: implementation of an `unsafe` method
-  --> $DIR/lint-unsafe-code.rs:77:5
+  --> $DIR/lint-unsafe-code.rs:85:5
    |
 LL |     unsafe fn provided(&self) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: implementation of an `unsafe` method
-  --> $DIR/lint-unsafe-code.rs:81:5
+  --> $DIR/lint-unsafe-code.rs:89:5
    |
 LL |     unsafe fn baz(&self) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: usage of an `unsafe` block
-  --> $DIR/lint-unsafe-code.rs:92:5
+  --> $DIR/lint-unsafe-code.rs:100:5
    |
 LL |     unsafe {}
    |     ^^^^^^^^^
 
 error: declaration of a `no_mangle` function
-  --> $DIR/lint-unsafe-code.rs:20:22
+  --> $DIR/lint-unsafe-code.rs:21:22
    |
 LL |         #[no_mangle] fn foo() {}
    |                      ^^^^^^^^^^^
@@ -106,7 +118,7 @@ LL |     unsafe_in_macro!()
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: declaration of a `no_mangle` static
-  --> $DIR/lint-unsafe-code.rs:21:22
+  --> $DIR/lint-unsafe-code.rs:22:22
    |
 LL |         #[no_mangle] static FOO: u32 = 5;
    |                      ^^^^^^^^^^^^^^^^^^^^
@@ -116,8 +128,30 @@ LL |     unsafe_in_macro!()
    |
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
+error: declaration of a function with `export_name`
+  --> $DIR/lint-unsafe-code.rs:23:32
+   |
+LL |         #[export_name = "bar"] fn bar() {}
+   |                                ^^^^^^^^^^^
+...
+LL |     unsafe_in_macro!()
+   |     ------------------ in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: declaration of a static with `export_name`
+  --> $DIR/lint-unsafe-code.rs:25:32
+   |
+LL |         #[export_name = "BAR"] static BAR: u32 = 5;
+   |                                ^^^^^^^^^^^^^^^^^^^^
+...
+LL |     unsafe_in_macro!()
+   |     ------------------ in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
 error: usage of an `unsafe` block
-  --> $DIR/lint-unsafe-code.rs:22:9
+  --> $DIR/lint-unsafe-code.rs:27:9
    |
 LL |         unsafe {}
    |         ^^^^^^^^^
@@ -127,5 +161,5 @@ LL |     unsafe_in_macro!()
    |
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 18 previous errors
+error: aborting due to 22 previous errors
 

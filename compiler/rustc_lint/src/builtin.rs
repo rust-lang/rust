@@ -283,12 +283,22 @@ impl EarlyLintPass for UnsafeCode {
                         lint.build("declaration of a `no_mangle` function").emit();
                     })
                 }
+                if attr::contains_name(&it.attrs, sym::export_name) {
+                    self.report_unsafe(cx, it.span, |lint| {
+                        lint.build("declaration of a function with `export_name`").emit();
+                    })
+                }
             }
 
             ast::ItemKind::Static(..) => {
                 if attr::contains_name(&it.attrs, sym::no_mangle) {
                     self.report_unsafe(cx, it.span, |lint| {
                         lint.build("declaration of a `no_mangle` static").emit();
+                    })
+                }
+                if attr::contains_name(&it.attrs, sym::export_name) {
+                    self.report_unsafe(cx, it.span, |lint| {
+                        lint.build("declaration of a static with `export_name`").emit();
                     })
                 }
             }
