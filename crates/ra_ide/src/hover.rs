@@ -921,4 +921,21 @@ fn func(foo: i32) { if true { <|>foo; }; }
             &["unsafe trait foo"],
         );
     }
+
+    #[test]
+    fn test_hover_mod_with_same_name_as_function() {
+        check_hover_result(
+            "
+            //- /lib.rs
+            use self::m<|>y::Bar;
+
+            mod my {
+                pub struct Bar;
+            }
+
+            fn my() {}
+            ",
+            &["mod my"],
+        );
+    }
 }

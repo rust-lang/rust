@@ -23,7 +23,7 @@ use crate::{
     db::HirDatabase,
     diagnostics::Diagnostic,
     semantics::source_to_def::{ChildContainer, SourceToDefCache, SourceToDefCtx},
-    source_analyzer::{resolve_hir_path, SourceAnalyzer},
+    source_analyzer::{resolve_hir_path, resolve_hir_path_qualifier, SourceAnalyzer},
     AssocItem, Field, Function, HirFileId, ImplDef, InFile, Local, MacroDef, Module, ModuleDef,
     Name, Origin, Path, ScopeDef, Trait, Type, TypeAlias, TypeParam,
 };
@@ -450,6 +450,10 @@ impl<'a, DB: HirDatabase> SemanticsScope<'a, DB> {
 
     pub fn resolve_hir_path(&self, path: &Path) -> Option<PathResolution> {
         resolve_hir_path(self.db, &self.resolver, path)
+    }
+
+    pub fn resolve_hir_path_qualifier(&self, path: &Path) -> Option<PathResolution> {
+        resolve_hir_path_qualifier(self.db, &self.resolver, path)
     }
 }
 
