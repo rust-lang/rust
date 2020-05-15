@@ -764,9 +764,21 @@ fn check_wild_enum_match(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_
                 if let QPath::Resolved(_, p) = path {
                     missing_variants.retain(|e| e.ctor_def_id != Some(p.res.def_id()));
                 }
-            } else if let PatKind::TupleStruct(ref path, ..) = arm.pat.kind {
+            } else if let PatKind::TupleStruct(ref path, ref patterns, ..) = arm.pat.kind {
                 if let QPath::Resolved(_, p) = path {
-                    missing_variants.retain(|e| e.ctor_def_id != Some(p.res.def_id()));
+                    // Some simple checks for exhaustive patterns.
+                    // There is a room for improvements to detect more cases,
+                    // but it can be more expensive to do so.
+                    let is_pattern_exhaustive = |pat: &&Pat<'_>| {
+                        if let PatKind::Wild | PatKind::Binding(.., None) = pat.kind {
+                            true
+                        } else {
+                            false
+                        }
+                    };
+                    if patterns.iter().all(is_pattern_exhaustive) {
+                        missing_variants.retain(|e| e.ctor_def_id != Some(p.res.def_id()));
+                    }
                 }
             }
         }
