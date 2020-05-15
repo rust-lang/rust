@@ -410,7 +410,7 @@ fn is_zero(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
         Some(Constant::Int(i)) => i == 0,
         Some(Constant::F32(f)) => f == 0.0,
         Some(Constant::F64(f)) => f == 0.0,
-        Some(_) | None => false,
+        _ => false,
     }
 }
 

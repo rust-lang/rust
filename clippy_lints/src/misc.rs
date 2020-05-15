@@ -509,7 +509,7 @@ fn is_allowed<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) -> boo
             Constant::F64(f) => *f == 0.0 || (*f).is_infinite(),
             _ => false,
         }),
-        Some(_) | None => false,
+        _ => false,
     }
 }
 

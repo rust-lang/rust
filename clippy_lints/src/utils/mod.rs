@@ -370,7 +370,6 @@ pub fn trait_ref_of_method<'tcx>(cx: &LateContext<'_, 'tcx>, hir_id: HirId) -> O
 
 /// Checks whether this type implements `Drop`.
 pub fn has_drop<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
-    #[allow(clippy::match_wildcard_for_single_variants)]
     match ty.ty_adt_def() {
         Some(def) => def.has_dtor(cx.tcx),
         _ => false,
@@ -445,7 +444,6 @@ pub fn is_entrypoint_fn(cx: &LateContext<'_, '_>, def_id: DefId) -> bool {
 /// Gets the name of the item the expression is in, if available.
 pub fn get_item_name(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> Option<Name> {
     let parent_id = cx.tcx.hir().get_parent_item(expr.hir_id);
-    #[allow(clippy::match_wildcard_for_single_variants)]
     match cx.tcx.hir().find(parent_id) {
         Some(
             Node::Item(Item { ident, .. })
