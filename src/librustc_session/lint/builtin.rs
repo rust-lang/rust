@@ -534,6 +534,16 @@ declare_lint! {
     @feature_gate = sym::unsafe_block_in_unsafe_fn;
 }
 
+declare_lint! {
+    pub CENUM_IMPL_DROP_CAST,
+    Warn,
+    "a C-like enum implementing Drop is cast",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #73333 <https://github.com/rust-lang/rust/issues/73333>",
+        edition: None,
+    };
+}
+
 declare_lint_pass! {
     /// Does nothing as a lint pass, but registers some `Lint`s
     /// that are used by other parts of the compiler.
@@ -607,6 +617,7 @@ declare_lint_pass! {
         ASM_SUB_REGISTER,
         UNSAFE_OP_IN_UNSAFE_FN,
         INCOMPLETE_INCLUDE,
+        CENUM_IMPL_DROP_CAST,
     ]
 }
 
