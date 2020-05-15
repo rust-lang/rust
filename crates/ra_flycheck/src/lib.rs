@@ -13,8 +13,7 @@ use cargo_metadata::Message;
 use crossbeam_channel::{never, select, unbounded, Receiver, RecvError, Sender};
 
 pub use cargo_metadata::diagnostic::{
-    Applicability, Diagnostic, DiagnosticLevel, DiagnosticSpan,
-    DiagnosticSpanMacroExpansion,
+    Applicability, Diagnostic, DiagnosticLevel, DiagnosticSpan, DiagnosticSpanMacroExpansion,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]

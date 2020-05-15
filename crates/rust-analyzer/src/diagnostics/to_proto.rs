@@ -2,8 +2,7 @@
 //! `cargo check` json format to the LSP diagnostic format.
 use std::{
     collections::HashMap,
-    fmt::Write,
-    path::{Component, Path, PathBuf, Prefix},
+    path::{Component, Path, Prefix},
     str::FromStr,
 };
 
@@ -12,17 +11,21 @@ use lsp_types::{
     Location, NumberOrString, Position, Range, TextEdit, Url, WorkspaceEdit,
 };
 use ra_flycheck::{Applicability, DiagnosticLevel, DiagnosticSpan, DiagnosticSpanMacroExpansion};
+use stdx::format_to;
+
+use crate::Result;
 
 /// Converts a Rust level string to a LSP severity
 fn map_level_to_severity(val: DiagnosticLevel) -> Option<DiagnosticSeverity> {
-    match val {
-        DiagnosticLevel::Ice => Some(DiagnosticSeverity::Error),
-        DiagnosticLevel::Error => Some(DiagnosticSeverity::Error),
-        DiagnosticLevel::Warning => Some(DiagnosticSeverity::Warning),
-        DiagnosticLevel::Note => Some(DiagnosticSeverity::Information),
-        DiagnosticLevel::Help => Some(DiagnosticSeverity::Hint),
-        DiagnosticLevel::Unknown => None,
-    }
+    let res = match val {
+        DiagnosticLevel::Ice => DiagnosticSeverity::Error,
+        DiagnosticLevel::Error => DiagnosticSeverity::Error,
+        DiagnosticLevel::Warning => DiagnosticSeverity::Warning,
+        DiagnosticLevel::Note => DiagnosticSeverity::Information,
+        DiagnosticLevel::Help => DiagnosticSeverity::Hint,
+        DiagnosticLevel::Unknown => return None,
+    };
+    Some(res)
 }
 
 /// Check whether a file name is from macro invocation
@@ -33,7 +36,7 @@ fn is_from_macro(file_name: &str) -> bool {
 /// Converts a Rust macro span to a LSP location recursively
 fn map_macro_span_to_location(
     span_macro: &DiagnosticSpanMacroExpansion,
-    workspace_root: &PathBuf,
+    workspace_root: &Path,
 ) -> Option<Location> {
     if !is_from_macro(&span_macro.span.file_name) {
         return Some(map_span_to_location(&span_macro.span, workspace_root));
@@ -47,7 +50,7 @@ fn map_macro_span_to_location(
 }
 
 /// Converts a Rust span to a LSP location, resolving macro expansion site if neccesary
-fn map_span_to_location(span: &DiagnosticSpan, workspace_root: &PathBuf) -> Location {
+fn map_span_to_location(span: &DiagnosticSpan, workspace_root: &Path) -> Location {
     if span.expansion.is_some() {
         let expansion = span.expansion.as_ref().unwrap();
         if let Some(macro_range) = map_macro_span_to_location(&expansion, workspace_root) {
@@ -59,11 +62,12 @@ fn map_span_to_location(span: &DiagnosticSpan, workspace_root: &PathBuf) -> Loca
 }
 
 /// Converts a Rust span to a LSP location
-fn map_span_to_location_naive(span: &DiagnosticSpan, workspace_root: &PathBuf) -> Location {
-    let mut file_name = workspace_root.clone();
+fn map_span_to_location_naive(span: &DiagnosticSpan, workspace_root: &Path) -> Location {
+    let mut file_name = workspace_root.to_path_buf();
     file_name.push(&span.file_name);
     let uri = url_from_path_with_drive_lowercasing(file_name).unwrap();
 
+    // FIXME: this doesn't handle UTF16 offsets correctly
     let range = Range::new(
         Position::new(span.line_start as u64 - 1, span.column_start as u64 - 1),
         Position::new(span.line_end as u64 - 1, span.column_end as u64 - 1),
@@ -77,39 +81,30 @@ fn map_span_to_location_naive(span: &DiagnosticSpan, workspace_root: &PathBuf) -
 /// If the span is unlabelled this will return `None`.
 fn map_secondary_span_to_related(
     span: &DiagnosticSpan,
-    workspace_root: &PathBuf,
+    workspace_root: &Path,
 ) -> Option<DiagnosticRelatedInformation> {
-    if let Some(label) = &span.label {
-        let location = map_span_to_location(span, workspace_root);
-        Some(DiagnosticRelatedInformation { location, message: label.clone() })
-    } else {
-        // Nothing to label this with
-        None
-    }
+    let message = span.label.clone()?;
+    let location = map_span_to_location(span, workspace_root);
+    Some(DiagnosticRelatedInformation { location, message })
 }
 
 /// Determines if diagnostic is related to unused code
 fn is_unused_or_unnecessary(rd: &ra_flycheck::Diagnostic) -> bool {
-    if let Some(code) = &rd.code {
-        match code.code.as_str() {
+    match &rd.code {
+        Some(code) => match code.code.as_str() {
             "dead_code" | "unknown_lints" | "unreachable_code" | "unused_attributes"
             | "unused_imports" | "unused_macros" | "unused_variables" => true,
             _ => false,
-        }
-    } else {
-        false
+        },
+        None => false,
     }
 }
 
 /// Determines if diagnostic is related to deprecated code
-fn is_deprecated(rd: &RustDiagnostic) -> bool {
-    if let Some(code) = &rd.code {
-        match code.code.as_str() {
-            "deprecated" => true,
-            _ => false,
-        }
-    } else {
-        false
+fn is_deprecated(rd: &ra_flycheck::Diagnostic) -> bool {
+    match &rd.code {
+        Some(code) => code.code.as_str() == "deprecated",
+        None => false,
     }
 }
 
@@ -121,7 +116,7 @@ enum MappedRustChildDiagnostic {
 
 fn map_rust_child_diagnostic(
     rd: &ra_flycheck::Diagnostic,
-    workspace_root: &PathBuf,
+    workspace_root: &Path,
 ) -> MappedRustChildDiagnostic {
     let spans: Vec<&DiagnosticSpan> = rd.spans.iter().filter(|s| s.is_primary).collect();
     if spans.is_empty() {
@@ -142,7 +137,12 @@ fn map_rust_child_diagnostic(
         }
     }
 
-    if !edit_map.is_empty() {
+    if edit_map.is_empty() {
+        MappedRustChildDiagnostic::Related(DiagnosticRelatedInformation {
+            location: map_span_to_location(spans[0], workspace_root),
+            message: rd.message.clone(),
+        })
+    } else {
         MappedRustChildDiagnostic::SuggestedFix(CodeAction {
             title: rd.message.clone(),
             kind: Some("quickfix".to_string()),
@@ -150,11 +150,6 @@ fn map_rust_child_diagnostic(
             edit: Some(WorkspaceEdit::new(edit_map)),
             command: None,
             is_preferred: None,
-        })
-    } else {
-        MappedRustChildDiagnostic::Related(DiagnosticRelatedInformation {
-            location: map_span_to_location(spans[0], workspace_root),
-            message: rd.message.clone(),
         })
     }
 }
@@ -178,11 +173,11 @@ pub(crate) struct MappedRustDiagnostic {
 /// If the diagnostic has no primary span this will return `None`
 pub(crate) fn map_rust_diagnostic_to_lsp(
     rd: &ra_flycheck::Diagnostic,
-    workspace_root: &PathBuf,
+    workspace_root: &Path,
 ) -> Vec<MappedRustDiagnostic> {
     let primary_spans: Vec<&DiagnosticSpan> = rd.spans.iter().filter(|s| s.is_primary).collect();
     if primary_spans.is_empty() {
-        return vec![];
+        return Vec::new();
     }
 
     let severity = map_level_to_severity(rd.level);
@@ -199,8 +194,8 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
     }
 
     let mut needs_primary_span_label = true;
-    let mut related_information = vec![];
-    let mut tags = vec![];
+    let mut related_information = Vec::new();
+    let mut tags = Vec::new();
 
     for secondary_span in rd.spans.iter().filter(|s| !s.is_primary) {
         let related = map_secondary_span_to_related(secondary_span, workspace_root);
@@ -209,7 +204,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
         }
     }
 
-    let mut fixes = vec![];
+    let mut fixes = Vec::new();
     let mut message = rd.message.clone();
     for child in &rd.children {
         let child = map_rust_child_diagnostic(&child, workspace_root);
@@ -217,7 +212,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
             MappedRustChildDiagnostic::Related(related) => related_information.push(related),
             MappedRustChildDiagnostic::SuggestedFix(code_action) => fixes.push(code_action),
             MappedRustChildDiagnostic::MessageLine(message_line) => {
-                write!(&mut message, "\n{}", message_line).unwrap();
+                format_to!(message, "\n{}", message_line);
 
                 // These secondary messages usually duplicate the content of the
                 // primary span label.
@@ -242,7 +237,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
             let mut message = message.clone();
             if needs_primary_span_label {
                 if let Some(primary_span_label) = &primary_span.label {
-                    write!(&mut message, "\n{}", primary_span_label).unwrap();
+                    format_to!(message, "\n{}", primary_span_label);
                 }
             }
 
@@ -262,12 +257,12 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
                 code: code.clone().map(NumberOrString::String),
                 source: Some(source.clone()),
                 message,
-                related_information: if !related_information.is_empty() {
-                    Some(related_information.clone())
-                } else {
+                related_information: if related_information.is_empty() {
                     None
+                } else {
+                    Some(related_information.clone())
                 },
-                tags: if !tags.is_empty() { Some(tags.clone()) } else { None },
+                tags: if tags.is_empty() { None } else { Some(tags.clone()) },
             };
 
             MappedRustDiagnostic { location, diagnostic, fixes: fixes.clone() }
@@ -279,21 +274,16 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
 /// This will only happen when processing windows paths.
 ///
 /// When processing non-windows path, this is essentially the same as `Url::from_file_path`.
-pub fn url_from_path_with_drive_lowercasing(
-    path: impl AsRef<Path>,
-) -> Result<Url, Box<dyn std::error::Error + Send + Sync>> {
+pub fn url_from_path_with_drive_lowercasing(path: impl AsRef<Path>) -> Result<Url> {
     let component_has_windows_drive = path.as_ref().components().any(|comp| {
         if let Component::Prefix(c) = comp {
-            match c.kind() {
-                Prefix::Disk(_) | Prefix::VerbatimDisk(_) => return true,
-                _ => return false,
-            }
+            return matches!(c.kind(), Prefix::Disk(_) | Prefix::VerbatimDisk(_));
         }
         false
     });
 
     // VSCode expects drive letters to be lowercased, where rust will uppercase the drive letters.
-    if component_has_windows_drive {
+    let res = if component_has_windows_drive {
         let url_original = Url::from_file_path(&path)
             .map_err(|_| format!("can't convert path to url: {}", path.as_ref().display()))?;
 
@@ -308,11 +298,12 @@ pub fn url_from_path_with_drive_lowercasing(
         let joined = drive_partition[1].to_ascii_lowercase() + ":" + drive_partition[0];
         let url = Url::from_str(&joined).expect("This came from a valid `Url`");
 
-        Ok(url)
+        url
     } else {
-        Ok(Url::from_file_path(&path)
-            .map_err(|_| format!("can't convert path to url: {}", path.as_ref().display()))?)
-    }
+        Url::from_file_path(&path)
+            .map_err(|_| format!("can't convert path to url: {}", path.as_ref().display()))?
+    };
+    Ok(res)
 }
 
 #[cfg(test)]
@@ -337,8 +328,8 @@ mod tests {
     }
 
     #[cfg(not(windows))]
-    fn parse_diagnostic(val: &str) -> cargo_metadata::diagnostic::Diagnostic {
-        serde_json::from_str::<cargo_metadata::diagnostic::Diagnostic>(val).unwrap()
+    fn parse_diagnostic(val: &str) -> ra_flycheck::Diagnostic {
+        serde_json::from_str::<ra_flycheck::Diagnostic>(val).unwrap()
     }
 
     #[test]
@@ -390,8 +381,8 @@ mod tests {
             "##,
         );
 
-        let workspace_root = PathBuf::from("/test/");
-        let diag = map_rust_diagnostic_to_lsp(&diag, &workspace_root);
+        let workspace_root = Path::new("/test/");
+        let diag = map_rust_diagnostic_to_lsp(&diag, workspace_root);
         insta::assert_debug_snapshot!(diag);
     }
 
@@ -473,8 +464,8 @@ mod tests {
     }"##,
         );
 
-        let workspace_root = PathBuf::from("/test/");
-        let diag = map_rust_diagnostic_to_lsp(&diag, &workspace_root);
+        let workspace_root = Path::new("/test/");
+        let diag = map_rust_diagnostic_to_lsp(&diag, workspace_root);
         insta::assert_debug_snapshot!(diag);
     }
 
@@ -598,8 +589,8 @@ mod tests {
     }"##,
         );
 
-        let workspace_root = PathBuf::from("/test/");
-        let diag = map_rust_diagnostic_to_lsp(&diag, &workspace_root);
+        let workspace_root = Path::new("/test/");
+        let diag = map_rust_diagnostic_to_lsp(&diag, workspace_root);
         insta::assert_debug_snapshot!(diag);
     }
 
@@ -719,8 +710,8 @@ mod tests {
     }"##,
         );
 
-        let workspace_root = PathBuf::from("/test/");
-        let diag = map_rust_diagnostic_to_lsp(&diag, &workspace_root);
+        let workspace_root = Path::new("/test/");
+        let diag = map_rust_diagnostic_to_lsp(&diag, workspace_root);
         insta::assert_debug_snapshot!(diag);
     }
 
@@ -763,8 +754,8 @@ mod tests {
     }"##,
         );
 
-        let workspace_root = PathBuf::from("/test/");
-        let diag = map_rust_diagnostic_to_lsp(&diag, &workspace_root);
+        let workspace_root = Path::new("/test/");
+        let diag = map_rust_diagnostic_to_lsp(&diag, workspace_root);
         insta::assert_debug_snapshot!(diag);
     }
 
@@ -1035,8 +1026,8 @@ mod tests {
     }"##,
         );
 
-        let workspace_root = PathBuf::from("/test/");
-        let diag = map_rust_diagnostic_to_lsp(&diag, &workspace_root);
+        let workspace_root = Path::new("/test/");
+        let diag = map_rust_diagnostic_to_lsp(&diag, workspace_root);
         insta::assert_debug_snapshot!(diag);
     }
 
@@ -1265,8 +1256,8 @@ mod tests {
             "##,
         );
 
-        let workspace_root = PathBuf::from("/test/");
-        let diag = map_rust_diagnostic_to_lsp(&diag, &workspace_root);
+        let workspace_root = Path::new("/test/");
+        let diag = map_rust_diagnostic_to_lsp(&diag, workspace_root);
         insta::assert_debug_snapshot!(diag);
     }
 
@@ -1399,8 +1390,8 @@ mod tests {
             "##,
         );
 
-        let workspace_root = PathBuf::from("/test/");
-        let diag = map_rust_diagnostic_to_lsp(&diag, &workspace_root);
+        let workspace_root = Path::new("/test/");
+        let diag = map_rust_diagnostic_to_lsp(&diag, workspace_root);
         insta::assert_debug_snapshot!(diag);
     }
 }
