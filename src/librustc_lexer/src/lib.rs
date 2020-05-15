@@ -1,5 +1,11 @@
 //! Low-level Rust lexer.
 //!
+//! The idea with `librustc_lexer` is to make a reusable library,
+//! by separating out pure lexing and rustc-specific concerns, like spans,
+//! error reporting an interning.  So, rustc_lexer operates directly on `&str`,
+//! produces simple tokens which are a pair of type-tag and a bit of original text,
+//! and does not report errors, instead storing them as flags on the token.
+//!
 //! Tokens produced by this lexer are not yet ready for parsing the Rust syntax,
 //! for that see `librustc_parse::lexer`, which converts this basic token stream
 //! into wide tokens used by actual parser.
@@ -719,6 +725,9 @@ impl Cursor<'_> {
 
             // Check that amount of closing '#' symbols
             // is equal to the amount of opening ones.
+            // Note that this will not consume extra trailing `#` characters:
+            // `r###"abcde"####` is lexed as a `LexedRawString { n_hashes: 3 }`
+            // followed by a `#` token.
             let mut hashes_left = n_start_hashes;
             let is_closing_hash = |c| {
                 if c == '#' && hashes_left != 0 {
@@ -739,8 +748,8 @@ impl Cursor<'_> {
                     possible_terminator_offset: None,
                 };
             } else if n_end_hashes > max_hashes {
-                // Keep track of possible terminators to give a hint about where there might be
-                // a missing terminator
+                // Keep track of possible terminators to give a hint about
+                // where there might be a missing terminator
                 possible_terminator_offset =
                     Some(self.len_consumed() - start_pos - n_end_hashes + prefix_len);
                 max_hashes = n_end_hashes;
