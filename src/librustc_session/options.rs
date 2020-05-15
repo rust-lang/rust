@@ -271,6 +271,7 @@ macro_rules! options {
             "one of supported relocation models (`rustc --print relocation-models`)";
         pub const parse_tls_model: &str =
             "one of supported TLS models (`rustc --print tls-models`)";
+        pub const parse_target_feature: &str = parse_string;
     }
 
     #[allow(dead_code)]
@@ -647,6 +648,19 @@ macro_rules! options {
             }
             true
         }
+
+        fn parse_target_feature(slot: &mut String, v: Option<&str>) -> bool {
+            match v {
+                Some(s) => {
+                    if !slot.is_empty() {
+                        slot.push_str(",");
+                    }
+                    slot.push_str(s);
+                    true
+                }
+                None => false,
+            }
+        }
     }
 ) }
 
@@ -742,7 +756,7 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
         "use soft float ABI (*eabihf targets only) (default: no)"),
     target_cpu: Option<String> = (None, parse_opt_string, [TRACKED],
         "select target processor (`rustc --print target-cpus` for details)"),
-    target_feature: String = (String::new(), parse_string, [TRACKED],
+    target_feature: String = (String::new(), parse_target_feature, [TRACKED],
         "target specific attributes. (`rustc --print target-features` for details). \
         This feature is unsafe."),
 
