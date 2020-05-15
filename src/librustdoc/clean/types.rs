@@ -643,6 +643,15 @@ impl Attributes {
             })
             .collect()
     }
+
+    pub fn get_doc_aliases(&self) -> FxHashSet<String> {
+        self.other_attrs
+            .lists(sym::doc)
+            .filter(|a| a.check_name(sym::alias))
+            .filter_map(|a| a.value_str().map(|s| s.to_string().replace("\"", "")))
+            .filter(|v| !v.is_empty())
+            .collect::<FxHashSet<_>>()
+    }
 }
 
 impl PartialEq for Attributes {
