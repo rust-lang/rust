@@ -342,8 +342,7 @@ public:
         llvm_unreachable("unknown case");
     }
 
-    //returns whether changed
-    bool operator&=(const DataType dt) {
+    bool andIn(const DataType dt, bool assertIfIllegal=true) {
         if (typeEnum == IntType::Anything) {
             return *this = dt;
         }
@@ -358,15 +357,26 @@ public:
         }
 
 		if (dt.typeEnum != typeEnum) {
-			//llvm::errs() << "&= typeEnum: " << to_string(typeEnum) << " dt.typeEnum.str(): " << to_string(dt.typeEnum) << "\n";
+            if (!assertIfIllegal) {
+                return *this = IntType::Unknown;
+            }
+			llvm::errs() << "&= typeEnum: " << to_string(typeEnum) << " dt.typeEnum.str(): " << to_string(dt.typeEnum) << "\n";
             return *this = IntType::Unknown;
 		}
         assert(dt.typeEnum == typeEnum);
 		if (dt.type != type) {
+            if (!assertIfIllegal) {
+                return *this = IntType::Unknown;
+            }
 			llvm::errs() << "type: " << *type << " dt.type: " << *dt.type << "\n";
 		}
         assert(dt.type == type);
         return false;
+    }
+
+    //returns whether changed
+    bool operator&=(const DataType dt) {
+        andIn(dt, /*assertIfIllegal*/true);
     }
 
     bool operator<(const DataType dt) const {
@@ -785,6 +795,10 @@ public:
     }
 
     bool operator&=(const ValueData &v) {
+        andIn(v, /*assertIfIllegal*/true);
+    }
+
+    bool andIn(const ValueData &v, bool assertIfIllegal=true) {
         bool changed = false;
 
         std::vector<std::vector<int>> keystodelete;
@@ -794,7 +808,7 @@ public:
             if (fd != v.mapping.end()) {
                 other = fd->second;
             }
-            changed = (pair.second &= other);
+            changed = (pair.second.andIn(other, assertIfIllegal));
             if (pair.second == IntType::Unknown) {
                 keystodelete.push_back(pair.first);
             }

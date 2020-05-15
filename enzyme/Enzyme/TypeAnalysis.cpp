@@ -837,7 +837,7 @@ void TypeAnalyzer::visitPHINode(PHINode& phi) {
 
     auto consider = [&](ValueData&& newData) {
         if (set) {
-            vd &= newData;
+            vd.andIn(newData, /*assertIfIllegal*/false);
         } else {
             set = true;
             vd = newData;
@@ -896,7 +896,7 @@ void TypeAnalyzer::visitPHINode(PHINode& phi) {
         ValueData vd1 = isa<ConstantInt>(bo->getOperand(0)) ? getAnalysis(bo->getOperand(0)) : vd;
         ValueData vd2 = isa<ConstantInt>(bo->getOperand(1)) ? getAnalysis(bo->getOperand(1)) : vd2;
         vd1.pointerIntMerge(vd2, bo->getOpcode());
-        vd &= vd1;
+        vd.andIn(vd1, /*assertIfIllegal*/false);
     }
     //llvm::errs() << " -- res" << vd.str() << "\n";
 
@@ -977,17 +977,19 @@ void TypeAnalyzer::visitBitCastInst(BitCastInst &I) {
 }
 
 void TypeAnalyzer::visitSelectInst(SelectInst &I) {
-    //dump();
-    //llvm::errs() << *I.getParent()->getParent() << "\n";
-    //llvm::errs() << "SI: " << I << " analysis: " << getAnalysis(&I).str() << "\n";
-    //llvm::errs() << " +  " << *I.getTrueValue() << " analysis: " << getAnalysis(I.getTrueValue()).str() << "\n";
-    //llvm::errs() << " +  " << *I.getFalseValue() << " analysis: " << getAnalysis(I.getFalseValue()).str() << "\n";
+    /*
+    llvm::errs() << *I.getParent()->getParent()->getParent() << "\n";
+    dump();
+    llvm::errs() << "SI: " << I << " analysis: " << getAnalysis(&I).str() << "\n";
+    llvm::errs() << " +  " << *I.getTrueValue() << " analysis: " << getAnalysis(I.getTrueValue()).str() << "\n";
+    llvm::errs() << " +  " << *I.getFalseValue() << " analysis: " << getAnalysis(I.getFalseValue()).str() << "\n";
+    */
     updateAnalysis(I.getTrueValue(), getAnalysis(&I), &I);
     updateAnalysis(I.getFalseValue(), getAnalysis(&I), &I);
 
     ValueData vd = getAnalysis(I.getTrueValue());
-	vd &= getAnalysis(I.getFalseValue());
-
+	vd.andIn(getAnalysis(I.getFalseValue()), /*assertIfIllegal*/false);
+    //llvm::errs() << " + new si " << vd.str() << "\n";
     updateAnalysis(&I, vd, &I);
 }
 
@@ -1031,7 +1033,7 @@ void TypeAnalyzer::visitShuffleVectorInst(ShuffleVectorInst &I) {
     updateAnalysis(I.getOperand(1), getAnalysis(&I), &I);
 
     ValueData vd = getAnalysis(I.getOperand(0));
-	vd &= getAnalysis(I.getOperand(1));
+	vd.andIn(getAnalysis(I.getOperand(1)), /*assertIfIllegal*/false);
 
     updateAnalysis(&I, vd, &I);
 }
@@ -1112,6 +1114,9 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
 		ValueData vd = getAnalysis(I.getOperand(0));
         vd.pointerIntMerge(getAnalysis(I.getOperand(1)), I.getOpcode());
 
+
+		ValueData vd = getAnalysis(I.getOperand(0));
+        vd.pointerIntMerge(getAnalysis(I.getOperand(1)), I.getOpcode());
 
         if (I.getOpcode() == BinaryOperator::And) {
             for(int i=0; i<2; i++) {
@@ -1578,7 +1583,7 @@ ValueData TypeAnalyzer::getReturnAnalysis() {
                         vd = getAnalysis(rv);
                         continue;
                     }
-                    vd &= getAnalysis(rv);
+                    vd.andIn(getAnalysis(rv), /*assertIfIllegal*/false);
                 }
             }
         }
