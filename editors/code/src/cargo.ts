@@ -48,9 +48,13 @@ export class Cargo {
 
     async executableFromArgs(args: readonly string[]): Promise<string> {
         const cargoArgs = [...args, "--message-format=json"];
+
+        // arguments for a runnable from the quick pick should be updated.
+        // see crates\rust-analyzer\src\main_loop\handlers.rs, handle_code_lens
         if (cargoArgs[0] === "run") {
-            // a runnable from the quick pick.
             cargoArgs[0] = "build";
+        } else if (cargoArgs.indexOf("--no-run") === -1) {
+            cargoArgs.push("--no-run");
         }
 
         let artifacts = await this.artifactsFromArgs(cargoArgs);
