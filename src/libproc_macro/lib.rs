@@ -158,6 +158,13 @@ impl fmt::Debug for TokenStream {
     }
 }
 
+#[stable(feature = "proc_macro_token_stream_default", since = "1.45.0")]
+impl Default for TokenStream {
+    fn default() -> Self {
+        TokenStream::new()
+    }
+}
+
 #[unstable(feature = "proc_macro_quote", issue = "54722")]
 pub use quote::{quote, quote_span};
 
