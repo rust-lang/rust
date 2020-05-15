@@ -89,12 +89,12 @@ attributes #3 = { nounwind }
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[fntape:.+]] = call { { double* } } @augmented_function(double %y, double %z, double* %x, double* %"x'")
 ; CHECK-NEXT:   %[[fnret:.+]] = extractvalue { { double* } } %[[fntape]], 0
-; CHECK-NEXT:   %[[dadd1:.+]] = call {} @diffeaddOne(double* %x, double* %"x'")
+; CHECK-NEXT:   call void @diffeaddOne(double* %x, double* %"x'")
 ; CHECK-NEXT:   %[[ret:.+]] = call { double, double } @diffefunction(double %y, double %z, double* %x, double* %"x'", { double* } %[[fnret]])
 ; CHECK-NEXT:   ret { double, double } %[[ret]]
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{} @diffeaddOne(double* nocapture %x, double* nocapture %"x'")
+; CHECK: define internal {{(dso_local )?}}void @diffeaddOne(double* nocapture %x, double* nocapture %"x'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = load double, double* %x, align 8, !tbaa !2
 ; CHECK-NEXT:   %add = fadd fast double %0, 1.000000e+00
@@ -104,7 +104,7 @@ attributes #3 = { nounwind }
 ; CHECK-NEXT:   %2 = load double, double* %"x'"
 ; CHECK-NEXT:   %3 = fadd fast double %2, %1
 ; CHECK-NEXT:   store double %3, double* %"x'"
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
 ; CHECK: define internal {{(dso_local )?}}{ double*, double* } @augmented_cast(double* readnone %x, double* %"x'")
@@ -138,7 +138,7 @@ attributes #3 = { nounwind }
 ; CHECK-NEXT:   %[[callp:.+]] = extractvalue { double* } %tapeArg, 0
 ; CHECK-NEXT:   %[[loadcallp:.+]] = load double, double* %[[callp]]
 ; CHECK-NEXT:   store double 0.000000e+00, double* %[[callp]]
-; CHECK-NEXT:   %[[dcast:.+]] = call {} @diffecast(double* %x, double* %"x'")
+; CHECK-NEXT:   call void @diffecast(double* %x, double* %"x'")
 ; CHECK-NEXT:   %m0diffez = fmul fast double %[[loadcallp]], %y
 ; CHECK-NEXT:   %m1diffey = fmul fast double %[[loadcallp]], %z
 ; CHECK-NEXT:   %[[toret0:.+]] = insertvalue { double, double } undef, double %m1diffey, 0
@@ -146,7 +146,7 @@ attributes #3 = { nounwind }
 ; CHECK-NEXT:   ret { double, double } %[[toret]]
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{} @diffecast(double* readnone %x, double* %"x'")
+; CHECK: define internal {{(dso_local )?}}void @diffecast(double* readnone %x, double* %"x'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

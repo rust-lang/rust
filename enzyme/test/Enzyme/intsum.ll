@@ -31,7 +31,7 @@ entry:
 
 declare double @__enzyme_autodiff(void (float*, float*)*, ...) #2
 
-; CHECK: define internal {} @diffesum(float* %array, float* %"array'", float* %ret, float* %"ret'")
+; CHECK: define internal void @diffesum(float* %array, float* %"array'", float* %ret, float* %"ret'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   br label %do.body
 
@@ -54,7 +54,7 @@ declare double @__enzyme_autodiff(void (float*, float*)*, ...) #2
 ; CHECK-NEXT:   br label %invertdo.body
 
 ; CHECK: invertentry:
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 
 ; CHECK: invertdo.body:
 ; CHECK-NEXT:   %"add'de.0" = phi float [ %0, %do.end ], [ 0.000000e+00, %incinvertdo.body ]

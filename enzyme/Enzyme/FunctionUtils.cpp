@@ -568,6 +568,9 @@ Function *CloneFunctionWithReturns(bool topLevel, Function *&F, AAResults &AA, T
     RetType = StructType::get(F->getContext(), RetTypes);
  }
 
+  bool noReturn = RetTypes.size() == 0;
+  if (noReturn) RetType = Type::getVoidTy(RetType->getContext());
+
  // Create a new function type...
  FunctionType *FTy = FunctionType::get(RetType,
                                    ArgTypes, F->getFunctionType()->isVarArg());

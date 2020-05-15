@@ -41,7 +41,7 @@ declare double @__enzyme_autodiff(void (float*, i32)*, ...)
 
 attributes #0 = { noinline norecurse nounwind uwtable }
 
-; CHECK: define internal {} @diffeinsertion_sort_inner(float* nocapture %array, float* nocapture %"array'", i32 %i) local_unnamed_addr #0 {
+; CHECK: define internal void @diffeinsertion_sort_inner(float* nocapture %array, float* nocapture %"array'", i32 %i) local_unnamed_addr #0 {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %cmp29 = icmp sgt i32 %i, 0
 ; CHECK-NEXT:   br i1 %cmp29, label %land.rhs.preheader, label %invertwhile.end
@@ -69,7 +69,7 @@ attributes #0 = { noinline norecurse nounwind uwtable }
 ; CHECK-NEXT:   br i1 %cmp, label %land.rhs, label %invertwhile.end
 
 ; CHECK: invertentry:                                      ; preds = %invertland.rhs, %invertwhile.end
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 
 ; CHECK: invertland.rhs:                                   ; preds = %invertwhile.end.loopexit, %invertwhile.body
 ; CHECK-NEXT:   %[[de5:.+]] = phi float [ %[[dein:.+]], %invertwhile.body ], [ 0.000000e+00, %invertwhile.end.loopexit ]

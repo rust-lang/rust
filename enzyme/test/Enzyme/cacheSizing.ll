@@ -912,7 +912,7 @@ attributes #9 = { noreturn nounwind }
 !43 = !{!"_ZTSN5Eigen8internal17product_evaluatorINS_7ProductINS_6MatrixIdLin1ELin1ELi0ELin1ELin1EEES4_Li1EEELi8ENS_10DenseShapeES6_ddEE", !17, i64 0, !17, i64 8, !44, i64 16, !44, i64 32, !4, i64 48}
 !44 = !{!"_ZTSN5Eigen8internal9evaluatorINS_6MatrixIdLin1ELin1ELi0ELin1ELin1EEEEE"}
 
-; CHECK: define internal {} @diffe_ZL6matvecPKN5Eigen6MatrixIdLin1ELin1ELi0ELin1ELin1EEES3_(double* noalias %W, double* %"W'", double* noalias %M, double* %"M'", double %differeturn)
+; CHECK: define internal void @diffe_ZL6matvecPKN5Eigen6MatrixIdLin1ELin1ELi0ELin1ELin1EEES3_(double* noalias %W, double* %"W'", double* noalias %M, double* %"M'", double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %"diff'ipa" = alloca { double*, i64 }, align 8
 ; CHECK-NEXT:   store { double*, i64 } zeroinitializer, { double*, i64 }* %"diff'ipa", align 8
@@ -985,7 +985,7 @@ attributes #9 = { noreturn nounwind }
 ; CHECK-NEXT:   br i1 %cmp2, label %matfor2, label %invertfor.cond.cleanup4
 
 ; CHECK: invertentry:                                      ; preds = %invertsubfor
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 
 ; CHECK: invertsubfor:                                     ; preds = %invertinternal, %incinvertsubfor
 ; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ 15, %invertinternal ], [ %[[ivsub:.+]], %incinvertsubfor ]

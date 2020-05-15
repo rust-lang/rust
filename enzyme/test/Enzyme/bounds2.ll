@@ -221,7 +221,7 @@ attributes #10 = { cold }
 !6 = !{!7, !7, i64 0}
 !7 = !{!"any pointer", !4, i64 0}
 
-; CHECK: define internal {} @diffebounds(float* nocapture readonly %a, float* nocapture %"a'", i32 %bound, float %differeturn) #3 {
+; CHECK: define internal void @diffebounds(float* nocapture readonly %a, float* nocapture %"a'", i32 %bound, float %differeturn) #3 {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %cmp7 = icmp sgt i32 %bound, 0
 ; CHECK-NEXT:   br i1 %cmp7, label %for.body.preheader, label %invertentry
@@ -239,7 +239,7 @@ attributes #10 = { cold }
 ; CHECK-NEXT:   br i1 %exitcond, label %invertfor.cond.cleanup, label %for.body
 
 ; CHECK: invertentry:                                      ; preds = %entry, %invertfor.body, %invertfor.cond.cleanup
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 
 ; CHECK: mergeinvertfor.body_for.cond.cleanup.loopexit:    ; preds = %invertfor.cond.cleanup
 ; CHECK-NEXT:   %_unwrap = add i32 %bound, -1
@@ -251,16 +251,16 @@ attributes #10 = { cold }
 ; CHECK-NEXT:   br i1 %cmp7, label %mergeinvertfor.body_for.cond.cleanup.loopexit, label %invertentry
 
 ; CHECK: invertfor.body:                                   ; preds = %incinvertfor.body, %mergeinvertfor.body_for.cond.cleanup.loopexit
-; CHECK-NEXT:   %"add'de.0" = phi float [ %1, %mergeinvertfor.body_for.cond.cleanup.loopexit ], [ %4, %incinvertfor.body ]
-; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %_unwrap1, %mergeinvertfor.body_for.cond.cleanup.loopexit ], [ %5, %incinvertfor.body ]
+; CHECK-NEXT:   %"add'de.0" = phi float [ %1, %mergeinvertfor.body_for.cond.cleanup.loopexit ], [ %[[asel:.+]], %incinvertfor.body ]
+; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %_unwrap1, %mergeinvertfor.body_for.cond.cleanup.loopexit ], [ %[[ivsub:.+]], %incinvertfor.body ]
 ; CHECK-NEXT:   %[[trunc:.+]] = trunc i64 %"iv'ac.0" to i32
-; CHECK-NEXT:   %2 = call {} @diffelookup(float* %a, float* %"a'", i32 %[[trunc]], i32 %bound, float %"add'de.0")
-; CHECK-NEXT:   %3 = icmp eq i64 %"iv'ac.0", 0
-; CHECK-NEXT:   %4 = select{{( fast)?}} i1 %3, float 0.000000e+00, float %"add'de.0"
-; CHECK-NEXT:   br i1 %3, label %invertentry, label %incinvertfor.body
+; CHECK-NEXT:   call void @diffelookup(float* %a, float* %"a'", i32 %[[trunc]], i32 %bound, float %"add'de.0")
+; CHECK-NEXT:   %[[ecmp:.+]] = icmp eq i64 %"iv'ac.0", 0
+; CHECK-NEXT:   %[[asel]] = select{{( fast)?}} i1 %[[ecmp]], float 0.000000e+00, float %"add'de.0"
+; CHECK-NEXT:   br i1 %[[ecmp]], label %invertentry, label %incinvertfor.body
 
 ; CHECK: incinvertfor.body:                                ; preds = %invertfor.body
-; CHECK-NEXT:   %5 = add nsw i64 %"iv'ac.0", -1
+; CHECK-NEXT:   %[[ivsub]] = add nsw i64 %"iv'ac.0", -1
 ; CHECK-NEXT:   br label %invertfor.body
 ; CHECK-NEXT: }
 
@@ -277,7 +277,7 @@ attributes #10 = { cold }
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal {} @diffelookup(float* nocapture readonly %data, float* nocapture %"data'", i32 %i, i32 %bound, float %differeturn)
+; CHECK: define internal void @diffelookup(float* nocapture readonly %data, float* nocapture %"data'", i32 %i, i32 %bound, float %differeturn)
 ; CHECK-NEXT: invertentry:
 ; CHECK-NEXT:   %cmp = icmp sge i32 %i, %bound
 ; CHECK-NEXT:   %0 = xor i1 %cmp, true
@@ -287,5 +287,5 @@ attributes #10 = { cold }
 ; CHECK-NEXT:   %1 = load float, float* %[[arrayidxipg]], align 4
 ; CHECK-NEXT:   %2 = fadd fast float %1, %differeturn
 ; CHECK-NEXT:   store float %2, float* %[[arrayidxipg]], align 4
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

@@ -21,7 +21,7 @@ declare void @__enzyme_autodiff.f64(...)
 
 attributes #0 = { noinline }
 
-; CHECK: define internal {{(dso_local )?}}{} @diffeman_max(float* %a, float* %"a'", float* %b, float* %"b'", float %[[differet:.+]])
+; CHECK: define internal {{(dso_local )?}}void @diffeman_max(float* %a, float* %"a'", float* %b, float* %"b'", float %[[differet:.+]])
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:  %[[la:.+]] = load float, float* %a, align 4
 ; CHECK-NEXT:  %[[lb:.+]] = load float, float* %b, align 4
@@ -30,5 +30,5 @@ attributes #0 = { noinline }
 ; CHECK-NEXT:  %[[prep:.+]] = load float, float* %[[abp]]
 ; CHECK-NEXT:  %[[postp:.]] = fadd fast float %[[prep]], %[[differet]]
 ; CHECK-NEXT:  store float %[[postp]], float* %[[abp]]
-; CHECK-NEXT:  ret {} undef
+; CHECK-NEXT:  ret void
 ; CHECK-NEXT: }

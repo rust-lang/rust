@@ -53,7 +53,7 @@ define dso_local void @derivative(double* %this, double* %dthis, i64* %xpr) {
 
 declare dso_local double @__enzyme_autodiff(i8*, double*, double*, i64*)
 
-; CHECK: define internal {} @diffecaller(double* %data, double* %"data'", i64* %a4, double %differeturn) {
+; CHECK: define internal void @diffecaller(double* %data, double* %"data'", i64* %a4, double %differeturn) {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %res_augmented = call { { i64, i64* }, double } @augmented_badfunc(double* %data, double* %"data'", i64* %a4)
 ; CHECK-NEXT:   %res = extractvalue { { i64, i64* }, double } %res_augmented, 1
@@ -64,8 +64,8 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*, i64*)
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"data'", align 8
 ; CHECK-NEXT:   %[[identr:.+]] = call { double } @diffeidentity(double %res, double %differeturn)
 ; CHECK-NEXT:   %[[iev:.+]] = extractvalue { double } %[[identr]], 0
-; CHECK-NEXT:   %[[unused:.+]] = call {} @diffebadfunc(double* %data, double* %"data'", i64* %a4, double %[[iev]], { i64, i64* } %[[resev]])
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   call void @diffebadfunc(double* %data, double* %"data'", i64* %a4, double %[[iev]], { i64, i64* } %[[resev]])
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
 ; CHECK: define internal void @augmented_identity(double %res) {
@@ -119,7 +119,7 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*, i64*)
 ; CHECK-NEXT:   ret { { i64, i64* }, double } %.fca.1.insert
 ; CHECK-NEXT: }
 
-; CHECK: define internal {} @diffebadfunc(double* %data, double* %"data'", i64* %a4, double %differeturn, { i64, i64* } %tapeArg) {
+; CHECK: define internal void @diffebadfunc(double* %data, double* %"data'", i64* %a4, double %differeturn, { i64, i64* } %tapeArg) {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[a19cache:.+]] = extractvalue { i64, i64* } %tapeArg, 1
 ; CHECK-NEXT:   %a5 = extractvalue { i64, i64* } %tapeArg, 0
@@ -145,7 +145,7 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*, i64*)
 ; CHECK: invertentry:                                      ; preds = %invertloop1
 ; CHECK-NEXT:   %[[free0:.+]] = bitcast i64* %[[a19cache]] to i8*
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %[[free0]])
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 
 ; CHECK: invertloop1:                                      ; preds = %invertloop2
 ; CHECK-NEXT:   %[[l1eq:.+]] = icmp eq i64 %"iv'ac.0", 0

@@ -41,7 +41,7 @@ entry:
 !5 = !{!"Simple C++ TBAA"}
 !6 = !{!4, i64 8, !"long"}
 
-; CHECK: define internal {} @diffetodiff(%"struct.std::array.6"* dereferenceable(16) %arr, %"struct.std::array.6"* %"arr'", i64 %identity) {
+; CHECK: define internal void @diffetodiff(%"struct.std::array.6"* dereferenceable(16) %arr, %"struct.std::array.6"* %"arr'", i64 %identity) {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %"arr.i'ipa" = alloca %"struct.std::array.6", align 8
 ; CHECK-NEXT:   store %"struct.std::array.6" zeroinitializer, %"struct.std::array.6"* %"arr.i'ipa", align 8
@@ -61,5 +61,5 @@ entry:
 ; CHECK-NEXT:   br label %invertentry
 
 ; CHECK: invertentry:                                      ; preds = %entry
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

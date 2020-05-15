@@ -33,7 +33,7 @@ declare float @llvm.fabs.f32(float) #0
 attributes #0 = { nounwind readnone speculatable }
 attributes #1 = { noinline }
 
-; CHECK: define internal {{(dso_local )?}}{} @diffecompute_sumabs(float* %a, float* %"a'", float* %b, float* %"b'", float* %ret, float* %"ret'")
+; CHECK: define internal {{(dso_local )?}}void @diffecompute_sumabs(float* %a, float* %"a'", float* %b, float* %"b'", float* %ret, float* %"ret'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:  %al = load float, float* %a
 ; CHECK-NEXT:  %[[call1:.+]] = call { float } @augmented_myabs(float %al)
@@ -55,5 +55,5 @@ attributes #1 = { noinline }
 ; CHECK-NEXT:  %[[prea:.+]] = load float, float* %"a'"
 ; CHECK-NEXT:  %[[totala:.+]] = fadd fast float %[[prea]], %[[exta]]
 ; CHECK-NEXT:  store float %[[totala]], float* %"a'"
-; CHECK-NEXT:  ret {} undef
+; CHECK-NEXT:  ret void
 ; CHECK-NEXT: }

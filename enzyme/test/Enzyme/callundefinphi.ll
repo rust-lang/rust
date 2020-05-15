@@ -443,7 +443,7 @@ attributes #22 = { readnone speculatable }
 !12 = !{!"long", !4, i64 0}
 !13 = !{!12, !12, i64 0}
 
-; CHECK: define internal {} @diffe_ZL6matvecPKN5Eigen6MatrixIdLin1ELin1ELi0ELin1ELin1EEES3_(double* noalias %W, double* %"W'", double* noalias %M, double* %"M'", double %differeturn)
+; CHECK: define internal void @diffe_ZL6matvecPKN5Eigen6MatrixIdLin1ELin1ELi0ELin1ELin1EEES3_(double* noalias %W, double* %"W'", double* noalias %M, double* %"M'", double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %call.i.i.i.i.i.i.i = call noalias i8* @malloc(i64 128) #8
 ; CHECK-NEXT:   %"call.i.i.i.i.i.i.i'mi" = call noalias nonnull i8* @malloc(i64 128) #8
@@ -496,7 +496,7 @@ attributes #22 = { readnone speculatable }
 ; CHECK: invertentry:                                      ; preds = %invertfor.body.i.i
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %"call.i.i.i.i.i.i.i'mi")
 ; CHECK-NEXT:   tail call void @free(i8* %call.i.i.i.i.i.i.i)
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 
 ; CHECK: invertfor.body.i.i:                               ; preds = %invert_ZN5Eigen8internal26call_dense_assignment_loopINS_6MatrixIdLin1ELin1ELi0ELin1ELin1EEENS_13CwiseBinaryOpINS0_20scalar_difference_opIddEEKS3_S7_EENS0_9assign_opIddEEEEvRT_RKT0_RKT1_.exit, %incinvertfor.body.i.i
 ; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ 15, %invert_ZN5Eigen8internal26call_dense_assignment_loopINS_6MatrixIdLin1ELin1ELi0ELin1ELin1EEENS_13CwiseBinaryOpINS0_20scalar_difference_opIddEEKS3_S7_EENS0_9assign_opIddEEEEvRT_RKT0_RKT1_.exit ], [ %[[ivsub:.+]], %incinvertfor.body.i.i ]
@@ -521,7 +521,7 @@ attributes #22 = { readnone speculatable }
 
 ; CHECK: invert_ZN5Eigen8internal26call_dense_assignment_loopINS_6MatrixIdLin1ELin1ELi0ELin1ELin1EEENS_13CwiseBinaryOpINS0_20scalar_difference_opIddEEKS3_S7_EENS0_9assign_opIddEEEEvRT_RKT0_RKT1_.exit: ; preds = %invertfor.body.i
 ; CHECK-NEXT:   %_unwrap = bitcast i8* %call.i.i.i.i.i.i.i13 to double*
-; CHECK-NEXT:   %{{.+}} = call {} @diffesubfn(double* %_unwrap, double* nonnull %"'ipc8", double* %0, double* nonnull %"'ipc")
+; CHECK-NEXT:   call void @diffesubfn(double* %_unwrap, double* nonnull %"'ipc8", double* %0, double* nonnull %"'ipc")
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %"call.i.i.i.i.i.i.i13'mi")
 ; CHECK-NEXT:   tail call void @free(i8* %call.i.i.i.i.i.i.i13)
 ; CHECK-NEXT:   br label %invertfor.body.i.i
@@ -576,7 +576,7 @@ attributes #22 = { readnone speculatable }
 ; CHECK-NEXT: }
 
 
-; CHECK: define internal {} @diffesubfn(double* %w3, double* %"w3'", double* %w9, double* %"w9'")
+; CHECK: define internal void @diffesubfn(double* %w3, double* %"w3'", double* %w9, double* %"w9'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %false = call i1 @falser()
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 128)
@@ -620,7 +620,7 @@ attributes #22 = { readnone speculatable }
 
 ; CHECK: invertentry:                                      ; preds = %invertfor.cond1.preheader
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %malloccall)
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 
 ; CHECK: invertfor.cond1.preheader:                        ; preds = %invertfor.body5
 ; CHECK-NEXT:   %[[ph1:.]] = icmp eq i64 %"iv'ac.0", 0
@@ -646,7 +646,7 @@ attributes #22 = { readnone speculatable }
 ; CHECK-NEXT:   %[[addniv:.+]] = add nuw nsw i64 %"iv'ac.0", %[[mulniv]]
 ; CHECK-NEXT:   %[[ngep:.+]] = getelementptr inbounds { double* }, { double* }* %_malloccache, i64 %[[addniv]]
 ; CHECK-NEXT:   %[[loadtape:.+]] = load { double* }, { double* }* %[[ngep]]
-; CHECK-NEXT:   %{{.+}} = call {} @diffesumsq(double* %add.ptr_unwrap, double* %"add.ptr'ipg_unwrap", double %[[nv:.+]], { double* } %[[loadtape]])
+; CHECK-NEXT:   call void @diffesumsq(double* %add.ptr_unwrap, double* %"add.ptr'ipg_unwrap", double %[[nv:.+]], { double* } %[[loadtape]])
 ; CHECK-NEXT:   br label %invertfor.body5
 
 ; CHECK: invertif.exit:                                    ; preds = %invertfor.cond.cleanup4, %incinvertfor.body5
@@ -698,7 +698,7 @@ attributes #22 = { readnone speculatable }
 ; CHECK-NEXT:   ret { { double* }, double } %[[ret]]
 ; CHECK-NEXT: }
 
-; CHECK: define internal {} @diffesumsq(double* %a3, double* %"a3'", double %differeturn, { double* } %tapeArg)
+; CHECK: define internal void @diffesumsq(double* %a3, double* %"a3'", double %differeturn, { double* } %tapeArg)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = extractvalue { double* } %tapeArg, 0
 ; CHECK-NEXT:   br label %for.body
@@ -712,7 +712,7 @@ attributes #22 = { readnone speculatable }
 ; CHECK: invertentry:                                      ; preds = %invertfor.body
 ; CHECK-NEXT:   %1 = bitcast double* %0 to i8*
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %1)
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 
 ; CHECK: invertfor.body:                                   ; preds = %for.body, %incinvertfor.body
 ; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %[[subidx:.+]], %incinvertfor.body ], [ 3, %for.body ]

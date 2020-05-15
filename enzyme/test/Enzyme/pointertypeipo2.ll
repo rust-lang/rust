@@ -66,7 +66,7 @@ attributes #4 = { nounwind }
 !4 = !{!5, i64 1, !"omnipotent char"}
 !5 = !{!"Simple C++ TBAA"}
 
-; CHECK: define internal {} @diffemv(i64* %m_dims, i64* %"m_dims'", i64* %out, i64* %"out'")
+; CHECK: define internal void @diffemv(i64* %m_dims, i64* %"m_dims'", i64* %out, i64* %"out'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %call4_augmented = call { { { i64, i64*, i64*, i8*, i8* }, i64 }, i64 } @augmented_sub(i64* %m_dims, i64* %"m_dims'") #3
 ; CHECK-NEXT:   %[[tape:.+]] = extractvalue { { { i64, i64*, i64*, i8*, i8* }, i64 }, i64 } %call4_augmented, 0
@@ -74,8 +74,8 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   store i64 %call4, i64* %out, align 4
 ; CHECK-NEXT:   %[[oold:.+]] = load i64, i64* %"out'", align 8
 ; CHECK-NEXT:   store i64 0, i64* %"out'", align 4
-; CHECK-NEXT:   %{{.+}} = call {} @diffesub(i64* %m_dims, i64* %"m_dims'", i64 %[[oold]], { { i64, i64*, i64*, i8*, i8* }, i64 } %[[tape]]) #3
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   call void @diffesub(i64* %m_dims, i64* %"m_dims'", i64 %[[oold]], { { i64, i64*, i64*, i8*, i8* }, i64 } %[[tape]]) #3
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
 ; CHECK: define internal { i64 } @augmented_mul(i64 %a) {
@@ -136,7 +136,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   ret { { { i64, i64*, i64*, i8*, i8* }, i64 }, i64 } %.fca.1.insert
 ; CHECK-NEXT: }
 
-; CHECK: define internal {} @diffesub(i64* %this, i64* %"this'", i64 %differeturn, { { i64, i64*, i64*, i8*, i8* }, i64 } %tapeArg) {
+; CHECK: define internal void @diffesub(i64* %this, i64* %"this'", i64 %differeturn, { { i64, i64*, i64*, i8*, i8* }, i64 } %tapeArg) {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %agg_fromtape_unwrap = extractvalue { { i64, i64*, i64*, i8*, i8* }, i64 } %tapeArg, 1
 ; CHECK-NEXT:   %_unwrap = extractvalue { { i64, i64*, i64*, i8*, i8* }, i64 } %tapeArg, 0
@@ -148,7 +148,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %5 = fadd fast double %3, %4
 ; CHECK-NEXT:   %6 = bitcast i64* %"this'" to double*
 ; CHECK-NEXT:   store double %5, double* %6, align 8
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
 ; CHECK: define internal { i64 } @diffepop(i64 %arr.coerce0, i64 %differeturn, { i64, i64*, i64*, i8*, i8* } %tapeArg) {
@@ -167,13 +167,13 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %arr_unwrap = bitcast i8* %malloccall_fromtape_unwrap to i64*
 ; CHECK-NEXT:   %"malloccall'mi_fromtape_unwrap" = extractvalue { i64, i64*, i64*, i8*, i8* } %tapeArg, 4
 ; CHECK-NEXT:   %"arr'ipc_unwrap" = bitcast i8* %"malloccall'mi_fromtape_unwrap" to i64*
-; CHECK-NEXT:   %7 = call {} @diffecast(i64* %arr_unwrap, i64* %"arr'ipc_unwrap")
-; CHECK-NEXT:   %8 = bitcast i8* %"malloccall'mi_fromtape_unwrap" to i64*
-; CHECK-NEXT:   %9 = load i64, i64* %8, align 8
+; CHECK-NEXT:   call void @diffecast(i64* %arr_unwrap, i64* %"arr'ipc_unwrap")
+; CHECK-NEXT:   %[[mi64:.+]] = bitcast i8* %"malloccall'mi_fromtape_unwrap" to i64*
+; CHECK-NEXT:   %[[mload:.+]] = load i64, i64* %[[mi64]], align 8
 ; CHECK-NEXT:   store i64 0, i64* %"arr'ipc_unwrap", align 4
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %"malloccall'mi_fromtape_unwrap")
-; CHECK-NEXT:   %10 = insertvalue { i64 } undef, i64 %9, 0
-; CHECK-NEXT:   ret { i64 } %10
+; CHECK-NEXT:   %[[iv:.+]] = insertvalue { i64 } undef, i64 %[[mload]], 0
+; CHECK-NEXT:   ret { i64 } %[[iv]]
 ; CHECK-NEXT: }
 
 ; CHECK: define internal { i64 } @diffemul(i64 %a, i64 %differeturn) {
@@ -182,7 +182,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   ret { i64 } %0
 ; CHECK-NEXT: }
 
-; CHECK: define internal {} @diffecast(i64* %a, i64* %"a'") {
+; CHECK: define internal void @diffecast(i64* %a, i64* %"a'") {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

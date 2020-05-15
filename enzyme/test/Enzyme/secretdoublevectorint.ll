@@ -28,7 +28,7 @@ declare void @__enzyme_autodiff(i8*, %struct.S*, %struct.S*, %struct.S*, %struct
 !4 = !{!"omnipotent char", !5, i64 0}
 !5 = !{!"Simple C/C++ TBAA"}
 
-; CHECK: define internal {} @diffedup(%struct.S* nocapture readonly %from, %struct.S* nocapture %"from'", %struct.S* nocapture %to, %struct.S* nocapture %"to'") {
+; CHECK: define internal void @diffedup(%struct.S* nocapture readonly %from, %struct.S* nocapture %"from'", %struct.S* nocapture %to, %struct.S* nocapture %"to'") {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %data1 = getelementptr inbounds %struct.S, %struct.S* %from, i64 0, i32 1
 ; CHECK-NEXT:   %data11 = getelementptr inbounds %struct.S, %struct.S* %to, i64 0, i32 1
@@ -47,5 +47,5 @@ declare void @__enzyme_autodiff(i8*, %struct.S*, %struct.S*, %struct.S*, %struct
 ; CHECK-NEXT:   %7 = fadd fast <2 x double> %6, %4
 ; CHECK-NEXT:   %8 = bitcast double* %[[data1ipge]] to <2 x double>*
 ; CHECK-NEXT:   store <2 x double> %7, <2 x double>* %8, align 8
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

@@ -42,7 +42,7 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*, i64)
 
 attributes #0 = { noinline nounwind uwtable }
 
-; CHECK: define internal {{(dso_local )?}}{} @diffef(double* nocapture readonly %x, double* nocapture %"x'", i64 %n, double %differeturn) #0 {
+; CHECK: define internal {{(dso_local )?}}void @diffef(double* nocapture readonly %x, double* nocapture %"x'", i64 %n, double %differeturn) #0 {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   br label %for.body
 
@@ -61,7 +61,7 @@ attributes #0 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   br i1 %cmp, label %for.body, label %invertif.end
 
 ; CHECK: invertentry:
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 
 ; CHECK: invertfor.body:
 ; CHECK-NEXT:   %[[ivp0:.+]] = phi i64 [ %iv, %invertif.then ], [ %[[ivp1:.+]], %invertif.end ]
@@ -86,5 +86,4 @@ attributes #0 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   %[[tostoreitp:.+]] = fadd fast double %[[loaditp]], %differeturn
 ; CHECK-NEXT:   store double %[[tostoreitp]], double* %[[arrayidx4ipg]], align 8
 ; CHECK-NEXT:   br label %invertfor.body
-
 ; CHECK-NEXT: }

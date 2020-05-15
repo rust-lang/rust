@@ -1202,7 +1202,7 @@ attributes #10 = { noreturn nounwind }
 ; CHECK-NEXT:   ret { { i8* } } %.fca.0.0.insert
 ; CHECK-NEXT: }
 
-; CHECK: define internal {} @diffesubfn(float** %m_data.i.i, float** %"m_data.i.i'", float* %K, float* %"K'", { i8* } %tapeArg)
+; CHECK: define internal void @diffesubfn(float** %m_data.i.i, float** %"m_data.i.i'", float* %K, float* %"K'", { i8* } %tapeArg)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[callpmi:.+]] = extractvalue { i8* } %tapeArg, 0
 ; CHECK-NEXT:   %[[a0ipc:.+]] = bitcast i8* %[[callpmi:.+]] to float*
@@ -1212,5 +1212,5 @@ attributes #10 = { noreturn nounwind }
 ; CHECK-NEXT:   %2 = fadd fast float %1, %0
 ; CHECK-NEXT:   store float %2, float* %"K'", align 4
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %[[callpmi:.+]])
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

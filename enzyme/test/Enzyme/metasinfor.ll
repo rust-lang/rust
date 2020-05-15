@@ -103,6 +103,6 @@ attributes #8 = { noreturn nounwind }
 
 ; CHECK: incinvertfor.cond:                                ; preds = %invertfor.cond
 ; CHECK-NEXT:   %[[isub]] = add nsw i64 %"iv'ac.0", -1
-; CHECK-NEXT:   %{{.+}} = call {} @diffemetasin(double* nonnull %a.addr, double* nonnull %"a.addr'ipa", double %[[sel]])
+; CHECK-NEXT:   call void @diffemetasin(double* nonnull %a.addr, double* nonnull %"a.addr'ipa", double %[[sel]])
 ; CHECK-NEXT:   br label %invertfor.cond
 ; CHECK-NEXT: }

@@ -52,4 +52,4 @@ attributes #1 = { uwtable }
 !4 = !{!"omnipotent char", !5, i64 0}
 !5 = !{!"Simple C++ TBAA"}
 
-; CHECK: define internal {{(dso_local )?}}{} @diffeinsertsort_sum(float* nocapture %array
+; CHECK: define internal {{(dso_local )?}}void @diffeinsertsort_sum(float* nocapture %array

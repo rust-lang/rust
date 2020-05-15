@@ -113,13 +113,13 @@ exit:                                             ; preds = %end2
 ; CHECK-NEXT:   ret { { i64 } } %[[ret]]
 ; CHECK-NEXT: }
 
-; CHECK: define internal {} @diffesubfn(double* %place, double* %"place'", i64* %m_rows, { i64 } %tapeArg) {
+; CHECK: define internal void @diffesubfn(double* %place, double* %"place'", i64* %m_rows, { i64 } %tapeArg) {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %rows = extractvalue { i64 } %tapeArg, 0
 ; CHECK-NEXT:   br label %invertend2
 
 ; CHECK: invertentry:                                      ; preds = %invertfor1
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 
 ; CHECK: invertfor1:                                       ; preds = %invertfor2
 ; CHECK-NEXT:   %[[eq1:.+]] = icmp eq i64 %"iv'ac.0", 0

@@ -203,7 +203,7 @@ attributes #8 = { builtin nounwind }
 
 
 ; CHECK: [[invertdelete]]:                               ; preds = %for.body.i
-; CHECK-NEXT:   %[[dsum:.+]] = call {} @diffe_Z8sum_listPK4node(%class.node* nonnull %[[bcnode]], %class.node* nonnull %"'ipc.i", double 1.000000e+00)
+; CHECK-NEXT:   call void @diffe_Z8sum_listPK4node(%class.node* nonnull %[[bcnode]], %class.node* nonnull %"'ipc.i", double 1.000000e+00)
 ; CHECK-NEXT:   br label %invertfor.body.i
 
 ; CHECK: invertfor.body.i:
@@ -235,7 +235,7 @@ attributes #8 = { builtin nounwind }
 ; CHECK-NEXT: }
 
 
-; CHECK: define internal {{(dso_local )?}}{} @diffe_Z8sum_listPK4node(%class.node* noalias readonly %node, %class.node* %"node'", double %[[differet:.+]])
+; CHECK: define internal {{(dso_local )?}}void @diffe_Z8sum_listPK4node(%class.node* noalias readonly %node, %class.node* %"node'", double %[[differet:.+]])
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[cmp:.+]] = icmp eq %class.node* %node, null
 ; CHECK-NEXT:   br i1 %[[cmp]], label %invertentry, label %for.body
@@ -259,7 +259,7 @@ attributes #8 = { builtin nounwind }
 ; CHECK-NEXT:   br i1 %[[lcmp]], label %[[antiloop:.+]], label %for.body
 
 ; CHECK: invertentry:
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 
 ; CHECK: invertfor.body.preheader:
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %_realloccache)
@@ -279,5 +279,4 @@ attributes #8 = { builtin nounwind }
 ; CHECK: incinvertfor.body:
 ; CHECK-NEXT:   %[[subidx]] = add nsw i64 %[[antivar]], -1
 ; CHECK-NEXT:   br label %[[antiloop]]
-
 ; CHECK-NEXT: }

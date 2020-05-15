@@ -79,7 +79,7 @@ attributes #2 = { nounwind }
 !9 = !{!10, !10, i64 0}
 !10 = !{!"double", !5, i64 0}
 
-; CHECK: define internal {} @diffematvec(%"class.Eigen::Matrix"* noalias %W, %"class.Eigen::Matrix"* %"W'")
+; CHECK: define internal void @diffematvec(%"class.Eigen::Matrix"* noalias %W, %"class.Eigen::Matrix"* %"W'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %m_rows.i.i.i.i.i.i.i.i.i = getelementptr inbounds %"class.Eigen::Matrix", %"class.Eigen::Matrix"* %W, i64 0, i32 0, i32 0, i32 1
 ; CHECK-NEXT:   %z0 = load i64, i64* %m_rows.i.i.i.i.i.i.i.i.i, align 8, !tbaa !2
@@ -98,7 +98,7 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   %lhs_unwrap = bitcast %"class.Eigen::Matrix"* %W to i64*
 ; CHECK-NEXT:   %[[lhsipc:.+]] = bitcast %"class.Eigen::Matrix"* %"W'" to i64*
 ; CHECK-NEXT:   %[[resipc:.+]] = bitcast i8* %"call.i.i4.i.i.i.i'mi" to double*
-; CHECK-NEXT:   %0 = call {} @diffesubfn(i64* %lhs_unwrap, i64* %[[lhsipc]], double* %res, double*{{( nonnull)?}} %[[resipc]], i1 true)
+; CHECK-NEXT:   call void @diffesubfn(i64* %lhs_unwrap, i64* %[[lhsipc]], double* %res, double*{{( nonnull)?}} %[[resipc]], i1 true)
 ; CHECK-NEXT:   %[[arrayidxipge:.+]] = getelementptr inbounds double, double* %[[resipc]], i64 %mul.i.i.i.i1
 ; CHECK-NEXT:   %[[z3ipc:.+]] = bitcast double* %[[arrayidxipge]] to i64*
 ; CHECK-NEXT:   store i64 0, i64* %[[z3ipc]], align 8
@@ -106,10 +106,10 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   store <2 x double> zeroinitializer, <2 x double>* %[[z2ipc]], align 16
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %"call.i.i4.i.i.i.i'mi")
 ; CHECK-NEXT:   tail call void @free(i8* %call.i.i4.i.i.i.i)
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal {} @diffesubfn(i64* %lhs, i64* %"lhs'", double* %argres, double* %"argres'", i1 %cmp.i.i.i)
+; CHECK: define internal void @diffesubfn(i64* %lhs, i64* %"lhs'", double* %argres, double* %"argres'", i1 %cmp.i.i.i)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %a0 = ptrtoint double* %argres to i64
 ; CHECK-NEXT:   %0 = bitcast i64* %"lhs'" to double**
@@ -131,6 +131,6 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   %2 = load double, double* %[[arrayidxi814ipge]], align 8
 ; CHECK-NEXT:   %3 = fadd fast double %2, %1
 ; CHECK-NEXT:   store double %3, double* %[[arrayidxi814ipge]], align 8
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 

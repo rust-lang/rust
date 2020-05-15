@@ -30,7 +30,7 @@ declare double @__enzyme_autodiff(i8*, ...)
 !7 = !{!"double", !5, i64 0}
 !8 = !{!7, !7, i64 0}
 
-; CHECK: define internal {} @diffecallee(i64* %ptr, i64* %"ptr'") {
+; CHECK: define internal void @diffecallee(i64* %ptr, i64* %"ptr'") {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %ptr2 = getelementptr inbounds i64, i64* %ptr, i64 2
 ; CHECK-NEXT:   %loadnotype = load i64, i64* %ptr2, align 4
@@ -53,5 +53,5 @@ declare double @__enzyme_autodiff(i8*, ...)
 ; CHECK-NEXT:   store i64 0, i64* %[[ptr3ipge]], align 4
 ; CHECK-NEXT:   %[[finalst:.+]] = fadd fast double %4, %[[dptr3load]]
 ; CHECK-NEXT:   store double %[[finalst]], double* %2, align 8
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

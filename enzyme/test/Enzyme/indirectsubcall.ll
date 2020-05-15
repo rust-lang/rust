@@ -74,16 +74,16 @@ entry:
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %tapeArg)
 ; CHECK-NEXT:   %[[loadc:.+]] = load double, double* %.unpack, align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %.unpack, align 8
-; CHECK-NEXT:   %[[null:.+]] = call {} @diffebad(double* %dxdt, double* %"dxdt'")
+; CHECK-NEXT:   call void @diffebad(double* %dxdt, double* %"dxdt'")
 ; CHECK-NEXT:   %[[xpl:.+]] = load double, double* %"x'", align 8
 ; CHECK-NEXT:   %[[fadd:.+]] = fadd fast double %[[xpl]], %[[loadc]]
 ; CHECK-NEXT:   store double %[[fadd]], double* %"x'", align 8
 ; CHECK-NEXT:   ret { double } zeroinitializer
 ; CHECK-NEXT: }
 
-; CHECK: define internal {} @diffebad(double* %this, double* %"this'") {
+; CHECK: define internal void @diffebad(double* %this, double* %"this'") {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
 ; CHECK: define internal { double } @diffesubfn(double %init, void (double*, double*, double)* %system, void (double*, double*, double)* %"system'", double %differeturn) {

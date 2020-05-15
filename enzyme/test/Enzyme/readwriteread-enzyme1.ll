@@ -132,7 +132,7 @@ attributes #8 = { noreturn nounwind }
 ; CHECK-NEXT:   %[[dhret:.+]] = call { double } @diffeh_read(double* %x, double* %"x'", double %differeturn)
 ; CHECK-NEXT:   %[[dg:.+]] = call { double } @diffeg_write(double* %x, double* %"x'", double %[[retf]], { double } %[[gtape]])
 ; CHECK-NEXT:   %[[dgret:.+]] = extractvalue { double } %[[dg]], 0
-; CHECK-NEXT:   %[[nil2:.+]] = call {} @diffef_read(double* %x, double* %"x'", double %[[dgret]], { double } %[[tapef]])
+; CHECK-NEXT:   call void @diffef_read(double* %x, double* %"x'", double %[[dgret]], { double } %[[tapef]])
 ; CHECK-NEXT:   ret { double } %[[dhret]]
 ; CHECK-NEXT: }
 

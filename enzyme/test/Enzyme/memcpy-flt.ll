@@ -50,14 +50,14 @@ attributes #1 = { argmemonly nounwind }
 attributes #2 = { noinline nounwind uwtable }
 attributes #3 = { nounwind }
 
-; CHECK: define internal {{(dso_local )?}}{} @diffememcpy_float(double* nocapture %dst, double* nocapture %"dst'", double* nocapture readonly %src, double* nocapture %"src'", i64 %num) 
+; CHECK: define internal {{(dso_local )?}}void @diffememcpy_float(double* nocapture %dst, double* nocapture %"dst'", double* nocapture readonly %src, double* nocapture %"src'", i64 %num) 
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = bitcast double* %dst to i8*
 ; CHECK-NEXT:   %1 = bitcast double* %src to i8*
 ; CHECK-NEXT:   tail call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %0, i8* align 1 %1, i64 %num, i1 false)
 ; CHECK-NEXT:   %2 = lshr i64 %num, 3
 ; CHECK-NEXT:   call void @__enzyme_memcpyadd_doubleda1sa1(double* %"dst'", double* %"src'", i64 %2)
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
 ; CHECK: define internal {{(dso_local )?}}void @__enzyme_memcpyadd_doubleda1sa1(double* nocapture %dst, double* nocapture %src, i64 %num) #[[mymemattrs:.+]] {
@@ -82,13 +82,13 @@ attributes #3 = { nounwind }
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{} @diffememcpyaugment_float(double* nocapture %dst, double* nocapture %"dst'", double* nocapture readonly %src, double* nocapture %"src'", i64 %num) 
+; CHECK: define internal {{(dso_local )?}}void @diffememcpyaugment_float(double* nocapture %dst, double* nocapture %"dst'", double* nocapture readonly %src, double* nocapture %"src'", i64 %num) 
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   call void @augmented_submemcpy_float(double* %dst, double* %"dst'", double* %src, double* %"src'", i64 %num)
 ; CHECK-NEXT:   store double 0.000000e+00, double* %dst, align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"dst'", align 8
-; CHECK-NEXT:   %[[dmemcpy:.+]] = call {} @diffesubmemcpy_float(double* %dst, double* %"dst'", double* %src, double* %"src'", i64 %num)
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   call void @diffesubmemcpy_float(double* %dst, double* %"dst'", double* %src, double* %"src'", i64 %num)
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
 ; CHECK: define internal {{(dso_local )?}}void @augmented_submemcpy_float(double* nocapture %smdst, double* nocapture %"smdst'", double* nocapture readonly %smsrc, double* nocapture %"smsrc'", i64 %num) 
@@ -99,11 +99,11 @@ attributes #3 = { nounwind }
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{} @diffesubmemcpy_float(double* nocapture %smdst, double* nocapture %"smdst'", double* nocapture readonly %smsrc, double* nocapture %"smsrc'", i64 %num)
+; CHECK: define internal {{(dso_local )?}}void @diffesubmemcpy_float(double* nocapture %smdst, double* nocapture %"smdst'", double* nocapture readonly %smsrc, double* nocapture %"smsrc'", i64 %num)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = lshr i64 %num, 3
 ; CHECK-NEXT:   call void @__enzyme_memcpyadd_doubleda1sa1(double* %"smdst'", double* %"smsrc'", i64 %0)
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
 ; CHECK: attributes #[[mymemattrs]] = { argmemonly nounwind }

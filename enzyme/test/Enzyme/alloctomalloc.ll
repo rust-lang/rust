@@ -461,7 +461,7 @@ attributes #9 = { cold }
 !8 = !{!9, !9, i64 0}
 !9 = !{!"double", !3, i64 0}
 
-; CHECK: define internal {} @diffematvec(%"class.Eigen::Matrix"* noalias %W, %"class.Eigen::Matrix"* %"W'", %"class.Eigen::Matrix.6"* noalias %b, %"class.Eigen::Matrix.6"* %"b'", %"class.Eigen::Matrix.6"* noalias %output, %"class.Eigen::Matrix.6"* %"output'") #3 {
+; CHECK: define internal void @diffematvec(%"class.Eigen::Matrix"* noalias %W, %"class.Eigen::Matrix"* %"W'", %"class.Eigen::Matrix.6"* noalias %b, %"class.Eigen::Matrix.6"* %"b'", %"class.Eigen::Matrix.6"* noalias %output, %"class.Eigen::Matrix.6"* %"output'") #3 {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %"a0'ipc" = bitcast %"class.Eigen::Matrix.6"* %"output'" to <2 x double>*
 ; CHECK-NEXT:   %a0 = bitcast %"class.Eigen::Matrix.6"* %output to <2 x double>*
@@ -471,14 +471,14 @@ attributes #9 = { cold }
 ; CHECK-NEXT:   %[[ev:.+]] = extractvalue { { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } } %_augmented, 0
 ; CHECK-NEXT:   %_unwrap = bitcast %"class.Eigen::Matrix.6"* %output to %"struct.Eigen::EigenBase.13"*
 ; CHECK-NEXT:   %[[ipc:.+]] = bitcast %"class.Eigen::Matrix.6"* %"output'" to %"struct.Eigen::EigenBase.13"*
-; CHECK-NEXT:   %[[unused0:.+]] = call {} @diffecast(%"struct.Eigen::EigenBase.13"* %_unwrap, %"struct.Eigen::EigenBase.13"* %[[ipc]])
-; CHECK-NEXT:   %[[unused:.+]] = call {} @diffesubfn(<2 x double>* %a0, <2 x double>* %"a0'ipc", %"class.Eigen::Matrix"* %W, %"class.Eigen::Matrix"* %"W'", double* %Bdouble, double* %[[Bdoubleipge]], { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } %[[ev]]) #8
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   call void @diffecast(%"struct.Eigen::EigenBase.13"* %_unwrap, %"struct.Eigen::EigenBase.13"* %[[ipc]])
+; CHECK-NEXT:   call void @diffesubfn(<2 x double>* %a0, <2 x double>* %"a0'ipc", %"class.Eigen::Matrix"* %W, %"class.Eigen::Matrix"* %"W'", double* %Bdouble, double* %[[Bdoubleipge]], { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } %[[ev]]) #8
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal {} @diffecast(%"struct.Eigen::EigenBase.13"* %this, %"struct.Eigen::EigenBase.13"* %"this'") {
+; CHECK: define internal void @diffecast(%"struct.Eigen::EigenBase.13"* %this, %"struct.Eigen::EigenBase.13"* %"this'") {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
 ; CHECK: define internal void @augmented_get2(%"class.Eigen::Matrix"* %this, %"class.Eigen::Matrix"* %"this'") {
@@ -532,7 +532,7 @@ attributes #9 = { cold }
 ; CHECK-NEXT:   ret { { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } } %.fca.0.6.insert
 ; CHECK-NEXT: }
 
-; CHECK: define internal {} @diffesubfn(<2 x double>* %dst, <2 x double>* %"dst'", %"class.Eigen::Matrix"* %W, %"class.Eigen::Matrix"* %"W'", double* %B, double* %"B'", { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } %tapeArg) {
+; CHECK: define internal void @diffesubfn(<2 x double>* %dst, <2 x double>* %"dst'", %"class.Eigen::Matrix"* %W, %"class.Eigen::Matrix"* %"W'", double* %B, double* %"B'", { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } %tapeArg) {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %B1 = extractvalue { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } %tapeArg, 2
 ; CHECK-NEXT:   %preb1 = insertelement <2 x double> undef, double %B1, i32 0
@@ -586,21 +586,21 @@ attributes #9 = { cold }
 ; CHECK-NEXT:   %17 = load <2 x double>, <2 x double>* %[[W12p_ipc1]], align 16
 ; CHECK-NEXT:   %18 = fadd fast <2 x double> %17, %m0diffeW12
 ; CHECK-NEXT:   store <2 x double> %18, <2 x double>* %[[W12p_ipc1]], align 16
-; CHECK-NEXT:   %19 = call {} @diffeget2(%"class.Eigen::Matrix"* %W, %"class.Eigen::Matrix"* %"W'")
+; CHECK-NEXT:   call void @diffeget2(%"class.Eigen::Matrix"* %W, %"class.Eigen::Matrix"* %"W'")
 
 ; CHECK-NEXT:   %[[malloccall:.+]] = extractvalue { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } %tapeArg, 5
 ; CHECK-NEXT:   %[[tmpi:.+]] = bitcast i8* %[[malloccall]] to <2 x double>*
-; CHECK-NEXT:   %20 = call {} @diffesubcast(<2 x double>* %[[tmpi]], <2 x double>* %[[tmpiipc]])
+; CHECK-NEXT:   call void @diffesubcast(<2 x double>* %[[tmpi]], <2 x double>* %[[tmpiipc]])
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %[[malloccallmi]])
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal {} @diffeget2(%"class.Eigen::Matrix"* %this, %"class.Eigen::Matrix"* %"this'") {
+; CHECK: define internal void @diffeget2(%"class.Eigen::Matrix"* %this, %"class.Eigen::Matrix"* %"this'") {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal {} @diffesubcast(<2 x double>* %tmp.i, <2 x double>* %"tmp.i'") #7 {
+; CHECK: define internal void @diffesubcast(<2 x double>* %tmp.i, <2 x double>* %"tmp.i'") #7 {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

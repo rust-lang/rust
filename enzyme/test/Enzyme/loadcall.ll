@@ -68,7 +68,7 @@ attributes #4 = { nounwind }
 !8 = !{!9, !9, i64 0}
 !9 = !{!"any pointer", !4, i64 0}
 
-; CHECK: define internal {} @diffebad(double* %a, double* %"a'", double %differeturn, i8* %tapeArg)
+; CHECK: define internal void @diffebad(double* %a, double* %"a'", double %differeturn, i8* %tapeArg)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = bitcast i8* %tapeArg to { double* }*
 ; CHECK-NEXT:   %1 = load { double* }, { double* }* %0, !enzyme_mustcache !6
@@ -86,6 +86,6 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %[[ligep:.+]] = load double, double* %"call'ip_phi_fromtape_unwrap", align 8
 ; CHECK-NEXT:   %[[add:.+]] = fadd fast double %[[ligep]], %[[loadde]]
 ; CHECK-NEXT:   store double %[[add]], double* %"call'ip_phi_fromtape_unwrap", align 8
-; CHECK-NEXT:   %{{.+}} = call {} @diffegep(double* %a, double* %"a'")
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   call void @diffegep(double* %a, double* %"a'")
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

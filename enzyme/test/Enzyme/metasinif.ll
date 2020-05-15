@@ -95,13 +95,13 @@ attributes #8 = { noreturn nounwind }
 ; CHECK-NEXT:   ret { double } %[[ret]]
 
 ; CHECK: invertif.true:                                    ; preds = %invertend
-; CHECK-NEXT:   %{{.+}} = call {} @diffemetasin(double* nonnull %a.addr, double* nonnull %"a.addr'ipa", double %[[drets:.+]])
+; CHECK-NEXT:   call void @diffemetasin(double* nonnull %a.addr, double* nonnull %"a.addr'ipa", double %[[drets:.+]])
 ; CHECK-NEXT:   %[[prev1]] = load double, double* %"a.addr'ipa", align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"a.addr'ipa", align 8
 ; CHECK-NEXT:   br label %invertentry
 
 ; CHECK: invertif.false:                                   ; preds = %invertend
-; CHECK-NEXT:   %{{.+}} = call {} @diffemetasin(double* nonnull %a.addr, double* nonnull %"a.addr'ipa", double %[[drets2:.+]])
+; CHECK-NEXT:   call void @diffemetasin(double* nonnull %a.addr, double* nonnull %"a.addr'ipa", double %[[drets2:.+]])
 ; CHECK-NEXT:   %[[pload:.+]] = load double, double* %"a.addr'ipa", align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"a.addr'ipa", align 8
 ; CHECK-NEXT:   %m0diffea = fmul fast double %[[pload]], %a

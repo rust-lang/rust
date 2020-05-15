@@ -6,7 +6,6 @@
 // RUN: %clang -std=c11 -O1 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_inline=1 -S | %lli - 
 // RUN: %clang -std=c11 -O2 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_inline=1 -S | %lli - 
 // RUN: %clang -std=c11 -O3 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_inline=1 -S | %lli - 
-// XFAIL: *
 
 #include <stdio.h>
 #include <math.h>

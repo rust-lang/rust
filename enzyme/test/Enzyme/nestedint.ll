@@ -809,7 +809,7 @@ attributes #11 = { cold }
 !16 = !{!"double", !5, i64 0}
 
 
-; CHECK: define internal {} @diffematvec(%"class.Eigen::Matrix"* noalias %W, %"class.Eigen::Matrix"* %"W'")
+; CHECK: define internal void @diffematvec(%"class.Eigen::Matrix"* noalias %W, %"class.Eigen::Matrix"* %"W'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %m_rows.i19 = getelementptr inbounds %"class.Eigen::Matrix", %"class.Eigen::Matrix"* %W, i64 0, i32 0, i32 0, i32 1
 ; CHECK-NEXT:   %a8 = load i64, i64* %m_rows.i19, align 8, !tbaa !2
@@ -832,8 +832,8 @@ attributes #11 = { cold }
 ; CHECK-NEXT:   %a9_unwrap = load double*, double** %m_data.i17, align 8, !tbaa !9
 ; CHECK-NEXT:   %a8_unwrap = load i64, i64* %m_rows.i19, align 8, !tbaa !2
 ; TODO there should be an a9'ipl unwrap here too
-; CHECK-NEXT:   %[[unused:.+]] = call {} @diffesub(double* %a9_unwrap, double* %"a9'ipl", i64 %a8_unwrap) #9
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   call void @diffesub(double* %a9_unwrap, double* %"a9'ipl", i64 %a8_unwrap) #9
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
 ; CHECK: define internal { i64 } @augmented_final(double* %array, double* %"array'", i64 %finalsize)
@@ -878,26 +878,26 @@ attributes #11 = { cold }
 ; CHECK-NEXT:   ret { i64 } %[[retinsert]]
 ; CHECK-NEXT: }
 
-; CHECK: define internal {} @diffesub(double*, double* %"'", i64 %subsize)
+; CHECK: define internal void @diffesub(double*, double* %"'", i64 %subsize)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[tobool:.+]] = icmp eq double* %0, null
 ; CHECK-NEXT:   br i1 %[[tobool]], label %[[ifend:.+]], label %invertentry
 
 ; CHECK: invertentry:
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 
 ; CHECK: [[ifend]]:                                           ; preds = %entry
-; CHECK-NEXT:   %1 = call {} @diffemetasub(double* %0, double* %"'", i64 %subsize)
+; CHECK-NEXT:   call void @diffemetasub(double* %0, double* %"'", i64 %subsize)
 ; CHECK-NEXT:   br label %invertentry
 ; CHECK-NEXT: }
 
-; CHECK: define internal {} @diffemetasub(double* %array, double* %"array'", i64 %metasize)
+; CHECK: define internal void @diffemetasub(double* %array, double* %"array'", i64 %metasize)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = call {} @diffefinal(double* %array, double* %"array'", i64 %metasize)
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   call void @diffefinal(double* %array, double* %"array'", i64 %metasize)
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal {} @diffefinal(double* %array, double* %"array'", i64 %finalsize)
+; CHECK: define internal void @diffefinal(double* %array, double* %"array'", i64 %finalsize)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

@@ -51,7 +51,7 @@ attributes #2 = { nounwind }
 !6 = !{!7, !7, i64 0}
 !7 = !{!"long long", !4, i64 0}
 
-; CHECK: define internal {{(dso_local )?}}{} @diffestore(double** nocapture readonly %x, double** nocapture %"x'", double** nocapture %y, double** nocapture %"y'")
+; CHECK: define internal {{(dso_local )?}}void @diffestore(double** nocapture readonly %x, double** nocapture %"x'", double** nocapture %y, double** nocapture %"y'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[ipc:.+]] = bitcast double** %"x'" to i64*
 ; CHECK-NEXT:   %0 = bitcast double** %x to i64*
@@ -61,6 +61,6 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   %2 = bitcast double** %y to i64*
 ; CHECK-NEXT:   store i64 %"'ipl", i64* %[[ipc2]]
 ; CHECK-NEXT:   store i64 %1, i64* %2
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 

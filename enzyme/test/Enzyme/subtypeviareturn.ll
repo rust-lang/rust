@@ -33,15 +33,15 @@ declare dso_local void @__enzyme_autodiff(i8*, ...)
 !6 = !{!7, !7, i64 0}
 !7 = !{!"double", !4, i64 0}
 
-; CHECK: define internal {} @diffefoo(i64* %inp, i64* %"inp'", i64* %out, i64* %"out'") {
+; CHECK: define internal void @diffefoo(i64* %inp, i64* %"inp'", i64* %out, i64* %"out'") {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %call_augmented = call { i64 } @augmented_subload(i64* %inp, i64* %"inp'")
 ; CHECK-NEXT:   %call = extractvalue { i64 } %call_augmented, 0
 ; CHECK-NEXT:   store i64 %call, i64* %out, align 4, !tbaa !
 ; CHECK-NEXT:   %0 = load i64, i64* %"out'"
 ; CHECK-NEXT:   store i64 0, i64* %"out'", align 4
-; CHECK-NEXT:   %[[unused:.+]] = call {} @diffesubload(i64* %inp, i64* %"inp'", i64 %0)
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   call void @diffesubload(i64* %inp, i64* %"inp'", i64 %0)
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
 ; CHECK: define internal { i64 } @augmented_subload(i64* %inp, i64* %"inp'") {
@@ -51,7 +51,7 @@ declare dso_local void @__enzyme_autodiff(i8*, ...)
 ; CHECK-NEXT:   ret { i64 } %.fca.0.insert
 ; CHECK-NEXT: }
 
-; CHECK: define internal {} @diffesubload(i64* %inp, i64* %"inp'", i64 %differeturn) {
+; CHECK: define internal void @diffesubload(i64* %inp, i64* %"inp'", i64 %differeturn) {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = bitcast i64* %"inp'" to double*
 ; CHECK-NEXT:   %1 = load double, double* %0, align 8
@@ -59,5 +59,5 @@ declare dso_local void @__enzyme_autodiff(i8*, ...)
 ; CHECK-NEXT:   %3 = fadd fast double %1, %2
 ; CHECK-NEXT:   %4 = bitcast i64* %"inp'" to double*
 ; CHECK-NEXT:   store double %3, double* %4, align 8
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

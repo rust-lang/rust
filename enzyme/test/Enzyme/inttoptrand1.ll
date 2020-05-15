@@ -20,7 +20,7 @@ entry:
   ret double %a4
 }
 
-; CHECK: define internal {} @diffematvec(i64* %lhs, i64* %"lhs'", double* %res, double* %"res'", double %differeturn) {
+; CHECK: define internal void @diffematvec(i64* %lhs, i64* %"lhs'", double* %res, double* %"res'", double %differeturn) {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = bitcast i64* %"lhs'" to double**
 ; CHECK-NEXT:   %"loaded'ipl1" = load double*, double** %0, align 4
@@ -38,5 +38,5 @@ entry:
 ; CHECK-NEXT:   %3 = load double, double* %[[gepipge]], align 8
 ; CHECK-NEXT:   %4 = fadd fast double %3, %2
 ; CHECK-NEXT:   store double %4, double* %[[gepipge]], align 8
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

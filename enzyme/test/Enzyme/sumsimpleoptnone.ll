@@ -36,7 +36,7 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*, double**, dou
 
 attributes #0 = { noinline nounwind uwtable optnone }
 
-; CHECK: define internal {{(dso_local )?}}{} @diffef(double* %x, double* %"x'", double** %y, double** %"y'", i64 %n)
+; CHECK: define internal {{(dso_local )?}}void @diffef(double* %x, double* %"x'", double** %y, double** %"y'", i64 %n)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = add i64 %n, 1
 ; CHECK-NEXT:   %1 = add nuw i64 %0, 1
@@ -64,7 +64,7 @@ attributes #0 = { noinline nounwind uwtable optnone }
 
 ; CHECK: invertentry:
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %malloccall)
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 
 ; CHECK: invertfor.cond:
 ; CHECK-NEXT:   %[[ivp:.+]] = phi i64 [ %0, %invertfor.end ], [ %[[sub:.+]], %incinvertfor.cond ]

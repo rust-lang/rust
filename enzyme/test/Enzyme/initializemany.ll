@@ -111,12 +111,12 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %vla = alloca double*, i64 %0, align 16
 ; CHECK-NEXT:   %[[aug_aas:.+]] = call { { i8** } } @augmented_allocateAndSet(double** nonnull %vla, double** nonnull %"vla'ipa", double %x, i32 %n)
 ; CHECK-NEXT:   %[[aas_tape:.+]] = extractvalue { { i8** } } %[[aug_aas]], 0
-; CHECK-NEXT:   %[[dget:.+]] = call {} @diffeget(double** nonnull %vla, double** nonnull %"vla'ipa", i32 3, double %differeturn)
+; CHECK-NEXT:   call void @diffeget(double** nonnull %vla, double** nonnull %"vla'ipa", i32 3, double %differeturn)
 ; CHECK-NEXT:   %[[ret:.+]] = call { double } @diffeallocateAndSet(double** nonnull %vla, double** nonnull %"vla'ipa", double %x, i32 %n, { i8** } %[[aas_tape]])
 ; CHECK-NEXT:   ret { double } %[[ret]]
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{} @diffeget(double** nocapture readonly %x, double** nocapture %"x'", i32 %i, double %differeturn)
+; CHECK: define internal {{(dso_local )?}}void @diffeget(double** nocapture readonly %x, double** nocapture %"x'", i32 %i, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %idxprom = zext i32 %i to i64
 ; CHECK-NEXT:   %[[arrayidxipge:.+]] = getelementptr inbounds double*, double** %"x'", i64 %idxprom
@@ -124,7 +124,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %0 = load double, double* %"'ipl", align 8
 ; CHECK-NEXT:   %1 = fadd fast double %0, %differeturn
 ; CHECK-NEXT:   store double %1, double* %"'ipl", align 8
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
 ; CHECK: define internal {{(dso_local )?}}{ { i8** } } @augmented_allocateAndSet(double** nocapture %arrayp, double** nocapture %"arrayp'", double %x, i32 %n)

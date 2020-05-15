@@ -78,7 +78,7 @@ attributes #5 = { nounwind "correctly-rounded-divide-sqrt-fp-math"="false" "disa
 !7 = !{!"any pointer", !4, i64 0}
 
 
-; CHECK: define internal {{(dso_local )?}}{} @diffeintcast(i64* nocapture readonly %x, i64* nocapture %"x'", double %differeturn)
+; CHECK: define internal {{(dso_local )?}}void @diffeintcast(i64* nocapture readonly %x, i64* nocapture %"x'", double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %_unwrap = bitcast i64* %x to double*
 ; CHECK-NEXT:   %[[uw1:.+]] = load double, double* %_unwrap
@@ -88,5 +88,5 @@ attributes #5 = { nounwind "correctly-rounded-divide-sqrt-fp-math"="false" "disa
 ; CHECK-NEXT:   %[[prev:.+]] = load double, double* %[[ipc]]
 ; CHECK-NEXT:   %[[tostore:.+]] = fadd fast double %[[prev]], %[[added]]
 ; CHECK-NEXT:   store double %[[tostore]], double* %[[ipc]]
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

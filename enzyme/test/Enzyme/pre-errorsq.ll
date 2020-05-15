@@ -126,7 +126,7 @@ exit:                                             ; preds = %end2
 ; CHECK-NEXT:   ret { { i64, double* } } %10
 ; CHECK-NEXT: }
 
-; CHECK: define internal {} @diffesubfn(double* %place, double* %"place'", i64* %m_rows, { i64, double* } %tapeArg) {
+; CHECK: define internal void @diffesubfn(double* %place, double* %"place'", i64* %m_rows, { i64, double* } %tapeArg) {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = extractvalue { i64, double* } %tapeArg, 1
 ; CHECK-NEXT:   %rows = extractvalue { i64, double* } %tapeArg, 0
@@ -135,7 +135,7 @@ exit:                                             ; preds = %end2
 ; CHECK: invertentry:                                      ; preds = %invertfor1
 ; CHECK-NEXT:   %1 = bitcast double* %0 to i8*
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %1)
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 
 ; CHECK: invertfor1:                                       ; preds = %invertfor2
 ; CHECK-NEXT:   %2 = icmp eq i64 %"iv'ac.0", 0

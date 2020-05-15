@@ -63,15 +63,15 @@ attributes #4 = { nounwind }
 !4 = !{!5, i64 1, !"omnipotent char"}
 !5 = !{!"Simple C++ TBAA"}
 
-; CHECK: define internal {} @diffemv(i64* %m_dims, i64* %"m_dims'")
+; CHECK: define internal void @diffemv(i64* %m_dims, i64* %"m_dims'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = call {} @diffesub(i64* %m_dims, i64* %"m_dims'")
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   call void @diffesub(i64* %m_dims, i64* %"m_dims'")
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal {} @diffesub(i64* %this, i64* %"this'")
+; CHECK: define internal void @diffesub(i64* %this, i64* %"this'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %agg = load i64, i64* %this, align 4
 ; CHECK-NEXT:   %call = tail call i64 @pop(i64 %agg)
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

@@ -54,7 +54,7 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*, i64) local_un
 attributes #0 = { noinline norecurse nounwind uwtable }
 attributes #1 = { noinline nounwind uwtable }
 
-; CHECK: define internal {} @diffef(double* nocapture %x, double* nocapture %"x'", i64 %n, double %differeturn) #0 {
+; CHECK: define internal void @diffef(double* nocapture %x, double* nocapture %"x'", i64 %n, double %differeturn) #0 {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[np1:.+]] = add nuw i64 %n, 1
 ; CHECK-NEXT:   %mallocsize = mul i64 %[[np1]], 8
@@ -88,7 +88,7 @@ attributes #1 = { noinline nounwind uwtable }
 
 ; CHECK: invertentry:                                      ; preds = %invertfor.cond3.preheader
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %malloccall)
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 
 ; CHECK: invertfor.cond3.preheader:
 ; CHECK-NEXT:   %[[done1:.+]] = icmp eq i64 %[[iv:.+]], 0
@@ -106,7 +106,7 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   %[[cached:.+]] = load double, double* %[[invertedgep2]], align 8, !invariant.group !1
 ; CHECK-NEXT:   %m0diffecall = fmul fast double %differeturn, %[[cached]]
 ; CHECK-NEXT:   %[[innerdiffe:.+]] = fadd fast double %m0diffecall, %m0diffecall
-; CHECK-NEXT:   %[[dcall:.+]] = call {} @diffeget(double* %x, double* %"x'", i64 undef, i64 %[[iv1]], double %[[innerdiffe]])
+; CHECK-NEXT:   call void @diffeget(double* %x, double* %"x'", i64 undef, i64 %[[iv1]], double %[[innerdiffe]])
 ; CHECK-NEXT:   %[[done2:.+]] = icmp eq i64 %[[iv1]], 0
 ; CHECK-NEXT:   br i1 %[[done2]], label %invertfor.cond3.preheader, label %incinvertfor.body7
 

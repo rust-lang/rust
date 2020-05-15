@@ -439,7 +439,7 @@ attributes #11 = { alwaysinline cold }
 !8 = !{!9, !9, i64 0}
 !9 = !{!"double", !3, i64 0}
 
-; CHECK: define internal {} @diffematvec(<2 x double>* %Wptr, <2 x double>* %"Wptr'", double* %B, double* %"B'", <2 x double>* %outvec, <2 x double>* %"outvec'") #3 {
+; CHECK: define internal void @diffematvec(<2 x double>* %Wptr, <2 x double>* %"Wptr'", double* %B, double* %"B'", <2 x double>* %outvec, <2 x double>* %"outvec'") #3 {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %B1 = load double, double* %B, align 8
 ; CHECK-NEXT:   %B2p = getelementptr inbounds double, double* %B, i64 1
@@ -459,7 +459,7 @@ attributes #11 = { alwaysinline cold }
 ; CHECK-NEXT:   %[[preb:.+]] = load double, double* %"B'", align 8
 ; CHECK-NEXT:   %[[addb:.+]] = fadd fast double %[[preb]], %[[sub0]]
 ; CHECK-NEXT:   store double %[[addb]], double* %"B'", align 8
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
 ; CHECK: define internal { <2 x double> } @diffecopy(<2 x double>* %to, <2 x double>* %"to'", <2 x double> %from) #4 {
@@ -523,7 +523,7 @@ attributes #11 = { alwaysinline cold }
 
 ; CHECK-NEXT:   %[[loadmultape:.+]] = extractvalue { { <2 x double> }, <2 x double>, i8*, i8* } %tapeArg, 0
 
-; CHECK-NEXT:   %[[unused:.+]] = call {} @diffeloadmul(<2 x double>* %W, <2 x double>* %"W'", <2 x double>* %[[Bref]], <2 x double>* %[[Brefipc]], <2 x double> %differeturn, { <2 x double> } %[[loadmultape]])
+; CHECK-NEXT:   call void @diffeloadmul(<2 x double>* %W, <2 x double>* %"W'", <2 x double>* %[[Bref]], <2 x double>* %[[Brefipc]], <2 x double> %differeturn, { <2 x double> } %[[loadmultape]])
 ; CHECK-NEXT:   %[[lbref:.+]] = load <2 x double>, <2 x double>* %[[Brefipc]], align 16
 ; CHECK-NEXT:   store <2 x double> zeroinitializer, <2 x double>* %[[Brefipc]], align 16
 ; CHECK-NEXT:   %[[lb221:.+]] = extractelement <2 x double> %m1diffeB22, i32 1
@@ -542,7 +542,7 @@ attributes #11 = { alwaysinline cold }
 ; CHECK-NEXT:   ret { double, double } %[[inserted1]]
 ; CHECK-NEXT: }
 
-; CHECK: define internal {} @diffeloadmul(<2 x double>* %a, <2 x double>* %"a'", <2 x double>* %b, <2 x double>* %"b'", <2 x double> %differeturn, { <2 x double> } %tapeArg) #4 {
+; CHECK: define internal void @diffeloadmul(<2 x double>* %a, <2 x double>* %"a'", <2 x double>* %b, <2 x double>* %"b'", <2 x double> %differeturn, { <2 x double> } %tapeArg) #4 {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[realb:.+]] = load <2 x double>, <2 x double>* %b, align 16
 ; CHECK-NEXT:   %m0diffe = fmul fast <2 x double> %[[realb]], %differeturn
@@ -554,5 +554,5 @@ attributes #11 = { alwaysinline cold }
 ; CHECK-NEXT:   %[[la:.+]] = load <2 x double>, <2 x double>* %"a'", align 16
 ; CHECK-NEXT:   %[[addA:.+]] = fadd fast <2 x double> %[[la]], %m0diffe
 ; CHECK-NEXT:   store <2 x double> %[[addA]], <2 x double>* %"a'", align 16
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

@@ -18,12 +18,12 @@ entry:
   ret <2 x double> %W34
 }
 
-; CHECK: define internal {} @diffematvec(double* noalias %W, double* %"W'", <2 x double> %differeturn) {
+; CHECK: define internal void @diffematvec(double* noalias %W, double* %"W'", <2 x double> %differeturn) {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[W3p:.+]] = getelementptr inbounds double, double* %"W'", i64 3
 ; CHECK-NEXT:   %[[vW34p:.+]] = bitcast double* %[[W3p]] to <2 x double>*
 ; CHECK-NEXT:   %[[ld:.+]] = load <2 x double>, <2 x double>* %[[vW34p]], align 1
 ; CHECK-NEXT:   %[[add:.+]] = fadd fast <2 x double> %[[ld]], %differeturn
 ; CHECK-NEXT:   store <2 x double> %[[add]], <2 x double>* %[[vW34p]], align 1
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

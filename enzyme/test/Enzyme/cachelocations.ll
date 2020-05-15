@@ -33,7 +33,7 @@ entry:
 
 declare dso_local double @__enzyme_autodiff(i8*, i1 zeroext, double*, double*)
 
-; CHECK: define internal {} @diffef(i1 zeroext %z, double* nocapture %x, double* nocapture %"x'") {
+; CHECK: define internal void @diffef(i1 zeroext %z, double* nocapture %x, double* nocapture %"x'") {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[augsubf:.+]] = call { { double } } @augmented_subf(i1 %z, double* %x, double* %"x'")
 ; CHECK-NEXT:   %[[subf:.+]] = extractvalue { { double } } %[[augsubf]], 0
@@ -41,8 +41,8 @@ declare dso_local double @__enzyme_autodiff(i8*, i1 zeroext, double*, double*)
 ; CHECK-NEXT:   store double 2.000000e+00, double* %arrayidx, align 8
 ; CHECK-NEXT:   %[[arrayidxipge:.+]] = getelementptr inbounds double, double* %"x'", i64 1
 ; CHECK-NEXT:   store double 0.000000e+00, double* %[[arrayidxipge]], align 8
-; CHECK-NEXT:   %[[dsubf:.+]] = call {} @diffesubf(i1 %z, double* nonnull %x, double* %"x'", { double } %[[subf]])
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   call void @diffesubf(i1 %z, double* nonnull %x, double* %"x'", { double } %[[subf]])
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
 ; CHECK: define internal { { double } } @augmented_subf(i1 zeroext %z, double* nocapture %x, double* nocapture %"x'")
@@ -61,12 +61,12 @@ declare dso_local double @__enzyme_autodiff(i8*, i1 zeroext, double*, double*)
 ; CHECK-NEXT:   ret { { double } } %[[toret]]
 ; CHECK-NEXT: }
 
-; CHECK: define internal {} @diffesubf(i1 zeroext %z, double* nocapture %x, double* nocapture %"x'", { double } %tapeArg)
+; CHECK: define internal void @diffesubf(i1 zeroext %z, double* nocapture %x, double* nocapture %"x'", { double } %tapeArg)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   br i1 %z, label %invertif.then, label %invertentry
 
 ; CHECK: invertentry:                                      ; preds = %entry, %invertif.then
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 
 ; CHECK: invertif.then:                                    ; preds = %entry
 ; CHECK-NEXT:   %0 = load double, double* %"x'"

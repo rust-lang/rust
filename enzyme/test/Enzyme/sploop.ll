@@ -44,7 +44,7 @@ entry:
 
 declare double @__enzyme_autodiff(void (double*, double*, i64*)*, ...)
 
-; CHECK: define internal {} @diffef(double* %x, double* %"x'", double* %z, double* %"z'", i64* %rows) {
+; CHECK: define internal void @diffef(double* %x, double* %"x'", double* %z, double* %"z'", i64* %rows) {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 32)
 ; CHECK-NEXT:   %L1_malloccache = bitcast i8* %malloccall to double*
@@ -90,7 +90,7 @@ declare double @__enzyme_autodiff(void (double*, double*, i64*)*, ...)
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %malloccall)
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %malloccall3)
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %malloccall4)
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 
 ; CHECK: invertloop1:                                      ; preds = %invertloop2
 ; CHECK-NEXT:   %[[X1ipg:.+]] = getelementptr inbounds double, double* %"x'", i64 %"iv'ac.0"

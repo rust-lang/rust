@@ -41,15 +41,15 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*) local_unnamed
 attributes #0 = { noinline norecurse nounwind uwtable }
 attributes #1 = { noinline nounwind uwtable }
 
-; CHECK: define internal {{(dso_local )?}}{} @diffef(double* nocapture %x, double* nocapture %"x'")
+; CHECK: define internal {{(dso_local )?}}void @diffef(double* nocapture %x, double* nocapture %"x'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[augf:.+]] = call { i1 } @augmented_subf(double* %x, double* %"x'")
 ; CHECK-NEXT:   %[[fret:.+]] = extractvalue { i1 } %[[augf]], 0
 ; CHECK-NEXT:   %sel = select i1 %[[fret]], double 2.000000e+00, double 3.000000e+00
 ; CHECK-NEXT:   store double %sel, double* %x, align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"x'", align 8
-; CHECK-NEXT:   %[[dsubf:.+]] = call {} @diffesubf(double* nonnull %x, double* %"x'")
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   call void @diffesubf(double* nonnull %x, double* %"x'")
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
 ; CHECK: define internal {{(dso_local )?}}{ i1 } @augmented_metasubf(double* nocapture %x, double* nocapture %"x'")
@@ -79,21 +79,21 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   ret { i1 } %[[toret]]
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{} @diffesubf(double* nocapture %x, double* nocapture %"x'")
+; CHECK: define internal {{(dso_local )?}}void @diffesubf(double* nocapture %x, double* nocapture %"x'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = call {} @diffemetasubf(double* %x, double* %"x'")
-; CHECK-NEXT:   %1 = load double, double* %"x'"
+; CHECK-NEXT:   call void @diffemetasubf(double* %x, double* %"x'")
+; CHECK-NEXT:   %[[px:.+]] = load double, double* %"x'"
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"x'"
-; CHECK-NEXT:   %m0diffe = fmul fast double %1, 2.000000e+00
-; CHECK-NEXT:   %2 = load double, double* %"x'"
-; CHECK-NEXT:   %3 = fadd fast double %2, %m0diffe
-; CHECK-NEXT:   store double %3, double* %"x'"
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   %m0diffe = fmul fast double %[[px]], 2.000000e+00
+; CHECK-NEXT:   %[[ppx:.+]] = load double, double* %"x'"
+; CHECK-NEXT:   %[[postx:.+]] = fadd fast double %[[ppx]], %m0diffe
+; CHECK-NEXT:   store double %[[postx]], double* %"x'"
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{} @diffemetasubf(double* nocapture %x, double* nocapture %"x'")
+; CHECK: define internal {{(dso_local )?}}void @diffemetasubf(double* nocapture %x, double* nocapture %"x'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[tostore:.+]] = getelementptr inbounds double, double* %"x'", i64 1
 ; CHECK-NEXT:   store double 0.000000e+00, double* %[[tostore]], align 8
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

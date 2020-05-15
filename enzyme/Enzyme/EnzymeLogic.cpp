@@ -2602,8 +2602,7 @@ void DerivativeMaker<const AugmentedReturn*>::visitCallInst(llvm::CallInst &call
             }
           }
         } else {
-          assert(subdata);
-          if (subdata->returns.find(AugmentedStruct::Tape) == subdata->returns.end()) {
+          if (subdata && subdata->returns.find(AugmentedStruct::Tape) == subdata->returns.end()) {
           } else {
             tape = gutils->addMalloc(BuilderZ, tape, getIndex(orig, CacheType::Tape) );
           }
@@ -2785,7 +2784,11 @@ badfn:;
     }
   }
 
-  assert(cast<StructType>(diffes->getType())->getNumElements() == structidx);
+  if (diffes->getType()->isVoidTy()) {
+    assert(structidx == 0);
+  } else {
+    assert(cast<StructType>(diffes->getType())->getNumElements() == structidx);
+  }
 
   //Note this shouldn't matter because this can't use itself, but setting null should be done before other sets but after load of diffe
   if (subretType == DIFFE_TYPE::OUT_DIFF)
@@ -3485,6 +3488,12 @@ void createInvertedTerminator(TypeResults& TR, DiffeGradientUtils* gutils, const
           if (!gutils->isConstantValue(&I) && argTypes[I.getArgNo()] == DIFFE_TYPE::OUT_DIFF ) {
             retargs.push_back(gutils->diffe(&I, Builder));
           }
+        }
+
+        if (gutils->newFunc->getReturnType()->isVoidTy()) {
+          assert(retargs.size() == 0);
+          Builder.CreateRetVoid();
+          return;
         }
 
         Value* toret = UndefValue::get(gutils->newFunc->getReturnType());

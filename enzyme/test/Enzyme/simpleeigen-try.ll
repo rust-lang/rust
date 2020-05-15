@@ -141,4 +141,4 @@ attributes #4 = { noreturn nounwind }
 !10 = !{!11, !11, i64 0}
 !11 = !{!"double", !5, i64 0}
 
-; CHECK: define internal {} @diffe_ZL6matvecRKN5Eigen6Matrix
+; CHECK: define internal void @diffe_ZL6matvecRKN5Eigen6Matrix

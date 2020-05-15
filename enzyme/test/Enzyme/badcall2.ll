@@ -48,13 +48,13 @@ entry:
 
 declare dso_local double @__enzyme_autodiff(i8*, double*, double*) local_unnamed_addr
 
-; CHECK: define internal {{(dso_local )?}}{} @diffef(double* nocapture %x, double* nocapture %"x'")
+; CHECK: define internal {{(dso_local )?}}void @diffef(double* nocapture %x, double* nocapture %"x'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   call void @augmented_subf(double* %x, double* %"x'")
 ; CHECK-NEXT:   store double 2.000000e+00, double* %x, align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"x'", align 8
-; CHECK-NEXT:   %[[df:.+]] = call {} @diffesubf(double* nonnull %x, double* %"x'")
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   call void @diffesubf(double* nonnull %x, double* %"x'")
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
 ; CHECK: define internal {{(dso_local )?}}void @augmented_othermetasubf(double* nocapture %x, double* nocapture %"x'") 
@@ -82,29 +82,29 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*) local_unnamed
 ; CHECK-NEXT: }
 
 
-; CHECK: define internal {{(dso_local )?}}{} @diffesubf(double* nocapture %x, double* nocapture %"x'")
+; CHECK: define internal {{(dso_local )?}}void @diffesubf(double* nocapture %x, double* nocapture %"x'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = call {} @diffeothermetasubf(double* %x, double* %"x'")
-; CHECK-NEXT:   %1 = call {} @diffemetasubf(double* %x, double* %"x'")
-; CHECK-NEXT:   %2 = load double, double* %"x'"
+; CHECK-NEXT:   call void @diffeothermetasubf(double* %x, double* %"x'")
+; CHECK-NEXT:   call void @diffemetasubf(double* %x, double* %"x'")
+; CHECK-NEXT:   %[[px:.+]] = load double, double* %"x'"
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"x'"
-; CHECK-NEXT:   %m0diffe = fmul fast double %2, 2.000000e+00
-; CHECK-NEXT:   %3 = load double, double* %"x'"
-; CHECK-NEXT:   %4 = fadd fast double %3, %m0diffe
-; CHECK-NEXT:   store double %4, double* %"x'"
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   %m0diffe = fmul fast double %[[px]], 2.000000e+00
+; CHECK-NEXT:   %[[ppx:.+]] = load double, double* %"x'"
+; CHECK-NEXT:   %[[postx:.+]] = fadd fast double %[[ppx]], %m0diffe
+; CHECK-NEXT:   store double %[[postx]], double* %"x'"
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{} @diffeothermetasubf(double* nocapture %x, double* nocapture %"x'") 
+; CHECK: define internal {{(dso_local )?}}void @diffeothermetasubf(double* nocapture %x, double* nocapture %"x'") 
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[tostore:.+]] = getelementptr inbounds double, double* %"x'", i64 1
 ; CHECK-NEXT:   store double 0.000000e+00, double* %[[tostore]], align 8
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{} @diffemetasubf(double* nocapture %x, double* nocapture %"x'") 
+; CHECK: define internal {{(dso_local )?}}void @diffemetasubf(double* nocapture %x, double* nocapture %"x'") 
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[tostore2:.+]] = getelementptr inbounds double, double* %"x'", i64 1
 ; CHECK-NEXT:   store double 0.000000e+00, double* %[[tostore2]], align 8
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

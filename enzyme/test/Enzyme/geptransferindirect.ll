@@ -36,7 +36,7 @@ declare double @__enzyme_autodiff(i8*, ...)
 !7 = !{!"double", !5, i64 0}
 !8 = !{!7, !7, i64 0}
 
-; CHECK: define internal {} @diffecallee(i64* %ptr, i64* %"ptr'") {
+; CHECK: define internal void @diffecallee(i64* %ptr, i64* %"ptr'") {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %ptr2_augmented = call { i64*, i64* } @augmented_gep.1(i64* %ptr, i64* %"ptr'", i64 2)
 ; CHECK-NEXT:   %"ptr2'ac" = extractvalue { i64*, i64* } %ptr2_augmented, 1
@@ -63,12 +63,12 @@ declare double @__enzyme_autodiff(i8*, ...)
 ; CHECK-NEXT:   %6 = bitcast i64* %"ptr3'ac" to double*
 ; CHECK-NEXT:   %7 = load double, double* %6, align 8
 ; CHECK-NEXT:   store i64 0, i64* %"ptr3'ac", align 4
-; CHECK-NEXT:   %8 = call {} @diffegep(i64* %ptr, i64* %"ptr'", i64 3)
-; CHECK-NEXT:   %9 = bitcast i64* %"ptr2'ac" to double*
-; CHECK-NEXT:   %10 = load double, double* %9, align 8
-; CHECK-NEXT:   %11 = fadd fast double %10, %7
-; CHECK-NEXT:   %12 = bitcast i64* %"ptr2'ac" to double*
-; CHECK-NEXT:   store double %11, double* %12, align 8
-; CHECK-NEXT:   %13 = call {} @diffegep.2(i64* %ptr, i64* %"ptr'", i64 2)
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   call void @diffegep(i64* %ptr, i64* %"ptr'", i64 3)
+; CHECK-NEXT:   %[[ptr2d:.+]] = bitcast i64* %"ptr2'ac" to double*
+; CHECK-NEXT:   %[[ld10:.+]] = load double, double* %[[ptr2d]], align 8
+; CHECK-NEXT:   %[[fa11:.+]] = fadd fast double %[[ld10]], %7
+; CHECK-NEXT:   %[[bc12:.+]] = bitcast i64* %"ptr2'ac" to double*
+; CHECK-NEXT:   store double %[[fa11]], double* %[[bc12]], align 8
+; CHECK-NEXT:   call void @diffegep.2(i64* %ptr, i64* %"ptr'", i64 2)
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

@@ -21,7 +21,7 @@ define dso_local double @_Z11matvec_realPdS_(double* nocapture readonly %mat, do
   ret double %call34.i
 }
 
-; CHECK: define internal {} @diffemv(double* nocapture readonly %mat, double* nocapture %"mat'", double* nocapture readonly %vec, double %differeturn)
+; CHECK: define internal void @diffemv(double* nocapture readonly %mat, double* nocapture %"mat'", double* nocapture readonly %vec, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %mload = load double, double* %mat
 ; CHECK-NEXT:   %arrayidx = getelementptr inbounds double, double* %vec, i64 1
@@ -33,5 +33,5 @@ define dso_local double @_Z11matvec_realPdS_(double* nocapture readonly %mat, do
 ; CHECK-NEXT:   %[[pmat:.+]] = load double, double* %"mat'"
 ; CHECK-NEXT:   %[[nmat:.+]] = fadd fast double %[[pmat]], %m1diffemload
 ; CHECK-NEXT:   store double %[[nmat]], double* %"mat'"
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

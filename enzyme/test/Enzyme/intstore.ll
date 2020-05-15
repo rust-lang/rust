@@ -49,7 +49,7 @@ attributes #2 = { nounwind }
 !4 = !{!"omnipotent char", !5, i64 0}
 !5 = !{!"Simple C/C++ TBAA"}
 
-; CHECK: define internal {{(dso_local )?}}{} @diffestore(double* nocapture readonly %x, double* nocapture %"x'", double* nocapture %y, double* nocapture %"y'")
+; CHECK: define internal {{(dso_local )?}}void @diffestore(double* nocapture readonly %x, double* nocapture %"x'", double* nocapture %y, double* nocapture %"y'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = bitcast double* %x to i64*
 ; CHECK-NEXT:   %1 = bitcast double* %y to i64*
@@ -65,6 +65,6 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   %7 = fadd fast double %6, %5
 ; CHECK-NEXT:   %8 = bitcast double %7 to i64
 ; CHECK-NEXT:   store i64 %8, i64* %[[ipc2]]
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 

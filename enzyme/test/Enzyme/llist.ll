@@ -93,7 +93,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:  br label %for.body.i
 
 ; CHECK:[[invertforcondcleanup:.+]]:
-; CHECK-NEXT:  %[[foo:.+]] = call {} @diffesum_list(%struct.n* %[[thisbc:.+]], %struct.n* nonnull %[[dstructncast:.+]], double 1.000000e+00)
+; CHECK-NEXT:  call void @diffesum_list(%struct.n* %[[thisbc:.+]], %struct.n* nonnull %[[dstructncast:.+]], double 1.000000e+00)
 ; CHECK-NEXT:  br label %invertfor.body.i
 
 ; CHECK:for.body.i:                                       ; preds = %for.body.i, %entry
@@ -155,7 +155,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:  ret double %[[add]]
 
 
-; CHECK: define internal {{(dso_local )?}}{} @diffesum_list(%struct.n* noalias readonly %node, %struct.n* %"node'", double %[[differet:.+]])
+; CHECK: define internal {{(dso_local )?}}void @diffesum_list(%struct.n* noalias readonly %node, %struct.n* %"node'", double %[[differet:.+]])
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %cmp6 = icmp eq %struct.n* %node, null
 ; CHECK-NEXT:   br i1 %cmp6, label %invertentry, label %for.body
@@ -179,7 +179,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   br i1 %cmp, label %[[antiloop:.+]], label %for.body
 
 ; CHECK: invertentry:
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 
 ; CHECK: invertfor.body.preheader:
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %_realloccache)
@@ -199,5 +199,4 @@ attributes #4 = { nounwind }
 ; CHECK: incinvertfor.body:
 ; CHECK-NEXT:   %[[subidx]] = add nsw i64 %[[antivar]], -1
 ; CHECK-NEXT:   br label %[[antiloop]]
-
 ; CHECK-NEXT: }

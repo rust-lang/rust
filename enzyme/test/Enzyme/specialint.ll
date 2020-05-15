@@ -50,7 +50,7 @@ attributes #3 = { readnone }
 !4 = !{!5, i64 1, !"omnipotent char"}
 !5 = !{!"Simple C++ TBAA"}
 
-; CHECK: define internal {} @diffematvec(%Type* %evaluator.i.i, %Type* %"evaluator.i.i'") {
+; CHECK: define internal void @diffematvec(%Type* %evaluator.i.i, %Type* %"evaluator.i.i'") {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[dimsipge:.+]] = getelementptr inbounds %Type, %Type* %"evaluator.i.i'", i64 0, i32 1
 ; CHECK-NEXT:   %dims = getelementptr inbounds %Type, %Type* %evaluator.i.i, i64 0, i32 1
@@ -63,8 +63,8 @@ attributes #3 = { readnone }
 ; CHECK-NEXT:   store float 0.000000e+00, float* %[[dataipge]], align 4
 ; CHECK-NEXT:   %dims_unwrap = getelementptr inbounds %Type, %Type* %evaluator.i.i, i64 0, i32 1
 ; CHECK-NEXT:   %[[dimsipge_unwrap:.+]] = getelementptr inbounds %Type, %Type* %"evaluator.i.i'", i64 0, i32 1
-; CHECK-NEXT:   %[[unused:.+]] = call {} @diffetotal(i64* nonnull %dims_unwrap, i64* nonnull %[[dimsipge_unwrap]])
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   call void @diffetotal(i64* nonnull %dims_unwrap, i64* nonnull %[[dimsipge_unwrap]])
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
 ; CHECK: define internal { i64 } @augmented_total(i64* %this, i64* %"this'") {
@@ -75,7 +75,7 @@ attributes #3 = { readnone }
 ; CHECK-NEXT:   ret { i64 } %.fca.0.insert
 ; CHECK-NEXT: }
 
-; CHECK: define internal {} @diffetotal(i64* %this, i64* %"this'") {
+; CHECK: define internal void @diffetotal(i64* %this, i64* %"this'") {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

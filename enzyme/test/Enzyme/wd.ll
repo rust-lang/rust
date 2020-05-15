@@ -922,4 +922,4 @@ attributes #10 = { cold }
 !21 = !{!"_ZTSN5Eigen8internal16blas_data_mapperIKdlLi1ELi0EEE", !4, i64 0, !7, i64 8}
 !22 = !{!21, !7, i64 8}
 
-; CHECK: define internal {} @diffe_ZL6matvecPKN5Eigen6MatrixIdLin1ELin1ELi0ELin1ELin1EEEPKNS0_IdLin1ELi1ELi0ELin1ELi1EEEPS4_(%"class.Eigen::Matrix"* noalias %W, %"class.Eigen::Matrix"* %"W'", %"class.Eigen::Matrix.6"* noalias %b, %"class.Eigen::Matrix.6"* %"b'", %"class.Eigen::Matrix.6"* noalias %output, %"class.Eigen::Matrix.6"* %"output'")
+; CHECK: define internal void @diffe_ZL6matvecPKN5Eigen6MatrixIdLin1ELin1ELi0ELin1ELin1EEEPKNS0_IdLin1ELi1ELi0ELin1ELi1EEEPS4_(%"class.Eigen::Matrix"* noalias %W, %"class.Eigen::Matrix"* %"W'", %"class.Eigen::Matrix.6"* noalias %b, %"class.Eigen::Matrix.6"* %"b'", %"class.Eigen::Matrix.6"* noalias %output, %"class.Eigen::Matrix.6"* %"output'")
