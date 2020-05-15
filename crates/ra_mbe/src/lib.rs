@@ -22,7 +22,7 @@ pub enum ParseError {
     RepetitionEmtpyTokenTree,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ExpandError {
     NoMatchingRule,
     UnexpectedToken,

@@ -243,7 +243,7 @@ impl Subtree {
 
 pub mod buffer;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ExpansionError {
     IOError(String),
     JsonError(String),
