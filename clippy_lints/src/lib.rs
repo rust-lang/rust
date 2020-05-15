@@ -180,7 +180,7 @@ mod attrs;
 mod await_holding_lock;
 mod bit_mask;
 mod blacklisted_name;
-mod block_in_if_condition;
+mod blocks_in_if_conditions;
 mod booleans;
 mod bytecount;
 mod cargo_common_metadata;
@@ -507,7 +507,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &bit_mask::INEFFECTIVE_BIT_MASK,
         &bit_mask::VERBOSE_BIT_MASK,
         &blacklisted_name::BLACKLISTED_NAME,
-        &block_in_if_condition::BLOCK_IN_IF_CONDITION,
+        &blocks_in_if_conditions::BLOCKS_IN_IF_CONDITIONS,
         &booleans::LOGIC_BUG,
         &booleans::NONMINIMAL_BOOL,
         &bytecount::NAIVE_BYTECOUNT,
@@ -615,7 +615,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &loops::EXPLICIT_INTO_ITER_LOOP,
         &loops::EXPLICIT_ITER_LOOP,
         &loops::FOR_KV_MAP,
-        &loops::FOR_LOOP_OVER_FALLIBLE,
+        &loops::FOR_LOOPS_OVER_FALLIBLES,
         &loops::ITER_NEXT_LOOP,
         &loops::MANUAL_MEMCPY,
         &loops::MUT_RANGE_BOUND,
@@ -894,7 +894,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box mut_reference::UnnecessaryMutPassed);
     store.register_late_pass(|| box len_zero::LenZero);
     store.register_late_pass(|| box attrs::Attributes);
-    store.register_late_pass(|| box block_in_if_condition::BlockInIfCondition);
+    store.register_late_pass(|| box blocks_in_if_conditions::BlocksInIfConditions);
     store.register_late_pass(|| box unicode::Unicode);
     store.register_late_pass(|| box strings::StringAdd);
     store.register_late_pass(|| box implicit_return::ImplicitReturn);
@@ -1199,7 +1199,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&bit_mask::INEFFECTIVE_BIT_MASK),
         LintId::of(&bit_mask::VERBOSE_BIT_MASK),
         LintId::of(&blacklisted_name::BLACKLISTED_NAME),
-        LintId::of(&block_in_if_condition::BLOCK_IN_IF_CONDITION),
+        LintId::of(&blocks_in_if_conditions::BLOCKS_IN_IF_CONDITIONS),
         LintId::of(&booleans::LOGIC_BUG),
         LintId::of(&booleans::NONMINIMAL_BOOL),
         LintId::of(&bytecount::NAIVE_BYTECOUNT),
@@ -1264,7 +1264,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&loops::EMPTY_LOOP),
         LintId::of(&loops::EXPLICIT_COUNTER_LOOP),
         LintId::of(&loops::FOR_KV_MAP),
-        LintId::of(&loops::FOR_LOOP_OVER_FALLIBLE),
+        LintId::of(&loops::FOR_LOOPS_OVER_FALLIBLES),
         LintId::of(&loops::ITER_NEXT_LOOP),
         LintId::of(&loops::MANUAL_MEMCPY),
         LintId::of(&loops::MUT_RANGE_BOUND),
@@ -1444,7 +1444,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&attrs::UNKNOWN_CLIPPY_LINTS),
         LintId::of(&bit_mask::VERBOSE_BIT_MASK),
         LintId::of(&blacklisted_name::BLACKLISTED_NAME),
-        LintId::of(&block_in_if_condition::BLOCK_IN_IF_CONDITION),
+        LintId::of(&blocks_in_if_conditions::BLOCKS_IN_IF_CONDITIONS),
         LintId::of(&collapsible_if::COLLAPSIBLE_IF),
         LintId::of(&comparison_chain::COMPARISON_CHAIN),
         LintId::of(&doc::MISSING_SAFETY_DOC),
@@ -1639,7 +1639,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&inline_fn_without_body::INLINE_FN_WITHOUT_BODY),
         LintId::of(&let_underscore::LET_UNDERSCORE_LOCK),
         LintId::of(&literal_representation::MISTYPED_LITERAL_SUFFIXES),
-        LintId::of(&loops::FOR_LOOP_OVER_FALLIBLE),
+        LintId::of(&loops::FOR_LOOPS_OVER_FALLIBLES),
         LintId::of(&loops::ITER_NEXT_LOOP),
         LintId::of(&loops::NEVER_LOOP),
         LintId::of(&loops::WHILE_IMMUTABLE_CONDITION),
@@ -1785,8 +1785,8 @@ pub fn register_renamed(ls: &mut rustc_lint::LintStore) {
     ls.register_renamed("clippy::new_without_default_derive", "clippy::new_without_default");
     ls.register_renamed("clippy::cyclomatic_complexity", "clippy::cognitive_complexity");
     ls.register_renamed("clippy::const_static_lifetime", "clippy::redundant_static_lifetimes");
-    ls.register_renamed("clippy::block_in_if_condition_expr", "clippy::block_in_if_condition");
-    ls.register_renamed("clippy::block_in_if_condition_stmt", "clippy::block_in_if_condition");
+    ls.register_renamed("clippy::block_in_if_condition_expr", "clippy::blocks_in_if_conditions");
+    ls.register_renamed("clippy::block_in_if_condition_stmt", "clippy::blocks_in_if_conditions");
     ls.register_renamed("clippy::option_map_unwrap_or", "clippy::map_unwrap_or");
     ls.register_renamed("clippy::option_map_unwrap_or_else", "clippy::map_unwrap_or");
     ls.register_renamed("clippy::result_map_unwrap_or_else", "clippy::map_unwrap_or");
@@ -1794,8 +1794,8 @@ pub fn register_renamed(ls: &mut rustc_lint::LintStore) {
     ls.register_renamed("clippy::result_unwrap_used", "clippy::unwrap_used");
     ls.register_renamed("clippy::option_expect_used", "clippy::expect_used");
     ls.register_renamed("clippy::result_expect_used", "clippy::expect_used");
-    ls.register_renamed("clippy::for_loop_over_option", "clippy::for_loop_over_fallible");
-    ls.register_renamed("clippy::for_loop_over_result", "clippy::for_loop_over_fallible");
+    ls.register_renamed("clippy::for_loop_over_option", "clippy::for_loops_over_fallibles");
+    ls.register_renamed("clippy::for_loop_over_result", "clippy::for_loops_over_fallibles");
 }
 
 // only exists to let the dogfood integration test works.

@@ -74,11 +74,11 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "blacklisted_name",
     },
     Lint {
-        name: "block_in_if_condition",
+        name: "blocks_in_if_conditions",
         group: "style",
         desc: "useless or complex blocks that can be eliminated in conditions",
         deprecation: None,
-        module: "block_in_if_condition",
+        module: "blocks_in_if_conditions",
     },
     Lint {
         name: "bool_comparison",
@@ -676,7 +676,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "loops",
     },
     Lint {
-        name: "for_loop_over_fallible",
+        name: "for_loops_over_fallibles",
         group: "correctness",
         desc: "for-looping over an `Option` or a `Result`, which is more clearly expressed as an `if let`",
         deprecation: None,

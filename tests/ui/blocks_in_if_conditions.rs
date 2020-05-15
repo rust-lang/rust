@@ -1,5 +1,5 @@
 // run-rustfix
-#![warn(clippy::block_in_if_condition)]
+#![warn(clippy::blocks_in_if_conditions)]
 #![allow(unused, clippy::let_and_return)]
 #![warn(clippy::nonminimal_bool)]
 

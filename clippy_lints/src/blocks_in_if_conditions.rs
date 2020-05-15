@@ -36,12 +36,12 @@ declare_clippy_lint! {
     /// let res = { let x = somefunc(); x };
     /// if res { /* ... */ }
     /// ```
-    pub BLOCK_IN_IF_CONDITION,
+    pub BLOCKS_IN_IF_CONDITIONS,
     style,
     "useless or complex blocks that can be eliminated in conditions"
 }
 
-declare_lint_pass!(BlockInIfCondition => [BLOCK_IN_IF_CONDITION]);
+declare_lint_pass!(BlocksInIfConditions => [BLOCKS_IN_IF_CONDITIONS]);
 
 struct ExVisitor<'a, 'tcx> {
     found_block: Option<&'tcx Expr<'tcx>>,
@@ -71,7 +71,7 @@ const BRACED_EXPR_MESSAGE: &str = "omit braces around single expression conditio
 const COMPLEX_BLOCK_MESSAGE: &str = "in an `if` condition, avoid complex blocks or closures with blocks; \
                                     instead, move the block or closure higher and bind it with a `let`";
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BlockInIfCondition {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BlocksInIfConditions {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         if in_external_macro(cx.sess(), expr.span) {
             return;
@@ -89,7 +89,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BlockInIfCondition {
                             let mut applicability = Applicability::MachineApplicable;
                             span_lint_and_sugg(
                                 cx,
-                                BLOCK_IN_IF_CONDITION,
+                                BLOCKS_IN_IF_CONDITIONS,
                                 cond.span,
                                 BRACED_EXPR_MESSAGE,
                                 "try",
@@ -115,7 +115,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BlockInIfCondition {
                         let mut applicability = Applicability::MachineApplicable;
                         span_lint_and_sugg(
                             cx,
-                            BLOCK_IN_IF_CONDITION,
+                            BLOCKS_IN_IF_CONDITIONS,
                             expr.span.with_hi(cond.span.hi()),
                             COMPLEX_BLOCK_MESSAGE,
                             "try",
@@ -137,7 +137,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BlockInIfCondition {
                 let mut visitor = ExVisitor { found_block: None, cx };
                 walk_expr(&mut visitor, cond);
                 if let Some(block) = visitor.found_block {
-                    span_lint(cx, BLOCK_IN_IF_CONDITION, block.span, COMPLEX_BLOCK_MESSAGE);
+                    span_lint(cx, BLOCKS_IN_IF_CONDITIONS, block.span, COMPLEX_BLOCK_MESSAGE);
                 }
             }
         }

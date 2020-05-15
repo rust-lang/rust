@@ -205,7 +205,7 @@ declare_clippy_lint! {
     ///     // ..
     /// }
     /// ```
-    pub FOR_LOOP_OVER_FALLIBLE,
+    pub FOR_LOOPS_OVER_FALLIBLES,
     correctness,
     "for-looping over an `Option` or a `Result`, which is more clearly expressed as an `if let`"
 }
@@ -426,7 +426,7 @@ declare_lint_pass!(Loops => [
     EXPLICIT_ITER_LOOP,
     EXPLICIT_INTO_ITER_LOOP,
     ITER_NEXT_LOOP,
-    FOR_LOOP_OVER_FALLIBLE,
+    FOR_LOOPS_OVER_FALLIBLES,
     WHILE_LET_LOOP,
     NEEDLESS_COLLECT,
     EXPLICIT_COUNTER_LOOP,
@@ -1290,7 +1290,7 @@ fn check_arg_type(cx: &LateContext<'_, '_>, pat: &Pat<'_>, arg: &Expr<'_>) {
     if is_type_diagnostic_item(cx, ty, sym!(option_type)) {
         span_lint_and_help(
             cx,
-            FOR_LOOP_OVER_FALLIBLE,
+            FOR_LOOPS_OVER_FALLIBLES,
             arg.span,
             &format!(
                 "for loop over `{0}`, which is an `Option`. This is more readably written as an \
@@ -1307,7 +1307,7 @@ fn check_arg_type(cx: &LateContext<'_, '_>, pat: &Pat<'_>, arg: &Expr<'_>) {
     } else if is_type_diagnostic_item(cx, ty, sym!(result_type)) {
         span_lint_and_help(
             cx,
-            FOR_LOOP_OVER_FALLIBLE,
+            FOR_LOOPS_OVER_FALLIBLES,
             arg.span,
             &format!(
                 "for loop over `{0}`, which is a `Result`. This is more readably written as an \

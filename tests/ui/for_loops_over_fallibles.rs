@@ -1,6 +1,6 @@
-#![warn(clippy::for_loop_over_fallible)]
+#![warn(clippy::for_loops_over_fallibles)]
 
-fn for_loop_over_fallible() {
+fn for_loops_over_fallibles() {
     let option = Some(1);
     let result = option.ok_or("x not found");
     let v = vec![0, 1, 2];
