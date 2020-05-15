@@ -205,6 +205,7 @@ impl Clone for Literal {
 impl fmt::Debug for Literal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Literal")
+            // format the kind without quotes, as in `kind: Float`
             .field("kind", &format_args!("{}", &self.debug_kind()))
             .field("symbol", &self.symbol())
             // format `Some("...")` on one line even in {:#?} mode
