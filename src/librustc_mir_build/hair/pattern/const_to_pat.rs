@@ -141,7 +141,8 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 // code at the moment, because types like `for <'a> fn(&'a ())` do
                 // not *yet* implement `PartialEq`. So for now we leave this here.
                 let ty_is_partial_eq: bool = {
-                    let partial_eq_trait_id = self.tcx().require_lang_item(EqTraitLangItem, None);
+                    let partial_eq_trait_id =
+                        self.tcx().require_lang_item(EqTraitLangItem, Some(self.span));
                     let obligation: PredicateObligation<'_> = predicate_for_trait_def(
                         self.tcx(),
                         self.param_env,
