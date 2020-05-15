@@ -1499,8 +1499,8 @@ any high-order bits of `rhs` that would cause the shift to exceed the bitwidth o
 
 Note that this is *not* the same as a rotate-left; the RHS of a wrapping shift-left is restricted to
 the range of the type, rather than the bits shifted out of the LHS being returned to the other end.
-The primitive integer types all implement a `rotate_left` function, which may be what you want
-instead.
+The primitive integer types all implement a `[`rotate_left`](#method.rotate_left) function,
+which may be what you want instead.
 
 # Examples
 
@@ -1531,8 +1531,8 @@ removes any high-order bits of `rhs` that would cause the shift to exceed the bi
 
 Note that this is *not* the same as a rotate-right; the RHS of a wrapping shift-right is restricted
 to the range of the type, rather than the bits shifted out of the LHS being returned to the other
-end. The primitive integer types all implement a `rotate_right` function, which may be what you want
-instead.
+end. The primitive integer types all implement a [`rotate_right`](#method.rotate_right) function,
+which may be what you want instead.
 
 # Examples
 
@@ -3610,8 +3610,8 @@ Note that this is *not* the same as a rotate-left; the
 RHS of a wrapping shift-left is restricted to the range
 of the type, rather than the bits shifted out of the LHS
 being returned to the other end. The primitive integer
-types all implement a `rotate_left` function, which may
-be what you want instead.
+types all implement a [`rotate_left`](#method.rotate_left) function,
+which may be what you want instead.
 
 # Examples
 
@@ -3644,8 +3644,8 @@ Note that this is *not* the same as a rotate-right; the
 RHS of a wrapping shift-right is restricted to the range
 of the type, rather than the bits shifted out of the LHS
 being returned to the other end. The primitive integer
-types all implement a `rotate_right` function, which may
-be what you want instead.
+types all implement a [`rotate_right`](#method.rotate_right) function,
+which may be what you want instead.
 
 # Examples
 
