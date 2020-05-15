@@ -164,15 +164,11 @@ impl<'infcx, 'tcx> InferCtxt<'infcx, 'tcx> {
             (_, ty::ConstKind::Infer(InferConst::Var(vid))) => {
                 return self.unify_const_variable(!a_is_expected, vid, a);
             }
-            (ty::ConstKind::Unevaluated(..), _)
-                if self.tcx.features().lazy_normalization_consts =>
-            {
+            (ty::ConstKind::Unevaluated(..), _) if self.tcx.features().const_generics => {
                 relation.const_equate_obligation(a, b);
                 return Ok(b);
             }
-            (_, ty::ConstKind::Unevaluated(..))
-                if self.tcx.features().lazy_normalization_consts =>
-            {
+            (_, ty::ConstKind::Unevaluated(..)) if self.tcx.features().const_generics => {
                 relation.const_equate_obligation(a, b);
                 return Ok(a);
             }
@@ -662,9 +658,7 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                     }
                 }
             }
-            ty::ConstKind::Unevaluated(..) if self.tcx().features().lazy_normalization_consts => {
-                Ok(c)
-            }
+            ty::ConstKind::Unevaluated(..) if self.tcx().features().const_generics => Ok(c),
             _ => relate::super_relate_consts(self, c, c),
         }
     }

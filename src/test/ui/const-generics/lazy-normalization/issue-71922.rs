@@ -1,6 +1,5 @@
 // run-pass
 #![feature(const_generics)]
-#![feature(lazy_normalization_consts)]
 #![allow(incomplete_features)]
 trait Foo {}
 

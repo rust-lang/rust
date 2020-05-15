@@ -1,7 +1,5 @@
 #![feature(const_generics)]
 //~^ WARN the feature `const_generics` is incomplete and may cause the compiler to crash
-#![feature(lazy_normalization_consts)]
-//~^ WARN the feature `lazy_normalization_consts` is incomplete and may cause the compiler to crash
 
 trait Baz {
     type Quaks;

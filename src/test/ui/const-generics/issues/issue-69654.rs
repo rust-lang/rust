@@ -1,14 +1,14 @@
 #![feature(const_generics)]
 #![allow(incomplete_features)]
 
-trait Bar<O> {}
-impl<O> Bar<O> for [u8; O] {}
-//~^ ERROR expected value, found type parameter `O`
+trait Bar<T> {}
+impl<T> Bar<T> for [u8; T] {}
+//~^ ERROR expected value, found type parameter `T`
 
-struct Foo<const O: usize> {}
-impl<const O: usize> Foo<O>
+struct Foo<const T: usize> {}
+impl<const T: usize> Foo<T>
 where
-    [u8; O]: Bar<[(); O]>,
+    [u8; T]: Bar<[(); T]>,
 {
     fn foo() {}
 }

@@ -6,11 +6,5 @@ LL | #![feature(const_generics)]
    = note: `#[warn(incomplete_features)]` on by default
    = note: see issue #44580 <https://github.com/rust-lang/rust/issues/44580> for more information
 
-warning: the feature `lazy_normalization_consts` is incomplete and may cause the compiler to crash
-  --> $DIR/issue-61935.rs:5:12
-   |
-LL | #![feature(lazy_normalization_consts)]
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^
-
-warning: 2 warnings emitted
+warning: 1 warning emitted
 

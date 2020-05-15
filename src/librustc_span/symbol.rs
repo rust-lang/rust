@@ -411,7 +411,6 @@ symbols! {
         label_break_value,
         lang,
         lang_items,
-        lazy_normalization_consts,
         let_chains,
         lhs,
         lib,
