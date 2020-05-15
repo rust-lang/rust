@@ -296,7 +296,7 @@ pub fn main() {
     rustc_driver::init_rustc_env_logger();
     lazy_static::initialize(&ICE_HOOK);
     exit(
-        rustc_driver::catch_fatal_errors(move || {
+        rustc_driver::catch_with_exit_code(move || {
             let mut orig_args: Vec<String> = env::args().collect();
 
             if orig_args.iter().any(|a| a == "--version" || a == "-V") {
@@ -411,7 +411,5 @@ pub fn main() {
                 if clippy_enabled { &mut clippy } else { &mut default };
             rustc_driver::run_compiler(&args, callbacks, None, None)
         })
-        .and_then(|result| result)
-        .is_err() as i32,
     )
 }
