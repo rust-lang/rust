@@ -369,6 +369,45 @@ fn test() {
 }
 
 #[test]
+fn enum_variant_through_self_in_pattern() {
+    assert_snapshot!(
+        infer(r#"
+enum E {
+    A { x: usize },
+    B(usize),
+    C
+}
+
+impl E {
+    fn test() {
+        match (loop {}) {
+            Self::A { x } => { x; },
+            Self::B(x) => { x; },
+            Self::C => {},
+        };
+    }
+}
+"#),
+        @r###"
+    76..218 '{     ...     }': ()
+    86..211 'match ...     }': ()
+    93..100 'loop {}': !
+    98..100 '{}': ()
+    116..129 'Self::A { x }': E
+    126..127 'x': usize
+    133..139 '{ x; }': ()
+    135..136 'x': usize
+    153..163 'Self::B(x)': E
+    161..162 'x': usize
+    167..173 '{ x; }': ()
+    169..170 'x': usize
+    187..194 'Self::C': E
+    198..200 '{}': ()
+    "###
+    );
+}
+
+#[test]
 fn infer_generics_in_patterns() {
     assert_snapshot!(
         infer(r#"

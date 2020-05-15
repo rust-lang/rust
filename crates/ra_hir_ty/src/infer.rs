@@ -28,7 +28,8 @@ use hir_def::{
     path::{path, Path},
     resolver::{HasResolver, Resolver, TypeNs},
     type_ref::{Mutability, TypeRef},
-    AdtId, AssocItemId, DefWithBodyId, FieldId, FunctionId, TraitId, TypeAliasId, VariantId,
+    AdtId, AssocItemId, DefWithBodyId, EnumVariantId, FieldId, FunctionId, TraitId, TypeAliasId,
+    VariantId,
 };
 use hir_expand::{diagnostics::DiagnosticSink, name::name};
 use ra_arena::map::ArenaMap;
@@ -438,43 +439,95 @@ impl<'a> InferenceContext<'a> {
         let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver);
         // FIXME: this should resolve assoc items as well, see this example:
         // https://play.rust-lang.org/?gist=087992e9e22495446c01c0d4e2d69521
-        return match resolver.resolve_path_in_type_ns_fully(self.db.upcast(), path.mod_path()) {
-            Some(TypeNs::AdtId(AdtId::StructId(strukt))) => {
+        let (resolution, unresolved) =
+            match resolver.resolve_path_in_type_ns(self.db.upcast(), path.mod_path()) {
+                Some(it) => it,
+                None => return (Ty::Unknown, None),
+            };
+        return match resolution {
+            TypeNs::AdtId(AdtId::StructId(strukt)) => {
                 let substs = Ty::substs_from_path(&ctx, path, strukt.into());
                 let ty = self.db.ty(strukt.into());
                 let ty = self.insert_type_vars(ty.subst(&substs));
-                (ty, Some(strukt.into()))
+                forbid_unresolved_segments((ty, Some(strukt.into())), unresolved)
             }
-            Some(TypeNs::EnumVariantId(var)) => {
+            TypeNs::EnumVariantId(var) => {
                 let substs = Ty::substs_from_path(&ctx, path, var.into());
                 let ty = self.db.ty(var.parent.into());
                 let ty = self.insert_type_vars(ty.subst(&substs));
-                (ty, Some(var.into()))
+                forbid_unresolved_segments((ty, Some(var.into())), unresolved)
             }
-            Some(TypeNs::SelfType(impl_id)) => {
+            TypeNs::SelfType(impl_id) => {
                 let generics = crate::utils::generics(self.db.upcast(), impl_id.into());
                 let substs = Substs::type_params_for_generics(&generics);
                 let ty = self.db.impl_self_ty(impl_id).subst(&substs);
-                let variant = ty_variant(&ty);
-                (ty, variant)
+                match unresolved {
+                    None => {
+                        let variant = ty_variant(&ty);
+                        (ty, variant)
+                    }
+                    Some(1) => {
+                        let segment = path.mod_path().segments.last().unwrap();
+                        // this could be an enum variant or associated type
+                        if let Some((AdtId::EnumId(enum_id), _)) = ty.as_adt() {
+                            let enum_data = self.db.enum_data(enum_id);
+                            if let Some(local_id) = enum_data.variant(segment) {
+                                let variant = EnumVariantId { parent: enum_id, local_id };
+                                return (ty, Some(variant.into()));
+                            }
+                        }
+                        // FIXME potentially resolve assoc type
+                        (Ty::Unknown, None)
+                    }
+                    Some(_) => {
+                        // FIXME diagnostic
+                        (Ty::Unknown, None)
+                    }
+                }
             }
-            Some(TypeNs::TypeAliasId(it)) => {
+            TypeNs::TypeAliasId(it) => {
                 let substs = Substs::build_for_def(self.db, it)
                     .fill(std::iter::repeat_with(|| self.table.new_type_var()))
                     .build();
                 let ty = self.db.ty(it.into()).subst(&substs);
                 let variant = ty_variant(&ty);
-                (ty, variant)
+                forbid_unresolved_segments((ty, variant), unresolved)
             }
-            Some(_) | None => (Ty::Unknown, None),
+            TypeNs::AdtSelfType(_) => {
+                // FIXME this could happen in array size expressions, once we're checking them
+                (Ty::Unknown, None)
+            }
+            TypeNs::GenericParam(_) => {
+                // FIXME potentially resolve assoc type
+                (Ty::Unknown, None)
+            }
+            TypeNs::AdtId(AdtId::EnumId(_))
+            | TypeNs::AdtId(AdtId::UnionId(_))
+            | TypeNs::BuiltinType(_)
+            | TypeNs::TraitId(_) => {
+                // FIXME diagnostic
+                (Ty::Unknown, None)
+            }
         };
+
+        fn forbid_unresolved_segments(
+            result: (Ty, Option<VariantId>),
+            unresolved: Option<usize>,
+        ) -> (Ty, Option<VariantId>) {
+            if unresolved.is_none() {
+                result
+            } else {
+                // FIXME diagnostic
+                (Ty::Unknown, None)
+            }
+        }
 
         fn ty_variant(ty: &Ty) -> Option<VariantId> {
             ty.as_adt().and_then(|(adt_id, _)| match adt_id {
                 AdtId::StructId(s) => Some(VariantId::StructId(s)),
                 AdtId::UnionId(u) => Some(VariantId::UnionId(u)),
                 AdtId::EnumId(_) => {
-                    // Error E0071, expected struct, variant or union type, found enum `Foo`
+                    // FIXME Error E0071, expected struct, variant or union type, found enum `Foo`
                     None
                 }
             })

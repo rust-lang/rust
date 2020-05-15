@@ -576,6 +576,50 @@ impl S {
 }
 
 #[test]
+fn infer_self_as_path() {
+    assert_snapshot!(
+        infer(r#"
+struct S1;
+struct S2(isize);
+enum E {
+    V1,
+    V2(u32),
+}
+
+impl S1 {
+    fn test() {
+        Self;
+    }
+}
+impl S2 {
+    fn test() {
+        Self(1);
+    }
+}
+impl E {
+    fn test() {
+        Self::V1;
+        Self::V2(1);
+    }
+}
+"#),
+        @r###"
+    87..108 '{     ...     }': ()
+    97..101 'Self': S1
+    135..159 '{     ...     }': ()
+    145..149 'Self': S2(isize) -> S2
+    145..152 'Self(1)': S2
+    150..151 '1': isize
+    185..231 '{     ...     }': ()
+    195..203 'Self::V1': E
+    213..221 'Self::V2': V2(u32) -> E
+    213..224 'Self::V2(1)': E
+    222..223 '1': u32
+    "###
+    );
+}
+
+#[test]
 fn infer_binary_op() {
     assert_snapshot!(
         infer(r#"
