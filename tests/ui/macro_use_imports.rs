@@ -18,6 +18,8 @@ mod a {
     use mini_mac;
     #[macro_use]
     use mac::inner;
+    #[macro_use]
+    use mac::inner::nested;
 
     #[derive(ClippyMiniMacroTest)]
     struct Test;
@@ -30,6 +32,8 @@ mod a {
         let v: ty_macro!() = Vec::default();
 
         inner::try_err!();
+        inner::foofoo!();
+        nested::string_add!();
     }
 }
 

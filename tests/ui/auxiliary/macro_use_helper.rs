@@ -13,7 +13,12 @@ pub mod inner {
 
     // RE-EXPORT
     // this will stick in `inner` module
+    pub use macro_rules::foofoo;
     pub use macro_rules::try_err;
+
+    pub mod nested {
+        pub use macro_rules::string_add;
+    }
 
     // ITEM
     #[macro_export]

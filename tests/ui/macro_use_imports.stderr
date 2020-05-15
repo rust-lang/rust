@@ -1,8 +1,8 @@
 error: `macro_use` attributes are no longer needed in the Rust 2018 edition
-  --> $DIR/macro_use_imports.rs:15:5
+  --> $DIR/macro_use_imports.rs:17:5
    |
 LL |     #[macro_use]
-   |     ^^^^^^^^^^^^ help: remove the attribute and import the macro directly, try: `use mac::pub_macro`
+   |     ^^^^^^^^^^^^ help: remove the attribute and import the macro directly, try: `use use mini_mac::ClippyMiniMacroTest;`
    |
    = note: `-D clippy::macro-use-imports` implied by `-D warnings`
 
@@ -10,37 +10,7 @@ error: `macro_use` attributes are no longer needed in the Rust 2018 edition
   --> $DIR/macro_use_imports.rs:15:5
    |
 LL |     #[macro_use]
-   |     ^^^^^^^^^^^^ help: remove the attribute and import the macro directly, try: `use mac::inner_mod_macro`
+   |     ^^^^^^^^^^^^ help: remove the attribute and import the macro directly, try: `use use mac::{pub_macro, inner_mod_macro, function_macro, ty_macro, pub_in_private_macro, inner::{foofoo, try_err, nested::string_add}};`
 
-error: `macro_use` attributes are no longer needed in the Rust 2018 edition
-  --> $DIR/macro_use_imports.rs:15:5
-   |
-LL |     #[macro_use]
-   |     ^^^^^^^^^^^^ help: remove the attribute and import the macro directly, try: `use mac::function_macro`
-
-error: `macro_use` attributes are no longer needed in the Rust 2018 edition
-  --> $DIR/macro_use_imports.rs:15:5
-   |
-LL |     #[macro_use]
-   |     ^^^^^^^^^^^^ help: remove the attribute and import the macro directly, try: `use mac::ty_macro`
-
-error: `macro_use` attributes are no longer needed in the Rust 2018 edition
-  --> $DIR/macro_use_imports.rs:15:5
-   |
-LL |     #[macro_use]
-   |     ^^^^^^^^^^^^ help: remove the attribute and import the macro directly, try: `use mac::pub_in_private_macro`
-
-error: `macro_use` attributes are no longer needed in the Rust 2018 edition
-  --> $DIR/macro_use_imports.rs:17:5
-   |
-LL |     #[macro_use]
-   |     ^^^^^^^^^^^^ help: remove the attribute and import the macro directly, try: `use mini_mac::ClippyMiniMacroTest`
-
-error: `macro_use` attributes are no longer needed in the Rust 2018 edition
-  --> $DIR/macro_use_imports.rs:19:5
-   |
-LL |     #[macro_use]
-   |     ^^^^^^^^^^^^ help: remove the attribute and import the macro directly, try: `use mac::inner::try_err`
-
-error: aborting due to 7 previous errors
+error: aborting due to 2 previous errors
 
