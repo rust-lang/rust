@@ -616,6 +616,13 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         value: OpTy<'tcx>,
         source_info: SourceInfo,
     ) {
+        if let Rvalue::Use(Operand::Constant(c)) = rval {
+            if !matches!(c.literal.val, ConstKind::Unevaluated(..)) {
+                trace!("skipping replace of Rvalue::Use({:?} because it is already a const", c);
+                return;
+            }
+        }
+
         trace!("attepting to replace {:?} with {:?}", rval, value);
         if let Err(e) = self.ecx.const_validate_operand(
             value,
