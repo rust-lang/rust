@@ -915,7 +915,14 @@ impl<'a> Builder<'a> {
             .env("RUSTC", self.out.join("bootstrap/debug/rustc"))
             .env("RUSTC_REAL", self.rustc(compiler))
             .env("RUSTC_STAGE", stage.to_string())
-            .env("RUSTC_DEBUG_ASSERTIONS", self.config.rust_debug_assertions.to_string())
+            .env(
+                "RUSTC_DEBUG_ASSERTIONS",
+                if mode == Mode::Std {
+                    self.config.rust_debug_assertions_std.to_string()
+                } else {
+                    self.config.rust_debug_assertions.to_string()
+                },
+            )
             .env("RUSTC_SYSROOT", &sysroot)
             .env("RUSTC_LIBDIR", &libdir)
             .env("RUSTDOC", self.out.join("bootstrap/debug/rustdoc"))
