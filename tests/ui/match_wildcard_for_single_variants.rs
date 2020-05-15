@@ -9,10 +9,51 @@ enum Foo {
     C,
 }
 
+enum Color {
+    Red,
+    Green,
+    Blue,
+    Rgb(u8, u8, u8),
+}
+
 fn main() {
-    match Foo::A {
+    let f = Foo::A;
+    match f {
         Foo::A => {},
         Foo::B => {},
+        _ => {},
+    }
+
+    let color = Color::Red;
+
+    // check exhaustive bindings
+    match color {
+        Color::Red => {},
+        Color::Green => {},
+        Color::Rgb(_r, _g, _b) => {},
+        _ => {},
+    }
+
+    // check exhaustive wild
+    match color {
+        Color::Red => {},
+        Color::Green => {},
+        Color::Rgb(..) => {},
+        _ => {},
+    }
+    match color {
+        Color::Red => {},
+        Color::Green => {},
+        Color::Rgb(_, _, _) => {},
+        _ => {},
+    }
+
+    // shouldn't lint as there is one missing variant
+    // and one that isn't exhaustively covered
+    match color {
+        Color::Red => {},
+        Color::Green => {},
+        Color::Rgb(255, _, _) => {},
         _ => {},
     }
 }
