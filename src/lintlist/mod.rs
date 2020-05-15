@@ -2469,7 +2469,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "useless_let_if_seq",
-        group: "style",
+        group: "nursery",
         desc: "unidiomatic `let mut` declaration followed by initialization in `if`",
         deprecation: None,
         module: "let_if_seq",
