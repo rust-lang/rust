@@ -202,10 +202,15 @@ impl Clone for Literal {
     }
 }
 
-// FIXME(eddyb) `Literal` should not expose internal `Debug` impls.
 impl fmt::Debug for Literal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.debug())
+        f.debug_struct("Literal")
+            .field("kind", &format_args!("{}", &self.debug_kind()))
+            .field("symbol", &self.symbol())
+            // format `Some("...")` on one line even in {:#?} mode
+            .field("suffix", &format_args!("{:?}", &self.suffix()))
+            .field("span", &self.span())
+            .finish()
     }
 }
 
