@@ -86,6 +86,7 @@ pub enum ResolveValueResult {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ValueNs {
+    ImplSelf(ImplId),
     LocalBinding(PatId),
     FunctionId(FunctionId),
     ConstId(ConstId),
@@ -291,19 +292,26 @@ impl Resolver {
                 }
                 Scope::GenericParams { .. } => continue,
 
-                Scope::ImplDefScope(impl_) if n_segments > 1 => {
+                Scope::ImplDefScope(impl_) => {
                     if first_name == &name![Self] {
-                        let ty = TypeNs::SelfType(*impl_);
-                        return Some(ResolveValueResult::Partial(ty, 1));
+                        if n_segments > 1 {
+                            let ty = TypeNs::SelfType(*impl_);
+                            return Some(ResolveValueResult::Partial(ty, 1));
+                        } else {
+                            return Some(ResolveValueResult::ValueNs(ValueNs::ImplSelf(*impl_)));
+                        }
                     }
                 }
-                Scope::AdtScope(adt) if n_segments > 1 => {
+                Scope::AdtScope(adt) => {
+                    if n_segments == 1 {
+                        // bare `Self` doesn't work in the value namespace in a struct/enum definition
+                        continue;
+                    }
                     if first_name == &name![Self] {
                         let ty = TypeNs::AdtSelfType(*adt);
                         return Some(ResolveValueResult::Partial(ty, 1));
                     }
                 }
-                Scope::ImplDefScope(_) | Scope::AdtScope(_) => continue,
 
                 Scope::ModuleScope(m) => {
                     let (module_def, idx) = m.crate_def_map.resolve_path(
