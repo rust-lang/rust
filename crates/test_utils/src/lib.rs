@@ -426,6 +426,12 @@ fn parse_fixture_gets_full_meta() {
 
     let parsed = &parsed[0];
     assert_eq!("\n", parsed.text);
+
+    let meta = &parsed.meta;
+    assert_eq!("foo", meta.crate_name().unwrap());
+    assert_eq!("/lib.rs", meta.path());
+    assert!(meta.cfg_options().is_some());
+    assert_eq!(2, meta.env().count());
 }
 
 /// Same as `parse_fixture`, except it allow empty fixture
