@@ -110,11 +110,17 @@ mod mut_ptr;
 ///   as the compiler doesn't need to prove that it's sound to elide the
 ///   copy.
 ///
+/// * It can be used to drop [pinned] data when `T` is not `repr(packed)`
+///   (pinned data must not be moved before it is dropped).
+///
 /// Unaligned values cannot be dropped in place, they must be copied to an aligned
-/// location first using [`ptr::read_unaligned`].
+/// location first using [`ptr::read_unaligned`]. For packed structs, this move is
+/// done automatically by the compiler. This means the fields of packed structs
+/// are not dropped in-place.
 ///
 /// [`ptr::read`]: ../ptr/fn.read.html
 /// [`ptr::read_unaligned`]: ../ptr/fn.read_unaligned.html
+/// [pinned]: ../pin/index.html
 ///
 /// # Safety
 ///

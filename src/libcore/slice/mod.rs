@@ -3179,6 +3179,7 @@ macro_rules! is_empty {
         $self.ptr.as_ptr() as *const T == $self.end
     };
 }
+
 // To get rid of some bounds checks (see `position`), we compute the length in a somewhat
 // unexpected way. (Tested by `codegen/slice-position-bounds-check`.)
 macro_rules! len {
@@ -3347,40 +3348,127 @@ macro_rules! iterator {
                 self.next_back()
             }
 
+            // We override the default implementation, which uses `try_fold`,
+            // because this simple implementation generates less LLVM IR and is
+            // faster to compile.
+            #[inline]
+            fn for_each<F>(mut self, mut f: F)
+            where
+                Self: Sized,
+                F: FnMut(Self::Item),
+            {
+                while let Some(x) = self.next() {
+                    f(x);
+                }
+            }
+
+            // We override the default implementation, which uses `try_fold`,
+            // because this simple implementation generates less LLVM IR and is
+            // faster to compile.
+            #[inline]
+            fn all<F>(&mut self, mut f: F) -> bool
+            where
+                Self: Sized,
+                F: FnMut(Self::Item) -> bool,
+            {
+                while let Some(x) = self.next() {
+                    if !f(x) {
+                        return false;
+                    }
+                }
+                true
+            }
+
+            // We override the default implementation, which uses `try_fold`,
+            // because this simple implementation generates less LLVM IR and is
+            // faster to compile.
+            #[inline]
+            fn any<F>(&mut self, mut f: F) -> bool
+            where
+                Self: Sized,
+                F: FnMut(Self::Item) -> bool,
+            {
+                while let Some(x) = self.next() {
+                    if f(x) {
+                        return true;
+                    }
+                }
+                false
+            }
+
+            // We override the default implementation, which uses `try_fold`,
+            // because this simple implementation generates less LLVM IR and is
+            // faster to compile.
+            #[inline]
+            fn find<P>(&mut self, mut predicate: P) -> Option<Self::Item>
+            where
+                Self: Sized,
+                P: FnMut(&Self::Item) -> bool,
+            {
+                while let Some(x) = self.next() {
+                    if predicate(&x) {
+                        return Some(x);
+                    }
+                }
+                None
+            }
+
+            // We override the default implementation, which uses `try_fold`,
+            // because this simple implementation generates less LLVM IR and is
+            // faster to compile.
+            #[inline]
+            fn find_map<B, F>(&mut self, mut f: F) -> Option<B>
+            where
+                Self: Sized,
+                F: FnMut(Self::Item) -> Option<B>,
+            {
+                while let Some(x) = self.next() {
+                    if let Some(y) = f(x) {
+                        return Some(y);
+                    }
+                }
+                None
+            }
+
+            // We override the default implementation, which uses `try_fold`,
+            // because this simple implementation generates less LLVM IR and is
+            // faster to compile. Also, the `assume` avoids a bounds check.
             #[inline]
             #[rustc_inherit_overflow_checks]
             fn position<P>(&mut self, mut predicate: P) -> Option<usize> where
                 Self: Sized,
                 P: FnMut(Self::Item) -> bool,
             {
-                // The addition might panic on overflow.
                 let n = len!(self);
-                self.try_fold(0, move |i, x| {
-                    if predicate(x) { Err(i) }
-                    else { Ok(i + 1) }
-                }).err()
-                    .map(|i| {
+                let mut i = 0;
+                while let Some(x) = self.next() {
+                    if predicate(x) {
                         unsafe { assume(i < n) };
-                        i
-                    })
+                        return Some(i);
+                    }
+                    i += 1;
+                }
+                None
             }
 
+            // We override the default implementation, which uses `try_fold`,
+            // because this simple implementation generates less LLVM IR and is
+            // faster to compile. Also, the `assume` avoids a bounds check.
             #[inline]
             fn rposition<P>(&mut self, mut predicate: P) -> Option<usize> where
                 P: FnMut(Self::Item) -> bool,
                 Self: Sized + ExactSizeIterator + DoubleEndedIterator
             {
-                // No need for an overflow check here, because `ExactSizeIterator`
                 let n = len!(self);
-                self.try_rfold(n, move |i, x| {
-                    let i = i - 1;
-                    if predicate(x) { Err(i) }
-                    else { Ok(i) }
-                }).err()
-                    .map(|i| {
+                let mut i = n;
+                while let Some(x) = self.next_back() {
+                    i -= 1;
+                    if predicate(x) {
                         unsafe { assume(i < n) };
-                        i
-                    })
+                        return Some(i);
+                    }
+                }
+                None
             }
 
             $($extra)*
