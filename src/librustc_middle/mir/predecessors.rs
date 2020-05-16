@@ -23,13 +23,13 @@ impl PredecessorCache {
     }
 
     /// Invalidates the predecessor cache.
-    ///
-    /// Invalidating the predecessor cache requires mutating the MIR, which in turn requires a
-    /// unique reference (`&mut`) to the `mir::Body`. Because of this, we can assume that all
-    /// callers of `invalidate` have a unique reference to the MIR and thus to the predecessor
-    /// cache. This means we never need to do synchronization when `invalidate` is called.
     #[inline]
     pub(super) fn invalidate(&mut self) {
+        // Invalidating the predecessor cache requires mutating the MIR, which in turn requires a
+        // unique reference (`&mut`) to the `mir::Body`. Because of this, we can assume that all
+        // callers of `invalidate` have a unique reference to the MIR and thus to the predecessor
+        // cache. This means we never need to do synchronization when `invalidate` is called, we can
+        // simply reinitialize the `OnceCell`.
         self.cache = OnceCell::new();
     }
 
