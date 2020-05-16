@@ -2527,6 +2527,14 @@ function getSearchElement() {
         });
     }
 
+    var params = getQueryStringParams();
+    if (params && params.search) {
+        search_input.value = params.search;
+        var search = getSearchElement();
+        search.innerHTML = "<h3 style=\"text-align: center;\">Loading search results...</h3>";
+        showSearchResults(search);
+    }
+
     function putBackSearch(search_input) {
         var search = getSearchElement();
         if (search_input.value !== "" && hasClass(search, "hidden")) {
@@ -2543,13 +2551,6 @@ function getSearchElement() {
         search_input.onfocus = function() {
             putBackSearch(this);
         };
-    }
-
-    var params = getQueryStringParams();
-    if (params && params.search) {
-        var search = getSearchElement();
-        search.innerHTML = "<h3 style=\"text-align: center;\">Loading search results...</h3>";
-        showSearchResults(search);
     }
 
     var sidebar_menu = document.getElementsByClassName("sidebar-menu")[0];
