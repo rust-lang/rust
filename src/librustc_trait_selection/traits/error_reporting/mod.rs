@@ -1655,7 +1655,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                     {
                         let (span, separator) = match param.bounds {
                             [] => (span.shrink_to_hi(), ":"),
-                            [.., bound] => (bound.span().shrink_to_hi(), " + "),
+                            [.., bound] => (bound.span().shrink_to_hi(), " +"),
                         };
                         err.span_suggestion_verbose(
                             span,
