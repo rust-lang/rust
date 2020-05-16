@@ -31,8 +31,8 @@ LL | fn f4<X: T>(x: &X) {
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
 help: consider relaxing the implicit `Sized` restriction
    |
-LL | fn f4<X: T +  ?Sized>(x: &X) {
-   |            ^^^^^^^^^
+LL | fn f4<X: T + ?Sized>(x: &X) {
+   |            ^^^^^^^^
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
   --> $DIR/unsized3.rs:33:8
