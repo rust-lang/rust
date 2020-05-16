@@ -237,7 +237,10 @@ error[E0277]: the `?` operator can only be applied to values that implement `std
   --> $DIR/incorrect-syntax-suggestions.rs:16:19
    |
 LL |     let _ = await bar()?;
-   |                   ^^^^^^ the `?` operator cannot be applied to type `impl std::future::Future`
+   |                   ^^^^^^
+   |                   |
+   |                   the `?` operator cannot be applied to type `impl std::future::Future`
+   |                   help: consider using `.await` here: `bar().await?`
    |
    = help: the trait `std::ops::Try` is not implemented for `impl std::future::Future`
    = note: required by `std::ops::Try::into_result`
