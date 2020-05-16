@@ -49,7 +49,7 @@ use rustc_ast_pretty::pprust;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{struct_span_err, Applicability};
+use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId, CRATE_DEF_INDEX};
@@ -78,6 +78,7 @@ macro_rules! arena_vec {
     });
 }
 
+mod diagnostics;
 mod expr;
 mod item;
 mod pat;
@@ -1136,70 +1137,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         }
                     }
                 }
-                // Possible `a + b` expression that should be surrounded in braces but was parsed
-                // as trait bounds in a trait object. Suggest surrounding with braces.
-                if let TyKind::TraitObject(ref bounds, TraitObjectSyntax::None) = ty.kind {
-                    // We cannot disambiguate multi-segment paths right now as that requires type
-                    // checking.
-                    let const_expr_without_braces = bounds.iter().all(|bound| match bound {
-                        GenericBound::Trait(
-                            PolyTraitRef {
-                                bound_generic_params,
-                                trait_ref: TraitRef { path, .. },
-                                ..
-                            },
-                            TraitBoundModifier::None,
-                        ) if bound_generic_params.is_empty()
-                            && path.segments.len() == 1
-                            && path.segments[0].args.is_none() =>
-                        {
-                            let part_res = self.resolver.get_partial_res(path.segments[0].id);
-                            match part_res.map(|r| r.base_res()) {
-                                Some(res) => {
-                                    !res.matches_ns(Namespace::TypeNS)
-                                        && res.matches_ns(Namespace::ValueNS)
-                                }
-                                None => true,
-                            }
-                        }
-                        _ => false,
-                    });
-                    if const_expr_without_braces {
-                        self.sess.struct_span_err(ty.span, "likely `const` expression parsed as trait bounds")
-                            .span_label(ty.span, "parsed as trait bounds but traits weren't found")
-                            .multipart_suggestion(
-                                "if you meant to write a `const` expression, surround the expression with braces",
-                                vec![
-                                    (ty.span.shrink_to_lo(), "{ ".to_string()),
-                                    (ty.span.shrink_to_hi(), " }".to_string()),
-                                ],
-                                Applicability::MachineApplicable,
-                            )
-                            .emit();
-
-                        let parent_def_id = self.current_hir_id_owner.last().unwrap().0;
-                        let node_id = self.resolver.next_node_id();
-                        // Add a definition for the in-band const def.
-                        self.resolver.definitions().create_def_with_parent(
-                            parent_def_id,
-                            node_id,
-                            DefPathData::AnonConst,
-                            ExpnId::root(),
-                            ty.span,
-                        );
-
-                        let path_expr = Expr {
-                            id: ty.id,
-                            kind: ExprKind::Err,
-                            span: ty.span,
-                            attrs: AttrVec::new(),
-                        };
-                        let value = self.with_new_scopes(|this| hir::AnonConst {
-                            hir_id: this.lower_node_id(node_id),
-                            body: this.lower_const_body(path_expr.span, Some(&path_expr)),
-                        });
-                        return GenericArg::Const(ConstArg { value, span: ty.span });
-                    }
+                if let Some(arg) = self.detect_const_expr_as_trait_object(ty) {
+                    // Possible `a + b` expression that should be surrounded in braces but was
+                    // parsed as trait bounds in a trait object. Suggest surrounding with braces
+                    // and recover by returning err expression const argument.
+                    return arg;
                 }
                 GenericArg::Type(self.lower_ty_direct(&ty, itctx))
             }
