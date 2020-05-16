@@ -3235,7 +3235,16 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, DIFFE_TYPE retTyp
       MallocTypes.push_back(a->getType());
   }
 
-  StructType* tapeType = StructType::get(nf->getContext(), MallocTypes);
+  Type* tapeType = StructType::get(nf->getContext(), MallocTypes);
+
+  bool removeTapeStruct = MallocTypes.size() == 1;
+  if (removeTapeStruct) {
+    tapeType = MallocTypes[0];
+
+    for(auto &a : cachedfunctions.find(tup)->second.tapeIndices) {
+      a.second = -1;
+    }
+  }
 
   bool recursive = cachedfunctions.find(tup)->second.fn->getNumUses() > 0 || forceAnonymousTape;
   bool noTape = MallocTypes.size() == 0 && !forceAnonymousTape;
@@ -3344,20 +3353,24 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, DIFFE_TYPE retTyp
           ib.getInt32(0),
           ib.getInt32(returnMapping.find(AugmentedStruct::Tape)->second),
       };
-      if (removeStruct) { Idxs.erase(Idxs.begin()+1); }
       assert(malloccall);
       assert(ret);
-      auto gep = ib.CreateGEP(ret, Idxs, "");
-      cast<GetElementPtrInst>(gep)->setIsInBounds(true);
+      Value* gep = ret;
+      if (!removeStruct) {
+        gep = ib.CreateGEP(ret, Idxs, "");
+        cast<GetElementPtrInst>(gep)->setIsInBounds(true);
+      }
       ib.CreateStore(malloccall, gep);
     } else {
       std::vector<Value *> Idxs = {
           ib.getInt32(0),
           ib.getInt32(returnMapping.find(AugmentedStruct::Tape)->second),
       };
-      if (removeStruct) { Idxs.erase(Idxs.begin()+1); }
-      tapeMemory = ib.CreateGEP(ret, Idxs, "");
-      cast<GetElementPtrInst>(tapeMemory)->setIsInBounds(true);
+      tapeMemory = ret;
+      if (!removeStruct) {
+        tapeMemory = ib.CreateGEP(ret, Idxs, "");
+        cast<GetElementPtrInst>(tapeMemory)->setIsInBounds(true);
+      }
     }
 
     unsigned i=0;
@@ -3365,12 +3378,15 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, DIFFE_TYPE retTyp
         if (!isa<UndefValue>(v)) {
             //llvm::errs() << "v: " << *v << "VMap[v]: " << *VMap[v] << "\n";
             IRBuilder <>ib(cast<Instruction>(VMap[v])->getNextNode());
-            Value *Idxs[] = {
+            std::vector<Value*> Idxs = {
               ib.getInt32(0),
               ib.getInt32(i)
             };
-            auto gep = ib.CreateGEP(tapeMemory, Idxs, "");
-            cast<GetElementPtrInst>(gep)->setIsInBounds(true);
+            Value* gep = tapeMemory;
+            if (!removeTapeStruct) {
+              gep = ib.CreateGEP(tapeMemory, Idxs, "");
+              cast<GetElementPtrInst>(gep)->setIsInBounds(true);
+            }
             ib.CreateStore(VMap[v], gep);
         }
         i++;
@@ -3923,8 +3939,6 @@ Function* CreatePrimalAndGradient(Function* todiff, DIFFE_TYPE retType, const st
     // TODO VERIFY THIS
     if (augmenteddata->tapeType && augmenteddata->tapeType != additionalValue->getType() ) {
         IRBuilder<> BuilderZ(gutils->inversionAllocs);
-        llvm::errs() << *gutils->newFunc->getParent() << "\n";
-        llvm::errs() << "additionalValue: " << *additionalValue << " tapeType: " << *augmenteddata->tapeType << "\n";
         //assert(PointerType::getUnqual(augmenteddata->tapeType) == additionalValue->getType());
         //auto tapep = additionalValue;
         auto tapep = BuilderZ.CreatePointerCast(additionalValue, PointerType::getUnqual(augmenteddata->tapeType));

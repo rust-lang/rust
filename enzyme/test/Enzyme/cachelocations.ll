@@ -35,16 +35,16 @@ declare dso_local double @__enzyme_autodiff(i8*, i1 zeroext, double*, double*)
 
 ; CHECK: define internal void @diffef(i1 zeroext %z, double* nocapture %x, double* nocapture %"x'") {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %[[augsubf:.+]] = call { double } @augmented_subf(i1 %z, double* %x, double* %"x'")
+; CHECK-NEXT:   %[[augsubf:.+]] = call fast double @augmented_subf(i1 %z, double* %x, double* %"x'")
 ; CHECK-NEXT:   %arrayidx = getelementptr inbounds double, double* %x, i64 1
 ; CHECK-NEXT:   store double 2.000000e+00, double* %arrayidx, align 8
 ; CHECK-NEXT:   %[[arrayidxipge:.+]] = getelementptr inbounds double, double* %"x'", i64 1
 ; CHECK-NEXT:   store double 0.000000e+00, double* %[[arrayidxipge]], align 8
-; CHECK-NEXT:   call void @diffesubf(i1 %z, double* nonnull %x, double* %"x'", { double } %[[augsubf]])
+; CHECK-NEXT:   call void @diffesubf(i1 %z, double* nonnull %x, double* %"x'", double %[[augsubf]])
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal { double } @augmented_subf(i1 zeroext %z, double* nocapture %x, double* nocapture %"x'")
+; CHECK: define internal double @augmented_subf(i1 zeroext %z, double* nocapture %x, double* nocapture %"x'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   br i1 %z, label %if.then, label %if.end
 
@@ -56,11 +56,10 @@ declare dso_local double @__enzyme_autodiff(i8*, i1 zeroext, double*, double*)
 
 ; CHECK: if.end:                                           ; preds = %if.then, %entry
 ; CHECK-NEXT:   %[[val:.+]] = phi double [ %0, %if.then ], [ undef, %entry ]
-; CHECK-NEXT:   %[[toret:.+]] = insertvalue { double } undef, double %[[val]], 0
-; CHECK-NEXT:   ret { double } %[[toret]]
+; CHECK-NEXT:   ret double %[[val]]
 ; CHECK-NEXT: }
 
-; CHECK: define internal void @diffesubf(i1 zeroext %z, double* nocapture %x, double* nocapture %"x'", { double } %tapeArg)
+; CHECK: define internal void @diffesubf(i1 zeroext %z, double* nocapture %x, double* nocapture %"x'", double)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   br i1 %z, label %invertif.then, label %invertentry
 
@@ -68,14 +67,13 @@ declare dso_local double @__enzyme_autodiff(i8*, i1 zeroext, double*, double*)
 ; CHECK-NEXT:   ret void
 
 ; CHECK: invertif.then:                                    ; preds = %entry
-; CHECK-NEXT:   %0 = load double, double* %"x'"
+; CHECK-NEXT:   %[[px:.+]] = load double, double* %"x'"
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"x'", align 8
-; CHECK-NEXT:   %[[uw:.+]] = extractvalue { double } %tapeArg, 0
-; CHECK-NEXT:   %m0diffe = fmul fast double %0, %[[uw]]
-; CHECK-NEXT:   %m1diffe = fmul fast double %0, %[[uw]]
-; CHECK-NEXT:   %1 = fadd fast double %m0diffe, %m1diffe
-; CHECK-NEXT:   %2 = load double, double* %"x'"
-; CHECK-NEXT:   %3 = fadd fast double %2, %1
-; CHECK-NEXT:   store double %3, double* %"x'"
+; CHECK-NEXT:   %m0diffe = fmul fast double %[[px]], %0
+; CHECK-NEXT:   %m1diffe = fmul fast double %[[px]], %0
+; CHECK-NEXT:   %[[de:.+]] = fadd fast double %m0diffe, %m1diffe
+; CHECK-NEXT:   %[[ppx:.+]] = load double, double* %"x'"
+; CHECK-NEXT:   %[[postx:.+]] = fadd fast double %[[ppx]], %[[de]]
+; CHECK-NEXT:   store double %[[postx]], double* %"x'"
 ; CHECK-NEXT:   br label %invertentry
 ; CHECK-NEXT: }

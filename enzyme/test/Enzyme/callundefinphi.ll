@@ -580,7 +580,7 @@ attributes #22 = { readnone speculatable }
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %false = call i1 @falser()
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 128)
-; CHECK-NEXT:   %_malloccache = bitcast i8* %malloccall to { double* }*
+; CHECK-NEXT:   %_malloccache = bitcast i8* %malloccall to double**
 ; CHECK-NEXT:   br label %for.cond1.preheader
 
 ; CHECK: for.cond1.preheader:                              ; preds = %for.cond.cleanup4, %entry
@@ -599,13 +599,13 @@ attributes #22 = { readnone speculatable }
 ; CHECK-NEXT:   br i1 %false, label %if.exit, label %if.end.i.i
 
 ; CHECK: if.end.i.i:                                       ; preds = %for.body5
-; CHECK-NEXT:   %call2.i.i.i_augmented = call { { double* }, double } @augmented_sumsq(double* %add.ptr, double* %"add.ptr'ipg")
-; CHECK-NEXT:   %[[exttape:.+]] = extractvalue { { double* }, double } %call2.i.i.i_augmented, 0
+; CHECK-NEXT:   %call2.i.i.i_augmented = call { double*, double } @augmented_sumsq(double* %add.ptr, double* %"add.ptr'ipg")
+; CHECK-NEXT:   %[[exttape:.+]] = extractvalue { double*, double } %call2.i.i.i_augmented, 0
 ; CHECK-NEXT:   %[[muliv:.+]] = mul nuw nsw i64 %iv1, 4
 ; CHECK-NEXT:   %[[addiv:.+]] = add nuw nsw i64 %iv, %[[muliv]]
-; CHECK-NEXT:   %[[ge:.+]] = getelementptr inbounds { double* }, { double* }* %_malloccache, i64 %[[addiv]]
-; CHECK-NEXT:   store { double* } %[[exttape]], { double* }* %[[ge]]
-; CHECK-NEXT:   %call2.i.i.i = extractvalue { { double* }, double } %call2.i.i.i_augmented, 1
+; CHECK-NEXT:   %[[ge:.+]] = getelementptr inbounds double*, double** %_malloccache, i64 %[[addiv]]
+; CHECK-NEXT:   store double* %[[exttape]], double** %[[ge]]
+; CHECK-NEXT:   %call2.i.i.i = extractvalue { double*, double } %call2.i.i.i_augmented, 1
 ; CHECK-NEXT:   br label %if.exit
 
 ; CHECK: if.exit:                                          ; preds = %if.end.i.i, %for.body5
@@ -644,9 +644,9 @@ attributes #22 = { readnone speculatable }
 ; CHECK-NEXT:   %"add.ptr'ipg_unwrap" = getelementptr inbounds double, double* %"w9'", i64 %"iv1'ac.0"
 ; CHECK-NEXT:   %[[mulniv:.+]] = mul nuw nsw i64 %"iv1'ac.0", 4
 ; CHECK-NEXT:   %[[addniv:.+]] = add nuw nsw i64 %"iv'ac.0", %[[mulniv]]
-; CHECK-NEXT:   %[[ngep:.+]] = getelementptr inbounds { double* }, { double* }* %_malloccache, i64 %[[addniv]]
-; CHECK-NEXT:   %[[loadtape:.+]] = load { double* }, { double* }* %[[ngep]]
-; CHECK-NEXT:   call void @diffesumsq(double* %add.ptr_unwrap, double* %"add.ptr'ipg_unwrap", double %[[nv:.+]], { double* } %[[loadtape]])
+; CHECK-NEXT:   %[[ngep:.+]] = getelementptr inbounds double*, double** %_malloccache, i64 %[[addniv]]
+; CHECK-NEXT:   %[[loadtape:.+]] = load double*, double** %[[ngep]]
+; CHECK-NEXT:   call void @diffesumsq(double* %add.ptr_unwrap, double* %"add.ptr'ipg_unwrap", double %[[nv:.+]], double* %[[loadtape]])
 ; CHECK-NEXT:   br label %invertfor.body5
 
 ; CHECK: invertif.exit:                                    ; preds = %invertfor.cond.cleanup4, %incinvertfor.body5
@@ -667,14 +667,13 @@ attributes #22 = { readnone speculatable }
 ; CHECK-NEXT:   br label %invertif.exit
 ; CHECK-NEXT: }
 
-; CHECK: define internal { { double* }, double } @augmented_sumsq(double* %a3, double* %"a3'")
+; CHECK: define internal { double*, double } @augmented_sumsq(double* %a3, double* %"a3'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = alloca { { double* }, double }
-; CHECK-NEXT:   %1 = getelementptr inbounds { { double* }, double }, { { double* }, double }* %0, i32 0, i32 0
+; CHECK-NEXT:   %0 = alloca { double*, double }
+; CHECK-NEXT:   %1 = getelementptr inbounds { double*, double }, { double*, double }* %0, i32 0, i32 0
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 32)
 ; CHECK-NEXT:   %a6_malloccache = bitcast i8* %malloccall to double*
-; CHECK-NEXT:   %2 = getelementptr inbounds { double* }, { double* }* %1, i32 0, i32 0
-; CHECK-NEXT:   store double* %a6_malloccache, double** %2
+; CHECK-NEXT:   store double* %a6_malloccache, double** %1
 ; CHECK-NEXT:   br label %for.body
 
 ; CHECK: for.body:                                         ; preds = %for.body, %entry
@@ -692,15 +691,14 @@ attributes #22 = { readnone speculatable }
 ; CHECK-NEXT:   br i1 %cmp, label %for.body, label %for.cond.cleanup8
 
 ; CHECK: for.cond.cleanup8:                                ; preds = %for.body
-; CHECK-NEXT:   %[[gepa:.+]] = getelementptr inbounds { { double* }, double }, { { double* }, double }* %0, i32 0, i32 1
+; CHECK-NEXT:   %[[gepa:.+]] = getelementptr inbounds { double*, double }, { double*, double }* %0, i32 0, i32 1
 ; CHECK-NEXT:   store double %add.i, double* %[[gepa]]
-; CHECK-NEXT:   %[[ret:.+]] = load { { double* }, double }, { { double* }, double }* %0
-; CHECK-NEXT:   ret { { double* }, double } %[[ret]]
+; CHECK-NEXT:   %[[ret:.+]] = load { double*, double }, { double*, double }* %0
+; CHECK-NEXT:   ret { double*, double } %[[ret]]
 ; CHECK-NEXT: }
 
-; CHECK: define internal void @diffesumsq(double* %a3, double* %"a3'", double %differeturn, { double* } %tapeArg)
+; CHECK: define internal void @diffesumsq(double* %a3, double* %"a3'", double %differeturn, double* %tapeArg)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = extractvalue { double* } %tapeArg, 0
 ; CHECK-NEXT:   br label %for.body
 
 ; CHECK: for.body:                                         ; preds = %for.body, %entry
@@ -710,13 +708,13 @@ attributes #22 = { readnone speculatable }
 ; CHECK-NEXT:   br i1 %cmp, label %for.body, label %invertfor.body
 
 ; CHECK: invertentry:                                      ; preds = %invertfor.body
-; CHECK-NEXT:   %1 = bitcast double* %0 to i8*
-; CHECK-NEXT:   tail call void @free(i8* nonnull %1)
+; CHECK-NEXT:   %[[tofree:.+]] = bitcast double* %tapeArg to i8*
+; CHECK-NEXT:   tail call void @free(i8* nonnull %[[tofree]])
 ; CHECK-NEXT:   ret void
 
 ; CHECK: invertfor.body:                                   ; preds = %for.body, %incinvertfor.body
 ; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %[[subidx:.+]], %incinvertfor.body ], [ 3, %for.body ]
-; CHECK-NEXT:   %[[tapeptr:.+]] = getelementptr inbounds double, double* %0, i64 %"iv'ac.0"
+; CHECK-NEXT:   %[[tapeptr:.+]] = getelementptr inbounds double, double* %tapeArg, i64 %"iv'ac.0"
 ; CHECK-NEXT:   %[[cached:.+]] = load double, double* %[[tapeptr]]
 ; CHECK-NEXT:   %[[fmul:.+]] = fmul fast double %differeturn, %[[cached]]
 ; CHECK-NEXT:   %[[dif:.+]] = fadd fast double %[[fmul]], %[[fmul]]

@@ -56,11 +56,11 @@ entry:
 ; CHECK: define internal i8* @augmented_indirect(double* %x, double* %"x'", double* %dxdt, double* %"dxdt'", double %t) {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 8)
+; CHECK-NEXT:   %tapemem = bitcast i8* %malloccall to double**
 ; CHECK-NEXT:   %a1 = load double, double* %x, align 8
 ; CHECK-NEXT:   %call1_augmented = call { double*, double* } @augmented_bad(double* %dxdt, double* %"dxdt'")
 ; CHECK-NEXT:   %antiptr_call1 = extractvalue { double*, double* } %call1_augmented, 1
-; CHECK-NEXT:   %0 = bitcast i8* %malloccall to double**
-; CHECK-NEXT:   store double* %antiptr_call1, double** %0
+; CHECK-NEXT:   store double* %antiptr_call1, double** %tapemem
 ; CHECK-NEXT:   %call1 = extractvalue { double*, double* } %call1_augmented, 0
 ; CHECK-NEXT:   store double %a1, double* %call1, align 8
 ; CHECK-NEXT:   ret i8* %malloccall
@@ -69,10 +69,10 @@ entry:
 ; CHECK: define internal { double } @diffeindirect(double* %x, double* %"x'", double* %dxdt, double* %"dxdt'", double %t, i8* %tapeArg) {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[elt1:.+]] = bitcast i8* %tapeArg to double**
-; CHECK-NEXT:   %.unpack = load double*, double** %[[elt1]], align 8
+; CHECK-NEXT:   %[[unpack:.+]] = load double*, double** %[[elt1]], align 8
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %tapeArg)
-; CHECK-NEXT:   %[[loadc:.+]] = load double, double* %.unpack, align 8
-; CHECK-NEXT:   store double 0.000000e+00, double* %.unpack, align 8
+; CHECK-NEXT:   %[[loadc:.+]] = load double, double* %[[unpack]], align 8
+; CHECK-NEXT:   store double 0.000000e+00, double* %[[unpack]], align 8
 ; CHECK-NEXT:   call void @diffebad(double* %dxdt, double* %"dxdt'")
 ; CHECK-NEXT:   %[[xpl:.+]] = load double, double* %"x'", align 8
 ; CHECK-NEXT:   %[[fadd:.+]] = fadd fast double %[[xpl]], %[[loadc]]

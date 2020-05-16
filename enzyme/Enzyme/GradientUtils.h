@@ -381,7 +381,7 @@ public:
     llvm::errs() << "end scope\n";
   }
 
-  Instruction* createAntiMalloc(CallInst *call, unsigned idx) {
+  Value* createAntiMalloc(CallInst *call, unsigned idx) {
     assert(call->getParent()->getParent() == newFunc);
     PHINode* placeholder = cast<PHINode>(invertedPointers[getOriginal(call)]);
 
@@ -393,7 +393,7 @@ public:
 	for(unsigned i=0;i < call->getNumArgOperands(); i++) {
 		args.push_back(call->getArgOperand(i));
 	}
-    Instruction* anti = bb.CreateCall(call->getCalledFunction(), args, call->getName()+"'mi");
+    Value* anti = bb.CreateCall(call->getCalledFunction(), args, call->getName()+"'mi");
     cast<CallInst>(anti)->setAttributes(call->getAttributes());
     cast<CallInst>(anti)->setCallingConv(call->getCallingConv());
     cast<CallInst>(anti)->setTailCallKind(call->getTailCallKind());
@@ -407,7 +407,7 @@ public:
     replaceAWithB(placeholder, anti);
     erase(placeholder);
 
-    anti = cast<Instruction>(addMalloc(bb, anti, idx));
+    anti = addMalloc(bb, anti, idx);
     invertedPointers[getOriginal(call)] = anti;
 
     if (tape == nullptr) {
@@ -474,7 +474,7 @@ public:
 
     if (tape) {
       if (idx >=0 && !tape->getType()->isStructTy()) {
-          llvm::errs() << "addMalloc incorrect tape type: " << *tape << "\n";
+          llvm::errs() << "addMalloc incorrect tape type: " << *tape << " idx: " << idx << "\n";
       }
       assert(idx < 0 || tape->getType()->isStructTy());
       if (idx >= 0 && (unsigned)idx >= cast<StructType>(tape->getType())->getNumElements()) {

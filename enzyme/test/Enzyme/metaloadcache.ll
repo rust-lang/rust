@@ -31,51 +31,44 @@ entry:
 
 ; CHECK: define internal void @diffematvec(double* %this, double* %"this'", i64* %d0, i64* %"d0'") {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %call_augmented = call { { { double } }, double } @augmented_metaloader(double* %this, double* %"this'")
-; CHECK-NEXT:   %[[eca:.+]] = extractvalue { { { double } }, double } %call_augmented, 0
-; CHECK-NEXT:   %call = extractvalue { { { double } }, double } %call_augmented, 1
+; CHECK-NEXT:   %call_augmented = call { double, double } @augmented_metaloader(double* %this, double* %"this'")
+; CHECK-NEXT:   %[[eca:.+]] = extractvalue { double, double } %call_augmented, 0
+; CHECK-NEXT:   %call = extractvalue { double, double } %call_augmented, 1
 ; CHECK-NEXT:   store double %call, double* %this, align 8
 ; CHECK-NEXT:   %[[dth:.+]] = load double, double* %"this'"
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"this'", align 8
-; CHECK-NEXT:   call void @diffemetaloader(double* %this, double* %"this'", double %[[dth]], { { double } } %[[eca]])
+; CHECK-NEXT:   call void @diffemetaloader(double* %this, double* %"this'", double %[[dth]], double %[[eca]])
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal { { double }, double } @augmented_loader(double* %a, double* %"a'") {
+; CHECK: define internal { double, double } @augmented_loader(double* %a, double* %"a'") {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = load double, double* %a, align 8
 ; CHECK-NEXT:   %mul = fmul double %0, %0
-; CHECK-NEXT:   %.fca.0.0.insert = insertvalue { { double }, double } undef, double %0, 0, 0
-; CHECK-NEXT:   %.fca.1.insert = insertvalue { { double }, double } %.fca.0.0.insert, double %mul, 1
-; CHECK-NEXT:   ret { { double }, double } %.fca.1.insert
+; CHECK-NEXT:   %.fca.0.insert = insertvalue { double, double } undef, double %0, 0
+; CHECK-NEXT:   %.fca.1.insert = insertvalue { double, double } %.fca.0.insert, double %mul, 1
+; CHECK-NEXT:   ret { double, double } %.fca.1.insert
 ; CHECK-NEXT: }
 
-; CHECK: define internal { { { double } }, double } @augmented_metaloader(double* %a, double* %"a'") {
+; CHECK: define internal { double, double } @augmented_metaloader(double* %a, double* %"a'") {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %call_augmented = call { { double }, double } @augmented_loader(double* %a, double* %"a'")
-; CHECK-NEXT:   %subcache = extractvalue { { double }, double } %call_augmented, 0
-; CHECK-NEXT:   %subcache.fca.0.extract = extractvalue { double } %subcache, 0
-; CHECK-NEXT:   %call = extractvalue { { double }, double } %call_augmented, 1
-; CHECK-NEXT:   %.fca.0.0.0.insert = insertvalue { { { double } }, double } undef, double %subcache.fca.0.extract, 0, 0, 0
-; CHECK-NEXT:   %.fca.1.insert = insertvalue { { { double } }, double } %.fca.0.0.0.insert, double %call, 1
-; CHECK-NEXT:   ret { { { double } }, double } %.fca.1.insert
+; CHECK-NEXT:   %call_augmented = call { double, double } @augmented_loader(double* %a, double* %"a'")
+; CHECK-NEXT:   ret { double, double } %call_augmented
 ; CHECK-NEXT: }
 
-; CHECK: define internal void @diffemetaloader(double* %a, double* %"a'", double %differeturn, { { double } } %tapeArg) {
+; CHECK: define internal void @diffemetaloader(double* %a, double* %"a'", double %differeturn, double %[[ev:.+]]) {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %[[ev:.+]] = extractvalue { { double } } %tapeArg, 0
-; CHECK-NEXT:   call void @diffeloader(double* %a, double* %"a'", double %differeturn, { double } %[[ev]])
+; CHECK-NEXT:   call void @diffeloader(double* %a, double* %"a'", double %differeturn, double %[[ev]])
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal void @diffeloader(double* %a, double* %"a'", double %differeturn, { double } %tapeArg) {
+; CHECK: define internal void @diffeloader(double* %a, double* %"a'", double %differeturn, double) {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %_fromtape_unwrap = extractvalue { double } %tapeArg, 0
-; CHECK-NEXT:   %m0diffe = fmul fast double %differeturn, %_fromtape_unwrap
-; CHECK-NEXT:   %m1diffe = fmul fast double %differeturn, %_fromtape_unwrap
-; CHECK-NEXT:   %0 = fadd fast double %m0diffe, %m1diffe
-; CHECK-NEXT:   %1 = load double, double* %"a'"
-; CHECK-NEXT:   %2 = fadd fast double %1, %0
-; CHECK-NEXT:   store double %2, double* %"a'"
+; CHECK-NEXT:   %m0diffe = fmul fast double %differeturn, %0
+; CHECK-NEXT:   %m1diffe = fmul fast double %differeturn, %0
+; CHECK-NEXT:   %[[de:.+]] = fadd fast double %m0diffe, %m1diffe
+; CHECK-NEXT:   %[[pra:.+]] = load double, double* %"a'"
+; CHECK-NEXT:   %[[pa:.+]] = fadd fast double %[[pra]], %[[de]]
+; CHECK-NEXT:   store double %[[pa]], double* %"a'"
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

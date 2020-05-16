@@ -142,10 +142,9 @@ attributes #5 = { nounwind }
 ; TODO note don't need to do these stores for known pointers
 ; CHECK-NEXT:  store double* null, double** %"array'ipa.i", align 8
 ; CHECK-NEXT:  %[[aug:.+]] = call fastcc i8* @augmented_allocateAndSet(double** nonnull %array.i, double** nonnull %"array'ipa.i", double %x, i32 %n)
-; CHECK-NEXT:  %[[oldret:.+]] = insertvalue { i8* } undef, i8* %[[aug]], 0
 ; CHECK-NEXT:  %"'ipl.i" = load double*, double** %"array'ipa.i", align 8
 ; CHECK-NEXT:  tail call fastcc void @diffeget(double* %"'ipl.i")
-; CHECK-NEXT:  %[[ret:.+]] = tail call fastcc double @diffeallocateAndSet(i32 %n, { i8* } %[[oldret]])
+; CHECK-NEXT:  %[[ret:.+]] = tail call fastcc double @diffeallocateAndSet(i32 %n, i8* nonnull %[[aug]])
 ; CHECK-NEXT:  call void @llvm.lifetime.end.p0i8(i64 8, i8* nonnull %[[api8]])
 ; CHECK-NEXT:  call void @llvm.lifetime.end.p0i8(i64 8, i8* nonnull %[[ai8]])
 ; CHECK-NEXT:  ret double %[[ret]]
@@ -160,7 +159,7 @@ attributes #5 = { nounwind }
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}fastcc i8* @augmented_allocateAndSet(double** nocapture %arrayp, double** nocapture %"arrayp'", double %x, i32 %n)
+; CHECK: define internal {{(dso_local )?}}fastcc nonnull i8* @augmented_allocateAndSet(double** nocapture %arrayp, double** nocapture %"arrayp'", double %x, i32 %n)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %conv = zext i32 %n to i64
 ; CHECK-NEXT:   %mul = shl nuw nsw i64 %conv, 3
@@ -177,9 +176,8 @@ attributes #5 = { nounwind }
 ; CHECK-NEXT:   ret i8* %"call'mi"
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}fastcc double @diffeallocateAndSet(i32 %n, { i8* } %tapeArg)
+; CHECK: define internal {{(dso_local )?}}fastcc double @diffeallocateAndSet(i32 %n, i8* nocapture %[[pointer:.+]])
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %[[pointer:.+]] = extractvalue { i8* } %tapeArg, 0
 ; CHECK-NEXT:   %[[arrayidx:.+]] = getelementptr inbounds i8, i8* %[[pointer]], i64 24
 ; CHECK-NEXT:   %[[ipc:.+]] = bitcast i8* %[[arrayidx]] to double*
 ; CHECK-NEXT:   %[[result:.+]] = load double, double* %[[ipc]], align 8

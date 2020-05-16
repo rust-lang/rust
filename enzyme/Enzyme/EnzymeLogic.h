@@ -80,7 +80,7 @@ class AugmentedReturn {
 public:
     llvm::Function *fn;
     //! return structtype if recursive function
-    llvm::StructType* tapeType;
+    llvm::Type* tapeType;
 
     std::map<std::pair<llvm::Instruction*, CacheType>, int> tapeIndices;
 

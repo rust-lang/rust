@@ -142,10 +142,9 @@ attributes #5 = { nounwind }
 ; CHECK-NEXT:   call void @llvm.lifetime.start.p0i8(i64 8, i8*{{( nonnull)?}} %[[ai8]])
 ; CHECK-NEXT:   store double* null, double** %"array'ipa.i", align 8
 ; CHECK-NEXT:   %[[aug_aas:.+]] = call i8* @augmented_allocateAndSet(double** nonnull %array.i, double** nonnull %"array'ipa.i", double %x, i32 %n)
-; CHECK-NEXT:   %oldret = insertvalue { i8* } undef, i8* %[[aug_aas]], 0
 ; CHECK-NEXT:   %"'ipl.i" = load double*, double** %"array'ipa.i", align 8
 ; CHECK-NEXT:   call void @diffeget(double* %"'ipl.i")
-; CHECK-NEXT:   %[[result:.+]] = call double @diffeallocateAndSet({ i8* } %oldret)
+; CHECK-NEXT:   %[[result:.+]] = call double @diffeallocateAndSet(i8* %[[aug_aas]])
 ; CHECK-NEXT:   call void @llvm.lifetime.end.p0i8(i64 8, i8*{{( nonnull)?}} %[[api8]])
 ; CHECK-NEXT:   call void @llvm.lifetime.end.p0i8(i64 8, i8*{{( nonnull)?}} %[[ai8]])
 ; CHECK-NEXT:   ret double %[[result]]
@@ -177,9 +176,8 @@ attributes #5 = { nounwind }
 ; CHECK-NEXT:   ret i8* %"call'mi"
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}double @diffeallocateAndSet({ i8* } %tapeArg)
+; CHECK: define internal {{(dso_local )?}}double @diffeallocateAndSet(i8* %[[callp:.+]])
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %[[callp:.+]] = extractvalue { i8* } %tapeArg, 0
 ; CHECK-NEXT:   %[[arrayidx:.+]] = getelementptr inbounds i8, i8* %[[callp]], i64 24
 ; CHECK-NEXT:   %[[ipc:.+]] = bitcast i8* %[[arrayidx]] to double*
 ; CHECK-NEXT:   %[[loaded:.+]] = load double, double* %[[ipc]], align 8

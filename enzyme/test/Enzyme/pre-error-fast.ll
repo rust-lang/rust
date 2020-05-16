@@ -76,12 +76,9 @@ exit:                                             ; preds = %end2
 !8 = !{!"any pointer", !4, i64 0}
 !9 = !{!"long", !4, i64 0}
 
-; CHECK: define internal { i64 } @augmented_subfn(double* %place, double* %"place'", i64* %m_rows) {
+; CHECK: define internal i64 @augmented_subfn(double* %place, double* %"place'", i64* %m_rows) {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = alloca { i64 }
 ; CHECK-NEXT:   %rows = load i64, i64* %m_rows, align 8
-; CHECK-NEXT:   %1 = getelementptr inbounds { i64 }, { i64 }* %0, i32 0, i32 0
-; CHECK-NEXT:   store i64 %rows, i64* %1
 ; CHECK-NEXT:   br label %for1
 
 ; CHECK: for1:                                             ; preds = %end2, %entry
@@ -108,13 +105,11 @@ exit:                                             ; preds = %end2
 ; CHECK-NEXT:   br i1 %cond1, label %exit, label %for1
 
 ; CHECK: exit:                                             ; preds = %end2
-; CHECK-NEXT:   %[[ret:.+]] = load { i64 }, { i64 }* %0
-; CHECK-NEXT:   ret { i64 } %[[ret]]
+; CHECK-NEXT:   ret i64 %rows
 ; CHECK-NEXT: }
 
-; CHECK: define internal void @diffesubfn(double* %place, double* %"place'", i64* %m_rows, { i64 } %tapeArg) {
+; CHECK: define internal void @diffesubfn(double* %place, double* %"place'", i64* %m_rows, i64 %rows) {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %rows = extractvalue { i64 } %tapeArg, 0
 ; CHECK-NEXT:   br label %invertend2
 
 ; CHECK: invertentry:                                      ; preds = %invertfor1
@@ -151,7 +146,6 @@ exit:                                             ; preds = %end2
 ; CHECK-NEXT:   %[[ldst:.+]] = load double, double* %[[tostoreipg]], align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %[[tostoreipg:.+]], align 8
 ; CHECK-NEXT:   %[[addde]] = fadd fast double %"add'de.1", %[[ldst]]
-; CHECK-NEXT:   %rows_unwrap = extractvalue { i64 } %tapeArg, 0
-; CHECK-NEXT:   %_unwrap = add i64 %rows_unwrap, -2
+; CHECK-NEXT:   %_unwrap = add i64 %rows, -2
 ; CHECK-NEXT:   br label %invertfor2
 ; CHECK-NEXT: }

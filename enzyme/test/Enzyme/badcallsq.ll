@@ -42,10 +42,10 @@ attributes #1 = { noinline nounwind uwtable }
 
 ; CHECK: define internal {{(dso_local )?}}void @diffef(double* nocapture %x, double* nocapture %"x'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:	%[[augsubf:.+]] = call { double } @augmented_subf(double* %x, double* %"x'")
+; CHECK-NEXT:	%[[augsubf:.+]] = call fast double @augmented_subf(double* %x, double* %"x'")
 ; CHECK-NEXT:	store double 2.000000e+00, double* %x, align 8
 ; CHECK-NEXT:	store double 0.000000e+00, double* %"x'", align 8
-; CHECK-NEXT:	call void @diffesubf(double* nonnull %x, double* %"x'", { double } %[[augsubf]])
+; CHECK-NEXT:	call void @diffesubf(double* nonnull %x, double* %"x'", double %[[augsubf]])
 ; CHECK-NEXT:	ret void
 ; CHECK-NEXT: }
 
@@ -56,27 +56,22 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{ double } @augmented_subf(double* nocapture %x, double* nocapture %"x'")
+; CHECK: define internal {{(dso_local )?}}double @augmented_subf(double* nocapture %x, double* nocapture %"x'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:  %[[alloca:.+]] = alloca { double }
 ; CHECK-NEXT:  %[[loadx:.+]] = load double, double* %x, align 8
-; CHECK-NEXT:  %[[gep1:.+]] = getelementptr inbounds { double }, { double }* %[[alloca]], i32 0, i32 0
-; CHECK-NEXT:  store double %[[loadx]], double* %[[gep1]]
 ; CHECK-NEXT:  %mul = fmul fast double %[[loadx]], %[[loadx]]
 ; CHECK-NEXT:  store double %mul, double* %x, align 8
 ; CHECK-NEXT:  call void @augmented_metasubf(double* %x, double* %"x'")
-; CHECK-NEXT:  %[[ret:.+]] = load { double }, { double }* %[[alloca]]
-; CHECK-NEXT:  ret { double } %[[ret]]
+; CHECK-NEXT:  ret double %[[loadx]]
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}void @diffesubf(double* nocapture %x, double* nocapture %"x'", { double } %tapeArg)
+; CHECK: define internal {{(dso_local )?}}void @diffesubf(double* nocapture %x, double* nocapture %"x'", double)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   call void @diffemetasubf(double* %x, double* %"x'")
 ; CHECK-NEXT:   %[[px:.+]] = load double, double* %"x'"
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"x'"
-; CHECK-NEXT:   %[[nloadx:.+]] = extractvalue { double } %tapeArg, 0
-; CHECK-NEXT:   %m0diffe = fmul fast double %[[px]], %[[nloadx]]
-; CHECK-NEXT:   %m1diffe = fmul fast double %[[px]], %[[nloadx]]
+; CHECK-NEXT:   %m0diffe = fmul fast double %[[px]], %0
+; CHECK-NEXT:   %m1diffe = fmul fast double %[[px]], %0
 ; CHECK-NEXT:   %[[diffe:.+]] = fadd fast double %m0diffe, %m1diffe
 ; CHECK-NEXT:   %[[dx:.+]] = load double, double* %"x'"
 ; CHECK-NEXT:   %[[ndx:.+]] = fadd fast double %[[dx]], %[[diffe]]

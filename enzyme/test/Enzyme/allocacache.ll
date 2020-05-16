@@ -444,12 +444,12 @@ attributes #11 = { alwaysinline cold }
 ; CHECK-NEXT:   %B1 = load double, double* %B, align 8
 ; CHECK-NEXT:   %B2p = getelementptr inbounds double, double* %B, i64 1
 ; CHECK-NEXT:   %B2 = load double, double* %B2p, align 8
-; CHECK-NEXT:   %call_augmented = call { { { <2 x double> }, <2 x double>, i8*, i8* }, <2 x double> } @augmented_subfn(<2 x double>* %Wptr, <2 x double>* %"Wptr'", double %B1, double %B2, i64 0)
-; CHECK-NEXT:   %[[calltape:.+]] = extractvalue { { { <2 x double> }, <2 x double>, i8*, i8* }, <2 x double> } %call_augmented, 0
-; CHECK-NEXT:   %call = extractvalue { { { <2 x double> }, <2 x double>, i8*, i8* }, <2 x double> } %call_augmented, 1
+; CHECK-NEXT:   %call_augmented = call { { <2 x double>, <2 x double>, i8*, i8* }, <2 x double> } @augmented_subfn(<2 x double>* %Wptr, <2 x double>* %"Wptr'", double %B1, double %B2, i64 0)
+; CHECK-NEXT:   %[[calltape:.+]] = extractvalue { { <2 x double>, <2 x double>, i8*, i8* }, <2 x double> } %call_augmented, 0
+; CHECK-NEXT:   %call = extractvalue { { <2 x double>, <2 x double>, i8*, i8* }, <2 x double> } %call_augmented, 1
 ; CHECK-NEXT:   %[[copyret:.+]] = call { <2 x double> } @diffecopy(<2 x double>* %outvec, <2 x double>* %"outvec'", <2 x double> %call)
 ; CHECK-NEXT:   %[[copyext:.+]] = extractvalue { <2 x double> } %[[copyret]], 0
-; CHECK-NEXT:   %[[subfnret:.+]] = call { double, double } @diffesubfn(<2 x double>* %Wptr, <2 x double>* %"Wptr'", double %B1, double %B2, i64 0, <2 x double> %[[copyext]], { { <2 x double> }, <2 x double>, i8*, i8* } %[[calltape]])
+; CHECK-NEXT:   %[[subfnret:.+]] = call { double, double } @diffesubfn(<2 x double>* %Wptr, <2 x double>* %"Wptr'", double %B1, double %B2, i64 0, <2 x double> %[[copyext]], { <2 x double>, <2 x double>, i8*, i8* } %[[calltape]])
 ; CHECK-NEXT:   %[[sub0:.+]] = extractvalue { double, double } %[[subfnret]], 0
 ; CHECK-NEXT:   %[[sub1:.+]] = extractvalue { double, double } %[[subfnret]], 1
 ; CHECK-NEXT:   %[[B2pprime:.+]] = getelementptr inbounds double, double* %"B'", i64 1
@@ -471,17 +471,17 @@ attributes #11 = { alwaysinline cold }
 ; CHECK-NEXT:   ret { <2 x double> } %1
 ; CHECK-NEXT: }
 
-; CHECK: define internal { { <2 x double> }, <2 x double> } @augmented_loadmul(<2 x double>* %a, <2 x double>* %"a'", <2 x double>* %b, <2 x double>* %"b'") #4 {
+; CHECK: define internal { <2 x double>, <2 x double> } @augmented_loadmul(<2 x double>* %a, <2 x double>* %"a'", <2 x double>* %b, <2 x double>* %"b'") #4 {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = load <2 x double>, <2 x double>* %a, align 16
 ; CHECK-NEXT:   %1 = load <2 x double>, <2 x double>* %b, align 16
 ; CHECK-NEXT:   %mul.i = fmul <2 x double> %0, %1
-; CHECK-NEXT:   %.fca.0.0.insert = insertvalue { { <2 x double> }, <2 x double> } undef, <2 x double> %0, 0, 0
-; CHECK-NEXT:   %.fca.1.insert = insertvalue { { <2 x double> }, <2 x double> } %.fca.0.0.insert, <2 x double> %mul.i, 1
-; CHECK-NEXT:   ret { { <2 x double> }, <2 x double> } %.fca.1.insert
+; CHECK-NEXT:   %.fca.0.insert = insertvalue { <2 x double>, <2 x double> } undef, <2 x double> %0, 0
+; CHECK-NEXT:   %.fca.1.insert = insertvalue { <2 x double>, <2 x double> } %.fca.0.insert, <2 x double> %mul.i, 1
+; CHECK-NEXT:   ret { <2 x double>, <2 x double> } %.fca.1.insert
 ; CHECK-NEXT: }
 
-; CHECK: define internal { { { <2 x double> }, <2 x double>, i8*, i8* }, <2 x double> } @augmented_subfn(<2 x double>* %W, <2 x double>* %"W'", double %B1, double %B2, i64 %row) #8 {
+; CHECK: define internal { { <2 x double>, <2 x double>, i8*, i8* }, <2 x double> } @augmented_subfn(<2 x double>* %W, <2 x double>* %"W'", double %B1, double %B2, i64 %row) #8 {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %malloccall = tail call i8* @malloc(i64 16) #9
 ; CHECK-NEXT:   %"malloccall'mi" = tail call noalias nonnull i8* @malloc(i64 16) #9
@@ -495,35 +495,34 @@ attributes #11 = { alwaysinline cold }
 ; CHECK-NEXT:   %preb2 = insertelement <2 x double> undef, double %B2, i32 0
 ; CHECK-NEXT:   %B22 = shufflevector <2 x double> %preb2, <2 x double> undef, <2 x i32> zeroinitializer
 ; CHECK-NEXT:   store <2 x double> %B11, <2 x double>* %Bref, align 16
-; CHECK-NEXT:   %call_augmented = call { { <2 x double> }, <2 x double> } @augmented_loadmul(<2 x double>* %W, <2 x double>* %"W'", <2 x double>* %Bref, <2 x double>*{{( nonnull)?}} %"Bref'ipc")
-; CHECK-NEXT:   %subcache = extractvalue { { <2 x double> }, <2 x double> } %call_augmented, 0
-; CHECK-NEXT:   %subcache.fca.0.extract = extractvalue { <2 x double> } %subcache, 0
-; CHECK-NEXT:   %call = extractvalue { { <2 x double> }, <2 x double> } %call_augmented, 1
+; CHECK-NEXT:   %call_augmented = call { <2 x double>, <2 x double> } @augmented_loadmul(<2 x double>* %W, <2 x double>* %"W'", <2 x double>* %Bref, <2 x double>*{{( nonnull)?}} %"Bref'ipc")
+; CHECK-NEXT:   %subcache = extractvalue { <2 x double>, <2 x double> } %call_augmented, 0
+; CHECK-NEXT:   %call = extractvalue { <2 x double>, <2 x double> } %call_augmented, 1
 ; CHECK-NEXT:   %mul = fmul <2 x double> %W34, %B22
 ; CHECK-NEXT:   %add = fadd <2 x double> %mul, %call
-; CHECK-NEXT:   %.fca.0.0.0.insert = insertvalue { { { <2 x double> }, <2 x double>, i8*, i8* }, <2 x double> } undef, <2 x double> %subcache.fca.0.extract, 0, 0, 0
-; CHECK-NEXT:   %.fca.0.1.insert = insertvalue { { { <2 x double> }, <2 x double>, i8*, i8* }, <2 x double> } %.fca.0.0.0.insert, <2 x double> %W34, 0, 1
-; CHECK-NEXT:   %.fca.0.2.insert = insertvalue { { { <2 x double> }, <2 x double>, i8*, i8* }, <2 x double> } %.fca.0.1.insert, i8* %malloccall, 0, 2
-; CHECK-NEXT:   %.fca.0.3.insert = insertvalue { { { <2 x double> }, <2 x double>, i8*, i8* }, <2 x double> } %.fca.0.2.insert, i8* %"malloccall'mi", 0, 3
-; CHECK-NEXT:   %.fca.1.insert = insertvalue { { { <2 x double> }, <2 x double>, i8*, i8* }, <2 x double> } %.fca.0.3.insert, <2 x double> %add, 1
-; CHECK-NEXT:   ret { { { <2 x double> }, <2 x double>, i8*, i8* }, <2 x double> } %.fca.1.insert
+; CHECK-NEXT:   %.fca.0.0.insert = insertvalue { { <2 x double>, <2 x double>, i8*, i8* }, <2 x double> } undef, <2 x double> %subcache, 0, 0
+; CHECK-NEXT:   %.fca.0.1.insert = insertvalue { { <2 x double>, <2 x double>, i8*, i8* }, <2 x double> } %.fca.0.0.insert, <2 x double> %W34, 0, 1
+; CHECK-NEXT:   %.fca.0.2.insert = insertvalue { { <2 x double>, <2 x double>, i8*, i8* }, <2 x double> } %.fca.0.1.insert, i8* %malloccall, 0, 2
+; CHECK-NEXT:   %.fca.0.3.insert = insertvalue { { <2 x double>, <2 x double>, i8*, i8* }, <2 x double> } %.fca.0.2.insert, i8* %"malloccall'mi", 0, 3
+; CHECK-NEXT:   %.fca.1.insert = insertvalue { { <2 x double>, <2 x double>, i8*, i8* }, <2 x double> } %.fca.0.3.insert, <2 x double> %add, 1
+; CHECK-NEXT:   ret { { <2 x double>, <2 x double>, i8*, i8* }, <2 x double> } %.fca.1.insert
 ; CHECK-NEXT: }
 
-; CHECK: define internal { double, double } @diffesubfn(<2 x double>* %W, <2 x double>* %"W'", double %B1, double %B2, i64 %row, <2 x double> %differeturn, { { <2 x double> }, <2 x double>, i8*, i8* } %tapeArg) #8 {
+; CHECK: define internal { double, double } @diffesubfn(<2 x double>* %W, <2 x double>* %"W'", double %B1, double %B2, i64 %row, <2 x double> %differeturn, { <2 x double>, <2 x double>, i8*, i8* } %tapeArg) #8 {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %preb2 = insertelement <2 x double> undef, double %B2, i32 0
 ; CHECK-NEXT:   %B22 = shufflevector <2 x double> %preb2, <2 x double> undef, <2 x i32> zeroinitializer
 ; CHECK-NEXT:   %m0diffeW34 = fmul fast <2 x double> %B22, %differeturn
-; CHECK-NEXT:   %W34_fromtape_unwrap = extractvalue { { <2 x double> }, <2 x double>, i8*, i8* } %tapeArg, 1
+; CHECK-NEXT:   %W34_fromtape_unwrap = extractvalue { <2 x double>, <2 x double>, i8*, i8* } %tapeArg, 1
 ; CHECK-NEXT:   %m1diffeB22 = fmul fast <2 x double> %W34_fromtape_unwrap, %differeturn
-; CHECK-NEXT:   %[[malloccall:.+]] = extractvalue { { <2 x double> }, <2 x double>, i8*, i8* } %tapeArg, 2
+; CHECK-NEXT:   %[[malloccall:.+]] = extractvalue { <2 x double>, <2 x double>, i8*, i8* } %tapeArg, 2
 ; CHECK-NEXT:   %[[Bref:.+]] = bitcast i8* %[[malloccall]] to <2 x double>*
-; CHECK-NEXT:   %[[malloccallmi:.+]] = extractvalue { { <2 x double> }, <2 x double>, i8*, i8* } %tapeArg, 3
+; CHECK-NEXT:   %[[malloccallmi:.+]] = extractvalue { <2 x double>, <2 x double>, i8*, i8* } %tapeArg, 3
 ; CHECK-NEXT:   %[[Brefipc:.+]] = bitcast i8* %[[malloccallmi]] to <2 x double>*
 
-; CHECK-NEXT:   %[[loadmultape:.+]] = extractvalue { { <2 x double> }, <2 x double>, i8*, i8* } %tapeArg, 0
+; CHECK-NEXT:   %[[loadmultape:.+]] = extractvalue { <2 x double>, <2 x double>, i8*, i8* } %tapeArg, 0
 
-; CHECK-NEXT:   call void @diffeloadmul(<2 x double>* %W, <2 x double>* %"W'", <2 x double>* %[[Bref]], <2 x double>* %[[Brefipc]], <2 x double> %differeturn, { <2 x double> } %[[loadmultape]])
+; CHECK-NEXT:   call void @diffeloadmul(<2 x double>* %W, <2 x double>* %"W'", <2 x double>* %[[Bref]], <2 x double>* %[[Brefipc]], <2 x double> %differeturn, <2 x double> %[[loadmultape]])
 ; CHECK-NEXT:   %[[lbref:.+]] = load <2 x double>, <2 x double>* %[[Brefipc]], align 16
 ; CHECK-NEXT:   store <2 x double> zeroinitializer, <2 x double>* %[[Brefipc]], align 16
 ; CHECK-NEXT:   %[[lb221:.+]] = extractelement <2 x double> %m1diffeB22, i32 1
@@ -542,12 +541,11 @@ attributes #11 = { alwaysinline cold }
 ; CHECK-NEXT:   ret { double, double } %[[inserted1]]
 ; CHECK-NEXT: }
 
-; CHECK: define internal void @diffeloadmul(<2 x double>* %a, <2 x double>* %"a'", <2 x double>* %b, <2 x double>* %"b'", <2 x double> %differeturn, { <2 x double> } %tapeArg) #4 {
+; CHECK: define internal void @diffeloadmul(<2 x double>* %a, <2 x double>* %"a'", <2 x double>* %b, <2 x double>* %"b'", <2 x double> %differeturn, <2 x double>) #4 {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[realb:.+]] = load <2 x double>, <2 x double>* %b, align 16
 ; CHECK-NEXT:   %m0diffe = fmul fast <2 x double> %[[realb]], %differeturn
-; CHECK-NEXT:   %_fromtape_unwrap = extractvalue { <2 x double> } %tapeArg, 0
-; CHECK-NEXT:   %m1diffe = fmul fast <2 x double> %_fromtape_unwrap, %differeturn
+; CHECK-NEXT:   %m1diffe = fmul fast <2 x double> %differeturn, %0
 ; CHECK-NEXT:   %[[lb:.+]] = load <2 x double>, <2 x double>* %"b'", align 16
 ; CHECK-NEXT:   %[[addB:.+]] = fadd fast <2 x double> %[[lb]], %m1diffe
 ; CHECK-NEXT:   store <2 x double> %[[addB]], <2 x double>* %"b'", align 16
