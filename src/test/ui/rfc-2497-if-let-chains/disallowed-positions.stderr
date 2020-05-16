@@ -499,19 +499,22 @@ LL |         true && let 1 = 1
    = note: only supported directly in conditions of `if`- and `while`-expressions
    = note: as well as when nested within `&&` and parenthesis in those conditions
 
-warning: the feature `const_generics` is incomplete and may cause the compiler to crash
+warning: the feature `const_generics` is incomplete and may not be safe to use and/or cause compiler crashes
   --> $DIR/disallowed-positions.rs:20:12
    |
 LL | #![feature(const_generics)]
    |            ^^^^^^^^^^^^^^
    |
    = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #44580 <https://github.com/rust-lang/rust/issues/44580> for more information
 
-warning: the feature `let_chains` is incomplete and may cause the compiler to crash
+warning: the feature `let_chains` is incomplete and may not be safe to use and/or cause compiler crashes
   --> $DIR/disallowed-positions.rs:22:12
    |
 LL | #![feature(let_chains)] // Avoid inflating `.stderr` with overzealous gates in this test.
    |            ^^^^^^^^^^
+   |
+   = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
 
 error[E0658]: `match` is not allowed in a `const`
   --> $DIR/disallowed-positions.rs:218:17
