@@ -464,7 +464,15 @@ machine. Each target has a default base CPU.
 
 Individual targets will support different features; this flag lets you control
 enabling or disabling a feature. Each feature should be prefixed with a `+` to
-enable it or `-` to disable it. Separate multiple features with commas.
+enable it or `-` to disable it.
+
+Features from multiple `-C target-feature` options are combined. \
+Multiple features can be specified in a single option by separating them
+with commas - `-C target-feature=+x,-y`. \
+If some feature is specified more than once with both `+` and `-`,
+then values passed later override values passed earlier. \
+For example, `-C target-feature=+x,-y,+z -Ctarget-feature=-x,+y`
+is equivalent to `-C target-feature=-x,+y,+z`.
 
 To see the valid options and an example of use, run `rustc --print
 target-features`.
