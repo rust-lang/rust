@@ -25,7 +25,7 @@ pub(crate) use token_set::TokenSet;
 pub use syntax_kind::SyntaxKind;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ParseError(pub String);
+pub struct ParseError(pub Box<String>);
 
 /// `TokenSource` abstracts the source of the tokens parser operates on.
 ///
