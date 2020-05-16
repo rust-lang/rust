@@ -1,3 +1,4 @@
+use rustc_hir::Mutability;
 use rustc_index::bit_set::HybridBitSet;
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::{self, BasicBlock, Local, Location};
@@ -61,6 +62,9 @@ impl<'tcx> MirPass<'tcx> for RenameReturnPlace {
             body.local_decls.pick2_mut(returned_local, mir::RETURN_PLACE);
         debug_assert_eq!(ret_decl.ty, renamed_decl.ty);
         ret_decl.clone_from(renamed_decl);
+
+        // The return place is always mutable.
+        ret_decl.mutability = Mutability::Mut;
     }
 }
 
