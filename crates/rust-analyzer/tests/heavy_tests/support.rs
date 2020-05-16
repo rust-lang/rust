@@ -68,7 +68,7 @@ impl<'a> Project<'a> {
         let mut paths = vec![];
 
         for entry in parse_fixture(self.fixture) {
-            let path = tmp_dir.path().join(entry.meta);
+            let path = tmp_dir.path().join(entry.meta.path().as_str());
             fs::create_dir_all(path.parent().unwrap()).unwrap();
             fs::write(path.as_path(), entry.text.as_bytes()).unwrap();
             paths.push((path, entry.text));

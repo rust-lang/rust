@@ -161,10 +161,8 @@ pub fn add_cursor(text: &str, offset: TextSize) -> String {
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct FixtureEntry {
-    pub meta: String,
+    pub meta: FixtureMeta,
     pub text: String,
-
-    pub parsed_meta: FixtureMeta,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -231,8 +229,8 @@ The offending line: {:?}"#,
     for line in lines.by_ref() {
         if line.starts_with("//-") {
             let meta = line["//-".len()..].trim().to_string();
-            let parsed_meta = parse_meta(&meta);
-            res.push(FixtureEntry { meta, parsed_meta, text: String::new() })
+            let meta = parse_meta(&meta);
+            res.push(FixtureEntry { meta, text: String::new() })
         } else if let Some(entry) = res.last_mut() {
             entry.text.push_str(line);
             entry.text.push('\n');

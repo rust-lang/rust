@@ -35,7 +35,7 @@ impl MockAnalysis {
     pub fn with_files(fixture: &str) -> MockAnalysis {
         let mut res = MockAnalysis::new();
         for entry in parse_fixture(fixture) {
-            res.add_file(&entry.meta, &entry.text);
+            res.add_file(entry.meta.path().as_str(), &entry.text);
         }
         res
     }
@@ -48,9 +48,10 @@ impl MockAnalysis {
         for entry in parse_fixture(fixture) {
             if entry.text.contains(CURSOR_MARKER) {
                 assert!(position.is_none(), "only one marker (<|>) per fixture is allowed");
-                position = Some(res.add_file_with_position(&entry.meta, &entry.text));
+                position =
+                    Some(res.add_file_with_position(&entry.meta.path().as_str(), &entry.text));
             } else {
-                res.add_file(&entry.meta, &entry.text);
+                res.add_file(&entry.meta.path().as_str(), &entry.text);
             }
         }
         let position = position.expect("expected a marker (<|>)");

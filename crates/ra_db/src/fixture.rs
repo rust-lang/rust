@@ -99,7 +99,7 @@ fn with_single_file(db: &mut dyn SourceDatabaseExt, ra_fixture: &str) -> FileId 
     let fixture = parse_single_fixture(ra_fixture);
 
     let crate_graph = if let Some(entry) = fixture {
-        let meta = match ParsedMeta::from(&entry.parsed_meta) {
+        let meta = match ParsedMeta::from(&entry.meta) {
             ParsedMeta::File(it) => it,
             _ => panic!("with_single_file only support file meta"),
         };
@@ -156,7 +156,7 @@ fn with_files(db: &mut dyn SourceDatabaseExt, fixture: &str) -> Option<FilePosit
     let mut file_position = None;
 
     for entry in fixture.iter() {
-        let meta = match ParsedMeta::from(&entry.parsed_meta) {
+        let meta = match ParsedMeta::from(&entry.meta) {
             ParsedMeta::Root { path } => {
                 let source_root = std::mem::replace(&mut source_root, SourceRoot::new_local());
                 db.set_source_root(source_root_id, Arc::new(source_root));
