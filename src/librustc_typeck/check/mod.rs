@@ -79,6 +79,7 @@ pub mod intrinsic;
 pub mod method;
 mod op;
 mod pat;
+mod reconciliation;
 mod regionck;
 mod upvar;
 mod wfcheck;
