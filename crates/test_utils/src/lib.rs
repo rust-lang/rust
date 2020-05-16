@@ -16,10 +16,10 @@ use std::{
 
 pub use ra_cfg::CfgOptions;
 
-use serde_json::Value;
-use text_size::{TextRange, TextSize};
 pub use relative_path::{RelativePath, RelativePathBuf};
 pub use rustc_hash::FxHashMap;
+use serde_json::Value;
+use text_size::{TextRange, TextSize};
 
 pub use difference::Changeset as __Changeset;
 
@@ -291,7 +291,6 @@ fn split1(haystack: &str, delim: char) -> Option<(&str, &str)> {
     let idx = haystack.find(delim)?;
     Some((&haystack[..idx], &haystack[idx + delim.len_utf8()..]))
 }
-
 
 /// Adjusts the indentation of the first line to the minimum indentation of the rest of the lines.
 /// This allows fixtures to start off in a different indentation, e.g. to align the first line with

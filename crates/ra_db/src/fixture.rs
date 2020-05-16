@@ -49,7 +49,7 @@ use std::sync::Arc;
 
 use ra_cfg::CfgOptions;
 use rustc_hash::FxHashMap;
-use test_utils::{extract_offset, parse_fixture, parse_single_fixture, CURSOR_MARKER};
+use test_utils::{extract_offset, parse_fixture, parse_single_fixture, FixtureMeta, CURSOR_MARKER};
 
 use crate::{
     input::CrateName, CrateGraph, CrateId, Edition, Env, FileId, FilePosition, RelativePathBuf,
@@ -99,7 +99,7 @@ fn with_single_file(db: &mut dyn SourceDatabaseExt, ra_fixture: &str) -> FileId 
     let fixture = parse_single_fixture(ra_fixture);
 
     let crate_graph = if let Some(entry) = fixture {
-        let meta = match parse_meta(&entry.meta) {
+        let meta = match ParsedMeta::from(&entry.parsed_meta) {
             ParsedMeta::File(it) => it,
             _ => panic!("with_single_file only support file meta"),
         };
@@ -156,7 +156,7 @@ fn with_files(db: &mut dyn SourceDatabaseExt, fixture: &str) -> Option<FilePosit
     let mut file_position = None;
 
     for entry in fixture.iter() {
-        let meta = match parse_meta(&entry.meta) {
+        let meta = match ParsedMeta::from(&entry.parsed_meta) {
             ParsedMeta::Root { path } => {
                 let source_root = std::mem::replace(&mut source_root, SourceRoot::new_local());
                 db.set_source_root(source_root_id, Arc::new(source_root));
@@ -244,53 +244,31 @@ struct FileMeta {
     env: Env,
 }
 
-//- /lib.rs crate:foo deps:bar,baz cfg:foo=a,bar=b env:OUTDIR=path/to,OTHER=foo)
-fn parse_meta(meta: &str) -> ParsedMeta {
-    let components = meta.split_ascii_whitespace().collect::<Vec<_>>();
-
-    if components[0] == "root" {
-        let path: RelativePathBuf = components[1].into();
-        assert!(path.starts_with("/") && path.ends_with("/"));
-        return ParsedMeta::Root { path };
-    }
-
-    let path: RelativePathBuf = components[0].into();
-    assert!(path.starts_with("/"));
-
-    let mut krate = None;
-    let mut deps = Vec::new();
-    let mut edition = Edition::Edition2018;
-    let mut cfg = CfgOptions::default();
-    let mut env = Env::default();
-    for component in components[1..].iter() {
-        let (key, value) = split1(component, ':').unwrap();
-        match key {
-            "crate" => krate = Some(value.to_string()),
-            "deps" => deps = value.split(',').map(|it| it.to_string()).collect(),
-            "edition" => edition = Edition::from_str(&value).unwrap(),
-            "cfg" => {
-                for key in value.split(',') {
-                    match split1(key, '=') {
-                        None => cfg.insert_atom(key.into()),
-                        Some((k, v)) => cfg.insert_key_value(k.into(), v.into()),
-                    }
-                }
+impl From<&FixtureMeta> for ParsedMeta {
+    fn from(meta: &FixtureMeta) -> Self {
+        match meta {
+            FixtureMeta::Root { path } => {
+                // `Self::Root` causes a false warning: 'variant is never constructed: `Root` '
+                // see https://github.com/rust-lang/rust/issues/69018
+                ParsedMeta::Root { path: path.to_owned() }
             }
-            "env" => {
-                for key in value.split(',') {
-                    if let Some((k, v)) = split1(key, '=') {
-                        env.set(k, v.into());
+            FixtureMeta::File(f) => Self::File(FileMeta {
+                path: f.path.to_owned().into(),
+                krate: f.krate.to_owned().into(),
+                deps: f.deps.to_owned(),
+                cfg: f.cfg.to_owned(),
+                edition: f
+                    .edition
+                    .as_ref()
+                    .map_or(Edition::Edition2018, |v| Edition::from_str(&v).unwrap()),
+                env: {
+                    let mut env = Env::default();
+                    for (k, v) in &f.env {
+                        env.set(&k, v.to_owned());
                     }
-                }
-            }
-            _ => panic!("bad component: {:?}", component),
+                    env
+                },
+            }),
         }
     }
-
-    ParsedMeta::File(FileMeta { path, krate, deps, edition, cfg, env })
-}
-
-fn split1(haystack: &str, delim: char) -> Option<(&str, &str)> {
-    let idx = haystack.find(delim)?;
-    Some((&haystack[..idx], &haystack[idx + delim.len_utf8()..]))
 }
