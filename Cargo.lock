@@ -3791,6 +3791,7 @@ dependencies = [
  "libc",
  "log",
  "measureme",
+ "once_cell",
  "parking_lot 0.10.2",
  "rustc-hash",
  "rustc-rayon",
