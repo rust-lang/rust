@@ -808,15 +808,13 @@ impl Ty {
         }
     }
 
-    /// If this is an `impl Trait` or `dyn Trait`, returns that trait.
-    pub fn inherent_trait(&self) -> Option<TraitId> {
+    /// If this is a `dyn Trait`, returns that trait.
+    pub fn dyn_trait(&self) -> Option<TraitId> {
         match self {
-            Ty::Dyn(predicates) | Ty::Opaque(predicates) => {
-                predicates.iter().find_map(|pred| match pred {
-                    GenericPredicate::Implemented(tr) => Some(tr.trait_),
-                    _ => None,
-                })
-            }
+            Ty::Dyn(predicates) => predicates.iter().find_map(|pred| match pred {
+                GenericPredicate::Implemented(tr) => Some(tr.trait_),
+                _ => None,
+            }),
             _ => None,
         }
     }
