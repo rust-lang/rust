@@ -104,14 +104,25 @@ impl AnnotateSnippetEmitterWriter {
         if let Some(source_map) = &self.source_map {
             // Make sure our primary file comes first
             let primary_lo = if let Some(ref primary_span) = msp.primary_span().as_ref() {
-                source_map.lookup_char_pos(primary_span.lo())
+                if primary_span.is_dummy() {
+                    // FIXME(#59346): Not sure when this is the case and what
+                    // should be done if it happens
+                    return;
+                } else {
+                    source_map.lookup_char_pos(primary_span.lo())
+                }
             } else {
                 // FIXME(#59346): Not sure when this is the case and what
                 // should be done if it happens
                 return;
             };
-            let annotated_files =
+            let mut annotated_files =
                 FileWithAnnotatedLines::collect_annotations(msp, &self.source_map);
+            if let Ok(pos) =
+                annotated_files.binary_search_by(|x| x.file.name.cmp(&primary_lo.file.name))
+            {
+                annotated_files.swap(0, pos);
+            }
             // owned: line source, line index, annotations
             type Owned = (String, usize, Vec<crate::snippet::Annotation>);
             let origin = primary_lo.file.name.to_string();
