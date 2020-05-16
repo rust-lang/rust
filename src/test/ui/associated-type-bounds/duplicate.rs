@@ -2,7 +2,7 @@
 
 #![feature(associated_type_bounds)]
 #![feature(type_alias_impl_trait)]
-#![feature(impl_trait_in_bindings)] //~ WARN the feature `impl_trait_in_bindings` is incomplete and may cause the compiler to crash [incomplete_features]
+#![feature(impl_trait_in_bindings)] //~ WARN the feature `impl_trait_in_bindings` is incomplete
 #![feature(untagged_unions)]
 
 use std::iter;

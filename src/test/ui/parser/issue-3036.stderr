@@ -1,4 +1,4 @@
-error: expected `;`, found ``}``
+error: expected `;`, found `}`
   --> $DIR/issue-3036.rs:5:14
    |
 LL |     let x = 3
