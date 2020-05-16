@@ -31,8 +31,7 @@ pub struct StringReader<'a> {
     /// Initial position, read-only.
     start_pos: BytePos,
     /// The absolute offset within the source_map of the current character.
-    // FIXME(#64197): `pub` is needed by tests for now.
-    pub pos: BytePos,
+    pos: BytePos,
     /// Stop reading src at this index.
     end_src_index: usize,
     /// Source text to tokenize.
@@ -434,6 +433,10 @@ impl<'a> StringReader<'a> {
                 (token::Float, id)
             }
         }
+    }
+
+    pub fn pos(&self) -> BytePos {
+        self.pos
     }
 
     #[inline]
