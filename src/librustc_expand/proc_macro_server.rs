@@ -507,9 +507,14 @@ impl server::Ident for Rustc<'_> {
 }
 
 impl server::Literal for Rustc<'_> {
-    // FIXME(eddyb) `Literal` should not expose internal `Debug` impls.
-    fn debug(&mut self, literal: &Self::Literal) -> String {
-        format!("{:?}", literal)
+    fn debug_kind(&mut self, literal: &Self::Literal) -> String {
+        format!("{:?}", literal.lit.kind)
+    }
+    fn symbol(&mut self, literal: &Self::Literal) -> String {
+        literal.lit.symbol.to_string()
+    }
+    fn suffix(&mut self, literal: &Self::Literal) -> Option<String> {
+        literal.lit.suffix.as_ref().map(Symbol::to_string)
     }
     fn integer(&mut self, n: &str) -> Self::Literal {
         self.lit(token::Integer, Symbol::intern(n), None)
