@@ -144,14 +144,9 @@ fn run_compiler(mut args: Vec<String>, callbacks: &mut (dyn rustc_driver::Callba
     args.splice(1..1, miri::miri_default_args().iter().map(ToString::to_string));
 
     // Invoke compiler, and handle return code.
-    let result = rustc_driver::catch_fatal_errors(move || {
+    let exit_code = rustc_driver::catch_with_exit_code(move || {
         rustc_driver::run_compiler(&args, callbacks, None, None)
-    })
-    .and_then(|result| result);
-    let exit_code = match result {
-        Ok(()) => rustc_driver::EXIT_SUCCESS,
-        Err(_) => rustc_driver::EXIT_FAILURE,
-    };
+    });
     std::process::exit(exit_code)
 }
 
