@@ -1,6 +1,5 @@
 // run-rustfix
-#![warn(clippy::block_in_if_condition_expr)]
-#![warn(clippy::block_in_if_condition_stmt)]
+#![warn(clippy::blocks_in_if_conditions)]
 #![allow(unused, clippy::let_and_return)]
 #![warn(clippy::nonminimal_bool)]
 
@@ -24,10 +23,10 @@ fn macro_if() {
 }
 
 fn condition_has_block() -> i32 {
-    if {
+    let res = {
         let x = 3;
         x == 3
-    } {
+    }; if res {
         6
     } else {
         10
@@ -35,7 +34,7 @@ fn condition_has_block() -> i32 {
 }
 
 fn condition_has_block_with_single_expression() -> i32 {
-    if { true } {
+    if true {
         6
     } else {
         10
@@ -44,7 +43,7 @@ fn condition_has_block_with_single_expression() -> i32 {
 
 fn condition_is_normal() -> i32 {
     let x = 3;
-    if true && x == 3 {
+    if x == 3 {
         6
     } else {
         10

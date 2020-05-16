@@ -1,18 +1,16 @@
-#![warn(clippy::for_loop_over_option, clippy::for_loop_over_result)]
+#![warn(clippy::for_loops_over_fallibles)]
 
-/// Tests for_loop_over_result and for_loop_over_option
-
-fn for_loop_over_option_and_result() {
+fn for_loops_over_fallibles() {
     let option = Some(1);
     let result = option.ok_or("x not found");
     let v = vec![0, 1, 2];
 
-    // check FOR_LOOP_OVER_OPTION lint
+    // check over an `Option`
     for x in option {
         println!("{}", x);
     }
 
-    // check FOR_LOOP_OVER_RESULT lint
+    // check over a `Result`
     for x in result {
         println!("{}", x);
     }

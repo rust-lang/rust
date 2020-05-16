@@ -137,4 +137,70 @@ fn h<T: Ord>(x: T, y: T, z: T) {
     }
 }
 
+// The following uses should be ignored
+mod issue_5212 {
+    use super::{a, b, c};
+    fn foo() -> u8 {
+        21
+    }
+
+    fn same_operation_equals() {
+        // operands are fixed
+
+        if foo() == 42 {
+            a()
+        } else if foo() == 42 {
+            b()
+        }
+
+        if foo() == 42 {
+            a()
+        } else if foo() == 42 {
+            b()
+        } else {
+            c()
+        }
+
+        // operands are transposed
+
+        if foo() == 42 {
+            a()
+        } else if 42 == foo() {
+            b()
+        }
+    }
+
+    fn same_operation_not_equals() {
+        // operands are fixed
+
+        if foo() > 42 {
+            a()
+        } else if foo() > 42 {
+            b()
+        }
+
+        if foo() > 42 {
+            a()
+        } else if foo() > 42 {
+            b()
+        } else {
+            c()
+        }
+
+        if foo() < 42 {
+            a()
+        } else if foo() < 42 {
+            b()
+        }
+
+        if foo() < 42 {
+            a()
+        } else if foo() < 42 {
+            b()
+        } else {
+            c()
+        }
+    }
+}
+
 fn main() {}

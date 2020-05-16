@@ -1,0 +1,16 @@
+error: this range is empty so it will yield no values
+  --> $DIR/reversed_empty_ranges_loops_unfixable.rs:4:14
+   |
+LL |     for i in 5..5 {
+   |              ^^^^
+   |
+   = note: `-D clippy::reversed-empty-ranges` implied by `-D warnings`
+
+error: this range is empty so it will yield no values
+  --> $DIR/reversed_empty_ranges_loops_unfixable.rs:8:14
+   |
+LL |     for i in (5 + 2)..(8 - 1) {
+   |              ^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
