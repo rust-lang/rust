@@ -1,4 +1,4 @@
-//! Transcraber takes a template, like `fn $ident() {}`, a set of bindings like
+//! Transcriber takes a template, like `fn $ident() {}`, a set of bindings like
 //! `$ident => foo`, interpolates variables in the template, to get `fn foo() {}`
 
 use ra_syntax::SmolStr;
@@ -53,7 +53,8 @@ impl Bindings {
 pub(super) fn transcribe(template: &tt::Subtree, bindings: &Bindings) -> ExpandResult<tt::Subtree> {
     assert!(template.delimiter == None);
     let mut ctx = ExpandCtx { bindings: &bindings, nesting: Vec::new() };
-    expand_subtree(&mut ctx, template)
+    let mut arena: Vec<tt::TokenTree> = Vec::new();
+    expand_subtree(&mut ctx, template, &mut arena)
 }
 
 #[derive(Debug)]
@@ -73,8 +74,13 @@ struct ExpandCtx<'a> {
     nesting: Vec<NestingState>,
 }
 
-fn expand_subtree(ctx: &mut ExpandCtx, template: &tt::Subtree) -> ExpandResult<tt::Subtree> {
-    let mut buf: Vec<tt::TokenTree> = Vec::new();
+fn expand_subtree(
+    ctx: &mut ExpandCtx,
+    template: &tt::Subtree,
+    arena: &mut Vec<tt::TokenTree>,
+) -> ExpandResult<tt::Subtree> {
+    // remember how many elements are in the arena now - when returning, we want to drain exactly how many elements we added. This way, the recursive uses of the arena get their own "view" of the arena, but will reuse the allocation
+    let start_elements = arena.len();
     let mut err = None;
     for op in parse_template(template) {
         let op = match op {
@@ -85,25 +91,27 @@ fn expand_subtree(ctx: &mut ExpandCtx, template: &tt::Subtree) -> ExpandResult<t
             }
         };
         match op {
-            Op::TokenTree(tt @ tt::TokenTree::Leaf(..)) => buf.push(tt.clone()),
+            Op::TokenTree(tt @ tt::TokenTree::Leaf(..)) => arena.push(tt.clone()),
             Op::TokenTree(tt::TokenTree::Subtree(tt)) => {
-                let ExpandResult(tt, e) = expand_subtree(ctx, tt);
+                let ExpandResult(tt, e) = expand_subtree(ctx, tt, arena);
                 err = err.or(e);
-                buf.push(tt.into());
+                arena.push(tt.into());
             }
             Op::Var { name, kind: _ } => {
                 let ExpandResult(fragment, e) = expand_var(ctx, name);
                 err = err.or(e);
-                push_fragment(&mut buf, fragment);
+                push_fragment(arena, fragment);
             }
             Op::Repeat { subtree, kind, separator } => {
-                let ExpandResult(fragment, e) = expand_repeat(ctx, subtree, kind, separator);
+                let ExpandResult(fragment, e) = expand_repeat(ctx, subtree, kind, separator, arena);
                 err = err.or(e);
-                push_fragment(&mut buf, fragment)
+                push_fragment(arena, fragment)
             }
         }
     }
-    ExpandResult(tt::Subtree { delimiter: template.delimiter, token_trees: buf }, err)
+    // drain the elements added in this instance of expand_subtree
+    let tts = arena.drain(start_elements..arena.len()).collect();
+    ExpandResult(tt::Subtree { delimiter: template.delimiter, token_trees: tts }, err)
 }
 
 fn expand_var(ctx: &mut ExpandCtx, v: &SmolStr) -> ExpandResult<Fragment> {
@@ -155,6 +163,7 @@ fn expand_repeat(
     template: &tt::Subtree,
     kind: RepeatKind,
     separator: Option<Separator>,
+    arena: &mut Vec<tt::TokenTree>,
 ) -> ExpandResult<Fragment> {
     let mut buf: Vec<tt::TokenTree> = Vec::new();
     ctx.nesting.push(NestingState { idx: 0, at_end: false, hit: false });
@@ -165,7 +174,7 @@ fn expand_repeat(
     let mut counter = 0;
 
     loop {
-        let ExpandResult(mut t, e) = expand_subtree(ctx, template);
+        let ExpandResult(mut t, e) = expand_subtree(ctx, template, arena);
         let nesting_state = ctx.nesting.last_mut().unwrap();
         if nesting_state.at_end || !nesting_state.hit {
             break;
