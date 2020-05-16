@@ -927,7 +927,7 @@ impl<'a> Parser<'a> {
             return Ok(());
         }
         let sm = self.sess.source_map();
-        let msg = format!("expected `;`, found `{}`", super::token_descr(&self.token));
+        let msg = format!("expected `;`, found {}", super::token_descr(&self.token));
         let appl = Applicability::MachineApplicable;
         if self.token.span == DUMMY_SP || self.prev_token.span == DUMMY_SP {
             // Likely inside a macro, can't provide meaningful suggestions.
