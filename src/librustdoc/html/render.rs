@@ -293,7 +293,12 @@ impl Serialize for IndexItem {
     where
         S: Serializer,
     {
-        assert_eq!(self.parent.is_some(), self.parent_idx.is_some());
+        assert_eq!(
+            self.parent.is_some(),
+            self.parent_idx.is_some(),
+            "`{}` is missing idx",
+            self.name
+        );
 
         (self.ty, &self.name, &self.path, &self.desc, self.parent_idx, &self.search_type)
             .serialize(serializer)
@@ -817,42 +822,6 @@ themePicker.onblur = handleThemeButtonsBlur;
             }
         }
         Ok((ret, krates))
-    }
-
-    fn show_item(item: &IndexItem, krate: &str) -> String {
-        format!(
-            "{{'crate':'{}','ty':{},'name':'{}','desc':'{}','p':'{}'{}}}",
-            krate,
-            item.ty as usize,
-            item.name,
-            item.desc.replace("'", "\\'"),
-            item.path,
-            if let Some(p) = item.parent_idx { format!(",'parent':{}", p) } else { String::new() }
-        )
-    }
-
-    let dst = cx.dst.join(&format!("aliases{}.js", cx.shared.resource_suffix));
-    {
-        let (mut all_aliases, _) = try_err!(collect(&dst, &krate.name, "ALIASES"), &dst);
-        let mut output = String::with_capacity(100);
-        for (alias, items) in &cx.cache.aliases {
-            if items.is_empty() {
-                continue;
-            }
-            output.push_str(&format!(
-                "\"{}\":[{}],",
-                alias,
-                items.iter().map(|v| show_item(v, &krate.name)).collect::<Vec<_>>().join(",")
-            ));
-        }
-        all_aliases.push(format!("ALIASES[\"{}\"] = {{{}}};", krate.name, output));
-        all_aliases.sort();
-        let mut v = Buffer::html();
-        writeln!(&mut v, "var ALIASES = {{}};");
-        for aliases in &all_aliases {
-            writeln!(&mut v, "{}", aliases);
-        }
-        cx.shared.fs.write(&dst, v.into_inner().into_bytes())?;
     }
 
     use std::ffi::OsString;

@@ -1138,6 +1138,16 @@ pub fn catch_fatal_errors<F: FnOnce() -> R, R>(f: F) -> Result<R, ErrorReported>
     })
 }
 
+/// Variant of `catch_fatal_errors` for the `interface::Result` return type
+/// that also computes the exit code.
+pub fn catch_with_exit_code(f: impl FnOnce() -> interface::Result<()>) -> i32 {
+    let result = catch_fatal_errors(f).and_then(|result| result);
+    match result {
+        Ok(()) => EXIT_SUCCESS,
+        Err(_) => EXIT_FAILURE,
+    }
+}
+
 lazy_static! {
     static ref DEFAULT_HOOK: Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 'static> = {
         let hook = panic::take_hook();
@@ -1228,12 +1238,12 @@ pub fn init_rustc_env_logger() {
     env_logger::init_from_env("RUSTC_LOG");
 }
 
-pub fn main() {
+pub fn main() -> ! {
     let start = Instant::now();
     init_rustc_env_logger();
     let mut callbacks = TimePassesCallbacks::default();
     install_ice_hook();
-    let result = catch_fatal_errors(|| {
+    let exit_code = catch_with_exit_code(|| {
         let args = env::args_os()
             .enumerate()
             .map(|(i, arg)| {
@@ -1246,13 +1256,8 @@ pub fn main() {
             })
             .collect::<Vec<_>>();
         run_compiler(&args, &mut callbacks, None, None)
-    })
-    .and_then(|result| result);
-    let exit_code = match result {
-        Ok(_) => EXIT_SUCCESS,
-        Err(_) => EXIT_FAILURE,
-    };
+    });
     // The extra `\t` is necessary to align this label with the others.
     print_time_passes_entry(callbacks.time_passes, "\ttotal", start.elapsed());
-    process::exit(exit_code);
+    process::exit(exit_code)
 }

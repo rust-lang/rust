@@ -26,8 +26,7 @@
                                            // + ty: i32
                                            // + val: Value(Scalar(0x00000063))
                                            // mir::Constant
--                                          // + span: $DIR/mutable_variable.rs:6:9: 6:11
-+                                          // + span: $DIR/mutable_variable.rs:6:5: 6:11
+                                           // + span: $DIR/mutable_variable.rs:6:9: 6:11
                                            // + literal: Const { ty: i32, val: Value(Scalar(0x00000063)) }
           StorageLive(_2);                 // scope 1 at $DIR/mutable_variable.rs:7:9: 7:10
 -         _2 = _1;                         // scope 1 at $DIR/mutable_variable.rs:7:13: 7:14

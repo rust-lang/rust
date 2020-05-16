@@ -1,14 +1,17 @@
 use super::{
     EvaluationResult, Obligation, ObligationCause, ObligationCauseCode, PredicateObligation,
+    SelectionContext,
 };
 
 use crate::infer::InferCtxt;
+use crate::traits::normalize_projection_type;
 
 use rustc_errors::{error_code, struct_span_err, Applicability, DiagnosticBuilder, Style};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
+use rustc_hir::lang_items;
 use rustc_hir::{AsyncGeneratorKind, GeneratorKind, Node};
 use rustc_middle::ty::TypeckTables;
 use rustc_middle::ty::{
@@ -150,6 +153,15 @@ pub trait InferCtxtExt<'tcx> {
         T: fmt::Display;
 
     fn suggest_new_overflow_limit(&self, err: &mut DiagnosticBuilder<'_>);
+
+    /// Suggest to await before try: future? => future.await?
+    fn suggest_await_before_try(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        obligation: &PredicateObligation<'tcx>,
+        trait_ref: &ty::Binder<ty::TraitRef<'tcx>>,
+        span: Span,
+    );
 }
 
 fn predicate_constraint(generics: &hir::Generics<'_>, pred: String) -> (Span, String) {
@@ -1821,6 +1833,95 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             "consider adding a `#![recursion_limit=\"{}\"]` attribute to your crate (`{}`)",
             suggested_limit, self.tcx.crate_name,
         ));
+    }
+
+    fn suggest_await_before_try(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        obligation: &PredicateObligation<'tcx>,
+        trait_ref: &ty::Binder<ty::TraitRef<'tcx>>,
+        span: Span,
+    ) {
+        debug!(
+            "suggest_await_befor_try: obligation={:?}, span={:?}, trait_ref={:?}, trait_ref_self_ty={:?}",
+            obligation,
+            span,
+            trait_ref,
+            trait_ref.self_ty()
+        );
+        let body_hir_id = obligation.cause.body_id;
+        let item_id = self.tcx.hir().get_parent_node(body_hir_id);
+
+        if let Some(body_id) = self.tcx.hir().maybe_body_owned_by(item_id) {
+            let body = self.tcx.hir().body(body_id);
+            if let Some(hir::GeneratorKind::Async(_)) = body.generator_kind {
+                let future_trait =
+                    self.tcx.require_lang_item(lang_items::FutureTraitLangItem, None);
+
+                let self_ty = self.resolve_vars_if_possible(&trait_ref.self_ty());
+
+                let impls_future = self.tcx.type_implements_trait((
+                    future_trait,
+                    self_ty,
+                    ty::List::empty(),
+                    obligation.param_env,
+                ));
+
+                let item_def_id = self
+                    .tcx
+                    .associated_items(future_trait)
+                    .in_definition_order()
+                    .next()
+                    .unwrap()
+                    .def_id;
+                // `<T as Future>::Output`
+                let projection_ty = ty::ProjectionTy {
+                    // `T`
+                    substs: self.tcx.mk_substs_trait(
+                        trait_ref.self_ty(),
+                        self.fresh_substs_for_item(span, item_def_id),
+                    ),
+                    // `Future::Output`
+                    item_def_id,
+                };
+
+                let mut selcx = SelectionContext::new(self);
+
+                let mut obligations = vec![];
+                let normalized_ty = normalize_projection_type(
+                    &mut selcx,
+                    obligation.param_env,
+                    projection_ty,
+                    obligation.cause.clone(),
+                    0,
+                    &mut obligations,
+                );
+
+                debug!(
+                    "suggest_await_befor_try: normalized_projection_type {:?}",
+                    self.resolve_vars_if_possible(&normalized_ty)
+                );
+                let try_obligation = self.mk_obligation_for_def_id(
+                    trait_ref.def_id(),
+                    normalized_ty,
+                    obligation.cause.clone(),
+                    obligation.param_env,
+                );
+                debug!("suggest_await_befor_try: try_trait_obligation {:?}", try_obligation);
+                if self.predicate_may_hold(&try_obligation) && impls_future {
+                    if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
+                        if snippet.ends_with('?') {
+                            err.span_suggestion(
+                                span,
+                                "consider using `.await` here",
+                                format!("{}.await?", snippet.trim_end_matches('?')),
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

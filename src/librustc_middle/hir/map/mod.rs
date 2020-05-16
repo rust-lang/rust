@@ -390,11 +390,7 @@ impl<'hir> Map<'hir> {
     /// Given a `HirId`, returns the `BodyId` associated with it,
     /// if the node is a body owner, otherwise returns `None`.
     pub fn maybe_body_owned_by(&self, hir_id: HirId) -> Option<BodyId> {
-        if let Some(node) = self.find(hir_id) {
-            associated_body(node)
-        } else {
-            bug!("no entry for id `{}`", hir_id)
-        }
+        self.find(hir_id).map(associated_body).flatten()
     }
 
     /// Given a body owner's id, returns the `BodyId` associated with it.

@@ -531,6 +531,7 @@ function getSearchElement() {
         var OUTPUT_DATA = 1;
         var NO_TYPE_FILTER = -1;
         var currentResults, index, searchIndex;
+        var ALIASES = {};
         var params = getQueryStringParams();
 
         // Populate search bar with query string search term when provided,
@@ -963,6 +964,72 @@ function getSearchElement() {
                 return itemTypes[ty.ty] + ty.path + ty.name;
             }
 
+            function createAliasFromItem(item) {
+                return {
+                    crate: item.crate,
+                    name: item.name,
+                    path: item.path,
+                    desc: item.desc,
+                    ty: item.ty,
+                    parent: item.parent,
+                    type: item.type,
+                    is_alias: true,
+                };
+            }
+
+            function handleAliases(ret, query, filterCrates) {
+                // We separate aliases and crate aliases because we want to have current crate
+                // aliases to be before the others in the displayed results.
+                var aliases = [];
+                var crateAliases = [];
+                var i;
+                if (filterCrates !== undefined &&
+                        ALIASES[filterCrates] &&
+                        ALIASES[filterCrates][query.search]) {
+                    for (i = 0; i < ALIASES[crate][query.search].length; ++i) {
+                        aliases.push(
+                            createAliasFromItem(searchIndex[ALIASES[filterCrates][query.search]]));
+                    }
+                } else {
+                    Object.keys(ALIASES).forEach(function(crate) {
+                        if (ALIASES[crate][query.search]) {
+                            var pushTo = crate === window.currentCrate ? crateAliases : aliases;
+                            for (i = 0; i < ALIASES[crate][query.search].length; ++i) {
+                                pushTo.push(
+                                    createAliasFromItem(
+                                        searchIndex[ALIASES[crate][query.search][i]]));
+                            }
+                        }
+                    });
+                }
+
+                var sortFunc = function(aaa, bbb) {
+                    if (aaa.path < bbb.path) {
+                        return 1;
+                    } else if (aaa.path === bbb.path) {
+                        return 0;
+                    }
+                    return -1;
+                };
+                crateAliases.sort(sortFunc);
+                aliases.sort(sortFunc);
+
+                var pushFunc = function(alias) {
+                    alias.alias = query.raw;
+                    var res = buildHrefAndPath(alias);
+                    alias.displayPath = pathSplitter(res[0]);
+                    alias.fullPath = alias.displayPath + alias.name;
+                    alias.href = res[1];
+
+                    ret.others.unshift(alias);
+                    if (ret.others.length > MAX_RESULTS) {
+                        ret.others.pop();
+                    }
+                };
+                onEach(aliases, pushFunc);
+                onEach(crateAliases, pushFunc);
+            }
+
             // quoted values mean literal search
             var nSearchWords = searchWords.length;
             var i;
@@ -1190,23 +1257,7 @@ function getSearchElement() {
                 "returned": sortResults(results_returned, true),
                 "others": sortResults(results),
             };
-            if (ALIASES && ALIASES[window.currentCrate] &&
-                    ALIASES[window.currentCrate][query.raw]) {
-                var aliases = ALIASES[window.currentCrate][query.raw];
-                for (i = 0; i < aliases.length; ++i) {
-                    aliases[i].is_alias = true;
-                    aliases[i].alias = query.raw;
-                    aliases[i].path = aliases[i].p;
-                    var res = buildHrefAndPath(aliases[i]);
-                    aliases[i].displayPath = pathSplitter(res[0]);
-                    aliases[i].fullPath = aliases[i].displayPath + aliases[i].name;
-                    aliases[i].href = res[1];
-                    ret.others.unshift(aliases[i]);
-                    if (ret.others.length > MAX_RESULTS) {
-                        ret.others.pop();
-                    }
-                }
-            }
+            handleAliases(ret, query, filterCrates);
             return ret;
         }
 
@@ -1599,13 +1650,12 @@ function getSearchElement() {
                     "returned": mergeArrays(results.returned),
                     "others": mergeArrays(results.others),
                 };
-            } else {
-                return {
-                    "in_args": results.in_args[0],
-                    "returned": results.returned[0],
-                    "others": results.others[0],
-                };
             }
+            return {
+                "in_args": results.in_args[0],
+                "returned": results.returned[0],
+                "others": results.others[0],
+            };
         }
 
         function getFilterCrates() {
@@ -1656,9 +1706,12 @@ function getSearchElement() {
             searchIndex = [];
             var searchWords = [];
             var i;
+            var currentIndex = 0;
 
             for (var crate in rawSearchIndex) {
                 if (!rawSearchIndex.hasOwnProperty(crate)) { continue; }
+
+                var crateSize = 0;
 
                 searchWords.push(crate);
                 searchIndex.push({
@@ -1669,6 +1722,7 @@ function getSearchElement() {
                     desc: rawSearchIndex[crate].doc,
                     type: null,
                 });
+                currentIndex += 1;
 
                 // an array of [(Number) item type,
                 //              (String) name,
@@ -1680,6 +1734,9 @@ function getSearchElement() {
                 // an array of [(Number) item type,
                 //              (String) name]
                 var paths = rawSearchIndex[crate].p;
+                // a array of [(String) alias name
+                //             [Number] index to items]
+                var aliases = rawSearchIndex[crate].a;
 
                 // convert `rawPaths` entries into object form
                 var len = paths.length;
@@ -1698,9 +1755,18 @@ function getSearchElement() {
                 var lastPath = "";
                 for (i = 0; i < len; ++i) {
                     var rawRow = items[i];
-                    var row = {crate: crate, ty: rawRow[0], name: rawRow[1],
-                               path: rawRow[2] || lastPath, desc: rawRow[3],
-                               parent: paths[rawRow[4]], type: rawRow[5]};
+                    if (!rawRow[2]) {
+                        rawRow[2] = lastPath;
+                    }
+                    var row = {
+                        crate: crate,
+                        ty: rawRow[0],
+                        name: rawRow[1],
+                        path: rawRow[2],
+                        desc: rawRow[3],
+                        parent: paths[rawRow[4]],
+                        type: rawRow[5],
+                    };
                     searchIndex.push(row);
                     if (typeof row.name === "string") {
                         var word = row.name.toLowerCase();
@@ -1709,7 +1775,25 @@ function getSearchElement() {
                         searchWords.push("");
                     }
                     lastPath = row.path;
+                    crateSize += 1;
                 }
+
+                if (aliases) {
+                    ALIASES[crate] = {};
+                    var j, local_aliases;
+                    for (var alias_name in aliases) {
+                        if (!aliases.hasOwnProperty(alias_name)) { continue; }
+
+                        if (!ALIASES[crate].hasOwnProperty(alias_name)) {
+                            ALIASES[crate][alias_name] = [];
+                        }
+                        local_aliases = aliases[alias_name];
+                        for (j = 0; j < local_aliases.length; ++j) {
+                            ALIASES[crate][alias_name].push(local_aliases[j] + currentIndex);
+                        }
+                    }
+                }
+                currentIndex += crateSize;
             }
             return searchWords;
         }

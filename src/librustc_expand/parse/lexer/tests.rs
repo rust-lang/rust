@@ -50,13 +50,13 @@ fn t1() {
         assert_eq!(string_reader.next_token(), token::Whitespace);
         // Read another token.
         let tok3 = string_reader.next_token();
-        assert_eq!(string_reader.pos.clone(), BytePos(28));
+        assert_eq!(string_reader.pos(), BytePos(28));
         let tok4 = Token::new(mk_ident("main"), Span::with_root_ctxt(BytePos(24), BytePos(28)));
         assert_eq!(tok3.kind, tok4.kind);
         assert_eq!(tok3.span, tok4.span);
 
         assert_eq!(string_reader.next_token(), token::OpenDelim(token::Paren));
-        assert_eq!(string_reader.pos.clone(), BytePos(29))
+        assert_eq!(string_reader.pos(), BytePos(29))
     })
 }
 
