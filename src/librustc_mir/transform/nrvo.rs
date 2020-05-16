@@ -21,8 +21,12 @@ use crate::transform::{MirPass, MirSource};
 /// }
 /// ```
 ///
-/// For now, this pass is very simple and only capable of eliminating a single copy.
-/// A more general version of copy propagation could yield even more benefits.
+/// For now, this pass is very simple and only capable of eliminating a single copy. A more general
+/// version of copy propagation, such as the one based on non-overlapping live ranges in [#47954] and
+/// [#71003], could yield even more benefits.
+///
+/// [#47954]: https://github.com/rust-lang/rust/pull/47954
+/// [#71003]: https://github.com/rust-lang/rust/pull/71003
 pub struct RenameReturnPlace;
 
 impl<'tcx> MirPass<'tcx> for RenameReturnPlace {
