@@ -2000,6 +2000,7 @@ extern "C" {
         SLPVectorize: bool,
         LoopVectorize: bool,
         DisableSimplifyLibCalls: bool,
+        EmitLifetimeMarkers: bool,
         SanitizerOptions: Option<&SanitizerOptions>,
         PGOGenPath: *const c_char,
         PGOUsePath: *const c_char,
