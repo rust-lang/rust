@@ -1096,3 +1096,34 @@ fn test() { (S {}).method()<|>; }
     );
     assert_eq!(t, "()");
 }
+
+#[test]
+fn dyn_trait_super_trait_not_in_scope() {
+    assert_snapshot!(
+        infer(r#"
+mod m {
+    pub trait SuperTrait {
+        fn foo(&self) -> u32 { 0 }
+    }
+}
+trait Trait: m::SuperTrait {}
+
+struct S;
+impl m::SuperTrait for S {}
+impl Trait for S {}
+
+fn test(d: &dyn Trait) {
+    d.foo();
+}
+"#),
+        @r###"
+    52..56 'self': &Self
+    65..70 '{ 0 }': u32
+    67..68 '0': u32
+    177..178 'd': &dyn Trait
+    192..208 '{     ...o(); }': ()
+    198..199 'd': &dyn Trait
+    198..205 'd.foo()': u32
+    "###
+    );
+}
