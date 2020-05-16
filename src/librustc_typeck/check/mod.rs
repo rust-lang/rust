@@ -1639,51 +1639,56 @@ fn check_opaque_for_inheriting_lifetimes(tcx: TyCtxt<'tcx>, def_id: LocalDefId, 
     struct ProhibitOpaqueVisitor<'tcx> {
         opaque_identity_ty: Ty<'tcx>,
         generics: &'tcx ty::Generics,
+        ty: Option<Ty<'tcx>>,
     };
 
     impl<'tcx> ty::fold::TypeVisitor<'tcx> for ProhibitOpaqueVisitor<'tcx> {
         fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
             debug!("check_opaque_for_inheriting_lifetimes: (visit_ty) t={:?}", t);
+            self.ty = Some(t);
             if t == self.opaque_identity_ty { false } else { t.super_visit_with(self) }
         }
 
         fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {
             debug!("check_opaque_for_inheriting_lifetimes: (visit_region) r={:?}", r);
             if let RegionKind::ReEarlyBound(ty::EarlyBoundRegion { index, .. }) = r {
-                return *index < self.generics.parent_count as u32;
+                let found_lifetime = *index < self.generics.parent_count as u32;
+                if !found_lifetime {
+                    self.ty = None;
+                }
+                return found_lifetime;
             }
 
             r.super_visit_with(self)
         }
     }
 
+    let mut visitor = ProhibitOpaqueVisitor {
+        opaque_identity_ty: tcx.mk_opaque(
+            def_id.to_def_id(),
+            InternalSubsts::identity_for_item(tcx, def_id.to_def_id()),
+        ),
+        generics: tcx.generics_of(def_id),
+        ty: None,
+    };
+    debug!("check_opaque_for_inheriting_lifetimes: visitor={:?}", visitor);
+
     let prohibit_opaque = match item.kind {
         ItemKind::OpaqueTy(hir::OpaqueTy {
-            bounds,
             origin: hir::OpaqueTyOrigin::AsyncFn | hir::OpaqueTyOrigin::FnReturn,
             ..
-        }) => {
-            let mut visitor = ProhibitOpaqueVisitor {
-                opaque_identity_ty: tcx.mk_opaque(
-                    def_id.to_def_id(),
-                    InternalSubsts::identity_for_item(tcx, def_id.to_def_id()),
-                ),
-                generics: tcx.generics_of(def_id),
-            };
-            debug!("check_opaque_for_inheriting_lifetimes: visitor={:?}", visitor);
-
-            for bound in bounds {
-                debug!("check_opaque_for_inheriting_lifetimes: {:?}", bound.trait_ref());
-            }
-            tcx.predicates_of(def_id)
-                .predicates
-                .iter()
-                .any(|(predicate, _)| predicate.visit_with(&mut visitor))
-        }
+        }) => tcx
+            .predicates_of(def_id)
+            .predicates
+            .iter()
+            .any(|(predicate, _)| predicate.visit_with(&mut visitor)),
         _ => false,
     };
+    debug!(
+        "check_opaque_for_inheriting_lifetimes: prohibit_opaque={:?}, visitor={:?}",
+        prohibit_opaque, visitor
+    );
 
-    debug!("check_opaque_for_inheriting_lifetimes: prohibit_opaque={:?}", prohibit_opaque);
     if prohibit_opaque {
         let is_async = match item.kind {
             ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) => match origin {
@@ -1693,14 +1698,28 @@ fn check_opaque_for_inheriting_lifetimes(tcx: TyCtxt<'tcx>, def_id: LocalDefId, 
             _ => unreachable!(),
         };
 
-        tcx.sess.span_err(
+        let mut err = struct_span_err!(
+            tcx.sess,
             span,
-            &format!(
+            E0754,
             "`{}` return type cannot contain a projection or `Self` that references lifetimes from \
              a parent scope",
             if is_async { "async fn" } else { "impl Trait" },
-        )
         );
+
+        if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(span) {
+            if snippet == "Self" {
+                if let Some(ty) = visitor.ty {
+                    err.span_suggestion(
+                        span,
+                        "consider spelling out the type instead",
+                        format!("{:?}", ty),
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+            }
+        }
+        err.emit();
     }
 }
 
