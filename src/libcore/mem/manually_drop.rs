@@ -7,14 +7,14 @@ use crate::ptr;
 ///
 /// `ManuallyDrop<T>` is subject to the same layout optimizations as `T`.
 /// As a consequence, it has *no effect* on the assumptions that the compiler makes
-/// about all values being initialized at their type.  In particular, initializing
-/// a `ManuallyDrop<&mut T>` with [`mem::zeroed`] is undefined behavior.
+/// about its contents. For example, initializing a `ManuallyDrop<&mut T>`
+/// with [`mem::zeroed`] is undefined behavior.
 /// If you need to handle uninitialized data, use [`MaybeUninit<T>`] instead.
 ///
 /// # Examples
 ///
-/// This wrapper helps with explicitly documenting the drop order dependencies between fields of
-/// the type:
+/// This wrapper can be used to enforce a particular drop order on fields, regardless
+/// of how they are defined in the struct:
 ///
 /// ```rust
 /// use std::mem::ManuallyDrop;
@@ -43,8 +43,18 @@ use crate::ptr;
 /// }
 /// ```
 ///
+/// However, care should be taken when using this pattern as it can lead to *leak amplification*.
+/// In this example, if the `Drop` implementation for `Peach` were to panic, the `banana` field
+/// would also be leaked.
+///
+/// In contrast, the automatically-generated compiler drop implementation would have ensured
+/// that all fields are dropped even in the presence of panics. This is especially important when
+/// working with [pinned] data, where reusing the memory without calling the destructor could lead
+/// to Undefined Behaviour.
+///
 /// [`mem::zeroed`]: fn.zeroed.html
 /// [`MaybeUninit<T>`]: union.MaybeUninit.html
+/// [pinned]: ../pin/index.html
 #[stable(feature = "manually_drop", since = "1.20.0")]
 #[lang = "manually_drop"]
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -113,19 +123,28 @@ impl<T> ManuallyDrop<T> {
 }
 
 impl<T: ?Sized> ManuallyDrop<T> {
-    /// Manually drops the contained value.
+    /// Manually drops the contained value. This is exactly equivalent to calling
+    /// [`ptr::drop_in_place`] with a pointer to the contained value. As such, unless
+    /// the contained value is a packed struct, the destructor will be called in-place
+    /// without moving the value, and thus can be used to safely drop [pinned] data.
     ///
     /// If you have ownership of the value, you can use [`ManuallyDrop::into_inner`] instead.
     ///
     /// # Safety
     ///
-    /// This function runs the destructor of the contained value and thus the wrapped value
-    /// now represents uninitialized data. It is up to the user of this method to ensure the
-    /// uninitialized data is not actually used.
-    /// In particular, this function can only be called at most once
-    /// for a given instance of `ManuallyDrop<T>`.
+    /// This function runs the destructor of the contained value. Other than changes made by
+    /// the destructor itself, the memory is left unchanged, and so as far as the compiler is
+    /// concerned still holds a bit-pattern which is valid for the type `T`.
+    ///
+    /// However, this "zombie" value should not be exposed to safe code, and this function
+    /// should not be called more than once. To use a value after it's been dropped, or drop
+    /// a value multiple times, can cause Undefined Behavior (depending on what `drop` does).
+    /// This is normally prevented by the type system, but users of `ManuallyDrop` must
+    /// uphold those guarantees without assistance from the compiler.
     ///
     /// [`ManuallyDrop::into_inner`]: #method.into_inner
+    /// [`ptr::drop_in_place`]: ../ptr/fn.drop_in_place.html
+    /// [pinned]: ../pin/index.html
     #[stable(feature = "manually_drop", since = "1.20.0")]
     #[inline]
     pub unsafe fn drop(slot: &mut ManuallyDrop<T>) {
