@@ -1,4 +1,4 @@
-// compile-flags: -C no-prepopulate-passes
+// compile-flags: -C no-prepopulate-passes -Z mir-opt-level=0
 // ignore-tidy-linelength
 
 #![crate_type = "lib"]
