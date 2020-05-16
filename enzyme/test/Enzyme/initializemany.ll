@@ -109,10 +109,9 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %2 = shl nuw nsw i64 %0, 3
 ; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull {{(align 16 )?}}%1, i8 0, i64 %2, {{(i32 16, )?}}i1 false)
 ; CHECK-NEXT:   %vla = alloca double*, i64 %0, align 16
-; CHECK-NEXT:   %[[aug_aas:.+]] = call { { i8** } } @augmented_allocateAndSet(double** nonnull %vla, double** nonnull %"vla'ipa", double %x, i32 %n)
-; CHECK-NEXT:   %[[aas_tape:.+]] = extractvalue { { i8** } } %[[aug_aas]], 0
+; CHECK-NEXT:   %[[aug_aas:.+]] = call { i8** } @augmented_allocateAndSet(double** nonnull %vla, double** nonnull %"vla'ipa", double %x, i32 %n)
 ; CHECK-NEXT:   call void @diffeget(double** nonnull %vla, double** nonnull %"vla'ipa", i32 3, double %differeturn)
-; CHECK-NEXT:   %[[ret:.+]] = call { double } @diffeallocateAndSet(double** nonnull %vla, double** nonnull %"vla'ipa", double %x, i32 %n, { i8** } %[[aas_tape]])
+; CHECK-NEXT:   %[[ret:.+]] = call { double } @diffeallocateAndSet(double** nonnull %vla, double** nonnull %"vla'ipa", double %x, i32 %n, { i8** } %[[aug_aas]])
 ; CHECK-NEXT:   ret { double } %[[ret]]
 ; CHECK-NEXT: }
 
@@ -127,7 +126,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{ { i8** } } @augmented_allocateAndSet(double** nocapture %arrayp, double** nocapture %"arrayp'", double %x, i32 %n)
+; CHECK: define internal {{(dso_local )?}}{ i8** } @augmented_allocateAndSet(double** nocapture %arrayp, double** nocapture %"arrayp'", double %x, i32 %n)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = add i32 %n, 1
 ; CHECK-NEXT:   %wide.trip.count = zext i32 %0 to i64
@@ -137,8 +136,8 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   br label %for.body
 
 ; CHECK: for.cond.cleanup:                                 ; preds = %for.body
-; CHECK-NEXT:   %.fca.0.0.insert = insertvalue { { i8** } } undef, i8** %"call'mi_malloccache", 0, 0
-; CHECK-NEXT:   ret { { i8** } } %.fca.0.0.insert
+; CHECK-NEXT:   %.fca.0.insert = insertvalue { i8** } undef, i8** %"call'mi_malloccache", 0
+; CHECK-NEXT:   ret { i8** } %.fca.0.insert
 
 ; CHECK: for.body:                                         ; preds = %for.body, %entry
 ; CHECK-NEXT:   %[[iv:.+]] = phi i64 [ %[[ivnext:.+]], %for.body ], [ 0, %entry ]

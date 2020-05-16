@@ -75,10 +75,9 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK: for.body7:                                        ; preds = %for.body7, %for.cond3.preheader
 ; CHECK-NEXT:   %iv1 = phi i64 [ %iv.next2, %for.body7 ], [ 0, %for.cond3.preheader ]
 ; CHECK-NEXT:   %iv.next2 = add nuw nsw i64 %iv1, 1
-; CHECK-NEXT:   %[[augmented:.+]] = call { double } @augmented_get(double* %x, double* %"x'", i64 undef, i64 %iv1)
-; CHECK-NEXT:   %[[retval:.+]] = extractvalue { double } %[[augmented]], 0
+; CHECK-NEXT:   %[[augmented:.+]] = call fast double @augmented_get(double* %x, double* %"x'", i64 undef, i64 %iv1)
 ; CHECK-NEXT:   %[[mallocgep2:.+]] = getelementptr inbounds double, double* %call_malloccache5, i64 %iv1
-; CHECK-NEXT:   store double %[[retval]], double* %[[mallocgep2]], align 8, !invariant.group !1
+; CHECK-NEXT:   store double %[[augmented]], double* %[[mallocgep2]], align 8, !invariant.group !1
 ; CHECK-NEXT:   %exitcond = icmp eq i64 %iv1, %iv
 ; CHECK-NEXT:   br i1 %exitcond, label %for.cond.cleanup6, label %for.body7
 

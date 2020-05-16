@@ -50,8 +50,7 @@ attributes #3 = { readnone }
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[dimsipge:.+]] = getelementptr inbounds %Type, %Type* %"evaluator.i.i'", i64 0, i32 1
 ; CHECK-NEXT:   %dims = getelementptr inbounds %Type, %Type* %evaluator.i.i, i64 0, i32 1
-; CHECK-NEXT:   %call_augmented = call { double } @augmented_total(double* %dims, double* %[[dimsipge]])
-; CHECK-NEXT:   %call = extractvalue { double } %call_augmented, 0
+; CHECK-NEXT:   %call = call fast double @augmented_total(double* %dims, double* %[[dimsipge]])
 ; CHECK-NEXT:   %flt = fptrunc double %call to float
 ; CHECK-NEXT:   %data = getelementptr inbounds %Type, %Type* %evaluator.i.i, i64 0, i32 0
 ; CHECK-NEXT:   store float %flt, float* %data, align 4
@@ -63,12 +62,11 @@ attributes #3 = { readnone }
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal { double } @augmented_total(double* %this, double* %"this'") {
+; CHECK: define internal double @augmented_total(double* %this, double* %"this'") {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %loaded = load double, double* %this
 ; CHECK-NEXT:   %mcall = tail call double @meta(double %loaded)
-; CHECK-NEXT:   %.fca.0.insert = insertvalue { double } undef, double %mcall, 0
-; CHECK-NEXT:   ret { double } %.fca.0.insert
+; CHECK-NEXT:   ret double %mcall
 ; CHECK-NEXT: }
 
 ; CHECK: define internal void @diffetotal(double* %this, double* %"this'", double %differeturn) {

@@ -91,11 +91,10 @@ entry:
 ; CHECK-ENZYME:   ret void
 ; CHECK-ENZYME: }
 
-; CHECK: define internal { i64 } @augmented_cols(i64* %this, i64* %"this'") {
+; CHECK: define internal i64 @augmented_cols(i64* %this, i64* %"this'") {
 ; CHECK-ENZYME: entry:
 ; CHECK-ENZYME:   %a0 = load i64, i64* %this, align 8, !tbaa !0
-; CHECK-ENZYME:   %.fca.0.insert = insertvalue { i64 } undef, i64 %a0, 0
-; CHECK-ENZYME:   ret { i64 } %.fca.0.insert
+; CHECK-ENZYME:   ret i64 %a0
 ; CHECK-ENZYME: }
 
 ; CHECK: define internal { i8*, i8* } @augmented_cast(i32* %this, i32* %"this'") {
@@ -114,8 +113,7 @@ entry:
 ; CHECK-ENZYME:   %call = extractvalue { i8*, i8* } %call_augmented, 0
 ; CHECK-ENZYME:   %"'ipc" = bitcast i8* %antiptr_call to i64*
 ; CHECK-ENZYME:   %0 = bitcast i8* %call to i64*
-; CHECK-ENZYME:   %call2_augmented = call { i64 } @augmented_cols(i64* %0, i64* %"'ipc")
-; CHECK-ENZYME:   %call2 = extractvalue { i64 } %call2_augmented, 0
+; CHECK-ENZYME:   %call2 = call i64 @augmented_cols(i64* %0, i64* %"'ipc")
 ; CHECK-ENZYME:   %.fca.0.0.insert = insertvalue { { i8*, i8* }, i64 } undef, i8* %antiptr_call, 0, 0
 ; CHECK-ENZYME:   %.fca.0.1.insert = insertvalue { { i8*, i8* }, i64 } %.fca.0.0.insert, i8* %call, 0, 1
 ; CHECK-ENZYME:   %.fca.1.insert = insertvalue { { i8*, i8* }, i64 } %.fca.0.1.insert, i64 %call2, 1

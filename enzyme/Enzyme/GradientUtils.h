@@ -362,10 +362,6 @@ public:
     assert(newtape != nullptr);
     assert(tapeidx == 0);
     assert(addedMallocs.size() == 0);
-    if (!newtape->getType()->isStructTy()) {
-        llvm::errs() << "incorrect tape type: " << *newtape << "\n";
-    }
-    assert(newtape->getType()->isStructTy());
     tape = newtape;
   }
 
@@ -437,7 +433,7 @@ public:
     return anti;
   }
 
-  unsigned getIndex(std::pair<Instruction*, CacheType> idx, std::map<std::pair<Instruction*, CacheType>, unsigned> &mapping) {
+  int getIndex(std::pair<Instruction*, CacheType> idx, std::map<std::pair<Instruction*, CacheType>, int> &mapping) {
     if (tape) {
         if (mapping.find(idx) == mapping.end()) {
             llvm::errs() << "oldFunc: " <<*oldFunc << "\n";
@@ -466,20 +462,22 @@ public:
     }
   }
 
-  Instruction* addMalloc(IRBuilder<> &BuilderQ, Instruction* malloc, unsigned idx) {
+  /*
+  Instruction* addMalloc(IRBuilder<> &BuilderQ, Instruction* malloc, int idx) {
       assert(malloc);
       return cast<Instruction>(addMalloc(BuilderQ, (Value*)malloc, idx));
   }
+  */
 
-  Value* addMalloc(IRBuilder<> &BuilderQ, Value* malloc, unsigned idx) {
+  Value* addMalloc(IRBuilder<> &BuilderQ, Value* malloc, int idx) {
     assert(BuilderQ.GetInsertBlock()->getParent() == newFunc);
 
     if (tape) {
-      if (!tape->getType()->isStructTy()) {
+      if (idx >=0 && !tape->getType()->isStructTy()) {
           llvm::errs() << "addMalloc incorrect tape type: " << *tape << "\n";
       }
-      assert(tape->getType()->isStructTy());
-      if (idx >= cast<StructType>(tape->getType())->getNumElements()) {
+      assert(idx < 0 || tape->getType()->isStructTy());
+      if (idx >= 0 && (unsigned)idx >= cast<StructType>(tape->getType())->getNumElements()) {
         llvm::errs() << "oldFunc: " <<*oldFunc << "\n";
         llvm::errs() << "newFunc: " <<*newFunc << "\n";
         if (malloc)
@@ -487,8 +485,8 @@ public:
         llvm::errs() << "tape: " <<*tape << "\n";
         llvm::errs() << "idx: " << idx << "\n";
       }
-      assert(idx < cast<StructType>(tape->getType())->getNumElements());
-      Instruction* ret = cast<Instruction>(BuilderQ.CreateExtractValue(tape, {idx}));
+      assert(idx < 0 || (unsigned)idx < cast<StructType>(tape->getType())->getNumElements());
+      Value* ret = (idx < 0) ? tape : cast<Instruction>(BuilderQ.CreateExtractValue(tape, {(unsigned)idx}));
 
       if (ret->getType()->isEmptyTy()) {
         if (auto inst = dyn_cast_or_null<Instruction>(malloc)) {
@@ -504,7 +502,8 @@ public:
           erase(inst);
         }
         Type* retType = ret->getType();
-        erase(ret);
+        if (auto ri = dyn_cast<Instruction>(ret))
+          erase(ri);
         return UndefValue::get(retType);
       }
 
@@ -519,11 +518,11 @@ public:
       if (!inLoop) {
         if (malloc) ret->setName(malloc->getName()+"_fromtape");
       } else {
-        erase(ret);
+        if (auto ri = dyn_cast<Instruction>(ret))
+          erase(ri);
         IRBuilder<> entryBuilder(inversionAllocs);
         entryBuilder.setFastMathFlags(getFast());
-        ret = cast<Instruction>(entryBuilder.CreateExtractValue(tape, {idx}));
-
+        ret = (idx < 0) ? tape : cast<Instruction>(entryBuilder.CreateExtractValue(tape, {(unsigned)idx}));
 
         //scopeMap[inst] = cache;
         Type* innerType = ret->getType();
@@ -697,7 +696,7 @@ public:
                         if (auto li = dyn_cast<LoadInst>(u)) {
                             IRBuilder<> lb(li);
                             //llvm::errs() << "fixing li: " << *li << "\n";
-                            auto replacewith = lb.CreateExtractValue(tape, {idx});
+                            auto replacewith = (idx < 0) ? tape : lb.CreateExtractValue(tape, {(unsigned)idx});
                             //llvm::errs() << "fixing with rw: " << *replacewith << "\n";
                             li->replaceAllUsesWith(replacewith);
                             erase(li);
@@ -732,7 +731,7 @@ public:
       assert(malloc);
       //assert(!isa<PHINode>(malloc));
 
-      assert(idx == addedMallocs.size());
+      assert(idx >=0 && (unsigned)idx == addedMallocs.size());
 
       if (isa<UndefValue>(malloc)) {
         addedMallocs.push_back(malloc);
@@ -804,7 +803,7 @@ public:
     }
 
 public:
-  static GradientUtils* CreateFromClone(Function *todiff, TargetLibraryInfo &TLI, TypeAnalysis &TA, AAResults &AA, DIFFE_TYPE retType, const std::vector<DIFFE_TYPE> & constant_args, bool returnUsed, std::map<AugmentedStruct, unsigned>& returnMapping);
+  static GradientUtils* CreateFromClone(Function *todiff, TargetLibraryInfo &TLI, TypeAnalysis &TA, AAResults &AA, DIFFE_TYPE retType, const std::vector<DIFFE_TYPE> & constant_args, bool returnUsed, std::map<AugmentedStruct, int>& returnMapping);
 
   StoreInst* setPtrDiffe(Value* ptr, Value* newval, IRBuilder<> &BuilderM) {
     if (auto inst = dyn_cast<Instruction>(ptr)) {

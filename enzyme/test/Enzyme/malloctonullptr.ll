@@ -1185,7 +1185,7 @@ attributes #10 = { noreturn nounwind }
 !49 = distinct !{!49, !50}
 !50 = !{!"llvm.loop.unroll.disable"}
 
-; CHECK: define internal { { i8* } } @augmented_subfn(float** %m_data.i.i, float** %"m_data.i.i'", float* %K, float* %"K'")
+; CHECK: define internal { i8* } @augmented_subfn(float** %m_data.i.i, float** %"m_data.i.i'", float* %K, float* %"K'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %call = tail call noalias i8* @malloc(i64 36) #7
 ; CHECK-NEXT:   %"call'mi" = tail call noalias nonnull i8* @malloc(i64 36) #7
@@ -1198,8 +1198,8 @@ attributes #10 = { noreturn nounwind }
 ; CHECK-NEXT:   %a41 = load i32, i32* %2, align 4, !tbaa !22
 ; CHECK-NEXT:   %3 = bitcast i8* %call to i32*
 ; CHECK-NEXT:   store i32 %a41, i32* %3, align 4, !tbaa !22
-; CHECK-NEXT:   %.fca.0.0.insert = insertvalue { { i8* } } undef, i8* %"call'mi", 0, 0
-; CHECK-NEXT:   ret { { i8* } } %.fca.0.0.insert
+; CHECK-NEXT:   %.fca.0.insert = insertvalue { i8* } undef, i8* %"call'mi", 0
+; CHECK-NEXT:   ret { i8* } %.fca.0.insert
 ; CHECK-NEXT: }
 
 ; CHECK: define internal void @diffesubfn(float** %m_data.i.i, float** %"m_data.i.i'", float* %K, float* %"K'", { i8* } %tapeArg)

@@ -78,10 +78,9 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal { i64 } @augmented_mul(i64 %a) {
+; CHECK: define internal i64 @augmented_mul(i64 %a) {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %.fca.0.insert = insertvalue { i64 } undef, i64 %a, 0
-; CHECK-NEXT:   ret { i64 } %.fca.0.insert
+; CHECK-NEXT:   ret i64 %a
 ; CHECK-NEXT: }
 
 ; CHECK: define internal { i64*, i64* } @augmented_cast(i64* %a, i64* %"a'") {
@@ -104,8 +103,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %antiptr_call.i = extractvalue { i64*, i64* } %call.i_augmented, 1
 ; CHECK-NEXT:   %call.i = extractvalue { i64*, i64* } %call.i_augmented, 0
 ; CHECK-NEXT:   %a2 = load i64, i64* %call.i, align 4, !tbaa !2
-; CHECK-NEXT:   %call2_augmented = call { i64 } @augmented_mul(i64 %a2)
-; CHECK-NEXT:   %call2 = extractvalue { i64 } %call2_augmented, 0
+; CHECK-NEXT:   %call2 = call i64 @augmented_mul(i64 %a2)
 ; CHECK-NEXT:   %.fca.0.0.insert = insertvalue { { i64, i64*, i64*, i8*, i8* }, i64 } undef, i64 %a2, 0, 0
 ; CHECK-NEXT:   %.fca.0.1.insert = insertvalue { { i64, i64*, i64*, i8*, i8* }, i64 } %.fca.0.0.insert, i64* %antiptr_call.i, 0, 1
 ; CHECK-NEXT:   %.fca.0.2.insert = insertvalue { { i64, i64*, i64*, i8*, i8* }, i64 } %.fca.0.1.insert, i64* %call.i, 0, 2

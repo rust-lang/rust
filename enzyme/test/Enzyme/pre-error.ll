@@ -77,13 +77,12 @@ exit:                                             ; preds = %end2
 !8 = !{!"any pointer", !4, i64 0}
 !9 = !{!"long", !4, i64 0}
 
-; CHECK: define internal { { i64 } } @augmented_subfn(double* %place, double* %"place'", i64* %m_rows) {
+; CHECK: define internal { i64 } @augmented_subfn(double* %place, double* %"place'", i64* %m_rows) {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = alloca { { i64 } }
-; CHECK-NEXT:   %1 = getelementptr inbounds { { i64 } }, { { i64 } }* %0, i32 0, i32 0
+; CHECK-NEXT:   %0 = alloca { i64 }
 ; CHECK-NEXT:   %rows = load i64, i64* %m_rows, align 8
-; CHECK-NEXT:   %2 = getelementptr inbounds { i64 }, { i64 }* %1, i32 0, i32 0
-; CHECK-NEXT:   store i64 %rows, i64* %2
+; CHECK-NEXT:   %[[rowgep:.+]] = getelementptr inbounds { i64 }, { i64 }* %0, i32 0, i32 0
+; CHECK-NEXT:   store i64 %rows, i64* %[[rowgep]]
 ; CHECK-NEXT:   br label %for1
 
 ; CHECK: for1:                                             ; preds = %end2, %entry
@@ -110,8 +109,8 @@ exit:                                             ; preds = %end2
 ; CHECK-NEXT:   br i1 %cond1, label %exit, label %for1
 
 ; CHECK: exit:                                             ; preds = %end2
-; CHECK-NEXT:   %[[ret:.+]] = load { { i64 } }, { { i64 } }* %0
-; CHECK-NEXT:   ret { { i64 } } %[[ret]]
+; CHECK-NEXT:   %[[ret:.+]] = load { i64 }, { i64 }* %0
+; CHECK-NEXT:   ret { i64 } %[[ret]]
 ; CHECK-NEXT: }
 
 ; CHECK: define internal void @diffesubfn(double* %place, double* %"place'", i64* %m_rows, { i64 } %tapeArg) {

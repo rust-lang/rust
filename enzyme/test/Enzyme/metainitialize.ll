@@ -152,8 +152,9 @@ attributes #5 = { nounwind }
 ; CHECK-NEXT:   %[[ai8:.+]] = bitcast double** %array.i to i8*
 ; CHECK-NEXT:   call void @llvm.lifetime.start.p0i8(i64 8, i8* nonnull %[[ai8]])
 ; CHECK-NEXT:   store double* null, double** %"array'ipa.i", align 8
-; CHECK-NEXT:   %[[aug:.+]] = call fastcc { i8* } @augmented_meta(double** nonnull %array.i, double** nonnull %"array'ipa.i", double %x, i32 %n)
-; CHECK-NEXT:   %[[oldret:.+]] = insertvalue { { i8* } } undef, { i8* } %[[aug]], 0
+; CHECK-NEXT:   %[[aug:.+]] = call fastcc i8* @augmented_meta(double** nonnull %array.i, double** nonnull %"array'ipa.i", double %x, i32 %n)
+; CHECK-NEXT:   %[[oldret2:.+]] = insertvalue { i8* } undef, i8* %[[aug]], 0
+; CHECK-NEXT:   %[[oldret:.+]] = insertvalue { { i8* } } undef, { i8* } %[[oldret2]], 0
 ; CHECK-NEXT:   %"'ipl.i" = load double*, double** %"array'ipa.i", align 8
 ; CHECK-NEXT:   tail call fastcc void @diffeget(double* %"'ipl.i")
 ; CHECK-NEXT:   %[[ret:.+]] = tail call fastcc double @diffemeta(i32 %n, { { i8* } } %[[oldret]])
@@ -188,11 +189,10 @@ attributes #5 = { nounwind }
 ; CHECK-NEXT:  ret i8* %"call'mi"
 ; CHECK-NEXT:}
 
-; CHECK: define internal {{(dso_local )?}}fastcc { i8* } @augmented_meta(double** nocapture %arrayp, double** nocapture %"arrayp'", double %x, i32 %n)
+; CHECK: define internal {{(dso_local )?}}fastcc i8* @augmented_meta(double** nocapture %arrayp, double** nocapture %"arrayp'", double %x, i32 %n)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[aug_aas:.+]] = tail call fastcc i8* @augmented_allocateAndSet(double** %arrayp, double** %"arrayp'", double %x, i32 %n)
-; CHECK-NEXT:   %[[retval:.+]] = insertvalue { i8* } undef, i8* %[[aug_aas]], 0
-; CHECK-NEXT:   ret { i8* } %[[retval]]
+; CHECK-NEXT:   ret i8* %[[aug_aas]]
 ; CHECK-NEXT: }
 
 ; CHECK: define internal {{(dso_local )?}}fastcc double @diffemeta(i32 %n, { { i8* } } %tapeArg)

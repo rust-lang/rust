@@ -38,11 +38,11 @@ entry:
 !15 = !{!16, !16, i64 0}
 !16 = !{!"double", !5, i64 0}
 
-; CHECK: @"_enzyme_indirect'" = internal constant { { i8* } (double*, double*, double*, double*, double)*, { double } (double*, double*, double*, double*, double, i8*)* } { { i8* } (double*, double*, double*, double*, double)* @augmented_indirect, { double } (double*, double*, double*, double*, double, i8*)* @diffeindirect }
+; CHECK: @"_enzyme_indirect'" = internal constant { i8* (double*, double*, double*, double*, double)*, { double } (double*, double*, double*, double*, double, i8*)* } { i8* (double*, double*, double*, double*, double)* @augmented_indirect, { double } (double*, double*, double*, double*, double, i8*)* @diffeindirect }
 
 ; CHECK: define internal { double } @diffefoobard(double %init, double %differeturn) {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = call { double } @diffesubfn(double %init, void (double*, double*, double)* nonnull @indirect, void (double*, double*, double)* bitcast ({ { i8* } (double*, double*, double*, double*, double)*, { double } (double*, double*, double*, double*, double, i8*)* }* @"_enzyme_indirect'" to void (double*, double*, double)*), double %differeturn)
+; CHECK-NEXT:   %0 = call { double } @diffesubfn(double %init, void (double*, double*, double)* nonnull @indirect, void (double*, double*, double)* bitcast ({ i8* (double*, double*, double*, double*, double)*, { double } (double*, double*, double*, double*, double, i8*)* }* @"_enzyme_indirect'" to void (double*, double*, double)*), double %differeturn)
 ; CHECK-NEXT:   ret { double } %0
 ; CHECK-NEXT: }
 
@@ -53,7 +53,7 @@ entry:
 ; CHECK-NEXT:   ret { double*, double* } %.fca.1.insert
 ; CHECK-NEXT: }
 
-; CHECK: define internal { i8* } @augmented_indirect(double* %x, double* %"x'", double* %dxdt, double* %"dxdt'", double %t) {
+; CHECK: define internal i8* @augmented_indirect(double* %x, double* %"x'", double* %dxdt, double* %"dxdt'", double %t) {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 8)
 ; CHECK-NEXT:   %a1 = load double, double* %x, align 8
@@ -63,8 +63,7 @@ entry:
 ; CHECK-NEXT:   store double* %antiptr_call1, double** %0
 ; CHECK-NEXT:   %call1 = extractvalue { double*, double* } %call1_augmented, 0
 ; CHECK-NEXT:   store double %a1, double* %call1, align 8
-; CHECK-NEXT:   %.fca.0.insert = insertvalue { i8* } undef, i8* %malloccall, 0
-; CHECK-NEXT:   ret { i8* } %.fca.0.insert
+; CHECK-NEXT:   ret i8* %malloccall
 ; CHECK-NEXT: }
 
 ; CHECK: define internal { double } @diffeindirect(double* %x, double* %"x'", double* %dxdt, double* %"dxdt'", double %t, i8* %tapeArg) {

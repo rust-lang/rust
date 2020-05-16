@@ -817,8 +817,7 @@ attributes #11 = { cold }
 ; CHECK-NEXT:   %m_data.i17 = getelementptr inbounds %"class.Eigen::Matrix", %"class.Eigen::Matrix"* %W, i64 0, i32 0, i32 0, i32 0
 ; CHECK-NEXT:   %"a9'ipl" = load double*, double** %[[m_datai17ipge:.+]], align 8
 ; CHECK-NEXT:   %a9 = load double*, double** %m_data.i17, align 8, !tbaa !9
-; CHECK-NEXT:   %subcall_augmented = call { i64 } @augmented_sub(double* %a9, double* %"a9'ipl", i64 %a8) #9
-; CHECK-NEXT:   %subcall = extractvalue { i64 } %subcall_augmented, 0
+; CHECK-NEXT:   %subcall = call i64 @augmented_sub(double* %a9, double* %"a9'ipl", i64 %a8) #9
 ; CHECK-NEXT:   %mvcond = icmp slt i64 %subcall, 0
 ; CHECK-NEXT:   br i1 %mvcond, label %one, label %invertentry
 
@@ -836,7 +835,7 @@ attributes #11 = { cold }
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal { i64 } @augmented_final(double* %array, double* %"array'", i64 %finalsize)
+; CHECK: define internal i64 @augmented_final(double* %array, double* %"array'", i64 %finalsize)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = ptrtoint double* %array to i64
 ; CHECK-NEXT:   %and = and i64 %0, 7
@@ -852,30 +851,27 @@ attributes #11 = { cold }
 
 ; CHECK: cleanup:                                          ; preds = %if.else, %entry
 ; CHECK-NEXT:   %finalret = phi i64 [ %cond, %if.else ], [ %finalsize, %entry ]
-; CHECK-NEXT:   %.fca.0.insert = insertvalue { i64 } undef, i64 %finalret, 0
-; CHECK-NEXT:   ret { i64 } %.fca.0.insert
+; CHECK-NEXT:   ret i64 %finalret
 ; CHECK-NEXT: }
 
-; CHECK: define internal { i64 } @augmented_metasub(double* %array, double* %"array'", i64 %metasize)
+; CHECK: define internal i64 @augmented_metasub(double* %array, double* %"array'", i64 %metasize)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %finalcall_augmented = call { i64 } @augmented_final(double* %array, double* %"array'", i64 %metasize)
-; CHECK-NEXT:   ret { i64 } %finalcall_augmented
+; CHECK-NEXT:   %finalcall = call i64 @augmented_final(double* %array, double* %"array'", i64 %metasize)
+; CHECK-NEXT:   ret i64 %finalcall
 ; CHECK-NEXT: }
 
-; CHECK: define internal { i64 } @augmented_sub(double*, double* %"'", i64 %subsize)
+; CHECK: define internal i64 @augmented_sub(double*, double* %"'", i64 %subsize)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %tobool = icmp eq double* %0, null
 ; CHECK-NEXT:   br i1 %tobool, label %if.end, label %return
 
 ; CHECK: if.end:                                           ; preds = %entry
-; CHECK-NEXT:   %metacall_augmented = call { i64 } @augmented_metasub(double* %0, double* %"'", i64 %subsize)
-; CHECK-NEXT:   %metacall = extractvalue { i64 } %metacall_augmented, 0
+; CHECK-NEXT:   %metacall = call i64 @augmented_metasub(double* %0, double* %"'", i64 %subsize)
 ; CHECK-NEXT:   br label %return
 
 ; CHECK: return:                                           ; preds = %if.end, %entry
 ; CHECK-NEXT:   %subret = phi i64 [ %metacall, %if.end ], [ -1, %entry ]
-; CHECK-NEXT:   %[[retinsert:.+]] = insertvalue { i64 } undef, i64 %subret, 0
-; CHECK-NEXT:   ret { i64 } %[[retinsert]]
+; CHECK-NEXT:   ret i64 %subret
 ; CHECK-NEXT: }
 
 ; CHECK: define internal void @diffesub(double*, double* %"'", i64 %subsize)

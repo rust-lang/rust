@@ -211,7 +211,7 @@ bool GradientUtils::shouldRecompute(Value* val, const ValueToValueMapTy& availab
   return true;
 }
 
-GradientUtils* GradientUtils::CreateFromClone(Function *todiff, TargetLibraryInfo &TLI, TypeAnalysis &TA, AAResults &AA, DIFFE_TYPE retType, const std::vector<DIFFE_TYPE> & constant_args, bool returnUsed, std::map<AugmentedStruct, unsigned> &returnMapping ) {
+GradientUtils* GradientUtils::CreateFromClone(Function *todiff, TargetLibraryInfo &TLI, TypeAnalysis &TA, AAResults &AA, DIFFE_TYPE retType, const std::vector<DIFFE_TYPE> & constant_args, bool returnUsed, std::map<AugmentedStruct, int> &returnMapping ) {
     assert(!todiff->empty());
 
     // Since this is forward pass this should always return the tape (at index 0)

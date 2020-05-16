@@ -261,8 +261,7 @@ attributes #22 = { readnone speculatable }
 ; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull %"call.i.i.i.i.i.i.i13'mi", i8 0, i64 128, i1 false)
 ; CHECK-NEXT:   %"'ipc8" = bitcast i8* %"call.i.i.i.i.i.i.i13'mi" to double*
 ; CHECK-NEXT:   %3 = bitcast i8* %call.i.i.i.i.i.i.i13 to double*
-; CHECK-NEXT:   %_augmented = call { { { double* }* } } @augmented_subfn(double* %3, double* nonnull %"'ipc8", double* nonnull %0, double* nonnull %"'ipc")
-; CHECK-NEXT:   %[[unwrap11:.+]] = extractvalue { { { double* }* } } %_augmented, 0
+; CHECK-NEXT:   %_augmented = call { { double* }* } @augmented_subfn(double* %3, double* nonnull %"'ipc8", double* nonnull %0, double* nonnull %"'ipc")
 ; CHECK-NEXT:   br label %for.body.i
 
 ; CHECK: for.body.i:                                       ; preds = %for.body.i, %_ZN5Eigen8internal26call_dense_assignment_loopINS_6MatrixIdLin1ELin1ELi0ELin1ELin1EEENS_13CwiseBinaryOpINS0_20scalar_difference_opIddEEKS3_S7_EENS0_9assign_opIddEEEEvRT_RKT0_RKT1_.exit
@@ -315,26 +314,26 @@ attributes #22 = { readnone speculatable }
 ; CHECK: invertfor.body.i.i:                               ; preds = %invert_ZN5Eigen8internal26call_dense_assignment_loopINS_6MatrixIdLin1ELin1ELi0ELin1ELin1EEENS_13CwiseBinaryOpINS0_20scalar_difference_opIddEEKS3_S7_EENS0_9assign_opIddEEEEvRT_RKT0_RKT1_.exit, %incinvertfor.body.i.i
 ; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ 15, %invert_ZN5Eigen8internal26call_dense_assignment_loopINS_6MatrixIdLin1ELin1ELi0ELin1ELin1EEENS_13CwiseBinaryOpINS0_20scalar_difference_opIddEEKS3_S7_EENS0_9assign_opIddEEEEvRT_RKT0_RKT1_.exit ], [ %[[ivsub:.+]], %incinvertfor.body.i.i ]
 ; CHECK-NEXT:   %"Oi'ipg_unwrap" = getelementptr inbounds double, double* %"'ipc", i64 %"iv'ac.0"
-; CHECK-NEXT:   %13 = load double, double* %"Oi'ipg_unwrap", align 8
+; CHECK-NEXT:   %[[pOi:.+]] = load double, double* %"Oi'ipg_unwrap", align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"Oi'ipg_unwrap", align 8
-; CHECK-NEXT:   %14 = fsub fast double 0.000000e+00, %13
+; CHECK-NEXT:   %[[nOi:.+]] = fsub fast double 0.000000e+00, %[[pOi]]
 ; CHECK-NEXT:   %"arrayidx.i2.i.i.i.i'ipg_unwrap" = getelementptr inbounds double, double* %"M'", i64 %"iv'ac.0"
-; CHECK-NEXT:   %15 = load double, double* %"arrayidx.i2.i.i.i.i'ipg_unwrap", align 8
-; CHECK-NEXT:   %16 = fadd fast double %15, %14
-; CHECK-NEXT:   store double %16, double* %"arrayidx.i2.i.i.i.i'ipg_unwrap", align 8
+; CHECK-NEXT:   %[[pai:.+]] = load double, double* %"arrayidx.i2.i.i.i.i'ipg_unwrap", align 8
+; CHECK-NEXT:   %[[postai:.+]] = fadd fast double %[[pai]], %[[nOi]]
+; CHECK-NEXT:   store double %[[postai:.+]], double* %"arrayidx.i2.i.i.i.i'ipg_unwrap", align 8
 ; CHECK-NEXT:   %"arrayidx.i.i.i.i.i'ipg_unwrap" = getelementptr inbounds double, double* %"W'", i64 %"iv'ac.0"
-; CHECK-NEXT:   %17 = load double, double* %"arrayidx.i.i.i.i.i'ipg_unwrap", align 8
-; CHECK-NEXT:   %18 = fadd fast double %17, %13
-; CHECK-NEXT:   store double %18, double* %"arrayidx.i.i.i.i.i'ipg_unwrap", align 8
-; CHECK-NEXT:   %19 = icmp eq i64 %"iv'ac.0", 0
-; CHECK-NEXT:   br i1 %19, label %invertentry, label %incinvertfor.body.i.i
+; CHECK-NEXT:   %[[zai:.+]] = load double, double* %"arrayidx.i.i.i.i.i'ipg_unwrap", align 8
+; CHECK-NEXT:   %[[rai:.+]] = fadd fast double %[[zai]], %[[pOi]]
+; CHECK-NEXT:   store double %[[rai]], double* %"arrayidx.i.i.i.i.i'ipg_unwrap", align 8
+; CHECK-NEXT:   %[[ivcmp:.+]] = icmp eq i64 %"iv'ac.0", 0
+; CHECK-NEXT:   br i1 %[[ivcmp]], label %invertentry, label %incinvertfor.body.i.i
 
 ; CHECK: incinvertfor.body.i.i:                            ; preds = %invertfor.body.i.i
 ; CHECK-NEXT:   %[[ivsub]] = add nsw i64 %"iv'ac.0", -1
 ; CHECK-NEXT:   br label %invertfor.body.i.i
 
 ; CHECK: invert_ZN5Eigen8internal26call_dense_assignment_loopINS_6MatrixIdLin1ELin1ELi0ELin1ELin1EEENS_13CwiseBinaryOpINS0_20scalar_difference_opIddEEKS3_S7_EENS0_9assign_opIddEEEEvRT_RKT0_RKT1_.exit: ; preds = %invertfor.body.i
-; CHECK-NEXT:   call void @diffesubfn(double* %3, double* nonnull %"'ipc8", double* %0, double* nonnull %"'ipc", { { double* }* } %4)
+; CHECK-NEXT:   call void @diffesubfn(double* %3, double* nonnull %"'ipc8", double* %0, double* nonnull %"'ipc", { { double* }* } %_augmented)
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %"call.i.i.i.i.i.i.i13'mi")
 ; CHECK-NEXT:   tail call void @free(i8* %call.i.i.i.i.i.i.i13)
 ; CHECK-NEXT:   br label %invertfor.body.i.i
@@ -430,15 +429,11 @@ attributes #22 = { readnone speculatable }
 ; CHECK-NEXT:   ret { { double* }, double } %[[out]]
 ; CHECK-NEXT: }
 
-; CHECK: define internal { { { double* }* } } @augmented_subfn(double* %w3, double* %"w3'", double* %w9, double* %"w9'")
+; CHECK: define internal { double* }* @augmented_subfn(double* %w3, double* %"w3'", double* %w9, double* %"w9'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = alloca { { { double* }* } }
-; CHECK-NEXT:   %1 = getelementptr inbounds { { { double* }* } }, { { { double* }* } }* %0, i32 0, i32 0
 ; CHECK-NEXT:   %false = call i1 @falser()
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 128)
 ; CHECK-NEXT:   %subcache_malloccache = bitcast i8* %malloccall to { double* }*
-; CHECK-NEXT:   %2 = getelementptr inbounds { { double* }* }, { { double* }* }* %1, i32 0, i32 0
-; CHECK-NEXT:   store { double* }* %subcache_malloccache, { double* }** %2
 ; CHECK-NEXT:   br label %for.cond1.preheader
 
 ; CHECK: for.cond1.preheader:                              ; preds = %for.cond.cleanup4, %entry
@@ -477,8 +472,7 @@ attributes #22 = { readnone speculatable }
 ; CHECK-NEXT:   br i1 %cmp, label %for.cond1.preheader, label %for.cond.cleanup
 
 ; CHECK: for.cond.cleanup:                                 ; preds = %for.cond.cleanup4
-; CHECK-NEXT:   %[[out:.+]] = load { { { double* }* } }, { { { double* }* } }* %0
-; CHECK-NEXT:   ret { { { double* }* } } %[[out]]
+; CHECK-NEXT:   ret { double* }* %subcache_malloccache
 ; CHECK-NEXT: }
 
 ; CHECK: define internal void @diffesubfn(double* %w3, double* %"w3'", double* %w9, double* %"w9'", { { double* }* } %tapeArg)

@@ -36,11 +36,9 @@ attributes #1 = { noinline }
 ; CHECK: define internal {{(dso_local )?}}void @diffecompute_sumabs(float* %a, float* %"a'", float* %b, float* %"b'", float* %ret, float* %"ret'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:  %al = load float, float* %a
-; CHECK-NEXT:  %[[call1:.+]] = call { float } @augmented_myabs(float %al)
-; CHECK-NEXT:  %[[myabs1:.+]] = extractvalue { float } %[[call1]], 0
+; CHECK-NEXT:  %[[myabs1:.+]] = call fast float @augmented_myabs(float %al)
 ; CHECK-NEXT:  %bl = load float, float* %b
-; CHECK-NEXT:  %[[call2:.+]] = call { float } @augmented_myabs(float %bl)
-; CHECK-NEXT:  %[[myabsret:.+]] = extractvalue { float } %[[call2]], 0
+; CHECK-NEXT:  %[[myabsret:.+]] = call fast float @augmented_myabs(float %bl)
 ; CHECK-NEXT:  %add = fadd float %[[myabs1]], %[[myabsret]]
 ; CHECK-NEXT:  store float %add, float* %ret
 ; CHECK-NEXT:  %[[ldret:.+]] = load float, float* %"ret'"

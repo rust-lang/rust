@@ -29,8 +29,7 @@ entry:
 
 ; CHECK: define internal { double } @diffetodiff(double %lhs, double %differeturn) {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %call_augmented = call { double } @augmented_f(double %lhs)
-; CHECK-NEXT:   %call = extractvalue { double } %call_augmented, 0
+; CHECK-NEXT:   %call = call fast double @augmented_f(double %lhs)
 ; CHECK-NEXT:   %0 = call { double } @diffeg(double %call, double %differeturn)
 ; CHECK-NEXT:   %1 = extractvalue { double } %0, 0
 ; CHECK-NEXT:   %2 = call { double } @diffef(double %lhs, double %1)
@@ -45,10 +44,9 @@ entry:
 ; CHECK-NEXT:   ret { double } %0
 ; CHECK-NEXT: }
 
-; CHECK: define internal { double } @augmented_f(double %xpr) {
+; CHECK: define internal double @augmented_f(double %xpr) {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %[[res:.+]] = insertvalue { double } undef, double %xpr, 0
-; CHECK-NEXT:   ret { double } %[[res]]
+; CHECK-NEXT:   ret double %xpr
 ; CHECK-NEXT: }
 
 ; CHECK: define internal { double } @diffef(double %xpr, double %differeturn) {
