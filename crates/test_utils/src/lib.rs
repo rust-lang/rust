@@ -245,8 +245,8 @@ impl FixtureMeta {
 ///  line 2
 ///  // - other meta
 ///  ```
-pub fn parse_fixture(fixture: &str) -> Vec<FixtureEntry> {
-    let fixture = indent_first_line(fixture);
+pub fn parse_fixture(ra_fixture: &str) -> Vec<FixtureEntry> {
+    let fixture = indent_first_line(ra_fixture);
     let margin = fixture_margin(&fixture);
 
     let mut lines = fixture
@@ -418,14 +418,16 @@ struct Bar;
 
 #[test]
 fn parse_fixture_gets_full_meta() {
-    let fixture = r"
+    let parsed = parse_fixture(
+        r"
     //- /lib.rs crate:foo deps:bar,baz cfg:foo=a,bar=b,atom env:OUTDIR=path/to,OTHER=foo
-    ";
-    let parsed = parse_fixture(fixture);
+    mod m;
+    ",
+    );
     assert_eq!(1, parsed.len());
 
     let parsed = &parsed[0];
-    assert_eq!("\n", parsed.text);
+    assert_eq!("mod m;\n\n", parsed.text);
 
     let meta = &parsed.meta;
     assert_eq!("foo", meta.crate_name().unwrap());
@@ -435,12 +437,12 @@ fn parse_fixture_gets_full_meta() {
 }
 
 /// Same as `parse_fixture`, except it allow empty fixture
-pub fn parse_single_fixture(fixture: &str) -> Option<FixtureEntry> {
-    if !fixture.lines().any(|it| it.trim_start().starts_with("//-")) {
+pub fn parse_single_fixture(ra_fixture: &str) -> Option<FixtureEntry> {
+    if !ra_fixture.lines().any(|it| it.trim_start().starts_with("//-")) {
         return None;
     }
 
-    let fixtures = parse_fixture(fixture);
+    let fixtures = parse_fixture(ra_fixture);
     if fixtures.len() > 1 {
         panic!("too many fixtures");
     }
