@@ -8,43 +8,40 @@ use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for `if` conditions that use blocks to contain an
-    /// expression.
+    /// **What it does:** Checks for `if` conditions that use blocks containing an
+    /// expression, statements or conditions that use closures with blocks.
     ///
-    /// **Why is this bad?** It isn't really Rust style, same as using parentheses
-    /// to contain expressions.
+    /// **Why is this bad?** Style, using blocks in the condition makes it hard to read.
     ///
     /// **Known problems:** None.
     ///
-    /// **Example:**
+    /// **Examples:**
     /// ```rust
+    /// // Bad
     /// if { true } { /* ... */ }
+    ///
+    /// // Good
+    /// if true { /* ... */ }
     /// ```
-    pub BLOCK_IN_IF_CONDITION_EXPR,
-    style,
-    "braces that can be eliminated in conditions, e.g., `if { true } ...`"
-}
-
-declare_clippy_lint! {
-    /// **What it does:** Checks for `if` conditions that use blocks containing
-    /// statements, or conditions that use closures with blocks.
     ///
-    /// **Why is this bad?** Using blocks in the condition makes it hard to read.
-    ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    /// ```rust,ignore
-    /// if { let x = somefunc(); x } {}
     /// // or
-    /// if somefunc(|x| { x == 47 }) {}
+    ///
+    /// ```rust
+    /// # fn somefunc() -> bool { true };
+    ///
+    /// // Bad
+    /// if { let x = somefunc(); x } { /* ... */ }
+    ///
+    /// // Good
+    /// let res = { let x = somefunc(); x };
+    /// if res { /* ... */ }
     /// ```
-    pub BLOCK_IN_IF_CONDITION_STMT,
+    pub BLOCKS_IN_IF_CONDITIONS,
     style,
-    "complex blocks in conditions, e.g., `if { let x = true; x } ...`"
+    "useless or complex blocks that can be eliminated in conditions"
 }
 
-declare_lint_pass!(BlockInIfCondition => [BLOCK_IN_IF_CONDITION_EXPR, BLOCK_IN_IF_CONDITION_STMT]);
+declare_lint_pass!(BlocksInIfConditions => [BLOCKS_IN_IF_CONDITIONS]);
 
 struct ExVisitor<'a, 'tcx> {
     found_block: Option<&'tcx Expr<'tcx>>,
@@ -72,9 +69,9 @@ impl<'a, 'tcx> Visitor<'tcx> for ExVisitor<'a, 'tcx> {
 
 const BRACED_EXPR_MESSAGE: &str = "omit braces around single expression condition";
 const COMPLEX_BLOCK_MESSAGE: &str = "in an `if` condition, avoid complex blocks or closures with blocks; \
-                                     instead, move the block or closure higher and bind it with a `let`";
+                                    instead, move the block or closure higher and bind it with a `let`";
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BlockInIfCondition {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BlocksInIfConditions {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         if in_external_macro(cx.sess(), expr.span) {
             return;
@@ -92,7 +89,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BlockInIfCondition {
                             let mut applicability = Applicability::MachineApplicable;
                             span_lint_and_sugg(
                                 cx,
-                                BLOCK_IN_IF_CONDITION_EXPR,
+                                BLOCKS_IN_IF_CONDITIONS,
                                 cond.span,
                                 BRACED_EXPR_MESSAGE,
                                 "try",
@@ -118,7 +115,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BlockInIfCondition {
                         let mut applicability = Applicability::MachineApplicable;
                         span_lint_and_sugg(
                             cx,
-                            BLOCK_IN_IF_CONDITION_STMT,
+                            BLOCKS_IN_IF_CONDITIONS,
                             expr.span.with_hi(cond.span.hi()),
                             COMPLEX_BLOCK_MESSAGE,
                             "try",
@@ -140,7 +137,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BlockInIfCondition {
                 let mut visitor = ExVisitor { found_block: None, cx };
                 walk_expr(&mut visitor, cond);
                 if let Some(block) = visitor.found_block {
-                    span_lint(cx, BLOCK_IN_IF_CONDITION_STMT, block.span, COMPLEX_BLOCK_MESSAGE);
+                    span_lint(cx, BLOCKS_IN_IF_CONDITIONS, block.span, COMPLEX_BLOCK_MESSAGE);
                 }
             }
         }
