@@ -20,7 +20,7 @@ pub(super) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
     let scope = ctx.scope();
     let context_module = scope.module();
 
-    let res = match scope.resolve_hir_path(&path) {
+    let res = match scope.resolve_hir_path_qualifier(&path) {
         Some(res) => res,
         None => return,
     };
@@ -219,6 +219,34 @@ mod tests {
                 documentation: Documentation(
                     "Some simple\ndocs describing `mod my`.",
                 ),
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
+    fn completes_mod_with_same_name_as_function() {
+        assert_debug_snapshot!(
+            do_reference_completion(
+                r"
+                use self::my::<|>;
+
+                mod my {
+                    pub struct Bar;
+                }
+
+                fn my() {}
+                "
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "Bar",
+                source_range: 31..31,
+                delete: 31..31,
+                insert: "Bar",
+                kind: Struct,
             },
         ]
         "###

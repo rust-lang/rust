@@ -23,7 +23,7 @@ use crate::{
     db::HirDatabase,
     diagnostics::Diagnostic,
     semantics::source_to_def::{ChildContainer, SourceToDefCache, SourceToDefCtx},
-    source_analyzer::{resolve_hir_path, SourceAnalyzer},
+    source_analyzer::{resolve_hir_path, resolve_hir_path_qualifier, SourceAnalyzer},
     AssocItem, Field, Function, HirFileId, ImplDef, InFile, Local, MacroDef, Module, ModuleDef,
     Name, Origin, Path, ScopeDef, Trait, Type, TypeAlias, TypeParam,
 };
@@ -450,6 +450,23 @@ impl<'a, DB: HirDatabase> SemanticsScope<'a, DB> {
 
     pub fn resolve_hir_path(&self, path: &Path) -> Option<PathResolution> {
         resolve_hir_path(self.db, &self.resolver, path)
+    }
+
+    /// Resolves a path where we know it is a qualifier of another path.
+    ///
+    /// For example, if we have:
+    /// ```
+    /// mod my {
+    ///     pub mod foo {
+    ///         struct Bar;
+    ///     }
+    ///
+    ///     pub fn foo() {}
+    /// }
+    /// ```
+    /// then we know that `foo` in `my::foo::Bar` refers to the module, not the function.
+    pub fn resolve_hir_path_qualifier(&self, path: &Path) -> Option<PathResolution> {
+        resolve_hir_path_qualifier(self.db, &self.resolver, path)
     }
 }
 
