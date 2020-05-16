@@ -1,5 +1,5 @@
 error[E0594]: cannot assign to `*OH_YES`, as `OH_YES` is an immutable static item
-  --> $DIR/mutable_references.rs:37:5
+  --> $DIR/mutable_references.rs:36:5
    |
 LL |     *OH_YES = 99;
    |     ^^^^^^^^^^^^ cannot assign
@@ -22,12 +22,12 @@ help: skipping check for `const_mut_refs` feature
 LL | static BOO: &mut Foo<()> = &mut Foo(());
    |                            ^^^^^^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references.rs:27:8
+  --> $DIR/mutable_references.rs:26:8
    |
 LL |     x: &UnsafeCell::new(42),
    |        ^^^^^^^^^^^^^^^^^^^^
 help: skipping check for `const_mut_refs` feature
-  --> $DIR/mutable_references.rs:31:27
+  --> $DIR/mutable_references.rs:30:27
    |
 LL | static OH_YES: &mut i32 = &mut 42;
    |                           ^^^^^^^

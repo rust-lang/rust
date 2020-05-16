@@ -1,13 +1,25 @@
-error: any use of this value will cause an error
-  --> $DIR/dangling-alloc-id-ice.rs:8:1
+error: encountered dangling pointer in final constant
+  --> $DIR/dangling-alloc-id-ice.rs:9:1
    |
 LL | / const FOO: &() = {
+LL | |
 LL | |     let y = ();
 LL | |     unsafe { Foo { y: &y }.long_live_the_unit }
 LL | | };
-   | |__^ encountered dangling pointer in final constant
+   | |__^
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/dangling-alloc-id-ice.rs:9:1
    |
-   = note: `#[deny(const_err)]` on by default
+LL | / const FOO: &() = {
+LL | |
+LL | |     let y = ();
+LL | |     unsafe { Foo { y: &y }.long_live_the_unit }
+LL | | };
+   | |__^ type validation failed: encountered a dangling reference (use-after-free)
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0080`.

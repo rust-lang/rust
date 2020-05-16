@@ -66,7 +66,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
         intern_kind,
         ret,
         body.ignore_interior_mut_in_const_validation,
-    )?;
+    );
 
     debug!("eval_body_using_ecx done: {:?}", *ret);
     Ok(ret)
