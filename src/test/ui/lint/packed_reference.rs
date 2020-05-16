@@ -7,11 +7,6 @@ pub struct Good {
     aligned: [u8; 32],
 }
 
-#[repr(packed)]
-pub struct JustArray {
-    array: [u32],
-}
-
 fn main() {
     unsafe {
         let good = Good { data: &0, data2: [&0, &0], aligned: [0; 32] };

@@ -1,5 +1,5 @@
 error: reference to packed field is not allowed
-  --> $DIR/packed_reference.rs:19:17
+  --> $DIR/packed_reference.rs:14:17
    |
 LL |         let _ = &good.data;
    |                 ^^^^^^^^^^
@@ -12,7 +12,7 @@ LL | #![deny(packed_references)]
    = note: fields of packed structs might be misaligned, and creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
 
 error: reference to packed field is not allowed
-  --> $DIR/packed_reference.rs:20:17
+  --> $DIR/packed_reference.rs:15:17
    |
 LL |         let _ = &good.data2[0];
    |                 ^^^^^^^^^^^^^^
