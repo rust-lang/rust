@@ -1987,7 +1987,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     Lint {
         name: "sort_by_key_reverse",
         group: "complexity",
-        desc: "default lint description",
+        desc: "Use of `Vec::sort_by` when `Vec::sort_by_key` would be clearer",
         deprecation: None,
         module: "sort_by_key_reverse",
     },
