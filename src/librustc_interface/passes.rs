@@ -7,7 +7,7 @@ use rustc_ast::mut_visit::MutVisitor;
 use rustc_ast::{self, ast, visit};
 use rustc_codegen_ssa::back::link::emit_metadata;
 use rustc_codegen_ssa::traits::CodegenBackend;
-use rustc_data_structures::sync::{par_iter, Lrc, Once, ParallelIterator, WorkerLocal};
+use rustc_data_structures::sync::{par_iter, Lrc, OnceCell, ParallelIterator, WorkerLocal};
 use rustc_data_structures::{box_region_allow_access, declare_box_region_type, parallel};
 use rustc_errors::{ErrorReported, PResult};
 use rustc_expand::base::ExtCtxt;
@@ -169,10 +169,10 @@ pub fn register_plugins<'a>(
     sess.init_features(features);
 
     let crate_types = util::collect_crate_types(sess, &krate.attrs);
-    sess.crate_types.set(crate_types);
+    sess.init_crate_types(crate_types);
 
     let disambiguator = util::compute_crate_disambiguator(sess);
-    sess.crate_disambiguator.set(disambiguator);
+    sess.crate_disambiguator.set(disambiguator).expect("not yet initialized");
     rustc_incremental::prepare_session_directory(sess, &crate_name, disambiguator);
 
     if sess.opts.incremental.is_some() {
@@ -244,7 +244,7 @@ fn configure_and_expand_inner<'a>(
             alt_std_name,
         );
         if let Some(name) = name {
-            sess.parse_sess.injected_crate_name.set(name);
+            sess.parse_sess.injected_crate_name.set(name).expect("not yet initialized");
         }
         krate
     });
@@ -288,7 +288,7 @@ fn configure_and_expand_inner<'a>(
         let features = sess.features_untracked();
         let cfg = rustc_expand::expand::ExpansionConfig {
             features: Some(&features),
-            recursion_limit: *sess.recursion_limit.get(),
+            recursion_limit: sess.recursion_limit(),
             trace_mac: sess.opts.debugging_opts.trace_macros,
             should_test: sess.opts.test,
             ..rustc_expand::expand::ExpansionConfig::default(crate_name.to_string())
@@ -358,7 +358,7 @@ fn configure_and_expand_inner<'a>(
         rustc_ast_passes::ast_validation::check_crate(sess, &krate, &mut resolver.lint_buffer())
     });
 
-    let crate_types = sess.crate_types.borrow();
+    let crate_types = sess.crate_types();
     let is_proc_macro_crate = crate_types.contains(&CrateType::ProcMacro);
 
     // For backwards compatibility, we don't try to run proc macro injection
@@ -488,7 +488,7 @@ fn generated_output_paths(
             // If the filename has been overridden using `-o`, it will not be modified
             // by appending `.rlib`, `.exe`, etc., so we can skip this transformation.
             OutputType::Exe if !exact_name => {
-                for crate_type in sess.crate_types.borrow().iter() {
+                for crate_type in sess.crate_types().iter() {
                     let p = filename_for_input(sess, *crate_type, crate_name, outputs);
                     out_filenames.push(p);
                 }
@@ -721,7 +721,7 @@ pub fn create_global_ctxt<'tcx>(
     mut resolver_outputs: ResolverOutputs,
     outputs: OutputFilenames,
     crate_name: &str,
-    global_ctxt: &'tcx Once<GlobalCtxt<'tcx>>,
+    global_ctxt: &'tcx OnceCell<GlobalCtxt<'tcx>>,
     arena: &'tcx WorkerLocal<Arena<'tcx>>,
 ) -> QueryContext<'tcx> {
     let sess = &compiler.session();
@@ -743,7 +743,7 @@ pub fn create_global_ctxt<'tcx>(
     }
 
     let gcx = sess.time("setup_global_ctxt", || {
-        global_ctxt.init_locking(|| {
+        global_ctxt.get_or_init(|| {
             TyCtxt::create_global_ctxt(
                 sess,
                 lint_store,
@@ -905,8 +905,7 @@ fn encode_and_write_metadata(
 
     let metadata_kind = tcx
         .sess
-        .crate_types
-        .borrow()
+        .crate_types()
         .iter()
         .map(|ty| match *ty {
             CrateType::Executable | CrateType::Staticlib | CrateType::Cdylib => MetadataKind::None,

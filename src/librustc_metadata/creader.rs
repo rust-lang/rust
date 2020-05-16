@@ -615,7 +615,7 @@ impl<'a> CrateLoader<'a> {
     fn inject_panic_runtime(&mut self, krate: &ast::Crate) {
         // If we're only compiling an rlib, then there's no need to select a
         // panic runtime, so we just skip this section entirely.
-        let any_non_rlib = self.sess.crate_types.borrow().iter().any(|ct| *ct != CrateType::Rlib);
+        let any_non_rlib = self.sess.crate_types().iter().any(|ct| *ct != CrateType::Rlib);
         if !any_non_rlib {
             info!("panic runtime injection skipped, only generating rlib");
             return;
@@ -734,7 +734,7 @@ impl<'a> CrateLoader<'a> {
         // At this point we've determined that we need an allocator. Let's see
         // if our compilation session actually needs an allocator based on what
         // we're emitting.
-        let all_rlib = self.sess.crate_types.borrow().iter().all(|ct| match *ct {
+        let all_rlib = self.sess.crate_types().iter().all(|ct| match *ct {
             CrateType::Rlib => true,
             _ => false,
         });

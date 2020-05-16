@@ -382,7 +382,7 @@ pub struct CompiledModules {
 
 fn need_bitcode_in_object(sess: &Session) -> bool {
     let requested_for_rlib = sess.opts.cg.embed_bitcode
-        && sess.crate_types.borrow().contains(&CrateType::Rlib)
+        && sess.crate_types().contains(&CrateType::Rlib)
         && sess.opts.output_types.contains_key(&OutputType::Exe);
     let forced_by_target = sess.target.target.options.forces_embed_bitcode;
     requested_for_rlib || forced_by_target
@@ -991,7 +991,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
     };
     let cgcx = CodegenContext::<B> {
         backend: backend.clone(),
-        crate_types: sess.crate_types.borrow().clone(),
+        crate_types: sess.crate_types().to_vec(),
         each_linked_rlib_for_lto,
         lto: sess.lto(),
         no_landing_pads: sess.panic_strategy() == PanicStrategy::Abort,
@@ -1812,7 +1812,7 @@ fn msvc_imps_needed(tcx: TyCtxt<'_>) -> bool {
     );
 
     tcx.sess.target.target.options.is_like_msvc &&
-        tcx.sess.crate_types.borrow().iter().any(|ct| *ct == CrateType::Rlib) &&
+        tcx.sess.crate_types().iter().any(|ct| *ct == CrateType::Rlib) &&
     // ThinLTO can't handle this workaround in all cases, so we don't
     // emit the `__imp_` symbols. Instead we make them unnecessary by disallowing
     // dynamic linking when linker plugin LTO is enabled.

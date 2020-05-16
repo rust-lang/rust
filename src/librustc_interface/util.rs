@@ -406,7 +406,7 @@ pub(crate) fn compute_crate_disambiguator(session: &Session) -> CrateDisambiguat
 
     // Also incorporate crate type, so that we don't get symbol conflicts when
     // linking against a library of the same name, if this is an executable.
-    let is_exe = session.crate_types.borrow().contains(&CrateType::Executable);
+    let is_exe = session.crate_types().contains(&CrateType::Executable);
     hasher.write(if is_exe { b"exe" } else { b"lib" });
 
     CrateDisambiguator::from(hasher.finish::<Fingerprint>())

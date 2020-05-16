@@ -416,7 +416,7 @@ impl<'tcx> EncodeContext<'tcx> {
     }
 
     fn encode_crate_root(&mut self) -> Lazy<CrateRoot<'tcx>> {
-        let is_proc_macro = self.tcx.sess.crate_types.borrow().contains(&CrateType::ProcMacro);
+        let is_proc_macro = self.tcx.sess.crate_types().contains(&CrateType::ProcMacro);
 
         let mut i = self.position();
 
@@ -1364,7 +1364,7 @@ impl EncodeContext<'tcx> {
     }
 
     fn encode_proc_macros(&mut self) -> Option<Lazy<[DefIndex]>> {
-        let is_proc_macro = self.tcx.sess.crate_types.borrow().contains(&CrateType::ProcMacro);
+        let is_proc_macro = self.tcx.sess.crate_types().contains(&CrateType::ProcMacro);
         if is_proc_macro {
             let tcx = self.tcx;
             Some(self.lazy(tcx.hir().krate().proc_macros.iter().map(|p| p.owner.local_def_index)))

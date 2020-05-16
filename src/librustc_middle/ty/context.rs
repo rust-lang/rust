@@ -1380,7 +1380,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn local_crate_exports_generics(self) -> bool {
         debug_assert!(self.sess.opts.share_generics());
 
-        self.sess.crate_types.borrow().iter().any(|crate_type| {
+        self.sess.crate_types().iter().any(|crate_type| {
             match crate_type {
                 CrateType::Executable
                 | CrateType::Staticlib

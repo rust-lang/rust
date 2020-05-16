@@ -174,7 +174,7 @@ pub unsafe fn create_module(
         llvm::LLVMRustSetModulePICLevel(llmod);
         // PIE is potentially more effective than PIC, but can only be used in executables.
         // If all our outputs are executables, then we can relax PIC to PIE.
-        if sess.crate_types.get().iter().all(|ty| *ty == CrateType::Executable) {
+        if sess.crate_types().iter().all(|ty| *ty == CrateType::Executable) {
             llvm::LLVMRustSetModulePIELevel(llmod);
         }
     }

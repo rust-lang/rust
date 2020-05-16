@@ -430,7 +430,7 @@ fn check_recursion_limit<'tcx>(
     // Code that needs to instantiate the same function recursively
     // more than the recursion limit is assumed to be causing an
     // infinite expansion.
-    if adjusted_recursion_depth > *tcx.sess.recursion_limit.get() {
+    if adjusted_recursion_depth > tcx.sess.recursion_limit() {
         let error = format!("reached the recursion limit while instantiating `{}`", instance);
         if let Some(def_id) = def_id.as_local() {
             let hir_id = tcx.hir().as_local_hir_id(def_id);
@@ -463,8 +463,7 @@ fn check_type_length_limit<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
     // which means that rustc basically hangs.
     //
     // Bail out in these cases to avoid that bad user experience.
-    let type_length_limit = *tcx.sess.type_length_limit.get();
-    if type_length > type_length_limit {
+    if type_length > tcx.sess.type_length_limit() {
         // The instance name is already known to be too long for rustc.
         // Show only the first and last 32 characters to avoid blasting
         // the user's terminal with thousands of lines of type-name.

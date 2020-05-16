@@ -18,7 +18,7 @@ use rustc_middle::ty::{SymbolName, TyCtxt};
 use rustc_session::config::{CrateType, Sanitizer};
 
 pub fn threshold(tcx: TyCtxt<'_>) -> SymbolExportLevel {
-    crates_export_threshold(&tcx.sess.crate_types.borrow())
+    crates_export_threshold(&tcx.sess.crate_types())
 }
 
 fn crate_export_threshold(crate_type: CrateType) -> SymbolExportLevel {
@@ -212,7 +212,7 @@ fn exported_symbols_provider_local(
         }));
     }
 
-    if tcx.sess.crate_types.borrow().contains(&CrateType::Dylib) {
+    if tcx.sess.crate_types().contains(&CrateType::Dylib) {
         let symbol_name = metadata_symbol_name(tcx);
         let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(&symbol_name));
 

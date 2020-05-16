@@ -43,14 +43,13 @@ impl<'tcx, F> NeedsDropTypes<'tcx, F> {
     ) -> Self {
         let mut seen_tys = FxHashSet::default();
         seen_tys.insert(ty);
-        let recursion_limit = *tcx.sess.recursion_limit.get();
         Self {
             tcx,
             param_env,
             seen_tys,
             query_ty: ty,
             unchecked_tys: vec![(ty, 0)],
-            recursion_limit,
+            recursion_limit: tcx.sess.recursion_limit(),
             adt_components,
         }
     }

@@ -48,7 +48,7 @@ impl<'a, 'tcx> Iterator for Autoderef<'a, 'tcx> {
             return Some((self.cur_ty, 0));
         }
 
-        if self.steps.len() >= *tcx.sess.recursion_limit.get() {
+        if self.steps.len() >= tcx.sess.recursion_limit() {
             if !self.silence_errors {
                 report_autoderef_recursion_limit_error(tcx, self.span, self.cur_ty);
             }
@@ -236,7 +236,7 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
 
 pub fn report_autoderef_recursion_limit_error<'tcx>(tcx: TyCtxt<'tcx>, span: Span, ty: Ty<'tcx>) {
     // We've reached the recursion limit, error gracefully.
-    let suggested_limit = *tcx.sess.recursion_limit.get() * 2;
+    let suggested_limit = tcx.sess.recursion_limit() * 2;
     let msg = format!("reached the recursion limit while auto-dereferencing `{:?}`", ty);
     let error_id = (DiagnosticMessageId::ErrorId(55), Some(span), msg);
     let fresh = tcx.sess.one_time_diagnostics.borrow_mut().insert(error_id);

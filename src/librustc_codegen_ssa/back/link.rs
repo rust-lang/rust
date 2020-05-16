@@ -53,7 +53,7 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
 ) {
     let _timer = sess.timer("link_binary");
     let output_metadata = sess.opts.output_types.contains_key(&OutputType::Metadata);
-    for &crate_type in sess.crate_types.borrow().iter() {
+    for &crate_type in sess.crate_types().iter() {
         // Ignore executable crates if we have -Z no-codegen, as they will error.
         if (sess.opts.debugging_opts.no_codegen || !sess.opts.output_types.should_codegen())
             && !output_metadata
@@ -875,11 +875,8 @@ fn preserve_objects_for_their_debuginfo(sess: &Session) -> bool {
 
     // If we're only producing artifacts that are archives, no need to preserve
     // the objects as they're losslessly contained inside the archives.
-    let output_linked = sess
-        .crate_types
-        .borrow()
-        .iter()
-        .any(|&x| x != CrateType::Rlib && x != CrateType::Staticlib);
+    let output_linked =
+        sess.crate_types().iter().any(|&x| x != CrateType::Rlib && x != CrateType::Staticlib);
     if !output_linked {
         return false;
     }
