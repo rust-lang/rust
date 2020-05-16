@@ -127,7 +127,7 @@ create_config! {
         "Add trailing semicolon after break, continue and return";
     trailing_comma: SeparatorTactic, SeparatorTactic::Vertical, false,
         "How to handle trailing commas for lists";
-    match_block_trailing_comma: bool, false, false,
+    match_block_trailing_comma: bool, false, true,
         "Put a trailing comma after a block based match arm (non-block arms are not affected)";
     blank_lines_upper_bound: usize, 1, false,
         "Maximum number of blank lines which can be put between items";
