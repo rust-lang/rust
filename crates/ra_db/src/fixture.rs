@@ -254,20 +254,14 @@ impl From<&FixtureMeta> for ParsedMeta {
             }
             FixtureMeta::File(f) => Self::File(FileMeta {
                 path: f.path.to_owned().into(),
-                krate: f.krate.to_owned().into(),
+                krate: f.crate_name.to_owned().into(),
                 deps: f.deps.to_owned(),
                 cfg: f.cfg.to_owned(),
                 edition: f
                     .edition
                     .as_ref()
                     .map_or(Edition::Edition2018, |v| Edition::from_str(&v).unwrap()),
-                env: {
-                    let mut env = Env::default();
-                    for (k, v) in &f.env {
-                        env.set(&k, v.to_owned());
-                    }
-                    env
-                },
+                env: Env::from(f.env.iter()),
             }),
         }
     }

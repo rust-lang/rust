@@ -1,5 +1,6 @@
 //! FIXME: write short doc here
 
+use std::str::FromStr;
 use std::sync::Arc;
 
 use ra_cfg::CfgOptions;
@@ -7,8 +8,8 @@ use ra_db::{CrateName, Env, RelativePathBuf};
 use test_utils::{extract_offset, extract_range, parse_fixture, FixtureEntry, CURSOR_MARKER};
 
 use crate::{
-    Analysis, AnalysisChange, AnalysisHost, CrateGraph, Edition::Edition2018, FileId, FilePosition,
-    FileRange, SourceRootId,
+    Analysis, AnalysisChange, AnalysisHost, CrateGraph, Edition, FileId, FilePosition, FileRange,
+    SourceRootId,
 };
 
 #[derive(Debug)]
@@ -44,6 +45,22 @@ impl MockFileData {
                 f.meta.cfg_options().map_or_else(Default::default, |o| o.clone())
             }
             _ => CfgOptions::default(),
+        }
+    }
+
+    fn edition(&self) -> Edition {
+        match self {
+            MockFileData::Fixture(f) => {
+                f.meta.edition().map_or(Edition::Edition2018, |v| Edition::from_str(v).unwrap())
+            }
+            _ => Edition::Edition2018,
+        }
+    }
+
+    fn env(&self) -> Env {
+        match self {
+            MockFileData::Fixture(f) => Env::from(f.meta.env()),
+            _ => Env::default(),
         }
     }
 }
@@ -153,13 +170,15 @@ impl MockAnalysis {
             let path = RelativePathBuf::from_path(&path[1..]).unwrap();
             let cfg_options = data.cfg_options();
             let file_id = FileId(i as u32 + 1);
+            let edition = data.edition();
+            let env = data.env();
             if path == "/lib.rs" || path == "/main.rs" {
                 root_crate = Some(crate_graph.add_crate_root(
                     file_id,
-                    Edition2018,
+                    edition,
                     None,
                     cfg_options,
-                    Env::default(),
+                    env,
                     Default::default(),
                     Default::default(),
                 ));
@@ -167,10 +186,10 @@ impl MockAnalysis {
                 let crate_name = path.parent().unwrap().file_name().unwrap();
                 let other_crate = crate_graph.add_crate_root(
                     file_id,
-                    Edition2018,
+                    edition,
                     Some(CrateName::new(crate_name).unwrap()),
                     cfg_options,
-                    Env::default(),
+                    env,
                     Default::default(),
                     Default::default(),
                 );

@@ -174,7 +174,7 @@ pub enum FixtureMeta {
 #[derive(Debug, Eq, PartialEq)]
 pub struct FileMeta {
     pub path: RelativePathBuf,
-    pub krate: Option<String>,
+    pub crate_name: Option<String>,
     pub deps: Vec<String>,
     pub cfg: CfgOptions,
     pub edition: Option<String>,
@@ -189,11 +189,51 @@ impl FixtureMeta {
         }
     }
 
+    pub fn crate_name(&self) -> Option<&String> {
+        match self {
+            FixtureMeta::File(f) => f.crate_name.as_ref(),
+            _ => None,
+        }
+    }
+
     pub fn cfg_options(&self) -> Option<&CfgOptions> {
         match self {
             FixtureMeta::File(f) => Some(&f.cfg),
             _ => None,
         }
+    }
+
+    pub fn edition(&self) -> Option<&String> {
+        match self {
+            FixtureMeta::File(f) => f.edition.as_ref(),
+            _ => None,
+        }
+    }
+
+    pub fn env(&self) -> impl Iterator<Item = (&String, &String)> {
+        struct EnvIter<'a> {
+            iter: Option<std::collections::hash_map::Iter<'a, String, String>>,
+        }
+
+        impl<'a> EnvIter<'a> {
+            fn new(meta: &'a FixtureMeta) -> Self {
+                Self {
+                    iter: match meta {
+                        FixtureMeta::File(f) => Some(f.env.iter()),
+                        _ => None,
+                    },
+                }
+            }
+        }
+
+        impl<'a> Iterator for EnvIter<'a> {
+            type Item = (&'a String, &'a String);
+            fn next(&mut self) -> Option<Self::Item> {
+                self.iter.as_mut().and_then(|i| i.next())
+            }
+        }
+
+        EnvIter::new(self)
     }
 }
 
@@ -289,7 +329,7 @@ fn parse_meta(meta: &str) -> FixtureMeta {
         }
     }
 
-    FixtureMeta::File(FileMeta { path, krate, deps, edition, cfg, env })
+    FixtureMeta::File(FileMeta { path, crate_name: krate, deps, edition, cfg, env })
 }
 
 fn split1(haystack: &str, delim: char) -> Option<(&str, &str)> {
