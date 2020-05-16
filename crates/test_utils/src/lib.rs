@@ -176,7 +176,7 @@ pub struct FileMeta {
     pub path: RelativePathBuf,
     pub krate: Option<String>,
     pub deps: Vec<String>,
-    pub cfg: ra_cfg::CfgOptions,
+    pub cfg: CfgOptions,
     pub edition: Option<String>,
     pub env: FxHashMap<String, String>,
 }
@@ -186,6 +186,13 @@ impl FixtureMeta {
         match self {
             FixtureMeta::Root { path } => &path,
             FixtureMeta::File(f) => &f.path,
+        }
+    }
+
+    pub fn cfg_options(&self) -> Option<&CfgOptions> {
+        match self {
+            FixtureMeta::File(f) => Some(&f.cfg),
+            _ => None,
         }
     }
 }
