@@ -14,8 +14,12 @@ use std::{
     path::{Path, PathBuf},
 };
 
+pub use ra_cfg::CfgOptions;
+
 use serde_json::Value;
 use text_size::{TextRange, TextSize};
+pub use relative_path::{RelativePath, RelativePathBuf};
+pub use rustc_hash::FxHashMap;
 
 pub use difference::Changeset as __Changeset;
 
@@ -159,6 +163,33 @@ pub fn add_cursor(text: &str, offset: TextSize) -> String {
 pub struct FixtureEntry {
     pub meta: String,
     pub text: String,
+
+    pub parsed_meta: FixtureMeta,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub enum FixtureMeta {
+    Root { path: RelativePathBuf },
+    File(FileMeta),
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct FileMeta {
+    pub path: RelativePathBuf,
+    pub krate: Option<String>,
+    pub deps: Vec<String>,
+    pub cfg: ra_cfg::CfgOptions,
+    pub edition: Option<String>,
+    pub env: FxHashMap<String, String>,
+}
+
+impl FixtureMeta {
+    pub fn path(&self) -> &RelativePath {
+        match self {
+            FixtureMeta::Root { path } => &path,
+            FixtureMeta::File(f) => &f.path,
+        }
+    }
 }
 
 /// Parses text which looks like this:
@@ -200,7 +231,8 @@ The offending line: {:?}"#,
     for line in lines.by_ref() {
         if line.starts_with("//-") {
             let meta = line["//-".len()..].trim().to_string();
-            res.push(FixtureEntry { meta, text: String::new() })
+            let parsed_meta = parse_meta(&meta);
+            res.push(FixtureEntry { meta, parsed_meta, text: String::new() })
         } else if let Some(entry) = res.last_mut() {
             entry.text.push_str(line);
             entry.text.push('\n');
@@ -208,6 +240,58 @@ The offending line: {:?}"#,
     }
     res
 }
+
+//- /lib.rs crate:foo deps:bar,baz cfg:foo=a,bar=b env:OUTDIR=path/to,OTHER=foo
+fn parse_meta(meta: &str) -> FixtureMeta {
+    let components = meta.split_ascii_whitespace().collect::<Vec<_>>();
+
+    if components[0] == "root" {
+        let path: RelativePathBuf = components[1].into();
+        assert!(path.starts_with("/") && path.ends_with("/"));
+        return FixtureMeta::Root { path };
+    }
+
+    let path: RelativePathBuf = components[0].into();
+    assert!(path.starts_with("/"));
+
+    let mut krate = None;
+    let mut deps = Vec::new();
+    let mut edition = None;
+    let mut cfg = CfgOptions::default();
+    let mut env = FxHashMap::default();
+    for component in components[1..].iter() {
+        let (key, value) = split1(component, ':').unwrap();
+        match key {
+            "crate" => krate = Some(value.to_string()),
+            "deps" => deps = value.split(',').map(|it| it.to_string()).collect(),
+            "edition" => edition = Some(value.to_string()),
+            "cfg" => {
+                for key in value.split(',') {
+                    match split1(key, '=') {
+                        None => cfg.insert_atom(key.into()),
+                        Some((k, v)) => cfg.insert_key_value(k.into(), v.into()),
+                    }
+                }
+            }
+            "env" => {
+                for key in value.split(',') {
+                    if let Some((k, v)) = split1(key, '=') {
+                        env.insert(k.into(), v.into());
+                    }
+                }
+            }
+            _ => panic!("bad component: {:?}", component),
+        }
+    }
+
+    FixtureMeta::File(FileMeta { path, krate, deps, edition, cfg, env })
+}
+
+fn split1(haystack: &str, delim: char) -> Option<(&str, &str)> {
+    let idx = haystack.find(delim)?;
+    Some((&haystack[..idx], &haystack[idx + delim.len_utf8()..]))
+}
+
 
 /// Adjusts the indentation of the first line to the minimum indentation of the rest of the lines.
 /// This allows fixtures to start off in a different indentation, e.g. to align the first line with
@@ -286,6 +370,18 @@ struct Bar;
 "
         )
     )
+}
+
+#[test]
+fn parse_fixture_gets_full_meta() {
+    let fixture = r"
+    //- /lib.rs crate:foo deps:bar,baz cfg:foo=a,bar=b,atom env:OUTDIR=path/to,OTHER=foo
+    ";
+    let parsed = parse_fixture(fixture);
+    assert_eq!(1, parsed.len());
+
+    let parsed = &parsed[0];
+    assert_eq!("\n", parsed.text);
 }
 
 /// Same as `parse_fixture`, except it allow empty fixture
