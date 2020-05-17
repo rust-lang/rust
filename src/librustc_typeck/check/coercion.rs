@@ -887,7 +887,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let coerce = Coerce::new(self, cause, AllowTwoPhase::No);
         coerce
             .autoderef(rustc_span::DUMMY_SP, expr_ty)
-            .find_map(|(ty, steps)| coerce.unify(ty, target).ok().map(|_| steps))
+            .find_map(|(ty, steps)| self.probe(|_| coerce.unify(ty, target)).ok().map(|_| steps))
     }
 
     /// Given some expressions, their known unified type and another expression,
