@@ -33,4 +33,9 @@ fn main() {
 
     let u: u8 = 0;
     u & 255;
+
+    1 << 0; // no error, this case is allowed, see issue 3430
+    42 << 0;
+    1 >> 0;
+    42 >> 0;
 }

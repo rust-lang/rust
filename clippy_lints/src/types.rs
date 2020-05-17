@@ -2206,7 +2206,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitHasher {
 
             multispan_sugg(
                 diag,
-                "consider adding a type parameter".to_string(),
+                "consider adding a type parameter",
                 vec![
                     (
                         generics_suggestion_span,
@@ -2230,7 +2230,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitHasher {
             );
 
             if !vis.suggestions.is_empty() {
-                multispan_sugg(diag, "...and use generic constructor".into(), vis.suggestions);
+                multispan_sugg(diag, "...and use generic constructor", vis.suggestions);
             }
         }
 

@@ -1,0 +1,34 @@
+error: this range is empty so it will yield no values
+  --> $DIR/reversed_empty_ranges_unfixable.rs:7:13
+   |
+LL |     let _ = (42 + 10..42 + 10).map(|x| x / 2).find(|&x| x == 21);
+   |             ^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::reversed-empty-ranges` implied by `-D warnings`
+
+error: this range is reversed and using it to index a slice will panic at run-time
+  --> $DIR/reversed_empty_ranges_unfixable.rs:10:18
+   |
+LL |     let _ = &arr[3usize..=1usize];
+   |                  ^^^^^^^^^^^^^^^
+
+error: this range is reversed and using it to index a slice will panic at run-time
+  --> $DIR/reversed_empty_ranges_unfixable.rs:11:18
+   |
+LL |     let _ = &arr[SOME_NUM..1];
+   |                  ^^^^^^^^^^^
+
+error: this range is empty and using it to index a slice will always yield an empty slice
+  --> $DIR/reversed_empty_ranges_unfixable.rs:12:18
+   |
+LL |     let _ = &arr[3..3];
+   |                  ^^^^
+
+error: this range is empty so it will yield no values
+  --> $DIR/reversed_empty_ranges_unfixable.rs:14:14
+   |
+LL |     for _ in ANSWER..ANSWER {}
+   |              ^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+

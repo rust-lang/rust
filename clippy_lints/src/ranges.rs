@@ -1,14 +1,17 @@
+use crate::consts::{constant, Constant};
 use if_chain::if_chain;
 use rustc_ast::ast::RangeLimits;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Spanned;
+use std::cmp::Ordering;
 
 use crate::utils::sugg::Sugg;
+use crate::utils::{get_parent_expr, is_integer_const, snippet, snippet_opt, span_lint, span_lint_and_then};
 use crate::utils::{higher, SpanlessEq};
-use crate::utils::{is_integer_const, snippet, snippet_opt, span_lint, span_lint_and_then};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for zipping a collection with the range of
@@ -84,10 +87,44 @@ declare_clippy_lint! {
     "`x..=(y-1)` reads better as `x..y`"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Checks for range expressions `x..y` where both `x` and `y`
+    /// are constant and `x` is greater or equal to `y`.
+    ///
+    /// **Why is this bad?** Empty ranges yield no values so iterating them is a no-op.
+    /// Moreover, trying to use a reversed range to index a slice will panic at run-time.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust,no_run
+    /// fn main() {
+    ///     (10..=0).for_each(|x| println!("{}", x));
+    ///
+    ///     let arr = [1, 2, 3, 4, 5];
+    ///     let sub = &arr[3..1];
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// fn main() {
+    ///     (0..=10).rev().for_each(|x| println!("{}", x));
+    ///
+    ///     let arr = [1, 2, 3, 4, 5];
+    ///     let sub = &arr[1..3];
+    /// }
+    /// ```
+    pub REVERSED_EMPTY_RANGES,
+    correctness,
+    "reversing the limits of range expressions, resulting in empty ranges"
+}
+
 declare_lint_pass!(Ranges => [
     RANGE_ZIP_WITH_LEN,
     RANGE_PLUS_ONE,
-    RANGE_MINUS_ONE
+    RANGE_MINUS_ONE,
+    REVERSED_EMPTY_RANGES,
 ]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Ranges {
@@ -124,6 +161,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Ranges {
 
         check_exclusive_range_plus_one(cx, expr);
         check_inclusive_range_minus_one(cx, expr);
+        check_reversed_empty_range(cx, expr);
     }
 }
 
@@ -198,6 +236,76 @@ fn check_inclusive_range_minus_one(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
                     );
                 },
             );
+        }
+    }
+}
+
+fn check_reversed_empty_range(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
+    fn inside_indexing_expr(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
+        matches!(
+            get_parent_expr(cx, expr),
+            Some(Expr {
+                kind: ExprKind::Index(..),
+                ..
+            })
+        )
+    }
+
+    fn is_empty_range(limits: RangeLimits, ordering: Ordering) -> bool {
+        match limits {
+            RangeLimits::HalfOpen => ordering != Ordering::Less,
+            RangeLimits::Closed => ordering == Ordering::Greater,
+        }
+    }
+
+    if_chain! {
+        if let Some(higher::Range { start: Some(start), end: Some(end), limits }) = higher::range(cx, expr);
+        let ty = cx.tables.expr_ty(start);
+        if let ty::Int(_) | ty::Uint(_) = ty.kind;
+        if let Some((start_idx, _)) = constant(cx, cx.tables, start);
+        if let Some((end_idx, _)) = constant(cx, cx.tables, end);
+        if let Some(ordering) = Constant::partial_cmp(cx.tcx, ty, &start_idx, &end_idx);
+        if is_empty_range(limits, ordering);
+        then {
+            if inside_indexing_expr(cx, expr) {
+                let (reason, outcome) = if ordering == Ordering::Equal {
+                    ("empty", "always yield an empty slice")
+                } else {
+                    ("reversed", "panic at run-time")
+                };
+
+                span_lint(
+                    cx,
+                    REVERSED_EMPTY_RANGES,
+                    expr.span,
+                    &format!("this range is {} and using it to index a slice will {}", reason, outcome),
+                );
+            } else {
+                span_lint_and_then(
+                    cx,
+                    REVERSED_EMPTY_RANGES,
+                    expr.span,
+                    "this range is empty so it will yield no values",
+                    |diag| {
+                        if ordering != Ordering::Equal {
+                            let start_snippet = snippet(cx, start.span, "_");
+                            let end_snippet = snippet(cx, end.span, "_");
+                            let dots = match limits {
+                                RangeLimits::HalfOpen => "..",
+                                RangeLimits::Closed => "..="
+                            };
+
+                            diag.span_suggestion(
+                                expr.span,
+                                "consider using the following if you are attempting to iterate over this \
+                                 range in reverse",
+                                format!("({}{}{}).rev()", end_snippet, dots, start_snippet),
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                    },
+                );
+            }
         }
     }
 }

@@ -7,30 +7,36 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for always-identical `Into`/`From`/`IntoIter` conversions.
+    /// **What it does:** Checks for `Into`/`From`/`IntoIter` calls that useless converts
+    /// to the same type as caller.
     ///
     /// **Why is this bad?** Redundant code.
     ///
     /// **Known problems:** None.
     ///
     /// **Example:**
+    ///
     /// ```rust
+    /// // Bad
     /// // format!() returns a `String`
     /// let s: String = format!("hello").into();
+    ///
+    /// // Good
+    /// let s: String = format!("hello");
     /// ```
-    pub IDENTITY_CONVERSION,
+    pub USELESS_CONVERSION,
     complexity,
-    "using always-identical `Into`/`From`/`IntoIter` conversions"
+    "calls to `Into`/`From`/`IntoIter` that performs useless conversions to the same type"
 }
 
 #[derive(Default)]
-pub struct IdentityConversion {
+pub struct UselessConversion {
     try_desugar_arm: Vec<HirId>,
 }
 
-impl_lint_pass!(IdentityConversion => [IDENTITY_CONVERSION]);
+impl_lint_pass!(UselessConversion => [USELESS_CONVERSION]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IdentityConversion {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UselessConversion {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr<'_>) {
         if e.span.from_expansion() {
             return;
@@ -60,9 +66,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IdentityConversion {
 
                         span_lint_and_sugg(
                             cx,
-                            IDENTITY_CONVERSION,
+                            USELESS_CONVERSION,
                             e.span,
-                            "identical conversion",
+                            "useless conversion",
                             "consider removing `.into()`",
                             sugg,
                             Applicability::MachineApplicable, // snippet
@@ -76,9 +82,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IdentityConversion {
                         let sugg = snippet(cx, args[0].span, "<expr>").into_owned();
                         span_lint_and_sugg(
                             cx,
-                            IDENTITY_CONVERSION,
+                            USELESS_CONVERSION,
                             e.span,
-                            "identical conversion",
+                            "useless conversion",
                             "consider removing `.into_iter()`",
                             sugg,
                             Applicability::MachineApplicable, // snippet
@@ -99,9 +105,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IdentityConversion {
                                     format!("consider removing `{}()`", snippet(cx, path.span, "From::from"));
                                 span_lint_and_sugg(
                                     cx,
-                                    IDENTITY_CONVERSION,
+                                    USELESS_CONVERSION,
                                     e.span,
-                                    "identical conversion",
+                                    "useless conversion",
                                     &sugg_msg,
                                     sugg,
                                     Applicability::MachineApplicable, // snippet

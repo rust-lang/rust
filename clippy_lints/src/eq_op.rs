@@ -115,7 +115,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                                     let rsnip = snippet(cx, r.span, "...").to_string();
                                     multispan_sugg(
                                         diag,
-                                        "use the values directly".to_string(),
+                                        "use the values directly",
                                         vec![(left.span, lsnip), (right.span, rsnip)],
                                     );
                                 },

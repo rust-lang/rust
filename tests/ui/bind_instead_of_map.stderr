@@ -1,20 +1,26 @@
 error: using `Option.and_then(Some)`, which is a no-op
-  --> $DIR/option_and_then_some.rs:8:13
+  --> $DIR/bind_instead_of_map.rs:8:13
    |
 LL |     let _ = x.and_then(Some);
    |             ^^^^^^^^^^^^^^^^ help: use the expression directly: `x`
    |
 note: the lint level is defined here
-  --> $DIR/option_and_then_some.rs:2:9
+  --> $DIR/bind_instead_of_map.rs:2:9
    |
-LL | #![deny(clippy::option_and_then_some)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #![deny(clippy::bind_instead_of_map)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: using `Option.and_then(|x| Some(y))`, which is more succinctly expressed as `map(|x| y)`
-  --> $DIR/option_and_then_some.rs:9:13
+  --> $DIR/bind_instead_of_map.rs:9:13
    |
 LL |     let _ = x.and_then(|o| Some(o + 1));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `x.map(|o| o + 1)`
 
-error: aborting due to 2 previous errors
+error: using `Result.and_then(Ok)`, which is a no-op
+  --> $DIR/bind_instead_of_map.rs:15:13
+   |
+LL |     let _ = x.and_then(Ok);
+   |             ^^^^^^^^^^^^^^ help: use the expression directly: `x`
+
+error: aborting due to 3 previous errors
 

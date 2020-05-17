@@ -1,9 +1,10 @@
-error[E0425]: cannot find function `f` in this scope
-  --> $DIR/for_loop_unfixable.rs:36:12
+error: you are iterating over `Iterator::next()` which is an Option; this will compile but is probably not what you want
+  --> $DIR/for_loop_unfixable.rs:21:15
    |
-LL |         if f(&vec[i], &vec[i]) {
-   |            ^ help: a local variable with a similar name exists: `i`
+LL |     for _v in vec.iter().next() {}
+   |               ^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::iter-next-loop` implied by `-D warnings`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0425`.

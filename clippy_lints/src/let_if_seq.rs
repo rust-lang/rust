@@ -50,7 +50,7 @@ declare_clippy_lint! {
     /// };
     /// ```
     pub USELESS_LET_IF_SEQ,
-    style,
+    nursery,
     "unidiomatic `let mut` declaration followed by initialization in `if`"
 }
 

@@ -8,6 +8,7 @@ use rustc_hir::{BinOpKind, Body, Expr, ExprKind, FnDecl, HirId, Path, QPath, UnO
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::map::Map;
 use rustc_middle::lint::in_external_macro;
+use rustc_middle::ty::Ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 
@@ -90,6 +91,14 @@ fn collect_unwrap_info<'a, 'tcx>(
     branch: &'tcx Expr<'_>,
     invert: bool,
 ) -> Vec<UnwrapInfo<'tcx>> {
+    fn is_relevant_option_call(cx: &LateContext<'_, '_>, ty: Ty<'_>, method_name: &str) -> bool {
+        is_type_diagnostic_item(cx, ty, sym!(option_type)) && ["is_some", "is_none"].contains(&method_name)
+    }
+
+    fn is_relevant_result_call(cx: &LateContext<'_, '_>, ty: Ty<'_>, method_name: &str) -> bool {
+        is_type_diagnostic_item(cx, ty, sym!(result_type)) && ["is_ok", "is_err"].contains(&method_name)
+    }
+
     if let ExprKind::Binary(op, left, right) = &expr.kind {
         match (invert, op.node) {
             (false, BinOpKind::And) | (false, BinOpKind::BitAnd) | (true, BinOpKind::Or) | (true, BinOpKind::BitOr) => {
@@ -106,9 +115,8 @@ fn collect_unwrap_info<'a, 'tcx>(
             if let ExprKind::MethodCall(method_name, _, args) = &expr.kind;
             if let ExprKind::Path(QPath::Resolved(None, path)) = &args[0].kind;
             let ty = cx.tables.expr_ty(&args[0]);
-            if is_type_diagnostic_item(cx, ty, sym!(option_type)) || is_type_diagnostic_item(cx, ty, sym!(result_type));
             let name = method_name.ident.as_str();
-            if ["is_some", "is_none", "is_ok", "is_err"].contains(&&*name);
+            if is_relevant_option_call(cx, ty, &name) || is_relevant_result_call(cx, ty, &name);
             then {
                 assert!(args.len() == 1);
                 let unwrappable = match name.as_ref() {

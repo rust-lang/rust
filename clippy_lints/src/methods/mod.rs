@@ -1,3 +1,4 @@
+mod bind_instead_of_map;
 mod inefficient_to_string;
 mod manual_saturating_arithmetic;
 mod option_map_unwrap_or;
@@ -7,6 +8,7 @@ use std::borrow::Cow;
 use std::fmt;
 use std::iter;
 
+use bind_instead_of_map::BindInsteadOfMap;
 use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_errors::Applicability;
@@ -33,40 +35,15 @@ use crate::utils::{
 };
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for `.unwrap()` calls on `Option`s.
+    /// **What it does:** Checks for `.unwrap()` calls on `Option`s and on `Result`s.
     ///
-    /// **Why is this bad?** Usually it is better to handle the `None` case, or to
-    /// at least call `.expect(_)` with a more helpful message. Still, for a lot of
+    /// **Why is this bad?** It is better to handle the `None` or `Err` case,
+    /// or at least call `.expect(_)` with a more helpful message. Still, for a lot of
     /// quick-and-dirty code, `unwrap` is a good choice, which is why this lint is
     /// `Allow` by default.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
-    /// Using unwrap on an `Option`:
-    ///
-    /// ```rust
-    /// let opt = Some(1);
-    /// opt.unwrap();
-    /// ```
-    ///
-    /// Better:
-    ///
-    /// ```rust
-    /// let opt = Some(1);
-    /// opt.expect("more helpful message");
-    /// ```
-    pub OPTION_UNWRAP_USED,
-    restriction,
-    "using `Option.unwrap()`, which should at least get a better message using `expect()`"
-}
-
-declare_clippy_lint! {
-    /// **What it does:** Checks for `.unwrap()` calls on `Result`s.
-    ///
-    /// **Why is this bad?** `result.unwrap()` will let the thread panic on `Err`
-    /// values. Normally, you want to implement more sophisticated error handling,
+    /// `result.unwrap()` will let the thread panic on `Err` values.
+    /// Normally, you want to implement more sophisticated error handling,
     /// and propagate errors upwards with `?` operator.
     ///
     /// Even if you want to panic on errors, not all `Error`s implement good
@@ -75,81 +52,73 @@ declare_clippy_lint! {
     ///
     /// **Known problems:** None.
     ///
-    /// **Example:**
-    /// Using unwrap on an `Result`:
-    ///
+    /// **Examples:**
     /// ```rust
-    /// let res: Result<usize, ()> = Ok(1);
-    /// res.unwrap();
+    /// # let opt = Some(1);
+    ///
+    /// // Bad
+    /// opt.unwrap();
+    ///
+    /// // Good
+    /// opt.expect("more helpful message");
     /// ```
     ///
-    /// Better:
+    /// // or
     ///
     /// ```rust
-    /// let res: Result<usize, ()> = Ok(1);
+    /// # let res: Result<usize, ()> = Ok(1);
+    ///
+    /// // Bad
+    /// res.unwrap();
+    ///
+    /// // Good
     /// res.expect("more helpful message");
     /// ```
-    pub RESULT_UNWRAP_USED,
+    pub UNWRAP_USED,
     restriction,
-    "using `Result.unwrap()`, which might be better handled"
+    "using `.unwrap()` on `Result` or `Option`, which should at least get a better message using `expect()`"
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for `.expect()` calls on `Option`s.
+    /// **What it does:** Checks for `.expect()` calls on `Option`s and `Result`s.
     ///
-    /// **Why is this bad?** Usually it is better to handle the `None` case. Still,
-    ///  for a lot of quick-and-dirty code, `expect` is a good choice, which is why
-    ///  this lint is `Allow` by default.
+    /// **Why is this bad?** Usually it is better to handle the `None` or `Err` case.
+    /// Still, for a lot of quick-and-dirty code, `expect` is a good choice, which is why
+    /// this lint is `Allow` by default.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
-    /// Using expect on an `Option`:
-    ///
-    /// ```rust
-    /// let opt = Some(1);
-    /// opt.expect("one");
-    /// ```
-    ///
-    /// Better:
-    ///
-    /// ```rust,ignore
-    /// let opt = Some(1);
-    /// opt?;
-    /// ```
-    pub OPTION_EXPECT_USED,
-    restriction,
-    "using `Option.expect()`, which might be better handled"
-}
-
-declare_clippy_lint! {
-    /// **What it does:** Checks for `.expect()` calls on `Result`s.
-    ///
-    /// **Why is this bad?** `result.expect()` will let the thread panic on `Err`
+    /// `result.expect()` will let the thread panic on `Err`
     /// values. Normally, you want to implement more sophisticated error handling,
     /// and propagate errors upwards with `?` operator.
     ///
     /// **Known problems:** None.
     ///
-    /// **Example:**
-    /// Using expect on an `Result`:
+    /// **Examples:**
+    /// ```rust,ignore
+    /// # let opt = Some(1);
     ///
-    /// ```rust
-    /// let res: Result<usize, ()> = Ok(1);
-    /// res.expect("one");
+    /// // Bad
+    /// opt.expect("one");
+    ///
+    /// // Good
+    /// let opt = Some(1);
+    /// opt?;
     /// ```
     ///
-    /// Better:
+    /// // or
     ///
     /// ```rust
-    /// let res: Result<usize, ()> = Ok(1);
+    /// # let res: Result<usize, ()> = Ok(1);
+    ///
+    /// // Bad
+    /// res.expect("one");
+    ///
+    /// // Good
     /// res?;
     /// # Ok::<(), ()>(())
     /// ```
-    pub RESULT_EXPECT_USED,
+    pub EXPECT_USED,
     restriction,
-    "using `Result.expect()`, which might be better handled"
+    "using `.expect()` on `Result` or `Option`, which might be better handled"
 }
 
 declare_clippy_lint! {
@@ -257,59 +226,40 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usage of `_.map(_).unwrap_or(_)`.
+    /// **What it does:** Checks for usage of `option.map(_).unwrap_or(_)` or `option.map(_).unwrap_or_else(_)` or
+    /// `result.map(_).unwrap_or_else(_)`.
     ///
-    /// **Why is this bad?** Readability, this can be written more concisely as
-    /// `_.map_or(_, _)`.
+    /// **Why is this bad?** Readability, these can be written more concisely (resp.) as
+    /// `option.map_or(_, _)`, `option.map_or_else(_, _)` and `result.map_or_else(_, _)`.
     ///
     /// **Known problems:** The order of the arguments is not in execution order
     ///
-    /// **Example:**
+    /// **Examples:**
     /// ```rust
     /// # let x = Some(1);
+    ///
+    /// // Bad
     /// x.map(|a| a + 1).unwrap_or(0);
+    ///
+    /// // Good
+    /// x.map_or(0, |a| a + 1);
     /// ```
-    pub OPTION_MAP_UNWRAP_OR,
-    pedantic,
-    "using `Option.map(f).unwrap_or(a)`, which is more succinctly expressed as `map_or(a, f)`"
-}
-
-declare_clippy_lint! {
-    /// **What it does:** Checks for usage of `_.map(_).unwrap_or_else(_)`.
     ///
-    /// **Why is this bad?** Readability, this can be written more concisely as
-    /// `_.map_or_else(_, _)`.
+    /// // or
     ///
-    /// **Known problems:** The order of the arguments is not in execution order.
-    ///
-    /// **Example:**
-    /// ```rust
-    /// # let x = Some(1);
-    /// # fn some_function() -> usize { 1 }
-    /// x.map(|a| a + 1).unwrap_or_else(some_function);
-    /// ```
-    pub OPTION_MAP_UNWRAP_OR_ELSE,
-    pedantic,
-    "using `Option.map(f).unwrap_or_else(g)`, which is more succinctly expressed as `map_or_else(g, f)`"
-}
-
-declare_clippy_lint! {
-    /// **What it does:** Checks for usage of `result.map(_).unwrap_or_else(_)`.
-    ///
-    /// **Why is this bad?** Readability, this can be written more concisely as
-    /// `result.map_or_else(_, _)`.
-    ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
     /// ```rust
     /// # let x: Result<usize, ()> = Ok(1);
     /// # fn some_function(foo: ()) -> usize { 1 }
+    ///
+    /// // Bad
     /// x.map(|a| a + 1).unwrap_or_else(some_function);
+    ///
+    /// // Good
+    /// x.map_or_else(some_function, |a| a + 1);
     /// ```
-    pub RESULT_MAP_UNWRAP_OR_ELSE,
+    pub MAP_UNWRAP_OR,
     pedantic,
-    "using `Result.map(f).unwrap_or_else(g)`, which is more succinctly expressed as `.map_or_else(g, f)`"
+    "using `.map(f).unwrap_or(a)` or `.map(f).unwrap_or_else(func)`, which are more succinctly expressed as `map_or(a, f)` or `map_or_else(a, f)`"
 }
 
 declare_clippy_lint! {
@@ -358,27 +308,34 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usage of `_.and_then(|x| Some(y))`.
+    /// **What it does:** Checks for usage of `_.and_then(|x| Some(y))`, `_.and_then(|x| Ok(y))` or
+    /// `_.or_else(|x| Err(y))`.
     ///
     /// **Why is this bad?** Readability, this can be written more concisely as
-    /// `_.map(|x| y)`.
+    /// `_.map(|x| y)` or `_.map_err(|x| y)`.
     ///
     /// **Known problems:** None
     ///
     /// **Example:**
     ///
     /// ```rust
-    /// let x = Some("foo");
-    /// let _ = x.and_then(|s| Some(s.len()));
+    /// # fn opt() -> Option<&'static str> { Some("42") }
+    /// # fn res() -> Result<&'static str, &'static str> { Ok("42") }
+    /// let _ = opt().and_then(|s| Some(s.len()));
+    /// let _ = res().and_then(|s| if s.len() == 42 { Ok(10) } else { Ok(20) });
+    /// let _ = res().or_else(|s| if s.len() == 42 { Err(10) } else { Err(20) });
     /// ```
     ///
     /// The correct use would be:
     ///
     /// ```rust
-    /// let x = Some("foo");
-    /// let _ = x.map(|s| s.len());
+    /// # fn opt() -> Option<&'static str> { Some("42") }
+    /// # fn res() -> Result<&'static str, &'static str> { Ok("42") }
+    /// let _ = opt().map(|s| s.len());
+    /// let _ = res().map(|s| if s.len() == 42 { 10 } else { 20 });
+    /// let _ = res().map_err(|s| if s.len() == 42 { 10 } else { 20 });
     /// ```
-    pub OPTION_AND_THEN_SOME,
+    pub BIND_INSTEAD_OF_MAP,
     complexity,
     "using `Option.and_then(|x| Some(y))`, which is more succinctly expressed as `map(|x| y)`"
 }
@@ -1286,20 +1243,16 @@ declare_clippy_lint! {
 }
 
 declare_lint_pass!(Methods => [
-    OPTION_UNWRAP_USED,
-    RESULT_UNWRAP_USED,
-    OPTION_EXPECT_USED,
-    RESULT_EXPECT_USED,
+    UNWRAP_USED,
+    EXPECT_USED,
     SHOULD_IMPLEMENT_TRAIT,
     WRONG_SELF_CONVENTION,
     WRONG_PUB_SELF_CONVENTION,
     OK_EXPECT,
-    OPTION_MAP_UNWRAP_OR,
-    OPTION_MAP_UNWRAP_OR_ELSE,
-    RESULT_MAP_UNWRAP_OR_ELSE,
+    MAP_UNWRAP_OR,
     RESULT_MAP_OR_INTO_OPTION,
     OPTION_MAP_OR_NONE,
-    OPTION_AND_THEN_SOME,
+    BIND_INSTEAD_OF_MAP,
     OR_FUN_CALL,
     EXPECT_FUN_CALL,
     CHARS_NEXT_CMP,
@@ -1358,7 +1311,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
             ["unwrap_or", "map"] => option_map_unwrap_or::lint(cx, expr, arg_lists[1], arg_lists[0], method_spans[1]),
             ["unwrap_or_else", "map"] => lint_map_unwrap_or_else(cx, expr, arg_lists[1], arg_lists[0]),
             ["map_or", ..] => lint_map_or_none(cx, expr, arg_lists[0]),
-            ["and_then", ..] => lint_option_and_then_some(cx, expr, arg_lists[0]),
+            ["and_then", ..] => {
+                bind_instead_of_map::OptionAndThenSome::lint(cx, expr, arg_lists[0]);
+                bind_instead_of_map::ResultAndThenOk::lint(cx, expr, arg_lists[0]);
+            },
+            ["or_else", ..] => {
+                bind_instead_of_map::ResultOrElseErrInfo::lint(cx, expr, arg_lists[0]);
+            },
             ["next", "filter"] => lint_filter_next(cx, expr, arg_lists[1]),
             ["next", "skip_while"] => lint_skip_while_next(cx, expr, arg_lists[1]),
             ["map", "filter"] => lint_filter_map(cx, expr, arg_lists[1], arg_lists[0]),
@@ -1503,9 +1462,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
                             cx,
                             lint,
                             first_arg.pat.span,
-                            &format!(
-                               "methods called `{}` usually take {}; consider choosing a less \
-                                 ambiguous name",
+                            &format!("methods called `{}` usually take {}; consider choosing a less ambiguous name",
                                 conv,
                                 &self_kinds
                                     .iter()
@@ -1678,7 +1635,7 @@ fn lint_or_fun_call<'a, 'tcx>(
             let self_ty = cx.tables.expr_ty(self_expr);
 
             if let Some(&(_, fn_has_arguments, poss, suffix)) =
-                   know_types.iter().find(|&&i| match_type(cx, self_ty, i.0));
+                know_types.iter().find(|&&i| match_type(cx, self_ty, i.0));
 
             if poss.contains(&name);
 
@@ -1931,7 +1888,7 @@ fn lint_clone_on_copy(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, arg: &hir:
                 CLONE_DOUBLE_REF,
                 expr.span,
                 "using `clone` on a double-reference; \
-                 this will copy the reference instead of cloning the inner type",
+                this will copy the reference instead of cloning the inner type",
                 |diag| {
                     if let Some(snip) = sugg::Sugg::hir_opt(cx, arg) {
                         let mut ty = innermost;
@@ -2121,7 +2078,7 @@ fn lint_iter_cloned_collect<'a, 'tcx>(
                 ITER_CLONED_COLLECT,
                 to_replace,
                 "called `iter().cloned().collect()` on a slice to create a `Vec`. Calling `to_vec()` is both faster and \
-                 more readable",
+                more readable",
                 "try",
                 ".to_vec()".to_string(),
                 Applicability::MachineApplicable,
@@ -2420,9 +2377,9 @@ fn lint_unwrap(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, unwrap_args: &[hi
     let obj_ty = walk_ptrs_ty(cx.tables.expr_ty(&unwrap_args[0]));
 
     let mess = if is_type_diagnostic_item(cx, obj_ty, sym!(option_type)) {
-        Some((OPTION_UNWRAP_USED, "an Option", "None"))
+        Some((UNWRAP_USED, "an Option", "None"))
     } else if is_type_diagnostic_item(cx, obj_ty, sym!(result_type)) {
-        Some((RESULT_UNWRAP_USED, "a Result", "Err"))
+        Some((UNWRAP_USED, "a Result", "Err"))
     } else {
         None
     };
@@ -2436,7 +2393,7 @@ fn lint_unwrap(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, unwrap_args: &[hi
             None,
             &format!(
                 "if you don't want to handle the `{}` case gracefully, consider \
-                 using `expect()` to provide a better panic message",
+                using `expect()` to provide a better panic message",
                 none_value,
             ),
         );
@@ -2448,9 +2405,9 @@ fn lint_expect(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, expect_args: &[hi
     let obj_ty = walk_ptrs_ty(cx.tables.expr_ty(&expect_args[0]));
 
     let mess = if is_type_diagnostic_item(cx, obj_ty, sym!(option_type)) {
-        Some((OPTION_EXPECT_USED, "an Option", "None"))
+        Some((EXPECT_USED, "an Option", "None"))
     } else if is_type_diagnostic_item(cx, obj_ty, sym!(result_type)) {
-        Some((RESULT_EXPECT_USED, "a Result", "Err"))
+        Some((EXPECT_USED, "a Result", "Err"))
     } else {
         None
     };
@@ -2494,7 +2451,7 @@ fn lint_map_flatten<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr<
     // lint if caller of `.map().flatten()` is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
         let msg = "called `map(..).flatten()` on an `Iterator`. \
-                   This is more succinctly expressed by calling `.flat_map(..)`";
+                    This is more succinctly expressed by calling `.flat_map(..)`";
         let self_snippet = snippet(cx, map_args[0].span, "..");
         let func_snippet = snippet(cx, map_args[1].span, "..");
         let hint = format!("{0}.flat_map({1})", self_snippet, func_snippet);
@@ -2555,10 +2512,10 @@ fn lint_map_unwrap_or_else<'a, 'tcx>(
         // lint message
         let msg = if is_option {
             "called `map(f).unwrap_or_else(g)` on an `Option` value. This can be done more directly by calling \
-             `map_or_else(g, f)` instead"
+            `map_or_else(g, f)` instead"
         } else {
             "called `map(f).unwrap_or_else(g)` on a `Result` value. This can be done more directly by calling \
-             `.map_or_else(g, f)` instead"
+            `.map_or_else(g, f)` instead"
         };
         // get snippets for args to map() and unwrap_or_else()
         let map_snippet = snippet(cx, map_args[1].span, "..");
@@ -2570,11 +2527,7 @@ fn lint_map_unwrap_or_else<'a, 'tcx>(
         if same_span && !multiline {
             span_lint_and_note(
                 cx,
-                if is_option {
-                    OPTION_MAP_UNWRAP_OR_ELSE
-                } else {
-                    RESULT_MAP_UNWRAP_OR_ELSE
-                },
+                MAP_UNWRAP_OR,
                 expr.span,
                 msg,
                 None,
@@ -2584,16 +2537,7 @@ fn lint_map_unwrap_or_else<'a, 'tcx>(
                 ),
             );
         } else if same_span && multiline {
-            span_lint(
-                cx,
-                if is_option {
-                    OPTION_MAP_UNWRAP_OR_ELSE
-                } else {
-                    RESULT_MAP_UNWRAP_OR_ELSE
-                },
-                expr.span,
-                msg,
-            );
+            span_lint(cx, MAP_UNWRAP_OR, expr.span, msg);
         };
     }
 }
@@ -2670,73 +2614,6 @@ fn lint_map_or_none<'a, 'tcx>(
         hint,
         Applicability::MachineApplicable,
     );
-}
-
-/// Lint use of `_.and_then(|x| Some(y))` for `Option`s
-fn lint_option_and_then_some(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
-    const LINT_MSG: &str = "using `Option.and_then(|x| Some(y))`, which is more succinctly expressed as `map(|x| y)`";
-    const NO_OP_MSG: &str = "using `Option.and_then(Some)`, which is a no-op";
-
-    let ty = cx.tables.expr_ty(&args[0]);
-    if !is_type_diagnostic_item(cx, ty, sym!(option_type)) {
-        return;
-    }
-
-    match args[1].kind {
-        hir::ExprKind::Closure(_, _, body_id, closure_args_span, _) => {
-            let closure_body = cx.tcx.hir().body(body_id);
-            let closure_expr = remove_blocks(&closure_body.value);
-            if_chain! {
-                if let hir::ExprKind::Call(ref some_expr, ref some_args) = closure_expr.kind;
-                if let hir::ExprKind::Path(ref qpath) = some_expr.kind;
-                if match_qpath(qpath, &paths::OPTION_SOME);
-                if some_args.len() == 1;
-                then {
-                    let inner_expr = &some_args[0];
-
-                    if contains_return(inner_expr) {
-                        return;
-                    }
-
-                    let some_inner_snip = if inner_expr.span.from_expansion() {
-                        snippet_with_macro_callsite(cx, inner_expr.span, "_")
-                    } else {
-                        snippet(cx, inner_expr.span, "_")
-                    };
-
-                    let closure_args_snip = snippet(cx, closure_args_span, "..");
-                    let option_snip = snippet(cx, args[0].span, "..");
-                    let note = format!("{}.map({} {})", option_snip, closure_args_snip, some_inner_snip);
-                    span_lint_and_sugg(
-                        cx,
-                        OPTION_AND_THEN_SOME,
-                        expr.span,
-                        LINT_MSG,
-                        "try this",
-                        note,
-                        Applicability::MachineApplicable,
-                    );
-                }
-            }
-        },
-        // `_.and_then(Some)` case, which is no-op.
-        hir::ExprKind::Path(ref qpath) => {
-            if match_qpath(qpath, &paths::OPTION_SOME) {
-                let option_snip = snippet(cx, args[0].span, "..");
-                let note = format!("{}", option_snip);
-                span_lint_and_sugg(
-                    cx,
-                    OPTION_AND_THEN_SOME,
-                    expr.span,
-                    NO_OP_MSG,
-                    "use the expression directly",
-                    note,
-                    Applicability::MachineApplicable,
-                );
-            }
-        },
-        _ => {},
-    }
 }
 
 /// lint use of `filter().next()` for `Iterators`

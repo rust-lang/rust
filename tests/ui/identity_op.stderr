@@ -48,5 +48,23 @@ error: the operation is ineffective. Consider reducing it to `u`
 LL |     u & 255;
    |     ^^^^^^^
 
-error: aborting due to 8 previous errors
+error: the operation is ineffective. Consider reducing it to `42`
+  --> $DIR/identity_op.rs:38:5
+   |
+LL |     42 << 0;
+   |     ^^^^^^^
+
+error: the operation is ineffective. Consider reducing it to `1`
+  --> $DIR/identity_op.rs:39:5
+   |
+LL |     1 >> 0;
+   |     ^^^^^^
+
+error: the operation is ineffective. Consider reducing it to `42`
+  --> $DIR/identity_op.rs:40:5
+   |
+LL |     42 >> 0;
+   |     ^^^^^^^
+
+error: aborting due to 11 previous errors
 

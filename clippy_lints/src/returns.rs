@@ -248,28 +248,7 @@ impl EarlyLintPass for Return {
             if let ast::TyKind::Tup(ref vals) = ty.kind;
             if vals.is_empty() && !ty.span.from_expansion() && get_def(span) == get_def(ty.span);
             then {
-                let (rspan, appl) = if let Ok(fn_source) =
-                        cx.sess().source_map()
-                                 .span_to_snippet(span.with_hi(ty.span.hi())) {
-                    if let Some(rpos) = fn_source.rfind("->") {
-                        #[allow(clippy::cast_possible_truncation)]
-                        (ty.span.with_lo(BytePos(span.lo().0 + rpos as u32)),
-                            Applicability::MachineApplicable)
-                    } else {
-                        (ty.span, Applicability::MaybeIncorrect)
-                    }
-                } else {
-                    (ty.span, Applicability::MaybeIncorrect)
-                };
-                span_lint_and_sugg(
-                    cx,
-                    UNUSED_UNIT,
-                    rspan,
-                    "unneeded unit return type",
-                    "remove the `-> ()`",
-                    String::new(),
-                    appl,
-                );
+                lint_unneeded_unit_return(cx, ty, span);
             }
         }
     }
@@ -313,6 +292,22 @@ impl EarlyLintPass for Return {
             _ => (),
         }
     }
+
+    fn check_poly_trait_ref(&mut self, cx: &EarlyContext<'_>, poly: &ast::PolyTraitRef, _: &ast::TraitBoundModifier) {
+        let segments = &poly.trait_ref.path.segments;
+
+        if_chain! {
+            if segments.len() == 1;
+            if ["Fn", "FnMut", "FnOnce"].contains(&&*segments[0].ident.name.as_str());
+            if let Some(args) = &segments[0].args;
+            if let ast::GenericArgs::Parenthesized(generic_args) = &**args;
+            if let ast::FnRetTy::Ty(ty) = &generic_args.output;
+            if ty.kind.is_unit();
+            then {
+                lint_unneeded_unit_return(cx, ty, generic_args.span);
+            }
+        }
+    }
 }
 
 fn attr_is_cfg(attr: &ast::Attribute) -> bool {
@@ -336,4 +331,29 @@ fn is_unit_expr(expr: &ast::Expr) -> bool {
     } else {
         false
     }
+}
+
+fn lint_unneeded_unit_return(cx: &EarlyContext<'_>, ty: &ast::Ty, span: Span) {
+    let (ret_span, appl) = if let Ok(fn_source) = cx.sess().source_map().span_to_snippet(span.with_hi(ty.span.hi())) {
+        if let Some(rpos) = fn_source.rfind("->") {
+            #[allow(clippy::cast_possible_truncation)]
+            (
+                ty.span.with_lo(BytePos(span.lo().0 + rpos as u32)),
+                Applicability::MachineApplicable,
+            )
+        } else {
+            (ty.span, Applicability::MaybeIncorrect)
+        }
+    } else {
+        (ty.span, Applicability::MaybeIncorrect)
+    };
+    span_lint_and_sugg(
+        cx,
+        UNUSED_UNIT,
+        ret_span,
+        "unneeded unit return type",
+        "remove the `-> ()`",
+        String::new(),
+        appl,
+    );
 }
