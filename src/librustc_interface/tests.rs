@@ -15,7 +15,7 @@ use rustc_session::{build_session, Session};
 use rustc_span::edition::{Edition, DEFAULT_EDITION};
 use rustc_span::symbol::sym;
 use rustc_span::SourceFileHashAlgorithm;
-use rustc_target::spec::{LinkerFlavor, MergeFunctions, PanicStrategy};
+use rustc_target::spec::{CodeModel, LinkerFlavor, MergeFunctions, PanicStrategy};
 use rustc_target::spec::{RelocModel, RelroLevel, TlsModel};
 use std::collections::{BTreeMap, BTreeSet};
 use std::iter::FromIterator;
@@ -411,7 +411,7 @@ fn test_codegen_options_tracking_hash() {
 
     // Make sure that changing a [TRACKED] option changes the hash.
     // This list is in alphabetical order.
-    tracked!(code_model, Some(String::from("code model")));
+    tracked!(code_model, Some(CodeModel::Large));
     tracked!(debug_assertions, Some(true));
     tracked!(debuginfo, 0xdeadbeef);
     tracked!(embed_bitcode, false);

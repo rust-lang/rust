@@ -24,7 +24,7 @@ use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{self, Lto, OutputType, Passes, Sanitizer, SwitchWithOptPath};
 use rustc_session::Session;
-use rustc_target::spec::RelocModel;
+use rustc_target::spec::{CodeModel, RelocModel};
 
 use libc::{c_char, c_int, c_uint, c_void, size_t};
 use std::ffi::CString;
@@ -34,13 +34,6 @@ use std::path::{Path, PathBuf};
 use std::slice;
 use std::str;
 use std::sync::Arc;
-
-pub const CODE_GEN_MODEL_ARGS: &[(&str, llvm::CodeModel)] = &[
-    ("small", llvm::CodeModel::Small),
-    ("kernel", llvm::CodeModel::Kernel),
-    ("medium", llvm::CodeModel::Medium),
-    ("large", llvm::CodeModel::Large),
-];
 
 pub fn llvm_err(handler: &rustc_errors::Handler, msg: &str) -> FatalError {
     match llvm::last_error() {
@@ -114,6 +107,17 @@ fn to_llvm_relocation_model(relocation_model: RelocModel) -> llvm::RelocModel {
     }
 }
 
+fn to_llvm_code_model(code_model: Option<CodeModel>) -> llvm::CodeModel {
+    match code_model {
+        Some(CodeModel::Tiny) => llvm::CodeModel::Tiny,
+        Some(CodeModel::Small) => llvm::CodeModel::Small,
+        Some(CodeModel::Kernel) => llvm::CodeModel::Kernel,
+        Some(CodeModel::Medium) => llvm::CodeModel::Medium,
+        Some(CodeModel::Large) => llvm::CodeModel::Large,
+        None => llvm::CodeModel::None,
+    }
+}
+
 pub fn target_machine_factory(
     sess: &Session,
     optlvl: config::OptLevel,
@@ -126,20 +130,7 @@ pub fn target_machine_factory(
     let ffunction_sections = sess.target.target.options.function_sections;
     let fdata_sections = ffunction_sections;
 
-    let code_model_arg =
-        sess.opts.cg.code_model.as_ref().or(sess.target.target.options.code_model.as_ref());
-
-    let code_model = match code_model_arg {
-        Some(s) => match CODE_GEN_MODEL_ARGS.iter().find(|arg| arg.0 == s) {
-            Some(x) => x.1,
-            _ => {
-                sess.err(&format!("{:?} is not a valid code model", code_model_arg));
-                sess.abort_if_errors();
-                bug!();
-            }
-        },
-        None => llvm::CodeModel::None,
-    };
+    let code_model = to_llvm_code_model(sess.code_model());
 
     let features = attributes::llvm_target_features(sess).collect::<Vec<_>>();
     let mut singlethread = sess.target.target.options.singlethread;

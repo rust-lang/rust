@@ -5,9 +5,8 @@ use crate::lint;
 use crate::search_paths::SearchPath;
 use crate::utils::NativeLibraryKind;
 
-use rustc_target::spec::TargetTriple;
-use rustc_target::spec::{LinkerFlavor, MergeFunctions, PanicStrategy};
-use rustc_target::spec::{RelocModel, RelroLevel, TlsModel};
+use rustc_target::spec::{CodeModel, LinkerFlavor, MergeFunctions, PanicStrategy};
+use rustc_target::spec::{RelocModel, RelroLevel, TargetTriple, TlsModel};
 
 use rustc_feature::UnstableFeatures;
 use rustc_span::edition::Edition;
@@ -269,6 +268,8 @@ macro_rules! options {
         pub const parse_src_file_hash: &str = "either `md5` or `sha1`";
         pub const parse_relocation_model: &str =
             "one of supported relocation models (`rustc --print relocation-models`)";
+        pub const parse_code_model: &str =
+            "one of supported code models (`rustc --print code-models`)";
         pub const parse_tls_model: &str =
             "one of supported TLS models (`rustc --print tls-models`)";
         pub const parse_target_feature: &str = parse_string;
@@ -621,6 +622,14 @@ macro_rules! options {
             true
         }
 
+        fn parse_code_model(slot: &mut Option<CodeModel>, v: Option<&str>) -> bool {
+            match v.and_then(|s| CodeModel::from_str(s).ok()) {
+                Some(code_model) => *slot = Some(code_model),
+                _ => return false,
+            }
+            true
+        }
+
         fn parse_tls_model(slot: &mut Option<TlsModel>, v: Option<&str>) -> bool {
             match v.and_then(|s| TlsModel::from_str(s).ok()) {
                 Some(tls_model) => *slot = Some(tls_model),
@@ -676,7 +685,7 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
 
     ar: String = (String::new(), parse_string, [UNTRACKED],
         "this option is deprecated and does nothing"),
-    code_model: Option<String> = (None, parse_opt_string, [TRACKED],
+    code_model: Option<CodeModel> = (None, parse_code_model, [TRACKED],
         "choose the code model to use (`rustc --print code-models` for details)"),
     codegen_units: Option<usize> = (None, parse_opt_uint, [UNTRACKED],
         "divide crate into N units to optimize in parallel"),

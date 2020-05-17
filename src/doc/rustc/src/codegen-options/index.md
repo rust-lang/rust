@@ -9,9 +9,25 @@ This option is deprecated and does nothing.
 
 ## code-model
 
-This option lets you choose which code model to use.
+This option lets you choose which code model to use. \
+Code models put constraints on address ranges that the program and its symbols may use. \
+With smaller address ranges machine instructions
+may be able to use use more compact addressing modes.
 
-To find the valid options for this flag, run `rustc --print code-models`.
+The specific ranges depend on target architectures and addressing modes available to them. \
+For x86 more detailed description of its code models can be found in
+[System V Application Binary Interface](https://github.com/hjl-tools/x86-psABI/wiki/x86-64-psABI-1.0.pdf)
+specification.
+
+Supported values for this option are:
+
+<!-- - `tiny` - Tiny code model. -->
+- `small` - Small code model. This is the default model for majority of supported targets.
+- `kernel` - Kernel code model.
+- `medium` - Medium code model.
+- `large` - Large code model.
+
+Supported values can also be discovered by running `rustc --print code-models`.
 
 ## codegen-units
 
