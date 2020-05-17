@@ -51,8 +51,11 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
     }
 }
 
-pub unsafe fn abort_internal() -> ! {
-    core::intrinsics::abort();
+pub fn abort_internal() -> ! {
+    #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // remove `unsafe` on bootstrap bump
+    unsafe {
+        core::intrinsics::abort();
+    }
 }
 
 pub use libc::strlen;
