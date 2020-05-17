@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use hir::{AsAssocItem, HirDisplay, Semantics};
+use hir::{AsAssocItem, Semantics};
 use itertools::Itertools;
 use ra_ide_db::RootDatabase;
 use ra_syntax::{
@@ -266,7 +266,7 @@ mod tests {
         //- /lib.rs
         <|> //empty
         fn main() {}
-        
+
         struct Data;
         impl Data {
             /// ```
