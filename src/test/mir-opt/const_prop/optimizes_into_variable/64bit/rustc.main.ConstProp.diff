@@ -149,27 +149,21 @@
           StorageDead(_4);                 // scope 1 at $DIR/optimizes_into_variable.rs:13:34: 13:35
           StorageLive(_8);                 // scope 2 at $DIR/optimizes_into_variable.rs:14:9: 14:10
           StorageLive(_9);                 // scope 2 at $DIR/optimizes_into_variable.rs:14:13: 14:36
-          _9 = Point { x: const 12u32, y: const 42u32 }; // scope 2 at $DIR/optimizes_into_variable.rs:14:13: 14:36
+          (_9.0: u32) = const 12u32;       // scope 2 at $DIR/optimizes_into_variable.rs:14:13: 14:36
                                            // ty::Const
                                            // + ty: u32
                                            // + val: Value(Scalar(0x0000000c))
                                            // mir::Constant
                                            // + span: $DIR/optimizes_into_variable.rs:14:25: 14:27
                                            // + literal: Const { ty: u32, val: Value(Scalar(0x0000000c)) }
+          (_9.1: u32) = const 42u32;       // scope 2 at $DIR/optimizes_into_variable.rs:14:13: 14:36
                                            // ty::Const
                                            // + ty: u32
                                            // + val: Value(Scalar(0x0000002a))
                                            // mir::Constant
                                            // + span: $DIR/optimizes_into_variable.rs:14:32: 14:34
                                            // + literal: Const { ty: u32, val: Value(Scalar(0x0000002a)) }
--         _8 = (_9.1: u32);                // scope 2 at $DIR/optimizes_into_variable.rs:14:13: 14:38
-+         _8 = const 42u32;                // scope 2 at $DIR/optimizes_into_variable.rs:14:13: 14:38
-+                                          // ty::Const
-+                                          // + ty: u32
-+                                          // + val: Value(Scalar(0x0000002a))
-+                                          // mir::Constant
-+                                          // + span: $DIR/optimizes_into_variable.rs:14:13: 14:38
-+                                          // + literal: Const { ty: u32, val: Value(Scalar(0x0000002a)) }
+          _8 = (_9.1: u32);                // scope 2 at $DIR/optimizes_into_variable.rs:14:13: 14:38
           StorageDead(_9);                 // scope 2 at $DIR/optimizes_into_variable.rs:14:38: 14:39
           _0 = const ();                   // scope 0 at $DIR/optimizes_into_variable.rs:11:11: 15:2
                                            // ty::Const

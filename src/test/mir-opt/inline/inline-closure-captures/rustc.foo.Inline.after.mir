@@ -28,15 +28,8 @@ fn foo(_1: T, _2: i32) -> (i32, T) {
         _4 = &_2;                        // scope 0 at $DIR/inline-closure-captures.rs:11:13: 11:24
         StorageLive(_5);                 // scope 0 at $DIR/inline-closure-captures.rs:11:13: 11:24
         _5 = &_1;                        // scope 0 at $DIR/inline-closure-captures.rs:11:13: 11:24
-        _3 = [closure@foo::<T>::{{closure}}#0] { q: move _4, t: move _5 }; // scope 0 at $DIR/inline-closure-captures.rs:11:13: 11:24
-                                         // closure
-                                         // + def_id: DefId(0:6 ~ inline_closure_captures[317d]::foo[0]::{{closure}}[0])
-                                         // + substs: [
-                                         //     T,
-                                         //     i8,
-                                         //     extern "rust-call" fn((i32,)) -> (i32, T),
-                                         //     (&i32, &T),
-                                         // ]
+        (_3.0: &i32) = move _4;          // scope 0 at $DIR/inline-closure-captures.rs:11:13: 11:24
+        (_3.1: &T) = move _5;            // scope 0 at $DIR/inline-closure-captures.rs:11:13: 11:24
         StorageDead(_5);                 // scope 0 at $DIR/inline-closure-captures.rs:11:23: 11:24
         StorageDead(_4);                 // scope 0 at $DIR/inline-closure-captures.rs:11:23: 11:24
         StorageLive(_6);                 // scope 1 at $DIR/inline-closure-captures.rs:12:5: 12:6
@@ -44,7 +37,7 @@ fn foo(_1: T, _2: i32) -> (i32, T) {
         StorageLive(_7);                 // scope 1 at $DIR/inline-closure-captures.rs:12:5: 12:9
         StorageLive(_8);                 // scope 1 at $DIR/inline-closure-captures.rs:12:7: 12:8
         _8 = _2;                         // scope 1 at $DIR/inline-closure-captures.rs:12:7: 12:8
-        _7 = (move _8,);                 // scope 1 at $DIR/inline-closure-captures.rs:12:5: 12:9
+        (_7.0: i32) = move _8;           // scope 1 at $DIR/inline-closure-captures.rs:12:5: 12:9
         _11 = move (_7.0: i32);          // scope 1 at $DIR/inline-closure-captures.rs:12:5: 12:9
         StorageLive(_9);                 // scope 2 at $DIR/inline-closure-captures.rs:11:19: 11:20
         _9 = (*((*_6).0: &i32));         // scope 2 at $DIR/inline-closure-captures.rs:11:19: 11:20
