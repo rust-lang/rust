@@ -1141,7 +1141,6 @@ impl fmt::Display for Literal {
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl fmt::Debug for Literal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // FIXME(eddyb) `Literal` should not expose internal `Debug` impls.
         self.0.fmt(f)
     }
 }

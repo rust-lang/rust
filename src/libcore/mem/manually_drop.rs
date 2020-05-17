@@ -2,7 +2,6 @@ use crate::ops::{Deref, DerefMut};
 use crate::ptr;
 
 /// A wrapper to inhibit compiler from automatically calling `T`’s destructor.
-///
 /// This wrapper is 0-cost.
 ///
 /// `ManuallyDrop<T>` is subject to the same layout optimizations as `T`.
@@ -10,6 +9,11 @@ use crate::ptr;
 /// about its contents. For example, initializing a `ManuallyDrop<&mut T>`
 /// with [`mem::zeroed`] is undefined behavior.
 /// If you need to handle uninitialized data, use [`MaybeUninit<T>`] instead.
+///
+/// Note that accessing the value inside a `ManuallyDrop<T>` is safe.
+/// This means that a `ManuallyDrop<T>` whose content has been dropped must not
+/// be exposed through a public safe API.
+/// Correspondingly, `ManuallyDrop::drop` is unsafe.
 ///
 /// # Examples
 ///
