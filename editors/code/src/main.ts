@@ -91,6 +91,7 @@ export async function activate(context: vscode.ExtensionContext) {
     ctx.registerCommand('debugSingle', commands.debugSingle);
     ctx.registerCommand('showReferences', commands.showReferences);
     ctx.registerCommand('applySourceChange', commands.applySourceChange);
+    ctx.registerCommand('applySnippetWorkspaceEdit', commands.applySnippetWorkspaceEdit);
     ctx.registerCommand('selectAndApplySourceChange', commands.selectAndApplySourceChange);
 
     ctx.pushCleanup(activateTaskProvider(workspaceFolder));
