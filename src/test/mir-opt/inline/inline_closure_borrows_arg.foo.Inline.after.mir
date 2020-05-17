@@ -24,15 +24,6 @@ fn foo(_1: T, _2: &i32) -> i32 {
 
     bb0: {
         StorageLive(_3);                 // scope 0 at $DIR/inline-closure-borrows-arg.rs:12:9: 12:10
-        _3 = [closure@foo::<T>::{{closure}}#0]; // scope 0 at $DIR/inline-closure-borrows-arg.rs:12:13: 15:6
-                                         // closure
-                                         // + def_id: DefId(0:6 ~ inline_closure_borrows_arg[317d]::foo[0]::{{closure}}[0])
-                                         // + substs: [
-                                         //     T,
-                                         //     i8,
-                                         //     for<'r, 's> extern "rust-call" fn((&'r i32, &'s i32)) -> i32,
-                                         //     (),
-                                         // ]
         StorageLive(_4);                 // scope 1 at $DIR/inline-closure-borrows-arg.rs:16:5: 16:6
         _4 = &_3;                        // scope 1 at $DIR/inline-closure-borrows-arg.rs:16:5: 16:6
         StorageLive(_5);                 // scope 1 at $DIR/inline-closure-borrows-arg.rs:16:5: 16:12
@@ -40,7 +31,8 @@ fn foo(_1: T, _2: &i32) -> i32 {
         _6 = &(*_2);                     // scope 1 at $DIR/inline-closure-borrows-arg.rs:16:7: 16:8
         StorageLive(_7);                 // scope 1 at $DIR/inline-closure-borrows-arg.rs:16:10: 16:11
         _7 = &(*_2);                     // scope 1 at $DIR/inline-closure-borrows-arg.rs:16:10: 16:11
-        _5 = (move _6, move _7);         // scope 1 at $DIR/inline-closure-borrows-arg.rs:16:5: 16:12
+        (_5.0: &i32) = move _6;          // scope 1 at $DIR/inline-closure-borrows-arg.rs:16:5: 16:12
+        (_5.1: &i32) = move _7;          // scope 1 at $DIR/inline-closure-borrows-arg.rs:16:5: 16:12
         _8 = move (_5.0: &i32);          // scope 1 at $DIR/inline-closure-borrows-arg.rs:16:5: 16:12
         _9 = move (_5.1: &i32);          // scope 1 at $DIR/inline-closure-borrows-arg.rs:16:5: 16:12
         _0 = (*_8);                      // scope 3 at $DIR/inline-closure-borrows-arg.rs:14:9: 14:18
