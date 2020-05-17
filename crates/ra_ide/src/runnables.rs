@@ -285,7 +285,7 @@ mod tests {
                 kind: Bin,
             },
             Runnable {
-                range: 52..106,
+                range: 51..105,
                 kind: DocTest {
                     test_id: Path(
                         "Data::foo",
