@@ -269,7 +269,7 @@ impl<T> Bucket<T> {
         } else {
             // the pointer arithmetic below might cross allocation bounds
             // because RawTable::iter() could call this function with empty table and index=0
-            base.as_ptr().wrapping_offset(!index as isize)
+            base.as_ptr().wrapping_add(!index) as usize as *mut T
         };
         Self {
             ptr: NonNull::new_unchecked(ptr),
