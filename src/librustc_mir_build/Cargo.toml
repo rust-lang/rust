@@ -20,7 +20,6 @@ rustc_index = { path = "../librustc_index" }
 rustc_errors = { path = "../librustc_errors" }
 rustc_hir = { path = "../librustc_hir" }
 rustc_infer = { path = "../librustc_infer" }
-rustc_macros = { path = "../librustc_macros" }
 rustc_serialize = { path = "../libserialize", package = "serialize" }
 rustc_session = { path = "../librustc_session" }
 rustc_span = { path = "../librustc_span" }
