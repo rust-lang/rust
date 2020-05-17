@@ -724,6 +724,29 @@ where
             }
         }
     }
+
+    #[inline]
+    fn rfold<Acc, F>(mut self, init: Acc, mut f: F) -> Acc
+    where
+        Self: Sized,
+        F: FnMut(Acc, Self::Item) -> Acc,
+    {
+        #[inline]
+        fn nth_back<I: DoubleEndedIterator>(
+            iter: &mut I,
+            step: usize,
+        ) -> impl FnMut() -> Option<I::Item> + '_ {
+            move || iter.nth_back(step)
+        }
+
+        match self.next_back() {
+            None => init,
+            Some(x) => {
+                let acc = f(init, x);
+                from_fn(nth_back(&mut self.iter, self.step)).fold(acc, f)
+            }
+        }
+    }
 }
 
 // StepBy can only make the iterator shorter, so the len will still fit.
@@ -2056,6 +2079,18 @@ where
             self.iter.try_rfold(init, check(n, fold)).into_try()
         }
     }
+
+    fn rfold<Acc, Fold>(mut self, init: Acc, fold: Fold) -> Acc
+    where
+        Fold: FnMut(Acc, Self::Item) -> Acc,
+    {
+        #[inline]
+        fn ok<Acc, T>(mut f: impl FnMut(Acc, T) -> Acc) -> impl FnMut(Acc, T) -> Result<Acc, !> {
+            move |acc, x| Ok(f(acc, x))
+        }
+
+        self.try_rfold(init, ok(fold)).unwrap()
+    }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -2217,6 +2252,24 @@ where
                 Try::from_ok(init)
             } else {
                 self.iter.try_rfold(init, fold)
+            }
+        }
+    }
+
+    #[inline]
+    fn rfold<Acc, Fold>(mut self, init: Acc, fold: Fold) -> Acc
+    where
+        Self: Sized,
+        Fold: FnMut(Acc, Self::Item) -> Acc,
+    {
+        if self.n == 0 {
+            init
+        } else {
+            let len = self.iter.len();
+            if len > self.n && self.iter.nth_back(len - self.n - 1).is_none() {
+                init
+            } else {
+                self.iter.rfold(init, fold)
             }
         }
     }
