@@ -47,6 +47,17 @@ function getSearchElement() {
     return document.getElementById("search");
 }
 
+// Sets the focus on the search bar at the top of the page
+function focusSearchBar() {
+    getSearchInput().focus();
+}
+
+// Removes the focus from the search bar
+function defocusSearchBar() {
+    getSearchInput().blur();
+}
+
+
 (function() {
     "use strict";
 
@@ -2777,16 +2788,6 @@ function getSearchElement() {
 
     buildHelperPopup();
 }());
-
-// Sets the focus on the search bar at the top of the page
-function focusSearchBar() {
-    getSearchInput().focus();
-}
-
-// Removes the focus from the search bar
-function defocusSearchBar() {
-    getSearchInput().blur();
-}
 
 // This is required in firefox. Explanations: when going back in the history, firefox doesn't re-run
 // the JS, therefore preventing rustdoc from setting a few things required to be able to reload the
