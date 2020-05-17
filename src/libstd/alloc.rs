@@ -279,7 +279,7 @@ pub fn rust_oom(layout: Layout) -> ! {
     let hook: fn(Layout) =
         if hook.is_null() { default_alloc_error_hook } else { unsafe { mem::transmute(hook) } };
     hook(layout);
-    unsafe { crate::sys::abort_internal() }
+    crate::process::abort()
 }
 
 #[cfg(not(test))]
