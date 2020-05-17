@@ -335,6 +335,7 @@ path = "lib.rs"
     command.current_dir(&dir);
     command.env("XARGO_HOME", &dir);
     command.env("XARGO_RUST_SRC", &rust_src);
+    command.env_remove("RUSTFLAGS"); // Make sure external `RUSTFLAGS` do not influence the build.
     // Use Miri as rustc to build a libstd compatible with us (and use the right flags).
     // However, when we are running in bootstrap, we cannot just overwrite `RUSTC`,
     // because we still need bootstrap to distinguish between host and target crates.
