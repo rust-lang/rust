@@ -443,6 +443,21 @@
                     "type": "object",
                     "default": {},
                     "description": "Optional settings passed to the debug engine. Example:\n{ \"lldb\": { \"terminal\":\"external\"} }"
+                },
+                "rust-analyzer.lens.run": {
+                    "description": "Whether to show Run lens.",
+                    "type": "boolean",
+                    "default": true
+                },
+                "rust-analyzer.lens.debug": {
+                    "description": "Whether to show Debug lens.",
+                    "type": "boolean",
+                    "default": true
+                },
+                "rust-analyzer.lens.implementations": {
+                    "description": "Whether to show Implementations lens.",
+                    "type": "boolean",
+                    "default": true
                 }
             }
         },

@@ -16,6 +16,9 @@ export class Config {
         "files",
         "highlighting",
         "updates.channel",
+        "lens.run",
+        "lens.debug",
+        "lens.implementations",
     ]
         .map(opt => `${this.rootSection}.${opt}`);
 
@@ -117,6 +120,14 @@ export class Config {
             engineSettings: this.get<object>("debug.engineSettings"),
             openUpDebugPane: this.get<boolean>("debug.openUpDebugPane"),
             sourceFileMap: sourceFileMap
+        };
+    }
+
+    get lens() {
+        return {
+            run: this.get<boolean>("lens.run"),
+            debug: this.get<boolean>("lens.debug"),
+            implementations: this.get<boolean>("lens.implementations"),
         };
     }
 }
