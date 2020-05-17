@@ -1,5 +1,5 @@
-/// Note: most tests relevant to this file can be found (at the time of writing)
-/// in src/tests/ui/pattern/usefulness.
+/// Note: most of the tests relevant to this file can be found (at the time of writing) in
+/// src/tests/ui/pattern/usefulness.
 ///
 /// This file includes the logic for exhaustiveness and usefulness checking for
 /// pattern-matching. Specifically, given a list of patterns for a type, we can
@@ -12,6 +12,8 @@
 /// However, to save future implementors from reading the original paper, we
 /// summarise the algorithm here to hopefully save time and be a little clearer
 /// (without being so rigorous).
+///
+/// # Premise
 ///
 /// The core of the algorithm revolves about a "usefulness" check. In particular, we
 /// are trying to compute a predicate `U(P, p)` where `P` is a list of patterns (we refer to this as
@@ -27,8 +29,52 @@
 /// pattern to those that have come before it doesn't increase the number of values
 /// we're matching).
 ///
+/// # Core concept
+///
+/// The idea that powers everything that is done in this file is the following: a value is made
+/// from a constructor applied to some fields. Examples of constructors are `Some`, `None`, `(,)`
+/// (the 2-tuple constructor), `Foo {..}` (the constructor for a struct `Foo`), and `2` (the
+/// constructor for the number `2`). Fields are just a (possibly empty) list of values.
+///
+/// Some of the constructors listed above might feel weird: `None` and `2` don't take any
+/// arguments. This is part of what makes constructors so general: we will consider plain values
+/// like numbers and string literals to be constructors that take no arguments, also called "0-ary
+/// constructors"; they are the simplest case of constructors. This allows us to see any value as
+/// made up from a tree of constructors, each having a given number of children. For example:
+/// `(None, Ok(0))` is made from 4 different constructors.
+///
+/// This idea can be extended to patterns: a pattern captures a set of possible values, and we can
+/// describe this set using constructors. For example, `Err(_)` captures all values of the type
+/// `Result<T, E>` that start with the `Err` constructor (for some choice of `T` and `E`). The
+/// wildcard `_` captures all values of the given type starting with any of the constructors for
+/// that type.
+///
+/// We use this to compute whether different patterns might capture a same value. Do the patterns
+/// `Ok("foo")` and `Err(_)` capture a common value? The answer is no, because the first pattern
+/// captures only values starting with the `Ok` constructor and the second only values starting
+/// with the `Err` constructor. Do the patterns `Some(42)` and `Some(1..10)` intersect? They might,
+/// since they both capture values starting with `Some`. To be certain, we need to dig under the
+/// `Some` constructor and continue asking the question. This is the main idea behind the
+/// exhaustiveness algorithm: by looking at patterns constructor-by-constructor, we can efficiently
+/// figure out if some new pattern might capture a value that hadn't been captured by previous
+/// patterns.
+///
+/// Constructors are represented by the `Constructor` enum, and its fields by the `Fields` enum.
+/// Most of the complexity of this file resides in transforming between patterns and
+/// (`Constructor`, `Fields`) pairs, handling all the special cases correctly.
+///
+/// Caveat: this constructors/fields distinction doesn't quite cover every Rust value. For example
+/// a value of type `Rc<u64>` doesn't fit this idea very well, nor do function pointers and various
+/// other things. However, the idea covers everything that can be pattern-matched, and this is all
+/// we need for exhaustiveness checking.
+///
+///
+/// # Algorithm
+///
+/// Recall that `U(P, p)` represents whether, given an existing list of patterns (aka matrix) `P`,
+/// adding a new pattern `p` will cover previously-uncovered values of the type.
 /// During the course of the algorithm, the rows of the matrix won't just be individual patterns,
-/// but rather partially-deconstructed patterns in the form of a list of patterns. The paper
+/// but rather partially-deconstructed patterns in the form of a list of fields. The paper
 /// calls those pattern-vectors, and we will call them pattern-stacks. The same holds for the
 /// new pattern `p`.
 ///
@@ -936,6 +982,9 @@ impl<'tcx> Constructor<'tcx> {
     }
 }
 
+/// Some fields need to be explicitely hidden away in certain cases; see the comment above the
+/// `Fields` struct. This struct represents such a potentially-hidden field. When a field is hidden
+/// we still keep its type around.
 #[derive(Debug, Copy, Clone)]
 enum FilteredField<'p, 'tcx> {
     Kept(&'p Pat<'tcx>),
@@ -972,10 +1021,17 @@ impl<'p, 'tcx> FilteredField<'p, 'tcx> {
 #[derive(Debug, Clone)]
 enum Fields<'p, 'tcx> {
     /// Lists of patterns that don't contain any filtered fields.
+    /// `Slice` and `Vec` behave the same; the difference is only to avoid allocating and
+    /// triple-dereferences when possible. Frankly this is premature optimization, I (Nadrieril)
+    /// have not measured if it really made a difference.
     Slice(&'p [Pat<'tcx>]),
     Vec(SmallVec<[&'p Pat<'tcx>; 2]>),
-    /// Patterns where some of the fields need to be hidden.
-    Filtered { fields: SmallVec<[FilteredField<'p, 'tcx>; 2]>, len: usize },
+    /// Patterns where some of the fields need to be hidden. `len` caches the number of non-hidden
+    /// fields.
+    Filtered {
+        fields: SmallVec<[FilteredField<'p, 'tcx>; 2]>,
+        len: usize,
+    },
 }
 
 impl<'p, 'tcx> Fields<'p, 'tcx> {
@@ -1098,7 +1154,8 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
         pats.into_iter()
     }
 
-    /// Overrides some of the fields with the provided patterns.
+    /// Overrides some of the fields with the provided patterns. Exactly like
+    /// `replace_fields_indexed`, except that it takes `FieldPat`s as input.
     fn replace_with_fieldpats(
         &self,
         new_pats: impl IntoIterator<Item = &'p FieldPat<'tcx>>,
@@ -1108,7 +1165,11 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
         )
     }
 
-    /// Overrides some of the fields with the provided patterns.
+    /// Overrides some of the fields with the provided patterns. This is used when a pattern
+    /// defines some fields but not all, for example `Foo { field1: Some(_), .. }`: here we start with a
+    /// `Fields` that is just one wildcard per field of the `Foo` struct, and override the entry
+    /// corresponding to `field1` with the pattern `Some(_)`. This is also used for slice patterns
+    /// for the same reason.
     fn replace_fields_indexed(
         &self,
         new_pats: impl IntoIterator<Item = (usize, &'p Pat<'tcx>)>,
