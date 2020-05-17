@@ -112,6 +112,22 @@ pub(crate) fn text_edit(
     lsp_types::TextEdit { range, new_text }
 }
 
+pub(crate) fn snippet_text_edit(
+    line_index: &LineIndex,
+    line_endings: LineEndings,
+    is_snippet: bool,
+    indel: Indel,
+) -> lsp_ext::SnippetTextEdit {
+    let text_edit = text_edit(line_index, line_endings, indel);
+    let insert_text_format =
+        if is_snippet { Some(lsp_types::InsertTextFormat::Snippet) } else { None };
+    lsp_ext::SnippetTextEdit {
+        range: text_edit.range,
+        new_text: text_edit.new_text,
+        insert_text_format,
+    }
+}
+
 pub(crate) fn text_edit_vec(
     line_index: &LineIndex,
     line_endings: LineEndings,
@@ -441,10 +457,11 @@ pub(crate) fn goto_definition_response(
     }
 }
 
-pub(crate) fn text_document_edit(
+pub(crate) fn snippet_text_document_edit(
     world: &WorldSnapshot,
+    is_snippet: bool,
     source_file_edit: SourceFileEdit,
-) -> Result<lsp_types::TextDocumentEdit> {
+) -> Result<lsp_ext::SnippetTextDocumentEdit> {
     let text_document = versioned_text_document_identifier(world, source_file_edit.file_id, None)?;
     let line_index = world.analysis().file_line_index(source_file_edit.file_id)?;
     let line_endings = world.file_line_endings(source_file_edit.file_id);
@@ -452,9 +469,9 @@ pub(crate) fn text_document_edit(
         .edit
         .as_indels()
         .iter()
-        .map(|it| text_edit(&line_index, line_endings, it.clone()))
+        .map(|it| snippet_text_edit(&line_index, line_endings, is_snippet, it.clone()))
         .collect();
-    Ok(lsp_types::TextDocumentEdit { text_document, edits })
+    Ok(lsp_ext::SnippetTextDocumentEdit { text_document, edits })
 }
 
 pub(crate) fn resource_op(
@@ -500,20 +517,70 @@ pub(crate) fn source_change(
             })
         }
     };
-    let mut document_changes: Vec<lsp_types::DocumentChangeOperation> = Vec::new();
+    let label = source_change.label.clone();
+    let workspace_edit = self::snippet_workspace_edit(world, source_change)?;
+    Ok(lsp_ext::SourceChange { label, workspace_edit, cursor_position })
+}
+
+pub(crate) fn snippet_workspace_edit(
+    world: &WorldSnapshot,
+    source_change: SourceChange,
+) -> Result<lsp_ext::SnippetWorkspaceEdit> {
+    let mut document_changes: Vec<lsp_ext::SnippetDocumentChangeOperation> = Vec::new();
     for op in source_change.file_system_edits {
         let op = resource_op(&world, op)?;
-        document_changes.push(lsp_types::DocumentChangeOperation::Op(op));
+        document_changes.push(lsp_ext::SnippetDocumentChangeOperation::Op(op));
     }
     for edit in source_change.source_file_edits {
-        let edit = text_document_edit(&world, edit)?;
-        document_changes.push(lsp_types::DocumentChangeOperation::Edit(edit));
+        let edit = snippet_text_document_edit(&world, source_change.is_snippet, edit)?;
+        document_changes.push(lsp_ext::SnippetDocumentChangeOperation::Edit(edit));
     }
-    let workspace_edit = lsp_types::WorkspaceEdit {
-        changes: None,
-        document_changes: Some(lsp_types::DocumentChanges::Operations(document_changes)),
-    };
-    Ok(lsp_ext::SourceChange { label: source_change.label, workspace_edit, cursor_position })
+    let workspace_edit =
+        lsp_ext::SnippetWorkspaceEdit { changes: None, document_changes: Some(document_changes) };
+    Ok(workspace_edit)
+}
+
+pub(crate) fn workspace_edit(
+    world: &WorldSnapshot,
+    source_change: SourceChange,
+) -> Result<lsp_types::WorkspaceEdit> {
+    assert!(!source_change.is_snippet);
+    snippet_workspace_edit(world, source_change).map(|it| it.into())
+}
+
+impl From<lsp_ext::SnippetWorkspaceEdit> for lsp_types::WorkspaceEdit {
+    fn from(snippet_workspace_edit: lsp_ext::SnippetWorkspaceEdit) -> lsp_types::WorkspaceEdit {
+        lsp_types::WorkspaceEdit {
+            changes: None,
+            document_changes: snippet_workspace_edit.document_changes.map(|changes| {
+                lsp_types::DocumentChanges::Operations(
+                    changes
+                        .into_iter()
+                        .map(|change| match change {
+                            lsp_ext::SnippetDocumentChangeOperation::Op(op) => {
+                                lsp_types::DocumentChangeOperation::Op(op)
+                            }
+                            lsp_ext::SnippetDocumentChangeOperation::Edit(edit) => {
+                                lsp_types::DocumentChangeOperation::Edit(
+                                    lsp_types::TextDocumentEdit {
+                                        text_document: edit.text_document,
+                                        edits: edit
+                                            .edits
+                                            .into_iter()
+                                            .map(|edit| lsp_types::TextEdit {
+                                                range: edit.range,
+                                                new_text: edit.new_text,
+                                            })
+                                            .collect(),
+                                    },
+                                )
+                            }
+                        })
+                        .collect(),
+                )
+            }),
+        }
+    }
 }
 
 pub fn call_hierarchy_item(
@@ -571,22 +638,25 @@ fn main() <fold>{
     }
 }
 
-pub(crate) fn code_action(world: &WorldSnapshot, assist: Assist) -> Result<lsp_types::CodeAction> {
-    let source_change = source_change(&world, assist.source_change)?;
-    let arg = serde_json::to_value(source_change)?;
-    let title = assist.label;
-    let command = lsp_types::Command {
-        title: title.clone(),
-        command: "rust-analyzer.applySourceChange".to_string(),
-        arguments: Some(vec![arg]),
-    };
+pub(crate) fn code_action(world: &WorldSnapshot, assist: Assist) -> Result<lsp_ext::CodeAction> {
+    let res = if assist.source_change.is_snippet {
+        lsp_ext::CodeAction {
+            title: assist.label,
+            kind: Some(String::new()),
+            edit: Some(snippet_workspace_edit(world, assist.source_change)?),
+            command: None,
+        }
+    } else {
+        let source_change = source_change(&world, assist.source_change)?;
+        let arg = serde_json::to_value(source_change)?;
+        let title = assist.label;
+        let command = lsp_types::Command {
+            title: title.clone(),
+            command: "rust-analyzer.applySourceChange".to_string(),
+            arguments: Some(vec![arg]),
+        };
 
-    Ok(lsp_types::CodeAction {
-        title,
-        kind: Some(String::new()),
-        diagnostics: None,
-        edit: None,
-        command: Some(command),
-        is_preferred: None,
-    })
+        lsp_ext::CodeAction { title, kind: Some(String::new()), edit: None, command: Some(command) }
+    };
+    Ok(res)
 }

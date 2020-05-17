@@ -208,16 +208,6 @@ impl AssistBuilder {
     pub(crate) fn replace(&mut self, range: TextRange, replace_with: impl Into<String>) {
         self.edit.replace(range, replace_with.into())
     }
-    /// Append specified `text` at the given `offset`
-    pub(crate) fn replace_snippet(
-        &mut self,
-        _cap: SnippetCap,
-        range: TextRange,
-        replace_with: impl Into<String>,
-    ) {
-        self.is_snippet = true;
-        self.edit.replace(range, replace_with.into())
-    }
     pub(crate) fn replace_ast<N: AstNode>(&mut self, old: N, new: N) {
         algo::diff(old.syntax(), new.syntax()).into_text_edit(&mut self.edit)
     }

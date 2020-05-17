@@ -3,8 +3,10 @@ pub(crate) mod to_proto;
 
 use std::{collections::HashMap, sync::Arc};
 
-use lsp_types::{CodeActionOrCommand, Diagnostic, Range};
+use lsp_types::{Diagnostic, Range};
 use ra_ide::FileId;
+
+use crate::lsp_ext;
 
 pub type CheckFixes = Arc<HashMap<FileId, Vec<Fix>>>;
 
@@ -18,13 +20,13 @@ pub struct DiagnosticCollection {
 #[derive(Debug, Clone)]
 pub struct Fix {
     pub range: Range,
-    pub action: CodeActionOrCommand,
+    pub action: lsp_ext::CodeAction,
 }
 
 #[derive(Debug)]
 pub enum DiagnosticTask {
     ClearCheck,
-    AddCheck(FileId, Diagnostic, Vec<CodeActionOrCommand>),
+    AddCheck(FileId, Diagnostic, Vec<lsp_ext::CodeAction>),
     SetNative(FileId, Vec<Diagnostic>),
 }
 
@@ -38,7 +40,7 @@ impl DiagnosticCollection {
         &mut self,
         file_id: FileId,
         diagnostic: Diagnostic,
-        fixes: Vec<CodeActionOrCommand>,
+        fixes: Vec<lsp_ext::CodeAction>,
     ) {
         let diagnostics = self.check.entry(file_id).or_default();
         for existing_diagnostic in diagnostics.iter() {
