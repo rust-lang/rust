@@ -826,16 +826,18 @@ pub fn handle_code_lens(
     if world.config.lens.runnable() {
         // Gather runnables
         for runnable in world.analysis().runnables(file_id)? {
-            let (run_title, debugee ) = match &runnable.kind {
-                RunnableKind::Test { .. } | RunnableKind::TestMod { .. } => ("▶️\u{fe0e}Run Test", true),
-                RunnableKind::DocTest { .. } => { 
+            let (run_title, debugee) = match &runnable.kind {
+                RunnableKind::Test { .. } | RunnableKind::TestMod { .. } => {
+                    ("▶️\u{fe0e}Run Test", true)
+                }
+                RunnableKind::DocTest { .. } => {
                     // cargo does not support -no-run for doctests
                     ("▶️\u{fe0e}Run Doctest", false)
                 }
                 RunnableKind::Bench { .. } => {
                     // Nothing wrong with bench debugging
                     ("Run Bench", true)
-                },
+                }
                 RunnableKind::Bin => {
                     // Do not suggest binary run on other target than binary
                     match &cargo_spec {

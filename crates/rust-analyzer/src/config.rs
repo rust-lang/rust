@@ -244,35 +244,35 @@ impl Config {
     pub fn update_caps(&mut self, caps: &ClientCapabilities) {
         if let Some(doc_caps) = caps.text_document.as_ref() {
             if let Some(value) = doc_caps.definition.as_ref().and_then(|it| it.link_support) {
-            self.client_caps.location_link = value;
-        }
+                self.client_caps.location_link = value;
+            }
             if let Some(value) = doc_caps.folding_range.as_ref().and_then(|it| it.line_folding_only)
             {
-            self.client_caps.line_folding_only = value
-        }
+                self.client_caps.line_folding_only = value
+            }
             if let Some(value) = doc_caps
                 .document_symbol
                 .as_ref()
                 .and_then(|it| it.hierarchical_document_symbol_support)
-        {
-            self.client_caps.hierarchical_symbols = value
-        }
+            {
+                self.client_caps.hierarchical_symbols = value
+            }
             if let Some(value) = doc_caps
                 .code_action
                 .as_ref()
                 .and_then(|it| Some(it.code_action_literal_support.is_some()))
-        {
-            self.client_caps.code_action_literals = value;
-        }
-        self.completion.allow_snippets(false);
+            {
+                self.client_caps.code_action_literals = value;
+            }
+            self.completion.allow_snippets(false);
             if let Some(completion) = &doc_caps.completion {
-            if let Some(completion_item) = &completion.completion_item {
-                if let Some(value) = completion_item.snippet_support {
-                    self.completion.allow_snippets(value);
+                if let Some(completion_item) = &completion.completion_item {
+                    if let Some(value) = completion_item.snippet_support {
+                        self.completion.allow_snippets(value);
+                    }
                 }
             }
         }
-    }
 
         if let Some(window_caps) = caps.window.as_ref() {
             if let Some(value) = window_caps.work_done_progress {

@@ -40,7 +40,7 @@ async function selectRunnable(ctx: Ctx, prevRunnable?: RunnableQuickPick, debugg
         items.push(new RunnableQuickPick(r));
     }
 
-    if( items.length === 0 ) {
+    if (items.length === 0) {
         // it is the debug case, run always has at least 'cargo check ...'
         // see crates\rust-analyzer\src\main_loop\handlers.rs, handle_runnables
         vscode.window.showErrorMessage("There's no debug target!");
