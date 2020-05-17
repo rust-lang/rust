@@ -988,7 +988,7 @@ where
                     }
                 }
             }
-            ty::ConstKind::Unevaluated(..) if self.tcx().features().const_generics => Ok(a),
+            ty::ConstKind::Unevaluated(..) if self.tcx().lazy_normalization() => Ok(a),
             _ => relate::super_relate_consts(self, a, a),
         }
     }

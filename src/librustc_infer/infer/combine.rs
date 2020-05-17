@@ -164,7 +164,7 @@ impl<'infcx, 'tcx> InferCtxt<'infcx, 'tcx> {
             (_, ty::ConstKind::Infer(InferConst::Var(vid))) => {
                 return self.unify_const_variable(!a_is_expected, vid, a);
             }
-            (ty::ConstKind::Unevaluated(..), _) if self.tcx.features().const_generics => {
+            (ty::ConstKind::Unevaluated(..), _) if self.tcx.lazy_normalization() => {
                 // FIXME(#59490): Need to remove the leak check to accomodate
                 // escaping bound variables here.
                 if !a.has_escaping_bound_vars() && !b.has_escaping_bound_vars() {
@@ -172,7 +172,7 @@ impl<'infcx, 'tcx> InferCtxt<'infcx, 'tcx> {
                 }
                 return Ok(b);
             }
-            (_, ty::ConstKind::Unevaluated(..)) if self.tcx.features().const_generics => {
+            (_, ty::ConstKind::Unevaluated(..)) if self.tcx.lazy_normalization() => {
                 // FIXME(#59490): Need to remove the leak check to accomodate
                 // escaping bound variables here.
                 if !a.has_escaping_bound_vars() && !b.has_escaping_bound_vars() {
@@ -666,7 +666,7 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                     }
                 }
             }
-            ty::ConstKind::Unevaluated(..) if self.tcx().features().const_generics => Ok(c),
+            ty::ConstKind::Unevaluated(..) if self.tcx().lazy_normalization() => Ok(c),
             _ => relate::super_relate_consts(self, c, c),
         }
     }
