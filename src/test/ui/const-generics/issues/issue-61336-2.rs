@@ -1,5 +1,3 @@
-#![feature(lazy_normalization_consts)]
-//~^ WARN the feature `lazy_normalization_consts` is incomplete
 #![feature(const_generics)]
 //~^ WARN the feature `const_generics` is incomplete
 

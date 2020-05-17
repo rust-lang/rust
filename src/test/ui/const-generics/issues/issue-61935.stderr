@@ -1,4 +1,5 @@
 warning: the feature `const_generics` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/issue-61935.rs:3:12
    |
 LL | #![feature(const_generics)]
    |            ^^^^^^^^^^^^^^

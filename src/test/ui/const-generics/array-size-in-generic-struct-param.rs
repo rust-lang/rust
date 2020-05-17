@@ -1,11 +1,5 @@
-<<<<<<< HEAD
-//~^ WARN the feature `const_generics` is incomplete
-#![feature(lazy_normalization_consts)]
-//~^ WARN the feature `lazy_normalization_consts` is incomplete
-=======
 #![feature(const_generics)]
-//~^ WARN the feature `const_generics` is incomplete and may cause the compiler to crash
->>>>>>> merge lazy_normalization_consts into const_generics
+//~^ WARN the feature `const_generics` is incomplete
 
 #[allow(dead_code)]
 struct ArithArrayLen<const N: usize>([u32; 0 + N]);
