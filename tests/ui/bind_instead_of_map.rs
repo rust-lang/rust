@@ -1,5 +1,5 @@
 // run-rustfix
-#![deny(clippy::option_and_then_some)]
+#![deny(clippy::bind_instead_of_map)]
 
 // need a main anyway, use it get rid of unused warnings too
 pub fn main() {

@@ -820,7 +820,7 @@ fn check_match_ref_pats(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>
 
         span_lint_and_then(cx, MATCH_REF_PATS, expr.span, title, |diag| {
             if !expr.span.from_expansion() {
-                multispan_sugg(diag, msg.to_owned(), suggs);
+                multispan_sugg(diag, msg, suggs);
             }
         });
     }
