@@ -1463,7 +1463,7 @@ fn parse_libs(
             let kind = parts.next().unwrap();
             let (name, kind) = match (parts.next(), kind) {
                 (None, name) => (name, None),
-                (Some(name), "dylib") => (name, Some(NativeLibKind::Unspecified)),
+                (Some(name), "dylib") => (name, Some(NativeLibKind::Dylib)),
                 (Some(name), "framework") => (name, Some(NativeLibKind::Framework)),
                 (Some(name), "static") => (name, Some(NativeLibKind::StaticBundle)),
                 (Some(name), "static-nobundle") => (name, Some(NativeLibKind::StaticNoBundle)),

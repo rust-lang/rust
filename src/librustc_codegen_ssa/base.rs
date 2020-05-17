@@ -896,7 +896,7 @@ pub fn provide_both(providers: &mut Providers<'_>) {
             .native_libraries(krate)
             .iter()
             .filter(|lib| {
-                if lib.kind != NativeLibKind::Unspecified {
+                if !matches!(lib.kind, NativeLibKind::Dylib | NativeLibKind::Unspecified) {
                     return false;
                 }
                 let cfg = match lib.cfg {

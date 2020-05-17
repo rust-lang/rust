@@ -330,6 +330,7 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
         match lib.kind {
             NativeLibKind::StaticBundle => {}
             NativeLibKind::StaticNoBundle
+            | NativeLibKind::Dylib
             | NativeLibKind::Framework
             | NativeLibKind::RawDylib
             | NativeLibKind::Unspecified => continue,
@@ -866,7 +867,9 @@ fn print_native_static_libs(sess: &Session, all_native_libs: &[NativeLib]) {
         .filter_map(|lib| {
             let name = lib.name?;
             match lib.kind {
-                NativeLibKind::StaticNoBundle | NativeLibKind::Unspecified => {
+                NativeLibKind::StaticNoBundle
+                | NativeLibKind::Dylib
+                | NativeLibKind::Unspecified => {
                     if sess.target.target.options.is_like_msvc {
                         Some(format!("{}.lib", name))
                     } else {
@@ -1648,7 +1651,7 @@ fn add_local_native_libraries(
             None => continue,
         };
         match lib.kind {
-            NativeLibKind::Unspecified => cmd.link_dylib(name),
+            NativeLibKind::Dylib | NativeLibKind::Unspecified => cmd.link_dylib(name),
             NativeLibKind::Framework => cmd.link_framework(name),
             NativeLibKind::StaticNoBundle => cmd.link_staticlib(name),
             NativeLibKind::StaticBundle => cmd.link_whole_staticlib(name, &search_path),
@@ -1984,7 +1987,7 @@ fn add_upstream_native_libraries(
                 continue;
             }
             match lib.kind {
-                NativeLibKind::Unspecified => cmd.link_dylib(name),
+                NativeLibKind::Dylib | NativeLibKind::Unspecified => cmd.link_dylib(name),
                 NativeLibKind::Framework => cmd.link_framework(name),
                 NativeLibKind::StaticNoBundle => {
                     // Link "static-nobundle" native libs only if the crate they originate from

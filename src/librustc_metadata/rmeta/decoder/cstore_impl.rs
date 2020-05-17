@@ -247,7 +247,9 @@ pub fn provide(providers: &mut Providers<'_>) {
     // resolve! Does this work? Unsure! That's what the issue is about
     *providers = Providers {
         is_dllimport_foreign_item: |tcx, id| match tcx.native_library_kind(id) {
-            Some(NativeLibKind::Unspecified | NativeLibKind::RawDylib) => true,
+            Some(NativeLibKind::Dylib | NativeLibKind::RawDylib | NativeLibKind::Unspecified) => {
+                true
+            }
             _ => false,
         },
         is_statically_included_foreign_item: |tcx, id| match tcx.native_library_kind(id) {

@@ -67,7 +67,7 @@ impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
                     lib.kind = match &*kind.as_str() {
                         "static" => NativeLibKind::StaticBundle,
                         "static-nobundle" => NativeLibKind::StaticNoBundle,
-                        "dylib" => NativeLibKind::Unspecified,
+                        "dylib" => NativeLibKind::Dylib,
                         "framework" => NativeLibKind::Framework,
                         "raw-dylib" => NativeLibKind::RawDylib,
                         k => {
