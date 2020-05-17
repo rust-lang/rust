@@ -62,7 +62,7 @@
 // `Once.state_and_queue` and an unknown number of `Waiter.signaled`.
 // * `state_and_queue` is used (1) as a state flag, (2) for synchronizing the
 //   result of the `Once`, and (3) for synchronizing `Waiter` nodes.
-//     - At the end of the `call_inner` function we have to make sure the result
+//     - At the end of the `try_call_inner` function we have to make sure the result
 //       of the `Once` is acquired. So every load which can be the only one to
 //       load COMPLETED must have at least Acquire ordering, which means all
 //       three of them.
@@ -75,7 +75,7 @@
 //       `state_and_queue` with Acquire ordering.
 //     - There is just one store where `state_and_queue` is used only as a
 //       state flag, without having to synchronize data: switching the state
-//       from INCOMPLETE to RUNNING in `call_inner`. This store can be Relaxed,
+//       from INCOMPLETE to RUNNING in `try_call_inner`. This store can be Relaxed,
 //       but the read has to be Acquire because of the requirements mentioned
 //       above.
 // * `Waiter.signaled` is both used as a flag, and to protect a field with
@@ -93,7 +93,7 @@ use crate::fmt;
 use crate::marker;
 use crate::ptr;
 use crate::sync::atomic::{spin_loop_hint, AtomicBool, AtomicUsize, Ordering};
-use crate::thread::{self, Thread};
+use crate::thread::{self, Thread, ThreadId};
 
 /// A synchronization primitive which can be used to run a one-time global
 /// initialization. Useful for one-time initialization for FFI or related
@@ -190,6 +190,7 @@ struct Waiter {
 #[repr(align(4))] // Ensure the two lower bits are free to use as state bits.
 struct WaiterQueue {
     head: Cell<*const Waiter>,
+    id: ThreadId,
 }
 
 // A guard that will wake up the waiters when it gets dropped, i.e. also on panic.
@@ -200,6 +201,13 @@ struct WaiterQueueGuard<'a> {
     state_and_queue: &'a AtomicUsize,
     queue: &'a WaiterQueue,
     set_state_on_drop_to: usize,
+}
+
+// Potential outcomes of calling try_call_inner
+enum CallResult {
+    Complete,
+    Poisoned,
+    Reentrance,
 }
 
 impl Once {
@@ -403,13 +411,27 @@ impl Once {
     // without some allocation overhead.
     #[cold]
     fn call_inner(&self, ignore_poisoning: bool, init: &mut dyn FnMut(&OnceState)) {
+        match self.try_call_inner(ignore_poisoning, init) {
+            CallResult::Complete => (),
+            // Panic to propagate the poison.
+            CallResult::Poisoned => panic!("Once instance has previously been poisoned"),
+            CallResult::Reentrance => panic!("Once instance cannot be recursively initialized"),
+        }
+    }
+
+    fn try_call_inner(
+        &self,
+        ignore_poisoning: bool,
+        init: &mut dyn FnMut(&OnceState),
+    ) -> CallResult {
         let mut state_and_queue = self.state_and_queue.load(Ordering::Acquire);
         loop {
             match state_and_queue {
-                COMPLETE => break,
+                COMPLETE => {
+                    return CallResult::Complete;
+                }
                 POISONED if !ignore_poisoning => {
-                    // Panic to propagate the poison.
-                    panic!("Once instance has previously been poisoned");
+                    return CallResult::Poisoned;
                 }
                 POISONED | INCOMPLETE => {
                     // Try to register this thread as the one RUNNING.
@@ -426,7 +448,8 @@ impl Once {
 
                     // `waiter_queue` will manage other waiting threads, and `queue_guard`
                     // will wake them up on drop.
-                    let waiter_queue = WaiterQueue { head: Cell::new(ptr::null()) };
+                    let waiter_queue =
+                        WaiterQueue { head: Cell::new(ptr::null()), id: thread::current().id() };
                     let mut queue_guard = WaiterQueueGuard {
                         state_and_queue: &self.state_and_queue,
                         queue: &waiter_queue,
@@ -445,13 +468,15 @@ impl Once {
                     };
                     init(&init_state);
                     queue_guard.set_state_on_drop_to = init_state.set_state_on_drop_to.get();
-                    break;
+                    return CallResult::Complete;
                 }
                 _ => {
                     // All other values must be RUNNING with possibly a
                     // pointer to the waiter queue in the more significant bits.
                     assert!(state_and_queue & STATE_MASK == RUNNING);
-                    wait(&self.state_and_queue, state_and_queue);
+                    if wait(&self.state_and_queue, state_and_queue) {
+                        return CallResult::Reentrance;
+                    }
                     state_and_queue = self.state_and_queue.load(Ordering::Acquire);
                 }
             }
@@ -459,13 +484,16 @@ impl Once {
     }
 }
 
-fn wait(state_and_queue: &AtomicUsize, mut current_state: usize) {
+// Returns whether reentrance has been detected.
+fn wait(state_and_queue: &AtomicUsize, mut current_state: usize) -> bool {
     // Note: the following code was carefully written to avoid creating a
     // mutable reference to `node` that gets aliased.
 
     // Create a node upfront to reduce time spent inside spin lock.
+    let thread = thread::current();
+    let id = thread.id();
     let node = Waiter {
-        thread: Cell::new(Some(thread::current())),
+        thread: Cell::new(Some(thread)),
         signaled: AtomicBool::new(false),
         next: Cell::new(ptr::null()),
     };
@@ -475,7 +503,7 @@ fn wait(state_and_queue: &AtomicUsize, mut current_state: usize) {
         // Don't queue this thread if the status is no longer running,
         // otherwise we will not be woken up.
         if current_state & STATE_MASK != RUNNING {
-            return;
+            return false;
         }
 
         // Currently locked, spin.
@@ -496,17 +524,27 @@ fn wait(state_and_queue: &AtomicUsize, mut current_state: usize) {
     }
 
     // Insert our node into the linked list.
-    {
+    let reentry = {
         // SAFETY: This is okay because we have just "lock"ed it. Even the thread
         // that creates this WaiterQueue would need to lock it before drop it, so
         // the reference is definitely not dangling.
         let queue = unsafe { &*((current_state & !STATE_MASK) as *const WaiterQueue) };
-        node.next.set(queue.head.get());
-        queue.head.set(&node as *const Waiter);
-    }
+        if queue.id != id {
+            node.next.set(queue.head.get());
+            queue.head.set(&node as *const Waiter);
+            false
+        } else {
+            // If thread id matches then this is an reentrance to try_call_inner
+            true
+        }
+    };
 
     // Unlock the WaiterQueue.
     state_and_queue.store(current_state, Ordering::Release);
+
+    if reentry {
+        return true;
+    }
 
     // We have enqueued ourselves, now lets wait.
     // It is important not to return before being signaled, otherwise we
@@ -520,6 +558,8 @@ fn wait(state_and_queue: &AtomicUsize, mut current_state: usize) {
         // an `unpark` just before on an unparked thread is does not park.
         thread::park();
     }
+
+    false
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
