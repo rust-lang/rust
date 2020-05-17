@@ -15,7 +15,7 @@ const XARGO_MIN_VERSION: (u32, u32, u32) = (0, 3, 20);
 const CARGO_MIRI_HELP: &str = r#"Interprets bin crates and tests in Miri
 
 Usage:
-    cargo miri [subcommand] [options] [--] [<miri opts>...] [--] [<program opts>...]
+    cargo miri [subcommand] [<cargo options>...] [--] [<miri options>...] [--] [<program/test suite options>...]
 
 Subcommands:
     run                      Run binaries (default)
@@ -30,6 +30,10 @@ Common options:
 Other [options] are the same as `cargo check`.  Everything after the first "--" is
 passed verbatim to Miri, which will pass everything after the second "--" verbatim
 to the interpreted program.
+
+Examples:
+    cargo miri run -- -Zmiri-disable-stacked-borrows
+    cargo miri test -- -- test-suite-filter
 "#;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

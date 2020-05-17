@@ -83,15 +83,16 @@ Now you can run your project in Miri:
 The first time you run Miri, it will perform some extra setup and install some
 dependencies.  It will ask you for confirmation before installing anything.
 
+You can pass arguments to Miri after the first `--`, and pass arguments to the
+interpreted program or test suite after the second `--`.  For example, `cargo
+miri run -- -Zmiri-disable-stacked-borrows` runs the program without checking
+the aliasing of references.  To filter the tests being run, use `cargo miri test
+-- -- filter`.
+
 Miri supports cross-execution: if you want to run the program as if it was a
 Linux program, you can do `cargo miri run --target x86_64-unknown-linux-gnu`.
 This is particularly useful if you are using Windows, as the Linux target is
 much better supported than Windows targets.
-
-You can pass arguments to Miri after the first `--`, and pass arguments to the
-interpreted program or test suite after the second `--`.  For example, `cargo
-miri run -- -Zmiri-disable-validation` runs the program without validation of
-basic type invariants and without checking the aliasing of references.
 
 When compiling code via `cargo miri`, the `miri` config flag is set.  You can
 use this to ignore test cases that fail under Miri because they do things Miri
