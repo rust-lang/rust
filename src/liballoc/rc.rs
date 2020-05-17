@@ -2035,6 +2035,8 @@ trait RcBoxPtr<T: ?Sized> {
         // nevertheless, we insert an abort here to hint LLVM at
         // an otherwise missed optimization.
         if strong == 0 || strong == usize::max_value() {
+            // remove `unsafe` on bootstrap bump
+            #[cfg_attr(not(bootstrap), allow(unused_unsafe))]
             unsafe {
                 abort();
             }
@@ -2061,6 +2063,8 @@ trait RcBoxPtr<T: ?Sized> {
         // nevertheless, we insert an abort here to hint LLVM at
         // an otherwise missed optimization.
         if weak == 0 || weak == usize::max_value() {
+            // remove `unsafe` on bootstrap bump
+            #[cfg_attr(not(bootstrap), allow(unused_unsafe))]
             unsafe {
                 abort();
             }

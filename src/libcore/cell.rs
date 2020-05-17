@@ -133,10 +133,9 @@
 //! `Cell<T>`.
 //!
 //! ```
-//! #![feature(core_intrinsics)]
 //! use std::cell::Cell;
 //! use std::ptr::NonNull;
-//! use std::intrinsics::abort;
+//! use std::process::abort;
 //! use std::marker::PhantomData;
 //!
 //! struct Rc<T: ?Sized> {
@@ -173,7 +172,7 @@
 //!             .strong
 //!             .set(self.strong()
 //!                      .checked_add(1)
-//!                      .unwrap_or_else(|| unsafe { abort() }));
+//!                      .unwrap_or_else(|| abort() ));
 //!     }
 //! }
 //!

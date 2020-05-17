@@ -918,7 +918,7 @@ extern "rust-intrinsic" {
 
     /// Aborts the execution of the process.
     ///
-    /// The stabilized version of this intrinsic is
+    /// A more user-friendly and stable version of this operation is
     /// [`std::process::abort`](../../std/process/fn.abort.html).
     pub fn abort() -> !;
 
