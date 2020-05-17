@@ -975,7 +975,7 @@ enum Fields<'p, 'tcx> {
     Slice(&'p [Pat<'tcx>]),
     Vec(SmallVec<[&'p Pat<'tcx>; 2]>),
     /// Patterns where some of the fields need to be hidden.
-    Filtered(SmallVec<[FilteredField<'p, 'tcx>; 2]>),
+    Filtered { fields: SmallVec<[FilteredField<'p, 'tcx>; 2]>, len: usize },
 }
 
 impl<'p, 'tcx> Fields<'p, 'tcx> {
@@ -1038,6 +1038,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                         if has_no_hidden_fields {
                             Fields::wildcards_from_tys(cx, field_tys)
                         } else {
+                            let mut len = 0;
                             let fields = variant
                                 .fields
                                 .iter()
@@ -1054,11 +1055,12 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                                     if is_uninhabited && (!is_visible || is_non_exhaustive) {
                                         FilteredField::Hidden(ty)
                                     } else {
+                                        len += 1;
                                         FilteredField::Kept(wildcard_from_ty(ty))
                                     }
                                 })
                                 .collect();
-                            Fields::Filtered(fields)
+                            Fields::Filtered { fields, len }
                         }
                     }
                 }
@@ -1079,7 +1081,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
         match self {
             Fields::Slice(pats) => pats.len(),
             Fields::Vec(pats) => pats.len(),
-            Fields::Filtered(fields) => fields.iter().filter(|p| p.kept().is_some()).count(),
+            Fields::Filtered { len, .. } => *len,
         }
     }
 
@@ -1088,7 +1090,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
         let pats: SmallVec<[_; 2]> = match self {
             Fields::Slice(pats) => pats.iter().cloned().collect(),
             Fields::Vec(pats) => pats.into_iter().cloned().collect(),
-            Fields::Filtered(fields) => {
+            Fields::Filtered { fields, .. } => {
                 // We don't skip any fields here.
                 fields.into_iter().map(|p| p.to_pattern()).collect()
             }
@@ -1122,7 +1124,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                     pats[i] = pat
                 }
             }
-            Fields::Filtered(fields) => {
+            Fields::Filtered { fields, .. } => {
                 for (i, pat) in new_pats {
                     if let FilteredField::Kept(p) = &mut fields[i] {
                         *p = pat
@@ -1144,7 +1146,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
         let pats: &[_] = cx.pattern_arena.alloc_from_iter(pats);
 
         match self {
-            Fields::Filtered(fields) => {
+            Fields::Filtered { fields, len } => {
                 let mut pats = pats.iter();
                 let mut fields = fields.clone();
                 for f in &mut fields {
@@ -1153,7 +1155,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                         *p = pats.next().unwrap();
                     }
                 }
-                Fields::Filtered(fields)
+                Fields::Filtered { fields, len: *len }
             }
             _ => Fields::Slice(pats),
         }
@@ -1166,7 +1168,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                 pats.extend_from_slice(stack);
                 pats
             }
-            Fields::Filtered(fields) => {
+            Fields::Filtered { fields, .. } => {
                 // We skip hidden fields here
                 fields.into_iter().filter_map(|p| p.kept()).chain(stack.iter().copied()).collect()
             }
