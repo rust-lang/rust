@@ -338,8 +338,38 @@ impl TokenStream {
             true
         }
 
-        let mut t1 = self.trees().filter(semantic_tree);
-        let mut t2 = other.trees().filter(semantic_tree);
+        // When comparing two `TokenStream`s, we ignore the `IsJoint` information.
+        //
+        // However, `rustc_parse::lexer::tokentrees::TokenStreamBuilder` will
+        // use `Token.glue` on adjacent tokens with the proper `IsJoint`.
+        // Since we are ignoreing `IsJoint`, a 'glued' token (e.g. `BinOp(Shr)`)
+        // and its 'split'/'unglued' compoenents (e.g. `Gt, Gt`) are equivalent
+        // when determining if two `TokenStream`s are 'probably equal'.
+        //
+        // Therefore, we use `break_two_token_op` to convert all tokens
+        // to the 'unglued' form (if it exists). This ensures that two
+        // `TokenStream`s which differ only in how their tokens are glued
+        // will be considered 'probably equal', which allows us to keep spans.
+        //
+        // This is important when the original `TokenStream` contained
+        // extra spaces (e.g. `f :: < Vec < _ > > ( ) ;'). These extra spaces
+        // will be omitted when we pretty-print, which can cause the original
+        // and reparsed `TokenStream`s to differ in the assignment of `IsJoint`,
+        // leading to some tokens being 'glued' together in one stream but not
+        // the other. See #68489 for more details.
+        fn break_tokens(tree: TokenTree) -> impl Iterator<Item = TokenTree> {
+            if let TokenTree::Token(token) = &tree {
+                if let Some((first, second)) = token.kind.break_two_token_op() {
+                    return SmallVec::from_buf([TokenTree::Token(Token::new(first, DUMMY_SP)), TokenTree::Token(Token::new(second, DUMMY_SP))]).into_iter()
+                }
+            }
+            let mut vec = SmallVec::<[_; 2]>::new();
+            vec.push(tree);
+            vec.into_iter()
+        }
+
+        let mut t1 = self.trees().filter(semantic_tree).flat_map(break_tokens);
+        let mut t2 = other.trees().filter(semantic_tree).flat_map(break_tokens);
         for (t1, t2) in t1.by_ref().zip(t2.by_ref()) {
             if !t1.probably_equal_for_proc_macro(&t2) {
                 return false;
