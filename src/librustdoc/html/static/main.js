@@ -3,7 +3,7 @@
 
 // Local js definitions:
 /* global addClass, getCurrentValue, hasClass */
-/* global onEach, removeClass, updateLocalStorage */
+/* global onEachLazy, hasOwnProperty, removeClass, updateLocalStorage */
 
 if (!String.prototype.startsWith) {
     String.prototype.startsWith = function(searchString, position) {
@@ -192,6 +192,7 @@ function defocusSearchBar() {
     var savedHash = "";
 
     function handleHashes(ev) {
+        var elem;
         var search = getSearchElement();
         if (ev !== null && search && !hasClass(search, "hidden") && ev.newURL) {
             // This block occurs when clicking on an element in the navbar while
@@ -201,7 +202,7 @@ function defocusSearchBar() {
             if (browserSupportsHistoryApi()) {
                 history.replaceState(hash, "", "?search=#" + hash);
             }
-            var elem = document.getElementById(hash);
+            elem = document.getElementById(hash);
             if (elem) {
                 elem.scrollIntoView();
             }
@@ -212,7 +213,7 @@ function defocusSearchBar() {
             if (savedHash.length === 0) {
                 return;
             }
-            var elem = document.getElementById(savedHash.slice(1)); // we remove the '#'
+            elem = document.getElementById(savedHash.slice(1)); // we remove the '#'
             if (!elem || !isHidden(elem)) {
                 return;
             }
@@ -335,7 +336,7 @@ function defocusSearchBar() {
     }
 
     function displayHelp(display, ev, help) {
-        var help = help ? help : getHelpElement();
+        help = help ? help : getHelpElement();
         if (display === true) {
             if (hasClass(help, "hidden")) {
                 ev.preventDefault();
@@ -449,7 +450,7 @@ function defocusSearchBar() {
 
                 set_fragment(cur_line_id);
             }
-        }
+        };
     }());
 
     document.addEventListener("click", function(ev) {
@@ -615,7 +616,7 @@ function defocusSearchBar() {
             function sortResults(results, isType) {
                 var ar = [];
                 for (var entry in results) {
-                    if (results.hasOwnProperty(entry)) {
+                    if (hasOwnProperty(results, entry)) {
                         ar.push(results[entry]);
                     }
                 }
@@ -1113,8 +1114,6 @@ function defocusSearchBar() {
                     }
                     fullId = generateId(ty);
 
-                    // allow searching for void (no output) functions as well
-                    var typeOutput = type.length > OUTPUT_DATA ? type[OUTPUT_DATA].name : "";
                     returned = checkReturned(ty, output, true, NO_TYPE_FILTER);
                     if (output.name === "*" || returned === true) {
                         in_args = false;
@@ -1177,7 +1176,6 @@ function defocusSearchBar() {
                 var contains = paths.slice(0, paths.length > 1 ? paths.length - 1 : 1);
 
                 var lev;
-                var lev_distance;
                 for (j = 0; j < nSearchWords; ++j) {
                     ty = searchIndex[j];
                     if (!ty || (filterCrates !== undefined && ty.crate !== filterCrates)) {
@@ -1674,7 +1672,7 @@ function defocusSearchBar() {
         function getFilterCrates() {
             var elem = document.getElementById("crate-search");
 
-            if (elem && elem.value !== "All crates" && rawSearchIndex.hasOwnProperty(elem.value)) {
+            if (elem && elem.value !== "All crates" && hasOwnProperty(rawSearchIndex, elem.value)) {
                 return elem.value;
             }
             return undefined;
@@ -1722,7 +1720,7 @@ function defocusSearchBar() {
             var currentIndex = 0;
 
             for (var crate in rawSearchIndex) {
-                if (!rawSearchIndex.hasOwnProperty(crate)) { continue; }
+                if (!hasOwnProperty(rawSearchIndex, crate)) { continue; }
 
                 var crateSize = 0;
 
@@ -1906,7 +1904,7 @@ function defocusSearchBar() {
 
                 var crates = [];
                 for (var crate in rawSearchIndex) {
-                    if (!rawSearchIndex.hasOwnProperty(crate)) {
+                    if (!hasOwnProperty(rawSearchIndex, crate)) {
                         continue;
                     }
                     crates.push(crate);
@@ -2173,19 +2171,13 @@ function defocusSearchBar() {
                         }
                     }
                     var ns = n.nextElementSibling;
-                    while (true) {
-                        if (ns && (
-                                hasClass(ns, "docblock") ||
-                                hasClass(ns, "stability"))) {
-                            if (addOrRemove) {
-                                addClass(ns, "hidden-by-impl-hider");
-                            } else {
-                                removeClass(ns, "hidden-by-impl-hider");
-                            }
-                            ns = ns.nextElementSibling;
-                            continue;
+                    while (ns && (hasClass(ns, "docblock") || hasClass(ns, "stability"))) {
+                        if (addOrRemove) {
+                            addClass(ns, "hidden-by-impl-hider");
+                        } else {
+                            removeClass(ns, "hidden-by-impl-hider");
                         }
-                        break;
+                        ns = ns.nextElementSibling;
                     }
                 }
             };
@@ -2482,7 +2474,7 @@ function defocusSearchBar() {
                     onEachLazy(inner_toggle.getElementsByClassName("toggle-label"), function(e) {
                         e.style.display = "inline-block";
                         if (extra === true) {
-                            i_e.innerHTML = " Show " + e.childNodes[0].innerHTML;
+                            e.innerHTML = " Show " + e.childNodes[0].innerHTML;
                         }
                     });
                 }
@@ -2587,17 +2579,17 @@ function defocusSearchBar() {
         }
         onEachLazy(document.getElementsByClassName("rust-example-rendered"), function(e) {
             if (hasClass(e, "compile_fail")) {
-                e.addEventListener("mouseover", function(event) {
+                e.addEventListener("mouseover", function() {
                     this.parentElement.previousElementSibling.childNodes[0].style.color = "#f00";
                 });
-                e.addEventListener("mouseout", function(event) {
+                e.addEventListener("mouseout", function() {
                     this.parentElement.previousElementSibling.childNodes[0].style.color = "";
                 });
             } else if (hasClass(e, "ignore")) {
-                e.addEventListener("mouseover", function(event) {
+                e.addEventListener("mouseover", function() {
                     this.parentElement.previousElementSibling.childNodes[0].style.color = "#ff9200";
                 });
-                e.addEventListener("mouseout", function(event) {
+                e.addEventListener("mouseout", function() {
                     this.parentElement.previousElementSibling.childNodes[0].style.color = "";
                 });
             }
@@ -2705,7 +2697,7 @@ function defocusSearchBar() {
         var crates_text = [];
         if (Object.keys(crates).length > 1) {
             for (var crate in crates) {
-                if (crates.hasOwnProperty(crate)) {
+                if (hasOwnProperty(crates, crate)) {
                     crates_text.push(crate);
                 }
             }
@@ -2740,7 +2732,7 @@ function defocusSearchBar() {
 
         if (search_input) {
             search_input.removeAttribute('disabled');
-        };
+        }
     };
 
     function buildHelperPopup() {
