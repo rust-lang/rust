@@ -16,9 +16,7 @@ pub fn dumb_print(args: fmt::Arguments<'_>) {
 
 pub fn abort(args: fmt::Arguments<'_>) -> ! {
     dumb_print(format_args!("fatal runtime error: {}\n", args));
-    unsafe {
-        crate::sys::abort_internal();
-    }
+    crate::sys::abort_internal();
 }
 
 #[allow(dead_code)] // stack overflow detection not enabled on all platforms

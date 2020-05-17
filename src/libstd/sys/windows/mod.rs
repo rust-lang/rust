@@ -308,11 +308,14 @@ pub fn dur2timeout(dur: Duration) -> c::DWORD {
 //
 // https://docs.microsoft.com/en-us/cpp/intrinsics/fastfail
 #[allow(unreachable_code)]
-pub unsafe fn abort_internal() -> ! {
+pub fn abort_internal() -> ! {
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-    {
+    unsafe {
         llvm_asm!("int $$0x29" :: "{ecx}"(7) ::: volatile); // 7 is FAST_FAIL_FATAL_APP_EXIT
         crate::intrinsics::unreachable();
     }
-    crate::intrinsics::abort();
+    #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // remove `unsafe` on bootstrap bump
+    unsafe {
+        crate::intrinsics::abort();
+    }
 }

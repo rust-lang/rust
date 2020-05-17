@@ -74,8 +74,10 @@ pub extern "C" fn floor(x: f64) -> f64 {
     unsafe { intrinsics::floorf64(x) }
 }
 
-pub unsafe fn abort_internal() -> ! {
-    abi::abort();
+pub fn abort_internal() -> ! {
+    unsafe {
+        abi::abort();
+    }
 }
 
 // FIXME: just a workaround to test the system
@@ -88,7 +90,7 @@ pub fn hashmap_random_keys() -> (u64, u64) {
 #[cfg(not(test))]
 #[no_mangle]
 // NB. used by both libunwind and libpanic_abort
-pub unsafe extern "C" fn __rust_abort() {
+pub extern "C" fn __rust_abort() {
     abort_internal();
 }
 
