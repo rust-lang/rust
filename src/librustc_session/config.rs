@@ -1452,7 +1452,7 @@ fn select_debuginfo(
 fn parse_libs(
     matches: &getopts::Matches,
     error_format: ErrorOutputType,
-) -> Vec<(String, Option<String>, Option<NativeLibKind>)> {
+) -> Vec<(String, Option<String>, NativeLibKind)> {
     matches
         .opt_strs("l")
         .into_iter()
@@ -1462,11 +1462,11 @@ fn parse_libs(
             let mut parts = s.splitn(2, '=');
             let kind = parts.next().unwrap();
             let (name, kind) = match (parts.next(), kind) {
-                (None, name) => (name, None),
-                (Some(name), "dylib") => (name, Some(NativeLibKind::Dylib)),
-                (Some(name), "framework") => (name, Some(NativeLibKind::Framework)),
-                (Some(name), "static") => (name, Some(NativeLibKind::StaticBundle)),
-                (Some(name), "static-nobundle") => (name, Some(NativeLibKind::StaticNoBundle)),
+                (None, name) => (name, NativeLibKind::Unspecified),
+                (Some(name), "dylib") => (name, NativeLibKind::Dylib),
+                (Some(name), "framework") => (name, NativeLibKind::Framework),
+                (Some(name), "static") => (name, NativeLibKind::StaticBundle),
+                (Some(name), "static-nobundle") => (name, NativeLibKind::StaticNoBundle),
                 (_, s) => {
                     early_error(
                         error_format,
@@ -1478,7 +1478,7 @@ fn parse_libs(
                     );
                 }
             };
-            if kind == Some(NativeLibKind::StaticNoBundle) && !nightly_options::is_nightly_build() {
+            if kind == NativeLibKind::StaticNoBundle && !nightly_options::is_nightly_build() {
                 early_error(
                     error_format,
                     "the library kind 'static-nobundle' is only \
@@ -2058,7 +2058,6 @@ crate mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(Option<RelroLevel>);
     impl_dep_tracking_hash_via_hash!(Option<lint::Level>);
     impl_dep_tracking_hash_via_hash!(Option<PathBuf>);
-    impl_dep_tracking_hash_via_hash!(Option<NativeLibKind>);
     impl_dep_tracking_hash_via_hash!(CrateType);
     impl_dep_tracking_hash_via_hash!(MergeFunctions);
     impl_dep_tracking_hash_via_hash!(PanicStrategy);
@@ -2084,7 +2083,7 @@ crate mod dep_tracking {
     impl_dep_tracking_hash_for_sortable_vec_of!(PathBuf);
     impl_dep_tracking_hash_for_sortable_vec_of!(CrateType);
     impl_dep_tracking_hash_for_sortable_vec_of!((String, lint::Level));
-    impl_dep_tracking_hash_for_sortable_vec_of!((String, Option<String>, Option<NativeLibKind>));
+    impl_dep_tracking_hash_for_sortable_vec_of!((String, Option<String>, NativeLibKind));
     impl_dep_tracking_hash_for_sortable_vec_of!((String, u64));
     impl_dep_tracking_hash_for_sortable_vec_of!(Sanitizer);
 

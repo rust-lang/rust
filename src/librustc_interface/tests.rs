@@ -300,30 +300,30 @@ fn test_native_libs_tracking_hash_different_values() {
 
     // Reference
     v1.libs = vec![
-        (String::from("a"), None, Some(NativeLibKind::StaticBundle)),
-        (String::from("b"), None, Some(NativeLibKind::Framework)),
-        (String::from("c"), None, Some(NativeLibKind::Unspecified)),
+        (String::from("a"), None, NativeLibKind::StaticBundle),
+        (String::from("b"), None, NativeLibKind::Framework),
+        (String::from("c"), None, NativeLibKind::Unspecified),
     ];
 
     // Change label
     v2.libs = vec![
-        (String::from("a"), None, Some(NativeLibKind::StaticBundle)),
-        (String::from("X"), None, Some(NativeLibKind::Framework)),
-        (String::from("c"), None, Some(NativeLibKind::Unspecified)),
+        (String::from("a"), None, NativeLibKind::StaticBundle),
+        (String::from("X"), None, NativeLibKind::Framework),
+        (String::from("c"), None, NativeLibKind::Unspecified),
     ];
 
     // Change kind
     v3.libs = vec![
-        (String::from("a"), None, Some(NativeLibKind::StaticBundle)),
-        (String::from("b"), None, Some(NativeLibKind::StaticBundle)),
-        (String::from("c"), None, Some(NativeLibKind::Unspecified)),
+        (String::from("a"), None, NativeLibKind::StaticBundle),
+        (String::from("b"), None, NativeLibKind::StaticBundle),
+        (String::from("c"), None, NativeLibKind::Unspecified),
     ];
 
     // Change new-name
     v4.libs = vec![
-        (String::from("a"), None, Some(NativeLibKind::StaticBundle)),
-        (String::from("b"), Some(String::from("X")), Some(NativeLibKind::Framework)),
-        (String::from("c"), None, Some(NativeLibKind::Unspecified)),
+        (String::from("a"), None, NativeLibKind::StaticBundle),
+        (String::from("b"), Some(String::from("X")), NativeLibKind::Framework),
+        (String::from("c"), None, NativeLibKind::Unspecified),
     ];
 
     assert!(v1.dep_tracking_hash() != v2.dep_tracking_hash());
@@ -345,21 +345,21 @@ fn test_native_libs_tracking_hash_different_order() {
 
     // Reference
     v1.libs = vec![
-        (String::from("a"), None, Some(NativeLibKind::StaticBundle)),
-        (String::from("b"), None, Some(NativeLibKind::Framework)),
-        (String::from("c"), None, Some(NativeLibKind::Unspecified)),
+        (String::from("a"), None, NativeLibKind::StaticBundle),
+        (String::from("b"), None, NativeLibKind::Framework),
+        (String::from("c"), None, NativeLibKind::Unspecified),
     ];
 
     v2.libs = vec![
-        (String::from("b"), None, Some(NativeLibKind::Framework)),
-        (String::from("a"), None, Some(NativeLibKind::StaticBundle)),
-        (String::from("c"), None, Some(NativeLibKind::Unspecified)),
+        (String::from("b"), None, NativeLibKind::Framework),
+        (String::from("a"), None, NativeLibKind::StaticBundle),
+        (String::from("c"), None, NativeLibKind::Unspecified),
     ];
 
     v3.libs = vec![
-        (String::from("c"), None, Some(NativeLibKind::Unspecified)),
-        (String::from("a"), None, Some(NativeLibKind::StaticBundle)),
-        (String::from("b"), None, Some(NativeLibKind::Framework)),
+        (String::from("c"), None, NativeLibKind::Unspecified),
+        (String::from("a"), None, NativeLibKind::StaticBundle),
+        (String::from("b"), None, NativeLibKind::Framework),
     ];
 
     assert!(v1.dep_tracking_hash() == v2.dep_tracking_hash());

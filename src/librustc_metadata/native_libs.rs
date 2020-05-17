@@ -241,8 +241,8 @@ impl Collector<'tcx> {
                 .drain_filter(|lib| {
                     if let Some(lib_name) = lib.name {
                         if lib_name.as_str() == *name {
-                            if let Some(k) = kind {
-                                lib.kind = k;
+                            if kind != NativeLibKind::Unspecified {
+                                lib.kind = kind;
                             }
                             if let &Some(ref new_name) = new_name {
                                 lib.name = Some(Symbol::intern(new_name));
@@ -258,7 +258,7 @@ impl Collector<'tcx> {
                 let new_name = new_name.as_ref().map(|s| &**s); // &Option<String> -> Option<&str>
                 let lib = NativeLib {
                     name: Some(Symbol::intern(new_name.unwrap_or(name))),
-                    kind: if let Some(k) = kind { k } else { NativeLibKind::Unspecified },
+                    kind,
                     cfg: None,
                     foreign_module: None,
                     wasm_import_module: None,

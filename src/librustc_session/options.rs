@@ -93,7 +93,7 @@ top_level_options!(
         describe_lints: bool [UNTRACKED],
         output_types: OutputTypes [TRACKED],
         search_paths: Vec<SearchPath> [UNTRACKED],
-        libs: Vec<(String, Option<String>, Option<NativeLibKind>)> [TRACKED],
+        libs: Vec<(String, Option<String>, NativeLibKind)> [TRACKED],
         maybe_sysroot: Option<PathBuf> [UNTRACKED],
 
         target_triple: TargetTriple [TRACKED],
