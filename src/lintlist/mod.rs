@@ -725,13 +725,6 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "methods",
     },
     Lint {
-        name: "identity_conversion",
-        group: "complexity",
-        desc: "using always-identical `Into`/`From`/`IntoIter` conversions",
-        deprecation: None,
-        module: "identity_conversion",
-    },
-    Lint {
         name: "identity_op",
         group: "complexity",
         desc: "using identity operations, e.g., `x + 0` or `y / 1`",
@@ -2417,6 +2410,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         desc: "use of lint attributes on `extern crate` items",
         deprecation: None,
         module: "attrs",
+    },
+    Lint {
+        name: "useless_conversion",
+        group: "complexity",
+        desc: "calls to `Into`/`From`/`IntoIter` that performs useless conversions to the same type",
+        deprecation: None,
+        module: "useless_conversion",
     },
     Lint {
         name: "useless_format",

@@ -1,6 +1,6 @@
 // run-rustfix
 
-#![deny(clippy::identity_conversion)]
+#![deny(clippy::useless_conversion)]
 
 fn test_generic<T: Copy>(val: T) -> T {
     let _ = T::from(val);
@@ -41,7 +41,7 @@ fn main() {
     let _: String = "foo".into();
     let _: String = From::from("foo");
     let _ = String::from("foo");
-    #[allow(clippy::identity_conversion)]
+    #[allow(clippy::useless_conversion)]
     {
         let _: String = "foo".into();
         let _ = String::from("foo");

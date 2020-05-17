@@ -805,7 +805,7 @@ Released 2018-09-13
 
 ## 0.0.166
 * Rustup to *rustc 1.22.0-nightly (b7960878b 2017-10-18)*
-* New lints: [`explicit_write`], [`identity_conversion`], [`implicit_hasher`], [`invalid_ref`], [`option_map_or_none`],
+* New lints: [`explicit_write`], `identity_conversion`, [`implicit_hasher`], [`invalid_ref`], [`option_map_or_none`],
   [`range_minus_one`], [`range_plus_one`], [`transmute_int_to_bool`], [`transmute_int_to_char`],
   [`transmute_int_to_float`]
 
@@ -1368,7 +1368,6 @@ Released 2018-09-13
 [`future_not_send`]: https://rust-lang.github.io/rust-clippy/master/index.html#future_not_send
 [`get_last_with_len`]: https://rust-lang.github.io/rust-clippy/master/index.html#get_last_with_len
 [`get_unwrap`]: https://rust-lang.github.io/rust-clippy/master/index.html#get_unwrap
-[`identity_conversion`]: https://rust-lang.github.io/rust-clippy/master/index.html#identity_conversion
 [`identity_op`]: https://rust-lang.github.io/rust-clippy/master/index.html#identity_op
 [`if_let_mutex`]: https://rust-lang.github.io/rust-clippy/master/index.html#if_let_mutex
 [`if_let_redundant_pattern_matching`]: https://rust-lang.github.io/rust-clippy/master/index.html#if_let_redundant_pattern_matching
@@ -1624,6 +1623,7 @@ Released 2018-09-13
 [`used_underscore_binding`]: https://rust-lang.github.io/rust-clippy/master/index.html#used_underscore_binding
 [`useless_asref`]: https://rust-lang.github.io/rust-clippy/master/index.html#useless_asref
 [`useless_attribute`]: https://rust-lang.github.io/rust-clippy/master/index.html#useless_attribute
+[`useless_conversion`]: https://rust-lang.github.io/rust-clippy/master/index.html#useless_conversion
 [`useless_format`]: https://rust-lang.github.io/rust-clippy/master/index.html#useless_format
 [`useless_let_if_seq`]: https://rust-lang.github.io/rust-clippy/master/index.html#useless_let_if_seq
 [`useless_transmute`]: https://rust-lang.github.io/rust-clippy/master/index.html#useless_transmute
