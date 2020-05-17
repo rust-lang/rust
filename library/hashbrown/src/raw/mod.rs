@@ -434,6 +434,7 @@ impl<T> RawTable<T> {
 
     /// Returns pointer to start of data table.
     #[cfg_attr(feature = "inline-more", inline)]
+    #[allow(dead_code)]
     pub unsafe fn compute_data_ptr(&self) -> *mut T {
         self.data_backwards().as_ptr().sub(self.buckets())
     }
