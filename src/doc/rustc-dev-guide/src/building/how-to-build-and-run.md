@@ -97,7 +97,7 @@ The result is that compiling `rustc` is done in stages:
     the symbol names used in the compiler source may not match the
     symbol names that would have been made by the stage1 compiler.
     This can be important when using dynamic linking (e.g., with
-    derives. Sometimes this means that some tests don't work when run
+    derives). Sometimes this means that some tests don't work when run
     with stage1.
 - **Stage 2:** we rebuild our stage1 compiler with itself to produce
   the stage2 compiler (i.e. it builds itself) to have all the _latest
