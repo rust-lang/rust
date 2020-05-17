@@ -9,9 +9,7 @@ pub struct Condvar {
 
 impl Condvar {
     pub const fn new() -> Condvar {
-        Condvar {
-            identifier: 0,
-        }
+        Condvar { identifier: 0 }
     }
 
     pub unsafe fn init(&mut self) {
