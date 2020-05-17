@@ -13,10 +13,10 @@ clean:
 	#clang++ $(BENCH) $^ -ffast-math -O2 -fno-unroll-loops -fno-vectorize -o $@ -S -emit-llvm
 
 %-raw.ll: %-unopt.ll
-	opt $^ $(LOAD) -enzyme -o $@ -S
+	opt $^ $(LOAD) -indvars -enzyme -o $@ -S
 	
 %-opt.ll: %-raw.ll
-	opt $^ -O2 -o $@ -S
+	opt $^ -O2 -indvars -o $@ -S
 	
 %.o: %-c-opt.ll
 	clang $^ -o $@

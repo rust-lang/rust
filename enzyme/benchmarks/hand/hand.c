@@ -416,8 +416,6 @@ void get_posed_relatives(
     delete_matrix(R);
 }
 
-
-__attribute__((alwaysinline))
 static inline void get_skinned_vertex_positions(
     int bone_count,
     const Matrix* __restrict base_relatives,

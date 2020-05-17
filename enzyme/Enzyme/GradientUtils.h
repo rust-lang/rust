@@ -81,6 +81,34 @@ static inline bool operator==(const LoopContext& lhs, const LoopContext &rhs) {
     return lhs.parent == rhs.parent;
 }
 
+class MyScalarEvolution : public ScalarEvolution {
+public:
+  using ScalarEvolution::ScalarEvolution;
+
+  ScalarEvolution::ExitLimit computeExitLimit(const Loop *L, BasicBlock *ExitingBlock, bool AllowPredicates);
+  ScalarEvolution::ExitLimit computeExitLimitFromCond(
+    const Loop *L, Value *ExitCond, bool ExitIfTrue,
+    bool ControlsExit, bool AllowPredicates);
+
+  ScalarEvolution::ExitLimit computeExitLimitFromCondCached(
+    ExitLimitCacheTy &Cache, const Loop *L, Value *ExitCond, bool ExitIfTrue,
+    bool ControlsExit, bool AllowPredicates);
+
+  ScalarEvolution::ExitLimit computeExitLimitFromCondImpl(
+      ExitLimitCacheTy &Cache, const Loop *L, Value *ExitCond, bool ExitIfTrue,
+      bool ControlsExit, bool AllowPredicates);
+
+  ScalarEvolution::ExitLimit computeExitLimitFromICmp(const Loop *L,
+                                            ICmpInst *ExitCond,
+                                            bool ExitIfTrue,
+                                            bool ControlsExit,
+                                            bool AllowPredicates=false);
+
+  ScalarEvolution::ExitLimit howManyLessThans(const SCEV *LHS, const SCEV *RHS,
+                                    const Loop *L, bool IsSigned,
+                                    bool ControlsExit, bool AllowPredicates);
+};
+
 class GradientUtils {
 public:
   llvm::Function *newFunc;
@@ -94,7 +122,7 @@ public:
   SmallPtrSet<Value*,2> nonconstant_values;
   LoopInfo LI;
   AssumptionCache AC;
-  ScalarEvolution SE;
+  MyScalarEvolution SE;
   std::map<Loop*, LoopContext> loopContexts;
   SmallVector<BasicBlock*, 12> originalBlocks;
   ValueMap<BasicBlock*,BasicBlock*> reverseBlocks;
@@ -1821,7 +1849,7 @@ endCheck:
             }
 
             if (!isChildLoop) {
-                llvm::errs() << "manually performing lcssa for instruction" << *inst << " in block " << BuilderM.GetInsertBlock()->getName() << "\n";
+                //llvm::errs() << "manually performing lcssa for instruction" << *inst << " in block " << BuilderM.GetInsertBlock()->getName() << "\n";
                 if (!DT.dominates(inst, forwardBlock)) {
                     llvm::errs() << *this->newFunc << "\n";
                     llvm::errs() << *forwardBlock << "\n";

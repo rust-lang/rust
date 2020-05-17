@@ -9,8 +9,8 @@ OPT=../../build/bin/opt
 %-unopt.ll: %.c
 	#$(CLANG) $^ -O2 -S -emit-llvm -o - -o $@ 
 	#$(CLANG) $^ -O3 -S -emit-llvm -o - -o $@ 
-	$(CLANG) -fno-unroll-loops $^ -O1 -Xclang -disable-llvm-passes -fno-vectorize -fno-slp-vectorize -S -emit-llvm -o - -ffast-math -o $@ 
-	#$(CLANG) -fno-unroll-loops $^ -O1 -fno-vectorize -fno-slp-vectorize -S -emit-llvm -o - -ffast-math -o $@ 
+	#$(CLANG) -fno-unroll-loops $^ -O1 -Xclang -disable-llvm-passes -fno-vectorize -fno-slp-vectorize -S -emit-llvm -o - -ffast-math -o $@ 
+	$(CLANG) -fno-unroll-loops $^ -O1 -fno-vectorize -fno-slp-vectorize -S -emit-llvm -o - -ffast-math -o $@ 
 
 %-unopt.ll: %.cpp
 	#$(CLANG)++ -fno-exceptions -fno-use-cxa-atexit -fno-unroll-loops $^ -O0 -fno-vectorize -fno-slp-vectorize -S -emit-llvm -o $@ -ffast-math -Wno-error=non-pod-varargs -DEIGEN_UNROLLING_LIMIT=0 -I/home/wmoses/autodiff/adept-2.0.5/include #-ggdb 

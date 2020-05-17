@@ -203,12 +203,12 @@ void gmm_objective(
     int d,
     int k,
     int n,
-    double const* alphas,
-    double const* means,
-    double const* icf,
-    double const* x,
+    double const* __restrict alphas,
+    double const* __restrict means,
+    double const* __restrict icf,
+    double const* __restrict x,
     Wishart wishart,
-    double* err
+    double* __restrict err
 )
 {
     int ix, ik;
@@ -248,8 +248,10 @@ void gmm_objective(
 
 extern int diffe_const;
 extern int diffe_dup;
+extern int diffe_dupnoneed;
 void __enzyme_autodiff(void*, ...);
 
+// *      tapenade -b -o gmm_tapenade -head "gmm_objective(err)/(alphas means icf)" gmm.c
 void dgmm_objective(int d, int k, int n, const double *alphas, double *
         alphasb, const double *means, double *meansb, const double *icf,
         double *icfb, const double *x, Wishart wishart, double *err, double *
@@ -264,5 +266,5 @@ void dgmm_objective(int d, int k, int n, const double *alphas, double *
             diffe_const, x,
             diffe_dup, icf, icfb,
             diffe_const, wishart,
-            diffe_dup, err, errb);
+            diffe_dupnoneed, err, errb);
 }

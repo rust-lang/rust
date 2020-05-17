@@ -249,7 +249,7 @@ void dcompute_reproj_error(
 }
 
 void dcompute_zach_weight_error(double const* w, double* dw, double* err, double* derr) {
-    __enzyme_autodiff(compute_zach_weight_error,
-            diffe_dup, w, dw,
-            diffe_dupnoneed, err, derr);
+//    __enzyme_autodiff(compute_zach_weight_error,
+//            diffe_dup, w, dw,
+//            diffe_dupnoneed, err, derr);
 }

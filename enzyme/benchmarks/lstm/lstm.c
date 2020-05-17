@@ -47,7 +47,7 @@ double logsumexp(double const* vect, int sz)
 // LSTM OBJECTIVE
 // The LSTM model
 void lstm_model(
-    int hsize,
+    int hsize, 
     double const* __restrict weight,
     double const* __restrict bias,
     double* __restrict hidden,
@@ -55,6 +55,9 @@ void lstm_model(
     double const* __restrict input
 )
 {
+    // TODO NOTE THIS
+    __builtin_assume(hsize > 0);
+
     double* gates = (double*)malloc(4 * hsize * sizeof(double));
     double* forget = &(gates[0]);
     double* ingate = &(gates[hsize]);
@@ -62,6 +65,8 @@ void lstm_model(
     double* change = &(gates[3 * hsize]);
 
     int i;
+    // caching input
+    // hidden (needed)
     for (i = 0; i < hsize; i++)
     {
         forget[i] = sigmoid(input[i] * weight[i] + bias[i]);
@@ -70,6 +75,7 @@ void lstm_model(
         change[i] = tanh(hidden[i] * weight[3 * hsize + i] + bias[3 * hsize + i]);
     }
 
+    // caching cell (needed)
     for (i = 0; i < hsize; i++)
     {
         cell[i] = cell[i] * forget[i] + ingate[i] * change[i];
@@ -104,6 +110,14 @@ void lstm_predict(
     for (i = 0; i <= 2 * l * b - 1; i += 2 * b)
     {
         lstm_model(b, &(w[i * 4]), &(w[(i + b) * 4]), &(s[i]), &(s[i + b]), xp);
+    /*
+     * int hsize, 
+    double const* __restrict weight,
+    double const* __restrict bias,
+    double* __restrict hidden,
+    double* __restrict cell,
+    double const* __restrict input
+    */
         xp = &(s[i]);
     }
 
@@ -134,6 +148,7 @@ void lstm_objective(
     const double* ygold;
     double lse;
 
+    __builtin_assume(b>0);
     for (t = 0; t <= (c - 1) * b - 1; t += b)
     {
         lstm_predict(l, b, main_params, extra_params, state, input, ypred);
