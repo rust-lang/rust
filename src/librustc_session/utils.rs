@@ -11,17 +11,19 @@ impl Session {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
-pub enum NativeLibraryKind {
-    /// native static library (.a archive)
-    NativeStatic,
-    /// native static library, which doesn't get bundled into .rlibs
-    NativeStaticNobundle,
-    /// macOS-specific
-    NativeFramework,
-    /// Windows dynamic library without import library.
-    NativeRawDylib,
-    /// default way to specify a dynamic library
-    NativeUnknown,
+pub enum NativeLibKind {
+    /// Static library (e.g. `libfoo.a` on Linux or `foo.lib` on Windows/MSVC) included
+    /// when linking a final binary, but not when archiving an rlib.
+    StaticNoBundle,
+    /// Static library (e.g. `libfoo.a` on Linux or `foo.lib` on Windows/MSVC) included
+    /// when linking a final binary, but also included when archiving an rlib.
+    StaticBundle,
+    /// Windows dynamic library (`foo.dll`) without a corresponding import library.
+    RawDylib,
+    /// A macOS-specific kind of dynamic libraries.
+    Framework,
+    /// The library kind wasn't specified, dynamic linking is currently preferred.
+    Unspecified,
 }
 
-rustc_data_structures::impl_stable_hash_via_hash!(NativeLibraryKind);
+rustc_data_structures::impl_stable_hash_via_hash!(NativeLibKind);

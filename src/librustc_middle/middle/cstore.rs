@@ -2,8 +2,6 @@
 //! are *mostly* used as a part of that interface, but these should
 //! probably get a better home if someone can find one.
 
-pub use self::NativeLibraryKind::*;
-
 use crate::ty::TyCtxt;
 
 use rustc_ast::ast;
@@ -14,7 +12,7 @@ use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash, DefPathTable};
 use rustc_macros::HashStable;
 use rustc_session::search_paths::PathKind;
-pub use rustc_session::utils::NativeLibraryKind;
+use rustc_session::utils::NativeLibKind;
 use rustc_session::CrateDisambiguator;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
@@ -89,8 +87,8 @@ pub enum LinkagePreference {
 }
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
-pub struct NativeLibrary {
-    pub kind: NativeLibraryKind,
+pub struct NativeLib {
+    pub kind: NativeLibKind,
     pub name: Option<Symbol>,
     pub cfg: Option<ast::MetaItem>,
     pub foreign_module: Option<DefId>,

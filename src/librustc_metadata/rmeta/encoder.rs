@@ -18,9 +18,7 @@ use rustc_hir::lang_items;
 use rustc_hir::{AnonConst, GenericParamKind};
 use rustc_index::vec::Idx;
 use rustc_middle::hir::map::Map;
-use rustc_middle::middle::cstore::{
-    EncodedMetadata, ForeignModule, LinkagePreference, NativeLibrary,
-};
+use rustc_middle::middle::cstore::{EncodedMetadata, ForeignModule, LinkagePreference, NativeLib};
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::{
     metadata_symbol_name, ExportedSymbol, SymbolExportLevel,
@@ -1355,7 +1353,7 @@ impl EncodeContext<'tcx> {
         self.encode_promoted_mir(def_id);
     }
 
-    fn encode_native_libraries(&mut self) -> Lazy<[NativeLibrary]> {
+    fn encode_native_libraries(&mut self) -> Lazy<[NativeLib]> {
         let used_libraries = self.tcx.native_libraries(LOCAL_CRATE);
         self.lazy(used_libraries.iter().cloned())
     }

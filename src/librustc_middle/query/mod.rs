@@ -131,7 +131,7 @@ rustc_queries! {
             cache_on_disk_if { key.is_local() }
         }
 
-        query native_libraries(_: CrateNum) -> Lrc<Vec<NativeLibrary>> {
+        query native_libraries(_: CrateNum) -> Lrc<Vec<NativeLib>> {
             desc { "looking up the native libraries of a linked crate" }
         }
 
@@ -937,7 +937,7 @@ rustc_queries! {
         query is_dllimport_foreign_item(_: DefId) -> bool {}
         query is_statically_included_foreign_item(_: DefId) -> bool {}
         query native_library_kind(_: DefId)
-            -> Option<NativeLibraryKind> {}
+            -> Option<NativeLibKind> {}
     }
 
     Linking {

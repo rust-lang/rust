@@ -11,7 +11,7 @@ use rustc_hir::def_id::{DefId, DefIndex};
 use rustc_hir::lang_items;
 use rustc_index::vec::IndexVec;
 use rustc_middle::hir::exports::Export;
-use rustc_middle::middle::cstore::{DepKind, ForeignModule, LinkagePreference, NativeLibrary};
+use rustc_middle::middle::cstore::{DepKind, ForeignModule, LinkagePreference, NativeLib};
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use rustc_middle::mir;
 use rustc_middle::ty::{self, ReprOptions, Ty};
@@ -190,7 +190,7 @@ crate struct CrateRoot<'tcx> {
     lang_items: Lazy<[(DefIndex, usize)]>,
     lang_items_missing: Lazy<[lang_items::LangItem]>,
     diagnostic_items: Lazy<[(Symbol, DefIndex)]>,
-    native_libraries: Lazy<[NativeLibrary]>,
+    native_libraries: Lazy<[NativeLib]>,
     foreign_modules: Lazy<[ForeignModule]>,
     source_map: Lazy<[rustc_span::SourceFile]>,
     def_path_table: Lazy<rustc_hir::definitions::DefPathTable>,
