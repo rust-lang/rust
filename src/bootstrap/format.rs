@@ -23,7 +23,7 @@ fn rustfmt(src: &Path, rustfmt: &Path, path: &Path, check: bool) {
     if !status.success() {
         eprintln!(
             "Running `{}` failed.\nIf you're running `tidy`, \
-            try again with `--bless` flag. Or, you just want to format \
+            try again with `--bless`. Or, if you just want to format \
             code, run `./x.py fmt` instead.",
             cmd_debug,
         );
