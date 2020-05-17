@@ -434,8 +434,8 @@ impl<T> RawTable<T> {
 
     /// Returns pointer to start of data table.
     #[cfg_attr(feature = "inline-more", inline)]
-    pub unsafe fn compute_data_ptr(&self) -> NonNull<T> {
-        NonNull::new_unchecked(self.data_backwards().as_ptr().sub(self.buckets()))
+    pub unsafe fn compute_data_ptr(&self) -> *mut T {
+        self.data_backwards().as_ptr().sub(self.buckets())
     }
 
     /// Returns the index of a bucket from a `Bucket`.
