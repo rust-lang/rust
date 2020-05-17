@@ -670,6 +670,7 @@ mod tests {
                         },
                     ],
                     cursor_position: None,
+                    is_snippet: false,
                 },
             },
         )
@@ -722,6 +723,7 @@ mod tests {
                         },
                     ],
                     cursor_position: None,
+                    is_snippet: false,
                 },
             },
         )
@@ -818,6 +820,7 @@ mod tests {
                         },
                     ],
                     cursor_position: None,
+                    is_snippet: false,
                 },
             },
         )

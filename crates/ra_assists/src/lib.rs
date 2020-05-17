@@ -10,6 +10,7 @@ macro_rules! eprintln {
     ($($tt:tt)*) => { stdx::eprintln!($($tt)*) };
 }
 
+mod assist_config;
 mod assist_context;
 mod marks;
 #[cfg(test)]
@@ -23,6 +24,8 @@ use ra_ide_db::{source_change::SourceChange, RootDatabase};
 use ra_syntax::TextRange;
 
 pub(crate) use crate::assist_context::{AssistContext, Assists};
+
+pub use assist_config::AssistConfig;
 
 /// Unique identifier of the assist, should not be shown to the user
 /// directly.
@@ -54,9 +57,9 @@ impl Assist {
     ///
     /// Assists are returned in the "unresolved" state, that is only labels are
     /// returned, without actual edits.
-    pub fn unresolved(db: &RootDatabase, range: FileRange) -> Vec<Assist> {
+    pub fn unresolved(db: &RootDatabase, config: &AssistConfig, range: FileRange) -> Vec<Assist> {
         let sema = Semantics::new(db);
-        let ctx = AssistContext::new(sema, range);
+        let ctx = AssistContext::new(sema, config, range);
         let mut acc = Assists::new_unresolved(&ctx);
         handlers::all().iter().for_each(|handler| {
             handler(&mut acc, &ctx);
@@ -68,9 +71,13 @@ impl Assist {
     ///
     /// Assists are returned in the "resolved" state, that is with edit fully
     /// computed.
-    pub fn resolved(db: &RootDatabase, range: FileRange) -> Vec<ResolvedAssist> {
+    pub fn resolved(
+        db: &RootDatabase,
+        config: &AssistConfig,
+        range: FileRange,
+    ) -> Vec<ResolvedAssist> {
         let sema = Semantics::new(db);
-        let ctx = AssistContext::new(sema, range);
+        let ctx = AssistContext::new(sema, config, range);
         let mut acc = Assists::new_resolved(&ctx);
         handlers::all().iter().for_each(|handler| {
             handler(&mut acc, &ctx);

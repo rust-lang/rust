@@ -476,7 +476,7 @@ pub fn handle_completion(
         return Ok(None);
     }
 
-    let items = match world.analysis().completions(position, &world.config.completion)? {
+    let items = match world.analysis().completions(&world.config.completion, position)? {
         None => return Ok(None),
         Some(items) => items,
     };
@@ -740,7 +740,9 @@ pub fn handle_code_action(
     }
 
     let mut grouped_assists: FxHashMap<String, (usize, Vec<Assist>)> = FxHashMap::default();
-    for assist in world.analysis().assists(FileRange { file_id, range })?.into_iter() {
+    for assist in
+        world.analysis().assists(&world.config.assist, FileRange { file_id, range })?.into_iter()
+    {
         match &assist.group_label {
             Some(label) => grouped_assists
                 .entry(label.to_owned())

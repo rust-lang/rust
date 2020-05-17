@@ -11,7 +11,7 @@ use std::{ffi::OsString, path::PathBuf};
 
 use lsp_types::ClientCapabilities;
 use ra_flycheck::FlycheckConfig;
-use ra_ide::{CompletionConfig, InlayHintsConfig};
+use ra_ide::{AssistConfig, CompletionConfig, InlayHintsConfig};
 use ra_project_model::CargoConfig;
 use serde::Deserialize;
 
@@ -32,6 +32,7 @@ pub struct Config {
 
     pub inlay_hints: InlayHintsConfig,
     pub completion: CompletionConfig,
+    pub assist: AssistConfig,
     pub call_info_full: bool,
     pub lens: LensConfig,
 }
@@ -136,6 +137,7 @@ impl Default for Config {
                 add_call_argument_snippets: true,
                 ..CompletionConfig::default()
             },
+            assist: AssistConfig::default(),
             call_info_full: true,
             lens: LensConfig::default(),
         }
@@ -281,6 +283,7 @@ impl Config {
                     }
                 }
             }
+            self.assist.allow_snippets(false);
         }
 
         if let Some(window_caps) = caps.window.as_ref() {
