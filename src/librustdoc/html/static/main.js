@@ -535,7 +535,7 @@ function defocusSearchBar() {
         return s1_len + s2_len;
     }
 
-    function initSearch(rawSearchIndex) {
+    window.initSearch = function(rawSearchIndex) {
         var MAX_LEV_DISTANCE = 3;
         var MAX_RESULTS = 200;
         var GENERICS_DATA = 1;
@@ -1930,12 +1930,11 @@ function defocusSearchBar() {
                 sidebar.appendChild(div);
             }
         }
-    }
+    };
 
-    window.initSearch = initSearch;
 
     // delayed sidebar rendering.
-    function initSidebarItems(items) {
+    window.initSidebarItems = function(items) {
         var sidebar = document.getElementsByClassName("sidebar-elems")[0];
         var current = window.sidebarCurrent;
 
@@ -1997,9 +1996,7 @@ function defocusSearchBar() {
         block("foreigntype", "Foreign Types");
         block("keyword", "Keywords");
         block("traitalias", "Trait Aliases");
-    }
-
-    window.initSidebarItems = initSidebarItems;
+    };
 
     window.register_implementors = function(imp) {
         var implementors = document.getElementById("implementors-list");
@@ -2699,7 +2696,7 @@ function defocusSearchBar() {
         });
     }
 
-    function addSearchOptions(crates) {
+    window.addSearchOptions = function(crates) {
         var elem = document.getElementById("crate-search");
 
         if (!elem) {
@@ -2744,9 +2741,7 @@ function defocusSearchBar() {
         if (search_input) {
             search_input.removeAttribute('disabled');
         };
-    }
-
-    window.addSearchOptions = addSearchOptions;
+    };
 
     function buildHelperPopup() {
         var popup = document.createElement("aside");
