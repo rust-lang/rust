@@ -781,6 +781,10 @@ impl<'tcx> Visitor<'tcx> for CanConstProp {
             // Projections are fine, because `&mut foo.x` will be caught by
             // `MutatingUseContext::Borrow` elsewhere.
             MutatingUse(MutatingUseContext::Projection)
+            // These are just stores, where the storing is not propagatable, but there may be later
+            // mutations of the same local via `Store`
+            | MutatingUse(MutatingUseContext::Call)
+            // Actual store that can possibly even propagate a value
             | MutatingUse(MutatingUseContext::Store) => {
                 if !self.found_assignment.insert(local) {
                     match &mut self.can_const_prop[local] {
@@ -805,7 +809,21 @@ impl<'tcx> Visitor<'tcx> for CanConstProp {
             | NonMutatingUse(NonMutatingUseContext::Inspect)
             | NonMutatingUse(NonMutatingUseContext::Projection)
             | NonUse(_) => {}
-            _ => {
+
+            // These could be propagated with a smarter analysis or just some careful thinking about
+            // whether they'd be fine right now.
+            MutatingUse(MutatingUseContext::AsmOutput)
+            | MutatingUse(MutatingUseContext::Yield)
+            | MutatingUse(MutatingUseContext::Drop)
+            | MutatingUse(MutatingUseContext::Retag)
+            // These can't ever be propagated under any scheme, as we can't reason about indirect
+            // mutation.
+            | NonMutatingUse(NonMutatingUseContext::SharedBorrow)
+            | NonMutatingUse(NonMutatingUseContext::ShallowBorrow)
+            | NonMutatingUse(NonMutatingUseContext::UniqueBorrow)
+            | NonMutatingUse(NonMutatingUseContext::AddressOf)
+            | MutatingUse(MutatingUseContext::Borrow)
+            | MutatingUse(MutatingUseContext::AddressOf) => {
                 trace!("local {:?} can't be propagaged because it's used: {:?}", local, context);
                 self.can_const_prop[local] = ConstPropMode::NoPropagation;
             }
@@ -881,6 +899,11 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                     // ```
                     // FIXME: we overzealously erase the entire local, because that's easier to
                     // implement.
+                    trace!(
+                        "propagation into {:?} failed.
+                        Nuking the entire site from orbit, it's the only way to be sure",
+                        place,
+                    );
                     Self::remove_const(&mut self.ecx, place.local);
                 }
             }
