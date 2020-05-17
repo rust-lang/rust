@@ -35,7 +35,7 @@ export function createClient(serverPath: string, cwd: string): lc.LanguageClient
         } as any
     };
 
-    const res = new lc.LanguageClient(
+    const client = new lc.LanguageClient(
         'rust-analyzer',
         'Rust Analyzer Language Server',
         serverOptions,
@@ -47,8 +47,19 @@ export function createClient(serverPath: string, cwd: string): lc.LanguageClient
     // since they are available on stable.
     // Note that while these features are stable in vscode their LSP protocol
     // implementations are still in the "proposed" category for 3.16.
-    res.registerFeature(new CallHierarchyFeature(res));
-    res.registerFeature(new SemanticTokensFeature(res));
+    client.registerFeature(new CallHierarchyFeature(client));
+    client.registerFeature(new SemanticTokensFeature(client));
+    client.registerFeature(new SnippetTextEditFeature());
 
-    return res;
+    return client;
+}
+
+class SnippetTextEditFeature implements lc.StaticFeature {
+    fillClientCapabilities(capabilities: lc.ClientCapabilities): void {
+        const caps: any = capabilities.experimental ?? {};
+        caps.snippetTextEdit = true;
+        capabilities.experimental = caps
+    }
+    initialize(_capabilities: lc.ServerCapabilities<any>, _documentSelector: lc.DocumentSelector | undefined): void {
+    }
 }

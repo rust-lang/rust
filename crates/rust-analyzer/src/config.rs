@@ -275,6 +275,7 @@ impl Config {
             {
                 self.client_caps.code_action_literals = value;
             }
+
             self.completion.allow_snippets(false);
             if let Some(completion) = &doc_caps.completion {
                 if let Some(completion_item) = &completion.completion_item {
@@ -283,13 +284,19 @@ impl Config {
                     }
                 }
             }
-            self.assist.allow_snippets(false);
         }
 
         if let Some(window_caps) = caps.window.as_ref() {
             if let Some(value) = window_caps.work_done_progress {
                 self.client_caps.work_done_progress = value;
             }
+        }
+
+        self.assist.allow_snippets(false);
+        if let Some(experimental) = &caps.experimental {
+            let enable =
+                experimental.get("snippetTextEdit").and_then(|it| it.as_bool()) == Some(true);
+            self.assist.allow_snippets(enable);
         }
     }
 }
