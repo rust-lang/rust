@@ -306,6 +306,43 @@ impl ToJson for RelocModel {
 }
 
 #[derive(Clone, Copy, PartialEq, Hash, Debug)]
+pub enum CodeModel {
+    Tiny,
+    Small,
+    Kernel,
+    Medium,
+    Large,
+}
+
+impl FromStr for CodeModel {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<CodeModel, ()> {
+        Ok(match s {
+            // "tiny" => CodeModel::Tiny, // Not exposed to users right now.
+            "small" => CodeModel::Small,
+            "kernel" => CodeModel::Kernel,
+            "medium" => CodeModel::Medium,
+            "large" => CodeModel::Large,
+            _ => return Err(()),
+        })
+    }
+}
+
+impl ToJson for CodeModel {
+    fn to_json(&self) -> Json {
+        match *self {
+            CodeModel::Tiny => "tiny",
+            CodeModel::Small => "small",
+            CodeModel::Kernel => "kernel",
+            CodeModel::Medium => "medium",
+            CodeModel::Large => "large",
+        }
+        .to_json()
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
 pub enum TlsModel {
     GeneralDynamic,
     LocalDynamic,
@@ -699,7 +736,8 @@ pub struct TargetOptions {
     /// -relocation-model=$relocation_model`. Defaults to `Pic`.
     pub relocation_model: RelocModel,
     /// Code model to use. Corresponds to `llc -code-model=$code_model`.
-    pub code_model: Option<String>,
+    /// Defaults to `None` which means "inherited from the base LLVM target".
+    pub code_model: Option<CodeModel>,
     /// TLS model to use. Options are "global-dynamic" (default), "local-dynamic", "initial-exec"
     /// and "local-exec". This is similar to the -ftls-model option in GCC/Clang.
     pub tls_model: TlsModel,
@@ -1114,6 +1152,18 @@ impl Target {
                     Some(Ok(()))
                 })).unwrap_or(Ok(()))
             } );
+            ($key_name:ident, CodeModel) => ( {
+                let name = (stringify!($key_name)).replace("_", "-");
+                obj.find(&name[..]).and_then(|o| o.as_string().and_then(|s| {
+                    match s.parse::<CodeModel>() {
+                        Ok(code_model) => base.options.$key_name = Some(code_model),
+                        _ => return Some(Err(format!("'{}' is not a valid code model. \
+                                                      Run `rustc --print code-models` to \
+                                                      see the list of supported values.", s))),
+                    }
+                    Some(Ok(()))
+                })).unwrap_or(Ok(()))
+            } );
             ($key_name:ident, TlsModel) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
                 obj.find(&name[..]).and_then(|o| o.as_string().and_then(|s| {
@@ -1266,7 +1316,7 @@ impl Target {
         key!(only_cdylib, bool);
         key!(executables, bool);
         key!(relocation_model, RelocModel)?;
-        key!(code_model, optional);
+        key!(code_model, CodeModel)?;
         key!(tls_model, TlsModel)?;
         key!(disable_redzone, bool);
         key!(eliminate_frame_pointer, bool);

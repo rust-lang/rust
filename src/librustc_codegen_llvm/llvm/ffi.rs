@@ -458,9 +458,7 @@ pub enum RelocModel {
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub enum CodeModel {
-    // FIXME: figure out if this variant is needed at all.
-    #[allow(dead_code)]
-    Other,
+    Tiny,
     Small,
     Kernel,
     Medium,
