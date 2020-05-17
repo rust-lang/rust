@@ -579,8 +579,6 @@ impl<T: ?Sized> Rc<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(weak_into_raw)]
-    ///
     /// use std::rc::Rc;
     ///
     /// let x = Rc::new("hello".to_owned());
@@ -589,7 +587,7 @@ impl<T: ?Sized> Rc<T> {
     /// assert_eq!(x_ptr, Rc::as_ptr(&y));
     /// assert_eq!(unsafe { &*x_ptr }, "hello");
     /// ```
-    #[unstable(feature = "weak_into_raw", issue = "60728")]
+    #[stable(feature = "weak_into_raw", since = "1.45.0")]
     pub fn as_ptr(this: &Self) -> *const T {
         let ptr: *mut RcBox<T> = NonNull::as_ptr(this.ptr);
         let fake_ptr = ptr as *mut T;
@@ -1665,8 +1663,6 @@ impl<T> Weak<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(weak_into_raw)]
-    ///
     /// use std::rc::Rc;
     /// use std::ptr;
     ///
@@ -1684,7 +1680,7 @@ impl<T> Weak<T> {
     /// ```
     ///
     /// [`null`]: ../../std/ptr/fn.null.html
-    #[unstable(feature = "weak_into_raw", issue = "60728")]
+    #[stable(feature = "weak_into_raw", since = "1.45.0")]
     pub fn as_ptr(&self) -> *const T {
         let offset = data_offset_sized::<T>();
         let ptr = self.ptr.cast::<u8>().as_ptr().wrapping_offset(offset);
@@ -1702,8 +1698,6 @@ impl<T> Weak<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(weak_into_raw)]
-    ///
     /// use std::rc::{Rc, Weak};
     ///
     /// let strong = Rc::new("hello".to_owned());
@@ -1719,7 +1713,7 @@ impl<T> Weak<T> {
     ///
     /// [`from_raw`]: struct.Weak.html#method.from_raw
     /// [`as_ptr`]: struct.Weak.html#method.as_ptr
-    #[unstable(feature = "weak_into_raw", issue = "60728")]
+    #[stable(feature = "weak_into_raw", since = "1.45.0")]
     pub fn into_raw(self) -> *const T {
         let result = self.as_ptr();
         mem::forget(self);
@@ -1746,8 +1740,6 @@ impl<T> Weak<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(weak_into_raw)]
-    ///
     /// use std::rc::{Rc, Weak};
     ///
     /// let strong = Rc::new("hello".to_owned());
@@ -1772,7 +1764,7 @@ impl<T> Weak<T> {
     /// [`Weak`]: struct.Weak.html
     /// [`new`]: struct.Weak.html#method.new
     /// [`forget`]: ../../std/mem/fn.forget.html
-    #[unstable(feature = "weak_into_raw", issue = "60728")]
+    #[stable(feature = "weak_into_raw", since = "1.45.0")]
     pub unsafe fn from_raw(ptr: *const T) -> Self {
         if ptr.is_null() {
             Self::new()
