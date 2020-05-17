@@ -386,8 +386,14 @@ rustc_queries! {
             storage(ArenaCacheSelector<'tcx>)
         }
 
-        /// HACK: when evaluated, this reports a "unsafe derive on repr(packed)" error
-        query unsafe_derive_on_repr_packed(_: DefId) -> () {}
+        /// HACK: when evaluated, this reports a "unsafe derive on repr(packed)" error.
+        ///
+        /// Unsafety checking is executed for each method separately, but we only want
+        /// to emit this error once per derive. As there are some impls with multiple
+        /// methods, we use a query for deduplication.
+        query unsafe_derive_on_repr_packed(key: LocalDefId) -> () {
+            desc { |tcx| "processing `{}`", tcx.def_path_str(key.to_def_id()) }
+        }
 
         /// The signature of functions and closures.
         query fn_sig(_: DefId) -> ty::PolyFnSig<'tcx> {}
