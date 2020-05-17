@@ -72,6 +72,12 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub UNUSED_CRATE_DEPENDENCIES,
+    Allow,
+    "crate dependencies that are never used"
+}
+
+declare_lint! {
     pub UNUSED_QUALIFICATIONS,
     Allow,
     "detects unnecessarily qualified names"
@@ -523,6 +529,7 @@ declare_lint_pass! {
         UNCONDITIONAL_PANIC,
         UNUSED_IMPORTS,
         UNUSED_EXTERN_CRATES,
+        UNUSED_CRATE_DEPENDENCIES,
         UNUSED_QUALIFICATIONS,
         UNKNOWN_LINTS,
         UNUSED_VARIABLES,
