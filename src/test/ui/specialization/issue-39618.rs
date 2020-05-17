@@ -4,7 +4,7 @@
 
 // check-pass
 
-#![feature(specialization)]
+#![feature(specialization)] //~ WARN the feature `specialization` is incomplete
 
 trait Foo {
     fn foo(&self);
