@@ -17,7 +17,7 @@ struct S;
 struct S;
 
 impl Debug for S {
-
+    $0
 }
 ```
 
@@ -33,7 +33,7 @@ struct Point {
 }
 
 // AFTER
-#[derive()]
+#[derive($0)]
 struct Point {
     x: u32,
     y: u32,
@@ -105,16 +105,16 @@ Adds a new inherent impl for a type.
 ```rust
 // BEFORE
 struct Ctx<T: Clone> {
-     data: T,┃
+    data: T,┃
 }
 
 // AFTER
 struct Ctx<T: Clone> {
-     data: T,
+    data: T,
 }
 
 impl<T: Clone> Ctx<T> {
-
+    $0
 }
 ```
 

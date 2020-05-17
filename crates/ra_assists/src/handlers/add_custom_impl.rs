@@ -25,7 +25,7 @@ use crate::{
 // struct S;
 //
 // impl Debug for S {
-//
+//     $0
 // }
 // ```
 pub(crate) fn add_custom_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
@@ -52,7 +52,7 @@ pub(crate) fn add_custom_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<
         format!("Add custom impl `{}` for `{}`", trait_token.text().as_str(), annotated_name);
 
     let target = attr.syntax().text_range();
-    acc.add(AssistId("add_custom_impl"), label, target, |edit| {
+    acc.add(AssistId("add_custom_impl"), label, target, |builder| {
         let new_attr_input = input
             .syntax()
             .descendants_with_tokens()
@@ -63,20 +63,11 @@ pub(crate) fn add_custom_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<
         let has_more_derives = !new_attr_input.is_empty();
         let new_attr_input = new_attr_input.iter().sep_by(", ").surround_with("(", ")").to_string();
 
-        let mut buf = String::new();
-        buf.push_str("\n\nimpl ");
-        buf.push_str(trait_token.text().as_str());
-        buf.push_str(" for ");
-        buf.push_str(annotated_name.as_str());
-        buf.push_str(" {\n");
-
-        let cursor_delta = if has_more_derives {
-            let delta = input.syntax().text_range().len() - TextSize::of(&new_attr_input);
-            edit.replace(input.syntax().text_range(), new_attr_input);
-            delta
+        if has_more_derives {
+            builder.replace(input.syntax().text_range(), new_attr_input);
         } else {
             let attr_range = attr.syntax().text_range();
-            edit.delete(attr_range);
+            builder.delete(attr_range);
 
             let line_break_range = attr
                 .syntax()
@@ -84,14 +75,24 @@ pub(crate) fn add_custom_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<
                 .filter(|t| t.kind() == WHITESPACE)
                 .map(|t| t.text_range())
                 .unwrap_or_else(|| TextRange::new(TextSize::from(0), TextSize::from(0)));
-            edit.delete(line_break_range);
+            builder.delete(line_break_range);
+        }
 
-            attr_range.len() + line_break_range.len()
-        };
-
-        edit.set_cursor(start_offset + TextSize::of(&buf) - cursor_delta);
-        buf.push_str("\n}");
-        edit.insert(start_offset, buf);
+        match ctx.config.snippet_cap {
+            Some(cap) => {
+                builder.insert_snippet(
+                    cap,
+                    start_offset,
+                    format!("\n\nimpl {} for {} {{\n    $0\n}}", trait_token, annotated_name),
+                );
+            }
+            None => {
+                builder.insert(
+                    start_offset,
+                    format!("\n\nimpl {} for {} {{\n\n}}", trait_token, annotated_name),
+                );
+            }
+        }
     })
 }
 
@@ -117,7 +118,7 @@ struct Foo {
 }
 
 impl Debug for Foo {
-<|>
+    $0
 }
             ",
         )
@@ -139,7 +140,7 @@ pub struct Foo {
 }
 
 impl Debug for Foo {
-<|>
+    $0
 }
             ",
         )
@@ -158,7 +159,7 @@ struct Foo {}
 struct Foo {}
 
 impl Debug for Foo {
-<|>
+    $0
 }
             ",
         )

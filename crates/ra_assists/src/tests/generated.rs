@@ -15,7 +15,7 @@ struct S;
 struct S;
 
 impl Debug for S {
-
+    $0
 }
 "#####,
     )
@@ -32,7 +32,7 @@ struct Point {
 }
 "#####,
         r#####"
-#[derive()]
+#[derive($0)]
 struct Point {
     x: u32,
     y: u32,
@@ -108,16 +108,16 @@ fn doctest_add_impl() {
         "add_impl",
         r#####"
 struct Ctx<T: Clone> {
-     data: T,<|>
+    data: T,<|>
 }
 "#####,
         r#####"
 struct Ctx<T: Clone> {
-     data: T,
+    data: T,
 }
 
 impl<T: Clone> Ctx<T> {
-
+    $0
 }
 "#####,
     )
