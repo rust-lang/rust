@@ -572,6 +572,35 @@ impl<'a> AstValidator<'a> {
             .emit();
     }
 
+    fn check_nomangle_item_asciionly(&self, ident: Ident, item_span: Span) {
+        if ident.name.as_str().is_ascii() {
+            return;
+        }
+        let head_span = self.session.source_map().guess_head_span(item_span);
+        struct_span_err!(
+            self.session,
+            head_span,
+            E0754,
+            "`#[no_mangle]` requires ASCII identifier"
+        )
+        .emit();
+    }
+
+    fn check_mod_file_item_asciionly(&self, ident: Ident) {
+        if ident.name.as_str().is_ascii() {
+            return;
+        }
+        struct_span_err!(
+            self.session,
+            ident.span,
+            E0754,
+            "trying to load file for module `{}` with non ascii identifer name",
+            ident.name
+        )
+        .help("consider using `#[path]` attribute to specify filesystem path")
+        .emit();
+    }
+
     fn deny_generic_params(&self, generics: &Generics, ident_span: Span) {
         if !generics.params.is_empty() {
             struct_span_err!(
@@ -866,6 +895,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             self.has_proc_macro_decls = true;
         }
 
+        if attr::contains_name(&item.attrs, sym::no_mangle) {
+            self.check_nomangle_item_asciionly(item.ident, item.span);
+        }
+
         match item.kind {
             ItemKind::Impl {
                 unsafety,
@@ -992,9 +1025,11 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 walk_list!(self, visit_attribute, &item.attrs);
                 return;
             }
-            ItemKind::Mod(_) => {
+            ItemKind::Mod(Mod { inline, .. }) => {
                 // Ensure that `path` attributes on modules are recorded as used (cf. issue #35584).
-                attr::first_attr_value_str_by_name(&item.attrs, sym::path);
+                if !inline && !attr::contains_name(&item.attrs, sym::path) {
+                    self.check_mod_file_item_asciionly(item.ident);
+                }
             }
             ItemKind::Union(ref vdata, _) => {
                 if let VariantData::Tuple(..) | VariantData::Unit(..) = vdata {
