@@ -1,6 +1,5 @@
 // run-rustfix
-#![warn(clippy::block_in_if_condition_expr)]
-#![warn(clippy::block_in_if_condition_stmt)]
+#![warn(clippy::blocks_in_if_conditions)]
 #![allow(unused, clippy::let_and_return)]
 #![warn(clippy::nonminimal_bool)]
 
@@ -64,10 +63,10 @@ fn block_in_assert() {
     let opt = Some(42);
     assert!(opt
         .as_ref()
-        .and_then(|val| {
+        .map(|val| {
             let mut v = val * 2;
             v -= 1;
-            Some(v * 3)
+            v * 3
         })
         .is_some());
 }

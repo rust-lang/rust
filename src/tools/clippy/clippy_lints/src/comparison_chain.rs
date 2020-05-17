@@ -81,10 +81,21 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ComparisonChain {
 
                 // Check that both sets of operands are equal
                 let mut spanless_eq = SpanlessEq::new(cx);
-                if (!spanless_eq.eq_expr(lhs1, lhs2) || !spanless_eq.eq_expr(rhs1, rhs2))
-                    && (!spanless_eq.eq_expr(lhs1, rhs2) || !spanless_eq.eq_expr(rhs1, lhs2))
-                {
+                let same_fixed_operands = spanless_eq.eq_expr(lhs1, lhs2) && spanless_eq.eq_expr(rhs1, rhs2);
+                let same_transposed_operands = spanless_eq.eq_expr(lhs1, rhs2) && spanless_eq.eq_expr(rhs1, lhs2);
+
+                if !same_fixed_operands && !same_transposed_operands {
                     return;
+                }
+
+                // Check that if the operation is the same, either it's not `==` or the operands are transposed
+                if kind1.node == kind2.node {
+                    if kind1.node == BinOpKind::Eq {
+                        return;
+                    }
+                    if !same_transposed_operands {
+                        return;
+                    }
                 }
 
                 // Check that the type being compared implements `core::cmp::Ord`

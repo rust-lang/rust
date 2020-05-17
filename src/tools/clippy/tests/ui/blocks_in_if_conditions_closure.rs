@@ -1,5 +1,4 @@
-#![warn(clippy::block_in_if_condition_expr)]
-#![warn(clippy::block_in_if_condition_stmt)]
+#![warn(clippy::blocks_in_if_conditions)]
 #![allow(unused, clippy::let_and_return)]
 
 fn predicate<F: FnOnce(T) -> bool, T>(pfn: F, val: T) -> bool {
@@ -10,7 +9,7 @@ fn pred_test() {
     let v = 3;
     let sky = "blue";
     // This is a sneaky case, where the block isn't directly in the condition,
-    // but is actually nside a closure that the condition is using.
+    // but is actually inside a closure that the condition is using.
     // The same principle applies -- add some extra expressions to make sure
     // linter isn't confused by them.
     if v == 3

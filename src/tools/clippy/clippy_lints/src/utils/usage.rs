@@ -77,8 +77,8 @@ impl<'tcx> Delegate<'tcx> for MutVarsDelegate {
 }
 
 pub struct UsedVisitor {
-    pub var: Symbol,    // var to look for
-    pub used: bool,     // has the var been used otherwise?
+    pub var: Symbol, // var to look for
+    pub used: bool,  // has the var been used otherwise?
 }
 
 impl<'tcx> Visitor<'tcx> for UsedVisitor {

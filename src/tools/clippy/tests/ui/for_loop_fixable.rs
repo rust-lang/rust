@@ -21,7 +21,6 @@ impl Unrelated {
     clippy::explicit_iter_loop,
     clippy::explicit_into_iter_loop,
     clippy::iter_next_loop,
-    clippy::reverse_range_loop,
     clippy::for_kv_map
 )]
 #[allow(
@@ -32,60 +31,7 @@ impl Unrelated {
 )]
 #[allow(clippy::many_single_char_names, unused_variables)]
 fn main() {
-    const MAX_LEN: usize = 42;
     let mut vec = vec![1, 2, 3, 4];
-
-    for i in 10..0 {
-        println!("{}", i);
-    }
-
-    for i in 10..=0 {
-        println!("{}", i);
-    }
-
-    for i in MAX_LEN..0 {
-        println!("{}", i);
-    }
-
-    for i in 5..=5 {
-        // not an error, this is the range with only one element “5”
-        println!("{}", i);
-    }
-
-    for i in 0..10 {
-        // not an error, the start index is less than the end index
-        println!("{}", i);
-    }
-
-    for i in -10..0 {
-        // not an error
-        println!("{}", i);
-    }
-
-    for i in (10..0).map(|x| x * 2) {
-        // not an error, it can't be known what arbitrary methods do to a range
-        println!("{}", i);
-    }
-
-    // testing that the empty range lint folds constants
-    for i in 10..5 + 4 {
-        println!("{}", i);
-    }
-
-    for i in (5 + 2)..(3 - 1) {
-        println!("{}", i);
-    }
-
-    for i in (2 * 2)..(2 * 3) {
-        // no error, 4..6 is fine
-        println!("{}", i);
-    }
-
-    let x = 42;
-    for i in x..10 {
-        // no error, not constant-foldable
-        println!("{}", i);
-    }
 
     // See #601
     for i in 0..10 {
