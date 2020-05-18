@@ -1620,7 +1620,7 @@ pub fn exit(code: i32) -> ! {
 /// [panic hook]: ../../std/panic/fn.set_hook.html
 #[stable(feature = "process_abort", since = "1.17.0")]
 pub fn abort() -> ! {
-    unsafe { crate::sys::abort_internal() };
+    crate::sys::abort_internal();
 }
 
 /// Returns the OS-assigned process identifier associated with this process.
