@@ -1,10 +1,11 @@
-use std::time::{Duration, SystemTime};
 use std::convert::TryInto;
+use std::time::{Duration, SystemTime};
 
 use rustc_middle::ty::{layout::TyAndLayout, TyKind, TypeAndMut};
 use rustc_target::abi::{LayoutOf, Size};
 
 use crate::stacked_borrows::Tag;
+use crate::thread::Time;
 
 use crate::*;
 
@@ -734,12 +735,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         };
 
         let timeout_time = if clock_id == this.eval_libc_i32("CLOCK_REALTIME")? {
-            let time_anchor_since_epoch =
-                this.machine.time_anchor_timestamp.duration_since(SystemTime::UNIX_EPOCH).unwrap();
-            let duration_since_time_anchor = duration.checked_sub(time_anchor_since_epoch).unwrap();
-            this.machine.time_anchor.checked_add(duration_since_time_anchor).unwrap()
+            Time::RealTime(SystemTime::UNIX_EPOCH.checked_add(duration).unwrap())
         } else if clock_id == this.eval_libc_i32("CLOCK_MONOTONIC")? {
-            this.machine.time_anchor.checked_add(duration).unwrap()
+            Time::Monotonic(this.machine.time_anchor.checked_add(duration).unwrap())
         } else {
             throw_ub_format!("Unsupported clock id.");
         };

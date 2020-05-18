@@ -4,7 +4,7 @@ use std::cell::RefCell;
 use std::collections::hash_map::Entry;
 use std::convert::TryFrom;
 use std::num::TryFromIntError;
-use std::time::Instant;
+use std::time::{Duration, Instant, SystemTime};
 
 use log::trace;
 
@@ -159,13 +159,30 @@ impl<'mir, 'tcx> Default for Thread<'mir, 'tcx> {
     }
 }
 
+#[derive(Debug)]
+pub enum Time {
+    Monotonic(Instant),
+    RealTime(SystemTime),
+}
+
+impl Time {
+    /// How long do we have to wait from now until the specified time?
+    fn get_wait_time(&self) -> Duration {
+        match self {
+            Time::Monotonic(instant) => instant.saturating_duration_since(Instant::now()),
+            Time::RealTime(time) =>
+                time.duration_since(SystemTime::now()).unwrap_or(Duration::new(0, 0)),
+        }
+    }
+}
+
 /// Callbacks are used to implement timeouts. For example, waiting on a
 /// conditional variable with a timeout creates a callback that is called after
 /// the specified time and unblocks the thread. If another thread signals on the
 /// conditional variable, the signal handler deletes the callback.
 struct TimeoutCallbackInfo<'mir, 'tcx> {
     /// The callback should be called no earlier than this time.
-    call_time: Instant,
+    call_time: Time,
     /// The called function.
     callback: TimeoutCallback<'mir, 'tcx>,
 }
@@ -362,11 +379,11 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
     fn register_timeout_callback(
         &mut self,
         thread: ThreadId,
-        call_time: Instant,
+        call_time: Time,
         callback: TimeoutCallback<'mir, 'tcx>,
     ) {
         self.timeout_callbacks
-            .insert(thread, TimeoutCallbackInfo { call_time: call_time, callback: callback })
+            .insert(thread, TimeoutCallbackInfo { call_time, callback })
             .unwrap_none();
     }
 
@@ -376,13 +393,12 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
     }
 
     /// Get a callback that is ready to be called.
-    fn get_callback(&mut self) -> Option<(ThreadId, TimeoutCallback<'mir, 'tcx>)> {
-        let current_time = Instant::now();
+    fn get_ready_callback(&mut self) -> Option<(ThreadId, TimeoutCallback<'mir, 'tcx>)> {
         // We use a for loop here to make the scheduler more deterministic.
         for thread in self.threads.indices() {
             match self.timeout_callbacks.entry(thread) {
                 Entry::Occupied(entry) =>
-                    if current_time >= entry.get().call_time {
+                    if entry.get().call_time.get_wait_time() == Duration::new(0, 0) {
                         return Some((thread, entry.remove().callback));
                     },
                 Entry::Vacant(_) => {}
@@ -445,18 +461,14 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         }
         // We have not found a thread to execute.
         if self.threads.iter().all(|thread| thread.state == ThreadState::Terminated) {
-            unreachable!();
-        } else if let Some(next_call_time) =
-            self.timeout_callbacks.values().min_by_key(|info| info.call_time)
+            unreachable!("all threads terminated without the main thread terminating?!");
+        } else if let Some(sleep_time) =
+            self.timeout_callbacks.values().map(|info| info.call_time.get_wait_time()).min()
         {
             // All threads are currently blocked, but we have unexecuted
             // timeout_callbacks, which may unblock some of the threads. Hence,
             // sleep until the first callback.
-            if let Some(sleep_time) =
-                next_call_time.call_time.checked_duration_since(Instant::now())
-            {
-                std::thread::sleep(sleep_time);
-            }
+            std::thread::sleep(sleep_time);
             Ok(SchedulingAction::ExecuteTimeoutCallback)
         } else {
             throw_machine_stop!(TerminationInfo::Deadlock);
@@ -650,7 +662,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn register_timeout_callback(
         &mut self,
         thread: ThreadId,
-        call_time: Instant,
+        call_time: Time,
         callback: TimeoutCallback<'mir, 'tcx>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
@@ -669,7 +681,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     #[inline]
     fn run_timeout_callback(&mut self) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let (thread, callback) = this.machine.threads.get_callback().expect("no callback found");
+        let (thread, callback) =
+            this.machine.threads.get_ready_callback().expect("no callback found");
         let old_thread = this.set_active_thread(thread)?;
         callback(this)?;
         this.set_active_thread(old_thread)?;

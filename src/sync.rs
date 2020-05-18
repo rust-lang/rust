@@ -1,7 +1,6 @@
 use std::collections::{hash_map::Entry, HashMap, VecDeque};
 use std::convert::TryFrom;
 use std::num::NonZeroU32;
-use std::time::Instant;
 
 use rustc_index::vec::{Idx, IndexVec};
 
@@ -76,8 +75,6 @@ struct CondvarWaiter {
     thread: ThreadId,
     /// The mutex on which the thread is waiting.
     mutex: MutexId,
-    /// The moment in time when the waiter should time out.
-    timeout: Option<Instant>,
 }
 
 /// The conditional variable state.
@@ -280,7 +277,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
         let waiters = &mut this.machine.threads.sync.condvars[id].waiters;
         assert!(waiters.iter().all(|waiter| waiter.thread != thread), "thread is already waiting");
-        waiters.push_back(CondvarWaiter { thread, mutex, timeout: None });
+        waiters.push_back(CondvarWaiter { thread, mutex });
     }
 
     /// Wake up some thread (if there is any) sleeping on the conditional
