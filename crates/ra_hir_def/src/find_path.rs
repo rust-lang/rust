@@ -8,6 +8,7 @@ use crate::{
     CrateId, ModuleDefId, ModuleId,
 };
 use hir_expand::name::{known, AsName, Name};
+use std::sync::Arc;
 use test_utils::tested_by;
 
 const MAX_PATH_LEN: usize = 15;
@@ -45,6 +46,7 @@ impl ModPath {
 /// Find a path that can be used to refer to a certain item. This can depend on
 /// *from where* you're referring to the item, hence the `from` parameter.
 pub fn find_path(db: &dyn DefDatabase, item: ItemInNs, from: ModuleId) -> Option<ModPath> {
+    let _p = ra_prof::profile("find_path");
     find_path_inner(db, item, from, MAX_PATH_LEN)
 }
 
@@ -198,7 +200,7 @@ fn find_importable_locations(
         .chain(crate_graph[from.krate].dependencies.iter().map(|dep| dep.crate_id))
     {
         result.extend(
-            importable_locations_in_crate(db, item, krate)
+            db.importable_locations_of(item, krate)
                 .iter()
                 .filter(|(_, _, vis)| vis.is_visible_from(db, from))
                 .map(|(m, n, _)| (*m, n.clone())),
@@ -213,11 +215,11 @@ fn find_importable_locations(
 ///
 /// Note that the crate doesn't need to be the one in which the item is defined;
 /// it might be re-exported in other crates.
-fn importable_locations_in_crate(
+pub(crate) fn importable_locations_in_crate(
     db: &dyn DefDatabase,
     item: ItemInNs,
     krate: CrateId,
-) -> Vec<(ModuleId, Name, Visibility)> {
+) -> Arc<[(ModuleId, Name, Visibility)]> {
     let def_map = db.crate_def_map(krate);
     let mut result = Vec::new();
     for (local_id, data) in def_map.modules.iter() {
@@ -243,7 +245,8 @@ fn importable_locations_in_crate(
             result.push((ModuleId { krate, local_id }, name.clone(), vis));
         }
     }
-    result
+
+    Arc::from(result)
 }
 
 #[cfg(test)]
