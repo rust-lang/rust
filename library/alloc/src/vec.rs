@@ -2240,9 +2240,14 @@ fn write_in_place_with_drop<T>(
     }
 }
 
+#[rustc_unsafe_specialization_marker]
+trait SourceIterMarker: SourceIter<Source: AsIntoIter> {}
+
+impl<T> SourceIterMarker for T where T: SourceIter<Source: AsIntoIter> {}
+
 impl<T, I> SpecFrom<T, I> for Vec<T>
 where
-    I: Iterator<Item = T> + InPlaceIterable + SourceIter<Source: AsIntoIter>,
+    I: Iterator<Item = T> + InPlaceIterable + SourceIterMarker,
 {
     default fn from_iter(mut iterator: I) -> Self {
         // Additional requirements which cannot expressed via trait bounds. We rely on const eval
@@ -3015,6 +3020,7 @@ unsafe impl<T> SourceIter for IntoIter<T> {
 }
 
 // internal helper trait for in-place iteration specialization.
+#[rustc_specialization_trait]
 pub(crate) trait AsIntoIter {
     type Item;
     fn as_into_iter(&mut self) -> &mut IntoIter<Self::Item>;
