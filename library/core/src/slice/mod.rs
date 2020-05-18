@@ -680,7 +680,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn windows(&self, size: usize) -> Windows<'_, T> {
-        assert!(size != 0);
+        assert_ne!(size, 0);
         Windows { v: self, size }
     }
 
@@ -714,7 +714,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn chunks(&self, chunk_size: usize) -> Chunks<'_, T> {
-        assert!(chunk_size != 0);
+        assert_ne!(chunk_size, 0);
         Chunks { v: self, chunk_size }
     }
 
@@ -752,7 +752,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn chunks_mut(&mut self, chunk_size: usize) -> ChunksMut<'_, T> {
-        assert!(chunk_size != 0);
+        assert_ne!(chunk_size, 0);
         ChunksMut { v: self, chunk_size }
     }
 
@@ -789,7 +789,7 @@ impl<T> [T] {
     #[stable(feature = "chunks_exact", since = "1.31.0")]
     #[inline]
     pub fn chunks_exact(&self, chunk_size: usize) -> ChunksExact<'_, T> {
-        assert!(chunk_size != 0);
+        assert_ne!(chunk_size, 0);
         let rem = self.len() % chunk_size;
         let len = self.len() - rem;
         let (fst, snd) = self.split_at(len);
@@ -834,7 +834,7 @@ impl<T> [T] {
     #[stable(feature = "chunks_exact", since = "1.31.0")]
     #[inline]
     pub fn chunks_exact_mut(&mut self, chunk_size: usize) -> ChunksExactMut<'_, T> {
-        assert!(chunk_size != 0);
+        assert_ne!(chunk_size, 0);
         let rem = self.len() % chunk_size;
         let len = self.len() - rem;
         let (fst, snd) = self.split_at_mut(len);
