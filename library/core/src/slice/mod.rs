@@ -841,6 +841,41 @@ impl<T> [T] {
         ChunksExactMut { v: fst, rem: snd, chunk_size }
     }
 
+    /// Returns an iterator over `N` elements of the slice at a time, starting at the
+    /// beginning of the slice.
+    ///
+    /// The chunks are slices and do not overlap. If `N` does not divide the length of the
+    /// slice, then the last up to `N-1` elements will be omitted and can be retrieved
+    /// from the `remainder` function of the iterator.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `N` is 0.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(array_chunks)]
+    /// let slice = ['l', 'o', 'r', 'e', 'm'];
+    /// let mut iter = slice.array_chunks();
+    /// assert_eq!(iter.next().unwrap(), &['l', 'o']);
+    /// assert_eq!(iter.next().unwrap(), &['r', 'e']);
+    /// assert!(iter.next().is_none());
+    /// assert_eq!(iter.remainder(), &['m']);
+    /// ```
+    ///
+    /// [`chunks`]: #method.chunks
+    /// [`rchunks_exact`]: #method.rchunks_exact
+    #[unstable(feature = "array_chunks", issue = "none")]
+    #[inline]
+    pub fn array_chunks<const N: usize>(&self) -> ArrayChunks<'_, T, N> {
+        assert_ne!(N, 0);
+        let rem = self.len() % N;
+        let len = self.len() - rem;
+        let (fst, snd) = self.split_at(len);
+        ArrayChunks { v: fst, rem: snd }
+    }
+
     /// Returns an iterator over `chunk_size` elements of the slice at a time, starting at the end
     /// of the slice.
     ///
@@ -5426,6 +5461,151 @@ unsafe impl<'a, T> TrustedRandomAccess for ChunksExactMut<'a, T> {
         let start = i * self.chunk_size;
         // SAFETY: see comments for `ChunksExactMut::get_unchecked`.
         unsafe { from_raw_parts_mut(self.v.as_mut_ptr().add(start), self.chunk_size) }
+    }
+    fn may_have_side_effect() -> bool {
+        false
+    }
+}
+
+/// An iterator over a slice in (non-overlapping) chunks (`N` elements at a
+/// time), starting at the beginning of the slice.
+///
+/// When the slice len is not evenly divided by the chunk size, the last
+/// up to `chunk_size-1` elements will be omitted but can be retrieved from
+/// the [`remainder`] function from the iterator.
+///
+/// This struct is created by the [`array_chunks`] method on [slices].
+///
+/// [`array_chunks`]: ../../std/primitive.slice.html#method.array_chunks
+/// [`remainder`]: ../../std/slice/struct.ArrayChunks.html#method.remainder
+/// [slices]: ../../std/primitive.slice.html
+#[derive(Debug)]
+#[unstable(feature = "array_chunks", issue = "none")]
+pub struct ArrayChunks<'a, T: 'a, const N: usize> {
+    v: &'a [T],
+    rem: &'a [T],
+}
+
+impl<'a, T, const N: usize> ArrayChunks<'a, T, N> {
+    /// Returns the remainder of the original slice that is not going to be
+    /// returned by the iterator. The returned slice has at most `chunk_size-1`
+    /// elements.
+    #[unstable(feature = "array_chunks", issue = "none")]
+    pub fn remainder(&self) -> &'a [T] {
+        self.rem
+    }
+}
+
+// FIXME(#26925) Remove in favor of `#[derive(Clone)]`
+#[unstable(feature = "array_chunks", issue = "none")]
+impl<T, const N: usize> Clone for ArrayChunks<'_, T, N> {
+    fn clone(&self) -> Self {
+        ArrayChunks { v: self.v, rem: self.rem }
+    }
+}
+
+#[unstable(feature = "array_chunks", issue = "none")]
+impl<'a, T, const N: usize> Iterator for ArrayChunks<'a, T, N> {
+    type Item = &'a [T; N];
+
+    #[inline]
+    fn next(&mut self) -> Option<&'a [T; N]> {
+        if self.v.len() < N {
+            None
+        } else {
+            let (fst, snd) = self.v.split_at(N);
+            self.v = snd;
+            // SAFETY: This is safe as fst is exactly N elements long.
+            let ptr = fst.as_ptr() as *const [T; N];
+            unsafe { Some(&*ptr) }
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let n = self.v.len() / N;
+        (n, Some(n))
+    }
+
+    #[inline]
+    fn count(self) -> usize {
+        self.len()
+    }
+
+    #[inline]
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        let (start, overflow) = n.overflowing_mul(N);
+        if start >= self.v.len() || overflow {
+            self.v = &[];
+            None
+        } else {
+            let (_, snd) = self.v.split_at(start);
+            self.v = snd;
+            self.next()
+        }
+    }
+
+    #[inline]
+    fn last(mut self) -> Option<Self::Item> {
+        self.next_back()
+    }
+}
+
+#[unstable(feature = "array_chunks", issue = "none")]
+impl<'a, T, const N: usize> DoubleEndedIterator for ArrayChunks<'a, T, N> {
+    #[inline]
+    fn next_back(&mut self) -> Option<&'a [T; N]> {
+        if self.v.len() < N {
+            None
+        } else {
+            let (fst, snd) = self.v.split_at(self.v.len() - N);
+            self.v = fst;
+            // SAFETY: This is safe as snd is exactly N elements long.
+            let ptr = snd.as_ptr() as *const [T; N];
+            unsafe { Some(&*ptr) }
+        }
+    }
+
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+        let len = self.len();
+        if n >= len {
+            self.v = &[];
+            None
+        } else {
+            let start = (len - 1 - n) * N;
+            let end = start + N;
+            let nth_back = &self.v[start..end];
+            self.v = &self.v[..start];
+            // SAFETY: This is safe as snd is exactly N elements long.
+            let ptr = nth_back.as_ptr() as *const [T; N];
+            unsafe { Some(&*ptr) }
+        }
+    }
+}
+
+#[unstable(feature = "array_chunks", issue = "none")]
+impl<T, const N: usize> ExactSizeIterator for ArrayChunks<'_, T, N> {
+    fn is_empty(&self) -> bool {
+        self.v.is_empty()
+    }
+}
+
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<T, const N: usize> TrustedLen for ArrayChunks<'_, T, N> {}
+
+#[unstable(feature = "array_chunks", issue = "none")]
+impl<T, const N: usize> FusedIterator for ArrayChunks<'_, T, N> {}
+
+#[doc(hidden)]
+#[unstable(feature = "array_chunks", issue = "none")]
+unsafe impl<'a, T, const N: usize> TrustedRandomAccess for ArrayChunks<'a, T, N> {
+    unsafe fn get_unchecked(&mut self, i: usize) -> &'a [T; N] {
+        let start = i * N;
+        // SAFETY: This is safe as `i` must be less than `self.size_hint`.
+        let segment = unsafe { from_raw_parts(self.v.as_ptr().add(start), N) };
+        // SAFETY: This is safe as segment is exactly `N` elements long.
+        unsafe { &*(segment.as_ptr() as *const [T; N]) }
     }
     fn may_have_side_effect() -> bool {
         false
