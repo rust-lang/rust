@@ -42,23 +42,10 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
                 _ => bug!("leak_check: expected placeholder found {:?}", placeholder_region,),
             };
 
-            // Find all regions that this placeholder `!p` must outlive -- i.e.,
-            // any region `r` where `!p: r` must hold. It is an error if any
-            // such region `r` is another placeholder or in a universe that
-            // can't see the placeholder. (This is actually incorrect, because
-            // we don't take into account the possibility of bounds in
-            // environment that tell us that the placeholder may be related to
-            // other regions).
-            //
-            // Note that we *don't* look for cases like `r: !p`. This is
-            // because:
-            //
-            // * If `r` is some other placeholder `!p1`, then we'll find the
-            //   error when we search the regions that `!p1` must outlive.
-            // * If `r` is a variable in some outer universe, then it can
-            //   potentially be assigned to `'static`, so this relation could
-            //   hold.
-            let mut taint_set = TaintSet::new(TaintDirections::outgoing(), placeholder_region);
+            // Find all regions that are related to this placeholder
+            // in some way. This means any region that either outlives
+            // or is outlived by a placeholder.
+            let mut taint_set = TaintSet::new(TaintDirections::both(), placeholder_region);
             taint_set.fixed_point(
                 tcx,
                 self.undo_log.region_constraints(),

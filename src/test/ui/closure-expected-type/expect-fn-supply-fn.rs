@@ -28,14 +28,14 @@ fn expect_free_supply_bound() {
     // Here, we are given a function whose region is bound at closure level,
     // but we expect one bound in the argument. Error results.
     with_closure_expecting_fn_with_free_region(|x: fn(&u32), y| {});
-    //~^ ERROR mismatched types
+    //~^ ERROR type mismatch
 }
 
 fn expect_bound_supply_free_from_fn<'x>(x: &'x u32) {
     // Here, we are given a `fn(&u32)` but we expect a `fn(&'x
     // u32)`. In principle, this could be ok, but we demand equality.
     with_closure_expecting_fn_with_bound_region(|x: fn(&'x u32), y| {});
-    //~^ ERROR mismatched types
+    //~^ ERROR type mismatch
 }
 
 fn expect_bound_supply_free_from_closure() {
@@ -44,7 +44,7 @@ fn expect_bound_supply_free_from_closure() {
     // the argument level.
     type Foo<'a> = fn(&'a u32);
     with_closure_expecting_fn_with_bound_region(|x: Foo<'_>, y| {
-    //~^ ERROR mismatched types
+    //~^ ERROR type mismatch
     });
 }
 
