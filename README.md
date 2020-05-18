@@ -247,7 +247,7 @@ To contribute to Rust, please see [CONTRIBUTING](CONTRIBUTING.md).
 Most real-time collaboration happens in a variety of channels on the
 [Rust Discord server][rust-discord], with channels dedicated for getting help,
 community, documentation, and all major contribution areas in the Rust ecosystem.
-A good place to ask for help would be the #help channel.
+A good place to ask for help would be the #contribute channel.
 
 The [rustc dev guide] might be a good place to start if you want to find out how
 various parts of the compiler work.

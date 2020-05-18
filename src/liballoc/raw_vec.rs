@@ -150,6 +150,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
             alloc_guard(layout.size()).unwrap_or_else(|_| capacity_overflow());
 
             let memory = alloc.alloc(layout, init).unwrap_or_else(|_| handle_alloc_error(layout));
+//            println!("{} {} {}\n", layout, capacity, memory);
             Self {
                 ptr: unsafe { Unique::new_unchecked(memory.ptr.cast().as_ptr()) },
                 cap: Self::capacity_from_bytes(memory.size),
