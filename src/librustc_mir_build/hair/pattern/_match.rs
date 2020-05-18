@@ -982,7 +982,7 @@ impl<'tcx> Constructor<'tcx> {
     }
 }
 
-/// Some fields need to be explicitely hidden away in certain cases; see the comment above the
+/// Some fields need to be explicitly hidden away in certain cases; see the comment above the
 /// `Fields` struct. This struct represents such a potentially-hidden field. When a field is hidden
 /// we still keep its type around.
 #[derive(Debug, Copy, Clone)]
