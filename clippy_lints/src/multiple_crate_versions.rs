@@ -54,7 +54,9 @@ impl LateLintPass<'_, '_> for MultipleCrateVersions {
             let group: Vec<cargo_metadata::Package> = group.collect();
 
             if group.len() > 1 {
-                let versions = group.into_iter().map(|p| p.version).join(", ");
+                let mut versions: Vec<_> = group.into_iter().map(|p| p.version).collect();
+                versions.sort();
+                let versions = versions.iter().join(", ");
 
                 span_lint(
                     cx,

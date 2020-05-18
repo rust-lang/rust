@@ -1,0 +1,7 @@
+[package]
+name = "multiple_crate_versions"
+version = "0.1.0"
+
+[dependencies]
+ctrlc = "=3.1.0"
+ansi_term = "=0.11.0"
