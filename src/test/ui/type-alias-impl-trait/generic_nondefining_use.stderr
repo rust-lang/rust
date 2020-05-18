@@ -25,7 +25,7 @@ error: non-defining opaque type use in defining scope
 LL | fn concrete_const() -> OneConst<{123}> {
    |                        ^^^^^^^^^^^^^^^
    |
-note: used non-generic constant `123usize` for generic parameter
+note: used non-generic constant `{123}` for generic parameter
   --> $DIR/generic_nondefining_use.rs:10:21
    |
 LL | type OneConst<const X: usize> = impl Debug;

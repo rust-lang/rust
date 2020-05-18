@@ -1339,7 +1339,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// What mode(s) of borrowck should we run? AST? MIR? both?
     /// (Also considers the `#![feature(nll)]` setting.)
-    pub fn borrowck_mode(&self) -> BorrowckMode {
+    pub fn borrowck_mode(self) -> BorrowckMode {
         // Here are the main constraints we need to deal with:
         //
         // 1. An opts.borrowck_mode of `BorrowckMode::Migrate` is
@@ -1367,6 +1367,13 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         self.sess.opts.borrowck_mode
+    }
+
+    /// If `true`, we should use lazy normalization for constants, otherwise
+    /// we still evaluate them eagerly.
+    #[inline]
+    pub fn lazy_normalization(self) -> bool {
+        self.features().const_generics
     }
 
     #[inline]

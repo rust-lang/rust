@@ -83,6 +83,11 @@ fn compute_components(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, out: &mut SmallVec<[Compo
                 }
             }
 
+            ty::Array(element, _) => {
+                // Don't look into the len const as it doesn't affect regions
+                compute_components(tcx, element, out);
+            }
+
             ty::Closure(_, ref substs) => {
                 for upvar_ty in substs.as_closure().upvar_tys() {
                     compute_components(tcx, upvar_ty, out);
@@ -158,7 +163,6 @@ fn compute_components(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, out: &mut SmallVec<[Compo
             ty::Opaque(..) |      // OutlivesNominalType (ish)
             ty::Foreign(..) |     // OutlivesNominalType
             ty::Str |             // OutlivesScalar (ish)
-            ty::Array(..) |       // ...
             ty::Slice(..) |       // ...
             ty::RawPtr(..) |      // ...
             ty::Ref(..) |         // OutlivesReference

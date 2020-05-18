@@ -2,7 +2,7 @@ use rustc_infer::infer::nll_relate::{NormalizationStrategy, TypeRelating, TypeRe
 use rustc_infer::infer::{InferCtxt, NLLRegionVariableOrigin};
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::relate::TypeRelation;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, Const, Ty};
 use rustc_trait_selection::traits::query::Fallible;
 
 use crate::borrow_check::constraints::OutlivesConstraint;
@@ -98,6 +98,10 @@ impl TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> {
             });
         }
     }
+
+    // We don't have to worry about the equality of consts during borrow checking
+    // as consts always have a static lifetime.
+    fn const_equate(&mut self, _a: &'tcx Const<'tcx>, _b: &'tcx Const<'tcx>) {}
 
     fn normalization() -> NormalizationStrategy {
         NormalizationStrategy::Eager

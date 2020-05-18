@@ -493,7 +493,8 @@ impl<'a> Clean<Option<WherePredicate>> for ty::Predicate<'a> {
             Predicate::WellFormed(..)
             | Predicate::ObjectSafe(..)
             | Predicate::ClosureKind(..)
-            | Predicate::ConstEvaluatable(..) => panic!("not user writable"),
+            | Predicate::ConstEvaluatable(..)
+            | Predicate::ConstEquate(..) => panic!("not user writable"),
         }
     }
 }

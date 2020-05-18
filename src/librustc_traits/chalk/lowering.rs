@@ -126,9 +126,8 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::InEnvironment<chalk_ir::Goal<RustInterner<'
                     | ty::Predicate::ObjectSafe(..)
                     | ty::Predicate::ClosureKind(..)
                     | ty::Predicate::Subtype(..)
-                    | ty::Predicate::ConstEvaluatable(..) => {
-                        bug!("unexpected predicate {}", predicate)
-                    }
+                    | ty::Predicate::ConstEvaluatable(..)
+                    | ty::Predicate::ConstEquate(..) => bug!("unexpected predicate {}", predicate),
                 }
             }
             ChalkEnvironmentClause::TypeFromEnv(ty) => Some(
@@ -192,9 +191,8 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::GoalData<RustInterner<'tcx>>> for ty::Predi
             Predicate::ObjectSafe(..)
             | Predicate::ClosureKind(..)
             | Predicate::Subtype(..)
-            | Predicate::ConstEvaluatable(..) => {
-                chalk_ir::GoalData::All(chalk_ir::Goals::new(interner))
-            }
+            | Predicate::ConstEvaluatable(..)
+            | Predicate::ConstEquate(..) => chalk_ir::GoalData::All(chalk_ir::Goals::new(interner)),
         }
     }
 }
@@ -459,7 +457,8 @@ impl<'tcx> LowerInto<'tcx, Option<chalk_ir::QuantifiedWhereClause<RustInterner<'
             Predicate::ObjectSafe(..)
             | Predicate::ClosureKind(..)
             | Predicate::Subtype(..)
-            | Predicate::ConstEvaluatable(..) => bug!("unexpected predicate {}", &self),
+            | Predicate::ConstEvaluatable(..)
+            | Predicate::ConstEquate(..) => bug!("unexpected predicate {}", &self),
         }
     }
 }

@@ -1,4 +1,4 @@
-use super::combine::{CombineFields, RelationDir};
+use super::combine::{CombineFields, ConstEquateRelation, RelationDir};
 use super::Subtype;
 
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
@@ -138,5 +138,11 @@ impl TypeRelation<'tcx> for Equate<'combine, 'infcx, 'tcx> {
             self.relate(a.skip_binder(), b.skip_binder())?;
             Ok(a.clone())
         }
+    }
+}
+
+impl<'tcx> ConstEquateRelation<'tcx> for Equate<'_, '_, 'tcx> {
+    fn const_equate_obligation(&mut self, a: &'tcx ty::Const<'tcx>, b: &'tcx ty::Const<'tcx>) {
+        self.fields.add_const_equate_obligation(self.a_is_expected, a, b);
     }
 }
