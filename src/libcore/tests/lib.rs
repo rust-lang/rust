@@ -44,6 +44,7 @@
 #![feature(leading_trailing_ones)]
 #![feature(const_forget)]
 #![feature(option_unwrap_none)]
+#![feature(peekable_next_if)]
 
 extern crate test;
 
