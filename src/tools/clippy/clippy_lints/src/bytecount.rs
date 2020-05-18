@@ -3,7 +3,7 @@ use crate::utils::{
     span_lint_and_sugg, walk_ptrs_ty,
 };
 use if_chain::if_chain;
-use rustc_ast::ast::{UintTy};
+use rustc_ast::ast::UintTy;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};

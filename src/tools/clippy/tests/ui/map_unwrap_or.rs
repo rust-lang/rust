@@ -1,21 +1,18 @@
 // FIXME: Add "run-rustfix" once it's supported for multipart suggestions
 // aux-build:option_helpers.rs
 
-#![warn(clippy::option_map_unwrap_or, clippy::option_map_unwrap_or_else)]
+#![warn(clippy::map_unwrap_or)]
 
 #[macro_use]
 extern crate option_helpers;
 
 use std::collections::HashMap;
 
-/// Checks implementation of the following lints:
-/// * `OPTION_MAP_UNWRAP_OR`
-/// * `OPTION_MAP_UNWRAP_OR_ELSE`
 #[rustfmt::skip]
 fn option_methods() {
     let opt = Some(1);
 
-    // Check `OPTION_MAP_UNWRAP_OR`.
+    // Check for `option.map(_).unwrap_or(_)` use.
     // Single line case.
     let _ = opt.map(|x| x + 1)
         // Should lint even though this call is on a separate line.
@@ -49,7 +46,7 @@ fn option_methods() {
     let id: String = "identifier".to_string();
     let _ = Some("prefix").map(|p| format!("{}.", p)).unwrap_or(id);
 
-    // Check OPTION_MAP_UNWRAP_OR_ELSE
+    // Check for `option.map(_).unwrap_or_else(_)` use.
     // single line case
     let _ = opt.map(|x| x + 1)
         // Should lint even though this call is on a separate line.
@@ -83,6 +80,20 @@ fn option_methods() {
     }
 }
 
+fn result_methods() {
+    let res: Result<i32, ()> = Ok(1);
+
+    // Check for `result.map(_).unwrap_or_else(_)` use.
+    // single line case
+    let _ = res.map(|x| x + 1).unwrap_or_else(|e| 0); // should lint even though this call is on a separate line
+                                                      // multi line cases
+    let _ = res.map(|x| x + 1).unwrap_or_else(|e| 0);
+    let _ = res.map(|x| x + 1).unwrap_or_else(|e| 0);
+    // macro case
+    let _ = opt_map!(res, |x| x + 1).unwrap_or_else(|e| 0); // should not lint
+}
+
 fn main() {
     option_methods();
+    result_methods();
 }

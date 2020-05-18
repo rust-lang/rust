@@ -293,7 +293,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                             );
                             spans.sort_by_key(|&(span, _)| span);
                         }
-                        multispan_sugg(diag, "consider taking a reference instead".to_string(), spans);
+                        multispan_sugg(diag, "consider taking a reference instead", spans);
                     };
 
                     span_lint_and_then(

@@ -1,4 +1,4 @@
-#![warn(clippy::option_expect_used, clippy::result_expect_used)]
+#![warn(clippy::expect_used)]
 
 fn expect_option() {
     let opt = Some(0);

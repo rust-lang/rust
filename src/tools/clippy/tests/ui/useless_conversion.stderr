@@ -1,65 +1,65 @@
-error: identical conversion
-  --> $DIR/identity_conversion.rs:6:13
+error: useless conversion
+  --> $DIR/useless_conversion.rs:6:13
    |
 LL |     let _ = T::from(val);
    |             ^^^^^^^^^^^^ help: consider removing `T::from()`: `val`
    |
 note: the lint level is defined here
-  --> $DIR/identity_conversion.rs:3:9
+  --> $DIR/useless_conversion.rs:3:9
    |
-LL | #![deny(clippy::identity_conversion)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #![deny(clippy::useless_conversion)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: identical conversion
-  --> $DIR/identity_conversion.rs:7:5
+error: useless conversion
+  --> $DIR/useless_conversion.rs:7:5
    |
 LL |     val.into()
    |     ^^^^^^^^^^ help: consider removing `.into()`: `val`
 
-error: identical conversion
-  --> $DIR/identity_conversion.rs:19:22
+error: useless conversion
+  --> $DIR/useless_conversion.rs:19:22
    |
 LL |         let _: i32 = 0i32.into();
    |                      ^^^^^^^^^^^ help: consider removing `.into()`: `0i32`
 
-error: identical conversion
-  --> $DIR/identity_conversion.rs:51:21
+error: useless conversion
+  --> $DIR/useless_conversion.rs:51:21
    |
 LL |     let _: String = "foo".to_string().into();
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into()`: `"foo".to_string()`
 
-error: identical conversion
-  --> $DIR/identity_conversion.rs:52:21
+error: useless conversion
+  --> $DIR/useless_conversion.rs:52:21
    |
 LL |     let _: String = From::from("foo".to_string());
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `From::from()`: `"foo".to_string()`
 
-error: identical conversion
-  --> $DIR/identity_conversion.rs:53:13
+error: useless conversion
+  --> $DIR/useless_conversion.rs:53:13
    |
 LL |     let _ = String::from("foo".to_string());
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `String::from()`: `"foo".to_string()`
 
-error: identical conversion
-  --> $DIR/identity_conversion.rs:54:13
+error: useless conversion
+  --> $DIR/useless_conversion.rs:54:13
    |
 LL |     let _ = String::from(format!("A: {:04}", 123));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `String::from()`: `format!("A: {:04}", 123)`
 
-error: identical conversion
-  --> $DIR/identity_conversion.rs:55:13
+error: useless conversion
+  --> $DIR/useless_conversion.rs:55:13
    |
 LL |     let _ = "".lines().into_iter();
    |             ^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into_iter()`: `"".lines()`
 
-error: identical conversion
-  --> $DIR/identity_conversion.rs:56:13
+error: useless conversion
+  --> $DIR/useless_conversion.rs:56:13
    |
 LL |     let _ = vec![1, 2, 3].into_iter().into_iter();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into_iter()`: `vec![1, 2, 3].into_iter()`
 
-error: identical conversion
-  --> $DIR/identity_conversion.rs:57:21
+error: useless conversion
+  --> $DIR/useless_conversion.rs:57:21
    |
 LL |     let _: String = format!("Hello {}", "world").into();
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into()`: `format!("Hello {}", "world")`

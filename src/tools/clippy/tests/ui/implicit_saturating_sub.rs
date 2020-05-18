@@ -35,8 +35,8 @@ fn main() {
         u_16 -= 1;
     }
 
-    let mut end_32: u32 = 7000;
-    let mut start_32: u32 = 7010;
+    let mut end_32: u32 = 7010;
+    let mut start_32: u32 = 7000;
 
     let mut u_32: u32 = end_32 - start_32;
 
