@@ -6,6 +6,9 @@ IFS=$'\n\t'
 source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 
 if isWindows; then
+    # FIXME(mati865): hopefully temporary workaround for MSYS2 issue
+    pacman -Sy --noconfirm pacman
+
     pacman -S --noconfirm --needed base-devel ca-certificates make diffutils tar \
         binutils
 
