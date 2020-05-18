@@ -1490,6 +1490,17 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.report_and_explain_type_error(trace, &err)
     }
 
+    pub fn report_mismatched_consts(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        expected: &'tcx ty::Const<'tcx>,
+        actual: &'tcx ty::Const<'tcx>,
+        err: TypeError<'tcx>,
+    ) -> DiagnosticBuilder<'tcx> {
+        let trace = TypeTrace::consts(cause, true, expected, actual);
+        self.report_and_explain_type_error(trace, &err)
+    }
+
     pub fn replace_bound_vars_with_fresh_vars<T>(
         &self,
         span: Span,
@@ -1775,6 +1786,15 @@ impl<'tcx> TypeTrace<'tcx> {
         b: Ty<'tcx>,
     ) -> TypeTrace<'tcx> {
         TypeTrace { cause: cause.clone(), values: Types(ExpectedFound::new(a_is_expected, a, b)) }
+    }
+
+    pub fn consts(
+        cause: &ObligationCause<'tcx>,
+        a_is_expected: bool,
+        a: &'tcx ty::Const<'tcx>,
+        b: &'tcx ty::Const<'tcx>,
+    ) -> TypeTrace<'tcx> {
+        TypeTrace { cause: cause.clone(), values: Consts(ExpectedFound::new(a_is_expected, a, b)) }
     }
 
     pub fn dummy(tcx: TyCtxt<'tcx>) -> TypeTrace<'tcx> {

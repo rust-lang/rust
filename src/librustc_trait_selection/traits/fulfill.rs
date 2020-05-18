@@ -2,9 +2,11 @@ use crate::infer::{InferCtxt, TyOrConstInferVar};
 use rustc_data_structures::obligation_forest::ProcessResult;
 use rustc_data_structures::obligation_forest::{DoCompleted, Error, ForestObligation};
 use rustc_data_structures::obligation_forest::{ObligationForest, ObligationProcessor};
+use rustc_errors::ErrorReported;
 use rustc_infer::traits::{TraitEngine, TraitEngineExt as _};
+use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::error::ExpectedFound;
-use rustc_middle::ty::{self, ToPolyTraitRef, Ty, TypeFoldable};
+use rustc_middle::ty::{self, Const, ToPolyTraitRef, Ty, TypeFoldable};
 use std::marker::PhantomData;
 
 use super::project;
@@ -518,6 +520,68 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                 ) {
                     Ok(_) => ProcessResult::Changed(vec![]),
                     Err(err) => ProcessResult::Error(CodeSelectionError(ConstEvalFailure(err))),
+                }
+            }
+
+            ty::Predicate::ConstEquate(c1, c2) => {
+                debug!("equating consts: c1={:?} c2={:?}", c1, c2);
+
+                let stalled_on = &mut pending_obligation.stalled_on;
+
+                let mut evaluate = |c: &'tcx Const<'tcx>| {
+                    if let ty::ConstKind::Unevaluated(def_id, substs, promoted) = c.val {
+                        match self.selcx.infcx().const_eval_resolve(
+                            obligation.param_env,
+                            def_id,
+                            substs,
+                            promoted,
+                            Some(obligation.cause.span),
+                        ) {
+                            Ok(val) => Ok(Const::from_value(self.selcx.tcx(), val, c.ty)),
+                            Err(ErrorHandled::TooGeneric) => {
+                                stalled_on.append(
+                                    &mut substs
+                                        .types()
+                                        .filter_map(|ty| TyOrConstInferVar::maybe_from_ty(ty))
+                                        .collect(),
+                                );
+                                Err(ErrorHandled::TooGeneric)
+                            }
+                            Err(err) => Err(err),
+                        }
+                    } else {
+                        Ok(c)
+                    }
+                };
+
+                match (evaluate(c1), evaluate(c2)) {
+                    (Ok(c1), Ok(c2)) => {
+                        match self
+                            .selcx
+                            .infcx()
+                            .at(&obligation.cause, obligation.param_env)
+                            .eq(c1, c2)
+                        {
+                            Ok(_) => ProcessResult::Changed(vec![]),
+                            Err(err) => {
+                                ProcessResult::Error(FulfillmentErrorCode::CodeConstEquateError(
+                                    ExpectedFound::new(true, c1, c2),
+                                    err,
+                                ))
+                            }
+                        }
+                    }
+                    (Err(ErrorHandled::Reported(ErrorReported)), _)
+                    | (_, Err(ErrorHandled::Reported(ErrorReported))) => ProcessResult::Error(
+                        CodeSelectionError(ConstEvalFailure(ErrorHandled::Reported(ErrorReported))),
+                    ),
+                    (Err(ErrorHandled::Linted), _) | (_, Err(ErrorHandled::Linted)) => span_bug!(
+                        obligation.cause.span(self.selcx.tcx()),
+                        "ConstEquate: const_eval_resolve returned an unexpected error"
+                    ),
+                    (Err(ErrorHandled::TooGeneric), _) | (_, Err(ErrorHandled::TooGeneric)) => {
+                        ProcessResult::Unchanged
+                    }
                 }
             }
         }

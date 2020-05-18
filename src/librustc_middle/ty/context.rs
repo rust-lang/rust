@@ -1339,7 +1339,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// What mode(s) of borrowck should we run? AST? MIR? both?
     /// (Also considers the `#![feature(nll)]` setting.)
-    pub fn borrowck_mode(&self) -> BorrowckMode {
+    pub fn borrowck_mode(self) -> BorrowckMode {
         // Here are the main constraints we need to deal with:
         //
         // 1. An opts.borrowck_mode of `BorrowckMode::Migrate` is
@@ -1367,6 +1367,13 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         self.sess.opts.borrowck_mode
+    }
+
+    /// If `true`, we should use lazy normalization for constants, otherwise
+    /// we still evaluate them eagerly.
+    #[inline]
+    pub fn lazy_normalization(self) -> bool {
+        self.features().const_generics
     }
 
     #[inline]
@@ -2069,24 +2076,25 @@ impl<'tcx> TyCtxt<'tcx> {
         self.mk_fn_ptr(sig.map_bound(|sig| ty::FnSig { unsafety: hir::Unsafety::Unsafe, ..sig }))
     }
 
-    /// Given a closure signature `sig`, returns an equivalent `fn`
-    /// type with the same signature. Detuples and so forth -- so
-    /// e.g., if we have a sig with `Fn<(u32, i32)>` then you would get
-    /// a `fn(u32, i32)`.
-    /// `unsafety` determines the unsafety of the `fn` type. If you pass
+    /// Given a closure signature, returns an equivalent fn signature. Detuples
+    /// and so forth -- so e.g., if we have a sig with `Fn<(u32, i32)>` then
+    /// you would get a `fn(u32, i32)`.
+    /// `unsafety` determines the unsafety of the fn signature. If you pass
     /// `hir::Unsafety::Unsafe` in the previous example, then you would get
     /// an `unsafe fn (u32, i32)`.
     /// It cannot convert a closure that requires unsafe.
-    pub fn coerce_closure_fn_ty(self, sig: PolyFnSig<'tcx>, unsafety: hir::Unsafety) -> Ty<'tcx> {
-        let converted_sig = sig.map_bound(|s| {
+    pub fn signature_unclosure(
+        self,
+        sig: PolyFnSig<'tcx>,
+        unsafety: hir::Unsafety,
+    ) -> PolyFnSig<'tcx> {
+        sig.map_bound(|s| {
             let params_iter = match s.inputs()[0].kind {
                 ty::Tuple(params) => params.into_iter().map(|k| k.expect_ty()),
                 _ => bug!(),
             };
             self.mk_fn_sig(params_iter, s.output(), s.c_variadic, unsafety, abi::Abi::Rust)
-        });
-
-        self.mk_fn_ptr(converted_sig)
+        })
     }
 
     #[allow(rustc::usage_of_ty_tykind)]

@@ -615,6 +615,17 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             obligation
                         )
                     }
+
+                    ty::Predicate::ConstEquate(..) => {
+                        // Errors for `ConstEquate` predicates show up as
+                        // `SelectionError::ConstEvalFailure`,
+                        // not `Unimplemented`.
+                        span_bug!(
+                            span,
+                            "const-equate requirement gave wrong error: `{:?}`",
+                            obligation
+                        )
+                    }
                 }
             }
 
@@ -1085,6 +1096,15 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
             FulfillmentErrorCode::CodeSubtypeError(ref expected_found, ref err) => {
                 self.report_mismatched_types(
+                    &error.obligation.cause,
+                    expected_found.expected,
+                    expected_found.found,
+                    err.clone(),
+                )
+                .emit();
+            }
+            FulfillmentErrorCode::CodeConstEquateError(ref expected_found, ref err) => {
+                self.report_mismatched_consts(
                     &error.obligation.cause,
                     expected_found.expected,
                     expected_found.found,

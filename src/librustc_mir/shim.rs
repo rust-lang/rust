@@ -277,7 +277,18 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for DropShimElaborator<'a, 'tcx> {
     }
 
     fn drop_style(&self, _path: Self::Path, mode: DropFlagMode) -> DropStyle {
-        if let DropFlagMode::Shallow = mode { DropStyle::Static } else { DropStyle::Open }
+        match mode {
+            DropFlagMode::Shallow => {
+                // Drops for the contained fields are "shallow" and "static" - they will simply call
+                // the field's own drop glue.
+                DropStyle::Static
+            }
+            DropFlagMode::Deep => {
+                // The top-level drop is "deep" and "open" - it will be elaborated to a drop ladder
+                // dropping each field contained in the value.
+                DropStyle::Open
+            }
+        }
     }
 
     fn get_drop_flag(&mut self, _path: Self::Path) -> Option<Operand<'tcx>> {

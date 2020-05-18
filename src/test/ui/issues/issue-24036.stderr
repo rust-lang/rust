@@ -11,24 +11,13 @@ LL |     x = |c| c + 1;
    = note: no two closures, even if identical, have the same type
    = help: consider boxing your closure and/or using it as a trait object
 
-error[E0308]: `match` arms have incompatible types
-  --> $DIR/issue-24036.rs:10:14
+error[E0282]: type annotations needed
+  --> $DIR/issue-24036.rs:9:15
    |
-LL |       let x = match 1usize {
-   |  _____________-
-LL | |         1 => |c| c + 1,
-   | |              --------- this is found to be of type `[closure@$DIR/issue-24036.rs:9:14: 9:23]`
-LL | |         2 => |c| c - 1,
-   | |              ^^^^^^^^^ expected closure, found a different closure
-LL | |         _ => |c| c - 1
-LL | |     };
-   | |_____- `match` arms have incompatible types
-   |
-   = note: expected type `[closure@$DIR/issue-24036.rs:9:14: 9:23]`
-           found closure `[closure@$DIR/issue-24036.rs:10:14: 10:23]`
-   = note: no two closures, even if identical, have the same type
-   = help: consider boxing your closure and/or using it as a trait object
+LL |         1 => |c| c + 1,
+   |               ^ consider giving this closure parameter a type
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0308`.
+Some errors have detailed explanations: E0282, E0308.
+For more information about an error, try `rustc --explain E0282`.

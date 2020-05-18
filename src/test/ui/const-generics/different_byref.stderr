@@ -13,8 +13,8 @@ error[E0308]: mismatched types
 LL |     x = Const::<{ [4] }> {};
    |         ^^^^^^^^^^^^^^^^^^^ expected `3usize`, found `4usize`
    |
-   = note: expected struct `Const<[3usize]>`
-              found struct `Const<[4usize]>`
+   = note: expected type `[3usize]`
+              found type `[4usize]`
 
 error: aborting due to previous error; 1 warning emitted
 

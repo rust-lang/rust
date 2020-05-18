@@ -39,7 +39,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{self, InferConst, Ty, TyCtxt};
+use rustc_middle::ty::{self, InferConst, Ty, TyCtxt, TypeFoldable};
 use rustc_middle::ty::{IntType, UintType};
 use rustc_span::{Span, DUMMY_SP};
 
@@ -126,7 +126,7 @@ impl<'infcx, 'tcx> InferCtxt<'infcx, 'tcx> {
         b: &'tcx ty::Const<'tcx>,
     ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>>
     where
-        R: TypeRelation<'tcx>,
+        R: ConstEquateRelation<'tcx>,
     {
         debug!("{}.consts({:?}, {:?})", relation.tag(), a, b);
         if a == b {
@@ -164,7 +164,22 @@ impl<'infcx, 'tcx> InferCtxt<'infcx, 'tcx> {
             (_, ty::ConstKind::Infer(InferConst::Var(vid))) => {
                 return self.unify_const_variable(!a_is_expected, vid, a);
             }
-
+            (ty::ConstKind::Unevaluated(..), _) if self.tcx.lazy_normalization() => {
+                // FIXME(#59490): Need to remove the leak check to accomodate
+                // escaping bound variables here.
+                if !a.has_escaping_bound_vars() && !b.has_escaping_bound_vars() {
+                    relation.const_equate_obligation(a, b);
+                }
+                return Ok(b);
+            }
+            (_, ty::ConstKind::Unevaluated(..)) if self.tcx.lazy_normalization() => {
+                // FIXME(#59490): Need to remove the leak check to accomodate
+                // escaping bound variables here.
+                if !a.has_escaping_bound_vars() && !b.has_escaping_bound_vars() {
+                    relation.const_equate_obligation(a, b);
+                }
+                return Ok(a);
+            }
             _ => {}
         }
 
@@ -374,6 +389,20 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
         let needs_wf = generalize.needs_wf;
         debug!("generalize: success {{ {:?}, {:?} }}", ty, needs_wf);
         Ok(Generalization { ty, needs_wf })
+    }
+
+    pub fn add_const_equate_obligation(
+        &mut self,
+        a_is_expected: bool,
+        a: &'tcx ty::Const<'tcx>,
+        b: &'tcx ty::Const<'tcx>,
+    ) {
+        let predicate = if a_is_expected {
+            ty::Predicate::ConstEquate(a, b)
+        } else {
+            ty::Predicate::ConstEquate(b, a)
+        };
+        self.obligations.push(Obligation::new(self.trace.cause.clone(), self.param_env, predicate));
     }
 }
 
@@ -637,9 +666,17 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                     }
                 }
             }
+            ty::ConstKind::Unevaluated(..) if self.tcx().lazy_normalization() => Ok(c),
             _ => relate::super_relate_consts(self, c, c),
         }
     }
+}
+
+pub trait ConstEquateRelation<'tcx>: TypeRelation<'tcx> {
+    /// Register an obligation that both constants must be equal to each other.
+    ///
+    /// If they aren't equal then the relation doesn't hold.
+    fn const_equate_obligation(&mut self, a: &'tcx ty::Const<'tcx>, b: &'tcx ty::Const<'tcx>);
 }
 
 pub trait RelateResultCompare<'tcx, T> {

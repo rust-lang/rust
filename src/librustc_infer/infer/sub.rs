@@ -1,6 +1,7 @@
 use super::combine::{CombineFields, RelationDir};
 use super::SubregionOrigin;
 
+use crate::infer::combine::ConstEquateRelation;
 use crate::traits::Obligation;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::relate::{Cause, Relate, RelateResult, TypeRelation};
@@ -167,5 +168,11 @@ impl TypeRelation<'tcx> for Sub<'combine, 'infcx, 'tcx> {
         T: Relate<'tcx>,
     {
         self.fields.higher_ranked_sub(a, b, self.a_is_expected)
+    }
+}
+
+impl<'tcx> ConstEquateRelation<'tcx> for Sub<'_, '_, 'tcx> {
+    fn const_equate_obligation(&mut self, a: &'tcx ty::Const<'tcx>, b: &'tcx ty::Const<'tcx>) {
+        self.fields.add_const_equate_obligation(self.a_is_expected, a, b);
     }
 }
