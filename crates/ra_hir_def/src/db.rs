@@ -17,6 +17,7 @@ use crate::{
     item_scope::ItemInNs,
     lang_item::{LangItemTarget, LangItems},
     nameres::{raw::RawItems, CrateDefMap},
+    path::ModPath,
     visibility::Visibility,
     AttrDefId, ConstId, ConstLoc, DefWithBodyId, EnumId, EnumLoc, FunctionId, FunctionLoc,
     GenericDefId, ImplId, ImplLoc, ModuleId, StaticId, StaticLoc, StructId, StructLoc, TraitId,
@@ -118,6 +119,9 @@ pub trait DefDatabase: InternDatabase + AstDatabase + Upcast<dyn AstDatabase> {
         item: ItemInNs,
         krate: CrateId,
     ) -> Arc<[(ModuleId, Name, Visibility)]>;
+
+    #[salsa::invoke(find_path::find_path_inner_query)]
+    fn find_path_inner(&self, item: ItemInNs, from: ModuleId, max_len: usize) -> Option<ModPath>;
 }
 
 fn crate_def_map_wait(db: &impl DefDatabase, krate: CrateId) -> Arc<CrateDefMap> {
