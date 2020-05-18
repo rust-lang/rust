@@ -32,7 +32,7 @@ pub enum SchedulingAction {
     Stop,
 }
 
-/// Timeout timeout_callbacks can be created by synchronization primitives to tell the
+/// Timeout callbacks can be created by synchronization primitives to tell the
 /// scheduler that they should be called once some period of time passes.
 type TimeoutCallback<'mir, 'tcx> =
     Box<dyn FnOnce(&mut InterpCx<'mir, 'tcx, Evaluator<'mir, 'tcx>>) -> InterpResult<'tcx> + 'tcx>;
@@ -189,7 +189,7 @@ struct TimeoutCallbackInfo<'mir, 'tcx> {
 
 impl<'mir, 'tcx> std::fmt::Debug for TimeoutCallbackInfo<'mir, 'tcx> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "CallBack({:?})", self.call_time)
+        write!(f, "TimeoutCallback({:?})", self.call_time)
     }
 }
 
@@ -394,7 +394,8 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
 
     /// Get a callback that is ready to be called.
     fn get_ready_callback(&mut self) -> Option<(ThreadId, TimeoutCallback<'mir, 'tcx>)> {
-        // We use a for loop here to make the scheduler more deterministic.
+        // We iterate over all threads in the order of their indices because
+        // this allows us to have a deterministic scheduler.
         for thread in self.threads.indices() {
             match self.timeout_callbacks.entry(thread) {
                 Entry::Occupied(entry) =>

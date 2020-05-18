@@ -1,6 +1,7 @@
 use std::collections::{hash_map::Entry, HashMap, VecDeque};
 use std::convert::TryFrom;
 use std::num::NonZeroU32;
+use std::ops::Not;
 
 use rustc_index::vec::{Idx, IndexVec};
 
@@ -142,34 +143,47 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         mutex.lock_count = mutex.lock_count.checked_add(1).unwrap();
     }
 
-    /// Unlock by decreasing the lock count. If the lock count reaches 0, unset
-    /// the owner.
-    fn mutex_unlock(&mut self, id: MutexId) -> Option<(ThreadId, usize)> {
+    /// Try unlocking by decreasing the lock count and returning the old owner
+    /// and the old lock count. If the lock count reaches 0, release the lock
+    /// and potentially give to a new owner. If the lock was not locked, return
+    /// `None`.
+    ///
+    /// Note: It is the caller's responsibility to check that the thread that
+    /// unlocked the lock actually is the same one, which owned it.
+    fn mutex_unlock(&mut self, id: MutexId) -> InterpResult<'tcx, Option<(ThreadId, usize)>> {
         let this = self.eval_context_mut();
         let mutex = &mut this.machine.threads.sync.mutexes[id];
         if let Some(current_owner) = mutex.owner {
-            mutex.lock_count = mutex
-                .lock_count
+            // Mutex is locked.
+            let old_lock_count = mutex.lock_count;
+            mutex.lock_count = old_lock_count
                 .checked_sub(1)
                 .expect("invariant violation: lock_count == 0 iff the thread is unlocked");
             if mutex.lock_count == 0 {
                 mutex.owner = None;
+                // The mutex is completely unlocked. Try transfering ownership
+                // to another thread.
+                if let Some(new_owner) = this.mutex_dequeue(id) {
+                    this.mutex_lock(id, new_owner);
+                    this.unblock_thread(new_owner)?;
+                }
             }
-            Some((current_owner, mutex.lock_count))
+            Ok(Some((current_owner, old_lock_count)))
         } else {
-            None
+            // Mutex is unlocked.
+            Ok(None)
         }
     }
 
     #[inline]
-    /// Take a thread out the queue waiting for the lock.
+    /// Put the thread into the queue waiting for the lock.
     fn mutex_enqueue(&mut self, id: MutexId, thread: ThreadId) {
         let this = self.eval_context_mut();
         this.machine.threads.sync.mutexes[id].queue.push_back(thread);
     }
 
     #[inline]
-    /// Take a thread out the queue waiting for the lock.
+    /// Take a thread out of the queue waiting for the lock.
     fn mutex_dequeue(&mut self, id: MutexId) -> Option<ThreadId> {
         let this = self.eval_context_mut();
         this.machine.threads.sync.mutexes[id].queue.pop_front()
@@ -187,7 +201,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn rwlock_is_locked(&mut self, id: RwLockId) -> bool {
         let this = self.eval_context_mut();
         this.machine.threads.sync.rwlocks[id].writer.is_some()
-            || !this.machine.threads.sync.rwlocks[id].readers.is_empty()
+            || this.machine.threads.sync.rwlocks[id].readers.is_empty().not()
     }
 
     #[inline]
@@ -197,16 +211,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.machine.threads.sync.rwlocks[id].writer.is_some()
     }
 
-    /// Add a reader that collectively with other readers owns the lock.
-    fn rwlock_reader_add(&mut self, id: RwLockId, reader: ThreadId) {
+    /// Read-lock the lock by adding the `reader` the list of threads that own
+    /// this lock.
+    fn rwlock_reader_lock(&mut self, id: RwLockId, reader: ThreadId) {
         let this = self.eval_context_mut();
         assert!(!this.rwlock_is_write_locked(id), "the lock is write locked");
         let count = this.machine.threads.sync.rwlocks[id].readers.entry(reader).or_insert(0);
-        *count += 1;
+        *count = count.checked_add(1).expect("the reader counter overflowed");
     }
 
-    /// Try removing the reader. Returns `true` if succeeded.
-    fn rwlock_reader_remove(&mut self, id: RwLockId, reader: ThreadId) -> bool {
+    /// Try read-unlock the lock for `reader`. Returns `true` if succeeded,
+    /// `false` if this `reader` did not hold the lock.
+    fn rwlock_reader_unlock(&mut self, id: RwLockId, reader: ThreadId) -> bool {
         let this = self.eval_context_mut();
         match this.machine.threads.sync.rwlocks[id].readers.entry(reader) {
             Entry::Occupied(mut entry) => {
@@ -222,15 +238,20 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 
     #[inline]
-    /// Put the reader in the queue waiting for the lock.
-    fn rwlock_enqueue_reader(&mut self, id: RwLockId, reader: ThreadId) {
+    /// Put the reader in the queue waiting for the lock and block it.
+    fn rwlock_enqueue_and_block_reader(
+        &mut self,
+        id: RwLockId,
+        reader: ThreadId,
+    ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         assert!(this.rwlock_is_write_locked(id), "queueing on not write locked lock");
         this.machine.threads.sync.rwlocks[id].reader_queue.push_back(reader);
+        this.block_thread(reader)
     }
 
     #[inline]
-    /// Take the reader out the queue waiting for the lock.
+    /// Take a reader out the queue waiting for the lock.
     fn rwlock_dequeue_reader(&mut self, id: RwLockId) -> Option<ThreadId> {
         let this = self.eval_context_mut();
         this.machine.threads.sync.rwlocks[id].reader_queue.pop_front()
@@ -238,25 +259,30 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     #[inline]
     /// Lock by setting the writer that owns the lock.
-    fn rwlock_writer_set(&mut self, id: RwLockId, writer: ThreadId) {
+    fn rwlock_writer_lock(&mut self, id: RwLockId, writer: ThreadId) {
         let this = self.eval_context_mut();
         assert!(!this.rwlock_is_locked(id), "the lock is already locked");
         this.machine.threads.sync.rwlocks[id].writer = Some(writer);
     }
 
     #[inline]
-    /// Try removing the writer.
-    fn rwlock_writer_remove(&mut self, id: RwLockId) -> Option<ThreadId> {
+    /// Try to unlock by removing the writer.
+    fn rwlock_writer_unlock(&mut self, id: RwLockId) -> Option<ThreadId> {
         let this = self.eval_context_mut();
         this.machine.threads.sync.rwlocks[id].writer.take()
     }
 
     #[inline]
     /// Put the writer in the queue waiting for the lock.
-    fn rwlock_enqueue_writer(&mut self, id: RwLockId, writer: ThreadId) {
+    fn rwlock_enqueue_and_block_writer(
+        &mut self,
+        id: RwLockId,
+        writer: ThreadId,
+    ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         assert!(this.rwlock_is_locked(id), "queueing on unlocked lock");
         this.machine.threads.sync.rwlocks[id].writer_queue.push_back(writer);
+        this.block_thread(writer)
     }
 
     #[inline]

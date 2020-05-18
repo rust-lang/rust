@@ -202,6 +202,7 @@ fn condattr_set_clock_id<'mir, 'tcx: 'mir>(
 // Our chosen memory layout for the emulated conditional variable (does not have
 // to match the platform layout!):
 
+// bytes 0-3: reserved for signature on macOS
 // bytes 4-7: the conditional variable id as u32 or 0 if id is not assigned yet.
 // bytes 8-11: the clock id constant as i32
 
@@ -275,18 +276,12 @@ fn release_cond_mutex<'mir, 'tcx: 'mir>(
     active_thread: ThreadId,
     mutex: MutexId,
 ) -> InterpResult<'tcx> {
-    if let Some((owner_thread, current_locked_count)) = ecx.mutex_unlock(mutex) {
-        if current_locked_count != 0 {
-            throw_unsup_format!("awaiting on multiple times acquired lock is not supported");
+    if let Some((old_owner_thread, old_locked_count)) = ecx.mutex_unlock(mutex)? {
+        if old_locked_count != 1 {
+            throw_unsup_format!("awaiting on a lock acquired multiple times is not supported");
         }
-        if owner_thread != active_thread {
+        if old_owner_thread != active_thread {
             throw_ub_format!("awaiting on a mutex owned by a different thread");
-        }
-        if let Some(thread) = ecx.mutex_dequeue(mutex) {
-            // We have at least one thread waiting on this mutex. Transfer
-            // ownership to it.
-            ecx.mutex_lock(mutex, thread);
-            ecx.unblock_thread(thread)?;
         }
     } else {
         throw_ub_format!("awaiting on unlocked mutex");
@@ -349,7 +344,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             mutexattr_get_kind(this, attr_op)?.not_undef()?
         };
 
-        let _ = mutex_get_or_create_id(this, mutex_op)?;
+        // Write 0 to use the same code path as the static initializers.
+        mutex_set_id(this, mutex_op, Scalar::from_i32(0))?;
+
         mutex_set_kind(this, mutex_op, kind)?;
 
         Ok(0)
@@ -427,18 +424,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let kind = mutex_get_kind(this, mutex_op)?.not_undef()?;
         let id = mutex_get_or_create_id(this, mutex_op)?;
 
-        if let Some((owner_thread, current_locked_count)) = this.mutex_unlock(id) {
-            if owner_thread != this.get_active_thread()? {
+        if let Some((old_owner_thread, _old_locked_count)) = this.mutex_unlock(id)? {
+            if old_owner_thread != this.get_active_thread()? {
                 throw_ub_format!("called pthread_mutex_unlock on a mutex owned by another thread");
-            }
-            if current_locked_count == 0 {
-                // The mutex is unlocked.
-                if let Some(thread) = this.mutex_dequeue(id) {
-                    // We have at least one thread waiting on this mutex. Transfer
-                    // ownership to it.
-                    this.mutex_lock(id, thread);
-                    this.unblock_thread(thread)?;
-                }
             }
             Ok(0)
         } else {
@@ -476,11 +464,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let active_thread = this.get_active_thread()?;
 
         if this.rwlock_is_write_locked(id) {
-            this.rwlock_enqueue_reader(id, active_thread);
-            this.block_thread(active_thread)?;
+            this.rwlock_enqueue_and_block_reader(id, active_thread)?;
             Ok(0)
         } else {
-            this.rwlock_reader_add(id, active_thread);
+            this.rwlock_reader_lock(id, active_thread);
             Ok(0)
         }
     }
@@ -494,7 +481,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         if this.rwlock_is_write_locked(id) {
             this.eval_libc_i32("EBUSY")
         } else {
-            this.rwlock_reader_add(id, active_thread);
+            this.rwlock_reader_lock(id, active_thread);
             Ok(0)
         }
     }
@@ -506,10 +493,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let active_thread = this.get_active_thread()?;
 
         if this.rwlock_is_locked(id) {
-            this.block_thread(active_thread)?;
-            this.rwlock_enqueue_writer(id, active_thread);
+            this.rwlock_enqueue_and_block_writer(id, active_thread)?;
         } else {
-            this.rwlock_writer_set(id, active_thread);
+            this.rwlock_writer_lock(id, active_thread);
         }
 
         Ok(0)
@@ -524,7 +510,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         if this.rwlock_is_locked(id) {
             this.eval_libc_i32("EBUSY")
         } else {
-            this.rwlock_writer_set(id, active_thread);
+            this.rwlock_writer_lock(id, active_thread);
             Ok(0)
         }
     }
@@ -535,18 +521,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let id = rwlock_get_or_create_id(this, rwlock_op)?;
         let active_thread = this.get_active_thread()?;
 
-        if this.rwlock_reader_remove(id, active_thread) {
+        if this.rwlock_reader_unlock(id, active_thread) {
             // The thread was a reader.
             if this.rwlock_is_locked(id) {
                 // No more readers owning the lock. Give it to a writer if there
                 // is any.
                 if let Some(writer) = this.rwlock_dequeue_writer(id) {
                     this.unblock_thread(writer)?;
-                    this.rwlock_writer_set(id, writer);
+                    this.rwlock_writer_lock(id, writer);
                 }
             }
             Ok(0)
-        } else if Some(active_thread) == this.rwlock_writer_remove(id) {
+        } else if Some(active_thread) == this.rwlock_writer_unlock(id) {
             // The thread was a writer.
             //
             // We are prioritizing writers here against the readers. As a
@@ -555,12 +541,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             if let Some(writer) = this.rwlock_dequeue_writer(id) {
                 // Give the lock to another writer.
                 this.unblock_thread(writer)?;
-                this.rwlock_writer_set(id, writer);
+                this.rwlock_writer_lock(id, writer);
             } else {
                 // Give the lock to all readers.
                 while let Some(reader) = this.rwlock_dequeue_reader(id) {
                     this.unblock_thread(reader)?;
-                    this.rwlock_reader_add(id, reader);
+                    this.rwlock_reader_lock(id, reader);
                 }
             }
             Ok(0)
@@ -586,6 +572,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn pthread_condattr_init(&mut self, attr_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
+        // The default value of the clock attribute shall refer to the system
+        // clock.
+        // https://pubs.opengroup.org/onlinepubs/9699919799/functions/pthread_condattr_setclock.html
         let default_clock_id = this.eval_libc("CLOCK_REALTIME")?;
         condattr_set_clock_id(this, attr_op, default_clock_id)?;
 
@@ -647,7 +636,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             condattr_get_clock_id(this, attr_op)?.not_undef()?
         };
 
-        let _ = cond_get_or_create_id(this, cond_op)?;
+        // Write 0 to use the same code path as the static initializers.
+        cond_set_id(this, cond_op, Scalar::from_i32(0))?;
+
         cond_set_clock_id(this, cond_op, clock_id)?;
 
         Ok(0)
