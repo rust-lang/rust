@@ -433,6 +433,28 @@ fn test_chunks_exact_mut_zip() {
     assert_eq!(v1, [13, 14, 19, 20, 4]);
 }
 
+// FIXME(#71154)
+// FIXME(const_generics)
+// We can't yet use `v.array_chunks::<3>()`, so until either #71154 or a
+// different PR implementing const arguments in type dependent paths lands,
+// we can't yet test many uses.
+#[test]
+fn test_array_chunks_simple() {
+    let v: &[i32] = &[0, 1, 2, 3, 4, 5];
+    let mut c = <[i32]>::array_chunks(&v);
+    assert!(matches!(c.next(), Some(&[0, 1, 2])));
+    assert!(matches!(c.next(), Some(&[3, 4, 5])));
+    assert!(matches!(c.next(), None));
+
+    let v2: &[i32] = &[0, 1, 2, 3, 4];
+    let c2 = <[i32]>::array_chunks(&v2);
+    for &[a, b, c] in c2 {
+        assert_eq!(a, 0i32);
+        assert_eq!(b, 1i32);
+        assert_eq!(c, 2i32);
+    }
+}
+
 #[test]
 fn test_rchunks_count() {
     let v: &[i32] = &[0, 1, 2, 3, 4, 5];
