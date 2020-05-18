@@ -93,7 +93,7 @@ impl<'a> InferenceContext<'a> {
                 Ty::Unknown
             }
             Expr::Loop { body } => {
-                self.breakables.push(BreakableContext { may_break: false });
+                self.breakables.push(BreakableContext { may_break: false, break_ty: Ty::Unknown });
                 self.infer_expr(*body, &Expectation::has_type(Ty::unit()));
 
                 let ctxt = self.breakables.pop().expect("breakable stack broken");
@@ -102,13 +102,13 @@ impl<'a> InferenceContext<'a> {
                 }
                 // FIXME handle break with value
                 if ctxt.may_break {
-                    Ty::unit()
+                    ctxt.break_ty
                 } else {
                     Ty::simple(TypeCtor::Never)
                 }
             }
             Expr::While { condition, body } => {
-                self.breakables.push(BreakableContext { may_break: false });
+                self.breakables.push(BreakableContext { may_break: false, break_ty: Ty::Unknown });
                 // while let is desugared to a match loop, so this is always simple while
                 self.infer_expr(*condition, &Expectation::has_type(Ty::simple(TypeCtor::Bool)));
                 self.infer_expr(*body, &Expectation::has_type(Ty::unit()));
@@ -120,7 +120,7 @@ impl<'a> InferenceContext<'a> {
             Expr::For { iterable, body, pat } => {
                 let iterable_ty = self.infer_expr(*iterable, &Expectation::none());
 
-                self.breakables.push(BreakableContext { may_break: false });
+                self.breakables.push(BreakableContext { may_break: false, break_ty: Ty::Unknown });
                 let pat_ty =
                     self.resolve_associated_type(iterable_ty, self.resolve_into_iter_item());
 
@@ -229,12 +229,21 @@ impl<'a> InferenceContext<'a> {
             }
             Expr::Continue => Ty::simple(TypeCtor::Never),
             Expr::Break { expr } => {
+                let mut has_val_ty = None;
+
                 if let Some(expr) = expr {
-                    // FIXME handle break with value
-                    self.infer_expr(*expr, &Expectation::none());
+                    has_val_ty = Some(self.infer_expr(*expr, &Expectation::none()));
                 }
+
                 if let Some(ctxt) = self.breakables.last_mut() {
                     ctxt.may_break = true;
+                    if let Some(val_ty) = has_val_ty {
+                        if ctxt.break_ty == Ty::Unknown {
+                            ctxt.break_ty = val_ty;
+                        } else if ctxt.break_ty != val_ty {
+                            // TODO: Unify partially matching type information (Option<{unknown}> + Option<i32> => Option<i32>)
+                        }
+                    }
                 } else {
                     self.push_diagnostic(InferenceDiagnostic::BreakOutsideOfLoop {
                         expr: tgt_expr,

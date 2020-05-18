@@ -218,6 +218,7 @@ struct InferenceContext<'a> {
 #[derive(Clone, Debug)]
 struct BreakableContext {
     pub may_break: bool,
+    pub break_ty: Ty,
 }
 
 impl<'a> InferenceContext<'a> {
