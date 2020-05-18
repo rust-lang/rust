@@ -293,9 +293,15 @@ impl<'tcx> TyCtxt<'tcx> {
     /// If `id` is `Some(_)`, this function will also check if the item at `def_id` has been
     /// deprecated. If the item is indeed deprecated, we will emit a deprecation lint attached to
     /// `id`.
-    pub fn eval_stability(self, def_id: DefId, id: Option<HirId>, span: Span) -> EvalResult {
+    pub fn eval_stability(
+        self,
+        def_id: DefId,
+        id: Option<HirId>,
+        span: Span,
+        check_deprecation: bool,
+    ) -> EvalResult {
         // Deprecated attributes apply in-crate and cross-crate.
-        if let Some(id) = id {
+        if let (Some(id), true) = (id, check_deprecation) {
             if let Some(depr_entry) = self.lookup_deprecation_entry(def_id) {
                 let parent_def_id = self.hir().local_def_id(self.hir().get_parent_item(id));
                 let skip = self
@@ -395,21 +401,39 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Additionally, this function will also check if the item is deprecated. If so, and `id` is
     /// not `None`, a deprecated lint attached to `id` will be emitted.
     pub fn check_stability(self, def_id: DefId, id: Option<HirId>, span: Span) {
+        self.check_stability_internal(def_id, id, span, true, |span, def_id| {
+            // The API could be uncallable for other reasons, for example when a private module
+            // was referenced.
+            self.sess.delay_span_bug(span, &format!("encountered unmarked API: {:?}", def_id));
+        })
+    }
+
+    /// Checks if an item is stable or error out.
+    ///
+    /// If the item defined by `def_id` is unstable and the corresponding `#![feature]` does not
+    /// exist, emits an error.
+    ///
+    /// Additionally when `inherit_dep` is `true`, this function will also check if the item is deprecated. If so, and `id` is
+    /// not `None`, a deprecated lint attached to `id` will be emitted.
+    pub fn check_stability_internal(
+        self,
+        def_id: DefId,
+        id: Option<HirId>,
+        span: Span,
+        check_deprecation: bool,
+        unmarked: impl FnOnce(Span, DefId) -> (),
+    ) {
         let soft_handler = |lint, span, msg: &_| {
             self.struct_span_lint_hir(lint, id.unwrap_or(hir::CRATE_HIR_ID), span, |lint| {
                 lint.build(msg).emit()
             })
         };
-        match self.eval_stability(def_id, id, span) {
+        match self.eval_stability(def_id, id, span, check_deprecation) {
             EvalResult::Allow => {}
             EvalResult::Deny { feature, reason, issue, is_soft } => {
                 report_unstable(self.sess, feature, reason, issue, is_soft, span, soft_handler)
             }
-            EvalResult::Unmarked => {
-                // The API could be uncallable for other reasons, for example when a private module
-                // was referenced.
-                self.sess.delay_span_bug(span, &format!("encountered unmarked API: {:?}", def_id));
-            }
+            EvalResult::Unmarked => unmarked(span, def_id),
         }
     }
 

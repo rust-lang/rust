@@ -360,7 +360,16 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => {
                     self.ast_region_to_region(&lt, Some(param)).into()
                 }
-                (GenericParamDefKind::Type { .. }, GenericArg::Type(ty)) => {
+                (GenericParamDefKind::Type { has_default, .. }, GenericArg::Type(ty)) => {
+                    if *has_default {
+                        tcx.check_stability_internal(
+                            param.def_id,
+                            Some(arg.id()),
+                            arg.span(),
+                            false,
+                            |_, _| (),
+                        )
+                    }
                     if let (hir::TyKind::Infer, false) = (&ty.kind, self.allow_ty_infer()) {
                         inferred_params.push(ty.span);
                         tcx.ty_error().into()
