@@ -564,6 +564,37 @@ fn main() {
 }
 
 #[test]
+fn issue_4465_dollar_crate_at_type() {
+    assert_snapshot!(
+        infer(r#"
+pub struct Foo {}
+pub fn anything<T>() -> T {
+    loop {}
+}
+macro_rules! foo {
+    () => {{
+        let r: $crate::Foo = anything();
+        r
+    }};
+}
+fn main() {
+    let _a = foo!();
+}
+"#), @r###"
+    45..60 '{     loop {} }': T
+    51..58 'loop {}': !
+    56..58 '{}': ()
+    !0..31 '{letr:...g();r}': Foo
+    !4..5 'r': Foo
+    !18..26 'anything': fn anything<Foo>() -> Foo
+    !18..28 'anything()': Foo
+    !29..30 'r': Foo
+    164..188 '{     ...!(); }': ()
+    174..176 '_a': Foo
+"###);
+}
+
+#[test]
 fn issue_4053_diesel_where_clauses() {
     assert_snapshot!(
         infer(r#"
