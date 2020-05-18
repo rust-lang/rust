@@ -6,6 +6,10 @@ use rustc_index::vec::{Idx, IndexVec};
 
 use crate::*;
 
+/// We cannot use the `newtype_index!` macro because we have to use 0 as a
+/// sentinel value meaning that the identifier is not assigned. This is because
+/// the pthreads static initializers initialize memory with zeros (see the
+/// `src/shims/sync.rs` file).
 macro_rules! declare_id {
     ($name: ident) => {
         /// 0 is used to indicate that the id was not yet assigned and,
@@ -22,9 +26,13 @@ macro_rules! declare_id {
 
         impl Idx for $name {
             fn new(idx: usize) -> Self {
+                // We use 0 as a sentinel value (see the comment above) and,
+                // therefore, need to shift by one when converting from an index
+                // into a vector.
                 $name(NonZeroU32::new(u32::try_from(idx).unwrap() + 1).unwrap())
             }
             fn index(self) -> usize {
+                // See the comment in `Self::new`.
                 usize::try_from(self.0.get() - 1).unwrap()
             }
         }
