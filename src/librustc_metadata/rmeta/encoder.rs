@@ -1612,6 +1612,9 @@ impl EncodeContext<'tcx> {
                         EntryKind::TypeParam,
                         default.is_some(),
                     );
+                    if default.is_some() {
+                        self.encode_stability(def_id.to_def_id());
+                    }
                 }
                 GenericParamKind::Const { .. } => {
                     self.encode_info_for_generic_param(
@@ -1619,6 +1622,7 @@ impl EncodeContext<'tcx> {
                         EntryKind::ConstParam,
                         true,
                     );
+                    // FIXME(const_generics:defaults)
                 }
             }
         }
