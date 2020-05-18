@@ -1311,6 +1311,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is
     /// [`std::pointer::offset`](../../std/primitive.pointer.html#method.offset).
+    #[must_use = "returns a new pointer rather than modifying its argument"]
     pub fn offset<T>(dst: *const T, offset: isize) -> *const T;
 
     /// Calculates the offset from a pointer, potentially wrapping.
@@ -1327,6 +1328,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is
     /// [`std::pointer::wrapping_offset`](../../std/primitive.pointer.html#method.wrapping_offset).
+    #[must_use = "returns a new pointer rather than modifying its argument"]
     pub fn arith_offset<T>(dst: *const T, offset: isize) -> *const T;
 
     /// Equivalent to the appropriate `llvm.memcpy.p0i8.0i8.*` intrinsic, with
