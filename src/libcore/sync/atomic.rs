@@ -1882,7 +1882,6 @@ using [`Release`] makes the load part [`Relaxed`].
 # Examples
 
 ```
-#![feature(atomic_min_max)]
 ", $extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};
 
 let foo = ", stringify!($atomic_type), "::new(23);
@@ -1893,7 +1892,6 @@ assert_eq!(foo.load(Ordering::SeqCst), 42);
 If you want to obtain the maximum value in one step, you can use the following:
 
 ```
-#![feature(atomic_min_max)]
 ", $extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};
 
 let foo = ", stringify!($atomic_type), "::new(23);
@@ -1902,9 +1900,7 @@ let max_foo = foo.fetch_max(bar, Ordering::SeqCst).max(bar);
 assert!(max_foo == 42);
 ```"),
                 #[inline]
-                #[unstable(feature = "atomic_min_max",
-                       reason = "easier and faster min/max than writing manual CAS loop",
-                       issue = "48655")]
+                #[stable(feature = "atomic_min_max", since = "1.45.0")]
                 #[$cfg_cas]
                 pub fn fetch_max(&self, val: $int_type, order: Ordering) -> $int_type {
                     // SAFETY: data races are prevented by atomic intrinsics.
@@ -1933,7 +1929,6 @@ using [`Release`] makes the load part [`Relaxed`].
 # Examples
 
 ```
-#![feature(atomic_min_max)]
 ", $extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};
 
 let foo = ", stringify!($atomic_type), "::new(23);
@@ -1946,7 +1941,6 @@ assert_eq!(foo.load(Ordering::Relaxed), 22);
 If you want to obtain the minimum value in one step, you can use the following:
 
 ```
-#![feature(atomic_min_max)]
 ", $extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};
 
 let foo = ", stringify!($atomic_type), "::new(23);
@@ -1955,9 +1949,7 @@ let min_foo = foo.fetch_min(bar, Ordering::SeqCst).min(bar);
 assert_eq!(min_foo, 12);
 ```"),
                 #[inline]
-                #[unstable(feature = "atomic_min_max",
-                       reason = "easier and faster min/max than writing manual CAS loop",
-                       issue = "48655")]
+                #[stable(feature = "atomic_min_max", since = "1.45.0")]
                 #[$cfg_cas]
                 pub fn fetch_min(&self, val: $int_type, order: Ordering) -> $int_type {
                     // SAFETY: data races are prevented by atomic intrinsics.
