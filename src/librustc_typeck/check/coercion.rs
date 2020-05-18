@@ -793,7 +793,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 //     `unsafe fn(arg0,arg1,...) -> _`
                 let closure_sig = substs_a.as_closure().sig();
                 let unsafety = fn_ty.unsafety();
-                let pointer_ty = self.tcx.coerce_closure_fn_ty(closure_sig, unsafety);
+                let pointer_ty =
+                    self.tcx.mk_fn_ptr(self.tcx.signature_unclosure(closure_sig, unsafety));
                 debug!("coerce_closure_to_fn(a={:?}, b={:?}, pty={:?})", a, b, pointer_ty);
                 self.unify_and(
                     pointer_ty,
@@ -909,23 +910,63 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("coercion::try_find_coercion_lub({:?}, {:?})", prev_ty, new_ty);
 
         // Special-case that coercion alone cannot handle:
-        // Two function item types of differing IDs or InternalSubsts.
-        if let (&ty::FnDef(..), &ty::FnDef(..)) = (&prev_ty.kind, &new_ty.kind) {
-            // Don't reify if the function types have a LUB, i.e., they
-            // are the same function and their parameters have a LUB.
-            let lub_ty = self
-                .commit_if_ok(|_| self.at(cause, self.param_env).lub(prev_ty, new_ty))
-                .map(|ok| self.register_infer_ok_obligations(ok));
-
-            if lub_ty.is_ok() {
-                // We have a LUB of prev_ty and new_ty, just return it.
-                return lub_ty;
+        // Function items or non-capturing closures of differing IDs or InternalSubsts.
+        let (a_sig, b_sig) = {
+            let is_capturing_closure = |ty| {
+                if let &ty::Closure(_, substs) = ty {
+                    substs.as_closure().upvar_tys().next().is_some()
+                } else {
+                    false
+                }
+            };
+            if is_capturing_closure(&prev_ty.kind) || is_capturing_closure(&new_ty.kind) {
+                (None, None)
+            } else {
+                match (&prev_ty.kind, &new_ty.kind) {
+                    (&ty::FnDef(..), &ty::FnDef(..)) => {
+                        // Don't reify if the function types have a LUB, i.e., they
+                        // are the same function and their parameters have a LUB.
+                        match self
+                            .commit_if_ok(|_| self.at(cause, self.param_env).lub(prev_ty, new_ty))
+                        {
+                            // We have a LUB of prev_ty and new_ty, just return it.
+                            Ok(ok) => return Ok(self.register_infer_ok_obligations(ok)),
+                            Err(_) => {
+                                (Some(prev_ty.fn_sig(self.tcx)), Some(new_ty.fn_sig(self.tcx)))
+                            }
+                        }
+                    }
+                    (&ty::Closure(_, substs), &ty::FnDef(..)) => {
+                        let b_sig = new_ty.fn_sig(self.tcx);
+                        let a_sig = self
+                            .tcx
+                            .signature_unclosure(substs.as_closure().sig(), b_sig.unsafety());
+                        (Some(a_sig), Some(b_sig))
+                    }
+                    (&ty::FnDef(..), &ty::Closure(_, substs)) => {
+                        let a_sig = prev_ty.fn_sig(self.tcx);
+                        let b_sig = self
+                            .tcx
+                            .signature_unclosure(substs.as_closure().sig(), a_sig.unsafety());
+                        (Some(a_sig), Some(b_sig))
+                    }
+                    (&ty::Closure(_, substs_a), &ty::Closure(_, substs_b)) => (
+                        Some(self.tcx.signature_unclosure(
+                            substs_a.as_closure().sig(),
+                            hir::Unsafety::Normal,
+                        )),
+                        Some(self.tcx.signature_unclosure(
+                            substs_b.as_closure().sig(),
+                            hir::Unsafety::Normal,
+                        )),
+                    ),
+                    _ => (None, None),
+                }
             }
-
+        };
+        if let (Some(a_sig), Some(b_sig)) = (a_sig, b_sig) {
             // The signature must match.
-            let a_sig = prev_ty.fn_sig(self.tcx);
             let a_sig = self.normalize_associated_types_in(new.span, &a_sig);
-            let b_sig = new_ty.fn_sig(self.tcx);
             let b_sig = self.normalize_associated_types_in(new.span, &b_sig);
             let sig = self
                 .at(cause, self.param_env)
@@ -935,17 +976,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // Reify both sides and return the reified fn pointer type.
             let fn_ptr = self.tcx.mk_fn_ptr(sig);
-            for expr in exprs.iter().map(|e| e.as_coercion_site()).chain(Some(new)) {
-                // The only adjustment that can produce an fn item is
-                // `NeverToAny`, so this should always be valid.
+            let prev_adjustment = match prev_ty.kind {
+                ty::Closure(..) => Adjust::Pointer(PointerCast::ClosureFnPointer(a_sig.unsafety())),
+                ty::FnDef(..) => Adjust::Pointer(PointerCast::ReifyFnPointer),
+                _ => unreachable!(),
+            };
+            let next_adjustment = match new_ty.kind {
+                ty::Closure(..) => Adjust::Pointer(PointerCast::ClosureFnPointer(b_sig.unsafety())),
+                ty::FnDef(..) => Adjust::Pointer(PointerCast::ReifyFnPointer),
+                _ => unreachable!(),
+            };
+            for expr in exprs.iter().map(|e| e.as_coercion_site()) {
                 self.apply_adjustments(
                     expr,
-                    vec![Adjustment {
-                        kind: Adjust::Pointer(PointerCast::ReifyFnPointer),
-                        target: fn_ptr,
-                    }],
+                    vec![Adjustment { kind: prev_adjustment.clone(), target: fn_ptr }],
                 );
             }
+            self.apply_adjustments(new, vec![Adjustment { kind: next_adjustment, target: fn_ptr }]);
             return Ok(fn_ptr);
         }
 
