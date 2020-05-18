@@ -2088,7 +2088,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             ty::Closure(_, substs) => substs.as_closure().sig(),
                             _ => bug!(),
                         };
-                        let ty_fn_ptr_from = tcx.coerce_closure_fn_ty(sig, *unsafety);
+                        let ty_fn_ptr_from = tcx.mk_fn_ptr(tcx.signature_unclosure(sig, *unsafety));
 
                         if let Err(terr) = self.eq_types(
                             ty_fn_ptr_from,
