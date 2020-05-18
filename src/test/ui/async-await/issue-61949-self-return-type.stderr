@@ -6,4 +6,4 @@ LL |     pub async fn new(_bar: &'a i32) -> Self {
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0754`.
+For more information about this error, try `rustc --explain E0755`.

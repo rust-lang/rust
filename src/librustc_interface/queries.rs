@@ -137,7 +137,7 @@ impl<'tcx> Queries<'tcx> {
             let result = passes::register_plugins(
                 self.session(),
                 &*self.codegen_backend().metadata_loader(),
-                self.compiler.register_lints.as_ref().map(|p| &**p).unwrap_or_else(|| empty),
+                self.compiler.register_lints.as_deref().unwrap_or_else(|| empty),
                 krate,
                 &crate_name,
             );

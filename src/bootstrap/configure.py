@@ -57,7 +57,6 @@ o("cargo-native-static", "build.cargo-native-static", "static native libraries i
 o("profiler", "build.profiler", "build the profiler runtime")
 o("full-tools", None, "enable all tools")
 o("lld", "rust.lld", "build lld")
-o("lldb", "rust.lldb", "build lldb")
 o("missing-tools", "dist.missing-tools", "allow failures when building tools")
 o("use-libcxx", "llvm.use-libcxx", "build LLVM with libc++")
 o("control-flow-guard", "rust.control-flow-guard", "Enable Control Flow Guard")

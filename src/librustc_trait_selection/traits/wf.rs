@@ -389,8 +389,6 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     self.compute_projection(data);
                 }
 
-                ty::UnnormalizedProjection(..) => bug!("only used with chalk-engine"),
-
                 ty::Adt(def, substs) => {
                     // WfNominalType
                     let obligations = self.nominal_obligations(def.did, substs);

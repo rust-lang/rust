@@ -100,7 +100,9 @@ use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, LocalDefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
-use rustc_hir::lang_items;
+use rustc_hir::lang_items::{
+    FutureTraitLangItem, PinTypeLangItem, SizedTraitLangItem, VaListTypeLangItem,
+};
 use rustc_hir::{ExprKind, GenericArg, HirIdMap, Item, ItemKind, Node, PatKind, QPath};
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::Idx;
@@ -831,13 +833,6 @@ fn primary_body_of(
 }
 
 fn has_typeck_tables(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    // FIXME(#71104) some `LocalDefId` do not seem to have a corresponding `HirId`.
-    if let Some(def_id) = def_id.as_local() {
-        if tcx.hir().opt_local_def_id_to_hir_id(def_id).is_none() {
-            return false;
-        }
-    }
-
     // Closures' tables come from their outermost function,
     // as they are part of the same "inference environment".
     let outer_def_id = tcx.closure_base_def_id(def_id);
@@ -1342,10 +1337,8 @@ fn check_fn<'a, 'tcx>(
     // C-variadic fns also have a `VaList` input that's not listed in `fn_sig`
     // (as it's created inside the body itself, not passed in from outside).
     let maybe_va_list = if fn_sig.c_variadic {
-        let va_list_did = tcx.require_lang_item(
-            lang_items::VaListTypeLangItem,
-            Some(body.params.last().unwrap().span),
-        );
+        let va_list_did =
+            tcx.require_lang_item(VaListTypeLangItem, Some(body.params.last().unwrap().span));
         let region = tcx.mk_region(ty::ReScope(region::Scope {
             id: body.value.hir_id.local_id,
             data: region::ScopeData::CallSite,
@@ -1645,81 +1638,78 @@ fn check_opaque_for_inheriting_lifetimes(tcx: TyCtxt<'tcx>, def_id: LocalDefId, 
     impl<'tcx> ty::fold::TypeVisitor<'tcx> for ProhibitOpaqueVisitor<'tcx> {
         fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
             debug!("check_opaque_for_inheriting_lifetimes: (visit_ty) t={:?}", t);
-            self.ty = Some(t);
-            if t == self.opaque_identity_ty { false } else { t.super_visit_with(self) }
+            if t != self.opaque_identity_ty && t.super_visit_with(self) {
+                self.ty = Some(t);
+                return true;
+            }
+            false
         }
 
         fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {
             debug!("check_opaque_for_inheriting_lifetimes: (visit_region) r={:?}", r);
             if let RegionKind::ReEarlyBound(ty::EarlyBoundRegion { index, .. }) = r {
-                let found_lifetime = *index < self.generics.parent_count as u32;
-                if !found_lifetime {
-                    self.ty = None;
-                }
-                return found_lifetime;
+                return *index < self.generics.parent_count as u32;
             }
 
             r.super_visit_with(self)
         }
     }
 
-    let mut visitor = ProhibitOpaqueVisitor {
-        opaque_identity_ty: tcx.mk_opaque(
-            def_id.to_def_id(),
-            InternalSubsts::identity_for_item(tcx, def_id.to_def_id()),
-        ),
-        generics: tcx.generics_of(def_id),
-        ty: None,
-    };
-    debug!("check_opaque_for_inheriting_lifetimes: visitor={:?}", visitor);
-
-    let prohibit_opaque = match item.kind {
-        ItemKind::OpaqueTy(hir::OpaqueTy {
-            origin: hir::OpaqueTyOrigin::AsyncFn | hir::OpaqueTyOrigin::FnReturn,
-            ..
-        }) => tcx
+    if let ItemKind::OpaqueTy(hir::OpaqueTy {
+        origin: hir::OpaqueTyOrigin::AsyncFn | hir::OpaqueTyOrigin::FnReturn,
+        ..
+    }) = item.kind
+    {
+        let mut visitor = ProhibitOpaqueVisitor {
+            opaque_identity_ty: tcx.mk_opaque(
+                def_id.to_def_id(),
+                InternalSubsts::identity_for_item(tcx, def_id.to_def_id()),
+            ),
+            generics: tcx.generics_of(def_id),
+            ty: None,
+        };
+        let prohibit_opaque = tcx
             .predicates_of(def_id)
             .predicates
             .iter()
-            .any(|(predicate, _)| predicate.visit_with(&mut visitor)),
-        _ => false,
-    };
-    debug!(
-        "check_opaque_for_inheriting_lifetimes: prohibit_opaque={:?}, visitor={:?}",
-        prohibit_opaque, visitor
-    );
-
-    if prohibit_opaque {
-        let is_async = match item.kind {
-            ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) => match origin {
-                hir::OpaqueTyOrigin::AsyncFn => true,
-                _ => false,
-            },
-            _ => unreachable!(),
-        };
-
-        let mut err = struct_span_err!(
-            tcx.sess,
-            span,
-            E0755,
-            "`{}` return type cannot contain a projection or `Self` that references lifetimes from \
-             a parent scope",
-            if is_async { "async fn" } else { "impl Trait" },
+            .any(|(predicate, _)| predicate.visit_with(&mut visitor));
+        debug!(
+            "check_opaque_for_inheriting_lifetimes: prohibit_opaque={:?}, visitor={:?}",
+            prohibit_opaque, visitor
         );
 
-        if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(span) {
-            if snippet == "Self" {
-                if let Some(ty) = visitor.ty {
-                    err.span_suggestion(
-                        span,
-                        "consider spelling out the type instead",
-                        format!("{:?}", ty),
-                        Applicability::MaybeIncorrect,
-                    );
+        if prohibit_opaque {
+            let is_async = match item.kind {
+                ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) => match origin {
+                    hir::OpaqueTyOrigin::AsyncFn => true,
+                    _ => false,
+                },
+                _ => unreachable!(),
+            };
+
+            let mut err = struct_span_err!(
+                tcx.sess,
+                span,
+                E0755,
+                "`{}` return type cannot contain a projection or `Self` that references lifetimes from \
+             a parent scope",
+                if is_async { "async fn" } else { "impl Trait" },
+            );
+
+            if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(span) {
+                if snippet == "Self" {
+                    if let Some(ty) = visitor.ty {
+                        err.span_suggestion(
+                            span,
+                            "consider spelling out the type instead",
+                            format!("{:?}", ty),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
                 }
             }
+            err.emit();
         }
-        err.emit();
     }
 }
 
@@ -3326,7 +3316,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         code: traits::ObligationCauseCode<'tcx>,
     ) {
         if !ty.references_error() {
-            let lang_item = self.tcx.require_lang_item(lang_items::SizedTraitLangItem, None);
+            let lang_item = self.tcx.require_lang_item(SizedTraitLangItem, None);
             self.require_type_meets(ty, span, code, lang_item);
         }
     }
@@ -5165,7 +5155,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => {}
         }
         let boxed_found = self.tcx.mk_box(found);
-        let new_found = self.tcx.mk_lang_item(boxed_found, lang_items::PinTypeLangItem).unwrap();
+        let new_found = self.tcx.mk_lang_item(boxed_found, PinTypeLangItem).unwrap();
         if let (true, Ok(snippet)) = (
             self.can_coerce(new_found, expected),
             self.sess().source_map().span_to_snippet(expr.span),
@@ -5312,6 +5302,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
     ) {
+        debug!("suggest_missing_await: expr={:?} expected={:?}, found={:?}", expr, expected, found);
         // `.await` is not permitted outside of `async` bodies, so don't bother to suggest if the
         // body isn't `async`.
         let item_id = self.tcx().hir().get_parent_node(self.body_id);
@@ -5321,7 +5312,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let sp = expr.span;
                 // Check for `Future` implementations by constructing a predicate to
                 // prove: `<T as Future>::Output == U`
-                let future_trait = self.tcx.lang_items().future_trait().unwrap();
+                let future_trait = self.tcx.require_lang_item(FutureTraitLangItem, Some(sp));
                 let item_def_id = self
                     .tcx
                     .associated_items(future_trait)
@@ -5329,22 +5320,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .next()
                     .unwrap()
                     .def_id;
+                // `<T as Future>::Output`
+                let projection_ty = ty::ProjectionTy {
+                    // `T`
+                    substs: self
+                        .tcx
+                        .mk_substs_trait(found, self.fresh_substs_for_item(sp, item_def_id)),
+                    // `Future::Output`
+                    item_def_id,
+                };
+
                 let predicate =
                     ty::Predicate::Projection(ty::Binder::bind(ty::ProjectionPredicate {
-                        // `<T as Future>::Output`
-                        projection_ty: ty::ProjectionTy {
-                            // `T`
-                            substs: self.tcx.mk_substs_trait(
-                                found,
-                                self.fresh_substs_for_item(sp, item_def_id),
-                            ),
-                            // `Future::Output`
-                            item_def_id,
-                        },
+                        projection_ty,
                         ty: expected,
                     }));
                 let obligation = traits::Obligation::new(self.misc(sp), self.param_env, predicate);
+
                 debug!("suggest_missing_await: trying obligation {:?}", obligation);
+
                 if self.infcx.predicate_may_hold(&obligation) {
                     debug!("suggest_missing_await: obligation held: {:?}", obligation);
                     if let Ok(code) = self.sess().source_map().span_to_snippet(sp) {

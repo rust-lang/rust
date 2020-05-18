@@ -120,6 +120,7 @@ E0223: include_str!("./error_codes/E0223.md"),
 E0224: include_str!("./error_codes/E0224.md"),
 E0225: include_str!("./error_codes/E0225.md"),
 E0226: include_str!("./error_codes/E0226.md"),
+E0228: include_str!("./error_codes/E0228.md"),
 E0229: include_str!("./error_codes/E0229.md"),
 E0230: include_str!("./error_codes/E0230.md"),
 E0231: include_str!("./error_codes/E0231.md"),
@@ -435,6 +436,7 @@ E0750: include_str!("./error_codes/E0750.md"),
 E0751: include_str!("./error_codes/E0751.md"),
 E0752: include_str!("./error_codes/E0752.md"),
 E0753: include_str!("./error_codes/E0753.md"),
+E0754: include_str!("./error_codes/E0754.md"),
 E0755: include_str!("./error_codes/E0755.md"),
 ;
 //  E0006, // merged with E0005
@@ -483,7 +485,6 @@ E0755: include_str!("./error_codes/E0755.md"),
 //  E0218, // no associated type defined
 //  E0219, // associated type defined in higher-ranked supertrait
     E0227, // ambiguous lifetime bound, explicit lifetime bound required
-    E0228, // explicit lifetime bound required
 //  E0233,
 //  E0234,
 //  E0235, // structure constructor specifies a structure of type but

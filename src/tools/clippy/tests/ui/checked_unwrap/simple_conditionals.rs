@@ -9,6 +9,30 @@ macro_rules! m {
     };
 }
 
+macro_rules! checks_in_param {
+    ($a:expr, $b:expr) => {
+        if $a {
+            $b;
+        }
+    };
+}
+
+macro_rules! checks_unwrap {
+    ($a:expr, $b:expr) => {
+        if $a.is_some() {
+            $b;
+        }
+    };
+}
+
+macro_rules! checks_some {
+    ($a:expr, $b:expr) => {
+        if $a {
+            $b.unwrap();
+        }
+    };
+}
+
 fn main() {
     let x = Some(());
     if x.is_some() {
@@ -22,6 +46,9 @@ fn main() {
         x.unwrap(); // unnecessary
     }
     m!(x);
+    checks_in_param!(x.is_some(), x.unwrap()); // ok
+    checks_unwrap!(x, x.unwrap()); // ok
+    checks_some!(x.is_some(), x); // ok
     let mut x: Result<(), ()> = Ok(());
     if x.is_ok() {
         x.unwrap(); // unnecessary

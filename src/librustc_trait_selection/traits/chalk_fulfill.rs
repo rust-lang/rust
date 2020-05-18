@@ -39,7 +39,7 @@ fn environment<'tcx>(
     let ty::InstantiatedPredicates { predicates, .. } =
         tcx.predicates_of(def_id).instantiate_identity(tcx);
 
-    let clauses = predicates.into_iter().map(|pred| ChalkEnvironmentClause::Predicate(pred));
+    let clauses = predicates.into_iter().map(ChalkEnvironmentClause::Predicate);
 
     let hir_id = tcx.hir().as_local_hir_id(def_id.expect_local());
     let node = tcx.hir().get(hir_id);
@@ -224,7 +224,7 @@ impl TraitEngine<'tcx> for FulfillmentContext<'tcx> {
                                 ),
 
                                 Err(_err) => errors.push(FulfillmentError {
-                                    obligation: obligation,
+                                    obligation,
                                     code: FulfillmentErrorCode::CodeSelectionError(
                                         SelectionError::Unimplemented,
                                     ),
@@ -238,7 +238,7 @@ impl TraitEngine<'tcx> for FulfillmentContext<'tcx> {
                     }
 
                     Err(NoSolution) => errors.push(FulfillmentError {
-                        obligation: obligation,
+                        obligation,
                         code: FulfillmentErrorCode::CodeSelectionError(
                             SelectionError::Unimplemented,
                         ),
@@ -257,6 +257,6 @@ impl TraitEngine<'tcx> for FulfillmentContext<'tcx> {
     }
 
     fn pending_obligations(&self) -> Vec<PredicateObligation<'tcx>> {
-        self.obligations.iter().map(|obligation| obligation.clone()).collect()
+        self.obligations.iter().cloned().collect()
     }
 }

@@ -181,7 +181,7 @@ function loadThings(thingsToLoad, kindOfLoad, funcToCall, fileContent) {
     for (var i = 0; i < thingsToLoad.length; ++i) {
         var tmp = funcToCall(fileContent, thingsToLoad[i]);
         if (tmp === null) {
-            console.error('unable to find ' + kindOfLoad + ' "' + thingsToLoad[i] + '"');
+            console.log('unable to find ' + kindOfLoad + ' "' + thingsToLoad[i] + '"');
             process.exit(1);
         }
         content += tmp;
@@ -218,12 +218,13 @@ function lookForEntry(entry, data) {
     return null;
 }
 
-function loadMainJsAndIndex(mainJs, aliases, searchIndex, crate) {
+function loadMainJsAndIndex(mainJs, searchIndex, storageJs, crate) {
     if (searchIndex[searchIndex.length - 1].length === 0) {
         searchIndex.pop();
     }
     searchIndex.pop();
-    searchIndex = loadContent(searchIndex.join("\n") + '\nexports.searchIndex = searchIndex;');
+    var fullSearchIndex = searchIndex.join("\n") + '\nexports.rawSearchIndex = searchIndex;';
+    searchIndex = loadContent(fullSearchIndex);
     var finalJS = "";
 
     var arraysToLoad = ["itemTypes"];
@@ -235,34 +236,28 @@ function loadMainJsAndIndex(mainJs, aliases, searchIndex, crate) {
     // execQuery last parameter is built in buildIndex.
     // buildIndex requires the hashmap from search-index.
     var functionsToLoad = ["buildHrefAndPath", "pathSplitter", "levenshtein", "validateResult",
-                           "getQuery", "buildIndex", "execQuery", "execSearch"];
+                           "handleAliases", "getQuery", "buildIndex", "execQuery", "execSearch"];
 
+    ALIASES = {};
     finalJS += 'window = { "currentCrate": "' + crate + '" };\n';
     finalJS += 'var rootPath = "../";\n';
-    finalJS += aliases;
+    finalJS += loadThings(["onEach"], 'function', extractFunction, storageJs);
     finalJS += loadThings(arraysToLoad, 'array', extractArrayVariable, mainJs);
     finalJS += loadThings(variablesToLoad, 'variable', extractVariable, mainJs);
     finalJS += loadThings(functionsToLoad, 'function', extractFunction, mainJs);
 
     var loaded = loadContent(finalJS);
-    var index = loaded.buildIndex(searchIndex.searchIndex);
+    var index = loaded.buildIndex(searchIndex.rawSearchIndex);
 
     return [loaded, index];
 }
 
-function runChecks(testFile, loaded, index) {
-    var errors = 0;
-    var loadedFile = loadContent(
-        readFile(testFile) + 'exports.QUERY = QUERY;exports.EXPECTED = EXPECTED;');
-
-    const expected = loadedFile.EXPECTED;
-    const query = loadedFile.QUERY;
+function runSearch(query, expected, index, loaded, loadedFile, queryName) {
     const filter_crate = loadedFile.FILTER_CRATE;
     const ignore_order = loadedFile.ignore_order;
     const exact_check = loadedFile.exact_check;
-    const should_fail = loadedFile.should_fail;
 
-    var results = loaded.execSearch(loaded.getQuery(query), index);
+    var results = loaded.execSearch(loaded.getQuery(query), index, filter_crate);
     var error_text = [];
 
     for (var key in expected) {
@@ -278,41 +273,77 @@ function runChecks(testFile, loaded, index) {
         for (var i = 0; i < entry.length; ++i) {
             var entry_pos = lookForEntry(entry[i], results[key]);
             if (entry_pos === null) {
-                error_text.push("==> Result not found in '" + key + "': '" +
+                error_text.push(queryName + "==> Result not found in '" + key + "': '" +
                                 JSON.stringify(entry[i]) + "'");
             } else if (exact_check === true && prev_pos + 1 !== entry_pos) {
-                error_text.push("==> Exact check failed at position " + (prev_pos + 1) + ": " +
-                                "expected '" + JSON.stringify(entry[i]) + "' but found '" +
+                error_text.push(queryName + "==> Exact check failed at position " + (prev_pos + 1) +
+                                ": expected '" + JSON.stringify(entry[i]) + "' but found '" +
                                 JSON.stringify(results[key][i]) + "'");
             } else if (ignore_order === false && entry_pos < prev_pos) {
-                error_text.push("==> '" + JSON.stringify(entry[i]) + "' was supposed to be " +
-                                " before '" + JSON.stringify(results[key][entry_pos]) + "'");
+                error_text.push(queryName + "==> '" + JSON.stringify(entry[i]) + "' was supposed " +
+                                "to be before '" + JSON.stringify(results[key][entry_pos]) + "'");
             } else {
                 prev_pos = entry_pos;
             }
         }
     }
-    if (error_text.length === 0 && should_fail === true) {
-        errors += 1;
-        console.error("FAILED");
-        console.error("==> Test was supposed to fail but all items were found...");
-    } else if (error_text.length !== 0 && should_fail === false) {
-        errors += 1;
-        console.error("FAILED");
-        console.error(error_text.join("\n"));
+    return error_text;
+}
+
+function checkResult(error_text, loadedFile, displaySuccess) {
+    if (error_text.length === 0 && loadedFile.should_fail === true) {
+        console.log("FAILED");
+        console.log("==> Test was supposed to fail but all items were found...");
+    } else if (error_text.length !== 0 && loadedFile.should_fail === false) {
+        console.log("FAILED");
+        console.log(error_text.join("\n"));
     } else {
-        console.log("OK");
+        if (displaySuccess) {
+            console.log("OK");
+        }
+        return 0;
     }
-    return errors;
+    return 1;
+}
+
+function runChecks(testFile, loaded, index) {
+    var loadedFile = loadContent(
+        readFile(testFile) + 'exports.QUERY = QUERY;exports.EXPECTED = EXPECTED;');
+
+    const expected = loadedFile.EXPECTED;
+    const query = loadedFile.QUERY;
+
+    if (Array.isArray(query)) {
+        if (!Array.isArray(expected)) {
+            console.log("FAILED");
+            console.log("==> If QUERY variable is an array, EXPECTED should be an array too");
+            return 1;
+        } else if (query.length !== expected.length) {
+            console.log("FAILED");
+            console.log("==> QUERY variable should have the same length as EXPECTED");
+            return 1;
+        }
+        for (var i = 0; i < query.length; ++i) {
+            var error_text = runSearch(query[i], expected[i], index, loaded, loadedFile,
+                "[ query `" + query[i] + "`]");
+            if (checkResult(error_text, loadedFile, false) !== 0) {
+                return 1;
+            }
+        }
+        console.log("OK");
+        return 0;
+    }
+    var error_text = runSearch(query, expected, index, loaded, loadedFile, "");
+    return checkResult(error_text, loadedFile, true);
 }
 
 function load_files(doc_folder, resource_suffix, crate) {
     var mainJs = readFile(path.join(doc_folder, "main" + resource_suffix + ".js"));
-    var aliases = readFile(path.join(doc_folder, "aliases" + resource_suffix + ".js"));
+    var storageJs = readFile(path.join(doc_folder, "storage" + resource_suffix + ".js"));
     var searchIndex = readFile(
         path.join(doc_folder, "search-index" + resource_suffix + ".js")).split("\n");
 
-    return loadMainJsAndIndex(mainJs, aliases, searchIndex, crate);
+    return loadMainJsAndIndex(mainJs, searchIndex, storageJs, crate);
 }
 
 function showHelp() {
@@ -349,7 +380,7 @@ function parseOptions(args) {
             || args[i] === "--crate-name") {
             i += 1;
             if (i >= args.length) {
-                console.error("Missing argument after `" + args[i - 1] + "` option.");
+                console.log("Missing argument after `" + args[i - 1] + "` option.");
                 return null;
             }
             opts[correspondances[args[i - 1]]] = args[i];
@@ -357,17 +388,17 @@ function parseOptions(args) {
             showHelp();
             process.exit(0);
         } else {
-            console.error("Unknown option `" + args[i] + "`.");
-            console.error("Use `--help` to see the list of options");
+            console.log("Unknown option `" + args[i] + "`.");
+            console.log("Use `--help` to see the list of options");
             return null;
         }
     }
     if (opts["doc_folder"].length < 1) {
-        console.error("Missing `--doc-folder` option.");
+        console.log("Missing `--doc-folder` option.");
     } else if (opts["crate_name"].length < 1) {
-        console.error("Missing `--crate-name` option.");
+        console.log("Missing `--crate-name` option.");
     } else if (opts["test_folder"].length < 1 && opts["test_file"].length < 1) {
-        console.error("At least one of `--test-folder` or `--test-file` option is required.");
+        console.log("At least one of `--test-folder` or `--test-file` option is required.");
     } else {
         return opts;
     }

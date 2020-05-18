@@ -103,8 +103,9 @@ macro_rules! with_api {
             Literal {
                 fn drop($self: $S::Literal);
                 fn clone($self: &$S::Literal) -> $S::Literal;
-                // FIXME(eddyb) `Literal` should not expose internal `Debug` impls.
-                fn debug($self: &$S::Literal) -> String;
+                fn debug_kind($self: &$S::Literal) -> String;
+                fn symbol($self: &$S::Literal) -> String;
+                fn suffix($self: &$S::Literal) -> Option<String>;
                 fn integer(n: &str) -> $S::Literal;
                 fn typed_integer(n: &str, kind: &str) -> $S::Literal;
                 fn float(n: &str) -> $S::Literal;

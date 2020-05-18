@@ -59,7 +59,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         // clauses or bounds?
         let predicates = self.tcx.predicates_defined_on(def_id).predicates;
         let where_clauses: Vec<_> = predicates
-            .into_iter()
+            .iter()
             .map(|(wc, _)| wc.subst(self.tcx, &bound_vars))
             .filter_map(|wc| LowerInto::<Option<chalk_ir::QuantifiedWhereClause<RustInterner<'tcx>>>>::lower_into(wc, &self.interner)).collect();
 
@@ -88,7 +88,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         let binders = binders_for(&self.interner, bound_vars);
         let predicates = self.tcx.predicates_defined_on(def_id).predicates;
         let where_clauses: Vec<_> = predicates
-            .into_iter()
+            .iter()
             .map(|(wc, _)| wc.subst(self.tcx, &bound_vars))
             .filter_map(|wc| LowerInto::<Option<chalk_ir::QuantifiedWhereClause<RustInterner<'tcx>>>>::lower_into(wc, &self.interner)).collect();
 
@@ -134,7 +134,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
 
                 let predicates = self.tcx.predicates_of(adt_def_id).predicates;
                 let where_clauses: Vec<_> = predicates
-                    .into_iter()
+                    .iter()
                     .map(|(wc, _)| wc.subst(self.tcx, bound_vars))
                     .filter_map(|wc| LowerInto::<Option<chalk_ir::QuantifiedWhereClause<RustInterner<'tcx>>>>::lower_into(wc, &self.interner))
                     .collect();
@@ -166,46 +166,42 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
                         fundamental: adt_def.is_fundamental(),
                     },
                 });
-                return struct_datum;
+                struct_datum
             }
-            RustDefId::Ref(_) => {
-                return Arc::new(chalk_rust_ir::StructDatum {
-                    id: struct_id,
-                    binders: chalk_ir::Binders::new(
-                        chalk_ir::ParameterKinds::from(
-                            &self.interner,
-                            vec![
-                                chalk_ir::ParameterKind::Lifetime(()),
-                                chalk_ir::ParameterKind::Ty(()),
-                            ],
-                        ),
-                        chalk_rust_ir::StructDatumBound { fields: vec![], where_clauses: vec![] },
+            RustDefId::Ref(_) => Arc::new(chalk_rust_ir::StructDatum {
+                id: struct_id,
+                binders: chalk_ir::Binders::new(
+                    chalk_ir::ParameterKinds::from(
+                        &self.interner,
+                        vec![
+                            chalk_ir::ParameterKind::Lifetime(()),
+                            chalk_ir::ParameterKind::Ty(()),
+                        ],
                     ),
-                    flags: chalk_rust_ir::StructFlags { upstream: false, fundamental: false },
-                });
-            }
-            RustDefId::Array | RustDefId::Slice => {
-                return Arc::new(chalk_rust_ir::StructDatum {
-                    id: struct_id,
-                    binders: chalk_ir::Binders::new(
-                        chalk_ir::ParameterKinds::from(
-                            &self.interner,
-                            Some(chalk_ir::ParameterKind::Ty(())),
-                        ),
-                        chalk_rust_ir::StructDatumBound { fields: vec![], where_clauses: vec![] },
+                    chalk_rust_ir::StructDatumBound { fields: vec![], where_clauses: vec![] },
+                ),
+                flags: chalk_rust_ir::StructFlags { upstream: false, fundamental: false },
+            }),
+            RustDefId::Array | RustDefId::Slice => Arc::new(chalk_rust_ir::StructDatum {
+                id: struct_id,
+                binders: chalk_ir::Binders::new(
+                    chalk_ir::ParameterKinds::from(
+                        &self.interner,
+                        Some(chalk_ir::ParameterKind::Ty(())),
                     ),
-                    flags: chalk_rust_ir::StructFlags { upstream: false, fundamental: false },
-                });
-            }
+                    chalk_rust_ir::StructDatumBound { fields: vec![], where_clauses: vec![] },
+                ),
+                flags: chalk_rust_ir::StructFlags { upstream: false, fundamental: false },
+            }),
             RustDefId::Str | RustDefId::Never | RustDefId::FnDef(_) => {
-                return Arc::new(chalk_rust_ir::StructDatum {
+                Arc::new(chalk_rust_ir::StructDatum {
                     id: struct_id,
                     binders: chalk_ir::Binders::new(
                         chalk_ir::ParameterKinds::new(&self.interner),
                         chalk_rust_ir::StructDatumBound { fields: vec![], where_clauses: vec![] },
                     ),
                     flags: chalk_rust_ir::StructFlags { upstream: false, fundamental: false },
-                });
+                })
             }
 
             _ => bug!("Used not struct variant when expecting struct variant."),
@@ -228,7 +224,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
 
         let predicates = self.tcx.predicates_of(def_id).predicates;
         let where_clauses: Vec<_> = predicates
-            .into_iter()
+            .iter()
             .map(|(wc, _)| wc.subst(self.tcx, bound_vars))
             .filter_map(|wc| LowerInto::<Option<chalk_ir::QuantifiedWhereClause<RustInterner<'tcx>>>>::lower_into(wc, &self.interner)).collect();
 
@@ -260,7 +256,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         // not there yet.
 
         let all_impls = self.tcx.all_impls(def_id);
-        let matched_impls = all_impls.into_iter().filter(|impl_def_id| {
+        let matched_impls = all_impls.filter(|impl_def_id| {
             use chalk_ir::could_match::CouldMatch;
             let trait_ref = self.tcx.impl_trait_ref(*impl_def_id).unwrap();
             let bound_vars = bound_vars_for_item(self.tcx, *impl_def_id);
@@ -304,7 +300,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
                 _ => {}
             }
         }
-        return false;
+        false
     }
 
     fn associated_ty_value(
@@ -379,7 +375,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
                                     ty::AdtKind::Struct | ty::AdtKind::Union => None,
                                     ty::AdtKind::Enum => {
                                         let constraint = self.tcx.adt_sized_constraint(adt_def_id);
-                                        if constraint.0.len() > 0 {
+                                        if !constraint.0.is_empty() {
                                             unimplemented!()
                                         } else {
                                             Some(true)
@@ -412,7 +408,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
                                     ty::AdtKind::Struct | ty::AdtKind::Union => None,
                                     ty::AdtKind::Enum => {
                                         let constraint = self.tcx.adt_sized_constraint(adt_def_id);
-                                        if constraint.0.len() > 0 {
+                                        if !constraint.0.is_empty() {
                                             unimplemented!()
                                         } else {
                                             Some(true)

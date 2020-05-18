@@ -347,7 +347,10 @@ pub fn run_tests(config: Config) {
         Ok(true) => {}
         Ok(false) => panic!("Some tests failed"),
         Err(e) => {
-            println!("I/O failure during tests: {:?}", e);
+            // We don't know if tests passed or not, but if there was an error
+            // during testing we don't want to just suceeed (we may not have
+            // tested something), so fail.
+            panic!("I/O failure during tests: {:?}", e);
         }
     }
 }

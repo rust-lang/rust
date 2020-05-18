@@ -31,7 +31,6 @@ path = "src/driver.rs"
 # begin automatic update
 clippy_lints = { version = "0.0.212", path = "clippy_lints" }
 # end automatic update
-regex = "1"
 semver = "0.9"
 rustc_tools_util = { version = "0.2.0", path = "rustc_tools_util"}
 tempfile = { version = "3.1.0", optional = true }

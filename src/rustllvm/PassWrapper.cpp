@@ -717,7 +717,7 @@ LLVMRustOptimizeWithNewPassManager(
     LLVMRustOptStage OptStage,
     bool NoPrepopulatePasses, bool VerifyIR, bool UseThinLTOBuffers,
     bool MergeFunctions, bool UnrollLoops, bool SLPVectorize, bool LoopVectorize,
-    bool DisableSimplifyLibCalls,
+    bool DisableSimplifyLibCalls, bool EmitLifetimeMarkers,
     LLVMRustSanitizerOptions *SanitizerOptions,
     const char *PGOGenPath, const char *PGOUsePath,
     void* LlvmSelfProfiler,
@@ -853,7 +853,7 @@ LLVMRustOptimizeWithNewPassManager(
         MPM.addPass(createModuleToFunctionPassAdaptor(std::move(FPM)));
       }
 
-      MPM.addPass(AlwaysInlinerPass(/*InsertLifetimeIntrinsics=*/false));
+      MPM.addPass(AlwaysInlinerPass(EmitLifetimeMarkers));
 
 #if LLVM_VERSION_GE(10, 0)
       if (PGOOpt) {

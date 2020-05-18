@@ -2178,8 +2178,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::Projection(_) | ty::Param(_) | ty::Opaque(..) => None,
             ty::Infer(ty::TyVar(_)) => Ambiguous,
 
-            ty::UnnormalizedProjection(..)
-            | ty::Placeholder(..)
+            ty::Placeholder(..)
             | ty::Bound(..)
             | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 bug!("asked to assemble builtin bounds of unexpected type: {:?}", self_ty);
@@ -2250,8 +2249,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Ambiguous
             }
 
-            ty::UnnormalizedProjection(..)
-            | ty::Placeholder(..)
+            ty::Placeholder(..)
             | ty::Bound(..)
             | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 bug!("asked to assemble builtin bounds of unexpected type: {:?}", self_ty);
@@ -2284,8 +2282,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Never
             | ty::Char => Vec::new(),
 
-            ty::UnnormalizedProjection(..)
-            | ty::Placeholder(..)
+            ty::Placeholder(..)
             | ty::Dynamic(..)
             | ty::Param(..)
             | ty::Foreign(..)

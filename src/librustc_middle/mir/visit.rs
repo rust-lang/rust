@@ -427,11 +427,27 @@ macro_rules! make_mir_visitor {
                     TerminatorKind::Goto { .. } |
                     TerminatorKind::Resume |
                     TerminatorKind::Abort |
-                    TerminatorKind::Return |
                     TerminatorKind::GeneratorDrop |
                     TerminatorKind::Unreachable |
                     TerminatorKind::FalseEdges { .. } |
                     TerminatorKind::FalseUnwind { .. } => {
+                    }
+
+                    TerminatorKind::Return => {
+                        // `return` logically moves from the return place `_0`. Note that the place
+                        // cannot be changed by any visitor, though.
+                        let $($mutability)? local = RETURN_PLACE;
+                        self.visit_local(
+                            & $($mutability)? local,
+                            PlaceContext::NonMutatingUse(NonMutatingUseContext::Move),
+                            source_location,
+                        );
+
+                        assert_eq!(
+                            local,
+                            RETURN_PLACE,
+                            "`MutVisitor` tried to mutate return place of `return` terminator"
+                        );
                     }
 
                     TerminatorKind::SwitchInt {

@@ -156,3 +156,76 @@ fn test_weird_formatting() {
     exported();
     foo();
 }
+
+mod super_imports {
+    fn foofoo() {}
+
+    mod should_be_replaced {
+        use super::*;
+
+        fn with_super() {
+            let _ = foofoo();
+        }
+    }
+
+    mod test_should_pass {
+        use super::*;
+
+        fn with_super() {
+            let _ = foofoo();
+        }
+    }
+
+    mod test_should_pass_inside_function {
+        fn with_super_inside_function() {
+            use super::*;
+            let _ = foofoo();
+        }
+    }
+
+    mod test_should_pass_further_inside {
+        fn insidefoo() {}
+        mod inner {
+            use super::*;
+            fn with_super() {
+                let _ = insidefoo();
+            }
+        }
+    }
+
+    mod should_be_replaced_futher_inside {
+        fn insidefoo() {}
+        mod inner {
+            use super::*;
+            fn with_super() {
+                let _ = insidefoo();
+            }
+        }
+    }
+
+    mod use_explicit_should_be_replaced {
+        use super_imports::*;
+
+        fn with_explicit() {
+            let _ = foofoo();
+        }
+    }
+
+    mod use_double_super_should_be_replaced {
+        mod inner {
+            use super::super::*;
+
+            fn with_double_super() {
+                let _ = foofoo();
+            }
+        }
+    }
+
+    mod use_super_explicit_should_be_replaced {
+        use super::super::super_imports::*;
+
+        fn with_super_explicit() {
+            let _ = foofoo();
+        }
+    }
+}

@@ -19,7 +19,7 @@ Rust MIR: a lowered representation of Rust.
 #![feature(exhaustive_patterns)]
 #![feature(iter_order_by)]
 #![feature(never_type)]
-#![feature(specialization)]
+#![feature(min_specialization)]
 #![feature(trusted_len)]
 #![feature(try_blocks)]
 #![feature(associated_type_bounds)]

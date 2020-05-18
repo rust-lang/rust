@@ -1164,6 +1164,12 @@ rustc_queries! {
             desc { "evaluating trait selection obligation `{}`", goal.value }
         }
 
+        query type_implements_trait(
+            key: (DefId, Ty<'tcx>, SubstsRef<'tcx>, ty::ParamEnv<'tcx>, )
+        ) -> bool {
+            desc { "evaluating `type_implements_trait` `{:?}`", key }
+        }
+
         /// Do not call this query directly: part of the `Eq` type-op
         query type_op_ascribe_user_type(
             goal: CanonicalTypeOpAscribeUserTypeGoal<'tcx>

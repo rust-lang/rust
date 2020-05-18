@@ -274,7 +274,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
         let uint = |i| apply(chalk_ir::TypeName::Scalar(chalk_ir::Scalar::Uint(i)), empty());
         let float = |f| apply(chalk_ir::TypeName::Scalar(chalk_ir::Scalar::Float(f)), empty());
 
-        return match self.kind {
+        match self.kind {
             Bool => apply(chalk_ir::TypeName::Scalar(chalk_ir::Scalar::Bool), empty()),
             Char => apply(chalk_ir::TypeName::Scalar(chalk_ir::Scalar::Char), empty()),
             Int(ty) => match ty {
@@ -353,7 +353,6 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
                 apply(chalk_ir::TypeName::Tuple(substs.len()), substs.lower_into(interner))
             }
             Projection(proj) => TyData::Alias(proj.lower_into(interner)).intern(interner),
-            UnnormalizedProjection(_proj) => unimplemented!(),
             Opaque(_def_id, _substs) => unimplemented!(),
             // This should have been done eagerly prior to this, and all Params
             // should have been substituted to placeholders
@@ -370,7 +369,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
             .intern(interner),
             Infer(_infer) => unimplemented!(),
             Error => unimplemented!(),
-        };
+        }
     }
 }
 

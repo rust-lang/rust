@@ -3,10 +3,10 @@ use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{
     def::{DefKind, Res},
-    Item, ItemKind, UseKind,
+    Item, ItemKind, PathSegment, UseKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::BytePos;
 
 declare_clippy_lint! {
@@ -43,9 +43,14 @@ declare_clippy_lint! {
     ///
     /// This can lead to confusing error messages at best and to unexpected behavior at worst.
     ///
-    /// Note that this will not warn about wildcard imports from modules named `prelude`; many
-    /// crates (including the standard library) provide modules named "prelude" specifically
-    /// designed for wildcard import.
+    /// **Exceptions:**
+    ///
+    /// Wildcard imports are allowed from modules named `prelude`. Many crates (including the standard library)
+    /// provide modules named "prelude" specifically designed for wildcard import.
+    ///
+    /// `use super::*` is allowed in test modules. This is defined as any module with "test" in the name.
+    ///
+    /// These exceptions can be disabled using the `warn-on-all-wildcard-imports` configuration flag.
     ///
     /// **Known problems:** If macros are imported through the wildcard, this macro is not included
     /// by the suggestion and has to be added by hand.
@@ -73,18 +78,34 @@ declare_clippy_lint! {
     "lint `use _::*` statements"
 }
 
-declare_lint_pass!(WildcardImports => [ENUM_GLOB_USE, WILDCARD_IMPORTS]);
+#[derive(Default)]
+pub struct WildcardImports {
+    warn_on_all: bool,
+    test_modules_deep: u32,
+}
+
+impl WildcardImports {
+    pub fn new(warn_on_all: bool) -> Self {
+        Self {
+            warn_on_all,
+            test_modules_deep: 0,
+        }
+    }
+}
+
+impl_lint_pass!(WildcardImports => [ENUM_GLOB_USE, WILDCARD_IMPORTS]);
 
 impl LateLintPass<'_, '_> for WildcardImports {
     fn check_item(&mut self, cx: &LateContext<'_, '_>, item: &Item<'_>) {
+        if is_test_module_or_function(item) {
+            self.test_modules_deep = self.test_modules_deep.saturating_add(1);
+        }
         if item.vis.node.is_pub() || item.vis.node.is_pub_restricted() {
             return;
         }
         if_chain! {
-            if !in_macro(item.span);
             if let ItemKind::Use(use_path, UseKind::Glob) = &item.kind;
-            // don't lint prelude glob imports
-            if !use_path.segments.iter().last().map_or(false, |ps| ps.ident.as_str() == "prelude");
+            if self.warn_on_all || !self.check_exceptions(item, use_path.segments);
             let used_imports = cx.tcx.names_imported_by_glob_use(item.hir_id.owner);
             if !used_imports.is_empty(); // Already handled by `unused_imports`
             then {
@@ -109,8 +130,7 @@ impl LateLintPass<'_, '_> for WildcardImports {
                         span = use_path.span.with_hi(item.span.hi() - BytePos(1));
                     }
                     (
-                        span,
-                        false,
+                        span, false,
                     )
                 };
 
@@ -153,4 +173,36 @@ impl LateLintPass<'_, '_> for WildcardImports {
             }
         }
     }
+
+    fn check_item_post(&mut self, _: &LateContext<'_, '_>, item: &Item<'_>) {
+        if is_test_module_or_function(item) {
+            self.test_modules_deep = self.test_modules_deep.saturating_sub(1);
+        }
+    }
+}
+
+impl WildcardImports {
+    fn check_exceptions(&self, item: &Item<'_>, segments: &[PathSegment<'_>]) -> bool {
+        in_macro(item.span)
+            || is_prelude_import(segments)
+            || (is_super_only_import(segments) && self.test_modules_deep > 0)
+    }
+}
+
+// Allow "...prelude::*" imports.
+// Many crates have a prelude, and it is imported as a glob by design.
+fn is_prelude_import(segments: &[PathSegment<'_>]) -> bool {
+    segments
+        .iter()
+        .last()
+        .map_or(false, |ps| ps.ident.as_str() == "prelude")
+}
+
+// Allow "super::*" imports in tests.
+fn is_super_only_import(segments: &[PathSegment<'_>]) -> bool {
+    segments.len() == 1 && segments[0].ident.as_str() == "super"
+}
+
+fn is_test_module_or_function(item: &Item<'_>) -> bool {
+    matches!(item.kind, ItemKind::Mod(..)) && item.ident.name.as_str().contains("test")
 }

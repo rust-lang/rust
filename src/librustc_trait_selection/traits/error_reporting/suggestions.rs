@@ -1,21 +1,24 @@
 use super::{
     EvaluationResult, Obligation, ObligationCause, ObligationCauseCode, PredicateObligation,
+    SelectionContext,
 };
 
 use crate::infer::InferCtxt;
+use crate::traits::normalize_projection_type;
 
 use rustc_errors::{error_code, struct_span_err, Applicability, DiagnosticBuilder, Style};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
+use rustc_hir::lang_items;
 use rustc_hir::{AsyncGeneratorKind, GeneratorKind, Node};
 use rustc_middle::ty::TypeckTables;
 use rustc_middle::ty::{
     self, suggest_constraining_type_param, AdtKind, DefIdTree, Infer, InferTy, ToPredicate, Ty,
     TyCtxt, TypeFoldable, WithConstness,
 };
-use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
 use std::fmt;
 
@@ -150,13 +153,22 @@ pub trait InferCtxtExt<'tcx> {
         T: fmt::Display;
 
     fn suggest_new_overflow_limit(&self, err: &mut DiagnosticBuilder<'_>);
+
+    /// Suggest to await before try: future? => future.await?
+    fn suggest_await_before_try(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        obligation: &PredicateObligation<'tcx>,
+        trait_ref: &ty::Binder<ty::TraitRef<'tcx>>,
+        span: Span,
+    );
 }
 
 fn predicate_constraint(generics: &hir::Generics<'_>, pred: String) -> (Span, String) {
     (
         generics.where_clause.span_for_predicates_or_empty_place().shrink_to_hi(),
         format!(
-            "{} {} ",
+            "{} {}",
             if !generics.where_clause.predicates.is_empty() { "," } else { " where" },
             pred,
         ),
@@ -173,7 +185,13 @@ fn suggest_restriction(
     fn_sig: Option<&hir::FnSig<'_>>,
     projection: Option<&ty::ProjectionTy<'_>>,
     trait_ref: ty::PolyTraitRef<'_>,
+    super_traits: Option<(&Ident, &hir::GenericBounds<'_>)>,
 ) {
+    // When we are dealing with a trait, `super_traits` will be `Some`:
+    // Given `trait T: A + B + C {}`
+    //              -  ^^^^^^^^^ GenericBounds
+    //              |
+    //              &Ident
     let span = generics.where_clause.span_for_predicates_or_empty_place();
     if span.from_expansion() || span.desugaring_kind().is_some() {
         return;
@@ -262,10 +280,28 @@ fn suggest_restriction(
         );
     } else {
         // Trivial case: `T` needs an extra bound: `T: Bound`.
-        let (sp, sugg) =
-            predicate_constraint(generics, trait_ref.without_const().to_predicate().to_string());
-        let appl = Applicability::MachineApplicable;
-        err.span_suggestion(sp, &format!("consider further restricting {}", msg), sugg, appl);
+        let (sp, suggestion) = match super_traits {
+            None => {
+                predicate_constraint(generics, trait_ref.without_const().to_predicate().to_string())
+            }
+            Some((ident, bounds)) => match bounds {
+                [.., bound] => (
+                    bound.span().shrink_to_hi(),
+                    format!(" + {}", trait_ref.print_only_trait_path().to_string()),
+                ),
+                [] => (
+                    ident.span.shrink_to_hi(),
+                    format!(": {}", trait_ref.print_only_trait_path().to_string()),
+                ),
+            },
+        };
+
+        err.span_suggestion_verbose(
+            sp,
+            &format!("consider further restricting {}", msg),
+            suggestion,
+            Applicability::MachineApplicable,
+        );
     }
 }
 
@@ -288,13 +324,35 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         let mut hir_id = body_id;
         while let Some(node) = self.tcx.hir().find(hir_id) {
             match node {
+                hir::Node::Item(hir::Item {
+                    ident,
+                    kind: hir::ItemKind::Trait(_, _, generics, bounds, _),
+                    ..
+                }) if self_ty == self.tcx.types.self_param => {
+                    assert!(param_ty);
+                    // Restricting `Self` for a single method.
+                    suggest_restriction(
+                        &generics,
+                        "`Self`",
+                        err,
+                        None,
+                        projection,
+                        trait_ref,
+                        Some((ident, bounds)),
+                    );
+                    return;
+                }
+
                 hir::Node::TraitItem(hir::TraitItem {
                     generics,
                     kind: hir::TraitItemKind::Fn(..),
                     ..
-                }) if param_ty && self_ty == self.tcx.types.self_param => {
+                }) if self_ty == self.tcx.types.self_param => {
+                    assert!(param_ty);
                     // Restricting `Self` for a single method.
-                    suggest_restriction(&generics, "`Self`", err, None, projection, trait_ref);
+                    suggest_restriction(
+                        &generics, "`Self`", err, None, projection, trait_ref, None,
+                    );
                     return;
                 }
 
@@ -319,6 +377,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         Some(fn_sig),
                         projection,
                         trait_ref,
+                        None,
                     );
                     return;
                 }
@@ -336,6 +395,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         None,
                         projection,
                         trait_ref,
+                        None,
                     );
                     return;
                 }
@@ -691,6 +751,15 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
 
             if let ty::Ref(region, t_type, mutability) = trait_ref.skip_binder().self_ty().kind {
+                if region.is_late_bound() || t_type.has_escaping_bound_vars() {
+                    // Avoid debug assertion in `mk_obligation_for_def_id`.
+                    //
+                    // If the self type has escaping bound vars then it's not
+                    // going to be the type of an expression, so the suggestion
+                    // probably won't apply anyway.
+                    return;
+                }
+
                 let trait_type = match mutability {
                     hir::Mutability::Mut => self.tcx.mk_imm_ref(region, t_type),
                     hir::Mutability::Not => self.tcx.mk_mut_ref(region, t_type),
@@ -1616,7 +1685,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 if suggest_const_in_array_repeat_expressions {
                     err.note(
                         "this array initializer can be evaluated at compile-time, see issue \
-                         #48147 <https://github.com/rust-lang/rust/issues/49147> \
+                         #49147 <https://github.com/rust-lang/rust/issues/49147> \
                          for more information",
                     );
                     if tcx.sess.opts.unstable_features.is_nightly_build() {
@@ -1765,6 +1834,95 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             suggested_limit, self.tcx.crate_name,
         ));
     }
+
+    fn suggest_await_before_try(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        obligation: &PredicateObligation<'tcx>,
+        trait_ref: &ty::Binder<ty::TraitRef<'tcx>>,
+        span: Span,
+    ) {
+        debug!(
+            "suggest_await_befor_try: obligation={:?}, span={:?}, trait_ref={:?}, trait_ref_self_ty={:?}",
+            obligation,
+            span,
+            trait_ref,
+            trait_ref.self_ty()
+        );
+        let body_hir_id = obligation.cause.body_id;
+        let item_id = self.tcx.hir().get_parent_node(body_hir_id);
+
+        if let Some(body_id) = self.tcx.hir().maybe_body_owned_by(item_id) {
+            let body = self.tcx.hir().body(body_id);
+            if let Some(hir::GeneratorKind::Async(_)) = body.generator_kind {
+                let future_trait =
+                    self.tcx.require_lang_item(lang_items::FutureTraitLangItem, None);
+
+                let self_ty = self.resolve_vars_if_possible(&trait_ref.self_ty());
+
+                let impls_future = self.tcx.type_implements_trait((
+                    future_trait,
+                    self_ty,
+                    ty::List::empty(),
+                    obligation.param_env,
+                ));
+
+                let item_def_id = self
+                    .tcx
+                    .associated_items(future_trait)
+                    .in_definition_order()
+                    .next()
+                    .unwrap()
+                    .def_id;
+                // `<T as Future>::Output`
+                let projection_ty = ty::ProjectionTy {
+                    // `T`
+                    substs: self.tcx.mk_substs_trait(
+                        trait_ref.self_ty(),
+                        self.fresh_substs_for_item(span, item_def_id),
+                    ),
+                    // `Future::Output`
+                    item_def_id,
+                };
+
+                let mut selcx = SelectionContext::new(self);
+
+                let mut obligations = vec![];
+                let normalized_ty = normalize_projection_type(
+                    &mut selcx,
+                    obligation.param_env,
+                    projection_ty,
+                    obligation.cause.clone(),
+                    0,
+                    &mut obligations,
+                );
+
+                debug!(
+                    "suggest_await_befor_try: normalized_projection_type {:?}",
+                    self.resolve_vars_if_possible(&normalized_ty)
+                );
+                let try_obligation = self.mk_obligation_for_def_id(
+                    trait_ref.def_id(),
+                    normalized_ty,
+                    obligation.cause.clone(),
+                    obligation.param_env,
+                );
+                debug!("suggest_await_befor_try: try_trait_obligation {:?}", try_obligation);
+                if self.predicate_may_hold(&try_obligation) && impls_future {
+                    if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
+                        if snippet.ends_with('?') {
+                            err.span_suggestion(
+                                span,
+                                "consider using `.await` here",
+                                format!("{}.await?", snippet.trim_end_matches('?')),
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 /// Collect all the returned expressions within the input expression.
@@ -1854,7 +2012,7 @@ impl NextTypeParamName for &[hir::GenericParam<'_>] {
     fn next_type_param_name(&self, name: Option<&str>) -> String {
         // This is the whitelist of possible parameter names that we might suggest.
         let name = name.and_then(|n| n.chars().next()).map(|c| c.to_string().to_uppercase());
-        let name = name.as_ref().map(|s| s.as_str());
+        let name = name.as_deref();
         let possible_names = [name.unwrap_or("T"), "T", "U", "V", "X", "Y", "Z", "A", "B", "C"];
         let used_names = self
             .iter()

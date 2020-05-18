@@ -40,15 +40,12 @@ use rustc_hir::{
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::map::Map;
-use rustc_middle::traits;
 use rustc_middle::ty::{self, layout::IntegerExt, subst::GenericArg, Binder, Ty, TyCtxt, TypeFoldable};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::original_sp;
 use rustc_span::symbol::{self, kw, Symbol};
 use rustc_span::{BytePos, Pos, Span, DUMMY_SP};
 use rustc_target::abi::Integer;
-use rustc_trait_selection::traits::predicate_for_trait_def;
-use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::query::normalize::AtExt;
 use smallvec::SmallVec;
 
@@ -326,19 +323,8 @@ pub fn implements_trait<'a, 'tcx>(
     trait_id: DefId,
     ty_params: &[GenericArg<'tcx>],
 ) -> bool {
-    let ty = cx.tcx.erase_regions(&ty);
-    let obligation = predicate_for_trait_def(
-        cx.tcx,
-        cx.param_env,
-        traits::ObligationCause::dummy(),
-        trait_id,
-        0,
-        ty,
-        ty_params,
-    );
-    cx.tcx
-        .infer_ctxt()
-        .enter(|infcx| infcx.predicate_must_hold_modulo_regions(&obligation))
+    let ty_params = cx.tcx.mk_substs(ty_params.iter());
+    cx.tcx.type_implements_trait((trait_id, ty, ty_params, cx.param_env))
 }
 
 /// Gets the `hir::TraitRef` of the trait the given method is implemented for.
@@ -933,6 +919,7 @@ pub fn is_ctor_or_promotable_const_function(cx: &LateContext<'_, '_>, expr: &Exp
 }
 
 /// Returns `true` if a pattern is refutable.
+// TODO: should be implemented using rustc/mir_build/hair machinery
 pub fn is_refutable(cx: &LateContext<'_, '_>, pat: &Pat<'_>) -> bool {
     fn is_enum_variant(cx: &LateContext<'_, '_>, qpath: &QPath<'_>, id: HirId) -> bool {
         matches!(
@@ -946,27 +933,34 @@ pub fn is_refutable(cx: &LateContext<'_, '_>, pat: &Pat<'_>) -> bool {
     }
 
     match pat.kind {
-        PatKind::Binding(..) | PatKind::Wild => false,
+        PatKind::Wild => false,
+        PatKind::Binding(_, _, _, pat) => pat.map_or(false, |pat| is_refutable(cx, pat)),
         PatKind::Box(ref pat) | PatKind::Ref(ref pat, _) => is_refutable(cx, pat),
         PatKind::Lit(..) | PatKind::Range(..) => true,
         PatKind::Path(ref qpath) => is_enum_variant(cx, qpath, pat.hir_id),
-        PatKind::Or(ref pats) | PatKind::Tuple(ref pats, _) => are_refutable(cx, pats.iter().map(|pat| &**pat)),
+        PatKind::Or(ref pats) => {
+            // TODO: should be the honest check, that pats is exhaustive set
+            are_refutable(cx, pats.iter().map(|pat| &**pat))
+        },
+        PatKind::Tuple(ref pats, _) => are_refutable(cx, pats.iter().map(|pat| &**pat)),
         PatKind::Struct(ref qpath, ref fields, _) => {
-            if is_enum_variant(cx, qpath, pat.hir_id) {
-                true
-            } else {
-                are_refutable(cx, fields.iter().map(|field| &*field.pat))
-            }
+            is_enum_variant(cx, qpath, pat.hir_id) || are_refutable(cx, fields.iter().map(|field| &*field.pat))
         },
         PatKind::TupleStruct(ref qpath, ref pats, _) => {
-            if is_enum_variant(cx, qpath, pat.hir_id) {
-                true
-            } else {
-                are_refutable(cx, pats.iter().map(|pat| &**pat))
-            }
+            is_enum_variant(cx, qpath, pat.hir_id) || are_refutable(cx, pats.iter().map(|pat| &**pat))
         },
         PatKind::Slice(ref head, ref middle, ref tail) => {
-            are_refutable(cx, head.iter().chain(middle).chain(tail.iter()).map(|pat| &**pat))
+            match &cx.tables.node_type(pat.hir_id).kind {
+                ty::Slice(..) => {
+                    // [..] is the only irrefutable slice pattern.
+                    !head.is_empty() || middle.is_none() || !tail.is_empty()
+                },
+                ty::Array(..) => are_refutable(cx, head.iter().chain(middle).chain(tail.iter()).map(|pat| &**pat)),
+                _ => {
+                    // unreachable!()
+                    true
+                },
+            }
         },
     }
 }

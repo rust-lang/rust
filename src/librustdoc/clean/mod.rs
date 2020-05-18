@@ -1722,7 +1722,6 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
 
             ty::Bound(..) => panic!("Bound"),
             ty::Placeholder(..) => panic!("Placeholder"),
-            ty::UnnormalizedProjection(..) => panic!("UnnormalizedProjection"),
             ty::GeneratorWitness(..) => panic!("GeneratorWitness"),
             ty::Infer(..) => panic!("Infer"),
             ty::Error => panic!("Error"),

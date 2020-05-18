@@ -540,9 +540,6 @@ pub trait PrettyPrinter<'tcx>:
                 p!(print_def_path(def_id, &[]));
             }
             ty::Projection(ref data) => p!(print(data)),
-            ty::UnnormalizedProjection(ref data) => {
-                p!(write("Unnormalized("), print(data), write(")"))
-            }
             ty::Placeholder(placeholder) => p!(write("Placeholder({:?})", placeholder)),
             ty::Opaque(def_id, substs) => {
                 // FIXME(eddyb) print this with `print_def_path`.
@@ -701,12 +698,14 @@ pub trait PrettyPrinter<'tcx>:
                 if self.tcx().sess.verbose() {
                     p!(write("{:?}", sz));
                 } else if let ty::ConstKind::Unevaluated(..) = sz.val {
-                    // do not try to evaluate unevaluated constants. If we are const evaluating an
+                    // Do not try to evaluate unevaluated constants. If we are const evaluating an
                     // array length anon const, rustc will (with debug assertions) print the
                     // constant's path. Which will end up here again.
                     p!(write("_"));
                 } else if let Some(n) = sz.val.try_to_bits(self.tcx().data_layout.pointer_size) {
                     p!(write("{}", n));
+                } else if let ty::ConstKind::Param(param) = sz.val {
+                    p!(write("{}", param));
                 } else {
                     p!(write("_"));
                 }

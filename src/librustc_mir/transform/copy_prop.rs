@@ -73,7 +73,12 @@ impl<'tcx> MirPass<'tcx> for CopyPropagation {
                     }
                     // Conservatively gives up if the dest is an argument,
                     // because there may be uses of the original argument value.
-                    if body.local_kind(dest_local) == LocalKind::Arg {
+                    // Also gives up on the return place, as we cannot propagate into its implicit
+                    // use by `return`.
+                    if matches!(
+                        body.local_kind(dest_local),
+                        LocalKind::Arg | LocalKind::ReturnPointer
+                    ) {
                         debug!("  Can't copy-propagate local: dest {:?} (argument)", dest_local);
                         continue;
                     }

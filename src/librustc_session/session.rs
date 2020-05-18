@@ -808,7 +808,7 @@ impl Session {
                 let mut fuel = self.optimization_fuel.lock();
                 ret = fuel.remaining != 0;
                 if fuel.remaining == 0 && !fuel.out_of_fuel {
-                    eprintln!("optimization-fuel-exhausted: {}", msg());
+                    self.warn(&format!("optimization-fuel-exhausted: {}", msg()));
                     fuel.out_of_fuel = true;
                 } else if fuel.remaining > 0 {
                     fuel.remaining -= 1;
@@ -935,6 +935,16 @@ impl Session {
         // If user didn't explicitly forced us to use / skip the PLT,
         // then try to skip it where possible.
         dbg_opts.plt.unwrap_or(needs_plt || !full_relro)
+    }
+
+    /// Checks if LLVM lifetime markers should be emitted.
+    pub fn emit_lifetime_markers(&self) -> bool {
+        match self.opts.debugging_opts.sanitizer {
+            // AddressSanitizer uses lifetimes to detect use after scope bugs.
+            // MemorySanitizer uses lifetimes to detect use of uninitialized stack variables.
+            Some(Sanitizer::Address | Sanitizer::Memory) => true,
+            _ => self.opts.optimize != config::OptLevel::No,
+        }
     }
 }
 

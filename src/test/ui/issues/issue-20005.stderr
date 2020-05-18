@@ -11,7 +11,7 @@ LL |     ) -> <Dst as From<Self>>::Result where Dst: From<Self> {
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
 help: consider further restricting `Self`
    |
-LL |     ) -> <Dst as From<Self>>::Result where Dst: From<Self>, Self: std::marker::Sized  {
+LL |     ) -> <Dst as From<Self>>::Result where Dst: From<Self>, Self: std::marker::Sized {
    |                                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider relaxing the implicit `Sized` restriction
    |

@@ -158,6 +158,8 @@ define_Conf! {
     (max_struct_bools, "max_struct_bools": u64, 3),
     /// Lint: FN_PARAMS_EXCESSIVE_BOOLS. The maximum number of bools function parameters can have
     (max_fn_params_bools, "max_fn_params_bools": u64, 3),
+    /// Lint: WILDCARD_IMPORTS. Whether to allow certain wildcard imports (prelude, super in tests).
+    (warn_on_all_wildcard_imports, "warn_on_all_wildcard_imports": bool, false),
 }
 
 impl Default for Conf {

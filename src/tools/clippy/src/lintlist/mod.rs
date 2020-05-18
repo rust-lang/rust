@@ -1082,11 +1082,25 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "main_recursion",
     },
     Lint {
+        name: "manual_async_fn",
+        group: "style",
+        desc: "manual implementations of `async` functions can be simplified using the dedicated syntax",
+        deprecation: None,
+        module: "manual_async_fn",
+    },
+    Lint {
         name: "manual_memcpy",
         group: "perf",
         desc: "manually copying items between slices",
         deprecation: None,
         module: "loops",
+    },
+    Lint {
+        name: "manual_non_exhaustive",
+        group: "style",
+        desc: "manual implementations of the non-exhaustive pattern can be simplified using #[non_exhaustive]",
+        deprecation: None,
+        module: "manual_non_exhaustive",
     },
     Lint {
         name: "manual_saturating_arithmetic",
@@ -1146,7 +1160,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "match_on_vec_items",
-        group: "correctness",
+        group: "pedantic",
         desc: "matching on vector elements can panic",
         deprecation: None,
         module: "match_on_vec_items",

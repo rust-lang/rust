@@ -20,7 +20,7 @@ use core::mem::{self, align_of, align_of_val, size_of_val};
 use core::ops::{CoerceUnsized, Deref, DispatchFromDyn, Receiver};
 use core::pin::Pin;
 use core::ptr::{self, NonNull};
-use core::slice::{self, from_raw_parts_mut};
+use core::slice::from_raw_parts_mut;
 use core::sync::atomic;
 use core::sync::atomic::Ordering::{Acquire, Relaxed, Release, SeqCst};
 
@@ -835,12 +835,14 @@ impl<T: ?Sized> Arc<T> {
     ///
     /// unsafe {
     ///     let ptr = Arc::into_raw(five);
-    ///     Arc::decr_strong_count(ptr);
+    ///     Arc::incr_strong_count(ptr);
     ///
-    ///     // This assertion is deterministic because we haven't shared
+    ///     // Those assertions are deterministic because we haven't shared
     ///     // the `Arc` between threads.
     ///     let five = Arc::from_raw(ptr);
-    ///     assert_eq!(0, Arc::strong_count(&five));
+    ///     assert_eq!(2, Arc::strong_count(&five));
+    ///     Arc::decr_strong_count(ptr);
+    ///     assert_eq!(1, Arc::strong_count(&five));
     /// }
     /// ```
     #[inline]
@@ -1094,6 +1096,8 @@ impl<T: ?Sized> Clone for Arc<T> {
         // We abort because such a program is incredibly degenerate, and we
         // don't care to support it.
         if old_size > MAX_REFCOUNT {
+            // remove `unsafe` on bootstrap bump
+            #[cfg_attr(not(bootstrap), allow(unused_unsafe))]
             unsafe {
                 abort();
             }
@@ -1612,6 +1616,8 @@ impl<T: ?Sized> Weak<T> {
 
             // See comments in `Arc::clone` for why we do this (for `mem::forget`).
             if n > MAX_REFCOUNT {
+                // remove `unsafe` on bootstrap bump
+                #[cfg_attr(not(bootstrap), allow(unused_unsafe))]
                 unsafe {
                     abort();
                 }
@@ -1751,6 +1757,7 @@ impl<T: ?Sized> Clone for Weak<T> {
 
         // See comments in Arc::clone() for why we do this (for mem::forget).
         if old_size > MAX_REFCOUNT {
+            #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // remove `unsafe` on bootstrap bump
             unsafe {
                 abort();
             }
@@ -1852,7 +1859,7 @@ impl<T: ?Sized + PartialEq> ArcEqIdent<T> for Arc<T> {
 ///
 /// We can only do this when `T: Eq` as a `PartialEq` might be deliberately irreflexive.
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized + Eq> ArcEqIdent<T> for Arc<T> {
+impl<T: ?Sized + crate::rc::MarkerEq> ArcEqIdent<T> for Arc<T> {
     #[inline]
     fn eq(&self, other: &Arc<T>) -> bool {
         Arc::ptr_eq(self, other) || **self == **other
@@ -2178,25 +2185,25 @@ impl<T> iter::FromIterator<T> for Arc<[T]> {
     /// # assert_eq!(&*evens, &*(0..10).collect::<Vec<_>>());
     /// ```
     fn from_iter<I: iter::IntoIterator<Item = T>>(iter: I) -> Self {
-        ArcFromIter::from_iter(iter.into_iter())
+        ToArcSlice::to_arc_slice(iter.into_iter())
     }
 }
 
 /// Specialization trait used for collecting into `Arc<[T]>`.
-trait ArcFromIter<T, I> {
-    fn from_iter(iter: I) -> Self;
+trait ToArcSlice<T>: Iterator<Item = T> + Sized {
+    fn to_arc_slice(self) -> Arc<[T]>;
 }
 
-impl<T, I: Iterator<Item = T>> ArcFromIter<T, I> for Arc<[T]> {
-    default fn from_iter(iter: I) -> Self {
-        iter.collect::<Vec<T>>().into()
+impl<T, I: Iterator<Item = T>> ToArcSlice<T> for I {
+    default fn to_arc_slice(self) -> Arc<[T]> {
+        self.collect::<Vec<T>>().into()
     }
 }
 
-impl<T, I: iter::TrustedLen<Item = T>> ArcFromIter<T, I> for Arc<[T]> {
-    default fn from_iter(iter: I) -> Self {
+impl<T, I: iter::TrustedLen<Item = T>> ToArcSlice<T> for I {
+    fn to_arc_slice(self) -> Arc<[T]> {
         // This is the case for a `TrustedLen` iterator.
-        let (low, high) = iter.size_hint();
+        let (low, high) = self.size_hint();
         if let Some(high) = high {
             debug_assert_eq!(
                 low,
@@ -2207,26 +2214,12 @@ impl<T, I: iter::TrustedLen<Item = T>> ArcFromIter<T, I> for Arc<[T]> {
 
             unsafe {
                 // SAFETY: We need to ensure that the iterator has an exact length and we have.
-                Arc::from_iter_exact(iter, low)
+                Arc::from_iter_exact(self, low)
             }
         } else {
             // Fall back to normal implementation.
-            iter.collect::<Vec<T>>().into()
+            self.collect::<Vec<T>>().into()
         }
-    }
-}
-
-impl<'a, T: 'a + Clone> ArcFromIter<&'a T, slice::Iter<'a, T>> for Arc<[T]> {
-    fn from_iter(iter: slice::Iter<'a, T>) -> Self {
-        // Delegate to `impl<T: Clone> From<&[T]> for Arc<[T]>`.
-        //
-        // In the case that `T: Copy`, we get to use `ptr::copy_nonoverlapping`
-        // which is even more performant.
-        //
-        // In the fall-back case we have `T: Clone`. This is still better
-        // than the `TrustedLen` implementation as slices have a known length
-        // and so we get to avoid calling `size_hint` and avoid the branching.
-        iter.as_slice().into()
     }
 }
 

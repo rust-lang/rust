@@ -38,8 +38,6 @@ pub fn pkgname(builder: &Builder<'_>, component: &str) -> String {
         format!("{}-{}", component, builder.rustfmt_package_vers())
     } else if component == "llvm-tools" {
         format!("{}-{}", component, builder.llvm_tools_package_vers())
-    } else if component == "lldb" {
-        format!("{}-{}", component, builder.lldb_package_vers())
     } else {
         assert!(component.starts_with("rust"));
         format!("{}-{}", component, builder.rust_package_vers())
@@ -1645,7 +1643,6 @@ impl Step for Extended {
         let llvm_tools_installer = builder.ensure(LlvmTools { target });
         let clippy_installer = builder.ensure(Clippy { compiler, target });
         let miri_installer = builder.ensure(Miri { compiler, target });
-        let lldb_installer = builder.ensure(Lldb { target });
         let mingw_installer = builder.ensure(Mingw { host: target });
         let analysis_installer = builder.ensure(Analysis { compiler, target });
 
@@ -1681,7 +1678,6 @@ impl Step for Extended {
         tarballs.extend(miri_installer.clone());
         tarballs.extend(rustfmt_installer.clone());
         tarballs.extend(llvm_tools_installer);
-        tarballs.extend(lldb_installer);
         tarballs.push(analysis_installer);
         tarballs.push(std_installer);
         if builder.config.docs {
@@ -2222,7 +2218,6 @@ impl Step for HashSign {
         cmd.arg(builder.package_vers(&builder.release_num("miri")));
         cmd.arg(builder.package_vers(&builder.release_num("rustfmt")));
         cmd.arg(builder.llvm_tools_package_vers());
-        cmd.arg(builder.lldb_package_vers());
 
         builder.create_dir(&distdir(builder));
 
@@ -2344,122 +2339,6 @@ impl Step for LlvmTools {
             .arg(format!("--package-name={}-{}", name, target))
             .arg("--legacy-manifest-dirs=rustlib,cargo")
             .arg("--component-name=llvm-tools-preview");
-
-        builder.run(&mut cmd);
-        Some(distdir(builder).join(format!("{}-{}.tar.gz", name, target)))
-    }
-}
-
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct Lldb {
-    pub target: Interned<String>,
-}
-
-impl Step for Lldb {
-    type Output = Option<PathBuf>;
-    const ONLY_HOSTS: bool = true;
-    const DEFAULT: bool = true;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/llvm-project/lldb").path("src/tools/lldb")
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Lldb { target: run.target });
-    }
-
-    fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
-        let target = self.target;
-
-        if builder.config.dry_run {
-            return None;
-        }
-
-        let bindir = builder.llvm_out(target).join("bin");
-        let lldb_exe = bindir.join(exe("lldb", &target));
-        if !lldb_exe.exists() {
-            return None;
-        }
-
-        builder.info(&format!("Dist Lldb ({})", target));
-        let src = builder.src.join("src/llvm-project/lldb");
-        let name = pkgname(builder, "lldb");
-
-        let tmp = tmpdir(builder);
-        let image = tmp.join("lldb-image");
-        drop(fs::remove_dir_all(&image));
-
-        // Prepare the image directory
-        let root = image.join("lib/rustlib").join(&*target);
-        let dst = root.join("bin");
-        t!(fs::create_dir_all(&dst));
-        for program in &["lldb", "lldb-argdumper", "lldb-mi", "lldb-server"] {
-            let exe = bindir.join(exe(program, &target));
-            builder.install(&exe, &dst, 0o755);
-        }
-
-        // The libraries.
-        let libdir = builder.llvm_out(target).join("lib");
-        let dst = root.join("lib");
-        t!(fs::create_dir_all(&dst));
-        for entry in t!(fs::read_dir(&libdir)) {
-            let entry = entry.unwrap();
-            if let Ok(name) = entry.file_name().into_string() {
-                if name.starts_with("liblldb.") && !name.ends_with(".a") {
-                    if t!(entry.file_type()).is_symlink() {
-                        builder.copy_to_folder(&entry.path(), &dst);
-                    } else {
-                        builder.install(&entry.path(), &dst, 0o755);
-                    }
-                }
-            }
-        }
-
-        // The lldb scripts might be installed in lib/python$version
-        // or in lib64/python$version.  If lib64 exists, use it;
-        // otherwise lib.
-        let libdir = builder.llvm_out(target).join("lib64");
-        let (libdir, libdir_name) = if libdir.exists() {
-            (libdir, "lib64")
-        } else {
-            (builder.llvm_out(target).join("lib"), "lib")
-        };
-        for entry in t!(fs::read_dir(&libdir)) {
-            let entry = t!(entry);
-            if let Ok(name) = entry.file_name().into_string() {
-                if name.starts_with("python") {
-                    let dst = root.join(libdir_name).join(entry.file_name());
-                    t!(fs::create_dir_all(&dst));
-                    builder.cp_r(&entry.path(), &dst);
-                    break;
-                }
-            }
-        }
-
-        // Prepare the overlay
-        let overlay = tmp.join("lldb-overlay");
-        drop(fs::remove_dir_all(&overlay));
-        builder.create_dir(&overlay);
-        builder.install(&src.join("LICENSE.TXT"), &overlay, 0o644);
-        builder.create(&overlay.join("version"), &builder.lldb_vers());
-
-        // Generate the installer tarball
-        let mut cmd = rust_installer(builder);
-        cmd.arg("generate")
-            .arg("--product-name=Rust")
-            .arg("--rel-manifest-dir=rustlib")
-            .arg("--success-message=lldb-installed.")
-            .arg("--image-dir")
-            .arg(&image)
-            .arg("--work-dir")
-            .arg(&tmpdir(builder))
-            .arg("--output-dir")
-            .arg(&distdir(builder))
-            .arg("--non-installed-overlay")
-            .arg(&overlay)
-            .arg(format!("--package-name={}-{}", name, target))
-            .arg("--legacy-manifest-dirs=rustlib,cargo")
-            .arg("--component-name=lldb-preview");
 
         builder.run(&mut cmd);
         Some(distdir(builder).join(format!("{}-{}.tar.gz", name, target)))

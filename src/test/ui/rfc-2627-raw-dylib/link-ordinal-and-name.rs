@@ -1,5 +1,5 @@
 #![feature(raw_dylib)]
-//~^ WARN the feature `raw_dylib` is incomplete and may cause the compiler to crash
+//~^ WARN the feature `raw_dylib` is incomplete
 
 #[link(name="foo")]
 extern {

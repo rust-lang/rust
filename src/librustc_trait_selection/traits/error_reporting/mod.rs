@@ -283,6 +283,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             .unwrap_or(false);
                         let is_from = format!("{}", trait_ref.print_only_trait_path())
                             .starts_with("std::convert::From<");
+                        let is_unsize =
+                            { Some(trait_ref.def_id()) == self.tcx.lang_items().unsize_trait() };
                         let (message, note) = if is_try && is_from {
                             (
                                 Some(format!(
@@ -400,9 +402,21 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         self.suggest_remove_reference(&obligation, &mut err, &trait_ref);
                         self.suggest_semicolon_removal(&obligation, &mut err, span, &trait_ref);
                         self.note_version_mismatch(&mut err, &trait_ref);
+                        self.suggest_await_before_try(&mut err, &obligation, &trait_ref, span);
                         if self.suggest_impl_trait(&mut err, span, &obligation, &trait_ref) {
                             err.emit();
                             return;
+                        }
+
+                        if is_unsize {
+                            // If the obligation failed due to a missing implementation of the
+                            // `Unsize` trait, give a pointer to why that might be the case
+                            err.note(
+                                "all implementations of `Unsize` are provided \
+                                automatically by the compiler, see \
+                                <https://doc.rust-lang.org/stable/std/marker/trait.Unsize.html> \
+                                for more information",
+                            );
                         }
 
                         // Try to report a help message
@@ -427,12 +441,16 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                 let impl_candidates = self.find_similar_impl_candidates(trait_ref);
                                 self.report_similar_impl_candidates(impl_candidates, &mut err);
                             }
-                            self.suggest_change_mut(
-                                &obligation,
-                                &mut err,
-                                &trait_ref,
-                                points_at_arg,
-                            );
+                            // Changing mutability doesn't make a difference to whether we have
+                            // an `Unsize` impl (Fixes ICE in #71036)
+                            if !is_unsize {
+                                self.suggest_change_mut(
+                                    &obligation,
+                                    &mut err,
+                                    &trait_ref,
+                                    points_at_arg,
+                                );
+                            }
                         }
 
                         // If this error is due to `!: Trait` not implemented but `(): Trait` is
@@ -1194,7 +1212,6 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                 ty::Foreign(..) => Some(19),
                 ty::GeneratorWitness(..) => Some(20),
                 ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) | ty::Error => None,
-                ty::UnnormalizedProjection(..) => bug!("only used with chalk-engine"),
             }
         }
 
@@ -1638,7 +1655,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                     {
                         let (span, separator) = match param.bounds {
                             [] => (span.shrink_to_hi(), ":"),
-                            [.., bound] => (bound.span().shrink_to_hi(), " + "),
+                            [.., bound] => (bound.span().shrink_to_hi(), " +"),
                         };
                         err.span_suggestion_verbose(
                             span,

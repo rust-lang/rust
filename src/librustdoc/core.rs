@@ -129,7 +129,7 @@ impl<'tcx> DocContext<'tcx> {
         );
 
         MAX_DEF_ID.with(|m| {
-            m.borrow_mut().entry(def_id.krate.clone()).or_insert(start_def_id);
+            m.borrow_mut().entry(def_id.krate).or_insert(start_def_id);
         });
 
         self.all_fake_def_ids.borrow_mut().insert(def_id);

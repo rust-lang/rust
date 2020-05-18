@@ -8,6 +8,7 @@ use rustc_ast::ast::{self, IntTy, UintTy};
 use rustc_attr as attr;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir as hir;
+use rustc_hir::lang_items::{GeneratorStateLangItem, PinTypeLangItem};
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_session::{DataTypeKind, FieldInfo, SizeKind, VariantInfo};
@@ -1241,11 +1242,9 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 tcx.layout_raw(param_env.and(normalized))?
             }
 
-            ty::Bound(..)
-            | ty::Placeholder(..)
-            | ty::UnnormalizedProjection(..)
-            | ty::GeneratorWitness(..)
-            | ty::Infer(_) => bug!("Layout::compute: unexpected type `{}`", ty),
+            ty::Bound(..) | ty::Placeholder(..) | ty::GeneratorWitness(..) | ty::Infer(_) => {
+                bug!("Layout::compute: unexpected type `{}`", ty)
+            }
 
             ty::Param(_) | ty::Error => {
                 return Err(LayoutError::Unknown(ty));
@@ -2138,7 +2137,6 @@ where
             }
 
             ty::Projection(_)
-            | ty::UnnormalizedProjection(..)
             | ty::Bound(..)
             | ty::Placeholder(..)
             | ty::Opaque(..)
@@ -2317,13 +2315,13 @@ impl<'tcx> ty::Instance<'tcx> {
                 let env_region = ty::ReLateBound(ty::INNERMOST, ty::BrEnv);
                 let env_ty = tcx.mk_mut_ref(tcx.mk_region(env_region), ty);
 
-                let pin_did = tcx.lang_items().pin_type().unwrap();
+                let pin_did = tcx.require_lang_item(PinTypeLangItem, None);
                 let pin_adt_ref = tcx.adt_def(pin_did);
                 let pin_substs = tcx.intern_substs(&[env_ty.into()]);
                 let env_ty = tcx.mk_adt(pin_adt_ref, pin_substs);
 
                 sig.map_bound(|sig| {
-                    let state_did = tcx.lang_items().gen_state().unwrap();
+                    let state_did = tcx.require_lang_item(GeneratorStateLangItem, None);
                     let state_adt_ref = tcx.adt_def(state_did);
                     let state_substs = tcx.intern_substs(&[
                         sig.yield_ty.into(),

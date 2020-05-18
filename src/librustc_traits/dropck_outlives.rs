@@ -271,8 +271,6 @@ fn dtorck_constraint_for_ty<'tcx>(
             constraints.dtorck_types.push(ty);
         }
 
-        ty::UnnormalizedProjection(..) => bug!("only used with chalk-engine"),
-
         ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) | ty::Error => {
             // By the time this code runs, all type variables ought to
             // be fully resolved.

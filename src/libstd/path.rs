@@ -157,10 +157,10 @@ pub enum Prefix<'a> {
         #[stable(feature = "rust1", since = "1.0.0")] &'a OsStr,
     ),
 
-    /// Verbatim disk prefix, e.g., `\\?\C:\`.
+    /// Verbatim disk prefix, e.g., `\\?\C:`.
     ///
     /// Verbatim disk prefixes consist of `\\?\` immediately followed by the
-    /// drive letter and `:\`.
+    /// drive letter and `:`.
     #[stable(feature = "rust1", since = "1.0.0")]
     VerbatimDisk(#[stable(feature = "rust1", since = "1.0.0")] u8),
 

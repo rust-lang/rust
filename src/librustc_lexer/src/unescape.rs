@@ -58,6 +58,42 @@ pub enum EscapeError {
     NonAsciiCharInByteString,
 }
 
+/// Takes a contents of a literal (without quotes) and produces a
+/// sequence of escaped characters or errors.
+/// Values are returned through invoking of the provided callback.
+pub fn unescape_literal<F>(literal_text: &str, mode: Mode, callback: &mut F)
+where
+    F: FnMut(Range<usize>, Result<char, EscapeError>),
+{
+    match mode {
+        Mode::Char | Mode::Byte => {
+            let mut chars = literal_text.chars();
+            let result = unescape_char_or_byte(&mut chars, mode);
+            // The Chars iterator moved forward.
+            callback(0..(literal_text.len() - chars.as_str().len()), result);
+        }
+        Mode::Str | Mode::ByteStr => unescape_str_or_byte_str(literal_text, mode, callback),
+        // NOTE: Raw strings do not perform any explicit character escaping, here we
+        // only translate CRLF to LF and produce errors on bare CR.
+        Mode::RawStr | Mode::RawByteStr => {
+            unescape_raw_str_or_byte_str(literal_text, mode, callback)
+        }
+    }
+}
+
+/// Takes a contents of a byte, byte string or raw byte string (without quotes)
+/// and produces a sequence of bytes or errors.
+/// Values are returned through invoking of the provided callback.
+pub fn unescape_byte_literal<F>(literal_text: &str, mode: Mode, callback: &mut F)
+where
+    F: FnMut(Range<usize>, Result<u8, EscapeError>),
+{
+    assert!(mode.is_bytes());
+    unescape_literal(literal_text, mode, &mut |range, result| {
+        callback(range, result.map(byte_from_char));
+    })
+}
+
 /// Takes a contents of a char literal (without quotes), and returns an
 /// unescaped char or an error
 pub fn unescape_char(literal_text: &str) -> Result<char, (usize, EscapeError)> {
@@ -75,54 +111,6 @@ pub fn unescape_byte(literal_text: &str) -> Result<u8, (usize, EscapeError)> {
         .map_err(|err| (literal_text.len() - chars.as_str().len(), err))
 }
 
-/// Takes a contents of a string literal (without quotes) and produces a
-/// sequence of escaped characters or errors.
-/// Values are returned through invoking of the provided callback.
-pub fn unescape_str<F>(literal_text: &str, callback: &mut F)
-where
-    F: FnMut(Range<usize>, Result<char, EscapeError>),
-{
-    unescape_str_or_byte_str(literal_text, Mode::Str, callback)
-}
-
-/// Takes a contents of a byte string literal (without quotes) and produces a
-/// sequence of bytes or errors.
-/// Values are returned through invoking of the provided callback.
-pub fn unescape_byte_str<F>(literal_text: &str, callback: &mut F)
-where
-    F: FnMut(Range<usize>, Result<u8, EscapeError>),
-{
-    unescape_str_or_byte_str(literal_text, Mode::ByteStr, &mut |range, char| {
-        callback(range, char.map(byte_from_char))
-    })
-}
-
-/// Takes a contents of a raw string literal (without quotes) and produces a
-/// sequence of characters or errors.
-/// Values are returned through invoking of the provided callback.
-/// NOTE: Raw strings do not perform any explicit character escaping, here we
-/// only translate CRLF to LF and produce errors on bare CR.
-pub fn unescape_raw_str<F>(literal_text: &str, callback: &mut F)
-where
-    F: FnMut(Range<usize>, Result<char, EscapeError>),
-{
-    unescape_raw_str_or_byte_str(literal_text, Mode::Str, callback)
-}
-
-/// Takes a contents of a raw byte string literal (without quotes) and produces a
-/// sequence of bytes or errors.
-/// Values are returned through invoking of the provided callback.
-/// NOTE: Raw strings do not perform any explicit character escaping, here we
-/// only translate CRLF to LF and produce errors on bare CR.
-pub fn unescape_raw_byte_str<F>(literal_text: &str, callback: &mut F)
-where
-    F: FnMut(Range<usize>, Result<u8, EscapeError>),
-{
-    unescape_raw_str_or_byte_str(literal_text, Mode::ByteStr, &mut |range, char| {
-        callback(range, char.map(byte_from_char))
-    })
-}
-
 /// What kind of literal do we parse.
 #[derive(Debug, Clone, Copy)]
 pub enum Mode {
@@ -130,13 +118,15 @@ pub enum Mode {
     Str,
     Byte,
     ByteStr,
+    RawStr,
+    RawByteStr,
 }
 
 impl Mode {
     pub fn in_single_quotes(self) -> bool {
         match self {
             Mode::Char | Mode::Byte => true,
-            Mode::Str | Mode::ByteStr => false,
+            Mode::Str | Mode::ByteStr | Mode::RawStr | Mode::RawByteStr => false,
         }
     }
 
@@ -146,8 +136,8 @@ impl Mode {
 
     pub fn is_bytes(self) -> bool {
         match self {
-            Mode::Byte | Mode::ByteStr => true,
-            Mode::Char | Mode::Str => false,
+            Mode::Byte | Mode::ByteStr | Mode::RawByteStr => true,
+            Mode::Char | Mode::Str | Mode::RawStr => false,
         }
     }
 }
@@ -345,7 +335,7 @@ where
 
 fn byte_from_char(c: char) -> u8 {
     let res = c as u32;
-    assert!(res <= u8::max_value() as u32, "guaranteed because of Mode::Byte(Str)");
+    assert!(res <= u8::max_value() as u32, "guaranteed because of Mode::ByteStr");
     res as u8
 }
 

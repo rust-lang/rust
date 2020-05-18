@@ -7,6 +7,7 @@ use rustc_trait_selection::traits::{self, ObligationCause};
 use rustc_ast::util::parser::PREC_POSTFIX;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
+use rustc_hir::lang_items::{CloneTraitLangItem, DerefTraitLangItem};
 use rustc_hir::{is_range_literal, Node};
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::{self, AssocItem, Ty, TypeAndMut};
@@ -455,8 +456,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
                 if self.can_coerce(ref_ty, expected) {
                     let mut sugg_sp = sp;
-                    if let hir::ExprKind::MethodCall(segment, _sp, args) = &expr.kind {
-                        let clone_trait = self.tcx.lang_items().clone_trait().unwrap();
+                    if let hir::ExprKind::MethodCall(ref segment, sp, ref args) = expr.kind {
+                        let clone_trait = self.tcx.require_lang_item(CloneTraitLangItem, Some(sp));
                         if let ([arg], Some(true), sym::clone) = (
                             &args[..],
                             self.tables.borrow().type_dependent_def_id(expr.hir_id).map(|did| {
@@ -634,7 +635,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ if sp == expr.span && !is_macro => {
                 // Check for `Deref` implementations by constructing a predicate to
                 // prove: `<T as Deref>::Output == U`
-                let deref_trait = self.tcx.lang_items().deref_trait().unwrap();
+                let deref_trait = self.tcx.require_lang_item(DerefTraitLangItem, Some(sp));
                 let item_def_id = self
                     .tcx
                     .associated_items(deref_trait)
@@ -708,24 +709,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // For now, don't suggest casting with `as`.
         let can_cast = false;
 
-        let mut prefix = String::new();
-        if let Some(hir::Node::Expr(hir::Expr {
-            kind: hir::ExprKind::Struct(_, fields, _), ..
+        let prefix = if let Some(hir::Node::Expr(hir::Expr {
+            kind: hir::ExprKind::Struct(_, fields, _),
+            ..
         })) = self.tcx.hir().find(self.tcx.hir().get_parent_node(expr.hir_id))
         {
             // `expr` is a literal field for a struct, only suggest if appropriate
-            for field in *fields {
-                if field.expr.hir_id == expr.hir_id && field.is_shorthand {
-                    // This is a field literal
-                    prefix = format!("{}: ", field.ident);
-                    break;
-                }
-            }
-            if &prefix == "" {
+            match (*fields)
+                .iter()
+                .find(|field| field.expr.hir_id == expr.hir_id && field.is_shorthand)
+            {
+                // This is a field literal
+                Some(field) => format!("{}: ", field.ident),
                 // Likely a field was meant, but this field wasn't found. Do not suggest anything.
-                return false;
+                None => return false,
             }
-        }
+        } else {
+            String::new()
+        };
         if let hir::ExprKind::Call(path, args) = &expr.kind {
             if let (hir::ExprKind::Path(hir::QPath::TypeRelative(base_ty, path_segment)), 1) =
                 (&path.kind, args.len())
@@ -817,7 +818,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let suggest_to_change_suffix_or_into =
                 |err: &mut DiagnosticBuilder<'_>, is_fallible: bool| {
-                    let into_sugg = into_suggestion.clone();
                     err.span_suggestion(
                         expr.span,
                         if literal_is_ty_suffixed(expr) {
@@ -832,7 +832,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         } else if is_fallible {
                             try_into_suggestion
                         } else {
-                            into_sugg
+                            into_suggestion.clone()
                         },
                         Applicability::MachineApplicable,
                     );

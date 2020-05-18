@@ -332,7 +332,10 @@ pub fn panicking() -> bool {
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 pub fn begin_panic_fmt(msg: &fmt::Arguments<'_>) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
-        unsafe { intrinsics::abort() }
+        #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // remove `unsafe` on bootstrap bump
+        unsafe {
+            intrinsics::abort()
+        }
     }
 
     let info = PanicInfo::internal_constructor(Some(msg), Location::caller());
@@ -398,7 +401,10 @@ pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
 #[track_caller]
 pub fn begin_panic<M: Any + Send>(msg: M) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
-        unsafe { intrinsics::abort() }
+        #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // remove `unsafe` on bootstrap bump
+        unsafe {
+            intrinsics::abort()
+        }
     }
 
     rust_panic_with_hook(&mut PanicPayload::new(msg), None, Location::caller());
@@ -458,7 +464,10 @@ fn rust_panic_with_hook(
             "thread panicked while processing \
                                        panic. aborting.\n"
         ));
-        unsafe { intrinsics::abort() }
+        #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // remove `unsafe` on bootstrap bump
+        unsafe {
+            intrinsics::abort()
+        }
     }
 
     unsafe {
@@ -493,7 +502,10 @@ fn rust_panic_with_hook(
             "thread panicked while panicking. \
                                        aborting.\n"
         ));
-        unsafe { intrinsics::abort() }
+        #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // remove `unsafe` on bootstrap bump
+        unsafe {
+            intrinsics::abort()
+        }
     }
 
     rust_panic(payload)
