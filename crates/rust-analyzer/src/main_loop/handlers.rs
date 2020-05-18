@@ -812,88 +812,108 @@ pub fn handle_code_lens(
     params: lsp_types::CodeLensParams,
 ) -> Result<Option<Vec<CodeLens>>> {
     let _p = profile("handle_code_lens");
-    let file_id = from_proto::file_id(&world, &params.text_document.uri)?;
-    let line_index = world.analysis().file_line_index(file_id)?;
-
     let mut lenses: Vec<CodeLens> = Default::default();
 
-    let cargo_spec = CargoTargetSpec::for_file(&world, file_id)?;
-    // Gather runnables
-    for runnable in world.analysis().runnables(file_id)? {
-        let title = match &runnable.kind {
-            RunnableKind::Test { .. } | RunnableKind::TestMod { .. } => "▶\u{fe0e} Run Test",
-            RunnableKind::DocTest { .. } => "▶\u{fe0e} Run Doctest",
-            RunnableKind::Bench { .. } => "Run Bench",
-            RunnableKind::Bin => {
-                // Do not suggest binary run on other target than binary
-                match &cargo_spec {
-                    Some(spec) => match spec.target_kind {
-                        TargetKind::Bin => "Run",
-                        _ => continue,
-                    },
-                    None => continue,
-                }
-            }
-        }
-        .to_string();
-        let mut r = to_lsp_runnable(&world, file_id, runnable)?;
-        let lens = CodeLens {
-            range: r.range,
-            command: Some(Command {
-                title,
-                command: "rust-analyzer.runSingle".into(),
-                arguments: Some(vec![to_value(&r).unwrap()]),
-            }),
-            data: None,
-        };
-        lenses.push(lens);
-
-        if r.args[0] == "run" {
-            r.args[0] = "build".into();
-        } else {
-            r.args.push("--no-run".into());
-        }
-        let debug_lens = CodeLens {
-            range: r.range,
-            command: Some(Command {
-                title: "Debug".into(),
-                command: "rust-analyzer.debugSingle".into(),
-                arguments: Some(vec![to_value(r).unwrap()]),
-            }),
-            data: None,
-        };
-        lenses.push(debug_lens);
+    if world.config.lens.none() {
+        // early return before any db query!
+        return Ok(Some(lenses));
     }
 
-    // Handle impls
-    lenses.extend(
-        world
-            .analysis()
-            .file_structure(file_id)?
-            .into_iter()
-            .filter(|it| match it.kind {
-                SyntaxKind::TRAIT_DEF | SyntaxKind::STRUCT_DEF | SyntaxKind::ENUM_DEF => true,
-                _ => false,
-            })
-            .map(|it| {
-                let range = to_proto::range(&line_index, it.node_range);
-                let pos = range.start;
-                let lens_params = lsp_types::request::GotoImplementationParams {
-                    text_document_position_params: lsp_types::TextDocumentPositionParams::new(
-                        params.text_document.clone(),
-                        pos,
-                    ),
-                    work_done_progress_params: Default::default(),
-                    partial_result_params: Default::default(),
-                };
-                CodeLens {
-                    range,
-                    command: None,
-                    data: Some(to_value(CodeLensResolveData::Impls(lens_params)).unwrap()),
-                }
-            }),
-    );
+    let file_id = from_proto::file_id(&world, &params.text_document.uri)?;
+    let line_index = world.analysis().file_line_index(file_id)?;
+    let cargo_spec = CargoTargetSpec::for_file(&world, file_id)?;
 
+    if world.config.lens.runnable() {
+        // Gather runnables
+        for runnable in world.analysis().runnables(file_id)? {
+            let (run_title, debugee) = match &runnable.kind {
+                RunnableKind::Test { .. } | RunnableKind::TestMod { .. } => {
+                    ("▶️\u{fe0e}Run Test", true)
+                }
+                RunnableKind::DocTest { .. } => {
+                    // cargo does not support -no-run for doctests
+                    ("▶️\u{fe0e}Run Doctest", false)
+                }
+                RunnableKind::Bench { .. } => {
+                    // Nothing wrong with bench debugging
+                    ("Run Bench", true)
+                }
+                RunnableKind::Bin => {
+                    // Do not suggest binary run on other target than binary
+                    match &cargo_spec {
+                        Some(spec) => match spec.target_kind {
+                            TargetKind::Bin => ("Run", true),
+                            _ => continue,
+                        },
+                        None => continue,
+                    }
+                }
+            };
+
+            let mut r = to_lsp_runnable(&world, file_id, runnable)?;
+            if world.config.lens.run {
+                let lens = CodeLens {
+                    range: r.range,
+                    command: Some(Command {
+                        title: run_title.to_string(),
+                        command: "rust-analyzer.runSingle".into(),
+                        arguments: Some(vec![to_value(&r).unwrap()]),
+                    }),
+                    data: None,
+                };
+                lenses.push(lens);
+            }
+
+            if debugee && world.config.lens.debug {
+                if r.args[0] == "run" {
+                    r.args[0] = "build".into();
+                } else {
+                    r.args.push("--no-run".into());
+                }
+                let debug_lens = CodeLens {
+                    range: r.range,
+                    command: Some(Command {
+                        title: "Debug".into(),
+                        command: "rust-analyzer.debugSingle".into(),
+                        arguments: Some(vec![to_value(r).unwrap()]),
+                    }),
+                    data: None,
+                };
+                lenses.push(debug_lens);
+            }
+        }
+    }
+
+    if world.config.lens.impementations {
+        // Handle impls
+        lenses.extend(
+            world
+                .analysis()
+                .file_structure(file_id)?
+                .into_iter()
+                .filter(|it| match it.kind {
+                    SyntaxKind::TRAIT_DEF | SyntaxKind::STRUCT_DEF | SyntaxKind::ENUM_DEF => true,
+                    _ => false,
+                })
+                .map(|it| {
+                    let range = to_proto::range(&line_index, it.node_range);
+                    let pos = range.start;
+                    let lens_params = lsp_types::request::GotoImplementationParams {
+                        text_document_position_params: lsp_types::TextDocumentPositionParams::new(
+                            params.text_document.clone(),
+                            pos,
+                        ),
+                        work_done_progress_params: Default::default(),
+                        partial_result_params: Default::default(),
+                    };
+                    CodeLens {
+                        range,
+                        command: None,
+                        data: Some(to_value(CodeLensResolveData::Impls(lens_params)).unwrap()),
+                    }
+                }),
+        );
+    }
     Ok(Some(lenses))
 }
 

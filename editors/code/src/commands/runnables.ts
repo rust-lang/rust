@@ -7,7 +7,7 @@ import { startDebugSession, getDebugConfiguration } from '../debug';
 
 const quickPickButtons = [{ iconPath: new vscode.ThemeIcon("save"), tooltip: "Save as a launch.json configurtation." }];
 
-async function selectRunnable(ctx: Ctx, prevRunnable?: RunnableQuickPick, showButtons: boolean = true): Promise<RunnableQuickPick | undefined> {
+async function selectRunnable(ctx: Ctx, prevRunnable?: RunnableQuickPick, debuggeeOnly = false, showButtons: boolean = true): Promise<RunnableQuickPick | undefined> {
     const editor = ctx.activeRustEditor;
     const client = ctx.client;
     if (!editor || !client) return;
@@ -33,7 +33,18 @@ async function selectRunnable(ctx: Ctx, prevRunnable?: RunnableQuickPick, showBu
         ) {
             continue;
         }
+
+        if (debuggeeOnly && (r.label.startsWith('doctest') || r.label.startsWith('cargo'))) {
+            continue;
+        }
         items.push(new RunnableQuickPick(r));
+    }
+
+    if (items.length === 0) {
+        // it is the debug case, run always has at least 'cargo check ...'
+        // see crates\rust-analyzer\src\main_loop\handlers.rs, handle_runnables
+        vscode.window.showErrorMessage("There's no debug target!");
+        return;
     }
 
     return await new Promise((resolve) => {
@@ -107,7 +118,7 @@ export function debug(ctx: Ctx): Cmd {
     let prevDebuggee: RunnableQuickPick | undefined;
 
     return async () => {
-        const item = await selectRunnable(ctx, prevDebuggee);
+        const item = await selectRunnable(ctx, prevDebuggee, true);
         if (!item) return;
 
         item.detail = 'restart';
@@ -147,7 +158,7 @@ async function makeDebugConfig(ctx: Ctx, item: RunnableQuickPick): Promise<void>
 
 export function newDebugConfig(ctx: Ctx): Cmd {
     return async () => {
-        const item = await selectRunnable(ctx, undefined, false);
+        const item = await selectRunnable(ctx, undefined, true, false);
         if (!item) return;
 
         await makeDebugConfig(ctx, item);

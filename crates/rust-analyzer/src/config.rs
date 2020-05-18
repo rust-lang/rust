@@ -33,6 +33,36 @@ pub struct Config {
     pub inlay_hints: InlayHintsConfig,
     pub completion: CompletionConfig,
     pub call_info_full: bool,
+    pub lens: LensConfig,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LensConfig {
+    pub run: bool,
+    pub debug: bool,
+    pub impementations: bool,
+}
+
+impl Default for LensConfig {
+    fn default() -> Self {
+        Self { run: true, debug: true, impementations: true }
+    }
+}
+
+impl LensConfig {
+    pub const NO_LENS: LensConfig = Self { run: false, debug: false, impementations: false };
+
+    pub fn any(&self) -> bool {
+        self.impementations || self.runnable()
+    }
+
+    pub fn none(&self) -> bool {
+        !self.any()
+    }
+
+    pub fn runnable(&self) -> bool {
+        self.run || self.debug
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -107,6 +137,7 @@ impl Default for Config {
                 ..CompletionConfig::default()
             },
             call_info_full: true,
+            lens: LensConfig::default(),
         }
     }
 }
@@ -195,6 +226,16 @@ impl Config {
         set(value, "/completion/addCallParenthesis", &mut self.completion.add_call_parenthesis);
         set(value, "/completion/addCallArgumentSnippets", &mut self.completion.add_call_argument_snippets);
         set(value, "/callInfo/full", &mut self.call_info_full);
+
+        let mut lens_enabled = true;
+        set(value, "/lens/enable", &mut lens_enabled);
+        if lens_enabled {
+            set(value, "/lens/run", &mut self.lens.run);
+            set(value, "/lens/debug", &mut self.lens.debug);
+            set(value, "/lens/implementations", &mut self.lens.impementations);
+        } else {
+            self.lens = LensConfig::NO_LENS;
+        }
 
         log::info!("Config::update() = {:#?}", self);
 
