@@ -370,7 +370,8 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                                 violation.kind = UnsafetyViolationKind::General;
                             }
                         }
-                        UnsafetyViolationKind::UnsafeFn => {
+                        UnsafetyViolationKind::UnsafeFn
+                        | UnsafetyViolationKind::UnsafeFnBorrowPacked => {
                             bug!("`UnsafetyViolationKind::UnsafeFn` in an `Safe` context")
                         }
                     }
@@ -385,8 +386,11 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                 for violation in violations {
                     let mut violation = *violation;
 
-                    // FIXME(LeSeulArtichaut): what to do with `UnsafetyViolationKind::BorrowPacked`?
-                    violation.kind = UnsafetyViolationKind::UnsafeFn;
+                    if violation.kind == UnsafetyViolationKind::BorrowPacked {
+                        violation.kind = UnsafetyViolationKind::UnsafeFnBorrowPacked;
+                    } else {
+                        violation.kind = UnsafetyViolationKind::UnsafeFn;
+                    }
                     if !self.violations.contains(&violation) {
                         self.violations.push(violation)
                     }
@@ -418,7 +422,8 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                                     self.violations.push(violation)
                                 }
                             }
-                            UnsafetyViolationKind::UnsafeFn => bug!(
+                            UnsafetyViolationKind::UnsafeFn
+                            | UnsafetyViolationKind::UnsafeFnBorrowPacked => bug!(
                                 "`UnsafetyViolationKind::UnsafeFn` in an `ExplicitUnsafe` context"
                             ),
                         }
@@ -719,13 +724,31 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: DefId) {
                 |lint| {
                     lint.build(&format!(
                         "{} is unsafe and requires unsafe block (error E0133)",
-                        description
+                        description,
                     ))
                     .span_label(source_info.span, &*description.as_str())
                     .note(&details.as_str())
                     .emit();
                 },
             ),
+            UnsafetyViolationKind::UnsafeFnBorrowPacked => {
+                let lint = if tcx.lint_level_at_node(SAFE_PACKED_BORROWS, lint_root).0
+                    <= tcx.lint_level_at_node(UNSAFE_OP_IN_UNSAFE_FN, lint_root).0
+                {
+                    SAFE_PACKED_BORROWS
+                } else {
+                    UNSAFE_OP_IN_UNSAFE_FN
+                };
+                tcx.struct_span_lint_hir(&lint, lint_root, source_info.span, |lint| {
+                    lint.build(&format!(
+                        "{} is unsafe and requires unsafe block (error E0133)",
+                        description,
+                    ))
+                    .span_label(source_info.span, &*description.as_str())
+                    .note(&details.as_str())
+                    .emit();
+                })
+            }
         }
     }
 
