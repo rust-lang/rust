@@ -532,11 +532,15 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         };
         let msg = format!("use parentheses to call the {}", callable);
 
-        let new_obligation = self.mk_trait_obligation_with_new_self_ty(
-            obligation.param_env,
-            trait_ref,
-            output_ty.skip_binder(),
-        );
+        // `mk_trait_obligation_with_new_self_ty` only works for types with no escaping bound
+        // variables, so bail out if we have any.
+        let output_ty = match output_ty.no_bound_vars() {
+            Some(ty) => ty,
+            None => return,
+        };
+
+        let new_obligation =
+            self.mk_trait_obligation_with_new_self_ty(obligation.param_env, trait_ref, output_ty);
 
         match self.evaluate_obligation(&new_obligation) {
             Ok(
