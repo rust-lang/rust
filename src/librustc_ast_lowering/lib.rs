@@ -53,8 +53,8 @@ use rustc_hir::def::{DefKind, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId, CRATE_DEF_INDEX};
 use rustc_hir::definitions::{DefKey, DefPathData, Definitions};
 use rustc_hir::intravisit;
-use rustc_hir::{ConstArg, GenericArg, ParamName};
-use rustc_index::vec::IndexVec;
+use rustc_hir::{ConstArg, GenericArg, HirIdVec, ParamName};
+use rustc_index::vec::{Idx, IndexVec};
 use rustc_session::config::nightly_options;
 use rustc_session::lint::{builtin::BARE_TRAIT_OBJECTS, BuiltinLintDiagnostics, LintBuffer};
 use rustc_session::parse::ParseSess;
@@ -115,7 +115,7 @@ struct LoweringContext<'a, 'hir: 'a> {
     modules: BTreeMap<hir::HirId, hir::ModuleItems>,
 
     /// Collected spans from the AST.
-    spans: BTreeMap<hir::HirId, Span>,
+    spans: HirIdVec<Span>,
 
     generator_kind: Option<hir::GeneratorKind>,
 
@@ -307,7 +307,7 @@ pub fn lower_crate<'a, 'hir>(
         bodies: BTreeMap::new(),
         trait_impls: BTreeMap::new(),
         modules: BTreeMap::new(),
-        spans: BTreeMap::new(),
+        spans: Default::default(),
         exported_macros: Vec::new(),
         non_exported_macro_attrs: Vec::new(),
         catch_scopes: Vec::new(),
@@ -570,6 +570,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         self.resolver.definitions().init_node_id_to_hir_id_mapping(self.node_id_to_hir_id);
 
+        //FIXME(cjgillot) Ideally, each LocalDefId would be a HIR owner.
+        // In the mean time, allocate the missing empty vectors.
+        self.spans.push_owner(Idx::new(self.resolver.definitions().def_index_count() - 1));
+
         hir::Crate {
             item: hir::CrateItem { module, attrs, span: c.span },
             exported_macros: self.arena.alloc_from_iter(self.exported_macros),
@@ -619,21 +623,21 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
 
         let hir_id = if let Some(existing_hir_id) = self.node_id_to_hir_id[ast_node_id] {
+            if span != DUMMY_SP {
+                debug_assert!(
+                    self.spans[existing_hir_id] == DUMMY_SP || self.spans[existing_hir_id] == span
+                );
+                self.spans[existing_hir_id] = span;
+            }
             existing_hir_id
         } else {
             // Generate a new `HirId`.
             let hir_id = alloc_hir_id(self);
             self.node_id_to_hir_id[ast_node_id] = Some(hir_id);
+            self.spans.push(hir_id, span);
 
             hir_id
         };
-
-        let stored_span = self.spans.entry(hir_id).or_insert(span);
-        if *stored_span == DUMMY_SP {
-            *stored_span = span;
-        } else if span != DUMMY_SP {
-            assert_eq!(*stored_span, span);
-        }
 
         hir_id
     }

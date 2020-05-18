@@ -203,7 +203,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     // Include parens in span, but only if it is a super-span.
                     if e.span.contains(ex.span) {
                         ex.span = e.span;
-                        self.spans.insert(ex.hir_id, e.span);
+                        self.spans[ex.hir_id] = e.span;
                     }
                     // Merge attributes into the inner expression.
                     let mut attrs = e.attrs.clone();
@@ -1365,7 +1365,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let mut head = self.lower_expr_mut(head);
         let desugared_span = self.mark_span_with_reason(DesugaringKind::ForLoop, head.span, None);
         head.span = desugared_span;
-        self.spans.insert(head.hir_id, desugared_span);
+        self.spans[head.hir_id] = desugared_span;
 
         let iter = Ident::with_dummy_span(sym::iter);
 

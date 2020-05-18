@@ -1,6 +1,7 @@
 use crate::def::{DefKind, Namespace, Res};
 use crate::def_id::DefId;
 crate use crate::hir_id::HirId;
+use crate::hir_id::HirIdVec;
 use crate::itemlikevisit;
 
 use rustc_ast::ast::{self, CrateSugar, LlvmAsmDialect};
@@ -643,7 +644,7 @@ pub struct Crate<'hir> {
     pub trait_map: BTreeMap<HirId, Vec<TraitCandidate>>,
 
     /// Collected spans from the AST.
-    pub spans: BTreeMap<HirId, Span>,
+    pub spans: HirIdVec<Span>,
 }
 
 impl Crate<'hir> {
