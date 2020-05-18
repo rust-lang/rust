@@ -64,9 +64,9 @@
 /// (`Constructor`, `Fields`) pairs, handling all the special cases correctly.
 ///
 /// Caveat: this constructors/fields distinction doesn't quite cover every Rust value. For example
-/// a value of type `Rc<u64>` doesn't fit this idea very well, nor do function pointers and various
-/// other things. However, the idea covers everything that can be pattern-matched, and this is all
-/// we need for exhaustiveness checking.
+/// a value of type `Rc<u64>` doesn't fit this idea very well, nor do various other things.
+/// However, this idea covers everything that can be pattern-matched, and this is all we need for
+/// exhaustiveness checking.
 ///
 ///
 /// # Algorithm
