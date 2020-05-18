@@ -21,6 +21,7 @@
 //!   thing we relate in chalk are basically domain goals and their
 //!   constituents)
 
+use crate::infer::combine::ConstEquateRelation;
 use crate::infer::InferCtxt;
 use crate::infer::{ConstVarValue, ConstVariableValue};
 use rustc_data_structures::fx::FxHashMap;
@@ -76,6 +77,8 @@ pub trait TypeRelatingDelegate<'tcx> {
     /// be regions from the type or new variables created through the
     /// delegate.
     fn push_outlives(&mut self, sup: ty::Region<'tcx>, sub: ty::Region<'tcx>);
+
+    fn const_equate(&mut self, a: &'tcx ty::Const<'tcx>, b: &'tcx ty::Const<'tcx>);
 
     /// Creates a new universe index. Used when instantiating placeholders.
     fn create_next_universe(&mut self) -> ty::UniverseIndex;
@@ -715,6 +718,15 @@ where
     }
 }
 
+impl<'tcx, D> ConstEquateRelation<'tcx> for TypeRelating<'_, 'tcx, D>
+where
+    D: TypeRelatingDelegate<'tcx>,
+{
+    fn const_equate_obligation(&mut self, a: &'tcx ty::Const<'tcx>, b: &'tcx ty::Const<'tcx>) {
+        self.delegate.const_equate(a, b);
+    }
+}
+
 /// When we encounter a binder like `for<..> fn(..)`, we actually have
 /// to walk the `fn` value to find all the values bound by the `for`
 /// (these are not explicitly present in the ty representation right
@@ -976,6 +988,7 @@ where
                     }
                 }
             }
+            ty::ConstKind::Unevaluated(..) if self.tcx().lazy_normalization() => Ok(a),
             _ => relate::super_relate_consts(self, a, a),
         }
     }

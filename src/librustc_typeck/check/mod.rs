@@ -1648,6 +1648,16 @@ fn check_opaque_for_inheriting_lifetimes(tcx: TyCtxt<'tcx>, def_id: LocalDefId, 
 
             r.super_visit_with(self)
         }
+
+        fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> bool {
+            if let ty::ConstKind::Unevaluated(..) = c.val {
+                // FIXME(#72219) We currenctly don't detect lifetimes within substs
+                // which would violate this check. Even though the particular substitution is not used
+                // within the const, this should still be fixed.
+                return false;
+            }
+            c.super_visit_with(self)
+        }
     }
 
     let prohibit_opaque = match item.kind {
@@ -3858,6 +3868,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty::Predicate::WellFormed(..) => None,
                 ty::Predicate::ObjectSafe(..) => None,
                 ty::Predicate::ConstEvaluatable(..) => None,
+                ty::Predicate::ConstEquate(..) => None,
                 // N.B., this predicate is created by breaking down a
                 // `ClosureType: FnFoo()` predicate, where
                 // `ClosureType` represents some `Closure`. It can't

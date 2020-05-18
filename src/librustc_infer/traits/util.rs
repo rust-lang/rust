@@ -42,6 +42,8 @@ pub fn anonymize_predicate<'tcx>(
         ty::Predicate::ConstEvaluatable(def_id, substs) => {
             ty::Predicate::ConstEvaluatable(def_id, substs)
         }
+
+        ty::Predicate::ConstEquate(c1, c2) => ty::Predicate::ConstEquate(c1, c2),
     }
 }
 
@@ -185,6 +187,10 @@ impl Elaborator<'tcx> {
             }
             ty::Predicate::ConstEvaluatable(..) => {
                 // Currently, we do not elaborate const-evaluatable
+                // predicates.
+            }
+            ty::Predicate::ConstEquate(..) => {
+                // Currently, we do not elaborate const-equate
                 // predicates.
             }
             ty::Predicate::RegionOutlives(..) => {

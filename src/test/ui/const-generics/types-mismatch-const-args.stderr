@@ -11,12 +11,10 @@ error[E0308]: mismatched types
   --> $DIR/types-mismatch-const-args.rs:13:41
    |
 LL |     let _: A<'a, u32, {2u32}, {3u32}> = A::<'a, u32, {4u32}, {3u32}> { data: PhantomData };
-   |            --------------------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `2u32`, found `4u32`
-   |            |
-   |            expected due to this
+   |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `2u32`, found `4u32`
    |
-   = note: expected struct `A<'_, _, 2u32, _>`
-              found struct `A<'_, _, 4u32, _>`
+   = note: expected type `2u32`
+              found type `4u32`
 
 error[E0308]: mismatched types
   --> $DIR/types-mismatch-const-args.rs:15:41
@@ -26,8 +24,8 @@ LL |     let _: A<'a, u16, {2u32}, {3u32}> = A::<'b, u32, {2u32}, {3u32}> { data
    |            |
    |            expected due to this
    |
-   = note: expected struct `A<'a, u16, _, _>`
-              found struct `A<'b, u32, _, _>`
+   = note: expected struct `A<'a, u16, {2u32}, {3u32}>`
+              found struct `A<'b, u32, {2u32}, {3u32}>`
 
 error: aborting due to 2 previous errors; 1 warning emitted
 

@@ -102,6 +102,10 @@ pub fn predicate_obligations<'a, 'tcx>(
                 wf.compute(ty);
             }
         }
+        ty::Predicate::ConstEquate(c1, c2) => {
+            wf.compute(c1.ty);
+            wf.compute(c2.ty);
+        }
     }
 
     wf.normalize()
