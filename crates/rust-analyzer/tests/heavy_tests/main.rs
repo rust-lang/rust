@@ -298,6 +298,7 @@ fn main() {}
                 }
               ]
             },
+            "kind": "quickfix",
             "title": "Create module"
         }]),
     );
@@ -368,6 +369,7 @@ fn main() {{}}
                 }
               ]
             },
+            "kind": "quickfix",
             "title": "Create module"
         }]),
     );

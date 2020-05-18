@@ -730,8 +730,13 @@ pub fn handle_code_action(
     for fix in fixes_from_diagnostics {
         let title = fix.label;
         let edit = to_proto::snippet_workspace_edit(&snap, fix.source_change)?;
-        let action =
-            lsp_ext::CodeAction { title, group: None, kind: None, edit: Some(edit), command: None };
+        let action = lsp_ext::CodeAction {
+            title,
+            group: None,
+            kind: Some(lsp_types::code_action_kind::QUICKFIX.into()),
+            edit: Some(edit),
+            command: None,
+        };
         res.push(action);
     }
 
