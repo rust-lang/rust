@@ -1892,7 +1892,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         span: Span,
     ) {
         debug!(
-            "suggest_await_befor_try: obligation={:?}, span={:?}, trait_ref={:?}, trait_ref_self_ty={:?}",
+            "suggest_await_before_try: obligation={:?}, span={:?}, trait_ref={:?}, trait_ref_self_ty={:?}",
             obligation,
             span,
             trait_ref,
@@ -1947,16 +1947,15 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 );
 
                 debug!(
-                    "suggest_await_befor_try: normalized_projection_type {:?}",
+                    "suggest_await_before_try: normalized_projection_type {:?}",
                     self.resolve_vars_if_possible(&normalized_ty)
                 );
-                let try_obligation = self.mk_obligation_for_def_id(
-                    trait_ref.def_id(),
-                    normalized_ty,
-                    obligation.cause.clone(),
+                let try_obligation = self.mk_trait_obligation_with_new_self_ty(
                     obligation.param_env,
+                    trait_ref,
+                    normalized_ty,
                 );
-                debug!("suggest_await_befor_try: try_trait_obligation {:?}", try_obligation);
+                debug!("suggest_await_before_try: try_trait_obligation {:?}", try_obligation);
                 if self.predicate_may_hold(&try_obligation) && impls_future {
                     if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
                         if snippet.ends_with('?') {
