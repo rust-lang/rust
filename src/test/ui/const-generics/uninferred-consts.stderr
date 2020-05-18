@@ -1,0 +1,19 @@
+warning: the feature `const_generics` is incomplete and may cause the compiler to crash
+  --> $DIR/uninferred-consts.rs:1:12
+   |
+LL | #![feature(const_generics)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0282]: type annotations needed
+  --> $DIR/uninferred-consts.rs:10:5
+   |
+LL |     Foo.foo();
+   |     ^^^^^^^^^
+   |
+   = note: unable to infer the value of a const parameter
+
+error: aborting due to previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0282`.
