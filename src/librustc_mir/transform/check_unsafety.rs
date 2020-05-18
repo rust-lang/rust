@@ -676,7 +676,7 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: DefId) {
     {
         // Report an error.
         let unsafe_fn_msg =
-            if unsafe_op_in_unsafe_fn_allowed(tcx, lint_root) { "" } else { " function or" };
+            if unsafe_op_in_unsafe_fn_allowed(tcx, lint_root) { " function or" } else { "" };
 
         match kind {
             UnsafetyViolationKind::GeneralAndConstFn | UnsafetyViolationKind::General => {
