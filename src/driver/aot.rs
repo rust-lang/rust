@@ -54,10 +54,10 @@ fn emit_module<B: Backend>(
     let work_product = if std::env::var("CG_CLIF_INCR_CACHE_DISABLED").is_ok() {
         None
     } else {
-        rustc_incremental::copy_cgu_workproducts_to_incr_comp_cache_dir(
+        rustc_incremental::copy_cgu_workproduct_to_incr_comp_cache_dir(
             tcx.sess,
             &name,
-            &[tmp_file.clone()],
+            &Some(tmp_file.clone()),
         )
     };
 
@@ -80,7 +80,7 @@ fn reuse_workproduct_for_cgu(
     let incr_comp_session_dir = tcx.sess.incr_comp_session_dir();
     let mut object = None;
     let work_product = cgu.work_product(tcx);
-    for saved_file in &work_product.saved_files {
+    if let Some(saved_file) = &work_product.saved_file {
         let obj_out = tcx.output_filenames(LOCAL_CRATE).temp_path(OutputType::Object, Some(&cgu.name().as_str()));
         object = Some(obj_out.clone());
         let source_file = rustc_incremental::in_incr_comp_dir(&incr_comp_session_dir, &saved_file);

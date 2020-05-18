@@ -305,6 +305,28 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
                     *destination,
                 ));
             }
+            TerminatorKind::InlineAsm {
+                template,
+                operands,
+                options: _,
+                destination,
+            } => {
+                match template {
+                    &[] => {
+                        assert_eq!(operands, &[]);
+                        match *destination {
+                            Some(destination) => {
+                                let destination_block = fx.get_block(destination);
+                                fx.bcx.ins().jump(destination_block, &[]);
+                            }
+                            None => bug!(),
+                        }
+
+                        // Black box
+                    }
+                    _ => unimpl_fatal!(fx.tcx, bb_data.terminator().source_info.span, "Inline assembly is not supported"),
+                }
+            }
             TerminatorKind::Resume | TerminatorKind::Abort => {
                 trap_unreachable(fx, "[corruption] Unwinding bb reached.");
             }
@@ -615,7 +637,7 @@ fn trans_stmt<'tcx>(
         | StatementKind::AscribeUserType(..) => {}
 
         StatementKind::LlvmInlineAsm(asm) => {
-            use rustc_ast::ast::Name;
+            use rustc_span::symbol::Symbol;
             let LlvmInlineAsm {
                 asm,
                 outputs: _,
@@ -632,37 +654,14 @@ fn trans_stmt<'tcx>(
                 asm_str_style: _,
             } = asm;
             match &*asm_code.as_str() {
-                "" => {
-                    assert_eq!(inputs, &[Name::intern("r")]);
-                    assert!(outputs.is_empty(), "{:?}", outputs);
-
-                    // Black box
-                }
-                "cpuid" | "cpuid\n" => {
-                    assert_eq!(inputs, &[Name::intern("{eax}"), Name::intern("{ecx}")]);
-
-                    assert_eq!(outputs.len(), 4);
-                    for (i, c) in (&["={eax}", "={ebx}", "={ecx}", "={edx}"])
-                        .iter()
-                        .enumerate()
-                    {
-                        assert_eq!(&outputs[i].constraint.as_str(), c);
-                        assert!(!outputs[i].is_rw);
-                        assert!(!outputs[i].is_indirect);
-                    }
-
-                    assert_eq!(clobbers, &[Name::intern("rbx")]);
-
-                    assert!(!volatile);
-                    assert!(!alignstack);
-
+                cpuid if cpuid.contains("cpuid") => {
                     crate::trap::trap_unimplemented(
                         fx,
                         "__cpuid_count arch intrinsic is not supported",
                     );
                 }
                 "xgetbv" => {
-                    assert_eq!(inputs, &[Name::intern("{ecx}")]);
+                    assert_eq!(inputs, &[Symbol::intern("{ecx}")]);
 
                     assert_eq!(outputs.len(), 2);
                     for (i, c) in (&["={eax}", "={edx}"]).iter().enumerate() {

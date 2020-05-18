@@ -73,8 +73,7 @@ pub(crate) fn write_metadata<P: WriteMetadata>(tcx: TyCtxt<'_>, product: &mut P)
 
     let kind = tcx
         .sess
-        .crate_types
-        .borrow()
+        .crate_types()
         .iter()
         .map(|ty| match *ty {
             config::CrateType::Executable

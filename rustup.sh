@@ -17,9 +17,12 @@ case $1 in
 
         ./clean_all.sh
         ./prepare.sh
+
+        (cd build_sysroot && cargo update)
+
         ;;
     "commit")
-        git add rust-toolchain
+        git add rust-toolchain build_sysroot/Cargo.lock
         git commit -m "Rustup to $(rustc -V)"
         ;;
     *)

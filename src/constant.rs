@@ -111,7 +111,7 @@ pub(crate) fn trans_const_value<'tcx>(
                     return CValue::const_val(fx, layout, data);
                 }
                 Scalar::Ptr(ptr) => {
-                    let alloc_kind = fx.tcx.alloc_map.lock().get(ptr.alloc_id);
+                    let alloc_kind = fx.tcx.get_global_alloc(ptr.alloc_id);
                     let base_addr = match alloc_kind {
                         Some(GlobalAlloc::Memory(alloc)) => {
                             fx.constants_cx.todo.push(TodoItem::Alloc(ptr.alloc_id));
@@ -163,7 +163,7 @@ fn pointer_for_allocation<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     alloc: &'tcx Allocation,
 ) -> crate::pointer::Pointer {
-    let alloc_id = fx.tcx.alloc_map.lock().create_memory_alloc(alloc);
+    let alloc_id = fx.tcx.create_memory_alloc(alloc);
     fx.constants_cx.todo.push(TodoItem::Alloc(alloc_id));
     let data_id = data_id_for_alloc_id(fx.module, alloc_id, alloc.align);
 
@@ -260,7 +260,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut Module<impl Backend>, cx: &mu
         let (data_id, alloc) = match todo_item {
             TodoItem::Alloc(alloc_id) => {
                 //println!("alloc_id {}", alloc_id);
-                let alloc = match tcx.alloc_map.lock().get(alloc_id).unwrap() {
+                let alloc = match tcx.get_global_alloc(alloc_id).unwrap() {
                     GlobalAlloc::Memory(alloc) => alloc,
                     GlobalAlloc::Function(_) | GlobalAlloc::Static(_) => unreachable!(),
                 };
@@ -314,11 +314,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut Module<impl Backend>, cx: &mu
                 read_target_uint(endianness, bytes).unwrap()
             };
 
-            // Don't inline `reloc_target_alloc` into the match. That would cause `tcx.alloc_map`
-            // to be locked for the duration of the match. `data_id_for_static` however may try
-            // to lock `tcx.alloc_map` itself while calculating the layout of the target static.
-            // This would cause a panic in single threaded rustc and a deadlock for parallel rustc.
-            let reloc_target_alloc = tcx.alloc_map.lock().get(reloc).unwrap();
+            let reloc_target_alloc = tcx.get_global_alloc(reloc).unwrap();
             let data_id = match reloc_target_alloc {
                 GlobalAlloc::Function(instance) => {
                     assert_eq!(addend, 0);

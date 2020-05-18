@@ -517,6 +517,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
         _ if intrinsic.starts_with("unchecked_") || intrinsic == "exact_div", (c x, c y) {
             // FIXME trap on overflow
             let bin_op = match intrinsic {
+                "unchecked_add" => BinOp::Add,
                 "unchecked_sub" => BinOp::Sub,
                 "unchecked_div" | "exact_div" => BinOp::Div,
                 "unchecked_rem" => BinOp::Rem,

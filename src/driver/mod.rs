@@ -17,7 +17,7 @@ pub(crate) fn codegen_crate(
     tcx.sess.abort_if_errors();
 
     if std::env::var("CG_CLIF_JIT").is_ok()
-        && tcx.sess.crate_types.get().contains(&rustc_session::config::CrateType::Executable)
+        && tcx.sess.crate_types().contains(&rustc_session::config::CrateType::Executable)
     {
         #[cfg(not(target_arch = "wasm32"))]
         let _: ! = jit::run_jit(tcx);
