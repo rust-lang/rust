@@ -1000,6 +1000,10 @@ trait InferCtxtPrivExt<'tcx> {
         trait_ref: &ty::PolyTraitRef<'tcx>,
     );
 
+    /// Creates a `PredicateObligation` with `new_self_ty` replacing the existing type in the
+    /// `trait_ref`.
+    ///
+    /// For this to work, `new_self_ty` must have no escaping bound variables.
     fn mk_trait_obligation_with_new_self_ty(
         &self,
         param_env: ty::ParamEnv<'tcx>,
