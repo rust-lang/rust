@@ -50,6 +50,8 @@ impl Default for LensConfig {
 }
 
 impl LensConfig {
+    pub const NO_LENS: LensConfig = Self { run: false, debug: false, impementations: false };
+
     pub fn any(&self) -> bool {
         self.impementations || self.runnable()
     }
@@ -224,9 +226,16 @@ impl Config {
         set(value, "/completion/addCallParenthesis", &mut self.completion.add_call_parenthesis);
         set(value, "/completion/addCallArgumentSnippets", &mut self.completion.add_call_argument_snippets);
         set(value, "/callInfo/full", &mut self.call_info_full);
-        set(value, "/lens/run", &mut self.lens.run);
-        set(value, "/lens/debug", &mut self.lens.debug);
-        set(value, "/lens/implementations", &mut self.lens.impementations);
+
+        let mut lens_enabled = true;
+        set(value, "/lens/enable", &mut lens_enabled);
+        if lens_enabled {
+            set(value, "/lens/run", &mut self.lens.run);
+            set(value, "/lens/debug", &mut self.lens.debug);
+            set(value, "/lens/implementations", &mut self.lens.impementations);
+        } else {
+            self.lens = LensConfig::NO_LENS;
+        }
 
         log::info!("Config::update() = {:#?}", self);
 

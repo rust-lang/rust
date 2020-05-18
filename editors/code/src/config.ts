@@ -16,6 +16,7 @@ export class Config {
         "files",
         "highlighting",
         "updates.channel",
+        "lens.enable",
         "lens.run",
         "lens.debug",
         "lens.implementations",
@@ -125,6 +126,7 @@ export class Config {
 
     get lens() {
         return {
+            enable: this.get<boolean>("lens.enable"),
             run: this.get<boolean>("lens.run"),
             debug: this.get<boolean>("lens.debug"),
             implementations: this.get<boolean>("lens.implementations"),

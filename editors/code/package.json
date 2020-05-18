@@ -444,18 +444,23 @@
                     "default": {},
                     "description": "Optional settings passed to the debug engine. Example:\n{ \"lldb\": { \"terminal\":\"external\"} }"
                 },
+                "rust-analyzer.lens.enable": {
+                    "description": "Whether to show CodeLens in Rust files.",
+                    "type": "boolean",
+                    "default": true
+                },
                 "rust-analyzer.lens.run": {
-                    "description": "Whether to show Run lens.",
+                    "markdownDescription": "Whether to show Run lens. Only applies when `#rust-analyzer.lens.enable#` is set.",
                     "type": "boolean",
                     "default": true
                 },
                 "rust-analyzer.lens.debug": {
-                    "description": "Whether to show Debug lens.",
+                    "markdownDescription": "Whether to show Debug lens. Only applies when `#rust-analyzer.lens.enable#` is set.",
                     "type": "boolean",
                     "default": true
                 },
                 "rust-analyzer.lens.implementations": {
-                    "description": "Whether to show Implementations lens.",
+                    "markdownDescription": "Whether to show Implementations lens. Only applies when `#rust-analyzer.lens.enable#` is set.",
                     "type": "boolean",
                     "default": true
                 }
