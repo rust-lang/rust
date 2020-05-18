@@ -42,10 +42,6 @@ macro_rules! check {
             //[bound_inv_a_b_vs_bound_inv_a]~^^^ ERROR
             //[bound_a_b_ret_a_vs_bound_a_ret_a]~^^^^ ERROR
             //[free_inv_x_vs_free_inv_y]~^^^^^ ERROR
-            //[bound_a_b_vs_bound_a]~^^^^^^ ERROR mismatched types
-            //[bound_co_a_co_b_ret_contra_a]~^^^^^^^ ERROR
-            //[bound_contra_a_contra_b_ret_co_a]~^^^^^^^^ ERROR
-            //[bound_co_a_b_vs_bound_co_a]~^^^^^^^^^ ERROR
         }
     }
 }
@@ -103,4 +99,8 @@ fn main() {
 //[bound_inv_a_vs_bound_inv_b]~^^^ ERROR fatal error triggered by #[rustc_error]
 //[bound_co_a_vs_bound_co_b]~^^^^ ERROR fatal error triggered by #[rustc_error]
 //[free_x_vs_free_x]~^^^^^ ERROR fatal error triggered by #[rustc_error]
+//[bound_a_b_vs_bound_a]~^^^^^^ ERROR fatal error triggered by #[rustc_error]
+//[bound_co_a_b_vs_bound_co_a]~^^^^^^^ ERROR fatal error triggered by #[rustc_error]
+//[bound_co_a_co_b_ret_contra_a]~^^^^^^^^ ERROR fatal error triggered by #[rustc_error]
+//[bound_contra_a_contra_b_ret_co_a]~^^^^^^^^^ ERROR fatal error triggered by #[rustc_error]
 }

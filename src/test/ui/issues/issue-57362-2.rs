@@ -19,7 +19,9 @@ impl<'a> X for fn(&'a ()) {
 }
 
 fn g() {
-    let x = <fn (&())>::make_g(); //~ ERROR no function or associated item
+    let x = <fn (&())>::make_g();
+    //~^ ERROR implementation of `X` is not general enough
+    //~| ERROR implementation of `X` is not general enough
 }
 
 fn main() {}

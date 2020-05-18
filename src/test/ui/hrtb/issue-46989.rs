@@ -38,5 +38,5 @@ fn assert_foo<T: Foo>() {}
 
 fn main() {
     assert_foo::<fn(&i32)>();
-    //~^ ERROR the trait bound `for<'r> fn(&'r i32): Foo` is not satisfied
+    //~^ ERROR implementation of `Foo` is not general enough
 }
