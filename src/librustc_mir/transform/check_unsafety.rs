@@ -184,7 +184,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
     }
 
     fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, _location: Location) {
-        // prevent
+        // On types with `scalar_valid_range`, prevent
         // * `&mut x.field`
         // * `x.field = y;`
         // * `&x.field` if `field`'s type has interior mutability
@@ -194,26 +194,26 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
             self.check_mut_borrowing_layout_constrained_field(*place, context.is_mutating_use());
         }
 
+        if context.is_borrow() {
+            if util::is_disaligned(self.tcx, self.body, self.param_env, *place) {
+                let source_info = self.source_info;
+                let lint_root = self.body.source_scopes[source_info.scope]
+                    .local_data
+                    .as_ref()
+                    .assert_crate_local()
+                    .lint_root;
+                self.require_unsafe(
+                    "borrow of packed field",
+                    "fields of packed structs might be misaligned: dereferencing a \
+                    misaligned pointer or even just creating a misaligned reference \
+                    is undefined behavior",
+                    UnsafetyViolationKind::BorrowPacked(lint_root),
+                );
+            }
+        }
+
         for (i, elem) in place.projection.iter().enumerate() {
             let proj_base = &place.projection[..i];
-
-            if context.is_borrow() {
-                if util::is_disaligned(self.tcx, self.body, self.param_env, *place) {
-                    let source_info = self.source_info;
-                    let lint_root = self.body.source_scopes[source_info.scope]
-                        .local_data
-                        .as_ref()
-                        .assert_crate_local()
-                        .lint_root;
-                    self.require_unsafe(
-                        "borrow of packed field",
-                        "fields of packed structs might be misaligned: dereferencing a \
-                        misaligned pointer or even just creating a misaligned reference \
-                        is undefined behavior",
-                        UnsafetyViolationKind::BorrowPacked(lint_root),
-                    );
-                }
-            }
             let old_source_info = self.source_info;
             if let [] = proj_base {
                 let decl = &self.body.local_decls[place.local];
