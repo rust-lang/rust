@@ -427,6 +427,8 @@ Several types of operands are supported:
   - The substituted string does not include any modifiers (e.g. GOT, PLT, relocations, etc).
   - `<path>` is allowed to point to a `#[thread_local]` static, in which case the asm code can combine the symbol with relocations (e.g. `@plt`, `@TPOFF`) to read from thread-local data.
 
+Operand expressions are evaluated from left to right, just like function call arguments. After the `asm!` has executed, outputs are written to in left to right order. This is significant if two outputs point to the same place: that place will contain the value of the rightmost output.
+
 ## Register operands
 
 Input and output operands can be specified either as an explicit register or as a register class from which the register allocator can select a register. Explicit registers are specified as string literals (e.g. `"eax"`) while register classes are specified as identifiers (e.g. `reg`). Using string literals for register names enables support for architectures that use special characters in register names, such as MIPS (`$0`, `$1`, etc).
@@ -438,7 +440,7 @@ Only the following types are allowed as operands for inline assembly:
 - Floating-point numbers
 - Pointers (thin only)
 - Function pointers
-- SIMD vectors (structs defined with `#[repr(simd)]` and which implement `Copy`)
+- SIMD vectors (structs defined with `#[repr(simd)]` and which implement `Copy`). This includes architecture-specific vector types defined in `std::arch` such as `__m128` (x86) or `int8x16_t` (ARM).
 
 Here is the list of currently supported register classes:
 
@@ -667,7 +669,6 @@ The compiler performs some additional checks on options:
 - These flags registers must be restored upon exiting the asm block if the `preserves_flags` option is set:
   - x86
     - Status flags in `EFLAGS` (CF, PF, AF, ZF, SF, OF).
-    - Direction flag in `EFLAGS` (DF).
     - Floating-point status word (all).
     - Floating-point exception flags in `MXCSR` (PE, UE, OE, ZE, DE, IE).
   - ARM
@@ -682,11 +683,17 @@ The compiler performs some additional checks on options:
     - Floating-point status (`FPSR` register).
   - RISC-V
     - Floating-point exception flags in `fcsr` (`fflags`).
+- On x86, the direction flag (DF in `EFLAGS`) is clear on entry to an asm block and must be clear on exit.
+  - Behavior is undefined if the direction flag is set on exiting an asm block.
 - The requirement of restoring the stack pointer and non-output registers to their original value only applies when exiting an `asm!` block.
   - This means that `asm!` blocks that never return (even if not marked `noreturn`) don't need to preserve these registers.
   - When returning to a different `asm!` block than you entered (e.g. for context switching), these registers must contain the value they had upon entering the `asm!` block that you are *exiting*.
     - You cannot exit an `asm!` block that has not been entered. Neither can you exit an `asm!` block that has already been exited.
     - You are responsible for switching any target-specific state (e.g. thread-local storage, stack bounds).
     - The set of memory locations that you may access is the intersection of those allowed by the `asm!` blocks you entered and exited.
+- You cannot assume that an `asm!` block will appear exactly once in the output binary. The compiler is allowed to instantiate multiple copies of the `asm!` block, for example when the function containing it is inlined in multiple places.
+  - As a consequence, you should only use [local labels] inside inline assembly code. Defining symbols in assembly code may lead to assembler and/or linker errors due to duplicate symbol definitions.
 
-> **Note**: As a general rule, these are the flags which are *not* preserved when performing a function call.
+> **Note**: As a general rule, the flags covered by `preserves_flags` are those which are *not* preserved when performing a function call.
+
+[local labels]: https://sourceware.org/binutils/docs/as/Symbol-Names.html#Local-Labels
