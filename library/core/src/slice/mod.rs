@@ -865,7 +865,6 @@ impl<T> [T] {
     /// ```
     ///
     /// [`chunks`]: #method.chunks
-    /// [`rchunks_exact`]: #method.rchunks_exact
     #[unstable(feature = "array_chunks", issue = "none")]
     #[inline]
     pub fn array_chunks<const N: usize>(&self) -> ArrayChunks<'_, T, N> {
