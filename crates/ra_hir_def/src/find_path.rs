@@ -17,18 +17,14 @@ const MAX_PATH_LEN: usize = 15;
 
 impl ModPath {
     fn starts_with_std(&self) -> bool {
-        self.segments.first().filter(|&first_segment| first_segment == &known::std).is_some()
+        self.segments.first() == Some(&known::std)
     }
 
     // When std library is present, paths starting with `std::`
     // should be preferred over paths starting with `core::` and `alloc::`
     fn can_start_with_std(&self) -> bool {
-        self.segments
-            .first()
-            .filter(|&first_segment| {
-                first_segment == &known::alloc || first_segment == &known::core
-            })
-            .is_some()
+        let first_segment = self.segments.first();
+        first_segment == Some(&known::alloc) || first_segment == Some(&known::core)
     }
 
     fn len(&self) -> usize {
