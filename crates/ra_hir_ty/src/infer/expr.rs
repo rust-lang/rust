@@ -238,23 +238,21 @@ impl<'a> InferenceContext<'a> {
                     Ty::unit()
                 };
 
-                let mut has_brkctx = false;
+                let last_ty = if let Some(ctxt) = self.breakables.last() {
+                    ctxt.break_ty.clone()
+                } else {
+                    Ty::Unknown
+                };
 
-                if self.breakables.last().is_some() {
-                    has_brkctx = true;
+                let merged_type = self.coerce_merge_branch(&last_ty, &val_ty);
+
+                if let Some(ctxt) = self.breakables.last_mut() {
+                    ctxt.break_ty = merged_type;
+                    ctxt.may_break = true;
                 } else {
                     self.push_diagnostic(InferenceDiagnostic::BreakOutsideOfLoop {
                         expr: tgt_expr,
                     });
-                }
-
-                if has_brkctx {
-                    let last_ty = self.breakables.last().expect("This is a bug").break_ty.clone();
-                    let merged_type = self.coerce_merge_branch(&last_ty, &val_ty);
-
-                    let ctxt = self.breakables.last_mut().expect("This is a bug");
-                    ctxt.may_break = true;
-                    ctxt.break_ty = merged_type;
                 }
 
                 Ty::simple(TypeCtor::Never)
