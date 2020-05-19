@@ -343,7 +343,7 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
         for_vid: ty::TyVid,
         dir: RelationDir,
     ) -> RelateResult<'tcx, Generalization<'tcx>> {
-        debug!("generalize(ty={:?}, for_vid={:?}, dir={:?}", ty, for_vid, dir);
+        debug!("generalize(ty={:?}, for_vid={:?}, dir={:?})", ty, for_vid, dir);
         // Determine the ambient variance within which `ty` appears.
         // The surrounding equation is:
         //
@@ -649,13 +649,17 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
     ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
         assert_eq!(c, c2); // we are abusing TypeRelation here; both LHS and RHS ought to be ==
 
+        debug!("generalize: consts c={:?}", c);
         match c.val {
             ty::ConstKind::Infer(InferConst::Var(vid)) => {
                 let mut inner = self.infcx.inner.borrow_mut();
                 let variable_table = &mut inner.const_unification_table();
                 let var_value = variable_table.probe_value(vid);
                 match var_value.val {
-                    ConstVariableValue::Known { value: u } => self.relate(&u, &u),
+                    ConstVariableValue::Known { value: u } => {
+                        drop(inner);
+                        self.relate(&u, &u)
+                    }
                     ConstVariableValue::Unknown { universe } => {
                         if self.for_universe.can_name(universe) {
                             Ok(c)
@@ -669,7 +673,22 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                     }
                 }
             }
-            ty::ConstKind::Unevaluated(..) if self.tcx().lazy_normalization() => Ok(c),
+            ty::ConstKind::Unevaluated(did, substs, promoted)
+                if self.tcx().lazy_normalization() =>
+            {
+                // We have to generalize inference variables used in the generic substitutions,
+                // as unevaluated consts may otherwise contain invalid inference variables.
+                let new_substs =
+                    self.relate_with_variance(ty::Variance::Invariant, &substs, &substs)?;
+                if new_substs != substs {
+                    Ok(self.tcx().mk_const(ty::Const {
+                        ty: c.ty,
+                        val: ty::ConstKind::Unevaluated(did, new_substs, promoted),
+                    }))
+                } else {
+                    Ok(c)
+                }
+            }
             _ => relate::super_relate_consts(self, c, c),
         }
     }
