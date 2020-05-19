@@ -85,7 +85,7 @@ fn run_server() -> Result<()> {
         capabilities: server_capabilities,
         server_info: Some(lsp_types::ServerInfo {
             name: String::from("rust-analyzer"),
-            version: None,
+            version: Some(String::from(env!("REV"))),
         }),
     };
 
