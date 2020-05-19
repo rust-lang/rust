@@ -110,6 +110,7 @@ mod handlers {
     mod add_impl;
     mod add_missing_impl_members;
     mod add_new;
+    mod add_turbo_fish;
     mod apply_demorgan;
     mod auto_import;
     mod change_return_type_to_result;
@@ -147,6 +148,7 @@ mod handlers {
             add_function::add_function,
             add_impl::add_impl,
             add_new::add_new,
+            add_turbo_fish::add_turbo_fish,
             apply_demorgan::apply_demorgan,
             auto_import::auto_import,
             change_return_type_to_result::change_return_type_to_result,
