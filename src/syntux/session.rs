@@ -2,14 +2,13 @@ use std::cell::RefCell;
 use std::path::Path;
 use std::rc::Rc;
 
-use rustc_ast::ast;
 use rustc_data_structures::sync::{Lrc, Send};
 use rustc_errors::emitter::{Emitter, EmitterWriter};
 use rustc_errors::{ColorConfig, Diagnostic, Handler, Level as DiagnosticLevel};
 use rustc_session::parse::ParseSess as RawParseSess;
 use rustc_span::{
     source_map::{FilePathMapping, SourceMap},
-    BytePos, Span,
+    symbol, BytePos, Span,
 };
 
 use crate::config::file_lines::LineRange;
@@ -147,8 +146,8 @@ impl ParseSess {
 
     pub(crate) fn default_submod_path(
         &self,
-        id: ast::Ident,
-        relative: Option<ast::Ident>,
+        id: symbol::Ident,
+        relative: Option<symbol::Ident>,
         dir_path: &Path,
     ) -> rustc_expand::module::ModulePath<'_> {
         rustc_expand::module::default_submod_path(

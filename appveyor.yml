@@ -48,6 +48,8 @@ install:
 build: false
 
 test_script:
+  - set CFG_RELEASE_CHANNEL=nightly
+  - set CFG_RELEASE=nightly
   - cargo build --verbose
   - cargo test
   - cargo test -- --ignored

@@ -3,7 +3,11 @@ use std::cmp::Ordering;
 use std::fmt;
 
 use rustc_ast::ast::{self, UseTreeKind};
-use rustc_span::{source_map, symbol::sym, BytePos, Span, DUMMY_SP};
+use rustc_span::{
+    source_map,
+    symbol::{self, sym},
+    BytePos, Span, DUMMY_SP,
+};
 
 use crate::comment::combine_strs_with_missing_comments;
 use crate::config::lists::*;
@@ -20,7 +24,7 @@ use crate::visitor::FmtVisitor;
 
 /// Returns a name imported by a `use` declaration.
 /// E.g., returns `Ordering` for `std::cmp::Ordering` and `self` for `std::cmp::self`.
-pub(crate) fn path_to_imported_ident(path: &ast::Path) -> ast::Ident {
+pub(crate) fn path_to_imported_ident(path: &ast::Path) -> symbol::Ident {
     path.segments.last().unwrap().ident
 }
 

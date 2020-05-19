@@ -1,9 +1,8 @@
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
-use rustc_ast::token::DelimToken;
-use rustc_ast::{ast, visit};
-use rustc_span::{BytePos, Pos, Span};
+use rustc_ast::{ast, token::DelimToken, visit};
+use rustc_span::{symbol, BytePos, Pos, Span};
 
 use crate::attr::*;
 use crate::comment::{rewrite_comment, CodeCharKind, CommentCodeSlices};
@@ -691,7 +690,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         }
     }
 
-    fn visit_mac(&mut self, mac: &ast::MacCall, ident: Option<ast::Ident>, pos: MacroPosition) {
+    fn visit_mac(&mut self, mac: &ast::MacCall, ident: Option<symbol::Ident>, pos: MacroPosition) {
         skip_out_of_file_lines_range_visitor!(self, mac.span());
 
         // 1 = ;
@@ -897,7 +896,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         m: &ast::Mod,
         vis: &ast::Visibility,
         s: Span,
-        ident: ast::Ident,
+        ident: symbol::Ident,
         attrs: &[ast::Attribute],
         is_internal: bool,
     ) {

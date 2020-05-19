@@ -17,7 +17,10 @@ use rustc_ast::tokenstream::{Cursor, TokenStream, TokenTree};
 use rustc_ast::{ast, ptr};
 use rustc_ast_pretty::pprust;
 use rustc_parse::{new_parser_from_tts, parser::Parser};
-use rustc_span::{symbol::kw, BytePos, Span, Symbol, DUMMY_SP};
+use rustc_span::{
+    symbol::{self, kw},
+    BytePos, Span, Symbol, DUMMY_SP,
+};
 
 use crate::comment::{
     contains_comment, CharClasses, FindUncommented, FullCodeCharKind, LineClasses,
@@ -52,7 +55,7 @@ pub(crate) enum MacroArg {
     Ty(ptr::P<ast::Ty>),
     Pat(ptr::P<ast::Pat>),
     Item(ptr::P<ast::Item>),
-    Keyword(ast::Ident, Span),
+    Keyword(symbol::Ident, Span),
 }
 
 impl MacroArg {
@@ -137,7 +140,7 @@ fn parse_macro_arg<'a, 'b: 'a>(parser: &'a mut Parser<'b>) -> Option<MacroArg> {
 fn rewrite_macro_name(
     context: &RewriteContext<'_>,
     path: &ast::Path,
-    extra_ident: Option<ast::Ident>,
+    extra_ident: Option<symbol::Ident>,
 ) -> String {
     let name = if path.segments.len() == 1 {
         // Avoid using pretty-printer in the common case.
@@ -188,7 +191,7 @@ fn return_macro_parse_failure_fallback(
 
 pub(crate) fn rewrite_macro(
     mac: &ast::MacCall,
-    extra_ident: Option<ast::Ident>,
+    extra_ident: Option<symbol::Ident>,
     context: &RewriteContext<'_>,
     shape: Shape,
     position: MacroPosition,
@@ -230,9 +233,10 @@ fn check_keyword<'a, 'b: 'a>(parser: &'a mut Parser<'b>) -> Option<MacroArg> {
             })
         {
             parser.bump();
-            let macro_arg =
-                MacroArg::Keyword(ast::Ident::with_dummy_span(keyword), parser.prev_token.span);
-            return Some(macro_arg);
+            return Some(MacroArg::Keyword(
+                symbol::Ident::with_dummy_span(keyword),
+                parser.prev_token.span,
+            ));
         }
     }
     None
@@ -240,7 +244,7 @@ fn check_keyword<'a, 'b: 'a>(parser: &'a mut Parser<'b>) -> Option<MacroArg> {
 
 fn rewrite_macro_inner(
     mac: &ast::MacCall,
-    extra_ident: Option<ast::Ident>,
+    extra_ident: Option<symbol::Ident>,
     context: &RewriteContext<'_>,
     shape: Shape,
     position: MacroPosition,
@@ -479,7 +483,7 @@ pub(crate) fn rewrite_macro_def(
     shape: Shape,
     indent: Indent,
     def: &ast::MacroDef,
-    ident: ast::Ident,
+    ident: symbol::Ident,
     vis: &ast::Visibility,
     span: Span,
 ) -> Option<String> {
@@ -620,7 +624,7 @@ fn replace_names(input: &str) -> Option<(String, HashMap<String, String>)> {
 #[derive(Debug, Clone)]
 enum MacroArgKind {
     /// e.g., `$x: expr`.
-    MetaVariable(ast::Name, String),
+    MetaVariable(Symbol, String),
     /// e.g., `$($foo: expr),*`
     Repeat(
         /// `()`, `[]` or `{}`.

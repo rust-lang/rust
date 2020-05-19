@@ -47,6 +47,8 @@ matrix:
 script:
   - |
     if [ -z ${INTEGRATION} ]; then
+      export CFG_RELEASE_CHANNEL=nightly
+      export CFG_RELEASE=nightly
       cargo build
       cargo test
       cargo test -- --ignored

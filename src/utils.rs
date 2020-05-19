@@ -6,7 +6,7 @@ use rustc_ast::ast::{
 };
 use rustc_ast::ptr;
 use rustc_ast_pretty::pprust;
-use rustc_span::{sym, BytePos, ExpnId, Span, Symbol, SyntaxContext};
+use rustc_span::{sym, symbol, BytePos, ExpnId, Span, Symbol, SyntaxContext};
 use unicode_width::UnicodeWidthStr;
 
 use crate::comment::{filter_normal_code, CharClasses, FullCodeCharKind, LineClasses};
@@ -24,7 +24,7 @@ pub(crate) fn skip_annotation() -> Symbol {
     Symbol::intern("rustfmt::skip")
 }
 
-pub(crate) fn rewrite_ident<'a>(context: &'a RewriteContext<'_>, ident: ast::Ident) -> &'a str {
+pub(crate) fn rewrite_ident<'a>(context: &'a RewriteContext<'_>, ident: symbol::Ident) -> &'a str {
     context.snippet(ident.span)
 }
 

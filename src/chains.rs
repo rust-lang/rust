@@ -59,7 +59,7 @@ use std::borrow::Cow;
 use std::cmp::min;
 
 use rustc_ast::{ast, ptr};
-use rustc_span::{BytePos, Span};
+use rustc_span::{symbol, BytePos, Span};
 
 use crate::comment::{rewrite_comment, CharClasses, FullCodeCharKind, RichChar};
 use crate::config::IndentStyle;
@@ -116,8 +116,8 @@ enum ChainItemKind {
         Vec<ast::GenericArg>,
         Vec<ptr::P<ast::Expr>>,
     ),
-    StructField(ast::Ident),
-    TupleField(ast::Ident, bool),
+    StructField(symbol::Ident),
+    TupleField(symbol::Ident, bool),
     Await,
     Comment(String, CommentPosition),
 }
@@ -234,7 +234,7 @@ impl ChainItem {
     }
 
     fn rewrite_method_call(
-        method_name: ast::Ident,
+        method_name: symbol::Ident,
         types: &[ast::GenericArg],
         args: &[ptr::P<ast::Expr>],
         span: Span,

@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use rustc_ast::ast;
 use rustc_ast::visit::Visitor;
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::{self, sym, Symbol};
 
 use crate::attr::MetaVisitor;
 use crate::config::FileName;
@@ -239,7 +239,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
     /// Find a file path in the filesystem which corresponds to the given module.
     fn find_external_module(
         &self,
-        mod_name: ast::Ident,
+        mod_name: symbol::Ident,
         attrs: &[ast::Attribute],
         sub_mod: &Cow<'ast, ast::Mod>,
     ) -> Result<Option<SubModKind<'c, 'ast>>, String> {
@@ -326,7 +326,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
         }
     }
 
-    fn push_inline_mod_directory(&mut self, id: ast::Ident, attrs: &[ast::Attribute]) {
+    fn push_inline_mod_directory(&mut self, id: symbol::Ident, attrs: &[ast::Attribute]) {
         if let Some(path) = find_path_value(attrs) {
             self.directory.path.push(&*path.as_str());
             self.directory.ownership = DirectoryOwnership::Owned { relative: None };
