@@ -51,7 +51,7 @@ pub(crate) fn replace_unwrap_with_match(acc: &mut Assists, ctx: &AssistContext) 
         let bind_path = make::path_unqualified(make::path_segment(make::name_ref("a")));
         let ok_arm = make::match_arm(iter::once(ok_tuple), make::expr_path(bind_path));
 
-        let unreachable_call = make::unreachable_macro_call().into();
+        let unreachable_call = make::expr_unreachable();
         let err_arm = make::match_arm(iter::once(make::placeholder_pat().into()), unreachable_call);
 
         let match_arm_list = make::match_arm_list(vec![ok_arm, err_arm]);

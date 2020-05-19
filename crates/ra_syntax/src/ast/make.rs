@@ -1,5 +1,9 @@
 //! This module contains free-standing functions for creating AST fragments out
 //! of smaller pieces.
+//!
+//! Note that all functions here intended to be stupid constructors, which just
+//! assemble a finish node from immediate children. If you want to do something
+//! smarter than that, it probably doesn't belong in this module.
 use itertools::Itertools;
 use stdx::format_to;
 
@@ -94,6 +98,9 @@ pub fn expr_empty_block() -> ast::Expr {
 }
 pub fn expr_unimplemented() -> ast::Expr {
     expr_from_text("unimplemented!()")
+}
+pub fn expr_unreachable() -> ast::Expr {
+    expr_from_text("unreachable!()")
 }
 pub fn expr_todo() -> ast::Expr {
     expr_from_text("todo!()")
@@ -262,10 +269,6 @@ pub fn token(kind: SyntaxKind) -> SyntaxToken {
         .filter_map(|it| it.into_token())
         .find(|it| it.kind() == kind)
         .unwrap_or_else(|| panic!("unhandled token: {:?}", kind))
-}
-
-pub fn unreachable_macro_call() -> ast::MacroCall {
-    ast_from_text(&format!("unreachable!()"))
 }
 
 pub fn param(name: String, ty: String) -> ast::Param {
