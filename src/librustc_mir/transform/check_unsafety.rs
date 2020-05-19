@@ -204,18 +204,12 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
 
         if context.is_borrow() {
             if util::is_disaligned(self.tcx, self.body, self.param_env, *place) {
-                let source_info = self.source_info;
-                let lint_root = self.body.source_scopes[source_info.scope]
-                    .local_data
-                    .as_ref()
-                    .assert_crate_local()
-                    .lint_root;
                 self.require_unsafe(
                     "borrow of packed field",
                     "fields of packed structs might be misaligned: dereferencing a \
                     misaligned pointer or even just creating a misaligned reference \
                     is undefined behavior",
-                    UnsafetyViolationKind::BorrowPacked(lint_root),
+                    UnsafetyViolationKind::BorrowPacked,
                 );
             }
         }
