@@ -378,6 +378,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         } else if this.tcx.sess.target.target.target_os == "macos"
             && cmd == this.eval_libc_i32("F_FULLFSYNC")?
         {
+            // On macOS, fsync does not wait for the underlying disk to finish writing, while this
+            // F_FULLFSYNC operation does. The standard library uses F_FULLFSYNC for both
+            // File::sync_data() and File::sync_all().
+            let &[_, _] = check_arg_count(args)?;
             if let Some(FileHandle { file, writable: _ }) = this.machine.file_handler.handles.get_mut(&fd) {
                 let result = file.sync_all();
                 this.try_unwrap_io_result(result.map(|_| 0i32))
@@ -1153,9 +1157,24 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.check_no_isolation("sync_file_range")?;
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
-        let _offset = this.read_scalar(offset_op)?.to_i64()?;
-        let _nbytes = this.read_scalar(nbytes_op)?.to_i64()?;
-        let _flags = this.read_scalar(flags_op)?.to_u32()?;
+        let offset = this.read_scalar(offset_op)?.to_i64()?;
+        let nbytes = this.read_scalar(nbytes_op)?.to_i64()?;
+        let flags = this.read_scalar(flags_op)?.to_i32()?;
+
+        if offset < 0 || nbytes < 0 {
+            let einval = this.eval_libc("EINVAL")?;
+            this.set_last_error(einval)?;
+            return Ok(-1);
+        }
+        let allowed_flags = this.eval_libc_i32("SYNC_FILE_RANGE_WAIT_BEFORE")?
+            | this.eval_libc_i32("SYNC_FILE_RANGE_WRITE")?
+            | this.eval_libc_i32("SYNC_FILE_RANGE_WAIT_AFTER")?;
+        if flags & allowed_flags != flags {
+            let einval = this.eval_libc("EINVAL")?;
+            this.set_last_error(einval)?;
+            return Ok(-1);
+        }
+
         if let Some(FileHandle { file, writable: _ }) = this.machine.file_handler.handles.get_mut(&fd) {
             // In the interest of host compatibility, we conservatively ignore
             // offset, nbytes, and flags, and sync the entire file.

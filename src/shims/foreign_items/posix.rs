@@ -137,11 +137,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_i64(result), dest)?;
             }
             "fsync" => {
-                let result = this.fsync(args[0])?;
+                let &[fd] = check_arg_count(args)?;
+                let result = this.fsync(fd)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "fdatasync" => {
-                let result = this.fdatasync(args[0])?;
+                let &[fd] = check_arg_count(args)?;
+                let result = this.fdatasync(fd)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
 

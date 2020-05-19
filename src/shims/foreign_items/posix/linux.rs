@@ -54,9 +54,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // fadvise is only informational, we can ignore it.
                 this.write_null(dest)?;
             }
-            // Linux-only
             "sync_file_range" => {
-                let result = this.sync_file_range(args[0], args[1], args[2], args[3])?;
+                let &[fd, offset, nbytes, flags] = check_arg_count(args)?;
+                let result = this.sync_file_range(fd, offset, nbytes, flags)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
 

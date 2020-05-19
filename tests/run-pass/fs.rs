@@ -14,8 +14,7 @@ fn main() {
     test_seek();
     test_metadata();
     test_file_set_len();
-    test_file_sync_all();
-    test_file_sync_data();
+    test_file_sync();
     test_symlink();
     test_errors();
     test_rename();
@@ -184,24 +183,14 @@ fn test_file_set_len() {
     remove_file(&path).unwrap();
 }
 
-fn test_file_sync_all() {
+fn test_file_sync() {
     let bytes = b"Hello, World!\n";
-    let path = prepare_with_content("miri_test_fs_sync_all.txt", bytes);
+    let path = prepare_with_content("miri_test_fs_sync.txt", bytes);
 
-    // Test that we can call sync_all (can't readily test effects of this operation)
-    let file = File::open(&path).unwrap();
-    file.sync_all().unwrap();
-
-    remove_file(&path).unwrap();
-}
-
-fn test_file_sync_data() {
-    let bytes = b"Hello, World!\n";
-    let path = prepare_with_content("miri_test_fs_sync_data.txt", bytes);
-
-    // Test that we can call sync_data (can't readily test effects of this operation)
+    // Test that we can call sync_data and sync_all (can't readily test effects of this operation)
     let file = File::open(&path).unwrap();
     file.sync_data().unwrap();
+    file.sync_all().unwrap();
 
     remove_file(&path).unwrap();
 }
