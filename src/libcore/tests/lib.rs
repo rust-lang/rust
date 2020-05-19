@@ -17,7 +17,6 @@
 #![feature(pattern)]
 #![feature(range_is_empty)]
 #![feature(raw)]
-#![feature(saturating_neg)]
 #![feature(sort_internals)]
 #![feature(slice_partition_at_index)]
 #![feature(specialization)]

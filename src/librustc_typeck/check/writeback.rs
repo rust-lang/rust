@@ -647,10 +647,23 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
         Resolver { tcx: fcx.tcx, infcx: fcx, span, body, replaced_with_error: false }
     }
 
-    fn report_error(&self, t: Ty<'tcx>) {
+    fn report_type_error(&self, t: Ty<'tcx>) {
         if !self.tcx.sess.has_errors() {
             self.infcx
                 .need_type_info_err(Some(self.body.id()), self.span.to_span(self.tcx), t, E0282)
+                .emit();
+        }
+    }
+
+    fn report_const_error(&self, c: &'tcx ty::Const<'tcx>) {
+        if !self.tcx.sess.has_errors() {
+            self.infcx
+                .need_type_info_err_const(
+                    Some(self.body.id()),
+                    self.span.to_span(self.tcx),
+                    c,
+                    E0282,
+                )
                 .emit();
         }
     }
@@ -666,7 +679,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
             Ok(t) => self.infcx.tcx.erase_regions(&t),
             Err(_) => {
                 debug!("Resolver::fold_ty: input type `{:?}` not fully resolvable", t);
-                self.report_error(t);
+                self.report_type_error(t);
                 self.replaced_with_error = true;
                 self.tcx().types.err
             }
@@ -683,8 +696,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
             Ok(ct) => self.infcx.tcx.erase_regions(&ct),
             Err(_) => {
                 debug!("Resolver::fold_const: input const `{:?}` not fully resolvable", ct);
-                // FIXME: we'd like to use `self.report_error`, but it doesn't yet
-                // accept a &'tcx ty::Const.
+                self.report_const_error(ct);
                 self.replaced_with_error = true;
                 self.tcx().mk_const(ty::Const { val: ty::ConstKind::Error, ty: ct.ty })
             }
