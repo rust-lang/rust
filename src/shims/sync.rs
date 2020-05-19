@@ -254,7 +254,8 @@ fn cond_set_clock_id<'mir, 'tcx: 'mir>(
     set_at_offset(ecx, cond_op, 8, clock_id, ecx.machine.layouts.i32, PTHREAD_COND_T_MIN_SIZE)
 }
 
-/// Try to reacquire the mutex associated with the condition variable after we were signaled.
+/// Try to reacquire the mutex associated with the condition variable after we
+/// were signaled.
 fn reacquire_cond_mutex<'mir, 'tcx: 'mir>(
     ecx: &mut MiriEvalContext<'mir, 'tcx>,
     thread: ThreadId,
@@ -267,6 +268,17 @@ fn reacquire_cond_mutex<'mir, 'tcx: 'mir>(
         ecx.unblock_thread(thread)?;
     }
     Ok(())
+}
+
+/// Reacquire the conditional variable and remove the timeout callback if any
+/// was registered.
+fn post_cond_signal<'mir, 'tcx: 'mir>(
+    ecx: &mut MiriEvalContext<'mir, 'tcx>,
+    thread: ThreadId,
+    mutex: MutexId,
+) -> InterpResult<'tcx> {
+    reacquire_cond_mutex(ecx, thread, mutex)?;
+    ecx.unregister_timeout_callback_if_exists(thread)
 }
 
 /// Release the mutex associated with the condition variable because we are
@@ -648,8 +660,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
         let id = cond_get_or_create_id(this, cond_op)?;
         if let Some((thread, mutex)) = this.condvar_signal(id) {
-            reacquire_cond_mutex(this, thread, mutex)?;
-            this.unregister_timeout_callback_if_exists(thread)?;
+            post_cond_signal(this, thread, mutex)?;
         }
 
         Ok(0)
@@ -660,8 +671,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let id = cond_get_or_create_id(this, cond_op)?;
 
         while let Some((thread, mutex)) = this.condvar_signal(id) {
-            reacquire_cond_mutex(this, thread, mutex)?;
-            this.unregister_timeout_callback_if_exists(thread)?;
+            post_cond_signal(this, thread, mutex)?;
         }
 
         Ok(0)
@@ -730,7 +740,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         } else if clock_id == this.eval_libc_i32("CLOCK_MONOTONIC")? {
             Time::Monotonic(this.machine.time_anchor.checked_add(duration).unwrap())
         } else {
-            throw_ub_format!("Unsupported clock id.");
+            throw_unsup_format!("Unsupported clock id.");
         };
 
         // Register the timeout callback.
@@ -738,13 +748,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             active_thread,
             timeout_time,
             Box::new(move |ecx| {
-                // Try to reacquire the mutex.
+                // We are not waiting for the condvar any more, wait for the
+                // mutex instead.
                 reacquire_cond_mutex(ecx, active_thread, mutex_id)?;
 
                 // Remove the thread from the conditional variable.
                 ecx.condvar_remove_waiter(id, active_thread);
 
-                // Set the timeout value.
+                // Set the return value: we timed out.
                 let timeout = ecx.eval_libc_i32("ETIMEDOUT")?;
                 ecx.write_scalar(Scalar::from_i32(timeout), dest)?;
 

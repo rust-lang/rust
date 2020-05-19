@@ -179,6 +179,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// Put the thread into the queue waiting for the lock.
     fn mutex_enqueue(&mut self, id: MutexId, thread: ThreadId) {
         let this = self.eval_context_mut();
+        assert!(this.mutex_is_locked(id), "queing on unlocked mutex");
         this.machine.threads.sync.mutexes[id].queue.push_back(thread);
     }
 

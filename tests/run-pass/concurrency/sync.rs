@@ -35,8 +35,9 @@ fn check_conditional_variables_notify_one() {
     let pair = Arc::new((Mutex::new(false), Condvar::new()));
     let pair2 = pair.clone();
 
-    // Inside of our lock, spawn a new thread, and then wait for it to start.
+    // Spawn a new thread.
     thread::spawn(move || {
+        thread::yield_now();
         let (lock, cvar) = &*pair2;
         let mut started = lock.lock().unwrap();
         *started = true;
@@ -44,7 +45,7 @@ fn check_conditional_variables_notify_one() {
         cvar.notify_one();
     });
 
-    // Wait for the thread to start up.
+    // Wait for the thread to fully start up.
     let (lock, cvar) = &*pair;
     let mut started = lock.lock().unwrap();
     while !*started {
