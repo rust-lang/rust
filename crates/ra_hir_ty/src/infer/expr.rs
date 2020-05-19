@@ -93,14 +93,17 @@ impl<'a> InferenceContext<'a> {
                 Ty::Unknown
             }
             Expr::Loop { body } => {
-                self.breakables.push(BreakableContext { may_break: false, break_ty: Ty::Unknown });
+                self.breakables.push(BreakableContext {
+                    may_break: false,
+                    break_ty: self.table.new_type_var(),
+                });
                 self.infer_expr(*body, &Expectation::has_type(Ty::unit()));
 
                 let ctxt = self.breakables.pop().expect("breakable stack broken");
                 if ctxt.may_break {
                     self.diverges = Diverges::Maybe;
                 }
-                // FIXME handle break with value
+
                 if ctxt.may_break {
                     ctxt.break_ty
                 } else {
@@ -229,26 +232,31 @@ impl<'a> InferenceContext<'a> {
             }
             Expr::Continue => Ty::simple(TypeCtor::Never),
             Expr::Break { expr } => {
-                let mut has_val_ty = None;
+                let val_ty = if let Some(expr) = expr {
+                    self.infer_expr(*expr, &Expectation::none())
+                } else {
+                    Ty::unit()
+                };
 
-                if let Some(expr) = expr {
-                    has_val_ty = Some(self.infer_expr(*expr, &Expectation::none()));
-                }
+                let mut has_brkctx = false;
 
-                if let Some(ctxt) = self.breakables.last_mut() {
-                    ctxt.may_break = true;
-                    if let Some(val_ty) = has_val_ty {
-                        if ctxt.break_ty == Ty::Unknown {
-                            ctxt.break_ty = val_ty;
-                        } else if ctxt.break_ty != val_ty {
-                            // TODO: Unify partially matching type information (Option<{unknown}> + Option<i32> => Option<i32>)
-                        }
-                    }
+                if self.breakables.last().is_some() {
+                    has_brkctx = true;
                 } else {
                     self.push_diagnostic(InferenceDiagnostic::BreakOutsideOfLoop {
                         expr: tgt_expr,
                     });
                 }
+
+                if has_brkctx {
+                    let last_ty = self.breakables.last().expect("This is a bug").break_ty.clone();
+                    let merged_type = self.coerce_merge_branch(&last_ty, &val_ty);
+
+                    let ctxt = self.breakables.last_mut().expect("This is a bug");
+                    ctxt.may_break = true;
+                    ctxt.break_ty = merged_type;
+                }
+
                 Ty::simple(TypeCtor::Never)
             }
             Expr::Return { expr } => {
