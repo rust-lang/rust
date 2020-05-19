@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use hir::Semantics;
+use hir::{AsAssocItem, Semantics};
 use itertools::Itertools;
 use ra_ide_db::RootDatabase;
 use ra_syntax::{
@@ -65,14 +65,36 @@ fn runnable_fn(sema: &Semantics<RootDatabase>, fn_def: ast::FnDef) -> Option<Run
         RunnableKind::Bin
     } else {
         let test_id = if let Some(module) = sema.to_def(&fn_def).map(|def| def.module(sema.db)) {
-            let path = module
+            let def = sema.to_def(&fn_def)?;
+            let impl_trait_name =
+                def.as_assoc_item(sema.db).and_then(|assoc_item| {
+                    match assoc_item.container(sema.db) {
+                        hir::AssocItemContainer::Trait(trait_item) => {
+                            Some(trait_item.name(sema.db).to_string())
+                        }
+                        hir::AssocItemContainer::ImplDef(impl_def) => impl_def
+                            .target_ty(sema.db)
+                            .as_adt()
+                            .map(|adt| adt.name(sema.db).to_string()),
+                    }
+                });
+
+            let path_iter = module
                 .path_to_root(sema.db)
                 .into_iter()
                 .rev()
                 .filter_map(|it| it.name(sema.db))
-                .map(|name| name.to_string())
-                .chain(std::iter::once(name_string))
-                .join("::");
+                .map(|name| name.to_string());
+
+            let path = if let Some(impl_trait_name) = impl_trait_name {
+                path_iter
+                    .chain(std::iter::once(impl_trait_name))
+                    .chain(std::iter::once(name_string))
+                    .join("::")
+            } else {
+                path_iter.chain(std::iter::once(name_string)).join("::")
+            };
+
             TestId::Path(path)
         } else {
             TestId::Name(name_string)
@@ -229,6 +251,44 @@ mod tests {
                 kind: DocTest {
                     test_id: Path(
                         "foo",
+                    ),
+                },
+            },
+        ]
+        "###
+                );
+    }
+
+    #[test]
+    fn test_runnables_doc_test_in_impl() {
+        let (analysis, pos) = analysis_and_position(
+            r#"
+        //- /lib.rs
+        <|> //empty
+        fn main() {}
+
+        struct Data;
+        impl Data {
+            /// ```
+            /// let x = 5;
+            /// ```
+            fn foo() {}
+        }
+        "#,
+        );
+        let runnables = analysis.runnables(pos.file_id).unwrap();
+        assert_debug_snapshot!(&runnables,
+        @r###"
+        [
+            Runnable {
+                range: 1..21,
+                kind: Bin,
+            },
+            Runnable {
+                range: 51..105,
+                kind: DocTest {
+                    test_id: Path(
+                        "Data::foo",
                     ),
                 },
             },
