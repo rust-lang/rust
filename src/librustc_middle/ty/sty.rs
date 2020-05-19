@@ -6,7 +6,6 @@ use self::InferTy::*;
 use self::TyKind::*;
 
 use crate::infer::canonical::Canonical;
-use crate::middle::region;
 use crate::mir::interpret::ConstValue;
 use crate::mir::interpret::{LitToConstInput, Scalar};
 use crate::mir::Promoted;
@@ -1179,17 +1178,15 @@ rustc_index::newtype_index! {
 
 pub type Region<'tcx> = &'tcx RegionKind;
 
-/// Representation of (lexical) regions. Note that the NLL checker
-/// uses a distinct representation of regions. For this reason, it
-/// internally replaces all the regions with inference variables --
-/// the index of the variable is then used to index into internal NLL
-/// data structures. See `rustc_mir::borrow_check` module for more
-/// information.
+/// Representation of regions. Note that the NLL checker uses a distinct
+/// representation of regions. For this reason, it internally replaces all the
+/// regions with inference variables -- the index of the variable is then used
+/// to index into internal NLL data structures. See `rustc_mir::borrow_check`
+/// module for more information.
 ///
 /// ## The Region lattice within a given function
 ///
-/// In general, the (lexical, and hence deprecated) region lattice
-/// looks like
+/// In general, the region lattice looks like
 ///
 /// ```
 /// static ----------+-----...------+       (greatest)
@@ -1197,7 +1194,6 @@ pub type Region<'tcx> = &'tcx RegionKind;
 /// early-bound and  |              |
 /// free regions     |              |
 /// |                |              |
-/// scope regions    |              |
 /// |                |              |
 /// empty(root)   placeholder(U1)   |
 /// |            /                  |
@@ -1212,13 +1208,7 @@ pub type Region<'tcx> = &'tcx RegionKind;
 /// Early-bound/free regions are the named lifetimes in scope from the
 /// function declaration. They have relationships to one another
 /// determined based on the declared relationships from the
-/// function. They all collectively outlive the scope regions. (See
-/// `RegionRelations` type, and particularly
-/// `crate::infer::outlives::free_region_map::FreeRegionMap`.)
-///
-/// The scope regions are related to one another based on the AST
-/// structure. (See `RegionRelations` type, and particularly the
-/// `rustc_middle::middle::region::ScopeTree`.)
+/// function.
 ///
 /// Note that inference variables and bound regions are not included
 /// in this diagram. In the case of inference variables, they should
@@ -1306,11 +1296,6 @@ pub enum RegionKind {
     /// that refer to bound region parameters are modified to refer to free
     /// region parameters.
     ReFree(FreeRegion),
-
-    /// A concrete region naming some statically determined scope
-    /// (e.g., an expression or sequence of statements) within the
-    /// current function.
-    ReScope(region::Scope),
 
     /// Static data that has an "infinite" lifetime. Top in the region lattice.
     ReStatic,
@@ -1535,7 +1520,6 @@ impl RegionKind {
             RegionKind::ReEarlyBound(ebr) => ebr.has_name(),
             RegionKind::ReLateBound(_, br) => br.is_named(),
             RegionKind::ReFree(fr) => fr.bound_region.is_named(),
-            RegionKind::ReScope(..) => false,
             RegionKind::ReStatic => true,
             RegionKind::ReVar(..) => false,
             RegionKind::RePlaceholder(placeholder) => placeholder.name.is_named(),
@@ -1616,7 +1600,7 @@ impl RegionKind {
                 flags = flags | TypeFlags::HAS_RE_PARAM;
                 flags = flags | TypeFlags::STILL_FURTHER_SPECIALIZABLE;
             }
-            ty::ReFree { .. } | ty::ReScope { .. } => {
+            ty::ReFree { .. } => {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
                 flags = flags | TypeFlags::HAS_FREE_LOCAL_REGIONS;
             }

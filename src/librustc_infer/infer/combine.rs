@@ -619,7 +619,6 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
             | ty::ReVar(..)
             | ty::ReEmpty(_)
             | ty::ReStatic
-            | ty::ReScope(..)
             | ty::ReEarlyBound(..)
             | ty::ReFree(..) => {
                 // see common code below

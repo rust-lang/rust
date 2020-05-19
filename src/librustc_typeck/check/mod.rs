@@ -106,13 +106,13 @@ use rustc_hir::lang_items::{
 use rustc_hir::{ExprKind, GenericArg, HirIdMap, Item, ItemKind, Node, PatKind, QPath};
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::Idx;
+use rustc_infer::infer;
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
-use rustc_infer::infer::{self, InferCtxt, InferOk, InferResult, TyCtxtInferExt};
+use rustc_infer::infer::{InferCtxt, InferOk, InferResult, RegionVariableOrigin, TyCtxtInferExt};
 use rustc_middle::hir::map::blocks::FnLikeNode;
-use rustc_middle::middle::region;
 use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCast,
@@ -667,13 +667,6 @@ impl Inherited<'a, 'tcx> {
         let tcx = infcx.tcx;
         let item_id = tcx.hir().local_def_id_to_hir_id(def_id);
         let body_id = tcx.hir().maybe_body_owned_by(item_id);
-        let implicit_region_bound = body_id.map(|body_id| {
-            let body = tcx.hir().body(body_id);
-            tcx.mk_region(ty::ReScope(region::Scope {
-                id: body.value.hir_id.local_id,
-                data: region::ScopeData::CallSite,
-            }))
-        });
 
         Inherited {
             tables: MaybeInProgressTables { maybe_tables: infcx.in_progress_tables },
@@ -686,7 +679,7 @@ impl Inherited<'a, 'tcx> {
             deferred_generator_interiors: RefCell::new(Vec::new()),
             opaque_types: RefCell::new(Default::default()),
             opaque_types_vars: RefCell::new(Default::default()),
-            implicit_region_bound,
+            implicit_region_bound: None,
             body_id,
         }
     }
@@ -1337,12 +1330,9 @@ fn check_fn<'a, 'tcx>(
     // C-variadic fns also have a `VaList` input that's not listed in `fn_sig`
     // (as it's created inside the body itself, not passed in from outside).
     let maybe_va_list = if fn_sig.c_variadic {
-        let va_list_did =
-            tcx.require_lang_item(VaListTypeLangItem, Some(body.params.last().unwrap().span));
-        let region = tcx.mk_region(ty::ReScope(region::Scope {
-            id: body.value.hir_id.local_id,
-            data: region::ScopeData::CallSite,
-        }));
+        let span = body.params.last().unwrap().span;
+        let va_list_did = tcx.require_lang_item(VaListTypeLangItem, Some(span));
+        let region = fcx.next_region_var(RegionVariableOrigin::MiscVariable(span));
 
         Some(tcx.type_of(va_list_did).subst(tcx, &[region.into()]))
     } else {

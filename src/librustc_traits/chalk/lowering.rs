@@ -394,7 +394,6 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Lifetime<RustInterner<'tcx>>> for Region<'t
                 ty::BrEnv => unimplemented!(),
             },
             ReFree(_) => unimplemented!(),
-            ReScope(_) => unimplemented!(),
             ReStatic => unimplemented!(),
             ReVar(_) => unimplemented!(),
             RePlaceholder(placeholder_region) => {

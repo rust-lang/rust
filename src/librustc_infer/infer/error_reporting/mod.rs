@@ -88,51 +88,6 @@ pub(super) fn note_and_explain_region(
     suffix: &str,
 ) {
     let (description, span) = match *region {
-        ty::ReScope(scope) => {
-            let new_string;
-            let unknown_scope =
-                || format!("{}unknown scope: {:?}{}.  Please report a bug.", prefix, scope, suffix);
-            let span = scope.span(tcx, region_scope_tree);
-            let hir_id = scope.hir_id(region_scope_tree);
-            let tag = match hir_id.and_then(|hir_id| tcx.hir().find(hir_id)) {
-                Some(Node::Block(_)) => "block",
-                Some(Node::Expr(expr)) => match expr.kind {
-                    hir::ExprKind::Call(..) => "call",
-                    hir::ExprKind::MethodCall(..) => "method call",
-                    hir::ExprKind::Match(.., hir::MatchSource::IfLetDesugar { .. }) => "if let",
-                    hir::ExprKind::Match(.., hir::MatchSource::WhileLetDesugar) => "while let",
-                    hir::ExprKind::Match(.., hir::MatchSource::ForLoopDesugar) => "for",
-                    hir::ExprKind::Match(..) => "match",
-                    _ => "expression",
-                },
-                Some(Node::Stmt(_)) => "statement",
-                Some(Node::Item(it)) => item_scope_tag(&it),
-                Some(Node::TraitItem(it)) => trait_item_scope_tag(&it),
-                Some(Node::ImplItem(it)) => impl_item_scope_tag(&it),
-                Some(_) | None => {
-                    err.span_note(span, &unknown_scope());
-                    return;
-                }
-            };
-            let scope_decorated_tag = match scope.data {
-                region::ScopeData::Node => tag,
-                region::ScopeData::CallSite => "scope of call-site for function",
-                region::ScopeData::Arguments => "scope of function body",
-                region::ScopeData::Destruction => {
-                    new_string = format!("destruction scope surrounding {}", tag);
-                    &new_string[..]
-                }
-                region::ScopeData::Remainder(first_statement_index) => {
-                    new_string = format!(
-                        "block suffix following statement {}",
-                        first_statement_index.index()
-                    );
-                    &new_string[..]
-                }
-            };
-            explain_span(tcx, scope_decorated_tag, span)
-        }
-
         ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReStatic => {
             msg_span_from_free_region(tcx, region)
         }

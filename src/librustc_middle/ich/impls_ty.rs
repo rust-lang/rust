@@ -87,9 +87,6 @@ impl<'a> HashStable<StableHashingContext<'a>> for ty::RegionKind {
                 index.hash_stable(hcx, hasher);
                 name.hash_stable(hcx, hasher);
             }
-            ty::ReScope(scope) => {
-                scope.hash_stable(hcx, hasher);
-            }
             ty::ReFree(ref free_region) => {
                 free_region.hash_stable(hcx, hasher);
             }

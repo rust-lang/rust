@@ -18,12 +18,10 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{ReEarlyBound, ReEmpty, ReErased, ReFree, ReStatic};
-use rustc_middle::ty::{ReLateBound, RePlaceholder, ReScope, ReVar};
+use rustc_middle::ty::{ReLateBound, RePlaceholder, ReVar};
 use rustc_middle::ty::{Region, RegionVid};
 use rustc_span::Span;
 use std::fmt;
-
-mod graphviz;
 
 /// This function performs lexical region resolution given a complete
 /// set of constraints and variable origins. It performs a fixed-point
@@ -149,7 +147,6 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             self.region_rels.context,
             self.dump_constraints(self.region_rels)
         );
-        graphviz::maybe_print_constraints_for(&self.data, self.region_rels);
 
         let graph = self.construct_graph();
         self.expand_givens(&graph);
@@ -426,15 +423,6 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
 
         match *b_data {
             VarValue::Value(cur_region) => {
-                // Identical scopes can show up quite often, if the fixed point
-                // iteration converges slowly. Skip them. This is purely an
-                // optimization.
-                if let (ReScope(a_scope), ReScope(cur_scope)) = (a_region, cur_region) {
-                    if a_scope == cur_scope {
-                        return false;
-                    }
-                }
-
                 // This is a specialized version of the `lub_concrete_regions`
                 // check below for a common case, here purely as an
                 // optimization.
@@ -528,8 +516,8 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                 self.tcx().lifetimes.re_static
             }
 
-            (&ReEmpty(_), r @ (ReEarlyBound(_) | ReFree(_) | ReScope(_)))
-            | (r @ (ReEarlyBound(_) | ReFree(_) | ReScope(_)), &ReEmpty(_)) => {
+            (&ReEmpty(_), r @ (ReEarlyBound(_) | ReFree(_)))
+            | (r @ (ReEarlyBound(_) | ReFree(_)), &ReEmpty(_)) => {
                 // All empty regions are less than early-bound, free,
                 // and scope regions.
                 r
@@ -552,46 +540,6 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                 } else {
                     self.tcx().lifetimes.re_static
                 }
-            }
-
-            (&ReEarlyBound(_) | &ReFree(_), &ReScope(s_id))
-            | (&ReScope(s_id), &ReEarlyBound(_) | &ReFree(_)) => {
-                // A "free" region can be interpreted as "some region
-                // at least as big as fr.scope".  So, we can
-                // reasonably compare free regions and scopes:
-                let fr_scope = match (a, b) {
-                    (&ReEarlyBound(ref br), _) | (_, &ReEarlyBound(ref br)) => {
-                        self.region_rels.region_scope_tree.early_free_scope(self.tcx(), br)
-                    }
-                    (&ReFree(ref fr), _) | (_, &ReFree(ref fr)) => {
-                        self.region_rels.region_scope_tree.free_scope(self.tcx(), fr)
-                    }
-                    _ => bug!(),
-                };
-                let r_id =
-                    self.region_rels.region_scope_tree.nearest_common_ancestor(fr_scope, s_id);
-                if r_id == fr_scope {
-                    // if the free region's scope `fr.scope` is bigger than
-                    // the scope region `s_id`, then the LUB is the free
-                    // region itself:
-                    match (a, b) {
-                        (_, &ReScope(_)) => return a,
-                        (&ReScope(_), _) => return b,
-                        _ => bug!(),
-                    }
-                }
-
-                // otherwise, we don't know what the free region is,
-                // so we must conservatively say the LUB is static:
-                self.tcx().lifetimes.re_static
-            }
-
-            (&ReScope(a_id), &ReScope(b_id)) => {
-                // The region corresponding to an outer block is a
-                // subtype of the region corresponding to an inner
-                // block.
-                let lub = self.region_rels.region_scope_tree.nearest_common_ancestor(a_id, b_id);
-                self.tcx().mk_region(ReScope(lub))
             }
 
             (&ReEarlyBound(_) | &ReFree(_), &ReEarlyBound(_) | &ReFree(_)) => {
@@ -662,7 +610,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                     if !self.sub_concrete_regions(a_region, b_region) {
                         debug!(
                             "collect_errors: region error at {:?}: \
-                             cannot verify that {:?}={:?} <= {:?}",
+                            cannot verify that {:?}={:?} <= {:?}",
                             origin, a_vid, a_region, b_region
                         );
                         *a_data = VarValue::ErrorValue;
