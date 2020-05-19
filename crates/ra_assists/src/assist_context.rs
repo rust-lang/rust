@@ -194,19 +194,29 @@ impl AssistBuilder {
     pub(crate) fn insert(&mut self, offset: TextSize, text: impl Into<String>) {
         self.edit.insert(offset, text.into())
     }
-    /// Append specified `text` at the given `offset`
+    /// Append specified `snippet` at the given `offset`
     pub(crate) fn insert_snippet(
         &mut self,
         _cap: SnippetCap,
         offset: TextSize,
-        text: impl Into<String>,
+        snippet: impl Into<String>,
     ) {
         self.is_snippet = true;
-        self.edit.insert(offset, text.into())
+        self.insert(offset, snippet);
     }
     /// Replaces specified `range` of text with a given string.
     pub(crate) fn replace(&mut self, range: TextRange, replace_with: impl Into<String>) {
         self.edit.replace(range, replace_with.into())
+    }
+    /// Replaces specified `range` of text with a given `snippet`.
+    pub(crate) fn replace_snippet(
+        &mut self,
+        _cap: SnippetCap,
+        range: TextRange,
+        snippet: impl Into<String>,
+    ) {
+        self.is_snippet = true;
+        self.replace(range, snippet);
     }
     pub(crate) fn replace_ast<N: AstNode>(&mut self, old: N, new: N) {
         algo::diff(old.syntax(), new.syntax()).into_text_edit(&mut self.edit)
