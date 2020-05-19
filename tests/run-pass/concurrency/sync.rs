@@ -53,25 +53,32 @@ fn check_conditional_variables_notify_one() {
     }
 }
 
-/// The test taken from the Rust documentation.
 fn check_conditional_variables_notify_all() {
-    let pair = Arc::new((Mutex::new(false), Condvar::new()));
-    let pair2 = pair.clone();
+    let pair = Arc::new(((Mutex::new(())), Condvar::new()));
 
-    thread::spawn(move || {
-        let (lock, cvar) = &*pair2;
-        let mut started = lock.lock().unwrap();
-        *started = true;
-        // We notify the condvar that the value has changed.
-        cvar.notify_all();
-    });
+    // Spawn threads and block them on the conditional variable.
+    let handles: Vec<_> = (0..5)
+        .map(|_| {
+            let pair2 = pair.clone();
+            thread::spawn(move || {
+                let (lock, cvar) = &*pair2;
+                let guard = lock.lock().unwrap();
+                // Block waiting on the conditional variable.
+                let _ = cvar.wait(guard).unwrap();
+            })
+        })
+        .inspect(|_| {
+            thread::yield_now();
+            thread::yield_now();
+        })
+        .collect();
 
-    // Wait for the thread to start up.
-    let (lock, cvar) = &*pair;
-    let mut started = lock.lock().unwrap();
-    // As long as the value inside the `Mutex<bool>` is `false`, we wait.
-    while !*started {
-        started = cvar.wait(started).unwrap();
+    let (_, cvar) = &*pair;
+    // Unblock all threads.
+    cvar.notify_all();
+
+    for handle in handles {
+        handle.join().unwrap();
     }
 }
 
