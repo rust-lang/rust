@@ -4,11 +4,11 @@ error[E0429]: `self` imports are only allowed within a { } list
 LL | use foo::self;
    |        ^^^^^^
    |
-help: Remove `::self`..
+help: consider importing the module directly
    |
 LL | use foo;
    |       --
-help: ..or add braces around `self`
+help: alternatively, use the multi-path `use` syntax to import `self`
    |
 LL | use foo::{self};
    |          ^    ^
@@ -19,11 +19,11 @@ error[E0429]: `self` imports are only allowed within a { } list
 LL | use std::mem::self;
    |             ^^^^^^
    |
-help: Remove `::self`..
+help: consider importing the module directly
    |
 LL | use std::mem;
    |            --
-help: ..or add braces around `self`
+help: alternatively, use the multi-path `use` syntax to import `self`
    |
 LL | use std::mem::{self};
    |               ^    ^

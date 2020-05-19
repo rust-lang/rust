@@ -316,7 +316,7 @@ impl<'a> Resolver<'a> {
                     // use foo::bar::self as abc -> foo::bar as abc
                     err.span_suggestion(
                         span,
-                        "Remove `::self`..",
+                        "consider importing the module directly",
                         "".to_string(),
                         Applicability::MachineApplicable,
                     );
@@ -328,7 +328,7 @@ impl<'a> Resolver<'a> {
                         (span_with_rename.shrink_to_hi(), "}".to_string()),
                     ];
                     err.multipart_suggestion(
-                        "..or add braces around `self`",
+                        "alternatively, use the multi-path `use` syntax to import `self`",
                         braces,
                         Applicability::MachineApplicable,
                     );
