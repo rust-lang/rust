@@ -1,11 +1,11 @@
 use ra_ide_db::defs::{classify_name_ref, Definition, NameRefClass};
 use ra_syntax::{ast, AstNode, SyntaxKind, T};
+use test_utils::mark;
 
 use crate::{
     assist_context::{AssistContext, Assists},
     AssistId,
 };
-use test_utils::tested_by;
 
 // Assist: add_turbo_fish
 //
@@ -28,7 +28,7 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext) -> Option<(
     let ident = ctx.find_token_at_offset(SyntaxKind::IDENT)?;
     let next_token = ident.next_token()?;
     if next_token.kind() == T![::] {
-        tested_by!(add_turbo_fish_one_fish_is_enough);
+        mark::hit!(add_turbo_fish_one_fish_is_enough);
         return None;
     }
     let name_ref = ast::NameRef::cast(ident.parent())?;
@@ -42,7 +42,7 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext) -> Option<(
     };
     let generics = hir::GenericDef::Function(fun).params(ctx.sema.db);
     if generics.is_empty() {
-        tested_by!(add_turbo_fish_non_generic);
+        mark::hit!(add_turbo_fish_non_generic);
         return None;
     }
     acc.add(AssistId("add_turbo_fish"), "Add `::<>`", ident.text_range(), |builder| {
@@ -58,7 +58,7 @@ mod tests {
     use crate::tests::{check_assist, check_assist_not_applicable};
 
     use super::*;
-    use test_utils::covers;
+    use test_utils::mark;
 
     #[test]
     fn add_turbo_fish_function() {
@@ -106,7 +106,7 @@ fn main() {
 
     #[test]
     fn add_turbo_fish_one_fish_is_enough() {
-        covers!(add_turbo_fish_one_fish_is_enough);
+        mark::check!(add_turbo_fish_one_fish_is_enough);
         check_assist_not_applicable(
             add_turbo_fish,
             r#"
@@ -120,7 +120,7 @@ fn main() {
 
     #[test]
     fn add_turbo_fish_non_generic() {
-        covers!(add_turbo_fish_non_generic);
+        mark::check!(add_turbo_fish_non_generic);
         check_assist_not_applicable(
             add_turbo_fish,
             r#"
