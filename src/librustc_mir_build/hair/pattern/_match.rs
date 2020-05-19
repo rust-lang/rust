@@ -65,8 +65,7 @@
 ///
 /// Caveat: this constructors/fields distinction doesn't quite cover every Rust value. For example
 /// a value of type `Rc<u64>` doesn't fit this idea very well, nor do various other things.
-/// However, this idea covers everything that can be pattern-matched, and this is all we need for
-/// exhaustiveness checking.
+/// However, this idea covers most of the cases that are relevant to exhaustiveness checking.
 ///
 ///
 /// # Algorithm
