@@ -998,6 +998,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box ptr_offset_with_cast::PtrOffsetWithCast);
     store.register_late_pass(|| box redundant_clone::RedundantClone);
     store.register_late_pass(|| box slow_vector_initialization::SlowVectorInit);
+    store.register_late_pass(|| box sort_by_key_reverse::SortByKeyReverse);
     store.register_late_pass(|| box types::RefToMut);
     store.register_late_pass(|| box assertions_on_constants::AssertionsOnConstants);
     store.register_late_pass(|| box missing_const_for_fn::MissingConstForFn);

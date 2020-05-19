@@ -1,0 +1,22 @@
+error: use Vec::sort_by_key here instead
+  --> $DIR/sort_by_key_reverse.rs:6:5
+   |
+LL |     vec.sort_by(|a, b| b.cmp(a));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort_by_key(|a| Reverse(a))`
+   |
+   = note: `-D clippy::sort-by-key-reverse` implied by `-D warnings`
+
+error: use Vec::sort_by_key here instead
+  --> $DIR/sort_by_key_reverse.rs:7:5
+   |
+LL |     vec.sort_by(|a, b| (b + 5).abs().cmp(&(a+5).abs()));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort_by_key(|a| Reverse(&(a+5).abs()))`
+
+error: use Vec::sort_by_key here instead
+  --> $DIR/sort_by_key_reverse.rs:8:5
+   |
+LL |     vec.sort_by(|a, b| (-b).cmp(&-a));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort_by_key(|a| Reverse(&-a))`
+
+error: aborting due to 3 previous errors
+
