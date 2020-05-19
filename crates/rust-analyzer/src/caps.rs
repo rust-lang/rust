@@ -15,35 +15,7 @@ use lsp_types::{
 };
 
 pub fn server_capabilities(client_caps: &ClientCapabilities) -> ServerCapabilities {
-    let mut code_action_provider = CodeActionProviderCapability::Simple(true);
-
-    match client_caps.text_document.as_ref() {
-        Some(it) => {
-            match it.code_action.as_ref().and_then(|c| c.code_action_literal_support.as_ref()) {
-                Some(_literal_support) => {
-                    code_action_provider =
-                        CodeActionProviderCapability::Options(CodeActionOptions {
-                            // Advertise support for all built-in CodeActionKinds.
-                            // Ideally we would base this off of the client capabilities
-                            // but the client is supposed to fall back gracefully for unknown values.
-                            code_action_kinds: Some(vec![
-                                lsp_types::code_action_kind::EMPTY.to_string(),
-                                lsp_types::code_action_kind::QUICKFIX.to_string(),
-                                lsp_types::code_action_kind::REFACTOR.to_string(),
-                                lsp_types::code_action_kind::REFACTOR_EXTRACT.to_string(),
-                                lsp_types::code_action_kind::REFACTOR_INLINE.to_string(),
-                                lsp_types::code_action_kind::REFACTOR_REWRITE.to_string(),
-                                lsp_types::code_action_kind::SOURCE.to_string(),
-                                lsp_types::code_action_kind::SOURCE_ORGANIZE_IMPORTS.to_string(),
-                            ]),
-                            work_done_progress_options: Default::default(),
-                        });
-                }
-                None => {}
-            }
-        }
-        None => {}
-    };
+    let code_action_provider = code_action_capabilities(client_caps);
 
     ServerCapabilities {
         text_document_sync: Some(TextDocumentSyncCapability::Options(TextDocumentSyncOptions {
@@ -111,4 +83,30 @@ pub fn server_capabilities(client_caps: &ClientCapabilities) -> ServerCapabiliti
         ),
         experimental: Default::default(),
     }
+}
+
+fn code_action_capabilities(client_caps: &ClientCapabilities) -> CodeActionProviderCapability {
+    client_caps
+        .text_document
+        .as_ref()
+        .and_then(|it| it.code_action.as_ref())
+        .and_then(|it| it.code_action_literal_support.as_ref())
+        .map_or(CodeActionProviderCapability::Simple(true), |_| {
+            CodeActionProviderCapability::Options(CodeActionOptions {
+                // Advertise support for all built-in CodeActionKinds.
+                // Ideally we would base this off of the client capabilities
+                // but the client is supposed to fall back gracefully for unknown values.
+                code_action_kinds: Some(vec![
+                    lsp_types::code_action_kind::EMPTY.to_string(),
+                    lsp_types::code_action_kind::QUICKFIX.to_string(),
+                    lsp_types::code_action_kind::REFACTOR.to_string(),
+                    lsp_types::code_action_kind::REFACTOR_EXTRACT.to_string(),
+                    lsp_types::code_action_kind::REFACTOR_INLINE.to_string(),
+                    lsp_types::code_action_kind::REFACTOR_REWRITE.to_string(),
+                    lsp_types::code_action_kind::SOURCE.to_string(),
+                    lsp_types::code_action_kind::SOURCE_ORGANIZE_IMPORTS.to_string(),
+                ]),
+                work_done_progress_options: Default::default(),
+            })
+        })
 }
