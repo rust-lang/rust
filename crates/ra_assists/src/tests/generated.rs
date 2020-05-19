@@ -212,6 +212,25 @@ impl<T: Clone> Ctx<T> {
 }
 
 #[test]
+fn doctest_add_turbo_fish() {
+    check_doc_test(
+        "add_turbo_fish",
+        r#####"
+fn make<T>() -> T { todo!() }
+fn main() {
+    let x = make<|>();
+}
+"#####,
+        r#####"
+fn make<T>() -> T { todo!() }
+fn main() {
+    let x = make::<${0:_}>();
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_apply_demorgan() {
     check_doc_test(
         "apply_demorgan",

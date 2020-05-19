@@ -203,6 +203,24 @@ impl<T: Clone> Ctx<T> {
 
 ```
 
+## `add_turbo_fish`
+
+Adds `::<_>` to a call of a generic method or function.
+
+```rust
+// BEFORE
+fn make<T>() -> T { todo!() }
+fn main() {
+    let x = make┃();
+}
+
+// AFTER
+fn make<T>() -> T { todo!() }
+fn main() {
+    let x = make::<${0:_}>();
+}
+```
+
 ## `apply_demorgan`
 
 Apply [De Morgan's law](https://en.wikipedia.org/wiki/De_Morgan%27s_laws).

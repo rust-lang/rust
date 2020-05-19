@@ -9,4 +9,6 @@ test_utils::marks![
     test_not_applicable_if_variable_unused
     change_visibility_field_false_positive
     test_add_from_impl_already_exists
+    add_turbo_fish_one_fish_is_enough
+    add_turbo_fish_non_generic
 ];
