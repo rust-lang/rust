@@ -15,18 +15,31 @@ use crate::assist_config::SnippetCap;
 
 pub(crate) use insert_use::insert_use_statement;
 
-pub(crate) fn render_snippet(
-    _cap: SnippetCap,
-    node: &SyntaxNode,
-    placeholder: &SyntaxNode,
-) -> String {
-    assert!(placeholder.ancestors().any(|it| it == *node));
-    let range = placeholder.text_range() - node.text_range().start();
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum Cursor<'a> {
+    Replace(&'a SyntaxNode),
+    Before(&'a SyntaxNode),
+}
+
+impl<'a> Cursor<'a> {
+    fn node(self) -> &'a SyntaxNode {
+        match self {
+            Cursor::Replace(node) | Cursor::Before(node) => node,
+        }
+    }
+}
+
+pub(crate) fn render_snippet(_cap: SnippetCap, node: &SyntaxNode, cursor: Cursor) -> String {
+    assert!(cursor.node().ancestors().any(|it| it == *node));
+    let range = cursor.node().text_range() - node.text_range().start();
     let range: ops::Range<usize> = range.into();
 
-    let mut placeholder = placeholder.to_string();
+    let mut placeholder = cursor.node().to_string();
     escape(&mut placeholder);
-    let tab_stop = format!("${{0:{}}}", placeholder);
+    let tab_stop = match cursor {
+        Cursor::Replace(placeholder) => format!("${{0:{}}}", placeholder),
+        Cursor::Before(placeholder) => format!("$0{}", placeholder),
+    };
 
     let mut buf = node.to_string();
     buf.replace_range(range, &tab_stop);

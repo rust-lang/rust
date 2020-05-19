@@ -10,7 +10,11 @@ use ra_syntax::{
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use crate::{assist_config::SnippetCap, utils::render_snippet, AssistContext, AssistId, Assists};
+use crate::{
+    assist_config::SnippetCap,
+    utils::{render_snippet, Cursor},
+    AssistContext, AssistId, Assists,
+};
 
 // Assist: add_function
 //
@@ -81,7 +85,11 @@ struct FunctionTemplate {
 impl FunctionTemplate {
     fn to_string(&self, cap: Option<SnippetCap>) -> String {
         let f = match cap {
-            Some(cap) => render_snippet(cap, self.fn_def.syntax(), self.placeholder_expr.syntax()),
+            Some(cap) => render_snippet(
+                cap,
+                self.fn_def.syntax(),
+                Cursor::Replace(self.placeholder_expr.syntax()),
+            ),
             None => self.fn_def.to_string(),
         };
         format!("{}{}{}", self.leading_ws, f, self.trailing_ws)
