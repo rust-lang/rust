@@ -11,12 +11,11 @@ use lsp_server::ErrorCode;
 use lsp_types::{
     CallHierarchyIncomingCall, CallHierarchyIncomingCallsParams, CallHierarchyItem,
     CallHierarchyOutgoingCall, CallHierarchyOutgoingCallsParams, CallHierarchyPrepareParams,
-    CodeAction, CodeActionResponse, CodeLens, Command, CompletionItem, Diagnostic,
-    DocumentFormattingParams, DocumentHighlight, DocumentSymbol, FoldingRange, FoldingRangeParams,
-    Hover, HoverContents, Location, MarkupContent, MarkupKind, Position, PrepareRenameResponse,
-    Range, RenameParams, SemanticTokensParams, SemanticTokensRangeParams,
-    SemanticTokensRangeResult, SemanticTokensResult, SymbolInformation, TextDocumentIdentifier,
-    TextEdit, Url, WorkspaceEdit,
+    CodeLens, Command, CompletionItem, Diagnostic, DocumentFormattingParams, DocumentHighlight,
+    DocumentSymbol, FoldingRange, FoldingRangeParams, Hover, HoverContents, Location,
+    MarkupContent, MarkupKind, Position, PrepareRenameResponse, Range, RenameParams,
+    SemanticTokensParams, SemanticTokensRangeParams, SemanticTokensRangeResult,
+    SemanticTokensResult, SymbolInformation, TextDocumentIdentifier, TextEdit, Url, WorkspaceEdit,
 };
 use ra_ide::{
     Assist, FileId, FilePosition, FileRange, Query, RangeInfo, Runnable, RunnableKind, SearchScope,
@@ -476,7 +475,7 @@ pub fn handle_completion(
         return Ok(None);
     }
 
-    let items = match world.analysis().completions(position, &world.config.completion)? {
+    let items = match world.analysis().completions(&world.config.completion, position)? {
         None => return Ok(None),
         Some(items) => items,
     };
@@ -585,9 +584,8 @@ pub fn handle_rename(world: WorldSnapshot, params: RenameParams) -> Result<Optio
         None => return Ok(None),
         Some(it) => it.info,
     };
-
-    let source_change = to_proto::source_change(&world, source_change)?;
-    Ok(Some(source_change.workspace_edit))
+    let workspace_edit = to_proto::workspace_edit(&world, source_change)?;
+    Ok(Some(workspace_edit))
 }
 
 pub fn handle_references(
@@ -696,14 +694,21 @@ pub fn handle_formatting(
 pub fn handle_code_action(
     world: WorldSnapshot,
     params: lsp_types::CodeActionParams,
-) -> Result<Option<CodeActionResponse>> {
+) -> Result<Option<Vec<lsp_ext::CodeAction>>> {
     let _p = profile("handle_code_action");
+    // We intentionally don't support command-based actions, as those either
+    // requires custom client-code anyway, or requires server-initiated edits.
+    // Server initiated edits break causality, so we avoid those as well.
+    if !world.config.client_caps.code_action_literals {
+        return Ok(None);
+    }
+
     let file_id = from_proto::file_id(&world, &params.text_document.uri)?;
     let line_index = world.analysis().file_line_index(file_id)?;
     let range = from_proto::text_range(&line_index, params.range);
 
     let diagnostics = world.analysis().diagnostics(file_id)?;
-    let mut res = CodeActionResponse::default();
+    let mut res: Vec<lsp_ext::CodeAction> = Vec::new();
 
     let fixes_from_diagnostics = diagnostics
         .into_iter()
@@ -713,22 +718,9 @@ pub fn handle_code_action(
 
     for source_edit in fixes_from_diagnostics {
         let title = source_edit.label.clone();
-        let edit = to_proto::source_change(&world, source_edit)?;
-
-        let command = Command {
-            title,
-            command: "rust-analyzer.applySourceChange".to_string(),
-            arguments: Some(vec![to_value(edit).unwrap()]),
-        };
-        let action = CodeAction {
-            title: command.title.clone(),
-            kind: None,
-            diagnostics: None,
-            edit: None,
-            command: Some(command),
-            is_preferred: None,
-        };
-        res.push(action.into());
+        let edit = to_proto::snippet_workspace_edit(&world, source_edit)?;
+        let action = lsp_ext::CodeAction { title, kind: None, edit: Some(edit), command: None };
+        res.push(action);
     }
 
     for fix in world.check_fixes.get(&file_id).into_iter().flatten() {
@@ -740,14 +732,21 @@ pub fn handle_code_action(
     }
 
     let mut grouped_assists: FxHashMap<String, (usize, Vec<Assist>)> = FxHashMap::default();
-    for assist in world.analysis().assists(FileRange { file_id, range })?.into_iter() {
+    for assist in
+        world.analysis().assists(&world.config.assist, FileRange { file_id, range })?.into_iter()
+    {
         match &assist.group_label {
             Some(label) => grouped_assists
                 .entry(label.to_owned())
                 .or_insert_with(|| {
                     let idx = res.len();
-                    let dummy = Command::new(String::new(), String::new(), None);
-                    res.push(dummy.into());
+                    let dummy = lsp_ext::CodeAction {
+                        title: String::new(),
+                        kind: None,
+                        command: None,
+                        edit: None,
+                    };
+                    res.push(dummy);
                     (idx, Vec::new())
                 })
                 .1
@@ -775,35 +774,10 @@ pub fn handle_code_action(
                 command: "rust-analyzer.selectAndApplySourceChange".to_string(),
                 arguments: Some(vec![serde_json::Value::Array(arguments)]),
             });
-            res[idx] = CodeAction {
-                title,
-                kind: None,
-                diagnostics: None,
-                edit: None,
-                command,
-                is_preferred: None,
-            }
-            .into();
+            res[idx] = lsp_ext::CodeAction { title, kind: None, edit: None, command };
         }
     }
 
-    // If the client only supports commands then filter the list
-    // and remove and actions that depend on edits.
-    if !world.config.client_caps.code_action_literals {
-        // FIXME: use drain_filter once it hits stable.
-        res = res
-            .into_iter()
-            .filter_map(|it| match it {
-                cmd @ lsp_types::CodeActionOrCommand::Command(_) => Some(cmd),
-                lsp_types::CodeActionOrCommand::CodeAction(action) => match action.command {
-                    Some(cmd) if action.edit.is_none() => {
-                        Some(lsp_types::CodeActionOrCommand::Command(cmd))
-                    }
-                    _ => None,
-                },
-            })
-            .collect();
-    }
     Ok(Some(res))
 }
 

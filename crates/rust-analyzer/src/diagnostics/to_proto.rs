@@ -7,13 +7,13 @@ use std::{
 };
 
 use lsp_types::{
-    CodeAction, Diagnostic, DiagnosticRelatedInformation, DiagnosticSeverity, DiagnosticTag,
-    Location, NumberOrString, Position, Range, TextEdit, Url, WorkspaceEdit,
+    Diagnostic, DiagnosticRelatedInformation, DiagnosticSeverity, DiagnosticTag, Location,
+    NumberOrString, Position, Range, TextEdit, Url,
 };
 use ra_flycheck::{Applicability, DiagnosticLevel, DiagnosticSpan, DiagnosticSpanMacroExpansion};
 use stdx::format_to;
 
-use crate::Result;
+use crate::{lsp_ext, Result};
 
 /// Converts a Rust level string to a LSP severity
 fn map_level_to_severity(val: DiagnosticLevel) -> Option<DiagnosticSeverity> {
@@ -110,7 +110,7 @@ fn is_deprecated(rd: &ra_flycheck::Diagnostic) -> bool {
 
 enum MappedRustChildDiagnostic {
     Related(DiagnosticRelatedInformation),
-    SuggestedFix(CodeAction),
+    SuggestedFix(lsp_ext::CodeAction),
     MessageLine(String),
 }
 
@@ -143,13 +143,15 @@ fn map_rust_child_diagnostic(
             message: rd.message.clone(),
         })
     } else {
-        MappedRustChildDiagnostic::SuggestedFix(CodeAction {
+        MappedRustChildDiagnostic::SuggestedFix(lsp_ext::CodeAction {
             title: rd.message.clone(),
             kind: Some("quickfix".to_string()),
-            diagnostics: None,
-            edit: Some(WorkspaceEdit::new(edit_map)),
+            edit: Some(lsp_ext::SnippetWorkspaceEdit {
+                // FIXME: there's no good reason to use edit_map here....
+                changes: Some(edit_map),
+                document_changes: None,
+            }),
             command: None,
-            is_preferred: None,
         })
     }
 }
@@ -158,7 +160,7 @@ fn map_rust_child_diagnostic(
 pub(crate) struct MappedRustDiagnostic {
     pub location: Location,
     pub diagnostic: Diagnostic,
-    pub fixes: Vec<CodeAction>,
+    pub fixes: Vec<lsp_ext::CodeAction>,
 }
 
 /// Converts a Rust root diagnostic to LSP form

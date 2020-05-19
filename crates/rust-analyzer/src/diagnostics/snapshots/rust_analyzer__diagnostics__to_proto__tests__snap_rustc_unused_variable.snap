@@ -53,9 +53,9 @@ expression: diag
                 kind: Some(
                     "quickfix",
                 ),
-                diagnostics: None,
+                command: None,
                 edit: Some(
-                    WorkspaceEdit {
+                    SnippetWorkspaceEdit {
                         changes: Some(
                             {
                                 "file:///test/driver/subcommand/repl.rs": [
@@ -78,8 +78,6 @@ expression: diag
                         document_changes: None,
                     },
                 ),
-                command: None,
-                is_preferred: None,
             },
         ],
     },

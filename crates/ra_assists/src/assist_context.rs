@@ -15,7 +15,10 @@ use ra_syntax::{
 };
 use ra_text_edit::TextEditBuilder;
 
-use crate::{Assist, AssistId, GroupLabel, ResolvedAssist};
+use crate::{
+    assist_config::{AssistConfig, SnippetCap},
+    Assist, AssistId, GroupLabel, ResolvedAssist,
+};
 
 /// `AssistContext` allows to apply an assist or check if it could be applied.
 ///
@@ -48,6 +51,7 @@ use crate::{Assist, AssistId, GroupLabel, ResolvedAssist};
 /// moment, because the LSP API is pretty awkward in this place, and it's much
 /// easier to just compute the edit eagerly :-)
 pub(crate) struct AssistContext<'a> {
+    pub(crate) config: &'a AssistConfig,
     pub(crate) sema: Semantics<'a, RootDatabase>,
     pub(crate) db: &'a RootDatabase,
     pub(crate) frange: FileRange,
@@ -55,10 +59,14 @@ pub(crate) struct AssistContext<'a> {
 }
 
 impl<'a> AssistContext<'a> {
-    pub fn new(sema: Semantics<'a, RootDatabase>, frange: FileRange) -> AssistContext<'a> {
+    pub(crate) fn new(
+        sema: Semantics<'a, RootDatabase>,
+        config: &'a AssistConfig,
+        frange: FileRange,
+    ) -> AssistContext<'a> {
         let source_file = sema.parse(frange.file_id);
         let db = sema.db;
-        AssistContext { sema, db, frange, source_file }
+        AssistContext { config, sema, db, frange, source_file }
     }
 
     // NB, this ignores active selection.
@@ -165,11 +173,17 @@ pub(crate) struct AssistBuilder {
     edit: TextEditBuilder,
     cursor_position: Option<TextSize>,
     file: FileId,
+    is_snippet: bool,
 }
 
 impl AssistBuilder {
     pub(crate) fn new(file: FileId) -> AssistBuilder {
-        AssistBuilder { edit: TextEditBuilder::default(), cursor_position: None, file }
+        AssistBuilder {
+            edit: TextEditBuilder::default(),
+            cursor_position: None,
+            file,
+            is_snippet: false,
+        }
     }
 
     /// Remove specified `range` of text.
@@ -178,6 +192,16 @@ impl AssistBuilder {
     }
     /// Append specified `text` at the given `offset`
     pub(crate) fn insert(&mut self, offset: TextSize, text: impl Into<String>) {
+        self.edit.insert(offset, text.into())
+    }
+    /// Append specified `text` at the given `offset`
+    pub(crate) fn insert_snippet(
+        &mut self,
+        _cap: SnippetCap,
+        offset: TextSize,
+        text: impl Into<String>,
+    ) {
+        self.is_snippet = true;
         self.edit.insert(offset, text.into())
     }
     /// Replaces specified `range` of text with a given string.
@@ -227,7 +251,12 @@ impl AssistBuilder {
         if edit.is_empty() && self.cursor_position.is_none() {
             panic!("Only call `add_assist` if the assist can be applied")
         }
-        SingleFileChange { label: change_label, edit, cursor_position: self.cursor_position }
-            .into_source_change(self.file)
+        let mut res =
+            SingleFileChange { label: change_label, edit, cursor_position: self.cursor_position }
+                .into_source_change(self.file);
+        if self.is_snippet {
+            res.is_snippet = true;
+        }
+        res
     }
 }

@@ -82,7 +82,7 @@ pub use crate::{
 };
 
 pub use hir::Documentation;
-pub use ra_assists::AssistId;
+pub use ra_assists::{AssistConfig, AssistId};
 pub use ra_db::{
     Canceled, CrateGraph, CrateId, Edition, FileId, FilePosition, FileRange, SourceRootId,
 };
@@ -458,17 +458,17 @@ impl Analysis {
     /// Computes completions at the given position.
     pub fn completions(
         &self,
-        position: FilePosition,
         config: &CompletionConfig,
+        position: FilePosition,
     ) -> Cancelable<Option<Vec<CompletionItem>>> {
-        self.with_db(|db| completion::completions(db, position, config).map(Into::into))
+        self.with_db(|db| completion::completions(db, config, position).map(Into::into))
     }
 
     /// Computes assists (aka code actions aka intentions) for the given
     /// position.
-    pub fn assists(&self, frange: FileRange) -> Cancelable<Vec<Assist>> {
+    pub fn assists(&self, config: &AssistConfig, frange: FileRange) -> Cancelable<Vec<Assist>> {
         self.with_db(|db| {
-            ra_assists::Assist::resolved(db, frange)
+            ra_assists::Assist::resolved(db, config, frange)
                 .into_iter()
                 .map(|assist| Assist {
                     id: assist.assist.id,

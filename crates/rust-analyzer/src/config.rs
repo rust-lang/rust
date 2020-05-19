@@ -11,7 +11,7 @@ use std::{ffi::OsString, path::PathBuf};
 
 use lsp_types::ClientCapabilities;
 use ra_flycheck::FlycheckConfig;
-use ra_ide::{CompletionConfig, InlayHintsConfig};
+use ra_ide::{AssistConfig, CompletionConfig, InlayHintsConfig};
 use ra_project_model::CargoConfig;
 use serde::Deserialize;
 
@@ -32,6 +32,7 @@ pub struct Config {
 
     pub inlay_hints: InlayHintsConfig,
     pub completion: CompletionConfig,
+    pub assist: AssistConfig,
     pub call_info_full: bool,
     pub lens: LensConfig,
 }
@@ -136,6 +137,7 @@ impl Default for Config {
                 add_call_argument_snippets: true,
                 ..CompletionConfig::default()
             },
+            assist: AssistConfig::default(),
             call_info_full: true,
             lens: LensConfig::default(),
         }
@@ -273,6 +275,7 @@ impl Config {
             {
                 self.client_caps.code_action_literals = value;
             }
+
             self.completion.allow_snippets(false);
             if let Some(completion) = &doc_caps.completion {
                 if let Some(completion_item) = &completion.completion_item {
@@ -287,6 +290,13 @@ impl Config {
             if let Some(value) = window_caps.work_done_progress {
                 self.client_caps.work_done_progress = value;
             }
+        }
+
+        self.assist.allow_snippets(false);
+        if let Some(experimental) = &caps.experimental {
+            let enable =
+                experimental.get("snippetTextEdit").and_then(|it| it.as_bool()) == Some(true);
+            self.assist.allow_snippets(enable);
         }
     }
 }

@@ -518,6 +518,7 @@ fn on_request(
         .on::<lsp_ext::ParentModule>(handlers::handle_parent_module)?
         .on::<lsp_ext::Runnables>(handlers::handle_runnables)?
         .on::<lsp_ext::InlayHints>(handlers::handle_inlay_hints)?
+        .on::<lsp_ext::CodeActionRequest>(handlers::handle_code_action)?
         .on::<lsp_types::request::OnTypeFormatting>(handlers::handle_on_type_formatting)?
         .on::<lsp_types::request::DocumentSymbolRequest>(handlers::handle_document_symbol)?
         .on::<lsp_types::request::WorkspaceSymbol>(handlers::handle_workspace_symbol)?
@@ -525,7 +526,6 @@ fn on_request(
         .on::<lsp_types::request::GotoImplementation>(handlers::handle_goto_implementation)?
         .on::<lsp_types::request::GotoTypeDefinition>(handlers::handle_goto_type_definition)?
         .on::<lsp_types::request::Completion>(handlers::handle_completion)?
-        .on::<lsp_types::request::CodeActionRequest>(handlers::handle_code_action)?
         .on::<lsp_types::request::CodeLensRequest>(handlers::handle_code_lens)?
         .on::<lsp_types::request::CodeLensResolve>(handlers::handle_code_lens_resolve)?
         .on::<lsp_types::request::FoldingRangeRequest>(handlers::handle_folding_range)?
