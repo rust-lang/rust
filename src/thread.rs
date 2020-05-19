@@ -441,6 +441,22 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
             }
             return Ok(SchedulingAction::Stop);
         }
+        // At least for `pthread_cond_timedwait` we need to report timeout when
+        // the function is called already after the specified time even if a
+        // signal is received before the thread gets scheduled. Therefore, we
+        // need to schedule all timeout callbacks before we continue regular
+        // execution.
+        //
+        // Documentation:
+        // https://pubs.opengroup.org/onlinepubs/9699919799/functions/pthread_cond_timedwait.html#
+        if let Some(sleep_time) =
+            self.timeout_callbacks.values().map(|info| info.call_time.get_wait_time()).min()
+        {
+            if sleep_time == Duration::new(0, 0) {
+                return Ok(SchedulingAction::ExecuteTimeoutCallback);
+            }
+        }
+        // No callbacks scheduled, pick a regular thread to execute.
         if self.threads[self.active_thread].state == ThreadState::Enabled
             && !self.yield_active_thread
         {
