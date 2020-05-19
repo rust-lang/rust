@@ -112,7 +112,7 @@ pub trait DefDatabase: InternDatabase + AstDatabase + Upcast<dyn AstDatabase> {
     #[salsa::invoke(Documentation::documentation_query)]
     fn documentation(&self, def: AttrDefId) -> Option<Documentation>;
 
-    #[salsa::invoke(find_path::importable_locations_in_crate)]
+    #[salsa::invoke(find_path::importable_locations_of_query)]
     fn importable_locations_of(
         &self,
         item: ItemInNs,

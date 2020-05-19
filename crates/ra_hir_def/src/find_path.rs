@@ -1,5 +1,11 @@
 //! An algorithm to find a path to refer to a certain item.
 
+use std::sync::Arc;
+
+use hir_expand::name::{known, AsName, Name};
+use ra_prof::profile;
+use test_utils::tested_by;
+
 use crate::{
     db::DefDatabase,
     item_scope::ItemInNs,
@@ -7,26 +13,28 @@ use crate::{
     visibility::Visibility,
     CrateId, ModuleDefId, ModuleId,
 };
-use hir_expand::name::{known, AsName, Name};
-use std::sync::Arc;
-use test_utils::tested_by;
+
+// FIXME: handle local items
+
+/// Find a path that can be used to refer to a certain item. This can depend on
+/// *from where* you're referring to the item, hence the `from` parameter.
+pub fn find_path(db: &dyn DefDatabase, item: ItemInNs, from: ModuleId) -> Option<ModPath> {
+    let _p = profile("find_path");
+    find_path_inner(db, item, from, MAX_PATH_LEN)
+}
 
 const MAX_PATH_LEN: usize = 15;
 
 impl ModPath {
     fn starts_with_std(&self) -> bool {
-        self.segments.first().filter(|&first_segment| first_segment == &known::std).is_some()
+        self.segments.first() == Some(&known::std)
     }
 
     // When std library is present, paths starting with `std::`
     // should be preferred over paths starting with `core::` and `alloc::`
     fn can_start_with_std(&self) -> bool {
-        self.segments
-            .first()
-            .filter(|&first_segment| {
-                first_segment == &known::alloc || first_segment == &known::core
-            })
-            .is_some()
+        let first_segment = self.segments.first();
+        first_segment == Some(&known::alloc) || first_segment == Some(&known::core)
     }
 
     fn len(&self) -> usize {
@@ -39,15 +47,6 @@ impl ModPath {
                 PathKind::DollarCrate(_) => 1,
             }
     }
-}
-
-// FIXME: handle local items
-
-/// Find a path that can be used to refer to a certain item. This can depend on
-/// *from where* you're referring to the item, hence the `from` parameter.
-pub fn find_path(db: &dyn DefDatabase, item: ItemInNs, from: ModuleId) -> Option<ModPath> {
-    let _p = ra_prof::profile("find_path");
-    find_path_inner(db, item, from, MAX_PATH_LEN)
 }
 
 fn find_path_inner(
@@ -215,11 +214,12 @@ fn find_importable_locations(
 ///
 /// Note that the crate doesn't need to be the one in which the item is defined;
 /// it might be re-exported in other crates.
-pub(crate) fn importable_locations_in_crate(
+pub(crate) fn importable_locations_of_query(
     db: &dyn DefDatabase,
     item: ItemInNs,
     krate: CrateId,
 ) -> Arc<[(ModuleId, Name, Visibility)]> {
+    let _p = profile("importable_locations_of_query");
     let def_map = db.crate_def_map(krate);
     let mut result = Vec::new();
     for (local_id, data) in def_map.modules.iter() {
