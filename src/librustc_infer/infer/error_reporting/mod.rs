@@ -297,7 +297,18 @@ pub fn unexpected_hidden_region_diagnostic(
     );
 
     // Explain the region we are capturing.
-    if let ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReStatic | ty::ReEmpty(_) = hidden_region {
+    match hidden_region {
+        ty::ReEmpty(ty::UniverseIndex::ROOT) => {
+            // All lifetimes shorter than the function body are `empty` in
+            // lexical region resolution. The default explanation of "an empty
+            // lifetime" isn't really accurate here.
+            let message = format!(
+                "hidden type `{}` captures lifetime smaller than the function body",
+                hidden_ty
+            );
+            err.span_note(span, &message);
+        }
+        ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReStatic | ty::ReEmpty(_) => {
         // Assuming regionck succeeded (*), we ought to always be
         // capturing *some* region from the fn header, and hence it
         // ought to be free. So under normal circumstances, we will go
@@ -313,7 +324,8 @@ pub fn unexpected_hidden_region_diagnostic(
             hidden_region,
             "",
         );
-    } else {
+        }
+        _ => {
         // Ugh. This is a painful case: the hidden region is not one
         // that we can easily summarize or explain. This can happen
         // in a case like
@@ -357,6 +369,7 @@ pub fn unexpected_hidden_region_diagnostic(
                 ),
             );
         }
+    }
     }
 
     err
