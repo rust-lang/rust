@@ -1,5 +1,10 @@
 //! An algorithm to find a path to refer to a certain item.
 
+use std::sync::Arc;
+
+use hir_expand::name::{known, AsName, Name};
+use test_utils::tested_by;
+
 use crate::{
     db::DefDatabase,
     item_scope::ItemInNs,
@@ -7,9 +12,6 @@ use crate::{
     visibility::Visibility,
     CrateId, ModuleDefId, ModuleId,
 };
-use hir_expand::name::{known, AsName, Name};
-use std::sync::Arc;
-use test_utils::tested_by;
 
 const MAX_PATH_LEN: usize = 15;
 
