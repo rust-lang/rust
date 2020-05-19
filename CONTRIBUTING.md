@@ -209,6 +209,13 @@ You can then sync with the remote names from above, e.g.:
 $ git subtree push -P src/tools/clippy clippy-local sync-from-rust
 ```
 
+_Note:_ The first time running `git subtree push` a cache has to be built. This
+involves going through the complete Clippy history once. For this you have to
+increase the stack limit though, which you can do with `ulimit -s 60000`. For
+this to work, you will need the fix of `git subtree` available
+[here][gitgitgadget-pr].
+
+[gitgitgadget-pr]: https://github.com/gitgitgadget/git/pull/493
 [subtree]: https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md#external-dependencies-subtree
 [`rust-lang/rust`]: https://github.com/rust-lang/rust
 
