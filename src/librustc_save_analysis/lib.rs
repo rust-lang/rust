@@ -620,7 +620,11 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
     }
 
     pub fn get_path_res(&self, id: NodeId) -> Res {
-        let hir_id = self.tcx.hir().node_id_to_hir_id(id);
+        // FIXME(#71104)
+        let hir_id = match self.tcx.hir().opt_node_id_to_hir_id(id) {
+            Some(id) => id,
+            None => return Res::Err,
+        };
         match self.tcx.hir().get(hir_id) {
             Node::TraitRef(tr) => tr.path.res,
 
