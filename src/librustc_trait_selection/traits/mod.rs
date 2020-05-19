@@ -28,7 +28,6 @@ use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_middle::middle::region;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
 use rustc_middle::ty::{
@@ -237,15 +236,12 @@ fn do_normalize_predicates<'tcx>(
 
         debug!("do_normalize_predictes: normalized predicates = {:?}", predicates);
 
-        let region_scope_tree = region::ScopeTree::default();
-
         // We can use the `elaborated_env` here; the region code only
         // cares about declarations like `'a: 'b`.
         let outlives_env = OutlivesEnvironment::new(elaborated_env);
 
         infcx.resolve_regions_and_report_errors(
             region_context,
-            &region_scope_tree,
             &outlives_env,
             RegionckMode::default(),
         );

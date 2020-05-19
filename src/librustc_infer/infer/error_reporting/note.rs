@@ -1,7 +1,6 @@
 use crate::infer::error_reporting::{note_and_explain_region, ObligationCauseExt};
 use crate::infer::{self, InferCtxt, SubregionOrigin};
 use rustc_errors::{struct_span_err, DiagnosticBuilder};
-use rustc_middle::middle::region;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{self, Region};
 
@@ -91,7 +90,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     pub(super) fn report_concrete_failure(
         &self,
-        region_scope_tree: &region::ScopeTree,
         origin: SubregionOrigin<'tcx>,
         sub: Region<'tcx>,
         sup: Region<'tcx>,
@@ -100,10 +98,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             infer::Subtype(box trace) => {
                 let terr = TypeError::RegionsDoesNotOutlive(sup, sub);
                 let mut err = self.report_and_explain_type_error(trace, &terr);
-                note_and_explain_region(self.tcx, region_scope_tree, &mut err, "", sup, "...");
+                note_and_explain_region(self.tcx, &mut err, "", sup, "...");
                 note_and_explain_region(
                     self.tcx,
-                    region_scope_tree,
                     &mut err,
                     "...does not necessarily outlive ",
                     sub,
@@ -121,7 +118,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 );
                 note_and_explain_region(
                     self.tcx,
-                    region_scope_tree,
                     &mut err,
                     "...the reference is valid for ",
                     sub,
@@ -129,7 +125,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 );
                 note_and_explain_region(
                     self.tcx,
-                    region_scope_tree,
                     &mut err,
                     "...but the borrowed content is only valid for ",
                     sup,
@@ -149,7 +144,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 );
                 note_and_explain_region(
                     self.tcx,
-                    region_scope_tree,
                     &mut err,
                     "...the borrowed pointer is valid for ",
                     sub,
@@ -157,7 +151,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 );
                 note_and_explain_region(
                     self.tcx,
-                    region_scope_tree,
                     &mut err,
                     &format!("...but `{}` is only valid for ", var_name),
                     sup,
@@ -173,17 +166,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     "lifetime of the source pointer does not outlive \
                                                 lifetime bound of the object type"
                 );
+                note_and_explain_region(self.tcx, &mut err, "object type is valid for ", sub, "");
                 note_and_explain_region(
                     self.tcx,
-                    region_scope_tree,
-                    &mut err,
-                    "object type is valid for ",
-                    sub,
-                    "",
-                );
-                note_and_explain_region(
-                    self.tcx,
-                    region_scope_tree,
                     &mut err,
                     "source pointer is only valid for ",
                     sup,
@@ -201,22 +186,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     self.ty_to_string(ty)
                 );
                 match *sub {
-                    ty::ReStatic => note_and_explain_region(
-                        self.tcx,
-                        region_scope_tree,
-                        &mut err,
-                        "type must satisfy ",
-                        sub,
-                        "",
-                    ),
-                    _ => note_and_explain_region(
-                        self.tcx,
-                        region_scope_tree,
-                        &mut err,
-                        "type must outlive ",
-                        sub,
-                        "",
-                    ),
+                    ty::ReStatic => {
+                        note_and_explain_region(self.tcx, &mut err, "type must satisfy ", sub, "")
+                    }
+                    _ => note_and_explain_region(self.tcx, &mut err, "type must outlive ", sub, ""),
                 }
                 err
             }
@@ -225,7 +198,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     struct_span_err!(self.tcx.sess, span, E0478, "lifetime bound not satisfied");
                 note_and_explain_region(
                     self.tcx,
-                    region_scope_tree,
                     &mut err,
                     "lifetime parameter instantiated with ",
                     sup,
@@ -233,7 +205,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 );
                 note_and_explain_region(
                     self.tcx,
-                    region_scope_tree,
                     &mut err,
                     "but lifetime parameter must outlive ",
                     sub,
@@ -251,7 +222,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 );
                 note_and_explain_region(
                     self.tcx,
-                    region_scope_tree,
                     &mut err,
                     "the return value is only valid for ",
                     sup,
@@ -267,22 +237,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     "a value of type `{}` is borrowed for too long",
                     self.ty_to_string(ty)
                 );
-                note_and_explain_region(
-                    self.tcx,
-                    region_scope_tree,
-                    &mut err,
-                    "the type is valid for ",
-                    sub,
-                    "",
-                );
-                note_and_explain_region(
-                    self.tcx,
-                    region_scope_tree,
-                    &mut err,
-                    "but the borrow lasts for ",
-                    sup,
-                    "",
-                );
+                note_and_explain_region(self.tcx, &mut err, "the type is valid for ", sub, "");
+                note_and_explain_region(self.tcx, &mut err, "but the borrow lasts for ", sup, "");
                 err
             }
             infer::ReferenceOutlivesReferent(ty, span) => {
@@ -293,17 +249,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     "in type `{}`, reference has a longer lifetime than the data it references",
                     self.ty_to_string(ty)
                 );
+                note_and_explain_region(self.tcx, &mut err, "the pointer is valid for ", sub, "");
                 note_and_explain_region(
                     self.tcx,
-                    region_scope_tree,
-                    &mut err,
-                    "the pointer is valid for ",
-                    sub,
-                    "",
-                );
-                note_and_explain_region(
-                    self.tcx,
-                    region_scope_tree,
                     &mut err,
                     "but the referenced data is only valid for ",
                     sup,
@@ -328,7 +276,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     pub(super) fn report_placeholder_failure(
         &self,
-        region_scope_tree: &region::ScopeTree,
         placeholder_origin: SubregionOrigin<'tcx>,
         sub: Region<'tcx>,
         sup: Region<'tcx>,
@@ -340,7 +287,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 self.report_and_explain_type_error(trace, &terr)
             }
 
-            _ => self.report_concrete_failure(region_scope_tree, placeholder_origin, sub, sup),
+            _ => self.report_concrete_failure(placeholder_origin, sub, sup),
         }
     }
 }

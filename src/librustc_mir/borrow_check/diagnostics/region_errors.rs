@@ -162,10 +162,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     let type_test_span = type_test.locations.span(&self.body);
 
                     if let Some(lower_bound_region) = lower_bound_region {
-                        let region_scope_tree = &self.infcx.tcx.region_scope_tree(self.mir_def_id);
                         self.infcx
                             .construct_generic_bound_failure(
-                                region_scope_tree,
                                 type_test_span,
                                 None,
                                 type_test.generic_kind,
@@ -194,12 +192,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 }
 
                 RegionErrorKind::UnexpectedHiddenRegion { span, hidden_ty, member_region } => {
-                    let region_scope_tree = &self.infcx.tcx.region_scope_tree(self.mir_def_id);
                     let named_ty = self.regioncx.name_regions(self.infcx.tcx, hidden_ty);
                     let named_region = self.regioncx.name_regions(self.infcx.tcx, member_region);
                     unexpected_hidden_region_diagnostic(
                         self.infcx.tcx,
-                        Some(region_scope_tree),
                         span,
                         named_ty,
                         named_region,

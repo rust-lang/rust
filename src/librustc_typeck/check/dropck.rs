@@ -5,7 +5,6 @@ use rustc_errors::{struct_span_err, ErrorReported};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{InferOk, RegionckMode, TyCtxtInferExt};
 use rustc_infer::traits::TraitEngineExt as _;
-use rustc_middle::middle::region;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::subst::{Subst, SubstsRef};
@@ -120,8 +119,6 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
             return Err(ErrorReported);
         }
 
-        let region_scope_tree = region::ScopeTree::default();
-
         // NB. It seems a bit... suspicious to use an empty param-env
         // here. The correct thing, I imagine, would be
         // `OutlivesEnvironment::new(impl_param_env)`, which would
@@ -134,7 +131,6 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
 
         infcx.resolve_regions_and_report_errors(
             drop_impl_did.to_def_id(),
-            &region_scope_tree,
             &outlives_env,
             RegionckMode::default(),
         );

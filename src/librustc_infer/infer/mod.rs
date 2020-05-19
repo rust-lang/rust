@@ -20,7 +20,6 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::infer::canonical::{Canonical, CanonicalVarValues};
 use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind, ToType};
-use rustc_middle::middle::region;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::ConstEvalResult;
 use rustc_middle::traits::select;
@@ -1213,7 +1212,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn resolve_regions_and_report_errors(
         &self,
         region_context: DefId,
-        region_map: &region::ScopeTree,
         outlives_env: &OutlivesEnvironment<'tcx>,
         mode: RegionckMode,
     ) {
@@ -1233,12 +1231,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 .into_infos_and_data()
         };
 
-        let region_rels = &RegionRelations::new(
-            self.tcx,
-            region_context,
-            region_map,
-            outlives_env.free_region_map(),
-        );
+        let region_rels =
+            &RegionRelations::new(self.tcx, region_context, outlives_env.free_region_map());
 
         let (lexical_region_resolutions, errors) =
             lexical_region_resolve::resolve(region_rels, var_infos, data, mode);
@@ -1252,7 +1246,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             // this infcx was in use.  This is totally hokey but
             // otherwise we have a hard time separating legit region
             // errors from silly ones.
-            self.report_region_errors(region_map, &errors);
+            self.report_region_errors(&errors);
         }
     }
 

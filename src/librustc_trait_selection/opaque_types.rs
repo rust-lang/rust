@@ -835,7 +835,6 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                 if let Some(hidden_ty) = self.hidden_ty.take() {
                     unexpected_hidden_region_diagnostic(
                         self.tcx,
-                        None,
                         self.tcx.def_span(self.opaque_type_def_id),
                         hidden_ty,
                         r,
