@@ -1243,7 +1243,7 @@ pub(crate) mod builtin {
     /// be disabled. See [`debug_assert!`] for assertions that are not enabled in
     /// release builds by default.
     ///
-    /// Unsafe code relies on `assert!` to enforce run-time invariants that, if
+    /// Unsafe code may rely on `assert!` to enforce run-time invariants that, if
     /// violated could lead to unsafety.
     ///
     /// Other use-cases of `assert!` include testing and enforcing run-time
