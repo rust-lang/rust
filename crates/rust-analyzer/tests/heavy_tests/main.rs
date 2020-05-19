@@ -333,29 +333,17 @@ fn main() {}
             partial_result_params: PartialResultParams::default(),
             work_done_progress_params: WorkDoneProgressParams::default(),
         },
-        json!([
-          {
-            "command": {
-              "arguments": [
+        json!([{
+            "edit": {
+              "documentChanges": [
                 {
-                  "cursorPosition": null,
-                  "label": "Create module",
-                  "workspaceEdit": {
-                    "documentChanges": [
-                      {
-                        "kind": "create",
-                        "uri": "file:///[..]/src/bar.rs"
-                      }
-                    ]
-                  }
+                  "kind": "create",
+                  "uri": "file:///[..]/src/bar.rs"
                 }
-              ],
-              "command": "rust-analyzer.applySourceChange",
-              "title": "Create module"
+              ]
             },
             "title": "Create module"
-          }
-        ]),
+        }]),
     );
 
     server.request::<CodeActionRequest>(
@@ -416,29 +404,17 @@ fn main() {{}}
             partial_result_params: PartialResultParams::default(),
             work_done_progress_params: WorkDoneProgressParams::default(),
         },
-        json!([
-          {
-            "command": {
-              "arguments": [
+        json!([{
+            "edit": {
+              "documentChanges": [
                 {
-                  "cursorPosition": null,
-                  "label": "Create module",
-                  "workspaceEdit": {
-                    "documentChanges": [
-                      {
-                        "kind": "create",
-                        "uri": "file:///[..]/src/bar.rs"
-                      }
-                    ]
-                  }
+                  "kind": "create",
+                  "uri": "file://[..]/src/bar.rs"
                 }
-              ],
-              "command": "rust-analyzer.applySourceChange",
-              "title": "Create module"
+              ]
             },
             "title": "Create module"
-          }
-        ]),
+        }]),
     );
 
     server.request::<CodeActionRequest>(

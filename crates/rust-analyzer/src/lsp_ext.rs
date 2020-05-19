@@ -206,7 +206,9 @@ pub struct CodeAction {
 #[derive(Debug, Eq, PartialEq, Clone, Default, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SnippetWorkspaceEdit {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub changes: Option<HashMap<lsp_types::Url, Vec<lsp_types::TextEdit>>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub document_changes: Option<Vec<SnippetDocumentChangeOperation>>,
 }
 
