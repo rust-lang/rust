@@ -401,14 +401,13 @@ impl<T, A: AllocRef> RawVec<T, A> {
         needed_extra_capacity: usize,
         placement: ReallocPlacement,
     ) -> Result<(), TryReserveError> {
+        // This is ensured by the calling contexts.
+        debug_assert!(needed_extra_capacity > 0);
+
         if mem::size_of::<T>() == 0 {
             // Since we return a capacity of `usize::MAX` when `elem_size` is
             // 0, getting to here necessarily means the `RawVec` is overfull.
             return Err(CapacityOverflow);
-        }
-
-        if needed_extra_capacity == 0 {
-            return Ok(());
         }
 
         // Nothing we can really do about these checks, sadly.
