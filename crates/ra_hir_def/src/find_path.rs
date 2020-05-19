@@ -13,6 +13,15 @@ use crate::{
     CrateId, ModuleDefId, ModuleId,
 };
 
+// FIXME: handle local items
+
+/// Find a path that can be used to refer to a certain item. This can depend on
+/// *from where* you're referring to the item, hence the `from` parameter.
+pub fn find_path(db: &dyn DefDatabase, item: ItemInNs, from: ModuleId) -> Option<ModPath> {
+    let _p = ra_prof::profile("find_path");
+    find_path_inner(db, item, from, MAX_PATH_LEN)
+}
+
 const MAX_PATH_LEN: usize = 15;
 
 impl ModPath {
@@ -37,15 +46,6 @@ impl ModPath {
                 PathKind::DollarCrate(_) => 1,
             }
     }
-}
-
-// FIXME: handle local items
-
-/// Find a path that can be used to refer to a certain item. This can depend on
-/// *from where* you're referring to the item, hence the `from` parameter.
-pub fn find_path(db: &dyn DefDatabase, item: ItemInNs, from: ModuleId) -> Option<ModPath> {
-    let _p = ra_prof::profile("find_path");
-    find_path_inner(db, item, from, MAX_PATH_LEN)
 }
 
 fn find_path_inner(
