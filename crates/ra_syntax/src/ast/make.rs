@@ -277,7 +277,12 @@ pub fn param_list(pats: impl IntoIterator<Item = ast::Param>) -> ast::ParamList 
     ast_from_text(&format!("fn f({}) {{ }}", args))
 }
 
+pub fn visibility_pub_crate() -> ast::Visibility {
+    ast_from_text("pub(crate) struct S")
+}
+
 pub fn fn_def(
+    visibility: Option<ast::Visibility>,
     fn_name: ast::Name,
     type_params: Option<ast::TypeParamList>,
     params: ast::ParamList,
@@ -285,21 +290,11 @@ pub fn fn_def(
 ) -> ast::FnDef {
     let type_params =
         if let Some(type_params) = type_params { format!("<{}>", type_params) } else { "".into() };
-    ast_from_text(&format!("fn {}{}{} {}", fn_name, type_params, params, body))
-}
-
-pub fn add_leading_newlines(amount_of_newlines: usize, t: impl AstNode) -> ast::SourceFile {
-    let newlines = "\n".repeat(amount_of_newlines);
-    ast_from_text(&format!("{}{}", newlines, t.syntax()))
-}
-
-pub fn add_trailing_newlines(amount_of_newlines: usize, t: impl AstNode) -> ast::SourceFile {
-    let newlines = "\n".repeat(amount_of_newlines);
-    ast_from_text(&format!("{}{}", t.syntax(), newlines))
-}
-
-pub fn add_pub_crate_modifier(fn_def: ast::FnDef) -> ast::FnDef {
-    ast_from_text(&format!("pub(crate) {}", fn_def))
+    let visibility = match visibility {
+        None => String::new(),
+        Some(it) => format!("{} ", it),
+    };
+    ast_from_text(&format!("{}fn {}{}{} {}", visibility, fn_name, type_params, params, body))
 }
 
 fn ast_from_text<N: AstNode>(text: &str) -> N {

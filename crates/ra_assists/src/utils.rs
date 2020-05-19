@@ -11,9 +11,15 @@ use ra_syntax::{
 };
 use rustc_hash::FxHashSet;
 
+use crate::assist_config::SnippetCap;
+
 pub(crate) use insert_use::insert_use_statement;
 
-pub(crate) fn render_snippet(node: &SyntaxNode, placeholder: &SyntaxNode) -> String {
+pub(crate) fn render_snippet(
+    _cap: SnippetCap,
+    node: &SyntaxNode,
+    placeholder: &SyntaxNode,
+) -> String {
     assert!(placeholder.ancestors().any(|it| it == *node));
     let range = placeholder.text_range() - node.text_range().start();
     let range: ops::Range<usize> = range.into();

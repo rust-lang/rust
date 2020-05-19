@@ -4,13 +4,13 @@ use ra_syntax::{
     ast::{
         self,
         edit::{AstNodeEdit, IndentLevel},
-        ArgListOwner, AstNode, ModuleItemOwner,
+        make, ArgListOwner, AstNode, ModuleItemOwner,
     },
     SyntaxKind, SyntaxNode, TextSize,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use crate::{utils::render_snippet, AssistContext, AssistId, Assists};
+use crate::{assist_config::SnippetCap, utils::render_snippet, AssistContext, AssistId, Assists};
 
 // Assist: add_function
 //
@@ -61,25 +61,31 @@ pub(crate) fn add_function(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
     acc.add(AssistId("add_function"), "Add function", target, |builder| {
         let function_template = function_builder.render();
         builder.set_file(function_template.file);
+        let new_fn = function_template.to_string(ctx.config.snippet_cap);
         match ctx.config.snippet_cap {
-            Some(cap) => {
-                let snippet = render_snippet(
-                    function_template.fn_def.syntax(),
-                    function_template.placeholder_expr.syntax(),
-                );
-                builder.insert_snippet(cap, function_template.insert_offset, snippet)
-            }
-            None => builder
-                .insert(function_template.insert_offset, function_template.fn_def.to_string()),
+            Some(cap) => builder.insert_snippet(cap, function_template.insert_offset, new_fn),
+            None => builder.insert(function_template.insert_offset, new_fn),
         }
     })
 }
 
 struct FunctionTemplate {
     insert_offset: TextSize,
-    fn_def: ast::SourceFile,
     placeholder_expr: ast::MacroCall,
+    leading_ws: String,
+    fn_def: ast::FnDef,
+    trailing_ws: String,
     file: FileId,
+}
+
+impl FunctionTemplate {
+    fn to_string(&self, cap: Option<SnippetCap>) -> String {
+        let f = match cap {
+            Some(cap) => render_snippet(cap, self.fn_def.syntax(), self.placeholder_expr.syntax()),
+            None => self.fn_def.to_string(),
+        };
+        format!("{}{}{}", self.leading_ws, f, self.trailing_ws)
+    }
 }
 
 struct FunctionBuilder {
@@ -119,33 +125,41 @@ impl FunctionBuilder {
     }
 
     fn render(self) -> FunctionTemplate {
-        let placeholder_expr = ast::make::expr_todo();
-        let fn_body = ast::make::block_expr(vec![], Some(placeholder_expr));
-        let mut fn_def = ast::make::fn_def(self.fn_name, self.type_params, self.params, fn_body);
-        if self.needs_pub {
-            fn_def = ast::make::add_pub_crate_modifier(fn_def);
-        }
+        let placeholder_expr = make::expr_todo();
+        let fn_body = make::block_expr(vec![], Some(placeholder_expr));
+        let visibility = if self.needs_pub { Some(make::visibility_pub_crate()) } else { None };
+        let mut fn_def =
+            make::fn_def(visibility, self.fn_name, self.type_params, self.params, fn_body);
+        let leading_ws;
+        let trailing_ws;
 
-        let (fn_def, insert_offset) = match self.target {
+        let insert_offset = match self.target {
             GeneratedFunctionTarget::BehindItem(it) => {
-                let with_leading_blank_line = ast::make::add_leading_newlines(2, fn_def);
-                let indented = with_leading_blank_line.indent(IndentLevel::from_node(&it));
-                (indented, it.text_range().end())
+                let indent = IndentLevel::from_node(&it);
+                leading_ws = format!("\n\n{}", indent);
+                fn_def = fn_def.indent(indent);
+                trailing_ws = String::new();
+                it.text_range().end()
             }
             GeneratedFunctionTarget::InEmptyItemList(it) => {
-                let indent_once = IndentLevel(1);
                 let indent = IndentLevel::from_node(it.syntax());
-                let fn_def = ast::make::add_leading_newlines(1, fn_def);
-                let fn_def = fn_def.indent(indent_once);
-                let fn_def = ast::make::add_trailing_newlines(1, fn_def);
-                let fn_def = fn_def.indent(indent);
-                (fn_def, it.syntax().text_range().start() + TextSize::of('{'))
+                leading_ws = format!("\n{}", indent + 1);
+                fn_def = fn_def.indent(indent + 1);
+                trailing_ws = format!("\n{}", indent);
+                it.syntax().text_range().start() + TextSize::of('{')
             }
         };
 
         let placeholder_expr =
             fn_def.syntax().descendants().find_map(ast::MacroCall::cast).unwrap();
-        FunctionTemplate { insert_offset, placeholder_expr, fn_def, file: self.file }
+        FunctionTemplate {
+            insert_offset,
+            placeholder_expr,
+            leading_ws,
+            fn_def,
+            trailing_ws,
+            file: self.file,
+        }
     }
 }
 
@@ -165,7 +179,7 @@ impl GeneratedFunctionTarget {
 
 fn fn_name(call: &ast::Path) -> Option<ast::Name> {
     let name = call.segment()?.syntax().to_string();
-    Some(ast::make::name(&name))
+    Some(make::name(&name))
 }
 
 /// Computes the type variables and arguments required for the generated function
@@ -187,8 +201,8 @@ fn fn_args(
         });
     }
     deduplicate_arg_names(&mut arg_names);
-    let params = arg_names.into_iter().zip(arg_types).map(|(name, ty)| ast::make::param(name, ty));
-    Some((None, ast::make::param_list(params)))
+    let params = arg_names.into_iter().zip(arg_types).map(|(name, ty)| make::param(name, ty));
+    Some((None, make::param_list(params)))
 }
 
 /// Makes duplicate argument names unique by appending incrementing numbers.
