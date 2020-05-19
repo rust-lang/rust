@@ -54,6 +54,7 @@ thread_local! {
     static FORCE_IMPL_FILENAME_LINE: Cell<bool> = Cell::new(false);
     static SHOULD_PREFIX_WITH_CRATE: Cell<bool> = Cell::new(false);
     static NO_QUERIES: Cell<bool> = Cell::new(false);
+    static NO_CONST_PATH: Cell<bool> = Cell::new(false);
 }
 
 /// Avoids running any queries during any prints that occur
@@ -68,6 +69,15 @@ pub fn with_no_queries<F: FnOnce() -> R, R>(f: F) -> R {
         let old = no_queries.replace(true);
         let result = f();
         no_queries.set(old);
+        result
+    })
+}
+
+pub fn with_no_const_path<F: FnOnce() -> R, R>(f: F) -> R {
+    NO_CONST_PATH.with(|no_const_path| {
+        let old = no_const_path.replace(true);
+        let result = f();
+        no_const_path.set(old);
         result
     })
 }
@@ -858,7 +868,9 @@ pub trait PrettyPrinter<'tcx>:
     ) -> Result<Self::Const, Self::Error> {
         define_scoped_cx!(self);
 
-        if self.tcx().sess.verbose() {
+        // See the call to `with_no_const_path` inside the
+        // `ty::ConstKind::Unevaluated` for why we check `NO_CONST_PATH`
+        if self.tcx().sess.verbose() || NO_CONST_PATH.with(|q| q.get()) {
             p!(write("Const({:?}: {:?})", ct.val, ct.ty));
             return Ok(self);
         }
@@ -882,29 +894,39 @@ pub trait PrettyPrinter<'tcx>:
 
         match ct.val {
             ty::ConstKind::Unevaluated(did, substs, promoted) => {
-                if let Some(promoted) = promoted {
-                    p!(print_value_path(did, substs));
-                    p!(write("::{:?}", promoted));
-                } else {
-                    match self.tcx().def_kind(did) {
-                        DefKind::Static | DefKind::Const | DefKind::AssocConst => {
-                            p!(print_value_path(did, substs))
-                        }
-                        _ => {
-                            if did.is_local() {
-                                let span = self.tcx().def_span(did);
-                                if let Ok(snip) = self.tcx().sess.source_map().span_to_snippet(span)
-                                {
-                                    p!(write("{}", snip))
+                // Don't re-entrantly enter this code path: that is,
+                // don't try to print the DefPath of an unevaluated const
+                // while we're already printing the DefPath of an unevaluated
+                // const. This ensures that we never end up trying to recursively
+                // print a const that we're already printing.
+                // See issue #68104 for more details
+                self = with_no_const_path(|| {
+                    if let Some(promoted) = promoted {
+                        p!(print_value_path(did, substs));
+                        p!(write("::{:?}", promoted));
+                    } else {
+                        match self.tcx().def_kind(did) {
+                            DefKind::Static | DefKind::Const | DefKind::AssocConst => {
+                                p!(print_value_path(did, substs))
+                            }
+                            _ => {
+                                if did.is_local() {
+                                    let span = self.tcx().def_span(did);
+                                    if let Ok(snip) =
+                                        self.tcx().sess.source_map().span_to_snippet(span)
+                                    {
+                                        p!(write("{}", snip))
+                                    } else {
+                                        print_underscore!()
+                                    }
                                 } else {
                                     print_underscore!()
                                 }
-                            } else {
-                                print_underscore!()
                             }
                         }
                     }
-                }
+                    Ok(self)
+                })?;
             }
             ty::ConstKind::Infer(..) => print_underscore!(),
             ty::ConstKind::Param(ParamConst { name, .. }) => p!(write("{}", name)),
