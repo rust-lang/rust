@@ -519,6 +519,7 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, sp: Span, args: AsmArgs) -> P<ast
         kind: ast::ExprKind::InlineAsm(inline_asm),
         span: sp,
         attrs: ast::AttrVec::new(),
+        tokens: None,
     })
 }
 

@@ -4,6 +4,7 @@ use super::{BlockMode, Parser, PathStyle, Restrictions, TokenType};
 use super::{SemiColonMode, SeqSep, TokenExpectType};
 use crate::maybe_recover_from_interpolated_ty_qpath;
 
+use log::debug;
 use rustc_ast::ast::{self, AttrStyle, AttrVec, CaptureBy, Field, Lit, UnOp, DUMMY_NODE_ID};
 use rustc_ast::ast::{AnonConst, BinOp, BinOpKind, FnDecl, FnRetTy, MacCall, Param, Ty, TyKind};
 use rustc_ast::ast::{Arm, Async, BlockCheckMode, Expr, ExprKind, Label, Movability, RangeLimits};
@@ -431,19 +432,23 @@ impl<'a> Parser<'a> {
     /// Parses a prefix-unary-operator expr.
     fn parse_prefix_expr(&mut self, attrs: Option<AttrVec>) -> PResult<'a, P<Expr>> {
         let attrs = self.parse_or_use_outer_attributes(attrs)?;
-        let lo = self.token.span;
-        // Note: when adding new unary operators, don't forget to adjust TokenKind::can_begin_expr()
-        let (hi, ex) = match self.token.uninterpolate().kind {
-            token::Not => self.parse_unary_expr(lo, UnOp::Not), // `!expr`
-            token::Tilde => self.recover_tilde_expr(lo),        // `~expr`
-            token::BinOp(token::Minus) => self.parse_unary_expr(lo, UnOp::Neg), // `-expr`
-            token::BinOp(token::Star) => self.parse_unary_expr(lo, UnOp::Deref), // `*expr`
-            token::BinOp(token::And) | token::AndAnd => self.parse_borrow_expr(lo),
-            token::Ident(..) if self.token.is_keyword(kw::Box) => self.parse_box_expr(lo),
-            token::Ident(..) if self.is_mistaken_not_ident_negation() => self.recover_not_expr(lo),
-            _ => return self.parse_dot_or_call_expr(Some(attrs)),
-        }?;
-        Ok(self.mk_expr(lo.to(hi), ex, attrs))
+        self.maybe_collect_tokens(!attrs.is_empty(), |this| {
+            let lo = this.token.span;
+            // Note: when adding new unary operators, don't forget to adjust TokenKind::can_begin_expr()
+            let (hi, ex) = match this.token.uninterpolate().kind {
+                token::Not => this.parse_unary_expr(lo, UnOp::Not), // `!expr`
+                token::Tilde => this.recover_tilde_expr(lo),        // `~expr`
+                token::BinOp(token::Minus) => this.parse_unary_expr(lo, UnOp::Neg), // `-expr`
+                token::BinOp(token::Star) => this.parse_unary_expr(lo, UnOp::Deref), // `*expr`
+                token::BinOp(token::And) | token::AndAnd => this.parse_borrow_expr(lo),
+                token::Ident(..) if this.token.is_keyword(kw::Box) => this.parse_box_expr(lo),
+                token::Ident(..) if this.is_mistaken_not_ident_negation() => {
+                    this.recover_not_expr(lo)
+                }
+                _ => return this.parse_dot_or_call_expr(Some(attrs)),
+            }?;
+            Ok(this.mk_expr(lo.to(hi), ex, attrs))
+        })
     }
 
     fn parse_prefix_expr_common(&mut self, lo: Span) -> PResult<'a, (Span, P<Expr>)> {
@@ -995,6 +1000,21 @@ impl<'a> Parser<'a> {
             }
         } else {
             self.parse_lit_expr(attrs)
+        }
+    }
+
+    fn maybe_collect_tokens(
+        &mut self,
+        has_outer_attrs: bool,
+        f: impl FnOnce(&mut Self) -> PResult<'a, P<Expr>>,
+    ) -> PResult<'a, P<Expr>> {
+        if has_outer_attrs {
+            let (mut expr, tokens) = self.collect_tokens(f)?;
+            debug!("maybe_collect_tokens: Collected tokens for {:?} (tokens {:?}", expr, tokens);
+            expr.tokens = Some(tokens);
+            Ok(expr)
+        } else {
+            f(self)
         }
     }
 
@@ -2169,7 +2189,7 @@ impl<'a> Parser<'a> {
     }
 
     crate fn mk_expr(&self, span: Span, kind: ExprKind, attrs: AttrVec) -> P<Expr> {
-        P(Expr { kind, span, attrs, id: DUMMY_NODE_ID })
+        P(Expr { kind, span, attrs, id: DUMMY_NODE_ID, tokens: None })
     }
 
     pub(super) fn mk_expr_err(&self, span: Span) -> P<Expr> {
