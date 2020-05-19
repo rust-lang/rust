@@ -38,64 +38,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 let var_name = self.tcx.hir().name(upvar_id.var_path.hir_id);
                 err.span_note(span, &format!("...so that closure can access `{}`", var_name));
             }
-            infer::InfStackClosure(span) => {
-                err.span_note(span, "...so that closure does not outlive its stack frame");
-            }
-            infer::InvokeClosure(span) => {
-                err.span_note(span, "...so that closure is not invoked outside its lifetime");
-            }
-            infer::DerefPointer(span) => {
-                err.span_note(span, "...so that pointer is not dereferenced outside its lifetime");
-            }
-            infer::ClosureCapture(span, id) => {
-                err.span_note(
-                    span,
-                    &format!(
-                        "...so that captured variable `{}` does not outlive the \
-                                        enclosing closure",
-                        self.tcx.hir().name(id)
-                    ),
-                );
-            }
-            infer::IndexSlice(span) => {
-                err.span_note(span, "...so that slice is not indexed outside the lifetime");
-            }
             infer::RelateObjectBound(span) => {
                 err.span_note(span, "...so that it can be closed over into an object");
             }
-            infer::CallRcvr(span) => {
-                err.span_note(span, "...so that method receiver is valid for the method call");
-            }
-            infer::CallArg(span) => {
-                err.span_note(span, "...so that argument is valid for the call");
-            }
             infer::CallReturn(span) => {
                 err.span_note(span, "...so that return value is valid for the call");
-            }
-            infer::Operand(span) => {
-                err.span_note(span, "...so that operand is valid for operation");
-            }
-            infer::AddrOf(span) => {
-                err.span_note(span, "...so that reference is valid at the time of borrow");
-            }
-            infer::AutoBorrow(span) => {
-                err.span_note(span, "...so that auto-reference is valid at the time of borrow");
-            }
-            infer::ExprTypeIsNotInScope(t, span) => {
-                err.span_note(
-                    span,
-                    &format!(
-                        "...so type `{}` of expression is valid during the \
-                                        expression",
-                        self.ty_to_string(t)
-                    ),
-                );
-            }
-            infer::BindingTypeIsNotValidAtDecl(span) => {
-                err.span_note(span, "...so that variable is valid at time of its declaration");
-            }
-            infer::ParameterInScope(_, span) => {
-                err.span_note(span, "...so that a type/lifetime parameter is in scope here");
             }
             infer::DataBorrowed(ty, span) => {
                 err.span_note(
@@ -126,24 +73,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     ),
                 );
             }
-            infer::RelateDefaultParamBound(span, t) => {
-                err.span_note(
-                    span,
-                    &format!(
-                        "...so that type parameter instantiated with `{}`, will \
-                                        meet its declared lifetime bounds",
-                        self.ty_to_string(t)
-                    ),
-                );
-            }
             infer::RelateRegionParamBound(span) => {
                 err.span_note(
                     span,
                     "...so that the declared lifetime parameter bounds are satisfied",
                 );
-            }
-            infer::SafeDestructor(span) => {
-                err.span_note(span, "...so that references are valid when the destructor runs");
             }
             infer::CompareImplMethodObligation { span, .. } => {
                 err.span_note(
@@ -231,106 +165,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 );
                 err
             }
-            infer::InfStackClosure(span) => {
-                let mut err =
-                    struct_span_err!(self.tcx.sess, span, E0314, "closure outlives stack frame");
-                note_and_explain_region(
-                    self.tcx,
-                    region_scope_tree,
-                    &mut err,
-                    "...the closure must be valid for ",
-                    sub,
-                    "...",
-                );
-                note_and_explain_region(
-                    self.tcx,
-                    region_scope_tree,
-                    &mut err,
-                    "...but the closure's stack frame is only valid \
-                                                  for ",
-                    sup,
-                    "",
-                );
-                err
-            }
-            infer::InvokeClosure(span) => {
-                let mut err = struct_span_err!(
-                    self.tcx.sess,
-                    span,
-                    E0315,
-                    "cannot invoke closure outside of its lifetime"
-                );
-                note_and_explain_region(
-                    self.tcx,
-                    region_scope_tree,
-                    &mut err,
-                    "the closure is only valid for ",
-                    sup,
-                    "",
-                );
-                err
-            }
-            infer::DerefPointer(span) => {
-                let mut err = struct_span_err!(
-                    self.tcx.sess,
-                    span,
-                    E0473,
-                    "dereference of reference outside its lifetime"
-                );
-                note_and_explain_region(
-                    self.tcx,
-                    region_scope_tree,
-                    &mut err,
-                    "the reference is only valid for ",
-                    sup,
-                    "",
-                );
-                err
-            }
-            infer::ClosureCapture(span, id) => {
-                let mut err = struct_span_err!(
-                    self.tcx.sess,
-                    span,
-                    E0474,
-                    "captured variable `{}` does not outlive the \
-                                                enclosing closure",
-                    self.tcx.hir().name(id)
-                );
-                note_and_explain_region(
-                    self.tcx,
-                    region_scope_tree,
-                    &mut err,
-                    "captured variable is valid for ",
-                    sup,
-                    "",
-                );
-                note_and_explain_region(
-                    self.tcx,
-                    region_scope_tree,
-                    &mut err,
-                    "closure is valid for ",
-                    sub,
-                    "",
-                );
-                err
-            }
-            infer::IndexSlice(span) => {
-                let mut err = struct_span_err!(
-                    self.tcx.sess,
-                    span,
-                    E0475,
-                    "index of slice outside its lifetime"
-                );
-                note_and_explain_region(
-                    self.tcx,
-                    region_scope_tree,
-                    &mut err,
-                    "the slice is only valid for ",
-                    sup,
-                    "",
-                );
-                err
-            }
             infer::RelateObjectBound(span) => {
                 let mut err = struct_span_err!(
                     self.tcx.sess,
@@ -407,61 +241,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 );
                 err
             }
-            infer::RelateDefaultParamBound(span, ty) => {
-                let mut err = struct_span_err!(
-                    self.tcx.sess,
-                    span,
-                    E0479,
-                    "the type `{}` (provided as the value of a type \
-                                                parameter) is not valid at this point",
-                    self.ty_to_string(ty)
-                );
-                note_and_explain_region(
-                    self.tcx,
-                    region_scope_tree,
-                    &mut err,
-                    "type must outlive ",
-                    sub,
-                    "",
-                );
-                err
-            }
-            infer::CallRcvr(span) => {
-                let mut err = struct_span_err!(
-                    self.tcx.sess,
-                    span,
-                    E0480,
-                    "lifetime of method receiver does not outlive the \
-                                                method call"
-                );
-                note_and_explain_region(
-                    self.tcx,
-                    region_scope_tree,
-                    &mut err,
-                    "the receiver is only valid for ",
-                    sup,
-                    "",
-                );
-                err
-            }
-            infer::CallArg(span) => {
-                let mut err = struct_span_err!(
-                    self.tcx.sess,
-                    span,
-                    E0481,
-                    "lifetime of function argument does not outlive \
-                                                the function call"
-                );
-                note_and_explain_region(
-                    self.tcx,
-                    region_scope_tree,
-                    &mut err,
-                    "the function argument is only valid for ",
-                    sup,
-                    "",
-                );
-                err
-            }
             infer::CallReturn(span) => {
                 let mut err = struct_span_err!(
                     self.tcx.sess,
@@ -476,140 +255,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     &mut err,
                     "the return value is only valid for ",
                     sup,
-                    "",
-                );
-                err
-            }
-            infer::Operand(span) => {
-                let mut err = struct_span_err!(
-                    self.tcx.sess,
-                    span,
-                    E0483,
-                    "lifetime of operand does not outlive the \
-                                                operation"
-                );
-                note_and_explain_region(
-                    self.tcx,
-                    region_scope_tree,
-                    &mut err,
-                    "the operand is only valid for ",
-                    sup,
-                    "",
-                );
-                err
-            }
-            infer::AddrOf(span) => {
-                let mut err = struct_span_err!(
-                    self.tcx.sess,
-                    span,
-                    E0484,
-                    "reference is not valid at the time of borrow"
-                );
-                note_and_explain_region(
-                    self.tcx,
-                    region_scope_tree,
-                    &mut err,
-                    "the borrow is only valid for ",
-                    sup,
-                    "",
-                );
-                err
-            }
-            infer::AutoBorrow(span) => {
-                let mut err = struct_span_err!(
-                    self.tcx.sess,
-                    span,
-                    E0485,
-                    "automatically reference is not valid at the time \
-                                                of borrow"
-                );
-                note_and_explain_region(
-                    self.tcx,
-                    region_scope_tree,
-                    &mut err,
-                    "the automatic borrow is only valid for ",
-                    sup,
-                    "",
-                );
-                err
-            }
-            infer::ExprTypeIsNotInScope(t, span) => {
-                let mut err = struct_span_err!(
-                    self.tcx.sess,
-                    span,
-                    E0486,
-                    "type of expression contains references that are \
-                                                not valid during the expression: `{}`",
-                    self.ty_to_string(t)
-                );
-                note_and_explain_region(
-                    self.tcx,
-                    region_scope_tree,
-                    &mut err,
-                    "type is only valid for ",
-                    sup,
-                    "",
-                );
-                err
-            }
-            infer::SafeDestructor(span) => {
-                let mut err = struct_span_err!(
-                    self.tcx.sess,
-                    span,
-                    E0487,
-                    "unsafe use of destructor: destructor might be \
-                                                called while references are dead"
-                );
-                // FIXME (22171): terms "super/subregion" are suboptimal
-                note_and_explain_region(
-                    self.tcx,
-                    region_scope_tree,
-                    &mut err,
-                    "superregion: ",
-                    sup,
-                    "",
-                );
-                note_and_explain_region(
-                    self.tcx,
-                    region_scope_tree,
-                    &mut err,
-                    "subregion: ",
-                    sub,
-                    "",
-                );
-                err
-            }
-            infer::BindingTypeIsNotValidAtDecl(span) => {
-                let mut err = struct_span_err!(
-                    self.tcx.sess,
-                    span,
-                    E0488,
-                    "lifetime of variable does not enclose its \
-                                                declaration"
-                );
-                note_and_explain_region(
-                    self.tcx,
-                    region_scope_tree,
-                    &mut err,
-                    "the variable is only valid for ",
-                    sup,
-                    "",
-                );
-                err
-            }
-            infer::ParameterInScope(_, span) => {
-                let mut err = struct_span_err!(
-                    self.tcx.sess,
-                    span,
-                    E0489,
-                    "type/lifetime parameter not in scope here"
-                );
-                note_and_explain_region(
-                    self.tcx,
-                    region_scope_tree,
-                    &mut err,
-                    "the parameter is only valid for ",
-                    sub,
                     "",
                 );
                 err
