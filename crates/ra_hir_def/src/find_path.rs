@@ -3,6 +3,7 @@
 use std::sync::Arc;
 
 use hir_expand::name::{known, AsName, Name};
+use ra_prof::profile;
 use test_utils::tested_by;
 
 use crate::{
@@ -18,7 +19,7 @@ use crate::{
 /// Find a path that can be used to refer to a certain item. This can depend on
 /// *from where* you're referring to the item, hence the `from` parameter.
 pub fn find_path(db: &dyn DefDatabase, item: ItemInNs, from: ModuleId) -> Option<ModPath> {
-    let _p = ra_prof::profile("find_path");
+    let _p = profile("find_path");
     find_path_inner(db, item, from, MAX_PATH_LEN)
 }
 
@@ -213,11 +214,12 @@ fn find_importable_locations(
 ///
 /// Note that the crate doesn't need to be the one in which the item is defined;
 /// it might be re-exported in other crates.
-pub(crate) fn importable_locations_in_crate(
+pub(crate) fn importable_locations_of_query(
     db: &dyn DefDatabase,
     item: ItemInNs,
     krate: CrateId,
 ) -> Arc<[(ModuleId, Name, Visibility)]> {
+    let _p = profile("importable_locations_of_query");
     let def_map = db.crate_def_map(krate);
     let mut result = Vec::new();
     for (local_id, data) in def_map.modules.iter() {
