@@ -25,9 +25,8 @@ pub(crate) fn add_explicit_type(acc: &mut Assists, ctx: &AssistContext) -> Optio
     let stmt = ctx.find_node_at_offset::<LetStmt>()?;
     let module = ctx.sema.scope(stmt.syntax()).module()?;
     let expr = stmt.initializer()?;
-    let pat = stmt.pat()?;
     // Must be a binding
-    let pat = match pat {
+    let pat = match stmt.pat()? {
         ast::Pat::BindPat(bind_pat) => bind_pat,
         _ => return None,
     };
@@ -46,7 +45,7 @@ pub(crate) fn add_explicit_type(acc: &mut Assists, ctx: &AssistContext) -> Optio
     // Assist not applicable if the type has already been specified
     // and it has no placeholders
     let ascribed_ty = stmt.ascribed_type();
-    if let Some(ref ty) = ascribed_ty {
+    if let Some(ty) = &ascribed_ty {
         if ty.syntax().descendants().find_map(ast::PlaceholderType::cast).is_none() {
             return None;
         }
