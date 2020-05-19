@@ -850,6 +850,17 @@ impl From<&OsStr> for Box<OsStr> {
     }
 }
 
+#[stable(feature = "box_from_cow", since = "1.45.0")]
+impl From<Cow<'_, OsStr>> for Box<OsStr> {
+    #[inline]
+    fn from(cow: Cow<'_, OsStr>) -> Box<OsStr> {
+        match cow {
+            Cow::Borrowed(s) => Box::from(s),
+            Cow::Owned(s) => Box::from(s),
+        }
+    }
+}
+
 #[stable(feature = "os_string_from_box", since = "1.18.0")]
 impl From<Box<OsStr>> for OsString {
     /// Converts a [`Box`]`<`[`OsStr`]`>` into a `OsString` without copying or

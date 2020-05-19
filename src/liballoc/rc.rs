@@ -252,6 +252,7 @@ use core::ptr::{self, NonNull};
 use core::slice::from_raw_parts_mut;
 
 use crate::alloc::{box_free, handle_alloc_error, AllocInit, AllocRef, Global, Layout};
+use crate::borrow::{Cow, ToOwned};
 use crate::string::String;
 use crate::vec::Vec;
 
@@ -1493,6 +1494,21 @@ impl<T> From<Vec<T>> for Rc<[T]> {
             v.set_len(0);
 
             rc
+        }
+    }
+}
+
+#[stable(feature = "shared_from_cow", since = "1.45.0")]
+impl<'a, B> From<Cow<'a, B>> for Rc<B>
+where
+    B: ToOwned + ?Sized,
+    Rc<B>: From<&'a B> + From<B::Owned>,
+{
+    #[inline]
+    fn from(cow: Cow<'a, B>) -> Rc<B> {
+        match cow {
+            Cow::Borrowed(s) => Rc::from(s),
+            Cow::Owned(s) => Rc::from(s),
         }
     }
 }

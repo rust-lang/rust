@@ -25,6 +25,7 @@ use core::sync::atomic;
 use core::sync::atomic::Ordering::{Acquire, Relaxed, Release, SeqCst};
 
 use crate::alloc::{box_free, handle_alloc_error, AllocInit, AllocRef, Global, Layout};
+use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
 use crate::rc::is_dangling;
 use crate::string::String;
@@ -2124,6 +2125,21 @@ impl<T> From<Vec<T>> for Arc<[T]> {
             v.set_len(0);
 
             arc
+        }
+    }
+}
+
+#[stable(feature = "shared_from_cow", since = "1.45.0")]
+impl<'a, B> From<Cow<'a, B>> for Arc<B>
+where
+    B: ToOwned + ?Sized,
+    Arc<B>: From<&'a B> + From<B::Owned>,
+{
+    #[inline]
+    fn from(cow: Cow<'a, B>) -> Arc<B> {
+        match cow {
+            Cow::Borrowed(s) => Arc::from(s),
+            Cow::Owned(s) => Arc::from(s),
         }
     }
 }
