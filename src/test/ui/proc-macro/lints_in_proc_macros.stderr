@@ -1,5 +1,5 @@
 error[E0425]: cannot find value `foobar2` in this scope
-  --> $DIR/lints_in_proc_macros.rs:12:5
+  --> $DIR/lints_in_proc_macros.rs:9:5
    |
 LL |     bang_proc_macro2!();
    |     ^^^^^^^^^^^^^^^^^^^^ help: a local variable with a similar name exists: `foobar`

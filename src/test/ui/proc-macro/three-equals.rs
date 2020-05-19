@@ -1,8 +1,5 @@
 // aux-build:three-equals.rs
 
-
-#![feature(proc_macro_hygiene)]
-
 extern crate three_equals;
 
 use three_equals::three_equals;
