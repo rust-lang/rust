@@ -49,7 +49,10 @@ pub fn resolve<'tcx>(
             let mut values = resolver.infer_variable_values(&mut errors);
             let re_erased = region_rels.tcx.lifetimes.re_erased;
 
-            values.values.iter_mut().for_each(|v| *v = VarValue::Value(re_erased));
+            values.values.iter_mut().for_each(|v| match *v {
+                VarValue::Value(ref mut r) => *r = re_erased,
+                VarValue::ErrorValue => {}
+            });
             (values, errors)
         }
         RegionckMode::Erase { suppress_errors: true } => {
@@ -290,8 +293,8 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
 
         // Find all the "upper bounds" -- that is, each region `b` such that
         // `r0 <= b` must hold.
-        let (member_upper_bounds, _) =
-            self.collect_concrete_regions(graph, member_vid, OUTGOING, None);
+        let (member_upper_bounds, ..) =
+            self.collect_bounding_regions(graph, member_vid, OUTGOING, None);
 
         // Get an iterator over the *available choice* -- that is,
         // each choice region `c` where `lb <= c` and `c <= ub` for all the
@@ -716,7 +719,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         graph: &RegionGraph<'tcx>,
         errors: &mut Vec<RegionResolutionError<'tcx>>,
     ) {
-        debug!("collect_var_errors");
+        debug!("collect_var_errors, var_data = {:#?}", var_data.values);
 
         // This is the best way that I have found to suppress
         // duplicate and related errors. Basically we keep a set of
@@ -815,10 +818,10 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
     ) {
         // Errors in expanding nodes result from a lower-bound that is
         // not contained by an upper-bound.
-        let (mut lower_bounds, lower_dup) =
-            self.collect_concrete_regions(graph, node_idx, INCOMING, Some(dup_vec));
-        let (mut upper_bounds, upper_dup) =
-            self.collect_concrete_regions(graph, node_idx, OUTGOING, Some(dup_vec));
+        let (mut lower_bounds, lower_vid_bounds, lower_dup) =
+            self.collect_bounding_regions(graph, node_idx, INCOMING, Some(dup_vec));
+        let (mut upper_bounds, _, upper_dup) =
+            self.collect_bounding_regions(graph, node_idx, OUTGOING, Some(dup_vec));
 
         if lower_dup || upper_dup {
             return;
@@ -874,15 +877,22 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         // If we have a scenario like `exists<'a> { forall<'b> { 'b:
         // 'a } }`, we wind up without any lower-bound -- all we have
         // are placeholders as upper bounds, but the universe of the
-        // variable `'a` doesn't permit those placeholders.
+        // variable `'a`, or some variable that `'a` has to outlive, doesn't
+        // permit those placeholders.
+        let min_universe = lower_vid_bounds
+            .into_iter()
+            .map(|vid| self.var_infos[vid].universe)
+            .min()
+            .expect("lower_vid_bounds should at least include `node_idx`");
+
         for upper_bound in &upper_bounds {
             if let ty::RePlaceholder(p) = upper_bound.region {
-                if node_universe.cannot_name(p.universe) {
+                if min_universe.cannot_name(p.universe) {
                     let origin = self.var_infos[node_idx].origin;
                     errors.push(RegionResolutionError::UpperBoundUniverseConflict(
                         node_idx,
                         origin,
-                        node_universe,
+                        min_universe,
                         upper_bound.origin.clone(),
                         upper_bound.region,
                     ));
@@ -904,13 +914,13 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         );
     }
 
-    fn collect_concrete_regions(
+    fn collect_bounding_regions(
         &self,
         graph: &RegionGraph<'tcx>,
         orig_node_idx: RegionVid,
         dir: Direction,
         mut dup_vec: Option<&mut IndexVec<RegionVid, Option<RegionVid>>>,
-    ) -> (Vec<RegionAndOrigin<'tcx>>, bool) {
+    ) -> (Vec<RegionAndOrigin<'tcx>>, FxHashSet<RegionVid>, bool) {
         struct WalkState<'tcx> {
             set: FxHashSet<RegionVid>,
             stack: Vec<RegionVid>,
@@ -929,9 +939,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         // direction specified
         process_edges(&self.data, &mut state, graph, orig_node_idx, dir);
 
-        while !state.stack.is_empty() {
-            let node_idx = state.stack.pop().unwrap();
-
+        while let Some(node_idx) = state.stack.pop() {
             // check whether we've visited this node on some previous walk
             if let Some(dup_vec) = &mut dup_vec {
                 if dup_vec[node_idx].is_none() {
@@ -949,8 +957,8 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             process_edges(&self.data, &mut state, graph, node_idx, dir);
         }
 
-        let WalkState { result, dup_found, .. } = state;
-        return (result, dup_found);
+        let WalkState { result, dup_found, set, .. } = state;
+        return (result, set, dup_found);
 
         fn process_edges<'tcx>(
             this: &RegionConstraintData<'tcx>,
