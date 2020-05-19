@@ -65,7 +65,8 @@ export function applySnippetWorkspaceEdit(_ctx: Ctx): Cmd {
         let lineDelta = 0;
         await editor.edit((builder) => {
             for (const indel of edits) {
-                if (indel.newText.indexOf('$0') !== -1) {
+                const isSnippet = indel.newText.indexOf('$0') !== -1 || indel.newText.indexOf('${') !== -1;
+                if (isSnippet) {
                     editWithSnippet = indel;
                 } else {
                     if (!editWithSnippet) {
