@@ -11,6 +11,8 @@ fn main() {
         let mut mutex: libc::pthread_mutex_t = std::mem::zeroed();
         assert_eq!(libc::pthread_mutex_init(&mut mutex as *mut _, &mutexattr as *const _), 0);
         assert_eq!(libc::pthread_mutex_lock(&mut mutex as *mut _), 0);
-        libc::pthread_mutex_lock(&mut mutex as *mut _); //~ ERROR deadlock
+        // FIXME: The error should be deadlock. See issue
+        // https://github.com/rust-lang/miri/issues/1419.
+        libc::pthread_mutex_lock(&mut mutex as *mut _); //~ ERROR Undefined Behavior
     }
 }

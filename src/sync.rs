@@ -30,10 +30,12 @@ macro_rules! declare_id {
                 // We use 0 as a sentinel value (see the comment above) and,
                 // therefore, need to shift by one when converting from an index
                 // into a vector.
-                $name(NonZeroU32::new(u32::try_from(idx).unwrap() + 1).unwrap())
+                let shifted_idx = u32::try_from(idx).unwrap().checked_add(1).unwrap();
+                $name(NonZeroU32::new(shifted_idx).unwrap())
             }
             fn index(self) -> usize {
                 // See the comment in `Self::new`.
+                // (This cannot underflow because self is NonZeroU32.)
                 usize::try_from(self.0.get() - 1).unwrap()
             }
         }
@@ -150,11 +152,19 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ///
     /// Note: It is the caller's responsibility to check that the thread that
     /// unlocked the lock actually is the same one, which owned it.
-    fn mutex_unlock(&mut self, id: MutexId) -> InterpResult<'tcx, Option<(ThreadId, usize)>> {
+    fn mutex_unlock(
+        &mut self,
+        id: MutexId,
+        expected_owner: ThreadId,
+    ) -> InterpResult<'tcx, Option<usize>> {
         let this = self.eval_context_mut();
         let mutex = &mut this.machine.threads.sync.mutexes[id];
         if let Some(current_owner) = mutex.owner {
             // Mutex is locked.
+            if current_owner != expected_owner {
+                // Only the owner can unlock the mutex.
+                return Ok(None);
+            }
             let old_lock_count = mutex.lock_count;
             mutex.lock_count = old_lock_count
                 .checked_sub(1)
@@ -168,7 +178,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     this.unblock_thread(new_owner)?;
                 }
             }
-            Ok(Some((current_owner, old_lock_count)))
+            Ok(Some(old_lock_count))
         } else {
             // Mutex is unlocked.
             Ok(None)

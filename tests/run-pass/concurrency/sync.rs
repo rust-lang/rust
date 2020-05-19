@@ -91,7 +91,8 @@ fn check_conditional_variables_timed_wait_timeout() {
     let now = Instant::now();
     let (_guard, timeout) = cvar.wait_timeout(guard, Duration::from_millis(100)).unwrap();
     assert!(timeout.timed_out());
-    assert!(now.elapsed().as_millis() >= 100);
+    let elapsed_time = now.elapsed().as_millis();
+    assert!(100 <= elapsed_time && elapsed_time <= 300);
 }
 
 /// Test that signaling a conditional variable when waiting with a timeout works
@@ -243,7 +244,7 @@ fn get_cached_val() -> usize {
 fn expensive_computation() -> usize {
     let mut i = 1;
     let mut c = 1;
-    while i < 10000 {
+    while i < 1000 {
         i *= c;
         c += 1;
     }
@@ -257,7 +258,7 @@ fn check_once() {
             thread::spawn(|| {
                 thread::yield_now();
                 let val = get_cached_val();
-                assert_eq!(val, 40320);
+                assert_eq!(val, 5040);
             })
         })
         .collect();

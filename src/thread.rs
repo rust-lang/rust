@@ -159,6 +159,7 @@ impl<'mir, 'tcx> Default for Thread<'mir, 'tcx> {
     }
 }
 
+/// A specific moment in time.
 #[derive(Debug)]
 pub enum Time {
     Monotonic(Instant),
@@ -449,9 +450,9 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         //
         // Documentation:
         // https://pubs.opengroup.org/onlinepubs/9699919799/functions/pthread_cond_timedwait.html#
-        if let Some(sleep_time) =
-            self.timeout_callbacks.values().map(|info| info.call_time.get_wait_time()).min()
-        {
+        let potential_sleep_time =
+            self.timeout_callbacks.values().map(|info| info.call_time.get_wait_time()).min();
+        if let Some(sleep_time) = potential_sleep_time {
             if sleep_time == Duration::new(0, 0) {
                 return Ok(SchedulingAction::ExecuteTimeoutCallback);
             }
@@ -479,9 +480,7 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         // We have not found a thread to execute.
         if self.threads.iter().all(|thread| thread.state == ThreadState::Terminated) {
             unreachable!("all threads terminated without the main thread terminating?!");
-        } else if let Some(sleep_time) =
-            self.timeout_callbacks.values().map(|info| info.call_time.get_wait_time()).min()
-        {
+        } else if let Some(sleep_time) = potential_sleep_time {
             // All threads are currently blocked, but we have unexecuted
             // timeout_callbacks, which may unblock some of the threads. Hence,
             // sleep until the first callback.

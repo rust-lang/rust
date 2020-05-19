@@ -288,15 +288,12 @@ fn release_cond_mutex<'mir, 'tcx: 'mir>(
     active_thread: ThreadId,
     mutex: MutexId,
 ) -> InterpResult<'tcx> {
-    if let Some((old_owner_thread, old_locked_count)) = ecx.mutex_unlock(mutex)? {
+    if let Some(old_locked_count) = ecx.mutex_unlock(mutex, active_thread)? {
         if old_locked_count != 1 {
             throw_unsup_format!("awaiting on a lock acquired multiple times is not supported");
         }
-        if old_owner_thread != active_thread {
-            throw_ub_format!("awaiting on a mutex owned by a different thread");
-        }
     } else {
-        throw_ub_format!("awaiting on unlocked mutex");
+        throw_ub_format!("awaiting on unlocked or owned by a different thread mutex");
     }
     ecx.block_thread(active_thread)?;
     Ok(())
@@ -321,7 +318,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         let kind = this.read_scalar(kind_op)?.not_undef()?;
-        if kind == this.eval_libc("PTHREAD_MUTEX_NORMAL")?
+        if kind == this.eval_libc("PTHREAD_MUTEX_DEFAULT")?
+            || kind == this.eval_libc("PTHREAD_MUTEX_NORMAL")?
             || kind == this.eval_libc("PTHREAD_MUTEX_ERRORCHECK")?
             || kind == this.eval_libc("PTHREAD_MUTEX_RECURSIVE")?
         {
@@ -380,6 +378,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 Ok(0)
             } else {
                 // Trying to acquire the same mutex again.
+                if kind == this.eval_libc("PTHREAD_MUTEX_DEFAULT")? {
+                    // FIXME: Sometimes this is actually a Deadlock.
+                    // https://github.com/rust-lang/miri/issues/1419
+                    throw_ub_format!(
+                        "trying to acquire already locked PTHREAD_MUTEX_DEFAULT (see #1419)"
+                    );
+                }
                 if kind == this.eval_libc("PTHREAD_MUTEX_NORMAL")? {
                     throw_machine_stop!(TerminationInfo::Deadlock);
                 } else if kind == this.eval_libc("PTHREAD_MUTEX_ERRORCHECK")? {
@@ -388,7 +393,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     this.mutex_lock(id, active_thread);
                     Ok(0)
                 } else {
-                    throw_ub_format!("called pthread_mutex_lock on an unsupported type of mutex");
+                    throw_unsup_format!(
+                        "called pthread_mutex_lock on an unsupported type of mutex"
+                    );
                 }
             }
         } else {
@@ -410,7 +417,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             if owner_thread != active_thread {
                 this.eval_libc_i32("EBUSY")
             } else {
-                if kind == this.eval_libc("PTHREAD_MUTEX_NORMAL")?
+                if kind == this.eval_libc("PTHREAD_MUTEX_DEFAULT")?
+                    || kind == this.eval_libc("PTHREAD_MUTEX_NORMAL")?
                     || kind == this.eval_libc("PTHREAD_MUTEX_ERRORCHECK")?
                 {
                     this.eval_libc_i32("EBUSY")
@@ -418,7 +426,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     this.mutex_lock(id, active_thread);
                     Ok(0)
                 } else {
-                    throw_ub_format!(
+                    throw_unsup_format!(
                         "called pthread_mutex_trylock on an unsupported type of mutex"
                     );
                 }
@@ -435,21 +443,29 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let kind = mutex_get_kind(this, mutex_op)?.not_undef()?;
         let id = mutex_get_or_create_id(this, mutex_op)?;
+        let active_thread = this.get_active_thread()?;
 
-        if let Some((old_owner_thread, _old_locked_count)) = this.mutex_unlock(id)? {
-            if old_owner_thread != this.get_active_thread()? {
-                throw_ub_format!("called pthread_mutex_unlock on a mutex owned by another thread");
-            }
+        if let Some(_old_locked_count) = this.mutex_unlock(id, active_thread)? {
+            // The mutex was locked by the current thread.
             Ok(0)
         } else {
-            if kind == this.eval_libc("PTHREAD_MUTEX_NORMAL")? {
-                throw_ub_format!("unlocked a PTHREAD_MUTEX_NORMAL mutex that was not locked");
+            // The mutex was locked by another thread or not locked at all. See
+            // the “Unlock When Not Owner” column in
+            // https://pubs.opengroup.org/onlinepubs/9699919799/functions/pthread_mutex_unlock.html.
+            if kind == this.eval_libc("PTHREAD_MUTEX_DEFAULT")? {
+                throw_ub_format!(
+                    "unlocked a PTHREAD_MUTEX_DEFAULT mutex that was not locked by the current thread"
+                );
+            } else if kind == this.eval_libc("PTHREAD_MUTEX_NORMAL")? {
+                throw_ub_format!(
+                    "unlocked a PTHREAD_MUTEX_NORMAL mutex that was not locked by the current thread"
+                );
             } else if kind == this.eval_libc("PTHREAD_MUTEX_ERRORCHECK")? {
                 this.eval_libc_i32("EPERM")
             } else if kind == this.eval_libc("PTHREAD_MUTEX_RECURSIVE")? {
                 this.eval_libc_i32("EPERM")
             } else {
-                throw_ub_format!("called pthread_mutex_unlock on an unsupported type of mutex");
+                throw_unsup_format!("called pthread_mutex_unlock on an unsupported type of mutex");
             }
         }
     }
@@ -505,6 +521,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let active_thread = this.get_active_thread()?;
 
         if this.rwlock_is_locked(id) {
+            // Note: this will deadlock if the lock is already locked by this
+            // thread in any way.
+            //
+            // Relevant documentation:
+            // https://pubs.opengroup.org/onlinepubs/9699919799/functions/pthread_rwlock_wrlock.html
+            // An in depth discussion on this topic:
+            // https://github.com/rust-lang/rust/issues/53127
+            //
+            // FIXME: Detect and report the deadlock proactively. (We currently
+            // report the deadlock only when no thread can continue execution,
+            // but we could detect that this lock is already locked and report
+            // an error.)
             this.rwlock_enqueue_and_block_writer(id, active_thread)?;
         } else {
             this.rwlock_writer_lock(id, active_thread);
@@ -719,19 +747,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let clock_id = cond_get_clock_id(this, cond_op)?.to_i32()?;
         let duration = {
             let tp = this.deref_operand(abstime_op)?;
-            let mut offset = Size::from_bytes(0);
-            let layout = this.libc_ty_layout("time_t")?;
-            let seconds_place = tp.offset(offset, MemPlaceMeta::None, layout, this)?;
+            let seconds_place = this.mplace_field(tp, 0)?;
             let seconds = this.read_scalar(seconds_place.into())?;
-            offset += layout.size;
-            let layout = this.libc_ty_layout("c_long")?;
-            let nanoseconds_place = tp.offset(offset, MemPlaceMeta::None, layout, this)?;
+            let nanoseconds_place = this.mplace_field(tp, 1)?;
             let nanoseconds = this.read_scalar(nanoseconds_place.into())?;
-            let (seconds, nanoseconds) = if this.pointer_size().bytes() == 8 {
-                (seconds.to_u64()?, nanoseconds.to_u64()?.try_into().unwrap())
-            } else {
-                (seconds.to_u32()?.into(), nanoseconds.to_u32()?)
-            };
+            let (seconds, nanoseconds) = (
+                seconds.to_machine_usize(this)?,
+                nanoseconds.to_machine_usize(this)?.try_into().unwrap(),
+            );
             Duration::new(seconds, nanoseconds)
         };
 
@@ -740,7 +763,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         } else if clock_id == this.eval_libc_i32("CLOCK_MONOTONIC")? {
             Time::Monotonic(this.machine.time_anchor.checked_add(duration).unwrap())
         } else {
-            throw_unsup_format!("Unsupported clock id.");
+            throw_unsup_format!("unsupported clock id: {}", clock_id);
         };
 
         // Register the timeout callback.

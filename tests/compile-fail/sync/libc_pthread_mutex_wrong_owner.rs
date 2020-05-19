@@ -24,7 +24,7 @@ fn main() {
 
         let lock_copy = lock.clone();
         thread::spawn(move || {
-            assert_eq!(libc::pthread_mutex_unlock(lock_copy.0.get() as *mut _), 0); //~ ERROR: Undefined Behavior: called pthread_mutex_unlock on a mutex owned by another thread
+            assert_eq!(libc::pthread_mutex_unlock(lock_copy.0.get() as *mut _), 0); //~ ERROR: Undefined Behavior: unlocked a PTHREAD_MUTEX_DEFAULT mutex that was not locked
         })
         .join()
         .unwrap();
