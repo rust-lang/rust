@@ -407,13 +407,34 @@ impl<T, A: AllocRef> RawVec<T, A> {
             return Err(CapacityOverflow);
         }
 
+        if needed_extra_capacity == 0 {
+            return Ok(());
+        }
+
         // Nothing we can really do about these checks, sadly.
         let required_cap =
             used_capacity.checked_add(needed_extra_capacity).ok_or(CapacityOverflow)?;
-        // Cannot overflow, because `cap <= isize::MAX`, and type of `cap` is `usize`.
-        let double_cap = self.cap * 2;
-        // `double_cap` guarantees exponential growth.
-        let cap = cmp::max(double_cap, required_cap);
+
+        // This guarantees exponential growth. The doubling cannot overflow
+        // because `cap <= isize::MAX` and the type of `cap` is `usize`.
+        let cap = cmp::max(self.cap * 2, required_cap);
+
+        // Tiny Vecs are dumb. Skip to:
+        // - 8 if the element size is 1, because any heap allocators is likely
+        //   to round up a request of less than 8 bytes to at least 8 bytes.
+        // - 4 if elements are moderate-sized (<= 1 KiB).
+        // - 1 otherwise, to avoid wasting too much space for very short Vecs.
+        // Note that `min_non_zero_cap` is computed statically.
+        let elem_size = mem::size_of::<T>();
+        let min_non_zero_cap = if elem_size == 1 {
+            8
+        } else if elem_size <= 1024 {
+            4
+        } else {
+            1
+        };
+        let cap = cmp::max(min_non_zero_cap, cap);
+
         let new_layout = Layout::array::<T>(cap);
 
         // `finish_grow` is non-generic over `T`.

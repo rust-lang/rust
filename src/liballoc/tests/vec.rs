@@ -1473,3 +1473,118 @@ fn vec_macro_repeating_null_raw_fat_pointer() {
         vtable: *mut (),
     }
 }
+
+// This test will likely fail if you change the capacities used in
+// `RawVec::grow_amortized`.
+#[test]
+fn test_push_growth_strategy() {
+    // If the element size is 1, we jump from 0 to 8, then double.
+    {
+        let mut v1: Vec<u8> = vec![];
+        assert_eq!(v1.capacity(), 0);
+
+        for _ in 0..8 {
+            v1.push(0);
+            assert_eq!(v1.capacity(), 8);
+        }
+
+        for _ in 8..16 {
+            v1.push(0);
+            assert_eq!(v1.capacity(), 16);
+        }
+
+        for _ in 16..32 {
+            v1.push(0);
+            assert_eq!(v1.capacity(), 32);
+        }
+
+        for _ in 32..64 {
+            v1.push(0);
+            assert_eq!(v1.capacity(), 64);
+        }
+    }
+
+    // If the element size is 2..=1024, we jump from 0 to 4, then double.
+    {
+        let mut v2: Vec<u16> = vec![];
+        let mut v1024: Vec<[u8; 1024]> = vec![];
+        assert_eq!(v2.capacity(), 0);
+        assert_eq!(v1024.capacity(), 0);
+
+        for _ in 0..4 {
+            v2.push(0);
+            v1024.push([0; 1024]);
+            assert_eq!(v2.capacity(), 4);
+            assert_eq!(v1024.capacity(), 4);
+        }
+
+        for _ in 4..8 {
+            v2.push(0);
+            v1024.push([0; 1024]);
+            assert_eq!(v2.capacity(), 8);
+            assert_eq!(v1024.capacity(), 8);
+        }
+
+        for _ in 8..16 {
+            v2.push(0);
+            v1024.push([0; 1024]);
+            assert_eq!(v2.capacity(), 16);
+            assert_eq!(v1024.capacity(), 16);
+        }
+
+        for _ in 16..32 {
+            v2.push(0);
+            v1024.push([0; 1024]);
+            assert_eq!(v2.capacity(), 32);
+            assert_eq!(v1024.capacity(), 32);
+        }
+
+        for _ in 32..64 {
+            v2.push(0);
+            v1024.push([0; 1024]);
+            assert_eq!(v2.capacity(), 64);
+            assert_eq!(v1024.capacity(), 64);
+        }
+    }
+
+    // If the element size is > 1024, we jump from 0 to 1, then double.
+    {
+        let mut v1025: Vec<[u8; 1025]> = vec![];
+        assert_eq!(v1025.capacity(), 0);
+
+        for _ in 0..1 {
+            v1025.push([0; 1025]);
+            assert_eq!(v1025.capacity(), 1);
+        }
+
+        for _ in 1..2 {
+            v1025.push([0; 1025]);
+            assert_eq!(v1025.capacity(), 2);
+        }
+
+        for _ in 2..4 {
+            v1025.push([0; 1025]);
+            assert_eq!(v1025.capacity(), 4);
+        }
+
+        for _ in 4..8 {
+            v1025.push([0; 1025]);
+            assert_eq!(v1025.capacity(), 8);
+        }
+
+        for _ in 8..16 {
+            v1025.push([0; 1025]);
+            assert_eq!(v1025.capacity(), 16);
+        }
+
+        for _ in 16..32 {
+            v1025.push([0; 1025]);
+            assert_eq!(v1025.capacity(), 32);
+        }
+
+        for _ in 32..64 {
+            v1025.push([0; 1025]);
+            assert_eq!(v1025.capacity(), 64);
+        }
+    }
+}
