@@ -10,7 +10,7 @@ use ra_syntax::{
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use crate::{AssistContext, AssistId, Assists};
+use crate::{utils::render_snippet, AssistContext, AssistId, Assists};
 
 // Assist: add_function
 //
@@ -33,7 +33,7 @@ use crate::{AssistContext, AssistId, Assists};
 // }
 //
 // fn bar(arg: &str, baz: Baz) {
-//     todo!()
+//     ${0:todo!()}
 // }
 //
 // ```
@@ -58,18 +58,27 @@ pub(crate) fn add_function(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
     let function_builder = FunctionBuilder::from_call(&ctx, &call, &path, target_module)?;
 
     let target = call.syntax().text_range();
-    acc.add(AssistId("add_function"), "Add function", target, |edit| {
+    acc.add(AssistId("add_function"), "Add function", target, |builder| {
         let function_template = function_builder.render();
-        edit.set_file(function_template.file);
-        edit.set_cursor(function_template.cursor_offset);
-        edit.insert(function_template.insert_offset, function_template.fn_def.to_string());
+        builder.set_file(function_template.file);
+        match ctx.config.snippet_cap {
+            Some(cap) => {
+                let snippet = render_snippet(
+                    function_template.fn_def.syntax(),
+                    function_template.placeholder_expr.syntax(),
+                );
+                builder.insert_snippet(cap, function_template.insert_offset, snippet)
+            }
+            None => builder
+                .insert(function_template.insert_offset, function_template.fn_def.to_string()),
+        }
     })
 }
 
 struct FunctionTemplate {
     insert_offset: TextSize,
-    cursor_offset: TextSize,
     fn_def: ast::SourceFile,
+    placeholder_expr: ast::MacroCall,
     file: FileId,
 }
 
@@ -136,9 +145,7 @@ impl FunctionBuilder {
 
         let placeholder_expr =
             fn_def.syntax().descendants().find_map(ast::MacroCall::cast).unwrap();
-        let cursor_offset_from_fn_start = placeholder_expr.syntax().text_range().start();
-        let cursor_offset = insert_offset + cursor_offset_from_fn_start;
-        FunctionTemplate { insert_offset, cursor_offset, fn_def, file: self.file }
+        FunctionTemplate { insert_offset, placeholder_expr, fn_def, file: self.file }
     }
 }
 
@@ -316,7 +323,7 @@ fn foo() {
 }
 
 fn bar() {
-    <|>todo!()
+    ${0:todo!()}
 }
 ",
         )
@@ -343,7 +350,7 @@ impl Foo {
 }
 
 fn bar() {
-    <|>todo!()
+    ${0:todo!()}
 }
 ",
         )
@@ -367,7 +374,7 @@ fn foo1() {
 }
 
 fn bar() {
-    <|>todo!()
+    ${0:todo!()}
 }
 
 fn foo2() {}
@@ -393,7 +400,7 @@ mod baz {
     }
 
     fn bar() {
-        <|>todo!()
+        ${0:todo!()}
     }
 }
 ",
@@ -419,7 +426,7 @@ fn foo() {
 }
 
 fn bar(baz: Baz) {
-    <|>todo!()
+    ${0:todo!()}
 }
 ",
         );
@@ -452,7 +459,7 @@ impl Baz {
 }
 
 fn bar(baz: Baz) {
-    <|>todo!()
+    ${0:todo!()}
 }
 ",
         )
@@ -473,7 +480,7 @@ fn foo() {
 }
 
 fn bar(arg: &str) {
-    <|>todo!()
+    ${0:todo!()}
 }
 "#,
         )
@@ -494,7 +501,7 @@ fn foo() {
 }
 
 fn bar(arg: char) {
-    <|>todo!()
+    ${0:todo!()}
 }
 "#,
         )
@@ -515,7 +522,7 @@ fn foo() {
 }
 
 fn bar(arg: i32) {
-    <|>todo!()
+    ${0:todo!()}
 }
 ",
         )
@@ -536,7 +543,7 @@ fn foo() {
 }
 
 fn bar(arg: u8) {
-    <|>todo!()
+    ${0:todo!()}
 }
 ",
         )
@@ -561,7 +568,7 @@ fn foo() {
 }
 
 fn bar(x: u8) {
-    <|>todo!()
+    ${0:todo!()}
 }
 ",
         )
@@ -584,7 +591,7 @@ fn foo() {
 }
 
 fn bar(worble: ()) {
-    <|>todo!()
+    ${0:todo!()}
 }
 ",
         )
@@ -613,7 +620,7 @@ fn baz() {
 }
 
 fn bar(foo: impl Foo) {
-    <|>todo!()
+    ${0:todo!()}
 }
 ",
         )
@@ -640,7 +647,7 @@ fn foo() {
 }
 
 fn bar(baz: &Baz) {
-    <|>todo!()
+    ${0:todo!()}
 }
 ",
         )
@@ -669,7 +676,7 @@ fn foo() {
 }
 
 fn bar(baz: Baz::Bof) {
-    <|>todo!()
+    ${0:todo!()}
 }
 ",
         )
@@ -692,7 +699,7 @@ fn foo<T>(t: T) {
 }
 
 fn bar<T>(t: T) {
-    <|>todo!()
+    ${0:todo!()}
 }
 ",
         )
@@ -723,7 +730,7 @@ fn foo() {
 }
 
 fn bar(arg: fn() -> Baz) {
-    <|>todo!()
+    ${0:todo!()}
 }
 ",
         )
@@ -748,7 +755,7 @@ fn foo() {
 }
 
 fn bar(closure: impl Fn(i64) -> i64) {
-    <|>todo!()
+    ${0:todo!()}
 }
 ",
         )
@@ -769,7 +776,7 @@ fn foo() {
 }
 
 fn bar(baz: ()) {
-    <|>todo!()
+    ${0:todo!()}
 }
 ",
         )
@@ -794,7 +801,7 @@ fn foo() {
 }
 
 fn bar(baz_1: Baz, baz_2: Baz) {
-    <|>todo!()
+    ${0:todo!()}
 }
 ",
         )
@@ -819,7 +826,7 @@ fn foo() {
 }
 
 fn bar(baz_1: Baz, baz_2: Baz, arg_1: &str, arg_2: &str) {
-    <|>todo!()
+    ${0:todo!()}
 }
 "#,
         )
@@ -839,7 +846,7 @@ fn foo() {
             r"
 mod bar {
     pub(crate) fn my_fn() {
-        <|>todo!()
+        ${0:todo!()}
     }
 }
 
@@ -878,7 +885,7 @@ fn bar() {
 }
 
 fn baz(foo: foo::Foo) {
-    <|>todo!()
+    ${0:todo!()}
 }
 ",
         )
@@ -902,7 +909,7 @@ mod bar {
     fn something_else() {}
 
     pub(crate) fn my_fn() {
-        <|>todo!()
+        ${0:todo!()}
     }
 }
 
@@ -930,7 +937,7 @@ fn foo() {
 mod bar {
     mod baz {
         pub(crate) fn my_fn() {
-            <|>todo!()
+            ${0:todo!()}
         }
     }
 }
@@ -959,7 +966,7 @@ fn main() {
 
 
 pub(crate) fn bar() {
-    <|>todo!()
+    ${0:todo!()}
 }",
         )
     }

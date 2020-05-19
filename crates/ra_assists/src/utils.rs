@@ -1,17 +1,37 @@
 //! Assorted functions shared by several assists.
 pub(crate) mod insert_use;
 
-use std::iter;
+use std::{iter, ops};
 
 use hir::{Adt, Crate, Semantics, Trait, Type};
 use ra_ide_db::RootDatabase;
 use ra_syntax::{
     ast::{self, make, NameOwner},
-    AstNode, T,
+    AstNode, SyntaxNode, T,
 };
 use rustc_hash::FxHashSet;
 
 pub(crate) use insert_use::insert_use_statement;
+
+pub(crate) fn render_snippet(node: &SyntaxNode, placeholder: &SyntaxNode) -> String {
+    assert!(placeholder.ancestors().any(|it| it == *node));
+    let range = placeholder.text_range() - node.text_range().start();
+    let range: ops::Range<usize> = range.into();
+
+    let mut placeholder = placeholder.to_string();
+    escape(&mut placeholder);
+    let tab_stop = format!("${{0:{}}}", placeholder);
+
+    let mut buf = node.to_string();
+    buf.replace_range(range, &tab_stop);
+    return buf;
+
+    fn escape(buf: &mut String) {
+        stdx::replace(buf, '{', r"\{");
+        stdx::replace(buf, '}', r"\}");
+        stdx::replace(buf, '$', r"\$");
+    }
+}
 
 pub fn get_missing_assoc_items(
     sema: &Semantics<RootDatabase>,
