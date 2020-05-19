@@ -1,4 +1,5 @@
 use crate::def_id::{LocalDefId, CRATE_DEF_INDEX};
+use rustc_index::vec::IndexVec;
 use std::fmt;
 
 /// Uniquely identifies a node in the HIR of the current crate. It is
@@ -45,3 +46,45 @@ pub const CRATE_HIR_ID: HirId = HirId {
     owner: LocalDefId { local_def_index: CRATE_DEF_INDEX },
     local_id: ItemLocalId::from_u32(0),
 };
+
+#[derive(Clone, Default, Debug, Encodable, Decodable)]
+pub struct HirIdVec<T> {
+    map: IndexVec<LocalDefId, IndexVec<ItemLocalId, T>>,
+}
+
+impl<T> HirIdVec<T> {
+    pub fn push_owner(&mut self, id: LocalDefId) {
+        self.map.ensure_contains_elem(id, IndexVec::new);
+    }
+
+    pub fn push(&mut self, id: HirId, value: T) {
+        if id.local_id == ItemLocalId::from_u32(0) {
+            self.push_owner(id.owner);
+        }
+        let submap = &mut self.map[id.owner];
+        let _ret_id = submap.push(value);
+        debug_assert_eq!(_ret_id, id.local_id);
+    }
+
+    pub fn get(&self, id: HirId) -> Option<&T> {
+        self.map.get(id.owner)?.get(id.local_id)
+    }
+
+    pub fn get_owner(&self, id: LocalDefId) -> &IndexVec<ItemLocalId, T> {
+        &self.map[id]
+    }
+}
+
+impl<T> std::ops::Index<HirId> for HirIdVec<T> {
+    type Output = T;
+
+    fn index(&self, id: HirId) -> &T {
+        &self.map[id.owner][id.local_id]
+    }
+}
+
+impl<T> std::ops::IndexMut<HirId> for HirIdVec<T> {
+    fn index_mut(&mut self, id: HirId) -> &mut T {
+        &mut self.map[id.owner][id.local_id]
+    }
+}
