@@ -21,6 +21,8 @@ use rustc_macros::HashStable_Generic;
 use rustc_span::{Span, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
 
+use log::debug;
+
 use std::{iter, mem};
 
 /// When the main rust parser encounters a syntax-extension invocation, it
@@ -358,14 +360,47 @@ impl TokenStream {
         // leading to some tokens being 'glued' together in one stream but not
         // the other. See #68489 for more details.
         fn break_tokens(tree: TokenTree) -> impl Iterator<Item = TokenTree> {
+            // In almost all cases, we should have either zero or one levels
+            // of 'unglueing'. However, in some unusual cases, we may need
+            // to iterate breaking tokens mutliple times. For example:
+            // '[BinOpEq(Shr)] => [Gt, Ge] -> [Gt, Gt, Eq]'
+            let mut token_trees: SmallVec<[_; 2]>;
             if let TokenTree::Token(token) = &tree {
-                if let Some((first, second)) = token.kind.break_two_token_op() {
-                    return SmallVec::from_buf([TokenTree::Token(Token::new(first, DUMMY_SP)), TokenTree::Token(Token::new(second, DUMMY_SP))]).into_iter()
+                let mut out = SmallVec::<[_; 2]>::new();
+                out.push(token.clone());
+                // Iterate to fixpoint:
+                // * We start off with 'out' containing our initial token, and `temp` empty
+                // * If we are able to break any tokens in `out`, then `out` will have
+                //   at least one more element than 'temp', so we will try to break tokens
+                //   again.
+                // * If we cannot break any tokens in 'out', we are done
+                loop {
+                    let mut temp = SmallVec::<[_; 2]>::new();
+                    let mut changed = false;
+
+                    for token in out.into_iter() {
+                        if let Some((first, second)) = token.kind.break_two_token_op() {
+                            temp.push(Token::new(first, DUMMY_SP));
+                            temp.push(Token::new(second, DUMMY_SP));
+                            changed = true;
+                        } else {
+                            temp.push(token);
+                        }
+                    }
+                    out = temp;
+                    if !changed {
+                        break;
+                    }
                 }
+                token_trees = out.into_iter().map(|t| TokenTree::Token(t)).collect();
+                if token_trees.len() != 1 {
+                    debug!("break_tokens: broke {:?} to {:?}", tree, token_trees);
+                }
+            } else {
+                token_trees = SmallVec::new();
+                token_trees.push(tree);
             }
-            let mut vec = SmallVec::<[_; 2]>::new();
-            vec.push(tree);
-            vec.into_iter()
+            token_trees.into_iter()
         }
 
         let mut t1 = self.trees().filter(semantic_tree).flat_map(break_tokens);
