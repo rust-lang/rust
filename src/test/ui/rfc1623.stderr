@@ -36,7 +36,7 @@ error[E0271]: type mismatch resolving `for<'a, 'b> <fn(_) -> _ {id::<_>} as std:
   --> $DIR/rfc1623.rs:25:8
    |
 LL |     f: &id,
-   |        ^^^ expected bound lifetime parameter 'a, found concrete lifetime
+   |        ^^^ expected bound lifetime parameter 'b, found concrete lifetime
    |
    = note: required for the cast to the object type `dyn for<'a, 'b> std::ops::Fn(&'a Foo<'b>) -> &'a Foo<'b>`
 

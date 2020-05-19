@@ -150,14 +150,12 @@ pub fn poly_project_and_unify_type<'cx, 'tcx>(
 
     let infcx = selcx.infcx();
     infcx.commit_if_ok(|snapshot| {
-        let (placeholder_predicate, placeholder_map) =
+        let (placeholder_predicate, _) =
             infcx.replace_bound_vars_with_placeholders(&obligation.predicate);
 
         let placeholder_obligation = obligation.with(placeholder_predicate);
         let result = project_and_unify_type(selcx, &placeholder_obligation)?;
-        infcx
-            .leak_check(false, &placeholder_map, snapshot)
-            .map_err(|err| MismatchedProjectionTypes { err })?;
+        infcx.leak_check(false, snapshot).map_err(|err| MismatchedProjectionTypes { err })?;
         Ok(result)
     })
 }
@@ -300,7 +298,11 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
     fn fold<T: TypeFoldable<'tcx>>(&mut self, value: &T) -> T {
         let value = self.selcx.infcx().resolve_vars_if_possible(value);
 
-        if !value.has_projections() { value } else { value.fold_with(self) }
+        if !value.has_projections() {
+            value
+        } else {
+            value.fold_with(self)
+        }
     }
 }
 

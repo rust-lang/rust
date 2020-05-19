@@ -21,7 +21,7 @@ use super::{Normalized, ProjectionCacheKey};
 use super::{ObligationCause, PredicateObligation, TraitObligation};
 use super::{Overflow, SelectionError, Unimplemented};
 
-use crate::infer::{CombinedSnapshot, InferCtxt, InferOk, PlaceholderMap, TypeFreshener};
+use crate::infer::{CombinedSnapshot, InferCtxt, InferOk, TypeFreshener};
 use crate::traits::error_reporting::InferCtxtExt;
 use crate::traits::project::ProjectionCacheKeyExt;
 use rustc_ast::attr;
@@ -1265,7 +1265,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         snapshot: &CombinedSnapshot<'_, 'tcx>,
     ) -> bool {
         let poly_trait_predicate = self.infcx().resolve_vars_if_possible(&obligation.predicate);
-        let (placeholder_trait_predicate, placeholder_map) =
+        let (placeholder_trait_predicate, _) =
             self.infcx().replace_bound_vars_with_placeholders(&poly_trait_predicate);
         debug!(
             "match_projection_obligation_against_definition_bounds: \
@@ -1297,7 +1297,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         obligation,
                         bound,
                         placeholder_trait_predicate.trait_ref,
-                        &placeholder_map,
                         snapshot,
                     )
                 }) {
@@ -1320,7 +1319,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     obligation,
                     bound,
                     placeholder_trait_predicate.trait_ref,
-                    &placeholder_map,
                     snapshot,
                 );
 
@@ -1335,7 +1333,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &TraitObligation<'tcx>,
         trait_bound: ty::PolyTraitRef<'tcx>,
         placeholder_trait_ref: ty::TraitRef<'tcx>,
-        placeholder_map: &PlaceholderMap<'tcx>,
         snapshot: &CombinedSnapshot<'_, 'tcx>,
     ) -> bool {
         debug_assert!(!placeholder_trait_ref.has_escaping_bound_vars());
@@ -1343,7 +1340,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .at(&obligation.cause, obligation.param_env)
             .sup(ty::Binder::dummy(placeholder_trait_ref), trait_bound)
             .is_ok()
-            && self.infcx.leak_check(false, placeholder_map, snapshot).is_ok()
+            && self.infcx.leak_check(false, snapshot).is_ok()
     }
 
     fn evaluate_where_clause<'o>(
@@ -1837,7 +1834,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return Err(());
         }
 
-        let (placeholder_obligation, placeholder_map) =
+        let (placeholder_obligation, _) =
             self.infcx().replace_bound_vars_with_placeholders(&obligation.predicate);
         let placeholder_obligation_trait_ref = placeholder_obligation.trait_ref;
 
@@ -1869,7 +1866,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .map_err(|e| debug!("match_impl: failed eq_trait_refs due to `{}`", e))?;
         nested_obligations.extend(obligations);
 
-        if let Err(e) = self.infcx.leak_check(false, &placeholder_map, snapshot) {
+        if let Err(e) = self.infcx.leak_check(false, snapshot) {
             debug!("match_impl: failed leak check due to `{}`", e);
             return Err(());
         }
@@ -2405,7 +2402,11 @@ impl<'o, 'tcx> TraitObligationStackList<'o, 'tcx> {
     }
 
     fn depth(&self) -> usize {
-        if let Some(head) = self.head { head.depth } else { 0 }
+        if let Some(head) = self.head {
+            head.depth
+        } else {
+            0
+        }
     }
 }
 

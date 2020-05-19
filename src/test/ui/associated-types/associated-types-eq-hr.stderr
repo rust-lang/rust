@@ -49,7 +49,7 @@ LL |     where T : for<'x,'y> TheTrait<(&'x isize, &'y isize), A = &'x isize>
    |                                                           ------------- required by this bound in `tuple_one`
 ...
 LL |     tuple_one::<Tuple>();
-   |     ^^^^^^^^^^^^^^^^^^ expected bound lifetime parameter 'x, found concrete lifetime
+   |     ^^^^^^^^^^^^^^^^^^ expected bound lifetime parameter 'y, found concrete lifetime
 
 error[E0277]: the trait bound `for<'x, 'y> Tuple: TheTrait<(&'x isize, &'y isize)>` is not satisfied
   --> $DIR/associated-types-eq-hr.rs:97:17
@@ -74,7 +74,7 @@ LL |     where T : for<'x,'y> TheTrait<(&'x isize, &'y isize), A = &'y isize>
    |                                                           ------------- required by this bound in `tuple_two`
 ...
 LL |     tuple_two::<Tuple>();
-   |     ^^^^^^^^^^^^^^^^^^ expected bound lifetime parameter 'x, found concrete lifetime
+   |     ^^^^^^^^^^^^^^^^^^ expected bound lifetime parameter 'y, found concrete lifetime
 
 error[E0277]: the trait bound `for<'x, 'y> Tuple: TheTrait<(&'x isize, &'y isize)>` is not satisfied
   --> $DIR/associated-types-eq-hr.rs:107:18

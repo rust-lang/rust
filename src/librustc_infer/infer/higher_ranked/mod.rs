@@ -33,7 +33,7 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
         self.infcx.commit_if_ok(|snapshot| {
             // First, we instantiate each bound region in the supertype with a
             // fresh placeholder region.
-            let (b_prime, placeholder_map) = self.infcx.replace_bound_vars_with_placeholders(b);
+            let (b_prime, _) = self.infcx.replace_bound_vars_with_placeholders(b);
 
             // Next, we instantiate each bound region in the subtype
             // with a fresh region variable. These region variables --
@@ -48,7 +48,7 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
             // Compare types now that bound regions have been replaced.
             let result = self.sub(a_is_expected).relate(&a_prime, &b_prime)?;
 
-            self.infcx.leak_check(!a_is_expected, &placeholder_map, snapshot)?;
+            self.infcx.leak_check(!a_is_expected, snapshot)?;
 
             debug!("higher_ranked_sub: OK result={:?}", result);
 
@@ -119,7 +119,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn leak_check(
         &self,
         overly_polymorphic: bool,
-        placeholder_map: &PlaceholderMap<'tcx>,
         snapshot: &CombinedSnapshot<'_, 'tcx>,
     ) -> RelateResult<'tcx, ()> {
         // If the user gave `-Zno-leak-check`, or we have been
@@ -135,7 +134,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.inner.borrow_mut().unwrap_region_constraints().leak_check(
             self.tcx,
             overly_polymorphic,
-            placeholder_map,
+            self.universe(),
             snapshot,
         )
     }

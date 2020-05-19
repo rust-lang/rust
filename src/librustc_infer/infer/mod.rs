@@ -992,12 +992,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
 
         Some(self.commit_if_ok(|snapshot| {
-            let (ty::SubtypePredicate { a_is_expected, a, b }, placeholder_map) =
+            let (ty::SubtypePredicate { a_is_expected, a, b }, _) =
                 self.replace_bound_vars_with_placeholders(&predicate);
 
             let ok = self.at(cause, param_env).sub_exp(a_is_expected, a, b)?;
 
-            self.leak_check(false, &placeholder_map, snapshot)?;
+            self.leak_check(false, snapshot)?;
 
             Ok(ok.unit())
         }))
@@ -1009,13 +1009,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         predicate: ty::PolyRegionOutlivesPredicate<'tcx>,
     ) -> UnitResult<'tcx> {
         self.commit_if_ok(|snapshot| {
-            let (ty::OutlivesPredicate(r_a, r_b), placeholder_map) =
+            let (ty::OutlivesPredicate(r_a, r_b), _) =
                 self.replace_bound_vars_with_placeholders(&predicate);
             let origin = SubregionOrigin::from_obligation_cause(cause, || {
                 RelateRegionParamBound(cause.span)
             });
             self.sub_regions(origin, r_b, r_a); // `b : a` ==> `a <= b`
-            self.leak_check(false, &placeholder_map, snapshot)?;
+            self.leak_check(false, snapshot)?;
             Ok(())
         })
     }
