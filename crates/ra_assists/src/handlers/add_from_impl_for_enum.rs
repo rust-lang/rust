@@ -1,6 +1,5 @@
 use ra_ide_db::RootDatabase;
 use ra_syntax::ast::{self, AstNode, NameOwner};
-use stdx::format_to;
 use test_utils::tested_by;
 
 use crate::{utils::FamousDefs, AssistContext, AssistId, Assists};
@@ -35,7 +34,7 @@ pub(crate) fn add_from_impl_for_enum(acc: &mut Assists, ctx: &AssistContext) -> 
     }
     let field_type = field_list.fields().next()?.type_ref()?;
     let path = match field_type {
-        ast::TypeRef::PathType(p) => p,
+        ast::TypeRef::PathType(it) => it,
         _ => return None,
     };
 
@@ -51,9 +50,7 @@ pub(crate) fn add_from_impl_for_enum(acc: &mut Assists, ctx: &AssistContext) -> 
         target,
         |edit| {
             let start_offset = variant.parent_enum().syntax().text_range().end();
-            let mut buf = String::new();
-            format_to!(
-                buf,
+            let buf = format!(
                 r#"
 
 impl From<{0}> for {1} {{

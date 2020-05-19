@@ -78,7 +78,7 @@ fn foo() {
 }
 
 fn bar(arg: &str, baz: Baz) {
-    todo!()
+    ${0:todo!()}
 }
 
 "#####,

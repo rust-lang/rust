@@ -116,3 +116,11 @@ pub fn to_lower_snake_case(s: &str) -> String {
     }
     buf
 }
+
+pub fn replace(buf: &mut String, from: char, to: &str) {
+    if !buf.contains(from) {
+        return;
+    }
+    // FIXME: do this in place.
+    *buf = buf.replace(from, to)
+}

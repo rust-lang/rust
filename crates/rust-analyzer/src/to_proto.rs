@@ -639,7 +639,7 @@ fn main() <fold>{
 }
 
 pub(crate) fn code_action(world: &WorldSnapshot, assist: Assist) -> Result<lsp_ext::CodeAction> {
-    let res = if assist.source_change.is_snippet {
+    let res = if assist.source_change.cursor_position.is_none() {
         lsp_ext::CodeAction {
             title: assist.label,
             kind: Some(String::new()),
@@ -647,6 +647,7 @@ pub(crate) fn code_action(world: &WorldSnapshot, assist: Assist) -> Result<lsp_e
             command: None,
         }
     } else {
+        assert!(!assist.source_change.is_snippet);
         let source_change = source_change(&world, assist.source_change)?;
         let arg = serde_json::to_value(source_change)?;
         let title = assist.label;

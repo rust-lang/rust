@@ -1,5 +1,9 @@
 //! This module contains free-standing functions for creating AST fragments out
 //! of smaller pieces.
+//!
+//! Note that all functions here intended to be stupid constructors, which just
+//! assemble a finish node from immediate children. If you want to do something
+//! smarter than that, it probably doesn't belong in this module.
 use itertools::Itertools;
 use stdx::format_to;
 
@@ -94,6 +98,9 @@ pub fn expr_empty_block() -> ast::Expr {
 }
 pub fn expr_unimplemented() -> ast::Expr {
     expr_from_text("unimplemented!()")
+}
+pub fn expr_unreachable() -> ast::Expr {
+    expr_from_text("unreachable!()")
 }
 pub fn expr_todo() -> ast::Expr {
     expr_from_text("todo!()")
@@ -264,10 +271,6 @@ pub fn token(kind: SyntaxKind) -> SyntaxToken {
         .unwrap_or_else(|| panic!("unhandled token: {:?}", kind))
 }
 
-pub fn unreachable_macro_call() -> ast::MacroCall {
-    ast_from_text(&format!("unreachable!()"))
-}
-
 pub fn param(name: String, ty: String) -> ast::Param {
     ast_from_text(&format!("fn f({}: {}) {{ }}", name, ty))
 }
@@ -277,7 +280,12 @@ pub fn param_list(pats: impl IntoIterator<Item = ast::Param>) -> ast::ParamList 
     ast_from_text(&format!("fn f({}) {{ }}", args))
 }
 
+pub fn visibility_pub_crate() -> ast::Visibility {
+    ast_from_text("pub(crate) struct S")
+}
+
 pub fn fn_def(
+    visibility: Option<ast::Visibility>,
     fn_name: ast::Name,
     type_params: Option<ast::TypeParamList>,
     params: ast::ParamList,
@@ -285,21 +293,11 @@ pub fn fn_def(
 ) -> ast::FnDef {
     let type_params =
         if let Some(type_params) = type_params { format!("<{}>", type_params) } else { "".into() };
-    ast_from_text(&format!("fn {}{}{} {}", fn_name, type_params, params, body))
-}
-
-pub fn add_leading_newlines(amount_of_newlines: usize, t: impl AstNode) -> ast::SourceFile {
-    let newlines = "\n".repeat(amount_of_newlines);
-    ast_from_text(&format!("{}{}", newlines, t.syntax()))
-}
-
-pub fn add_trailing_newlines(amount_of_newlines: usize, t: impl AstNode) -> ast::SourceFile {
-    let newlines = "\n".repeat(amount_of_newlines);
-    ast_from_text(&format!("{}{}", t.syntax(), newlines))
-}
-
-pub fn add_pub_crate_modifier(fn_def: ast::FnDef) -> ast::FnDef {
-    ast_from_text(&format!("pub(crate) {}", fn_def))
+    let visibility = match visibility {
+        None => String::new(),
+        Some(it) => format!("{} ", it),
+    };
+    ast_from_text(&format!("{}fn {}{}{} {}", visibility, fn_name, type_params, params, body))
 }
 
 fn ast_from_text<N: AstNode>(text: &str) -> N {

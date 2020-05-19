@@ -266,6 +266,15 @@ impl<'a> SyntaxRewriter<'a> {
         let replacement = Replacement::Single(with.clone().into());
         self.replacements.insert(what, replacement);
     }
+    pub fn replace_with_many<T: Clone + Into<SyntaxElement>>(
+        &mut self,
+        what: &T,
+        with: Vec<SyntaxElement>,
+    ) {
+        let what = what.clone().into();
+        let replacement = Replacement::Many(with);
+        self.replacements.insert(what, replacement);
+    }
     pub fn replace_ast<T: AstNode>(&mut self, what: &T, with: &T) {
         self.replace(what.syntax(), with.syntax())
     }
@@ -302,31 +311,41 @@ impl<'a> SyntaxRewriter<'a> {
 
     fn rewrite_children(&self, node: &SyntaxNode) -> SyntaxNode {
         //  FIXME: this could be made much faster.
-        let new_children =
-            node.children_with_tokens().flat_map(|it| self.rewrite_self(&it)).collect::<Vec<_>>();
+        let mut new_children = Vec::new();
+        for child in node.children_with_tokens() {
+            self.rewrite_self(&mut new_children, &child);
+        }
         with_children(node, new_children)
     }
 
     fn rewrite_self(
         &self,
+        acc: &mut Vec<NodeOrToken<rowan::GreenNode, rowan::GreenToken>>,
         element: &SyntaxElement,
-    ) -> Option<NodeOrToken<rowan::GreenNode, rowan::GreenToken>> {
+    ) {
         if let Some(replacement) = self.replacement(&element) {
-            return match replacement {
+            match replacement {
                 Replacement::Single(NodeOrToken::Node(it)) => {
-                    Some(NodeOrToken::Node(it.green().clone()))
+                    acc.push(NodeOrToken::Node(it.green().clone()))
                 }
                 Replacement::Single(NodeOrToken::Token(it)) => {
-                    Some(NodeOrToken::Token(it.green().clone()))
+                    acc.push(NodeOrToken::Token(it.green().clone()))
                 }
-                Replacement::Delete => None,
+                Replacement::Many(replacements) => {
+                    acc.extend(replacements.iter().map(|it| match it {
+                        NodeOrToken::Node(it) => NodeOrToken::Node(it.green().clone()),
+                        NodeOrToken::Token(it) => NodeOrToken::Token(it.green().clone()),
+                    }))
+                }
+                Replacement::Delete => (),
             };
+            return;
         }
         let res = match element {
             NodeOrToken::Token(it) => NodeOrToken::Token(it.green().clone()),
             NodeOrToken::Node(it) => NodeOrToken::Node(self.rewrite_children(it).green().clone()),
         };
-        Some(res)
+        acc.push(res)
     }
 }
 
@@ -341,6 +360,7 @@ impl ops::AddAssign for SyntaxRewriter<'_> {
 enum Replacement {
     Delete,
     Single(SyntaxElement),
+    Many(Vec<SyntaxElement>),
 }
 
 fn with_children(

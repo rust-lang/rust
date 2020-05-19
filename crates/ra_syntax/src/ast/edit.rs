@@ -1,7 +1,10 @@
 //! This module contains functions for editing syntax trees. As the trees are
 //! immutable, all function here return a fresh copy of the tree, instead of
 //! doing an in-place modification.
-use std::{iter, ops::RangeInclusive};
+use std::{
+    fmt, iter,
+    ops::{self, RangeInclusive},
+};
 
 use arrayvec::ArrayVec;
 
@@ -437,6 +440,28 @@ impl From<u8> for IndentLevel {
     }
 }
 
+impl fmt::Display for IndentLevel {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let spaces = "                                        ";
+        let buf;
+        let len = self.0 as usize * 4;
+        let indent = if len <= spaces.len() {
+            &spaces[..len]
+        } else {
+            buf = iter::repeat(' ').take(len).collect::<String>();
+            &buf
+        };
+        fmt::Display::fmt(indent, f)
+    }
+}
+
+impl ops::Add<u8> for IndentLevel {
+    type Output = IndentLevel;
+    fn add(self, rhs: u8) -> IndentLevel {
+        IndentLevel(self.0 + rhs)
+    }
+}
+
 impl IndentLevel {
     pub fn from_node(node: &SyntaxNode) -> IndentLevel {
         let first_token = match node.first_token() {
@@ -453,6 +478,14 @@ impl IndentLevel {
         IndentLevel(0)
     }
 
+    /// XXX: this intentionally doesn't change the indent of the very first token.
+    /// Ie, in something like
+    /// ```
+    /// fn foo() {
+    ///    92
+    /// }
+    /// ```
+    /// if you indent the block, the `{` token would stay put.
     fn increase_indent(self, node: SyntaxNode) -> SyntaxNode {
         let mut rewriter = SyntaxRewriter::default();
         node.descendants_with_tokens()
@@ -463,12 +496,7 @@ impl IndentLevel {
                 text.contains('\n')
             })
             .for_each(|ws| {
-                let new_ws = make::tokens::whitespace(&format!(
-                    "{}{:width$}",
-                    ws.syntax().text(),
-                    "",
-                    width = self.0 as usize * 4
-                ));
+                let new_ws = make::tokens::whitespace(&format!("{}{}", ws.syntax(), self,));
                 rewriter.replace(ws.syntax(), &new_ws)
             });
         rewriter.rewrite(&node)
@@ -485,7 +513,7 @@ impl IndentLevel {
             })
             .for_each(|ws| {
                 let new_ws = make::tokens::whitespace(
-                    &ws.syntax().text().replace(&format!("\n{:1$}", "", self.0 as usize * 4), "\n"),
+                    &ws.syntax().text().replace(&format!("\n{}", self), "\n"),
                 );
                 rewriter.replace(ws.syntax(), &new_ws)
             });
