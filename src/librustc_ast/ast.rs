@@ -1121,7 +1121,7 @@ impl Expr {
             ExprKind::Break(..) => ExprPrecedence::Break,
             ExprKind::Continue(..) => ExprPrecedence::Continue,
             ExprKind::Ret(..) => ExprPrecedence::Ret,
-            ExprKind::LlvmInlineAsm(..) => ExprPrecedence::InlineAsm,
+            ExprKind::InlineAsm(..) | ExprKind::LlvmInlineAsm(..) => ExprPrecedence::InlineAsm,
             ExprKind::MacCall(..) => ExprPrecedence::Mac,
             ExprKind::Struct(..) => ExprPrecedence::Struct,
             ExprKind::Repeat(..) => ExprPrecedence::Repeat,
@@ -1250,6 +1250,8 @@ pub enum ExprKind {
     /// A `return`, with an optional value to be returned.
     Ret(Option<P<Expr>>),
 
+    /// Output of the `asm!()` macro.
+    InlineAsm(InlineAsm),
     /// Output of the `llvm_asm!()` macro.
     LlvmInlineAsm(P<LlvmInlineAsm>),
 
@@ -1862,6 +1864,112 @@ impl TyKind {
 pub enum TraitObjectSyntax {
     Dyn,
     None,
+}
+
+/// Inline assembly operand explicit register or register class.
+///
+/// E.g., `"eax"` as in `asm!("mov eax, 2", out("eax") result)`.
+#[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug)]
+pub enum InlineAsmRegOrRegClass {
+    Reg(Symbol),
+    RegClass(Symbol),
+}
+
+bitflags::bitflags! {
+    #[derive(RustcEncodable, RustcDecodable, HashStable_Generic)]
+    pub struct InlineAsmOptions: u8 {
+        const PURE = 1 << 0;
+        const NOMEM = 1 << 1;
+        const READONLY = 1 << 2;
+        const PRESERVES_FLAGS = 1 << 3;
+        const NORETURN = 1 << 4;
+        const NOSTACK = 1 << 5;
+        const ATT_SYNTAX = 1 << 6;
+    }
+}
+
+#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+pub enum InlineAsmTemplatePiece {
+    String(String),
+    Placeholder { operand_idx: usize, modifier: Option<char>, span: Span },
+}
+
+impl fmt::Display for InlineAsmTemplatePiece {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::String(s) => {
+                for c in s.chars() {
+                    match c {
+                        '{' => f.write_str("{{")?,
+                        '}' => f.write_str("}}")?,
+                        _ => write!(f, "{}", c.escape_debug())?,
+                    }
+                }
+                Ok(())
+            }
+            Self::Placeholder { operand_idx, modifier: Some(modifier), .. } => {
+                write!(f, "{{{}:{}}}", operand_idx, modifier)
+            }
+            Self::Placeholder { operand_idx, modifier: None, .. } => {
+                write!(f, "{{{}}}", operand_idx)
+            }
+        }
+    }
+}
+
+impl InlineAsmTemplatePiece {
+    /// Rebuilds the asm template string from its pieces.
+    pub fn to_string(s: &[Self]) -> String {
+        use fmt::Write;
+        let mut out = String::new();
+        for p in s.iter() {
+            let _ = write!(out, "{}", p);
+        }
+        out
+    }
+}
+
+/// Inline assembly operand.
+///
+/// E.g., `out("eax") result` as in `asm!("mov eax, 2", out("eax") result)`.
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+pub enum InlineAsmOperand {
+    In {
+        reg: InlineAsmRegOrRegClass,
+        expr: P<Expr>,
+    },
+    Out {
+        reg: InlineAsmRegOrRegClass,
+        late: bool,
+        expr: Option<P<Expr>>,
+    },
+    InOut {
+        reg: InlineAsmRegOrRegClass,
+        late: bool,
+        expr: P<Expr>,
+    },
+    SplitInOut {
+        reg: InlineAsmRegOrRegClass,
+        late: bool,
+        in_expr: P<Expr>,
+        out_expr: Option<P<Expr>>,
+    },
+    Const {
+        expr: P<Expr>,
+    },
+    Sym {
+        expr: P<Expr>,
+    },
+}
+
+/// Inline assembly.
+///
+/// E.g., `asm!("NOP");`.
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+pub struct InlineAsm {
+    pub template: Vec<InlineAsmTemplatePiece>,
+    pub operands: Vec<(InlineAsmOperand, Span)>,
+    pub options: InlineAsmOptions,
 }
 
 /// Inline assembly dialect.

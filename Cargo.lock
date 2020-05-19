@@ -635,9 +635,9 @@ dependencies = [
 
 [[package]]
 name = "compiler_builtins"
-version = "0.1.27"
+version = "0.1.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "38f18416546abfbf8d801c555a0e99524453e7214f9cc9107ad49de3d5948ccc"
+checksum = "439a6fab343b1dab347823537734a5cd4ae6ae2000b465ab886f64cdb723bd14"
 dependencies = [
  "cc",
  "rustc-std-workspace-core",
@@ -1012,9 +1012,9 @@ dependencies = [
 
 [[package]]
 name = "dlmalloc"
-version = "0.1.3"
+version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f283302e035e61c23f2b86b3093e8c6273a4c3125742d6087e96ade001ca5e63"
+checksum = "35055b1021724f4eb5262eb49130eebff23fc59fc5a14160e05faad8eeb36673"
 dependencies = [
  "compiler_builtins",
  "libc",
@@ -3625,6 +3625,7 @@ dependencies = [
 name = "rustc_ast"
 version = "0.0.0"
 dependencies = [
+ "bitflags",
  "log",
  "rustc_data_structures",
  "rustc_index",
@@ -3678,6 +3679,7 @@ dependencies = [
  "log",
  "rustc_ast",
  "rustc_span",
+ "rustc_target",
 ]
 
 [[package]]

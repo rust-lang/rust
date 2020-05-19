@@ -13,3 +13,4 @@ doctest = false
 log = "0.4"
 rustc_span = { path = "../librustc_span" }
 rustc_ast = { path = "../librustc_ast" }
+rustc_target = { path = "../librustc_target" }

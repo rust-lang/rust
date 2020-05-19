@@ -96,6 +96,7 @@
 use self::LiveNodeKind::*;
 use self::VarKind::*;
 
+use rustc_ast::ast::InlineAsmOptions;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -531,6 +532,7 @@ fn visit_expr<'tcx>(ir: &mut IrMaps<'tcx>, expr: &'tcx Expr<'tcx>) {
         | hir::ExprKind::AssignOp(..)
         | hir::ExprKind::Struct(..)
         | hir::ExprKind::Repeat(..)
+        | hir::ExprKind::InlineAsm(..)
         | hir::ExprKind::LlvmInlineAsm(..)
         | hir::ExprKind::Box(..)
         | hir::ExprKind::Yield(..)
@@ -1176,6 +1178,64 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             | hir::ExprKind::Yield(ref e, _)
             | hir::ExprKind::Repeat(ref e, _) => self.propagate_through_expr(&e, succ),
 
+            hir::ExprKind::InlineAsm(ref asm) => {
+                // Handle non-returning asm
+                let mut succ = if asm.options.contains(InlineAsmOptions::NORETURN) {
+                    self.s.exit_ln
+                } else {
+                    succ
+                };
+
+                // Do a first pass for writing outputs only
+                for op in asm.operands.iter().rev() {
+                    match op {
+                        hir::InlineAsmOperand::In { .. }
+                        | hir::InlineAsmOperand::Const { .. }
+                        | hir::InlineAsmOperand::Sym { .. } => {}
+                        hir::InlineAsmOperand::Out { expr, .. } => {
+                            if let Some(expr) = expr {
+                                succ = self.write_place(expr, succ, ACC_WRITE);
+                            }
+                        }
+                        hir::InlineAsmOperand::InOut { expr, .. } => {
+                            succ = self.write_place(expr, succ, ACC_READ | ACC_WRITE);
+                        }
+                        hir::InlineAsmOperand::SplitInOut { out_expr, .. } => {
+                            if let Some(expr) = out_expr {
+                                succ = self.write_place(expr, succ, ACC_WRITE);
+                            }
+                        }
+                    }
+                }
+
+                // Then do a second pass for inputs
+                let mut succ = succ;
+                for op in asm.operands.iter().rev() {
+                    match op {
+                        hir::InlineAsmOperand::In { expr, .. }
+                        | hir::InlineAsmOperand::Const { expr, .. }
+                        | hir::InlineAsmOperand::Sym { expr, .. } => {
+                            succ = self.propagate_through_expr(expr, succ)
+                        }
+                        hir::InlineAsmOperand::Out { expr, .. } => {
+                            if let Some(expr) = expr {
+                                succ = self.propagate_through_place_components(expr, succ);
+                            }
+                        }
+                        hir::InlineAsmOperand::InOut { expr, .. } => {
+                            succ = self.propagate_through_place_components(expr, succ);
+                        }
+                        hir::InlineAsmOperand::SplitInOut { in_expr, out_expr, .. } => {
+                            if let Some(expr) = out_expr {
+                                succ = self.propagate_through_place_components(expr, succ);
+                            }
+                            succ = self.propagate_through_expr(in_expr, succ);
+                        }
+                    }
+                }
+                succ
+            }
+
             hir::ExprKind::LlvmInlineAsm(ref asm) => {
                 let ia = &asm.inner;
                 let outputs = asm.outputs_exprs;
@@ -1394,6 +1454,33 @@ fn check_expr<'tcx>(this: &mut Liveness<'_, 'tcx>, expr: &'tcx Expr<'tcx>) {
         hir::ExprKind::AssignOp(_, ref l, _) => {
             if !this.tables.is_method_call(expr) {
                 this.check_place(&l);
+            }
+        }
+
+        hir::ExprKind::InlineAsm(ref asm) => {
+            for op in asm.operands {
+                match op {
+                    hir::InlineAsmOperand::In { expr, .. }
+                    | hir::InlineAsmOperand::Const { expr, .. }
+                    | hir::InlineAsmOperand::Sym { expr, .. } => this.visit_expr(expr),
+                    hir::InlineAsmOperand::Out { expr, .. } => {
+                        if let Some(expr) = expr {
+                            this.check_place(expr);
+                            this.visit_expr(expr);
+                        }
+                    }
+                    hir::InlineAsmOperand::InOut { expr, .. } => {
+                        this.check_place(expr);
+                        this.visit_expr(expr);
+                    }
+                    hir::InlineAsmOperand::SplitInOut { in_expr, out_expr, .. } => {
+                        this.visit_expr(in_expr);
+                        if let Some(out_expr) = out_expr {
+                            this.check_place(out_expr);
+                            this.visit_expr(out_expr);
+                        }
+                    }
+                }
             }
         }
 

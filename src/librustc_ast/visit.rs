@@ -818,6 +818,27 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
         }
         ExprKind::MacCall(ref mac) => visitor.visit_mac(mac),
         ExprKind::Paren(ref subexpression) => visitor.visit_expr(subexpression),
+        ExprKind::InlineAsm(ref ia) => {
+            for (op, _) in &ia.operands {
+                match op {
+                    InlineAsmOperand::In { expr, .. }
+                    | InlineAsmOperand::InOut { expr, .. }
+                    | InlineAsmOperand::Const { expr, .. }
+                    | InlineAsmOperand::Sym { expr, .. } => visitor.visit_expr(expr),
+                    InlineAsmOperand::Out { expr, .. } => {
+                        if let Some(expr) = expr {
+                            visitor.visit_expr(expr);
+                        }
+                    }
+                    InlineAsmOperand::SplitInOut { in_expr, out_expr, .. } => {
+                        visitor.visit_expr(in_expr);
+                        if let Some(out_expr) = out_expr {
+                            visitor.visit_expr(out_expr);
+                        }
+                    }
+                }
+            }
+        }
         ExprKind::LlvmInlineAsm(ref ia) => {
             for &(_, ref input) in &ia.inputs {
                 visitor.visit_expr(input)

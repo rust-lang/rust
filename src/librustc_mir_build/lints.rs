@@ -114,6 +114,15 @@ impl<'mir, 'tcx> TriColorVisitor<&'mir Body<'tcx>> for Search<'mir, 'tcx> {
             | TerminatorKind::Unreachable
             | TerminatorKind::Yield { .. } => ControlFlow::Break(NonRecursive),
 
+            // A diverging InlineAsm is treated as non-recursing
+            TerminatorKind::InlineAsm { destination, .. } => {
+                if destination.is_some() {
+                    ControlFlow::Continue
+                } else {
+                    ControlFlow::Break(NonRecursive)
+                }
+            }
+
             // These do not.
             TerminatorKind::Assert { .. }
             | TerminatorKind::Call { .. }

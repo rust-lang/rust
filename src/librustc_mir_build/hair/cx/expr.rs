@@ -400,6 +400,121 @@ fn make_mirror_unadjusted<'a, 'tcx>(
             convert_path_expr(cx, expr, res)
         }
 
+        hir::ExprKind::InlineAsm(ref asm) => ExprKind::InlineAsm {
+            template: asm.template,
+            operands: asm
+                .operands
+                .iter()
+                .map(|op| {
+                    match *op {
+                        hir::InlineAsmOperand::In { reg, ref expr } => {
+                            InlineAsmOperand::In { reg, expr: expr.to_ref() }
+                        }
+                        hir::InlineAsmOperand::Out { reg, late, ref expr } => {
+                            InlineAsmOperand::Out {
+                                reg,
+                                late,
+                                expr: expr.as_ref().map(|expr| expr.to_ref()),
+                            }
+                        }
+                        hir::InlineAsmOperand::InOut { reg, late, ref expr } => {
+                            InlineAsmOperand::InOut { reg, late, expr: expr.to_ref() }
+                        }
+                        hir::InlineAsmOperand::SplitInOut {
+                            reg,
+                            late,
+                            ref in_expr,
+                            ref out_expr,
+                        } => InlineAsmOperand::SplitInOut {
+                            reg,
+                            late,
+                            in_expr: in_expr.to_ref(),
+                            out_expr: out_expr.as_ref().map(|expr| expr.to_ref()),
+                        },
+                        hir::InlineAsmOperand::Const { ref expr } => {
+                            InlineAsmOperand::Const { expr: expr.to_ref() }
+                        }
+                        hir::InlineAsmOperand::Sym { ref expr } => {
+                            let qpath = match expr.kind {
+                                hir::ExprKind::Path(ref qpath) => qpath,
+                                _ => span_bug!(
+                                    expr.span,
+                                    "asm `sym` operand should be a path, found {:?}",
+                                    expr.kind
+                                ),
+                            };
+                            let temp_lifetime =
+                                cx.region_scope_tree.temporary_scope(expr.hir_id.local_id);
+                            let res = cx.tables().qpath_res(qpath, expr.hir_id);
+                            let ty;
+                            match res {
+                                Res::Def(DefKind::Fn, _) | Res::Def(DefKind::AssocFn, _) => {
+                                    ty = cx.tables().node_type(expr.hir_id);
+                                    let user_ty = user_substs_applied_to_res(cx, expr.hir_id, res);
+                                    InlineAsmOperand::SymFn {
+                                        expr: Expr {
+                                            ty,
+                                            temp_lifetime,
+                                            span: expr.span,
+                                            kind: ExprKind::Literal {
+                                                literal: ty::Const::zero_sized(cx.tcx, ty),
+                                                user_ty,
+                                            },
+                                        }
+                                        .to_ref(),
+                                    }
+                                }
+
+                                Res::Def(DefKind::Static, id) => {
+                                    ty = cx.tcx.static_ptr_ty(id);
+                                    let ptr = cx.tcx.create_static_alloc(id);
+                                    InlineAsmOperand::SymStatic {
+                                        expr: Expr {
+                                            ty,
+                                            temp_lifetime,
+                                            span: expr.span,
+                                            kind: ExprKind::StaticRef {
+                                                literal: ty::Const::from_scalar(
+                                                    cx.tcx,
+                                                    Scalar::Ptr(ptr.into()),
+                                                    ty,
+                                                ),
+                                                def_id: id,
+                                            },
+                                        }
+                                        .to_ref(),
+                                    }
+                                }
+
+                                _ => {
+                                    cx.tcx.sess.span_err(
+                                        expr.span,
+                                        "asm `sym` operand must point to a fn or static",
+                                    );
+
+                                    // Not a real fn, but we're not reaching codegen anyways...
+                                    ty = cx.tcx.types.err;
+                                    InlineAsmOperand::SymFn {
+                                        expr: Expr {
+                                            ty,
+                                            temp_lifetime,
+                                            span: expr.span,
+                                            kind: ExprKind::Literal {
+                                                literal: ty::Const::zero_sized(cx.tcx, ty),
+                                                user_ty: None,
+                                            },
+                                        }
+                                        .to_ref(),
+                                    }
+                                }
+                            }
+                        }
+                    }
+                })
+                .collect(),
+            options: asm.options,
+        },
+
         hir::ExprKind::LlvmInlineAsm(ref asm) => ExprKind::LlvmInlineAsm {
             asm: &asm.inner,
             outputs: asm.outputs_exprs.to_ref(),

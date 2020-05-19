@@ -25,6 +25,7 @@ extern crate rustc_macros;
 extern crate log;
 
 pub mod abi;
+pub mod asm;
 pub mod spec;
 
 /// Requirements for a `StableHashingContext` to be used in this crate.

@@ -220,6 +220,30 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 self.borrow_expr(&base, bk);
             }
 
+            hir::ExprKind::InlineAsm(ref asm) => {
+                for op in asm.operands {
+                    match op {
+                        hir::InlineAsmOperand::In { expr, .. }
+                        | hir::InlineAsmOperand::Const { expr, .. }
+                        | hir::InlineAsmOperand::Sym { expr, .. } => self.consume_expr(expr),
+                        hir::InlineAsmOperand::Out { expr, .. } => {
+                            if let Some(expr) = expr {
+                                self.mutate_expr(expr);
+                            }
+                        }
+                        hir::InlineAsmOperand::InOut { expr, .. } => {
+                            self.mutate_expr(expr);
+                        }
+                        hir::InlineAsmOperand::SplitInOut { in_expr, out_expr, .. } => {
+                            self.consume_expr(in_expr);
+                            if let Some(out_expr) = out_expr {
+                                self.mutate_expr(out_expr);
+                            }
+                        }
+                    }
+                }
+            }
+
             hir::ExprKind::LlvmInlineAsm(ref ia) => {
                 for (o, output) in ia.inner.outputs.iter().zip(ia.outputs_exprs) {
                     if o.is_indirect {

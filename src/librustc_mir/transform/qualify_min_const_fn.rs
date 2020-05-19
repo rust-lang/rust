@@ -392,5 +392,9 @@ fn check_terminator(
         TerminatorKind::Assert { cond, expected: _, msg: _, target: _, cleanup: _ } => {
             check_operand(tcx, cond, span, def_id, body)
         }
+
+        TerminatorKind::InlineAsm { .. } => {
+            Err((span, "cannot use inline assembly in const fn".into()))
+        }
     }
 }

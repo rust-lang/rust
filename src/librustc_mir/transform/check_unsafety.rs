@@ -95,6 +95,12 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                     self.check_target_features(func_id);
                 }
             }
+
+            TerminatorKind::InlineAsm { .. } => self.require_unsafe(
+                "use of inline assembly",
+                "inline assembly is entirely unchecked and can cause undefined behavior",
+                UnsafetyViolationKind::General,
+            ),
         }
         self.super_terminator(terminator, location);
     }

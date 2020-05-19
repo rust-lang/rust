@@ -9,9 +9,11 @@ use crate::meth;
 use crate::traits::*;
 use crate::MemFlags;
 
+use rustc_ast::ast;
 use rustc_hir::lang_items;
 use rustc_index::vec::Idx;
 use rustc_middle::mir;
+use rustc_middle::mir::interpret::{AllocId, ConstValue, Pointer, Scalar};
 use rustc_middle::mir::AssertKind;
 use rustc_middle::ty::layout::{FnAbiExt, HasTyCtxt};
 use rustc_middle::ty::{self, Instance, Ty, TypeFoldable};
@@ -820,6 +822,123 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             cleanup,
         );
     }
+
+    fn codegen_asm_terminator(
+        &mut self,
+        helper: TerminatorCodegenHelper<'tcx>,
+        mut bx: Bx,
+        terminator: &mir::Terminator<'tcx>,
+        template: &[ast::InlineAsmTemplatePiece],
+        operands: &[mir::InlineAsmOperand<'tcx>],
+        options: ast::InlineAsmOptions,
+        destination: Option<mir::BasicBlock>,
+    ) {
+        let span = terminator.source_info.span;
+
+        let operands: Vec<_> = operands
+            .iter()
+            .map(|op| match *op {
+                mir::InlineAsmOperand::In { reg, ref value } => {
+                    let value = self.codegen_operand(&mut bx, value);
+                    InlineAsmOperandRef::In { reg, value }
+                }
+                mir::InlineAsmOperand::Out { reg, late, ref place } => {
+                    let place = place.map(|place| self.codegen_place(&mut bx, place.as_ref()));
+                    InlineAsmOperandRef::Out { reg, late, place }
+                }
+                mir::InlineAsmOperand::InOut { reg, late, ref in_value, ref out_place } => {
+                    let in_value = self.codegen_operand(&mut bx, in_value);
+                    let out_place =
+                        out_place.map(|out_place| self.codegen_place(&mut bx, out_place.as_ref()));
+                    InlineAsmOperandRef::InOut { reg, late, in_value, out_place }
+                }
+                mir::InlineAsmOperand::Const { ref value } => {
+                    if let mir::Operand::Constant(constant) = value {
+                        let const_value = self
+                            .eval_mir_constant(constant)
+                            .unwrap_or_else(|_| span_bug!(span, "asm const cannot be resolved"));
+                        let ty = constant.literal.ty;
+                        let size = bx.layout_of(ty).size;
+                        let scalar = match const_value {
+                            // Promoted constants are evaluated into a ByRef instead of a Scalar,
+                            // but we want the scalar value here.
+                            ConstValue::ByRef { alloc, offset } => {
+                                let ptr = Pointer::new(AllocId(0), offset);
+                                alloc
+                                    .read_scalar(&bx, ptr, size)
+                                    .and_then(|s| s.not_undef())
+                                    .unwrap_or_else(|e| {
+                                        bx.tcx().sess.span_err(
+                                            span,
+                                            &format!("Could not evaluate asm const: {}", e),
+                                        );
+
+                                        // We are erroring out, just emit a dummy constant.
+                                        Scalar::from_u64(0)
+                                    })
+                            }
+                            _ => span_bug!(span, "expected ByRef for promoted asm const"),
+                        };
+                        let value = scalar.assert_bits(size);
+                        let string = match ty.kind {
+                            ty::Uint(_) => value.to_string(),
+                            ty::Int(int_ty) => {
+                                match int_ty.normalize(bx.tcx().sess.target.ptr_width) {
+                                    ast::IntTy::I8 => (value as i8).to_string(),
+                                    ast::IntTy::I16 => (value as i16).to_string(),
+                                    ast::IntTy::I32 => (value as i32).to_string(),
+                                    ast::IntTy::I64 => (value as i64).to_string(),
+                                    ast::IntTy::I128 => (value as i128).to_string(),
+                                    ast::IntTy::Isize => unreachable!(),
+                                }
+                            }
+                            ty::Float(ast::FloatTy::F32) => {
+                                f32::from_bits(value as u32).to_string()
+                            }
+                            ty::Float(ast::FloatTy::F64) => {
+                                f64::from_bits(value as u64).to_string()
+                            }
+                            _ => span_bug!(span, "asm const has bad type {}", ty),
+                        };
+                        InlineAsmOperandRef::Const { string }
+                    } else {
+                        span_bug!(span, "asm const is not a constant");
+                    }
+                }
+                mir::InlineAsmOperand::SymFn { ref value } => {
+                    let literal = self.monomorphize(&value.literal);
+                    if let ty::FnDef(def_id, substs) = literal.ty.kind {
+                        let instance = ty::Instance::resolve(
+                            bx.tcx(),
+                            ty::ParamEnv::reveal_all(),
+                            def_id,
+                            substs,
+                        )
+                        .unwrap()
+                        .unwrap();
+                        InlineAsmOperandRef::SymFn { instance }
+                    } else {
+                        span_bug!(span, "invalid type for asm sym (fn)");
+                    }
+                }
+                mir::InlineAsmOperand::SymStatic { ref value } => {
+                    if let Some(def_id) = value.check_static_ptr(bx.tcx()) {
+                        InlineAsmOperandRef::SymStatic { def_id }
+                    } else {
+                        span_bug!(span, "invalid type for asm sym (static)");
+                    }
+                }
+            })
+            .collect();
+
+        bx.codegen_inline_asm(template, &operands, options, span);
+
+        if let Some(target) = destination {
+            helper.funclet_br(self, &mut bx, target);
+        } else {
+            bx.unreachable();
+        }
+    }
 }
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
@@ -913,6 +1032,18 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
             mir::TerminatorKind::FalseEdges { .. } | mir::TerminatorKind::FalseUnwind { .. } => {
                 bug!("borrowck false edges in codegen")
+            }
+
+            mir::TerminatorKind::InlineAsm { template, ref operands, options, destination } => {
+                self.codegen_asm_terminator(
+                    helper,
+                    bx,
+                    terminator,
+                    template,
+                    operands,
+                    options,
+                    destination,
+                );
             }
         }
     }

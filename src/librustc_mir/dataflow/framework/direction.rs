@@ -482,6 +482,12 @@ impl Direction for Forward {
                 }
             }
 
+            InlineAsm { template: _, operands: _, options: _, destination } => {
+                if let Some(target) = destination {
+                    propagate(target, exit_state);
+                }
+            }
+
             SwitchInt { ref targets, ref values, ref discr, switch_ty: _ } => {
                 let enum_ = discr
                     .place()

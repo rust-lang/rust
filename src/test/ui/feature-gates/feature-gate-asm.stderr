@@ -4,10 +4,10 @@ error[E0658]: use of unstable library feature 'asm': inline assembly is not stab
 LL |         asm!("");
    |         ^^^
    |
-   = note: see issue #70173 <https://github.com/rust-lang/rust/issues/70173> for more information
+   = note: see issue #72016 <https://github.com/rust-lang/rust/issues/72016> for more information
    = help: add `#![feature(asm)]` to the crate attributes to enable
 
-error[E0658]: use of unstable library feature 'llvm_asm': inline assembly is not stable enough for use and is subject to change
+error[E0658]: use of unstable library feature 'llvm_asm': LLVM-style inline assembly will never be stabilized, prefer using asm! instead
   --> $DIR/feature-gate-asm.rs:7:9
    |
 LL |         llvm_asm!("");
@@ -16,14 +16,6 @@ LL |         llvm_asm!("");
    = note: see issue #70173 <https://github.com/rust-lang/rust/issues/70173> for more information
    = help: add `#![feature(llvm_asm)]` to the crate attributes to enable
 
-warning: use of deprecated item 'asm': the syntax of asm! will change soon, use llvm_asm! to avoid breakage
-  --> $DIR/feature-gate-asm.rs:5:9
-   |
-LL |         asm!("");
-   |         ^^^ help: replace the use of the deprecated item: `llvm_asm`
-   |
-   = note: `#[warn(deprecated)]` on by default
-
-error: aborting due to 2 previous errors; 1 warning emitted
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

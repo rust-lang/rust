@@ -7,6 +7,7 @@ use rustc_ast::ast::{self, CrateSugar, LlvmAsmDialect};
 use rustc_ast::ast::{AttrVec, Attribute, FloatTy, IntTy, Label, LitKind, StrStyle, UintTy};
 pub use rustc_ast::ast::{BorrowKind, ImplPolarity, IsAuto};
 pub use rustc_ast::ast::{CaptureBy, Movability, Mutability};
+use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::fx::FxHashSet;
@@ -15,6 +16,7 @@ use rustc_macros::HashStable_Generic;
 use rustc_span::source_map::{SourceMap, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
+use rustc_target::asm::InlineAsmRegOrRegClass;
 use rustc_target::spec::abi::Abi;
 
 use smallvec::SmallVec;
@@ -1391,6 +1393,7 @@ impl Expr<'_> {
             ExprKind::Break(..) => ExprPrecedence::Break,
             ExprKind::Continue(..) => ExprPrecedence::Continue,
             ExprKind::Ret(..) => ExprPrecedence::Ret,
+            ExprKind::InlineAsm(..) => ExprPrecedence::InlineAsm,
             ExprKind::LlvmInlineAsm(..) => ExprPrecedence::InlineAsm,
             ExprKind::Struct(..) => ExprPrecedence::Struct,
             ExprKind::Repeat(..) => ExprPrecedence::Repeat,
@@ -1446,6 +1449,7 @@ impl Expr<'_> {
             | ExprKind::Ret(..)
             | ExprKind::Loop(..)
             | ExprKind::Assign(..)
+            | ExprKind::InlineAsm(..)
             | ExprKind::LlvmInlineAsm(..)
             | ExprKind::AssignOp(..)
             | ExprKind::Lit(_)
@@ -1622,6 +1626,8 @@ pub enum ExprKind<'hir> {
     /// A `return`, with an optional value to be returned.
     Ret(Option<&'hir Expr<'hir>>),
 
+    /// Inline assembly (from `asm!`), with its outputs and inputs.
+    InlineAsm(&'hir InlineAsm<'hir>),
     /// Inline assembly (from `llvm_asm!`), with its outputs and inputs.
     LlvmInlineAsm(&'hir LlvmInlineAsm<'hir>),
 
@@ -2052,6 +2058,55 @@ pub enum TyKind<'hir> {
     Infer,
     /// Placeholder for a type that has failed to be defined.
     Err,
+}
+
+#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+pub enum InlineAsmOperand<'hir> {
+    In {
+        reg: InlineAsmRegOrRegClass,
+        expr: Expr<'hir>,
+    },
+    Out {
+        reg: InlineAsmRegOrRegClass,
+        late: bool,
+        expr: Option<Expr<'hir>>,
+    },
+    InOut {
+        reg: InlineAsmRegOrRegClass,
+        late: bool,
+        expr: Expr<'hir>,
+    },
+    SplitInOut {
+        reg: InlineAsmRegOrRegClass,
+        late: bool,
+        in_expr: Expr<'hir>,
+        out_expr: Option<Expr<'hir>>,
+    },
+    Const {
+        expr: Expr<'hir>,
+    },
+    Sym {
+        expr: Expr<'hir>,
+    },
+}
+
+impl<'hir> InlineAsmOperand<'hir> {
+    pub fn reg(&self) -> Option<InlineAsmRegOrRegClass> {
+        match *self {
+            Self::In { reg, .. }
+            | Self::Out { reg, .. }
+            | Self::InOut { reg, .. }
+            | Self::SplitInOut { reg, .. } => Some(reg),
+            Self::Const { .. } | Self::Sym { .. } => None,
+        }
+    }
+}
+
+#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+pub struct InlineAsm<'hir> {
+    pub template: &'hir [InlineAsmTemplatePiece],
+    pub operands: &'hir [InlineAsmOperand<'hir>],
+    pub options: InlineAsmOptions,
 }
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug, HashStable_Generic, PartialEq)]

@@ -639,7 +639,8 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
             | mir::TerminatorKind::Abort
             | mir::TerminatorKind::Return
             | mir::TerminatorKind::Unreachable
-            | mir::TerminatorKind::Assert { .. } => {}
+            | mir::TerminatorKind::Assert { .. }
+            | mir::TerminatorKind::InlineAsm { .. } => {}
             mir::TerminatorKind::GeneratorDrop
             | mir::TerminatorKind::Yield { .. }
             | mir::TerminatorKind::FalseEdges { .. }

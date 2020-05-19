@@ -3,6 +3,7 @@
 use crate::build::expr::category::{Category, RvalueFunc};
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 use crate::hair::*;
+use rustc_ast::ast::InlineAsmOptions;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_middle::mir::*;
@@ -53,7 +54,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::NeverToAny { source } => {
                 let source = this.hir.mirror(source);
                 let is_call = match source.kind {
-                    ExprKind::Call { .. } => true,
+                    ExprKind::Call { .. } | ExprKind::InlineAsm { .. } => true,
                     _ => false,
                 };
 
@@ -308,6 +309,73 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     Rvalue::Aggregate(adt, fields),
                 );
                 block.unit()
+            }
+            ExprKind::InlineAsm { template, operands, options } => {
+                use crate::hair;
+                use rustc_middle::mir;
+                let operands = operands
+                    .into_iter()
+                    .map(|op| match op {
+                        hair::InlineAsmOperand::In { reg, expr } => mir::InlineAsmOperand::In {
+                            reg,
+                            value: unpack!(block = this.as_local_operand(block, expr)),
+                        },
+                        hair::InlineAsmOperand::Out { reg, late, expr } => {
+                            mir::InlineAsmOperand::Out {
+                                reg,
+                                late,
+                                place: expr.map(|expr| unpack!(block = this.as_place(block, expr))),
+                            }
+                        }
+                        hair::InlineAsmOperand::InOut { reg, late, expr } => {
+                            let place = unpack!(block = this.as_place(block, expr));
+                            mir::InlineAsmOperand::InOut {
+                                reg,
+                                late,
+                                // This works because asm operands must be Copy
+                                in_value: Operand::Copy(place),
+                                out_place: Some(place),
+                            }
+                        }
+                        hair::InlineAsmOperand::SplitInOut { reg, late, in_expr, out_expr } => {
+                            mir::InlineAsmOperand::InOut {
+                                reg,
+                                late,
+                                in_value: unpack!(block = this.as_local_operand(block, in_expr)),
+                                out_place: out_expr.map(|out_expr| {
+                                    unpack!(block = this.as_place(block, out_expr))
+                                }),
+                            }
+                        }
+                        hair::InlineAsmOperand::Const { expr } => mir::InlineAsmOperand::Const {
+                            value: unpack!(block = this.as_local_operand(block, expr)),
+                        },
+                        hair::InlineAsmOperand::SymFn { expr } => {
+                            mir::InlineAsmOperand::SymFn { value: box this.as_constant(expr) }
+                        }
+                        hair::InlineAsmOperand::SymStatic { expr } => {
+                            mir::InlineAsmOperand::SymStatic { value: box this.as_constant(expr) }
+                        }
+                    })
+                    .collect();
+
+                let destination = this.cfg.start_new_block();
+
+                this.cfg.terminate(
+                    block,
+                    source_info,
+                    TerminatorKind::InlineAsm {
+                        template,
+                        operands,
+                        options,
+                        destination: if options.contains(InlineAsmOptions::NORETURN) {
+                            None
+                        } else {
+                            Some(destination)
+                        },
+                    },
+                );
+                destination.unit()
             }
 
             // These cases don't actually need a destination

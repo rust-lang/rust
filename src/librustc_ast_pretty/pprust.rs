@@ -4,6 +4,8 @@ use crate::pp::{self, Breaks};
 use rustc_ast::ast::{self, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
 use rustc_ast::ast::{Attribute, GenericArg, MacArgs};
 use rustc_ast::ast::{GenericBound, SelfKind, TraitBoundModifier};
+use rustc_ast::ast::{InlineAsmOperand, InlineAsmRegOrRegClass};
+use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_ast::attr;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, BinOpToken, DelimToken, Nonterminal, Token, TokenKind};
@@ -2013,6 +2015,119 @@ impl<'a> State<'a> {
                     self.s.word(" ");
                     self.print_expr_maybe_paren(expr, parser::PREC_JUMP);
                 }
+            }
+            ast::ExprKind::InlineAsm(ref a) => {
+                enum AsmArg<'a> {
+                    Template(String),
+                    Operand(&'a InlineAsmOperand),
+                    Options(InlineAsmOptions),
+                }
+
+                let mut args = vec![];
+                args.push(AsmArg::Template(InlineAsmTemplatePiece::to_string(&a.template)));
+                args.extend(a.operands.iter().map(|(o, _)| AsmArg::Operand(o)));
+                if !a.options.is_empty() {
+                    args.push(AsmArg::Options(a.options));
+                }
+
+                self.word("asm!");
+                self.popen();
+                self.commasep(Consistent, &args, |s, arg| match arg {
+                    AsmArg::Template(template) => s.print_string(&template, ast::StrStyle::Cooked),
+                    AsmArg::Operand(op) => {
+                        let print_reg_or_class = |s: &mut Self, r: &InlineAsmRegOrRegClass| match r
+                        {
+                            InlineAsmRegOrRegClass::Reg(r) => {
+                                s.print_string(&r.as_str(), ast::StrStyle::Cooked)
+                            }
+                            InlineAsmRegOrRegClass::RegClass(r) => s.word(r.to_string()),
+                        };
+                        match op {
+                            InlineAsmOperand::In { reg, expr } => {
+                                s.word("in");
+                                s.popen();
+                                print_reg_or_class(s, reg);
+                                s.pclose();
+                                s.space();
+                                s.print_expr(expr);
+                            }
+                            InlineAsmOperand::Out { reg, late, expr } => {
+                                s.word(if *late { "lateout" } else { "out" });
+                                s.popen();
+                                print_reg_or_class(s, reg);
+                                s.pclose();
+                                s.space();
+                                match expr {
+                                    Some(expr) => s.print_expr(expr),
+                                    None => s.word("_"),
+                                }
+                            }
+                            InlineAsmOperand::InOut { reg, late, expr } => {
+                                s.word(if *late { "inlateout" } else { "inout" });
+                                s.popen();
+                                print_reg_or_class(s, reg);
+                                s.pclose();
+                                s.space();
+                                s.print_expr(expr);
+                            }
+                            InlineAsmOperand::SplitInOut { reg, late, in_expr, out_expr } => {
+                                s.word(if *late { "inlateout" } else { "inout" });
+                                s.popen();
+                                print_reg_or_class(s, reg);
+                                s.pclose();
+                                s.space();
+                                s.print_expr(in_expr);
+                                s.space();
+                                s.word_space("=>");
+                                match out_expr {
+                                    Some(out_expr) => s.print_expr(out_expr),
+                                    None => s.word("_"),
+                                }
+                            }
+                            InlineAsmOperand::Const { expr } => {
+                                s.word("const");
+                                s.space();
+                                s.print_expr(expr);
+                            }
+                            InlineAsmOperand::Sym { expr } => {
+                                s.word("sym");
+                                s.space();
+                                s.print_expr(expr);
+                            }
+                        }
+                    }
+                    AsmArg::Options(opts) => {
+                        s.word("options");
+                        s.popen();
+                        let mut options = vec![];
+                        if opts.contains(InlineAsmOptions::PURE) {
+                            options.push("pure");
+                        }
+                        if opts.contains(InlineAsmOptions::NOMEM) {
+                            options.push("nomem");
+                        }
+                        if opts.contains(InlineAsmOptions::READONLY) {
+                            options.push("readonly");
+                        }
+                        if opts.contains(InlineAsmOptions::PRESERVES_FLAGS) {
+                            options.push("preserves_flags");
+                        }
+                        if opts.contains(InlineAsmOptions::NORETURN) {
+                            options.push("noreturn");
+                        }
+                        if opts.contains(InlineAsmOptions::NOSTACK) {
+                            options.push("nostack");
+                        }
+                        if opts.contains(InlineAsmOptions::ATT_SYNTAX) {
+                            options.push("att_syntax");
+                        }
+                        s.commasep(Inconsistent, &options, |s, &opt| {
+                            s.word(opt);
+                        });
+                        s.pclose();
+                    }
+                });
+                self.pclose();
             }
             ast::ExprKind::LlvmInlineAsm(ref a) => {
                 self.s.word("llvm_asm!");

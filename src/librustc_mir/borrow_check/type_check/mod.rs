@@ -1548,7 +1548,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             | TerminatorKind::Unreachable
             | TerminatorKind::Drop { .. }
             | TerminatorKind::FalseEdges { .. }
-            | TerminatorKind::FalseUnwind { .. } => {
+            | TerminatorKind::FalseUnwind { .. }
+            | TerminatorKind::InlineAsm { .. } => {
                 // no checks needed for these
             }
 
@@ -1853,6 +1854,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         span_mirbug!(self, block_data, "cleanup in cleanup block via false unwind");
                     }
                     self.assert_iscleanup(body, block_data, unwind, true);
+                }
+            }
+            TerminatorKind::InlineAsm { ref destination, .. } => {
+                if let &Some(target) = destination {
+                    self.assert_iscleanup(body, block_data, target, is_cleanup);
                 }
             }
         }

@@ -800,6 +800,11 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
             {
                 bug!("False unwinds should have been removed before inlining")
             }
+            TerminatorKind::InlineAsm { ref mut destination, .. } => {
+                if let Some(ref mut tgt) = *destination {
+                    *tgt = self.update_target(*tgt);
+                }
+            }
         }
     }
 

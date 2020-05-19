@@ -19,6 +19,7 @@ use rustc_target::abi::VariantIdx;
 
 use polonius_engine::Atom;
 pub use rustc_ast::ast::Mutability;
+use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::dominators::{dominators, Dominators};
 use rustc_data_structures::graph::{self, GraphSuccessors};
@@ -28,6 +29,7 @@ use rustc_macros::HashStable;
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
+use rustc_target::asm::InlineAsmRegOrRegClass;
 use std::borrow::Cow;
 use std::fmt::{self, Debug, Display, Formatter, Write};
 use std::ops::{Index, IndexMut};
@@ -1178,6 +1180,23 @@ pub enum TerminatorKind<'tcx> {
         /// of the `remove_noop_landing_pads` and `no_landing_pads` passes.
         unwind: Option<BasicBlock>,
     },
+
+    /// Block ends with an inline assembly block. This is a terminator since
+    /// inline assembly is allowed to diverge.
+    InlineAsm {
+        /// The template for the inline assembly, with placeholders.
+        template: &'tcx [InlineAsmTemplatePiece],
+
+        /// The operands for the inline assembly, as `Operand`s or `Place`s.
+        operands: Vec<InlineAsmOperand<'tcx>>,
+
+        /// Miscellaneous options for the inline assembly.
+        options: InlineAsmOptions,
+
+        /// Destination block after the inline assembly returns, unless it is
+        /// diverging (InlineAsmOptions::NORETURN).
+        destination: Option<BasicBlock>,
+    },
 }
 
 /// Information about an assertion failure.
@@ -1190,6 +1209,34 @@ pub enum AssertKind<O> {
     RemainderByZero,
     ResumedAfterReturn(GeneratorKind),
     ResumedAfterPanic(GeneratorKind),
+}
+
+#[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
+pub enum InlineAsmOperand<'tcx> {
+    In {
+        reg: InlineAsmRegOrRegClass,
+        value: Operand<'tcx>,
+    },
+    Out {
+        reg: InlineAsmRegOrRegClass,
+        late: bool,
+        place: Option<Place<'tcx>>,
+    },
+    InOut {
+        reg: InlineAsmRegOrRegClass,
+        late: bool,
+        in_value: Operand<'tcx>,
+        out_place: Option<Place<'tcx>>,
+    },
+    Const {
+        value: Operand<'tcx>,
+    },
+    SymFn {
+        value: Box<Constant<'tcx>>,
+    },
+    SymStatic {
+        value: Box<Constant<'tcx>>,
+    },
 }
 
 /// Type for MIR `Assert` terminator error messages.
@@ -1242,7 +1289,8 @@ impl<'tcx> TerminatorKind<'tcx> {
             | GeneratorDrop
             | Return
             | Unreachable
-            | Call { destination: None, cleanup: None, .. } => None.into_iter().chain(&[]),
+            | Call { destination: None, cleanup: None, .. }
+            | InlineAsm { destination: None, .. } => None.into_iter().chain(&[]),
             Goto { target: ref t }
             | Call { destination: None, cleanup: Some(ref t), .. }
             | Call { destination: Some((_, ref t)), cleanup: None, .. }
@@ -1250,7 +1298,8 @@ impl<'tcx> TerminatorKind<'tcx> {
             | DropAndReplace { target: ref t, unwind: None, .. }
             | Drop { target: ref t, unwind: None, .. }
             | Assert { target: ref t, cleanup: None, .. }
-            | FalseUnwind { real_target: ref t, unwind: None } => Some(t).into_iter().chain(&[]),
+            | FalseUnwind { real_target: ref t, unwind: None }
+            | InlineAsm { destination: Some(ref t), .. } => Some(t).into_iter().chain(&[]),
             Call { destination: Some((_, ref t)), cleanup: Some(ref u), .. }
             | Yield { resume: ref t, drop: Some(ref u), .. }
             | DropAndReplace { target: ref t, unwind: Some(ref u), .. }
@@ -1274,7 +1323,8 @@ impl<'tcx> TerminatorKind<'tcx> {
             | GeneratorDrop
             | Return
             | Unreachable
-            | Call { destination: None, cleanup: None, .. } => None.into_iter().chain(&mut []),
+            | Call { destination: None, cleanup: None, .. }
+            | InlineAsm { destination: None, .. } => None.into_iter().chain(&mut []),
             Goto { target: ref mut t }
             | Call { destination: None, cleanup: Some(ref mut t), .. }
             | Call { destination: Some((_, ref mut t)), cleanup: None, .. }
@@ -1282,9 +1332,8 @@ impl<'tcx> TerminatorKind<'tcx> {
             | DropAndReplace { target: ref mut t, unwind: None, .. }
             | Drop { target: ref mut t, unwind: None, .. }
             | Assert { target: ref mut t, cleanup: None, .. }
-            | FalseUnwind { real_target: ref mut t, unwind: None } => {
-                Some(t).into_iter().chain(&mut [])
-            }
+            | FalseUnwind { real_target: ref mut t, unwind: None }
+            | InlineAsm { destination: Some(ref mut t), .. } => Some(t).into_iter().chain(&mut []),
             Call { destination: Some((_, ref mut t)), cleanup: Some(ref mut u), .. }
             | Yield { resume: ref mut t, drop: Some(ref mut u), .. }
             | DropAndReplace { target: ref mut t, unwind: Some(ref mut u), .. }
@@ -1310,7 +1359,8 @@ impl<'tcx> TerminatorKind<'tcx> {
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::Yield { .. }
             | TerminatorKind::SwitchInt { .. }
-            | TerminatorKind::FalseEdges { .. } => None,
+            | TerminatorKind::FalseEdges { .. }
+            | TerminatorKind::InlineAsm { .. } => None,
             TerminatorKind::Call { cleanup: ref unwind, .. }
             | TerminatorKind::Assert { cleanup: ref unwind, .. }
             | TerminatorKind::DropAndReplace { ref unwind, .. }
@@ -1329,7 +1379,8 @@ impl<'tcx> TerminatorKind<'tcx> {
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::Yield { .. }
             | TerminatorKind::SwitchInt { .. }
-            | TerminatorKind::FalseEdges { .. } => None,
+            | TerminatorKind::FalseEdges { .. }
+            | TerminatorKind::InlineAsm { .. } => None,
             TerminatorKind::Call { cleanup: ref mut unwind, .. }
             | TerminatorKind::Assert { cleanup: ref mut unwind, .. }
             | TerminatorKind::DropAndReplace { ref mut unwind, .. }
@@ -1544,6 +1595,50 @@ impl<'tcx> TerminatorKind<'tcx> {
             }
             FalseEdges { .. } => write!(fmt, "falseEdges"),
             FalseUnwind { .. } => write!(fmt, "falseUnwind"),
+            InlineAsm { template, ref operands, options, destination: _ } => {
+                write!(fmt, "asm!(\"{}\"", InlineAsmTemplatePiece::to_string(template))?;
+                for op in operands {
+                    write!(fmt, ", ")?;
+                    let print_late = |&late| if late { "late" } else { "" };
+                    match op {
+                        InlineAsmOperand::In { reg, value } => {
+                            write!(fmt, "in({}) {:?}", reg, value)?;
+                        }
+                        InlineAsmOperand::Out { reg, late, place: Some(place) } => {
+                            write!(fmt, "{}out({}) {:?}", print_late(late), reg, place)?;
+                        }
+                        InlineAsmOperand::Out { reg, late, place: None } => {
+                            write!(fmt, "{}out({}) _", print_late(late), reg)?;
+                        }
+                        InlineAsmOperand::InOut {
+                            reg,
+                            late,
+                            in_value,
+                            out_place: Some(out_place),
+                        } => {
+                            write!(
+                                fmt,
+                                "in{}out({}) {:?} => {:?}",
+                                print_late(late),
+                                reg,
+                                in_value,
+                                out_place
+                            )?;
+                        }
+                        InlineAsmOperand::InOut { reg, late, in_value, out_place: None } => {
+                            write!(fmt, "in{}out({}) {:?} => _", print_late(late), reg, in_value)?;
+                        }
+                        InlineAsmOperand::Const { value } => {
+                            write!(fmt, "const {:?}", value)?;
+                        }
+                        InlineAsmOperand::SymFn { value }
+                        | InlineAsmOperand::SymStatic { value } => {
+                            write!(fmt, "sym {:?}", value)?;
+                        }
+                    }
+                }
+                write!(fmt, ", options({:?}))", options)
+            }
         }
     }
 
@@ -1586,6 +1681,8 @@ impl<'tcx> TerminatorKind<'tcx> {
             FalseEdges { .. } => vec!["real".into(), "imaginary".into()],
             FalseUnwind { unwind: Some(_), .. } => vec!["real".into(), "cleanup".into()],
             FalseUnwind { unwind: None, .. } => vec!["real".into()],
+            InlineAsm { destination: Some(_), .. } => vec!["".into()],
+            InlineAsm { destination: None, .. } => vec![],
         }
     }
 }

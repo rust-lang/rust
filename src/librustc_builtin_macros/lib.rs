@@ -19,6 +19,7 @@ use rustc_expand::proc_macro::BangProcMacro;
 use rustc_span::edition::Edition;
 use rustc_span::symbol::{sym, Ident};
 
+mod asm;
 mod assert;
 mod cfg;
 mod cfg_accessible;
@@ -61,7 +62,7 @@ pub fn register_builtin_macros(resolver: &mut dyn Resolver, edition: Edition) {
     }
 
     register_bang! {
-        asm: llvm_asm::expand_llvm_asm,
+        asm: asm::expand_asm,
         assert: assert::expand_assert,
         cfg: cfg::expand_cfg,
         column: source_util::expand_column,

@@ -232,6 +232,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_expr_addr_of(kind, mutbl, oprnd, expected, expr)
             }
             ExprKind::Path(ref qpath) => self.check_expr_path(qpath, expr),
+            ExprKind::InlineAsm(asm) => self.check_expr_asm(asm),
             ExprKind::LlvmInlineAsm(ref asm) => {
                 for expr in asm.outputs_exprs.iter().chain(asm.inputs_exprs.iter()) {
                     self.check_expr(expr);
@@ -1809,6 +1810,72 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .emit();
                 self.tcx.mk_unit()
             }
+        }
+    }
+
+    fn check_expr_asm_operand(&self, expr: &'tcx hir::Expr<'tcx>, is_input: bool) {
+        let needs = if is_input { Needs::None } else { Needs::MutPlace };
+        let ty = self.check_expr_with_needs(expr, needs);
+        self.require_type_is_sized(ty, expr.span, traits::InlineAsmSized);
+
+        if !is_input && !expr.is_syntactic_place_expr() {
+            let mut err = self.tcx.sess.struct_span_err(expr.span, "invalid asm output");
+            err.span_label(expr.span, "cannot assign to this expression");
+            err.emit();
+        }
+
+        // If this is an input value, we require its type to be fully resolved
+        // at this point. This allows us to provide helpful coercions which help
+        // pass the type whitelist in a later pass.
+        //
+        // We don't require output types to be resolved at this point, which
+        // allows them to be inferred based on how they are used later in the
+        // function.
+        if is_input {
+            let ty = self.structurally_resolved_type(expr.span, &ty);
+            match ty.kind {
+                ty::FnDef(..) => {
+                    let fnptr_ty = self.tcx.mk_fn_ptr(ty.fn_sig(self.tcx));
+                    self.demand_coerce(expr, ty, fnptr_ty, AllowTwoPhase::No);
+                }
+                ty::Ref(_, base_ty, mutbl) => {
+                    let ptr_ty = self.tcx.mk_ptr(ty::TypeAndMut { ty: base_ty, mutbl });
+                    self.demand_coerce(expr, ty, ptr_ty, AllowTwoPhase::No);
+                }
+                _ => {}
+            }
+        }
+    }
+
+    fn check_expr_asm(&self, asm: &'tcx hir::InlineAsm<'tcx>) -> Ty<'tcx> {
+        for op in asm.operands {
+            match op {
+                hir::InlineAsmOperand::In { expr, .. } | hir::InlineAsmOperand::Const { expr } => {
+                    self.check_expr_asm_operand(expr, true);
+                }
+                hir::InlineAsmOperand::Out { expr, .. } => {
+                    if let Some(expr) = expr {
+                        self.check_expr_asm_operand(expr, false);
+                    }
+                }
+                hir::InlineAsmOperand::InOut { expr, .. } => {
+                    self.check_expr_asm_operand(expr, false);
+                }
+                hir::InlineAsmOperand::SplitInOut { in_expr, out_expr, .. } => {
+                    self.check_expr_asm_operand(in_expr, true);
+                    if let Some(out_expr) = out_expr {
+                        self.check_expr_asm_operand(out_expr, false);
+                    }
+                }
+                hir::InlineAsmOperand::Sym { expr } => {
+                    self.check_expr(expr);
+                }
+            }
+        }
+        if asm.options.contains(ast::InlineAsmOptions::NORETURN) {
+            self.tcx.types.never
+        } else {
+            self.tcx.mk_unit()
         }
     }
 }

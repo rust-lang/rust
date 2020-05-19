@@ -17,7 +17,7 @@ use rustc_middle::mir::{
 };
 use rustc_middle::mir::{AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind};
 use rustc_middle::mir::{Field, ProjectionElem, Promoted, Rvalue, Statement, StatementKind};
-use rustc_middle::mir::{Terminator, TerminatorKind};
+use rustc_middle::mir::{InlineAsmOperand, Terminator, TerminatorKind};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, RegionVid, TyCtxt};
 use rustc_session::lint::builtin::{MUTABLE_BORROW_RESERVATION_CONFLICT, UNUSED_MUT};
@@ -724,6 +724,42 @@ impl<'cx, 'tcx> dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tc
                 self.mutate_place(loc, (resume_arg, span), Deep, JustWrite, flow_state);
             }
 
+            TerminatorKind::InlineAsm { template: _, ref operands, options: _, destination: _ } => {
+                for op in operands {
+                    match *op {
+                        InlineAsmOperand::In { reg: _, ref value }
+                        | InlineAsmOperand::Const { ref value } => {
+                            self.consume_operand(loc, (value, span), flow_state);
+                        }
+                        InlineAsmOperand::Out { reg: _, late: _, place, .. } => {
+                            if let Some(place) = place {
+                                self.mutate_place(
+                                    loc,
+                                    (place, span),
+                                    Shallow(None),
+                                    JustWrite,
+                                    flow_state,
+                                );
+                            }
+                        }
+                        InlineAsmOperand::InOut { reg: _, late: _, ref in_value, out_place } => {
+                            self.consume_operand(loc, (in_value, span), flow_state);
+                            if let Some(out_place) = out_place {
+                                self.mutate_place(
+                                    loc,
+                                    (out_place, span),
+                                    Shallow(None),
+                                    JustWrite,
+                                    flow_state,
+                                );
+                            }
+                        }
+                        InlineAsmOperand::SymFn { value: _ }
+                        | InlineAsmOperand::SymStatic { value: _ } => {}
+                    }
+                }
+            }
+
             TerminatorKind::Goto { target: _ }
             | TerminatorKind::Abort
             | TerminatorKind::Unreachable
@@ -778,7 +814,8 @@ impl<'cx, 'tcx> dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tc
             | TerminatorKind::FalseUnwind { real_target: _, unwind: _ }
             | TerminatorKind::Goto { .. }
             | TerminatorKind::SwitchInt { .. }
-            | TerminatorKind::Unreachable => {}
+            | TerminatorKind::Unreachable
+            | TerminatorKind::InlineAsm { .. } => {}
         }
     }
 }

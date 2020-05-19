@@ -160,6 +160,7 @@ symbols! {
         attr,
         attributes,
         attr_literals,
+        att_syntax,
         augmented_assignments,
         automatically_derived,
         avx512_target_feature,
@@ -376,6 +377,8 @@ symbols! {
         if_let,
         if_while_or_patterns,
         ignore,
+        inlateout,
+        inout,
         impl_header_lifetime_elision,
         impl_lint_pass,
         impl_trait_in_bindings,
@@ -411,6 +414,7 @@ symbols! {
         label_break_value,
         lang,
         lang_items,
+        lateout,
         let_chains,
         lhs,
         lib,
@@ -495,12 +499,15 @@ symbols! {
         no_link,
         no_main,
         no_mangle,
+        nomem,
         non_ascii_idents,
         None,
         non_exhaustive,
         non_modrs_mods,
-        no_sanitize,
+        noreturn,
         no_niche,
+        no_sanitize,
+        nostack,
         no_stack_check,
         no_start,
         no_std,
@@ -519,11 +526,13 @@ symbols! {
         option,
         Option,
         option_env,
+        options,
         opt_out_copy,
         or,
         or_patterns,
         Ord,
         Ordering,
+        out,
         Output,
         overlapping_marker_traits,
         packed,
@@ -556,6 +565,7 @@ symbols! {
         pref_align_of,
         prelude,
         prelude_import,
+        preserves_flags,
         primitive,
         proc_dash_macro: "proc-macro",
         proc_macro,
@@ -572,6 +582,7 @@ symbols! {
         profiler_runtime,
         ptr_offset_from,
         pub_restricted,
+        pure,
         pushpop_unsafe,
         quad_precision_float,
         question_mark,
@@ -586,6 +597,7 @@ symbols! {
         raw_identifiers,
         raw_ref_op,
         Rc,
+        readonly,
         Ready,
         reason,
         recursion_limit,
@@ -607,6 +619,7 @@ symbols! {
         Result,
         Return,
         rhs,
+        riscv_target_feature,
         rlib,
         rotate_left,
         rotate_right,
@@ -722,6 +735,7 @@ symbols! {
         sty,
         sub_with_overflow,
         suggestion,
+        sym,
         sync_trait,
         target_feature,
         target_feature_11,
@@ -1186,8 +1200,8 @@ pub mod sym {
     // have a static symbol and therefore are fast.
     pub fn integer<N: TryInto<usize> + Copy + ToString>(n: N) -> Symbol {
         if let Result::Ok(idx) = n.try_into() {
-            if let Option::Some(&sym) = digits_array.get(idx) {
-                return sym;
+            if let Option::Some(&sym_) = digits_array.get(idx) {
+                return sym_;
             }
         }
         Symbol::intern(&n.to_string())

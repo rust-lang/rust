@@ -411,6 +411,31 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                     self.gather_init(destination.as_ref(), InitKind::NonPanicPathOnly);
                 }
             }
+            TerminatorKind::InlineAsm { template: _, ref operands, options: _, destination: _ } => {
+                for op in operands {
+                    match *op {
+                        InlineAsmOperand::In { reg: _, ref value }
+                        | InlineAsmOperand::Const { ref value } => {
+                            self.gather_operand(value);
+                        }
+                        InlineAsmOperand::Out { reg: _, late: _, place, .. } => {
+                            if let Some(place) = place {
+                                self.create_move_path(place);
+                                self.gather_init(place.as_ref(), InitKind::Deep);
+                            }
+                        }
+                        InlineAsmOperand::InOut { reg: _, late: _, ref in_value, out_place } => {
+                            self.gather_operand(in_value);
+                            if let Some(out_place) = out_place {
+                                self.create_move_path(out_place);
+                                self.gather_init(out_place.as_ref(), InitKind::Deep);
+                            }
+                        }
+                        InlineAsmOperand::SymFn { value: _ }
+                        | InlineAsmOperand::SymStatic { value: _ } => {}
+                    }
+                }
+            }
         }
     }
 

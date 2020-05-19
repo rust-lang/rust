@@ -203,6 +203,10 @@ static Attribute::AttrKind fromRust(LLVMRustAttribute Kind) {
     return Attribute::OptimizeNone;
   case ReturnsTwice:
     return Attribute::ReturnsTwice;
+  case ReadNone:
+    return Attribute::ReadNone;
+  case InaccessibleMemOnly:
+    return Attribute::InaccessibleMemOnly;
   }
   report_fatal_error("bad AttributeKind");
 }
