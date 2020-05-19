@@ -35,7 +35,7 @@ LL | more code
   - The users' affected code and its surroundings.
   - Primary and secondary spans underlying the users' code. These spans can
     optionally contain one or more labels.
-    - Primary spans should have enough text to descrive the problem in such a
+    - Primary spans should have enough text to describe the problem in such a
       way that if it where the only thing being displayed (for example, in an
       IDE) it would still make sense. Because it is "spatially aware" (it
       points at the code), it can generally be more succinct than the error
