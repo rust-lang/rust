@@ -1115,10 +1115,6 @@ impl<'tcx> TyCtxt<'tcx> {
         let mut trait_map: FxHashMap<_, FxHashMap<_, _>> = FxHashMap::default();
         for (hir_id, v) in resolutions.trait_map.into_iter() {
             let map = trait_map.entry(hir_id.owner).or_default();
-            let v = v
-                .into_iter()
-                .map(|tc| tc.map_import_ids(|id| definitions.node_id_to_hir_id(id)))
-                .collect();
             map.insert(hir_id.local_id, StableVec::new(v));
         }
 

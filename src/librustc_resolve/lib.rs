@@ -1273,15 +1273,21 @@ impl<'a> Resolver<'a> {
     }
 
     pub fn into_outputs(self) -> ResolverOutputs {
+        let definitions = self.definitions;
         let trait_map = {
             let mut map = FxHashMap::default();
             for (k, v) in self.trait_map.into_iter() {
-                map.insert(self.definitions.node_id_to_hir_id(k), v);
+                map.insert(
+                    definitions.node_id_to_hir_id(k),
+                    v.into_iter()
+                        .map(|tc| tc.map_import_ids(|id| definitions.node_id_to_hir_id(id)))
+                        .collect(),
+                );
             }
             map
         };
         ResolverOutputs {
-            definitions: self.definitions,
+            definitions: definitions,
             cstore: Box::new(self.crate_loader.into_cstore()),
             extern_crate_map: self.extern_crate_map,
             export_map: self.export_map,
@@ -1306,7 +1312,15 @@ impl<'a> Resolver<'a> {
             trait_map: {
                 let mut map = FxHashMap::default();
                 for (k, v) in self.trait_map.iter() {
-                    map.insert(self.definitions.node_id_to_hir_id(k.clone()), v.clone());
+                    map.insert(
+                        self.definitions.node_id_to_hir_id(k.clone()),
+                        v.iter()
+                            .map(|tc| {
+                                tc.clone()
+                                    .map_import_ids(|id| self.definitions.node_id_to_hir_id(id))
+                            })
+                            .collect(),
+                    );
                 }
                 map
             },
