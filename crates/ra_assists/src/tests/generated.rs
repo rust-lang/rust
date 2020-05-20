@@ -276,7 +276,7 @@ fn doctest_change_return_type_to_result() {
 fn foo() -> i32<|> { 42i32 }
 "#####,
         r#####"
-fn foo() -> Result<i32, > { Ok(42i32) }
+fn foo() -> Result<i32, ${0:_}> { Ok(42i32) }
 "#####,
     )
 }

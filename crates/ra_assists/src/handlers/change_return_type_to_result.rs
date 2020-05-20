@@ -1,8 +1,6 @@
 use ra_syntax::{
     ast::{self, BlockExpr, Expr, LoopBodyOwner},
-    AstNode,
-    SyntaxKind::{COMMENT, WHITESPACE},
-    SyntaxNode, TextSize,
+    AstNode, SyntaxNode,
 };
 
 use crate::{AssistContext, AssistId, Assists};
@@ -16,7 +14,7 @@ use crate::{AssistContext, AssistId, Assists};
 // ```
 // ->
 // ```
-// fn foo() -> Result<i32, > { Ok(42i32) }
+// fn foo() -> Result<i32, ${0:_}> { Ok(42i32) }
 // ```
 pub(crate) fn change_return_type_to_result(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let ret_type = ctx.find_node_at_offset::<ast::RetType>()?;
@@ -42,14 +40,14 @@ pub(crate) fn change_return_type_to_result(acc: &mut Assists, ctx: &AssistContex
             for ret_expr_arg in tail_return_expr_collector.exprs_to_wrap {
                 builder.replace_node_and_indent(&ret_expr_arg, format!("Ok({})", ret_expr_arg));
             }
-            match ctx.config.snippet_cap {
-                Some(_) => {}
-                None => {}
-            }
-            builder.replace_node_and_indent(type_ref.syntax(), format!("Result<{}, >", type_ref));
 
-            if let Some(node_start) = result_insertion_offset(&type_ref) {
-                builder.set_cursor(node_start + TextSize::of(&format!("Result<{}, ", type_ref)));
+            match ctx.config.snippet_cap {
+                Some(cap) => {
+                    let snippet = format!("Result<{}, ${{0:_}}>", type_ref);
+                    builder.replace_snippet(cap, type_ref.syntax().text_range(), snippet)
+                }
+                None => builder
+                    .replace(type_ref.syntax().text_range(), format!("Result<{}, _>", type_ref)),
             }
         },
     )
@@ -251,17 +249,8 @@ fn get_tail_expr_from_block(expr: &Expr) -> Option<Vec<NodeType>> {
     }
 }
 
-fn result_insertion_offset(ret_type: &ast::TypeRef) -> Option<TextSize> {
-    let non_ws_child = ret_type
-        .syntax()
-        .children_with_tokens()
-        .find(|it| it.kind() != COMMENT && it.kind() != WHITESPACE)?;
-    Some(non_ws_child.text_range().start())
-}
-
 #[cfg(test)]
 mod tests {
-
     use crate::tests::{check_assist, check_assist_not_applicable};
 
     use super::*;
@@ -274,7 +263,7 @@ mod tests {
                 let test = "test";
                 return 42i32;
             }"#,
-            r#"fn foo() -> Result<i32, <|>> {
+            r#"fn foo() -> Result<i32, ${0:_}> {
                 let test = "test";
                 return Ok(42i32);
             }"#,
@@ -289,7 +278,7 @@ mod tests {
                 let test = "test";
                 return 42i32;
             }"#,
-            r#"fn foo() -> Result<i32, <|>> {
+            r#"fn foo() -> Result<i32, ${0:_}> {
                 let test = "test";
                 return Ok(42i32);
             }"#,
@@ -315,7 +304,7 @@ mod tests {
                 let test = "test";
                 return 42i32;
             }"#,
-            r#"fn foo() -> Result<i32, <|>> {
+            r#"fn foo() -> Result<i32, ${0:_}> {
                 let test = "test";
                 return Ok(42i32);
             }"#,
@@ -330,7 +319,7 @@ mod tests {
                 let test = "test";
                 42i32
             }"#,
-            r#"fn foo() -> Result<i32, <|>> {
+            r#"fn foo() -> Result<i32, ${0:_}> {
                 let test = "test";
                 Ok(42i32)
             }"#,
@@ -344,7 +333,7 @@ mod tests {
             r#"fn foo() -> i32<|> {
                 42i32
             }"#,
-            r#"fn foo() -> Result<i32, <|>> {
+            r#"fn foo() -> Result<i32, ${0:_}> {
                 Ok(42i32)
             }"#,
         );
@@ -360,7 +349,7 @@ mod tests {
                     24i32
                 }
             }"#,
-            r#"fn foo() -> Result<i32, <|>> {
+            r#"fn foo() -> Result<i32, ${0:_}> {
                 if true {
                     Ok(42i32)
                 } else {
@@ -385,7 +374,7 @@ mod tests {
                     24i32
                 }
             }"#,
-            r#"fn foo() -> Result<i32, <|>> {
+            r#"fn foo() -> Result<i32, ${0:_}> {
                 if true {
                     if false {
                         Ok(1)
@@ -414,7 +403,7 @@ mod tests {
                     24i32.await
                 }
             }"#,
-            r#"async fn foo() -> Result<i32, <|>> {
+            r#"async fn foo() -> Result<i32, ${0:_}> {
                 if true {
                     if false {
                         Ok(1.await)
@@ -435,7 +424,7 @@ mod tests {
             r#"fn foo() -> [i32;<|> 3] {
                 [1, 2, 3]
             }"#,
-            r#"fn foo() -> Result<[i32; 3], <|>> {
+            r#"fn foo() -> Result<[i32; 3], ${0:_}> {
                 Ok([1, 2, 3])
             }"#,
         );
@@ -456,7 +445,7 @@ mod tests {
                     24 as i32
                 }
             }"#,
-            r#"fn foo() -> Result<i32, <|>> {
+            r#"fn foo() -> Result<i32, ${0:_}> {
                 if true {
                     if false {
                         Ok(1 as i32)
@@ -481,7 +470,7 @@ mod tests {
                     _ => 24i32,
                 }
             }"#,
-            r#"fn foo() -> Result<i32, <|>> {
+            r#"fn foo() -> Result<i32, ${0:_}> {
                 let my_var = 5;
                 match my_var {
                     5 => Ok(42i32),
@@ -504,7 +493,7 @@ mod tests {
 
                 my_var
             }"#,
-            r#"fn foo() -> Result<i32, <|>> {
+            r#"fn foo() -> Result<i32, ${0:_}> {
                 let my_var = 5;
                 loop {
                     println!("test");
@@ -527,7 +516,7 @@ mod tests {
 
                 my_var
             }"#,
-            r#"fn foo() -> Result<i32, <|>> {
+            r#"fn foo() -> Result<i32, ${0:_}> {
                 let my_var = let x = loop {
                     break 1;
                 };
@@ -550,7 +539,7 @@ mod tests {
 
                 res
             }"#,
-            r#"fn foo() -> Result<i32, <|>> {
+            r#"fn foo() -> Result<i32, ${0:_}> {
                 let my_var = 5;
                 let res = match my_var {
                     5 => 42i32,
@@ -573,7 +562,7 @@ mod tests {
 
                 res
             }"#,
-            r#"fn foo() -> Result<i32, <|>> {
+            r#"fn foo() -> Result<i32, ${0:_}> {
                 let my_var = 5;
                 let res = if my_var == 5 {
                     42i32
@@ -609,7 +598,7 @@ mod tests {
                     },
                 }
             }"#,
-            r#"fn foo() -> Result<i32, <|>> {
+            r#"fn foo() -> Result<i32, ${0:_}> {
                 let my_var = 5;
                 match my_var {
                     5 => {
@@ -642,7 +631,7 @@ mod tests {
                 }
                 53i32
             }"#,
-            r#"fn foo() -> Result<i32, <|>> {
+            r#"fn foo() -> Result<i32, ${0:_}> {
                 let test = "test";
                 if test == "test" {
                     return Ok(24i32);
@@ -673,7 +662,7 @@ mod tests {
 
                 the_field
             }"#,
-            r#"fn foo(the_field: u32) -> Result<u32, <|>> {
+            r#"fn foo(the_field: u32) -> Result<u32, ${0:_}> {
                 let true_closure = || {
                     return true;
                 };
@@ -712,7 +701,7 @@ mod tests {
 
                 t.unwrap_or_else(|| the_field)
             }"#,
-            r#"fn foo(the_field: u32) -> Result<u32, <|>> {
+            r#"fn foo(the_field: u32) -> Result<u32, ${0:_}> {
                 let true_closure = || {
                     return true;
                 };
@@ -750,7 +739,7 @@ mod tests {
                     i += 1;
                 }
             }"#,
-            r#"fn foo() -> Result<i32, <|>> {
+            r#"fn foo() -> Result<i32, ${0:_}> {
                 let test = "test";
                 if test == "test" {
                     return Ok(24i32);
@@ -782,7 +771,7 @@ mod tests {
                     }
                 }
             }"#,
-            r#"fn foo() -> Result<i32, <|>> {
+            r#"fn foo() -> Result<i32, ${0:_}> {
                 let test = "test";
                 if test == "test" {
                     return Ok(24i32);
@@ -820,7 +809,7 @@ mod tests {
                     }
                 }
             }"#,
-            r#"fn foo() -> Result<i32, <|>> {
+            r#"fn foo() -> Result<i32, ${0:_}> {
                 let test = "test";
                 let other = 5;
                 if test == "test" {
@@ -861,7 +850,7 @@ mod tests {
 
                 the_field
             }"#,
-            r#"fn foo(the_field: u32) -> Result<u32, <|>> {
+            r#"fn foo(the_field: u32) -> Result<u32, ${0:_}> {
                 if the_field < 5 {
                     let mut i = 0;
                     loop {
@@ -895,7 +884,7 @@ mod tests {
 
                 the_field
             }"#,
-            r#"fn foo(the_field: u32) -> Result<u32, <|>> {
+            r#"fn foo(the_field: u32) -> Result<u32, ${0:_}> {
                 if the_field < 5 {
                     let mut i = 0;
 
@@ -924,7 +913,7 @@ mod tests {
 
                 the_field
             }"#,
-            r#"fn foo(the_field: u32) -> Result<u32, <|>> {
+            r#"fn foo(the_field: u32) -> Result<u32, ${0:_}> {
                 if the_field < 5 {
                     let mut i = 0;
 
@@ -954,7 +943,7 @@ mod tests {
 
                 the_field
             }"#,
-            r#"fn foo(the_field: u32) -> Result<u32, <|>> {
+            r#"fn foo(the_field: u32) -> Result<u32, ${0:_}> {
                 if the_field < 5 {
                     let mut i = 0;
 
