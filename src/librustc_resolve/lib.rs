@@ -1298,6 +1298,11 @@ impl<'a> Resolver<'a> {
             }
             map
         };
+        let maybe_unused_trait_imports = self
+            .maybe_unused_trait_imports
+            .into_iter()
+            .map(|id| definitions.local_def_id(id))
+            .collect();
         ResolverOutputs {
             definitions: definitions,
             cstore: Box::new(self.crate_loader.into_cstore()),
@@ -1305,7 +1310,7 @@ impl<'a> Resolver<'a> {
             export_map,
             trait_map,
             glob_map: self.glob_map,
-            maybe_unused_trait_imports: self.maybe_unused_trait_imports,
+            maybe_unused_trait_imports,
             maybe_unused_extern_crates: self.maybe_unused_extern_crates,
             extern_prelude: self
                 .extern_prelude
@@ -1348,7 +1353,11 @@ impl<'a> Resolver<'a> {
                 map
             },
             glob_map: self.glob_map.clone(),
-            maybe_unused_trait_imports: self.maybe_unused_trait_imports.clone(),
+            maybe_unused_trait_imports: self
+                .maybe_unused_trait_imports
+                .iter()
+                .map(|id| self.definitions.local_def_id(id.clone()))
+                .collect(),
             maybe_unused_extern_crates: self.maybe_unused_extern_crates.clone(),
             extern_prelude: self
                 .extern_prelude

@@ -1132,11 +1132,7 @@ impl<'tcx> TyCtxt<'tcx> {
             extern_crate_map: resolutions.extern_crate_map,
             trait_map,
             export_map: resolutions.export_map,
-            maybe_unused_trait_imports: resolutions
-                .maybe_unused_trait_imports
-                .into_iter()
-                .map(|id| definitions.local_def_id(id))
-                .collect(),
+            maybe_unused_trait_imports: resolutions.maybe_unused_trait_imports,
             maybe_unused_extern_crates: resolutions
                 .maybe_unused_extern_crates
                 .into_iter()
