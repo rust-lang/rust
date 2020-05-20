@@ -51,10 +51,14 @@ export class Cargo {
 
         // arguments for a runnable from the quick pick should be updated.
         // see crates\rust-analyzer\src\main_loop\handlers.rs, handle_code_lens
-        if (cargoArgs[0] === "run") {
-            cargoArgs[0] = "build";
-        } else if (cargoArgs.indexOf("--no-run") === -1) {
-            cargoArgs.push("--no-run");
+        switch (cargoArgs[0]) {
+            case "run": cargoArgs[0] = "build"; break;
+            case "test": {
+                if (cargoArgs.indexOf("--no-run") === -1) {
+                    cargoArgs.push("--no-run");
+                }
+                break;
+            }
         }
 
         let artifacts = await this.artifactsFromArgs(cargoArgs);
