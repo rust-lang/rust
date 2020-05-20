@@ -12,14 +12,46 @@ interface CompilationArtifact {
     isTest: boolean;
 }
 
+export interface ArtifactSpec {
+    cargoArgs: string[];
+    filter?: (artifacts: CompilationArtifact[]) => CompilationArtifact[];
+}
+
+export function artifactSpec(args: readonly string[]): ArtifactSpec {
+    const cargoArgs = [...args, "--message-format=json"];
+
+    // arguments for a runnable from the quick pick should be updated.
+    // see crates\rust-analyzer\src\main_loop\handlers.rs, handle_code_lens
+    switch (cargoArgs[0]) {
+        case "run": cargoArgs[0] = "build"; break;
+        case "test": {
+            if (cargoArgs.indexOf("--no-run") === -1) {
+                cargoArgs.push("--no-run");
+            }
+            break;
+        }
+    }
+
+    const result: ArtifactSpec = { cargoArgs: cargoArgs };
+    if (cargoArgs[0] === "test") {
+        // for instance, `crates\rust-analyzer\tests\heavy_tests\main.rs` tests
+        // produce 2 artifacts: {"kind": "bin"} and {"kind": "test"}
+        result.filter = (artifacts) => {
+            return artifacts.filter(a => a.isTest);
+        };
+    }
+
+    return result;
+}
+
 export class Cargo {
     constructor(readonly rootFolder: string, readonly output: OutputChannel) { }
 
-    private async artifactsFromArgs(cargoArgs: string[]): Promise<CompilationArtifact[]> {
-        const artifacts: CompilationArtifact[] = [];
+    private async getArtifacts(spec: ArtifactSpec): Promise<CompilationArtifact[]> {
+        let artifacts: CompilationArtifact[] = [];
 
         try {
-            await this.runCargo(cargoArgs,
+            await this.runCargo(spec.cargoArgs,
                 message => {
                     if (message.reason === 'compiler-artifact' && message.executable) {
                         const isBinary = message.target.crate_types.includes('bin');
@@ -43,30 +75,15 @@ export class Cargo {
             throw new Error(`Cargo invocation has failed: ${err}`);
         }
 
+        if (spec.filter) {
+            artifacts = spec.filter(artifacts);
+        }
+
         return artifacts;
     }
 
     async executableFromArgs(args: readonly string[]): Promise<string> {
-        const cargoArgs = [...args, "--message-format=json"];
-
-        // arguments for a runnable from the quick pick should be updated.
-        // see crates\rust-analyzer\src\main_loop\handlers.rs, handle_code_lens
-        switch (cargoArgs[0]) {
-            case "run": cargoArgs[0] = "build"; break;
-            case "test": {
-                if (cargoArgs.indexOf("--no-run") === -1) {
-                    cargoArgs.push("--no-run");
-                }
-                break;
-            }
-        }
-
-        let artifacts = await this.artifactsFromArgs(cargoArgs);
-        if (cargoArgs[0] === "test") {
-            // for instance, `crates\rust-analyzer\tests\heavy_tests\main.rs` tests
-            // produce 2 artifacts: {"kind": "bin"} and {"kind": "test"}
-            artifacts = artifacts.filter(a => a.isTest);
-        }
+        const artifacts = await this.getArtifacts(artifactSpec(args));
 
         if (artifacts.length === 0) {
             throw new Error('No compilation artifacts');

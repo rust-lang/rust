@@ -9,7 +9,7 @@
         "esModuleInterop": true,
         "allowSyntheticDefaultImports": true,
         "sourceMap": true,
-        "rootDir": "src",
+        "rootDir": ".",
         "strict": true,
         "noUnusedLocals": true,
         "noUnusedParameters": true,
@@ -18,6 +18,11 @@
         "newLine": "LF"
     },
     "exclude": [
-        "node_modules"
+        "node_modules",
+        ".vscode-test"
+    ],
+    "include": [
+        "src",
+        "tests"
     ]
 }

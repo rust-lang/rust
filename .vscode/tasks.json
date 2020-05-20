@@ -40,6 +40,18 @@
       "command": "cargo build --release --package rust-analyzer",
       "problemMatcher": "$rustc"
     },
+    {
+      "label": "Pretest",
+      "group": "build",
+      "isBackground": false,
+      "type": "npm",
+      "script": "pretest",
+      "path": "editors/code/",
+      "problemMatcher": {
+        "base": "$tsc",
+        "fileLocation": ["relative", "${workspaceFolder}/editors/code/"]
+      }
+    },
 
     {
       "label": "Build Server and Extension",
