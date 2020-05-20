@@ -244,7 +244,7 @@ fn bench_extend_recycle(b: &mut Bencher) {
         let tmp = std::mem::replace(&mut data, Vec::new());
         let mut to_extend = black_box(Vec::new());
         to_extend.extend(tmp.into_iter());
-        std::mem::replace(&mut data, black_box(to_extend));
+        data = black_box(to_extend);
     });
 
     black_box(data);
@@ -502,16 +502,13 @@ fn bench_in_place_recycle(b: &mut test::Bencher) {
 
     b.iter(|| {
         let tmp = std::mem::replace(&mut data, Vec::new());
-        std::mem::replace(
-            &mut data,
-            black_box(
-                tmp.into_iter()
-                    .enumerate()
-                    .map(|(idx, e)| idx.wrapping_add(e))
-                    .fuse()
-                    .peekable()
-                    .collect::<Vec<usize>>(),
-            ),
+        data = black_box(
+            tmp.into_iter()
+                .enumerate()
+                .map(|(idx, e)| idx.wrapping_add(e))
+                .fuse()
+                .peekable()
+                .collect::<Vec<usize>>(),
         );
     });
 }
@@ -532,7 +529,7 @@ fn bench_in_place_zip_recycle(b: &mut test::Bencher) {
             .map(|(i, (d, s))| d.wrapping_add(i as u8) ^ s)
             .collect::<Vec<_>>();
         assert_eq!(mangled.len(), 1000);
-        std::mem::replace(&mut data, black_box(mangled));
+        data = black_box(mangled);
     });
 }
 
