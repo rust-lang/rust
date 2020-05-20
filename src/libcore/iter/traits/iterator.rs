@@ -1697,8 +1697,8 @@ pub trait Iterator {
             mut f: impl FnMut(&T) -> bool + 'a,
             left: &'a mut B,
             right: &'a mut B,
-        ) -> impl FnMut(T) + 'a {
-            move |x| {
+        ) -> impl FnMut((), T) + 'a {
+            move |(), x| {
                 if f(&x) {
                     left.extend(Some(x));
                 } else {
@@ -1710,7 +1710,7 @@ pub trait Iterator {
         let mut left: B = Default::default();
         let mut right: B = Default::default();
 
-        self.for_each(extend(f, &mut left, &mut right));
+        self.fold((), extend(f, &mut left, &mut right));
 
         (left, right)
     }
@@ -1826,7 +1826,7 @@ pub trait Iterator {
     ///
     /// # Note to Implementors
     ///
-    /// Most of the other (forward) methods have default implementations in
+    /// Several of the other (forward) methods have default implementations in
     /// terms of this one, so try to implement this explicitly if it can
     /// do something better than the default `for` loop implementation.
     ///
@@ -1944,6 +1944,15 @@ pub trait Iterator {
     /// may not terminate for infinite iterators, even on traits for which a
     /// result is determinable in finite time.
     ///
+    /// # Note to Implementors
+    ///
+    /// Several of the other (forward) methods have default implementations in
+    /// terms of this one, so try to implement this explicitly if it can
+    /// do something better than the default `for` loop implementation.
+    ///
+    /// In particular, try to have this call `fold()` on the internal parts
+    /// from which this iterator is composed.
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -1992,17 +2001,16 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn fold<B, F>(mut self, init: B, f: F) -> B
+    fn fold<B, F>(mut self, init: B, mut f: F) -> B
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> B,
     {
-        #[inline]
-        fn ok<B, T>(mut f: impl FnMut(B, T) -> B) -> impl FnMut(B, T) -> Result<B, !> {
-            move |acc, x| Ok(f(acc, x))
+        let mut accum = init;
+        while let Some(x) = self.next() {
+            accum = f(accum, x);
         }
-
-        self.try_fold(init, ok(f)).unwrap()
+        accum
     }
 
     /// The same as [`fold()`](#method.fold), but uses the first element in the
@@ -2273,7 +2281,7 @@ pub trait Iterator {
         F: FnMut(&Self::Item) -> R,
         R: Try<Ok = bool, Error = E>,
     {
-        self.try_for_each(move |x| match f(&x).into_result() {
+        self.try_fold((), move |(), x| match f(&x).into_result() {
             Ok(false) => LoopState::Continue(()),
             Ok(true) => LoopState::Break(Ok(x)),
             Err(x) => LoopState::Break(Err(x)),
@@ -2665,8 +2673,8 @@ pub trait Iterator {
         fn extend<'a, A, B>(
             ts: &'a mut impl Extend<A>,
             us: &'a mut impl Extend<B>,
-        ) -> impl FnMut((A, B)) + 'a {
-            move |(t, u)| {
+        ) -> impl FnMut((), (A, B)) + 'a {
+            move |(), (t, u)| {
                 ts.extend(Some(t));
                 us.extend(Some(u));
             }
@@ -2675,7 +2683,7 @@ pub trait Iterator {
         let mut ts: FromA = Default::default();
         let mut us: FromB = Default::default();
 
-        self.for_each(extend(&mut ts, &mut us));
+        self.fold((), extend(&mut ts, &mut us));
 
         (ts, us)
     }

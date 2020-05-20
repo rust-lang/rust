@@ -1,17 +1,17 @@
 error[E0429]: `self` imports are only allowed within a { } list
-  --> $DIR/E0429.rs:1:13
+  --> $DIR/use-mod-6.rs:7:13
    |
-LL | use std::fmt::self;
+LL | use foo::bar::self as abc;
    |             ^^^^^^
    |
 help: consider importing the module directly
    |
-LL | use std::fmt;
+LL | use foo::bar as abc;
    |            --
 help: alternatively, use the multi-path `use` syntax to import `self`
    |
-LL | use std::fmt::{self};
-   |               ^    ^
+LL | use foo::bar::{self as abc};
+   |               ^           ^
 
 error: aborting due to previous error
 

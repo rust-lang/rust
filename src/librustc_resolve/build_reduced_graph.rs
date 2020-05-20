@@ -426,7 +426,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                             return;
                         }
 
-                        // Replace `use foo::self;` with `use foo;`
+                        // Replace `use foo::{ self };` with `use foo;`
                         source = module_path.pop().unwrap();
                         if rename.is_none() {
                             ident = source.ident;
@@ -435,10 +435,33 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 } else {
                     // Disallow `self`
                     if source.ident.name == kw::SelfLower {
+                        let parent = module_path.last();
+
+                        let span = match parent {
+                            // only `::self` from `use foo::self as bar`
+                            Some(seg) => seg.ident.span.shrink_to_hi().to(source.ident.span),
+                            None => source.ident.span,
+                        };
+                        let span_with_rename = match rename {
+                            // only `self as bar` from `use foo::self as bar`
+                            Some(rename) => source.ident.span.to(rename.span),
+                            None => source.ident.span,
+                        };
                         self.r.report_error(
-                            use_tree.span,
-                            ResolutionError::SelfImportsOnlyAllowedWithin,
+                            span,
+                            ResolutionError::SelfImportsOnlyAllowedWithin {
+                                root: parent.is_none(),
+                                span_with_rename,
+                            },
                         );
+
+                        // Error recovery: replace `use foo::self;` with `use foo;`
+                        if let Some(parent) = module_path.pop() {
+                            source = parent;
+                            if rename.is_none() {
+                                ident = source.ident;
+                            }
+                        }
                     }
 
                     // Disallow `use $crate;`
