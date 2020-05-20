@@ -17,7 +17,7 @@ use crate::ty;
 use crate::ty::subst::{InternalSubsts, Subst, SubstsRef};
 use crate::ty::util::{Discr, IntTypeExt};
 use rustc_ast::ast;
-use rustc_ast::node_id::{NodeId, NodeMap};
+use rustc_ast::node_id::NodeMap;
 use rustc_attr as attr;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -124,7 +124,7 @@ pub struct ResolverOutputs {
     pub extern_crate_map: NodeMap<CrateNum>,
     pub trait_map: FxHashMap<hir::HirId, Vec<hir::TraitCandidate<hir::HirId>>>,
     pub maybe_unused_trait_imports: FxHashSet<LocalDefId>,
-    pub maybe_unused_extern_crates: Vec<(NodeId, Span)>,
+    pub maybe_unused_extern_crates: Vec<(DefId, Span)>,
     pub export_map: ExportMap<hir::HirId>,
     pub glob_map: GlobMap,
     /// Extern prelude entries. The value is `true` if the entry was introduced
