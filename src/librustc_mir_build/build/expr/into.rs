@@ -365,7 +365,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     block,
                     source_info,
                     TerminatorKind::InlineAsm {
-                        template,
+                        template: template.into(),
                         operands,
                         options,
                         destination: if options.contains(InlineAsmOptions::NORETURN) {

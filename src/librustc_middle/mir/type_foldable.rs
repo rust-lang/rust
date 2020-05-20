@@ -78,9 +78,12 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                 FalseEdges { real_target, imaginary_target }
             }
             FalseUnwind { real_target, unwind } => FalseUnwind { real_target, unwind },
-            InlineAsm { template, ref operands, options, destination } => {
-                InlineAsm { template, operands: operands.fold_with(folder), options, destination }
-            }
+            InlineAsm { ref template, ref operands, options, destination } => InlineAsm {
+                template: template.clone(),
+                operands: operands.fold_with(folder),
+                options,
+                destination,
+            },
         };
         Terminator { source_info: self.source_info, kind }
     }

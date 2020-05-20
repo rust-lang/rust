@@ -1185,7 +1185,7 @@ pub enum TerminatorKind<'tcx> {
     /// inline assembly is allowed to diverge.
     InlineAsm {
         /// The template for the inline assembly, with placeholders.
-        template: &'tcx [InlineAsmTemplatePiece],
+        template: Cow<'tcx, [InlineAsmTemplatePiece]>,
 
         /// The operands for the inline assembly, as `Operand`s or `Place`s.
         operands: Vec<InlineAsmOperand<'tcx>>,

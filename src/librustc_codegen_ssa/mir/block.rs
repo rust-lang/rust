@@ -1034,7 +1034,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bug!("borrowck false edges in codegen")
             }
 
-            mir::TerminatorKind::InlineAsm { template, ref operands, options, destination } => {
+            mir::TerminatorKind::InlineAsm { ref template, ref operands, options, destination } => {
                 self.codegen_asm_terminator(
                     helper,
                     bx,
