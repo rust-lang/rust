@@ -331,6 +331,28 @@ fn handle(action: Action) {
 }
 ```
 
+## `fix_visibility`
+
+Makes inaccessible item public.
+
+```rust
+// BEFORE
+mod m {
+    fn frobnicate() {}
+}
+fn main() {
+    m::frobnicate┃() {}
+}
+
+// AFTER
+mod m {
+    pub(crate) fn frobnicate() {}
+}
+fn main() {
+    m::frobnicate() {}
+}
+```
+
 ## `flip_binexpr`
 
 Flips operands of a binary expression.
