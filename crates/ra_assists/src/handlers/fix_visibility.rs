@@ -25,7 +25,7 @@ use crate::{AssistContext, AssistId, Assists};
 // ->
 // ```
 // mod m {
-//     pub(crate) fn frobnicate() {}
+//     $0pub(crate) fn frobnicate() {}
 // }
 // fn main() {
 //     m::frobnicate() {}
@@ -62,10 +62,12 @@ fn add_vis_to_referenced_module_def(acc: &mut Assists, ctx: &AssistContext) -> O
         Some(name) => format!("Change visibility of {} to {}", name, missing_visibility),
     };
 
-    acc.add(AssistId("fix_visibility"), assist_label, target, |edit| {
-        edit.set_file(target_file);
-        edit.insert(offset, format!("{} ", missing_visibility));
-        edit.set_cursor(offset);
+    acc.add(AssistId("fix_visibility"), assist_label, target, |builder| {
+        builder.set_file(target_file);
+        match ctx.config.snippet_cap {
+            Some(cap) => builder.insert_snippet(cap, offset, format!("$0{} ", missing_visibility)),
+            None => builder.insert(offset, format!("{} ", missing_visibility)),
+        }
     })
 }
 
@@ -103,10 +105,12 @@ fn add_vis_to_referenced_record_field(acc: &mut Assists, ctx: &AssistContext) ->
     let assist_label =
         format!("Change visibility of {}.{} to {}", parent_name, target_name, missing_visibility);
 
-    acc.add(AssistId("fix_visibility"), assist_label, target, |edit| {
-        edit.set_file(target_file);
-        edit.insert(offset, format!("{} ", missing_visibility));
-        edit.set_cursor(offset)
+    acc.add(AssistId("fix_visibility"), assist_label, target, |builder| {
+        builder.set_file(target_file);
+        match ctx.config.snippet_cap {
+            Some(cap) => builder.insert_snippet(cap, offset, format!("$0{} ", missing_visibility)),
+            None => builder.insert(offset, format!("{} ", missing_visibility)),
+        }
     })
 }
 
@@ -196,7 +200,7 @@ mod tests {
             fix_visibility,
             r"mod foo { fn foo() {} }
               fn main() { foo::foo<|>() } ",
-            r"mod foo { <|>pub(crate) fn foo() {} }
+            r"mod foo { $0pub(crate) fn foo() {} }
               fn main() { foo::foo() } ",
         );
         check_assist_not_applicable(
@@ -212,7 +216,7 @@ mod tests {
             fix_visibility,
             r"mod foo { struct Foo; }
               fn main() { foo::Foo<|> } ",
-            r"mod foo { <|>pub(crate) struct Foo; }
+            r"mod foo { $0pub(crate) struct Foo; }
               fn main() { foo::Foo } ",
         );
         check_assist_not_applicable(
@@ -224,7 +228,7 @@ mod tests {
             fix_visibility,
             r"mod foo { enum Foo; }
               fn main() { foo::Foo<|> } ",
-            r"mod foo { <|>pub(crate) enum Foo; }
+            r"mod foo { $0pub(crate) enum Foo; }
               fn main() { foo::Foo } ",
         );
         check_assist_not_applicable(
@@ -236,7 +240,7 @@ mod tests {
             fix_visibility,
             r"mod foo { union Foo; }
               fn main() { foo::Foo<|> } ",
-            r"mod foo { <|>pub(crate) union Foo; }
+            r"mod foo { $0pub(crate) union Foo; }
               fn main() { foo::Foo } ",
         );
         check_assist_not_applicable(
@@ -258,7 +262,7 @@ mod tests {
               //- /foo.rs
               struct Foo;
               ",
-            r"<|>pub(crate) struct Foo;
+            r"$0pub(crate) struct Foo;
 
 ",
         );
@@ -270,7 +274,7 @@ mod tests {
             fix_visibility,
             r"mod foo { pub struct Foo { bar: (), } }
               fn main() { foo::Foo { <|>bar: () }; } ",
-            r"mod foo { pub struct Foo { <|>pub(crate) bar: (), } }
+            r"mod foo { pub struct Foo { $0pub(crate) bar: (), } }
               fn main() { foo::Foo { bar: () }; } ",
         );
         check_assist(
@@ -281,7 +285,7 @@ mod tests {
               //- /foo.rs
               pub struct Foo { bar: () }
               ",
-            r"pub struct Foo { <|>pub(crate) bar: () }
+            r"pub struct Foo { $0pub(crate) bar: () }
 
 ",
         );
@@ -307,7 +311,7 @@ mod tests {
             fix_visibility,
             r"mod foo { pub enum Foo { Bar { bar: () } } }
               fn main() { foo::Foo::Bar { <|>bar: () }; } ",
-            r"mod foo { pub enum Foo { Bar { <|>pub(crate) bar: () } } }
+            r"mod foo { pub enum Foo { Bar { $0pub(crate) bar: () } } }
               fn main() { foo::Foo::Bar { bar: () }; } ",
         );
         check_assist(
@@ -318,7 +322,7 @@ mod tests {
               //- /foo.rs
               pub enum Foo { Bar { bar: () } }
               ",
-            r"pub enum Foo { Bar { <|>pub(crate) bar: () } }
+            r"pub enum Foo { Bar { $0pub(crate) bar: () } }
 
 ",
         );
@@ -346,7 +350,7 @@ mod tests {
             fix_visibility,
             r"mod foo { pub union Foo { bar: (), } }
               fn main() { foo::Foo { <|>bar: () }; } ",
-            r"mod foo { pub union Foo { <|>pub(crate) bar: (), } }
+            r"mod foo { pub union Foo { $0pub(crate) bar: (), } }
               fn main() { foo::Foo { bar: () }; } ",
         );
         check_assist(
@@ -357,7 +361,7 @@ mod tests {
               //- /foo.rs
               pub union Foo { bar: () }
               ",
-            r"pub union Foo { <|>pub(crate) bar: () }
+            r"pub union Foo { $0pub(crate) bar: () }
 
 ",
         );
@@ -383,7 +387,7 @@ mod tests {
             fix_visibility,
             r"mod foo { const FOO: () = (); }
               fn main() { foo::FOO<|> } ",
-            r"mod foo { <|>pub(crate) const FOO: () = (); }
+            r"mod foo { $0pub(crate) const FOO: () = (); }
               fn main() { foo::FOO } ",
         );
         check_assist_not_applicable(
@@ -399,7 +403,7 @@ mod tests {
             fix_visibility,
             r"mod foo { static FOO: () = (); }
               fn main() { foo::FOO<|> } ",
-            r"mod foo { <|>pub(crate) static FOO: () = (); }
+            r"mod foo { $0pub(crate) static FOO: () = (); }
               fn main() { foo::FOO } ",
         );
         check_assist_not_applicable(
@@ -415,7 +419,7 @@ mod tests {
             fix_visibility,
             r"mod foo { trait Foo { fn foo(&self) {} } }
               fn main() { let x: &dyn foo::<|>Foo; } ",
-            r"mod foo { <|>pub(crate) trait Foo { fn foo(&self) {} } }
+            r"mod foo { $0pub(crate) trait Foo { fn foo(&self) {} } }
               fn main() { let x: &dyn foo::Foo; } ",
         );
         check_assist_not_applicable(
@@ -431,7 +435,7 @@ mod tests {
             fix_visibility,
             r"mod foo { type Foo = (); }
               fn main() { let x: foo::Foo<|>; } ",
-            r"mod foo { <|>pub(crate) type Foo = (); }
+            r"mod foo { $0pub(crate) type Foo = (); }
               fn main() { let x: foo::Foo; } ",
         );
         check_assist_not_applicable(
@@ -447,7 +451,7 @@ mod tests {
             fix_visibility,
             r"mod foo { mod bar { fn bar() {} } }
               fn main() { foo::bar<|>::bar(); } ",
-            r"mod foo { <|>pub(crate) mod bar { fn bar() {} } }
+            r"mod foo { $0pub(crate) mod bar { fn bar() {} } }
               fn main() { foo::bar::bar(); } ",
         );
 
@@ -463,7 +467,7 @@ mod tests {
                 pub fn baz() {}
             }
             ",
-            r"<|>pub(crate) mod bar {
+            r"$0pub(crate) mod bar {
     pub fn baz() {}
 }
 
@@ -493,7 +497,7 @@ mod tests {
             pub fn baz() {}
             }
             ",
-            r"<|>pub(crate) mod bar;
+            r"$0pub(crate) mod bar;
 ",
         );
     }
@@ -510,7 +514,7 @@ mod tests {
               mod bar {
                   pub fn baz() {}
               }",
-            r"<|>pub(crate) mod bar {
+            r"$0pub(crate) mod bar {
     pub fn baz() {}
 }
 ",
@@ -525,7 +529,7 @@ mod tests {
               foo::Bar<|>
               //- /lib.rs crate:foo
               struct Bar;",
-            r"<|>pub struct Bar;
+            r"$0pub struct Bar;
 ",
         )
     }
@@ -545,7 +549,7 @@ mod tests {
             ",
             r"
             mod foo {
-                <|>pub(crate) use bar::Baz;
+                $0pub(crate) use bar::Baz;
                 mod bar { pub(super) struct Baz; }
             }
             foo::Baz

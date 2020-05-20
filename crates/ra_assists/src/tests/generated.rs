@@ -358,7 +358,7 @@ fn main() {
 "#####,
         r#####"
 mod m {
-    pub(crate) fn frobnicate() {}
+    $0pub(crate) fn frobnicate() {}
 }
 fn main() {
     m::frobnicate() {}
