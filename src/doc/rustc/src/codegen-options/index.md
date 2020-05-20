@@ -21,7 +21,7 @@ specification.
 
 Supported values for this option are:
 
-<!-- - `tiny` - Tiny code model. -->
+- `tiny` - Tiny code model.
 - `small` - Small code model. This is the default model for majority of supported targets.
 - `kernel` - Kernel code model.
 - `medium` - Medium code model.
