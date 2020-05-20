@@ -800,12 +800,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let hir::ExprKind::Lit(lit) = &expr.kind { lit.node.is_suffixed() } else { false }
         };
 
-        let is_const_context = self.tcx.hir().is_const_context(expr.hir_id);
+        let in_const_context = self.tcx.hir().is_inside_const_context(expr.hir_id);
         let suggest_to_change_suffix_or_into =
             |err: &mut DiagnosticBuilder<'_>, is_fallible: bool| {
                 let msg = if literal_is_ty_suffixed(expr) {
                     &lit_msg
-                } else if is_const_context {
+                } else if in_const_context {
                     // Do not recommend `into` or `try_into` in const contexts.
                     return;
                 } else if is_fallible {

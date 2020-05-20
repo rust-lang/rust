@@ -586,7 +586,7 @@ impl<'hir> Map<'hir> {
 
     /// Whether the expression pointed at by `hir_id` belongs to a `const` evaluation context.
     /// Used exclusively for diagnostics, to avoid suggestion function calls.
-    pub fn is_const_context(&self, hir_id: HirId) -> bool {
+    pub fn is_inside_const_context(&self, hir_id: HirId) -> bool {
         self.body_const_context(self.local_def_id(self.enclosing_body_owner(hir_id))).is_some()
     }
 
