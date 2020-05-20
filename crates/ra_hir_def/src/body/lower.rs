@@ -15,7 +15,7 @@ use ra_syntax::{
     },
     AstNode, AstPtr,
 };
-use test_utils::tested_by;
+use test_utils::mark;
 
 use crate::{
     adt::StructKind,
@@ -226,7 +226,7 @@ impl ExprCollector<'_> {
                         None => self.collect_expr_opt(condition.expr()),
                         // if let -- desugar to match
                         Some(pat) => {
-                            tested_by!(infer_resolve_while_let);
+                            mark::hit!(infer_resolve_while_let);
                             let pat = self.collect_pat(pat);
                             let match_expr = self.collect_expr_opt(condition.expr());
                             let placeholder_pat = self.missing_pat();

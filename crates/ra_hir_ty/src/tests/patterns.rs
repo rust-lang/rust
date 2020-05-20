@@ -1,5 +1,5 @@
 use insta::assert_snapshot;
-use test_utils::covers;
+use test_utils::mark;
 
 use super::{infer, infer_with_mismatches};
 
@@ -197,7 +197,7 @@ fn test() {
 
 #[test]
 fn infer_pattern_match_ergonomics_ref() {
-    covers!(match_ergonomics_ref);
+    mark::check!(match_ergonomics_ref);
     assert_snapshot!(
         infer(r#"
 fn test() {

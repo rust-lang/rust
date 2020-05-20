@@ -469,7 +469,7 @@ fn iterate_inherent_methods<T>(
                 // already happens in `is_valid_candidate` above; if not, we
                 // check it here
                 if receiver_ty.is_none() && inherent_impl_substs(db, impl_def, self_ty).is_none() {
-                    test_utils::tested_by!(impl_self_type_match_without_receiver);
+                    test_utils::mark::hit!(impl_self_type_match_without_receiver);
                     continue;
                 }
                 if let Some(result) = callback(&self_ty.value, item) {

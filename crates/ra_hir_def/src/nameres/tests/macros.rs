@@ -212,7 +212,7 @@ fn unexpanded_macro_should_expand_by_fixedpoint_loop() {
 
 #[test]
 fn macro_rules_from_other_crates_are_visible_with_macro_use() {
-    covers!(macro_rules_from_other_crates_are_visible_with_macro_use);
+    mark::check!(macro_rules_from_other_crates_are_visible_with_macro_use);
     let map = def_map(
         "
         //- /main.rs crate:main deps:foo
@@ -262,7 +262,7 @@ fn macro_rules_from_other_crates_are_visible_with_macro_use() {
 
 #[test]
 fn prelude_is_macro_use() {
-    covers!(prelude_is_macro_use);
+    mark::check!(prelude_is_macro_use);
     let map = def_map(
         "
         //- /main.rs crate:main deps:foo
@@ -544,8 +544,7 @@ fn path_qualified_macros() {
 
 #[test]
 fn macro_dollar_crate_is_correct_in_item() {
-    covers!(macro_dollar_crate_self);
-    covers!(macro_dollar_crate_other);
+    mark::check!(macro_dollar_crate_self);
     let map = def_map(
         "
         //- /main.rs crate:main deps:foo
@@ -603,7 +602,7 @@ fn macro_dollar_crate_is_correct_in_item() {
 
 #[test]
 fn macro_dollar_crate_is_correct_in_indirect_deps() {
-    covers!(macro_dollar_crate_other);
+    mark::check!(macro_dollar_crate_other);
     // From std
     let map = def_map(
         r#"

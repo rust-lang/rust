@@ -7,8 +7,6 @@
 //! * marks (see the eponymous module).
 
 #[macro_use]
-pub mod marks;
-#[macro_use]
 pub mod mark;
 
 use std::{

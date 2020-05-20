@@ -152,7 +152,7 @@ fn glob_privacy_2() {
 
 #[test]
 fn glob_across_crates() {
-    covers!(glob_across_crates);
+    mark::check!(glob_across_crates);
     let map = def_map(
         r"
         //- /main.rs crate:main deps:test_crate
@@ -171,7 +171,6 @@ fn glob_across_crates() {
 
 #[test]
 fn glob_privacy_across_crates() {
-    covers!(glob_across_crates);
     let map = def_map(
         r"
         //- /main.rs crate:main deps:test_crate
@@ -191,7 +190,7 @@ fn glob_privacy_across_crates() {
 
 #[test]
 fn glob_enum() {
-    covers!(glob_enum);
+    mark::check!(glob_enum);
     let map = def_map(
         "
         //- /lib.rs
@@ -212,7 +211,7 @@ fn glob_enum() {
 
 #[test]
 fn glob_enum_group() {
-    covers!(glob_enum_group);
+    mark::check!(glob_enum_group);
     let map = def_map(
         r"
         //- /lib.rs

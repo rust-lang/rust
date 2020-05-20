@@ -7,7 +7,7 @@ use ra_syntax::{
     SyntaxNode, TextSize,
 };
 use stdx::format_to;
-use test_utils::tested_by;
+use test_utils::mark;
 
 use crate::{AssistContext, AssistId, Assists};
 
@@ -33,7 +33,7 @@ pub(crate) fn introduce_variable(acc: &mut Assists, ctx: &AssistContext) -> Opti
     }
     let node = ctx.covering_element();
     if node.kind() == COMMENT {
-        tested_by!(introduce_var_in_comment_is_not_applicable);
+        mark::hit!(introduce_var_in_comment_is_not_applicable);
         return None;
     }
     let expr = node.ancestors().find_map(valid_target_expr)?;
@@ -61,7 +61,7 @@ pub(crate) fn introduce_variable(acc: &mut Assists, ctx: &AssistContext) -> Opti
             false
         };
         if is_full_stmt {
-            tested_by!(test_introduce_var_expr_stmt);
+            mark::hit!(test_introduce_var_expr_stmt);
             if full_stmt.unwrap().semicolon_token().is_none() {
                 buf.push_str(";");
             }
@@ -113,7 +113,7 @@ fn anchor_stmt(expr: ast::Expr) -> Option<(SyntaxNode, bool)> {
     expr.syntax().ancestors().find_map(|node| {
         if let Some(expr) = node.parent().and_then(ast::BlockExpr::cast).and_then(|it| it.expr()) {
             if expr.syntax() == &node {
-                tested_by!(test_introduce_var_last_expr);
+                mark::hit!(test_introduce_var_last_expr);
                 return Some((node, false));
             }
         }
@@ -134,7 +134,7 @@ fn anchor_stmt(expr: ast::Expr) -> Option<(SyntaxNode, bool)> {
 
 #[cfg(test)]
 mod tests {
-    use test_utils::covers;
+    use test_utils::mark;
 
     use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
 
@@ -158,13 +158,13 @@ fn foo() {
 
     #[test]
     fn introduce_var_in_comment_is_not_applicable() {
-        covers!(introduce_var_in_comment_is_not_applicable);
+        mark::check!(introduce_var_in_comment_is_not_applicable);
         check_assist_not_applicable(introduce_variable, "fn main() { 1 + /* <|>comment<|> */ 1; }");
     }
 
     #[test]
     fn test_introduce_var_expr_stmt() {
-        covers!(test_introduce_var_expr_stmt);
+        mark::check!(test_introduce_var_expr_stmt);
         check_assist(
             introduce_variable,
             "
@@ -209,7 +209,7 @@ fn foo() {
 
     #[test]
     fn test_introduce_var_last_expr() {
-        covers!(test_introduce_var_last_expr);
+        mark::check!(test_introduce_var_last_expr);
         check_assist(
             introduce_variable,
             "

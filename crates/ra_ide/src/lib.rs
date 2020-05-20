@@ -43,8 +43,6 @@ mod expand_macro;
 mod ssr;
 
 #[cfg(test)]
-mod marks;
-#[cfg(test)]
 mod test_utils;
 
 use std::sync::Arc;

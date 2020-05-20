@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use hir_expand::name::{known, AsName, Name};
 use ra_prof::profile;
-use test_utils::tested_by;
+use test_utils::mark;
 
 use crate::{
     db::DefDatabase,
@@ -164,17 +164,19 @@ fn find_path_inner(
 
 fn select_best_path(old_path: ModPath, new_path: ModPath, prefer_no_std: bool) -> ModPath {
     if old_path.starts_with_std() && new_path.can_start_with_std() {
-        tested_by!(prefer_std_paths);
         if prefer_no_std {
+            mark::hit!(prefer_no_std_paths);
             new_path
         } else {
+            mark::hit!(prefer_std_paths);
             old_path
         }
     } else if new_path.starts_with_std() && old_path.can_start_with_std() {
-        tested_by!(prefer_std_paths);
         if prefer_no_std {
+            mark::hit!(prefer_no_std_paths);
             old_path
         } else {
+            mark::hit!(prefer_std_paths);
             new_path
         }
     } else if new_path.len() < old_path.len() {
@@ -251,12 +253,14 @@ pub(crate) fn importable_locations_of_query(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::test_db::TestDB;
     use hir_expand::hygiene::Hygiene;
     use ra_db::fixture::WithFixture;
     use ra_syntax::ast::AstNode;
-    use test_utils::covers;
+    use test_utils::mark;
+
+    use crate::test_db::TestDB;
+
+    use super::*;
 
     /// `code` needs to contain a cursor marker; checks that `find_path` for the
     /// item the `path` refers to returns that same path when called from the
@@ -511,7 +515,7 @@ mod tests {
 
     #[test]
     fn prefer_std_paths_over_alloc() {
-        covers!(prefer_std_paths);
+        mark::check!(prefer_std_paths);
         let code = r#"
         //- /main.rs crate:main deps:alloc,std
         <|>
@@ -530,32 +534,8 @@ mod tests {
     }
 
     #[test]
-    fn prefer_alloc_paths_over_std() {
-        covers!(prefer_std_paths);
-        let code = r#"
-        //- /main.rs crate:main deps:alloc,std
-        #![no_std]
-
-        <|>
-
-        //- /std.rs crate:std deps:alloc
-
-        pub mod sync {
-            pub use alloc::sync::Arc;
-        }
-
-        //- /zzz.rs crate:alloc
-
-        pub mod sync {
-            pub struct Arc;
-        }
-        "#;
-        check_found_path(code, "alloc::sync::Arc");
-    }
-
-    #[test]
     fn prefer_core_paths_over_std() {
-        covers!(prefer_std_paths);
+        mark::check!(prefer_no_std_paths);
         let code = r#"
         //- /main.rs crate:main deps:core,std
         #![no_std]
@@ -575,6 +555,29 @@ mod tests {
         }
         "#;
         check_found_path(code, "core::fmt::Error");
+    }
+
+    #[test]
+    fn prefer_alloc_paths_over_std() {
+        let code = r#"
+        //- /main.rs crate:main deps:alloc,std
+        #![no_std]
+
+        <|>
+
+        //- /std.rs crate:std deps:alloc
+
+        pub mod sync {
+            pub use alloc::sync::Arc;
+        }
+
+        //- /zzz.rs crate:alloc
+
+        pub mod sync {
+            pub struct Arc;
+        }
+        "#;
+        check_found_path(code, "alloc::sync::Arc");
     }
 
     #[test]

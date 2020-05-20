@@ -7,7 +7,7 @@ use ra_syntax::{
     algo::find_node_at_offset,
     ast::{self, AstNode},
 };
-use test_utils::tested_by;
+use test_utils::mark;
 
 use crate::NavigationTarget;
 
@@ -25,7 +25,7 @@ pub(crate) fn parent_module(db: &RootDatabase, position: FilePosition) -> Vec<Na
             .item_list()
             .map_or(false, |it| it.syntax().text_range().contains_inclusive(position.offset))
         {
-            tested_by!(test_resolve_parent_module_on_module_decl);
+            mark::hit!(test_resolve_parent_module_on_module_decl);
             module = m.syntax().ancestors().skip(1).find_map(ast::Module::cast);
         }
     }
@@ -57,7 +57,7 @@ pub(crate) fn crate_for(db: &RootDatabase, file_id: FileId) -> Vec<CrateId> {
 mod tests {
     use ra_cfg::CfgOptions;
     use ra_db::Env;
-    use test_utils::covers;
+    use test_utils::mark;
 
     use crate::{
         mock_analysis::{analysis_and_position, MockAnalysis},
@@ -81,7 +81,7 @@ mod tests {
 
     #[test]
     fn test_resolve_parent_module_on_module_decl() {
-        covers!(test_resolve_parent_module_on_module_decl);
+        mark::check!(test_resolve_parent_module_on_module_decl);
         let (analysis, pos) = analysis_and_position(
             "
             //- /lib.rs

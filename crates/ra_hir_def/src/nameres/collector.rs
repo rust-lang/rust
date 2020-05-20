@@ -14,7 +14,7 @@ use ra_cfg::CfgOptions;
 use ra_db::{CrateId, FileId, ProcMacroId};
 use ra_syntax::ast;
 use rustc_hash::FxHashMap;
-use test_utils::tested_by;
+use test_utils::mark;
 
 use crate::{
     attr::Attrs,
@@ -302,7 +302,7 @@ impl DefCollector<'_> {
         );
 
         if let Some(ModuleDefId::ModuleId(m)) = res.take_types() {
-            tested_by!(macro_rules_from_other_crates_are_visible_with_macro_use);
+            mark::hit!(macro_rules_from_other_crates_are_visible_with_macro_use);
             self.import_all_macros_exported(current_module_id, m.krate);
         }
     }
@@ -412,10 +412,10 @@ impl DefCollector<'_> {
             match def.take_types() {
                 Some(ModuleDefId::ModuleId(m)) => {
                     if import.is_prelude {
-                        tested_by!(std_prelude);
+                        mark::hit!(std_prelude);
                         self.def_map.prelude = Some(m);
                     } else if m.krate != self.def_map.krate {
-                        tested_by!(glob_across_crates);
+                        mark::hit!(glob_across_crates);
                         // glob import from other crate => we can just import everything once
                         let item_map = self.db.crate_def_map(m.krate);
                         let scope = &item_map[m.local_id].scope;
@@ -461,7 +461,7 @@ impl DefCollector<'_> {
                     }
                 }
                 Some(ModuleDefId::AdtId(AdtId::EnumId(e))) => {
-                    tested_by!(glob_enum);
+                    mark::hit!(glob_enum);
                     // glob import from enum => just import all the variants
 
                     // XXX: urgh, so this works by accident! Here, we look at
@@ -510,7 +510,7 @@ impl DefCollector<'_> {
 
                     self.update(module_id, &[(name, def)], vis);
                 }
-                None => tested_by!(bogus_paths),
+                None => mark::hit!(bogus_paths),
             }
         }
     }
@@ -683,7 +683,7 @@ impl ModCollector<'_, '_> {
         // Prelude module is always considered to be `#[macro_use]`.
         if let Some(prelude_module) = self.def_collector.def_map.prelude {
             if prelude_module.krate != self.def_collector.def_map.krate {
-                tested_by!(prelude_is_macro_use);
+                mark::hit!(prelude_is_macro_use);
                 self.def_collector.import_all_macros_exported(self.module_id, prelude_module.krate);
             }
         }

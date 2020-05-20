@@ -12,7 +12,6 @@ macro_rules! eprintln {
 
 mod assist_config;
 mod assist_context;
-mod marks;
 #[cfg(test)]
 mod tests;
 pub mod utils;

@@ -42,7 +42,6 @@ pub mod expr;
 mod tests;
 #[cfg(test)]
 mod test_db;
-mod marks;
 mod _match;
 
 use std::ops::Deref;
