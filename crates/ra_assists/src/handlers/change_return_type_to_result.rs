@@ -19,23 +19,21 @@ use crate::{AssistContext, AssistId, Assists};
 // fn foo() -> Result<i32, > { Ok(42i32) }
 // ```
 pub(crate) fn change_return_type_to_result(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let fn_def = ctx.find_node_at_offset::<ast::FnDef>()?;
-    let ret_type = &fn_def.ret_type()?.type_ref()?;
-    if ret_type.syntax().text().to_string().starts_with("Result<") {
+    let ret_type = ctx.find_node_at_offset::<ast::RetType>()?;
+    // FIXME: extend to lambdas as well
+    let fn_def = ret_type.syntax().parent().and_then(ast::FnDef::cast)?;
+
+    let type_ref = &ret_type.type_ref()?;
+    if type_ref.syntax().text().to_string().starts_with("Result<") {
         return None;
     }
 
     let block_expr = &fn_def.body()?;
-    let cursor_in_ret_type =
-        fn_def.ret_type()?.syntax().text_range().contains_range(ctx.frange.range);
-    if !cursor_in_ret_type {
-        return None;
-    }
 
     acc.add(
         AssistId("change_return_type_to_result"),
         "Change return type to Result",
-        ret_type.syntax().text_range(),
+        type_ref.syntax().text_range(),
         |edit| {
             let mut tail_return_expr_collector = TailReturnCollector::new();
             tail_return_expr_collector.collect_jump_exprs(block_expr, false);
@@ -44,10 +42,10 @@ pub(crate) fn change_return_type_to_result(acc: &mut Assists, ctx: &AssistContex
             for ret_expr_arg in tail_return_expr_collector.exprs_to_wrap {
                 edit.replace_node_and_indent(&ret_expr_arg, format!("Ok({})", ret_expr_arg));
             }
-            edit.replace_node_and_indent(ret_type.syntax(), format!("Result<{}, >", ret_type));
+            edit.replace_node_and_indent(type_ref.syntax(), format!("Result<{}, >", type_ref));
 
-            if let Some(node_start) = result_insertion_offset(&ret_type) {
-                edit.set_cursor(node_start + TextSize::of(&format!("Result<{}, ", ret_type)));
+            if let Some(node_start) = result_insertion_offset(&type_ref) {
+                edit.set_cursor(node_start + TextSize::of(&format!("Result<{}, ", type_ref)));
             }
         },
     )
