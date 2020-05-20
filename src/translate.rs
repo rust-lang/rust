@@ -362,8 +362,8 @@ impl<'a, 'tcx> TranslationContext<'a, 'tcx> {
         predicate: Predicate<'tcx>,
     ) -> Option<Predicate<'tcx>> {
         use rustc_middle::ty::{
-            Binder, /*EquatePredicate,*/ OutlivesPredicate, ProjectionPredicate, ProjectionTy,
-            SubtypePredicate, TraitPredicate,
+            Binder, OutlivesPredicate, ProjectionPredicate, ProjectionTy, SubtypePredicate,
+            TraitPredicate,
         };
 
         Some(match predicate {
@@ -386,13 +386,6 @@ impl<'a, 'tcx> TranslationContext<'a, 'tcx> {
                 ),
                 constness,
             ),
-            /*Predicate::Equate(equate_predicate) => {
-                Predicate::Equate(equate_predicate.map_bound(|e_pred| {
-                    let l = self.translate(index_map, &e_pred.0);
-                    let r = self.translate(index_map, &e_pred.1);
-                    EquatePredicate(l, r)
-                }))
-            },*/
             Predicate::RegionOutlives(region_outlives_predicate) => {
                 Predicate::RegionOutlives(region_outlives_predicate.map_bound(|r_pred| {
                     let l = self.translate_region(r_pred.0);
@@ -451,6 +444,10 @@ impl<'a, 'tcx> TranslationContext<'a, 'tcx> {
                     return None;
                 }
             }
+            Predicate::ConstEquate(c1, c2) => Predicate::ConstEquate(
+                self.translate(index_map, &c1),
+                self.translate(index_map, &c2),
+            ),
         })
     }
 
