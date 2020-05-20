@@ -2977,12 +2977,12 @@ impl<T> Drain<'_, T> {
     }
 
     /// Makes room for inserting more elements before the tail.
-    unsafe fn move_tail(&mut self, extra_capacity: usize) {
+    unsafe fn move_tail(&mut self, additional: usize) {
         let vec = self.vec.as_mut();
-        let used_capacity = self.tail_start + self.tail_len;
-        vec.buf.reserve(used_capacity, extra_capacity);
+        let len = self.tail_start + self.tail_len;
+        vec.buf.reserve(len, additional);
 
-        let new_tail_start = self.tail_start + extra_capacity;
+        let new_tail_start = self.tail_start + additional;
         let src = vec.as_ptr().add(self.tail_start);
         let dst = vec.as_mut_ptr().add(new_tail_start);
         ptr::copy(src, dst, self.tail_len);
