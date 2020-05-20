@@ -22,8 +22,8 @@ where **only** the `rust-analyzer` extension being debugged is enabled.
 
 ## Debug TypeScript VSCode extension
 
-- `Run Extension` - runs the extension with the globally installed `rust-analyzer` binary.
-- `Run Extension (Dev Server)` - runs extension with the locally built LSP server (`target/debug/rust-analyzer`).
+- `Run Installed Extension` - runs the extension with the globally installed `rust-analyzer` binary.
+- `Run Extension (Debug Build)` - runs extension with the locally built LSP server (`target/debug/rust-analyzer`).
 
 TypeScript debugging is configured to watch your source edits and recompile.
 To apply changes to an already running debug process, press <kbd>Ctrl+Shift+P</kbd> and run the following command in your `[Extension Development Host]`
@@ -47,7 +47,7 @@ To apply changes to an already running debug process, press <kbd>Ctrl+Shift+P</k
     debug = 2
   ```
 
-- Select `Run Extension (Dev Server)` to run your locally built `target/debug/rust-analyzer`.
+- Select `Run Extension (Debug Build)` to run your locally built `target/debug/rust-analyzer`.
 
 - In the original VSCode window once again select the `Attach To Server` debug configuration.
 
