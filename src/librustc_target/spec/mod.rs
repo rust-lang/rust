@@ -322,7 +322,7 @@ impl FromStr for CodeModel {
 
     fn from_str(s: &str) -> Result<CodeModel, ()> {
         Ok(match s {
-            // "tiny" => CodeModel::Tiny, // Not exposed to users right now.
+            "tiny" => CodeModel::Tiny,
             "small" => CodeModel::Small,
             "kernel" => CodeModel::Kernel,
             "medium" => CodeModel::Medium,
