@@ -34,18 +34,22 @@ pub(crate) fn change_return_type_to_result(acc: &mut Assists, ctx: &AssistContex
         AssistId("change_return_type_to_result"),
         "Change return type to Result",
         type_ref.syntax().text_range(),
-        |edit| {
+        |builder| {
             let mut tail_return_expr_collector = TailReturnCollector::new();
             tail_return_expr_collector.collect_jump_exprs(block_expr, false);
             tail_return_expr_collector.collect_tail_exprs(block_expr);
 
             for ret_expr_arg in tail_return_expr_collector.exprs_to_wrap {
-                edit.replace_node_and_indent(&ret_expr_arg, format!("Ok({})", ret_expr_arg));
+                builder.replace_node_and_indent(&ret_expr_arg, format!("Ok({})", ret_expr_arg));
             }
-            edit.replace_node_and_indent(type_ref.syntax(), format!("Result<{}, >", type_ref));
+            match ctx.config.snippet_cap {
+                Some(_) => {}
+                None => {}
+            }
+            builder.replace_node_and_indent(type_ref.syntax(), format!("Result<{}, >", type_ref));
 
             if let Some(node_start) = result_insertion_offset(&type_ref) {
-                edit.set_cursor(node_start + TextSize::of(&format!("Result<{}, ", type_ref)));
+                builder.set_cursor(node_start + TextSize::of(&format!("Result<{}, ", type_ref)));
             }
         },
     )
