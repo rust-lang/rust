@@ -5,7 +5,7 @@
 
 use hir_expand::MacroDefId;
 
-use crate::{visibility::Visibility, ModuleDefId};
+use crate::{item_scope::ItemInNs, visibility::Visibility, ModuleDefId};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct PerNs {
@@ -83,5 +83,13 @@ impl PerNs {
             values: self.values.or(other.values),
             macros: self.macros.or(other.macros),
         }
+    }
+
+    pub fn iter_items(self) -> impl Iterator<Item = ItemInNs> {
+        self.types
+            .map(|it| ItemInNs::Types(it.0))
+            .into_iter()
+            .chain(self.values.map(|it| ItemInNs::Values(it.0)).into_iter())
+            .chain(self.macros.map(|it| ItemInNs::Macros(it.0)).into_iter())
     }
 }

@@ -14,6 +14,7 @@ use crate::{
     docs::Documentation,
     find_path,
     generics::GenericParams,
+    import_map::ImportMap,
     item_scope::ItemInNs,
     lang_item::{LangItemTarget, LangItems},
     nameres::{raw::RawItems, CrateDefMap},
@@ -122,6 +123,9 @@ pub trait DefDatabase: InternDatabase + AstDatabase + Upcast<dyn AstDatabase> {
 
     #[salsa::invoke(find_path::find_path_inner_query)]
     fn find_path_inner(&self, item: ItemInNs, from: ModuleId, max_len: usize) -> Option<ModPath>;
+
+    #[salsa::invoke(ImportMap::import_map_query)]
+    fn import_map(&self, krate: CrateId) -> Arc<ImportMap>;
 }
 
 fn crate_def_map_wait(db: &impl DefDatabase, krate: CrateId) -> Arc<CrateDefMap> {

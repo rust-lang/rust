@@ -76,6 +76,19 @@ impl ModPath {
         }
     }
 
+    /// Returns the number of segments in the path (counting special segments like `$crate` and
+    /// `super`).
+    pub fn len(&self) -> usize {
+        self.segments.len()
+            + match self.kind {
+                PathKind::Plain => 0,
+                PathKind::Super(i) => i as usize,
+                PathKind::Crate => 1,
+                PathKind::Abs => 0,
+                PathKind::DollarCrate(_) => 1,
+            }
+    }
+
     pub fn is_ident(&self) -> bool {
         self.kind == PathKind::Plain && self.segments.len() == 1
     }

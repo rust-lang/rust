@@ -36,17 +36,6 @@ impl ModPath {
         let first_segment = self.segments.first();
         first_segment == Some(&known::alloc) || first_segment == Some(&known::core)
     }
-
-    fn len(&self) -> usize {
-        self.segments.len()
-            + match self.kind {
-                PathKind::Plain => 0,
-                PathKind::Super(i) => i as usize,
-                PathKind::Crate => 1,
-                PathKind::Abs => 0,
-                PathKind::DollarCrate(_) => 1,
-            }
-    }
 }
 
 pub(crate) fn find_path_inner_query(
@@ -192,9 +181,17 @@ fn find_importable_locations(
 ) -> Vec<(ModuleId, Name)> {
     let crate_graph = db.crate_graph();
     let mut result = Vec::new();
+
     // We only look in the crate from which we are importing, and the direct
     // dependencies. We cannot refer to names from transitive dependencies
     // directly (only through reexports in direct dependencies).
+
+    // For the crate from which we're importing, we have to check whether any
+    // module visible to `from` exports the item we're looking for.
+    // For dependencies of the crate only `pub` items reachable through `pub`
+    // modules from the crate root are relevant. For that we precompute an
+    // import map that tells us the shortest path to any importable item with a
+    // single lookup.
     for krate in Some(from.krate)
         .into_iter()
         .chain(crate_graph[from.krate].dependencies.iter().map(|dep| dep.crate_id))

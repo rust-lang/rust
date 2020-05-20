@@ -43,6 +43,7 @@ pub mod child_by_source;
 
 pub mod visibility;
 pub mod find_path;
+pub mod import_map;
 
 #[cfg(test)]
 mod test_db;
