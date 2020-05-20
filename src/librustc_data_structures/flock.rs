@@ -7,13 +7,13 @@
 #![allow(non_camel_case_types)]
 #![allow(nonstandard_style)]
 
+use std::fs::{File, OpenOptions};
 use std::io;
 use std::path::Path;
 
 cfg_if! {
-    if #[cfg(unix)] {
+    if #[cfg(target_os = "linux")] {
         use std::os::unix::prelude::*;
-        use std::fs::{File, OpenOptions};
 
         #[derive(Debug)]
         pub struct Lock {
@@ -27,11 +27,11 @@ cfg_if! {
                        exclusive: bool)
                        -> io::Result<Lock> {
                 let file = OpenOptions::new()
-                           .read(true)
-                           .write(true)
-                           .create(create)
-                           .mode(libc::S_IRWXU as u32)
-                           .open(p)?;
+                    .read(true)
+                    .write(true)
+                    .create(create)
+                    .mode(libc::S_IRWXU as u32)
+                    .open(p)?;
 
                 let mut operation = if exclusive {
                     libc::LOCK_EX
@@ -44,8 +44,7 @@ cfg_if! {
 
                 let ret = unsafe { libc::flock(file.as_raw_fd(), operation) };
                 if ret == -1 {
-                    let err = io::Error::last_os_error();
-                    Err(err)
+                    Err(io::Error::last_os_error())
                 } else {
                     Ok(Lock { _file: file })
                 }
@@ -55,10 +54,68 @@ cfg_if! {
         // Note that we don't need a Drop impl to execute `flock(fd, LOCK_UN)`. Lock acquired by
         // `flock` is associated with the file descriptor and closing the file release it
         // automatically.
+    } else if #[cfg(unix)] {
+        use std::mem;
+        use std::os::unix::prelude::*;
+
+        #[derive(Debug)]
+        pub struct Lock {
+            file: File,
+        }
+
+        impl Lock {
+            pub fn new(p: &Path,
+                       wait: bool,
+                       create: bool,
+                       exclusive: bool)
+                       -> io::Result<Lock> {
+                let file = OpenOptions::new()
+                    .read(true)
+                    .write(true)
+                    .create(create)
+                    .mode(libc::S_IRWXU as u32)
+                    .open(p)?;
+
+                let lock_type = if exclusive {
+                    libc::F_WRLCK
+                } else {
+                    libc::F_RDLCK
+                };
+
+                let mut flock: libc::flock = unsafe { mem::zeroed() };
+                flock.l_type = lock_type as libc::c_short;
+                flock.l_whence = libc::SEEK_SET as libc::c_short;
+                flock.l_start = 0;
+                flock.l_len = 0;
+
+                let cmd = if wait { libc::F_SETLKW } else { libc::F_SETLK };
+                let ret = unsafe {
+                    libc::fcntl(file.as_raw_fd(), cmd, &flock)
+                };
+                if ret == -1 {
+                    Err(io::Error::last_os_error())
+                } else {
+                    Ok(Lock { file })
+                }
+            }
+        }
+
+        impl Drop for Lock {
+            fn drop(&mut self) {
+                let mut flock: libc::flock = unsafe { mem::zeroed() };
+                flock.l_type = libc::F_UNLCK as libc::c_short;
+                flock.l_whence = libc::SEEK_SET as libc::c_short;
+                flock.l_start = 0;
+                flock.l_len = 0;
+
+                unsafe {
+                    libc::fcntl(self.file.as_raw_fd(), libc::F_SETLK, &flock);
+                }
+            }
+        }
     } else if #[cfg(windows)] {
         use std::mem;
         use std::os::windows::prelude::*;
-        use std::fs::{File, OpenOptions};
 
         use winapi::um::minwinbase::{OVERLAPPED, LOCKFILE_FAIL_IMMEDIATELY, LOCKFILE_EXCLUSIVE_LOCK};
         use winapi::um::fileapi::LockFileEx;
