@@ -12,7 +12,6 @@ use ra_db::{FileId, FileRange, SourceDatabaseExt};
 use ra_prof::profile;
 use ra_syntax::{ast, match_ast, AstNode, TextRange, TextSize};
 use rustc_hash::FxHashMap;
-use test_utils::tested_by;
 
 use crate::{
     defs::{classify_name_ref, Definition, NameRefClass},
@@ -209,7 +208,6 @@ impl Definition {
             for (idx, _) in text.match_indices(pat) {
                 let offset: TextSize = idx.try_into().unwrap();
                 if !search_range.contains_inclusive(offset) {
-                    tested_by!(search_filters_by_range; force);
                     continue;
                 }
 
