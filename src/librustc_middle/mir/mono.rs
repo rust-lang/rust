@@ -77,7 +77,7 @@ impl<'tcx> MonoItem<'tcx> {
 
     pub fn has_closure_generic_argument(&self) -> bool {
         match *self {
-            MonoItem::Fn(instance) => instance.substs.non_erasable_generics().any(|arg| match arg { 
+            MonoItem::Fn(instance) => instance.substs.non_erasable_generics().any(|arg| match arg {
                 GenericArgKind::Type(ty) => ty.is_closure(),
                 GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
             }),
