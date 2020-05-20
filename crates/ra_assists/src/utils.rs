@@ -3,7 +3,7 @@ pub(crate) mod insert_use;
 
 use std::{iter, ops};
 
-use hir::{Adt, Crate, Semantics, Trait, Type};
+use hir::{Adt, Crate, Enum, ScopeDef, Semantics, Trait, Type};
 use ra_ide_db::RootDatabase;
 use ra_syntax::{
     ast::{self, make, NameOwner},
@@ -200,13 +200,19 @@ impl FamousDefs<'_, '_> {
     #[cfg(test)]
     pub(crate) const FIXTURE: &'static str = r#"
 //- /libcore.rs crate:core
-pub mod convert{
+pub mod convert {
     pub trait From<T> {
         fn from(T) -> Self;
     }
 }
 
-pub mod prelude { pub use crate::convert::From }
+pub mod option {
+    pub enum Option<T> { None, Some(T)}
+}
+
+pub mod prelude {
+    pub use crate::{convert::From, option::Option::{self, *}};
+}
 #[prelude_import]
 pub use prelude::*;
 "#;
@@ -215,7 +221,25 @@ pub use prelude::*;
         self.find_trait("core:convert:From")
     }
 
+    pub(crate) fn core_option_Option(&self) -> Option<Enum> {
+        self.find_enum("core:option:Option")
+    }
+
     fn find_trait(&self, path: &str) -> Option<Trait> {
+        match self.find_def(path)? {
+            hir::ScopeDef::ModuleDef(hir::ModuleDef::Trait(it)) => Some(it),
+            _ => None,
+        }
+    }
+
+    fn find_enum(&self, path: &str) -> Option<Enum> {
+        match self.find_def(path)? {
+            hir::ScopeDef::ModuleDef(hir::ModuleDef::Adt(hir::Adt::Enum(it))) => Some(it),
+            _ => None,
+        }
+    }
+
+    fn find_def(&self, path: &str) -> Option<ScopeDef> {
         let db = self.0.db;
         let mut path = path.split(':');
         let trait_ = path.next_back()?;
@@ -240,9 +264,6 @@ pub use prelude::*;
         }
         let def =
             module.scope(db, None).into_iter().find(|(name, _def)| &name.to_string() == trait_)?.1;
-        match def {
-            hir::ScopeDef::ModuleDef(hir::ModuleDef::Trait(it)) => Some(it),
-            _ => None,
-        }
+        Some(def)
     }
 }

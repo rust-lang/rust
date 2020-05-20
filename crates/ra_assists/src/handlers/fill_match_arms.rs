@@ -4,8 +4,9 @@ use hir::{Adt, HasSource, ModuleDef, Semantics};
 use itertools::Itertools;
 use ra_ide_db::RootDatabase;
 use ra_syntax::ast::{self, make, AstNode, MatchArm, NameOwner, Pat};
+use test_utils::tested_by;
 
-use crate::{AssistContext, AssistId, Assists};
+use crate::{utils::FamousDefs, AssistContext, AssistId, Assists};
 
 // Assist: fill_match_arms
 //
@@ -49,12 +50,18 @@ pub(crate) fn fill_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option<
     let missing_arms: Vec<MatchArm> = if let Some(enum_def) = resolve_enum_def(&ctx.sema, &expr) {
         let variants = enum_def.variants(ctx.db);
 
-        variants
+        let mut variants = variants
             .into_iter()
             .filter_map(|variant| build_pat(ctx.db, module, variant))
             .filter(|variant_pat| is_variant_missing(&mut arms, variant_pat))
             .map(|pat| make::match_arm(iter::once(pat), make::expr_empty_block()))
-            .collect()
+            .collect::<Vec<_>>();
+        if Some(enum_def) == FamousDefs(&ctx.sema, module.krate()).core_option_Option() {
+            // Match `Some` variant first.
+            tested_by!(option_order);
+            variants.reverse()
+        }
+        variants
     } else if let Some(enum_defs) = resolve_tuple_of_enum_def(&ctx.sema, &expr) {
         // Partial fill not currently supported for tuple of enums.
         if !arms.is_empty() {
@@ -167,9 +174,13 @@ fn build_pat(db: &RootDatabase, module: hir::Module, var: hir::EnumVariant) -> O
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
+    use crate::{
+        tests::{check_assist, check_assist_not_applicable, check_assist_target},
+        utils::FamousDefs,
+    };
 
     use super::fill_match_arms;
+    use test_utils::covers;
 
     #[test]
     fn all_match_arms_provided() {
@@ -734,6 +745,31 @@ mod tests {
                 }
             }
             "#,
+        );
+    }
+
+    #[test]
+    fn option_order() {
+        covers!(option_order);
+        let before = r#"
+fn foo(opt: Option<i32>) {
+    match opt<|> {
+    }
+}"#;
+        let before =
+            &format!("//- main.rs crate:main deps:core\n{}{}", before, FamousDefs::FIXTURE);
+
+        check_assist(
+            fill_match_arms,
+            before,
+            r#"
+fn foo(opt: Option<i32>) {
+    match <|>opt {
+        Some(_) => {}
+        None => {}
+    }
+}
+"#,
         );
     }
 }
