@@ -20,7 +20,7 @@ use crate::{
 /// *from where* you're referring to the item, hence the `from` parameter.
 pub fn find_path(db: &dyn DefDatabase, item: ItemInNs, from: ModuleId) -> Option<ModPath> {
     let _p = profile("find_path");
-    find_path_inner(db, item, from, MAX_PATH_LEN)
+    db.find_path_inner(item, from, MAX_PATH_LEN)
 }
 
 const MAX_PATH_LEN: usize = 15;
@@ -49,7 +49,7 @@ impl ModPath {
     }
 }
 
-fn find_path_inner(
+pub(crate) fn find_path_inner_query(
     db: &dyn DefDatabase,
     item: ItemInNs,
     from: ModuleId,
@@ -140,8 +140,7 @@ fn find_path_inner(
     let mut best_path = None;
     let mut best_path_len = max_len;
     for (module_id, name) in importable_locations {
-        let mut path = match find_path_inner(
-            db,
+        let mut path = match db.find_path_inner(
             ItemInNs::Types(ModuleDefId::ModuleId(module_id)),
             from,
             best_path_len - 1,
