@@ -2,7 +2,7 @@ use crate::cmp::Ordering;
 use crate::convert::TryInto;
 use crate::fmt;
 use crate::hash;
-use crate::io;
+use crate::io::{self, Write};
 use crate::iter;
 use crate::mem;
 use crate::net::{htons, ntohs, IpAddr, Ipv4Addr, Ipv6Addr};
@@ -600,7 +600,17 @@ impl fmt::Display for SocketAddr {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for SocketAddrV4 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}:{}", self.ip(), self.port())
+        const IPV4_SOCKET_BUF_LEN: usize = 21;
+        let mut buf = [0; IPV4_SOCKET_BUF_LEN];
+        let mut buf_slice = &mut buf[..];
+
+        // Unwrap is fine because writing to a buffer is infallible
+        write!(buf_slice, "{}:{}", self.ip(), self.port()).unwrap();
+        let len = IPV4_SOCKET_BUF_LEN - buf_slice.len();
+
+        // This unsafe is OK because we know what is being written to the buffer
+        let buf = unsafe { crate::str::from_utf8_unchecked(&buf[..len]) };
+        f.pad(buf)
     }
 }
 
@@ -614,7 +624,21 @@ impl fmt::Debug for SocketAddrV4 {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for SocketAddrV6 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "[{}]:{}", self.ip(), self.port())
+        const IPV6_SOCKET_BUF_LEN: usize = (4 * 8)  // The address
+            + 7  // The colon separators
+            + 2  // The brackets
+            + 1 + 5; // The port
+
+        let mut buf = [0; IPV6_SOCKET_BUF_LEN];
+        let mut buf_slice = &mut buf[..];
+
+        // Unwrap is fine because writing to a buffer is infallible
+        write!(buf_slice, "[{}]:{}", self.ip(), self.port()).unwrap();
+        let len = IPV6_SOCKET_BUF_LEN - buf_slice.len();
+
+        // This unsafe is OK because we know what is being written to the buffer
+        let buf = unsafe { crate::str::from_utf8_unchecked(&buf[..len]) };
+        f.pad(buf)
     }
 }
 
