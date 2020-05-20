@@ -2,7 +2,6 @@ use crate::alloc::alloc::{alloc, dealloc, handle_alloc_error};
 use crate::scopeguard::guard;
 use crate::CollectionAllocErr;
 use core::alloc::Layout;
-use core::cmp;
 use core::hint;
 use core::iter::FusedIterator;
 use core::marker::PhantomData;
@@ -209,34 +208,52 @@ fn bucket_mask_to_capacity(bucket_mask: usize) -> usize {
     }
 }
 
-#[cfg_attr(feature = "inline-more", inline)]
-fn align_size(size: usize, align: usize) -> Option<usize> {
-    Some(size.checked_add(align - 1)? & !(align - 1))
-}
-
-// Returns a Layout which describes the allocation required for a hash table,
-// and the offset of the control bytes in the allocation.
-// (the offset is also one past last element of data table)
+/// Returns a Layout which describes the allocation required for a hash table,
+/// and the offset of the control bytes in the allocation.
+/// (the offset is also one past last element of buckets)
 ///
 /// Returns `None` if an overflow occurs.
 #[cfg_attr(feature = "inline-more", inline)]
+#[cfg(feature = "nightly")]
+pub fn calculate_layout<T>(buckets: usize) -> Option<(Layout, usize)> {
+    debug_assert!(buckets.is_power_of_two());
+
+    // Array of buckets
+    let padded_data = Layout::array::<T>(buckets).ok()?.pad_to_align();
+
+    // Array of control bytes. This must be aligned to the group size.
+    //
+    // We add `Group::WIDTH` control bytes at the end of the array which
+    // replicate the bytes at the start of the array and thus avoids the need to
+    // perform bounds-checking while probing.
+    //
+    // There is no possible overflow here since buckets is a power of two and
+    // Group::WIDTH is a small number.
+    let ctrl = unsafe { Layout::from_size_align_unchecked(buckets + Group::WIDTH, Group::WIDTH) };
+
+    padded_data.extend(ctrl).ok()
+}
+
+/// Returns a Layout which describes the allocation required for a hash table,
+/// and the offset of the control bytes in the allocation.
+/// (the offset is also one past last element of buckets)
+///
+/// Returns `None` if an overflow occurs.
+#[cfg_attr(feature = "inline-more", inline)]
+#[cfg(not(feature = "nightly"))]
 fn calculate_layout<T>(buckets: usize) -> Option<(Layout, usize)> {
     debug_assert!(buckets.is_power_of_two());
 
-    let align = cmp::max(mem::align_of::<T>(), Group::WIDTH);
+    // Manual layout calculation since Layout methods are not yet stable.
+    let ctrl_align = usize::max(mem::align_of::<T>(), Group::WIDTH);
+    let ctrl_offset = mem::size_of::<T>().checked_mul(buckets)?
+                      .checked_add(ctrl_align - 1)? & !(ctrl_align - 1);
+    let len = ctrl_offset.checked_add(buckets + Group::WIDTH)?;
 
-    unsafe {
-        let data = Layout::from_size_align_unchecked(
-            align_size(mem::size_of::<T>() * buckets, align)?, align);
-
-        let ctrl = Layout::from_size_align_unchecked(
-            align_size(buckets + Group::WIDTH, align)?, align);
-
-        let layout = Layout::from_size_align_unchecked(
-            data.size().checked_add(ctrl.size())?, align);
-
-        Some((layout, /*ctrl offset*/ layout.size() - ctrl.size()))
-    }
+    Some((
+        unsafe { Layout::from_size_align_unchecked(len, ctrl_align) },
+        ctrl_offset
+    ))
 }
 
 /// A reference to a hash table bucket containing a `T`.
@@ -336,8 +353,8 @@ pub struct RawTable<T> {
     // number of buckets in the table.
     bucket_mask: usize,
 
-    // [Padding], .., T1, T2, ..., C1, C2, .., [Padding]
-    //                             ^ points here
+    // [Padding], T1, T2, ..., Tlast, C1, C2, ...
+    //                                ^ points here
     ctrl: NonNull<u8>,
 
     // Number of elements that can be inserted before we need to grow the table
@@ -425,24 +442,23 @@ impl<T> RawTable<T> {
         dealloc(self.ctrl.as_ptr().sub(ctrl_offset), layout);
     }
 
-
     /// Returns pointer to one past last element of data table.
     #[cfg_attr(feature = "inline-more", inline)]
-    pub unsafe fn data_backwards(&self) -> NonNull<T> {
+    pub unsafe fn data_end(&self) -> NonNull<T> {
         NonNull::new_unchecked(self.ctrl.as_ptr() as *mut T)
     }
 
     /// Returns pointer to start of data table.
     #[cfg_attr(feature = "inline-more", inline)]
-    #[allow(dead_code)]
-    pub unsafe fn compute_data_ptr(&self) -> *mut T {
-        self.data_backwards().as_ptr().sub(self.buckets())
+    #[cfg(feature = "nightly")]
+    pub unsafe fn data_start(&self) -> *mut T {
+        self.data_end().as_ptr().sub(self.buckets())
     }
 
     /// Returns the index of a bucket from a `Bucket`.
     #[cfg_attr(feature = "inline-more", inline)]
     pub unsafe fn bucket_index(&self, bucket: &Bucket<T>) -> usize {
-        bucket.to_base_index(self.data_backwards())
+        bucket.to_base_index(self.data_end())
     }
 
     /// Returns a pointer to a control byte.
@@ -457,7 +473,7 @@ impl<T> RawTable<T> {
     pub unsafe fn bucket(&self, index: usize) -> Bucket<T> {
         debug_assert_ne!(self.bucket_mask, 0);
         debug_assert!(index < self.buckets());
-        Bucket::from_base_index(self.data_backwards(), index)
+        Bucket::from_base_index(self.data_end(), index)
     }
 
     /// Erases an element from the table without dropping it.
@@ -946,7 +962,7 @@ impl<T> RawTable<T> {
     /// struct, we have to make the `iter` method unsafe.
     #[cfg_attr(feature = "inline-more", inline)]
     pub unsafe fn iter(&self) -> RawIter<T> {
-        let data = Bucket::from_base_index(self.data_backwards(), 0);
+        let data = Bucket::from_base_index(self.data_end(), 0);
         RawIter {
             iter: RawIterRange::new(self.ctrl.as_ptr(), data, self.buckets()),
             items: self.items,
@@ -1061,8 +1077,8 @@ impl<T: Copy> RawTableClone for RawTable<T> {
             .ctrl(0)
             .copy_to_nonoverlapping(self.ctrl(0), self.num_ctrl_bytes());
         source
-            .compute_data_ptr()
-            .copy_to_nonoverlapping(self.compute_data_ptr(), self.buckets());
+            .data_start()
+            .copy_to_nonoverlapping(self.data_start(), self.buckets());
 
         self.items = source.items;
         self.growth_left = source.growth_left;
