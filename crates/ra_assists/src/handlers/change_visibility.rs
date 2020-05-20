@@ -9,7 +9,7 @@ use ra_syntax::{
 };
 
 use hir::{db::HirDatabase, HasSource, HasVisibility, PathResolution};
-use test_utils::tested_by;
+use test_utils::mark;
 
 use crate::{AssistContext, AssistId, Assists};
 use ra_db::FileId;
@@ -55,7 +55,7 @@ fn add_vis(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     } else if let Some(field_name) = ctx.find_node_at_offset::<ast::Name>() {
         let field = field_name.syntax().ancestors().find_map(ast::RecordFieldDef::cast)?;
         if field.name()? != field_name {
-            tested_by!(change_visibility_field_false_positive);
+            mark::hit!(change_visibility_field_false_positive);
             return None;
         }
         if field.visibility().is_some() {
@@ -255,7 +255,7 @@ fn change_vis(acc: &mut Assists, vis: ast::Visibility) -> Option<()> {
 
 #[cfg(test)]
 mod tests {
-    use test_utils::covers;
+    use test_utils::mark;
 
     use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
 
@@ -288,7 +288,7 @@ mod tests {
 
     #[test]
     fn change_visibility_field_false_positive() {
-        covers!(change_visibility_field_false_positive);
+        mark::check!(change_visibility_field_false_positive);
         check_assist_not_applicable(
             change_visibility,
             r"struct S { field: [(); { let <|>x = ();}] }",

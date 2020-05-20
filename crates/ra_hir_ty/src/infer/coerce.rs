@@ -5,7 +5,7 @@
 //! See: https://doc.rust-lang.org/nomicon/coercions.html
 
 use hir_def::{lang_item::LangItemTarget, type_ref::Mutability};
-use test_utils::tested_by;
+use test_utils::mark;
 
 use crate::{autoderef, traits::Solution, Obligation, Substs, TraitRef, Ty, TypeCtor};
 
@@ -34,7 +34,7 @@ impl<'a> InferenceContext<'a> {
             ty1.clone()
         } else {
             if let (ty_app!(TypeCtor::FnDef(_)), ty_app!(TypeCtor::FnDef(_))) = (ty1, ty2) {
-                tested_by!(coerce_fn_reification);
+                mark::hit!(coerce_fn_reification);
                 // Special case: two function types. Try to coerce both to
                 // pointers to have a chance at getting a match. See
                 // https://github.com/rust-lang/rust/blob/7b805396bf46dce972692a6846ce2ad8481c5f85/src/librustc_typeck/check/coercion.rs#L877-L916
@@ -44,7 +44,7 @@ impl<'a> InferenceContext<'a> {
                 let ptr_ty2 = Ty::fn_ptr(sig2);
                 self.coerce_merge_branch(&ptr_ty1, &ptr_ty2)
             } else {
-                tested_by!(coerce_merge_fail_fallback);
+                mark::hit!(coerce_merge_fail_fallback);
                 // For incompatible types, we use the latter one as result
                 // to be better recovery for `if` without `else`.
                 ty2.clone()

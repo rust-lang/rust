@@ -1,9 +1,10 @@
 use insta::assert_snapshot;
-
 use ra_db::fixture::WithFixture;
+use test_utils::mark;
+
+use crate::test_db::TestDB;
 
 use super::{infer, infer_with_mismatches, type_at, type_at_pos};
-use crate::test_db::TestDB;
 
 #[test]
 fn infer_await() {
@@ -301,7 +302,7 @@ fn test() {
 
 #[test]
 fn trait_default_method_self_bound_implements_trait() {
-    test_utils::covers!(trait_self_implements_self);
+    mark::check!(trait_self_implements_self);
     assert_snapshot!(
         infer(r#"
 trait Trait {
@@ -324,7 +325,6 @@ trait Trait {
 
 #[test]
 fn trait_default_method_self_bound_implements_super_trait() {
-    test_utils::covers!(trait_self_implements_self);
     assert_snapshot!(
         infer(r#"
 trait SuperTrait {

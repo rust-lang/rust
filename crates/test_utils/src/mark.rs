@@ -7,18 +7,18 @@
 //! ```
 //! #[test]
 //! fn test_foo() {
-//!     covers!(test_foo);
+//!     mark::check!(test_foo);
 //! }
 //! ```
 //!
 //! and in the code under test you write
 //!
 //! ```
-//! # use test_utils::tested_by;
+//! # use test_utils::mark;
 //! # fn some_condition() -> bool { true }
 //! fn foo() {
 //!     if some_condition() {
-//!         tested_by!(test_foo);
+//!         mark::hit!(test_foo);
 //!     }
 //! }
 //! ```
@@ -29,43 +29,31 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 #[macro_export]
-macro_rules! tested_by {
-    ($ident:ident; force) => {{
-        {
-            // sic! use call-site crate
-            crate::marks::$ident.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-        }
-    }};
+macro_rules! _hit {
     ($ident:ident) => {{
         #[cfg(test)]
         {
-            // sic! use call-site crate
-            crate::marks::$ident.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            extern "C" {
+                #[no_mangle]
+                static $ident: std::sync::atomic::AtomicUsize;
+            }
+            unsafe {
+                $ident.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            }
         }
     }};
 }
+pub use _hit as hit;
 
 #[macro_export]
-macro_rules! covers {
-    // sic! use call-site crate
+macro_rules! _check {
     ($ident:ident) => {
-        $crate::covers!(crate::$ident)
-    };
-    ($krate:ident :: $ident:ident) => {
-        let _checker = $crate::marks::MarkChecker::new(&$krate::marks::$ident);
-    };
-}
-
-#[macro_export]
-macro_rules! marks {
-    ($($ident:ident)*) => {
-        $(
-        #[allow(bad_style)]
-        pub static $ident: std::sync::atomic::AtomicUsize =
-            std::sync::atomic::AtomicUsize::new(0);
-        )*
+        #[no_mangle]
+        static $ident: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+        let _checker = $crate::mark::MarkChecker::new(&$ident);
     };
 }
+pub use _check as check;
 
 pub struct MarkChecker {
     mark: &'static AtomicUsize,

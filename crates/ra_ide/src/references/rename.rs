@@ -9,7 +9,7 @@ use ra_syntax::{
 };
 use ra_text_edit::TextEdit;
 use std::convert::TryInto;
-use test_utils::tested_by;
+use test_utils::mark;
 
 use crate::{
     references::find_all_refs, FilePosition, FileSystemEdit, RangeInfo, Reference, ReferenceKind,
@@ -57,13 +57,13 @@ fn source_edit_from_reference(reference: Reference, new_name: &str) -> SourceFil
     let file_id = reference.file_range.file_id;
     let range = match reference.kind {
         ReferenceKind::FieldShorthandForField => {
-            tested_by!(test_rename_struct_field_for_shorthand);
+            mark::hit!(test_rename_struct_field_for_shorthand);
             replacement_text.push_str(new_name);
             replacement_text.push_str(": ");
             TextRange::new(reference.file_range.range.start(), reference.file_range.range.start())
         }
         ReferenceKind::FieldShorthandForLocal => {
-            tested_by!(test_rename_local_for_field_shorthand);
+            mark::hit!(test_rename_local_for_field_shorthand);
             replacement_text.push_str(": ");
             replacement_text.push_str(new_name);
             TextRange::new(reference.file_range.range.end(), reference.file_range.range.end())
@@ -260,7 +260,7 @@ fn rename_reference(
 mod tests {
     use insta::assert_debug_snapshot;
     use ra_text_edit::TextEditBuilder;
-    use test_utils::{assert_eq_text, covers};
+    use test_utils::{assert_eq_text, mark};
 
     use crate::{
         mock_analysis::analysis_and_position, mock_analysis::single_file_with_position, FileId,
@@ -492,7 +492,7 @@ mod tests {
 
     #[test]
     fn test_rename_struct_field_for_shorthand() {
-        covers!(test_rename_struct_field_for_shorthand);
+        mark::check!(test_rename_struct_field_for_shorthand);
         test_rename(
             r#"
     struct Foo {
@@ -522,7 +522,7 @@ mod tests {
 
     #[test]
     fn test_rename_local_for_field_shorthand() {
-        covers!(test_rename_local_for_field_shorthand);
+        mark::check!(test_rename_local_for_field_shorthand);
         test_rename(
             r#"
     struct Foo {

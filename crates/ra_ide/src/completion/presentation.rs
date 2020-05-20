@@ -3,7 +3,7 @@
 use hir::{Docs, HasAttrs, HasSource, HirDisplay, ModPath, ScopeDef, StructKind, Type};
 use ra_syntax::ast::NameOwner;
 use stdx::SepBy;
-use test_utils::tested_by;
+use test_utils::mark;
 
 use crate::{
     completion::{
@@ -121,7 +121,7 @@ impl Completions {
                     _ => false,
                 };
                 if has_non_default_type_params {
-                    tested_by!(inserts_angle_brackets_for_generics);
+                    mark::hit!(inserts_angle_brackets_for_generics);
                     completion_item = completion_item
                         .lookup_by(local_name.clone())
                         .label(format!("{}<…>", local_name))
@@ -176,7 +176,7 @@ impl Completions {
             }
             None if needs_bang => builder.insert_text(format!("{}!", name)),
             _ => {
-                tested_by!(dont_insert_macro_call_parens_unncessary);
+                mark::hit!(dont_insert_macro_call_parens_unncessary);
                 builder.insert_text(name)
             }
         };
@@ -330,14 +330,14 @@ pub(crate) fn compute_score(
     // FIXME: this should not fall back to string equality.
     let ty = &ty.display(ctx.db).to_string();
     let (active_name, active_type) = if let Some(record_field) = &ctx.record_field_syntax {
-        tested_by!(test_struct_field_completion_in_record_lit);
+        mark::hit!(test_struct_field_completion_in_record_lit);
         let (struct_field, _local) = ctx.sema.resolve_record_field(record_field)?;
         (
             struct_field.name(ctx.db).to_string(),
             struct_field.signature_ty(ctx.db).display(ctx.db).to_string(),
         )
     } else if let Some(active_parameter) = &ctx.active_parameter {
-        tested_by!(test_struct_field_completion_in_func_call);
+        mark::hit!(test_struct_field_completion_in_func_call);
         (active_parameter.name.clone(), active_parameter.ty.clone())
     } else {
         return None;
@@ -398,7 +398,7 @@ impl Builder {
             None => return self,
         };
         // If not an import, add parenthesis automatically.
-        tested_by!(inserts_parens_for_function_calls);
+        mark::hit!(inserts_parens_for_function_calls);
 
         let (snippet, label) = if params.is_empty() {
             (format!("{}()$0", name), format!("{}()", name))
@@ -457,7 +457,7 @@ fn guess_macro_braces(macro_name: &str, docs: &str) -> (&'static str, &'static s
 #[cfg(test)]
 mod tests {
     use insta::assert_debug_snapshot;
-    use test_utils::covers;
+    use test_utils::mark;
 
     use crate::completion::{
         test_utils::{do_completion, do_completion_with_options},
@@ -607,7 +607,7 @@ mod tests {
 
     #[test]
     fn inserts_parens_for_function_calls() {
-        covers!(inserts_parens_for_function_calls);
+        mark::check!(inserts_parens_for_function_calls);
         assert_debug_snapshot!(
             do_reference_completion(
                 r"
@@ -992,7 +992,7 @@ mod tests {
 
     #[test]
     fn inserts_angle_brackets_for_generics() {
-        covers!(inserts_angle_brackets_for_generics);
+        mark::check!(inserts_angle_brackets_for_generics);
         assert_debug_snapshot!(
             do_reference_completion(
                 r"
@@ -1115,7 +1115,7 @@ mod tests {
 
     #[test]
     fn dont_insert_macro_call_parens_unncessary() {
-        covers!(dont_insert_macro_call_parens_unncessary);
+        mark::check!(dont_insert_macro_call_parens_unncessary);
         assert_debug_snapshot!(
             do_reference_completion(
                 r"
@@ -1181,7 +1181,7 @@ mod tests {
 
     #[test]
     fn test_struct_field_completion_in_func_call() {
-        covers!(test_struct_field_completion_in_func_call);
+        mark::check!(test_struct_field_completion_in_func_call);
         assert_debug_snapshot!(
         do_reference_completion(
                 r"
@@ -1271,7 +1271,7 @@ mod tests {
 
     #[test]
     fn test_struct_field_completion_in_record_lit() {
-        covers!(test_struct_field_completion_in_record_lit);
+        mark::check!(test_struct_field_completion_in_record_lit);
         assert_debug_snapshot!(
         do_reference_completion(
                 r"

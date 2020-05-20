@@ -1,6 +1,6 @@
 use ra_ide_db::RootDatabase;
 use ra_syntax::ast::{self, AstNode, NameOwner};
-use test_utils::tested_by;
+use test_utils::mark;
 
 use crate::{utils::FamousDefs, AssistContext, AssistId, Assists};
 
@@ -39,7 +39,7 @@ pub(crate) fn add_from_impl_for_enum(acc: &mut Assists, ctx: &AssistContext) -> 
     };
 
     if existing_from_impl(&ctx.sema, &variant).is_some() {
-        tested_by!(test_add_from_impl_already_exists);
+        mark::hit!(test_add_from_impl_already_exists);
         return None;
     }
 
@@ -90,7 +90,7 @@ fn existing_from_impl(
 
 #[cfg(test)]
 mod tests {
-    use test_utils::covers;
+    use test_utils::mark;
 
     use crate::tests::{check_assist, check_assist_not_applicable};
 
@@ -149,7 +149,7 @@ impl From<foo::bar::baz::Boo> for A {
 
     #[test]
     fn test_add_from_impl_already_exists() {
-        covers!(test_add_from_impl_already_exists);
+        mark::check!(test_add_from_impl_already_exists);
         check_not_applicable(
             r#"
 enum A { <|>One(u32), }

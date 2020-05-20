@@ -4,7 +4,7 @@ use hir::{Adt, HasSource, ModuleDef, Semantics};
 use itertools::Itertools;
 use ra_ide_db::RootDatabase;
 use ra_syntax::ast::{self, make, AstNode, MatchArm, NameOwner, Pat};
-use test_utils::tested_by;
+use test_utils::mark;
 
 use crate::{utils::FamousDefs, AssistContext, AssistId, Assists};
 
@@ -58,7 +58,7 @@ pub(crate) fn fill_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option<
             .collect::<Vec<_>>();
         if Some(enum_def) == FamousDefs(&ctx.sema, module.krate()).core_option_Option() {
             // Match `Some` variant first.
-            tested_by!(option_order);
+            mark::hit!(option_order);
             variants.reverse()
         }
         variants
@@ -174,13 +174,14 @@ fn build_pat(db: &RootDatabase, module: hir::Module, var: hir::EnumVariant) -> O
 
 #[cfg(test)]
 mod tests {
+    use test_utils::mark;
+
     use crate::{
         tests::{check_assist, check_assist_not_applicable, check_assist_target},
         utils::FamousDefs,
     };
 
     use super::fill_match_arms;
-    use test_utils::covers;
 
     #[test]
     fn all_match_arms_provided() {
@@ -750,7 +751,7 @@ mod tests {
 
     #[test]
     fn option_order() {
-        covers!(option_order);
+        mark::check!(option_order);
         let before = r#"
 fn foo(opt: Option<i32>) {
     match opt<|> {

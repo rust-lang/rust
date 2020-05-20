@@ -3,7 +3,7 @@ use ra_syntax::{
     ast::{self, AstNode, AstToken},
     TextRange,
 };
-use test_utils::tested_by;
+use test_utils::mark;
 
 use crate::{
     assist_context::{AssistContext, Assists},
@@ -33,11 +33,11 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> O
         _ => return None,
     };
     if bind_pat.mut_token().is_some() {
-        tested_by!(test_not_inline_mut_variable);
+        mark::hit!(test_not_inline_mut_variable);
         return None;
     }
     if !bind_pat.syntax().text_range().contains_inclusive(ctx.offset()) {
-        tested_by!(not_applicable_outside_of_bind_pat);
+        mark::hit!(not_applicable_outside_of_bind_pat);
         return None;
     }
     let initializer_expr = let_stmt.initializer()?;
@@ -46,7 +46,7 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> O
     let def = Definition::Local(def);
     let refs = def.find_usages(ctx.db, None);
     if refs.is_empty() {
-        tested_by!(test_not_applicable_if_variable_unused);
+        mark::hit!(test_not_applicable_if_variable_unused);
         return None;
     };
 
@@ -122,7 +122,7 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> O
 
 #[cfg(test)]
 mod tests {
-    use test_utils::covers;
+    use test_utils::mark;
 
     use crate::tests::{check_assist, check_assist_not_applicable};
 
@@ -330,7 +330,7 @@ fn foo() {
 
     #[test]
     fn test_not_inline_mut_variable() {
-        covers!(test_not_inline_mut_variable);
+        mark::check!(test_not_inline_mut_variable);
         check_assist_not_applicable(
             inline_local_variable,
             r"
@@ -663,7 +663,7 @@ fn foo() {
 
     #[test]
     fn test_not_applicable_if_variable_unused() {
-        covers!(test_not_applicable_if_variable_unused);
+        mark::check!(test_not_applicable_if_variable_unused);
         check_assist_not_applicable(
             inline_local_variable,
             r"
@@ -676,7 +676,7 @@ fn foo() {
 
     #[test]
     fn not_applicable_outside_of_bind_pat() {
-        covers!(not_applicable_outside_of_bind_pat);
+        mark::check!(not_applicable_outside_of_bind_pat);
         check_assist_not_applicable(
             inline_local_variable,
             r"

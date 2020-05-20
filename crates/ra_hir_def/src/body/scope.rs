@@ -174,7 +174,7 @@ mod tests {
     use hir_expand::{name::AsName, InFile};
     use ra_db::{fixture::WithFixture, FileId, SourceDatabase};
     use ra_syntax::{algo::find_node_at_offset, ast, AstNode};
-    use test_utils::{assert_eq_text, covers, extract_offset};
+    use test_utils::{assert_eq_text, extract_offset, mark};
 
     use crate::{db::DefDatabase, test_db::TestDB, FunctionId, ModuleDefId};
 
@@ -388,7 +388,7 @@ mod tests {
 
     #[test]
     fn while_let_desugaring() {
-        covers!(infer_resolve_while_let);
+        mark::check!(infer_resolve_while_let);
         do_check_local_name(
             r#"
 fn test() {

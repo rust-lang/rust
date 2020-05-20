@@ -3,7 +3,7 @@
 use hir::{Adt, HasVisibility, PathResolution, ScopeDef};
 use ra_syntax::AstNode;
 use rustc_hash::FxHashSet;
-use test_utils::tested_by;
+use test_utils::mark;
 
 use crate::completion::{CompletionContext, Completions};
 
@@ -40,7 +40,7 @@ pub(super) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                         if let Some(name_ref) = ctx.name_ref_syntax.as_ref() {
                             if name_ref.syntax().text() == name.to_string().as_str() {
                                 // for `use self::foo<|>`, don't suggest `foo` as a completion
-                                tested_by!(dont_complete_current_use);
+                                mark::hit!(dont_complete_current_use);
                                 continue;
                             }
                         }
@@ -147,7 +147,7 @@ pub(super) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
 
 #[cfg(test)]
 mod tests {
-    use test_utils::covers;
+    use test_utils::mark;
 
     use crate::completion::{test_utils::do_completion, CompletionItem, CompletionKind};
     use insta::assert_debug_snapshot;
@@ -158,7 +158,7 @@ mod tests {
 
     #[test]
     fn dont_complete_current_use() {
-        covers!(dont_complete_current_use);
+        mark::check!(dont_complete_current_use);
         let completions = do_completion(r"use self::foo<|>;", CompletionKind::Reference);
         assert!(completions.is_empty());
     }
