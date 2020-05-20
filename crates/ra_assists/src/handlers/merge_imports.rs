@@ -58,8 +58,6 @@ pub(crate) fn merge_imports(acc: &mut Assists, ctx: &AssistContext) -> Option<()
     let target = tree.syntax().text_range();
     acc.add(AssistId("merge_imports"), "Merge imports", target, |builder| {
         builder.rewrite(rewriter);
-        // FIXME: we only need because our diff is imprecise
-        builder.set_cursor(offset);
     })
 }
 
@@ -142,7 +140,7 @@ use std::fmt<|>::Debug;
 use std::fmt::Display;
 ",
             r"
-use std::fmt<|>::{Debug, Display};
+use std::fmt::{Debug, Display};
 ",
         )
     }
@@ -156,7 +154,7 @@ use std::fmt::Debug;
 use std::fmt<|>::Display;
 ",
             r"
-use std::fmt:<|>:{Display, Debug};
+use std::fmt::{Display, Debug};
 ",
         );
     }
@@ -169,7 +167,7 @@ use std::fmt:<|>:{Display, Debug};
 use std::{fmt<|>::Debug, fmt::Display};
 ",
             r"
-use std::{fmt<|>::{Debug, Display}};
+use std::{fmt::{Debug, Display}};
 ",
         );
         check_assist(
@@ -178,7 +176,7 @@ use std::{fmt<|>::{Debug, Display}};
 use std::{fmt::Debug, fmt<|>::Display};
 ",
             r"
-use std::{fmt::<|>{Display, Debug}};
+use std::{fmt::{Display, Debug}};
 ",
         );
     }
@@ -192,7 +190,7 @@ use std<|>::cell::*;
 use std::str;
 ",
             r"
-use std<|>::{cell::*, str};
+use std::{cell::*, str};
 ",
         )
     }
@@ -206,7 +204,7 @@ use std<|>::cell::*;
 use std::str::*;
 ",
             r"
-use std<|>::{cell::*, str::*};
+use std::{cell::*, str::*};
 ",
         )
     }
@@ -222,7 +220,7 @@ use foo::baz;
 /// Doc comment
 ",
             r"
-use foo<|>::{bar, baz};
+use foo::{bar, baz};
 
 /// Doc comment
 ",
@@ -241,7 +239,7 @@ use {
 ",
             r"
 use {
-    foo<|>::{bar, baz},
+    foo::{bar, baz},
 };
 ",
         );
@@ -255,7 +253,7 @@ use {
 ",
             r"
 use {
-    foo::{bar<|>, baz},
+    foo::{bar, baz},
 };
 ",
         );
@@ -272,7 +270,7 @@ use foo::<|>{
 };
 ",
             r"
-use foo::{<|>
+use foo::{
     FooBar,
 bar::baz};
 ",

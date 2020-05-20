@@ -26,8 +26,7 @@ pub(crate) fn remove_mut(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     };
 
     let target = mut_token.text_range();
-    acc.add(AssistId("remove_mut"), "Remove `mut` keyword", target, |edit| {
-        edit.set_cursor(delete_from);
-        edit.delete(TextRange::new(delete_from, delete_to));
+    acc.add(AssistId("remove_mut"), "Remove `mut` keyword", target, |builder| {
+        builder.delete(TextRange::new(delete_from, delete_to));
     })
 }
