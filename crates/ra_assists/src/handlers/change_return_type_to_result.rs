@@ -19,8 +19,7 @@ use crate::{AssistContext, AssistId, Assists};
 // fn foo() -> Result<i32, > { Ok(42i32) }
 // ```
 pub(crate) fn change_return_type_to_result(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let fn_def = ctx.find_node_at_offset::<ast::FnDef>();
-    let fn_def = &mut fn_def?;
+    let fn_def = ctx.find_node_at_offset::<ast::FnDef>()?;
     let ret_type = &fn_def.ret_type()?.type_ref()?;
     if ret_type.syntax().text().to_string().starts_with("Result<") {
         return None;
