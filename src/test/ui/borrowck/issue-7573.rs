@@ -1,36 +1,34 @@
 pub struct CrateId {
     local_path: String,
-    junk: String
+    junk: String,
 }
 
 impl CrateId {
     fn new(s: &str) -> CrateId {
-        CrateId {
-            local_path: s.to_string(),
-            junk: "wutevs".to_string()
-        }
+        CrateId { local_path: s.to_string(), junk: "wutevs".to_string() }
     }
 }
 
 pub fn remove_package_from_database() {
     let mut lines_to_use: Vec<&CrateId> = Vec::new();
-        //~^ NOTE cannot infer an appropriate lifetime
+    //~^ NOTE `lines_to_use` declared here, outside of the closure body
     let push_id = |installed_id: &CrateId| {
-        //~^ NOTE borrowed data cannot outlive this closure
-        //~| NOTE ...so that variable is valid at time of its declaration
+        //~^ NOTE `installed_id` is a reference that is only valid in the closure body
         lines_to_use.push(installed_id);
-        //~^ ERROR borrowed data cannot be stored outside of its closure
-        //~| NOTE cannot be stored outside of its closure
+        //~^ ERROR borrowed data escapes outside of closure
+        //~| NOTE `installed_id` escapes the closure body here
     };
     list_database(push_id);
 
     for l in &lines_to_use {
         println!("{}", l.local_path);
     }
-
 }
 
-pub fn list_database<F>(mut f: F) where F: FnMut(&CrateId) {
+pub fn list_database<F>(mut f: F)
+where
+    F: FnMut(&CrateId),
+{
     let stuff = ["foo", "bar"];
 
     for l in &stuff {
