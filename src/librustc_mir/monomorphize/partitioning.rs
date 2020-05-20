@@ -155,7 +155,8 @@ where
     // local functions the definition of which is marked with `#[inline]`.
     let mut post_inlining = {
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_place_inline_items");
-        let is_debug_incremental = tcx.sess.opts.optimize == OptLevel::No && tcx.sess.opts.incremental.is_some();
+        let is_debug_incremental =
+            tcx.sess.opts.optimize == OptLevel::No && tcx.sess.opts.incremental.is_some();
         place_inlined_mono_items(initial_partitioning, inlining_map, is_debug_incremental)
     };
 
@@ -228,14 +229,22 @@ where
             InstantiationMode::LocalCopy => continue,
         }
 
-        let characteristic_def_id = characteristic_def_id_of_mono_item(tcx, mono_item, is_debug_incremental);
+        let characteristic_def_id =
+            characteristic_def_id_of_mono_item(tcx, mono_item, is_debug_incremental);
         let is_volatile = is_incremental_build && mono_item.is_generic_fn();
 
         let codegen_unit_name = match (characteristic_def_id, mono_item.is_local()) {
             (Some(def_id), false) if is_debug_incremental => {
                 let crate_name = tcx.crate_name(def_id.krate);
-                cgu_name_builder.build_cgu_name(LOCAL_CRATE, &[&*crate_name.as_str(), if mono_item.has_closure_generic_argument() { "has_closure" } else { "" }], Some("cgu"))
-            },
+                cgu_name_builder.build_cgu_name(
+                    LOCAL_CRATE,
+                    &[
+                        &*crate_name.as_str(),
+                        if mono_item.has_closure_generic_argument() { "has_closure" } else { "" },
+                    ],
+                    Some("cgu"),
+                )
+            }
             (Some(def_id), _) => compute_codegen_unit_name(
                 tcx,
                 cgu_name_builder,
@@ -468,7 +477,9 @@ fn merge_codegen_units<'tcx>(
     assert!(target_cgu_count >= 1);
     let codegen_units = &mut initial_partitioning.codegen_units;
 
-    if tcx.is_compiler_builtins(LOCAL_CRATE) || (tcx.dep_graph.is_fully_enabled() && tcx.sess.opts.optimize == OptLevel::No) {
+    if tcx.is_compiler_builtins(LOCAL_CRATE)
+        || (tcx.dep_graph.is_fully_enabled() && tcx.sess.opts.optimize == OptLevel::No)
+    {
         // Compiler builtins require some degree of control over how mono items
         // are partitioned into compilation units. Provide it by keeping the
         // original partitioning when compiling the compiler builtins crate.

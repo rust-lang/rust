@@ -1,7 +1,9 @@
 use crate::dep_graph::{DepConstructor, DepNode, WorkProduct, WorkProductId};
 use crate::ich::{NodeIdHashingMode, StableHashingContext};
 use crate::ty::print::obsolete::DefPathBasedNames;
-use crate::ty::{subst::InternalSubsts, subst::GenericArgKind, Instance, InstanceDef, SymbolName, TyCtxt};
+use crate::ty::{
+    subst::GenericArgKind, subst::InternalSubsts, Instance, InstanceDef, SymbolName, TyCtxt,
+};
 use rustc_attr::InlineAttr;
 use rustc_data_structures::base_n;
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -77,10 +79,12 @@ impl<'tcx> MonoItem<'tcx> {
 
     pub fn has_closure_generic_argument(&self) -> bool {
         match *self {
-            MonoItem::Fn(instance) => instance.substs.non_erasable_generics().any(|arg| match arg {
-                GenericArgKind::Type(ty) => ty.is_closure(),
-                GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
-            }),
+            MonoItem::Fn(instance) => {
+                instance.substs.non_erasable_generics().any(|arg| match arg {
+                    GenericArgKind::Type(ty) => ty.is_closure(),
+                    GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
+                })
+            }
             MonoItem::Static(..) | MonoItem::GlobalAsm(..) => false,
         }
     }
@@ -229,7 +233,7 @@ impl<'tcx> MonoItem<'tcx> {
         match *self {
             MonoItem::Fn(Instance { def, .. }) => def.def_id().is_local(),
             MonoItem::Static(def_id) => def_id.is_local(),
-            MonoItem::GlobalAsm(..) => true
+            MonoItem::GlobalAsm(..) => true,
         }
     }
 }
