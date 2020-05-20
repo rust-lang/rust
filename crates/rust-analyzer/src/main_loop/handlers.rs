@@ -802,11 +802,11 @@ pub fn handle_code_lens(
         for runnable in world.analysis().runnables(file_id)? {
             let (run_title, debugee) = match &runnable.kind {
                 RunnableKind::Test { .. } | RunnableKind::TestMod { .. } => {
-                    ("▶️\u{fe0e}Run Test", true)
+                    ("▶\u{fe0e} Run Test", true)
                 }
                 RunnableKind::DocTest { .. } => {
                     // cargo does not support -no-run for doctests
-                    ("▶️\u{fe0e}Run Doctest", false)
+                    ("▶\u{fe0e} Run Doctest", false)
                 }
                 RunnableKind::Bench { .. } => {
                     // Nothing wrong with bench debugging
