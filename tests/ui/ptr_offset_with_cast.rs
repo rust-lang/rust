@@ -9,12 +9,12 @@ fn main() {
     let offset_isize = 1_isize;
 
     unsafe {
-        ptr.offset(offset_usize as isize);
-        ptr.offset(offset_isize as isize);
-        ptr.offset(offset_u8 as isize);
+        let _ = ptr.offset(offset_usize as isize);
+        let _ = ptr.offset(offset_isize as isize);
+        let _ = ptr.offset(offset_u8 as isize);
 
-        ptr.wrapping_offset(offset_usize as isize);
-        ptr.wrapping_offset(offset_isize as isize);
-        ptr.wrapping_offset(offset_u8 as isize);
+        let _ = ptr.wrapping_offset(offset_usize as isize);
+        let _ = ptr.wrapping_offset(offset_isize as isize);
+        let _ = ptr.wrapping_offset(offset_u8 as isize);
     }
 }

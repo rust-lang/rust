@@ -1,4 +1,4 @@
-#![feature(proc_macro_quote, proc_macro_hygiene)]
+#![feature(proc_macro_quote)]
 #![deny(rust_2018_idioms)]
 // FIXME: Remove this attribute once the weird failure is gone.
 #![allow(unused_extern_crates)]

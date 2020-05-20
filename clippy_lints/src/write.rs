@@ -353,7 +353,8 @@ impl Write {
         is_write: bool,
     ) -> (Option<StrLit>, Option<Expr>) {
         use fmt_macros::{
-            AlignUnknown, ArgumentImplicitlyIs, ArgumentIs, ArgumentNamed, CountImplied, FormatSpec, Parser, Piece,
+            AlignUnknown, ArgumentImplicitlyIs, ArgumentIs, ArgumentNamed, CountImplied, FormatSpec, ParseMode, Parser,
+            Piece,
         };
         let tts = tts.clone();
 
@@ -376,7 +377,7 @@ impl Write {
         };
         let tmp = fmtstr.symbol.as_str();
         let mut args = vec![];
-        let mut fmt_parser = Parser::new(&tmp, None, Vec::new(), false);
+        let mut fmt_parser = Parser::new(&tmp, None, None, false, ParseMode::Format);
         while let Some(piece) = fmt_parser.next() {
             if !fmt_parser.errors.is_empty() {
                 return (None, expr);
