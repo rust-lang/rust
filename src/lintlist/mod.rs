@@ -1195,7 +1195,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "match_wild_err_arm",
-        group: "style",
+        group: "pedantic",
         desc: "a `match` with `Err(_)` arm and take drastic actions",
         deprecation: None,
         module: "matches",
