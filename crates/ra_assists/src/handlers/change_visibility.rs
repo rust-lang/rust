@@ -68,7 +68,6 @@ fn add_vis(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
 
     acc.add(AssistId("change_visibility"), "Change visibility to pub(crate)", target, |edit| {
         edit.insert(offset, "pub(crate) ");
-        edit.set_cursor(offset);
     })
 }
 
@@ -92,7 +91,6 @@ fn change_vis(acc: &mut Assists, vis: ast::Visibility) -> Option<()> {
             target,
             |edit| {
                 edit.replace(vis.syntax().text_range(), "pub(crate)");
-                edit.set_cursor(vis.syntax().text_range().start())
             },
         );
     }
@@ -104,7 +102,6 @@ fn change_vis(acc: &mut Assists, vis: ast::Visibility) -> Option<()> {
             target,
             |edit| {
                 edit.replace(vis.syntax().text_range(), "pub");
-                edit.set_cursor(vis.syntax().text_range().start());
             },
         );
     }
@@ -122,15 +119,15 @@ mod tests {
     #[test]
     fn change_visibility_adds_pub_crate_to_items() {
         check_assist(change_visibility, "<|>fn foo() {}", "<|>pub(crate) fn foo() {}");
-        check_assist(change_visibility, "f<|>n foo() {}", "<|>pub(crate) fn foo() {}");
+        check_assist(change_visibility, "f<|>n foo() {}", "pub(crate) f<|>n foo() {}");
         check_assist(change_visibility, "<|>struct Foo {}", "<|>pub(crate) struct Foo {}");
         check_assist(change_visibility, "<|>mod foo {}", "<|>pub(crate) mod foo {}");
         check_assist(change_visibility, "<|>trait Foo {}", "<|>pub(crate) trait Foo {}");
-        check_assist(change_visibility, "m<|>od {}", "<|>pub(crate) mod {}");
+        check_assist(change_visibility, "m<|>od {}", "pub(crate) m<|>od {}");
         check_assist(
             change_visibility,
             "unsafe f<|>n foo() {}",
-            "<|>pub(crate) unsafe fn foo() {}",
+            "pub(crate) unsafe f<|>n foo() {}",
         );
     }
 
