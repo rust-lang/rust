@@ -1322,7 +1322,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     "`async` generators are not yet supported"
                 )
                 .emit();
-                return hir::ExprKind::Err;
             }
             None => self.generator_kind = Some(hir::GeneratorKind::Gen),
         }
