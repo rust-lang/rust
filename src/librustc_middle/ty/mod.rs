@@ -32,7 +32,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Namespace, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, CRATE_DEF_INDEX};
 use rustc_hir::lang_items::{FnMutTraitLangItem, FnOnceTraitLangItem, FnTraitLangItem};
-use rustc_hir::{Constness, GlobMap, Node};
+use rustc_hir::{Constness, Node};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable;
 use rustc_serialize::{self, Encodable, Encoder};
@@ -126,7 +126,7 @@ pub struct ResolverOutputs {
     pub maybe_unused_trait_imports: FxHashSet<LocalDefId>,
     pub maybe_unused_extern_crates: Vec<(DefId, Span)>,
     pub export_map: ExportMap<hir::HirId>,
-    pub glob_map: GlobMap,
+    pub glob_map: FxHashMap<LocalDefId, FxHashSet<Symbol>>,
     /// Extern prelude entries. The value is `true` if the entry was introduced
     /// via `extern crate` item and not `--extern` option or compiler built-in.
     pub extern_prelude: FxHashMap<Symbol, bool>,

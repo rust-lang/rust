@@ -1308,13 +1308,18 @@ impl<'a> Resolver<'a> {
             .into_iter()
             .map(|(id, sp)| (definitions.local_def_id(id).to_def_id(), sp))
             .collect();
+        let glob_map = self
+            .glob_map
+            .into_iter()
+            .map(|(id, names)| (definitions.local_def_id(id), names))
+            .collect();
         ResolverOutputs {
             definitions: definitions,
             cstore: Box::new(self.crate_loader.into_cstore()),
             extern_crate_map: self.extern_crate_map,
             export_map,
             trait_map,
-            glob_map: self.glob_map,
+            glob_map,
             maybe_unused_trait_imports,
             maybe_unused_extern_crates,
             extern_prelude: self
@@ -1357,7 +1362,11 @@ impl<'a> Resolver<'a> {
                 }
                 map
             },
-            glob_map: self.glob_map.clone(),
+            glob_map: self
+                .glob_map
+                .iter()
+                .map(|(id, names)| (self.definitions.local_def_id(id.clone()), names.clone()))
+                .collect(),
             maybe_unused_trait_imports: self
                 .maybe_unused_trait_imports
                 .iter()
