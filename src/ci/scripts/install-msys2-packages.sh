@@ -6,8 +6,16 @@ IFS=$'\n\t'
 source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 
 if isWindows; then
-    # FIXME(mati865): hopefully temporary workaround for MSYS2 issue
-    pacman -Sy --noconfirm pacman
+    # FIXME(mati865): temporary workaround until chocolatey updates their MSYS2
+    base_url='https://ci-mirrors.rust-lang.org/rustc/msys2-repo/msys/x86_64'
+    curl ${base_url}/libzstd-1.4.4-2-x86_64.pkg.tar.xz -o libzstd-1.4.4-2-x86_64.pkg.tar.xz
+    curl ${base_url}/pacman-5.2.1-6-x86_64.pkg.tar.xz -o pacman-5.2.1-6-x86_64.pkg.tar.xz
+    curl ${base_url}/zstd-1.4.4-2-x86_64.pkg.tar.xz -o zstd-1.4.4-2-x86_64.pkg.tar.xz
+    pacman -U --noconfirm libzstd-1.4.4-2-x86_64.pkg.tar.xz pacman-5.2.1-6-x86_64.pkg.tar.xz \
+        zstd-1.4.4-2-x86_64.pkg.tar.xz
+    rm libzstd-1.4.4-2-x86_64.pkg.tar.xz pacman-5.2.1-6-x86_64.pkg.tar.xz \
+        zstd-1.4.4-2-x86_64.pkg.tar.xz
+    pacman -Sy
 
     pacman -S --noconfirm --needed base-devel ca-certificates make diffutils tar \
         binutils
