@@ -72,7 +72,7 @@ mod tests {
         check_assist(
             invert_if,
             "fn f() { i<|>f x != 3 { 1 } else { 3 + 2 } }",
-            "fn f() { i<|>f x == 3 { 3 + 2 } else { 1 } }",
+            "fn f() { if x == 3 { 3 + 2 } else { 1 } }",
         )
     }
 
@@ -81,7 +81,7 @@ mod tests {
         check_assist(
             invert_if,
             "fn f() { <|>if !cond { 3 * 2 } else { 1 } }",
-            "fn f() { <|>if cond { 1 } else { 3 * 2 } }",
+            "fn f() { if cond { 1 } else { 3 * 2 } }",
         )
     }
 
@@ -90,7 +90,7 @@ mod tests {
         check_assist(
             invert_if,
             "fn f() { i<|>f cond { 3 * 2 } else { 1 } }",
-            "fn f() { i<|>f !cond { 1 } else { 3 * 2 } }",
+            "fn f() { if !cond { 1 } else { 3 * 2 } }",
         )
     }
 

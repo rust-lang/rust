@@ -99,7 +99,7 @@ mod tests {
             fn foo<T: u32, <|>F: FnOnce(T) -> T>() {}
             "#,
             r#"
-            fn foo<T, <|>F>() where T: u32, F: FnOnce(T) -> T {}
+            fn foo<T, F>() where T: u32, F: FnOnce(T) -> T {}
             "#,
         );
     }
@@ -112,7 +112,7 @@ mod tests {
             impl<U: u32, <|>T> A<U, T> {}
             "#,
             r#"
-            impl<U, <|>T> A<U, T> where U: u32 {}
+            impl<U, T> A<U, T> where U: u32 {}
             "#,
         );
     }
@@ -125,7 +125,7 @@ mod tests {
             struct A<<|>T: Iterator<Item = u32>> {}
             "#,
             r#"
-            struct A<<|>T> where T: Iterator<Item = u32> {}
+            struct A<T> where T: Iterator<Item = u32> {}
             "#,
         );
     }
@@ -138,7 +138,7 @@ mod tests {
             struct Pair<<|>T: u32>(T, T);
             "#,
             r#"
-            struct Pair<<|>T>(T, T) where T: u32;
+            struct Pair<T>(T, T) where T: u32;
             "#,
         );
     }

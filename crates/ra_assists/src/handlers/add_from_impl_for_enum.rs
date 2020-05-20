@@ -101,7 +101,7 @@ mod tests {
         check_assist(
             add_from_impl_for_enum,
             "enum A { <|>One(u32) }",
-            r#"enum A { <|>One(u32) }
+            r#"enum A { One(u32) }
 
 impl From<u32> for A {
     fn from(v: u32) -> Self {
@@ -116,7 +116,7 @@ impl From<u32> for A {
         check_assist(
             add_from_impl_for_enum,
             r#"enum A { <|>One(foo::bar::baz::Boo) }"#,
-            r#"enum A { <|>One(foo::bar::baz::Boo) }
+            r#"enum A { One(foo::bar::baz::Boo) }
 
 impl From<foo::bar::baz::Boo> for A {
     fn from(v: foo::bar::baz::Boo) -> Self {
@@ -178,7 +178,7 @@ impl From<String> for A {
 pub trait From<T> {
     fn from(T) -> Self;
 }"#,
-            r#"enum A { <|>One(u32), Two(String), }
+            r#"enum A { One(u32), Two(String), }
 
 impl From<u32> for A {
     fn from(v: u32) -> Self {

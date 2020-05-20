@@ -63,22 +63,22 @@ mod tests {
 
     #[test]
     fn demorgan_turns_and_into_or() {
-        check_assist(apply_demorgan, "fn f() { !x &&<|> !x }", "fn f() { !(x ||<|> x) }")
+        check_assist(apply_demorgan, "fn f() { !x &&<|> !x }", "fn f() { !(x || x) }")
     }
 
     #[test]
     fn demorgan_turns_or_into_and() {
-        check_assist(apply_demorgan, "fn f() { !x ||<|> !x }", "fn f() { !(x &&<|> x) }")
+        check_assist(apply_demorgan, "fn f() { !x ||<|> !x }", "fn f() { !(x && x) }")
     }
 
     #[test]
     fn demorgan_removes_inequality() {
-        check_assist(apply_demorgan, "fn f() { x != x ||<|> !x }", "fn f() { !(x == x &&<|> x) }")
+        check_assist(apply_demorgan, "fn f() { x != x ||<|> !x }", "fn f() { !(x == x && x) }")
     }
 
     #[test]
     fn demorgan_general_case() {
-        check_assist(apply_demorgan, "fn f() { x ||<|> x }", "fn f() { !(!x &&<|> !x) }")
+        check_assist(apply_demorgan, "fn f() { x ||<|> x }", "fn f() { !(!x && !x) }")
     }
 
     #[test]

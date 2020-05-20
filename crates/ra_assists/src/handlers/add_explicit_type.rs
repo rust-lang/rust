@@ -86,11 +86,7 @@ mod tests {
 
     #[test]
     fn add_explicit_type_works_for_simple_expr() {
-        check_assist(
-            add_explicit_type,
-            "fn f() { let a<|> = 1; }",
-            "fn f() { let a<|>: i32 = 1; }",
-        );
+        check_assist(add_explicit_type, "fn f() { let a<|> = 1; }", "fn f() { let a: i32 = 1; }");
     }
 
     #[test]
@@ -98,7 +94,7 @@ mod tests {
         check_assist(
             add_explicit_type,
             "fn f() { let a<|>: _ = 1; }",
-            "fn f() { let a<|>: i32 = 1; }",
+            "fn f() { let a: i32 = 1; }",
         );
     }
 
@@ -122,7 +118,7 @@ mod tests {
             }
 
             fn f() {
-                let a<|>: Option<i32> = Option::Some(1);
+                let a: Option<i32> = Option::Some(1);
             }"#,
         );
     }
@@ -132,7 +128,7 @@ mod tests {
         check_assist(
             add_explicit_type,
             r"macro_rules! v { () => {0u64} } fn f() { let a<|> = v!(); }",
-            r"macro_rules! v { () => {0u64} } fn f() { let a<|>: u64 = v!(); }",
+            r"macro_rules! v { () => {0u64} } fn f() { let a: u64 = v!(); }",
         );
     }
 
@@ -140,8 +136,8 @@ mod tests {
     fn add_explicit_type_works_for_macro_call_recursive() {
         check_assist(
             add_explicit_type,
-            "macro_rules! u { () => {0u64} } macro_rules! v { () => {u!()} } fn f() { let a<|> = v!(); }",
-            "macro_rules! u { () => {0u64} } macro_rules! v { () => {u!()} } fn f() { let a<|>: u64 = v!(); }",
+            r#"macro_rules! u { () => {0u64} } macro_rules! v { () => {u!()} } fn f() { let a<|> = v!(); }"#,
+            r#"macro_rules! u { () => {0u64} } macro_rules! v { () => {u!()} } fn f() { let a: u64 = v!(); }"#,
         );
     }
 
@@ -208,7 +204,7 @@ struct Test<K, T = u8> {
 }
 
 fn main() {
-    let test<|>: Test<i32> = Test { t: 23, k: 33 };
+    let test: Test<i32> = Test { t: 23, k: 33 };
 }"#,
         );
     }
