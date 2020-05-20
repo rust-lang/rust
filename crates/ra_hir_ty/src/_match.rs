@@ -1946,6 +1946,23 @@ mod tests {
 
         check_no_diagnostic(content);
     }
+
+    #[test]
+    fn expr_diverges_missing_arm() {
+        let content = r"
+            enum Either {
+                A,
+                B,
+            }
+            fn test_fn() {
+                match loop {} {
+                    Either::A => (),
+                }
+            }
+        ";
+
+        check_no_diagnostic(content);
+    }
 }
 
 #[cfg(test)]
@@ -1998,26 +2015,6 @@ mod false_negatives {
     }
 
     #[test]
-    fn expr_diverges_missing_arm() {
-        let content = r"
-            enum Either {
-                A,
-                B,
-            }
-            fn test_fn() {
-                match loop {} {
-                    Either::A => (),
-                }
-            }
-        ";
-
-        // This is a false negative.
-        // Even though the match expression diverges, rustc fails
-        // to compile here since `Either::B` is missing.
-        check_no_diagnostic(content);
-    }
-
-    #[test]
     fn expr_loop_missing_arm() {
         let content = r"
             enum Either {
@@ -2035,7 +2032,7 @@ mod false_negatives {
         // We currently infer the type of `loop { break Foo::A }` to `!`, which
         // causes us to skip the diagnostic since `Either::A` doesn't type check
         // with `!`.
-        check_no_diagnostic(content);
+        check_diagnostic(content);
     }
 
     #[test]

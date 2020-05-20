@@ -1860,3 +1860,66 @@ fn test() {
     "###
     );
 }
+
+#[test]
+fn infer_loop_break_with_val() {
+    assert_snapshot!(
+        infer(r#"
+enum Option<T> { Some(T), None }
+use Option::*;
+
+fn test() {
+    let x = loop {
+        if false {
+            break None;
+        }
+
+        break Some(true);
+    };
+}
+"#),
+        @r###"
+    60..169 '{     ...  }; }': ()
+    70..71 'x': Option<bool>
+    74..166 'loop {...     }': Option<bool>
+    79..166 '{     ...     }': ()
+    89..133 'if fal...     }': ()
+    92..97 'false': bool
+    98..133 '{     ...     }': ()
+    112..122 'break None': !
+    118..122 'None': Option<bool>
+    143..159 'break ...(true)': !
+    149..153 'Some': Some<bool>(bool) -> Option<bool>
+    149..159 'Some(true)': Option<bool>
+    154..158 'true': bool
+    "###
+    );
+}
+
+#[test]
+fn infer_loop_break_without_val() {
+    assert_snapshot!(
+        infer(r#"
+enum Option<T> { Some(T), None }
+use Option::*;
+
+fn test() {
+    let x = loop {
+        if false {
+            break;
+        }
+    };
+}
+"#),
+        @r###"
+    60..137 '{     ...  }; }': ()
+    70..71 'x': ()
+    74..134 'loop {...     }': ()
+    79..134 '{     ...     }': ()
+    89..128 'if fal...     }': ()
+    92..97 'false': bool
+    98..128 '{     ...     }': ()
+    112..117 'break': !
+    "###
+    );
+}
