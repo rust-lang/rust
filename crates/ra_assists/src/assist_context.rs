@@ -248,8 +248,7 @@ impl AssistBuilder {
 
     fn finish(self, change_label: String) -> SourceChange {
         let edit = self.edit.finish();
-        let mut res = SingleFileChange { label: change_label, edit, cursor_position: None }
-            .into_source_change(self.file);
+        let mut res = SingleFileChange { label: change_label, edit }.into_source_change(self.file);
         if self.is_snippet {
             res.is_snippet = true;
         }
