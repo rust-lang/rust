@@ -733,7 +733,7 @@ fn main() {
     let x: Result<i32, i32> = Result::Ok(92);
     let y = match x {
         Ok(a) => a,
-        _ => unreachable!(),
+        $0_ => unreachable!(),
     };
 }
 ```
