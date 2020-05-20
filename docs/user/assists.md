@@ -175,8 +175,8 @@ trait Trait<T> {
 }
 
 impl Trait<u32> for () {
-    $0fn foo(&self) -> u32 {
-        todo!()
+    fn foo(&self) -> u32 {
+        ${0:todo!()}
     }
 
 }

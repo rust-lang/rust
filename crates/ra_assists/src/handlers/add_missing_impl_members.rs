@@ -45,8 +45,8 @@ enum AddMissingImplMembersMode {
 // }
 //
 // impl Trait<u32> for () {
-//     $0fn foo(&self) -> u32 {
-//         todo!()
+//     fn foo(&self) -> u32 {
+//         ${0:todo!()}
 //     }
 //
 // }
@@ -167,15 +167,23 @@ fn add_missing_impl_members_inner(
         let original_range = impl_item_list.syntax().text_range();
         match ctx.config.snippet_cap {
             None => builder.replace(original_range, new_impl_item_list.to_string()),
-            Some(cap) => builder.replace_snippet(
-                cap,
-                original_range,
-                render_snippet(
+            Some(cap) => {
+                let mut cursor = Cursor::Before(first_new_item.syntax());
+                let placeholder;
+                if let ast::AssocItem::FnDef(func) = &first_new_item {
+                    if let Some(m) = func.syntax().descendants().find_map(ast::MacroCall::cast) {
+                        if m.syntax().text() == "todo!()" {
+                            placeholder = m;
+                            cursor = Cursor::Replace(placeholder.syntax());
+                        }
+                    }
+                }
+                builder.replace_snippet(
                     cap,
-                    new_impl_item_list.syntax(),
-                    Cursor::Before(first_new_item.syntax()),
-                ),
-            ),
+                    original_range,
+                    render_snippet(cap, new_impl_item_list.syntax(), cursor),
+                )
+            }
         };
     })
 }
@@ -271,8 +279,8 @@ struct S;
 
 impl Foo for S {
     fn bar(&self) {}
-    $0fn foo(&self) {
-        todo!()
+    fn foo(&self) {
+        ${0:todo!()}
     }
 
 }"#,
@@ -291,8 +299,8 @@ impl Foo for S { <|> }"#,
 trait Foo { fn foo(&self); }
 struct S;
 impl Foo for S {
-    $0fn foo(&self) {
-        todo!()
+    fn foo(&self) {
+        ${0:todo!()}
     }
 }"#,
         );
@@ -310,8 +318,8 @@ impl Foo<u32> for S { <|> }"#,
 trait Foo<T> { fn foo(&self, t: T) -> &T; }
 struct S;
 impl Foo<u32> for S {
-    $0fn foo(&self, t: u32) -> &u32 {
-        todo!()
+    fn foo(&self, t: u32) -> &u32 {
+        ${0:todo!()}
     }
 }"#,
         );
@@ -329,8 +337,8 @@ impl<U> Foo<U> for S { <|> }"#,
 trait Foo<T> { fn foo(&self, t: T) -> &T; }
 struct S;
 impl<U> Foo<U> for S {
-    $0fn foo(&self, t: U) -> &U {
-        todo!()
+    fn foo(&self, t: U) -> &U {
+        ${0:todo!()}
     }
 }"#,
         );
@@ -348,8 +356,8 @@ impl Foo for S {}<|>"#,
 trait Foo { fn foo(&self); }
 struct S;
 impl Foo for S {
-    $0fn foo(&self) {
-        todo!()
+    fn foo(&self) {
+        ${0:todo!()}
     }
 }"#,
         )
@@ -373,8 +381,8 @@ mod foo {
 }
 struct S;
 impl foo::Foo for S {
-    $0fn foo(&self, bar: foo::Bar) {
-        todo!()
+    fn foo(&self, bar: foo::Bar) {
+        ${0:todo!()}
     }
 }"#,
         );
@@ -398,8 +406,8 @@ mod foo {
 }
 struct S;
 impl foo::Foo for S {
-    $0fn foo(&self, bar: foo::Bar<u32>) {
-        todo!()
+    fn foo(&self, bar: foo::Bar<u32>) {
+        ${0:todo!()}
     }
 }"#,
         );
@@ -423,8 +431,8 @@ mod foo {
 }
 struct S;
 impl foo::Foo<u32> for S {
-    $0fn foo(&self, bar: foo::Bar<u32>) {
-        todo!()
+    fn foo(&self, bar: foo::Bar<u32>) {
+        ${0:todo!()}
     }
 }"#,
         );
@@ -451,8 +459,8 @@ mod foo {
 struct Param;
 struct S;
 impl foo::Foo<Param> for S {
-    $0fn foo(&self, bar: Param) {
-        todo!()
+    fn foo(&self, bar: Param) {
+        ${0:todo!()}
     }
 }"#,
         );
@@ -478,8 +486,8 @@ mod foo {
 }
 struct S;
 impl foo::Foo for S {
-    $0fn foo(&self, bar: foo::Bar<u32>::Assoc) {
-        todo!()
+    fn foo(&self, bar: foo::Bar<u32>::Assoc) {
+        ${0:todo!()}
     }
 }"#,
         );
@@ -505,8 +513,8 @@ mod foo {
 }
 struct S;
 impl foo::Foo for S {
-    $0fn foo(&self, bar: foo::Bar<foo::Baz>) {
-        todo!()
+    fn foo(&self, bar: foo::Bar<foo::Baz>) {
+        ${0:todo!()}
     }
 }"#,
         );
@@ -530,8 +538,8 @@ mod foo {
 }
 struct S;
 impl foo::Foo for S {
-    $0fn foo(&self, bar: dyn Fn(u32) -> i32) {
-        todo!()
+    fn foo(&self, bar: dyn Fn(u32) -> i32) {
+        ${0:todo!()}
     }
 }"#,
         );
@@ -645,8 +653,8 @@ trait Foo<T = Self> {
 
 struct S;
 impl Foo for S {
-    $0fn bar(&self, other: &Self) {
-        todo!()
+    fn bar(&self, other: &Self) {
+        ${0:todo!()}
     }
 }"#,
         )
@@ -670,8 +678,8 @@ trait Foo<T1, T2 = Self> {
 
 struct S<T>;
 impl Foo<T> for S<T> {
-    $0fn bar(&self, this: &T, that: &Self) {
-        todo!()
+    fn bar(&self, this: &T, that: &Self) {
+        ${0:todo!()}
     }
 }"#,
         )
