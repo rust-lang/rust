@@ -1,3 +1,5 @@
+// ignore-tidy-filelength
+
 //! This crate is responsible for the part of name resolution that doesn't require type checker.
 //!
 //! Module structure of the crate is built here.
@@ -1271,12 +1273,19 @@ impl<'a> Resolver<'a> {
     }
 
     pub fn into_outputs(self) -> ResolverOutputs {
+        let trait_map = {
+            let mut map = FxHashMap::default();
+            for (k, v) in self.trait_map.into_iter() {
+                map.insert(self.definitions.node_id_to_hir_id(k), v);
+            }
+            map
+        };
         ResolverOutputs {
             definitions: self.definitions,
             cstore: Box::new(self.crate_loader.into_cstore()),
             extern_crate_map: self.extern_crate_map,
             export_map: self.export_map,
-            trait_map: self.trait_map,
+            trait_map,
             glob_map: self.glob_map,
             maybe_unused_trait_imports: self.maybe_unused_trait_imports,
             maybe_unused_extern_crates: self.maybe_unused_extern_crates,
@@ -1294,7 +1303,13 @@ impl<'a> Resolver<'a> {
             cstore: Box::new(self.cstore().clone()),
             extern_crate_map: self.extern_crate_map.clone(),
             export_map: self.export_map.clone(),
-            trait_map: self.trait_map.clone(),
+            trait_map: {
+                let mut map = FxHashMap::default();
+                for (k, v) in self.trait_map.iter() {
+                    map.insert(self.definitions.node_id_to_hir_id(k.clone()), v.clone());
+                }
+                map
+            },
             glob_map: self.glob_map.clone(),
             maybe_unused_trait_imports: self.maybe_unused_trait_imports.clone(),
             maybe_unused_extern_crates: self.maybe_unused_extern_crates.clone(),

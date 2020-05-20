@@ -1113,8 +1113,7 @@ impl<'tcx> TyCtxt<'tcx> {
         };
 
         let mut trait_map: FxHashMap<_, FxHashMap<_, _>> = FxHashMap::default();
-        for (k, v) in resolutions.trait_map {
-            let hir_id = definitions.node_id_to_hir_id(k);
+        for (hir_id, v) in resolutions.trait_map.into_iter() {
             let map = trait_map.entry(hir_id.owner).or_default();
             let v = v
                 .into_iter()
