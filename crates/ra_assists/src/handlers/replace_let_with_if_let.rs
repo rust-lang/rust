@@ -58,12 +58,9 @@ pub(crate) fn replace_let_with_if_let(acc: &mut Assists, ctx: &AssistContext) ->
         let stmt = make::expr_stmt(if_);
 
         let placeholder = stmt.syntax().descendants().find_map(ast::PlaceholderPat::cast).unwrap();
-        let target_offset =
-            let_stmt.syntax().text_range().start() + placeholder.syntax().text_range().start();
         let stmt = stmt.replace_descendant(placeholder.into(), original_pat);
 
         edit.replace_ast(ast::Stmt::from(let_stmt), ast::Stmt::from(stmt));
-        edit.set_cursor(target_offset);
     })
 }
 
@@ -88,7 +85,7 @@ fn main() {
 enum E<T> { X(T), Y(T) }
 
 fn main() {
-    if let <|>x = E::X(92) {
+    if let x = E::X(92) {
     }
 }
             ",
