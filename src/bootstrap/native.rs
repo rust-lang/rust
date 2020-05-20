@@ -520,6 +520,10 @@ impl Step for Lld {
                 .define("LLVM_TABLEGEN_EXE", llvm_config.with_file_name("llvm-tblgen"));
         }
 
+        // Explicitly set C++ standard, because upstream doesn't do so
+        // for standalone builds.
+        cfg.define("CMAKE_CXX_STANDARD", "14");
+
         cfg.build();
 
         t!(File::create(&done_stamp));
