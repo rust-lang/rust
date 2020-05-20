@@ -164,7 +164,7 @@ mod test {
             "#,
             r##"
             fn f() {
-                let s = <|>r#"random
+                let s = r#"random
 string"#;
             }
             "##,
@@ -182,7 +182,7 @@ string"#;
             "#,
             r##"
             fn f() {
-                format!(<|>r#"x = {}"#, 92)
+                format!(r#"x = {}"#, 92)
             }
             "##,
         )
@@ -199,7 +199,7 @@ string"#;
             "###,
             r####"
             fn f() {
-                let s = <|>r#"#random##
+                let s = r#"#random##
 string"#;
             }
             "####,
@@ -217,7 +217,7 @@ string"#;
             "###,
             r####"
             fn f() {
-                let s = <|>r###"#random"##
+                let s = r###"#random"##
 string"###;
             }
             "####,
@@ -235,7 +235,7 @@ string"###;
             "#,
             r##"
             fn f() {
-                let s = <|>r#"random string"#;
+                let s = r#"random string"#;
             }
             "##,
         )
@@ -289,7 +289,7 @@ string"###;
             "#,
             r##"
             fn f() {
-                let s = <|>r#"random string"#;
+                let s = r#"random string"#;
             }
             "##,
         )
@@ -306,7 +306,7 @@ string"###;
             "##,
             r###"
             fn f() {
-                let s = <|>r##"random"string"##;
+                let s = r##"random"string"##;
             }
             "###,
         )
@@ -348,7 +348,7 @@ string"###;
             "##,
             r#"
             fn f() {
-                let s = <|>r"random string";
+                let s = r"random string";
             }
             "#,
         )
@@ -365,7 +365,7 @@ string"###;
             "##,
             r#"
             fn f() {
-                let s = <|>r"random\"str\"ing";
+                let s = r"random\"str\"ing";
             }
             "#,
         )
@@ -382,7 +382,7 @@ string"###;
             "###,
             r##"
             fn f() {
-                let s = <|>r#"random string"#;
+                let s = r#"random string"#;
             }
             "##,
         )
@@ -436,7 +436,7 @@ string"###;
             "##,
             r#"
             fn f() {
-                let s = <|>"random string";
+                let s = "random string";
             }
             "#,
         )
@@ -453,7 +453,7 @@ string"###;
             "##,
             r#"
             fn f() {
-                let s = <|>"random\"str\"ing";
+                let s = "random\"str\"ing";
             }
             "#,
         )
@@ -470,7 +470,7 @@ string"###;
             "###,
             r##"
             fn f() {
-                let s = <|>"random string";
+                let s = "random string";
             }
             "##,
         )

@@ -105,18 +105,9 @@ fn check(handler: Handler, before: &str, expected: ExpectedResult) {
             change.edit.apply(&mut actual);
 
             if !source_change.is_snippet {
-                match source_change.cursor_position {
-                    None => {
-                        if let RangeOrOffset::Offset(before_cursor_pos) = range_or_offset {
-                            let off = change
-                                .edit
-                                .apply_to_offset(before_cursor_pos)
-                                .expect("cursor position is affected by the edit");
-                            actual = add_cursor(&actual, off)
-                        }
-                    }
-                    Some(off) => actual = add_cursor(&actual, off.offset),
-                };
+                if let Some(off) = source_change.cursor_position {
+                    actual = add_cursor(&actual, off.offset)
+                }
             }
             assert_eq_text!(after, &actual);
         }
