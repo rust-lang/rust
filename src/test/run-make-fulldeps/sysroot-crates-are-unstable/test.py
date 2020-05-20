@@ -11,6 +11,10 @@ STABLE_CRATES = ['std', 'alloc', 'core', 'proc_macro',
                  'rsbegin.o', 'rsend.o', 'dllcrt2.o', 'crt2.o', 'clang_rt']
 
 
+# This is a whitelist of crates which give an "compiled by an incompatible version of rustc"
+# error, due to being copied into the sysroot as proc-macro deps. See #69976
+INCOMPATIBLE_VER_CRATES = ['autocfg', 'cc']
+
 def convert_to_string(s):
     if s.__class__.__name__ == 'bytes':
         return s.decode('utf-8')
@@ -34,6 +38,11 @@ def check_lib(lib):
     stdout, stderr = exec_command([os.environ['RUSTC'], '-', '--crate-type', 'rlib',
                                    '--extern', '{}={}'.format(lib['name'], lib['path'])],
                                   to_input=('extern crate {};'.format(lib['name'])).encode('utf-8'))
+
+    if 'compiled by an incompatible version of rustc' in '{}{}'.format(stdout, stderr):
+        if lib['name'] in INCOMPATIBLE_VER_CRATES:
+            return True
+
     if not 'use of unstable library feature' in '{}{}'.format(stdout, stderr):
         print('crate {} "{}" is not unstable'.format(lib['name'], lib['path']))
         print('{}{}'.format(stdout, stderr))
