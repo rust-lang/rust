@@ -575,8 +575,9 @@ impl char {
     /// assert!(!'A'.is_lowercase());
     /// assert!(!'Δ'.is_lowercase());
     ///
-    /// // The various Chinese scripts do not have case, and so:
+    /// // The various Chinese scripts and punctuation do not have case, and so:
     /// assert!(!'中'.is_lowercase());
+    /// assert!(!' '.is_lowercase());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -606,8 +607,9 @@ impl char {
     /// assert!('A'.is_uppercase());
     /// assert!('Δ'.is_uppercase());
     ///
-    /// // The various Chinese scripts do not have case, and so:
+    /// // The various Chinese scripts and punctuation do not have case, and so:
     /// assert!(!'中'.is_uppercase());
+    /// assert!(!' '.is_uppercase());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
