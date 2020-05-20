@@ -249,7 +249,7 @@ If it worked, you should see "rust-analyzer, Line X, Column Y" on the left side 
 
 If you get an error saying `No such file or directory: 'rust-analyzer'`, see the <<rust-analyzer-language-server-binary,`rust-analyzer` binary>> section on installing the language server binary.
 
-=== Gnome Builder
+=== GNOME Builder
 
 Prerequisites: You have installed the <<rust-analyzer-language-server-binary,`rust-analyzer` binary>>.
 
