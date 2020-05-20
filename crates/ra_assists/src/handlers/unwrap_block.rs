@@ -1,8 +1,10 @@
-use crate::{AssistContext, AssistId, Assists};
-
-use ast::{ElseBranch, Expr, LoopBodyOwner};
 use ra_fmt::unwrap_trivial_block;
-use ra_syntax::{ast, match_ast, AstNode, TextRange, T};
+use ra_syntax::{
+    ast::{self, ElseBranch, Expr, LoopBodyOwner},
+    match_ast, AstNode, TextRange, T,
+};
+
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: unwrap_block
 //

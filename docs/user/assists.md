@@ -325,7 +325,7 @@ enum Action { Move { distance: u32 }, Stop }
 
 fn handle(action: Action) {
     match action {
-        Action::Move { distance } => {}
+        $0Action::Move { distance } => {}
         Action::Stop => {}
     }
 }
@@ -346,7 +346,7 @@ fn main() {
 
 // AFTER
 mod m {
-    pub(crate) fn frobnicate() {}
+    $0pub(crate) fn frobnicate() {}
 }
 fn main() {
     m::frobnicate() {}
