@@ -123,6 +123,7 @@ pub trait Linker {
     fn pgo_gen(&mut self);
     fn control_flow_guard(&mut self);
     fn debuginfo(&mut self, strip: Strip);
+    fn no_crt_objects(&mut self);
     fn no_default_libraries(&mut self);
     fn build_dylib(&mut self, out_filename: &Path);
     fn build_static_executable(&mut self);
@@ -266,7 +267,9 @@ impl<'a> Linker for GccLinker<'a> {
         self.cmd.arg("-pie");
     }
     fn no_position_independent_executable(&mut self) {
-        self.cmd.arg("-no-pie");
+        if !self.is_ld {
+            self.cmd.arg("-no-pie");
+        }
     }
     fn full_relro(&mut self) {
         self.linker_arg("-zrelro");
@@ -401,6 +404,12 @@ impl<'a> Linker for GccLinker<'a> {
             Strip::Symbols => {
                 self.linker_arg("--strip-all");
             }
+        }
+    }
+
+    fn no_crt_objects(&mut self) {
+        if !self.is_ld {
+            self.cmd.arg("-nostartfiles");
         }
     }
 
@@ -641,6 +650,10 @@ impl<'a> Linker for MsvcLinker<'a> {
     }
 
     fn no_relro(&mut self) {
+        // noop
+    }
+
+    fn no_crt_objects(&mut self) {
         // noop
     }
 
@@ -907,6 +920,8 @@ impl<'a> Linker for EmLinker<'a> {
         });
     }
 
+    fn no_crt_objects(&mut self) {}
+
     fn no_default_libraries(&mut self) {
         self.cmd.args(&["-s", "DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=[]"]);
     }
@@ -1106,6 +1121,8 @@ impl<'a> Linker for WasmLd<'a> {
         self.sess.warn("Windows Control Flow Guard is not supported by this linker.");
     }
 
+    fn no_crt_objects(&mut self) {}
+
     fn no_default_libraries(&mut self) {}
 
     fn build_dylib(&mut self, _out_filename: &Path) {
@@ -1270,6 +1287,8 @@ impl<'a> Linker for PtxLinker<'a> {
     fn gc_sections(&mut self, _keep_metadata: bool) {}
 
     fn pgo_gen(&mut self) {}
+
+    fn no_crt_objects(&mut self) {}
 
     fn no_default_libraries(&mut self) {}
 
