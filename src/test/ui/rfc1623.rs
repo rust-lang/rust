@@ -8,7 +8,6 @@ fn non_elidable<'a, 'b>(a: &'a u8, b: &'b u8) -> &'a u8 {
 static NON_ELIDABLE_FN: &for<'a> fn(&'a u8, &'a u8) -> &'a u8 =
     &(non_elidable as for<'a> fn(&'a u8, &'a u8) -> &'a u8);
 
-
 struct SomeStruct<'x, 'y, 'z: 'x> {
     foo: &'x Foo<'z>,
     bar: &'x Bar<'z>,
@@ -19,12 +18,12 @@ fn id<T>(t: T) -> T {
     t
 }
 
-static SOME_STRUCT: &SomeStruct = SomeStruct { //~ ERROR mismatched types
+static SOME_STRUCT: &SomeStruct = SomeStruct {
+    //~^ ERROR mismatched types
     foo: &Foo { bools: &[false, true] },
     bar: &Bar { bools: &[true, true] },
     f: &id,
-    //~^ ERROR type mismatch in function arguments
-    //~| ERROR type mismatch resolving
+    //~^ ERROR type mismatch resolving
 };
 
 // very simple test for a 'static static with default lifetime

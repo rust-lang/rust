@@ -22,18 +22,6 @@ LL |     a.iter().map(|_: (u16, u16)| 45);
    |              |
    |              expected signature of `fn(&(u32, u32)) -> _`
 
-error[E0631]: type mismatch in function arguments
-  --> $DIR/closure-arg-type-mismatch.rs:10:9
-   |
-LL | fn baz<F: Fn(*mut &u32)>(_: F) {}
-   |           ------------- required by this bound in `baz`
-LL | fn _test<'a>(f: fn(*mut &'a u32)) {
-LL |     baz(f);
-   |         ^
-   |         |
-   |         expected signature of `for<'r> fn(*mut &'r u32) -> _`
-   |         found signature of `fn(*mut &'a u32) -> _`
-
 error[E0271]: type mismatch resolving `for<'r> <fn(*mut &'a u32) as std::ops::FnOnce<(*mut &'r u32,)>>::Output == ()`
   --> $DIR/closure-arg-type-mismatch.rs:10:5
    |
@@ -43,7 +31,7 @@ LL | fn _test<'a>(f: fn(*mut &'a u32)) {
 LL |     baz(f);
    |     ^^^ expected bound lifetime parameter, found concrete lifetime
 
-error: aborting due to 5 previous errors
+error: aborting due to 4 previous errors
 
 Some errors have detailed explanations: E0271, E0631.
 For more information about an error, try `rustc --explain E0271`.

@@ -347,6 +347,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> Result<EvaluationResult, OverflowError> {
         self.infcx.probe(|snapshot| -> Result<EvaluationResult, OverflowError> {
             let result = op(self)?;
+
+            match self.infcx.leak_check(true, snapshot) {
+                Ok(()) => {}
+                Err(_) => return Ok(EvaluatedToErr),
+            }
+
             match self.infcx.region_constraints_added_in_snapshot(snapshot) {
                 None => Ok(result),
                 Some(_) => Ok(result.max(EvaluatedToOkModuloRegions)),
@@ -2402,11 +2408,7 @@ impl<'o, 'tcx> TraitObligationStackList<'o, 'tcx> {
     }
 
     fn depth(&self) -> usize {
-        if let Some(head) = self.head {
-            head.depth
-        } else {
-            0
-        }
+        if let Some(head) = self.head { head.depth } else { 0 }
     }
 }
 

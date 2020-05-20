@@ -30,7 +30,7 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
 
         let span = self.trace.cause.span;
 
-        self.infcx.commit_if_ok(|snapshot| {
+        self.infcx.commit_if_ok(|_| {
             // First, we instantiate each bound region in the supertype with a
             // fresh placeholder region.
             let (b_prime, _) = self.infcx.replace_bound_vars_with_placeholders(b);
@@ -47,8 +47,6 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
 
             // Compare types now that bound regions have been replaced.
             let result = self.sub(a_is_expected).relate(&a_prime, &b_prime)?;
-
-            self.infcx.leak_check(!a_is_expected, snapshot)?;
 
             debug!("higher_ranked_sub: OK result={:?}", result);
 
@@ -75,7 +73,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
-        let next_universe = self.create_next_universe();
+        // Figure out what the next universe will be, but don't actually create
+        // it until after we've done the substitution (in particular there may
+        // be no bound variables). This is a performance optimization, since the
+        // leak check for example can be skipped if no new universes are created
+        // (i.e., if there are no placeholders).
+        let next_universe = self.universe().next_universe();
 
         let fld_r = |br| {
             self.tcx.mk_region(ty::RePlaceholder(ty::PlaceholderRegion {
@@ -102,6 +105,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         };
 
         let (result, map) = self.tcx.replace_bound_vars(binder, fld_r, fld_t, fld_c);
+
+        // If there were higher-ranked regions to replace, then actually create
+        // the next universe (this avoids needlessly creating universes).
+        if !map.is_empty() {
+            let n_u = self.create_next_universe();
+            assert_eq!(n_u, next_universe);
+        }
 
         debug!(
             "replace_bound_vars_with_placeholders(\

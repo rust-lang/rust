@@ -298,11 +298,7 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
     fn fold<T: TypeFoldable<'tcx>>(&mut self, value: &T) -> T {
         let value = self.selcx.infcx().resolve_vars_if_possible(value);
 
-        if !value.has_projections() {
-            value
-        } else {
-            value.fold_with(self)
-        }
+        if !value.has_projections() { value } else { value.fold_with(self) }
     }
 }
 

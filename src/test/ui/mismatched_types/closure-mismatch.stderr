@@ -9,20 +9,6 @@ LL |     baz(|_| ());
    |
    = note: required because of the requirements on the impl of `Foo` for `[closure@$DIR/closure-mismatch.rs:8:9: 8:15]`
 
-error[E0631]: type mismatch in closure arguments
-  --> $DIR/closure-mismatch.rs:8:5
-   |
-LL | fn baz<T: Foo>(_: T) {}
-   |           --- required by this bound in `baz`
-...
-LL |     baz(|_| ());
-   |     ^^^ ------ found signature of `fn(_) -> _`
-   |     |
-   |     expected signature of `for<'r> fn(&'r ()) -> _`
-   |
-   = note: required because of the requirements on the impl of `Foo` for `[closure@$DIR/closure-mismatch.rs:8:9: 8:15]`
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0271, E0631.
-For more information about an error, try `rustc --explain E0271`.
+For more information about this error, try `rustc --explain E0271`.
