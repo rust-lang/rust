@@ -673,62 +673,6 @@ impl Token {
 
         Some(Token::new(kind, self.span.to(joint.span)))
     }
-
-    // See comments in `Nonterminal::to_tokenstream` for why we care about
-    // *probably* equal here rather than actual equality
-    crate fn probably_equal_for_proc_macro(&self, other: &Token) -> bool {
-        if mem::discriminant(&self.kind) != mem::discriminant(&other.kind) {
-            return false;
-        }
-        match (&self.kind, &other.kind) {
-            (&Eq, &Eq)
-            | (&Lt, &Lt)
-            | (&Le, &Le)
-            | (&EqEq, &EqEq)
-            | (&Ne, &Ne)
-            | (&Ge, &Ge)
-            | (&Gt, &Gt)
-            | (&AndAnd, &AndAnd)
-            | (&OrOr, &OrOr)
-            | (&Not, &Not)
-            | (&Tilde, &Tilde)
-            | (&At, &At)
-            | (&Dot, &Dot)
-            | (&DotDot, &DotDot)
-            | (&DotDotDot, &DotDotDot)
-            | (&DotDotEq, &DotDotEq)
-            | (&Comma, &Comma)
-            | (&Semi, &Semi)
-            | (&Colon, &Colon)
-            | (&ModSep, &ModSep)
-            | (&RArrow, &RArrow)
-            | (&LArrow, &LArrow)
-            | (&FatArrow, &FatArrow)
-            | (&Pound, &Pound)
-            | (&Dollar, &Dollar)
-            | (&Question, &Question)
-            | (&Whitespace, &Whitespace)
-            | (&Comment, &Comment)
-            | (&Eof, &Eof) => true,
-
-            (&BinOp(a), &BinOp(b)) | (&BinOpEq(a), &BinOpEq(b)) => a == b,
-
-            (&OpenDelim(a), &OpenDelim(b)) | (&CloseDelim(a), &CloseDelim(b)) => a == b,
-
-            (&DocComment(a), &DocComment(b)) | (&Shebang(a), &Shebang(b)) => a == b,
-
-            (&Literal(a), &Literal(b)) => a == b,
-
-            (&Lifetime(a), &Lifetime(b)) => a == b,
-            (&Ident(a, b), &Ident(c, d)) => {
-                b == d && (a == c || a == kw::DollarCrate || c == kw::DollarCrate)
-            }
-
-            (&Interpolated(_), &Interpolated(_)) => false,
-
-            _ => panic!("forgot to add a token?"),
-        }
-    }
 }
 
 impl PartialEq<TokenKind> for Token {
