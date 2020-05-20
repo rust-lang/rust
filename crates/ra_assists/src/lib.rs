@@ -116,6 +116,7 @@ mod handlers {
     mod change_visibility;
     mod early_return;
     mod fill_match_arms;
+    mod fix_visibility;
     mod flip_binexpr;
     mod flip_comma;
     mod flip_trait_bound;
@@ -154,6 +155,7 @@ mod handlers {
             change_visibility::change_visibility,
             early_return::convert_to_guarded_return,
             fill_match_arms::fill_match_arms,
+            fix_visibility::fix_visibility,
             flip_binexpr::flip_binexpr,
             flip_comma::flip_comma,
             flip_trait_bound::flip_trait_bound,

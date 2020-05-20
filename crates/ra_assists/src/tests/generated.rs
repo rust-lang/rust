@@ -345,6 +345,29 @@ fn handle(action: Action) {
 }
 
 #[test]
+fn doctest_fix_visibility() {
+    check_doc_test(
+        "fix_visibility",
+        r#####"
+mod m {
+    fn frobnicate() {}
+}
+fn main() {
+    m::frobnicate<|>() {}
+}
+"#####,
+        r#####"
+mod m {
+    pub(crate) fn frobnicate() {}
+}
+fn main() {
+    m::frobnicate() {}
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_flip_binexpr() {
     check_doc_test(
         "flip_binexpr",
