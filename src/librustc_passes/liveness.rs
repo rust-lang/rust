@@ -357,7 +357,7 @@ fn visit_fn<'tcx>(
     sp: Span,
     id: hir::HirId,
 ) {
-    debug!("visit_fn");
+    debug!("visit_fn {:?}", id);
 
     // swap in a new set of IR maps for this function body:
     let def_id = ir.tcx.hir().local_def_id(id);
@@ -777,12 +777,12 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
     fn write_vars<F>(&self, wr: &mut dyn Write, ln: LiveNode, mut test: F) -> io::Result<()>
     where
-        F: FnMut(usize) -> LiveNode,
+        F: FnMut(usize) -> bool,
     {
         let node_base_idx = self.idx(ln, Variable(0));
         for var_idx in 0..self.ir.num_vars {
             let idx = node_base_idx + var_idx;
-            if test(idx).is_valid() {
+            if test(idx) {
                 write!(wr, " {:?}", Variable(var_idx as u32))?;
             }
         }
@@ -795,9 +795,12 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         {
             let wr = &mut wr as &mut dyn Write;
             write!(wr, "[ln({:?}) of kind {:?} reads", ln.get(), self.ir.lnk(ln));
-            self.write_vars(wr, ln, |idx| self.rwu_table.get_reader(idx));
+            self.write_vars(wr, ln, |idx| self.rwu_table.get_reader(idx).is_valid());
             write!(wr, "  writes");
-            self.write_vars(wr, ln, |idx| self.rwu_table.get_writer(idx));
+            self.write_vars(wr, ln, |idx| self.rwu_table.get_writer(idx).is_valid());
+            write!(wr, "  uses");
+            self.write_vars(wr, ln, |idx| self.rwu_table.get_used(idx));
+
             write!(wr, "  precedes {:?}]", self.successors[ln.get()]);
         }
         String::from_utf8(wr).unwrap()
