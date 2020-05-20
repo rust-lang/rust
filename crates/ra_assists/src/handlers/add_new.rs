@@ -3,7 +3,7 @@ use ra_syntax::{
     ast::{
         self, AstNode, NameOwner, StructKind, TypeAscriptionOwner, TypeParamsOwner, VisibilityOwner,
     },
-    TextSize, T,
+    T,
 };
 use stdx::{format_to, SepBy};
 
@@ -25,7 +25,7 @@ use crate::{AssistContext, AssistId, Assists};
 // }
 //
 // impl<T: Clone> Ctx<T> {
-//     fn new(data: T) -> Self { Self { data } }
+//     fn $0new(data: T) -> Self { Self { data } }
 // }
 //
 // ```
@@ -42,31 +42,26 @@ pub(crate) fn add_new(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let impl_def = find_struct_impl(&ctx, &strukt)?;
 
     let target = strukt.syntax().text_range();
-    acc.add(AssistId("add_new"), "Add default constructor", target, |edit| {
+    acc.add(AssistId("add_new"), "Add default constructor", target, |builder| {
         let mut buf = String::with_capacity(512);
 
         if impl_def.is_some() {
             buf.push('\n');
         }
 
-        let vis = strukt.visibility().map(|v| format!("{} ", v));
-        let vis = vis.as_deref().unwrap_or("");
+        let vis = strukt.visibility().map_or(String::new(), |v| format!("{} ", v));
 
         let params = field_list
             .fields()
             .filter_map(|f| {
-                Some(format!(
-                    "{}: {}",
-                    f.name()?.syntax().text(),
-                    f.ascribed_type()?.syntax().text()
-                ))
+                Some(format!("{}: {}", f.name()?.syntax(), f.ascribed_type()?.syntax()))
             })
             .sep_by(", ");
         let fields = field_list.fields().filter_map(|f| f.name()).sep_by(", ");
 
         format_to!(buf, "    {}fn new({}) -> Self {{ Self {{ {} }} }}", vis, params, fields);
 
-        let (start_offset, end_offset) = impl_def
+        let start_offset = impl_def
             .and_then(|impl_def| {
                 buf.push('\n');
                 let start = impl_def
@@ -76,17 +71,20 @@ pub(crate) fn add_new(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
                     .text_range()
                     .end();
 
-                Some((start, TextSize::of("\n")))
+                Some(start)
             })
             .unwrap_or_else(|| {
                 buf = generate_impl_text(&strukt, &buf);
-                let start = strukt.syntax().text_range().end();
-
-                (start, TextSize::of("\n}\n"))
+                strukt.syntax().text_range().end()
             });
 
-        edit.set_cursor(start_offset + TextSize::of(&buf) - end_offset);
-        edit.insert(start_offset, buf);
+        match ctx.config.snippet_cap {
+            None => builder.insert(start_offset, buf),
+            Some(cap) => {
+                buf = buf.replace("fn new", "fn $0new");
+                builder.insert_snippet(cap, start_offset, buf);
+            }
+        }
     })
 }
 
@@ -191,7 +189,7 @@ mod tests {
 "struct Foo {}
 
 impl Foo {
-    fn new() -> Self { Self {  } }<|>
+    fn $0new() -> Self { Self {  } }
 }
 ",
         );
@@ -201,7 +199,7 @@ impl Foo {
 "struct Foo<T: Clone> {}
 
 impl<T: Clone> Foo<T> {
-    fn new() -> Self { Self {  } }<|>
+    fn $0new() -> Self { Self {  } }
 }
 ",
         );
@@ -211,7 +209,7 @@ impl<T: Clone> Foo<T> {
 "struct Foo<'a, T: Foo<'a>> {}
 
 impl<'a, T: Foo<'a>> Foo<'a, T> {
-    fn new() -> Self { Self {  } }<|>
+    fn $0new() -> Self { Self {  } }
 }
 ",
         );
@@ -221,7 +219,7 @@ impl<'a, T: Foo<'a>> Foo<'a, T> {
 "struct Foo { baz: String }
 
 impl Foo {
-    fn new(baz: String) -> Self { Self { baz } }<|>
+    fn $0new(baz: String) -> Self { Self { baz } }
 }
 ",
         );
@@ -231,7 +229,7 @@ impl Foo {
 "struct Foo { baz: String, qux: Vec<i32> }
 
 impl Foo {
-    fn new(baz: String, qux: Vec<i32>) -> Self { Self { baz, qux } }<|>
+    fn $0new(baz: String, qux: Vec<i32>) -> Self { Self { baz, qux } }
 }
 ",
         );
@@ -243,7 +241,7 @@ impl Foo {
 "struct Foo { pub baz: String, pub qux: Vec<i32> }
 
 impl Foo {
-    fn new(baz: String, qux: Vec<i32>) -> Self { Self { baz, qux } }<|>
+    fn $0new(baz: String, qux: Vec<i32>) -> Self { Self { baz, qux } }
 }
 ",
         );
@@ -258,7 +256,7 @@ impl Foo {}
 "struct Foo {}
 
 impl Foo {
-    fn new() -> Self { Self {  } }<|>
+    fn $0new() -> Self { Self {  } }
 }
 ",
         );
@@ -273,7 +271,7 @@ impl Foo {
 "struct Foo {}
 
 impl Foo {
-    fn new() -> Self { Self {  } }<|>
+    fn $0new() -> Self { Self {  } }
 
     fn qux(&self) {}
 }
@@ -294,7 +292,7 @@ impl Foo {
 "struct Foo {}
 
 impl Foo {
-    fn new() -> Self { Self {  } }<|>
+    fn $0new() -> Self { Self {  } }
 
     fn qux(&self) {}
     fn baz() -> i32 {
@@ -311,7 +309,7 @@ impl Foo {
 "pub struct Foo {}
 
 impl Foo {
-    pub fn new() -> Self { Self {  } }<|>
+    pub fn $0new() -> Self { Self {  } }
 }
 ",
         );
@@ -321,7 +319,7 @@ impl Foo {
 "pub(crate) struct Foo {}
 
 impl Foo {
-    pub(crate) fn new() -> Self { Self {  } }<|>
+    pub(crate) fn $0new() -> Self { Self {  } }
 }
 ",
         );
@@ -414,7 +412,7 @@ pub struct Source<T> {
 }
 
 impl<T> Source<T> {
-    pub fn new(file_id: HirFileId, ast: T) -> Self { Self { file_id, ast } }<|>
+    pub fn $0new(file_id: HirFileId, ast: T) -> Self { Self { file_id, ast } }
 
     pub fn map<F: FnOnce(T) -> U, U>(self, f: F) -> Source<U> {
         Source { file_id: self.file_id, ast: f(self.ast) }

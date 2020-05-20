@@ -198,7 +198,7 @@ struct Ctx<T: Clone> {
 }
 
 impl<T: Clone> Ctx<T> {
-    fn new(data: T) -> Self { Self { data } }
+    fn $0new(data: T) -> Self { Self { data } }
 }
 
 ```
@@ -268,7 +268,7 @@ Change the function's return type to Result.
 fn foo() -> i32┃ { 42i32 }
 
 // AFTER
-fn foo() -> Result<i32, > { Ok(42i32) }
+fn foo() -> Result<i32, ${0:_}> { Ok(42i32) }
 ```
 
 ## `change_visibility`
