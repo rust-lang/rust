@@ -12,4 +12,11 @@ fn main() {
     vec.sort_by_key(|&b| Reverse(b));
     vec.sort_by_key(|&b| Reverse((b + 5).abs()));
     vec.sort_by_key(|&b| Reverse(id(-b)));
+    // Negative examples (shouldn't be changed)
+    let c = &7;
+    vec.sort_by(|a, b| (b - a).cmp(&(a - b)));
+    vec.sort_by(|_, b| b.cmp(&5));
+    vec.sort_by(|_, b| b.cmp(c));
+    vec.sort_by(|a, _| a.cmp(c));
+    vec.sort_by(|a, b| a.cmp(b));
 }

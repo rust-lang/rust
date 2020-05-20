@@ -9,8 +9,8 @@ LL |     vec.sort_by(|a, b| b.cmp(a));
 error: use Vec::sort_by_key here instead
   --> $DIR/sort_by_key_reverse.rs:13:5
    |
-LL |     vec.sort_by(|a, b| (b + 5).abs().cmp(&(a+5).abs()));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort_by_key(|&b| Reverse((b + 5).abs()))`
+LL |     vec.sort_by(|a, b| (b + 5).abs().cmp(&(a + 5).abs()));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort_by_key(|&b| Reverse((b + 5).abs()))`
 
 error: use Vec::sort_by_key here instead
   --> $DIR/sort_by_key_reverse.rs:14:5
