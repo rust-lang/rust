@@ -2787,3 +2787,9 @@ function focusSearchBar() {
 function defocusSearchBar() {
     getSearchInput().blur();
 }
+
+// This is required in firefox. Explanations: when going back in the history, firefox doesn't re-run
+// the JS, therefore preventing rustdoc from setting a few things required to be able to reload the
+// previous search results (if you navigated to a search result with the keyboard, pressed enter on
+// it to navigate to that result, and then came back to this page).
+window.onunload = function(){};
