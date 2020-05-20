@@ -1131,17 +1131,7 @@ impl<'tcx> TyCtxt<'tcx> {
             consts: common_consts,
             extern_crate_map: resolutions.extern_crate_map,
             trait_map,
-            export_map: resolutions
-                .export_map
-                .into_iter()
-                .map(|(k, v)| {
-                    let exports: Vec<_> = v
-                        .into_iter()
-                        .map(|e| e.map_id(|id| definitions.node_id_to_hir_id(id)))
-                        .collect();
-                    (k, exports)
-                })
-                .collect(),
+            export_map: resolutions.export_map,
             maybe_unused_trait_imports: resolutions
                 .maybe_unused_trait_imports
                 .into_iter()

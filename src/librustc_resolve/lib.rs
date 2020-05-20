@@ -1274,6 +1274,18 @@ impl<'a> Resolver<'a> {
 
     pub fn into_outputs(self) -> ResolverOutputs {
         let definitions = self.definitions;
+        let export_map = {
+            let mut map = FxHashMap::default();
+            for (k, v) in self.export_map.into_iter() {
+                map.insert(
+                    k,
+                    v.into_iter()
+                        .map(|e| e.map_id(|id| definitions.node_id_to_hir_id(id)))
+                        .collect(),
+                );
+            }
+            map
+        };
         let trait_map = {
             let mut map = FxHashMap::default();
             for (k, v) in self.trait_map.into_iter() {
@@ -1290,7 +1302,7 @@ impl<'a> Resolver<'a> {
             definitions: definitions,
             cstore: Box::new(self.crate_loader.into_cstore()),
             extern_crate_map: self.extern_crate_map,
-            export_map: self.export_map,
+            export_map,
             trait_map,
             glob_map: self.glob_map,
             maybe_unused_trait_imports: self.maybe_unused_trait_imports,
@@ -1308,7 +1320,18 @@ impl<'a> Resolver<'a> {
             definitions: self.definitions.clone(),
             cstore: Box::new(self.cstore().clone()),
             extern_crate_map: self.extern_crate_map.clone(),
-            export_map: self.export_map.clone(),
+            export_map: {
+                let mut map = FxHashMap::default();
+                for (k, v) in self.export_map.iter() {
+                    map.insert(
+                        k.clone(),
+                        v.iter()
+                            .map(|e| e.clone().map_id(|id| self.definitions.node_id_to_hir_id(id)))
+                            .collect(),
+                    );
+                }
+                map
+            },
             trait_map: {
                 let mut map = FxHashMap::default();
                 for (k, v) in self.trait_map.iter() {
