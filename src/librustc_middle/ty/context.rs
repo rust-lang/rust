@@ -1114,16 +1114,13 @@ impl<'tcx> TyCtxt<'tcx> {
 
         let mut trait_map: FxHashMap<_, FxHashMap<_, _>> = FxHashMap::default();
         for (k, v) in resolutions.trait_map {
-            // FIXME(#71104) Should really be using just `node_id_to_hir_id` but
-            // some `NodeId` do not seem to have a corresponding HirId.
-            if let Some(hir_id) = definitions.opt_node_id_to_hir_id(k) {
-                let map = trait_map.entry(hir_id.owner).or_default();
-                let v = v
-                    .into_iter()
-                    .map(|tc| tc.map_import_ids(|id| definitions.node_id_to_hir_id(id)))
-                    .collect();
-                map.insert(hir_id.local_id, StableVec::new(v));
-            }
+            let hir_id = definitions.node_id_to_hir_id(k);
+            let map = trait_map.entry(hir_id.owner).or_default();
+            let v = v
+                .into_iter()
+                .map(|tc| tc.map_import_ids(|id| definitions.node_id_to_hir_id(id)))
+                .collect();
+            map.insert(hir_id.local_id, StableVec::new(v));
         }
 
         GlobalCtxt {
