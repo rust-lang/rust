@@ -39,7 +39,7 @@ pub(crate) fn replace_qualified_name_with_use(
         target,
         |builder| {
             let path_to_import = hir_path.mod_path().clone();
-            insert_use_statement(path.syntax(), &path_to_import, ctx, builder);
+            insert_use_statement(path.syntax(), &path_to_import, ctx, builder.text_edit_builder());
 
             if let Some(last) = path.segment() {
                 // Here we are assuming the assist will provide a correct use statement
