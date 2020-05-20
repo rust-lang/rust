@@ -171,19 +171,13 @@ impl Assists {
 
 pub(crate) struct AssistBuilder {
     edit: TextEditBuilder,
-    cursor_position: Option<TextSize>,
     file: FileId,
     is_snippet: bool,
 }
 
 impl AssistBuilder {
     pub(crate) fn new(file: FileId) -> AssistBuilder {
-        AssistBuilder {
-            edit: TextEditBuilder::default(),
-            cursor_position: None,
-            file,
-            is_snippet: false,
-        }
+        AssistBuilder { edit: TextEditBuilder::default(), file, is_snippet: false }
     }
 
     /// Remove specified `range` of text.
@@ -241,10 +235,6 @@ impl AssistBuilder {
         algo::diff(&node, &new).into_text_edit(&mut self.edit)
     }
 
-    /// Specify desired position of the cursor after the assist is applied.
-    pub(crate) fn set_cursor(&mut self, offset: TextSize) {
-        self.cursor_position = Some(offset)
-    }
     // FIXME: better API
     pub(crate) fn set_file(&mut self, assist_file: FileId) {
         self.file = assist_file;
@@ -258,12 +248,8 @@ impl AssistBuilder {
 
     fn finish(self, change_label: String) -> SourceChange {
         let edit = self.edit.finish();
-        if edit.is_empty() && self.cursor_position.is_none() {
-            panic!("Only call `add_assist` if the assist can be applied")
-        }
-        let mut res =
-            SingleFileChange { label: change_label, edit, cursor_position: self.cursor_position }
-                .into_source_change(self.file);
+        let mut res = SingleFileChange { label: change_label, edit, cursor_position: None }
+            .into_source_change(self.file);
         if self.is_snippet {
             res.is_snippet = true;
         }

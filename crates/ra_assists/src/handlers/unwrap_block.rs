@@ -62,7 +62,6 @@ pub(crate) fn unwrap_block(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
                             let range_to_del_else_if = TextRange::new(ancestor_then_branch.syntax().text_range().end(), l_curly_token.text_range().start());
                             let range_to_del_rest = TextRange::new(then_branch.syntax().text_range().end(), if_expr.syntax().text_range().end());
 
-                            edit.set_cursor(ancestor_then_branch.syntax().text_range().end());
                             edit.delete(range_to_del_rest);
                             edit.delete(range_to_del_else_if);
                             edit.replace(target, update_expr_string(then_branch.to_string(), &[' ', '{']));
@@ -79,7 +78,6 @@ pub(crate) fn unwrap_block(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
                                 return acc.add(assist_id, assist_label, target, |edit| {
                                     let range_to_del = TextRange::new(then_branch.syntax().text_range().end(), l_curly_token.text_range().start());
 
-                                    edit.set_cursor(then_branch.syntax().text_range().end());
                                     edit.delete(range_to_del);
                                     edit.replace(target, update_expr_string(else_block.to_string(), &[' ', '{']));
                                 });
@@ -97,8 +95,6 @@ pub(crate) fn unwrap_block(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
 
     let target = expr_to_unwrap.syntax().text_range();
     acc.add(assist_id, assist_label, target, |edit| {
-        edit.set_cursor(expr.syntax().text_range().start());
-
         edit.replace(
             expr.syntax().text_range(),
             update_expr_string(expr_to_unwrap.to_string(), &[' ', '{', '\n']),
@@ -154,7 +150,7 @@ mod tests {
             r#"
             fn main() {
                 bar();
-                <|>foo();
+                foo();
 
                 //comment
                 bar();
@@ -188,7 +184,7 @@ mod tests {
 
                     //comment
                     bar();
-                }<|>
+                }
                 println!("bar");
             }
             "#,
@@ -222,7 +218,7 @@ mod tests {
 
                     //comment
                     //bar();
-                }<|>
+                }
                 println!("bar");
             }
             "#,
@@ -258,7 +254,7 @@ mod tests {
                     //bar();
                 } else if false {
                     println!("bar");
-                }<|>
+                }
                 println!("foo");
             }
             "#,
@@ -298,7 +294,7 @@ mod tests {
                     println!("bar");
                 } else if true {
                     println!("foo");
-                }<|>
+                }
                 println!("else");
             }
             "#,
@@ -336,7 +332,7 @@ mod tests {
                     //bar();
                 } else if false {
                     println!("bar");
-                }<|>
+                }
                 println!("foo");
             }
             "#,
@@ -383,7 +379,7 @@ mod tests {
             "#,
             r#"
             fn main() {
-                <|>if true {
+                if true {
                     foo();
 
                     //comment
@@ -417,7 +413,7 @@ mod tests {
             r#"
             fn main() {
                 for i in 0..5 {
-                    <|>foo();
+                    foo();
 
                     //comment
                     bar();
@@ -447,7 +443,7 @@ mod tests {
             "#,
             r#"
             fn main() {
-                <|>if true {
+                if true {
                     foo();
 
                     //comment
@@ -480,7 +476,7 @@ mod tests {
             "#,
             r#"
             fn main() {
-                <|>if true {
+                if true {
                     foo();
 
                     //comment
