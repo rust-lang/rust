@@ -2,6 +2,8 @@ language: rust
 rust: nightly
 sudo: false
 
+cache: cargo
+
 notifications:
   email:
     on_failure: always

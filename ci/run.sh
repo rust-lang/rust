@@ -5,7 +5,13 @@ set -ex
 export RUST_BACKTRACE=full
 #export RUST_TEST_NOCAPTURE=1
 
-rustup component add rustc-dev
+cargo +nightly install rustup-toolchain-install-master
+if [ "${TRAVIS_OS_NAME}" = "windows" ]; then
+    rustup-toolchain-install-master -f -n master -c rustc-dev -i x86_64-pc-windows-msvc
+else
+    rustup-toolchain-install-master -f -n master -c rustc-dev
+fi
+rustup override set master
 
 cargo build
 cargo test --verbose -- --nocapture
@@ -20,7 +26,6 @@ case "${TRAVIS_OS_NAME}" in
         TEST_TARGET=x86_64-unknown-linux-gnu cargo test --verbose -- --nocapture
         ;;
     *"windows"*)
-        rustup target add x86_64-pc-windows-msvc
         TEST_TARGET=x86_64-pc-windows-msvc cargo test --verbose -- --nocapture
         ;;
     *"macos"*)
