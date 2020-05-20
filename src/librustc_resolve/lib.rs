@@ -1274,6 +1274,13 @@ impl<'a> Resolver<'a> {
 
     pub fn into_outputs(self) -> ResolverOutputs {
         let definitions = self.definitions;
+        let extern_crate_map = {
+            let mut map = FxHashMap::default();
+            for (k, v) in self.extern_crate_map.into_iter() {
+                map.insert(definitions.local_def_id(k).to_def_id(), v);
+            }
+            map
+        };
         let export_map = {
             let mut map = FxHashMap::default();
             for (k, v) in self.export_map.into_iter() {
@@ -1316,7 +1323,7 @@ impl<'a> Resolver<'a> {
         ResolverOutputs {
             definitions: definitions,
             cstore: Box::new(self.crate_loader.into_cstore()),
-            extern_crate_map: self.extern_crate_map,
+            extern_crate_map,
             export_map,
             trait_map,
             glob_map,
@@ -1334,7 +1341,13 @@ impl<'a> Resolver<'a> {
         ResolverOutputs {
             definitions: self.definitions.clone(),
             cstore: Box::new(self.cstore().clone()),
-            extern_crate_map: self.extern_crate_map.clone(),
+            extern_crate_map: {
+                let mut map = FxHashMap::default();
+                for (k, v) in self.extern_crate_map.iter() {
+                    map.insert(self.definitions.local_def_id(k.clone()).to_def_id(), v.clone());
+                }
+                map
+            },
             export_map: {
                 let mut map = FxHashMap::default();
                 for (k, v) in self.export_map.iter() {
