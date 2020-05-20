@@ -1,39 +1,20 @@
-error[E0067]: can't reassign to an uninitialized variable
+error: can't reassign to an uninitialized variable
   --> $DIR/let-binop.rs:2:15
    |
 LL |     let a: i8 *= 1;
    |               ^^ help: initialize the variable
 
-error[E0067]: can't reassign to an uninitialized variable
+error: can't reassign to an uninitialized variable
   --> $DIR/let-binop.rs:4:11
    |
 LL |     let b += 1;
-   |           ^^
-   |
-help: initialize the variable
-   |
-LL |     let b = 1;
-   |           ^
-help: otherwise, reassign to a previously initialized variable
-   |
-LL |     b += 1;
-   |    --
+   |           ^^ help: initialize the variable
 
-error[E0067]: can't reassign to an uninitialized variable
+error: can't reassign to an uninitialized variable
   --> $DIR/let-binop.rs:6:11
    |
 LL |     let c *= 1;
-   |           ^^
-   |
-help: initialize the variable
-   |
-LL |     let c = 1;
-   |           ^
-help: otherwise, reassign to a previously initialized variable
-   |
-LL |     c *= 1;
-   |    --
+   |           ^^ help: initialize the variable
 
 error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0067`.

@@ -12,7 +12,7 @@ use rustc_ast::ast::{Block, BlockCheckMode, Expr, ExprKind, Local, Stmt, StmtKin
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, TokenKind};
 use rustc_ast::util::classify;
-use rustc_errors::{struct_span_err, Applicability, PResult};
+use rustc_errors::{Applicability, PResult};
 use rustc_span::source_map::{BytePos, Span};
 use rustc_span::symbol::{kw, sym};
 
@@ -145,12 +145,12 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_local_mk(&mut self, lo: Span, attrs: AttrVec) -> PResult<'a, Stmt> {
-        let local = self.parse_local(lo, attrs)?;
+        let local = self.parse_local(attrs)?;
         Ok(self.mk_stmt(lo.to(self.prev_token.span), StmtKind::Local(local)))
     }
 
     /// Parses a local variable declaration.
-    fn parse_local(&mut self, let_span: Span, attrs: AttrVec) -> PResult<'a, P<Local>> {
+    fn parse_local(&mut self, attrs: AttrVec) -> PResult<'a, P<Local>> {
         let lo = self.prev_token.span;
         let pat = self.parse_top_pat(GateOr::Yes)?;
 
@@ -174,10 +174,7 @@ impl<'a> Parser<'a> {
         } else {
             (None, None)
         };
-        let init = match (
-            self.parse_initializer(let_span.until(pat.span), ty.is_some(), err.is_some()),
-            err,
-        ) {
+        let init = match (self.parse_initializer(err.is_some()), err) {
             (Ok(init), None) => {
                 // init parsed, ty parsed
                 init
@@ -219,46 +216,28 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses the RHS of a local variable declaration (e.g., '= 14;').
-    fn parse_initializer(
-        &mut self,
-        let_span: Span,
-        has_ty: bool,
-        skip_eq: bool,
-    ) -> PResult<'a, Option<P<Expr>>> {
-        // In case of code like `let x: i8 += 1`, `i8` is interpreted as a trait consuming the `+`
-        // from `+=`.
-        let ate_plus = self.prev_token.is_like_plus() && has_ty;
-        let parse = if !skip_eq && (ate_plus || matches!(self.token.kind, TokenKind::BinOpEq(_))) {
-            // Error recovery for `let x += 1`
-            let mut err = struct_span_err!(
-                self.sess.span_diagnostic,
-                self.token.span,
-                E0067,
-                "can't reassign to an uninitialized variable"
-            );
-            err.span_suggestion_short(
-                self.token.span,
-                "initialize the variable",
-                "=".to_string(),
-                Applicability::MaybeIncorrect,
-            );
-            // In case of code like `let x += 1` it's possible the user may have meant to write `x += 1`
-            if !has_ty {
-                err.span_suggestion_short(
-                    let_span,
-                    "otherwise, reassign to a previously initialized variable",
-                    "".to_string(),
+    fn parse_initializer(&mut self, eq_optional: bool) -> PResult<'a, Option<P<Expr>>> {
+        let eq_consumed = match self.token.kind {
+            token::BinOpEq(..) => {
+                // Recover `let x <op>= 1` as `let x = 1`
+                self.struct_span_err(
+                    self.token.span,
+                    "can't reassign to an uninitialized variable",
+                )
+                .span_suggestion_short(
+                    self.token.span,
+                    "initialize the variable",
+                    "=".to_string(),
                     Applicability::MaybeIncorrect,
-                );
+                )
+                .emit();
+                self.bump();
+                true
             }
-            err.emit();
-            self.bump();
-            true
-        } else {
-            self.eat(&token::Eq) || skip_eq
+            _ => self.eat(&token::Eq),
         };
 
-        if parse { Ok(Some(self.parse_expr()?)) } else { Ok(None) }
+        Ok(if eq_consumed || eq_optional { Some(self.parse_expr()?) } else { None })
     }
 
     /// Parses a block. No inner attributes are allowed.
