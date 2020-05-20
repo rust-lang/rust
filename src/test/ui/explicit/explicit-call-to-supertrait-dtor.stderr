@@ -2,7 +2,10 @@ error[E0040]: explicit use of destructor method
   --> $DIR/explicit-call-to-supertrait-dtor.rs:17:14
    |
 LL |         self.drop();
-   |              ^^^^ explicit destructor calls not allowed
+   |              ^^^^
+   |              |
+   |              explicit destructor calls not allowed
+   |              help: consider using `drop` function: `drop(self)`
 
 error: aborting due to previous error
 
