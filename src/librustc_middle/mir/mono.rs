@@ -48,6 +48,13 @@ pub enum MonoItem<'tcx> {
 }
 
 impl<'tcx> MonoItem<'tcx> {
+    pub fn def_id(&self) -> Option<DefId> {
+        match self {
+            MonoItem::Fn(instance) => Some(instance.def_id()),
+            MonoItem::Static(def_id) => Some(*def_id),
+            MonoItem::GlobalAsm(..) => None,
+        }
+    }
     pub fn size_estimate(&self, tcx: TyCtxt<'tcx>) -> usize {
         match *self {
             MonoItem::Fn(instance) => {

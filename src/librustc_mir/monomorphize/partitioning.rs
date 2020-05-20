@@ -210,6 +210,7 @@ where
     let mut roots = FxHashSet::default();
     let mut codegen_units = FxHashMap::default();
     let is_incremental_build = tcx.sess.opts.incremental.is_some();
+    let is_debug_incremental = is_incremental_build && tcx.sess.opts.optimize == OptLevel::No;
     let mut internalization_candidates = FxHashSet::default();
 
     // Determine if monomorphizations instantiated in this crate will be made
@@ -227,11 +228,11 @@ where
             InstantiationMode::LocalCopy => continue,
         }
 
-        let characteristic_def_id = characteristic_def_id_of_mono_item(tcx, mono_item);
+        let characteristic_def_id = characteristic_def_id_of_mono_item(tcx, mono_item, is_debug_incremental);
         let is_volatile = is_incremental_build && mono_item.is_generic_fn();
 
         let codegen_unit_name = match (characteristic_def_id, mono_item.is_local()) {
-            (Some(def_id), false) if is_incremental_build && tcx.sess.opts.optimize == OptLevel::No => {
+            (Some(def_id), false) if is_debug_incremental => {
                 let crate_name = tcx.crate_name(def_id.krate);
                 cgu_name_builder.build_cgu_name(LOCAL_CRATE, &[&*crate_name.as_str(), if mono_item.has_closure_generic_argument() { "has_closure" } else { "" }], Some("cgu"))
             },
@@ -720,7 +721,12 @@ fn internalize_symbols<'tcx>(
 fn characteristic_def_id_of_mono_item<'tcx>(
     tcx: TyCtxt<'tcx>,
     mono_item: MonoItem<'tcx>,
+    is_debug_incremental: bool,
 ) -> Option<DefId> {
+    if is_debug_incremental {
+        return mono_item.def_id();
+    }
+
     match mono_item {
         MonoItem::Fn(instance) => {
             let def_id = match instance.def {
