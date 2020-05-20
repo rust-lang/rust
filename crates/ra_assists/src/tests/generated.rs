@@ -443,7 +443,7 @@ fn main() {
 "#####,
         r#####"
 fn main() {
-    let var_name = (1 + 2);
+    let $0var_name = (1 + 2);
     var_name * 4;
 }
 "#####,

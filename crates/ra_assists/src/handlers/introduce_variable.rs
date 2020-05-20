@@ -4,7 +4,7 @@ use ra_syntax::{
         BLOCK_EXPR, BREAK_EXPR, COMMENT, LAMBDA_EXPR, LOOP_EXPR, MATCH_ARM, PATH_EXPR, RETURN_EXPR,
         WHITESPACE,
     },
-    SyntaxNode, TextSize,
+    SyntaxNode,
 };
 use stdx::format_to;
 use test_utils::mark;
@@ -23,7 +23,7 @@ use crate::{AssistContext, AssistId, Assists};
 // ->
 // ```
 // fn main() {
-//     let var_name = (1 + 2);
+//     let $0var_name = (1 + 2);
 //     var_name * 4;
 // }
 // ```
@@ -46,14 +46,13 @@ pub(crate) fn introduce_variable(acc: &mut Assists, ctx: &AssistContext) -> Opti
     acc.add(AssistId("introduce_variable"), "Extract into variable", target, move |edit| {
         let mut buf = String::new();
 
-        let cursor_offset = if wrap_in_block {
+        if wrap_in_block {
             buf.push_str("{ let var_name = ");
-            TextSize::of("{ let ")
         } else {
             buf.push_str("let var_name = ");
-            TextSize::of("let ")
         };
         format_to!(buf, "{}", expr.syntax());
+
         let full_stmt = ast::ExprStmt::cast(anchor_stmt.clone());
         let is_full_stmt = if let Some(expr_stmt) = &full_stmt {
             Some(expr.syntax().clone()) == expr_stmt.expr().map(|e| e.syntax().clone())
@@ -65,28 +64,43 @@ pub(crate) fn introduce_variable(acc: &mut Assists, ctx: &AssistContext) -> Opti
             if full_stmt.unwrap().semicolon_token().is_none() {
                 buf.push_str(";");
             }
-            edit.replace(expr.syntax().text_range(), buf);
-        } else {
-            buf.push_str(";");
-
-            // We want to maintain the indent level,
-            // but we do not want to duplicate possible
-            // extra newlines in the indent block
-            let text = indent.text();
-            if text.starts_with('\n') {
-                buf.push_str("\n");
-                buf.push_str(text.trim_start_matches('\n'));
-            } else {
-                buf.push_str(text);
+            let offset = expr.syntax().text_range();
+            match ctx.config.snippet_cap {
+                Some(cap) => {
+                    let snip = buf.replace("let var_name", "let $0var_name");
+                    edit.replace_snippet(cap, offset, snip)
+                }
+                None => edit.replace(offset, buf),
             }
-
-            edit.replace(expr.syntax().text_range(), "var_name".to_string());
-            edit.insert(anchor_stmt.text_range().start(), buf);
-            if wrap_in_block {
-                edit.insert(anchor_stmt.text_range().end(), " }");
-            }
+            return;
         }
-        edit.set_cursor(anchor_stmt.text_range().start() + cursor_offset);
+
+        buf.push_str(";");
+
+        // We want to maintain the indent level,
+        // but we do not want to duplicate possible
+        // extra newlines in the indent block
+        let text = indent.text();
+        if text.starts_with('\n') {
+            buf.push_str("\n");
+            buf.push_str(text.trim_start_matches('\n'));
+        } else {
+            buf.push_str(text);
+        }
+
+        edit.replace(expr.syntax().text_range(), "var_name".to_string());
+        let offset = anchor_stmt.text_range().start();
+        match ctx.config.snippet_cap {
+            Some(cap) => {
+                let snip = buf.replace("let var_name", "let $0var_name");
+                edit.insert_snippet(cap, offset, snip)
+            }
+            None => edit.insert(offset, buf),
+        }
+
+        if wrap_in_block {
+            edit.insert(anchor_stmt.text_range().end(), " }");
+        }
     })
 }
 
@@ -144,15 +158,15 @@ mod tests {
     fn test_introduce_var_simple() {
         check_assist(
             introduce_variable,
-            "
+            r#"
 fn foo() {
     foo(<|>1 + 1<|>);
-}",
-            "
+}"#,
+            r#"
 fn foo() {
-    let <|>var_name = 1 + 1;
+    let $0var_name = 1 + 1;
     foo(var_name);
-}",
+}"#,
         );
     }
 
@@ -167,14 +181,14 @@ fn foo() {
         mark::check!(test_introduce_var_expr_stmt);
         check_assist(
             introduce_variable,
-            "
+            r#"
 fn foo() {
     <|>1 + 1<|>;
-}",
-            "
+}"#,
+            r#"
 fn foo() {
-    let <|>var_name = 1 + 1;
-}",
+    let $0var_name = 1 + 1;
+}"#,
         );
         check_assist(
             introduce_variable,
@@ -185,7 +199,7 @@ fn foo() {
 }",
             "
 fn foo() {
-    let <|>var_name = { let x = 0; x };
+    let $0var_name = { let x = 0; x };
     something_else();
 }",
         );
@@ -201,7 +215,7 @@ fn foo() {
 }",
             "
 fn foo() {
-    let <|>var_name = 1;
+    let $0var_name = 1;
     var_name + 1;
 }",
         );
@@ -218,7 +232,7 @@ fn foo() {
 }",
             "
 fn foo() {
-    let <|>var_name = 1 + 1;
+    let $0var_name = 1 + 1;
     bar(var_name)
 }",
         );
@@ -230,7 +244,7 @@ fn foo() {
 }",
             "
 fn foo() {
-    let <|>var_name = bar(1 + 1);
+    let $0var_name = bar(1 + 1);
     var_name
 }",
         )
@@ -253,7 +267,7 @@ fn main() {
 fn main() {
     let x = true;
     let tuple = match x {
-        true => { let <|>var_name = 2 + 2; (var_name, true) }
+        true => { let $0var_name = 2 + 2; (var_name, true) }
         _ => (0, false)
     };
 }
@@ -283,7 +297,7 @@ fn main() {
     let tuple = match x {
         true => {
             let y = 1;
-            let <|>var_name = 2 + y;
+            let $0var_name = 2 + y;
             (var_name, true)
         }
         _ => (0, false)
@@ -304,7 +318,7 @@ fn main() {
 ",
             "
 fn main() {
-    let lambda = |x: u32| { let <|>var_name = x * 2; var_name };
+    let lambda = |x: u32| { let $0var_name = x * 2; var_name };
 }
 ",
         );
@@ -321,7 +335,7 @@ fn main() {
 ",
             "
 fn main() {
-    let lambda = |x: u32| { let <|>var_name = x * 2; var_name };
+    let lambda = |x: u32| { let $0var_name = x * 2; var_name };
 }
 ",
         );
@@ -338,7 +352,7 @@ fn main() {
 ",
             "
 fn main() {
-    let <|>var_name = Some(true);
+    let $0var_name = Some(true);
     let o = var_name;
 }
 ",
@@ -356,7 +370,7 @@ fn main() {
 ",
             "
 fn main() {
-    let <|>var_name = bar.foo();
+    let $0var_name = bar.foo();
     let v = var_name;
 }
 ",
@@ -374,7 +388,7 @@ fn foo() -> u32 {
 ",
             "
 fn foo() -> u32 {
-    let <|>var_name = 2 + 2;
+    let $0var_name = 2 + 2;
     return var_name;
 }
 ",
@@ -396,7 +410,7 @@ fn foo() -> u32 {
 fn foo() -> u32 {
 
 
-    let <|>var_name = 2 + 2;
+    let $0var_name = 2 + 2;
     return var_name;
 }
 ",
@@ -413,7 +427,7 @@ fn foo() -> u32 {
             "
 fn foo() -> u32 {
 
-        let <|>var_name = 2 + 2;
+        let $0var_name = 2 + 2;
         return var_name;
 }
 ",
@@ -438,7 +452,7 @@ fn foo() -> u32 {
     // bar
 
 
-    let <|>var_name = 2 + 2;
+    let $0var_name = 2 + 2;
     return var_name;
 }
 ",
@@ -459,7 +473,7 @@ fn main() {
             "
 fn main() {
     let result = loop {
-        let <|>var_name = 2 + 2;
+        let $0var_name = 2 + 2;
         break var_name;
     };
 }
@@ -478,7 +492,7 @@ fn main() {
 ",
             "
 fn main() {
-    let <|>var_name = 0f32 as u32;
+    let $0var_name = 0f32 as u32;
     let v = var_name;
 }
 ",
