@@ -358,7 +358,7 @@ pub fn trait_ref_of_method<'tcx>(cx: &LateContext<'_, 'tcx>, hir_id: HirId) -> O
 pub fn has_drop<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
     match ty.ty_adt_def() {
         Some(def) => def.has_dtor(cx.tcx),
-        _ => false,
+        None => false,
     }
 }
 

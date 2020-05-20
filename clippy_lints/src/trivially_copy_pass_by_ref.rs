@@ -161,7 +161,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TriviallyCopyPassByRef {
                 }
             },
             FnKind::Method(..) => (),
-            _ => return,
+            FnKind::Closure(..) => return,
         }
 
         // Exclude non-inherent impls

@@ -77,7 +77,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for FloatLiteral {
                 let type_suffix = match lit_float_ty {
                     LitFloatType::Suffixed(FloatTy::F32) => Some("f32"),
                     LitFloatType::Suffixed(FloatTy::F64) => Some("f64"),
-                    _ => None
+                    LitFloatType::Unsuffixed => None
                 };
                 let (is_whole, mut float_str) = match fty {
                     FloatTy::F32 => {
