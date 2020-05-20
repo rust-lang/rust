@@ -168,7 +168,7 @@ declare_clippy_lint! {
     /// **What it does:** Checks for arm which matches all errors with `Err(_)`
     /// and take drastic actions like `panic!`.
     ///
-    /// **Why is this bad?** It is generally a bad practice, just like
+    /// **Why is this bad?** It is generally a bad practice, similar to
     /// catching all exceptions in java with `catch(Exception)`
     ///
     /// **Known problems:** None.
@@ -182,7 +182,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     pub MATCH_WILD_ERR_ARM,
-    style,
+    pedantic,
     "a `match` with `Err(_)` arm and take drastic actions"
 }
 
@@ -711,7 +711,7 @@ fn check_wild_err_arm(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>])
                                 arm.pat.span,
                                 &format!("`Err({})` matches all errors", &ident_bind_name),
                                 None,
-                                "match each error separately or use the error output",
+                                "match each error separately or use the error output, or use `.except(msg)` if the error case is unreachable",
                             );
                         }
                     }
