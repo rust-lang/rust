@@ -196,9 +196,7 @@ async function patchelf(dest: PathLike): Promise<void> {
             title: "Patching rust-analysis for NixOS"
         },
         async (progress, _) => {
-            const patchPath = path.join(os.tmpdir(), "patch-ra.nix");
-            progress.report({ message: "Writing nix file", increment: 5 });
-            await fs.writeFile(patchPath, `
+            const expression = `
             {src, pkgs ? import <nixpkgs> {}}:
                 pkgs.stdenv.mkDerivation {
                     name = "rust-analyzer";
@@ -210,12 +208,12 @@ async function patchelf(dest: PathLike): Promise<void> {
                     patchelf --set-interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" $out
                     '';
                 }
-            `);
+            `;
             const origFile = dest + "-orig";
             await fs.rename(dest, origFile);
             progress.report({ message: "Patching executable", increment: 20 });
             await new Promise((resolve, reject) => {
-                exec(`nix-build ${patchPath} --arg src '${origFile}' -o ${dest}`,
+                const handle = exec(`nix-build -E - --arg src '${origFile}' -o ${dest}`,
                     (err, stdout, stderr) => {
                         if (err != null) {
                             reject(Error(stderr));
@@ -223,6 +221,8 @@ async function patchelf(dest: PathLike): Promise<void> {
                             resolve(stdout);
                         }
                     });
+                handle.stdin?.write(expression);
+                handle.stdin?.end();
             });
             await fs.unlink(origFile);
         }
