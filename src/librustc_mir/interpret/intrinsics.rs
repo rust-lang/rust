@@ -219,7 +219,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let place = self.deref_operand(args[0])?;
                 let discr_val = self.read_discriminant(place.into())?.0;
                 let scalar = match dest.layout.ty.kind {
-                    ty::Int(_) => Scalar::from_int(discr_val as i128, dest.layout.size),
+                    ty::Int(_) => Scalar::from_int(
+                        self.sign_extend(discr_val, dest.layout) as i128,
+                        dest.layout.size,
+                    ),
                     ty::Uint(_) => Scalar::from_uint(discr_val, dest.layout.size),
                     _ => bug!("invalid `discriminant_value` return layout: {:?}", dest.layout),
                 };
