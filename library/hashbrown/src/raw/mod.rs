@@ -218,8 +218,9 @@ fn bucket_mask_to_capacity(bucket_mask: usize) -> usize {
 pub fn calculate_layout<T>(buckets: usize) -> Option<(Layout, usize)> {
     debug_assert!(buckets.is_power_of_two());
 
+    let common_align = usize::max(mem::align_of::<T>(), Group::WIDTH);
     // Array of buckets
-    let padded_data = Layout::array::<T>(buckets).ok()?.pad_to_align();
+    let padded_data = Layout::array::<T>(buckets).ok()?.align_to(common_align).ok()?.pad_to_align();
 
     // Array of control bytes. This must be aligned to the group size.
     //
@@ -230,6 +231,9 @@ pub fn calculate_layout<T>(buckets: usize) -> Option<(Layout, usize)> {
     // There is no possible overflow here since buckets is a power of two and
     // Group::WIDTH is a small number.
     let ctrl = unsafe { Layout::from_size_align_unchecked(buckets + Group::WIDTH, Group::WIDTH) };
+    
+    // There must be no padding between two tables.
+    debug_assert_eq!(padded_data.padding_needed_for(Group::WIDTH), 0);
 
     padded_data.extend(ctrl).ok()
 }
@@ -452,7 +456,7 @@ impl<T> RawTable<T> {
     #[cfg_attr(feature = "inline-more", inline)]
     #[cfg(feature = "nightly")]
     pub unsafe fn data_start(&self) -> *mut T {
-        self.data_end().as_ptr().sub(self.buckets())
+        self.data_end().as_ptr().wrapping_sub(self.buckets())
     }
 
     /// Returns the index of a bucket from a `Bucket`.
