@@ -130,10 +130,12 @@ impl Duration {
     /// ```
     #[stable(feature = "duration", since = "1.3.0")]
     #[inline]
-    #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
-    pub fn new(secs: u64, nanos: u32) -> Duration {
-        let secs =
-            secs.checked_add((nanos / NANOS_PER_SEC) as u64).expect("overflow in Duration::new");
+    #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
+    pub const fn new(secs: u64, nanos: u32) -> Duration {
+        let secs = match secs.checked_add((nanos / NANOS_PER_SEC) as u64) {
+            Some(secs) => secs,
+            None => panic!("overflow in Duration::new"),
+        };
         let nanos = nanos % NANOS_PER_SEC;
         Duration { secs, nanos }
     }
