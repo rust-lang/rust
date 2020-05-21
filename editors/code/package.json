@@ -313,22 +313,22 @@
                 "rust-analyzer.inlayHints.enable": {
                     "type": "boolean",
                     "default": true,
-                    "description": "Disable all inlay hints"
+                    "description": "Whether to show inlay hints"
                 },
                 "rust-analyzer.inlayHints.typeHints": {
                     "type": "boolean",
                     "default": true,
-                    "description": "Whether to show inlay type hints"
+                    "description": "Whether to show inlay type hints for variables."
                 },
                 "rust-analyzer.inlayHints.chainingHints": {
                     "type": "boolean",
                     "default": true,
-                    "description": "Whether to show inlay type hints for method chains"
+                    "description": "Whether to show inlay type hints for method chains."
                 },
                 "rust-analyzer.inlayHints.parameterHints": {
                     "type": "boolean",
                     "default": true,
-                    "description": "Whether to show function parameter name inlay hints at the call site"
+                    "description": "Whether to show function parameter name inlay hints at the call site."
                 },
                 "rust-analyzer.inlayHints.maxLength": {
                     "type": [
