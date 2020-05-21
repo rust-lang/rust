@@ -25,7 +25,7 @@ export function artifactSpec(args: readonly string[]): ArtifactSpec {
     switch (cargoArgs[0]) {
         case "run": cargoArgs[0] = "build"; break;
         case "test": {
-            if (cargoArgs.indexOf("--no-run") === -1) {
+            if (!cargoArgs.includes("--no-run")) {
                 cargoArgs.push("--no-run");
             }
             break;
@@ -36,9 +36,7 @@ export function artifactSpec(args: readonly string[]): ArtifactSpec {
     if (cargoArgs[0] === "test") {
         // for instance, `crates\rust-analyzer\tests\heavy_tests\main.rs` tests
         // produce 2 artifacts: {"kind": "bin"} and {"kind": "test"}
-        result.filter = (artifacts) => {
-            return artifacts.filter(a => a.isTest);
-        };
+        result.filter = (artifacts) => artifacts.filter(it => it.isTest);
     }
 
     return result;
@@ -48,7 +46,7 @@ export class Cargo {
     constructor(readonly rootFolder: string, readonly output: OutputChannel) { }
 
     private async getArtifacts(spec: ArtifactSpec): Promise<CompilationArtifact[]> {
-        let artifacts: CompilationArtifact[] = [];
+        const artifacts: CompilationArtifact[] = [];
 
         try {
             await this.runCargo(spec.cargoArgs,
@@ -75,11 +73,7 @@ export class Cargo {
             throw new Error(`Cargo invocation has failed: ${err}`);
         }
 
-        if (spec.filter) {
-            artifacts = spec.filter(artifacts);
-        }
-
-        return artifacts;
+        return spec.filter?.(artifacts) ?? artifacts;
     }
 
     async executableFromArgs(args: readonly string[]): Promise<string> {
