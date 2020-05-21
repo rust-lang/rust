@@ -611,6 +611,55 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
                 .note(&format!("{:?}", &cmd))
                 .note(&escape_string(&output))
                 .emit();
+
+                // If MSVC's `link.exe` was expected but the return code
+                // is not a Microsoft LNK error then suggest a way to fix or
+                // install the Visual Studio build tools.
+                if let Some(code) = prog.status.code() {
+                    if sess.target.target.options.is_like_msvc
+                        && flavor == LinkerFlavor::Msvc
+                        // Respect the command line override
+                        && sess.opts.cg.linker.is_none()
+                        // Match exactly "link.exe"
+                        && linker_path.to_str() == Some("link.exe")
+                        // All Microsoft `link.exe` linking error codes are
+                        // four digit numbers in the range 1000 to 9999 inclusive
+                        && (code < 1000 || code > 9999)
+                    {
+                        let is_vs_installed = windows_registry::find_vs_version().is_ok();
+                        let has_linker = windows_registry::find_tool(
+                            &sess.opts.target_triple.triple(),
+                            "link.exe",
+                        )
+                        .is_some();
+
+                        sess.note_without_error("`link.exe` returned an unexpected error");
+                        if is_vs_installed && has_linker {
+                            // the linker is broken
+                            sess.note_without_error(
+                                "the Visual Studio build tools may need to be repaired \
+                                using the Visual Studio installer",
+                            );
+                            sess.note_without_error(
+                                "or a necessary component may be missing from the \
+                                \"C++ build tools\" workload",
+                            );
+                        } else if is_vs_installed {
+                            // the linker is not installed
+                            sess.note_without_error(
+                                "in the Visual Studio installer, ensure the \
+                                \"C++ build tools\" workload is selected",
+                            );
+                        } else {
+                            // visual studio is not installed
+                            sess.note_without_error(
+                                "you may need to install Visual Studio build tools with the \
+                                \"C++ build tools\" workload",
+                            );
+                        }
+                    }
+                }
+
                 sess.abort_if_errors();
             }
             info!("linker stderr:\n{}", escape_string(&prog.stderr));
