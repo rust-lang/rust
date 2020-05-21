@@ -474,27 +474,21 @@ fn main() {{}}
             position: Position { line: 0, character: 5 },
         },
         json!({
-          "cursorPosition": {
-            "position": { "character": 4, "line": 1 },
-            "textDocument": { "uri": "file:///[..]src/m0.rs" }
-          },
-          "label": "On enter",
-          "workspaceEdit": {
-            "documentChanges": [
-              {
-                "edits": [
-                  {
-                    "newText": "\n/// ",
-                    "range": {
-                      "end": { "character": 5, "line": 0 },
-                      "start": { "character": 5, "line": 0 }
-                    }
+          "documentChanges": [
+            {
+              "edits": [
+                {
+                  "insertTextFormat": 2,
+                  "newText": "\n/// $0",
+                  "range": {
+                    "end": { "character": 5, "line": 0 },
+                    "start": { "character": 5, "line": 0 }
                   }
-                ],
-                "textDocument": { "uri": "file:///[..]src/m0.rs", "version": null }
-              }
-            ]
-          }
+                }
+              ],
+              "textDocument": { "uri": "file:///[..]src/m0.rs", "version": null }
+            }
+          ]
         }),
     );
     let elapsed = start.elapsed();
@@ -526,27 +520,21 @@ version = \"0.0.0\"
             position: Position { line: 0, character: 8 },
         },
         json!({
-          "cursorPosition": {
-            "position": { "line": 1, "character": 4 },
-            "textDocument": { "uri": "file:///[..]src/main.rs" }
-          },
-          "label": "On enter",
-          "workspaceEdit": {
-            "documentChanges": [
-              {
-                "edits": [
-                  {
-                    "newText": "\r\n/// ",
-                    "range": {
-                      "end": { "line": 0, "character": 8 },
-                      "start": { "line": 0, "character": 8 }
-                    }
+          "documentChanges": [
+            {
+              "edits": [
+                {
+                  "insertTextFormat": 2,
+                  "newText": "\r\n/// $0",
+                  "range": {
+                    "end": { "line": 0, "character": 8 },
+                    "start": { "line": 0, "character": 8 }
                   }
-                ],
-                "textDocument": { "uri": "file:///[..]src/main.rs", "version": null }
-              }
-            ]
-          }
+                }
+              ],
+              "textDocument": { "uri": "file:///[..]src/main.rs", "version": null }
+            }
+          ]
         }),
     );
 }

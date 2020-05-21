@@ -102,7 +102,7 @@ pub enum OnEnter {}
 
 impl Request for OnEnter {
     type Params = lsp_types::TextDocumentPositionParams;
-    type Result = Option<SourceChange>;
+    type Result = Option<SnippetWorkspaceEdit>;
     const METHOD: &'static str = "rust-analyzer/onEnter";
 }
 

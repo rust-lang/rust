@@ -69,7 +69,7 @@ export interface JoinLinesParams {
 export const joinLines = request<JoinLinesParams, SourceChange>("joinLines");
 
 
-export const onEnter = request<lc.TextDocumentPositionParams, Option<SourceChange>>("onEnter");
+export const onEnter = request<lc.TextDocumentPositionParams, Option<lc.WorkspaceEdit>>("onEnter");
 
 export interface RunnablesParams {
     textDocument: lc.TextDocumentIdentifier;
