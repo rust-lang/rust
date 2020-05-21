@@ -82,7 +82,6 @@ fn on_eq_typed(file: &SourceFile, offset: TextSize) -> Option<SingleFileChange> 
     Some(SingleFileChange {
         label: "add semicolon".to_string(),
         edit: TextEdit::insert(offset, ";".to_string()),
-        cursor_position: None,
     })
 }
 
@@ -111,7 +110,6 @@ fn on_dot_typed(file: &SourceFile, offset: TextSize) -> Option<SingleFileChange>
     Some(SingleFileChange {
         label: "reindent dot".to_string(),
         edit: TextEdit::replace(TextRange::new(offset - current_indent_len, offset), target_indent),
-        cursor_position: None,
     })
 }
 
@@ -130,7 +128,6 @@ fn on_arrow_typed(file: &SourceFile, offset: TextSize) -> Option<SingleFileChang
     Some(SingleFileChange {
         label: "add space after return type".to_string(),
         edit: TextEdit::insert(after_arrow, " ".to_string()),
-        cursor_position: None,
     })
 }
 
