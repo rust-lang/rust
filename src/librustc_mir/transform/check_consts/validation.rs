@@ -207,8 +207,6 @@ impl Validator<'mir, 'tcx> {
             }
         }
 
-        check_short_circuiting_in_const_local(self.ccx);
-
         if body.is_cfg_cyclic() {
             // We can't provide a good span for the error here, but this should be caught by the
             // HIR const-checker anyways.
@@ -624,44 +622,6 @@ fn error_min_const_fn_violation(tcx: TyCtxt<'_>, span: Span, msg: Cow<'_, str>) 
         )
         .help("add `#![feature(const_fn)]` to the crate attributes to enable")
         .emit();
-}
-
-fn check_short_circuiting_in_const_local(ccx: &ConstCx<'_, 'tcx>) {
-    let body = ccx.body;
-
-    if body.control_flow_destroyed.is_empty() {
-        return;
-    }
-
-    let mut locals = body.vars_iter();
-    if let Some(local) = locals.next() {
-        let span = body.local_decls[local].source_info.span;
-        let mut error = ccx.tcx.sess.struct_span_err(
-            span,
-            &format!(
-                "new features like let bindings are not permitted in {}s \
-                which also use short circuiting operators",
-                ccx.const_kind(),
-            ),
-        );
-        for (span, kind) in body.control_flow_destroyed.iter() {
-            error.span_note(
-                *span,
-                &format!(
-                    "use of {} here does not actually short circuit due to \
-                     the const evaluator presently not being able to do control flow. \
-                     See issue #49146 <https://github.com/rust-lang/rust/issues/49146> \
-                     for more information.",
-                    kind
-                ),
-            );
-        }
-        for local in locals {
-            let span = body.local_decls[local].source_info.span;
-            error.span_note(span, "more locals are defined here");
-        }
-        error.emit();
-    }
 }
 
 fn check_return_ty_is_sync(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, hir_id: HirId) {
