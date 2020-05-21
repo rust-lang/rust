@@ -83,8 +83,6 @@
 //!
 //! - `exit_ln`: a live node that is generated to represent every 'exit' from
 //!   the function, whether it be by explicit return, panic, or other means.
-//!
-//! - `fallthrough_ln`: a live node that represents a fallthrough
 
 use self::LiveNodeKind::*;
 use self::VarKind::*;
@@ -638,7 +636,6 @@ impl RWUTable {
 #[derive(Copy, Clone)]
 struct Specials {
     exit_ln: LiveNode,
-    fallthrough_ln: LiveNode,
 }
 
 const ACC_READ: u32 = 1;
@@ -668,7 +665,6 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         //   an implicit return
         let specials = Specials {
             exit_ln: ir.add_live_node(ExitNode),
-            fallthrough_ln: ir.add_live_node(ExitNode),
         };
 
         let tables = ir.tcx.typeck_tables_of(def_id);
@@ -897,12 +893,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn compute(&mut self, body: &hir::Expr<'_>) -> LiveNode {
         debug!("compute: using id for body, {:?}", body);
 
-        // the fallthrough exit is only for those cases where we do not
-        // explicitly return:
         let s = self.s;
-        self.init_from_succ(s.fallthrough_ln, s.exit_ln);
-
-        let entry_ln = self.propagate_through_expr(body, s.fallthrough_ln);
+        let entry_ln = self.propagate_through_expr(body, s.exit_ln);
 
         // hack to skip the loop unless debug! is enabled:
         debug!(
