@@ -244,6 +244,7 @@ struct LocalInfo {
 enum VarKind {
     Param(HirId, Symbol),
     Local(LocalInfo),
+    Upvar(HirId, Symbol),
 }
 
 struct IrMaps<'tcx> {
@@ -296,7 +297,7 @@ impl IrMaps<'tcx> {
         self.num_vars += 1;
 
         match vk {
-            Local(LocalInfo { id: node_id, .. }) | Param(node_id, _) => {
+            Local(LocalInfo { id: node_id, .. }) | Param(node_id, _) | Upvar(node_id, _) => {
                 self.variable_map.insert(node_id, v);
             }
         }
@@ -317,14 +318,14 @@ impl IrMaps<'tcx> {
 
     fn variable_name(&self, var: Variable) -> String {
         match self.var_kinds[var.get()] {
-            Local(LocalInfo { name, .. }) | Param(_, name) => name.to_string(),
+            Local(LocalInfo { name, .. }) | Param(_, name) | Upvar(_, name) => name.to_string(),
         }
     }
 
     fn variable_is_shorthand(&self, var: Variable) -> bool {
         match self.var_kinds[var.get()] {
             Local(LocalInfo { is_shorthand, .. }) => is_shorthand,
-            Param(..) => false,
+            Param(..) | Upvar(..) => false,
         }
     }
 
@@ -364,6 +365,14 @@ fn visit_fn<'tcx>(
     debug!("creating fn_maps: {:p}", &fn_maps);
 
     let body = ir.tcx.hir().body(body_id);
+
+    if let Some(upvars) = ir.tcx.upvars_mentioned(def_id) {
+        for (&var_hir_id, _upvar) in upvars {
+            debug!("adding upvar {:?}", var_hir_id);
+            let var_name = ir.tcx.hir().name(var_hir_id);
+            fn_maps.add_variable(Upvar(var_hir_id, var_name));
+        }
+    }
 
     for param in body.params {
         let is_shorthand = match param.pat.kind {
@@ -450,11 +459,8 @@ fn visit_expr<'tcx>(ir: &mut IrMaps<'tcx>, expr: &'tcx Expr<'tcx>) {
         // live nodes required for uses or definitions of variables:
         hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => {
             debug!("expr {}: path that leads to {:?}", expr.hir_id, path.res);
-            if let Res::Local(var_hir_id) = path.res {
-                let upvars = ir.tcx.upvars_mentioned(ir.body_owner);
-                if !upvars.map_or(false, |upvars| upvars.contains_key(&var_hir_id)) {
-                    ir.add_live_node_for_node(expr.hir_id, ExprNode(expr.span));
-                }
+            if let Res::Local(_var_hir_id) = path.res {
+                ir.add_live_node_for_node(expr.hir_id, ExprNode(expr.span));
             }
             intravisit::walk_expr(ir, expr);
         }
@@ -470,16 +476,9 @@ fn visit_expr<'tcx>(ir: &mut IrMaps<'tcx>, expr: &'tcx Expr<'tcx>) {
             let mut call_caps = Vec::new();
             let closure_def_id = ir.tcx.hir().local_def_id(expr.hir_id);
             if let Some(upvars) = ir.tcx.upvars_mentioned(closure_def_id) {
-                let parent_upvars = ir.tcx.upvars_mentioned(ir.body_owner);
-                call_caps.extend(upvars.iter().filter_map(|(&var_id, upvar)| {
-                    let has_parent =
-                        parent_upvars.map_or(false, |upvars| upvars.contains_key(&var_id));
-                    if !has_parent {
-                        let upvar_ln = ir.add_live_node(UpvarNode(upvar.span));
-                        Some(CaptureInfo { ln: upvar_ln, var_hid: var_id })
-                    } else {
-                        None
-                    }
+                call_caps.extend(upvars.iter().map(|(&var_id, upvar)| {
+                    let upvar_ln = ir.add_live_node(UpvarNode(upvar.span));
+                    CaptureInfo { ln: upvar_ln, var_hid: var_id }
                 }));
             }
             ir.set_captures(expr.hir_id, call_caps);
@@ -894,6 +893,14 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         debug!("compute: using id for body, {:?}", body);
 
         let s = self.s;
+
+        if let Some(upvars) = self.ir.tcx.upvars_mentioned(self.ir.body_owner) {
+            for (&var_hir_id, upvar) in upvars.iter().rev() {
+                let var = self.variable(var_hir_id, upvar.span);
+                self.acc(s.exit_ln, var, ACC_READ | ACC_USE);
+            }
+        }
+
         let entry_ln = self.propagate_through_expr(body, s.exit_ln);
 
         // hack to skip the loop unless debug! is enabled:
@@ -1345,14 +1352,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         acc: u32,
     ) -> LiveNode {
         match path.res {
-            Res::Local(hid) => {
-                let upvars = self.ir.tcx.upvars_mentioned(self.ir.body_owner);
-                if !upvars.map_or(false, |upvars| upvars.contains_key(&hid)) {
-                    self.access_var(hir_id, hid, succ, acc, path.span)
-                } else {
-                    succ
-                }
-            }
+            Res::Local(hid) => self.access_var(hir_id, hid, succ, acc, path.span),
             _ => succ,
         }
     }
@@ -1511,16 +1511,13 @@ impl<'tcx> Liveness<'_, 'tcx> {
         match expr.kind {
             hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => {
                 if let Res::Local(var_hid) = path.res {
-                    let upvars = self.ir.tcx.upvars_mentioned(self.ir.body_owner);
-                    if !upvars.map_or(false, |upvars| upvars.contains_key(&var_hid)) {
-                        // Assignment to an immutable variable or argument: only legal
-                        // if there is no later assignment. If this local is actually
-                        // mutable, then check for a reassignment to flag the mutability
-                        // as being used.
-                        let ln = self.live_node(expr.hir_id, expr.span);
-                        let var = self.variable(var_hid, expr.span);
-                        self.warn_about_dead_assign(vec![expr.span], expr.hir_id, ln, var);
-                    }
+                    // Assignment to an immutable variable or argument: only legal
+                    // if there is no later assignment. If this local is actually
+                    // mutable, then check for a reassignment to flag the mutability
+                    // as being used.
+                    let ln = self.live_node(expr.hir_id, expr.span);
+                    let var = self.variable(var_hid, expr.span);
+                    self.warn_about_dead_assign(vec![expr.span], expr.hir_id, ln, var);
                 }
             }
             _ => {
