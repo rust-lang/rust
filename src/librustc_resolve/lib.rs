@@ -1274,37 +1274,35 @@ impl<'a> Resolver<'a> {
 
     pub fn into_outputs(self) -> ResolverOutputs {
         let definitions = self.definitions;
-        let extern_crate_map = {
-            let mut map = FxHashMap::default();
-            for (k, v) in self.extern_crate_map.into_iter() {
-                map.insert(definitions.local_def_id(k).to_def_id(), v);
-            }
-            map
-        };
-        let export_map = {
-            let mut map = FxHashMap::default();
-            for (k, v) in self.export_map.into_iter() {
-                map.insert(
+        let extern_crate_map = self
+            .extern_crate_map
+            .into_iter()
+            .map(|(k, v)| (definitions.local_def_id(k).to_def_id(), v))
+            .collect();
+        let export_map = self
+            .export_map
+            .into_iter()
+            .map(|(k, v)| {
+                (
                     k,
                     v.into_iter()
                         .map(|e| e.map_id(|id| definitions.node_id_to_hir_id(id)))
                         .collect(),
-                );
-            }
-            map
-        };
-        let trait_map = {
-            let mut map = FxHashMap::default();
-            for (k, v) in self.trait_map.into_iter() {
-                map.insert(
+                )
+            })
+            .collect();
+        let trait_map = self
+            .trait_map
+            .into_iter()
+            .map(|(k, v)| {
+                (
                     definitions.node_id_to_hir_id(k),
                     v.into_iter()
                         .map(|tc| tc.map_import_ids(|id| definitions.node_id_to_hir_id(id)))
                         .collect(),
-                );
-            }
-            map
-        };
+                )
+            })
+            .collect();
         let maybe_unused_trait_imports = self
             .maybe_unused_trait_imports
             .into_iter()
@@ -1341,29 +1339,28 @@ impl<'a> Resolver<'a> {
         ResolverOutputs {
             definitions: self.definitions.clone(),
             cstore: Box::new(self.cstore().clone()),
-            extern_crate_map: {
-                let mut map = FxHashMap::default();
-                for (k, v) in self.extern_crate_map.iter() {
-                    map.insert(self.definitions.local_def_id(k.clone()).to_def_id(), v.clone());
-                }
-                map
-            },
-            export_map: {
-                let mut map = FxHashMap::default();
-                for (k, v) in self.export_map.iter() {
-                    map.insert(
+            extern_crate_map: self
+                .extern_crate_map
+                .iter()
+                .map(|(k, v)| (self.definitions.local_def_id(k.clone()).to_def_id(), v.clone()))
+                .collect(),
+            export_map: self
+                .export_map
+                .iter()
+                .map(|(k, v)| {
+                    (
                         k.clone(),
                         v.iter()
                             .map(|e| e.clone().map_id(|id| self.definitions.node_id_to_hir_id(id)))
                             .collect(),
-                    );
-                }
-                map
-            },
-            trait_map: {
-                let mut map = FxHashMap::default();
-                for (k, v) in self.trait_map.iter() {
-                    map.insert(
+                    )
+                })
+                .collect(),
+            trait_map: self
+                .trait_map
+                .iter()
+                .map(|(k, v)| {
+                    (
                         self.definitions.node_id_to_hir_id(k.clone()),
                         v.iter()
                             .map(|tc| {
@@ -1371,10 +1368,9 @@ impl<'a> Resolver<'a> {
                                     .map_import_ids(|id| self.definitions.node_id_to_hir_id(id))
                             })
                             .collect(),
-                    );
-                }
-                map
-            },
+                    )
+                })
+                .collect(),
             glob_map: self
                 .glob_map
                 .iter()
