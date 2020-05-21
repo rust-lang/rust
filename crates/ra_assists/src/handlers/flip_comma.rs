@@ -1,6 +1,6 @@
 use ra_syntax::{algo::non_trivia_sibling, Direction, T};
 
-use crate::{Assist, AssistCtx, AssistId};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: flip_comma
 //
@@ -17,7 +17,7 @@ use crate::{Assist, AssistCtx, AssistId};
 //     ((3, 4), (1, 2));
 // }
 // ```
-pub(crate) fn flip_comma(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn flip_comma(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let comma = ctx.find_token_at_offset(T![,])?;
     let prev = non_trivia_sibling(comma.clone().into(), Direction::Prev)?;
     let next = non_trivia_sibling(comma.clone().into(), Direction::Next)?;
@@ -28,8 +28,7 @@ pub(crate) fn flip_comma(ctx: AssistCtx) -> Option<Assist> {
         return None;
     }
 
-    ctx.add_assist(AssistId("flip_comma"), "Flip comma", |edit| {
-        edit.target(comma.text_range());
+    acc.add(AssistId("flip_comma"), "Flip comma", comma.text_range(), |edit| {
         edit.replace(prev.text_range(), next.to_string());
         edit.replace(next.text_range(), prev.to_string());
     })
@@ -39,14 +38,14 @@ pub(crate) fn flip_comma(ctx: AssistCtx) -> Option<Assist> {
 mod tests {
     use super::*;
 
-    use crate::helpers::{check_assist, check_assist_target};
+    use crate::tests::{check_assist, check_assist_target};
 
     #[test]
     fn flip_comma_works_for_function_parameters() {
         check_assist(
             flip_comma,
             "fn foo(x: i32,<|> y: Result<(), ()>) {}",
-            "fn foo(y: Result<(), ()>,<|> x: i32) {}",
+            "fn foo(y: Result<(), ()>, x: i32) {}",
         )
     }
 

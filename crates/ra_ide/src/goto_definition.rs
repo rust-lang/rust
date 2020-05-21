@@ -93,7 +93,7 @@ pub(crate) fn reference_definition(
 
 #[cfg(test)]
 mod tests {
-    use test_utils::{assert_eq_text, covers};
+    use test_utils::assert_eq_text;
 
     use crate::mock_analysis::analysis_and_position;
 
@@ -208,7 +208,6 @@ mod tests {
 
     #[test]
     fn goto_def_for_macros() {
-        covers!(ra_ide_db::goto_def_for_macros);
         check_goto(
             "
             //- /lib.rs
@@ -225,7 +224,6 @@ mod tests {
 
     #[test]
     fn goto_def_for_macros_from_other_crates() {
-        covers!(ra_ide_db::goto_def_for_macros);
         check_goto(
             "
             //- /lib.rs
@@ -233,6 +231,38 @@ mod tests {
             fn bar() {
                 <|>foo!();
             }
+
+            //- /foo/lib.rs
+            #[macro_export]
+            macro_rules! foo { () => { () } }
+            ",
+            "foo MACRO_CALL FileId(2) 0..49 29..32",
+            "#[macro_export]\nmacro_rules! foo { () => { () } }|foo",
+        );
+    }
+
+    #[test]
+    fn goto_def_for_use_alias() {
+        check_goto(
+            "
+            //- /lib.rs
+            use foo as bar<|>;
+
+
+            //- /foo/lib.rs
+            #[macro_export]
+            macro_rules! foo { () => { () } }",
+            "SOURCE_FILE FileId(2) 0..50",
+            "#[macro_export]\nmacro_rules! foo { () => { () } }\n",
+        );
+    }
+
+    #[test]
+    fn goto_def_for_use_alias_foo_macro() {
+        check_goto(
+            "
+            //- /lib.rs
+            use foo::foo as bar<|>;
 
             //- /foo/lib.rs
             #[macro_export]
@@ -337,7 +367,6 @@ mod tests {
 
     #[test]
     fn goto_def_for_methods() {
-        covers!(ra_ide_db::goto_def_for_methods);
         check_goto(
             "
             //- /lib.rs
@@ -357,7 +386,6 @@ mod tests {
 
     #[test]
     fn goto_def_for_fields() {
-        covers!(ra_ide_db::goto_def_for_fields);
         check_goto(
             r"
             //- /lib.rs
@@ -376,7 +404,6 @@ mod tests {
 
     #[test]
     fn goto_def_for_record_fields() {
-        covers!(ra_ide_db::goto_def_for_record_fields);
         check_goto(
             r"
             //- /lib.rs
@@ -397,7 +424,6 @@ mod tests {
 
     #[test]
     fn goto_def_for_record_pat_fields() {
-        covers!(ra_ide_db::goto_def_for_record_field_pats);
         check_goto(
             r"
             //- /lib.rs
@@ -754,14 +780,14 @@ mod tests {
     #[test]
     fn goto_for_type_param() {
         check_goto(
-            "
+            r#"
             //- /lib.rs
-            struct Foo<T> {
+            struct Foo<T: Clone> {
                 t: <|>T,
             }
-            ",
-            "T TYPE_PARAM FileId(1) 11..12",
-            "T",
+            "#,
+            "T TYPE_PARAM FileId(1) 11..19 11..12",
+            "T: Clone|T",
         );
     }
 
@@ -840,7 +866,6 @@ mod tests {
 
     #[test]
     fn goto_def_for_field_init_shorthand() {
-        covers!(ra_ide_db::goto_def_for_field_init_shorthand);
         check_goto(
             "
             //- /lib.rs

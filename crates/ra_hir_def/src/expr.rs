@@ -101,6 +101,9 @@ pub enum Expr {
     Try {
         expr: ExprId,
     },
+    TryBlock {
+        body: ExprId,
+    },
     Cast {
         expr: ExprId,
         type_ref: TypeRef,
@@ -236,6 +239,7 @@ impl Expr {
                     f(*expr);
                 }
             }
+            Expr::TryBlock { body } => f(*body),
             Expr::Loop { body } => f(*body),
             Expr::While { condition, body } => {
                 f(*condition);

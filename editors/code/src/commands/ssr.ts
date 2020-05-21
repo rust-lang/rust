@@ -11,7 +11,7 @@ export function ssr(ctx: Ctx): Cmd {
 
         const options: vscode.InputBoxOptions = {
             value: "() ==>> ()",
-            prompt: "EnteR request, for example 'Foo($a:expr) ==> Foo::new($a)' ",
+            prompt: "Enter request, for example 'Foo($a:expr) ==> Foo::new($a)' ",
             validateInput: async (x: string) => {
                 try {
                     await client.sendRequest(ra.ssr, { query: x, parseOnly: true });

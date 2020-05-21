@@ -19,12 +19,12 @@ fn macro_rules_are_globally_visible() {
     );
     assert_snapshot!(map, @r###"
    ⋮crate
-   ⋮Foo: t v
+   ⋮Foo: t
    ⋮nested: t
    ⋮
    ⋮crate::nested
-   ⋮Bar: t v
-   ⋮Baz: t v
+   ⋮Bar: t
+   ⋮Baz: t
     "###);
 }
 
@@ -91,13 +91,13 @@ fn macro_rules_from_other_crates_are_visible() {
     );
     assert_snapshot!(map, @r###"
    ⋮crate
-   ⋮Bar: t v
-   ⋮Foo: t v
+   ⋮Bar: t
+   ⋮Foo: t
    ⋮bar: t
    ⋮
    ⋮crate::bar
-   ⋮Bar: t v
-   ⋮Foo: t v
+   ⋮Bar: t
+   ⋮Foo: t
    ⋮bar: t
     "###);
 }
@@ -124,13 +124,50 @@ fn macro_rules_export_with_local_inner_macros_are_visible() {
     );
     assert_snapshot!(map, @r###"
    ⋮crate
-   ⋮Bar: t v
-   ⋮Foo: t v
+   ⋮Bar: t
+   ⋮Foo: t
    ⋮bar: t
    ⋮
    ⋮crate::bar
-   ⋮Bar: t v
-   ⋮Foo: t v
+   ⋮Bar: t
+   ⋮Foo: t
+   ⋮bar: t
+    "###);
+}
+
+#[test]
+fn local_inner_macros_makes_local_macros_usable() {
+    let map = def_map(
+        "
+        //- /main.rs crate:main deps:foo
+        foo::structs!(Foo, Bar);
+        mod bar;
+        //- /bar.rs
+        use crate::*;
+        //- /lib.rs crate:foo
+        #[macro_export(local_inner_macros)]
+        macro_rules! structs {
+            ($($i:ident),*) => {
+                inner!($($i),*);
+            }
+        }
+        #[macro_export]
+        macro_rules! inner {
+            ($($i:ident),*) => {
+                $(struct $i { field: u32 } )*
+            }
+        }
+        ",
+    );
+    assert_snapshot!(map, @r###"
+   ⋮crate
+   ⋮Bar: t
+   ⋮Foo: t
+   ⋮bar: t
+   ⋮
+   ⋮crate::bar
+   ⋮Bar: t
+   ⋮Foo: t
    ⋮bar: t
     "###);
 }
@@ -167,7 +204,7 @@ fn unexpanded_macro_should_expand_by_fixedpoint_loop() {
     );
     assert_snapshot!(map, @r###"
    ⋮crate
-   ⋮Foo: t v
+   ⋮Foo: t
    ⋮bar: m
    ⋮foo: m
     "###);
@@ -175,7 +212,7 @@ fn unexpanded_macro_should_expand_by_fixedpoint_loop() {
 
 #[test]
 fn macro_rules_from_other_crates_are_visible_with_macro_use() {
-    covers!(macro_rules_from_other_crates_are_visible_with_macro_use);
+    mark::check!(macro_rules_from_other_crates_are_visible_with_macro_use);
     let map = def_map(
         "
         //- /main.rs crate:main deps:foo
@@ -225,7 +262,7 @@ fn macro_rules_from_other_crates_are_visible_with_macro_use() {
 
 #[test]
 fn prelude_is_macro_use() {
-    covers!(prelude_is_macro_use);
+    mark::check!(prelude_is_macro_use);
     let map = def_map(
         "
         //- /main.rs crate:main deps:foo
@@ -507,8 +544,7 @@ fn path_qualified_macros() {
 
 #[test]
 fn macro_dollar_crate_is_correct_in_item() {
-    covers!(macro_dollar_crate_self);
-    covers!(macro_dollar_crate_other);
+    mark::check!(macro_dollar_crate_self);
     let map = def_map(
         "
         //- /main.rs crate:main deps:foo
@@ -566,7 +602,7 @@ fn macro_dollar_crate_is_correct_in_item() {
 
 #[test]
 fn macro_dollar_crate_is_correct_in_indirect_deps() {
-    covers!(macro_dollar_crate_other);
+    mark::check!(macro_dollar_crate_other);
     // From std
     let map = def_map(
         r#"

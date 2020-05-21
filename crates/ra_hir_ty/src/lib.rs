@@ -42,7 +42,6 @@ pub mod expr;
 mod tests;
 #[cfg(test)]
 mod test_db;
-mod marks;
 mod _match;
 
 use std::ops::Deref;
@@ -427,6 +426,11 @@ impl Substs {
     }
 }
 
+/// Return an index of a parameter in the generic type parameter list by it's id.
+pub fn param_idx(db: &dyn HirDatabase, id: TypeParamId) -> Option<usize> {
+    generics(db.upcast(), id.parent).param_idx(id)
+}
+
 #[derive(Debug, Clone)]
 pub struct SubstsBuilder {
     vec: Vec<Ty>,
@@ -683,6 +687,12 @@ impl Ty {
     pub fn unit() -> Self {
         Ty::apply(TypeCtor::Tuple { cardinality: 0 }, Substs::empty())
     }
+    pub fn fn_ptr(sig: FnSig) -> Self {
+        Ty::apply(
+            TypeCtor::FnPtr { num_args: sig.params().len() as u16 },
+            Substs(sig.params_and_return),
+        )
+    }
 
     pub fn as_reference(&self) -> Option<(&Ty, Mutability)> {
         match self {
@@ -728,6 +738,10 @@ impl Ty {
             }
             _ => None,
         }
+    }
+
+    pub fn is_never(&self) -> bool {
+        matches!(self, Ty::Apply(ApplicationTy { ctor: TypeCtor::Never, .. }))
     }
 
     /// If this is a `dyn Trait` type, this returns the `Trait` part.
@@ -793,15 +807,13 @@ impl Ty {
         }
     }
 
-    /// If this is an `impl Trait` or `dyn Trait`, returns that trait.
-    pub fn inherent_trait(&self) -> Option<TraitId> {
+    /// If this is a `dyn Trait`, returns that trait.
+    pub fn dyn_trait(&self) -> Option<TraitId> {
         match self {
-            Ty::Dyn(predicates) | Ty::Opaque(predicates) => {
-                predicates.iter().find_map(|pred| match pred {
-                    GenericPredicate::Implemented(tr) => Some(tr.trait_),
-                    _ => None,
-                })
-            }
+            Ty::Dyn(predicates) => predicates.iter().find_map(|pred| match pred {
+                GenericPredicate::Implemented(tr) => Some(tr.trait_),
+                _ => None,
+            }),
             _ => None,
         }
     }

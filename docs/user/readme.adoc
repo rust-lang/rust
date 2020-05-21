@@ -57,9 +57,13 @@ To disable this notification put the following to `settings.json`
 ----
 ====
 
-The server binary is stored in `~/.config/Code/User/globalStorage/matklad.rust-analyzer` (Linux) or in `~/.Library/Application Support/Code/User/globalStorage/matklad.rust-analyzer` (macOS) or in `%APPDATA%\Code\User\globalStorage` (Windows).
+The server binary is stored in:
 
-Note that we only support the latest version of VS Code.
+* Linux: `~/.config/Code/User/globalStorage/matklad.rust-analyzer`
+* macOS: `~/Library/Application Support/Code/User/globalStorage/matklad.rust-analyzer`
+* Windows: `%APPDATA%\Code\User\globalStorage\matklad.rust-analyzer`
+
+Note that we only support two most recent versions of VS Code.
 
 ==== Updates
 
@@ -104,7 +108,7 @@ Here are some useful self-diagnostic commands:
 
 * **Rust Analyzer: Show RA Version** shows the version of `rust-analyzer` binary
 * **Rust Analyzer: Status** prints some statistics about the server, like the few latest LSP requests
-* To enable server-side logging, run with `env RUST_LOG=info` and see `Output > Rust Analyzer Language Server` in VS Code's panel.
+* To enable server-side logging, run with `env RA_LOG=info` and see `Output > Rust Analyzer Language Server` in VS Code's panel.
 * To log all LSP requests, add `"rust-analyzer.trace.server": "verbose"` to the settings and look for `Server Trace` in the panel.
 * To enable client-side logging, add `"rust-analyzer.trace.extension": true` to the settings and open the `Console` tab of VS Code developer tools.
 
@@ -135,17 +139,16 @@ If your editor can't find the binary even though the binary is on your `$PATH`, 
 
 ==== Arch Linux
 
-The `rust-analyzer` binary can be installed from AUR (Arch User Repository):
+The `rust-analyzer` binary can be installed from the repos or AUR (Arch User Repository):
 
-- https://aur.archlinux.org/packages/rust-analyzer-bin[`rust-analyzer-bin`] (binary from GitHub releases)
-- https://aur.archlinux.org/packages/rust-analyzer[`rust-analyzer`] (built from latest tagged source)
-- https://aur.archlinux.org/packages/rust-analyzer-git[`rust-analyzer-git`] (latest git version)
+- https://www.archlinux.org/packages/community/x86_64/rust-analyzer/[`rust-analyzer`] (built from latest tagged source)
+- https://aur.archlinux.org/packages/rust-analyzer-git[`rust-analyzer-git`] (latest Git version)
 
-Install it with AUR helper of your choice, for example:
+Install it with pacman, for example:
 
 [source,bash]
 ----
-$ yay -S rust-analyzer-bin
+$ pacman -S rust-analyzer
 ----
 
 === Emacs
@@ -159,11 +162,11 @@ Emacs support is maintained as part of the https://github.com/emacs-lsp/lsp-mode
 3. Run `lsp` in a Rust buffer.
 4. (Optionally) bind commands like `lsp-rust-analyzer-join-lines`, `lsp-extend-selection` and `lsp-rust-analyzer-expand-macro` to keys.
 
-=== Vim
+=== Vim/NeoVim
 
-Prerequisites: You have installed the <<rust-analyzer-language-server-binary,`rust-analyzer` binary>>.
+Prerequisites: You have installed the <<rust-analyzer-language-server-binary,`rust-analyzer` binary>>. Not needed if the extension can install/update it on its own, coc-rust-analyzer is one example.
 
-The are several LSP client implementations for vim:
+The are several LSP client implementations for vim or neovim:
 
 ==== coc-rust-analyzer
 
@@ -183,7 +186,7 @@ The are several LSP client implementations for vim:
 
 1. Install LanguageClient-neovim by following the instructions
    https://github.com/autozimu/LanguageClient-neovim[here]
-   * The github project wiki has extra tips on configuration
+   * The GitHub project wiki has extra tips on configuration
 
 2. Configure by adding this to your vim/neovim config file (replacing the existing Rust-specific line if it exists):
 +
@@ -216,17 +219,11 @@ let g:ycm_language_server =
 
 ==== ALE
 
-To add the LSP server to https://github.com/dense-analysis/ale[ale]:
+To use the LSP server in https://github.com/dense-analysis/ale[ale]:
 
 [source,vim]
 ----
-call ale#linter#Define('rust', {
-\   'name': 'rust-analyzer',
-\   'lsp': 'stdio',
-\   'executable': 'rust-analyzer',
-\   'command': '%e',
-\   'project_root': '.',
-\})
+let g:ale_linters = {'rust': ['analyzer']}
 ----
 
 ==== nvim-lsp
@@ -252,7 +249,7 @@ If it worked, you should see "rust-analyzer, Line X, Column Y" on the left side 
 
 If you get an error saying `No such file or directory: 'rust-analyzer'`, see the <<rust-analyzer-language-server-binary,`rust-analyzer` binary>> section on installing the language server binary.
 
-=== Gnome Builder
+=== GNOME Builder
 
 Prerequisites: You have installed the <<rust-analyzer-language-server-binary,`rust-analyzer` binary>>.
 

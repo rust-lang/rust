@@ -2,14 +2,18 @@ use std::{iter::once, ops::RangeInclusive};
 
 use ra_syntax::{
     algo::replace_children,
-    ast::{self, edit::IndentLevel, make, Block, Pat::TupleStructPat},
+    ast::{
+        self,
+        edit::{AstNodeEdit, IndentLevel},
+        make,
+    },
     AstNode,
     SyntaxKind::{FN_DEF, LOOP_EXPR, L_CURLY, R_CURLY, WHILE_EXPR, WHITESPACE},
     SyntaxNode,
 };
 
 use crate::{
-    assist_ctx::{Assist, AssistCtx},
+    assist_context::{AssistContext, Assists},
     utils::invert_boolean_expression,
     AssistId,
 };
@@ -36,7 +40,7 @@ use crate::{
 //     bar();
 // }
 // ```
-pub(crate) fn convert_to_guarded_return(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let if_expr: ast::IfExpr = ctx.find_node_at_offset()?;
     if if_expr.else_branch().is_some() {
         return None;
@@ -47,7 +51,7 @@ pub(crate) fn convert_to_guarded_return(ctx: AssistCtx) -> Option<Assist> {
     // Check if there is an IfLet that we can handle.
     let if_let_pat = match cond.pat() {
         None => None, // No IfLet, supported.
-        Some(TupleStructPat(pat)) if pat.args().count() == 1 => {
+        Some(ast::Pat::TupleStructPat(pat)) if pat.args().count() == 1 => {
             let path = pat.path()?;
             match path.qualifier() {
                 None => {
@@ -61,9 +65,9 @@ pub(crate) fn convert_to_guarded_return(ctx: AssistCtx) -> Option<Assist> {
     };
 
     let cond_expr = cond.expr()?;
-    let then_block = if_expr.then_branch()?.block()?;
+    let then_block = if_expr.then_branch()?;
 
-    let parent_block = if_expr.syntax().parent()?.ancestors().find_map(ast::Block::cast)?;
+    let parent_block = if_expr.syntax().parent()?.ancestors().find_map(ast::BlockExpr::cast)?;
 
     if parent_block.expr()? != if_expr.clone().into() {
         return None;
@@ -80,7 +84,7 @@ pub(crate) fn convert_to_guarded_return(ctx: AssistCtx) -> Option<Assist> {
         return None;
     }
 
-    let parent_container = parent_block.syntax().parent()?.parent()?;
+    let parent_container = parent_block.syntax().parent()?;
 
     let early_expression: ast::Expr = match parent_container.kind() {
         WHILE_EXPR | LOOP_EXPR => make::expr_continue(),
@@ -93,9 +97,9 @@ pub(crate) fn convert_to_guarded_return(ctx: AssistCtx) -> Option<Assist> {
     }
 
     then_block.syntax().last_child_or_token().filter(|t| t.kind() == R_CURLY)?;
-    let cursor_position = ctx.frange.range.start();
 
-    ctx.add_assist(AssistId("convert_to_guarded_return"), "Convert to guarded return", |edit| {
+    let target = if_expr.syntax().text_range();
+    acc.add(AssistId("convert_to_guarded_return"), "Convert to guarded return", target, |edit| {
         let if_indent_level = IndentLevel::from_node(&if_expr.syntax());
         let new_block = match if_let_pat {
             None => {
@@ -104,8 +108,7 @@ pub(crate) fn convert_to_guarded_return(ctx: AssistCtx) -> Option<Assist> {
                     let then_branch =
                         make::block_expr(once(make::expr_stmt(early_expression).into()), None);
                     let cond = invert_boolean_expression(cond_expr);
-                    let e = make::expr_if(make::condition(cond, None), then_branch);
-                    if_indent_level.increase_indent(e)
+                    make::expr_if(make::condition(cond, None), then_branch).indent(if_indent_level)
                 };
                 replace(new_expr.syntax(), &then_block, &parent_block, &if_expr)
             }
@@ -139,21 +142,19 @@ pub(crate) fn convert_to_guarded_return(ctx: AssistCtx) -> Option<Assist> {
                     make::bind_pat(make::name(&bound_ident.syntax().to_string())).into(),
                     Some(match_expr),
                 );
-                let let_stmt = if_indent_level.increase_indent(let_stmt);
+                let let_stmt = let_stmt.indent(if_indent_level);
                 replace(let_stmt.syntax(), &then_block, &parent_block, &if_expr)
             }
         };
-        edit.target(if_expr.syntax().text_range());
-        edit.replace_ast(parent_block, ast::Block::cast(new_block).unwrap());
-        edit.set_cursor(cursor_position);
+        edit.replace_ast(parent_block, ast::BlockExpr::cast(new_block).unwrap());
 
         fn replace(
             new_expr: &SyntaxNode,
-            then_block: &Block,
-            parent_block: &Block,
+            then_block: &ast::BlockExpr,
+            parent_block: &ast::BlockExpr,
             if_expr: &ast::IfExpr,
         ) -> SyntaxNode {
-            let then_block_items = IndentLevel::from(1).decrease_indent(then_block.clone());
+            let then_block_items = then_block.dedent(IndentLevel::from(1));
             let end_of_then = then_block_items.syntax().last_child_or_token().unwrap();
             let end_of_then =
                 if end_of_then.prev_sibling_or_token().map(|n| n.kind()) == Some(WHITESPACE) {
@@ -182,7 +183,7 @@ pub(crate) fn convert_to_guarded_return(ctx: AssistCtx) -> Option<Assist> {
 
 #[cfg(test)]
 mod tests {
-    use crate::helpers::{check_assist, check_assist_not_applicable};
+    use crate::tests::{check_assist, check_assist_not_applicable};
 
     use super::*;
 
@@ -204,7 +205,7 @@ mod tests {
             r#"
             fn main() {
                 bar();
-                if<|> !true {
+                if !true {
                     return;
                 }
                 foo();
@@ -234,7 +235,7 @@ mod tests {
             r#"
             fn main(n: Option<String>) {
                 bar();
-                le<|>t n = match n {
+                let n = match n {
                     Some(it) => it,
                     _ => return,
                 };
@@ -260,7 +261,7 @@ mod tests {
             "#,
             r#"
             fn main() {
-                le<|>t x = match Err(92) {
+                let x = match Err(92) {
                     Ok(it) => it,
                     _ => return,
                 };
@@ -288,7 +289,7 @@ mod tests {
             r#"
             fn main(n: Option<String>) {
                 bar();
-                le<|>t n = match n {
+                let n = match n {
                     Ok(it) => it,
                     _ => return,
                 };
@@ -318,7 +319,7 @@ mod tests {
             r#"
             fn main() {
                 while true {
-                    if<|> !true {
+                    if !true {
                         continue;
                     }
                     foo();
@@ -346,7 +347,7 @@ mod tests {
             r#"
             fn main() {
                 while true {
-                    le<|>t n = match n {
+                    let n = match n {
                         Some(it) => it,
                         _ => continue,
                     };
@@ -375,7 +376,7 @@ mod tests {
             r#"
             fn main() {
                 loop {
-                    if<|> !true {
+                    if !true {
                         continue;
                     }
                     foo();
@@ -403,7 +404,7 @@ mod tests {
             r#"
             fn main() {
                 loop {
-                    le<|>t n = match n {
+                    let n = match n {
                         Some(it) => it,
                         _ => continue,
                     };

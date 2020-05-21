@@ -39,7 +39,7 @@ pub mod fuzz;
 
 use std::{marker::PhantomData, sync::Arc};
 
-use ra_text_edit::AtomTextEdit;
+use ra_text_edit::Indel;
 use stdx::format_to;
 
 use crate::syntax_node::GreenNode;
@@ -126,13 +126,13 @@ impl Parse<SourceFile> {
         buf
     }
 
-    pub fn reparse(&self, edit: &AtomTextEdit) -> Parse<SourceFile> {
-        self.incremental_reparse(edit).unwrap_or_else(|| self.full_reparse(edit))
+    pub fn reparse(&self, indel: &Indel) -> Parse<SourceFile> {
+        self.incremental_reparse(indel).unwrap_or_else(|| self.full_reparse(indel))
     }
 
-    fn incremental_reparse(&self, edit: &AtomTextEdit) -> Option<Parse<SourceFile>> {
+    fn incremental_reparse(&self, indel: &Indel) -> Option<Parse<SourceFile>> {
         // FIXME: validation errors are not handled here
-        parsing::incremental_reparse(self.tree().syntax(), edit, self.errors.to_vec()).map(
+        parsing::incremental_reparse(self.tree().syntax(), indel, self.errors.to_vec()).map(
             |(green_node, errors, _reparsed_range)| Parse {
                 green: green_node,
                 errors: Arc::new(errors),
@@ -141,8 +141,9 @@ impl Parse<SourceFile> {
         )
     }
 
-    fn full_reparse(&self, edit: &AtomTextEdit) -> Parse<SourceFile> {
-        let text = edit.apply(self.tree().syntax().text().to_string());
+    fn full_reparse(&self, indel: &Indel) -> Parse<SourceFile> {
+        let mut text = self.tree().syntax().text().to_string();
+        indel.apply(&mut text);
         SourceFile::parse(&text)
     }
 }
@@ -237,8 +238,7 @@ fn api_walkthrough() {
 
     // Let's get the `1 + 1` expression!
     let body: ast::BlockExpr = func.body().unwrap();
-    let block = body.block().unwrap();
-    let expr: ast::Expr = block.expr().unwrap();
+    let expr: ast::Expr = body.expr().unwrap();
 
     // Enums are used to group related ast nodes together, and can be used for
     // matching. However, because there are no public fields, it's possible to
@@ -274,8 +274,8 @@ fn api_walkthrough() {
     assert_eq!(text.to_string(), "1 + 1");
 
     // There's a bunch of traversal methods on `SyntaxNode`:
-    assert_eq!(expr_syntax.parent().as_ref(), Some(block.syntax()));
-    assert_eq!(block.syntax().first_child_or_token().map(|it| it.kind()), Some(T!['{']));
+    assert_eq!(expr_syntax.parent().as_ref(), Some(body.syntax()));
+    assert_eq!(body.syntax().first_child_or_token().map(|it| it.kind()), Some(T!['{']));
     assert_eq!(
         expr_syntax.next_sibling_or_token().map(|it| it.kind()),
         Some(SyntaxKind::WHITESPACE)

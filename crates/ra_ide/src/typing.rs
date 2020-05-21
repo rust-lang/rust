@@ -17,15 +17,16 @@ mod on_enter;
 
 use ra_db::{FilePosition, SourceDatabase};
 use ra_fmt::leading_indent;
-use ra_ide_db::RootDatabase;
+use ra_ide_db::{source_change::SingleFileChange, RootDatabase};
 use ra_syntax::{
     algo::find_node_at_offset,
     ast::{self, AstToken},
     AstNode, SourceFile, TextRange, TextSize,
 };
+
 use ra_text_edit::TextEdit;
 
-use crate::{source_change::SingleFileChange, SourceChange};
+use crate::SourceChange;
 
 pub(crate) use on_enter::on_enter;
 
@@ -81,7 +82,6 @@ fn on_eq_typed(file: &SourceFile, offset: TextSize) -> Option<SingleFileChange> 
     Some(SingleFileChange {
         label: "add semicolon".to_string(),
         edit: TextEdit::insert(offset, ";".to_string()),
-        cursor_position: None,
     })
 }
 
@@ -110,7 +110,6 @@ fn on_dot_typed(file: &SourceFile, offset: TextSize) -> Option<SingleFileChange>
     Some(SingleFileChange {
         label: "reindent dot".to_string(),
         edit: TextEdit::replace(TextRange::new(offset - current_indent_len, offset), target_indent),
-        cursor_position: Some(offset + target_indent_len - current_indent_len + TextSize::of('.')),
     })
 }
 
@@ -129,7 +128,6 @@ fn on_arrow_typed(file: &SourceFile, offset: TextSize) -> Option<SingleFileChang
     Some(SingleFileChange {
         label: "add space after return type".to_string(),
         edit: TextEdit::insert(after_arrow, " ".to_string()),
-        cursor_position: Some(after_arrow),
     })
 }
 
@@ -139,26 +137,23 @@ mod tests {
 
     use super::*;
 
-    fn do_type_char(char_typed: char, before: &str) -> Option<(String, SingleFileChange)> {
+    fn do_type_char(char_typed: char, before: &str) -> Option<String> {
         let (offset, before) = extract_offset(before);
         let edit = TextEdit::insert(offset, char_typed.to_string());
-        let before = edit.apply(&before);
+        let mut before = before.to_string();
+        edit.apply(&mut before);
         let parse = SourceFile::parse(&before);
-        on_char_typed_inner(&parse.tree(), offset, char_typed)
-            .map(|it| (it.edit.apply(&before), it))
+        on_char_typed_inner(&parse.tree(), offset, char_typed).map(|it| {
+            it.edit.apply(&mut before);
+            before.to_string()
+        })
     }
 
     fn type_char(char_typed: char, before: &str, after: &str) {
-        let (actual, file_change) = do_type_char(char_typed, before)
+        let actual = do_type_char(char_typed, before)
             .unwrap_or_else(|| panic!("typing `{}` did nothing", char_typed));
 
-        if after.contains("<|>") {
-            let (offset, after) = extract_offset(after);
-            assert_eq_text!(&after, &actual);
-            assert_eq!(file_change.cursor_position, Some(offset))
-        } else {
-            assert_eq_text!(after, &actual);
-        }
+        assert_eq_text!(after, &actual);
     }
 
     fn type_char_noop(char_typed: char, before: &str) {
@@ -346,6 +341,6 @@ fn foo() {
 
     #[test]
     fn adds_space_after_return_type() {
-        type_char('>', "fn foo() -<|>{ 92 }", "fn foo() -><|> { 92 }")
+        type_char('>', "fn foo() -<|>{ 92 }", "fn foo() -> { 92 }")
     }
 }

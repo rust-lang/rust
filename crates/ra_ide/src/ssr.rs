@@ -1,18 +1,18 @@
 //!  structural search replace
 
-use crate::source_change::SourceFileEdit;
+use std::{collections::HashMap, iter::once, str::FromStr};
+
 use ra_db::{SourceDatabase, SourceDatabaseExt};
-use ra_ide_db::symbol_index::SymbolsDatabase;
-use ra_ide_db::RootDatabase;
-use ra_syntax::ast::make::try_expr_from_text;
+use ra_ide_db::{symbol_index::SymbolsDatabase, RootDatabase};
 use ra_syntax::ast::{
-    ArgList, AstToken, CallExpr, Comment, Expr, MethodCallExpr, RecordField, RecordLit,
+    make::try_expr_from_text, ArgList, AstToken, CallExpr, Comment, Expr, MethodCallExpr,
+    RecordField, RecordLit,
 };
 use ra_syntax::{AstNode, SyntaxElement, SyntaxKind, SyntaxNode};
 use ra_text_edit::{TextEdit, TextEditBuilder};
 use rustc_hash::FxHashMap;
-use std::collections::HashMap;
-use std::{iter::once, str::FromStr};
+
+use crate::SourceFileEdit;
 
 #[derive(Debug, PartialEq)]
 pub struct SsrError(String);
@@ -401,16 +401,22 @@ fn render_replace(
     ignored_comments: &Vec<Comment>,
     template: &SsrTemplate,
 ) -> String {
-    let mut builder = TextEditBuilder::default();
-    for element in template.template.descendants() {
-        if let Some(var) = template.placeholders.get(&element) {
-            builder.replace(element.text_range(), binding[var].to_string())
+    let edit = {
+        let mut builder = TextEditBuilder::default();
+        for element in template.template.descendants() {
+            if let Some(var) = template.placeholders.get(&element) {
+                builder.replace(element.text_range(), binding[var].to_string())
+            }
         }
-    }
-    for comment in ignored_comments {
-        builder.insert(template.template.text_range().end(), comment.syntax().to_string())
-    }
-    builder.finish().apply(&template.template.text().to_string())
+        for comment in ignored_comments {
+            builder.insert(template.template.text_range().end(), comment.syntax().to_string())
+        }
+        builder.finish()
+    };
+
+    let mut text = template.template.text().to_string();
+    edit.apply(&mut text);
+    text
 }
 
 #[cfg(test)]
@@ -505,7 +511,9 @@ mod tests {
         );
 
         let edit = replace(&matches, &query.template);
-        assert_eq!(edit.apply(input), "fn main() { bar(1+2); }");
+        let mut after = input.to_string();
+        edit.apply(&mut after);
+        assert_eq!(after, "fn main() { bar(1+2); }");
     }
 
     fn assert_ssr_transform(query: &str, input: &str, result: &str) {
@@ -513,7 +521,9 @@ mod tests {
         let code = SourceFile::parse(input).tree();
         let matches = find(&query.pattern, code.syntax());
         let edit = replace(&matches, &query.template);
-        assert_eq!(edit.apply(input), result);
+        let mut after = input.to_string();
+        edit.apply(&mut after);
+        assert_eq!(after, result);
     }
 
     #[test]

@@ -1,16 +1,19 @@
 //! Completion of names from the current scope, e.g. locals and imported items.
 
 use hir::ScopeDef;
-use test_utils::tested_by;
+use test_utils::mark;
 
 use crate::completion::{CompletionContext, Completions};
 use hir::{Adt, ModuleDef, Type};
 use ra_syntax::AstNode;
 
 pub(super) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionContext) {
-    if (!ctx.is_trivial_path && !ctx.is_pat_binding_or_const)
-        || ctx.record_lit_syntax.is_some()
+    if !(ctx.is_trivial_path || ctx.is_pat_binding_or_const) {
+        return;
+    }
+    if ctx.record_lit_syntax.is_some()
         || ctx.record_pat_syntax.is_some()
+        || ctx.attribute_under_caret.is_some()
     {
         return;
     }
@@ -27,7 +30,7 @@ pub(super) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
         if ctx.use_item_syntax.is_some() {
             if let (ScopeDef::Unknown, Some(name_ref)) = (&res, &ctx.name_ref_syntax) {
                 if name_ref.syntax().text() == name.to_string().as_str() {
-                    tested_by!(self_fulfilling_completion);
+                    mark::hit!(self_fulfilling_completion);
                     return;
                 }
             }
@@ -63,7 +66,7 @@ fn complete_enum_variants(acc: &mut Completions, ctx: &CompletionContext, ty: &T
 #[cfg(test)]
 mod tests {
     use insta::assert_debug_snapshot;
-    use test_utils::covers;
+    use test_utils::mark;
 
     use crate::completion::{test_utils::do_completion, CompletionItem, CompletionKind};
 
@@ -73,7 +76,7 @@ mod tests {
 
     #[test]
     fn self_fulfilling_completion() {
-        covers!(self_fulfilling_completion);
+        mark::check!(self_fulfilling_completion);
         assert_debug_snapshot!(
             do_reference_completion(
                 r#"
@@ -1367,6 +1370,20 @@ mod tests {
             },
         ]
         "###
+        )
+    }
+
+    #[test]
+    fn dont_complete_attr() {
+        assert_debug_snapshot!(
+            do_reference_completion(
+                r"
+                struct Foo;
+                #[<|>]
+                fn f() {}
+                "
+            ),
+            @r###"[]"###
         )
     }
 }

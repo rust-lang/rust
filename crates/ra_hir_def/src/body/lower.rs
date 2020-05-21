@@ -15,7 +15,7 @@ use ra_syntax::{
     },
     AstNode, AstPtr,
 };
-use test_utils::tested_by;
+use test_utils::mark;
 
 use crate::{
     adt::StructKind,
@@ -60,13 +60,10 @@ pub(super) fn lower(
     params: Option<ast::ParamList>,
     body: Option<ast::Expr>,
 ) -> (Body, BodySourceMap) {
-    let ctx = LowerCtx::new(db, expander.current_file_id.clone());
-
     ExprCollector {
         db,
         def,
         expander,
-        ctx,
         source_map: BodySourceMap::default(),
         body: Body {
             exprs: Arena::default(),
@@ -83,7 +80,6 @@ struct ExprCollector<'a> {
     db: &'a dyn DefDatabase,
     def: DefWithBodyId,
     expander: Expander,
-    ctx: LowerCtx,
     body: Body,
     source_map: BodySourceMap,
 }
@@ -120,6 +116,10 @@ impl ExprCollector<'_> {
 
         self.body.body_expr = self.collect_expr_opt(body);
         (self.body, self.source_map)
+    }
+
+    fn ctx(&self) -> LowerCtx {
+        LowerCtx::new(self.db, self.expander.current_file_id)
     }
 
     fn alloc_expr(&mut self, expr: Expr, ptr: AstPtr<ast::Expr>) -> ExprId {
@@ -162,8 +162,7 @@ impl ExprCollector<'_> {
 
     fn collect_expr(&mut self, expr: ast::Expr) -> ExprId {
         let syntax_ptr = AstPtr::new(&expr);
-        let attrs = self.expander.parse_attrs(&expr);
-        if !self.expander.is_cfg_enabled(&attrs) {
+        if !self.expander.is_cfg_enabled(&expr) {
             return self.missing_expr();
         }
         match expr {
@@ -203,6 +202,16 @@ impl ExprCollector<'_> {
 
                 self.alloc_expr(Expr::If { condition, then_branch, else_branch }, syntax_ptr)
             }
+            ast::Expr::EffectExpr(e) => match e.effect() {
+                ast::Effect::Try(_) => {
+                    let body = self.collect_block_opt(e.block_expr());
+                    self.alloc_expr(Expr::TryBlock { body }, syntax_ptr)
+                }
+                // FIXME: we need to record these effects somewhere...
+                ast::Effect::Async(_) | ast::Effect::Label(_) | ast::Effect::Unsafe(_) => {
+                    self.collect_block_opt(e.block_expr())
+                }
+            },
             ast::Expr::BlockExpr(e) => self.collect_block(e),
             ast::Expr::LoopExpr(e) => {
                 let body = self.collect_block_opt(e.loop_body());
@@ -217,7 +226,7 @@ impl ExprCollector<'_> {
                         None => self.collect_expr_opt(condition.expr()),
                         // if let -- desugar to match
                         Some(pat) => {
-                            tested_by!(infer_resolve_while_let);
+                            mark::hit!(infer_resolve_while_let);
                             let pat = self.collect_pat(pat);
                             let match_expr = self.collect_expr_opt(condition.expr());
                             let placeholder_pat = self.missing_pat();
@@ -259,7 +268,7 @@ impl ExprCollector<'_> {
                 };
                 let method_name = e.name_ref().map(|nr| nr.as_name()).unwrap_or_else(Name::missing);
                 let generic_args =
-                    e.type_arg_list().and_then(|it| GenericArgs::from_ast(&self.ctx, it));
+                    e.type_arg_list().and_then(|it| GenericArgs::from_ast(&self.ctx(), it));
                 self.alloc_expr(
                     Expr::MethodCall { receiver, method_name, args, generic_args },
                     syntax_ptr,
@@ -319,8 +328,7 @@ impl ExprCollector<'_> {
                         .fields()
                         .inspect(|field| field_ptrs.push(AstPtr::new(field)))
                         .filter_map(|field| {
-                            let attrs = self.expander.parse_attrs(&field);
-                            if !self.expander.is_cfg_enabled(&attrs) {
+                            if !self.expander.is_cfg_enabled(&field) {
                                 return None;
                             }
                             let name = field.field_name()?.as_name();
@@ -365,7 +373,7 @@ impl ExprCollector<'_> {
             }
             ast::Expr::CastExpr(e) => {
                 let expr = self.collect_expr_opt(e.expr());
-                let type_ref = TypeRef::from_ast_opt(&self.ctx, e.type_ref());
+                let type_ref = TypeRef::from_ast_opt(&self.ctx(), e.type_ref());
                 self.alloc_expr(Expr::Cast { expr, type_ref }, syntax_ptr)
             }
             ast::Expr::RefExpr(e) => {
@@ -388,7 +396,7 @@ impl ExprCollector<'_> {
                     for param in pl.params() {
                         let pat = self.collect_pat_opt(param.pat());
                         let type_ref =
-                            param.ascribed_type().map(|it| TypeRef::from_ast(&self.ctx, it));
+                            param.ascribed_type().map(|it| TypeRef::from_ast(&self.ctx(), it));
                         args.push(pat);
                         arg_types.push(type_ref);
                     }
@@ -396,7 +404,7 @@ impl ExprCollector<'_> {
                 let ret_type = e
                     .ret_type()
                     .and_then(|r| r.type_ref())
-                    .map(|it| TypeRef::from_ast(&self.ctx, it));
+                    .map(|it| TypeRef::from_ast(&self.ctx(), it));
                 let body = self.collect_expr_opt(e.body());
                 self.alloc_expr(Expr::Lambda { args, arg_types, ret_type, body }, syntax_ptr)
             }
@@ -456,6 +464,7 @@ impl ExprCollector<'_> {
                         krate: Some(self.expander.module.krate),
                         ast_id: Some(self.expander.ast_id(&e)),
                         kind: MacroDefKind::Declarative,
+                        local_inner: false,
                     };
                     self.body.item_scope.define_legacy_macro(name, mac);
 
@@ -490,19 +499,16 @@ impl ExprCollector<'_> {
         }
     }
 
-    fn collect_block(&mut self, expr: ast::BlockExpr) -> ExprId {
-        let syntax_node_ptr = AstPtr::new(&expr.clone().into());
-        let block = match expr.block() {
-            Some(block) => block,
-            None => return self.alloc_expr(Expr::Missing, syntax_node_ptr),
-        };
+    fn collect_block(&mut self, block: ast::BlockExpr) -> ExprId {
+        let syntax_node_ptr = AstPtr::new(&block.clone().into());
         self.collect_block_items(&block);
         let statements = block
             .statements()
             .map(|s| match s {
                 ast::Stmt::LetStmt(stmt) => {
                     let pat = self.collect_pat_opt(stmt.pat());
-                    let type_ref = stmt.ascribed_type().map(|it| TypeRef::from_ast(&self.ctx, it));
+                    let type_ref =
+                        stmt.ascribed_type().map(|it| TypeRef::from_ast(&self.ctx(), it));
                     let initializer = stmt.initializer().map(|e| self.collect_expr(e));
                     Statement::Let { pat, type_ref, initializer }
                 }
@@ -513,7 +519,7 @@ impl ExprCollector<'_> {
         self.alloc_expr(Expr::Block { statements, tail }, syntax_node_ptr)
     }
 
-    fn collect_block_items(&mut self, block: &ast::Block) {
+    fn collect_block_items(&mut self, block: &ast::BlockExpr) {
         let container = ContainerId::DefWithBodyId(self.def);
         for item in block.items() {
             let (def, name): (ModuleDefId, Option<ast::Name>) = match item {
@@ -568,9 +574,16 @@ impl ExprCollector<'_> {
             self.body.item_scope.define_def(def);
             if let Some(name) = name {
                 let vis = crate::visibility::Visibility::Public; // FIXME determine correctly
-                self.body
-                    .item_scope
-                    .push_res(name.as_name(), crate::per_ns::PerNs::from_def(def, vis));
+                let has_constructor = match def {
+                    ModuleDefId::AdtId(AdtId::StructId(s)) => {
+                        self.db.struct_data(s).variant_data.kind() != StructKind::Record
+                    }
+                    _ => true,
+                };
+                self.body.item_scope.push_res(
+                    name.as_name(),
+                    crate::per_ns::PerNs::from_def(def, vis, has_constructor),
+                );
             }
         }
     }

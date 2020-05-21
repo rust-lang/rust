@@ -2,7 +2,7 @@ use super::*;
 
 #[test]
 fn name_res_works_for_broken_modules() {
-    covers!(name_res_works_for_broken_modules);
+    mark::check!(name_res_works_for_broken_modules);
     let map = def_map(
         r"
         //- /lib.rs

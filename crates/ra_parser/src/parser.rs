@@ -192,7 +192,7 @@ impl<'t> Parser<'t> {
     /// structured errors with spans and notes, like rustc
     /// does.
     pub(crate) fn error<T: Into<String>>(&mut self, message: T) {
-        let msg = ParseError(message.into());
+        let msg = ParseError(Box::new(message.into()));
         self.push_event(Event::Error { msg })
     }
 

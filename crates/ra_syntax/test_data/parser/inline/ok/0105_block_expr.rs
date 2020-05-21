@@ -1,5 +1,0 @@
-fn foo() {
-    {};
-    unsafe {};
-    'label: {};
-}

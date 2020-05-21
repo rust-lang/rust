@@ -20,7 +20,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-16.04, windows-latest, macos-latest]
 
     steps:
     - name: Checkout repository
@@ -42,25 +42,25 @@ jobs:
         override: true
 
     - name: Install Nodejs
-      if: matrix.os == 'ubuntu-latest'
+      if: matrix.os == 'ubuntu-16.04'
       uses: actions/setup-node@v1
       with:
         node-version: 12.x
 
     - name: Dist
-      if: matrix.os == 'ubuntu-latest' && github.ref == 'refs/heads/release'
+      if: matrix.os == 'ubuntu-16.04' && github.ref == 'refs/heads/release'
       run: cargo xtask dist --client 0.2.$GITHUB_RUN_NUMBER
 
     - name: Dist
-      if: matrix.os == 'ubuntu-latest' && github.ref != 'refs/heads/release'
+      if: matrix.os == 'ubuntu-16.04' && github.ref != 'refs/heads/release'
       run: cargo xtask dist --nightly --client 0.3.$GITHUB_RUN_NUMBER-nightly
 
     - name: Dist
-      if: matrix.os != 'ubuntu-latest'
+      if: matrix.os != 'ubuntu-16.04'
       run: cargo xtask dist
 
     - name: Nightly analysis-stats check
-      if: matrix.os == 'ubuntu-latest' && github.ref != 'refs/heads/release'
+      if: matrix.os == 'ubuntu-16.04' && github.ref != 'refs/heads/release'
       run: ./dist/rust-analyzer-linux analysis-stats .
 
     - name: Upload artifacts
@@ -71,7 +71,7 @@ jobs:
 
   publish:
     name: publish
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-16.04
     needs: ['dist']
     steps:
     - name: Install Nodejs
@@ -94,7 +94,7 @@ jobs:
         path: dist
     - uses: actions/download-artifact@v1
       with:
-        name: dist-ubuntu-latest
+        name: dist-ubuntu-16.04
         path: dist
     - uses: actions/download-artifact@v1
       with:

@@ -7,9 +7,9 @@ use ra_syntax::{
     },
     SyntaxNode, TextSize, T,
 };
+use test_utils::mark;
 
-use crate::{Assist, AssistCtx, AssistId};
-use test_utils::tested_by;
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: change_visibility
 //
@@ -22,14 +22,14 @@ use test_utils::tested_by;
 // ```
 // pub(crate) fn frobnicate() {}
 // ```
-pub(crate) fn change_visibility(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn change_visibility(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     if let Some(vis) = ctx.find_node_at_offset::<ast::Visibility>() {
-        return change_vis(ctx, vis);
+        return change_vis(acc, vis);
     }
-    add_vis(ctx)
+    add_vis(acc, ctx)
 }
 
-fn add_vis(ctx: AssistCtx) -> Option<Assist> {
+fn add_vis(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let item_keyword = ctx.token_at_offset().find(|leaf| match leaf.kind() {
         T![const] | T![fn] | T![mod] | T![struct] | T![enum] | T![trait] => true,
         _ => false,
@@ -47,23 +47,27 @@ fn add_vis(ctx: AssistCtx) -> Option<Assist> {
             return None;
         }
         (vis_offset(&parent), keyword.text_range())
-    } else {
-        let field_name: ast::Name = ctx.find_node_at_offset()?;
+    } else if let Some(field_name) = ctx.find_node_at_offset::<ast::Name>() {
         let field = field_name.syntax().ancestors().find_map(ast::RecordFieldDef::cast)?;
         if field.name()? != field_name {
-            tested_by!(change_visibility_field_false_positive);
+            mark::hit!(change_visibility_field_false_positive);
             return None;
         }
         if field.visibility().is_some() {
             return None;
         }
         (vis_offset(field.syntax()), field_name.syntax().text_range())
+    } else if let Some(field) = ctx.find_node_at_offset::<ast::TupleFieldDef>() {
+        if field.visibility().is_some() {
+            return None;
+        }
+        (vis_offset(field.syntax()), field.syntax().text_range())
+    } else {
+        return None;
     };
 
-    ctx.add_assist(AssistId("change_visibility"), "Change visibility to pub(crate)", |edit| {
-        edit.target(target);
+    acc.add(AssistId("change_visibility"), "Change visibility to pub(crate)", target, |edit| {
         edit.insert(offset, "pub(crate) ");
-        edit.set_cursor(offset);
     })
 }
 
@@ -78,49 +82,49 @@ fn vis_offset(node: &SyntaxNode) -> TextSize {
         .unwrap_or_else(|| node.text_range().start())
 }
 
-fn change_vis(ctx: AssistCtx, vis: ast::Visibility) -> Option<Assist> {
+fn change_vis(acc: &mut Assists, vis: ast::Visibility) -> Option<()> {
     if vis.syntax().text() == "pub" {
-        return ctx.add_assist(
+        let target = vis.syntax().text_range();
+        return acc.add(
             AssistId("change_visibility"),
             "Change Visibility to pub(crate)",
+            target,
             |edit| {
-                edit.target(vis.syntax().text_range());
                 edit.replace(vis.syntax().text_range(), "pub(crate)");
-                edit.set_cursor(vis.syntax().text_range().start())
             },
         );
     }
     if vis.syntax().text() == "pub(crate)" {
-        return ctx.add_assist(AssistId("change_visibility"), "Change visibility to pub", |edit| {
-            edit.target(vis.syntax().text_range());
-            edit.replace(vis.syntax().text_range(), "pub");
-            edit.set_cursor(vis.syntax().text_range().start());
-        });
+        let target = vis.syntax().text_range();
+        return acc.add(
+            AssistId("change_visibility"),
+            "Change visibility to pub",
+            target,
+            |edit| {
+                edit.replace(vis.syntax().text_range(), "pub");
+            },
+        );
     }
     None
 }
 
 #[cfg(test)]
 mod tests {
-    use test_utils::covers;
+    use test_utils::mark;
 
-    use crate::helpers::{check_assist, check_assist_not_applicable, check_assist_target};
+    use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
 
     use super::*;
 
     #[test]
     fn change_visibility_adds_pub_crate_to_items() {
-        check_assist(change_visibility, "<|>fn foo() {}", "<|>pub(crate) fn foo() {}");
-        check_assist(change_visibility, "f<|>n foo() {}", "<|>pub(crate) fn foo() {}");
-        check_assist(change_visibility, "<|>struct Foo {}", "<|>pub(crate) struct Foo {}");
-        check_assist(change_visibility, "<|>mod foo {}", "<|>pub(crate) mod foo {}");
-        check_assist(change_visibility, "<|>trait Foo {}", "<|>pub(crate) trait Foo {}");
-        check_assist(change_visibility, "m<|>od {}", "<|>pub(crate) mod {}");
-        check_assist(
-            change_visibility,
-            "unsafe f<|>n foo() {}",
-            "<|>pub(crate) unsafe fn foo() {}",
-        );
+        check_assist(change_visibility, "<|>fn foo() {}", "pub(crate) fn foo() {}");
+        check_assist(change_visibility, "f<|>n foo() {}", "pub(crate) fn foo() {}");
+        check_assist(change_visibility, "<|>struct Foo {}", "pub(crate) struct Foo {}");
+        check_assist(change_visibility, "<|>mod foo {}", "pub(crate) mod foo {}");
+        check_assist(change_visibility, "<|>trait Foo {}", "pub(crate) trait Foo {}");
+        check_assist(change_visibility, "m<|>od {}", "pub(crate) mod {}");
+        check_assist(change_visibility, "unsafe f<|>n foo() {}", "pub(crate) unsafe fn foo() {}");
     }
 
     #[test]
@@ -128,13 +132,14 @@ mod tests {
         check_assist(
             change_visibility,
             r"struct S { <|>field: u32 }",
-            r"struct S { <|>pub(crate) field: u32 }",
-        )
+            r"struct S { pub(crate) field: u32 }",
+        );
+        check_assist(change_visibility, r"struct S ( <|>u32 )", r"struct S ( pub(crate) u32 )");
     }
 
     #[test]
     fn change_visibility_field_false_positive() {
-        covers!(change_visibility_field_false_positive);
+        mark::check!(change_visibility_field_false_positive);
         check_assist_not_applicable(
             change_visibility,
             r"struct S { field: [(); { let <|>x = ();}] }",
@@ -143,17 +148,17 @@ mod tests {
 
     #[test]
     fn change_visibility_pub_to_pub_crate() {
-        check_assist(change_visibility, "<|>pub fn foo() {}", "<|>pub(crate) fn foo() {}")
+        check_assist(change_visibility, "<|>pub fn foo() {}", "pub(crate) fn foo() {}")
     }
 
     #[test]
     fn change_visibility_pub_crate_to_pub() {
-        check_assist(change_visibility, "<|>pub(crate) fn foo() {}", "<|>pub fn foo() {}")
+        check_assist(change_visibility, "<|>pub(crate) fn foo() {}", "pub fn foo() {}")
     }
 
     #[test]
     fn change_visibility_const() {
-        check_assist(change_visibility, "<|>const FOO = 3u8;", "<|>pub(crate) const FOO = 3u8;");
+        check_assist(change_visibility, "<|>const FOO = 3u8;", "pub(crate) const FOO = 3u8;");
     }
 
     #[test]
@@ -174,9 +179,18 @@ mod tests {
             // comments
 
             #[derive(Debug)]
-            <|>pub(crate) struct Foo;
+            pub(crate) struct Foo;
             ",
         )
+    }
+
+    #[test]
+    fn not_applicable_for_enum_variants() {
+        check_assist_not_applicable(
+            change_visibility,
+            r"mod foo { pub enum Foo {Foo1} }
+              fn main() { foo::Foo::Foo1<|> } ",
+        );
     }
 
     #[test]

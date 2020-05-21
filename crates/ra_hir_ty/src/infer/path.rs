@@ -5,7 +5,7 @@ use std::iter;
 use hir_def::{
     path::{Path, PathSegment},
     resolver::{ResolveValueResult, Resolver, TypeNs, ValueNs},
-    AssocContainerId, AssocItemId, Lookup,
+    AdtId, AssocContainerId, AssocItemId, EnumVariantId, Lookup,
 };
 use hir_expand::name::Name;
 
@@ -76,6 +76,18 @@ impl<'a> InferenceContext<'a> {
                 self.write_variant_resolution(id, it.into());
 
                 it.into()
+            }
+            ValueNs::ImplSelf(impl_id) => {
+                let generics = crate::utils::generics(self.db.upcast(), impl_id.into());
+                let substs = Substs::type_params_for_generics(&generics);
+                let ty = self.db.impl_self_ty(impl_id).subst(&substs);
+                if let Some((AdtId::StructId(struct_id), _)) = ty.as_adt() {
+                    let ty = self.db.value_ty(struct_id.into()).subst(&substs);
+                    return Some(ty);
+                } else {
+                    // FIXME: diagnostic, invalid Self reference
+                    return None;
+                }
             }
         };
 
@@ -199,6 +211,10 @@ impl<'a> InferenceContext<'a> {
             return None;
         }
 
+        if let Some(result) = self.resolve_enum_variant_on_ty(&ty, name, id) {
+            return Some(result);
+        }
+
         let canonical_ty = self.canonicalizer().canonicalize_ty(ty.clone());
         let krate = self.resolver.krate()?;
         let traits_in_scope = self.resolver.traits_in_scope(self.db.upcast());
@@ -249,5 +265,22 @@ impl<'a> InferenceContext<'a> {
                 Some((def, substs))
             },
         )
+    }
+
+    fn resolve_enum_variant_on_ty(
+        &mut self,
+        ty: &Ty,
+        name: &Name,
+        id: ExprOrPatId,
+    ) -> Option<(ValueNs, Option<Substs>)> {
+        let (enum_id, subst) = match ty.as_adt() {
+            Some((AdtId::EnumId(e), subst)) => (e, subst),
+            _ => return None,
+        };
+        let enum_data = self.db.enum_data(enum_id);
+        let local_id = enum_data.variant(name)?;
+        let variant = EnumVariantId { parent: enum_id, local_id };
+        self.write_variant_resolution(id, variant.into());
+        Some((ValueNs::EnumVariantId(variant), Some(subst.clone())))
     }
 }

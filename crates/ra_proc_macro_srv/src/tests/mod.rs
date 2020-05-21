@@ -10,7 +10,7 @@ fn test_derive_serialize_proc_macro() {
     assert_expand(
         "serde_derive",
         "Serialize",
-        "1.0.106",
+        "1.0",
         r##"struct Foo {}"##,
         include_str!("fixtures/test_serialize_proc_macro.txt"),
     );
@@ -21,7 +21,7 @@ fn test_derive_serialize_proc_macro_failed() {
     assert_expand(
         "serde_derive",
         "Serialize",
-        "1.0.106",
+        "1.0",
         r##"
     struct {}
 "##,
@@ -37,7 +37,7 @@ SUBTREE $
 
 #[test]
 fn test_derive_proc_macro_list() {
-    let res = list("serde_derive", "1.0.106").join("\n");
+    let res = list("serde_derive", "1.0").join("\n");
 
     assert_eq_text!(
         &res,

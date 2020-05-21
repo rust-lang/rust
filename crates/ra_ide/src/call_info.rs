@@ -5,7 +5,7 @@ use ra_syntax::{
     ast::{self, ArgListOwner},
     match_ast, AstNode, SyntaxNode, SyntaxToken,
 };
-use test_utils::tested_by;
+use test_utils::mark;
 
 use crate::{CallInfo, FilePosition, FunctionSignature};
 
@@ -84,7 +84,7 @@ fn call_info_for_token(sema: &Semantics<RootDatabase>, token: SyntaxToken) -> Op
 
                 let arg_list_range = arg_list.syntax().text_range();
                 if !arg_list_range.contains_inclusive(token.text_range().start()) {
-                    tested_by!(call_info_bad_offset);
+                    mark::hit!(call_info_bad_offset);
                     return None;
                 }
 
@@ -213,7 +213,7 @@ impl CallInfo {
 
 #[cfg(test)]
 mod tests {
-    use test_utils::covers;
+    use test_utils::mark;
 
     use crate::mock_analysis::single_file_with_position;
 
@@ -529,7 +529,7 @@ By default this method stops actor's `Context`."#
 
     #[test]
     fn call_info_bad_offset() {
-        covers!(call_info_bad_offset);
+        mark::check!(call_info_bad_offset);
         let (analysis, position) = single_file_with_position(
             r#"fn foo(x: u32, y: u32) -> u32 {x + y}
                fn bar() { foo <|> (3, ); }"#,

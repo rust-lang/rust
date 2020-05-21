@@ -5,7 +5,7 @@ use ra_syntax::{
     TextSize,
 };
 
-use crate::{Assist, AssistCtx, AssistId};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: make_raw_string
 //
@@ -22,11 +22,11 @@ use crate::{Assist, AssistCtx, AssistId};
 //     r#"Hello, World!"#;
 // }
 // ```
-pub(crate) fn make_raw_string(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn make_raw_string(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let token = ctx.find_token_at_offset(STRING).and_then(ast::String::cast)?;
     let value = token.value()?;
-    ctx.add_assist(AssistId("make_raw_string"), "Rewrite as raw string", |edit| {
-        edit.target(token.syntax().text_range());
+    let target = token.syntax().text_range();
+    acc.add(AssistId("make_raw_string"), "Rewrite as raw string", target, |edit| {
         let max_hash_streak = count_hashes(&value);
         let mut hashes = String::with_capacity(max_hash_streak + 1);
         for _ in 0..hashes.capacity() {
@@ -51,11 +51,11 @@ pub(crate) fn make_raw_string(ctx: AssistCtx) -> Option<Assist> {
 //     "Hello, \"World!\"";
 // }
 // ```
-pub(crate) fn make_usual_string(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn make_usual_string(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let token = ctx.find_token_at_offset(RAW_STRING).and_then(ast::RawString::cast)?;
     let value = token.value()?;
-    ctx.add_assist(AssistId("make_usual_string"), "Rewrite as regular string", |edit| {
-        edit.target(token.syntax().text_range());
+    let target = token.syntax().text_range();
+    acc.add(AssistId("make_usual_string"), "Rewrite as regular string", target, |edit| {
         // parse inside string to escape `"`
         let escaped = value.escape_default().to_string();
         edit.replace(token.syntax().text_range(), format!("\"{}\"", escaped));
@@ -77,10 +77,10 @@ pub(crate) fn make_usual_string(ctx: AssistCtx) -> Option<Assist> {
 //     r##"Hello, World!"##;
 // }
 // ```
-pub(crate) fn add_hash(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn add_hash(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let token = ctx.find_token_at_offset(RAW_STRING)?;
-    ctx.add_assist(AssistId("add_hash"), "Add # to raw string", |edit| {
-        edit.target(token.text_range());
+    let target = token.text_range();
+    acc.add(AssistId("add_hash"), "Add # to raw string", target, |edit| {
         edit.insert(token.text_range().start() + TextSize::of('r'), "#");
         edit.insert(token.text_range().end(), "#");
     })
@@ -101,15 +101,15 @@ pub(crate) fn add_hash(ctx: AssistCtx) -> Option<Assist> {
 //     r"Hello, World!";
 // }
 // ```
-pub(crate) fn remove_hash(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn remove_hash(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let token = ctx.find_token_at_offset(RAW_STRING)?;
     let text = token.text().as_str();
     if text.starts_with("r\"") {
         // no hash to remove
         return None;
     }
-    ctx.add_assist(AssistId("remove_hash"), "Remove hash from raw string", |edit| {
-        edit.target(token.text_range());
+    let target = token.text_range();
+    acc.add(AssistId("remove_hash"), "Remove hash from raw string", target, |edit| {
         let result = &text[2..text.len() - 1];
         let result = if result.starts_with('\"') {
             // FIXME: this logic is wrong, not only the last has has to handled specially
@@ -138,7 +138,7 @@ fn count_hashes(s: &str) -> usize {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::helpers::{check_assist, check_assist_not_applicable, check_assist_target};
+    use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
 
     #[test]
     fn make_raw_string_target() {
@@ -164,7 +164,7 @@ mod test {
             "#,
             r##"
             fn f() {
-                let s = <|>r#"random
+                let s = r#"random
 string"#;
             }
             "##,
@@ -182,7 +182,7 @@ string"#;
             "#,
             r##"
             fn f() {
-                format!(<|>r#"x = {}"#, 92)
+                format!(r#"x = {}"#, 92)
             }
             "##,
         )
@@ -199,7 +199,7 @@ string"#;
             "###,
             r####"
             fn f() {
-                let s = <|>r#"#random##
+                let s = r#"#random##
 string"#;
             }
             "####,
@@ -217,7 +217,7 @@ string"#;
             "###,
             r####"
             fn f() {
-                let s = <|>r###"#random"##
+                let s = r###"#random"##
 string"###;
             }
             "####,
@@ -235,7 +235,7 @@ string"###;
             "#,
             r##"
             fn f() {
-                let s = <|>r#"random string"#;
+                let s = r#"random string"#;
             }
             "##,
         )
@@ -289,7 +289,7 @@ string"###;
             "#,
             r##"
             fn f() {
-                let s = <|>r#"random string"#;
+                let s = r#"random string"#;
             }
             "##,
         )
@@ -306,7 +306,7 @@ string"###;
             "##,
             r###"
             fn f() {
-                let s = <|>r##"random"string"##;
+                let s = r##"random"string"##;
             }
             "###,
         )
@@ -348,7 +348,7 @@ string"###;
             "##,
             r#"
             fn f() {
-                let s = <|>r"random string";
+                let s = r"random string";
             }
             "#,
         )
@@ -365,7 +365,7 @@ string"###;
             "##,
             r#"
             fn f() {
-                let s = <|>r"random\"str\"ing";
+                let s = r"random\"str\"ing";
             }
             "#,
         )
@@ -382,7 +382,7 @@ string"###;
             "###,
             r##"
             fn f() {
-                let s = <|>r#"random string"#;
+                let s = r#"random string"#;
             }
             "##,
         )
@@ -436,7 +436,7 @@ string"###;
             "##,
             r#"
             fn f() {
-                let s = <|>"random string";
+                let s = "random string";
             }
             "#,
         )
@@ -453,7 +453,7 @@ string"###;
             "##,
             r#"
             fn f() {
-                let s = <|>"random\"str\"ing";
+                let s = "random\"str\"ing";
             }
             "#,
         )
@@ -470,7 +470,7 @@ string"###;
             "###,
             r##"
             fn f() {
-                let s = <|>"random string";
+                let s = "random string";
             }
             "##,
         )

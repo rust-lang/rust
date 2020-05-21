@@ -33,22 +33,21 @@
         "fix": " tsfmt -r       && eslint -c .eslintrc.js --ext ts ./src --fix"
     },
     "dependencies": {
-        "jsonc-parser": "^2.2.1",
         "node-fetch": "^2.6.0",
         "vscode-languageclient": "7.0.0-next.1"
     },
     "devDependencies": {
         "@rollup/plugin-commonjs": "^11.1.0",
         "@rollup/plugin-node-resolve": "^7.1.3",
-        "@types/node": "^12.12.37",
-        "@types/node-fetch": "^2.5.6",
+        "@types/node": "^12.12.39",
+        "@types/node-fetch": "^2.5.7",
         "@types/vscode": "^1.44.0",
-        "@typescript-eslint/eslint-plugin": "^2.29.0",
-        "@typescript-eslint/parser": "^2.29.0",
+        "@typescript-eslint/eslint-plugin": "^2.33.0",
+        "@typescript-eslint/parser": "^2.33.0",
         "eslint": "^6.8.0",
-        "rollup": "^2.7.1",
-        "tslib": "^1.11.1",
-        "typescript": "^3.8.3",
+        "rollup": "^2.10.0",
+        "tslib": "^1.12.0",
+        "typescript": "^3.9.2",
         "typescript-formatter": "^7.2.2",
         "vsce": "^1.75.0"
     },
@@ -119,6 +118,16 @@
             {
                 "command": "rust-analyzer.run",
                 "title": "Run",
+                "category": "Rust Analyzer"
+            },
+            {
+                "command": "rust-analyzer.debug",
+                "title": "Debug",
+                "category": "Rust Analyzer"
+            },
+            {
+                "command": "rust-analyzer.newDebugConfig",
+                "title": "Generate launch configuration",
                 "category": "Rust Analyzer"
             },
             {
@@ -205,11 +214,6 @@
                     "default": [],
                     "description": "Paths to exclude from analysis."
                 },
-                "rust-analyzer.notifications.workspaceLoaded": {
-                    "type": "boolean",
-                    "default": true,
-                    "markdownDescription": "Whether to show `workspace loaded` message."
-                },
                 "rust-analyzer.notifications.cargoTomlNotFound": {
                     "type": "boolean",
                     "default": true,
@@ -237,6 +241,14 @@
                     "type": "boolean",
                     "default": false,
                     "markdownDescription": "Run `cargo check` on startup to get the correct value for package OUT_DIRs"
+                },
+                "rust-analyzer.cargo.target": {
+                    "type": [
+                        "null",
+                        "string"
+                    ],
+                    "default": null,
+                    "description": "Specify the compilation target"
                 },
                 "rust-analyzer.rustfmt.extraArgs": {
                     "type": "array",
@@ -286,27 +298,37 @@
                         "minItems": 1
                     },
                     "default": null,
-                    "markdownDescription": "Advanced option, fully override the command rust-analyzer uses for checking. The command should include `--message=format=json` or similar option."
+                    "markdownDescription": "Advanced option, fully override the command rust-analyzer uses for checking. The command should include `--message-format=json` or similar option."
                 },
                 "rust-analyzer.checkOnSave.allTargets": {
                     "type": "boolean",
                     "default": true,
                     "markdownDescription": "Check all targets and tests (will be passed as `--all-targets`)"
                 },
+                "rust-analyzer.checkOnSave.allFeatures": {
+                    "type": "boolean",
+                    "default": true,
+                    "markdownDescription": "Check with all features (will be passed as `--all-features`)"
+                },
+                "rust-analyzer.inlayHints.enable": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Whether to show inlay hints"
+                },
                 "rust-analyzer.inlayHints.typeHints": {
                     "type": "boolean",
                     "default": true,
-                    "description": "Whether to show inlay type hints"
+                    "description": "Whether to show inlay type hints for variables."
                 },
                 "rust-analyzer.inlayHints.chainingHints": {
                     "type": "boolean",
                     "default": true,
-                    "description": "Whether to show inlay type hints for method chains"
+                    "description": "Whether to show inlay type hints for method chains."
                 },
                 "rust-analyzer.inlayHints.parameterHints": {
                     "type": "boolean",
                     "default": true,
-                    "description": "Whether to show function parameter name inlay hints at the call site"
+                    "description": "Whether to show function parameter name inlay hints at the call site."
                 },
                 "rust-analyzer.inlayHints.maxLength": {
                     "type": [
@@ -398,7 +420,7 @@
                         "ms-vscode.cpptools"
                     ],
                     "default": "auto",
-                    "description": "Preffered debug engine.",
+                    "description": "Preferred debug engine.",
                     "markdownEnumDescriptions": [
                         "First try to use [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb), if it's not installed try to use [MS C++ tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools).",
                         "Use [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb)",
@@ -411,6 +433,36 @@
                     "default": {
                         "/rustc/<id>": "${env:USERPROFILE}/.rustup/toolchains/<toolchain-id>/lib/rustlib/src/rust"
                     }
+                },
+                "rust-analyzer.debug.openDebugPane": {
+                    "description": "Whether to open up the Debug Pane on debugging start.",
+                    "type": "boolean",
+                    "default": false
+                },
+                "rust-analyzer.debug.engineSettings": {
+                    "type": "object",
+                    "default": {},
+                    "description": "Optional settings passed to the debug engine. Example:\n{ \"lldb\": { \"terminal\":\"external\"} }"
+                },
+                "rust-analyzer.lens.enable": {
+                    "description": "Whether to show CodeLens in Rust files.",
+                    "type": "boolean",
+                    "default": true
+                },
+                "rust-analyzer.lens.run": {
+                    "markdownDescription": "Whether to show Run lens. Only applies when `#rust-analyzer.lens.enable#` is set.",
+                    "type": "boolean",
+                    "default": true
+                },
+                "rust-analyzer.lens.debug": {
+                    "markdownDescription": "Whether to show Debug lens. Only applies when `#rust-analyzer.lens.enable#` is set.",
+                    "type": "boolean",
+                    "default": true
+                },
+                "rust-analyzer.lens.implementations": {
+                    "markdownDescription": "Whether to show Implementations lens. Only applies when `#rust-analyzer.lens.enable#` is set.",
+                    "type": "boolean",
+                    "default": true
                 }
             }
         },
@@ -456,6 +508,11 @@
             }
         ],
         "grammars": [
+            {
+                "language": "rust",
+                "scopeName": "source.rust",
+                "path": "rust.tmGrammar.json"
+            },
             {
                 "language": "ra_syntax_tree",
                 "scopeName": "source.ra_syntax_tree",
@@ -539,6 +596,10 @@
             {
                 "id": "unresolvedReference",
                 "description": "Style for names which can not be resolved due to compilation errors"
+            },
+            {
+                "id": "formatSpecifier",
+                "description": "Style for {} placeholders in format strings"
             }
         ],
         "semanticTokenModifiers": [
@@ -563,26 +624,41 @@
             {
                 "language": "rust",
                 "scopes": {
+                    "macro": [
+                        "entity.name.function.macro.rust"
+                    ],
                     "attribute": [
-                        "meta.attribute"
+                        "meta.attribute.rust"
                     ],
                     "builtinType": [
-                        "support.type.primitive"
+                        "support.type.primitive.rust"
                     ],
                     "lifetime": [
-                        "entity.name.lifetime.rust"
+                        "storage.modifier.lifetime.rust"
                     ],
                     "typeAlias": [
-                        "entity.name.typeAlias"
+                        "entity.name.type.typeAlias.rust"
                     ],
                     "union": [
-                        "entity.name.union"
+                        "entity.name.type.union.rust"
                     ],
-                    "keyword.unsafe": [
-                        "keyword.other.unsafe"
+                    "struct": [
+                        "entity.name.type.struct.rust"
+                    ],
+                    "keyword": [
+                        "keyword.other.rust"
+                    ],
+                    "keyword.controlFlow": [
+                        "keyword.control.rust"
                     ],
                     "variable.constant": [
-                        "entity.name.constant"
+                        "variable.other.constant.rust"
+                    ],
+                    "formatSpecifier": [
+                        "punctuation.section.embedded.rust"
+                    ],
+                    "*.mutable": [
+                        "markup.underline"
                     ]
                 }
             }

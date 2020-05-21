@@ -46,8 +46,6 @@ pub mod find_path;
 
 #[cfg(test)]
 mod test_db;
-#[cfg(test)]
-mod marks;
 
 use std::hash::Hash;
 

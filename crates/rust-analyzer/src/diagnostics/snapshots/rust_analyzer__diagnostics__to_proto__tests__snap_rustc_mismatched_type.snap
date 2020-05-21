@@ -1,0 +1,48 @@
+---
+source: crates/rust-analyzer/src/diagnostics/to_proto.rs
+expression: diag
+---
+[
+    MappedRustDiagnostic {
+        location: Location {
+            uri: "file:///test/runtime/compiler_support.rs",
+            range: Range {
+                start: Position {
+                    line: 47,
+                    character: 64,
+                },
+                end: Position {
+                    line: 47,
+                    character: 69,
+                },
+            },
+        },
+        diagnostic: Diagnostic {
+            range: Range {
+                start: Position {
+                    line: 47,
+                    character: 64,
+                },
+                end: Position {
+                    line: 47,
+                    character: 69,
+                },
+            },
+            severity: Some(
+                Error,
+            ),
+            code: Some(
+                String(
+                    "E0308",
+                ),
+            ),
+            source: Some(
+                "rustc",
+            ),
+            message: "mismatched types\nexpected usize, found u32",
+            related_information: None,
+            tags: None,
+        },
+        fixes: [],
+    },
+]

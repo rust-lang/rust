@@ -18,7 +18,7 @@ use ra_syntax::{
     ast::{self, AttrsOwner, NameOwner, VisibilityOwner},
     AstNode,
 };
-use test_utils::tested_by;
+use test_utils::mark;
 
 use crate::{
     attr::Attrs,
@@ -156,9 +156,16 @@ pub(super) struct DefData {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub(super) enum StructDefKind {
+    Record,
+    Tuple,
+    Unit,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub(super) enum DefKind {
     Function(FileAstId<ast::FnDef>),
-    Struct(FileAstId<ast::StructDef>),
+    Struct(FileAstId<ast::StructDef>, StructDefKind),
     Union(FileAstId<ast::UnionDef>),
     Enum(FileAstId<ast::EnumDef>),
     Const(FileAstId<ast::ConstDef>),
@@ -171,7 +178,7 @@ impl DefKind {
     pub fn ast_id(&self) -> FileAstId<ast::ModuleItem> {
         match self {
             DefKind::Function(it) => it.upcast(),
-            DefKind::Struct(it) => it.upcast(),
+            DefKind::Struct(it, _) => it.upcast(),
             DefKind::Union(it) => it.upcast(),
             DefKind::Enum(it) => it.upcast(),
             DefKind::Const(it) => it.upcast(),
@@ -188,6 +195,7 @@ pub(super) struct MacroData {
     pub(super) path: ModPath,
     pub(super) name: Option<Name>,
     pub(super) export: bool,
+    pub(super) local_inner: bool,
     pub(super) builtin: bool,
 }
 
@@ -235,9 +243,14 @@ impl RawItemsCollector {
                 return;
             }
             ast::ModuleItem::StructDef(it) => {
+                let kind = match it.kind() {
+                    ast::StructKind::Record(_) => StructDefKind::Record,
+                    ast::StructKind::Tuple(_) => StructDefKind::Tuple,
+                    ast::StructKind::Unit => StructDefKind::Unit,
+                };
                 let id = self.source_ast_id_map.ast_id(&it);
                 let name = it.name();
-                (DefKind::Struct(id), name)
+                (DefKind::Struct(id, kind), name)
             }
             ast::ModuleItem::UnionDef(it) => {
                 let id = self.source_ast_id_map.ast_id(&it);
@@ -333,7 +346,7 @@ impl RawItemsCollector {
             self.push_item(current_module, attrs, RawItemKind::Module(item));
             return;
         }
-        tested_by!(name_res_works_for_broken_modules);
+        mark::hit!(name_res_works_for_broken_modules);
     }
 
     fn add_use_item(&mut self, current_module: Option<Idx<ModuleData>>, use_item: ast::UseItem) {
@@ -401,14 +414,32 @@ impl RawItemsCollector {
 
         let name = m.name().map(|it| it.as_name());
         let ast_id = self.source_ast_id_map.ast_id(&m);
-        // FIXME: cfg_attr
-        let export = m.attrs().filter_map(|x| x.simple_name()).any(|name| name == "macro_export");
 
         // FIXME: cfg_attr
-        let builtin =
-            m.attrs().filter_map(|x| x.simple_name()).any(|name| name == "rustc_builtin_macro");
+        let export_attr = attrs.by_key("macro_export");
 
-        let m = self.raw_items.macros.alloc(MacroData { ast_id, path, name, export, builtin });
+        let export = export_attr.exists();
+        let local_inner = if export {
+            export_attr.tt_values().map(|it| &it.token_trees).flatten().any(|it| match it {
+                tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) => {
+                    ident.text.contains("local_inner_macros")
+                }
+                _ => false,
+            })
+        } else {
+            false
+        };
+
+        let builtin = attrs.by_key("rustc_builtin_macro").exists();
+
+        let m = self.raw_items.macros.alloc(MacroData {
+            ast_id,
+            path,
+            name,
+            export,
+            local_inner,
+            builtin,
+        });
         self.push_item(current_module, attrs, RawItemKind::Macro(m));
     }
 

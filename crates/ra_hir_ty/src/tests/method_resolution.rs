@@ -17,8 +17,8 @@ impl<T> [T] {
 #[lang = "slice_alloc"]
 impl<T> [T] {}
 
-fn test() {
-    <[_]>::foo(b"foo");
+fn test(x: &[u8]) {
+    <[_]>::foo(x);
 }
 "#),
         @r###"
@@ -26,10 +26,11 @@ fn test() {
     56..79 '{     ...     }': T
     66..73 'loop {}': !
     71..73 '{}': ()
-    133..160 '{     ...o"); }': ()
-    139..149 '<[_]>::foo': fn foo<u8>(&[u8]) -> u8
-    139..157 '<[_]>:..."foo")': u8
-    150..156 'b"foo"': &[u8]
+    131..132 'x': &[u8]
+    141..163 '{     ...(x); }': ()
+    147..157 '<[_]>::foo': fn foo<u8>(&[u8]) -> u8
+    147..160 '<[_]>::foo(x)': u8
+    158..159 'x': &[u8]
     "###
     );
 }
@@ -983,7 +984,7 @@ fn test() { S2.into()<|>; }
 
 #[test]
 fn method_resolution_overloaded_method() {
-    test_utils::covers!(impl_self_type_match_without_receiver);
+    test_utils::mark::check!(impl_self_type_match_without_receiver);
     let t = type_at(
         r#"
 //- main.rs
@@ -1094,4 +1095,35 @@ fn test() { (S {}).method()<|>; }
 "#,
     );
     assert_eq!(t, "()");
+}
+
+#[test]
+fn dyn_trait_super_trait_not_in_scope() {
+    assert_snapshot!(
+        infer(r#"
+mod m {
+    pub trait SuperTrait {
+        fn foo(&self) -> u32 { 0 }
+    }
+}
+trait Trait: m::SuperTrait {}
+
+struct S;
+impl m::SuperTrait for S {}
+impl Trait for S {}
+
+fn test(d: &dyn Trait) {
+    d.foo();
+}
+"#),
+        @r###"
+    52..56 'self': &Self
+    65..70 '{ 0 }': u32
+    67..68 '0': u32
+    177..178 'd': &dyn Trait
+    192..208 '{     ...o(); }': ()
+    198..199 'd': &dyn Trait
+    198..205 'd.foo()': u32
+    "###
+    );
 }

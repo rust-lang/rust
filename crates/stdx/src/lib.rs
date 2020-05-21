@@ -102,3 +102,25 @@ pub fn timeit(label: &'static str) -> impl Drop {
 
     Guard { label, start: Instant::now() }
 }
+
+pub fn to_lower_snake_case(s: &str) -> String {
+    let mut buf = String::with_capacity(s.len());
+    let mut prev = false;
+    for c in s.chars() {
+        if c.is_ascii_uppercase() && prev {
+            buf.push('_')
+        }
+        prev = true;
+
+        buf.push(c.to_ascii_lowercase());
+    }
+    buf
+}
+
+pub fn replace(buf: &mut String, from: char, to: &str) {
+    if !buf.contains(from) {
+        return;
+    }
+    // FIXME: do this in place.
+    *buf = buf.replace(from, to)
+}

@@ -16,7 +16,6 @@ macro_rules! eprintln {
 }
 
 pub mod mock_analysis;
-mod source_change;
 
 mod prime_caches;
 mod status;
@@ -32,7 +31,6 @@ mod syntax_highlighting;
 mod parent_module;
 mod references;
 mod impls;
-mod assists;
 mod diagnostics;
 mod syntax_tree;
 mod folding_ranges;
@@ -43,11 +41,6 @@ mod display;
 mod inlay_hints;
 mod expand_macro;
 mod ssr;
-
-#[cfg(test)]
-mod marks;
-#[cfg(test)]
-mod test_utils;
 
 use std::sync::Arc;
 
@@ -65,7 +58,6 @@ use ra_syntax::{SourceFile, TextRange, TextSize};
 use crate::display::ToNav;
 
 pub use crate::{
-    assists::{Assist, AssistId},
     call_hierarchy::CallItem,
     completion::{
         CompletionConfig, CompletionItem, CompletionItemKind, CompletionScore, InsertTextFormat,
@@ -78,7 +70,6 @@ pub use crate::{
     inlay_hints::{InlayHint, InlayHintsConfig, InlayKind},
     references::{Declaration, Reference, ReferenceAccess, ReferenceKind, ReferenceSearchResult},
     runnables::{Runnable, RunnableKind, TestId},
-    source_change::{FileSystemEdit, SourceChange, SourceFileEdit},
     ssr::SsrError,
     syntax_highlighting::{
         Highlight, HighlightModifier, HighlightModifiers, HighlightTag, HighlightedRange,
@@ -86,17 +77,19 @@ pub use crate::{
 };
 
 pub use hir::Documentation;
+pub use ra_assists::{AssistConfig, AssistId};
 pub use ra_db::{
     Canceled, CrateGraph, CrateId, Edition, FileId, FilePosition, FileRange, SourceRootId,
 };
 pub use ra_ide_db::{
     change::{AnalysisChange, LibraryData},
     line_index::{LineCol, LineIndex},
-    line_index_utils::translate_offset_with_edit,
     search::SearchScope,
+    source_change::{FileSystemEdit, SourceChange, SourceFileEdit},
     symbol_index::Query,
     RootDatabase,
 };
+pub use ra_text_edit::{Indel, TextEdit};
 
 pub type Cancelable<T> = Result<T, Canceled>;
 
@@ -135,10 +128,12 @@ pub struct AnalysisHost {
     db: RootDatabase,
 }
 
-impl Default for AnalysisHost {
-    fn default() -> AnalysisHost {
-        AnalysisHost::new(None)
-    }
+#[derive(Debug)]
+pub struct Assist {
+    pub id: AssistId,
+    pub label: String,
+    pub group_label: Option<String>,
+    pub source_change: SourceChange,
 }
 
 impl AnalysisHost {
@@ -176,15 +171,17 @@ impl AnalysisHost {
     pub fn request_cancellation(&mut self) {
         self.db.request_cancellation();
     }
-    pub fn raw_database(
-        &self,
-    ) -> &(impl hir::db::HirDatabase + salsa::Database + ra_db::SourceDatabaseExt) {
+    pub fn raw_database(&self) -> &RootDatabase {
         &self.db
     }
-    pub fn raw_database_mut(
-        &mut self,
-    ) -> &mut (impl hir::db::HirDatabase + salsa::Database + ra_db::SourceDatabaseExt) {
+    pub fn raw_database_mut(&mut self) -> &mut RootDatabase {
         &mut self.db
+    }
+}
+
+impl Default for AnalysisHost {
+    fn default() -> AnalysisHost {
+        AnalysisHost::new(None)
     }
 }
 
@@ -289,14 +286,10 @@ impl Analysis {
 
     /// Returns an edit to remove all newlines in the range, cleaning up minor
     /// stuff like trailing commas.
-    pub fn join_lines(&self, frange: FileRange) -> Cancelable<SourceChange> {
+    pub fn join_lines(&self, frange: FileRange) -> Cancelable<TextEdit> {
         self.with_db(|db| {
             let parse = db.parse(frange.file_id);
-            let file_edit = SourceFileEdit {
-                file_id: frange.file_id,
-                edit: join_lines::join_lines(&parse.tree(), frange.range),
-            };
-            SourceChange::source_file_edit("join lines", file_edit)
+            join_lines::join_lines(&parse.tree(), frange.range)
         })
     }
 
@@ -456,16 +449,26 @@ impl Analysis {
     /// Computes completions at the given position.
     pub fn completions(
         &self,
-        position: FilePosition,
         config: &CompletionConfig,
+        position: FilePosition,
     ) -> Cancelable<Option<Vec<CompletionItem>>> {
-        self.with_db(|db| completion::completions(db, position, config).map(Into::into))
+        self.with_db(|db| completion::completions(db, config, position).map(Into::into))
     }
 
     /// Computes assists (aka code actions aka intentions) for the given
     /// position.
-    pub fn assists(&self, frange: FileRange) -> Cancelable<Vec<Assist>> {
-        self.with_db(|db| assists::assists(db, frange))
+    pub fn assists(&self, config: &AssistConfig, frange: FileRange) -> Cancelable<Vec<Assist>> {
+        self.with_db(|db| {
+            ra_assists::Assist::resolved(db, config, frange)
+                .into_iter()
+                .map(|assist| Assist {
+                    id: assist.assist.id,
+                    label: assist.assist.label,
+                    group_label: assist.assist.group.map(|it| it.0),
+                    source_change: assist.source_change,
+                })
+                .collect()
+        })
     }
 
     /// Computes the set of diagnostics for the given file.
@@ -490,7 +493,7 @@ impl Analysis {
     ) -> Cancelable<Result<SourceChange, SsrError>> {
         self.with_db(|db| {
             let edits = ssr::parse_search_replace(query, parse_only, db)?;
-            Ok(SourceChange::source_file_edits("ssr", edits))
+            Ok(SourceChange::source_file_edits("Structural Search Replace", edits))
         })
     }
 

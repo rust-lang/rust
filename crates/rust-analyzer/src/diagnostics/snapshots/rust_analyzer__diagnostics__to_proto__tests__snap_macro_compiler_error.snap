@@ -1,0 +1,63 @@
+---
+source: crates/rust-analyzer/src/diagnostics/to_proto.rs
+expression: diag
+---
+[
+    MappedRustDiagnostic {
+        location: Location {
+            uri: "file:///test/crates/ra_hir_def/src/data.rs",
+            range: Range {
+                start: Position {
+                    line: 79,
+                    character: 15,
+                },
+                end: Position {
+                    line: 79,
+                    character: 41,
+                },
+            },
+        },
+        diagnostic: Diagnostic {
+            range: Range {
+                start: Position {
+                    line: 79,
+                    character: 15,
+                },
+                end: Position {
+                    line: 79,
+                    character: 41,
+                },
+            },
+            severity: Some(
+                Error,
+            ),
+            code: None,
+            source: Some(
+                "rustc",
+            ),
+            message: "Please register your known path in the path module",
+            related_information: Some(
+                [
+                    DiagnosticRelatedInformation {
+                        location: Location {
+                            uri: "file:///test/crates/ra_hir_def/src/path.rs",
+                            range: Range {
+                                start: Position {
+                                    line: 264,
+                                    character: 8,
+                                },
+                                end: Position {
+                                    line: 264,
+                                    character: 76,
+                                },
+                            },
+                        },
+                        message: "Error originated from macro here",
+                    },
+                ],
+            ),
+            tags: None,
+        },
+        fixes: [],
+    },
+]

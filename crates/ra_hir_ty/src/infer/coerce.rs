@@ -5,7 +5,7 @@
 //! See: https://doc.rust-lang.org/nomicon/coercions.html
 
 use hir_def::{lang_item::LangItemTarget, type_ref::Mutability};
-use test_utils::tested_by;
+use test_utils::mark;
 
 use crate::{autoderef, traits::Solution, Obligation, Substs, TraitRef, Ty, TypeCtor};
 
@@ -20,21 +20,35 @@ impl<'a> InferenceContext<'a> {
         self.coerce_inner(from_ty, &to_ty)
     }
 
-    /// Merge two types from different branches, with possible implicit coerce.
+    /// Merge two types from different branches, with possible coercion.
     ///
-    /// Note that it is only possible that one type are coerced to another.
-    /// Coercing both types to another least upper bound type is not possible in rustc,
-    /// which will simply result in "incompatible types" error.
+    /// Mostly this means trying to coerce one to the other, but
+    ///  - if we have two function types for different functions, we need to
+    ///    coerce both to function pointers;
+    ///  - if we were concerned with lifetime subtyping, we'd need to look for a
+    ///    least upper bound.
     pub(super) fn coerce_merge_branch(&mut self, ty1: &Ty, ty2: &Ty) -> Ty {
         if self.coerce(ty1, ty2) {
             ty2.clone()
         } else if self.coerce(ty2, ty1) {
             ty1.clone()
         } else {
-            tested_by!(coerce_merge_fail_fallback);
-            // For incompatible types, we use the latter one as result
-            // to be better recovery for `if` without `else`.
-            ty2.clone()
+            if let (ty_app!(TypeCtor::FnDef(_)), ty_app!(TypeCtor::FnDef(_))) = (ty1, ty2) {
+                mark::hit!(coerce_fn_reification);
+                // Special case: two function types. Try to coerce both to
+                // pointers to have a chance at getting a match. See
+                // https://github.com/rust-lang/rust/blob/7b805396bf46dce972692a6846ce2ad8481c5f85/src/librustc_typeck/check/coercion.rs#L877-L916
+                let sig1 = ty1.callable_sig(self.db).expect("FnDef without callable sig");
+                let sig2 = ty2.callable_sig(self.db).expect("FnDef without callable sig");
+                let ptr_ty1 = Ty::fn_ptr(sig1);
+                let ptr_ty2 = Ty::fn_ptr(sig2);
+                self.coerce_merge_branch(&ptr_ty1, &ptr_ty2)
+            } else {
+                mark::hit!(coerce_merge_fail_fallback);
+                // For incompatible types, we use the latter one as result
+                // to be better recovery for `if` without `else`.
+                ty2.clone()
+            }
         }
     }
 
@@ -84,9 +98,7 @@ impl<'a> InferenceContext<'a> {
                 match from_ty.callable_sig(self.db) {
                     None => return false,
                     Some(sig) => {
-                        let num_args = sig.params_and_return.len() as u16 - 1;
-                        from_ty =
-                            Ty::apply(TypeCtor::FnPtr { num_args }, Substs(sig.params_and_return));
+                        from_ty = Ty::fn_ptr(sig);
                     }
                 }
             }

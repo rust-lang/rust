@@ -1,5 +1,5 @@
 use insta::assert_snapshot;
-use test_utils::covers;
+use test_utils::mark;
 
 use super::{infer, infer_with_mismatches};
 
@@ -197,7 +197,7 @@ fn test() {
 
 #[test]
 fn infer_pattern_match_ergonomics_ref() {
-    covers!(match_ergonomics_ref);
+    mark::check!(match_ergonomics_ref);
     assert_snapshot!(
         infer(r#"
 fn test() {
@@ -364,6 +364,45 @@ fn test() {
     264..275 'E::A { .. }': E
     278..279 'e': E
     285..286 'd': &E
+    "###
+    );
+}
+
+#[test]
+fn enum_variant_through_self_in_pattern() {
+    assert_snapshot!(
+        infer(r#"
+enum E {
+    A { x: usize },
+    B(usize),
+    C
+}
+
+impl E {
+    fn test() {
+        match (loop {}) {
+            Self::A { x } => { x; },
+            Self::B(x) => { x; },
+            Self::C => {},
+        };
+    }
+}
+"#),
+        @r###"
+    76..218 '{     ...     }': ()
+    86..211 'match ...     }': ()
+    93..100 'loop {}': !
+    98..100 '{}': ()
+    116..129 'Self::A { x }': E
+    126..127 'x': usize
+    133..139 '{ x; }': ()
+    135..136 'x': usize
+    153..163 'Self::B(x)': E
+    161..162 'x': usize
+    167..173 '{ x; }': ()
+    169..170 'x': usize
+    187..194 'Self::C': E
+    198..200 '{}': ()
     "###
     );
 }

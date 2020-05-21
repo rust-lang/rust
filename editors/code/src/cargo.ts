@@ -1,6 +1,9 @@
 import * as cp from 'child_process';
+import * as os from 'os';
+import * as path from 'path';
 import * as readline from 'readline';
 import { OutputChannel } from 'vscode';
+import { isValidExecutable } from './util';
 
 interface CompilationArtifact {
     fileName: string;
@@ -10,17 +13,9 @@ interface CompilationArtifact {
 }
 
 export class Cargo {
-    rootFolder: string;
-    env?: Record<string, string>;
-    output: OutputChannel;
+    constructor(readonly rootFolder: string, readonly output: OutputChannel) { }
 
-    public constructor(cargoTomlFolder: string, output: OutputChannel, env: Record<string, string> | undefined = undefined) {
-        this.rootFolder = cargoTomlFolder;
-        this.output = output;
-        this.env = env;
-    }
-
-    public async artifactsFromArgs(cargoArgs: string[]): Promise<CompilationArtifact[]> {
+    private async artifactsFromArgs(cargoArgs: string[]): Promise<CompilationArtifact[]> {
         const artifacts: CompilationArtifact[] = [];
 
         try {
@@ -37,17 +32,13 @@ export class Cargo {
                                 isTest: message.profile.test
                             });
                         }
-                    }
-                    else if (message.reason === 'compiler-message') {
+                    } else if (message.reason === 'compiler-message') {
                         this.output.append(message.message.rendered);
                     }
                 },
-                stderr => {
-                    this.output.append(stderr);
-                }
+                stderr => this.output.append(stderr),
             );
-        }
-        catch (err) {
+        } catch (err) {
             this.output.show(true);
             throw new Error(`Cargo invocation has failed: ${err}`);
         }
@@ -55,11 +46,27 @@ export class Cargo {
         return artifacts;
     }
 
-    public async executableFromArgs(args: string[]): Promise<string> {
-        const cargoArgs = [...args]; // to remain  args unchanged
-        cargoArgs.push("--message-format=json");
+    async executableFromArgs(args: readonly string[]): Promise<string> {
+        const cargoArgs = [...args, "--message-format=json"];
 
-        const artifacts = await this.artifactsFromArgs(cargoArgs);
+        // arguments for a runnable from the quick pick should be updated.
+        // see crates\rust-analyzer\src\main_loop\handlers.rs, handle_code_lens
+        switch (cargoArgs[0]) {
+            case "run": cargoArgs[0] = "build"; break;
+            case "test": {
+                if (cargoArgs.indexOf("--no-run") === -1) {
+                    cargoArgs.push("--no-run");
+                }
+                break;
+            }
+        }
+
+        let artifacts = await this.artifactsFromArgs(cargoArgs);
+        if (cargoArgs[0] === "test") {
+            // for instance, `crates\rust-analyzer\tests\heavy_tests\main.rs` tests
+            // produce 2 artifacts: {"kind": "bin"} and {"kind": "test"}
+            artifacts = artifacts.filter(a => a.isTest);
+        }
 
         if (artifacts.length === 0) {
             throw new Error('No compilation artifacts');
@@ -70,24 +77,27 @@ export class Cargo {
         return artifacts[0].fileName;
     }
 
-    runCargo(
+    private runCargo(
         cargoArgs: string[],
         onStdoutJson: (obj: any) => void,
         onStderrString: (data: string) => void
     ): Promise<number> {
-        return new Promise<number>((resolve, reject) => {
-            const cargo = cp.spawn('cargo', cargoArgs, {
+        return new Promise((resolve, reject) => {
+            let cargoPath;
+            try {
+                cargoPath = getCargoPathOrFail();
+            } catch (err) {
+                return reject(err);
+            }
+
+            const cargo = cp.spawn(cargoPath, cargoArgs, {
                 stdio: ['ignore', 'pipe', 'pipe'],
-                cwd: this.rootFolder,
-                env: this.env,
+                cwd: this.rootFolder
             });
 
-            cargo.on('error', err => {
-                reject(new Error(`could not launch cargo: ${err}`));
-            });
-            cargo.stderr.on('data', chunk => {
-                onStderrString(chunk.toString());
-            });
+            cargo.on('error', err => reject(new Error(`could not launch cargo: ${err}`)));
+
+            cargo.stderr.on('data', chunk => onStderrString(chunk.toString()));
 
             const rl = readline.createInterface({ input: cargo.stdout });
             rl.on('line', line => {
@@ -103,4 +113,28 @@ export class Cargo {
             });
         });
     }
+}
+
+// Mirrors `ra_env::get_path_for_executable` implementation
+function getCargoPathOrFail(): string {
+    const envVar = process.env.CARGO;
+    const executableName = "cargo";
+
+    if (envVar) {
+        if (isValidExecutable(envVar)) return envVar;
+
+        throw new Error(`\`${envVar}\` environment variable points to something that's not a valid executable`);
+    }
+
+    if (isValidExecutable(executableName)) return executableName;
+
+    const standardLocation = path.join(os.homedir(), '.cargo', 'bin', executableName);
+
+    if (isValidExecutable(standardLocation)) return standardLocation;
+
+    throw new Error(
+        `Failed to find \`${executableName}\` executable. ` +
+        `Make sure \`${executableName}\` is in \`$PATH\`, ` +
+        `or set \`${envVar}\` to point to a valid executable.`
+    );
 }

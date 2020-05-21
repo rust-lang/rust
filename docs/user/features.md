@@ -143,9 +143,9 @@ takes arguments, the cursor is positioned inside the parenthesis.
 There are postfix completions, which can be triggered by typing something like
 `foo().if`. The word after `.` determines postfix completion. Possible variants are:
 
-- `expr.if` -> `if expr {}`
+- `expr.if` -> `if expr {}` or `if let ... {}` for `Option` or `Result`
 - `expr.match` -> `match expr {}`
-- `expr.while` -> `while expr {}`
+- `expr.while` -> `while expr {}` or `while let ... {}` for `Option` or `Result`
 - `expr.ref` -> `&expr`
 - `expr.refm` -> `&mut expr`
 - `expr.not` -> `!expr`
@@ -161,6 +161,16 @@ There also snippet completions:
 #### Inside Modules
 
 - `tfn` -> `#[test] fn f(){}`
+- `tmod` ->
+```rust
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_fn() {}
+}
+```
 
 ### Code Highlighting
 

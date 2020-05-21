@@ -101,14 +101,14 @@ fn collect_assists() -> Result<Vec<Assist>> {
 }
 
 fn generate_tests(assists: &[Assist], mode: Mode) -> Result<()> {
-    let mut buf = String::from("use super::check;\n");
+    let mut buf = String::from("use super::check_doc_test;\n");
 
     for assist in assists.iter() {
         let test = format!(
             r######"
 #[test]
 fn doctest_{}() {{
-    check(
+    check_doc_test(
         "{}",
 r#####"
 {}"#####, r#####"

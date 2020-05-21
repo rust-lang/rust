@@ -179,7 +179,7 @@ fn test(a: u32, b: isize, c: !, d: &str) {
     17..18 'b': isize
     27..28 'c': !
     33..34 'd': &str
-    42..121 '{     ...f32; }': !
+    42..121 '{     ...f32; }': ()
     48..49 'a': u32
     55..56 'b': isize
     62..63 'c': !
@@ -414,7 +414,7 @@ fn test() {
     27..31 '5f32': f32
     37..41 '5f64': f64
     47..54 '"hello"': &str
-    60..68 'b"bytes"': &[u8]
+    60..68 'b"bytes"': &[u8; _]
     74..77 ''c'': char
     83..87 'b'b'': u8
     93..97 '3.14': f64
@@ -422,7 +422,7 @@ fn test() {
     113..118 'false': bool
     124..128 'true': bool
     134..202 'r#"   ...    "#': &str
-    208..218 'br#"yolo"#': &[u8]
+    208..218 'br#"yolo"#': &[u8; _]
     "###
     );
 }
@@ -571,6 +571,50 @@ impl S {
     143..147 'S {}': S
     177..200 '{     ...     }': S
     187..194 'Self {}': S
+    "###
+    );
+}
+
+#[test]
+fn infer_self_as_path() {
+    assert_snapshot!(
+        infer(r#"
+struct S1;
+struct S2(isize);
+enum E {
+    V1,
+    V2(u32),
+}
+
+impl S1 {
+    fn test() {
+        Self;
+    }
+}
+impl S2 {
+    fn test() {
+        Self(1);
+    }
+}
+impl E {
+    fn test() {
+        Self::V1;
+        Self::V2(1);
+    }
+}
+"#),
+        @r###"
+    87..108 '{     ...     }': ()
+    97..101 'Self': S1
+    135..159 '{     ...     }': ()
+    145..149 'Self': S2(isize) -> S2
+    145..152 'Self(1)': S2
+    150..151 '1': isize
+    185..231 '{     ...     }': ()
+    195..203 'Self::V1': E
+    213..221 'Self::V2': V2(u32) -> E
+    213..224 'Self::V2(1)': E
+    222..223 '1': u32
     "###
     );
 }
@@ -935,7 +979,7 @@ fn foo() {
     29..33 'true': bool
     34..51 '{     ...     }': i32
     44..45 '1': i32
-    57..80 '{     ...     }': !
+    57..80 '{     ...     }': i32
     67..73 'return': !
     90..93 '_x2': i32
     96..149 'if tru...     }': i32
@@ -951,7 +995,7 @@ fn foo() {
     186..190 'true': bool
     194..195 '3': i32
     205..206 '_': bool
-    210..241 '{     ...     }': !
+    210..241 '{     ...     }': i32
     224..230 'return': !
     257..260 '_x4': i32
     263..320 'match ...     }': i32
@@ -1687,7 +1731,7 @@ fn foo() -> u32 {
     17..59 '{     ...; }; }': ()
     27..28 'x': || -> usize
     31..56 '|| -> ...n 1; }': || -> usize
-    43..56 '{ return 1; }': !
+    43..56 '{ return 1; }': usize
     45..53 'return 1': !
     52..53 '1': usize
     "###
@@ -1706,7 +1750,7 @@ fn foo() -> u32 {
     17..48 '{     ...; }; }': ()
     27..28 'x': || -> ()
     31..45 '|| { return; }': || -> ()
-    34..45 '{ return; }': !
+    34..45 '{ return; }': ()
     36..42 'return': !
     "###
     );
@@ -1752,6 +1796,130 @@ fn main() {
     101..102 'm': fn()
     105..111 'vtable': Vtable
     105..118 'vtable.method': fn()
+    "###
+    );
+}
+
+#[test]
+fn effects_smoke_test() {
+    assert_snapshot!(
+        infer(r#"
+fn main() {
+    let x = unsafe { 92 };
+    let y = async { async { () }.await };
+    let z = try { () };
+    let t = 'a: { 92 };
+}
+"#),
+        @r###"
+    11..131 '{     ...2 }; }': ()
+    21..22 'x': i32
+    32..38 '{ 92 }': i32
+    34..36 '92': i32
+    48..49 'y': {unknown}
+    58..80 '{ asyn...wait }': {unknown}
+    60..78 'async ....await': {unknown}
+    66..72 '{ () }': ()
+    68..70 '()': ()
+    90..91 'z': {unknown}
+    94..104 'try { () }': {unknown}
+    98..104 '{ () }': ()
+    100..102 '()': ()
+    114..115 't': i32
+    122..128 '{ 92 }': i32
+    124..126 '92': i32
+    "###
+    )
+}
+
+#[test]
+fn infer_generic_from_later_assignment() {
+    assert_snapshot!(
+        infer(r#"
+enum Option<T> { Some(T), None }
+use Option::*;
+
+fn test() {
+    let mut end = None;
+    loop {
+        end = Some(true);
+    }
+}
+"#),
+        @r###"
+    60..130 '{     ...   } }': ()
+    70..77 'mut end': Option<bool>
+    80..84 'None': Option<bool>
+    90..128 'loop {...     }': !
+    95..128 '{     ...     }': ()
+    105..108 'end': Option<bool>
+    105..121 'end = ...(true)': ()
+    111..115 'Some': Some<bool>(bool) -> Option<bool>
+    111..121 'Some(true)': Option<bool>
+    116..120 'true': bool
+    "###
+    );
+}
+
+#[test]
+fn infer_loop_break_with_val() {
+    assert_snapshot!(
+        infer(r#"
+enum Option<T> { Some(T), None }
+use Option::*;
+
+fn test() {
+    let x = loop {
+        if false {
+            break None;
+        }
+
+        break Some(true);
+    };
+}
+"#),
+        @r###"
+    60..169 '{     ...  }; }': ()
+    70..71 'x': Option<bool>
+    74..166 'loop {...     }': Option<bool>
+    79..166 '{     ...     }': ()
+    89..133 'if fal...     }': ()
+    92..97 'false': bool
+    98..133 '{     ...     }': ()
+    112..122 'break None': !
+    118..122 'None': Option<bool>
+    143..159 'break ...(true)': !
+    149..153 'Some': Some<bool>(bool) -> Option<bool>
+    149..159 'Some(true)': Option<bool>
+    154..158 'true': bool
+    "###
+    );
+}
+
+#[test]
+fn infer_loop_break_without_val() {
+    assert_snapshot!(
+        infer(r#"
+enum Option<T> { Some(T), None }
+use Option::*;
+
+fn test() {
+    let x = loop {
+        if false {
+            break;
+        }
+    };
+}
+"#),
+        @r###"
+    60..137 '{     ...  }; }': ()
+    70..71 'x': ()
+    74..134 'loop {...     }': ()
+    79..134 '{     ...     }': ()
+    89..128 'if fal...     }': ()
+    92..97 'false': bool
+    98..128 '{     ...     }': ()
+    112..117 'break': !
     "###
     );
 }

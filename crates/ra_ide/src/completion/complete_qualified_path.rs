@@ -2,20 +2,25 @@
 
 use hir::{Adt, HasVisibility, PathResolution, ScopeDef};
 use ra_syntax::AstNode;
-use test_utils::tested_by;
+use rustc_hash::FxHashSet;
+use test_utils::mark;
 
 use crate::completion::{CompletionContext, Completions};
-use rustc_hash::FxHashSet;
 
 pub(super) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionContext) {
     let path = match &ctx.path_prefix {
         Some(path) => path.clone(),
-        _ => return,
+        None => return,
     };
+
+    if ctx.attribute_under_caret.is_some() {
+        return;
+    }
+
     let scope = ctx.scope();
     let context_module = scope.module();
 
-    let res = match scope.resolve_hir_path(&path) {
+    let res = match scope.resolve_hir_path_qualifier(&path) {
         Some(res) => res,
         None => return,
     };
@@ -35,7 +40,7 @@ pub(super) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                         if let Some(name_ref) = ctx.name_ref_syntax.as_ref() {
                             if name_ref.syntax().text() == name.to_string().as_str() {
                                 // for `use self::foo<|>`, don't suggest `foo` as a completion
-                                tested_by!(dont_complete_current_use);
+                                mark::hit!(dont_complete_current_use);
                                 continue;
                             }
                         }
@@ -79,7 +84,7 @@ pub(super) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                 });
 
                 // Iterate assoc types separately
-                ty.iterate_impl_items(ctx.db, krate, |item| {
+                ty.iterate_assoc_items(ctx.db, krate, |item| {
                     if context_module.map_or(false, |m| !item.is_visible_from(ctx.db, m)) {
                         return None;
                     }
@@ -142,7 +147,7 @@ pub(super) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
 
 #[cfg(test)]
 mod tests {
-    use test_utils::covers;
+    use test_utils::mark;
 
     use crate::completion::{test_utils::do_completion, CompletionItem, CompletionKind};
     use insta::assert_debug_snapshot;
@@ -153,7 +158,7 @@ mod tests {
 
     #[test]
     fn dont_complete_current_use() {
-        covers!(dont_complete_current_use);
+        mark::check!(dont_complete_current_use);
         let completions = do_completion(r"use self::foo<|>;", CompletionKind::Reference);
         assert!(completions.is_empty());
     }
@@ -214,6 +219,34 @@ mod tests {
                 documentation: Documentation(
                     "Some simple\ndocs describing `mod my`.",
                 ),
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
+    fn completes_mod_with_same_name_as_function() {
+        assert_debug_snapshot!(
+            do_reference_completion(
+                r"
+                use self::my::<|>;
+
+                mod my {
+                    pub struct Bar;
+                }
+
+                fn my() {}
+                "
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "Bar",
+                source_range: 31..31,
+                delete: 31..31,
+                insert: "Bar",
+                kind: Struct,
             },
         ]
         "###
@@ -1324,5 +1357,19 @@ mod tests {
         ]
         "###
         );
+    }
+
+    #[test]
+    fn dont_complete_attr() {
+        assert_debug_snapshot!(
+            do_reference_completion(
+                r"
+                mod foo { pub struct Foo; }
+                #[foo::<|>]
+                fn f() {}
+                "
+            ),
+            @r###"[]"###
+        )
     }
 }

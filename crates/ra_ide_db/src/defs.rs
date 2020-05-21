@@ -14,7 +14,6 @@ use ra_syntax::{
     ast::{self, AstNode},
     match_ast,
 };
-use test_utils::tested_by;
 
 use crate::RootDatabase;
 
@@ -42,12 +41,10 @@ impl Definition {
     }
 
     pub fn visibility(&self, db: &RootDatabase) -> Option<Visibility> {
-        let module = self.module(db);
-
         match self {
             Definition::Macro(_) => None,
             Definition::Field(sf) => Some(sf.visibility(db)),
-            Definition::ModuleDef(def) => module?.visibility_of(db, def),
+            Definition::ModuleDef(def) => def.definition_visibility(db),
             Definition::SelfType(_) => None,
             Definition::Local(_) => None,
             Definition::TypeParam(_) => None,
@@ -119,6 +116,15 @@ fn classify_name_inner(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Opti
 
     match_ast! {
         match parent {
+            ast::Alias(it) => {
+                let use_tree = it.syntax().parent().and_then(ast::UseTree::cast)?;
+                let path = use_tree.path()?;
+                let path_segment = path.segment()?;
+                let name_ref = path_segment.name_ref()?;
+                let name_ref_class = classify_name_ref(sema, &name_ref)?;
+
+                Some(name_ref_class.definition())
+            },
             ast::BindPat(it) => {
                 let local = sema.to_def(&it)?;
                 Some(Definition::Local(local))
@@ -195,6 +201,8 @@ impl NameRefClass {
     }
 }
 
+// Note: we don't have unit-tests for this rather important function.
+// It is primarily exercised via goto definition tests in `ra_ide`.
 pub fn classify_name_ref(
     sema: &Semantics<RootDatabase>,
     name_ref: &ast::NameRef,
@@ -204,22 +212,18 @@ pub fn classify_name_ref(
     let parent = name_ref.syntax().parent()?;
 
     if let Some(method_call) = ast::MethodCallExpr::cast(parent.clone()) {
-        tested_by!(goto_def_for_methods; force);
         if let Some(func) = sema.resolve_method_call(&method_call) {
             return Some(NameRefClass::Definition(Definition::ModuleDef(func.into())));
         }
     }
 
     if let Some(field_expr) = ast::FieldExpr::cast(parent.clone()) {
-        tested_by!(goto_def_for_fields; force);
         if let Some(field) = sema.resolve_field(&field_expr) {
             return Some(NameRefClass::Definition(Definition::Field(field)));
         }
     }
 
     if let Some(record_field) = ast::RecordField::for_field_name(name_ref) {
-        tested_by!(goto_def_for_record_fields; force);
-        tested_by!(goto_def_for_field_init_shorthand; force);
         if let Some((field, local)) = sema.resolve_record_field(&record_field) {
             let field = Definition::Field(field);
             let res = match local {
@@ -231,7 +235,6 @@ pub fn classify_name_ref(
     }
 
     if let Some(record_field_pat) = ast::RecordFieldPat::cast(parent.clone()) {
-        tested_by!(goto_def_for_record_field_pats; force);
         if let Some(field) = sema.resolve_record_field_pat(&record_field_pat) {
             let field = Definition::Field(field);
             return Some(NameRefClass::Definition(field));
@@ -239,7 +242,6 @@ pub fn classify_name_ref(
     }
 
     if let Some(macro_call) = parent.ancestors().find_map(ast::MacroCall::cast) {
-        tested_by!(goto_def_for_macros; force);
         if let Some(macro_def) = sema.resolve_macro_call(&macro_call) {
             return Some(NameRefClass::Definition(Definition::Macro(macro_def)));
         }

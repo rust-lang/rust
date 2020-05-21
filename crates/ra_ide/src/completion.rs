@@ -59,13 +59,13 @@ pub use crate::completion::{
 /// with ordering of completions (currently this is done by the client).
 pub(crate) fn completions(
     db: &RootDatabase,
-    position: FilePosition,
     config: &CompletionConfig,
+    position: FilePosition,
 ) -> Option<Completions> {
     let ctx = CompletionContext::new(db, position, config)?;
 
     let mut acc = Completions::default();
-
+    complete_attribute::complete_attribute(&mut acc, &ctx);
     complete_fn_param::complete_fn_param(&mut acc, &ctx);
     complete_keyword::complete_expr_keyword(&mut acc, &ctx);
     complete_keyword::complete_use_tree_keyword(&mut acc, &ctx);
@@ -79,7 +79,6 @@ pub(crate) fn completions(
     complete_postfix::complete_postfix(&mut acc, &ctx);
     complete_macro_in_item_position::complete_macro_in_item_position(&mut acc, &ctx);
     complete_trait_impl::complete_trait_impl(&mut acc, &ctx);
-    complete_attribute::complete_attribute(&mut acc, &ctx);
 
     Some(acc)
 }

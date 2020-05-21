@@ -42,7 +42,9 @@ impl<'t> TokenBuffer<'t> {
         buffers: &mut Vec<Box<[Entry<'t>]>>,
         next: Option<EntryPtr>,
     ) -> usize {
-        let mut entries = vec![];
+        // Must contain everything in tokens and then the Entry::End
+        let start_capacity = tokens.len() + 1;
+        let mut entries = Vec::with_capacity(start_capacity);
         let mut children = vec![];
 
         for (idx, tt) in tokens.iter().enumerate() {

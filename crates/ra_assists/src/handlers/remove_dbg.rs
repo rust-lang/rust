@@ -3,7 +3,7 @@ use ra_syntax::{
     TextSize, T,
 };
 
-use crate::{Assist, AssistCtx, AssistId};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: remove_dbg
 //
@@ -20,7 +20,7 @@ use crate::{Assist, AssistCtx, AssistId};
 //     92;
 // }
 // ```
-pub(crate) fn remove_dbg(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn remove_dbg(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let macro_call = ctx.find_node_at_offset::<ast::MacroCall>()?;
 
     if !is_valid_macrocall(&macro_call, "dbg")? {
@@ -28,26 +28,6 @@ pub(crate) fn remove_dbg(ctx: AssistCtx) -> Option<Assist> {
     }
 
     let macro_range = macro_call.syntax().text_range();
-
-    // If the cursor is inside the macro call, we'll try to maintain the cursor
-    // position by subtracting the length of dbg!( from the start of the file
-    // range, otherwise we'll default to using the start of the macro call
-    let cursor_pos = {
-        let file_range = ctx.frange.range;
-
-        let offset_start = file_range
-            .start()
-            .checked_sub(macro_range.start())
-            .unwrap_or_else(|| TextSize::from(0));
-
-        let dbg_size = TextSize::of("dbg!(");
-
-        if offset_start > dbg_size {
-            file_range.start() - dbg_size
-        } else {
-            macro_range.start()
-        }
-    };
 
     let macro_content = {
         let macro_args = macro_call.token_tree()?.syntax().clone();
@@ -57,10 +37,9 @@ pub(crate) fn remove_dbg(ctx: AssistCtx) -> Option<Assist> {
         text.slice(without_parens).to_string()
     };
 
-    ctx.add_assist(AssistId("remove_dbg"), "Remove dbg!()", |edit| {
-        edit.target(macro_call.syntax().text_range());
-        edit.replace(macro_range, macro_content);
-        edit.set_cursor(cursor_pos);
+    let target = macro_call.syntax().text_range();
+    acc.add(AssistId("remove_dbg"), "Remove dbg!()", target, |builder| {
+        builder.replace(macro_range, macro_content);
     })
 }
 
@@ -90,17 +69,17 @@ fn is_valid_macrocall(macro_call: &ast::MacroCall, macro_name: &str) -> Option<b
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::helpers::{check_assist, check_assist_not_applicable, check_assist_target};
+    use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
 
     #[test]
     fn test_remove_dbg() {
-        check_assist(remove_dbg, "<|>dbg!(1 + 1)", "<|>1 + 1");
+        check_assist(remove_dbg, "<|>dbg!(1 + 1)", "1 + 1");
 
-        check_assist(remove_dbg, "dbg!<|>((1 + 1))", "<|>(1 + 1)");
+        check_assist(remove_dbg, "dbg!<|>((1 + 1))", "(1 + 1)");
 
-        check_assist(remove_dbg, "dbg!(1 <|>+ 1)", "1 <|>+ 1");
+        check_assist(remove_dbg, "dbg!(1 <|>+ 1)", "1 + 1");
 
-        check_assist(remove_dbg, "let _ = <|>dbg!(1 + 1)", "let _ = <|>1 + 1");
+        check_assist(remove_dbg, "let _ = <|>dbg!(1 + 1)", "let _ = 1 + 1");
 
         check_assist(
             remove_dbg,
@@ -113,7 +92,7 @@ fn foo(n: usize) {
 ",
             "
 fn foo(n: usize) {
-    if let Some(_) = n.<|>checked_sub(4) {
+    if let Some(_) = n.checked_sub(4) {
         // ...
     }
 }
@@ -122,8 +101,8 @@ fn foo(n: usize) {
     }
     #[test]
     fn test_remove_dbg_with_brackets_and_braces() {
-        check_assist(remove_dbg, "dbg![<|>1 + 1]", "<|>1 + 1");
-        check_assist(remove_dbg, "dbg!{<|>1 + 1}", "<|>1 + 1");
+        check_assist(remove_dbg, "dbg![<|>1 + 1]", "1 + 1");
+        check_assist(remove_dbg, "dbg!{<|>1 + 1}", "1 + 1");
     }
 
     #[test]

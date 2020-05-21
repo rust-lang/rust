@@ -11,7 +11,7 @@ use std::{
 use crossbeam_channel::{unbounded, Receiver};
 use lsp_types::Url;
 use parking_lot::RwLock;
-use ra_flycheck::{url_from_path_with_drive_lowercasing, Flycheck, FlycheckConfig};
+use ra_flycheck::{Flycheck, FlycheckConfig};
 use ra_ide::{
     Analysis, AnalysisChange, AnalysisHost, CrateGraph, FileId, LibraryData, SourceRootId,
 };
@@ -22,7 +22,9 @@ use stdx::format_to;
 
 use crate::{
     config::Config,
-    diagnostics::{CheckFixes, DiagnosticCollection},
+    diagnostics::{
+        to_proto::url_from_path_with_drive_lowercasing, CheckFixes, DiagnosticCollection,
+    },
     main_loop::pending_requests::{CompletedRequest, LatestRequests},
     vfs_glob::{Glob, RustPackageFilterBuilder},
     LspError, Result,
@@ -131,19 +133,10 @@ impl WorldState {
 
         // FIXME: Read default cfgs from config
         let default_cfg_options = {
-            let mut opts = get_rustc_cfg_options();
+            let mut opts = get_rustc_cfg_options(config.cargo.target.as_ref());
             opts.insert_atom("test".into());
             opts.insert_atom("debug_assertion".into());
             opts
-        };
-
-        // Create crate graph from all the workspaces
-        let mut crate_graph = CrateGraph::default();
-        let mut load = |path: &std::path::Path| {
-            // Some path from metadata will be non canonicalized, e.g. /foo/../bar/lib.rs
-            let path = path.canonicalize().ok()?;
-            let vfs_file = vfs.load(&path);
-            vfs_file.map(|f| FileId(f.0))
         };
 
         let proc_macro_client = match &config.proc_macro_srv {
@@ -161,19 +154,22 @@ impl WorldState {
             },
         };
 
-        workspaces
-            .iter()
-            .map(|ws| {
-                ws.to_crate_graph(
-                    &default_cfg_options,
-                    &extern_source_roots,
-                    &proc_macro_client,
-                    &mut load,
-                )
-            })
-            .for_each(|graph| {
-                crate_graph.extend(graph);
-            });
+        // Create crate graph from all the workspaces
+        let mut crate_graph = CrateGraph::default();
+        let mut load = |path: &Path| {
+            // Some path from metadata will be non canonicalized, e.g. /foo/../bar/lib.rs
+            let path = path.canonicalize().ok()?;
+            let vfs_file = vfs.load(&path);
+            vfs_file.map(|f| FileId(f.0))
+        };
+        for ws in workspaces.iter() {
+            crate_graph.extend(ws.to_crate_graph(
+                &default_cfg_options,
+                &extern_source_roots,
+                &proc_macro_client,
+                &mut load,
+            ));
+        }
         change.set_crate_graph(crate_graph);
 
         let flycheck = config.check.as_ref().and_then(|c| create_flycheck(&workspaces, c));

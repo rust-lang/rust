@@ -3,7 +3,7 @@
 use hir::{Docs, HasAttrs, HasSource, HirDisplay, ModPath, ScopeDef, StructKind, Type};
 use ra_syntax::ast::NameOwner;
 use stdx::SepBy;
-use test_utils::tested_by;
+use test_utils::mark;
 
 use crate::{
     completion::{
@@ -17,12 +17,11 @@ use crate::{
 impl Completions {
     pub(crate) fn add_field(&mut self, ctx: &CompletionContext, field: hir::Field, ty: &Type) {
         let is_deprecated = is_deprecated(field, ctx.db);
-        let ty = ty.display(ctx.db).to_string();
         let name = field.name(ctx.db);
         let mut completion_item =
             CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name.to_string())
                 .kind(CompletionItemKind::Field)
-                .detail(ty.clone())
+                .detail(ty.display(ctx.db).to_string())
                 .set_documentation(field.docs(ctx.db))
                 .set_deprecated(is_deprecated);
 
@@ -107,6 +106,12 @@ impl Completions {
             }
         };
 
+        if let ScopeDef::Local(local) = resolution {
+            if let Some(score) = compute_score(ctx, &local.ty(ctx.db), &local_name) {
+                completion_item = completion_item.set_score(score);
+            }
+        }
+
         // Add `<>` for generic types
         if ctx.is_path_type && !ctx.has_type_args && ctx.config.add_call_parenthesis {
             if let Some(cap) = ctx.config.snippet_cap {
@@ -116,7 +121,7 @@ impl Completions {
                     _ => false,
                 };
                 if has_non_default_type_params {
-                    tested_by!(inserts_angle_brackets_for_generics);
+                    mark::hit!(inserts_angle_brackets_for_generics);
                     completion_item = completion_item
                         .lookup_by(local_name.clone())
                         .label(format!("{}<…>", local_name))
@@ -171,7 +176,7 @@ impl Completions {
             }
             None if needs_bang => builder.insert_text(format!("{}!", name)),
             _ => {
-                tested_by!(dont_insert_macro_call_parens_unncessary);
+                mark::hit!(dont_insert_macro_call_parens_unncessary);
                 builder.insert_text(name)
             }
         };
@@ -319,19 +324,20 @@ impl Completions {
 
 pub(crate) fn compute_score(
     ctx: &CompletionContext,
-    // FIXME: this definitely should be a `Type`
-    ty: &str,
+    ty: &Type,
     name: &str,
 ) -> Option<CompletionScore> {
+    // FIXME: this should not fall back to string equality.
+    let ty = &ty.display(ctx.db).to_string();
     let (active_name, active_type) = if let Some(record_field) = &ctx.record_field_syntax {
-        tested_by!(test_struct_field_completion_in_record_lit);
+        mark::hit!(test_struct_field_completion_in_record_lit);
         let (struct_field, _local) = ctx.sema.resolve_record_field(record_field)?;
         (
             struct_field.name(ctx.db).to_string(),
             struct_field.signature_ty(ctx.db).display(ctx.db).to_string(),
         )
     } else if let Some(active_parameter) = &ctx.active_parameter {
-        tested_by!(test_struct_field_completion_in_func_call);
+        mark::hit!(test_struct_field_completion_in_func_call);
         (active_parameter.name.clone(), active_parameter.ty.clone())
     } else {
         return None;
@@ -392,7 +398,7 @@ impl Builder {
             None => return self,
         };
         // If not an import, add parenthesis automatically.
-        tested_by!(inserts_parens_for_function_calls);
+        mark::hit!(inserts_parens_for_function_calls);
 
         let (snippet, label) = if params.is_empty() {
             (format!("{}()$0", name), format!("{}()", name))
@@ -451,7 +457,7 @@ fn guess_macro_braces(macro_name: &str, docs: &str) -> (&'static str, &'static s
 #[cfg(test)]
 mod tests {
     use insta::assert_debug_snapshot;
-    use test_utils::covers;
+    use test_utils::mark;
 
     use crate::completion::{
         test_utils::{do_completion, do_completion_with_options},
@@ -601,7 +607,7 @@ mod tests {
 
     #[test]
     fn inserts_parens_for_function_calls() {
-        covers!(inserts_parens_for_function_calls);
+        mark::check!(inserts_parens_for_function_calls);
         assert_debug_snapshot!(
             do_reference_completion(
                 r"
@@ -986,7 +992,7 @@ mod tests {
 
     #[test]
     fn inserts_angle_brackets_for_generics() {
-        covers!(inserts_angle_brackets_for_generics);
+        mark::check!(inserts_angle_brackets_for_generics);
         assert_debug_snapshot!(
             do_reference_completion(
                 r"
@@ -1109,7 +1115,7 @@ mod tests {
 
     #[test]
     fn dont_insert_macro_call_parens_unncessary() {
-        covers!(dont_insert_macro_call_parens_unncessary);
+        mark::check!(dont_insert_macro_call_parens_unncessary);
         assert_debug_snapshot!(
             do_reference_completion(
                 r"
@@ -1175,7 +1181,7 @@ mod tests {
 
     #[test]
     fn test_struct_field_completion_in_func_call() {
-        covers!(test_struct_field_completion_in_func_call);
+        mark::check!(test_struct_field_completion_in_func_call);
         assert_debug_snapshot!(
         do_reference_completion(
                 r"
@@ -1265,7 +1271,7 @@ mod tests {
 
     #[test]
     fn test_struct_field_completion_in_record_lit() {
-        covers!(test_struct_field_completion_in_record_lit);
+        mark::check!(test_struct_field_completion_in_record_lit);
         assert_debug_snapshot!(
         do_reference_completion(
                 r"
@@ -1399,6 +1405,50 @@ mod tests {
                 insert: "the_field",
                 kind: Field,
                 detail: "u32",
+                score: TypeAndNameMatch,
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
+    fn prioritize_exact_ref_match() {
+        assert_debug_snapshot!(
+        do_reference_completion(
+                r"
+                    struct WorldSnapshot { _f: () };
+                    fn go(world: &WorldSnapshot) {
+                        go(w<|>)
+                    }
+                    ",
+        ),
+            @r###"
+        [
+            CompletionItem {
+                label: "WorldSnapshot",
+                source_range: 132..133,
+                delete: 132..133,
+                insert: "WorldSnapshot",
+                kind: Struct,
+            },
+            CompletionItem {
+                label: "go(…)",
+                source_range: 132..133,
+                delete: 132..133,
+                insert: "go(${1:world})$0",
+                kind: Function,
+                lookup: "go",
+                detail: "fn go(world: &WorldSnapshot)",
+                trigger_call_info: true,
+            },
+            CompletionItem {
+                label: "world",
+                source_range: 132..133,
+                delete: 132..133,
+                insert: "world",
+                kind: Binding,
+                detail: "&WorldSnapshot",
                 score: TypeAndNameMatch,
             },
         ]

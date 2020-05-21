@@ -204,6 +204,8 @@ pub struct MacroDefId {
     pub krate: Option<CrateId>,
     pub ast_id: Option<AstId<ast::MacroCall>>,
     pub kind: MacroDefKind,
+
+    pub local_inner: bool,
 }
 
 impl MacroDefId {

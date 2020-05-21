@@ -2,7 +2,7 @@ use std::iter::successors;
 
 use ra_syntax::{ast, AstNode, T};
 
-use crate::{Assist, AssistCtx, AssistId};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: split_import
 //
@@ -15,7 +15,7 @@ use crate::{Assist, AssistCtx, AssistId};
 // ```
 // use std::{collections::HashMap};
 // ```
-pub(crate) fn split_import(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn split_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let colon_colon = ctx.find_token_at_offset(T![::])?;
     let path = ast::Path::cast(colon_colon.parent())?.qualifier()?;
     let top_path = successors(Some(path.clone()), |it| it.parent_path()).last()?;
@@ -26,18 +26,16 @@ pub(crate) fn split_import(ctx: AssistCtx) -> Option<Assist> {
     if new_tree == use_tree {
         return None;
     }
-    let cursor = ctx.frange.range.start();
 
-    ctx.add_assist(AssistId("split_import"), "Split import", |edit| {
-        edit.target(colon_colon.text_range());
+    let target = colon_colon.text_range();
+    acc.add(AssistId("split_import"), "Split import", target, |edit| {
         edit.replace_ast(use_tree, new_tree);
-        edit.set_cursor(cursor);
     })
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::helpers::{check_assist, check_assist_not_applicable, check_assist_target};
+    use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
 
     use super::*;
 
@@ -46,7 +44,7 @@ mod tests {
         check_assist(
             split_import,
             "use crate::<|>db::RootDatabase;",
-            "use crate::<|>{db::RootDatabase};",
+            "use crate::{db::RootDatabase};",
         )
     }
 
@@ -55,7 +53,7 @@ mod tests {
         check_assist(
             split_import,
             "use crate:<|>:db::{RootDatabase, FileSymbol}",
-            "use crate:<|>:{db::{RootDatabase, FileSymbol}}",
+            "use crate::{db::{RootDatabase, FileSymbol}}",
         )
     }
 

@@ -197,7 +197,7 @@ fn spam() {
     !0..6 '1isize': isize
     !0..6 '1isize': isize
     !0..6 '1isize': isize
-    54..457 '{     ...!(); }': !
+    54..457 '{     ...!(); }': ()
     88..109 'spam!(...am!())': {unknown}
     115..134 'for _ ...!() {}': ()
     119..120 '_': {unknown}
@@ -269,7 +269,7 @@ fn test() { S.foo()<|>; }
 }
 
 #[test]
-fn infer_impl_items_generated_by_macros() {
+fn infer_assoc_items_generated_by_macros() {
     let t = type_at(
         r#"
 //- /main.rs
@@ -288,7 +288,7 @@ fn test() { S.foo()<|>; }
 }
 
 #[test]
-fn infer_impl_items_generated_by_macros_chain() {
+fn infer_assoc_items_generated_by_macros_chain() {
     let t = type_at(
         r#"
 //- /main.rs
@@ -425,6 +425,32 @@ fn main() {
         75..77 '_a': usize
     "###
     );
+}
+
+#[test]
+fn infer_local_inner_macros() {
+    let (db, pos) = TestDB::with_position(
+        r#"
+//- /main.rs crate:main deps:foo
+fn test() {
+    let x = foo::foo!(1);
+    x<|>;
+}
+
+//- /lib.rs crate:foo
+#[macro_export(local_inner_macros)]
+macro_rules! foo {
+    (1) => { bar!() };
+}
+
+#[macro_export]
+macro_rules! bar {
+    () => { 42 }
+}
+
+"#,
+    );
+    assert_eq!("i32", type_at_pos(&db, pos));
 }
 
 #[test]

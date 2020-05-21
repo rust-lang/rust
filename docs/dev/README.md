@@ -74,7 +74,7 @@ relevant test and execute it (VS Code includes an action for running a single
 test).
 
 However, launching a VS Code instance with locally build language server is
-possible. There's **"Run Extension (Dev Server)"** launch configuration for this.
+possible. There's **"Run Extension (Debug Build)"** launch configuration for this.
 
 In general, I use one of the following workflows for fixing bugs and
 implementing features.
@@ -86,7 +86,7 @@ then just do printf-driven development/debugging. As a sanity check after I'm
 done, I use `cargo xtask install --server` and **Reload Window** action in VS
 Code to sanity check that the thing works as I expect.
 
-If the problem concerns only the VS Code extension, I use **Run Extension**
+If the problem concerns only the VS Code extension, I use **Run Installed Extension**
 launch configuration from `launch.json`. Notably, this uses the usual
 `rust-analyzer` binary from `PATH`. For this it is important to have the following
 in `setting.json` file:
@@ -134,7 +134,7 @@ To log all communication between the server and the client, there are two choice
 
 * you can log on the server side, by running something like
   ```
-  env RUST_LOG=gen_lsp_server=trace code .
+  env RA_LOG=gen_lsp_server=trace code .
   ```
 
 * you can log on the client side, by enabling `"rust-analyzer.trace.server":

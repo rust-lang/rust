@@ -17,7 +17,7 @@ struct S;
 struct S;
 
 impl Debug for S {
-
+    $0
 }
 ```
 
@@ -33,7 +33,7 @@ struct Point {
 }
 
 // AFTER
-#[derive()]
+#[derive($0)]
 struct Point {
     x: u32,
     y: u32,
@@ -77,7 +77,7 @@ fn foo() {
 }
 
 fn bar(arg: &str, baz: Baz) {
-    todo!()
+    ${0:todo!()}
 }
 
 ```
@@ -105,16 +105,16 @@ Adds a new inherent impl for a type.
 ```rust
 // BEFORE
 struct Ctx<T: Clone> {
-     data: T,┃
+    data: T,┃
 }
 
 // AFTER
 struct Ctx<T: Clone> {
-     data: T,
+    data: T,
 }
 
 impl<T: Clone> Ctx<T> {
-
+    $0
 }
 ```
 
@@ -146,7 +146,7 @@ trait Trait {
 impl Trait for () {
     Type X = ();
     fn foo(&self) {}
-    fn bar(&self) {}
+    $0fn bar(&self) {}
 
 }
 ```
@@ -175,7 +175,9 @@ trait Trait<T> {
 }
 
 impl Trait<u32> for () {
-    fn foo(&self) -> u32 { todo!() }
+    fn foo(&self) -> u32 {
+        ${0:todo!()}
+    }
 
 }
 ```
@@ -196,9 +198,27 @@ struct Ctx<T: Clone> {
 }
 
 impl<T: Clone> Ctx<T> {
-    fn new(data: T) -> Self { Self { data } }
+    fn $0new(data: T) -> Self { Self { data } }
 }
 
+```
+
+## `add_turbo_fish`
+
+Adds `::<_>` to a call of a generic method or function.
+
+```rust
+// BEFORE
+fn make<T>() -> T { todo!() }
+fn main() {
+    let x = make┃();
+}
+
+// AFTER
+fn make<T>() -> T { todo!() }
+fn main() {
+    let x = make::<${0:_}>();
+}
 ```
 
 ## `apply_demorgan`
@@ -237,6 +257,18 @@ use std::collections::HashMap;
 fn main() {
     let map = HashMap::new();
 }
+```
+
+## `change_return_type_to_result`
+
+Change the function's return type to Result.
+
+```rust
+// BEFORE
+fn foo() -> i32┃ { 42i32 }
+
+// AFTER
+fn foo() -> Result<i32, ${0:_}> { Ok(42i32) }
 ```
 
 ## `change_visibility`
@@ -293,9 +325,31 @@ enum Action { Move { distance: u32 }, Stop }
 
 fn handle(action: Action) {
     match action {
-        Action::Move { distance } => {}
+        $0Action::Move { distance } => {}
         Action::Stop => {}
     }
+}
+```
+
+## `fix_visibility`
+
+Makes inaccessible item public.
+
+```rust
+// BEFORE
+mod m {
+    fn frobnicate() {}
+}
+fn main() {
+    m::frobnicate┃() {}
+}
+
+// AFTER
+mod m {
+    $0pub(crate) fn frobnicate() {}
+}
+fn main() {
+    m::frobnicate() {}
 }
 ```
 
@@ -372,7 +426,7 @@ fn main() {
 
 // AFTER
 fn main() {
-    let var_name = (1 + 2);
+    let $0var_name = (1 + 2);
     var_name * 4;
 }
 ```
@@ -679,7 +733,7 @@ fn main() {
     let x: Result<i32, i32> = Result::Ok(92);
     let y = match x {
         Ok(a) => a,
-        _ => unreachable!(),
+        $0_ => unreachable!(),
     };
 }
 ```
@@ -694,4 +748,22 @@ use std::┃collections::HashMap;
 
 // AFTER
 use std::{collections::HashMap};
+```
+
+## `unwrap_block`
+
+This assist removes if...else, for, while and loop control statements to just keep the body.
+
+```rust
+// BEFORE
+fn foo() {
+    if true {┃
+        println!("foo");
+    }
+}
+
+// AFTER
+fn foo() {
+    println!("foo");
+}
 ```

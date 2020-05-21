@@ -8,10 +8,9 @@ import { activateInlayHints } from './inlay_hints';
 import { activateStatusDisplay } from './status_display';
 import { Ctx } from './ctx';
 import { Config, NIGHTLY_TAG } from './config';
-import { log, assert } from './util';
+import { log, assert, isValidExecutable } from './util';
 import { PersistentState } from './persistent_state';
 import { fetchRelease, download } from './net';
-import { spawnSync } from 'child_process';
 import { activateTaskProvider } from './tasks';
 
 let ctx: Ctx | undefined;
@@ -78,6 +77,8 @@ export async function activate(context: vscode.ExtensionContext) {
     ctx.registerCommand('syntaxTree', commands.syntaxTree);
     ctx.registerCommand('expandMacro', commands.expandMacro);
     ctx.registerCommand('run', commands.run);
+    ctx.registerCommand('debug', commands.debug);
+    ctx.registerCommand('newDebugConfig', commands.newDebugConfig);
 
     defaultOnEnter.dispose();
     ctx.registerCommand('onEnter', commands.onEnter);
@@ -90,6 +91,7 @@ export async function activate(context: vscode.ExtensionContext) {
     ctx.registerCommand('debugSingle', commands.debugSingle);
     ctx.registerCommand('showReferences', commands.showReferences);
     ctx.registerCommand('applySourceChange', commands.applySourceChange);
+    ctx.registerCommand('applySnippetWorkspaceEdit', commands.applySnippetWorkspaceEditCommand);
     ctx.registerCommand('selectAndApplySourceChange', commands.selectAndApplySourceChange);
 
     ctx.pushCleanup(activateTaskProvider(workspaceFolder));
@@ -179,10 +181,7 @@ async function bootstrapServer(config: Config, state: PersistentState): Promise<
 
     log.debug("Using server binary at", path);
 
-    const res = spawnSync(path, ["--version"], { encoding: 'utf8' });
-    log.debug("Checked binary availability via --version", res);
-    log.debug(res, "--version output:", res.output);
-    if (res.status !== 0) {
+    if (!isValidExecutable(path)) {
         throw new Error(`Failed to execute ${path} --version`);
     }
 

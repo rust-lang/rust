@@ -4,7 +4,7 @@ use ra_syntax::{
     TextSize,
 };
 
-use crate::{Assist, AssistCtx, AssistId};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: add_derive
 //
@@ -18,31 +18,37 @@ use crate::{Assist, AssistCtx, AssistId};
 // ```
 // ->
 // ```
-// #[derive()]
+// #[derive($0)]
 // struct Point {
 //     x: u32,
 //     y: u32,
 // }
 // ```
-pub(crate) fn add_derive(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn add_derive(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+    let cap = ctx.config.snippet_cap?;
     let nominal = ctx.find_node_at_offset::<ast::NominalDef>()?;
     let node_start = derive_insertion_offset(&nominal)?;
-    ctx.add_assist(AssistId("add_derive"), "Add `#[derive]`", |edit| {
+    let target = nominal.syntax().text_range();
+    acc.add(AssistId("add_derive"), "Add `#[derive]`", target, |builder| {
         let derive_attr = nominal
             .attrs()
             .filter_map(|x| x.as_simple_call())
             .filter(|(name, _arg)| name == "derive")
             .map(|(_name, arg)| arg)
             .next();
-        let offset = match derive_attr {
+        match derive_attr {
             None => {
-                edit.insert(node_start, "#[derive()]\n");
-                node_start + TextSize::of("#[derive(")
+                builder.insert_snippet(cap, node_start, "#[derive($0)]\n");
             }
-            Some(tt) => tt.syntax().text_range().end() - TextSize::of(')'),
+            Some(tt) => {
+                // Just move the cursor.
+                builder.insert_snippet(
+                    cap,
+                    tt.syntax().text_range().end() - TextSize::of(')'),
+                    "$0",
+                )
+            }
         };
-        edit.target(nominal.syntax().text_range());
-        edit.set_cursor(offset)
     })
 }
 
@@ -57,20 +63,21 @@ fn derive_insertion_offset(nominal: &ast::NominalDef) -> Option<TextSize> {
 
 #[cfg(test)]
 mod tests {
+    use crate::tests::{check_assist, check_assist_target};
+
     use super::*;
-    use crate::helpers::{check_assist, check_assist_target};
 
     #[test]
     fn add_derive_new() {
         check_assist(
             add_derive,
             "struct Foo { a: i32, <|>}",
-            "#[derive(<|>)]\nstruct Foo { a: i32, }",
+            "#[derive($0)]\nstruct Foo { a: i32, }",
         );
         check_assist(
             add_derive,
             "struct Foo { <|> a: i32, }",
-            "#[derive(<|>)]\nstruct Foo {  a: i32, }",
+            "#[derive($0)]\nstruct Foo {  a: i32, }",
         );
     }
 
@@ -79,7 +86,7 @@ mod tests {
         check_assist(
             add_derive,
             "#[derive(Clone)]\nstruct Foo { a: i32<|>, }",
-            "#[derive(Clone<|>)]\nstruct Foo { a: i32, }",
+            "#[derive(Clone$0)]\nstruct Foo { a: i32, }",
         );
     }
 
@@ -95,7 +102,7 @@ struct Foo { a: i32<|>, }
             "
 /// `Foo` is a pretty important struct.
 /// It does stuff.
-#[derive(<|>)]
+#[derive($0)]
 struct Foo { a: i32, }
             ",
         );

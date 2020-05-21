@@ -3,10 +3,10 @@ use std::iter::successors;
 use ra_syntax::{
     algo::neighbor,
     ast::{self, AstNode},
-    Direction, TextSize,
+    Direction,
 };
 
-use crate::{Assist, AssistCtx, AssistId, TextRange};
+use crate::{AssistContext, AssistId, Assists, TextRange};
 
 // Assist: merge_match_arms
 //
@@ -32,7 +32,7 @@ use crate::{Assist, AssistCtx, AssistId, TextRange};
 //     }
 // }
 // ```
-pub(crate) fn merge_match_arms(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn merge_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let current_arm = ctx.find_node_at_offset::<ast::MatchArm>()?;
     // Don't try to handle arms with guards for now - can add support for this later
     if current_arm.guard().is_some() {
@@ -40,17 +40,6 @@ pub(crate) fn merge_match_arms(ctx: AssistCtx) -> Option<Assist> {
     }
     let current_expr = current_arm.expr()?;
     let current_text_range = current_arm.syntax().text_range();
-
-    enum CursorPos {
-        InExpr(TextSize),
-        InPat(TextSize),
-    }
-    let cursor_pos = ctx.frange.range.start();
-    let cursor_pos = if current_expr.syntax().text_range().contains(cursor_pos) {
-        CursorPos::InExpr(current_text_range.end() - cursor_pos)
-    } else {
-        CursorPos::InPat(cursor_pos)
-    };
 
     // We check if the following match arms match this one. We could, but don't,
     // compare to the previous match arm as well.
@@ -70,7 +59,7 @@ pub(crate) fn merge_match_arms(ctx: AssistCtx) -> Option<Assist> {
         return None;
     }
 
-    ctx.add_assist(AssistId("merge_match_arms"), "Merge match arms", |edit| {
+    acc.add(AssistId("merge_match_arms"), "Merge match arms", current_text_range, |edit| {
         let pats = if arms_to_merge.iter().any(contains_placeholder) {
             "_".into()
         } else {
@@ -87,11 +76,6 @@ pub(crate) fn merge_match_arms(ctx: AssistCtx) -> Option<Assist> {
         let start = arms_to_merge.first().unwrap().syntax().text_range().start();
         let end = arms_to_merge.last().unwrap().syntax().text_range().end();
 
-        edit.target(current_text_range);
-        edit.set_cursor(match cursor_pos {
-            CursorPos::InExpr(back_offset) => start + TextSize::of(&arm) - back_offset,
-            CursorPos::InPat(offset) => offset,
-        });
         edit.replace(TextRange::new(start, end), arm);
     })
 }
@@ -105,7 +89,7 @@ fn contains_placeholder(a: &ast::MatchArm) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use crate::helpers::{check_assist, check_assist_not_applicable};
+    use crate::tests::{check_assist, check_assist_not_applicable};
 
     use super::*;
 
@@ -133,7 +117,7 @@ mod tests {
             fn main() {
                 let x = X::A;
                 let y = match x {
-                    X::A | X::B => { 1i32<|> }
+                    X::A | X::B => { 1i32 }
                     X::C => { 2i32 }
                 }
             }
@@ -165,7 +149,7 @@ mod tests {
             fn main() {
                 let x = X::A;
                 let y = match x {
-                    X::A | X::B | X::C | X::D => {<|> 1i32 },
+                    X::A | X::B | X::C | X::D => { 1i32 },
                     X::E => { 2i32 },
                 }
             }
@@ -198,7 +182,7 @@ mod tests {
                 let x = X::A;
                 let y = match x {
                     X::A => { 1i32 },
-                    _ => { 2i<|>32 }
+                    _ => { 2i32 }
                 }
             }
             "#,
@@ -227,7 +211,7 @@ mod tests {
 
             fn main() {
                 match X::A {
-                    X::A<|> | X::B | X::C => 92,
+                    X::A | X::B | X::C => 92,
                     X::D => 62,
                     _ => panic!(),
                 }

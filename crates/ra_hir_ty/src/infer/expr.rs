@@ -1,7 +1,7 @@
 //! Type inference for expressions.
 
 use std::iter::{repeat, repeat_with};
-use std::sync::Arc;
+use std::{mem, sync::Arc};
 
 use hir_def::{
     builtin_type::Signedness,
@@ -21,11 +21,18 @@ use crate::{
     Ty, TypeCtor, Uncertain,
 };
 
-use super::{BindingMode, Expectation, InferenceContext, InferenceDiagnostic, TypeMismatch};
+use super::{
+    BindingMode, BreakableContext, Diverges, Expectation, InferenceContext, InferenceDiagnostic,
+    TypeMismatch,
+};
 
 impl<'a> InferenceContext<'a> {
     pub(super) fn infer_expr(&mut self, tgt_expr: ExprId, expected: &Expectation) -> Ty {
         let ty = self.infer_expr_inner(tgt_expr, expected);
+        if ty.is_never() {
+            // Any expression that produces a value of type `!` must have diverged
+            self.diverges = Diverges::Always;
+        }
         let could_unify = self.unify(&ty, &expected.ty);
         if !could_unify {
             self.result.type_mismatches.insert(
@@ -64,34 +71,68 @@ impl<'a> InferenceContext<'a> {
                 // if let is desugared to match, so this is always simple if
                 self.infer_expr(*condition, &Expectation::has_type(Ty::simple(TypeCtor::Bool)));
 
+                let condition_diverges = mem::replace(&mut self.diverges, Diverges::Maybe);
+                let mut both_arms_diverge = Diverges::Always;
+
                 let then_ty = self.infer_expr_inner(*then_branch, &expected);
+                both_arms_diverge &= mem::replace(&mut self.diverges, Diverges::Maybe);
                 let else_ty = match else_branch {
                     Some(else_branch) => self.infer_expr_inner(*else_branch, &expected),
                     None => Ty::unit(),
                 };
+                both_arms_diverge &= self.diverges;
+
+                self.diverges = condition_diverges | both_arms_diverge;
 
                 self.coerce_merge_branch(&then_ty, &else_ty)
             }
             Expr::Block { statements, tail } => self.infer_block(statements, *tail, expected),
+            Expr::TryBlock { body } => {
+                let _inner = self.infer_expr(*body, expected);
+                // FIXME should be std::result::Result<{inner}, _>
+                Ty::Unknown
+            }
             Expr::Loop { body } => {
+                self.breakables.push(BreakableContext {
+                    may_break: false,
+                    break_ty: self.table.new_type_var(),
+                });
                 self.infer_expr(*body, &Expectation::has_type(Ty::unit()));
-                // FIXME handle break with value
-                Ty::simple(TypeCtor::Never)
+
+                let ctxt = self.breakables.pop().expect("breakable stack broken");
+                if ctxt.may_break {
+                    self.diverges = Diverges::Maybe;
+                }
+
+                if ctxt.may_break {
+                    ctxt.break_ty
+                } else {
+                    Ty::simple(TypeCtor::Never)
+                }
             }
             Expr::While { condition, body } => {
+                self.breakables.push(BreakableContext { may_break: false, break_ty: Ty::Unknown });
                 // while let is desugared to a match loop, so this is always simple while
                 self.infer_expr(*condition, &Expectation::has_type(Ty::simple(TypeCtor::Bool)));
                 self.infer_expr(*body, &Expectation::has_type(Ty::unit()));
+                let _ctxt = self.breakables.pop().expect("breakable stack broken");
+                // the body may not run, so it diverging doesn't mean we diverge
+                self.diverges = Diverges::Maybe;
                 Ty::unit()
             }
             Expr::For { iterable, body, pat } => {
                 let iterable_ty = self.infer_expr(*iterable, &Expectation::none());
 
+                self.breakables.push(BreakableContext { may_break: false, break_ty: Ty::Unknown });
                 let pat_ty =
                     self.resolve_associated_type(iterable_ty, self.resolve_into_iter_item());
 
                 self.infer_pat(*pat, &pat_ty, BindingMode::default());
+
                 self.infer_expr(*body, &Expectation::has_type(Ty::unit()));
+                let _ctxt = self.breakables.pop().expect("breakable stack broken");
+                // the body may not run, so it diverging doesn't mean we diverge
+                self.diverges = Diverges::Maybe;
                 Ty::unit()
             }
             Expr::Lambda { body, args, ret_type, arg_types } => {
@@ -127,10 +168,12 @@ impl<'a> InferenceContext<'a> {
                 // infer the body.
                 self.coerce(&closure_ty, &expected.ty);
 
-                let prev_ret_ty = std::mem::replace(&mut self.return_ty, ret_ty.clone());
+                let prev_diverges = mem::replace(&mut self.diverges, Diverges::Maybe);
+                let prev_ret_ty = mem::replace(&mut self.return_ty, ret_ty.clone());
 
                 self.infer_expr_coerce(*body, &Expectation::has_type(ret_ty));
 
+                self.diverges = prev_diverges;
                 self.return_ty = prev_ret_ty;
 
                 closure_ty
@@ -160,7 +203,11 @@ impl<'a> InferenceContext<'a> {
                     self.table.new_type_var()
                 };
 
+                let matchee_diverges = self.diverges;
+                let mut all_arms_diverge = Diverges::Always;
+
                 for arm in arms {
+                    self.diverges = Diverges::Maybe;
                     let _pat_ty = self.infer_pat(arm.pat, &input_ty, BindingMode::default());
                     if let Some(guard_expr) = arm.guard {
                         self.infer_expr(
@@ -170,8 +217,11 @@ impl<'a> InferenceContext<'a> {
                     }
 
                     let arm_ty = self.infer_expr_inner(arm.expr, &expected);
+                    all_arms_diverge &= self.diverges;
                     result_ty = self.coerce_merge_branch(&result_ty, &arm_ty);
                 }
+
+                self.diverges = matchee_diverges | all_arms_diverge;
 
                 result_ty
             }
@@ -182,10 +232,29 @@ impl<'a> InferenceContext<'a> {
             }
             Expr::Continue => Ty::simple(TypeCtor::Never),
             Expr::Break { expr } => {
-                if let Some(expr) = expr {
-                    // FIXME handle break with value
-                    self.infer_expr(*expr, &Expectation::none());
+                let val_ty = if let Some(expr) = expr {
+                    self.infer_expr(*expr, &Expectation::none())
+                } else {
+                    Ty::unit()
+                };
+
+                let last_ty = if let Some(ctxt) = self.breakables.last() {
+                    ctxt.break_ty.clone()
+                } else {
+                    Ty::Unknown
+                };
+
+                let merged_type = self.coerce_merge_branch(&last_ty, &val_ty);
+
+                if let Some(ctxt) = self.breakables.last_mut() {
+                    ctxt.break_ty = merged_type;
+                    ctxt.may_break = true;
+                } else {
+                    self.push_diagnostic(InferenceDiagnostic::BreakOutsideOfLoop {
+                        expr: tgt_expr,
+                    });
                 }
+
                 Ty::simple(TypeCtor::Never)
             }
             Expr::Return { expr } => {
@@ -496,8 +565,8 @@ impl<'a> InferenceContext<'a> {
                 }
                 Literal::ByteString(..) => {
                     let byte_type = Ty::simple(TypeCtor::Int(Uncertain::Known(IntTy::u8())));
-                    let slice_type = Ty::apply_one(TypeCtor::Slice, byte_type);
-                    Ty::apply_one(TypeCtor::Ref(Mutability::Shared), slice_type)
+                    let array_type = Ty::apply_one(TypeCtor::Array, byte_type);
+                    Ty::apply_one(TypeCtor::Ref(Mutability::Shared), array_type)
                 }
                 Literal::Char(..) => Ty::simple(TypeCtor::Char),
                 Literal::Int(_v, ty) => Ty::simple(TypeCtor::Int((*ty).into())),
@@ -517,7 +586,6 @@ impl<'a> InferenceContext<'a> {
         tail: Option<ExprId>,
         expected: &Expectation,
     ) -> Ty {
-        let mut diverges = false;
         for stmt in statements {
             match stmt {
                 Statement::Let { pat, type_ref, initializer } => {
@@ -539,9 +607,7 @@ impl<'a> InferenceContext<'a> {
                     self.infer_pat(*pat, &ty, BindingMode::default());
                 }
                 Statement::Expr(expr) => {
-                    if let ty_app!(TypeCtor::Never) = self.infer_expr(*expr, &Expectation::none()) {
-                        diverges = true;
-                    }
+                    self.infer_expr(*expr, &Expectation::none());
                 }
             }
         }
@@ -549,14 +615,22 @@ impl<'a> InferenceContext<'a> {
         let ty = if let Some(expr) = tail {
             self.infer_expr_coerce(expr, expected)
         } else {
-            self.coerce(&Ty::unit(), expected.coercion_target());
-            Ty::unit()
+            // Citing rustc: if there is no explicit tail expression,
+            // that is typically equivalent to a tail expression
+            // of `()` -- except if the block diverges. In that
+            // case, there is no value supplied from the tail
+            // expression (assuming there are no other breaks,
+            // this implies that the type of the block will be
+            // `!`).
+            if self.diverges.is_always() {
+                // we don't even make an attempt at coercion
+                self.table.new_maybe_never_type_var()
+            } else {
+                self.coerce(&Ty::unit(), expected.coercion_target());
+                Ty::unit()
+            }
         };
-        if diverges {
-            Ty::simple(TypeCtor::Never)
-        } else {
-            ty
-        }
+        ty
     }
 
     fn infer_method_call(

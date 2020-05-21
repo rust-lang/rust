@@ -4,6 +4,7 @@ import * as ra from '../rust-analyzer-api';
 
 import { Ctx, Cmd } from '../ctx';
 import * as sourceChange from '../source_change';
+import { assert } from '../util';
 
 export * from './analyzer_status';
 export * from './matching_brace';
@@ -50,4 +51,59 @@ export function selectAndApplySourceChange(ctx: Ctx): Cmd {
             await sourceChange.applySourceChange(ctx, selectedChange);
         }
     };
+}
+
+export function applySnippetWorkspaceEditCommand(_ctx: Ctx): Cmd {
+    return async (edit: vscode.WorkspaceEdit) => {
+        await applySnippetWorkspaceEdit(edit);
+    };
+}
+
+export async function applySnippetWorkspaceEdit(edit: vscode.WorkspaceEdit) {
+    assert(edit.entries().length === 1, `bad ws edit: ${JSON.stringify(edit)}`);
+    const [uri, edits] = edit.entries()[0];
+
+    const editor = vscode.window.visibleTextEditors.find((it) => it.document.uri.toString() === uri.toString());
+    if (!editor) return;
+
+    let selection: vscode.Selection | undefined = undefined;
+    let lineDelta = 0;
+    await editor.edit((builder) => {
+        for (const indel of edits) {
+            const parsed = parseSnippet(indel.newText);
+            if (parsed) {
+                const [newText, [placeholderStart, placeholderLength]] = parsed;
+                const prefix = newText.substr(0, placeholderStart);
+                const lastNewline = prefix.lastIndexOf('\n');
+
+                const startLine = indel.range.start.line + lineDelta + countLines(prefix);
+                const startColumn = lastNewline === -1 ?
+                    indel.range.start.character + placeholderStart
+                    : prefix.length - lastNewline - 1;
+                const endColumn = startColumn + placeholderLength;
+                selection = new vscode.Selection(
+                    new vscode.Position(startLine, startColumn),
+                    new vscode.Position(startLine, endColumn),
+                );
+                builder.replace(indel.range, newText);
+            } else {
+                lineDelta = countLines(indel.newText) - (indel.range.end.line - indel.range.start.line);
+                builder.replace(indel.range, indel.newText);
+            }
+        }
+    });
+    if (selection) editor.selection = selection;
+}
+
+function parseSnippet(snip: string): [string, [number, number]] | undefined {
+    const m = snip.match(/\$(0|\{0:([^}]*)\})/);
+    if (!m) return undefined;
+    const placeholder = m[2] ?? "";
+    const range: [number, number] = [m.index!!, placeholder.length];
+    const insert = snip.replace(m[0], placeholder);
+    return [insert, range];
+}
+
+function countLines(text: string): number {
+    return (text.match(/\n/g) || []).length;
 }

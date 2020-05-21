@@ -20,10 +20,11 @@ macro_rules! eprintln {
 mod vfs_glob;
 mod caps;
 mod cargo_target_spec;
-mod conv;
+mod to_proto;
+mod from_proto;
 mod main_loop;
 mod markdown;
-pub mod req;
+pub mod lsp_ext;
 pub mod config;
 mod world;
 mod diagnostics;

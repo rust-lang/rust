@@ -14,7 +14,7 @@ use std::iter::successors;
 
 use hir_expand::name::Name;
 use ra_db::Edition;
-use test_utils::tested_by;
+use test_utils::mark;
 
 use crate::{
     db::DefDatabase,
@@ -108,7 +108,7 @@ impl CrateDefMap {
         let mut curr_per_ns: PerNs = match path.kind {
             PathKind::DollarCrate(krate) => {
                 if krate == self.krate {
-                    tested_by!(macro_dollar_crate_self);
+                    mark::hit!(macro_dollar_crate_self);
                     PerNs::types(
                         ModuleId { krate: self.krate, local_id: self.root }.into(),
                         Visibility::Public,
@@ -116,7 +116,7 @@ impl CrateDefMap {
                 } else {
                     let def_map = db.crate_def_map(krate);
                     let module = ModuleId { krate, local_id: def_map.root };
-                    tested_by!(macro_dollar_crate_other);
+                    mark::hit!(macro_dollar_crate_other);
                     PerNs::types(module.into(), Visibility::Public)
                 }
             }
@@ -221,7 +221,7 @@ impl CrateDefMap {
                 }
                 ModuleDefId::AdtId(AdtId::EnumId(e)) => {
                     // enum variant
-                    tested_by!(can_import_enum_variant);
+                    mark::hit!(can_import_enum_variant);
                     let enum_data = db.enum_data(e);
                     match enum_data.variant(&segment) {
                         Some(local_id) => {

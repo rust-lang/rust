@@ -3,18 +3,9 @@ use std::collections::HashMap;
 use hir::{Adt, ModuleDef, PathResolution, Semantics, Struct};
 use itertools::Itertools;
 use ra_ide_db::RootDatabase;
-use ra_syntax::{
-    algo,
-    ast::{self, Path, RecordLit, RecordPat},
-    match_ast, AstNode, SyntaxKind,
-    SyntaxKind::*,
-    SyntaxNode,
-};
+use ra_syntax::{algo, ast, match_ast, AstNode, SyntaxKind, SyntaxKind::*, SyntaxNode};
 
-use crate::{
-    assist_ctx::{Assist, AssistCtx},
-    AssistId,
-};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: reorder_fields
 //
@@ -31,13 +22,13 @@ use crate::{
 // const test: Foo = Foo {foo: 1, bar: 0}
 // ```
 //
-pub(crate) fn reorder_fields(ctx: AssistCtx) -> Option<Assist> {
-    reorder::<RecordLit>(ctx.clone()).or_else(|| reorder::<RecordPat>(ctx))
+pub(crate) fn reorder_fields(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+    reorder::<ast::RecordLit>(acc, ctx.clone()).or_else(|| reorder::<ast::RecordPat>(acc, ctx))
 }
 
-fn reorder<R: AstNode>(ctx: AssistCtx) -> Option<Assist> {
+fn reorder<R: AstNode>(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let record = ctx.find_node_at_offset::<R>()?;
-    let path = record.syntax().children().find_map(Path::cast)?;
+    let path = record.syntax().children().find_map(ast::Path::cast)?;
 
     let ranks = compute_fields_ranks(&path, &ctx)?;
 
@@ -50,11 +41,11 @@ fn reorder<R: AstNode>(ctx: AssistCtx) -> Option<Assist> {
         return None;
     }
 
-    ctx.add_assist(AssistId("reorder_fields"), "Reorder record fields", |edit| {
+    let target = record.syntax().text_range();
+    acc.add(AssistId("reorder_fields"), "Reorder record fields", target, |edit| {
         for (old, new) in fields.iter().zip(&sorted_fields) {
             algo::diff(old, new).into_text_edit(edit.text_edit_builder());
         }
-        edit.target(record.syntax().text_range())
     })
 }
 
@@ -96,9 +87,9 @@ fn struct_definition(path: &ast::Path, sema: &Semantics<RootDatabase>) -> Option
     }
 }
 
-fn compute_fields_ranks(path: &Path, ctx: &AssistCtx) -> Option<HashMap<String, usize>> {
+fn compute_fields_ranks(path: &ast::Path, ctx: &AssistContext) -> Option<HashMap<String, usize>> {
     Some(
-        struct_definition(path, ctx.sema)?
+        struct_definition(path, &ctx.sema)?
             .fields(ctx.db)
             .iter()
             .enumerate()
@@ -109,7 +100,7 @@ fn compute_fields_ranks(path: &Path, ctx: &AssistCtx) -> Option<HashMap<String, 
 
 #[cfg(test)]
 mod tests {
-    use crate::helpers::{check_assist, check_assist_not_applicable};
+    use crate::tests::{check_assist, check_assist_not_applicable};
 
     use super::*;
 
@@ -149,7 +140,7 @@ mod tests {
         "#,
             r#"
         struct Foo {foo: i32, bar: i32};
-        const test: Foo = <|>Foo {foo: 1, bar: 0}
+        const test: Foo = Foo {foo: 1, bar: 0}
         "#,
         )
     }
@@ -173,7 +164,7 @@ mod tests {
 
         fn f(f: Foo) -> {
             match f {
-                <|>Foo { ref mut bar, baz: 0, .. } => (),
+                Foo { ref mut bar, baz: 0, .. } => (),
                 _ => ()
             }
         }
@@ -211,7 +202,7 @@ mod tests {
             impl Foo {
                 fn new() -> Foo {
                     let foo = String::new();
-                    <|>Foo {
+                    Foo {
                         foo,
                         bar: foo.clone(),
                         extra: "Extra field",

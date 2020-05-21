@@ -1,5 +1,7 @@
 //! FIXME: write short doc here
 
+// FIXME: this modules relies on strings and AST way too much, and it should be
+// rewritten (matklad 2020-05-07)
 use std::{
     convert::From,
     fmt::{self, Display},
@@ -82,8 +84,8 @@ impl FunctionSignature {
             let ty = field.signature_ty(db);
             let raw_param = format!("{}", ty.display(db));
 
-            if let Some(param_type) = raw_param.split(':').nth(1) {
-                parameter_types.push(param_type[1..].to_string());
+            if let Some(param_type) = raw_param.split(':').nth(1).and_then(|it| it.get(1..)) {
+                parameter_types.push(param_type.to_string());
             } else {
                 // useful when you have tuple struct
                 parameter_types.push(raw_param.clone());
@@ -127,8 +129,8 @@ impl FunctionSignature {
         for field in variant.fields(db).into_iter() {
             let ty = field.signature_ty(db);
             let raw_param = format!("{}", ty.display(db));
-            if let Some(param_type) = raw_param.split(':').nth(1) {
-                parameter_types.push(param_type[1..].to_string());
+            if let Some(param_type) = raw_param.split(':').nth(1).and_then(|it| it.get(1..)) {
+                parameter_types.push(param_type.to_string());
             } else {
                 // The unwrap_or_else is useful when you have tuple
                 parameter_types.push(raw_param);
@@ -195,14 +197,23 @@ impl From<&'_ ast::FnDef> for FunctionSignature {
                     let raw_param = self_param.syntax().text().to_string();
 
                     res_types.push(
-                        raw_param.split(':').nth(1).unwrap_or_else(|| " Self")[1..].to_string(),
+                        raw_param
+                            .split(':')
+                            .nth(1)
+                            .and_then(|it| it.get(1..))
+                            .unwrap_or_else(|| "Self")
+                            .to_string(),
                     );
                     res.push(raw_param);
                 }
 
                 res.extend(param_list.params().map(|param| param.syntax().text().to_string()));
                 res_types.extend(param_list.params().map(|param| {
-                    param.syntax().text().to_string().split(':').nth(1).unwrap()[1..].to_string()
+                    let param_text = param.syntax().text().to_string();
+                    match param_text.split(':').nth(1).and_then(|it| it.get(1..)) {
+                        Some(it) => it.to_string(),
+                        None => param_text,
+                    }
                 }));
             }
             (has_self_param, res, res_types)

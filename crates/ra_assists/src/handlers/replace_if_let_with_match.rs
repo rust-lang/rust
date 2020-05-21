@@ -1,10 +1,14 @@
 use ra_fmt::unwrap_trivial_block;
 use ra_syntax::{
-    ast::{self, edit::IndentLevel, make},
+    ast::{
+        self,
+        edit::{AstNodeEdit, IndentLevel},
+        make,
+    },
     AstNode,
 };
 
-use crate::{utils::TryEnum, Assist, AssistCtx, AssistId};
+use crate::{utils::TryEnum, AssistContext, AssistId, Assists};
 
 // Assist: replace_if_let_with_match
 //
@@ -32,7 +36,7 @@ use crate::{utils::TryEnum, Assist, AssistCtx, AssistId};
 //     }
 // }
 // ```
-pub(crate) fn replace_if_let_with_match(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let if_expr: ast::IfExpr = ctx.find_node_at_offset()?;
     let cond = if_expr.condition()?;
     let pat = cond.pat()?;
@@ -43,29 +47,27 @@ pub(crate) fn replace_if_let_with_match(ctx: AssistCtx) -> Option<Assist> {
         ast::ElseBranch::IfExpr(_) => return None,
     };
 
-    let sema = ctx.sema;
-    ctx.add_assist(AssistId("replace_if_let_with_match"), "Replace with match", move |edit| {
+    let target = if_expr.syntax().text_range();
+    acc.add(AssistId("replace_if_let_with_match"), "Replace with match", target, move |edit| {
         let match_expr = {
             let then_arm = {
                 let then_expr = unwrap_trivial_block(then_block);
                 make::match_arm(vec![pat.clone()], then_expr)
             };
             let else_arm = {
-                let pattern = sema
+                let pattern = ctx
+                    .sema
                     .type_of_pat(&pat)
-                    .and_then(|ty| TryEnum::from_ty(sema, &ty))
+                    .and_then(|ty| TryEnum::from_ty(&ctx.sema, &ty))
                     .map(|it| it.sad_pattern())
                     .unwrap_or_else(|| make::placeholder_pat().into());
                 let else_expr = unwrap_trivial_block(else_block);
                 make::match_arm(vec![pattern], else_expr)
             };
             make::expr_match(expr, make::match_arm_list(vec![then_arm, else_arm]))
+                .indent(IndentLevel::from_node(if_expr.syntax()))
         };
 
-        let match_expr = IndentLevel::from_node(if_expr.syntax()).increase_indent(match_expr);
-
-        edit.target(if_expr.syntax().text_range());
-        edit.set_cursor(if_expr.syntax().text_range().start());
         edit.replace_ast::<ast::Expr>(if_expr.into(), match_expr);
     })
 }
@@ -74,13 +76,13 @@ pub(crate) fn replace_if_let_with_match(ctx: AssistCtx) -> Option<Assist> {
 mod tests {
     use super::*;
 
-    use crate::helpers::{check_assist, check_assist_target};
+    use crate::tests::{check_assist, check_assist_target};
 
     #[test]
     fn test_replace_if_let_with_match_unwraps_simple_expressions() {
         check_assist(
             replace_if_let_with_match,
-            "
+            r#"
 impl VariantData {
     pub fn is_struct(&self) -> bool {
         if <|>let VariantData::Struct(..) = *self {
@@ -89,16 +91,16 @@ impl VariantData {
             false
         }
     }
-}           ",
-            "
+}           "#,
+            r#"
 impl VariantData {
     pub fn is_struct(&self) -> bool {
-        <|>match *self {
+        match *self {
             VariantData::Struct(..) => true,
             _ => false,
         }
     }
-}           ",
+}           "#,
         )
     }
 
@@ -106,7 +108,7 @@ impl VariantData {
     fn test_replace_if_let_with_match_doesnt_unwrap_multiline_expressions() {
         check_assist(
             replace_if_let_with_match,
-            "
+            r#"
 fn foo() {
     if <|>let VariantData::Struct(..) = a {
         bar(
@@ -115,10 +117,10 @@ fn foo() {
     } else {
         false
     }
-}           ",
-            "
+}           "#,
+            r#"
 fn foo() {
-    <|>match a {
+    match a {
         VariantData::Struct(..) => {
             bar(
                 123
@@ -126,7 +128,7 @@ fn foo() {
         }
         _ => false,
     }
-}           ",
+}           "#,
         )
     }
 
@@ -134,7 +136,7 @@ fn foo() {
     fn replace_if_let_with_match_target() {
         check_assist_target(
             replace_if_let_with_match,
-            "
+            r#"
 impl VariantData {
     pub fn is_struct(&self) -> bool {
         if <|>let VariantData::Struct(..) = *self {
@@ -143,7 +145,7 @@ impl VariantData {
             false
         }
     }
-}           ",
+}           "#,
             "if let VariantData::Struct(..) = *self {
             true
         } else {
@@ -173,7 +175,7 @@ enum Option<T> { Some(T), None }
 use Option::*;
 
 fn foo(x: Option<i32>) {
-    <|>match x {
+    match x {
         Some(x) => println!("{}", x),
         None => println!("none"),
     }
@@ -203,7 +205,7 @@ enum Result<T, E> { Ok(T), Err(E) }
 use Result::*;
 
 fn foo(x: Result<i32, ()>) {
-    <|>match x {
+    match x {
         Ok(x) => println!("{}", x),
         Err(_) => println!("none"),
     }

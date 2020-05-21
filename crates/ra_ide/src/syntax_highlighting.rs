@@ -167,6 +167,19 @@ pub(crate) fn highlight(
                         binding_hash: None,
                     });
                 }
+                if let Some(name) = mc.is_macro_rules() {
+                    if let Some((highlight, binding_hash)) = highlight_element(
+                        &sema,
+                        &mut bindings_shadow_count,
+                        name.syntax().clone().into(),
+                    ) {
+                        stack.add(HighlightedRange {
+                            range: name.syntax().text_range(),
+                            highlight,
+                            binding_hash,
+                        });
+                    }
+                }
                 continue;
             }
             WalkEvent::Leave(Some(mc)) => {
@@ -390,12 +403,13 @@ fn highlight_element(
                 T![break]
                 | T![continue]
                 | T![else]
-                | T![for]
                 | T![if]
                 | T![loop]
                 | T![match]
                 | T![return]
-                | T![while] => h | HighlightModifier::ControlFlow,
+                | T![while]
+                | T![in] => h | HighlightModifier::ControlFlow,
+                T![for] if !is_child_of_impl(element) => h | HighlightModifier::ControlFlow,
                 T![unsafe] => h | HighlightModifier::Unsafe,
                 _ => h,
             }
@@ -419,6 +433,13 @@ fn highlight_element(
     }
 }
 
+fn is_child_of_impl(element: SyntaxElement) -> bool {
+    match element.parent() {
+        Some(e) => e.kind() == IMPL_DEF,
+        _ => false,
+    }
+}
+
 fn highlight_name(db: &RootDatabase, def: Definition) -> Highlight {
     match def {
         Definition::Macro(_) => HighlightTag::Macro,
@@ -431,10 +452,16 @@ fn highlight_name(db: &RootDatabase, def: Definition) -> Highlight {
             hir::ModuleDef::Adt(hir::Adt::Union(_)) => HighlightTag::Union,
             hir::ModuleDef::EnumVariant(_) => HighlightTag::EnumVariant,
             hir::ModuleDef::Const(_) => HighlightTag::Constant,
-            hir::ModuleDef::Static(_) => HighlightTag::Static,
             hir::ModuleDef::Trait(_) => HighlightTag::Trait,
             hir::ModuleDef::TypeAlias(_) => HighlightTag::TypeAlias,
             hir::ModuleDef::BuiltinType(_) => HighlightTag::BuiltinType,
+            hir::ModuleDef::Static(s) => {
+                let mut h = Highlight::new(HighlightTag::Static);
+                if s.is_mut(db) {
+                    h |= HighlightModifier::Mutable;
+                }
+                return h;
+            }
         },
         Definition::SelfType(_) => HighlightTag::SelfType,
         Definition::TypeParam(_) => HighlightTag::TypeParam,

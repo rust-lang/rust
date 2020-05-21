@@ -19,11 +19,14 @@ use hir_def::{
 use hir_expand::{
     diagnostics::DiagnosticSink,
     name::{name, AsName},
-    MacroDefId,
+    MacroDefId, MacroDefKind,
 };
 use hir_ty::{
-    autoderef, display::HirFormatter, expr::ExprValidator, method_resolution, ApplicationTy,
-    Canonical, InEnvironment, Substs, TraitEnvironment, Ty, TyDefId, TypeCtor,
+    autoderef,
+    display::{HirDisplayError, HirFormatter},
+    expr::ExprValidator,
+    method_resolution, ApplicationTy, Canonical, InEnvironment, Substs, TraitEnvironment, Ty,
+    TyDefId, TypeCtor,
 };
 use ra_db::{CrateId, CrateName, Edition, FileId};
 use ra_prof::profile;
@@ -144,6 +147,26 @@ impl ModuleDef {
             ModuleDef::TypeAlias(it) => Some(it.module(db)),
             ModuleDef::BuiltinType(_) => None,
         }
+    }
+
+    pub fn definition_visibility(&self, db: &dyn HirDatabase) -> Option<Visibility> {
+        let module = match self {
+            ModuleDef::Module(it) => it.parent(db)?,
+            ModuleDef::Function(it) => return Some(it.visibility(db)),
+            ModuleDef::Adt(it) => it.module(db),
+            ModuleDef::EnumVariant(it) => {
+                let parent = it.parent_enum(db);
+                let module = it.module(db);
+                return module.visibility_of(db, &ModuleDef::Adt(Adt::Enum(parent)));
+            }
+            ModuleDef::Const(it) => return Some(it.visibility(db)),
+            ModuleDef::Static(it) => it.module(db),
+            ModuleDef::Trait(it) => it.module(db),
+            ModuleDef::TypeAlias(it) => return Some(it.visibility(db)),
+            ModuleDef::BuiltinType(_) => return None,
+        };
+
+        module.visibility_of(db, self)
     }
 }
 
@@ -675,6 +698,10 @@ impl Static {
     pub fn name(self, db: &dyn HirDatabase) -> Option<Name> {
         db.static_data(self.id).name.clone()
     }
+
+    pub fn is_mut(self, db: &dyn HirDatabase) -> bool {
+        db.static_data(self.id).mutable
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -762,13 +789,12 @@ impl MacroDef {
 
     /// Indicate it is a proc-macro
     pub fn is_proc_macro(&self) -> bool {
-        match self.id.kind {
-            hir_expand::MacroDefKind::Declarative => false,
-            hir_expand::MacroDefKind::BuiltIn(_) => false,
-            hir_expand::MacroDefKind::BuiltInDerive(_) => false,
-            hir_expand::MacroDefKind::BuiltInEager(_) => false,
-            hir_expand::MacroDefKind::CustomDerive(_) => true,
-        }
+        matches!(self.id.kind, MacroDefKind::CustomDerive(_))
+    }
+
+    /// Indicate it is a derive macro
+    pub fn is_derive_macro(&self) -> bool {
+        matches!(self.id.kind, MacroDefKind::CustomDerive(_) | MacroDefKind::BuiltInDerive(_))
     }
 }
 
@@ -962,6 +988,17 @@ impl TypeParam {
             krate: self.id.parent.module(db.upcast()).krate,
             ty: InEnvironment { value: ty, environment },
         }
+    }
+
+    pub fn default(self, db: &dyn HirDatabase) -> Option<Type> {
+        let params = db.generic_defaults(self.id.parent);
+        let local_idx = hir_ty::param_idx(db, self.id)?;
+        let resolver = self.id.parent.resolver(db.upcast());
+        let environment = TraitEnvironment::lower(db, &resolver);
+        params.get(local_idx).cloned().map(|ty| Type {
+            krate: self.id.parent.module(db.upcast()).krate,
+            ty: InEnvironment { value: ty, environment },
+        })
     }
 }
 
@@ -1212,7 +1249,7 @@ impl Type {
 
     // This would be nicer if it just returned an iterator, but that runs into
     // lifetime problems, because we need to borrow temp `CrateImplDefs`.
-    pub fn iterate_impl_items<T>(
+    pub fn iterate_assoc_items<T>(
         self,
         db: &dyn HirDatabase,
         krate: Crate,
@@ -1320,7 +1357,7 @@ impl Type {
 }
 
 impl HirDisplay for Type {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> std::fmt::Result {
+    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
         self.ty.value.hir_fmt(f)
     }
 }

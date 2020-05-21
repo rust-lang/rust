@@ -34,7 +34,12 @@ impl TokenExpander {
             // FIXME switch these to ExpandResult as well
             TokenExpander::Builtin(it) => it.expand(db, id, tt).into(),
             TokenExpander::BuiltinDerive(it) => it.expand(db, id, tt).into(),
-            TokenExpander::ProcMacro(it) => it.expand(db, id, tt).into(),
+            TokenExpander::ProcMacro(_) => {
+                // We store the result in salsa db to prevent non-determinisc behavior in
+                // some proc-macro implementation
+                // See #4315 for details
+                db.expand_proc_macro(id.into()).into()
+            }
         }
     }
 
@@ -75,6 +80,8 @@ pub trait AstDatabase: SourceDatabase {
 
     #[salsa::interned]
     fn intern_eager_expansion(&self, eager: EagerCallLoc) -> EagerMacroId;
+
+    fn expand_proc_macro(&self, call: MacroCallId) -> Result<tt::Subtree, mbe::ExpandError>;
 }
 
 /// This expands the given macro call, but with different arguments. This is
@@ -216,6 +223,33 @@ fn macro_expand_with_arg(
     (Some(Arc::new(tt)), err.map(|e| format!("{:?}", e)))
 }
 
+pub(crate) fn expand_proc_macro(
+    db: &dyn AstDatabase,
+    id: MacroCallId,
+) -> Result<tt::Subtree, mbe::ExpandError> {
+    let lazy_id = match id {
+        MacroCallId::LazyMacro(id) => id,
+        MacroCallId::EagerMacro(_) => unreachable!(),
+    };
+
+    let loc = db.lookup_intern_macro(lazy_id);
+    let macro_arg = match db.macro_arg(id) {
+        Some(it) => it,
+        None => {
+            return Err(
+                tt::ExpansionError::Unknown("No arguments for proc-macro".to_string()).into()
+            )
+        }
+    };
+
+    let expander = match loc.def.kind {
+        MacroDefKind::CustomDerive(expander) => expander,
+        _ => unreachable!(),
+    };
+
+    expander.expand(db, lazy_id, &macro_arg.0)
+}
+
 pub(crate) fn parse_or_expand(db: &dyn AstDatabase, file_id: HirFileId) -> Option<SyntaxNode> {
     match file_id.0 {
         HirFileIdRepr::FileId(file_id) => Some(db.parse(file_id).tree().syntax().clone()),
@@ -330,7 +364,7 @@ fn to_fragment_kind(db: &dyn AstDatabase, id: MacroCallId) -> FragmentKind {
             FragmentKind::Expr
         }
         // FIXME: Expand to statements in appropriate positions; HIR lowering needs to handle that
-        EXPR_STMT | BLOCK => FragmentKind::Expr,
+        EXPR_STMT | BLOCK_EXPR => FragmentKind::Expr,
         ARG_LIST => FragmentKind::Expr,
         TRY_EXPR => FragmentKind::Expr,
         TUPLE_EXPR => FragmentKind::Expr,
@@ -342,7 +376,6 @@ fn to_fragment_kind(db: &dyn AstDatabase, id: MacroCallId) -> FragmentKind {
         CONDITION => FragmentKind::Expr,
         BREAK_EXPR => FragmentKind::Expr,
         RETURN_EXPR => FragmentKind::Expr,
-        BLOCK_EXPR => FragmentKind::Expr,
         MATCH_EXPR => FragmentKind::Expr,
         MATCH_ARM => FragmentKind::Expr,
         MATCH_GUARD => FragmentKind::Expr,

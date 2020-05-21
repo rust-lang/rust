@@ -2,7 +2,7 @@
 
 mod atom;
 
-pub(crate) use self::atom::match_arm_list;
+pub(crate) use self::atom::{block_expr, match_arm_list};
 pub(super) use self::atom::{literal, LITERAL_FIRST};
 use super::*;
 
@@ -47,28 +47,6 @@ pub(super) fn expr_stmt(p: &mut Parser) -> (Option<CompletedMarker>, BlockLike) 
 fn expr_no_struct(p: &mut Parser) {
     let r = Restrictions { forbid_structs: true, prefer_stmt: false };
     expr_bp(p, r, 1);
-}
-
-// test block
-// fn a() {}
-// fn b() { let _ = 1; }
-// fn c() { 1; 2; }
-// fn d() { 1; 2 }
-pub(crate) fn block(p: &mut Parser) {
-    if !p.at(T!['{']) {
-        p.error("expected a block");
-        return;
-    }
-    atom::block_expr(p, None);
-}
-
-pub(crate) fn naked_block(p: &mut Parser) {
-    assert!(p.at(T!['{']));
-    let m = p.start();
-    p.bump(T!['{']);
-    expr_block_contents(p);
-    p.expect(T!['}']);
-    m.complete(p, BLOCK);
 }
 
 fn is_expr_stmt_attr_allowed(kind: SyntaxKind) -> bool {
@@ -197,7 +175,7 @@ pub(super) fn stmt(p: &mut Parser, with_semi: StmtWithSemi) {
     }
 }
 
-pub(crate) fn expr_block_contents(p: &mut Parser) {
+pub(super) fn expr_block_contents(p: &mut Parser) {
     // This is checked by a validator
     attributes::inner_attributes(p);
 

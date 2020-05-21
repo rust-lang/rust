@@ -1,10 +1,9 @@
 use ra_syntax::{
-    ast,
-    ast::{AstNode, AstToken, IfExpr, MatchArm},
-    TextSize,
+    ast::{AstNode, IfExpr, MatchArm},
+    SyntaxKind::WHITESPACE,
 };
 
-use crate::{Assist, AssistCtx, AssistId};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: move_guard_to_arm_body
 //
@@ -31,7 +30,7 @@ use crate::{Assist, AssistCtx, AssistId};
 //     }
 // }
 // ```
-pub(crate) fn move_guard_to_arm_body(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn move_guard_to_arm_body(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let match_arm = ctx.find_node_at_offset::<MatchArm>()?;
     let guard = match_arm.guard()?;
     let space_before_guard = guard.syntax().prev_sibling_or_token();
@@ -40,26 +39,17 @@ pub(crate) fn move_guard_to_arm_body(ctx: AssistCtx) -> Option<Assist> {
     let arm_expr = match_arm.expr()?;
     let buf = format!("if {} {{ {} }}", guard_conditions.syntax().text(), arm_expr.syntax().text());
 
-    ctx.add_assist(AssistId("move_guard_to_arm_body"), "Move guard to arm body", |edit| {
-        edit.target(guard.syntax().text_range());
-        let offseting_amount = match space_before_guard.and_then(|it| it.into_token()) {
-            Some(tok) => {
-                if ast::Whitespace::cast(tok.clone()).is_some() {
-                    let ele = tok.text_range();
-                    edit.delete(ele);
-                    ele.len()
-                } else {
-                    TextSize::from(0)
-                }
+    let target = guard.syntax().text_range();
+    acc.add(AssistId("move_guard_to_arm_body"), "Move guard to arm body", target, |edit| {
+        match space_before_guard {
+            Some(element) if element.kind() == WHITESPACE => {
+                edit.delete(element.text_range());
             }
-            _ => TextSize::from(0),
+            _ => (),
         };
 
         edit.delete(guard.syntax().text_range());
         edit.replace_node_and_indent(arm_expr.syntax(), buf);
-        edit.set_cursor(
-            arm_expr.syntax().text_range().start() + TextSize::from(3) - offseting_amount,
-        );
     })
 }
 
@@ -88,7 +78,7 @@ pub(crate) fn move_guard_to_arm_body(ctx: AssistCtx) -> Option<Assist> {
 //     }
 // }
 // ```
-pub(crate) fn move_arm_cond_to_match_guard(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn move_arm_cond_to_match_guard(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let match_arm: MatchArm = ctx.find_node_at_offset::<MatchArm>()?;
     let match_pat = match_arm.pat()?;
 
@@ -108,14 +98,15 @@ pub(crate) fn move_arm_cond_to_match_guard(ctx: AssistCtx) -> Option<Assist> {
 
     let buf = format!(" if {}", cond.syntax().text());
 
-    ctx.add_assist(
+    let target = if_expr.syntax().text_range();
+    acc.add(
         AssistId("move_arm_cond_to_match_guard"),
         "Move condition to match guard",
+        target,
         |edit| {
-            edit.target(if_expr.syntax().text_range());
-            let then_only_expr = then_block.block().and_then(|it| it.statements().next()).is_none();
+            let then_only_expr = then_block.statements().next().is_none();
 
-            match &then_block.block().and_then(|it| it.expr()) {
+            match &then_block.expr() {
                 Some(then_expr) if then_only_expr => {
                     edit.replace(if_expr.syntax().text_range(), then_expr.syntax().text())
                 }
@@ -123,7 +114,6 @@ pub(crate) fn move_arm_cond_to_match_guard(ctx: AssistCtx) -> Option<Assist> {
             }
 
             edit.insert(match_pat.syntax().text_range().end(), buf);
-            edit.set_cursor(match_pat.syntax().text_range().end() + TextSize::from(1));
         },
     )
 }
@@ -132,7 +122,7 @@ pub(crate) fn move_arm_cond_to_match_guard(ctx: AssistCtx) -> Option<Assist> {
 mod tests {
     use super::*;
 
-    use crate::helpers::{check_assist, check_assist_not_applicable, check_assist_target};
+    use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
 
     #[test]
     fn move_guard_to_arm_body_target() {
@@ -171,7 +161,7 @@ mod tests {
                 let t = 'a';
                 let chars = "abcd";
                 match t {
-                    '\r' => if chars.clone().next() == Some('\n') { <|>false },
+                    '\r' => if chars.clone().next() == Some('\n') { false },
                     _ => true
                 }
             }
@@ -194,7 +184,7 @@ mod tests {
             r#"
             fn f() {
                 match x {
-                    y @ 4 | y @ 5 => if y > 5 { <|>true },
+                    y @ 4 | y @ 5 => if y > 5 { true },
                     _ => false
                 }
             }
@@ -221,7 +211,7 @@ mod tests {
                 let t = 'a';
                 let chars = "abcd";
                 match t {
-                    '\r' <|>if chars.clone().next() == Some('\n') => false,
+                    '\r' if chars.clone().next() == Some('\n') => false,
                     _ => true
                 }
             }
@@ -265,7 +255,7 @@ mod tests {
                 let t = 'a';
                 let chars = "abcd";
                 match t {
-                    '\r' <|>if chars.clone().next().is_some() => {  },
+                    '\r' if chars.clone().next().is_some() => {  },
                     _ => true
                 }
             }
@@ -295,7 +285,7 @@ mod tests {
                 let mut t = 'a';
                 let chars = "abcd";
                 match t {
-                    '\r' <|>if chars.clone().next().is_some() => {
+                    '\r' if chars.clone().next().is_some() => {
                         t = 'e';
                         false
                     },

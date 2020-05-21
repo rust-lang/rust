@@ -53,6 +53,7 @@ winapi = "0.3.8"
 
 [dev-dependencies]
 tempfile = "3.1.0"
+insta = "0.16.0"
 test_utils = { path = "../test_utils" }
 
 [features]

@@ -5,7 +5,7 @@ use ra_syntax::{
     T,
 };
 
-use crate::{Assist, AssistCtx, AssistId};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: move_bounds_to_where_clause
 //
@@ -22,7 +22,7 @@ use crate::{Assist, AssistCtx, AssistId};
 //     f(x)
 // }
 // ```
-pub(crate) fn move_bounds_to_where_clause(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn move_bounds_to_where_clause(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let type_param_list = ctx.find_node_at_offset::<ast::TypeParamList>()?;
 
     let mut type_params = type_param_list.type_params();
@@ -49,7 +49,8 @@ pub(crate) fn move_bounds_to_where_clause(ctx: AssistCtx) -> Option<Assist> {
         }
     };
 
-    ctx.add_assist(AssistId("move_bounds_to_where_clause"), "Move to where clause", |edit| {
+    let target = type_param_list.syntax().text_range();
+    acc.add(AssistId("move_bounds_to_where_clause"), "Move to where clause", target, |edit| {
         let new_params = type_param_list
             .type_params()
             .filter(|it| it.type_bound_list().is_some())
@@ -71,7 +72,6 @@ pub(crate) fn move_bounds_to_where_clause(ctx: AssistCtx) -> Option<Assist> {
             _ => format!(" {}", where_clause.syntax()),
         };
         edit.insert(anchor.text_range().start(), to_insert);
-        edit.target(type_param_list.syntax().text_range());
     })
 }
 
@@ -89,7 +89,7 @@ fn build_predicate(param: ast::TypeParam) -> Option<ast::WherePred> {
 mod tests {
     use super::*;
 
-    use crate::helpers::check_assist;
+    use crate::tests::check_assist;
 
     #[test]
     fn move_bounds_to_where_clause_fn() {
@@ -99,7 +99,7 @@ mod tests {
             fn foo<T: u32, <|>F: FnOnce(T) -> T>() {}
             "#,
             r#"
-            fn foo<T, <|>F>() where T: u32, F: FnOnce(T) -> T {}
+            fn foo<T, F>() where T: u32, F: FnOnce(T) -> T {}
             "#,
         );
     }
@@ -112,7 +112,7 @@ mod tests {
             impl<U: u32, <|>T> A<U, T> {}
             "#,
             r#"
-            impl<U, <|>T> A<U, T> where U: u32 {}
+            impl<U, T> A<U, T> where U: u32 {}
             "#,
         );
     }
@@ -125,7 +125,7 @@ mod tests {
             struct A<<|>T: Iterator<Item = u32>> {}
             "#,
             r#"
-            struct A<<|>T> where T: Iterator<Item = u32> {}
+            struct A<T> where T: Iterator<Item = u32> {}
             "#,
         );
     }
@@ -138,7 +138,7 @@ mod tests {
             struct Pair<<|>T: u32>(T, T);
             "#,
             r#"
-            struct Pair<<|>T>(T, T) where T: u32;
+            struct Pair<T>(T, T) where T: u32;
             "#,
         );
     }

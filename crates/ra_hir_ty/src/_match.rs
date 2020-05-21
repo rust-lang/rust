@@ -573,14 +573,20 @@ pub(crate) fn is_useful(
     matrix: &Matrix,
     v: &PatStack,
 ) -> MatchCheckResult<Usefulness> {
-    // Handle the special case of enums with no variants. In that case, no match
-    // arm is useful.
-    if let Ty::Apply(ApplicationTy { ctor: TypeCtor::Adt(AdtId::EnumId(enum_id)), .. }) =
-        cx.infer[cx.match_expr].strip_references()
-    {
-        if cx.db.enum_data(*enum_id).variants.is_empty() {
+    // Handle two special cases:
+    // - enum with no variants
+    // - `!` type
+    // In those cases, no match arm is useful.
+    match cx.infer[cx.match_expr].strip_references() {
+        Ty::Apply(ApplicationTy { ctor: TypeCtor::Adt(AdtId::EnumId(enum_id)), .. }) => {
+            if cx.db.enum_data(*enum_id).variants.is_empty() {
+                return Ok(Usefulness::NotUseful);
+            }
+        }
+        Ty::Apply(ApplicationTy { ctor: TypeCtor::Never, .. }) => {
             return Ok(Usefulness::NotUseful);
         }
+        _ => (),
     }
 
     if v.is_empty() {
@@ -1918,12 +1924,40 @@ mod tests {
     }
 
     #[test]
+    fn type_never() {
+        let content = r"
+            fn test_fn(never: !) {
+                match never {}
+            }
+        ";
+
+        check_no_diagnostic(content);
+    }
+
+    #[test]
     fn enum_never_ref() {
         let content = r"
             enum Never {}
 
             fn test_fn(never: &Never) {
                 match never {}
+            }
+        ";
+
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn expr_diverges_missing_arm() {
+        let content = r"
+            enum Either {
+                A,
+                B,
+            }
+            fn test_fn() {
+                match loop {} {
+                    Either::A => (),
+                }
             }
         ";
 
@@ -1981,26 +2015,6 @@ mod false_negatives {
     }
 
     #[test]
-    fn expr_diverges_missing_arm() {
-        let content = r"
-            enum Either {
-                A,
-                B,
-            }
-            fn test_fn() {
-                match loop {} {
-                    Either::A => (),
-                }
-            }
-        ";
-
-        // This is a false negative.
-        // Even though the match expression diverges, rustc fails
-        // to compile here since `Either::B` is missing.
-        check_no_diagnostic(content);
-    }
-
-    #[test]
     fn expr_loop_missing_arm() {
         let content = r"
             enum Either {
@@ -2018,7 +2032,7 @@ mod false_negatives {
         // We currently infer the type of `loop { break Foo::A }` to `!`, which
         // causes us to skip the diagnostic since `Either::A` doesn't type check
         // with `!`.
-        check_no_diagnostic(content);
+        check_diagnostic(content);
     }
 
     #[test]

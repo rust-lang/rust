@@ -1,6 +1,5 @@
 //! Advertizes the capabilities of the LSP Server.
-
-use crate::semantic_tokens;
+use std::env;
 
 use lsp_types::{
     CallHierarchyServerCapability, CodeActionOptions, CodeActionProviderCapability,
@@ -11,12 +10,19 @@ use lsp_types::{
     ServerCapabilities, SignatureHelpOptions, TextDocumentSyncCapability, TextDocumentSyncKind,
     TextDocumentSyncOptions, TypeDefinitionProviderCapability, WorkDoneProgressOptions,
 };
+use serde_json::json;
+
+use crate::semantic_tokens;
 
 pub fn server_capabilities() -> ServerCapabilities {
     ServerCapabilities {
         text_document_sync: Some(TextDocumentSyncCapability::Options(TextDocumentSyncOptions {
             open_close: Some(true),
-            change: Some(TextDocumentSyncKind::Incremental),
+            change: Some(if env::var("RA_NO_INCREMENTAL_SYNC").is_ok() {
+                TextDocumentSyncKind::Full
+            } else {
+                TextDocumentSyncKind::Incremental
+            }),
             will_save: None,
             will_save_wait_until: None,
             save: Some(SaveOptions::default()),
@@ -43,7 +49,7 @@ pub fn server_capabilities() -> ServerCapabilities {
         code_action_provider: Some(CodeActionProviderCapability::Options(CodeActionOptions {
             // Advertise support for all built-in CodeActionKinds
             code_action_kinds: Some(vec![
-                String::new(),
+                lsp_types::code_action_kind::EMPTY.to_string(),
                 lsp_types::code_action_kind::QUICKFIX.to_string(),
                 lsp_types::code_action_kind::REFACTOR.to_string(),
                 lsp_types::code_action_kind::REFACTOR_EXTRACT.to_string(),
@@ -86,6 +92,8 @@ pub fn server_capabilities() -> ServerCapabilities {
             }
             .into(),
         ),
-        experimental: Default::default(),
+        experimental: Some(json!({
+            "joinLines": true,
+        })),
     }
 }

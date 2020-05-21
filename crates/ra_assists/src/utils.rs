@@ -1,19 +1,58 @@
 //! Assorted functions shared by several assists.
 pub(crate) mod insert_use;
 
-use std::iter;
+use std::{iter, ops};
 
-use hir::{Adt, Crate, Semantics, Trait, Type};
+use hir::{Adt, Crate, Enum, ScopeDef, Semantics, Trait, Type};
 use ra_ide_db::RootDatabase;
 use ra_syntax::{
     ast::{self, make, NameOwner},
-    AstNode, T,
+    AstNode, SyntaxNode, T,
 };
 use rustc_hash::FxHashSet;
 
-pub use insert_use::insert_use_statement;
+use crate::assist_config::SnippetCap;
 
-pub fn get_missing_impl_items(
+pub(crate) use insert_use::insert_use_statement;
+
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum Cursor<'a> {
+    Replace(&'a SyntaxNode),
+    Before(&'a SyntaxNode),
+}
+
+impl<'a> Cursor<'a> {
+    fn node(self) -> &'a SyntaxNode {
+        match self {
+            Cursor::Replace(node) | Cursor::Before(node) => node,
+        }
+    }
+}
+
+pub(crate) fn render_snippet(_cap: SnippetCap, node: &SyntaxNode, cursor: Cursor) -> String {
+    assert!(cursor.node().ancestors().any(|it| it == *node));
+    let range = cursor.node().text_range() - node.text_range().start();
+    let range: ops::Range<usize> = range.into();
+
+    let mut placeholder = cursor.node().to_string();
+    escape(&mut placeholder);
+    let tab_stop = match cursor {
+        Cursor::Replace(placeholder) => format!("${{0:{}}}", placeholder),
+        Cursor::Before(placeholder) => format!("$0{}", placeholder),
+    };
+
+    let mut buf = node.to_string();
+    buf.replace_range(range, &tab_stop);
+    return buf;
+
+    fn escape(buf: &mut String) {
+        stdx::replace(buf, '{', r"\{");
+        stdx::replace(buf, '}', r"\}");
+        stdx::replace(buf, '$', r"\$");
+    }
+}
+
+pub fn get_missing_assoc_items(
     sema: &Semantics<RootDatabase>,
     impl_def: &ast::ImplDef,
 ) -> Vec<hir::AssocItem> {
@@ -23,21 +62,21 @@ pub fn get_missing_impl_items(
     let mut impl_type = FxHashSet::default();
 
     if let Some(item_list) = impl_def.item_list() {
-        for item in item_list.impl_items() {
+        for item in item_list.assoc_items() {
             match item {
-                ast::ImplItem::FnDef(f) => {
+                ast::AssocItem::FnDef(f) => {
                     if let Some(n) = f.name() {
                         impl_fns_consts.insert(n.syntax().to_string());
                     }
                 }
 
-                ast::ImplItem::TypeAliasDef(t) => {
+                ast::AssocItem::TypeAliasDef(t) => {
                     if let Some(n) = t.name() {
                         impl_type.insert(n.syntax().to_string());
                     }
                 }
 
-                ast::ImplItem::ConstDef(c) => {
+                ast::AssocItem::ConstDef(c) => {
                     if let Some(n) = c.name() {
                         impl_fns_consts.insert(n.syntax().to_string());
                     }
@@ -103,7 +142,7 @@ fn invert_special_case(expr: &ast::Expr) -> Option<ast::Expr> {
 }
 
 #[derive(Clone, Copy)]
-pub(crate) enum TryEnum {
+pub enum TryEnum {
     Result,
     Option,
 }
@@ -111,7 +150,7 @@ pub(crate) enum TryEnum {
 impl TryEnum {
     const ALL: [TryEnum; 2] = [TryEnum::Option, TryEnum::Result];
 
-    pub(crate) fn from_ty(sema: &Semantics<RootDatabase>, ty: &Type) -> Option<TryEnum> {
+    pub fn from_ty(sema: &Semantics<RootDatabase>, ty: &Type) -> Option<TryEnum> {
         let enum_ = match ty.as_adt() {
             Some(Adt::Enum(it)) => it,
             _ => return None,
@@ -161,13 +200,19 @@ impl FamousDefs<'_, '_> {
     #[cfg(test)]
     pub(crate) const FIXTURE: &'static str = r#"
 //- /libcore.rs crate:core
-pub mod convert{
+pub mod convert {
     pub trait From<T> {
         fn from(T) -> Self;
     }
 }
 
-pub mod prelude { pub use crate::convert::From }
+pub mod option {
+    pub enum Option<T> { None, Some(T)}
+}
+
+pub mod prelude {
+    pub use crate::{convert::From, option::Option::{self, *}};
+}
 #[prelude_import]
 pub use prelude::*;
 "#;
@@ -176,7 +221,25 @@ pub use prelude::*;
         self.find_trait("core:convert:From")
     }
 
+    pub(crate) fn core_option_Option(&self) -> Option<Enum> {
+        self.find_enum("core:option:Option")
+    }
+
     fn find_trait(&self, path: &str) -> Option<Trait> {
+        match self.find_def(path)? {
+            hir::ScopeDef::ModuleDef(hir::ModuleDef::Trait(it)) => Some(it),
+            _ => None,
+        }
+    }
+
+    fn find_enum(&self, path: &str) -> Option<Enum> {
+        match self.find_def(path)? {
+            hir::ScopeDef::ModuleDef(hir::ModuleDef::Adt(hir::Adt::Enum(it))) => Some(it),
+            _ => None,
+        }
+    }
+
+    fn find_def(&self, path: &str) -> Option<ScopeDef> {
         let db = self.0.db;
         let mut path = path.split(':');
         let trait_ = path.next_back()?;
@@ -201,9 +264,6 @@ pub use prelude::*;
         }
         let def =
             module.scope(db, None).into_iter().find(|(name, _def)| &name.to_string() == trait_)?.1;
-        match def {
-            hir::ScopeDef::ModuleDef(hir::ModuleDef::Trait(it)) => Some(it),
-            _ => None,
-        }
+        Some(def)
     }
 }

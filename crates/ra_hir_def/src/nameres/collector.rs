@@ -14,7 +14,7 @@ use ra_cfg::CfgOptions;
 use ra_db::{CrateId, FileId, ProcMacroId};
 use ra_syntax::ast;
 use rustc_hash::FxHashMap;
-use test_utils::tested_by;
+use test_utils::mark;
 
 use crate::{
     attr::Attrs,
@@ -204,6 +204,7 @@ impl DefCollector<'_> {
                 ast_id: None,
                 krate: Some(krate),
                 kind: MacroDefKind::CustomDerive(expander),
+                local_inner: false,
             };
 
             self.define_proc_macro(name.clone(), macro_id);
@@ -301,7 +302,7 @@ impl DefCollector<'_> {
         );
 
         if let Some(ModuleDefId::ModuleId(m)) = res.take_types() {
-            tested_by!(macro_rules_from_other_crates_are_visible_with_macro_use);
+            mark::hit!(macro_rules_from_other_crates_are_visible_with_macro_use);
             self.import_all_macros_exported(current_module_id, m.krate);
         }
     }
@@ -411,10 +412,10 @@ impl DefCollector<'_> {
             match def.take_types() {
                 Some(ModuleDefId::ModuleId(m)) => {
                     if import.is_prelude {
-                        tested_by!(std_prelude);
+                        mark::hit!(std_prelude);
                         self.def_map.prelude = Some(m);
                     } else if m.krate != self.def_map.krate {
-                        tested_by!(glob_across_crates);
+                        mark::hit!(glob_across_crates);
                         // glob import from other crate => we can just import everything once
                         let item_map = self.db.crate_def_map(m.krate);
                         let scope = &item_map[m.local_id].scope;
@@ -460,7 +461,7 @@ impl DefCollector<'_> {
                     }
                 }
                 Some(ModuleDefId::AdtId(AdtId::EnumId(e))) => {
-                    tested_by!(glob_enum);
+                    mark::hit!(glob_enum);
                     // glob import from enum => just import all the variants
 
                     // XXX: urgh, so this works by accident! Here, we look at
@@ -509,7 +510,7 @@ impl DefCollector<'_> {
 
                     self.update(module_id, &[(name, def)], vis);
                 }
-                None => tested_by!(bogus_paths),
+                None => mark::hit!(bogus_paths),
             }
         }
     }
@@ -682,7 +683,7 @@ impl ModCollector<'_, '_> {
         // Prelude module is always considered to be `#[macro_use]`.
         if let Some(prelude_module) = self.def_collector.def_map.prelude {
             if prelude_module.krate != self.def_collector.def_map.krate {
-                tested_by!(prelude_is_macro_use);
+                mark::hit!(prelude_is_macro_use);
                 self.def_collector.import_all_macros_exported(self.module_id, prelude_module.krate);
             }
         }
@@ -829,7 +830,7 @@ impl ModCollector<'_, '_> {
         let module = ModuleId { krate: self.def_collector.def_map.krate, local_id: res };
         let def: ModuleDefId = module.into();
         self.def_collector.def_map.modules[self.module_id].scope.define_def(def);
-        self.def_collector.update(self.module_id, &[(name, PerNs::from_def(def, vis))], vis);
+        self.def_collector.update(self.module_id, &[(name, PerNs::from_def(def, vis, false))], vis);
         res
     }
 
@@ -843,6 +844,8 @@ impl ModCollector<'_, '_> {
         let name = def.name.clone();
         let container = ContainerId::ModuleId(module);
         let vis = &def.visibility;
+        let mut has_constructor = false;
+
         let def: ModuleDefId = match def.kind {
             raw::DefKind::Function(ast_id) => FunctionLoc {
                 container: container.into(),
@@ -850,7 +853,8 @@ impl ModCollector<'_, '_> {
             }
             .intern(self.def_collector.db)
             .into(),
-            raw::DefKind::Struct(ast_id) => {
+            raw::DefKind::Struct(ast_id, mode) => {
+                has_constructor = mode != raw::StructDefKind::Record;
                 StructLoc { container, ast_id: AstId::new(self.file_id, ast_id) }
                     .intern(self.def_collector.db)
                     .into()
@@ -893,7 +897,11 @@ impl ModCollector<'_, '_> {
             .def_map
             .resolve_visibility(self.def_collector.db, self.module_id, vis)
             .unwrap_or(Visibility::Public);
-        self.def_collector.update(self.module_id, &[(name, PerNs::from_def(def, vis))], vis)
+        self.def_collector.update(
+            self.module_id,
+            &[(name, PerNs::from_def(def, vis, has_constructor))],
+            vis,
+        )
     }
 
     fn collect_derives(&mut self, attrs: &Attrs, def: &raw::DefData) {
@@ -941,6 +949,7 @@ impl ModCollector<'_, '_> {
                     ast_id: Some(ast_id.ast_id),
                     krate: Some(self.def_collector.def_map.krate),
                     kind: MacroDefKind::Declarative,
+                    local_inner: mac.local_inner,
                 };
                 self.def_collector.define_macro(self.module_id, name.clone(), macro_id, mac.export);
             }

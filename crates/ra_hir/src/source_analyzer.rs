@@ -226,6 +226,17 @@ impl SourceAnalyzer {
         // This must be a normal source file rather than macro file.
         let hir_path =
             crate::Path::from_src(path.clone(), &Hygiene::new(db.upcast(), self.file_id))?;
+
+        // Case where path is a qualifier of another path, e.g. foo::bar::Baz where we
+        // trying to resolve foo::bar.
+        if let Some(outer_path) = path.syntax().parent().and_then(ast::Path::cast) {
+            if let Some(qualifier) = outer_path.qualifier() {
+                if path == &qualifier {
+                    return resolve_hir_path_qualifier(db, &self.resolver, &hir_path);
+                }
+            }
+        }
+
         resolve_hir_path(db, &self.resolver, &hir_path)
     }
 
@@ -404,6 +415,7 @@ pub(crate) fn resolve_hir_path(
             TypeNs::BuiltinType(it) => PathResolution::Def(it.into()),
             TypeNs::TraitId(it) => PathResolution::Def(Trait::from(it).into()),
         });
+
     let body_owner = resolver.body_owner();
     let values =
         resolver.resolve_path_in_value_ns_fully(db.upcast(), path.mod_path()).and_then(|val| {
@@ -417,6 +429,7 @@ pub(crate) fn resolve_hir_path(
                 ValueNs::StaticId(it) => PathResolution::Def(Static::from(it).into()),
                 ValueNs::StructId(it) => PathResolution::Def(Struct::from(it).into()),
                 ValueNs::EnumVariantId(it) => PathResolution::Def(EnumVariant::from(it).into()),
+                ValueNs::ImplSelf(impl_id) => PathResolution::SelfType(impl_id.into()),
             };
             Some(res)
         });
@@ -425,9 +438,48 @@ pub(crate) fn resolve_hir_path(
         .resolve_module_path_in_items(db.upcast(), path.mod_path())
         .take_types()
         .map(|it| PathResolution::Def(it.into()));
+
     types.or(values).or(items).or_else(|| {
         resolver
             .resolve_path_as_macro(db.upcast(), path.mod_path())
             .map(|def| PathResolution::Macro(def.into()))
+    })
+}
+
+/// Resolves a path where we know it is a qualifier of another path.
+///
+/// For example, if we have:
+/// ```
+/// mod my {
+///     pub mod foo {
+///         struct Bar;
+///     }
+///
+///     pub fn foo() {}
+/// }
+/// ```
+/// then we know that `foo` in `my::foo::Bar` refers to the module, not the function.
+pub(crate) fn resolve_hir_path_qualifier(
+    db: &dyn HirDatabase,
+    resolver: &Resolver,
+    path: &crate::Path,
+) -> Option<PathResolution> {
+    let items = resolver
+        .resolve_module_path_in_items(db.upcast(), path.mod_path())
+        .take_types()
+        .map(|it| PathResolution::Def(it.into()));
+
+    if items.is_some() {
+        return items;
+    }
+
+    resolver.resolve_path_in_type_ns_fully(db.upcast(), path.mod_path()).map(|ty| match ty {
+        TypeNs::SelfType(it) => PathResolution::SelfType(it.into()),
+        TypeNs::GenericParam(id) => PathResolution::TypeParam(TypeParam { id }),
+        TypeNs::AdtSelfType(it) | TypeNs::AdtId(it) => PathResolution::Def(Adt::from(it).into()),
+        TypeNs::EnumVariantId(it) => PathResolution::Def(EnumVariant::from(it).into()),
+        TypeNs::TypeAliasId(it) => PathResolution::Def(TypeAlias::from(it).into()),
+        TypeNs::BuiltinType(it) => PathResolution::Def(it.into()),
+        TypeNs::TraitId(it) => PathResolution::Def(Trait::from(it).into()),
     })
 }

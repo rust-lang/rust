@@ -17,6 +17,18 @@ struct Foo {
     pub y: i32,
 }
 
+trait Bar {
+    fn bar(&self) -> i32;
+}
+
+impl Bar for Foo {
+    fn bar(&self) -> i32 {
+        self.x
+    }
+}
+
+static mut STATIC_MUT: i32 = 0;
+
 fn foo<'a, T>() -> T {
     foo::<'a, i32>()
 }
@@ -40,7 +52,14 @@ fn main() {
         let x = 92;
         vec.push(Foo { x, y: 1 });
     }
-    unsafe { vec.set_len(0); }
+    unsafe {
+        vec.set_len(0);
+        STATIC_MUT = 1;
+    }
+
+    for e in vec {
+        // Do nothing
+    }
 
     let mut x = 42;
     let y = &mut x;

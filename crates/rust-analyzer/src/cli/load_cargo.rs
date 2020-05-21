@@ -22,7 +22,7 @@ fn vfs_root_to_id(r: ra_vfs::VfsRoot) -> SourceRootId {
     SourceRootId(r.0)
 }
 
-pub(crate) fn load_cargo(
+pub fn load_cargo(
     root: &Path,
     load_out_dirs_from_check: bool,
     with_proc_macro: bool,
@@ -149,7 +149,7 @@ pub(crate) fn load(
 
     // FIXME: cfg options?
     let default_cfg_options = {
-        let mut opts = get_rustc_cfg_options();
+        let mut opts = get_rustc_cfg_options(None);
         opts.insert_atom("test".into());
         opts.insert_atom("debug_assertion".into());
         opts

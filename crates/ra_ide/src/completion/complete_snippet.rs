@@ -36,6 +36,24 @@ pub(super) fn complete_item_snippet(acc: &mut Completions, ctx: &CompletionConte
     snippet(
         ctx,
         cap,
+        "Test module",
+        "\
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ${1:test_name}() {
+        $0
+    }
+}",
+    )
+    .lookup_by("tmod")
+    .add_to(acc);
+
+    snippet(
+        ctx,
+        cap,
         "Test function",
         "\
 #[test]
@@ -116,6 +134,14 @@ mod tests {
                 insert: "#[test]\nfn ${1:feature}() {\n    $0\n}",
                 kind: Snippet,
                 lookup: "tfn",
+            },
+            CompletionItem {
+                label: "Test module",
+                source_range: 78..78,
+                delete: 78..78,
+                insert: "#[cfg(test)]\nmod tests {\n    use super::*;\n\n    #[test]\n    fn ${1:test_name}() {\n        $0\n    }\n}",
+                kind: Snippet,
+                lookup: "tmod",
             },
             CompletionItem {
                 label: "macro_rules",

@@ -33,11 +33,23 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="keyword">pub</span> <span class="field declaration">y</span>: <span class="builtin_type">i32</span>,
 }
 
+<span class="keyword">trait</span> <span class="trait declaration">Bar</span> {
+    <span class="keyword">fn</span> <span class="function declaration">bar</span>(&<span class="keyword">self</span>) -&gt; <span class="builtin_type">i32</span>;
+}
+
+<span class="keyword">impl</span> <span class="trait">Bar</span> <span class="keyword">for</span> <span class="struct">Foo</span> {
+    <span class="keyword">fn</span> <span class="function declaration">bar</span>(&<span class="keyword">self</span>) -&gt; <span class="builtin_type">i32</span> {
+        <span class="keyword">self</span>.<span class="field">x</span>
+    }
+}
+
+<span class="keyword">static</span> <span class="keyword">mut</span> <span class="static declaration mutable">STATIC_MUT</span>: <span class="builtin_type">i32</span> = <span class="numeric_literal">0</span>;
+
 <span class="keyword">fn</span> <span class="function declaration">foo</span>&lt;<span class="lifetime declaration">'a</span>, <span class="type_param declaration">T</span>&gt;() -&gt; <span class="type_param">T</span> {
     <span class="function">foo</span>::&lt;<span class="lifetime">'a</span>, <span class="builtin_type">i32</span>&gt;()
 }
 
-<span class="macro">macro_rules!</span> def_fn {
+<span class="macro">macro_rules!</span> <span class="macro declaration">def_fn</span> {
     ($($tt:tt)*) =&gt; {$($tt)*}
 }
 
@@ -56,7 +68,14 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
         <span class="keyword">let</span> <span class="variable declaration">x</span> = <span class="numeric_literal">92</span>;
         <span class="variable mutable">vec</span>.<span class="unresolved_reference">push</span>(<span class="struct">Foo</span> { <span class="field">x</span>, <span class="field">y</span>: <span class="numeric_literal">1</span> });
     }
-    <span class="keyword unsafe">unsafe</span> { <span class="variable mutable">vec</span>.<span class="unresolved_reference">set_len</span>(<span class="numeric_literal">0</span>); }
+    <span class="keyword unsafe">unsafe</span> {
+        <span class="variable mutable">vec</span>.<span class="unresolved_reference">set_len</span>(<span class="numeric_literal">0</span>);
+        <span class="static mutable">STATIC_MUT</span> = <span class="numeric_literal">1</span>;
+    }
+
+    <span class="keyword control">for</span> <span class="variable declaration">e</span> <span class="keyword control">in</span> <span class="variable mutable">vec</span> {
+        <span class="comment">// Do nothing</span>
+    }
 
     <span class="keyword">let</span> <span class="keyword">mut</span> <span class="variable declaration mutable">x</span> = <span class="numeric_literal">42</span>;
     <span class="keyword">let</span> <span class="variable declaration mutable">y</span> = &<span class="keyword">mut</span> <span class="variable mutable">x</span>;

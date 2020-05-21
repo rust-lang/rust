@@ -32,9 +32,8 @@ SOURCE_FILE@0..88
               R_ANGLE@22..23 ">"
     WHITESPACE@23..24 " "
     BLOCK_EXPR@24..26
-      BLOCK@24..26
-        L_CURLY@24..25 "{"
-        R_CURLY@25..26 "}"
+      L_CURLY@24..25 "{"
+      R_CURLY@25..26 "}"
   WHITESPACE@26..28 "\n\n"
   FN_DEF@28..56
     FN_KW@28..30 "fn"
@@ -75,9 +74,8 @@ SOURCE_FILE@0..88
       R_PAREN@52..53 ")"
     WHITESPACE@53..54 " "
     BLOCK_EXPR@54..56
-      BLOCK@54..56
-        L_CURLY@54..55 "{"
-        R_CURLY@55..56 "}"
+      L_CURLY@54..55 "{"
+      R_CURLY@55..56 "}"
   WHITESPACE@56..58 "\n\n"
   FN_DEF@58..87
     FN_KW@58..60 "fn"
@@ -120,7 +118,6 @@ SOURCE_FILE@0..88
       R_PAREN@83..84 ")"
     WHITESPACE@84..85 " "
     BLOCK_EXPR@85..87
-      BLOCK@85..87
-        L_CURLY@85..86 "{"
-        R_CURLY@86..87 "}"
+      L_CURLY@85..86 "{"
+      R_CURLY@86..87 "}"
   WHITESPACE@87..88 "\n"

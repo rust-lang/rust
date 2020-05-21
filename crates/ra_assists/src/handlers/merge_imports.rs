@@ -6,7 +6,10 @@ use ra_syntax::{
     AstNode, Direction, InsertPosition, SyntaxElement, T,
 };
 
-use crate::{Assist, AssistCtx, AssistId};
+use crate::{
+    assist_context::{AssistContext, Assists},
+    AssistId,
+};
 
 // Assist: merge_imports
 //
@@ -20,10 +23,10 @@ use crate::{Assist, AssistCtx, AssistId};
 // ```
 // use std::{fmt::Formatter, io};
 // ```
-pub(crate) fn merge_imports(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn merge_imports(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let tree: ast::UseTree = ctx.find_node_at_offset()?;
     let mut rewriter = SyntaxRewriter::default();
-    let mut offset = ctx.frange.range.start();
+    let mut offset = ctx.offset();
 
     if let Some(use_item) = tree.syntax().parent().and_then(ast::UseItem::cast) {
         let (merged, to_delete) = next_prev()
@@ -52,10 +55,9 @@ pub(crate) fn merge_imports(ctx: AssistCtx) -> Option<Assist> {
         }
     };
 
-    ctx.add_assist(AssistId("merge_imports"), "Merge imports", |edit| {
-        edit.rewrite(rewriter);
-        // FIXME: we only need because our diff is imprecise
-        edit.set_cursor(offset);
+    let target = tree.syntax().text_range();
+    acc.add(AssistId("merge_imports"), "Merge imports", target, |builder| {
+        builder.rewrite(rewriter);
     })
 }
 
@@ -125,7 +127,7 @@ fn first_path(path: &ast::Path) -> ast::Path {
 
 #[cfg(test)]
 mod tests {
-    use crate::helpers::check_assist;
+    use crate::tests::check_assist;
 
     use super::*;
 
@@ -138,7 +140,7 @@ use std::fmt<|>::Debug;
 use std::fmt::Display;
 ",
             r"
-use std::fmt<|>::{Debug, Display};
+use std::fmt::{Debug, Display};
 ",
         )
     }
@@ -152,7 +154,7 @@ use std::fmt::Debug;
 use std::fmt<|>::Display;
 ",
             r"
-use std::fmt:<|>:{Display, Debug};
+use std::fmt::{Display, Debug};
 ",
         );
     }
@@ -165,7 +167,7 @@ use std::fmt:<|>:{Display, Debug};
 use std::{fmt<|>::Debug, fmt::Display};
 ",
             r"
-use std::{fmt<|>::{Debug, Display}};
+use std::{fmt::{Debug, Display}};
 ",
         );
         check_assist(
@@ -174,7 +176,7 @@ use std::{fmt<|>::{Debug, Display}};
 use std::{fmt::Debug, fmt<|>::Display};
 ",
             r"
-use std::{fmt::<|>{Display, Debug}};
+use std::{fmt::{Display, Debug}};
 ",
         );
     }
@@ -188,7 +190,7 @@ use std<|>::cell::*;
 use std::str;
 ",
             r"
-use std<|>::{cell::*, str};
+use std::{cell::*, str};
 ",
         )
     }
@@ -202,7 +204,7 @@ use std<|>::cell::*;
 use std::str::*;
 ",
             r"
-use std<|>::{cell::*, str::*};
+use std::{cell::*, str::*};
 ",
         )
     }
@@ -218,7 +220,7 @@ use foo::baz;
 /// Doc comment
 ",
             r"
-use foo<|>::{bar, baz};
+use foo::{bar, baz};
 
 /// Doc comment
 ",
@@ -237,7 +239,7 @@ use {
 ",
             r"
 use {
-    foo<|>::{bar, baz},
+    foo::{bar, baz},
 };
 ",
         );
@@ -251,7 +253,7 @@ use {
 ",
             r"
 use {
-    foo::{bar<|>, baz},
+    foo::{bar, baz},
 };
 ",
         );
@@ -268,7 +270,7 @@ use foo::<|>{
 };
 ",
             r"
-use foo::{<|>
+use foo::{
     FooBar,
 bar::baz};
 ",

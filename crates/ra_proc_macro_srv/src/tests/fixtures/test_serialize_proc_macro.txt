@@ -23,23 +23,12 @@ SUBTREE $
     SUBTREE [] 4294967295
       IDENT   allow 4294967295
       SUBTREE () 4294967295
-        IDENT   unknown_lints 4294967295
-    PUNCH   # [alone] 4294967295
-    SUBTREE [] 4294967295
-      IDENT   cfg_attr 4294967295
-      SUBTREE () 4294967295
-        IDENT   feature 4294967295
-        PUNCH   = [alone] 4294967295
-        LITERAL "cargo-clippy" 0
-        PUNCH   , [alone] 4294967295
-        IDENT   allow 4294967295
-        SUBTREE () 4294967295
-          IDENT   useless_attribute 4294967295
-    PUNCH   # [alone] 4294967295
-    SUBTREE [] 4294967295
-      IDENT   allow 4294967295
-      SUBTREE () 4294967295
         IDENT   rust_2018_idioms 4294967295
+        PUNCH   , [alone] 4294967295
+        IDENT   clippy 4294967295
+        PUNCH   : [joint] 4294967295
+        PUNCH   : [alone] 4294967295
+        IDENT   useless_attribute 4294967295
     IDENT   extern 4294967295
     IDENT   crate 4294967295
     IDENT   serde 4294967295

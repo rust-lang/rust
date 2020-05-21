@@ -11,7 +11,7 @@ use ra_syntax::{
     TextRange,
 };
 
-use crate::FileSymbol;
+use crate::{FileRange, FileSymbol};
 
 use super::short_label::ShortLabel;
 
@@ -22,10 +22,11 @@ use super::short_label::ShortLabel;
 /// code, like a function or a struct, but this is not strictly required.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NavigationTarget {
+    // FIXME: use FileRange?
     file_id: FileId,
+    full_range: TextRange,
     name: SmolStr,
     kind: SyntaxKind,
-    full_range: TextRange,
     focus_range: Option<TextRange>,
     container_name: Option<SmolStr>,
     description: Option<String>,
@@ -61,6 +62,10 @@ impl NavigationTarget {
 
     pub fn file_id(&self) -> FileId {
         self.file_id
+    }
+
+    pub fn file_range(&self) -> FileRange {
+        FileRange { file_id: self.file_id, range: self.full_range }
     }
 
     pub fn full_range(&self) -> TextRange {
@@ -376,16 +381,20 @@ impl ToNav for hir::Local {
 impl ToNav for hir::TypeParam {
     fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
         let src = self.source(db);
-        let range = match src.value {
+        let full_range = match &src.value {
             Either::Left(it) => it.syntax().text_range(),
             Either::Right(it) => it.syntax().text_range(),
+        };
+        let focus_range = match &src.value {
+            Either::Left(_) => None,
+            Either::Right(it) => it.name().map(|it| it.syntax().text_range()),
         };
         NavigationTarget {
             file_id: src.file_id.original_file(db),
             name: self.name(db).to_string().into(),
             kind: TYPE_PARAM,
-            full_range: range,
-            focus_range: None,
+            full_range,
+            focus_range,
             container_name: None,
             description: None,
             docs: None,

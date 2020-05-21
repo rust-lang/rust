@@ -3,7 +3,7 @@
 //! Specifically, it generates the `SyntaxKind` enum and a number of newtype
 //! wrappers around `SyntaxNode` which implement `ra_syntax::AstNode`.
 
-use std::collections::HashSet;
+use std::{collections::HashSet, fmt::Write};
 
 use proc_macro2::{Punct, Spacing};
 use quote::{format_ident, quote};
@@ -102,6 +102,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
             });
             (
                 quote! {
+                    #[pretty_doc_comment_placeholder_workaround]
                     #[derive(Debug, Clone, PartialEq, Eq, Hash)]
                     pub struct #name {
                         pub(crate) syntax: SyntaxNode,
@@ -145,6 +146,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
 
             (
                 quote! {
+                    #[pretty_doc_comment_placeholder_workaround]
                     #[derive(Debug, Clone, PartialEq, Eq, Hash)]
                     pub enum #name {
                         #(#variants(#variants),)*
@@ -230,8 +232,27 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
     };
 
     let ast = ast.to_string().replace("T ! [ ", "T![").replace(" ] )", "])");
-    let pretty = crate::reformat(ast)?.replace("#[derive", "\n#[derive");
+
+    let mut res = String::with_capacity(ast.len() * 2);
+
+    let mut docs =
+        grammar.nodes.iter().map(|it| it.doc).chain(grammar.enums.iter().map(|it| it.doc));
+
+    for chunk in ast.split("# [ pretty_doc_comment_placeholder_workaround ]") {
+        res.push_str(chunk);
+        if let Some(doc) = docs.next() {
+            write_doc_comment(doc, &mut res);
+        }
+    }
+
+    let pretty = crate::reformat(res)?;
     Ok(pretty)
+}
+
+fn write_doc_comment(contents: &[&str], dest: &mut String) {
+    for line in contents {
+        writeln!(dest, "///{}", line).unwrap();
+    }
 }
 
 fn generate_syntax_kinds(grammar: KindsSrc<'_>) -> Result<String> {
@@ -432,6 +453,7 @@ impl Field<'_> {
                     ":" => "colon",
                     "::" => "coloncolon",
                     "#" => "pound",
+                    "?" => "question_mark",
                     _ => name,
                 };
                 format_ident!("{}_token", name)

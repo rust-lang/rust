@@ -2,14 +2,13 @@
 //!
 //! It is mainly a `HirDatabase` for semantic analysis, plus a `SymbolsDatabase`, for fuzzy search.
 
-pub mod marks;
 pub mod line_index;
-pub mod line_index_utils;
 pub mod symbol_index;
 pub mod change;
 pub mod defs;
 pub mod search;
 pub mod imports_locator;
+pub mod source_change;
 mod wasm_shims;
 
 use std::sync::Arc;

@@ -9,9 +9,9 @@
 
 use std::{ffi::OsString, path::PathBuf};
 
-use lsp_types::TextDocumentClientCapabilities;
+use lsp_types::ClientCapabilities;
 use ra_flycheck::FlycheckConfig;
-use ra_ide::{CompletionConfig, InlayHintsConfig};
+use ra_ide::{AssistConfig, CompletionConfig, InlayHintsConfig};
 use ra_project_model::CargoConfig;
 use serde::Deserialize;
 
@@ -32,7 +32,38 @@ pub struct Config {
 
     pub inlay_hints: InlayHintsConfig,
     pub completion: CompletionConfig,
+    pub assist: AssistConfig,
     pub call_info_full: bool,
+    pub lens: LensConfig,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LensConfig {
+    pub run: bool,
+    pub debug: bool,
+    pub impementations: bool,
+}
+
+impl Default for LensConfig {
+    fn default() -> Self {
+        Self { run: true, debug: true, impementations: true }
+    }
+}
+
+impl LensConfig {
+    pub const NO_LENS: LensConfig = Self { run: false, debug: false, impementations: false };
+
+    pub fn any(&self) -> bool {
+        self.impementations || self.runnable()
+    }
+
+    pub fn none(&self) -> bool {
+        !self.any()
+    }
+
+    pub fn runnable(&self) -> bool {
+        self.run || self.debug
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -49,7 +80,6 @@ pub enum FilesWatcher {
 
 #[derive(Debug, Clone)]
 pub struct NotificationsConfig {
-    pub workspace_loaded: bool,
     pub cargo_toml_not_found: bool,
 }
 
@@ -71,6 +101,7 @@ pub struct ClientCapsConfig {
     pub line_folding_only: bool,
     pub hierarchical_symbols: bool,
     pub code_action_literals: bool,
+    pub work_done_progress: bool,
 }
 
 impl Default for Config {
@@ -83,16 +114,14 @@ impl Default for Config {
             lru_capacity: None,
             proc_macro_srv: None,
             files: FilesConfig { watcher: FilesWatcher::Notify, exclude: Vec::new() },
-            notifications: NotificationsConfig {
-                workspace_loaded: true,
-                cargo_toml_not_found: true,
-            },
+            notifications: NotificationsConfig { cargo_toml_not_found: true },
 
             cargo: CargoConfig::default(),
             rustfmt: RustfmtConfig::Rustfmt { extra_args: Vec::new() },
             check: Some(FlycheckConfig::CargoCommand {
                 command: "check".to_string(),
                 all_targets: true,
+                all_features: true,
                 extra_args: Vec::new(),
             }),
 
@@ -108,7 +137,9 @@ impl Default for Config {
                 add_call_argument_snippets: true,
                 ..CompletionConfig::default()
             },
+            assist: AssistConfig::default(),
             call_info_full: true,
+            lens: LensConfig::default(),
         }
     }
 }
@@ -129,13 +160,13 @@ impl Config {
             Some("client") => FilesWatcher::Client,
             Some("notify") | _ => FilesWatcher::Notify
         };
-        set(value, "/notifications/workspaceLoaded", &mut self.notifications.workspace_loaded);
         set(value, "/notifications/cargoTomlNotFound", &mut self.notifications.cargo_toml_not_found);
 
         set(value, "/cargo/noDefaultFeatures", &mut self.cargo.no_default_features);
         set(value, "/cargo/allFeatures", &mut self.cargo.all_features);
         set(value, "/cargo/features", &mut self.cargo.features);
         set(value, "/cargo/loadOutDirsFromCheck", &mut self.cargo.load_out_dirs_from_check);
+        set(value, "/cargo/target", &mut self.cargo.target);
 
         match get(value, "/procMacro/enable") {
             Some(true) => {
@@ -177,12 +208,13 @@ impl Config {
                 }
                 // otherwise configure command customizations
                 _ => {
-                    if let Some(FlycheckConfig::CargoCommand { command, extra_args, all_targets })
+                    if let Some(FlycheckConfig::CargoCommand { command, extra_args, all_targets, all_features })
                         = &mut self.check
                     {
                         set(value, "/checkOnSave/extraArgs", extra_args);
                         set(value, "/checkOnSave/command", command);
                         set(value, "/checkOnSave/allTargets", all_targets);
+                        set(value, "/checkOnSave/allFeatures", all_features);
                     }
                 }
             };
@@ -197,6 +229,16 @@ impl Config {
         set(value, "/completion/addCallArgumentSnippets", &mut self.completion.add_call_argument_snippets);
         set(value, "/callInfo/full", &mut self.call_info_full);
 
+        let mut lens_enabled = true;
+        set(value, "/lens/enable", &mut lens_enabled);
+        if lens_enabled {
+            set(value, "/lens/run", &mut self.lens.run);
+            set(value, "/lens/debug", &mut self.lens.debug);
+            set(value, "/lens/implementations", &mut self.lens.impementations);
+        } else {
+            self.lens = LensConfig::NO_LENS;
+        }
+
         log::info!("Config::update() = {:#?}", self);
 
         fn get<'a, T: Deserialize<'a>>(value: &'a serde_json::Value, pointer: &str) -> Option<T> {
@@ -210,30 +252,51 @@ impl Config {
         }
     }
 
-    pub fn update_caps(&mut self, caps: &TextDocumentClientCapabilities) {
-        if let Some(value) = caps.definition.as_ref().and_then(|it| it.link_support) {
-            self.client_caps.location_link = value;
-        }
-        if let Some(value) = caps.folding_range.as_ref().and_then(|it| it.line_folding_only) {
-            self.client_caps.line_folding_only = value
-        }
-        if let Some(value) =
-            caps.document_symbol.as_ref().and_then(|it| it.hierarchical_document_symbol_support)
-        {
-            self.client_caps.hierarchical_symbols = value
-        }
-        if let Some(value) =
-            caps.code_action.as_ref().and_then(|it| Some(it.code_action_literal_support.is_some()))
-        {
-            self.client_caps.code_action_literals = value;
-        }
-        self.completion.allow_snippets(false);
-        if let Some(completion) = &caps.completion {
-            if let Some(completion_item) = &completion.completion_item {
-                if let Some(value) = completion_item.snippet_support {
-                    self.completion.allow_snippets(value);
+    pub fn update_caps(&mut self, caps: &ClientCapabilities) {
+        if let Some(doc_caps) = caps.text_document.as_ref() {
+            if let Some(value) = doc_caps.definition.as_ref().and_then(|it| it.link_support) {
+                self.client_caps.location_link = value;
+            }
+            if let Some(value) = doc_caps.folding_range.as_ref().and_then(|it| it.line_folding_only)
+            {
+                self.client_caps.line_folding_only = value
+            }
+            if let Some(value) = doc_caps
+                .document_symbol
+                .as_ref()
+                .and_then(|it| it.hierarchical_document_symbol_support)
+            {
+                self.client_caps.hierarchical_symbols = value
+            }
+            if let Some(value) = doc_caps
+                .code_action
+                .as_ref()
+                .and_then(|it| Some(it.code_action_literal_support.is_some()))
+            {
+                self.client_caps.code_action_literals = value;
+            }
+
+            self.completion.allow_snippets(false);
+            if let Some(completion) = &doc_caps.completion {
+                if let Some(completion_item) = &completion.completion_item {
+                    if let Some(value) = completion_item.snippet_support {
+                        self.completion.allow_snippets(value);
+                    }
                 }
             }
+        }
+
+        if let Some(window_caps) = caps.window.as_ref() {
+            if let Some(value) = window_caps.work_done_progress {
+                self.client_caps.work_done_progress = value;
+            }
+        }
+
+        self.assist.allow_snippets(false);
+        if let Some(experimental) = &caps.experimental {
+            let enable =
+                experimental.get("snippetTextEdit").and_then(|it| it.as_bool()) == Some(true);
+            self.assist.allow_snippets(enable);
         }
     }
 }

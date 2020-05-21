@@ -73,11 +73,13 @@ pub fn find_builtin_macro(
             krate: Some(krate),
             ast_id: Some(ast_id),
             kind: MacroDefKind::BuiltIn(kind),
+            local_inner: false,
         }),
         Either::Right(kind) => Some(MacroDefId {
             krate: Some(krate),
             ast_id: Some(ast_id),
             kind: MacroDefKind::BuiltInEager(kind),
+            local_inner: false,
         }),
     }
 }
@@ -358,7 +360,7 @@ fn env_expand(
     // However, we cannot use an empty string here, because for
     // `include!(concat!(env!("OUT_DIR"), "/foo.rs"))` will become
     // `include!("foo.rs"), which might go to infinite loop
-    let s = get_env_inner(db, arg_id, &key).unwrap_or_else(|| "__RA_UNIMPLEMENTATED__".to_string());
+    let s = get_env_inner(db, arg_id, &key).unwrap_or_else(|| "__RA_UNIMPLEMENTED__".to_string());
     let expanded = quote! { #s };
 
     Ok((expanded, FragmentKind::Expr))
@@ -406,6 +408,7 @@ mod tests {
                     krate: Some(CrateId(0)),
                     ast_id: Some(AstId::new(file_id.into(), ast_id_map.ast_id(&macro_calls[0]))),
                     kind: MacroDefKind::BuiltIn(expander),
+                    local_inner: false,
                 };
 
                 let loc = MacroCallLoc {
@@ -425,6 +428,7 @@ mod tests {
                     krate: Some(CrateId(0)),
                     ast_id: Some(AstId::new(file_id.into(), ast_id_map.ast_id(&macro_calls[0]))),
                     kind: MacroDefKind::BuiltInEager(expander),
+                    local_inner: false,
                 };
 
                 let args = macro_calls[1].token_tree().unwrap();
@@ -504,7 +508,7 @@ mod tests {
             "#,
         );
 
-        assert_eq!(expanded, "\"__RA_UNIMPLEMENTATED__\"");
+        assert_eq!(expanded, "\"__RA_UNIMPLEMENTED__\"");
     }
 
     #[test]

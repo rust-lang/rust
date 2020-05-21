@@ -1,12 +1,8 @@
 use ra_ide_db::RootDatabase;
-use ra_syntax::{
-    ast::{self, AstNode, NameOwner},
-    TextSize,
-};
-use stdx::format_to;
+use ra_syntax::ast::{self, AstNode, NameOwner};
+use test_utils::mark;
 
-use crate::{utils::FamousDefs, Assist, AssistCtx, AssistId};
-use test_utils::tested_by;
+use crate::{utils::FamousDefs, AssistContext, AssistId, Assists};
 
 // Assist add_from_impl_for_enum
 //
@@ -25,7 +21,7 @@ use test_utils::tested_by;
 //     }
 // }
 // ```
-pub(crate) fn add_from_impl_for_enum(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn add_from_impl_for_enum(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let variant = ctx.find_node_at_offset::<ast::EnumVariant>()?;
     let variant_name = variant.name()?;
     let enum_name = variant.parent_enum().name()?;
@@ -38,23 +34,23 @@ pub(crate) fn add_from_impl_for_enum(ctx: AssistCtx) -> Option<Assist> {
     }
     let field_type = field_list.fields().next()?.type_ref()?;
     let path = match field_type {
-        ast::TypeRef::PathType(p) => p,
+        ast::TypeRef::PathType(it) => it,
         _ => return None,
     };
 
-    if existing_from_impl(ctx.sema, &variant).is_some() {
-        tested_by!(test_add_from_impl_already_exists);
+    if existing_from_impl(&ctx.sema, &variant).is_some() {
+        mark::hit!(test_add_from_impl_already_exists);
         return None;
     }
 
-    ctx.add_assist(
+    let target = variant.syntax().text_range();
+    acc.add(
         AssistId("add_from_impl_for_enum"),
         "Add From impl for this enum variant",
+        target,
         |edit| {
             let start_offset = variant.parent_enum().syntax().text_range().end();
-            let mut buf = String::new();
-            format_to!(
-                buf,
+            let buf = format!(
                 r#"
 
 impl From<{0}> for {1} {{
@@ -67,7 +63,6 @@ impl From<{0}> for {1} {{
                 variant_name
             );
             edit.insert(start_offset, buf);
-            edit.set_cursor(start_offset + TextSize::of("\n\n"));
         },
     )
 }
@@ -95,10 +90,11 @@ fn existing_from_impl(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use test_utils::mark;
 
-    use crate::helpers::{check_assist, check_assist_not_applicable};
-    use test_utils::covers;
+    use crate::tests::{check_assist, check_assist_not_applicable};
+
+    use super::*;
 
     #[test]
     fn test_add_from_impl_for_enum() {
@@ -107,7 +103,7 @@ mod tests {
             "enum A { <|>One(u32) }",
             r#"enum A { One(u32) }
 
-<|>impl From<u32> for A {
+impl From<u32> for A {
     fn from(v: u32) -> Self {
         A::One(v)
     }
@@ -119,10 +115,10 @@ mod tests {
     fn test_add_from_impl_for_enum_complicated_path() {
         check_assist(
             add_from_impl_for_enum,
-            "enum A { <|>One(foo::bar::baz::Boo) }",
+            r#"enum A { <|>One(foo::bar::baz::Boo) }"#,
             r#"enum A { One(foo::bar::baz::Boo) }
 
-<|>impl From<foo::bar::baz::Boo> for A {
+impl From<foo::bar::baz::Boo> for A {
     fn from(v: foo::bar::baz::Boo) -> Self {
         A::One(v)
     }
@@ -153,7 +149,7 @@ mod tests {
 
     #[test]
     fn test_add_from_impl_already_exists() {
-        covers!(test_add_from_impl_already_exists);
+        mark::check!(test_add_from_impl_already_exists);
         check_not_applicable(
             r#"
 enum A { <|>One(u32), }
@@ -184,7 +180,7 @@ pub trait From<T> {
 }"#,
             r#"enum A { One(u32), Two(String), }
 
-<|>impl From<u32> for A {
+impl From<u32> for A {
     fn from(v: u32) -> Self {
         A::One(v)
     }

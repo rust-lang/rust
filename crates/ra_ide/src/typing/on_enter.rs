@@ -38,17 +38,15 @@ pub(crate) fn on_enter(db: &RootDatabase, position: FilePosition) -> Option<Sour
     }
 
     let indent = node_indent(&file, comment.syntax())?;
-    let inserted = format!("\n{}{} ", indent, prefix);
-    let cursor_position = position.offset + TextSize::of(&inserted);
+    let inserted = format!("\n{}{} $0", indent, prefix);
     let edit = TextEdit::insert(position.offset, inserted);
 
-    Some(
-        SourceChange::source_file_edit(
-            "on enter",
-            SourceFileEdit { edit, file_id: position.file_id },
-        )
-        .with_cursor(FilePosition { offset: cursor_position, file_id: position.file_id }),
-    )
+    let mut res = SourceChange::source_file_edit(
+        "On enter",
+        SourceFileEdit { edit, file_id: position.file_id },
+    );
+    res.is_snippet = true;
+    Some(res)
 }
 
 fn followed_by_comment(comment: &ast::Comment) -> bool {
@@ -84,7 +82,7 @@ fn node_indent(file: &SourceFile, token: &SyntaxToken) -> Option<SmolStr> {
 
 #[cfg(test)]
 mod tests {
-    use test_utils::{add_cursor, assert_eq_text, extract_offset};
+    use test_utils::{assert_eq_text, extract_offset};
 
     use crate::mock_analysis::single_file;
 
@@ -96,8 +94,8 @@ mod tests {
         let result = analysis.on_enter(FilePosition { offset, file_id }).unwrap()?;
 
         assert_eq!(result.source_file_edits.len(), 1);
-        let actual = result.source_file_edits[0].edit.apply(&before);
-        let actual = add_cursor(&actual, result.cursor_position.unwrap().offset);
+        let mut actual = before.to_string();
+        result.source_file_edits[0].edit.apply(&mut actual);
         Some(actual)
     }
 
@@ -120,7 +118,7 @@ fn foo() {
 ",
             r"
 /// Some docs
-/// <|>
+/// $0
 fn foo() {
 }
 ",
@@ -136,7 +134,7 @@ impl S {
             r"
 impl S {
     /// Some
-    /// <|> docs.
+    /// $0 docs.
     fn foo() {}
 }
 ",
@@ -150,7 +148,7 @@ fn foo() {
 ",
             r"
 ///
-/// <|> Some docs
+/// $0 Some docs
 fn foo() {
 }
 ",
@@ -174,7 +172,7 @@ fn main() {
             r"
 fn main() {
     // Fix
-    // <|> me
+    // $0 me
     let x = 1 + 1;
 }
 ",
@@ -194,7 +192,7 @@ fn main() {
             r"
 fn main() {
     // Fix
-    // <|>
+    // $0
     // me
     let x = 1 + 1;
 }

@@ -1,9 +1,10 @@
 use insta::assert_snapshot;
-
 use ra_db::fixture::WithFixture;
+use test_utils::mark;
+
+use crate::test_db::TestDB;
 
 use super::{infer, infer_with_mismatches, type_at, type_at_pos};
-use crate::test_db::TestDB;
 
 #[test]
 fn infer_await() {
@@ -301,7 +302,7 @@ fn test() {
 
 #[test]
 fn trait_default_method_self_bound_implements_trait() {
-    test_utils::covers!(trait_self_implements_self);
+    mark::check!(trait_self_implements_self);
     assert_snapshot!(
         infer(r#"
 trait Trait {
@@ -324,7 +325,6 @@ trait Trait {
 
 #[test]
 fn trait_default_method_self_bound_implements_super_trait() {
-    test_utils::covers!(trait_self_implements_self);
     assert_snapshot!(
         infer(r#"
 trait SuperTrait {
@@ -1617,6 +1617,138 @@ fn test<F: FnOnce(u32, u64) -> u128>(f: F) {
 }
 
 #[test]
+fn fn_ptr_and_item() {
+    assert_snapshot!(
+        infer(r#"
+#[lang="fn_once"]
+trait FnOnce<Args> {
+    type Output;
+
+    fn call_once(self, args: Args) -> Self::Output;
+}
+
+trait Foo<T> {
+    fn foo(&self) -> T;
+}
+
+struct Bar<T>(T);
+
+impl<A1, R, F: FnOnce(A1) -> R> Foo<(A1, R)> for Bar<F> {
+    fn foo(&self) -> (A1, R) {}
+}
+
+enum Opt<T> { None, Some(T) }
+impl<T> Opt<T> {
+    fn map<U, F: FnOnce(T) -> U>(self, f: F) -> Opt<U> {}
+}
+
+fn test() {
+    let bar: Bar<fn(u8) -> u32>;
+    bar.foo();
+
+    let opt: Opt<u8>;
+    let f: fn(u8) -> u32;
+    opt.map(f);
+}
+"#),
+        @r###"
+75..79 'self': Self
+81..85 'args': Args
+140..144 'self': &Self
+244..248 'self': &Bar<F>
+261..263 '{}': ()
+347..351 'self': Opt<T>
+353..354 'f': F
+369..371 '{}': ()
+385..501 '{     ...(f); }': ()
+395..398 'bar': Bar<fn(u8) -> u32>
+424..427 'bar': Bar<fn(u8) -> u32>
+424..433 'bar.foo()': {unknown}
+444..447 'opt': Opt<u8>
+466..467 'f': fn(u8) -> u32
+488..491 'opt': Opt<u8>
+488..498 'opt.map(f)': Opt<FnOnce::Output<fn(u8) -> u32, (u8,)>>
+496..497 'f': fn(u8) -> u32
+"###
+    );
+}
+
+#[test]
+fn fn_trait_deref_with_ty_default() {
+    assert_snapshot!(
+        infer(r#"
+#[lang = "deref"]
+trait Deref {
+    type Target;
+
+    fn deref(&self) -> &Self::Target;
+}
+
+#[lang="fn_once"]
+trait FnOnce<Args> {
+    type Output;
+
+    fn call_once(self, args: Args) -> Self::Output;
+}
+
+struct Foo;
+
+impl Foo {
+    fn foo(&self) -> usize {}
+}
+
+struct Lazy<T, F = fn() -> T>(F);
+
+impl<T, F> Lazy<T, F> {
+    pub fn new(f: F) -> Lazy<T, F> {}
+}
+
+impl<T, F: FnOnce() -> T> Deref for Lazy<T, F> {
+    type Target = T;
+}
+
+fn test() {
+    let lazy1: Lazy<Foo, _> = Lazy::new(|| Foo);
+    let r1 = lazy1.foo();
+
+    fn make_foo_fn() -> Foo {}
+    let make_foo_fn_ptr: fn() -> Foo = make_foo_fn;
+    let lazy2: Lazy<Foo, _> = Lazy::new(make_foo_fn_ptr);
+    let r2 = lazy2.foo();
+}
+"#),
+        @r###"
+65..69 'self': &Self
+166..170 'self': Self
+172..176 'args': Args
+240..244 'self': &Foo
+255..257 '{}': ()
+335..336 'f': F
+355..357 '{}': ()
+444..690 '{     ...o(); }': ()
+454..459 'lazy1': Lazy<Foo, fn() -> T>
+476..485 'Lazy::new': fn new<Foo, fn() -> T>(fn() -> T) -> Lazy<Foo, fn() -> T>
+476..493 'Lazy::...| Foo)': Lazy<Foo, fn() -> T>
+486..492 '|| Foo': || -> T
+489..492 'Foo': Foo
+503..505 'r1': {unknown}
+508..513 'lazy1': Lazy<Foo, fn() -> T>
+508..519 'lazy1.foo()': {unknown}
+561..576 'make_foo_fn_ptr': fn() -> Foo
+592..603 'make_foo_fn': fn make_foo_fn() -> Foo
+613..618 'lazy2': Lazy<Foo, fn() -> T>
+635..644 'Lazy::new': fn new<Foo, fn() -> T>(fn() -> T) -> Lazy<Foo, fn() -> T>
+635..661 'Lazy::...n_ptr)': Lazy<Foo, fn() -> T>
+645..660 'make_foo_fn_ptr': fn() -> Foo
+671..673 'r2': {unknown}
+676..681 'lazy2': Lazy<Foo, fn() -> T>
+676..687 'lazy2.foo()': {unknown}
+550..552 '{}': ()
+"###
+    );
+}
+
+#[test]
 fn closure_1() {
     assert_snapshot!(
         infer(r#"
@@ -2055,7 +2187,7 @@ fn test<I: Iterator<Item: Iterator<Item = u32>>>() {
 #[test]
 fn proc_macro_server_types() {
     assert_snapshot!(
-        infer_with_mismatches(r#"
+        infer(r#"
 macro_rules! with_api {
     ($S:ident, $self:ident, $m:ident) => {
         $m! {
@@ -2069,9 +2201,9 @@ macro_rules! with_api {
 }
 macro_rules! associated_item {
     (type TokenStream) =>
-        (type TokenStream: 'static + Clone;);
+        (type TokenStream: 'static;);
     (type Group) =>
-        (type Group: 'static + Clone;);
+        (type Group: 'static;);
     ($($item:tt)*) => ($($item)*;)
 }
 macro_rules! declare_server_traits {
@@ -2083,21 +2215,23 @@ macro_rules! declare_server_traits {
         }
 
         $(pub trait $name: Types {
-            $(associated_item!(fn $method(&mut self, $($arg: $arg_ty),*) $(-> $ret_ty)?);)*
+            $(associated_item!(fn $method($($arg: $arg_ty),*) $(-> $ret_ty)?);)*
         })*
 
         pub trait Server: Types $(+ $name)* {}
         impl<S: Types $(+ $name)*> Server for S {}
     }
 }
+
 with_api!(Self, self_, declare_server_traits);
-struct Group {}
-struct TokenStream {}
+struct G {}
+struct T {}
 struct Rustc;
 impl Types for Rustc {
-    type TokenStream = TokenStream;
-    type Group = Group;
+    type TokenStream = T;
+    type Group = G;
 }
+
 fn make<T>() -> T { loop {} }
 impl TokenStream for Rustc {
     fn new() -> Self::TokenStream {
@@ -2105,17 +2239,17 @@ impl TokenStream for Rustc {
         make()
     }
 }
-"#, true),
+"#),
         @r###"
-    1115..1126 '{ loop {} }': T
-    1117..1124 'loop {}': !
-    1122..1124 '{}': ()
-    1190..1253 '{     ...     }': {unknown}
-    1204..1209 'group': {unknown}
-    1225..1229 'make': fn make<{unknown}>() -> {unknown}
-    1225..1231 'make()': {unknown}
-    1241..1245 'make': fn make<{unknown}>() -> {unknown}
-    1241..1247 'make()': {unknown}
+    1062..1073 '{ loop {} }': T
+    1064..1071 'loop {}': !
+    1069..1071 '{}': ()
+    1137..1200 '{     ...     }': T
+    1151..1156 'group': G
+    1172..1176 'make': fn make<G>() -> G
+    1172..1178 'make()': G
+    1188..1192 'make': fn make<T>() -> T
+    1188..1194 'make()': T
     "###
     );
 }

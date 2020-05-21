@@ -1,12 +1,20 @@
+use hir::HirDisplay;
+use ra_db::FileId;
 use ra_syntax::{
-    ast::{self, AstNode},
+    ast::{
+        self,
+        edit::{AstNodeEdit, IndentLevel},
+        make, ArgListOwner, AstNode, ModuleItemOwner,
+    },
     SyntaxKind, SyntaxNode, TextSize,
 };
-
-use crate::{Assist, AssistCtx, AssistFile, AssistId};
-use ast::{edit::IndentLevel, ArgListOwner, ModuleItemOwner};
-use hir::HirDisplay;
 use rustc_hash::{FxHashMap, FxHashSet};
+
+use crate::{
+    assist_config::SnippetCap,
+    utils::{render_snippet, Cursor},
+    AssistContext, AssistId, Assists,
+};
 
 // Assist: add_function
 //
@@ -29,11 +37,11 @@ use rustc_hash::{FxHashMap, FxHashSet};
 // }
 //
 // fn bar(arg: &str, baz: Baz) {
-//     todo!()
+//     ${0:todo!()}
 // }
 //
 // ```
-pub(crate) fn add_function(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn add_function(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let path_expr: ast::PathExpr = ctx.find_node_at_offset()?;
     let call = path_expr.syntax().parent().and_then(ast::CallExpr::cast)?;
     let path = path_expr.path()?;
@@ -43,36 +51,49 @@ pub(crate) fn add_function(ctx: AssistCtx) -> Option<Assist> {
         return None;
     }
 
-    let target_module = if let Some(qualifier) = path.qualifier() {
-        if let Some(hir::PathResolution::Def(hir::ModuleDef::Module(module))) =
-            ctx.sema.resolve_path(&qualifier)
-        {
-            Some(module.definition_source(ctx.sema.db))
-        } else {
-            return None;
-        }
-    } else {
-        None
+    let target_module = match path.qualifier() {
+        Some(qualifier) => match ctx.sema.resolve_path(&qualifier) {
+            Some(hir::PathResolution::Def(hir::ModuleDef::Module(module))) => Some(module),
+            _ => return None,
+        },
+        None => None,
     };
 
     let function_builder = FunctionBuilder::from_call(&ctx, &call, &path, target_module)?;
 
-    ctx.add_assist(AssistId("add_function"), "Add function", |edit| {
-        edit.target(call.syntax().text_range());
-
-        if let Some(function_template) = function_builder.render() {
-            edit.set_file(function_template.file);
-            edit.set_cursor(function_template.cursor_offset);
-            edit.insert(function_template.insert_offset, function_template.fn_def.to_string());
+    let target = call.syntax().text_range();
+    acc.add(AssistId("add_function"), "Add function", target, |builder| {
+        let function_template = function_builder.render();
+        builder.set_file(function_template.file);
+        let new_fn = function_template.to_string(ctx.config.snippet_cap);
+        match ctx.config.snippet_cap {
+            Some(cap) => builder.insert_snippet(cap, function_template.insert_offset, new_fn),
+            None => builder.insert(function_template.insert_offset, new_fn),
         }
     })
 }
 
 struct FunctionTemplate {
     insert_offset: TextSize,
-    cursor_offset: TextSize,
-    fn_def: ast::SourceFile,
-    file: AssistFile,
+    placeholder_expr: ast::MacroCall,
+    leading_ws: String,
+    fn_def: ast::FnDef,
+    trailing_ws: String,
+    file: FileId,
+}
+
+impl FunctionTemplate {
+    fn to_string(&self, cap: Option<SnippetCap>) -> String {
+        let f = match cap {
+            Some(cap) => render_snippet(
+                cap,
+                self.fn_def.syntax(),
+                Cursor::Replace(self.placeholder_expr.syntax()),
+            ),
+            None => self.fn_def.to_string(),
+        };
+        format!("{}{}{}", self.leading_ws, f, self.trailing_ws)
+    }
 }
 
 struct FunctionBuilder {
@@ -80,68 +101,73 @@ struct FunctionBuilder {
     fn_name: ast::Name,
     type_params: Option<ast::TypeParamList>,
     params: ast::ParamList,
-    file: AssistFile,
+    file: FileId,
     needs_pub: bool,
 }
 
 impl FunctionBuilder {
-    /// Prepares a generated function that matches `call` in `generate_in`
-    /// (or as close to `call` as possible, if `generate_in` is `None`)
+    /// Prepares a generated function that matches `call`.
+    /// The function is generated in `target_module` or next to `call`
     fn from_call(
-        ctx: &AssistCtx,
+        ctx: &AssistContext,
         call: &ast::CallExpr,
         path: &ast::Path,
-        target_module: Option<hir::InFile<hir::ModuleSource>>,
+        target_module: Option<hir::Module>,
     ) -> Option<Self> {
-        let needs_pub = target_module.is_some();
-        let mut file = AssistFile::default();
-        let target = if let Some(target_module) = target_module {
-            let (in_file, target) = next_space_for_fn_in_module(ctx.sema.db, target_module)?;
-            file = in_file;
-            target
-        } else {
-            next_space_for_fn_after_call_site(&call)?
+        let mut file = ctx.frange.file_id;
+        let target = match &target_module {
+            Some(target_module) => {
+                let module_source = target_module.definition_source(ctx.db);
+                let (in_file, target) = next_space_for_fn_in_module(ctx.sema.db, &module_source)?;
+                file = in_file;
+                target
+            }
+            None => next_space_for_fn_after_call_site(&call)?,
         };
+        let needs_pub = target_module.is_some();
+        let target_module = target_module.or_else(|| ctx.sema.scope(target.syntax()).module())?;
         let fn_name = fn_name(&path)?;
-        let (type_params, params) = fn_args(ctx, &call)?;
+        let (type_params, params) = fn_args(ctx, target_module, &call)?;
+
         Some(Self { target, fn_name, type_params, params, file, needs_pub })
     }
 
-    fn render(self) -> Option<FunctionTemplate> {
-        let placeholder_expr = ast::make::expr_todo();
-        let fn_body = ast::make::block_expr(vec![], Some(placeholder_expr));
-        let mut fn_def = ast::make::fn_def(self.fn_name, self.type_params, self.params, fn_body);
-        if self.needs_pub {
-            fn_def = ast::make::add_pub_crate_modifier(fn_def);
-        }
+    fn render(self) -> FunctionTemplate {
+        let placeholder_expr = make::expr_todo();
+        let fn_body = make::block_expr(vec![], Some(placeholder_expr));
+        let visibility = if self.needs_pub { Some(make::visibility_pub_crate()) } else { None };
+        let mut fn_def =
+            make::fn_def(visibility, self.fn_name, self.type_params, self.params, fn_body);
+        let leading_ws;
+        let trailing_ws;
 
-        let (fn_def, insert_offset) = match self.target {
+        let insert_offset = match self.target {
             GeneratedFunctionTarget::BehindItem(it) => {
-                let with_leading_blank_line = ast::make::add_leading_newlines(2, fn_def);
-                let indented = IndentLevel::from_node(&it).increase_indent(with_leading_blank_line);
-                (indented, it.text_range().end())
+                let indent = IndentLevel::from_node(&it);
+                leading_ws = format!("\n\n{}", indent);
+                fn_def = fn_def.indent(indent);
+                trailing_ws = String::new();
+                it.text_range().end()
             }
             GeneratedFunctionTarget::InEmptyItemList(it) => {
-                let indent_once = IndentLevel(1);
                 let indent = IndentLevel::from_node(it.syntax());
-
-                let fn_def = ast::make::add_leading_newlines(1, fn_def);
-                let fn_def = indent_once.increase_indent(fn_def);
-                let fn_def = ast::make::add_trailing_newlines(1, fn_def);
-                let fn_def = indent.increase_indent(fn_def);
-                (fn_def, it.syntax().text_range().start() + TextSize::of('{'))
+                leading_ws = format!("\n{}", indent + 1);
+                fn_def = fn_def.indent(indent + 1);
+                trailing_ws = format!("\n{}", indent);
+                it.syntax().text_range().start() + TextSize::of('{')
             }
         };
 
-        let cursor_offset_from_fn_start = fn_def
-            .syntax()
-            .descendants()
-            .find_map(ast::MacroCall::cast)?
-            .syntax()
-            .text_range()
-            .start();
-        let cursor_offset = insert_offset + cursor_offset_from_fn_start;
-        Some(FunctionTemplate { insert_offset, cursor_offset, fn_def, file: self.file })
+        let placeholder_expr =
+            fn_def.syntax().descendants().find_map(ast::MacroCall::cast).unwrap();
+        FunctionTemplate {
+            insert_offset,
+            placeholder_expr,
+            leading_ws,
+            fn_def,
+            trailing_ws,
+            file: self.file,
+        }
     }
 }
 
@@ -150,32 +176,41 @@ enum GeneratedFunctionTarget {
     InEmptyItemList(ast::ItemList),
 }
 
+impl GeneratedFunctionTarget {
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            GeneratedFunctionTarget::BehindItem(it) => it,
+            GeneratedFunctionTarget::InEmptyItemList(it) => it.syntax(),
+        }
+    }
+}
+
 fn fn_name(call: &ast::Path) -> Option<ast::Name> {
     let name = call.segment()?.syntax().to_string();
-    Some(ast::make::name(&name))
+    Some(make::name(&name))
 }
 
 /// Computes the type variables and arguments required for the generated function
 fn fn_args(
-    ctx: &AssistCtx,
+    ctx: &AssistContext,
+    target_module: hir::Module,
     call: &ast::CallExpr,
 ) -> Option<(Option<ast::TypeParamList>, ast::ParamList)> {
     let mut arg_names = Vec::new();
     let mut arg_types = Vec::new();
     for arg in call.arg_list()?.args() {
-        let arg_name = match fn_arg_name(&arg) {
+        arg_names.push(match fn_arg_name(&arg) {
             Some(name) => name,
             None => String::from("arg"),
-        };
-        arg_names.push(arg_name);
-        arg_types.push(match fn_arg_type(ctx, &arg) {
+        });
+        arg_types.push(match fn_arg_type(ctx, target_module, &arg) {
             Some(ty) => ty,
             None => String::from("()"),
         });
     }
     deduplicate_arg_names(&mut arg_names);
-    let params = arg_names.into_iter().zip(arg_types).map(|(name, ty)| ast::make::param(name, ty));
-    Some((None, ast::make::param_list(params)))
+    let params = arg_names.into_iter().zip(arg_types).map(|(name, ty)| make::param(name, ty));
+    Some((None, make::param_list(params)))
 }
 
 /// Makes duplicate argument names unique by appending incrementing numbers.
@@ -224,12 +259,21 @@ fn fn_arg_name(fn_arg: &ast::Expr) -> Option<String> {
     }
 }
 
-fn fn_arg_type(ctx: &AssistCtx, fn_arg: &ast::Expr) -> Option<String> {
+fn fn_arg_type(
+    ctx: &AssistContext,
+    target_module: hir::Module,
+    fn_arg: &ast::Expr,
+) -> Option<String> {
     let ty = ctx.sema.type_of_expr(fn_arg)?;
     if ty.is_unknown() {
         return None;
     }
-    Some(ty.display(ctx.sema.db).to_string())
+
+    if let Ok(rendered) = ty.display_source_code(ctx.db, target_module.into()) {
+        Some(rendered)
+    } else {
+        None
+    }
 }
 
 /// Returns the position inside the current mod or file
@@ -258,11 +302,10 @@ fn next_space_for_fn_after_call_site(expr: &ast::CallExpr) -> Option<GeneratedFu
 
 fn next_space_for_fn_in_module(
     db: &dyn hir::db::AstDatabase,
-    module: hir::InFile<hir::ModuleSource>,
-) -> Option<(AssistFile, GeneratedFunctionTarget)> {
-    let file = module.file_id.original_file(db);
-    let assist_file = AssistFile::TargetFile(file);
-    let assist_item = match module.value {
+    module_source: &hir::InFile<hir::ModuleSource>,
+) -> Option<(FileId, GeneratedFunctionTarget)> {
+    let file = module_source.file_id.original_file(db);
+    let assist_item = match &module_source.value {
         hir::ModuleSource::SourceFile(it) => {
             if let Some(last_item) = it.items().last() {
                 GeneratedFunctionTarget::BehindItem(last_item.syntax().clone())
@@ -278,12 +321,12 @@ fn next_space_for_fn_in_module(
             }
         }
     };
-    Some((assist_file, assist_item))
+    Some((file, assist_item))
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::helpers::{check_assist, check_assist_not_applicable};
+    use crate::tests::{check_assist, check_assist_not_applicable};
 
     use super::*;
 
@@ -302,7 +345,7 @@ fn foo() {
 }
 
 fn bar() {
-    <|>todo!()
+    ${0:todo!()}
 }
 ",
         )
@@ -329,7 +372,7 @@ impl Foo {
 }
 
 fn bar() {
-    <|>todo!()
+    ${0:todo!()}
 }
 ",
         )
@@ -353,7 +396,7 @@ fn foo1() {
 }
 
 fn bar() {
-    <|>todo!()
+    ${0:todo!()}
 }
 
 fn foo2() {}
@@ -379,7 +422,7 @@ mod baz {
     }
 
     fn bar() {
-        <|>todo!()
+        ${0:todo!()}
     }
 }
 ",
@@ -405,7 +448,7 @@ fn foo() {
 }
 
 fn bar(baz: Baz) {
-    <|>todo!()
+    ${0:todo!()}
 }
 ",
         );
@@ -438,7 +481,7 @@ impl Baz {
 }
 
 fn bar(baz: Baz) {
-    <|>todo!()
+    ${0:todo!()}
 }
 ",
         )
@@ -459,7 +502,7 @@ fn foo() {
 }
 
 fn bar(arg: &str) {
-    <|>todo!()
+    ${0:todo!()}
 }
 "#,
         )
@@ -480,7 +523,7 @@ fn foo() {
 }
 
 fn bar(arg: char) {
-    <|>todo!()
+    ${0:todo!()}
 }
 "#,
         )
@@ -501,7 +544,7 @@ fn foo() {
 }
 
 fn bar(arg: i32) {
-    <|>todo!()
+    ${0:todo!()}
 }
 ",
         )
@@ -522,7 +565,7 @@ fn foo() {
 }
 
 fn bar(arg: u8) {
-    <|>todo!()
+    ${0:todo!()}
 }
 ",
         )
@@ -547,7 +590,7 @@ fn foo() {
 }
 
 fn bar(x: u8) {
-    <|>todo!()
+    ${0:todo!()}
 }
 ",
         )
@@ -570,7 +613,7 @@ fn foo() {
 }
 
 fn bar(worble: ()) {
-    <|>todo!()
+    ${0:todo!()}
 }
 ",
         )
@@ -599,15 +642,40 @@ fn baz() {
 }
 
 fn bar(foo: impl Foo) {
-    <|>todo!()
+    ${0:todo!()}
 }
 ",
         )
     }
 
     #[test]
-    #[ignore]
-    // FIXME print paths properly to make this test pass
+    fn borrowed_arg() {
+        check_assist(
+            add_function,
+            r"
+struct Baz;
+fn baz() -> Baz { todo!() }
+
+fn foo() {
+    bar<|>(&baz())
+}
+",
+            r"
+struct Baz;
+fn baz() -> Baz { todo!() }
+
+fn foo() {
+    bar(&baz())
+}
+
+fn bar(baz: &Baz) {
+    ${0:todo!()}
+}
+",
+        )
+    }
+
+    #[test]
     fn add_function_with_qualified_path_arg() {
         check_assist(
             add_function,
@@ -616,10 +684,8 @@ mod Baz {
     pub struct Bof;
     pub fn baz() -> Bof { Bof }
 }
-mod Foo {
-    fn foo() {
-        <|>bar(super::Baz::baz())
-    }
+fn foo() {
+    <|>bar(Baz::baz())
 }
 ",
             r"
@@ -627,14 +693,12 @@ mod Baz {
     pub struct Bof;
     pub fn baz() -> Bof { Bof }
 }
-mod Foo {
-    fn foo() {
-        bar(super::Baz::baz())
-    }
+fn foo() {
+    bar(Baz::baz())
+}
 
-    fn bar(baz: super::Baz::Bof) {
-        <|>todo!()
-    }
+fn bar(baz: Baz::Bof) {
+    ${0:todo!()}
 }
 ",
         )
@@ -657,7 +721,7 @@ fn foo<T>(t: T) {
 }
 
 fn bar<T>(t: T) {
-    <|>todo!()
+    ${0:todo!()}
 }
 ",
         )
@@ -688,7 +752,7 @@ fn foo() {
 }
 
 fn bar(arg: fn() -> Baz) {
-    <|>todo!()
+    ${0:todo!()}
 }
 ",
         )
@@ -713,7 +777,7 @@ fn foo() {
 }
 
 fn bar(closure: impl Fn(i64) -> i64) {
-    <|>todo!()
+    ${0:todo!()}
 }
 ",
         )
@@ -734,7 +798,7 @@ fn foo() {
 }
 
 fn bar(baz: ()) {
-    <|>todo!()
+    ${0:todo!()}
 }
 ",
         )
@@ -759,7 +823,7 @@ fn foo() {
 }
 
 fn bar(baz_1: Baz, baz_2: Baz) {
-    <|>todo!()
+    ${0:todo!()}
 }
 ",
         )
@@ -784,7 +848,7 @@ fn foo() {
 }
 
 fn bar(baz_1: Baz, baz_2: Baz, arg_1: &str, arg_2: &str) {
-    <|>todo!()
+    ${0:todo!()}
 }
 "#,
         )
@@ -804,12 +868,46 @@ fn foo() {
             r"
 mod bar {
     pub(crate) fn my_fn() {
-        <|>todo!()
+        ${0:todo!()}
     }
 }
 
 fn foo() {
     bar::my_fn()
+}
+",
+        )
+    }
+
+    #[test]
+    #[ignore]
+    // Ignored until local imports are supported.
+    // See https://github.com/rust-analyzer/rust-analyzer/issues/1165
+    fn qualified_path_uses_correct_scope() {
+        check_assist(
+            add_function,
+            "
+mod foo {
+    pub struct Foo;
+}
+fn bar() {
+    use foo::Foo;
+    let foo = Foo;
+    baz<|>(foo)
+}
+",
+            "
+mod foo {
+    pub struct Foo;
+}
+fn bar() {
+    use foo::Foo;
+    let foo = Foo;
+    baz(foo)
+}
+
+fn baz(foo: foo::Foo) {
+    ${0:todo!()}
 }
 ",
         )
@@ -833,7 +931,7 @@ mod bar {
     fn something_else() {}
 
     pub(crate) fn my_fn() {
-        <|>todo!()
+        ${0:todo!()}
     }
 }
 
@@ -861,7 +959,7 @@ fn foo() {
 mod bar {
     mod baz {
         pub(crate) fn my_fn() {
-            <|>todo!()
+            ${0:todo!()}
         }
     }
 }
@@ -890,7 +988,7 @@ fn main() {
 
 
 pub(crate) fn bar() {
-    <|>todo!()
+    ${0:todo!()}
 }",
         )
     }
@@ -923,21 +1021,6 @@ fn foo() {
 
 fn bar(baz: ()) {}
 ",
-        )
-    }
-
-    #[test]
-    fn add_function_not_applicable_if_function_path_not_singleton() {
-        // In the future this assist could be extended to generate functions
-        // if the path is in the same crate (or even the same workspace).
-        // For the beginning, I think this is fine.
-        check_assist_not_applicable(
-            add_function,
-            r"
-fn foo() {
-    other_crate::bar<|>();
-}
-        ",
         )
     }
 

@@ -88,7 +88,7 @@ fn fold_kind(kind: SyntaxKind) -> Option<FoldKind> {
         | ITEM_LIST
         | EXTERN_ITEM_LIST
         | USE_TREE_LIST
-        | BLOCK
+        | BLOCK_EXPR
         | MATCH_ARM_LIST
         | ENUM_VARIANT_LIST
         | TOKEN_TREE => Some(FoldKind::Block),

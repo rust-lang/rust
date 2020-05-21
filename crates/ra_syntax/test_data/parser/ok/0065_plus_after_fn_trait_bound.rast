@@ -55,7 +55,6 @@ SOURCE_FILE@0..40
                     IDENT@32..36 "Send"
     WHITESPACE@36..37 " "
     BLOCK_EXPR@37..39
-      BLOCK@37..39
-        L_CURLY@37..38 "{"
-        R_CURLY@38..39 "}"
+      L_CURLY@37..38 "{"
+      R_CURLY@38..39 "}"
   WHITESPACE@39..40 "\n"

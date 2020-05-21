@@ -9,7 +9,7 @@ use ra_syntax::{
     SyntaxKind::*,
     SyntaxNode, SyntaxToken, TextRange, TextSize,
 };
-use ra_text_edit::AtomTextEdit;
+use ra_text_edit::Indel;
 
 use crate::{call_info::ActiveParameter, completion::CompletionConfig, FilePosition};
 
@@ -34,7 +34,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) record_pat_syntax: Option<ast::RecordPat>,
     pub(super) record_field_syntax: Option<ast::RecordField>,
     pub(super) impl_def: Option<ast::ImplDef>,
-    /// FIXME: `ActiveParameter` is string-based, which is very wrong
+    /// FIXME: `ActiveParameter` is string-based, which is very very wrong
     pub(super) active_parameter: Option<ActiveParameter>,
     pub(super) is_param: bool,
     /// If a name-binding or reference to a const in a pattern.
@@ -58,7 +58,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) is_macro_call: bool,
     pub(super) is_path_type: bool,
     pub(super) has_type_args: bool,
-    pub(super) is_attribute: bool,
+    pub(super) attribute_under_caret: Option<ast::Attr>,
 }
 
 impl<'a> CompletionContext<'a> {
@@ -76,7 +76,7 @@ impl<'a> CompletionContext<'a> {
         // actual completion.
         let file_with_fake_ident = {
             let parse = db.parse(position.file_id);
-            let edit = AtomTextEdit::insert(position.offset, "intellijRulezz".to_string());
+            let edit = Indel::insert(position.offset, "intellijRulezz".to_string());
             parse.reparse(&edit).tree()
         };
         let fake_ident_token =
@@ -116,7 +116,7 @@ impl<'a> CompletionContext<'a> {
             is_path_type: false,
             has_type_args: false,
             dot_receiver_is_ambiguous_float_literal: false,
-            is_attribute: false,
+            attribute_under_caret: None,
         };
 
         let mut original_file = original_file.syntax().clone();
@@ -200,6 +200,7 @@ impl<'a> CompletionContext<'a> {
                 Some(ty)
             })
             .flatten();
+        self.attribute_under_caret = find_node_at_offset(&file_with_fake_ident, offset);
 
         // First, let's try to complete a reference to some declaration.
         if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(&file_with_fake_ident, offset) {
@@ -318,7 +319,6 @@ impl<'a> CompletionContext<'a> {
                 .and_then(|it| it.syntax().parent().and_then(ast::CallExpr::cast))
                 .is_some();
             self.is_macro_call = path.syntax().parent().and_then(ast::MacroCall::cast).is_some();
-            self.is_attribute = path.syntax().parent().and_then(ast::Attr::cast).is_some();
 
             self.is_path_type = path.syntax().parent().and_then(ast::PathType::cast).is_some();
             self.has_type_args = segment.type_arg_list().is_some();
@@ -344,7 +344,7 @@ impl<'a> CompletionContext<'a> {
                                 stmt.syntax().text_range() == name_ref.syntax().text_range(),
                             );
                         }
-                        if let Some(block) = ast::Block::cast(node) {
+                        if let Some(block) = ast::BlockExpr::cast(node) {
                             return Some(
                                 block.expr().map(|e| e.syntax().text_range())
                                     == Some(name_ref.syntax().text_range()),

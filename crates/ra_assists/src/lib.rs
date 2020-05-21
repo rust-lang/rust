@@ -10,119 +10,113 @@ macro_rules! eprintln {
     ($($tt:tt)*) => { stdx::eprintln!($($tt)*) };
 }
 
-mod assist_ctx;
-mod marks;
+mod assist_config;
+mod assist_context;
 #[cfg(test)]
-mod doc_tests;
+mod tests;
 pub mod utils;
 pub mod ast_transform;
 
-use ra_db::{FileId, FileRange};
-use ra_ide_db::RootDatabase;
-use ra_syntax::{TextRange, TextSize};
-use ra_text_edit::TextEdit;
-
-pub(crate) use crate::assist_ctx::{Assist, AssistCtx, AssistHandler};
 use hir::Semantics;
+use ra_db::FileRange;
+use ra_ide_db::{source_change::SourceChange, RootDatabase};
+use ra_syntax::TextRange;
+
+pub(crate) use crate::assist_context::{AssistContext, Assists};
+
+pub use assist_config::AssistConfig;
 
 /// Unique identifier of the assist, should not be shown to the user
 /// directly.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AssistId(pub &'static str);
 
-#[derive(Debug, Clone)]
-pub struct AssistLabel {
-    /// Short description of the assist, as shown in the UI.
-    pub label: String,
-    pub id: AssistId,
-}
-
 #[derive(Clone, Debug)]
 pub struct GroupLabel(pub String);
 
-impl AssistLabel {
-    pub(crate) fn new(label: String, id: AssistId) -> AssistLabel {
-        // FIXME: make fields private, so that this invariant can't be broken
-        assert!(label.starts_with(|c: char| c.is_uppercase()));
-        AssistLabel { label, id }
-    }
-}
-
 #[derive(Debug, Clone)]
-pub struct AssistAction {
-    pub edit: TextEdit,
-    pub cursor_position: Option<TextSize>,
-    // FIXME: This belongs to `AssistLabel`
-    pub target: Option<TextRange>,
-    pub file: AssistFile,
+pub struct Assist {
+    pub id: AssistId,
+    /// Short description of the assist, as shown in the UI.
+    pub label: String,
+    pub group: Option<GroupLabel>,
+    /// Target ranges are used to sort assists: the smaller the target range,
+    /// the more specific assist is, and so it should be sorted first.
+    pub target: TextRange,
 }
 
 #[derive(Debug, Clone)]
 pub struct ResolvedAssist {
-    pub label: AssistLabel,
-    pub group_label: Option<GroupLabel>,
-    pub action: AssistAction,
+    pub assist: Assist,
+    pub source_change: SourceChange,
 }
 
-#[derive(Debug, Clone, Copy)]
-pub enum AssistFile {
-    CurrentFile,
-    TargetFile(FileId),
-}
+impl Assist {
+    /// Return all the assists applicable at the given position.
+    ///
+    /// Assists are returned in the "unresolved" state, that is only labels are
+    /// returned, without actual edits.
+    pub fn unresolved(db: &RootDatabase, config: &AssistConfig, range: FileRange) -> Vec<Assist> {
+        let sema = Semantics::new(db);
+        let ctx = AssistContext::new(sema, config, range);
+        let mut acc = Assists::new_unresolved(&ctx);
+        handlers::all().iter().for_each(|handler| {
+            handler(&mut acc, &ctx);
+        });
+        acc.finish_unresolved()
+    }
 
-impl Default for AssistFile {
-    fn default() -> Self {
-        Self::CurrentFile
+    /// Return all the assists applicable at the given position.
+    ///
+    /// Assists are returned in the "resolved" state, that is with edit fully
+    /// computed.
+    pub fn resolved(
+        db: &RootDatabase,
+        config: &AssistConfig,
+        range: FileRange,
+    ) -> Vec<ResolvedAssist> {
+        let sema = Semantics::new(db);
+        let ctx = AssistContext::new(sema, config, range);
+        let mut acc = Assists::new_resolved(&ctx);
+        handlers::all().iter().for_each(|handler| {
+            handler(&mut acc, &ctx);
+        });
+        acc.finish_resolved()
+    }
+
+    pub(crate) fn new(
+        id: AssistId,
+        label: String,
+        group: Option<GroupLabel>,
+        target: TextRange,
+    ) -> Assist {
+        // FIXME: make fields private, so that this invariant can't be broken
+        assert!(label.starts_with(|c: char| c.is_uppercase()));
+        Assist { id, label, group, target }
     }
 }
 
-/// Return all the assists applicable at the given position.
-///
-/// Assists are returned in the "unresolved" state, that is only labels are
-/// returned, without actual edits.
-pub fn unresolved_assists(db: &RootDatabase, range: FileRange) -> Vec<AssistLabel> {
-    let sema = Semantics::new(db);
-    let ctx = AssistCtx::new(&sema, range, false);
-    handlers::all()
-        .iter()
-        .filter_map(|f| f(ctx.clone()))
-        .flat_map(|it| it.0)
-        .map(|a| a.label)
-        .collect()
-}
-
-/// Return all the assists applicable at the given position.
-///
-/// Assists are returned in the "resolved" state, that is with edit fully
-/// computed.
-pub fn resolved_assists(db: &RootDatabase, range: FileRange) -> Vec<ResolvedAssist> {
-    let sema = Semantics::new(db);
-    let ctx = AssistCtx::new(&sema, range, true);
-    let mut a = handlers::all()
-        .iter()
-        .filter_map(|f| f(ctx.clone()))
-        .flat_map(|it| it.0)
-        .map(|it| it.into_resolved().unwrap())
-        .collect::<Vec<_>>();
-    a.sort_by_key(|it| it.action.target.map_or(TextSize::from(!0u32), |it| it.len()));
-    a
-}
-
 mod handlers {
-    use crate::AssistHandler;
+    use crate::{AssistContext, Assists};
+
+    pub(crate) type Handler = fn(&mut Assists, &AssistContext) -> Option<()>;
 
     mod add_custom_impl;
     mod add_derive;
     mod add_explicit_type;
+    mod add_from_impl_for_enum;
     mod add_function;
     mod add_impl;
     mod add_missing_impl_members;
     mod add_new;
+    mod add_turbo_fish;
     mod apply_demorgan;
     mod auto_import;
+    mod change_return_type_to_result;
     mod change_visibility;
     mod early_return;
     mod fill_match_arms;
+    mod fix_visibility;
     mod flip_binexpr;
     mod flip_comma;
     mod flip_trait_bound;
@@ -136,28 +130,32 @@ mod handlers {
     mod raw_string;
     mod remove_dbg;
     mod remove_mut;
+    mod reorder_fields;
     mod replace_if_let_with_match;
     mod replace_let_with_if_let;
     mod replace_qualified_name_with_use;
     mod replace_unwrap_with_match;
     mod split_import;
-    mod add_from_impl_for_enum;
-    mod reorder_fields;
+    mod unwrap_block;
 
-    pub(crate) fn all() -> &'static [AssistHandler] {
+    pub(crate) fn all() -> &'static [Handler] {
         &[
             // These are alphabetic for the foolish consistency
             add_custom_impl::add_custom_impl,
             add_derive::add_derive,
             add_explicit_type::add_explicit_type,
+            add_from_impl_for_enum::add_from_impl_for_enum,
             add_function::add_function,
             add_impl::add_impl,
             add_new::add_new,
+            add_turbo_fish::add_turbo_fish,
             apply_demorgan::apply_demorgan,
             auto_import::auto_import,
+            change_return_type_to_result::change_return_type_to_result,
             change_visibility::change_visibility,
             early_return::convert_to_guarded_return,
             fill_match_arms::fill_match_arms,
+            fix_visibility::fix_visibility,
             flip_binexpr::flip_binexpr,
             flip_comma::flip_comma,
             flip_trait_bound::flip_trait_bound,
@@ -175,167 +173,18 @@ mod handlers {
             raw_string::remove_hash,
             remove_dbg::remove_dbg,
             remove_mut::remove_mut,
+            reorder_fields::reorder_fields,
             replace_if_let_with_match::replace_if_let_with_match,
             replace_let_with_if_let::replace_let_with_if_let,
             replace_qualified_name_with_use::replace_qualified_name_with_use,
             replace_unwrap_with_match::replace_unwrap_with_match,
             split_import::split_import,
-            add_from_impl_for_enum::add_from_impl_for_enum,
+            unwrap_block::unwrap_block,
             // These are manually sorted for better priorities
             add_missing_impl_members::add_missing_impl_members,
             add_missing_impl_members::add_missing_default_members,
-            reorder_fields::reorder_fields,
+            // Are you sure you want to add new assist here, and not to the
+            // sorted list above?
         ]
-    }
-}
-
-#[cfg(test)]
-mod helpers {
-    use std::sync::Arc;
-
-    use ra_db::{fixture::WithFixture, FileId, FileRange, SourceDatabaseExt};
-    use ra_ide_db::{symbol_index::SymbolsDatabase, RootDatabase};
-    use test_utils::{add_cursor, assert_eq_text, extract_range_or_offset, RangeOrOffset};
-
-    use crate::{AssistCtx, AssistFile, AssistHandler};
-    use hir::Semantics;
-
-    pub(crate) fn with_single_file(text: &str) -> (RootDatabase, FileId) {
-        let (mut db, file_id) = RootDatabase::with_single_file(text);
-        // FIXME: ideally, this should be done by the above `RootDatabase::with_single_file`,
-        // but it looks like this might need specialization? :(
-        db.set_local_roots(Arc::new(vec![db.file_source_root(file_id)]));
-        (db, file_id)
-    }
-
-    pub(crate) fn check_assist(
-        assist: AssistHandler,
-        ra_fixture_before: &str,
-        ra_fixture_after: &str,
-    ) {
-        check(assist, ra_fixture_before, ExpectedResult::After(ra_fixture_after));
-    }
-
-    // FIXME: instead of having a separate function here, maybe use
-    // `extract_ranges` and mark the target as `<target> </target>` in the
-    // fixuture?
-    pub(crate) fn check_assist_target(assist: AssistHandler, ra_fixture: &str, target: &str) {
-        check(assist, ra_fixture, ExpectedResult::Target(target));
-    }
-
-    pub(crate) fn check_assist_not_applicable(assist: AssistHandler, ra_fixture: &str) {
-        check(assist, ra_fixture, ExpectedResult::NotApplicable);
-    }
-
-    enum ExpectedResult<'a> {
-        NotApplicable,
-        After(&'a str),
-        Target(&'a str),
-    }
-
-    fn check(assist: AssistHandler, before: &str, expected: ExpectedResult) {
-        let (text_without_caret, file_with_caret_id, range_or_offset, db) =
-            if before.contains("//-") {
-                let (mut db, position) = RootDatabase::with_position(before);
-                db.set_local_roots(Arc::new(vec![db.file_source_root(position.file_id)]));
-                (
-                    db.file_text(position.file_id).as_ref().to_owned(),
-                    position.file_id,
-                    RangeOrOffset::Offset(position.offset),
-                    db,
-                )
-            } else {
-                let (range_or_offset, text_without_caret) = extract_range_or_offset(before);
-                let (db, file_id) = with_single_file(&text_without_caret);
-                (text_without_caret, file_id, range_or_offset, db)
-            };
-
-        let frange = FileRange { file_id: file_with_caret_id, range: range_or_offset.into() };
-
-        let sema = Semantics::new(&db);
-        let assist_ctx = AssistCtx::new(&sema, frange, true);
-
-        match (assist(assist_ctx), expected) {
-            (Some(assist), ExpectedResult::After(after)) => {
-                let action = assist.0[0].action.clone().unwrap();
-
-                let assisted_file_text = if let AssistFile::TargetFile(file_id) = action.file {
-                    db.file_text(file_id).as_ref().to_owned()
-                } else {
-                    text_without_caret
-                };
-
-                let mut actual = action.edit.apply(&assisted_file_text);
-                match action.cursor_position {
-                    None => {
-                        if let RangeOrOffset::Offset(before_cursor_pos) = range_or_offset {
-                            let off = action
-                                .edit
-                                .apply_to_offset(before_cursor_pos)
-                                .expect("cursor position is affected by the edit");
-                            actual = add_cursor(&actual, off)
-                        }
-                    }
-                    Some(off) => actual = add_cursor(&actual, off),
-                };
-
-                assert_eq_text!(after, &actual);
-            }
-            (Some(assist), ExpectedResult::Target(target)) => {
-                let action = assist.0[0].action.clone().unwrap();
-                let range = action.target.expect("expected target on action");
-                assert_eq_text!(&text_without_caret[range], target);
-            }
-            (Some(_), ExpectedResult::NotApplicable) => panic!("assist should not be applicable!"),
-            (None, ExpectedResult::After(_)) | (None, ExpectedResult::Target(_)) => {
-                panic!("code action is not applicable")
-            }
-            (None, ExpectedResult::NotApplicable) => (),
-        };
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use ra_db::FileRange;
-    use ra_syntax::TextRange;
-    use test_utils::{extract_offset, extract_range};
-
-    use crate::{helpers, resolved_assists};
-
-    #[test]
-    fn assist_order_field_struct() {
-        let before = "struct Foo { <|>bar: u32 }";
-        let (before_cursor_pos, before) = extract_offset(before);
-        let (db, file_id) = helpers::with_single_file(&before);
-        let frange = FileRange { file_id, range: TextRange::empty(before_cursor_pos) };
-        let assists = resolved_assists(&db, frange);
-        let mut assists = assists.iter();
-
-        assert_eq!(
-            assists.next().expect("expected assist").label.label,
-            "Change visibility to pub(crate)"
-        );
-        assert_eq!(assists.next().expect("expected assist").label.label, "Add `#[derive]`");
-    }
-
-    #[test]
-    fn assist_order_if_expr() {
-        let before = "
-        pub fn test_some_range(a: int) -> bool {
-            if let 2..6 = <|>5<|> {
-                true
-            } else {
-                false
-            }
-        }";
-        let (range, before) = extract_range(before);
-        let (db, file_id) = helpers::with_single_file(&before);
-        let frange = FileRange { file_id, range };
-        let assists = resolved_assists(&db, frange);
-        let mut assists = assists.iter();
-
-        assert_eq!(assists.next().expect("expected assist").label.label, "Extract into variable");
-        assert_eq!(assists.next().expect("expected assist").label.label, "Replace with match");
     }
 }

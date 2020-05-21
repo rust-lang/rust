@@ -4,7 +4,7 @@ use ra_syntax::{
     TextRange,
 };
 
-use crate::{Assist, AssistCtx, AssistId};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: add_explicit_type
 //
@@ -21,12 +21,12 @@ use crate::{Assist, AssistCtx, AssistId};
 //     let x: i32 = 92;
 // }
 // ```
-pub(crate) fn add_explicit_type(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn add_explicit_type(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let stmt = ctx.find_node_at_offset::<LetStmt>()?;
+    let module = ctx.sema.scope(stmt.syntax()).module()?;
     let expr = stmt.initializer()?;
-    let pat = stmt.pat()?;
     // Must be a binding
-    let pat = match pat {
+    let pat = match stmt.pat()? {
         ast::Pat::BindPat(bind_pat) => bind_pat,
         _ => return None,
     };
@@ -45,7 +45,7 @@ pub(crate) fn add_explicit_type(ctx: AssistCtx) -> Option<Assist> {
     // Assist not applicable if the type has already been specified
     // and it has no placeholders
     let ascribed_ty = stmt.ascribed_type();
-    if let Some(ref ty) = ascribed_ty {
+    if let Some(ty) = &ascribed_ty {
         if ty.syntax().descendants().find_map(ast::PlaceholderType::cast).is_none() {
             return None;
         }
@@ -57,17 +57,17 @@ pub(crate) fn add_explicit_type(ctx: AssistCtx) -> Option<Assist> {
         return None;
     }
 
-    let db = ctx.db;
-    let new_type_string = ty.display_truncated(db, None).to_string();
-    ctx.add_assist(
+    let inferred_type = ty.display_source_code(ctx.db, module.into()).ok()?;
+    acc.add(
         AssistId("add_explicit_type"),
-        format!("Insert explicit type '{}'", new_type_string),
-        |edit| {
-            edit.target(pat_range);
-            if let Some(ascribed_ty) = ascribed_ty {
-                edit.replace(ascribed_ty.syntax().text_range(), new_type_string);
-            } else {
-                edit.insert(name_range.end(), format!(": {}", new_type_string));
+        format!("Insert explicit type `{}`", inferred_type),
+        pat_range,
+        |builder| match ascribed_ty {
+            Some(ascribed_ty) => {
+                builder.replace(ascribed_ty.syntax().text_range(), inferred_type);
+            }
+            None => {
+                builder.insert(name_range.end(), format!(": {}", inferred_type));
             }
         },
     )
@@ -77,7 +77,7 @@ pub(crate) fn add_explicit_type(ctx: AssistCtx) -> Option<Assist> {
 mod tests {
     use super::*;
 
-    use crate::helpers::{check_assist, check_assist_not_applicable, check_assist_target};
+    use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
 
     #[test]
     fn add_explicit_type_target() {
@@ -86,11 +86,7 @@ mod tests {
 
     #[test]
     fn add_explicit_type_works_for_simple_expr() {
-        check_assist(
-            add_explicit_type,
-            "fn f() { let a<|> = 1; }",
-            "fn f() { let a<|>: i32 = 1; }",
-        );
+        check_assist(add_explicit_type, "fn f() { let a<|> = 1; }", "fn f() { let a: i32 = 1; }");
     }
 
     #[test]
@@ -98,7 +94,7 @@ mod tests {
         check_assist(
             add_explicit_type,
             "fn f() { let a<|>: _ = 1; }",
-            "fn f() { let a<|>: i32 = 1; }",
+            "fn f() { let a: i32 = 1; }",
         );
     }
 
@@ -122,7 +118,7 @@ mod tests {
             }
 
             fn f() {
-                let a<|>: Option<i32> = Option::Some(1);
+                let a: Option<i32> = Option::Some(1);
             }"#,
         );
     }
@@ -132,7 +128,7 @@ mod tests {
         check_assist(
             add_explicit_type,
             r"macro_rules! v { () => {0u64} } fn f() { let a<|> = v!(); }",
-            r"macro_rules! v { () => {0u64} } fn f() { let a<|>: u64 = v!(); }",
+            r"macro_rules! v { () => {0u64} } fn f() { let a: u64 = v!(); }",
         );
     }
 
@@ -140,8 +136,8 @@ mod tests {
     fn add_explicit_type_works_for_macro_call_recursive() {
         check_assist(
             add_explicit_type,
-            "macro_rules! u { () => {0u64} } macro_rules! v { () => {u!()} } fn f() { let a<|> = v!(); }",
-            "macro_rules! u { () => {0u64} } macro_rules! v { () => {u!()} } fn f() { let a<|>: u64 = v!(); }",
+            r#"macro_rules! u { () => {0u64} } macro_rules! v { () => {u!()} } fn f() { let a<|> = v!(); }"#,
+            r#"macro_rules! u { () => {0u64} } macro_rules! v { () => {u!()} } fn f() { let a: u64 = v!(); }"#,
         );
     }
 
@@ -208,7 +204,7 @@ struct Test<K, T = u8> {
 }
 
 fn main() {
-    let test<|>: Test<i32> = Test { t: 23, k: 33 };
+    let test: Test<i32> = Test { t: 23, k: 33 };
 }"#,
         );
     }

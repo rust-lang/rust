@@ -1,6 +1,6 @@
 use ra_syntax::ast::{AstNode, BinExpr, BinOp};
 
-use crate::{Assist, AssistCtx, AssistId};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: flip_binexpr
 //
@@ -17,7 +17,7 @@ use crate::{Assist, AssistCtx, AssistId};
 //     let _ = 2 + 90;
 // }
 // ```
-pub(crate) fn flip_binexpr(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn flip_binexpr(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let expr = ctx.find_node_at_offset::<BinExpr>()?;
     let lhs = expr.lhs()?.syntax().clone();
     let rhs = expr.rhs()?.syntax().clone();
@@ -33,8 +33,7 @@ pub(crate) fn flip_binexpr(ctx: AssistCtx) -> Option<Assist> {
         return None;
     }
 
-    ctx.add_assist(AssistId("flip_binexpr"), "Flip binary expression", |edit| {
-        edit.target(op_range);
+    acc.add(AssistId("flip_binexpr"), "Flip binary expression", op_range, |edit| {
         if let FlipAction::FlipAndReplaceOp(new_op) = action {
             edit.replace(op_range, new_op);
         }
@@ -69,7 +68,7 @@ impl From<BinOp> for FlipAction {
 mod tests {
     use super::*;
 
-    use crate::helpers::{check_assist, check_assist_not_applicable, check_assist_target};
+    use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
 
     #[test]
     fn flip_binexpr_target_is_the_op() {
@@ -86,17 +85,13 @@ mod tests {
         check_assist(
             flip_binexpr,
             "fn f() { let res = 1 ==<|> 2; }",
-            "fn f() { let res = 2 ==<|> 1; }",
+            "fn f() { let res = 2 == 1; }",
         )
     }
 
     #[test]
     fn flip_binexpr_works_for_gt() {
-        check_assist(
-            flip_binexpr,
-            "fn f() { let res = 1 ><|> 2; }",
-            "fn f() { let res = 2 <<|> 1; }",
-        )
+        check_assist(flip_binexpr, "fn f() { let res = 1 ><|> 2; }", "fn f() { let res = 2 < 1; }")
     }
 
     #[test]
@@ -104,7 +99,7 @@ mod tests {
         check_assist(
             flip_binexpr,
             "fn f() { let res = 1 <=<|> 2; }",
-            "fn f() { let res = 2 >=<|> 1; }",
+            "fn f() { let res = 2 >= 1; }",
         )
     }
 
@@ -113,7 +108,7 @@ mod tests {
         check_assist(
             flip_binexpr,
             "fn f() { let res = (1 + 1) ==<|> (2 + 2); }",
-            "fn f() { let res = (2 + 2) ==<|> (1 + 1); }",
+            "fn f() { let res = (2 + 2) == (1 + 1); }",
         )
     }
 
@@ -133,7 +128,7 @@ mod tests {
             fn dyn_eq(&self, other: &dyn Diagnostic) -> bool {
                 match other.downcast_ref::<Self>() {
                     None => false,
-                    Some(it) => self ==<|> it,
+                    Some(it) => self == it,
                 }
             }
             "#,

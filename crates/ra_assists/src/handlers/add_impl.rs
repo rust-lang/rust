@@ -1,10 +1,7 @@
-use ra_syntax::{
-    ast::{self, AstNode, NameOwner, TypeParamsOwner},
-    TextSize,
-};
+use ra_syntax::ast::{self, AstNode, NameOwner, TypeParamsOwner};
 use stdx::{format_to, SepBy};
 
-use crate::{Assist, AssistCtx, AssistId};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: add_impl
 //
@@ -12,24 +9,24 @@ use crate::{Assist, AssistCtx, AssistId};
 //
 // ```
 // struct Ctx<T: Clone> {
-//      data: T,<|>
+//     data: T,<|>
 // }
 // ```
 // ->
 // ```
 // struct Ctx<T: Clone> {
-//      data: T,
+//     data: T,
 // }
 //
 // impl<T: Clone> Ctx<T> {
-//
+//     $0
 // }
 // ```
-pub(crate) fn add_impl(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn add_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let nominal = ctx.find_node_at_offset::<ast::NominalDef>()?;
     let name = nominal.name()?;
-    ctx.add_assist(AssistId("add_impl"), format!("Implement {}", name.text().as_str()), |edit| {
-        edit.target(nominal.syntax().text_range());
+    let target = nominal.syntax().text_range();
+    acc.add(AssistId("add_impl"), format!("Implement {}", name.text().as_str()), target, |edit| {
         let type_params = nominal.type_param_list();
         let start_offset = nominal.syntax().text_range().end();
         let mut buf = String::new();
@@ -50,30 +47,37 @@ pub(crate) fn add_impl(ctx: AssistCtx) -> Option<Assist> {
             let generic_params = lifetime_params.chain(type_params).sep_by(", ");
             format_to!(buf, "<{}>", generic_params)
         }
-        buf.push_str(" {\n");
-        edit.set_cursor(start_offset + TextSize::of(&buf));
-        buf.push_str("\n}");
-        edit.insert(start_offset, buf);
+        match ctx.config.snippet_cap {
+            Some(cap) => {
+                buf.push_str(" {\n    $0\n}");
+                edit.insert_snippet(cap, start_offset, buf);
+            }
+            None => {
+                buf.push_str(" {\n}");
+                edit.insert(start_offset, buf);
+            }
+        }
     })
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::tests::{check_assist, check_assist_target};
+
     use super::*;
-    use crate::helpers::{check_assist, check_assist_target};
 
     #[test]
     fn test_add_impl() {
-        check_assist(add_impl, "struct Foo {<|>}\n", "struct Foo {}\n\nimpl Foo {\n<|>\n}\n");
+        check_assist(add_impl, "struct Foo {<|>}\n", "struct Foo {}\n\nimpl Foo {\n    $0\n}\n");
         check_assist(
             add_impl,
             "struct Foo<T: Clone> {<|>}",
-            "struct Foo<T: Clone> {}\n\nimpl<T: Clone> Foo<T> {\n<|>\n}",
+            "struct Foo<T: Clone> {}\n\nimpl<T: Clone> Foo<T> {\n    $0\n}",
         );
         check_assist(
             add_impl,
             "struct Foo<'a, T: Foo<'a>> {<|>}",
-            "struct Foo<'a, T: Foo<'a>> {}\n\nimpl<'a, T: Foo<'a>> Foo<'a, T> {\n<|>\n}",
+            "struct Foo<'a, T: Foo<'a>> {}\n\nimpl<'a, T: Foo<'a>> Foo<'a, T> {\n    $0\n}",
         );
     }
 

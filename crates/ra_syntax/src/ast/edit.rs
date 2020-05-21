@@ -1,7 +1,10 @@
 //! This module contains functions for editing syntax trees. As the trees are
 //! immutable, all function here return a fresh copy of the tree, instead of
 //! doing an in-place modification.
-use std::{iter, ops::RangeInclusive};
+use std::{
+    fmt, iter,
+    ops::{self, RangeInclusive},
+};
 
 use arrayvec::ArrayVec;
 
@@ -28,7 +31,7 @@ impl ast::BinExpr {
 
 impl ast::FnDef {
     #[must_use]
-    pub fn with_body(&self, body: ast::Block) -> ast::FnDef {
+    pub fn with_body(&self, body: ast::BlockExpr) -> ast::FnDef {
         let mut to_insert: ArrayVec<[SyntaxElement; 2]> = ArrayVec::new();
         let old_body_or_semi: SyntaxElement = if let Some(old_body) = self.body() {
             old_body.syntax().clone().into()
@@ -79,7 +82,7 @@ where
 
 impl ast::ItemList {
     #[must_use]
-    pub fn append_items(&self, items: impl IntoIterator<Item = ast::ImplItem>) -> ast::ItemList {
+    pub fn append_items(&self, items: impl IntoIterator<Item = ast::AssocItem>) -> ast::ItemList {
         let mut res = self.clone();
         if !self.syntax().text().contains_char('\n') {
             res = make_multiline(res);
@@ -89,8 +92,8 @@ impl ast::ItemList {
     }
 
     #[must_use]
-    pub fn append_item(&self, item: ast::ImplItem) -> ast::ItemList {
-        let (indent, position) = match self.impl_items().last() {
+    pub fn append_item(&self, item: ast::AssocItem) -> ast::ItemList {
+        let (indent, position) = match self.assoc_items().last() {
             Some(it) => (
                 leading_indent(it.syntax()).unwrap_or_default().to_string(),
                 InsertPosition::After(it.syntax().clone().into()),
@@ -437,6 +440,28 @@ impl From<u8> for IndentLevel {
     }
 }
 
+impl fmt::Display for IndentLevel {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let spaces = "                                        ";
+        let buf;
+        let len = self.0 as usize * 4;
+        let indent = if len <= spaces.len() {
+            &spaces[..len]
+        } else {
+            buf = iter::repeat(' ').take(len).collect::<String>();
+            &buf
+        };
+        fmt::Display::fmt(indent, f)
+    }
+}
+
+impl ops::Add<u8> for IndentLevel {
+    type Output = IndentLevel;
+    fn add(self, rhs: u8) -> IndentLevel {
+        IndentLevel(self.0 + rhs)
+    }
+}
+
 impl IndentLevel {
     pub fn from_node(node: &SyntaxNode) -> IndentLevel {
         let first_token = match node.first_token() {
@@ -453,11 +478,15 @@ impl IndentLevel {
         IndentLevel(0)
     }
 
-    pub fn increase_indent<N: AstNode>(self, node: N) -> N {
-        N::cast(self._increase_indent(node.syntax().clone())).unwrap()
-    }
-
-    fn _increase_indent(self, node: SyntaxNode) -> SyntaxNode {
+    /// XXX: this intentionally doesn't change the indent of the very first token.
+    /// Ie, in something like
+    /// ```
+    /// fn foo() {
+    ///    92
+    /// }
+    /// ```
+    /// if you indent the block, the `{` token would stay put.
+    fn increase_indent(self, node: SyntaxNode) -> SyntaxNode {
         let mut rewriter = SyntaxRewriter::default();
         node.descendants_with_tokens()
             .filter_map(|el| el.into_token())
@@ -467,22 +496,13 @@ impl IndentLevel {
                 text.contains('\n')
             })
             .for_each(|ws| {
-                let new_ws = make::tokens::whitespace(&format!(
-                    "{}{:width$}",
-                    ws.syntax().text(),
-                    "",
-                    width = self.0 as usize * 4
-                ));
+                let new_ws = make::tokens::whitespace(&format!("{}{}", ws.syntax(), self,));
                 rewriter.replace(ws.syntax(), &new_ws)
             });
         rewriter.rewrite(&node)
     }
 
-    pub fn decrease_indent<N: AstNode>(self, node: N) -> N {
-        N::cast(self._decrease_indent(node.syntax().clone())).unwrap()
-    }
-
-    fn _decrease_indent(self, node: SyntaxNode) -> SyntaxNode {
+    fn decrease_indent(self, node: SyntaxNode) -> SyntaxNode {
         let mut rewriter = SyntaxRewriter::default();
         node.descendants_with_tokens()
             .filter_map(|el| el.into_token())
@@ -493,7 +513,7 @@ impl IndentLevel {
             })
             .for_each(|ws| {
                 let new_ws = make::tokens::whitespace(
-                    &ws.syntax().text().replace(&format!("\n{:1$}", "", self.0 as usize * 4), "\n"),
+                    &ws.syntax().text().replace(&format!("\n{}", self), "\n"),
                 );
                 rewriter.replace(ws.syntax(), &new_ws)
             });
@@ -521,7 +541,7 @@ fn prev_tokens(token: SyntaxToken) -> impl Iterator<Item = SyntaxToken> {
     iter::successors(Some(token), |token| token.prev_token())
 }
 
-pub trait AstNodeEdit: AstNode + Sized {
+pub trait AstNodeEdit: AstNode + Clone + Sized {
     #[must_use]
     fn insert_children(
         &self,
@@ -558,9 +578,17 @@ pub trait AstNodeEdit: AstNode + Sized {
         }
         rewriter.rewrite_ast(self)
     }
+    #[must_use]
+    fn indent(&self, indent: IndentLevel) -> Self {
+        Self::cast(indent.increase_indent(self.syntax().clone())).unwrap()
+    }
+    #[must_use]
+    fn dedent(&self, indent: IndentLevel) -> Self {
+        Self::cast(indent.decrease_indent(self.syntax().clone())).unwrap()
+    }
 }
 
-impl<N: AstNode> AstNodeEdit for N {}
+impl<N: AstNode + Clone> AstNodeEdit for N {}
 
 fn single_node(element: impl Into<SyntaxElement>) -> RangeInclusive<SyntaxElement> {
     let element = element.into();
@@ -580,7 +608,7 @@ fn test_increase_indent() {
     _ => (),
 }"
     );
-    let indented = IndentLevel(2).increase_indent(arm_list);
+    let indented = arm_list.indent(IndentLevel(2));
     assert_eq!(
         indented.syntax().to_string(),
         "{

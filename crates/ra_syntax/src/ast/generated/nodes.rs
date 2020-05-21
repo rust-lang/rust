@@ -5,17 +5,41 @@ use crate::{
     SyntaxKind::{self, *},
     SyntaxNode, SyntaxToken, T,
 };
-
+/// The entire Rust source file. Includes all top-level inner attributes and module items.
+///
+/// [Reference](https://doc.rust-lang.org/reference/crates-and-source-files.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SourceFile {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::ModuleItemOwner for SourceFile {}
 impl ast::AttrsOwner for SourceFile {}
+impl ast::DocCommentsOwner for SourceFile {}
 impl SourceFile {
     pub fn modules(&self) -> AstChildren<Module> { support::children(&self.syntax) }
 }
-
+/// Function definition either with body or not.
+/// Includes all of its attributes and doc comments.
+///
+/// ```
+/// ❰
+///     /// Docs
+///     #[attr]
+///     pub extern "C" fn foo<T>(#[attr] Patern {p}: Pattern) -> u32
+///     where
+///         T: Debug
+///     {
+///         42
+///     }
+/// ❱
+///
+/// extern "C" {
+///     ❰ fn fn_decl(also_variadic_ffi: u32, ...) -> u32; ❱
+/// }
+/// ```
+///
+/// - [Reference](https://doc.rust-lang.org/reference/items/functions.html)
+/// - [Nomicon](https://doc.rust-lang.org/nomicon/ffi.html#variadic-functions)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FnDef {
     pub(crate) syntax: SyntaxNode,
@@ -37,7 +61,13 @@ impl FnDef {
     pub fn body(&self) -> Option<BlockExpr> { support::child(&self.syntax) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
 }
-
+/// Return type annotation.
+///
+/// ```
+/// fn foo(a: u32) ❰ -> Option<u32> ❱ { Some(a) }
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/items/functions.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RetType {
     pub(crate) syntax: SyntaxNode,
@@ -46,7 +76,26 @@ impl RetType {
     pub fn thin_arrow_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![->]) }
     pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
 }
-
+/// Struct definition.
+/// Includes all of its attributes and doc comments.
+///
+/// ```
+/// ❰
+///     /// Docs
+///     #[attr]
+///     struct Foo<T> where T: Debug {
+///         /// Docs
+///         #[attr]
+///         pub a: u32,
+///         b: T,
+///     }
+/// ❱
+///
+/// ❰ struct Foo; ❱
+/// ❰ struct Foo<T>(#[attr] T) where T: Debug; ❱
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/items/structs.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct StructDef {
     pub(crate) syntax: SyntaxNode,
@@ -61,7 +110,23 @@ impl StructDef {
     pub fn field_def_list(&self) -> Option<FieldDefList> { support::child(&self.syntax) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
 }
-
+/// Union definition.
+/// Includes all of its attributes and doc comments.
+///
+/// ```
+/// ❰
+///     /// Docs
+///     #[attr]
+///     pub union Foo<T> where T: Debug {
+///         /// Docs
+///         #[attr]
+///         a: T,
+///         b: u32,
+///     }
+/// ❱
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/items/unions.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct UnionDef {
     pub(crate) syntax: SyntaxNode,
@@ -77,7 +142,19 @@ impl UnionDef {
         support::child(&self.syntax)
     }
 }
-
+/// Record field definition list including enclosing curly braces.
+///
+/// ```
+/// struct Foo // same for union
+/// ❰
+///     {
+///         a: u32,
+///         b: bool,
+///     }
+/// ❱
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/items/structs.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RecordFieldDefList {
     pub(crate) syntax: SyntaxNode,
@@ -87,7 +164,22 @@ impl RecordFieldDefList {
     pub fn fields(&self) -> AstChildren<RecordFieldDef> { support::children(&self.syntax) }
     pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
 }
-
+/// Record field definition including its attributes and doc comments.
+///
+/// ` ``
+/// same for union
+/// struct Foo {
+///      ❰
+///          /// Docs
+///          #[attr]
+///          pub a: u32
+///      ❱
+///
+///      ❰ b: bool ❱
+/// }
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/items/structs.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RecordFieldDef {
     pub(crate) syntax: SyntaxNode,
@@ -98,7 +190,13 @@ impl ast::AttrsOwner for RecordFieldDef {}
 impl ast::DocCommentsOwner for RecordFieldDef {}
 impl ast::TypeAscriptionOwner for RecordFieldDef {}
 impl RecordFieldDef {}
-
+/// Tuple field definition list including enclosing parens.
+///
+/// ```
+/// struct Foo ❰ (u32, String, Vec<u32>) ❱;
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/items/structs.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TupleFieldDefList {
     pub(crate) syntax: SyntaxNode,
@@ -108,7 +206,13 @@ impl TupleFieldDefList {
     pub fn fields(&self) -> AstChildren<TupleFieldDef> { support::children(&self.syntax) }
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
 }
-
+/// Tuple field definition including its attributes.
+///
+/// ```
+/// struct Foo(❰ #[attr] u32 ❱);
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/items/structs.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TupleFieldDef {
     pub(crate) syntax: SyntaxNode,
@@ -118,7 +222,29 @@ impl ast::AttrsOwner for TupleFieldDef {}
 impl TupleFieldDef {
     pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
 }
-
+/// Enum definition.
+/// Includes all of its attributes and doc comments.
+///
+/// ```
+/// ❰
+///     /// Docs
+///     #[attr]
+///     pub enum Foo<T> where T: Debug {
+///         /// Docs
+///         #[attr]
+///         Bar,
+///         Baz(#[attr] u32),
+///         Bruh {
+///             a: u32,
+///             /// Docs
+///             #[attr]
+///             b: T,
+///         }
+///     }
+/// ❱
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/items/enumerations.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct EnumDef {
     pub(crate) syntax: SyntaxNode,
@@ -132,7 +258,22 @@ impl EnumDef {
     pub fn enum_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![enum]) }
     pub fn variant_list(&self) -> Option<EnumVariantList> { support::child(&self.syntax) }
 }
-
+/// Enum variant definition list including enclosing curly braces.
+///
+/// ```
+/// enum Foo
+/// ❰
+///     {
+///         Bar,
+///         Baz(u32),
+///         Bruh {
+///             a: u32
+///         }
+///     }
+/// ❱
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/items/enumerations.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct EnumVariantList {
     pub(crate) syntax: SyntaxNode,
@@ -142,7 +283,21 @@ impl EnumVariantList {
     pub fn variants(&self) -> AstChildren<EnumVariant> { support::children(&self.syntax) }
     pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
 }
-
+/// Enum variant definition including its attributes and discriminant value definition.
+///
+/// ```
+/// enum Foo {
+///     ❰
+///         /// Docs
+///         #[attr]
+///         Bar
+///     ❱
+///
+///     // same for tuple and record variants
+/// }
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/items/enumerations.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct EnumVariant {
     pub(crate) syntax: SyntaxNode,
@@ -156,7 +311,20 @@ impl EnumVariant {
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
-
+/// Trait definition.
+/// Includes all of its attributes and doc comments.
+///
+/// ```
+/// ❰
+///     /// Docs
+///     #[attr]
+///     pub unsafe trait Foo<T>: Debug where T: Debug {
+///         // ...
+///     }
+/// ❱
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/items/traits.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TraitDef {
     pub(crate) syntax: SyntaxNode,
@@ -173,7 +341,27 @@ impl TraitDef {
     pub fn trait_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![trait]) }
     pub fn item_list(&self) -> Option<ItemList> { support::child(&self.syntax) }
 }
-
+/// Module definition either with body or not.
+/// Includes all of its inner and outer attributes, module items, doc comments.
+///
+/// ```
+/// ❰
+///     /// Docs
+///     #[attr]
+///     pub mod foo;
+/// ❱
+///
+/// ❰
+///     /// Docs
+///     #[attr]
+///     pub mod bar {
+///        //! Inner docs
+///        #![inner_attr]
+///     }
+/// ❱
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/items/modules.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Module {
     pub(crate) syntax: SyntaxNode,
@@ -187,7 +375,28 @@ impl Module {
     pub fn item_list(&self) -> Option<ItemList> { support::child(&self.syntax) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
 }
-
+/// Item defintion list.
+/// This is used for both top-level items and impl block items.
+///
+/// ```
+/// ❰
+///     fn foo {}
+///     struct Bar;
+///     enum Baz;
+///     trait Bruh;
+///     const BRUUH: u32 = 42;
+/// ❱
+///
+/// impl Foo
+/// ❰
+///     {
+///         fn bar() {}
+///         const BAZ: u32 = 42;
+///     }
+/// ❱
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/items.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ItemList {
     pub(crate) syntax: SyntaxNode,
@@ -195,10 +404,21 @@ pub struct ItemList {
 impl ast::ModuleItemOwner for ItemList {}
 impl ItemList {
     pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
-    pub fn impl_items(&self) -> AstChildren<ImplItem> { support::children(&self.syntax) }
+    pub fn assoc_items(&self) -> AstChildren<AssocItem> { support::children(&self.syntax) }
     pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
 }
-
+/// Constant variable definition.
+/// Includes all of its attributes and doc comments.
+///
+/// ```
+/// ❰
+///     /// Docs
+///     #[attr]
+///     pub const FOO: u32 = 42;
+/// ❱
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/items/constant-items.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ConstDef {
     pub(crate) syntax: SyntaxNode,
@@ -216,7 +436,18 @@ impl ConstDef {
     pub fn body(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
 }
-
+/// Static variable definition.
+/// Includes all of its attributes and doc comments.
+///
+/// ```
+/// ❰
+///     /// Docs
+///     #[attr]
+///     pub static mut FOO: u32 = 42;
+/// ❱
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/items/static-items.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct StaticDef {
     pub(crate) syntax: SyntaxNode,
@@ -234,7 +465,24 @@ impl StaticDef {
     pub fn body(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
 }
-
+/// Type alias definition.
+/// Includes associated type clauses with type bounds.
+///
+/// ```
+/// ❰
+///     /// Docs
+///     #[attr]
+///     pub type Foo<T> where T: Debug = T;
+/// ❱
+///
+/// trait Bar {
+///     ❰ type Baz: Debug; ❱
+///     ❰ type Bruh = String; ❱
+///     ❰ type Bruuh: Debug = u32; ❱
+/// }
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/items/type-aliases.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeAliasDef {
     pub(crate) syntax: SyntaxNode,
@@ -252,13 +500,27 @@ impl TypeAliasDef {
     pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
 }
-
+/// Inherent and trait impl definition.
+/// Includes all of its inner and outer attributes.
+///
+/// ```
+/// ❰
+///     #[attr]
+///     unsafe impl<T> const !Foo for Bar where T: Debug {
+///         #![inner_attr]
+///         // ...
+///     }
+/// ❱
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/items/implementations.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ImplDef {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::TypeParamsOwner for ImplDef {}
 impl ast::AttrsOwner for ImplDef {}
+impl ast::DocCommentsOwner for ImplDef {}
 impl ImplDef {
     pub fn default_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![default]) }
     pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
@@ -268,7 +530,16 @@ impl ImplDef {
     pub fn for_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![for]) }
     pub fn item_list(&self) -> Option<ItemList> { support::child(&self.syntax) }
 }
-
+/// Parenthesized type reference.
+/// Note: parens are only used for grouping, this is not a tuple type.
+///
+/// ```
+/// // This is effectively just `u32`.
+/// // Single-item tuple must be defined with a trailing comma: `(u32,)`
+/// type Foo = ❰ (u32) ❱;
+///
+/// let bar: &'static ❰ (dyn Debug) ❱ = "bruh";
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ParenType {
     pub(crate) syntax: SyntaxNode,
@@ -278,7 +549,13 @@ impl ParenType {
     pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
 }
-
+/// Unnamed tuple type.
+///
+/// ```
+/// let foo: ❰ (u32, bool) ❱ = (42, true);
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/types/tuple.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TupleType {
     pub(crate) syntax: SyntaxNode,
@@ -288,7 +565,17 @@ impl TupleType {
     pub fn fields(&self) -> AstChildren<TypeRef> { support::children(&self.syntax) }
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
 }
-
+/// The never type (i.e. the exclamation point).
+///
+/// ```
+/// type T = ❰ ! ❱;
+///
+/// fn no_return() -> ❰ ! ❱ {
+///     loop {}
+/// }
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/types/never.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NeverType {
     pub(crate) syntax: SyntaxNode,
@@ -296,7 +583,17 @@ pub struct NeverType {
 impl NeverType {
     pub fn excl_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![!]) }
 }
-
+/// Path to a type.
+/// Includes single identifier type names and elaborate paths with
+/// generic parameters.
+///
+/// ```
+/// type Foo = ❰ String ❱;
+/// type Bar = ❰ std::vec::Vec<T> ❱;
+/// type Baz = ❰ ::bruh::<Bruuh as Iterator>::Item ❱;
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/paths.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PathType {
     pub(crate) syntax: SyntaxNode,
@@ -304,7 +601,14 @@ pub struct PathType {
 impl PathType {
     pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
 }
-
+/// Raw pointer type.
+///
+/// ```
+/// type Foo = ❰ *const u32 ❱;
+/// type Bar = ❰ *mut u32 ❱;
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/types/pointer.html#raw-pointers-const-and-mut)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PointerType {
     pub(crate) syntax: SyntaxNode,
@@ -315,7 +619,13 @@ impl PointerType {
     pub fn mut_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![mut]) }
     pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
 }
-
+/// Array type.
+///
+/// ```
+/// type Foo = ❰ [u32; 24 - 3] ❱;
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/types/array.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ArrayType {
     pub(crate) syntax: SyntaxNode,
@@ -327,7 +637,13 @@ impl ArrayType {
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn r_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![']']) }
 }
-
+/// Slice type.
+///
+/// ```
+/// type Foo = ❰ [u8] ❱;
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/types/slice.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SliceType {
     pub(crate) syntax: SyntaxNode,
@@ -337,7 +653,13 @@ impl SliceType {
     pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
     pub fn r_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![']']) }
 }
-
+/// Reference type.
+///
+/// ```
+/// type Foo = ❰ &'static str ❱;
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/types/pointer.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ReferenceType {
     pub(crate) syntax: SyntaxNode,
@@ -350,7 +672,13 @@ impl ReferenceType {
     pub fn mut_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![mut]) }
     pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
 }
-
+/// Placeholder type (i.e. the underscore).
+///
+/// ```
+/// let foo: ❰ _ ❱ = 42_u32;
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/types/inferred.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PlaceholderType {
     pub(crate) syntax: SyntaxNode,
@@ -358,7 +686,15 @@ pub struct PlaceholderType {
 impl PlaceholderType {
     pub fn underscore_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![_]) }
 }
-
+/// Function pointer type (not to be confused with `Fn*` family of traits).
+///
+/// ```
+/// type Foo = ❰ async fn(#[attr] u32, named: bool) -> u32 ❱;
+///
+/// type Bar = ❰ extern "C" fn(variadic: u32, #[attr] ...) ❱;
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/types/function-pointer.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FnPointerType {
     pub(crate) syntax: SyntaxNode,
@@ -370,7 +706,13 @@ impl FnPointerType {
     pub fn param_list(&self) -> Option<ParamList> { support::child(&self.syntax) }
     pub fn ret_type(&self) -> Option<RetType> { support::child(&self.syntax) }
 }
-
+/// Higher order type.
+///
+/// ```
+/// type Foo = ❰ for<'a> fn(&'a str) ❱;
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/nomicon/hrtb.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ForType {
     pub(crate) syntax: SyntaxNode,
@@ -380,7 +722,13 @@ impl ForType {
     pub fn type_param_list(&self) -> Option<TypeParamList> { support::child(&self.syntax) }
     pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
 }
-
+/// Opaque `impl Trait` type.
+///
+/// ```
+/// fn foo(bar: ❰ impl Debug + Eq ❱) {}
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/types/impl-trait.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ImplTraitType {
     pub(crate) syntax: SyntaxNode,
@@ -389,7 +737,13 @@ impl ast::TypeBoundsOwner for ImplTraitType {}
 impl ImplTraitType {
     pub fn impl_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![impl]) }
 }
-
+/// Trait object type.
+///
+/// ```
+/// type Foo = ❰ dyn Debug ❱;
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/types/trait-object.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct DynTraitType {
     pub(crate) syntax: SyntaxNode,
@@ -398,7 +752,13 @@ impl ast::TypeBoundsOwner for DynTraitType {}
 impl DynTraitType {
     pub fn dyn_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![dyn]) }
 }
-
+/// Tuple literal.
+///
+/// ```
+/// ❰ (42, true) ❱;
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/expressions/tuple-expr.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TupleExpr {
     pub(crate) syntax: SyntaxNode,
@@ -409,7 +769,15 @@ impl TupleExpr {
     pub fn exprs(&self) -> AstChildren<Expr> { support::children(&self.syntax) }
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
 }
-
+/// Array literal.
+///
+/// ```
+/// ❰ [#![inner_attr] true, false, true] ❱;
+///
+/// ❰ ["baz"; 24] ❱;
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/expressions/array-expr.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ArrayExpr {
     pub(crate) syntax: SyntaxNode,
@@ -421,7 +789,14 @@ impl ArrayExpr {
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
     pub fn r_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![']']) }
 }
-
+/// Parenthesized expression.
+/// Note: parens are only used for grouping, this is not a tuple literal.
+///
+/// ```
+/// ❰ (#![inner_attr] 2 + 2) ❱ * 2;
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/expressions/grouped-expr.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ParenExpr {
     pub(crate) syntax: SyntaxNode,
@@ -432,7 +807,19 @@ impl ParenExpr {
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
 }
-
+/// Path to a symbol in expression context.
+/// Includes single identifier variable names and elaborate paths with
+/// generic parameters.
+///
+/// ```
+/// ❰ Some::<i32> ❱;
+/// ❰ foo ❱ + 42;
+/// ❰ Vec::<i32>::push ❱;
+/// ❰ <[i32]>::reverse ❱;
+/// ❰ <String as std::borrow::Borrow<str>>::borrow ❱;
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/expressions/path-expr.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PathExpr {
     pub(crate) syntax: SyntaxNode,
@@ -440,7 +827,17 @@ pub struct PathExpr {
 impl PathExpr {
     pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
 }
-
+/// Anonymous callable object literal a.k.a. closure, lambda or functor.
+///
+/// ```
+/// ❰ || 42 ❱;
+/// ❰ |a: u32| val + 1 ❱;
+/// ❰ async |#[attr] Pattern(_): Pattern| { bar } ❱;
+/// ❰ move || baz ❱;
+/// ❰ || -> u32 { closure_with_ret_type_annotation_requires_block_expr } ❱
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/expressions/closure-expr.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LambdaExpr {
     pub(crate) syntax: SyntaxNode,
@@ -454,7 +851,25 @@ impl LambdaExpr {
     pub fn ret_type(&self) -> Option<RetType> { support::child(&self.syntax) }
     pub fn body(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
-
+/// If expression. Includes both regular `if` and `if let` forms.
+/// Beware that `else if` is a special case syntax sugar, because in general
+/// there has to be block expression after `else`.
+///
+/// ```
+/// ❰ if bool_cond { 42 } ❱
+/// ❰ if bool_cond { 42 } else { 24 } ❱
+/// ❰ if bool_cond { 42 } else if bool_cond2 { 42 } ❱
+///
+/// ❰
+///     if let Pattern(foo) = bar {
+///         foo
+///     } else {
+///         panic!();
+///     }
+/// ❱
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/expressions/if-expr.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct IfExpr {
     pub(crate) syntax: SyntaxNode,
@@ -464,7 +879,17 @@ impl IfExpr {
     pub fn if_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![if]) }
     pub fn condition(&self) -> Option<Condition> { support::child(&self.syntax) }
 }
-
+/// Unconditional loop expression.
+///
+/// ```
+/// ❰
+///     loop {
+///         // yeah, it's that simple...
+///     }
+/// ❱
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/expressions/loop-expr.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LoopExpr {
     pub(crate) syntax: SyntaxNode,
@@ -474,7 +899,45 @@ impl ast::LoopBodyOwner for LoopExpr {}
 impl LoopExpr {
     pub fn loop_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![loop]) }
 }
-
+/// Block expression with an optional prefix (label, try ketword,
+/// unsafe keyword, async keyword...).
+///
+/// ```
+/// ❰
+///     'label: try {
+///         None?
+///     }
+/// ❱
+/// ```
+///
+/// - [try block](https://doc.rust-lang.org/unstable-book/language-features/try-blocks.html)
+/// - [unsafe block](https://doc.rust-lang.org/reference/expressions/block-expr.html#unsafe-blocks)
+/// - [async block](https://doc.rust-lang.org/reference/expressions/block-expr.html#async-blocks)
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct EffectExpr {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ast::AttrsOwner for EffectExpr {}
+impl EffectExpr {
+    pub fn label(&self) -> Option<Label> { support::child(&self.syntax) }
+    pub fn try_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![try]) }
+    pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![unsafe]) }
+    pub fn async_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![async]) }
+    pub fn block_expr(&self) -> Option<BlockExpr> { support::child(&self.syntax) }
+}
+/// For loop expression.
+/// Note: record struct literals are not valid as iterable expression
+/// due to ambiguity.
+///
+/// ```
+/// ❰
+/// for i in (0..4) {
+///     dbg!(i);
+/// }
+/// ❱
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/expressions/loop-expr.html#iterator-loops)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ForExpr {
     pub(crate) syntax: SyntaxNode,
@@ -487,7 +950,22 @@ impl ForExpr {
     pub fn in_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![in]) }
     pub fn iterable(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
-
+/// While loop expression. Includes both regular `while` and `while let` forms.
+///
+/// ```
+/// ❰
+///     while bool_cond {
+///         42;
+///     }
+/// ❱
+/// ❰
+///     while let Pattern(foo) = bar {
+///         bar += 1;
+///     }
+/// ❱
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/expressions/loop-expr.html#predicate-loops)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct WhileExpr {
     pub(crate) syntax: SyntaxNode,
@@ -498,7 +976,22 @@ impl WhileExpr {
     pub fn while_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![while]) }
     pub fn condition(&self) -> Option<Condition> { support::child(&self.syntax) }
 }
-
+/// Continue expression.
+///
+/// ```
+/// while bool_cond {
+///     ❰ continue ❱;
+/// }
+///
+/// 'outer: loop {
+///     loop {
+///         ❰ continue 'outer ❱;
+///     }
+/// }
+///
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/expressions/loop-expr.html#continue-expressions)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ContinueExpr {
     pub(crate) syntax: SyntaxNode,
@@ -512,7 +1005,25 @@ impl ContinueExpr {
         support::token(&self.syntax, T![lifetime])
     }
 }
-
+/// Break expression.
+///
+/// ```
+/// while bool_cond {
+///     ❰ break ❱;
+/// }
+/// 'outer: loop {
+///     for foo in bar {
+///         ❰ break 'outer ❱;
+///     }
+/// }
+/// 'outer: loop {
+///     loop {
+///         ❰ break 'outer 42 ❱;
+///     }
+/// }
+/// ```
+///
+/// [Refernce](https://doc.rust-lang.org/reference/expressions/loop-expr.html#break-expressions)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BreakExpr {
     pub(crate) syntax: SyntaxNode,
@@ -525,7 +1036,20 @@ impl BreakExpr {
     }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
-
+/// Label.
+///
+/// ```
+/// ❰ 'outer: ❱ loop {}
+///
+/// let foo = ❰ 'bar: ❱ loop {}
+///
+/// ❰ 'baz: ❱ {
+///     break 'baz;
+/// }
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/expressions/loop-expr.html?highlight=label#loop-labels)
+/// [Labels for blocks RFC](https://github.com/rust-lang/rfcs/blob/master/text/2046-label-break-value.md)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Label {
     pub(crate) syntax: SyntaxNode,
@@ -535,19 +1059,44 @@ impl Label {
         support::token(&self.syntax, T![lifetime])
     }
 }
-
+/// Block expression. Includes unsafe blocks and block labels.
+///
+/// ```
+///     let foo = ❰
+///         {
+///             #![inner_attr]
+///             ❰ { } ❱
+///
+///             ❰ 'label: { break 'label } ❱
+///         }
+///     ❱;
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/expressions/block-expr.html)
+/// [Labels for blocks RFC](https://github.com/rust-lang/rfcs/blob/master/text/2046-label-break-value.md)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BlockExpr {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::AttrsOwner for BlockExpr {}
+impl ast::ModuleItemOwner for BlockExpr {}
 impl BlockExpr {
-    pub fn label(&self) -> Option<Label> { support::child(&self.syntax) }
-    pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![unsafe]) }
-    pub fn async_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![async]) }
-    pub fn block(&self) -> Option<Block> { support::child(&self.syntax) }
+    pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
+    pub fn statements(&self) -> AstChildren<Stmt> { support::children(&self.syntax) }
+    pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
+    pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
 }
-
+/// Return expression.
+///
+/// ```
+/// || ❰ return 42 ❱;
+///
+/// fn bar() {
+///     ❰ return ❱;
+/// }
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/expressions/return-expr.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ReturnExpr {
     pub(crate) syntax: SyntaxNode,
@@ -556,7 +1105,16 @@ impl ast::AttrsOwner for ReturnExpr {}
 impl ReturnExpr {
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
-
+/// Call expression (not to be confused with method call expression, it is
+/// a separate ast node).
+///
+/// ```
+/// ❰ foo() ❱;
+/// ❰ &str::len("bar") ❱;
+/// ❰ <&str as PartialEq<&str>>::eq(&"", &"") ❱;
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/expressions/call-expr.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CallExpr {
     pub(crate) syntax: SyntaxNode,
@@ -565,7 +1123,16 @@ impl ast::ArgListOwner for CallExpr {}
 impl CallExpr {
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
-
+/// Method call expression.
+///
+/// ```
+/// ❰ receiver_expr.method() ❱;
+/// ❰ receiver_expr.method::<T>(42, true) ❱;
+///
+/// ❰ ❰ ❰ foo.bar() ❱ .baz() ❱ .bruh() ❱;
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/expressions/method-call-expr.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MethodCallExpr {
     pub(crate) syntax: SyntaxNode,
@@ -578,7 +1145,13 @@ impl MethodCallExpr {
     pub fn name_ref(&self) -> Option<NameRef> { support::child(&self.syntax) }
     pub fn type_arg_list(&self) -> Option<TypeArgList> { support::child(&self.syntax) }
 }
-
+/// Index expression a.k.a. subscript operator call.
+///
+/// ```
+/// ❰ foo[42] ❱;
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/expressions/array-expr.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct IndexExpr {
     pub(crate) syntax: SyntaxNode,
@@ -588,7 +1161,15 @@ impl IndexExpr {
     pub fn l_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['[']) }
     pub fn r_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![']']) }
 }
-
+/// Field access expression.
+///
+/// ```
+/// ❰ expr.bar ❱;
+///
+/// ❰ ❰ ❰ foo.bar ❱ .baz ❱ .bruh ❱;
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/expressions/field-expr.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FieldExpr {
     pub(crate) syntax: SyntaxNode,
@@ -599,7 +1180,13 @@ impl FieldExpr {
     pub fn dot_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![.]) }
     pub fn name_ref(&self) -> Option<NameRef> { support::child(&self.syntax) }
 }
-
+/// Await operator call expression.
+///
+/// ```
+/// ❰ expr.await ❱;
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/expressions/await-expr.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AwaitExpr {
     pub(crate) syntax: SyntaxNode,
@@ -610,17 +1197,29 @@ impl AwaitExpr {
     pub fn dot_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![.]) }
     pub fn await_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![await]) }
 }
-
+/// The question mark operator call.
+///
+/// ```
+/// ❰ expr? ❱;
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/expressions/operator-expr.html#the-question-mark-operator)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TryExpr {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::AttrsOwner for TryExpr {}
 impl TryExpr {
-    pub fn try_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![try]) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
+    pub fn question_mark_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![?]) }
 }
-
+/// Type cast expression.
+///
+/// ```
+/// ❰ expr as T ❱;
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/expressions/operator-expr.html#type-cast-expressions)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CastExpr {
     pub(crate) syntax: SyntaxNode,
@@ -631,7 +1230,14 @@ impl CastExpr {
     pub fn as_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![as]) }
     pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
 }
-
+/// Borrow operator call.
+///
+/// ```
+/// ❰ &foo ❱;
+/// ❰ &mut bar ❱;
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/expressions/operator-expr.html#borrow-operators)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RefExpr {
     pub(crate) syntax: SyntaxNode,
@@ -643,7 +1249,15 @@ impl RefExpr {
     pub fn mut_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![mut]) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
-
+/// Prefix operator call. This is either `!` or `*` or `-`.
+///
+/// ```
+/// ❰ !foo ❱;
+/// ❰ *bar ❱;
+/// ❰ -42 ❱;
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/expressions/operator-expr.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PrefixExpr {
     pub(crate) syntax: SyntaxNode,
@@ -652,7 +1266,13 @@ impl ast::AttrsOwner for PrefixExpr {}
 impl PrefixExpr {
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
-
+/// Box operator call.
+///
+/// ```
+/// ❰ box 42 ❱;
+/// ```
+///
+/// [RFC](https://github.com/rust-lang/rfcs/blob/0806be4f282144cfcd55b1d20284b43f87cbe1c6/text/0809-box-and-in-for-stdlib.md)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BoxExpr {
     pub(crate) syntax: SyntaxNode,
@@ -662,27 +1282,69 @@ impl BoxExpr {
     pub fn box_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![box]) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
-
+/// Range operator call.
+///
+/// ```
+/// ❰ 0..42 ❱;
+/// ❰ ..42 ❱;
+/// ❰ 0.. ❱;
+/// ❰ .. ❱;
+/// ❰ 0..=42 ❱;
+/// ❰ ..=42 ❱;
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/expressions/range-expr.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RangeExpr {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::AttrsOwner for RangeExpr {}
 impl RangeExpr {}
-
+/// Binary operator call.
+/// Includes all arithmetic, logic, bitwise and assignment operators.
+///
+/// ```
+/// ❰ 2 + ❰ 2 * 2 ❱ ❱;
+/// ❰ ❰ true && false ❱ || true ❱;
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/expressions/operator-expr.html#arithmetic-and-logical-binary-operators)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BinExpr {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::AttrsOwner for BinExpr {}
 impl BinExpr {}
-
+/// [Raw] string, [raw] byte string, char, byte, integer, float or bool literal.
+///
+/// ```
+/// ❰ "str" ❱;
+/// ❰ br##"raw byte str"## ❱;
+/// ❰ 'c' ❱;
+/// ❰ b'c' ❱;
+/// ❰ 42 ❱;
+/// ❰ 1e9 ❱;
+/// ❰ true ❱;
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/expressions/literal-expr.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Literal {
     pub(crate) syntax: SyntaxNode,
 }
 impl Literal {}
-
+/// Match expression.
+///
+/// ```
+/// ❰
+///     match expr {
+///         Pat1 => {}
+///         Pat2(_) => 42,
+///     }
+/// ❱
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/expressions/match-expr.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MatchExpr {
     pub(crate) syntax: SyntaxNode,
@@ -693,7 +1355,20 @@ impl MatchExpr {
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn match_arm_list(&self) -> Option<MatchArmList> { support::child(&self.syntax) }
 }
-
+/// Match arm list part of match expression. Includes its inner attributes.
+///
+/// ```
+/// match expr
+/// ❰
+///     {
+///         #![inner_attr]
+///         Pat1 => {}
+///         Pat2(_) => 42,
+///     }
+/// ❱
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/expressions/match-expr.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MatchArmList {
     pub(crate) syntax: SyntaxNode,
@@ -704,7 +1379,16 @@ impl MatchArmList {
     pub fn arms(&self) -> AstChildren<MatchArm> { support::children(&self.syntax) }
     pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
 }
-
+/// Match arm.
+/// Note: record struct literals are not valid as target match expression
+/// due to ambiguity.
+/// ```
+/// match expr {
+///     ❰ #[attr] Pattern(it) if bool_cond => it ❱,
+/// }
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/expressions/match-expr.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MatchArm {
     pub(crate) syntax: SyntaxNode,
@@ -716,7 +1400,15 @@ impl MatchArm {
     pub fn fat_arrow_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=>]) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
-
+/// Match guard.
+///
+/// ```
+/// match expr {
+///     Pattern(it) ❰ if bool_cond ❱ => it,
+/// }
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/expressions/match-expr.html#match-guards)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MatchGuard {
     pub(crate) syntax: SyntaxNode,
@@ -725,7 +1417,21 @@ impl MatchGuard {
     pub fn if_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![if]) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
-
+/// Record literal expression. The same syntax is used for structs,
+/// unions and record enum variants.
+///
+/// ```
+/// ❰
+///     foo::Bar {
+///         #![inner_attr]
+///         baz: 42,
+///         bruh: true,
+///         ..spread
+///     }
+/// ❱
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/expressions/struct-expr.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RecordLit {
     pub(crate) syntax: SyntaxNode,
@@ -734,7 +1440,16 @@ impl RecordLit {
     pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
     pub fn record_field_list(&self) -> Option<RecordFieldList> { support::child(&self.syntax) }
 }
-
+/// Record field list including enclosing curly braces.
+///
+/// foo::Bar ❰
+///     {
+///         baz: 42,
+///         ..spread
+///     }
+/// ❱
+///
+/// [Reference](https://doc.rust-lang.org/reference/expressions/struct-expr.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RecordFieldList {
     pub(crate) syntax: SyntaxNode,
@@ -746,7 +1461,15 @@ impl RecordFieldList {
     pub fn spread(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
 }
-
+/// Record field.
+///
+/// ```
+/// foo::Bar {
+///     ❰ #[attr] baz: 42 ❱
+/// }
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/expressions/struct-expr.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RecordField {
     pub(crate) syntax: SyntaxNode,
@@ -757,7 +1480,13 @@ impl RecordField {
     pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
-
+/// Disjunction of patterns.
+///
+/// ```
+/// let ❰ Foo(it) | Bar(it) | Baz(it) ❱ = bruh;
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/patterns.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct OrPat {
     pub(crate) syntax: SyntaxNode,
@@ -765,7 +1494,14 @@ pub struct OrPat {
 impl OrPat {
     pub fn pats(&self) -> AstChildren<Pat> { support::children(&self.syntax) }
 }
-
+/// Parenthesized pattern.
+/// Note: parens are only used for grouping, this is not a tuple pattern.
+///
+/// ```
+/// if let ❰ &(0..=42) ❱ = foo {}
+/// ```
+///
+/// https://doc.rust-lang.org/reference/patterns.html#grouped-patterns
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ParenPat {
     pub(crate) syntax: SyntaxNode,
@@ -775,7 +1511,16 @@ impl ParenPat {
     pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
 }
-
+/// Reference pattern.
+/// Note: this has nothing to do with `ref` keyword, the latter is used in bind patterns.
+///
+/// ```
+/// let ❰ &mut foo ❱ = bar;
+///
+/// let ❰ & ❰ &mut ❰ &_ ❱ ❱ ❱ = baz;
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/patterns.html#reference-patterns)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RefPat {
     pub(crate) syntax: SyntaxNode,
@@ -785,7 +1530,13 @@ impl RefPat {
     pub fn mut_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![mut]) }
     pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
 }
-
+/// Box pattern.
+///
+/// ```
+/// let ❰ box foo ❱ = box 42;
+/// ```
+///
+/// [Unstable book](https://doc.rust-lang.org/unstable-book/language-features/box-patterns.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BoxPat {
     pub(crate) syntax: SyntaxNode,
@@ -794,7 +1545,16 @@ impl BoxPat {
     pub fn box_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![box]) }
     pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
 }
-
+/// Bind pattern.
+///
+/// ```
+/// match foo {
+///     Some(❰ ref mut bar ❱) => {}
+///     ❰ baz @ None ❱ => {}
+/// }
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/patterns.html#identifier-patterns)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BindPat {
     pub(crate) syntax: SyntaxNode,
@@ -807,7 +1567,13 @@ impl BindPat {
     pub fn at_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![@]) }
     pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
 }
-
+/// Placeholder pattern a.k.a. the wildcard pattern or the underscore.
+///
+/// ```
+/// let ❰ _ ❱ = foo;
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/patterns.html#wildcard-pattern)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PlaceholderPat {
     pub(crate) syntax: SyntaxNode,
@@ -815,7 +1581,16 @@ pub struct PlaceholderPat {
 impl PlaceholderPat {
     pub fn underscore_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![_]) }
 }
-
+/// Rest-of-the record/tuple pattern.
+/// Note: this is not the unbonded range pattern (even more: it doesn't exist).
+///
+/// ```
+/// let Foo { bar, ❰ .. ❱ } = baz;
+/// let (❰ .. ❱, bruh) = (42, 24, 42);
+/// let Bruuh(❰ .. ❱) = bruuuh;
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/patterns.html#struct-patterns)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct DotDotPat {
     pub(crate) syntax: SyntaxNode,
@@ -823,7 +1598,15 @@ pub struct DotDotPat {
 impl DotDotPat {
     pub fn dotdot_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![..]) }
 }
-
+/// Path pattern.
+/// Doesn't include the underscore pattern (it is a special case, namely `PlaceholderPat`).
+///
+/// ```
+/// let ❰ foo::bar::Baz ❱ { .. } = bruh;
+/// if let ❰ CONST ❱ = 42 {}
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/patterns.html#path-patterns)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PathPat {
     pub(crate) syntax: SyntaxNode,
@@ -831,7 +1614,13 @@ pub struct PathPat {
 impl PathPat {
     pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
 }
-
+/// Slice pattern.
+///
+/// ```
+/// let ❰ [foo, bar, baz] ❱ = [1, 2, 3];
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/patterns.html#slice-patterns)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SlicePat {
     pub(crate) syntax: SyntaxNode,
@@ -841,13 +1630,33 @@ impl SlicePat {
     pub fn args(&self) -> AstChildren<Pat> { support::children(&self.syntax) }
     pub fn r_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![']']) }
 }
-
+/// Range pattern.
+///
+/// ```
+/// match foo {
+///     ❰ 0..42 ❱ => {}
+///     ❰ 0..=42 ❱ => {}
+/// }
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/patterns.html#range-patterns)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RangePat {
     pub(crate) syntax: SyntaxNode,
 }
 impl RangePat {}
-
+/// Literal pattern.
+/// Includes only bool, number, char, and string literals.
+///
+/// ```
+/// match foo {
+///     Number(❰ 42 ❱) => {}
+///     String(❰ "42" ❱) => {}
+///     Bool(❰ true ❱) => {}
+/// }
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/patterns.html#literal-patterns)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LiteralPat {
     pub(crate) syntax: SyntaxNode,
@@ -855,7 +1664,13 @@ pub struct LiteralPat {
 impl LiteralPat {
     pub fn literal(&self) -> Option<Literal> { support::child(&self.syntax) }
 }
-
+/// Macro invocation in pattern position.
+///
+/// ```
+/// let ❰ foo!(my custom syntax) ❱ = baz;
+///
+/// ```
+/// [Reference](https://doc.rust-lang.org/reference/macros.html#macro-invocation)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MacroPat {
     pub(crate) syntax: SyntaxNode,
@@ -863,7 +1678,13 @@ pub struct MacroPat {
 impl MacroPat {
     pub fn macro_call(&self) -> Option<MacroCall> { support::child(&self.syntax) }
 }
-
+/// Record literal pattern.
+///
+/// ```
+/// let ❰ foo::Bar { baz, .. } ❱ = bruh;
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/patterns.html#struct-patterns)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RecordPat {
     pub(crate) syntax: SyntaxNode,
@@ -874,7 +1695,13 @@ impl RecordPat {
     }
     pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
 }
-
+/// Record literal's field patterns list including enclosing curly braces.
+///
+/// ```
+/// let foo::Bar ❰ { baz, bind @ bruh, .. } ❱ = bruuh;
+/// ``
+///
+/// [Reference](https://doc.rust-lang.org/reference/patterns.html#struct-patterns)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RecordFieldPatList {
     pub(crate) syntax: SyntaxNode,
@@ -889,7 +1716,15 @@ impl RecordFieldPatList {
     pub fn dotdot_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![..]) }
     pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
 }
-
+/// Record literal's field pattern.
+/// Note: record literal can also match tuple structs.
+///
+/// ```
+/// let Foo { ❰ bar: _ ❱ } = baz;
+/// let TupleStruct { ❰ 0: _ ❱ } = bruh;
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/patterns.html#struct-patterns)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RecordFieldPat {
     pub(crate) syntax: SyntaxNode,
@@ -900,7 +1735,13 @@ impl RecordFieldPat {
     pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
     pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
 }
-
+/// Tuple struct literal pattern.
+///
+/// ```
+/// let ❰ foo::Bar(baz, bruh) ❱ = bruuh;
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/patterns.html#tuple-struct-patterns)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TupleStructPat {
     pub(crate) syntax: SyntaxNode,
@@ -911,7 +1752,14 @@ impl TupleStructPat {
     pub fn args(&self) -> AstChildren<Pat> { support::children(&self.syntax) }
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
 }
-
+/// Tuple pattern.
+/// Note: this doesn't include tuple structs (see `TupleStructPat`)
+///
+/// ```
+/// let ❰ (foo, bar, .., baz) ❱ = bruh;
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/patterns.html#tuple-patterns)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TuplePat {
     pub(crate) syntax: SyntaxNode,
@@ -921,7 +1769,17 @@ impl TuplePat {
     pub fn args(&self) -> AstChildren<Pat> { support::children(&self.syntax) }
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
 }
-
+/// Visibility.
+///
+/// ```
+/// ❰ pub mod ❱ foo;
+/// ❰ pub(crate) ❱ struct Bar;
+/// ❰ pub(self) ❱ enum Baz {}
+/// ❰ pub(super) ❱ fn bruh() {}
+/// ❰ pub(in bruuh::bruuuh) ❱ type T = u64;
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/visibility-and-privacy.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Visibility {
     pub(crate) syntax: SyntaxNode,
@@ -932,7 +1790,29 @@ impl Visibility {
     pub fn self_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![self]) }
     pub fn crate_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![crate]) }
 }
-
+/// Single identifier.
+/// Note(@matklad): `Name` is for things that install a new name into the scope,
+/// `NameRef` is a usage of a name. Most of the time, this definition/reference
+/// distinction can be determined purely syntactically, ie in
+/// ```
+/// fn foo() { foo() }
+/// ```
+/// the first foo is `Name`, the second one is `NameRef`.
+/// The notable exception are patterns, where in
+/// ``
+/// let x = 92
+/// ```
+/// `x` can be semantically either a name or a name ref, depeding on
+/// wether there's an `x` constant in scope.
+/// We use `Name` for patterns, and disambiguate semantically (see `NameClass` in ide_db).
+///
+/// ```
+/// let ❰ foo ❱ = bar;
+/// struct ❰ Baz ❱;
+/// fn ❰ bruh ❱() {}
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/identifiers.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Name {
     pub(crate) syntax: SyntaxNode,
@@ -940,13 +1820,41 @@ pub struct Name {
 impl Name {
     pub fn ident_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![ident]) }
 }
-
+/// Reference to a name.
+/// See the explanation on the difference between `Name` and `NameRef`
+/// in `Name` ast node docs.
+///
+/// ```
+/// let foo = ❰ bar ❱(❰ Baz(❰ bruh ❱) ❱;
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/identifiers.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NameRef {
     pub(crate) syntax: SyntaxNode,
 }
 impl NameRef {}
-
+/// Macro call.
+/// Includes all of its attributes and doc comments.
+///
+/// ```
+/// ❰
+///     /// Docs
+///     #[attr]
+///     macro_rules! foo {   // macro rules is also a macro call
+///         ($bar: tt) => {}
+///     }
+/// ❱
+///
+/// // semicolon is a part of `MacroCall` when it is used in item positions
+/// ❰ foo!(); ❱
+///
+/// fn main() {
+///     ❰ foo!() ❱; // macro call in expression positions doesn't include the semi
+/// }
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/macros.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MacroCall {
     pub(crate) syntax: SyntaxNode,
@@ -960,7 +1868,18 @@ impl MacroCall {
     pub fn token_tree(&self) -> Option<TokenTree> { support::child(&self.syntax) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
 }
-
+/// Attribute.
+///
+/// ```
+/// ❰ #![inner_attr] ❱
+///
+/// ❰ #[attr] ❱
+/// ❰ #[foo = "bar"] ❱
+/// ❰ #[baz(bruh::bruuh = "42")] ❱
+/// struct Foo;
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/attributes.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Attr {
     pub(crate) syntax: SyntaxNode,
@@ -974,13 +1893,32 @@ impl Attr {
     pub fn input(&self) -> Option<AttrInput> { support::child(&self.syntax) }
     pub fn r_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![']']) }
 }
-
+/// Stores a list of lexer tokens and other `TokenTree`s.
+/// It appears in attributes, macro_rules and macro call (foo!)
+///
+/// ```
+/// macro_call! ❰ { my syntax here } ❱;
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/macros.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TokenTree {
     pub(crate) syntax: SyntaxNode,
 }
 impl TokenTree {}
-
+/// Generic lifetime, type and constants parameters list **declaration**.
+///
+/// ```
+/// fn foo❰ <'a, 'b, T, U, const BAR: u64> ❱() {}
+///
+/// struct Baz❰ <T> ❱(T);
+///
+/// impl❰ <T> ❱ Bruh<T> {}
+///
+/// type Bruuh = for❰ <'a> ❱ fn(&'a str) -> &'a str;
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/items/generics.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeParamList {
     pub(crate) syntax: SyntaxNode,
@@ -993,7 +1931,13 @@ impl TypeParamList {
     pub fn const_params(&self) -> AstChildren<ConstParam> { support::children(&self.syntax) }
     pub fn r_angle_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![>]) }
 }
-
+/// Single type parameter **declaration**.
+///
+/// ```
+/// fn foo<❰ K ❱, ❰ I ❱, ❰ E: Debug ❱, ❰ V = DefaultType ❱>() {}
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/items/generics.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeParam {
     pub(crate) syntax: SyntaxNode,
@@ -1005,7 +1949,12 @@ impl TypeParam {
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
     pub fn default_type(&self) -> Option<TypeRef> { support::child(&self.syntax) }
 }
-
+/// Const generic parameter **declaration**.
+/// ```
+/// fn foo<T, U, ❰ const BAR: usize ❱, ❰ const BAZ: bool ❱>() {}
+/// ```
+///
+/// [RFC](https://github.com/rust-lang/rfcs/blob/master/text/2000-const-generics.md#declaring-a-const-parameter)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ConstParam {
     pub(crate) syntax: SyntaxNode,
@@ -1017,7 +1966,13 @@ impl ConstParam {
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
     pub fn default_val(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
-
+/// Lifetime parameter **declaration**.
+///
+/// ```
+/// fn foo<❰ 'a ❱, ❰ 'b ❱, V, G, D>(bar: &'a str, baz: &'b mut str) {}
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/items/generics.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LifetimeParam {
     pub(crate) syntax: SyntaxNode,
@@ -1028,7 +1983,20 @@ impl LifetimeParam {
         support::token(&self.syntax, T![lifetime])
     }
 }
-
+/// Type bound declaration clause.
+///
+/// ```
+/// fn foo<T: ❰ ?Sized ❱ + ❰ Debug ❱>() {}
+///
+/// trait Bar<T>
+/// where
+///     T: ❰ Send ❱ + ❰ Sync ❱
+/// {
+///     type Baz: ❰ !Sync ❱ + ❰ Debug ❱ + ❰ ?const Add ❱;
+/// }
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/trait-bounds.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeBound {
     pub(crate) syntax: SyntaxNode,
@@ -1040,7 +2008,21 @@ impl TypeBound {
     pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
     pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
 }
-
+/// Type bounds list.
+///
+/// ```
+///
+/// fn foo<T: ❰ ?Sized + Debug ❱>() {}
+///
+/// trait Bar<T>
+/// where
+///     T: ❰ Send + Sync ❱
+/// {
+///     type Baz: ❰ !Sync + Debug ❱;
+/// }
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/trait-bounds.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeBoundList {
     pub(crate) syntax: SyntaxNode,
@@ -1048,7 +2030,18 @@ pub struct TypeBoundList {
 impl TypeBoundList {
     pub fn bounds(&self) -> AstChildren<TypeBound> { support::children(&self.syntax) }
 }
-
+/// Single where predicate.
+///
+/// ```
+/// trait Foo<'a, 'b, T>
+/// where
+///     ❰ 'a: 'b ❱,
+///     ❰ T: IntoIterator ❱,
+///     ❰ for<'c> <T as IntoIterator>::Item: Bar<'c> ❱
+/// {}
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/items/generics.html#where-clauses)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct WherePred {
     pub(crate) syntax: SyntaxNode,
@@ -1060,7 +2053,14 @@ impl WherePred {
     }
     pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
 }
-
+/// Where clause.
+///
+/// ```
+/// trait Foo<'a, T> ❰ where 'a: 'static, T: Debug ❱ {}
+///
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/items/generics.html#where-clauses)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct WhereClause {
     pub(crate) syntax: SyntaxNode,
@@ -1069,13 +2069,42 @@ impl WhereClause {
     pub fn where_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![where]) }
     pub fn predicates(&self) -> AstChildren<WherePred> { support::children(&self.syntax) }
 }
-
+/// Abi declaration.
+/// Note: the abi string is optional.
+///
+/// ```
+/// ❰ extern "C" ❱ {
+///     fn foo() {}
+/// }
+///
+/// type Bar = ❰ extern ❱ fn() -> u32;
+///
+/// type Baz = ❰ extern r#"stdcall"# ❱ fn() -> bool;
+/// ```
+///
+/// - [Extern blocks reference](https://doc.rust-lang.org/reference/items/external-blocks.html)
+/// - [FFI function pointers reference](https://doc.rust-lang.org/reference/items/functions.html#functions)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Abi {
     pub(crate) syntax: SyntaxNode,
 }
 impl Abi {}
-
+/// Expression statement.
+///
+/// ```
+/// ❰ 42; ❱
+/// ❰ foo(); ❱
+/// ❰ (); ❱
+/// ❰ {}; ❱
+///
+/// // constructions with trailing curly brace can omit the semicolon
+/// // but only when there are satements immediately after them (this is important!)
+/// ❰ if bool_cond { } ❱
+/// ❰ loop {} ❱
+/// ❰ somestatment; ❱
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/statements.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ExprStmt {
     pub(crate) syntax: SyntaxNode,
@@ -1085,7 +2114,16 @@ impl ExprStmt {
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
 }
-
+/// Let statement.
+///
+/// ```
+/// ❰ #[attr] let foo; ❱
+/// ❰ let bar: u64; ❱
+/// ❰ let baz = 42; ❱
+/// ❰ let bruh: bool = true; ❱
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/statements.html#let-statements)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LetStmt {
     pub(crate) syntax: SyntaxNode,
@@ -1099,7 +2137,18 @@ impl LetStmt {
     pub fn initializer(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
 }
-
+/// Condition of `if` or `while` expression.
+///
+/// ```
+/// if ❰ true ❱ {}
+/// if ❰ let Pat(foo) = bar ❱ {}
+///
+/// while ❰ true ❱ {}
+/// while ❰ let Pat(baz) = bruh ❱ {}
+/// ```
+///
+/// [If expression reference](https://doc.rust-lang.org/reference/expressions/if-expr.html)
+/// [While expression reference](https://doc.rust-lang.org/reference/expressions/loop-expr.html#predicate-loops)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Condition {
     pub(crate) syntax: SyntaxNode,
@@ -1110,20 +2159,18 @@ impl Condition {
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Block {
-    pub(crate) syntax: SyntaxNode,
-}
-impl ast::AttrsOwner for Block {}
-impl ast::ModuleItemOwner for Block {}
-impl Block {
-    pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
-    pub fn statements(&self) -> AstChildren<Stmt> { support::children(&self.syntax) }
-    pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
-    pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
-}
-
+/// Parameter list **declaration**.
+///
+/// ```
+/// fn foo❰ (a: u32, b: bool) ❱ -> u32 {}
+/// let bar = ❰ |a, b| ❱ {};
+///
+/// impl Baz {
+///     fn bruh❰ (&self, a: u32) ❱ {}
+/// }
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/items/functions.html)ocs to codegen script
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ParamList {
     pub(crate) syntax: SyntaxNode,
@@ -1134,7 +2181,19 @@ impl ParamList {
     pub fn params(&self) -> AstChildren<Param> { support::children(&self.syntax) }
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
 }
-
+/// Self parameter **declaration**.
+///
+/// ```
+/// impl Bruh {
+///     fn foo(❰ self ❱) {}
+///     fn bar(❰ &self ❱) {}
+///     fn baz(❰ &mut self ❱) {}
+///     fn blah<'a>(❰ &'a self ❱) {}
+///     fn blin(❰ self: Box<Self> ❱) {}
+/// }
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/items/functions.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SelfParam {
     pub(crate) syntax: SyntaxNode,
@@ -1149,7 +2208,17 @@ impl SelfParam {
     }
     pub fn self_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![self]) }
 }
-
+/// Parameter **declaration**.
+///
+/// ```
+/// fn foo(❰ #[attr] Pat(bar): Pat(u32) ❱, ❰ #[attr] _: bool ❱) {}
+///
+/// extern "C" {
+///     fn bar(❰ baz: u32 ❱, ❰ ... ❱) -> u32;
+/// }
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/items/functions.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Param {
     pub(crate) syntax: SyntaxNode,
@@ -1160,7 +2229,16 @@ impl Param {
     pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
     pub fn dotdotdot_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![...]) }
 }
-
+/// Use declaration.
+///
+/// ```
+/// ❰ #[attr] pub use foo; ❱
+/// ❰ use bar as baz; ❱
+/// ❰ use bruh::{self, bruuh}; ❱
+/// ❰ use { blin::blen, blah::* };
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/items/use-declarations.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct UseItem {
     pub(crate) syntax: SyntaxNode,
@@ -1171,7 +2249,16 @@ impl UseItem {
     pub fn use_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![use]) }
     pub fn use_tree(&self) -> Option<UseTree> { support::child(&self.syntax) }
 }
-
+/// Use tree.
+///
+/// ```
+/// pub use ❰ foo::❰ * ❱ ❱;
+/// use ❰ bar as baz ❱;
+/// use ❰ bruh::bruuh::{ ❰ self ❱, ❰ blin ❱ } ❱;
+/// use ❰ { ❰ blin::blen ❱ } ❱
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/items/use-declarations.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct UseTree {
     pub(crate) syntax: SyntaxNode,
@@ -1182,7 +2269,16 @@ impl UseTree {
     pub fn use_tree_list(&self) -> Option<UseTreeList> { support::child(&self.syntax) }
     pub fn alias(&self) -> Option<Alias> { support::child(&self.syntax) }
 }
-
+/// Item alias.
+/// Note: this is not the type alias.
+///
+/// ```
+/// use foo ❰ as bar ❱;
+/// use baz::{bruh ❰ as _ ❱};
+/// extern crate bruuh ❰ as blin ❱;
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/items/use-declarations.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Alias {
     pub(crate) syntax: SyntaxNode,
@@ -1191,7 +2287,14 @@ impl ast::NameOwner for Alias {}
 impl Alias {
     pub fn as_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![as]) }
 }
-
+/// Sublist of use trees.
+///
+/// ```
+/// use bruh::bruuh::❰ { ❰ self ❱, ❰ blin ❱ } ❱;
+/// use ❰ { blin::blen::❰ {} ❱ } ❱
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/items/use-declarations.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct UseTreeList {
     pub(crate) syntax: SyntaxNode,
@@ -1201,7 +2304,14 @@ impl UseTreeList {
     pub fn use_trees(&self) -> AstChildren<UseTree> { support::children(&self.syntax) }
     pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
 }
-
+/// Extern crate item.
+///
+/// ```
+/// ❰ #[attr] pub extern crate foo; ❱
+/// ❰ extern crate self as bar; ❱
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/items/extern-crates.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ExternCrateItem {
     pub(crate) syntax: SyntaxNode,
@@ -1214,7 +2324,13 @@ impl ExternCrateItem {
     pub fn name_ref(&self) -> Option<NameRef> { support::child(&self.syntax) }
     pub fn alias(&self) -> Option<Alias> { support::child(&self.syntax) }
 }
-
+/// Call site arguments list.
+///
+/// ```
+/// foo::<T, U>❰ (42, true) ❱;
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/expressions/call-expr.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ArgList {
     pub(crate) syntax: SyntaxNode,
@@ -1224,16 +2340,41 @@ impl ArgList {
     pub fn args(&self) -> AstChildren<Expr> { support::children(&self.syntax) }
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
 }
-
+/// Path to a symbol. Includes single identifier names and elaborate paths with
+/// generic parameters.
+///
+/// ```
+/// (0..10).❰ ❰ collect ❱ ::<Vec<_>> ❱();
+/// ❰ ❰ ❰ Vec ❱ ::<u8> ❱ ::with_capacity ❱(1024);
+/// ❰ ❰ <❰ Foo ❱ as ❰ ❰ bar ❱ ::Bar ❱> ❱ ::baz ❱();
+/// ❰ ❰ <❰ bruh ❱> ❱ ::bruuh ❱();
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/paths.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Path {
     pub(crate) syntax: SyntaxNode,
 }
 impl Path {
     pub fn segment(&self) -> Option<PathSegment> { support::child(&self.syntax) }
+    pub fn coloncolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![::]) }
     pub fn qualifier(&self) -> Option<Path> { support::child(&self.syntax) }
 }
-
+/// Segment of the path to a symbol.
+/// Only path segment of an absolute path holds the `::` token,
+/// all other `::` tokens that connect path segments reside under `Path` itself.`
+///
+/// ```
+/// (0..10).❰ collect ❱ :: ❰ <Vec<_>> ❱();
+/// ❰ Vec ❱ :: ❰ <u8> ❱ :: ❰ with_capacity ❱(1024);
+/// ❰ <❰ Foo ❱ as ❰ bar ❱ :: ❰ Bar ❱> ❱ :: ❰ baz ❱();
+/// ❰ <❰ bruh ❱> ❱ :: ❰ bruuh ❱();
+///
+/// // Note that only in this case `::` token is inlcuded:
+/// ❰ ::foo ❱;
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/paths.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PathSegment {
     pub(crate) syntax: SyntaxNode,
@@ -1251,7 +2392,15 @@ impl PathSegment {
     pub fn path_type(&self) -> Option<PathType> { support::child(&self.syntax) }
     pub fn r_angle_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![>]) }
 }
-
+/// List of type arguments that are passed at generic instantiation site.
+///
+/// ```
+/// type _ = Foo ❰ ::<'a, u64, Item = Bar, 42, {true}> ❱::Bar;
+///
+/// Vec❰ ::<bool> ❱::();
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/paths.html#paths-in-expressions)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeArgList {
     pub(crate) syntax: SyntaxNode,
@@ -1266,7 +2415,13 @@ impl TypeArgList {
     pub fn const_args(&self) -> AstChildren<ConstArg> { support::children(&self.syntax) }
     pub fn r_angle_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![>]) }
 }
-
+/// Type argument that is passed at generic instantiation site.
+///
+/// ```
+/// type _ = Foo::<'a, ❰ u64 ❱, ❰ bool ❱, Item = Bar, 42>::Baz;
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/paths.html#paths-in-expressions)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeArg {
     pub(crate) syntax: SyntaxNode,
@@ -1274,7 +2429,13 @@ pub struct TypeArg {
 impl TypeArg {
     pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
 }
-
+/// Associated type argument that is passed at generic instantiation site.
+/// ```
+/// type Foo = Bar::<'a, u64, bool, ❰ Item = Baz ❱, 42>::Bruh;
+///
+/// trait Bruh<T>: Iterator<❰ Item: Debug ❱> {}
+/// ```
+///
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AssocTypeArg {
     pub(crate) syntax: SyntaxNode,
@@ -1285,7 +2446,15 @@ impl AssocTypeArg {
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
     pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
 }
-
+/// Lifetime argument that is passed at generic instantiation site.
+///
+/// ```
+/// fn foo<'a>(s: &'a str) {
+///     bar::<❰ 'a ❱>(s);
+/// }
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/paths.html#paths-in-expressions)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LifetimeArg {
     pub(crate) syntax: SyntaxNode,
@@ -1295,24 +2464,41 @@ impl LifetimeArg {
         support::token(&self.syntax, T![lifetime])
     }
 }
-
+/// Constant value argument that is passed at generic instantiation site.
+///
+/// ```
+/// foo::<u32, ❰ { true } ❱>();
+///
+/// bar::<❰ { 2 + 2} ❱>();
+/// ```
+///
+/// [RFC](https://github.com/rust-lang/rfcs/blob/master/text/2000-const-generics.md#declaring-a-const-parameter)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ConstArg {
     pub(crate) syntax: SyntaxNode,
 }
 impl ConstArg {
     pub fn literal(&self) -> Option<Literal> { support::child(&self.syntax) }
-    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
     pub fn block_expr(&self) -> Option<BlockExpr> { support::child(&self.syntax) }
 }
-
+/// FIXME: (@edwin0cheng) Remove it to use ItemList instead
+/// https://github.com/rust-analyzer/rust-analyzer/pull/4083#discussion_r422666243
+///
+/// [Reference](https://doc.rust-lang.org/reference/macros.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MacroItems {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::ModuleItemOwner for MacroItems {}
 impl MacroItems {}
-
+/// FIXME: (@edwin0cheng) add some documentation here. As per the writing
+/// of this comment this ast node is not used.
+///
+/// ```
+/// // FIXME: example here
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/macros.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MacroStmts {
     pub(crate) syntax: SyntaxNode,
@@ -1321,7 +2507,18 @@ impl MacroStmts {
     pub fn statements(&self) -> AstChildren<Stmt> { support::children(&self.syntax) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
-
+/// List of items in an extern block.
+///
+/// ```
+/// extern "C" ❰
+///     {
+///         fn foo();
+///         static var: u32;
+///     }
+/// ❱
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/items/external-blocks.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ExternItemList {
     pub(crate) syntax: SyntaxNode,
@@ -1332,7 +2529,18 @@ impl ExternItemList {
     pub fn extern_items(&self) -> AstChildren<ExternItem> { support::children(&self.syntax) }
     pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
 }
-
+/// Extern block.
+///
+/// ```
+/// ❰
+///     extern "C" {
+///         fn foo();
+///     }
+/// ❱
+///
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/items/external-blocks.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ExternBlock {
     pub(crate) syntax: SyntaxNode,
@@ -1341,7 +2549,15 @@ impl ExternBlock {
     pub fn abi(&self) -> Option<Abi> { support::child(&self.syntax) }
     pub fn extern_item_list(&self) -> Option<ExternItemList> { support::child(&self.syntax) }
 }
-
+/// Meta item in an attribute.
+///
+/// ```
+/// #[❰ bar::baz = "42" ❱]
+/// #[❰ bruh(bruuh("true")) ❱]
+/// struct Foo;
+/// ```
+///
+/// [Reference](https://doc.rust-lang.org/reference/attributes.html?highlight=meta,item#meta-item-attribute-syntax)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MetaItem {
     pub(crate) syntax: SyntaxNode,
@@ -1352,7 +2568,15 @@ impl MetaItem {
     pub fn attr_input(&self) -> Option<AttrInput> { support::child(&self.syntax) }
     pub fn nested_meta_items(&self) -> AstChildren<MetaItem> { support::children(&self.syntax) }
 }
-
+/// Macro 2.0 definition.
+/// Their syntax is still WIP by rustc team...
+/// ```
+/// ❰
+///     macro foo { }
+/// ❱
+/// ```
+///
+/// [RFC](https://github.com/rust-lang/rfcs/blob/master/text/1584-macros.md)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MacroDef {
     pub(crate) syntax: SyntaxNode,
@@ -1361,7 +2585,7 @@ impl MacroDef {
     pub fn name(&self) -> Option<Name> { support::child(&self.syntax) }
     pub fn token_tree(&self) -> Option<TokenTree> { support::child(&self.syntax) }
 }
-
+/// Any kind of nominal type definition.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum NominalDef {
     StructDef(StructDef),
@@ -1371,14 +2595,14 @@ pub enum NominalDef {
 impl ast::NameOwner for NominalDef {}
 impl ast::TypeParamsOwner for NominalDef {}
 impl ast::AttrsOwner for NominalDef {}
-
+/// Any kind of **declared** generic parameter
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum GenericParam {
     LifetimeParam(LifetimeParam),
     TypeParam(TypeParam),
     ConstParam(ConstParam),
 }
-
+/// Any kind of generic argument passed at instantiation site
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum GenericArg {
     LifetimeArg(LifetimeArg),
@@ -1386,7 +2610,7 @@ pub enum GenericArg {
     ConstArg(ConstArg),
     AssocTypeArg(AssocTypeArg),
 }
-
+/// Any kind of construct valid in type context
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TypeRef {
     ParenType(ParenType),
@@ -1403,7 +2627,7 @@ pub enum TypeRef {
     ImplTraitType(ImplTraitType),
     DynTraitType(DynTraitType),
 }
-
+/// Any kind of top-level item that may appear in a module
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ModuleItem {
     StructDef(StructDef),
@@ -1424,16 +2648,20 @@ pub enum ModuleItem {
 impl ast::NameOwner for ModuleItem {}
 impl ast::AttrsOwner for ModuleItem {}
 impl ast::VisibilityOwner for ModuleItem {}
-
+/// Any kind of item that may appear in an impl block
+///
+/// // FIXME: impl blocks can also contain MacroCall
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum ImplItem {
+pub enum AssocItem {
     FnDef(FnDef),
     TypeAliasDef(TypeAliasDef),
     ConstDef(ConstDef),
 }
-impl ast::NameOwner for ImplItem {}
-impl ast::AttrsOwner for ImplItem {}
-
+impl ast::NameOwner for AssocItem {}
+impl ast::AttrsOwner for AssocItem {}
+/// Any kind of item that may appear in an extern block
+///
+/// // FIXME: extern blocks can also contain MacroCall
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ExternItem {
     FnDef(FnDef),
@@ -1442,7 +2670,7 @@ pub enum ExternItem {
 impl ast::NameOwner for ExternItem {}
 impl ast::AttrsOwner for ExternItem {}
 impl ast::VisibilityOwner for ExternItem {}
-
+/// Any kind of expression
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Expr {
     TupleExpr(TupleExpr),
@@ -1467,6 +2695,7 @@ pub enum Expr {
     FieldExpr(FieldExpr),
     AwaitExpr(AwaitExpr),
     TryExpr(TryExpr),
+    EffectExpr(EffectExpr),
     CastExpr(CastExpr),
     RefExpr(RefExpr),
     PrefixExpr(PrefixExpr),
@@ -1477,7 +2706,7 @@ pub enum Expr {
     BoxExpr(BoxExpr),
 }
 impl ast::AttrsOwner for Expr {}
-
+/// Any kind of pattern
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Pat {
     OrPat(OrPat),
@@ -1496,25 +2725,28 @@ pub enum Pat {
     LiteralPat(LiteralPat),
     MacroPat(MacroPat),
 }
-
+/// Any kind of pattern that appears directly inside of the curly
+/// braces of a record pattern
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum RecordInnerPat {
     RecordFieldPat(RecordFieldPat),
     BindPat(BindPat),
 }
-
+/// Any kind of input to an attribute
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AttrInput {
     Literal(Literal),
     TokenTree(TokenTree),
 }
-
+/// Any kind of statement
+/// Note: there are no empty statements, these are just represented as
+/// bare semicolons without a dedicated statement ast node.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Stmt {
     LetStmt(LetStmt),
     ExprStmt(ExprStmt),
 }
-
+/// Any kind of fields list (record or tuple field lists)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum FieldDefList {
     RecordFieldDefList(RecordFieldDefList),
@@ -1940,6 +3172,17 @@ impl AstNode for IfExpr {
 }
 impl AstNode for LoopExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == LOOP_EXPR }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for EffectExpr {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == EFFECT_EXPR }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2631,17 +3874,6 @@ impl AstNode for Condition {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for Block {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == BLOCK }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
 impl AstNode for ParamList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == PARAM_LIST }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -3163,16 +4395,16 @@ impl AstNode for ModuleItem {
         }
     }
 }
-impl From<FnDef> for ImplItem {
-    fn from(node: FnDef) -> ImplItem { ImplItem::FnDef(node) }
+impl From<FnDef> for AssocItem {
+    fn from(node: FnDef) -> AssocItem { AssocItem::FnDef(node) }
 }
-impl From<TypeAliasDef> for ImplItem {
-    fn from(node: TypeAliasDef) -> ImplItem { ImplItem::TypeAliasDef(node) }
+impl From<TypeAliasDef> for AssocItem {
+    fn from(node: TypeAliasDef) -> AssocItem { AssocItem::TypeAliasDef(node) }
 }
-impl From<ConstDef> for ImplItem {
-    fn from(node: ConstDef) -> ImplItem { ImplItem::ConstDef(node) }
+impl From<ConstDef> for AssocItem {
+    fn from(node: ConstDef) -> AssocItem { AssocItem::ConstDef(node) }
 }
-impl AstNode for ImplItem {
+impl AstNode for AssocItem {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
             FN_DEF | TYPE_ALIAS_DEF | CONST_DEF => true,
@@ -3181,18 +4413,18 @@ impl AstNode for ImplItem {
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         let res = match syntax.kind() {
-            FN_DEF => ImplItem::FnDef(FnDef { syntax }),
-            TYPE_ALIAS_DEF => ImplItem::TypeAliasDef(TypeAliasDef { syntax }),
-            CONST_DEF => ImplItem::ConstDef(ConstDef { syntax }),
+            FN_DEF => AssocItem::FnDef(FnDef { syntax }),
+            TYPE_ALIAS_DEF => AssocItem::TypeAliasDef(TypeAliasDef { syntax }),
+            CONST_DEF => AssocItem::ConstDef(ConstDef { syntax }),
             _ => return None,
         };
         Some(res)
     }
     fn syntax(&self) -> &SyntaxNode {
         match self {
-            ImplItem::FnDef(it) => &it.syntax,
-            ImplItem::TypeAliasDef(it) => &it.syntax,
-            ImplItem::ConstDef(it) => &it.syntax,
+            AssocItem::FnDef(it) => &it.syntax,
+            AssocItem::TypeAliasDef(it) => &it.syntax,
+            AssocItem::ConstDef(it) => &it.syntax,
         }
     }
 }
@@ -3290,6 +4522,9 @@ impl From<AwaitExpr> for Expr {
 impl From<TryExpr> for Expr {
     fn from(node: TryExpr) -> Expr { Expr::TryExpr(node) }
 }
+impl From<EffectExpr> for Expr {
+    fn from(node: EffectExpr) -> Expr { Expr::EffectExpr(node) }
+}
 impl From<CastExpr> for Expr {
     fn from(node: CastExpr) -> Expr { Expr::CastExpr(node) }
 }
@@ -3320,8 +4555,10 @@ impl AstNode for Expr {
             TUPLE_EXPR | ARRAY_EXPR | PAREN_EXPR | PATH_EXPR | LAMBDA_EXPR | IF_EXPR
             | LOOP_EXPR | FOR_EXPR | WHILE_EXPR | CONTINUE_EXPR | BREAK_EXPR | LABEL
             | BLOCK_EXPR | RETURN_EXPR | MATCH_EXPR | RECORD_LIT | CALL_EXPR | INDEX_EXPR
-            | METHOD_CALL_EXPR | FIELD_EXPR | AWAIT_EXPR | TRY_EXPR | CAST_EXPR | REF_EXPR
-            | PREFIX_EXPR | RANGE_EXPR | BIN_EXPR | LITERAL | MACRO_CALL | BOX_EXPR => true,
+            | METHOD_CALL_EXPR | FIELD_EXPR | AWAIT_EXPR | TRY_EXPR | EFFECT_EXPR | CAST_EXPR
+            | REF_EXPR | PREFIX_EXPR | RANGE_EXPR | BIN_EXPR | LITERAL | MACRO_CALL | BOX_EXPR => {
+                true
+            }
             _ => false,
         }
     }
@@ -3349,6 +4586,7 @@ impl AstNode for Expr {
             FIELD_EXPR => Expr::FieldExpr(FieldExpr { syntax }),
             AWAIT_EXPR => Expr::AwaitExpr(AwaitExpr { syntax }),
             TRY_EXPR => Expr::TryExpr(TryExpr { syntax }),
+            EFFECT_EXPR => Expr::EffectExpr(EffectExpr { syntax }),
             CAST_EXPR => Expr::CastExpr(CastExpr { syntax }),
             REF_EXPR => Expr::RefExpr(RefExpr { syntax }),
             PREFIX_EXPR => Expr::PrefixExpr(PrefixExpr { syntax }),
@@ -3385,6 +4623,7 @@ impl AstNode for Expr {
             Expr::FieldExpr(it) => &it.syntax,
             Expr::AwaitExpr(it) => &it.syntax,
             Expr::TryExpr(it) => &it.syntax,
+            Expr::EffectExpr(it) => &it.syntax,
             Expr::CastExpr(it) => &it.syntax,
             Expr::RefExpr(it) => &it.syntax,
             Expr::PrefixExpr(it) => &it.syntax,
@@ -3630,7 +4869,7 @@ impl std::fmt::Display for ModuleItem {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for ImplItem {
+impl std::fmt::Display for AssocItem {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -3861,6 +5100,11 @@ impl std::fmt::Display for IfExpr {
     }
 }
 impl std::fmt::Display for LoopExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for EffectExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -4171,11 +5415,6 @@ impl std::fmt::Display for LetStmt {
     }
 }
 impl std::fmt::Display for Condition {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for Block {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

@@ -1,7 +1,7 @@
 //! Defines database & queries for name resolution.
 use std::sync::Arc;
 
-use hir_expand::{db::AstDatabase, HirFileId};
+use hir_expand::{db::AstDatabase, name::Name, HirFileId};
 use ra_db::{salsa, CrateId, SourceDatabase, Upcast};
 use ra_prof::profile;
 use ra_syntax::SmolStr;
@@ -10,11 +10,15 @@ use crate::{
     adt::{EnumData, StructData},
     attr::Attrs,
     body::{scope::ExprScopes, Body, BodySourceMap},
-    data::{ConstData, FunctionData, ImplData, TraitData, TypeAliasData},
+    data::{ConstData, FunctionData, ImplData, StaticData, TraitData, TypeAliasData},
     docs::Documentation,
+    find_path,
     generics::GenericParams,
+    item_scope::ItemInNs,
     lang_item::{LangItemTarget, LangItems},
     nameres::{raw::RawItems, CrateDefMap},
+    path::ModPath,
+    visibility::Visibility,
     AttrDefId, ConstId, ConstLoc, DefWithBodyId, EnumId, EnumLoc, FunctionId, FunctionLoc,
     GenericDefId, ImplId, ImplLoc, ModuleId, StaticId, StaticLoc, StructId, StructLoc, TraitId,
     TraitLoc, TypeAliasId, TypeAliasLoc, UnionId, UnionLoc,
@@ -77,8 +81,8 @@ pub trait DefDatabase: InternDatabase + AstDatabase + Upcast<dyn AstDatabase> {
     #[salsa::invoke(ConstData::const_data_query)]
     fn const_data(&self, konst: ConstId) -> Arc<ConstData>;
 
-    #[salsa::invoke(ConstData::static_data_query)]
-    fn static_data(&self, konst: StaticId) -> Arc<ConstData>;
+    #[salsa::invoke(StaticData::static_data_query)]
+    fn static_data(&self, konst: StaticId) -> Arc<StaticData>;
 
     #[salsa::invoke(Body::body_with_source_map_query)]
     fn body_with_source_map(&self, def: DefWithBodyId) -> (Arc<Body>, Arc<BodySourceMap>);
@@ -108,6 +112,16 @@ pub trait DefDatabase: InternDatabase + AstDatabase + Upcast<dyn AstDatabase> {
     // Remove this query completely, in favor of `Attrs::docs` method
     #[salsa::invoke(Documentation::documentation_query)]
     fn documentation(&self, def: AttrDefId) -> Option<Documentation>;
+
+    #[salsa::invoke(find_path::importable_locations_of_query)]
+    fn importable_locations_of(
+        &self,
+        item: ItemInNs,
+        krate: CrateId,
+    ) -> Arc<[(ModuleId, Name, Visibility)]>;
+
+    #[salsa::invoke(find_path::find_path_inner_query)]
+    fn find_path_inner(&self, item: ItemInNs, from: ModuleId, max_len: usize) -> Option<ModPath>;
 }
 
 fn crate_def_map_wait(db: &impl DefDatabase, krate: CrateId) -> Arc<CrateDefMap> {

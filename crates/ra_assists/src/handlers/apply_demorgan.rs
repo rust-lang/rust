@@ -1,6 +1,6 @@
 use ra_syntax::ast::{self, AstNode};
 
-use crate::{utils::invert_boolean_expression, Assist, AssistCtx, AssistId};
+use crate::{utils::invert_boolean_expression, AssistContext, AssistId, Assists};
 
 // Assist: apply_demorgan
 //
@@ -21,7 +21,7 @@ use crate::{utils::invert_boolean_expression, Assist, AssistCtx, AssistId};
 //     if !(x == 4 && y) {}
 // }
 // ```
-pub(crate) fn apply_demorgan(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let expr = ctx.find_node_at_offset::<ast::BinExpr>()?;
     let op = expr.op_kind()?;
     let op_range = expr.op_token()?.text_range();
@@ -39,8 +39,7 @@ pub(crate) fn apply_demorgan(ctx: AssistCtx) -> Option<Assist> {
     let rhs_range = rhs.syntax().text_range();
     let not_rhs = invert_boolean_expression(rhs);
 
-    ctx.add_assist(AssistId("apply_demorgan"), "Apply De Morgan's law", |edit| {
-        edit.target(op_range);
+    acc.add(AssistId("apply_demorgan"), "Apply De Morgan's law", op_range, |edit| {
         edit.replace(op_range, opposite_op);
         edit.replace(lhs_range, format!("!({}", not_lhs.syntax().text()));
         edit.replace(rhs_range, format!("{})", not_rhs.syntax().text()));
@@ -60,26 +59,26 @@ fn opposite_logic_op(kind: ast::BinOp) -> Option<&'static str> {
 mod tests {
     use super::*;
 
-    use crate::helpers::{check_assist, check_assist_not_applicable};
+    use crate::tests::{check_assist, check_assist_not_applicable};
 
     #[test]
     fn demorgan_turns_and_into_or() {
-        check_assist(apply_demorgan, "fn f() { !x &&<|> !x }", "fn f() { !(x ||<|> x) }")
+        check_assist(apply_demorgan, "fn f() { !x &&<|> !x }", "fn f() { !(x || x) }")
     }
 
     #[test]
     fn demorgan_turns_or_into_and() {
-        check_assist(apply_demorgan, "fn f() { !x ||<|> !x }", "fn f() { !(x &&<|> x) }")
+        check_assist(apply_demorgan, "fn f() { !x ||<|> !x }", "fn f() { !(x && x) }")
     }
 
     #[test]
     fn demorgan_removes_inequality() {
-        check_assist(apply_demorgan, "fn f() { x != x ||<|> !x }", "fn f() { !(x == x &&<|> x) }")
+        check_assist(apply_demorgan, "fn f() { x != x ||<|> !x }", "fn f() { !(x == x && x) }")
     }
 
     #[test]
     fn demorgan_general_case() {
-        check_assist(apply_demorgan, "fn f() { x ||<|> x }", "fn f() { !(!x &&<|> !x) }")
+        check_assist(apply_demorgan, "fn f() { x ||<|> x }", "fn f() { !(!x && !x) }")
     }
 
     #[test]

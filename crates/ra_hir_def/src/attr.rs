@@ -140,6 +140,7 @@ impl Attr {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
 pub struct AttrQuery<'a> {
     attrs: &'a Attrs,
     key: &'static str,

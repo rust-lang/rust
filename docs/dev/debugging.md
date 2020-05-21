@@ -22,11 +22,11 @@ where **only** the `rust-analyzer` extension being debugged is enabled.
 
 ## Debug TypeScript VSCode extension
 
-- `Run Extension` - runs the extension with the globally installed `rust-analyzer` binary.
-- `Run Extension (Dev Server)` - runs extension with the locally built LSP server (`target/debug/rust-analyzer`).
+- `Run Installed Extension` - runs the extension with the globally installed `rust-analyzer` binary.
+- `Run Extension (Debug Build)` - runs extension with the locally built LSP server (`target/debug/rust-analyzer`).
 
 TypeScript debugging is configured to watch your source edits and recompile.
-To apply changes to an already running debug process press <kbd>Ctrl+Shift+P</kbd> and run the following command in your `[Extension Development Host]`
+To apply changes to an already running debug process, press <kbd>Ctrl+Shift+P</kbd> and run the following command in your `[Extension Development Host]`
 
 ```
 > Developer: Reload Window
@@ -47,7 +47,7 @@ To apply changes to an already running debug process press <kbd>Ctrl+Shift+P</kb
     debug = 2
   ```
 
-- Select `Run Extension (Dev Server)` to run your locally built `target/debug/rust-analyzer`.
+- Select `Run Extension (Debug Build)` to run your locally built `target/debug/rust-analyzer`.
 
 - In the original VSCode window once again select the `Attach To Server` debug configuration.
 
@@ -76,11 +76,11 @@ Make sure you open a rust file in the `[Extension Development Host]` and try aga
 
 Make sure you have run `echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope`.
 
-By default this should reset back to 1 everytime you log in.
+By default this should reset back to 1 every time you log in.
 
 ### Breakpoints are never being hit
 
-Check your version of `lldb` if it's version 6 and lower use the `classic` adapter type.
+Check your version of `lldb`. If it's version 6 and lower, use the `classic` adapter type.
 It's `lldb.adapterType` in settings file.
 
-If you're running `lldb` version 7 change the lldb adapter type to `bundled` or `native`.
+If you're running `lldb` version 7, change the lldb adapter type to `bundled` or `native`.

@@ -151,13 +151,20 @@ impl ItemScope {
 }
 
 impl PerNs {
-    pub(crate) fn from_def(def: ModuleDefId, v: Visibility) -> PerNs {
+    pub(crate) fn from_def(def: ModuleDefId, v: Visibility, has_constructor: bool) -> PerNs {
         match def {
             ModuleDefId::ModuleId(_) => PerNs::types(def, v),
             ModuleDefId::FunctionId(_) => PerNs::values(def, v),
             ModuleDefId::AdtId(adt) => match adt {
-                AdtId::StructId(_) | AdtId::UnionId(_) => PerNs::both(def, def, v),
+                AdtId::UnionId(_) => PerNs::types(def, v),
                 AdtId::EnumId(_) => PerNs::types(def, v),
+                AdtId::StructId(_) => {
+                    if has_constructor {
+                        PerNs::both(def, def, v)
+                    } else {
+                        PerNs::types(def, v)
+                    }
+                }
             },
             ModuleDefId::EnumVariantId(_) => PerNs::both(def, def, v),
             ModuleDefId::ConstId(_) | ModuleDefId::StaticId(_) => PerNs::values(def, v),

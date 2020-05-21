@@ -190,8 +190,6 @@ fn get_struct_def_name_for_struct_literal_search(
 
 #[cfg(test)]
 mod tests {
-    use test_utils::covers;
-
     use crate::{
         mock_analysis::{analysis_and_position, single_file_with_position, MockAnalysis},
         Declaration, Reference, ReferenceSearchResult, SearchScope,
@@ -301,7 +299,6 @@ mod tests {
 
     #[test]
     fn search_filters_by_range() {
-        covers!(ra_ide_db::search_filters_by_range);
         let code = r#"
             fn foo() {
                 let spam<|> = 92;
@@ -591,6 +588,31 @@ mod tests {
 
         let refs = get_all_refs(code);
         check_result(refs, "i BIND_PAT FileId(1) 36..37 Other", &["FileId(1) 51..52 Other Write"]);
+    }
+
+    #[test]
+    fn test_find_struct_function_refs_outside_module() {
+        let code = r#"
+        mod foo {
+            pub struct Foo;
+
+            impl Foo {
+                pub fn new<|>() -> Foo {
+                    Foo
+                }
+            }
+        }
+
+        fn main() {
+            let _f = foo::Foo::new();
+        }"#;
+
+        let refs = get_all_refs(code);
+        check_result(
+            refs,
+            "new FN_DEF FileId(1) 87..150 94..97 Other",
+            &["FileId(1) 227..230 StructLiteral"],
+        );
     }
 
     fn get_all_refs(text: &str) -> ReferenceSearchResult {

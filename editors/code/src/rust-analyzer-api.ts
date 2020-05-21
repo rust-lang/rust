@@ -64,12 +64,12 @@ export const parentModule = request<lc.TextDocumentPositionParams, Vec<lc.Locati
 
 export interface JoinLinesParams {
     textDocument: lc.TextDocumentIdentifier;
-    range: lc.Range;
+    ranges: lc.Range[];
 }
-export const joinLines = request<JoinLinesParams, SourceChange>("joinLines");
+export const joinLines = new lc.RequestType<JoinLinesParams, lc.TextEdit[], unknown>('experimental/joinLines');
 
 
-export const onEnter = request<lc.TextDocumentPositionParams, Option<SourceChange>>("onEnter");
+export const onEnter = request<lc.TextDocumentPositionParams, Option<lc.WorkspaceEdit>>("onEnter");
 
 export interface RunnablesParams {
     textDocument: lc.TextDocumentIdentifier;

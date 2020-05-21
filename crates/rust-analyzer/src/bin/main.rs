@@ -60,7 +60,7 @@ fn main() -> Result<()> {
 
 fn setup_logging() -> Result<()> {
     std::env::set_var("RUST_BACKTRACE", "short");
-    env_logger::try_init()?;
+    env_logger::try_init_from_env("RA_LOG")?;
     ra_prof::init();
     Ok(())
 }
@@ -100,9 +100,8 @@ fn run_server() -> Result<()> {
         if let Some(value) = &initialize_params.initialization_options {
             config.update(value);
         }
-        if let Some(caps) = &initialize_params.capabilities.text_document {
-            config.update_caps(caps);
-        }
+        config.update_caps(&initialize_params.capabilities);
+
         config
     };
 

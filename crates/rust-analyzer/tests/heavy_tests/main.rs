@@ -3,14 +3,16 @@ mod support;
 use std::{collections::HashMap, path::PathBuf, time::Instant};
 
 use lsp_types::{
-    CodeActionContext, DidOpenTextDocumentParams, DocumentFormattingParams, FormattingOptions,
-    GotoDefinitionParams, HoverParams, PartialResultParams, Position, Range, TextDocumentItem,
-    TextDocumentPositionParams, WorkDoneProgressParams,
+    notification::DidOpenTextDocument,
+    request::{
+        CodeActionRequest, Completion, Formatting, GotoDefinition, GotoTypeDefinition, HoverRequest,
+    },
+    CodeActionContext, CodeActionParams, CompletionParams, DidOpenTextDocumentParams,
+    DocumentFormattingParams, FormattingOptions, GotoDefinitionParams, HoverParams,
+    PartialResultParams, Position, Range, TextDocumentItem, TextDocumentPositionParams,
+    WorkDoneProgressParams,
 };
-use rust_analyzer::req::{
-    CodeActionParams, CodeActionRequest, Completion, CompletionParams, DidOpenTextDocument,
-    Formatting, GotoDefinition, HoverRequest, OnEnter, Runnables, RunnablesParams,
-};
+use rust_analyzer::lsp_ext::{OnEnter, Runnables, RunnablesParams};
 use serde_json::json;
 use tempfile::TempDir;
 use test_utils::skip_slow_tests;
@@ -149,7 +151,7 @@ fn main() {}
               "cwd": server.path().join("foo")
             },
             {
-              "args": [ "check", "--package", "foo", "--test", "spam" ],
+              "args": [ "check", "--package", "foo" ],
               "extraArgs": [],
               "bin": "cargo",
               "env": {},
@@ -161,7 +163,7 @@ fn main() {}
               "cwd": server.path().join("foo")
             },
             {
-              "args": [ "test", "--package", "foo", "--test", "spam" ],
+              "args": [ "test", "--package", "foo" ],
               "extraArgs": [],
               "bin": "cargo",
               "env": {},
@@ -331,29 +333,17 @@ fn main() {}
             partial_result_params: PartialResultParams::default(),
             work_done_progress_params: WorkDoneProgressParams::default(),
         },
-        json!([
-          {
-            "command": {
-              "arguments": [
+        json!([{
+            "edit": {
+              "documentChanges": [
                 {
-                  "cursorPosition": null,
-                  "label": "create module",
-                  "workspaceEdit": {
-                    "documentChanges": [
-                      {
-                        "kind": "create",
-                        "uri": "file:///[..]/src/bar.rs"
-                      }
-                    ]
-                  }
+                  "kind": "create",
+                  "uri": "file:///[..]/src/bar.rs"
                 }
-              ],
-              "command": "rust-analyzer.applySourceChange",
-              "title": "create module"
+              ]
             },
-            "title": "create module"
-          }
-        ]),
+            "title": "Create module"
+        }]),
     );
 
     server.request::<CodeActionRequest>(
@@ -414,29 +404,17 @@ fn main() {{}}
             partial_result_params: PartialResultParams::default(),
             work_done_progress_params: WorkDoneProgressParams::default(),
         },
-        json!([
-          {
-            "command": {
-              "arguments": [
+        json!([{
+            "edit": {
+              "documentChanges": [
                 {
-                  "cursorPosition": null,
-                  "label": "create module",
-                  "workspaceEdit": {
-                    "documentChanges": [
-                      {
-                        "kind": "create",
-                        "uri": "file:///[..]/src/bar.rs"
-                      }
-                    ]
-                  }
+                  "kind": "create",
+                  "uri": "file://[..]/src/bar.rs"
                 }
-              ],
-              "command": "rust-analyzer.applySourceChange",
-              "title": "create module"
+              ]
             },
-            "title": "create module"
-          }
-        ]),
+            "title": "Create module"
+        }]),
     );
 
     server.request::<CodeActionRequest>(
@@ -496,27 +474,21 @@ fn main() {{}}
             position: Position { line: 0, character: 5 },
         },
         json!({
-          "cursorPosition": {
-            "position": { "character": 4, "line": 1 },
-            "textDocument": { "uri": "file:///[..]src/m0.rs" }
-          },
-          "label": "on enter",
-          "workspaceEdit": {
-            "documentChanges": [
-              {
-                "edits": [
-                  {
-                    "newText": "\n/// ",
-                    "range": {
-                      "end": { "character": 5, "line": 0 },
-                      "start": { "character": 5, "line": 0 }
-                    }
+          "documentChanges": [
+            {
+              "edits": [
+                {
+                  "insertTextFormat": 2,
+                  "newText": "\n/// $0",
+                  "range": {
+                    "end": { "character": 5, "line": 0 },
+                    "start": { "character": 5, "line": 0 }
                   }
-                ],
-                "textDocument": { "uri": "file:///[..]src/m0.rs", "version": null }
-              }
-            ]
-          }
+                }
+              ],
+              "textDocument": { "uri": "file:///[..]src/m0.rs", "version": null }
+            }
+          ]
         }),
     );
     let elapsed = start.elapsed();
@@ -548,33 +520,27 @@ version = \"0.0.0\"
             position: Position { line: 0, character: 8 },
         },
         json!({
-          "cursorPosition": {
-            "position": { "line": 1, "character": 4 },
-            "textDocument": { "uri": "file:///[..]src/main.rs" }
-          },
-          "label": "on enter",
-          "workspaceEdit": {
-            "documentChanges": [
-              {
-                "edits": [
-                  {
-                    "newText": "\r\n/// ",
-                    "range": {
-                      "end": { "line": 0, "character": 8 },
-                      "start": { "line": 0, "character": 8 }
-                    }
+          "documentChanges": [
+            {
+              "edits": [
+                {
+                  "insertTextFormat": 2,
+                  "newText": "\r\n/// $0",
+                  "range": {
+                    "end": { "line": 0, "character": 8 },
+                    "start": { "line": 0, "character": 8 }
                   }
-                ],
-                "textDocument": { "uri": "file:///[..]src/main.rs", "version": null }
-              }
-            ]
-          }
+                }
+              ],
+              "textDocument": { "uri": "file:///[..]src/main.rs", "version": null }
+            }
+          ]
         }),
     );
 }
 
 #[test]
-fn resolve_include_concat_env() {
+fn out_dirs_check() {
     if skip_slow_tests() {
         return;
     }
@@ -597,10 +563,27 @@ fn main() {
         r#"pub fn message() -> &'static str { "Hello, World!" }"#,
     )
     .unwrap();
+    println!("cargo:rustc-cfg=atom_cfg");
+    println!("cargo:rustc-cfg=featlike=\"set\"");
     println!("cargo:rerun-if-changed=build.rs");
 }
 //- src/main.rs
 include!(concat!(env!("OUT_DIR"), "/hello.rs"));
+
+#[cfg(atom_cfg)]
+struct A;
+#[cfg(bad_atom_cfg)]
+struct A;
+#[cfg(featlike = "set")]
+struct B;
+#[cfg(featlike = "not_set")]
+struct B;
+
+fn main() {
+    let va = A;
+    let vb = B;
+    message();
+}
 
 fn main() { message(); }
 "###,
@@ -613,12 +596,98 @@ fn main() { message(); }
     let res = server.send_request::<GotoDefinition>(GotoDefinitionParams {
         text_document_position_params: TextDocumentPositionParams::new(
             server.doc_id("src/main.rs"),
-            Position::new(2, 15),
+            Position::new(14, 8),
         ),
         work_done_progress_params: Default::default(),
         partial_result_params: Default::default(),
     });
     assert!(format!("{}", res).contains("hello.rs"));
+    server.request::<GotoTypeDefinition>(
+        GotoDefinitionParams {
+            text_document_position_params: TextDocumentPositionParams::new(
+                server.doc_id("src/main.rs"),
+                Position::new(12, 9),
+            ),
+            work_done_progress_params: Default::default(),
+            partial_result_params: Default::default(),
+        },
+        json!([{
+            "originSelectionRange": {
+                "end": {
+                    "character": 10,
+                    "line": 12
+                },
+                "start": {
+                    "character": 8,
+                    "line": 12
+                }
+            },
+            "targetRange": {
+                "end": {
+                    "character": 9,
+                    "line": 3
+                },
+                "start": {
+                    "character": 0,
+                    "line": 2
+                }
+            },
+            "targetSelectionRange": {
+                "end": {
+                    "character": 8,
+                    "line": 3
+                },
+                "start": {
+                    "character": 7,
+                    "line": 3
+                }
+            },
+            "targetUri": "file:///[..]src/main.rs"
+        }]),
+    );
+    server.request::<GotoTypeDefinition>(
+        GotoDefinitionParams {
+            text_document_position_params: TextDocumentPositionParams::new(
+                server.doc_id("src/main.rs"),
+                Position::new(13, 9),
+            ),
+            work_done_progress_params: Default::default(),
+            partial_result_params: Default::default(),
+        },
+        json!([{
+            "originSelectionRange": {
+                "end": {
+                    "character": 10,
+                    "line": 13
+                },
+                "start": {
+                    "character": 8,
+                    "line":13
+                }
+            },
+            "targetRange": {
+                "end": {
+                    "character": 9,
+                    "line": 7
+                },
+                "start": {
+                    "character": 0,
+                    "line":6
+                }
+            },
+            "targetSelectionRange": {
+                "end": {
+                    "character": 8,
+                    "line": 7
+                },
+                "start": {
+                    "character": 7,
+                    "line": 7
+                }
+            },
+            "targetUri": "file:///[..]src/main.rs"
+        }]),
+    );
 }
 
 #[test]

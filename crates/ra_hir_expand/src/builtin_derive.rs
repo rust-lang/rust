@@ -38,7 +38,7 @@ macro_rules! register_builtin {
                  _ => return None,
             };
 
-            Some(MacroDefId { krate: None, ast_id: None, kind: MacroDefKind::BuiltInDerive(kind) })
+            Some(MacroDefId { krate: None, ast_id: None, kind: MacroDefKind::BuiltInDerive(kind), local_inner: false })
         }
     };
 }

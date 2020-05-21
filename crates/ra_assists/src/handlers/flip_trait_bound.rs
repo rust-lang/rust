@@ -4,7 +4,7 @@ use ra_syntax::{
     Direction, T,
 };
 
-use crate::{Assist, AssistCtx, AssistId};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: flip_trait_bound
 //
@@ -17,7 +17,7 @@ use crate::{Assist, AssistCtx, AssistId};
 // ```
 // fn foo<T: Copy + Clone>() { }
 // ```
-pub(crate) fn flip_trait_bound(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn flip_trait_bound(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     // We want to replicate the behavior of `flip_binexpr` by only suggesting
     // the assist when the cursor is on a `+`
     let plus = ctx.find_token_at_offset(T![+])?;
@@ -32,8 +32,8 @@ pub(crate) fn flip_trait_bound(ctx: AssistCtx) -> Option<Assist> {
         non_trivia_sibling(plus.clone().into(), Direction::Next)?,
     );
 
-    ctx.add_assist(AssistId("flip_trait_bound"), "Flip trait bounds", |edit| {
-        edit.target(plus.text_range());
+    let target = plus.text_range();
+    acc.add(AssistId("flip_trait_bound"), "Flip trait bounds", target, |edit| {
         edit.replace(before.text_range(), after.to_string());
         edit.replace(after.text_range(), before.to_string());
     })
@@ -43,7 +43,7 @@ pub(crate) fn flip_trait_bound(ctx: AssistCtx) -> Option<Assist> {
 mod tests {
     use super::*;
 
-    use crate::helpers::{check_assist, check_assist_not_applicable, check_assist_target};
+    use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
 
     #[test]
     fn flip_trait_bound_assist_available() {
@@ -60,7 +60,7 @@ mod tests {
         check_assist(
             flip_trait_bound,
             "struct S<T> where T: A <|>+ B { }",
-            "struct S<T> where T: B <|>+ A { }",
+            "struct S<T> where T: B + A { }",
         )
     }
 
@@ -69,13 +69,13 @@ mod tests {
         check_assist(
             flip_trait_bound,
             "impl X for S<T> where T: A +<|> B { }",
-            "impl X for S<T> where T: B +<|> A { }",
+            "impl X for S<T> where T: B + A { }",
         )
     }
 
     #[test]
     fn flip_trait_bound_works_for_fn() {
-        check_assist(flip_trait_bound, "fn f<T: A <|>+ B>(t: T) { }", "fn f<T: B <|>+ A>(t: T) { }")
+        check_assist(flip_trait_bound, "fn f<T: A <|>+ B>(t: T) { }", "fn f<T: B + A>(t: T) { }")
     }
 
     #[test]
@@ -83,7 +83,7 @@ mod tests {
         check_assist(
             flip_trait_bound,
             "fn f<T>(t: T) where T: A +<|> B { }",
-            "fn f<T>(t: T) where T: B +<|> A { }",
+            "fn f<T>(t: T) where T: B + A { }",
         )
     }
 
@@ -92,7 +92,7 @@ mod tests {
         check_assist(
             flip_trait_bound,
             "fn f<T>(t: T) where T: A <|>+ 'static { }",
-            "fn f<T>(t: T) where T: 'static <|>+ A { }",
+            "fn f<T>(t: T) where T: 'static + A { }",
         )
     }
 
@@ -101,7 +101,7 @@ mod tests {
         check_assist(
             flip_trait_bound,
             "struct S<T> where T: A<T> <|>+ b_mod::B<T> + C<T> { }",
-            "struct S<T> where T: b_mod::B<T> <|>+ A<T> + C<T> { }",
+            "struct S<T> where T: b_mod::B<T> + A<T> + C<T> { }",
         )
     }
 
@@ -110,7 +110,7 @@ mod tests {
         check_assist(
             flip_trait_bound,
             "struct S<T> where T: A + B + C + D + E + F +<|> G + H + I + J { }",
-            "struct S<T> where T: A + B + C + D + E + G +<|> F + H + I + J { }",
+            "struct S<T> where T: A + B + C + D + E + G + F + H + I + J { }",
         )
     }
 }

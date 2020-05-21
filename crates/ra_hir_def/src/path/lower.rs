@@ -116,6 +116,21 @@ pub(super) fn lower_path(mut path: ast::Path, hygiene: &Hygiene) -> Option<Path>
     }
     segments.reverse();
     generic_args.reverse();
+
+    // handle local_inner_macros :
+    // Basically, even in rustc it is quite hacky:
+    // https://github.com/rust-lang/rust/blob/614f273e9388ddd7804d5cbc80b8865068a3744e/src/librustc_resolve/macros.rs#L456
+    // We follow what it did anyway :)
+    if segments.len() == 1 && kind == PathKind::Plain {
+        if let Some(macro_call) = path.syntax().parent().and_then(ast::MacroCall::cast) {
+            if macro_call.is_bang() {
+                if let Some(crate_id) = hygiene.local_inner_macros() {
+                    kind = PathKind::DollarCrate(crate_id);
+                }
+            }
+        }
+    }
+
     let mod_path = ModPath { kind, segments };
     return Some(Path { type_anchor, mod_path, generic_args });
 

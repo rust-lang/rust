@@ -182,7 +182,10 @@ impl chalk_ir::interner::Interner for Interner {
         Arc::new(goal)
     }
 
-    fn intern_goals(&self, data: impl IntoIterator<Item = Goal<Self>>) -> Self::InternedGoals {
+    fn intern_goals<E>(
+        &self,
+        data: impl IntoIterator<Item = Result<Goal<Self>, E>>,
+    ) -> Result<Self::InternedGoals, E> {
         data.into_iter().collect()
     }
 
@@ -222,10 +225,10 @@ impl chalk_ir::interner::Interner for Interner {
         clause
     }
 
-    fn intern_program_clauses(
+    fn intern_program_clauses<E>(
         &self,
-        data: impl IntoIterator<Item = chalk_ir::ProgramClause<Self>>,
-    ) -> Arc<[chalk_ir::ProgramClause<Self>]> {
+        data: impl IntoIterator<Item = Result<chalk_ir::ProgramClause<Self>, E>>,
+    ) -> Result<Arc<[chalk_ir::ProgramClause<Self>]>, E> {
         data.into_iter().collect()
     }
 
@@ -236,10 +239,10 @@ impl chalk_ir::interner::Interner for Interner {
         &clauses
     }
 
-    fn intern_quantified_where_clauses(
+    fn intern_quantified_where_clauses<E>(
         &self,
-        data: impl IntoIterator<Item = chalk_ir::QuantifiedWhereClause<Self>>,
-    ) -> Self::InternedQuantifiedWhereClauses {
+        data: impl IntoIterator<Item = Result<chalk_ir::QuantifiedWhereClause<Self>, E>>,
+    ) -> Result<Self::InternedQuantifiedWhereClauses, E> {
         data.into_iter().collect()
     }
 
@@ -250,10 +253,10 @@ impl chalk_ir::interner::Interner for Interner {
         clauses
     }
 
-    fn intern_parameter_kinds(
+    fn intern_parameter_kinds<E>(
         &self,
-        data: impl IntoIterator<Item = chalk_ir::ParameterKind<()>>,
-    ) -> Self::InternedParameterKinds {
+        data: impl IntoIterator<Item = Result<chalk_ir::ParameterKind<()>, E>>,
+    ) -> Result<Self::InternedParameterKinds, E> {
         data.into_iter().collect()
     }
 
@@ -264,10 +267,10 @@ impl chalk_ir::interner::Interner for Interner {
         &parameter_kinds
     }
 
-    fn intern_canonical_var_kinds(
+    fn intern_canonical_var_kinds<E>(
         &self,
-        data: impl IntoIterator<Item = chalk_ir::ParameterKind<UniverseIndex>>,
-    ) -> Self::InternedCanonicalVarKinds {
+        data: impl IntoIterator<Item = Result<chalk_ir::ParameterKind<UniverseIndex>, E>>,
+    ) -> Result<Self::InternedCanonicalVarKinds, E> {
         data.into_iter().collect()
     }
 
@@ -460,6 +463,14 @@ impl ToChalk for TypeCtor {
             TypeName::Struct(struct_id) => db.lookup_intern_type_ctor(struct_id.into()),
             TypeName::AssociatedType(type_id) => TypeCtor::AssociatedType(from_chalk(db, type_id)),
             TypeName::OpaqueType(_) => unreachable!(),
+
+            TypeName::Scalar(_) => unreachable!(),
+            TypeName::Tuple(_) => unreachable!(),
+            TypeName::Raw(_) => unreachable!(),
+            TypeName::Slice => unreachable!(),
+            TypeName::Ref(_) => unreachable!(),
+            TypeName::Str => unreachable!(),
+
             TypeName::Error => {
                 // this should not be reached, since we don't represent TypeName::Error with TypeCtor
                 unreachable!()
@@ -862,12 +873,6 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
         // We don't do coherence checking (yet)
         unimplemented!()
     }
-    fn as_struct_id(&self, id: &TypeName<Interner>) -> Option<StructId> {
-        match id {
-            TypeName::Struct(struct_id) => Some(*struct_id),
-            _ => None,
-        }
-    }
     fn interner(&self) -> &Interner {
         &Interner
     }
@@ -891,6 +896,20 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
         _id: chalk_ir::OpaqueTyId<Interner>,
     ) -> Arc<chalk_rust_ir::OpaqueTyDatum<Interner>> {
         unimplemented!()
+    }
+
+    fn force_impl_for(
+        &self,
+        _well_known: chalk_rust_ir::WellKnownTrait,
+        _ty: &chalk_ir::TyData<Interner>,
+    ) -> Option<bool> {
+        // this method is mostly for rustc
+        None
+    }
+
+    fn is_object_safe(&self, _trait_id: chalk_ir::TraitId<Interner>) -> bool {
+        // FIXME: implement actual object safety
+        true
     }
 }
 

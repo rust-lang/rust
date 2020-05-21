@@ -7,7 +7,7 @@
 //! * marks (see the eponymous module).
 
 #[macro_use]
-pub mod marks;
+pub mod mark;
 
 use std::{
     fs,
@@ -155,7 +155,7 @@ pub fn add_cursor(text: &str, offset: TextSize) -> String {
     res
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct FixtureEntry {
     pub meta: String,
     pub text: String,
@@ -170,19 +170,26 @@ pub struct FixtureEntry {
 ///  // - other meta
 ///  ```
 pub fn parse_fixture(fixture: &str) -> Vec<FixtureEntry> {
-    let margin = fixture
-        .lines()
-        .filter(|it| it.trim_start().starts_with("//-"))
-        .map(|it| it.len() - it.trim_start().len())
-        .next()
-        .expect("empty fixture");
+    let fixture = indent_first_line(fixture);
+    let margin = fixture_margin(&fixture);
 
     let mut lines = fixture
         .split('\n') // don't use `.lines` to not drop `\r\n`
-        .filter_map(|line| {
+        .enumerate()
+        .filter_map(|(ix, line)| {
             if line.len() >= margin {
                 assert!(line[..margin].trim().is_empty());
-                Some(&line[margin..])
+                let line_content = &line[margin..];
+                if !line_content.starts_with("//-") {
+                    assert!(
+                        !line_content.contains("//-"),
+                        r#"Metadata line {} has invalid indentation. All metadata lines need to have the same indentation.
+The offending line: {:?}"#,
+                        ix,
+                        line
+                    );
+                }
+                Some(line_content)
             } else {
                 assert!(line.trim().is_empty());
                 None
@@ -200,6 +207,85 @@ pub fn parse_fixture(fixture: &str) -> Vec<FixtureEntry> {
         }
     }
     res
+}
+
+/// Adjusts the indentation of the first line to the minimum indentation of the rest of the lines.
+/// This allows fixtures to start off in a different indentation, e.g. to align the first line with
+/// the other lines visually:
+/// ```
+/// let fixture = "//- /lib.rs
+///                mod foo;
+///                //- /foo.rs
+///                fn bar() {}
+/// ";
+/// assert_eq!(fixture_margin(fixture),
+/// "               //- /lib.rs
+///                mod foo;
+///                //- /foo.rs
+///                fn bar() {}
+/// ")
+/// ```
+fn indent_first_line(fixture: &str) -> String {
+    if fixture.is_empty() {
+        return String::new();
+    }
+    let mut lines = fixture.lines();
+    let first_line = lines.next().unwrap();
+    if first_line.contains("//-") {
+        let rest = lines.collect::<Vec<_>>().join("\n");
+        let fixed_margin = fixture_margin(&rest);
+        let fixed_indent = fixed_margin - indent_len(first_line);
+        format!("\n{}{}\n{}", " ".repeat(fixed_indent), first_line, rest)
+    } else {
+        fixture.to_owned()
+    }
+}
+
+fn fixture_margin(fixture: &str) -> usize {
+    fixture
+        .lines()
+        .filter(|it| it.trim_start().starts_with("//-"))
+        .map(indent_len)
+        .next()
+        .expect("empty fixture")
+}
+
+fn indent_len(s: &str) -> usize {
+    s.len() - s.trim_start().len()
+}
+
+#[test]
+#[should_panic]
+fn parse_fixture_checks_further_indented_metadata() {
+    parse_fixture(
+        r"
+        //- /lib.rs
+          mod bar;
+
+          fn foo() {}
+          //- /bar.rs
+          pub fn baz() {}
+          ",
+    );
+}
+
+#[test]
+fn parse_fixture_can_handle_dedented_first_line() {
+    let fixture = "//- /lib.rs
+                   mod foo;
+                   //- /foo.rs
+                   struct Bar;
+";
+    assert_eq!(
+        parse_fixture(fixture),
+        parse_fixture(
+            "//- /lib.rs
+mod foo;
+//- /foo.rs
+struct Bar;
+"
+        )
+    )
 }
 
 /// Same as `parse_fixture`, except it allow empty fixture

@@ -1,6 +1,6 @@
 use ra_syntax::{SyntaxKind, TextRange, T};
 
-use crate::{Assist, AssistCtx, AssistId};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: remove_mut
 //
@@ -17,7 +17,7 @@ use crate::{Assist, AssistCtx, AssistId};
 //     fn feed(&self, amount: u32) {}
 // }
 // ```
-pub(crate) fn remove_mut(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn remove_mut(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let mut_token = ctx.find_token_at_offset(T![mut])?;
     let delete_from = mut_token.text_range().start();
     let delete_to = match mut_token.next_token() {
@@ -25,8 +25,8 @@ pub(crate) fn remove_mut(ctx: AssistCtx) -> Option<Assist> {
         _ => mut_token.text_range().end(),
     };
 
-    ctx.add_assist(AssistId("remove_mut"), "Remove `mut` keyword", |edit| {
-        edit.set_cursor(delete_from);
-        edit.delete(TextRange::new(delete_from, delete_to));
+    let target = mut_token.text_range();
+    acc.add(AssistId("remove_mut"), "Remove `mut` keyword", target, |builder| {
+        builder.delete(TextRange::new(delete_from, delete_to));
     })
 }
