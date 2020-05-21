@@ -18,11 +18,11 @@ trait Context {
 impl<T> Context for io::Result<T> {
     fn context<C: AsRef<str>>(self, text: C) -> Self {
         match self {
+            Ok(t) => Ok(t),
             Err(e) => {
                 let message = format!("{}: {}", text.as_ref(), e);
                 Err(io::Error::new(ErrorKind::Other, message))
             },
-            ok => ok,
         }
     }
 }
