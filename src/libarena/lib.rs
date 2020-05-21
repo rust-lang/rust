@@ -386,7 +386,7 @@ impl DroplessArena {
             self.align(align);
 
             let future_end = intrinsics::arith_offset(self.ptr.get(), bytes as isize);
-            if (future_end as *mut u8) >= self.end.get() {
+            if (future_end as *mut u8) > self.end.get() {
                 self.grow(bytes);
             }
 
