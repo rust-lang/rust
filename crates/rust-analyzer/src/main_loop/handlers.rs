@@ -986,11 +986,11 @@ pub fn handle_document_highlight(
 pub fn handle_ssr(
     world: WorldSnapshot,
     params: lsp_ext::SsrParams,
-) -> Result<lsp_ext::SourceChange> {
+) -> Result<lsp_types::WorkspaceEdit> {
     let _p = profile("handle_ssr");
     let source_change =
         world.analysis().structural_search_replace(&params.query, params.parse_only)??;
-    to_proto::source_change(&world, source_change)
+    to_proto::workspace_edit(&world, source_change)
 }
 
 pub fn publish_diagnostics(world: &WorldSnapshot, file_id: FileId) -> Result<DiagnosticTask> {

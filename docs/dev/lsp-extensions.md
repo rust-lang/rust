@@ -84,3 +84,38 @@ fn main() {
 * What is the position of the cursor after `joinLines`?
   Currently this is left to editor's discretion, but it might be useful to specify on the server via snippets.
   However, it then becomes unclear how it works with multi cursor.
+
+## Structural Search Replace (SSR)
+
+**Server Capability:** `{ "ssr": boolean }`
+
+This request is send from client to server to handle structural search replace -- automated syntax tree based transformation of the source.
+
+**Method:** `experimental/ssr`
+
+**Request:**
+
+```typescript
+interface SsrParams {
+    /// Search query.
+    /// The specific syntax is specified outside of the protocol.
+    query: string,
+    /// If true, only check the syntax of the query and don't compute the actual edit.
+    parseOnly: bool,
+}
+```
+
+**Response:**
+
+```typescript
+WorkspaceEdit
+```
+
+### Example
+
+SSR with query `foo($a:expr, $b:expr) ==>> ($a).foo($b)` will transform, eg `foo(y + 5, z)` into `(y + 5).foo(z)`.
+
+### Unresolved Question
+
+* Probably needs search without replace mode
+* Needs a way to limit the scope to certain files.

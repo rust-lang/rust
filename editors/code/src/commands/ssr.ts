@@ -2,7 +2,6 @@ import * as vscode from 'vscode';
 import * as ra from "../rust-analyzer-api";
 
 import { Ctx, Cmd } from '../ctx';
-import { applySourceChange } from '../source_change';
 
 export function ssr(ctx: Ctx): Cmd {
     return async () => {
@@ -22,11 +21,10 @@ export function ssr(ctx: Ctx): Cmd {
             }
         };
         const request = await vscode.window.showInputBox(options);
-
         if (!request) return;
 
-        const change = await client.sendRequest(ra.ssr, { query: request, parseOnly: false });
+        const edit = await client.sendRequest(ra.ssr, { query: request, parseOnly: false });
 
-        await applySourceChange(ctx, change);
+        await vscode.workspace.applyEdit(client.protocol2CodeConverter.asWorkspaceEdit(edit));
     };
 }
