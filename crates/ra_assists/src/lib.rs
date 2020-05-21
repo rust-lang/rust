@@ -10,8 +10,8 @@ macro_rules! eprintln {
     ($($tt:tt)*) => { stdx::eprintln!($($tt)*) };
 }
 
+mod assist_config;
 mod assist_context;
-mod marks;
 #[cfg(test)]
 mod tests;
 pub mod utils;
@@ -23,6 +23,8 @@ use ra_ide_db::{source_change::SourceChange, RootDatabase};
 use ra_syntax::TextRange;
 
 pub(crate) use crate::assist_context::{AssistContext, Assists};
+
+pub use assist_config::AssistConfig;
 
 /// Unique identifier of the assist, should not be shown to the user
 /// directly.
@@ -54,9 +56,9 @@ impl Assist {
     ///
     /// Assists are returned in the "unresolved" state, that is only labels are
     /// returned, without actual edits.
-    pub fn unresolved(db: &RootDatabase, range: FileRange) -> Vec<Assist> {
+    pub fn unresolved(db: &RootDatabase, config: &AssistConfig, range: FileRange) -> Vec<Assist> {
         let sema = Semantics::new(db);
-        let ctx = AssistContext::new(sema, range);
+        let ctx = AssistContext::new(sema, config, range);
         let mut acc = Assists::new_unresolved(&ctx);
         handlers::all().iter().for_each(|handler| {
             handler(&mut acc, &ctx);
@@ -68,9 +70,13 @@ impl Assist {
     ///
     /// Assists are returned in the "resolved" state, that is with edit fully
     /// computed.
-    pub fn resolved(db: &RootDatabase, range: FileRange) -> Vec<ResolvedAssist> {
+    pub fn resolved(
+        db: &RootDatabase,
+        config: &AssistConfig,
+        range: FileRange,
+    ) -> Vec<ResolvedAssist> {
         let sema = Semantics::new(db);
-        let ctx = AssistContext::new(sema, range);
+        let ctx = AssistContext::new(sema, config, range);
         let mut acc = Assists::new_resolved(&ctx);
         handlers::all().iter().for_each(|handler| {
             handler(&mut acc, &ctx);
@@ -103,12 +109,14 @@ mod handlers {
     mod add_impl;
     mod add_missing_impl_members;
     mod add_new;
+    mod add_turbo_fish;
     mod apply_demorgan;
     mod auto_import;
     mod change_return_type_to_result;
     mod change_visibility;
     mod early_return;
     mod fill_match_arms;
+    mod fix_visibility;
     mod flip_binexpr;
     mod flip_comma;
     mod flip_trait_bound;
@@ -140,12 +148,14 @@ mod handlers {
             add_function::add_function,
             add_impl::add_impl,
             add_new::add_new,
+            add_turbo_fish::add_turbo_fish,
             apply_demorgan::apply_demorgan,
             auto_import::auto_import,
             change_return_type_to_result::change_return_type_to_result,
             change_visibility::change_visibility,
             early_return::convert_to_guarded_return,
             fill_match_arms::fill_match_arms,
+            fix_visibility::fix_visibility,
             flip_binexpr::flip_binexpr,
             flip_comma::flip_comma,
             flip_trait_bound::flip_trait_bound,

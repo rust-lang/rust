@@ -11,7 +11,7 @@ use ra_syntax::{
 };
 use ra_text_edit::TextEditBuilder;
 
-use crate::assist_context::{AssistBuilder, AssistContext};
+use crate::assist_context::AssistContext;
 
 /// Creates and inserts a use statement for the given path to import.
 /// The use statement is inserted in the scope most appropriate to the
@@ -21,7 +21,7 @@ pub(crate) fn insert_use_statement(
     position: &SyntaxNode,
     path_to_import: &ModPath,
     ctx: &AssistContext,
-    builder: &mut AssistBuilder,
+    builder: &mut TextEditBuilder,
 ) {
     let target = path_to_import.to_string().split("::").map(SmolStr::new).collect::<Vec<_>>();
     let container = ctx.sema.ancestors_with_macros(position.clone()).find_map(|n| {
@@ -33,7 +33,7 @@ pub(crate) fn insert_use_statement(
 
     if let Some(container) = container {
         let action = best_action_for_target(container, position.clone(), &target);
-        make_assist(&action, &target, builder.text_edit_builder());
+        make_assist(&action, &target, builder);
     }
 }
 

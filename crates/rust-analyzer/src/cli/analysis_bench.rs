@@ -105,7 +105,7 @@ pub fn analysis_bench(
             if is_completion {
                 let options = CompletionConfig::default();
                 let res = do_work(&mut host, file_id, |analysis| {
-                    analysis.completions(file_position, &options)
+                    analysis.completions(&options, file_position)
                 });
                 if verbosity.is_verbose() {
                     println!("\n{:#?}", res);

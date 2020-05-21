@@ -68,7 +68,6 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext) 
                 .indent(IndentLevel::from_node(if_expr.syntax()))
         };
 
-        edit.set_cursor(if_expr.syntax().text_range().start());
         edit.replace_ast::<ast::Expr>(if_expr.into(), match_expr);
     })
 }
@@ -83,7 +82,7 @@ mod tests {
     fn test_replace_if_let_with_match_unwraps_simple_expressions() {
         check_assist(
             replace_if_let_with_match,
-            "
+            r#"
 impl VariantData {
     pub fn is_struct(&self) -> bool {
         if <|>let VariantData::Struct(..) = *self {
@@ -92,16 +91,16 @@ impl VariantData {
             false
         }
     }
-}           ",
-            "
+}           "#,
+            r#"
 impl VariantData {
     pub fn is_struct(&self) -> bool {
-        <|>match *self {
+        match *self {
             VariantData::Struct(..) => true,
             _ => false,
         }
     }
-}           ",
+}           "#,
         )
     }
 
@@ -109,7 +108,7 @@ impl VariantData {
     fn test_replace_if_let_with_match_doesnt_unwrap_multiline_expressions() {
         check_assist(
             replace_if_let_with_match,
-            "
+            r#"
 fn foo() {
     if <|>let VariantData::Struct(..) = a {
         bar(
@@ -118,10 +117,10 @@ fn foo() {
     } else {
         false
     }
-}           ",
-            "
+}           "#,
+            r#"
 fn foo() {
-    <|>match a {
+    match a {
         VariantData::Struct(..) => {
             bar(
                 123
@@ -129,7 +128,7 @@ fn foo() {
         }
         _ => false,
     }
-}           ",
+}           "#,
         )
     }
 
@@ -137,7 +136,7 @@ fn foo() {
     fn replace_if_let_with_match_target() {
         check_assist_target(
             replace_if_let_with_match,
-            "
+            r#"
 impl VariantData {
     pub fn is_struct(&self) -> bool {
         if <|>let VariantData::Struct(..) = *self {
@@ -146,7 +145,7 @@ impl VariantData {
             false
         }
     }
-}           ",
+}           "#,
             "if let VariantData::Struct(..) = *self {
             true
         } else {
@@ -176,7 +175,7 @@ enum Option<T> { Some(T), None }
 use Option::*;
 
 fn foo(x: Option<i32>) {
-    <|>match x {
+    match x {
         Some(x) => println!("{}", x),
         None => println!("none"),
     }
@@ -206,7 +205,7 @@ enum Result<T, E> { Ok(T), Err(E) }
 use Result::*;
 
 fn foo(x: Result<i32, ()>) {
-    <|>match x {
+    match x {
         Ok(x) => println!("{}", x),
         Err(_) => println!("none"),
     }

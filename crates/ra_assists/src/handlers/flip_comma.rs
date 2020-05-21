@@ -45,7 +45,7 @@ mod tests {
         check_assist(
             flip_comma,
             "fn foo(x: i32,<|> y: Result<(), ()>) {}",
-            "fn foo(y: Result<(), ()>,<|> x: i32) {}",
+            "fn foo(y: Result<(), ()>, x: i32) {}",
         )
     }
 

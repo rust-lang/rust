@@ -11,7 +11,7 @@ use test_utils::{
     RangeOrOffset,
 };
 
-use crate::{handlers::Handler, Assist, AssistContext, Assists};
+use crate::{handlers::Handler, Assist, AssistConfig, AssistContext, Assists};
 
 pub(crate) fn with_single_file(text: &str) -> (RootDatabase, FileId) {
     let (mut db, file_id) = RootDatabase::with_single_file(text);
@@ -41,14 +41,14 @@ fn check_doc_test(assist_id: &str, before: &str, after: &str) {
     let (db, file_id) = crate::tests::with_single_file(&before);
     let frange = FileRange { file_id, range: selection.into() };
 
-    let mut assist = Assist::resolved(&db, frange)
+    let mut assist = Assist::resolved(&db, &AssistConfig::default(), frange)
         .into_iter()
         .find(|assist| assist.assist.id.0 == assist_id)
         .unwrap_or_else(|| {
             panic!(
                 "\n\nAssist is not applicable: {}\nAvailable assists: {}",
                 assist_id,
-                Assist::resolved(&db, frange)
+                Assist::resolved(&db, &AssistConfig::default(), frange)
                     .into_iter()
                     .map(|assist| assist.assist.id.0)
                     .collect::<Vec<_>>()
@@ -90,7 +90,8 @@ fn check(handler: Handler, before: &str, expected: ExpectedResult) {
     let frange = FileRange { file_id: file_with_caret_id, range: range_or_offset.into() };
 
     let sema = Semantics::new(&db);
-    let ctx = AssistContext::new(sema, frange);
+    let config = AssistConfig::default();
+    let ctx = AssistContext::new(sema, &config, frange);
     let mut acc = Assists::new_resolved(&ctx);
     handler(&mut acc, &ctx);
     let mut res = acc.finish_resolved();
@@ -103,19 +104,11 @@ fn check(handler: Handler, before: &str, expected: ExpectedResult) {
             let mut actual = db.file_text(change.file_id).as_ref().to_owned();
             change.edit.apply(&mut actual);
 
-            match source_change.cursor_position {
-                None => {
-                    if let RangeOrOffset::Offset(before_cursor_pos) = range_or_offset {
-                        let off = change
-                            .edit
-                            .apply_to_offset(before_cursor_pos)
-                            .expect("cursor position is affected by the edit");
-                        actual = add_cursor(&actual, off)
-                    }
+            if !source_change.is_snippet {
+                if let Some(off) = source_change.cursor_position {
+                    actual = add_cursor(&actual, off.offset)
                 }
-                Some(off) => actual = add_cursor(&actual, off.offset),
-            };
-
+            }
             assert_eq_text!(after, &actual);
         }
         (Some(assist), ExpectedResult::Target(target)) => {
@@ -136,7 +129,7 @@ fn assist_order_field_struct() {
     let (before_cursor_pos, before) = extract_offset(before);
     let (db, file_id) = with_single_file(&before);
     let frange = FileRange { file_id, range: TextRange::empty(before_cursor_pos) };
-    let assists = Assist::resolved(&db, frange);
+    let assists = Assist::resolved(&db, &AssistConfig::default(), frange);
     let mut assists = assists.iter();
 
     assert_eq!(
@@ -159,7 +152,7 @@ fn assist_order_if_expr() {
     let (range, before) = extract_range(before);
     let (db, file_id) = with_single_file(&before);
     let frange = FileRange { file_id, range };
-    let assists = Assist::resolved(&db, frange);
+    let assists = Assist::resolved(&db, &AssistConfig::default(), frange);
     let mut assists = assists.iter();
 
     assert_eq!(assists.next().expect("expected assist").assist.label, "Extract into variable");

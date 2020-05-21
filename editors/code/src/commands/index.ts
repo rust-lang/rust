@@ -4,6 +4,7 @@ import * as ra from '../rust-analyzer-api';
 
 import { Ctx, Cmd } from '../ctx';
 import * as sourceChange from '../source_change';
+import { assert } from '../util';
 
 export * from './analyzer_status';
 export * from './matching_brace';
@@ -48,6 +49,40 @@ export function selectAndApplySourceChange(ctx: Ctx): Cmd {
             const selectedChange = await vscode.window.showQuickPick(changes);
             if (!selectedChange) return;
             await sourceChange.applySourceChange(ctx, selectedChange);
+        }
+    };
+}
+
+export function applySnippetWorkspaceEdit(_ctx: Ctx): Cmd {
+    return async (edit: vscode.WorkspaceEdit) => {
+        assert(edit.entries().length === 1, `bad ws edit: ${JSON.stringify(edit)}`);
+        const [uri, edits] = edit.entries()[0];
+
+        const editor = vscode.window.visibleTextEditors.find((it) => it.document.uri.toString() === uri.toString());
+        if (!editor) return;
+
+        let editWithSnippet: vscode.TextEdit | undefined = undefined;
+        let lineDelta = 0;
+        await editor.edit((builder) => {
+            for (const indel of edits) {
+                const isSnippet = indel.newText.indexOf('$0') !== -1 || indel.newText.indexOf('${') !== -1;
+                if (isSnippet) {
+                    editWithSnippet = indel;
+                } else {
+                    if (!editWithSnippet) {
+                        lineDelta = (indel.newText.match(/\n/g) || []).length - (indel.range.end.line - indel.range.start.line);
+                    }
+                    builder.replace(indel.range, indel.newText);
+                }
+            }
+        });
+        if (editWithSnippet) {
+            const snip = editWithSnippet as vscode.TextEdit;
+            const range = snip.range.with(
+                snip.range.start.with(snip.range.start.line + lineDelta),
+                snip.range.end.with(snip.range.end.line + lineDelta),
+            );
+            await editor.insertSnippet(new vscode.SnippetString(snip.newText), range);
         }
     };
 }

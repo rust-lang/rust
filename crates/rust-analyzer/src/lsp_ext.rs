@@ -1,6 +1,6 @@
 //! rust-analyzer extensions to the LSP.
 
-use std::path::PathBuf;
+use std::{collections::HashMap, path::PathBuf};
 
 use lsp_types::request::Request;
 use lsp_types::{Location, Position, Range, TextDocumentIdentifier};
@@ -137,7 +137,7 @@ pub struct Runnable {
 #[serde(rename_all = "camelCase")]
 pub struct SourceChange {
     pub label: String,
-    pub workspace_edit: lsp_types::WorkspaceEdit,
+    pub workspace_edit: SnippetWorkspaceEdit,
     pub cursor_position: Option<lsp_types::TextDocumentPositionParams>,
 }
 
@@ -182,4 +182,55 @@ impl Request for Ssr {
 pub struct SsrParams {
     pub query: String,
     pub parse_only: bool,
+}
+
+pub enum CodeActionRequest {}
+
+impl Request for CodeActionRequest {
+    type Params = lsp_types::CodeActionParams;
+    type Result = Option<Vec<CodeAction>>;
+    const METHOD: &'static str = "textDocument/codeAction";
+}
+
+#[derive(Debug, PartialEq, Clone, Default, Deserialize, Serialize)]
+pub struct CodeAction {
+    pub title: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub kind: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub command: Option<lsp_types::Command>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub edit: Option<SnippetWorkspaceEdit>,
+}
+
+#[derive(Debug, Eq, PartialEq, Clone, Default, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SnippetWorkspaceEdit {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub changes: Option<HashMap<lsp_types::Url, Vec<lsp_types::TextEdit>>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub document_changes: Option<Vec<SnippetDocumentChangeOperation>>,
+}
+
+#[derive(Debug, Eq, PartialEq, Clone, Deserialize, Serialize)]
+#[serde(untagged, rename_all = "lowercase")]
+pub enum SnippetDocumentChangeOperation {
+    Op(lsp_types::ResourceOp),
+    Edit(SnippetTextDocumentEdit),
+}
+
+#[derive(Debug, Eq, PartialEq, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SnippetTextDocumentEdit {
+    pub text_document: lsp_types::VersionedTextDocumentIdentifier,
+    pub edits: Vec<SnippetTextEdit>,
+}
+
+#[derive(Debug, Eq, PartialEq, Clone, Default, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SnippetTextEdit {
+    pub range: Range,
+    pub new_text: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub insert_text_format: Option<lsp_types::InsertTextFormat>,
 }

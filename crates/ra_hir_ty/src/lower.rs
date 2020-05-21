@@ -812,7 +812,7 @@ impl TraitEnvironment {
                 // add `Self: Trait<T1, T2, ...>` to the environment in trait
                 // function default implementations (and hypothetical code
                 // inside consts or type aliases)
-                test_utils::tested_by!(trait_self_implements_self);
+                test_utils::mark::hit!(trait_self_implements_self);
                 let substs = Substs::type_params(db, trait_id);
                 let trait_ref = TraitRef { trait_: trait_id, substs };
                 let pred = GenericPredicate::Implemented(trait_ref);

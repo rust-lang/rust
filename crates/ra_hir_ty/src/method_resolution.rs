@@ -408,8 +408,9 @@ fn iterate_trait_method_candidates<T>(
     receiver_ty: Option<&Canonical<Ty>>,
     mut callback: impl FnMut(&Ty, AssocItemId) -> Option<T>,
 ) -> Option<T> {
-    // if ty is `impl Trait` or `dyn Trait`, the trait doesn't need to be in scope
-    let inherent_trait = self_ty.value.inherent_trait().into_iter();
+    // if ty is `dyn Trait`, the trait doesn't need to be in scope
+    let inherent_trait =
+        self_ty.value.dyn_trait().into_iter().flat_map(|t| all_super_traits(db.upcast(), t));
     let env_traits = if let Ty::Placeholder(_) = self_ty.value {
         // if we have `T: Trait` in the param env, the trait doesn't need to be in scope
         env.trait_predicates_for_self_ty(&self_ty.value)
@@ -468,7 +469,7 @@ fn iterate_inherent_methods<T>(
                 // already happens in `is_valid_candidate` above; if not, we
                 // check it here
                 if receiver_ty.is_none() && inherent_impl_substs(db, impl_def, self_ty).is_none() {
-                    test_utils::tested_by!(impl_self_type_match_without_receiver);
+                    test_utils::mark::hit!(impl_self_type_match_without_receiver);
                     continue;
                 }
                 if let Some(result) = callback(&self_ty.value, item) {
@@ -601,11 +602,6 @@ pub fn implements_trait(
     krate: CrateId,
     trait_: TraitId,
 ) -> bool {
-    if ty.value.inherent_trait() == Some(trait_) {
-        // FIXME this is a bit of a hack, since Chalk should say the same thing
-        // anyway, but currently Chalk doesn't implement `dyn/impl Trait` yet
-        return true;
-    }
     let goal = generic_implements_goal(db, env, trait_, ty.clone());
     let solution = db.trait_solve(krate, goal);
 

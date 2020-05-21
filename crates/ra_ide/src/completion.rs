@@ -59,8 +59,8 @@ pub use crate::completion::{
 /// with ordering of completions (currently this is done by the client).
 pub(crate) fn completions(
     db: &RootDatabase,
-    position: FilePosition,
     config: &CompletionConfig,
+    position: FilePosition,
 ) -> Option<Completions> {
     let ctx = CompletionContext::new(db, position, config)?;
 

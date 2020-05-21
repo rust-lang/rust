@@ -1,5 +1,11 @@
 //! An algorithm to find a path to refer to a certain item.
 
+use std::sync::Arc;
+
+use hir_expand::name::{known, AsName, Name};
+use ra_prof::profile;
+use test_utils::mark;
+
 use crate::{
     db::DefDatabase,
     item_scope::ItemInNs,
@@ -7,25 +13,28 @@ use crate::{
     visibility::Visibility,
     CrateId, ModuleDefId, ModuleId,
 };
-use hir_expand::name::{known, AsName, Name};
-use test_utils::tested_by;
+
+// FIXME: handle local items
+
+/// Find a path that can be used to refer to a certain item. This can depend on
+/// *from where* you're referring to the item, hence the `from` parameter.
+pub fn find_path(db: &dyn DefDatabase, item: ItemInNs, from: ModuleId) -> Option<ModPath> {
+    let _p = profile("find_path");
+    db.find_path_inner(item, from, MAX_PATH_LEN)
+}
 
 const MAX_PATH_LEN: usize = 15;
 
 impl ModPath {
     fn starts_with_std(&self) -> bool {
-        self.segments.first().filter(|&first_segment| first_segment == &known::std).is_some()
+        self.segments.first() == Some(&known::std)
     }
 
     // When std library is present, paths starting with `std::`
     // should be preferred over paths starting with `core::` and `alloc::`
     fn can_start_with_std(&self) -> bool {
-        self.segments
-            .first()
-            .filter(|&first_segment| {
-                first_segment == &known::alloc || first_segment == &known::core
-            })
-            .is_some()
+        let first_segment = self.segments.first();
+        first_segment == Some(&known::alloc) || first_segment == Some(&known::core)
     }
 
     fn len(&self) -> usize {
@@ -40,15 +49,7 @@ impl ModPath {
     }
 }
 
-// FIXME: handle local items
-
-/// Find a path that can be used to refer to a certain item. This can depend on
-/// *from where* you're referring to the item, hence the `from` parameter.
-pub fn find_path(db: &dyn DefDatabase, item: ItemInNs, from: ModuleId) -> Option<ModPath> {
-    find_path_inner(db, item, from, MAX_PATH_LEN)
-}
-
-fn find_path_inner(
+pub(crate) fn find_path_inner_query(
     db: &dyn DefDatabase,
     item: ItemInNs,
     from: ModuleId,
@@ -139,8 +140,7 @@ fn find_path_inner(
     let mut best_path = None;
     let mut best_path_len = max_len;
     for (module_id, name) in importable_locations {
-        let mut path = match find_path_inner(
-            db,
+        let mut path = match db.find_path_inner(
             ItemInNs::Types(ModuleDefId::ModuleId(module_id)),
             from,
             best_path_len - 1,
@@ -163,17 +163,19 @@ fn find_path_inner(
 
 fn select_best_path(old_path: ModPath, new_path: ModPath, prefer_no_std: bool) -> ModPath {
     if old_path.starts_with_std() && new_path.can_start_with_std() {
-        tested_by!(prefer_std_paths);
         if prefer_no_std {
+            mark::hit!(prefer_no_std_paths);
             new_path
         } else {
+            mark::hit!(prefer_std_paths);
             old_path
         }
     } else if new_path.starts_with_std() && old_path.can_start_with_std() {
-        tested_by!(prefer_std_paths);
         if prefer_no_std {
+            mark::hit!(prefer_no_std_paths);
             old_path
         } else {
+            mark::hit!(prefer_std_paths);
             new_path
         }
     } else if new_path.len() < old_path.len() {
@@ -198,7 +200,7 @@ fn find_importable_locations(
         .chain(crate_graph[from.krate].dependencies.iter().map(|dep| dep.crate_id))
     {
         result.extend(
-            importable_locations_in_crate(db, item, krate)
+            db.importable_locations_of(item, krate)
                 .iter()
                 .filter(|(_, _, vis)| vis.is_visible_from(db, from))
                 .map(|(m, n, _)| (*m, n.clone())),
@@ -213,11 +215,12 @@ fn find_importable_locations(
 ///
 /// Note that the crate doesn't need to be the one in which the item is defined;
 /// it might be re-exported in other crates.
-fn importable_locations_in_crate(
+pub(crate) fn importable_locations_of_query(
     db: &dyn DefDatabase,
     item: ItemInNs,
     krate: CrateId,
-) -> Vec<(ModuleId, Name, Visibility)> {
+) -> Arc<[(ModuleId, Name, Visibility)]> {
+    let _p = profile("importable_locations_of_query");
     let def_map = db.crate_def_map(krate);
     let mut result = Vec::new();
     for (local_id, data) in def_map.modules.iter() {
@@ -243,17 +246,20 @@ fn importable_locations_in_crate(
             result.push((ModuleId { krate, local_id }, name.clone(), vis));
         }
     }
-    result
+
+    Arc::from(result)
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::test_db::TestDB;
     use hir_expand::hygiene::Hygiene;
     use ra_db::fixture::WithFixture;
     use ra_syntax::ast::AstNode;
-    use test_utils::covers;
+    use test_utils::mark;
+
+    use crate::test_db::TestDB;
+
+    use super::*;
 
     /// `code` needs to contain a cursor marker; checks that `find_path` for the
     /// item the `path` refers to returns that same path when called from the
@@ -508,7 +514,7 @@ mod tests {
 
     #[test]
     fn prefer_std_paths_over_alloc() {
-        covers!(prefer_std_paths);
+        mark::check!(prefer_std_paths);
         let code = r#"
         //- /main.rs crate:main deps:alloc,std
         <|>
@@ -527,32 +533,8 @@ mod tests {
     }
 
     #[test]
-    fn prefer_alloc_paths_over_std() {
-        covers!(prefer_std_paths);
-        let code = r#"
-        //- /main.rs crate:main deps:alloc,std
-        #![no_std]
-
-        <|>
-
-        //- /std.rs crate:std deps:alloc
-
-        pub mod sync {
-            pub use alloc::sync::Arc;
-        }
-
-        //- /zzz.rs crate:alloc
-
-        pub mod sync {
-            pub struct Arc;
-        }
-        "#;
-        check_found_path(code, "alloc::sync::Arc");
-    }
-
-    #[test]
     fn prefer_core_paths_over_std() {
-        covers!(prefer_std_paths);
+        mark::check!(prefer_no_std_paths);
         let code = r#"
         //- /main.rs crate:main deps:core,std
         #![no_std]
@@ -572,6 +554,29 @@ mod tests {
         }
         "#;
         check_found_path(code, "core::fmt::Error");
+    }
+
+    #[test]
+    fn prefer_alloc_paths_over_std() {
+        let code = r#"
+        //- /main.rs crate:main deps:alloc,std
+        #![no_std]
+
+        <|>
+
+        //- /std.rs crate:std deps:alloc
+
+        pub mod sync {
+            pub use alloc::sync::Arc;
+        }
+
+        //- /zzz.rs crate:alloc
+
+        pub mod sync {
+            pub struct Arc;
+        }
+        "#;
+        check_found_path(code, "alloc::sync::Arc");
     }
 
     #[test]

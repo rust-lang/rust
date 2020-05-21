@@ -1,7 +1,6 @@
 use ra_ide_db::RootDatabase;
 use ra_syntax::ast::{self, AstNode, NameOwner};
-use stdx::format_to;
-use test_utils::tested_by;
+use test_utils::mark;
 
 use crate::{utils::FamousDefs, AssistContext, AssistId, Assists};
 
@@ -35,12 +34,12 @@ pub(crate) fn add_from_impl_for_enum(acc: &mut Assists, ctx: &AssistContext) -> 
     }
     let field_type = field_list.fields().next()?.type_ref()?;
     let path = match field_type {
-        ast::TypeRef::PathType(p) => p,
+        ast::TypeRef::PathType(it) => it,
         _ => return None,
     };
 
     if existing_from_impl(&ctx.sema, &variant).is_some() {
-        tested_by!(test_add_from_impl_already_exists);
+        mark::hit!(test_add_from_impl_already_exists);
         return None;
     }
 
@@ -51,9 +50,7 @@ pub(crate) fn add_from_impl_for_enum(acc: &mut Assists, ctx: &AssistContext) -> 
         target,
         |edit| {
             let start_offset = variant.parent_enum().syntax().text_range().end();
-            let mut buf = String::new();
-            format_to!(
-                buf,
+            let buf = format!(
                 r#"
 
 impl From<{0}> for {1} {{
@@ -93,7 +90,7 @@ fn existing_from_impl(
 
 #[cfg(test)]
 mod tests {
-    use test_utils::covers;
+    use test_utils::mark;
 
     use crate::tests::{check_assist, check_assist_not_applicable};
 
@@ -104,7 +101,7 @@ mod tests {
         check_assist(
             add_from_impl_for_enum,
             "enum A { <|>One(u32) }",
-            r#"enum A { <|>One(u32) }
+            r#"enum A { One(u32) }
 
 impl From<u32> for A {
     fn from(v: u32) -> Self {
@@ -119,7 +116,7 @@ impl From<u32> for A {
         check_assist(
             add_from_impl_for_enum,
             r#"enum A { <|>One(foo::bar::baz::Boo) }"#,
-            r#"enum A { <|>One(foo::bar::baz::Boo) }
+            r#"enum A { One(foo::bar::baz::Boo) }
 
 impl From<foo::bar::baz::Boo> for A {
     fn from(v: foo::bar::baz::Boo) -> Self {
@@ -152,7 +149,7 @@ impl From<foo::bar::baz::Boo> for A {
 
     #[test]
     fn test_add_from_impl_already_exists() {
-        covers!(test_add_from_impl_already_exists);
+        mark::check!(test_add_from_impl_already_exists);
         check_not_applicable(
             r#"
 enum A { <|>One(u32), }
@@ -181,7 +178,7 @@ impl From<String> for A {
 pub trait From<T> {
     fn from(T) -> Self;
 }"#,
-            r#"enum A { <|>One(u32), Two(String), }
+            r#"enum A { One(u32), Two(String), }
 
 impl From<u32> for A {
     fn from(v: u32) -> Self {

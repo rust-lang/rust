@@ -1,7 +1,4 @@
-use ra_syntax::{
-    ast::{self, AstNode, NameOwner, TypeParamsOwner},
-    TextSize,
-};
+use ra_syntax::ast::{self, AstNode, NameOwner, TypeParamsOwner};
 use stdx::{format_to, SepBy};
 
 use crate::{AssistContext, AssistId, Assists};
@@ -12,17 +9,17 @@ use crate::{AssistContext, AssistId, Assists};
 //
 // ```
 // struct Ctx<T: Clone> {
-//      data: T,<|>
+//     data: T,<|>
 // }
 // ```
 // ->
 // ```
 // struct Ctx<T: Clone> {
-//      data: T,
+//     data: T,
 // }
 //
 // impl<T: Clone> Ctx<T> {
-//
+//     $0
 // }
 // ```
 pub(crate) fn add_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
@@ -50,30 +47,37 @@ pub(crate) fn add_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
             let generic_params = lifetime_params.chain(type_params).sep_by(", ");
             format_to!(buf, "<{}>", generic_params)
         }
-        buf.push_str(" {\n");
-        edit.set_cursor(start_offset + TextSize::of(&buf));
-        buf.push_str("\n}");
-        edit.insert(start_offset, buf);
+        match ctx.config.snippet_cap {
+            Some(cap) => {
+                buf.push_str(" {\n    $0\n}");
+                edit.insert_snippet(cap, start_offset, buf);
+            }
+            None => {
+                buf.push_str(" {\n}");
+                edit.insert(start_offset, buf);
+            }
+        }
     })
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::tests::{check_assist, check_assist_target};
+
+    use super::*;
 
     #[test]
     fn test_add_impl() {
-        check_assist(add_impl, "struct Foo {<|>}\n", "struct Foo {}\n\nimpl Foo {\n<|>\n}\n");
+        check_assist(add_impl, "struct Foo {<|>}\n", "struct Foo {}\n\nimpl Foo {\n    $0\n}\n");
         check_assist(
             add_impl,
             "struct Foo<T: Clone> {<|>}",
-            "struct Foo<T: Clone> {}\n\nimpl<T: Clone> Foo<T> {\n<|>\n}",
+            "struct Foo<T: Clone> {}\n\nimpl<T: Clone> Foo<T> {\n    $0\n}",
         );
         check_assist(
             add_impl,
             "struct Foo<'a, T: Foo<'a>> {<|>}",
-            "struct Foo<'a, T: Foo<'a>> {}\n\nimpl<'a, T: Foo<'a>> Foo<'a, T> {\n<|>\n}",
+            "struct Foo<'a, T: Foo<'a>> {}\n\nimpl<'a, T: Foo<'a>> Foo<'a, T> {\n    $0\n}",
         );
     }
 

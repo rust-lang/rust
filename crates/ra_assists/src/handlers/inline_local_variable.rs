@@ -3,7 +3,7 @@ use ra_syntax::{
     ast::{self, AstNode, AstToken},
     TextRange,
 };
-use test_utils::tested_by;
+use test_utils::mark;
 
 use crate::{
     assist_context::{AssistContext, Assists},
@@ -33,11 +33,11 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> O
         _ => return None,
     };
     if bind_pat.mut_token().is_some() {
-        tested_by!(test_not_inline_mut_variable);
+        mark::hit!(test_not_inline_mut_variable);
         return None;
     }
     if !bind_pat.syntax().text_range().contains_inclusive(ctx.offset()) {
-        tested_by!(not_applicable_outside_of_bind_pat);
+        mark::hit!(not_applicable_outside_of_bind_pat);
         return None;
     }
     let initializer_expr = let_stmt.initializer()?;
@@ -46,7 +46,7 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> O
     let def = Definition::Local(def);
     let refs = def.find_usages(ctx.db, None);
     if refs.is_empty() {
-        tested_by!(test_not_applicable_if_variable_unused);
+        mark::hit!(test_not_applicable_if_variable_unused);
         return None;
     };
 
@@ -116,13 +116,12 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> O
             let replacement = if should_wrap { init_in_paren.clone() } else { init_str.clone() };
             builder.replace(desc.file_range.range, replacement)
         }
-        builder.set_cursor(delete_range.start())
     })
 }
 
 #[cfg(test)]
 mod tests {
-    use test_utils::covers;
+    use test_utils::mark;
 
     use crate::tests::{check_assist, check_assist_not_applicable};
 
@@ -149,7 +148,7 @@ fn foo() {
             r"
 fn bar(a: usize) {}
 fn foo() {
-    <|>1 + 1;
+    1 + 1;
     if 1 > 10 {
     }
 
@@ -183,7 +182,7 @@ fn foo() {
             r"
 fn bar(a: usize) {}
 fn foo() {
-    <|>(1 + 1) + 1;
+    (1 + 1) + 1;
     if (1 + 1) > 10 {
     }
 
@@ -217,7 +216,7 @@ fn foo() {
             r"
 fn bar(a: usize) {}
 fn foo() {
-    <|>bar(1) + 1;
+    bar(1) + 1;
     if bar(1) > 10 {
     }
 
@@ -251,7 +250,7 @@ fn foo() {
             r"
 fn bar(a: usize): usize { a }
 fn foo() {
-    <|>(bar(1) as u64) + 1;
+    (bar(1) as u64) + 1;
     if (bar(1) as u64) > 10 {
     }
 
@@ -283,7 +282,7 @@ fn foo() {
 }",
             r"
 fn foo() {
-    <|>{ 10 + 1 } + 1;
+    { 10 + 1 } + 1;
     if { 10 + 1 } > 10 {
     }
 
@@ -315,7 +314,7 @@ fn foo() {
 }",
             r"
 fn foo() {
-    <|>( 10 + 1 ) + 1;
+    ( 10 + 1 ) + 1;
     if ( 10 + 1 ) > 10 {
     }
 
@@ -330,7 +329,7 @@ fn foo() {
 
     #[test]
     fn test_not_inline_mut_variable() {
-        covers!(test_not_inline_mut_variable);
+        mark::check!(test_not_inline_mut_variable);
         check_assist_not_applicable(
             inline_local_variable,
             r"
@@ -353,7 +352,7 @@ fn foo() {
 }",
             r"
 fn foo() {
-    <|>let b = bar(10 + 1) * 10;
+    let b = bar(10 + 1) * 10;
     let c = bar(10 + 1) as usize;
 }",
         );
@@ -373,7 +372,7 @@ fn foo() {
             r"
 fn foo() {
     let x = vec![1, 2, 3];
-    <|>let b = x[0] * 10;
+    let b = x[0] * 10;
     let c = x[0] as usize;
 }",
         );
@@ -393,7 +392,7 @@ fn foo() {
             r"
 fn foo() {
     let bar = vec![1];
-    <|>let b = bar.len() * 10;
+    let b = bar.len() * 10;
     let c = bar.len() as usize;
 }",
         );
@@ -421,7 +420,7 @@ struct Bar {
 
 fn foo() {
     let bar = Bar { foo: 1 };
-    <|>let b = bar.foo * 10;
+    let b = bar.foo * 10;
     let c = bar.foo as usize;
 }",
         );
@@ -442,7 +441,7 @@ fn foo() -> Option<usize> {
             r"
 fn foo() -> Option<usize> {
     let bar = Some(1);
-    <|>let b = bar? * 10;
+    let b = bar? * 10;
     let c = bar? as usize;
     None
 }",
@@ -462,7 +461,7 @@ fn foo() {
             r"
 fn foo() {
     let bar = 10;
-    <|>let b = &bar * 10;
+    let b = &bar * 10;
 }",
         );
     }
@@ -478,7 +477,7 @@ fn foo() {
 }",
             r"
 fn foo() {
-    <|>let b = (10, 20)[0];
+    let b = (10, 20)[0];
 }",
         );
     }
@@ -494,7 +493,7 @@ fn foo() {
 }",
             r"
 fn foo() {
-    <|>let b = [1, 2, 3].len();
+    let b = [1, 2, 3].len();
 }",
         );
     }
@@ -511,7 +510,7 @@ fn foo() {
 }",
             r"
 fn foo() {
-    <|>let b = (10 + 20) * 10;
+    let b = (10 + 20) * 10;
     let c = (10 + 20) as usize;
 }",
         );
@@ -531,7 +530,7 @@ fn foo() {
             r"
 fn foo() {
     let d = 10;
-    <|>let b = d * 10;
+    let b = d * 10;
     let c = d as usize;
 }",
         );
@@ -549,7 +548,7 @@ fn foo() {
 }",
             r"
 fn foo() {
-    <|>let b = { 10 } * 10;
+    let b = { 10 } * 10;
     let c = { 10 } as usize;
 }",
         );
@@ -569,7 +568,7 @@ fn foo() {
 }",
             r"
 fn foo() {
-    <|>let b = (10 + 20) * 10;
+    let b = (10 + 20) * 10;
     let c = (10 + 20, 20);
     let d = [10 + 20, 10];
     let e = (10 + 20);
@@ -588,7 +587,7 @@ fn foo() {
 }",
             r"
 fn foo() {
-    <|>for i in vec![10, 20] {}
+    for i in vec![10, 20] {}
 }",
         );
     }
@@ -604,7 +603,7 @@ fn foo() {
 }",
             r"
 fn foo() {
-    <|>while 1 > 0 {}
+    while 1 > 0 {}
 }",
         );
     }
@@ -622,7 +621,7 @@ fn foo() {
 }",
             r"
 fn foo() {
-    <|>loop {
+    loop {
         break 1 + 1;
     }
 }",
@@ -640,7 +639,7 @@ fn foo() {
 }",
             r"
 fn foo() {
-    <|>return 1 > 0;
+    return 1 > 0;
 }",
         );
     }
@@ -656,14 +655,14 @@ fn foo() {
 }",
             r"
 fn foo() {
-    <|>match 1 > 0 {}
+    match 1 > 0 {}
 }",
         );
     }
 
     #[test]
     fn test_not_applicable_if_variable_unused() {
-        covers!(test_not_applicable_if_variable_unused);
+        mark::check!(test_not_applicable_if_variable_unused);
         check_assist_not_applicable(
             inline_local_variable,
             r"
@@ -676,7 +675,7 @@ fn foo() {
 
     #[test]
     fn not_applicable_outside_of_bind_pat() {
-        covers!(not_applicable_outside_of_bind_pat);
+        mark::check!(not_applicable_outside_of_bind_pat);
         check_assist_not_applicable(
             inline_local_variable,
             r"

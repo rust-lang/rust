@@ -11,7 +11,7 @@ use std::{ffi::OsString, path::PathBuf};
 
 use lsp_types::ClientCapabilities;
 use ra_flycheck::FlycheckConfig;
-use ra_ide::{CompletionConfig, InlayHintsConfig};
+use ra_ide::{AssistConfig, CompletionConfig, InlayHintsConfig};
 use ra_project_model::CargoConfig;
 use serde::Deserialize;
 
@@ -32,7 +32,38 @@ pub struct Config {
 
     pub inlay_hints: InlayHintsConfig,
     pub completion: CompletionConfig,
+    pub assist: AssistConfig,
     pub call_info_full: bool,
+    pub lens: LensConfig,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LensConfig {
+    pub run: bool,
+    pub debug: bool,
+    pub impementations: bool,
+}
+
+impl Default for LensConfig {
+    fn default() -> Self {
+        Self { run: true, debug: true, impementations: true }
+    }
+}
+
+impl LensConfig {
+    pub const NO_LENS: LensConfig = Self { run: false, debug: false, impementations: false };
+
+    pub fn any(&self) -> bool {
+        self.impementations || self.runnable()
+    }
+
+    pub fn none(&self) -> bool {
+        !self.any()
+    }
+
+    pub fn runnable(&self) -> bool {
+        self.run || self.debug
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -106,7 +137,9 @@ impl Default for Config {
                 add_call_argument_snippets: true,
                 ..CompletionConfig::default()
             },
+            assist: AssistConfig::default(),
             call_info_full: true,
+            lens: LensConfig::default(),
         }
     }
 }
@@ -196,6 +229,16 @@ impl Config {
         set(value, "/completion/addCallArgumentSnippets", &mut self.completion.add_call_argument_snippets);
         set(value, "/callInfo/full", &mut self.call_info_full);
 
+        let mut lens_enabled = true;
+        set(value, "/lens/enable", &mut lens_enabled);
+        if lens_enabled {
+            set(value, "/lens/run", &mut self.lens.run);
+            set(value, "/lens/debug", &mut self.lens.debug);
+            set(value, "/lens/implementations", &mut self.lens.impementations);
+        } else {
+            self.lens = LensConfig::NO_LENS;
+        }
+
         log::info!("Config::update() = {:#?}", self);
 
         fn get<'a, T: Deserialize<'a>>(value: &'a serde_json::Value, pointer: &str) -> Option<T> {
@@ -232,6 +275,7 @@ impl Config {
             {
                 self.client_caps.code_action_literals = value;
             }
+
             self.completion.allow_snippets(false);
             if let Some(completion) = &doc_caps.completion {
                 if let Some(completion_item) = &completion.completion_item {
@@ -246,6 +290,13 @@ impl Config {
             if let Some(value) = window_caps.work_done_progress {
                 self.client_caps.work_done_progress = value;
             }
+        }
+
+        self.assist.allow_snippets(false);
+        if let Some(experimental) = &caps.experimental {
+            let enable =
+                experimental.get("snippetTextEdit").and_then(|it| it.as_bool()) == Some(true);
+            self.assist.allow_snippets(enable);
         }
     }
 }

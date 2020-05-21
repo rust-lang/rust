@@ -26,12 +26,10 @@ pub(crate) fn split_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
     if new_tree == use_tree {
         return None;
     }
-    let cursor = ctx.offset();
 
     let target = colon_colon.text_range();
     acc.add(AssistId("split_import"), "Split import", target, |edit| {
         edit.replace_ast(use_tree, new_tree);
-        edit.set_cursor(cursor);
     })
 }
 
@@ -46,7 +44,7 @@ mod tests {
         check_assist(
             split_import,
             "use crate::<|>db::RootDatabase;",
-            "use crate::<|>{db::RootDatabase};",
+            "use crate::{db::RootDatabase};",
         )
     }
 
@@ -55,7 +53,7 @@ mod tests {
         check_assist(
             split_import,
             "use crate:<|>:db::{RootDatabase, FileSymbol}",
-            "use crate:<|>:{db::{RootDatabase, FileSymbol}}",
+            "use crate::{db::{RootDatabase, FileSymbol}}",
         )
     }
 

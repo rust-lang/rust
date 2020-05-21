@@ -190,8 +190,6 @@ fn get_struct_def_name_for_struct_literal_search(
 
 #[cfg(test)]
 mod tests {
-    use test_utils::covers;
-
     use crate::{
         mock_analysis::{analysis_and_position, single_file_with_position, MockAnalysis},
         Declaration, Reference, ReferenceSearchResult, SearchScope,
@@ -301,7 +299,6 @@ mod tests {
 
     #[test]
     fn search_filters_by_range() {
-        covers!(ra_ide_db::search_filters_by_range);
         let code = r#"
             fn foo() {
                 let spam<|> = 92;

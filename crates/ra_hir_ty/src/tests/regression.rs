@@ -1,9 +1,10 @@
 use insta::assert_snapshot;
-use test_utils::covers;
+use ra_db::fixture::WithFixture;
+use test_utils::mark;
+
+use crate::test_db::TestDB;
 
 use super::infer;
-use crate::test_db::TestDB;
-use ra_db::fixture::WithFixture;
 
 #[test]
 fn bug_484() {
@@ -89,8 +90,8 @@ fn quux() {
 
 #[test]
 fn recursive_vars() {
-    covers!(type_var_cycles_resolve_completely);
-    covers!(type_var_cycles_resolve_as_possible);
+    mark::check!(type_var_cycles_resolve_completely);
+    mark::check!(type_var_cycles_resolve_as_possible);
     assert_snapshot!(
         infer(r#"
 fn test() {
@@ -112,8 +113,6 @@ fn test() {
 
 #[test]
 fn recursive_vars_2() {
-    covers!(type_var_cycles_resolve_completely);
-    covers!(type_var_cycles_resolve_as_possible);
     assert_snapshot!(
         infer(r#"
 fn test() {
@@ -170,7 +169,7 @@ fn write() {
 
 #[test]
 fn infer_std_crash_2() {
-    covers!(type_var_resolves_to_int_var);
+    mark::check!(type_var_resolves_to_int_var);
     // caused "equating two type variables, ...", taken from std
     assert_snapshot!(
         infer(r#"
@@ -561,6 +560,37 @@ fn main() {
     110..117 'a.foo()': ()
 "###
     );
+}
+
+#[test]
+fn issue_4465_dollar_crate_at_type() {
+    assert_snapshot!(
+        infer(r#"
+pub struct Foo {}
+pub fn anything<T>() -> T {
+    loop {}
+}
+macro_rules! foo {
+    () => {{
+        let r: $crate::Foo = anything();
+        r
+    }};
+}
+fn main() {
+    let _a = foo!();
+}
+"#), @r###"
+    45..60 '{     loop {} }': T
+    51..58 'loop {}': !
+    56..58 '{}': ()
+    !0..31 '{letr:...g();r}': Foo
+    !4..5 'r': Foo
+    !18..26 'anything': fn anything<Foo>() -> Foo
+    !18..28 'anything()': Foo
+    !29..30 'r': Foo
+    164..188 '{     ...!(); }': ()
+    174..176 '_a': Foo
+"###);
 }
 
 #[test]

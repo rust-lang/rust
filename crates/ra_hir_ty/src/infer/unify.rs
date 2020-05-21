@@ -4,7 +4,7 @@ use std::borrow::Cow;
 
 use ena::unify::{InPlaceUnificationTable, NoError, UnifyKey, UnifyValue};
 
-use test_utils::tested_by;
+use test_utils::mark;
 
 use super::{InferenceContext, Obligation};
 use crate::{
@@ -313,7 +313,7 @@ impl InferenceTable {
         // more than once
         for i in 0..3 {
             if i > 0 {
-                tested_by!(type_var_resolves_to_int_var);
+                mark::hit!(type_var_resolves_to_int_var);
             }
             match &*ty {
                 Ty::Infer(tv) => {
@@ -342,7 +342,7 @@ impl InferenceTable {
             Ty::Infer(tv) => {
                 let inner = tv.to_inner();
                 if tv_stack.contains(&inner) {
-                    tested_by!(type_var_cycles_resolve_as_possible);
+                    mark::hit!(type_var_cycles_resolve_as_possible);
                     // recursive type
                     return tv.fallback_value();
                 }
@@ -369,7 +369,7 @@ impl InferenceTable {
             Ty::Infer(tv) => {
                 let inner = tv.to_inner();
                 if tv_stack.contains(&inner) {
-                    tested_by!(type_var_cycles_resolve_completely);
+                    mark::hit!(type_var_cycles_resolve_completely);
                     // recursive type
                     return tv.fallback_value();
                 }

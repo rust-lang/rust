@@ -1,6 +1,6 @@
 use super::infer_with_mismatches;
 use insta::assert_snapshot;
-use test_utils::covers;
+use test_utils::mark;
 
 // Infer with some common definitions and impls.
 fn infer(source: &str) -> String {
@@ -339,7 +339,7 @@ fn test(i: i32) {
 
 #[test]
 fn coerce_merge_one_by_one1() {
-    covers!(coerce_merge_fail_fallback);
+    mark::check!(coerce_merge_fail_fallback);
 
     assert_snapshot!(
         infer(r#"
@@ -547,7 +547,7 @@ fn test() {
 
 #[test]
 fn coerce_fn_items_in_match_arms() {
-    covers!(coerce_fn_reification);
+    mark::check!(coerce_fn_reification);
     assert_snapshot!(
         infer_with_mismatches(r#"
 fn foo1(x: u32) -> isize { 1 }

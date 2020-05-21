@@ -18,7 +18,7 @@ use ra_syntax::{
     ast::{self, AttrsOwner, NameOwner, VisibilityOwner},
     AstNode,
 };
-use test_utils::tested_by;
+use test_utils::mark;
 
 use crate::{
     attr::Attrs,
@@ -346,7 +346,7 @@ impl RawItemsCollector {
             self.push_item(current_module, attrs, RawItemKind::Module(item));
             return;
         }
-        tested_by!(name_res_works_for_broken_modules);
+        mark::hit!(name_res_works_for_broken_modules);
     }
 
     fn add_use_item(&mut self, current_module: Option<Idx<ModuleData>>, use_item: ast::UseItem) {

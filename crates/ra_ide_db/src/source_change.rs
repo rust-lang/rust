@@ -4,7 +4,7 @@
 //! It can be viewed as a dual for `AnalysisChange`.
 
 use ra_db::{FileId, FilePosition, RelativePathBuf, SourceRootId};
-use ra_text_edit::{TextEdit, TextSize};
+use ra_text_edit::TextEdit;
 
 #[derive(Debug, Clone)]
 pub struct SourceChange {
@@ -13,6 +13,7 @@ pub struct SourceChange {
     pub source_file_edits: Vec<SourceFileEdit>,
     pub file_system_edits: Vec<FileSystemEdit>,
     pub cursor_position: Option<FilePosition>,
+    pub is_snippet: bool,
 }
 
 impl SourceChange {
@@ -28,6 +29,7 @@ impl SourceChange {
             source_file_edits,
             file_system_edits,
             cursor_position: None,
+            is_snippet: false,
         }
     }
 
@@ -41,6 +43,7 @@ impl SourceChange {
             source_file_edits: edits,
             file_system_edits: vec![],
             cursor_position: None,
+            is_snippet: false,
         }
     }
 
@@ -52,6 +55,7 @@ impl SourceChange {
             source_file_edits: vec![],
             file_system_edits: edits,
             cursor_position: None,
+            is_snippet: false,
         }
     }
 
@@ -105,7 +109,6 @@ pub enum FileSystemEdit {
 pub struct SingleFileChange {
     pub label: String,
     pub edit: TextEdit,
-    pub cursor_position: Option<TextSize>,
 }
 
 impl SingleFileChange {
@@ -114,7 +117,8 @@ impl SingleFileChange {
             label: self.label,
             source_file_edits: vec![SourceFileEdit { file_id, edit: self.edit }],
             file_system_edits: Vec::new(),
-            cursor_position: self.cursor_position.map(|offset| FilePosition { file_id, offset }),
+            cursor_position: None,
+            is_snippet: false,
         }
     }
 }

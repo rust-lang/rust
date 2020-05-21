@@ -11,12 +11,11 @@ use lsp_server::ErrorCode;
 use lsp_types::{
     CallHierarchyIncomingCall, CallHierarchyIncomingCallsParams, CallHierarchyItem,
     CallHierarchyOutgoingCall, CallHierarchyOutgoingCallsParams, CallHierarchyPrepareParams,
-    CodeAction, CodeActionResponse, CodeLens, Command, CompletionItem, Diagnostic,
-    DocumentFormattingParams, DocumentHighlight, DocumentSymbol, FoldingRange, FoldingRangeParams,
-    Hover, HoverContents, Location, MarkupContent, MarkupKind, Position, PrepareRenameResponse,
-    Range, RenameParams, SemanticTokensParams, SemanticTokensRangeParams,
-    SemanticTokensRangeResult, SemanticTokensResult, SymbolInformation, TextDocumentIdentifier,
-    TextEdit, Url, WorkspaceEdit,
+    CodeLens, Command, CompletionItem, Diagnostic, DocumentFormattingParams, DocumentHighlight,
+    DocumentSymbol, FoldingRange, FoldingRangeParams, Hover, HoverContents, Location,
+    MarkupContent, MarkupKind, Position, PrepareRenameResponse, Range, RenameParams,
+    SemanticTokensParams, SemanticTokensRangeParams, SemanticTokensRangeResult,
+    SemanticTokensResult, SymbolInformation, TextDocumentIdentifier, TextEdit, Url, WorkspaceEdit,
 };
 use ra_ide::{
     Assist, FileId, FilePosition, FileRange, Query, RangeInfo, Runnable, RunnableKind, SearchScope,
@@ -476,7 +475,7 @@ pub fn handle_completion(
         return Ok(None);
     }
 
-    let items = match world.analysis().completions(position, &world.config.completion)? {
+    let items = match world.analysis().completions(&world.config.completion, position)? {
         None => return Ok(None),
         Some(items) => items,
     };
@@ -585,9 +584,8 @@ pub fn handle_rename(world: WorldSnapshot, params: RenameParams) -> Result<Optio
         None => return Ok(None),
         Some(it) => it.info,
     };
-
-    let source_change = to_proto::source_change(&world, source_change)?;
-    Ok(Some(source_change.workspace_edit))
+    let workspace_edit = to_proto::workspace_edit(&world, source_change)?;
+    Ok(Some(workspace_edit))
 }
 
 pub fn handle_references(
@@ -696,14 +694,21 @@ pub fn handle_formatting(
 pub fn handle_code_action(
     world: WorldSnapshot,
     params: lsp_types::CodeActionParams,
-) -> Result<Option<CodeActionResponse>> {
+) -> Result<Option<Vec<lsp_ext::CodeAction>>> {
     let _p = profile("handle_code_action");
+    // We intentionally don't support command-based actions, as those either
+    // requires custom client-code anyway, or requires server-initiated edits.
+    // Server initiated edits break causality, so we avoid those as well.
+    if !world.config.client_caps.code_action_literals {
+        return Ok(None);
+    }
+
     let file_id = from_proto::file_id(&world, &params.text_document.uri)?;
     let line_index = world.analysis().file_line_index(file_id)?;
     let range = from_proto::text_range(&line_index, params.range);
 
     let diagnostics = world.analysis().diagnostics(file_id)?;
-    let mut res = CodeActionResponse::default();
+    let mut res: Vec<lsp_ext::CodeAction> = Vec::new();
 
     let fixes_from_diagnostics = diagnostics
         .into_iter()
@@ -713,22 +718,9 @@ pub fn handle_code_action(
 
     for source_edit in fixes_from_diagnostics {
         let title = source_edit.label.clone();
-        let edit = to_proto::source_change(&world, source_edit)?;
-
-        let command = Command {
-            title,
-            command: "rust-analyzer.applySourceChange".to_string(),
-            arguments: Some(vec![to_value(edit).unwrap()]),
-        };
-        let action = CodeAction {
-            title: command.title.clone(),
-            kind: None,
-            diagnostics: None,
-            edit: None,
-            command: Some(command),
-            is_preferred: None,
-        };
-        res.push(action.into());
+        let edit = to_proto::snippet_workspace_edit(&world, source_edit)?;
+        let action = lsp_ext::CodeAction { title, kind: None, edit: Some(edit), command: None };
+        res.push(action);
     }
 
     for fix in world.check_fixes.get(&file_id).into_iter().flatten() {
@@ -740,14 +732,21 @@ pub fn handle_code_action(
     }
 
     let mut grouped_assists: FxHashMap<String, (usize, Vec<Assist>)> = FxHashMap::default();
-    for assist in world.analysis().assists(FileRange { file_id, range })?.into_iter() {
+    for assist in
+        world.analysis().assists(&world.config.assist, FileRange { file_id, range })?.into_iter()
+    {
         match &assist.group_label {
             Some(label) => grouped_assists
                 .entry(label.to_owned())
                 .or_insert_with(|| {
                     let idx = res.len();
-                    let dummy = Command::new(String::new(), String::new(), None);
-                    res.push(dummy.into());
+                    let dummy = lsp_ext::CodeAction {
+                        title: String::new(),
+                        kind: None,
+                        command: None,
+                        edit: None,
+                    };
+                    res.push(dummy);
                     (idx, Vec::new())
                 })
                 .1
@@ -775,35 +774,10 @@ pub fn handle_code_action(
                 command: "rust-analyzer.selectAndApplySourceChange".to_string(),
                 arguments: Some(vec![serde_json::Value::Array(arguments)]),
             });
-            res[idx] = CodeAction {
-                title,
-                kind: None,
-                diagnostics: None,
-                edit: None,
-                command,
-                is_preferred: None,
-            }
-            .into();
+            res[idx] = lsp_ext::CodeAction { title, kind: None, edit: None, command };
         }
     }
 
-    // If the client only supports commands then filter the list
-    // and remove and actions that depend on edits.
-    if !world.config.client_caps.code_action_literals {
-        // FIXME: use drain_filter once it hits stable.
-        res = res
-            .into_iter()
-            .filter_map(|it| match it {
-                cmd @ lsp_types::CodeActionOrCommand::Command(_) => Some(cmd),
-                lsp_types::CodeActionOrCommand::CodeAction(action) => match action.command {
-                    Some(cmd) if action.edit.is_none() => {
-                        Some(lsp_types::CodeActionOrCommand::Command(cmd))
-                    }
-                    _ => None,
-                },
-            })
-            .collect();
-    }
     Ok(Some(res))
 }
 
@@ -812,88 +786,108 @@ pub fn handle_code_lens(
     params: lsp_types::CodeLensParams,
 ) -> Result<Option<Vec<CodeLens>>> {
     let _p = profile("handle_code_lens");
-    let file_id = from_proto::file_id(&world, &params.text_document.uri)?;
-    let line_index = world.analysis().file_line_index(file_id)?;
-
     let mut lenses: Vec<CodeLens> = Default::default();
 
-    let cargo_spec = CargoTargetSpec::for_file(&world, file_id)?;
-    // Gather runnables
-    for runnable in world.analysis().runnables(file_id)? {
-        let title = match &runnable.kind {
-            RunnableKind::Test { .. } | RunnableKind::TestMod { .. } => "▶\u{fe0e} Run Test",
-            RunnableKind::DocTest { .. } => "▶\u{fe0e} Run Doctest",
-            RunnableKind::Bench { .. } => "Run Bench",
-            RunnableKind::Bin => {
-                // Do not suggest binary run on other target than binary
-                match &cargo_spec {
-                    Some(spec) => match spec.target_kind {
-                        TargetKind::Bin => "Run",
-                        _ => continue,
-                    },
-                    None => continue,
-                }
-            }
-        }
-        .to_string();
-        let mut r = to_lsp_runnable(&world, file_id, runnable)?;
-        let lens = CodeLens {
-            range: r.range,
-            command: Some(Command {
-                title,
-                command: "rust-analyzer.runSingle".into(),
-                arguments: Some(vec![to_value(&r).unwrap()]),
-            }),
-            data: None,
-        };
-        lenses.push(lens);
-
-        if r.args[0] == "run" {
-            r.args[0] = "build".into();
-        } else {
-            r.args.push("--no-run".into());
-        }
-        let debug_lens = CodeLens {
-            range: r.range,
-            command: Some(Command {
-                title: "Debug".into(),
-                command: "rust-analyzer.debugSingle".into(),
-                arguments: Some(vec![to_value(r).unwrap()]),
-            }),
-            data: None,
-        };
-        lenses.push(debug_lens);
+    if world.config.lens.none() {
+        // early return before any db query!
+        return Ok(Some(lenses));
     }
 
-    // Handle impls
-    lenses.extend(
-        world
-            .analysis()
-            .file_structure(file_id)?
-            .into_iter()
-            .filter(|it| match it.kind {
-                SyntaxKind::TRAIT_DEF | SyntaxKind::STRUCT_DEF | SyntaxKind::ENUM_DEF => true,
-                _ => false,
-            })
-            .map(|it| {
-                let range = to_proto::range(&line_index, it.node_range);
-                let pos = range.start;
-                let lens_params = lsp_types::request::GotoImplementationParams {
-                    text_document_position_params: lsp_types::TextDocumentPositionParams::new(
-                        params.text_document.clone(),
-                        pos,
-                    ),
-                    work_done_progress_params: Default::default(),
-                    partial_result_params: Default::default(),
-                };
-                CodeLens {
-                    range,
-                    command: None,
-                    data: Some(to_value(CodeLensResolveData::Impls(lens_params)).unwrap()),
-                }
-            }),
-    );
+    let file_id = from_proto::file_id(&world, &params.text_document.uri)?;
+    let line_index = world.analysis().file_line_index(file_id)?;
+    let cargo_spec = CargoTargetSpec::for_file(&world, file_id)?;
 
+    if world.config.lens.runnable() {
+        // Gather runnables
+        for runnable in world.analysis().runnables(file_id)? {
+            let (run_title, debugee) = match &runnable.kind {
+                RunnableKind::Test { .. } | RunnableKind::TestMod { .. } => {
+                    ("▶\u{fe0e} Run Test", true)
+                }
+                RunnableKind::DocTest { .. } => {
+                    // cargo does not support -no-run for doctests
+                    ("▶\u{fe0e} Run Doctest", false)
+                }
+                RunnableKind::Bench { .. } => {
+                    // Nothing wrong with bench debugging
+                    ("Run Bench", true)
+                }
+                RunnableKind::Bin => {
+                    // Do not suggest binary run on other target than binary
+                    match &cargo_spec {
+                        Some(spec) => match spec.target_kind {
+                            TargetKind::Bin => ("Run", true),
+                            _ => continue,
+                        },
+                        None => continue,
+                    }
+                }
+            };
+
+            let mut r = to_lsp_runnable(&world, file_id, runnable)?;
+            if world.config.lens.run {
+                let lens = CodeLens {
+                    range: r.range,
+                    command: Some(Command {
+                        title: run_title.to_string(),
+                        command: "rust-analyzer.runSingle".into(),
+                        arguments: Some(vec![to_value(&r).unwrap()]),
+                    }),
+                    data: None,
+                };
+                lenses.push(lens);
+            }
+
+            if debugee && world.config.lens.debug {
+                if r.args[0] == "run" {
+                    r.args[0] = "build".into();
+                } else {
+                    r.args.push("--no-run".into());
+                }
+                let debug_lens = CodeLens {
+                    range: r.range,
+                    command: Some(Command {
+                        title: "Debug".into(),
+                        command: "rust-analyzer.debugSingle".into(),
+                        arguments: Some(vec![to_value(r).unwrap()]),
+                    }),
+                    data: None,
+                };
+                lenses.push(debug_lens);
+            }
+        }
+    }
+
+    if world.config.lens.impementations {
+        // Handle impls
+        lenses.extend(
+            world
+                .analysis()
+                .file_structure(file_id)?
+                .into_iter()
+                .filter(|it| match it.kind {
+                    SyntaxKind::TRAIT_DEF | SyntaxKind::STRUCT_DEF | SyntaxKind::ENUM_DEF => true,
+                    _ => false,
+                })
+                .map(|it| {
+                    let range = to_proto::range(&line_index, it.node_range);
+                    let pos = range.start;
+                    let lens_params = lsp_types::request::GotoImplementationParams {
+                        text_document_position_params: lsp_types::TextDocumentPositionParams::new(
+                            params.text_document.clone(),
+                            pos,
+                        ),
+                        work_done_progress_params: Default::default(),
+                        partial_result_params: Default::default(),
+                    };
+                    CodeLens {
+                        range,
+                        command: None,
+                        data: Some(to_value(CodeLensResolveData::Impls(lens_params)).unwrap()),
+                    }
+                }),
+        );
+    }
     Ok(Some(lenses))
 }
 

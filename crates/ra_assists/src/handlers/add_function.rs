@@ -4,13 +4,17 @@ use ra_syntax::{
     ast::{
         self,
         edit::{AstNodeEdit, IndentLevel},
-        ArgListOwner, AstNode, ModuleItemOwner,
+        make, ArgListOwner, AstNode, ModuleItemOwner,
     },
     SyntaxKind, SyntaxNode, TextSize,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use crate::{AssistContext, AssistId, Assists};
+use crate::{
+    assist_config::SnippetCap,
+    utils::{render_snippet, Cursor},
+    AssistContext, AssistId, Assists,
+};
 
 // Assist: add_function
 //
@@ -33,7 +37,7 @@ use crate::{AssistContext, AssistId, Assists};
 // }
 //
 // fn bar(arg: &str, baz: Baz) {
-//     todo!()
+//     ${0:todo!()}
 // }
 //
 // ```
@@ -58,19 +62,38 @@ pub(crate) fn add_function(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
     let function_builder = FunctionBuilder::from_call(&ctx, &call, &path, target_module)?;
 
     let target = call.syntax().text_range();
-    acc.add(AssistId("add_function"), "Add function", target, |edit| {
+    acc.add(AssistId("add_function"), "Add function", target, |builder| {
         let function_template = function_builder.render();
-        edit.set_file(function_template.file);
-        edit.set_cursor(function_template.cursor_offset);
-        edit.insert(function_template.insert_offset, function_template.fn_def.to_string());
+        builder.set_file(function_template.file);
+        let new_fn = function_template.to_string(ctx.config.snippet_cap);
+        match ctx.config.snippet_cap {
+            Some(cap) => builder.insert_snippet(cap, function_template.insert_offset, new_fn),
+            None => builder.insert(function_template.insert_offset, new_fn),
+        }
     })
 }
 
 struct FunctionTemplate {
     insert_offset: TextSize,
-    cursor_offset: TextSize,
-    fn_def: ast::SourceFile,
+    placeholder_expr: ast::MacroCall,
+    leading_ws: String,
+    fn_def: ast::FnDef,
+    trailing_ws: String,
     file: FileId,
+}
+
+impl FunctionTemplate {
+    fn to_string(&self, cap: Option<SnippetCap>) -> String {
+        let f = match cap {
+            Some(cap) => render_snippet(
+                cap,
+                self.fn_def.syntax(),
+                Cursor::Replace(self.placeholder_expr.syntax()),
+            ),
+            None => self.fn_def.to_string(),
+        };
+        format!("{}{}{}", self.leading_ws, f, self.trailing_ws)
+    }
 }
 
 struct FunctionBuilder {
@@ -110,35 +133,41 @@ impl FunctionBuilder {
     }
 
     fn render(self) -> FunctionTemplate {
-        let placeholder_expr = ast::make::expr_todo();
-        let fn_body = ast::make::block_expr(vec![], Some(placeholder_expr));
-        let mut fn_def = ast::make::fn_def(self.fn_name, self.type_params, self.params, fn_body);
-        if self.needs_pub {
-            fn_def = ast::make::add_pub_crate_modifier(fn_def);
-        }
+        let placeholder_expr = make::expr_todo();
+        let fn_body = make::block_expr(vec![], Some(placeholder_expr));
+        let visibility = if self.needs_pub { Some(make::visibility_pub_crate()) } else { None };
+        let mut fn_def =
+            make::fn_def(visibility, self.fn_name, self.type_params, self.params, fn_body);
+        let leading_ws;
+        let trailing_ws;
 
-        let (fn_def, insert_offset) = match self.target {
+        let insert_offset = match self.target {
             GeneratedFunctionTarget::BehindItem(it) => {
-                let with_leading_blank_line = ast::make::add_leading_newlines(2, fn_def);
-                let indented = with_leading_blank_line.indent(IndentLevel::from_node(&it));
-                (indented, it.text_range().end())
+                let indent = IndentLevel::from_node(&it);
+                leading_ws = format!("\n\n{}", indent);
+                fn_def = fn_def.indent(indent);
+                trailing_ws = String::new();
+                it.text_range().end()
             }
             GeneratedFunctionTarget::InEmptyItemList(it) => {
-                let indent_once = IndentLevel(1);
                 let indent = IndentLevel::from_node(it.syntax());
-                let fn_def = ast::make::add_leading_newlines(1, fn_def);
-                let fn_def = fn_def.indent(indent_once);
-                let fn_def = ast::make::add_trailing_newlines(1, fn_def);
-                let fn_def = fn_def.indent(indent);
-                (fn_def, it.syntax().text_range().start() + TextSize::of('{'))
+                leading_ws = format!("\n{}", indent + 1);
+                fn_def = fn_def.indent(indent + 1);
+                trailing_ws = format!("\n{}", indent);
+                it.syntax().text_range().start() + TextSize::of('{')
             }
         };
 
         let placeholder_expr =
             fn_def.syntax().descendants().find_map(ast::MacroCall::cast).unwrap();
-        let cursor_offset_from_fn_start = placeholder_expr.syntax().text_range().start();
-        let cursor_offset = insert_offset + cursor_offset_from_fn_start;
-        FunctionTemplate { insert_offset, cursor_offset, fn_def, file: self.file }
+        FunctionTemplate {
+            insert_offset,
+            placeholder_expr,
+            leading_ws,
+            fn_def,
+            trailing_ws,
+            file: self.file,
+        }
     }
 }
 
@@ -158,7 +187,7 @@ impl GeneratedFunctionTarget {
 
 fn fn_name(call: &ast::Path) -> Option<ast::Name> {
     let name = call.segment()?.syntax().to_string();
-    Some(ast::make::name(&name))
+    Some(make::name(&name))
 }
 
 /// Computes the type variables and arguments required for the generated function
@@ -180,8 +209,8 @@ fn fn_args(
         });
     }
     deduplicate_arg_names(&mut arg_names);
-    let params = arg_names.into_iter().zip(arg_types).map(|(name, ty)| ast::make::param(name, ty));
-    Some((None, ast::make::param_list(params)))
+    let params = arg_names.into_iter().zip(arg_types).map(|(name, ty)| make::param(name, ty));
+    Some((None, make::param_list(params)))
 }
 
 /// Makes duplicate argument names unique by appending incrementing numbers.
@@ -316,7 +345,7 @@ fn foo() {
 }
 
 fn bar() {
-    <|>todo!()
+    ${0:todo!()}
 }
 ",
         )
@@ -343,7 +372,7 @@ impl Foo {
 }
 
 fn bar() {
-    <|>todo!()
+    ${0:todo!()}
 }
 ",
         )
@@ -367,7 +396,7 @@ fn foo1() {
 }
 
 fn bar() {
-    <|>todo!()
+    ${0:todo!()}
 }
 
 fn foo2() {}
@@ -393,7 +422,7 @@ mod baz {
     }
 
     fn bar() {
-        <|>todo!()
+        ${0:todo!()}
     }
 }
 ",
@@ -419,7 +448,7 @@ fn foo() {
 }
 
 fn bar(baz: Baz) {
-    <|>todo!()
+    ${0:todo!()}
 }
 ",
         );
@@ -452,7 +481,7 @@ impl Baz {
 }
 
 fn bar(baz: Baz) {
-    <|>todo!()
+    ${0:todo!()}
 }
 ",
         )
@@ -473,7 +502,7 @@ fn foo() {
 }
 
 fn bar(arg: &str) {
-    <|>todo!()
+    ${0:todo!()}
 }
 "#,
         )
@@ -494,7 +523,7 @@ fn foo() {
 }
 
 fn bar(arg: char) {
-    <|>todo!()
+    ${0:todo!()}
 }
 "#,
         )
@@ -515,7 +544,7 @@ fn foo() {
 }
 
 fn bar(arg: i32) {
-    <|>todo!()
+    ${0:todo!()}
 }
 ",
         )
@@ -536,7 +565,7 @@ fn foo() {
 }
 
 fn bar(arg: u8) {
-    <|>todo!()
+    ${0:todo!()}
 }
 ",
         )
@@ -561,7 +590,7 @@ fn foo() {
 }
 
 fn bar(x: u8) {
-    <|>todo!()
+    ${0:todo!()}
 }
 ",
         )
@@ -584,7 +613,7 @@ fn foo() {
 }
 
 fn bar(worble: ()) {
-    <|>todo!()
+    ${0:todo!()}
 }
 ",
         )
@@ -613,7 +642,7 @@ fn baz() {
 }
 
 fn bar(foo: impl Foo) {
-    <|>todo!()
+    ${0:todo!()}
 }
 ",
         )
@@ -640,7 +669,7 @@ fn foo() {
 }
 
 fn bar(baz: &Baz) {
-    <|>todo!()
+    ${0:todo!()}
 }
 ",
         )
@@ -669,7 +698,7 @@ fn foo() {
 }
 
 fn bar(baz: Baz::Bof) {
-    <|>todo!()
+    ${0:todo!()}
 }
 ",
         )
@@ -692,7 +721,7 @@ fn foo<T>(t: T) {
 }
 
 fn bar<T>(t: T) {
-    <|>todo!()
+    ${0:todo!()}
 }
 ",
         )
@@ -723,7 +752,7 @@ fn foo() {
 }
 
 fn bar(arg: fn() -> Baz) {
-    <|>todo!()
+    ${0:todo!()}
 }
 ",
         )
@@ -748,7 +777,7 @@ fn foo() {
 }
 
 fn bar(closure: impl Fn(i64) -> i64) {
-    <|>todo!()
+    ${0:todo!()}
 }
 ",
         )
@@ -769,7 +798,7 @@ fn foo() {
 }
 
 fn bar(baz: ()) {
-    <|>todo!()
+    ${0:todo!()}
 }
 ",
         )
@@ -794,7 +823,7 @@ fn foo() {
 }
 
 fn bar(baz_1: Baz, baz_2: Baz) {
-    <|>todo!()
+    ${0:todo!()}
 }
 ",
         )
@@ -819,7 +848,7 @@ fn foo() {
 }
 
 fn bar(baz_1: Baz, baz_2: Baz, arg_1: &str, arg_2: &str) {
-    <|>todo!()
+    ${0:todo!()}
 }
 "#,
         )
@@ -839,7 +868,7 @@ fn foo() {
             r"
 mod bar {
     pub(crate) fn my_fn() {
-        <|>todo!()
+        ${0:todo!()}
     }
 }
 
@@ -878,7 +907,7 @@ fn bar() {
 }
 
 fn baz(foo: foo::Foo) {
-    <|>todo!()
+    ${0:todo!()}
 }
 ",
         )
@@ -902,7 +931,7 @@ mod bar {
     fn something_else() {}
 
     pub(crate) fn my_fn() {
-        <|>todo!()
+        ${0:todo!()}
     }
 }
 
@@ -930,7 +959,7 @@ fn foo() {
 mod bar {
     mod baz {
         pub(crate) fn my_fn() {
-            <|>todo!()
+            ${0:todo!()}
         }
     }
 }
@@ -959,7 +988,7 @@ fn main() {
 
 
 pub(crate) fn bar() {
-    <|>todo!()
+    ${0:todo!()}
 }",
         )
     }

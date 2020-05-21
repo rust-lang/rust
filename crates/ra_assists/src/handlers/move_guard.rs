@@ -1,7 +1,6 @@
 use ra_syntax::{
-    ast,
-    ast::{AstNode, AstToken, IfExpr, MatchArm},
-    TextSize,
+    ast::{AstNode, IfExpr, MatchArm},
+    SyntaxKind::WHITESPACE,
 };
 
 use crate::{AssistContext, AssistId, Assists};
@@ -42,24 +41,15 @@ pub(crate) fn move_guard_to_arm_body(acc: &mut Assists, ctx: &AssistContext) -> 
 
     let target = guard.syntax().text_range();
     acc.add(AssistId("move_guard_to_arm_body"), "Move guard to arm body", target, |edit| {
-        let offseting_amount = match space_before_guard.and_then(|it| it.into_token()) {
-            Some(tok) => {
-                if ast::Whitespace::cast(tok.clone()).is_some() {
-                    let ele = tok.text_range();
-                    edit.delete(ele);
-                    ele.len()
-                } else {
-                    TextSize::from(0)
-                }
+        match space_before_guard {
+            Some(element) if element.kind() == WHITESPACE => {
+                edit.delete(element.text_range());
             }
-            _ => TextSize::from(0),
+            _ => (),
         };
 
         edit.delete(guard.syntax().text_range());
         edit.replace_node_and_indent(arm_expr.syntax(), buf);
-        edit.set_cursor(
-            arm_expr.syntax().text_range().start() + TextSize::from(3) - offseting_amount,
-        );
     })
 }
 
@@ -124,7 +114,6 @@ pub(crate) fn move_arm_cond_to_match_guard(acc: &mut Assists, ctx: &AssistContex
             }
 
             edit.insert(match_pat.syntax().text_range().end(), buf);
-            edit.set_cursor(match_pat.syntax().text_range().end() + TextSize::from(1));
         },
     )
 }
@@ -172,7 +161,7 @@ mod tests {
                 let t = 'a';
                 let chars = "abcd";
                 match t {
-                    '\r' => if chars.clone().next() == Some('\n') { <|>false },
+                    '\r' => if chars.clone().next() == Some('\n') { false },
                     _ => true
                 }
             }
@@ -195,7 +184,7 @@ mod tests {
             r#"
             fn f() {
                 match x {
-                    y @ 4 | y @ 5 => if y > 5 { <|>true },
+                    y @ 4 | y @ 5 => if y > 5 { true },
                     _ => false
                 }
             }
@@ -222,7 +211,7 @@ mod tests {
                 let t = 'a';
                 let chars = "abcd";
                 match t {
-                    '\r' <|>if chars.clone().next() == Some('\n') => false,
+                    '\r' if chars.clone().next() == Some('\n') => false,
                     _ => true
                 }
             }
@@ -266,7 +255,7 @@ mod tests {
                 let t = 'a';
                 let chars = "abcd";
                 match t {
-                    '\r' <|>if chars.clone().next().is_some() => {  },
+                    '\r' if chars.clone().next().is_some() => {  },
                     _ => true
                 }
             }
@@ -296,7 +285,7 @@ mod tests {
                 let mut t = 'a';
                 let chars = "abcd";
                 match t {
-                    '\r' <|>if chars.clone().next().is_some() => {
+                    '\r' if chars.clone().next().is_some() => {
                         t = 'e';
                         false
                     },

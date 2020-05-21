@@ -97,7 +97,6 @@ pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext) 
     }
 
     then_block.syntax().last_child_or_token().filter(|t| t.kind() == R_CURLY)?;
-    let cursor_position = ctx.offset();
 
     let target = if_expr.syntax().text_range();
     acc.add(AssistId("convert_to_guarded_return"), "Convert to guarded return", target, |edit| {
@@ -148,7 +147,6 @@ pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext) 
             }
         };
         edit.replace_ast(parent_block, ast::BlockExpr::cast(new_block).unwrap());
-        edit.set_cursor(cursor_position);
 
         fn replace(
             new_expr: &SyntaxNode,
@@ -207,7 +205,7 @@ mod tests {
             r#"
             fn main() {
                 bar();
-                if<|> !true {
+                if !true {
                     return;
                 }
                 foo();
@@ -237,7 +235,7 @@ mod tests {
             r#"
             fn main(n: Option<String>) {
                 bar();
-                le<|>t n = match n {
+                let n = match n {
                     Some(it) => it,
                     _ => return,
                 };
@@ -263,7 +261,7 @@ mod tests {
             "#,
             r#"
             fn main() {
-                le<|>t x = match Err(92) {
+                let x = match Err(92) {
                     Ok(it) => it,
                     _ => return,
                 };
@@ -291,7 +289,7 @@ mod tests {
             r#"
             fn main(n: Option<String>) {
                 bar();
-                le<|>t n = match n {
+                let n = match n {
                     Ok(it) => it,
                     _ => return,
                 };
@@ -321,7 +319,7 @@ mod tests {
             r#"
             fn main() {
                 while true {
-                    if<|> !true {
+                    if !true {
                         continue;
                     }
                     foo();
@@ -349,7 +347,7 @@ mod tests {
             r#"
             fn main() {
                 while true {
-                    le<|>t n = match n {
+                    let n = match n {
                         Some(it) => it,
                         _ => continue,
                     };
@@ -378,7 +376,7 @@ mod tests {
             r#"
             fn main() {
                 loop {
-                    if<|> !true {
+                    if !true {
                         continue;
                     }
                     foo();
@@ -406,7 +404,7 @@ mod tests {
             r#"
             fn main() {
                 loop {
-                    le<|>t n = match n {
+                    let n = match n {
                         Some(it) => it,
                         _ => continue,
                     };

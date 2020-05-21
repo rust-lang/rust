@@ -140,7 +140,7 @@ mod tests {
         "#,
             r#"
         struct Foo {foo: i32, bar: i32};
-        const test: Foo = <|>Foo {foo: 1, bar: 0}
+        const test: Foo = Foo {foo: 1, bar: 0}
         "#,
         )
     }
@@ -164,7 +164,7 @@ mod tests {
 
         fn f(f: Foo) -> {
             match f {
-                <|>Foo { ref mut bar, baz: 0, .. } => (),
+                Foo { ref mut bar, baz: 0, .. } => (),
                 _ => ()
             }
         }
@@ -202,7 +202,7 @@ mod tests {
             impl Foo {
                 fn new() -> Foo {
                     let foo = String::new();
-                    <|>Foo {
+                    Foo {
                         foo,
                         bar: foo.clone(),
                         extra: "Extra field",

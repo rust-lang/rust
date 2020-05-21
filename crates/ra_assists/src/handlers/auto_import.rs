@@ -50,7 +50,12 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
             format!("Import `{}`", &import),
             range,
             |builder| {
-                insert_use_statement(&auto_import_assets.syntax_under_caret, &import, ctx, builder);
+                insert_use_statement(
+                    &auto_import_assets.syntax_under_caret,
+                    &import,
+                    ctx,
+                    builder.text_edit_builder(),
+                );
             },
         );
     }
@@ -293,7 +298,7 @@ mod tests {
             }
             ",
             r"
-            <|>use PubMod::PubStruct;
+            use PubMod::PubStruct;
 
             PubStruct
 
@@ -324,7 +329,7 @@ mod tests {
             macro_rules! foo {
                 ($i:ident) => { fn foo(a: $i) {} }
             }
-            foo!(Pub<|>Struct);
+            foo!(PubStruct);
 
             pub mod PubMod {
                 pub struct PubStruct;
@@ -355,7 +360,7 @@ mod tests {
             use PubMod::{PubStruct2, PubStruct1};
 
             struct Test {
-                test: Pub<|>Struct2<u8>,
+                test: PubStruct2<u8>,
             }
 
             pub mod PubMod {
@@ -388,7 +393,7 @@ mod tests {
             r"
             use PubMod3::PubStruct;
 
-            PubSt<|>ruct
+            PubStruct
 
             pub mod PubMod1 {
                 pub struct PubStruct;
@@ -469,7 +474,7 @@ mod tests {
             r"
             use PubMod::test_function;
 
-            test_function<|>
+            test_function
 
             pub mod PubMod {
                 pub fn test_function() {};
@@ -496,7 +501,7 @@ mod tests {
             r"use crate_with_macro::foo;
 
 fn main() {
-    foo<|>
+    foo
 }
 ",
         );
@@ -582,7 +587,7 @@ fn main() {
             }
 
             fn main() {
-                TestStruct::test_function<|>
+                TestStruct::test_function
             }
             ",
         );
@@ -615,7 +620,7 @@ fn main() {
             }
 
             fn main() {
-                TestStruct::TEST_CONST<|>
+                TestStruct::TEST_CONST
             }
             ",
         );
@@ -654,7 +659,7 @@ fn main() {
             }
 
             fn main() {
-                test_mod::TestStruct::test_function<|>
+                test_mod::TestStruct::test_function
             }
             ",
         );
@@ -725,7 +730,7 @@ fn main() {
             }
 
             fn main() {
-                test_mod::TestStruct::TEST_CONST<|>
+                test_mod::TestStruct::TEST_CONST
             }
             ",
         );
@@ -798,7 +803,7 @@ fn main() {
 
             fn main() {
                 let test_struct = test_mod::TestStruct {};
-                test_struct.test_meth<|>od()
+                test_struct.test_method()
             }
             ",
         );

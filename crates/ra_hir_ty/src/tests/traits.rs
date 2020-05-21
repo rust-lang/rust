@@ -1,9 +1,10 @@
 use insta::assert_snapshot;
-
 use ra_db::fixture::WithFixture;
+use test_utils::mark;
+
+use crate::test_db::TestDB;
 
 use super::{infer, infer_with_mismatches, type_at, type_at_pos};
-use crate::test_db::TestDB;
 
 #[test]
 fn infer_await() {
@@ -301,7 +302,7 @@ fn test() {
 
 #[test]
 fn trait_default_method_self_bound_implements_trait() {
-    test_utils::covers!(trait_self_implements_self);
+    mark::check!(trait_self_implements_self);
     assert_snapshot!(
         infer(r#"
 trait Trait {
@@ -324,7 +325,6 @@ trait Trait {
 
 #[test]
 fn trait_default_method_self_bound_implements_super_trait() {
-    test_utils::covers!(trait_self_implements_self);
     assert_snapshot!(
         infer(r#"
 trait SuperTrait {
@@ -1613,6 +1613,138 @@ fn test<F: FnOnce(u32, u64) -> u128>(f: F) {
     175..176 '1': u32
     178..179 '2': u64
     "###
+    );
+}
+
+#[test]
+fn fn_ptr_and_item() {
+    assert_snapshot!(
+        infer(r#"
+#[lang="fn_once"]
+trait FnOnce<Args> {
+    type Output;
+
+    fn call_once(self, args: Args) -> Self::Output;
+}
+
+trait Foo<T> {
+    fn foo(&self) -> T;
+}
+
+struct Bar<T>(T);
+
+impl<A1, R, F: FnOnce(A1) -> R> Foo<(A1, R)> for Bar<F> {
+    fn foo(&self) -> (A1, R) {}
+}
+
+enum Opt<T> { None, Some(T) }
+impl<T> Opt<T> {
+    fn map<U, F: FnOnce(T) -> U>(self, f: F) -> Opt<U> {}
+}
+
+fn test() {
+    let bar: Bar<fn(u8) -> u32>;
+    bar.foo();
+
+    let opt: Opt<u8>;
+    let f: fn(u8) -> u32;
+    opt.map(f);
+}
+"#),
+        @r###"
+75..79 'self': Self
+81..85 'args': Args
+140..144 'self': &Self
+244..248 'self': &Bar<F>
+261..263 '{}': ()
+347..351 'self': Opt<T>
+353..354 'f': F
+369..371 '{}': ()
+385..501 '{     ...(f); }': ()
+395..398 'bar': Bar<fn(u8) -> u32>
+424..427 'bar': Bar<fn(u8) -> u32>
+424..433 'bar.foo()': {unknown}
+444..447 'opt': Opt<u8>
+466..467 'f': fn(u8) -> u32
+488..491 'opt': Opt<u8>
+488..498 'opt.map(f)': Opt<FnOnce::Output<fn(u8) -> u32, (u8,)>>
+496..497 'f': fn(u8) -> u32
+"###
+    );
+}
+
+#[test]
+fn fn_trait_deref_with_ty_default() {
+    assert_snapshot!(
+        infer(r#"
+#[lang = "deref"]
+trait Deref {
+    type Target;
+
+    fn deref(&self) -> &Self::Target;
+}
+
+#[lang="fn_once"]
+trait FnOnce<Args> {
+    type Output;
+
+    fn call_once(self, args: Args) -> Self::Output;
+}
+
+struct Foo;
+
+impl Foo {
+    fn foo(&self) -> usize {}
+}
+
+struct Lazy<T, F = fn() -> T>(F);
+
+impl<T, F> Lazy<T, F> {
+    pub fn new(f: F) -> Lazy<T, F> {}
+}
+
+impl<T, F: FnOnce() -> T> Deref for Lazy<T, F> {
+    type Target = T;
+}
+
+fn test() {
+    let lazy1: Lazy<Foo, _> = Lazy::new(|| Foo);
+    let r1 = lazy1.foo();
+
+    fn make_foo_fn() -> Foo {}
+    let make_foo_fn_ptr: fn() -> Foo = make_foo_fn;
+    let lazy2: Lazy<Foo, _> = Lazy::new(make_foo_fn_ptr);
+    let r2 = lazy2.foo();
+}
+"#),
+        @r###"
+65..69 'self': &Self
+166..170 'self': Self
+172..176 'args': Args
+240..244 'self': &Foo
+255..257 '{}': ()
+335..336 'f': F
+355..357 '{}': ()
+444..690 '{     ...o(); }': ()
+454..459 'lazy1': Lazy<Foo, fn() -> T>
+476..485 'Lazy::new': fn new<Foo, fn() -> T>(fn() -> T) -> Lazy<Foo, fn() -> T>
+476..493 'Lazy::...| Foo)': Lazy<Foo, fn() -> T>
+486..492 '|| Foo': || -> T
+489..492 'Foo': Foo
+503..505 'r1': {unknown}
+508..513 'lazy1': Lazy<Foo, fn() -> T>
+508..519 'lazy1.foo()': {unknown}
+561..576 'make_foo_fn_ptr': fn() -> Foo
+592..603 'make_foo_fn': fn make_foo_fn() -> Foo
+613..618 'lazy2': Lazy<Foo, fn() -> T>
+635..644 'Lazy::new': fn new<Foo, fn() -> T>(fn() -> T) -> Lazy<Foo, fn() -> T>
+635..661 'Lazy::...n_ptr)': Lazy<Foo, fn() -> T>
+645..660 'make_foo_fn_ptr': fn() -> Foo
+671..673 'r2': {unknown}
+676..681 'lazy2': Lazy<Foo, fn() -> T>
+676..687 'lazy2.foo()': {unknown}
+550..552 '{}': ()
+"###
     );
 }
 

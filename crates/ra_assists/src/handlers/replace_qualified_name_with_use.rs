@@ -39,7 +39,7 @@ pub(crate) fn replace_qualified_name_with_use(
         target,
         |builder| {
             let path_to_import = hir_path.mod_path().clone();
-            insert_use_statement(path.syntax(), &path_to_import, ctx, builder);
+            insert_use_statement(path.syntax(), &path_to_import, ctx, builder.text_edit_builder());
 
             if let Some(last) = path.segment() {
                 // Here we are assuming the assist will provide a correct use statement
@@ -89,7 +89,7 @@ std::fmt::Debug<|>
             "
 use std::fmt::Debug;
 
-Debug<|>
+Debug
     ",
         );
     }
@@ -106,7 +106,7 @@ fn main() {
             "
 use std::fmt::Debug;
 
-Debug<|>
+Debug
 
 fn main() {
 }
@@ -130,7 +130,7 @@ use std::fmt::Debug;
 fn main() {
 }
 
-Debug<|>
+Debug
     ",
         );
     }
@@ -145,7 +145,7 @@ std::fmt<|>::Debug
             "
 use std::fmt;
 
-fmt<|>::Debug
+fmt::Debug
     ",
         );
     }
@@ -164,7 +164,7 @@ impl std::fmt::Debug<|> for Foo {
 use stdx;
 use std::fmt::Debug;
 
-impl Debug<|> for Foo {
+impl Debug for Foo {
 }
     ",
         );
@@ -181,7 +181,7 @@ impl std::fmt::Debug<|> for Foo {
             "
 use std::fmt::Debug;
 
-impl Debug<|> for Foo {
+impl Debug for Foo {
 }
     ",
         );
@@ -198,7 +198,7 @@ impl Debug<|> for Foo {
             "
     use std::fmt::Debug;
 
-    impl Debug<|> for Foo {
+    impl Debug for Foo {
     }
     ",
         );
@@ -217,7 +217,7 @@ impl std::io<|> for Foo {
             "
 use std::{io, fmt};
 
-impl io<|> for Foo {
+impl io for Foo {
 }
     ",
         );
@@ -236,7 +236,7 @@ impl std::fmt::Debug<|> for Foo {
             "
 use std::fmt::{self, Debug, };
 
-impl Debug<|> for Foo {
+impl Debug for Foo {
 }
     ",
         );
@@ -255,7 +255,7 @@ impl std::fmt<|> for Foo {
             "
 use std::fmt::{self, Debug};
 
-impl fmt<|> for Foo {
+impl fmt for Foo {
 }
     ",
         );
@@ -274,7 +274,7 @@ impl std::fmt::nested<|> for Foo {
             "
 use std::fmt::{Debug, nested::{Display, self}};
 
-impl nested<|> for Foo {
+impl nested for Foo {
 }
 ",
         );
@@ -293,7 +293,7 @@ impl std::fmt::nested<|> for Foo {
             "
 use std::fmt::{Debug, nested::{self, Display}};
 
-impl nested<|> for Foo {
+impl nested for Foo {
 }
 ",
         );
@@ -312,7 +312,7 @@ impl std::fmt::nested::Debug<|> for Foo {
             "
 use std::fmt::{Debug, nested::{Display, Debug}};
 
-impl Debug<|> for Foo {
+impl Debug for Foo {
 }
 ",
         );
@@ -331,7 +331,7 @@ impl std::fmt::nested::Display<|> for Foo {
             "
 use std::fmt::{nested::Display, Debug};
 
-impl Display<|> for Foo {
+impl Display for Foo {
 }
 ",
         );
@@ -350,7 +350,7 @@ impl std::fmt::Display<|> for Foo {
             "
 use std::fmt::{Display, nested::Debug};
 
-impl Display<|> for Foo {
+impl Display for Foo {
 }
 ",
         );
@@ -374,7 +374,7 @@ use crate::{
     AssocItem,
 };
 
-fn foo() { lower<|>::trait_env() }
+fn foo() { lower::trait_env() }
 ",
         );
     }
@@ -392,7 +392,7 @@ impl foo::Debug<|> for Foo {
             "
 use std::fmt as foo;
 
-impl Debug<|> for Foo {
+impl Debug for Foo {
 }
 ",
         );
@@ -435,7 +435,7 @@ mod foo {
     mod bar {
         use std::fmt::Debug;
 
-        Debug<|>
+        Debug
     }
 }
     ",
@@ -458,7 +458,7 @@ fn main() {
 use std::fmt::Debug;
 
 fn main() {
-    Debug<|>
+    Debug
 }
     ",
         );

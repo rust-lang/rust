@@ -85,17 +85,13 @@ mod tests {
         check_assist(
             flip_binexpr,
             "fn f() { let res = 1 ==<|> 2; }",
-            "fn f() { let res = 2 ==<|> 1; }",
+            "fn f() { let res = 2 == 1; }",
         )
     }
 
     #[test]
     fn flip_binexpr_works_for_gt() {
-        check_assist(
-            flip_binexpr,
-            "fn f() { let res = 1 ><|> 2; }",
-            "fn f() { let res = 2 <<|> 1; }",
-        )
+        check_assist(flip_binexpr, "fn f() { let res = 1 ><|> 2; }", "fn f() { let res = 2 < 1; }")
     }
 
     #[test]
@@ -103,7 +99,7 @@ mod tests {
         check_assist(
             flip_binexpr,
             "fn f() { let res = 1 <=<|> 2; }",
-            "fn f() { let res = 2 >=<|> 1; }",
+            "fn f() { let res = 2 >= 1; }",
         )
     }
 
@@ -112,7 +108,7 @@ mod tests {
         check_assist(
             flip_binexpr,
             "fn f() { let res = (1 + 1) ==<|> (2 + 2); }",
-            "fn f() { let res = (2 + 2) ==<|> (1 + 1); }",
+            "fn f() { let res = (2 + 2) == (1 + 1); }",
         )
     }
 
@@ -132,7 +128,7 @@ mod tests {
             fn dyn_eq(&self, other: &dyn Diagnostic) -> bool {
                 match other.downcast_ref::<Self>() {
                     None => false,
-                    Some(it) => self ==<|> it,
+                    Some(it) => self == it,
                 }
             }
             "#,
