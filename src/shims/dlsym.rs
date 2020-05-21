@@ -15,15 +15,18 @@ impl Dlsym {
         use self::Dlsym::*;
         let name = String::from_utf8_lossy(name);
         Ok(match target_os {
-            "linux" | "macos" => match &*name {
-                "getentropy" => Some(GetEntropy),
+            "linux" => match &*name {
                 "__pthread_get_minstack" => None,
-                _ => throw_unsup_format!("unsupported dlsym: {}", name),
+                _ => throw_unsup_format!("unsupported Linux dlsym: {}", name),
+            }
+            "macos" => match &*name {
+                "getentropy" => Some(GetEntropy),
+                _ => throw_unsup_format!("unsupported macOS dlsym: {}", name),
             }
             "windows" => match &*name {
                 "SetThreadStackGuarantee" => None,
                 "AcquireSRWLockExclusive" => None,
-                _ => throw_unsup_format!("unsupported dlsym: {}", name),
+                _ => throw_unsup_format!("unsupported Windows dlsym: {}", name),
             }
             os => bug!("dlsym not implemented for target_os {}", os),
         })
