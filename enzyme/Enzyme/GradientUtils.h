@@ -1094,6 +1094,8 @@ public:
     assert(val->getName() != "<badref>");
     assert(val->getType());
 
+    //llvm::errs() << " attempting unwrap of: " << *val << "\n";
+
     for(auto pair : available) {
       assert(pair.first);
       assert(pair.second);
@@ -1293,35 +1295,31 @@ public:
       unwrap_cache[cidx] = toreturn;
       assert(val->getType() == toreturn->getType());
       return toreturn;
-    } else if (auto op = dyn_cast<IntrinsicInst>(val)) {
-      switch(op->getIntrinsicID()) {
-          case Intrinsic::sin: {
-            Value *args[] = {getOp(SAFE(op,getOperand(0)))};
-            if (args[0] == nullptr) goto endCheck;
-            Type *tys[] = {op->getOperand(0)->getType()};
-            auto toreturn = cast<CallInst>(BuilderM.CreateCall(Intrinsic::getDeclaration(op->getParent()->getParent()->getParent(), Intrinsic::sin, tys), args));
-            toreturn->copyIRFlags(op);
-            toreturn->setAttributes(op->getAttributes());
-            toreturn->setCallingConv(op->getCallingConv());
-            toreturn->setTailCallKind(op->getTailCallKind());
-            toreturn->setDebugLoc(op->getDebugLoc());
-            return toreturn;
-          }
-          case Intrinsic::cos: {
-            Value *args[] = {getOp(SAFE(op,getOperand(0)))};
-            if (args[0] == nullptr) goto endCheck;
-            Type *tys[] = {op->getOperand(0)->getType()};
-            auto toreturn = cast<CallInst>(BuilderM.CreateCall(Intrinsic::getDeclaration(op->getParent()->getParent()->getParent(), Intrinsic::cos, tys), args));
-            toreturn->copyIRFlags(op);
-            toreturn->setAttributes(op->getAttributes());
-            toreturn->setCallingConv(op->getCallingConv());
-            toreturn->setTailCallKind(op->getTailCallKind());
-            toreturn->setDebugLoc(op->getDebugLoc());
-            return toreturn;
-          }
-          default:;
+    } else if (auto op = dyn_cast<CallInst>(val)) {
 
+      bool legalMove = mode == UnwrapMode::LegalFullUnwrap;
+      if (mode != UnwrapMode::LegalFullUnwrap) {
+        //TODO actually consider whether this is legal to move to the new location, rather than recomputable anywhere
+        legalMove = legalRecompute(op, available);
       }
+      if (!legalMove) return nullptr;
+
+      std::vector<Value*> args;
+      for(unsigned i=0; i<op->getNumArgOperands(); i++) {
+        args.emplace_back(getOp(SAFE(op, getArgOperand(i))));
+        if (args[i] == nullptr) return nullptr;
+      }
+
+      Value* fn = getOp(SAFE(op,getCalledValue()));
+      if (fn == nullptr) return nullptr;
+
+      auto toreturn = cast<CallInst>(BuilderM.CreateCall(fn, args));
+      toreturn->copyIRFlags(op);
+      toreturn->setAttributes(op->getAttributes());
+      toreturn->setCallingConv(op->getCallingConv());
+      toreturn->setTailCallKind(op->getTailCallKind());
+      toreturn->setDebugLoc(op->getDebugLoc());
+      return toreturn;
     } else if (auto phi = dyn_cast<PHINode>(val)) {
       if (phi->getNumIncomingValues () == 1) {
           assert(SAFE(phi,getIncomingValue(0)) != phi);

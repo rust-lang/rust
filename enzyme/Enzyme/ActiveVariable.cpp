@@ -267,7 +267,7 @@ void propagateArgumentInformation(CallInst& CI, std::function<bool(Value*)> prop
         auto n = called->getName();
         if (n == "lgamma" || n == "lgammaf" || n == "lgammal" || n == "lgamma_r" || n == "lgammaf_r" || n == "lgammal_r"
             || n == "__lgamma_r_finite" || n == "__lgammaf_r_finite" || n == "__lgammal_r_finite"
-            || n == "tanh") {
+            || n == "tanh" || n == "tanhf") {
 
             propagateFromOperand(CI.getArgOperand(0));
             return;

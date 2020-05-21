@@ -1398,6 +1398,7 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
         CONSIDER(cosh)
         CONSIDER(sinh)
         CONSIDER(tanh)
+        CONSIDER(tanhf)
         CONSIDER(acosh)
         CONSIDER(acoshf)
         CONSIDER(acoshl)

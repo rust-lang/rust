@@ -111,10 +111,14 @@ bool GradientUtils::legalRecompute(Value* val, const ValueToValueMapTy& availabl
     if (auto dli = dyn_cast_or_null<LoadInst>(hasUninverted(val))) {
       return legalRecompute(dli, available); // TODO ADD && !TR.intType(getOriginal(dli), /*mustfind*/false).isPossibleFloat();
     }
+    llvm::errs() << "illegal recompute: " << *val << "\n";
     return false;
   }
 
-  if (isa<Instruction>(val) && cast<Instruction>(val)->getMetadata("enzyme_mustcache")) return false;
+  if (isa<Instruction>(val) && cast<Instruction>(val)->getMetadata("enzyme_mustcache")) {
+    llvm::errs() << "illegal recompute: " << *val << "\n";
+    return false;
+  }
 
   // If this is a load from cache already, dont force a cache of this
   if (isa<LoadInst>(val) && cast<LoadInst>(val)->getMetadata("enzyme_fromcache")) return true;
@@ -159,8 +163,22 @@ bool GradientUtils::legalRecompute(Value* val, const ValueToValueMapTy& availabl
     }
   }
 
+  if (auto ci = dyn_cast<CallInst>(val)) {
+    if (auto called = ci->getCalledFunction()) {
+      auto n = called->getName();
+      if (n == "lgamma" || n == "lgammaf" || n == "lgammal" || n == "lgamma_r" || n == "lgammaf_r" || n == "lgammal_r"
+        || n == "__lgamma_r_finite" || n == "__lgammaf_r_finite" || n == "__lgammal_r_finite"
+        || n == "tanh" || n == "tanhf") {
+        return true;
+      }
+    }
+  }
+
   if (auto inst = dyn_cast<Instruction>(val)) {
-    return !inst->mayReadOrWriteMemory();
+    if (inst->mayReadOrWriteMemory()) {
+      llvm::errs() << "illegal recompute: " << *val << "\n";
+      return false;
+    }
   }
 
   return true;
@@ -187,7 +205,7 @@ bool GradientUtils::shouldRecompute(Value* val, const ValueToValueMapTy& availab
         // If this is a load from cache already, dont force a cache of this
         if (isa<LoadInst>(op) && cast<LoadInst>(op)->getMetadata("enzyme_fromcache")) continue;
 
-        //llvm::errs() << "choosing to cache " << *val << " because of " << *op << "\n";
+        llvm::errs() << "choosing to cache " << *val << " because of " << *op << "\n";
         return false;
       }
     }
@@ -197,6 +215,8 @@ bool GradientUtils::shouldRecompute(Value* val, const ValueToValueMapTy& availab
     switch(op->getIntrinsicID()) {
       case Intrinsic::sin:
       case Intrinsic::cos:
+      case Intrinsic::exp:
+      case Intrinsic::log:
       return true;
       return shouldRecompute(op->getOperand(0), available);
       default:
@@ -204,8 +224,22 @@ bool GradientUtils::shouldRecompute(Value* val, const ValueToValueMapTy& availab
     }
   }
 
+  if (auto ci = dyn_cast<CallInst>(val)) {
+    if (auto called = ci->getCalledFunction()) {
+      auto n = called->getName();
+      if (n == "lgamma" || n == "lgammaf" || n == "lgammal" || n == "lgamma_r" || n == "lgammaf_r" || n == "lgammal_r"
+        || n == "__lgamma_r_finite" || n == "__lgammaf_r_finite" || n == "__lgammal_r_finite"
+        || n == "tanh" || n == "tanhf") {
+        return true;
+      }
+    }
+  }
+
   //cache a call, assuming its longer to run that
-  if (isa<CallInst>(val)) return false;
+  if (isa<CallInst>(val)) {
+    llvm::errs() << " caching call: " << *val << "\n";
+    return false;
+  }
 
   //llvm::errs() << "unknown inst " << *val << " unable to recompute\n";
   return true;
