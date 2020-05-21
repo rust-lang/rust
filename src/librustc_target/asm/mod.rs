@@ -385,9 +385,7 @@ impl InlineAsmRegClass {
                 InlineAsmArch::RiscV32 | InlineAsmArch::RiscV64 => {
                     Self::RiscV(RiscVInlineAsmRegClass::parse(arch, name)?)
                 }
-                InlineAsmArch::Nvptx64 => {
-                    Self::Nvptx(NvptxInlineAsmRegClass::parse(arch, name)?)
-                }
+                InlineAsmArch::Nvptx64 => Self::Nvptx(NvptxInlineAsmRegClass::parse(arch, name)?),
             })
         })
     }
