@@ -5797,7 +5797,7 @@ unsafe impl<'a, T> TrustedRandomAccess for RChunksExactMut<'a, T> {
 ///     // `a` and `b` are different allocated objects...
 ///     let a = 42;
 ///     let b = 27;
-///     // ... which may nevertheless be laid out contiguous in memory: | a | b |
+///     // ... which may nevertheless be laid out contiguously in memory: | a | b |
 ///     let _ = join_slices(slice::from_ref(&a), slice::from_ref(&b)); // UB
 /// }
 /// ```
