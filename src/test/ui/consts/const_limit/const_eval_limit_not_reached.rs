@@ -1,7 +1,7 @@
 // check-pass
 
 #![feature(const_eval_limit)]
-#![feature(const_loop, const_if_match)]
+#![feature(const_loop)]
 
 // This needs to be higher than the number of loop iterations since each pass through the loop may
 // hit more than one terminator.

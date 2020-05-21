@@ -7,7 +7,6 @@ fn main() {
         //~^ ERROR `while` is not allowed in a `const`
             n = if n % 2 == 0 { n/2 } else { 3*n + 1 };
             //~^ ERROR evaluation of constant value failed
-            //~| ERROR `if` is not allowed in a `const`
         }
         n
     }];

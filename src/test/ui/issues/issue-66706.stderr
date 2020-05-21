@@ -26,15 +26,6 @@ error: expected identifier, found reserved identifier `_`
 LL |     [0; match [|f @ &ref _| () ] {} ]
    |                          ^ expected identifier, found reserved identifier
 
-error[E0658]: `match` is not allowed in a `const`
-  --> $DIR/issue-66706.rs:20:9
-   |
-LL |     [0; match [|f @ &ref _| () ] {} ]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
-   = help: add `#![feature(const_if_match)]` to the crate attributes to enable
-
 error[E0282]: type annotations needed
   --> $DIR/issue-66706.rs:2:11
    |
@@ -65,7 +56,7 @@ LL | fn d() {
 LL |     [0; match [|f @ &ref _| () ] {} ]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found array `[{integer}; _]`
 
-error: aborting due to 9 previous errors
+error: aborting due to 8 previous errors
 
-Some errors have detailed explanations: E0282, E0308, E0658.
+Some errors have detailed explanations: E0282, E0308.
 For more information about an error, try `rustc --explain E0282`.
