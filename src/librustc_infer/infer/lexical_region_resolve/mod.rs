@@ -862,6 +862,17 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         );
     }
 
+    /// Collects all regions that "bound" the variable `orig_node_idx` in the
+    /// given direction.
+    ///
+    /// If `dup_vec` is `Some` it's used to track duplicates between successive
+    /// calls of this function.
+    ///
+    /// The return tuple fields are:
+    /// - a list of all concrete regions bounding the given region.
+    /// - the set of all region variables bounding the given region.
+    /// - a `bool` that's true if the returned region variables overlap with
+    ///   those returned by a previous call for another region.
     fn collect_bounding_regions(
         &self,
         graph: &RegionGraph<'tcx>,
