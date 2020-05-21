@@ -26,6 +26,7 @@ impl Dlsym {
             "windows" => match &*name {
                 "SetThreadStackGuarantee" => None,
                 "AcquireSRWLockExclusive" => None,
+                "GetSystemTimePreciseAsFileTime" => None,
                 _ => throw_unsup_format!("unsupported Windows dlsym: {}", name),
             }
             os => bug!("dlsym not implemented for target_os {}", os),
