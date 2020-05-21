@@ -324,7 +324,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             span,
             self.body_id,
             self.param_env,
-            poly_trait_ref.without_const().to_predicate(),
+            poly_trait_ref.without_const().to_predicate(self.tcx),
         );
 
         // Now we want to know if this can be matched
@@ -401,7 +401,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         obligations.push(traits::Obligation::new(
             cause,
             self.param_env,
-            ty::Predicate::WellFormed(method_ty),
+            ty::PredicateKind::WellFormed(method_ty).to_predicate(tcx),
         ));
 
         let callee = MethodCallee { def_id, substs: trait_ref.substs, sig: fn_sig };

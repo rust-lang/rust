@@ -10,7 +10,7 @@ use crate::arena::ArenaAllocatable;
 use crate::infer::canonical::{CanonicalVarInfo, CanonicalVarInfos};
 use crate::mir::{self, interpret::Allocation};
 use crate::ty::subst::SubstsRef;
-use crate::ty::{self, List, Ty, TyCtxt};
+use crate::ty::{self, List, ToPredicate, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_serialize::{opaque, Decodable, Decoder, Encodable, Encoder};
@@ -200,15 +200,16 @@ where
         (0..decoder.read_usize()?)
             .map(|_| {
                 // Handle shorthands first, if we have an usize > 0x80.
-                let predicate = if decoder.positioned_at_shorthand() {
+                let predicate_kind = if decoder.positioned_at_shorthand() {
                     let pos = decoder.read_usize()?;
                     assert!(pos >= SHORTHAND_OFFSET);
                     let shorthand = pos - SHORTHAND_OFFSET;
 
-                    decoder.with_position(shorthand, ty::Predicate::decode)
+                    decoder.with_position(shorthand, ty::PredicateKind::decode)
                 } else {
-                    ty::Predicate::decode(decoder)
+                    ty::PredicateKind::decode(decoder)
                 }?;
+                let predicate = predicate_kind.to_predicate(tcx);
                 Ok((predicate, Decodable::decode(decoder)?))
             })
             .collect::<Result<Vec<_>, _>>()?,

@@ -1016,9 +1016,30 @@ impl<'tcx> GenericPredicates<'tcx> {
     }
 }
 
+#[derive(Clone, Copy, Hash, RustcEncodable, RustcDecodable, Lift)]
+#[derive(HashStable)]
+pub struct Predicate<'tcx> {
+    kind: &'tcx PredicateKind<'tcx>,
+}
+
+impl<'tcx> PartialEq for Predicate<'tcx> {
+    fn eq(&self, other: &Self) -> bool {
+        // `self.kind` is always interned.
+        ptr::eq(self.kind, other.kind)
+    }
+}
+
+impl<'tcx> Eq for Predicate<'tcx> {}
+
+impl<'tcx> Predicate<'tcx> {
+    pub fn kind(self) -> &'tcx PredicateKind<'tcx> {
+        self.kind
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 #[derive(HashStable, TypeFoldable)]
-pub enum Predicate<'tcx> {
+pub enum PredicateKind<'tcx> {
     /// Corresponds to `where Foo: Bar<A, B, C>`. `Foo` here would be
     /// the `Self` type of the trait reference and `A`, `B`, and `C`
     /// would be the type parameters.
@@ -1086,7 +1107,7 @@ impl<'tcx> Predicate<'tcx> {
     /// substitution in terms of what happens with bound regions. See
     /// lengthy comment below for details.
     pub fn subst_supertrait(
-        &self,
+        self,
         tcx: TyCtxt<'tcx>,
         trait_ref: &ty::PolyTraitRef<'tcx>,
     ) -> ty::Predicate<'tcx> {
@@ -1151,34 +1172,36 @@ impl<'tcx> Predicate<'tcx> {
         // this trick achieves that).
 
         let substs = &trait_ref.skip_binder().substs;
-        match *self {
-            Predicate::Trait(ref binder, constness) => {
-                Predicate::Trait(binder.map_bound(|data| data.subst(tcx, substs)), constness)
+        let predicate = match self.kind() {
+            &PredicateKind::Trait(ref binder, constness) => {
+                PredicateKind::Trait(binder.map_bound(|data| data.subst(tcx, substs)), constness)
             }
-            Predicate::Subtype(ref binder) => {
-                Predicate::Subtype(binder.map_bound(|data| data.subst(tcx, substs)))
+            PredicateKind::Subtype(binder) => {
+                PredicateKind::Subtype(binder.map_bound(|data| data.subst(tcx, substs)))
             }
-            Predicate::RegionOutlives(ref binder) => {
-                Predicate::RegionOutlives(binder.map_bound(|data| data.subst(tcx, substs)))
+            PredicateKind::RegionOutlives(binder) => {
+                PredicateKind::RegionOutlives(binder.map_bound(|data| data.subst(tcx, substs)))
             }
-            Predicate::TypeOutlives(ref binder) => {
-                Predicate::TypeOutlives(binder.map_bound(|data| data.subst(tcx, substs)))
+            PredicateKind::TypeOutlives(binder) => {
+                PredicateKind::TypeOutlives(binder.map_bound(|data| data.subst(tcx, substs)))
             }
-            Predicate::Projection(ref binder) => {
-                Predicate::Projection(binder.map_bound(|data| data.subst(tcx, substs)))
+            PredicateKind::Projection(binder) => {
+                PredicateKind::Projection(binder.map_bound(|data| data.subst(tcx, substs)))
             }
-            Predicate::WellFormed(data) => Predicate::WellFormed(data.subst(tcx, substs)),
-            Predicate::ObjectSafe(trait_def_id) => Predicate::ObjectSafe(trait_def_id),
-            Predicate::ClosureKind(closure_def_id, closure_substs, kind) => {
-                Predicate::ClosureKind(closure_def_id, closure_substs.subst(tcx, substs), kind)
+            &PredicateKind::WellFormed(data) => PredicateKind::WellFormed(data.subst(tcx, substs)),
+            &PredicateKind::ObjectSafe(trait_def_id) => PredicateKind::ObjectSafe(trait_def_id),
+            &PredicateKind::ClosureKind(closure_def_id, closure_substs, kind) => {
+                PredicateKind::ClosureKind(closure_def_id, closure_substs.subst(tcx, substs), kind)
             }
-            Predicate::ConstEvaluatable(def_id, const_substs) => {
-                Predicate::ConstEvaluatable(def_id, const_substs.subst(tcx, substs))
+            &PredicateKind::ConstEvaluatable(def_id, const_substs) => {
+                PredicateKind::ConstEvaluatable(def_id, const_substs.subst(tcx, substs))
             }
-            Predicate::ConstEquate(c1, c2) => {
-                Predicate::ConstEquate(c1.subst(tcx, substs), c2.subst(tcx, substs))
+            PredicateKind::ConstEquate(c1, c2) => {
+                PredicateKind::ConstEquate(c1.subst(tcx, substs), c2.subst(tcx, substs))
             }
-        }
+        };
+
+        predicate.to_predicate(tcx)
     }
 }
 
@@ -1293,85 +1316,95 @@ impl<'tcx> ToPolyTraitRef<'tcx> for PolyTraitPredicate<'tcx> {
 }
 
 pub trait ToPredicate<'tcx> {
-    fn to_predicate(&self) -> Predicate<'tcx>;
+    fn to_predicate(&self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx>;
+}
+
+impl ToPredicate<'tcx> for PredicateKind<'tcx> {
+    fn to_predicate(&self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
+        tcx.mk_predicate(*self)
+    }
 }
 
 impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<TraitRef<'tcx>> {
-    fn to_predicate(&self) -> Predicate<'tcx> {
-        ty::Predicate::Trait(
+    fn to_predicate(&self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
+        ty::PredicateKind::Trait(
             ty::Binder::dummy(ty::TraitPredicate { trait_ref: self.value }),
             self.constness,
         )
+        .to_predicate(tcx)
     }
 }
 
 impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<&TraitRef<'tcx>> {
-    fn to_predicate(&self) -> Predicate<'tcx> {
-        ty::Predicate::Trait(
+    fn to_predicate(&self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
+        ty::PredicateKind::Trait(
             ty::Binder::dummy(ty::TraitPredicate { trait_ref: *self.value }),
             self.constness,
         )
+        .to_predicate(tcx)
     }
 }
 
 impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<PolyTraitRef<'tcx>> {
-    fn to_predicate(&self) -> Predicate<'tcx> {
-        ty::Predicate::Trait(self.value.to_poly_trait_predicate(), self.constness)
+    fn to_predicate(&self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
+        ty::PredicateKind::Trait(self.value.to_poly_trait_predicate(), self.constness)
+            .to_predicate(tcx)
     }
 }
 
 impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<&PolyTraitRef<'tcx>> {
-    fn to_predicate(&self) -> Predicate<'tcx> {
-        ty::Predicate::Trait(self.value.to_poly_trait_predicate(), self.constness)
+    fn to_predicate(&self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
+        ty::PredicateKind::Trait(self.value.to_poly_trait_predicate(), self.constness)
+            .to_predicate(tcx)
     }
 }
 
 impl<'tcx> ToPredicate<'tcx> for PolyRegionOutlivesPredicate<'tcx> {
-    fn to_predicate(&self) -> Predicate<'tcx> {
-        Predicate::RegionOutlives(*self)
+    fn to_predicate(&self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
+        PredicateKind::RegionOutlives(*self).to_predicate(tcx)
     }
 }
 
 impl<'tcx> ToPredicate<'tcx> for PolyTypeOutlivesPredicate<'tcx> {
-    fn to_predicate(&self) -> Predicate<'tcx> {
-        Predicate::TypeOutlives(*self)
+    fn to_predicate(&self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
+        PredicateKind::TypeOutlives(*self).to_predicate(tcx)
     }
 }
 
 impl<'tcx> ToPredicate<'tcx> for PolyProjectionPredicate<'tcx> {
-    fn to_predicate(&self) -> Predicate<'tcx> {
-        Predicate::Projection(*self)
+    fn to_predicate(&self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
+        PredicateKind::Projection(*self).to_predicate(tcx)
     }
 }
 
 impl<'tcx> Predicate<'tcx> {
-    pub fn to_opt_poly_trait_ref(&self) -> Option<PolyTraitRef<'tcx>> {
-        match *self {
-            Predicate::Trait(ref t, _) => Some(t.to_poly_trait_ref()),
-            Predicate::Projection(..)
-            | Predicate::Subtype(..)
-            | Predicate::RegionOutlives(..)
-            | Predicate::WellFormed(..)
-            | Predicate::ObjectSafe(..)
-            | Predicate::ClosureKind(..)
-            | Predicate::TypeOutlives(..)
-            | Predicate::ConstEvaluatable(..)
-            | Predicate::ConstEquate(..) => None,
+    pub fn to_opt_poly_trait_ref(self) -> Option<PolyTraitRef<'tcx>> {
+        match self.kind() {
+            &PredicateKind::Trait(ref t, _) => Some(t.to_poly_trait_ref()),
+            PredicateKind::Projection(..)
+            | PredicateKind::Subtype(..)
+            | PredicateKind::RegionOutlives(..)
+            | PredicateKind::WellFormed(..)
+            | PredicateKind::ObjectSafe(..)
+            | PredicateKind::ClosureKind(..)
+            | PredicateKind::TypeOutlives(..)
+            | PredicateKind::ConstEvaluatable(..)
+            | PredicateKind::ConstEquate(..) => None,
         }
     }
 
-    pub fn to_opt_type_outlives(&self) -> Option<PolyTypeOutlivesPredicate<'tcx>> {
-        match *self {
-            Predicate::TypeOutlives(data) => Some(data),
-            Predicate::Trait(..)
-            | Predicate::Projection(..)
-            | Predicate::Subtype(..)
-            | Predicate::RegionOutlives(..)
-            | Predicate::WellFormed(..)
-            | Predicate::ObjectSafe(..)
-            | Predicate::ClosureKind(..)
-            | Predicate::ConstEvaluatable(..)
-            | Predicate::ConstEquate(..) => None,
+    pub fn to_opt_type_outlives(self) -> Option<PolyTypeOutlivesPredicate<'tcx>> {
+        match self.kind() {
+            &PredicateKind::TypeOutlives(data) => Some(data),
+            PredicateKind::Trait(..)
+            | PredicateKind::Projection(..)
+            | PredicateKind::Subtype(..)
+            | PredicateKind::RegionOutlives(..)
+            | PredicateKind::WellFormed(..)
+            | PredicateKind::ObjectSafe(..)
+            | PredicateKind::ClosureKind(..)
+            | PredicateKind::ConstEvaluatable(..)
+            | PredicateKind::ConstEquate(..) => None,
         }
     }
 }
@@ -1617,7 +1650,7 @@ pub struct ConstnessAnd<T> {
     pub value: T,
 }
 
-// FIXME(ecstaticmorse): Audit all occurrences of `without_const().to_predicate()` to ensure that
+// FIXME(ecstaticmorse): Audit all occurrences of `without_const().to_predicate(tcx)` to ensure that
 // the constness of trait bounds is being propagated correctly.
 pub trait WithConstness: Sized {
     #[inline]

@@ -425,7 +425,8 @@ fn check_type_defn<'tcx, F>(
                 fcx.register_predicate(traits::Obligation::new(
                     cause,
                     fcx.param_env,
-                    ty::Predicate::ConstEvaluatable(discr_def_id.to_def_id(), discr_substs),
+                    ty::PredicateKind::ConstEvaluatable(discr_def_id.to_def_id(), discr_substs)
+                        .to_predicate(fcx.tcx),
                 ));
             }
         }
@@ -1174,8 +1175,11 @@ fn receiver_is_implemented(
         substs: fcx.tcx.mk_substs_trait(receiver_ty, &[]),
     };
 
-    let obligation =
-        traits::Obligation::new(cause, fcx.param_env, trait_ref.without_const().to_predicate());
+    let obligation = traits::Obligation::new(
+        cause,
+        fcx.param_env,
+        trait_ref.without_const().to_predicate(fcx.tcx),
+    );
 
     if fcx.predicate_must_hold_modulo_regions(&obligation) {
         true

@@ -33,7 +33,7 @@ pub trait TraitEngine<'tcx>: 'tcx {
                 cause,
                 recursion_depth: 0,
                 param_env,
-                predicate: trait_ref.without_const().to_predicate(),
+                predicate: trait_ref.without_const().to_predicate(infcx.tcx),
             },
         );
     }

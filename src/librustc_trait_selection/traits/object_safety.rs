@@ -245,8 +245,8 @@ fn predicates_reference_self(
         .iter()
         .map(|(predicate, sp)| (predicate.subst_supertrait(tcx, &trait_ref), sp))
         .filter_map(|(predicate, &sp)| {
-            match predicate {
-                ty::Predicate::Trait(ref data, _) => {
+            match predicate.kind() {
+                ty::PredicateKind::Trait(ref data, _) => {
                     // In the case of a trait predicate, we can skip the "self" type.
                     if data.skip_binder().trait_ref.substs[1..].iter().any(has_self_ty) {
                         Some(sp)
@@ -254,7 +254,7 @@ fn predicates_reference_self(
                         None
                     }
                 }
-                ty::Predicate::Projection(ref data) => {
+                ty::PredicateKind::Projection(ref data) => {
                     // And similarly for projections. This should be redundant with
                     // the previous check because any projection should have a
                     // matching `Trait` predicate with the same inputs, but we do
@@ -276,14 +276,14 @@ fn predicates_reference_self(
                         None
                     }
                 }
-                ty::Predicate::WellFormed(..)
-                | ty::Predicate::ObjectSafe(..)
-                | ty::Predicate::TypeOutlives(..)
-                | ty::Predicate::RegionOutlives(..)
-                | ty::Predicate::ClosureKind(..)
-                | ty::Predicate::Subtype(..)
-                | ty::Predicate::ConstEvaluatable(..)
-                | ty::Predicate::ConstEquate(..) => None,
+                ty::PredicateKind::WellFormed(..)
+                | ty::PredicateKind::ObjectSafe(..)
+                | ty::PredicateKind::TypeOutlives(..)
+                | ty::PredicateKind::RegionOutlives(..)
+                | ty::PredicateKind::ClosureKind(..)
+                | ty::PredicateKind::Subtype(..)
+                | ty::PredicateKind::ConstEvaluatable(..)
+                | ty::PredicateKind::ConstEquate(..) => None,
             }
         })
         .collect()
@@ -304,19 +304,22 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     // Search for a predicate like `Self : Sized` amongst the trait bounds.
     let predicates = tcx.predicates_of(def_id);
     let predicates = predicates.instantiate_identity(tcx).predicates;
-    elaborate_predicates(tcx, predicates.into_iter()).any(|obligation| match obligation.predicate {
-        ty::Predicate::Trait(ref trait_pred, _) => {
-            trait_pred.def_id() == sized_def_id && trait_pred.skip_binder().self_ty().is_param(0)
+    elaborate_predicates(tcx, predicates.into_iter()).any(|obligation| {
+        match obligation.predicate.kind() {
+            ty::PredicateKind::Trait(ref trait_pred, _) => {
+                trait_pred.def_id() == sized_def_id
+                    && trait_pred.skip_binder().self_ty().is_param(0)
+            }
+            ty::PredicateKind::Projection(..)
+            | ty::PredicateKind::Subtype(..)
+            | ty::PredicateKind::RegionOutlives(..)
+            | ty::PredicateKind::WellFormed(..)
+            | ty::PredicateKind::ObjectSafe(..)
+            | ty::PredicateKind::ClosureKind(..)
+            | ty::PredicateKind::TypeOutlives(..)
+            | ty::PredicateKind::ConstEvaluatable(..)
+            | ty::PredicateKind::ConstEquate(..) => false,
         }
-        ty::Predicate::Projection(..)
-        | ty::Predicate::Subtype(..)
-        | ty::Predicate::RegionOutlives(..)
-        | ty::Predicate::WellFormed(..)
-        | ty::Predicate::ObjectSafe(..)
-        | ty::Predicate::ClosureKind(..)
-        | ty::Predicate::TypeOutlives(..)
-        | ty::Predicate::ConstEvaluatable(..)
-        | ty::Predicate::ConstEquate(..) => false,
     })
 }
 
@@ -636,7 +639,7 @@ fn receiver_is_dispatchable<'tcx>(
             substs: tcx.mk_substs_trait(tcx.types.self_param, &[unsized_self_ty.into()]),
         }
         .without_const()
-        .to_predicate();
+        .to_predicate(tcx);
 
         // U: Trait<Arg1, ..., ArgN>
         let trait_predicate = {
@@ -649,7 +652,7 @@ fn receiver_is_dispatchable<'tcx>(
                     }
                 });
 
-            ty::TraitRef { def_id: unsize_did, substs }.without_const().to_predicate()
+            ty::TraitRef { def_id: unsize_did, substs }.without_const().to_predicate(tcx)
         };
 
         let caller_bounds: Vec<Predicate<'tcx>> = param_env
@@ -672,7 +675,7 @@ fn receiver_is_dispatchable<'tcx>(
             substs: tcx.mk_substs_trait(receiver_ty, &[unsized_receiver_ty.into()]),
         }
         .without_const()
-        .to_predicate();
+        .to_predicate(tcx);
 
         Obligation::new(ObligationCause::dummy(), param_env, predicate)
     };

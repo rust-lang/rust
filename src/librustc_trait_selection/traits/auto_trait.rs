@@ -341,7 +341,8 @@ impl AutoTraitFinder<'tcx> {
                         already_visited.remove(&pred);
                         self.add_user_pred(
                             &mut user_computed_preds,
-                            ty::Predicate::Trait(pred, hir::Constness::NotConst),
+                            ty::PredicateKind::Trait(pred, hir::Constness::NotConst)
+                                .to_predicate(self.tcx),
                         );
                         predicates.push_back(pred);
                     } else {
@@ -411,8 +412,10 @@ impl AutoTraitFinder<'tcx> {
     ) {
         let mut should_add_new = true;
         user_computed_preds.retain(|&old_pred| {
-            if let (&ty::Predicate::Trait(new_trait, _), ty::Predicate::Trait(old_trait, _)) =
-                (&new_pred, old_pred)
+            if let (
+                ty::PredicateKind::Trait(new_trait, _),
+                ty::PredicateKind::Trait(old_trait, _),
+            ) = (new_pred.kind(), old_pred.kind())
             {
                 if new_trait.def_id() == old_trait.def_id() {
                     let new_substs = new_trait.skip_binder().trait_ref.substs;
@@ -630,8 +633,8 @@ impl AutoTraitFinder<'tcx> {
             //
             // We check this by calling is_of_param on the relevant types
             // from the various possible predicates
-            match &predicate {
-                &ty::Predicate::Trait(p, _) => {
+            match predicate.kind() {
+                &ty::PredicateKind::Trait(p, _) => {
                     if self.is_param_no_infer(p.skip_binder().trait_ref.substs)
                         && !only_projections
                         && is_new_pred
@@ -640,7 +643,7 @@ impl AutoTraitFinder<'tcx> {
                     }
                     predicates.push_back(p);
                 }
-                &ty::Predicate::Projection(p) => {
+                &ty::PredicateKind::Projection(p) => {
                     debug!(
                         "evaluate_nested_obligations: examining projection predicate {:?}",
                         predicate
@@ -765,12 +768,12 @@ impl AutoTraitFinder<'tcx> {
                         }
                     }
                 }
-                &ty::Predicate::RegionOutlives(ref binder) => {
+                ty::PredicateKind::RegionOutlives(ref binder) => {
                     if select.infcx().region_outlives_predicate(&dummy_cause, binder).is_err() {
                         return false;
                     }
                 }
-                &ty::Predicate::TypeOutlives(ref binder) => {
+                ty::PredicateKind::TypeOutlives(ref binder) => {
                     match (
                         binder.no_bound_vars(),
                         binder.map_bound_ref(|pred| pred.0).no_bound_vars(),

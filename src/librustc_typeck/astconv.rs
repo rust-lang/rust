@@ -1596,8 +1596,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     "conv_object_ty_poly_trait_ref: observing object predicate `{:?}`",
                     obligation.predicate
                 );
-                match obligation.predicate {
-                    ty::Predicate::Trait(pred, _) => {
+                match obligation.predicate.kind() {
+                    ty::PredicateKind::Trait(pred, _) => {
                         associated_types.entry(span).or_default().extend(
                             tcx.associated_items(pred.def_id())
                                 .in_definition_order()
@@ -1605,7 +1605,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 .map(|item| item.def_id),
                         );
                     }
-                    ty::Predicate::Projection(pred) => {
+                    &ty::PredicateKind::Projection(pred) => {
                         // A `Self` within the original bound will be substituted with a
                         // `trait_object_dummy_self`, so check for that.
                         let references_self =
@@ -3042,7 +3042,7 @@ impl<'tcx> Bounds<'tcx> {
                     def_id: sized,
                     substs: tcx.mk_substs_trait(param_ty, &[]),
                 });
-                (trait_ref.without_const().to_predicate(), span)
+                (trait_ref.without_const().to_predicate(tcx), span)
             })
         });
 
@@ -3057,16 +3057,16 @@ impl<'tcx> Bounds<'tcx> {
                         // or it's a generic associated type that deliberately has escaping bound vars.
                         let region_bound = ty::fold::shift_region(tcx, region_bound, 1);
                         let outlives = ty::OutlivesPredicate(param_ty, region_bound);
-                        (ty::Binder::bind(outlives).to_predicate(), span)
+                        (ty::Binder::bind(outlives).to_predicate(tcx), span)
                     })
                     .chain(self.trait_bounds.iter().map(|&(bound_trait_ref, span, constness)| {
-                        let predicate = bound_trait_ref.with_constness(constness).to_predicate();
+                        let predicate = bound_trait_ref.with_constness(constness).to_predicate(tcx);
                         (predicate, span)
                     }))
                     .chain(
                         self.projection_bounds
                             .iter()
-                            .map(|&(projection, span)| (projection.to_predicate(), span)),
+                            .map(|&(projection, span)| (projection.to_predicate(tcx), span)),
                     ),
             )
             .collect()

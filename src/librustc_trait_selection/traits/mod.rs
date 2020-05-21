@@ -143,7 +143,7 @@ pub fn type_known_to_meet_bound_modulo_regions<'a, 'tcx>(
         param_env,
         cause: ObligationCause::misc(span, hir::CRATE_HIR_ID),
         recursion_depth: 0,
-        predicate: trait_ref.without_const().to_predicate(),
+        predicate: trait_ref.without_const().to_predicate(infcx.tcx),
     };
 
     let result = infcx.predicate_must_hold_modulo_regions(&obligation);
@@ -333,8 +333,8 @@ pub fn normalize_param_env_or_error<'tcx>(
     // This works fairly well because trait matching  does not actually care about param-env
     // TypeOutlives predicates - these are normally used by regionck.
     let outlives_predicates: Vec<_> = predicates
-        .drain_filter(|predicate| match predicate {
-            ty::Predicate::TypeOutlives(..) => true,
+        .drain_filter(|predicate| match predicate.kind() {
+            ty::PredicateKind::TypeOutlives(..) => true,
             _ => false,
         })
         .collect();
@@ -557,7 +557,7 @@ fn type_implements_trait<'tcx>(
         cause: ObligationCause::dummy(),
         param_env,
         recursion_depth: 0,
-        predicate: trait_ref.without_const().to_predicate(),
+        predicate: trait_ref.without_const().to_predicate(tcx),
     };
     tcx.infer_ctxt().enter(|infcx| infcx.predicate_must_hold_modulo_regions(&obligation))
 }

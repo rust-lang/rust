@@ -29,8 +29,9 @@ use crate::ty::{self, DefIdTree, Ty, TypeAndMut};
 use crate::ty::{AdtDef, AdtKind, Const, Region};
 use crate::ty::{BindingMode, BoundVar};
 use crate::ty::{ConstVid, FloatVar, FloatVid, IntVar, IntVid, TyVar, TyVid};
-use crate::ty::{ExistentialPredicate, InferTy, ParamTy, PolyFnSig, Predicate, ProjectionTy};
+use crate::ty::{ExistentialPredicate, Predicate, PredicateKind};
 use crate::ty::{InferConst, ParamConst};
+use crate::ty::{InferTy, ParamTy, PolyFnSig, ProjectionTy};
 use crate::ty::{List, TyKind, TyS};
 use rustc_ast::ast;
 use rustc_ast::expand::allocator::AllocatorKind;
@@ -89,6 +90,7 @@ pub struct CtxtInterners<'tcx> {
     canonical_var_infos: InternedSet<'tcx, List<CanonicalVarInfo>>,
     region: InternedSet<'tcx, RegionKind>,
     existential_predicates: InternedSet<'tcx, List<ExistentialPredicate<'tcx>>>,
+    predicate_kind: InternedSet<'tcx, PredicateKind<'tcx>>,
     predicates: InternedSet<'tcx, List<Predicate<'tcx>>>,
     projs: InternedSet<'tcx, List<ProjectionKind>>,
     place_elems: InternedSet<'tcx, List<PlaceElem<'tcx>>>,
@@ -107,6 +109,7 @@ impl<'tcx> CtxtInterners<'tcx> {
             region: Default::default(),
             existential_predicates: Default::default(),
             canonical_var_infos: Default::default(),
+            predicate_kind: Default::default(),
             predicates: Default::default(),
             projs: Default::default(),
             place_elems: Default::default(),
@@ -1574,6 +1577,7 @@ macro_rules! nop_list_lift {
 nop_lift! {type_; Ty<'a> => Ty<'tcx>}
 nop_lift! {region; Region<'a> => Region<'tcx>}
 nop_lift! {const_; &'a Const<'a> => &'tcx Const<'tcx>}
+nop_lift! {predicate_kind; &'a PredicateKind<'a> => &'tcx PredicateKind<'tcx>}
 
 nop_list_lift! {type_list; Ty<'a> => Ty<'tcx>}
 nop_list_lift! {existential_predicates; ExistentialPredicate<'a> => ExistentialPredicate<'tcx>}
@@ -2012,8 +2016,14 @@ impl<'tcx> Borrow<[traits::ChalkEnvironmentClause<'tcx>]>
     }
 }
 
+impl<'tcx> Borrow<PredicateKind<'tcx>> for Interned<'tcx, PredicateKind<'tcx>> {
+    fn borrow<'a>(&'a self) -> &'a PredicateKind<'tcx> {
+        &self.0
+    }
+}
+
 macro_rules! direct_interners {
-    ($($name:ident: $method:ident($ty:ty)),+) => {
+    ($($name:ident: $method:ident($ty:ty),)+) => {
         $(impl<'tcx> PartialEq for Interned<'tcx, $ty> {
             fn eq(&self, other: &Self) -> bool {
                 self.0 == other.0
@@ -2038,7 +2048,11 @@ macro_rules! direct_interners {
     }
 }
 
-direct_interners!(region: mk_region(RegionKind), const_: mk_const(Const<'tcx>));
+direct_interners!(
+    region: mk_region(RegionKind),
+    const_: mk_const(Const<'tcx>),
+    predicate_kind: intern_predicate_kind(PredicateKind<'tcx>),
+);
 
 macro_rules! slice_interners {
     ($($field:ident: $method:ident($ty:ty)),+) => (
@@ -2098,6 +2112,12 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn mk_ty(&self, st: TyKind<'tcx>) -> Ty<'tcx> {
         self.interners.intern_ty(st)
+    }
+
+    #[inline]
+    pub fn mk_predicate(&self, kind: PredicateKind<'tcx>) -> Predicate<'tcx> {
+        let kind = self.intern_predicate_kind(kind);
+        Predicate { kind }
     }
 
     pub fn mk_mach_int(self, tm: ast::IntTy) -> Ty<'tcx> {
