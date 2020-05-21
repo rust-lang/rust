@@ -1678,7 +1678,7 @@ void GradientUtils::branchToCorrespondingTarget(BasicBlock* ctx, IRBuilder <>& B
         Value* otherBranch = nullptr;
         for(unsigned i=0; i<2; i++) {
           Value* val = cond1;
-          if (i == 1) val = BuilderM.CreateNot(val, "not1_");
+          if (i == 1) val = BuilderM.CreateNot(val, "anot1_");
           auto edge = std::make_pair(block, bi1->getSuccessor(i));
           if (done[edge].size() == 1) {
             auto found = replacePHIs->find(*done[edge].begin());
@@ -1701,8 +1701,8 @@ void GradientUtils::branchToCorrespondingTarget(BasicBlock* ctx, IRBuilder <>& B
           auto found = replacePHIs->find(*done[edge].begin());
           if(found == replacePHIs->end()) continue;
 
-          Value* val = cond1;
-          if (i == 1) val = BuilderM.CreateNot(val, "not1_");
+          Value* val = cond2;
+          if (i == 1) val = BuilderM.CreateNot(val, "bnot1_");
           val = BuilderM.CreateAnd(val, otherBranch, "andVal" + i);
           if (&*BuilderM.GetInsertPoint() == found->second) {
             if (found->second->getNextNode())

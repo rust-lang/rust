@@ -134,19 +134,22 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %_unwrap = load double, double* %arrayidx_unwrap, align 8, !tbaa !2, !invariant.group !6, !enzyme_unwrapped !7
 ; CHECK-NEXT:   %cmp1_unwrap = fcmp fast ogt double %_unwrap, 1.000000e+00
 ; CHECK-NEXT:   %cmp8_unwrap = fcmp fast ogt double %_unwrap, 0.000000e+00
-; CHECK-NEXT:   %3 = fadd fast double %"mul'de.1", %2
-; TODO there's no point of having this as a select
-; CHECK-NEXT:   %4 = select i1 %cmp1_unwrap, double %3, double %"mul'de.1"
-; CHECK-NEXT:   %m0diffe = fmul fast double %4, 2.000000e+00
+; CHECK-NEXT:   %anot1_ = xor i1 %cmp1_unwrap, true
+; CHECK-NEXT:   %andVal = and i1 %cmp8_unwrap, %anot1_
+; CHECK-NEXT:   %3 = fadd fast double %"add'de.2", %2
+; CHECK-NEXT:   %4 = select i1 %andVal, double %3, double %"add'de.2"
+; CHECK-NEXT:   %5 = fadd fast double %"mul'de.1", %2
+; CHECK-NEXT:   %6 = select i1 %cmp1_unwrap, double %5, double %"mul'de.1"
+; CHECK-NEXT:   %m0diffe = fmul fast double %6, 2.000000e+00
 ; CHECK-NEXT:   %"add'de.1" = select i1 %cmp8_unwrap, double 0.000000e+00, double %"add'de.2"
-; CHECK-NEXT:   %"'de.1" = select i1 %cmp8_unwrap, double %"add'de.2", double 0.000000e+00
-; CHECK-NEXT:   %"add'de.0" = select i1 %cmp1_unwrap, double %"add'de.2", double %"add'de.1"
+; CHECK-NEXT:   %"'de.1" = select i1 %cmp8_unwrap, double %4, double 0.000000e+00
+; CHECK-NEXT:   %"add'de.0" = select i1 %cmp1_unwrap, double %4, double %"add'de.1"
 ; CHECK-NEXT:   %"mul'de.0" = select i1 %cmp1_unwrap, double 0.000000e+00, double %"mul'de.1"
 ; CHECK-NEXT:   %"'de.0" = select i1 %cmp1_unwrap, double %m0diffe, double %"'de.1"
 ; CHECK-NEXT:   %"arrayidx'ipg_unwrap" = getelementptr inbounds double, double* %"in'", i64 %"iv'ac.0"
-; CHECK-NEXT:   %5 = load double, double* %"arrayidx'ipg_unwrap", align 8
-; CHECK-NEXT:   %6 = fadd fast double %5, %"'de.0"
-; CHECK-NEXT:   store double %6, double* %"arrayidx'ipg_unwrap", align 8
-; CHECK-NEXT:   %7 = icmp eq i64 %"iv'ac.0", 0
-; CHECK-NEXT:   br i1 %7, label %invertentry, label %incinvertfor.body
+; CHECK-NEXT:   %7 = load double, double* %"arrayidx'ipg_unwrap", align 8
+; CHECK-NEXT:   %8 = fadd fast double %7, %"'de.0"
+; CHECK-NEXT:   store double %8, double* %"arrayidx'ipg_unwrap", align 8
+; CHECK-NEXT:   %9 = icmp eq i64 %"iv'ac.0", 0
+; CHECK-NEXT:   br i1 %9, label %invertentry, label %incinvertfor.body
 ; CHECK-NEXT: }
