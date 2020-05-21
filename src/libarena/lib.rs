@@ -216,26 +216,21 @@ impl<T> TypedArena<T> {
     #[cold]
     fn grow(&self, n: usize) {
         unsafe {
-            // We need the element size in to convert chunk sizes (ranging from
+            // We need the element size to convert chunk sizes (ranging from
             // PAGE to HUGE_PAGE bytes) to element counts.
             let elem_size = cmp::max(1, mem::size_of::<T>());
             let mut chunks = self.chunks.borrow_mut();
-            let (chunk, mut new_capacity);
+            let mut new_capacity;
             if let Some(last_chunk) = chunks.last_mut() {
                 let used_bytes = self.ptr.get() as usize - last_chunk.start() as usize;
-                let currently_used_cap = used_bytes / mem::size_of::<T>();
-                last_chunk.entries = currently_used_cap;
-                if last_chunk.storage.reserve_in_place(currently_used_cap, n) {
-                    self.end.set(last_chunk.end());
-                    return;
-                } else {
-                    // If the previous chunk's capacity is less than HUGE_PAGE
-                    // bytes, then this chunk will be least double the previous
-                    // chunk's size.
-                    new_capacity = last_chunk.storage.capacity();
-                    if new_capacity < HUGE_PAGE / elem_size {
-                        new_capacity = new_capacity.checked_mul(2).unwrap();
-                    }
+                last_chunk.entries = used_bytes / mem::size_of::<T>();
+
+                // If the previous chunk's capacity is less than HUGE_PAGE
+                // bytes, then this chunk will be least double the previous
+                // chunk's size.
+                new_capacity = last_chunk.storage.capacity();
+                if new_capacity < HUGE_PAGE / elem_size {
+                    new_capacity = new_capacity.checked_mul(2).unwrap();
                 }
             } else {
                 new_capacity = PAGE / elem_size;
@@ -243,7 +238,7 @@ impl<T> TypedArena<T> {
             // Also ensure that this chunk can fit `n`.
             new_capacity = cmp::max(n, new_capacity);
 
-            chunk = TypedArenaChunk::<T>::new(new_capacity);
+            let chunk = TypedArenaChunk::<T>::new(new_capacity);
             self.ptr.set(chunk.start());
             self.end.set(chunk.end());
             chunks.push(chunk);
@@ -350,20 +345,17 @@ impl DroplessArena {
     fn grow(&self, needed_bytes: usize) {
         unsafe {
             let mut chunks = self.chunks.borrow_mut();
-            let (chunk, mut new_capacity);
+            let mut new_capacity;
             if let Some(last_chunk) = chunks.last_mut() {
-                let used_bytes = self.ptr.get() as usize - last_chunk.start() as usize;
-                if last_chunk.storage.reserve_in_place(used_bytes, needed_bytes) {
-                    self.end.set(last_chunk.end());
-                    return;
-                } else {
-                    // If the previous chunk's capacity is less than HUGE_PAGE
-                    // bytes, then this chunk will be least double the previous
-                    // chunk's size.
-                    new_capacity = last_chunk.storage.capacity();
-                    if new_capacity < HUGE_PAGE {
-                        new_capacity = new_capacity.checked_mul(2).unwrap();
-                    }
+                // There is no need to update `last_chunk.entries` because that
+                // field isn't used by `DroplessArena`.
+
+                // If the previous chunk's capacity is less than HUGE_PAGE
+                // bytes, then this chunk will be least double the previous
+                // chunk's size.
+                new_capacity = last_chunk.storage.capacity();
+                if new_capacity < HUGE_PAGE {
+                    new_capacity = new_capacity.checked_mul(2).unwrap();
                 }
             } else {
                 new_capacity = PAGE;
@@ -371,7 +363,7 @@ impl DroplessArena {
             // Also ensure that this chunk can fit `needed_bytes`.
             new_capacity = cmp::max(needed_bytes, new_capacity);
 
-            chunk = TypedArenaChunk::<u8>::new(new_capacity);
+            let chunk = TypedArenaChunk::<u8>::new(new_capacity);
             self.ptr.set(chunk.start());
             self.end.set(chunk.end());
             chunks.push(chunk);
