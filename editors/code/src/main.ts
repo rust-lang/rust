@@ -192,13 +192,13 @@ async function bootstrapServer(config: Config, state: PersistentState): Promise<
 async function patchelf(dest: PathLike): Promise<void> {
     await vscode.window.withProgress(
         {
-            location: vscode.ProgressLocation.Notification, 
+            location: vscode.ProgressLocation.Notification,
             title: "Patching rust-analysis for NixOS"
-        }, 
+        },
         async (progress, _) => {
-            let patch_path = path.join(os.tmpdir(), "patch-ra.nix")
-            progress.report({message: "Writing nix file", increment: 5})
-            await fs.writeFile(patch_path, `
+            const patchPath = path.join(os.tmpdir(), "patch-ra.nix");
+            progress.report({ message: "Writing nix file", increment: 5 });
+            await fs.writeFile(patchPath, `
             {src, pkgs ? import <nixpkgs> {}}:
                 pkgs.stdenv.mkDerivation {
                     name = "rust-analyzer";
@@ -210,23 +210,23 @@ async function patchelf(dest: PathLike): Promise<void> {
                     patchelf --set-interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" $out
                     '';
                 }
-            `)
-            let orig_file = dest + "-orig"
-            await fs.rename(dest, orig_file)
-            progress.report({message: "Patching executable", increment: 20})
+            `);
+            const origFile = dest + "-orig";
+            await fs.rename(dest, origFile);
+            progress.report({ message: "Patching executable", increment: 20 });
             await new Promise((resolve, reject) => {
-                exec(`nix-build ${patch_path} --arg src '${orig_file}' -o ${dest}`,
-                (err, stdout, stderr) => {
-                    if (err != null) {
-                        reject(Error(stderr))
-                    } else {
-                        resolve(stdout)
-                    }
-                })
-            })
-            await fs.unlink(orig_file)
+                exec(`nix-build ${patchPath} --arg src '${origFile}' -o ${dest}`,
+                    (err, stdout, stderr) => {
+                        if (err != null) {
+                            reject(Error(stderr));
+                        } else {
+                            resolve(stdout);
+                        }
+                    });
+            });
+            await fs.unlink(origFile);
         }
-    )
+    );
 }
 
 async function getServer(config: Config, state: PersistentState): Promise<string | undefined> {
@@ -281,7 +281,7 @@ async function getServer(config: Config, state: PersistentState): Promise<string
 
     // Patching executable if that's NixOS.
     if (fs.stat("/etc/nixos").then(_ => true).catch(_ => false)) {
-        await patchelf(dest)
+        await patchelf(dest);
     }
 
     await state.updateServerVersion(config.package.version);
