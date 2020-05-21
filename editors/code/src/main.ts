@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from "path";
 import * as os from "os";
-import { promises as fs } from "fs";
+import { promises as fs, PathLike } from "fs";
 
 import * as commands from './commands';
 import { activateInlayHints } from './inlay_hints';
@@ -12,6 +12,7 @@ import { log, assert, isValidExecutable } from './util';
 import { PersistentState } from './persistent_state';
 import { fetchRelease, download } from './net';
 import { activateTaskProvider } from './tasks';
+import { exec } from 'child_process';
 
 let ctx: Ctx | undefined;
 
@@ -188,6 +189,46 @@ async function bootstrapServer(config: Config, state: PersistentState): Promise<
     return path;
 }
 
+async function patchelf(dest: PathLike): Promise<void> {
+    await vscode.window.withProgress(
+        {
+            location: vscode.ProgressLocation.Notification, 
+            title: "Patching rust-analysis for NixOS"
+        }, 
+        async (progress, _) => {
+            let patch_path = path.join(os.tmpdir(), "patch-ra.nix")
+            progress.report({message: "Writing nix file", increment: 5})
+            await fs.writeFile(patch_path, `
+            {src, pkgs ? import <nixpkgs> {}}:
+                pkgs.stdenv.mkDerivation {
+                    name = "rust-analyzer";
+                    inherit src;
+                    phases = [ "installPhase" "fixupPhase" ];
+                    installPhase = "cp $src $out";
+                    fixupPhase = ''
+                    chmod 755 $out
+                    patchelf --set-interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" $out
+                    '';
+                }
+            `)
+            let orig_file = dest + "-orig"
+            await fs.rename(dest, orig_file)
+            progress.report({message: "Patching executable", increment: 20})
+            await new Promise((resolve, reject) => {
+                exec(`nix-build ${patch_path} --arg src '${orig_file}' -o ${dest}`,
+                (err, stdout, stderr) => {
+                    if (err != null) {
+                        reject(Error(stderr))
+                    } else {
+                        resolve(stdout)
+                    }
+                })
+            })
+            // await fs.unlink(orig_file)
+        }
+    )
+}
+
 async function getServer(config: Config, state: PersistentState): Promise<string | undefined> {
     const explicitPath = process.env.__RA_LSP_SERVER_DEBUG ?? config.serverPath;
     if (explicitPath) {
@@ -237,6 +278,12 @@ async function getServer(config: Config, state: PersistentState): Promise<string
     assert(!!artifact, `Bad release: ${JSON.stringify(release)}`);
 
     await download(artifact.browser_download_url, dest, "Downloading rust-analyzer server", { mode: 0o755 });
+
+    // Patching executable if that's NixOS.
+    if (fs.stat("/etc/nixos").then(_ => true).catch(_ => false)) {
+        await patchelf(dest)
+    }
+
     await state.updateServerVersion(config.package.version);
     return dest;
 }
