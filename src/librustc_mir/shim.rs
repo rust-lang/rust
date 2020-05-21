@@ -251,7 +251,6 @@ fn new_body<'tcx>(
         arg_count,
         vec![],
         span,
-        vec![],
         None,
     )
 }

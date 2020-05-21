@@ -778,7 +778,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.arg_count,
             self.var_debug_info,
             self.fn_span,
-            self.hir.control_flow_destroyed(),
             self.generator_kind,
         )
     }
