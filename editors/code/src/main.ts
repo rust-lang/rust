@@ -280,7 +280,7 @@ async function getServer(config: Config, state: PersistentState): Promise<string
     await download(artifact.browser_download_url, dest, "Downloading rust-analyzer server", { mode: 0o755 });
 
     // Patching executable if that's NixOS.
-    if (fs.stat("/etc/nixos").then(_ => true).catch(_ => false)) {
+    if (await fs.stat("/etc/nixos").then(_ => true).catch(_ => false)) {
         await patchelf(dest);
     }
 
