@@ -63,4 +63,5 @@ fn main() {
         println!("cargo:rustc-link-lib=c");
         println!("cargo:rustc-link-lib=compiler_rt");
     }
+    println!("cargo:rustc-env=STD_ENV_ARCH={}", env::var("CARGO_CFG_TARGET_ARCH").unwrap());
 }
