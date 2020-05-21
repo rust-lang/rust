@@ -94,6 +94,7 @@ pub fn server_capabilities() -> ServerCapabilities {
         ),
         experimental: Some(json!({
             "joinLines": true,
+            "ssr": true,
         })),
     }
 }

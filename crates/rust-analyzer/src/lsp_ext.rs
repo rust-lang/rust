@@ -173,8 +173,8 @@ pub enum Ssr {}
 
 impl Request for Ssr {
     type Params = SsrParams;
-    type Result = SourceChange;
-    const METHOD: &'static str = "rust-analyzer/ssr";
+    type Result = lsp_types::WorkspaceEdit;
+    const METHOD: &'static str = "experimental/ssr";
 }
 
 #[derive(Debug, Deserialize, Serialize)]

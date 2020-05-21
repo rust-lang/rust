@@ -112,7 +112,7 @@ export interface SsrParams {
     query: string;
     parseOnly: boolean;
 }
-export const ssr = request<SsrParams, SourceChange>("ssr");
+export const ssr = new lc.RequestType<SsrParams, lc.WorkspaceEdit, unknown>('experimental/ssr');
 
 
 export const publishDecorations = notification<PublishDecorationsParams>("publishDecorations");
