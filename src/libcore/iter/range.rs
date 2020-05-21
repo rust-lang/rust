@@ -646,7 +646,11 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
         }
         let is_iterating = self.start < self.end;
         Some(if is_iterating {
-            let n = Step::forward(self.start.clone(), 1);
+            // SAFETY: just checked precondition
+            // We use the unchecked version here, because
+            // otherwise `for _ in '\0'..=char::MAX`
+            // does not successfully remove panicking code.
+            let n = unsafe { Step::forward_unchecked(self.start.clone(), 1) };
             mem::replace(&mut self.start, n)
         } else {
             self.exhausted = true;
