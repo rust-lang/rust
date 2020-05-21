@@ -224,7 +224,7 @@ async function patchelf(dest: PathLike): Promise<void> {
                     }
                 })
             })
-            // await fs.unlink(orig_file)
+            await fs.unlink(orig_file)
         }
     )
 }
