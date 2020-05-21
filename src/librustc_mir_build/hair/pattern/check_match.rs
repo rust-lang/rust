@@ -187,9 +187,9 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
         let matrix = check_arms(&mut cx, &inlined_arms, source);
 
         // Fifth, check if the match is exhaustive.
-        let scrut_ty = self.tables.node_type(scrut.hir_id);
         // Note: An empty match isn't the same as an empty matrix for diagnostics purposes,
         // since an empty matrix can occur when there are arms, if those arms all have guards.
+        let scrut_ty = self.tables.expr_ty_adjusted(scrut);
         let is_empty_match = inlined_arms.is_empty();
         check_exhaustive(&mut cx, scrut_ty, scrut.span, &matrix, scrut.hir_id, is_empty_match);
     }

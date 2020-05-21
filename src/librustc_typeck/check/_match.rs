@@ -436,6 +436,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if let Some(m) = contains_ref_bindings {
             self.check_expr_with_needs(scrut, Needs::maybe_mut_place(m))
+        } else if arms.is_empty() {
+            self.check_expr(scrut)
         } else {
             // ...but otherwise we want to use any supertype of the
             // scrutinee. This is sort of a workaround, see note (*) in
