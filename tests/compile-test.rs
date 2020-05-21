@@ -147,7 +147,7 @@ fn run_ui_toml(config: &mut compiletest::Config) {
         Ok(true) => {},
         Ok(false) => panic!("Some tests failed"),
         Err(e) => {
-            println!("I/O failure during tests: {:?}", e);
+            panic!("I/O failure during tests: {:?}", e);
         },
     }
 }
@@ -223,7 +223,7 @@ fn run_ui_cargo(config: &mut compiletest::Config) {
         Ok(true) => {},
         Ok(false) => panic!("Some tests failed"),
         Err(e) => {
-            println!("I/O failure during tests: {:?}", e);
+            panic!("I/O failure during tests: {:?}", e);
         },
     }
 }

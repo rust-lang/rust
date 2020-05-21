@@ -139,6 +139,7 @@ fn get_manifest_contents(lint_name: &str, hint: &str) -> String {
 [package]
 name = "{}"
 version = "0.1.0"
+publish = false
 "#,
         hint, lint_name
     )
