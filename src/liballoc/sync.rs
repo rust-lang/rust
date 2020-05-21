@@ -9,6 +9,7 @@
 use core::any::Any;
 use core::array::LengthAtMost32;
 use core::borrow;
+use core::cell::UnsafeCell;
 use core::cmp::Ordering;
 use core::convert::{From, TryFrom};
 use core::fmt;
@@ -16,7 +17,7 @@ use core::hash::{Hash, Hasher};
 use core::intrinsics::abort;
 use core::iter;
 use core::marker::{PhantomData, Unpin, Unsize};
-use core::mem::{self, align_of, align_of_val, size_of_val};
+use core::mem::{self, align_of, align_of_val, size_of_val, ManuallyDrop};
 use core::ops::{CoerceUnsized, Deref, DispatchFromDyn, Receiver};
 use core::pin::Pin;
 use core::ptr::{self, NonNull};
@@ -210,8 +211,14 @@ macro_rules! acquire {
 #[cfg_attr(not(test), rustc_diagnostic_item = "Arc")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Arc<T: ?Sized> {
-    ptr: NonNull<ArcInner<T>>,
-    phantom: PhantomData<ArcInner<T>>,
+    // Never dereference this pointer!
+    // All access should go through the `.inner()` method.
+    ptr: NonNull<InternalArcInner<T>>,
+
+    // Here we use PhantomData for "dropck", *not* for variance.
+    // An `Arc` has shared ownership of both the `InternalArcInner`
+    // and the type `T`.
+    phantom: PhantomData<InternalArcInner<T>>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -226,11 +233,11 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Arc<U>> for Arc<T> {}
 impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Arc<U>> for Arc<T> {}
 
 impl<T: ?Sized> Arc<T> {
-    fn from_inner(ptr: NonNull<ArcInner<T>>) -> Self {
+    fn from_inner(ptr: NonNull<InternalArcInner<T>>) -> Self {
         Self { ptr, phantom: PhantomData }
     }
 
-    unsafe fn from_ptr(ptr: *mut ArcInner<T>) -> Self {
+    unsafe fn from_ptr(ptr: *mut InternalArcInner<T>) -> Self {
         Self::from_inner(NonNull::new_unchecked(ptr))
     }
 }
@@ -261,12 +268,17 @@ impl<T: ?Sized> Arc<T> {
 /// [`None`]: ../../std/option/enum.Option.html#variant.None
 #[stable(feature = "arc_weak", since = "1.4.0")]
 pub struct Weak<T: ?Sized> {
+    // Never dereference this pointer!
+    // All access should go through the `.inner()` method.
+    //
     // This is a `NonNull` to allow optimizing the size of this type in enums,
     // but it is not necessarily a valid pointer.
     // `Weak::new` sets this to `usize::MAX` so that it doesn’t need
     // to allocate space on the heap.  That's not a value a real pointer
-    // will ever have because RcBox has alignment at least 2.
-    ptr: NonNull<ArcInner<T>>,
+    // will ever have because RcInner has alignment at least 2.
+    ptr: NonNull<InternalArcInner<T>>,
+    // PhantomData is not required for "dropck" because dropping a `Weak`
+    // will never trigger the destructor of an inner `T` value.
 }
 
 #[stable(feature = "arc_weak", since = "1.4.0")]
@@ -289,8 +301,12 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for Weak<T> {
 // This is repr(C) to future-proof against possible field-reordering, which
 // would interfere with otherwise safe [into|from]_raw() of transmutable
 // inner types.
+//
+// This type should only be accessed during construction and destruction,
+// when we know we have exclusive ownership of the memory. At all other
+// times, the `ArcInner` alias should be used.
 #[repr(C)]
-struct ArcInner<T: ?Sized> {
+struct InternalArcInner<T: ?Sized> {
     strong: atomic::AtomicUsize,
 
     // the value usize::MAX acts as a sentinel for temporarily "locking" the
@@ -300,6 +316,9 @@ struct ArcInner<T: ?Sized> {
 
     data: T,
 }
+
+// When the backing memory is shared, all access should go through this alias.
+type ArcInner<T> = InternalArcInner<UnsafeCell<ManuallyDrop<T>>>;
 
 unsafe impl<T: ?Sized + Sync + Send> Send for ArcInner<T> {}
 unsafe impl<T: ?Sized + Sync + Send> Sync for ArcInner<T> {}
@@ -319,12 +338,12 @@ impl<T> Arc<T> {
     pub fn new(data: T) -> Arc<T> {
         // Start the weak pointer count as 1 which is the weak pointer that's
         // held by all the strong pointers (kinda), see std/rc.rs for more info
-        let x: Box<_> = box ArcInner {
+        let x: Box<_> = box InternalArcInner {
             strong: atomic::AtomicUsize::new(1),
             weak: atomic::AtomicUsize::new(1),
             data,
         };
-        Self::from_inner(Box::leak(x).into())
+        Self::from_inner(NonNull::from(Box::leak(x)))
     }
 
     /// Constructs a new `Arc` with uninitialized contents.
@@ -352,7 +371,7 @@ impl<T> Arc<T> {
     pub fn new_uninit() -> Arc<mem::MaybeUninit<T>> {
         unsafe {
             Arc::from_ptr(Arc::allocate_for_layout(Layout::new::<T>(), |mem| {
-                mem as *mut ArcInner<mem::MaybeUninit<T>>
+                mem as *mut InternalArcInner<mem::MaybeUninit<T>>
             }))
         }
     }
@@ -417,19 +436,20 @@ impl<T> Arc<T> {
     #[inline]
     #[stable(feature = "arc_unique", since = "1.4.0")]
     pub fn try_unwrap(this: Self) -> Result<T, Self> {
+        let inner = this.inner();
+
         // See `drop` for why all these atomics are like this
-        if this.inner().strong.compare_exchange(1, 0, Release, Relaxed).is_err() {
+        if inner.strong.compare_exchange(1, 0, Release, Relaxed).is_err() {
             return Err(this);
         }
 
-        acquire!(this.inner().strong);
+        acquire!(inner.strong);
 
         unsafe {
-            let elem = ptr::read(&this.ptr.as_ref().data);
+            let elem = ManuallyDrop::take(&mut *inner.data.get());
 
             // Make a weak pointer to clean up the implicit strong-weak reference
-            let _weak = Weak { ptr: this.ptr };
-            mem::forget(this);
+            let _weak = this.transmute_weak();
 
             Ok(elem)
         }
@@ -590,8 +610,8 @@ impl<T: ?Sized> Arc<T> {
     /// ```
     #[unstable(feature = "weak_into_raw", issue = "60728")]
     pub fn as_ptr(this: &Self) -> *const T {
-        let ptr: *mut ArcInner<T> = NonNull::as_ptr(this.ptr);
-        let fake_ptr = ptr as *mut T;
+        let inner = this.inner();
+        let fake_ptr = inner as *const _ as *mut T;
 
         // SAFETY: This cannot go through Deref::deref.
         // Instead, we manually offset the pointer rather than manifesting a reference.
@@ -599,8 +619,8 @@ impl<T: ?Sized> Arc<T> {
         // This is required so that e.g. `get_mut` can write through the pointer
         // after the Arc is recovered through `from_raw`.
         unsafe {
-            let offset = data_offset(&(*ptr).data);
-            set_data_ptr(fake_ptr, (ptr as *mut u8).offset(offset))
+            let offset = data_offset(&inner.data);
+            set_data_ptr(fake_ptr, (fake_ptr as *mut u8).offset(offset))
         }
     }
 
@@ -646,7 +666,7 @@ impl<T: ?Sized> Arc<T> {
         let offset = data_offset(ptr);
 
         // Reverse the offset to find the original ArcInner.
-        let fake_ptr = ptr as *mut ArcInner<T>;
+        let fake_ptr = ptr as *mut InternalArcInner<T>;
         let arc_ptr = set_data_ptr(fake_ptr, (ptr as *mut u8).offset(-offset));
 
         Self::from_ptr(arc_ptr)
@@ -690,14 +710,16 @@ impl<T: ?Sized> Arc<T> {
     /// ```
     #[stable(feature = "arc_weak", since = "1.4.0")]
     pub fn downgrade(this: &Self) -> Weak<T> {
+        let inner = this.inner();
+
         // This Relaxed is OK because we're checking the value in the CAS
         // below.
-        let mut cur = this.inner().weak.load(Relaxed);
+        let mut cur = inner.weak.load(Relaxed);
 
         loop {
             // check if the weak counter is currently "locked"; if so, spin.
             if cur == usize::MAX {
-                cur = this.inner().weak.load(Relaxed);
+                cur = inner.weak.load(Relaxed);
                 continue;
             }
 
@@ -708,7 +730,7 @@ impl<T: ?Sized> Arc<T> {
             // Unlike with Clone(), we need this to be an Acquire read to
             // synchronize with the write coming from `is_unique`, so that the
             // events prior to that write happen before this read.
-            match this.inner().weak.compare_exchange_weak(cur, cur + 1, Acquire, Relaxed) {
+            match inner.weak.compare_exchange_weak(cur, cur + 1, Acquire, Relaxed) {
                 Ok(_) => {
                     // Make sure we do not create a dangling Weak
                     debug_assert!(!is_dangling(this.ptr));
@@ -858,19 +880,30 @@ impl<T: ?Sized> Arc<T> {
         // `ArcInner` structure itself is `Sync` because the inner data is
         // `Sync` as well, so we're ok loaning out an immutable pointer to these
         // contents.
-        unsafe { self.ptr.as_ref() }
+        unsafe {
+            let ptr: NonNull<ArcInner<T>> = mem::transmute(self.ptr);
+            &*ptr.as_ptr()
+        }
+    }
+
+    unsafe fn transmute_weak(self) -> Weak<T> {
+        let ptr = self.ptr;
+        mem::forget(self);
+        Weak { ptr }
     }
 
     // Non-inlined part of `drop`.
     #[inline(never)]
     unsafe fn drop_slow(&mut self) {
+        let inner = self.inner();
+
         // Destroy the data at this time, even though we may not free the box
         // allocation itself (there may still be weak pointers lying around).
-        ptr::drop_in_place(&mut self.ptr.as_mut().data);
+        ManuallyDrop::drop(&mut *inner.data.get());
 
-        if self.inner().weak.fetch_sub(1, Release) == 1 {
+        if inner.weak.fetch_sub(1, Release) == 1 {
             acquire!(self.inner().weak);
-            Global.dealloc(self.ptr.cast(), Layout::for_value(self.ptr.as_ref()))
+            Global.dealloc(self.ptr.cast(), Layout::for_value(inner))
         }
     }
 
@@ -906,8 +939,8 @@ impl<T: ?Sized> Arc<T> {
     /// and must return back a (potentially fat)-pointer for the `ArcInner<T>`.
     unsafe fn allocate_for_layout(
         value_layout: Layout,
-        mem_to_arcinner: impl FnOnce(*mut u8) -> *mut ArcInner<T>,
-    ) -> *mut ArcInner<T> {
+        mem_to_arcinner: impl FnOnce(*mut u8) -> *mut InternalArcInner<T>,
+    ) -> *mut InternalArcInner<T> {
         // Calculate layout using the given value layout.
         // Previously, layout was calculated on the expression
         // `&*(ptr as *const ArcInner<T>)`, but this created a misaligned
@@ -929,10 +962,10 @@ impl<T: ?Sized> Arc<T> {
     }
 
     /// Allocates an `ArcInner<T>` with sufficient space for an unsized inner value.
-    unsafe fn allocate_for_ptr(ptr: *const T) -> *mut ArcInner<T> {
+    unsafe fn allocate_for_ptr(ptr: *const T) -> *mut InternalArcInner<T> {
         // Allocate for the `ArcInner<T>` using the given value.
         Self::allocate_for_layout(Layout::for_value(&*ptr), |mem| {
-            set_data_ptr(ptr as *mut T, mem) as *mut ArcInner<T>
+            set_data_ptr(ptr as *mut T, mem) as *mut InternalArcInner<T>
         })
     }
 
@@ -947,7 +980,7 @@ impl<T: ?Sized> Arc<T> {
             // Copy value as bytes
             ptr::copy_nonoverlapping(
                 bptr as *const T as *const u8,
-                &mut (*ptr).data as *mut _ as *mut u8,
+                &mut (*ptr).data as *mut T as *mut u8,
                 value_size,
             );
 
@@ -961,9 +994,9 @@ impl<T: ?Sized> Arc<T> {
 
 impl<T> Arc<[T]> {
     /// Allocates an `ArcInner<[T]>` with the given length.
-    unsafe fn allocate_for_slice(len: usize) -> *mut ArcInner<[T]> {
+    unsafe fn allocate_for_slice(len: usize) -> *mut InternalArcInner<[T]> {
         Self::allocate_for_layout(Layout::array::<T>(len).unwrap(), |mem| {
-            ptr::slice_from_raw_parts_mut(mem as *mut T, len) as *mut ArcInner<[T]>
+            ptr::slice_from_raw_parts_mut(mem as *mut T, len) as *mut InternalArcInner<[T]>
         })
     }
 }
@@ -1111,7 +1144,7 @@ impl<T: ?Sized> Deref for Arc<T> {
 
     #[inline]
     fn deref(&self) -> &T {
-        &self.inner().data
+        unsafe { &*self.inner().data.get() }
     }
 }
 
@@ -1155,6 +1188,7 @@ impl<T: Clone> Arc<T> {
     #[inline]
     #[stable(feature = "arc_unique", since = "1.4.0")]
     pub fn make_mut(this: &mut Self) -> &mut T {
+        let inner = this.inner();
         // Note that we hold both a strong reference and a weak reference.
         // Thus, releasing our strong reference only will not, by itself, cause
         // the memory to be deallocated.
@@ -1163,10 +1197,10 @@ impl<T: Clone> Arc<T> {
         // before release writes (i.e., decrements) to `strong`. Since we hold a
         // weak count, there's no chance the ArcInner itself could be
         // deallocated.
-        if this.inner().strong.compare_exchange(1, 0, Acquire, Relaxed).is_err() {
+        if inner.strong.compare_exchange(1, 0, Acquire, Relaxed).is_err() {
             // Another strong pointer exists; clone
             *this = Arc::new((**this).clone());
-        } else if this.inner().weak.load(Relaxed) != 1 {
+        } else if inner.weak.load(Relaxed) != 1 {
             // Relaxed suffices in the above because this is fundamentally an
             // optimization: we are always racing with weak pointers being
             // dropped. Worst case, we end up allocated a new Arc unnecessarily.
@@ -1179,29 +1213,27 @@ impl<T: Clone> Arc<T> {
             // usize::MAX (i.e., locked), since the weak count can only be
             // locked by a thread with a strong reference.
 
-            // Materialize our own implicit weak pointer, so that it can clean
-            // up the ArcInner as needed.
-            let weak = Weak { ptr: this.ptr };
-
-            // mark the data itself as already deallocated
             unsafe {
                 // there is no data race in the implicit write caused by `read`
                 // here (due to zeroing) because data is no longer accessed by
                 // other threads (due to there being no more strong refs at this
                 // point).
-                let mut swap = Arc::new(ptr::read(&weak.ptr.as_ref().data));
+                let mut swap = Arc::new(ManuallyDrop::take(&mut *inner.data.get()));
                 mem::swap(this, &mut swap);
-                mem::forget(swap);
+
+                // Materialize our own implicit weak pointer, so that it can clean
+                // up the ArcInner as needed.
+                let _weak = swap.transmute_weak();
             }
         } else {
             // We were the sole reference of either kind; bump back up the
             // strong ref count.
-            this.inner().strong.store(1, Release);
+            inner.strong.store(1, Release);
         }
 
         // As with `get_mut()`, the unsafety is ok because our reference was
         // either unique to begin with, or became one upon cloning the contents.
-        unsafe { &mut this.ptr.as_mut().data }
+        unsafe { Self::get_mut_unchecked(this) }
     }
 }
 
@@ -1277,7 +1309,7 @@ impl<T: ?Sized> Arc<T> {
     #[inline]
     #[unstable(feature = "get_mut_unchecked", issue = "63292")]
     pub unsafe fn get_mut_unchecked(this: &mut Self) -> &mut T {
-        &mut this.ptr.as_mut().data
+        &mut *this.inner().data.get()
     }
 
     /// Determine whether this is the unique reference (including weak refs) to
@@ -1409,7 +1441,7 @@ impl Arc<dyn Any + Send + Sync> {
         T: Any + Send + Sync + 'static,
     {
         if (*self).is::<T>() {
-            let ptr = self.ptr.cast::<ArcInner<T>>();
+            let ptr = self.ptr.cast::<InternalArcInner<T>>();
             mem::forget(self);
             Ok(Arc::from_inner(ptr))
         } else {
@@ -1435,7 +1467,7 @@ impl<T> Weak<T> {
     /// ```
     #[stable(feature = "downgraded_weak", since = "1.10.0")]
     pub fn new() -> Weak<T> {
-        Weak { ptr: NonNull::new(usize::MAX as *mut ArcInner<T>).expect("MAX is not 0") }
+        Weak { ptr: NonNull::new(usize::MAX as *mut InternalArcInner<T>).expect("MAX is not 0") }
     }
 
     /// Returns a raw pointer to the object `T` pointed to by this `Weak<T>`.
@@ -1561,7 +1593,7 @@ impl<T> Weak<T> {
         } else {
             // See Arc::from_raw for details
             let offset = data_offset(ptr);
-            let fake_ptr = ptr as *mut ArcInner<T>;
+            let fake_ptr = ptr as *mut InternalArcInner<T>;
             let ptr = set_data_ptr(fake_ptr, (ptr as *mut u8).offset(-offset));
             Weak { ptr: NonNull::new(ptr).expect("Invalid pointer passed to from_raw") }
         }
@@ -1674,7 +1706,14 @@ impl<T: ?Sized> Weak<T> {
     /// (i.e., when this `Weak` was created by `Weak::new`).
     #[inline]
     fn inner(&self) -> Option<&ArcInner<T>> {
-        if is_dangling(self.ptr) { None } else { Some(unsafe { self.ptr.as_ref() }) }
+        if is_dangling(self.ptr) {
+            None
+        } else {
+            Some(unsafe {
+                let ptr: NonNull<ArcInner<T>> = mem::transmute(self.ptr);
+                &*ptr.as_ptr()
+            })
+        }
     }
 
     /// Returns `true` if the two `Weak`s point to the same allocation (similar to
@@ -1823,7 +1862,7 @@ impl<T: ?Sized> Drop for Weak<T> {
 
         if inner.weak.fetch_sub(1, Release) == 1 {
             acquire!(inner.weak);
-            unsafe { Global.dealloc(self.ptr.cast(), Layout::for_value(self.ptr.as_ref())) }
+            unsafe { Global.dealloc(self.ptr.cast(), Layout::for_value(inner)) }
         }
     }
 }
