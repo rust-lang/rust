@@ -331,6 +331,8 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
 
     gated!(ffi_returns_twice, Whitelisted, template!(Word), experimental!(ffi_returns_twice)),
+    gated!(ffi_pure, Whitelisted, template!(Word), experimental!(ffi_pure)),
+    gated!(ffi_const, Whitelisted, template!(Word), experimental!(ffi_const)),
     gated!(track_caller, Whitelisted, template!(Word), experimental!(track_caller)),
     gated!(
         register_attr, CrateLevel, template!(List: "attr1, attr2, ..."),
