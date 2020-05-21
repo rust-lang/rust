@@ -206,6 +206,20 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
 
+            // Dynamic symbol loading
+            "GetProcAddress" => {
+                #[allow(non_snake_case)]
+                let &[hModule, lpProcName] = check_arg_count(args)?;
+                this.read_scalar(hModule)?.not_undef()?;
+                let name = this.memory.read_c_str(this.read_scalar(lpProcName)?.not_undef()?)?;
+                if let Some(dlsym) = Dlsym::from_str(name, &this.tcx.sess.target.target.target_os)? {
+                    let ptr = this.memory.create_fn_alloc(FnVal::Other(dlsym));
+                    this.write_scalar(Scalar::from(ptr), dest)?;
+                } else {
+                    this.write_null(dest)?;
+                }
+            }
+
             // Miscellaneous
             "SystemFunction036" => {
                 // The actual name of 'RtlGenRandom'
@@ -257,17 +271,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let &[_lpModuleName] = check_arg_count(args)?;
                 // Pretend this does not exist / nothing happened, by returning zero.
                 this.write_null(dest)?;
-            }
-            "GetProcAddress" if this.frame().instance.to_string().starts_with("std::sys::windows::") => {
-                #[allow(non_snake_case)]
-                let &[_hModule, lpProcName] = check_arg_count(args)?;
-                let name = this.memory.read_c_str(this.read_scalar(lpProcName)?.not_undef()?)?;
-                if let Some(dlsym) = Dlsym::from_str(name, &this.tcx.sess.target.target.target_os)? {
-                    let ptr = this.memory.create_fn_alloc(FnVal::Other(dlsym));
-                    this.write_scalar(Scalar::from(ptr), dest)?;
-                } else {
-                    this.write_null(dest)?;
-                }
             }
             "SetConsoleTextAttribute" if this.frame().instance.to_string().starts_with("std::sys::windows::") => {
                 #[allow(non_snake_case)]
