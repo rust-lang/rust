@@ -25,7 +25,7 @@ use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
-use rustc_middle::ty::{self, BoundVar, Const, Ty, TyCtxt};
+use rustc_middle::ty::{self, BoundVar, Const, ToPredicate, Ty, TyCtxt};
 use std::fmt::Debug;
 
 impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
@@ -532,12 +532,14 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                 cause.clone(),
                 param_env,
                 match k1.unpack() {
-                    GenericArgKind::Lifetime(r1) => ty::Predicate::RegionOutlives(
+                    GenericArgKind::Lifetime(r1) => ty::PredicateKind::RegionOutlives(
                         ty::Binder::bind(ty::OutlivesPredicate(r1, r2)),
-                    ),
-                    GenericArgKind::Type(t1) => {
-                        ty::Predicate::TypeOutlives(ty::Binder::bind(ty::OutlivesPredicate(t1, r2)))
-                    }
+                    )
+                    .to_predicate(self.tcx),
+                    GenericArgKind::Type(t1) => ty::PredicateKind::TypeOutlives(ty::Binder::bind(
+                        ty::OutlivesPredicate(t1, r2),
+                    ))
+                    .to_predicate(self.tcx),
                     GenericArgKind::Const(..) => {
                         // Consts cannot outlive one another, so we don't expect to
                         // ecounter this branch.
@@ -664,9 +666,10 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for QueryTypeRelatingDelegate<'_, 'tcx> {
         self.obligations.push(Obligation {
             cause: self.cause.clone(),
             param_env: self.param_env,
-            predicate: ty::Predicate::RegionOutlives(ty::Binder::dummy(ty::OutlivesPredicate(
+            predicate: ty::PredicateKind::RegionOutlives(ty::Binder::dummy(ty::OutlivesPredicate(
                 sup, sub,
-            ))),
+            )))
+            .to_predicate(self.infcx.tcx),
             recursion_depth: 0,
         });
     }

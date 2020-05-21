@@ -40,15 +40,15 @@ fn normalize_generic_arg_after_erasing_regions<'tcx>(
 }
 
 fn not_outlives_predicate(p: &ty::Predicate<'_>) -> bool {
-    match p {
-        ty::Predicate::RegionOutlives(..) | ty::Predicate::TypeOutlives(..) => false,
-        ty::Predicate::Trait(..)
-        | ty::Predicate::Projection(..)
-        | ty::Predicate::WellFormed(..)
-        | ty::Predicate::ObjectSafe(..)
-        | ty::Predicate::ClosureKind(..)
-        | ty::Predicate::Subtype(..)
-        | ty::Predicate::ConstEvaluatable(..)
-        | ty::Predicate::ConstEquate(..) => true,
+    match p.kind() {
+        ty::PredicateKind::RegionOutlives(..) | ty::PredicateKind::TypeOutlives(..) => false,
+        ty::PredicateKind::Trait(..)
+        | ty::PredicateKind::Projection(..)
+        | ty::PredicateKind::WellFormed(..)
+        | ty::PredicateKind::ObjectSafe(..)
+        | ty::PredicateKind::ClosureKind(..)
+        | ty::PredicateKind::Subtype(..)
+        | ty::PredicateKind::ConstEvaluatable(..)
+        | ty::PredicateKind::ConstEquate(..) => true,
     }
 }

@@ -83,7 +83,7 @@ pub struct PendingPredicateObligation<'tcx> {
 
 // `PendingPredicateObligation` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
-static_assert_size!(PendingPredicateObligation<'_>, 136);
+static_assert_size!(PendingPredicateObligation<'_>, 112);
 
 impl<'a, 'tcx> FulfillmentContext<'tcx> {
     /// Creates a new fulfillment context.
@@ -322,8 +322,8 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
 
         let infcx = self.selcx.infcx();
 
-        match obligation.predicate {
-            ty::Predicate::Trait(ref data, _) => {
+        match obligation.predicate.kind() {
+            ty::PredicateKind::Trait(ref data, _) => {
                 let trait_obligation = obligation.with(*data);
 
                 if data.is_global() {
@@ -378,14 +378,14 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                 }
             }
 
-            ty::Predicate::RegionOutlives(ref binder) => {
+            ty::PredicateKind::RegionOutlives(ref binder) => {
                 match infcx.region_outlives_predicate(&obligation.cause, binder) {
                     Ok(()) => ProcessResult::Changed(vec![]),
                     Err(_) => ProcessResult::Error(CodeSelectionError(Unimplemented)),
                 }
             }
 
-            ty::Predicate::TypeOutlives(ref binder) => {
+            ty::PredicateKind::TypeOutlives(ref binder) => {
                 // Check if there are higher-ranked vars.
                 match binder.no_bound_vars() {
                     // If there are, inspect the underlying type further.
@@ -429,7 +429,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                 }
             }
 
-            ty::Predicate::Projection(ref data) => {
+            ty::PredicateKind::Projection(ref data) => {
                 let project_obligation = obligation.with(*data);
                 match project::poly_project_and_unify_type(self.selcx, &project_obligation) {
                     Ok(None) => {
@@ -443,7 +443,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                 }
             }
 
-            ty::Predicate::ObjectSafe(trait_def_id) => {
+            &ty::PredicateKind::ObjectSafe(trait_def_id) => {
                 if !self.selcx.tcx().is_object_safe(trait_def_id) {
                     ProcessResult::Error(CodeSelectionError(Unimplemented))
                 } else {
@@ -451,7 +451,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                 }
             }
 
-            ty::Predicate::ClosureKind(_, closure_substs, kind) => {
+            &ty::PredicateKind::ClosureKind(_, closure_substs, kind) => {
                 match self.selcx.infcx().closure_kind(closure_substs) {
                     Some(closure_kind) => {
                         if closure_kind.extends(kind) {
@@ -464,7 +464,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                 }
             }
 
-            ty::Predicate::WellFormed(ty) => {
+            &ty::PredicateKind::WellFormed(ty) => {
                 match wf::obligations(
                     self.selcx.infcx(),
                     obligation.param_env,
@@ -481,7 +481,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                 }
             }
 
-            ty::Predicate::Subtype(ref subtype) => {
+            ty::PredicateKind::Subtype(subtype) => {
                 match self.selcx.infcx().subtype_predicate(
                     &obligation.cause,
                     obligation.param_env,
@@ -510,7 +510,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                 }
             }
 
-            ty::Predicate::ConstEvaluatable(def_id, substs) => {
+            &ty::PredicateKind::ConstEvaluatable(def_id, substs) => {
                 match self.selcx.infcx().const_eval_resolve(
                     obligation.param_env,
                     def_id,
@@ -523,7 +523,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                 }
             }
 
-            ty::Predicate::ConstEquate(c1, c2) => {
+            ty::PredicateKind::ConstEquate(c1, c2) => {
                 debug!("equating consts: c1={:?} c2={:?}", c1, c2);
 
                 let stalled_on = &mut pending_obligation.stalled_on;

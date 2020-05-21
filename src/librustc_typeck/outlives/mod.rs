@@ -3,7 +3,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::GenericArgKind;
-use rustc_middle::ty::{self, CratePredicatesMap, TyCtxt};
+use rustc_middle::ty::{self, CratePredicatesMap, ToPredicate, TyCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 
@@ -30,9 +30,9 @@ fn inferred_outlives_of(tcx: TyCtxt<'_>, item_def_id: DefId) -> &[(ty::Predicate
                 if tcx.has_attr(item_def_id, sym::rustc_outlives) {
                     let mut pred: Vec<String> = predicates
                         .iter()
-                        .map(|(out_pred, _)| match out_pred {
-                            ty::Predicate::RegionOutlives(p) => p.to_string(),
-                            ty::Predicate::TypeOutlives(p) => p.to_string(),
+                        .map(|(out_pred, _)| match out_pred.kind() {
+                            ty::PredicateKind::RegionOutlives(p) => p.to_string(),
+                            ty::PredicateKind::TypeOutlives(p) => p.to_string(),
                             err => bug!("unexpected predicate {:?}", err),
                         })
                         .collect();
@@ -82,22 +82,26 @@ fn inferred_outlives_crate(tcx: TyCtxt<'_>, crate_num: CrateNum) -> CratePredica
         .iter()
         .map(|(&def_id, set)| {
             let predicates = &*tcx.arena.alloc_from_iter(set.iter().filter_map(
-                |(ty::OutlivesPredicate(kind1, region2), &span)| match kind1.unpack() {
-                    GenericArgKind::Type(ty1) => Some((
-                        ty::Predicate::TypeOutlives(ty::Binder::bind(ty::OutlivesPredicate(
-                            ty1, region2,
-                        ))),
-                        span,
-                    )),
-                    GenericArgKind::Lifetime(region1) => Some((
-                        ty::Predicate::RegionOutlives(ty::Binder::bind(ty::OutlivesPredicate(
-                            region1, region2,
-                        ))),
-                        span,
-                    )),
-                    GenericArgKind::Const(_) => {
-                        // Generic consts don't impose any constraints.
-                        None
+                |(ty::OutlivesPredicate(kind1, region2), &span)| {
+                    match kind1.unpack() {
+                        GenericArgKind::Type(ty1) => Some((
+                            ty::PredicateKind::TypeOutlives(ty::Binder::bind(
+                                ty::OutlivesPredicate(ty1, region2),
+                            ))
+                            .to_predicate(tcx),
+                            span,
+                        )),
+                        GenericArgKind::Lifetime(region1) => Some((
+                            ty::PredicateKind::RegionOutlives(ty::Binder::bind(
+                                ty::OutlivesPredicate(region1, region2),
+                            ))
+                            .to_predicate(tcx),
+                            span,
+                        )),
+                        GenericArgKind::Const(_) => {
+                            // Generic consts don't impose any constraints.
+                            None
+                        }
                     }
                 },
             ));

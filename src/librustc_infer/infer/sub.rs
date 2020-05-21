@@ -6,7 +6,7 @@ use crate::traits::Obligation;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::relate::{Cause, Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::TyVar;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt};
 use std::mem;
 
 /// Ensures `a` is made a subtype of `b`. Returns `a` on success.
@@ -100,11 +100,12 @@ impl TypeRelation<'tcx> for Sub<'combine, 'infcx, 'tcx> {
                 self.fields.obligations.push(Obligation::new(
                     self.fields.trace.cause.clone(),
                     self.fields.param_env,
-                    ty::Predicate::Subtype(ty::Binder::dummy(ty::SubtypePredicate {
+                    ty::PredicateKind::Subtype(ty::Binder::dummy(ty::SubtypePredicate {
                         a_is_expected: self.a_is_expected,
                         a,
                         b,
-                    })),
+                    }))
+                    .to_predicate(self.tcx()),
                 ));
 
                 Ok(a)

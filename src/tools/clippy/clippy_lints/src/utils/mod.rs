@@ -1299,7 +1299,7 @@ pub fn is_must_use_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>) -> boo
         ty::Tuple(ref substs) => substs.types().any(|ty| is_must_use_ty(cx, ty)),
         ty::Opaque(ref def_id, _) => {
             for (predicate, _) in cx.tcx.predicates_of(*def_id).predicates {
-                if let ty::Predicate::Trait(ref poly_trait_predicate, _) = predicate {
+                if let ty::PredicateKind::Trait(ref poly_trait_predicate, _) = predicate.kind() {
                     if must_use_attr(&cx.tcx.get_attrs(poly_trait_predicate.skip_binder().trait_ref.def_id)).is_some() {
                         return true;
                     }
