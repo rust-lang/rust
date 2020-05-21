@@ -23,7 +23,6 @@ use rustc_span::{sym, Span, Symbol};
 enum NonConstExpr {
     Loop(hir::LoopSource),
     Match(hir::MatchSource),
-    OrPattern,
 }
 
 impl NonConstExpr {
@@ -31,7 +30,6 @@ impl NonConstExpr {
         match self {
             Self::Loop(src) => format!("`{}`", src.name()),
             Self::Match(src) => format!("`{}`", src.name()),
-            Self::OrPattern => "or-pattern".to_string(),
         }
     }
 
@@ -40,22 +38,19 @@ impl NonConstExpr {
         use hir::MatchSource::*;
 
         let gates: &[_] = match self {
-            Self::Match(Normal)
-            | Self::Match(IfDesugar { .. })
-            | Self::Match(IfLetDesugar { .. })
-            | Self::OrPattern => &[sym::const_if_match],
-
-            Self::Loop(Loop) => &[sym::const_loop],
-
-            Self::Loop(While)
-            | Self::Loop(WhileLet)
-            | Self::Match(WhileDesugar | WhileLetDesugar) => {
-                &[sym::const_loop, sym::const_if_match]
-            }
-
             // A `for` loop's desugaring contains a call to `IntoIterator::into_iter`,
             // so they are not yet allowed with `#![feature(const_loop)]`.
-            _ => return None,
+            // Likewise, `?` desugars to a call to `Try::into_result`.
+            Self::Loop(ForLoop) | Self::Match(ForLoopDesugar | TryDesugar | AwaitDesugar) => {
+                return None;
+            }
+
+            Self::Loop(Loop | While | WhileLet) | Self::Match(WhileDesugar | WhileLetDesugar) => {
+                &[sym::const_loop]
+            }
+
+            // All other matches are allowed.
+            Self::Match(Normal | IfDesugar { .. } | IfLetDesugar { .. }) => &[],
         };
 
         Some(gates)
@@ -114,17 +109,6 @@ impl<'tcx> CheckConstVisitor<'tcx> {
         match missing_gates.as_slice() {
             &[] => struct_span_err!(self.tcx.sess, span, E0744, "{}", msg).emit(),
 
-            // If the user enabled `#![feature(const_loop)]` but not `#![feature(const_if_match)]`,
-            // explain why their `while` loop is being rejected.
-            &[gate @ sym::const_if_match] if required_gates.contains(&sym::const_loop) => {
-                feature_err(&self.tcx.sess.parse_sess, gate, span, &msg)
-                    .note(
-                        "`#![feature(const_loop)]` alone is not sufficient, \
-                           since this loop expression contains an implicit conditional",
-                    )
-                    .emit();
-            }
-
             &[missing_primary, ref missing_secondary @ ..] => {
                 let mut err = feature_err(&self.tcx.sess.parse_sess, missing_primary, span, &msg);
 
@@ -173,15 +157,6 @@ impl<'tcx> Visitor<'tcx> for CheckConstVisitor<'tcx> {
         let owner = self.tcx.hir().body_owner_def_id(body.id());
         let kind = self.tcx.hir().body_const_context(owner);
         self.recurse_into(kind, |this| intravisit::walk_body(this, body));
-    }
-
-    fn visit_pat(&mut self, p: &'tcx hir::Pat<'tcx>) {
-        if self.const_kind.is_some() {
-            if let hir::PatKind::Or { .. } = p.kind {
-                self.const_check_violated(NonConstExpr::OrPattern, p.span);
-            }
-        }
-        intravisit::walk_pat(self, p)
     }
 
     fn visit_expr(&mut self, e: &'tcx hir::Expr<'tcx>) {
