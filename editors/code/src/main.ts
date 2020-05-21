@@ -193,7 +193,7 @@ async function patchelf(dest: PathLike): Promise<void> {
     await vscode.window.withProgress(
         {
             location: vscode.ProgressLocation.Notification,
-            title: "Patching rust-analysis for NixOS"
+            title: "Patching rust-analyzer for NixOS"
         },
         async (progress, _) => {
             const expression = `
