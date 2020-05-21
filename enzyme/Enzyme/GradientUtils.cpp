@@ -1573,13 +1573,153 @@ void GradientUtils::branchToCorrespondingTarget(BasicBlock* ctx, IRBuilder <>& B
 
   std::set<BasicBlock*> blocks;
   for(auto pair : done) {
-      //const auto& targets = pair.second;
       const auto& edge = pair.first;
-      //llvm::errs() << " edge: (" << edge.first->getName() << "," << edge.second->getName() << ")\n";
-      //llvm::errs() << "   targets: [";
-      //for(auto t : targets) llvm::errs() << t->getName() << ", ";
-      //llvm::errs() << "]\n";
+
+      /*
+      const auto& targets = pair.second;
+      llvm::errs() << " edge: (" << edge.first->getName() << "," << edge.second->getName() << ")\n";
+      llvm::errs() << "   targets: [";
+      for(auto t : targets) llvm::errs() << t->getName() << ", ";
+      llvm::errs() << "]\n";
+      */
+
       blocks.insert(edge.first);
+  }
+
+  if (targetToPreds.size() == 3) {
+    //llvm::errs() << "trying special 3pair\n";
+    for(auto block : blocks) {
+      std::set<BasicBlock*> foundtargets;
+      std::set<BasicBlock*> uniqueTargets;
+      for (BasicBlock* succ : successors(block)) {
+          auto edge = std::make_pair(block, succ);
+          //llvm::errs() << " edge: " << edge.first->getName() << " | " << edge.second->getName() << "\n";
+          for(BasicBlock* target : done[edge]) {
+            if (foundtargets.find(target) != foundtargets.end()) {
+              goto rnextpair;
+            }
+            foundtargets.insert(target);
+            if (done[edge].size() == 1) uniqueTargets.insert(target);
+          }
+      }
+      if (foundtargets.size() != 3) goto rnextpair;
+      if (uniqueTargets.size() != 1) goto rnextpair;
+
+      /*
+      llvm::errs() << " valid block1: " << block->getName() << " : targets:[";
+      for(auto a : foundtargets) llvm::errs() << a->getName() << ",";
+      llvm::errs() << "] uniqueTargets:[";
+      for(auto a : uniqueTargets) llvm::errs() << a->getName() << ",";
+      llvm::errs() << "]\n";
+      */
+
+      {
+      BasicBlock* subblock = nullptr;
+      for(auto block2 : blocks) {
+        std::set<BasicBlock*> seen2;
+        //llvm::errs() << " + trying block: " << block2->getName() << "\n";
+        for (BasicBlock* succ : successors(block2)) {
+          //llvm::errs() << " + + trying succ: " << succ->getName() << "\n";
+          auto edge = std::make_pair(block2, succ);
+          if (done[edge].size() != 1) {
+            //llvm::errs() << " -- failed from noonesize\n";
+            goto nextblock;
+          }
+          for(BasicBlock* target : done[edge]) {
+            if (seen2.find(target) != seen2.end()) {
+              //llvm::errs() << " -- failed from not uniqueTargets\n";
+              goto nextblock;
+            }
+            seen2.insert(target);
+            if (foundtargets.find(target) == foundtargets.end()) {
+              //llvm::errs() << " -- failed from not unknown target\n";
+              goto nextblock;
+            }
+            if (uniqueTargets.find(target) != uniqueTargets.end()) {
+              //llvm::errs() << " -- failed from not same target\n";
+              goto nextblock;
+            }
+          }
+        }
+        if (seen2.size() != 2) {
+          //llvm::errs() << " -- failed from not 2 seen\n";
+          goto nextblock;
+        }
+        subblock = block2;
+        break;
+        nextblock:;
+      }
+
+      if (subblock == nullptr) goto rnextpair;
+
+      //llvm::errs() << " valid block2: " << subblock->getName() << "\n";
+
+      {
+      auto bi1 = cast<BranchInst>(block->getTerminator());
+
+      auto cond1 = lookupM(bi1->getCondition(), BuilderM);
+      auto bi2 = cast<BranchInst>(subblock->getTerminator());
+      auto cond2 = lookupM(bi2->getCondition(), BuilderM);
+
+      if (replacePHIs == nullptr) {
+        BasicBlock* staging = BasicBlock::Create(oldFunc->getContext(), "staging", newFunc);
+        auto stagingIfNeeded = [&](BasicBlock* B) {
+          auto edge = std::make_pair(block, B);
+          if (done[edge].size() == 1) {
+            return *done[edge].begin();
+          } else {
+            return staging;
+          }
+        };
+        BuilderM.CreateCondBr(cond1, stagingIfNeeded(bi1->getSuccessor(0)), stagingIfNeeded(bi1->getSuccessor(1)));
+        BuilderM.SetInsertPoint(staging);
+        BuilderM.CreateCondBr(cond2, *done[std::make_pair(subblock, bi2->getSuccessor(0))].begin(), *done[std::make_pair(subblock, bi2->getSuccessor(1))].begin());
+      } else {
+        Value* otherBranch = nullptr;
+        for(unsigned i=0; i<2; i++) {
+          Value* val = cond1;
+          if (i == 1) val = BuilderM.CreateNot(val, "not1_");
+          auto edge = std::make_pair(block, bi1->getSuccessor(i));
+          if (done[edge].size() == 1) {
+            auto found = replacePHIs->find(*done[edge].begin());
+            if(found == replacePHIs->end()) continue;
+            if (&*BuilderM.GetInsertPoint() == found->second) {
+              if (found->second->getNextNode())
+                BuilderM.SetInsertPoint(found->second->getNextNode());
+              else
+                BuilderM.SetInsertPoint(found->second->getParent());
+            }
+            found->second->replaceAllUsesWith(val);
+            found->second->eraseFromParent();
+          } else {
+            otherBranch = val;
+          }
+        }
+
+        for(unsigned i=0; i<2; i++) {
+          auto edge = std::make_pair(subblock, bi2->getSuccessor(i));
+          auto found = replacePHIs->find(*done[edge].begin());
+          if(found == replacePHIs->end()) continue;
+
+          Value* val = cond1;
+          if (i == 1) val = BuilderM.CreateNot(val, "not1_");
+          val = BuilderM.CreateAnd(val, otherBranch, "andVal" + i);
+          if (&*BuilderM.GetInsertPoint() == found->second) {
+            if (found->second->getNextNode())
+              BuilderM.SetInsertPoint(found->second->getNextNode());
+            else
+              BuilderM.SetInsertPoint(found->second->getParent());
+          }
+          found->second->replaceAllUsesWith(val);
+          found->second->eraseFromParent();
+        }
+      }
+
+      return;
+      }
+      }
+      rnextpair:;
+    }
   }
 
   for(auto block : blocks) {
@@ -1666,7 +1806,7 @@ void GradientUtils::branchToCorrespondingTarget(BasicBlock* ctx, IRBuilder <>& B
                   val = BuilderM.CreateICmpEQ(cas, phi);
               } else {
                   //default case
-                  val = ConstantInt::getTrue(pair.second->getContext());
+                  val = ConstantInt::getFalse(pair.second->getContext());
                   for(auto switchcase : si->cases()) {
                       val = BuilderM.CreateOr(val, BuilderM.CreateICmpEQ(switchcase.getCaseValue(), phi));
                   }

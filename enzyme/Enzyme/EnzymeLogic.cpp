@@ -2298,13 +2298,13 @@ void DerivativeMaker<const AugmentedReturn*>::visitCallInst(llvm::CallInst &call
     return;
   }
 
-  if (called && (called->getName() == "tanhf")) {
+  if (called && (called->getName() == "tanhf" || called->getName() == "tanh")) {
     if (gutils->isConstantValue(orig)) return;
 
     Value* x  = lookup(gutils->getNewFromOriginal(orig->getArgOperand(0)), Builder2);
 
     SmallVector<Value*, 1> args = { x };
-    auto coshf = gutils->oldFunc->getParent()->getOrInsertFunction("coshf", called->getFunctionType(), called->getAttributes());
+    auto coshf = gutils->oldFunc->getParent()->getOrInsertFunction( (called->getName() == "tanh") ? "cosh" : "coshf", called->getFunctionType(), called->getAttributes());
     auto cal = cast<CallInst>(Builder2.CreateCall(coshf, args));
     Value* dif0 = Builder2.CreateFDiv(diffe(orig, Builder2), Builder2.CreateFMul(cal, cal));
     addToDiffe(orig->getArgOperand(0), dif0, Builder2, x->getType());
@@ -2393,6 +2393,8 @@ void DerivativeMaker<const AugmentedReturn*>::visitCallInst(llvm::CallInst &call
         return;
       }
   }
+
+
 
   //llvm::errs() << " considering op: " << *op << " isConstantInstruction:" << gutils->isConstantInstruction(orig) << " subretused: " << subretused << " !op->doesNotAccessMemory: " << !op->doesNotAccessMemory() << "\n";
   if (gutils->isConstantInstruction(orig)) {
