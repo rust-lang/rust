@@ -239,12 +239,6 @@ fn check_statement(
             check_rvalue(tcx, body, def_id, rval, span)
         }
 
-        StatementKind::FakeRead(FakeReadCause::ForMatchedPlace, _)
-            if !feature_allowed(tcx, def_id, sym::const_if_match) =>
-        {
-            Err((span, "loops and conditional expressions are not stable in const fn".into()))
-        }
-
         StatementKind::FakeRead(_, place) => check_place(tcx, **place, span, def_id, body),
 
         // just an assignment
@@ -353,10 +347,6 @@ fn check_terminator(
         TerminatorKind::DropAndReplace { place, value, .. } => {
             check_place(tcx, *place, span, def_id, body)?;
             check_operand(tcx, value, span, def_id, body)
-        }
-
-        TerminatorKind::SwitchInt { .. } if !feature_allowed(tcx, def_id, sym::const_if_match) => {
-            Err((span, "loops and conditional expressions are not stable in const fn".into()))
         }
 
         TerminatorKind::SwitchInt { discr, switch_ty: _, values: _, targets: _ } => {

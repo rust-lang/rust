@@ -481,21 +481,12 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                 self.super_statement(statement, location);
             }
 
-            StatementKind::FakeRead(
-                FakeReadCause::ForMatchedPlace
-                | FakeReadCause::ForMatchGuard
-                | FakeReadCause::ForGuardBinding,
-                _,
-            ) => {
-                self.super_statement(statement, location);
-                self.check_op(ops::IfOrMatch);
-            }
             StatementKind::LlvmInlineAsm { .. } => {
                 self.super_statement(statement, location);
                 self.check_op(ops::InlineAsm);
             }
 
-            StatementKind::FakeRead(FakeReadCause::ForLet | FakeReadCause::ForIndex, _)
+            StatementKind::FakeRead(..)
             | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
             | StatementKind::Retag { .. }
