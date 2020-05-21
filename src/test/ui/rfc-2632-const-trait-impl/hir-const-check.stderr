@@ -1,11 +1,11 @@
-error[E0658]: `match` is not allowed in a `const fn`
+error[E0658]: `loop` is not allowed in a `const fn`
   --> $DIR/hir-const-check.rs:12:9
    |
-LL |         match *self {}
-   |         ^^^^^^^^^^^^^^
+LL |         loop {}
+   |         ^^^^^^^
    |
-   = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
-   = help: add `#![feature(const_if_match)]` to the crate attributes to enable
+   = note: see issue #52000 <https://github.com/rust-lang/rust/issues/52000> for more information
+   = help: add `#![feature(const_loop)]` to the crate attributes to enable
 
 error: aborting due to previous error
 

@@ -1,5 +1,5 @@
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/const_refers_to_static_cross_crate.rs:12:1
+  --> $DIR/const_refers_to_static_cross_crate.rs:11:1
    |
 LL | / const SLICE_MUT: &[u8; 1] = {
 LL | |
@@ -11,13 +11,13 @@ LL | | };
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
 error: could not evaluate constant pattern
-  --> $DIR/const_refers_to_static_cross_crate.rs:40:9
+  --> $DIR/const_refers_to_static_cross_crate.rs:39:9
    |
 LL |         SLICE_MUT => true,
    |         ^^^^^^^^^
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/const_refers_to_static_cross_crate.rs:18:1
+  --> $DIR/const_refers_to_static_cross_crate.rs:17:1
    |
 LL | / const U8_MUT: &u8 = {
 LL | |
@@ -29,13 +29,13 @@ LL | | };
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
 error: could not evaluate constant pattern
-  --> $DIR/const_refers_to_static_cross_crate.rs:49:9
+  --> $DIR/const_refers_to_static_cross_crate.rs:48:9
    |
 LL |         U8_MUT => true,
    |         ^^^^^^
 
 warning: any use of this value will cause an error
-  --> $DIR/const_refers_to_static_cross_crate.rs:27:14
+  --> $DIR/const_refers_to_static_cross_crate.rs:26:14
    |
 LL | / const U8_MUT2: &u8 = {
 LL | |     unsafe { &(*static_cross_crate::ZERO_REF)[0] }
@@ -46,19 +46,19 @@ LL | | };
    | |__-
    |
 note: the lint level is defined here
-  --> $DIR/const_refers_to_static_cross_crate.rs:25:8
+  --> $DIR/const_refers_to_static_cross_crate.rs:24:8
    |
 LL | #[warn(const_err)]
    |        ^^^^^^^^^
 
 error: could not evaluate constant pattern
-  --> $DIR/const_refers_to_static_cross_crate.rs:60:9
+  --> $DIR/const_refers_to_static_cross_crate.rs:59:9
    |
 LL |         U8_MUT2 => true,
    |         ^^^^^^^
 
 warning: any use of this value will cause an error
-  --> $DIR/const_refers_to_static_cross_crate.rs:33:51
+  --> $DIR/const_refers_to_static_cross_crate.rs:32:51
    |
 LL | / const U8_MUT3: &u8 = {
 LL | |     unsafe { match static_cross_crate::OPT_ZERO { Some(ref u) => u, None => panic!() } }
@@ -69,37 +69,37 @@ LL | | };
    | |__-
    |
 note: the lint level is defined here
-  --> $DIR/const_refers_to_static_cross_crate.rs:31:8
+  --> $DIR/const_refers_to_static_cross_crate.rs:30:8
    |
 LL | #[warn(const_err)]
    |        ^^^^^^^^^
 
 error: could not evaluate constant pattern
-  --> $DIR/const_refers_to_static_cross_crate.rs:68:9
+  --> $DIR/const_refers_to_static_cross_crate.rs:67:9
    |
 LL |         U8_MUT3 => true,
    |         ^^^^^^^
 
 error: could not evaluate constant pattern
-  --> $DIR/const_refers_to_static_cross_crate.rs:40:9
+  --> $DIR/const_refers_to_static_cross_crate.rs:39:9
    |
 LL |         SLICE_MUT => true,
    |         ^^^^^^^^^
 
 error: could not evaluate constant pattern
-  --> $DIR/const_refers_to_static_cross_crate.rs:49:9
+  --> $DIR/const_refers_to_static_cross_crate.rs:48:9
    |
 LL |         U8_MUT => true,
    |         ^^^^^^
 
 error: could not evaluate constant pattern
-  --> $DIR/const_refers_to_static_cross_crate.rs:60:9
+  --> $DIR/const_refers_to_static_cross_crate.rs:59:9
    |
 LL |         U8_MUT2 => true,
    |         ^^^^^^^
 
 error: could not evaluate constant pattern
-  --> $DIR/const_refers_to_static_cross_crate.rs:68:9
+  --> $DIR/const_refers_to_static_cross_crate.rs:67:9
    |
 LL |         U8_MUT3 => true,
    |         ^^^^^^^
@@ -107,57 +107,52 @@ LL |         U8_MUT3 => true,
 warning: skipping const checks
    |
 help: skipping check that does not even have a feature gate
-  --> $DIR/const_refers_to_static_cross_crate.rs:15:15
+  --> $DIR/const_refers_to_static_cross_crate.rs:14:15
    |
 LL |     unsafe { &static_cross_crate::ZERO }
    |               ^^^^^^^^^^^^^^^^^^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/const_refers_to_static_cross_crate.rs:15:15
+  --> $DIR/const_refers_to_static_cross_crate.rs:14:15
    |
 LL |     unsafe { &static_cross_crate::ZERO }
    |               ^^^^^^^^^^^^^^^^^^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/const_refers_to_static_cross_crate.rs:21:15
+  --> $DIR/const_refers_to_static_cross_crate.rs:20:15
    |
 LL |     unsafe { &static_cross_crate::ZERO[0] }
    |               ^^^^^^^^^^^^^^^^^^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/const_refers_to_static_cross_crate.rs:21:15
+  --> $DIR/const_refers_to_static_cross_crate.rs:20:15
    |
 LL |     unsafe { &static_cross_crate::ZERO[0] }
    |               ^^^^^^^^^^^^^^^^^^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/const_refers_to_static_cross_crate.rs:21:15
+  --> $DIR/const_refers_to_static_cross_crate.rs:20:15
    |
 LL |     unsafe { &static_cross_crate::ZERO[0] }
    |               ^^^^^^^^^^^^^^^^^^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/const_refers_to_static_cross_crate.rs:27:17
+  --> $DIR/const_refers_to_static_cross_crate.rs:26:17
    |
 LL |     unsafe { &(*static_cross_crate::ZERO_REF)[0] }
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/const_refers_to_static_cross_crate.rs:33:20
+  --> $DIR/const_refers_to_static_cross_crate.rs:32:20
    |
 LL |     unsafe { match static_cross_crate::OPT_ZERO { Some(ref u) => u, None => panic!() } }
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/const_refers_to_static_cross_crate.rs:33:20
-   |
-LL |     unsafe { match static_cross_crate::OPT_ZERO { Some(ref u) => u, None => panic!() } }
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: skipping check that does not even have a feature gate
-  --> $DIR/const_refers_to_static_cross_crate.rs:33:20
+  --> $DIR/const_refers_to_static_cross_crate.rs:32:20
    |
 LL |     unsafe { match static_cross_crate::OPT_ZERO { Some(ref u) => u, None => panic!() } }
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: skipping check for `const_panic` feature
-  --> $DIR/const_refers_to_static_cross_crate.rs:33:77
+  --> $DIR/const_refers_to_static_cross_crate.rs:32:77
    |
 LL |     unsafe { match static_cross_crate::OPT_ZERO { Some(ref u) => u, None => panic!() } }
    |                                                                             ^^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/const_refers_to_static_cross_crate.rs:33:20
+  --> $DIR/const_refers_to_static_cross_crate.rs:32:20
    |
 LL |     unsafe { match static_cross_crate::OPT_ZERO { Some(ref u) => u, None => panic!() } }
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^

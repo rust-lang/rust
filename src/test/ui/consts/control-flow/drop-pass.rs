@@ -1,7 +1,6 @@
 // run-pass
 // revisions: stock precise
 
-#![feature(const_if_match)]
 #![feature(const_loop)]
 #![cfg_attr(precise, feature(const_precise_live_drops))]
 

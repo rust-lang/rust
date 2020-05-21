@@ -19,7 +19,6 @@ fn c() {
 fn d() {
     [0; match [|f @ &ref _| () ] {} ]
     //~^ ERROR expected identifier, found reserved identifier `_`
-    //~| ERROR `match` is not allowed in a `const`
     //~| ERROR mismatched types
 }
 

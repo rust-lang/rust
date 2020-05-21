@@ -6,7 +6,6 @@ LL |     [(); return while let Some(n) = Some(0) {}];
    |
    = note: see issue #52000 <https://github.com/rust-lang/rust/issues/52000> for more information
    = help: add `#![feature(const_loop)]` to the crate attributes to enable
-   = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
 error[E0572]: return statement outside of function body
   --> $DIR/issue-51714.rs:2:14

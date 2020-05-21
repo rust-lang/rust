@@ -2,8 +2,7 @@
 // aux-build:static_cross_crate.rs
 #![allow(const_err)]
 
-// `const_if_match` is a HIR check and thus needed even when unleashed.
-#![feature(exclusive_range_pattern, half_open_range_patterns, const_if_match)]
+#![feature(exclusive_range_pattern, half_open_range_patterns)]
 
 extern crate static_cross_crate;
 

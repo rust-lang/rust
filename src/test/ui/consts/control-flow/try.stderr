@@ -1,5 +1,5 @@
 error[E0744]: `?` is not allowed in a `const fn`
-  --> $DIR/try.rs:8:5
+  --> $DIR/try.rs:6:5
    |
 LL |     x?;
    |     ^^

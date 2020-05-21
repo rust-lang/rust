@@ -9,7 +9,7 @@ pub trait MyTrait {
 
 impl const MyTrait for () {
     fn method(&self) {
-        match *self {} //~ ERROR `match` is not allowed in a `const fn`
+        loop {} //~ ERROR `loop` is not allowed in a `const fn`
     }
 }
 

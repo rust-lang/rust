@@ -1,12 +1,12 @@
-#![allow(warnings)]
+// check-pass
 
-const x: bool = match Some(true) { //~ ERROR `match` is not allowed in a `const`
+const _: bool = match Some(true) {
     Some(value) => true,
     _ => false
 };
 
-const y: bool = {
-    match Some(true) { //~ ERROR `match` is not allowed in a `const`
+const _: bool = {
+    match Some(true) {
         Some(value) => true,
         _ => false
     }

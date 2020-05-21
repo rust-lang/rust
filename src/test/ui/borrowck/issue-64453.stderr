@@ -1,13 +1,26 @@
-error[E0658]: `match` is not allowed in a `static`
+error[E0507]: cannot move out of static item `settings_dir`
+  --> $DIR/issue-64453.rs:14:37
+   |
+LL |     let settings_data = from_string(settings_dir);
+   |                                     ^^^^^^^^^^^^ move occurs because `settings_dir` has type `std::string::String`, which does not implement the `Copy` trait
+
+error[E0015]: calls in statics are limited to constant functions, tuple structs and tuple variants
   --> $DIR/issue-64453.rs:4:31
    |
 LL | static settings_dir: String = format!("");
    |                               ^^^^^^^^^^^
    |
-   = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
-   = help: add `#![feature(const_if_match)]` to the crate attributes to enable
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to previous error
+error[E0015]: calls in statics are limited to constant functions, tuple structs and tuple variants
+  --> $DIR/issue-64453.rs:4:31
+   |
+LL | static settings_dir: String = format!("");
+   |                               ^^^^^^^^^^^
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-For more information about this error, try `rustc --explain E0658`.
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0015, E0507.
+For more information about an error, try `rustc --explain E0015`.

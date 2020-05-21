@@ -1,7 +1,6 @@
 #![feature(const_eval_limit)]
-#![feature(const_loop, const_if_match)]
-
-#![const_eval_limit="500"]
+#![feature(const_loop)]
+#![const_eval_limit = "500"]
 
 const X: usize = {
     let mut x = 0;
