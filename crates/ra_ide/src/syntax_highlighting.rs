@@ -413,6 +413,7 @@ fn highlight_element(
                 | T![in] => h | HighlightModifier::ControlFlow,
                 T![for] if !is_child_of_impl(element) => h | HighlightModifier::ControlFlow,
                 T![unsafe] => h | HighlightModifier::Unsafe,
+                T![true] | T![false] => HighlightTag::BoolLiteral.into(),
                 _ => h,
             }
         }

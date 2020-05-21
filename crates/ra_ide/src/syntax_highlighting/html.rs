@@ -76,6 +76,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .type_param         { color: #DFAF8F; }
 .attribute          { color: #94BFF3; }
 .numeric_literal    { color: #BFEBBF; }
+.bool_literal       { color: #BFE6EB; }
 .macro              { color: #94BFF3; }
 .module             { color: #AFD8AF; }
 .variable           { color: #DCDCCC; }

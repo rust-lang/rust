@@ -36,6 +36,7 @@ macro_rules! define_semantic_token_types {
 
 define_semantic_token_types![
     (ATTRIBUTE, "attribute"),
+    (BOOLEAN, "boolean"),
     (BUILTIN_TYPE, "builtinType"),
     (ENUM_MEMBER, "enumMember"),
     (LIFETIME, "lifetime"),

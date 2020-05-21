@@ -644,6 +644,9 @@
                     "function.attribute": [
                         "entity.name.function.attribute.rust"
                     ],
+                    "boolean": [
+                        "constant.language.boolean.rust"
+                    ],
                     "builtinType": [
                         "support.type.primitive.rust"
                     ],
