@@ -312,11 +312,11 @@
 
 # Whether or not debug assertions are enabled for the compiler and standard
 # library.
-#debug-assertions = false
+#debug-assertions = debug
 
 # Whether or not debug assertions are enabled for the standard library.
 # Overrides the `debug-assertions` option, if defined.
-#debug-assertions-std = false
+#debug-assertions-std = debug-assertions
 
 # Debuginfo level for most of Rust code, corresponds to the `-C debuginfo=N` option of `rustc`.
 # `0` - no debug info
