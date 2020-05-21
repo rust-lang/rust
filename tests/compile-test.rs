@@ -174,9 +174,13 @@ fn run_ui_cargo(config: &mut compiletest::Config) {
                 _ => {},
             }
 
-            for case in &["pass", "fail"] {
-                let tail: PathBuf = [case, "src"].iter().collect();
-                let src_path = dir_path.join(tail);
+            for case in fs::read_dir(&dir_path)? {
+                let case = case?;
+                if !case.file_type()?.is_dir() {
+                    continue;
+                }
+
+                let src_path = case.path().join("src");
                 env::set_current_dir(&src_path)?;
 
                 for file in fs::read_dir(&src_path)? {
