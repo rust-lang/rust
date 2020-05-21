@@ -3,7 +3,7 @@
 //!
 //! It can be viewed as a dual for `AnalysisChange`.
 
-use ra_db::{FileId, FilePosition, RelativePathBuf, SourceRootId};
+use ra_db::{FileId, RelativePathBuf, SourceRootId};
 use ra_text_edit::TextEdit;
 
 #[derive(Debug, Clone)]
@@ -12,7 +12,6 @@ pub struct SourceChange {
     pub label: String,
     pub source_file_edits: Vec<SourceFileEdit>,
     pub file_system_edits: Vec<FileSystemEdit>,
-    pub cursor_position: Option<FilePosition>,
     pub is_snippet: bool,
 }
 
@@ -28,7 +27,6 @@ impl SourceChange {
             label: label.into(),
             source_file_edits,
             file_system_edits,
-            cursor_position: None,
             is_snippet: false,
         }
     }
@@ -42,7 +40,6 @@ impl SourceChange {
             label: label,
             source_file_edits: edits,
             file_system_edits: vec![],
-            cursor_position: None,
             is_snippet: false,
         }
     }
@@ -54,7 +51,6 @@ impl SourceChange {
             label: label.into(),
             source_file_edits: vec![],
             file_system_edits: edits,
-            cursor_position: None,
             is_snippet: false,
         }
     }
@@ -79,18 +75,6 @@ impl SourceChange {
     /// from the given `FileId` and `TextEdit`
     pub fn file_system_edit<L: Into<String>>(label: L, edit: FileSystemEdit) -> Self {
         SourceChange::file_system_edits(label, vec![edit])
-    }
-
-    /// Sets the cursor position to the given `FilePosition`
-    pub fn with_cursor(mut self, cursor_position: FilePosition) -> Self {
-        self.cursor_position = Some(cursor_position);
-        self
-    }
-
-    /// Sets the cursor position to the given `FilePosition`
-    pub fn with_cursor_opt(mut self, cursor_position: Option<FilePosition>) -> Self {
-        self.cursor_position = cursor_position;
-        self
     }
 }
 
@@ -117,7 +101,6 @@ impl SingleFileChange {
             label: self.label,
             source_file_edits: vec![SourceFileEdit { file_id, edit: self.edit }],
             file_system_edits: Vec::new(),
-            cursor_position: None,
             is_snippet: false,
         }
     }

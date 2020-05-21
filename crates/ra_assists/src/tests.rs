@@ -7,8 +7,7 @@ use ra_db::{fixture::WithFixture, FileId, FileRange, SourceDatabaseExt};
 use ra_ide_db::{symbol_index::SymbolsDatabase, RootDatabase};
 use ra_syntax::TextRange;
 use test_utils::{
-    add_cursor, assert_eq_text, extract_offset, extract_range, extract_range_or_offset,
-    RangeOrOffset,
+    assert_eq_text, extract_offset, extract_range, extract_range_or_offset, RangeOrOffset,
 };
 
 use crate::{handlers::Handler, Assist, AssistConfig, AssistContext, Assists};
@@ -103,12 +102,6 @@ fn check(handler: Handler, before: &str, expected: ExpectedResult) {
 
             let mut actual = db.file_text(change.file_id).as_ref().to_owned();
             change.edit.apply(&mut actual);
-
-            if !source_change.is_snippet {
-                if let Some(off) = source_change.cursor_position {
-                    actual = add_cursor(&actual, off.offset)
-                }
-            }
             assert_eq_text!(after, &actual);
         }
         (Some(assist), ExpectedResult::Target(target)) => {

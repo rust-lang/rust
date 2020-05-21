@@ -87,7 +87,6 @@ pub use ra_db::{
 pub use ra_ide_db::{
     change::{AnalysisChange, LibraryData},
     line_index::{LineCol, LineIndex},
-    line_index_utils::translate_offset_with_edit,
     search::SearchScope,
     source_change::{FileSystemEdit, SourceChange, SourceFileEdit},
     symbol_index::Query,

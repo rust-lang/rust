@@ -3,7 +3,6 @@
 //! It is mainly a `HirDatabase` for semantic analysis, plus a `SymbolsDatabase`, for fuzzy search.
 
 pub mod line_index;
-pub mod line_index_utils;
 pub mod symbol_index;
 pub mod change;
 pub mod defs;

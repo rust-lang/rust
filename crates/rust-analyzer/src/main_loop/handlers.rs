@@ -159,12 +159,12 @@ pub fn handle_join_lines(
 pub fn handle_on_enter(
     world: WorldSnapshot,
     params: lsp_types::TextDocumentPositionParams,
-) -> Result<Option<lsp_ext::SourceChange>> {
+) -> Result<Option<lsp_ext::SnippetWorkspaceEdit>> {
     let _p = profile("handle_on_enter");
     let position = from_proto::file_position(&world, params)?;
     match world.analysis().on_enter(position)? {
         None => Ok(None),
-        Some(source_change) => to_proto::source_change(&world, source_change).map(Some),
+        Some(source_change) => to_proto::snippet_workspace_edit(&world, source_change).map(Some),
     }
 }
 

@@ -1,10 +1,10 @@
 //! Conversion of rust-analyzer specific types to lsp_types equivalents.
 use ra_db::{FileId, FileRange};
 use ra_ide::{
-    translate_offset_with_edit, Assist, CompletionItem, CompletionItemKind, Documentation,
-    FileSystemEdit, Fold, FoldKind, FunctionSignature, Highlight, HighlightModifier, HighlightTag,
-    HighlightedRange, InlayHint, InlayKind, InsertTextFormat, LineIndex, NavigationTarget,
-    ReferenceAccess, Severity, SourceChange, SourceFileEdit,
+    Assist, CompletionItem, CompletionItemKind, Documentation, FileSystemEdit, Fold, FoldKind,
+    FunctionSignature, Highlight, HighlightModifier, HighlightTag, HighlightedRange, InlayHint,
+    InlayKind, InsertTextFormat, LineIndex, NavigationTarget, ReferenceAccess, Severity,
+    SourceChange, SourceFileEdit,
 };
 use ra_syntax::{SyntaxKind, TextRange, TextSize};
 use ra_text_edit::{Indel, TextEdit};
@@ -375,14 +375,6 @@ pub(crate) fn url(world: &WorldSnapshot, file_id: FileId) -> Result<lsp_types::U
     world.file_id_to_uri(file_id)
 }
 
-pub(crate) fn text_document_identifier(
-    world: &WorldSnapshot,
-    file_id: FileId,
-) -> Result<lsp_types::TextDocumentIdentifier> {
-    let res = lsp_types::TextDocumentIdentifier { uri: url(world, file_id)? };
-    Ok(res)
-}
-
 pub(crate) fn versioned_text_document_identifier(
     world: &WorldSnapshot,
     file_id: FileId,
@@ -496,30 +488,9 @@ pub(crate) fn source_change(
     world: &WorldSnapshot,
     source_change: SourceChange,
 ) -> Result<lsp_ext::SourceChange> {
-    let cursor_position = match source_change.cursor_position {
-        None => None,
-        Some(pos) => {
-            let line_index = world.analysis().file_line_index(pos.file_id)?;
-            let edit = source_change
-                .source_file_edits
-                .iter()
-                .find(|it| it.file_id == pos.file_id)
-                .map(|it| &it.edit);
-            let line_col = match edit {
-                Some(edit) => translate_offset_with_edit(&*line_index, pos.offset, edit),
-                None => line_index.line_col(pos.offset),
-            };
-            let position =
-                lsp_types::Position::new(u64::from(line_col.line), u64::from(line_col.col_utf16));
-            Some(lsp_types::TextDocumentPositionParams {
-                text_document: text_document_identifier(world, pos.file_id)?,
-                position,
-            })
-        }
-    };
     let label = source_change.label.clone();
     let workspace_edit = self::snippet_workspace_edit(world, source_change)?;
-    Ok(lsp_ext::SourceChange { label, workspace_edit, cursor_position })
+    Ok(lsp_ext::SourceChange { label, workspace_edit, cursor_position: None })
 }
 
 pub(crate) fn snippet_workspace_edit(
@@ -639,25 +610,11 @@ fn main() <fold>{
 }
 
 pub(crate) fn code_action(world: &WorldSnapshot, assist: Assist) -> Result<lsp_ext::CodeAction> {
-    let res = if assist.source_change.cursor_position.is_none() {
-        lsp_ext::CodeAction {
-            title: assist.label,
-            kind: Some(String::new()),
-            edit: Some(snippet_workspace_edit(world, assist.source_change)?),
-            command: None,
-        }
-    } else {
-        assert!(!assist.source_change.is_snippet);
-        let source_change = source_change(&world, assist.source_change)?;
-        let arg = serde_json::to_value(source_change)?;
-        let title = assist.label;
-        let command = lsp_types::Command {
-            title: title.clone(),
-            command: "rust-analyzer.applySourceChange".to_string(),
-            arguments: Some(vec![arg]),
-        };
-
-        lsp_ext::CodeAction { title, kind: Some(String::new()), edit: None, command: Some(command) }
+    let res = lsp_ext::CodeAction {
+        title: assist.label,
+        kind: Some(String::new()),
+        edit: Some(snippet_workspace_edit(world, assist.source_change)?),
+        command: None,
     };
     Ok(res)
 }

@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
 import * as ra from '../rust-analyzer-api';
 
-import { applySourceChange } from '../source_change';
 import { Cmd, Ctx } from '../ctx';
+import { applySnippetWorkspaceEdit } from '.';
 
 async function handleKeypress(ctx: Ctx) {
     const editor = ctx.activeRustEditor;
@@ -21,7 +21,8 @@ async function handleKeypress(ctx: Ctx) {
     });
     if (!change) return false;
 
-    await applySourceChange(ctx, change);
+    const workspaceEdit = client.protocol2CodeConverter.asWorkspaceEdit(change);
+    await applySnippetWorkspaceEdit(workspaceEdit);
     return true;
 }
 
