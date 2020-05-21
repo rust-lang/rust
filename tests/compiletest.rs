@@ -9,7 +9,7 @@ use colored::*;
 use compiletest_rs as compiletest;
 
 fn miri_path() -> PathBuf {
-    PathBuf::from(option_env!("MIRI_PATH").unwrap_or(env!("CARGO_BIN_EXE_miri")))
+    PathBuf::from(option_env!("MIRI").unwrap_or(env!("CARGO_BIN_EXE_miri")))
 }
 
 fn run_tests(mode: &str, path: &str, target: &str) {
