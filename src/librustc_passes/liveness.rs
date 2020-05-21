@@ -85,13 +85,6 @@
 //!   the function, whether it be by explicit return, panic, or other means.
 //!
 //! - `fallthrough_ln`: a live node that represents a fallthrough
-//!
-//! - `clean_exit_var`: a synthetic variable that is only 'read' from the
-//!   fallthrough node. It is only live if the function could converge
-//!   via means other than an explicit `return` expression. That is, it is
-//!   only dead if the end of the function's block can never be reached.
-//!   It is the responsibility of typeck to ensure that there are no
-//!   `return` expressions in a function declared as diverging.
 
 use self::LiveNodeKind::*;
 use self::VarKind::*;
@@ -253,7 +246,6 @@ struct LocalInfo {
 enum VarKind {
     Param(HirId, Symbol),
     Local(LocalInfo),
-    CleanExit,
 }
 
 struct IrMaps<'tcx> {
@@ -309,7 +301,6 @@ impl IrMaps<'tcx> {
             Local(LocalInfo { id: node_id, .. }) | Param(node_id, _) => {
                 self.variable_map.insert(node_id, v);
             }
-            CleanExit => {}
         }
 
         debug!("{:?} is {:?}", v, vk);
@@ -329,14 +320,13 @@ impl IrMaps<'tcx> {
     fn variable_name(&self, var: Variable) -> String {
         match self.var_kinds[var.get()] {
             Local(LocalInfo { name, .. }) | Param(_, name) => name.to_string(),
-            CleanExit => "<clean-exit>".to_owned(),
         }
     }
 
     fn variable_is_shorthand(&self, var: Variable) -> bool {
         match self.var_kinds[var.get()] {
             Local(LocalInfo { is_shorthand, .. }) => is_shorthand,
-            Param(..) | CleanExit => false,
+            Param(..) => false,
         }
     }
 
@@ -649,7 +639,6 @@ impl RWUTable {
 struct Specials {
     exit_ln: LiveNode,
     fallthrough_ln: LiveNode,
-    clean_exit_var: Variable,
 }
 
 const ACC_READ: u32 = 1;
@@ -680,7 +669,6 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         let specials = Specials {
             exit_ln: ir.add_live_node(ExitNode),
             fallthrough_ln: ir.add_live_node(ExitNode),
-            clean_exit_var: ir.add_variable(CleanExit),
         };
 
         let tables = ir.tcx.typeck_tables_of(def_id);
@@ -913,7 +901,6 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         // explicitly return:
         let s = self.s;
         self.init_from_succ(s.fallthrough_ln, s.exit_ln);
-        self.acc(s.fallthrough_ln, s.clean_exit_var, ACC_READ);
 
         let entry_ln = self.propagate_through_expr(body, s.fallthrough_ln);
 
