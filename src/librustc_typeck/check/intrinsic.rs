@@ -283,14 +283,20 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             "likely" => (0, vec![tcx.types.bool], tcx.types.bool),
             "unlikely" => (0, vec![tcx.types.bool], tcx.types.bool),
 
-            "discriminant_value" => (
-                1,
-                vec![tcx.mk_imm_ref(
-                    tcx.mk_region(ty::ReLateBound(ty::INNERMOST, ty::BrAnon(0))),
-                    param(0),
-                )],
-                tcx.types.u64,
-            ),
+            "discriminant_value" => {
+                let assoc_items =
+                    tcx.associated_items(tcx.lang_items().discriminant_kind_trait().unwrap());
+                let discriminant_def_id = assoc_items.in_definition_order().next().unwrap().def_id;
+
+                (
+                    1,
+                    vec![tcx.mk_imm_ref(
+                        tcx.mk_region(ty::ReLateBound(ty::INNERMOST, ty::BrAnon(0))),
+                        param(0),
+                    )],
+                    tcx.mk_projection(discriminant_def_id, tcx.mk_substs([param(0).into()].iter())),
+                )
+            }
 
             "try" => {
                 let mut_u8 = tcx.mk_mut_ptr(tcx.types.u8);

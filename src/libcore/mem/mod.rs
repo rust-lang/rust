@@ -10,7 +10,7 @@ use crate::cmp;
 use crate::fmt;
 use crate::hash;
 use crate::intrinsics;
-use crate::marker::{Copy, PhantomData, Sized};
+use crate::marker::{Copy, DiscriminantKind, Sized};
 use crate::ptr;
 
 mod manually_drop;
@@ -930,7 +930,7 @@ pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
 ///
 /// [`discriminant`]: fn.discriminant.html
 #[stable(feature = "discriminant_value", since = "1.21.0")]
-pub struct Discriminant<T>(u64, PhantomData<fn() -> T>);
+pub struct Discriminant<T>(<T as DiscriminantKind>::Discriminant);
 
 // N.B. These trait implementations cannot be derived because we don't want any bounds on T.
 
@@ -995,5 +995,5 @@ impl<T> fmt::Debug for Discriminant<T> {
 #[stable(feature = "discriminant_value", since = "1.21.0")]
 #[rustc_const_unstable(feature = "const_discriminant", issue = "69821")]
 pub const fn discriminant<T>(v: &T) -> Discriminant<T> {
-    Discriminant(intrinsics::discriminant_value(v), PhantomData)
+    Discriminant(intrinsics::discriminant_value(v))
 }

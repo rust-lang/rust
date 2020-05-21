@@ -8,6 +8,7 @@
 
 use crate::cell::UnsafeCell;
 use crate::cmp;
+use crate::fmt::Debug;
 use crate::hash::Hash;
 use crate::hash::Hasher;
 
@@ -677,6 +678,37 @@ mod impls {
     unsafe impl<T: Sync + ?Sized> Send for &T {}
     #[stable(feature = "rust1", since = "1.0.0")]
     unsafe impl<T: Send + ?Sized> Send for &mut T {}
+}
+
+/// Compiler-internal trait used to indicate the type of enum discriminants.
+///
+/// This trait is automatically implemented for every type and does not add any
+/// guarantees to [`mem::Discriminant`]. It is **undefined behavior** to transmute
+/// between `DiscriminantKind::Discriminant` and `mem::Discriminant`.
+///
+/// [`mem::Discriminant`]: https://doc.rust-lang.org/stable/core/mem/struct.Discriminant.html
+#[unstable(
+    feature = "discriminant_kind",
+    issue = "none",
+    reason = "this trait is unlikely to ever be stabilized, use `mem::discriminant` instead"
+)]
+#[cfg_attr(not(bootstrap), lang = "discriminant_kind")]
+pub trait DiscriminantKind {
+    /// The type of the dicriminant, which must satisfy the trait
+    /// bounds required by `mem::Discriminant`.
+    type Discriminant: Clone + Copy + Debug + Eq + PartialEq + Hash + Send + Sync + Unpin;
+}
+
+// Manually implement `DiscriminantKind` for all types during bootstrap
+// to reduce the required amount of conditional compilation.
+#[unstable(
+    feature = "discriminant_kind",
+    issue = "none",
+    reason = "this trait is unlikely to ever be stabilized, use `mem::discriminant` instead"
+)]
+#[cfg(bootstrap)]
+impl<T: ?Sized> DiscriminantKind for T {
+    type Discriminant = u64;
 }
 
 /// Compiler-internal trait used to determine whether a type contains

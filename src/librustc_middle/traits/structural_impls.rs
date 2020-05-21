@@ -19,6 +19,8 @@ impl<'tcx, N: fmt::Debug> fmt::Debug for traits::Vtable<'tcx, N> {
 
             super::VtableFnPointer(ref d) => write!(f, "VtableFnPointer({:?})", d),
 
+            super::VtableDiscriminantKind(ref d) => write!(f, "{:?}", d),
+
             super::VtableObject(ref d) => write!(f, "{:?}", d),
 
             super::VtableParam(ref n) => write!(f, "VtableParam({:?})", n),
@@ -273,6 +275,9 @@ impl<'a, 'tcx> Lift<'tcx> for traits::Vtable<'a, ()> {
                 tcx.lift(&fn_ty).map(|fn_ty| {
                     traits::VtableFnPointer(traits::VtableFnPointerData { fn_ty, nested })
                 })
+            }
+            traits::VtableDiscriminantKind(traits::VtableDiscriminantKindData) => {
+                Some(traits::VtableDiscriminantKind(traits::VtableDiscriminantKindData))
             }
             traits::VtableParam(n) => Some(traits::VtableParam(n)),
             traits::VtableBuiltin(n) => Some(traits::VtableBuiltin(n)),

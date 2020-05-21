@@ -32,6 +32,7 @@
 #![feature(const_panic)]
 #![feature(const_transmute)]
 #![feature(core_intrinsics)]
+#![feature(discriminant_kind)]
 #![feature(drain_filter)]
 #![feature(never_type)]
 #![feature(exhaustive_patterns)]

@@ -411,6 +411,9 @@ pub enum Vtable<'tcx, N> {
     /// Same as above, but for a function pointer type with the given signature.
     VtableFnPointer(VtableFnPointerData<'tcx, N>),
 
+    /// Vtable for a builtin `DeterminantKind` trait implementation.
+    VtableDiscriminantKind(VtableDiscriminantKindData),
+
     /// Vtable automatically generated for a generator.
     VtableGenerator(VtableGeneratorData<'tcx, N>),
 
@@ -429,6 +432,7 @@ impl<'tcx, N> Vtable<'tcx, N> {
             VtableGenerator(c) => c.nested,
             VtableObject(d) => d.nested,
             VtableFnPointer(d) => d.nested,
+            VtableDiscriminantKind(VtableDiscriminantKindData) => Vec::new(),
             VtableTraitAlias(d) => d.nested,
         }
     }
@@ -443,6 +447,7 @@ impl<'tcx, N> Vtable<'tcx, N> {
             VtableGenerator(c) => &c.nested[..],
             VtableObject(d) => &d.nested[..],
             VtableFnPointer(d) => &d.nested[..],
+            VtableDiscriminantKind(VtableDiscriminantKindData) => &[],
             VtableTraitAlias(d) => &d.nested[..],
         }
     }
@@ -484,6 +489,9 @@ impl<'tcx, N> Vtable<'tcx, N> {
                 fn_ty: p.fn_ty,
                 nested: p.nested.into_iter().map(f).collect(),
             }),
+            VtableDiscriminantKind(VtableDiscriminantKindData) => {
+                VtableDiscriminantKind(VtableDiscriminantKindData)
+            }
             VtableTraitAlias(d) => VtableTraitAlias(VtableTraitAliasData {
                 alias_def_id: d.alias_def_id,
                 substs: d.substs,
@@ -559,6 +567,10 @@ pub struct VtableFnPointerData<'tcx, N> {
     pub fn_ty: Ty<'tcx>,
     pub nested: Vec<N>,
 }
+
+// FIXME(@lcnr): This should be  refactored and merged with other builtin vtables.
+#[derive(Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
+pub struct VtableDiscriminantKindData;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
 pub struct VtableTraitAliasData<'tcx, N> {

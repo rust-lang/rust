@@ -2,8 +2,6 @@
 //! looking at their MIR. Intrinsics/functions supported here are shared by CTFE
 //! and miri.
 
-use std::convert::TryFrom;
-
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::{
     self,
@@ -220,7 +218,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             sym::discriminant_value => {
                 let place = self.deref_operand(args[0])?;
                 let discr_val = self.read_discriminant(place.into())?.0;
-                self.write_scalar(Scalar::from_u64(u64::try_from(discr_val).unwrap()), dest)?;
+                let scalar = match dest.layout.ty.kind {
+                    ty::Int(_) => Scalar::from_int(discr_val as i128, dest.layout.size),
+                    ty::Uint(_) => Scalar::from_uint(discr_val, dest.layout.size),
+                    _ => bug!("invalid `discriminant_value` return layout: {:?}", dest.layout),
+                };
+                self.write_scalar(scalar, dest)?;
             }
             sym::unchecked_shl
             | sym::unchecked_shr
