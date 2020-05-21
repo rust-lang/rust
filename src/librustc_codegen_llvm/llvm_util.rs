@@ -170,6 +170,7 @@ const AARCH64_WHITELIST: &[(&str, Option<Symbol>)] = &[
     ("fp16", Some(sym::aarch64_target_feature)),
     ("rcpc", Some(sym::aarch64_target_feature)),
     ("dotprod", Some(sym::aarch64_target_feature)),
+    ("tme", Some(sym::aarch64_target_feature)),
     ("v8.1a", Some(sym::aarch64_target_feature)),
     ("v8.2a", Some(sym::aarch64_target_feature)),
     ("v8.3a", Some(sym::aarch64_target_feature)),
