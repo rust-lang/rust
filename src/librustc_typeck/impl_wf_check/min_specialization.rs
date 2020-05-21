@@ -204,7 +204,7 @@ fn unconstrained_parent_impl_substs<'tcx>(
     // the functions in `cgp` add the constrained parameters to a list of
     // unconstrained parameters.
     for (predicate, _) in impl_generic_predicates.predicates.iter() {
-        if let ty::Predicate::Projection(proj) = predicate {
+        if let ty::PredicateKind::Projection(proj) = predicate.kind() {
             let projection_ty = proj.skip_binder().projection_ty;
             let projected_ty = proj.skip_binder().ty;
 
@@ -368,13 +368,13 @@ fn check_predicates<'tcx>(
 
 fn check_specialization_on<'tcx>(tcx: TyCtxt<'tcx>, predicate: &ty::Predicate<'tcx>, span: Span) {
     debug!("can_specialize_on(predicate = {:?})", predicate);
-    match predicate {
+    match predicate.kind() {
         // Global predicates are either always true or always false, so we
         // are fine to specialize on.
         _ if predicate.is_global() => (),
         // We allow specializing on explicitly marked traits with no associated
         // items.
-        ty::Predicate::Trait(pred, hir::Constness::NotConst) => {
+        ty::PredicateKind::Trait(pred, hir::Constness::NotConst) => {
             if !matches!(
                 trait_predicate_kind(tcx, predicate),
                 Some(TraitSpecializationKind::Marker)
@@ -401,19 +401,19 @@ fn trait_predicate_kind<'tcx>(
     tcx: TyCtxt<'tcx>,
     predicate: &ty::Predicate<'tcx>,
 ) -> Option<TraitSpecializationKind> {
-    match predicate {
-        ty::Predicate::Trait(pred, hir::Constness::NotConst) => {
+    match predicate.kind() {
+        ty::PredicateKind::Trait(pred, hir::Constness::NotConst) => {
             Some(tcx.trait_def(pred.def_id()).specialization_kind)
         }
-        ty::Predicate::Trait(_, hir::Constness::Const)
-        | ty::Predicate::RegionOutlives(_)
-        | ty::Predicate::TypeOutlives(_)
-        | ty::Predicate::Projection(_)
-        | ty::Predicate::WellFormed(_)
-        | ty::Predicate::Subtype(_)
-        | ty::Predicate::ObjectSafe(_)
-        | ty::Predicate::ClosureKind(..)
-        | ty::Predicate::ConstEvaluatable(..)
-        | ty::Predicate::ConstEquate(..) => None,
+        ty::PredicateKind::Trait(_, hir::Constness::Const)
+        | ty::PredicateKind::RegionOutlives(_)
+        | ty::PredicateKind::TypeOutlives(_)
+        | ty::PredicateKind::Projection(_)
+        | ty::PredicateKind::WellFormed(_)
+        | ty::PredicateKind::Subtype(_)
+        | ty::PredicateKind::ObjectSafe(_)
+        | ty::PredicateKind::ClosureKind(..)
+        | ty::PredicateKind::ConstEvaluatable(..)
+        | ty::PredicateKind::ConstEquate(..) => None,
     }
 }

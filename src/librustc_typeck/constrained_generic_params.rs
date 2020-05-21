@@ -180,7 +180,7 @@ pub fn setup_constraining_predicates<'tcx>(
         changed = false;
 
         for j in i..predicates.len() {
-            if let ty::Predicate::Projection(ref poly_projection) = predicates[j].0 {
+            if let ty::PredicateKind::Projection(ref poly_projection) = predicates[j].0.kind() {
                 // Note that we can skip binder here because the impl
                 // trait ref never contains any late-bound regions.
                 let projection = poly_projection.skip_binder();

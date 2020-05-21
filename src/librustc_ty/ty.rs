@@ -61,7 +61,7 @@ fn sized_constraint_for_ty<'tcx>(
                 substs: tcx.mk_substs_trait(ty, &[]),
             })
             .without_const()
-            .to_predicate();
+            .to_predicate(tcx);
             let predicates = tcx.predicates_of(adtdef.did).predicates;
             if predicates.iter().any(|(p, _)| *p == sized_predicate) { vec![] } else { vec![ty] }
         }

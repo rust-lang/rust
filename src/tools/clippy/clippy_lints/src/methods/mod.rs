@@ -18,7 +18,7 @@ use rustc_lint::{LateContext, LateLintPass, Lint, LintContext};
 use rustc_middle::hir::map::Map;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::subst::GenericArgKind;
-use rustc_middle::ty::{self, Predicate, Ty};
+use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{sym, SymbolStr};
@@ -1496,8 +1496,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
             if let ty::Opaque(def_id, _) = ret_ty.kind {
                 // one of the associated types must be Self
                 for predicate in cx.tcx.predicates_of(def_id).predicates {
-                    match predicate {
-                        (Predicate::Projection(poly_projection_predicate), _) => {
+                    match predicate.0.kind() {
+                        ty::PredicateKind::Projection(poly_projection_predicate) => {
                             let binder = poly_projection_predicate.ty();
                             let associated_type = binder.skip_binder();
 
@@ -1506,7 +1506,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
                                 return;
                             }
                         },
-                        (_, _) => {},
+                        _ => {},
                     }
                 }
             }

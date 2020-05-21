@@ -29,8 +29,8 @@ impl<'tcx> ExplicitPredicatesMap<'tcx> {
 
             // process predicates and convert to `RequiredPredicates` entry, see below
             for &(predicate, span) in predicates.predicates {
-                match predicate {
-                    ty::Predicate::TypeOutlives(predicate) => {
+                match predicate.kind() {
+                    ty::PredicateKind::TypeOutlives(predicate) => {
                         let OutlivesPredicate(ref ty, ref reg) = predicate.skip_binder();
                         insert_outlives_predicate(
                             tcx,
@@ -41,7 +41,7 @@ impl<'tcx> ExplicitPredicatesMap<'tcx> {
                         )
                     }
 
-                    ty::Predicate::RegionOutlives(predicate) => {
+                    ty::PredicateKind::RegionOutlives(predicate) => {
                         let OutlivesPredicate(ref reg1, ref reg2) = predicate.skip_binder();
                         insert_outlives_predicate(
                             tcx,
@@ -52,14 +52,14 @@ impl<'tcx> ExplicitPredicatesMap<'tcx> {
                         )
                     }
 
-                    ty::Predicate::Trait(..)
-                    | ty::Predicate::Projection(..)
-                    | ty::Predicate::WellFormed(..)
-                    | ty::Predicate::ObjectSafe(..)
-                    | ty::Predicate::ClosureKind(..)
-                    | ty::Predicate::Subtype(..)
-                    | ty::Predicate::ConstEvaluatable(..)
-                    | ty::Predicate::ConstEquate(..) => (),
+                    ty::PredicateKind::Trait(..)
+                    | ty::PredicateKind::Projection(..)
+                    | ty::PredicateKind::WellFormed(..)
+                    | ty::PredicateKind::ObjectSafe(..)
+                    | ty::PredicateKind::ClosureKind(..)
+                    | ty::PredicateKind::Subtype(..)
+                    | ty::PredicateKind::ConstEvaluatable(..)
+                    | ty::PredicateKind::ConstEquate(..) => (),
                 }
             }
 

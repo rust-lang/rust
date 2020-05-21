@@ -815,19 +815,18 @@ fn foo(&self) -> Self::T { String::new() }
                 for item in &items[..] {
                     match item.kind {
                         hir::AssocItemKind::Type | hir::AssocItemKind::OpaqueTy => {
-                            if self.type_of(self.hir().local_def_id(item.id.hir_id)) == found {
-                                if let hir::Defaultness::Default { has_value: true } =
-                                    item.defaultness
-                                {
+                            // FIXME: account for returning some type in a trait fn impl that has
+                            // an assoc type as a return type (#72076).
+                            if let hir::Defaultness::Default { has_value: true } = item.defaultness
+                            {
+                                if self.type_of(self.hir().local_def_id(item.id.hir_id)) == found {
                                     db.span_label(
                                         item.span,
                                         "associated type defaults can't be assumed inside the \
                                             trait defining them",
                                     );
-                                } else {
-                                    db.span_label(item.span, "expected this associated type");
+                                    return true;
                                 }
-                                return true;
                             }
                         }
                         _ => {}
