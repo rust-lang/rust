@@ -173,9 +173,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.read_scalar(handle)?.not_undef()?;
                 let symbol = this.read_scalar(symbol)?.not_undef()?;
                 let symbol_name = this.memory.read_c_str(symbol)?;
-                let err = format!("bad c unicode symbol: {:?}", symbol_name);
-                let symbol_name = ::std::str::from_utf8(symbol_name).unwrap_or(&err);
-                if let Some(dlsym) = Dlsym::from_str(symbol_name)? {
+                if let Some(dlsym) = Dlsym::from_str(symbol_name, &this.tcx.sess.target.target.target_os)? {
                     let ptr = this.memory.create_fn_alloc(FnVal::Other(dlsym));
                     this.write_scalar(Scalar::from(ptr), dest)?;
                 } else {

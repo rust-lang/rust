@@ -11,12 +11,21 @@ pub enum Dlsym {
 impl Dlsym {
     // Returns an error for unsupported symbols, and None if this symbol
     // should become a NULL pointer (pretend it does not exist).
-    pub fn from_str(name: &str) -> InterpResult<'static, Option<Dlsym>> {
+    pub fn from_str(name: &[u8], target_os: &str) -> InterpResult<'static, Option<Dlsym>> {
         use self::Dlsym::*;
-        Ok(match name {
-            "getentropy" => Some(GetEntropy),
-            "__pthread_get_minstack" => None,
-            _ => throw_unsup_format!("unsupported dlsym: {}", name),
+        let name = String::from_utf8_lossy(name);
+        Ok(match target_os {
+            "linux" | "macos" => match &*name {
+                "getentropy" => Some(GetEntropy),
+                "__pthread_get_minstack" => None,
+                _ => throw_unsup_format!("unsupported dlsym: {}", name),
+            }
+            "windows" => match &*name {
+                "SetThreadStackGuarantee" => None,
+                "AcquireSRWLockExclusive" => None,
+                _ => throw_unsup_format!("unsupported dlsym: {}", name),
+            }
+            os => bug!("dlsym not implemented for target_os {}", os),
         })
     }
 }
