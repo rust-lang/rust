@@ -616,4 +616,7 @@ E0754: include_str!("./error_codes/E0754.md"),
     E0724, // `#[ffi_returns_twice]` is only allowed in foreign functions
     E0726, // non-explicit (not `'_`) elided lifetime in unsupported position
 //  E0738, // Removed; errored on `#[track_caller] fn`s in `extern "Rust" { ... }`.
+    E0755, // `#[ffi_pure]` is only allowed on foreign functions
+    E0756, // `#[ffi_const]` is only allowed on foreign functions
+    E0757, // `#[ffi_const]` functions cannot be `#[ffi_pure]`
 }
