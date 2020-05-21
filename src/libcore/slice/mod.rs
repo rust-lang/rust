@@ -5740,7 +5740,8 @@ unsafe impl<'a, T> TrustedRandomAccess for RChunksExactMut<'a, T> {
 ///   and it must be properly aligned. This means in particular:
 ///
 ///     * The entire memory range of this slice must be contained within a single allocated object!
-///       Slices can never span across multiple allocated objects.
+///       Slices can never span across multiple allocated objects. See [below](#incorrect-usage)
+///       for an example incorrectly not taking this into account.
 ///     * `data` must be non-null and aligned even for zero-length slices. One
 ///       reason for this is that enum layout optimizations may rely on references
 ///       (including slices of any length) being aligned and non-null to distinguish
@@ -5771,6 +5772,34 @@ unsafe impl<'a, T> TrustedRandomAccess for RChunksExactMut<'a, T> {
 /// let ptr = &x as *const _;
 /// let slice = unsafe { slice::from_raw_parts(ptr, 1) };
 /// assert_eq!(slice[0], 42);
+/// ```
+///
+/// ### Incorrect usage
+///
+/// The following `join_slices` function is **unsound** ⚠️
+///
+/// ```rust,no_run
+/// use std::slice;
+///
+/// fn join_slices<'a, T>(fst: &'a [T], snd: &'a [T]) -> &'a [T] {
+///     let fst_end = fst.as_ptr().wrapping_add(fst.len());
+///     let snd_start = snd.as_ptr();
+///     assert_eq!(fst_end, snd_start, "Slices must be contiguous!");
+///     unsafe {
+///         // The assertion above ensures `fst` and `snd` are contiguous, but they might
+///         // still be contained within _different allocated objects_, in which case
+///         // creating this slice is undefined behavior.
+///         slice::from_raw_parts(fst.as_ptr(), fst.len() + snd.len())
+///     }
+/// }
+///
+/// fn main() {
+///     // `a` and `b` are different allocated objects...
+///     let a = 42;
+///     let b = 27;
+///     // ... which may nevertheless be laid out contiguously in memory: | a | b |
+///     let _ = join_slices(slice::from_ref(&a), slice::from_ref(&b)); // UB
+/// }
 /// ```
 ///
 /// [valid]: ../../std/ptr/index.html#safety
