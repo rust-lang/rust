@@ -110,6 +110,19 @@ impl Duration {
     #[unstable(feature = "duration_constants", issue = "57391")]
     pub const NANOSECOND: Duration = Duration::from_nanos(1);
 
+    /// The largest value a duration can hold.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(duration_constants)]
+    /// use std::time::Duration;
+    ///
+    /// assert_eq!(Duration::MAX, Duration::from_new(u64::MAX, 1_000_000_000-1));
+    /// ```
+    #[unstable(feature = "duration_constants", issue = "57391")]
+    pub const MAX: Duration = Duration::new(u64::MAX, NANOS_PER_SEC-1);
+
     /// Creates a new `Duration` from the specified number of whole seconds and
     /// additional nanoseconds.
     ///
