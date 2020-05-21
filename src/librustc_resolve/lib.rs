@@ -1342,16 +1342,16 @@ impl<'a> Resolver<'a> {
             extern_crate_map: self
                 .extern_crate_map
                 .iter()
-                .map(|(k, v)| (self.definitions.local_def_id(k.clone()).to_def_id(), v.clone()))
+                .map(|(&k, &v)| (self.definitions.local_def_id(k).to_def_id(), v))
                 .collect(),
             export_map: self
                 .export_map
                 .iter()
-                .map(|(k, v)| {
+                .map(|(&k, v)| {
                     (
-                        k.clone(),
+                        k,
                         v.iter()
-                            .map(|e| e.clone().map_id(|id| self.definitions.node_id_to_hir_id(id)))
+                            .map(|e| e.map_id(|id| self.definitions.node_id_to_hir_id(id)))
                             .collect(),
                     )
                 })
@@ -1359,13 +1359,13 @@ impl<'a> Resolver<'a> {
             trait_map: self
                 .trait_map
                 .iter()
-                .map(|(k, v)| {
+                .map(|(&k, v)| {
                     (
-                        self.definitions.node_id_to_hir_id(k.clone()),
+                        self.definitions.node_id_to_hir_id(k),
                         v.iter()
+                            .cloned()
                             .map(|tc| {
-                                tc.clone()
-                                    .map_import_ids(|id| self.definitions.node_id_to_hir_id(id))
+                                tc.map_import_ids(|id| self.definitions.node_id_to_hir_id(id))
                             })
                             .collect(),
                     )
@@ -1374,17 +1374,17 @@ impl<'a> Resolver<'a> {
             glob_map: self
                 .glob_map
                 .iter()
-                .map(|(id, names)| (self.definitions.local_def_id(id.clone()), names.clone()))
+                .map(|(&id, names)| (self.definitions.local_def_id(id), names.clone()))
                 .collect(),
             maybe_unused_trait_imports: self
                 .maybe_unused_trait_imports
                 .iter()
-                .map(|id| self.definitions.local_def_id(id.clone()))
+                .map(|&id| self.definitions.local_def_id(id))
                 .collect(),
             maybe_unused_extern_crates: self
                 .maybe_unused_extern_crates
                 .iter()
-                .map(|(id, sp)| (self.definitions.local_def_id(id.clone()).to_def_id(), sp.clone()))
+                .map(|&(id, sp)| (self.definitions.local_def_id(id).to_def_id(), sp))
                 .collect(),
             extern_prelude: self
                 .extern_prelude
