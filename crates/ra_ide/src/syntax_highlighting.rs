@@ -481,23 +481,31 @@ fn highlight_name(db: &RootDatabase, def: Definition) -> Highlight {
 }
 
 fn highlight_name_by_syntax(name: ast::Name) -> Highlight {
-    let default = HighlightTag::Function.into();
+    let default = HighlightTag::UnresolvedReference;
 
     let parent = match name.syntax().parent() {
         Some(it) => it,
-        _ => return default,
+        _ => return default.into(),
     };
 
-    match parent.kind() {
-        STRUCT_DEF => HighlightTag::Struct.into(),
-        ENUM_DEF => HighlightTag::Enum.into(),
-        UNION_DEF => HighlightTag::Union.into(),
-        TRAIT_DEF => HighlightTag::Trait.into(),
-        TYPE_ALIAS_DEF => HighlightTag::TypeAlias.into(),
-        TYPE_PARAM => HighlightTag::TypeParam.into(),
-        RECORD_FIELD_DEF => HighlightTag::Field.into(),
+    let tag = match parent.kind() {
+        STRUCT_DEF => HighlightTag::Struct,
+        ENUM_DEF => HighlightTag::Enum,
+        UNION_DEF => HighlightTag::Union,
+        TRAIT_DEF => HighlightTag::Trait,
+        TYPE_ALIAS_DEF => HighlightTag::TypeAlias,
+        TYPE_PARAM => HighlightTag::TypeParam,
+        RECORD_FIELD_DEF => HighlightTag::Field,
+        MODULE => HighlightTag::Module,
+        FN_DEF => HighlightTag::Function,
+        CONST_DEF => HighlightTag::Constant,
+        STATIC_DEF => HighlightTag::Static,
+        ENUM_VARIANT => HighlightTag::EnumVariant,
+        BIND_PAT => HighlightTag::Local,
         _ => default,
-    }
+    };
+
+    tag.into()
 }
 
 fn highlight_injection(
