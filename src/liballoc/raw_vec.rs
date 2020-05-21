@@ -9,7 +9,7 @@ use core::ptr::{NonNull, Unique};
 use core::slice;
 
 use crate::alloc::{
-    handle_alloc_error, AllocErr,
+    handle_alloc_error,
     AllocInit::{self, *},
     AllocRef, Global, Layout,
     ReallocPlacement::{self, *},
@@ -302,36 +302,9 @@ impl<T, A: AllocRef> RawVec<T, A> {
         needed_extra_capacity: usize,
     ) -> Result<(), TryReserveError> {
         if self.needs_to_grow(used_capacity, needed_extra_capacity) {
-            self.grow_amortized(used_capacity, needed_extra_capacity, MayMove)
+            self.grow_amortized(used_capacity, needed_extra_capacity)
         } else {
             Ok(())
-        }
-    }
-
-    /// Attempts to ensure that the buffer contains at least enough space to hold
-    /// `used_capacity + needed_extra_capacity` elements. If it doesn't already have
-    /// enough capacity, will reallocate in place enough space plus comfortable slack
-    /// space to get amortized `O(1)` behavior. Will limit this behaviour
-    /// if it would needlessly cause itself to panic.
-    ///
-    /// If `used_capacity` exceeds `self.capacity()`, this may fail to actually allocate
-    /// the requested space. This is not really unsafe, but the unsafe
-    /// code *you* write that relies on the behavior of this function may break.
-    ///
-    /// Returns `true` if the reallocation attempt has succeeded.
-    ///
-    /// # Panics
-    ///
-    /// * Panics if the requested capacity exceeds `usize::MAX` bytes.
-    /// * Panics on 32-bit platforms if the requested capacity exceeds
-    ///   `isize::MAX` bytes.
-    pub fn reserve_in_place(&mut self, used_capacity: usize, needed_extra_capacity: usize) -> bool {
-        // This is more readable than putting this in one line:
-        // `!self.needs_to_grow(...) || self.grow(...).is_ok()`
-        if self.needs_to_grow(used_capacity, needed_extra_capacity) {
-            self.grow_amortized(used_capacity, needed_extra_capacity, InPlace).is_ok()
-        } else {
-            true
         }
     }
 
@@ -423,11 +396,9 @@ impl<T, A: AllocRef> RawVec<T, A> {
         &mut self,
         used_capacity: usize,
         needed_extra_capacity: usize,
-        placement: ReallocPlacement,
     ) -> Result<(), TryReserveError> {
         // This is ensured by the calling contexts.
         debug_assert!(needed_extra_capacity > 0);
-
         if mem::size_of::<T>() == 0 {
             // Since we return a capacity of `usize::MAX` when `elem_size` is
             // 0, getting to here necessarily means the `RawVec` is overfull.
@@ -461,7 +432,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
         let new_layout = Layout::array::<T>(cap);
 
         // `finish_grow` is non-generic over `T`.
-        let memory = finish_grow(new_layout, placement, self.current_memory(), &mut self.alloc)?;
+        let memory = finish_grow(new_layout, self.current_memory(), &mut self.alloc)?;
         self.set_memory(memory);
         Ok(())
     }
@@ -484,7 +455,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
         let new_layout = Layout::array::<T>(cap);
 
         // `finish_grow` is non-generic over `T`.
-        let memory = finish_grow(new_layout, MayMove, self.current_memory(), &mut self.alloc)?;
+        let memory = finish_grow(new_layout, self.current_memory(), &mut self.alloc)?;
         self.set_memory(memory);
         Ok(())
     }
@@ -518,7 +489,6 @@ impl<T, A: AllocRef> RawVec<T, A> {
 // much smaller than the number of `T` types.)
 fn finish_grow<A>(
     new_layout: Result<Layout, LayoutErr>,
-    placement: ReallocPlacement,
     current_memory: Option<(NonNull<u8>, Layout)>,
     alloc: &mut A,
 ) -> Result<MemoryBlock, TryReserveError>
@@ -532,12 +502,9 @@ where
 
     let memory = if let Some((ptr, old_layout)) = current_memory {
         debug_assert_eq!(old_layout.align(), new_layout.align());
-        unsafe { alloc.grow(ptr, old_layout, new_layout.size(), placement, Uninitialized) }
+        unsafe { alloc.grow(ptr, old_layout, new_layout.size(), MayMove, Uninitialized) }
     } else {
-        match placement {
-            MayMove => alloc.alloc(new_layout, Uninitialized),
-            InPlace => Err(AllocErr),
-        }
+        alloc.alloc(new_layout, Uninitialized)
     }
     .map_err(|_| AllocError { layout: new_layout, non_exhaustive: () })?;
 
