@@ -87,15 +87,15 @@ pub enum JoinLines {}
 
 impl Request for JoinLines {
     type Params = JoinLinesParams;
-    type Result = SourceChange;
-    const METHOD: &'static str = "rust-analyzer/joinLines";
+    type Result = Vec<lsp_types::TextEdit>;
+    const METHOD: &'static str = "experimental/joinLines";
 }
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct JoinLinesParams {
     pub text_document: TextDocumentIdentifier,
-    pub range: Range,
+    pub ranges: Vec<Range>,
 }
 
 pub enum OnEnter {}

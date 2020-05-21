@@ -1,7 +1,7 @@
 import * as ra from '../rust-analyzer-api';
+import * as lc from 'vscode-languageclient';
 
 import { Ctx, Cmd } from '../ctx';
-import { applySourceChange } from '../source_change';
 
 export function joinLines(ctx: Ctx): Cmd {
     return async () => {
@@ -9,10 +9,14 @@ export function joinLines(ctx: Ctx): Cmd {
         const client = ctx.client;
         if (!editor || !client) return;
 
-        const change = await client.sendRequest(ra.joinLines, {
-            range: client.code2ProtocolConverter.asRange(editor.selection),
+        const items: lc.TextEdit[] = await client.sendRequest(ra.joinLines, {
+            ranges: editor.selections.map((it) => client.code2ProtocolConverter.asRange(it)),
             textDocument: { uri: editor.document.uri.toString() },
         });
-        await applySourceChange(ctx, change);
+        editor.edit((builder) => {
+            client.protocol2CodeConverter.asTextEdits(items).forEach((edit) => {
+                builder.replace(edit.range, edit.newText);
+            });
+        });
     };
 }

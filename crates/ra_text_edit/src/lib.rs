@@ -17,7 +17,7 @@ pub struct Indel {
     pub delete: TextRange,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone)]
 pub struct TextEdit {
     indels: Vec<Indel>,
 }
@@ -62,14 +62,6 @@ impl TextEdit {
         let mut builder = TextEditBuilder::default();
         builder.replace(range, replace_with);
         builder.finish()
-    }
-
-    pub(crate) fn from_indels(mut indels: Vec<Indel>) -> TextEdit {
-        indels.sort_by_key(|a| (a.delete.start(), a.delete.end()));
-        for (a1, a2) in indels.iter().zip(indels.iter().skip(1)) {
-            assert!(a1.delete.end() <= a2.delete.start())
-        }
-        TextEdit { indels }
     }
 
     pub fn len(&self) -> usize {
@@ -122,6 +114,17 @@ impl TextEdit {
         *text = buf
     }
 
+    pub fn union(&mut self, other: TextEdit) -> Result<(), TextEdit> {
+        // FIXME: can be done without allocating intermediate vector
+        let mut all = self.iter().chain(other.iter()).collect::<Vec<_>>();
+        if !check_disjoint(&mut all) {
+            return Err(other);
+        }
+        self.indels.extend(other.indels);
+        assert!(check_disjoint(&mut self.indels));
+        Ok(())
+    }
+
     pub fn apply_to_offset(&self, offset: TextSize) -> Option<TextSize> {
         let mut res = offset;
         for indel in self.indels.iter() {
@@ -149,9 +152,19 @@ impl TextEditBuilder {
         self.indels.push(Indel::insert(offset, text))
     }
     pub fn finish(self) -> TextEdit {
-        TextEdit::from_indels(self.indels)
+        let mut indels = self.indels;
+        assert!(check_disjoint(&mut indels));
+        TextEdit { indels }
     }
     pub fn invalidates_offset(&self, offset: TextSize) -> bool {
         self.indels.iter().any(|indel| indel.delete.contains_inclusive(offset))
     }
+}
+
+fn check_disjoint(indels: &mut [impl std::borrow::Borrow<Indel>]) -> bool {
+    indels.sort_by_key(|indel| (indel.borrow().delete.start(), indel.borrow().delete.end()));
+    indels
+        .iter()
+        .zip(indels.iter().skip(1))
+        .all(|(l, r)| l.borrow().delete.end() <= r.borrow().delete.start())
 }

@@ -15,10 +15,11 @@ use lsp_types::{
     DocumentSymbol, FoldingRange, FoldingRangeParams, Hover, HoverContents, Location,
     MarkupContent, MarkupKind, Position, PrepareRenameResponse, Range, RenameParams,
     SemanticTokensParams, SemanticTokensRangeParams, SemanticTokensRangeResult,
-    SemanticTokensResult, SymbolInformation, TextDocumentIdentifier, TextEdit, Url, WorkspaceEdit,
+    SemanticTokensResult, SymbolInformation, TextDocumentIdentifier, Url, WorkspaceEdit,
 };
 use ra_ide::{
     Assist, FileId, FilePosition, FileRange, Query, RangeInfo, Runnable, RunnableKind, SearchScope,
+    TextEdit,
 };
 use ra_prof::profile;
 use ra_project_model::TargetKind;
@@ -149,11 +150,24 @@ pub fn handle_find_matching_brace(
 pub fn handle_join_lines(
     world: WorldSnapshot,
     params: lsp_ext::JoinLinesParams,
-) -> Result<lsp_ext::SourceChange> {
+) -> Result<Vec<lsp_types::TextEdit>> {
     let _p = profile("handle_join_lines");
-    let frange = from_proto::file_range(&world, params.text_document, params.range)?;
-    let source_change = world.analysis().join_lines(frange)?;
-    to_proto::source_change(&world, source_change)
+    let file_id = from_proto::file_id(&world, &params.text_document.uri)?;
+    let line_index = world.analysis().file_line_index(file_id)?;
+    let line_endings = world.file_line_endings(file_id);
+    let mut res = TextEdit::default();
+    for range in params.ranges {
+        let range = from_proto::text_range(&line_index, range);
+        let edit = world.analysis().join_lines(FileRange { file_id, range })?;
+        match res.union(edit) {
+            Ok(()) => (),
+            Err(_edit) => {
+                // just ignore overlapping edits
+            }
+        }
+    }
+    let res = to_proto::text_edit_vec(&line_index, line_endings, res);
+    Ok(res)
 }
 
 pub fn handle_on_enter(
@@ -172,7 +186,7 @@ pub fn handle_on_enter(
 pub fn handle_on_type_formatting(
     world: WorldSnapshot,
     params: lsp_types::DocumentOnTypeFormattingParams,
-) -> Result<Option<Vec<TextEdit>>> {
+) -> Result<Option<Vec<lsp_types::TextEdit>>> {
     let _p = profile("handle_on_type_formatting");
     let mut position = from_proto::file_position(&world, params.text_document_position)?;
     let line_index = world.analysis().file_line_index(position.file_id)?;
@@ -618,7 +632,7 @@ pub fn handle_references(
 pub fn handle_formatting(
     world: WorldSnapshot,
     params: DocumentFormattingParams,
-) -> Result<Option<Vec<TextEdit>>> {
+) -> Result<Option<Vec<lsp_types::TextEdit>>> {
     let _p = profile("handle_formatting");
     let file_id = from_proto::file_id(&world, &params.text_document.uri)?;
     let file = world.analysis().file_text(file_id)?;
@@ -685,7 +699,7 @@ pub fn handle_formatting(
         }
     }
 
-    Ok(Some(vec![TextEdit {
+    Ok(Some(vec![lsp_types::TextEdit {
         range: Range::new(Position::new(0, 0), end_position),
         new_text: captured_stdout,
     }]))

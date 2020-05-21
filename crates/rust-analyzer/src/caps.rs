@@ -1,8 +1,6 @@
 //! Advertizes the capabilities of the LSP Server.
 use std::env;
 
-use crate::semantic_tokens;
-
 use lsp_types::{
     CallHierarchyServerCapability, CodeActionOptions, CodeActionProviderCapability,
     CodeLensOptions, CompletionOptions, DocumentOnTypeFormattingOptions,
@@ -12,6 +10,9 @@ use lsp_types::{
     ServerCapabilities, SignatureHelpOptions, TextDocumentSyncCapability, TextDocumentSyncKind,
     TextDocumentSyncOptions, TypeDefinitionProviderCapability, WorkDoneProgressOptions,
 };
+use serde_json::json;
+
+use crate::semantic_tokens;
 
 pub fn server_capabilities() -> ServerCapabilities {
     ServerCapabilities {
@@ -91,6 +92,8 @@ pub fn server_capabilities() -> ServerCapabilities {
             }
             .into(),
         ),
-        experimental: Default::default(),
+        experimental: Some(json!({
+            "joinLines": true,
+        })),
     }
 }
