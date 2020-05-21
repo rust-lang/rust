@@ -518,9 +518,6 @@ declare_features! (
     /// Allows using the `#[register_tool]` attribute.
     (active, register_tool, "1.41.0", Some(66079), None),
 
-    /// Allows the use of `if` and `match` in constants.
-    (active, const_if_match, "1.41.0", Some(49146), None),
-
     /// Allows the use of `#[cfg(sanitize = "option")]`; set when -Zsanitizer is used.
     (active, cfg_sanitize, "1.41.0", Some(39699), None),
 
