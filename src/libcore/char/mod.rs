@@ -92,7 +92,7 @@ const MAX_THREE_B: u32 = 0x10000;
 /// [Unicode Scalar Value]: http://www.unicode.org/glossary/#unicode_scalar_value
 /// [Code Point]: http://www.unicode.org/glossary/#code_point
 #[stable(feature = "rust1", since = "1.0.0")]
-pub const MAX: char = '\u{10ffff}';
+pub const MAX: char = char::MAX;
 
 /// `U+FFFD REPLACEMENT CHARACTER` (�) is used in Unicode to represent a
 /// decoding error.
@@ -100,7 +100,7 @@ pub const MAX: char = '\u{10ffff}';
 /// It can occur, for example, when giving ill-formed UTF-8 bytes to
 /// [`String::from_utf8_lossy`](../../std/string/struct.String.html#method.from_utf8_lossy).
 #[stable(feature = "decode_utf16", since = "1.9.0")]
-pub const REPLACEMENT_CHARACTER: char = '\u{FFFD}';
+pub const REPLACEMENT_CHARACTER: char = char::REPLACEMENT_CHARACTER;
 
 /// Returns an iterator that yields the hexadecimal Unicode escape of a
 /// character, as `char`s.
