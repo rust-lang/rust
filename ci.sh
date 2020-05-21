@@ -4,7 +4,7 @@ set -euo pipefail
 # Determine configuration
 export RUST_TEST_NOCAPTURE=1
 export RUST_BACKTRACE=1
-export RUSTC_EXTRA_FLAGS="-D warnings"
+export RUSTFLAGS="-D warnings"
 export CARGO_INCREMENTAL=0
 export CARGO_EXTRA_FLAGS="--all-features"
 

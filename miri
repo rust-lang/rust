@@ -45,14 +45,14 @@ if ! test -d "$LIBDIR"; then
     echo "Please report a bug at https://github.com/rust-lang/miri/issues."
     exit 2
 fi
-# We set the rpath so that Miri finds the private rustc libraries it needs.
-# We enable debug-assertions to get tracing.
-# We enable line-only debuginfo for backtraces.
-export RUSTFLAGS="-C link-args=-Wl,-rpath,$LIBDIR -C debug-assertions -C debuginfo=1 $RUSTC_EXTRA_FLAGS"
 if [ -z "$CARGO_INCREMENTAL" ]; then
     # Default CARGO_INCREMENTAL to 1.
     export CARGO_INCREMENTAL=1
 fi
+# We set the rpath so that Miri finds the private rustc libraries it needs.
+# We enable debug-assertions to get tracing.
+# We enable line-only debuginfo for backtraces.
+export RUSTFLAGS="-C link-args=-Wl,-rpath,$LIBDIR -C debug-assertions -C debuginfo=1 $RUSTFLAGS"
 
 ## Helper functions
 
