@@ -24,5 +24,9 @@ serde_json = "1.0.40"
 # for more information.
 rustc-workspace-hack = "1.0.0"
 
+# Enable some feature flags that dev-dependencies need but dependencies
+# do not.  This makes `./miri install` after `./miri build` faster.
+serde = { version = "*", features = ["derive"] }
+
 [build-dependencies]
 vergen = "3"

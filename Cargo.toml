@@ -40,6 +40,11 @@ rand = "0.7"
 # for more information.
 rustc-workspace-hack = "1.0.0"
 
+# Enable some feature flags that dev-dependencies need but dependencies
+# do not.  This makes `./miri install` after `./miri build` faster.
+[target."cfg(unix)".dependencies]
+libc = "0.2"
+
 [dev-dependencies]
 compiletest_rs = { version = "0.5", features = ["tmp"] }
 rustc_version = "0.2.3"
