@@ -9,7 +9,6 @@
 // merged.
 
 #![feature(test, stmt_expr_attributes)]
-#![feature(track_caller)]
 #![deny(overflowing_literals)]
 extern crate test;
 

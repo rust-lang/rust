@@ -1,5 +1,5 @@
 error[E0658]: `#[target_feature(..)]` can only be applied to `unsafe` functions
-  --> $DIR/issue-68060.rs:6:13
+  --> $DIR/issue-68060.rs:4:13
    |
 LL |             #[target_feature(enable = "")]
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -11,13 +11,13 @@ LL |             |_| (),
    = help: add `#![feature(target_feature_11)]` to the crate attributes to enable
 
 error: the feature named `` is not valid for this target
-  --> $DIR/issue-68060.rs:6:30
+  --> $DIR/issue-68060.rs:4:30
    |
 LL |             #[target_feature(enable = "")]
    |                              ^^^^^^^^^^^ `` is not valid for this target
 
 error[E0737]: `#[track_caller]` requires Rust ABI
-  --> $DIR/issue-68060.rs:9:13
+  --> $DIR/issue-68060.rs:7:13
    |
 LL |             #[track_caller]
    |             ^^^^^^^^^^^^^^^

@@ -1,7 +1,5 @@
 // run-pass
 
-#![feature(track_caller)]
-
 use std::panic::Location;
 
 struct Foo;
