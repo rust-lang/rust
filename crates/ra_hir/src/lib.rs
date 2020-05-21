@@ -62,6 +62,7 @@ pub use crate::{
 
 pub use hir_def::{
     adt::StructKind,
+    attr::Attrs,
     body::scope::ExprScopes,
     builtin_type::BuiltinType,
     docs::Documentation,

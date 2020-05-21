@@ -33,6 +33,36 @@ impl CfgExpr {
             CfgExpr::Not(pred) => pred.fold(query).map(|s| !s),
         }
     }
+
+    /// Return minimal features needed
+    pub fn minimal_features_needed(&self) -> Option<Vec<SmolStr>> {
+        let mut features = vec![];
+        self.collect_minimal_features_needed(&mut features);
+        if features.is_empty() {
+            None
+        } else {
+            Some(features)
+        }
+    }
+
+    fn collect_minimal_features_needed(&self, features: &mut Vec<SmolStr>) {
+        match self {
+            CfgExpr::KeyValue { key, value } if key == "feature" => features.push(value.clone()),
+            CfgExpr::All(preds) => {
+                preds.iter().for_each(|cfg| cfg.collect_minimal_features_needed(features));
+            }
+            CfgExpr::Any(preds) => {
+                for cfg in preds {
+                    let len_features = features.len();
+                    cfg.collect_minimal_features_needed(features);
+                    if len_features != features.len() {
+                        break;
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
 }
 
 pub fn parse_cfg(tt: &Subtree) -> CfgExpr {
@@ -88,13 +118,17 @@ fn next_cfg_expr(it: &mut SliceIter<tt::TokenTree>) -> Option<CfgExpr> {
 mod tests {
     use super::*;
 
-    use mbe::ast_to_token_tree;
+    use mbe::{ast_to_token_tree, TokenMap};
     use ra_syntax::ast::{self, AstNode};
 
-    fn assert_parse_result(input: &str, expected: CfgExpr) {
+    fn get_token_tree_generated(input: &str) -> (tt::Subtree, TokenMap) {
         let source_file = ast::SourceFile::parse(input).ok().unwrap();
         let tt = source_file.syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
-        let (tt, _) = ast_to_token_tree(&tt).unwrap();
+        ast_to_token_tree(&tt).unwrap()
+    }
+
+    fn assert_parse_result(input: &str, expected: CfgExpr) {
+        let (tt, _) = get_token_tree_generated(input);
         assert_eq!(parse_cfg(&tt), expected);
     }
 
@@ -128,5 +162,33 @@ mod tests {
                 CfgExpr::KeyValue { key: "bar".into(), value: "baz".into() },
             ]),
         );
+    }
+
+    #[test]
+    fn test_cfg_expr_minimal_features_needed() {
+        let (subtree, _) = get_token_tree_generated(r#"#![cfg(feature = "baz")]"#);
+        let cfg_expr = parse_cfg(&subtree);
+
+        assert_eq!(cfg_expr.minimal_features_needed().unwrap(), vec![SmolStr::new("baz")]);
+
+        let (subtree, _) =
+            get_token_tree_generated(r#"#![cfg(all(feature = "baz", feature = "foo"))]"#);
+        let cfg_expr = parse_cfg(&subtree);
+
+        assert_eq!(
+            cfg_expr.minimal_features_needed().unwrap(),
+            vec![SmolStr::new("baz"), SmolStr::new("foo")]
+        );
+
+        let (subtree, _) =
+            get_token_tree_generated(r#"#![cfg(any(feature = "baz", feature = "foo", unix))]"#);
+        let cfg_expr = parse_cfg(&subtree);
+
+        assert_eq!(cfg_expr.minimal_features_needed().unwrap(), vec![SmolStr::new("baz")]);
+
+        let (subtree, _) = get_token_tree_generated(r#"#![cfg(foo)]"#);
+        let cfg_expr = parse_cfg(&subtree);
+
+        assert!(cfg_expr.minimal_features_needed().is_none());
     }
 }

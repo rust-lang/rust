@@ -4,6 +4,7 @@ use ra_ide::{FileId, RunnableKind, TestId};
 use ra_project_model::{self, ProjectWorkspace, TargetKind};
 
 use crate::{world::WorldSnapshot, Result};
+use ra_syntax::SmolStr;
 
 /// Abstract representation of Cargo target.
 ///
@@ -20,6 +21,7 @@ impl CargoTargetSpec {
     pub(crate) fn runnable_args(
         spec: Option<CargoTargetSpec>,
         kind: &RunnableKind,
+        features_needed: &Option<Vec<SmolStr>>,
     ) -> Result<(Vec<String>, Vec<String>)> {
         let mut args = Vec::new();
         let mut extra_args = Vec::new();
@@ -72,6 +74,13 @@ impl CargoTargetSpec {
                     spec.push_to(&mut args, kind);
                 }
             }
+        }
+
+        if let Some(features_needed) = features_needed {
+            features_needed.iter().for_each(|feature| {
+                args.push("--features".to_string());
+                args.push(feature.to_string());
+            });
         }
         Ok((args, extra_args))
     }
