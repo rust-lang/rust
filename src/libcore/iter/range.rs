@@ -427,6 +427,8 @@ unsafe impl Step for char {
             res = Step::forward_checked(res, 0x800)?;
         }
         if res <= char::MAX as u32 {
+            // SAFETY: res is a valid unicode scalar
+            // (below 0x110000 and not in 0xD800..0xE000)
             Some(unsafe { char::from_u32_unchecked(res) })
         } else {
             None
@@ -440,6 +442,8 @@ unsafe impl Step for char {
         if start >= 0xE000 && 0xE000 > res {
             res = Step::backward_checked(res, 0x800)?;
         }
+        // SAFETY: res is a valid unicode scalar
+        // (below 0x110000 and not in 0xD800..0xE000)
         Some(unsafe { char::from_u32_unchecked(res) })
     }
 
