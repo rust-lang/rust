@@ -252,7 +252,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
         let function_type_metadata = unsafe {
             let fn_signature = get_function_signature(self, fn_abi);
-            llvm::LLVMRustDIBuilderCreateSubroutineType(DIB(self), file_metadata, fn_signature)
+            llvm::LLVMRustDIBuilderCreateSubroutineType(DIB(self), fn_signature)
         };
 
         // Find the enclosing function, in case this is a closure.
@@ -265,8 +265,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         // name if necessary.
         let generics = self.tcx().generics_of(enclosing_fn_def_id);
         let substs = instance.substs.truncate_to(self.tcx(), generics);
-        let template_parameters =
-            get_template_parameters(self, &generics, substs, file_metadata, &mut name);
+        let template_parameters = get_template_parameters(self, &generics, substs, &mut name);
 
         // Get the linkage_name, which is just the symbol name
         let linkage_name = mangled_name_of_instance(self, instance);
@@ -388,7 +387,6 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             cx: &CodegenCx<'ll, 'tcx>,
             generics: &ty::Generics,
             substs: SubstsRef<'tcx>,
-            file_metadata: &'ll DIFile,
             name_to_append_suffix_to: &mut String,
         ) -> &'ll DIArray {
             if substs.types().next().is_none() {
@@ -429,9 +427,6 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                                     name.as_ptr().cast(),
                                     name.len(),
                                     actual_type_metadata,
-                                    file_metadata,
-                                    0,
-                                    0,
                                 ))
                             })
                         } else {

@@ -447,7 +447,6 @@ fn subroutine_type_metadata(
         unsafe {
             llvm::LLVMRustDIBuilderCreateSubroutineType(
                 DIB(cx),
-                unknown_file_metadata(cx),
                 create_DIArray(DIB(cx), &signature_metadata[..]),
             )
         },
@@ -635,14 +634,12 @@ pub fn type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>, usage_site_span: Sp
                     // anything reading the debuginfo for a recursive
                     // type is going to see *something* weird - the only
                     // question is what exactly it will see.
-                    let (size, align) = cx.size_and_align_of(t);
                     let name = "<recur_type>";
                     llvm::LLVMRustDIBuilderCreateBasicType(
                         DIB(cx),
                         name.as_ptr().cast(),
                         name.len(),
-                        size.bits(),
-                        align.bits() as u32,
+                        cx.size_of(t).bits(),
                         DW_ATE_unsigned,
                     )
                 }
@@ -841,14 +838,12 @@ fn basic_type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll DIType {
         _ => bug!("debuginfo::basic_type_metadata - `t` is invalid type"),
     };
 
-    let (size, align) = cx.size_and_align_of(t);
     let ty_metadata = unsafe {
         llvm::LLVMRustDIBuilderCreateBasicType(
             DIB(cx),
             name.as_ptr().cast(),
             name.len(),
-            size.bits(),
-            align.bits() as u32,
+            cx.size_of(t).bits(),
             encoding,
         )
     };
@@ -2187,9 +2182,6 @@ fn compute_type_parameters(cx: &CodegenCx<'ll, 'tcx>, ty: Ty<'tcx>) -> Option<&'
                                 name.as_ptr().cast(),
                                 name.len(),
                                 actual_type_metadata,
-                                unknown_file_metadata(cx),
-                                0,
-                                0,
                             ))
                         })
                     } else {
