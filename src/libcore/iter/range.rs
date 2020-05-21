@@ -1,3 +1,4 @@
+use crate::char;
 use crate::convert::TryFrom;
 use crate::mem;
 use crate::ops::{self, Add, Sub, Try};
@@ -398,6 +399,69 @@ step_integer_impls! {
 step_integer_impls! {
     narrower than or same width as usize: [u8 i8], [u16 i16], [usize isize];
     wider than usize: [u32 i32], [u64 i64], [u128 i128];
+}
+
+#[unstable(feature = "step_trait", reason = "recently redesigned", issue = "42168")]
+unsafe impl Step for char {
+    #[inline]
+    fn steps_between(&start: &char, &end: &char) -> Option<usize> {
+        let start = start as u32;
+        let end = end as u32;
+        if start <= end {
+            let count = end - start + 1;
+            if start < 0xD800 && 0xE000 <= end {
+                usize::try_from(count - 0x800).ok()
+            } else {
+                usize::try_from(count).ok()
+            }
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    fn forward_checked(start: char, count: usize) -> Option<char> {
+        let start = start as u32;
+        let mut res = Step::forward_checked(start, count)?;
+        if start < 0xD800 && 0xD800 <= res {
+            res = Step::forward_checked(res, 0x800)?;
+        }
+        if res <= char::MAX as u32 {
+            Some(unsafe { char::from_u32_unchecked(res) })
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    fn backward_checked(start: char, count: usize) -> Option<char> {
+        let start = start as u32;
+        let mut res = Step::backward_checked(start, count)?;
+        if start >= 0xE000 && 0xE000 > res {
+            res = Step::backward_checked(res, 0x800)?;
+        }
+        Some(unsafe { char::from_u32_unchecked(res) })
+    }
+
+    #[inline]
+    unsafe fn forward_unchecked(start: char, count: usize) -> char {
+        let start = start as u32;
+        let mut res = Step::forward_unchecked(start, count);
+        if start < 0xD800 && 0xD800 <= res {
+            res = Step::forward_unchecked(res, 0x800);
+        }
+        char::from_u32_unchecked(res)
+    }
+
+    #[inline]
+    unsafe fn backward_unchecked(start: char, count: usize) -> char {
+        let start = start as u32;
+        let mut res = Step::backward_unchecked(start, count);
+        if start >= 0xE000 && 0xE000 > res {
+            res = Step::backward_unchecked(res, 0x800);
+        }
+        char::from_u32_unchecked(res)
+    }
 }
 
 macro_rules! range_exact_iter_impl {
