@@ -72,7 +72,7 @@ pub enum InstanceDef<'tcx> {
     /// NB: the type must currently be monomorphic to avoid double substitution
     /// problems with the MIR shim bodies. `Instance::resolve` enforces this.
     // FIXME(#69925) support polymorphic MIR shim bodies properly instead.
-    CloneShim(DefId, Ty<'tcx>),
+    CloneShim(DefId, Ty<'tcx>, bool),
 }
 
 impl<'tcx> Instance<'tcx> {
@@ -151,7 +151,7 @@ impl<'tcx> InstanceDef<'tcx> {
             | InstanceDef::Intrinsic(def_id)
             | InstanceDef::ClosureOnceShim { call_once: def_id }
             | InstanceDef::DropGlue(def_id, _)
-            | InstanceDef::CloneShim(def_id, _) => def_id,
+            | InstanceDef::CloneShim(def_id, _, _) => def_id,
         }
     }
 
@@ -240,7 +240,8 @@ impl<'tcx> fmt::Display for Instance<'tcx> {
             InstanceDef::FnPtrShim(_, ty) => write!(f, " - shim({:?})", ty),
             InstanceDef::ClosureOnceShim { .. } => write!(f, " - shim"),
             InstanceDef::DropGlue(_, ty) => write!(f, " - shim({:?})", ty),
-            InstanceDef::CloneShim(_, ty) => write!(f, " - shim({:?})", ty),
+            InstanceDef::CloneShim(_, ty, from_derive) => write!(f, " - shim({:?}, from_derive={:?})", ty,
+            from_derive),
         }
     }
 }

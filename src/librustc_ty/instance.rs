@@ -92,6 +92,22 @@ fn resolve_associated_item<'tcx>(
             assert!(!rcvr_substs.needs_infer());
             assert!(!trait_ref.needs_infer());
 
+            if Some(trait_ref.def_id) == tcx.lang_items().clone_trait() {
+                let name = tcx.item_name(def_id);
+                let self_ty = trait_ref.self_ty();
+                if name == sym::clone {
+                    if tcx.is_transitive_derive_clone(self_ty) {
+                        debug!("Using CloneShim for transitive Clone derive on {:?}",
+                               self_ty);
+                        return Ok(Some(Instance {
+                            def: ty::InstanceDef::CloneShim(def_id, self_ty, true),
+                            substs: rcvr_substs,
+                        }))
+                    }
+                }
+            }
+
+
             let trait_def_id = tcx.trait_id_of_impl(impl_data.impl_def_id).unwrap();
             let trait_def = tcx.trait_def(trait_def_id);
             let leaf_def = trait_def
@@ -222,7 +238,7 @@ fn resolve_associated_item<'tcx>(
                     }
 
                     Some(Instance {
-                        def: ty::InstanceDef::CloneShim(def_id, self_ty),
+                        def: ty::InstanceDef::CloneShim(def_id, self_ty, false),
                         substs: rcvr_substs,
                     })
                 } else {

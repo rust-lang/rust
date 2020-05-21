@@ -28,6 +28,7 @@ use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_hir::lang_items::DerivedClone;
 use rustc_middle::middle::region;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
@@ -562,6 +563,19 @@ fn type_implements_trait<'tcx>(
     tcx.infer_ctxt().enter(|infcx| infcx.predicate_must_hold_modulo_regions(&obligation))
 }
 
+fn is_transitive_derive_clone(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
+    match ty.kind {
+        ty::Adt(adt_def, substs) => {
+            let derived_clone = tcx.require_lang_item(DerivedClone, None);
+            let is_derived_clone = tcx.type_implements_trait((derived_clone, ty, InternalSubsts::empty(), ParamEnv::empty()));
+            is_derived_clone && adt_def.all_fields().all(|field| {
+                tcx.is_transitive_derive_clone(field.ty(tcx, substs))
+            })
+        }
+        _ => true
+    }
+}
+
 pub fn provide(providers: &mut ty::query::Providers<'_>) {
     object_safety::provide(providers);
     *providers = ty::query::Providers {
@@ -571,6 +585,7 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
         vtable_methods,
         substitute_normalize_and_test_predicates,
         type_implements_trait,
+        is_transitive_derive_clone,
         ..*providers
     };
 }

@@ -73,6 +73,14 @@ pub fn expand_deriving_clone(
         _ => cx.span_bug(span, "`#[derive(Clone)]` on trait item or impl item"),
     }
 
+    super::inject_impl_of_structural_trait(
+        cx,
+        span,
+        item,
+        path_std!(cx, marker::DerivedClone),
+        push,
+    );
+
     let inline = cx.meta_word(span, sym::inline);
     let attrs = vec![cx.attribute(inline)];
     let trait_def = TraitDef {

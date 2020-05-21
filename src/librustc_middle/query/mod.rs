@@ -1296,5 +1296,9 @@ rustc_queries! {
         ) -> Result<Option<ty::Instance<'tcx>>, ErrorReported> {
             desc { "resolving instance `{}`", ty::Instance::new(key.value.0, key.value.1) }
         }
+
+        query is_transitive_derive_clone(key: Ty<'tcx>) -> bool {
+            desc { "determining if item {:?} transitively derives Clone", key }
+        }
     }
 }

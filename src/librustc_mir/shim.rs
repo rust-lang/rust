@@ -95,13 +95,13 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
 
             build_drop_shim(tcx, def_id, ty)
         }
-        ty::InstanceDef::CloneShim(def_id, ty) => {
+        ty::InstanceDef::CloneShim(def_id, ty, from_derive) => {
             // FIXME(eddyb) support generating shims for a "shallow type",
             // e.g. `Foo<_>` or `[_]` instead of requiring a fully monomorphic
             // `Foo<Bar>` or `[String]` etc.
             assert!(!ty.needs_subst());
 
-            build_clone_shim(tcx, def_id, ty)
+            build_clone_shim(tcx, def_id, ty, from_derive)
         }
         ty::InstanceDef::Virtual(..) => {
             bug!("InstanceDef::Virtual ({:?}) is for direct calls only", instance)
@@ -312,7 +312,7 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for DropShimElaborator<'a, 'tcx> {
 }
 
 /// Builds a `Clone::clone` shim for `self_ty`. Here, `def_id` is `Clone::clone`.
-fn build_clone_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -> Body<'tcx> {
+fn build_clone_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>, from_derive: bool) -> Body<'tcx> {
     debug!("build_clone_shim(def_id={:?})", def_id);
 
     let param_env = tcx.param_env(def_id);
@@ -324,7 +324,7 @@ fn build_clone_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -
     let src = tcx.mk_place_deref(Place::from(Local::new(1 + 0)));
 
     match self_ty.kind {
-        _ if is_copy => builder.copy_shim(),
+        _ if is_copy || from_derive => builder.copy_shim(),
         ty::Array(ty, len) => {
             let len = len.eval_usize(tcx, param_env);
             builder.array_shim(dest, src, ty, len)
