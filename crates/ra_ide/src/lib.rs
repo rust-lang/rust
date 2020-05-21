@@ -42,9 +42,6 @@ mod inlay_hints;
 mod expand_macro;
 mod ssr;
 
-#[cfg(test)]
-mod test_utils;
-
 use std::sync::Arc;
 
 use ra_cfg::CfgOptions;
