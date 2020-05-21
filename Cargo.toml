@@ -8,9 +8,6 @@ version = "0.1.0"
 default-run = "miri"
 edition = "2018"
 
-[workspace]
-members = ["cargo-miri"]
-
 [lib]
 test = true # we have unit tests
 doctest = false # but no doc tests
