@@ -983,8 +983,8 @@ mod tests {
         if let Some(change) = source_change {
             for edit in change.info.source_file_edits {
                 file_id = Some(edit.file_id);
-                for indel in edit.edit.as_indels() {
-                    text_edit_builder.replace(indel.delete, indel.insert.clone());
+                for indel in edit.edit.into_iter() {
+                    text_edit_builder.replace(indel.delete, indel.insert);
                 }
             }
         }

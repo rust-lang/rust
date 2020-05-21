@@ -3,6 +3,7 @@
 //! `rust-analyzer` never mutates text itself and only sends diffs to clients,
 //! so `TextEdit` is the ultimate representation of the work done by
 //! rust-analyzer.
+use std::{slice, vec};
 
 pub use text_size::{TextRange, TextSize};
 
@@ -71,17 +72,24 @@ impl TextEdit {
         TextEdit { indels }
     }
 
+    pub fn len(&self) -> usize {
+        self.indels.len()
+    }
+
     pub fn is_empty(&self) -> bool {
         self.indels.is_empty()
     }
 
-    // FXME: impl IntoIter instead
-    pub fn as_indels(&self) -> &[Indel] {
-        &self.indels
+    pub fn iter(&self) -> slice::Iter<'_, Indel> {
+        self.indels.iter()
+    }
+
+    pub fn into_iter(self) -> vec::IntoIter<Indel> {
+        self.indels.into_iter()
     }
 
     pub fn apply(&self, text: &mut String) {
-        match self.indels.len() {
+        match self.len() {
             0 => return,
             1 => {
                 self.indels[0].apply(text);

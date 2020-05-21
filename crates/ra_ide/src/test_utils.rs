@@ -3,9 +3,9 @@
 use ra_syntax::{SourceFile, TextSize};
 use ra_text_edit::TextEdit;
 
-pub use test_utils::*;
+pub(crate) use test_utils::*;
 
-pub fn check_action<F: Fn(&SourceFile, TextSize) -> Option<TextEdit>>(
+pub(crate) fn check_action<F: Fn(&SourceFile, TextSize) -> Option<TextEdit>>(
     before: &str,
     after: &str,
     f: F,

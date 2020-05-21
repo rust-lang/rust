@@ -133,11 +133,7 @@ pub(crate) fn text_edit_vec(
     line_endings: LineEndings,
     text_edit: TextEdit,
 ) -> Vec<lsp_types::TextEdit> {
-    text_edit
-        .as_indels()
-        .iter()
-        .map(|it| self::text_edit(line_index, line_endings, it.clone()))
-        .collect()
+    text_edit.into_iter().map(|indel| self::text_edit(line_index, line_endings, indel)).collect()
 }
 
 pub(crate) fn completion_item(
@@ -150,7 +146,7 @@ pub(crate) fn completion_item(
     // LSP does not allow arbitrary edits in completion, so we have to do a
     // non-trivial mapping here.
     let source_range = completion_item.source_range();
-    for indel in completion_item.text_edit().as_indels() {
+    for indel in completion_item.text_edit().iter() {
         if indel.delete.contains_range(source_range) {
             text_edit = Some(if indel.delete == source_range {
                 self::text_edit(line_index, line_endings, indel.clone())
@@ -459,8 +455,7 @@ pub(crate) fn snippet_text_document_edit(
     let line_endings = world.file_line_endings(source_file_edit.file_id);
     let edits = source_file_edit
         .edit
-        .as_indels()
-        .iter()
+        .into_iter()
         .map(|it| snippet_text_edit(&line_index, line_endings, is_snippet, it.clone()))
         .collect();
     Ok(lsp_ext::SnippetTextDocumentEdit { text_document, edits })
