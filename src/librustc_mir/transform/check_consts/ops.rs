@@ -143,19 +143,6 @@ impl NonConstOp for HeapAllocation {
 }
 
 #[derive(Debug)]
-pub struct IfOrMatch;
-impl NonConstOp for IfOrMatch {
-    fn feature_gate() -> Option<Symbol> {
-        Some(sym::const_if_match)
-    }
-
-    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
-        // This should be caught by the HIR const-checker.
-        ccx.tcx.sess.delay_span_bug(span, "complex control flow is forbidden in a const context");
-    }
-}
-
-#[derive(Debug)]
 pub struct InlineAsm;
 impl NonConstOp for InlineAsm {}
 
