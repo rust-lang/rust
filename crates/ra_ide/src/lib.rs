@@ -89,6 +89,7 @@ pub use ra_ide_db::{
     symbol_index::Query,
     RootDatabase,
 };
+pub use ra_text_edit::{Indel, TextEdit};
 
 pub type Cancelable<T> = Result<T, Canceled>;
 
@@ -285,14 +286,10 @@ impl Analysis {
 
     /// Returns an edit to remove all newlines in the range, cleaning up minor
     /// stuff like trailing commas.
-    pub fn join_lines(&self, frange: FileRange) -> Cancelable<SourceChange> {
+    pub fn join_lines(&self, frange: FileRange) -> Cancelable<TextEdit> {
         self.with_db(|db| {
             let parse = db.parse(frange.file_id);
-            let file_edit = SourceFileEdit {
-                file_id: frange.file_id,
-                edit: join_lines::join_lines(&parse.tree(), frange.range),
-            };
-            SourceChange::source_file_edit("Join lines", file_edit)
+            join_lines::join_lines(&parse.tree(), frange.range)
         })
     }
 

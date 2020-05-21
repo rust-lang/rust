@@ -2,12 +2,11 @@
 use ra_db::{FileId, FileRange};
 use ra_ide::{
     Assist, CompletionItem, CompletionItemKind, Documentation, FileSystemEdit, Fold, FoldKind,
-    FunctionSignature, Highlight, HighlightModifier, HighlightTag, HighlightedRange, InlayHint,
-    InlayKind, InsertTextFormat, LineIndex, NavigationTarget, ReferenceAccess, Severity,
-    SourceChange, SourceFileEdit,
+    FunctionSignature, Highlight, HighlightModifier, HighlightTag, HighlightedRange, Indel,
+    InlayHint, InlayKind, InsertTextFormat, LineIndex, NavigationTarget, ReferenceAccess, Severity,
+    SourceChange, SourceFileEdit, TextEdit,
 };
 use ra_syntax::{SyntaxKind, TextRange, TextSize};
-use ra_text_edit::{Indel, TextEdit};
 use ra_vfs::LineEndings;
 
 use crate::{lsp_ext, semantic_tokens, world::WorldSnapshot, Result};

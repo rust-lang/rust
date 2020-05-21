@@ -7,13 +7,7 @@ All capabilities are enabled via `experimental` field of `ClientCapabilities`.
 
 ## `SnippetTextEdit`
 
-**Capability**
-
-```typescript
-{
-    "snippetTextEdit": boolean
-}
-```
+**Client Capability:** `{ "snippetTextEdit": boolean }`
 
 If this capability is set, `WorkspaceEdit`s returned from `codeAction` requests might contain `SnippetTextEdit`s instead of usual `TextEdit`s:
 
@@ -32,3 +26,61 @@ export interface TextDocumentEdit {
 
 When applying such code action, the editor should insert snippet, with tab stops and placeholder.
 At the moment, rust-analyzer guarantees that only a single edit will have `InsertTextFormat.Snippet`.
+
+### Example
+
+"Add `derive`" code action transforms `struct S;` into `#[derive($0)] struct S;`
+
+### Unresolved Questions
+
+* Where exactly are `SnippetTextEdit`s allowed (only in code actions at the moment)?
+* Can snippets span multiple files (so far, no)?
+
+## `joinLines`
+
+**Server Capability:** `{ "joinLines": boolean }`
+
+This request is send from client to server to handle "Join Lines" editor action.
+
+**Method:** `experimental/JoinLines`
+
+**Request:**
+
+```typescript
+interface JoinLinesParams {
+    textDocument: TextDocumentIdentifier,
+    /// Currently active selections/cursor offsets.
+    /// This is an array to support multiple cursors.
+    ranges: Range[],
+}
+```
+
+**Response:**
+
+```typescript
+TextEdit[]
+```
+
+### Example
+
+```rust
+fn main() {
+    /*cursor here*/let x = {
+        92
+    };
+}
+```
+
+`experimental/joinLines` yields (curly braces are automagiacally removed)
+
+```rust
+fn main() {
+    let x = 92;
+}
+```
+
+### Unresolved Question
+
+* What is the position of the cursor after `joinLines`?
+  Currently this is left to editor's discretion, but it might be useful to specify on the server via snippets.
+  However, it then becomes unclear how it works with multi cursor.
