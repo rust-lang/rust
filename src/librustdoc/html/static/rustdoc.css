@@ -625,7 +625,7 @@ a {
 	display: initial;
 }
 
-.in-band:hover > .anchor {
+.in-band:hover > .anchor, .impl:hover > .anchor {
 	display: inline-block;
 	position: absolute;
 }
