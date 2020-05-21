@@ -87,7 +87,9 @@ mod upvar;
 mod wfcheck;
 pub mod writeback;
 
-use crate::astconv::{AstConv, GenericArgCountMismatch, PathSeg};
+use crate::astconv::{
+    AstConv, ExplicitLateBound, GenericArgCountMismatch, GenericArgCountResult, PathSeg,
+};
 use rustc_ast::ast;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_attr as attr;
@@ -5495,11 +5497,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // parameter internally, but we don't allow users to specify the
             // parameter's value explicitly, so we have to do some error-
             // checking here.
-            if let Err(GenericArgCountMismatch { reported: Some(ErrorReported), .. }) =
-                AstConv::check_generic_arg_count_for_call(
-                    tcx, span, &generics, &seg, false, // `is_method_call`
-                )
-            {
+            if let GenericArgCountResult {
+                correct: Err(GenericArgCountMismatch { reported: Some(ErrorReported), .. }),
+                ..
+            } = AstConv::check_generic_arg_count_for_call(
+                tcx, span, &generics, &seg, false, // `is_method_call`
+            ) {
                 infer_args_for_err.insert(index);
                 self.set_tainted_by_errors(); // See issue #53251.
             }
@@ -5555,6 +5558,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // escaping late-bound regions, and nor should the base type scheme.
         let ty = tcx.type_of(def_id);
 
+        let arg_count = GenericArgCountResult {
+            explicit_late_bound: ExplicitLateBound::No,
+            correct: if infer_args_for_err.is_empty() {
+                Ok(())
+            } else {
+                Err(GenericArgCountMismatch::default())
+            },
+        };
+
         let substs = self_ctor_substs.unwrap_or_else(|| {
             AstConv::create_substs_for_generic_args(
                 tcx,
@@ -5562,7 +5574,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 &[][..],
                 has_self,
                 self_ty,
-                infer_args_for_err.is_empty(),
+                arg_count,
                 // Provide the generic args, and whether types should be inferred.
                 |def_id| {
                     if let Some(&PathSeg(_, index)) =
