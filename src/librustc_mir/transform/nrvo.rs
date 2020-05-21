@@ -44,6 +44,18 @@ impl<'tcx> MirPass<'tcx> for RenameReturnPlace {
             }
         };
 
+        // Sometimes, the return place is assigned a local of a different but coercable type, for
+        // example `&T` instead of `&mut T`. Overwriting the `LocalInfo` for the return place would
+        // result in it having an incorrect type. Although this doesn't seem to cause a problem in
+        // codegen, bail out anyways since it happens so rarely.
+        let ret_ty = body.local_decls[mir::RETURN_PLACE].ty;
+        let assigned_ty = body.local_decls[returned_local].ty;
+        if ret_ty != assigned_ty {
+            debug!("`{:?}` was eligible for NRVO but for type mismatch", src.def_id());
+            debug!("typeof(_0) != typeof({:?}); {:?} != {:?}", returned_local, ret_ty, assigned_ty);
+            return;
+        }
+
         debug!(
             "`{:?}` was eligible for NRVO, making {:?} the return place",
             src.def_id(),
@@ -60,7 +72,6 @@ impl<'tcx> MirPass<'tcx> for RenameReturnPlace {
         // Overwrite the debuginfo of `_0` with that of the renamed local.
         let (renamed_decl, ret_decl) =
             body.local_decls.pick2_mut(returned_local, mir::RETURN_PLACE);
-        debug_assert_eq!(ret_decl.ty, renamed_decl.ty);
         ret_decl.clone_from(renamed_decl);
 
         // The return place is always mutable.
