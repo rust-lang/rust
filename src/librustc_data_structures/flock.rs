@@ -7,18 +7,22 @@
 #![allow(non_camel_case_types)]
 #![allow(nonstandard_style)]
 
+use std::fs::{File, OpenOptions};
 use std::io;
 use std::path::Path;
 
 cfg_if! {
-    if #[cfg(unix)] {
-        use std::ffi::{CString, OsStr};
-        use std::mem;
+    // We use `flock` rather than `fcntl` on Linux, because WSL1 does not support
+    // `fcntl`-style advisory locks properly (rust-lang/rust#72157).
+    //
+    // For other Unix targets we still use `fcntl` because it's more portable than
+    // `flock`.
+    if #[cfg(target_os = "linux")] {
         use std::os::unix::prelude::*;
 
         #[derive(Debug)]
         pub struct Lock {
-            fd: libc::c_int,
+            _file: File,
         }
 
         impl Lock {
@@ -27,22 +31,55 @@ cfg_if! {
                        create: bool,
                        exclusive: bool)
                        -> io::Result<Lock> {
-                let os: &OsStr = p.as_ref();
-                let buf = CString::new(os.as_bytes()).unwrap();
-                let open_flags = if create {
-                    libc::O_RDWR | libc::O_CREAT
+                let file = OpenOptions::new()
+                    .read(true)
+                    .write(true)
+                    .create(create)
+                    .mode(libc::S_IRWXU as u32)
+                    .open(p)?;
+
+                let mut operation = if exclusive {
+                    libc::LOCK_EX
                 } else {
-                    libc::O_RDWR
+                    libc::LOCK_SH
                 };
-
-                let fd = unsafe {
-                    libc::open(buf.as_ptr(), open_flags,
-                               libc::S_IRWXU as libc::c_int)
-                };
-
-                if fd < 0 {
-                    return Err(io::Error::last_os_error());
+                if !wait {
+                    operation |= libc::LOCK_NB
                 }
+
+                let ret = unsafe { libc::flock(file.as_raw_fd(), operation) };
+                if ret == -1 {
+                    Err(io::Error::last_os_error())
+                } else {
+                    Ok(Lock { _file: file })
+                }
+            }
+        }
+
+        // Note that we don't need a Drop impl to execute `flock(fd, LOCK_UN)`. Lock acquired by
+        // `flock` is associated with the file descriptor and closing the file release it
+        // automatically.
+    } else if #[cfg(unix)] {
+        use std::mem;
+        use std::os::unix::prelude::*;
+
+        #[derive(Debug)]
+        pub struct Lock {
+            file: File,
+        }
+
+        impl Lock {
+            pub fn new(p: &Path,
+                       wait: bool,
+                       create: bool,
+                       exclusive: bool)
+                       -> io::Result<Lock> {
+                let file = OpenOptions::new()
+                    .read(true)
+                    .write(true)
+                    .create(create)
+                    .mode(libc::S_IRWXU as u32)
+                    .open(p)?;
 
                 let lock_type = if exclusive {
                     libc::F_WRLCK
@@ -58,14 +95,12 @@ cfg_if! {
 
                 let cmd = if wait { libc::F_SETLKW } else { libc::F_SETLK };
                 let ret = unsafe {
-                    libc::fcntl(fd, cmd, &flock)
+                    libc::fcntl(file.as_raw_fd(), cmd, &flock)
                 };
                 if ret == -1 {
-                    let err = io::Error::last_os_error();
-                    unsafe { libc::close(fd); }
-                    Err(err)
+                    Err(io::Error::last_os_error())
                 } else {
-                    Ok(Lock { fd })
+                    Ok(Lock { file })
                 }
             }
         }
@@ -79,15 +114,13 @@ cfg_if! {
                 flock.l_len = 0;
 
                 unsafe {
-                    libc::fcntl(self.fd, libc::F_SETLK, &flock);
-                    libc::close(self.fd);
+                    libc::fcntl(self.file.as_raw_fd(), libc::F_SETLK, &flock);
                 }
             }
         }
     } else if #[cfg(windows)] {
         use std::mem;
         use std::os::windows::prelude::*;
-        use std::fs::{File, OpenOptions};
 
         use winapi::um::minwinbase::{OVERLAPPED, LOCKFILE_FAIL_IMMEDIATELY, LOCKFILE_EXCLUSIVE_LOCK};
         use winapi::um::fileapi::LockFileEx;
