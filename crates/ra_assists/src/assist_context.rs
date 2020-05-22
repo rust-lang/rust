@@ -181,7 +181,7 @@ impl Assists {
         if !self.resolve {
             return None;
         }
-        let mut director = AssistDirector::new();
+        let mut director = AssistDirector::default();
         f(&mut director);
         let changes = director.finish();
         let file_edits: Vec<SourceFileEdit> =
@@ -296,10 +296,6 @@ pub(crate) struct AssistDirector {
 }
 
 impl AssistDirector {
-    fn new() -> AssistDirector {
-        AssistDirector { builders: FxHashMap::default() }
-    }
-
     pub(crate) fn perform(&mut self, file_id: FileId, f: impl FnOnce(&mut AssistBuilder)) {
         let mut builder = self.builders.entry(file_id).or_insert(AssistBuilder::new(file_id));
         f(&mut builder);
@@ -310,5 +306,11 @@ impl AssistDirector {
             .into_iter()
             .map(|(_, builder)| builder.finish())
             .collect::<Vec<SourceChange>>()
+    }
+}
+
+impl Default for AssistDirector {
+    fn default() -> Self {
+        AssistDirector { builders: FxHashMap::default() }
     }
 }
