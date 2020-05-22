@@ -6,7 +6,6 @@ use crate::back::profiling::{
 use crate::base;
 use crate::common;
 use crate::consts;
-use crate::context::all_outputs_are_pic_executables;
 use crate::llvm::{self, DiagnosticInfo, PassManager, SMDiagnostic};
 use crate::llvm_util;
 use crate::type_::Type;
@@ -150,7 +149,6 @@ pub fn target_machine_factory(
     let features = features.join(",");
     let features = CString::new(features).unwrap();
     let abi = SmallCStr::new(&sess.target.target.options.llvm_abiname);
-    let pic_is_pie = all_outputs_are_pic_executables(sess);
     let trap_unreachable = sess.target.target.options.trap_unreachable;
     let emit_stack_size_section = sess.opts.debugging_opts.emit_stack_sizes;
 
@@ -174,7 +172,6 @@ pub fn target_machine_factory(
                 reloc_model,
                 opt_level,
                 use_softfp,
-                pic_is_pie,
                 ffunction_sections,
                 fdata_sections,
                 trap_unreachable,

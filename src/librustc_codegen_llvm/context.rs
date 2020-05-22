@@ -97,17 +97,6 @@ fn to_llvm_tls_model(tls_model: TlsModel) -> llvm::ThreadLocalMode {
     }
 }
 
-/// PIE is potentially more effective than PIC, but can only be used in executables.
-/// If all our outputs are executables, then we can relax PIC to PIE when producing object code.
-/// If the list of crate types is not yet known we conservatively return `false`.
-pub fn all_outputs_are_pic_executables(sess: &Session) -> bool {
-    sess.relocation_model() == RelocModel::Pic
-        && sess
-            .crate_types
-            .try_get()
-            .map_or(false, |crate_types| crate_types.iter().all(|ty| *ty == CrateType::Executable))
-}
-
 fn strip_function_ptr_alignment(data_layout: String) -> String {
     // FIXME: Make this more general.
     data_layout.replace("-Fi8-", "-")
@@ -183,10 +172,11 @@ pub unsafe fn create_module(
 
     if sess.relocation_model() == RelocModel::Pic {
         llvm::LLVMRustSetModulePICLevel(llmod);
-    }
-
-    if all_outputs_are_pic_executables(sess) {
-        llvm::LLVMRustSetModulePIELevel(llmod);
+        // PIE is potentially more effective than PIC, but can only be used in executables.
+        // If all our outputs are executables, then we can relax PIC to PIE.
+        if sess.crate_types.get().iter().all(|ty| *ty == CrateType::Executable) {
+            llvm::LLVMRustSetModulePIELevel(llmod);
+        }
     }
 
     // If skipping the PLT is enabled, we need to add some module metadata
