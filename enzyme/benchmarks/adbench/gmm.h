@@ -157,7 +157,9 @@ int main(const int argc, const char* argv[]) {
     const auto replicate_point = (argc > 9 && string(argv[9]) == "-rep");
     const GMMParameters params = { replicate_point };
 
-    std::vector<std::string> paths = { "1k/gmm_d10_K100.txt" };
+    std::vector<std::string> paths;// = { "1k/gmm_d10_K100.txt" };
+
+    getTests(paths);
 
     for (auto path : paths) {
         printf("starting path %s\n", path.c_str());
@@ -199,7 +201,6 @@ int main(const int argc, const char* argv[]) {
     {
       struct timeval start, end;
       gettimeofday(&start, NULL);
-      printf("starting enzyme calc\n");
       calculate_jacobian<dgmm_objective>(input, result);
       gettimeofday(&end, NULL);
       printf("++ Enzyme combined %0.6f\n", tdiff(&start, &end));

@@ -32,4 +32,40 @@ typedef struct
 #define BA_RAD_IDX 9
 
 //# Flexion, Abduction, Twist = 'xzy'
-#define HAND_XYZ_TO_ROTATIONAL_PARAMETERIZATION {0, 2, 1} 
+#define HAND_XYZ_TO_ROTATIONAL_PARAMETERIZATION {0, 2, 1}
+
+#ifdef __cplusplus
+#include <vector>
+#include <dirent.h>
+#include <string>
+#include <string.h>
+
+inline bool ends_with(std::string const & value, std::string const & ending)
+{
+    if (ending.size() > value.size()) return false;
+    return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
+}
+
+void getTests(std::vector<std::string> &tests, const char *name="data", std::string indent="") {
+    DIR *dir;
+    struct dirent *entry;
+
+    if (!(dir = opendir(name)))
+        return;
+
+    while ((entry = readdir(dir)) != NULL) {
+        if (entry->d_type == DT_DIR) {
+            char path[1024];
+            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+                continue;
+            snprintf(path, sizeof(path), "%s/%s", name, entry->d_name);
+            //printf("%*s[%s]\n", indent, "", entry->d_name);
+            getTests(tests, path, indent + entry->d_name + "/");
+        } else if (ends_with(std::string(entry->d_name),".txt")){
+            tests.push_back(indent + entry->d_name);
+        }
+    }
+    closedir(dir);
+}
+
+#endif

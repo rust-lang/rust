@@ -11,7 +11,7 @@ clean:
 	clang++ $(BENCH) $^ -O2 -fno-exceptions -fno-vectorize -fno-slp-vectorize -ffast-math -fno-unroll-loops -o $@ -S -emit-llvm
 
 %-raw.ll: %-unopt.ll
-	opt $^ $(LOAD) -indvars -enzyme -o $@ -S
+	opt $^ $(LOAD) -indvars -enzyme -mem2reg -early-cse -instcombine -adce -simplifycfg -loop-deletion -simplifycfg -o $@ -S
 
 %-opt.ll: %-raw.ll
 	opt $^ -O2 -indvars -o $@ -S

@@ -265,8 +265,8 @@ void dgmm_objective(int d, int k, int n, const double *alphas, double *
             diffe_const, n,
             diffe_dup, alphas, alphasb,
             diffe_dup, means, meansb,
-            diffe_const, x,
             diffe_dup, icf, icfb,
+            diffe_const, x,
             diffe_const, wishart,
             diffe_dupnoneed, err, errb);
 }
