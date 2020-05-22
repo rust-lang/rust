@@ -79,14 +79,14 @@ pub(crate) fn rust_code_markup_with_doc(
     doc: Option<&str>,
     mod_path: Option<&str>,
 ) -> String {
-    let mut buf = "".to_owned();
+    let mut buf = String::new();
 
     if let Some(mod_path) = mod_path {
         if !mod_path.is_empty() {
-            format_to!(buf, "{}\n___\n", mod_path);
+            format_to!(buf, "{}\n___\n\n", mod_path);
         }
     }
-    format_to!(buf, "```rust\n\n{}\n```", code);
+    format_to!(buf, "```rust\n{}\n```", code);
 
     if let Some(doc) = doc {
         format_to!(buf, "\n\n{}", doc);
