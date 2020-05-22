@@ -1,12 +1,13 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_fs_util::fix_windows_verbatim_for_gcc;
 use rustc_hir::def_id::CrateNum;
-use rustc_middle::middle::cstore::{EncodedMetadata, LibSource, NativeLibrary, NativeLibraryKind};
+use rustc_middle::middle::cstore::{EncodedMetadata, LibSource, NativeLib};
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_session::config::{self, CFGuard, CrateType, DebugInfo};
 use rustc_session::config::{OutputFilenames, OutputType, PrintRequest, Sanitizer};
 use rustc_session::output::{check_file_is_writeable, invalid_output_for_target, out_filename};
 use rustc_session::search_paths::PathKind;
+use rustc_session::utils::NativeLibKind;
 /// For all the linkers we support, and information they might
 /// need out of the shared crate context before we get rid of it.
 use rustc_session::{filesearch, Session};
@@ -183,6 +184,7 @@ fn get_linker(sess: &Session, linker: &Path, flavor: LinkerFlavor) -> Command {
                     "x86_64" => Some("x64".to_string()),
                     "x86" => Some("x86".to_string()),
                     "aarch64" => Some("arm64".to_string()),
+                    "arm" => Some("arm".to_string()),
                     _ => None,
                 };
                 if let Some(ref a) = arch {
@@ -327,11 +329,12 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
     // metadata of the rlib we're generating somehow.
     for lib in codegen_results.crate_info.used_libraries.iter() {
         match lib.kind {
-            NativeLibraryKind::NativeStatic => {}
-            NativeLibraryKind::NativeStaticNobundle
-            | NativeLibraryKind::NativeFramework
-            | NativeLibraryKind::NativeRawDylib
-            | NativeLibraryKind::NativeUnknown => continue,
+            NativeLibKind::StaticBundle => {}
+            NativeLibKind::StaticNoBundle
+            | NativeLibKind::Dylib
+            | NativeLibKind::Framework
+            | NativeLibKind::RawDylib
+            | NativeLibKind::Unspecified => continue,
         }
         if let Some(name) = lib.name {
             ab.add_native_library(name);
@@ -430,7 +433,7 @@ fn link_staticlib<'a, B: ArchiveBuilder<'a>>(
         // object files come from where and selectively skip them.
         let skip_object_files = native_libs
             .iter()
-            .any(|lib| lib.kind == NativeLibraryKind::NativeStatic && !relevant_lib(sess, lib));
+            .any(|lib| lib.kind == NativeLibKind::StaticBundle && !relevant_lib(sess, lib));
         ab.add_rlib(
             path,
             &name.as_str(),
@@ -907,26 +910,28 @@ enum RlibFlavor {
     StaticlibBase,
 }
 
-fn print_native_static_libs(sess: &Session, all_native_libs: &[NativeLibrary]) {
+fn print_native_static_libs(sess: &Session, all_native_libs: &[NativeLib]) {
     let lib_args: Vec<_> = all_native_libs
         .iter()
         .filter(|l| relevant_lib(sess, l))
         .filter_map(|lib| {
             let name = lib.name?;
             match lib.kind {
-                NativeLibraryKind::NativeStaticNobundle | NativeLibraryKind::NativeUnknown => {
+                NativeLibKind::StaticNoBundle
+                | NativeLibKind::Dylib
+                | NativeLibKind::Unspecified => {
                     if sess.target.target.options.is_like_msvc {
                         Some(format!("{}.lib", name))
                     } else {
                         Some(format!("-l{}", name))
                     }
                 }
-                NativeLibraryKind::NativeFramework => {
+                NativeLibKind::Framework => {
                     // ld-only syntax, since there are no frameworks in MSVC
                     Some(format!("-framework {}", name))
                 }
                 // These are included, no need to print them
-                NativeLibraryKind::NativeStatic | NativeLibraryKind::NativeRawDylib => None,
+                NativeLibKind::StaticBundle | NativeLibKind::RawDylib => None,
             }
         })
         .collect();
@@ -1696,11 +1701,11 @@ fn add_local_native_libraries(
             None => continue,
         };
         match lib.kind {
-            NativeLibraryKind::NativeUnknown => cmd.link_dylib(name),
-            NativeLibraryKind::NativeFramework => cmd.link_framework(name),
-            NativeLibraryKind::NativeStaticNobundle => cmd.link_staticlib(name),
-            NativeLibraryKind::NativeStatic => cmd.link_whole_staticlib(name, &search_path),
-            NativeLibraryKind::NativeRawDylib => {
+            NativeLibKind::Dylib | NativeLibKind::Unspecified => cmd.link_dylib(name),
+            NativeLibKind::Framework => cmd.link_framework(name),
+            NativeLibKind::StaticNoBundle => cmd.link_staticlib(name),
+            NativeLibKind::StaticBundle => cmd.link_whole_staticlib(name, &search_path),
+            NativeLibKind::RawDylib => {
                 // FIXME(#58713): Proper handling for raw dylibs.
                 bug!("raw_dylib feature not yet implemented");
             }
@@ -1890,7 +1895,7 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
         let native_libs = &codegen_results.crate_info.native_libraries[&cnum];
         let skip_native = native_libs
             .iter()
-            .any(|lib| lib.kind == NativeLibraryKind::NativeStatic && !relevant_lib(sess, lib));
+            .any(|lib| lib.kind == NativeLibKind::StaticBundle && !relevant_lib(sess, lib));
 
         if (!are_upstream_rust_objects_already_included(sess)
             || ignored_for_lto(sess, &codegen_results.crate_info, cnum))
@@ -2032,9 +2037,9 @@ fn add_upstream_native_libraries(
                 continue;
             }
             match lib.kind {
-                NativeLibraryKind::NativeUnknown => cmd.link_dylib(name),
-                NativeLibraryKind::NativeFramework => cmd.link_framework(name),
-                NativeLibraryKind::NativeStaticNobundle => {
+                NativeLibKind::Dylib | NativeLibKind::Unspecified => cmd.link_dylib(name),
+                NativeLibKind::Framework => cmd.link_framework(name),
+                NativeLibKind::StaticNoBundle => {
                     // Link "static-nobundle" native libs only if the crate they originate from
                     // is being linked statically to the current crate.  If it's linked dynamically
                     // or is an rlib already included via some other dylib crate, the symbols from
@@ -2046,8 +2051,8 @@ fn add_upstream_native_libraries(
                 // ignore statically included native libraries here as we've
                 // already included them when we included the rust library
                 // previously
-                NativeLibraryKind::NativeStatic => {}
-                NativeLibraryKind::NativeRawDylib => {
+                NativeLibKind::StaticBundle => {}
+                NativeLibKind::RawDylib => {
                     // FIXME(#58713): Proper handling for raw dylibs.
                     bug!("raw_dylib feature not yet implemented");
                 }
@@ -2056,7 +2061,7 @@ fn add_upstream_native_libraries(
     }
 }
 
-fn relevant_lib(sess: &Session, lib: &NativeLibrary) -> bool {
+fn relevant_lib(sess: &Session, lib: &NativeLib) -> bool {
     match lib.cfg {
         Some(ref cfg) => rustc_attr::cfg_matches(cfg, &sess.parse_sess, None),
         None => true,

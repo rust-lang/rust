@@ -27,3 +27,7 @@ extern "C" {}
 #[link(name = "gcc_eh", kind = "static-nobundle", cfg(target_feature = "crt-static"))]
 #[link(name = "gcc_s", cfg(not(target_feature = "crt-static")))]
 extern "C" {}
+
+#[cfg(all(target_vendor = "fortanix", target_env = "sgx"))]
+#[link(name = "unwind", kind = "static-nobundle")]
+extern "C" {}
