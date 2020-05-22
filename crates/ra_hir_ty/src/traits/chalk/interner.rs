@@ -138,6 +138,59 @@ impl chalk_ir::interner::Interner for Interner {
         })
     }
 
+    fn debug_fn_def_id(
+        fn_def_id: chalk_ir::FnDefId<Self>,
+        fmt: &mut fmt::Formatter<'_>,
+    ) -> Option<fmt::Result> {
+        tls::with_current_program(|prog| Some(prog?.debug_fn_def_id(fn_def_id, fmt)))
+    }
+    fn debug_const(
+        constant: &chalk_ir::Const<Self>,
+        fmt: &mut fmt::Formatter<'_>,
+    ) -> Option<fmt::Result> {
+        tls::with_current_program(|prog| Some(prog?.debug_const(constant, fmt)))
+    }
+    fn debug_variable_kinds(
+        variable_kinds: &chalk_ir::VariableKinds<Self>,
+        fmt: &mut fmt::Formatter<'_>,
+    ) -> Option<fmt::Result> {
+        tls::with_current_program(|prog| Some(prog?.debug_variable_kinds(variable_kinds, fmt)))
+    }
+    fn debug_variable_kinds_with_angles(
+        variable_kinds: &chalk_ir::VariableKinds<Self>,
+        fmt: &mut fmt::Formatter<'_>,
+    ) -> Option<fmt::Result> {
+        tls::with_current_program(|prog| {
+            Some(prog?.debug_variable_kinds_with_angles(variable_kinds, fmt))
+        })
+    }
+    fn debug_canonical_var_kinds(
+        canonical_var_kinds: &chalk_ir::CanonicalVarKinds<Self>,
+        fmt: &mut fmt::Formatter<'_>,
+    ) -> Option<fmt::Result> {
+        tls::with_current_program(|prog| {
+            Some(prog?.debug_canonical_var_kinds(canonical_var_kinds, fmt))
+        })
+    }
+    fn debug_program_clause(
+        clause: &chalk_ir::ProgramClause<Self>,
+        fmt: &mut fmt::Formatter<'_>,
+    ) -> Option<fmt::Result> {
+        tls::with_current_program(|prog| Some(prog?.debug_program_clause(clause, fmt)))
+    }
+    fn debug_program_clauses(
+        clauses: &chalk_ir::ProgramClauses<Self>,
+        fmt: &mut fmt::Formatter<'_>,
+    ) -> Option<fmt::Result> {
+        tls::with_current_program(|prog| Some(prog?.debug_program_clauses(clauses, fmt)))
+    }
+    fn debug_quantified_where_clauses(
+        clauses: &chalk_ir::QuantifiedWhereClauses<Self>,
+        fmt: &mut fmt::Formatter<'_>,
+    ) -> Option<fmt::Result> {
+        tls::with_current_program(|prog| Some(prog?.debug_quantified_where_clauses(clauses, fmt)))
+    }
+
     fn intern_ty(&self, ty: chalk_ir::TyData<Self>) -> Box<chalk_ir::TyData<Self>> {
         Box::new(ty)
     }

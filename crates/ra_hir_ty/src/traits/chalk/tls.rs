@@ -244,6 +244,65 @@ impl DebugContext<'_> {
     ) -> Result<(), fmt::Error> {
         write!(fmt, "{:?}", separator_trait_ref.debug(&Interner))
     }
+
+    pub fn debug_fn_def_id(
+        &self,
+        _fn_def_id: chalk_ir::FnDefId<Interner>,
+        fmt: &mut fmt::Formatter<'_>,
+    ) -> Result<(), fmt::Error> {
+        write!(fmt, "fn")
+    }
+
+    pub fn debug_const(
+        &self,
+        _constant: &chalk_ir::Const<Interner>,
+        fmt: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result {
+        write!(fmt, "const")
+    }
+
+    pub fn debug_variable_kinds(
+        &self,
+        variable_kinds: &chalk_ir::VariableKinds<Interner>,
+        fmt: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result {
+        write!(fmt, "{:?}", variable_kinds.as_slice(&Interner))
+    }
+    pub fn debug_variable_kinds_with_angles(
+        &self,
+        variable_kinds: &chalk_ir::VariableKinds<Interner>,
+        fmt: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result {
+        write!(fmt, "{:?}", variable_kinds.inner_debug(&Interner))
+    }
+    pub fn debug_canonical_var_kinds(
+        &self,
+        canonical_var_kinds: &chalk_ir::CanonicalVarKinds<Interner>,
+        fmt: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result {
+        write!(fmt, "{:?}", canonical_var_kinds.as_slice(&Interner))
+    }
+    pub fn debug_program_clause(
+        &self,
+        clause: &chalk_ir::ProgramClause<Interner>,
+        fmt: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result {
+        write!(fmt, "{:?}", clause.data(&Interner))
+    }
+    pub fn debug_program_clauses(
+        &self,
+        clauses: &chalk_ir::ProgramClauses<Interner>,
+        fmt: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result {
+        write!(fmt, "{:?}", clauses.as_slice(&Interner))
+    }
+    pub fn debug_quantified_where_clauses(
+        &self,
+        clauses: &chalk_ir::QuantifiedWhereClauses<Interner>,
+        fmt: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result {
+        write!(fmt, "{:?}", clauses.as_slice(&Interner))
+    }
 }
 
 mod unsafe_tls {
