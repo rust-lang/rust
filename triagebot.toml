@@ -37,5 +37,9 @@ label = "ICEBreaker-Cleanup-Crew"
 [prioritize]
 label = "I-prioritize"
 prioritize_on = ["regression-from-stable-to-stable", "regression-from-stable-to-beta", "regression-from-stable-to-nightly"]
-priority_labels = "P-*"
+exclude_labels = [
+    "P-*",
+    "T-infra",
+    "T-release",
+]
 zulip_stream = 227806
