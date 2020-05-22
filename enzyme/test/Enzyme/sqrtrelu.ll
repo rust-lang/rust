@@ -58,8 +58,12 @@ attributes #3 = { nounwind }
 ; CHECK-NEXT:   %[[mul:.+]] = fmul fast double %0, %x
 ; CHECK-NEXT:   %[[sqrt:.+]] = call fast double @llvm.sqrt.f64(double %[[mul]])
 ; CHECK-NEXT:   %[[div:.+]] = fdiv fast double 5.000000e-01, %[[sqrt]]
-; CHECK-NEXT:   %[[dmul0:.+]] = fmul fast double %[[div]], %x
-; CHECK-NEXT:   %[[dmul1:.+]] = fmul fast double %[[div]], %[[dsin]]
+
+; CHECK-NEXT:   %[[sqrtzero:.+]] = fcmp fast oeq double %mul_unwrap.i, 0.000000e+00
+; CHECK-NEXT:   %[[dsqrt:.+]] = select{{( fast)?}} i1 %[[sqrtzero]], double 0.000000e+00, double %[[div]]
+
+; CHECK-NEXT:   %[[dmul0:.+]] = fmul fast double %[[dsqrt]], %x
+; CHECK-NEXT:   %[[dmul1:.+]] = fmul fast double %[[dsqrt]], %[[dsin]]
 ; CHECK-NEXT:   %[[dcos:.+]] = call fast double @llvm.cos.f64(double %x)
 ; CHECK-NEXT:   %[[fmul:.+]] = fmul fast double %[[dmul0]], %[[dcos]]
 ; CHECK-NEXT:   %[[res:.+]] = fadd fast double %[[dmul1]], %[[fmul]]

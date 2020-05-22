@@ -103,8 +103,8 @@ attributes #8 = { noreturn nounwind }
 ; CHECK-NEXT:   %anot1_ = xor i1 %cmp8_unwrap, true
 ; CHECK-NEXT:   %andVal = and i1 %lcmp.mod_unwrap, %anot1_
 ; CHECK-NEXT:   %bnot1_ = xor i1 %lcmp.mod_unwrap, true
-; CHECK-NEXT:   %0 = select i1 %bnot1_, double %differeturn, double 0.000000e+00
-; CHECK-NEXT:   %1 = select i1 %andVal, double %differeturn, double 0.000000e+00
+; CHECK-NEXT:   %0 = select{{( fast)?}} i1 %bnot1_, double %differeturn, double 0.000000e+00
+; CHECK-NEXT:   %1 = select{{( fast)?}} i1 %andVal, double %differeturn, double 0.000000e+00
 ; CHECK-NEXT:   br i1 %cmp8_unwrap, label %invertentry, label %staging
 
 ; CHECK: invertentry:                                      ; preds = %invertfor.body, %entry
@@ -125,7 +125,7 @@ attributes #8 = { noreturn nounwind }
 ; CHECK-NEXT:   %6 = fmul fast double %5, %conv_unwrap
 ; CHECK-NEXT:   %7 = fadd fast double %"x'de.1", %6
 ; CHECK-NEXT:   %8 = icmp eq i64 %"iv'ac.0", 0
-; CHECK-NEXT:   %9 = select i1 %8, double 0.000000e+00, double %1
+; CHECK-NEXT:   %9 = select{{( fast)?}} i1 %8, double 0.000000e+00, double %1
 ; CHECK-NEXT:   br i1 %8, label %invertentry, label %incinvertfor.body
 
 ; CHECK: incinvertfor.body:                                ; preds = %invertfor.body

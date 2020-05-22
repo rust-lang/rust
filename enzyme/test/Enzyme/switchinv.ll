@@ -103,8 +103,8 @@ attributes #8 = { noreturn nounwind }
 ; CHECK-NEXT:   %1 = icmp eq i64 0, %SINCOSN
 ; CHECK-NEXT:   %2 = icmp eq i64 1, %SINCOSN
 ; CHECK-NEXT:   %3 = or i1 %1, %2
-; CHECK-NEXT:   %4 = select i1 %3, double 0.000000e+00, double %differeturn
-; CHECK-NEXT:   %5 = select i1 %0, double %differeturn, double 0.000000e+00
+; CHECK-NEXT:   %4 = select{{( fast)?}} i1 %3, double 0.000000e+00, double %differeturn
+; CHECK-NEXT:   %5 = select{{( fast)?}} i1 %0, double %differeturn, double 0.000000e+00
 ; CHECK-NEXT:   %switch = icmp ult i64 %SINCOSN, 2
 ; CHECK-NEXT:   br i1 %switch, label %invertentry, label %invertfor.cond.cleanup.loopexit
 
@@ -125,7 +125,7 @@ attributes #8 = { noreturn nounwind }
 ; CHECK-NEXT:   %10 = fmul fast double %9, %conv_unwrap
 ; CHECK-NEXT:   %11 = fadd fast double %"x'de.1", %10
 ; CHECK-NEXT:   %12 = icmp eq i64 %"iv'ac.0", 0
-; CHECK-NEXT:   %13 = select i1 %12, double 0.000000e+00, double %4
+; CHECK-NEXT:   %13 = select{{( fast)?}} i1 %12, double 0.000000e+00, double %4
 ; CHECK-NEXT:   br i1 %12, label %invertentry, label %incinvertfor.body
 
 ; CHECK: incinvertfor.body:                                ; preds = %invertfor.body
