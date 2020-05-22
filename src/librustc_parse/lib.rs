@@ -14,7 +14,9 @@ use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Diagnostic, FatalError, Level, PResult};
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::kw;
-use rustc_span::{FileName, SourceFile, Span};
+use rustc_span::{FileName, SourceFile, Span, DUMMY_SP};
+
+use smallvec::SmallVec;
 
 use std::mem;
 use std::path::Path;
