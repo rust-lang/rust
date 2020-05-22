@@ -145,6 +145,7 @@ fn map_rust_child_diagnostic(
     } else {
         MappedRustChildDiagnostic::SuggestedFix(lsp_ext::CodeAction {
             title: rd.message.clone(),
+            group: None,
             kind: Some("quickfix".to_string()),
             edit: Some(lsp_ext::SnippetWorkspaceEdit {
                 // FIXME: there's no good reason to use edit_map here....
