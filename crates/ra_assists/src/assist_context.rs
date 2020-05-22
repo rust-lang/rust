@@ -307,9 +307,7 @@ impl AssistDirector {
     }
 
     fn finish(mut self) -> Vec<SourceChange> {
-        for (_, builder) in
-            self.builders.into_iter().collect::<Vec<(FileId, AssistBuilder)>>()
-        {
+        for (_, builder) in self.builders.into_iter().collect::<Vec<(FileId, AssistBuilder)>>() {
             self.source_changes.push(builder.finish());
         }
         self.source_changes
