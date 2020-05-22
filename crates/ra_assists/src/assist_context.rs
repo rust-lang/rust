@@ -292,13 +292,12 @@ impl AssistBuilder {
 }
 
 pub(crate) struct AssistDirector {
-    source_changes: Vec<SourceChange>,
     builders: FxHashMap<FileId, AssistBuilder>,
 }
 
 impl AssistDirector {
     fn new() -> AssistDirector {
-        AssistDirector { source_changes: vec![], builders: FxHashMap::default() }
+        AssistDirector { builders: FxHashMap::default() }
     }
 
     pub(crate) fn perform(&mut self, file_id: FileId, f: impl FnOnce(&mut AssistBuilder)) {
@@ -306,10 +305,10 @@ impl AssistDirector {
         f(&mut builder);
     }
 
-    fn finish(mut self) -> Vec<SourceChange> {
-        for (_, builder) in self.builders.into_iter().collect::<Vec<(FileId, AssistBuilder)>>() {
-            self.source_changes.push(builder.finish());
-        }
-        self.source_changes
+    fn finish(self) -> Vec<SourceChange> {
+        self.builders
+            .into_iter()
+            .map(|(_, builder)| builder.finish())
+            .collect::<Vec<SourceChange>>()
     }
 }

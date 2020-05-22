@@ -59,8 +59,8 @@ pub(crate) fn extract_struct_from_enum(acc: &mut Assists, ctx: &AssistContext) -
             let res = definition.find_usages(&ctx.db, None);
             let module_def = mod_def_for_target_module(ctx, &enum_name);
             let start_offset = variant.parent_enum().syntax().text_range().start();
-            let mut seen_files_map: FxHashSet<Module> = FxHashSet::default();
-            seen_files_map.insert(module_def.module(ctx.db).unwrap());
+            let mut visited_modules_set: FxHashSet<Module> = FxHashSet::default();
+            visited_modules_set.insert(module_def.module(ctx.db).unwrap());
             for reference in res {
                 let source_file = ctx.sema.parse(reference.file_range.file_id);
                 update_reference(
@@ -69,7 +69,7 @@ pub(crate) fn extract_struct_from_enum(acc: &mut Assists, ctx: &AssistContext) -
                     reference,
                     &source_file,
                     &module_def,
-                    &mut seen_files_map,
+                    &mut visited_modules_set,
                 );
             }
             extract_struct_def(
@@ -101,7 +101,7 @@ fn mod_def_for_target_module(ctx: &AssistContext, enum_name: &str) -> ModuleDef 
     ImportsLocator::new(ctx.db).find_imports(enum_name).first().unwrap().left().unwrap()
 }
 
-fn insert_use_import(
+fn insert_import(
     ctx: &AssistContext,
     builder: &mut AssistBuilder,
     path: &ast::PathExpr,
@@ -179,7 +179,7 @@ fn update_reference(
     reference: Reference,
     source_file: &SourceFile,
     module_def: &ModuleDef,
-    seen_files_map: &mut FxHashSet<Module>,
+    visited_modules_set: &mut FxHashSet<Module>,
 ) -> Option<()> {
     let path_expr: ast::PathExpr = find_node_at_offset::<ast::PathExpr>(
         source_file.syntax(),
@@ -195,8 +195,8 @@ fn update_reference(
     );
     edit.perform(reference.file_range.file_id, |builder| {
         let module = ctx.sema.scope(&path_expr.syntax()).module().unwrap();
-        if !seen_files_map.contains(&module) {
-            if insert_use_import(
+        if !visited_modules_set.contains(&module) {
+            if insert_import(
                 ctx,
                 builder,
                 &path_expr,
@@ -206,7 +206,7 @@ fn update_reference(
             )
             .is_some()
             {
-                seen_files_map.insert(module);
+                visited_modules_set.insert(module);
             }
         }
         builder.replace(inside_list_range, format!("{}{}", segment, list));
