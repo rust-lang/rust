@@ -56,8 +56,6 @@ enum SubModKind<'a, 'ast> {
     External(PathBuf, DirectoryOwnership, Cow<'ast, ast::Mod>),
     /// `mod foo;` with multiple sources.
     MultiExternal(Vec<(PathBuf, DirectoryOwnership, Cow<'ast, ast::Mod>)>),
-    /// `#[path = "..."] mod foo {}`
-    InternalWithPath(PathBuf),
     /// `mod foo {}`
     Internal(&'a ast::Item),
 }
@@ -173,12 +171,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
             self.find_external_module(item.ident, &item.attrs, sub_mod)
         } else {
             // An internal module (`mod foo { /* ... */ }`);
-            if let Some(path) = find_path_value(&item.attrs) {
-                let path = Path::new(&*path.as_str()).to_path_buf();
-                Ok(Some(SubModKind::InternalWithPath(path)))
-            } else {
-                Ok(Some(SubModKind::Internal(item)))
-            }
+            Ok(Some(SubModKind::Internal(item)))
         }
     }
 
@@ -215,14 +208,6 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
                 let directory = Directory {
                     path: mod_path.parent().unwrap().to_path_buf(),
                     ownership: directory_ownership,
-                };
-                self.visit_sub_mod_after_directory_update(sub_mod, Some(directory))
-            }
-            SubModKind::InternalWithPath(mod_path) => {
-                // All `#[path]` files are treated as though they are a `mod.rs` file.
-                let directory = Directory {
-                    path: mod_path,
-                    ownership: DirectoryOwnership::Owned { relative: None },
                 };
                 self.visit_sub_mod_after_directory_update(sub_mod, Some(directory))
             }
