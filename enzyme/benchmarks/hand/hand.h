@@ -12,15 +12,6 @@ extern "C" {
 
 #include "../mshared/defs.h"
 
-typedef struct
-{
-    int nrows;
-    int ncols;
-    double* data;                   // matrix is stored in data COLUMN MAJOR!!!
-} Matrix;
-
-
-
 // theta: 26 [global rotation, global translation, finger parameters (4*5)]
 // bone_count, bone_names, parents, base_relatives, inverse_base_absolutes,
 // base_positions, weights, triangles, is_mirrored, corresp_count, correspondencies: data measurements and hand model
