@@ -2602,3 +2602,81 @@ fn test(x: &dyn Foo) {
     "###
     );
 }
+
+#[test]
+fn builtin_copy() {
+    assert_snapshot!(
+        infer_with_mismatches(r#"
+#[lang = "copy"]
+trait Copy {}
+
+struct IsCopy;
+impl Copy for IsCopy {}
+struct NotCopy;
+
+trait Test { fn test(&self) -> bool; }
+impl<T: Copy> Test for T {}
+
+fn test() {
+    IsCopy.test();
+    NotCopy.test();
+    (IsCopy, IsCopy).test();
+    (IsCopy, NotCopy).test();
+}
+"#, true),
+        @r###"
+    111..115 'self': &Self
+    167..268 '{     ...t(); }': ()
+    173..179 'IsCopy': IsCopy
+    173..186 'IsCopy.test()': bool
+    192..199 'NotCopy': NotCopy
+    192..206 'NotCopy.test()': {unknown}
+    212..228 '(IsCop...sCopy)': (IsCopy, IsCopy)
+    212..235 '(IsCop...test()': bool
+    213..219 'IsCopy': IsCopy
+    221..227 'IsCopy': IsCopy
+    241..258 '(IsCop...tCopy)': (IsCopy, NotCopy)
+    241..265 '(IsCop...test()': {unknown}
+    242..248 'IsCopy': IsCopy
+    250..257 'NotCopy': NotCopy
+    "###
+    );
+}
+
+#[test]
+fn builtin_sized() {
+    assert_snapshot!(
+        infer_with_mismatches(r#"
+#[lang = "sized"]
+trait Sized {}
+
+trait Test { fn test(&self) -> bool; }
+impl<T: Sized> Test for T {}
+
+fn test() {
+    1u8.test();
+    (*"foo").test(); // not Sized
+    (1u8, 1u8).test();
+    (1u8, *"foo").test(); // not Sized
+}
+"#, true),
+        @r###"
+    57..61 'self': &Self
+    114..229 '{     ...ized }': ()
+    120..123 '1u8': u8
+    120..130 '1u8.test()': bool
+    136..151 '(*"foo").test()': {unknown}
+    137..143 '*"foo"': str
+    138..143 '"foo"': &str
+    170..180 '(1u8, 1u8)': (u8, u8)
+    170..187 '(1u8, ...test()': bool
+    171..174 '1u8': u8
+    176..179 '1u8': u8
+    193..206 '(1u8, *"foo")': (u8, str)
+    193..213 '(1u8, ...test()': {unknown}
+    194..197 '1u8': u8
+    199..205 '*"foo"': str
+    200..205 '"foo"': &str
+    "###
+    );
+}

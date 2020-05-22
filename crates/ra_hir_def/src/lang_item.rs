@@ -73,8 +73,8 @@ pub struct LangItems {
 }
 
 impl LangItems {
-    pub fn target<'a>(&'a self, item: &str) -> Option<&'a LangItemTarget> {
-        self.items.get(item)
+    pub fn target(&self, item: &str) -> Option<LangItemTarget> {
+        self.items.get(item).copied()
     }
 
     /// Salsa query. This will look for lang items in a specific crate.
@@ -163,9 +163,13 @@ impl LangItems {
     ) where
         T: Into<AttrDefId> + Copy,
     {
-        let attrs = db.attrs(item.into());
-        if let Some(lang_item_name) = attrs.by_key("lang").string_value() {
+        if let Some(lang_item_name) = lang_attr(db, item) {
             self.items.entry(lang_item_name.clone()).or_insert_with(|| constructor(item));
         }
     }
+}
+
+pub fn lang_attr(db: &dyn DefDatabase, item: impl Into<AttrDefId> + Copy) -> Option<SmolStr> {
+    let attrs = db.attrs(item.into());
+    attrs.by_key("lang").string_value().cloned()
 }

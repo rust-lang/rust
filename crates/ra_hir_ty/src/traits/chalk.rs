@@ -5,10 +5,14 @@ use log::debug;
 
 use chalk_ir::{
     cast::Cast, fold::shift::Shift, interner::HasInterner, GenericArg, Goal, GoalData,
-    PlaceholderIndex, TypeName, UniverseIndex,
+    PlaceholderIndex, Scalar, TypeName, UniverseIndex,
 };
 
-use hir_def::{AssocContainerId, AssocItemId, GenericDefId, HasModule, Lookup, TypeAliasId};
+use hir_def::{
+    lang_item::{lang_attr, LangItemTarget},
+    type_ref::Mutability,
+    AssocContainerId, AssocItemId, GenericDefId, HasModule, Lookup, TypeAliasId,
+};
 use ra_db::{
     salsa::{InternId, InternKey},
     CrateId,
@@ -16,9 +20,14 @@ use ra_db::{
 
 use super::{builtin, AssocTyValue, Canonical, ChalkContext, Impl, Obligation};
 use crate::{
-    db::HirDatabase, display::HirDisplay, method_resolution::TyFingerprint, utils::generics,
+    db::HirDatabase,
+    display::HirDisplay,
+    method_resolution::TyFingerprint,
+    primitive::{FloatBitness, FloatTy, IntBitness, IntTy, Signedness, Uncertain},
+    utils::generics,
     ApplicationTy, DebruijnIndex, GenericPredicate, ProjectionTy, Substs, TraitRef, Ty, TypeCtor,
 };
+use chalk_rust_ir::WellKnownTrait;
 
 pub(super) mod tls;
 
@@ -330,6 +339,9 @@ impl ToChalk for Ty {
     fn to_chalk(self, db: &dyn HirDatabase) -> chalk_ir::Ty<Interner> {
         match self {
             Ty::Apply(apply_ty) => {
+                if let TypeCtor::Ref(m) = apply_ty.ctor {
+                    return ref_to_chalk(db, m, apply_ty.parameters);
+                }
                 let name = apply_ty.ctor.to_chalk(db);
                 let substitution = apply_ty.parameters.to_chalk(db);
                 chalk_ir::ApplicationTy { name, substitution }.cast(&Interner).intern(&Interner)
@@ -373,6 +385,7 @@ impl ToChalk for Ty {
         match chalk.data(&Interner).clone() {
             chalk_ir::TyData::Apply(apply_ty) => match apply_ty.name {
                 TypeName::Error => Ty::Unknown,
+                TypeName::Ref(m) => ref_from_chalk(db, m, apply_ty.substitution),
                 _ => {
                     let ctor = from_chalk(db, apply_ty.name);
                     let parameters = from_chalk(db, apply_ty.substitution);
@@ -407,6 +420,41 @@ impl ToChalk for Ty {
             }
         }
     }
+}
+
+const LIFETIME_PLACEHOLDER: PlaceholderIndex =
+    PlaceholderIndex { ui: UniverseIndex::ROOT, idx: usize::MAX };
+
+/// We currently don't model lifetimes, but Chalk does. So, we have to insert a
+/// fake lifetime here, because Chalks built-in logic may expect it to be there.
+fn ref_to_chalk(
+    db: &dyn HirDatabase,
+    mutability: Mutability,
+    subst: Substs,
+) -> chalk_ir::Ty<Interner> {
+    let arg = subst[0].clone().to_chalk(db);
+    let lifetime = LIFETIME_PLACEHOLDER.to_lifetime(&Interner);
+    chalk_ir::ApplicationTy {
+        name: TypeName::Ref(mutability.to_chalk(db)),
+        substitution: chalk_ir::Substitution::from(
+            &Interner,
+            vec![lifetime.cast(&Interner), arg.cast(&Interner)],
+        ),
+    }
+    .intern(&Interner)
+}
+
+/// Here we remove the lifetime from the type we got from Chalk.
+fn ref_from_chalk(
+    db: &dyn HirDatabase,
+    mutability: chalk_ir::Mutability,
+    subst: chalk_ir::Substitution<Interner>,
+) -> Ty {
+    let tys = subst
+        .iter(&Interner)
+        .filter_map(|p| Some(from_chalk(db, p.ty(&Interner)?.clone())))
+        .collect();
+    Ty::apply(TypeCtor::Ref(from_chalk(db, mutability)), Substs(tys))
 }
 
 impl ToChalk for Substs {
@@ -465,7 +513,31 @@ impl ToChalk for TypeCtor {
                 let type_id = type_alias.to_chalk(db);
                 TypeName::AssociatedType(type_id)
             }
-            _ => {
+
+            TypeCtor::Bool => TypeName::Scalar(Scalar::Bool),
+            TypeCtor::Char => TypeName::Scalar(Scalar::Char),
+            TypeCtor::Int(Uncertain::Known(int_ty)) => TypeName::Scalar(int_ty_to_chalk(int_ty)),
+            TypeCtor::Float(Uncertain::Known(FloatTy { bitness: FloatBitness::X32 })) => {
+                TypeName::Scalar(Scalar::Float(chalk_ir::FloatTy::F32))
+            }
+            TypeCtor::Float(Uncertain::Known(FloatTy { bitness: FloatBitness::X64 })) => {
+                TypeName::Scalar(Scalar::Float(chalk_ir::FloatTy::F64))
+            }
+
+            TypeCtor::Tuple { cardinality } => TypeName::Tuple(cardinality.into()),
+            TypeCtor::RawPtr(mutability) => TypeName::Raw(mutability.to_chalk(db)),
+            TypeCtor::Slice => TypeName::Slice,
+            TypeCtor::Ref(mutability) => TypeName::Ref(mutability.to_chalk(db)),
+            TypeCtor::Str => TypeName::Str,
+
+            TypeCtor::Int(Uncertain::Unknown)
+            | TypeCtor::Float(Uncertain::Unknown)
+            | TypeCtor::Adt(_)
+            | TypeCtor::Array
+            | TypeCtor::FnDef(_)
+            | TypeCtor::FnPtr { .. }
+            | TypeCtor::Never
+            | TypeCtor::Closure { .. } => {
                 // other TypeCtors get interned and turned into a chalk StructId
                 let struct_id = db.intern_type_ctor(self).into();
                 TypeName::Adt(struct_id)
@@ -479,12 +551,27 @@ impl ToChalk for TypeCtor {
             TypeName::AssociatedType(type_id) => TypeCtor::AssociatedType(from_chalk(db, type_id)),
             TypeName::OpaqueType(_) => unreachable!(),
 
-            TypeName::Scalar(_) => unreachable!(),
-            TypeName::Tuple(_) => unreachable!(),
-            TypeName::Raw(_) => unreachable!(),
-            TypeName::Slice => unreachable!(),
-            TypeName::Ref(_) => unreachable!(),
-            TypeName::Str => unreachable!(),
+            TypeName::Scalar(Scalar::Bool) => TypeCtor::Bool,
+            TypeName::Scalar(Scalar::Char) => TypeCtor::Char,
+            TypeName::Scalar(Scalar::Int(int_ty)) => TypeCtor::Int(Uncertain::Known(IntTy {
+                signedness: Signedness::Signed,
+                bitness: bitness_from_chalk_int(int_ty),
+            })),
+            TypeName::Scalar(Scalar::Uint(uint_ty)) => TypeCtor::Int(Uncertain::Known(IntTy {
+                signedness: Signedness::Unsigned,
+                bitness: bitness_from_chalk_uint(uint_ty),
+            })),
+            TypeName::Scalar(Scalar::Float(chalk_ir::FloatTy::F32)) => {
+                TypeCtor::Float(Uncertain::Known(FloatTy { bitness: FloatBitness::X32 }))
+            }
+            TypeName::Scalar(Scalar::Float(chalk_ir::FloatTy::F64)) => {
+                TypeCtor::Float(Uncertain::Known(FloatTy { bitness: FloatBitness::X64 }))
+            }
+            TypeName::Tuple(cardinality) => TypeCtor::Tuple { cardinality: cardinality as u16 },
+            TypeName::Raw(mutability) => TypeCtor::RawPtr(from_chalk(db, mutability)),
+            TypeName::Slice => TypeCtor::Slice,
+            TypeName::Ref(mutability) => TypeCtor::Ref(from_chalk(db, mutability)),
+            TypeName::Str => TypeCtor::Str,
 
             TypeName::FnDef(_) => unreachable!(),
 
@@ -492,6 +579,71 @@ impl ToChalk for TypeCtor {
                 // this should not be reached, since we don't represent TypeName::Error with TypeCtor
                 unreachable!()
             }
+        }
+    }
+}
+
+fn bitness_from_chalk_uint(uint_ty: chalk_ir::UintTy) -> IntBitness {
+    use chalk_ir::UintTy;
+
+    match uint_ty {
+        UintTy::Usize => IntBitness::Xsize,
+        UintTy::U8 => IntBitness::X8,
+        UintTy::U16 => IntBitness::X16,
+        UintTy::U32 => IntBitness::X32,
+        UintTy::U64 => IntBitness::X64,
+        UintTy::U128 => IntBitness::X128,
+    }
+}
+
+fn bitness_from_chalk_int(int_ty: chalk_ir::IntTy) -> IntBitness {
+    use chalk_ir::IntTy;
+
+    match int_ty {
+        IntTy::Isize => IntBitness::Xsize,
+        IntTy::I8 => IntBitness::X8,
+        IntTy::I16 => IntBitness::X16,
+        IntTy::I32 => IntBitness::X32,
+        IntTy::I64 => IntBitness::X64,
+        IntTy::I128 => IntBitness::X128,
+    }
+}
+
+fn int_ty_to_chalk(int_ty: IntTy) -> Scalar {
+    use chalk_ir::{IntTy, UintTy};
+
+    match int_ty.signedness {
+        Signedness::Signed => Scalar::Int(match int_ty.bitness {
+            IntBitness::Xsize => IntTy::Isize,
+            IntBitness::X8 => IntTy::I8,
+            IntBitness::X16 => IntTy::I16,
+            IntBitness::X32 => IntTy::I32,
+            IntBitness::X64 => IntTy::I64,
+            IntBitness::X128 => IntTy::I128,
+        }),
+        Signedness::Unsigned => Scalar::Uint(match int_ty.bitness {
+            IntBitness::Xsize => UintTy::Usize,
+            IntBitness::X8 => UintTy::U8,
+            IntBitness::X16 => UintTy::U16,
+            IntBitness::X32 => UintTy::U32,
+            IntBitness::X64 => UintTy::U64,
+            IntBitness::X128 => UintTy::U128,
+        }),
+    }
+}
+
+impl ToChalk for Mutability {
+    type Chalk = chalk_ir::Mutability;
+    fn to_chalk(self, _db: &dyn HirDatabase) -> Self::Chalk {
+        match self {
+            Mutability::Shared => chalk_ir::Mutability::Not,
+            Mutability::Mut => chalk_ir::Mutability::Mut,
+        }
+    }
+    fn from_chalk(_db: &dyn HirDatabase, chalk: Self::Chalk) -> Self {
+        match chalk {
+            chalk_ir::Mutability::Mut => Mutability::Mut,
+            chalk_ir::Mutability::Not => Mutability::Shared,
         }
     }
 }
@@ -907,10 +1059,15 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
     }
     fn well_known_trait_id(
         &self,
-        _well_known_trait: chalk_rust_ir::WellKnownTrait,
+        well_known_trait: chalk_rust_ir::WellKnownTrait,
     ) -> Option<chalk_ir::TraitId<Interner>> {
-        // FIXME tell Chalk about well-known traits (here and in trait_datum)
-        None
+        let lang_attr = lang_attr_from_well_known_trait(well_known_trait);
+        let lang_items = self.db.crate_lang_items(self.krate);
+        let trait_ = match lang_items.target(lang_attr) {
+            Some(LangItemTarget::TraitId(trait_)) => trait_,
+            _ => return None,
+        };
+        Some(trait_.to_chalk(self.db))
     }
 
     fn program_clauses_for_env(
@@ -1012,7 +1169,8 @@ pub(crate) fn trait_datum_query(
     let associated_ty_ids =
         trait_data.associated_types().map(|type_alias| type_alias.to_chalk(db)).collect();
     let trait_datum_bound = chalk_rust_ir::TraitDatumBound { where_clauses };
-    let well_known = None; // FIXME set this (depending on lang items)
+    let well_known =
+        lang_attr(db.upcast(), trait_).and_then(|name| well_known_trait_from_lang_attr(&name));
     let trait_datum = TraitDatum {
         id: trait_id,
         binders: make_binders(trait_datum_bound, bound_vars.len()),
@@ -1021,6 +1179,25 @@ pub(crate) fn trait_datum_query(
         well_known,
     };
     Arc::new(trait_datum)
+}
+
+fn well_known_trait_from_lang_attr(name: &str) -> Option<WellKnownTrait> {
+    Some(match name {
+        "sized" => WellKnownTrait::SizedTrait,
+        "copy" => WellKnownTrait::CopyTrait,
+        "clone" => WellKnownTrait::CloneTrait,
+        "drop" => WellKnownTrait::DropTrait,
+        _ => return None,
+    })
+}
+
+fn lang_attr_from_well_known_trait(attr: WellKnownTrait) -> &'static str {
+    match attr {
+        WellKnownTrait::SizedTrait => "sized",
+        WellKnownTrait::CopyTrait => "copy",
+        WellKnownTrait::CloneTrait => "clone",
+        WellKnownTrait::DropTrait => "drop",
+    }
 }
 
 pub(crate) fn struct_datum_query(
