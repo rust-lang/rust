@@ -14,7 +14,7 @@ fn creation() {
 #[test]
 #[should_panic]
 fn new_overflow() {
-    let _ = Duration::new(::core::u64::MAX, 1_000_000_000);
+    let _ = Duration::new(u64::MAX, 1_000_000_000);
 }
 
 #[test]
@@ -86,7 +86,7 @@ fn checked_add() {
         Duration::new(0, 500_000_000).checked_add(Duration::new(0, 500_000_001)),
         Some(Duration::new(1, 1))
     );
-    assert_eq!(Duration::new(1, 0).checked_add(Duration::new(::core::u64::MAX, 0)), None);
+    assert_eq!(Duration::new(1, 0).checked_add(Duration::new(u64::MAX, 0)), None);
 }
 
 #[test]
@@ -133,7 +133,7 @@ fn checked_mul() {
     assert_eq!(Duration::new(1, 1).checked_mul(3), Some(Duration::new(3, 3)));
     assert_eq!(Duration::new(0, 500_000_001).checked_mul(4), Some(Duration::new(2, 4)));
     assert_eq!(Duration::new(0, 500_000_001).checked_mul(4000), Some(Duration::new(2000, 4000)));
-    assert_eq!(Duration::new(::core::u64::MAX - 1, 0).checked_mul(2), None);
+    assert_eq!(Duration::new(u64::MAX - 1, 0).checked_mul(2), None);
 }
 
 #[test]

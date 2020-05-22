@@ -103,7 +103,12 @@ pub unsafe fn setup(build: &mut Build) {
     };
 
     let parent = OpenProcess(PROCESS_DUP_HANDLE, FALSE, pid.parse().unwrap());
-    assert!(!parent.is_null(), "{}", io::Error::last_os_error());
+    assert!(
+        !parent.is_null(),
+        "PID `{}` doesn't seem to exist: {}",
+        pid,
+        io::Error::last_os_error()
+    );
     let mut parent_handle = ptr::null_mut();
     let r = DuplicateHandle(
         GetCurrentProcess(),

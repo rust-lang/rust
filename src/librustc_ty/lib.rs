@@ -10,11 +10,11 @@
 #![recursion_limit = "256"]
 
 #[macro_use]
-extern crate rustc;
+extern crate rustc_middle;
 #[macro_use]
 extern crate log;
 
-use rustc::ty::query::Providers;
+use rustc_middle::ty::query::Providers;
 
 mod common_traits;
 pub mod instance;
@@ -25,4 +25,5 @@ pub fn provide(providers: &mut Providers<'_>) {
     common_traits::provide(providers);
     needs_drop::provide(providers);
     ty::provide(providers);
+    instance::provide(providers);
 }

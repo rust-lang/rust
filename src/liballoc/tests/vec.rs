@@ -3,7 +3,6 @@ use std::collections::TryReserveError::*;
 use std::mem::size_of;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::vec::{Drain, IntoIter};
-use std::{isize, usize};
 
 struct DropCounter<'a> {
     count: &'a mut u32,
@@ -1138,6 +1137,7 @@ fn test_reserve_exact() {
 
 #[test]
 #[cfg_attr(miri, ignore)] // Miri does not support signalling OOM
+#[cfg_attr(target_os = "android", ignore)] // Android used in CI has a broken dlmalloc
 fn test_try_reserve() {
     // These are the interesting cases:
     // * exactly isize::MAX should never trigger a CapacityOverflow (can be OOM)
@@ -1255,6 +1255,7 @@ fn test_try_reserve() {
 
 #[test]
 #[cfg_attr(miri, ignore)] // Miri does not support signalling OOM
+#[cfg_attr(target_os = "android", ignore)] // Android used in CI has a broken dlmalloc
 fn test_try_reserve_exact() {
     // This is exactly the same as test_try_reserve with the method changed.
     // See that test for comments.
@@ -1351,17 +1352,26 @@ fn test_try_reserve_exact() {
 }
 
 #[test]
-fn test_stable_push_pop() {
+fn test_stable_pointers() {
+    /// Pull an element from the iterator, then drop it.
+    /// Useful to cover both the `next` and `drop` paths of an iterator.
+    fn next_then_drop<I: Iterator>(mut i: I) {
+        i.next().unwrap();
+        drop(i);
+    }
+
     // Test that, if we reserved enough space, adding and removing elements does not
     // invalidate references into the vector (such as `v0`).  This test also
     // runs in Miri, which would detect such problems.
-    let mut v = Vec::with_capacity(10);
+    let mut v = Vec::with_capacity(128);
     v.push(13);
 
-    // laundering the lifetime -- we take care that `v` does not reallocate, so that's okay.
-    let v0 = unsafe { &*(&v[0] as *const _) };
-
+    // Laundering the lifetime -- we take care that `v` does not reallocate, so that's okay.
+    let v0 = &mut v[0];
+    let v0 = unsafe { &mut *(v0 as *mut _) };
     // Now do a bunch of things and occasionally use `v0` again to assert it is still valid.
+
+    // Pushing/inserting and popping/removing
     v.push(1);
     v.push(2);
     v.insert(1, 1);
@@ -1369,6 +1379,58 @@ fn test_stable_push_pop() {
     v.remove(1);
     v.pop().unwrap();
     assert_eq!(*v0, 13);
+    v.push(1);
+    v.swap_remove(1);
+    assert_eq!(v.len(), 2);
+    v.swap_remove(1); // swap_remove the last element
+    assert_eq!(*v0, 13);
+
+    // Appending
+    v.append(&mut vec![27, 19]);
+    assert_eq!(*v0, 13);
+
+    // Extending
+    v.extend_from_slice(&[1, 2]);
+    v.extend(&[1, 2]); // `slice::Iter` (with `T: Copy`) specialization
+    v.extend(vec![2, 3]); // `vec::IntoIter` specialization
+    v.extend(std::iter::once(3)); // `TrustedLen` specialization
+    v.extend(std::iter::empty::<i32>()); // `TrustedLen` specialization with empty iterator
+    v.extend(std::iter::once(3).filter(|_| true)); // base case
+    v.extend(std::iter::once(&3)); // `cloned` specialization
+    assert_eq!(*v0, 13);
+
+    // Truncation
+    v.truncate(2);
+    assert_eq!(*v0, 13);
+
+    // Resizing
+    v.resize_with(v.len() + 10, || 42);
+    assert_eq!(*v0, 13);
+    v.resize_with(2, || panic!());
+    assert_eq!(*v0, 13);
+
+    // No-op reservation
+    v.reserve(32);
+    v.reserve_exact(32);
+    assert_eq!(*v0, 13);
+
+    // Partial draining
+    v.resize_with(10, || 42);
+    next_then_drop(v.drain(5..));
+    assert_eq!(*v0, 13);
+
+    // Splicing
+    v.resize_with(10, || 42);
+    next_then_drop(v.splice(5.., vec![1, 2, 3, 4, 5])); // empty tail after range
+    assert_eq!(*v0, 13);
+    next_then_drop(v.splice(5..8, vec![1])); // replacement is smaller than original range
+    assert_eq!(*v0, 13);
+    next_then_drop(v.splice(5..6, vec![1; 10].into_iter().filter(|_| true))); // lower bound not exact
+    assert_eq!(*v0, 13);
+
+    // Smoke test that would fire even outside Miri if an actual relocation happened.
+    *v0 -= 13;
+    assert_eq!(v[0], 0);
 }
 
 // https://github.com/rust-lang/rust/pull/49496 introduced specialization based on:
@@ -1409,5 +1471,120 @@ fn vec_macro_repeating_null_raw_fat_pointer() {
     struct DynRepr {
         data: *mut (),
         vtable: *mut (),
+    }
+}
+
+// This test will likely fail if you change the capacities used in
+// `RawVec::grow_amortized`.
+#[test]
+fn test_push_growth_strategy() {
+    // If the element size is 1, we jump from 0 to 8, then double.
+    {
+        let mut v1: Vec<u8> = vec![];
+        assert_eq!(v1.capacity(), 0);
+
+        for _ in 0..8 {
+            v1.push(0);
+            assert_eq!(v1.capacity(), 8);
+        }
+
+        for _ in 8..16 {
+            v1.push(0);
+            assert_eq!(v1.capacity(), 16);
+        }
+
+        for _ in 16..32 {
+            v1.push(0);
+            assert_eq!(v1.capacity(), 32);
+        }
+
+        for _ in 32..64 {
+            v1.push(0);
+            assert_eq!(v1.capacity(), 64);
+        }
+    }
+
+    // If the element size is 2..=1024, we jump from 0 to 4, then double.
+    {
+        let mut v2: Vec<u16> = vec![];
+        let mut v1024: Vec<[u8; 1024]> = vec![];
+        assert_eq!(v2.capacity(), 0);
+        assert_eq!(v1024.capacity(), 0);
+
+        for _ in 0..4 {
+            v2.push(0);
+            v1024.push([0; 1024]);
+            assert_eq!(v2.capacity(), 4);
+            assert_eq!(v1024.capacity(), 4);
+        }
+
+        for _ in 4..8 {
+            v2.push(0);
+            v1024.push([0; 1024]);
+            assert_eq!(v2.capacity(), 8);
+            assert_eq!(v1024.capacity(), 8);
+        }
+
+        for _ in 8..16 {
+            v2.push(0);
+            v1024.push([0; 1024]);
+            assert_eq!(v2.capacity(), 16);
+            assert_eq!(v1024.capacity(), 16);
+        }
+
+        for _ in 16..32 {
+            v2.push(0);
+            v1024.push([0; 1024]);
+            assert_eq!(v2.capacity(), 32);
+            assert_eq!(v1024.capacity(), 32);
+        }
+
+        for _ in 32..64 {
+            v2.push(0);
+            v1024.push([0; 1024]);
+            assert_eq!(v2.capacity(), 64);
+            assert_eq!(v1024.capacity(), 64);
+        }
+    }
+
+    // If the element size is > 1024, we jump from 0 to 1, then double.
+    {
+        let mut v1025: Vec<[u8; 1025]> = vec![];
+        assert_eq!(v1025.capacity(), 0);
+
+        for _ in 0..1 {
+            v1025.push([0; 1025]);
+            assert_eq!(v1025.capacity(), 1);
+        }
+
+        for _ in 1..2 {
+            v1025.push([0; 1025]);
+            assert_eq!(v1025.capacity(), 2);
+        }
+
+        for _ in 2..4 {
+            v1025.push([0; 1025]);
+            assert_eq!(v1025.capacity(), 4);
+        }
+
+        for _ in 4..8 {
+            v1025.push([0; 1025]);
+            assert_eq!(v1025.capacity(), 8);
+        }
+
+        for _ in 8..16 {
+            v1025.push([0; 1025]);
+            assert_eq!(v1025.capacity(), 16);
+        }
+
+        for _ in 16..32 {
+            v1025.push([0; 1025]);
+            assert_eq!(v1025.capacity(), 32);
+        }
+
+        for _ in 32..64 {
+            v1025.push([0; 1025]);
+            assert_eq!(v1025.capacity(), 64);
+        }
     }
 }

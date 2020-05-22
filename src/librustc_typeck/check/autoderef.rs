@@ -1,14 +1,14 @@
 use super::method::MethodCallee;
 use super::{FnCtxt, Needs, PlaceOp};
 
-use rustc::ty::adjustment::{Adjust, Adjustment, OverloadedDeref};
-use rustc::ty::{self, TraitRef, Ty, TyCtxt, WithConstness};
-use rustc::ty::{ToPredicate, TypeFoldable};
-use rustc_ast::ast::Ident;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_infer::infer::{InferCtxt, InferOk};
+use rustc_middle::ty::adjustment::{Adjust, Adjustment, OverloadedDeref};
+use rustc_middle::ty::{self, TraitRef, Ty, TyCtxt, WithConstness};
+use rustc_middle::ty::{ToPredicate, TypeFoldable};
 use rustc_session::DiagnosticMessageId;
+use rustc_span::symbol::Ident;
 use rustc_span::Span;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{self, TraitEngine};
@@ -114,10 +114,10 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
 
         let tcx = self.infcx.tcx;
 
-        // <cur_ty as Deref>
+        // <ty as Deref>
         let trait_ref = TraitRef {
             def_id: tcx.lang_items().deref_trait()?,
-            substs: tcx.mk_substs_trait(self.cur_ty, &[]),
+            substs: tcx.mk_substs_trait(ty, &[]),
         };
 
         let cause = traits::ObligationCause::misc(self.span, self.body_id);

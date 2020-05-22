@@ -2,7 +2,7 @@
 #![allow(dead_code)]
 // pretty-expanded FIXME #23616
 
-#![feature(optin_builtin_traits)]
+#![feature(negative_impls)]
 
 struct TestType;
 

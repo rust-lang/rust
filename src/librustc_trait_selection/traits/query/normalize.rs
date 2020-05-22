@@ -7,14 +7,15 @@ use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::{InferCtxt, InferOk};
 use crate::traits::error_reporting::InferCtxtExt;
 use crate::traits::{Obligation, ObligationCause, PredicateObligation, Reveal};
-use rustc::ty::fold::{TypeFoldable, TypeFolder};
-use rustc::ty::subst::Subst;
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_infer::traits::Normalized;
+use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
+use rustc_middle::ty::subst::Subst;
+use rustc_middle::ty::{self, Ty, TyCtxt};
 
 use super::NoSolution;
 
-pub use rustc::traits::query::NormalizationResult;
+pub use rustc_middle::traits::query::NormalizationResult;
 
 pub trait AtExt<'tcx> {
     fn normalize<T>(&self, value: &T) -> Result<Normalized<'tcx, T>, NoSolution>
@@ -59,11 +60,22 @@ impl<'cx, 'tcx> AtExt<'tcx> for At<'cx, 'tcx> {
             anon_depth: 0,
         };
 
-        let value1 = value.fold_with(&mut normalizer);
+        let result = value.fold_with(&mut normalizer);
+        debug!(
+            "normalize::<{}>: result={:?} with {} obligations",
+            ::std::any::type_name::<T>(),
+            result,
+            normalizer.obligations.len(),
+        );
+        debug!(
+            "normalize::<{}>: obligations={:?}",
+            ::std::any::type_name::<T>(),
+            normalizer.obligations,
+        );
         if normalizer.error {
             Err(NoSolution)
         } else {
-            Ok(Normalized { value: value1, obligations: normalizer.obligations })
+            Ok(Normalized { value: result, obligations: normalizer.obligations })
         }
     }
 }
@@ -120,7 +132,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                                 ty
                             );
                         }
-                        let folded_ty = self.fold_ty(concrete_ty);
+                        let folded_ty = ensure_sufficient_stack(|| self.fold_ty(concrete_ty));
                         self.anon_depth -= 1;
                         folded_ty
                     }
@@ -191,6 +203,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
     }
 
     fn fold_const(&mut self, constant: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
+        let constant = constant.super_fold_with(self);
         constant.eval(self.infcx.tcx, self.param_env)
     }
 }

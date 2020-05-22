@@ -10,7 +10,7 @@ use crate::cmp;
 use crate::fmt;
 use crate::hash;
 use crate::intrinsics;
-use crate::marker::{Copy, PhantomData, Sized};
+use crate::marker::{Copy, DiscriminantKind, Sized};
 use crate::ptr;
 
 mod manually_drop;
@@ -378,7 +378,6 @@ pub fn size_of_val<T: ?Sized>(val: &T) -> usize {
 /// assert_eq!(13, unsafe { mem::size_of_val_raw(y) });
 /// ```
 #[inline]
-#[cfg(not(bootstrap))]
 #[unstable(feature = "layout_for_ptr", issue = "69835")]
 pub unsafe fn size_of_val_raw<T: ?Sized>(val: *const T) -> usize {
     intrinsics::size_of_val(val)
@@ -509,7 +508,6 @@ pub fn align_of_val<T: ?Sized>(val: &T) -> usize {
 /// assert_eq!(4, unsafe { mem::align_of_val_raw(&5i32) });
 /// ```
 #[inline]
-#[cfg(not(bootstrap))]
 #[unstable(feature = "layout_for_ptr", issue = "69835")]
 pub unsafe fn align_of_val_raw<T: ?Sized>(val: *const T) -> usize {
     intrinsics::min_align_of_val(val)
@@ -621,10 +619,7 @@ pub const fn needs_drop<T>() -> bool {
 #[allow(deprecated)]
 #[rustc_diagnostic_item = "mem_zeroed"]
 pub unsafe fn zeroed<T>() -> T {
-    #[cfg(not(bootstrap))]
     intrinsics::assert_zero_valid::<T>();
-    #[cfg(bootstrap)]
-    intrinsics::panic_if_uninhabited::<T>();
     MaybeUninit::zeroed().assume_init()
 }
 
@@ -657,10 +652,7 @@ pub unsafe fn zeroed<T>() -> T {
 #[allow(deprecated)]
 #[rustc_diagnostic_item = "mem_uninitialized"]
 pub unsafe fn uninitialized<T>() -> T {
-    #[cfg(not(bootstrap))]
     intrinsics::assert_uninit_valid::<T>();
-    #[cfg(bootstrap)]
-    intrinsics::panic_if_uninhabited::<T>();
     MaybeUninit::uninit().assume_init()
 }
 
@@ -808,6 +800,7 @@ pub fn take<T: Default>(dest: &mut T) -> T {
 /// [`Clone`]: ../../std/clone/trait.Clone.html
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[must_use = "if you don't need the old value, you can just assign the new value directly"]
 pub fn replace<T>(dest: &mut T, mut src: T) -> T {
     swap(dest, &mut src);
     src
@@ -923,7 +916,12 @@ pub fn drop<T>(_x: T) {}
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
-    ptr::read_unaligned(src as *const T as *const U)
+    // If U has a higher alignment requirement, src may not be suitably aligned.
+    if align_of::<U>() > align_of::<T>() {
+        ptr::read_unaligned(src as *const T as *const U)
+    } else {
+        ptr::read(src as *const T as *const U)
+    }
 }
 
 /// Opaque type representing the discriminant of an enum.
@@ -932,7 +930,7 @@ pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
 ///
 /// [`discriminant`]: fn.discriminant.html
 #[stable(feature = "discriminant_value", since = "1.21.0")]
-pub struct Discriminant<T>(u64, PhantomData<fn() -> T>);
+pub struct Discriminant<T>(<T as DiscriminantKind>::Discriminant);
 
 // N.B. These trait implementations cannot be derived because we don't want any bounds on T.
 
@@ -997,5 +995,5 @@ impl<T> fmt::Debug for Discriminant<T> {
 #[stable(feature = "discriminant_value", since = "1.21.0")]
 #[rustc_const_unstable(feature = "const_discriminant", issue = "69821")]
 pub const fn discriminant<T>(v: &T) -> Discriminant<T> {
-    Discriminant(intrinsics::discriminant_value(v), PhantomData)
+    Discriminant(intrinsics::discriminant_value(v))
 }

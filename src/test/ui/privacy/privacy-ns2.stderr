@@ -4,7 +4,7 @@ error[E0423]: expected function, tuple struct or tuple variant, found trait `Bar
 LL |     Bar();
    |     ^^^ not a function, tuple struct or tuple variant
    |
-help: possible better candidates are found in other modules, you can import them into scope
+help: consider importing one of these items instead
    |
 LL | use foo1::Bar;
    |
@@ -26,7 +26,7 @@ help: a unit struct with a similar name exists
    |
 LL |     Baz();
    |     ^^^
-help: possible better candidates are found in other modules, you can import them into scope
+help: consider importing one of these items instead
    |
 LL | use foo1::Bar;
    |
@@ -45,7 +45,7 @@ help: use `=` if you meant to assign
    |
 LL |     let _x = Bar();
    |            ^
-help: possible better candidates are found in other modules, you can import them into scope
+help: consider importing one of these items instead
    |
 LL | use foo1::Bar;
    |

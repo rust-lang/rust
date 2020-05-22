@@ -1,6 +1,5 @@
 #![cfg(not(target_arch = "wasm32"))]
 
-use std::i16;
 use std::str;
 
 use core::num::flt2dec::strategy::grisu::format_exact_opt;
@@ -139,13 +138,11 @@ where
 #[test]
 fn shortest_random_equivalence_test() {
     use core::num::flt2dec::strategy::dragon::format_shortest as fallback;
-    #[cfg(not(miri))] // Miri is too slow
-    const N: usize = 10_000;
-    #[cfg(miri)]
-    const N: usize = 10;
+    // Miri is too slow
+    let n = if cfg!(miri) { 10 } else { 10_000 };
 
-    f64_random_equivalence_test(format_shortest_opt, fallback, MAX_SIG_DIGITS, N);
-    f32_random_equivalence_test(format_shortest_opt, fallback, MAX_SIG_DIGITS, N);
+    f64_random_equivalence_test(format_shortest_opt, fallback, MAX_SIG_DIGITS, n);
+    f32_random_equivalence_test(format_shortest_opt, fallback, MAX_SIG_DIGITS, n);
 }
 
 #[test]
@@ -174,17 +171,15 @@ fn shortest_f64_hard_random_equivalence_test() {
 #[test]
 fn exact_f32_random_equivalence_test() {
     use core::num::flt2dec::strategy::dragon::format_exact as fallback;
-    #[cfg(not(miri))] // Miri is too slow
-    const N: usize = 1_000;
-    #[cfg(miri)]
-    const N: usize = 3;
+    // Miri is too slow
+    let n = if cfg!(miri) { 3 } else { 1_000 };
 
     for k in 1..21 {
         f32_random_equivalence_test(
             |d, buf| format_exact_opt(d, buf, i16::MIN),
             |d, buf| fallback(d, buf, i16::MIN),
             k,
-            N,
+            n,
         );
     }
 }
@@ -192,17 +187,15 @@ fn exact_f32_random_equivalence_test() {
 #[test]
 fn exact_f64_random_equivalence_test() {
     use core::num::flt2dec::strategy::dragon::format_exact as fallback;
-    #[cfg(not(miri))] // Miri is too slow
-    const N: usize = 1_000;
-    #[cfg(miri)]
-    const N: usize = 3;
+    // Miri is too slow
+    let n = if cfg!(miri) { 3 } else { 1_000 };
 
     for k in 1..21 {
         f64_random_equivalence_test(
             |d, buf| format_exact_opt(d, buf, i16::MIN),
             |d, buf| fallback(d, buf, i16::MIN),
             k,
-            N,
+            n,
         );
     }
 }

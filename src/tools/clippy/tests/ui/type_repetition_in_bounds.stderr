@@ -1,0 +1,15 @@
+error: this type has already been used as a bound predicate
+  --> $DIR/type_repetition_in_bounds.rs:6:5
+   |
+LL |     T: Clone,
+   |     ^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/type_repetition_in_bounds.rs:1:8
+   |
+LL | #[deny(clippy::type_repetition_in_bounds)]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: consider combining the bounds: `T: Copy + Clone`
+
+error: aborting due to previous error
+

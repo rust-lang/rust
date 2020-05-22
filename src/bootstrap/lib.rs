@@ -140,6 +140,7 @@ mod format;
 mod install;
 mod metadata;
 mod native;
+mod run;
 mod sanity;
 mod test;
 mod tool;
@@ -739,19 +740,18 @@ impl Build {
         self.config.jobs.unwrap_or_else(|| num_cpus::get() as u32)
     }
 
-    fn debuginfo_map(&self, which: GitRepo) -> Option<String> {
+    fn debuginfo_map_to(&self, which: GitRepo) -> Option<String> {
         if !self.config.rust_remap_debuginfo {
             return None;
         }
 
-        let path = match which {
+        match which {
             GitRepo::Rustc => {
                 let sha = self.rust_sha().unwrap_or(channel::CFG_RELEASE_NUM);
-                format!("/rustc/{}", sha)
+                Some(format!("/rustc/{}", sha))
             }
-            GitRepo::Llvm => String::from("/rustc/llvm"),
-        };
-        Some(format!("{}={}", self.src.display(), path))
+            GitRepo::Llvm => Some(String::from("/rustc/llvm")),
+        }
     }
 
     /// Returns the path to the C compiler for the target specified.
@@ -786,7 +786,8 @@ impl Build {
             base.push("-fno-omit-frame-pointer".into());
         }
 
-        if let Some(map) = self.debuginfo_map(which) {
+        if let Some(map_to) = self.debuginfo_map_to(which) {
+            let map = format!("{}={}", self.src.display(), map_to);
             let cc = self.cc(target);
             if cc.ends_with("clang") || cc.ends_with("gcc") {
                 base.push(format!("-fdebug-prefix-map={}", map));
@@ -1025,14 +1026,6 @@ impl Build {
     }
 
     fn llvm_tools_vers(&self) -> String {
-        self.rust_version()
-    }
-
-    fn lldb_package_vers(&self) -> String {
-        self.package_vers(channel::CFG_RELEASE_NUM)
-    }
-
-    fn lldb_vers(&self) -> String {
         self.rust_version()
     }
 

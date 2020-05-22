@@ -356,6 +356,6 @@ help: the clause will not be checked when the type alias is used, and should be 
 LL |     pub type Alias<T>  = T;
    |                      --
 
-error: aborting due to 36 previous errors
+error: aborting due to 36 previous errors; 2 warnings emitted
 
 For more information about this error, try `rustc --explain E0446`.

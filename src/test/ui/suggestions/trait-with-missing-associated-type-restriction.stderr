@@ -1,0 +1,103 @@
+error[E0308]: mismatched types
+  --> $DIR/trait-with-missing-associated-type-restriction.rs:13:9
+   |
+LL |     qux(x.func())
+   |         ^^^^^^^^ expected `usize`, found associated type
+   |
+   = note:         expected type `usize`
+           found associated type `<impl Trait as Trait>::A`
+help: consider constraining the associated type `<impl Trait as Trait>::A` to `usize`
+   |
+LL | fn foo(_: impl Trait, x: impl Trait<A = usize>) {
+   |                                    ^^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/trait-with-missing-associated-type-restriction.rs:17:9
+   |
+LL |     qux(x.func())
+   |         ^^^^^^^^ expected `usize`, found associated type
+   |
+   = note:         expected type `usize`
+           found associated type `<T as Trait>::A`
+help: consider constraining the associated type `<T as Trait>::A` to `usize`
+   |
+LL | fn bar<T: Trait<A = usize>>(x: T) {
+   |                ^^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/trait-with-missing-associated-type-restriction.rs:21:9
+   |
+LL |     qux(x.func())
+   |         ^^^^^^^^ expected `usize`, found associated type
+   |
+   = note:         expected type `usize`
+           found associated type `<impl Trait<i32> as Trait<i32>>::A`
+help: consider constraining the associated type `<impl Trait<i32> as Trait<i32>>::A` to `usize`
+   |
+LL | fn foo2(x: impl Trait<i32, A = usize>) {
+   |                          ^^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/trait-with-missing-associated-type-restriction.rs:25:12
+   |
+LL |     x.funk(3);
+   |            ^ expected associated type, found integer
+   |
+   = note: expected associated type `<T as Trait<i32>>::A`
+                         found type `{integer}`
+help: a method is available that returns `<T as Trait<i32>>::A`
+  --> $DIR/trait-with-missing-associated-type-restriction.rs:8:5
+   |
+LL |     fn func(&self) -> Self::A;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ consider calling `Trait::func`
+help: consider constraining the associated type `<T as Trait<i32>>::A` to `{integer}`
+   |
+LL | fn bar2<T: Trait<i32, A = {integer}>>(x: T) {
+   |                     ^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/trait-with-missing-associated-type-restriction.rs:26:9
+   |
+LL |     qux(x.func())
+   |         ^^^^^^^^ expected `usize`, found associated type
+   |
+   = note:         expected type `usize`
+           found associated type `<T as Trait<i32>>::A`
+help: consider constraining the associated type `<T as Trait<i32>>::A` to `usize`
+   |
+LL | fn bar2<T: Trait<i32, A = usize>>(x: T) {
+   |                     ^^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/trait-with-missing-associated-type-restriction.rs:30:9
+   |
+LL | fn baz<D: std::fmt::Debug, T: Trait<A = D>>(x: T) {
+   |        - this type parameter
+LL |     qux(x.func())
+   |         ^^^^^^^^ expected `usize`, found type parameter `D`
+   |
+   = note:        expected type `usize`
+           found type parameter `D`
+
+error[E0308]: mismatched types
+  --> $DIR/trait-with-missing-associated-type-restriction.rs:34:9
+   |
+LL |     qux(x.func())
+   |         ^^^^^^^^ expected `usize`, found `()`
+
+error[E0308]: mismatched types
+  --> $DIR/trait-with-missing-associated-type-restriction.rs:38:9
+   |
+LL |     qux(x.func())
+   |         ^^^^^^^^ expected `usize`, found associated type
+   |
+   = note:         expected type `usize`
+           found associated type `<T as Trait>::A`
+help: consider constraining the associated type `<T as Trait>::A` to `usize`
+   |
+LL | fn ban<T>(x: T) where T: Trait<A = usize> {
+   |                               ^^^^^^^^^^^
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

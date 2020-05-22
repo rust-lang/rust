@@ -497,7 +497,7 @@ impl Drop for WaiterQueue<'_> {
             let mut queue = (state_and_queue & !STATE_MASK) as *const Waiter;
             while !queue.is_null() {
                 let next = (*queue).next;
-                let thread = (*queue).thread.replace(None).unwrap();
+                let thread = (*queue).thread.take().unwrap();
                 (*queue).signaled.store(true, Ordering::Release);
                 // ^- FIXME (maybe): This is another case of issue #55005
                 // `store()` has a potentially dangling ref to `signaled`.

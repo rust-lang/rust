@@ -67,16 +67,16 @@
 
 use crate::constrained_generic_params as cgp;
 
-use rustc::middle::region::ScopeTree;
-use rustc::ty::subst::{GenericArg, InternalSubsts, SubstsRef};
-use rustc::ty::trait_def::TraitSpecializationKind;
-use rustc::ty::{self, InstantiatedPredicates, TyCtxt, TypeFoldable};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{InferCtxt, RegionckMode, TyCtxtInferExt};
 use rustc_infer::traits::specialization_graph::Node;
+use rustc_middle::middle::region::ScopeTree;
+use rustc_middle::ty::subst::{GenericArg, InternalSubsts, SubstsRef};
+use rustc_middle::ty::trait_def::TraitSpecializationKind;
+use rustc_middle::ty::{self, InstantiatedPredicates, TyCtxt, TypeFoldable};
 use rustc_span::Span;
 use rustc_trait_selection::traits::{self, translate_substs, wf};
 
@@ -130,7 +130,14 @@ fn check_always_applicable(
         check_static_lifetimes(tcx, &parent_substs, span);
         check_duplicate_params(tcx, impl1_substs, &parent_substs, span);
 
-        check_predicates(infcx, impl1_def_id, impl1_substs, impl2_node, impl2_substs, span);
+        check_predicates(
+            infcx,
+            impl1_def_id.expect_local(),
+            impl1_substs,
+            impl2_node,
+            impl2_substs,
+            span,
+        );
     }
 }
 
@@ -287,7 +294,7 @@ fn check_static_lifetimes<'tcx>(
 ///   including the `Self`-type.
 fn check_predicates<'tcx>(
     infcx: &InferCtxt<'_, 'tcx>,
-    impl1_def_id: DefId,
+    impl1_def_id: LocalDefId,
     impl1_substs: SubstsRef<'tcx>,
     impl2_node: Node,
     impl2_substs: SubstsRef<'tcx>,
@@ -322,7 +329,7 @@ fn check_predicates<'tcx>(
     // which is sound because we forbid impls like the following
     //
     // impl<D: Debug> AlwaysApplicable for D { }
-    let always_applicable_traits: Vec<_> = impl1_predicates
+    let always_applicable_traits = impl1_predicates
         .predicates
         .iter()
         .filter(|predicate| {
@@ -331,15 +338,14 @@ fn check_predicates<'tcx>(
                 Some(TraitSpecializationKind::AlwaysApplicable)
             )
         })
-        .copied()
-        .collect();
+        .copied();
 
     // Include the well-formed predicates of the type parameters of the impl.
     for ty in tcx.impl_trait_ref(impl1_def_id).unwrap().substs.types() {
         if let Some(obligations) = wf::obligations(
             infcx,
             tcx.param_env(impl1_def_id),
-            tcx.hir().as_local_hir_id(impl1_def_id).unwrap(),
+            tcx.hir().as_local_hir_id(impl1_def_id),
             ty,
             span,
         ) {
@@ -348,7 +354,10 @@ fn check_predicates<'tcx>(
                 .extend(obligations.into_iter().map(|obligation| obligation.predicate))
         }
     }
-    impl2_predicates.predicates.extend(traits::elaborate_predicates(tcx, always_applicable_traits));
+    impl2_predicates.predicates.extend(
+        traits::elaborate_predicates(tcx, always_applicable_traits)
+            .map(|obligation| obligation.predicate),
+    );
 
     for predicate in impl1_predicates.predicates {
         if !impl2_predicates.predicates.contains(&predicate) {
@@ -404,6 +413,7 @@ fn trait_predicate_kind<'tcx>(
         | ty::Predicate::Subtype(_)
         | ty::Predicate::ObjectSafe(_)
         | ty::Predicate::ClosureKind(..)
-        | ty::Predicate::ConstEvaluatable(..) => None,
+        | ty::Predicate::ConstEvaluatable(..)
+        | ty::Predicate::ConstEquate(..) => None,
     }
 }

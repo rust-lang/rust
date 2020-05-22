@@ -1,5 +1,5 @@
 error[E0401]: can't use generic parameters from outer function
-  --> $DIR/issue-3214.rs:3:12
+  --> $DIR/issue-3214.rs:5:12
    |
 LL | fn foo<T>() {
    |    --- - type parameter from outer function
@@ -10,12 +10,18 @@ LL |         x: T,
    |            ^ use of generic parameter from outer function
 
 error[E0107]: wrong number of type arguments: expected 0, found 1
-  --> $DIR/issue-3214.rs:6:26
+  --> $DIR/issue-3214.rs:8:26
    |
 LL |     impl<T> Drop for Foo<T> {
    |                          ^ unexpected type argument
 
-error: aborting due to 2 previous errors
+error[E0207]: the type parameter `T` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/issue-3214.rs:8:10
+   |
+LL |     impl<T> Drop for Foo<T> {
+   |          ^ unconstrained type parameter
 
-Some errors have detailed explanations: E0107, E0401.
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0107, E0207, E0401.
 For more information about an error, try `rustc --explain E0107`.

@@ -3,8 +3,8 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use rustc::middle::cstore::LibSource;
 use rustc_hir::def_id::CrateNum;
+use rustc_middle::middle::cstore::LibSource;
 
 pub struct RPathConfig<'a> {
     pub used_crates: &'a [(CrateNum, LibSource)],

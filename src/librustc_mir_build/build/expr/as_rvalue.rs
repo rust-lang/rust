@@ -5,10 +5,10 @@ use rustc_index::vec::Idx;
 use crate::build::expr::category::{Category, RvalueFunc};
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use crate::hair::*;
-use rustc::middle::region;
-use rustc::mir::AssertKind;
-use rustc::mir::*;
-use rustc::ty::{self, Ty, UpvarSubsts};
+use rustc_middle::middle::region;
+use rustc_middle::mir::AssertKind;
+use rustc_middle::mir::*;
+use rustc_middle::ty::{self, Ty, UpvarSubsts};
 use rustc_span::Span;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -78,7 +78,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     this.cfg.push_assign(
                         block,
                         source_info,
-                        &is_min,
+                        is_min,
                         Rvalue::BinaryOp(BinOp::Eq, arg.to_copy(), minval),
                     );
 
@@ -97,7 +97,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // The `Box<T>` temporary created here is not a part of the HIR,
                 // and therefore is not considered during generator OIBIT
                 // determination. See the comment about `box` at `yield_in_scope`.
-                let result = this.local_decls.push(LocalDecl::new_internal(expr.ty, expr_span));
+                let result = this.local_decls.push(LocalDecl::new(expr.ty, expr_span).internal());
                 this.cfg.push(
                     block,
                     Statement { source_info, kind: StatementKind::StorageLive(result) },
@@ -109,15 +109,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 // malloc some memory of suitable type (thus far, uninitialized):
                 let box_ = Rvalue::NullaryOp(NullOp::Box, value.ty);
-                this.cfg.push_assign(block, source_info, &Place::from(result), box_);
+                this.cfg.push_assign(block, source_info, Place::from(result), box_);
 
                 // initialize the box contents:
                 unpack!(
-                    block = this.into(
-                        &this.hir.tcx().mk_place_deref(Place::from(result)),
-                        block,
-                        value
-                    )
+                    block =
+                        this.into(this.hir.tcx().mk_place_deref(Place::from(result)), block, value)
                 );
                 block.and(Rvalue::Use(Operand::Move(Place::from(result))))
             }
@@ -228,7 +225,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             ExprKind::Assign { .. } | ExprKind::AssignOp { .. } => {
                 block = unpack!(this.stmt_expr(block, expr, None));
-                block.and(this.unit_rvalue())
+                block.and(Rvalue::Use(Operand::Constant(box Constant {
+                    span: expr_span,
+                    user_ty: None,
+                    literal: ty::Const::zero_sized(this.hir.tcx(), this.hir.tcx().types.unit),
+                })))
             }
             ExprKind::Yield { .. }
             | ExprKind::Literal { .. }
@@ -252,6 +253,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::Continue { .. }
             | ExprKind::Return { .. }
             | ExprKind::InlineAsm { .. }
+            | ExprKind::LlvmInlineAsm { .. }
             | ExprKind::PlaceTypeAscription { .. }
             | ExprKind::ValueTypeAscription { .. } => {
                 // these do not have corresponding `Rvalue` variants,
@@ -284,14 +286,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.cfg.push_assign(
                 block,
                 source_info,
-                &result_value,
+                result_value,
                 Rvalue::CheckedBinaryOp(op, lhs, rhs),
             );
             let val_fld = Field::new(0);
             let of_fld = Field::new(1);
 
             let tcx = self.hir.tcx();
-            let val = tcx.mk_place_field(result_value.clone(), val_fld, ty);
+            let val = tcx.mk_place_field(result_value, val_fld, ty);
             let of = tcx.mk_place_field(result_value, of_fld, bool_ty);
 
             let err = AssertKind::Overflow(op);
@@ -317,7 +319,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.cfg.push_assign(
                     block,
                     source_info,
-                    &is_zero,
+                    is_zero,
                     Rvalue::BinaryOp(BinOp::Eq, rhs.to_copy(), zero),
                 );
 
@@ -338,13 +340,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     self.cfg.push_assign(
                         block,
                         source_info,
-                        &is_neg_1,
+                        is_neg_1,
                         Rvalue::BinaryOp(BinOp::Eq, rhs.to_copy(), neg_1),
                     );
                     self.cfg.push_assign(
                         block,
                         source_info,
-                        &is_min,
+                        is_min,
                         Rvalue::BinaryOp(BinOp::Eq, lhs.to_copy(), min),
                     );
 
@@ -353,7 +355,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     self.cfg.push_assign(
                         block,
                         source_info,
-                        &of,
+                        of,
                         Rvalue::BinaryOp(BinOp::BitAnd, is_neg_1, is_min),
                     );
 
@@ -376,7 +378,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let this = self;
 
         let source_info = this.source_info(upvar_span);
-        let temp = this.local_decls.push(LocalDecl::new_temp(upvar_ty, upvar_span));
+        let temp = this.local_decls.push(LocalDecl::new(upvar_ty, upvar_span));
 
         this.cfg.push(block, Statement { source_info, kind: StatementKind::StorageLive(temp) });
 
@@ -428,7 +430,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         this.cfg.push_assign(
             block,
             source_info,
-            &Place::from(temp),
+            Place::from(temp),
             Rvalue::Ref(this.hir.tcx().lifetimes.re_erased, borrow_kind, arg_place),
         );
 

@@ -1,7 +1,7 @@
 use crate::cgu_reuse_tracker::CguReuseTracker;
 use crate::code_stats::CodeStats;
 pub use crate::code_stats::{DataTypeKind, FieldInfo, SizeKind, VariantInfo};
-use crate::config::{self, OutputType, PrintRequest, Sanitizer, SwitchWithOptPath};
+use crate::config::{self, CrateType, OutputType, PrintRequest, Sanitizer, SwitchWithOptPath};
 use crate::filesearch;
 use crate::lint;
 use crate::parse::ParseSess;
@@ -18,16 +18,21 @@ use rustc_data_structures::sync::{
 use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitterWriter;
 use rustc_errors::emitter::{Emitter, EmitterWriter, HumanReadableErrorType};
 use rustc_errors::json::JsonEmitter;
+use rustc_errors::registry::Registry;
 use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticId, ErrorReported};
 use rustc_span::edition::Edition;
-use rustc_span::source_map::{self, MultiSpan, Span};
-use rustc_target::spec::{PanicStrategy, RelroLevel, Target, TargetTriple};
+use rustc_span::source_map::{self, FileLoader, MultiSpan, RealFileLoader, SourceMap, Span};
+use rustc_span::{SourceFileHashAlgorithm, Symbol};
+use rustc_target::asm::InlineAsmArch;
+use rustc_target::spec::{CodeModel, PanicStrategy, RelocModel, RelroLevel};
+use rustc_target::spec::{Target, TargetTriple, TlsModel};
 
 use std::cell::{self, RefCell};
 use std::env;
 use std::io::Write;
 use std::num::NonZeroU32;
 use std::path::PathBuf;
+use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -72,7 +77,7 @@ pub struct Session {
     /// (sub)diagnostics that have been set once, but should not be set again,
     /// in order to avoid redundantly verbose output (Issue #24690, #44953).
     pub one_time_diagnostics: Lock<FxHashSet<(DiagnosticMessageId, Option<Span>, String)>>,
-    pub crate_types: Once<Vec<config::CrateType>>,
+    pub crate_types: Once<Vec<CrateType>>,
     /// The `crate_disambiguator` is constructed out of all the `-C metadata`
     /// arguments passed to the compiler. Its value together with the crate-name
     /// forms a unique global identifier for the crate. It is used to allow
@@ -140,6 +145,27 @@ pub struct Session {
     /// Options range from returning the error without a backtrace to returning an error
     /// and immediately printing the backtrace to stderr.
     pub ctfe_backtrace: Lock<CtfeBacktrace>,
+
+    /// This tracks where `-Zunleash-the-miri-inside-of-you` was used to get around a
+    /// const check, optionally with the relevant feature gate.  We use this to
+    /// warn about unleashing, but with a single diagnostic instead of dozens that
+    /// drown everything else in noise.
+    miri_unleashed_features: Lock<Vec<(Span, Option<Symbol>)>>,
+
+    /// Base directory containing the `src/` for the Rust standard library, and
+    /// potentially `rustc` as well, if we can can find it. Right now it's always
+    /// `$sysroot/lib/rustlib/src/rust` (i.e. the `rustup` `rust-src` component).
+    ///
+    /// This directory is what the virtual `/rustc/$hash` is translated back to,
+    /// if Rust was built with path remapping to `/rustc/$hash` enabled
+    /// (the `rust.remap-debuginfo` option in `config.toml`).
+    pub real_rust_source_base_dir: Option<PathBuf>,
+
+    /// Architecture to use for interpreting asm!.
+    pub asm_arch: Option<InlineAsmArch>,
+
+    /// Set of enabled features for the current target.
+    pub target_features: FxHashSet<Symbol>,
 }
 
 pub struct PerfStats {
@@ -150,7 +176,7 @@ pub struct PerfStats {
     /// Total number of values canonicalized queries constructed.
     pub queries_canonicalized: AtomicUsize,
     /// Number of times this query is invoked.
-    pub normalize_ty_after_erasing_regions: AtomicUsize,
+    pub normalize_generic_arg_after_erasing_regions: AtomicUsize,
     /// Number of times this query is invoked.
     pub normalize_projection_ty: AtomicUsize,
 }
@@ -179,6 +205,44 @@ impl From<&'static lint::Lint> for DiagnosticMessageId {
 }
 
 impl Session {
+    pub fn miri_unleashed_feature(&self, span: Span, feature_gate: Option<Symbol>) {
+        self.miri_unleashed_features.lock().push((span, feature_gate));
+    }
+
+    fn check_miri_unleashed_features(&self) {
+        let unleashed_features = self.miri_unleashed_features.lock();
+        if !unleashed_features.is_empty() {
+            let mut must_err = false;
+            // Create a diagnostic pointing at where things got unleashed.
+            let mut diag = self.struct_warn("skipping const checks");
+            for &(span, feature_gate) in unleashed_features.iter() {
+                // FIXME: `span_label` doesn't do anything, so we use "help" as a hack.
+                if let Some(feature_gate) = feature_gate {
+                    diag.span_help(span, &format!("skipping check for `{}` feature", feature_gate));
+                    // The unleash flag must *not* be used to just "hack around" feature gates.
+                    must_err = true;
+                } else {
+                    diag.span_help(span, "skipping check that does not even have a feature gate");
+                }
+            }
+            diag.emit();
+            // If we should err, make sure we did.
+            if must_err && !self.has_errors() {
+                // We have skipped a feature gate, and not run into other errors... reject.
+                self.err(
+                    "`-Zunleash-the-miri-inside-of-you` may not be used to circumvent feature \
+                     gates, except when testing error paths in the CTFE engine",
+                );
+            }
+        }
+    }
+
+    /// Invoked all the way at the end to finish off diagnostics printing.
+    pub fn finish_diagnostics(&self, registry: &Registry) {
+        self.check_miri_unleashed_features();
+        self.diagnostic().print_error_count(registry);
+    }
+
     pub fn local_crate_disambiguator(&self) -> CrateDisambiguator {
         *self.crate_disambiguator.get()
     }
@@ -530,9 +594,6 @@ impl Session {
         self.opts.debugging_opts.fewer_names || !more_names
     }
 
-    pub fn no_landing_pads(&self) -> bool {
-        self.opts.debugging_opts.no_landing_pads || self.panic_strategy() == PanicStrategy::Abort
-    }
     pub fn unstable_options(&self) -> bool {
         self.opts.debugging_opts.unstable_options
     }
@@ -545,25 +606,20 @@ impl Session {
     }
 
     /// Check whether this compile session and crate type use static crt.
-    pub fn crt_static(&self, crate_type: Option<config::CrateType>) -> bool {
-        // If the target does not opt in to crt-static support, use its default.
-        if self.target.target.options.crt_static_respected {
-            self.crt_static_feature(crate_type)
-        } else {
-            self.target.target.options.crt_static_default
+    pub fn crt_static(&self, crate_type: Option<CrateType>) -> bool {
+        if !self.target.target.options.crt_static_respected {
+            // If the target does not opt in to crt-static support, use its default.
+            return self.target.target.options.crt_static_default;
         }
-    }
 
-    /// Check whether this compile session and crate type use `crt-static` feature.
-    pub fn crt_static_feature(&self, crate_type: Option<config::CrateType>) -> bool {
         let requested_features = self.opts.cg.target_feature.split(',');
         let found_negative = requested_features.clone().any(|r| r == "-crt-static");
         let found_positive = requested_features.clone().any(|r| r == "+crt-static");
 
         if found_positive || found_negative {
             found_positive
-        } else if crate_type == Some(config::CrateType::ProcMacro)
-            || crate_type == None && self.opts.crate_types.contains(&config::CrateType::ProcMacro)
+        } else if crate_type == Some(CrateType::ProcMacro)
+            || crate_type == None && self.opts.crate_types.contains(&CrateType::ProcMacro)
         {
             // FIXME: When crate_type is not available,
             // we use compiler options to determine the crate_type.
@@ -572,6 +628,18 @@ impl Session {
         } else {
             self.target.target.options.crt_static_default
         }
+    }
+
+    pub fn relocation_model(&self) -> RelocModel {
+        self.opts.cg.relocation_model.unwrap_or(self.target.target.options.relocation_model)
+    }
+
+    pub fn code_model(&self) -> Option<CodeModel> {
+        self.opts.cg.code_model.or(self.target.target.options.code_model)
+    }
+
+    pub fn tls_model(&self) -> TlsModel {
+        self.opts.debugging_opts.tls_model.unwrap_or(self.target.target.options.tls_model)
     }
 
     pub fn must_not_eliminate_frame_pointers(&self) -> bool {
@@ -583,6 +651,33 @@ impl Session {
             x
         } else {
             !self.target.target.options.eliminate_frame_pointer
+        }
+    }
+
+    pub fn must_emit_unwind_tables(&self) -> bool {
+        // This is used to control the emission of the `uwtable` attribute on
+        // LLVM functions.
+        //
+        // At the very least, unwind tables are needed when compiling with
+        // `-C panic=unwind`.
+        //
+        // On some targets (including windows), however, exceptions include
+        // other events such as illegal instructions, segfaults, etc. This means
+        // that on Windows we end up still needing unwind tables even if the `-C
+        // panic=abort` flag is passed.
+        //
+        // You can also find more info on why Windows needs unwind tables in:
+        //      https://bugzilla.mozilla.org/show_bug.cgi?id=1302078
+        //
+        // If a target requires unwind tables, then they must be emitted.
+        // Otherwise, we can defer to the `-C force-unwind-tables=<yes/no>`
+        // value, if it is provided, or disable them, if not.
+        if self.panic_strategy() == PanicStrategy::Unwind {
+            true
+        } else if self.target.target.options.requires_uwtable {
+            true
+        } else {
+            self.opts.cg.force_unwind_tables.unwrap_or(false)
         }
     }
 
@@ -707,8 +802,8 @@ impl Session {
             self.perf_stats.queries_canonicalized.load(Ordering::Relaxed)
         );
         println!(
-            "normalize_ty_after_erasing_regions:            {}",
-            self.perf_stats.normalize_ty_after_erasing_regions.load(Ordering::Relaxed)
+            "normalize_generic_arg_after_erasing_regions:   {}",
+            self.perf_stats.normalize_generic_arg_after_erasing_regions.load(Ordering::Relaxed)
         );
         println!(
             "normalize_projection_ty:                       {}",
@@ -726,7 +821,7 @@ impl Session {
                 let mut fuel = self.optimization_fuel.lock();
                 ret = fuel.remaining != 0;
                 if fuel.remaining == 0 && !fuel.out_of_fuel {
-                    eprintln!("optimization-fuel-exhausted: {}", msg());
+                    self.warn(&format!("optimization-fuel-exhausted: {}", msg()));
                     fuel.out_of_fuel = true;
                 } else if fuel.remaining > 0 {
                     fuel.remaining -= 1;
@@ -756,6 +851,13 @@ impl Session {
         }
         if let Some(n) = self.target.target.options.default_codegen_units {
             return n as usize;
+        }
+
+        // If incremental compilation is turned on, we default to a high number
+        // codegen units in order to reduce the "collateral damage" small
+        // changes cause.
+        if self.opts.incremental.is_some() {
+            return 256;
         }
 
         // Why is 16 codegen units the default all the time?
@@ -847,6 +949,16 @@ impl Session {
         // then try to skip it where possible.
         dbg_opts.plt.unwrap_or(needs_plt || !full_relro)
     }
+
+    /// Checks if LLVM lifetime markers should be emitted.
+    pub fn emit_lifetime_markers(&self) -> bool {
+        match self.opts.debugging_opts.sanitizer {
+            // AddressSanitizer uses lifetimes to detect use after scope bugs.
+            // MemorySanitizer uses lifetimes to detect use of uninitialized stack variables.
+            Some(Sanitizer::Address | Sanitizer::Memory) => true,
+            _ => self.opts.optimize != config::OptLevel::No,
+        }
+    }
 }
 
 pub fn build_session(
@@ -854,16 +966,15 @@ pub fn build_session(
     local_crate_source_file: Option<PathBuf>,
     registry: rustc_errors::registry::Registry,
 ) -> Session {
-    let file_path_mapping = sopts.file_path_mapping();
-
     build_session_with_source_map(
         sopts,
         local_crate_source_file,
         registry,
-        Lrc::new(source_map::SourceMap::new(file_path_mapping)),
         DiagnosticOutput::Default,
         Default::default(),
+        None,
     )
+    .0
 }
 
 fn default_emitter(
@@ -883,7 +994,7 @@ fn default_emitter(
                     short,
                     macro_backtrace,
                 );
-                Box::new(emitter.ui_testing(sopts.debugging_opts.ui_testing()))
+                Box::new(emitter.ui_testing(sopts.debugging_opts.ui_testing))
             } else {
                 let emitter = match dst {
                     None => EmitterWriter::stderr(
@@ -904,7 +1015,7 @@ fn default_emitter(
                         macro_backtrace,
                     ),
                 };
-                Box::new(emitter.ui_testing(sopts.debugging_opts.ui_testing()))
+                Box::new(emitter.ui_testing(sopts.debugging_opts.ui_testing))
             }
         }
         (config::ErrorOutputType::Json { pretty, json_rendered }, None) => Box::new(
@@ -915,7 +1026,7 @@ fn default_emitter(
                 json_rendered,
                 macro_backtrace,
             )
-            .ui_testing(sopts.debugging_opts.ui_testing()),
+            .ui_testing(sopts.debugging_opts.ui_testing),
         ),
         (config::ErrorOutputType::Json { pretty, json_rendered }, Some(dst)) => Box::new(
             JsonEmitter::new(
@@ -926,7 +1037,7 @@ fn default_emitter(
                 json_rendered,
                 macro_backtrace,
             )
-            .ui_testing(sopts.debugging_opts.ui_testing()),
+            .ui_testing(sopts.debugging_opts.ui_testing),
         ),
     }
 }
@@ -940,10 +1051,10 @@ pub fn build_session_with_source_map(
     sopts: config::Options,
     local_crate_source_file: Option<PathBuf>,
     registry: rustc_errors::registry::Registry,
-    source_map: Lrc<source_map::SourceMap>,
     diagnostics_output: DiagnosticOutput,
-    lint_caps: FxHashMap<lint::LintId, lint::Level>,
-) -> Session {
+    driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
+    file_loader: Option<Box<dyn FileLoader + Send + Sync + 'static>>,
+) -> (Session, Lrc<SourceMap>) {
     // FIXME: This is not general enough to make the warning lint completely override
     // normal diagnostic warnings, since the warning lint can also be denied and changed
     // later via the source code.
@@ -961,23 +1072,33 @@ pub fn build_session_with_source_map(
         DiagnosticOutput::Default => None,
         DiagnosticOutput::Raw(write) => Some(write),
     };
+
+    let target_cfg = config::build_target_config(&sopts, sopts.error_format);
+    let host_triple = TargetTriple::from_triple(config::host_triple());
+    let host = Target::search(&host_triple).unwrap_or_else(|e| {
+        early_error(sopts.error_format, &format!("Error loading host specification: {}", e))
+    });
+
+    let loader = file_loader.unwrap_or(Box::new(RealFileLoader));
+    let hash_kind = sopts.debugging_opts.src_hash_algorithm.unwrap_or_else(|| {
+        if target_cfg.target.options.is_like_msvc {
+            SourceFileHashAlgorithm::Sha1
+        } else {
+            SourceFileHashAlgorithm::Md5
+        }
+    });
+    let source_map = Lrc::new(SourceMap::with_file_loader_and_hash_kind(
+        loader,
+        sopts.file_path_mapping(),
+        hash_kind,
+    ));
     let emitter = default_emitter(&sopts, registry, &source_map, write_dest);
 
-    let diagnostic_handler = rustc_errors::Handler::with_emitter_and_flags(
+    let span_diagnostic = rustc_errors::Handler::with_emitter_and_flags(
         emitter,
         sopts.debugging_opts.diagnostic_handler_flags(can_emit_warnings),
     );
 
-    build_session_(sopts, local_crate_source_file, diagnostic_handler, source_map, lint_caps)
-}
-
-fn build_session_(
-    sopts: config::Options,
-    local_crate_source_file: Option<PathBuf>,
-    span_diagnostic: rustc_errors::Handler,
-    source_map: Lrc<source_map::SourceMap>,
-    driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
-) -> Session {
     let self_profiler = if let SwitchWithOptPath::Enabled(ref d) = sopts.debugging_opts.self_profile
     {
         let directory =
@@ -999,13 +1120,7 @@ fn build_session_(
         None
     };
 
-    let host_triple = TargetTriple::from_triple(config::host_triple());
-    let host = Target::search(&host_triple).unwrap_or_else(|e| {
-        span_diagnostic.fatal(&format!("Error loading host specification: {}", e)).raise()
-    });
-    let target_cfg = config::build_target_config(&sopts, &span_diagnostic);
-
-    let parse_sess = ParseSess::with_span_handler(span_diagnostic, source_map);
+    let parse_sess = ParseSess::with_span_handler(span_diagnostic, source_map.clone());
     let sysroot = match &sopts.maybe_sysroot {
         Some(sysroot) => sysroot.clone(),
         None => filesearch::get_or_default_sysroot(),
@@ -1056,6 +1171,32 @@ fn build_session_(
         _ => CtfeBacktrace::Disabled,
     });
 
+    // Try to find a directory containing the Rust `src`, for more details see
+    // the doc comment on the `real_rust_source_base_dir` field.
+    let real_rust_source_base_dir = {
+        // This is the location used by the `rust-src` `rustup` component.
+        let mut candidate = sysroot.join("lib/rustlib/src/rust");
+        if let Ok(metadata) = candidate.symlink_metadata() {
+            // Replace the symlink rustbuild creates, with its destination.
+            // We could try to use `fs::canonicalize` instead, but that might
+            // produce unnecessarily verbose path.
+            if metadata.file_type().is_symlink() {
+                if let Ok(symlink_dest) = std::fs::read_link(&candidate) {
+                    candidate = symlink_dest;
+                }
+            }
+        }
+
+        // Only use this directory if it has a file we can expect to always find.
+        if candidate.join("src/libstd/lib.rs").is_file() { Some(candidate) } else { None }
+    };
+
+    let asm_arch = if target_cfg.target.options.allow_asm {
+        InlineAsmArch::from_str(&target_cfg.target.arch).ok()
+    } else {
+        None
+    };
+
     let sess = Session {
         target: target_cfg,
         host,
@@ -1080,7 +1221,7 @@ fn build_session_(
             symbol_hash_time: Lock::new(Duration::from_secs(0)),
             decode_def_path_tables_time: Lock::new(Duration::from_secs(0)),
             queries_canonicalized: AtomicUsize::new(0),
-            normalize_ty_after_erasing_regions: AtomicUsize::new(0),
+            normalize_generic_arg_after_erasing_regions: AtomicUsize::new(0),
             normalize_projection_ty: AtomicUsize::new(0),
         },
         code_stats: Default::default(),
@@ -1094,11 +1235,15 @@ fn build_session_(
         confused_type_with_std_module: Lock::new(Default::default()),
         system_library_path: OneThread::new(RefCell::new(Default::default())),
         ctfe_backtrace,
+        miri_unleashed_features: Lock::new(Default::default()),
+        real_rust_source_base_dir,
+        asm_arch,
+        target_features: FxHashSet::default(),
     };
 
     validate_commandline_args_with_session_available(&sess);
 
-    sess
+    (sess, source_map)
 }
 
 // If it is useful to have a Session available already for validating a
@@ -1129,6 +1274,23 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
                 "File `{}` passed to `-C profile-use` does not exist.",
                 path.display()
             ));
+        }
+    }
+
+    // Unwind tables cannot be disabled if the target requires them.
+    if let Some(include_uwtables) = sess.opts.cg.force_unwind_tables {
+        if sess.panic_strategy() == PanicStrategy::Unwind && !include_uwtables {
+            sess.err(
+                "panic=unwind requires unwind tables, they cannot be disabled \
+                     with `-C force-unwind-tables=no`.",
+            );
+        }
+
+        if sess.target.target.options.requires_uwtable && !include_uwtables {
+            sess.err(
+                "target requires unwind tables, they cannot be disabled with \
+                     `-C force-unwind-tables=no`.",
+            );
         }
     }
 

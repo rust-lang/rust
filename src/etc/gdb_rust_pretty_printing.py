@@ -374,7 +374,7 @@ class RustStdBTreeSetPrinter(object):
         innermap = GdbValue(self.__val.get_wrapped_value()['map'])
         if innermap.get_wrapped_value()['length'] > 0:
             root = GdbValue(innermap.get_wrapped_value()['root'])
-            type_name = str(root.type.ty.name).replace('core::option::Option<', '')[:-1]
+            type_name = str(root.type.ty.name).replace('core::option::Option<', '', 1)[:-1]
             root = root.get_wrapped_value().cast(gdb.lookup_type(type_name))
             node_ptr = root['node']
             i = 0
@@ -398,7 +398,7 @@ class RustStdBTreeMapPrinter(object):
     def children(self):
         if self.__val.get_wrapped_value()['length'] > 0:
             root = GdbValue(self.__val.get_wrapped_value()['root'])
-            type_name = str(root.type.ty.name).replace('core::option::Option<', '')[:-1]
+            type_name = str(root.type.ty.name).replace('core::option::Option<', '', 1)[:-1]
             root = root.get_wrapped_value().cast(gdb.lookup_type(type_name))
             node_ptr = root['node']
             i = 0

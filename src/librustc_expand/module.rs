@@ -1,10 +1,10 @@
-use rustc_ast::ast::{self, Attribute, Ident, Mod};
+use rustc_ast::ast::{Attribute, Mod};
 use rustc_ast::{attr, token};
 use rustc_errors::{struct_span_err, PResult};
 use rustc_parse::new_parser_from_file;
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::{FileName, Span};
-use rustc_span::symbol::sym;
+use rustc_span::symbol::{sym, Ident};
 
 use std::path::{self, Path, PathBuf};
 
@@ -18,7 +18,7 @@ pub struct Directory {
 pub enum DirectoryOwnership {
     Owned {
         // None if `mod.rs`, `Some("foo")` if we're in `foo.rs`.
-        relative: Option<ast::Ident>,
+        relative: Option<Ident>,
     },
     UnownedViaBlock,
     UnownedViaMod,
@@ -40,7 +40,7 @@ pub struct ModulePathSuccess {
 
 crate fn parse_external_mod(
     sess: &ParseSess,
-    id: ast::Ident,
+    id: Ident,
     span: Span, // The span to blame on errors.
     Directory { mut ownership, path }: Directory,
     attrs: &mut Vec<Attribute>,
@@ -125,7 +125,7 @@ crate fn push_directory(
 
 fn submod_path<'a>(
     sess: &'a ParseSess,
-    id: ast::Ident,
+    id: Ident,
     span: Span,
     attrs: &[Attribute],
     ownership: DirectoryOwnership,
@@ -236,9 +236,9 @@ pub fn submod_path_from_attr(attrs: &[Attribute], dir_path: &Path) -> Option<Pat
 // Public for rustfmt usage.
 pub fn default_submod_path<'a>(
     sess: &'a ParseSess,
-    id: ast::Ident,
+    id: Ident,
     span: Span,
-    relative: Option<ast::Ident>,
+    relative: Option<Ident>,
     dir_path: &Path,
 ) -> ModulePath<'a> {
     // If we're in a foo.rs file instead of a mod.rs file,

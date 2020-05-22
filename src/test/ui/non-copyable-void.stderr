@@ -1,5 +1,5 @@
 error[E0599]: no method named `clone` found for enum `libc::c_void` in the current scope
-  --> $DIR/non-copyable-void.rs:16:23
+  --> $DIR/non-copyable-void.rs:11:23
    |
 LL |         let _z = (*y).clone();
    |                       ^^^^^ method not found in `libc::c_void`

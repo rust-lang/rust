@@ -1,12 +1,12 @@
 //! Upvar (closure capture) collection from cross-body HIR uses of `Res::Local`s.
 
-use rustc::ty::query::Providers;
-use rustc::ty::TyCtxt;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::{self, HirId};
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 
 pub fn provide(providers: &mut Providers<'_>) {
@@ -15,7 +15,7 @@ pub fn provide(providers: &mut Providers<'_>) {
             return None;
         }
 
-        let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+        let hir_id = tcx.hir().as_local_hir_id(def_id.expect_local());
         let body = tcx.hir().body(tcx.hir().maybe_body_owned_by(hir_id)?);
 
         let mut local_collector = LocalCollector::default();

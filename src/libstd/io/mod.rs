@@ -256,11 +256,13 @@
 //! [`Read::read`]: trait.Read.html#tymethod.read
 //! [`Result`]: ../result/enum.Result.html
 //! [`.unwrap()`]: ../result/enum.Result.html#method.unwrap
+// ignore-tidy-filelength
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::cmp;
 use crate::fmt;
+use crate::mem;
 use crate::memchr;
 use crate::ops::{Deref, DerefMut};
 use crate::ptr;
@@ -515,6 +517,11 @@ pub trait Read {
     ///    reader will *always* no longer be able to produce bytes.
     /// 2. The buffer specified was 0 bytes in length.
     ///
+    /// It is not an error if the returned value `n` is smaller than the buffer size,
+    /// even when the reader is not at the end of the stream yet.
+    /// This may happen for example because fewer bytes are actually available right now
+    /// (e. g. being close to end-of-file) or because read() was interrupted by a signal.
+    ///
     /// No guarantees are provided about the contents of `buf` when this
     /// function is called, implementations cannot rely on any property of the
     /// contents of `buf` being true. It is recommended that *implementations*
@@ -569,14 +576,28 @@ pub trait Read {
     /// Like `read`, except that it reads into a slice of buffers.
     ///
     /// Data is copied to fill each buffer in order, with the final buffer
-    /// written to possibly being only partially filled. This method must behave
-    /// as a single call to `read` with the buffers concatenated would.
+    /// written to possibly being only partially filled. This method must
+    /// behave equivalently to a single call to `read` with concatenated
+    /// buffers.
     ///
     /// The default implementation calls `read` with either the first nonempty
     /// buffer provided, or an empty one if none exists.
     #[stable(feature = "iovec", since = "1.36.0")]
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> Result<usize> {
         default_read_vectored(|b| self.read(b), bufs)
+    }
+
+    /// Determines if this `Read`er has an efficient `read_vectored`
+    /// implementation.
+    ///
+    /// If a `Read`er does not override the default `read_vectored`
+    /// implementation, code using it may want to avoid the method all together
+    /// and coalesce writes into a single buffer for higher performance.
+    ///
+    /// The default implementation returns `false`.
+    #[unstable(feature = "can_vector", issue = "69941")]
+    fn is_read_vectored(&self) -> bool {
+        false
     }
 
     /// Determines if this `Read`er can work with buffers of uninitialized
@@ -951,6 +972,12 @@ pub trait Read {
 #[repr(transparent)]
 pub struct IoSliceMut<'a>(sys::io::IoSliceMut<'a>);
 
+#[stable(feature = "iovec-send-sync", since = "1.44.0")]
+unsafe impl<'a> Send for IoSliceMut<'a> {}
+
+#[stable(feature = "iovec-send-sync", since = "1.44.0")]
+unsafe impl<'a> Sync for IoSliceMut<'a> {}
+
 #[stable(feature = "iovec", since = "1.36.0")]
 impl<'a> fmt::Debug for IoSliceMut<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -1053,6 +1080,12 @@ impl<'a> DerefMut for IoSliceMut<'a> {
 #[derive(Copy, Clone)]
 #[repr(transparent)]
 pub struct IoSlice<'a>(sys::io::IoSlice<'a>);
+
+#[stable(feature = "iovec-send-sync", since = "1.44.0")]
+unsafe impl<'a> Send for IoSlice<'a> {}
+
+#[stable(feature = "iovec-send-sync", since = "1.44.0")]
+unsafe impl<'a> Sync for IoSlice<'a> {}
 
 #[stable(feature = "iovec", since = "1.36.0")]
 impl<'a> fmt::Debug for IoSlice<'a> {
@@ -1291,6 +1324,19 @@ pub trait Write {
         default_write_vectored(|b| self.write(b), bufs)
     }
 
+    /// Determines if this `Write`er has an efficient `write_vectored`
+    /// implementation.
+    ///
+    /// If a `Write`er does not override the default `write_vectored`
+    /// implementation, code using it may want to avoid the method all together
+    /// and coalesce writes into a single buffer for higher performance.
+    ///
+    /// The default implementation returns `false`.
+    #[unstable(feature = "can_vector", issue = "69941")]
+    fn is_write_vectored(&self) -> bool {
+        false
+    }
+
     /// Flush this output stream, ensuring that all intermediately buffered
     /// contents reach their destination.
     ///
@@ -1357,6 +1403,70 @@ pub trait Write {
                     return Err(Error::new(ErrorKind::WriteZero, "failed to write whole buffer"));
                 }
                 Ok(n) => buf = &buf[n..],
+                Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
+                Err(e) => return Err(e),
+            }
+        }
+        Ok(())
+    }
+
+    /// Attempts to write multiple buffers into this writer.
+    ///
+    /// This method will continuously call [`write_vectored`] until there is no
+    /// more data to be written or an error of non-[`ErrorKind::Interrupted`]
+    /// kind is returned. This method will not return until all buffers have
+    /// been successfully written or such an error occurs. The first error that
+    /// is not of [`ErrorKind::Interrupted`] kind generated from this method
+    /// will be returned.
+    ///
+    /// If the buffer contains no data, this will never call [`write_vectored`].
+    ///
+    /// [`write_vectored`]: #method.write_vectored
+    /// [`ErrorKind::Interrupted`]: ../../std/io/enum.ErrorKind.html#variant.Interrupted
+    ///
+    /// # Notes
+    ///
+    ///
+    /// Unlike `io::Write::write_vectored`, this takes a *mutable* reference to
+    /// a slice of `IoSlice`s, not an immutable one. That's because we need to
+    /// modify the slice to keep track of the bytes already written.
+    ///
+    /// Once this function returns, the contents of `bufs` are unspecified, as
+    /// this depends on how many calls to `write_vectored` were necessary. It is
+    /// best to understand this function as taking ownership of `bufs` and to
+    /// not use `bufs` afterwards. The underlying buffers, to which the
+    /// `IoSlice`s point (but not the `IoSlice`s themselves), are unchanged and
+    /// can be reused.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(write_all_vectored)]
+    /// # fn main() -> std::io::Result<()> {
+    ///
+    /// use std::io::{Write, IoSlice};
+    ///
+    /// let mut writer = Vec::new();
+    /// let bufs = &mut [
+    ///     IoSlice::new(&[1]),
+    ///     IoSlice::new(&[2, 3]),
+    ///     IoSlice::new(&[4, 5, 6]),
+    /// ];
+    ///
+    /// writer.write_all_vectored(bufs)?;
+    /// // Note: the contents of `bufs` is now undefined, see the Notes section.
+    ///
+    /// assert_eq!(writer, &[1, 2, 3, 4, 5, 6]);
+    /// # Ok(()) }
+    /// ```
+    #[unstable(feature = "write_all_vectored", issue = "70436")]
+    fn write_all_vectored(&mut self, mut bufs: &mut [IoSlice<'_>]) -> Result<()> {
+        while !bufs.is_empty() {
+            match self.write_vectored(bufs) {
+                Ok(0) => {
+                    return Err(Error::new(ErrorKind::WriteZero, "failed to write whole buffer"));
+                }
+                Ok(n) => bufs = IoSlice::advance(mem::take(&mut bufs), n),
                 Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
                 Err(e) => return Err(e),
             }
@@ -2411,7 +2521,7 @@ impl<B: BufRead> Iterator for Lines<B> {
 #[cfg(test)]
 mod tests {
     use super::{repeat, Cursor, SeekFrom};
-    use crate::cmp;
+    use crate::cmp::{self, min};
     use crate::io::prelude::*;
     use crate::io::{self, IoSlice, IoSliceMut};
     use crate::ops::Deref;
@@ -2799,5 +2909,108 @@ mod tests {
         // Going beyond the total length should be ok.
         bufs = IoSlice::advance(bufs, 9);
         assert!(bufs.is_empty());
+    }
+
+    /// Create a new writer that reads from at most `n_bufs` and reads
+    /// `per_call` bytes (in total) per call to write.
+    fn test_writer(n_bufs: usize, per_call: usize) -> TestWriter {
+        TestWriter { n_bufs, per_call, written: Vec::new() }
+    }
+
+    struct TestWriter {
+        n_bufs: usize,
+        per_call: usize,
+        written: Vec<u8>,
+    }
+
+    impl Write for TestWriter {
+        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            self.write_vectored(&[IoSlice::new(buf)])
+        }
+
+        fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+            let mut left = self.per_call;
+            let mut written = 0;
+            for buf in bufs.iter().take(self.n_bufs) {
+                let n = min(left, buf.len());
+                self.written.extend_from_slice(&buf[0..n]);
+                left -= n;
+                written += n;
+            }
+            Ok(written)
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn test_writer_read_from_one_buf() {
+        let mut writer = test_writer(1, 2);
+
+        assert_eq!(writer.write(&[]).unwrap(), 0);
+        assert_eq!(writer.write_vectored(&[]).unwrap(), 0);
+
+        // Read at most 2 bytes.
+        assert_eq!(writer.write(&[1, 1, 1]).unwrap(), 2);
+        let bufs = &[IoSlice::new(&[2, 2, 2])];
+        assert_eq!(writer.write_vectored(bufs).unwrap(), 2);
+
+        // Only read from first buf.
+        let bufs = &[IoSlice::new(&[3]), IoSlice::new(&[4, 4])];
+        assert_eq!(writer.write_vectored(bufs).unwrap(), 1);
+
+        assert_eq!(writer.written, &[1, 1, 2, 2, 3]);
+    }
+
+    #[test]
+    fn test_writer_read_from_multiple_bufs() {
+        let mut writer = test_writer(3, 3);
+
+        // Read at most 3 bytes from two buffers.
+        let bufs = &[IoSlice::new(&[1]), IoSlice::new(&[2, 2, 2])];
+        assert_eq!(writer.write_vectored(bufs).unwrap(), 3);
+
+        // Read at most 3 bytes from three buffers.
+        let bufs = &[IoSlice::new(&[3]), IoSlice::new(&[4]), IoSlice::new(&[5, 5])];
+        assert_eq!(writer.write_vectored(bufs).unwrap(), 3);
+
+        assert_eq!(writer.written, &[1, 2, 2, 3, 4, 5]);
+    }
+
+    #[test]
+    fn test_write_all_vectored() {
+        #[rustfmt::skip] // Becomes unreadable otherwise.
+        let tests: Vec<(_, &'static [u8])> = vec![
+            (vec![], &[]),
+            (vec![IoSlice::new(&[1])], &[1]),
+            (vec![IoSlice::new(&[1, 2])], &[1, 2]),
+            (vec![IoSlice::new(&[1, 2, 3])], &[1, 2, 3]),
+            (vec![IoSlice::new(&[1, 2, 3, 4])], &[1, 2, 3, 4]),
+            (vec![IoSlice::new(&[1, 2, 3, 4, 5])], &[1, 2, 3, 4, 5]),
+            (vec![IoSlice::new(&[1]), IoSlice::new(&[2])], &[1, 2]),
+            (vec![IoSlice::new(&[1]), IoSlice::new(&[2, 2])], &[1, 2, 2]),
+            (vec![IoSlice::new(&[1, 1]), IoSlice::new(&[2, 2])], &[1, 1, 2, 2]),
+            (vec![IoSlice::new(&[1, 1]), IoSlice::new(&[2, 2, 2])], &[1, 1, 2, 2, 2]),
+            (vec![IoSlice::new(&[1, 1]), IoSlice::new(&[2, 2, 2])], &[1, 1, 2, 2, 2]),
+            (vec![IoSlice::new(&[1, 1, 1]), IoSlice::new(&[2, 2, 2])], &[1, 1, 1, 2, 2, 2]),
+            (vec![IoSlice::new(&[1, 1, 1]), IoSlice::new(&[2, 2, 2, 2])], &[1, 1, 1, 2, 2, 2, 2]),
+            (vec![IoSlice::new(&[1, 1, 1, 1]), IoSlice::new(&[2, 2, 2, 2])], &[1, 1, 1, 1, 2, 2, 2, 2]),
+            (vec![IoSlice::new(&[1]), IoSlice::new(&[2]), IoSlice::new(&[3])], &[1, 2, 3]),
+            (vec![IoSlice::new(&[1, 1]), IoSlice::new(&[2, 2]), IoSlice::new(&[3, 3])], &[1, 1, 2, 2, 3, 3]),
+            (vec![IoSlice::new(&[1]), IoSlice::new(&[2, 2]), IoSlice::new(&[3, 3, 3])], &[1, 2, 2, 3, 3, 3]),
+            (vec![IoSlice::new(&[1, 1, 1]), IoSlice::new(&[2, 2, 2]), IoSlice::new(&[3, 3, 3])], &[1, 1, 1, 2, 2, 2, 3, 3, 3]),
+        ];
+
+        let writer_configs = &[(1, 1), (1, 2), (1, 3), (2, 2), (2, 3), (3, 3)];
+
+        for (n_bufs, per_call) in writer_configs.iter().copied() {
+            for (mut input, wanted) in tests.clone().into_iter() {
+                let mut writer = test_writer(n_bufs, per_call);
+                assert!(writer.write_all_vectored(&mut *input).is_ok());
+                assert_eq!(&*writer.written, &*wanted);
+            }
+        }
     }
 }

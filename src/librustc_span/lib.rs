@@ -9,9 +9,14 @@
 #![feature(const_if_match)]
 #![feature(const_fn)]
 #![feature(const_panic)]
+#![feature(negative_impls)]
 #![feature(nll)]
 #![feature(optin_builtin_traits)]
-#![feature(specialization)]
+#![feature(min_specialization)]
+
+// FIXME(#56935): Work around ICEs during cross-compilation.
+#[allow(unused)]
+extern crate rustc_macros;
 
 use rustc_data_structures::AtomicRef;
 use rustc_macros::HashStable_Generic;
@@ -46,9 +51,14 @@ use std::borrow::Cow;
 use std::cell::RefCell;
 use std::cmp::{self, Ordering};
 use std::fmt;
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
 use std::ops::{Add, Sub};
 use std::path::PathBuf;
+use std::str::FromStr;
+
+use md5::Md5;
+use sha1::Digest;
+use sha1::Sha1;
 
 #[cfg(test)]
 mod tests;
@@ -651,7 +661,8 @@ impl MultiSpan {
         MultiSpan { primary_spans: vec![primary_span], span_labels: vec![] }
     }
 
-    pub fn from_spans(vec: Vec<Span>) -> MultiSpan {
+    pub fn from_spans(mut vec: Vec<Span>) -> MultiSpan {
+        vec.sort();
         MultiSpan { primary_spans: vec, span_labels: vec![] }
     }
 
@@ -873,6 +884,70 @@ impl ExternalSource {
 #[derive(Debug)]
 pub struct OffsetOverflowError;
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
+pub enum SourceFileHashAlgorithm {
+    Md5,
+    Sha1,
+}
+
+impl FromStr for SourceFileHashAlgorithm {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<SourceFileHashAlgorithm, ()> {
+        match s {
+            "md5" => Ok(SourceFileHashAlgorithm::Md5),
+            "sha1" => Ok(SourceFileHashAlgorithm::Sha1),
+            _ => Err(()),
+        }
+    }
+}
+
+rustc_data_structures::impl_stable_hash_via_hash!(SourceFileHashAlgorithm);
+
+/// The hash of the on-disk source file used for debug info.
+#[derive(Copy, Clone, PartialEq, Eq, Debug, RustcEncodable, RustcDecodable)]
+#[derive(HashStable_Generic)]
+pub struct SourceFileHash {
+    pub kind: SourceFileHashAlgorithm,
+    value: [u8; 20],
+}
+
+impl SourceFileHash {
+    pub fn new(kind: SourceFileHashAlgorithm, src: &str) -> SourceFileHash {
+        let mut hash = SourceFileHash { kind, value: Default::default() };
+        let len = hash.hash_len();
+        let value = &mut hash.value[..len];
+        let data = src.as_bytes();
+        match kind {
+            SourceFileHashAlgorithm::Md5 => {
+                value.copy_from_slice(&Md5::digest(data));
+            }
+            SourceFileHashAlgorithm::Sha1 => {
+                value.copy_from_slice(&Sha1::digest(data));
+            }
+        }
+        hash
+    }
+
+    /// Check if the stored hash matches the hash of the string.
+    pub fn matches(&self, src: &str) -> bool {
+        Self::new(self.kind, src) == *self
+    }
+
+    /// The bytes of the hash.
+    pub fn hash_bytes(&self) -> &[u8] {
+        let len = self.hash_len();
+        &self.value[..len]
+    }
+
+    fn hash_len(&self) -> usize {
+        match self.kind {
+            SourceFileHashAlgorithm::Md5 => 16,
+            SourceFileHashAlgorithm::Sha1 => 20,
+        }
+    }
+}
+
 /// A single source in the `SourceMap`.
 #[derive(Clone)]
 pub struct SourceFile {
@@ -888,7 +963,7 @@ pub struct SourceFile {
     /// The complete source code.
     pub src: Option<Lrc<String>>,
     /// The source code's hash.
-    pub src_hash: u128,
+    pub src_hash: SourceFileHash,
     /// The external source code (used for external crates, which will have a `None`
     /// value as `self.src`.
     pub external_src: Lock<ExternalSource>,
@@ -986,7 +1061,8 @@ impl Decodable for SourceFile {
             let name: FileName = d.read_struct_field("name", 0, |d| Decodable::decode(d))?;
             let name_was_remapped: bool =
                 d.read_struct_field("name_was_remapped", 1, |d| Decodable::decode(d))?;
-            let src_hash: u128 = d.read_struct_field("src_hash", 2, |d| Decodable::decode(d))?;
+            let src_hash: SourceFileHash =
+                d.read_struct_field("src_hash", 2, |d| Decodable::decode(d))?;
             let start_pos: BytePos =
                 d.read_struct_field("start_pos", 3, |d| Decodable::decode(d))?;
             let end_pos: BytePos = d.read_struct_field("end_pos", 4, |d| Decodable::decode(d))?;
@@ -1061,14 +1137,12 @@ impl SourceFile {
         unmapped_path: FileName,
         mut src: String,
         start_pos: BytePos,
+        hash_kind: SourceFileHashAlgorithm,
     ) -> Self {
+        // Compute the file hash before any normalization.
+        let src_hash = SourceFileHash::new(hash_kind, &src);
         let normalized_pos = normalize_src(&mut src, start_pos);
 
-        let src_hash = {
-            let mut hasher: StableHasher = StableHasher::new();
-            hasher.write(src.as_bytes());
-            hasher.finish::<u128>()
-        };
         let name_hash = {
             let mut hasher: StableHasher = StableHasher::new();
             name.hash(&mut hasher);
@@ -1123,11 +1197,10 @@ impl SourceFile {
                 kind: src_kind @ ExternalSourceKind::AbsentOk, ..
             } = &mut *external_src
             {
-                if let Some(src) = src {
-                    let mut hasher: StableHasher = StableHasher::new();
-                    hasher.write(src.as_bytes());
-
-                    if hasher.finish::<u128>() == self.src_hash {
+                if let Some(mut src) = src {
+                    // The src_hash needs to be computed on the pre-normalized src.
+                    if self.src_hash.matches(&src) {
+                        normalize_src(&mut src, BytePos::from_usize(0));
                         *src_kind = ExternalSourceKind::Present(Lrc::new(src));
                         return true;
                     }
@@ -1543,7 +1616,7 @@ fn lookup_line(lines: &[BytePos], pos: BytePos) -> isize {
 
 /// Requirements for a `StableHashingContext` to be used in this crate.
 /// This is a hack to allow using the `HashStable_Generic` derive macro
-/// instead of implementing everything in librustc.
+/// instead of implementing everything in librustc_middle.
 pub trait HashStableContext {
     fn hash_spans(&self) -> bool;
     fn hash_def_id(&mut self, _: DefId, hasher: &mut StableHasher);

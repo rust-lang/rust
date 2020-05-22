@@ -41,6 +41,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::fmt;
+use crate::hash::{Hash, Hasher};
 
 mod num;
 
@@ -744,5 +745,12 @@ impl Ord for Infallible {
 impl From<!> for Infallible {
     fn from(x: !) -> Self {
         x
+    }
+}
+
+#[stable(feature = "convert_infallible_hash", since = "1.44.0")]
+impl Hash for Infallible {
+    fn hash<H: Hasher>(&self, _: &mut H) {
+        match *self {}
     }
 }

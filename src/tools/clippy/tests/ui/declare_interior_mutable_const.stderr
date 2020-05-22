@@ -1,0 +1,110 @@
+error: a `const` item should never be interior mutable
+  --> $DIR/declare_interior_mutable_const.rs:9:1
+   |
+LL | const ATOMIC: AtomicUsize = AtomicUsize::new(5); //~ ERROR interior mutable
+   | -----^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | make this a static item (maybe with lazy_static)
+   |
+   = note: `-D clippy::declare-interior-mutable-const` implied by `-D warnings`
+
+error: a `const` item should never be interior mutable
+  --> $DIR/declare_interior_mutable_const.rs:10:1
+   |
+LL | const CELL: Cell<usize> = Cell::new(6); //~ ERROR interior mutable
+   | -----^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | make this a static item (maybe with lazy_static)
+
+error: a `const` item should never be interior mutable
+  --> $DIR/declare_interior_mutable_const.rs:11:1
+   |
+LL | const ATOMIC_TUPLE: ([AtomicUsize; 1], Vec<AtomicUsize>, u8) = ([ATOMIC], Vec::new(), 7);
+   | -----^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | make this a static item (maybe with lazy_static)
+
+error: a `const` item should never be interior mutable
+  --> $DIR/declare_interior_mutable_const.rs:16:9
+   |
+LL |         const $name: $ty = $e;
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | declare_const!(_ONCE: Once = Once::new()); //~ ERROR interior mutable
+   | ------------------------------------------ in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: a `const` item should never be interior mutable
+  --> $DIR/declare_interior_mutable_const.rs:40:5
+   |
+LL |     const ATOMIC: AtomicUsize; //~ ERROR interior mutable
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: a `const` item should never be interior mutable
+  --> $DIR/declare_interior_mutable_const.rs:44:5
+   |
+LL |     const INPUT: T;
+   |     ^^^^^^^^^^^^^-^
+   |                  |
+   |                  consider requiring `T` to be `Copy`
+
+error: a `const` item should never be interior mutable
+  --> $DIR/declare_interior_mutable_const.rs:47:5
+   |
+LL |     const ASSOC: Self::NonCopyType;
+   |     ^^^^^^^^^^^^^-----------------^
+   |                  |
+   |                  consider requiring `<Self as Trait<T>>::NonCopyType` to be `Copy`
+
+error: a `const` item should never be interior mutable
+  --> $DIR/declare_interior_mutable_const.rs:51:5
+   |
+LL |     const AN_INPUT: T = Self::INPUT;
+   |     ^^^^^^^^^^^^^^^^-^^^^^^^^^^^^^^^
+   |                     |
+   |                     consider requiring `T` to be `Copy`
+
+error: a `const` item should never be interior mutable
+  --> $DIR/declare_interior_mutable_const.rs:16:9
+   |
+LL |         const $name: $ty = $e;
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     declare_const!(ANOTHER_INPUT: T = Self::INPUT); //~ ERROR interior mutable
+   |     ----------------------------------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: a `const` item should never be interior mutable
+  --> $DIR/declare_interior_mutable_const.rs:60:5
+   |
+LL |     const SELF_2: Self;
+   |     ^^^^^^^^^^^^^^----^
+   |                   |
+   |                   consider requiring `Self` to be `Copy`
+
+error: a `const` item should never be interior mutable
+  --> $DIR/declare_interior_mutable_const.rs:81:5
+   |
+LL |     const ASSOC_3: AtomicUsize = AtomicUsize::new(14); //~ ERROR interior mutable
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: a `const` item should never be interior mutable
+  --> $DIR/declare_interior_mutable_const.rs:84:5
+   |
+LL |     const U_SELF: U = U::SELF_2;
+   |     ^^^^^^^^^^^^^^-^^^^^^^^^^^^^
+   |                   |
+   |                   consider requiring `U` to be `Copy`
+
+error: a `const` item should never be interior mutable
+  --> $DIR/declare_interior_mutable_const.rs:87:5
+   |
+LL |     const T_ASSOC: T::NonCopyType = T::ASSOC;
+   |     ^^^^^^^^^^^^^^^--------------^^^^^^^^^^^^
+   |                    |
+   |                    consider requiring `<T as Trait<u32>>::NonCopyType` to be `Copy`
+
+error: aborting due to 13 previous errors
+

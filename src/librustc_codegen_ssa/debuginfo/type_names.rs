@@ -1,9 +1,9 @@
 // Type Names for Debug Info.
 
-use rustc::ty::{self, subst::SubstsRef, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_middle::ty::{self, subst::SubstsRef, Ty, TyCtxt};
 
 // Compute the name of the type as it should be stored in debuginfo. Does not do
 // any caching, i.e., calling the function twice with the same type will also do
@@ -198,7 +198,6 @@ pub fn push_debuginfo_type_name<'tcx>(
         ty::Error
         | ty::Infer(_)
         | ty::Placeholder(..)
-        | ty::UnnormalizedProjection(..)
         | ty::Projection(..)
         | ty::Bound(..)
         | ty::Opaque(..)

@@ -36,11 +36,12 @@ pub use crate::result::Result::{self, Err, Ok};
 
 // Re-exported built-in macros
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
+#[allow(deprecated)]
 #[doc(no_inline)]
 pub use core::prelude::v1::{
     asm, assert, cfg, column, compile_error, concat, concat_idents, env, file, format_args,
-    format_args_nl, global_asm, include, include_bytes, include_str, line, log_syntax, module_path,
-    option_env, stringify, trace_macros,
+    format_args_nl, global_asm, include, include_bytes, include_str, line, llvm_asm, log_syntax,
+    module_path, option_env, stringify, trace_macros,
 };
 
 // FIXME: Attribute and derive macros are not documented because for them rustdoc generates
@@ -53,7 +54,6 @@ pub use core::prelude::v1::{
     PartialEq, PartialOrd, RustcDecodable, RustcEncodable,
 };
 
-#[cfg(not(bootstrap))]
 #[unstable(
     feature = "cfg_accessible",
     issue = "64797",

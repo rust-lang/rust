@@ -10,3 +10,5 @@ note: the lint level is defined here
 LL | #![warn(unused_imports)] // Warning explanation here, it's OK
    |         ^^^^^^^^^^^^^^
 
+warning: 1 warning emitted
+

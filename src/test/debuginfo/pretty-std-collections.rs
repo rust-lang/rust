@@ -26,14 +26,19 @@
 // gdb-command: print empty_btree_map
 // gdb-check:$4 = BTreeMap<i32, u32>(len: 0)
 
+// gdb-command: print option_btree_map
+// gdb-check:$5 = BTreeMap<bool, core::option::Option<bool>>(len: 2) = {[false] = [...], [true] = [...]}
+// (abbreviated because both values vary wildly over gdb versions and/or linux distributions)
+
 // gdb-command: print nasty_btree_map
-// gdb-check:$5 = BTreeMap<i32, pretty_std_collections::MyLeafNode>(len: 1) = {[1] = pretty_std_collections::MyLeafNode (11)}
+// gdb-check:$6 = BTreeMap<i32, pretty_std_collections::MyLeafNode>(len: 15) = {[0] = pretty_std_collections::MyLeafNode (0), [...]}
+// (abbreviated because it's boring but we need enough elements to include internal nodes)
 
 // gdb-command: print vec_deque
-// gdb-check:$6 = VecDeque<i32>(len: 3, cap: 8) = {5, 3, 7}
+// gdb-check:$7 = VecDeque<i32>(len: 3, cap: 8) = {5, 3, 7}
 
 // gdb-command: print vec_deque2
-// gdb-check:$7 = VecDeque<i32>(len: 7, cap: 8) = {2, 3, 4, 5, 6, 7, 8}
+// gdb-check:$8 = VecDeque<i32>(len: 7, cap: 8) = {2, 3, 4, 5, 6, 7, 8}
 
 #![allow(unused_variables)]
 use std::collections::BTreeMap;
@@ -59,8 +64,14 @@ fn main() {
 
     let mut empty_btree_map: BTreeMap<i32, u32> = BTreeMap::new();
 
+    let mut option_btree_map: BTreeMap<bool, Option<bool>> = BTreeMap::new();
+    option_btree_map.insert(false, None);
+    option_btree_map.insert(true, Some(true));
+
     let mut nasty_btree_map: BTreeMap<i32, MyLeafNode> = BTreeMap::new();
-    nasty_btree_map.insert(1, MyLeafNode(11));
+    for i in 0..15 {
+        nasty_btree_map.insert(i, MyLeafNode(i));
+    }
 
     // VecDeque
     let mut vec_deque = VecDeque::new();

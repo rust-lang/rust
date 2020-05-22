@@ -69,6 +69,6 @@ LL |     let _: Box<(for<'a> Trait<'a>) + (Obj) + (?Sized)>;
    |                 first non-auto trait
    |                 trait alias used in trait object type (first use)
 
-error: aborting due to 6 previous errors
+error: aborting due to 6 previous errors; 3 warnings emitted
 
 For more information about this error, try `rustc --explain E0225`.

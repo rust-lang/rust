@@ -7,6 +7,7 @@ use libc;
 
 // FIXME(#43348): Make libc adapt #[doc(cfg(...))] so we don't need these fake definitions here?
 #[cfg(not(unix))]
+#[allow(non_camel_case_types)]
 mod libc {
     pub use libc::c_int;
     pub type socklen_t = u32;
@@ -614,6 +615,11 @@ impl io::Read for UnixStream {
     }
 
     #[inline]
+    fn is_read_vectored(&self) -> bool {
+        io::Read::is_read_vectored(&&*self)
+    }
+
+    #[inline]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
     }
@@ -627,6 +633,11 @@ impl<'a> io::Read for &'a UnixStream {
 
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         self.0.read_vectored(bufs)
+    }
+
+    #[inline]
+    fn is_read_vectored(&self) -> bool {
+        self.0.is_read_vectored()
     }
 
     #[inline]
@@ -645,6 +656,11 @@ impl io::Write for UnixStream {
         io::Write::write_vectored(&mut &*self, bufs)
     }
 
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        io::Write::is_write_vectored(&&*self)
+    }
+
     fn flush(&mut self) -> io::Result<()> {
         io::Write::flush(&mut &*self)
     }
@@ -658,6 +674,11 @@ impl<'a> io::Write for &'a UnixStream {
 
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.0.write_vectored(bufs)
+    }
+
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        self.0.is_write_vectored()
     }
 
     fn flush(&mut self) -> io::Result<()> {

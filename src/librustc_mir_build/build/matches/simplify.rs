@@ -15,12 +15,13 @@
 use crate::build::matches::{Ascription, Binding, Candidate, MatchPair};
 use crate::build::Builder;
 use crate::hair::{self, *};
-use rustc::mir::interpret::truncate;
-use rustc::mir::Place;
-use rustc::ty;
-use rustc::ty::layout::{Integer, IntegerExt, Size};
 use rustc_attr::{SignedInt, UnsignedInt};
 use rustc_hir::RangeEnd;
+use rustc_middle::mir::interpret::truncate;
+use rustc_middle::mir::Place;
+use rustc_middle::ty;
+use rustc_middle::ty::layout::IntegerExt;
+use rustc_target::abi::{Integer, Size};
 
 use std::mem;
 
@@ -128,7 +129,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 Ok(())
             }
 
-            PatKind::Binding { name, mutability, mode, var, ty, ref subpattern } => {
+            PatKind::Binding { name, mutability, mode, var, ty, ref subpattern, is_primary: _ } => {
                 candidate.bindings.push(Binding {
                     name,
                     mutability,

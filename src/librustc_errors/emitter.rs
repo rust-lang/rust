@@ -285,21 +285,18 @@ pub trait Emitter {
         let has_macro_spans = iter::once(&*span)
             .chain(children.iter().map(|child| &child.span))
             .flat_map(|span| span.primary_spans())
-            .copied()
-            .flat_map(|sp| {
-                sp.macro_backtrace().filter_map(|expn_data| {
-                    match expn_data.kind {
-                        ExpnKind::Root => None,
+            .flat_map(|sp| sp.macro_backtrace())
+            .find_map(|expn_data| {
+                match expn_data.kind {
+                    ExpnKind::Root => None,
 
-                        // Skip past non-macro entries, just in case there
-                        // are some which do actually involve macros.
-                        ExpnKind::Desugaring(..) | ExpnKind::AstPass(..) => None,
+                    // Skip past non-macro entries, just in case there
+                    // are some which do actually involve macros.
+                    ExpnKind::Desugaring(..) | ExpnKind::AstPass(..) => None,
 
-                        ExpnKind::Macro(macro_kind, _) => Some(macro_kind),
-                    }
-                })
-            })
-            .next();
+                    ExpnKind::Macro(macro_kind, _) => Some(macro_kind),
+                }
+            });
 
         if !backtrace {
             self.fix_multispans_in_extern_macros(source_map, span, children);
@@ -1361,7 +1358,7 @@ impl EmitterWriter {
                 let mut multilines = FxHashMap::default();
 
                 // Get the left-side margin to remove it
-                let mut whitespace_margin = std::usize::MAX;
+                let mut whitespace_margin = usize::MAX;
                 for line_idx in 0..annotated_file.lines.len() {
                     let file = annotated_file.file.clone();
                     let line = &annotated_file.lines[line_idx];
@@ -1373,19 +1370,19 @@ impl EmitterWriter {
                         }
                     }
                 }
-                if whitespace_margin == std::usize::MAX {
+                if whitespace_margin == usize::MAX {
                     whitespace_margin = 0;
                 }
 
                 // Left-most column any visible span points at.
-                let mut span_left_margin = std::usize::MAX;
+                let mut span_left_margin = usize::MAX;
                 for line in &annotated_file.lines {
                     for ann in &line.annotations {
                         span_left_margin = min(span_left_margin, ann.start_col);
                         span_left_margin = min(span_left_margin, ann.end_col);
                     }
                 }
-                if span_left_margin == std::usize::MAX {
+                if span_left_margin == usize::MAX {
                     span_left_margin = 0;
                 }
 
@@ -1421,7 +1418,7 @@ impl EmitterWriter {
                 } else {
                     termize::dimensions()
                         .map(|(w, _)| w.saturating_sub(code_offset))
-                        .unwrap_or(std::usize::MAX)
+                        .unwrap_or(usize::MAX)
                 };
 
                 let margin = Margin::new(
@@ -1719,7 +1716,7 @@ impl EmitterWriter {
                 if !self.short_message {
                     for child in children {
                         let span = child.render_span.as_ref().unwrap_or(&child.span);
-                        match self.emit_message_default(
+                        if let Err(err) = self.emit_message_default(
                             &span,
                             &child.styled_message(),
                             &None,
@@ -1727,15 +1724,14 @@ impl EmitterWriter {
                             max_line_num_len,
                             true,
                         ) {
-                            Err(e) => panic!("failed to emit error: {}", e),
-                            _ => (),
+                            panic!("failed to emit error: {}", err);
                         }
                     }
                     for sugg in suggestions {
                         if sugg.style == SuggestionStyle::CompletelyHidden {
                             // do not display this suggestion, it is meant only for tools
                         } else if sugg.style == SuggestionStyle::HideCodeAlways {
-                            match self.emit_message_default(
+                            if let Err(e) = self.emit_message_default(
                                 &MultiSpan::new(),
                                 &[(sugg.msg.to_owned(), Style::HeaderMsg)],
                                 &None,
@@ -1743,16 +1739,13 @@ impl EmitterWriter {
                                 max_line_num_len,
                                 true,
                             ) {
-                                Err(e) => panic!("failed to emit error: {}", e),
-                                _ => (),
+                                panic!("failed to emit error: {}", e);
                             }
-                        } else {
-                            match self.emit_suggestion_default(sugg, &Level::Help, max_line_num_len)
-                            {
-                                Err(e) => panic!("failed to emit error: {}", e),
-                                _ => (),
-                            }
-                        }
+                        } else if let Err(e) =
+                            self.emit_suggestion_default(sugg, &Level::Help, max_line_num_len)
+                        {
+                            panic!("failed to emit error: {}", e);
+                        };
                     }
                 }
             }
@@ -1762,10 +1755,11 @@ impl EmitterWriter {
         let mut dst = self.dst.writable();
         match writeln!(dst) {
             Err(e) => panic!("failed to emit error: {}", e),
-            _ => match dst.flush() {
-                Err(e) => panic!("failed to emit error: {}", e),
-                _ => (),
-            },
+            _ => {
+                if let Err(e) = dst.flush() {
+                    panic!("failed to emit error: {}", e)
+                }
+            }
         }
     }
 }
@@ -2008,7 +2002,7 @@ fn emit_to_destination(
     let _buffer_lock = lock::acquire_global_lock("rustc_errors");
     for (pos, line) in rendered_buffer.iter().enumerate() {
         for part in line {
-            dst.apply_style(lvl.clone(), part.style)?;
+            dst.apply_style(*lvl, part.style)?;
             write!(dst, "{}", part.text)?;
             dst.reset()?;
         }
@@ -2149,11 +2143,8 @@ impl<'a> Write for WritableDst<'a> {
 
 impl<'a> Drop for WritableDst<'a> {
     fn drop(&mut self) {
-        match *self {
-            WritableDst::Buffered(ref mut dst, ref mut buf) => {
-                drop(dst.print(buf));
-            }
-            _ => {}
+        if let WritableDst::Buffered(ref mut dst, ref mut buf) = self {
+            drop(dst.print(buf));
         }
     }
 }

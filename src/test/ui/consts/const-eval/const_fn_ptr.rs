@@ -9,15 +9,15 @@ const X: fn(usize) -> usize = double;
 const X_CONST: fn(usize) -> usize = double_const;
 
 const fn bar(x: usize) -> usize {
-    X(x) //~ WARNING skipping const checks
+    X(x)
 }
 
 const fn bar_const(x: usize) -> usize {
-    X_CONST(x) //~ WARNING skipping const checks
+    X_CONST(x)
 }
 
 const fn foo(x: fn(usize) -> usize, y: usize)  -> usize {
-    x(y) //~ WARNING skipping const checks
+    x(y)
 }
 
 fn main() {

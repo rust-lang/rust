@@ -4,13 +4,13 @@ use crate::astconv::AstConv;
 use crate::check::{callee, FnCtxt, Needs, PlaceOp};
 use crate::hir::def_id::DefId;
 use crate::hir::GenericArg;
-use rustc::ty::adjustment::{Adjust, Adjustment, OverloadedDeref, PointerCast};
-use rustc::ty::adjustment::{AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
-use rustc::ty::fold::TypeFoldable;
-use rustc::ty::subst::{Subst, SubstsRef};
-use rustc::ty::{self, GenericParamDefKind, Ty};
 use rustc_hir as hir;
 use rustc_infer::infer::{self, InferOk};
+use rustc_middle::ty::adjustment::{Adjust, Adjustment, OverloadedDeref, PointerCast};
+use rustc_middle::ty::adjustment::{AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
+use rustc_middle::ty::fold::TypeFoldable;
+use rustc_middle::ty::subst::{Subst, SubstsRef};
+use rustc_middle::ty::{self, GenericParamDefKind, Ty};
 use rustc_span::Span;
 use rustc_trait_selection::traits;
 
@@ -114,7 +114,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // a custom error in that case.
         if illegal_sized_bound.is_none() {
             let method_ty = self.tcx.mk_fn_ptr(ty::Binder::bind(method_sig));
-            self.add_obligations(method_ty, all_substs, &method_predicates);
+            self.add_obligations(method_ty, all_substs, method_predicates);
         }
 
         // Create the final `MethodCallee`.
@@ -209,7 +209,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                     "impl {:?} is not an inherent impl",
                     impl_def_id
                 );
-                self.impl_self_ty(self.span, impl_def_id).substs
+                self.fresh_substs_for_item(self.span, impl_def_id)
             }
 
             probe::ObjectPick => {
@@ -269,7 +269,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         self.fcx
             .autoderef(self.span, self_ty)
             .include_raw_pointers()
-            .filter_map(|(ty, _)| match ty.kind {
+            .find_map(|(ty, _)| match ty.kind {
                 ty::Dynamic(ref data, ..) => Some(closure(
                     self,
                     ty,
@@ -279,7 +279,6 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 )),
                 _ => None,
             })
-            .next()
             .unwrap_or_else(|| {
                 span_bug!(
                     self.span,
@@ -395,7 +394,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         &mut self,
         fty: Ty<'tcx>,
         all_substs: SubstsRef<'tcx>,
-        method_predicates: &ty::InstantiatedPredicates<'tcx>,
+        method_predicates: ty::InstantiatedPredicates<'tcx>,
     ) {
         debug!(
             "add_obligations: fty={:?} all_substs={:?} method_predicates={:?}",
@@ -469,7 +468,9 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
             match expr.kind {
                 hir::ExprKind::Index(ref base_expr, ref index_expr) => {
-                    let index_expr_ty = self.node_ty(index_expr.hir_id);
+                    // We need to get the final type in case dereferences were needed for the trait
+                    // to apply (#72002).
+                    let index_expr_ty = self.tables.borrow().expr_ty_adjusted(index_expr);
                     self.convert_place_op_to_mutable(
                         PlaceOp::Index,
                         expr,
@@ -551,12 +552,11 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             }
 
             // If we have an autoref followed by unsizing at the end, fix the unsize target.
-            match adjustments[..] {
-                [.., Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(..)), .. }, Adjustment { kind: Adjust::Pointer(PointerCast::Unsize), ref mut target }] =>
-                {
-                    *target = method.sig.inputs()[0];
-                }
-                _ => {}
+
+            if let [.., Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(..)), .. }, Adjustment { kind: Adjust::Pointer(PointerCast::Unsize), ref mut target }] =
+                adjustments[..]
+            {
+                *target = method.sig.inputs()[0];
             }
         }
     }
@@ -573,25 +573,25 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             None => return None,
         };
 
-        traits::elaborate_predicates(self.tcx, predicates.predicates.clone())
-            .filter_map(|predicate| match predicate {
+        traits::elaborate_predicates(self.tcx, predicates.predicates.iter().copied())
+            .filter_map(|obligation| match obligation.predicate {
                 ty::Predicate::Trait(trait_pred, _) if trait_pred.def_id() == sized_def_id => {
                     let span = predicates
                         .predicates
                         .iter()
                         .zip(predicates.spans.iter())
-                        .filter_map(|(p, span)| if *p == predicate { Some(*span) } else { None })
-                        .next()
+                        .find_map(
+                            |(p, span)| if *p == obligation.predicate { Some(*span) } else { None },
+                        )
                         .unwrap_or(rustc_span::DUMMY_SP);
                     Some((trait_pred, span))
                 }
                 _ => None,
             })
-            .filter_map(|(trait_pred, span)| match trait_pred.skip_binder().self_ty().kind {
+            .find_map(|(trait_pred, span)| match trait_pred.skip_binder().self_ty().kind {
                 ty::Dynamic(..) => Some(span),
                 _ => None,
             })
-            .next()
     }
 
     fn enforce_illegal_method_limitations(&self, pick: &probe::Pick<'_>) {

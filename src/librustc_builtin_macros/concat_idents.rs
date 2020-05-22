@@ -3,7 +3,7 @@ use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Token};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_expand::base::{self, *};
-use rustc_span::symbol::Symbol;
+use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::Span;
 
 pub fn expand_concat_idents<'cx>(
@@ -39,10 +39,10 @@ pub fn expand_concat_idents<'cx>(
         }
     }
 
-    let ident = ast::Ident::new(Symbol::intern(&res_str), cx.with_call_site_ctxt(sp));
+    let ident = Ident::new(Symbol::intern(&res_str), cx.with_call_site_ctxt(sp));
 
     struct ConcatIdentsResult {
-        ident: ast::Ident,
+        ident: Ident,
     }
 
     impl base::MacResult for ConcatIdentsResult {

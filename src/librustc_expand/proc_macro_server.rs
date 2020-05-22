@@ -10,7 +10,7 @@ use rustc_errors::Diagnostic;
 use rustc_parse::lexer::nfc_normalize;
 use rustc_parse::{nt_to_tokenstream, parse_stream_from_source_str};
 use rustc_session::parse::ParseSess;
-use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::symbol::{self, kw, sym, Symbol};
 use rustc_span::{BytePos, FileName, MultiSpan, Pos, SourceFile, Span};
 
 use pm::bridge::{server, TokenTree};
@@ -141,10 +141,10 @@ impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
             SingleQuote => op!('\''),
 
             Ident(name, false) if name == kw::DollarCrate => tt!(Ident::dollar_crate()),
-            Ident(name, is_raw) => tt!(Ident::new(name, is_raw)),
+            Ident(name, is_raw) => tt!(Ident::new(sess, name, is_raw)),
             Lifetime(name) => {
-                let ident = ast::Ident::new(name, span).without_first_quote();
-                stack.push(tt!(Ident::new(ident.name, false)));
+                let ident = symbol::Ident::new(name, span).without_first_quote();
+                stack.push(tt!(Ident::new(sess, ident.name, false)));
                 tt!(Punct::new('\'', true))
             }
             Literal(lit) => tt!(Literal { lit }),
@@ -322,7 +322,7 @@ impl Ident {
             false
         }
     }
-    fn new(sym: Symbol, is_raw: bool, span: Span) -> Ident {
+    fn new(sess: &ParseSess, sym: Symbol, is_raw: bool, span: Span) -> Ident {
         let sym = nfc_normalize(&sym.as_str());
         let string = sym.as_str();
         if !Self::is_valid(&string) {
@@ -331,6 +331,7 @@ impl Ident {
         if is_raw && !sym.can_be_raw() {
             panic!("`{}` cannot be a raw identifier", string);
         }
+        sess.symbol_gallery.insert(sym, span);
         Ident { sym, is_raw, span }
     }
     fn dollar_crate(span: Span) -> Ident {
@@ -495,7 +496,7 @@ impl server::Punct for Rustc<'_> {
 
 impl server::Ident for Rustc<'_> {
     fn new(&mut self, string: &str, span: Self::Span, is_raw: bool) -> Self::Ident {
-        Ident::new(Symbol::intern(string), is_raw, span)
+        Ident::new(self.sess, Symbol::intern(string), is_raw, span)
     }
     fn span(&mut self, ident: Self::Ident) -> Self::Span {
         ident.span
@@ -506,9 +507,14 @@ impl server::Ident for Rustc<'_> {
 }
 
 impl server::Literal for Rustc<'_> {
-    // FIXME(eddyb) `Literal` should not expose internal `Debug` impls.
-    fn debug(&mut self, literal: &Self::Literal) -> String {
-        format!("{:?}", literal)
+    fn debug_kind(&mut self, literal: &Self::Literal) -> String {
+        format!("{:?}", literal.lit.kind)
+    }
+    fn symbol(&mut self, literal: &Self::Literal) -> String {
+        literal.lit.symbol.to_string()
+    }
+    fn suffix(&mut self, literal: &Self::Literal) -> Option<String> {
+        literal.lit.suffix.as_ref().map(Symbol::to_string)
     }
     fn integer(&mut self, n: &str) -> Self::Literal {
         self.lit(token::Integer, Symbol::intern(n), None)

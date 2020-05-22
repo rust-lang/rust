@@ -3,10 +3,10 @@
 
 // run-pass
 
-#![feature(generators, generator_trait, core_intrinsics)]
+#![feature(generators, generator_trait, core_intrinsics, discriminant_kind)]
 
 use std::intrinsics::discriminant_value;
-use std::marker::Unpin;
+use std::marker::{Unpin, DiscriminantKind};
 use std::mem::size_of_val;
 use std::{cmp, ops::*};
 
@@ -65,7 +65,10 @@ macro_rules! yield250 {
     };
 }
 
-fn cycle(gen: impl Generator<()> + Unpin, expected_max_discr: u64) {
+fn cycle(
+    gen: impl Generator<()> + Unpin + DiscriminantKind<Discriminant = i32>,
+    expected_max_discr: i32
+) {
     let mut gen = Box::pin(gen);
     let mut max_discr = 0;
     loop {

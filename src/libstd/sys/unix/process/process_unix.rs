@@ -72,7 +72,7 @@ impl Command {
             }
         };
 
-        let mut p = Process { pid: pid, status: None };
+        let mut p = Process { pid, status: None };
         drop(output);
         let mut bytes = [0; 8];
 

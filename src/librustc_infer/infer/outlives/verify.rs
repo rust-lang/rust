@@ -1,12 +1,10 @@
 use crate::infer::outlives::env::RegionBoundPairs;
 use crate::infer::{GenericKind, VerifyBound};
 use crate::traits;
-use rustc::ty::subst::{InternalSubsts, Subst};
-use rustc::ty::{self, Ty, TyCtxt};
 use rustc_data_structures::captures::Captures;
 use rustc_hir::def_id::DefId;
-
-use smallvec::smallvec;
+use rustc_middle::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, Subst};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 
 /// The `TypeOutlives` struct has the job of "lowering" a `T: 'a`
 /// obligation into a series of `'a: 'b` constraints and "verifys", as
@@ -44,7 +42,32 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         match ty.kind {
             ty::Param(p) => self.param_bound(p),
             ty::Projection(data) => self.projection_bound(data),
-            _ => self.recursive_type_bound(ty),
+            ty::FnDef(_, substs) => {
+                // HACK(eddyb) ignore lifetimes found shallowly in `substs`.
+                // This is inconsistent with `ty::Adt` (including all substs),
+                // but consistent with previous (accidental) behavior.
+                // See https://github.com/rust-lang/rust/issues/70917
+                // for further background and discussion.
+                let mut bounds = substs
+                    .iter()
+                    .filter_map(|&child| match child.unpack() {
+                        GenericArgKind::Type(ty) => Some(self.type_bound(ty)),
+                        GenericArgKind::Lifetime(_) => None,
+                        GenericArgKind::Const(_) => Some(self.recursive_bound(child)),
+                    })
+                    .filter(|bound| {
+                        // Remove bounds that must hold, since they are not interesting.
+                        !bound.must_hold()
+                    });
+
+                match (bounds.next(), bounds.next()) {
+                    (Some(first), None) => first,
+                    (first, second) => VerifyBound::AllBounds(
+                        first.into_iter().chain(second).chain(bounds).collect(),
+                    ),
+                }
+            }
+            _ => self.recursive_bound(ty.into()),
         }
     }
 
@@ -144,25 +167,33 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
 
         // see the extensive comment in projection_must_outlive
         let ty = self.tcx.mk_projection(projection_ty.item_def_id, projection_ty.substs);
-        let recursive_bound = self.recursive_type_bound(ty);
+        let recursive_bound = self.recursive_bound(ty.into());
 
         VerifyBound::AnyBound(env_bounds.chain(trait_bounds).collect()).or(recursive_bound)
     }
 
-    fn recursive_type_bound(&self, ty: Ty<'tcx>) -> VerifyBound<'tcx> {
-        let mut bounds = ty.walk_shallow().map(|subty| self.type_bound(subty)).collect::<Vec<_>>();
+    fn recursive_bound(&self, parent: GenericArg<'tcx>) -> VerifyBound<'tcx> {
+        let mut bounds = parent
+            .walk_shallow()
+            .filter_map(|child| match child.unpack() {
+                GenericArgKind::Type(ty) => Some(self.type_bound(ty)),
+                GenericArgKind::Lifetime(lt) => {
+                    // Ignore late-bound regions.
+                    if !lt.is_late_bound() { Some(VerifyBound::OutlivedBy(lt)) } else { None }
+                }
+                GenericArgKind::Const(_) => Some(self.recursive_bound(child)),
+            })
+            .filter(|bound| {
+                // Remove bounds that must hold, since they are not interesting.
+                !bound.must_hold()
+            });
 
-        let mut regions = smallvec![];
-        ty.push_regions(&mut regions);
-        regions.retain(|r| !r.is_late_bound()); // ignore late-bound regions
-        bounds.push(VerifyBound::AllBounds(
-            regions.into_iter().map(|r| VerifyBound::OutlivedBy(r)).collect(),
-        ));
-
-        // remove bounds that must hold, since they are not interesting
-        bounds.retain(|b| !b.must_hold());
-
-        if bounds.len() == 1 { bounds.pop().unwrap() } else { VerifyBound::AllBounds(bounds) }
+        match (bounds.next(), bounds.next()) {
+            (Some(first), None) => first,
+            (first, second) => {
+                VerifyBound::AllBounds(first.into_iter().chain(second).chain(bounds).collect())
+            }
+        }
     }
 
     /// Searches the environment for where-clauses like `G: 'a` where
@@ -192,7 +223,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         // like `T` and `T::Item`. It may not work as well for things
         // like `<T as Foo<'a>>::Item`.
         let c_b = self.param_env.caller_bounds;
-        let param_bounds = self.collect_outlives_from_predicate_list(&compare_ty, c_b);
+        let param_bounds = self.collect_outlives_from_predicate_list(&compare_ty, c_b.into_iter());
 
         // Next, collect regions we scraped from the well-formedness
         // constraints in the fn signature. To do that, we walk the list
@@ -284,13 +315,12 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         let tcx = self.tcx;
         let assoc_item = tcx.associated_item(assoc_item_def_id);
         let trait_def_id = assoc_item.container.assert_trait();
-        let trait_predicates =
-            tcx.predicates_of(trait_def_id).predicates.iter().map(|(p, _)| *p).collect();
+        let trait_predicates = tcx.predicates_of(trait_def_id).predicates.iter().map(|(p, _)| *p);
         let identity_substs = InternalSubsts::identity_for_item(tcx, assoc_item_def_id);
         let identity_proj = tcx.mk_projection(assoc_item_def_id, identity_substs);
         self.collect_outlives_from_predicate_list(
             move |ty| ty == identity_proj,
-            traits::elaborate_predicates(tcx, trait_predicates),
+            traits::elaborate_predicates(tcx, trait_predicates).map(|o| o.predicate),
         )
         .map(|b| b.1)
     }
@@ -304,10 +334,9 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     fn collect_outlives_from_predicate_list(
         &self,
         compare_ty: impl Fn(Ty<'tcx>) -> bool,
-        predicates: impl IntoIterator<Item = impl AsRef<ty::Predicate<'tcx>>>,
+        predicates: impl Iterator<Item = impl AsRef<ty::Predicate<'tcx>>>,
     ) -> impl Iterator<Item = ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>> {
         predicates
-            .into_iter()
             .filter_map(|p| p.as_ref().to_opt_type_outlives())
             .filter_map(|p| p.no_bound_vars())
             .filter(move |p| compare_ty(p.0))

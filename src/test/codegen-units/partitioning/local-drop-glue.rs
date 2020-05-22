@@ -1,8 +1,8 @@
 // ignore-tidy-linelength
-// We specify -Z incremental here because we want to test the partitioning for
+// We specify -C incremental here because we want to test the partitioning for
 // incremental compilation
 // We specify opt-level=0 because `drop_in_place` is `Internal` when optimizing
-// compile-flags:-Zprint-mono-items=lazy -Zincremental=tmp/partitioning-tests/local-drop-glue
+// compile-flags:-Zprint-mono-items=lazy -Cincremental=tmp/partitioning-tests/local-drop-glue
 // compile-flags:-Zinline-in-all-cgus -Copt-level=0
 
 #![allow(dead_code)]

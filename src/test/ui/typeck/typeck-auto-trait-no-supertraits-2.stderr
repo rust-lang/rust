@@ -1,5 +1,5 @@
 error[E0568]: auto traits cannot have super traits
-  --> $DIR/typeck-auto-trait-no-supertraits-2.rs:3:20
+  --> $DIR/typeck-auto-trait-no-supertraits-2.rs:4:20
    |
 LL | auto trait Magic : Sized where Option<Self> : Magic {}
    |            -----   ^^^^^ help: remove the super traits

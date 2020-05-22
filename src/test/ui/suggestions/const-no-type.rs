@@ -35,6 +35,11 @@ const C = 42;
 //~| HELP provide a type for the item
 //~| SUGGESTION C: i32
 
+const D = &&42;
+//~^ ERROR missing type for `const` item
+//~| HELP provide a type for the item
+//~| SUGGESTION D: &&i32
+
 static S = Vec::<String>::new();
 //~^ ERROR missing type for `static` item
 //~| HELP provide a type for the item

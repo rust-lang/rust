@@ -9,6 +9,8 @@ LL |     let a = 4;
    |         |
    |         interpreted as a constant pattern, not a new variable
    |         help: introduce a variable instead: `a_var`
+   |
+   = note: the matched value is of type `u8`
 
 error[E0005]: refutable pattern in local binding: `0u8..=1u8` and `3u8..=std::u8::MAX` not covered
   --> $DIR/const-pattern-irrefutable.rs:13:9
@@ -21,6 +23,8 @@ LL |     let c = 4;
    |         |
    |         interpreted as a constant pattern, not a new variable
    |         help: introduce a variable instead: `c_var`
+   |
+   = note: the matched value is of type `u8`
 
 error[E0005]: refutable pattern in local binding: `0u8..=1u8` and `3u8..=std::u8::MAX` not covered
   --> $DIR/const-pattern-irrefutable.rs:14:9
@@ -33,6 +37,8 @@ LL |     let d = 4;
    |         |
    |         interpreted as a constant pattern, not a new variable
    |         help: introduce a variable instead: `d_var`
+   |
+   = note: the matched value is of type `u8`
 
 error: aborting due to 3 previous errors
 

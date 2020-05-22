@@ -1,0 +1,15 @@
+// compile-flags: -Zmir-opt-level=1
+
+fn foo<T>() {
+    if let (Some(a), None) = (Option::<u8>::None, Option::<T>::None) {
+        if a > 42u8 {
+
+        }
+    }
+}
+
+fn main() {
+    foo::<()>();
+}
+
+// EMIT_MIR rustc.foo.SimplifyLocals.diff

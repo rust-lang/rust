@@ -5,6 +5,7 @@ LL |     match (A, ()) {
    |           ^^^^^^^ patterns `(B, _)`, `(C, _)`, `(D, _)` and 2 more not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `(Enum, ())`
 
 error[E0004]: non-exhaustive patterns: `(_, B)`, `(_, C)`, `(_, D)` and 2 more not covered
   --> $DIR/issue-35609.rs:14:11
@@ -13,6 +14,7 @@ LL |     match (A, A) {
    |           ^^^^^^ patterns `(_, B)`, `(_, C)`, `(_, D)` and 2 more not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `(Enum, Enum)`
 
 error[E0004]: non-exhaustive patterns: `((B, _), _)`, `((C, _), _)`, `((D, _), _)` and 2 more not covered
   --> $DIR/issue-35609.rs:18:11
@@ -21,6 +23,7 @@ LL |     match ((A, ()), ()) {
    |           ^^^^^^^^^^^^^ patterns `((B, _), _)`, `((C, _), _)`, `((D, _), _)` and 2 more not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `((Enum, ()), ())`
 
 error[E0004]: non-exhaustive patterns: `((B, _), _)`, `((C, _), _)`, `((D, _), _)` and 2 more not covered
   --> $DIR/issue-35609.rs:22:11
@@ -29,6 +32,7 @@ LL |     match ((A, ()), A) {
    |           ^^^^^^^^^^^^ patterns `((B, _), _)`, `((C, _), _)`, `((D, _), _)` and 2 more not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `((Enum, ()), Enum)`
 
 error[E0004]: non-exhaustive patterns: `((B, _), _)`, `((C, _), _)`, `((D, _), _)` and 2 more not covered
   --> $DIR/issue-35609.rs:26:11
@@ -37,6 +41,7 @@ LL |     match ((A, ()), ()) {
    |           ^^^^^^^^^^^^^ patterns `((B, _), _)`, `((C, _), _)`, `((D, _), _)` and 2 more not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `((Enum, ()), ())`
 
 error[E0004]: non-exhaustive patterns: `S(B, _)`, `S(C, _)`, `S(D, _)` and 2 more not covered
   --> $DIR/issue-35609.rs:31:11
@@ -48,6 +53,7 @@ LL |     match S(A, ()) {
    |           ^^^^^^^^ patterns `S(B, _)`, `S(C, _)`, `S(D, _)` and 2 more not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `S`
 
 error[E0004]: non-exhaustive patterns: `Sd { x: B, .. }`, `Sd { x: C, .. }`, `Sd { x: D, .. }` and 2 more not covered
   --> $DIR/issue-35609.rs:35:11
@@ -59,6 +65,7 @@ LL |     match (Sd { x: A, y: () }) {
    |           ^^^^^^^^^^^^^^^^^^^^ patterns `Sd { x: B, .. }`, `Sd { x: C, .. }`, `Sd { x: D, .. }` and 2 more not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `Sd`
 
 error[E0004]: non-exhaustive patterns: `Some(B)`, `Some(C)`, `Some(D)` and 2 more not covered
   --> $DIR/issue-35609.rs:39:11
@@ -67,6 +74,7 @@ LL |     match Some(A) {
    |           ^^^^^^^ patterns `Some(B)`, `Some(C)`, `Some(D)` and 2 more not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `std::option::Option<Enum>`
 
 error: aborting due to 8 previous errors
 

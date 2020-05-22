@@ -82,6 +82,9 @@ impl<T: ?Sized> Deref for &T {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized> !DerefMut for &T {}
+
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Deref for &mut T {
     type Target = T;
 

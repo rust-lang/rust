@@ -3,11 +3,11 @@
 
 use crate::require_same_types;
 
-use rustc::traits::{ObligationCause, ObligationCauseCode};
-use rustc::ty::subst::Subst;
-use rustc::ty::{self, Ty, TyCtxt};
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
+use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
+use rustc_middle::ty::subst::Subst;
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::abi::Abi;
 
@@ -69,7 +69,7 @@ fn equate_intrinsic_type<'tcx>(
 /// Returns `true` if the given intrinsic is unsafe to call or not.
 pub fn intrinsic_operation_unsafety(intrinsic: &str) -> hir::Unsafety {
     match intrinsic {
-        "size_of" | "min_align_of" | "needs_drop" | "caller_location" | "size_of_val"
+        "abort" | "size_of" | "min_align_of" | "needs_drop" | "caller_location" | "size_of_val"
         | "min_align_of_val" | "add_with_overflow" | "sub_with_overflow" | "mul_with_overflow"
         | "wrapping_add" | "wrapping_sub" | "wrapping_mul" | "saturating_add"
         | "saturating_sub" | "rotate_left" | "rotate_right" | "ctpop" | "ctlz" | "cttz"
@@ -130,7 +130,9 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             }
         };
         (n_tps, inputs, output, hir::Unsafety::Unsafe)
-    } else if &name[..] == "abort" || &name[..] == "unreachable" {
+    } else if &name[..] == "abort" {
+        (0, Vec::new(), tcx.types.never, hir::Unsafety::Normal)
+    } else if &name[..] == "unreachable" {
         (0, Vec::new(), tcx.types.never, hir::Unsafety::Unsafe)
     } else {
         let unsafety = intrinsic_operation_unsafety(&name[..]);
@@ -275,20 +277,26 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             "fadd_fast" | "fsub_fast" | "fmul_fast" | "fdiv_fast" | "frem_fast" => {
                 (1, vec![param(0), param(0)], param(0))
             }
-            "float_to_int_approx_unchecked" => (2, vec![param(0)], param(1)),
+            "float_to_int_unchecked" => (2, vec![param(0)], param(1)),
 
             "assume" => (0, vec![tcx.types.bool], tcx.mk_unit()),
             "likely" => (0, vec![tcx.types.bool], tcx.types.bool),
             "unlikely" => (0, vec![tcx.types.bool], tcx.types.bool),
 
-            "discriminant_value" => (
-                1,
-                vec![tcx.mk_imm_ref(
-                    tcx.mk_region(ty::ReLateBound(ty::INNERMOST, ty::BrAnon(0))),
-                    param(0),
-                )],
-                tcx.types.u64,
-            ),
+            "discriminant_value" => {
+                let assoc_items =
+                    tcx.associated_items(tcx.lang_items().discriminant_kind_trait().unwrap());
+                let discriminant_def_id = assoc_items.in_definition_order().next().unwrap().def_id;
+
+                (
+                    1,
+                    vec![tcx.mk_imm_ref(
+                        tcx.mk_region(ty::ReLateBound(ty::INNERMOST, ty::BrAnon(0))),
+                        param(0),
+                    )],
+                    tcx.mk_projection(discriminant_def_id, tcx.mk_substs([param(0).into()].iter())),
+                )
+            }
 
             "try" => {
                 let mut_u8 = tcx.mk_mut_ptr(tcx.types.u8);

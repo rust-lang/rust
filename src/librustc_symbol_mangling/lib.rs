@@ -90,19 +90,20 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![feature(never_type)]
 #![feature(nll)]
+#![feature(or_patterns)]
 #![feature(in_band_lifetimes)]
 #![recursion_limit = "256"]
 
 #[macro_use]
-extern crate rustc;
+extern crate rustc_middle;
 
-use rustc::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc::mir::mono::{InstantiationMode, MonoItem};
-use rustc::ty::query::Providers;
-use rustc::ty::subst::SubstsRef;
-use rustc::ty::{self, Instance, TyCtxt};
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_hir::Node;
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use rustc_middle::mir::mono::{InstantiationMode, MonoItem};
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::ty::{self, Instance, TyCtxt};
 use rustc_session::config::SymbolManglingVersion;
 
 use rustc_span::symbol::Symbol;
@@ -164,22 +165,18 @@ fn compute_symbol_name(
 
     debug!("symbol_name(def_id={:?}, substs={:?})", def_id, substs);
 
-    let hir_id = tcx.hir().as_local_hir_id(def_id);
-
-    if def_id.is_local() {
-        if tcx.plugin_registrar_fn(LOCAL_CRATE) == Some(def_id) {
+    // FIXME(eddyb) Precompute a custom symbol name based on attributes.
+    let is_foreign = if let Some(def_id) = def_id.as_local() {
+        if tcx.plugin_registrar_fn(LOCAL_CRATE) == Some(def_id.to_def_id()) {
             let disambiguator = tcx.sess.local_crate_disambiguator();
             return tcx.sess.generate_plugin_registrar_symbol(disambiguator);
         }
-        if tcx.proc_macro_decls_static(LOCAL_CRATE) == Some(def_id) {
+        if tcx.proc_macro_decls_static(LOCAL_CRATE) == Some(def_id.to_def_id()) {
             let disambiguator = tcx.sess.local_crate_disambiguator();
             return tcx.sess.generate_proc_macro_decls_symbol(disambiguator);
         }
-    }
-
-    // FIXME(eddyb) Precompute a custom symbol name based on attributes.
-    let is_foreign = if let Some(id) = hir_id {
-        match tcx.hir().get(id) {
+        let hir_id = tcx.hir().as_local_hir_id(def_id);
+        match tcx.hir().get(hir_id) {
             Node::ForeignItem(_) => true,
             _ => false,
         }

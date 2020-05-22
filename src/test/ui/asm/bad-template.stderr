@@ -1,0 +1,86 @@
+error: invalid reference to argument at index 0
+  --> $DIR/bad-template.rs:8:15
+   |
+LL |         asm!("{}");
+   |               ^^ from here
+   |
+   = note: no arguments were given
+
+error: invalid reference to argument at index 1
+  --> $DIR/bad-template.rs:10:15
+   |
+LL |         asm!("{1}", in(reg) foo);
+   |               ^^^ from here
+   |
+   = note: there is 1 argument
+
+error: argument never used
+  --> $DIR/bad-template.rs:10:21
+   |
+LL |         asm!("{1}", in(reg) foo);
+   |                     ^^^^^^^^^^^ argument never used
+
+error: there is no argument named `a`
+  --> $DIR/bad-template.rs:13:15
+   |
+LL |         asm!("{a}");
+   |               ^^^
+
+error: invalid reference to argument at index 0
+  --> $DIR/bad-template.rs:15:15
+   |
+LL |         asm!("{}", a = in(reg) foo);
+   |               ^^   --------------- named argument
+   |               |
+   |               from here
+   |
+   = note: no positional arguments were given
+note: named arguments cannot be referenced by position
+  --> $DIR/bad-template.rs:15:20
+   |
+LL |         asm!("{}", a = in(reg) foo);
+   |                    ^^^^^^^^^^^^^^^
+
+error: named argument never used
+  --> $DIR/bad-template.rs:15:20
+   |
+LL |         asm!("{}", a = in(reg) foo);
+   |                    ^^^^^^^^^^^^^^^ named argument never used
+
+error: invalid reference to argument at index 1
+  --> $DIR/bad-template.rs:18:15
+   |
+LL |         asm!("{1}", a = in(reg) foo);
+   |               ^^^ from here
+   |
+   = note: no positional arguments were given
+
+error: named argument never used
+  --> $DIR/bad-template.rs:18:21
+   |
+LL |         asm!("{1}", a = in(reg) foo);
+   |                     ^^^^^^^^^^^^^^^ named argument never used
+
+error: invalid reference to argument at index 0
+  --> $DIR/bad-template.rs:21:15
+   |
+LL |         asm!("{}", in("eax") foo);
+   |               ^^   ------------- explicit register argument
+   |               |
+   |               from here
+   |
+   = note: no positional arguments were given
+note: explicit register arguments cannot be used in the asm template
+  --> $DIR/bad-template.rs:21:20
+   |
+LL |         asm!("{}", in("eax") foo);
+   |                    ^^^^^^^^^^^^^
+
+error: asm template modifier must be a single character
+  --> $DIR/bad-template.rs:23:17
+   |
+LL |         asm!("{:foo}", in(reg) foo);
+   |                 ^^^
+
+error: aborting due to 10 previous errors
+

@@ -1,7 +1,7 @@
 use crate::infer::InferCtxt;
 use crate::traits::Obligation;
-use rustc::ty::{self, ToPredicate, Ty, WithConstness};
 use rustc_hir::def_id::DefId;
+use rustc_middle::ty::{self, ToPredicate, Ty, WithConstness};
 
 use super::FulfillmentError;
 use super::{ObligationCause, PredicateObligation};

@@ -1,5 +1,4 @@
 use log::info;
-use rustc::ty;
 use rustc_ast::ast::{AttrVec, BlockCheckMode};
 use rustc_ast::mut_visit::{visit_clobber, MutVisitor, *};
 use rustc_ast::ptr::P;
@@ -14,15 +13,17 @@ use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_errors::registry::Registry;
 use rustc_metadata::dynamic_lib::DynamicLibrary;
+use rustc_middle::ty;
 use rustc_resolve::{self, Resolver};
 use rustc_session as session;
+use rustc_session::config::{self, CrateType};
 use rustc_session::config::{ErrorOutputType, Input, OutputFilenames};
 use rustc_session::lint::{self, BuiltinLintDiagnostics, LintBuffer};
 use rustc_session::parse::CrateConfig;
 use rustc_session::CrateDisambiguator;
-use rustc_session::{config, early_error, filesearch, output, DiagnosticOutput, Session};
+use rustc_session::{early_error, filesearch, output, DiagnosticOutput, Session};
 use rustc_span::edition::Edition;
-use rustc_span::source_map::{FileLoader, RealFileLoader, SourceMap};
+use rustc_span::source_map::{FileLoader, SourceMap};
 use rustc_span::symbol::{sym, Symbol};
 use smallvec::SmallVec;
 use std::env;
@@ -41,14 +42,17 @@ use std::{panic, thread};
 /// features is available on the target machine, by querying LLVM.
 pub fn add_configuration(
     cfg: &mut CrateConfig,
-    sess: &Session,
+    sess: &mut Session,
     codegen_backend: &dyn CodegenBackend,
 ) {
     let tf = sym::target_feature;
 
-    cfg.extend(codegen_backend.target_features(sess).into_iter().map(|feat| (tf, Some(feat))));
+    let target_features = codegen_backend.target_features(sess);
+    sess.target_features.extend(target_features.iter().cloned());
 
-    if sess.crt_static_feature(None) {
+    cfg.extend(target_features.into_iter().map(|feat| (tf, Some(feat))));
+
+    if sess.crt_static(None) {
         cfg.insert((tf, Some(Symbol::intern("crt-static"))));
     }
 }
@@ -62,34 +66,25 @@ pub fn create_session(
     lint_caps: FxHashMap<lint::LintId, lint::Level>,
     descriptions: Registry,
 ) -> (Lrc<Session>, Lrc<Box<dyn CodegenBackend>>, Lrc<SourceMap>) {
-    let loader = file_loader.unwrap_or(box RealFileLoader);
-    let source_map = Lrc::new(SourceMap::with_file_loader(loader, sopts.file_path_mapping()));
-    let mut sess = session::build_session_with_source_map(
+    let (mut sess, source_map) = session::build_session_with_source_map(
         sopts,
         input_path,
         descriptions,
-        source_map.clone(),
         diagnostic_output,
         lint_caps,
+        file_loader,
     );
 
     let codegen_backend = get_codegen_backend(&sess);
 
     let mut cfg = config::build_configuration(&sess, config::to_crate_config(cfg));
-    add_configuration(&mut cfg, &sess, &*codegen_backend);
+    add_configuration(&mut cfg, &mut sess, &*codegen_backend);
     sess.parse_sess.config = cfg;
 
     (Lrc::new(sess), Lrc::new(codegen_backend), source_map)
 }
 
-// Temporarily have stack size set to 32MB to deal with various crates with long method
-// chains or deep syntax trees, except when on Haiku.
-// FIXME(oli-obk): get https://github.com/rust-lang/rust/pull/55617 the finish line
-#[cfg(not(target_os = "haiku"))]
-const STACK_SIZE: usize = 32 * 1024 * 1024;
-
-#[cfg(target_os = "haiku")]
-const STACK_SIZE: usize = 16 * 1024 * 1024;
+const STACK_SIZE: usize = 8 * 1024 * 1024;
 
 fn get_stack_size() -> Option<usize> {
     // FIXME: Hacks on hacks. If the env is trying to override the stack size
@@ -207,7 +202,7 @@ pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
 }
 
 fn load_backend_from_dylib(path: &Path) -> fn() -> Box<dyn CodegenBackend> {
-    let lib = DynamicLibrary::open(Some(path)).unwrap_or_else(|err| {
+    let lib = DynamicLibrary::open(path).unwrap_or_else(|err| {
         let err = format!("couldn't load codegen backend {:?}: {:?}", path, err);
         early_error(ErrorOutputType::default(), &err);
     });
@@ -269,17 +264,14 @@ pub fn rustc_path<'a>() -> Option<&'a Path> {
 }
 
 fn get_rustc_path_inner(bin_path: &str) -> Option<PathBuf> {
-    sysroot_candidates()
-        .iter()
-        .filter_map(|sysroot| {
-            let candidate = sysroot.join(bin_path).join(if cfg!(target_os = "windows") {
-                "rustc.exe"
-            } else {
-                "rustc"
-            });
-            candidate.exists().then_some(candidate)
-        })
-        .next()
+    sysroot_candidates().iter().find_map(|sysroot| {
+        let candidate = sysroot.join(bin_path).join(if cfg!(target_os = "windows") {
+            "rustc.exe"
+        } else {
+            "rustc"
+        });
+        candidate.exists().then_some(candidate)
+    })
 }
 
 fn sysroot_candidates() -> Vec<PathBuf> {
@@ -414,7 +406,7 @@ pub(crate) fn compute_crate_disambiguator(session: &Session) -> CrateDisambiguat
 
     // Also incorporate crate type, so that we don't get symbol conflicts when
     // linking against a library of the same name, if this is an executable.
-    let is_exe = session.crate_types.borrow().contains(&config::CrateType::Executable);
+    let is_exe = session.crate_types.borrow().contains(&CrateType::Executable);
     hasher.write(if is_exe { b"exe" } else { b"lib" });
 
     CrateDisambiguator::from(hasher.finish::<Fingerprint>())
@@ -462,23 +454,23 @@ pub(crate) fn check_attr_crate_type(attrs: &[ast::Attribute], lint_buffer: &mut 
     }
 }
 
-const CRATE_TYPES: &[(Symbol, config::CrateType)] = &[
-    (sym::rlib, config::CrateType::Rlib),
-    (sym::dylib, config::CrateType::Dylib),
-    (sym::cdylib, config::CrateType::Cdylib),
+const CRATE_TYPES: &[(Symbol, CrateType)] = &[
+    (sym::rlib, CrateType::Rlib),
+    (sym::dylib, CrateType::Dylib),
+    (sym::cdylib, CrateType::Cdylib),
     (sym::lib, config::default_lib_output()),
-    (sym::staticlib, config::CrateType::Staticlib),
-    (sym::proc_dash_macro, config::CrateType::ProcMacro),
-    (sym::bin, config::CrateType::Executable),
+    (sym::staticlib, CrateType::Staticlib),
+    (sym::proc_dash_macro, CrateType::ProcMacro),
+    (sym::bin, CrateType::Executable),
 ];
 
-fn categorize_crate_type(s: Symbol) -> Option<config::CrateType> {
+fn categorize_crate_type(s: Symbol) -> Option<CrateType> {
     Some(CRATE_TYPES.iter().find(|(key, _)| *key == s)?.1)
 }
 
-pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<config::CrateType> {
+pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<CrateType> {
     // Unconditionally collect crate types from attributes to make them used
-    let attr_types: Vec<config::CrateType> = attrs
+    let attr_types: Vec<CrateType> = attrs
         .iter()
         .filter_map(|a| {
             if a.check_name(sym::crate_type) {
@@ -495,7 +487,7 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<c
     // If we're generating a test executable, then ignore all other output
     // styles at all other locations
     if session.opts.test {
-        return vec![config::CrateType::Executable];
+        return vec![CrateType::Executable];
     }
 
     // Only check command line flags if present. If no types are specified by
@@ -630,28 +622,30 @@ impl<'a, 'b> ReplaceBodyWithLoop<'a, 'b> {
                     | ast::TyKind::Rptr(_, ast::MutTy { ty: ref subty, .. })
                     | ast::TyKind::Paren(ref subty) => involves_impl_trait(subty),
                     ast::TyKind::Tup(ref tys) => any_involves_impl_trait(tys.iter()),
-                    ast::TyKind::Path(_, ref path) => path.segments.iter().any(|seg| {
-                        match seg.args.as_ref().map(|generic_arg| &**generic_arg) {
+                    ast::TyKind::Path(_, ref path) => {
+                        path.segments.iter().any(|seg| match seg.args.as_deref() {
                             None => false,
                             Some(&ast::GenericArgs::AngleBracketed(ref data)) => {
-                                let types = data.args.iter().filter_map(|arg| match arg {
-                                    ast::GenericArg::Type(ty) => Some(ty),
-                                    _ => None,
-                                });
-                                any_involves_impl_trait(types)
-                                    || data.constraints.iter().any(|c| match c.kind {
+                                data.args.iter().any(|arg| match arg {
+                                    ast::AngleBracketedArg::Arg(arg) => match arg {
+                                        ast::GenericArg::Type(ty) => involves_impl_trait(ty),
+                                        ast::GenericArg::Lifetime(_)
+                                        | ast::GenericArg::Const(_) => false,
+                                    },
+                                    ast::AngleBracketedArg::Constraint(c) => match c.kind {
                                         ast::AssocTyConstraintKind::Bound { .. } => true,
                                         ast::AssocTyConstraintKind::Equality { ref ty } => {
                                             involves_impl_trait(ty)
                                         }
-                                    })
+                                    },
+                                })
                             }
                             Some(&ast::GenericArgs::Parenthesized(ref data)) => {
                                 any_involves_impl_trait(data.inputs.iter())
                                     || ReplaceBodyWithLoop::should_ignore_fn(&data.output)
                             }
-                        }
-                    }),
+                        })
+                    }
                     _ => false,
                 }
             }

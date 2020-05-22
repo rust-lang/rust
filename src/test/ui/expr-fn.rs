@@ -1,4 +1,5 @@
 // run-pass
+#![allow(unused_braces)]
 
 fn test_int() {
     fn f() -> isize { 10 }

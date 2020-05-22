@@ -1,8 +1,8 @@
 //! A pass that simplifies branches when their condition is known.
 
 use crate::transform::{MirPass, MirSource};
-use rustc::mir::*;
-use rustc::ty::TyCtxt;
+use rustc_middle::mir::*;
+use rustc_middle::ty::TyCtxt;
 
 use std::borrow::Cow;
 
@@ -21,7 +21,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyBranches {
         Cow::Borrowed(&self.label)
     }
 
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
         let param_env = tcx.param_env(src.def_id());
         for block in body.basic_blocks_mut() {
             let terminator = block.terminator_mut();

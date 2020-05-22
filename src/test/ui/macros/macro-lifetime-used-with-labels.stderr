@@ -11,3 +11,5 @@ LL |         br2!('b);
    |
    = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
+warning: 1 warning emitted
+

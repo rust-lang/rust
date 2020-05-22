@@ -169,7 +169,8 @@ pub struct AssertParamIsCopy<T: Copy + ?Sized> {
 /// Implementations of `Clone` for primitive types.
 ///
 /// Implementations that cannot be described in Rust
-/// are implemented in `SelectionContext::copy_clone_conditions()` in librustc.
+/// are implemented in `traits::SelectionContext::copy_clone_conditions()`
+/// in `rustc_trait_selection`.
 mod impls {
 
     use super::Clone;
@@ -219,7 +220,7 @@ mod impls {
         }
     }
 
-    // Shared references can be cloned, but mutable references *cannot*!
+    /// Shared references can be cloned, but mutable references *cannot*!
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<T: ?Sized> Clone for &T {
         #[inline]
@@ -227,4 +228,8 @@ mod impls {
             *self
         }
     }
+
+    /// Shared references can be cloned, but mutable references *cannot*!
+    #[stable(feature = "rust1", since = "1.0.0")]
+    impl<T: ?Sized> !Clone for &mut T {}
 }

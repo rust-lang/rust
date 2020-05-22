@@ -22,3 +22,5 @@ LL | fn pleaselintme() { }
    |
    = note: `#[warn(please_lint)]` on by default
 
+warning: 3 warnings emitted
+

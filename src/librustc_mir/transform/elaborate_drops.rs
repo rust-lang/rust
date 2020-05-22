@@ -1,27 +1,27 @@
 use crate::dataflow;
-use crate::dataflow::generic::{Analysis, ResultsCursor};
+use crate::dataflow::impls::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
 use crate::dataflow::move_paths::{LookupResult, MoveData, MovePathIndex};
 use crate::dataflow::on_lookup_result_bits;
 use crate::dataflow::MoveDataParamEnv;
 use crate::dataflow::{on_all_children_bits, on_all_drop_children_bits};
-use crate::dataflow::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
+use crate::dataflow::{Analysis, ResultsCursor};
 use crate::transform::{MirPass, MirSource};
 use crate::util::elaborate_drops::{elaborate_drop, DropFlagState, Unwind};
 use crate::util::elaborate_drops::{DropElaborator, DropFlagMode, DropStyle};
 use crate::util::patch::MirPatch;
-use rustc::mir::*;
-use rustc::ty::layout::VariantIdx;
-use rustc::ty::{self, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_index::bit_set::BitSet;
+use rustc_middle::mir::*;
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::Span;
+use rustc_target::abi::VariantIdx;
 use std::fmt;
 
 pub struct ElaborateDrops;
 
 impl<'tcx> MirPass<'tcx> for ElaborateDrops {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
         debug!("elaborate_drops({:?} @ {:?})", src, body.span);
 
         let def_id = src.def_id();
@@ -101,7 +101,7 @@ fn find_dead_unwinds<'tcx>(
             }
         };
 
-        flow_inits.seek_before(body.terminator_loc(bb));
+        flow_inits.seek_before_primary_effect(body.terminator_loc(bb));
         debug!(
             "find_dead_unwinds @ {:?}: path({:?})={:?}; init_data={:?}",
             bb,
@@ -131,8 +131,8 @@ struct InitializationData<'mir, 'tcx> {
 
 impl InitializationData<'_, '_> {
     fn seek_before(&mut self, loc: Location) {
-        self.inits.seek_before(loc);
-        self.uninits.seek_before(loc);
+        self.inits.seek_before_primary_effect(loc);
+        self.uninits.seek_before_primary_effect(loc);
     }
 
     fn maybe_live_dead(&self, path: MovePathIndex) -> (bool, bool) {
@@ -346,7 +346,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
 
             let resume_block = self.patch.resume_block();
             match terminator.kind {
-                TerminatorKind::Drop { ref location, target, unwind } => {
+                TerminatorKind::Drop { location, target, unwind } => {
                     self.init_data.seek_before(loc);
                     match self.move_data().rev_lookup.find(location.as_ref()) {
                         LookupResult::Exact(path) => elaborate_drop(
@@ -371,7 +371,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                         }
                     }
                 }
-                TerminatorKind::DropAndReplace { ref location, ref value, target, unwind } => {
+                TerminatorKind::DropAndReplace { location, ref value, target, unwind } => {
                     assert!(!data.is_cleanup);
 
                     self.elaborate_replace(loc, location, value, target, unwind);
@@ -396,7 +396,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
     fn elaborate_replace(
         &mut self,
         loc: Location,
-        location: &Place<'tcx>,
+        location: Place<'tcx>,
         value: &Operand<'tcx>,
         target: BasicBlock,
         unwind: Option<BasicBlock>,
@@ -407,7 +407,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         assert!(!data.is_cleanup, "DropAndReplace in unwind path not supported");
 
         let assign = Statement {
-            kind: StatementKind::Assign(box (*location, Rvalue::Use(value.clone()))),
+            kind: StatementKind::Assign(box (location, Rvalue::Use(value.clone()))),
             source_info: terminator.source_info,
         };
 
@@ -459,7 +459,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                 debug!("elaborate_drop_and_replace({:?}) - untracked {:?}", terminator, parent);
                 self.patch.patch_terminator(
                     bb,
-                    TerminatorKind::Drop { location: *location, target, unwind: Some(unwind) },
+                    TerminatorKind::Drop { location, target, unwind: Some(unwind) },
                 );
             }
         }

@@ -6,7 +6,7 @@ use rustc_codegen_ssa::traits::*;
 use crate::common::CodegenCx;
 use crate::llvm;
 use crate::llvm::debuginfo::{DIScope, DISubprogram};
-use rustc::mir::{Body, SourceScope};
+use rustc_middle::mir::{Body, SourceScope};
 use rustc_session::config::DebugInfo;
 
 use rustc_index::bit_set::BitSet;
@@ -76,7 +76,7 @@ fn make_mir_scope(
     }
 
     let loc = cx.lookup_debug_loc(scope_data.span.lo());
-    let file_metadata = file_metadata(cx, &loc.file.name, debug_context.defining_crate);
+    let file_metadata = file_metadata(cx, &loc.file, debug_context.defining_crate);
 
     let scope_metadata = unsafe {
         Some(llvm::LLVMRustDIBuilderCreateLexicalBlock(

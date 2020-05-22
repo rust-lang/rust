@@ -28,7 +28,7 @@ mod type_;
 mod write;
 
 pub use self::abi::AbiBuilderMethods;
-pub use self::asm::{AsmBuilderMethods, AsmMethods};
+pub use self::asm::{AsmBuilderMethods, AsmMethods, InlineAsmOperandRef};
 pub use self::backend::{Backend, BackendTypes, CodegenBackend, ExtraBackendMethods};
 pub use self::builder::{BuilderMethods, OverflowOp};
 pub use self::consts::ConstMethods;
@@ -42,7 +42,7 @@ pub use self::type_::{
 };
 pub use self::write::{ModuleBufferMethods, ThinBufferMethods, WriteBackendMethods};
 
-use rustc::ty::layout::{HasParamEnv, HasTyCtxt};
+use rustc_middle::ty::layout::{HasParamEnv, HasTyCtxt};
 use rustc_target::spec::HasTargetSpec;
 
 use std::fmt;

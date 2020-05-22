@@ -1,10 +1,15 @@
 use smallvec::smallvec;
 
-use rustc::ty::outlives::Component;
-use rustc::ty::{self, ToPolyTraitRef, TyCtxt};
+use crate::traits::{Obligation, ObligationCause, PredicateObligation};
 use rustc_data_structures::fx::FxHashSet;
+use rustc_middle::ty::outlives::Component;
+use rustc_middle::ty::{self, ToPolyTraitRef, ToPredicate, TyCtxt, WithConstness};
+use rustc_span::Span;
 
-fn anonymize_predicate<'tcx>(tcx: TyCtxt<'tcx>, pred: &ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
+pub fn anonymize_predicate<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    pred: &ty::Predicate<'tcx>,
+) -> ty::Predicate<'tcx> {
     match *pred {
         ty::Predicate::Trait(ref data, constness) => {
             ty::Predicate::Trait(tcx.anonymize_late_bound_regions(data), constness)
@@ -37,6 +42,8 @@ fn anonymize_predicate<'tcx>(tcx: TyCtxt<'tcx>, pred: &ty::Predicate<'tcx>) -> t
         ty::Predicate::ConstEvaluatable(def_id, substs) => {
             ty::Predicate::ConstEvaluatable(def_id, substs)
         }
+
+        ty::Predicate::ConstEquate(c1, c2) => ty::Predicate::ConstEquate(c1, c2),
     }
 }
 
@@ -84,41 +91,81 @@ impl<T: AsRef<ty::Predicate<'tcx>>> Extend<T> for PredicateSet<'tcx> {
 /// holds as well. Similarly, if we have `trait Foo: 'static`, and we know that
 /// `T: Foo`, then we know that `T: 'static`.
 pub struct Elaborator<'tcx> {
-    stack: Vec<ty::Predicate<'tcx>>,
+    stack: Vec<PredicateObligation<'tcx>>,
     visited: PredicateSet<'tcx>,
+}
+
+pub fn elaborate_trait_ref<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    trait_ref: ty::PolyTraitRef<'tcx>,
+) -> Elaborator<'tcx> {
+    elaborate_predicates(tcx, std::iter::once(trait_ref.without_const().to_predicate()))
+}
+
+pub fn elaborate_trait_refs<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    trait_refs: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
+) -> Elaborator<'tcx> {
+    let predicates = trait_refs.map(|trait_ref| trait_ref.without_const().to_predicate());
+    elaborate_predicates(tcx, predicates)
 }
 
 pub fn elaborate_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
-    mut predicates: Vec<ty::Predicate<'tcx>>,
+    predicates: impl Iterator<Item = ty::Predicate<'tcx>>,
+) -> Elaborator<'tcx> {
+    let obligations = predicates.map(|predicate| predicate_obligation(predicate, None)).collect();
+    elaborate_obligations(tcx, obligations)
+}
+
+pub fn elaborate_obligations<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    mut obligations: Vec<PredicateObligation<'tcx>>,
 ) -> Elaborator<'tcx> {
     let mut visited = PredicateSet::new(tcx);
-    predicates.retain(|pred| visited.insert(pred));
-    Elaborator { stack: predicates, visited }
+    obligations.retain(|obligation| visited.insert(&obligation.predicate));
+    Elaborator { stack: obligations, visited }
+}
+
+fn predicate_obligation<'tcx>(
+    predicate: ty::Predicate<'tcx>,
+    span: Option<Span>,
+) -> PredicateObligation<'tcx> {
+    let mut cause = ObligationCause::dummy();
+    if let Some(span) = span {
+        cause.span = span;
+    }
+    Obligation { cause, param_env: ty::ParamEnv::empty(), recursion_depth: 0, predicate }
 }
 
 impl Elaborator<'tcx> {
-    fn elaborate(&mut self, predicate: &ty::Predicate<'tcx>) {
+    pub fn filter_to_traits(self) -> FilterToTraits<Self> {
+        FilterToTraits::new(self)
+    }
+
+    fn elaborate(&mut self, obligation: &PredicateObligation<'tcx>) {
         let tcx = self.visited.tcx;
-        match *predicate {
+        match obligation.predicate {
             ty::Predicate::Trait(ref data, _) => {
                 // Get predicates declared on the trait.
                 let predicates = tcx.super_predicates_of(data.def_id());
 
-                let predicates = predicates
-                    .predicates
-                    .iter()
-                    .map(|(pred, _)| pred.subst_supertrait(tcx, &data.to_poly_trait_ref()));
-                debug!("super_predicates: data={:?} predicates={:?}", data, predicates.clone());
+                let obligations = predicates.predicates.iter().map(|(pred, span)| {
+                    predicate_obligation(
+                        pred.subst_supertrait(tcx, &data.to_poly_trait_ref()),
+                        Some(*span),
+                    )
+                });
+                debug!("super_predicates: data={:?}", data);
 
                 // Only keep those bounds that we haven't already seen.
                 // This is necessary to prevent infinite recursion in some
                 // cases. One common case is when people define
                 // `trait Sized: Sized { }` rather than `trait Sized { }`.
                 let visited = &mut self.visited;
-                let predicates = predicates.filter(|pred| visited.insert(pred));
+                let obligations = obligations.filter(|o| visited.insert(&o.predicate));
 
-                self.stack.extend(predicates);
+                self.stack.extend(obligations);
             }
             ty::Predicate::WellFormed(..) => {
                 // Currently, we do not elaborate WF predicates,
@@ -140,6 +187,10 @@ impl Elaborator<'tcx> {
             }
             ty::Predicate::ConstEvaluatable(..) => {
                 // Currently, we do not elaborate const-evaluatable
+                // predicates.
+            }
+            ty::Predicate::ConstEquate(..) => {
+                // Currently, we do not elaborate const-equate
                 // predicates.
             }
             ty::Predicate::RegionOutlives(..) => {
@@ -199,7 +250,8 @@ impl Elaborator<'tcx> {
                                 None
                             }
                         })
-                        .filter(|p| visited.insert(p)),
+                        .filter(|p| visited.insert(p))
+                        .map(|p| predicate_obligation(p, None)),
                 );
             }
         }
@@ -207,19 +259,73 @@ impl Elaborator<'tcx> {
 }
 
 impl Iterator for Elaborator<'tcx> {
-    type Item = ty::Predicate<'tcx>;
+    type Item = PredicateObligation<'tcx>;
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         (self.stack.len(), None)
     }
 
-    fn next(&mut self) -> Option<ty::Predicate<'tcx>> {
+    fn next(&mut self) -> Option<Self::Item> {
         // Extract next item from top-most stack frame, if any.
-        if let Some(pred) = self.stack.pop() {
-            self.elaborate(&pred);
-            Some(pred)
+        if let Some(obligation) = self.stack.pop() {
+            self.elaborate(&obligation);
+            Some(obligation)
         } else {
             None
         }
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////
+// Supertrait iterator
+///////////////////////////////////////////////////////////////////////////
+
+pub type Supertraits<'tcx> = FilterToTraits<Elaborator<'tcx>>;
+
+pub fn supertraits<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    trait_ref: ty::PolyTraitRef<'tcx>,
+) -> Supertraits<'tcx> {
+    elaborate_trait_ref(tcx, trait_ref).filter_to_traits()
+}
+
+pub fn transitive_bounds<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    bounds: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
+) -> Supertraits<'tcx> {
+    elaborate_trait_refs(tcx, bounds).filter_to_traits()
+}
+
+///////////////////////////////////////////////////////////////////////////
+// Other
+///////////////////////////////////////////////////////////////////////////
+
+/// A filter around an iterator of predicates that makes it yield up
+/// just trait references.
+pub struct FilterToTraits<I> {
+    base_iterator: I,
+}
+
+impl<I> FilterToTraits<I> {
+    fn new(base: I) -> FilterToTraits<I> {
+        FilterToTraits { base_iterator: base }
+    }
+}
+
+impl<'tcx, I: Iterator<Item = PredicateObligation<'tcx>>> Iterator for FilterToTraits<I> {
+    type Item = ty::PolyTraitRef<'tcx>;
+
+    fn next(&mut self) -> Option<ty::PolyTraitRef<'tcx>> {
+        while let Some(obligation) = self.base_iterator.next() {
+            if let ty::Predicate::Trait(data, _) = obligation.predicate {
+                return Some(data.to_poly_trait_ref());
+            }
+        }
+        None
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let (_, upper) = self.base_iterator.size_hint();
+        (0, upper)
     }
 }

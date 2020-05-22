@@ -1,24 +1,26 @@
 error[E0308]: mismatched types
   --> $DIR/defaults-in-other-trait-items.rs:9:13
    |
+LL |     type A = ();
+   |     ------------ associated type defaults can't be assumed inside the trait defining them
+...
 LL |         let () = p;
    |             ^^ expected associated type, found `()`
    |
    = note: expected associated type `<Self as Tr>::A`
                     found unit type `()`
-   = note: consider constraining the associated type `<Self as Tr>::A` to `()` or calling a method that returns `<Self as Tr>::A`
-   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 
 error[E0308]: mismatched types
-  --> $DIR/defaults-in-other-trait-items.rs:37:25
+  --> $DIR/defaults-in-other-trait-items.rs:35:25
    |
+LL |     type Ty = u8;
+   |     ------------- associated type defaults can't be assumed inside the trait defining them
+...
 LL |     const C: Self::Ty = 0u8;
    |                         ^^^ expected associated type, found `u8`
    |
    = note: expected associated type `<Self as AssocConst>::Ty`
                          found type `u8`
-   = note: consider constraining the associated type `<Self as AssocConst>::Ty` to `u8` or calling a method that returns `<Self as AssocConst>::Ty`
-   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 
 error: aborting due to 2 previous errors
 

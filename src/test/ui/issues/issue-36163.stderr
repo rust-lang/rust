@@ -1,20 +1,48 @@
-error[E0391]: cycle detected when const checking `Foo::B::{{constant}}#0`
+error[E0391]: cycle detected when const-evaluating + checking `Foo::B::{{constant}}#0`
   --> $DIR/issue-36163.rs:4:9
    |
 LL |     B = A,
    |         ^
    |
-note: ...which requires const checking `A`...
-  --> $DIR/issue-36163.rs:1:18
+note: ...which requires const-evaluating + checking `Foo::B::{{constant}}#0`...
+  --> $DIR/issue-36163.rs:4:9
+   |
+LL |     B = A,
+   |         ^
+note: ...which requires const-evaluating `Foo::B::{{constant}}#0`...
+  --> $DIR/issue-36163.rs:4:9
+   |
+LL |     B = A,
+   |         ^
+   = note: ...which requires normalizing `A`...
+note: ...which requires const-evaluating + checking `A`...
+  --> $DIR/issue-36163.rs:1:1
    |
 LL | const A: isize = Foo::B as isize;
-   |                  ^^^^^^^^^^^^^^^
-   = note: ...which again requires const checking `Foo::B::{{constant}}#0`, completing the cycle
-note: cycle used when processing `Foo::B::{{constant}}#0`
-  --> $DIR/issue-36163.rs:4:9
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires const-evaluating + checking `A`...
+  --> $DIR/issue-36163.rs:1:1
    |
-LL |     B = A,
-   |         ^
+LL | const A: isize = Foo::B as isize;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires const-evaluating `A`...
+  --> $DIR/issue-36163.rs:1:1
+   |
+LL | const A: isize = Foo::B as isize;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which requires normalizing `A`...
+   = note: ...which again requires const-evaluating + checking `Foo::B::{{constant}}#0`, completing the cycle
+note: cycle used when collecting item types in top-level module
+  --> $DIR/issue-36163.rs:1:1
+   |
+LL | / const A: isize = Foo::B as isize;
+LL | |
+LL | | enum Foo {
+LL | |     B = A,
+LL | | }
+LL | |
+LL | | fn main() {}
+   | |____________^
 
 error: aborting due to previous error
 

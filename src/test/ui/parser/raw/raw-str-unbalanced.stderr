@@ -1,0 +1,10 @@
+error: too many `#` when terminating raw string
+  --> $DIR/raw-str-unbalanced.rs:3:9
+   |
+LL |       "##
+   |         ^ help: remove the extra `#`
+   |
+   = note: the raw string started with 1 `#`s
+
+error: aborting due to previous error
+

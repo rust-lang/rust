@@ -18,5 +18,5 @@ error: erroneous constant encountered
 LL |     let _ = PrintName::<T>::VOID;
    |             ^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to previous error; 1 warning emitted
 

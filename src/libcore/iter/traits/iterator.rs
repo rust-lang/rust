@@ -198,7 +198,7 @@ pub trait Iterator {
     /// // and the maximum possible lower bound
     /// let iter = 0..;
     ///
-    /// assert_eq!((usize::max_value(), None), iter.size_hint());
+    /// assert_eq!((usize::MAX, None), iter.size_hint());
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -333,7 +333,7 @@ pub trait Iterator {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn nth(&mut self, mut n: usize) -> Option<Self::Item> {
-        for x in self {
+        while let Some(x) = self.next() {
             if n == 0 {
                 return Some(x);
             }
@@ -1697,8 +1697,8 @@ pub trait Iterator {
             mut f: impl FnMut(&T) -> bool + 'a,
             left: &'a mut B,
             right: &'a mut B,
-        ) -> impl FnMut(T) + 'a {
-            move |x| {
+        ) -> impl FnMut((), T) + 'a {
+            move |(), x| {
                 if f(&x) {
                     left.extend(Some(x));
                 } else {
@@ -1710,7 +1710,7 @@ pub trait Iterator {
         let mut left: B = Default::default();
         let mut right: B = Default::default();
 
-        self.for_each(extend(f, &mut left, &mut right));
+        self.fold((), extend(f, &mut left, &mut right));
 
         (left, right)
     }
@@ -1826,7 +1826,7 @@ pub trait Iterator {
     ///
     /// # Note to Implementors
     ///
-    /// Most of the other (forward) methods have default implementations in
+    /// Several of the other (forward) methods have default implementations in
     /// terms of this one, so try to implement this explicitly if it can
     /// do something better than the default `for` loop implementation.
     ///
@@ -1944,6 +1944,15 @@ pub trait Iterator {
     /// may not terminate for infinite iterators, even on traits for which a
     /// result is determinable in finite time.
     ///
+    /// # Note to Implementors
+    ///
+    /// Several of the other (forward) methods have default implementations in
+    /// terms of this one, so try to implement this explicitly if it can
+    /// do something better than the default `for` loop implementation.
+    ///
+    /// In particular, try to have this call `fold()` on the internal parts
+    /// from which this iterator is composed.
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -1992,17 +2001,53 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn fold<B, F>(mut self, init: B, f: F) -> B
+    fn fold<B, F>(mut self, init: B, mut f: F) -> B
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> B,
     {
-        #[inline]
-        fn ok<B, T>(mut f: impl FnMut(B, T) -> B) -> impl FnMut(B, T) -> Result<B, !> {
-            move |acc, x| Ok(f(acc, x))
+        let mut accum = init;
+        while let Some(x) = self.next() {
+            accum = f(accum, x);
         }
+        accum
+    }
 
-        self.try_fold(init, ok(f)).unwrap()
+    /// The same as [`fold()`](#method.fold), but uses the first element in the
+    /// iterator as the initial value, folding every subsequent element into it.
+    /// If the iterator is empty, return `None`; otherwise, return the result
+    /// of the fold.
+    ///
+    /// # Example
+    ///
+    /// Find the maximum value:
+    ///
+    /// ```
+    /// #![feature(iterator_fold_self)]
+    ///
+    /// fn find_max<I>(iter: I) -> Option<I::Item>
+    ///     where I: Iterator,
+    ///           I::Item: Ord,
+    /// {
+    ///     iter.fold_first(|a, b| {
+    ///         if a >= b { a } else { b }
+    ///     })
+    /// }
+    /// let a = [10, 20, 5, -23, 0];
+    /// let b: [u32; 0] = [];
+    ///
+    /// assert_eq!(find_max(a.iter()), Some(&20));
+    /// assert_eq!(find_max(b.iter()), None);
+    /// ```
+    #[inline]
+    #[unstable(feature = "iterator_fold_self", issue = "68125")]
+    fn fold_first<F>(mut self, f: F) -> Option<Self::Item>
+    where
+        Self: Sized,
+        F: FnMut(Self::Item, Self::Item) -> Self::Item,
+    {
+        let first = self.next()?;
+        Some(self.fold(first, f))
     }
 
     /// Tests if every element of the iterator matches a predicate.
@@ -2236,7 +2281,7 @@ pub trait Iterator {
         F: FnMut(&Self::Item) -> R,
         R: Try<Ok = bool, Error = E>,
     {
-        self.try_for_each(move |x| match f(&x).into_result() {
+        self.try_fold((), move |(), x| match f(&x).into_result() {
             Ok(false) => LoopState::Continue(()),
             Ok(true) => LoopState::Break(Ok(x)),
             Err(x) => LoopState::Break(Err(x)),
@@ -2497,7 +2542,7 @@ pub trait Iterator {
             move |x, y| cmp::max_by(x, y, &mut compare)
         }
 
-        fold1(self, fold(compare))
+        self.fold_first(fold(compare))
     }
 
     /// Returns the element that gives the minimum value from the
@@ -2561,7 +2606,7 @@ pub trait Iterator {
             move |x, y| cmp::min_by(x, y, &mut compare)
         }
 
-        fold1(self, fold(compare))
+        self.fold_first(fold(compare))
     }
 
     /// Reverses an iterator's direction.
@@ -2628,8 +2673,8 @@ pub trait Iterator {
         fn extend<'a, A, B>(
             ts: &'a mut impl Extend<A>,
             us: &'a mut impl Extend<B>,
-        ) -> impl FnMut((A, B)) + 'a {
-            move |(t, u)| {
+        ) -> impl FnMut((), (A, B)) + 'a {
+            move |(), (t, u)| {
                 ts.extend(Some(t));
                 us.extend(Some(u));
             }
@@ -2638,7 +2683,7 @@ pub trait Iterator {
         let mut ts: FromA = Default::default();
         let mut us: FromB = Default::default();
 
-        self.for_each(extend(&mut ts, &mut us));
+        self.fold((), extend(&mut ts, &mut us));
 
         (ts, us)
     }
@@ -2883,7 +2928,7 @@ pub trait Iterator {
     /// assert_eq!([1.].iter().partial_cmp([1., 2.].iter()), Some(Ordering::Less));
     /// assert_eq!([1., 2.].iter().partial_cmp([1.].iter()), Some(Ordering::Greater));
     ///
-    /// assert_eq!([std::f64::NAN].iter().partial_cmp([1.].iter()), None);
+    /// assert_eq!([f64::NAN].iter().partial_cmp([1.].iter()), None);
     /// ```
     #[stable(feature = "iter_order", since = "1.5.0")]
     fn partial_cmp<I>(self, other: I) -> Option<Ordering>
@@ -3072,7 +3117,7 @@ pub trait Iterator {
         Self::Item: PartialOrd<I::Item>,
         Self: Sized,
     {
-        matches!(self.partial_cmp(other), Some(Ordering::Less) | Some(Ordering::Equal))
+        matches!(self.partial_cmp(other), Some(Ordering::Less | Ordering::Equal))
     }
 
     /// Determines if the elements of this `Iterator` are lexicographically
@@ -3112,7 +3157,7 @@ pub trait Iterator {
         Self::Item: PartialOrd<I::Item>,
         Self: Sized,
     {
-        matches!(self.partial_cmp(other), Some(Ordering::Greater) | Some(Ordering::Equal))
+        matches!(self.partial_cmp(other), Some(Ordering::Greater | Ordering::Equal))
     }
 
     /// Checks if the elements of this iterator are sorted.
@@ -3133,7 +3178,7 @@ pub trait Iterator {
     /// assert!(![1, 3, 2, 4].iter().is_sorted());
     /// assert!([0].iter().is_sorted());
     /// assert!(std::iter::empty::<i32>().is_sorted());
-    /// assert!(![0.0, 1.0, std::f32::NAN].iter().is_sorted());
+    /// assert!(![0.0, 1.0, f32::NAN].iter().is_sorted());
     /// ```
     #[inline]
     #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
@@ -3160,7 +3205,7 @@ pub trait Iterator {
     /// assert!(![1, 3, 2, 4].iter().is_sorted_by(|a, b| a.partial_cmp(b)));
     /// assert!([0].iter().is_sorted_by(|a, b| a.partial_cmp(b)));
     /// assert!(std::iter::empty::<i32>().is_sorted_by(|a, b| a.partial_cmp(b)));
-    /// assert!(![0.0, 1.0, std::f32::NAN].iter().is_sorted_by(|a, b| a.partial_cmp(b)));
+    /// assert!(![0.0, 1.0, f32::NAN].iter().is_sorted_by(|a, b| a.partial_cmp(b)));
     /// ```
     ///
     /// [`is_sorted`]: trait.Iterator.html#method.is_sorted
@@ -3212,20 +3257,6 @@ pub trait Iterator {
     {
         self.map(f).is_sorted()
     }
-}
-
-/// Fold an iterator without having to provide an initial value.
-#[inline]
-fn fold1<I, F>(mut it: I, f: F) -> Option<I::Item>
-where
-    I: Iterator,
-    F: FnMut(I::Item, I::Item) -> I::Item,
-{
-    // start with the first element as our selection. This avoids
-    // having to use `Option`s inside the loop, translating to a
-    // sizeable performance gain (6x in one case).
-    let first = it.next()?;
-    Some(it.fold(first, f))
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

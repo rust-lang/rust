@@ -1,0 +1,88 @@
+error: use of a blacklisted/placeholder name `foo`
+  --> $DIR/blacklisted_name.rs:11:9
+   |
+LL | fn test(foo: ()) {}
+   |         ^^^
+   |
+   = note: `-D clippy::blacklisted-name` implied by `-D warnings`
+
+error: use of a blacklisted/placeholder name `foo`
+  --> $DIR/blacklisted_name.rs:14:9
+   |
+LL |     let foo = 42;
+   |         ^^^
+
+error: use of a blacklisted/placeholder name `bar`
+  --> $DIR/blacklisted_name.rs:15:9
+   |
+LL |     let bar = 42;
+   |         ^^^
+
+error: use of a blacklisted/placeholder name `baz`
+  --> $DIR/blacklisted_name.rs:16:9
+   |
+LL |     let baz = 42;
+   |         ^^^
+
+error: use of a blacklisted/placeholder name `foo`
+  --> $DIR/blacklisted_name.rs:22:10
+   |
+LL |         (foo, Some(bar), baz @ Some(_)) => (),
+   |          ^^^
+
+error: use of a blacklisted/placeholder name `bar`
+  --> $DIR/blacklisted_name.rs:22:20
+   |
+LL |         (foo, Some(bar), baz @ Some(_)) => (),
+   |                    ^^^
+
+error: use of a blacklisted/placeholder name `baz`
+  --> $DIR/blacklisted_name.rs:22:26
+   |
+LL |         (foo, Some(bar), baz @ Some(_)) => (),
+   |                          ^^^
+
+error: use of a blacklisted/placeholder name `foo`
+  --> $DIR/blacklisted_name.rs:27:19
+   |
+LL | fn issue_1647(mut foo: u8) {
+   |                   ^^^
+
+error: use of a blacklisted/placeholder name `bar`
+  --> $DIR/blacklisted_name.rs:28:13
+   |
+LL |     let mut bar = 0;
+   |             ^^^
+
+error: use of a blacklisted/placeholder name `baz`
+  --> $DIR/blacklisted_name.rs:29:21
+   |
+LL |     if let Some(mut baz) = Some(42) {}
+   |                     ^^^
+
+error: use of a blacklisted/placeholder name `bar`
+  --> $DIR/blacklisted_name.rs:33:13
+   |
+LL |     let ref bar = 0;
+   |             ^^^
+
+error: use of a blacklisted/placeholder name `baz`
+  --> $DIR/blacklisted_name.rs:34:21
+   |
+LL |     if let Some(ref baz) = Some(42) {}
+   |                     ^^^
+
+error: use of a blacklisted/placeholder name `bar`
+  --> $DIR/blacklisted_name.rs:38:17
+   |
+LL |     let ref mut bar = 0;
+   |                 ^^^
+
+error: use of a blacklisted/placeholder name `baz`
+  --> $DIR/blacklisted_name.rs:39:25
+   |
+LL |     if let Some(ref mut baz) = Some(42) {}
+   |                         ^^^
+
+error: aborting due to 14 previous errors
+

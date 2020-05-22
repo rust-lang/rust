@@ -23,9 +23,9 @@ use super::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use super::InferCtxt;
 
 use crate::traits::ObligationCause;
-use rustc::ty::relate::{RelateResult, TypeRelation};
-use rustc::ty::TyVar;
-use rustc::ty::{self, Ty};
+use rustc_middle::ty::relate::{RelateResult, TypeRelation};
+use rustc_middle::ty::TyVar;
+use rustc_middle::ty::{self, Ty};
 
 pub trait LatticeDir<'f, 'tcx>: TypeRelation<'tcx> {
     fn infcx(&self) -> &'f InferCtxt<'f, 'tcx>;
@@ -56,8 +56,8 @@ where
     }
 
     let infcx = this.infcx();
-    let a = infcx.inner.borrow_mut().type_variables.replace_if_possible(a);
-    let b = infcx.inner.borrow_mut().type_variables.replace_if_possible(b);
+    let a = infcx.inner.borrow_mut().type_variables().replace_if_possible(a);
+    let b = infcx.inner.borrow_mut().type_variables().replace_if_possible(b);
     match (&a.kind, &b.kind) {
         // If one side is known to be a variable and one is not,
         // create a variable (`v`) to represent the LUB. Make sure to

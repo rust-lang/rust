@@ -29,3 +29,5 @@ warning: unused extern crate
 LL |     extern crate core;
    |     ^^^^^^^^^^^^^^^^^^ help: remove it
 
+warning: 4 warnings emitted
+

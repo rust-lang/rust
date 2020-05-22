@@ -1,6 +1,7 @@
-use rustc::ty::{self, Region, RegionVid, TypeFoldable};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
+use rustc_hir::lang_items;
+use rustc_middle::ty::{self, Region, RegionVid, TypeFoldable};
 use rustc_trait_selection::traits::auto_trait::{self, AutoTraitResult};
 
 use std::fmt::Debug;
@@ -314,25 +315,28 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         tcx: TyCtxt<'tcx>,
         pred: ty::Predicate<'tcx>,
     ) -> FxHashSet<GenericParamDef> {
-        pred.walk_tys()
-            .flat_map(|t| {
-                let mut regions = FxHashSet::default();
-                tcx.collect_regions(&t, &mut regions);
+        let regions = match pred {
+            ty::Predicate::Trait(poly_trait_pred, _) => {
+                tcx.collect_referenced_late_bound_regions(&poly_trait_pred)
+            }
+            ty::Predicate::Projection(poly_proj_pred) => {
+                tcx.collect_referenced_late_bound_regions(&poly_proj_pred)
+            }
+            _ => return FxHashSet::default(),
+        };
 
-                regions.into_iter().flat_map(|r| {
-                    match r {
-                        // We only care about late bound regions, as we need to add them
-                        // to the 'for<>' section
-                        &ty::ReLateBound(_, ty::BoundRegion::BrNamed(_, name)) => {
-                            Some(GenericParamDef {
-                                name: name.to_string(),
-                                kind: GenericParamDefKind::Lifetime,
-                            })
-                        }
-                        &ty::ReVar(_) | &ty::ReEarlyBound(_) | &ty::ReStatic => None,
-                        _ => panic!("Unexpected region type {:?}", r),
-                    }
-                })
+        regions
+            .into_iter()
+            .filter_map(|br| {
+                match br {
+                    // We only care about named late bound regions, as we need to add them
+                    // to the 'for<>' section
+                    ty::BrNamed(_, name) => Some(GenericParamDef {
+                        name: name.to_string(),
+                        kind: GenericParamDefKind::Lifetime,
+                    }),
+                    _ => None,
+                }
             })
             .collect()
     }
@@ -497,18 +501,15 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                     // of the type.
                     // Therefore, we make sure that we never add a ?Sized
                     // bound for projections
-                    match &ty {
-                        &Type::QPath { .. } => {
-                            has_sized.insert(ty.clone());
-                        }
-                        _ => {}
+                    if let Type::QPath { .. } = ty {
+                        has_sized.insert(ty.clone());
                     }
 
                     if bounds.is_empty() {
                         continue;
                     }
 
-                    let mut for_generics = self.extract_for_generics(tcx, orig_p.clone());
+                    let mut for_generics = self.extract_for_generics(tcx, orig_p);
 
                     assert!(bounds.len() == 1);
                     let mut b = bounds.pop().expect("bounds were empty");

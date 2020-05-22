@@ -9,11 +9,10 @@ LL |
 LL |     x.clone();
    |     ^ value borrowed here after move
    |
-help: consider further restricting this bound with `+ Copy`
-  --> $DIR/unop-move-semantics.rs:5:24
+help: consider further restricting this bound
    |
-LL | fn move_then_borrow<T: Not<Output=T> + Clone>(x: T) {
-   |                        ^^^^^^^^^^^^^^^^^^^^^
+LL | fn move_then_borrow<T: Not<Output=T> + Clone + Copy>(x: T) {
+   |                                              ^^^^^^
 
 error[E0505]: cannot move out of `x` because it is borrowed
   --> $DIR/unop-move-semantics.rs:15:6

@@ -1,12 +1,12 @@
-use rustc::hir::map::{DefPathData, DisambiguatedDefPathData};
-use rustc::mir::interpret::Allocation;
-use rustc::ty::{
+use rustc_hir::def_id::CrateNum;
+use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
+use rustc_middle::mir::interpret::Allocation;
+use rustc_middle::ty::{
     self,
     print::{PrettyPrinter, Print, Printer},
     subst::{GenericArg, GenericArgKind},
     Ty, TyCtxt,
 };
-use rustc_hir::def_id::CrateNum;
 use std::fmt::Write;
 
 struct AbsolutePathPrinter<'tcx> {
@@ -60,7 +60,6 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
             | ty::FnDef(def_id, substs)
             | ty::Opaque(def_id, substs)
             | ty::Projection(ty::ProjectionTy { item_def_id: def_id, substs })
-            | ty::UnnormalizedProjection(ty::ProjectionTy { item_def_id: def_id, substs })
             | ty::Closure(def_id, substs)
             | ty::Generator(def_id, substs, _) => self.print_def_path(def_id, substs),
             ty::Foreign(def_id) => self.print_def_path(def_id, &[]),
@@ -129,9 +128,8 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
         self = print_prefix(self)?;
 
         // Skip `::{{constructor}}` on tuple/unit structs.
-        match disambiguated_data.data {
-            DefPathData::Ctor => return Ok(self),
-            _ => {}
+        if disambiguated_data.data == DefPathData::Ctor {
+            return Ok(self);
         }
 
         self.path.push_str("::");

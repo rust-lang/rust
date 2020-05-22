@@ -1,9 +1,11 @@
 // Not in interpret to make sure we do not use private implementation details
 
-use rustc::mir;
-use rustc::ty::layout::VariantIdx;
-use rustc::ty::{self, TyCtxt};
+use std::convert::TryFrom;
+
+use rustc_middle::mir;
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::{source_map::DUMMY_SP, symbol::Symbol};
+use rustc_target::abi::VariantIdx;
 
 use crate::interpret::{intern_const_alloc_recursive, ConstValue, InternKind, InterpCx};
 
@@ -37,7 +39,7 @@ pub(crate) fn const_field<'tcx>(
         Some(variant) => ecx.operand_downcast(op, variant).unwrap(),
     };
     // then project
-    let field = ecx.operand_field(down, field.index() as u64).unwrap();
+    let field = ecx.operand_field(down, field.index()).unwrap();
     // and finally move back to the const world, always normalizing because
     // this is not called for statics.
     op_to_const(&ecx, field)
@@ -51,7 +53,7 @@ pub(crate) fn const_caller_location(
     let mut ecx = mk_eval_cx(tcx, DUMMY_SP, ty::ParamEnv::reveal_all(), false);
 
     let loc_place = ecx.alloc_caller_location(file, line, col);
-    intern_const_alloc_recursive(&mut ecx, InternKind::Constant, loc_place, false).unwrap();
+    intern_const_alloc_recursive(&mut ecx, InternKind::Constant, loc_place, false);
     ConstValue::Scalar(loc_place.ptr)
 }
 
@@ -68,10 +70,11 @@ pub(crate) fn destructure_const<'tcx>(
 
     let variant = ecx.read_discriminant(op).unwrap().1;
 
+    // We go to `usize` as we cannot allocate anything bigger anyway.
     let field_count = match val.ty.kind {
-        ty::Array(_, len) => len.eval_usize(tcx, param_env),
-        ty::Adt(def, _) => def.variants[variant].fields.len() as u64,
-        ty::Tuple(substs) => substs.len() as u64,
+        ty::Array(_, len) => usize::try_from(len.eval_usize(tcx, param_env)).unwrap(),
+        ty::Adt(def, _) => def.variants[variant].fields.len(),
+        ty::Tuple(substs) => substs.len(),
         _ => bug!("cannot destructure constant {:?}", val),
     };
 

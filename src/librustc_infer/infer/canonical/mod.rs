@@ -19,17 +19,17 @@
 //! For a more detailed look at what is happening here, check
 //! out the [chapter in the rustc dev guide][c].
 //!
-//! [c]: https://rustc-dev-guide.rust-lang.org/traits/canonicalization.html
+//! [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html
 
 use crate::infer::{ConstVariableOrigin, ConstVariableOriginKind};
 use crate::infer::{InferCtxt, RegionVariableOrigin, TypeVariableOrigin, TypeVariableOriginKind};
-use rustc::ty::fold::TypeFoldable;
-use rustc::ty::subst::GenericArg;
-use rustc::ty::{self, BoundVar, List};
 use rustc_index::vec::IndexVec;
+use rustc_middle::ty::fold::TypeFoldable;
+use rustc_middle::ty::subst::GenericArg;
+use rustc_middle::ty::{self, BoundVar, List};
 use rustc_span::source_map::Span;
 
-pub use rustc::infer::canonical::*;
+pub use rustc_middle::infer::canonical::*;
 use substitute::CanonicalExt;
 
 mod canonicalizer;

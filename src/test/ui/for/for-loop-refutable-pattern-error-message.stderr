@@ -3,6 +3,8 @@ error[E0005]: refutable pattern in `for` loop binding: `&std::i32::MIN..=0i32` a
    |
 LL |     for &1 in [1].iter() {}
    |         ^^ patterns `&std::i32::MIN..=0i32` and `&2i32..=std::i32::MAX` not covered
+   |
+   = note: the matched value is of type `&i32`
 
 error: aborting due to previous error
 

@@ -1,5 +1,5 @@
 error[E0599]: no method named `clone` found for struct `issue_69725::Struct<A>` in the current scope
-  --> $DIR/issue-69725.rs:12:32
+  --> $DIR/issue-69725.rs:7:32
    |
 LL |     let _ = Struct::<A>::new().clone();
    |                                ^^^^^ method not found in `issue_69725::Struct<A>`

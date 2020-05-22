@@ -7,8 +7,6 @@ use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
 use libc::{c_char, c_uint};
 use log::debug;
-use rustc::ty::layout::{self, Align, Size, TyLayout};
-use rustc::ty::{self, Ty, TyCtxt};
 use rustc_codegen_ssa::base::to_immediate;
 use rustc_codegen_ssa::common::{IntPredicate, RealPredicate, TypeKind};
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
@@ -18,7 +16,9 @@ use rustc_codegen_ssa::MemFlags;
 use rustc_data_structures::const_cstr;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::DefId;
-use rustc_session::config::{self, Sanitizer};
+use rustc_middle::ty::layout::TyAndLayout;
+use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_target::abi::{self, Align, Size};
 use rustc_target::spec::{HasTargetSpec, Target};
 use std::borrow::Cow;
 use std::ffi::CStr;
@@ -60,8 +60,8 @@ impl BackendTypes for Builder<'_, 'll, 'tcx> {
     type DIVariable = <CodegenCx<'ll, 'tcx> as BackendTypes>::DIVariable;
 }
 
-impl ty::layout::HasDataLayout for Builder<'_, '_, '_> {
-    fn data_layout(&self) -> &ty::layout::TargetDataLayout {
+impl abi::HasDataLayout for Builder<'_, '_, '_> {
+    fn data_layout(&self) -> &abi::TargetDataLayout {
         self.cx.data_layout()
     }
 }
@@ -84,11 +84,11 @@ impl HasTargetSpec for Builder<'_, '_, 'tcx> {
     }
 }
 
-impl ty::layout::LayoutOf for Builder<'_, '_, 'tcx> {
+impl abi::LayoutOf for Builder<'_, '_, 'tcx> {
     type Ty = Ty<'tcx>;
-    type TyLayout = TyLayout<'tcx>;
+    type TyAndLayout = TyAndLayout<'tcx>;
 
-    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyLayout {
+    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyAndLayout {
         self.cx.layout_of(ty)
     }
 }
@@ -302,14 +302,14 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         lhs: Self::Value,
         rhs: Self::Value,
     ) -> (Self::Value, Self::Value) {
-        use rustc::ty::{Int, Uint};
         use rustc_ast::ast::IntTy::*;
         use rustc_ast::ast::UintTy::*;
+        use rustc_middle::ty::{Int, Uint};
 
         let new_kind = match ty.kind {
             Int(t @ Isize) => Int(t.normalize(self.tcx.sess.target.ptr_width)),
             Uint(t @ Usize) => Uint(t.normalize(self.tcx.sess.target.ptr_width)),
-            ref t @ Uint(_) | ref t @ Int(_) => t.clone(),
+            ref t @ (Uint(_) | Int(_)) => t.clone(),
             _ => panic!("tried to get overflow intrinsic for op applied to non-int type"),
         };
 
@@ -435,17 +435,17 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         fn scalar_load_metadata<'a, 'll, 'tcx>(
             bx: &mut Builder<'a, 'll, 'tcx>,
             load: &'ll Value,
-            scalar: &layout::Scalar,
+            scalar: &abi::Scalar,
         ) {
             let vr = scalar.valid_range.clone();
             match scalar.value {
-                layout::Int(..) => {
+                abi::Int(..) => {
                     let range = scalar.valid_range_exclusive(bx);
                     if range.start != range.end {
                         bx.range_metadata(load, range);
                     }
                 }
-                layout::Pointer if vr.start() < vr.end() && !vr.contains(&0) => {
+                abi::Pointer if vr.start() < vr.end() && !vr.contains(&0) => {
                     bx.nonnull_metadata(load);
                 }
                 _ => {}
@@ -465,16 +465,16 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             }
             let llval = const_llval.unwrap_or_else(|| {
                 let load = self.load(place.llval, place.align);
-                if let layout::Abi::Scalar(ref scalar) = place.layout.abi {
+                if let abi::Abi::Scalar(ref scalar) = place.layout.abi {
                     scalar_load_metadata(self, load, scalar);
                 }
                 load
             });
             OperandValue::Immediate(to_immediate(self, llval, place.layout))
-        } else if let layout::Abi::ScalarPair(ref a, ref b) = place.layout.abi {
+        } else if let abi::Abi::ScalarPair(ref a, ref b) = place.layout.abi {
             let b_offset = a.value.size(self).align_to(b.value.align(self).abi);
 
-            let mut load = |i, scalar: &layout::Scalar, align| {
+            let mut load = |i, scalar: &abi::Scalar, align| {
                 let llptr = self.struct_gep(place.llval, i as u64);
                 let load = self.load(llptr, align);
                 scalar_load_metadata(self, load, scalar);
@@ -1242,14 +1242,7 @@ impl Builder<'a, 'll, 'tcx> {
             return;
         }
 
-        let opts = &self.cx.sess().opts;
-        let emit = match opts.debugging_opts.sanitizer {
-            // Some sanitizer use lifetime intrinsics. When they are in use,
-            // emit lifetime intrinsics regardless of optimization level.
-            Some(Sanitizer::Address) | Some(Sanitizer::Memory) => true,
-            _ => opts.optimize != config::OptLevel::No,
-        };
-        if !emit {
+        if !self.cx().sess().emit_lifetime_markers() {
             return;
         }
 

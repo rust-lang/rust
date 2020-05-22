@@ -10,7 +10,7 @@ unsafe impl GlobalAlloc for System {
         if layout.align() <= MIN_ALIGN && layout.align() <= layout.size() {
             libc::malloc(layout.size()) as *mut u8
         } else {
-            libc::aligned_alloc(layout.size(), layout.align()) as *mut u8
+            libc::aligned_alloc(layout.align(), layout.size()) as *mut u8
         }
     }
 

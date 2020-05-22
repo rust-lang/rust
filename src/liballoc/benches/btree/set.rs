@@ -63,6 +63,22 @@ pub fn clone_100_and_clear(b: &mut Bencher) {
 }
 
 #[bench]
+pub fn clone_100_and_drain_all(b: &mut Bencher) {
+    let src = pos(100);
+    b.iter(|| src.clone().drain_filter(|_| true).count())
+}
+
+#[bench]
+pub fn clone_100_and_drain_half(b: &mut Bencher) {
+    let src = pos(100);
+    b.iter(|| {
+        let mut set = src.clone();
+        assert_eq!(set.drain_filter(|i| i % 2 == 0).count(), 100 / 2);
+        assert_eq!(set.len(), 100 / 2);
+    })
+}
+
+#[bench]
 pub fn clone_100_and_into_iter(b: &mut Bencher) {
     let src = pos(100);
     b.iter(|| src.clone().into_iter().count())
@@ -113,6 +129,22 @@ pub fn clone_10k(b: &mut Bencher) {
 pub fn clone_10k_and_clear(b: &mut Bencher) {
     let src = pos(10_000);
     b.iter(|| src.clone().clear())
+}
+
+#[bench]
+pub fn clone_10k_and_drain_all(b: &mut Bencher) {
+    let src = pos(10_000);
+    b.iter(|| src.clone().drain_filter(|_| true).count())
+}
+
+#[bench]
+pub fn clone_10k_and_drain_half(b: &mut Bencher) {
+    let src = pos(10_000);
+    b.iter(|| {
+        let mut set = src.clone();
+        assert_eq!(set.drain_filter(|i| i % 2 == 0).count(), 10_000 / 2);
+        assert_eq!(set.len(), 10_000 / 2);
+    })
 }
 
 #[bench]

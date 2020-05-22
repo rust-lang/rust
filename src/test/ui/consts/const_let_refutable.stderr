@@ -3,6 +3,8 @@ error[E0005]: refutable pattern in function argument: `&[]`, `&[_]` and `&[_, _,
    |
 LL | const fn slice(&[a, b]: &[i32]) -> i32 {
    |                ^^^^^^^ patterns `&[]`, `&[_]` and `&[_, _, _, ..]` not covered
+   |
+   = note: the matched value is of type `&[i32]`
 
 error[E0723]: loops and conditional expressions are not stable in const fn
   --> $DIR/const_let_refutable.rs:3:17

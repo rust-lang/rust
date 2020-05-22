@@ -1,0 +1,15 @@
+warning: `no_sanitize` will have no effect after inlining
+  --> $DIR/inline-always.rs:7:1
+   |
+LL | #[no_sanitize(address)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(inline_no_sanitize)]` on by default
+note: inlining requested here
+  --> $DIR/inline-always.rs:5:1
+   |
+LL | #[inline(always)]
+   | ^^^^^^^^^^^^^^^^^
+
+warning: 1 warning emitted
+

@@ -24,6 +24,7 @@ members = [
   "src/tools/miri",
   "src/tools/rustdoc-themes",
   "src/tools/unicode-table-generator",
+  "src/tools/expand-yaml-anchors",
 ]
 exclude = [
   "build",

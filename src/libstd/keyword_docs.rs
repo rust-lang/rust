@@ -685,12 +685,12 @@ mod impl_keyword {}
 /// ## Literal Examples:
 ///
 ///    * `for _ **in** 1..3 {}` - Iterate over an exclusive range up to but excluding 3.
-///    * `for _ **in** 1..=3 {}` - Iterate over an inclusive range up to and includeing 3.
+///    * `for _ **in** 1..=3 {}` - Iterate over an inclusive range up to and including 3.
 ///
 /// (Read more about [range patterns])
 ///
 /// [`Iterator`]: ../book/ch13-04-performance.html
-/// [`range patterns`]: ../reference/patterns.html?highlight=range#range-patterns
+/// [range patterns]: ../reference/patterns.html?highlight=range#range-patterns
 /// [`for`]: keyword.for.html
 mod in_keyword {}
 

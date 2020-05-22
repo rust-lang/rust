@@ -1,7 +1,7 @@
 // build-pass
 #![allow(unused_macros)]
 #![allow(dead_code)]
-#![feature(asm)]
+#![feature(llvm_asm)]
 
 type History = Vec<&'static str>;
 
@@ -18,10 +18,10 @@ macro_rules! demo {
 
             let mut history: History = vec![];
             unsafe {
-                asm!("mov ($1), $0"
-                     : $output_constraint (*wrap(&mut x, "out", &mut history))
-                     : "r"(&wrap(y, "in", &mut history))
-                     :: "volatile");
+                llvm_asm!("mov ($1), $0"
+                          : $output_constraint (*wrap(&mut x, "out", &mut history))
+                          : "r"(&wrap(y, "in", &mut history))
+                          :: "volatile");
             }
             assert_eq!((x,y), (1,1));
             let b: &[_] = &["out", "in"];

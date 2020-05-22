@@ -11,10 +11,11 @@ use crate::ast::*;
 use crate::ptr::P;
 use crate::token::{self, Token};
 use crate::tokenstream::*;
-use crate::util::map_in_place::MapInPlace;
 
+use rustc_data_structures::map_in_place::MapInPlace;
 use rustc_data_structures::sync::Lrc;
 use rustc_span::source_map::{respan, Spanned};
+use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
 use smallvec::{smallvec, Array, SmallVec};
@@ -546,9 +547,11 @@ pub fn noop_visit_angle_bracketed_parameter_data<T: MutVisitor>(
     data: &mut AngleBracketedArgs,
     vis: &mut T,
 ) {
-    let AngleBracketedArgs { args, constraints, span } = data;
-    visit_vec(args, |arg| vis.visit_generic_arg(arg));
-    visit_vec(constraints, |constraint| vis.visit_ty_constraint(constraint));
+    let AngleBracketedArgs { args, span } = data;
+    visit_vec(args, |arg| match arg {
+        AngleBracketedArg::Arg(arg) => vis.visit_generic_arg(arg),
+        AngleBracketedArg::Constraint(constraint) => vis.visit_ty_constraint(constraint),
+    });
     vis.visit_span(span);
 }
 
@@ -1203,7 +1206,28 @@ pub fn noop_visit_expr<T: MutVisitor>(Expr { kind, id, span, attrs }: &mut Expr,
             visit_opt(expr, |expr| vis.visit_expr(expr));
         }
         ExprKind::InlineAsm(asm) => {
-            let InlineAsm {
+            for (op, _) in &mut asm.operands {
+                match op {
+                    InlineAsmOperand::In { expr, .. }
+                    | InlineAsmOperand::InOut { expr, .. }
+                    | InlineAsmOperand::Const { expr, .. }
+                    | InlineAsmOperand::Sym { expr, .. } => vis.visit_expr(expr),
+                    InlineAsmOperand::Out { expr, .. } => {
+                        if let Some(expr) = expr {
+                            vis.visit_expr(expr);
+                        }
+                    }
+                    InlineAsmOperand::SplitInOut { in_expr, out_expr, .. } => {
+                        vis.visit_expr(in_expr);
+                        if let Some(out_expr) = out_expr {
+                            vis.visit_expr(out_expr);
+                        }
+                    }
+                }
+            }
+        }
+        ExprKind::LlvmInlineAsm(asm) => {
+            let LlvmInlineAsm {
                 asm: _,
                 asm_str_style: _,
                 outputs,
@@ -1214,7 +1238,7 @@ pub fn noop_visit_expr<T: MutVisitor>(Expr { kind, id, span, attrs }: &mut Expr,
                 dialect: _,
             } = asm.deref_mut();
             for out in outputs {
-                let InlineAsmOutput { constraint: _, expr, is_rw: _, is_indirect: _ } = out;
+                let LlvmInlineAsmOutput { constraint: _, expr, is_rw: _, is_indirect: _ } = out;
                 vis.visit_expr(expr);
             }
             visit_vec(inputs, |(_c, expr)| vis.visit_expr(expr));

@@ -1,5 +1,5 @@
 error[E0643]: method `foo` has incompatible signature for trait
-  --> $DIR/impl-generic-mismatch.rs:13:12
+  --> $DIR/impl-generic-mismatch.rs:8:12
    |
 LL |     fn foo(&self, _: &impl Debug);
    |                       ---------- declaration in trait here
@@ -13,7 +13,7 @@ LL |     fn foo(&self, _: &impl Debug) { }
    |          --           ^^^^^^^^^^
 
 error[E0643]: method `bar` has incompatible signature for trait
-  --> $DIR/impl-generic-mismatch.rs:22:23
+  --> $DIR/impl-generic-mismatch.rs:17:23
    |
 LL |     fn bar<U: Debug>(&self, _: &U);
    |            - declaration in trait here
@@ -27,7 +27,7 @@ LL |     fn bar<U: Debug>(&self, _: &U) { }
    |           ^^^^^^^^^^            ^
 
 error[E0643]: method `hash` has incompatible signature for trait
-  --> $DIR/impl-generic-mismatch.rs:33:33
+  --> $DIR/impl-generic-mismatch.rs:28:33
    |
 LL |     fn hash(&self, hasher: &mut impl Hasher) {}
    |                                 ^^^^^^^^^^^ expected generic parameter, found `impl Trait`

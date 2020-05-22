@@ -17,11 +17,10 @@ LL |     let mut r = R {c: Box::new(f)};
 LL |     f(&mut r, false)
    |     ^ value borrowed here after move
    |
-help: consider further restricting this bound with `+ Copy`
-  --> $DIR/moves-based-on-type-no-recursive-stack-closure.rs:30:35
+help: consider further restricting this bound
    |
-LL | fn conspirator<F>(mut f: F) where F: FnMut(&mut R, bool) {
-   |                                   ^^^^^^^^^^^^^^^^^^^^^^
+LL | fn conspirator<F>(mut f: F) where F: FnMut(&mut R, bool) + Copy {
+   |                                                          ^^^^^^
 
 error: aborting due to 2 previous errors
 

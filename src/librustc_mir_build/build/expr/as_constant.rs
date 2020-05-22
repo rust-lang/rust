@@ -2,8 +2,8 @@
 
 use crate::build::Builder;
 use crate::hair::*;
-use rustc::mir::*;
-use rustc::ty::CanonicalUserTypeAnnotation;
+use rustc_middle::mir::*;
+use rustc_middle::ty::CanonicalUserTypeAnnotation;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr`, yielding a compile-time constant. Assumes that

@@ -1,23 +1,23 @@
 error[E0178]: expected a path on the left-hand side of `+`, not `((Auto))`
-  --> $DIR/trait-object-bad-parens.rs:7:16
+  --> $DIR/trait-object-bad-parens.rs:8:16
    |
 LL |     let _: Box<((Auto)) + Auto>;
    |                ^^^^^^^^^^^^^^^ expected a path
 
 error[E0178]: expected a path on the left-hand side of `+`, not `(Auto + Auto)`
-  --> $DIR/trait-object-bad-parens.rs:9:16
+  --> $DIR/trait-object-bad-parens.rs:10:16
    |
 LL |     let _: Box<(Auto + Auto) + Auto>;
    |                ^^^^^^^^^^^^^^^^^^^^ expected a path
 
 error[E0178]: expected a path on the left-hand side of `+`, not `(Auto)`
-  --> $DIR/trait-object-bad-parens.rs:11:16
+  --> $DIR/trait-object-bad-parens.rs:12:16
    |
 LL |     let _: Box<(Auto +) + Auto>;
    |                ^^^^^^^^^^^^^^^ expected a path
 
 error[E0178]: expected a path on the left-hand side of `+`, not `(dyn Auto)`
-  --> $DIR/trait-object-bad-parens.rs:13:16
+  --> $DIR/trait-object-bad-parens.rs:14:16
    |
 LL |     let _: Box<(dyn Auto) + Auto>;
    |                ^^^^^^^^^^^^^^^^^ expected a path

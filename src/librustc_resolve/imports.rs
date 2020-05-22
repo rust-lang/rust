@@ -9,10 +9,7 @@ use crate::{BindingKey, ModuleKind, ResolutionError, Resolver, Segment};
 use crate::{CrateLint, Module, ModuleOrUniformRoot, ParentScope, PerNS, ScopeSet, Weak};
 use crate::{NameBinding, NameBindingKind, PathResult, PrivacyError, ToNameBinding};
 
-use rustc::hir::exports::Export;
-use rustc::ty;
-use rustc::{bug, span_bug};
-use rustc_ast::ast::{Ident, Name, NodeId};
+use rustc_ast::ast::NodeId;
 use rustc_ast::unwrap_or;
 use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_data_structures::fx::FxHashSet;
@@ -20,11 +17,14 @@ use rustc_data_structures::ptr_key::PtrKey;
 use rustc_errors::{pluralize, struct_span_err, Applicability};
 use rustc_hir::def::{self, PartialRes};
 use rustc_hir::def_id::DefId;
+use rustc_middle::hir::exports::Export;
+use rustc_middle::ty;
+use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::{PUB_USE_OF_PRIVATE_EXTERN_CRATE, UNUSED_IMPORTS};
 use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::DiagnosticMessageId;
 use rustc_span::hygiene::ExpnId;
-use rustc_span::symbol::kw;
+use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::{MultiSpan, Span};
 
 use log::*;
@@ -57,7 +57,7 @@ pub enum ImportKind<'a> {
                                        // n.b. `max_vis` is only used in `finalize_import` to check for re-export errors.
     },
     ExternCrate {
-        source: Option<Name>,
+        source: Option<Symbol>,
         target: Ident,
     },
     MacroUse,
@@ -1441,7 +1441,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     let enum_resolution = resolutions.get(&key).expect("resolution should exist");
                     let enum_span =
                         enum_resolution.borrow().binding.expect("binding should exist").span;
-                    let enum_def_span = this.session.source_map().def_span(enum_span);
+                    let enum_def_span = this.session.source_map().guess_head_span(enum_span);
                     let enum_def_snippet = this
                         .session
                         .source_map()

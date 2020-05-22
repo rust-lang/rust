@@ -50,8 +50,8 @@
 //! The internal iterator over the argument has not been advanced by the time
 //! the first `{}` is seen, so it prints the first argument. Then upon reaching
 //! the second `{}`, the iterator has advanced forward to the second argument.
-//! Essentially, parameters which explicitly name their argument do not affect
-//! parameters which do not name an argument in terms of positional specifiers.
+//! Essentially, parameters that explicitly name their argument do not affect
+//! parameters that do not name an argument in terms of positional specifiers.
 //!
 //! A format string is required to use all of its arguments, otherwise it is a
 //! compile-time error. You may refer to the same argument more than once in the
@@ -60,7 +60,7 @@
 //! ## Named parameters
 //!
 //! Rust itself does not have a Python-like equivalent of named parameters to a
-//! function, but the [`format!`] macro is a syntax extension which allows it to
+//! function, but the [`format!`] macro is a syntax extension that allows it to
 //! leverage named parameters. Named parameters are listed at the end of the
 //! argument list and have the syntax:
 //!
@@ -77,7 +77,7 @@
 //! ```
 //!
 //! It is not valid to put positional parameters (those without names) after
-//! arguments which have names. Like with positional parameters, it is not
+//! arguments that have names. Like with positional parameters, it is not
 //! valid to provide named parameters that are unused by the format string.
 //!
 //! # Formatting Parameters
@@ -130,7 +130,7 @@
 //!
 //! The default [fill/alignment](#fillalignment) for non-numerics is a space and
 //! left-aligned. The
-//! defaults for numeric formatters is also a space but with right-alignment. If
+//! default for numeric formatters is also a space character but with right-alignment. If
 //! the `0` flag (see below) is specified for numerics, then the implicit fill character is
 //! `0`.
 //!
@@ -161,7 +161,7 @@
 //!         `Signed` trait. This flag indicates that the correct sign (`+` or `-`)
 //!         should always be printed.
 //! * `-` - Currently not used
-//! * `#` - This flag is indicates that the "alternate" form of printing should
+//! * `#` - This flag indicates that the "alternate" form of printing should
 //!         be used. The alternate forms are:
 //!     * `#?` - pretty-print the [`Debug`] formatting
 //!     * `#x` - precedes the argument with a `0x`
@@ -173,9 +173,9 @@
 //!         like `{:08}` would yield `00000001` for the integer `1`, while the
 //!         same format would yield `-0000001` for the integer `-1`. Notice that
 //!         the negative version has one fewer zero than the positive version.
-//!         Note that padding zeroes are always placed after the sign (if any)
+//!         Note that padding zeros are always placed after the sign (if any)
 //!         and before the digits. When used together with the `#` flag, a similar
-//!         rule applies: padding zeroes are inserted after the prefix but before
+//!         rule applies: padding zeros are inserted after the prefix but before
 //!         the digits. The prefix is included in the total width.
 //!
 //! ## Precision
@@ -251,7 +251,7 @@
 //!
 //! In some programming languages, the behavior of string formatting functions
 //! depends on the operating system's locale setting. The format functions
-//! provided by Rust's standard library do not have any concept of locale, and
+//! provided by Rust's standard library do not have any concept of locale and
 //! will produce the same results on all systems regardless of user
 //! configuration.
 //!
@@ -470,7 +470,7 @@
 //!
 //! ### `format_args!`
 //!
-//! This is a curious macro which is used to safely pass around
+//! This is a curious macro used to safely pass around
 //! an opaque object describing the format string. This object
 //! does not require any heap allocations to create, and it only
 //! references information on the stack. Under the hood, all of
@@ -495,7 +495,7 @@
 //! This structure can then be passed to the [`write`] and [`format`] functions
 //! inside this module in order to process the format string.
 //! The goal of this macro is to even further prevent intermediate allocations
-//! when dealing formatting strings.
+//! when dealing with formatting strings.
 //!
 //! For example, a logging library could use the standard formatting syntax, but
 //! it would internally pass around this structure until it has been determined

@@ -1,12 +1,12 @@
 //! A pass that eliminates branches on uninhabited enum variants.
 
 use crate::transform::{MirPass, MirSource};
-use rustc::mir::{
-    BasicBlock, BasicBlockData, Body, BodyAndCache, Local, Operand, Rvalue, StatementKind,
-    TerminatorKind,
+use rustc_middle::mir::{
+    BasicBlock, BasicBlockData, Body, Local, Operand, Rvalue, StatementKind, TerminatorKind,
 };
-use rustc::ty::layout::{Abi, TyLayout, Variants};
-use rustc::ty::{Ty, TyCtxt};
+use rustc_middle::ty::layout::TyAndLayout;
+use rustc_middle::ty::{Ty, TyCtxt};
+use rustc_target::abi::{Abi, Variants};
 
 pub struct UninhabitedEnumBranching;
 
@@ -49,11 +49,11 @@ fn get_switched_on_type<'tcx>(
 }
 
 fn variant_discriminants<'tcx>(
-    layout: &TyLayout<'tcx>,
+    layout: &TyAndLayout<'tcx>,
     ty: Ty<'tcx>,
     tcx: TyCtxt<'tcx>,
 ) -> Vec<u128> {
-    match &layout.details.variants {
+    match &layout.variants {
         Variants::Single { index } => vec![index.as_u32() as u128],
         Variants::Multiple { variants, .. } => variants
             .iter_enumerated()
@@ -66,7 +66,7 @@ fn variant_discriminants<'tcx>(
 }
 
 impl<'tcx> MirPass<'tcx> for UninhabitedEnumBranching {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
         if source.promoted.is_some() {
             return;
         }

@@ -1,0 +1,22 @@
+error: casting to the same type is unnecessary (`i32` -> `i32`)
+  --> $DIR/unnecessary_cast.rs:6:5
+   |
+LL |     1i32 as i32;
+   |     ^^^^^^^^^^^
+   |
+   = note: `-D clippy::unnecessary-cast` implied by `-D warnings`
+
+error: casting to the same type is unnecessary (`f32` -> `f32`)
+  --> $DIR/unnecessary_cast.rs:7:5
+   |
+LL |     1f32 as f32;
+   |     ^^^^^^^^^^^
+
+error: casting to the same type is unnecessary (`bool` -> `bool`)
+  --> $DIR/unnecessary_cast.rs:8:5
+   |
+LL |     false as bool;
+   |     ^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

@@ -2,7 +2,7 @@ error[E0277]: `u8` is not an iterator
   --> $DIR/bound.rs:2:10
    |
 LL | struct S<I: Iterator>(I);
-   | ------------------------- required by `S`
+   |             -------- required by this bound in `S`
 LL | struct T(S<u8>);
    |          ^^^^^ `u8` is not an iterator
    |

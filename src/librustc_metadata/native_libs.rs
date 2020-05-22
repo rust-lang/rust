@@ -1,10 +1,10 @@
-use rustc::middle::cstore::{self, NativeLibrary};
-use rustc::ty::TyCtxt;
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
+use rustc_middle::middle::cstore::{self, NativeLibrary};
+use rustc_middle::ty::TyCtxt;
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
 use rustc_span::source_map::Span;
@@ -51,7 +51,7 @@ impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
                 name: None,
                 kind: cstore::NativeUnknown,
                 cfg: None,
-                foreign_module: Some(self.tcx.hir().local_def_id(it.hir_id)),
+                foreign_module: Some(self.tcx.hir().local_def_id(it.hir_id).to_def_id()),
                 wasm_import_module: None,
             };
             let mut kind_specified = false;
@@ -162,8 +162,13 @@ impl Collector<'tcx> {
             }
         }
         if lib.cfg.is_some() && !self.tcx.features().link_cfg {
-            feature_err(&self.tcx.sess.parse_sess, sym::link_cfg, span.unwrap(), "is unstable")
-                .emit();
+            feature_err(
+                &self.tcx.sess.parse_sess,
+                sym::link_cfg,
+                span.unwrap(),
+                "kind=\"link_cfg\" is unstable",
+            )
+            .emit();
         }
         if lib.kind == cstore::NativeStaticNobundle && !self.tcx.features().static_nobundle {
             feature_err(

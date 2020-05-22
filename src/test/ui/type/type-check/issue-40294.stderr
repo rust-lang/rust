@@ -2,12 +2,12 @@ error[E0283]: type annotations needed
   --> $DIR/issue-40294.rs:6:19
    |
 LL | trait Foo: Sized {
-   | ---------------- required by `Foo`
+   | ---------------- required by this bound in `Foo`
 ...
 LL |     where &'a T : Foo,
    |                   ^^^ cannot infer type for reference `&'a T`
    |
-   = note: cannot resolve `&'a T: Foo`
+   = note: cannot satisfy `&'a T: Foo`
 
 error: aborting due to previous error
 

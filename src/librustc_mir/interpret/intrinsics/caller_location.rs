@@ -1,5 +1,7 @@
-use rustc::middle::lang_items::PanicLocationLangItem;
-use rustc::ty::subst::Subst;
+use std::convert::TryFrom;
+
+use rustc_hir::lang_items::PanicLocationLangItem;
+use rustc_middle::ty::subst::Subst;
 use rustc_span::{Span, Symbol};
 use rustc_target::abi::LayoutOf;
 
@@ -8,20 +10,23 @@ use crate::interpret::{
     MPlaceTy, MemoryKind, Scalar,
 };
 
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
+impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Walks up the callstack from the intrinsic's callsite, searching for the first callsite in a
-    /// frame which is not `#[track_caller]`. If the first frame found lacks `#[track_caller]`, then
-    /// `None` is returned and the callsite of the function invocation itself should be used.
-    crate fn find_closest_untracked_caller_location(&self) -> Option<Span> {
-        let mut caller_span = None;
-        for next_caller in self.stack.iter().rev() {
-            if !next_caller.instance.def.requires_caller_location(*self.tcx) {
-                return caller_span;
-            }
-            caller_span = Some(next_caller.span);
-        }
-
-        caller_span
+    /// frame which is not `#[track_caller]`.
+    crate fn find_closest_untracked_caller_location(&self) -> Span {
+        self.stack()
+            .iter()
+            .rev()
+            // Find first non-`#[track_caller]` frame.
+            .find(|frame| !frame.instance.def.requires_caller_location(*self.tcx))
+            // Assert that there is always such a frame.
+            .unwrap()
+            .current_source_info()
+            // Assert that the frame we look at is actually executing code currently
+            // (`current_source_info` is None when we are unwinding and the frame does
+            // not require cleanup).
+            .unwrap()
+            .span
     }
 
     /// Allocate a `const core::panic::Location` with the provided filename and line/column numbers.
@@ -59,8 +64,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let caller = self.tcx.sess.source_map().lookup_char_pos(topmost.lo());
         (
             Symbol::intern(&caller.file.name.to_string()),
-            caller.line as u32,
-            caller.col_display as u32 + 1,
+            u32::try_from(caller.line).unwrap(),
+            u32::try_from(caller.col_display).unwrap().checked_add(1).unwrap(),
         )
     }
 

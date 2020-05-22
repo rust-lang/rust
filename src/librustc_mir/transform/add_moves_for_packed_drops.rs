@@ -1,6 +1,6 @@
-use rustc::mir::*;
-use rustc::ty::TyCtxt;
 use rustc_hir::def_id::DefId;
+use rustc_middle::mir::*;
+use rustc_middle::ty::TyCtxt;
 
 use crate::transform::{MirPass, MirSource};
 use crate::util;
@@ -40,17 +40,13 @@ use crate::util::patch::MirPatch;
 pub struct AddMovesForPackedDrops;
 
 impl<'tcx> MirPass<'tcx> for AddMovesForPackedDrops {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
         debug!("add_moves_for_packed_drops({:?} @ {:?})", src, body.span);
         add_moves_for_packed_drops(tcx, body, src.def_id());
     }
 }
 
-pub fn add_moves_for_packed_drops<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    body: &mut BodyAndCache<'tcx>,
-    def_id: DefId,
-) {
+pub fn add_moves_for_packed_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, def_id: DefId) {
     let patch = add_moves_for_packed_drops_patch(tcx, body, def_id);
     patch.apply(body);
 }
@@ -68,7 +64,7 @@ fn add_moves_for_packed_drops_patch<'tcx>(
         let terminator = data.terminator();
 
         match terminator.kind {
-            TerminatorKind::Drop { ref location, .. }
+            TerminatorKind::Drop { location, .. }
                 if util::is_disaligned(tcx, body, param_env, location) =>
             {
                 add_move_for_packed_drop(tcx, body, &mut patch, terminator, loc, data.is_cleanup);

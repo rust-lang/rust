@@ -65,8 +65,6 @@
 //! [`write_volatile`]: ./fn.write_volatile.html
 //! [`NonNull::dangling`]: ./struct.NonNull.html#method.dangling
 
-// ignore-tidy-undocumented-unsafe
-
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::cmp::Ordering;
@@ -76,12 +74,15 @@ use crate::intrinsics::{self, is_aligned_and_not_null, is_nonoverlapping};
 use crate::mem::{self, MaybeUninit};
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[doc(inline)]
 pub use crate::intrinsics::copy_nonoverlapping;
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[doc(inline)]
 pub use crate::intrinsics::copy;
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[doc(inline)]
 pub use crate::intrinsics::write_bytes;
 
 mod non_null;
@@ -109,11 +110,17 @@ mod mut_ptr;
 ///   as the compiler doesn't need to prove that it's sound to elide the
 ///   copy.
 ///
+/// * It can be used to drop [pinned] data when `T` is not `repr(packed)`
+///   (pinned data must not be moved before it is dropped).
+///
 /// Unaligned values cannot be dropped in place, they must be copied to an aligned
-/// location first using [`ptr::read_unaligned`].
+/// location first using [`ptr::read_unaligned`]. For packed structs, this move is
+/// done automatically by the compiler. This means the fields of packed structs
+/// are not dropped in-place.
 ///
 /// [`ptr::read`]: ../ptr/fn.read.html
 /// [`ptr::read_unaligned`]: ../ptr/fn.read_unaligned.html
+/// [pinned]: ../pin/index.html
 ///
 /// # Safety
 ///
@@ -245,14 +252,17 @@ pub(crate) struct FatPtr<T> {
 ///
 /// // create a slice pointer when starting out with a pointer to the first element
 /// let x = [5, 6, 7];
-/// let ptr = x.as_ptr();
-/// let slice = ptr::slice_from_raw_parts(ptr, 3);
+/// let raw_pointer = x.as_ptr();
+/// let slice = ptr::slice_from_raw_parts(raw_pointer, 3);
 /// assert_eq!(unsafe { &*slice }[2], 7);
 /// ```
 #[inline]
 #[stable(feature = "slice_from_raw_parts", since = "1.42.0")]
 #[rustc_const_unstable(feature = "const_slice_from_raw_parts", issue = "67456")]
 pub const fn slice_from_raw_parts<T>(data: *const T, len: usize) -> *const [T] {
+    // SAFETY: Accessing the value from the `Repr` union is safe since *const [T]
+    // and FatPtr have the same memory layouts. Only std can make this
+    // guarantee.
     unsafe { Repr { raw: FatPtr { data, len } }.rust }
 }
 
@@ -266,10 +276,28 @@ pub const fn slice_from_raw_parts<T>(data: *const T, len: usize) -> *const [T] {
 ///
 /// [`slice_from_raw_parts`]: fn.slice_from_raw_parts.html
 /// [`from_raw_parts_mut`]: ../../std/slice/fn.from_raw_parts_mut.html
+///
+/// # Examples
+///
+/// ```rust
+/// use std::ptr;
+///
+/// let x = &mut [5, 6, 7];
+/// let raw_pointer = x.as_mut_ptr();
+/// let slice = ptr::slice_from_raw_parts_mut(raw_pointer, 3);
+///
+/// unsafe {
+///     (*slice)[2] = 99; // assign a value at an index in the slice
+/// };
+///
+/// assert_eq!(unsafe { &*slice }[2], 99);
+/// ```
 #[inline]
 #[stable(feature = "slice_from_raw_parts", since = "1.42.0")]
 #[rustc_const_unstable(feature = "const_slice_from_raw_parts", issue = "67456")]
 pub const fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
+    // SAFETY: Accessing the value from the `Repr` union is safe since *mut [T]
+    // and FatPtr have the same memory layouts
     unsafe { Repr { raw: FatPtr { data, len } }.rust_mut }
 }
 

@@ -21,7 +21,7 @@ use rustc_parse::parser::Parser;
 use rustc_session::parse::ParseSess;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::Transparency;
-use rustc_span::symbol::{kw, sym, MacroRulesNormalizedIdent, Symbol};
+use rustc_span::symbol::{kw, sym, Ident, MacroRulesNormalizedIdent, Symbol};
 use rustc_span::Span;
 
 use log::debug;
@@ -39,7 +39,7 @@ crate struct ParserAnyMacro<'a> {
     /// Span of the expansion site of the macro this parser is for
     site_span: Span,
     /// The ident of the macro we're parsing
-    macro_ident: ast::Ident,
+    macro_ident: Ident,
     arm_span: Span,
 }
 
@@ -86,8 +86,9 @@ fn suggest_slice_pat(e: &mut DiagnosticBuilder<'_>, site_span: Span, parser: &Pa
 fn emit_frag_parse_err(
     mut e: DiagnosticBuilder<'_>,
     parser: &Parser<'_>,
+    orig_parser: &mut Parser<'_>,
     site_span: Span,
-    macro_ident: ast::Ident,
+    macro_ident: Ident,
     arm_span: Span,
     kind: AstFragmentKind,
 ) {
@@ -118,6 +119,21 @@ fn emit_frag_parse_err(
         AstFragmentKind::Pat if macro_ident.name == sym::vec => {
             suggest_slice_pat(&mut e, site_span, parser);
         }
+        // Try a statement if an expression is wanted but failed and suggest adding `;` to call.
+        AstFragmentKind::Expr => match parse_ast_fragment(orig_parser, AstFragmentKind::Stmts) {
+            Err(mut err) => err.cancel(),
+            Ok(_) => {
+                e.note(
+                    "the macro call doesn't expand to an expression, but it can expand to a statement",
+                );
+                e.span_suggestion_verbose(
+                    site_span.shrink_to_hi(),
+                    "add `;` to interpret the expansion as a statement",
+                    ";".to_string(),
+                    Applicability::MaybeIncorrect,
+                );
+            }
+        },
         _ => annotate_err_with_kind(&mut e, kind, site_span),
     };
     e.emit();
@@ -126,10 +142,11 @@ fn emit_frag_parse_err(
 impl<'a> ParserAnyMacro<'a> {
     crate fn make(mut self: Box<ParserAnyMacro<'a>>, kind: AstFragmentKind) -> AstFragment {
         let ParserAnyMacro { site_span, macro_ident, ref mut parser, arm_span } = *self;
+        let snapshot = &mut parser.clone();
         let fragment = match parse_ast_fragment(parser, kind) {
             Ok(f) => f,
             Err(err) => {
-                emit_frag_parse_err(err, parser, site_span, macro_ident, arm_span, kind);
+                emit_frag_parse_err(err, parser, snapshot, site_span, macro_ident, arm_span, kind);
                 return kind.dummy(site_span);
             }
         };
@@ -149,7 +166,7 @@ impl<'a> ParserAnyMacro<'a> {
 }
 
 struct MacroRulesMacroExpander {
-    name: ast::Ident,
+    name: Ident,
     span: Span,
     transparency: Transparency,
     lhses: Vec<mbe::TokenTree>,
@@ -198,7 +215,7 @@ fn generic_extension<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
     def_span: Span,
-    name: ast::Ident,
+    name: Ident,
     transparency: Transparency,
     arg: TokenStream,
     lhses: &[mbe::TokenTree],
@@ -326,7 +343,7 @@ fn generic_extension<'cx>(
     let mut err = cx.struct_span_err(span, &parse_failure_msg(&token));
     err.span_label(span, label);
     if !def_span.is_dummy() && !cx.source_map().is_imported(def_span) {
-        err.span_label(cx.source_map().def_span(def_span), "when calling this macro");
+        err.span_label(cx.source_map().guess_head_span(def_span), "when calling this macro");
     }
 
     // Check whether there's a missing comma in this macro call, like `println!("{}" a);`
@@ -337,20 +354,19 @@ fn generic_extension<'cx>(
                 mbe::TokenTree::Delimited(_, ref delim) => &delim.tts[..],
                 _ => continue,
             };
-            match parse_tt(&mut Cow::Borrowed(&parser_from_cx(sess, arg.clone())), lhs_tt) {
-                Success(_) => {
-                    if comma_span.is_dummy() {
-                        err.note("you might be missing a comma");
-                    } else {
-                        err.span_suggestion_short(
-                            comma_span,
-                            "missing comma here",
-                            ", ".to_string(),
-                            Applicability::MachineApplicable,
-                        );
-                    }
+            if let Success(_) =
+                parse_tt(&mut Cow::Borrowed(&parser_from_cx(sess, arg.clone())), lhs_tt)
+            {
+                if comma_span.is_dummy() {
+                    err.note("you might be missing a comma");
+                } else {
+                    err.span_suggestion_short(
+                        comma_span,
+                        "missing comma here",
+                        ", ".to_string(),
+                        Applicability::MachineApplicable,
+                    );
                 }
-                _ => {}
             }
         }
     }
@@ -384,9 +400,9 @@ pub fn compile_declarative_macro(
     };
 
     let diag = &sess.span_diagnostic;
-    let lhs_nm = ast::Ident::new(sym::lhs, def.span);
-    let rhs_nm = ast::Ident::new(sym::rhs, def.span);
-    let tt_spec = ast::Ident::new(sym::tt, def.span);
+    let lhs_nm = Ident::new(sym::lhs, def.span);
+    let rhs_nm = Ident::new(sym::rhs, def.span);
+    let tt_spec = Ident::new(sym::tt, def.span);
 
     // Parse the macro_rules! invocation
     let (macro_rules, body) = match &def.kind {

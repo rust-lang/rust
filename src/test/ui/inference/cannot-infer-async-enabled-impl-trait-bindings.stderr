@@ -1,10 +1,11 @@
-warning: the feature `impl_trait_in_bindings` is incomplete and may cause the compiler to crash
+warning: the feature `impl_trait_in_bindings` is incomplete and may not be safe to use and/or cause compiler crashes
   --> $DIR/cannot-infer-async-enabled-impl-trait-bindings.rs:2:12
    |
 LL | #![feature(impl_trait_in_bindings)]
    |            ^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #63065 <https://github.com/rust-lang/rust/issues/63065> for more information
 
 error[E0282]: type annotations needed for `impl std::future::Future`
   --> $DIR/cannot-infer-async-enabled-impl-trait-bindings.rs:13:9
@@ -14,6 +15,6 @@ LL |     let fut = async {
 LL |         make_unit()?;
    |         ^^^^^^^^^^^^ cannot infer type
 
-error: aborting due to previous error
+error: aborting due to previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0282`.

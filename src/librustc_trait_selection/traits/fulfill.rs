@@ -1,10 +1,12 @@
 use crate::infer::{InferCtxt, TyOrConstInferVar};
-use rustc::ty::error::ExpectedFound;
-use rustc::ty::{self, ToPolyTraitRef, Ty, TypeFoldable};
 use rustc_data_structures::obligation_forest::ProcessResult;
 use rustc_data_structures::obligation_forest::{DoCompleted, Error, ForestObligation};
 use rustc_data_structures::obligation_forest::{ObligationForest, ObligationProcessor};
+use rustc_errors::ErrorReported;
 use rustc_infer::traits::{TraitEngine, TraitEngineExt as _};
+use rustc_middle::mir::interpret::ErrorHandled;
+use rustc_middle::ty::error::ExpectedFound;
+use rustc_middle::ty::{self, Const, ToPolyTraitRef, Ty, TypeFoldable};
 use std::marker::PhantomData;
 
 use super::project;
@@ -240,9 +242,15 @@ struct FulfillProcessor<'a, 'b, 'tcx> {
     register_region_obligations: bool,
 }
 
-fn mk_pending(os: Vec<PredicateObligation<'tcx>>) -> Vec<PendingPredicateObligation<'tcx>> {
+fn mk_pending(
+    infcx: &InferCtxt<'_, 'tcx>,
+    os: Vec<PredicateObligation<'tcx>>,
+) -> Vec<PendingPredicateObligation<'tcx>> {
     os.into_iter()
-        .map(|o| PendingPredicateObligation { obligation: o, stalled_on: vec![] })
+        .map(|mut o| {
+            o.predicate = infcx.resolve_vars_if_possible(&o.predicate);
+            PendingPredicateObligation { obligation: o, stalled_on: vec![] }
+        })
         .collect()
 }
 
@@ -312,14 +320,16 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
 
         debug!("process_obligation: obligation = {:?} cause = {:?}", obligation, obligation.cause);
 
+        let infcx = self.selcx.infcx();
+
         match obligation.predicate {
             ty::Predicate::Trait(ref data, _) => {
-                let trait_obligation = obligation.with(data.clone());
+                let trait_obligation = obligation.with(*data);
 
                 if data.is_global() {
                     // no type variables present, can use evaluation for better caching.
                     // FIXME: consider caching errors too.
-                    if self.selcx.infcx().predicate_must_hold_considering_regions(&obligation) {
+                    if infcx.predicate_must_hold_considering_regions(&obligation) {
                         debug!(
                             "selecting trait `{:?}` at depth {} evaluated to holds",
                             data, obligation.recursion_depth
@@ -334,7 +344,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                             "selecting trait `{:?}` at depth {} yielded Ok(Some)",
                             data, obligation.recursion_depth
                         );
-                        ProcessResult::Changed(mk_pending(vtable.nested_obligations()))
+                        ProcessResult::Changed(mk_pending(infcx, vtable.nested_obligations()))
                     }
                     Ok(None) => {
                         debug!(
@@ -351,7 +361,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
 
                         debug!(
                             "process_predicate: pending obligation {:?} now stalled on {:?}",
-                            self.selcx.infcx().resolve_vars_if_possible(obligation),
+                            infcx.resolve_vars_if_possible(obligation),
                             pending_obligation.stalled_on
                         );
 
@@ -369,7 +379,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
             }
 
             ty::Predicate::RegionOutlives(ref binder) => {
-                match self.selcx.infcx().region_outlives_predicate(&obligation.cause, binder) {
+                match infcx.region_outlives_predicate(&obligation.cause, binder) {
                     Ok(()) => ProcessResult::Changed(vec![]),
                     Err(_) => ProcessResult::Error(CodeSelectionError(Unimplemented)),
                 }
@@ -420,7 +430,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
             }
 
             ty::Predicate::Projection(ref data) => {
-                let project_obligation = obligation.with(data.clone());
+                let project_obligation = obligation.with(*data);
                 match project::poly_project_and_unify_type(self.selcx, &project_obligation) {
                     Ok(None) => {
                         let tcx = self.selcx.tcx();
@@ -428,7 +438,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                             trait_ref_type_vars(self.selcx, data.to_poly_trait_ref(tcx));
                         ProcessResult::Unchanged
                     }
-                    Ok(Some(os)) => ProcessResult::Changed(mk_pending(os)),
+                    Ok(Some(os)) => ProcessResult::Changed(mk_pending(infcx, os)),
                     Err(e) => ProcessResult::Error(CodeProjectionError(e)),
                 }
             }
@@ -467,7 +477,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                             vec![TyOrConstInferVar::maybe_from_ty(ty).unwrap()];
                         ProcessResult::Unchanged
                     }
-                    Some(os) => ProcessResult::Changed(mk_pending(os)),
+                    Some(os) => ProcessResult::Changed(mk_pending(infcx, os)),
                 }
             }
 
@@ -485,7 +495,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                         ];
                         ProcessResult::Unchanged
                     }
-                    Some(Ok(ok)) => ProcessResult::Changed(mk_pending(ok.obligations)),
+                    Some(Ok(ok)) => ProcessResult::Changed(mk_pending(infcx, ok.obligations)),
                     Some(Err(err)) => {
                         let expected_found = ExpectedFound::new(
                             subtype.skip_binder().a_is_expected,
@@ -512,6 +522,68 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                     Err(err) => ProcessResult::Error(CodeSelectionError(ConstEvalFailure(err))),
                 }
             }
+
+            ty::Predicate::ConstEquate(c1, c2) => {
+                debug!("equating consts: c1={:?} c2={:?}", c1, c2);
+
+                let stalled_on = &mut pending_obligation.stalled_on;
+
+                let mut evaluate = |c: &'tcx Const<'tcx>| {
+                    if let ty::ConstKind::Unevaluated(def_id, substs, promoted) = c.val {
+                        match self.selcx.infcx().const_eval_resolve(
+                            obligation.param_env,
+                            def_id,
+                            substs,
+                            promoted,
+                            Some(obligation.cause.span),
+                        ) {
+                            Ok(val) => Ok(Const::from_value(self.selcx.tcx(), val, c.ty)),
+                            Err(ErrorHandled::TooGeneric) => {
+                                stalled_on.append(
+                                    &mut substs
+                                        .types()
+                                        .filter_map(|ty| TyOrConstInferVar::maybe_from_ty(ty))
+                                        .collect(),
+                                );
+                                Err(ErrorHandled::TooGeneric)
+                            }
+                            Err(err) => Err(err),
+                        }
+                    } else {
+                        Ok(c)
+                    }
+                };
+
+                match (evaluate(c1), evaluate(c2)) {
+                    (Ok(c1), Ok(c2)) => {
+                        match self
+                            .selcx
+                            .infcx()
+                            .at(&obligation.cause, obligation.param_env)
+                            .eq(c1, c2)
+                        {
+                            Ok(_) => ProcessResult::Changed(vec![]),
+                            Err(err) => {
+                                ProcessResult::Error(FulfillmentErrorCode::CodeConstEquateError(
+                                    ExpectedFound::new(true, c1, c2),
+                                    err,
+                                ))
+                            }
+                        }
+                    }
+                    (Err(ErrorHandled::Reported(ErrorReported)), _)
+                    | (_, Err(ErrorHandled::Reported(ErrorReported))) => ProcessResult::Error(
+                        CodeSelectionError(ConstEvalFailure(ErrorHandled::Reported(ErrorReported))),
+                    ),
+                    (Err(ErrorHandled::Linted), _) | (_, Err(ErrorHandled::Linted)) => span_bug!(
+                        obligation.cause.span(self.selcx.tcx()),
+                        "ConstEquate: const_eval_resolve returned an unexpected error"
+                    ),
+                    (Err(ErrorHandled::TooGeneric), _) | (_, Err(ErrorHandled::TooGeneric)) => {
+                        ProcessResult::Unchanged
+                    }
+                }
+            }
         }
     }
 
@@ -536,18 +608,17 @@ fn trait_ref_type_vars<'a, 'tcx>(
     selcx: &mut SelectionContext<'a, 'tcx>,
     trait_ref: ty::PolyTraitRef<'tcx>,
 ) -> Vec<TyOrConstInferVar<'tcx>> {
-    trait_ref
+    selcx
+        .infcx()
+        .resolve_vars_if_possible(&trait_ref)
         .skip_binder() // ok b/c this check doesn't care about regions
-        // FIXME(eddyb) walk over `GenericArg` to support const infer vars.
-        .input_types()
-        .map(|ty| selcx.infcx().resolve_vars_if_possible(&ty))
-        // FIXME(eddyb) try using `maybe_walk` to skip *all* subtrees that
-        // don't contain inference variables, not just the outermost level.
-        // FIXME(eddyb) use `has_infer_types_or_const`.
-        .filter(|ty| ty.has_infer_types())
-        .flat_map(|ty| ty.walk())
-        // FIXME(eddyb) use `TyOrConstInferVar::maybe_from_generic_arg`.
-        .filter_map(TyOrConstInferVar::maybe_from_ty)
+        .substs
+        .iter()
+        // FIXME(eddyb) try using `skip_current_subtree` to skip everything that
+        // doesn't contain inference variables, not just the outermost level.
+        .filter(|arg| arg.has_infer_types_or_consts())
+        .flat_map(|arg| arg.walk())
+        .filter_map(TyOrConstInferVar::maybe_from_generic_arg)
         .collect()
 }
 

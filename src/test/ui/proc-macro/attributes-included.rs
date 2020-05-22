@@ -1,5 +1,5 @@
 // aux-build:attributes-included.rs
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 
 #![warn(unused)]
 

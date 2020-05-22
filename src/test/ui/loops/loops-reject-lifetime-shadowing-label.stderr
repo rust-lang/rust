@@ -6,3 +6,5 @@ LL |     'a: loop {
 LL |         let b = Box::new(|x: &i8| *x) as Box<dyn for <'a> Fn(&'a i8) -> i8>;
    |                                                       ^^ lifetime 'a already in scope
 
+warning: 1 warning emitted
+

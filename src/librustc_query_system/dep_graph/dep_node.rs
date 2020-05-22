@@ -26,7 +26,7 @@
 //!   could not be instantiated because the current compilation session
 //!   contained no `DefId` for thing that had been removed.
 //!
-//! `DepNode` definition happens in `librustc` with the `define_dep_nodes!()` macro.
+//! `DepNode` definition happens in `librustc_middle` with the `define_dep_nodes!()` macro.
 //! This macro defines the `DepKind` enum and a corresponding `DepConstructor` enum. The
 //! `DepConstructor` enum links a `DepKind` to the parameters that are needed at runtime in order
 //! to construct a valid `DepNode` fingerprint.
@@ -46,7 +46,6 @@ use super::{DepContext, DepKind};
 
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_macros::HashStable_Generic;
 
 use std::fmt;
 use std::hash::Hash;
@@ -64,6 +63,24 @@ impl<K: DepKind> DepNode<K> {
     pub fn new_no_params(kind: K) -> DepNode<K> {
         debug_assert!(!kind.has_params());
         DepNode { kind, hash: Fingerprint::ZERO }
+    }
+
+    pub fn construct<Ctxt, Key>(tcx: Ctxt, kind: K, arg: &Key) -> DepNode<K>
+    where
+        Ctxt: crate::query::QueryContext<DepKind = K>,
+        Key: DepNodeParams<Ctxt>,
+    {
+        let hash = arg.to_fingerprint(tcx);
+        let dep_node = DepNode { kind, hash };
+
+        #[cfg(debug_assertions)]
+        {
+            if !kind.can_reconstruct_query_key() && tcx.debug_dep_node() {
+                tcx.dep_graph().register_dep_node_debug_str(dep_node, || arg.to_debug_str(tcx));
+            }
+        }
+
+        dep_node
     }
 }
 
@@ -121,13 +138,18 @@ where
     }
 }
 
+impl<Ctxt: DepContext> DepNodeParams<Ctxt> for () {
+    fn to_fingerprint(&self, _: Ctxt) -> Fingerprint {
+        Fingerprint::ZERO
+    }
+}
+
 /// A "work product" corresponds to a `.o` (or other) file that we
 /// save in between runs. These IDs do not have a `DefId` but rather
 /// some independent path or string that persists between runs without
 /// the need to be mapped or unmapped. (This ensures we can serialize
 /// them even in the absence of a tcx.)
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
-#[derive(HashStable_Generic)]
 pub struct WorkProductId {
     hash: Fingerprint,
 }
@@ -142,5 +164,12 @@ impl WorkProductId {
 
     pub fn from_fingerprint(fingerprint: Fingerprint) -> WorkProductId {
         WorkProductId { hash: fingerprint }
+    }
+}
+
+impl<HCX> HashStable<HCX> for WorkProductId {
+    #[inline]
+    fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
+        self.hash.hash_stable(hcx, hasher)
     }
 }

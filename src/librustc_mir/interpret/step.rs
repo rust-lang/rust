@@ -2,9 +2,9 @@
 //!
 //! The main entry point is the `step` method.
 
-use rustc::mir;
-use rustc::mir::interpret::{InterpResult, PointerArithmetic, Scalar};
-use rustc::ty::layout::LayoutOf;
+use rustc_middle::mir;
+use rustc_middle::mir::interpret::{InterpResult, Scalar};
+use rustc_target::abi::LayoutOf;
 
 use super::{InterpCx, Machine};
 
@@ -12,7 +12,7 @@ use super::{InterpCx, Machine};
 /// same type as the result.
 #[inline]
 fn binop_left_homogeneous(op: mir::BinOp) -> bool {
-    use rustc::mir::BinOp::*;
+    use rustc_middle::mir::BinOp::*;
     match op {
         Add | Sub | Mul | Div | Rem | BitXor | BitAnd | BitOr | Offset | Shl | Shr => true,
         Eq | Ne | Lt | Le | Gt | Ge => false,
@@ -22,14 +22,14 @@ fn binop_left_homogeneous(op: mir::BinOp) -> bool {
 /// same type as the LHS.
 #[inline]
 fn binop_right_homogeneous(op: mir::BinOp) -> bool {
-    use rustc::mir::BinOp::*;
+    use rustc_middle::mir::BinOp::*;
     match op {
         Add | Sub | Mul | Div | Rem | BitXor | BitAnd | BitOr | Eq | Ne | Lt | Le | Gt | Ge => true,
         Offset | Shl | Shr => false,
     }
 }
 
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
+impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn run(&mut self) -> InterpResult<'tcx> {
         while self.step()? {}
         Ok(())
@@ -42,12 +42,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// This is marked `#inline(always)` to work around adverserial codegen when `opt-level = 3`
     #[inline(always)]
     pub fn step(&mut self) -> InterpResult<'tcx, bool> {
-        if self.stack.is_empty() {
+        if self.stack().is_empty() {
             return Ok(false);
         }
 
-        let block = match self.frame().block {
-            Some(block) => block,
+        let loc = match self.frame().loc {
+            Some(loc) => loc,
             None => {
                 // We are unwinding and this fn has no cleanup code.
                 // Just go on unwinding.
@@ -56,14 +56,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 return Ok(true);
             }
         };
-        let stmt_id = self.frame().stmt;
-        let body = self.body();
-        let basic_block = &body.basic_blocks()[block];
+        let basic_block = &self.body().basic_blocks()[loc.block];
 
-        let old_frames = self.cur_frame();
+        let old_frames = self.frame_idx();
 
-        if let Some(stmt) = basic_block.statements.get(stmt_id) {
-            assert_eq!(old_frames, self.cur_frame());
+        if let Some(stmt) = basic_block.statements.get(loc.statement_index) {
+            assert_eq!(old_frames, self.frame_idx());
             self.statement(stmt)?;
             return Ok(true);
         }
@@ -71,39 +69,38 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         M::before_terminator(self)?;
 
         let terminator = basic_block.terminator();
-        assert_eq!(old_frames, self.cur_frame());
+        assert_eq!(old_frames, self.frame_idx());
         self.terminator(terminator)?;
         Ok(true)
     }
 
     fn statement(&mut self, stmt: &mir::Statement<'tcx>) -> InterpResult<'tcx> {
         info!("{:?}", stmt);
+        self.set_span(stmt.source_info.span);
 
-        use rustc::mir::StatementKind::*;
+        use rustc_middle::mir::StatementKind::*;
 
         // Some statements (e.g., box) push new stack frames.
         // We have to record the stack frame number *before* executing the statement.
-        let frame_idx = self.cur_frame();
-        self.tcx.span = stmt.source_info.span;
-        self.memory.tcx.span = stmt.source_info.span;
+        let frame_idx = self.frame_idx();
 
-        match stmt.kind {
-            Assign(box (ref place, ref rvalue)) => self.eval_rvalue_into_place(rvalue, place)?,
+        match &stmt.kind {
+            Assign(box (place, rvalue)) => self.eval_rvalue_into_place(rvalue, *place)?,
 
-            SetDiscriminant { ref place, variant_index } => {
-                let dest = self.eval_place(place)?;
-                self.write_discriminant_index(variant_index, dest)?;
+            SetDiscriminant { place, variant_index } => {
+                let dest = self.eval_place(**place)?;
+                self.write_discriminant_index(*variant_index, dest)?;
             }
 
             // Mark locals as alive
             StorageLive(local) => {
-                let old_val = self.storage_live(local)?;
+                let old_val = self.storage_live(*local)?;
                 self.deallocate_local(old_val)?;
             }
 
             // Mark locals as dead
             StorageDead(local) => {
-                let old_val = self.storage_dead(local);
+                let old_val = self.storage_dead(*local);
                 self.deallocate_local(old_val)?;
             }
 
@@ -112,9 +109,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             FakeRead(..) => {}
 
             // Stacked Borrows.
-            Retag(kind, ref place) => {
-                let dest = self.eval_place(place)?;
-                M::retag(self, kind, dest)?;
+            Retag(kind, place) => {
+                let dest = self.eval_place(**place)?;
+                M::retag(self, *kind, dest)?;
             }
 
             // Statements we do not track.
@@ -124,10 +121,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // size of MIR constantly.
             Nop => {}
 
-            InlineAsm { .. } => throw_unsup_format!("inline assembly is not supported"),
+            LlvmInlineAsm { .. } => throw_unsup_format!("inline assembly is not supported"),
         }
 
-        self.stack[frame_idx].stmt += 1;
+        self.stack_mut()[frame_idx].loc.as_mut().unwrap().statement_index += 1;
         Ok(())
     }
 
@@ -138,11 +135,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn eval_rvalue_into_place(
         &mut self,
         rvalue: &mir::Rvalue<'tcx>,
-        place: &mir::Place<'tcx>,
+        place: mir::Place<'tcx>,
     ) -> InterpResult<'tcx> {
         let dest = self.eval_place(place)?;
 
-        use rustc::mir::Rvalue::*;
+        use rustc_middle::mir::Rvalue::*;
         match *rvalue {
             Use(ref operand) => {
                 // Avoid recomputing the layout
@@ -192,7 +189,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     // Ignore zero-sized fields.
                     if !op.layout.is_zst() {
                         let field_index = active_field_index.unwrap_or(i);
-                        let field_dest = self.place_field(dest, field_index as u64)?;
+                        let field_dest = self.place_field(dest, field_index)?;
                         self.copy_op(op, field_dest)?;
                     }
                 }
@@ -224,16 +221,15 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
             }
 
-            Len(ref place) => {
+            Len(place) => {
                 // FIXME(CTFE): don't allow computing the length of arrays in const eval
                 let src = self.eval_place(place)?;
                 let mplace = self.force_allocation(src)?;
                 let len = mplace.len(self)?;
-                let size = self.pointer_size();
-                self.write_scalar(Scalar::from_uint(len, size), dest)?;
+                self.write_scalar(Scalar::from_machine_usize(len, self), dest)?;
             }
 
-            AddressOf(_, ref place) | Ref(_, _, ref place) => {
+            AddressOf(_, place) | Ref(_, _, place) => {
                 let src = self.eval_place(place)?;
                 let place = self.force_allocation(src)?;
                 if place.layout.size.bytes() > 0 {
@@ -254,8 +250,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     !layout.is_unsized(),
                     "SizeOf nullary MIR operator called for unsized type"
                 );
-                let size = self.pointer_size();
-                self.write_scalar(Scalar::from_uint(layout.size.bytes(), size), dest)?;
+                self.write_scalar(Scalar::from_machine_usize(layout.size.bytes(), self), dest)?;
             }
 
             Cast(kind, ref operand, _) => {
@@ -263,7 +258,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.cast(src, kind, dest)?;
             }
 
-            Discriminant(ref place) => {
+            Discriminant(place) => {
                 let op = self.eval_place_to_op(place, None)?;
                 let discr_val = self.read_discriminant(op)?.0;
                 let size = dest.layout.size;
@@ -278,18 +273,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     fn terminator(&mut self, terminator: &mir::Terminator<'tcx>) -> InterpResult<'tcx> {
         info!("{:?}", terminator.kind);
-        self.tcx.span = terminator.source_info.span;
-        self.memory.tcx.span = terminator.source_info.span;
-
-        let old_stack = self.cur_frame();
-        let old_bb = self.frame().block;
+        self.set_span(terminator.source_info.span);
 
         self.eval_terminator(terminator)?;
-        if !self.stack.is_empty() {
-            // This should change *something*
-            assert!(self.cur_frame() != old_stack || self.frame().block != old_bb);
-            if let Some(block) = self.frame().block {
-                info!("// executing {:?}", block);
+        if !self.stack().is_empty() {
+            if let Some(loc) = self.frame().loc {
+                info!("// executing {:?}", loc.block);
             }
         }
         Ok(())

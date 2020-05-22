@@ -91,7 +91,8 @@
 //! pull-requests for your suggested changes.
 //!
 //! Contributions are appreciated! If you see a part of the docs that can be
-//! improved, submit a PR, or chat with us first on irc.mozilla.org #rust-docs.
+//! improved, submit a PR, or chat with us first on [Discord][rust-discord]
+//! #docs.
 //!
 //! # A Tour of The Rust Standard Library
 //!
@@ -194,6 +195,7 @@
 //! [multithreading]: thread/index.html
 //! [other]: #what-is-in-the-standard-library-documentation
 //! [primitive types]: ../book/ch03-02-data-types.html
+//! [rust-discord]: https://discord.gg/rust-lang
 
 #![stable(feature = "rust1", since = "1.0.0")]
 #![doc(
@@ -240,7 +242,8 @@
 #![feature(atomic_mut_ptr)]
 #![feature(box_syntax)]
 #![feature(c_variadic)]
-#![cfg_attr(not(bootstrap), feature(cfg_accessible))]
+#![feature(cfg_accessible)]
+#![feature(can_vector)]
 #![feature(cfg_target_has_atomic)]
 #![feature(cfg_target_thread_local)]
 #![feature(char_error_internals)]
@@ -274,13 +277,16 @@
 #![feature(libc)]
 #![feature(link_args)]
 #![feature(linkage)]
+#![feature(llvm_asm)]
 #![feature(log_syntax)]
 #![feature(maybe_uninit_ref)]
 #![feature(maybe_uninit_slice)]
 #![feature(needs_panic_runtime)]
+#![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(nll)]
 #![feature(optin_builtin_traits)]
+#![feature(or_patterns)]
 #![feature(panic_info_message)]
 #![feature(panic_internals)]
 #![feature(panic_unwind)]
@@ -293,8 +299,7 @@
 #![feature(shrink_to)]
 #![feature(slice_concat_ext)]
 #![feature(slice_internals)]
-#![cfg_attr(bootstrap, feature(specialization))]
-#![cfg_attr(not(bootstrap), feature(min_specialization))]
+#![feature(min_specialization)]
 #![feature(staged_api)]
 #![feature(std_internals)]
 #![feature(stdsimd)]
@@ -513,48 +518,17 @@ pub use std_detect::detect;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated, deprecated_in_future)]
 pub use core::{
-    // Stable
-    assert_eq,
-    assert_ne,
-    debug_assert,
-    debug_assert_eq,
-    debug_assert_ne,
-    // Unstable
-    matches,
-    r#try,
-    todo,
-    unimplemented,
-    unreachable,
-    write,
-    writeln,
+    assert_eq, assert_ne, debug_assert, debug_assert_eq, debug_assert_ne, matches, r#try, todo,
+    unimplemented, unreachable, write, writeln,
 };
 
 // Re-export built-in macros defined through libcore.
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
+#[allow(deprecated)]
 pub use core::{
-    // Unstable
-    asm,
-    // Stable
-    assert,
-    cfg,
-    column,
-    compile_error,
-    concat,
-    concat_idents,
-    env,
-    file,
-    format_args,
-    format_args_nl,
-    global_asm,
-    include,
-    include_bytes,
-    include_str,
-    line,
-    log_syntax,
-    module_path,
-    option_env,
-    stringify,
-    trace_macros,
+    asm, assert, cfg, column, compile_error, concat, concat_idents, env, file, format_args,
+    format_args_nl, global_asm, include, include_bytes, include_str, line, llvm_asm, log_syntax,
+    module_path, option_env, stringify, trace_macros,
 };
 
 #[stable(feature = "core_primitive", since = "1.43.0")]

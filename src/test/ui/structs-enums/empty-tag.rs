@@ -1,4 +1,5 @@
 // run-pass
+#![allow(unused_braces)]
 #![allow(non_camel_case_types)]
 
 #[derive(Copy, Clone, Debug)]

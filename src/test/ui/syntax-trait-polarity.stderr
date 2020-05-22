@@ -16,7 +16,7 @@ LL | unsafe impl !Send for TestType {}
    | unsafe because of this
 
 error: inherent impls cannot be negative
-  --> $DIR/syntax-trait-polarity.rs:19:10
+  --> $DIR/syntax-trait-polarity.rs:18:10
    |
 LL | impl<T> !TestType2<T> {}
    |         -^^^^^^^^^^^^ inherent impl for this type
@@ -24,7 +24,7 @@ LL | impl<T> !TestType2<T> {}
    |         negative because of this
 
 error[E0198]: negative impls cannot be unsafe
-  --> $DIR/syntax-trait-polarity.rs:22:16
+  --> $DIR/syntax-trait-polarity.rs:21:16
    |
 LL | unsafe impl<T> !Send for TestType2<T> {}
    | ------         -^^^^
@@ -32,23 +32,6 @@ LL | unsafe impl<T> !Send for TestType2<T> {}
    | |              negative because of this
    | unsafe because of this
 
-error[E0192]: invalid negative impl
-  --> $DIR/syntax-trait-polarity.rs:14:6
-   |
-LL | impl !TestTrait for TestType {}
-   |      ^^^^^^^^^^
-   |
-   = note: negative impls are only allowed for auto traits, like `Send` and `Sync`
+error: aborting due to 4 previous errors
 
-error[E0192]: invalid negative impl
-  --> $DIR/syntax-trait-polarity.rs:24:9
-   |
-LL | impl<T> !TestTrait for TestType2<T> {}
-   |         ^^^^^^^^^^
-   |
-   = note: negative impls are only allowed for auto traits, like `Send` and `Sync`
-
-error: aborting due to 6 previous errors
-
-Some errors have detailed explanations: E0192, E0198.
-For more information about an error, try `rustc --explain E0192`.
+For more information about this error, try `rustc --explain E0198`.

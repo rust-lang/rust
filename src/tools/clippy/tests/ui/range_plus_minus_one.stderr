@@ -1,0 +1,60 @@
+error: an inclusive range would be more readable
+  --> $DIR/range_plus_minus_one.rs:14:14
+   |
+LL |     for _ in 0..3 + 1 {}
+   |              ^^^^^^^^ help: use: `0..=3`
+   |
+   = note: `-D clippy::range-plus-one` implied by `-D warnings`
+
+error: an inclusive range would be more readable
+  --> $DIR/range_plus_minus_one.rs:17:14
+   |
+LL |     for _ in 0..1 + 5 {}
+   |              ^^^^^^^^ help: use: `0..=5`
+
+error: an inclusive range would be more readable
+  --> $DIR/range_plus_minus_one.rs:20:14
+   |
+LL |     for _ in 1..1 + 1 {}
+   |              ^^^^^^^^ help: use: `1..=1`
+
+error: an inclusive range would be more readable
+  --> $DIR/range_plus_minus_one.rs:26:14
+   |
+LL |     for _ in 0..(1 + f()) {}
+   |              ^^^^^^^^^^^^ help: use: `0..=f()`
+
+error: an exclusive range would be more readable
+  --> $DIR/range_plus_minus_one.rs:30:13
+   |
+LL |     let _ = ..=11 - 1;
+   |             ^^^^^^^^^ help: use: `..11`
+   |
+   = note: `-D clippy::range-minus-one` implied by `-D warnings`
+
+error: an exclusive range would be more readable
+  --> $DIR/range_plus_minus_one.rs:31:13
+   |
+LL |     let _ = ..=(11 - 1);
+   |             ^^^^^^^^^^^ help: use: `..11`
+
+error: an inclusive range would be more readable
+  --> $DIR/range_plus_minus_one.rs:32:13
+   |
+LL |     let _ = (1..11 + 1);
+   |             ^^^^^^^^^^^ help: use: `(1..=11)`
+
+error: an inclusive range would be more readable
+  --> $DIR/range_plus_minus_one.rs:33:13
+   |
+LL |     let _ = (f() + 1)..(f() + 1);
+   |             ^^^^^^^^^^^^^^^^^^^^ help: use: `((f() + 1)..=f())`
+
+error: an inclusive range would be more readable
+  --> $DIR/range_plus_minus_one.rs:37:14
+   |
+LL |     for _ in 1..ONE + ONE {}
+   |              ^^^^^^^^^^^^ help: use: `1..=ONE`
+
+error: aborting due to 9 previous errors
+

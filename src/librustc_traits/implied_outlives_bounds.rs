@@ -1,13 +1,14 @@
 //! Provider for the `implied_outlives_bounds` query.
-//! Do not call this query directory. See [`rustc::traits::query::implied_outlives_bounds`].
+//! Do not call this query directory. See
+//! [`rustc_trait_selection::traits::query::type_op::implied_outlives_bounds`].
 
-use rustc::ty::outlives::Component;
-use rustc::ty::query::Providers;
-use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_hir as hir;
 use rustc_infer::infer::canonical::{self, Canonical};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::TraitEngineExt as _;
+use rustc_middle::ty::outlives::Component;
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_span::source_map::DUMMY_SP;
 use rustc_trait_selection::infer::InferCtxtBuilderExt;
 use rustc_trait_selection::traits::query::outlives_bounds::OutlivesBound;
@@ -61,7 +62,7 @@ fn compute_implied_outlives_bounds<'tcx>(
         // unresolved inference variables here anyway, but there might be
         // during typeck under some circumstances.)
         let obligations =
-            wf::obligations(infcx, param_env, hir::DUMMY_HIR_ID, ty, DUMMY_SP).unwrap_or(vec![]);
+            wf::obligations(infcx, param_env, hir::CRATE_HIR_ID, ty, DUMMY_SP).unwrap_or(vec![]);
 
         // N.B., all of these predicates *ought* to be easily proven
         // true. In fact, their correctness is (mostly) implied by
@@ -99,7 +100,8 @@ fn compute_implied_outlives_bounds<'tcx>(
                 | ty::Predicate::Projection(..)
                 | ty::Predicate::ClosureKind(..)
                 | ty::Predicate::ObjectSafe(..)
-                | ty::Predicate::ConstEvaluatable(..) => vec![],
+                | ty::Predicate::ConstEvaluatable(..)
+                | ty::Predicate::ConstEquate(..) => vec![],
 
                 ty::Predicate::WellFormed(subty) => {
                     wf_types.push(subty);

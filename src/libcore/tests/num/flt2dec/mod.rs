@@ -1,4 +1,4 @@
-use std::{f32, f64, fmt, i16, str};
+use std::{fmt, str};
 
 use core::num::flt2dec::{decode, DecodableFloat, Decoded, FullDecoded};
 use core::num::flt2dec::{round_up, Formatted, Part, Sign, MAX_SIG_DIGITS};

@@ -8,8 +8,8 @@ extern crate coherence_lib as lib;
 use lib::*;
 
 #[fundamental]
-struct Local;
+struct Local<T>(T);
 
-impl Remote for Local {}
+impl Remote for Local<()> {}
 
 fn main() {}

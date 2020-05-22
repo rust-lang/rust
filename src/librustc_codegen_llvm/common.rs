@@ -2,26 +2,24 @@
 
 //! Code that is useful in various codegen modules.
 
-use crate::consts;
+use crate::consts::{self, const_alloc_to_llvm};
+pub use crate::context::CodegenCx;
 use crate::llvm::{self, BasicBlock, Bool, ConstantInt, False, OperandBundleDef, True};
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
-use log::debug;
-use rustc::bug;
-use rustc_codegen_ssa::traits::*;
-
-use crate::consts::const_alloc_to_llvm;
-use rustc::mir::interpret::{Allocation, GlobalAlloc, Scalar};
-use rustc::ty::layout::{self, HasDataLayout, LayoutOf, Size, TyLayout};
-use rustc_codegen_ssa::mir::place::PlaceRef;
-
-use libc::{c_char, c_uint};
 
 use rustc_ast::ast::Mutability;
+use rustc_codegen_ssa::mir::place::PlaceRef;
+use rustc_codegen_ssa::traits::*;
+use rustc_middle::bug;
+use rustc_middle::mir::interpret::{Allocation, GlobalAlloc, Scalar};
+use rustc_middle::ty::layout::TyAndLayout;
 use rustc_span::symbol::Symbol;
+use rustc_target::abi::{self, HasDataLayout, LayoutOf, Pointer, Size};
 
-pub use crate::context::CodegenCx;
+use libc::{c_char, c_uint};
+use log::debug;
 
 /*
 * A note on nomenclature of linking: "extern", "foreign", and "upcall".
@@ -229,12 +227,7 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         })
     }
 
-    fn scalar_to_backend(
-        &self,
-        cv: Scalar,
-        layout: &layout::Scalar,
-        llty: &'ll Type,
-    ) -> &'ll Value {
+    fn scalar_to_backend(&self, cv: Scalar, layout: &abi::Scalar, llty: &'ll Type) -> &'ll Value {
         let bitsize = if layout.is_bool() { 1 } else { layout.value.size(self).bits() };
         match cv {
             Scalar::Raw { size: 0, .. } => {
@@ -244,16 +237,15 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             Scalar::Raw { data, size } => {
                 assert_eq!(size as u64, layout.value.size(self).bytes());
                 let llval = self.const_uint_big(self.type_ix(bitsize), data);
-                if layout.value == layout::Pointer {
+                if layout.value == Pointer {
                     unsafe { llvm::LLVMConstIntToPtr(llval, llty) }
                 } else {
                     self.const_bitcast(llval, llty)
                 }
             }
             Scalar::Ptr(ptr) => {
-                let alloc_kind = self.tcx.alloc_map.lock().get(ptr.alloc_id);
-                let base_addr = match alloc_kind {
-                    Some(GlobalAlloc::Memory(alloc)) => {
+                let base_addr = match self.tcx.global_alloc(ptr.alloc_id) {
+                    GlobalAlloc::Memory(alloc) => {
                         let init = const_alloc_to_llvm(self, alloc);
                         let value = match alloc.mutability {
                             Mutability::Mut => self.static_addr_of_mut(init, alloc.align, None),
@@ -264,12 +256,11 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                         }
                         value
                     }
-                    Some(GlobalAlloc::Function(fn_instance)) => self.get_fn_addr(fn_instance),
-                    Some(GlobalAlloc::Static(def_id)) => {
+                    GlobalAlloc::Function(fn_instance) => self.get_fn_addr(fn_instance),
+                    GlobalAlloc::Static(def_id) => {
                         assert!(self.tcx.is_static(def_id));
                         self.get_static(def_id)
                     }
-                    None => bug!("missing allocation {:?}", ptr.alloc_id),
                 };
                 let llval = unsafe {
                     llvm::LLVMConstInBoundsGEP(
@@ -278,7 +269,7 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                         1,
                     )
                 };
-                if layout.value != layout::Pointer {
+                if layout.value != Pointer {
                     unsafe { llvm::LLVMConstPtrToInt(llval, llty) }
                 } else {
                     self.const_bitcast(llval, llty)
@@ -289,7 +280,7 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
     fn from_const_alloc(
         &self,
-        layout: TyLayout<'tcx>,
+        layout: TyAndLayout<'tcx>,
         alloc: &Allocation,
         offset: Size,
     ) -> PlaceRef<'tcx, &'ll Value> {

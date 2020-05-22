@@ -8,13 +8,12 @@ trait TraitWithAssoc {
 }
 
 type Foo<V> = impl Trait<V>;
-//~^ ERROR could not find defining uses
-//~| ERROR the trait bound `T: TraitWithAssoc` is not satisfied
+//~^ ERROR the trait bound `T: TraitWithAssoc` is not satisfied
 
 trait Trait<U> {}
 
 impl<W> Trait<W> for () {}
 
-fn foo_desugared<T: TraitWithAssoc>(_: T) -> Foo<T::Assoc> { //~ ERROR does not fully define
+fn foo_desugared<T: TraitWithAssoc>(_: T) -> Foo<T::Assoc> {
     ()
 }

@@ -3,10 +3,6 @@
 use crate::locator::{CrateLocator, CratePaths};
 use crate::rmeta::{CrateDep, CrateMetadata, CrateNumMap, CrateRoot, MetadataBlob};
 
-use rustc::hir::map::Definitions;
-use rustc::middle::cstore::DepKind;
-use rustc::middle::cstore::{CrateSource, ExternCrate, ExternCrateSource, MetadataLoaderDyn};
-use rustc::ty::TyCtxt;
 use rustc_ast::expand::allocator::{global_allocator_spans, AllocatorKind};
 use rustc_ast::{ast, attr};
 use rustc_data_structures::svh::Svh;
@@ -14,8 +10,14 @@ use rustc_data_structures::sync::Lrc;
 use rustc_errors::struct_span_err;
 use rustc_expand::base::SyntaxExtension;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
+use rustc_hir::definitions::Definitions;
 use rustc_index::vec::IndexVec;
-use rustc_session::config;
+use rustc_middle::middle::cstore::DepKind;
+use rustc_middle::middle::cstore::{
+    CrateSource, ExternCrate, ExternCrateSource, MetadataLoaderDyn,
+};
+use rustc_middle::ty::TyCtxt;
+use rustc_session::config::{self, CrateType};
 use rustc_session::output::validate_crate_name;
 use rustc_session::search_paths::PathKind;
 use rustc_session::{CrateDisambiguator, Session};
@@ -99,9 +101,15 @@ fn dump_crates(cstore: &CStore) {
         info!("  hash: {}", data.hash());
         info!("  reqd: {:?}", data.dep_kind());
         let CrateSource { dylib, rlib, rmeta } = data.source();
-        dylib.as_ref().map(|dl| info!("  dylib: {}", dl.0.display()));
-        rlib.as_ref().map(|rl| info!("   rlib: {}", rl.0.display()));
-        rmeta.as_ref().map(|rl| info!("   rmeta: {}", rl.0.display()));
+        if let Some(dylib) = dylib {
+            info!("  dylib: {}", dylib.0.display());
+        }
+        if let Some(rlib) = rlib {
+            info!("   rlib: {}", rlib.0.display());
+        }
+        if let Some(rmeta) = rmeta {
+            info!("   rmeta: {}", rmeta.0.display());
+        }
     });
 }
 
@@ -583,7 +591,7 @@ impl<'a> CrateLoader<'a> {
 
         // Make sure the path contains a / or the linker will search for it.
         let path = env::current_dir().unwrap().join(path);
-        let lib = match DynamicLibrary::open(Some(&path)) {
+        let lib = match DynamicLibrary::open(&path) {
             Ok(lib) => lib,
             Err(err) => self.sess.span_fatal(span, &err),
         };
@@ -607,8 +615,7 @@ impl<'a> CrateLoader<'a> {
     fn inject_panic_runtime(&mut self, krate: &ast::Crate) {
         // If we're only compiling an rlib, then there's no need to select a
         // panic runtime, so we just skip this section entirely.
-        let any_non_rlib =
-            self.sess.crate_types.borrow().iter().any(|ct| *ct != config::CrateType::Rlib);
+        let any_non_rlib = self.sess.crate_types.borrow().iter().any(|ct| *ct != CrateType::Rlib);
         if !any_non_rlib {
             info!("panic runtime injection skipped, only generating rlib");
             return;
@@ -684,7 +691,9 @@ impl<'a> CrateLoader<'a> {
     }
 
     fn inject_profiler_runtime(&mut self) {
-        if self.sess.opts.debugging_opts.profile || self.sess.opts.cg.profile_generate.enabled() {
+        if (self.sess.opts.debugging_opts.profile || self.sess.opts.cg.profile_generate.enabled())
+            && !self.sess.opts.debugging_opts.no_profiler_runtime
+        {
             info!("loading profiler");
 
             let name = Symbol::intern("profiler_builtins");
@@ -726,7 +735,7 @@ impl<'a> CrateLoader<'a> {
         // if our compilation session actually needs an allocator based on what
         // we're emitting.
         let all_rlib = self.sess.crate_types.borrow().iter().all(|ct| match *ct {
-            config::CrateType::Rlib => true,
+            CrateType::Rlib => true,
             _ => false,
         });
         if all_rlib {

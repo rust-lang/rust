@@ -315,6 +315,20 @@ impl<'a> DiagnosticBuilder<'a> {
         self
     }
 
+    pub fn span_suggestion_verbose(
+        &mut self,
+        sp: Span,
+        msg: &str,
+        suggestion: String,
+        applicability: Applicability,
+    ) -> &mut Self {
+        if !self.0.allow_suggestions {
+            return self;
+        }
+        self.0.diagnostic.span_suggestion_verbose(sp, msg, suggestion, applicability);
+        self
+    }
+
     pub fn span_suggestion_hidden(
         &mut self,
         sp: Span,

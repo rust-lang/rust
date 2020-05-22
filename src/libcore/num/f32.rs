@@ -18,15 +18,46 @@ use crate::num::FpCategory;
 
 /// The radix or base of the internal representation of `f32`.
 /// Use [`f32::RADIX`](../../std/primitive.f32.html#associatedconstant.RADIX) instead.
+///
+/// # Examples
+///
+/// ```rust
+/// // deprecated way
+/// let r = std::f32::RADIX;
+///
+/// // intended way
+/// let r = f32::RADIX;
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const RADIX: u32 = f32::RADIX;
 
 /// Number of significant digits in base 2.
 /// Use [`f32::MANTISSA_DIGITS`](../../std/primitive.f32.html#associatedconstant.MANTISSA_DIGITS) instead.
+///
+/// # Examples
+///
+/// ```rust
+/// // deprecated way
+/// let d = std::f32::MANTISSA_DIGITS;
+///
+/// // intended way
+/// let d = f32::MANTISSA_DIGITS;
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const MANTISSA_DIGITS: u32 = f32::MANTISSA_DIGITS;
+
 /// Approximate number of significant digits in base 10.
 /// Use [`f32::DIGITS`](../../std/primitive.f32.html#associatedconstant.DIGITS) instead.
+///
+/// # Examples
+///
+/// ```rust
+/// // deprecated way
+/// let d = std::f32::DIGITS;
+///
+/// // intended way
+/// let d = f32::DIGITS;
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const DIGITS: u32 = f32::DIGITS;
 
@@ -36,50 +67,166 @@ pub const DIGITS: u32 = f32::DIGITS;
 /// This is the difference between `1.0` and the next larger representable number.
 ///
 /// [Machine epsilon]: https://en.wikipedia.org/wiki/Machine_epsilon
+///
+/// # Examples
+///
+/// ```rust
+/// // deprecated way
+/// let e = std::f32::EPSILON;
+///
+/// // intended way
+/// let e = f32::EPSILON;
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const EPSILON: f32 = f32::EPSILON;
 
 /// Smallest finite `f32` value.
 /// Use [`f32::MIN`](../../std/primitive.f32.html#associatedconstant.MIN) instead.
+///
+/// # Examples
+///
+/// ```rust
+/// // deprecated way
+/// let min = std::f32::MIN;
+///
+/// // intended way
+/// let min = f32::MIN;
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const MIN: f32 = f32::MIN;
+
 /// Smallest positive normal `f32` value.
 /// Use [`f32::MIN_POSITIVE`](../../std/primitive.f32.html#associatedconstant.MIN_POSITIVE) instead.
+///
+/// # Examples
+///
+/// ```rust
+/// // deprecated way
+/// let min = std::f32::MIN_POSITIVE;
+///
+/// // intended way
+/// let min = f32::MIN_POSITIVE;
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const MIN_POSITIVE: f32 = f32::MIN_POSITIVE;
+
 /// Largest finite `f32` value.
 /// Use [`f32::MAX`](../../std/primitive.f32.html#associatedconstant.MAX) instead.
+///
+/// # Examples
+///
+/// ```rust
+/// // deprecated way
+/// let max = std::f32::MAX;
+///
+/// // intended way
+/// let max = f32::MAX;
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const MAX: f32 = f32::MAX;
 
 /// One greater than the minimum possible normal power of 2 exponent.
 /// Use [`f32::MIN_EXP`](../../std/primitive.f32.html#associatedconstant.MIN_EXP) instead.
+///
+/// # Examples
+///
+/// ```rust
+/// // deprecated way
+/// let min = std::f32::MIN_EXP;
+///
+/// // intended way
+/// let min = f32::MIN_EXP;
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const MIN_EXP: i32 = f32::MIN_EXP;
+
 /// Maximum possible power of 2 exponent.
 /// Use [`f32::MAX_EXP`](../../std/primitive.f32.html#associatedconstant.MAX_EXP) instead.
+///
+/// # Examples
+///
+/// ```rust
+/// // deprecated way
+/// let max = std::f32::MAX_EXP;
+///
+/// // intended way
+/// let max = f32::MAX_EXP;
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const MAX_EXP: i32 = f32::MAX_EXP;
 
 /// Minimum possible normal power of 10 exponent.
 /// Use [`f32::MIN_10_EXP`](../../std/primitive.f32.html#associatedconstant.MIN_10_EXP) instead.
+///
+/// # Examples
+///
+/// ```rust
+/// // deprecated way
+/// let min = std::f32::MIN_10_EXP;
+///
+/// // intended way
+/// let min = f32::MIN_10_EXP;
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const MIN_10_EXP: i32 = f32::MIN_10_EXP;
+
 /// Maximum possible power of 10 exponent.
 /// Use [`f32::MAX_10_EXP`](../../std/primitive.f32.html#associatedconstant.MAX_10_EXP) instead.
+///
+/// # Examples
+///
+/// ```rust
+/// // deprecated way
+/// let max = std::f32::MAX_10_EXP;
+///
+/// // intended way
+/// let max = f32::MAX_10_EXP;
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const MAX_10_EXP: i32 = f32::MAX_10_EXP;
 
 /// Not a Number (NaN).
 /// Use [`f32::NAN`](../../std/primitive.f32.html#associatedconstant.NAN) instead.
+///
+/// # Examples
+///
+/// ```rust
+/// // deprecated way
+/// let nan = std::f32::NAN;
+///
+/// // intended way
+/// let nan = f32::NAN;
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const NAN: f32 = f32::NAN;
+
 /// Infinity (∞).
 /// Use [`f32::INFINITY`](../../std/primitive.f32.html#associatedconstant.INFINITY) instead.
+///
+/// # Examples
+///
+/// ```rust
+/// // deprecated way
+/// let inf = std::f32::INFINITY;
+///
+/// // intended way
+/// let inf = f32::INFINITY;
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const INFINITY: f32 = f32::INFINITY;
+
 /// Negative infinity (−∞).
 /// Use [`f32::NEG_INFINITY`](../../std/primitive.f32.html#associatedconstant.NEG_INFINITY) instead.
+///
+/// # Examples
+///
+/// ```rust
+/// // deprecated way
+/// let ninf = std::f32::NEG_INFINITY;
+///
+/// // intended way
+/// let ninf = f32::NEG_INFINITY;
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const NEG_INFINITY: f32 = f32::NEG_INFINITY;
 
@@ -220,7 +367,7 @@ impl f32 {
     /// Infinity (∞).
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const INFINITY: f32 = 1.0_f32 / 0.0_f32;
-    /// Negative infinity (-∞).
+    /// Negative infinity (−∞).
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const NEG_INFINITY: f32 = -1.0_f32 / 0.0_f32;
 
@@ -265,7 +412,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn is_infinite(self) -> bool {
-        self.abs_private() == INFINITY
+        self.abs_private() == Self::INFINITY
     }
 
     /// Returns `true` if this number is neither infinite nor `NaN`.
@@ -287,7 +434,7 @@ impl f32 {
     pub fn is_finite(self) -> bool {
         // There's no need to handle NaN separately: if self is NaN,
         // the comparison is not true, exactly as desired.
-        self.abs_private() < INFINITY
+        self.abs_private() < Self::INFINITY
     }
 
     /// Returns `true` if the number is neither zero, infinite,
@@ -394,9 +541,7 @@ impl f32 {
     /// Converts radians to degrees.
     ///
     /// ```
-    /// use std::f32::consts;
-    ///
-    /// let angle = consts::PI;
+    /// let angle = std::f32::consts::PI;
     ///
     /// let abs_difference = (angle.to_degrees() - 180.0).abs();
     ///
@@ -413,11 +558,9 @@ impl f32 {
     /// Converts degrees to radians.
     ///
     /// ```
-    /// use std::f32::consts;
-    ///
     /// let angle = 180.0f32;
     ///
-    /// let abs_difference = (angle.to_radians() - consts::PI).abs();
+    /// let abs_difference = (angle.to_radians() - std::f32::consts::PI).abs();
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
@@ -464,15 +607,13 @@ impl f32 {
     /// assuming that the value is finite and fits in that type.
     ///
     /// ```
-    /// #![feature(float_approx_unchecked_to)]
-    ///
     /// let value = 4.6_f32;
-    /// let rounded = unsafe { value.approx_unchecked_to::<u16>() };
+    /// let rounded = unsafe { value.to_int_unchecked::<u16>() };
     /// assert_eq!(rounded, 4);
     ///
     /// let value = -128.9_f32;
-    /// let rounded = unsafe { value.approx_unchecked_to::<i8>() };
-    /// assert_eq!(rounded, std::i8::MIN);
+    /// let rounded = unsafe { value.to_int_unchecked::<i8>() };
+    /// assert_eq!(rounded, i8::MIN);
     /// ```
     ///
     /// # Safety
@@ -482,13 +623,13 @@ impl f32 {
     /// * Not be `NaN`
     /// * Not be infinite
     /// * Be representable in the return type `Int`, after truncating off its fractional part
-    #[unstable(feature = "float_approx_unchecked_to", issue = "67058")]
+    #[stable(feature = "float_approx_unchecked_to", since = "1.44.0")]
     #[inline]
-    pub unsafe fn approx_unchecked_to<Int>(self) -> Int
+    pub unsafe fn to_int_unchecked<Int>(self) -> Int
     where
         Self: FloatToInt<Int>,
     {
-        FloatToInt::<Int>::approx_unchecked(self)
+        FloatToInt::<Int>::to_int_unchecked(self)
     }
 
     /// Raw transmutation to `u32`.

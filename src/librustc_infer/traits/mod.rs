@@ -1,16 +1,16 @@
-//! Trait Resolution. See the [rustc guide] for more information on how this works.
+//! Trait Resolution. See the [rustc-dev-guide] for more information on how this works.
 //!
-//! [rustc guide]: https://rust-lang.github.io/rustc-guide/traits/resolution.html
+//! [rustc-dev-guide]: https://rustc-dev-guide.rust-lang.org/traits/resolution.html
 
 mod engine;
 pub mod error_reporting;
 mod project;
 mod structural_impls;
-mod util;
+pub mod util;
 
-use rustc::ty::error::{ExpectedFound, TypeError};
-use rustc::ty::{self, Ty};
 use rustc_hir as hir;
+use rustc_middle::ty::error::{ExpectedFound, TypeError};
+use rustc_middle::ty::{self, Const, Ty};
 use rustc_span::Span;
 
 pub use self::FulfillmentErrorCode::*;
@@ -20,13 +20,14 @@ pub use self::Vtable::*;
 
 pub use self::engine::{TraitEngine, TraitEngineExt};
 pub use self::project::MismatchedProjectionTypes;
+pub(crate) use self::project::UndoLog;
 pub use self::project::{
     Normalized, NormalizedTy, ProjectionCache, ProjectionCacheEntry, ProjectionCacheKey,
-    ProjectionCacheSnapshot, Reveal,
+    ProjectionCacheStorage, Reveal,
 };
 crate use self::util::elaborate_predicates;
 
-pub use rustc::traits::*;
+pub use rustc_middle::traits::*;
 
 /// An `Obligation` represents some trait reference (e.g., `int: Eq`) for
 /// which the vtable must be found. The process of finding a vtable is
@@ -80,6 +81,7 @@ pub enum FulfillmentErrorCode<'tcx> {
     CodeSelectionError(SelectionError<'tcx>),
     CodeProjectionError(MismatchedProjectionTypes<'tcx>),
     CodeSubtypeError(ExpectedFound<Ty<'tcx>>, TypeError<'tcx>), // always comes from a SubtypePredicate
+    CodeConstEquateError(ExpectedFound<&'tcx Const<'tcx>>, TypeError<'tcx>),
     CodeAmbiguity,
 }
 

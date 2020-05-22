@@ -1,7 +1,7 @@
 use crate::infer::canonical::{Canonicalized, CanonicalizedQueryResponse};
 use crate::traits::query::outlives_bounds::OutlivesBound;
 use crate::traits::query::Fallible;
-use rustc::ty::{ParamEnvAnd, Ty, TyCtxt};
+use rustc_middle::ty::{ParamEnvAnd, Ty, TyCtxt};
 
 #[derive(Clone, Debug, HashStable, TypeFoldable, Lift)]
 pub struct ImpliedOutlivesBounds<'tcx> {

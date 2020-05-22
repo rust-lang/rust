@@ -3,11 +3,11 @@ pub mod borrowck_errors;
 pub mod def_use;
 pub mod elaborate_drops;
 pub mod patch;
+pub mod storage;
 
 mod alignment;
 pub mod collect_writes;
 mod graphviz;
-pub mod liveness;
 pub(crate) mod pretty;
 
 pub use self::aggregate::expand_aggregate;

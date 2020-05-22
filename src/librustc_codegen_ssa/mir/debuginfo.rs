@@ -1,13 +1,12 @@
 use crate::traits::*;
-use rustc::mir;
-use rustc::ty;
-use rustc::ty::layout::{LayoutOf, Size};
 use rustc_hir::def_id::CrateNum;
 use rustc_index::vec::IndexVec;
+use rustc_middle::mir;
+use rustc_middle::ty;
 use rustc_session::config::DebugInfo;
-
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{BytePos, Span};
+use rustc_target::abi::{LayoutOf, Size};
 
 use super::operand::OperandValue;
 use super::place::PlaceRef;
@@ -116,7 +115,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let full_debug_info = bx.sess().opts.debuginfo == DebugInfo::Full;
 
         // FIXME(eddyb) maybe name the return place as `_0` or `return`?
-        if local == mir::RETURN_PLACE {
+        if local == mir::RETURN_PLACE && !self.mir.local_decls[mir::RETURN_PLACE].is_user_variable()
+        {
             return;
         }
 

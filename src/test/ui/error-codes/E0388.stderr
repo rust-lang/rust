@@ -12,6 +12,8 @@ error[E0019]: static contains unimplemented expression type
    |
 LL | static STATIC_REF: &'static mut i32 = &mut X;
    |                                       ^^^^^^
+   |
+   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
 error[E0658]: references in statics may only refer to immutable values
   --> $DIR/E0388.rs:5:39

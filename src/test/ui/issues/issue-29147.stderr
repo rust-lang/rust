@@ -7,7 +7,7 @@ LL | trait Foo { fn xxx(&self); }
 LL |     let _ = <S5<_>>::xxx;
    |             ^^^^^^^^^^^^ cannot infer type for struct `S5<_>`
    |
-   = note: cannot resolve `S5<_>: Foo`
+   = note: cannot satisfy `S5<_>: Foo`
 
 error: aborting due to previous error
 

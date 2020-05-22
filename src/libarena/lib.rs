@@ -5,8 +5,7 @@
 //! of individual objects while the arena itself is still alive. The benefit
 //! of an arena is very fast allocation; just a pointer bump.
 //!
-//! This crate implements `TypedArena`, a simple arena that can only hold
-//! objects of a single type.
+//! This crate implements several kinds of arena.
 
 #![doc(
     html_root_url = "https://doc.rust-lang.org/nightly/",
@@ -98,7 +97,13 @@ impl<T> TypedArenaChunk<T> {
     }
 }
 
+// The arenas start with PAGE-sized chunks, and then each new chunk is twice as
+// big as its predecessor, up until we reach HUGE_PAGE-sized chunks, whereupon
+// we stop growing. This scales well, from arenas that are barely used up to
+// arenas that are used for 100s of MiBs. Note also that the chosen sizes match
+// the usual sizes of pages and huge pages on Linux.
 const PAGE: usize = 4096;
+const HUGE_PAGE: usize = 2 * 1024 * 1024;
 
 impl<T> Default for TypedArena<T> {
     /// Creates a new `TypedArena`.
@@ -211,6 +216,9 @@ impl<T> TypedArena<T> {
     #[cold]
     fn grow(&self, n: usize) {
         unsafe {
+            // We need the element size in to convert chunk sizes (ranging from
+            // PAGE to HUGE_PAGE bytes) to element counts.
+            let elem_size = cmp::max(1, mem::size_of::<T>());
             let mut chunks = self.chunks.borrow_mut();
             let (chunk, mut new_capacity);
             if let Some(last_chunk) = chunks.last_mut() {
@@ -221,18 +229,20 @@ impl<T> TypedArena<T> {
                     self.end.set(last_chunk.end());
                     return;
                 } else {
+                    // If the previous chunk's capacity is less than HUGE_PAGE
+                    // bytes, then this chunk will be least double the previous
+                    // chunk's size.
                     new_capacity = last_chunk.storage.capacity();
-                    loop {
+                    if new_capacity < HUGE_PAGE / elem_size {
                         new_capacity = new_capacity.checked_mul(2).unwrap();
-                        if new_capacity >= currently_used_cap + n {
-                            break;
-                        }
                     }
                 }
             } else {
-                let elem_size = cmp::max(1, mem::size_of::<T>());
-                new_capacity = cmp::max(n, PAGE / elem_size);
+                new_capacity = PAGE / elem_size;
             }
+            // Also ensure that this chunk can fit `n`.
+            new_capacity = cmp::max(n, new_capacity);
+
             chunk = TypedArenaChunk::<T>::new(new_capacity);
             self.ptr.set(chunk.start());
             self.end.set(chunk.end());
@@ -347,17 +357,20 @@ impl DroplessArena {
                     self.end.set(last_chunk.end());
                     return;
                 } else {
+                    // If the previous chunk's capacity is less than HUGE_PAGE
+                    // bytes, then this chunk will be least double the previous
+                    // chunk's size.
                     new_capacity = last_chunk.storage.capacity();
-                    loop {
+                    if new_capacity < HUGE_PAGE {
                         new_capacity = new_capacity.checked_mul(2).unwrap();
-                        if new_capacity >= used_bytes + needed_bytes {
-                            break;
-                        }
                     }
                 }
             } else {
-                new_capacity = cmp::max(needed_bytes, PAGE);
+                new_capacity = PAGE;
             }
+            // Also ensure that this chunk can fit `needed_bytes`.
+            new_capacity = cmp::max(needed_bytes, new_capacity);
+
             chunk = TypedArenaChunk::<u8>::new(new_capacity);
             self.ptr.set(chunk.start());
             self.end.set(chunk.end());

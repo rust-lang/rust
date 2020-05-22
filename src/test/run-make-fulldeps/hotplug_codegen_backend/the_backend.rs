@@ -1,7 +1,8 @@
 #![feature(rustc_private)]
 
-extern crate rustc;
 extern crate rustc_codegen_ssa;
+extern crate rustc_errors;
+extern crate rustc_middle;
 #[macro_use]
 extern crate rustc_data_structures;
 extern crate rustc_driver;
@@ -11,21 +12,20 @@ extern crate rustc_span;
 extern crate rustc_symbol_mangling;
 extern crate rustc_target;
 
-use rustc::dep_graph::DepGraph;
-use rustc::middle::cstore::{EncodedMetadata, MetadataLoader, MetadataLoaderDyn};
-use rustc::ty::query::Providers;
-use rustc::ty::TyCtxt;
-use rustc::util::common::ErrorReported;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::owning_ref::OwningRef;
 use rustc_data_structures::sync::MetadataRef;
+use rustc_errors::ErrorReported;
+use rustc_middle::dep_graph::DepGraph;
+use rustc_middle::middle::cstore::{EncodedMetadata, MetadataLoader, MetadataLoaderDyn};
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::TyCtxt;
 use rustc_session::config::OutputFilenames;
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::Target;
 use std::any::Any;
 use std::path::Path;
-use std::sync::Arc;
 
 pub struct NoLlvmMetadataLoader;
 
@@ -53,10 +53,10 @@ impl CodegenBackend for TheBackend {
         rustc_symbol_mangling::provide(providers);
 
         providers.target_features_whitelist = |tcx, _cnum| {
-            tcx.arena.alloc(Default::default()) // Just a dummy
+            Default::default() // Just a dummy
         };
         providers.is_reachable_non_generic = |_tcx, _defid| true;
-        providers.exported_symbols = |_tcx, _crate| Arc::new(Vec::new());
+        providers.exported_symbols = |_tcx, _crate| &[];
     }
 
     fn provide_extern(&self, providers: &mut Providers) {

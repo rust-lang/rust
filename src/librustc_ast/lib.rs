@@ -14,9 +14,14 @@
 #![feature(crate_visibility_modifier)]
 #![feature(label_break_value)]
 #![feature(nll)]
+#![feature(or_patterns)]
 #![feature(try_trait)]
 #![feature(unicode_internals)]
 #![recursion_limit = "256"]
+
+// FIXME(#56935): Work around ICEs during cross-compilation.
+#[allow(unused)]
+extern crate rustc_macros;
 
 #[macro_export]
 macro_rules! unwrap_or {
@@ -33,7 +38,6 @@ pub mod util {
     pub mod comments;
     pub mod lev_distance;
     pub mod literal;
-    pub mod map_in_place;
     pub mod parser;
 }
 
@@ -54,7 +58,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 
 /// Requirements for a `StableHashingContext` to be used in this crate.
 /// This is a hack to allow using the `HashStable_Generic` derive macro
-/// instead of implementing everything in librustc.
+/// instead of implementing everything in librustc_middle.
 pub trait HashStableContext: rustc_span::HashStableContext {
     fn hash_attr(&mut self, _: &ast::Attribute, hasher: &mut StableHasher);
 }

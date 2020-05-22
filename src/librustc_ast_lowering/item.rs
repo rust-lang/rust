@@ -12,7 +12,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
 use rustc_span::source_map::{respan, DesugaringKind};
-use rustc_span::symbol::{kw, sym};
+use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
 use rustc_target::spec::abi;
 
@@ -165,19 +165,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             ItemKind::MacroDef(..) => SmallVec::new(),
             ItemKind::Fn(..) | ItemKind::Impl { of_trait: None, .. } => smallvec![i.id],
-            ItemKind::Static(ref ty, ..) => {
+            ItemKind::Static(ref ty, ..) | ItemKind::Const(_, ref ty, ..) => {
                 let mut ids = smallvec![i.id];
                 if self.sess.features_untracked().impl_trait_in_bindings {
-                    let mut visitor = ImplTraitTypeIdVisitor { ids: &mut ids };
-                    visitor.visit_ty(ty);
-                }
-                ids
-            }
-            ItemKind::Const(_, ref ty, ..) => {
-                let mut ids = smallvec![i.id];
-                if self.sess.features_untracked().impl_trait_in_bindings {
-                    let mut visitor = ImplTraitTypeIdVisitor { ids: &mut ids };
-                    visitor.visit_ty(ty);
+                    ImplTraitTypeIdVisitor { ids: &mut ids }.visit_ty(ty);
                 }
                 ids
             }
@@ -268,7 +259,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 hir::ItemKind::Const(ty, body_id)
             }
             ItemKind::Fn(_, FnSig { ref decl, header }, ref generics, ref body) => {
-                let fn_def_id = self.resolver.definitions().local_def_id(id).expect_local();
+                let fn_def_id = self.resolver.definitions().local_def_id(id);
                 self.with_new_scopes(|this| {
                     this.current_item = Some(ident.span);
 
@@ -355,7 +346,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 self_ty: ref ty,
                 items: ref impl_items,
             } => {
-                let def_id = self.resolver.definitions().local_def_id(id).expect_local();
+                let def_id = self.resolver.definitions().local_def_id(id);
 
                 // Lower the "impl header" first. This ordering is important
                 // for in-band lifetimes! Consider `'a` here:
@@ -654,7 +645,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_foreign_item(&mut self, i: &ForeignItem) -> hir::ForeignItem<'hir> {
-        let def_id = self.resolver.definitions().local_def_id(i.id).expect_local();
+        let def_id = self.resolver.definitions().local_def_id(i.id);
         hir::ForeignItem {
             hir_id: self.lower_node_id(i.id),
             ident: i.ident,
@@ -755,7 +746,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_trait_item(&mut self, i: &AssocItem) -> hir::TraitItem<'hir> {
-        let trait_item_def_id = self.resolver.definitions().local_def_id(i.id).expect_local();
+        let trait_item_def_id = self.resolver.definitions().local_def_id(i.id);
 
         let (generics, kind) = match i.kind {
             AssocItemKind::Const(_, ref ty, ref default) => {
@@ -805,7 +796,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 (hir::AssocItemKind::Type, default.is_some())
             }
             AssocItemKind::Fn(_, sig, _, default) => {
-                (hir::AssocItemKind::Method { has_self: sig.decl.has_self() }, default.is_some())
+                (hir::AssocItemKind::Fn { has_self: sig.decl.has_self() }, default.is_some())
             }
             AssocItemKind::MacCall(..) => unimplemented!(),
         };
@@ -820,7 +811,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_impl_item(&mut self, i: &AssocItem) -> hir::ImplItem<'hir> {
-        let impl_item_def_id = self.resolver.definitions().local_def_id(i.id).expect_local();
+        let impl_item_def_id = self.resolver.definitions().local_def_id(i.id);
 
         let (generics, kind) = match &i.kind {
             AssocItemKind::Const(_, ty, expr) => {
@@ -903,7 +894,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     }
                 }
                 AssocItemKind::Fn(_, sig, ..) => {
-                    hir::AssocItemKind::Method { has_self: sig.decl.has_self() }
+                    hir::AssocItemKind::Fn { has_self: sig.decl.has_self() }
                 }
                 AssocItemKind::MacCall(..) => unimplemented!(),
             },
@@ -972,8 +963,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         f: impl FnOnce(&mut Self) -> (&'hir [hir::Param<'hir>], hir::Expr<'hir>),
     ) -> hir::BodyId {
         let prev_gen_kind = self.generator_kind.take();
+        let task_context = self.task_context.take();
         let (parameters, result) = f(self);
         let body_id = self.record_body(parameters, result);
+        self.task_context = task_context;
         self.generator_kind = prev_gen_kind;
         body_id
     }
@@ -1332,17 +1325,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                                         self.resolver.definitions().as_local_node_id(def_id)
                                     {
                                         for param in &generics.params {
-                                            match param.kind {
-                                                GenericParamKind::Type { .. } => {
-                                                    if node_id == param.id {
-                                                        add_bounds
-                                                            .entry(param.id)
-                                                            .or_default()
-                                                            .push(bound.clone());
-                                                        continue 'next_bound;
-                                                    }
+                                            if let GenericParamKind::Type { .. } = param.kind {
+                                                if node_id == param.id {
+                                                    add_bounds
+                                                        .entry(param.id)
+                                                        .or_default()
+                                                        .push(bound.clone());
+                                                    continue 'next_bound;
                                                 }
-                                                _ => {}
                                             }
                                         }
                                     }

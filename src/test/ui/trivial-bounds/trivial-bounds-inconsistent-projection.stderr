@@ -42,3 +42,5 @@ warning: Trait bound B: A does not depend on any type or lifetime parameters
 LL |     B: A<X = u8> + A
    |                    ^
 
+warning: 7 warnings emitted
+

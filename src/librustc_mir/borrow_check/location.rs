@@ -1,5 +1,5 @@
-use rustc::mir::{BasicBlock, Body, Location};
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_middle::mir::{BasicBlock, Body, Location};
 
 /// Maps between a MIR Location, which identifies a particular
 /// statement within a basic block, to a "rich location", which

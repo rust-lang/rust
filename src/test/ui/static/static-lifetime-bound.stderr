@@ -17,6 +17,6 @@ LL |     f(&x);
 LL | }
    | - `x` dropped here while still borrowed
 
-error: aborting due to previous error
+error: aborting due to previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0597`.

@@ -7,20 +7,22 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
+#![feature(or_patterns)]
 #![recursion_limit = "256"]
 
 #[macro_use]
-extern crate rustc;
+extern crate rustc_middle;
 #[macro_use]
 extern crate log;
 
-use rustc::ty::query::Providers;
+use rustc_middle::ty::query::Providers;
 
 mod check_attr;
 mod check_const;
 pub mod dead;
 mod diagnostic_items;
 pub mod entry;
+pub mod hir_id_validator;
 pub mod hir_stats;
 mod intrinsicck;
 mod lang_items;

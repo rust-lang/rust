@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 
 #![doc(no_default_passes, passes = "collapse-docs unindent-comments")]
 

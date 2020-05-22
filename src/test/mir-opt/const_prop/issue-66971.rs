@@ -11,28 +11,7 @@ fn encode(this: ((), u8, u8)) {
     assert!(this.2 == 0);
 }
 
+// EMIT_MIR rustc.main.ConstProp.diff
 fn main() {
     encode(((), 0, 0));
 }
-
-// END RUST SOURCE
-// START rustc.main.ConstProp.before.mir
-//  bb0: {
-//      ...
-//      _3 = ();
-//      _2 = (move _3, const 0u8, const 0u8);
-//      ...
-//      _1 = const encode(move _2) -> bb1;
-//      ...
-//  }
-// END rustc.main.ConstProp.before.mir
-// START rustc.main.ConstProp.after.mir
-//  bb0: {
-//      ...
-//      _3 = const ();
-//      _2 = (move _3, const 0u8, const 0u8);
-//      ...
-//      _1 = const encode(move _2) -> bb1;
-//      ...
-//  }
-// END rustc.main.ConstProp.after.mir

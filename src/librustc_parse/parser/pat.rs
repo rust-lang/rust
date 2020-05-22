@@ -1,14 +1,14 @@
 use super::{Parser, PathStyle};
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 use rustc_ast::ast::{self, AttrVec, Attribute, FieldPat, MacCall, Pat, PatKind, RangeEnd};
-use rustc_ast::ast::{BindingMode, Expr, ExprKind, Ident, Mutability, Path, QSelf, RangeSyntax};
+use rustc_ast::ast::{BindingMode, Expr, ExprKind, Mutability, Path, QSelf, RangeSyntax};
 use rustc_ast::mut_visit::{noop_visit_mac, noop_visit_pat, MutVisitor};
 use rustc_ast::ptr::P;
 use rustc_ast::token;
 use rustc_ast_pretty::pprust;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, PResult};
 use rustc_span::source_map::{respan, Span, Spanned};
-use rustc_span::symbol::{kw, sym};
+use rustc_span::symbol::{kw, sym, Ident};
 
 type Expected = Option<&'static str>;
 
@@ -162,7 +162,7 @@ impl<'a> Parser<'a> {
             _ => false,
         });
         match (is_end_ahead, &self.token.kind) {
-            (true, token::BinOp(token::Or)) | (true, token::OrOr) => {
+            (true, token::BinOp(token::Or) | token::OrOr) => {
                 self.ban_illegal_vert(lo, "trailing", "not allowed in an or-pattern");
                 self.bump();
                 true
@@ -295,6 +295,8 @@ impl<'a> Parser<'a> {
             // A rest pattern `..`.
             self.bump(); // `..`
             PatKind::Rest
+        } else if self.check(&token::DotDotDot) && !self.is_pat_range_end_start(1) {
+            self.recover_dotdotdot_rest_pat(lo)
         } else if let Some(form) = self.parse_range_end() {
             self.parse_pat_range_to(form)? // `..=X`, `...X`, or `..X`.
         } else if self.eat_keyword(kw::Underscore) {
@@ -360,6 +362,25 @@ impl<'a> Parser<'a> {
         }
 
         Ok(pat)
+    }
+
+    /// Recover from a typoed `...` pattern that was encountered
+    /// Ref: Issue #70388
+    fn recover_dotdotdot_rest_pat(&mut self, lo: Span) -> PatKind {
+        // A typoed rest pattern `...`.
+        self.bump(); // `...`
+
+        // The user probably mistook `...` for a rest pattern `..`.
+        self.struct_span_err(lo, "unexpected `...`")
+            .span_label(lo, "not a valid pattern")
+            .span_suggestion_short(
+                lo,
+                "for a rest pattern, use `..` instead of `...`",
+                "..".to_owned(),
+                Applicability::MachineApplicable,
+            )
+            .emit();
+        PatKind::Rest
     }
 
     /// Try to recover the more general form `intersect ::= $pat_lhs @ $pat_rhs`.

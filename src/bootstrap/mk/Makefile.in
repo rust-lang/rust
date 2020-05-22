@@ -48,7 +48,6 @@ check:
 	$(Q)$(BOOTSTRAP) test $(BOOTSTRAP_ARGS)
 check-aux:
 	$(Q)$(BOOTSTRAP) test \
-		src/test/run-fail/pretty \
 		src/test/run-pass-valgrind/pretty \
 		$(AUX_ARGS) \
 		$(BOOTSTRAP_ARGS)

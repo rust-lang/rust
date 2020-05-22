@@ -5,8 +5,8 @@ use super::combine::CombineFields;
 use super::{HigherRankedType, InferCtxt, PlaceholderMap};
 
 use crate::infer::CombinedSnapshot;
-use rustc::ty::relate::{Relate, RelateResult, TypeRelation};
-use rustc::ty::{self, Binder, TypeFoldable};
+use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
+use rustc_middle::ty::{self, Binder, TypeFoldable};
 
 impl<'a, 'tcx> CombineFields<'a, 'tcx> {
     pub fn higher_ranked_sub<T>(

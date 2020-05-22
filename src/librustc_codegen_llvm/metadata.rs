@@ -1,7 +1,7 @@
 use crate::llvm;
 use crate::llvm::archive_ro::ArchiveRO;
 use crate::llvm::{mk_section_iter, False, ObjectFile};
-use rustc::middle::cstore::MetadataLoader;
+use rustc_middle::middle::cstore::MetadataLoader;
 use rustc_target::spec::Target;
 
 use log::debug;

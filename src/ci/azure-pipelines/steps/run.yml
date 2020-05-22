@@ -1,3 +1,14 @@
+#####################################
+##    READ BEFORE CHANGING THIS    ##
+#####################################
+
+# We're in the process of evaluating GitHub Actions as a possible replacement
+# for Azure Pipelines, and at the moment the configuration is duplicated
+# between the two CI providers. Be sure to also change the configuration in
+# src/ci/github-actions when changing this file.
+
+#####################################
+
 # FIXME(linux): need to configure core dumps, enable them, and then dump
 # backtraces on failure from all core dumps:
 #
@@ -59,8 +70,8 @@ steps:
   displayName: Install InnoSetup
   condition: and(succeeded(), not(variables.SKIP_JOB))
 
-- bash: src/ci/scripts/windows-symlink-build-dir.sh
-  displayName: Ensure the build happens on C:\ instead of D:\
+- bash: src/ci/scripts/symlink-build-dir.sh
+  displayName: Ensure the build happens on a partition with enough space
   condition: and(succeeded(), not(variables.SKIP_JOB))
 
 - bash: src/ci/scripts/disable-git-crlf-conversion.sh

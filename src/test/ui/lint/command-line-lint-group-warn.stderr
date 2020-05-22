@@ -6,3 +6,5 @@ LL |     let _InappropriateCamelCasing = true;
    |
    = note: `-W non-snake-case` implied by `-W bad-style`
 
+warning: 1 warning emitted
+

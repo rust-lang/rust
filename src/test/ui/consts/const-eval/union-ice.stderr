@@ -27,7 +27,7 @@ LL | |         unsafe { UNION.field3 },
 ...  |
 LL | |     a: 42,
 LL | | };
-   | |__^ type validation failed: encountered undefined bytes at .b[1]
+   | |__^ type validation failed: encountered uninitialized bytes at .b[1]
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 

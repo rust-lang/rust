@@ -1,0 +1,10 @@
+error: `macro_use` attributes are no longer needed in the Rust 2018 edition
+  --> $DIR/macro_use_imports.rs:5:1
+   |
+LL | #[macro_use]
+   | ^^^^^^^^^^^^ help: remove the attribute and import the macro directly, try: `use std::prelude::<macro name>`
+   |
+   = note: `-D clippy::macro-use-imports` implied by `-D warnings`
+
+error: aborting due to previous error
+

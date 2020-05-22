@@ -1,6 +1,6 @@
-use rustc::ty::fold::{TypeFoldable, TypeVisitor};
-use rustc::ty::{self, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
+use rustc_middle::ty::fold::{TypeFoldable, TypeVisitor};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::source_map::Span;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]

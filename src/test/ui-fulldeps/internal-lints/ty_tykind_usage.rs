@@ -2,9 +2,9 @@
 
 #![feature(rustc_private)]
 
-extern crate rustc;
+extern crate rustc_middle;
 
-use rustc::ty::{self, Ty, TyKind};
+use rustc_middle::ty::{self, Ty, TyKind};
 
 #[deny(rustc::usage_of_ty_tykind)]
 fn main() {
@@ -32,7 +32,6 @@ fn main() {
         TyKind::Never => (), //~ ERROR usage of `ty::TyKind::<kind>`
         TyKind::Tuple(..) => (), //~ ERROR usage of `ty::TyKind::<kind>`
         TyKind::Projection(..) => (), //~ ERROR usage of `ty::TyKind::<kind>`
-        TyKind::UnnormalizedProjection(..) => (), //~ ERROR usage of `ty::TyKind::<kind>`
         TyKind::Opaque(..) => (), //~ ERROR usage of `ty::TyKind::<kind>`
         TyKind::Param(..) => (), //~ ERROR usage of `ty::TyKind::<kind>`
         TyKind::Bound(..) => (), //~ ERROR usage of `ty::TyKind::<kind>`

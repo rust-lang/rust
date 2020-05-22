@@ -39,7 +39,7 @@ where
     alive: Range<usize>,
 }
 
-impl<T, const N: usize> IntoIter<T, { N }>
+impl<T, const N: usize> IntoIter<T, N>
 where
     [T; N]: LengthAtMost32,
 {
@@ -99,7 +99,7 @@ where
 }
 
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
-impl<T, const N: usize> Iterator for IntoIter<T, { N }>
+impl<T, const N: usize> Iterator for IntoIter<T, N>
 where
     [T; N]: LengthAtMost32,
 {
@@ -146,7 +146,7 @@ where
 }
 
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
-impl<T, const N: usize> DoubleEndedIterator for IntoIter<T, { N }>
+impl<T, const N: usize> DoubleEndedIterator for IntoIter<T, N>
 where
     [T; N]: LengthAtMost32,
 {
@@ -182,7 +182,7 @@ where
 }
 
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
-impl<T, const N: usize> Drop for IntoIter<T, { N }>
+impl<T, const N: usize> Drop for IntoIter<T, N>
 where
     [T; N]: LengthAtMost32,
 {
@@ -195,7 +195,7 @@ where
 }
 
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
-impl<T, const N: usize> ExactSizeIterator for IntoIter<T, { N }>
+impl<T, const N: usize> ExactSizeIterator for IntoIter<T, N>
 where
     [T; N]: LengthAtMost32,
 {
@@ -210,17 +210,17 @@ where
 }
 
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
-impl<T, const N: usize> FusedIterator for IntoIter<T, { N }> where [T; N]: LengthAtMost32 {}
+impl<T, const N: usize> FusedIterator for IntoIter<T, N> where [T; N]: LengthAtMost32 {}
 
 // The iterator indeed reports the correct length. The number of "alive"
 // elements (that will still be yielded) is the length of the range `alive`.
 // This range is decremented in length in either `next` or `next_back`. It is
 // always decremented by 1 in those methods, but only if `Some(_)` is returned.
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
-unsafe impl<T, const N: usize> TrustedLen for IntoIter<T, { N }> where [T; N]: LengthAtMost32 {}
+unsafe impl<T, const N: usize> TrustedLen for IntoIter<T, N> where [T; N]: LengthAtMost32 {}
 
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
-impl<T: Clone, const N: usize> Clone for IntoIter<T, { N }>
+impl<T: Clone, const N: usize> Clone for IntoIter<T, N>
 where
     [T; N]: LengthAtMost32,
 {
@@ -249,7 +249,7 @@ where
 }
 
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
-impl<T: fmt::Debug, const N: usize> fmt::Debug for IntoIter<T, { N }>
+impl<T: fmt::Debug, const N: usize> fmt::Debug for IntoIter<T, N>
 where
     [T; N]: LengthAtMost32,
 {

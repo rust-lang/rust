@@ -4,9 +4,9 @@
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError::SubSupConflict;
 use crate::infer::SubregionOrigin;
-use rustc::ty::RegionKind;
-use rustc::util::common::ErrorReported;
+use rustc_errors::ErrorReported;
 use rustc_hir::{Expr, ExprKind::Closure, Node};
+use rustc_middle::ty::RegionKind;
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     /// Print the error message for lifetime errors when binding escapes a closure.
@@ -46,7 +46,8 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             ) = (&sub_origin, sup_region)
             {
                 let hir = &self.tcx().hir();
-                if let Some(hir_id) = hir.as_local_hir_id(free_region.scope) {
+                if let Some(def_id) = free_region.scope.as_local() {
+                    let hir_id = hir.as_local_hir_id(def_id);
                     if let Node::Expr(Expr { kind: Closure(_, _, _, closure_span, None), .. }) =
                         hir.get(hir_id)
                     {

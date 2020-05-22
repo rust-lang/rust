@@ -1,5 +1,5 @@
 error[E0004]: non-exhaustive patterns: `None` and `Some(_)` not covered
-  --> $DIR/E0004-2.rs:9:11
+  --> $DIR/E0004-2.rs:4:11
    |
 LL |     match x { }
    |           ^ patterns `None` and `Some(_)` not covered
@@ -13,6 +13,7 @@ LL |     Some(#[stable(feature = "rust1", since = "1.0.0")] T),
    |     ---- not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `std::option::Option<i32>`
 
 error: aborting due to previous error
 

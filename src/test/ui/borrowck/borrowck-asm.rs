@@ -6,7 +6,7 @@
 // ignore-sparc
 // ignore-sparc64
 
-#![feature(asm)]
+#![feature(llvm_asm)]
 
 #[cfg(any(target_arch = "x86",
             target_arch = "x86_64",
@@ -19,7 +19,7 @@ mod test_cases {
         let y: &mut isize;
         let x = &mut 0isize;
         unsafe {
-            asm!("nop" : : "r"(x));
+            llvm_asm!("nop" : : "r"(x));
         }
         let z = x;  //~ ERROR use of moved value: `x`
     }
@@ -28,7 +28,7 @@ mod test_cases {
         let mut x = 3;
         let y = &mut x;
         unsafe {
-            asm!("nop" : : "r"(x)); //~ ERROR cannot use
+            llvm_asm!("nop" : : "r"(x)); //~ ERROR cannot use
         }
         let z = y;
     }
@@ -36,12 +36,12 @@ mod test_cases {
     fn out_is_assign() {
         let x = 3;
         unsafe {
-            asm!("nop" : "=r"(x));  //~ ERROR cannot assign twice
+            llvm_asm!("nop" : "=r"(x));  //~ ERROR cannot assign twice
         }
         let mut a = &mut 3;
         let b = &*a;
         unsafe {
-            asm!("nop" : "=r"(a));  // OK, Shallow write to `a`
+            llvm_asm!("nop" : "=r"(a));  // OK, Shallow write to `a`
         }
         let c = b;
         let d = *a;
@@ -50,14 +50,14 @@ mod test_cases {
     fn rw_is_assign() {
         let x = 3;
         unsafe {
-            asm!("nop" : "+r"(x));  //~ ERROR cannot assign twice
+            llvm_asm!("nop" : "+r"(x));  //~ ERROR cannot assign twice
         }
     }
 
     fn indirect_is_not_init() {
         let x: i32;
         unsafe {
-            asm!("nop" : "=*r"(x)); //~ ERROR use of possibly-uninitialized variable
+            llvm_asm!("nop" : "=*r"(x)); //~ ERROR use of possibly-uninitialized variable
         }
     }
 
@@ -65,7 +65,7 @@ mod test_cases {
         let mut x = &mut 3;
         let y = &*x;
         unsafe {
-            asm!("nop" : "+r"(x));  //~ ERROR cannot assign to `x` because it is borrowed
+            llvm_asm!("nop" : "+r"(x));  //~ ERROR cannot assign to `x` because it is borrowed
         }
         let z = y;
     }
@@ -73,7 +73,7 @@ mod test_cases {
     fn two_moves() {
         let x = &mut 2;
         unsafe {
-            asm!("nop" : : "r"(x), "r"(x) );    //~ ERROR use of moved value
+            llvm_asm!("nop" : : "r"(x), "r"(x) );    //~ ERROR use of moved value
         }
     }
 }

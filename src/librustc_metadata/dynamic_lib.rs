@@ -16,10 +16,9 @@ impl Drop for DynamicLibrary {
 }
 
 impl DynamicLibrary {
-    /// Lazily open a dynamic library. When passed None it gives a
-    /// handle to the calling process
-    pub fn open(filename: Option<&Path>) -> Result<DynamicLibrary, String> {
-        let maybe_library = dl::open(filename.map(|path| path.as_os_str()));
+    /// Lazily open a dynamic library.
+    pub fn open(filename: &Path) -> Result<DynamicLibrary, String> {
+        let maybe_library = dl::open(filename.as_os_str());
 
         // The dynamic library must not be constructed if there is
         // an error opening the library so the destructor does not
@@ -57,22 +56,11 @@ mod dl {
     use std::ptr;
     use std::str;
 
-    pub(super) fn open(filename: Option<&OsStr>) -> Result<*mut u8, String> {
+    pub(super) fn open(filename: &OsStr) -> Result<*mut u8, String> {
         check_for_errors_in(|| unsafe {
-            match filename {
-                Some(filename) => open_external(filename),
-                None => open_internal(),
-            }
+            let s = CString::new(filename.as_bytes()).unwrap();
+            libc::dlopen(s.as_ptr(), libc::RTLD_LAZY) as *mut u8
         })
-    }
-
-    unsafe fn open_external(filename: &OsStr) -> *mut u8 {
-        let s = CString::new(filename.as_bytes()).unwrap();
-        libc::dlopen(s.as_ptr(), libc::RTLD_LAZY) as *mut u8
-    }
-
-    unsafe fn open_internal() -> *mut u8 {
-        libc::dlopen(ptr::null(), libc::RTLD_LAZY) as *mut u8
     }
 
     fn check_for_errors_in<T, F>(f: F) -> Result<T, String>
@@ -124,10 +112,10 @@ mod dl {
 
     use winapi::shared::minwindef::HMODULE;
     use winapi::um::errhandlingapi::SetThreadErrorMode;
-    use winapi::um::libloaderapi::{FreeLibrary, GetModuleHandleExW, GetProcAddress, LoadLibraryW};
+    use winapi::um::libloaderapi::{FreeLibrary, GetProcAddress, LoadLibraryW};
     use winapi::um::winbase::SEM_FAILCRITICALERRORS;
 
-    pub(super) fn open(filename: Option<&OsStr>) -> Result<*mut u8, String> {
+    pub(super) fn open(filename: &OsStr) -> Result<*mut u8, String> {
         // disable "dll load failed" error dialog.
         let prev_error_mode = unsafe {
             let new_error_mode = SEM_FAILCRITICALERRORS;
@@ -139,22 +127,9 @@ mod dl {
             prev_error_mode
         };
 
-        let result = match filename {
-            Some(filename) => {
-                let filename_str: Vec<_> = filename.encode_wide().chain(Some(0)).collect();
-                let result = unsafe { LoadLibraryW(filename_str.as_ptr()) } as *mut u8;
-                ptr_result(result)
-            }
-            None => {
-                let mut handle = ptr::null_mut();
-                let succeeded = unsafe { GetModuleHandleExW(0, ptr::null(), &mut handle) };
-                if succeeded == 0 {
-                    Err(io::Error::last_os_error().to_string())
-                } else {
-                    Ok(handle as *mut u8)
-                }
-            }
-        };
+        let filename_str: Vec<_> = filename.encode_wide().chain(Some(0)).collect();
+        let result = unsafe { LoadLibraryW(filename_str.as_ptr()) } as *mut u8;
+        let result = ptr_result(result);
 
         unsafe {
             SetThreadErrorMode(prev_error_mode, ptr::null_mut());

@@ -4,6 +4,7 @@ fn main() {
     println!("{}", test(&()));
 }
 
+// EMIT_MIR rustc.test.Inline.after.mir
 fn test(x: &dyn X) -> u32 {
     x.y()
 }
@@ -19,13 +20,3 @@ impl X for () {
         2
     }
 }
-
-// END RUST SOURCE
-// START rustc.test.Inline.after.mir
-// ...
-// bb0: {
-// ...
-//     _0 = const <dyn X as X>::y(move _2) -> bb1;
-// }
-// ...
-// END rustc.test.Inline.after.mir

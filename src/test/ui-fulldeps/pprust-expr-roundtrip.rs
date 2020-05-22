@@ -32,6 +32,7 @@ use rustc_parse::new_parser_from_source_str;
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::{Spanned, DUMMY_SP, FileName};
 use rustc_span::source_map::FilePathMapping;
+use rustc_span::symbol::Ident;
 use rustc_ast::ast::*;
 use rustc_ast::mut_visit::{self, MutVisitor, visit_clobber};
 use rustc_ast::ptr::P;

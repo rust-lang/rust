@@ -5,8 +5,8 @@ use super::*;
 
 use crate::infer::region_constraints::{Constraint, RegionConstraintData};
 use crate::infer::InferCtxt;
-use rustc::ty::fold::TypeFolder;
-use rustc::ty::{Region, RegionVid};
+use rustc_middle::ty::fold::TypeFolder;
+use rustc_middle::ty::{Region, RegionVid};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 
@@ -187,13 +187,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             // to store all of the necessary region/lifetime bounds in the InferContext, as well as
             // an additional sanity check.
             let mut fulfill = FulfillmentContext::new();
-            fulfill.register_bound(
-                &infcx,
-                full_env,
-                ty,
-                trait_did,
-                ObligationCause::misc(DUMMY_SP, hir::DUMMY_HIR_ID),
-            );
+            fulfill.register_bound(&infcx, full_env, ty, trait_did, ObligationCause::dummy());
             fulfill.select_all_or_error(&infcx).unwrap_or_else(|e| {
                 panic!("Unable to fulfill trait {:?} for '{:?}': {:?}", trait_did, ty, e)
             });
@@ -201,7 +195,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             let body_id_map: FxHashMap<_, _> = infcx
                 .inner
                 .borrow()
-                .region_obligations
+                .region_obligations()
                 .iter()
                 .map(|&(id, _)| (id, vec![]))
                 .collect();
@@ -287,12 +281,12 @@ impl AutoTraitFinder<'tcx> {
             },
         }));
 
-        let mut computed_preds: FxHashSet<_> = param_env.caller_bounds.iter().cloned().collect();
+        let computed_preds = param_env.caller_bounds.iter().cloned();
         let mut user_computed_preds: FxHashSet<_> =
             user_env.caller_bounds.iter().cloned().collect();
 
         let mut new_env = param_env;
-        let dummy_cause = ObligationCause::misc(DUMMY_SP, hir::DUMMY_HIR_ID);
+        let dummy_cause = ObligationCause::dummy();
 
         while let Some(pred) = predicates.pop_front() {
             infcx.clear_caches();
@@ -314,19 +308,17 @@ impl AutoTraitFinder<'tcx> {
                 &Ok(Some(ref vtable)) => {
                     // If we see an explicit negative impl (e.g., `impl !Send for MyStruct`),
                     // we immediately bail out, since it's impossible for us to continue.
-                    match vtable {
-                        Vtable::VtableImpl(VtableImplData { impl_def_id, .. }) => {
-                            // Blame 'tidy' for the weird bracket placement.
-                            if infcx.tcx.impl_polarity(*impl_def_id) == ty::ImplPolarity::Negative {
-                                debug!(
-                                    "evaluate_nested_obligations: found explicit negative impl\
+
+                    if let Vtable::VtableImpl(VtableImplData { impl_def_id, .. }) = vtable {
+                        // Blame 'tidy' for the weird bracket placement.
+                        if infcx.tcx.impl_polarity(*impl_def_id) == ty::ImplPolarity::Negative {
+                            debug!(
+                                "evaluate_nested_obligations: found explicit negative impl\
                                         {:?}, bailing out",
-                                    impl_def_id
-                                );
-                                return None;
-                            }
+                                impl_def_id
+                            );
+                            return None;
                         }
-                        _ => {}
                     }
 
                     let obligations = vtable.clone().nested_obligations().into_iter();
@@ -366,9 +358,11 @@ impl AutoTraitFinder<'tcx> {
                 _ => panic!("Unexpected error for '{:?}': {:?}", ty, result),
             };
 
-            computed_preds.extend(user_computed_preds.iter().cloned());
-            let normalized_preds =
-                elaborate_predicates(tcx, computed_preds.iter().cloned().collect());
+            let normalized_preds = elaborate_predicates(
+                tcx,
+                computed_preds.clone().chain(user_computed_preds.iter().cloned()),
+            )
+            .map(|o| o.predicate);
             new_env =
                 ty::ParamEnv::new(tcx.mk_predicates(normalized_preds), param_env.reveal, None);
         }
@@ -417,80 +411,77 @@ impl AutoTraitFinder<'tcx> {
     ) {
         let mut should_add_new = true;
         user_computed_preds.retain(|&old_pred| {
-            match (&new_pred, old_pred) {
-                (&ty::Predicate::Trait(new_trait, _), ty::Predicate::Trait(old_trait, _)) => {
-                    if new_trait.def_id() == old_trait.def_id() {
-                        let new_substs = new_trait.skip_binder().trait_ref.substs;
-                        let old_substs = old_trait.skip_binder().trait_ref.substs;
+            if let (&ty::Predicate::Trait(new_trait, _), ty::Predicate::Trait(old_trait, _)) =
+                (&new_pred, old_pred)
+            {
+                if new_trait.def_id() == old_trait.def_id() {
+                    let new_substs = new_trait.skip_binder().trait_ref.substs;
+                    let old_substs = old_trait.skip_binder().trait_ref.substs;
 
-                        if !new_substs.types().eq(old_substs.types()) {
-                            // We can't compare lifetimes if the types are different,
-                            // so skip checking `old_pred`.
-                            return true;
-                        }
+                    if !new_substs.types().eq(old_substs.types()) {
+                        // We can't compare lifetimes if the types are different,
+                        // so skip checking `old_pred`.
+                        return true;
+                    }
 
-                        for (new_region, old_region) in
-                            new_substs.regions().zip(old_substs.regions())
-                        {
-                            match (new_region, old_region) {
-                                // If both predicates have an `ReLateBound` (a HRTB) in the
-                                // same spot, we do nothing.
-                                (
-                                    ty::RegionKind::ReLateBound(_, _),
-                                    ty::RegionKind::ReLateBound(_, _),
-                                ) => {}
+                    for (new_region, old_region) in new_substs.regions().zip(old_substs.regions()) {
+                        match (new_region, old_region) {
+                            // If both predicates have an `ReLateBound` (a HRTB) in the
+                            // same spot, we do nothing.
+                            (
+                                ty::RegionKind::ReLateBound(_, _),
+                                ty::RegionKind::ReLateBound(_, _),
+                            ) => {}
 
-                                (ty::RegionKind::ReLateBound(_, _), _)
-                                | (_, ty::RegionKind::ReVar(_)) => {
-                                    // One of these is true:
-                                    // The new predicate has a HRTB in a spot where the old
-                                    // predicate does not (if they both had a HRTB, the previous
-                                    // match arm would have executed). A HRBT is a 'stricter'
-                                    // bound than anything else, so we want to keep the newer
-                                    // predicate (with the HRBT) in place of the old predicate.
-                                    //
-                                    // OR
-                                    //
-                                    // The old predicate has a region variable where the new
-                                    // predicate has some other kind of region. An region
-                                    // variable isn't something we can actually display to a user,
-                                    // so we choose their new predicate (which doesn't have a region
-                                    // variable).
-                                    //
-                                    // In both cases, we want to remove the old predicate,
-                                    // from `user_computed_preds`, and replace it with the new
-                                    // one. Having both the old and the new
-                                    // predicate in a `ParamEnv` would confuse `SelectionContext`.
-                                    //
-                                    // We're currently in the predicate passed to 'retain',
-                                    // so we return `false` to remove the old predicate from
-                                    // `user_computed_preds`.
-                                    return false;
-                                }
-                                (_, ty::RegionKind::ReLateBound(_, _))
-                                | (ty::RegionKind::ReVar(_), _) => {
-                                    // This is the opposite situation as the previous arm.
-                                    // One of these is true:
-                                    //
-                                    // The old predicate has a HRTB lifetime in a place where the
-                                    // new predicate does not.
-                                    //
-                                    // OR
-                                    //
-                                    // The new predicate has a region variable where the old
-                                    // predicate has some other type of region.
-                                    //
-                                    // We want to leave the old
-                                    // predicate in `user_computed_preds`, and skip adding
-                                    // new_pred to `user_computed_params`.
-                                    should_add_new = false
-                                }
-                                _ => {}
+                            (ty::RegionKind::ReLateBound(_, _), _)
+                            | (_, ty::RegionKind::ReVar(_)) => {
+                                // One of these is true:
+                                // The new predicate has a HRTB in a spot where the old
+                                // predicate does not (if they both had a HRTB, the previous
+                                // match arm would have executed). A HRBT is a 'stricter'
+                                // bound than anything else, so we want to keep the newer
+                                // predicate (with the HRBT) in place of the old predicate.
+                                //
+                                // OR
+                                //
+                                // The old predicate has a region variable where the new
+                                // predicate has some other kind of region. An region
+                                // variable isn't something we can actually display to a user,
+                                // so we choose their new predicate (which doesn't have a region
+                                // variable).
+                                //
+                                // In both cases, we want to remove the old predicate,
+                                // from `user_computed_preds`, and replace it with the new
+                                // one. Having both the old and the new
+                                // predicate in a `ParamEnv` would confuse `SelectionContext`.
+                                //
+                                // We're currently in the predicate passed to 'retain',
+                                // so we return `false` to remove the old predicate from
+                                // `user_computed_preds`.
+                                return false;
                             }
+                            (_, ty::RegionKind::ReLateBound(_, _))
+                            | (ty::RegionKind::ReVar(_), _) => {
+                                // This is the opposite situation as the previous arm.
+                                // One of these is true:
+                                //
+                                // The old predicate has a HRTB lifetime in a place where the
+                                // new predicate does not.
+                                //
+                                // OR
+                                //
+                                // The new predicate has a region variable where the old
+                                // predicate has some other type of region.
+                                //
+                                // We want to leave the old
+                                // predicate in `user_computed_preds`, and skip adding
+                                // new_pred to `user_computed_params`.
+                                should_add_new = false
+                            }
+                            _ => {}
                         }
                     }
                 }
-                _ => {}
             }
             true
         });
@@ -619,7 +610,7 @@ impl AutoTraitFinder<'tcx> {
         select: &mut SelectionContext<'_, 'tcx>,
         only_projections: bool,
     ) -> bool {
-        let dummy_cause = ObligationCause::misc(DUMMY_SP, hir::DUMMY_HIR_ID);
+        let dummy_cause = ObligationCause::dummy();
 
         for (obligation, mut predicate) in nested.map(|o| (o.clone(), o.predicate)) {
             let is_new_pred = fresh_preds.insert(self.clean_pred(select.infcx(), predicate));
@@ -749,7 +740,7 @@ impl AutoTraitFinder<'tcx> {
                             if p.ty().skip_binder().has_infer_types() {
                                 if !self.evaluate_nested_obligations(
                                     ty,
-                                    v.clone().iter().cloned(),
+                                    v.into_iter(),
                                     computed_preds,
                                     fresh_preds,
                                     predicates,

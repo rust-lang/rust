@@ -1,0 +1,33 @@
+- // MIR for `test` before Deaggregator
++ // MIR for `test` after Deaggregator
+  
+  fn test(_1: i32) -> [Foo; 2] {
+      debug x => _1;                       // in scope 0 at $DIR/deaggregator_test_multiple.rs:9:9: 9:10
+      let mut _0: [Foo; 2];                // return place in scope 0 at $DIR/deaggregator_test_multiple.rs:9:20: 9:28
+      let mut _2: Foo;                     // in scope 0 at $DIR/deaggregator_test_multiple.rs:10:6: 10:15
+      let mut _3: i32;                     // in scope 0 at $DIR/deaggregator_test_multiple.rs:10:13: 10:14
+      let mut _4: Foo;                     // in scope 0 at $DIR/deaggregator_test_multiple.rs:10:17: 10:26
+      let mut _5: i32;                     // in scope 0 at $DIR/deaggregator_test_multiple.rs:10:24: 10:25
+  
+      bb0: {
+          StorageLive(_2);                 // scope 0 at $DIR/deaggregator_test_multiple.rs:10:6: 10:15
+          StorageLive(_3);                 // scope 0 at $DIR/deaggregator_test_multiple.rs:10:13: 10:14
+          _3 = _1;                         // scope 0 at $DIR/deaggregator_test_multiple.rs:10:13: 10:14
+-         _2 = Foo::A(move _3);            // scope 0 at $DIR/deaggregator_test_multiple.rs:10:6: 10:15
++         ((_2 as A).0: i32) = move _3;    // scope 0 at $DIR/deaggregator_test_multiple.rs:10:6: 10:15
++         discriminant(_2) = 0;            // scope 0 at $DIR/deaggregator_test_multiple.rs:10:6: 10:15
+          StorageDead(_3);                 // scope 0 at $DIR/deaggregator_test_multiple.rs:10:14: 10:15
+          StorageLive(_4);                 // scope 0 at $DIR/deaggregator_test_multiple.rs:10:17: 10:26
+          StorageLive(_5);                 // scope 0 at $DIR/deaggregator_test_multiple.rs:10:24: 10:25
+          _5 = _1;                         // scope 0 at $DIR/deaggregator_test_multiple.rs:10:24: 10:25
+-         _4 = Foo::A(move _5);            // scope 0 at $DIR/deaggregator_test_multiple.rs:10:17: 10:26
++         ((_4 as A).0: i32) = move _5;    // scope 0 at $DIR/deaggregator_test_multiple.rs:10:17: 10:26
++         discriminant(_4) = 0;            // scope 0 at $DIR/deaggregator_test_multiple.rs:10:17: 10:26
+          StorageDead(_5);                 // scope 0 at $DIR/deaggregator_test_multiple.rs:10:25: 10:26
+          _0 = [move _2, move _4];         // scope 0 at $DIR/deaggregator_test_multiple.rs:10:5: 10:27
+          StorageDead(_4);                 // scope 0 at $DIR/deaggregator_test_multiple.rs:10:26: 10:27
+          StorageDead(_2);                 // scope 0 at $DIR/deaggregator_test_multiple.rs:10:26: 10:27
+          return;                          // scope 0 at $DIR/deaggregator_test_multiple.rs:11:2: 11:2
+      }
+  }
+  

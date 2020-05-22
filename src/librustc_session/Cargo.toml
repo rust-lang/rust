@@ -9,6 +9,7 @@ name = "rustc_session"
 path = "lib.rs"
 
 [dependencies]
+getopts = "0.2"
 log = "0.4"
 rustc_errors = { path = "../librustc_errors" }
 rustc_feature = { path = "../librustc_feature" }
@@ -16,7 +17,6 @@ rustc_target = { path = "../librustc_target" }
 rustc_serialize = { path = "../libserialize", package = "serialize" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_span = { path = "../librustc_span" }
-rustc_index = { path = "../librustc_index" }
 rustc_fs_util = { path = "../librustc_fs_util" }
 num_cpus = "1.0"
 rustc_ast = { path = "../librustc_ast" }

@@ -12,9 +12,9 @@
 //! assert_eq!(Duration::new(5, 0), Duration::from_secs(5));
 //! ```
 
+use crate::fmt;
 use crate::iter::Sum;
 use crate::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
-use crate::{fmt, u64};
 
 const NANOS_PER_SEC: u32 = 1_000_000_000;
 const NANOS_PER_MILLI: u32 = 1_000_000;
@@ -389,7 +389,7 @@ impl Duration {
     /// use std::time::Duration;
     ///
     /// assert_eq!(Duration::new(0, 0).checked_add(Duration::new(0, 1)), Some(Duration::new(0, 1)));
-    /// assert_eq!(Duration::new(1, 0).checked_add(Duration::new(std::u64::MAX, 0)), None);
+    /// assert_eq!(Duration::new(1, 0).checked_add(Duration::new(u64::MAX, 0)), None);
     /// ```
     #[stable(feature = "duration_checked_ops", since = "1.16.0")]
     #[inline]
@@ -460,7 +460,7 @@ impl Duration {
     /// use std::time::Duration;
     ///
     /// assert_eq!(Duration::new(0, 500_000_001).checked_mul(2), Some(Duration::new(1, 2)));
-    /// assert_eq!(Duration::new(std::u64::MAX - 1, 0).checked_mul(2), None);
+    /// assert_eq!(Duration::new(u64::MAX - 1, 0).checked_mul(2), None);
     /// ```
     #[stable(feature = "duration_checked_ops", since = "1.16.0")]
     #[inline]

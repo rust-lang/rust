@@ -1,8 +1,8 @@
 use crate::attributes;
 use libc::c_uint;
-use rustc::bug;
-use rustc::ty::TyCtxt;
 use rustc_ast::expand::allocator::{AllocatorKind, AllocatorTy, ALLOCATOR_METHODS};
+use rustc_middle::bug;
+use rustc_middle::ty::TyCtxt;
 
 use crate::llvm::{self, False, True};
 use crate::ModuleLlvm;
@@ -54,7 +54,7 @@ pub(crate) unsafe fn codegen(tcx: TyCtxt<'_>, mods: &mut ModuleLlvm, kind: Alloc
         if tcx.sess.target.target.options.default_hidden_visibility {
             llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
         }
-        if tcx.sess.target.target.options.requires_uwtable {
+        if tcx.sess.must_emit_unwind_tables() {
             attributes::emit_uwtable(llfn, true);
         }
 

@@ -23,6 +23,14 @@ fi
 ci_dir=`cd $(dirname $0) && pwd`
 source "$ci_dir/shared.sh"
 
+if command -v python > /dev/null; then
+    PYTHON="python"
+elif command -v python3 > /dev/null; then
+    PYTHON="python3"
+else
+    PYTHON="python2"
+fi
+
 if ! isCI || isCiBranch auto || isCiBranch beta; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.print-step-timings --enable-verbose-tests"
 fi
@@ -107,7 +115,7 @@ SCCACHE_IDLE_TIMEOUT=10800 sccache --start-server || true
 
 if [ "$RUN_CHECK_WITH_PARALLEL_QUERIES" != "" ]; then
   $SRC/configure --enable-parallel-compiler
-  CARGO_INCREMENTAL=0 python2.7 ../x.py check
+  CARGO_INCREMENTAL=0 $PYTHON ../x.py check
   rm -f config.toml
   rm -rf build
 fi

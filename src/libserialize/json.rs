@@ -198,7 +198,7 @@ use std::num::FpCategory as Fp;
 use std::ops::Index;
 use std::str::FromStr;
 use std::string;
-use std::{char, f64, fmt, str};
+use std::{char, fmt, str};
 
 use crate::Encodable;
 
@@ -1417,16 +1417,18 @@ enum ParserState {
 
 /// A Stack represents the current position of the parser in the logical
 /// structure of the JSON stream.
-/// For example foo.bar[3].x
+///
+/// An example is `foo.bar[3].x`.
 pub struct Stack {
     stack: Vec<InternalStackElement>,
     str_buffer: Vec<u8>,
 }
 
 /// StackElements compose a Stack.
-/// For example, StackElement::Key("foo"), StackElement::Key("bar"),
-/// StackElement::Index(3) and StackElement::Key("x") are the
-/// StackElements compositing the stack that represents foo.bar[3].x
+///
+/// As an example, `StackElement::Key("foo")`, `StackElement::Key("bar")`,
+/// `StackElement::Index(3)`, and `StackElement::Key("x")` are the
+/// StackElements composing the stack that represents `foo.bar[3].x`.
 #[derive(PartialEq, Clone, Debug)]
 pub enum StackElement<'l> {
     Index(u32),
@@ -2305,7 +2307,7 @@ macro_rules! read_primitive {
                 value => Err(ExpectedError("Number".to_owned(), value.to_string())),
             }
         }
-    }
+    };
 }
 
 impl crate::Decoder for Decoder {
@@ -2682,11 +2684,11 @@ impl<A: ToJson> ToJson for Vec<A> {
     }
 }
 
-impl<A: ToJson> ToJson for BTreeMap<string::String, A> {
+impl<T: ToString, A: ToJson> ToJson for BTreeMap<T, A> {
     fn to_json(&self) -> Json {
         let mut d = BTreeMap::new();
         for (key, value) in self {
-            d.insert((*key).clone(), value.to_json());
+            d.insert(key.to_string(), value.to_json());
         }
         Json::Object(d)
     }

@@ -1,0 +1,143 @@
+// run-rustfix
+
+#![warn(clippy::len_zero)]
+#![allow(dead_code, unused, clippy::len_without_is_empty)]
+
+pub struct One;
+struct Wither;
+
+trait TraitsToo {
+    fn len(self: &Self) -> isize;
+    // No error; `len` is private; see issue #1085.
+}
+
+impl TraitsToo for One {
+    fn len(self: &Self) -> isize {
+        0
+    }
+}
+
+pub struct HasIsEmpty;
+
+impl HasIsEmpty {
+    pub fn len(self: &Self) -> isize {
+        1
+    }
+
+    fn is_empty(self: &Self) -> bool {
+        false
+    }
+}
+
+pub struct HasWrongIsEmpty;
+
+impl HasWrongIsEmpty {
+    pub fn len(self: &Self) -> isize {
+        1
+    }
+
+    pub fn is_empty(self: &Self, x: u32) -> bool {
+        false
+    }
+}
+
+pub trait WithIsEmpty {
+    fn len(self: &Self) -> isize;
+    fn is_empty(self: &Self) -> bool;
+}
+
+impl WithIsEmpty for Wither {
+    fn len(self: &Self) -> isize {
+        1
+    }
+
+    fn is_empty(self: &Self) -> bool {
+        false
+    }
+}
+
+fn main() {
+    let x = [1, 2];
+    if x.is_empty() {
+        println!("This should not happen!");
+    }
+
+    if "".is_empty() {}
+
+    let y = One;
+    if y.len() == 0 {
+        // No error; `One` does not have `.is_empty()`.
+        println!("This should not happen either!");
+    }
+
+    let z: &dyn TraitsToo = &y;
+    if z.len() > 0 {
+        // No error; `TraitsToo` has no `.is_empty()` method.
+        println!("Nor should this!");
+    }
+
+    let has_is_empty = HasIsEmpty;
+    if has_is_empty.is_empty() {
+        println!("Or this!");
+    }
+    if !has_is_empty.is_empty() {
+        println!("Or this!");
+    }
+    if !has_is_empty.is_empty() {
+        println!("Or this!");
+    }
+    if has_is_empty.is_empty() {
+        println!("Or this!");
+    }
+    if !has_is_empty.is_empty() {
+        println!("Or this!");
+    }
+    if has_is_empty.len() > 1 {
+        // No error.
+        println!("This can happen.");
+    }
+    if has_is_empty.len() <= 1 {
+        // No error.
+        println!("This can happen.");
+    }
+    if has_is_empty.is_empty() {
+        println!("Or this!");
+    }
+    if !has_is_empty.is_empty() {
+        println!("Or this!");
+    }
+    if !has_is_empty.is_empty() {
+        println!("Or this!");
+    }
+    if !has_is_empty.is_empty() {
+        println!("Or this!");
+    }
+    if has_is_empty.is_empty() {
+        println!("Or this!");
+    }
+    if 1 < has_is_empty.len() {
+        // No error.
+        println!("This can happen.");
+    }
+    if 1 >= has_is_empty.len() {
+        // No error.
+        println!("This can happen.");
+    }
+    assert!(!has_is_empty.is_empty());
+
+    let with_is_empty: &dyn WithIsEmpty = &Wither;
+    if with_is_empty.is_empty() {
+        println!("Or this!");
+    }
+    assert!(!with_is_empty.is_empty());
+
+    let has_wrong_is_empty = HasWrongIsEmpty;
+    if has_wrong_is_empty.len() == 0 {
+        // No error; `HasWrongIsEmpty` does not have `.is_empty()`.
+        println!("Or this!");
+    }
+}
+
+fn test_slice(b: &[u8]) {
+    if !b.is_empty() {}
+}

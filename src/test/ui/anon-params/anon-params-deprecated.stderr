@@ -30,3 +30,5 @@ LL |     fn bar_with_default_impl(String, String) {}
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
    = note: for more information, see issue #41686 <https://github.com/rust-lang/rust/issues/41686>
 
+warning: 3 warnings emitted
+

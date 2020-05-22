@@ -5,7 +5,7 @@
 //! For an overview of what canonicaliation is and how it fits into
 //! rustc, check out the [chapter in the rustc dev guide][c].
 //!
-//! [c]: https://rustc-dev-guide.rust-lang.org/traits/canonicalization.html
+//! [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html
 
 use crate::infer::canonical::substitute::{substitute_value, CanonicalExt};
 use crate::infer::canonical::{
@@ -16,16 +16,16 @@ use crate::infer::nll_relate::{NormalizationStrategy, TypeRelating, TypeRelating
 use crate::infer::region_constraints::{Constraint, RegionConstraintData};
 use crate::infer::{InferCtxt, InferOk, InferResult, NLLRegionVariableOrigin};
 use crate::traits::query::{Fallible, NoSolution};
-use crate::traits::{DomainGoal, TraitEngine};
+use crate::traits::TraitEngine;
 use crate::traits::{Obligation, ObligationCause, PredicateObligation};
-use rustc::arena::ArenaAllocatable;
-use rustc::ty::fold::TypeFoldable;
-use rustc::ty::relate::TypeRelation;
-use rustc::ty::subst::{GenericArg, GenericArgKind};
-use rustc::ty::{self, BoundVar, Ty, TyCtxt};
 use rustc_data_structures::captures::Captures;
 use rustc_index::vec::Idx;
 use rustc_index::vec::IndexVec;
+use rustc_middle::arena::ArenaAllocatable;
+use rustc_middle::ty::fold::TypeFoldable;
+use rustc_middle::ty::relate::TypeRelation;
+use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
+use rustc_middle::ty::{self, BoundVar, Const, Ty, TyCtxt};
 use std::fmt::Debug;
 
 impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
@@ -154,7 +154,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     /// To get a good understanding of what is happening here, check
     /// out the [chapter in the rustc dev guide][c].
     ///
-    /// [c]: https://rustc-dev-guide.rust-lang.org/traits/canonicalization.html#processing-the-canonicalized-query-result
+    /// [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html#processing-the-canonicalized-query-result
     pub fn instantiate_query_response_and_region_obligations<R>(
         &self,
         cause: &ObligationCause<'tcx>,
@@ -671,8 +671,11 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for QueryTypeRelatingDelegate<'_, 'tcx> {
         });
     }
 
-    fn push_domain_goal(&mut self, _: DomainGoal<'tcx>) {
-        bug!("should never be invoked with eager normalization")
+    fn const_equate(&mut self, _a: &'tcx Const<'tcx>, _b: &'tcx Const<'tcx>) {
+        span_bug!(
+            self.cause.span(self.infcx.tcx),
+            "lazy_normalization_consts: unreachable `const_equate`"
+        );
     }
 
     fn normalization() -> NormalizationStrategy {

@@ -1,13 +1,22 @@
 pub use super::*;
 
-use crate::dataflow::generic::{self as dataflow, GenKill, Results, ResultsRefCursor};
 use crate::dataflow::BottomValue;
-use rustc::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
-use rustc::mir::*;
+use crate::dataflow::{self, GenKill, Results, ResultsRefCursor};
+use crate::util::storage::AlwaysLiveLocals;
+use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
+use rustc_middle::mir::*;
 use std::cell::RefCell;
 
-#[derive(Copy, Clone)]
-pub struct MaybeStorageLive;
+#[derive(Clone)]
+pub struct MaybeStorageLive {
+    always_live_locals: AlwaysLiveLocals,
+}
+
+impl MaybeStorageLive {
+    pub fn new(always_live_locals: AlwaysLiveLocals) -> Self {
+        MaybeStorageLive { always_live_locals }
+    }
+}
 
 impl dataflow::AnalysisDomain<'tcx> for MaybeStorageLive {
     type Idx = Local;
@@ -19,9 +28,12 @@ impl dataflow::AnalysisDomain<'tcx> for MaybeStorageLive {
     }
 
     fn initialize_start_block(&self, body: &mir::Body<'tcx>, on_entry: &mut BitSet<Self::Idx>) {
-        // The resume argument is live on function entry (we don't care about
-        // the `self` argument)
-        for arg in body.args_iter().skip(1) {
+        assert_eq!(body.local_decls.len(), self.always_live_locals.domain_size());
+        for local in self.always_live_locals.iter() {
+            on_entry.insert(local);
+        }
+
+        for arg in body.args_iter() {
             on_entry.insert(arg);
         }
     }
@@ -56,7 +68,7 @@ impl dataflow::GenKillAnalysis<'tcx> for MaybeStorageLive {
         _block: BasicBlock,
         _func: &mir::Operand<'tcx>,
         _args: &[mir::Operand<'tcx>],
-        _return_place: &mir::Place<'tcx>,
+        _return_place: mir::Place<'tcx>,
     ) {
         // Nothing to do when a call returns successfully
     }
@@ -72,18 +84,18 @@ type BorrowedLocalsResults<'a, 'tcx> = ResultsRefCursor<'a, 'a, 'tcx, MaybeBorro
 /// Dataflow analysis that determines whether each local requires storage at a
 /// given location; i.e. whether its storage can go away without being observed.
 pub struct MaybeRequiresStorage<'mir, 'tcx> {
-    body: ReadOnlyBodyAndCache<'mir, 'tcx>,
+    body: &'mir Body<'tcx>,
     borrowed_locals: RefCell<BorrowedLocalsResults<'mir, 'tcx>>,
 }
 
 impl<'mir, 'tcx> MaybeRequiresStorage<'mir, 'tcx> {
     pub fn new(
-        body: ReadOnlyBodyAndCache<'mir, 'tcx>,
+        body: &'mir Body<'tcx>,
         borrowed_locals: &'mir Results<'tcx, MaybeBorrowedLocals>,
     ) -> Self {
         MaybeRequiresStorage {
             body,
-            borrowed_locals: RefCell::new(ResultsRefCursor::new(*body, borrowed_locals)),
+            borrowed_locals: RefCell::new(ResultsRefCursor::new(&body, borrowed_locals)),
         }
     }
 }
@@ -124,7 +136,7 @@ impl<'mir, 'tcx> dataflow::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'mir, 
             | StatementKind::SetDiscriminant { box place, .. } => {
                 trans.gen(place.local);
             }
-            StatementKind::InlineAsm(asm) => {
+            StatementKind::LlvmInlineAsm(asm) => {
                 for place in &*asm.outputs {
                     trans.gen(place.local);
                 }
@@ -171,6 +183,23 @@ impl<'mir, 'tcx> dataflow::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'mir, 
             // place to have storage *before* the yield, only after.
             TerminatorKind::Yield { .. } => {}
 
+            TerminatorKind::InlineAsm { operands, .. } => {
+                for op in operands {
+                    match op {
+                        InlineAsmOperand::Out { place, .. }
+                        | InlineAsmOperand::InOut { out_place: place, .. } => {
+                            if let Some(place) = place {
+                                trans.gen(place.local);
+                            }
+                        }
+                        InlineAsmOperand::In { .. }
+                        | InlineAsmOperand::Const { .. }
+                        | InlineAsmOperand::SymFn { .. }
+                        | InlineAsmOperand::SymStatic { .. } => {}
+                    }
+                }
+            }
+
             // Nothing to do for these. Match exhaustively so this fails to compile when new
             // variants are added.
             TerminatorKind::Call { destination: None, .. }
@@ -216,6 +245,7 @@ impl<'mir, 'tcx> dataflow::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'mir, 
             | TerminatorKind::FalseUnwind { .. }
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::Goto { .. }
+            | TerminatorKind::InlineAsm { .. }
             | TerminatorKind::Resume
             | TerminatorKind::Return
             | TerminatorKind::SwitchInt { .. }
@@ -231,16 +261,16 @@ impl<'mir, 'tcx> dataflow::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'mir, 
         _block: BasicBlock,
         _func: &mir::Operand<'tcx>,
         _args: &[mir::Operand<'tcx>],
-        return_place: &mir::Place<'tcx>,
+        return_place: mir::Place<'tcx>,
     ) {
         trans.gen(return_place.local);
     }
 
     fn yield_resume_effect(
         &self,
-        trans: &mut BitSet<Self::Idx>,
+        trans: &mut impl GenKill<Self::Idx>,
         _resume_block: BasicBlock,
-        resume_place: &mir::Place<'tcx>,
+        resume_place: mir::Place<'tcx>,
     ) {
         trans.gen(resume_place.local);
     }
@@ -250,7 +280,7 @@ impl<'mir, 'tcx> MaybeRequiresStorage<'mir, 'tcx> {
     /// Kill locals that are fully moved and have not been borrowed.
     fn check_for_move(&self, trans: &mut impl GenKill<Local>, loc: Location) {
         let mut visitor = MoveVisitor { trans, borrowed_locals: &self.borrowed_locals };
-        visitor.visit_location(self.body, loc);
+        visitor.visit_location(&self.body, loc);
     }
 }
 
@@ -271,7 +301,7 @@ where
     fn visit_local(&mut self, local: &Local, context: PlaceContext, loc: Location) {
         if PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) == context {
             let mut borrowed_locals = self.borrowed_locals.borrow_mut();
-            borrowed_locals.seek_before(loc);
+            borrowed_locals.seek_before_primary_effect(loc);
             if !borrowed_locals.contains(*local) {
                 self.trans.kill(*local);
             }

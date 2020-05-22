@@ -20,12 +20,11 @@ LL |     5u32
    |     ---- this returned value is of type `u32`
    |
    = help: the trait `std::fmt::Debug` is not implemented for `U`
-help: consider restricting this type parameter with `U: std::fmt::Debug`
-  --> $DIR/generic_underconstrained2.rs:10:21
-   |
-LL | fn underconstrained<U>(_: U) -> Underconstrained<U> {
-   |                     ^
    = note: the return type of a function must have a statically known size
+help: consider restricting type parameter `U`
+   |
+LL | fn underconstrained<U: std::fmt::Debug>(_: U) -> Underconstrained<U> {
+   |                      ^^^^^^^^^^^^^^^^^
 
 error[E0277]: `V` doesn't implement `std::fmt::Debug`
   --> $DIR/generic_underconstrained2.rs:14:1
@@ -37,12 +36,11 @@ LL |     5u32
    |     ---- this returned value is of type `u32`
    |
    = help: the trait `std::fmt::Debug` is not implemented for `V`
-help: consider restricting this type parameter with `V: std::fmt::Debug`
-  --> $DIR/generic_underconstrained2.rs:19:25
-   |
-LL | fn underconstrained2<U, V>(_: U, _: V) -> Underconstrained2<V> {
-   |                         ^
    = note: the return type of a function must have a statically known size
+help: consider restricting type parameter `V`
+   |
+LL | fn underconstrained2<U, V: std::fmt::Debug>(_: U, _: V) -> Underconstrained2<V> {
+   |                          ^^^^^^^^^^^^^^^^^
 
 error: aborting due to 4 previous errors
 

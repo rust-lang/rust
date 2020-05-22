@@ -1,16 +1,17 @@
 use crate::transform::{MirPass, MirSource};
 use crate::util::patch::MirPatch;
-use rustc::mir::*;
-use rustc::ty::TyCtxt;
 use rustc_index::bit_set::BitSet;
+use rustc_middle::mir::*;
+use rustc_middle::ty::TyCtxt;
+use rustc_target::spec::PanicStrategy;
 
 /// A pass that removes noop landing pads and replaces jumps to them with
 /// `None`. This is important because otherwise LLVM generates terrible
 /// code for these.
 pub struct RemoveNoopLandingPads;
 
-pub fn remove_noop_landing_pads<'tcx>(tcx: TyCtxt<'tcx>, body: &mut BodyAndCache<'tcx>) {
-    if tcx.sess.no_landing_pads() {
+pub fn remove_noop_landing_pads<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+    if tcx.sess.panic_strategy() == PanicStrategy::Abort {
         return;
     }
     debug!("remove_noop_landing_pads({:?})", body);
@@ -19,7 +20,7 @@ pub fn remove_noop_landing_pads<'tcx>(tcx: TyCtxt<'tcx>, body: &mut BodyAndCache
 }
 
 impl<'tcx> MirPass<'tcx> for RemoveNoopLandingPads {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, _src: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, _src: MirSource<'tcx>, body: &mut Body<'tcx>) {
         remove_noop_landing_pads(tcx, body);
     }
 }
@@ -52,7 +53,7 @@ impl RemoveNoopLandingPads {
 
                 StatementKind::Assign { .. }
                 | StatementKind::SetDiscriminant { .. }
-                | StatementKind::InlineAsm { .. }
+                | StatementKind::LlvmInlineAsm { .. }
                 | StatementKind::Retag { .. } => {
                     return false;
                 }
@@ -76,11 +77,12 @@ impl RemoveNoopLandingPads {
             | TerminatorKind::Call { .. }
             | TerminatorKind::Assert { .. }
             | TerminatorKind::DropAndReplace { .. }
-            | TerminatorKind::Drop { .. } => false,
+            | TerminatorKind::Drop { .. }
+            | TerminatorKind::InlineAsm { .. } => false,
         }
     }
 
-    fn remove_nop_landing_pads(&self, body: &mut BodyAndCache<'_>) {
+    fn remove_nop_landing_pads(&self, body: &mut Body<'_>) {
         // make sure there's a single resume block
         let resume_block = {
             let patch = MirPatch::new(body);
@@ -107,16 +109,13 @@ impl RemoveNoopLandingPads {
                 }
             }
 
-            match body[bb].terminator_mut().unwind_mut() {
-                Some(unwind) => {
-                    if *unwind == Some(resume_block) {
-                        debug!("    removing noop landing pad");
-                        jumps_folded -= 1;
-                        landing_pads_removed += 1;
-                        *unwind = None;
-                    }
+            if let Some(unwind) = body[bb].terminator_mut().unwind_mut() {
+                if *unwind == Some(resume_block) {
+                    debug!("    removing noop landing pad");
+                    jumps_folded -= 1;
+                    landing_pads_removed += 1;
+                    *unwind = None;
                 }
-                _ => {}
             }
 
             let is_nop_landing_pad = self.is_nop_landing_pad(bb, body, &nop_landing_pads);

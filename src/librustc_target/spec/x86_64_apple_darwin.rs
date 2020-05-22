@@ -16,7 +16,7 @@ pub fn target() -> TargetResult {
     let llvm_target = super::apple_base::macos_llvm_target(&arch);
 
     Ok(Target {
-        llvm_target: llvm_target,
+        llvm_target,
         target_endian: "little".to_string(),
         target_pointer_width: "64".to_string(),
         target_c_int_width: "32".to_string(),

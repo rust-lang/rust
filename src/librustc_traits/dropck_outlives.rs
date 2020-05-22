@@ -1,11 +1,11 @@
-use rustc::ty::query::Providers;
-use rustc::ty::subst::{InternalSubsts, Subst};
-use rustc::ty::{self, ParamEnvAnd, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::canonical::{Canonical, QueryResponse};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::TraitEngineExt as _;
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::subst::{InternalSubsts, Subst};
+use rustc_middle::ty::{self, ParamEnvAnd, Ty, TyCtxt};
 use rustc_span::source_map::{Span, DUMMY_SP};
 use rustc_trait_selection::traits::query::dropck_outlives::trivial_dropck_outlives;
 use rustc_trait_selection::traits::query::dropck_outlives::{
@@ -191,10 +191,12 @@ fn dtorck_constraint_for_ty<'tcx>(
 
         ty::Array(ety, _) | ty::Slice(ety) => {
             // single-element containers, behave like their element
-            dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, ety, constraints)?;
+            rustc_data_structures::stack::ensure_sufficient_stack(|| {
+                dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, ety, constraints)
+            })?;
         }
 
-        ty::Tuple(tys) => {
+        ty::Tuple(tys) => rustc_data_structures::stack::ensure_sufficient_stack(|| {
             for ty in tys.iter() {
                 dtorck_constraint_for_ty(
                     tcx,
@@ -205,13 +207,15 @@ fn dtorck_constraint_for_ty<'tcx>(
                     constraints,
                 )?;
             }
-        }
+            Ok::<_, NoSolution>(())
+        })?,
 
-        ty::Closure(_, substs) => {
+        ty::Closure(_, substs) => rustc_data_structures::stack::ensure_sufficient_stack(|| {
             for ty in substs.as_closure().upvar_tys() {
                 dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, ty, constraints)?;
             }
-        }
+            Ok::<_, NoSolution>(())
+        })?,
 
         ty::Generator(_, substs, _movability) => {
             // rust-lang/rust#49918: types can be constructed, stored
@@ -266,8 +270,6 @@ fn dtorck_constraint_for_ty<'tcx>(
         ty::Projection(..) | ty::Opaque(..) | ty::Param(..) => {
             constraints.dtorck_types.push(ty);
         }
-
-        ty::UnnormalizedProjection(..) => bug!("only used with chalk-engine"),
 
         ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) | ty::Error => {
             // By the time this code runs, all type variables ought to

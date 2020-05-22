@@ -65,6 +65,7 @@ impl DoubleEndedIterator for Args {
     target_os = "netbsd",
     target_os = "openbsd",
     target_os = "solaris",
+    target_os = "illumos",
     target_os = "emscripten",
     target_os = "haiku",
     target_os = "l4re",

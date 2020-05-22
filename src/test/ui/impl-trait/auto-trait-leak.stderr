@@ -258,7 +258,7 @@ error[E0277]: `std::rc::Rc<std::string::String>` cannot be sent between threads 
   --> $DIR/auto-trait-leak.rs:16:5
    |
 LL | fn send<T: Send>(_: T) {}
-   |    ----    ---- required by this bound in `send`
+   |            ---- required by this bound in `send`
 ...
 LL |     send(cycle2().clone());
    |     ^^^^ `std::rc::Rc<std::string::String>` cannot be sent between threads safely

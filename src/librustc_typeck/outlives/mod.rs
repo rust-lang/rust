@@ -1,9 +1,9 @@
 use hir::Node;
-use rustc::ty::query::Providers;
-use rustc::ty::subst::GenericArgKind;
-use rustc::ty::{self, CratePredicatesMap, TyCtxt};
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::subst::GenericArgKind;
+use rustc_middle::ty::{self, CratePredicatesMap, TyCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 
@@ -18,7 +18,7 @@ pub fn provide(providers: &mut Providers<'_>) {
 }
 
 fn inferred_outlives_of(tcx: TyCtxt<'_>, item_def_id: DefId) -> &[(ty::Predicate<'_>, Span)] {
-    let id = tcx.hir().as_local_hir_id(item_def_id).expect("expected local def-id");
+    let id = tcx.hir().as_local_hir_id(item_def_id.expect_local());
 
     match tcx.hir().get(id) {
         Node::Item(item) => match item.kind {
@@ -58,7 +58,7 @@ fn inferred_outlives_of(tcx: TyCtxt<'_>, item_def_id: DefId) -> &[(ty::Predicate
     }
 }
 
-fn inferred_outlives_crate(tcx: TyCtxt<'_>, crate_num: CrateNum) -> &CratePredicatesMap<'_> {
+fn inferred_outlives_crate(tcx: TyCtxt<'_>, crate_num: CrateNum) -> CratePredicatesMap<'_> {
     assert_eq!(crate_num, LOCAL_CRATE);
 
     // Compute a map from each struct/enum/union S to the **explicit**
@@ -105,5 +105,5 @@ fn inferred_outlives_crate(tcx: TyCtxt<'_>, crate_num: CrateNum) -> &CratePredic
         })
         .collect();
 
-    tcx.arena.alloc(ty::CratePredicatesMap { predicates })
+    ty::CratePredicatesMap { predicates }
 }

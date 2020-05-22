@@ -14,7 +14,7 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
       libc6-dev \
       libc6-dev-arm64-cross \
       make \
-      python2.7 \
+      python3 \
       qemu-system-aarch64 \
       xz-utils
 
@@ -75,5 +75,5 @@ RUN sh /scripts/sccache.sh
 
 ENV RUST_CONFIGURE_ARGS \
       --qemu-aarch64-rootfs=/tmp/rootfs
-ENV SCRIPT python2.7 ../x.py test --target aarch64-unknown-linux-gnu
+ENV SCRIPT python3 ../x.py test --target aarch64-unknown-linux-gnu
 ENV NO_CHANGE_USER=1

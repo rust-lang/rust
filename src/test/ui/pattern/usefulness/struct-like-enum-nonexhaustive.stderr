@@ -12,6 +12,7 @@ LL |       match x {
    |             ^ pattern `B { x: Some(_) }` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `A`
 
 error: aborting due to previous error
 

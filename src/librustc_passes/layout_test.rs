@@ -1,18 +1,12 @@
-use rustc::ty::layout::HasDataLayout;
-use rustc::ty::layout::HasParamEnv;
-use rustc::ty::layout::HasTyCtxt;
-use rustc::ty::layout::LayoutOf;
-use rustc::ty::layout::TargetDataLayout;
-use rustc::ty::layout::TyLayout;
-use rustc::ty::ParamEnv;
-use rustc::ty::Ty;
-use rustc::ty::TyCtxt;
 use rustc_ast::ast::Attribute;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::ItemKind;
+use rustc_middle::ty::layout::{HasParamEnv, HasTyCtxt, TyAndLayout};
+use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
 use rustc_span::symbol::sym;
+use rustc_target::abi::{HasDataLayout, LayoutOf, TargetDataLayout};
 
 pub fn test_layout(tcx: TyCtxt<'_>) {
     if tcx.features().rustc_attrs {
@@ -33,8 +27,9 @@ impl ItemLikeVisitor<'tcx> for LayoutTest<'tcx> {
             ItemKind::TyAlias(..)
             | ItemKind::Enum(..)
             | ItemKind::Struct(..)
-            | ItemKind::Union(..) => {
-                for attr in self.tcx.get_attrs(item_def_id).iter() {
+            | ItemKind::Union(..)
+            | ItemKind::OpaqueTy(..) => {
+                for attr in self.tcx.get_attrs(item_def_id.to_def_id()).iter() {
                     if attr.check_name(sym::rustc_layout) {
                         self.dump_layout_of(item_def_id, item, attr);
                     }
@@ -49,7 +44,7 @@ impl ItemLikeVisitor<'tcx> for LayoutTest<'tcx> {
 }
 
 impl LayoutTest<'tcx> {
-    fn dump_layout_of(&self, item_def_id: DefId, item: &hir::Item<'tcx>, attr: &Attribute) {
+    fn dump_layout_of(&self, item_def_id: LocalDefId, item: &hir::Item<'tcx>, attr: &Attribute) {
         let tcx = self.tcx;
         let param_env = self.tcx.param_env(item_def_id);
         let ty = self.tcx.type_of(item_def_id);
@@ -90,7 +85,7 @@ impl LayoutTest<'tcx> {
                         sym::debug => {
                             self.tcx.sess.span_err(
                                 item.span,
-                                &format!("layout debugging: {:#?}", *ty_layout),
+                                &format!("layout_of({:?}) = {:#?}", ty, *ty_layout),
                             );
                         }
 
@@ -118,9 +113,9 @@ struct UnwrapLayoutCx<'tcx> {
 
 impl LayoutOf for UnwrapLayoutCx<'tcx> {
     type Ty = Ty<'tcx>;
-    type TyLayout = TyLayout<'tcx>;
+    type TyAndLayout = TyAndLayout<'tcx>;
 
-    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyLayout {
+    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyAndLayout {
         self.tcx.layout_of(self.param_env.and(ty)).unwrap()
     }
 }

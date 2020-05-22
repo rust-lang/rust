@@ -1,0 +1,54 @@
+error: this arithmetic operation will overflow
+  --> $DIR/issue-69020-assoc-const-arith-overflow.rs:29:22
+   |
+LL |     const NEG: i32 = -i32::MIN + T::NEG;
+   |                      ^^^^^^^^^ attempt to negate with overflow
+   |
+   = note: `#[deny(arithmetic_overflow)]` on by default
+
+error: this arithmetic operation will overflow
+  --> $DIR/issue-69020-assoc-const-arith-overflow.rs:31:35
+   |
+LL |     const NEG_REV: i32 = T::NEG + (-i32::MIN);
+   |                                   ^^^^^^^^^^^ attempt to negate with overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/issue-69020-assoc-const-arith-overflow.rs:34:22
+   |
+LL |     const ADD: i32 = (i32::MAX+1) + T::ADD;
+   |                      ^^^^^^^^^^^^ attempt to add with overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/issue-69020-assoc-const-arith-overflow.rs:36:36
+   |
+LL |     const ADD_REV: i32 =  T::ADD + (i32::MAX+1);
+   |                                    ^^^^^^^^^^^^ attempt to add with overflow
+
+error: this operation will panic at runtime
+  --> $DIR/issue-69020-assoc-const-arith-overflow.rs:39:22
+   |
+LL |     const DIV: i32 = (1/0) + T::DIV;
+   |                      ^^^^^ attempt to divide by zero
+   |
+   = note: `#[deny(unconditional_panic)]` on by default
+
+error: this operation will panic at runtime
+  --> $DIR/issue-69020-assoc-const-arith-overflow.rs:41:35
+   |
+LL |     const DIV_REV: i32 = T::DIV + (1/0);
+   |                                   ^^^^^ attempt to divide by zero
+
+error: this operation will panic at runtime
+  --> $DIR/issue-69020-assoc-const-arith-overflow.rs:44:22
+   |
+LL |     const OOB: i32 = [1][1] + T::OOB;
+   |                      ^^^^^^ index out of bounds: the len is 1 but the index is 1
+
+error: this operation will panic at runtime
+  --> $DIR/issue-69020-assoc-const-arith-overflow.rs:46:35
+   |
+LL |     const OOB_REV: i32 = T::OOB + [1][1];
+   |                                   ^^^^^^ index out of bounds: the len is 1 but the index is 1
+
+error: aborting due to 8 previous errors
+

@@ -1,0 +1,9 @@
+error[E0284]: type annotations needed: cannot satisfy `<u64 as Test<_>>::Output == _`
+  --> $DIR/issue-69455.rs:29:26
+   |
+LL |     println!("{}", 23u64.test(xs.iter().sum()));
+   |                          ^^^^ cannot satisfy `<u64 as Test<_>>::Output == _`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0284`.

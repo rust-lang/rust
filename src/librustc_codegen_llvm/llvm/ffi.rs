@@ -124,6 +124,8 @@ pub enum Attribute {
     NonLazyBind = 23,
     OptimizeNone = 24,
     ReturnsTwice = 25,
+    ReadNone = 26,
+    InaccessibleMemOnly = 27,
 }
 
 /// LLVMIntPredicate
@@ -389,10 +391,10 @@ pub enum AsmDialect {
 }
 
 impl AsmDialect {
-    pub fn from_generic(asm: rustc_ast::ast::AsmDialect) -> Self {
+    pub fn from_generic(asm: rustc_ast::ast::LlvmAsmDialect) -> Self {
         match asm {
-            rustc_ast::ast::AsmDialect::Att => AsmDialect::Att,
-            rustc_ast::ast::AsmDialect::Intel => AsmDialect::Intel,
+            rustc_ast::ast::LlvmAsmDialect::Att => AsmDialect::Att,
+            rustc_ast::ast::LlvmAsmDialect::Intel => AsmDialect::Intel,
         }
     }
 }
@@ -445,8 +447,7 @@ pub struct SanitizerOptions {
 /// LLVMRelocMode
 #[derive(Copy, Clone, PartialEq)]
 #[repr(C)]
-pub enum RelocMode {
-    Default,
+pub enum RelocModel {
     Static,
     PIC,
     DynamicNoPic,
@@ -459,9 +460,7 @@ pub enum RelocMode {
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub enum CodeModel {
-    // FIXME: figure out if this variant is needed at all.
-    #[allow(dead_code)]
-    Other,
+    Tiny,
     Small,
     Kernel,
     Medium,
@@ -544,6 +543,15 @@ pub enum ThreadLocalMode {
     LocalDynamic,
     InitialExec,
     LocalExec,
+}
+
+/// LLVMRustChecksumKind
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub enum ChecksumKind {
+    None,
+    MD5,
+    SHA1,
 }
 
 extern "C" {
@@ -1640,6 +1648,9 @@ extern "C" {
         FilenameLen: size_t,
         Directory: *const c_char,
         DirectoryLen: size_t,
+        CSKind: ChecksumKind,
+        Checksum: *const c_char,
+        ChecksumLen: size_t,
     ) -> &'a DIFile;
 
     pub fn LLVMRustDIBuilderCreateSubroutineType(
@@ -1934,7 +1945,7 @@ extern "C" {
         Features: *const c_char,
         Abi: *const c_char,
         Model: CodeModel,
-        Reloc: RelocMode,
+        Reloc: RelocModel,
         Level: CodeGenOptLevel,
         UseSoftFP: bool,
         PositionIndependentExecutable: bool,
@@ -1945,6 +1956,7 @@ extern "C" {
         AsmComments: bool,
         EmitStackSizeSection: bool,
         RelaxELFRelocations: bool,
+        UseInitArray: bool,
     ) -> Option<&'static mut TargetMachine>;
     pub fn LLVMRustDisposeTargetMachine(T: &'static mut TargetMachine);
     pub fn LLVMRustAddBuilderLibraryInfo(
@@ -1988,6 +2000,7 @@ extern "C" {
         SLPVectorize: bool,
         LoopVectorize: bool,
         DisableSimplifyLibCalls: bool,
+        EmitLifetimeMarkers: bool,
         SanitizerOptions: Option<&SanitizerOptions>,
         PGOGenPath: *const c_char,
         PGOUsePath: *const c_char,
@@ -2126,6 +2139,11 @@ extern "C" {
         len: usize,
         Identifier: *const c_char,
     ) -> Option<&Module>;
+    pub fn LLVMRustGetBitcodeSliceFromObjectData(
+        Data: *const u8,
+        len: usize,
+        out_len: &mut usize,
+    ) -> *const u8;
     pub fn LLVMRustThinLTOGetDICompileUnit(
         M: &Module,
         CU1: &mut *mut c_void,

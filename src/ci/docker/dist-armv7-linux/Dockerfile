@@ -3,8 +3,8 @@ FROM ubuntu:16.04
 COPY scripts/cross-apt-packages.sh /scripts/
 RUN sh /scripts/cross-apt-packages.sh
 
-COPY dist-armv7-linux/crosstool-ng.sh /scripts/
-RUN sh /scripts/crosstool-ng.sh
+COPY scripts/crosstool-ng-1.24.sh /scripts/
+RUN sh /scripts/crosstool-ng-1.24.sh
 
 COPY scripts/rustbuild-setup.sh /scripts/
 RUN sh /scripts/rustbuild-setup.sh
@@ -27,5 +27,5 @@ ENV CC_armv7_unknown_linux_gnueabihf=armv7-unknown-linux-gnueabihf-gcc \
 
 ENV HOSTS=armv7-unknown-linux-gnueabihf
 
-ENV RUST_CONFIGURE_ARGS --enable-extended --disable-docs
-ENV SCRIPT python2.7 ../x.py dist --host $HOSTS --target $HOSTS
+ENV RUST_CONFIGURE_ARGS --enable-full-tools --disable-docs
+ENV SCRIPT python3 ../x.py dist --host $HOSTS --target $HOSTS

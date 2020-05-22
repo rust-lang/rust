@@ -1,6 +1,6 @@
-use rustc::ty::outlives::Component;
-use rustc::ty::subst::{GenericArg, GenericArgKind};
-use rustc::ty::{self, Region, RegionKind, Ty, TyCtxt};
+use rustc_middle::ty::outlives::Component;
+use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
+use rustc_middle::ty::{self, Region, RegionKind, Ty, TyCtxt};
 use rustc_span::Span;
 use smallvec::smallvec;
 use std::collections::BTreeMap;

@@ -1,23 +1,20 @@
 use super::ty::AllowPlus;
 use super::{BlockMode, Parser, PathStyle, SemiColonMode, SeqSep, TokenExpectType, TokenType};
 
-use rustc_ast::ast::{
-    self, BinOpKind, BindingMode, BlockCheckMode, Expr, ExprKind, Ident, Item, Param,
-};
+use rustc_ast::ast::{self, BinOpKind, BindingMode, BlockCheckMode, Expr, ExprKind, Item, Param};
 use rustc_ast::ast::{AttrVec, ItemKind, Mutability, Pat, PatKind, PathSegment, QSelf, Ty, TyKind};
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, TokenKind};
+use rustc_ast::token::{self, Lit, LitKind, TokenKind};
 use rustc_ast::util::parser::AssocOp;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{pluralize, struct_span_err};
 use rustc_errors::{Applicability, DiagnosticBuilder, Handler, PResult};
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::kw;
+use rustc_span::symbol::{kw, Ident};
 use rustc_span::{MultiSpan, Span, SpanSnippetError, DUMMY_SP};
 
 use log::{debug, trace};
-use std::mem;
 
 const TURBOFISH: &str = "use `::<...>` instead of `<...>` to specify type arguments";
 
@@ -256,6 +253,10 @@ impl<'a> Parser<'a> {
             }
         }
 
+        if self.check_too_many_raw_str_terminators(&mut err) {
+            return Err(err);
+        }
+
         let sm = self.sess.source_map();
         if self.prev_token.span == DUMMY_SP {
             // Account for macro context where the previous span might not be
@@ -281,6 +282,29 @@ impl<'a> Parser<'a> {
         }
         self.maybe_annotate_with_ascription(&mut err, false);
         Err(err)
+    }
+
+    fn check_too_many_raw_str_terminators(&mut self, err: &mut DiagnosticBuilder<'_>) -> bool {
+        match (&self.prev_token.kind, &self.token.kind) {
+            (
+                TokenKind::Literal(Lit {
+                    kind: LitKind::StrRaw(n_hashes) | LitKind::ByteStrRaw(n_hashes),
+                    ..
+                }),
+                TokenKind::Pound,
+            ) => {
+                err.set_primary_message("too many `#` when terminating raw string");
+                err.span_suggestion(
+                    self.token.span,
+                    "remove the extra `#`",
+                    String::new(),
+                    Applicability::MachineApplicable,
+                );
+                err.note(&format!("the raw string started with {} `#`s", n_hashes));
+                true
+            }
+            _ => false,
+        }
     }
 
     pub fn maybe_annotate_with_ascription(
@@ -459,48 +483,85 @@ impl<'a> Parser<'a> {
         err: &mut DiagnosticBuilder<'_>,
         inner_op: &Expr,
         outer_op: &Spanned<AssocOp>,
-    ) {
+    ) -> bool /* advanced the cursor */ {
         if let ExprKind::Binary(op, ref l1, ref r1) = inner_op.kind {
-            match (op.node, &outer_op.node) {
+            if let ExprKind::Field(_, ident) = l1.kind {
+                if ident.as_str().parse::<i32>().is_err() && !matches!(r1.kind, ExprKind::Lit(_)) {
+                    // The parser has encountered `foo.bar<baz`, the likelihood of the turbofish
+                    // suggestion being the only one to apply is high.
+                    return false;
+                }
+            }
+            let mut enclose = |left: Span, right: Span| {
+                err.multipart_suggestion(
+                    "parenthesize the comparison",
+                    vec![
+                        (left.shrink_to_lo(), "(".to_string()),
+                        (right.shrink_to_hi(), ")".to_string()),
+                    ],
+                    Applicability::MaybeIncorrect,
+                );
+            };
+            return match (op.node, &outer_op.node) {
+                // `x == y == z`
+                (BinOpKind::Eq, AssocOp::Equal) |
                 // `x < y < z` and friends.
-                (BinOpKind::Lt, AssocOp::Less) | (BinOpKind::Lt, AssocOp::LessEqual) |
-                (BinOpKind::Le, AssocOp::LessEqual) | (BinOpKind::Le, AssocOp::Less) |
+                (BinOpKind::Lt, AssocOp::Less | AssocOp::LessEqual) |
+                (BinOpKind::Le, AssocOp::LessEqual | AssocOp::Less) |
                 // `x > y > z` and friends.
-                (BinOpKind::Gt, AssocOp::Greater) | (BinOpKind::Gt, AssocOp::GreaterEqual) |
-                (BinOpKind::Ge, AssocOp::GreaterEqual) | (BinOpKind::Ge, AssocOp::Greater) => {
+                (BinOpKind::Gt, AssocOp::Greater | AssocOp::GreaterEqual) |
+                (BinOpKind::Ge, AssocOp::GreaterEqual | AssocOp::Greater) => {
                     let expr_to_str = |e: &Expr| {
                         self.span_to_snippet(e.span)
                             .unwrap_or_else(|_| pprust::expr_to_string(&e))
                     };
-                    err.span_suggestion(
-                        inner_op.span.to(outer_op.span),
-                        "split the comparison into two...",
-                        format!(
-                            "{} {} {} && {} {}",
-                            expr_to_str(&l1),
-                            op.node.to_string(),
-                            expr_to_str(&r1),
-                            expr_to_str(&r1),
-                            outer_op.node.to_ast_binop().unwrap().to_string(),
-                        ),
+                    err.span_suggestion_verbose(
+                        inner_op.span.shrink_to_hi(),
+                        "split the comparison into two",
+                        format!(" && {}", expr_to_str(&r1)),
                         Applicability::MaybeIncorrect,
                     );
-                    err.span_suggestion(
-                        inner_op.span.to(outer_op.span),
-                        "...or parenthesize one of the comparisons",
-                        format!(
-                            "({} {} {}) {}",
-                            expr_to_str(&l1),
-                            op.node.to_string(),
-                            expr_to_str(&r1),
-                            outer_op.node.to_ast_binop().unwrap().to_string(),
-                        ),
-                        Applicability::MaybeIncorrect,
-                    );
+                    false // Keep the current parse behavior, where the AST is `(x < y) < z`.
                 }
-                _ => {}
-            }
+                // `x == y < z`
+                (BinOpKind::Eq, AssocOp::Less | AssocOp::LessEqual | AssocOp::Greater | AssocOp::GreaterEqual) => {
+                    // Consume `z`/outer-op-rhs.
+                    let snapshot = self.clone();
+                    match self.parse_expr() {
+                        Ok(r2) => {
+                            // We are sure that outer-op-rhs could be consumed, the suggestion is
+                            // likely correct.
+                            enclose(r1.span, r2.span);
+                            true
+                        }
+                        Err(mut expr_err) => {
+                            expr_err.cancel();
+                            *self = snapshot;
+                            false
+                        }
+                    }
+                }
+                // `x > y == z`
+                (BinOpKind::Lt | BinOpKind::Le | BinOpKind::Gt | BinOpKind::Ge, AssocOp::Equal) => {
+                    let snapshot = self.clone();
+                    // At this point it is always valid to enclose the lhs in parentheses, no
+                    // further checks are necessary.
+                    match self.parse_expr() {
+                        Ok(_) => {
+                            enclose(l1.span, r1.span);
+                            true
+                        }
+                        Err(mut expr_err) => {
+                            expr_err.cancel();
+                            *self = snapshot;
+                            false
+                        }
+                    }
+                }
+                _ => false,
+            };
         }
+        false
     }
 
     /// Produces an error if comparison operators are chained (RFC #558).
@@ -514,11 +575,13 @@ impl<'a> Parser<'a> {
     /// Keep in mind that given that `outer_op.is_comparison()` holds and comparison ops are left
     /// associative we can infer that we have:
     ///
+    /// ```text
     ///           outer_op
     ///           /   \
     ///     inner_op   r2
     ///        /  \
     ///      l1    r1
+    /// ```
     pub(super) fn check_no_chained_comparison(
         &mut self,
         inner_op: &Expr,
@@ -534,31 +597,26 @@ impl<'a> Parser<'a> {
             |this: &Self, span| Ok(Some(this.mk_expr(span, ExprKind::Err, AttrVec::new())));
 
         match inner_op.kind {
-            ExprKind::Binary(op, _, _) if op.node.is_comparison() => {
-                // Respan to include both operators.
-                let op_span = op.span.to(self.prev_token.span);
-                let mut err =
-                    self.struct_span_err(op_span, "comparison operators cannot be chained");
-
-                // If it looks like a genuine attempt to chain operators (as opposed to a
-                // misformatted turbofish, for instance), suggest a correct form.
-                self.attempt_chained_comparison_suggestion(&mut err, inner_op, outer_op);
+            ExprKind::Binary(op, ref l1, ref r1) if op.node.is_comparison() => {
+                let mut err = self.struct_span_err(
+                    vec![op.span, self.prev_token.span],
+                    "comparison operators cannot be chained",
+                );
 
                 let suggest = |err: &mut DiagnosticBuilder<'_>| {
                     err.span_suggestion_verbose(
-                        op_span.shrink_to_lo(),
+                        op.span.shrink_to_lo(),
                         TURBOFISH,
                         "::".to_string(),
                         Applicability::MaybeIncorrect,
                     );
                 };
 
-                if op.node == BinOpKind::Lt &&
-                    outer_op.node == AssocOp::Less ||  // Include `<` to provide this recommendation
-                    outer_op.node == AssocOp::Greater
-                // even in a case like the following:
+                // Include `<` to provide this recommendation even in a case like
+                // `Foo<Bar<Baz<Qux, ()>>>`
+                if op.node == BinOpKind::Lt && outer_op.node == AssocOp::Less
+                    || outer_op.node == AssocOp::Greater
                 {
-                    //     Foo<Bar<Baz<Qux, ()>>>
                     if outer_op.node == AssocOp::Less {
                         let snapshot = self.clone();
                         self.bump();
@@ -572,7 +630,7 @@ impl<'a> Parser<'a> {
                         {
                             // We don't have `foo< bar >(` or `foo< bar >::`, so we rewind the
                             // parser and bail out.
-                            mem::replace(self, snapshot.clone());
+                            *self = snapshot.clone();
                         }
                     }
                     return if token::ModSep == self.token.kind {
@@ -597,7 +655,7 @@ impl<'a> Parser<'a> {
                                 expr_err.cancel();
                                 // Not entirely sure now, but we bubble the error up with the
                                 // suggestion.
-                                mem::replace(self, snapshot);
+                                *self = snapshot;
                                 Err(err)
                             }
                         }
@@ -617,15 +675,33 @@ impl<'a> Parser<'a> {
                             }
                         }
                     } else {
-                        // All we know is that this is `foo < bar >` and *nothing* else. Try to
-                        // be helpful, but don't attempt to recover.
-                        err.help(TURBOFISH);
-                        err.help("or use `(...)` if you meant to specify fn arguments");
-                        // These cases cause too many knock-down errors, bail out (#61329).
-                        Err(err)
+                        if !matches!(l1.kind, ExprKind::Lit(_))
+                            && !matches!(r1.kind, ExprKind::Lit(_))
+                        {
+                            // All we know is that this is `foo < bar >` and *nothing* else. Try to
+                            // be helpful, but don't attempt to recover.
+                            err.help(TURBOFISH);
+                            err.help("or use `(...)` if you meant to specify fn arguments");
+                        }
+
+                        // If it looks like a genuine attempt to chain operators (as opposed to a
+                        // misformatted turbofish, for instance), suggest a correct form.
+                        if self.attempt_chained_comparison_suggestion(&mut err, inner_op, outer_op)
+                        {
+                            err.emit();
+                            mk_err_expr(self, inner_op.span.to(self.prev_token.span))
+                        } else {
+                            // These cases cause too many knock-down errors, bail out (#61329).
+                            Err(err)
+                        }
                     };
                 }
+                let recover =
+                    self.attempt_chained_comparison_suggestion(&mut err, inner_op, outer_op);
                 err.emit();
+                if recover {
+                    return mk_err_expr(self, inner_op.span.to(self.prev_token.span));
+                }
             }
             _ => {}
         }
@@ -643,7 +719,7 @@ impl<'a> Parser<'a> {
 
         if self.token.kind == token::Eof {
             // Not entirely sure that what we consumed were fn arguments, rollback.
-            mem::replace(self, snapshot);
+            *self = snapshot;
             Err(())
         } else {
             // 99% certain that the suggestion is correct, continue parsing.
@@ -851,7 +927,7 @@ impl<'a> Parser<'a> {
             return Ok(());
         }
         let sm = self.sess.source_map();
-        let msg = format!("expected `;`, found `{}`", super::token_descr(&self.token));
+        let msg = format!("expected `;`, found {}", super::token_descr(&self.token));
         let appl = Applicability::MachineApplicable;
         if self.token.span == DUMMY_SP || self.prev_token.span == DUMMY_SP {
             // Likely inside a macro, can't provide meaningful suggestions.
@@ -976,6 +1052,39 @@ impl<'a> Parser<'a> {
         }
     }
 
+    pub(super) fn try_macro_suggestion(&mut self) -> PResult<'a, P<Expr>> {
+        let is_try = self.token.is_keyword(kw::Try);
+        let is_questionmark = self.look_ahead(1, |t| t == &token::Not); //check for !
+        let is_open = self.look_ahead(2, |t| t == &token::OpenDelim(token::Paren)); //check for (
+
+        if is_try && is_questionmark && is_open {
+            let lo = self.token.span;
+            self.bump(); //remove try
+            self.bump(); //remove !
+            let try_span = lo.to(self.token.span); //we take the try!( span
+            self.bump(); //remove (
+            let is_empty = self.token == token::CloseDelim(token::Paren); //check if the block is empty
+            self.consume_block(token::Paren, ConsumeClosingDelim::No); //eat the block
+            let hi = self.token.span;
+            self.bump(); //remove )
+            let mut err = self.struct_span_err(lo.to(hi), "use of deprecated `try` macro");
+            err.note("in the 2018 edition `try` is a reserved keyword, and the `try!()` macro is deprecated");
+            let prefix = if is_empty { "" } else { "alternatively, " };
+            if !is_empty {
+                err.multipart_suggestion(
+                    "you can use the `?` operator instead",
+                    vec![(try_span, "".to_owned()), (hi, "?".to_owned())],
+                    Applicability::MachineApplicable,
+                );
+            }
+            err.span_suggestion(lo.shrink_to_lo(), &format!("{}you can still access the deprecated `try!()` macro using the \"raw identifier\" syntax", prefix), "r#".to_string(), Applicability::MachineApplicable);
+            err.emit();
+            Ok(self.mk_expr_err(lo.to(hi)))
+        } else {
+            Err(self.expected_expression_found()) // The user isn't trying to invoke the try! macro
+        }
+    }
+
     /// Recovers a situation like `for ( $pat in $expr )`
     /// and suggest writing `for $pat in $expr` instead.
     ///
@@ -1035,7 +1144,7 @@ impl<'a> Parser<'a> {
             self.look_ahead(2, |t| t.is_ident())
             || self.look_ahead(1, |t| t == &token::ModSep)
                 && (self.look_ahead(2, |t| t.is_ident()) ||   // `foo:bar::baz`
-             self.look_ahead(2, |t| t == &token::Lt)) // `foo:bar::<baz>`
+            self.look_ahead(2, |t| t == &token::Lt)) // `foo:bar::<baz>`
     }
 
     pub(super) fn recover_seq_parse_error(

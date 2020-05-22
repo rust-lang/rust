@@ -4,70 +4,12 @@ extern "C" {
 
 static Y: i32 = 42;
 
+// EMIT_MIR rustc.BAR.PromoteTemps.diff
+// EMIT_MIR rustc.BAR-promoted[0].ConstProp.after.mir
 static mut BAR: *const &i32 = [&Y].as_ptr();
 
+// EMIT_MIR rustc.FOO.PromoteTemps.diff
+// EMIT_MIR rustc.FOO-promoted[0].ConstProp.after.mir
 static mut FOO: *const &i32 = [unsafe { &X }].as_ptr();
 
 fn main() {}
-
-// END RUST SOURCE
-// START rustc.FOO.PromoteTemps.before.mir
-// bb0: {
-// ...
-//     _5 = const {alloc1+0: &i32};
-//     _4 = &(*_5);
-//     _3 = [move _4];
-//     _2 = &_3;
-//     _1 = move _2 as &[&i32] (Pointer(Unsize));
-//     _0 = const core::slice::<impl [&i32]>::as_ptr(move _1) -> [return: bb2, unwind: bb1];
-// }
-// ...
-// bb2: {
-//     StorageDead(_5);
-//     StorageDead(_3);
-//     return;
-// }
-// END rustc.FOO.PromoteTemps.before.mir
-// START rustc.BAR.PromoteTemps.before.mir
-// bb0: {
-// ...
-//     _5 = const {alloc0+0: &i32};
-//     _4 = &(*_5);
-//     _3 = [move _4];
-//     _2 = &_3;
-//     _1 = move _2 as &[&i32] (Pointer(Unsize));
-//     _0 = const core::slice::<impl [&i32]>::as_ptr(move _1) -> [return: bb2, unwind: bb1];
-// }
-// ...
-// bb2: {
-//     StorageDead(_5);
-//     StorageDead(_3);
-//     return;
-// }
-// END rustc.BAR.PromoteTemps.before.mir
-// START rustc.BAR.PromoteTemps.after.mir
-// bb0: {
-// ...
-//     _6 = const BAR::promoted[0];
-//     _2 = &(*_6);
-//     _1 = move _2 as &[&i32] (Pointer(Unsize));
-//     _0 = const core::slice::<impl [&i32]>::as_ptr(move _1) -> [return: bb2, unwind: bb1];
-// }
-// ...
-// bb2: {
-//     return;
-// }
-// END rustc.BAR.PromoteTemps.after.mir
-// START rustc.FOO.PromoteTemps.after.mir
-// bb0: {
-// ...
-//     _6 = const FOO::promoted[0];
-//     _2 = &(*_6);
-//     _1 = move _2 as &[&i32] (Pointer(Unsize));
-//     _0 = const core::slice::<impl [&i32]>::as_ptr(move _1) -> [return: bb2, unwind: bb1];
-// }
-// ...
-// bb2: {
-//     return;
-// }
-// END rustc.FOO.PromoteTemps.after.mir

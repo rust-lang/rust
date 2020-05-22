@@ -1,3 +1,14 @@
+#####################################
+##    READ BEFORE CHANGING THIS    ##
+#####################################
+
+# We're in the process of evaluating GitHub Actions as a possible replacement
+# for Azure Pipelines, and at the moment the configuration is duplicated
+# between the two CI providers. Be sure to also change the configuration in
+# src/ci/github-actions when changing this file.
+
+#####################################
+
 #
 # Azure Pipelines pull request build for Rust
 #
@@ -18,7 +29,7 @@ jobs:
     - template: steps/run.yml
   strategy:
     matrix:
-      x86_64-gnu-llvm-7: {}
+      x86_64-gnu-llvm-8: {}
       mingw-check: {}
       x86_64-gnu-tools:
         CI_ONLY_WHEN_SUBMODULES_CHANGED: 1

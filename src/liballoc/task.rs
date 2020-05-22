@@ -1,6 +1,6 @@
 #![unstable(feature = "wake_trait", issue = "69912")]
 //! Types and Traits for working with asynchronous tasks.
-use core::mem::{self, ManuallyDrop};
+use core::mem::ManuallyDrop;
 use core::task::{RawWaker, RawWakerVTable, Waker};
 
 use crate::sync::Arc;
@@ -12,10 +12,12 @@ use crate::sync::Arc;
 /// to the tasks that are executed on that executor.
 ///
 /// This trait is a memory-safe and ergonomic alternative to constructing a
-/// [`RawWaker`]. It supports the common executor design in which the data
-/// used to wake up a task is stored in an [`Arc`]. Some executors (especially
+/// [`RawWaker`]. It supports the common executor design in which the data used
+/// to wake up a task is stored in an [`Arc`][arc]. Some executors (especially
 /// those for embedded systems) cannot use this API, which is why [`RawWaker`]
 /// exists as an alternative for those systems.
+///
+/// [arc]: ../../std/sync/struct.Arc.html
 #[unstable(feature = "wake_trait", issue = "69912")]
 pub trait Wake {
     /// Wake this task.
@@ -58,9 +60,11 @@ impl<W: Wake + Send + Sync + 'static> From<Arc<W>> for RawWaker {
 fn raw_waker<W: Wake + Send + Sync + 'static>(waker: Arc<W>) -> RawWaker {
     // Increment the reference count of the arc to clone it.
     unsafe fn clone_waker<W: Wake + Send + Sync + 'static>(waker: *const ()) -> RawWaker {
-        let waker: Arc<W> = Arc::from_raw(waker as *const W);
-        mem::forget(Arc::clone(&waker));
-        raw_waker(waker)
+        Arc::incr_strong_count(waker as *const W);
+        RawWaker::new(
+            waker as *const (),
+            &RawWakerVTable::new(clone_waker::<W>, wake::<W>, wake_by_ref::<W>, drop_waker::<W>),
+        )
     }
 
     // Wake by value, moving the Arc into the Wake::wake function
@@ -77,7 +81,7 @@ fn raw_waker<W: Wake + Send + Sync + 'static>(waker: Arc<W>) -> RawWaker {
 
     // Decrement the reference count of the Arc on drop
     unsafe fn drop_waker<W: Wake + Send + Sync + 'static>(waker: *const ()) {
-        mem::drop(Arc::from_raw(waker as *const W));
+        Arc::decr_strong_count(waker as *const W);
     }
 
     RawWaker::new(

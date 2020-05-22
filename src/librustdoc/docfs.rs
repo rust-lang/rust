@@ -16,12 +16,12 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
 
 macro_rules! try_err {
-    ($e:expr, $file:expr) => {{
+    ($e:expr, $file:expr) => {
         match $e {
             Ok(e) => e,
             Err(e) => return Err(E::new(e, $file)),
         }
-    }};
+    };
 }
 
 pub trait PathError {

@@ -1,8 +1,8 @@
-#![feature(optin_builtin_traits)]
+#![feature(negative_impls)]
 
 // @has issue_55321/struct.A.html
-// @has - '//*[@id="implementations-list"]/*[@class="impl"]//code' "impl !Send for A"
-// @has - '//*[@id="implementations-list"]/*[@class="impl"]//code' "impl !Sync for A"
+// @has - '//*[@id="trait-implementations-list"]/*[@class="impl"]//code' "impl !Send for A"
+// @has - '//*[@id="trait-implementations-list"]/*[@class="impl"]//code' "impl !Sync for A"
 pub struct A();
 
 impl !Send for A {}

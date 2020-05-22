@@ -143,7 +143,7 @@ where
     }
 }
 
-/// Sorts `v` using heapsort, which guarantees `O(n log n)` worst-case.
+/// Sorts `v` using heapsort, which guarantees `O(n * log(n))` worst-case.
 #[cold]
 pub fn heapsort<T, F>(v: &mut [T], is_less: &mut F)
 where
@@ -621,7 +621,7 @@ where
         }
 
         // If too many bad pivot choices were made, simply fall back to heapsort in order to
-        // guarantee `O(n log n)` worst-case.
+        // guarantee `O(n * log(n))` worst-case.
         if limit == 0 {
             heapsort(v, is_less);
             return;
@@ -684,7 +684,7 @@ where
     }
 }
 
-/// Sorts `v` using pattern-defeating quicksort, which is `O(n log n)` worst-case.
+/// Sorts `v` using pattern-defeating quicksort, which is `O(n * log(n))` worst-case.
 pub fn quicksort<T, F>(v: &mut [T], mut is_less: F)
 where
     F: FnMut(&T, &T) -> bool,

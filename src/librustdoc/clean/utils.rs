@@ -9,13 +9,13 @@ use crate::clean::{
 use crate::core::DocContext;
 
 use itertools::Itertools;
-use rustc::mir::interpret::{sign_extend, ConstValue, Scalar};
-use rustc::ty::subst::{GenericArgKind, SubstsRef};
-use rustc::ty::{self, DefIdTree, Ty};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_middle::mir::interpret::{sign_extend, ConstValue, Scalar};
+use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
+use rustc_middle::ty::{self, DefIdTree, Ty};
 use rustc_span::symbol::{kw, sym, Symbol};
 use std::mem;
 
@@ -121,7 +121,7 @@ pub fn external_generic_args(
     let args: Vec<_> = substs
         .iter()
         .filter_map(|kind| match kind.unpack() {
-            GenericArgKind::Lifetime(lt) => lt.clean(cx).map(|lt| GenericArg::Lifetime(lt)),
+            GenericArgKind::Lifetime(lt) => lt.clean(cx).map(GenericArg::Lifetime),
             GenericArgKind::Type(_) if skip_self => {
                 skip_self = false;
                 None
@@ -198,27 +198,24 @@ pub fn get_real_types(
         }) {
             let bounds = where_pred.get_bounds().unwrap_or_else(|| &[]);
             for bound in bounds.iter() {
-                match *bound {
-                    GenericBound::TraitBound(ref poly_trait, _) => {
-                        for x in poly_trait.generic_params.iter() {
-                            if !x.is_type() {
-                                continue;
-                            }
-                            if let Some(ty) = x.get_type() {
-                                let adds = get_real_types(generics, &ty, cx, recurse + 1);
-                                if !adds.is_empty() {
-                                    res.extend(adds);
-                                } else if !ty.is_full_generic() {
-                                    if let Some(did) = ty.def_id() {
-                                        if let Some(kind) = cx.tcx.def_kind(did).clean(cx) {
-                                            res.insert((ty, kind));
-                                        }
-                                    }
+                if let GenericBound::TraitBound(ref poly_trait, _) = *bound {
+                    for x in poly_trait.generic_params.iter() {
+                        if !x.is_type() {
+                            continue;
+                        }
+                        if let Some(ty) = x.get_type() {
+                            let adds = get_real_types(generics, &ty, cx, recurse + 1);
+                            if !adds.is_empty() {
+                                res.extend(adds);
+                            } else if !ty.is_full_generic() {
+                                if let Some(kind) =
+                                    ty.def_id().map(|did| cx.tcx.def_kind(did).clean(cx))
+                                {
+                                    res.insert((ty, kind));
                                 }
                             }
                         }
                     }
-                    _ => {}
                 }
             }
         }
@@ -229,20 +226,16 @@ pub fn get_real_types(
                     if !adds.is_empty() {
                         res.extend(adds);
                     } else if !ty.is_full_generic() {
-                        if let Some(did) = ty.def_id() {
-                            if let Some(kind) = cx.tcx.def_kind(did).clean(cx) {
-                                res.insert((ty.clone(), kind));
-                            }
+                        if let Some(kind) = ty.def_id().map(|did| cx.tcx.def_kind(did).clean(cx)) {
+                            res.insert((ty.clone(), kind));
                         }
                     }
                 }
             }
         }
     } else {
-        if let Some(did) = arg.def_id() {
-            if let Some(kind) = cx.tcx.def_kind(did).clean(cx) {
-                res.insert((arg.clone(), kind));
-            }
+        if let Some(kind) = arg.def_id().map(|did| cx.tcx.def_kind(did).clean(cx)) {
+            res.insert((arg.clone(), kind));
         }
         if let Some(gens) = arg.generics() {
             for gen in gens.iter() {
@@ -251,10 +244,8 @@ pub fn get_real_types(
                     if !adds.is_empty() {
                         res.extend(adds);
                     }
-                } else if let Some(did) = gen.def_id() {
-                    if let Some(kind) = cx.tcx.def_kind(did).clean(cx) {
-                        res.insert((gen.clone(), kind));
-                    }
+                } else if let Some(kind) = gen.def_id().map(|did| cx.tcx.def_kind(did).clean(cx)) {
+                    res.insert((gen.clone(), kind));
                 }
             }
         }
@@ -280,10 +271,8 @@ pub fn get_all_types(
         if !args.is_empty() {
             all_types.extend(args);
         } else {
-            if let Some(did) = arg.type_.def_id() {
-                if let Some(kind) = cx.tcx.def_kind(did).clean(cx) {
-                    all_types.insert((arg.type_.clone(), kind));
-                }
+            if let Some(kind) = arg.type_.def_id().map(|did| cx.tcx.def_kind(did).clean(cx)) {
+                all_types.insert((arg.type_.clone(), kind));
             }
         }
     }
@@ -292,10 +281,8 @@ pub fn get_all_types(
         FnRetTy::Return(ref return_type) => {
             let mut ret = get_real_types(generics, &return_type, cx, 0);
             if ret.is_empty() {
-                if let Some(did) = return_type.def_id() {
-                    if let Some(kind) = cx.tcx.def_kind(did).clean(cx) {
-                        ret.insert((return_type.clone(), kind));
-                    }
+                if let Some(kind) = return_type.def_id().map(|did| cx.tcx.def_kind(did).clean(cx)) {
+                    ret.insert((return_type.clone(), kind));
                 }
             }
             ret.into_iter().collect()
@@ -480,7 +467,8 @@ pub fn name_from_pat(p: &hir::Pat) -> String {
 pub fn print_const(cx: &DocContext<'_>, n: &'tcx ty::Const<'_>) -> String {
     match n.val {
         ty::ConstKind::Unevaluated(def_id, _, promoted) => {
-            let mut s = if let Some(hir_id) = cx.tcx.hir().as_local_hir_id(def_id) {
+            let mut s = if let Some(def_id) = def_id.as_local() {
+                let hir_id = cx.tcx.hir().as_local_hir_id(def_id);
                 print_const_expr(cx, cx.tcx.hir().body_owned_by(hir_id))
             } else {
                 inline::print_inlined_const(cx, def_id)
@@ -578,16 +566,12 @@ pub fn print_const_expr(cx: &DocContext<'_>, body: hir::BodyId) -> String {
         None
     };
 
-    snippet.unwrap_or_else(|| cx.tcx.hir().hir_to_pretty_string(body.hir_id))
+    snippet.unwrap_or_else(|| rustc_hir_pretty::id_to_string(&cx.tcx.hir(), body.hir_id))
 }
 
 /// Given a type Path, resolve it to a Type using the TyCtxt
 pub fn resolve_type(cx: &DocContext<'_>, path: Path, id: hir::HirId) -> Type {
-    if id == hir::DUMMY_HIR_ID {
-        debug!("resolve_type({:?})", path);
-    } else {
-        debug!("resolve_type({:?},{:?})", path, id);
-    }
+    debug!("resolve_type({:?},{:?})", path, id);
 
     let is_generic = match path.res {
         Res::PrimTy(p) => return Primitive(PrimitiveType::from(p)),
@@ -597,7 +581,7 @@ pub fn resolve_type(cx: &DocContext<'_>, path: Path, id: hir::HirId) -> Type {
         Res::Def(DefKind::TyParam, _) if path.segments.len() == 1 => {
             return Generic(format!("{:#}", path.print()));
         }
-        Res::SelfTy(..) | Res::Def(DefKind::TyParam, _) | Res::Def(DefKind::AssocTy, _) => true,
+        Res::SelfTy(..) | Res::Def(DefKind::TyParam | DefKind::AssocTy, _) => true,
         _ => false,
     };
     let did = register_res(&*cx, path.res);

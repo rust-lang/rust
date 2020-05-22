@@ -14,15 +14,13 @@
 //! - [`Generics`], [`GenericParam`], [`WhereClause`]: Metadata associated with generic parameters.
 //! - [`EnumDef`] and [`Variant`]: Enum declaration.
 //! - [`Lit`] and [`LitKind`]: Literal expressions.
-//! - [`MacroDef`], [`MacStmtStyle`], [`MacCall`], [`MacDelimeter`]: Macro definition and invocation.
+//! - [`MacroDef`], [`MacStmtStyle`], [`MacCall`], [`MacDelimiter`]: Macro definition and invocation.
 //! - [`Attribute`]: Metadata associated with item.
-//! - [`UnOp`], [`UnOpKind`], [`BinOp`], [`BinOpKind`]: Unary and binary operators.
+//! - [`UnOp`], [`BinOp`], and [`BinOpKind`]: Unary and binary operators.
 
 pub use crate::util::parser::ExprPrecedence;
 pub use GenericArgs::*;
 pub use UnsafeSource::*;
-
-pub use rustc_span::symbol::{Ident, Symbol as Name};
 
 use crate::ptr::P;
 use crate::token::{self, DelimToken};
@@ -34,7 +32,7 @@ use rustc_data_structures::thin_vec::ThinVec;
 use rustc_macros::HashStable_Generic;
 use rustc_serialize::{self, Decoder, Encoder};
 use rustc_span::source_map::{respan, Spanned};
-use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 
 use std::convert::TryFrom;
@@ -214,11 +212,18 @@ impl GenericArg {
 pub struct AngleBracketedArgs {
     /// The overall span.
     pub span: Span,
-    /// The arguments for this path segment.
-    pub args: Vec<GenericArg>,
-    /// Constraints on associated types, if any.
-    /// E.g., `Foo<A = Bar, B: Baz>`.
-    pub constraints: Vec<AssocTyConstraint>,
+    /// The comma separated parts in the `<...>`.
+    pub args: Vec<AngleBracketedArg>,
+}
+
+/// Either an argument for a parameter e.g., `'a`, `Vec<u8>`, `0`,
+/// or a constraint on an associated item, e.g., `Item = String` or `Item: Bound`.
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+pub enum AngleBracketedArg {
+    /// Argument for a generic parameter.
+    Arg(GenericArg),
+    /// Constraint for an associated item.
+    Constraint(AssocTyConstraint),
 }
 
 impl Into<Option<P<GenericArgs>>> for AngleBracketedArgs {
@@ -248,11 +253,13 @@ pub struct ParenthesizedArgs {
 
 impl ParenthesizedArgs {
     pub fn as_angle_bracketed_args(&self) -> AngleBracketedArgs {
-        AngleBracketedArgs {
-            span: self.span,
-            args: self.inputs.iter().cloned().map(GenericArg::Type).collect(),
-            constraints: vec![],
-        }
+        let args = self
+            .inputs
+            .iter()
+            .cloned()
+            .map(|input| AngleBracketedArg::Arg(GenericArg::Type(input)))
+            .collect();
+        AngleBracketedArgs { span: self.span, args }
     }
 }
 
@@ -291,8 +298,8 @@ pub enum GenericBound {
 impl GenericBound {
     pub fn span(&self) -> Span {
         match self {
-            &GenericBound::Trait(ref t, ..) => t.span,
-            &GenericBound::Outlives(ref l) => l.ident.span,
+            GenericBound::Trait(ref t, ..) => t.span,
+            GenericBound::Outlives(ref l) => l.ident.span,
         }
     }
 }
@@ -1114,7 +1121,7 @@ impl Expr {
             ExprKind::Break(..) => ExprPrecedence::Break,
             ExprKind::Continue(..) => ExprPrecedence::Continue,
             ExprKind::Ret(..) => ExprPrecedence::Ret,
-            ExprKind::InlineAsm(..) => ExprPrecedence::InlineAsm,
+            ExprKind::InlineAsm(..) | ExprKind::LlvmInlineAsm(..) => ExprPrecedence::InlineAsm,
             ExprKind::MacCall(..) => ExprPrecedence::Mac,
             ExprKind::Struct(..) => ExprPrecedence::Struct,
             ExprKind::Repeat(..) => ExprPrecedence::Repeat,
@@ -1244,7 +1251,9 @@ pub enum ExprKind {
     Ret(Option<P<Expr>>),
 
     /// Output of the `asm!()` macro.
-    InlineAsm(P<InlineAsm>),
+    InlineAsm(InlineAsm),
+    /// Output of the `llvm_asm!()` macro.
+    LlvmInlineAsm(P<LlvmInlineAsm>),
 
     /// A macro invocation; pre-expansion.
     MacCall(MacCall),
@@ -1560,8 +1569,7 @@ impl LitKind {
     pub fn is_suffixed(&self) -> bool {
         match *self {
             // suffixed variants
-            LitKind::Int(_, LitIntType::Signed(..))
-            | LitKind::Int(_, LitIntType::Unsigned(..))
+            LitKind::Int(_, LitIntType::Signed(..) | LitIntType::Unsigned(..))
             | LitKind::Float(_, LitFloatType::Suffixed(..)) => true,
             // unsuffixed variants
             LitKind::Str(..)
@@ -1614,7 +1622,7 @@ impl FloatTy {
         }
     }
 
-    pub fn bit_width(self) -> usize {
+    pub fn bit_width(self) -> u64 {
         match self {
             FloatTy::F32 => 32,
             FloatTy::F64 => 64,
@@ -1663,7 +1671,7 @@ impl IntTy {
         format!("{}{}", val as u128, self.name_str())
     }
 
-    pub fn bit_width(&self) -> Option<usize> {
+    pub fn bit_width(&self) -> Option<u64> {
         Some(match *self {
             IntTy::Isize => return None,
             IntTy::I8 => 8,
@@ -1725,7 +1733,7 @@ impl UintTy {
         format!("{}{}", val, self.name_str())
     }
 
-    pub fn bit_width(&self) -> Option<usize> {
+    pub fn bit_width(&self) -> Option<u64> {
         Some(match *self {
             UintTy::Usize => return None,
             UintTy::U8 => 8,
@@ -1858,24 +1866,100 @@ pub enum TraitObjectSyntax {
     None,
 }
 
-/// Inline assembly dialect.
+/// Inline assembly operand explicit register or register class.
 ///
-/// E.g., `"intel"` as in `asm!("mov eax, 2" : "={eax}"(result) : : : "intel")`.
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy, HashStable_Generic)]
-pub enum AsmDialect {
-    Att,
-    Intel,
+/// E.g., `"eax"` as in `asm!("mov eax, 2", out("eax") result)`.
+#[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug)]
+pub enum InlineAsmRegOrRegClass {
+    Reg(Symbol),
+    RegClass(Symbol),
 }
 
-/// Inline assembly.
+bitflags::bitflags! {
+    #[derive(RustcEncodable, RustcDecodable, HashStable_Generic)]
+    pub struct InlineAsmOptions: u8 {
+        const PURE = 1 << 0;
+        const NOMEM = 1 << 1;
+        const READONLY = 1 << 2;
+        const PRESERVES_FLAGS = 1 << 3;
+        const NORETURN = 1 << 4;
+        const NOSTACK = 1 << 5;
+        const ATT_SYNTAX = 1 << 6;
+    }
+}
+
+#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+pub enum InlineAsmTemplatePiece {
+    String(String),
+    Placeholder { operand_idx: usize, modifier: Option<char>, span: Span },
+}
+
+impl fmt::Display for InlineAsmTemplatePiece {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::String(s) => {
+                for c in s.chars() {
+                    match c {
+                        '{' => f.write_str("{{")?,
+                        '}' => f.write_str("}}")?,
+                        _ => write!(f, "{}", c.escape_debug())?,
+                    }
+                }
+                Ok(())
+            }
+            Self::Placeholder { operand_idx, modifier: Some(modifier), .. } => {
+                write!(f, "{{{}:{}}}", operand_idx, modifier)
+            }
+            Self::Placeholder { operand_idx, modifier: None, .. } => {
+                write!(f, "{{{}}}", operand_idx)
+            }
+        }
+    }
+}
+
+impl InlineAsmTemplatePiece {
+    /// Rebuilds the asm template string from its pieces.
+    pub fn to_string(s: &[Self]) -> String {
+        use fmt::Write;
+        let mut out = String::new();
+        for p in s.iter() {
+            let _ = write!(out, "{}", p);
+        }
+        out
+    }
+}
+
+/// Inline assembly operand.
 ///
-/// E.g., `"={eax}"(result)` as in `asm!("mov eax, 2" : "={eax}"(result) : : : "intel")`.
+/// E.g., `out("eax") result` as in `asm!("mov eax, 2", out("eax") result)`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub struct InlineAsmOutput {
-    pub constraint: Symbol,
-    pub expr: P<Expr>,
-    pub is_rw: bool,
-    pub is_indirect: bool,
+pub enum InlineAsmOperand {
+    In {
+        reg: InlineAsmRegOrRegClass,
+        expr: P<Expr>,
+    },
+    Out {
+        reg: InlineAsmRegOrRegClass,
+        late: bool,
+        expr: Option<P<Expr>>,
+    },
+    InOut {
+        reg: InlineAsmRegOrRegClass,
+        late: bool,
+        expr: P<Expr>,
+    },
+    SplitInOut {
+        reg: InlineAsmRegOrRegClass,
+        late: bool,
+        in_expr: P<Expr>,
+        out_expr: Option<P<Expr>>,
+    },
+    Const {
+        expr: P<Expr>,
+    },
+    Sym {
+        expr: P<Expr>,
+    },
 }
 
 /// Inline assembly.
@@ -1883,14 +1967,44 @@ pub struct InlineAsmOutput {
 /// E.g., `asm!("NOP");`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct InlineAsm {
+    pub template: Vec<InlineAsmTemplatePiece>,
+    pub operands: Vec<(InlineAsmOperand, Span)>,
+    pub options: InlineAsmOptions,
+}
+
+/// Inline assembly dialect.
+///
+/// E.g., `"intel"` as in `llvm_asm!("mov eax, 2" : "={eax}"(result) : : : "intel")`.
+#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy, HashStable_Generic)]
+pub enum LlvmAsmDialect {
+    Att,
+    Intel,
+}
+
+/// LLVM-style inline assembly.
+///
+/// E.g., `"={eax}"(result)` as in `llvm_asm!("mov eax, 2" : "={eax}"(result) : : : "intel")`.
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+pub struct LlvmInlineAsmOutput {
+    pub constraint: Symbol,
+    pub expr: P<Expr>,
+    pub is_rw: bool,
+    pub is_indirect: bool,
+}
+
+/// LLVM-style inline assembly.
+///
+/// E.g., `llvm_asm!("NOP");`.
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+pub struct LlvmInlineAsm {
     pub asm: Symbol,
     pub asm_str_style: StrStyle,
-    pub outputs: Vec<InlineAsmOutput>,
+    pub outputs: Vec<LlvmInlineAsmOutput>,
     pub inputs: Vec<(Symbol, P<Expr>)>,
     pub clobbers: Vec<Symbol>,
     pub volatile: bool,
     pub alignstack: bool,
-    pub dialect: AsmDialect,
+    pub dialect: LlvmAsmDialect,
 }
 
 /// A parameter in a function header.
@@ -2203,14 +2317,14 @@ rustc_index::newtype_index! {
 }
 
 impl rustc_serialize::Encodable for AttrId {
-    fn encode<S: Encoder>(&self, _: &mut S) -> Result<(), S::Error> {
-        Ok(())
+    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        s.emit_unit()
     }
 }
 
 impl rustc_serialize::Decodable for AttrId {
-    fn decode<D: Decoder>(_: &mut D) -> Result<AttrId, D::Error> {
-        Ok(crate::attr::mk_attr_id())
+    fn decode<D: Decoder>(d: &mut D) -> Result<AttrId, D::Error> {
+        d.read_nil().map(|_| crate::attr::mk_attr_id())
     }
 }
 
@@ -2443,7 +2557,7 @@ pub enum ItemKind {
     /// An `extern crate` item, with the optional *original* crate name if the crate was renamed.
     ///
     /// E.g., `extern crate foo` or `extern crate foo_bar as foo`.
-    ExternCrate(Option<Name>),
+    ExternCrate(Option<Symbol>),
     /// A use declaration item (`use`).
     ///
     /// E.g., `use foo;`, `use foo::bar;` or `use foo::bar as FooBar;`.

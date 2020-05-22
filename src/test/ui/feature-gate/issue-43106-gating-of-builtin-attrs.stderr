@@ -1234,3 +1234,5 @@ warning: unused attribute
 LL | #![proc_macro_derive()]
    | ^^^^^^^^^^^^^^^^^^^^^^^
 
+warning: 203 warnings emitted
+

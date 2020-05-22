@@ -1,7 +1,7 @@
 use crate::traits;
 use crate::traits::project::Normalized;
-use rustc::ty;
-use rustc::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
+use rustc_middle::ty;
+use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 
 use std::fmt;
 
@@ -40,6 +40,9 @@ impl<'tcx> fmt::Debug for traits::FulfillmentErrorCode<'tcx> {
             super::CodeProjectionError(ref e) => write!(f, "{:?}", e),
             super::CodeSubtypeError(ref a, ref b) => {
                 write!(f, "CodeSubtypeError({:?}, {:?})", a, b)
+            }
+            super::CodeConstEquateError(ref a, ref b) => {
+                write!(f, "CodeConstEquateError({:?}, {:?})", a, b)
             }
             super::CodeAmbiguity => write!(f, "Ambiguity"),
         }

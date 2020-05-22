@@ -1,0 +1,93 @@
+error[E0277]: `dummy::TestType` cannot be sent between threads safely
+  --> $DIR/negated-auto-traits-error.rs:23:11
+   |
+LL | struct Outer<T: Send>(T);
+   | ------------------------- required by `Outer`
+...
+LL |     Outer(TestType);
+   |           ^^^^^^^^ `dummy::TestType` cannot be sent between threads safely
+   |
+   = help: the trait `std::marker::Send` is not implemented for `dummy::TestType`
+
+error[E0277]: `dummy::TestType` cannot be sent between threads safely
+  --> $DIR/negated-auto-traits-error.rs:23:5
+   |
+LL | struct Outer<T: Send>(T);
+   |                 ---- required by this bound in `Outer`
+...
+LL |     Outer(TestType);
+   |     ^^^^^^^^^^^^^^^ `dummy::TestType` cannot be sent between threads safely
+   |
+   = help: the trait `std::marker::Send` is not implemented for `dummy::TestType`
+
+error[E0277]: `dummy1b::TestType` cannot be sent between threads safely
+  --> $DIR/negated-auto-traits-error.rs:32:13
+   |
+LL | fn is_send<T: Send>(_: T) {}
+   |               ---- required by this bound in `is_send`
+...
+LL |     is_send(TestType);
+   |             ^^^^^^^^ `dummy1b::TestType` cannot be sent between threads safely
+   |
+   = help: the trait `std::marker::Send` is not implemented for `dummy1b::TestType`
+
+error[E0277]: `dummy1c::TestType` cannot be sent between threads safely
+  --> $DIR/negated-auto-traits-error.rs:40:13
+   |
+LL | fn is_send<T: Send>(_: T) {}
+   |               ---- required by this bound in `is_send`
+...
+LL |     is_send((8, TestType));
+   |             ^^^^^^^^^^^^^ `dummy1c::TestType` cannot be sent between threads safely
+   |
+   = help: within `({integer}, dummy1c::TestType)`, the trait `std::marker::Send` is not implemented for `dummy1c::TestType`
+   = note: required because it appears within the type `({integer}, dummy1c::TestType)`
+
+error[E0277]: `dummy2::TestType` cannot be sent between threads safely
+  --> $DIR/negated-auto-traits-error.rs:48:13
+   |
+LL | fn is_send<T: Send>(_: T) {}
+   |               ---- required by this bound in `is_send`
+...
+LL |     is_send(Box::new(TestType));
+   |             ^^^^^^^^^^^^^^^^^^
+   |             |
+   |             expected an implementor of trait `std::marker::Send`
+   |             help: consider borrowing here: `&Box::new(TestType)`
+   |
+   = note: the trait bound `dummy2::TestType: std::marker::Send` is not satisfied
+   = note: required because of the requirements on the impl of `std::marker::Send` for `std::ptr::Unique<dummy2::TestType>`
+   = note: required because it appears within the type `std::boxed::Box<dummy2::TestType>`
+
+error[E0277]: `dummy3::TestType` cannot be sent between threads safely
+  --> $DIR/negated-auto-traits-error.rs:56:13
+   |
+LL | fn is_send<T: Send>(_: T) {}
+   |               ---- required by this bound in `is_send`
+...
+LL |     is_send(Box::new(Outer2(TestType)));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ `dummy3::TestType` cannot be sent between threads safely
+   |
+   = help: within `Outer2<dummy3::TestType>`, the trait `std::marker::Send` is not implemented for `dummy3::TestType`
+   = note: required because it appears within the type `Outer2<dummy3::TestType>`
+   = note: required because of the requirements on the impl of `std::marker::Send` for `std::ptr::Unique<Outer2<dummy3::TestType>>`
+   = note: required because it appears within the type `std::boxed::Box<Outer2<dummy3::TestType>>`
+
+error[E0277]: `main::TestType` cannot be sent between threads safely
+  --> $DIR/negated-auto-traits-error.rs:66:13
+   |
+LL | fn is_sync<T: Sync>(_: T) {}
+   |               ---- required by this bound in `is_sync`
+...
+LL |     is_sync(Outer2(TestType));
+   |             ^^^^^^^^^^^^^^^^
+   |             |
+   |             expected an implementor of trait `std::marker::Sync`
+   |             help: consider borrowing here: `&Outer2(TestType)`
+   |
+   = note: the trait bound `main::TestType: std::marker::Sync` is not satisfied
+   = note: required because of the requirements on the impl of `std::marker::Sync` for `Outer2<main::TestType>`
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

@@ -117,14 +117,6 @@ pub fn check(build: &mut Build) {
                 build.config.ninja = true;
             }
         }
-
-        if build.config.lldb_enabled {
-            cmd_finder.must_have("swig");
-            let out = output(Command::new("swig").arg("-version"));
-            if !out.contains("SWIG Version 3") && !out.contains("SWIG Version 4") {
-                panic!("Ensure that Swig 3.x.x or 4.x.x is installed.");
-            }
-        }
     }
 
     build.config.python = build
@@ -132,8 +124,6 @@ pub fn check(build: &mut Build) {
         .python
         .take()
         .map(|p| cmd_finder.must_have(p))
-        .or_else(|| cmd_finder.maybe_have("python2.7"))
-        .or_else(|| cmd_finder.maybe_have("python2"))
         .or_else(|| env::var_os("BOOTSTRAP_PYTHON").map(PathBuf::from)) // set by bootstrap.py
         .or_else(|| Some(cmd_finder.must_have("python")));
 

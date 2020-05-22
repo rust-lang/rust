@@ -1,77 +1,75 @@
 use crate::fx::FxHashMap;
+use crate::undo_log::{Rollback, Snapshots, UndoLogs, VecLog};
+use std::borrow::{Borrow, BorrowMut};
 use std::hash::Hash;
-use std::mem;
+use std::marker::PhantomData;
 use std::ops;
+
+pub use crate::undo_log::Snapshot;
 
 #[cfg(test)]
 mod tests;
 
-pub struct SnapshotMap<K, V>
-where
-    K: Clone + Eq,
-{
-    map: FxHashMap<K, V>,
-    undo_log: Vec<UndoLog<K, V>>,
-    num_open_snapshots: usize,
+pub type SnapshotMapStorage<K, V> = SnapshotMap<K, V, FxHashMap<K, V>, ()>;
+pub type SnapshotMapRef<'a, K, V, L> = SnapshotMap<K, V, &'a mut FxHashMap<K, V>, &'a mut L>;
+
+pub struct SnapshotMap<K, V, M = FxHashMap<K, V>, L = VecLog<UndoLog<K, V>>> {
+    map: M,
+    undo_log: L,
+    _marker: PhantomData<(K, V)>,
 }
 
 // HACK(eddyb) manual impl avoids `Default` bounds on `K` and `V`.
-impl<K, V> Default for SnapshotMap<K, V>
+impl<K, V, M, L> Default for SnapshotMap<K, V, M, L>
 where
-    K: Hash + Clone + Eq,
+    M: Default,
+    L: Default,
 {
     fn default() -> Self {
-        SnapshotMap { map: Default::default(), undo_log: Default::default(), num_open_snapshots: 0 }
+        SnapshotMap { map: Default::default(), undo_log: Default::default(), _marker: PhantomData }
     }
 }
 
-pub struct Snapshot {
-    len: usize,
-}
-
-enum UndoLog<K, V> {
+pub enum UndoLog<K, V> {
     Inserted(K),
     Overwrite(K, V),
     Purged,
 }
 
-impl<K, V> SnapshotMap<K, V>
+impl<K, V, M, L> SnapshotMap<K, V, M, L> {
+    pub fn with_log<L2>(&mut self, undo_log: L2) -> SnapshotMap<K, V, &mut M, L2> {
+        SnapshotMap { map: &mut self.map, undo_log, _marker: PhantomData }
+    }
+}
+
+impl<K, V, M, L> SnapshotMap<K, V, M, L>
 where
     K: Hash + Clone + Eq,
+    M: BorrowMut<FxHashMap<K, V>> + Borrow<FxHashMap<K, V>>,
+    L: UndoLogs<UndoLog<K, V>>,
 {
     pub fn clear(&mut self) {
-        self.map.clear();
+        self.map.borrow_mut().clear();
         self.undo_log.clear();
-        self.num_open_snapshots = 0;
-    }
-
-    fn in_snapshot(&self) -> bool {
-        self.num_open_snapshots > 0
     }
 
     pub fn insert(&mut self, key: K, value: V) -> bool {
-        match self.map.insert(key.clone(), value) {
+        match self.map.borrow_mut().insert(key.clone(), value) {
             None => {
-                if self.in_snapshot() {
-                    self.undo_log.push(UndoLog::Inserted(key));
-                }
+                self.undo_log.push(UndoLog::Inserted(key));
                 true
             }
             Some(old_value) => {
-                if self.in_snapshot() {
-                    self.undo_log.push(UndoLog::Overwrite(key, old_value));
-                }
+                self.undo_log.push(UndoLog::Overwrite(key, old_value));
                 false
             }
         }
     }
 
     pub fn remove(&mut self, key: K) -> bool {
-        match self.map.remove(&key) {
+        match self.map.borrow_mut().remove(&key) {
             Some(old_value) => {
-                if self.in_snapshot() {
-                    self.undo_log.push(UndoLog::Overwrite(key, old_value));
-                }
+                self.undo_log.push(UndoLog::Overwrite(key, old_value));
                 true
             }
             None => false,
@@ -79,83 +77,64 @@ where
     }
 
     pub fn get(&self, key: &K) -> Option<&V> {
-        self.map.get(key)
+        self.map.borrow().get(key)
     }
+}
 
+impl<K, V> SnapshotMap<K, V>
+where
+    K: Hash + Clone + Eq,
+{
     pub fn snapshot(&mut self) -> Snapshot {
-        let len = self.undo_log.len();
-        self.num_open_snapshots += 1;
-        Snapshot { len }
-    }
-
-    fn assert_open_snapshot(&self, snapshot: &Snapshot) {
-        assert!(self.undo_log.len() >= snapshot.len);
-        assert!(self.num_open_snapshots > 0);
+        self.undo_log.start_snapshot()
     }
 
     pub fn commit(&mut self, snapshot: Snapshot) {
-        self.assert_open_snapshot(&snapshot);
-        if self.num_open_snapshots == 1 {
-            // The root snapshot. It's safe to clear the undo log because
-            // there's no snapshot further out that we might need to roll back
-            // to.
-            assert!(snapshot.len == 0);
-            self.undo_log.clear();
-        }
-
-        self.num_open_snapshots -= 1;
-    }
-
-    pub fn partial_rollback<F>(&mut self, snapshot: &Snapshot, should_revert_key: &F)
-    where
-        F: Fn(&K) -> bool,
-    {
-        self.assert_open_snapshot(snapshot);
-        for i in (snapshot.len..self.undo_log.len()).rev() {
-            let reverse = match self.undo_log[i] {
-                UndoLog::Purged => false,
-                UndoLog::Inserted(ref k) => should_revert_key(k),
-                UndoLog::Overwrite(ref k, _) => should_revert_key(k),
-            };
-
-            if reverse {
-                let entry = mem::replace(&mut self.undo_log[i], UndoLog::Purged);
-                self.reverse(entry);
-            }
-        }
+        self.undo_log.commit(snapshot)
     }
 
     pub fn rollback_to(&mut self, snapshot: Snapshot) {
-        self.assert_open_snapshot(&snapshot);
-        while self.undo_log.len() > snapshot.len {
-            let entry = self.undo_log.pop().unwrap();
-            self.reverse(entry);
-        }
-
-        self.num_open_snapshots -= 1;
+        let map = &mut self.map;
+        self.undo_log.rollback_to(|| map, snapshot)
     }
+}
 
-    fn reverse(&mut self, entry: UndoLog<K, V>) {
-        match entry {
+impl<'k, K, V, M, L> ops::Index<&'k K> for SnapshotMap<K, V, M, L>
+where
+    K: Hash + Clone + Eq,
+    M: Borrow<FxHashMap<K, V>>,
+{
+    type Output = V;
+    fn index(&self, key: &'k K) -> &V {
+        &self.map.borrow()[key]
+    }
+}
+
+impl<K, V, M, L> Rollback<UndoLog<K, V>> for SnapshotMap<K, V, M, L>
+where
+    K: Eq + Hash,
+    M: Rollback<UndoLog<K, V>>,
+{
+    fn reverse(&mut self, undo: UndoLog<K, V>) {
+        self.map.reverse(undo)
+    }
+}
+
+impl<K, V> Rollback<UndoLog<K, V>> for FxHashMap<K, V>
+where
+    K: Eq + Hash,
+{
+    fn reverse(&mut self, undo: UndoLog<K, V>) {
+        match undo {
             UndoLog::Inserted(key) => {
-                self.map.remove(&key);
+                self.remove(&key);
             }
 
             UndoLog::Overwrite(key, old_value) => {
-                self.map.insert(key, old_value);
+                self.insert(key, old_value);
             }
 
             UndoLog::Purged => {}
         }
-    }
-}
-
-impl<'k, K, V> ops::Index<&'k K> for SnapshotMap<K, V>
-where
-    K: Hash + Clone + Eq,
-{
-    type Output = V;
-    fn index(&self, key: &'k K) -> &V {
-        &self.map[key]
     }
 }

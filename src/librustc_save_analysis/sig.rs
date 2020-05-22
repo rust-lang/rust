@@ -32,6 +32,7 @@ use rls_data::{SigElement, Signature};
 use rustc_ast::ast::{self, Extern, NodeId};
 use rustc_ast_pretty::pprust;
 use rustc_hir::def::{DefKind, Res};
+use rustc_span::symbol::{Ident, Symbol};
 
 pub fn item_signature(item: &ast::Item, scx: &SaveContext<'_, '_>) -> Option<Signature> {
     if !scx.config.signatures {
@@ -69,7 +70,7 @@ pub fn variant_signature(variant: &ast::Variant, scx: &SaveContext<'_, '_>) -> O
 
 pub fn method_signature(
     id: NodeId,
-    ident: ast::Ident,
+    ident: Ident,
     generics: &ast::Generics,
     m: &ast::FnSig,
     scx: &SaveContext<'_, '_>,
@@ -82,7 +83,7 @@ pub fn method_signature(
 
 pub fn assoc_const_signature(
     id: NodeId,
-    ident: ast::Name,
+    ident: Symbol,
     ty: &ast::Ty,
     default: Option<&ast::Expr>,
     scx: &SaveContext<'_, '_>,
@@ -95,7 +96,7 @@ pub fn assoc_const_signature(
 
 pub fn assoc_type_signature(
     id: NodeId,
-    ident: ast::Ident,
+    ident: Ident,
     bounds: Option<&ast::GenericBounds>,
     default: Option<&ast::Ty>,
     scx: &SaveContext<'_, '_>,
@@ -561,9 +562,7 @@ impl Sig for ast::Path {
                     refs: vec![],
                 });
             }
-            Res::Def(DefKind::AssocConst, _)
-            | Res::Def(DefKind::Variant, _)
-            | Res::Def(DefKind::Ctor(..), _) => {
+            Res::Def(DefKind::AssocConst | DefKind::Variant | DefKind::Ctor(..), _) => {
                 let len = self.segments.len();
                 if len < 2 {
                     return Err("Bad path");
@@ -805,7 +804,7 @@ fn name_and_generics(
     offset: usize,
     generics: &ast::Generics,
     id: NodeId,
-    name: ast::Ident,
+    name: Ident,
     scx: &SaveContext<'_, '_>,
 ) -> Result {
     let name = name.to_string();
@@ -823,7 +822,7 @@ fn name_and_generics(
 
 fn make_assoc_type_signature(
     id: NodeId,
-    ident: ast::Ident,
+    ident: Ident,
     bounds: Option<&ast::GenericBounds>,
     default: Option<&ast::Ty>,
     scx: &SaveContext<'_, '_>,
@@ -855,7 +854,7 @@ fn make_assoc_type_signature(
 
 fn make_assoc_const_signature(
     id: NodeId,
-    ident: ast::Name,
+    ident: Symbol,
     ty: &ast::Ty,
     default: Option<&ast::Expr>,
     scx: &SaveContext<'_, '_>,
@@ -886,7 +885,7 @@ fn make_assoc_const_signature(
 
 fn make_method_signature(
     id: NodeId,
-    ident: ast::Ident,
+    ident: Ident,
     generics: &ast::Generics,
     m: &ast::FnSig,
     scx: &SaveContext<'_, '_>,

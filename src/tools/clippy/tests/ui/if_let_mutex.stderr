@@ -1,0 +1,29 @@
+error: calling `Mutex::lock` inside the scope of another `Mutex::lock` causes a deadlock
+  --> $DIR/if_let_mutex.rs:10:5
+   |
+LL | /     if let Err(locked) = m.lock() {
+LL | |         do_stuff(locked);
+LL | |     } else {
+LL | |         let lock = m.lock().unwrap();
+LL | |         do_stuff(lock);
+LL | |     };
+   | |_____^
+   |
+   = note: `-D clippy::if-let-mutex` implied by `-D warnings`
+   = help: move the lock call outside of the `if let ...` expression
+
+error: calling `Mutex::lock` inside the scope of another `Mutex::lock` causes a deadlock
+  --> $DIR/if_let_mutex.rs:22:5
+   |
+LL | /     if let Some(locked) = m.lock().unwrap().deref() {
+LL | |         do_stuff(locked);
+LL | |     } else {
+LL | |         let lock = m.lock().unwrap();
+LL | |         do_stuff(lock);
+LL | |     };
+   | |_____^
+   |
+   = help: move the lock call outside of the `if let ...` expression
+
+error: aborting due to 2 previous errors
+

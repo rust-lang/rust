@@ -292,6 +292,10 @@ impl<R: Read> Read for BufReader<R> {
         Ok(nread)
     }
 
+    fn is_read_vectored(&self) -> bool {
+        self.inner.is_read_vectored()
+    }
+
     // we can't skip unconditionally because of the large buffer case in read.
     unsafe fn initializer(&self) -> Initializer {
         self.inner.initializer()
@@ -680,6 +684,10 @@ impl<W: Write> Write for BufWriter<W> {
         }
     }
 
+    fn is_write_vectored(&self) -> bool {
+        self.get_ref().is_write_vectored()
+    }
+
     fn flush(&mut self) -> io::Result<()> {
         self.flush_buf().and_then(|()| self.get_mut().flush())
     }
@@ -1043,15 +1051,10 @@ impl<W: Write> Write for LineWriter<W> {
         }
 
         // Find the last newline, and failing that write the whole buffer
-        let last_newline = bufs
-            .iter()
-            .enumerate()
-            .rev()
-            .filter_map(|(i, buf)| {
-                let pos = memchr::memrchr(b'\n', buf)?;
-                Some((i, pos))
-            })
-            .next();
+        let last_newline = bufs.iter().enumerate().rev().find_map(|(i, buf)| {
+            let pos = memchr::memrchr(b'\n', buf)?;
+            Some((i, pos))
+        });
         let (i, j) = match last_newline {
             Some(pair) => pair,
             None => return self.inner.write_vectored(bufs),

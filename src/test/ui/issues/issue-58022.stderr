@@ -16,7 +16,7 @@ LL |     fn new(slice: &[u8; Foo::SIZE]) -> Self;
    |                         cannot infer type
    |                         help: use the fully qualified path to an implementation: `<Type as Foo>::SIZE`
    |
-   = note: cannot resolve `_: Foo`
+   = note: cannot satisfy `_: Foo`
    = note: associated constants cannot be accessed directly on a `trait`, they can only be accessed through a specific `impl`
 
 error: aborting due to 2 previous errors

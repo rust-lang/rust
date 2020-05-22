@@ -1,8 +1,8 @@
 use crate::{LateContext, LateLintPass, LintContext};
-use rustc::ty;
-use rustc::ty::adjustment::{Adjust, Adjustment};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
+use rustc_middle::ty;
+use rustc_middle::ty::adjustment::{Adjust, Adjustment};
 use rustc_session::lint::FutureIncompatibleInfo;
 use rustc_span::symbol::sym;
 

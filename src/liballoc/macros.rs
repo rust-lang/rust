@@ -36,13 +36,15 @@
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow_internal_unstable(box_syntax)]
 macro_rules! vec {
+    () => (
+        $crate::vec::Vec::new()
+    );
     ($elem:expr; $n:expr) => (
         $crate::vec::from_elem($elem, $n)
     );
-    ($($x:expr),*) => (
-        <[_]>::into_vec(box [$($x),*])
+    ($($x:expr),+ $(,)?) => (
+        <[_]>::into_vec(box [$($x),+])
     );
-    ($($x:expr,)*) => ($crate::vec![$($x),*])
 }
 
 // HACK(japaric): with cfg(test) the inherent `[T]::into_vec` method, which is
@@ -51,6 +53,9 @@ macro_rules! vec {
 // NB see the slice::hack module in slice.rs for more information
 #[cfg(test)]
 macro_rules! vec {
+    () => (
+        $crate::vec::Vec::new()
+    );
     ($elem:expr; $n:expr) => (
         $crate::vec::from_elem($elem, $n)
     );

@@ -36,3 +36,5 @@ warning: unused attribute
 LL |         #[derive(Debug)]
    |         ^^^^^^^^^^^^^^^^
 
+warning: 5 warnings emitted
+

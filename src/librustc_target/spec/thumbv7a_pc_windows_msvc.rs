@@ -1,4 +1,4 @@
-use crate::spec::{LinkerFlavor, PanicStrategy, Target, TargetOptions, TargetResult};
+use crate::spec::{LinkerFlavor, LldFlavor, PanicStrategy, Target, TargetOptions, TargetResult};
 
 pub fn target() -> TargetResult {
     let mut base = super::windows_msvc_base::opts();
@@ -10,7 +10,12 @@ pub fn target() -> TargetResult {
     // should be smart enough to insert branch islands only
     // where necessary, but this is not the observed behavior.
     // Disabling the LBR optimization works around the issue.
-    base.pre_link_args.get_mut(&LinkerFlavor::Msvc).unwrap().push("/OPT:NOLBR".to_string());
+    let pre_link_args_msvc = "/OPT:NOLBR".to_string();
+    base.pre_link_args.get_mut(&LinkerFlavor::Msvc).unwrap().push(pre_link_args_msvc.clone());
+    base.pre_link_args
+        .get_mut(&LinkerFlavor::Lld(LldFlavor::Link))
+        .unwrap()
+        .push(pre_link_args_msvc);
 
     // FIXME(jordanrh): use PanicStrategy::Unwind when SEH is
     // implemented for windows/arm in LLVM

@@ -3,9 +3,9 @@
 
 use crate::build::Builder;
 
-use rustc::ty::{self, Ty};
+use rustc_middle::ty::{self, Ty};
 
-use rustc::mir::*;
+use rustc_middle::mir::*;
 use rustc_span::{Span, DUMMY_SP};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -15,7 +15,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// N.B., **No cleanup is scheduled for this temporary.** You should
     /// call `schedule_drop` once the temporary is initialized.
     crate fn temp(&mut self, ty: Ty<'tcx>, span: Span) -> Place<'tcx> {
-        let temp = self.local_decls.push(LocalDecl::new_temp(ty, span));
+        let temp = self.local_decls.push(LocalDecl::new(ty, span));
         let place = Place::from(temp);
         debug!("temp: created temp {:?} with type {:?}", place, self.local_decls[temp].ty);
         place
@@ -30,10 +30,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) -> Operand<'tcx> {
         let constant = box Constant { span, user_ty: None, literal };
         Operand::Constant(constant)
-    }
-
-    crate fn unit_rvalue(&mut self) -> Rvalue<'tcx> {
-        Rvalue::Aggregate(box AggregateKind::Tuple, vec![])
     }
 
     // Returns a zero literal operand for the appropriate type, works for
@@ -55,7 +51,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.cfg.push_assign_constant(
             block,
             source_info,
-            &temp,
+            temp,
             Constant {
                 span: source_info.span,
                 user_ty: None,

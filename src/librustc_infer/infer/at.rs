@@ -27,8 +27,8 @@
 
 use super::*;
 
-use rustc::ty::relate::{Relate, TypeRelation};
-use rustc::ty::Const;
+use rustc_middle::ty::relate::{Relate, TypeRelation};
+use rustc_middle::ty::Const;
 
 pub struct At<'a, 'tcx> {
     pub infcx: &'a InferCtxt<'a, 'tcx>,
@@ -186,7 +186,6 @@ impl<'a, 'tcx> At<'a, 'tcx> {
 impl<'a, 'tcx> Trace<'a, 'tcx> {
     /// Makes `a <: b` where `a` may or may not be expected (if
     /// `a_is_expected` is true, then `a` is expected).
-    /// Makes `expected <: actual`.
     pub fn sub<T>(self, a: &T, b: &T) -> InferResult<'tcx, ()>
     where
         T: Relate<'tcx>,

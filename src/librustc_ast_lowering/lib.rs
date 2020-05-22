@@ -33,7 +33,8 @@
 #![feature(array_value_iter)]
 #![feature(crate_visibility_modifier)]
 #![feature(marker_trait_attr)]
-#![feature(specialization)]
+#![feature(specialization)] // FIXME: min_specialization does not work
+#![feature(or_patterns)]
 #![recursion_limit = "256"]
 
 use rustc_ast::ast;
@@ -62,7 +63,7 @@ use rustc_session::parse::ParseSess;
 use rustc_session::Session;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::source_map::{respan, DesugaringKind, ExpnData, ExpnKind};
-use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 
 use log::{debug, trace};
@@ -96,7 +97,7 @@ struct LoweringContext<'a, 'hir: 'a> {
 
     /// HACK(Centril): there is a cyclic dependency between the parser and lowering
     /// if we don't have this function pointer. To avoid that dependency so that
-    /// librustc is independent of the parser, we use dynamic dispatch here.
+    /// librustc_middle is independent of the parser, we use dynamic dispatch here.
     nt_to_tokenstream: NtToTokenstream,
 
     /// Used to allocate HIR nodes
@@ -167,7 +168,7 @@ struct LoweringContext<'a, 'hir: 'a> {
 
     current_hir_id_owner: Vec<(LocalDefId, u32)>,
     item_local_id_counters: NodeMap<u32>,
-    node_id_to_hir_id: IndexVec<NodeId, hir::HirId>,
+    node_id_to_hir_id: IndexVec<NodeId, Option<hir::HirId>>,
 
     allow_try_trait: Option<Lrc<[Symbol]>>,
     allow_gen_future: Option<Lrc<[Symbol]>>,
@@ -463,8 +464,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     | ItemKind::Enum(_, ref generics)
                     | ItemKind::TyAlias(_, ref generics, ..)
                     | ItemKind::Trait(_, _, ref generics, ..) => {
-                        let def_id =
-                            self.lctx.resolver.definitions().local_def_id(item.id).expect_local();
+                        let def_id = self.lctx.resolver.definitions().local_def_id(item.id);
                         let count = generics
                             .params
                             .iter()
@@ -522,7 +522,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
 
         self.lower_node_id(CRATE_NODE_ID);
-        debug_assert!(self.node_id_to_hir_id[CRATE_NODE_ID] == hir::CRATE_HIR_ID);
+        debug_assert!(self.node_id_to_hir_id[CRATE_NODE_ID] == Some(hir::CRATE_HIR_ID));
 
         visit::walk_crate(&mut MiscCollector { lctx: &mut self, hir_id_owner: None }, c);
         visit::walk_crate(&mut item::ItemLowerer { lctx: &mut self }, c);
@@ -530,7 +530,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let module = self.lower_mod(&c.module);
         let attrs = self.lower_attrs(&c.attrs);
         let body_ids = body_ids(&self.bodies);
-        let proc_macros = c.proc_macros.iter().map(|id| self.node_id_to_hir_id[*id]).collect();
+        let proc_macros =
+            c.proc_macros.iter().map(|id| self.node_id_to_hir_id[*id].unwrap()).collect();
 
         self.resolver.definitions().init_node_id_to_hir_id_mapping(self.node_id_to_hir_id);
 
@@ -571,26 +572,22 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         ast_node_id: NodeId,
         alloc_hir_id: impl FnOnce(&mut Self) -> hir::HirId,
     ) -> hir::HirId {
-        if ast_node_id == DUMMY_NODE_ID {
-            return hir::DUMMY_HIR_ID;
-        }
+        assert_ne!(ast_node_id, DUMMY_NODE_ID);
 
         let min_size = ast_node_id.as_usize() + 1;
 
         if min_size > self.node_id_to_hir_id.len() {
-            self.node_id_to_hir_id.resize(min_size, hir::DUMMY_HIR_ID);
+            self.node_id_to_hir_id.resize(min_size, None);
         }
 
-        let existing_hir_id = self.node_id_to_hir_id[ast_node_id];
-
-        if existing_hir_id == hir::DUMMY_HIR_ID {
+        if let Some(existing_hir_id) = self.node_id_to_hir_id[ast_node_id] {
+            existing_hir_id
+        } else {
             // Generate a new `HirId`.
             let hir_id = alloc_hir_id(self);
-            self.node_id_to_hir_id[ast_node_id] = hir_id;
+            self.node_id_to_hir_id[ast_node_id] = Some(hir_id);
 
             hir_id
-        } else {
-            existing_hir_id
         }
     }
 
@@ -599,7 +596,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             .item_local_id_counters
             .insert(owner, HIR_ID_COUNTER_LOCKED)
             .unwrap_or_else(|| panic!("no `item_local_id_counters` entry for {:?}", owner));
-        let def_id = self.resolver.definitions().local_def_id(owner).expect_local();
+        let def_id = self.resolver.definitions().local_def_id(owner);
         self.current_hir_id_owner.push((def_id, counter));
         let ret = f(self);
         let (new_def_id, new_counter) = self.current_hir_id_owner.pop().unwrap();
@@ -1242,16 +1239,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     let bounds =
                         this.arena.alloc_from_iter(bounds.iter().filter_map(
                             |bound| match *bound {
-                                GenericBound::Trait(ref ty, TraitBoundModifier::None)
-                                | GenericBound::Trait(ref ty, TraitBoundModifier::MaybeConst) => {
-                                    Some(this.lower_poly_trait_ref(ty, itctx.reborrow()))
-                                }
+                                GenericBound::Trait(
+                                    ref ty,
+                                    TraitBoundModifier::None | TraitBoundModifier::MaybeConst,
+                                ) => Some(this.lower_poly_trait_ref(ty, itctx.reborrow())),
                                 // `?const ?Bound` will cause an error during AST validation
                                 // anyways, so treat it like `?Bound` as compilation proceeds.
-                                GenericBound::Trait(_, TraitBoundModifier::Maybe)
-                                | GenericBound::Trait(_, TraitBoundModifier::MaybeConstMaybe) => {
-                                    None
-                                }
+                                GenericBound::Trait(
+                                    _,
+                                    TraitBoundModifier::Maybe | TraitBoundModifier::MaybeConstMaybe,
+                                ) => None,
                                 GenericBound::Outlives(ref lifetime) => {
                                     if lifetime_bound.is_none() {
                                         lifetime_bound = Some(this.lower_lifetime(lifetime));
@@ -1279,8 +1276,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     }
                     ImplTraitContext::Universal(in_band_ty_params) => {
                         // Add a definition for the in-band `Param`.
-                        let def_id =
-                            self.resolver.definitions().local_def_id(def_node_id).expect_local();
+                        let def_id = self.resolver.definitions().local_def_id(def_node_id);
 
                         let hir_bounds = self.lower_param_bounds(
                             bounds,
@@ -1368,8 +1364,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // frequently opened issues show.
         let opaque_ty_span = self.mark_span_with_reason(DesugaringKind::OpaqueTy, span, None);
 
-        let opaque_ty_def_id =
-            self.resolver.definitions().local_def_id(opaque_ty_node_id).expect_local();
+        let opaque_ty_def_id = self.resolver.definitions().local_def_id(opaque_ty_node_id);
 
         self.allocate_hir_id_counter(opaque_ty_node_id);
 
@@ -1745,8 +1740,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             c_variadic,
             implicit_self: decl.inputs.get(0).map_or(hir::ImplicitSelfKind::None, |arg| {
                 let is_mutable_pat = match arg.pat.kind {
-                    PatKind::Ident(BindingMode::ByValue(mt), _, _)
-                    | PatKind::Ident(BindingMode::ByRef(mt), _, _) => mt == Mutability::Mut,
+                    PatKind::Ident(BindingMode::ByValue(mt) | BindingMode::ByRef(mt), _, _) => {
+                        mt == Mutability::Mut
+                    }
                     _ => false,
                 };
 
@@ -1798,8 +1794,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         let opaque_ty_span = self.mark_span_with_reason(DesugaringKind::Async, span, None);
 
-        let opaque_ty_def_id =
-            self.resolver.definitions().local_def_id(opaque_ty_node_id).expect_local();
+        let opaque_ty_def_id = self.resolver.definitions().local_def_id(opaque_ty_node_id);
 
         self.allocate_hir_id_counter(opaque_ty_node_id);
 
@@ -2474,7 +2469,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             hir::QPath::Resolved(None, path) => {
                 // Turn trait object paths into `TyKind::TraitObject` instead.
                 match path.res {
-                    Res::Def(DefKind::Trait, _) | Res::Def(DefKind::TraitAlias, _) => {
+                    Res::Def(DefKind::Trait | DefKind::TraitAlias, _) => {
                         let principal = hir::PolyTraitRef {
                             bound_generic_params: &[],
                             trait_ref: hir::TraitRef { path, hir_ref_id: hir_id },

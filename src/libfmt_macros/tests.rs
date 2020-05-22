@@ -1,7 +1,7 @@
 use super::*;
 
 fn same(fmt: &'static str, p: &[Piece<'static>]) {
-    let parser = Parser::new(fmt, None, vec![], false);
+    let parser = Parser::new(fmt, None, None, false, ParseMode::Format);
     assert_eq!(parser.collect::<Vec<Piece<'static>>>(), p);
 }
 
@@ -20,7 +20,7 @@ fn fmtdflt() -> FormatSpec<'static> {
 }
 
 fn musterr(s: &str) {
-    let mut p = Parser::new(s, None, vec![], false);
+    let mut p = Parser::new(s, None, None, false, ParseMode::Format);
     p.next();
     assert!(!p.errors.is_empty());
 }

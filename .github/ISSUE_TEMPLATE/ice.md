@@ -14,7 +14,7 @@ http://blog.pnkfx.org/blog/2019/11/18/rust-bug-minimization-patterns/
 
 ### Code
 
-```
+```Rust
 <code>
 ```
 

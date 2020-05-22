@@ -1,10 +1,6 @@
 #![allow(non_snake_case)]
 
 use crate::{LateContext, LateLintPass, LintContext};
-use rustc::mir::interpret::{sign_extend, truncate};
-use rustc::ty::layout::{self, IntegerExt, LayoutOf, SizeSkeleton, VariantIdx};
-use rustc::ty::subst::SubstsRef;
-use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
 use rustc_ast::ast;
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashSet;
@@ -13,14 +9,18 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{is_range_literal, ExprKind, Node};
 use rustc_index::vec::Idx;
+use rustc_middle::mir::interpret::{sign_extend, truncate};
+use rustc_middle::ty::layout::{IntegerExt, SizeSkeleton};
+use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
 use rustc_span::source_map;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
+use rustc_target::abi::{DiscriminantKind, Integer, LayoutOf, VariantIdx, Variants};
 use rustc_target::spec::abi::Abi;
 
 use log::debug;
 use std::cmp;
-use std::{f32, f64, i16, i32, i64, i8, u16, u32, u64, u8};
 
 declare_lint! {
     UNUSED_COMPARISONS,
@@ -43,14 +43,14 @@ declare_lint! {
 #[derive(Copy, Clone)]
 pub struct TypeLimits {
     /// Id of the last visited negated expression
-    negated_expr_id: hir::HirId,
+    negated_expr_id: Option<hir::HirId>,
 }
 
 impl_lint_pass!(TypeLimits => [UNUSED_COMPARISONS, OVERFLOWING_LITERALS]);
 
 impl TypeLimits {
     pub fn new() -> TypeLimits {
-        TypeLimits { negated_expr_id: hir::DUMMY_HIR_ID }
+        TypeLimits { negated_expr_id: None }
     }
 }
 
@@ -134,7 +134,7 @@ fn get_bin_hex_repr(cx: &LateContext<'_, '_>, lit: &hir::Lit) -> Option<String> 
 
     if firstch == '0' {
         match src.chars().nth(1) {
-            Some('x') | Some('b') => return Some(src),
+            Some('x' | 'b') => return Some(src),
             _ => return None,
         }
     }
@@ -150,7 +150,7 @@ fn report_bin_hex_error(
     val: u128,
     negative: bool,
 ) {
-    let size = layout::Integer::from_attr(&cx.tcx, ty).size();
+    let size = Integer::from_attr(&cx.tcx, ty).size();
     cx.struct_span_lint(OVERFLOWING_LITERALS, expr.span, |lint| {
         let (t, actually) = match ty {
             attr::IntType::SignedInt(t) => {
@@ -244,7 +244,7 @@ fn lint_int_literal<'a, 'tcx>(
     let int_type = t.normalize(cx.sess().target.ptr_width);
     let (min, max) = int_ty_range(int_type);
     let max = max as u128;
-    let negative = type_limits.negated_expr_id == e.hir_id;
+    let negative = type_limits.negated_expr_id == Some(e.hir_id);
 
     // Detect literal value out of range [min, max] inclusive
     // avoiding use of -min to prevent overflow/panic
@@ -356,8 +356,7 @@ fn lint_literal<'a, 'tcx>(
     match cx.tables.node_type(e.hir_id).kind {
         ty::Int(t) => {
             match lit.node {
-                ast::LitKind::Int(v, ast::LitIntType::Signed(_))
-                | ast::LitKind::Int(v, ast::LitIntType::Unsuffixed) => {
+                ast::LitKind::Int(v, ast::LitIntType::Signed(_) | ast::LitIntType::Unsuffixed) => {
                     lint_int_literal(cx, type_limits, e, lit, t, v)
                 }
                 _ => bug!(),
@@ -397,8 +396,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
         match e.kind {
             hir::ExprKind::Unary(hir::UnOp::UnNeg, ref expr) => {
                 // propagate negation, if the negation itself isn't negated
-                if self.negated_expr_id != e.hir_id {
-                    self.negated_expr_id = expr.hir_id;
+                if self.negated_expr_id != Some(e.hir_id) {
+                    self.negated_expr_id = Some(expr.hir_id);
                 }
             }
             hir::ExprKind::Binary(binop, ref l, ref r) => {
@@ -455,8 +454,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                     let (min, max) = int_ty_range(int_ty);
                     let lit_val: i128 = match lit.kind {
                         hir::ExprKind::Lit(ref li) => match li.node {
-                            ast::LitKind::Int(v, ast::LitIntType::Signed(_))
-                            | ast::LitKind::Int(v, ast::LitIntType::Unsuffixed) => v as i128,
+                            ast::LitKind::Int(
+                                v,
+                                ast::LitIntType::Signed(_) | ast::LitIntType::Unsuffixed,
+                            ) => v as i128,
                             _ => return true,
                         },
                         _ => bug!(),
@@ -887,7 +888,6 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             | ty::Generator(..)
             | ty::GeneratorWitness(..)
             | ty::Placeholder(..)
-            | ty::UnnormalizedProjection(..)
             | ty::Projection(..)
             | ty::Opaque(..)
             | ty::FnDef(..) => bug!("unexpected type in foreign function: {:?}", ty),
@@ -919,7 +919,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     }
 
     fn check_for_opaque_ty(&mut self, sp: Span, ty: Ty<'tcx>) -> bool {
-        use crate::rustc::ty::TypeFoldable;
+        use rustc_middle::ty::TypeFoldable;
 
         struct ProhibitOpaqueTypes<'tcx> {
             ty: Option<Ty<'tcx>>,
@@ -1030,12 +1030,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VariantSizeDifferences {
             let ty = cx.tcx.erase_regions(&t);
             let layout = match cx.layout_of(ty) {
                 Ok(layout) => layout,
-                Err(ty::layout::LayoutError::Unknown(_))
-                | Err(ty::layout::LayoutError::SizeOverflow(_)) => return,
+                Err(
+                    ty::layout::LayoutError::Unknown(_) | ty::layout::LayoutError::SizeOverflow(_),
+                ) => return,
             };
             let (variants, tag) = match layout.variants {
-                layout::Variants::Multiple {
-                    discr_kind: layout::DiscriminantKind::Tag,
+                Variants::Multiple {
+                    discr_kind: DiscriminantKind::Tag,
                     ref discr,
                     ref variants,
                     ..

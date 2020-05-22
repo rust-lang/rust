@@ -6,144 +6,75 @@ The tracking issue for this feature is: [#39699](https://github.com/rust-lang/ru
 
 This feature allows for use of one of following sanitizers:
 
-* [AddressSanitizer][clang-asan] a faster memory error detector. Can
-  detect out-of-bounds access to heap, stack, and globals, use after free, use
-  after return, double free, invalid free, memory leaks.
+* [AddressSanitizer][clang-asan] a fast memory error detector.
 * [LeakSanitizer][clang-lsan] a run-time memory leak detector.
 * [MemorySanitizer][clang-msan] a detector of uninitialized reads.
 * [ThreadSanitizer][clang-tsan] a fast data race detector.
 
-To enable a sanitizer compile with `-Zsanitizer=...` option, where value is one
-of `address`, `leak`, `memory` or `thread`.
+To enable a sanitizer compile with `-Zsanitizer=address`, `-Zsanitizer=leak`,
+`-Zsanitizer=memory` or `-Zsanitizer=thread`. Only a single sanitizer can be
+enabled at a time.
 
-# Examples
+# AddressSanitizer
 
-This sections show various issues that can be detected with sanitizers.  For
-simplicity, the examples are prepared under assumption that optimization level
-used is zero.
+AddressSanitizer is a memory error detector. It can detect the following types
+of bugs:
 
-## AddressSanitizer
+* Out of bound accesses to heap, stack and globals
+* Use after free
+* Use after return (runtime flag `ASAN_OPTIONS=detect_stack_use_after_return=1`)
+* Use after scope
+* Double-free, invalid free
+* Memory leaks
+
+AddressSanitizer is supported on the following targets:
+
+* `x86_64-apple-darwin`
+* `x86_64-unknown-linux-gnu`
+
+AddressSanitizer works with non-instrumented code although it will impede its
+ability to detect some bugs.  It is not expected to produce false positive
+reports.
+
+## Examples
 
 Stack buffer overflow:
 
-```shell
-$ cat a.rs
+```rust
 fn main() {
     let xs = [0, 1, 2, 3];
     let _y = unsafe { *xs.as_ptr().offset(4) };
 }
-$ rustc -Zsanitizer=address a.rs
-$ ./a
-=================================================================
-==10029==ERROR: AddressSanitizer: stack-buffer-overflow on address 0x7ffcc15f43d0 at pc 0x55f77dc015c5 bp 0x7ffcc15f4390 sp 0x7ffcc15f4388
-READ of size 4 at 0x7ffcc15f43d0 thread T0
-    #0 0x55f77dc015c4 in a::main::hab3bd2a745c2d0ac (/tmp/a+0xa5c4)
-    #1 0x55f77dc01cdb in std::rt::lang_start::_$u7b$$u7b$closure$u7d$$u7d$::haa8c76d1faa7b7ca (/tmp/a+0xacdb)
-    #2 0x55f77dc90f02 in std::rt::lang_start_internal::_$u7b$$u7b$closure$u7d$$u7d$::hfeb9a1aef9ac820d /rustc/c27f7568bc74c418996892028a629eed5a7f5f00/src/libstd/rt.rs:48:12
-    #3 0x55f77dc90f02 in std::panicking::try::do_call::h12f0919717b8e0a6 /rustc/c27f7568bc74c418996892028a629eed5a7f5f00/src/libstd/panicking.rs:288:39
-    #4 0x55f77dc926c9 in __rust_maybe_catch_panic /rustc/c27f7568bc74c418996892028a629eed5a7f5f00/src/libpanic_unwind/lib.rs:80:7
-    #5 0x55f77dc9197c in std::panicking::try::h413b21cdcd6cfd86 /rustc/c27f7568bc74c418996892028a629eed5a7f5f00/src/libstd/panicking.rs:267:12
-    #6 0x55f77dc9197c in std::panic::catch_unwind::hc5cc8ef2fd73424d /rustc/c27f7568bc74c418996892028a629eed5a7f5f00/src/libstd/panic.rs:396:8
-    #7 0x55f77dc9197c in std::rt::lang_start_internal::h2039f418ab92218f /rustc/c27f7568bc74c418996892028a629eed5a7f5f00/src/libstd/rt.rs:47:24
-    #8 0x55f77dc01c61 in std::rt::lang_start::ha905d28f6b61d691 (/tmp/a+0xac61)
-    #9 0x55f77dc0163a in main (/tmp/a+0xa63a)
-    #10 0x7f9b3cf5bbba in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x26bba)
-    #11 0x55f77dc01289 in _start (/tmp/a+0xa289)
-
-Address 0x7ffcc15f43d0 is located in stack of thread T0 at offset 48 in frame
-    #0 0x55f77dc0135f in a::main::hab3bd2a745c2d0ac (/tmp/a+0xa35f)
-
-  This frame has 1 object(s):
-    [32, 48) 'xs' <== Memory access at offset 48 overflows this variable
-HINT: this may be a false positive if your program uses some custom stack unwind mechanism, swapcontext or vfork
-      (longjmp and C++ exceptions *are* supported)
-SUMMARY: AddressSanitizer: stack-buffer-overflow (/tmp/a+0xa5c4) in a::main::hab3bd2a745c2d0ac
-Shadow bytes around the buggy address:
-  0x1000182b6820: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  0x1000182b6830: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  0x1000182b6840: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  0x1000182b6850: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  0x1000182b6860: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-=>0x1000182b6870: 00 00 00 00 f1 f1 f1 f1 00 00[f3]f3 00 00 00 00
-  0x1000182b6880: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  0x1000182b6890: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  0x1000182b68a0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  0x1000182b68b0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  0x1000182b68c0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-Shadow byte legend (one shadow byte represents 8 application bytes):
-  Addressable:           00
-  Partially addressable: 01 02 03 04 05 06 07 
-  Heap left redzone:       fa
-  Freed heap region:       fd
-  Stack left redzone:      f1
-  Stack mid redzone:       f2
-  Stack right redzone:     f3
-  Stack after return:      f5
-  Stack use after scope:   f8
-  Global redzone:          f9
-  Global init order:       f6
-  Poisoned by user:        f7
-  Container overflow:      fc
-  Array cookie:            ac
-  Intra object redzone:    bb
-  ASan internal:           fe
-  Left alloca redzone:     ca
-  Right alloca redzone:    cb
-  Shadow gap:              cc
-==10029==ABORTING
 ```
 
-Use of a stack object after its scope has already ended:
-
 ```shell
-$ cat b.rs
-static mut P: *mut usize = std::ptr::null_mut();
+$ export RUSTFLAGS=-Zsanitizer=address RUSTDOCFLAGS=-Zsanitizer=address
+$ cargo run -Zbuild-std --target x86_64-unknown-linux-gnu
+==37882==ERROR: AddressSanitizer: stack-buffer-overflow on address 0x7ffe400e6250 at pc 0x5609a841fb20 bp 0x7ffe400e6210 sp 0x7ffe400e6208
+READ of size 4 at 0x7ffe400e6250 thread T0
+    #0 0x5609a841fb1f in example::main::h628ffc6626ed85b2 /.../src/main.rs:3:23
+    ...
 
-fn main() {
-    unsafe {
-        {
-            let mut x = 0;
-            P = &mut x;
-        }
-        std::ptr::write_volatile(P, 123);
-    }
-}
-$ rustc -Zsanitizer=address b.rs
-$./b
-=================================================================
-==424427==ERROR: AddressSanitizer: stack-use-after-scope on address 0x7fff67be6be0 at pc 0x5647a3ea4658 bp 0x7fff67be6b90 sp 0x7fff67be6b88
-WRITE of size 8 at 0x7fff67be6be0 thread T0
-    #0 0x5647a3ea4657 in core::ptr::write_volatile::h4b04601757d0376d (/tmp/b+0xb8657)
-    #1 0x5647a3ea4432 in b::main::h5574a756e615c9cf (/tmp/b+0xb8432)
-    #2 0x5647a3ea480b in std::rt::lang_start::_$u7b$$u7b$closure$u7d$$u7d$::hd57e7ee01866077e (/tmp/b+0xb880b)
-    #3 0x5647a3eab412 in std::panicking::try::do_call::he0421ca82dd11ba3 (.llvm.8083791802951296215) (/tmp/b+0xbf412)
-    #4 0x5647a3eacb26 in __rust_maybe_catch_panic (/tmp/b+0xc0b26)
-    #5 0x5647a3ea5b66 in std::rt::lang_start_internal::h19bc96b28f670a64 (/tmp/b+0xb9b66)
-    #6 0x5647a3ea4788 in std::rt::lang_start::h642d10b4b6965fb8 (/tmp/b+0xb8788)
-    #7 0x5647a3ea449a in main (/tmp/b+0xb849a)
-    #8 0x7fd1d18b3bba in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x26bba)
-    #9 0x5647a3df7299 in _start (/tmp/b+0xb299)
-
-Address 0x7fff67be6be0 is located in stack of thread T0 at offset 32 in frame
-    #0 0x5647a3ea433f in b::main::h5574a756e615c9cf (/tmp/b+0xb833f)
+Address 0x7ffe400e6250 is located in stack of thread T0 at offset 48 in frame
+    #0 0x5609a841f8af in example::main::h628ffc6626ed85b2 /.../src/main.rs:1
 
   This frame has 1 object(s):
-    [32, 40) 'x' <== Memory access at offset 32 is inside this variable
+    [32, 48) 'xs' (line 2) <== Memory access at offset 48 overflows this variable
 HINT: this may be a false positive if your program uses some custom stack unwind mechanism, swapcontext or vfork
       (longjmp and C++ exceptions *are* supported)
-SUMMARY: AddressSanitizer: stack-use-after-scope (/tmp/b+0xb8657) in core::ptr::write_volatile::h4b04601757d0376d
+SUMMARY: AddressSanitizer: stack-buffer-overflow /.../src/main.rs:3:23 in example::main::h628ffc6626ed85b2
 Shadow bytes around the buggy address:
-  0x10006cf74d20: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  0x10006cf74d30: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  0x10006cf74d40: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  0x10006cf74d50: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  0x10006cf74d60: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-=>0x10006cf74d70: 00 00 00 00 00 00 00 00 f1 f1 f1 f1[f8]f3 f3 f3
-  0x10006cf74d80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  0x10006cf74d90: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  0x10006cf74da0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  0x10006cf74db0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  0x10006cf74dc0: f1 f1 f1 f1 00 f3 f3 f3 00 00 00 00 00 00 00 00
+  0x100048014bf0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x100048014c00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x100048014c10: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x100048014c20: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x100048014c30: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+=>0x100048014c40: 00 00 00 00 f1 f1 f1 f1 00 00[f3]f3 00 00 00 00
+  0x100048014c50: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x100048014c60: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x100048014c70: f1 f1 f1 f1 00 00 f3 f3 00 00 00 00 00 00 00 00
+  0x100048014c80: 00 00 00 00 00 00 00 00 00 00 00 00 f1 f1 f1 f1
+  0x100048014c90: 00 00 f3 f3 00 00 00 00 00 00 00 00 00 00 00 00
 Shadow byte legend (one shadow byte represents 8 application bytes):
   Addressable:           00
   Partially addressable: 01 02 03 04 05 06 07
@@ -164,17 +95,95 @@ Shadow byte legend (one shadow byte represents 8 application bytes):
   Left alloca redzone:     ca
   Right alloca redzone:    cb
   Shadow gap:              cc
-==424427==ABORTING
+==37882==ABORTING
 ```
 
-## MemorySanitizer
+Use of a stack object after its scope has already ended:
 
-Use of uninitialized memory. Note that we are using `-Zbuild-std` to instrument
-the standard library, and passing `-Zsanitizer-track-origins` to track the
-origins of uninitialized memory:
+```rust
+static mut P: *mut usize = std::ptr::null_mut();
+
+fn main() {
+    unsafe {
+        {
+            let mut x = 0;
+            P = &mut x;
+        }
+        std::ptr::write_volatile(P, 123);
+    }
+}
+```
 
 ```shell
-$ cat src/main.rs
+$ export RUSTFLAGS=-Zsanitizer=address RUSTDOCFLAGS=-Zsanitizer=address
+$ cargo run -Zbuild-std --target x86_64-unknown-linux-gnu
+=================================================================
+==39249==ERROR: AddressSanitizer: stack-use-after-scope on address 0x7ffc7ed3e1a0 at pc 0x55c98b262a8e bp 0x7ffc7ed3e050 sp 0x7ffc7ed3e048
+WRITE of size 8 at 0x7ffc7ed3e1a0 thread T0
+    #0 0x55c98b262a8d in core::ptr::write_volatile::he21f1df5a82f329a /.../src/rust/src/libcore/ptr/mod.rs:1048:5
+    #1 0x55c98b262cd2 in example::main::h628ffc6626ed85b2 /.../src/main.rs:9:9
+    ...
+
+Address 0x7ffc7ed3e1a0 is located in stack of thread T0 at offset 32 in frame
+    #0 0x55c98b262bdf in example::main::h628ffc6626ed85b2 /.../src/main.rs:3
+
+  This frame has 1 object(s):
+    [32, 40) 'x' (line 6) <== Memory access at offset 32 is inside this variable
+HINT: this may be a false positive if your program uses some custom stack unwind mechanism, swapcontext or vfork
+      (longjmp and C++ exceptions *are* supported)
+SUMMARY: AddressSanitizer: stack-use-after-scope /.../src/rust/src/libcore/ptr/mod.rs:1048:5 in core::ptr::write_volatile::he21f1df5a82f329a
+Shadow bytes around the buggy address:
+  0x10000fd9fbe0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x10000fd9fbf0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x10000fd9fc00: 00 00 00 00 00 00 00 00 00 00 00 00 f1 f1 f1 f1
+  0x10000fd9fc10: f8 f8 f3 f3 00 00 00 00 00 00 00 00 00 00 00 00
+  0x10000fd9fc20: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+=>0x10000fd9fc30: f1 f1 f1 f1[f8]f3 f3 f3 00 00 00 00 00 00 00 00
+  0x10000fd9fc40: 00 00 00 00 00 00 00 00 00 00 00 00 f1 f1 f1 f1
+  0x10000fd9fc50: 00 00 f3 f3 00 00 00 00 00 00 00 00 00 00 00 00
+  0x10000fd9fc60: 00 00 00 00 00 00 00 00 f1 f1 f1 f1 00 00 f3 f3
+  0x10000fd9fc70: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x10000fd9fc80: 00 00 00 00 f1 f1 f1 f1 00 00 f3 f3 00 00 00 00
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07
+  Heap left redzone:       fa
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+  Left alloca redzone:     ca
+  Right alloca redzone:    cb
+  Shadow gap:              cc
+==39249==ABORTING
+```
+
+# MemorySanitizer
+
+MemorySanitizer is detector of uninitialized reads. It is only supported on the
+`x86_64-unknown-linux-gnu` target.
+
+MemorySanitizer requires all program code to be instrumented. C/C++ dependencies
+need to be recompiled using Clang with `-fsanitize=memory` option. Failing to
+achieve that will result in false positive reports.
+
+## Example
+
+Detecting the use of uninitialized memory. The `-Zbuild-std` flag rebuilds and
+instruments the standard library, and is strictly necessary for the correct
+operation of the tool. The `-Zsanitizer-track-origins` enables tracking of the
+origins of uninitialized memory:
+
+```rust
 use std::mem::MaybeUninit;
 
 fn main() {
@@ -184,7 +193,9 @@ fn main() {
         println!("{}", a[2]);
     }
 }
+```
 
+```shell
 $ export \
   CC=clang \
   CXX=clang++ \
@@ -193,7 +204,7 @@ $ export \
   RUSTFLAGS='-Zsanitizer=memory -Zsanitizer-memory-track-origins' \
   RUSTDOCFLAGS='-Zsanitizer=memory -Zsanitizer-memory-track-origins'
 $ cargo clean
-$ cargo -Zbuild-std run --target x86_64-unknown-linux-gnu
+$ cargo run -Zbuild-std --target x86_64-unknown-linux-gnu
 ==9416==WARNING: MemorySanitizer: use-of-uninitialized-value
     #0 0x560c04f7488a in core::fmt::num::imp::fmt_u64::haa293b0b098501ca $RUST/build/x86_64-unknown-linux-gnu/stage1/lib/rustlib/src/rust/src/libcore/fmt/num.rs:202:16
 ...
@@ -205,6 +216,55 @@ $ cargo -Zbuild-std run --target x86_64-unknown-linux-gnu
     #0 0x560c04b2bc50 in memory::main::hd2333c1899d997f5 $CWD/src/main.rs:3
 ```
 
+# ThreadSanitizer
+
+ThreadSanitizer is a data race detection tool. It is supported on the following
+targets:
+
+* `x86_64-apple-darwin`
+* `x86_64-unknown-linux-gnu`
+
+To work correctly ThreadSanitizer needs to be "aware" of all synchronization
+operations in a program. It generally achieves that through combination of
+library interception (for example synchronization performed through
+`pthread_mutex_lock` / `pthread_mutex_unlock`) and compile time instrumentation
+(e.g. atomic operations). Using it without instrumenting all the program code
+can lead to false positive reports.
+
+ThreadSanitizer does not support atomic fences `std::sync::atomic::fence`,
+nor synchronization performed using inline assembly code.
+
+## Example
+
+```rust
+static mut A: usize = 0;
+
+fn main() {
+    let t = std::thread::spawn(|| {
+        unsafe { A += 1 };
+    });
+    unsafe { A += 1 };
+
+    t.join().unwrap();
+}
+```
+
+```shell
+$ export RUSTFLAGS=-Zsanitizer=thread RUSTDOCFLAGS=-Zsanitizer=thread
+$ cargo run -Zbuild-std --target x86_64-unknown-linux-gnu
+==================
+WARNING: ThreadSanitizer: data race (pid=10574)
+  Read of size 8 at 0x5632dfe3d030 by thread T1:
+    #0 example::main::_$u7b$$u7b$closure$u7d$$u7d$::h23f64b0b2f8c9484 ../src/main.rs:5:18 (example+0x86cec)
+    ...
+
+  Previous write of size 8 at 0x5632dfe3d030 by main thread:
+    #0 example::main::h628ffc6626ed85b2 /.../src/main.rs:7:14 (example+0x868c8)
+    ...
+    #11 main <null> (example+0x86a1a)
+
+  Location is global 'example::A::h43ac149ddf992709' of size 8 at 0x5632dfe3d030 (example+0x000000bd9030)
+```
 
 # Instrumentation of external dependencies and std
 
@@ -230,6 +290,10 @@ version of rustc.
 In more practical terms when using cargo always remember to pass `--target`
 flag, so that rustflags will not be applied to build scripts and procedural
 macros.
+
+# Symbolizing the Reports
+
+Sanitizers produce symbolized stacktraces when llvm-symbolizer binary is in `PATH`.
 
 # Additional Information
 

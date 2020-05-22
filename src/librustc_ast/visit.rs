@@ -17,6 +17,7 @@ use crate::ast::*;
 use crate::token::Token;
 use crate::tokenstream::{TokenStream, TokenTree};
 
+use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::Span;
 
 #[derive(Copy, Clone, PartialEq)]
@@ -74,7 +75,7 @@ impl<'a> FnKind<'a> {
 /// to monitor future changes to `Visitor` in case a new method with a
 /// new default implementation gets introduced.)
 pub trait Visitor<'ast>: Sized {
-    fn visit_name(&mut self, _span: Span, _name: Name) {
+    fn visit_name(&mut self, _span: Span, _name: Symbol) {
         // Nothing to do.
     }
     fn visit_ident(&mut self, ident: Ident) {
@@ -464,8 +465,12 @@ where
 {
     match *generic_args {
         GenericArgs::AngleBracketed(ref data) => {
-            walk_list!(visitor, visit_generic_arg, &data.args);
-            walk_list!(visitor, visit_assoc_ty_constraint, &data.constraints);
+            for arg in &data.args {
+                match arg {
+                    AngleBracketedArg::Arg(a) => visitor.visit_generic_arg(a),
+                    AngleBracketedArg::Constraint(c) => visitor.visit_assoc_ty_constraint(c),
+                }
+            }
         }
         GenericArgs::Parenthesized(ref data) => {
             walk_list!(visitor, visit_ty, &data.inputs);
@@ -814,6 +819,27 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
         ExprKind::MacCall(ref mac) => visitor.visit_mac(mac),
         ExprKind::Paren(ref subexpression) => visitor.visit_expr(subexpression),
         ExprKind::InlineAsm(ref ia) => {
+            for (op, _) in &ia.operands {
+                match op {
+                    InlineAsmOperand::In { expr, .. }
+                    | InlineAsmOperand::InOut { expr, .. }
+                    | InlineAsmOperand::Const { expr, .. }
+                    | InlineAsmOperand::Sym { expr, .. } => visitor.visit_expr(expr),
+                    InlineAsmOperand::Out { expr, .. } => {
+                        if let Some(expr) = expr {
+                            visitor.visit_expr(expr);
+                        }
+                    }
+                    InlineAsmOperand::SplitInOut { in_expr, out_expr, .. } => {
+                        visitor.visit_expr(in_expr);
+                        if let Some(out_expr) = out_expr {
+                            visitor.visit_expr(out_expr);
+                        }
+                    }
+                }
+            }
+        }
+        ExprKind::LlvmInlineAsm(ref ia) => {
             for &(_, ref input) in &ia.inputs {
                 visitor.visit_expr(input)
             }

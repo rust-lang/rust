@@ -2,18 +2,17 @@
 //! looking at their MIR. Intrinsics/functions supported here are shared by CTFE
 //! and miri.
 
-use rustc::mir::{
+use rustc_hir::def_id::DefId;
+use rustc_middle::mir::{
     self,
     interpret::{ConstValue, GlobalId, InterpResult, Scalar},
     BinOp,
 };
-use rustc::ty;
-use rustc::ty::layout::{LayoutOf, Primitive, Size};
-use rustc::ty::subst::SubstsRef;
-use rustc::ty::TyCtxt;
-use rustc_hir::def_id::DefId;
+use rustc_middle::ty;
+use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::{sym, Symbol};
-use rustc_span::Span;
+use rustc_target::abi::{Abi, LayoutOf as _, Primitive, Size};
 
 use super::{ImmTy, InterpCx, Machine, OpTy, PlaceTy};
 
@@ -29,11 +28,11 @@ fn numeric_intrinsic<'tcx, Tag>(
         Primitive::Int(integer, _) => integer.size(),
         _ => bug!("invalid `{}` argument: {:?}", name, bits),
     };
-    let extra = 128 - size.bits() as u128;
+    let extra = 128 - u128::from(size.bits());
     let bits_out = match name {
-        sym::ctpop => bits.count_ones() as u128,
-        sym::ctlz => bits.leading_zeros() as u128 - extra,
-        sym::cttz => (bits << extra).trailing_zeros() as u128 - extra,
+        sym::ctpop => u128::from(bits.count_ones()),
+        sym::ctlz => u128::from(bits.leading_zeros()) - extra,
+        sym::cttz => u128::from((bits << extra).trailing_zeros()) - extra,
         sym::bswap => (bits << extra).swap_bytes(),
         sym::bitreverse => (bits << extra).reverse_bits(),
         _ => bug!("not a numeric intrinsic: {}", name),
@@ -72,11 +71,10 @@ crate fn eval_nullary_intrinsic<'tcx>(
     })
 }
 
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
+impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Returns `true` if emulation happened.
     pub fn emulate_intrinsic(
         &mut self,
-        span: Span,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, M::PointerTag>],
         ret: Option<(PlaceTy<'tcx, M::PointerTag>, mir::BasicBlock)>,
@@ -96,10 +94,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         };
 
         // Keep the patterns in this match ordered the same as the list in
-        // `src/librustc/ty/constness.rs`
+        // `src/librustc_middle/ty/constness.rs`
         match intrinsic_name {
             sym::caller_location => {
-                let span = self.find_closest_untracked_caller_location().unwrap_or(span);
+                let span = self.find_closest_untracked_caller_location();
                 let location = self.alloc_caller_location_for_span(span);
                 self.write_scalar(location.ptr, dest)?;
             }
@@ -116,7 +114,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     sym::needs_drop => self.tcx.types.bool,
                     sym::type_id => self.tcx.types.u64,
                     sym::type_name => self.tcx.mk_static_str(),
-                    _ => span_bug!(span, "Already checked for nullary intrinsics"),
+                    _ => bug!("already checked for nullary intrinsics"),
                 };
                 let val = self.const_eval(gid, ty)?;
                 self.copy_op(val, dest)?;
@@ -134,7 +132,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let val = self.read_scalar(args[0])?.not_undef()?;
                 let bits = self.force_bits(val, layout_of.size)?;
                 let kind = match layout_of.abi {
-                    ty::layout::Abi::Scalar(ref scalar) => scalar.value,
+                    Abi::Scalar(ref scalar) => scalar.value,
                     _ => bug!("{} called on invalid type {:?}", intrinsic_name, ty),
                 };
                 let (nonzero, intrinsic_name) = match intrinsic_name {
@@ -220,7 +218,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             sym::discriminant_value => {
                 let place = self.deref_operand(args[0])?;
                 let discr_val = self.read_discriminant(place.into())?.0;
-                self.write_scalar(Scalar::from_uint(discr_val, dest.layout.size), dest)?;
+                let scalar = match dest.layout.ty.kind {
+                    ty::Int(_) => Scalar::from_int(discr_val as i128, dest.layout.size),
+                    ty::Uint(_) => Scalar::from_uint(discr_val, dest.layout.size),
+                    _ => bug!("invalid `discriminant_value` return layout: {:?}", dest.layout),
+                };
+                self.write_scalar(scalar, dest)?;
             }
             sym::unchecked_shl
             | sym::unchecked_shr
@@ -261,7 +264,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let val_bits = self.force_bits(val, layout.size)?;
                 let raw_shift = self.read_scalar(args[1])?.not_undef()?;
                 let raw_shift_bits = self.force_bits(raw_shift, layout.size)?;
-                let width_bits = layout.size.bits() as u128;
+                let width_bits = u128::from(layout.size.bits());
                 let shift_bits = raw_shift_bits % width_bits;
                 let inv_shift_bits = (width_bits - shift_bits) % width_bits;
                 let result_bits = if intrinsic_name == sym::rotate_left {
@@ -275,7 +278,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             sym::ptr_offset_from => {
-                let isize_layout = self.layout_of(self.tcx.types.isize)?;
                 let a = self.read_immediate(args[0])?.to_scalar()?;
                 let b = self.read_immediate(args[1])?.to_scalar()?;
 
@@ -292,7 +294,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     let a = a.to_machine_usize(self)?;
                     let b = b.to_machine_usize(self)?;
                     if a == b && a != 0 {
-                        self.write_scalar(Scalar::from_int(0, isize_layout.size), dest)?;
+                        self.write_scalar(Scalar::from_machine_isize(0, self), dest)?;
                         true
                     } else {
                         false
@@ -312,6 +314,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         );
                     }
                     let usize_layout = self.layout_of(self.tcx.types.usize)?;
+                    let isize_layout = self.layout_of(self.tcx.types.isize)?;
                     let a_offset = ImmTy::from_uint(a.offset.bytes(), usize_layout);
                     let b_offset = ImmTy::from_uint(b.offset.bytes(), usize_layout);
                     let (val, _overflowed, _ty) =
@@ -350,8 +353,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 );
 
                 for i in 0..len {
-                    let place = self.place_field(dest, i)?;
-                    let value = if i == index { elem } else { self.operand_field(input, i)? };
+                    let place = self.place_index(dest, i)?;
+                    let value = if i == index { elem } else { self.operand_index(input, i)? };
                     self.copy_op(value, place)?;
                 }
             }
@@ -370,7 +373,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     "Return type `{}` must match vector element type `{}`",
                     dest.layout.ty, e_ty
                 );
-                self.copy_op(self.operand_field(args[0], index)?, dest)?;
+                self.copy_op(self.operand_index(args[0], index)?, dest)?;
             }
             _ => return Ok(false),
         }

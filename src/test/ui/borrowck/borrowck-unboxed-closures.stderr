@@ -26,11 +26,10 @@ LL |     f(1, 2);
 LL |     f(1, 2);
    |     ^ value used here after move
    |
-help: consider further restricting this bound with `+ Copy`
-  --> $DIR/borrowck-unboxed-closures.rs:10:8
+help: consider further restricting this bound
    |
-LL | fn c<F:FnOnce(isize, isize) -> isize>(f: F) {
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | fn c<F:FnOnce(isize, isize) -> isize + Copy>(f: F) {
+   |                                      ^^^^^^
 
 error: aborting due to 3 previous errors
 

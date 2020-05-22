@@ -1,5 +1,7 @@
 include ../tools.mk
 
+# ignore-stage1
+
 all:
 	/bin/echo || exit 0 # This test requires /bin/echo to exist
 	$(RUSTC) the_backend.rs --crate-name the_backend --crate-type dylib \

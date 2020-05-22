@@ -1,4 +1,4 @@
-use std::fs::File;
+use std::fs::{create_dir_all, File};
 use std::io::prelude::*;
 use std::path::PathBuf;
 
@@ -40,6 +40,11 @@ pub fn render(
     diag: &rustc_errors::Handler,
     edition: Edition,
 ) -> i32 {
+    if let Err(e) = create_dir_all(&options.output) {
+        diag.struct_err(&format!("{}: {}", options.output.display(), e)).emit();
+        return 4;
+    }
+
     let mut output = options.output;
     output.push(input.file_name().unwrap());
     output.set_extension("html");
@@ -148,7 +153,7 @@ pub fn test(mut options: Options, diag: &rustc_errors::Handler) -> i32 {
     collector.set_position(DUMMY_SP);
     let codes = ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build());
 
-    find_testable_code(&input_str, &mut collector, codes, options.enable_per_target_ignores);
+    find_testable_code(&input_str, &mut collector, codes, options.enable_per_target_ignores, None);
 
     options.test_args.insert(0, "rustdoctest".to_string());
     testing::test_main(

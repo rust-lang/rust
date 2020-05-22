@@ -186,6 +186,6 @@ error[E0452]: malformed lint attribute input
 LL | #![warn(keyword_idents, reason = "root in rubble", macro_use_extern_crate)]
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^ reason in lint attribute must come last
 
-error: aborting due to 30 previous errors
+error: aborting due to 30 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0452`.

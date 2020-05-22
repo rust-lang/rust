@@ -19,8 +19,8 @@ use crate::llvm::AttributePlace::Function;
 use crate::type_::Type;
 use crate::value::Value;
 use log::debug;
-use rustc::ty::Ty;
 use rustc_codegen_ssa::traits::*;
+use rustc_middle::ty::Ty;
 
 /// Declare a function.
 ///

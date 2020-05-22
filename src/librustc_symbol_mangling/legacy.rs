@@ -1,12 +1,12 @@
-use rustc::hir::map::{DefPathData, DisambiguatedDefPathData};
-use rustc::ich::NodeIdHashingMode;
-use rustc::mir::interpret::{ConstValue, Scalar};
-use rustc::ty::print::{PrettyPrinter, Print, Printer};
-use rustc::ty::subst::{GenericArg, GenericArgKind};
-use rustc::ty::{self, Instance, Ty, TyCtxt, TypeFoldable};
-use rustc::util::common::record_time;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::def_id::CrateNum;
+use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
+use rustc_middle::ich::NodeIdHashingMode;
+use rustc_middle::mir::interpret::{ConstValue, Scalar};
+use rustc_middle::ty::print::{PrettyPrinter, Print, Printer};
+use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
+use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::util::common::record_time;
 
 use log::debug;
 
@@ -216,7 +216,6 @@ impl Printer<'tcx> for SymbolPrinter<'tcx> {
             ty::FnDef(def_id, substs)
             | ty::Opaque(def_id, substs)
             | ty::Projection(ty::ProjectionTy { item_def_id: def_id, substs })
-            | ty::UnnormalizedProjection(ty::ProjectionTy { item_def_id: def_id, substs })
             | ty::Closure(def_id, substs)
             | ty::Generator(def_id, substs, _) => self.print_def_path(def_id, substs),
             _ => self.pretty_print_type(ty),
@@ -264,7 +263,6 @@ impl Printer<'tcx> for SymbolPrinter<'tcx> {
             ty::FnDef(..)
             | ty::Opaque(..)
             | ty::Projection(_)
-            | ty::UnnormalizedProjection(_)
             | ty::Closure(..)
             | ty::Generator(..)
                 if trait_ref.is_none() =>
@@ -308,9 +306,8 @@ impl Printer<'tcx> for SymbolPrinter<'tcx> {
         self = print_prefix(self)?;
 
         // Skip `::{{constructor}}` on tuple/unit structs.
-        match disambiguated_data.data {
-            DefPathData::Ctor => return Ok(self),
-            _ => {}
+        if let DefPathData::Ctor = disambiguated_data.data {
+            return Ok(self);
         }
 
         if self.keep_within_component {

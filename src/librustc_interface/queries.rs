@@ -1,18 +1,18 @@
 use crate::interface::{Compiler, Result};
 use crate::passes::{self, BoxedResolver, QueryContext};
 
-use rustc::arena::Arena;
-use rustc::dep_graph::DepGraph;
-use rustc::ty::steal::Steal;
-use rustc::ty::{GlobalCtxt, ResolverOutputs, TyCtxt};
-use rustc::util::common::ErrorReported;
 use rustc_ast::{self, ast};
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::sync::{Lrc, Once, WorkerLocal};
+use rustc_errors::ErrorReported;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::Crate;
 use rustc_incremental::DepGraphFuture;
 use rustc_lint::LintStore;
+use rustc_middle::arena::Arena;
+use rustc_middle::dep_graph::DepGraph;
+use rustc_middle::ty::steal::Steal;
+use rustc_middle::ty::{GlobalCtxt, ResolverOutputs, TyCtxt};
 use rustc_session::config::{OutputFilenames, OutputType};
 use rustc_session::{output::find_crate_name, Session};
 use rustc_span::symbol::sym;
@@ -137,7 +137,7 @@ impl<'tcx> Queries<'tcx> {
             let result = passes::register_plugins(
                 self.session(),
                 &*self.codegen_backend().metadata_loader(),
-                self.compiler.register_lints.as_ref().map(|p| &**p).unwrap_or_else(|| empty),
+                self.compiler.register_lints.as_deref().unwrap_or_else(|| empty),
                 krate,
                 &crate_name,
             );
@@ -293,7 +293,7 @@ impl<'tcx> Queries<'tcx> {
             _ => return,
         };
 
-        let attrs = &*tcx.get_attrs(def_id);
+        let attrs = &*tcx.get_attrs(def_id.to_def_id());
         let attrs = attrs.iter().filter(|attr| attr.check_name(sym::rustc_error));
         for attr in attrs {
             match attr.meta_item_list() {

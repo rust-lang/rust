@@ -26,3 +26,5 @@ LL |     nonstandard_style,
    |     ^^^^^^^^^^^^^^^^^
    = note: `#[warn(non_snake_case)]` implied by `#[warn(nonstandard_style)]`
 
+warning: 2 warnings emitted
+

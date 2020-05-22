@@ -1,4 +1,4 @@
-error: associated const is never used: `BAR`
+error: associated constant is never used: `BAR`
   --> $DIR/associated-const-dead-code.rs:6:5
    |
 LL |     const BAR: u32 = 1;

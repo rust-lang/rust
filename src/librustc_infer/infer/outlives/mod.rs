@@ -4,8 +4,8 @@ pub mod env;
 pub mod obligations;
 pub mod verify;
 
-use rustc::traits::query::OutlivesBound;
-use rustc::ty;
+use rustc_middle::traits::query::OutlivesBound;
+use rustc_middle::ty;
 
 pub fn explicit_outlives_bounds<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
@@ -19,7 +19,8 @@ pub fn explicit_outlives_bounds<'tcx>(
         | ty::Predicate::ObjectSafe(..)
         | ty::Predicate::ClosureKind(..)
         | ty::Predicate::TypeOutlives(..)
-        | ty::Predicate::ConstEvaluatable(..) => None,
+        | ty::Predicate::ConstEvaluatable(..)
+        | ty::Predicate::ConstEquate(..) => None,
         ty::Predicate::RegionOutlives(ref data) => data
             .no_bound_vars()
             .map(|ty::OutlivesPredicate(r_a, r_b)| OutlivesBound::RegionSubRegion(r_b, r_a)),

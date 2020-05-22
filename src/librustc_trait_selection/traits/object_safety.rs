@@ -13,11 +13,12 @@ use super::elaborate_predicates;
 use crate::infer::TyCtxtInferExt;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::{self, Obligation, ObligationCause};
-use rustc::ty::subst::{InternalSubsts, Subst};
-use rustc::ty::{self, Predicate, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
-use rustc_errors::Applicability;
+use rustc_errors::{Applicability, FatalError};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_middle::ty::subst::{GenericArg, InternalSubsts, Subst};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeVisitor, WithConstness};
+use rustc_middle::ty::{Predicate, ToPredicate};
 use rustc_session::lint::builtin::WHERE_CLAUSES_OBJECT_SAFETY;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
@@ -47,13 +48,17 @@ pub fn astconv_object_safety_violations(
     violations
 }
 
-fn object_safety_violations(tcx: TyCtxt<'_>, trait_def_id: DefId) -> Vec<ObjectSafetyViolation> {
+fn object_safety_violations(
+    tcx: TyCtxt<'tcx>,
+    trait_def_id: DefId,
+) -> &'tcx [ObjectSafetyViolation] {
     debug_assert!(tcx.generics_of(trait_def_id).has_self);
     debug!("object_safety_violations: {:?}", trait_def_id);
 
-    traits::supertrait_def_ids(tcx, trait_def_id)
-        .flat_map(|def_id| object_safety_violations_for_trait(tcx, def_id))
-        .collect()
+    tcx.arena.alloc_from_iter(
+        traits::supertrait_def_ids(tcx, trait_def_id)
+            .flat_map(|def_id| object_safety_violations_for_trait(tcx, def_id)),
+    )
 }
 
 /// We say a method is *vtable safe* if it can be invoked on a trait
@@ -82,7 +87,7 @@ fn object_safety_violations_for_trait(
     let mut violations: Vec<_> = tcx
         .associated_items(trait_def_id)
         .in_definition_order()
-        .filter(|item| item.kind == ty::AssocKind::Method)
+        .filter(|item| item.kind == ty::AssocKind::Fn)
         .filter_map(|item| {
             object_safety_violation_for_method(tcx, trait_def_id, &item)
                 .map(|(code, span)| ObjectSafetyViolation::Method(item.ident.name, code, span))
@@ -170,6 +175,24 @@ fn object_safety_violations_for_trait(
     violations
 }
 
+fn sized_trait_bound_spans<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    bounds: hir::GenericBounds<'tcx>,
+) -> impl 'tcx + Iterator<Item = Span> {
+    bounds.iter().filter_map(move |b| match b {
+        hir::GenericBound::Trait(trait_ref, hir::TraitBoundModifier::None)
+            if trait_has_sized_self(
+                tcx,
+                trait_ref.trait_ref.trait_def_id().unwrap_or_else(|| FatalError.raise()),
+            ) =>
+        {
+            // Fetch spans for supertraits that are `Sized`: `trait T: Super`
+            Some(trait_ref.span)
+        }
+        _ => None,
+    })
+}
+
 fn get_sized_bounds(tcx: TyCtxt<'_>, trait_def_id: DefId) -> SmallVec<[Span; 1]> {
     tcx.hir()
         .get_if_local(trait_def_id)
@@ -189,33 +212,14 @@ fn get_sized_bounds(tcx: TyCtxt<'_>, trait_def_id: DefId) -> SmallVec<[Span; 1]>
                             {
                                 // Fetch spans for trait bounds that are Sized:
                                 // `trait T where Self: Pred`
-                                Some(pred.bounds.iter().filter_map(|b| match b {
-                                    hir::GenericBound::Trait(
-                                        trait_ref,
-                                        hir::TraitBoundModifier::None,
-                                    ) if trait_has_sized_self(
-                                        tcx,
-                                        trait_ref.trait_ref.trait_def_id(),
-                                    ) =>
-                                    {
-                                        Some(trait_ref.span)
-                                    }
-                                    _ => None,
-                                }))
+                                Some(sized_trait_bound_spans(tcx, pred.bounds))
                             }
                             _ => None,
                         }
                     })
                     .flatten()
-                    .chain(bounds.iter().filter_map(|b| match b {
-                        hir::GenericBound::Trait(trait_ref, hir::TraitBoundModifier::None)
-                            if trait_has_sized_self(tcx, trait_ref.trait_ref.trait_def_id()) =>
-                        {
-                            // Fetch spans for supertraits that are `Sized`: `trait T: Super`
-                            Some(trait_ref.span)
-                        }
-                        _ => None,
-                    }))
+                    // Fetch spans for supertraits that are `Sized`: `trait T: Super`.
+                    .chain(sized_trait_bound_spans(tcx, bounds))
                     .collect::<SmallVec<[Span; 1]>>(),
             ),
             _ => None,
@@ -235,7 +239,7 @@ fn predicates_reference_self(
         tcx.predicates_of(trait_def_id)
     };
     let self_ty = tcx.types.self_param;
-    let has_self_ty = |t: Ty<'_>| t.walk().any(|t| t == self_ty);
+    let has_self_ty = |arg: &GenericArg<'_>| arg.walk().any(|arg| arg == self_ty.into());
     predicates
         .predicates
         .iter()
@@ -244,7 +248,7 @@ fn predicates_reference_self(
             match predicate {
                 ty::Predicate::Trait(ref data, _) => {
                     // In the case of a trait predicate, we can skip the "self" type.
-                    if data.skip_binder().input_types().skip(1).any(has_self_ty) {
+                    if data.skip_binder().trait_ref.substs[1..].iter().any(has_self_ty) {
                         Some(sp)
                     } else {
                         None
@@ -263,12 +267,8 @@ fn predicates_reference_self(
                     //
                     // This is ALT2 in issue #56288, see that for discussion of the
                     // possible alternatives.
-                    if data
-                        .skip_binder()
-                        .projection_ty
-                        .trait_ref(tcx)
-                        .input_types()
-                        .skip(1)
+                    if data.skip_binder().projection_ty.trait_ref(tcx).substs[1..]
+                        .iter()
                         .any(has_self_ty)
                     {
                         Some(sp)
@@ -282,7 +282,8 @@ fn predicates_reference_self(
                 | ty::Predicate::RegionOutlives(..)
                 | ty::Predicate::ClosureKind(..)
                 | ty::Predicate::Subtype(..)
-                | ty::Predicate::ConstEvaluatable(..) => None,
+                | ty::Predicate::ConstEvaluatable(..)
+                | ty::Predicate::ConstEquate(..) => None,
             }
         })
         .collect()
@@ -303,7 +304,7 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     // Search for a predicate like `Self : Sized` amongst the trait bounds.
     let predicates = tcx.predicates_of(def_id);
     let predicates = predicates.instantiate_identity(tcx).predicates;
-    elaborate_predicates(tcx, predicates).any(|predicate| match predicate {
+    elaborate_predicates(tcx, predicates.into_iter()).any(|obligation| match obligation.predicate {
         ty::Predicate::Trait(ref trait_pred, _) => {
             trait_pred.def_id() == sized_def_id && trait_pred.skip_binder().self_ty().is_param(0)
         }
@@ -314,7 +315,8 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         | ty::Predicate::ObjectSafe(..)
         | ty::Predicate::ClosureKind(..)
         | ty::Predicate::TypeOutlives(..)
-        | ty::Predicate::ConstEvaluatable(..) => false,
+        | ty::Predicate::ConstEvaluatable(..)
+        | ty::Predicate::ConstEquate(..) => false,
     })
 }
 
@@ -363,7 +365,7 @@ fn virtual_call_violation_for_method<'tcx>(
     method: &ty::AssocItem,
 ) -> Option<MethodViolationCode> {
     // The method's first parameter must be named `self`
-    if !method.method_has_self_argument {
+    if !method.fn_has_self_parameter {
         // We'll attempt to provide a structured suggestion for `Self: Sized`.
         let sugg =
             tcx.hir().get_if_local(method.def_id).as_ref().and_then(|node| node.generics()).map(
@@ -421,7 +423,7 @@ fn virtual_call_violation_for_method<'tcx>(
         } else {
             // Do sanity check to make sure the receiver actually has the layout of a pointer.
 
-            use rustc::ty::layout::Abi;
+            use rustc_target::abi::Abi;
 
             let param_env = tcx.param_env(method.def_id);
 
@@ -617,7 +619,7 @@ fn receiver_is_dispatchable<'tcx>(
     // FIXME(mikeyhew) this is a total hack. Once object_safe_for_dispatch is stabilized, we can
     // replace this with `dyn Trait`
     let unsized_self_ty: Ty<'tcx> =
-        tcx.mk_ty_param(::std::u32::MAX, Symbol::intern("RustaceansAreAwesome"));
+        tcx.mk_ty_param(u32::MAX, Symbol::intern("RustaceansAreAwesome"));
 
     // `Receiver[Self => U]`
     let unsized_receiver_ty =
@@ -725,52 +727,65 @@ fn contains_illegal_self_type_reference<'tcx>(
     // object type, and we cannot resolve `Self as SomeOtherTrait`
     // without knowing what `Self` is.
 
-    let mut supertraits: Option<Vec<ty::PolyTraitRef<'tcx>>> = None;
-    let mut error = false;
-    let self_ty = tcx.types.self_param;
-    ty.maybe_walk(|ty| {
-        match ty.kind {
-            ty::Param(_) => {
-                if ty == self_ty {
-                    error = true;
-                }
+    struct IllegalSelfTypeVisitor<'tcx> {
+        tcx: TyCtxt<'tcx>,
+        self_ty: Ty<'tcx>,
+        trait_def_id: DefId,
+        supertraits: Option<Vec<ty::PolyTraitRef<'tcx>>>,
+    }
 
-                false // no contained types to walk
+    impl<'tcx> TypeVisitor<'tcx> for IllegalSelfTypeVisitor<'tcx> {
+        fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
+            match t.kind {
+                ty::Param(_) => t == self.self_ty,
+                ty::Projection(ref data) => {
+                    // This is a projected type `<Foo as SomeTrait>::X`.
+
+                    // Compute supertraits of current trait lazily.
+                    if self.supertraits.is_none() {
+                        let trait_ref =
+                            ty::Binder::bind(ty::TraitRef::identity(self.tcx, self.trait_def_id));
+                        self.supertraits = Some(traits::supertraits(self.tcx, trait_ref).collect());
+                    }
+
+                    // Determine whether the trait reference `Foo as
+                    // SomeTrait` is in fact a supertrait of the
+                    // current trait. In that case, this type is
+                    // legal, because the type `X` will be specified
+                    // in the object type.  Note that we can just use
+                    // direct equality here because all of these types
+                    // are part of the formal parameter listing, and
+                    // hence there should be no inference variables.
+                    let projection_trait_ref = ty::Binder::bind(data.trait_ref(self.tcx));
+                    let is_supertrait_of_current_trait =
+                        self.supertraits.as_ref().unwrap().contains(&projection_trait_ref);
+
+                    if is_supertrait_of_current_trait {
+                        false // do not walk contained types, do not report error, do collect $200
+                    } else {
+                        t.super_visit_with(self) // DO walk contained types, POSSIBLY reporting an error
+                    }
+                }
+                _ => t.super_visit_with(self), // walk contained types, if any
             }
-
-            ty::Projection(ref data) => {
-                // This is a projected type `<Foo as SomeTrait>::X`.
-
-                // Compute supertraits of current trait lazily.
-                if supertraits.is_none() {
-                    let trait_ref = ty::Binder::bind(ty::TraitRef::identity(tcx, trait_def_id));
-                    supertraits = Some(traits::supertraits(tcx, trait_ref).collect());
-                }
-
-                // Determine whether the trait reference `Foo as
-                // SomeTrait` is in fact a supertrait of the
-                // current trait. In that case, this type is
-                // legal, because the type `X` will be specified
-                // in the object type.  Note that we can just use
-                // direct equality here because all of these types
-                // are part of the formal parameter listing, and
-                // hence there should be no inference variables.
-                let projection_trait_ref = ty::Binder::bind(data.trait_ref(tcx));
-                let is_supertrait_of_current_trait =
-                    supertraits.as_ref().unwrap().contains(&projection_trait_ref);
-
-                if is_supertrait_of_current_trait {
-                    false // do not walk contained types, do not report error, do collect $200
-                } else {
-                    true // DO walk contained types, POSSIBLY reporting an error
-                }
-            }
-
-            _ => true, // walk contained types, if any
         }
-    });
 
-    error
+        fn visit_const(&mut self, _c: &ty::Const<'tcx>) -> bool {
+            // FIXME(#72219) Look into the unevaluated constants for object safety violations.
+            // Do not walk substitutions of unevaluated consts, as they contain `Self`, even
+            // though the const expression doesn't necessary use it. Currently type variables
+            // inside array length expressions are forbidden, so they can't break the above
+            // rules.
+            false
+        }
+    }
+
+    ty.visit_with(&mut IllegalSelfTypeVisitor {
+        tcx,
+        self_ty: tcx.types.self_param,
+        trait_def_id,
+        supertraits: None,
+    })
 }
 
 pub fn provide(providers: &mut ty::query::Providers<'_>) {

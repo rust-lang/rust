@@ -52,7 +52,12 @@ unsafe impl GlobalAlloc for System {
     }
 }
 
-#[cfg(any(target_os = "android", target_os = "redox", target_os = "solaris"))]
+#[cfg(any(
+    target_os = "android",
+    target_os = "illumos",
+    target_os = "redox",
+    target_os = "solaris"
+))]
 #[inline]
 unsafe fn aligned_malloc(layout: &Layout) -> *mut u8 {
     // On android we currently target API level 9 which unfortunately
@@ -75,7 +80,12 @@ unsafe fn aligned_malloc(layout: &Layout) -> *mut u8 {
     libc::memalign(layout.align(), layout.size()) as *mut u8
 }
 
-#[cfg(not(any(target_os = "android", target_os = "redox", target_os = "solaris")))]
+#[cfg(not(any(
+    target_os = "android",
+    target_os = "illumos",
+    target_os = "redox",
+    target_os = "solaris"
+)))]
 #[inline]
 unsafe fn aligned_malloc(layout: &Layout) -> *mut u8 {
     let mut out = ptr::null_mut();

@@ -52,7 +52,7 @@ impl<T: PartialEq> TinyList<T> {
             if &e.data == data {
                 return true;
             }
-            elem = e.next.as_ref().map(|e| &**e);
+            elem = e.next.as_deref();
         }
         false
     }
@@ -62,7 +62,7 @@ impl<T: PartialEq> TinyList<T> {
         let (mut elem, mut count) = (self.head.as_ref(), 0);
         while let Some(ref e) = elem {
             count += 1;
-            elem = e.next.as_ref().map(|e| &**e);
+            elem = e.next.as_deref();
         }
         count
     }

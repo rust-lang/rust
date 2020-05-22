@@ -7,15 +7,15 @@ LL |     _parse: <ParseQuery as Query<RootDatabase>>::Data,
    = note: required because of the requirements on the impl of `Query<RootDatabase>` for `ParseQuery`
 
 error[E0275]: overflow evaluating the requirement `Runtime<RootDatabase>: std::panic::RefUnwindSafe`
-  --> $DIR/cycle-cache-err-60010.rs:31:5
+  --> $DIR/cycle-cache-err-60010.rs:31:20
    |
+LL | trait Database {
+   |       -------- required by a bound in this
 LL |     type Storage;
-   |          ------- associated type defined here
+   |     ------------- required by this bound in `Database`
 ...
-LL | impl Database for RootDatabase {
-   | ------------------------------ in this `impl` item
 LL |     type Storage = SalsaStorage;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                    ^^^^^^^^^^^^
    |
    = note: required because it appears within the type `RootDatabase`
    = note: required because of the requirements on the impl of `SourceDatabase` for `RootDatabase`

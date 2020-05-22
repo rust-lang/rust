@@ -7,6 +7,7 @@
 #![feature(box_syntax)]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
+#![feature(or_patterns)]
 #![feature(test)]
 #![feature(vec_remove_item)]
 #![feature(ptr_offset_from)]
@@ -15,8 +16,6 @@
 #![recursion_limit = "256"]
 
 extern crate env_logger;
-extern crate getopts;
-extern crate rustc;
 extern crate rustc_ast;
 extern crate rustc_ast_pretty;
 extern crate rustc_attr;
@@ -26,12 +25,14 @@ extern crate rustc_errors;
 extern crate rustc_expand;
 extern crate rustc_feature;
 extern crate rustc_hir;
+extern crate rustc_hir_pretty;
 extern crate rustc_index;
 extern crate rustc_infer;
 extern crate rustc_interface;
 extern crate rustc_lexer;
 extern crate rustc_lint;
 extern crate rustc_metadata;
+extern crate rustc_middle;
 extern crate rustc_mir;
 extern crate rustc_parse;
 extern crate rustc_resolve;
@@ -50,6 +51,7 @@ use std::panic;
 use std::process;
 
 use rustc_session::config::{make_crate_type_option, ErrorOutputType, RustcOptGroup};
+use rustc_session::getopts;
 use rustc_session::{early_error, early_warn};
 
 #[macro_use]

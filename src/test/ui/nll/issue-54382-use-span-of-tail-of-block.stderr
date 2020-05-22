@@ -13,7 +13,10 @@ LL |
 LL |     ;
    |     - ... and the borrow might be used here, when that temporary is dropped and runs the `Drop` code for type `D`
    |
-   = note: The temporary is part of an expression at the end of a block. Consider adding semicolon after the expression so its temporaries are dropped sooner, before the local variables declared by the block are dropped.
+help: consider adding semicolon after the expression so its temporaries are dropped sooner, before the local variables declared by the block are dropped
+   |
+LL |             D("other").next(&_thing1);
+   |                                      ^
 
 error: aborting due to previous error
 

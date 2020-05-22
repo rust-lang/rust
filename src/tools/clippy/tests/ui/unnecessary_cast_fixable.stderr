@@ -1,0 +1,22 @@
+error: casting integer literal to `f32` is unnecessary
+  --> $DIR/unnecessary_cast_fixable.rs:8:5
+   |
+LL |     100 as f32;
+   |     ^^^^^^^^^^ help: try: `100_f32`
+   |
+   = note: `-D clippy::unnecessary-cast` implied by `-D warnings`
+
+error: casting integer literal to `f64` is unnecessary
+  --> $DIR/unnecessary_cast_fixable.rs:9:5
+   |
+LL |     100 as f64;
+   |     ^^^^^^^^^^ help: try: `100_f64`
+
+error: casting integer literal to `f64` is unnecessary
+  --> $DIR/unnecessary_cast_fixable.rs:10:5
+   |
+LL |     100_i32 as f64;
+   |     ^^^^^^^^^^^^^^ help: try: `100_f64`
+
+error: aborting due to 3 previous errors
+

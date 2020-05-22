@@ -21,6 +21,7 @@ pub mod args;
 pub mod cmath;
 pub mod condvar;
 pub mod env;
+pub mod ext;
 pub mod fast_thread_local;
 pub mod fd;
 pub mod fs;
@@ -73,8 +74,10 @@ pub extern "C" fn floor(x: f64) -> f64 {
     unsafe { intrinsics::floorf64(x) }
 }
 
-pub unsafe fn abort_internal() -> ! {
-    abi::abort();
+pub fn abort_internal() -> ! {
+    unsafe {
+        abi::abort();
+    }
 }
 
 // FIXME: just a workaround to test the system
@@ -87,15 +90,13 @@ pub fn hashmap_random_keys() -> (u64, u64) {
 #[cfg(not(test))]
 #[no_mangle]
 // NB. used by both libunwind and libpanic_abort
-pub unsafe extern "C" fn __rust_abort() {
+pub extern "C" fn __rust_abort() {
     abort_internal();
 }
 
 #[cfg(not(test))]
 pub fn init() {
-    unsafe {
-        let _ = net::init();
-    }
+    let _ = net::init();
 }
 
 #[cfg(not(test))]
@@ -105,6 +106,7 @@ pub unsafe extern "C" fn runtime_entry(
     argv: *const *const c_char,
     env: *const *const c_char,
 ) -> ! {
+    use crate::sys::hermit::fast_thread_local::run_dtors;
     extern "C" {
         fn main(argc: isize, argv: *const *const c_char) -> i32;
     }
@@ -114,6 +116,7 @@ pub unsafe extern "C" fn runtime_entry(
 
     let result = main(argc as isize, argv);
 
+    run_dtors();
     abi::exit(result);
 }
 

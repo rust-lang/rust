@@ -2,7 +2,7 @@ error[E0277]: the trait bound `for<'t> <std::iter::Map<<&'t _ as std::iter::Into
   --> $DIR/issue-60218.rs:18:5
    |
 LL | pub fn trigger_error<I, F>(iterable: I, functor: F)
-   |        -------------
+   |        ------------- required by a bound in this
 ...
 LL | for<'t> <Map<<&'t I as IntoIterator>::IntoIter, F> as Iterator>::Item: Foo,
    |                                                                        --- required by this bound in `trigger_error`

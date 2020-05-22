@@ -278,6 +278,7 @@ use crate::vec::Vec;
 /// [`Deref`]: ../../std/ops/trait.Deref.html
 /// [`as_str()`]: struct.String.html#method.as_str
 #[derive(PartialOrd, Eq, Ord)]
+#[cfg_attr(not(test), rustc_diagnostic_item = "string_type")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct String {
     vec: Vec<u8>,
@@ -482,6 +483,7 @@ impl String {
     /// [`String`]: struct.String.html
     /// [`u8`]: ../../std/primitive.u8.html
     /// [`Vec<u8>`]: ../../std/vec/struct.Vec.html
+    /// [`&str`]: ../../std/primitive.str.html
     /// [`str::from_utf8`]: ../../std/str/fn.from_utf8.html
     /// [`into_bytes`]: struct.String.html#method.into_bytes
     /// [`FromUtf8Error`]: struct.FromUtf8Error.html
@@ -1461,6 +1463,7 @@ impl String {
     /// ```
     #[inline]
     #[stable(feature = "string_split_off", since = "1.16.0")]
+    #[must_use = "use `.truncate()` if you don't need the other half"]
     pub fn split_off(&mut self, at: usize) -> String {
         assert!(self.is_char_boundary(at));
         let other = self.vec.split_off(at);
@@ -1826,7 +1829,13 @@ impl<'a> Extend<Cow<'a, str>> for String {
     }
 }
 
-/// A convenience impl that delegates to the impl for `&str`
+/// A convenience impl that delegates to the impl for `&str`.
+///
+/// # Examples
+///
+/// ```
+/// assert_eq!(String::from("Hello world").find("world"), Some(6));
+/// ```
 #[unstable(
     feature = "pattern",
     reason = "API not fully fleshed out and ready to be stabilized",
@@ -1847,6 +1856,21 @@ impl<'a, 'b> Pattern<'a> for &'b String {
     #[inline]
     fn is_prefix_of(self, haystack: &'a str) -> bool {
         self[..].is_prefix_of(haystack)
+    }
+
+    #[inline]
+    fn strip_prefix_of(self, haystack: &'a str) -> Option<&'a str> {
+        self[..].strip_prefix_of(haystack)
+    }
+
+    #[inline]
+    fn is_suffix_of(self, haystack: &'a str) -> bool {
+        self[..].is_suffix_of(haystack)
+    }
+
+    #[inline]
+    fn strip_suffix_of(self, haystack: &'a str) -> Option<&'a str> {
+        self[..].strip_suffix_of(haystack)
     }
 }
 

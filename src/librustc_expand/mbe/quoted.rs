@@ -1,12 +1,11 @@
 use crate::mbe::macro_parser;
 use crate::mbe::{Delimited, KleeneOp, KleeneToken, SequenceRepetition, TokenTree};
 
-use rustc_ast::ast;
 use rustc_ast::token::{self, Token};
 use rustc_ast::tokenstream;
 use rustc_ast_pretty::pprust;
 use rustc_session::parse::ParseSess;
-use rustc_span::symbol::kw;
+use rustc_span::symbol::{kw, Ident};
 
 use rustc_span::Span;
 
@@ -67,7 +66,7 @@ pub(super) fn parse(
                     tree => tree.as_ref().map(tokenstream::TokenTree::span).unwrap_or(start_sp),
                 };
                 sess.missing_fragment_specifiers.borrow_mut().insert(span);
-                result.push(TokenTree::MetaVarDecl(span, ident, ast::Ident::invalid()));
+                result.push(TokenTree::MetaVarDecl(span, ident, Ident::invalid()));
             }
 
             // Not a metavar or no matchers allowed, so just return the tree
@@ -145,7 +144,7 @@ fn parse_tree(
                 let msg =
                     format!("expected identifier, found `{}`", pprust::token_to_string(&token),);
                 sess.span_diagnostic.span_err(token.span, &msg);
-                TokenTree::MetaVar(token.span, ast::Ident::invalid())
+                TokenTree::MetaVar(token.span, Ident::invalid())
             }
 
             // There are no more tokens. Just return the `$` we already have.

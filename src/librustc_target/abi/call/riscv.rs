@@ -6,7 +6,7 @@
 
 use crate::abi::call::{ArgAbi, ArgAttribute, CastTarget, FnAbi, PassMode, Reg, RegKind, Uniform};
 use crate::abi::{
-    self, Abi, FieldPlacement, HasDataLayout, LayoutOf, Size, TyLayout, TyLayoutMethods,
+    self, Abi, FieldsShape, HasDataLayout, LayoutOf, Size, TyAndLayout, TyAndLayoutMethods,
 };
 use crate::spec::HasTargetSpec;
 
@@ -36,15 +36,15 @@ fn is_riscv_aggregate<'a, Ty>(arg: &ArgAbi<'a, Ty>) -> bool {
 
 fn should_use_fp_conv_helper<'a, Ty, C>(
     cx: &C,
-    arg_layout: &TyLayout<'a, Ty>,
+    arg_layout: &TyAndLayout<'a, Ty>,
     xlen: u64,
     flen: u64,
     field1_kind: &mut RegPassKind,
     field2_kind: &mut RegPassKind,
 ) -> Result<(), CannotUseFpConv>
 where
-    Ty: TyLayoutMethods<'a, C> + Copy,
-    C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>>,
+    Ty: TyAndLayoutMethods<'a, C> + Copy,
+    C: LayoutOf<Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>>,
 {
     match arg_layout.abi {
         Abi::Scalar(ref scalar) => match scalar.value {
@@ -87,12 +87,15 @@ where
         },
         Abi::Vector { .. } | Abi::Uninhabited => return Err(CannotUseFpConv),
         Abi::ScalarPair(..) | Abi::Aggregate { .. } => match arg_layout.fields {
-            FieldPlacement::Union(_) => {
+            FieldsShape::Primitive => {
+                unreachable!("aggregates can't have `FieldsShape::Primitive`")
+            }
+            FieldsShape::Union(_) => {
                 if !arg_layout.is_zst() {
                     return Err(CannotUseFpConv);
                 }
             }
-            FieldPlacement::Array { count, .. } => {
+            FieldsShape::Array { count, .. } => {
                 for _ in 0..count {
                     let elem_layout = arg_layout.field(cx, 0);
                     should_use_fp_conv_helper(
@@ -105,7 +108,7 @@ where
                     )?;
                 }
             }
-            FieldPlacement::Arbitrary { .. } => {
+            FieldsShape::Arbitrary { .. } => {
                 match arg_layout.variants {
                     abi::Variants::Multiple { .. } => return Err(CannotUseFpConv),
                     abi::Variants::Single { .. } => (),
@@ -122,13 +125,13 @@ where
 
 fn should_use_fp_conv<'a, Ty, C>(
     cx: &C,
-    arg: &TyLayout<'a, Ty>,
+    arg: &TyAndLayout<'a, Ty>,
     xlen: u64,
     flen: u64,
 ) -> Option<FloatConv>
 where
-    Ty: TyLayoutMethods<'a, C> + Copy,
-    C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>>,
+    Ty: TyAndLayoutMethods<'a, C> + Copy,
+    C: LayoutOf<Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>>,
 {
     let mut field1_kind = RegPassKind::Unknown;
     let mut field2_kind = RegPassKind::Unknown;
@@ -146,8 +149,8 @@ where
 
 fn classify_ret<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>, xlen: u64, flen: u64) -> bool
 where
-    Ty: TyLayoutMethods<'a, C> + Copy,
-    C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>>,
+    Ty: TyAndLayoutMethods<'a, C> + Copy,
+    C: LayoutOf<Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>>,
 {
     if let Some(conv) = should_use_fp_conv(cx, &arg.layout, xlen, flen) {
         match conv {
@@ -209,8 +212,8 @@ fn classify_arg<'a, Ty, C>(
     avail_gprs: &mut u64,
     avail_fprs: &mut u64,
 ) where
-    Ty: TyLayoutMethods<'a, C> + Copy,
-    C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>>,
+    Ty: TyAndLayoutMethods<'a, C> + Copy,
+    C: LayoutOf<Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>>,
 {
     if !is_vararg {
         match should_use_fp_conv(cx, &arg.layout, xlen, flen) {
@@ -300,30 +303,25 @@ fn classify_arg<'a, Ty, C>(
 }
 
 fn extend_integer_width<'a, Ty>(arg: &mut ArgAbi<'a, Ty>, xlen: u64) {
-    match arg.layout.abi {
-        Abi::Scalar(ref scalar) => {
-            match scalar.value {
-                abi::Int(i, _) => {
-                    // 32-bit integers are always sign-extended
-                    if i.size().bits() == 32 && xlen > 32 {
-                        if let PassMode::Direct(ref mut attrs) = arg.mode {
-                            attrs.set(ArgAttribute::SExt);
-                            return;
-                        }
-                    }
+    if let Abi::Scalar(ref scalar) = arg.layout.abi {
+        if let abi::Int(i, _) = scalar.value {
+            // 32-bit integers are always sign-extended
+            if i.size().bits() == 32 && xlen > 32 {
+                if let PassMode::Direct(ref mut attrs) = arg.mode {
+                    attrs.set(ArgAttribute::SExt);
+                    return;
                 }
-                _ => (),
             }
         }
-        _ => (),
     }
+
     arg.extend_integer_width_to(xlen);
 }
 
 pub fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
 where
-    Ty: TyLayoutMethods<'a, C> + Copy,
-    C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout + HasTargetSpec,
+    Ty: TyAndLayoutMethods<'a, C> + Copy,
+    C: LayoutOf<Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>> + HasDataLayout + HasTargetSpec,
 {
     let flen = match &cx.target_spec().options.llvm_abiname[..] {
         "ilp32f" | "lp64f" => 32,

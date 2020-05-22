@@ -1,12 +1,12 @@
-use rustc::hir::map::{DefPathData, DisambiguatedDefPathData};
-use rustc::ty::print::{Print, Printer};
-use rustc::ty::subst::{GenericArg, GenericArgKind, Subst};
-use rustc::ty::{self, Instance, Ty, TyCtxt, TypeFoldable};
 use rustc_ast::ast::{FloatTy, IntTy, UintTy};
 use rustc_data_structures::base_n;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId};
+use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
+use rustc_middle::ty::print::{Print, Printer};
+use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst};
+use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable};
 use rustc_target::spec::abi::Abi;
 
 use std::fmt::Write;
@@ -153,7 +153,7 @@ impl SymbolMangler<'tcx> {
 
         // Write a separating `_` if necessary (leading digit or `_`).
         match ident.chars().next() {
-            Some('_') | Some('0'..='9') => {
+            Some('_' | '0'..='9') => {
                 self.push("_");
             }
             _ => {}
@@ -413,7 +413,6 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
             | ty::FnDef(def_id, substs)
             | ty::Opaque(def_id, substs)
             | ty::Projection(ty::ProjectionTy { item_def_id: def_id, substs })
-            | ty::UnnormalizedProjection(ty::ProjectionTy { item_def_id: def_id, substs })
             | ty::Closure(def_id, substs)
             | ty::Generator(def_id, substs, _) => {
                 self = self.print_def_path(def_id, substs)?;

@@ -1,0 +1,12 @@
+error[E0277]: the trait bound `&'a T: std::marker::Unsize<&'a U>` is not satisfied
+  --> $DIR/issue-71036.rs:11:1
+   |
+LL | impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Foo<'a, U>> for Foo<'a, T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Unsize<&'a U>` is not implemented for `&'a T`
+   |
+   = note: all implementations of `Unsize` are provided automatically by the compiler, see <https://doc.rust-lang.org/stable/std/marker/trait.Unsize.html> for more information
+   = note: required because of the requirements on the impl of `std::ops::DispatchFromDyn<&'a &'a U>` for `&'a &'a T`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

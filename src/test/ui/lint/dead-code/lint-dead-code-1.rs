@@ -17,14 +17,14 @@ mod foo2 {
 }
 
 pub static pub_static: isize = 0;
-static priv_static: isize = 0; //~ ERROR: static item is never used
+static priv_static: isize = 0; //~ ERROR: static is never used
 const used_static: isize = 0;
 pub static used_static2: isize = used_static;
 const USED_STATIC: isize = 0;
 const STATIC_USED_IN_ENUM_DISCRIMINANT: isize = 10;
 
 pub const pub_const: isize = 0;
-const priv_const: isize = 0; //~ ERROR: constant item is never used
+const priv_const: isize = 0; //~ ERROR: constant is never used
 const used_const: isize = 0;
 pub const used_const2: isize = used_const;
 const USED_CONST: isize = 1;

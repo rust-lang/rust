@@ -4,14 +4,14 @@
 //! types computed here.
 
 use super::FnCtxt;
-use rustc::middle::region::{self, YieldData};
-use rustc::ty::{self, Ty};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::{Expr, ExprKind, Pat, PatKind};
+use rustc_middle::middle::region::{self, YieldData};
+use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
 
 struct InteriorVisitor<'a, 'tcx> {
@@ -96,6 +96,7 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
                         span: source_span,
                         ty: &ty,
                         scope_span,
+                        yield_span: yield_data.span,
                         expr: expr.map(|e| e.hir_id),
                     })
                     .or_insert(entries);
@@ -205,7 +206,7 @@ pub fn resolve_interior<'a, 'tcx>(
 }
 
 // This visitor has to have the same visit_expr calls as RegionResolutionVisitor in
-// librustc/middle/region.rs since `expr_count` is compared against the results
+// librustc_middle/middle/region.rs since `expr_count` is compared against the results
 // there.
 impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
     type Map = intravisit::ErasedMap<'tcx>;
@@ -235,9 +236,10 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
                         // Direct calls never need to keep the callee `ty::FnDef`
                         // ZST in a temporary, so skip its type, just in case it
                         // can significantly complicate the generator type.
-                        Res::Def(DefKind::Fn, _)
-                        | Res::Def(DefKind::AssocFn, _)
-                        | Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) => {
+                        Res::Def(
+                            DefKind::Fn | DefKind::AssocFn | DefKind::Ctor(_, CtorKind::Fn),
+                            _,
+                        ) => {
                             // NOTE(eddyb) this assumes a path expression has
                             // no nested expressions to keep track of.
                             self.expr_count += 1;

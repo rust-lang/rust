@@ -4,7 +4,11 @@ error[E0404]: expected trait, found type alias `Bar`
 LL | impl Bar for Baz { }
    |      ^^^ type aliases cannot be used as traits
    |
-   = note: did you mean to use a trait alias?
+help: you might have meant to use `#![feature(trait_alias)]` instead of a `type` alias
+  --> $DIR/two_files_data.rs:5:1
+   |
+LL | type Bar = dyn Foo;
+   | ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

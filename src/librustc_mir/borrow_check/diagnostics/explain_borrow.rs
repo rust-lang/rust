@@ -2,16 +2,16 @@
 
 use std::collections::VecDeque;
 
-use rustc::mir::{
-    Body, CastKind, ConstraintCategory, FakeReadCause, Local, Location, Operand, Place, Rvalue,
-    Statement, StatementKind, TerminatorKind,
-};
-use rustc::ty::adjustment::PointerCast;
-use rustc::ty::{self, RegionVid, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::NLLRegionVariableOrigin;
+use rustc_middle::mir::{
+    Body, CastKind, ConstraintCategory, FakeReadCause, Local, Location, Operand, Place, Rvalue,
+    Statement, StatementKind, TerminatorKind,
+};
+use rustc_middle::ty::adjustment::PointerCast;
+use rustc_middle::ty::{self, RegionVid, TyCtxt};
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 
@@ -156,23 +156,32 @@ impl BorrowExplanation {
                         err.span_label(body.source_info(drop_loc).span, message);
 
                         if let Some(info) = &local_decl.is_block_tail {
-                            // FIXME: use span_suggestion instead, highlighting the
-                            // whole block tail expression.
-                            let msg = if info.tail_result_is_ignored {
-                                "The temporary is part of an expression at the end of a block. \
-                                 Consider adding semicolon after the expression so its temporaries \
-                                 are dropped sooner, before the local variables declared by the \
-                                 block are dropped."
+                            if info.tail_result_is_ignored {
+                                err.span_suggestion_verbose(
+                                    info.span.shrink_to_hi(),
+                                    "consider adding semicolon after the expression so its \
+                                     temporaries are dropped sooner, before the local variables \
+                                     declared by the block are dropped",
+                                    ";".to_string(),
+                                    Applicability::MaybeIncorrect,
+                                );
                             } else {
-                                "The temporary is part of an expression at the end of a block. \
-                                 Consider forcing this temporary to be dropped sooner, before \
-                                 the block's local variables are dropped. \
-                                 For example, you could save the expression's value in a new \
-                                 local variable `x` and then make `x` be the expression \
-                                 at the end of the block."
+                                err.note(
+                                    "the temporary is part of an expression at the end of a \
+                                     block;\nconsider forcing this temporary to be dropped sooner, \
+                                     before the block's local variables are dropped",
+                                );
+                                err.multipart_suggestion(
+                                    "for example, you could save the expression's value in a new \
+                                     local variable `x` and then make `x` be the expression at the \
+                                     end of the block",
+                                    vec![
+                                        (info.span.shrink_to_lo(), "let x = ".to_string()),
+                                        (info.span.shrink_to_hi(), "; x".to_string()),
+                                    ],
+                                    Applicability::MaybeIncorrect,
+                                );
                             };
-
-                            err.note(msg);
                         }
                     }
                 }
@@ -208,48 +217,34 @@ impl BorrowExplanation {
                     );
                 };
 
-                self.add_lifetime_bound_suggestion_to_diagnostic(
-                    tcx,
-                    err,
-                    &category,
-                    span,
-                    region_name,
-                );
+                self.add_lifetime_bound_suggestion_to_diagnostic(err, &category, span, region_name);
             }
             _ => {}
         }
     }
-    pub(in crate::borrow_check) fn add_lifetime_bound_suggestion_to_diagnostic<'tcx>(
+    pub(in crate::borrow_check) fn add_lifetime_bound_suggestion_to_diagnostic(
         &self,
-        tcx: TyCtxt<'tcx>,
         err: &mut DiagnosticBuilder<'_>,
         category: &ConstraintCategory,
         span: Span,
         region_name: &RegionName,
     ) {
-        match category {
-            ConstraintCategory::OpaqueType => {
-                if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(span) {
-                    let suggestable_name = if region_name.was_named() {
-                        region_name.to_string()
-                    } else {
-                        "'_".to_string()
-                    };
+        if let ConstraintCategory::OpaqueType = category {
+            let suggestable_name =
+                if region_name.was_named() { region_name.to_string() } else { "'_".to_string() };
 
-                    err.span_suggestion(
-                        span,
-                        &format!(
-                            "you can add a bound to the {}to make it last less than \
-                             `'static` and match `{}`",
-                            category.description(),
-                            region_name,
-                        ),
-                        format!("{} + {}", snippet, suggestable_name),
-                        Applicability::Unspecified,
-                    );
-                }
-            }
-            _ => {}
+            let msg = format!(
+                "you can add a bound to the {}to make it last less than `'static` and match `{}`",
+                category.description(),
+                region_name,
+            );
+
+            err.span_suggestion_verbose(
+                span.shrink_to_hi(),
+                &msg,
+                format!(" + {}", suggestable_name),
+                Applicability::Unspecified,
+            );
         }
     }
 }
@@ -289,7 +284,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         &self,
         location: Location,
         borrow: &BorrowData<'tcx>,
-        kind_place: Option<(WriteKind, &Place<'tcx>)>,
+        kind_place: Option<(WriteKind, Place<'tcx>)>,
     ) -> BorrowExplanation {
         debug!(
             "explain_why_borrow_contains_point(location={:?}, borrow={:?}, kind_place={:?})",

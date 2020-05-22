@@ -2,6 +2,11 @@
 
 use std::{convert::TryFrom, rc::Rc, sync::Arc};
 
+pub fn no_vec() {
+    let v: Vec<_> = [0; 33].into();
+    //~^ ERROR arrays only have std trait implementations for lengths 0..=32
+}
+
 pub fn no_box() {
     let boxed_slice = Box::new([0; 33]) as Box<[i32]>;
     let boxed_array = <Box<[i32; 33]>>::try_from(boxed_slice);

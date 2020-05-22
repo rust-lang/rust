@@ -34,8 +34,9 @@
 use crate::hir::*;
 use crate::hir_id::CRATE_HIR_ID;
 use crate::itemlikevisit::{ItemLikeVisitor, ParItemLikeVisitor};
-use rustc_ast::ast::{Attribute, Ident, Label, Name};
+use rustc_ast::ast::{Attribute, Label};
 use rustc_ast::walk_list;
+use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::Span;
 
 pub struct DeepVisitor<'v, V> {
@@ -119,8 +120,10 @@ impl<'a> FnKind<'a> {
     }
 }
 
-/// An abstract representation of the HIR `rustc::hir::map::Map`.
+/// An abstract representation of the HIR `rustc_middle::hir::map::Map`.
 pub trait Map<'hir> {
+    /// Retrieves the `Node` corresponding to `id`, returning `None` if cannot be found.
+    fn find(&self, hir_id: HirId) -> Option<Node<'hir>>;
     fn body(&self, id: BodyId) -> &'hir Body<'hir>;
     fn item(&self, id: HirId) -> &'hir Item<'hir>;
     fn trait_item(&self, id: TraitItemId) -> &'hir TraitItem<'hir>;
@@ -132,6 +135,9 @@ pub trait Map<'hir> {
 pub struct ErasedMap<'hir>(&'hir dyn Map<'hir>);
 
 impl<'hir> Map<'hir> for ErasedMap<'hir> {
+    fn find(&self, _: HirId) -> Option<Node<'hir>> {
+        None
+    }
     fn body(&self, id: BodyId) -> &'hir Body<'hir> {
         self.0.body(id)
     }
@@ -312,7 +318,7 @@ pub trait Visitor<'v>: Sized {
     fn visit_id(&mut self, _hir_id: HirId) {
         // Nothing to do.
     }
-    fn visit_name(&mut self, _span: Span, _name: Name) {
+    fn visit_name(&mut self, _span: Span, _name: Symbol) {
         // Nothing to do.
     }
     fn visit_ident(&mut self, ident: Ident) {
@@ -390,7 +396,7 @@ pub trait Visitor<'v>: Sized {
     fn visit_variant_data(
         &mut self,
         s: &'v VariantData<'v>,
-        _: Name,
+        _: Symbol,
         _: &'v Generics<'v>,
         _parent_id: HirId,
         _: Span,
@@ -1152,6 +1158,27 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
             walk_list!(visitor, visit_expr, optional_expression);
         }
         ExprKind::InlineAsm(ref asm) => {
+            for op in asm.operands {
+                match op {
+                    InlineAsmOperand::In { expr, .. }
+                    | InlineAsmOperand::InOut { expr, .. }
+                    | InlineAsmOperand::Const { expr, .. }
+                    | InlineAsmOperand::Sym { expr, .. } => visitor.visit_expr(expr),
+                    InlineAsmOperand::Out { expr, .. } => {
+                        if let Some(expr) = expr {
+                            visitor.visit_expr(expr);
+                        }
+                    }
+                    InlineAsmOperand::SplitInOut { in_expr, out_expr, .. } => {
+                        visitor.visit_expr(in_expr);
+                        if let Some(out_expr) = out_expr {
+                            visitor.visit_expr(out_expr);
+                        }
+                    }
+                }
+            }
+        }
+        ExprKind::LlvmInlineAsm(ref asm) => {
             walk_list!(visitor, visit_expr, asm.outputs_exprs);
             walk_list!(visitor, visit_expr, asm.inputs_exprs);
         }

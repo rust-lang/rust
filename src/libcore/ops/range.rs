@@ -98,8 +98,6 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// assert!(!(3..5).contains(&2));
     /// assert!( (3..5).contains(&3));
     /// assert!( (3..5).contains(&4));
@@ -139,10 +137,9 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
     /// ```
     /// #![feature(range_is_empty)]
     ///
-    /// use std::f32::NAN;
     /// assert!(!(3.0..5.0).is_empty());
-    /// assert!( (3.0..NAN).is_empty());
-    /// assert!( (NAN..5.0).is_empty());
+    /// assert!( (3.0..f32::NAN).is_empty());
+    /// assert!( (f32::NAN..5.0).is_empty());
     /// ```
     #[unstable(feature = "range_is_empty", reason = "recently added", issue = "48111")]
     pub fn is_empty(&self) -> bool {
@@ -199,8 +196,6 @@ impl<Idx: PartialOrd<Idx>> RangeFrom<Idx> {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// assert!(!(3..).contains(&2));
     /// assert!( (3..).contains(&3));
     /// assert!( (3..).contains(&1_000_000_000));
@@ -283,8 +278,6 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// assert!( (..5).contains(&-1_000_000_000));
     /// assert!( (..5).contains(&4));
     /// assert!(!(..5).contains(&5));
@@ -454,8 +447,6 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// assert!(!(3..=5).contains(&2));
     /// assert!( (3..=5).contains(&3));
     /// assert!( (3..=5).contains(&4));
@@ -496,10 +487,9 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     /// ```
     /// #![feature(range_is_empty)]
     ///
-    /// use std::f32::NAN;
     /// assert!(!(3.0..=5.0).is_empty());
-    /// assert!( (3.0..=NAN).is_empty());
-    /// assert!( (NAN..=5.0).is_empty());
+    /// assert!( (3.0..=f32::NAN).is_empty());
+    /// assert!( (f32::NAN..=5.0).is_empty());
     /// ```
     ///
     /// This method returns `true` after iteration has finished:
@@ -583,8 +573,6 @@ impl<Idx: PartialOrd<Idx>> RangeToInclusive<Idx> {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// assert!( (..=5).contains(&-1_000_000_000));
     /// assert!( (..=5).contains(&5));
     /// assert!(!(..=5).contains(&6));
@@ -723,8 +711,6 @@ pub trait RangeBounds<T: ?Sized> {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// assert!( (3..5).contains(&4));
     /// assert!(!(3..5).contains(&2));
     ///

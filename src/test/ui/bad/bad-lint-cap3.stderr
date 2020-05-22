@@ -11,3 +11,5 @@ LL | #![deny(warnings)]
    |         ^^^^^^^^
    = note: `#[warn(unused_imports)]` implied by `#[warn(warnings)]`
 
+warning: 1 warning emitted
+

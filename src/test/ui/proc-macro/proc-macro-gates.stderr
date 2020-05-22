@@ -76,51 +76,6 @@ LL |     let _x = #[identity_attr] println!();
    = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
    = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
 
-error[E0658]: procedural macros cannot be expanded to patterns
-  --> $DIR/proc-macro-gates.rs:49:12
-   |
-LL |     if let identity!(Some(_x)) = Some(3) {}
-   |            ^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
-   = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
-
-error[E0658]: procedural macros cannot be expanded to statements
-  --> $DIR/proc-macro-gates.rs:52:5
-   |
-LL |     empty!(struct S;);
-   |     ^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
-   = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
-
-error[E0658]: procedural macros cannot be expanded to statements
-  --> $DIR/proc-macro-gates.rs:53:5
-   |
-LL |     empty!(let _x = 3;);
-   |     ^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
-   = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
-
-error[E0658]: procedural macros cannot be expanded to expressions
-  --> $DIR/proc-macro-gates.rs:55:14
-   |
-LL |     let _x = identity!(3);
-   |              ^^^^^^^^^^^^
-   |
-   = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
-   = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
-
-error[E0658]: procedural macros cannot be expanded to expressions
-  --> $DIR/proc-macro-gates.rs:56:15
-   |
-LL |     let _x = [empty!(3)];
-   |               ^^^^^^^^^
-   |
-   = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
-   = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
-
-error: aborting due to 14 previous errors
+error: aborting due to 9 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

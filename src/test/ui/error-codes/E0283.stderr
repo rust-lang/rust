@@ -7,7 +7,7 @@ LL |     fn create() -> u32;
 LL |     let cont: u32 = Generator::create();
    |                     ^^^^^^^^^^^^^^^^^ cannot infer type
    |
-   = note: cannot resolve `_: Generator`
+   = note: cannot satisfy `_: Generator`
 
 error: aborting due to previous error
 

@@ -15,27 +15,37 @@ fn detect_llvm_link() -> (&'static str, &'static str) {
 }
 
 fn main() {
+    println!("cargo:rerun-if-env-changed=RUST_CHECK");
     if env::var_os("RUST_CHECK").is_some() {
         // If we're just running `check`, there's no need for LLVM to be built.
-        println!("cargo:rerun-if-env-changed=RUST_CHECK");
         return;
     }
 
     build_helper::restore_library_path();
 
     let target = env::var("TARGET").expect("TARGET was not set");
-    let llvm_config = env::var_os("LLVM_CONFIG").map(PathBuf::from).unwrap_or_else(|| {
-        if let Some(dir) = env::var_os("CARGO_TARGET_DIR").map(PathBuf::from) {
-            let to_test =
-                dir.parent().unwrap().parent().unwrap().join(&target).join("llvm/bin/llvm-config");
-            if Command::new(&to_test).output().is_ok() {
-                return to_test;
+    let llvm_config =
+        env::var_os("LLVM_CONFIG").map(|x| Some(PathBuf::from(x))).unwrap_or_else(|| {
+            if let Some(dir) = env::var_os("CARGO_TARGET_DIR").map(PathBuf::from) {
+                let to_test = dir
+                    .parent()
+                    .unwrap()
+                    .parent()
+                    .unwrap()
+                    .join(&target)
+                    .join("llvm/bin/llvm-config");
+                if Command::new(&to_test).output().is_ok() {
+                    return Some(to_test);
+                }
             }
-        }
-        PathBuf::from("llvm-config")
-    });
+            None
+        });
 
-    println!("cargo:rerun-if-changed={}", llvm_config.display());
+    if let Some(llvm_config) = &llvm_config {
+        println!("cargo:rerun-if-changed={}", llvm_config.display());
+    }
+    let llvm_config = llvm_config.unwrap_or_else(|| PathBuf::from("llvm-config"));
+
     println!("cargo:rerun-if-env-changed=LLVM_CONFIG");
 
     // Test whether we're cross-compiling LLVM. This is a pretty rare case

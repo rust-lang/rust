@@ -1,16 +1,15 @@
-use rustc::mir;
-use rustc::mir::interpret::{InterpResult, Scalar};
-use rustc::ty::{
-    self,
-    layout::{LayoutOf, TyLayout},
-    Ty,
-};
+use std::convert::TryFrom;
+
 use rustc_apfloat::Float;
 use rustc_ast::ast::FloatTy;
+use rustc_middle::mir;
+use rustc_middle::mir::interpret::{InterpResult, Scalar};
+use rustc_middle::ty::{self, layout::TyAndLayout, Ty};
+use rustc_target::abi::LayoutOf;
 
 use super::{ImmTy, Immediate, InterpCx, Machine, PlaceTy};
 
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
+impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Applies the binary operation `op` to the two operands and writes a tuple of the result
     /// and a boolean signifying the potential overflow to the destination.
     pub fn binop_with_overflow(
@@ -46,14 +45,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 }
 
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
+impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     fn binary_char_op(
         &self,
         bin_op: mir::BinOp,
         l: char,
         r: char,
     ) -> (Scalar<M::PointerTag>, bool, Ty<'tcx>) {
-        use rustc::mir::BinOp::*;
+        use rustc_middle::mir::BinOp::*;
 
         let res = match bin_op {
             Eq => l == r,
@@ -73,7 +72,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         l: bool,
         r: bool,
     ) -> (Scalar<M::PointerTag>, bool, Ty<'tcx>) {
-        use rustc::mir::BinOp::*;
+        use rustc_middle::mir::BinOp::*;
 
         let res = match bin_op {
             Eq => l == r,
@@ -97,7 +96,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         l: F,
         r: F,
     ) -> (Scalar<M::PointerTag>, bool, Ty<'tcx>) {
-        use rustc::mir::BinOp::*;
+        use rustc_middle::mir::BinOp::*;
 
         let (val, ty) = match bin_op {
             Eq => (Scalar::from_bool(l == r), self.tcx.types.bool),
@@ -121,37 +120,36 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         bin_op: mir::BinOp,
         // passing in raw bits
         l: u128,
-        left_layout: TyLayout<'tcx>,
+        left_layout: TyAndLayout<'tcx>,
         r: u128,
-        right_layout: TyLayout<'tcx>,
+        right_layout: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, (Scalar<M::PointerTag>, bool, Ty<'tcx>)> {
-        use rustc::mir::BinOp::*;
+        use rustc_middle::mir::BinOp::*;
 
         // Shift ops can have an RHS with a different numeric type.
         if bin_op == Shl || bin_op == Shr {
             let signed = left_layout.abi.is_signed();
-            let mut oflo = (r as u32 as u128) != r;
-            let mut r = r as u32;
-            let size = left_layout.size;
-            oflo |= r >= size.bits() as u32;
-            r %= size.bits() as u32;
+            let size = u128::from(left_layout.size.bits());
+            let overflow = r >= size;
+            let r = r % size; // mask to type size
+            let r = u32::try_from(r).unwrap(); // we masked so this will always fit
             let result = if signed {
                 let l = self.sign_extend(l, left_layout) as i128;
                 let result = match bin_op {
-                    Shl => l << r,
-                    Shr => l >> r,
+                    Shl => l.checked_shl(r).unwrap(),
+                    Shr => l.checked_shr(r).unwrap(),
                     _ => bug!("it has already been checked that this is a shift op"),
                 };
                 result as u128
             } else {
                 match bin_op {
-                    Shl => l << r,
-                    Shr => l >> r,
+                    Shl => l.checked_shl(r).unwrap(),
+                    Shr => l.checked_shr(r).unwrap(),
                     _ => bug!("it has already been checked that this is a shift op"),
                 }
             };
             let truncated = self.truncate(result, left_layout);
-            return Ok((Scalar::from_uint(truncated, size), oflo, left_layout.ty));
+            return Ok((Scalar::from_uint(truncated, left_layout.size), overflow, left_layout.ty));
         }
 
         // For the remaining ops, the types must be the same on both sides
@@ -193,21 +191,18 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 _ => None,
             };
             if let Some(op) = op {
-                let l128 = self.sign_extend(l, left_layout) as i128;
                 let r = self.sign_extend(r, right_layout) as i128;
                 // We need a special check for overflowing remainder:
                 // "int_min % -1" overflows and returns 0, but after casting things to a larger int
                 // type it does *not* overflow nor give an unrepresentable result!
-                match bin_op {
-                    Rem => {
-                        if r == -1 && l == (1 << (size.bits() - 1)) {
-                            return Ok((Scalar::from_int(0, size), true, left_layout.ty));
-                        }
+                if bin_op == Rem {
+                    if r == -1 && l == (1 << (size.bits() - 1)) {
+                        return Ok((Scalar::from_int(0, size), true, left_layout.ty));
                     }
-                    _ => {}
                 }
+                let l = self.sign_extend(l, left_layout) as i128;
 
-                let (result, oflo) = op(l128, r);
+                let (result, oflo) = op(l, r);
                 // This may be out-of-bounds for the result type, so we have to truncate ourselves.
                 // If that truncation loses any information, we have an overflow.
                 let result = result as u128;
@@ -361,7 +356,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         un_op: mir::UnOp,
         val: ImmTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, (Scalar<M::PointerTag>, bool, Ty<'tcx>)> {
-        use rustc::mir::UnOp::*;
+        use rustc_middle::mir::UnOp::*;
 
         let layout = val.layout;
         let val = val.to_scalar()?;

@@ -11,23 +11,23 @@
 #![feature(extern_types)]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
+#![feature(or_patterns)]
 #![feature(trusted_len)]
 #![recursion_limit = "256"]
 
 use back::write::{create_informational_target_machine, create_target_machine};
 
 pub use llvm_util::target_features;
-use rustc::dep_graph::{DepGraph, WorkProduct};
-use rustc::middle::cstore::{EncodedMetadata, MetadataLoaderDyn};
-use rustc::ty::{self, TyCtxt};
-use rustc::util::common::ErrorReported;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
 use rustc_codegen_ssa::back::write::{CodegenContext, FatLTOInput, ModuleConfig};
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::ModuleCodegen;
 use rustc_codegen_ssa::{CodegenResults, CompiledModule};
-use rustc_errors::{FatalError, Handler};
+use rustc_errors::{ErrorReported, FatalError, Handler};
+use rustc_middle::dep_graph::{DepGraph, WorkProduct};
+use rustc_middle::middle::cstore::{EncodedMetadata, MetadataLoaderDyn};
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_serialize::json;
 use rustc_session::config::{self, OptLevel, OutputFilenames, PrintRequest};
 use rustc_session::Session;
@@ -40,7 +40,6 @@ use std::sync::Arc;
 
 mod back {
     pub mod archive;
-    pub mod bytecode;
     pub mod lto;
     mod profiling;
     pub mod write;
@@ -110,9 +109,8 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
         &self,
         sess: &Session,
         optlvl: OptLevel,
-        find_features: bool,
     ) -> Arc<dyn Fn() -> Result<&'static mut llvm::TargetMachine, String> + Send + Sync> {
-        back::write::target_machine_factory(sess, optlvl, find_features)
+        back::write::target_machine_factory(sess, optlvl)
     }
     fn target_cpu<'b>(&self, sess: &'b Session) -> &'b str {
         llvm_util::target_cpu(sess)
@@ -201,21 +199,23 @@ impl CodegenBackend for LlvmCodegenBackend {
         match req {
             PrintRequest::RelocationModels => {
                 println!("Available relocation models:");
-                for &(name, _) in back::write::RELOC_MODEL_ARGS.iter() {
+                for name in
+                    &["static", "pic", "dynamic-no-pic", "ropi", "rwpi", "ropi-rwpi", "default"]
+                {
                     println!("    {}", name);
                 }
                 println!();
             }
             PrintRequest::CodeModels => {
                 println!("Available code models:");
-                for &(name, _) in back::write::CODE_GEN_MODEL_ARGS.iter() {
+                for name in &["tiny", "small", "kernel", "medium", "large"] {
                     println!("    {}", name);
                 }
                 println!();
             }
             PrintRequest::TlsModels => {
                 println!("Available TLS models:");
-                for &(name, _) in back::write::TLS_MODEL_ARGS.iter() {
+                for name in &["global-dynamic", "local-dynamic", "initial-exec", "local-exec"] {
                     println!("    {}", name);
                 }
                 println!();
@@ -351,7 +351,7 @@ impl ModuleLlvm {
         unsafe {
             let llcx = llvm::LLVMRustContextCreate(tcx.sess.fewer_names());
             let llmod_raw = context::create_module(tcx, llcx, mod_name) as *const _;
-            ModuleLlvm { llmod_raw, llcx, tm: create_target_machine(tcx, false) }
+            ModuleLlvm { llmod_raw, llcx, tm: create_target_machine(tcx) }
         }
     }
 
@@ -359,11 +359,7 @@ impl ModuleLlvm {
         unsafe {
             let llcx = llvm::LLVMRustContextCreate(tcx.sess.fewer_names());
             let llmod_raw = context::create_module(tcx, llcx, mod_name) as *const _;
-            ModuleLlvm {
-                llmod_raw,
-                llcx,
-                tm: create_informational_target_machine(&tcx.sess, false),
-            }
+            ModuleLlvm { llmod_raw, llcx, tm: create_informational_target_machine(tcx.sess) }
         }
     }
 
