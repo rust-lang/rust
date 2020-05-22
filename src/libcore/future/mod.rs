@@ -10,11 +10,15 @@ use crate::{
 };
 
 mod future;
+mod into_future;
 mod pending;
 mod ready;
 
 #[stable(feature = "futures_api", since = "1.36.0")]
 pub use self::future::Future;
+
+#[unstable(feature = "into_future", issue = "67644")]
+pub use into_future::IntoFuture;
 
 #[unstable(feature = "future_readiness_fns", issue = "70921")]
 pub use pending::{pending, Pending};
