@@ -54,8 +54,8 @@ pub(crate) fn change_lifetime_anon_to_named(acc: &mut Assists, ctx: &AssistConte
                             param_name
                         })
                         .collect();
-                    "abcdefghijklmnopqrstuvwxyz"
-                        .chars()
+                    (b'a'..=b'z')
+                        .map(char::from)
                         .find(|c| !used_lifetime_params.contains(&c.to_string()))?
                 }
                 None => 'a',
