@@ -74,11 +74,24 @@ fn run_server() -> Result<()> {
     log::info!("lifecycle: server started");
 
     let (connection, io_threads) = Connection::stdio();
-    let server_capabilities = serde_json::to_value(rust_analyzer::server_capabilities()).unwrap();
 
-    let initialize_params = connection.initialize(server_capabilities)?;
+    let (initialize_id, initialize_params) = connection.initialize_start()?;
     let initialize_params =
         from_json::<lsp_types::InitializeParams>("InitializeParams", initialize_params)?;
+
+    let server_capabilities = rust_analyzer::server_capabilities(&initialize_params.capabilities);
+
+    let initialize_result = lsp_types::InitializeResult {
+        capabilities: server_capabilities,
+        server_info: Some(lsp_types::ServerInfo {
+            name: String::from("rust-analyzer"),
+            version: Some(String::from(env!("REV"))),
+        }),
+    };
+
+    let initialize_result = serde_json::to_value(initialize_result).unwrap();
+
+    connection.initialize_finish(initialize_id, initialize_result)?;
 
     if let Some(client_info) = initialize_params.client_info {
         log::info!("Client '{}' {}", client_info.name, client_info.version.unwrap_or_default());
