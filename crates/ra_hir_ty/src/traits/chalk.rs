@@ -4,7 +4,7 @@ use std::{fmt, sync::Arc};
 use log::debug;
 
 use chalk_ir::{
-    cast::Cast, fold::shift::Shift, interner::HasInterner, Goal, GoalData, Parameter,
+    cast::Cast, fold::shift::Shift, interner::HasInterner, GenericArg, Goal, GoalData,
     PlaceholderIndex, TypeName, UniverseIndex,
 };
 
@@ -26,24 +26,24 @@ pub(super) mod tls;
 pub struct Interner;
 
 impl chalk_ir::interner::Interner for Interner {
-    type InternedType = Box<chalk_ir::TyData<Self>>;
+    type InternedType = Box<chalk_ir::TyData<Self>>; // FIXME use Arc?
     type InternedLifetime = chalk_ir::LifetimeData<Self>;
-    type InternedParameter = chalk_ir::ParameterData<Self>;
+    type InternedConst = Arc<chalk_ir::ConstData<Self>>;
+    type InternedConcreteConst = ();
+    type InternedGenericArg = chalk_ir::GenericArgData<Self>;
     type InternedGoal = Arc<GoalData<Self>>;
     type InternedGoals = Vec<Goal<Self>>;
-    type InternedSubstitution = Vec<Parameter<Self>>;
+    type InternedSubstitution = Vec<GenericArg<Self>>;
     type InternedProgramClause = chalk_ir::ProgramClauseData<Self>;
     type InternedProgramClauses = Arc<[chalk_ir::ProgramClause<Self>]>;
     type InternedQuantifiedWhereClauses = Vec<chalk_ir::QuantifiedWhereClause<Self>>;
-    type InternedParameterKinds = Vec<chalk_ir::ParameterKind<()>>;
-    type InternedCanonicalVarKinds = Vec<chalk_ir::ParameterKind<UniverseIndex>>;
-    type Identifier = TypeAliasId;
+    type InternedVariableKinds = Vec<chalk_ir::VariableKind<Self>>;
+    type InternedCanonicalVarKinds = Vec<chalk_ir::CanonicalVarKind<Self>>;
     type DefId = InternId;
+    type InternedAdtId = InternId;
+    type Identifier = TypeAliasId;
 
-    fn debug_struct_id(
-        type_kind_id: StructId,
-        fmt: &mut fmt::Formatter<'_>,
-    ) -> Option<fmt::Result> {
+    fn debug_adt_id(type_kind_id: StructId, fmt: &mut fmt::Formatter<'_>) -> Option<fmt::Result> {
         tls::with_current_program(|prog| Some(prog?.debug_struct_id(type_kind_id, fmt)))
     }
 
@@ -94,11 +94,11 @@ impl chalk_ir::interner::Interner for Interner {
         tls::with_current_program(|prog| Some(prog?.debug_lifetime(lifetime, fmt)))
     }
 
-    fn debug_parameter(
-        parameter: &Parameter<Interner>,
+    fn debug_generic_arg(
+        parameter: &GenericArg<Interner>,
         fmt: &mut fmt::Formatter<'_>,
     ) -> Option<fmt::Result> {
-        tls::with_current_program(|prog| Some(prog?.debug_parameter(parameter, fmt)))
+        tls::with_current_program(|prog| Some(prog?.debug_generic_arg(parameter, fmt)))
     }
 
     fn debug_goal(goal: &Goal<Interner>, fmt: &mut fmt::Formatter<'_>) -> Option<fmt::Result> {
@@ -164,17 +164,32 @@ impl chalk_ir::interner::Interner for Interner {
         lifetime
     }
 
-    fn intern_parameter(
+    fn intern_const(&self, constant: chalk_ir::ConstData<Self>) -> Arc<chalk_ir::ConstData<Self>> {
+        Arc::new(constant)
+    }
+
+    fn const_data<'a>(
         &self,
-        parameter: chalk_ir::ParameterData<Self>,
-    ) -> chalk_ir::ParameterData<Self> {
+        constant: &'a Arc<chalk_ir::ConstData<Self>>,
+    ) -> &'a chalk_ir::ConstData<Self> {
+        constant
+    }
+
+    fn const_eq(&self, _ty: &Box<chalk_ir::TyData<Self>>, _c1: &(), _c2: &()) -> bool {
+        true
+    }
+
+    fn intern_generic_arg(
+        &self,
+        parameter: chalk_ir::GenericArgData<Self>,
+    ) -> chalk_ir::GenericArgData<Self> {
         parameter
     }
 
-    fn parameter_data<'a>(
+    fn generic_arg_data<'a>(
         &self,
-        parameter: &'a chalk_ir::ParameterData<Self>,
-    ) -> &'a chalk_ir::ParameterData<Self> {
+        parameter: &'a chalk_ir::GenericArgData<Self>,
+    ) -> &'a chalk_ir::GenericArgData<Self> {
         parameter
     }
 
@@ -199,15 +214,15 @@ impl chalk_ir::interner::Interner for Interner {
 
     fn intern_substitution<E>(
         &self,
-        data: impl IntoIterator<Item = Result<Parameter<Self>, E>>,
-    ) -> Result<Vec<Parameter<Self>>, E> {
+        data: impl IntoIterator<Item = Result<GenericArg<Self>, E>>,
+    ) -> Result<Vec<GenericArg<Self>>, E> {
         data.into_iter().collect()
     }
 
     fn substitution_data<'a>(
         &self,
-        substitution: &'a Vec<Parameter<Self>>,
-    ) -> &'a [Parameter<Self>] {
+        substitution: &'a Vec<GenericArg<Self>>,
+    ) -> &'a [GenericArg<Self>] {
         substitution
     }
 
@@ -253,23 +268,23 @@ impl chalk_ir::interner::Interner for Interner {
         clauses
     }
 
-    fn intern_parameter_kinds<E>(
+    fn intern_generic_arg_kinds<E>(
         &self,
-        data: impl IntoIterator<Item = Result<chalk_ir::ParameterKind<()>, E>>,
-    ) -> Result<Self::InternedParameterKinds, E> {
+        data: impl IntoIterator<Item = Result<chalk_ir::VariableKind<Self>, E>>,
+    ) -> Result<Self::InternedVariableKinds, E> {
         data.into_iter().collect()
     }
 
-    fn parameter_kinds_data<'a>(
+    fn variable_kinds_data<'a>(
         &self,
-        parameter_kinds: &'a Self::InternedParameterKinds,
-    ) -> &'a [chalk_ir::ParameterKind<()>] {
+        parameter_kinds: &'a Self::InternedVariableKinds,
+    ) -> &'a [chalk_ir::VariableKind<Self>] {
         &parameter_kinds
     }
 
     fn intern_canonical_var_kinds<E>(
         &self,
-        data: impl IntoIterator<Item = Result<chalk_ir::ParameterKind<UniverseIndex>, E>>,
+        data: impl IntoIterator<Item = Result<chalk_ir::CanonicalVarKind<Self>, E>>,
     ) -> Result<Self::InternedCanonicalVarKinds, E> {
         data.into_iter().collect()
     }
@@ -277,7 +292,7 @@ impl chalk_ir::interner::Interner for Interner {
     fn canonical_var_kinds_data<'a>(
         &self,
         canonical_var_kinds: &'a Self::InternedCanonicalVarKinds,
-    ) -> &'a [chalk_ir::ParameterKind<UniverseIndex>] {
+    ) -> &'a [chalk_ir::CanonicalVarKind<Self>] {
         &canonical_var_kinds
     }
 }
@@ -290,8 +305,8 @@ pub type AssocTypeId = chalk_ir::AssocTypeId<Interner>;
 pub type AssociatedTyDatum = chalk_rust_ir::AssociatedTyDatum<Interner>;
 pub type TraitId = chalk_ir::TraitId<Interner>;
 pub type TraitDatum = chalk_rust_ir::TraitDatum<Interner>;
-pub type StructId = chalk_ir::StructId<Interner>;
-pub type StructDatum = chalk_rust_ir::StructDatum<Interner>;
+pub type StructId = chalk_ir::AdtId<Interner>;
+pub type StructDatum = chalk_rust_ir::AdtDatum<Interner>;
 pub type ImplId = chalk_ir::ImplId<Interner>;
 pub type ImplDatum = chalk_rust_ir::ImplDatum<Interner>;
 pub type AssociatedTyValueId = chalk_rust_ir::AssociatedTyValueId<Interner>;
@@ -453,14 +468,14 @@ impl ToChalk for TypeCtor {
             _ => {
                 // other TypeCtors get interned and turned into a chalk StructId
                 let struct_id = db.intern_type_ctor(self).into();
-                TypeName::Struct(struct_id)
+                TypeName::Adt(struct_id)
             }
         }
     }
 
     fn from_chalk(db: &dyn HirDatabase, type_name: TypeName<Interner>) -> TypeCtor {
         match type_name {
-            TypeName::Struct(struct_id) => db.lookup_intern_type_ctor(struct_id.into()),
+            TypeName::Adt(struct_id) => db.lookup_intern_type_ctor(struct_id.into()),
             TypeName::AssociatedType(type_id) => TypeCtor::AssociatedType(from_chalk(db, type_id)),
             TypeName::OpaqueType(_) => unreachable!(),
 
@@ -470,6 +485,8 @@ impl ToChalk for TypeCtor {
             TypeName::Slice => unreachable!(),
             TypeName::Ref(_) => unreachable!(),
             TypeName::Str => unreachable!(),
+
+            TypeName::FnDef(_) => unreachable!(),
 
             TypeName::Error => {
                 // this should not be reached, since we don't represent TypeName::Error with TypeCtor
@@ -622,7 +639,10 @@ where
     type Chalk = chalk_ir::Canonical<T::Chalk>;
 
     fn to_chalk(self, db: &dyn HirDatabase) -> chalk_ir::Canonical<T::Chalk> {
-        let parameter = chalk_ir::ParameterKind::Ty(chalk_ir::UniverseIndex::ROOT);
+        let parameter = chalk_ir::CanonicalVarKind::new(
+            chalk_ir::VariableKind::Ty,
+            chalk_ir::UniverseIndex::ROOT,
+        );
         let value = self.value.to_chalk(db);
         chalk_ir::Canonical {
             value,
@@ -738,9 +758,9 @@ where
     T: HasInterner<Interner = Interner>,
 {
     chalk_ir::Binders::new(
-        chalk_ir::ParameterKinds::from(
+        chalk_ir::VariableKinds::from(
             &Interner,
-            std::iter::repeat(chalk_ir::ParameterKind::Ty(())).take(num_vars),
+            std::iter::repeat(chalk_ir::VariableKind::Ty).take(num_vars),
         ),
         value,
     )
@@ -819,16 +839,25 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
     fn trait_datum(&self, trait_id: TraitId) -> Arc<TraitDatum> {
         self.db.trait_datum(self.krate, trait_id)
     }
-    fn struct_datum(&self, struct_id: StructId) -> Arc<StructDatum> {
+    fn adt_datum(&self, struct_id: StructId) -> Arc<StructDatum> {
         self.db.struct_datum(self.krate, struct_id)
     }
     fn impl_datum(&self, impl_id: ImplId) -> Arc<ImplDatum> {
         self.db.impl_datum(self.krate, impl_id)
     }
+
+    fn fn_def_datum(
+        &self,
+        _fn_def_id: chalk_ir::FnDefId<Interner>,
+    ) -> Arc<chalk_rust_ir::FnDefDatum<Interner>> {
+        // We don't yet provide any FnDefs to Chalk
+        unimplemented!()
+    }
+
     fn impls_for_trait(
         &self,
         trait_id: TraitId,
-        parameters: &[Parameter<Interner>],
+        parameters: &[GenericArg<Interner>],
     ) -> Vec<ImplId> {
         debug!("impls_for_trait {:?}", trait_id);
         let trait_: hir_def::TraitId = from_chalk(self.db, trait_id);
@@ -1000,7 +1029,7 @@ pub(crate) fn struct_datum_query(
     struct_id: StructId,
 ) -> Arc<StructDatum> {
     debug!("struct_datum {:?}", struct_id);
-    let type_ctor: TypeCtor = from_chalk(db, TypeName::Struct(struct_id));
+    let type_ctor: TypeCtor = from_chalk(db, TypeName::Adt(struct_id));
     debug!("struct {:?} = {:?}", struct_id, type_ctor);
     let num_params = type_ctor.num_ty_params(db);
     let upstream = type_ctor.krate(db) != Some(krate);
@@ -1012,12 +1041,12 @@ pub(crate) fn struct_datum_query(
             convert_where_clauses(db, generic_def, &bound_vars)
         })
         .unwrap_or_else(Vec::new);
-    let flags = chalk_rust_ir::StructFlags {
+    let flags = chalk_rust_ir::AdtFlags {
         upstream,
         // FIXME set fundamental flag correctly
         fundamental: false,
     };
-    let struct_datum_bound = chalk_rust_ir::StructDatumBound {
+    let struct_datum_bound = chalk_rust_ir::AdtDatumBound {
         fields: Vec::new(), // FIXME add fields (only relevant for auto traits)
         where_clauses,
     };
@@ -1153,7 +1182,7 @@ impl From<StructId> for crate::TypeCtorId {
 
 impl From<crate::TypeCtorId> for StructId {
     fn from(type_ctor_id: crate::TypeCtorId) -> Self {
-        chalk_ir::StructId(type_ctor_id.as_intern_id())
+        chalk_ir::AdtId(type_ctor_id.as_intern_id())
     }
 }
 

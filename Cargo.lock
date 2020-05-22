@@ -114,7 +114,7 @@ checksum = "4785bdd1c96b2a846b2bd7cc02e86b6b3dbf14e7e53446c4f54c92a361040822"
 [[package]]
 name = "chalk-derive"
 version = "0.10.1-dev"
-source = "git+https://github.com/rust-lang/chalk.git?rev=3e9c2503ae9c5277c2acb74624dc267876dd89b3#3e9c2503ae9c5277c2acb74624dc267876dd89b3"
+source = "git+https://github.com/rust-lang/chalk.git?rev=eaab84b394007d1bed15f5470409a6ea02900a96#eaab84b394007d1bed15f5470409a6ea02900a96"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -125,7 +125,7 @@ dependencies = [
 [[package]]
 name = "chalk-engine"
 version = "0.10.1-dev"
-source = "git+https://github.com/rust-lang/chalk.git?rev=3e9c2503ae9c5277c2acb74624dc267876dd89b3#3e9c2503ae9c5277c2acb74624dc267876dd89b3"
+source = "git+https://github.com/rust-lang/chalk.git?rev=eaab84b394007d1bed15f5470409a6ea02900a96#eaab84b394007d1bed15f5470409a6ea02900a96"
 dependencies = [
  "chalk-macros",
  "rustc-hash",
@@ -134,7 +134,7 @@ dependencies = [
 [[package]]
 name = "chalk-ir"
 version = "0.10.1-dev"
-source = "git+https://github.com/rust-lang/chalk.git?rev=3e9c2503ae9c5277c2acb74624dc267876dd89b3#3e9c2503ae9c5277c2acb74624dc267876dd89b3"
+source = "git+https://github.com/rust-lang/chalk.git?rev=eaab84b394007d1bed15f5470409a6ea02900a96#eaab84b394007d1bed15f5470409a6ea02900a96"
 dependencies = [
  "chalk-derive",
  "chalk-engine",
@@ -144,7 +144,7 @@ dependencies = [
 [[package]]
 name = "chalk-macros"
 version = "0.10.1-dev"
-source = "git+https://github.com/rust-lang/chalk.git?rev=3e9c2503ae9c5277c2acb74624dc267876dd89b3#3e9c2503ae9c5277c2acb74624dc267876dd89b3"
+source = "git+https://github.com/rust-lang/chalk.git?rev=eaab84b394007d1bed15f5470409a6ea02900a96#eaab84b394007d1bed15f5470409a6ea02900a96"
 dependencies = [
  "lazy_static",
 ]
@@ -152,7 +152,7 @@ dependencies = [
 [[package]]
 name = "chalk-rust-ir"
 version = "0.10.1-dev"
-source = "git+https://github.com/rust-lang/chalk.git?rev=3e9c2503ae9c5277c2acb74624dc267876dd89b3#3e9c2503ae9c5277c2acb74624dc267876dd89b3"
+source = "git+https://github.com/rust-lang/chalk.git?rev=eaab84b394007d1bed15f5470409a6ea02900a96#eaab84b394007d1bed15f5470409a6ea02900a96"
 dependencies = [
  "chalk-derive",
  "chalk-engine",
@@ -163,14 +163,14 @@ dependencies = [
 [[package]]
 name = "chalk-solve"
 version = "0.10.1-dev"
-source = "git+https://github.com/rust-lang/chalk.git?rev=3e9c2503ae9c5277c2acb74624dc267876dd89b3#3e9c2503ae9c5277c2acb74624dc267876dd89b3"
+source = "git+https://github.com/rust-lang/chalk.git?rev=eaab84b394007d1bed15f5470409a6ea02900a96#eaab84b394007d1bed15f5470409a6ea02900a96"
 dependencies = [
  "chalk-derive",
  "chalk-engine",
  "chalk-ir",
  "chalk-macros",
  "chalk-rust-ir",
- "ena 0.13.1",
+ "ena",
  "itertools",
  "petgraph",
  "rustc-hash",
@@ -309,15 +309,6 @@ checksum = "bb1f6b1ce1c140482ea30ddd3335fc0024ac7ee112895426e0a629a6c20adfe3"
 
 [[package]]
 name = "ena"
-version = "0.13.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8944dc8fa28ce4a38f778bd46bf7d923fe73eed5a439398507246c8e017e6f36"
-dependencies = [
- "log",
-]
-
-[[package]]
-name = "ena"
 version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d7402b94a93c24e742487327a7cd839dc9d36fec9de9fb25b09f2dae459f36c3"
@@ -354,9 +345,9 @@ dependencies = [
 
 [[package]]
 name = "fixedbitset"
-version = "0.1.9"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "86d4de0081402f5e88cdac65c8dcdcc73118c1a7a465e2a05f0da05843a8ea33"
+checksum = "37ab347416e802de484e4d03c7316c48f1ecb56574dfd4a46a80f173ce1de04d"
 
 [[package]]
 name = "fnv"
@@ -814,12 +805,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b631f7e854af39a1739f401cf34a8a013dfe09eac4fa4dba91e9768bd28168d"
 
 [[package]]
-name = "ordermap"
-version = "0.3.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a86ed3f5f244b372d6b1a00b72ef7f8876d0bc6a78a4c9985c53614041512063"
-
-[[package]]
 name = "parking_lot"
 version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -873,12 +858,12 @@ checksum = "d4fd5641d01c8f18a23da7b6fe29298ff4b55afcccdf78973b24cf3175fee32e"
 
 [[package]]
 name = "petgraph"
-version = "0.4.13"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9c3659d1ee90221741f65dd128d9998311b0e40c5d3c23a62445938214abce4f"
+checksum = "29c127eea4a29ec6c85d153c59dc1213f33ec74cead30fe4730aecc88cc1fd92"
 dependencies = [
  "fixedbitset",
- "ordermap",
+ "indexmap",
 ]
 
 [[package]]
@@ -1053,7 +1038,7 @@ dependencies = [
  "chalk-ir",
  "chalk-rust-ir",
  "chalk-solve",
- "ena 0.14.0",
+ "ena",
  "insta",
  "itertools",
  "log",
