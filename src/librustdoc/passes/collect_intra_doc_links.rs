@@ -431,6 +431,43 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
 
         look_for_tests(&cx, &dox, &item, true);
 
+        // find item's parent to resolve `Self` in item's docs below
+        let parent_name = self.cx.as_local_hir_id(item.def_id).and_then(|item_hir| {
+            let parent_hir = self.cx.tcx.hir().get_parent_item(item_hir);
+            let item_parent = self.cx.tcx.hir().find(parent_hir);
+            match item_parent {
+                Some(hir::Node::Item(hir::Item {
+                    kind:
+                        hir::ItemKind::Impl {
+                            self_ty:
+                                hir::Ty {
+                                    kind:
+                                        hir::TyKind::Path(hir::QPath::Resolved(
+                                            _,
+                                            hir::Path { segments, .. },
+                                        )),
+                                    ..
+                                },
+                            ..
+                        },
+                    ..
+                })) => segments.first().and_then(|seg| Some(seg.ident.to_string())),
+                Some(hir::Node::Item(hir::Item {
+                    ident, kind: hir::ItemKind::Enum(..), ..
+                }))
+                | Some(hir::Node::Item(hir::Item {
+                    ident, kind: hir::ItemKind::Struct(..), ..
+                }))
+                | Some(hir::Node::Item(hir::Item {
+                    ident, kind: hir::ItemKind::Union(..), ..
+                }))
+                | Some(hir::Node::Item(hir::Item {
+                    ident, kind: hir::ItemKind::Trait(..), ..
+                })) => Some(ident.to_string()),
+                _ => None,
+            }
+        });
+
         for (ori_link, link_range) in markdown_links(&dox) {
             // Bail early for real links.
             if ori_link.contains('/') {
@@ -467,7 +504,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
             };
             let (res, fragment) = {
                 let mut kind = None;
-                let path_str = if let Some(prefix) =
+                let mut path_str = if let Some(prefix) =
                     ["struct@", "enum@", "type@", "trait@", "union@"]
                         .iter()
                         .find(|p| link.starts_with(**p))
@@ -521,6 +558,15 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                 let base_node =
                     if item.is_mod() && item.attrs.inner_docs { None } else { parent_node };
 
+                let resolved_self;
+                // replace `Self` with suitable item's parent name
+                if path_str.starts_with("Self::") {
+                    if let Some(ref name) = parent_name {
+                        resolved_self = format!("{}::{}", name, &path_str[6..]);
+                        path_str = &resolved_self;
+                    }
+                }
+
                 match kind {
                     Some(ns @ ValueNS) => {
                         match self.resolve(
@@ -529,7 +575,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                             &current_item,
                             base_node,
                             &extra_fragment,
-                            None,
+                            Some(&item),
                         ) {
                             Ok(res) => res,
                             Err(ErrorKind::ResolutionFailure) => {
@@ -552,7 +598,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                             &current_item,
                             base_node,
                             &extra_fragment,
-                            None,
+                            Some(&item),
                         ) {
                             Ok(res) => res,
                             Err(ErrorKind::ResolutionFailure) => {
@@ -577,7 +623,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                                 &current_item,
                                 base_node,
                                 &extra_fragment,
-                                None,
+                                Some(&item),
                             ) {
                                 Err(ErrorKind::AnchorFailure(msg)) => {
                                     anchor_failure(cx, &item, &ori_link, &dox, link_range, msg);
