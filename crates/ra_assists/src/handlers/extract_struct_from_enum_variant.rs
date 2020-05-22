@@ -1,4 +1,3 @@
-use hir_expand::name::AsName;
 use ra_ide_db::{
     defs::Definition, imports_locator::ImportsLocator, search::Reference, RootDatabase,
 };
@@ -15,14 +14,14 @@ use crate::{
     AssistContext, AssistId, Assists,
 };
 use ast::{ArgListOwner, VisibilityOwner};
-use hir::{EnumVariant, Module, ModuleDef};
+use hir::{AsName, EnumVariant, Module, ModuleDef};
 use ra_db::FileId;
 use ra_fmt::leading_indent;
 use rustc_hash::FxHashSet;
 
 // Assist extract_struct_from_enum
 //
-// Extracts a from struct from enum variant
+// Extracts a struct from enum variant
 //
 // ```
 // enum A { <|>One(u32, u32) }
@@ -41,7 +40,7 @@ pub(crate) fn extract_struct_from_enum(acc: &mut Assists, ctx: &AssistContext) -
     };
     let variant_name = variant.name()?.to_string();
     let enum_ast = variant.parent_enum();
-    let enum_name = enum_ast.name().unwrap().to_string();
+    let enum_name = enum_ast.name()?.to_string();
     let visibility = enum_ast.visibility();
     let variant_hir = ctx.sema.to_def(&variant)?;
 
@@ -88,13 +87,12 @@ pub(crate) fn extract_struct_from_enum(acc: &mut Assists, ctx: &AssistContext) -
 }
 
 fn existing_struct_def(db: &RootDatabase, variant_name: &str, variant: &EnumVariant) -> bool {
-    let module_defs = variant.parent_enum(db).module(db).scope(db, None);
-    for (name, _) in module_defs {
-        if name.to_string() == variant_name.to_string() {
-            return true;
-        }
-    }
-    false
+    variant
+        .parent_enum(db)
+        .module(db)
+        .scope(db, None)
+        .into_iter()
+        .any(|(name, _)| name.to_string() == variant_name.to_string())
 }
 
 fn mod_def_for_target_module(ctx: &AssistContext, enum_name: &str) -> ModuleDef {

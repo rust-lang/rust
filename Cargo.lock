@@ -921,7 +921,6 @@ dependencies = [
  "ra_db",
  "ra_fmt",
  "ra_hir",
- "ra_hir_expand",
  "ra_ide_db",
  "ra_prof",
  "ra_syntax",
