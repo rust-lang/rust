@@ -335,7 +335,6 @@ path = "lib.rs"
     command.current_dir(&dir);
     command.env("XARGO_HOME", &dir);
     command.env("XARGO_RUST_SRC", &rust_src);
-    command.env_remove("RUSTFLAGS"); // Make sure external `RUSTFLAGS` do not influence the build.
     // Use Miri as rustc to build a libstd compatible with us (and use the right flags).
     // However, when we are running in bootstrap, we cannot just overwrite `RUSTC`,
     // because we still need bootstrap to distinguish between host and target crates.
@@ -347,6 +346,12 @@ path = "lib.rs"
         command.env("RUSTC", find_miri());
     }
     command.env("MIRI_BE_RUSTC", "1");
+    // Make sure there are no other wrappers or flags getting in our way
+    // (Cc https://github.com/rust-lang/miri/issues/1421).
+    // This is consistent with normal `cargo build` that does not apply `RUSTFLAGS`
+    // to the sysroot either.
+    command.env_remove("RUSTC_WRAPPER");
+    command.env_remove("RUSTFLAGS");
     // Finally run it!
     if command.status().expect("failed to run xargo").success().not() {
         show_error(format!("Failed to run xargo"));
@@ -446,6 +451,9 @@ fn in_cargo_miri() {
         // Set `RUSTC_WRAPPER` to ourselves.  Cargo will prepend that binary to its usual invocation,
         // i.e., the first argument is `rustc` -- which is what we use in `main` to distinguish
         // the two codepaths. (That extra argument is why we prefer this over setting `RUSTC`.)
+        if env::var_os("RUSTC_WRAPPER").is_some() {
+            println!("WARNING: Ignoring existing `RUSTC_WRAPPER` environment variable, Miri does not support wrapping.");
+        }
         let path = std::env::current_exe().expect("current executable path invalid");
         cmd.env("RUSTC_WRAPPER", path);
         if verbose {
