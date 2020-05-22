@@ -7,6 +7,8 @@ All capabilities are enabled via `experimental` field of `ClientCapabilities`.
 
 ## Snippet `TextEdit`
 
+**Issue:** https://github.com/microsoft/language-server-protocol/issues/724
+
 **Client Capability:** `{ "snippetTextEdit": boolean }`
 
 If this capability is set, `WorkspaceEdit`s returned from `codeAction` requests might contain `SnippetTextEdit`s instead of usual `TextEdit`s:
@@ -37,6 +39,8 @@ At the moment, rust-analyzer guarantees that only a single edit will have `Inser
 * Can snippets span multiple files (so far, no)?
 
 ## Join Lines
+
+**Issue:** https://github.com/microsoft/language-server-protocol/issues/992
 
 **Server Capability:** `{ "joinLines": boolean }`
 
@@ -122,13 +126,15 @@ SSR with query `foo($a:expr, $b:expr) ==>> ($a).foo($b)` will transform, eg `foo
 
 ## `CodeAction` Groups
 
+**Issue:** https://github.com/microsoft/language-server-protocol/issues/994
+
 **Client Capability:** `{ "codeActionGroup": boolean }`
 
 If this capability is set, `CodeAction` returned from the server contain an additional field, `group`:
 
 ```typescript
 interface CodeAction {
-	title: string;
+    title: string;
     group?: string;
     ...
 }
