@@ -9,8 +9,9 @@ use chalk_ir::{
 };
 
 use hir_def::{
-    type_ref::Mutability, AssocContainerId, AssocItemId, GenericDefId, HasModule, Lookup,
-    TypeAliasId,
+    lang_item::{lang_attr, LangItemTarget},
+    type_ref::Mutability,
+    AssocContainerId, AssocItemId, GenericDefId, HasModule, Lookup, TypeAliasId,
 };
 use ra_db::{
     salsa::{InternId, InternKey},
@@ -26,6 +27,7 @@ use crate::{
     utils::generics,
     ApplicationTy, DebruijnIndex, GenericPredicate, ProjectionTy, Substs, TraitRef, Ty, TypeCtor,
 };
+use chalk_rust_ir::WellKnownTrait;
 
 pub(super) mod tls;
 
@@ -1057,10 +1059,15 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
     }
     fn well_known_trait_id(
         &self,
-        _well_known_trait: chalk_rust_ir::WellKnownTrait,
+        well_known_trait: chalk_rust_ir::WellKnownTrait,
     ) -> Option<chalk_ir::TraitId<Interner>> {
-        // FIXME tell Chalk about well-known traits (here and in trait_datum)
-        None
+        let lang_attr = lang_attr_from_well_known_trait(well_known_trait);
+        let lang_items = self.db.crate_lang_items(self.krate);
+        let trait_ = match lang_items.target(lang_attr) {
+            Some(LangItemTarget::TraitId(trait_)) => trait_,
+            _ => return None,
+        };
+        Some(trait_.to_chalk(self.db))
     }
 
     fn program_clauses_for_env(
@@ -1162,7 +1169,8 @@ pub(crate) fn trait_datum_query(
     let associated_ty_ids =
         trait_data.associated_types().map(|type_alias| type_alias.to_chalk(db)).collect();
     let trait_datum_bound = chalk_rust_ir::TraitDatumBound { where_clauses };
-    let well_known = None; // FIXME set this (depending on lang items)
+    let well_known =
+        lang_attr(db.upcast(), trait_).and_then(|name| well_known_trait_from_lang_attr(&name));
     let trait_datum = TraitDatum {
         id: trait_id,
         binders: make_binders(trait_datum_bound, bound_vars.len()),
@@ -1171,6 +1179,25 @@ pub(crate) fn trait_datum_query(
         well_known,
     };
     Arc::new(trait_datum)
+}
+
+fn well_known_trait_from_lang_attr(name: &str) -> Option<WellKnownTrait> {
+    Some(match name {
+        "sized" => WellKnownTrait::SizedTrait,
+        "copy" => WellKnownTrait::CopyTrait,
+        "clone" => WellKnownTrait::CloneTrait,
+        "drop" => WellKnownTrait::DropTrait,
+        _ => return None,
+    })
+}
+
+fn lang_attr_from_well_known_trait(attr: WellKnownTrait) -> &'static str {
+    match attr {
+        WellKnownTrait::SizedTrait => "sized",
+        WellKnownTrait::CopyTrait => "copy",
+        WellKnownTrait::CloneTrait => "clone",
+        WellKnownTrait::DropTrait => "drop",
+    }
 }
 
 pub(crate) fn struct_datum_query(
