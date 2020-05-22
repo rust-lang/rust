@@ -70,6 +70,35 @@ book!(
     RustdocBook, "src/doc/rustdoc", "rustdoc";
 );
 
+fn open(builder: &Builder<'_>, path: impl AsRef<Path>) {
+    if builder.config.dry_run || !builder.config.cmd.open() {
+        return;
+    }
+
+    let path = path.as_ref();
+    builder.info(&format!("Opening doc {}", path.display()));
+    if let Err(err) = opener::open(path) {
+        builder.info(&format!("{}\n", err));
+    }
+}
+
+// "src/libstd" -> ["src", "libstd"]
+//
+// Used for deciding whether a particular step is one requested by the user on
+// the `x.py doc` command line, which determines whether `--open` will open that
+// page.
+fn components_simplified(path: &PathBuf) -> Vec<&str> {
+    path.iter().map(|component| component.to_str().unwrap_or("???")).collect()
+}
+
+fn is_explicit_request(builder: &Builder<'_>, path: &str) -> bool {
+    builder
+        .paths
+        .iter()
+        .map(components_simplified)
+        .any(|requested| requested.iter().copied().eq(path.split("/")))
+}
+
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct UnstableBook {
     target: Interned<String>,
@@ -199,6 +228,12 @@ impl Step for TheBook {
             let path = path.to_str().unwrap();
 
             invoke_rustdoc(builder, compiler, target, path);
+        }
+
+        if is_explicit_request(builder, "src/doc/book") {
+            let out = builder.doc_out(target);
+            let index = out.join("book").join("index.html");
+            open(builder, &index);
         }
     }
 }
@@ -338,6 +373,13 @@ impl Step for Standalone {
             }
             builder.run(&mut cmd);
         }
+
+        // We open doc/index.html as the default if invoked as `x.py doc --open`
+        // with no particular explicit doc requested (e.g. src/libcore).
+        if builder.paths.is_empty() || is_explicit_request(builder, "src/doc") {
+            let index = out.join("index.html");
+            open(builder, &index);
+        }
     }
 }
 
@@ -418,10 +460,25 @@ impl Step for Std {
 
             builder.run(&mut cargo.into());
         };
-        for krate in &["alloc", "core", "std", "proc_macro", "test"] {
+        let krates = ["alloc", "core", "std", "proc_macro", "test"];
+        for krate in &krates {
             run_cargo_rustdoc_for(krate);
         }
         builder.cp_r(&my_out, &out);
+
+        // Look for src/libstd, src/libcore etc in the `x.py doc` arguments and
+        // open the corresponding rendered docs.
+        for path in builder.paths.iter().map(components_simplified) {
+            if path.get(0) == Some(&"src")
+                && path.get(1).map_or(false, |dir| dir.starts_with("lib"))
+            {
+                let requested_crate = &path[1][3..];
+                if krates.contains(&requested_crate) {
+                    let index = out.join(requested_crate).join("index.html");
+                    open(builder, &index);
+                }
+            }
+        }
     }
 }
 
