@@ -52,30 +52,6 @@ macro_rules! def_reg_class {
 
 #[macro_use]
 macro_rules! def_regs {
-    ($arch:ident $arch_reg:ident $arch_regclass:ident {}) => {
-        #[allow(unreachable_code)]
-        #[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug, Eq, PartialEq, Hash, HashStable_Generic)]
-        pub enum $arch_reg {}
-
-        impl $arch_reg {
-            pub fn parse(
-                _arch: super::InlineAsmArch,
-                mut _has_feature: impl FnMut(&str) -> bool,
-                _name: &str,
-            ) -> Result<Self, &'static str> {
-                Err("unknown register")
-            }
-        }
-
-        pub(super) fn fill_reg_map(
-            _arch: super::InlineAsmArch,
-            mut _has_feature: impl FnMut(&str) -> bool,
-            _map: &mut rustc_data_structures::fx::FxHashMap<
-                super::InlineAsmRegClass,
-                rustc_data_structures::fx::FxHashSet<super::InlineAsmReg>,
-            >,
-        ) {}
-    };
     ($arch:ident $arch_reg:ident $arch_regclass:ident {
         $(
             $reg:ident: $class:ident $(, $extra_class:ident)* = [$reg_name:literal $(, $alias:literal)*] $(% $filter:ident)?,
@@ -84,6 +60,7 @@ macro_rules! def_regs {
             #error = [$($bad_reg:literal),+] => $error:literal,
         )*
     }) => {
+        #[allow(unreachable_code)]
         #[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug, Eq, PartialEq, Hash, HashStable_Generic)]
         #[allow(non_camel_case_types)]
         pub enum $arch_reg {
@@ -126,19 +103,20 @@ macro_rules! def_regs {
         pub(super) fn fill_reg_map(
             _arch: super::InlineAsmArch,
             mut _has_feature: impl FnMut(&str) -> bool,
-            map: &mut rustc_data_structures::fx::FxHashMap<
+            _map: &mut rustc_data_structures::fx::FxHashMap<
                 super::InlineAsmRegClass,
                 rustc_data_structures::fx::FxHashSet<super::InlineAsmReg>,
             >,
         ) {
+            #[allow(unused_imports)]
             use super::{InlineAsmReg, InlineAsmRegClass};
             $(
                 if $($filter(_arch, &mut _has_feature, true).is_ok() &&)? true {
-                    if let Some(set) = map.get_mut(&InlineAsmRegClass::$arch($arch_regclass::$class)) {
+                    if let Some(set) = _map.get_mut(&InlineAsmRegClass::$arch($arch_regclass::$class)) {
                         set.insert(InlineAsmReg::$arch($arch_reg::$reg));
                     }
                     $(
-                        if let Some(set) = map.get_mut(&InlineAsmRegClass::$arch($arch_regclass::$extra_class)) {
+                        if let Some(set) = _map.get_mut(&InlineAsmRegClass::$arch($arch_regclass::$extra_class)) {
                             set.insert(InlineAsmReg::$arch($arch_reg::$reg));
                         }
                     )*
