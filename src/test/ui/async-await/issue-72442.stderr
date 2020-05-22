@@ -1,0 +1,14 @@
+error[E0277]: the trait bound `std::option::Option<&str>: std::convert::AsRef<std::path::Path>` is not satisfied
+  --> $DIR/issue-72442.rs:12:36
+   |
+LL |             let mut f = File::open(path.to_str())?;
+   |                                    ^^^^^^^^^^^^^ the trait `std::convert::AsRef<std::path::Path>` is not implemented for `std::option::Option<&str>`
+   | 
+  ::: $SRC_DIR/libstd/fs.rs:LL:COL
+   |
+LL |     pub fn open<P: AsRef<Path>>(path: P) -> io::Result<File> {
+   |                    ----------- required by this bound in `std::fs::File::open`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

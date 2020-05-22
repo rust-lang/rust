@@ -1,4 +1,5 @@
 // edition:2018
+// compile-flags:-Cincremental=tmp/issue-72442
 
 use std::fs::File;
 use std::future::Future;
@@ -9,7 +10,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         {
             let path = std::path::Path::new(".");
             let mut f = File::open(path.to_str())?;
-            //~^ ERROR the trait bound `std::option::Option<&str>: std::convert::AsRef<std::path::Path>` is not satisfied
+            //~^ ERROR the trait bound
             let mut src = String::new();
             f.read_to_string(&mut src)?;
             Ok(())
