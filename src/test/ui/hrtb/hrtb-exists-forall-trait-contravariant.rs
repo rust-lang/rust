@@ -32,5 +32,5 @@ fn main() {
     // NB. *However*, the reinstated leak-check gives an error here.
 
     foo::<()>();
-    //~^ ERROR not satisfied
+    //~^ ERROR implementation of `Trait` is not general enough
 }

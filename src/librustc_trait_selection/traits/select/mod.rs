@@ -21,7 +21,7 @@ use super::{Normalized, ProjectionCacheKey};
 use super::{ObligationCause, PredicateObligation, TraitObligation};
 use super::{Overflow, SelectionError, Unimplemented};
 
-use crate::infer::{CombinedSnapshot, InferCtxt, InferOk, TypeFreshener};
+use crate::infer::{InferCtxt, InferOk, TypeFreshener};
 use crate::traits::error_reporting::InferCtxtExt;
 use crate::traits::project::ProjectionCacheKeyExt;
 use rustc_ast::attr;
@@ -1268,7 +1268,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn match_projection_obligation_against_definition_bounds(
         &mut self,
         obligation: &TraitObligation<'tcx>,
-        snapshot: &CombinedSnapshot<'_, 'tcx>,
     ) -> bool {
         let poly_trait_predicate = self.infcx().resolve_vars_if_possible(&obligation.predicate);
         let (placeholder_trait_predicate, _) =
@@ -1299,12 +1298,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             if let ty::PredicateKind::Trait(bound, _) = bound.kind() {
                 let bound = bound.to_poly_trait_ref();
                 if self.infcx.probe(|_| {
-                    self.match_projection(
-                        obligation,
-                        bound,
-                        placeholder_trait_predicate.trait_ref,
-                        snapshot,
-                    )
+                    self.match_projection(obligation, bound, placeholder_trait_predicate.trait_ref)
                 }) {
                     return Some(bound);
                 }
@@ -1321,12 +1315,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             None => false,
             Some(bound) => {
                 // Repeat the successful match, if any, this time outside of a probe.
-                let result = self.match_projection(
-                    obligation,
-                    bound,
-                    placeholder_trait_predicate.trait_ref,
-                    snapshot,
-                );
+                let result =
+                    self.match_projection(obligation, bound, placeholder_trait_predicate.trait_ref);
 
                 assert!(result);
                 true
@@ -1339,14 +1329,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &TraitObligation<'tcx>,
         trait_bound: ty::PolyTraitRef<'tcx>,
         placeholder_trait_ref: ty::TraitRef<'tcx>,
-        snapshot: &CombinedSnapshot<'_, 'tcx>,
     ) -> bool {
         debug_assert!(!placeholder_trait_ref.has_escaping_bound_vars());
         self.infcx
             .at(&obligation.cause, obligation.param_env)
             .sup(ty::Binder::dummy(placeholder_trait_ref), trait_bound)
             .is_ok()
-            && self.infcx.leak_check(false, snapshot).is_ok()
     }
 
     fn evaluate_where_clause<'o>(
@@ -1811,9 +1799,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         impl_def_id: DefId,
         obligation: &TraitObligation<'tcx>,
-        snapshot: &CombinedSnapshot<'_, 'tcx>,
     ) -> Normalized<'tcx, SubstsRef<'tcx>> {
-        match self.match_impl(impl_def_id, obligation, snapshot) {
+        match self.match_impl(impl_def_id, obligation) {
             Ok(substs) => substs,
             Err(()) => {
                 bug!(
@@ -1829,7 +1816,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         impl_def_id: DefId,
         obligation: &TraitObligation<'tcx>,
-        snapshot: &CombinedSnapshot<'_, 'tcx>,
     ) -> Result<Normalized<'tcx, SubstsRef<'tcx>>, ()> {
         let impl_trait_ref = self.tcx().impl_trait_ref(impl_def_id).unwrap();
 
@@ -1871,11 +1857,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .eq(placeholder_obligation_trait_ref, impl_trait_ref)
             .map_err(|e| debug!("match_impl: failed eq_trait_refs due to `{}`", e))?;
         nested_obligations.extend(obligations);
-
-        if let Err(e) = self.infcx.leak_check(false, snapshot) {
-            debug!("match_impl: failed leak check due to `{}`", e);
-            return Err(());
-        }
 
         if !self.intercrate
             && self.tcx().impl_polarity(impl_def_id) == ty::ImplPolarity::Reservation

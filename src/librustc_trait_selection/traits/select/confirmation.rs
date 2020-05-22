@@ -121,9 +121,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     fn confirm_projection_candidate(&mut self, obligation: &TraitObligation<'tcx>) {
-        self.infcx.commit_unconditionally(|snapshot| {
-            let result =
-                self.match_projection_obligation_against_definition_bounds(obligation, snapshot);
+        self.infcx.commit_unconditionally(|_| {
+            let result = self.match_projection_obligation_against_definition_bounds(obligation);
             assert!(result);
         })
     }
@@ -265,8 +264,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         // First, create the substitutions by matching the impl again,
         // this time not in a probe.
-        self.infcx.commit_unconditionally(|snapshot| {
-            let substs = self.rematch_impl(impl_def_id, obligation, snapshot);
+        self.infcx.commit_unconditionally(|_| {
+            let substs = self.rematch_impl(impl_def_id, obligation);
             debug!("confirm_impl_candidate: substs={:?}", substs);
             let cause = obligation.derived_cause(ImplDerivedObligation);
             ensure_sufficient_stack(|| {

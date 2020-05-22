@@ -1,18 +1,14 @@
-error[E0277]: the trait bound `(): Trait<for<'b> fn(&'b u32)>` is not satisfied
-  --> $DIR/hrtb-exists-forall-trait-contravariant.rs:34:11
+error: implementation of `Trait` is not general enough
+  --> $DIR/hrtb-exists-forall-trait-contravariant.rs:34:5
    |
-LL | fn foo<T>()
-   |    --- required by a bound in this
-LL | where
-LL |     T: Trait<for<'b> fn(&'b u32)>,
-   |        -------------------------- required by this bound in `foo`
+LL | trait Trait<T> {}
+   | ----------------- trait `Trait` defined here
 ...
 LL |     foo::<()>();
-   |           ^^ the trait `Trait<for<'b> fn(&'b u32)>` is not implemented for `()`
+   |     ^^^^^^^^^ implementation of `Trait` is not general enough
    |
-   = help: the following implementations were found:
-             <() as Trait<fn(&'a u32)>>
+   = note: `()` must implement `Trait<for<'b> fn(&'b u32)>`
+   = note: ...but `()` actually implements `Trait<fn(&'0 u32)>`, for some specific lifetime `'0`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0277`.
