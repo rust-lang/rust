@@ -605,11 +605,14 @@ impl fmt::Display for SocketAddrV4 {
         if f.precision().is_none() && f.width().is_none() {
             write!(f, "{}:{}", self.ip(), self.port())
         } else {
-            const IPV4_SOCKET_BUF_LEN: usize = 21;
+            const IPV4_SOCKET_BUF_LEN: usize = (3 * 4)  // the segments
+                + 3  // the separators
+                + 1 + 5; // the port
             let mut buf = [0; IPV4_SOCKET_BUF_LEN];
             let mut buf_slice = &mut buf[..];
 
-            // Unwrap is fine because writing to a buffer is infallible
+            // Unwrap is fine because writing to a sufficiently-sized
+            // buffer is infallible
             write!(buf_slice, "{}:{}", self.ip(), self.port()).unwrap();
             let len = IPV4_SOCKET_BUF_LEN - buf_slice.len();
 
@@ -643,7 +646,8 @@ impl fmt::Display for SocketAddrV6 {
             let mut buf = [0; IPV6_SOCKET_BUF_LEN];
             let mut buf_slice = &mut buf[..];
 
-            // Unwrap is fine because writing to a buffer is infallible
+            // Unwrap is fine because writing to a sufficiently-sized
+            // buffer is infallible
             write!(buf_slice, "[{}]:{}", self.ip(), self.port()).unwrap();
             let len = IPV6_SOCKET_BUF_LEN - buf_slice.len();
 
