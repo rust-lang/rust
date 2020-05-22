@@ -1105,12 +1105,13 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
 		updateAnalysis(I.getOperand(0), analysis, &I);
 		updateAnalysis(I.getOperand(1), analysis, &I);
 
+        //llvm::errs() << "I: " << I << "\n";
+        //llvm::errs() << "op(0): " << getAnalysis(I.getOperand(0)).str() << "\n";
+        //llvm::errs() << "op(1): " << getAnalysis(I.getOperand(1)).str() << "\n";
+
 		ValueData vd = getAnalysis(I.getOperand(0));
         vd.pointerIntMerge(getAnalysis(I.getOperand(1)), I.getOpcode());
 
-        //llvm::errs() << "vd: " << vd.str() << "\n";
-        //llvm::errs() << "op(0): " << getAnalysis(I.getOperand(0)).str() << "\n";
-        //llvm::errs() << "op(1): " << getAnalysis(I.getOperand(1)).str() << "\n";
 
         if (I.getOpcode() == BinaryOperator::And) {
             for(int i=0; i<2; i++) {

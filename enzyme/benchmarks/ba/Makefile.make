@@ -1,5 +1,4 @@
 # RUN: cd %desired_wd/ba && LD_LIBRARY_PATH="%bldpath:$LD_LIBRARY_PATH" BENCH="%bench" BENCHLINK="%blink" LOAD="%loadEnzyme" make -B ba-unopt.ll ba-raw.ll results.txt -f %s
-# TODO run
 
 .PHONY: clean
 
