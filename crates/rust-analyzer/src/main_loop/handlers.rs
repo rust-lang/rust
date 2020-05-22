@@ -281,7 +281,7 @@ pub fn handle_document_symbol(
             kind: symbol.kind,
             deprecated: symbol.deprecated,
             location: Location::new(url.clone(), symbol.range),
-            container_name: container_name,
+            container_name,
         });
 
         for child in symbol.children.iter().flatten() {
