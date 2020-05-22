@@ -76,10 +76,10 @@ fn open(builder: &Builder<'_>, path: impl AsRef<Path>) {
     }
 
     let path = path.as_ref();
-    builder.info(&format!("Opening doc {}", path.to_string_lossy()));
-
-    // ignore error
-    let _ = opener::open(path);
+    builder.info(&format!("Opening doc {}", path.display()));
+    if let Err(err) = opener::open(path) {
+        builder.info(&format!("{}\n", err));
+    }
 }
 
 // "src/libstd" -> ["src", "libstd"]
