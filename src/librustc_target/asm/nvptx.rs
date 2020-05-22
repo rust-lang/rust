@@ -43,5 +43,7 @@ impl NvptxInlineAsmRegClass {
 }
 
 def_regs! {
+    // Registers in PTX are declared in the assembly.
+    // There are no predefined registers that one can use.
     Nvptx NvptxInlineAsmReg NvptxInlineAsmRegClass {}
 }
