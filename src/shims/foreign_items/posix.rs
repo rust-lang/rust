@@ -170,7 +170,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // Dynamic symbol loading
             "dlsym" => {
                 let &[handle, symbol] = check_arg_count(args)?;
-                this.read_scalar(handle)?.not_undef()?;
+                this.read_scalar(handle)?.to_machine_usize(this)?;
                 let symbol = this.read_scalar(symbol)?.not_undef()?;
                 let symbol_name = this.memory.read_c_str(symbol)?;
                 if let Some(dlsym) = Dlsym::from_str(symbol_name, &this.tcx.sess.target.target.target_os)? {
@@ -369,9 +369,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             "pthread_atfork" => {
                 let &[prepare, parent, child] = check_arg_count(args)?;
-                this.read_scalar(prepare)?.not_undef()?;
-                this.read_scalar(parent)?.not_undef()?;
-                this.read_scalar(child)?.not_undef()?;
+                this.force_bits(this.read_scalar(prepare)?.not_undef()?, this.memory.pointer_size())?;
+                this.force_bits(this.read_scalar(parent)?.not_undef()?, this.memory.pointer_size())?;
+                this.force_bits(this.read_scalar(child)?.not_undef()?, this.memory.pointer_size())?;
                 // We do not support forking, so there is nothing to do here.
                 this.write_null(dest)?;
             }

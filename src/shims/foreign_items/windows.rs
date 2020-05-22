@@ -210,7 +210,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "GetProcAddress" => {
                 #[allow(non_snake_case)]
                 let &[hModule, lpProcName] = check_arg_count(args)?;
-                this.read_scalar(hModule)?.not_undef()?;
+                this.read_scalar(hModule)?.to_machine_isize(this)?;
                 let name = this.memory.read_c_str(this.read_scalar(lpProcName)?.not_undef()?)?;
                 if let Some(dlsym) = Dlsym::from_str(name, &this.tcx.sess.target.target.target_os)? {
                     let ptr = this.memory.create_fn_alloc(FnVal::Other(dlsym));
