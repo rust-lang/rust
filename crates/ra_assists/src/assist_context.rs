@@ -5,7 +5,7 @@ use hir::Semantics;
 use ra_db::{FileId, FileRange};
 use ra_fmt::{leading_indent, reindent};
 use ra_ide_db::{
-    source_change::{SingleFileChange, SourceChange},
+    source_change::{SourceChange, SourceFileEdit},
     RootDatabase,
 };
 use ra_syntax::{
@@ -150,11 +150,10 @@ impl Assists {
         self.add_impl(label, f)
     }
     fn add_impl(&mut self, label: Assist, f: impl FnOnce(&mut AssistBuilder)) -> Option<()> {
-        let change_label = label.label.clone();
         let source_change = if self.resolve {
             let mut builder = AssistBuilder::new(self.file);
             f(&mut builder);
-            Some(builder.finish(change_label))
+            Some(builder.finish())
         } else {
             None
         };
@@ -246,9 +245,10 @@ impl AssistBuilder {
         &mut self.edit
     }
 
-    fn finish(self, change_label: String) -> SourceChange {
+    fn finish(self) -> SourceChange {
         let edit = self.edit.finish();
-        let mut res = SingleFileChange { label: change_label, edit }.into_source_change(self.file);
+        let source_file_edit = SourceFileEdit { file_id: self.file, edit };
+        let mut res: SourceChange = source_file_edit.into();
         if self.is_snippet {
             res.is_snippet = true;
         }
