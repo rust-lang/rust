@@ -76,13 +76,10 @@
 //!   is not just used to generate a new value. For example, `x += 1` is
 //!   a read but not a use. This is used to generate better warnings.
 //!
-//! ## Special Variables
+//! ## Special nodes and variables
 //!
-//! We generate various special variables for various, well, special purposes.
-//! These are described in the `specials` struct:
-//!
-//! - `exit_ln`: a live node that is generated to represent every 'exit' from
-//!   the function, whether it be by explicit return, panic, or other means.
+//! We generate various special nodes for various, well, special purposes.
+//! These are described in the `Specials` struct.
 
 use self::LiveNodeKind::*;
 use self::VarKind::*;
@@ -131,6 +128,7 @@ enum LiveNodeKind {
     UpvarNode(Span),
     ExprNode(Span),
     VarDefNode(Span),
+    ClosureNode,
     ExitNode,
 }
 
@@ -140,6 +138,7 @@ fn live_node_kind_to_string(lnk: LiveNodeKind, tcx: TyCtxt<'_>) -> String {
         UpvarNode(s) => format!("Upvar node [{}]", sm.span_to_string(s)),
         ExprNode(s) => format!("Expr node [{}]", sm.span_to_string(s)),
         VarDefNode(s) => format!("Var def node [{}]", sm.span_to_string(s)),
+        ClosureNode => "Closure node".to_owned(),
         ExitNode => "Exit node".to_owned(),
     }
 }
@@ -396,10 +395,12 @@ fn visit_fn<'tcx>(
 
     // compute liveness
     let mut lsets = Liveness::new(&mut fn_maps, def_id);
-    let entry_ln = lsets.compute(&body.value);
+    let entry_ln = lsets.compute(fk, &body, sp, id);
+    lsets.log_liveness(entry_ln, id);
 
     // check for various error conditions
     lsets.visit_body(body);
+    lsets.warn_about_unused_upvars(entry_ln);
     lsets.warn_about_unused_args(body, entry_ln);
 }
 
@@ -634,6 +635,12 @@ impl RWUTable {
 
 #[derive(Copy, Clone)]
 struct Specials {
+    /// A live node representing a point of execution before closure entry &
+    /// after closure exit. Used to calculate liveness of captured variables
+    /// through calls to the same closure. Used for Fn & FnMut closures only.
+    closure_ln: LiveNode,
+    /// A live node representing every 'exit' from the function, whether it be
+    /// by explicit return, panic, or other means.
     exit_ln: LiveNode,
 }
 
@@ -658,11 +665,8 @@ struct Liveness<'a, 'tcx> {
 
 impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn new(ir: &'a mut IrMaps<'tcx>, def_id: LocalDefId) -> Liveness<'a, 'tcx> {
-        // Special nodes and variables:
-        // - exit_ln represents the end of the fn, either by return or panic
-        // - implicit_ret_var is a pseudo-variable that represents
-        //   an implicit return
         let specials = Specials {
+            closure_ln: ir.add_live_node(ClosureNode),
             exit_ln: ir.add_live_node(ExitNode),
         };
 
@@ -789,6 +793,20 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         String::from_utf8(wr).unwrap()
     }
 
+    fn log_liveness(&self, entry_ln: LiveNode, hir_id: hir::HirId) {
+        // hack to skip the loop unless debug! is enabled:
+        debug!(
+            "^^ liveness computation results for body {} (entry={:?})",
+            {
+                for ln_idx in 0..self.ir.num_live_nodes {
+                    debug!("{:?}", self.ln_str(LiveNode(ln_idx as u32)));
+                }
+                hir_id
+            },
+            entry_ln
+        );
+    }
+
     fn init_empty(&mut self, ln: LiveNode, succ_ln: LiveNode) {
         self.successors[ln.get()] = succ_ln;
 
@@ -889,33 +907,87 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         self.rwu_table.assign_unpacked(idx, rwu);
     }
 
-    fn compute(&mut self, body: &hir::Expr<'_>) -> LiveNode {
-        debug!("compute: using id for body, {:?}", body);
+    fn compute(
+        &mut self,
+        fk: FnKind<'_>,
+        body: &hir::Body<'_>,
+        span: Span,
+        id: hir::HirId,
+    ) -> LiveNode {
+        debug!("compute: using id for body, {:?}", body.value);
 
-        let s = self.s;
+        // # Liveness of captured variables
+        //
+        // When computing the liveness for captured variables we take into
+        // account how variable is captured (ByRef vs ByValue) and what is the
+        // closure kind (Generator / FnOnce vs Fn / FnMut).
+        //
+        // Variables captured by reference are assumed to be used on the exit
+        // from the closure.
+        //
+        // In FnOnce closures, variables captured by value are known to be dead
+        // on exit since it is impossible to call the closure again.
+        //
+        // In Fn / FnMut closures, variables captured by value are live on exit
+        // if they are live on the entry to the closure, since only the closure
+        // itself can access them on subsequent calls.
 
         if let Some(upvars) = self.ir.tcx.upvars_mentioned(self.ir.body_owner) {
+            // Mark upvars captured by reference as used after closure exits.
             for (&var_hir_id, upvar) in upvars.iter().rev() {
-                let var = self.variable(var_hir_id, upvar.span);
-                self.acc(s.exit_ln, var, ACC_READ | ACC_USE);
+                let upvar_id = ty::UpvarId {
+                    var_path: ty::UpvarPath { hir_id: var_hir_id },
+                    closure_expr_id: self.ir.body_owner.expect_local(),
+                };
+                match self.tables.upvar_capture(upvar_id) {
+                    ty::UpvarCapture::ByRef(_) => {
+                        let var = self.variable(var_hir_id, upvar.span);
+                        self.acc(self.s.exit_ln, var, ACC_READ | ACC_USE);
+                    }
+                    ty::UpvarCapture::ByValue => {}
+                }
             }
         }
 
-        let entry_ln = self.propagate_through_expr(body, s.exit_ln);
+        let succ = self.propagate_through_expr(&body.value, self.s.exit_ln);
 
-        // hack to skip the loop unless debug! is enabled:
-        debug!(
-            "^^ liveness computation results for body {} (entry={:?})",
-            {
-                for ln_idx in 0..self.ir.num_live_nodes {
-                    debug!("{:?}", self.ln_str(LiveNode(ln_idx as u32)));
-                }
-                body.hir_id
+        match fk {
+            FnKind::Method(..) | FnKind::ItemFn(..) => return succ,
+            FnKind::Closure(..) => {}
+        }
+
+        let ty = self.tables.node_type(id);
+        match ty.kind {
+            ty::Closure(_def_id, substs) => match substs.as_closure().kind() {
+                ty::ClosureKind::Fn => {}
+                ty::ClosureKind::FnMut => {}
+                ty::ClosureKind::FnOnce => return succ,
             },
-            entry_ln
-        );
+            ty::Generator(..) => return succ,
+            _ => {
+                span_bug!(span, "type of closure expr {:?} is not a closure {:?}", id, ty,);
+            }
+        };
 
-        entry_ln
+        // Propagate through calls to the closure.
+        let mut first_merge = true;
+        loop {
+            self.init_from_succ(self.s.closure_ln, succ);
+            for param in body.params {
+                param.pat.each_binding(|_bm, hir_id, _x, ident| {
+                    let var = self.variable(hir_id, ident.span);
+                    self.define(self.s.closure_ln, var);
+                })
+            }
+
+            if !self.merge_from_succ(self.s.exit_ln, self.s.closure_ln, first_merge) {
+                break;
+            }
+            first_merge = false;
+            assert_eq!(succ, self.propagate_through_expr(&body.value, self.s.exit_ln));
+        }
+
+        succ
     }
 
     fn propagate_through_block(&mut self, blk: &hir::Block<'_>, succ: LiveNode) -> LiveNode {
@@ -1533,11 +1605,60 @@ impl<'tcx> Liveness<'_, 'tcx> {
         if name.is_empty() || name.as_bytes()[0] == b'_' { None } else { Some(name) }
     }
 
+    fn warn_about_unused_upvars(&self, entry_ln: LiveNode) {
+        let upvars = match self.ir.tcx.upvars_mentioned(self.ir.body_owner) {
+            None => return,
+            Some(upvars) => upvars,
+        };
+        for (&var_hir_id, upvar) in upvars.iter() {
+            let var = self.variable(var_hir_id, upvar.span);
+            let upvar_id = ty::UpvarId {
+                var_path: ty::UpvarPath { hir_id: var_hir_id },
+                closure_expr_id: self.ir.body_owner.expect_local(),
+            };
+            match self.tables.upvar_capture(upvar_id) {
+                ty::UpvarCapture::ByValue => {}
+                ty::UpvarCapture::ByRef(..) => continue,
+            };
+            if self.used_on_entry(entry_ln, var) {
+                if self.live_on_entry(entry_ln, var).is_none() {
+                    if let Some(name) = self.should_warn(var) {
+                        self.ir.tcx.struct_span_lint_hir(
+                            lint::builtin::UNUSED_ASSIGNMENTS,
+                            var_hir_id,
+                            vec![upvar.span],
+                            |lint| {
+                                lint.build(&format!("value captured by `{}` is never read", name))
+                                    .help("did you mean to capture by reference instead?")
+                                    .emit();
+                            },
+                        );
+                    }
+                }
+            } else {
+                if let Some(name) = self.should_warn(var) {
+                    self.ir.tcx.struct_span_lint_hir(
+                        lint::builtin::UNUSED_VARIABLES,
+                        var_hir_id,
+                        vec![upvar.span],
+                        |lint| {
+                            lint.build(&format!("unused variable: `{}`", name))
+                                .help("did you mean to capture by reference instead?")
+                                .emit();
+                        },
+                    );
+                }
+            }
+        }
+    }
+
     fn warn_about_unused_args(&self, body: &hir::Body<'_>, entry_ln: LiveNode) {
         for p in body.params {
             self.check_unused_vars_in_pat(&p.pat, Some(entry_ln), |spans, hir_id, ln, var| {
                 if self.live_on_entry(ln, var).is_none() {
-                    self.report_dead_assign(hir_id, spans, var, true);
+                    self.report_unsed_assign(hir_id, spans, var, |name| {
+                        format!("value passed to `{}` is never read", name)
+                    });
                 }
             });
         }
@@ -1651,35 +1772,30 @@ impl<'tcx> Liveness<'_, 'tcx> {
 
     fn warn_about_dead_assign(&self, spans: Vec<Span>, hir_id: HirId, ln: LiveNode, var: Variable) {
         if self.live_on_exit(ln, var).is_none() {
-            self.report_dead_assign(hir_id, spans, var, false);
+            self.report_unsed_assign(hir_id, spans, var, |name| {
+                format!("value assigned to `{}` is never read", name)
+            });
         }
     }
 
-    fn report_dead_assign(&self, hir_id: HirId, spans: Vec<Span>, var: Variable, is_param: bool) {
+    fn report_unsed_assign(
+        &self,
+        hir_id: HirId,
+        spans: Vec<Span>,
+        var: Variable,
+        message: impl Fn(&str) -> String,
+    ) {
         if let Some(name) = self.should_warn(var) {
-            if is_param {
-                self.ir.tcx.struct_span_lint_hir(
-                    lint::builtin::UNUSED_ASSIGNMENTS,
-                    hir_id,
-                    spans,
-                    |lint| {
-                        lint.build(&format!("value passed to `{}` is never read", name))
-                            .help("maybe it is overwritten before being read?")
-                            .emit();
-                    },
-                )
-            } else {
-                self.ir.tcx.struct_span_lint_hir(
-                    lint::builtin::UNUSED_ASSIGNMENTS,
-                    hir_id,
-                    spans,
-                    |lint| {
-                        lint.build(&format!("value assigned to `{}` is never read", name))
-                            .help("maybe it is overwritten before being read?")
-                            .emit();
-                    },
-                )
-            }
+            self.ir.tcx.struct_span_lint_hir(
+                lint::builtin::UNUSED_ASSIGNMENTS,
+                hir_id,
+                spans,
+                |lint| {
+                    lint.build(&message(&name))
+                        .help("maybe it is overwritten before being read?")
+                        .emit();
+                },
+            )
         }
     }
 }
