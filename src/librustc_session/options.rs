@@ -3,7 +3,7 @@ use crate::config::*;
 use crate::early_error;
 use crate::lint;
 use crate::search_paths::SearchPath;
-use crate::utils::NativeLibraryKind;
+use crate::utils::NativeLibKind;
 
 use rustc_target::spec::{CodeModel, LinkerFlavor, MergeFunctions, PanicStrategy};
 use rustc_target::spec::{RelocModel, RelroLevel, TargetTriple, TlsModel};
@@ -93,7 +93,7 @@ top_level_options!(
         describe_lints: bool [UNTRACKED],
         output_types: OutputTypes [TRACKED],
         search_paths: Vec<SearchPath> [UNTRACKED],
-        libs: Vec<(String, Option<String>, Option<NativeLibraryKind>)> [TRACKED],
+        libs: Vec<(String, Option<String>, NativeLibKind)> [TRACKED],
         maybe_sysroot: Option<PathBuf> [UNTRACKED],
 
         target_triple: TargetTriple [TRACKED],

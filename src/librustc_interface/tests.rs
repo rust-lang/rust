@@ -2,7 +2,6 @@ use crate::interface::parse_cfgspecs;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{emitter::HumanReadableErrorType, registry, ColorConfig};
-use rustc_middle::middle::cstore;
 use rustc_session::config::Strip;
 use rustc_session::config::{build_configuration, build_session_options, to_crate_config};
 use rustc_session::config::{rustc_optgroups, ErrorOutputType, ExternLocation, Options, Passes};
@@ -11,6 +10,7 @@ use rustc_session::config::{Externs, OutputType, OutputTypes, Sanitizer, SymbolM
 use rustc_session::getopts;
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
+use rustc_session::utils::NativeLibKind;
 use rustc_session::{build_session, Session};
 use rustc_span::edition::{Edition, DEFAULT_EDITION};
 use rustc_span::symbol::sym;
@@ -300,30 +300,30 @@ fn test_native_libs_tracking_hash_different_values() {
 
     // Reference
     v1.libs = vec![
-        (String::from("a"), None, Some(cstore::NativeStatic)),
-        (String::from("b"), None, Some(cstore::NativeFramework)),
-        (String::from("c"), None, Some(cstore::NativeUnknown)),
+        (String::from("a"), None, NativeLibKind::StaticBundle),
+        (String::from("b"), None, NativeLibKind::Framework),
+        (String::from("c"), None, NativeLibKind::Unspecified),
     ];
 
     // Change label
     v2.libs = vec![
-        (String::from("a"), None, Some(cstore::NativeStatic)),
-        (String::from("X"), None, Some(cstore::NativeFramework)),
-        (String::from("c"), None, Some(cstore::NativeUnknown)),
+        (String::from("a"), None, NativeLibKind::StaticBundle),
+        (String::from("X"), None, NativeLibKind::Framework),
+        (String::from("c"), None, NativeLibKind::Unspecified),
     ];
 
     // Change kind
     v3.libs = vec![
-        (String::from("a"), None, Some(cstore::NativeStatic)),
-        (String::from("b"), None, Some(cstore::NativeStatic)),
-        (String::from("c"), None, Some(cstore::NativeUnknown)),
+        (String::from("a"), None, NativeLibKind::StaticBundle),
+        (String::from("b"), None, NativeLibKind::StaticBundle),
+        (String::from("c"), None, NativeLibKind::Unspecified),
     ];
 
     // Change new-name
     v4.libs = vec![
-        (String::from("a"), None, Some(cstore::NativeStatic)),
-        (String::from("b"), Some(String::from("X")), Some(cstore::NativeFramework)),
-        (String::from("c"), None, Some(cstore::NativeUnknown)),
+        (String::from("a"), None, NativeLibKind::StaticBundle),
+        (String::from("b"), Some(String::from("X")), NativeLibKind::Framework),
+        (String::from("c"), None, NativeLibKind::Unspecified),
     ];
 
     assert!(v1.dep_tracking_hash() != v2.dep_tracking_hash());
@@ -345,21 +345,21 @@ fn test_native_libs_tracking_hash_different_order() {
 
     // Reference
     v1.libs = vec![
-        (String::from("a"), None, Some(cstore::NativeStatic)),
-        (String::from("b"), None, Some(cstore::NativeFramework)),
-        (String::from("c"), None, Some(cstore::NativeUnknown)),
+        (String::from("a"), None, NativeLibKind::StaticBundle),
+        (String::from("b"), None, NativeLibKind::Framework),
+        (String::from("c"), None, NativeLibKind::Unspecified),
     ];
 
     v2.libs = vec![
-        (String::from("b"), None, Some(cstore::NativeFramework)),
-        (String::from("a"), None, Some(cstore::NativeStatic)),
-        (String::from("c"), None, Some(cstore::NativeUnknown)),
+        (String::from("b"), None, NativeLibKind::Framework),
+        (String::from("a"), None, NativeLibKind::StaticBundle),
+        (String::from("c"), None, NativeLibKind::Unspecified),
     ];
 
     v3.libs = vec![
-        (String::from("c"), None, Some(cstore::NativeUnknown)),
-        (String::from("a"), None, Some(cstore::NativeStatic)),
-        (String::from("b"), None, Some(cstore::NativeFramework)),
+        (String::from("c"), None, NativeLibKind::Unspecified),
+        (String::from("a"), None, NativeLibKind::StaticBundle),
+        (String::from("b"), None, NativeLibKind::Framework),
     ];
 
     assert!(v1.dep_tracking_hash() == v2.dep_tracking_hash());
