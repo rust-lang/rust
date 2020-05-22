@@ -218,9 +218,8 @@ fn bucket_mask_to_capacity(bucket_mask: usize) -> usize {
 fn calculate_layout<T>(buckets: usize) -> Option<(Layout, usize)> {
     debug_assert!(buckets.is_power_of_two());
 
-    let common_align = usize::max(mem::align_of::<T>(), Group::WIDTH);
     // Array of buckets
-    let padded_data = Layout::array::<T>(buckets).ok()?.align_to(common_align).ok()?.pad_to_align();
+    let data = Layout::array::<T>(buckets).ok()?;
 
     // Array of control bytes. This must be aligned to the group size.
     //
@@ -235,7 +234,7 @@ fn calculate_layout<T>(buckets: usize) -> Option<(Layout, usize)> {
     // There must be no padding between two tables.
     debug_assert_eq!(padded_data.padding_needed_for(Group::WIDTH), 0);
 
-    padded_data.extend(ctrl).ok()
+    data.extend(ctrl).ok()
 }
 
 /// Returns a Layout which describes the allocation required for a hash table,
@@ -266,6 +265,9 @@ fn calculate_layout<T>(buckets: usize) -> Option<(Layout, usize)> {
 /// is a ZST, then we instead track the index of the element in the table so
 /// that `erase` works properly.
 pub struct Bucket<T> {
+    // Actually it is pointer to next element than element itself
+    // this is needed to maintain pointer arithmetic invariants
+    // keeping direct pointer to element introduces difficulty.
     // Using `NonNull` for variance and niche layout
     ptr: NonNull<T>,
 }
