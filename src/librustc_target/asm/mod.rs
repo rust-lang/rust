@@ -52,6 +52,30 @@ macro_rules! def_reg_class {
 
 #[macro_use]
 macro_rules! def_regs {
+    ($arch:ident $arch_reg:ident $arch_regclass:ident {}) => {
+        #[allow(unreachable_code)]
+        #[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug, Eq, PartialEq, Hash, HashStable_Generic)]
+        pub enum $arch_reg {}
+
+        impl $arch_reg {
+            pub fn parse(
+                _arch: super::InlineAsmArch,
+                mut _has_feature: impl FnMut(&str) -> bool,
+                _name: &str,
+            ) -> Result<Self, &'static str> {
+                Err("unknown register")
+            }
+        }
+
+        pub(super) fn fill_reg_map(
+            _arch: super::InlineAsmArch,
+            mut _has_feature: impl FnMut(&str) -> bool,
+            _map: &mut rustc_data_structures::fx::FxHashMap<
+                super::InlineAsmRegClass,
+                rustc_data_structures::fx::FxHashSet<super::InlineAsmReg>,
+            >,
+        ) {}
+    };
     ($arch:ident $arch_reg:ident $arch_regclass:ident {
         $(
             $reg:ident: $class:ident $(, $extra_class:ident)* = [$reg_name:literal $(, $alias:literal)*] $(% $filter:ident)?,
@@ -210,7 +234,6 @@ impl InlineAsmReg {
             Self::Arm(r) => r.name(),
             Self::AArch64(r) => r.name(),
             Self::RiscV(r) => r.name(),
-            Self::Nvptx(r) => r.name(),
         }
     }
 
@@ -220,7 +243,6 @@ impl InlineAsmReg {
             Self::Arm(r) => InlineAsmRegClass::Arm(r.reg_class()),
             Self::AArch64(r) => InlineAsmRegClass::AArch64(r.reg_class()),
             Self::RiscV(r) => InlineAsmRegClass::RiscV(r.reg_class()),
-            Self::Nvptx(r) => InlineAsmRegClass::Nvptx(r.reg_class()),
         }
     }
 
@@ -262,7 +284,6 @@ impl InlineAsmReg {
             Self::Arm(r) => r.emit(out, arch, modifier),
             Self::AArch64(r) => r.emit(out, arch, modifier),
             Self::RiscV(r) => r.emit(out, arch, modifier),
-            Self::Nvptx(r) => r.emit(out, arch, modifier),
         }
     }
 
@@ -272,7 +293,6 @@ impl InlineAsmReg {
             Self::Arm(r) => r.overlapping_regs(|r| cb(Self::Arm(r))),
             Self::AArch64(_) => cb(self),
             Self::RiscV(_) => cb(self),
-            Self::Nvptx(_) => cb(self),
         }
     }
 }

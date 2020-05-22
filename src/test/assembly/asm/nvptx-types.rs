@@ -1,6 +1,7 @@
 // no-system-llvm
 // assembly-output: emit-asm
 // compile-flags: --target --nvptx64-nvidia-cuda
+// compile-flags: -Z merge-functions=disabled
 // only-nvptx64
 // ignore-nvptx64
 
@@ -53,12 +54,6 @@ macro_rules! check {
     ($func:ident $ty:ident, $class:ident $mov:literal) => {
         #[no_mangle]
         pub unsafe fn $func(x: $ty) -> $ty {
-            // Hack to avoid function merging
-            extern "Rust" {
-                fn dont_merge(s: &str);
-            }
-            dont_merge(stringify!($func));
-
             let y;
             asm!(concat!($mov, " {}, {};"), out($class) y, in($class) x);
             y
@@ -66,44 +61,80 @@ macro_rules! check {
     };
 }
 
-// CHECK-LABEL: reg_i8
+// CHECK-LABEL: reg16_i8
 // CHECK: #APP
 // CHECK: mov.i16 {{[a-z0-9]+}}, {{[a-z0-9]+}};
 // CHECK: #NO_APP
-check!(reg_i8 i8 reg16 "mov.i16");
+check!(reg16_i8 i8 reg16 "mov.i16");
 
-// CHECK-LABEL: reg_i16
+// CHECK-LABEL: reg16_i16
 // CHECK: #APP
 // CHECK: mov.i16 {{[a-z0-9]+}}, {{[a-z0-9]+}};
 // CHECK: #NO_APP
-check!(reg_i16 i16 reg16 "mov.i16");
+check!(reg16_i16 i16 reg16 "mov.i16");
 
-// CHECK-LABEL: reg_i32
+// CHECK-LABEL: reg32_i8
 // CHECK: #APP
 // CHECK: mov.i32 {{[a-z0-9]+}}, {{[a-z0-9]+}};
 // CHECK: #NO_APP
-check!(reg_i32 i32 reg32 "mov.i32");
+check!(reg32_i8 i8 reg32 "mov.i32");
 
-// CHECK-LABEL: reg_f32
+// CHECK-LABEL: reg32_i16
 // CHECK: #APP
-// CHECK: mov.f32 {{[a-z0-9]+}}, {{[a-z0-9]+}};
+// CHECK: mov.i32 {{[a-z0-9]+}}, {{[a-z0-9]+}};
 // CHECK: #NO_APP
-check!(reg_f32 f32 freg32 "mov.f32");
+check!(reg32_i16 i16 reg32 "mov.i32");
 
-// CHECK-LABEL: reg_i54
+// CHECK-LABEL: reg32_i32
+// CHECK: #APP
+// CHECK: mov.i32 {{[a-z0-9]+}}, {{[a-z0-9]+}};
+// CHECK: #NO_APP
+check!(reg32_i32 i32 reg32 "mov.i32");
+
+// CHECK-LABEL: reg32_f32
+// CHECK: #APP
+// CHECK: mov.i32 {{[a-z0-9]+}}, {{[a-z0-9]+}};
+// CHECK: #NO_APP
+check!(reg32_f32 f32 reg32 "mov.i32");
+
+// CHECK-LABEL: reg64_i8
 // CHECK: #APP
 // CHECK: mov.i64 {{[a-z0-9]+}}, {{[a-z0-9]+}};
 // CHECK: #NO_APP
-check!(reg_i64 i64 reg64 "mov.i64");
+check!(reg64_i8 i8 reg64 "mov.i64");
 
-// CHECK-LABEL: reg_f64
-// CHECK: #APP
-// CHECK: mov.f64 {{[a-z0-9]+}}, {{[a-z0-9]+}};
-// CHECK: #NO_APP
-check!(reg_f64 f64 freg64 "mov.f64");
-
-// CHECK-LABEL: reg_ptr
+// CHECK-LABEL: reg64_i16
 // CHECK: #APP
 // CHECK: mov.i64 {{[a-z0-9]+}}, {{[a-z0-9]+}};
 // CHECK: #NO_APP
-check!(reg_ptr ptr reg64 "mov.i64");
+check!(reg64_i16 i16 reg64 "mov.i64");
+
+// CHECK-LABEL: reg64_i32
+// CHECK: #APP
+// CHECK: mov.i64 {{[a-z0-9]+}}, {{[a-z0-9]+}};
+// CHECK: #NO_APP
+check!(reg64_i32 i32 reg64 "mov.i64");
+
+// CHECK-LABEL: reg64_f32
+// CHECK: #APP
+// CHECK: mov.i64 {{[a-z0-9]+}}, {{[a-z0-9]+}};
+// CHECK: #NO_APP
+check!(reg64_f32 f32 reg64 "mov.i64");
+
+// CHECK-LABEL: reg64_i64
+// CHECK: #APP
+// CHECK: mov.i64 {{[a-z0-9]+}}, {{[a-z0-9]+}};
+// CHECK: #NO_APP
+check!(reg64_i64 i64 reg64 "mov.i64");
+
+// CHECK-LABEL: reg64_f64
+// CHECK: #APP
+// CHECK: mov.i64 {{[a-z0-9]+}}, {{[a-z0-9]+}};
+// CHECK: #NO_APP
+check!(reg64_f64 f64 reg64 "mov.i64");
+
+// CHECK-LABEL: reg64_ptr
+// CHECK: #APP
+// CHECK: mov.i64 {{[a-z0-9]+}}, {{[a-z0-9]+}};
+// CHECK: #NO_APP
+check!(reg64_ptr ptr reg64 "mov.i64");

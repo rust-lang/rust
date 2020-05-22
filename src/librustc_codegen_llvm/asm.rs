@@ -414,8 +414,6 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass) -> String {
             InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg16) => "h",
             InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg32) => "r",
             InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg64) => "l",
-            InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::freg32) => "f",
-            InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::freg64) => "d",
             InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::reg) => "r",
             InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::freg) => "f",
             InlineAsmRegClass::X86(X86InlineAsmRegClass::reg) => "r",
@@ -512,8 +510,6 @@ fn dummy_output_type(cx: &CodegenCx<'ll, 'tcx>, reg: InlineAsmRegClass) -> &'ll 
         InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg16) => cx.type_i16(),
         InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg32) => cx.type_i32(),
         InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg64) => cx.type_i64(),
-        InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::freg32) => cx.type_f32(),
-        InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::freg64) => cx.type_f64(),
         InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::reg) => cx.type_i32(),
         InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::freg) => cx.type_f32(),
         InlineAsmRegClass::X86(X86InlineAsmRegClass::reg)
