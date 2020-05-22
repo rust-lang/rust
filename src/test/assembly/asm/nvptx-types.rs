@@ -1,14 +1,10 @@
 // no-system-llvm
 // assembly-output: emit-asm
-// compile-flags: --target --nvptx64-nvidia-cuda
-// compile-flags: -Z merge-functions=disabled
-// only-nvptx64
-// ignore-nvptx64
+// compile-flags: --target nvptx64-nvidia-cuda
+// compile-flags: --crate-type cdylib
 
 #![feature(no_core, lang_items, rustc_attrs)]
-#![crate_type = "rlib"]
 #![no_core]
-#![allow(asm_sub_register, non_camel_case_types)]
 
 #[rustc_builtin_macro]
 macro_rules! asm {
@@ -16,10 +12,6 @@ macro_rules! asm {
 }
 #[rustc_builtin_macro]
 macro_rules! concat {
-    () => {};
-}
-#[rustc_builtin_macro]
-macro_rules! stringify {
     () => {};
 }
 
@@ -39,19 +31,19 @@ impl Copy for f64 {}
 impl Copy for ptr {}
 
 #[no_mangle]
-fn extern_func();
+fn extern_func() {}
 
-// CHECK-LABEL: sym_fn
-// CHECK: #APP
-// CHECK call extern_func;
-// CHECK: #NO_APP
+// CHECK-LABEL: .visible .func sym_fn()
+// CHECK: // begin inline asm
+// CHECK: call extern_func;
+// CHECK: // end inline asm
 #[no_mangle]
 pub unsafe fn sym_fn() {
-    asm!("call {}", sym extern_func);
+    asm!("call {};", sym extern_func);
 }
 
 macro_rules! check {
-    ($func:ident $ty:ident, $class:ident $mov:literal) => {
+    ($func:ident $ty:ident $class:ident $mov:literal) => {
         #[no_mangle]
         pub unsafe fn $func(x: $ty) -> $ty {
             let y;
@@ -61,80 +53,80 @@ macro_rules! check {
     };
 }
 
-// CHECK-LABEL: reg16_i8
-// CHECK: #APP
-// CHECK: mov.i16 {{[a-z0-9]+}}, {{[a-z0-9]+}};
-// CHECK: #NO_APP
+// CHECK-LABEL: .visible .func (.param .b32 func_retval0) reg16_i8
+// CHECK: // begin inline asm
+// CHECK: mov.i16 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
+// CHECK: // end inline asm
 check!(reg16_i8 i8 reg16 "mov.i16");
 
-// CHECK-LABEL: reg16_i16
-// CHECK: #APP
-// CHECK: mov.i16 {{[a-z0-9]+}}, {{[a-z0-9]+}};
-// CHECK: #NO_APP
+// CHECK-LABEL: .visible .func (.param .b32 func_retval0) reg16_i16
+// CHECK: // begin inline asm
+// CHECK: mov.i16 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
+// CHECK: // end inline asm
 check!(reg16_i16 i16 reg16 "mov.i16");
 
-// CHECK-LABEL: reg32_i8
-// CHECK: #APP
-// CHECK: mov.i32 {{[a-z0-9]+}}, {{[a-z0-9]+}};
-// CHECK: #NO_APP
+// CHECK-LABEL: .visible .func (.param .b32 func_retval0) reg32_i8
+// CHECK: // begin inline asm
+// CHECK: mov.i32 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
+// CHECK: // end inline asm
 check!(reg32_i8 i8 reg32 "mov.i32");
 
-// CHECK-LABEL: reg32_i16
-// CHECK: #APP
-// CHECK: mov.i32 {{[a-z0-9]+}}, {{[a-z0-9]+}};
-// CHECK: #NO_APP
+// CHECK-LABEL: .visible .func (.param .b32 func_retval0) reg32_i16
+// CHECK: // begin inline asm
+// CHECK: mov.i32 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
+// CHECK: // end inline asm
 check!(reg32_i16 i16 reg32 "mov.i32");
 
-// CHECK-LABEL: reg32_i32
-// CHECK: #APP
-// CHECK: mov.i32 {{[a-z0-9]+}}, {{[a-z0-9]+}};
-// CHECK: #NO_APP
+// CHECK-LABEL: .visible .func (.param .b32 func_retval0) reg32_i32
+// CHECK: // begin inline asm
+// CHECK: mov.i32 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
+// CHECK: // end inline asm
 check!(reg32_i32 i32 reg32 "mov.i32");
 
-// CHECK-LABEL: reg32_f32
-// CHECK: #APP
-// CHECK: mov.i32 {{[a-z0-9]+}}, {{[a-z0-9]+}};
-// CHECK: #NO_APP
+// CHECK-LABEL: .visible .func (.param .b32 func_retval0) reg32_f32
+// CHECK: // begin inline asm
+// CHECK: mov.i32 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
+// CHECK: // end inline asm
 check!(reg32_f32 f32 reg32 "mov.i32");
 
-// CHECK-LABEL: reg64_i8
-// CHECK: #APP
-// CHECK: mov.i64 {{[a-z0-9]+}}, {{[a-z0-9]+}};
-// CHECK: #NO_APP
+// CHECK-LABEL: .visible .func (.param .b32 func_retval0) reg64_i8
+// CHECK: // begin inline asm
+// CHECK: mov.i64 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
+// CHECK: // end inline asm
 check!(reg64_i8 i8 reg64 "mov.i64");
 
-// CHECK-LABEL: reg64_i16
-// CHECK: #APP
-// CHECK: mov.i64 {{[a-z0-9]+}}, {{[a-z0-9]+}};
-// CHECK: #NO_APP
+// CHECK-LABEL: .visible .func (.param .b32 func_retval0) reg64_i16
+// CHECK: // begin inline asm
+// CHECK: mov.i64 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
+// CHECK: // end inline asm
 check!(reg64_i16 i16 reg64 "mov.i64");
 
-// CHECK-LABEL: reg64_i32
-// CHECK: #APP
-// CHECK: mov.i64 {{[a-z0-9]+}}, {{[a-z0-9]+}};
-// CHECK: #NO_APP
+// CHECK-LABEL: .visible .func (.param .b32 func_retval0) reg64_i32
+// CHECK: // begin inline asm
+// CHECK: mov.i64 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
+// CHECK: // end inline asm
 check!(reg64_i32 i32 reg64 "mov.i64");
 
-// CHECK-LABEL: reg64_f32
-// CHECK: #APP
-// CHECK: mov.i64 {{[a-z0-9]+}}, {{[a-z0-9]+}};
-// CHECK: #NO_APP
+// CHECK-LABEL: .visible .func (.param .b32 func_retval0) reg64_f32
+// CHECK: // begin inline asm
+// CHECK: mov.i64 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
+// CHECK: // end inline asm
 check!(reg64_f32 f32 reg64 "mov.i64");
 
-// CHECK-LABEL: reg64_i64
-// CHECK: #APP
-// CHECK: mov.i64 {{[a-z0-9]+}}, {{[a-z0-9]+}};
-// CHECK: #NO_APP
+// CHECK-LABEL: .visible .func (.param .b64 func_retval0) reg64_i64
+// CHECK: // begin inline asm
+// CHECK: mov.i64 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
+// CHECK: // end inline asm
 check!(reg64_i64 i64 reg64 "mov.i64");
 
-// CHECK-LABEL: reg64_f64
-// CHECK: #APP
-// CHECK: mov.i64 {{[a-z0-9]+}}, {{[a-z0-9]+}};
-// CHECK: #NO_APP
+// CHECK-LABEL: .visible .func (.param .b64 func_retval0) reg64_f64
+// CHECK: // begin inline asm
+// CHECK: mov.i64 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
+// CHECK: // end inline asm
 check!(reg64_f64 f64 reg64 "mov.i64");
 
-// CHECK-LABEL: reg64_ptr
-// CHECK: #APP
-// CHECK: mov.i64 {{[a-z0-9]+}}, {{[a-z0-9]+}};
-// CHECK: #NO_APP
+// CHECK-LABEL: .visible .func (.param .b64 func_retval0) reg64_ptr
+// CHECK: // begin inline asm
+// CHECK: mov.i64 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
+// CHECK: // end inline asm
 check!(reg64_ptr ptr reg64 "mov.i64");
