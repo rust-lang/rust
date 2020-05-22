@@ -18,7 +18,7 @@ use lsp_types::{
     SemanticTokensResult, SymbolInformation, TextDocumentIdentifier, Url, WorkspaceEdit,
 };
 use ra_ide::{
-    Assist, FileId, FilePosition, FileRange, Query, RangeInfo, Runnable, RunnableKind, SearchScope,
+    FileId, FilePosition, FileRange, Query, RangeInfo, Runnable, RunnableKind, SearchScope,
     TextEdit,
 };
 use ra_prof::profile;
@@ -720,6 +720,7 @@ pub fn handle_code_action(
     let file_id = from_proto::file_id(&world, &params.text_document.uri)?;
     let line_index = world.analysis().file_line_index(file_id)?;
     let range = from_proto::text_range(&line_index, params.range);
+    let frange = FileRange { file_id, range };
 
     let diagnostics = world.analysis().diagnostics(file_id)?;
     let mut res: Vec<lsp_ext::CodeAction> = Vec::new();
@@ -733,7 +734,8 @@ pub fn handle_code_action(
     for source_edit in fixes_from_diagnostics {
         let title = source_edit.label.clone();
         let edit = to_proto::snippet_workspace_edit(&world, source_edit)?;
-        let action = lsp_ext::CodeAction { title, kind: None, edit: Some(edit), command: None };
+        let action =
+            lsp_ext::CodeAction { title, group: None, kind: None, edit: Some(edit), command: None };
         res.push(action);
     }
 
@@ -745,53 +747,9 @@ pub fn handle_code_action(
         res.push(fix.action.clone());
     }
 
-    let mut grouped_assists: FxHashMap<String, (usize, Vec<Assist>)> = FxHashMap::default();
-    for assist in
-        world.analysis().assists(&world.config.assist, FileRange { file_id, range })?.into_iter()
-    {
-        match &assist.group_label {
-            Some(label) => grouped_assists
-                .entry(label.to_owned())
-                .or_insert_with(|| {
-                    let idx = res.len();
-                    let dummy = lsp_ext::CodeAction {
-                        title: String::new(),
-                        kind: None,
-                        command: None,
-                        edit: None,
-                    };
-                    res.push(dummy);
-                    (idx, Vec::new())
-                })
-                .1
-                .push(assist),
-            None => {
-                res.push(to_proto::code_action(&world, assist)?.into());
-            }
-        }
+    for assist in world.analysis().assists(&world.config.assist, frange)?.into_iter() {
+        res.push(to_proto::code_action(&world, assist)?.into());
     }
-
-    for (group_label, (idx, assists)) in grouped_assists {
-        if assists.len() == 1 {
-            res[idx] = to_proto::code_action(&world, assists.into_iter().next().unwrap())?.into();
-        } else {
-            let title = group_label;
-
-            let mut arguments = Vec::with_capacity(assists.len());
-            for assist in assists {
-                let source_change = to_proto::source_change(&world, assist.source_change)?;
-                arguments.push(to_value(source_change)?);
-            }
-
-            let command = Some(Command {
-                title: title.clone(),
-                command: "rust-analyzer.selectAndApplySourceChange".to_string(),
-                arguments: Some(vec![serde_json::Value::Array(arguments)]),
-            });
-            res[idx] = lsp_ext::CodeAction { title, kind: None, edit: None, command };
-        }
-    }
-
     Ok(Some(res))
 }
 

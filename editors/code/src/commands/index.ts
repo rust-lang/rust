@@ -41,15 +41,11 @@ export function applySourceChange(ctx: Ctx): Cmd {
     };
 }
 
-export function selectAndApplySourceChange(ctx: Ctx): Cmd {
-    return async (changes: ra.SourceChange[]) => {
-        if (changes.length === 1) {
-            await sourceChange.applySourceChange(ctx, changes[0]);
-        } else if (changes.length > 0) {
-            const selectedChange = await vscode.window.showQuickPick(changes);
-            if (!selectedChange) return;
-            await sourceChange.applySourceChange(ctx, selectedChange);
-        }
+export function applyActionGroup(_ctx: Ctx): Cmd {
+    return async (actions: { label: string; edit: vscode.WorkspaceEdit }[]) => {
+        const selectedAction = await vscode.window.showQuickPick(actions);
+        if (!selectedAction) return;
+        await applySnippetWorkspaceEdit(selectedAction.edit);
     };
 }
 

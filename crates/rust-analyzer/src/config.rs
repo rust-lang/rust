@@ -102,6 +102,7 @@ pub struct ClientCapsConfig {
     pub hierarchical_symbols: bool,
     pub code_action_literals: bool,
     pub work_done_progress: bool,
+    pub code_action_group: bool,
 }
 
 impl Default for Config {
@@ -294,9 +295,13 @@ impl Config {
 
         self.assist.allow_snippets(false);
         if let Some(experimental) = &caps.experimental {
-            let enable =
+            let snippet_text_edit =
                 experimental.get("snippetTextEdit").and_then(|it| it.as_bool()) == Some(true);
-            self.assist.allow_snippets(enable);
+            self.assist.allow_snippets(snippet_text_edit);
+
+            let code_action_group =
+                experimental.get("codeActionGroup").and_then(|it| it.as_bool()) == Some(true);
+            self.client_caps.code_action_group = code_action_group
         }
     }
 }

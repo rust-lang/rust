@@ -478,15 +478,6 @@ pub(crate) fn resource_op(
     Ok(res)
 }
 
-pub(crate) fn source_change(
-    world: &WorldSnapshot,
-    source_change: SourceChange,
-) -> Result<lsp_ext::SourceChange> {
-    let label = source_change.label.clone();
-    let workspace_edit = self::snippet_workspace_edit(world, source_change)?;
-    Ok(lsp_ext::SourceChange { label, workspace_edit, cursor_position: None })
-}
-
 pub(crate) fn snippet_workspace_edit(
     world: &WorldSnapshot,
     source_change: SourceChange,
@@ -606,6 +597,7 @@ fn main() <fold>{
 pub(crate) fn code_action(world: &WorldSnapshot, assist: Assist) -> Result<lsp_ext::CodeAction> {
     let res = lsp_ext::CodeAction {
         title: assist.label,
+        group: if world.config.client_caps.code_action_group { assist.group_label } else { None },
         kind: Some(String::new()),
         edit: Some(snippet_workspace_edit(world, assist.source_change)?),
         command: None,

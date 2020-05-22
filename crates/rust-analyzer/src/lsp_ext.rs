@@ -133,14 +133,6 @@ pub struct Runnable {
     pub cwd: Option<PathBuf>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct SourceChange {
-    pub label: String,
-    pub workspace_edit: SnippetWorkspaceEdit,
-    pub cursor_position: Option<lsp_types::TextDocumentPositionParams>,
-}
-
 pub enum InlayHints {}
 
 impl Request for InlayHints {
@@ -195,6 +187,8 @@ impl Request for CodeActionRequest {
 #[derive(Debug, PartialEq, Clone, Default, Deserialize, Serialize)]
 pub struct CodeAction {
     pub title: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub group: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub kind: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]

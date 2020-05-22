@@ -5,7 +5,7 @@ It's a best effort document, when in doubt, consult the source (and send a PR wi
 We aim to upstream all non Rust-specific extensions to the protocol, but this is not a top priority.
 All capabilities are enabled via `experimental` field of `ClientCapabilities`.
 
-## `SnippetTextEdit`
+## Snippet `TextEdit`
 
 **Client Capability:** `{ "snippetTextEdit": boolean }`
 
@@ -36,7 +36,7 @@ At the moment, rust-analyzer guarantees that only a single edit will have `Inser
 * Where exactly are `SnippetTextEdit`s allowed (only in code actions at the moment)?
 * Can snippets span multiple files (so far, no)?
 
-## `joinLines`
+## Join Lines
 
 **Server Capability:** `{ "joinLines": boolean }`
 
@@ -119,3 +119,48 @@ SSR with query `foo($a:expr, $b:expr) ==>> ($a).foo($b)` will transform, eg `foo
 
 * Probably needs search without replace mode
 * Needs a way to limit the scope to certain files.
+
+## `CodeAction` Groups
+
+**Client Capability:** `{ "codeActionGroup": boolean }`
+
+If this capability is set, `CodeAction` returned from the server contain an additional field, `group`:
+
+```typescript
+interface CodeAction {
+	title: string;
+    group?: string;
+    ...
+}
+```
+
+All code-actions with the same `group` should be grouped under single (extendable) entry in lightbulb menu.
+The set of actions `[ { title: "foo" }, { group: "frobnicate", title: "bar" }, { group: "frobnicate", title: "baz" }]` should be rendered as
+
+```
+💡
+  +-------------+
+  | foo         |
+  +-------------+-----+
+  | frobnicate >| bar |
+  +-------------+-----+
+                | baz |
+                +-----+
+```
+
+Alternatively, selecting `frobnicate` could present a user with an additional menu to choose between `bar` and `baz`.
+
+### Example
+
+```rust
+fn main() {
+    let x: Entry/*cursor here*/ = todo!();
+}
+```
+
+Invoking code action at this position will yield two code actions for importing `Entry` from either `collections::HashMap` or `collection::BTreeMap`, grouped under a single "import" group.
+
+### Unresolved Questions
+
+* Is a fixed two-level structure enough?
+* Should we devise a general way to encode custom interaction protocols for GUI refactorings?

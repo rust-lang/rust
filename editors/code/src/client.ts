@@ -41,10 +41,12 @@ export function createClient(serverPath: string, cwd: string): lc.LanguageClient
                 return client.sendRequest(lc.CodeActionRequest.type, params, token).then((values) => {
                     if (values === null) return undefined;
                     const result: (vscode.CodeAction | vscode.Command)[] = [];
+                    const groups = new Map<string, { index: number; items: vscode.CodeAction[] }>();
                     for (const item of values) {
                         if (lc.CodeAction.is(item)) {
                             const action = client.protocol2CodeConverter.asCodeAction(item);
-                            if (isSnippetEdit(item)) {
+                            const group = actionGroup(item);
+                            if (isSnippetEdit(item) || group) {
                                 action.command = {
                                     command: "rust-analyzer.applySnippetWorkspaceEdit",
                                     title: "",
@@ -52,10 +54,36 @@ export function createClient(serverPath: string, cwd: string): lc.LanguageClient
                                 };
                                 action.edit = undefined;
                             }
-                            result.push(action);
+
+                            if (group) {
+                                let entry = groups.get(group);
+                                if (!entry) {
+                                    entry = { index: result.length, items: [] };
+                                    groups.set(group, entry);
+                                    result.push(action);
+                                }
+                                entry.items.push(action);
+                            } else {
+                                result.push(action);
+                            }
                         } else {
                             const command = client.protocol2CodeConverter.asCommand(item);
                             result.push(command);
+                        }
+                    }
+                    for (const [group, { index, items }] of groups) {
+                        if (items.length === 1) {
+                            result[index] = items[0];
+                        } else {
+                            const action = new vscode.CodeAction(group);
+                            action.command = {
+                                command: "rust-analyzer.applyActionGroup",
+                                title: "",
+                                arguments: [items.map((item) => {
+                                    return { label: item.title, edit: item.command!!.arguments!![0] };
+                                })],
+                            };
+                            result[index] = action;
                         }
                     }
                     return result;
@@ -81,15 +109,16 @@ export function createClient(serverPath: string, cwd: string): lc.LanguageClient
     // implementations are still in the "proposed" category for 3.16.
     client.registerFeature(new CallHierarchyFeature(client));
     client.registerFeature(new SemanticTokensFeature(client));
-    client.registerFeature(new SnippetTextEditFeature());
+    client.registerFeature(new ExperimentalFeatures());
 
     return client;
 }
 
-class SnippetTextEditFeature implements lc.StaticFeature {
+class ExperimentalFeatures implements lc.StaticFeature {
     fillClientCapabilities(capabilities: lc.ClientCapabilities): void {
         const caps: any = capabilities.experimental ?? {};
         caps.snippetTextEdit = true;
+        caps.codeActionGroup = true;
         capabilities.experimental = caps;
     }
     initialize(_capabilities: lc.ServerCapabilities<any>, _documentSelector: lc.DocumentSelector | undefined): void {
@@ -106,4 +135,8 @@ function isSnippetEdit(action: lc.CodeAction): boolean {
         }
     }
     return false;
+}
+
+function actionGroup(action: lc.CodeAction): string | undefined {
+    return (action as any).group;
 }
