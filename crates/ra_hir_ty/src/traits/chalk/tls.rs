@@ -1,7 +1,7 @@
 //! Implementation of Chalk debug helper functions using TLS.
 use std::fmt;
 
-use chalk_ir::{AliasTy, Goal, Goals, Lifetime, Parameter, ProgramClauseImplication, TypeName};
+use chalk_ir::{AliasTy, GenericArg, Goal, Goals, Lifetime, ProgramClauseImplication, TypeName};
 use itertools::Itertools;
 
 use super::{from_chalk, Interner};
@@ -18,7 +18,7 @@ impl DebugContext<'_> {
         id: super::StructId,
         f: &mut fmt::Formatter<'_>,
     ) -> Result<(), fmt::Error> {
-        let type_ctor: TypeCtor = from_chalk(self.0, TypeName::Struct(id));
+        let type_ctor: TypeCtor = from_chalk(self.0, TypeName::Adt(id));
         match type_ctor {
             TypeCtor::Bool => write!(f, "bool")?,
             TypeCtor::Char => write!(f, "char")?,
@@ -188,9 +188,9 @@ impl DebugContext<'_> {
         write!(fmt, "{:?}", lifetime.data(&Interner))
     }
 
-    pub fn debug_parameter(
+    pub fn debug_generic_arg(
         &self,
-        parameter: &Parameter<Interner>,
+        parameter: &GenericArg<Interner>,
         fmt: &mut fmt::Formatter<'_>,
     ) -> Result<(), fmt::Error> {
         write!(fmt, "{:?}", parameter.data(&Interner).inner_debug())
