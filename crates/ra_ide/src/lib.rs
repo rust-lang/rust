@@ -97,8 +97,22 @@ pub type Cancelable<T> = Result<T, Canceled>;
 pub struct Diagnostic {
     pub message: String,
     pub range: TextRange,
-    pub fix: Option<SourceChange>,
     pub severity: Severity,
+    pub fix: Option<Fix>,
+}
+
+#[derive(Debug)]
+pub struct Fix {
+    pub label: String,
+    pub source_change: SourceChange,
+}
+
+impl Fix {
+    pub fn new(label: impl Into<String>, source_change: SourceChange) -> Self {
+        let label = label.into();
+        assert!(label.starts_with(char::is_uppercase) && !label.ends_with('.'));
+        Self { label, source_change }
+    }
 }
 
 /// Info associated with a text range.
@@ -493,7 +507,7 @@ impl Analysis {
     ) -> Cancelable<Result<SourceChange, SsrError>> {
         self.with_db(|db| {
             let edits = ssr::parse_search_replace(query, parse_only, db)?;
-            Ok(SourceChange::source_file_edits("Structural Search Replace", edits))
+            Ok(SourceChange::source_file_edits(edits))
         })
     }
 

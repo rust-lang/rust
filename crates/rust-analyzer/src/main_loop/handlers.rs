@@ -731,9 +731,9 @@ pub fn handle_code_action(
         .filter(|(diag_range, _fix)| diag_range.intersect(range).is_some())
         .map(|(_range, fix)| fix);
 
-    for source_edit in fixes_from_diagnostics {
-        let title = source_edit.label.clone();
-        let edit = to_proto::snippet_workspace_edit(&world, source_edit)?;
+    for fix in fixes_from_diagnostics {
+        let title = fix.label;
+        let edit = to_proto::snippet_workspace_edit(&world, fix.source_change)?;
         let action =
             lsp_ext::CodeAction { title, group: None, kind: None, edit: Some(edit), command: None };
         res.push(action);

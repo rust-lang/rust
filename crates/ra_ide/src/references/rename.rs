@@ -128,7 +128,7 @@ fn rename_mod(
         source_file_edits.extend(ref_edits);
     }
 
-    Some(SourceChange::from_edits("Rename", source_file_edits, file_system_edits))
+    Some(SourceChange::from_edits(source_file_edits, file_system_edits))
 }
 
 fn rename_to_self(db: &RootDatabase, position: FilePosition) -> Option<RangeInfo<SourceChange>> {
@@ -171,7 +171,7 @@ fn rename_to_self(db: &RootDatabase, position: FilePosition) -> Option<RangeInfo
         ),
     });
 
-    Some(RangeInfo::new(range, SourceChange::source_file_edits("Rename", edits)))
+    Some(RangeInfo::new(range, SourceChange::source_file_edits(edits)))
 }
 
 fn text_edit_from_self_param(
@@ -234,7 +234,7 @@ fn rename_self_to_param(
     let range = ast::SelfParam::cast(self_token.parent())
         .map_or(self_token.text_range(), |p| p.syntax().text_range());
 
-    Some(RangeInfo::new(range, SourceChange::source_file_edits("Rename", edits)))
+    Some(RangeInfo::new(range, SourceChange::source_file_edits(edits)))
 }
 
 fn rename_reference(
@@ -253,7 +253,7 @@ fn rename_reference(
         return None;
     }
 
-    Some(RangeInfo::new(range, SourceChange::source_file_edits("Rename", edit)))
+    Some(RangeInfo::new(range, SourceChange::source_file_edits(edit)))
 }
 
 #[cfg(test)]
@@ -642,7 +642,6 @@ mod tests {
             RangeInfo {
                 range: 4..7,
                 info: SourceChange {
-                    label: "Rename",
                     source_file_edits: [
                         SourceFileEdit {
                             file_id: FileId(
@@ -694,7 +693,6 @@ mod tests {
             RangeInfo {
                 range: 4..7,
                 info: SourceChange {
-                    label: "Rename",
                     source_file_edits: [
                         SourceFileEdit {
                             file_id: FileId(
@@ -777,7 +775,6 @@ mod tests {
             RangeInfo {
                 range: 8..11,
                 info: SourceChange {
-                    label: "Rename",
                     source_file_edits: [
                         SourceFileEdit {
                             file_id: FileId(

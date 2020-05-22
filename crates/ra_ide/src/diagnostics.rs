@@ -21,7 +21,7 @@ use ra_syntax::{
 };
 use ra_text_edit::{TextEdit, TextEditBuilder};
 
-use crate::{Diagnostic, FileId, FileSystemEdit, SourceChange, SourceFileEdit};
+use crate::{Diagnostic, FileId, FileSystemEdit, Fix, SourceChange, SourceFileEdit};
 
 #[derive(Debug, Copy, Clone)]
 pub enum Severity {
@@ -63,8 +63,8 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
             .parent()
             .unwrap_or_else(|| RelativePath::new(""))
             .join(&d.candidate);
-        let create_file = FileSystemEdit::CreateFile { source_root, path };
-        let fix = SourceChange::file_system_edit("Create module", create_file);
+        let fix =
+            Fix::new("Create module", FileSystemEdit::CreateFile { source_root, path }.into());
         res.borrow_mut().push(Diagnostic {
             range: sema.diagnostics_range(d).range,
             message: d.message(),
@@ -88,14 +88,12 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
                 field_list = field_list.append_field(&field);
             }
 
-            let mut builder = TextEditBuilder::default();
-            algo::diff(&d.ast(db).syntax(), &field_list.syntax()).into_text_edit(&mut builder);
-
-            Some(SourceChange::source_file_edit_from(
-                "Fill struct fields",
-                file_id,
-                builder.finish(),
-            ))
+            let edit = {
+                let mut builder = TextEditBuilder::default();
+                algo::diff(&d.ast(db).syntax(), &field_list.syntax()).into_text_edit(&mut builder);
+                builder.finish()
+            };
+            Some(Fix::new("Fill struct fields", SourceFileEdit { file_id, edit }.into()))
         };
 
         res.borrow_mut().push(Diagnostic {
@@ -117,7 +115,8 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
         let node = d.ast(db);
         let replacement = format!("Ok({})", node.syntax());
         let edit = TextEdit::replace(node.syntax().text_range(), replacement);
-        let fix = SourceChange::source_file_edit_from("Wrap with ok", file_id, edit);
+        let source_change = SourceChange::source_file_edit_from(file_id, edit);
+        let fix = Fix::new("Wrap with ok", source_change);
         res.borrow_mut().push(Diagnostic {
             range: sema.diagnostics_range(d).range,
             message: d.message(),
@@ -154,9 +153,9 @@ fn check_unnecessary_braces_in_use_statement(
             range,
             message: "Unnecessary braces in use statement".to_string(),
             severity: Severity::WeakWarning,
-            fix: Some(SourceChange::source_file_edit(
+            fix: Some(Fix::new(
                 "Remove unnecessary braces",
-                SourceFileEdit { file_id, edit },
+                SourceFileEdit { file_id, edit }.into(),
             )),
         });
     }
@@ -198,9 +197,9 @@ fn check_struct_shorthand_initialization(
                     range: record_field.syntax().text_range(),
                     message: "Shorthand struct initialization".to_string(),
                     severity: Severity::WeakWarning,
-                    fix: Some(SourceChange::source_file_edit(
+                    fix: Some(Fix::new(
                         "Use struct shorthand initialization",
-                        SourceFileEdit { file_id, edit },
+                        SourceFileEdit { file_id, edit }.into(),
                     )),
                 });
             }
@@ -240,7 +239,7 @@ mod tests {
         let diagnostic =
             diagnostics.pop().unwrap_or_else(|| panic!("no diagnostics for:\n{}\n", before));
         let mut fix = diagnostic.fix.unwrap();
-        let edit = fix.source_file_edits.pop().unwrap().edit;
+        let edit = fix.source_change.source_file_edits.pop().unwrap().edit;
         let actual = {
             let mut actual = before.to_string();
             edit.apply(&mut actual);
@@ -258,7 +257,7 @@ mod tests {
         let (analysis, file_position) = analysis_and_position(fixture);
         let diagnostic = analysis.diagnostics(file_position.file_id).unwrap().pop().unwrap();
         let mut fix = diagnostic.fix.unwrap();
-        let edit = fix.source_file_edits.pop().unwrap().edit;
+        let edit = fix.source_change.source_file_edits.pop().unwrap().edit;
         let target_file_contents = analysis.file_text(file_position.file_id).unwrap();
         let actual = {
             let mut actual = target_file_contents.to_string();
@@ -295,7 +294,7 @@ mod tests {
         let (analysis, file_id) = single_file(before);
         let diagnostic = analysis.diagnostics(file_id).unwrap().pop().unwrap();
         let mut fix = diagnostic.fix.unwrap();
-        let edit = fix.source_file_edits.pop().unwrap().edit;
+        let edit = fix.source_change.source_file_edits.pop().unwrap().edit;
         let actual = {
             let mut actual = before.to_string();
             edit.apply(&mut actual);
@@ -616,22 +615,24 @@ mod tests {
             Diagnostic {
                 message: "unresolved module",
                 range: 0..8,
+                severity: Error,
                 fix: Some(
-                    SourceChange {
+                    Fix {
                         label: "Create module",
-                        source_file_edits: [],
-                        file_system_edits: [
-                            CreateFile {
-                                source_root: SourceRootId(
-                                    0,
-                                ),
-                                path: "foo.rs",
-                            },
-                        ],
-                        is_snippet: false,
+                        source_change: SourceChange {
+                            source_file_edits: [],
+                            file_system_edits: [
+                                CreateFile {
+                                    source_root: SourceRootId(
+                                        0,
+                                    ),
+                                    path: "foo.rs",
+                                },
+                            ],
+                            is_snippet: false,
+                        },
                     },
                 ),
-                severity: Error,
             },
         ]
         "###);
@@ -665,29 +666,31 @@ mod tests {
             Diagnostic {
                 message: "Missing structure fields:\n- b",
                 range: 224..233,
+                severity: Error,
                 fix: Some(
-                    SourceChange {
+                    Fix {
                         label: "Fill struct fields",
-                        source_file_edits: [
-                            SourceFileEdit {
-                                file_id: FileId(
-                                    1,
-                                ),
-                                edit: TextEdit {
-                                    indels: [
-                                        Indel {
-                                            insert: "{a:42, b: ()}",
-                                            delete: 3..9,
-                                        },
-                                    ],
+                        source_change: SourceChange {
+                            source_file_edits: [
+                                SourceFileEdit {
+                                    file_id: FileId(
+                                        1,
+                                    ),
+                                    edit: TextEdit {
+                                        indels: [
+                                            Indel {
+                                                insert: "{a:42, b: ()}",
+                                                delete: 3..9,
+                                            },
+                                        ],
+                                    },
                                 },
-                            },
-                        ],
-                        file_system_edits: [],
-                        is_snippet: false,
+                            ],
+                            file_system_edits: [],
+                            is_snippet: false,
+                        },
                     },
                 ),
-                severity: Error,
             },
         ]
         "###);

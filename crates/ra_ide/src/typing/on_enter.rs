@@ -41,10 +41,7 @@ pub(crate) fn on_enter(db: &RootDatabase, position: FilePosition) -> Option<Sour
     let inserted = format!("\n{}{} $0", indent, prefix);
     let edit = TextEdit::insert(position.offset, inserted);
 
-    let mut res = SourceChange::source_file_edit(
-        "On enter",
-        SourceFileEdit { edit, file_id: position.file_id },
-    );
+    let mut res = SourceChange::from(SourceFileEdit { edit, file_id: position.file_id });
     res.is_snippet = true;
     Some(res)
 }

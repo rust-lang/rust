@@ -17,7 +17,7 @@ mod on_enter;
 
 use ra_db::{FilePosition, SourceDatabase};
 use ra_fmt::leading_indent;
-use ra_ide_db::{source_change::SingleFileChange, RootDatabase};
+use ra_ide_db::RootDatabase;
 use ra_syntax::{
     algo::find_node_at_offset,
     ast::{self, AstToken},
@@ -40,15 +40,11 @@ pub(crate) fn on_char_typed(
     assert!(TRIGGER_CHARS.contains(char_typed));
     let file = &db.parse(position.file_id).tree();
     assert_eq!(file.syntax().text().char_at(position.offset), Some(char_typed));
-    let single_file_change = on_char_typed_inner(file, position.offset, char_typed)?;
-    Some(single_file_change.into_source_change(position.file_id))
+    let text_edit = on_char_typed_inner(file, position.offset, char_typed)?;
+    Some(SourceChange::source_file_edit_from(position.file_id, text_edit))
 }
 
-fn on_char_typed_inner(
-    file: &SourceFile,
-    offset: TextSize,
-    char_typed: char,
-) -> Option<SingleFileChange> {
+fn on_char_typed_inner(file: &SourceFile, offset: TextSize, char_typed: char) -> Option<TextEdit> {
     assert!(TRIGGER_CHARS.contains(char_typed));
     match char_typed {
         '.' => on_dot_typed(file, offset),
@@ -61,7 +57,7 @@ fn on_char_typed_inner(
 /// Returns an edit which should be applied after `=` was typed. Primarily,
 /// this works when adding `let =`.
 // FIXME: use a snippet completion instead of this hack here.
-fn on_eq_typed(file: &SourceFile, offset: TextSize) -> Option<SingleFileChange> {
+fn on_eq_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
     assert_eq!(file.syntax().text().char_at(offset), Some('='));
     let let_stmt: ast::LetStmt = find_node_at_offset(file.syntax(), offset)?;
     if let_stmt.semicolon_token().is_some() {
@@ -79,14 +75,11 @@ fn on_eq_typed(file: &SourceFile, offset: TextSize) -> Option<SingleFileChange> 
         return None;
     }
     let offset = let_stmt.syntax().text_range().end();
-    Some(SingleFileChange {
-        label: "add semicolon".to_string(),
-        edit: TextEdit::insert(offset, ";".to_string()),
-    })
+    Some(TextEdit::insert(offset, ";".to_string()))
 }
 
 /// Returns an edit which should be applied when a dot ('.') is typed on a blank line, indenting the line appropriately.
-fn on_dot_typed(file: &SourceFile, offset: TextSize) -> Option<SingleFileChange> {
+fn on_dot_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
     assert_eq!(file.syntax().text().char_at(offset), Some('.'));
     let whitespace =
         file.syntax().token_at_offset(offset).left_biased().and_then(ast::Whitespace::cast)?;
@@ -107,14 +100,11 @@ fn on_dot_typed(file: &SourceFile, offset: TextSize) -> Option<SingleFileChange>
         return None;
     }
 
-    Some(SingleFileChange {
-        label: "reindent dot".to_string(),
-        edit: TextEdit::replace(TextRange::new(offset - current_indent_len, offset), target_indent),
-    })
+    Some(TextEdit::replace(TextRange::new(offset - current_indent_len, offset), target_indent))
 }
 
 /// Adds a space after an arrow when `fn foo() { ... }` is turned into `fn foo() -> { ... }`
-fn on_arrow_typed(file: &SourceFile, offset: TextSize) -> Option<SingleFileChange> {
+fn on_arrow_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
     let file_text = file.syntax().text();
     assert_eq!(file_text.char_at(offset), Some('>'));
     let after_arrow = offset + TextSize::of('>');
@@ -125,10 +115,7 @@ fn on_arrow_typed(file: &SourceFile, offset: TextSize) -> Option<SingleFileChang
         return None;
     }
 
-    Some(SingleFileChange {
-        label: "add space after return type".to_string(),
-        edit: TextEdit::insert(after_arrow, " ".to_string()),
-    })
+    Some(TextEdit::insert(after_arrow, " ".to_string()))
 }
 
 #[cfg(test)]
@@ -144,7 +131,7 @@ mod tests {
         edit.apply(&mut before);
         let parse = SourceFile::parse(&before);
         on_char_typed_inner(&parse.tree(), offset, char_typed).map(|it| {
-            it.edit.apply(&mut before);
+            it.apply(&mut before);
             before.to_string()
         })
     }
