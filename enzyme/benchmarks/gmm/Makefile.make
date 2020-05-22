@@ -1,6 +1,4 @@
 # RUN: cd %desired_wd/gmm && LD_LIBRARY_PATH="%bldpath:$LD_LIBRARY_PATH" BENCH="%bench" BENCHLINK="%blink" LOAD="%loadEnzyme" make -B gmm-unopt.ll gmm-raw.ll results.txt -f %s
-# TODO run
-#  - note haven't set up actual result gathering code yet
 
 .PHONY: clean
 
