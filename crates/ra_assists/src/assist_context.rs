@@ -2,7 +2,7 @@
 
 use algo::find_covering_element;
 use hir::Semantics;
-use ra_db::{FileId, FileRange};
+use ra_db::{FileId, FileRange, FilePosition};
 use ra_fmt::{leading_indent, reindent};
 use ra_ide_db::{
     source_change::{SourceChange, SourceFileEdit},
@@ -19,6 +19,7 @@ use crate::{
     assist_config::{AssistConfig, SnippetCap},
     Assist, AssistId, GroupLabel, ResolvedAssist,
 };
+use rustc_hash::FxHashMap;
 
 /// `AssistContext` allows to apply an assist or check if it could be applied.
 ///
@@ -138,6 +139,16 @@ impl Assists {
         let label = Assist::new(id, label.into(), None, target);
         self.add_impl(label, f)
     }
+    pub(crate) fn add_in_multiple_files(
+        &mut self,
+        id: AssistId,
+        label: impl Into<String>,
+        target: TextRange,
+        f: impl FnOnce(&mut AssistDirector),
+    ) -> Option<()> {
+        let label = Assist::new(id, label.into(), None, target);
+        self.add_impl_multiple_files(label, f)
+    }
     pub(crate) fn add_group(
         &mut self,
         group: &GroupLabel,
@@ -159,6 +170,27 @@ impl Assists {
         };
 
         self.buf.push((label, source_change));
+        Some(())
+    }
+
+    fn add_impl_multiple_files(&mut self, label: Assist, f: impl FnOnce(&mut AssistDirector)) -> Option<()> {
+        let change_label = label.label.clone();
+        if !self.resolve {
+            return None
+        }
+        let mut director = AssistDirector::new(change_label.clone());
+        f(&mut director);
+        let changes = director.finish();
+        let file_edits: Vec<SourceFileEdit> = changes.into_iter()
+            .map(|mut change| change.source_file_edits.pop().unwrap()).collect();
+
+        let source_change = SourceChange {
+            source_file_edits: file_edits,
+            file_system_edits: vec![],
+            is_snippet: false,
+        };
+
+        self.buf.push((label, Some(source_change)));
         Some(())
     }
 
@@ -253,5 +285,33 @@ impl AssistBuilder {
             res.is_snippet = true;
         }
         res
+    }
+}
+
+pub(crate) struct AssistDirector {
+    source_changes: Vec<SourceChange>,
+    builders: FxHashMap<FileId, AssistBuilder>,
+    change_label: String 
+} 
+
+impl AssistDirector {
+    fn new(change_label: String) -> AssistDirector {
+        AssistDirector {
+            source_changes: vec![],
+            builders: FxHashMap::default(),
+            change_label
+        }
+    }
+
+    pub(crate) fn perform(&mut self, file_id: FileId, f: impl FnOnce(&mut AssistBuilder)) {
+        let mut builder = self.builders.entry(file_id).or_insert(AssistBuilder::new(file_id));
+        f(&mut builder);
+    }
+
+    fn finish(mut self) -> Vec<SourceChange> {
+        for (file_id, builder) in self.builders.into_iter().collect::<Vec<(FileId, AssistBuilder)>>() {
+            self.source_changes.push(builder.finish());    
+        }
+        self.source_changes
     }
 }
