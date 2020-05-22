@@ -27,6 +27,8 @@ fn main() {
     // provide them.
     if (target.contains("wasm32") && !target.contains("wasi"))
         || (target.contains("sgx") && target.contains("fortanix"))
+        || target.contains("-none")
+        || target.contains("nvptx")
     {
         println!("cargo:rustc-cfg=feature=\"mem\"");
     }
