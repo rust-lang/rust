@@ -650,8 +650,9 @@ impl f32 {
     ///
     /// ```
     #[stable(feature = "float_bits_conv", since = "1.20.0")]
+    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
     #[inline]
-    pub fn to_bits(self) -> u32 {
+    pub const fn to_bits(self) -> u32 {
         // SAFETY: `u32` is a plain old datatype so we can always transmute to it
         unsafe { mem::transmute(self) }
     }
@@ -693,8 +694,9 @@ impl f32 {
     /// assert_eq!(v, 12.5);
     /// ```
     #[stable(feature = "float_bits_conv", since = "1.20.0")]
+    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
     #[inline]
-    pub fn from_bits(v: u32) -> Self {
+    pub const fn from_bits(v: u32) -> Self {
         // SAFETY: `u32` is a plain old datatype so we can always transmute from it
         // It turns out the safety issues with sNaN were overblown! Hooray!
         unsafe { mem::transmute(v) }
@@ -710,8 +712,9 @@ impl f32 {
     /// assert_eq!(bytes, [0x41, 0x48, 0x00, 0x00]);
     /// ```
     #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
+    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
     #[inline]
-    pub fn to_be_bytes(self) -> [u8; 4] {
+    pub const fn to_be_bytes(self) -> [u8; 4] {
         self.to_bits().to_be_bytes()
     }
 
@@ -725,8 +728,9 @@ impl f32 {
     /// assert_eq!(bytes, [0x00, 0x00, 0x48, 0x41]);
     /// ```
     #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
+    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
     #[inline]
-    pub fn to_le_bytes(self) -> [u8; 4] {
+    pub const fn to_le_bytes(self) -> [u8; 4] {
         self.to_bits().to_le_bytes()
     }
 
@@ -753,8 +757,9 @@ impl f32 {
     /// );
     /// ```
     #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
+    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
     #[inline]
-    pub fn to_ne_bytes(self) -> [u8; 4] {
+    pub const fn to_ne_bytes(self) -> [u8; 4] {
         self.to_bits().to_ne_bytes()
     }
 
@@ -767,8 +772,9 @@ impl f32 {
     /// assert_eq!(value, 12.5);
     /// ```
     #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
+    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
     #[inline]
-    pub fn from_be_bytes(bytes: [u8; 4]) -> Self {
+    pub const fn from_be_bytes(bytes: [u8; 4]) -> Self {
         Self::from_bits(u32::from_be_bytes(bytes))
     }
 
@@ -781,8 +787,9 @@ impl f32 {
     /// assert_eq!(value, 12.5);
     /// ```
     #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
+    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
     #[inline]
-    pub fn from_le_bytes(bytes: [u8; 4]) -> Self {
+    pub const fn from_le_bytes(bytes: [u8; 4]) -> Self {
         Self::from_bits(u32::from_le_bytes(bytes))
     }
 
@@ -806,8 +813,9 @@ impl f32 {
     /// assert_eq!(value, 12.5);
     /// ```
     #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
+    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
     #[inline]
-    pub fn from_ne_bytes(bytes: [u8; 4]) -> Self {
+    pub const fn from_ne_bytes(bytes: [u8; 4]) -> Self {
         Self::from_bits(u32::from_ne_bytes(bytes))
     }
 }
