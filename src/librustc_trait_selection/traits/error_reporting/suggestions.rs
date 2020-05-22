@@ -631,6 +631,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 param_env,
                 new_trait_ref.without_const().to_predicate(self.tcx),
             );
+
             if self.predicate_must_hold_modulo_regions(&new_obligation) {
                 if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
                     // We have a very specific type of error, where just borrowing this argument
@@ -638,6 +639,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     // original type obligation, not the last one that failed, which is arbitrary.
                     // Because of this, we modify the error to refer to the original obligation and
                     // return early in the caller.
+
                     let msg = format!(
                         "the trait bound `{}: {}` is not satisfied",
                         found,
@@ -660,12 +662,23 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             obligation.parent_trait_ref.skip_binder().print_only_trait_path(),
                         ),
                     );
-                    err.span_suggestion(
-                        span,
-                        "consider borrowing here",
-                        format!("&{}", snippet),
-                        Applicability::MaybeIncorrect,
-                    );
+
+                    // This if is to prevent a special edge-case
+                    if !span.from_expansion() {
+                        // We don't want a borrowing suggestion on the fields in structs,
+                        // ```
+                        // struct Foo {
+                        //  the_foos: Vec<Foo>
+                        // }
+                        // ```
+
+                        err.span_suggestion(
+                            span,
+                            "consider borrowing here",
+                            format!("&{}", snippet),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
                     return true;
                 }
             }
