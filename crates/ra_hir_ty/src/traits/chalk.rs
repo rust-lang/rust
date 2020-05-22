@@ -14,7 +14,7 @@ use ra_db::{salsa::InternKey, CrateId};
 use super::{builtin, AssocTyValue, ChalkContext, Impl};
 use crate::{
     db::HirDatabase, display::HirDisplay, method_resolution::TyFingerprint, utils::generics,
-    DebruijnIndex, GenericPredicate, Substs, Ty, TypeCtor,
+    CallableDef, DebruijnIndex, GenericPredicate, Substs, Ty, TypeCtor,
 };
 use chalk_rust_ir::WellKnownTrait;
 use mapping::{convert_where_clauses, generic_predicate_to_inline_bound, make_binders};
@@ -54,10 +54,9 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
 
     fn fn_def_datum(
         &self,
-        _fn_def_id: chalk_ir::FnDefId<Interner>,
+        fn_def_id: chalk_ir::FnDefId<Interner>,
     ) -> Arc<chalk_rust_ir::FnDefDatum<Interner>> {
-        // We don't yet provide any FnDefs to Chalk
-        unimplemented!()
+        self.db.fn_def_datum(self.krate, fn_def_id)
     }
 
     fn impls_for_trait(
@@ -405,6 +404,26 @@ fn type_alias_associated_ty_value(
     Arc::new(value)
 }
 
+pub(crate) fn fn_def_datum_query(
+    db: &dyn HirDatabase,
+    _krate: CrateId,
+    fn_def_id: FnDefId,
+) -> Arc<FnDefDatum> {
+    let callable_def: CallableDef = from_chalk(db, fn_def_id);
+    let generic_params = generics(db.upcast(), callable_def.into());
+    let sig = db.callable_item_signature(callable_def);
+    let bound_vars = Substs::bound_vars(&generic_params, DebruijnIndex::INNERMOST);
+    let where_clauses = convert_where_clauses(db, callable_def.into(), &bound_vars);
+    let bound = chalk_rust_ir::FnDefDatumBound {
+        // Note: Chalk doesn't actually use this information yet as far as I am aware, but we provide it anyway
+        argument_types: sig.value.params().iter().map(|ty| ty.clone().to_chalk(db)).collect(),
+        return_type: sig.value.ret().clone().to_chalk(db),
+        where_clauses,
+    };
+    let datum = FnDefDatum { id: fn_def_id, binders: make_binders(bound, sig.num_binders) };
+    Arc::new(datum)
+}
+
 impl From<AdtId> for crate::TypeCtorId {
     fn from(struct_id: AdtId) -> Self {
         struct_id.0
@@ -414,6 +433,18 @@ impl From<AdtId> for crate::TypeCtorId {
 impl From<crate::TypeCtorId> for AdtId {
     fn from(type_ctor_id: crate::TypeCtorId) -> Self {
         chalk_ir::AdtId(type_ctor_id)
+    }
+}
+
+impl From<FnDefId> for crate::CallableDefId {
+    fn from(fn_def_id: FnDefId) -> Self {
+        InternKey::from_intern_id(fn_def_id.0)
+    }
+}
+
+impl From<crate::CallableDefId> for FnDefId {
+    fn from(callable_def_id: crate::CallableDefId) -> Self {
+        chalk_ir::FnDefId(callable_def_id.as_intern_id())
     }
 }
 

@@ -2644,6 +2644,48 @@ fn test() {
 }
 
 #[test]
+fn builtin_fn_def_copy() {
+    assert_snapshot!(
+        infer_with_mismatches(r#"
+#[lang = "copy"]
+trait Copy {}
+
+fn foo() {}
+fn bar<T: Copy>(T) -> T {}
+struct Struct(usize);
+enum Enum { Variant(usize) }
+
+trait Test { fn test(&self) -> bool; }
+impl<T: Copy> Test for T {}
+
+fn test() {
+    foo.test();
+    bar.test();
+    Struct.test();
+    Enum::Variant.test();
+}
+"#, true),
+        // wrong result, because the built-in Copy impl for fn defs doesn't exist in Chalk yet
+        @r###"
+    42..44 '{}': ()
+    61..62 'T': {unknown}
+    69..71 '{}': ()
+    69..71: expected T, got ()
+    146..150 'self': &Self
+    202..282 '{     ...t(); }': ()
+    208..211 'foo': fn foo()
+    208..218 'foo.test()': {unknown}
+    224..227 'bar': fn bar<{unknown}>({unknown}) -> {unknown}
+    224..234 'bar.test()': {unknown}
+    240..246 'Struct': Struct(usize) -> Struct
+    240..253 'Struct.test()': {unknown}
+    259..272 'Enum::Variant': Variant(usize) -> Enum
+    259..279 'Enum::...test()': {unknown}
+    "###
+    );
+}
+
+#[test]
 fn builtin_sized() {
     assert_snapshot!(
         infer_with_mismatches(r#"

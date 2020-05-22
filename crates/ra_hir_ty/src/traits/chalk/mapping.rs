@@ -15,8 +15,8 @@ use crate::{
     db::HirDatabase,
     primitive::{FloatBitness, FloatTy, IntBitness, IntTy, Signedness, Uncertain},
     traits::{builtin, AssocTyValue, Canonical, Impl, Obligation},
-    ApplicationTy, GenericPredicate, InEnvironment, ProjectionPredicate, ProjectionTy, Substs,
-    TraitEnvironment, TraitRef, Ty, TypeCtor,
+    ApplicationTy, CallableDef, GenericPredicate, InEnvironment, ProjectionPredicate, ProjectionTy,
+    Substs, TraitEnvironment, TraitRef, Ty, TypeCtor,
 };
 
 use super::interner::*;
@@ -217,11 +217,14 @@ impl ToChalk for TypeCtor {
             TypeCtor::Slice => TypeName::Slice,
             TypeCtor::Ref(mutability) => TypeName::Ref(mutability.to_chalk(db)),
             TypeCtor::Str => TypeName::Str,
+            TypeCtor::FnDef(callable_def) => {
+                let id = callable_def.to_chalk(db);
+                TypeName::FnDef(id)
+            }
             TypeCtor::Int(Uncertain::Unknown)
             | TypeCtor::Float(Uncertain::Unknown)
             | TypeCtor::Adt(_)
             | TypeCtor::Array
-            | TypeCtor::FnDef(_)
             | TypeCtor::FnPtr { .. }
             | TypeCtor::Never
             | TypeCtor::Closure { .. } => {
@@ -260,7 +263,10 @@ impl ToChalk for TypeCtor {
             TypeName::Ref(mutability) => TypeCtor::Ref(from_chalk(db, mutability)),
             TypeName::Str => TypeCtor::Str,
 
-            TypeName::FnDef(_) => unreachable!(),
+            TypeName::FnDef(fn_def_id) => {
+                let callable_def = from_chalk(db, fn_def_id);
+                TypeCtor::FnDef(callable_def)
+            }
 
             TypeName::Error => {
                 // this should not be reached, since we don't represent TypeName::Error with TypeCtor
@@ -344,6 +350,18 @@ impl ToChalk for Impl {
 
     fn from_chalk(db: &dyn HirDatabase, impl_id: ImplId) -> Impl {
         db.lookup_intern_chalk_impl(impl_id.into())
+    }
+}
+
+impl ToChalk for CallableDef {
+    type Chalk = FnDefId;
+
+    fn to_chalk(self, db: &dyn HirDatabase) -> FnDefId {
+        db.intern_callable_def(self).into()
+    }
+
+    fn from_chalk(db: &dyn HirDatabase, fn_def_id: FnDefId) -> CallableDef {
+        db.lookup_intern_callable_def(fn_def_id.into())
     }
 }
 
