@@ -215,7 +215,7 @@ fn bucket_mask_to_capacity(bucket_mask: usize) -> usize {
 /// Returns `None` if an overflow occurs.
 #[cfg_attr(feature = "inline-more", inline)]
 #[cfg(feature = "nightly")]
-pub fn calculate_layout<T>(buckets: usize) -> Option<(Layout, usize)> {
+fn calculate_layout<T>(buckets: usize) -> Option<(Layout, usize)> {
     debug_assert!(buckets.is_power_of_two());
 
     let common_align = usize::max(mem::align_of::<T>(), Group::WIDTH);
