@@ -26,14 +26,19 @@ impl ToChalk for Ty {
     type Chalk = chalk_ir::Ty<Interner>;
     fn to_chalk(self, db: &dyn HirDatabase) -> chalk_ir::Ty<Interner> {
         match self {
-            Ty::Apply(apply_ty) => {
-                if let TypeCtor::Ref(m) = apply_ty.ctor {
-                    return ref_to_chalk(db, m, apply_ty.parameters);
+            Ty::Apply(apply_ty) => match apply_ty.ctor {
+                TypeCtor::Ref(m) => ref_to_chalk(db, m, apply_ty.parameters),
+                TypeCtor::FnPtr { num_args: _ } => {
+                    let substitution = apply_ty.parameters.to_chalk(db).shifted_in(&Interner);
+                    chalk_ir::TyData::Function(chalk_ir::Fn { num_binders: 0, substitution })
+                        .intern(&Interner)
                 }
-                let name = apply_ty.ctor.to_chalk(db);
-                let substitution = apply_ty.parameters.to_chalk(db);
-                chalk_ir::ApplicationTy { name, substitution }.cast(&Interner).intern(&Interner)
-            }
+                _ => {
+                    let name = apply_ty.ctor.to_chalk(db);
+                    let substitution = apply_ty.parameters.to_chalk(db);
+                    chalk_ir::ApplicationTy { name, substitution }.cast(&Interner).intern(&Interner)
+                }
+            },
             Ty::Projection(proj_ty) => {
                 let associated_ty_id = proj_ty.associated_ty.to_chalk(db);
                 let substitution = proj_ty.parameters.to_chalk(db);
@@ -93,7 +98,13 @@ impl ToChalk for Ty {
                 Ty::Projection(ProjectionTy { associated_ty, parameters })
             }
             chalk_ir::TyData::Alias(chalk_ir::AliasTy::Opaque(_)) => unimplemented!(),
-            chalk_ir::TyData::Function(_) => unimplemented!(),
+            chalk_ir::TyData::Function(chalk_ir::Fn { num_binders: _, substitution }) => {
+                let parameters: Substs = from_chalk(db, substitution);
+                Ty::Apply(ApplicationTy {
+                    ctor: TypeCtor::FnPtr { num_args: (parameters.len() - 1) as u16 },
+                    parameters,
+                })
+            }
             chalk_ir::TyData::BoundVar(idx) => Ty::Bound(idx),
             chalk_ir::TyData::InferenceVar(_iv) => Ty::Unknown,
             chalk_ir::TyData::Dyn(where_clauses) => {

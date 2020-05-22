@@ -2686,6 +2686,38 @@ fn test() {
 }
 
 #[test]
+fn builtin_fn_ptr_copy() {
+    assert_snapshot!(
+        infer_with_mismatches(r#"
+#[lang = "copy"]
+trait Copy {}
+
+trait Test { fn test(&self) -> bool; }
+impl<T: Copy> Test for T {}
+
+fn test(f1: fn(), f2: fn(usize) -> u8, f3: fn(u8, u8) -> &u8) {
+    f1.test();
+    f2.test();
+    f3.test();
+}
+"#, true),
+        @r###"
+    55..59 'self': &Self
+    109..111 'f1': fn()
+    119..121 'f2': fn(usize) -> u8
+    140..142 'f3': fn(u8, u8) -> &u8
+    163..211 '{     ...t(); }': ()
+    169..171 'f1': fn()
+    169..178 'f1.test()': bool
+    184..186 'f2': fn(usize) -> u8
+    184..193 'f2.test()': bool
+    199..201 'f3': fn(u8, u8) -> &u8
+    199..208 'f3.test()': bool
+    "###
+    );
+}
+
+#[test]
 fn builtin_sized() {
     assert_snapshot!(
         infer_with_mismatches(r#"
