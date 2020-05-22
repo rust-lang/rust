@@ -1690,7 +1690,7 @@ fn check_opaque_for_inheriting_lifetimes(tcx: TyCtxt<'tcx>, def_id: LocalDefId, 
             let mut err = struct_span_err!(
                 tcx.sess,
                 span,
-                E0755,
+                E0760,
                 "`{}` return type cannot contain a projection or `Self` that references lifetimes from \
              a parent scope",
                 if is_async { "async fn" } else { "impl Trait" },
