@@ -2461,6 +2461,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "types",
     },
     Lint {
+        name: "vec_resize_to_zero",
+        group: "correctness",
+        desc: "emptying a vector with `resize(0, an_int)` instead of `clear()` is probably an argument inversion mistake",
+        deprecation: None,
+        module: "vec_resize_to_zero",
+    },
+    Lint {
         name: "verbose_bit_mask",
         group: "style",
         desc: "expressions where a bit mask is less readable than the corresponding method call",

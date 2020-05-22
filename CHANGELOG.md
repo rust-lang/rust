@@ -1630,6 +1630,7 @@ Released 2018-09-13
 [`useless_transmute`]: https://rust-lang.github.io/rust-clippy/master/index.html#useless_transmute
 [`useless_vec`]: https://rust-lang.github.io/rust-clippy/master/index.html#useless_vec
 [`vec_box`]: https://rust-lang.github.io/rust-clippy/master/index.html#vec_box
+[`vec_resize_to_zero`]: https://rust-lang.github.io/rust-clippy/master/index.html#vec_resize_to_zero
 [`verbose_bit_mask`]: https://rust-lang.github.io/rust-clippy/master/index.html#verbose_bit_mask
 [`verbose_file_reads`]: https://rust-lang.github.io/rust-clippy/master/index.html#verbose_file_reads
 [`vtable_address_comparisons`]: https://rust-lang.github.io/rust-clippy/master/index.html#vtable_address_comparisons
