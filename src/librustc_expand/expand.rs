@@ -988,6 +988,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                     ExpnKind::Macro(MacroKind::Attr, sym::derive),
                     item.span(),
                     self.cx.parse_sess.edition,
+                    None,
                 )
             }),
             _ => None,
