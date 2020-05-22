@@ -14,7 +14,7 @@ pub type AssocTypeId = chalk_ir::AssocTypeId<Interner>;
 pub type AssociatedTyDatum = chalk_rust_ir::AssociatedTyDatum<Interner>;
 pub type TraitId = chalk_ir::TraitId<Interner>;
 pub type TraitDatum = chalk_rust_ir::TraitDatum<Interner>;
-pub type StructId = chalk_ir::AdtId<Interner>;
+pub type AdtId = chalk_ir::AdtId<Interner>;
 pub type StructDatum = chalk_rust_ir::AdtDatum<Interner>;
 pub type ImplId = chalk_ir::ImplId<Interner>;
 pub type ImplDatum = chalk_rust_ir::ImplDatum<Interner>;
@@ -36,10 +36,10 @@ impl chalk_ir::interner::Interner for Interner {
     type InternedVariableKinds = Vec<chalk_ir::VariableKind<Self>>;
     type InternedCanonicalVarKinds = Vec<chalk_ir::CanonicalVarKind<Self>>;
     type DefId = InternId;
-    type InternedAdtId = InternId;
+    type InternedAdtId = crate::TypeCtorId;
     type Identifier = TypeAliasId;
 
-    fn debug_adt_id(type_kind_id: StructId, fmt: &mut fmt::Formatter<'_>) -> Option<fmt::Result> {
+    fn debug_adt_id(type_kind_id: AdtId, fmt: &mut fmt::Formatter<'_>) -> Option<fmt::Result> {
         tls::with_current_program(|prog| Some(prog?.debug_struct_id(type_kind_id, fmt)))
     }
 

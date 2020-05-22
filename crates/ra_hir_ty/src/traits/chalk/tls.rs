@@ -15,7 +15,7 @@ pub struct DebugContext<'a>(&'a (dyn HirDatabase + 'a));
 impl DebugContext<'_> {
     pub fn debug_struct_id(
         &self,
-        id: super::StructId,
+        id: super::AdtId,
         f: &mut fmt::Formatter<'_>,
     ) -> Result<(), fmt::Error> {
         let type_ctor: TypeCtor = from_chalk(self.0, TypeName::Adt(id));

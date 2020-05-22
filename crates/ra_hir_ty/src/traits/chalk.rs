@@ -45,7 +45,7 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
     fn trait_datum(&self, trait_id: TraitId) -> Arc<TraitDatum> {
         self.db.trait_datum(self.krate, trait_id)
     }
-    fn adt_datum(&self, struct_id: StructId) -> Arc<StructDatum> {
+    fn adt_datum(&self, struct_id: AdtId) -> Arc<StructDatum> {
         self.db.struct_datum(self.krate, struct_id)
     }
     fn impl_datum(&self, impl_id: ImplId) -> Arc<ImplDatum> {
@@ -94,7 +94,7 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
         debug!("impls_for_trait returned {} impls", result.len());
         result
     }
-    fn impl_provided_for(&self, auto_trait_id: TraitId, struct_id: StructId) -> bool {
+    fn impl_provided_for(&self, auto_trait_id: TraitId, struct_id: AdtId) -> bool {
         debug!("impl_provided_for {:?}, {:?}", auto_trait_id, struct_id);
         false // FIXME
     }
@@ -257,7 +257,7 @@ fn lang_attr_from_well_known_trait(attr: WellKnownTrait) -> &'static str {
 pub(crate) fn struct_datum_query(
     db: &dyn HirDatabase,
     krate: CrateId,
-    struct_id: StructId,
+    struct_id: AdtId,
 ) -> Arc<StructDatum> {
     debug!("struct_datum {:?}", struct_id);
     let type_ctor: TypeCtor = from_chalk(db, TypeName::Adt(struct_id));
@@ -405,15 +405,15 @@ fn type_alias_associated_ty_value(
     Arc::new(value)
 }
 
-impl From<StructId> for crate::TypeCtorId {
-    fn from(struct_id: StructId) -> Self {
-        InternKey::from_intern_id(struct_id.0)
+impl From<AdtId> for crate::TypeCtorId {
+    fn from(struct_id: AdtId) -> Self {
+        struct_id.0
     }
 }
 
-impl From<crate::TypeCtorId> for StructId {
+impl From<crate::TypeCtorId> for AdtId {
     fn from(type_ctor_id: crate::TypeCtorId) -> Self {
-        chalk_ir::AdtId(type_ctor_id.as_intern_id())
+        chalk_ir::AdtId(type_ctor_id)
     }
 }
 

@@ -155,7 +155,7 @@ pub enum TypeCtor {
 /// This exists just for Chalk, because Chalk just has a single `StructId` where
 /// we have different kinds of ADTs, primitive types and special type
 /// constructors like tuples and function pointers.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub struct TypeCtorId(salsa::InternId);
 impl_intern_key!(TypeCtorId);
 
