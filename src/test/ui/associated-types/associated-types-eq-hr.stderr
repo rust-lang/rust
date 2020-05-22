@@ -28,32 +28,72 @@ LL |     bar::<IntStruct>();
    = note: expected reference `&usize`
               found reference `&isize`
 
-error[E0271]: type mismatch resolving `for<'x, 'y> <Tuple as TheTrait<(&'x isize, &'y isize)>>::A == &'x isize`
+error: implementation of `TheTrait` is not general enough
   --> $DIR/associated-types-eq-hr.rs:96:5
    |
-LL | fn tuple_one<T>()
-   |    --------- required by a bound in this
-LL | where
-LL |     T: for<'x, 'y> TheTrait<(&'x isize, &'y isize), A = &'x isize>,
-   |                                                     ------------- required by this bound in `tuple_one`
+LL | / pub trait TheTrait<T> {
+LL | |     type A;
+LL | |
+LL | |     fn get(&self, t: T) -> Self::A;
+LL | | }
+   | |_- trait `TheTrait` defined here
 ...
-LL |     tuple_one::<Tuple>();
-   |     ^^^^^^^^^^^^^^^^^^ expected bound lifetime parameter 'x, found concrete lifetime
-
-error[E0271]: type mismatch resolving `for<'x, 'y> <Tuple as TheTrait<(&'x isize, &'y isize)>>::A == &'y isize`
-  --> $DIR/associated-types-eq-hr.rs:101:5
+LL |       tuple_one::<Tuple>();
+   |       ^^^^^^^^^^^^^^^^^^ implementation of `TheTrait` is not general enough
    |
-LL | fn tuple_two<T>()
-   |    --------- required by a bound in this
-LL | where
-LL |     T: for<'x, 'y> TheTrait<(&'x isize, &'y isize), A = &'y isize>,
-   |                                                     ------------- required by this bound in `tuple_two`
-...
-LL |     tuple_two::<Tuple>();
-   |     ^^^^^^^^^^^^^^^^^^ expected bound lifetime parameter 'y, found concrete lifetime
+   = note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
+   = note: ...but `Tuple` actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
 
 error: implementation of `TheTrait` is not general enough
-  --> $DIR/associated-types-eq-hr.rs:110:5
+  --> $DIR/associated-types-eq-hr.rs:96:5
+   |
+LL | / pub trait TheTrait<T> {
+LL | |     type A;
+LL | |
+LL | |     fn get(&self, t: T) -> Self::A;
+LL | | }
+   | |_- trait `TheTrait` defined here
+...
+LL |       tuple_one::<Tuple>();
+   |       ^^^^^^^^^^^^^^^^^^ implementation of `TheTrait` is not general enough
+   |
+   = note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
+   = note: ...but `Tuple` actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
+
+error: implementation of `TheTrait` is not general enough
+  --> $DIR/associated-types-eq-hr.rs:102:5
+   |
+LL | / pub trait TheTrait<T> {
+LL | |     type A;
+LL | |
+LL | |     fn get(&self, t: T) -> Self::A;
+LL | | }
+   | |_- trait `TheTrait` defined here
+...
+LL |       tuple_two::<Tuple>();
+   |       ^^^^^^^^^^^^^^^^^^ implementation of `TheTrait` is not general enough
+   |
+   = note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
+   = note: ...but `Tuple` actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
+
+error: implementation of `TheTrait` is not general enough
+  --> $DIR/associated-types-eq-hr.rs:102:5
+   |
+LL | / pub trait TheTrait<T> {
+LL | |     type A;
+LL | |
+LL | |     fn get(&self, t: T) -> Self::A;
+LL | | }
+   | |_- trait `TheTrait` defined here
+...
+LL |       tuple_two::<Tuple>();
+   |       ^^^^^^^^^^^^^^^^^^ implementation of `TheTrait` is not general enough
+   |
+   = note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
+   = note: ...but `Tuple` actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
+
+error: implementation of `TheTrait` is not general enough
+  --> $DIR/associated-types-eq-hr.rs:112:5
    |
 LL | / pub trait TheTrait<T> {
 LL | |     type A;
@@ -68,6 +108,6 @@ LL |       tuple_four::<Tuple>();
    = note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
    = note: ...but `Tuple` actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
 
-error: aborting due to 5 previous errors
+error: aborting due to 7 previous errors
 
 For more information about this error, try `rustc --explain E0271`.

@@ -94,12 +94,14 @@ pub fn call_bar() {
 
 pub fn call_tuple_one() {
     tuple_one::<Tuple>();
-    //~^ ERROR type mismatch
+    //~^ ERROR implementation of `TheTrait` is not general enough
+    //~| ERROR implementation of `TheTrait` is not general enough
 }
 
 pub fn call_tuple_two() {
     tuple_two::<Tuple>();
-    //~^ ERROR type mismatch
+    //~^ ERROR implementation of `TheTrait` is not general enough
+    //~| ERROR implementation of `TheTrait` is not general enough
 }
 
 pub fn call_tuple_three() {

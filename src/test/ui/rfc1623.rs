@@ -11,19 +11,18 @@ static NON_ELIDABLE_FN: &for<'a> fn(&'a u8, &'a u8) -> &'a u8 =
 struct SomeStruct<'x, 'y, 'z: 'x> {
     foo: &'x Foo<'z>,
     bar: &'x Bar<'z>,
-    f: &'y dyn for<'a, 'b> Fn(&'a Foo<'b>) -> &'a Bar<'b>,
+    f: &'y dyn for<'a, 'b> Fn(&'a Foo<'b>) -> &'a Foo<'b>,
 }
 
 fn id<T>(t: T) -> T {
     t
 }
 
-static SOME_STRUCT: &SomeStruct = SomeStruct {
-    //~^ ERROR mismatched types
+static SOME_STRUCT: &SomeStruct = &SomeStruct {
     foo: &Foo { bools: &[false, true] },
     bar: &Bar { bools: &[true, true] },
     f: &id,
-    //~^ ERROR type mismatch resolving
+    //~^ ERROR mismatched types
 };
 
 // very simple test for a 'static static with default lifetime

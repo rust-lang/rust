@@ -15,7 +15,7 @@ struct X;
 
 impl Foo for X {
     type Bar = impl Baz<Self, Self>;
-    //~^ ERROR type mismatch resolving
+    //~^ ERROR mismatched types
 
     fn bar(&self) -> Self::Bar {
         |x| x
