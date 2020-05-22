@@ -61,6 +61,7 @@ pub enum Subcommand {
     },
     Doc {
         paths: Vec<PathBuf>,
+        open: bool,
     },
     Test {
         paths: Vec<PathBuf>,
@@ -248,6 +249,9 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
             "bench" => {
                 opts.optmulti("", "test-args", "extra arguments", "ARGS");
             }
+            "doc" => {
+                opts.optflag("", "open", "open the docs in a browser");
+            }
             "clean" => {
                 opts.optflag("", "all", "clean all build artifacts");
             }
@@ -404,6 +408,7 @@ Arguments:
         ./x.py doc src/doc/book
         ./x.py doc src/doc/nomicon
         ./x.py doc src/doc/book src/libstd
+        ./x.py doc src/libstd --open
 
     If no arguments are passed then everything is documented:
 
@@ -479,7 +484,7 @@ Arguments:
                 },
             },
             "bench" => Subcommand::Bench { paths, test_args: matches.opt_strs("test-args") },
-            "doc" => Subcommand::Doc { paths },
+            "doc" => Subcommand::Doc { paths, open: matches.opt_present("open") },
             "clean" => {
                 if !paths.is_empty() {
                     println!("\nclean does not take a path argument\n");
@@ -611,6 +616,13 @@ impl Subcommand {
         match *self {
             Subcommand::Test { ref pass, .. } => pass.as_ref().map(|s| &s[..]),
             _ => None,
+        }
+    }
+
+    pub fn open(&self) -> bool {
+        match *self {
+            Subcommand::Doc { open, .. } => open,
+            _ => false,
         }
     }
 }
