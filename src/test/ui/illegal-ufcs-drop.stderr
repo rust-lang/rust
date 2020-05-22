@@ -5,7 +5,7 @@ LL |     Drop::drop(&mut Foo)
    |     ^^^^^^^^^^
    |     |
    |     explicit destructor calls not allowed
-   |     help: consider using `drop` function
+   |     help: consider using `drop` function: `drop`
 
 error: aborting due to previous error
 

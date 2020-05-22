@@ -35,13 +35,18 @@ pub fn check_legal_trait_for_method_call(
             .and_then(|s| tcx.sess.source_map().span_to_snippet(s).ok())
             .unwrap_or_default();
 
-        let (suggestion, applicability) = if snippet.is_empty() {
-            (snippet, Applicability::Unspecified)
-        } else {
-            (format!("drop({})", snippet), Applicability::MachineApplicable)
-        };
+        let suggestion =
+            if snippet.is_empty() { "drop".to_string() } else { format!("drop({})", snippet) };
 
-        err.span_suggestion(span, "consider using `drop` function", suggestion, applicability);
+        let suggestion_span =
+            receiver.and_then(|s| tcx.sess.source_map().merge_spans(s, span)).unwrap_or(span);
+
+        err.span_suggestion(
+            suggestion_span,
+            "consider using `drop` function",
+            suggestion,
+            Applicability::MaybeIncorrect,
+        );
 
         err.emit();
     }
