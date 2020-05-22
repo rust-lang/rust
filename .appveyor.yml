@@ -30,7 +30,7 @@ install:
 - rustup update
 # Install "master" toolchain.
 - cargo install rustup-toolchain-install-master
-- rustup-toolchain-install-master -f -n master %RUSTC_HASH% -c rust-src -c rustc-dev
+- rustup-toolchain-install-master -f -n master %RUSTC_HASH% -c rust-src -c rustc-dev -c llvm-tools
 - rustup default master
 - rustc --version
 - cargo --version
