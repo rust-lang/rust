@@ -4552,6 +4552,7 @@ dependencies = [
 name = "test"
 version = "0.0.0"
 dependencies = [
+ "cfg-if",
  "core",
  "getopts",
  "libc",

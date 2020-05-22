@@ -10,6 +10,7 @@ path = "lib.rs"
 crate-type = ["dylib", "rlib"]
 
 [dependencies]
+cfg-if = { version = "0.1.8", features = ['rustc-dep-of-std'] }
 getopts = { version = "0.2.21", features = ['rustc-dep-of-std'] }
 term = { path = "../libterm" }
 std = { path = "../libstd" }
