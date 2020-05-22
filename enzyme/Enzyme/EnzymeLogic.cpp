@@ -1780,6 +1780,10 @@ public:
               Builder2.CreateFMul(ConstantFP::get(II.getType(), 0.5), vdiff),
               cal
             );
+
+            Value* cmp  = Builder2.CreateFCmpOEQ(args[0], ConstantFP::get(orig_ops[0]->getType(), 0));
+            dif0 = Builder2.CreateSelect(cmp, ConstantFP::get(orig_ops[0]->getType(), 0), dif0);
+
             addToDiffe(orig_ops[0], dif0, Builder2, II.getType());
           }
           return;
@@ -2307,6 +2311,7 @@ void DerivativeMaker<const AugmentedReturn*>::visitCallInst(llvm::CallInst &call
     auto coshf = gutils->oldFunc->getParent()->getOrInsertFunction( (called->getName() == "tanh") ? "cosh" : "coshf", called->getFunctionType(), called->getAttributes());
     auto cal = cast<CallInst>(Builder2.CreateCall(coshf, args));
     Value* dif0 = Builder2.CreateFDiv(diffe(orig, Builder2), Builder2.CreateFMul(cal, cal));
+    setDiffe(orig, Constant::getNullValue(orig->getType()), Builder2);
     addToDiffe(orig->getArgOperand(0), dif0, Builder2, x->getType());
     return;
   }
@@ -2790,7 +2795,6 @@ badfn:;
     assert(cast<StructType>(diffes->getType())->getNumElements() == structidx);
   }
 
-  //Note this shouldn't matter because this can't use itself, but setting null should be done before other sets but after load of diffe
   if (subretType == DIFFE_TYPE::OUT_DIFF)
     setDiffe(orig, Constant::getNullValue(op->getType()), Builder2);
 

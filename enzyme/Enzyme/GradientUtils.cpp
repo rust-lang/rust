@@ -111,12 +111,12 @@ bool GradientUtils::legalRecompute(Value* val, const ValueToValueMapTy& availabl
     if (auto dli = dyn_cast_or_null<LoadInst>(hasUninverted(val))) {
       return legalRecompute(dli, available); // TODO ADD && !TR.intType(getOriginal(dli), /*mustfind*/false).isPossibleFloat();
     }
-    llvm::errs() << "illegal recompute: " << *val << "\n";
+    //llvm::errs() << "illegal recompute: " << *val << "\n";
     return false;
   }
 
   if (isa<Instruction>(val) && cast<Instruction>(val)->getMetadata("enzyme_mustcache")) {
-    llvm::errs() << "illegal recompute: " << *val << "\n";
+    //llvm::errs() << "illegal recompute: " << *val << "\n";
     return false;
   }
 
@@ -176,7 +176,7 @@ bool GradientUtils::legalRecompute(Value* val, const ValueToValueMapTy& availabl
 
   if (auto inst = dyn_cast<Instruction>(val)) {
     if (inst->mayReadOrWriteMemory()) {
-      llvm::errs() << "illegal recompute: " << *val << "\n";
+      //llvm::errs() << "illegal recompute: " << *val << "\n";
       return false;
     }
   }
