@@ -231,7 +231,7 @@ pub fn calculate_layout<T>(buckets: usize) -> Option<(Layout, usize)> {
     // There is no possible overflow here since buckets is a power of two and
     // Group::WIDTH is a small number.
     let ctrl = unsafe { Layout::from_size_align_unchecked(buckets + Group::WIDTH, Group::WIDTH) };
-    
+
     // There must be no padding between two tables.
     debug_assert_eq!(padded_data.padding_needed_for(Group::WIDTH), 0);
 
@@ -288,9 +288,7 @@ impl<T> Bucket<T> {
             // won't overflow because index must be less than length
             (index + 1) as *mut T
         } else {
-            // the pointer arithmetic below might cross allocation bounds
-            // because RawTable::iter() could call this function with empty table and index=0
-            base.as_ptr().wrapping_add(!index) as usize as *mut T
+            base.as_ptr().sub(index)
         };
         Self {
             ptr: NonNull::new_unchecked(ptr),
@@ -301,8 +299,7 @@ impl<T> Bucket<T> {
         if mem::size_of::<T>() == 0 {
             self.ptr.as_ptr() as usize - 1
         } else {
-            //emulation of wrapping_offset_from - currently available only at nightly
-            (base.as_ptr() as usize - self.ptr.as_ptr() as usize) / mem::size_of::<T>() - 1
+            offset_from(base.as_ptr(), self.ptr.as_ptr())
         }
     }
     #[cfg_attr(feature = "inline-more", inline)]
@@ -311,7 +308,7 @@ impl<T> Bucket<T> {
             // Just return an arbitrary ZST pointer which is properly aligned
             mem::align_of::<T>() as *mut T
         } else {
-            self.ptr.as_ptr()
+            self.ptr.as_ptr().sub(1)
         }
     }
     #[cfg_attr(feature = "inline-more", inline)]
