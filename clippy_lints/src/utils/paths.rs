@@ -131,6 +131,7 @@ pub const TRANSMUTE: [&str; 4] = ["core", "intrinsics", "", "transmute"];
 pub const TRY_FROM: [&str; 4] = ["core", "convert", "TryFrom", "try_from"];
 pub const TRY_FROM_ERROR: [&str; 4] = ["std", "ops", "Try", "from_error"];
 pub const TRY_INTO_RESULT: [&str; 4] = ["std", "ops", "Try", "into_result"];
+pub const TRY_INTO_TRAIT: [&str; 3] = ["core", "convert", "TryInto"];
 pub const VEC: [&str; 3] = ["alloc", "vec", "Vec"];
 pub const VEC_AS_MUT_SLICE: [&str; 4] = ["alloc", "vec", "Vec", "as_mut_slice"];
 pub const VEC_AS_SLICE: [&str; 4] = ["alloc", "vec", "Vec", "as_slice"];

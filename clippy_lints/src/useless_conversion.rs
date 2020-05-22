@@ -10,8 +10,8 @@ use rustc_middle::ty;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for `Into`, `From`, `TryFrom`,`IntoIter` calls that useless converts
-    /// to the same type as caller.
+    /// **What it does:** Checks for `Into`, `TryInto`, `From`, `TryFrom`,`IntoIter` calls
+    /// that useless converts to the same type as caller.
     ///
     /// **Why is this bad?** Redundant code.
     ///
@@ -29,7 +29,7 @@ declare_clippy_lint! {
     /// ```
     pub USELESS_CONVERSION,
     complexity,
-    "calls to `Into`, `From`, `TryFrom`, `IntoIter` that performs useless conversions to the same type"
+    "calls to `Into`, `TryInto`, `From`, `TryFrom`, `IntoIter` that performs useless conversions to the same type"
 }
 
 #[derive(Default)]
@@ -39,6 +39,7 @@ pub struct UselessConversion {
 
 impl_lint_pass!(UselessConversion => [USELESS_CONVERSION]);
 
+#[allow(clippy::too_many_lines)]
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UselessConversion {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr<'_>) {
         if e.span.from_expansion() {
@@ -66,7 +67,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UselessConversion {
                     let b = cx.tables.expr_ty(&args[0]);
                     if same_tys(cx, a, b) {
                         let sugg = snippet_with_macro_callsite(cx, args[0].span, "<expr>").to_string();
-
                         span_lint_and_sugg(
                             cx,
                             USELESS_CONVERSION,
@@ -94,6 +94,27 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UselessConversion {
                         );
                     }
                 }
+                if match_trait_method(cx, e, &paths::TRY_INTO_TRAIT) && &*name.ident.as_str() == "try_into" {
+                    if_chain! {
+                        let a = cx.tables.expr_ty(e);
+                        let b = cx.tables.expr_ty(&args[0]);
+                        if is_type_diagnostic_item(cx, a, sym!(result_type));
+                        if let ty::Adt(_, substs) = a.kind;
+                        if let Some(a_type) = substs.types().next();
+                        if same_tys(cx, a_type, b);
+
+                        then {
+                            span_lint_and_help(
+                                cx,
+                                USELESS_CONVERSION,
+                                e.span,
+                                "Useless conversion to the same type",
+                                None,
+                                "consider removing `.try_into()`",
+                            );
+                        }
+                    }
+                }
             },
 
             ExprKind::Call(ref path, ref args) => {
@@ -109,7 +130,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UselessConversion {
                             if match_def_path(cx, def_id, &paths::TRY_FROM);
                             if is_type_diagnostic_item(cx, a, sym!(result_type));
                             if let ty::Adt(_, substs) = a.kind;
-                            if let Some(a_type) = substs.types().nth(0);
+                            if let Some(a_type) = substs.types().next();
                             if same_tys(cx, a_type, b);
 
                             then {
@@ -125,8 +146,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UselessConversion {
                             }
                         }
 
-                        if match_def_path(cx, def_id, &paths::FROM_FROM) {
-                            if same_tys(cx, a, b) {
+                        if_chain! {
+                            if match_def_path(cx, def_id, &paths::FROM_FROM);
+                            if same_tys(cx, a, b);
+
+                            then {
                                 let sugg = snippet(cx, args[0].span.source_callsite(), "<expr>").into_owned();
                                 let sugg_msg =
                                     format!("consider removing `{}()`", snippet(cx, path.span, "From::from"));
