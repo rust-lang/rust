@@ -1,5 +1,6 @@
 use crate::{AssistContext, AssistId, Assists};
-use ra_syntax::{ast, ast::{TypeParamsOwner}, AstNode, SyntaxKind};
+use ra_syntax::{ast, ast::TypeParamsOwner, AstNode, SyntaxKind};
+use std::collections::HashSet;
 
 /// Assist: change_lifetime_anon_to_named
 ///
@@ -24,7 +25,7 @@ use ra_syntax::{ast, ast::{TypeParamsOwner}, AstNode, SyntaxKind};
 ///     }
 /// }
 /// ```
-// TODO : How can we handle renaming any one of multiple anonymous lifetimes?
+// FIXME: How can we handle renaming any one of multiple anonymous lifetimes?
 pub(crate) fn change_lifetime_anon_to_named(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let lifetime_token = ctx.find_token_at_offset(SyntaxKind::LIFETIME)?;
     let lifetime_arg = ast::LifetimeArg::cast(lifetime_token.parent())?;
@@ -43,6 +44,22 @@ pub(crate) fn change_lifetime_anon_to_named(acc: &mut Assists, ctx: &AssistConte
             if impl_kw.kind() != SyntaxKind::IMPL_KW {
                 return None;
             }
+            let new_lifetime_param = match impl_def.type_param_list() {
+                Some(type_params) => {
+                    let used_lifetime_params: HashSet<_> = type_params
+                        .lifetime_params()
+                        .map(|p| {
+                            let mut param_name = p.syntax().text().to_string();
+                            param_name.remove(0);
+                            param_name
+                        })
+                        .collect();
+                    "abcdefghijklmnopqrstuvwxyz"
+                        .chars()
+                        .find(|c| !used_lifetime_params.contains(&c.to_string()))?
+                }
+                None => 'a',
+            };
             acc.add(
                 AssistId("change_lifetime_anon_to_named"),
                 "Give anonymous lifetime a name",
@@ -52,17 +69,20 @@ pub(crate) fn change_lifetime_anon_to_named(acc: &mut Assists, ctx: &AssistConte
                         Some(type_params) => {
                             builder.insert(
                                 (u32::from(type_params.syntax().text_range().end()) - 1).into(),
-                                ", 'a",
+                                format!(", '{}", new_lifetime_param),
                             );
-                        },
+                        }
                         None => {
                             builder.insert(
                                 impl_kw.text_range().end(),
-                                "<'a>",
+                                format!("<'{}>", new_lifetime_param),
                             );
-                        },
+                        }
                     }
-                    builder.replace(lifetime_arg.syntax().text_range(), "'a");
+                    builder.replace(
+                        lifetime_arg.syntax().text_range(),
+                        format!("'{}", new_lifetime_param),
+                    );
                 },
             )
         }
@@ -118,6 +138,15 @@ mod tests {
             change_lifetime_anon_to_named,
             r#"impl<T> Cursor<T, '_<|>>"#,
             r#"impl<T, 'a> Cursor<T, 'a>"#,
+        );
+    }
+
+    #[test]
+    fn test_with_existing_lifetime_name_conflict() {
+        check_assist(
+            change_lifetime_anon_to_named,
+            r#"impl<'a, 'b> Cursor<'a, 'b, '_<|>>"#,
+            r#"impl<'a, 'b, 'c> Cursor<'a, 'b, 'c>"#,
         );
     }
 }
