@@ -2,7 +2,7 @@
 
 use algo::find_covering_element;
 use hir::Semantics;
-use ra_db::{FileId, FileRange, FilePosition};
+use ra_db::{FileId, FileRange};
 use ra_fmt::{leading_indent, reindent};
 use ra_ide_db::{
     source_change::{SourceChange, SourceFileEdit},
@@ -173,16 +173,20 @@ impl Assists {
         Some(())
     }
 
-    fn add_impl_multiple_files(&mut self, label: Assist, f: impl FnOnce(&mut AssistDirector)) -> Option<()> {
+    fn add_impl_multiple_files(
+        &mut self,
+        label: Assist,
+        f: impl FnOnce(&mut AssistDirector),
+    ) -> Option<()> {
         let change_label = label.label.clone();
         if !self.resolve {
-            return None
+            return None;
         }
         let mut director = AssistDirector::new(change_label.clone());
         f(&mut director);
         let changes = director.finish();
-        let file_edits: Vec<SourceFileEdit> = changes.into_iter()
-            .map(|mut change| change.source_file_edits.pop().unwrap()).collect();
+        let file_edits: Vec<SourceFileEdit> =
+            changes.into_iter().map(|mut change| change.source_file_edits.pop().unwrap()).collect();
 
         let source_change = SourceChange {
             source_file_edits: file_edits,
@@ -291,16 +295,12 @@ impl AssistBuilder {
 pub(crate) struct AssistDirector {
     source_changes: Vec<SourceChange>,
     builders: FxHashMap<FileId, AssistBuilder>,
-    change_label: String 
-} 
+    change_label: String,
+}
 
 impl AssistDirector {
     fn new(change_label: String) -> AssistDirector {
-        AssistDirector {
-            source_changes: vec![],
-            builders: FxHashMap::default(),
-            change_label
-        }
+        AssistDirector { source_changes: vec![], builders: FxHashMap::default(), change_label }
     }
 
     pub(crate) fn perform(&mut self, file_id: FileId, f: impl FnOnce(&mut AssistBuilder)) {
@@ -309,8 +309,10 @@ impl AssistDirector {
     }
 
     fn finish(mut self) -> Vec<SourceChange> {
-        for (file_id, builder) in self.builders.into_iter().collect::<Vec<(FileId, AssistBuilder)>>() {
-            self.source_changes.push(builder.finish());    
+        for (file_id, builder) in
+            self.builders.into_iter().collect::<Vec<(FileId, AssistBuilder)>>()
+        {
+            self.source_changes.push(builder.finish());
         }
         self.source_changes
     }

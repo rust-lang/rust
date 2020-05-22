@@ -16,9 +16,9 @@ use crate::{
 };
 use ast::{ArgListOwner, VisibilityOwner};
 use hir::{EnumVariant, Module, ModuleDef};
+use ra_db::FileId;
 use ra_fmt::leading_indent;
 use rustc_hash::FxHashSet;
-use ra_db::FileId;
 
 // Assist extract_struct_from_enum
 //
@@ -229,7 +229,10 @@ fn list_with_visibility(list: &str) -> String {
 #[cfg(test)]
 mod tests {
 
-    use crate::{utils::FamousDefs, tests::{check_assist, check_assist_not_applicable}};
+    use crate::{
+        tests::{check_assist, check_assist_not_applicable},
+        utils::FamousDefs,
+    };
 
     use super::*;
 
