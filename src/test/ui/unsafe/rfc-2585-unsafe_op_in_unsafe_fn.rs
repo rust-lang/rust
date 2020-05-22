@@ -1,18 +1,10 @@
 #![feature(unsafe_block_in_unsafe_fn)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(unused_unsafe)]
-#![deny(safe_packed_borrows)]
 
 unsafe fn unsf() {}
 const PTR: *const () = std::ptr::null();
 static mut VOID: () = ();
-
-#[repr(packed)]
-pub struct Packed {
-    data: &'static u32,
-}
-
-const PACKED: Packed = Packed { data: &0 };
 
 unsafe fn deny_level() {
     unsf();
@@ -21,9 +13,6 @@ unsafe fn deny_level() {
     //~^ ERROR dereference of raw pointer is unsafe and requires unsafe block
     VOID = ();
     //~^ ERROR use of mutable static is unsafe and requires unsafe block
-    &PACKED.data;
-    //~^ ERROR borrow of packed field is unsafe and requires unsafe block
-    //~| WARNING this was previously accepted by the compiler but is being phased out
 }
 
 // Check that `unsafe_op_in_unsafe_fn` works starting from the `warn` level.
@@ -36,9 +25,6 @@ unsafe fn warning_level() {
     //~^ ERROR dereference of raw pointer is unsafe and requires unsafe block
     VOID = ();
     //~^ ERROR use of mutable static is unsafe and requires unsafe block
-    &PACKED.data;
-    //~^ ERROR borrow of packed field is unsafe and requires unsafe block
-    //~| WARNING this was previously accepted by the compiler but is being phased out
 }
 
 unsafe fn explicit_block() {
@@ -47,7 +33,6 @@ unsafe fn explicit_block() {
         unsf();
         *PTR;
         VOID = ();
-        &PACKED.data;
     }
 }
 
@@ -56,25 +41,12 @@ unsafe fn two_explicit_blocks() {
     //~^ ERROR unnecessary `unsafe` block
 }
 
-#[warn(safe_packed_borrows)]
-unsafe fn warn_packed_borrows() {
-    &PACKED.data;
-    //~^ WARNING borrow of packed field is unsafe and requires unsafe block
-    //~| WARNING this was previously accepted by the compiler but is being phased out
-}
-
-#[allow(safe_packed_borrows)]
-unsafe fn allow_packed_borrows() {
-    &PACKED.data; // `safe_packed_borrows` is allowed, no error
-}
-
 #[allow(unsafe_op_in_unsafe_fn)]
 unsafe fn allow_level() {
     // lint allowed -> no error
     unsf();
     *PTR;
     VOID = ();
-    &PACKED.data;
 
     unsafe { unsf() }
     //~^ ERROR unnecessary `unsafe` block
@@ -87,7 +59,6 @@ unsafe fn nested_allow_level() {
         unsf();
         *PTR;
         VOID = ();
-        &PACKED.data;
 
         unsafe { unsf() }
         //~^ ERROR unnecessary `unsafe` block
