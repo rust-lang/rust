@@ -232,7 +232,7 @@ fn calculate_layout<T>(buckets: usize) -> Option<(Layout, usize)> {
     let ctrl = unsafe { Layout::from_size_align_unchecked(buckets + Group::WIDTH, Group::WIDTH) };
 
     // There must be no padding between two tables.
-    debug_assert_eq!(padded_data.padding_needed_for(Group::WIDTH), 0);
+    debug_assert_eq!(data.padding_needed_for(Group::WIDTH), 0);
 
     data.extend(ctrl).ok()
 }
