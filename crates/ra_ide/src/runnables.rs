@@ -190,17 +190,8 @@ fn runnable_mod(
 
 fn get_features_needed(attrs: Attrs) -> Option<Vec<SmolStr>> {
     let cfg_expr = attrs.by_key("cfg").tt_values().map(|subtree| ra_cfg::parse_cfg(subtree));
-    let features_needed = cfg_expr.fold(vec![], |mut acc, cfg| {
-        if let Some(features_needed) = cfg.minimal_features_needed() {
-            acc.extend(features_needed);
-        }
-        acc
-    });
-    if features_needed.is_empty() {
-        None
-    } else {
-        Some(features_needed)
-    }
+    let features_needed = cfg_expr.map(|cfg| cfg.minimal_features_needed()).flatten().collect();
+    Some(features_needed).filter(|it: &Vec<SmolStr>| !it.is_empty())
 }
 
 #[cfg(test)]

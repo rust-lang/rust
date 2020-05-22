@@ -35,14 +35,11 @@ impl CfgExpr {
     }
 
     /// Return minimal features needed
-    pub fn minimal_features_needed(&self) -> Option<Vec<SmolStr>> {
+    pub fn minimal_features_needed(&self) -> Vec<SmolStr> {
         let mut features = vec![];
         self.collect_minimal_features_needed(&mut features);
-        if features.is_empty() {
-            None
-        } else {
-            Some(features)
-        }
+
+        features
     }
 
     fn collect_minimal_features_needed(&self, features: &mut Vec<SmolStr>) {
@@ -169,14 +166,14 @@ mod tests {
         let (subtree, _) = get_token_tree_generated(r#"#![cfg(feature = "baz")]"#);
         let cfg_expr = parse_cfg(&subtree);
 
-        assert_eq!(cfg_expr.minimal_features_needed().unwrap(), vec![SmolStr::new("baz")]);
+        assert_eq!(cfg_expr.minimal_features_needed(), vec![SmolStr::new("baz")]);
 
         let (subtree, _) =
             get_token_tree_generated(r#"#![cfg(all(feature = "baz", feature = "foo"))]"#);
         let cfg_expr = parse_cfg(&subtree);
 
         assert_eq!(
-            cfg_expr.minimal_features_needed().unwrap(),
+            cfg_expr.minimal_features_needed(),
             vec![SmolStr::new("baz"), SmolStr::new("foo")]
         );
 
@@ -184,11 +181,11 @@ mod tests {
             get_token_tree_generated(r#"#![cfg(any(feature = "baz", feature = "foo", unix))]"#);
         let cfg_expr = parse_cfg(&subtree);
 
-        assert_eq!(cfg_expr.minimal_features_needed().unwrap(), vec![SmolStr::new("baz")]);
+        assert_eq!(cfg_expr.minimal_features_needed(), vec![SmolStr::new("baz")]);
 
         let (subtree, _) = get_token_tree_generated(r#"#![cfg(foo)]"#);
         let cfg_expr = parse_cfg(&subtree);
 
-        assert!(cfg_expr.minimal_features_needed().is_none());
+        assert!(cfg_expr.minimal_features_needed().is_empty());
     }
 }
