@@ -39,7 +39,7 @@ fi
 
 # Install and setup new toolchain.
 rustup toolchain uninstall miri
-rustup-toolchain-install-master -n miri -c rust-src -c rustc-dev -- "$NEW_COMMIT"
+rustup-toolchain-install-master -n miri -c rust-src -c rustc-dev -c llvm-tools -- "$NEW_COMMIT"
 rustup override set miri
 
 # Cleanup.
