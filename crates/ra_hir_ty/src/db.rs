@@ -89,7 +89,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     fn trait_datum(&self, krate: CrateId, trait_id: chalk::TraitId) -> Arc<chalk::TraitDatum>;
 
     #[salsa::invoke(chalk::struct_datum_query)]
-    fn struct_datum(&self, krate: CrateId, struct_id: chalk::StructId) -> Arc<chalk::StructDatum>;
+    fn struct_datum(&self, krate: CrateId, struct_id: chalk::AdtId) -> Arc<chalk::StructDatum>;
 
     #[salsa::invoke(crate::traits::chalk::impl_datum_query)]
     fn impl_datum(&self, krate: CrateId, impl_id: chalk::ImplId) -> Arc<chalk::ImplDatum>;
