@@ -178,11 +178,10 @@ impl Assists {
         label: Assist,
         f: impl FnOnce(&mut AssistDirector),
     ) -> Option<()> {
-        let change_label = label.label.clone();
         if !self.resolve {
             return None;
         }
-        let mut director = AssistDirector::new(change_label.clone());
+        let mut director = AssistDirector::new();
         f(&mut director);
         let changes = director.finish();
         let file_edits: Vec<SourceFileEdit> =
@@ -295,12 +294,11 @@ impl AssistBuilder {
 pub(crate) struct AssistDirector {
     source_changes: Vec<SourceChange>,
     builders: FxHashMap<FileId, AssistBuilder>,
-    change_label: String,
 }
 
 impl AssistDirector {
-    fn new(change_label: String) -> AssistDirector {
-        AssistDirector { source_changes: vec![], builders: FxHashMap::default(), change_label }
+    fn new() -> AssistDirector {
+        AssistDirector { source_changes: vec![], builders: FxHashMap::default() }
     }
 
     pub(crate) fn perform(&mut self, file_id: FileId, f: impl FnOnce(&mut AssistBuilder)) {
@@ -309,7 +307,7 @@ impl AssistDirector {
     }
 
     fn finish(mut self) -> Vec<SourceChange> {
-        for (file_id, builder) in
+        for (_, builder) in
             self.builders.into_iter().collect::<Vec<(FileId, AssistBuilder)>>()
         {
             self.source_changes.push(builder.finish());
