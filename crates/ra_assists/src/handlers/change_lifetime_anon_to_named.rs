@@ -2,29 +2,29 @@ use crate::{AssistContext, AssistId, Assists};
 use ra_syntax::{ast, ast::TypeParamsOwner, AstNode, SyntaxKind};
 use std::collections::HashSet;
 
-/// Assist: change_lifetime_anon_to_named
-///
-/// Change an anonymous lifetime to a named lifetime.
-///
-/// ```
-/// impl Cursor<'_<|>> {
-///     fn node(self) -> &SyntaxNode {
-///         match self {
-///             Cursor::Replace(node) | Cursor::Before(node) => node,
-///         }
-///     }
-/// }
-/// ```
-/// ->
-/// ```
-/// impl<'a> Cursor<'a> {
-///     fn node(self) -> &SyntaxNode {
-///         match self {
-///             Cursor::Replace(node) | Cursor::Before(node) => node,
-///         }
-///     }
-/// }
-/// ```
+// Assist: change_lifetime_anon_to_named
+//
+// Change an anonymous lifetime to a named lifetime.
+//
+// ```
+// impl Cursor<'_<|>> {
+//     fn node(self) -> &SyntaxNode {
+//         match self {
+//             Cursor::Replace(node) | Cursor::Before(node) => node,
+//         }
+//     }
+// }
+// ```
+// ->
+// ```
+// impl<'a> Cursor<'a> {
+//     fn node(self) -> &SyntaxNode {
+//         match self {
+//             Cursor::Replace(node) | Cursor::Before(node) => node,
+//         }
+//     }
+// }
+// ```
 // FIXME: How can we handle renaming any one of multiple anonymous lifetimes?
 pub(crate) fn change_lifetime_anon_to_named(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let lifetime_token = ctx.find_token_at_offset(SyntaxKind::LIFETIME)?;
