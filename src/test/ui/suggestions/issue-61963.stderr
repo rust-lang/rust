@@ -1,5 +1,5 @@
 error: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/issue-61963.rs:20:14
+  --> $DIR/issue-61963.rs:21:14
    |
 LL |     bar: Box<Bar>,
    |              ^^^ help: use `dyn`: `dyn Bar`
@@ -10,5 +10,11 @@ note: the lint level is defined here
 LL | #![deny(bare_trait_objects)]
    |         ^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/issue-61963.rs:18:1
+   |
+LL | pub struct Foo {
+   | ^^^ help: use `dyn`: `dyn pub`
+
+error: aborting due to 2 previous errors
 

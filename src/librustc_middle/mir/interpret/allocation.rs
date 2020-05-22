@@ -11,6 +11,7 @@ use rustc_target::abi::{Align, HasDataLayout, Size};
 
 use super::{
     read_target_uint, write_target_uint, AllocId, InterpResult, Pointer, Scalar, ScalarMaybeUninit,
+    UninitBytesAccess,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
@@ -545,17 +546,23 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
 impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
     /// Checks whether the given range  is entirely defined.
     ///
-    /// Returns `Ok(())` if it's defined. Otherwise returns the index of the byte
-    /// at which the first undefined access begins.
-    fn is_defined(&self, ptr: Pointer<Tag>, size: Size) -> Result<(), Size> {
+    /// Returns `Ok(())` if it's defined. Otherwise returns the range of byte
+    /// indexes of the first contiguous undefined access.
+    fn is_defined(&self, ptr: Pointer<Tag>, size: Size) -> Result<(), Range<Size>> {
         self.init_mask.is_range_initialized(ptr.offset, ptr.offset + size) // `Size` addition
     }
 
-    /// Checks that a range of bytes is defined. If not, returns the `ReadUndefBytes`
-    /// error which will report the first byte which is undefined.
+    /// Checks that a range of bytes is defined. If not, returns the `InvalidUndefBytes`
+    /// error which will report the first range of bytes which is undefined.
     fn check_defined(&self, ptr: Pointer<Tag>, size: Size) -> InterpResult<'tcx> {
-        self.is_defined(ptr, size)
-            .or_else(|idx| throw_ub!(InvalidUninitBytes(Some(Pointer::new(ptr.alloc_id, idx)))))
+        self.is_defined(ptr, size).or_else(|idx_range| {
+            throw_ub!(InvalidUninitBytes(Some(Box::new(UninitBytesAccess {
+                access_ptr: ptr.erase_tag(),
+                access_size: size,
+                uninit_ptr: Pointer::new(ptr.alloc_id, idx_range.start),
+                uninit_size: idx_range.end - idx_range.start, // `Size` subtraction
+            }))))
+        })
     }
 
     pub fn mark_definedness(&mut self, ptr: Pointer<Tag>, size: Size, new_state: bool) {
@@ -758,19 +765,25 @@ impl InitMask {
 
     /// Checks whether the range `start..end` (end-exclusive) is entirely initialized.
     ///
-    /// Returns `Ok(())` if it's initialized. Otherwise returns the index of the byte
-    /// at which the first uninitialized access begins.
+    /// Returns `Ok(())` if it's initialized. Otherwise returns a range of byte
+    /// indexes for the first contiguous span of the uninitialized access.
     #[inline]
-    pub fn is_range_initialized(&self, start: Size, end: Size) -> Result<(), Size> {
+    pub fn is_range_initialized(&self, start: Size, end: Size) -> Result<(), Range<Size>> {
         if end > self.len {
-            return Err(self.len);
+            return Err(self.len..end);
         }
 
         // FIXME(oli-obk): optimize this for allocations larger than a block.
         let idx = (start.bytes()..end.bytes()).map(Size::from_bytes).find(|&i| !self.get(i));
 
         match idx {
-            Some(idx) => Err(idx),
+            Some(idx) => {
+                let undef_end = (idx.bytes()..end.bytes())
+                    .map(Size::from_bytes)
+                    .find(|&i| self.get(i))
+                    .unwrap_or(end);
+                Err(idx..undef_end)
+            }
             None => Ok(()),
         }
     }
