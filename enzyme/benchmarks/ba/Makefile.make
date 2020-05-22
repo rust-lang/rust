@@ -10,7 +10,7 @@ clean:
 	clang++ $(BENCH) $^ -O2 -fno-exceptions -fno-vectorize -fno-slp-vectorize -ffast-math -fno-unroll-loops -Xclang -new-struct-path-tbaa -o $@ -S -emit-llvm
 
 %-raw.ll: %-unopt.ll
-	opt $^ $(LOAD) -enzyme -mem2reg -sroa -early-cse -adce -instcombine -o $@ -S
+	opt $^ $(LOAD) -enzyme -o $@ -S
 
 %-opt.ll: %-raw.ll
 	opt $^ -O2 -o $@ -S

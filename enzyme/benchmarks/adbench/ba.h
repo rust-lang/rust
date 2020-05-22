@@ -170,6 +170,7 @@ void read_ba_instance(const string& fn,
 {
     FILE* fid = fopen(fn.c_str(), "r");
     if (!fid) {
+        printf("could not open file: %s\n", fn.c_str());
         exit(1);
     }
     std::cout << "read_ba_instance: opened " << fn << std::endl;
@@ -241,11 +242,6 @@ void calculate_reproj_error_jacobian_part(struct BAInput &input, struct BAOutput
 
         for(auto& a : reproj_err_d_row) a = 0.0;
 
-        if (i == 0) {
-            for(int j=0; j<3; j++)
-                printf("pre reproj_err_d_row[%d]=%f\n", j, reproj_err_d_row[j]);
-        }
-
         deriv_reproj(
             &input.cams[camIdx * BA_NCAMPARAMS],
             cam_gradient_part,
@@ -257,12 +253,6 @@ void calculate_reproj_error_jacobian_part(struct BAInput &input, struct BAOutput
             err,
             errb
         );
-        if (i == 0) {
-            for(int j=0; j<3; j++)
-                printf("reproj_err_d_row[%d]=%f\n", j, reproj_err_d_row[j]);
-            for(int j=0; j<1; j++)
-                printf("weight_gradient_part[%d]=%f\n", j, weight_gradient_part[j]);
-        }
 
         // fill first row elements
         for (int j = 0; j < BA_NCAMPARAMS + 3 + 1; j++)
@@ -315,8 +305,6 @@ void calculate_weight_error_jacobian_part(struct BAInput &input, struct BAOutput
                                 // (equals to 1.0 for derivative calculation)
 
         deriv_weight(&input.w[j], &wb, &err, &errb);
-        if (j < 5)
-        printf("wb[%d]=%f\n", j, wb);
         result.J.insert_w_err_block(j, wb);
     }
 }
@@ -335,11 +323,18 @@ void calculate_jacobian(struct BAInput &input, struct BAOutput &result)
 int main(const int argc, const char* argv[]) {
     std::string path = "/mnt/Data/git/Enzyme/apps/ADBench/data/ba/ba1_n49_m7776_p31843.txt";
 
+    std::vector<std::string> paths = {
+        "ba10_n1197_m126327_p563734.txt",  "ba14_n356_m226730_p1255268.txt",   "ba18_n1936_m649673_p5213733.txt",    "ba2_n21_m11315_p36455.txt",    "ba6_n539_m65220_p277273.txt",  "test.txt",
+        "ba11_n1723_m156502_p678718.txt",  "ba15_n1102_m780462_p4052340.txt",  "ba19_n4585_m1324582_p9125125.txt",   "ba3_n161_m48126_p182072.txt",  "ba7_n93_m61203_p287451.txt",
+        "ba12_n253_m163691_p899155.txt",   "ba16_n1544_m942409_p4750193.txt",  "ba1_n49_m7776_p31843.txt",           "ba4_n372_m47423_p204472.txt",  "ba8_n88_m64298_p383937.txt",
+        "ba13_n245_m198739_p1091386.txt",  "ba17_n1778_m993923_p5001946.txt",  "ba20_n13682_m4456117_p2987644.txt",  "ba5_n257_m65132_p225911.txt",  "ba9_n810_m88814_p393775.txt",
+    };
+    for (auto path : paths) {
 
     {
 
     struct BAInput input;
-    read_ba_instance(path, input.n, input.m, input.p, input.cams, input.X, input.w, input.obs, input.feats);
+    read_ba_instance("data/" + path, input.n, input.m, input.p, input.cams, input.X, input.w, input.obs, input.feats);
 
     struct BAOutput result = {
         std::vector<double>(2 * input.p),
@@ -373,7 +368,7 @@ int main(const int argc, const char* argv[]) {
       gettimeofday(&start, NULL);
       calculate_jacobian<compute_reproj_error_b, compute_zach_weight_error_b>(input, result);
       gettimeofday(&end, NULL);
-      printf("Tapenade combined %0.6f\n", tdiff(&start, &end));
+      printf("** Tapenade combined %0.6f\n", tdiff(&start, &end));
       for(unsigned i=0; i<5; i++) {
         printf("%f ", result.J.vals[i]);
       }
@@ -385,7 +380,7 @@ int main(const int argc, const char* argv[]) {
     {
 
     struct BAInput input;
-    read_ba_instance(path, input.n, input.m, input.p, input.cams, input.X, input.w, input.obs, input.feats);
+    read_ba_instance("data/" + path, input.n, input.m, input.p, input.cams, input.X, input.w, input.obs, input.feats);
 
     struct BAOutput result = {
         std::vector<double>(2 * input.p),
@@ -419,11 +414,13 @@ int main(const int argc, const char* argv[]) {
       gettimeofday(&start, NULL);
       calculate_jacobian<dcompute_reproj_error, dcompute_zach_weight_error>(input, result);
       gettimeofday(&end, NULL);
-      printf("enzyme combined %0.6f\n", tdiff(&start, &end));
+      printf("++ enzyme combined %0.6f\n", tdiff(&start, &end));
       for(unsigned i=0; i<5; i++) {
         printf("%f ", result.J.vals[i]);
       }
       printf("\n");
+    }
+
     }
 
     }

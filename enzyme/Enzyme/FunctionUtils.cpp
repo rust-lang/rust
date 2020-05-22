@@ -407,71 +407,9 @@ if (enzyme_preopt) {
         std::vector<std::pair<Value*, User*>> todo;
 		for(auto a : ai->users()) todo.push_back(std::make_pair((Value*)ai, a));
         std::set<User*> seen;
-        bool needToConvert = ai->getParent() != &NewF->getEntryBlock();
-        if (!needToConvert && !topLevel)
-        while(todo.size() > 0) {
-            auto used = todo.back();
-            User* use = used.second;
-            todo.pop_back();
-
-
-            if (seen.find(use) != seen.end()) continue;
-            seen.insert(use);
-
-			//llvm::errs() << " considering use: " << *use << " of ai: " <<*ai << "\n";
-
-            if (isa<LoadInst>(use) || isa<StoreInst>(use)) {
-                continue;
-            }
-
-            if (auto gep = dyn_cast<GetElementPtrInst>(use)) {
-                for(auto a : gep->users()) { todo.push_back(std::make_pair((Value*)use, a)); }
-                continue;
-            }
-            if (auto gep = dyn_cast<CastInst>(use)) {
-                for(auto a : gep->users()) { todo.push_back(std::make_pair((Value*)use, a)); }
-                continue;
-            }
-            if (auto gep = dyn_cast<PHINode>(use)) {
-                for(auto a : gep->users()) { todo.push_back(std::make_pair((Value*)use, a)); }
-                continue;
-            }
-            if (auto sel = dyn_cast<SelectInst>(use)) {
-                for(auto a : sel->users()) { todo.push_back(std::make_pair((Value*)use, a)); }
-                continue;
-            }
-
-            //Be conservative and assume comparisons need the alloca for reverse pass (likely unnecessary but shrug)
-            //  If both comparison operators originate from the same alloca, then this isn't necessary (future optimization)
-            if (isa<CmpInst>(use)) {
-                needToConvert = true;
-                goto end;
-            }
-
-            if (auto ci = dyn_cast<CallInst>(use)) {
-                for(unsigned i = 0; i<ci->getNumArgOperands(); i++) {
-                    if (ci->getArgOperand(i) == used.first) {
-                        if (ci->paramHasAttr(i, Attribute::NoCapture)) continue;
-                        else {
-                            needToConvert = true;
-                            goto end;
-                        }
-                    }
-                }
-                continue;
-            }
-			llvm::errs() << " newF: " << *NewF << "\n";
-			llvm::errs() << " use: " << *use << " ai: " << *ai << "\n";
-            llvm_unreachable("unknown inst use of alloca");
-        }
-
-        end:;
-
-        if (!needToConvert) {
-
-        }
-		//llvm::errs() << "ai: " << *ai << " needToConvert: " << needToConvert << "\n";
-        if (needToConvert) {
+        bool usableEverywhere = ai->getParent() == &NewF->getEntryBlock();
+        // TODO use is_value_needed_in_reverse
+        if (!usableEverywhere || !topLevel) {
             toconvert.push_back(ai);
 		}
     }
