@@ -30,6 +30,7 @@ impl Copy for i64 {}
 impl Copy for f64 {}
 impl Copy for ptr {}
 
+// NVPTX does not support static variables
 #[no_mangle]
 fn extern_func() {}
 
