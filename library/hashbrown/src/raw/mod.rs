@@ -208,8 +208,9 @@ fn bucket_mask_to_capacity(bucket_mask: usize) -> usize {
     }
 }
 
-// Returns a Layout which describes the allocation required for a hash table,
-// and the offset of the buckets in the allocation.
+/// Returns a Layout which describes the allocation required for a hash table,
+/// and the offset of the control bytes in the allocation.
+/// (the offset is also one past last element of buckets)
 ///
 /// Returns `None` if an overflow occurs.
 #[cfg_attr(feature = "inline-more", inline)]
@@ -230,24 +231,28 @@ fn calculate_layout<T>(buckets: usize) -> Option<(Layout, usize)> {
     // Group::WIDTH is a small number.
     let ctrl = unsafe { Layout::from_size_align_unchecked(buckets + Group::WIDTH, Group::WIDTH) };
 
-    ctrl.extend(data).ok()
+    data.extend(ctrl).ok()
 }
 
-// Returns a Layout which describes the allocation required for a hash table,
-// and the offset of the buckets in the allocation.
+/// Returns a Layout which describes the allocation required for a hash table,
+/// and the offset of the control bytes in the allocation.
+/// (the offset is also one past last element of buckets)
+///
+/// Returns `None` if an overflow occurs.
 #[cfg_attr(feature = "inline-more", inline)]
 #[cfg(not(feature = "nightly"))]
 fn calculate_layout<T>(buckets: usize) -> Option<(Layout, usize)> {
     debug_assert!(buckets.is_power_of_two());
 
     // Manual layout calculation since Layout methods are not yet stable.
-    let data_align = usize::max(mem::align_of::<T>(), Group::WIDTH);
-    let data_offset = (buckets + Group::WIDTH).checked_add(data_align - 1)? & !(data_align - 1);
-    let len = data_offset.checked_add(mem::size_of::<T>().checked_mul(buckets)?)?;
+    let ctrl_align = usize::max(mem::align_of::<T>(), Group::WIDTH);
+    let ctrl_offset = mem::size_of::<T>().checked_mul(buckets)?
+                      .checked_add(ctrl_align - 1)? & !(ctrl_align - 1);
+    let len = ctrl_offset.checked_add(buckets + Group::WIDTH)?;
 
     Some((
-        unsafe { Layout::from_size_align_unchecked(len, data_align) },
-        data_offset,
+        unsafe { Layout::from_size_align_unchecked(len, ctrl_align) },
+        ctrl_offset
     ))
 }
 
@@ -257,6 +262,9 @@ fn calculate_layout<T>(buckets: usize) -> Option<(Layout, usize)> {
 /// is a ZST, then we instead track the index of the element in the table so
 /// that `erase` works properly.
 pub struct Bucket<T> {
+    // Actually it is pointer to next element than element itself
+    // this is needed to maintain pointer arithmetic invariants
+    // keeping direct pointer to element introduces difficulty.
     // Using `NonNull` for variance and niche layout
     ptr: NonNull<T>,
 }
@@ -279,7 +287,7 @@ impl<T> Bucket<T> {
             // won't overflow because index must be less than length
             (index + 1) as *mut T
         } else {
-            base.as_ptr().add(index)
+            base.as_ptr().sub(index)
         };
         Self {
             ptr: NonNull::new_unchecked(ptr),
@@ -290,7 +298,7 @@ impl<T> Bucket<T> {
         if mem::size_of::<T>() == 0 {
             self.ptr.as_ptr() as usize - 1
         } else {
-            offset_from(self.ptr.as_ptr(), base.as_ptr())
+            offset_from(base.as_ptr(), self.ptr.as_ptr())
         }
     }
     #[cfg_attr(feature = "inline-more", inline)]
@@ -299,15 +307,15 @@ impl<T> Bucket<T> {
             // Just return an arbitrary ZST pointer which is properly aligned
             mem::align_of::<T>() as *mut T
         } else {
-            self.ptr.as_ptr()
+            self.ptr.as_ptr().sub(1)
         }
     }
     #[cfg_attr(feature = "inline-more", inline)]
-    unsafe fn add(&self, offset: usize) -> Self {
+    unsafe fn next_n(&self, offset: usize) -> Self {
         let ptr = if mem::size_of::<T>() == 0 {
             (self.ptr.as_ptr() as usize + offset) as *mut T
         } else {
-            self.ptr.as_ptr().add(offset)
+            self.ptr.as_ptr().sub(offset)
         };
         Self {
             ptr: NonNull::new_unchecked(ptr),
@@ -345,11 +353,9 @@ pub struct RawTable<T> {
     // number of buckets in the table.
     bucket_mask: usize,
 
-    // Pointer to the array of control bytes
+    // [Padding], T1, T2, ..., Tlast, C1, C2, ...
+    //                                ^ points here
     ctrl: NonNull<u8>,
-
-    // Pointer to the array of buckets
-    data: NonNull<T>,
 
     // Number of elements that can be inserted before we need to grow the table
     growth_left: usize,
@@ -370,7 +376,6 @@ impl<T> RawTable<T> {
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn new() -> Self {
         Self {
-            data: NonNull::dangling(),
             // Be careful to cast the entire slice to a raw pointer.
             ctrl: unsafe { NonNull::new_unchecked(Group::static_empty().as_ptr() as *mut u8) },
             bucket_mask: 0,
@@ -389,12 +394,11 @@ impl<T> RawTable<T> {
         fallability: Fallibility,
     ) -> Result<Self, CollectionAllocErr> {
         debug_assert!(buckets.is_power_of_two());
-        let (layout, data_offset) =
+        let (layout, ctrl_offset) =
             calculate_layout::<T>(buckets).ok_or_else(|| fallability.capacity_overflow())?;
-        let ctrl = NonNull::new(alloc(layout)).ok_or_else(|| fallability.alloc_err(layout))?;
-        let data = NonNull::new_unchecked(ctrl.as_ptr().add(data_offset) as *mut T);
+        let ptr = NonNull::new(alloc(layout)).ok_or_else(|| fallability.alloc_err(layout))?;
+        let ctrl = NonNull::new_unchecked(ptr.as_ptr().add(ctrl_offset));
         Ok(Self {
-            data,
             ctrl,
             bucket_mask: buckets - 1,
             items: 0,
@@ -433,15 +437,28 @@ impl<T> RawTable<T> {
     /// Deallocates the table without dropping any entries.
     #[cfg_attr(feature = "inline-more", inline)]
     unsafe fn free_buckets(&mut self) {
-        let (layout, _) =
+        let (layout, ctrl_offset) =
             calculate_layout::<T>(self.buckets()).unwrap_or_else(|| hint::unreachable_unchecked());
-        dealloc(self.ctrl.as_ptr(), layout);
+        dealloc(self.ctrl.as_ptr().sub(ctrl_offset), layout);
+    }
+
+    /// Returns pointer to one past last element of data table.
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub unsafe fn data_end(&self) -> NonNull<T> {
+        NonNull::new_unchecked(self.ctrl.as_ptr() as *mut T)
+    }
+
+    /// Returns pointer to start of data table.
+    #[cfg_attr(feature = "inline-more", inline)]
+    #[cfg(feature = "nightly")]
+    pub unsafe fn data_start(&self) -> *mut T {
+        self.data_end().as_ptr().wrapping_sub(self.buckets())
     }
 
     /// Returns the index of a bucket from a `Bucket`.
     #[cfg_attr(feature = "inline-more", inline)]
     pub unsafe fn bucket_index(&self, bucket: &Bucket<T>) -> usize {
-        bucket.to_base_index(self.data)
+        bucket.to_base_index(self.data_end())
     }
 
     /// Returns a pointer to a control byte.
@@ -456,7 +473,7 @@ impl<T> RawTable<T> {
     pub unsafe fn bucket(&self, index: usize) -> Bucket<T> {
         debug_assert_ne!(self.bucket_mask, 0);
         debug_assert!(index < self.buckets());
-        Bucket::from_base_index(self.data, index)
+        Bucket::from_base_index(self.data_end(), index)
     }
 
     /// Erases an element from the table without dropping it.
@@ -945,7 +962,7 @@ impl<T> RawTable<T> {
     /// struct, we have to make the `iter` method unsafe.
     #[cfg_attr(feature = "inline-more", inline)]
     pub unsafe fn iter(&self) -> RawIter<T> {
-        let data = Bucket::from_base_index(self.data, 0);
+        let data = Bucket::from_base_index(self.data_end(), 0);
         RawIter {
             iter: RawIterRange::new(self.ctrl.as_ptr(), data, self.buckets()),
             items: self.items,
@@ -973,9 +990,9 @@ impl<T> RawTable<T> {
         let alloc = if self.is_empty_singleton() {
             None
         } else {
-            let (layout, _) = calculate_layout::<T>(self.buckets())
+            let (layout, ctrl_offset) = calculate_layout::<T>(self.buckets())
                 .unwrap_or_else(|| unsafe { hint::unreachable_unchecked() });
-            Some((self.ctrl.cast(), layout))
+            Some((unsafe { NonNull::new_unchecked(self.ctrl.as_ptr().sub(ctrl_offset)) }, layout))
         };
         mem::forget(self);
         alloc
@@ -1060,9 +1077,8 @@ impl<T: Copy> RawTableClone for RawTable<T> {
             .ctrl(0)
             .copy_to_nonoverlapping(self.ctrl(0), self.num_ctrl_bytes());
         source
-            .data
-            .as_ptr()
-            .copy_to_nonoverlapping(self.data.as_ptr(), self.buckets());
+            .data_start()
+            .copy_to_nonoverlapping(self.data_start(), self.buckets());
 
         self.items = source.items;
         self.growth_left = source.growth_left;
@@ -1278,10 +1294,10 @@ impl<T> RawIterRange<T> {
 
                 let tail = Self::new(
                     self.next_ctrl.add(mid),
-                    self.data.add(Group::WIDTH).add(mid),
+                    self.data.next_n(Group::WIDTH).next_n(mid),
                     len - mid,
                 );
-                debug_assert_eq!(self.data.add(Group::WIDTH).add(mid).ptr, tail.data.ptr);
+                debug_assert_eq!(self.data.next_n(Group::WIDTH).next_n(mid).ptr, tail.data.ptr);
                 debug_assert_eq!(self.end, tail.end);
                 self.end = self.next_ctrl.add(mid);
                 debug_assert_eq!(self.end.add(Group::WIDTH), tail.next_ctrl);
@@ -1317,7 +1333,7 @@ impl<T> Iterator for RawIterRange<T> {
             loop {
                 if let Some(index) = self.current_group.lowest_set_bit() {
                     self.current_group = self.current_group.remove_lowest_bit();
-                    return Some(self.data.add(index));
+                    return Some(self.data.next_n(index));
                 }
 
                 if self.next_ctrl >= self.end {
@@ -1330,7 +1346,7 @@ impl<T> Iterator for RawIterRange<T> {
                 // EMPTY. On larger tables self.end is guaranteed to be aligned
                 // to the group size (since tables are power-of-two sized).
                 self.current_group = Group::load_aligned(self.next_ctrl).match_full();
-                self.data = self.data.add(Group::WIDTH);
+                self.data = self.data.next_n(Group::WIDTH);
                 self.next_ctrl = self.next_ctrl.add(Group::WIDTH);
             }
         }
