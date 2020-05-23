@@ -503,7 +503,7 @@ impl<'a> Builder<'a> {
             Subcommand::Check { ref paths } => (Kind::Check, &paths[..]),
             Subcommand::Clippy { ref paths } => (Kind::Clippy, &paths[..]),
             Subcommand::Fix { ref paths } => (Kind::Fix, &paths[..]),
-            Subcommand::Doc { ref paths } => (Kind::Doc, &paths[..]),
+            Subcommand::Doc { ref paths, .. } => (Kind::Doc, &paths[..]),
             Subcommand::Test { ref paths, .. } => (Kind::Test, &paths[..]),
             Subcommand::Bench { ref paths, .. } => (Kind::Bench, &paths[..]),
             Subcommand::Dist { ref paths } => (Kind::Dist, &paths[..]),

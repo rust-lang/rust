@@ -213,6 +213,7 @@ dependencies = [
  "lazy_static 1.4.0",
  "libc",
  "num_cpus",
+ "opener",
  "pretty_assertions",
  "serde",
  "serde_json",
