@@ -108,17 +108,18 @@ fn uncached_llvm_type<'a, 'tcx>(
     }
 }
 
+/// Note: this must match the expected padding from LayoutCx::padded_indices.
 fn struct_llfields<'a, 'tcx>(
     cx: &CodegenCx<'a, 'tcx>,
     layout: TyAndLayout<'tcx>,
 ) -> (Vec<&'a Type>, bool) {
     debug!("struct_llfields: {:#?}", layout);
-    let field_count = layout.fields.count();
+    let field_count = layout.fields.padded_field_count();
 
     let mut packed = false;
     let mut offset = Size::ZERO;
     let mut prev_effective_align = layout.align.abi;
-    let mut result: Vec<_> = Vec::with_capacity(1 + field_count * 2);
+    let mut result: Vec<_> = Vec::with_capacity(field_count);
     for i in layout.fields.index_by_increasing_offset() {
         let target_offset = layout.fields.offset(i as usize);
         let field = layout.field(cx, i);
@@ -127,7 +128,7 @@ fn struct_llfields<'a, 'tcx>(
         packed |= effective_field_align < field.align.abi;
 
         debug!(
-            "struct_llfields: {}: {:?} offset: {:?} target_offset: {:?} \
+            "struct_llfields: {}: {:#?} offset: {:?} target_offset: {:?} \
                 effective_field_align: {}",
             i,
             field,
@@ -139,7 +140,8 @@ fn struct_llfields<'a, 'tcx>(
         let padding = target_offset - offset;
         let padding_align = prev_effective_align.min(effective_field_align);
         assert_eq!(offset.align_to(padding_align) + padding, target_offset);
-        result.push(cx.type_padding_filler(padding, padding_align));
+        let pad = cx.opt_type_padding_filler(padding, padding_align).into_iter();
+        result.extend(pad);
         debug!("    padding before: {:?}", padding);
 
         result.push(field.llvm_type(cx));
@@ -157,11 +159,13 @@ fn struct_llfields<'a, 'tcx>(
             "struct_llfields: pad_bytes: {:?} offset: {:?} stride: {:?}",
             padding, offset, layout.size
         );
-        result.push(cx.type_padding_filler(padding, padding_align));
-        assert_eq!(result.len(), 1 + field_count * 2);
+        let pad = cx.opt_type_padding_filler(padding, padding_align).into_iter();
+        result.extend(pad);
     } else {
         debug!("struct_llfields: offset: {:?} stride: {:?}", offset, layout.size);
     }
+
+    debug!("struct_llfields: result = {:#?}", result);
 
     (result, packed)
 }
@@ -374,7 +378,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
 
             FieldsShape::Array { .. } => index as u64,
 
-            FieldsShape::Arbitrary { .. } => 1 + (self.fields.memory_index(index) as u64) * 2,
+            FieldsShape::Arbitrary { .. } => self.fields.padded_memory_index(index) as u64,
         }
     }
 

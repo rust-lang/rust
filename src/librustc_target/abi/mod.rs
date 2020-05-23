@@ -656,6 +656,13 @@ pub enum FieldsShape {
         // FIXME(eddyb) build a better abstraction for permutations, if possible.
         // FIXME(camlorn) also consider small vector  optimization here.
         memory_index: Vec<u32>,
+
+        /// Map source order indices to memory indices which include
+        /// required implicit padding, eg due to alignment.
+        /// If None, then this is the identity. This will likely change soon,
+        /// so try not to use it directly (unless you're in
+        /// librustc_middle::ty::layout).
+        padded_indices: Option<(u32, Box<[u32]>)>,
     },
 }
 
@@ -707,6 +714,39 @@ impl FieldsShape {
                 assert_eq!(r as usize as u32, r);
                 r as usize
             }
+        }
+    }
+
+    /// Similar to `memory_index` above, but these indices here include
+    /// implicit padding fields.
+    pub fn padded_memory_index(&self, i: usize) -> usize {
+        match *self {
+            FieldsShape::Primitive => {
+                unreachable!("FieldsShape::padded_memory_index: `Primitive`s have no fields")
+            }
+            FieldsShape::Union(_)
+            | FieldsShape::Array { .. }
+            | FieldsShape::Arbitrary { padded_indices: None, .. } => i,
+            FieldsShape::Arbitrary { padded_indices: Some((_, ref indices)), .. } => {
+                let r = indices[i];
+                assert_eq!(r as usize as u32, r); // ??? Is this really needed?
+                r as usize
+            }
+        }
+    }
+
+    /// Field count, including padding. This is an upper bound, due to optional end-of-structure
+    /// padding, but it will be at most one more than the actual count.
+    pub fn padded_field_count(&self) -> usize {
+        match self {
+            FieldsShape::Arbitrary { padded_indices: Some((count, _)), .. } => *count as _,
+            FieldsShape::Arbitrary { ref offsets, .. } => {
+                // + 1 for the padding.
+                offsets.len() + 1
+            }
+            _ => unreachable!(
+                "FieldsShape::padded_field_count: only applicable to FieldsShape::Arbitrary"
+            ),
         }
     }
 

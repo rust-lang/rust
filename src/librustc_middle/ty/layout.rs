@@ -244,6 +244,93 @@ fn invert_mapping(map: &[u32]) -> Vec<u32> {
 }
 
 impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
+    fn padded_indices<F>(
+        &self,
+        ty: Ty<'tcx>,
+        inv_mem_idx: &[u32],
+        align: &AbiAndPrefAlign,
+        offsets: &[Size],
+        field_info: F,
+    ) -> Result<Option<(u32, Box<[u32]>)>, LayoutError<'tcx>>
+    where
+        F: Fn(usize) -> (Size, AbiAndPrefAlign),
+    {
+        debug!("padded_indices: {:?} {:?}", inv_mem_idx, offsets);
+
+        let mut offset = Size::ZERO;
+        let mut prev_effective_align = align.abi;
+        let mut current_index = 0u32;
+        let mut padded_indices = vec![];
+
+        // avoid allocating if no padding is required and the memory order is also the identity.
+        let mut identity = true;
+        let mut assign = |i: usize, idx: u32, padded_idx: u32| {
+            debug!("assign: padded_idx = {}", padded_idx);
+            if identity {
+                if i as u32 == idx && idx == padded_idx {
+                    // no-op
+                    return;
+                }
+
+                identity = false;
+
+                padded_indices = vec![0; inv_mem_idx.len()];
+                padded_indices[..i as usize].iter_mut().enumerate().for_each(|(i, v)| {
+                    *v = i as u32;
+                });
+            }
+
+            padded_indices[idx as usize] = padded_idx;
+        };
+
+        let overflow_err = LayoutError::SizeOverflow(ty);
+
+        for (i, &idx) in inv_mem_idx.iter().enumerate() {
+            let target_offset = offsets[idx as usize];
+            let (field_size, field_align) = field_info(idx as usize);
+            let effective_field_align =
+                align.abi.min(field_align.abi).restrict_for_offset(target_offset);
+
+            debug!(
+                "{:?}: {:?} offset: {} target_offset: {}",
+                (i, idx),
+                (field_size.bytes(), field_align),
+                offset.bytes(),
+                target_offset.bytes(),
+            );
+
+            assert!(target_offset >= offset);
+            let padding = target_offset - offset;
+            let padding_align = prev_effective_align.min(effective_field_align);
+            let padding_bytes = padding.bytes();
+            debug!(
+                "effective_field_align: {}, padding_bytes = {}, padded_idx = {}",
+                effective_field_align.bytes(),
+                padding_bytes,
+                current_index,
+            );
+
+            assert_eq!(offset.align_to(padding_align) + padding, target_offset);
+
+            if padding_bytes != 0 {
+                current_index = current_index.checked_add(1).ok_or(overflow_err)?;
+            }
+
+            assign(i, idx, current_index);
+            current_index = current_index.checked_add(1).ok_or(overflow_err)?;
+            offset = target_offset + field_size;
+            prev_effective_align = effective_field_align;
+        }
+
+        if identity {
+            Ok(None)
+        } else {
+            // Technically, there is also a possible final padding member, so current_index isn't
+            // decremented to adjust for the last += 1 in the above loop.
+            Ok(Some((current_index, padded_indices.into_boxed_slice())))
+        }
+    }
+
     fn scalar_pair(&self, a: Scalar, b: Scalar) -> Layout {
         let dl = self.data_layout();
         let b_align = b.value.align(dl);
@@ -263,6 +350,8 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             fields: FieldsShape::Arbitrary {
                 offsets: vec![Size::ZERO, b_offset],
                 memory_index: vec![0, 1],
+                // scalar pairs never have padding
+                padded_indices: None,
             },
             abi: Abi::ScalarPair(a, b),
             largest_niche,
@@ -383,6 +472,14 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         // Field 5 would be the first element, so memory_index is i:
         // Note: if we didn't optimize, it's already right.
 
+        let padded_indices =
+            self.padded_indices(ty, &inverse_memory_index, &align, &offsets, |i| {
+                let field = &fields[i];
+                let size = field.size;
+                let align = field.align;
+                (size, align)
+            })?;
+
         let memory_index =
             if optimize { invert_mapping(&inverse_memory_index) } else { inverse_memory_index };
 
@@ -444,7 +541,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         };
                         let pair = self.scalar_pair(a.clone(), b.clone());
                         let pair_offsets = match pair.fields {
-                            FieldsShape::Arbitrary { ref offsets, ref memory_index } => {
+                            FieldsShape::Arbitrary { ref offsets, ref memory_index, .. } => {
                                 assert_eq!(memory_index, &[0, 1]);
                                 offsets
                             }
@@ -472,7 +569,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
         Ok(Layout {
             variants: Variants::Single { index: VariantIdx::new(0) },
-            fields: FieldsShape::Arbitrary { offsets, memory_index },
+            fields: FieldsShape::Arbitrary { offsets, memory_index, padded_indices },
             abi,
             largest_niche,
             align,
@@ -973,6 +1070,12 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                             let largest_niche =
                                 Niche::from_scalar(dl, offset, niche_scalar.clone());
 
+                            let padded_indices = if offset != Size::ZERO {
+                                Some((1, vec![1u32].into_boxed_slice()))
+                            } else {
+                                None
+                            };
+
                             return Ok(tcx.intern_layout(Layout {
                                 variants: Variants::Multiple {
                                     discr: niche_scalar,
@@ -987,6 +1090,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                                 fields: FieldsShape::Arbitrary {
                                     offsets: vec![offset],
                                     memory_index: vec![0],
+                                    padded_indices,
                                 },
                                 abi,
                                 largest_niche,
@@ -1123,18 +1227,43 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     // Patch up the variants' first few fields.
                     let old_ity_size = min_ity.size();
                     let new_ity_size = ity.size();
-                    for variant in &mut layout_variants {
+                    for (variant, fields) in layout_variants.iter_mut().zip(variants.iter()) {
                         match variant.fields {
-                            FieldsShape::Arbitrary { ref mut offsets, .. } => {
-                                for i in offsets {
+                            FieldsShape::Arbitrary {
+                                ref mut offsets,
+                                ref memory_index,
+                                ref mut padded_indices,
+                            } => {
+                                let mut recompute_padding_indices = false;
+                                for i in offsets.iter_mut() {
                                     if *i <= old_ity_size {
                                         assert_eq!(*i, old_ity_size);
                                         *i = new_ity_size;
+                                        recompute_padding_indices = true;
                                     }
                                 }
                                 // We might be making the struct larger.
                                 if variant.size <= old_ity_size {
                                     variant.size = new_ity_size;
+                                }
+
+                                if recompute_padding_indices {
+                                    // if we change field offsets, we also need to recompute the
+                                    // padding required.
+                                    let inv_mem_idx = invert_mapping(&**memory_index);
+                                    let new_padding_indices = self.padded_indices(
+                                        ty,
+                                        &inv_mem_idx,
+                                        &variant.align,
+                                        &offsets,
+                                        |i| {
+                                            let field = &fields[i];
+                                            let size = field.size;
+                                            let align = field.align;
+                                            (size, align)
+                                        },
+                                    )?;
+                                    *padded_indices = new_padding_indices;
                                 }
                             }
                             _ => bug!(),
@@ -1191,7 +1320,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     if let Some((prim, offset)) = common_prim {
                         let pair = self.scalar_pair(tag.clone(), scalar_unit(prim));
                         let pair_offsets = match pair.fields {
-                            FieldsShape::Arbitrary { ref offsets, ref memory_index } => {
+                            FieldsShape::Arbitrary { ref offsets, ref memory_index, .. } => {
                                 assert_eq!(memory_index, &[0, 1]);
                                 offsets
                             }
@@ -1225,6 +1354,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     fields: FieldsShape::Arbitrary {
                         offsets: vec![Size::ZERO],
                         memory_index: vec![0],
+                        padded_indices: None,
                     },
                     largest_niche,
                     abi,
@@ -1390,6 +1520,9 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         substs: SubstsRef<'tcx>,
     ) -> Result<&'tcx Layout, LayoutError<'tcx>> {
         use SavedLocalEligibility::*;
+
+        debug!("generator_layout: ty = {:?}", ty);
+
         let tcx = self.tcx;
 
         let subst_field = |ty: Ty<'tcx>| ty.subst(tcx, substs);
@@ -1430,6 +1563,8 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         )?;
 
         let (prefix_size, prefix_align) = (prefix.size, prefix.align);
+        debug!("prefix_layouts = {:#?}, promoted_start = {}", prefix_layouts, discr_index + 1);
+        let promoted_layouts = &prefix_layouts[discr_index + 1..];
 
         // Split the prefix layout into the "outer" fields (upvars and
         // discriminant) and the "promoted" fields. Promoted fields will
@@ -1437,7 +1572,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         // GeneratorLayout.
         debug!("prefix = {:#?}", prefix);
         let (outer_fields, promoted_offsets, promoted_memory_index) = match prefix.fields {
-            FieldsShape::Arbitrary { mut offsets, memory_index } => {
+            FieldsShape::Arbitrary { mut offsets, memory_index, .. } => {
                 let mut inverse_memory_index = invert_mapping(&memory_index);
 
                 // "a" (`0..b_start`) and "b" (`b_start..`) correspond to
@@ -1459,12 +1594,32 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 let memory_index_a = invert_mapping(&inverse_memory_index_a);
                 let memory_index_b = invert_mapping(&inverse_memory_index_b);
 
-                let outer_fields =
-                    FieldsShape::Arbitrary { offsets: offsets_a, memory_index: memory_index_a };
+                let padded_indices_a = self.padded_indices(
+                    ty,
+                    &inverse_memory_index_a,
+                    &prefix_align,
+                    &offsets_a,
+                    |i| {
+                        let field = &prefix_layouts[i];
+                        let size = field.size;
+                        let align = field.align;
+                        (size, align)
+                    },
+                )?;
+
+                let outer_fields = FieldsShape::Arbitrary {
+                    offsets: offsets_a,
+                    memory_index: memory_index_a,
+                    padded_indices: padded_indices_a,
+                };
+
+                debug!("outer_fields = {:#?}", outer_fields);
                 (outer_fields, offsets_b, memory_index_b)
             }
             _ => bug!(),
         };
+        debug!("promoted_offsets = {:#?}", promoted_offsets);
+        debug!("promoted_memory_index = {:?}", promoted_memory_index);
 
         let mut size = prefix.size;
         let mut align = prefix.align;
@@ -1472,6 +1627,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             .variant_fields
             .iter_enumerated()
             .map(|(index, variant_fields)| {
+                debug!("index = {:?}", index);
                 // Only include overlap-eligible fields when we compute our variant layout.
                 let variant_only_tys = variant_fields
                     .iter()
@@ -1482,19 +1638,18 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         Ineligible(_) => false,
                     })
                     .map(|local| subst_field(info.field_tys[*local]));
-
+                let variant_only_fields =
+                    variant_only_tys.map(|ty| self.layout_of(ty)).collect::<Result<Vec<_>, _>>()?;
                 let mut variant = self.univariant_uninterned(
                     ty,
-                    &variant_only_tys
-                        .map(|ty| self.layout_of(ty))
-                        .collect::<Result<Vec<_>, _>>()?,
+                    &variant_only_fields,
                     &ReprOptions::default(),
                     StructKind::Prefixed(prefix_size, prefix_align.abi),
                 )?;
                 variant.variants = Variants::Single { index };
 
                 let (offsets, memory_index) = match variant.fields {
-                    FieldsShape::Arbitrary { offsets, memory_index } => (offsets, memory_index),
+                    FieldsShape::Arbitrary { offsets, memory_index, .. } => (offsets, memory_index),
                     _ => bug!(),
                 };
 
@@ -1510,36 +1665,65 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 const INVALID_FIELD_IDX: u32 = !0;
                 let mut combined_inverse_memory_index =
                     vec![INVALID_FIELD_IDX; promoted_memory_index.len() + memory_index.len()];
-                let mut offsets_and_memory_index = offsets.into_iter().zip(memory_index);
+                let mut combined_fields = vec![None; promoted_offsets.len() + offsets.len()];
+                let mut offsets_and_memory_index =
+                    offsets.into_iter().zip(memory_index).zip(variant_only_fields.iter());
+                debug!(
+                    "variant assignments = {:#?}",
+                    variant_fields.iter().map(|local| &assignments[*local]).collect::<Vec<_>>()
+                );
                 let combined_offsets = variant_fields
                     .iter()
                     .enumerate()
                     .map(|(i, local)| {
-                        let (offset, memory_index) = match assignments[*local] {
+                        let (offset, memory_index, field_info) = match assignments[*local] {
                             Unassigned => bug!(),
                             Assigned(_) => {
-                                let (offset, memory_index) =
+                                let ((offset, memory_index), field) =
                                     offsets_and_memory_index.next().unwrap();
-                                (offset, promoted_memory_index.len() as u32 + memory_index)
+                                (
+                                    offset,
+                                    promoted_memory_index.len() as u32 + memory_index,
+                                    (field.size, field.align),
+                                )
                             }
                             Ineligible(field_idx) => {
                                 let field_idx = field_idx.unwrap() as usize;
-                                (promoted_offsets[field_idx], promoted_memory_index[field_idx])
+                                let promoted_field = &promoted_layouts[field_idx];
+                                (
+                                    promoted_offsets[field_idx],
+                                    promoted_memory_index[field_idx],
+                                    (promoted_field.size, promoted_field.align),
+                                )
                             }
                         };
                         combined_inverse_memory_index[memory_index as usize] = i as u32;
+                        combined_fields[i] = Some(field_info);
                         offset
                     })
-                    .collect();
+                    .collect::<Vec<_>>();
+
+                debug!("combined_offsets = {:#?}", combined_offsets);
+                debug!("combined_inverse_memory_index = {:?}", combined_inverse_memory_index);
+                debug!("combined_fields = {:#?}", combined_fields);
 
                 // Remove the unused slots and invert the mapping to obtain the
                 // combined `memory_index` (also see previous comment).
                 combined_inverse_memory_index.retain(|&i| i != INVALID_FIELD_IDX);
                 let combined_memory_index = invert_mapping(&combined_inverse_memory_index);
 
+                let combined_padded_indices = self.padded_indices(
+                    ty,
+                    &combined_inverse_memory_index,
+                    &variant.align,
+                    &combined_offsets,
+                    |i| combined_fields[i].expect("missing field"),
+                )?;
+
                 variant.fields = FieldsShape::Arbitrary {
                     offsets: combined_offsets,
                     memory_index: combined_memory_index,
+                    padded_indices: combined_padded_indices,
                 };
 
                 size = size.max(variant.size);
@@ -2010,7 +2194,8 @@ where
                     variants: Variants::Single { index: variant_index },
                     fields: match NonZeroUsize::new(fields) {
                         Some(fields) => FieldsShape::Union(fields),
-                        None => FieldsShape::Arbitrary { offsets: vec![], memory_index: vec![] },
+                        None => FieldsShape::Arbitrary { offsets: vec![], memory_index: vec![],
+                            padded_indices: None, },
                     },
                     abi: Abi::Uninhabited,
                     largest_niche: None,

@@ -8,6 +8,7 @@ error: layout_of(E) = Layout {
         memory_index: [
             0,
         ],
+        padded_indices: None,
     },
     variants: Multiple {
         discr: Scalar {
@@ -24,6 +25,7 @@ error: layout_of(E) = Layout {
                 fields: Arbitrary {
                     offsets: [],
                     memory_index: [],
+                    padded_indices: None,
                 },
                 variants: Single {
                     index: 0,
@@ -60,6 +62,16 @@ error: layout_of(E) = Layout {
                         1,
                         2,
                     ],
+                    padded_indices: Some(
+                        (
+                            4,
+                            [
+                                1,
+                                2,
+                                3,
+                            ],
+                        ),
+                    ),
                 },
                 variants: Single {
                     index: 1,
@@ -128,6 +140,16 @@ error: layout_of(S) = Layout {
             0,
             2,
         ],
+        padded_indices: Some(
+            (
+                3,
+                [
+                    1,
+                    0,
+                    2,
+                ],
+            ),
+        ),
     },
     variants: Single {
         index: 0,
@@ -200,6 +222,7 @@ error: layout_of(std::result::Result<i32, i32>) = Layout {
         memory_index: [
             0,
         ],
+        padded_indices: None,
     },
     variants: Multiple {
         discr: Scalar {
@@ -222,6 +245,14 @@ error: layout_of(std::result::Result<i32, i32>) = Layout {
                     memory_index: [
                         0,
                     ],
+                    padded_indices: Some(
+                        (
+                            2,
+                            [
+                                1,
+                            ],
+                        ),
+                    ),
                 },
                 variants: Single {
                     index: 0,
@@ -250,6 +281,14 @@ error: layout_of(std::result::Result<i32, i32>) = Layout {
                     memory_index: [
                         0,
                     ],
+                    padded_indices: Some(
+                        (
+                            2,
+                            [
+                                1,
+                            ],
+                        ),
+                    ),
                 },
                 variants: Single {
                     index: 1,

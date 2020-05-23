@@ -129,6 +129,18 @@ impl CodegenCx<'ll, 'tcx> {
         self.type_array(self.type_from_integer(unit), size / unit_size)
     }
 
+    /// Return a LLVM type that has at most the required alignment,
+    /// and exactly the required size, as a best-effort padding array.
+    /// This returns `None` if no padding is required.
+    crate fn opt_type_padding_filler(&self, size: Size, align: Align) -> Option<&'ll Type> {
+        let unit = Integer::approximate_align(self, align);
+        let size = size.bytes();
+        let unit_size = unit.size().bytes();
+        assert_eq!(size % unit_size, 0);
+        let len = size / unit_size;
+        if size == 0 { None } else { Some(self.type_array(self.type_from_integer(unit), len)) }
+    }
+
     crate fn type_variadic_func(&self, args: &[&'ll Type], ret: &'ll Type) -> &'ll Type {
         unsafe { llvm::LLVMFunctionType(ret, args.as_ptr(), args.len() as c_uint, True) }
     }
