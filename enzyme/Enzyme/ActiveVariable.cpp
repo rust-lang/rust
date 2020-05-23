@@ -380,26 +380,34 @@ bool isconstantM(TypeResults &TR, Instruction* inst, SmallPtrSetImpl<Value*> &co
 
     if (directions & UP) {
         if (auto li = dyn_cast<LoadInst>(inst)) {
-            if (constants.find(li->getPointerOperand()) != constants.end()) {
+            if (constantvals.find(li->getPointerOperand()) != constantvals.end()
+                || constants.find(li->getPointerOperand()) != constants.end()) {
                 constants.insert(li);
+                constantvals.insert(li);
                 return true;
             }
         }
         if (auto rmw = dyn_cast<AtomicRMWInst>(inst)) {
-            if (constants.find(rmw->getPointerOperand()) != constants.end()) {
+            if (constantvals.find(rmw->getPointerOperand()) != constantvals.end()
+                || constants.find(rmw->getPointerOperand()) != constants.end()) {
                 constants.insert(rmw);
+                constantvals.insert(rmw);
                 return true;
             }
         }
         if (auto gep = dyn_cast<GetElementPtrInst>(inst)) {
-            if (constants.find(gep->getPointerOperand()) != constants.end()) {
+            if (constantvals.find(gep->getPointerOperand()) != constantvals.end()
+                || constants.find(gep->getPointerOperand()) != constants.end()) {
                 constants.insert(gep);
+                constantvals.insert(gep);
                 return true;
             }
         }
         if (auto cst = dyn_cast<CastInst>(inst)) {
-            if (constants.find(cst->getOperand(0)) != constants.end()) {
+            if (constantvals.find(cst->getOperand(0)) != constantvals.end()
+                || constants.find(cst->getOperand(0)) != constants.end()) {
                 constants.insert(cst);
+                constantvals.insert(cst);
                 return true;
             }
         }

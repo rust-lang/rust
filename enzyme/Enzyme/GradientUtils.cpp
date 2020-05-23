@@ -23,6 +23,8 @@
 
 #include "FunctionUtils.h"
 
+#include "LibraryFuncs.h"
+
 #include "llvm/IR/GlobalValue.h"
 
 #include "llvm/IR/Constants.h"
@@ -102,7 +104,7 @@
     }
   }
 
-bool GradientUtils::legalRecompute(Value* val, const ValueToValueMapTy& available) {
+bool GradientUtils::legalRecompute(const Value* val, const ValueToValueMapTy& available) const {
   if (available.count(val)) {
     return true;
   }
@@ -131,7 +133,7 @@ bool GradientUtils::legalRecompute(Value* val, const ValueToValueMapTy& availabl
     if (li->getMetadata("enzyme_unwrapped"))
       return true;
 
-    Instruction* orig = nullptr;
+    const Instruction* orig = nullptr;
     if (li->getParent()->getParent() == oldFunc) {
       orig = li;
     } else {
@@ -139,7 +141,7 @@ bool GradientUtils::legalRecompute(Value* val, const ValueToValueMapTy& availabl
     }
 
     if (orig) {
-      auto found = can_modref_map->find(orig);
+      auto found = can_modref_map->find(const_cast<Instruction*>(orig));
       //llvm::errs() << "legality of recomputing: " << *li << " is " << !found->second << "\n";
       if(found == can_modref_map->end()) {
           llvm::errs() << "can_modref_map:\n";
@@ -185,7 +187,7 @@ bool GradientUtils::legalRecompute(Value* val, const ValueToValueMapTy& availabl
 }
 
 //! Given the option to recompute a value or re-use an old one, return true if it is faster to recompute this value from scratch
-bool GradientUtils::shouldRecompute(Value* val, const ValueToValueMapTy& available) {
+bool GradientUtils::shouldRecompute(const Value* val, const ValueToValueMapTy& available) const {
   if (available.count(val)) return true;
   //TODO: remake such that this returns whether a load to a cache is more expensive than redoing the computation.
 
@@ -194,20 +196,55 @@ bool GradientUtils::shouldRecompute(Value* val, const ValueToValueMapTy& availab
 
   if (isa<CastInst>(val) || isa<GetElementPtrInst>(val)) return true;
 
+  if (!isa<Instruction>(val)) return true;
+
   //llvm::errs() << " considering recompute of " << *val << "\n";
+  const Instruction* inst = cast<Instruction>(val);
 
   // if this has operands that need to be loaded and haven't already been loaded (TODO), just cache this
-  if (auto inst = dyn_cast<Instruction>(val)) {
-    for(auto &op : inst->operands()) {
-      //llvm::errs() << "   + " << *op << " legalRecompute:" << legalRecompute(op, available) << "\n";
-      if (!legalRecompute(op, available)) {
+  for(auto &op : inst->operands()) {
+    //llvm::errs() << "   + " << *op << " legalRecompute:" << legalRecompute(op, available) << "\n";
+    if (!legalRecompute(op, available)) {
 
-        // If this is a load from cache already, dont force a cache of this
-        if (isa<LoadInst>(op) && cast<LoadInst>(op)->getMetadata("enzyme_fromcache")) continue;
+      // If this is a load from cache already, dont force a cache of this
+      if (isa<LoadInst>(op) && cast<LoadInst>(op)->getMetadata("enzyme_fromcache")) continue;
 
-        llvm::errs() << "choosing to cache " << *val << " because of " << *op << "\n";
-        return false;
+      // If a plcaeholder phi for inversion (and we know from above not recomputable)
+      if (!isa<PHINode>(op) && dyn_cast_or_null<LoadInst>(hasUninverted(op))) {
+        goto forceCache;
       }
+
+      // Even if cannot recompute (say a phi node), don't force a reload if it is possible to just use this instruction from forward pass without issue
+      if (auto i2 = dyn_cast<Instruction>(op)) {
+        if (!i2->mayReadOrWriteMemory()) {
+          LoopContext lc;
+          bool inLoop = const_cast<GradientUtils*>(this)->getContext(i2->getParent(), lc);
+          if (!inLoop) {
+            if (i2->getParent() == &newFunc->getEntryBlock()) {
+              continue;
+            }
+            // TODO upgrade this to be all returns that this could enter from
+            bool legal = true;
+            for(auto &BB: *oldFunc) {
+              if (isa<ReturnInst>(BB.getTerminator())) {
+                BasicBlock* returningBlock = cast<BasicBlock>(getNewFromOriginal(&BB));
+                if (i2->getParent() == returningBlock) continue;
+                if (!DT.dominates(i2, returningBlock)) {
+                  legal = false;
+                  break;
+                }
+              }
+            }
+            if (legal) {
+              continue;
+            }
+          }
+        }
+      }
+
+      forceCache:;
+      llvm::errs() << "choosing to cache " << *val << " because of " << *op << "\n";
+      return false;
     }
   }
 
@@ -623,7 +660,6 @@ void removeRedundantIVs(const Loop* L, BasicBlock* Header, BasicBlock* Preheader
         if (PN->getType()->isPointerTy()) continue;
         if (!SE.isSCEVable(PN->getType())) continue;
         const SCEV *S = SE.getSCEV(PN);
-        //llvm::errs() << "try replace: " << *PN << " with: " << *S << "\n";
         if (SE.getCouldNotCompute() == S) continue;
         Value *NewIV = Exp.expandCodeFor(S, S->getType(), CanonicalIV);
         if (NewIV == PN) {
@@ -1419,7 +1455,51 @@ Value* GradientUtils::lookupM(Value* val, IRBuilder<>& BuilderM, const ValueToVa
                 llvm::errs() << "didnt dominate inst: " << *inst << "\nbb: " << *BuilderM.GetInsertBlock() << "\n";
             }
         }
+        // This is a reverse block
+    } else if (BuilderM.GetInsertBlock() != inversionAllocs) {
+      // Something in the entry (or anything that dominates all returns, doesn't need caching)
+
+      BasicBlock* forwardBlock = originalForReverseBlock(*BuilderM.GetInsertBlock());
+
+      // Don't allow this if we're not definitely using the last iteration of this value
+      //   + either because the value isn't in a loop
+      //   + or because the forward of the block usage location isn't in a loop (thus last iteration)
+      //   + or because the loop nests share no ancestry
+
+      bool loopLegal = true;
+      for(Loop* idx = LI.getLoopFor(inst->getParent()); idx != nullptr; idx = idx->getParentLoop()) {
+        for(Loop* fdx = LI.getLoopFor(forwardBlock); fdx != nullptr; fdx = fdx->getParentLoop()) {
+          if (idx == fdx) {
+            loopLegal = false;
+            break;
+          }
+        }
+      }
+
+      if (loopLegal) {
+        if (inst->getParent() == &newFunc->getEntryBlock()) {
+          return inst;
+        }
+        // TODO upgrade this to be all returns that this could enter from
+        bool legal = true;
+        for(auto &BB: *oldFunc) {
+          if (isa<ReturnInst>(BB.getTerminator())) {
+            BasicBlock* returningBlock = cast<BasicBlock>(getNewFromOriginal(&BB));
+            if (inst->getParent() == returningBlock) continue;
+            if (!DT.dominates(inst, returningBlock)) {
+              legal = false;
+              break;
+            }
+          }
+        }
+        if (legal) {
+          return inst;
+        }
+      }
     }
+
+    Instruction* prelcssaInst = inst;
+
     assert(inst->getName() != "<badref>");
     val = inst = fixLCSSA(inst, BuilderM);
 
@@ -1433,13 +1513,13 @@ Value* GradientUtils::lookupM(Value* val, IRBuilder<>& BuilderM, const ValueToVa
         return result;
     }
 
-    LoopContext lc;
-    bool inLoop = getContext(inst->getParent(), lc);
-
     ValueToValueMapTy available;
     for(auto pair : incoming_available) {
       available[pair.first] = pair.second;
     }
+
+    LoopContext lc;
+    bool inLoop = getContext(inst->getParent(), lc);
 
     if (inLoop) {
         bool first = true;
@@ -1461,14 +1541,14 @@ Value* GradientUtils::lookupM(Value* val, IRBuilder<>& BuilderM, const ValueToVa
 
     //TODO consider call as part of
     //llvm::errs() << " considering " << *inst << " legal: " << legalRecompute(inst, available) << " should: " << shouldRecompute(inst, available) << "\n";
-    if (legalRecompute(inst, available)) {
-      if (shouldRecompute(inst, available)) {
-          auto op = unwrapM(inst, BuilderM, available, UnwrapMode::AttemptSingleUnwrap);
+    if (legalRecompute(prelcssaInst, available)) {
+      if (shouldRecompute(prelcssaInst, available)) {
+          auto op = unwrapM(prelcssaInst, BuilderM, available, UnwrapMode::AttemptSingleUnwrap);
           //llvm::errs() << "for op " << *inst << " choosing to unwrap and found: " << op << "\n";
           if (op) {
             assert(op);
             assert(op->getType());
-            if (auto load_op = dyn_cast<LoadInst>(inst)) {
+            if (auto load_op = dyn_cast<LoadInst>(prelcssaInst)) {
               if (auto new_op = dyn_cast<LoadInst>(op)) {
                   MDNode* invgroup = load_op->getMetadata(LLVMContext::MD_invariant_group);
                   if (invgroup == nullptr) {
@@ -1482,11 +1562,70 @@ Value* GradientUtils::lookupM(Value* val, IRBuilder<>& BuilderM, const ValueToVa
             return op;
           }
       } else {
-        if (isa<LoadInst>(inst)) {
+        if (isa<LoadInst>(prelcssaInst)) {
           //llvm::errs() << " + loading " << *inst << "\n";
         }
       }
     }
+    //llvm::errs() << "looking from cache: " << *inst << "\n";
+
+    if (auto origInst = isOriginal(inst))
+    if (auto li = dyn_cast<LoadInst>(inst)) {
+
+      auto liobj = GetUnderlyingObject(li->getPointerOperand(), oldFunc->getParent()->getDataLayout(), 100);
+
+      for(auto pair : scopeMap) {
+        if (auto li2 = dyn_cast<LoadInst>(const_cast<Value*>(pair.first))) {
+          if (!isOriginal(li2)) continue;
+
+          auto li2obj = GetUnderlyingObject(li2->getPointerOperand(), oldFunc->getParent()->getDataLayout(), 100);
+
+          if (liobj == li2obj && DT.dominates(li2, li)) {
+            bool failed = false;
+
+            llvm::errs() << "found potential candidate loads: oli:" << *origInst << " oli2: " << *getOriginal(li2) << "\n";
+            auto scev1 = SE.getSCEV(li->getPointerOperand());
+            auto scev2 = SE.getSCEV(li2->getPointerOperand());
+            llvm::errs() << " scev1: " << *scev1 << " scev2: " << *scev2 << "\n";
+
+            allInstructionsBetween(OrigLI, getOriginal(li2), origInst, [&](Instruction* I) {
+              //llvm::errs() << "examining instruction: " << *I << " between: " << *li2 << " and " << *li << "\n";
+              if ( I->mayWriteToMemory() && writesToMemoryReadBy(AA, /*maybeReader*/origInst, /*maybeWriter*/I) ) {
+                failed = true;
+                llvm::errs() << "FAILED: " << *I << "\n";
+              }
+            });
+            if (failed) continue;
+
+
+            if (auto ar1 = dyn_cast<SCEVAddRecExpr>(scev1)) {
+              if (auto ar2 = dyn_cast<SCEVAddRecExpr>(scev2)) {
+                if (ar1->getStart() != SE.getCouldNotCompute() && ar1->getStart() == ar2->getStart() &&
+                    ar1->getStart() != SE.getCouldNotCompute() && ar1->getStepRecurrence(SE) == ar2->getStepRecurrence(SE)) {
+
+                  LoopContext l1;
+                  getContext(ar1->getLoop()->getHeader(), l1);
+                  LoopContext l2;
+                  getContext(ar2->getLoop()->getHeader(), l2);
+
+                  //TODO IF len(ar2) >= len(ar1) then we can replace li with li2
+                  if (SE.getSCEV(l1.limit) != SE.getCouldNotCompute() && SE.getSCEV(l1.limit) == SE.getSCEV(l2.limit)) {
+                    llvm::errs() << " step1: " << *ar1->getStepRecurrence(SE) << " step2: " << *ar2->getStepRecurrence(SE) << "\n";
+
+                    inst = li2;
+                    idx = std::make_pair(val, BuilderM.GetInsertBlock());
+                    break;
+                  }
+
+                }
+              }
+            }
+
+          }
+        }
+      }
+    }
+
     //llvm::errs() << "looking from cache: " << *inst << "\n";
 
     ensureLookupCached(inst);

@@ -62,35 +62,6 @@ cl::opt<bool> nonmarkedglobals_inactiveloads(
             "enzyme_nonmarkedglobals_inactiveloads", cl::init(true), cl::Hidden,
             cl::desc("Consider loads of nonmarked globals to be inactive"));
 
-
-static inline void allFollowersOf(Instruction* inst, std::function<void(Instruction*)> f) {
-
-  //llvm::errs() << "all followers of: " << *inst << "\n";
-  for(auto uinst = inst->getNextNode(); uinst != nullptr; uinst = uinst->getNextNode()) {
-    //llvm::errs() << " + bb1: " << *uinst << "\n";
-    f(uinst);
-  }
-
-  std::deque<BasicBlock*> todo;
-  std::set<BasicBlock*> done;
-  for(auto suc : successors(inst->getParent())) {
-    todo.push_back(suc);
-  }
-  while(todo.size()) {
-    auto BB = todo.front();
-    todo.pop_front();
-    if (done.count(BB)) continue;
-    done.insert(BB);
-    for(auto &ni : *BB) {
-      f(&ni);
-      if (&ni == inst) break;
-    }
-    for(auto suc : successors(BB)) {
-      todo.push_back(suc);
-    }
-  }
-}
-
 bool is_load_uncacheable(LoadInst& li, AAResults& AA, GradientUtils* gutils, TargetLibraryInfo& TLI, const SmallPtrSetImpl<const Instruction*> &unnecessaryInstructions, const std::map<Argument*, bool>& uncacheable_args);
 
 
@@ -331,14 +302,15 @@ std::string to_string(const std::map<Argument*, bool>& us) {
 }
 
 // Determine if a value is needed in the reverse pass. We only use this logic in the top level function right now.
-bool is_value_needed_in_reverse(TypeResults &TR, const GradientUtils* gutils, const Value* inst, bool topLevel, std::map<const Value*, bool> seen = {}) {
-  if (seen.find(inst) != seen.end()) return seen[inst];
+bool is_value_needed_in_reverse(TypeResults &TR, const GradientUtils* gutils, const Value* inst, bool topLevel, std::map<std::pair<const Value*, bool>, bool> seen = {}) {
+  auto idx = std::make_pair(inst, topLevel);
+  if (seen.find(idx) != seen.end()) return seen[idx];
   if (auto ainst = dyn_cast<Instruction>(inst)) {
     assert(ainst->getParent()->getParent() == gutils->oldFunc);
   }
 
   //Inductively claim we aren't needed (and try to find contradiction)
-  seen[inst] = false;
+  seen[idx] = false;
 
   //Consider all users of this value, do any of them need this in the reverse?
   for (auto use : inst->users()) {
@@ -354,14 +326,14 @@ bool is_value_needed_in_reverse(TypeResults &TR, const GradientUtils* gutils, co
         //TODO save loop bounds for dynamic loop
 
         //TODO make this more aggressive and dont need to save loop latch
-        if (isa<BranchInst>(use) || isa<SwitchInst>(use) || isa<CallInst>(use)) {
+        if (isa<BranchInst>(use) || isa<SwitchInst>(use)) {
             //llvm::errs() << " had to use in reverse since used in branch/switch " << *inst << " use: " << *use << "\n";
-            return seen[inst] = true;
+            return seen[idx] = true;
         }
 
         if (is_value_needed_in_reverse(TR, gutils, user, topLevel, seen)) {
             //llvm::errs() << " had to use in reverse since used in " << *inst << " use: " << *use << "\n";
-            return seen[inst] = true;
+            return seen[idx] = true;
         }
     }
     //llvm::errs() << " considering use : " << *user << " of " <<  *inst << "\n";
@@ -384,7 +356,7 @@ bool is_value_needed_in_reverse(TypeResults &TR, const GradientUtils* gutils, co
             if (isa<LoadInst>(zu) || isa<CastInst>(zu) || isa<PHINode>(zu)) {
                 if (is_value_needed_in_reverse(TR, gutils, zu, topLevel, seen)) {
                     //llvm::errs() << " had to use in reverse since sub use " << *zu << " of " << *inst << "\n";
-                    return seen[inst] = true;
+                    return seen[idx] = true;
                 }
                 continue;
             }
@@ -396,10 +368,16 @@ bool is_value_needed_in_reverse(TypeResults &TR, const GradientUtils* gutils, co
               }
             }
 
-            if (isa<CallInst>(zu)) {
-                //llvm::errs() << " had to use in reverse since call use " << *zu << " of " << *inst << "\n";
-                return seen[inst] = true;
+            if (auto ci = dyn_cast<CallInst>(zu)) {
+              // If this instruction isn't constant (and thus we need the argument to propagate to its adjoint)
+              //   it may write memory and is topLevel (and thus we need to do the write in reverse)
+              //   or we need this value for the reverse pass (we conservatively assume that if legal it is recomputed and not stored)
+              if (!gutils->isConstantInstruction(ci) || (ci->mayWriteToMemory() && topLevel) || (gutils->legalRecompute(ci, ValueToValueMapTy()) && is_value_needed_in_reverse(TR, gutils, ci, topLevel, seen))) {
+                  return seen[idx] = true;
+              }
+              continue;
             }
+
 
             /*
             if (auto gep = dyn_cast<GetElementPtrInst>(zu)) {
@@ -442,21 +420,18 @@ bool is_value_needed_in_reverse(TypeResults &TR, const GradientUtils* gutils, co
     if (auto op = dyn_cast<BinaryOperator>(user)) {
       if (op->getOpcode() == Instruction::FAdd || op->getOpcode() == Instruction::FSub) {
         continue;
-      }
-      if (op->getOpcode() == Instruction::FMul) {
+      } else if (op->getOpcode() == Instruction::FMul) {
         bool needed = false;
         if (op->getOperand(0) == inst && !gutils->isConstantValue(op->getOperand(1))) needed = true;
         if (op->getOperand(1) == inst && !gutils->isConstantValue(op->getOperand(0))) needed = true;
         //llvm::errs() << "needed " << *inst << " in mul " << *op << " - needed:" << needed << "\n";
         if (!needed) continue;
-      }
-
-      if (op->getOpcode() == Instruction::FDiv) {
+      } else if (op->getOpcode() == Instruction::FDiv) {
         bool needed = false;
         if (op->getOperand(1) == inst && !gutils->isConstantValue(op->getOperand(1))) needed = true;
         if (op->getOperand(1) == inst && !gutils->isConstantValue(op->getOperand(0))) needed = true;
         if (!needed) continue;
-      }
+      } else continue;
     }
 
     //We don't need only the indices of a GEP to compute the adjoint of a GEP
@@ -488,16 +463,18 @@ bool is_value_needed_in_reverse(TypeResults &TR, const GradientUtils* gutils, co
 
     //! Note it is important that return check comes before this as it may not have a new instruction
 
-    // nonconstant
-    if (isa<CallInst>(user) && (gutils->originalToNewFn.find(user) == gutils->originalToNewFn.end() || isa<ExtractValueInst>(gutils->getNewFromOriginal(user)))) {
-
-    } else if (gutils->isConstantInstruction(const_cast<Instruction*>(user))) {
-        //llvm::errs() << " skipping constant use : " << *user << " of " <<  *inst << "\n";
-        continue;
+    if (auto ci = dyn_cast<CallInst>(use)) {
+      // If this instruction isn't constant (and thus we need the argument to propagate to its adjoint)
+      //   it may write memory and is topLevel (and thus we need to do the write in reverse)
+      //   or we need this value for the reverse pass (we conservatively assume that if legal it is recomputed and not stored)
+      if (!gutils->isConstantInstruction(ci) || (ci->mayWriteToMemory() && topLevel) || (gutils->legalRecompute(ci, ValueToValueMapTy()) && is_value_needed_in_reverse(TR, gutils, ci, topLevel, seen))) {
+        return seen[idx] = true;
+      }
+      continue;
     }
 
     //llvm::errs() << " + must have in reverse from considering use : " << *user << " of " <<  *inst << "\n";
-    return seen[inst] = true;
+    return seen[idx] = true;
   }
   return false;
 }
@@ -638,60 +615,6 @@ bool legalCombinedForwardReverse(CallInst &ci, const std::map<ReturnInst*,StoreI
     return false;
   }
 
-  auto writesToMemoryReadBy = [&](Instruction* maybeReader, Instruction* maybeWriter) -> bool {
-    if (auto call = dyn_cast<CallInst>(maybeWriter)) {
-      if (call->getCalledFunction() && isCertainMallocOrFree(call->getCalledFunction())) {
-        return false;
-      }
-    }
-    if (auto call = dyn_cast<CallInst>(maybeReader)) {
-      if (call->getCalledFunction() && isCertainMallocOrFree(call->getCalledFunction())) {
-        return false;
-      }
-    }
-    if (auto call = dyn_cast<InvokeInst>(maybeWriter)) {
-      if (call->getCalledFunction() && isCertainMallocOrFree(call->getCalledFunction())) {
-        return false;
-      }
-    }
-    if (auto call = dyn_cast<InvokeInst>(maybeReader)) {
-      if (call->getCalledFunction() && isCertainMallocOrFree(call->getCalledFunction())) {
-        return false;
-      }
-    }
-    assert(maybeWriter->mayWriteToMemory());
-    assert(maybeReader->mayReadFromMemory());
-
-    if (auto li = dyn_cast<LoadInst>(maybeReader)) {
-      return isModSet(gutils->AA.getModRefInfo(maybeWriter, MemoryLocation::get(li)));
-    }
-    if (auto rmw = dyn_cast<AtomicRMWInst>(maybeReader)) {
-      return isModSet(gutils->AA.getModRefInfo(maybeWriter, MemoryLocation::get(rmw)));
-    }
-    if (auto xch = dyn_cast<AtomicCmpXchgInst>(maybeReader)) {
-      return isModSet(gutils->AA.getModRefInfo(maybeWriter, MemoryLocation::get(xch)));
-    }
-
-    if (auto si = dyn_cast<StoreInst>(maybeWriter)) {
-      return isRefSet(gutils->AA.getModRefInfo(maybeReader, MemoryLocation::get(si)));
-    }
-    if (auto rmw = dyn_cast<AtomicRMWInst>(maybeWriter)) {
-      return isRefSet(gutils->AA.getModRefInfo(maybeReader, MemoryLocation::get(rmw)));
-    }
-    if (auto xch = dyn_cast<AtomicCmpXchgInst>(maybeWriter)) {
-      return isRefSet(gutils->AA.getModRefInfo(maybeReader, MemoryLocation::get(xch)));
-    }
-
-    if (auto cb = dyn_cast<CallInst>(maybeReader)) {
-      return isModOrRefSet(gutils->AA.getModRefInfo(maybeWriter, cb));
-    }
-    if (auto cb = dyn_cast<InvokeInst>(maybeReader)) {
-      return isModOrRefSet(gutils->AA.getModRefInfo(maybeWriter, cb));
-    }
-    llvm::errs() << " maybeReader: " << *maybeReader << " maybeWriter: " << *maybeWriter << "\n";
-    llvm_unreachable("unknown inst2");
-  };
-
   // Check any users of the returned value and determine all values that would be needed to be moved to reverse pass
   //  to ensure the forward pass would remain correct and everything computable
   SmallPtrSet<Instruction*,4> usetree;
@@ -802,7 +725,7 @@ bool legalCombinedForwardReverse(CallInst &ci, const std::map<ReturnInst*,StoreI
     if (inst->mayWriteToMemory()) {
       auto consider = [&](Instruction* user) {
         if (!user->mayReadFromMemory()) return;
-        if (writesToMemoryReadBy(/*maybeReader*/user, /*maybeWriter*/inst)) {
+        if (writesToMemoryReadBy(gutils->AA, /*maybeReader*/user, /*maybeWriter*/inst)) {
           //llvm::errs() << " memory deduced need follower of " << *inst << " - " << *user << "\n";
           propagate(user);
           if (!legal) return;
@@ -828,7 +751,7 @@ bool legalCombinedForwardReverse(CallInst &ci, const std::map<ReturnInst*,StoreI
       if (unnecessaryInstructions.count(post)) return;
       if (!post->mayWriteToMemory()) return;
       //llvm::errs() << " checking if illegal move of " << *inst << " due to " << *post << "\n";
-      if (writesToMemoryReadBy(/*maybeReader*/inst, /*maybeWriter*/post)) {
+      if (writesToMemoryReadBy(gutils->AA, /*maybeReader*/inst, /*maybeWriter*/post)) {
         if (called)
           llvm::errs() << " failed to replace function " << (called->getName()) << " due to " << *post << " usetree: " << *inst << "\n";
         else
@@ -1508,7 +1431,7 @@ public:
       default:def:;
         llvm::errs() << *gutils->oldFunc << "\n";
         for(auto & pair : gutils->internal_isConstantInstruction) {
-          llvm::errs() << " constantinst[" << *pair.first << "] = " << pair.second << " val:" << gutils->internal_isConstantValue[pair.first] << " type: " << TR.query(pair.first).str() << "\n";
+          llvm::errs() << " constantinst[" << *pair.first << "] = " << pair.second << " val:" << gutils->internal_isConstantValue[const_cast<Instruction*>(pair.first)] << " type: " << TR.query(const_cast<Instruction*>(pair.first)).str() << "\n";
         }
         llvm::errs() << "cannot handle unknown binary operator: " << BO << "\n";
         report_fatal_error("unknown binary operator");
@@ -2288,18 +2211,6 @@ void DerivativeMaker<const AugmentedReturn*>::visitCallInst(llvm::CallInst &call
         }
       }
     }
-  }
-
-  if (called && (called->getName() == "printf" || called->getName() == "puts")) {
-    SmallVector<Value*, 4> args;
-    for(unsigned i=0; i<op->getNumArgOperands(); i++) {
-      args.push_back(gutils->lookupM(argops[i], Builder2));
-    }
-    CallInst* cal = Builder2.CreateCall(called, args);
-    cal->setAttributes(op->getAttributes());
-    cal->setCallingConv(op->getCallingConv());
-    cal->setTailCallKind(op->getTailCallKind());
-    return;
   }
 
   if (called && (called->getName() == "tanhf" || called->getName() == "tanh")) {
@@ -3184,7 +3095,19 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, DIFFE_TYPE retTyp
       assert(term);
 
       // Don't create derivatives for code that results in termination
-      if (guaranteedUnreachable.find(&oBB) != guaranteedUnreachable.end()) continue;
+      if (guaranteedUnreachable.find(&oBB) != guaranteedUnreachable.end()) {
+        std::vector<Instruction*> toerase;
+
+        // For having the prints still exist on bugs, check if indeed unused
+        for(auto &I: oBB) { toerase.push_back(&I); }
+        for(auto I : toerase) { maker.eraseIfUnused(*I, /*erase*/true, /*check*/true); }
+        auto newBB = cast<BasicBlock>(gutils->getNewFromOriginal(&oBB));
+        if (newBB->getTerminator())
+          newBB->getTerminator()->eraseFromParent();
+        IRBuilder<> builder(newBB);
+        builder.CreateUnreachable();
+        continue;
+      }
 
       if (!isa<ReturnInst>(term) && !isa<BranchInst>(term) && !isa<SwitchInst>(term)) {
         llvm::errs() << *oBB.getParent() << "\n";
@@ -4086,7 +4009,17 @@ Function* CreatePrimalAndGradient(Function* todiff, DIFFE_TYPE retType, const st
 
   for(BasicBlock& oBB: *gutils->oldFunc) {
     // Don't create derivatives for code that results in termination
-    if (guaranteedUnreachable.find(&oBB) != guaranteedUnreachable.end()) continue;
+    if (guaranteedUnreachable.find(&oBB) != guaranteedUnreachable.end()) {
+        std::vector<Instruction*> toerase;
+        for(auto &I: oBB) { toerase.push_back(&I); }
+        for(auto I : toerase) { maker.eraseIfUnused(*I, /*erase*/true, /*check*/false); }
+        auto newBB = cast<BasicBlock>(gutils->getNewFromOriginal(&oBB));
+        if (newBB->getTerminator())
+          newBB->getTerminator()->eraseFromParent();
+        IRBuilder<> builder(newBB);
+        builder.CreateUnreachable();
+        continue;
+    }
 
     auto term = oBB.getTerminator();
     assert(term);

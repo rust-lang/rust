@@ -336,4 +336,115 @@ static inline typename std::map<K, V>::iterator insert_or_assign(std::map<K, V>&
   return map.find(key);
 }
 
+#include "llvm/IR/CFG.h"
+#include <functional>
+#include <deque>
+static inline void allFollowersOf(llvm::Instruction* inst, std::function<void(llvm::Instruction*)> f) {
+
+  //llvm::errs() << "all followers of: " << *inst << "\n";
+  for(auto uinst = inst->getNextNode(); uinst != nullptr; uinst = uinst->getNextNode()) {
+    //llvm::errs() << " + bb1: " << *uinst << "\n";
+    f(uinst);
+  }
+
+  std::deque<llvm::BasicBlock*> todo;
+  std::set<llvm::BasicBlock*> done;
+  for(auto suc : llvm::successors(inst->getParent())) {
+    todo.push_back(suc);
+  }
+  while(todo.size()) {
+    auto BB = todo.front();
+    todo.pop_front();
+    if (done.count(BB)) continue;
+    done.insert(BB);
+    for(auto &ni : *BB) {
+      f(&ni);
+      if (&ni == inst) break;
+    }
+    for(auto suc : llvm::successors(BB)) {
+      todo.push_back(suc);
+    }
+  }
+}
+
+static inline void allPredecessorsOf(llvm::Instruction* inst, std::function<void(llvm::Instruction*)> f) {
+
+  //llvm::errs() << "all followers of: " << *inst << "\n";
+  for(auto uinst = inst->getPrevNode(); uinst != nullptr; uinst = uinst->getPrevNode()) {
+    //llvm::errs() << " + bb1: " << *uinst << "\n";
+    f(uinst);
+  }
+
+  std::deque<llvm::BasicBlock*> todo;
+  std::set<llvm::BasicBlock*> done;
+  for(auto suc : llvm::predecessors(inst->getParent())) {
+    todo.push_back(suc);
+  }
+  while(todo.size()) {
+    auto BB = todo.front();
+    todo.pop_front();
+    if (done.count(BB)) continue;
+    done.insert(BB);
+
+    llvm::BasicBlock::reverse_iterator I = BB->rbegin(), E = BB->rend();
+    for (; I != E; I++) {
+      f(&*I);
+      if (&*I == inst) break;
+    }
+    for(auto suc : llvm::predecessors(BB)) {
+      todo.push_back(suc);
+    }
+  }
+}
+
+#include "llvm/Analysis/LoopInfo.h"
+static inline void allInstructionsBetween(llvm::LoopInfo &LI, llvm::Instruction* inst1, llvm::Instruction* inst2, std::function<void(llvm::Instruction*)> f) {
+  for(auto uinst = inst1->getNextNode(); uinst != nullptr; uinst = uinst->getNextNode()) {
+    //llvm::errs() << " + bb1: " << *uinst << "\n";
+    f(uinst);
+    if (uinst == inst2) return;
+  }
+
+  std::set<llvm::Instruction*> instructions;
+
+  llvm::Loop* l1 = LI.getLoopFor(inst1->getParent());
+  while (l1 && !l1->contains(inst2->getParent())) l1 = l1->getParentLoop();
+  /*
+  llvm::errs() << " l1: " << l1;
+  if (l1) llvm::errs() << " " << *l1;
+  llvm::errs() << "\n";
+  */
+
+  // Do all instructions from inst1 up to first instance of inst2's start block
+  {
+  std::deque<llvm::BasicBlock*> todo;
+  std::set<llvm::BasicBlock*> done;
+  for(auto suc : llvm::successors(inst1->getParent())) {
+    todo.push_back(suc);
+  }
+  while(todo.size()) {
+    auto BB = todo.front();
+    todo.pop_front();
+    if (done.count(BB)) continue;
+    done.insert(BB);
+
+    //llvm::errs() << " block: " << BB->getName() << "\n";
+    for(auto &ni : *BB) {
+      instructions.insert(&ni);
+    }
+    for(auto suc : llvm::successors(BB)) {
+      if (!l1 || suc != l1->getHeader()) {
+        todo.push_back(suc);
+      }
+    }
+  }
+  }
+
+  allPredecessorsOf(inst2, [&](llvm::Instruction* I) {
+    if (instructions.find(I) == instructions.end()) return;
+    f(I);
+  });
+
+}
+
 #endif

@@ -120,6 +120,7 @@ public:
   SmallPtrSet<Value*,20> nonconstant;
   SmallPtrSet<Value*,4> constant_values;
   SmallPtrSet<Value*,2> nonconstant_values;
+  LoopInfo OrigLI;
   LoopInfo LI;
   AssumptionCache AC;
   MyScalarEvolution SE;
@@ -181,30 +182,30 @@ public:
     return cast<Instruction>(getNewFromOriginal((Value*)newinst));
   }
 
-  Value* hasUninverted(Value* inverted) const {
+  Value* hasUninverted(const Value* inverted) const {
     for(auto v: invertedPointers) {
         if (v.second == inverted) return const_cast<Value*>(v.first);
     }
     return nullptr;
   }
 
-  Value* isOriginal(Value* newinst) const {
+  Value* isOriginal(const Value* newinst) const {
     for(auto v: originalToNewFn) {
         if (v.second == newinst) return const_cast<Value*>(v.first);
     }
     return nullptr;
   }
 
-  Instruction* isOriginal(Instruction* newinst) const {
-    return dyn_cast_or_null<Instruction>(isOriginal((Value*)newinst));
+  Instruction* isOriginal(const Instruction* newinst) const {
+    return dyn_cast_or_null<Instruction>(isOriginal((const Value*)newinst));
   }
 
   template<typename T>
   T* isOriginalT(T* newinst) const {
-    return dyn_cast_or_null<T>(isOriginal((Value*)newinst));
+    return dyn_cast_or_null<T>(isOriginal((const Value*)newinst));
   }
 
-  Value* getOriginal(Value* newinst) const {
+  Value* getOriginal(const Value* newinst) const {
     if (auto inst = dyn_cast<Instruction>(newinst)) {
       assert(inst->getParent()->getParent() == newFunc);
     }
@@ -243,8 +244,8 @@ private:
   std::map<std::pair<Value*, BasicBlock*>, Value*> unwrap_cache;
   std::map<std::pair<Value*, BasicBlock*>, Value*> lookup_cache;
 public:
-  bool legalRecompute(Value* val, const ValueToValueMapTy& available);
-  bool shouldRecompute(Value* val, const ValueToValueMapTy& available);
+  bool legalRecompute(const Value* val, const ValueToValueMapTy& available) const;
+  bool shouldRecompute(const Value* val, const ValueToValueMapTy& available) const;
 
   void replaceAWithB(Value* A, Value* B) {
       for(unsigned i=0; i<addedMallocs.size(); i++) {
@@ -818,7 +819,7 @@ public:
   AAResults &AA;
   TypeAnalysis &TA;
   GradientUtils(Function* newFunc_, Function* oldFunc_, TargetLibraryInfo &TLI_, TypeAnalysis &TA_, AAResults &AA_, ValueToValueMapTy& invertedPointers_, const SmallPtrSetImpl<Value*> &constants_, const SmallPtrSetImpl<Value*> &nonconstant_, const SmallPtrSetImpl<Value*> &constantvalues_, const SmallPtrSetImpl<Value*> &returnvals_, ValueToValueMapTy& originalToNewFn_) :
-      newFunc(newFunc_), oldFunc(oldFunc_), invertedPointers(), DT(*newFunc_), OrigDT(*oldFunc_), constants(constants_.begin(), constants_.end()), nonconstant(nonconstant_.begin(), nonconstant_.end()), constant_values(constantvalues_.begin(), constantvalues_.end()), nonconstant_values(returnvals_.begin(), returnvals_.end()), LI(DT), AC(*newFunc_), SE(*newFunc_, TLI_, AC, DT, LI), inversionAllocs(nullptr), TLI(TLI_), AA(AA_), TA(TA_) {
+      newFunc(newFunc_), oldFunc(oldFunc_), invertedPointers(), DT(*newFunc_), OrigDT(*oldFunc_), constants(constants_.begin(), constants_.end()), nonconstant(nonconstant_.begin(), nonconstant_.end()), constant_values(constantvalues_.begin(), constantvalues_.end()), nonconstant_values(returnvals_.begin(), returnvals_.end()), OrigLI(OrigDT), LI(DT), AC(*newFunc_), SE(*newFunc_, TLI_, AC, DT, LI), inversionAllocs(nullptr), TLI(TLI_), AA(AA_), TA(TA_) {
         invertedPointers.insert(invertedPointers_.begin(), invertedPointers_.end());
         originalToNewFn.insert(originalToNewFn_.begin(), originalToNewFn_.end());
           for (BasicBlock &BB: *newFunc) {
@@ -910,7 +911,7 @@ public:
   }
 
   std::map<llvm::Value*, bool> internal_isConstantValue;
-  std::map<llvm::Instruction*, bool> internal_isConstantInstruction;
+  std::map<const llvm::Instruction*, bool> internal_isConstantInstruction;
 
   void forceActiveDetection(AAResults &AA, TypeResults &TR) {
       for(auto a = oldFunc->arg_begin(); a != oldFunc->arg_end(); a++) {
@@ -1013,7 +1014,7 @@ public:
     exit(1);
   }
 
-  bool isConstantInstruction(Instruction* inst) const {
+  bool isConstantInstruction(const Instruction* inst) const {
     assert(inst->getParent()->getParent() == oldFunc);
     if (internal_isConstantInstruction.find(inst) == internal_isConstantInstruction.end()) {
       llvm::errs() << *oldFunc << "\n";
@@ -1824,6 +1825,7 @@ endCheck:
         storeInstructionInCache(inst->getParent(), inst, cache);
     }
 
+    std::map<Instruction*, std::map<BasicBlock*, Instruction*>> lcssaFixes;
     Instruction* fixLCSSA(Instruction* inst, const IRBuilder <>& BuilderM) {
         assert(inst->getName() != "<badref>");
         LoopContext lc;
@@ -1856,10 +1858,22 @@ endCheck:
                 }
                 assert(DT.dominates(inst, forwardBlock));
 
-                IRBuilder<> lcssa(&forwardBlock->front());
+                for(auto pair : lcssaFixes[inst]) {
+                  if (DT.dominates(pair.first, forwardBlock)) {
+                    return pair.second;
+                  }
+                }
+
+                //TODO replace toplace with the first block dominated by inst, that dominates (or is) forwardBlock
+                //  for ensuring maximum reuse
+                BasicBlock* toplace = forwardBlock;
+
+                IRBuilder<> lcssa(&toplace->front());
                 auto lcssaPHI = lcssa.CreatePHI(inst->getType(), 1, inst->getName()+"!manual_lcssa");
-                for(auto pred : predecessors(forwardBlock))
+                for(auto pred : predecessors(toplace))
                     lcssaPHI->addIncoming(inst, pred);
+
+                lcssaFixes[inst][toplace] = lcssaPHI;
                 return lcssaPHI;
 
             }

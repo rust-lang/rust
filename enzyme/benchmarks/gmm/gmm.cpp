@@ -87,7 +87,6 @@ void subtract(
 }
 
 
-
 double log_sum_exp(int n, double const* x)
 {
     int i;
@@ -103,7 +102,7 @@ double log_sum_exp(int n, double const* x)
 }
 
 
-
+__attribute__((const))
 double log_gamma_distrib(double a, double p)
 {
     int j;
@@ -185,14 +184,17 @@ void Qtimesx(
     int i, j;
     for (i = 0; i < d; i++)
     {
+        // storing separately this X
         out[i] = Qdiag[i] * x[i];
     }
 
+    //caching lparams as scev doesn't replicate index calculation
     int Lparamsidx = 0;
     for (i = 0; i < d; i++)
     {
         for (j = i + 1; j < d; j++)
         {
+            // and this x
             out[j] = out[j] + ltri[Lparamsidx] * x[i];
             Lparamsidx++;
         }
@@ -213,6 +215,7 @@ void gmm_objective(
     double* __restrict err
 )
 {
+    #define int int64_t
     int ix, ik;
     const double CONSTANT = -n * d * 0.5 * log(2 * PI);
     int icf_sz = d * (d + 1) / 2;
@@ -232,13 +235,19 @@ void gmm_objective(
         {
             subtract(d, &x[ix * d], &means[ik * d], &xcentered[0]);
             Qtimesx(d, &Qdiags[ik * d], &icf[ik * icf_sz + d], &xcentered[0], &Qxcentered[0]);
+            // two caches for qxcentered at idx 0 and at arbitrary index
             main_term[ik] = alphas[ik] + sum_qs[ik] - 0.5 * sqnorm(d, &Qxcentered[0]);
         }
 
+        // storing cmp for max of main_term
+        // 2 x (0 and arbitrary) storing sub to exp
+        // storing sum for use in log
         slse = slse + log_sum_exp(k, &main_term[0]);
     }
 
+    //storing cmp of alphas
     double lse_alphas = log_sum_exp(k, alphas);
+
     *err = CONSTANT + slse - n * lse_alphas + log_wishart_prior(d, k, wishart, &sum_qs[0], &Qdiags[0], icf);
 
     free(Qdiags);
@@ -246,6 +255,7 @@ void gmm_objective(
     free(xcentered);
     free(Qxcentered);
     free(main_term);
+    #undef int
 }
 
 extern int diffe_const;

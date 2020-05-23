@@ -238,4 +238,59 @@ CallInst* freeKnownAllocation(llvm::IRBuilder <>& builder, llvm::Value* tofree, 
   	return freecall;
 }
 
+static inline bool writesToMemoryReadBy(AAResults &AA, Instruction* maybeReader, Instruction* maybeWriter) {
+	if (auto call = dyn_cast<CallInst>(maybeWriter)) {
+	  if (call->getCalledFunction() && isCertainMallocOrFree(call->getCalledFunction())) {
+	    return false;
+	  }
+	}
+	if (auto call = dyn_cast<CallInst>(maybeReader)) {
+	  if (call->getCalledFunction() && isCertainMallocOrFree(call->getCalledFunction())) {
+	    return false;
+	  }
+	}
+	if (auto call = dyn_cast<InvokeInst>(maybeWriter)) {
+	  if (call->getCalledFunction() && isCertainMallocOrFree(call->getCalledFunction())) {
+	    return false;
+	  }
+	}
+	if (auto call = dyn_cast<InvokeInst>(maybeReader)) {
+	  if (call->getCalledFunction() && isCertainMallocOrFree(call->getCalledFunction())) {
+	    return false;
+	  }
+	}
+	assert(maybeWriter->mayWriteToMemory());
+	assert(maybeReader->mayReadFromMemory());
+
+	if (auto li = dyn_cast<LoadInst>(maybeReader)) {
+	  return isModSet(AA.getModRefInfo(maybeWriter, MemoryLocation::get(li)));
+	}
+	if (auto rmw = dyn_cast<AtomicRMWInst>(maybeReader)) {
+	  return isModSet(AA.getModRefInfo(maybeWriter, MemoryLocation::get(rmw)));
+	}
+	if (auto xch = dyn_cast<AtomicCmpXchgInst>(maybeReader)) {
+	  return isModSet(AA.getModRefInfo(maybeWriter, MemoryLocation::get(xch)));
+	}
+
+	if (auto si = dyn_cast<StoreInst>(maybeWriter)) {
+	  return isRefSet(AA.getModRefInfo(maybeReader, MemoryLocation::get(si)));
+	}
+	if (auto rmw = dyn_cast<AtomicRMWInst>(maybeWriter)) {
+	  return isRefSet(AA.getModRefInfo(maybeReader, MemoryLocation::get(rmw)));
+	}
+	if (auto xch = dyn_cast<AtomicCmpXchgInst>(maybeWriter)) {
+	  return isRefSet(AA.getModRefInfo(maybeReader, MemoryLocation::get(xch)));
+	}
+
+	if (auto cb = dyn_cast<CallInst>(maybeReader)) {
+	  //llvm::errs() << " considering: " << *cb << " and: " << *maybeWriter << "\n";
+	  return isModOrRefSet(AA.getModRefInfo(maybeWriter, cb));
+	}
+	if (auto cb = dyn_cast<InvokeInst>(maybeReader)) {
+	  return isModOrRefSet(AA.getModRefInfo(maybeWriter, cb));
+	}
+	llvm::errs() << " maybeReader: " << *maybeReader << " maybeWriter: " << *maybeWriter << "\n";
+	llvm_unreachable("unknown inst2");
+}
+
 #endif
