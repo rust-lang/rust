@@ -8,7 +8,6 @@ trait A {
 
 impl A for () {
     type Projection = bool;
-    // using () instead of bool here does compile though
 }
 
 struct Next<T: A>(T::Projection);
