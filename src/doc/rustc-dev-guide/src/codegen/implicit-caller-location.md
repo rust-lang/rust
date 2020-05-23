@@ -160,7 +160,6 @@ The `#[track_caller]` attribute is checked alongside other codegen attributes to
 function:
 
 * has the `"Rust"` ABI (as opposed to e.g., `"C"`)
-* is not a foreign import (e.g., in an `extern {...}` block)
 * is not a closure
 * is not `#[naked]`
 
