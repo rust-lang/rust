@@ -596,7 +596,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         Scalar::from_uint(discr.val, discr_layout.size)
                     }
                     None => {
-                        // On a type without actual discriminants, return variant idx as `u8`.
+                        // On a type without actual discriminants, variant is 0. Return variant idx as `u8`.
+                        assert_eq!(index.as_u32(), 0);
                         let discr_layout = self.layout_of(self.tcx.types.u8)?;
                         Scalar::from_uint(index.as_u32(), discr_layout.size)
                     }
