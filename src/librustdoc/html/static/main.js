@@ -2218,7 +2218,7 @@ function getSearchElement() {
             }
 
             if ((!relatedDoc && hasClass(docblock, "docblock") === false) ||
-                (pageId && document.getElementById(pageId))) {
+                (pageId && parentElem.id === pageId)) {
                 return;
             }
 
@@ -2248,13 +2248,13 @@ function getSearchElement() {
         }
     }
 
-    function collapser(e, collapse) {
+    function collapser(e, pageId) {
         // inherent impl ids are like "impl" or impl-<number>'.
         // they will never be hidden by default.
         var n = e.parentElement;
         if (n.id.match(/^impl(?:-\d+)?$/) === null) {
             // Automatically minimize all non-inherent impls
-            if (collapse || hasClass(n, "impl")) {
+            if (hasClass(n, "impl")) {
                 collapseDocs(e, "hide", pageId);
             }
         }
@@ -2268,7 +2268,7 @@ function getSearchElement() {
 
             if (impl_list !== null) {
                 onEachLazy(impl_list.getElementsByClassName("collapse-toggle"), function(e) {
-                    collapser(e, collapse);
+                    collapser(e, pageId);
                 });
             }
 
@@ -2276,7 +2276,7 @@ function getSearchElement() {
 
             if (blanket_list !== null) {
                 onEachLazy(blanket_list.getElementsByClassName("collapse-toggle"), function(e) {
-                    collapser(e, collapse);
+                    collapser(e, pageId);
                 });
             }
         }
