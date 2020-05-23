@@ -223,19 +223,19 @@ impl InlineAsmReg {
         name: Symbol,
     ) -> Result<Self, &'static str> {
         // FIXME: use direct symbol comparison for register names
-        name.with(|name| {
-            Ok(match arch {
-                InlineAsmArch::X86 | InlineAsmArch::X86_64 => {
-                    Self::X86(X86InlineAsmReg::parse(arch, has_feature, name)?)
-                }
-                InlineAsmArch::Arm => Self::Arm(ArmInlineAsmReg::parse(arch, has_feature, name)?),
-                InlineAsmArch::AArch64 => {
-                    Self::AArch64(AArch64InlineAsmReg::parse(arch, has_feature, name)?)
-                }
-                InlineAsmArch::RiscV32 | InlineAsmArch::RiscV64 => {
-                    Self::RiscV(RiscVInlineAsmReg::parse(arch, has_feature, name)?)
-                }
-            })
+        // Use `Symbol::as_str` instead of `Symbol::with` here because `has_feature` may access `Symbol`.
+        let name = name.as_str();
+        Ok(match arch {
+            InlineAsmArch::X86 | InlineAsmArch::X86_64 => {
+                Self::X86(X86InlineAsmReg::parse(arch, has_feature, &name)?)
+            }
+            InlineAsmArch::Arm => Self::Arm(ArmInlineAsmReg::parse(arch, has_feature, &name)?),
+            InlineAsmArch::AArch64 => {
+                Self::AArch64(AArch64InlineAsmReg::parse(arch, has_feature, &name)?)
+            }
+            InlineAsmArch::RiscV32 | InlineAsmArch::RiscV64 => {
+                Self::RiscV(RiscVInlineAsmReg::parse(arch, has_feature, &name)?)
+            }
         })
     }
 
