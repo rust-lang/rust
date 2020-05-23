@@ -21,7 +21,7 @@ impl CargoTargetSpec {
     pub(crate) fn runnable_args(
         spec: Option<CargoTargetSpec>,
         kind: &RunnableKind,
-        features_needed: &Option<Vec<SmolStr>>,
+        features_needed: &Vec<SmolStr>,
     ) -> Result<(Vec<String>, Vec<String>)> {
         let mut args = Vec::new();
         let mut extra_args = Vec::new();
@@ -76,12 +76,11 @@ impl CargoTargetSpec {
             }
         }
 
-        if let Some(features_needed) = features_needed {
-            features_needed.iter().for_each(|feature| {
-                args.push("--features".to_string());
-                args.push(feature.to_string());
-            });
-        }
+        features_needed.iter().for_each(|feature| {
+            args.push("--features".to_string());
+            args.push(feature.to_string());
+        });
+
         Ok((args, extra_args))
     }
 

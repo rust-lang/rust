@@ -33,33 +33,6 @@ impl CfgExpr {
             CfgExpr::Not(pred) => pred.fold(query).map(|s| !s),
         }
     }
-
-    /// Return minimal features needed
-    pub fn minimal_features_needed(&self) -> Vec<SmolStr> {
-        let mut features = vec![];
-        self.collect_minimal_features_needed(&mut features);
-
-        features
-    }
-
-    fn collect_minimal_features_needed(&self, features: &mut Vec<SmolStr>) {
-        match self {
-            CfgExpr::KeyValue { key, value } if key == "feature" => features.push(value.clone()),
-            CfgExpr::All(preds) => {
-                preds.iter().for_each(|cfg| cfg.collect_minimal_features_needed(features));
-            }
-            CfgExpr::Any(preds) => {
-                for cfg in preds {
-                    let len_features = features.len();
-                    cfg.collect_minimal_features_needed(features);
-                    if len_features != features.len() {
-                        break;
-                    }
-                }
-            }
-            _ => {}
-        }
-    }
 }
 
 pub fn parse_cfg(tt: &Subtree) -> CfgExpr {
@@ -159,33 +132,5 @@ mod tests {
                 CfgExpr::KeyValue { key: "bar".into(), value: "baz".into() },
             ]),
         );
-    }
-
-    #[test]
-    fn test_cfg_expr_minimal_features_needed() {
-        let (subtree, _) = get_token_tree_generated(r#"#![cfg(feature = "baz")]"#);
-        let cfg_expr = parse_cfg(&subtree);
-
-        assert_eq!(cfg_expr.minimal_features_needed(), vec![SmolStr::new("baz")]);
-
-        let (subtree, _) =
-            get_token_tree_generated(r#"#![cfg(all(feature = "baz", feature = "foo"))]"#);
-        let cfg_expr = parse_cfg(&subtree);
-
-        assert_eq!(
-            cfg_expr.minimal_features_needed(),
-            vec![SmolStr::new("baz"), SmolStr::new("foo")]
-        );
-
-        let (subtree, _) =
-            get_token_tree_generated(r#"#![cfg(any(feature = "baz", feature = "foo", unix))]"#);
-        let cfg_expr = parse_cfg(&subtree);
-
-        assert_eq!(cfg_expr.minimal_features_needed(), vec![SmolStr::new("baz")]);
-
-        let (subtree, _) = get_token_tree_generated(r#"#![cfg(foo)]"#);
-        let cfg_expr = parse_cfg(&subtree);
-
-        assert!(cfg_expr.minimal_features_needed().is_empty());
     }
 }

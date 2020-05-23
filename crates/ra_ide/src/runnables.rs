@@ -10,13 +10,14 @@ use ra_syntax::{
 
 use crate::FileId;
 use ast::DocCommentsOwner;
+use ra_cfg::CfgExpr;
 use std::fmt::Display;
 
 #[derive(Debug)]
 pub struct Runnable {
     pub range: TextRange,
     pub kind: RunnableKind,
-    pub features_needed: Option<Vec<SmolStr>>,
+    pub cfg_exprs: Vec<CfgExpr>,
 }
 
 #[derive(Debug)]
@@ -118,9 +119,10 @@ fn runnable_fn(
     };
 
     let attrs = Attrs::from_attrs_owner(sema.db, InFile::new(HirFileId::from(file_id), &fn_def));
-    let features_needed = get_features_needed(attrs);
+    let cfg_exprs =
+        attrs.by_key("cfg").tt_values().map(|subtree| ra_cfg::parse_cfg(subtree)).collect();
 
-    Some(Runnable { range: fn_def.syntax().text_range(), kind, features_needed })
+    Some(Runnable { range: fn_def.syntax().text_range(), kind, cfg_exprs })
 }
 
 #[derive(Debug)]
@@ -183,15 +185,10 @@ fn runnable_mod(
         .join("::");
 
     let attrs = Attrs::from_attrs_owner(sema.db, InFile::new(HirFileId::from(file_id), &module));
-    let features_needed = get_features_needed(attrs);
+    let cfg_exprs =
+        attrs.by_key("cfg").tt_values().map(|subtree| ra_cfg::parse_cfg(subtree)).collect();
 
-    Some(Runnable { range, kind: RunnableKind::TestMod { path }, features_needed })
-}
-
-fn get_features_needed(attrs: Attrs) -> Option<Vec<SmolStr>> {
-    let cfg_expr = attrs.by_key("cfg").tt_values().map(|subtree| ra_cfg::parse_cfg(subtree));
-    let features_needed = cfg_expr.map(|cfg| cfg.minimal_features_needed()).flatten().collect();
-    Some(features_needed).filter(|it: &Vec<SmolStr>| !it.is_empty())
+    Some(Runnable { range, kind: RunnableKind::TestMod { path }, cfg_exprs })
 }
 
 #[cfg(test)]
@@ -223,7 +220,7 @@ mod tests {
             Runnable {
                 range: 1..21,
                 kind: Bin,
-                features_needed: None,
+                cfg_exprs: [],
             },
             Runnable {
                 range: 22..46,
@@ -235,7 +232,7 @@ mod tests {
                         ignore: false,
                     },
                 },
-                features_needed: None,
+                cfg_exprs: [],
             },
             Runnable {
                 range: 47..81,
@@ -247,7 +244,7 @@ mod tests {
                         ignore: true,
                     },
                 },
-                features_needed: None,
+                cfg_exprs: [],
             },
         ]
         "###
@@ -275,7 +272,7 @@ mod tests {
             Runnable {
                 range: 1..21,
                 kind: Bin,
-                features_needed: None,
+                cfg_exprs: [],
             },
             Runnable {
                 range: 22..64,
@@ -284,7 +281,7 @@ mod tests {
                         "foo",
                     ),
                 },
-                features_needed: None,
+                cfg_exprs: [],
             },
         ]
         "###
@@ -315,7 +312,7 @@ mod tests {
             Runnable {
                 range: 1..21,
                 kind: Bin,
-                features_needed: None,
+                cfg_exprs: [],
             },
             Runnable {
                 range: 51..105,
@@ -324,7 +321,7 @@ mod tests {
                         "Data::foo",
                     ),
                 },
-                features_needed: None,
+                cfg_exprs: [],
             },
         ]
         "###
@@ -352,7 +349,7 @@ mod tests {
                 kind: TestMod {
                     path: "test_mod",
                 },
-                features_needed: None,
+                cfg_exprs: [],
             },
             Runnable {
                 range: 28..57,
@@ -364,7 +361,7 @@ mod tests {
                         ignore: false,
                     },
                 },
-                features_needed: None,
+                cfg_exprs: [],
             },
         ]
         "###
@@ -394,7 +391,7 @@ mod tests {
                 kind: TestMod {
                     path: "foo::test_mod",
                 },
-                features_needed: None,
+                cfg_exprs: [],
             },
             Runnable {
                 range: 46..79,
@@ -406,7 +403,7 @@ mod tests {
                         ignore: false,
                     },
                 },
-                features_needed: None,
+                cfg_exprs: [],
             },
         ]
         "###
@@ -438,7 +435,7 @@ mod tests {
                 kind: TestMod {
                     path: "foo::bar::test_mod",
                 },
-                features_needed: None,
+                cfg_exprs: [],
             },
             Runnable {
                 range: 68..105,
@@ -450,7 +447,7 @@ mod tests {
                         ignore: false,
                     },
                 },
-                features_needed: None,
+                cfg_exprs: [],
             },
         ]
         "###
@@ -482,11 +479,12 @@ mod tests {
                         ignore: false,
                     },
                 },
-                features_needed: Some(
-                    [
-                        "foo",
-                    ],
-                ),
+                cfg_exprs: [
+                    KeyValue {
+                        key: "feature",
+                        value: "foo",
+                    },
+                ],
             },
         ]
         "###
@@ -518,12 +516,20 @@ mod tests {
                         ignore: false,
                     },
                 },
-                features_needed: Some(
-                    [
-                        "foo",
-                        "bar",
-                    ],
-                ),
+                cfg_exprs: [
+                    All(
+                        [
+                            KeyValue {
+                                key: "feature",
+                                value: "foo",
+                            },
+                            KeyValue {
+                                key: "feature",
+                                value: "bar",
+                            },
+                        ],
+                    ),
+                ],
             },
         ]
         "###
