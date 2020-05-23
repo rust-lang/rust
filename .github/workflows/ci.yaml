@@ -125,6 +125,8 @@ jobs:
 
     - name: Run vscode tests
       uses: GabrielBB/xvfb-action@v1.2
+      env:
+        VSCODE_CLI: 1
       with:
         run: npm --prefix ./editors/code test
         # working-directory: ./editors/code  # does not work: https://github.com/GabrielBB/xvfb-action/issues/8
