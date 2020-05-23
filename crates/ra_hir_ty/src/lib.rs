@@ -159,6 +159,12 @@ pub enum TypeCtor {
 pub struct TypeCtorId(salsa::InternId);
 impl_intern_key!(TypeCtorId);
 
+/// This exists just for Chalk, because Chalk just has a single `FnDefId` where
+/// we have different IDs for struct and enum variant constructors.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
+pub struct CallableDefId(salsa::InternId);
+impl_intern_key!(CallableDefId);
+
 impl TypeCtor {
     pub fn num_ty_params(self, db: &dyn HirDatabase) -> usize {
         match self {

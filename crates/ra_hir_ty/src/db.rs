@@ -76,6 +76,8 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     #[salsa::interned]
     fn intern_type_ctor(&self, type_ctor: TypeCtor) -> crate::TypeCtorId;
     #[salsa::interned]
+    fn intern_callable_def(&self, callable_def: CallableDef) -> crate::CallableDefId;
+    #[salsa::interned]
     fn intern_type_param_id(&self, param_id: TypeParamId) -> GlobalTypeParamId;
     #[salsa::interned]
     fn intern_chalk_impl(&self, impl_: Impl) -> crate::traits::GlobalImplId;
@@ -93,6 +95,9 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
 
     #[salsa::invoke(crate::traits::chalk::impl_datum_query)]
     fn impl_datum(&self, krate: CrateId, impl_id: chalk::ImplId) -> Arc<chalk::ImplDatum>;
+
+    #[salsa::invoke(crate::traits::chalk::fn_def_datum_query)]
+    fn fn_def_datum(&self, krate: CrateId, fn_def_id: chalk::FnDefId) -> Arc<chalk::FnDefDatum>;
 
     #[salsa::invoke(crate::traits::chalk::associated_ty_value_query)]
     fn associated_ty_value(

@@ -15,8 +15,8 @@ use crate::{
     db::HirDatabase,
     primitive::{FloatBitness, FloatTy, IntBitness, IntTy, Signedness, Uncertain},
     traits::{builtin, AssocTyValue, Canonical, Impl, Obligation},
-    ApplicationTy, GenericPredicate, InEnvironment, ProjectionPredicate, ProjectionTy, Substs,
-    TraitEnvironment, TraitRef, Ty, TypeCtor,
+    ApplicationTy, CallableDef, GenericPredicate, InEnvironment, ProjectionPredicate, ProjectionTy,
+    Substs, TraitEnvironment, TraitRef, Ty, TypeCtor,
 };
 
 use super::interner::*;
@@ -26,14 +26,19 @@ impl ToChalk for Ty {
     type Chalk = chalk_ir::Ty<Interner>;
     fn to_chalk(self, db: &dyn HirDatabase) -> chalk_ir::Ty<Interner> {
         match self {
-            Ty::Apply(apply_ty) => {
-                if let TypeCtor::Ref(m) = apply_ty.ctor {
-                    return ref_to_chalk(db, m, apply_ty.parameters);
+            Ty::Apply(apply_ty) => match apply_ty.ctor {
+                TypeCtor::Ref(m) => ref_to_chalk(db, m, apply_ty.parameters),
+                TypeCtor::FnPtr { num_args: _ } => {
+                    let substitution = apply_ty.parameters.to_chalk(db).shifted_in(&Interner);
+                    chalk_ir::TyData::Function(chalk_ir::Fn { num_binders: 0, substitution })
+                        .intern(&Interner)
                 }
-                let name = apply_ty.ctor.to_chalk(db);
-                let substitution = apply_ty.parameters.to_chalk(db);
-                chalk_ir::ApplicationTy { name, substitution }.cast(&Interner).intern(&Interner)
-            }
+                _ => {
+                    let name = apply_ty.ctor.to_chalk(db);
+                    let substitution = apply_ty.parameters.to_chalk(db);
+                    chalk_ir::ApplicationTy { name, substitution }.cast(&Interner).intern(&Interner)
+                }
+            },
             Ty::Projection(proj_ty) => {
                 let associated_ty_id = proj_ty.associated_ty.to_chalk(db);
                 let substitution = proj_ty.parameters.to_chalk(db);
@@ -93,7 +98,13 @@ impl ToChalk for Ty {
                 Ty::Projection(ProjectionTy { associated_ty, parameters })
             }
             chalk_ir::TyData::Alias(chalk_ir::AliasTy::Opaque(_)) => unimplemented!(),
-            chalk_ir::TyData::Function(_) => unimplemented!(),
+            chalk_ir::TyData::Function(chalk_ir::Fn { num_binders: _, substitution }) => {
+                let parameters: Substs = from_chalk(db, substitution);
+                Ty::Apply(ApplicationTy {
+                    ctor: TypeCtor::FnPtr { num_args: (parameters.len() - 1) as u16 },
+                    parameters,
+                })
+            }
             chalk_ir::TyData::BoundVar(idx) => Ty::Bound(idx),
             chalk_ir::TyData::InferenceVar(_iv) => Ty::Unknown,
             chalk_ir::TyData::Dyn(where_clauses) => {
@@ -217,11 +228,14 @@ impl ToChalk for TypeCtor {
             TypeCtor::Slice => TypeName::Slice,
             TypeCtor::Ref(mutability) => TypeName::Ref(mutability.to_chalk(db)),
             TypeCtor::Str => TypeName::Str,
+            TypeCtor::FnDef(callable_def) => {
+                let id = callable_def.to_chalk(db);
+                TypeName::FnDef(id)
+            }
             TypeCtor::Int(Uncertain::Unknown)
             | TypeCtor::Float(Uncertain::Unknown)
             | TypeCtor::Adt(_)
             | TypeCtor::Array
-            | TypeCtor::FnDef(_)
             | TypeCtor::FnPtr { .. }
             | TypeCtor::Never
             | TypeCtor::Closure { .. } => {
@@ -260,7 +274,10 @@ impl ToChalk for TypeCtor {
             TypeName::Ref(mutability) => TypeCtor::Ref(from_chalk(db, mutability)),
             TypeName::Str => TypeCtor::Str,
 
-            TypeName::FnDef(_) => unreachable!(),
+            TypeName::FnDef(fn_def_id) => {
+                let callable_def = from_chalk(db, fn_def_id);
+                TypeCtor::FnDef(callable_def)
+            }
 
             TypeName::Error => {
                 // this should not be reached, since we don't represent TypeName::Error with TypeCtor
@@ -344,6 +361,18 @@ impl ToChalk for Impl {
 
     fn from_chalk(db: &dyn HirDatabase, impl_id: ImplId) -> Impl {
         db.lookup_intern_chalk_impl(impl_id.into())
+    }
+}
+
+impl ToChalk for CallableDef {
+    type Chalk = FnDefId;
+
+    fn to_chalk(self, db: &dyn HirDatabase) -> FnDefId {
+        db.intern_callable_def(self).into()
+    }
+
+    fn from_chalk(db: &dyn HirDatabase, fn_def_id: FnDefId) -> CallableDef {
+        db.lookup_intern_callable_def(fn_def_id.into())
     }
 }
 

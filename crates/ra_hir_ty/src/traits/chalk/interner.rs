@@ -20,6 +20,8 @@ pub type ImplId = chalk_ir::ImplId<Interner>;
 pub type ImplDatum = chalk_rust_ir::ImplDatum<Interner>;
 pub type AssociatedTyValueId = chalk_rust_ir::AssociatedTyValueId<Interner>;
 pub type AssociatedTyValue = chalk_rust_ir::AssociatedTyValue<Interner>;
+pub type FnDefId = chalk_ir::FnDefId<Interner>;
+pub type FnDefDatum = chalk_rust_ir::FnDefDatum<Interner>;
 
 impl chalk_ir::interner::Interner for Interner {
     type InternedType = Box<chalk_ir::TyData<Self>>; // FIXME use Arc?

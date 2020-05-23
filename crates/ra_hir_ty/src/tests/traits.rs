@@ -2644,6 +2644,80 @@ fn test() {
 }
 
 #[test]
+fn builtin_fn_def_copy() {
+    assert_snapshot!(
+        infer_with_mismatches(r#"
+#[lang = "copy"]
+trait Copy {}
+
+fn foo() {}
+fn bar<T: Copy>(T) -> T {}
+struct Struct(usize);
+enum Enum { Variant(usize) }
+
+trait Test { fn test(&self) -> bool; }
+impl<T: Copy> Test for T {}
+
+fn test() {
+    foo.test();
+    bar.test();
+    Struct.test();
+    Enum::Variant.test();
+}
+"#, true),
+        // wrong result, because the built-in Copy impl for fn defs doesn't exist in Chalk yet
+        @r###"
+    42..44 '{}': ()
+    61..62 'T': {unknown}
+    69..71 '{}': ()
+    69..71: expected T, got ()
+    146..150 'self': &Self
+    202..282 '{     ...t(); }': ()
+    208..211 'foo': fn foo()
+    208..218 'foo.test()': {unknown}
+    224..227 'bar': fn bar<{unknown}>({unknown}) -> {unknown}
+    224..234 'bar.test()': {unknown}
+    240..246 'Struct': Struct(usize) -> Struct
+    240..253 'Struct.test()': {unknown}
+    259..272 'Enum::Variant': Variant(usize) -> Enum
+    259..279 'Enum::...test()': {unknown}
+    "###
+    );
+}
+
+#[test]
+fn builtin_fn_ptr_copy() {
+    assert_snapshot!(
+        infer_with_mismatches(r#"
+#[lang = "copy"]
+trait Copy {}
+
+trait Test { fn test(&self) -> bool; }
+impl<T: Copy> Test for T {}
+
+fn test(f1: fn(), f2: fn(usize) -> u8, f3: fn(u8, u8) -> &u8) {
+    f1.test();
+    f2.test();
+    f3.test();
+}
+"#, true),
+        @r###"
+    55..59 'self': &Self
+    109..111 'f1': fn()
+    119..121 'f2': fn(usize) -> u8
+    140..142 'f3': fn(u8, u8) -> &u8
+    163..211 '{     ...t(); }': ()
+    169..171 'f1': fn()
+    169..178 'f1.test()': bool
+    184..186 'f2': fn(usize) -> u8
+    184..193 'f2.test()': bool
+    199..201 'f3': fn(u8, u8) -> &u8
+    199..208 'f3.test()': bool
+    "###
+    );
+}
+
+#[test]
 fn builtin_sized() {
     assert_snapshot!(
         infer_with_mismatches(r#"
