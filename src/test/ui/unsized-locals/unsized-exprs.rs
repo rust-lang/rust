@@ -1,5 +1,4 @@
-#![feature(unsized_tuple_coercion, unsized_locals, unsized_fn_params)]
-//~^ WARN the feature `unsized_locals` is incomplete
+#![feature(unsized_tuple_coercion, unsized_fn_params)]
 
 struct A<X: ?Sized>(X);
 
