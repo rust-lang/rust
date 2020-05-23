@@ -39,6 +39,7 @@ mod diagnostic;
 #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
 pub use diagnostic::{Diagnostic, Level, MultiSpan};
 
+use std::cmp::Ordering;
 use std::ops::{Bound, RangeBounds};
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -419,6 +420,20 @@ pub struct LineColumn {
 impl !Send for LineColumn {}
 #[unstable(feature = "proc_macro_span", issue = "54725")]
 impl !Sync for LineColumn {}
+
+#[unstable(feature = "proc_macro_span", issue = "54725")]
+impl Ord for LineColumn {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.line.cmp(&other.line).then(self.column.cmp(&other.column))
+    }
+}
+
+#[unstable(feature = "proc_macro_span", issue = "54725")]
+impl PartialOrd for LineColumn {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
 
 /// The source file of a given `Span`.
 #[unstable(feature = "proc_macro_span", issue = "54725")]
