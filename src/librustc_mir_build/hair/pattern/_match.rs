@@ -1870,7 +1870,9 @@ crate fn is_useful<'p, 'tcx>(
         return if any_is_useful { Useful(unreachable_pats) } else { NotUseful };
     }
 
-    let pcx = PatCtxt { ty: v.head().ty, span: v.head().span };
+    // FIXME(Nadrieril): Hack to work around type normalization issues (see #72476).
+    let ty = matrix.heads().next().map(|r| r.ty).unwrap_or(v.head().ty);
+    let pcx = PatCtxt { ty, span: v.head().span };
 
     debug!("is_useful_expand_first_col: pcx={:#?}, expanding {:#?}", pcx, v.head());
 
