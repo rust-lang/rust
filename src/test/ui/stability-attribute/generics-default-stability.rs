@@ -30,31 +30,31 @@ impl Trait3<usize> for S {
 }
 
 fn main() {
-    // let _ = S;
+    let _ = S;
 
-    // let _ = Struct1 { field: 1 }; //~ ERROR use of unstable library feature 'unstable_default'
-    // let _: Struct1 = Struct1 { field: 1 }; //~ ERROR use of unstable library feature 'unstable_default'
-    // let _: Struct1<isize> = Struct1 { field: 1 }; //~ ERROR use of unstable library feature 'unstable_default'
+    let _ = Struct1 { field: 1 }; //~ ERROR use of unstable library feature 'unstable_default'
+    let _: Struct1 = Struct1 { field: 1 }; //~ ERROR use of unstable library feature 'unstable_default'
+    let _: Struct1<isize> = Struct1 { field: 1 }; //~ ERROR use of unstable library feature 'unstable_default'
 
-    // let _ = STRUCT1; // ok
-    // let _: Struct1 = STRUCT1; // ok
-    // let _: Struct1<usize> = STRUCT1; //~ ERROR use of unstable library feature 'unstable_default'
-    // let _: Struct1<usize> = STRUCT1; //~ ERROR use of unstable library feature 'unstable_default'
-    // let _ = STRUCT1.field; // ok
-    // let _: usize = STRUCT1.field; //~ ERROR use of unstable library feature 'unstable_default'
-    // let _ = STRUCT1.field + 1; //~ ERROR use of unstable library feature 'unstable_default'
-    // let _ = STRUCT1.field + 1usize; //~ ERROR use of unstable library feature 'unstable_default'
+    let _ = STRUCT1; // ok
+    let _: Struct1 = STRUCT1; // ok
+    let _: Struct1<usize> = STRUCT1; //~ ERROR use of unstable library feature 'unstable_default'
+    let _: Struct1<usize> = STRUCT1; //~ ERROR use of unstable library feature 'unstable_default'
+    let _ = STRUCT1.field; // ok
+    let _: usize = STRUCT1.field; //~ ERROR use of unstable library feature 'unstable_default'
+    let _ = STRUCT1.field + 1; //~ ERROR use of unstable library feature 'unstable_default'
+    let _ = STRUCT1.field + 1usize; //~ ERROR use of unstable library feature 'unstable_default'
 
-    // let _ = Struct2 { field: 1 }; // ok
-    // let _: Struct2 = Struct2 { field: 1 }; // ok
-    // let _: Struct2<usize> = Struct2 { field: 1 }; // ok
+    let _ = Struct2 { field: 1 }; // ok
+    let _: Struct2 = Struct2 { field: 1 }; // ok
+    let _: Struct2<usize> = Struct2 { field: 1 }; // ok
 
-    // let _ = STRUCT2;
-    // let _: Struct2 = STRUCT2; // ok
-    // let _: Struct2<usize> = STRUCT2; // ok
-    // let _: Struct2<usize> = STRUCT2; // ok
-    // let _ = STRUCT2.field; // ok
-    // let _: usize = STRUCT2.field; // ok
-    // let _ = STRUCT2.field + 1; // ok
-    // let _ = STRUCT2.field + 1usize; // ok
+    let _ = STRUCT2;
+    let _: Struct2 = STRUCT2; // ok
+    let _: Struct2<usize> = STRUCT2; // ok
+    let _: Struct2<usize> = STRUCT2; // ok
+    let _ = STRUCT2.field; // ok
+    let _: usize = STRUCT2.field; // ok
+    let _ = STRUCT2.field + 1; // ok
+    let _ = STRUCT2.field + 1usize; // ok
 }
