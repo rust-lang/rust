@@ -36,6 +36,7 @@ use rustc_hash::FxHashSet;
 
 use crate::{
     db::{DefDatabase, HirDatabase},
+    diagnostics::UnsafeValidator,
     has_source::HasSource,
     CallableDef, HirDisplay, InFile, Name,
 };
@@ -677,7 +678,9 @@ impl Function {
         let _p = profile("Function::diagnostics");
         let infer = db.infer(self.id.into());
         infer.add_diagnostics(db, self.id, sink);
-        let mut validator = ExprValidator::new(self.id, infer, sink);
+        let mut validator = ExprValidator::new(self.id, infer.clone(), sink);
+        validator.validate_body(db);
+        let mut validator = UnsafeValidator::new(&self, infer, sink);
         validator.validate_body(db);
     }
 }

@@ -169,3 +169,61 @@ impl AstDiagnostic for BreakOutsideOfLoop {
         ast::Expr::cast(node).unwrap()
     }
 }
+
+#[derive(Debug)]
+pub struct MissingUnsafe {
+    pub file: HirFileId,
+    pub fn_def: AstPtr<ast::FnDef>,
+    pub fn_name: Name,
+}
+
+impl Diagnostic for MissingUnsafe {
+    fn message(&self) -> String {
+        format!("Missing unsafe marker on fn `{}`", self.fn_name)
+    }
+    fn source(&self) -> InFile<SyntaxNodePtr> {
+        InFile { file_id: self.file, value: self.fn_def.clone().into() }
+    }
+    fn as_any(&self) -> &(dyn Any + Send + 'static) {
+        self
+    }
+}
+
+impl AstDiagnostic for MissingUnsafe {
+    type AST = ast::FnDef;
+
+    fn ast(&self, db: &impl AstDatabase) -> Self::AST {
+        let root = db.parse_or_expand(self.source().file_id).unwrap();
+        let node = self.source().value.to_node(&root);
+        ast::FnDef::cast(node).unwrap()
+    }
+}
+
+#[derive(Debug)]
+pub struct UnnecessaryUnsafe {
+    pub file: HirFileId,
+    pub fn_def: AstPtr<ast::FnDef>,
+    pub fn_name: Name,
+}
+
+impl Diagnostic for UnnecessaryUnsafe {
+    fn message(&self) -> String {
+        format!("Unnecessary unsafe marker on fn `{}`", self.fn_name)
+    }
+    fn source(&self) -> InFile<SyntaxNodePtr> {
+        InFile { file_id: self.file, value: self.fn_def.clone().into() }
+    }
+    fn as_any(&self) -> &(dyn Any + Send + 'static) {
+        self
+    }
+}
+
+impl AstDiagnostic for UnnecessaryUnsafe {
+    type AST = ast::FnDef;
+
+    fn ast(&self, db: &impl AstDatabase) -> Self::AST {
+        let root = db.parse_or_expand(self.source().file_id).unwrap();
+        let node = self.source().value.to_node(&root);
+        ast::FnDef::cast(node).unwrap()
+    }
+}

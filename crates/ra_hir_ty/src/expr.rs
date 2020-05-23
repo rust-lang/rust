@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use hir_def::{path::path, resolver::HasResolver, AdtId, FunctionId};
+use hir_def::{path::path, resolver::HasResolver, AdtId, DefWithBodyId, FunctionId};
 use hir_expand::diagnostics::DiagnosticSink;
 use ra_syntax::{ast, AstPtr};
 use rustc_hash::FxHashSet;
@@ -311,4 +311,26 @@ pub fn record_pattern_missing_fields(
         return None;
     }
     Some((variant_def, missed_fields, exhaustive))
+}
+
+pub fn unsafe_expressions(
+    db: &dyn HirDatabase,
+    infer: &InferenceResult,
+    def: DefWithBodyId,
+) -> Vec<ExprId> {
+    let mut unsafe_expr_ids = vec![];
+    let body = db.body(def);
+    for (id, expr) in body.exprs.iter() {
+        if let Expr::Call { callee, .. } = expr {
+            if infer
+                .method_resolution(*callee)
+                .map(|func| db.function_data(func).is_unsafe)
+                .unwrap_or(false)
+            {
+                unsafe_expr_ids.push(id);
+            }
+        }
+    }
+
+    unsafe_expr_ids
 }
