@@ -116,5 +116,8 @@ jobs:
     - run: npm run lint
       working-directory: ./editors/code
 
+    - run: npm test
+      working-directory: ./editors/code
+
     - run: npm run package --scripts-prepend-node-path
       working-directory: ./editors/code
