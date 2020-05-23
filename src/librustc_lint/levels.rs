@@ -9,7 +9,6 @@ use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_hir::{intravisit, HirId};
-use rustc_lint::builtin::UNSAFE_OP_IN_UNSAFE_FN;
 use rustc_middle::hir::map::Map;
 use rustc_middle::lint::LintDiagnosticBuilder;
 use rustc_middle::lint::{struct_lint_level, LintLevelMap, LintLevelSets, LintSet, LintSource};
@@ -388,7 +387,7 @@ impl<'s> LintLevelsBuilder<'s> {
     }
 
     fn check_gated_lint(&self, name: Symbol, span: Span) {
-        if name.as_str() == UNSAFE_OP_IN_UNSAFE_FN.name
+        if name.as_str() == builtin::UNSAFE_OP_IN_UNSAFE_FN.name
             && !self.sess.features_untracked().unsafe_block_in_unsafe_fn
         {
             feature_err(
