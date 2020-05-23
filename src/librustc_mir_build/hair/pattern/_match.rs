@@ -1066,10 +1066,9 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
         constructor: &Constructor<'tcx>,
         ty: Ty<'tcx>,
     ) -> Self {
-        debug!("Fields::wildcards({:#?}, {:?})", constructor, ty);
         let wildcard_from_ty = |ty| &*cx.pattern_arena.alloc(Pat::wildcard_from_ty(ty));
 
-        match constructor {
+        let ret = match constructor {
             Single | Variant(_) => match ty.kind {
                 ty::Tuple(ref fs) => {
                     Fields::wildcards_from_tys(cx, fs.into_iter().map(|ty| ty.expect_ty()))
@@ -1129,7 +1128,9 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                 _ => bug!("bad slice pattern {:?} {:?}", constructor, ty),
             },
             ConstantValue(..) | FloatRange(..) | IntRange(..) | NonExhaustive => Fields::empty(),
-        }
+        };
+        debug!("Fields::wildcards({:?}, {:?}) = {:#?}", constructor, ty, ret);
+        ret
     }
 
     fn len(&self) -> usize {
@@ -1870,7 +1871,7 @@ crate fn is_useful<'p, 'tcx>(
 
     debug!("is_useful_expand_first_col: pcx={:#?}, expanding {:#?}", pcx, v.head());
 
-    if let Some(constructor) = pat_constructor(cx.tcx, cx.param_env, v.head()) {
+    let ret = if let Some(constructor) = pat_constructor(cx.tcx, cx.param_env, v.head()) {
         debug!("is_useful - expanding constructor: {:#?}", constructor);
         split_grouped_constructors(
             cx.tcx,
@@ -1901,11 +1902,11 @@ crate fn is_useful<'p, 'tcx>(
 
         let used_ctors: Vec<Constructor<'_>> =
             matrix.heads().filter_map(|p| pat_constructor(cx.tcx, cx.param_env, p)).collect();
-        debug!("used_ctors = {:#?}", used_ctors);
+        debug!("is_useful_used_ctors = {:#?}", used_ctors);
         // `all_ctors` are all the constructors for the given type, which
         // should all be represented (or caught with the wild pattern `_`).
         let all_ctors = all_constructors(cx, pcx);
-        debug!("all_ctors = {:#?}", all_ctors);
+        debug!("is_useful_all_ctors = {:#?}", all_ctors);
 
         // `missing_ctors` is the set of constructors from the same type as the
         // first column of `matrix` that are matched only by wildcard patterns
@@ -1920,7 +1921,7 @@ crate fn is_useful<'p, 'tcx>(
         // can be big.
         let missing_ctors = MissingConstructors::new(all_ctors, used_ctors);
 
-        debug!("missing_ctors.empty()={:#?}", missing_ctors.is_empty(),);
+        debug!("is_useful_missing_ctors.empty()={:#?}", missing_ctors.is_empty(),);
 
         if missing_ctors.is_empty() {
             let (all_ctors, _) = missing_ctors.into_inner();
@@ -1988,7 +1989,9 @@ crate fn is_useful<'p, 'tcx>(
                 usefulness.apply_missing_ctors(cx, pcx.ty, &missing_ctors)
             }
         }
-    }
+    };
+    debug!("is_useful::returns({:#?}, {:#?}) = {:?}", matrix, v, ret);
+    ret
 }
 
 /// A shorthand for the `U(S(c, P), S(c, q))` operation from the paper. I.e., `is_useful` applied
@@ -2647,7 +2650,10 @@ fn specialize_one_pattern<'p, 'tcx>(
 
         PatKind::Or { .. } => bug!("Or-pattern should have been expanded earlier on."),
     };
-    debug!("specialize({:#?}, {:#?}) = {:#?}", pat, ctor_wild_subpatterns, result);
+    debug!(
+        "specialize({:#?}, {:#?}, {:#?}) = {:#?}",
+        pat, constructor, ctor_wild_subpatterns, result
+    );
 
     result
 }
