@@ -1079,6 +1079,9 @@ pub enum PredicateKind<'tcx> {
 
     /// Constants must be equal. The first component is the const that is expected.
     ConstEquate(&'tcx Const<'tcx>, &'tcx Const<'tcx>),
+
+    /// Constant must be well formed.
+    WellFormedConst(&'tcx Const<'tcx>),
 }
 
 /// The crate outlives map is computed during typeck and contains the
@@ -1194,6 +1197,9 @@ impl<'tcx> Predicate<'tcx> {
             }
             PredicateKind::ConstEquate(c1, c2) => {
                 PredicateKind::ConstEquate(c1.subst(tcx, substs), c2.subst(tcx, substs))
+            }
+            PredicateKind::WellFormedConst(c) => {
+                PredicateKind::WellFormedConst(c.subst(tcx, substs))
             }
         };
 
@@ -1386,7 +1392,8 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::ClosureKind(..)
             | PredicateKind::TypeOutlives(..)
             | PredicateKind::ConstEvaluatable(..)
-            | PredicateKind::ConstEquate(..) => None,
+            | PredicateKind::ConstEquate(..)
+            | PredicateKind::WellFormedConst(..) => None,
         }
     }
 
@@ -1401,7 +1408,8 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::ObjectSafe(..)
             | PredicateKind::ClosureKind(..)
             | PredicateKind::ConstEvaluatable(..)
-            | PredicateKind::ConstEquate(..) => None,
+            | PredicateKind::ConstEquate(..)
+            | PredicateKind::WellFormedConst(..) => None,
         }
     }
 }

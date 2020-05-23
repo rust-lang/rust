@@ -610,6 +610,15 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         }
                     }
 
+                    ty::PredicateKind::WellFormedConst(ct) => {
+                        // Const WF predicates cannot themselves make
+                        // errors. They can only block due to
+                        // ambiguity; otherwise, they always
+                        // degenerate into other obligations
+                        // (which may fail).
+                        span_bug!(span, "const WF predicate not satisfied for {:?}", ct);
+                    }
+
                     ty::PredicateKind::ConstEvaluatable(..) => {
                         // Errors for `ConstEvaluatable` predicates show up as
                         // `SelectionError::ConstEvalFailure`,
@@ -1538,6 +1547,15 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                     return;
                 }
                 self.need_type_info_err(body_id, span, ty, ErrorCode::E0282)
+            }
+
+            ty::PredicateKind::WellFormedConst(ct) => {
+                // Same hacky approach as above to avoid deluging user
+                // with error messages.
+                if ct.references_error() || self.tcx.sess.has_errors() {
+                    return;
+                }
+                self.need_type_info_err_const(body_id, span, ct, ErrorCode::E0282)
             }
 
             ty::PredicateKind::Subtype(ref data) => {

@@ -45,6 +45,8 @@ pub fn anonymize_predicate<'tcx>(
         }
 
         ty::PredicateKind::ConstEquate(c1, c2) => ty::PredicateKind::ConstEquate(c1, c2),
+
+        ty::PredicateKind::WellFormedConst(ct) => ty::PredicateKind::WellFormedConst(ct),
     };
 
     if new != *kind { new.to_predicate(tcx) } else { pred }
@@ -203,6 +205,9 @@ impl Elaborator<'tcx> {
             ty::PredicateKind::ConstEquate(..) => {
                 // Currently, we do not elaborate const-equate
                 // predicates.
+            }
+            ty::PredicateKind::WellFormedConst(..) => {
+                // Currently, we do not elaborate WF predicates.
             }
             ty::PredicateKind::RegionOutlives(..) => {
                 // Nothing to elaborate from `'a: 'b`.

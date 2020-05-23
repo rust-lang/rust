@@ -247,6 +247,7 @@ impl fmt::Debug for ty::PredicateKind<'tcx> {
                 write!(f, "ConstEvaluatable({:?}, {:?})", def_id, substs)
             }
             ty::PredicateKind::ConstEquate(c1, c2) => write!(f, "ConstEquate({:?}, {:?})", c1, c2),
+            ty::PredicateKind::WellFormedConst(c) => write!(f, "WellFormedConst({:?})", c),
         }
     }
 }
@@ -506,6 +507,9 @@ impl<'a, 'tcx> Lift<'tcx> for ty::PredicateKind<'a> {
             }
             ty::PredicateKind::ConstEquate(c1, c2) => {
                 tcx.lift(&(c1, c2)).map(|(c1, c2)| ty::PredicateKind::ConstEquate(c1, c2))
+            }
+            ty::PredicateKind::WellFormedConst(c) => {
+                tcx.lift(&c).map(ty::PredicateKind::WellFormedConst)
             }
         }
     }

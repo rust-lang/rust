@@ -1,6 +1,6 @@
-#![allow(incomplete_features, dead_code, unconditional_recursion)]
+#![allow(dead_code, unconditional_recursion)]
 #![feature(const_generics)]
-#![feature(lazy_normalization_consts)]
+//~^ WARN the feature `const_generics` is incomplete
 
 fn fact<const N: usize>() {
     fact::<{ N - 1 }>();

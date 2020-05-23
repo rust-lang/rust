@@ -1218,6 +1218,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TrivialConstraints {
                     Projection(..) |
                     // Ignore bounds that a user can't type
                     WellFormed(..) |
+                    WellFormedConst(..) |
                     ObjectSafe(..) |
                     ClosureKind(..) |
                     Subtype(..) |

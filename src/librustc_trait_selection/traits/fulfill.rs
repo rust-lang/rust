@@ -476,6 +476,21 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                 }
             }
 
+            ty::PredicateKind::WellFormedConst(constant) => match wf::const_obligations(
+                self.selcx.infcx(),
+                obligation.param_env,
+                obligation.cause.body_id,
+                constant,
+                obligation.cause.span,
+            ) {
+                Some(predicates) => ProcessResult::Changed(mk_pending(predicates)),
+                None => {
+                    pending_obligation.stalled_on =
+                        vec![TyOrConstInferVar::maybe_from_const(constant).unwrap()];
+                    ProcessResult::Unchanged
+                }
+            },
+
             &ty::PredicateKind::Subtype(subtype) => {
                 match self.selcx.infcx().subtype_predicate(
                     &obligation.cause,

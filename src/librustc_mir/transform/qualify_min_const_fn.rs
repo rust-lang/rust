@@ -29,7 +29,8 @@ pub fn is_min_const_fn(tcx: TyCtxt<'tcx>, def_id: DefId, body: &'a Body<'tcx>) -
                 | ty::PredicateKind::WellFormed(_)
                 | ty::PredicateKind::Projection(_)
                 | ty::PredicateKind::ConstEvaluatable(..)
-                | ty::PredicateKind::ConstEquate(..) => continue,
+                | ty::PredicateKind::ConstEquate(..)
+                | ty::PredicateKind::WellFormedConst(..) => continue,
                 ty::PredicateKind::ObjectSafe(_) => {
                     bug!("object safe predicate on function: {:#?}", predicate)
                 }

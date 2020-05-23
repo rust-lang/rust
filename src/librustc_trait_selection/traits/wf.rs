@@ -128,15 +128,15 @@ pub fn predicate_obligations<'a, 'tcx>(
             let obligations = wf.nominal_obligations(def_id, substs);
             wf.out.extend(obligations);
 
-            for subst in substs.iter().copied() {
+            for subst in substs.iter() {
                 wf.compute(subst);
             }
         }
-        ty::PredicateKind::ConstEquate(c1, c2) => {
-            wf.compute(c1.ty.into());
-            wf.compute(c2.ty.into());
+        &ty::PredicateKind::ConstEquate(c1, c2) => {
+            wf.compute(c1.into());
+            wf.compute(c2.into());
         }
-        ty::Predicate::WellFormedConst(constant) => {
+        &ty::PredicateKind::WellFormedConst(constant) => {
             wf.compute(constant.into());
         }
     }
@@ -368,7 +368,8 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                             let obligations = self.nominal_obligations(def_id, substs);
                             self.out.extend(obligations);
 
-                            let predicate = ty::PredicateKind::ConstEvaluatable(def_id, substs).to_predicate(self.tcx());
+                            let predicate = ty::PredicateKind::ConstEvaluatable(def_id, substs)
+                                .to_predicate(self.tcx());
                             let cause = self.cause(traits::MiscObligation);
                             self.out.push(traits::Obligation::new(
                                 cause,
@@ -389,11 +390,20 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                                 self.out.push(traits::Obligation::new(
                                     cause,
                                     self.param_env,
-                                    ty::PredicateKind::WellFormedConst(resolved_constant).to_predicate(self.tcx()),
+                                    ty::PredicateKind::WellFormedConst(resolved_constant)
+                                        .to_predicate(self.tcx()),
                                 ));
                             }
                         }
-                        _ => (),
+                        ty::ConstKind::Error
+                        | ty::ConstKind::Param(_)
+                        | ty::ConstKind::Bound(..)
+                        | ty::ConstKind::Placeholder(..) => {
+                            // These variants are trivially WF, so nothing to do here.
+                        }
+                        ty::ConstKind::Value(..) => {
+                            // FIXME: Enforce that values are structually-matchable.
+                        }
                     }
                     continue;
                 }

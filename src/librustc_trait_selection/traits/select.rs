@@ -450,6 +450,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 None => Ok(EvaluatedToAmbig),
             },
 
+            ty::PredicateKind::WellFormedConst(constant) => match wf::const_obligations(
+                self.infcx,
+                obligation.param_env,
+                obligation.cause.body_id,
+                constant,
+                obligation.cause.span,
+            ) {
+                Some(mut obligations) => {
+                    self.add_depth(obligations.iter_mut(), obligation.recursion_depth);
+                    self.evaluate_predicates_recursively(previous_stack, obligations.into_iter())
+                }
+                None => Ok(EvaluatedToAmbig),
+            },
+
             ty::PredicateKind::TypeOutlives(..) | ty::PredicateKind::RegionOutlives(..) => {
                 // We do not consider region relationships when evaluating trait matches.
                 Ok(EvaluatedToOkModuloRegions)

@@ -3353,28 +3353,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn to_const(&self, ast_c: &hir::AnonConst) -> &'tcx ty::Const<'tcx> {
         let const_def_id = self.tcx.hir().local_def_id(ast_c.hir_id);
         let c = ty::Const::from_anon_const(self.tcx, const_def_id);
-
-        // HACK(eddyb) emulate what a `WellFormedConst` obligation would do.
-        // This code should be replaced with the proper WF handling ASAP.
-        if let ty::ConstKind::Unevaluated(def_id, substs, promoted) = c.val {
-            assert!(promoted.is_none());
-
-            // HACK(eddyb) let's hope these are always empty.
-            // let obligations = self.nominal_obligations(def_id, substs);
-            // self.out.extend(obligations);
-
-            let cause = traits::ObligationCause::new(
-                self.tcx.def_span(const_def_id.to_def_id()),
-                self.body_id,
-                traits::MiscObligation,
-            );
-            self.register_predicate(traits::Obligation::new(
-                cause,
-                self.param_env,
-                ty::PredicateKind::ConstEvaluatable(def_id, substs).to_predicate(self.tcx),
-            ));
-        }
-
+        self.register_wf_const_obligation(
+            c,
+            self.tcx.hir().span(ast_c.hir_id),
+            ObligationCauseCode::MiscObligation,
+        );
         c
     }
 
@@ -3424,11 +3407,40 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ));
     }
 
-    /// Registers obligations that all types appearing in `substs` are well-formed.
+    /// Registers an obligation for checking later, during regionck, that the type `ty` must
+    /// outlive the region `r`.
+    pub fn register_wf_const_obligation(
+        &self,
+        ct: &'tcx ty::Const<'tcx>,
+        span: Span,
+        code: traits::ObligationCauseCode<'tcx>,
+    ) {
+        // WF obligations never themselves fail, so no real need to give a detailed cause:
+        let cause = traits::ObligationCause::new(span, self.body_id, code);
+        self.register_predicate(traits::Obligation::new(
+            cause,
+            self.param_env,
+            ty::PredicateKind::WellFormedConst(ct).to_predicate(self.tcx),
+        ));
+    }
+
+    /// Registers obligations that all `substs` are well-formed.
     pub fn add_wf_bounds(&self, substs: SubstsRef<'tcx>, expr: &hir::Expr<'_>) {
-        for ty in substs.types() {
-            if !ty.references_error() {
-                self.register_wf_obligation(ty, expr.span, traits::MiscObligation);
+        for subst in substs {
+            match subst.unpack() {
+                GenericArgKind::Lifetime(..) => {
+                    // Nothing to do for lifetimes.
+                }
+                GenericArgKind::Type(ty) => {
+                    if !ty.references_error() {
+                        self.register_wf_obligation(ty, expr.span, traits::MiscObligation);
+                    }
+                }
+                GenericArgKind::Const(ct) => {
+                    if !ct.references_error() {
+                        self.register_wf_const_obligation(ct, expr.span, traits::MiscObligation);
+                    }
+                }
             }
         }
     }
@@ -3860,6 +3872,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty::PredicateKind::RegionOutlives(..) => None,
                 ty::PredicateKind::TypeOutlives(..) => None,
                 ty::PredicateKind::WellFormed(..) => None,
+                ty::PredicateKind::WellFormedConst(..) => None,
                 ty::PredicateKind::ObjectSafe(..) => None,
                 ty::PredicateKind::ConstEvaluatable(..) => None,
                 ty::PredicateKind::ConstEquate(..) => None,

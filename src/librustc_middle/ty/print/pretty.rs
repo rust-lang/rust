@@ -2054,6 +2054,9 @@ define_print_and_forward_display! {
                    print(c2),
                    write("`"))
             }
+            ty::PredicateKind::WellFormedConst(c) => {
+                p!(print(c), write(" well-formed"))
+            }
         }
     }
 

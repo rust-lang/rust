@@ -77,7 +77,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::InEnvironment<chalk_ir::Goal<RustInterner<'
     ) -> chalk_ir::InEnvironment<chalk_ir::Goal<RustInterner<'tcx>>> {
         let clauses = self.environment.into_iter().filter_map(|clause| match clause {
             ChalkEnvironmentClause::Predicate(predicate) => {
-                match &predicate.kind() {
+                match predicate.kind() {
                     ty::PredicateKind::Trait(predicate, _) => {
                         let (predicate, binders, _named_regions) =
                             collect_bound_vars(interner, interner.tcx, predicate);
@@ -126,7 +126,8 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::InEnvironment<chalk_ir::Goal<RustInterner<'
                     | ty::PredicateKind::ClosureKind(..)
                     | ty::PredicateKind::Subtype(..)
                     | ty::PredicateKind::ConstEvaluatable(..)
-                    | ty::PredicateKind::ConstEquate(..) => {
+                    | ty::PredicateKind::ConstEquate(..)
+                    | ty::PredicateKind::WellFormedConst(..) => {
                         bug!("unexpected predicate {}", predicate)
                     }
                 }
@@ -193,7 +194,8 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::GoalData<RustInterner<'tcx>>> for ty::Predi
             | ty::PredicateKind::ClosureKind(..)
             | ty::PredicateKind::Subtype(..)
             | ty::PredicateKind::ConstEvaluatable(..)
-            | ty::PredicateKind::ConstEquate(..) => {
+            | ty::PredicateKind::ConstEquate(..)
+            | ty::PredicateKind::WellFormedConst(..) => {
                 chalk_ir::GoalData::All(chalk_ir::Goals::new(interner))
             }
         }
@@ -460,7 +462,8 @@ impl<'tcx> LowerInto<'tcx, Option<chalk_ir::QuantifiedWhereClause<RustInterner<'
             | ty::PredicateKind::ClosureKind(..)
             | ty::PredicateKind::Subtype(..)
             | ty::PredicateKind::ConstEvaluatable(..)
-            | ty::PredicateKind::ConstEquate(..) => bug!("unexpected predicate {}", &self),
+            | ty::PredicateKind::ConstEquate(..)
+            | ty::PredicateKind::WellFormedConst(..) => bug!("unexpected predicate {}", &self),
         }
     }
 }
