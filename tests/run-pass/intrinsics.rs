@@ -25,4 +25,9 @@ fn main() {
     assert_eq!(intrinsics::unlikely(true), true);
 
     unsafe { intrinsics::forget(Bomb); }
+
+    let _v = intrinsics::discriminant_value(&Some(()));
+    let _v = intrinsics::discriminant_value(&0);
+    let _v = intrinsics::discriminant_value(&true);
+    let _v = intrinsics::discriminant_value(&vec![1,2,3]);
 }
