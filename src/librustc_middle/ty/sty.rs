@@ -29,6 +29,7 @@ use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::marker::PhantomData;
 use std::ops::Range;
+use ty::util::IntTypeExt;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
 #[derive(HashStable, TypeFoldable, Lift)]
@@ -2101,6 +2102,15 @@ impl<'tcx> TyS<'tcx> {
                 Some(substs.as_generator().discriminant_for_variant(def_id, tcx, variant_index))
             }
             _ => None,
+        }
+    }
+
+    /// Returns the type of the discriminant of this type.
+    pub fn discriminant_type(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+        match self.kind {
+            ty::Adt(adt_def, _) => adt_def.repr.discr_type().to_ty(tcx),
+            ty::Generator(_, substs, _) => substs.as_generator().discr_ty(tcx),
+            _ => bug!("{:?} does not have a discriminant", self),
         }
     }
 

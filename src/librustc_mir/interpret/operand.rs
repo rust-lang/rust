@@ -7,11 +7,11 @@ use std::fmt::Write;
 use rustc_errors::ErrorReported;
 use rustc_hir::def::Namespace;
 use rustc_macros::HashStable;
-use rustc_middle::ty::layout::{IntegerExt, PrimitiveExt, TyAndLayout};
+use rustc_middle::ty::layout::{PrimitiveExt, TyAndLayout};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter, Printer};
 use rustc_middle::ty::Ty;
 use rustc_middle::{mir, ty};
-use rustc_target::abi::{Abi, DiscriminantKind, HasDataLayout, Integer, LayoutOf, Size};
+use rustc_target::abi::{Abi, DiscriminantKind, HasDataLayout, LayoutOf, Size};
 use rustc_target::abi::{VariantIdx, Variants};
 
 use super::{
@@ -576,9 +576,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Read discriminant, return the runtime value as well as the variant index.
     pub fn read_discriminant(
         &self,
-        rval: OpTy<'tcx, M::PointerTag>,
+        op: OpTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, (Scalar<M::PointerTag>, VariantIdx)> {
-        trace!("read_discriminant_value {:#?}", rval.layout);
+        trace!("read_discriminant_value {:#?}", op.layout);
+
+        // Get type and layout of the discriminant.
+        let discr_layout = self.layout_of(op.layout.ty.discriminant_type(*self.tcx))?;
+        trace!("discriminant type: {:?}", discr_layout.ty);
 
         // We use "discriminant" to refer to the value associated with a particualr enum variant.
         // This is not to be confused with its "variant index", which is just determining its position in the
@@ -587,18 +591,17 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // straight-forward (`DiscriminantKind::Tag`) or with a niche (`DiscriminantKind::Niche`).
         // Unfortunately, the rest of the compiler calls the latter "discriminant", too, which makes things
         // rather confusing.
-        let (tag_scalar_layout, tag_kind, tag_index) = match rval.layout.variants {
+        let (tag_scalar_layout, tag_kind, tag_index) = match op.layout.variants {
             Variants::Single { index } => {
-                let discr = match rval.layout.ty.discriminant_for_variant(*self.tcx, index) {
+                let discr = match op.layout.ty.discriminant_for_variant(*self.tcx, index) {
                     Some(discr) => {
                         // This type actually has discriminants.
-                        let discr_layout = self.layout_of(discr.ty)?;
+                        assert_eq!(discr.ty, discr_layout.ty);
                         Scalar::from_uint(discr.val, discr_layout.size)
                     }
                     None => {
-                        // On a type without actual discriminants, variant is 0. Return variant idx as `u8`.
+                        // On a type without actual discriminants, variant is 0.
                         assert_eq!(index.as_u32(), 0);
-                        let discr_layout = self.layout_of(self.tcx.types.u8)?;
                         Scalar::from_uint(index.as_u32(), discr_layout.size)
                     }
                 };
@@ -609,40 +612,24 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
         };
 
-        // There are *three* types/layouts that come into play here:
-        // - The discriminant has a type for typechecking. This is `discr_ty`, and is used for
+        // There are *three* layouts that come into play here:
+        // - The discriminant has a type for typechecking. This is `discr_layout`, and is used for
         //   the `Scalar` we return.
-        // - The discriminant gets encoded as a tag/niche, with layout `tag_layout`.
-        //   This is always an integer, and used to interpret the value we read from the
-        //   tag field. For the return value, a cast to `discr_ty` is performed.
-        // - The field storing the tag has a layout, which is very similar to
-        //   `tag_layout` but may be a pointer. This is `tag_val.layout`;
-        //   we just use it for sanity checks.
+        // - The tag (encoded discriminant) has layout `tag_layout`. This is always an integer type,
+        //   and used to interpret the value we read from the tag field.
+        //   For the return value, a cast to `discr_layout` is performed.
+        // - The field storing the tag has a layout, which is very similar to `tag_layout` but
+        //   may be a pointer. This is `tag_val.layout`; we just use it for sanity checks.
 
         // Get layout for tag.
         let tag_layout = self.layout_of(tag_scalar_layout.value.to_int_ty(*self.tcx))?;
 
         // Read tag and sanity-check `tag_layout`.
-        let tag_val = self.read_immediate(self.operand_field(rval, tag_index)?)?;
+        let tag_val = self.read_immediate(self.operand_field(op, tag_index)?)?;
         assert_eq!(tag_layout.size, tag_val.layout.size);
         assert_eq!(tag_layout.abi.is_signed(), tag_val.layout.abi.is_signed());
         let tag_val = tag_val.to_scalar()?;
         trace!("tag value: {:?}", tag_val);
-
-        // Get type used by typechecking.
-        let discr_ty = match rval.layout.ty.kind {
-            ty::Adt(adt, _) => {
-                let discr_int_ty = Integer::from_attr(self, adt.repr.discr_type());
-                // The signedness of tag and discriminant is the same.
-                discr_int_ty.to_ty(*self.tcx, tag_layout.abi.is_signed())
-            }
-            ty::Generator(_, substs, _) => {
-                let substs = substs.as_generator();
-                substs.discr_ty(*self.tcx)
-            }
-            _ => bug!("multiple variants for non-adt non-generator"),
-        };
-        trace!("discriminant type: {:?}", discr_ty);
 
         // Figure out which discriminant and variant this corresponds to.
         Ok(match *tag_kind {
@@ -651,11 +638,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     .force_bits(tag_val, tag_layout.size)
                     .map_err(|_| err_ub!(InvalidDiscriminant(tag_val.erase_tag())))?;
                 // Cast bits from tag layout to discriminant layout.
-                let discr_layout = self.layout_of(discr_ty)?;
-                let discr_val_cast = self.cast_from_scalar(tag_bits, tag_layout, discr_ty);
+                let discr_val_cast = self.cast_from_scalar(tag_bits, tag_layout, discr_layout.ty);
                 let discr_bits = discr_val_cast.assert_bits(discr_layout.size);
                 // Convert discriminant to variant index, and catch invalid discriminants.
-                let index = match rval.layout.ty.kind {
+                let index = match op.layout.ty.kind {
                     ty::Adt(adt, _) => {
                         adt.discriminants(self.tcx.tcx).find(|(_, var)| var.val == discr_bits)
                     }
@@ -705,7 +691,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             let variant_index = variants_start
                                 .checked_add(variant_index_relative)
                                 .expect("overflow computing absolute variant idx");
-                            let variants_len = rval
+                            let variants_len = op
                                 .layout
                                 .ty
                                 .ty_adt_def()
@@ -722,8 +708,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // Compute the size of the scalar we need to return.
                 // No need to cast, because the variant index directly serves as discriminant and is
                 // encoded in the tag.
-                let size = self.layout_of(discr_ty)?.size;
-                (Scalar::from_uint(variant.as_u32(), size), variant)
+                (Scalar::from_uint(variant.as_u32(), discr_layout.size), variant)
             }
         })
     }
