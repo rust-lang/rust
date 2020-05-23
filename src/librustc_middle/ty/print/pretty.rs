@@ -495,7 +495,7 @@ pub trait PrettyPrinter<'tcx>:
             }
             ty::Never => p!(write("!")),
             ty::Tuple(ref tys) => {
-                p!(write("("), comma_sep(tys.iter().copied()));
+                p!(write("("), comma_sep(tys.iter()));
                 if tys.len() == 1 {
                     p!(write(","));
                 }
@@ -560,7 +560,7 @@ pub trait PrettyPrinter<'tcx>:
                         // FIXME(eddyb) print this with `print_def_path`.
                         if !substs.is_empty() {
                             p!(write("::"));
-                            p!(generic_delimiters(|cx| cx.comma_sep(substs.iter().copied())));
+                            p!(generic_delimiters(|cx| cx.comma_sep(substs.iter())));
                         }
                         return Ok(self);
                     }
@@ -1935,7 +1935,7 @@ define_print_and_forward_display! {
     (self, cx):
 
     &'tcx ty::List<Ty<'tcx>> {
-        p!(write("{{"), comma_sep(self.iter().copied()), write("}}"))
+        p!(write("{{"), comma_sep(self.iter()), write("}}"))
     }
 
     ty::TypeAndMut<'tcx> {

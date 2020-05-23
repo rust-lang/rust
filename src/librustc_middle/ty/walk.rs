@@ -128,7 +128,7 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
                 stack.push(lt.into());
             }
             ty::Projection(data) => {
-                stack.extend(data.substs.iter().copied().rev());
+                stack.extend(data.substs.iter().rev());
             }
             ty::Dynamic(obj, lt) => {
                 stack.push(lt.into());
@@ -143,7 +143,7 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
                         }
                     };
 
-                    substs.iter().copied().rev().chain(opt_ty.map(|ty| ty.into()))
+                    substs.iter().rev().chain(opt_ty.map(|ty| ty.into()))
                 }));
             }
             ty::Adt(_, substs)
@@ -152,14 +152,14 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
             | ty::Generator(_, substs, _)
             | ty::Tuple(substs)
             | ty::FnDef(_, substs) => {
-                stack.extend(substs.iter().copied().rev());
+                stack.extend(substs.iter().rev());
             }
             ty::GeneratorWitness(ts) => {
-                stack.extend(ts.skip_binder().iter().cloned().rev().map(|ty| ty.into()));
+                stack.extend(ts.skip_binder().iter().rev().map(|ty| ty.into()));
             }
             ty::FnPtr(sig) => {
                 stack.push(sig.skip_binder().output().into());
-                stack.extend(sig.skip_binder().inputs().iter().cloned().rev().map(|ty| ty.into()));
+                stack.extend(sig.skip_binder().inputs().iter().copied().rev().map(|ty| ty.into()));
             }
         },
         GenericArgKind::Lifetime(_) => {}
@@ -174,7 +174,7 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
                 | ty::ConstKind::Error => {}
 
                 ty::ConstKind::Unevaluated(_, substs, _) => {
-                    stack.extend(substs.iter().copied().rev());
+                    stack.extend(substs.iter().rev());
                 }
             }
         }

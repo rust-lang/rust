@@ -163,8 +163,8 @@ fn place_components_conflict<'tcx>(
             body,
             borrow_local,
             borrow_proj_base,
-            borrow_c,
-            access_c,
+            &borrow_c,
+            &access_c,
             bias,
         ) {
             Overlap::Arbitrary => {
@@ -420,24 +420,24 @@ fn place_projection_conflict<'tcx>(
             }
         }
         (
-            ProjectionElem::ConstantIndex {
+            &ProjectionElem::ConstantIndex {
                 offset: offset_from_begin,
                 min_length: min_length1,
                 from_end: false,
             },
-            ProjectionElem::ConstantIndex {
+            &ProjectionElem::ConstantIndex {
                 offset: offset_from_end,
                 min_length: min_length2,
                 from_end: true,
             },
         )
         | (
-            ProjectionElem::ConstantIndex {
+            &ProjectionElem::ConstantIndex {
                 offset: offset_from_end,
                 min_length: min_length1,
                 from_end: true,
             },
-            ProjectionElem::ConstantIndex {
+            &ProjectionElem::ConstantIndex {
                 offset: offset_from_begin,
                 min_length: min_length2,
                 from_end: false,
@@ -449,7 +449,7 @@ fn place_projection_conflict<'tcx>(
             // element (like -1 in Python) and `min_length` the first.
             // Therefore, `min_length - offset_from_end` gives the minimal possible
             // offset from the beginning
-            if *offset_from_begin >= *min_length - *offset_from_end {
+            if offset_from_begin >= min_length - offset_from_end {
                 debug!("place_element_conflict: DISJOINT-OR-EQ-ARRAY-CONSTANT-INDEX-FE");
                 Overlap::EqualOrDisjoint
             } else {

@@ -5,6 +5,7 @@ use rustc_serialize::{Encodable, Encoder};
 use std::cmp::{self, Ordering};
 use std::fmt;
 use std::hash::{Hash, Hasher};
+use std::iter;
 use std::mem;
 use std::ops::Deref;
 use std::ptr;
@@ -21,6 +22,10 @@ extern "C" {
 /// the same contents can exist in the same context.
 /// This means we can use pointer for both
 /// equality comparisons and hashing.
+///
+/// Unlike slices, The types contained in `List` are expected to be `Copy`
+/// and iterating over a `List` returns `T` instead of a reference.
+///
 /// Note: `Slice` was already taken by the `Ty`.
 #[repr(C)]
 pub struct List<T> {
@@ -60,6 +65,15 @@ impl<T: Copy> List<T> {
 
             result
         }
+    }
+
+    // If this method didn't exist, we would use `slice.iter` due to
+    // deref coercion.
+    //
+    // This would be weird, as `self.into_iter` iterates over `T` directly.
+    #[inline(always)]
+    pub fn iter(&self) -> <&'_ List<T> as IntoIterator>::IntoIter {
+        self.into_iter()
     }
 }
 
@@ -128,12 +142,12 @@ impl<T> AsRef<[T]> for List<T> {
     }
 }
 
-impl<'a, T> IntoIterator for &'a List<T> {
-    type Item = &'a T;
-    type IntoIter = <&'a [T] as IntoIterator>::IntoIter;
+impl<'a, T: Copy> IntoIterator for &'a List<T> {
+    type Item = T;
+    type IntoIter = iter::Copied<<&'a [T] as IntoIterator>::IntoIter>;
     #[inline(always)]
     fn into_iter(self) -> Self::IntoIter {
-        self[..].iter()
+        self[..].iter().copied()
     }
 }
 

@@ -87,7 +87,7 @@ fn environment<'tcx>(
         NodeKind::TraitImpl => {
             let trait_ref = tcx.impl_trait_ref(def_id).expect("not an impl");
 
-            inputs.extend(trait_ref.substs.iter().flat_map(|&arg| arg.walk()));
+            inputs.extend(trait_ref.substs.iter().flat_map(|arg| arg.walk()));
         }
 
         // In an inherent impl, we assume that the receiver type and all its

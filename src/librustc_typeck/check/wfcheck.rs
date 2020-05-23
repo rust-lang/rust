@@ -900,7 +900,7 @@ fn check_opaque_types<'fcx, 'tcx>(
                     if may_define_opaque_type(tcx, fn_def_id, opaque_hir_id) {
                         trace!("check_opaque_types: may define, generics={:#?}", generics);
                         let mut seen_params: FxHashMap<_, Vec<_>> = FxHashMap::default();
-                        for (i, &arg) in substs.iter().enumerate() {
+                        for (i, arg) in substs.iter().enumerate() {
                             let arg_is_param = match arg.unpack() {
                                 GenericArgKind::Type(ty) => matches!(ty.kind, ty::Param(_)),
 

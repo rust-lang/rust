@@ -497,7 +497,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                     return PlaceTy::from_ty(self.tcx().types.err);
                 }
             }
-            place_ty = self.sanitize_projection(place_ty, elem, place, location)
+            place_ty = self.sanitize_projection(place_ty, &elem, place, location)
         }
 
         if let PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) = context {

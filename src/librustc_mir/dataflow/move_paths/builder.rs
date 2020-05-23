@@ -158,7 +158,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             };
 
             if union_path.is_none() {
-                base = self.add_move_path(base, elem, |tcx| Place {
+                base = self.add_move_path(base, &elem, |tcx| Place {
                     local: place.local,
                     projection: tcx.intern_place_elems(&place.projection[..i + 1]),
                 });

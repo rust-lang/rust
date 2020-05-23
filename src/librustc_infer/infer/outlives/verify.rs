@@ -50,7 +50,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
                 // for further background and discussion.
                 let mut bounds = substs
                     .iter()
-                    .filter_map(|&child| match child.unpack() {
+                    .filter_map(|child| match child.unpack() {
                         GenericArgKind::Type(ty) => Some(self.type_bound(ty)),
                         GenericArgKind::Lifetime(_) => None,
                         GenericArgKind::Const(_) => Some(self.recursive_bound(child)),
@@ -223,8 +223,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         // like `T` and `T::Item`. It may not work as well for things
         // like `<T as Foo<'a>>::Item`.
         let c_b = self.param_env.caller_bounds;
-        let param_bounds =
-            self.collect_outlives_from_predicate_list(&compare_ty, c_b.into_iter().copied());
+        let param_bounds = self.collect_outlives_from_predicate_list(&compare_ty, c_b.into_iter());
 
         // Next, collect regions we scraped from the well-formedness
         // constraints in the fn signature. To do that, we walk the list

@@ -466,7 +466,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let op = place
             .projection
             .iter()
-            .try_fold(base_op, |op, elem| self.operand_projection(op, elem))?;
+            .try_fold(base_op, |op, elem| self.operand_projection(op, &elem))?;
 
         trace!("eval_place_to_op: got {:?}", *op);
         Ok(op)

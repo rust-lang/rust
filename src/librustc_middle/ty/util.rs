@@ -413,7 +413,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let result = item_substs
             .iter()
             .zip(impl_substs.iter())
-            .filter(|&(_, &k)| {
+            .filter(|&(_, k)| {
                 match k.unpack() {
                     GenericArgKind::Lifetime(&ty::RegionKind::ReEarlyBound(ref ebr)) => {
                         !impl_generics.region_param(ebr, self).pure_wrt_drop
@@ -433,7 +433,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     }
                 }
             })
-            .map(|(&item_param, _)| item_param)
+            .map(|(item_param, _)| item_param)
             .collect();
         debug!("destructor_constraint({:?}) = {:?}", def.did, result);
         result

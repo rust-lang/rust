@@ -634,7 +634,7 @@ where
         };
 
         for elem in place.projection.iter() {
-            place_ty = self.place_projection(place_ty, elem)?
+            place_ty = self.place_projection(place_ty, &elem)?
         }
 
         self.dump_place(place_ty.place);

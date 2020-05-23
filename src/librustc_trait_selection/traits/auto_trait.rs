@@ -281,9 +281,8 @@ impl AutoTraitFinder<'tcx> {
             },
         }));
 
-        let computed_preds = param_env.caller_bounds.iter().cloned();
-        let mut user_computed_preds: FxHashSet<_> =
-            user_env.caller_bounds.iter().cloned().collect();
+        let computed_preds = param_env.caller_bounds.iter();
+        let mut user_computed_preds: FxHashSet<_> = user_env.caller_bounds.iter().collect();
 
         let mut new_env = param_env;
         let dummy_cause = ObligationCause::dummy();

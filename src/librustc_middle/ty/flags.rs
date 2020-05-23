@@ -129,7 +129,7 @@ impl FlagComputation {
             &ty::Dynamic(ref obj, r) => {
                 let mut computation = FlagComputation::new();
                 for predicate in obj.skip_binder().iter() {
-                    match *predicate {
+                    match predicate {
                         ty::ExistentialPredicate::Trait(tr) => computation.add_substs(tr.substs),
                         ty::ExistentialPredicate::Projection(p) => {
                             let mut proj_computation = FlagComputation::new();

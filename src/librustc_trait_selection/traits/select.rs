@@ -3154,7 +3154,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 // Check that the source struct with the target's
                 // unsizing parameters is equal to the target.
-                let substs = tcx.mk_substs(substs_a.iter().enumerate().map(|(i, &k)| {
+                let substs = tcx.mk_substs(substs_a.iter().enumerate().map(|(i, k)| {
                     if unsizing_params.contains(i as u32) { substs_b[i] } else { k }
                 }));
                 let new_struct = tcx.mk_adt(def, substs);

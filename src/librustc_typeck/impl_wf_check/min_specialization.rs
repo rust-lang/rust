@@ -229,7 +229,7 @@ fn unconstrained_parent_impl_substs<'tcx>(
         .iter()
         .enumerate()
         .filter(|&(idx, _)| !constrained_params.contains(&(idx as u32)))
-        .map(|(_, arg)| *arg)
+        .map(|(_, arg)| arg)
         .collect()
 }
 

@@ -872,7 +872,7 @@ fn assemble_candidates_from_param_env<'cx, 'tcx>(
         obligation_trait_ref,
         candidate_set,
         ProjectionTyCandidate::ParamEnv,
-        obligation.param_env.caller_bounds.iter().cloned(),
+        obligation.param_env.caller_bounds.iter(),
     );
 }
 
