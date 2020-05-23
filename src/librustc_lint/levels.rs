@@ -14,7 +14,7 @@ use rustc_middle::lint::LintDiagnosticBuilder;
 use rustc_middle::lint::{struct_lint_level, LintLevelMap, LintLevelSets, LintSet, LintSource};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::lint::{builtin, Level, Lint};
+use rustc_session::lint::{builtin, Level, Lint, LintId};
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
@@ -80,13 +80,13 @@ impl<'s> LintLevelsBuilder<'s> {
             let level = cmp::min(level, self.sets.lint_cap);
 
             let lint_flag_val = Symbol::intern(lint_name);
-            self.check_gated_lint(lint_flag_val, DUMMY_SP);
 
             let ids = match store.find_lints(&lint_name) {
                 Ok(ids) => ids,
                 Err(_) => continue, // errors handled in check_lint_name_cmdline above
             };
             for id in ids {
+                self.check_gated_lint(id, DUMMY_SP);
                 let src = LintSource::CommandLine(lint_flag_val);
                 specs.insert(id, (level, src));
             }
@@ -213,9 +213,9 @@ impl<'s> LintLevelsBuilder<'s> {
                 let name = meta_item.path.segments.last().expect("empty lint name").ident.name;
                 match store.check_lint_name(&name.as_str(), tool_name) {
                     CheckLintNameResult::Ok(ids) => {
-                        self.check_gated_lint(name, attr.span);
                         let src = LintSource::Node(name, li.span(), reason);
                         for id in ids {
+                            self.check_gated_lint(*id, attr.span);
                             specs.insert(*id, (level, src));
                         }
                     }
@@ -386,8 +386,8 @@ impl<'s> LintLevelsBuilder<'s> {
         BuilderPush { prev, changed: prev != self.cur }
     }
 
-    fn check_gated_lint(&self, name: Symbol, span: Span) {
-        if name.as_str() == builtin::UNSAFE_OP_IN_UNSAFE_FN.name
+    fn check_gated_lint(&self, id: LintId, span: Span) {
+        if id == LintId::of(builtin::UNSAFE_OP_IN_UNSAFE_FN)
             && !self.sess.features_untracked().unsafe_block_in_unsafe_fn
         {
             feature_err(
