@@ -37,57 +37,48 @@ pub(crate) fn change_lifetime_anon_to_named(acc: &mut Assists, ctx: &AssistConte
         // only allow naming the last anonymous lifetime
         return None;
     }
-    match lifetime_arg.syntax().ancestors().find_map(ast::ImplDef::cast) {
-        Some(impl_def) => {
-            // get the `impl` keyword so we know where to add the lifetime argument
-            let impl_kw = impl_def.syntax().first_child_or_token()?.into_token()?;
-            if impl_kw.kind() != SyntaxKind::IMPL_KW {
-                return None;
-            }
-            let new_lifetime_param = match impl_def.type_param_list() {
-                Some(type_params) => {
-                    let used_lifetime_params: HashSet<_> = type_params
-                        .lifetime_params()
-                        .map(|p| {
-                            let mut param_name = p.syntax().text().to_string();
-                            param_name.remove(0);
-                            param_name
-                        })
-                        .collect();
-                    (b'a'..=b'z')
-                        .map(char::from)
-                        .find(|c| !used_lifetime_params.contains(&c.to_string()))?
-                }
-                None => 'a',
-            };
-            acc.add(
-                AssistId("change_lifetime_anon_to_named"),
-                "Give anonymous lifetime a name",
-                lifetime_arg.syntax().text_range(),
-                |builder| {
-                    match impl_def.type_param_list() {
-                        Some(type_params) => {
-                            builder.insert(
-                                (u32::from(type_params.syntax().text_range().end()) - 1).into(),
-                                format!(", '{}", new_lifetime_param),
-                            );
-                        }
-                        None => {
-                            builder.insert(
-                                impl_kw.text_range().end(),
-                                format!("<'{}>", new_lifetime_param),
-                            );
-                        }
-                    }
-                    builder.replace(
-                        lifetime_arg.syntax().text_range(),
-                        format!("'{}", new_lifetime_param),
-                    );
-                },
-            )
-        }
-        _ => None,
+    let impl_def = lifetime_arg.syntax().ancestors().find_map(ast::ImplDef::cast)?;
+    // get the `impl` keyword so we know where to add the lifetime argument
+    let impl_kw = impl_def.syntax().first_child_or_token()?.into_token()?;
+    if impl_kw.kind() != SyntaxKind::IMPL_KW {
+        return None;
     }
+    let new_lifetime_param = match impl_def.type_param_list() {
+        Some(type_params) => {
+            let used_lifetime_params: HashSet<_> = type_params
+                .lifetime_params()
+                .map(|p| {
+                    let mut param_name = p.syntax().text().to_string();
+                    param_name.remove(0);
+                    param_name
+                })
+                .collect();
+            (b'a'..=b'z')
+                .map(char::from)
+                .find(|c| !used_lifetime_params.contains(&c.to_string()))?
+        }
+        None => 'a',
+    };
+    acc.add(
+        AssistId("change_lifetime_anon_to_named"),
+        "Give anonymous lifetime a name",
+        lifetime_arg.syntax().text_range(),
+        |builder| {
+            match impl_def.type_param_list() {
+                Some(type_params) => {
+                    builder.insert(
+                        (u32::from(type_params.syntax().text_range().end()) - 1).into(),
+                        format!(", '{}", new_lifetime_param),
+                    );
+                }
+                None => {
+                    builder
+                        .insert(impl_kw.text_range().end(), format!("<'{}>", new_lifetime_param));
+                }
+            }
+            builder.replace(lifetime_arg.syntax().text_range(), format!("'{}", new_lifetime_param));
+        },
+    )
 }
 
 #[cfg(test)]
