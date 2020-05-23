@@ -1032,6 +1032,7 @@ impl<'tcx> PartialEq for Predicate<'tcx> {
 impl<'tcx> Eq for Predicate<'tcx> {}
 
 impl<'tcx> Predicate<'tcx> {
+    #[inline(always)]
     pub fn kind(self) -> &'tcx PredicateKind<'tcx> {
         self.kind
     }
@@ -1166,7 +1167,8 @@ impl<'tcx> Predicate<'tcx> {
         // this trick achieves that).
 
         let substs = &trait_ref.skip_binder().substs;
-        let predicate = match self.kind() {
+        let kind = self.kind();
+        let new = match kind {
             &PredicateKind::Trait(ref binder, constness) => {
                 PredicateKind::Trait(binder.map_bound(|data| data.subst(tcx, substs)), constness)
             }
@@ -1195,7 +1197,7 @@ impl<'tcx> Predicate<'tcx> {
             }
         };
 
-        predicate.to_predicate(tcx)
+        if new != *kind { new.to_predicate(tcx) } else { self }
     }
 }
 
@@ -1314,6 +1316,7 @@ pub trait ToPredicate<'tcx> {
 }
 
 impl ToPredicate<'tcx> for PredicateKind<'tcx> {
+    #[inline(always)]
     fn to_predicate(&self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         tcx.mk_predicate(*self)
     }
