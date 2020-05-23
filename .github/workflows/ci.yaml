@@ -116,17 +116,11 @@ jobs:
     - run: npm run lint
       working-directory: ./editors/code
 
-    - name: Start xvfb
-      run: |
-        sudo apt-get install xvfb
-        set -e
-        /usr/bin/Xvfb :10 -ac >> /tmp/Xvfb.out 2>&1 &
-        disown -ar
-      
-    - run: npm test
-      working-directory: ./editors/code
-      env:
-        DISPLAY: :10
+    - name: Run vscode tests
+      uses: GabrielBB/xvfb-action@v1.2
+      with:
+        run: npm test
+        working-directory: ./editors/code
 
     - run: npm run package --scripts-prepend-node-path
       working-directory: ./editors/code
