@@ -119,7 +119,7 @@
 #![feature(unicode_internals)]
 #![feature(unsize)]
 #![cfg_attr(not(bootstrap), feature(unsized_fn_params))]
-#![feature(unsized_locals)]
+#![cfg_attr(bootstrap, feature(unsized_locals))]
 #![feature(allocator_internals)]
 #![feature(slice_partition_dedup)]
 #![feature(maybe_uninit_extra, maybe_uninit_slice)]
