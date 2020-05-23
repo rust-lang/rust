@@ -4,18 +4,23 @@
 const ANSWER: i32 = 42;
 
 fn main() {
+    let arr = [1, 2, 3, 4, 5];
+
+    // These should be linted:
+
     (21..=42).rev().for_each(|x| println!("{}", x));
     let _ = (21..ANSWER).rev().filter(|x| x % 2 == 0).take(10).collect::<Vec<_>>();
 
     for _ in (-42..=-21).rev() {}
     for _ in (21u32..42u32).rev() {}
 
+    let _ = &[] as &[i32];
+
     // These should be ignored as they are not empty ranges:
 
     (21..=42).for_each(|x| println!("{}", x));
     (21..42).for_each(|x| println!("{}", x));
 
-    let arr = [1, 2, 3, 4, 5];
     let _ = &arr[1..=3];
     let _ = &arr[1..3];
 
