@@ -3,7 +3,7 @@ use crate::passes::{self, BoxedResolver, QueryContext};
 
 use rustc_ast::{self, ast};
 use rustc_codegen_ssa::traits::CodegenBackend;
-use rustc_data_structures::sync::{Lrc, Once, WorkerLocal};
+use rustc_data_structures::sync::{Lrc, OnceCell, WorkerLocal};
 use rustc_errors::ErrorReported;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::Crate;
@@ -65,7 +65,7 @@ impl<T> Default for Query<T> {
 
 pub struct Queries<'tcx> {
     compiler: &'tcx Compiler,
-    gcx: Once<GlobalCtxt<'tcx>>,
+    gcx: OnceCell<GlobalCtxt<'tcx>>,
 
     arena: WorkerLocal<Arena<'tcx>>,
     hir_arena: WorkerLocal<rustc_ast_lowering::Arena<'tcx>>,
@@ -86,7 +86,7 @@ impl<'tcx> Queries<'tcx> {
     pub fn new(compiler: &'tcx Compiler) -> Queries<'tcx> {
         Queries {
             compiler,
-            gcx: Once::new(),
+            gcx: OnceCell::new(),
             arena: WorkerLocal::new(|_| Arena::default()),
             hir_arena: WorkerLocal::new(|_| rustc_ast_lowering::Arena::default()),
             dep_graph_future: Default::default(),

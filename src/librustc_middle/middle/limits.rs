@@ -7,7 +7,7 @@
 
 use crate::bug;
 use rustc_ast::ast;
-use rustc_data_structures::sync::Once;
+use rustc_data_structures::sync::OnceCell;
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
 
@@ -22,7 +22,7 @@ pub fn update_limits(sess: &Session, krate: &ast::Crate) {
 fn update_limit(
     sess: &Session,
     krate: &ast::Crate,
-    limit: &Once<usize>,
+    limit: &OnceCell<usize>,
     name: Symbol,
     default: usize,
 ) {
@@ -34,7 +34,7 @@ fn update_limit(
         if let Some(s) = attr.value_str() {
             match s.as_str().parse() {
                 Ok(n) => {
-                    limit.set(n);
+                    limit.set(n).unwrap();
                     return;
                 }
                 Err(e) => {
@@ -62,5 +62,5 @@ fn update_limit(
             }
         }
     }
-    limit.set(default);
+    limit.set(default).unwrap();
 }

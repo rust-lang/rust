@@ -163,7 +163,7 @@ fn dtorck_constraint_for_ty<'tcx>(
 ) -> Result<(), NoSolution> {
     debug!("dtorck_constraint_for_ty({:?}, {:?}, {:?}, {:?})", span, for_ty, depth, ty);
 
-    if depth >= *tcx.sess.recursion_limit.get() {
+    if depth >= tcx.sess.recursion_limit() {
         constraints.overflows.push(ty);
         return Ok(());
     }

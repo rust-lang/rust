@@ -108,7 +108,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                     Reveal::UserFacing => ty,
 
                     Reveal::All => {
-                        let recursion_limit = *self.tcx().sess.recursion_limit.get();
+                        let recursion_limit = self.tcx().sess.recursion_limit();
                         if self.anon_depth >= recursion_limit {
                             let obligation = Obligation::with_depth(
                                 self.cause.clone(),

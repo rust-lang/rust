@@ -15,6 +15,7 @@ indexmap = "1"
 log = "0.4"
 jobserver_crate = { version = "0.1.13", package = "jobserver" }
 lazy_static = "1"
+once_cell = { version = "1", features = ["parking_lot"] }
 rustc_serialize = { path = "../libserialize", package = "serialize" }
 graphviz = { path = "../libgraphviz" }
 cfg-if = "0.1.2"

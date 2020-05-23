@@ -51,7 +51,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for EntryContext<'a, 'tcx> {
 fn entry_fn(tcx: TyCtxt<'_>, cnum: CrateNum) -> Option<(LocalDefId, EntryFnType)> {
     assert_eq!(cnum, LOCAL_CRATE);
 
-    let any_exe = tcx.sess.crate_types.borrow().iter().any(|ty| *ty == CrateType::Executable);
+    let any_exe = tcx.sess.crate_types().iter().any(|ty| *ty == CrateType::Executable);
     if !any_exe {
         // No need to find a main function.
         return None;

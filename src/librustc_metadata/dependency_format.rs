@@ -64,8 +64,7 @@ use rustc_target::spec::PanicStrategy;
 
 crate fn calculate(tcx: TyCtxt<'_>) -> Dependencies {
     tcx.sess
-        .crate_types
-        .borrow()
+        .crate_types()
         .iter()
         .map(|&ty| {
             let linkage = calculate_type(tcx, ty);

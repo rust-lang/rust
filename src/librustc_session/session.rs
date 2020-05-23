@@ -13,7 +13,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::jobserver::{self, Client};
 use rustc_data_structures::profiling::{duration_to_secs_str, SelfProfiler, SelfProfilerRef};
 use rustc_data_structures::sync::{
-    self, AtomicU64, AtomicUsize, Lock, Lrc, Once, OneThread, Ordering, Ordering::SeqCst,
+    self, AtomicU64, AtomicUsize, Lock, Lrc, OnceCell, OneThread, Ordering, Ordering::SeqCst,
 };
 use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitterWriter;
 use rustc_errors::emitter::{Emitter, EmitterWriter, HumanReadableErrorType};
@@ -77,25 +77,25 @@ pub struct Session {
     /// (sub)diagnostics that have been set once, but should not be set again,
     /// in order to avoid redundantly verbose output (Issue #24690, #44953).
     pub one_time_diagnostics: Lock<FxHashSet<(DiagnosticMessageId, Option<Span>, String)>>,
-    pub crate_types: Once<Vec<CrateType>>,
+    crate_types: OnceCell<Vec<CrateType>>,
     /// The `crate_disambiguator` is constructed out of all the `-C metadata`
     /// arguments passed to the compiler. Its value together with the crate-name
     /// forms a unique global identifier for the crate. It is used to allow
     /// multiple crates with the same name to coexist. See the
     /// `rustc_codegen_llvm::back::symbol_names` module for more information.
-    pub crate_disambiguator: Once<CrateDisambiguator>,
+    pub crate_disambiguator: OnceCell<CrateDisambiguator>,
 
-    features: Once<rustc_feature::Features>,
+    features: OnceCell<rustc_feature::Features>,
 
     /// The maximum recursion limit for potentially infinitely recursive
     /// operations such as auto-dereference and monomorphization.
-    pub recursion_limit: Once<usize>,
+    pub recursion_limit: OnceCell<usize>,
 
     /// The maximum length of types during monomorphization.
-    pub type_length_limit: Once<usize>,
+    pub type_length_limit: OnceCell<usize>,
 
     /// The maximum blocks a const expression can evaluate.
-    pub const_eval_limit: Once<usize>,
+    pub const_eval_limit: OnceCell<usize>,
 
     incr_comp_session: OneThread<RefCell<IncrCompSession>>,
     /// Used for incremental compilation tests. Will only be populated if
@@ -244,7 +244,27 @@ impl Session {
     }
 
     pub fn local_crate_disambiguator(&self) -> CrateDisambiguator {
-        *self.crate_disambiguator.get()
+        self.crate_disambiguator.get().copied().unwrap()
+    }
+
+    pub fn crate_types(&self) -> &[CrateType] {
+        self.crate_types.get().unwrap().as_slice()
+    }
+
+    pub fn init_crate_types(&self, crate_types: Vec<CrateType>) {
+        self.crate_types.set(crate_types).expect("`crate_types` was initialized twice")
+    }
+
+    pub fn recursion_limit(&self) -> usize {
+        self.recursion_limit.get().copied().unwrap()
+    }
+
+    pub fn type_length_limit(&self) -> usize {
+        self.type_length_limit.get().copied().unwrap()
+    }
+
+    pub fn const_eval_limit(&self) -> usize {
+        self.const_eval_limit.get().copied().unwrap()
     }
 
     pub fn struct_span_warn<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> DiagnosticBuilder<'_> {
@@ -500,11 +520,14 @@ impl Session {
     /// dependency tracking. Use tcx.features() instead.
     #[inline]
     pub fn features_untracked(&self) -> &rustc_feature::Features {
-        self.features.get()
+        self.features.get().unwrap()
     }
 
     pub fn init_features(&self, features: rustc_feature::Features) {
-        self.features.set(features);
+        match self.features.set(features) {
+            Ok(()) => {}
+            Err(_) => panic!("`features` was initialized twice"),
+        }
     }
 
     /// Calculates the flavor of LTO to use for this compilation.
@@ -1208,12 +1231,12 @@ pub fn build_session_with_source_map(
         local_crate_source_file,
         working_dir,
         one_time_diagnostics: Default::default(),
-        crate_types: Once::new(),
-        crate_disambiguator: Once::new(),
-        features: Once::new(),
-        recursion_limit: Once::new(),
-        type_length_limit: Once::new(),
-        const_eval_limit: Once::new(),
+        crate_types: OnceCell::new(),
+        crate_disambiguator: OnceCell::new(),
+        features: OnceCell::new(),
+        recursion_limit: OnceCell::new(),
+        type_length_limit: OnceCell::new(),
+        const_eval_limit: OnceCell::new(),
         incr_comp_session: OneThread::new(RefCell::new(IncrCompSession::NotInitialized)),
         cgu_reuse_tracker,
         prof,

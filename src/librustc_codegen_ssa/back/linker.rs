@@ -44,8 +44,7 @@ impl LinkerInfo {
         LinkerInfo {
             exports: tcx
                 .sess
-                .crate_types
-                .borrow()
+                .crate_types()
                 .iter()
                 .map(|&c| (c, exported_symbols(tcx, c)))
                 .collect(),

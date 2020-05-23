@@ -948,7 +948,7 @@ fn determine_cgu_reuse<'tcx>(tcx: TyCtxt<'tcx>, cgu: &CodegenUnit<'tcx>) -> CguR
         match compute_per_cgu_lto_type(
             &tcx.sess.lto(),
             &tcx.sess.opts,
-            &tcx.sess.crate_types.borrow(),
+            &tcx.sess.crate_types(),
             ModuleKind::Regular,
         ) {
             ComputedLtoType::No => CguReuse::PostLto,

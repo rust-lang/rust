@@ -128,6 +128,7 @@ const WHITELIST: &[&str] = &[
     "miniz_oxide",
     "nodrop",
     "num_cpus",
+    "once_cell",
     "opaque-debug",
     "parking_lot",
     "parking_lot_core",

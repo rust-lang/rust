@@ -87,7 +87,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
     pub fn compilation_output(&self, crate_name: &str) -> PathBuf {
         let sess = &self.tcx.sess;
         // Save-analysis is emitted per whole session, not per each crate type
-        let crate_type = sess.crate_types.borrow()[0];
+        let crate_type = sess.crate_types()[0];
         let outputs = &*self.tcx.output_filenames(LOCAL_CRATE);
 
         if outputs.outputs.contains_key(&OutputType::Metadata) {
@@ -987,8 +987,7 @@ impl<'a> DumpHandler<'a> {
                     error!("Could not create directory {}: {}", root_path.display(), e);
                 }
 
-                let executable =
-                    sess.crate_types.borrow().iter().any(|ct| *ct == CrateType::Executable);
+                let executable = sess.crate_types().iter().any(|ct| *ct == CrateType::Executable);
                 let mut out_name = if executable { String::new() } else { "lib".to_owned() };
                 out_name.push_str(&self.cratename);
                 out_name.push_str(&sess.opts.cg.extra_filename);

@@ -10,7 +10,7 @@ use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::sync::{AtomicCell, Lock, LockGuard, Lrc, Once};
+use rustc_data_structures::sync::{AtomicCell, Lock, LockGuard, Lrc, OnceCell};
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, ProcMacroDerive};
 use rustc_hir as hir;
@@ -79,7 +79,7 @@ crate struct CrateMetadata {
     /// Proc macro descriptions for this crate, if it's a proc macro crate.
     raw_proc_macros: Option<&'static [ProcMacro]>,
     /// Source maps for code from the crate.
-    source_map_import_info: Once<Vec<ImportedSourceFile>>,
+    source_map_import_info: OnceCell<Vec<ImportedSourceFile>>,
     /// Used for decoding interpret::AllocIds in a cached & thread-safe manner.
     alloc_decoding_state: AllocDecodingState,
     /// The `DepNodeIndex` of the `DepNode` representing this upstream crate.
@@ -1486,7 +1486,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             }
         };
 
-        self.cdata.source_map_import_info.init_locking(|| {
+        self.cdata.source_map_import_info.get_or_init(|| {
             let external_source_map = self.root.source_map.decode(self);
 
             external_source_map
@@ -1600,7 +1600,7 @@ impl CrateMetadata {
             def_path_table,
             trait_impls,
             raw_proc_macros,
-            source_map_import_info: Once::new(),
+            source_map_import_info: OnceCell::new(),
             alloc_decoding_state,
             dep_node_index: AtomicCell::new(DepNodeIndex::INVALID),
             cnum,
