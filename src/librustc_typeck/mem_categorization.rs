@@ -159,7 +159,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             infcx,
             param_env,
             body_owner,
-            upvars: infcx.tcx.upvars(body_owner),
+            upvars: infcx.tcx.upvars_mentioned(body_owner),
         }
     }
 

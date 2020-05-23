@@ -463,7 +463,7 @@ fn visit_expr<'tcx>(ir: &mut IrMaps<'tcx>, expr: &'tcx Expr<'tcx>) {
         hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => {
             debug!("expr {}: path that leads to {:?}", expr.hir_id, path.res);
             if let Res::Local(var_hir_id) = path.res {
-                let upvars = ir.tcx.upvars(ir.body_owner);
+                let upvars = ir.tcx.upvars_mentioned(ir.body_owner);
                 if !upvars.map_or(false, |upvars| upvars.contains_key(&var_hir_id)) {
                     ir.add_live_node_for_node(expr.hir_id, ExprNode(expr.span));
                 }
@@ -481,8 +481,8 @@ fn visit_expr<'tcx>(ir: &mut IrMaps<'tcx>, expr: &'tcx Expr<'tcx>) {
             // construction site.
             let mut call_caps = Vec::new();
             let closure_def_id = ir.tcx.hir().local_def_id(expr.hir_id);
-            if let Some(upvars) = ir.tcx.upvars(closure_def_id) {
-                let parent_upvars = ir.tcx.upvars(ir.body_owner);
+            if let Some(upvars) = ir.tcx.upvars_mentioned(closure_def_id) {
+                let parent_upvars = ir.tcx.upvars_mentioned(ir.body_owner);
                 call_caps.extend(upvars.iter().filter_map(|(&var_id, upvar)| {
                     let has_parent =
                         parent_upvars.map_or(false, |upvars| upvars.contains_key(&var_id));
@@ -1364,7 +1364,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     ) -> LiveNode {
         match path.res {
             Res::Local(hid) => {
-                let upvars = self.ir.tcx.upvars(self.ir.body_owner);
+                let upvars = self.ir.tcx.upvars_mentioned(self.ir.body_owner);
                 if !upvars.map_or(false, |upvars| upvars.contains_key(&hid)) {
                     self.access_var(hir_id, hid, succ, acc, path.span)
                 } else {
@@ -1535,7 +1535,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
         match expr.kind {
             hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => {
                 if let Res::Local(var_hid) = path.res {
-                    let upvars = self.ir.tcx.upvars(self.ir.body_owner);
+                    let upvars = self.ir.tcx.upvars_mentioned(self.ir.body_owner);
                     if !upvars.map_or(false, |upvars| upvars.contains_key(&var_hid)) {
                         // Assignment to an immutable variable or argument: only legal
                         // if there is no later assignment. If this local is actually
