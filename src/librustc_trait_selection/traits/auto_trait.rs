@@ -768,12 +768,12 @@ impl AutoTraitFinder<'tcx> {
                         }
                     }
                 }
-                ty::PredicateKind::RegionOutlives(ref binder) => {
+                &ty::PredicateKind::RegionOutlives(binder) => {
                     if select.infcx().region_outlives_predicate(&dummy_cause, binder).is_err() {
                         return false;
                     }
                 }
-                ty::PredicateKind::TypeOutlives(ref binder) => {
+                &ty::PredicateKind::TypeOutlives(binder) => {
                     match (
                         binder.no_bound_vars(),
                         binder.map_bound_ref(|pred| pred.0).no_bound_vars(),

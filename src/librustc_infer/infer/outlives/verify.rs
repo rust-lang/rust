@@ -223,7 +223,8 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         // like `T` and `T::Item`. It may not work as well for things
         // like `<T as Foo<'a>>::Item`.
         let c_b = self.param_env.caller_bounds;
-        let param_bounds = self.collect_outlives_from_predicate_list(&compare_ty, c_b.into_iter());
+        let param_bounds =
+            self.collect_outlives_from_predicate_list(&compare_ty, c_b.into_iter().copied());
 
         // Next, collect regions we scraped from the well-formedness
         // constraints in the fn signature. To do that, we walk the list
@@ -334,10 +335,10 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     fn collect_outlives_from_predicate_list(
         &self,
         compare_ty: impl Fn(Ty<'tcx>) -> bool,
-        predicates: impl Iterator<Item = impl AsRef<ty::Predicate<'tcx>>>,
+        predicates: impl Iterator<Item = ty::Predicate<'tcx>>,
     ) -> impl Iterator<Item = ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>> {
         predicates
-            .filter_map(|p| p.as_ref().to_opt_type_outlives())
+            .filter_map(|p| p.to_opt_type_outlives())
             .filter_map(|p| p.no_bound_vars())
             .filter(move |p| compare_ty(p.0))
     }

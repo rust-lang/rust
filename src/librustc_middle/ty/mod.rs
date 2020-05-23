@@ -1094,12 +1094,6 @@ pub struct CratePredicatesMap<'tcx> {
     pub predicates: FxHashMap<DefId, &'tcx [(ty::Predicate<'tcx>, Span)]>,
 }
 
-impl<'tcx> AsRef<Predicate<'tcx>> for Predicate<'tcx> {
-    fn as_ref(&self) -> &Predicate<'tcx> {
-        self
-    }
-}
-
 impl<'tcx> Predicate<'tcx> {
     /// Performs a substitution suitable for going from a
     /// poly-trait-ref to supertraits that must hold if that
@@ -1214,17 +1208,17 @@ pub struct TraitPredicate<'tcx> {
 pub type PolyTraitPredicate<'tcx> = ty::Binder<TraitPredicate<'tcx>>;
 
 impl<'tcx> TraitPredicate<'tcx> {
-    pub fn def_id(&self) -> DefId {
+    pub fn def_id(self) -> DefId {
         self.trait_ref.def_id
     }
 
-    pub fn self_ty(&self) -> Ty<'tcx> {
+    pub fn self_ty(self) -> Ty<'tcx> {
         self.trait_ref.self_ty()
     }
 }
 
 impl<'tcx> PolyTraitPredicate<'tcx> {
-    pub fn def_id(&self) -> DefId {
+    pub fn def_id(self) -> DefId {
         // Ok to skip binder since trait `DefId` does not care about regions.
         self.skip_binder().def_id()
     }
