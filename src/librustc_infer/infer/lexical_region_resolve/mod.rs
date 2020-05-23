@@ -18,12 +18,10 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{ReEarlyBound, ReEmpty, ReErased, ReFree, ReStatic};
-use rustc_middle::ty::{ReLateBound, RePlaceholder, ReScope, ReVar};
+use rustc_middle::ty::{ReLateBound, RePlaceholder, ReVar};
 use rustc_middle::ty::{Region, RegionVid};
 use rustc_span::Span;
 use std::fmt;
-
-mod graphviz;
 
 /// This function performs lexical region resolution given a complete
 /// set of constraints and variable origins. It performs a fixed-point
@@ -49,7 +47,10 @@ pub fn resolve<'tcx>(
             let mut values = resolver.infer_variable_values(&mut errors);
             let re_erased = region_rels.tcx.lifetimes.re_erased;
 
-            values.values.iter_mut().for_each(|v| *v = VarValue::Value(re_erased));
+            values.values.iter_mut().for_each(|v| match *v {
+                VarValue::Value(ref mut r) => *r = re_erased,
+                VarValue::ErrorValue => {}
+            });
             (values, errors)
         }
         RegionckMode::Erase { suppress_errors: true } => {
@@ -146,7 +147,6 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             self.region_rels.context,
             self.dump_constraints(self.region_rels)
         );
-        graphviz::maybe_print_constraints_for(&self.data, self.region_rels);
 
         let graph = self.construct_graph();
         self.expand_givens(&graph);
@@ -290,8 +290,8 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
 
         // Find all the "upper bounds" -- that is, each region `b` such that
         // `r0 <= b` must hold.
-        let (member_upper_bounds, _) =
-            self.collect_concrete_regions(graph, member_vid, OUTGOING, None);
+        let (member_upper_bounds, ..) =
+            self.collect_bounding_regions(graph, member_vid, OUTGOING, None);
 
         // Get an iterator over the *available choice* -- that is,
         // each choice region `c` where `lb <= c` and `c <= ub` for all the
@@ -423,15 +423,6 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
 
         match *b_data {
             VarValue::Value(cur_region) => {
-                // Identical scopes can show up quite often, if the fixed point
-                // iteration converges slowly. Skip them. This is purely an
-                // optimization.
-                if let (ReScope(a_scope), ReScope(cur_scope)) = (a_region, cur_region) {
-                    if a_scope == cur_scope {
-                        return false;
-                    }
-                }
-
                 // This is a specialized version of the `lub_concrete_regions`
                 // check below for a common case, here purely as an
                 // optimization.
@@ -525,8 +516,8 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                 self.tcx().lifetimes.re_static
             }
 
-            (&ReEmpty(_), r @ (ReEarlyBound(_) | ReFree(_) | ReScope(_)))
-            | (r @ (ReEarlyBound(_) | ReFree(_) | ReScope(_)), &ReEmpty(_)) => {
+            (&ReEmpty(_), r @ (ReEarlyBound(_) | ReFree(_)))
+            | (r @ (ReEarlyBound(_) | ReFree(_)), &ReEmpty(_)) => {
                 // All empty regions are less than early-bound, free,
                 // and scope regions.
                 r
@@ -549,46 +540,6 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                 } else {
                     self.tcx().lifetimes.re_static
                 }
-            }
-
-            (&ReEarlyBound(_) | &ReFree(_), &ReScope(s_id))
-            | (&ReScope(s_id), &ReEarlyBound(_) | &ReFree(_)) => {
-                // A "free" region can be interpreted as "some region
-                // at least as big as fr.scope".  So, we can
-                // reasonably compare free regions and scopes:
-                let fr_scope = match (a, b) {
-                    (&ReEarlyBound(ref br), _) | (_, &ReEarlyBound(ref br)) => {
-                        self.region_rels.region_scope_tree.early_free_scope(self.tcx(), br)
-                    }
-                    (&ReFree(ref fr), _) | (_, &ReFree(ref fr)) => {
-                        self.region_rels.region_scope_tree.free_scope(self.tcx(), fr)
-                    }
-                    _ => bug!(),
-                };
-                let r_id =
-                    self.region_rels.region_scope_tree.nearest_common_ancestor(fr_scope, s_id);
-                if r_id == fr_scope {
-                    // if the free region's scope `fr.scope` is bigger than
-                    // the scope region `s_id`, then the LUB is the free
-                    // region itself:
-                    match (a, b) {
-                        (_, &ReScope(_)) => return a,
-                        (&ReScope(_), _) => return b,
-                        _ => bug!(),
-                    }
-                }
-
-                // otherwise, we don't know what the free region is,
-                // so we must conservatively say the LUB is static:
-                self.tcx().lifetimes.re_static
-            }
-
-            (&ReScope(a_id), &ReScope(b_id)) => {
-                // The region corresponding to an outer block is a
-                // subtype of the region corresponding to an inner
-                // block.
-                let lub = self.region_rels.region_scope_tree.nearest_common_ancestor(a_id, b_id);
-                self.tcx().mk_region(ReScope(lub))
             }
 
             (&ReEarlyBound(_) | &ReFree(_), &ReEarlyBound(_) | &ReFree(_)) => {
@@ -659,7 +610,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                     if !self.sub_concrete_regions(a_region, b_region) {
                         debug!(
                             "collect_errors: region error at {:?}: \
-                             cannot verify that {:?}={:?} <= {:?}",
+                            cannot verify that {:?}={:?} <= {:?}",
                             origin, a_vid, a_region, b_region
                         );
                         *a_data = VarValue::ErrorValue;
@@ -716,7 +667,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         graph: &RegionGraph<'tcx>,
         errors: &mut Vec<RegionResolutionError<'tcx>>,
     ) {
-        debug!("collect_var_errors");
+        debug!("collect_var_errors, var_data = {:#?}", var_data.values);
 
         // This is the best way that I have found to suppress
         // duplicate and related errors. Basically we keep a set of
@@ -815,10 +766,10 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
     ) {
         // Errors in expanding nodes result from a lower-bound that is
         // not contained by an upper-bound.
-        let (mut lower_bounds, lower_dup) =
-            self.collect_concrete_regions(graph, node_idx, INCOMING, Some(dup_vec));
-        let (mut upper_bounds, upper_dup) =
-            self.collect_concrete_regions(graph, node_idx, OUTGOING, Some(dup_vec));
+        let (mut lower_bounds, lower_vid_bounds, lower_dup) =
+            self.collect_bounding_regions(graph, node_idx, INCOMING, Some(dup_vec));
+        let (mut upper_bounds, _, upper_dup) =
+            self.collect_bounding_regions(graph, node_idx, OUTGOING, Some(dup_vec));
 
         if lower_dup || upper_dup {
             return;
@@ -874,15 +825,22 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         // If we have a scenario like `exists<'a> { forall<'b> { 'b:
         // 'a } }`, we wind up without any lower-bound -- all we have
         // are placeholders as upper bounds, but the universe of the
-        // variable `'a` doesn't permit those placeholders.
+        // variable `'a`, or some variable that `'a` has to outlive, doesn't
+        // permit those placeholders.
+        let min_universe = lower_vid_bounds
+            .into_iter()
+            .map(|vid| self.var_infos[vid].universe)
+            .min()
+            .expect("lower_vid_bounds should at least include `node_idx`");
+
         for upper_bound in &upper_bounds {
             if let ty::RePlaceholder(p) = upper_bound.region {
-                if node_universe.cannot_name(p.universe) {
+                if min_universe.cannot_name(p.universe) {
                     let origin = self.var_infos[node_idx].origin;
                     errors.push(RegionResolutionError::UpperBoundUniverseConflict(
                         node_idx,
                         origin,
-                        node_universe,
+                        min_universe,
                         upper_bound.origin.clone(),
                         upper_bound.region,
                     ));
@@ -904,13 +862,24 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         );
     }
 
-    fn collect_concrete_regions(
+    /// Collects all regions that "bound" the variable `orig_node_idx` in the
+    /// given direction.
+    ///
+    /// If `dup_vec` is `Some` it's used to track duplicates between successive
+    /// calls of this function.
+    ///
+    /// The return tuple fields are:
+    /// - a list of all concrete regions bounding the given region.
+    /// - the set of all region variables bounding the given region.
+    /// - a `bool` that's true if the returned region variables overlap with
+    ///   those returned by a previous call for another region.
+    fn collect_bounding_regions(
         &self,
         graph: &RegionGraph<'tcx>,
         orig_node_idx: RegionVid,
         dir: Direction,
         mut dup_vec: Option<&mut IndexVec<RegionVid, Option<RegionVid>>>,
-    ) -> (Vec<RegionAndOrigin<'tcx>>, bool) {
+    ) -> (Vec<RegionAndOrigin<'tcx>>, FxHashSet<RegionVid>, bool) {
         struct WalkState<'tcx> {
             set: FxHashSet<RegionVid>,
             stack: Vec<RegionVid>,
@@ -929,9 +898,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         // direction specified
         process_edges(&self.data, &mut state, graph, orig_node_idx, dir);
 
-        while !state.stack.is_empty() {
-            let node_idx = state.stack.pop().unwrap();
-
+        while let Some(node_idx) = state.stack.pop() {
             // check whether we've visited this node on some previous walk
             if let Some(dup_vec) = &mut dup_vec {
                 if dup_vec[node_idx].is_none() {
@@ -949,8 +916,8 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             process_edges(&self.data, &mut state, graph, node_idx, dir);
         }
 
-        let WalkState { result, dup_found, .. } = state;
-        return (result, dup_found);
+        let WalkState { result, dup_found, set, .. } = state;
+        return (result, set, dup_found);
 
         fn process_edges<'tcx>(
             this: &RegionConstraintData<'tcx>,

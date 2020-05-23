@@ -670,7 +670,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 // `least_region`. We cannot use `push_outlives_components` because regions in
 // closure signatures are not included in their outlives components. We need to
 // ensure all regions outlive the given bound so that we don't end up with,
-// say, `ReScope` appearing in a return type and causing ICEs when other
+// say, `ReVar` appearing in a return type and causing ICEs when other
 // functions end up with region constraints involving regions from other
 // functions.
 //
@@ -816,7 +816,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
             // The regions that we expect from borrow checking.
             ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReEmpty(ty::UniverseIndex::ROOT) => {}
 
-            ty::ReEmpty(_) | ty::RePlaceholder(_) | ty::ReVar(_) | ty::ReScope(_) => {
+            ty::ReEmpty(_) | ty::RePlaceholder(_) | ty::ReVar(_) => {
                 // All of the regions in the type should either have been
                 // erased by writeback, or mapped back to named regions by
                 // borrow checking.
@@ -835,7 +835,6 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                 if let Some(hidden_ty) = self.hidden_ty.take() {
                     unexpected_hidden_region_diagnostic(
                         self.tcx,
-                        None,
                         self.tcx.def_span(self.opaque_type_def_id),
                         hidden_ty,
                         r,

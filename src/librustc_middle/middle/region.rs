@@ -7,7 +7,7 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/borrow_check.html
 
 use crate::ich::{NodeIdHashingMode, StableHashingContext};
-use crate::ty::{self, DefIdTree, TyCtxt};
+use crate::ty::TyCtxt;
 use rustc_hir as hir;
 use rustc_hir::Node;
 
@@ -333,7 +333,7 @@ pub struct YieldData {
     pub source: hir::YieldSource,
 }
 
-impl<'tcx> ScopeTree {
+impl ScopeTree {
     pub fn record_scope_parent(&mut self, child: Scope, parent: Option<(Scope, ScopeDepth)>) {
         debug!("{:?}.parent = {:?}", child, parent);
 
@@ -345,24 +345,6 @@ impl<'tcx> ScopeTree {
         // Record the destruction scopes for later so we can query them.
         if let ScopeData::Destruction = child.data {
             self.destruction_scopes.insert(child.item_local_id(), child);
-        }
-    }
-
-    pub fn each_encl_scope<E>(&self, mut e: E)
-    where
-        E: FnMut(Scope, Scope),
-    {
-        for (&child, &parent) in &self.parent_map {
-            e(child, parent.0)
-        }
-    }
-
-    pub fn each_var_scope<E>(&self, mut e: E)
-    where
-        E: FnMut(&hir::ItemLocalId, Scope),
-    {
-        for (child, &parent) in self.var_map.iter() {
-            e(child, parent)
         }
     }
 
@@ -406,12 +388,6 @@ impl<'tcx> ScopeTree {
         self.parent_map.get(&id).cloned().map(|(p, _)| p)
     }
 
-    /// Returns the narrowest scope that encloses `id`, if any.
-    #[allow(dead_code)] // used in cfg
-    pub fn encl_scope(&self, id: Scope) -> Scope {
-        self.opt_encl_scope(id).unwrap()
-    }
-
     /// Returns the lifetime of the local variable `var_id`
     pub fn var_scope(&self, var_id: hir::ItemLocalId) -> Scope {
         self.var_map
@@ -448,17 +424,6 @@ impl<'tcx> ScopeTree {
         None
     }
 
-    /// Returns the lifetime of the variable `id`.
-    pub fn var_region(&self, id: hir::ItemLocalId) -> ty::RegionKind {
-        let scope = ty::ReScope(self.var_scope(id));
-        debug!("var_region({:?}) = {:?}", id, scope);
-        scope
-    }
-
-    pub fn scopes_intersect(&self, scope1: Scope, scope2: Scope) -> bool {
-        self.is_subscope_of(scope1, scope2) || self.is_subscope_of(scope2, scope1)
-    }
-
     /// Returns `true` if `subscope` is equal to or is lexically nested inside `superscope`, and
     /// `false` otherwise.
     pub fn is_subscope_of(&self, subscope: Scope, superscope: Scope) -> bool {
@@ -477,127 +442,6 @@ impl<'tcx> ScopeTree {
         debug!("is_subscope_of({:?}, {:?})=true", subscope, superscope);
 
         true
-    }
-
-    /// Returns the ID of the innermost containing body.
-    pub fn containing_body(&self, mut scope: Scope) -> Option<hir::ItemLocalId> {
-        loop {
-            if let ScopeData::CallSite = scope.data {
-                return Some(scope.item_local_id());
-            }
-
-            scope = self.opt_encl_scope(scope)?;
-        }
-    }
-
-    /// Finds the nearest common ancestor of two scopes. That is, finds the
-    /// smallest scope which is greater than or equal to both `scope_a` and
-    /// `scope_b`.
-    pub fn nearest_common_ancestor(&self, scope_a: Scope, scope_b: Scope) -> Scope {
-        if scope_a == scope_b {
-            return scope_a;
-        }
-
-        let mut a = scope_a;
-        let mut b = scope_b;
-
-        // Get the depth of each scope's parent. If either scope has no parent,
-        // it must be the root, which means we can stop immediately because the
-        // root must be the nearest common ancestor. (In practice, this is
-        // moderately common.)
-        let (parent_a, parent_a_depth) = match self.parent_map.get(&a) {
-            Some(pd) => *pd,
-            None => return a,
-        };
-        let (parent_b, parent_b_depth) = match self.parent_map.get(&b) {
-            Some(pd) => *pd,
-            None => return b,
-        };
-
-        if parent_a_depth > parent_b_depth {
-            // `a` is lower than `b`. Move `a` up until it's at the same depth
-            // as `b`. The first move up is trivial because we already found
-            // `parent_a` above; the loop does the remaining N-1 moves.
-            a = parent_a;
-            for _ in 0..(parent_a_depth - parent_b_depth - 1) {
-                a = self.parent_map.get(&a).unwrap().0;
-            }
-        } else if parent_b_depth > parent_a_depth {
-            // `b` is lower than `a`.
-            b = parent_b;
-            for _ in 0..(parent_b_depth - parent_a_depth - 1) {
-                b = self.parent_map.get(&b).unwrap().0;
-            }
-        } else {
-            // Both scopes are at the same depth, and we know they're not equal
-            // because that case was tested for at the top of this function. So
-            // we can trivially move them both up one level now.
-            assert!(parent_a_depth != 0);
-            a = parent_a;
-            b = parent_b;
-        }
-
-        // Now both scopes are at the same level. We move upwards in lockstep
-        // until they match. In practice, this loop is almost always executed
-        // zero times because `a` is almost always a direct ancestor of `b` or
-        // vice versa.
-        while a != b {
-            a = self.parent_map.get(&a).unwrap().0;
-            b = self.parent_map.get(&b).unwrap().0;
-        }
-
-        a
-    }
-
-    /// Assuming that the provided region was defined within this `ScopeTree`,
-    /// returns the outermost `Scope` that the region outlives.
-    pub fn early_free_scope(&self, tcx: TyCtxt<'tcx>, br: &ty::EarlyBoundRegion) -> Scope {
-        let param_owner = tcx.parent(br.def_id).unwrap();
-
-        let param_owner_id = tcx.hir().as_local_hir_id(param_owner.expect_local());
-        let scope = tcx
-            .hir()
-            .maybe_body_owned_by(param_owner_id)
-            .map(|body_id| tcx.hir().body(body_id).value.hir_id.local_id)
-            .unwrap_or_else(|| {
-                // The lifetime was defined on node that doesn't own a body,
-                // which in practice can only mean a trait or an impl, that
-                // is the parent of a method, and that is enforced below.
-                if Some(param_owner_id) != self.root_parent {
-                    tcx.sess.delay_span_bug(
-                        DUMMY_SP,
-                        &format!(
-                            "free_scope: {:?} not recognized by the \
-                              region scope tree for {:?} / {:?}",
-                            param_owner,
-                            self.root_parent.map(|id| tcx.hir().local_def_id(id)),
-                            self.root_body.map(|hir_id| hir_id.owner)
-                        ),
-                    );
-                }
-
-                // The trait/impl lifetime is in scope for the method's body.
-                self.root_body.unwrap().local_id
-            });
-
-        Scope { id: scope, data: ScopeData::CallSite }
-    }
-
-    /// Assuming that the provided region was defined within this `ScopeTree`,
-    /// returns the outermost `Scope` that the region outlives.
-    pub fn free_scope(&self, tcx: TyCtxt<'tcx>, fr: &ty::FreeRegion) -> Scope {
-        let param_owner = match fr.bound_region {
-            ty::BoundRegion::BrNamed(def_id, _) => tcx.parent(def_id).unwrap(),
-            _ => fr.scope,
-        };
-
-        // Ensure that the named late-bound lifetimes were defined
-        // on the same function that they ended up being freed in.
-        assert_eq!(param_owner, fr.scope);
-
-        let param_owner_id = tcx.hir().as_local_hir_id(param_owner.expect_local());
-        let body_id = tcx.hir().body_owned_by(param_owner_id);
-        Scope { id: tcx.hir().body(body_id).value.hir_id.local_id, data: ScopeData::CallSite }
     }
 
     /// Checks whether the given scope contains a `yield`. If so,

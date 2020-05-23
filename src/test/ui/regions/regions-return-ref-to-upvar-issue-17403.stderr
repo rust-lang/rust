@@ -1,30 +1,13 @@
-error[E0495]: cannot infer an appropriate lifetime for borrow expression due to conflicting requirements
+error: captured variable cannot escape `FnMut` closure body
   --> $DIR/regions-return-ref-to-upvar-issue-17403.rs:7:24
    |
 LL |         let mut f = || &mut x;
-   |                        ^^^^^^
+   |                      - ^^^^^^ returns a reference to a captured variable which escapes the closure body
+   |                      |
+   |                      inferred to be a `FnMut` closure
    |
-note: first, the lifetime cannot outlive the lifetime `'_` as defined on the body at 7:21...
-  --> $DIR/regions-return-ref-to-upvar-issue-17403.rs:7:21
-   |
-LL |         let mut f = || &mut x;
-   |                     ^^^^^^^^^
-note: ...so that closure can access `x`
-  --> $DIR/regions-return-ref-to-upvar-issue-17403.rs:7:24
-   |
-LL |         let mut f = || &mut x;
-   |                        ^^^^^^
-note: but, the lifetime must be valid for the call at 9:17...
-  --> $DIR/regions-return-ref-to-upvar-issue-17403.rs:9:17
-   |
-LL |         let y = f();
-   |                 ^^^
-note: ...so type `&mut i32` of expression is valid during the expression
-  --> $DIR/regions-return-ref-to-upvar-issue-17403.rs:9:17
-   |
-LL |         let y = f();
-   |                 ^^^
+   = note: `FnMut` closures only have access to their captured variables while they are executing...
+   = note: ...therefore, they cannot allow references to captured variables to escape
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0495`.
