@@ -1,0 +1,9 @@
+error[E0284]: type annotations needed: cannot satisfy `<u64 as std::ops::Rem<_>>::Output == u64`
+  --> $DIR/issue-71584.rs:4:11
+   |
+LL |     d = d % n.into();
+   |           ^ cannot satisfy `<u64 as std::ops::Rem<_>>::Output == u64`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0284`.
