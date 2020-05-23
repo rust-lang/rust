@@ -511,6 +511,7 @@ fn test_debugging_options_tracking_hash() {
     untracked!(ui_testing, true);
     untracked!(unpretty, Some("expanded".to_string()));
     untracked!(unstable_options, true);
+    untracked!(validate_mir, true);
     untracked!(verbose, true);
 
     macro_rules! tracked {

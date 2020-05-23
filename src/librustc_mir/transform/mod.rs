@@ -39,6 +39,7 @@ pub mod simplify_branches;
 pub mod simplify_try;
 pub mod uninhabited_enum_branching;
 pub mod unreachable_prop;
+pub mod validate;
 
 pub(crate) fn provide(providers: &mut Providers<'_>) {
     self::check_unsafety::provide(providers);
@@ -147,12 +148,18 @@ pub fn run_passes(
     passes: &[&[&dyn MirPass<'tcx>]],
 ) {
     let phase_index = mir_phase.phase_index();
+    let source = MirSource { instance, promoted };
+    let validate = tcx.sess.opts.debugging_opts.validate_mir;
 
     if body.phase >= mir_phase {
         return;
     }
 
-    let source = MirSource { instance, promoted };
+    if validate {
+        validate::Validator { when: format!("input to phase {:?}", mir_phase) }
+            .run_pass(tcx, source, body);
+    }
+
     let mut index = 0;
     let mut run_pass = |pass: &dyn MirPass<'tcx>| {
         let run_hooks = |body: &_, index, is_after| {
@@ -168,6 +175,11 @@ pub fn run_passes(
         run_hooks(body, index, false);
         pass.run_pass(tcx, source, body);
         run_hooks(body, index, true);
+
+        if validate {
+            validate::Validator { when: format!("after {} in phase {:?}", pass.name(), mir_phase) }
+                .run_pass(tcx, source, body);
+        }
 
         index += 1;
     };
