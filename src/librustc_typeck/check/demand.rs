@@ -1,16 +1,15 @@
 use crate::check::FnCtxt;
 use rustc_infer::infer::InferOk;
 use rustc_trait_selection::infer::InferCtxtExt as _;
-use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
-use rustc_trait_selection::traits::{self, ObligationCause};
+use rustc_trait_selection::traits::ObligationCause;
 
 use rustc_ast::util::parser::PREC_POSTFIX;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
-use rustc_hir::lang_items::{CloneTraitLangItem, DerefTraitLangItem};
+use rustc_hir::lang_items::CloneTraitLangItem;
 use rustc_hir::{is_range_literal, Node};
 use rustc_middle::ty::adjustment::AllowTwoPhase;
-use rustc_middle::ty::{self, AssocItem, ToPredicate, Ty, TypeAndMut};
+use rustc_middle::ty::{self, AssocItem, Ty, TypeAndMut};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 
@@ -633,48 +632,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             _ if sp == expr.span && !is_macro => {
-                // Check for `Deref` implementations by constructing a predicate to
-                // prove: `<T as Deref>::Output == U`
-                let deref_trait = self.tcx.require_lang_item(DerefTraitLangItem, Some(sp));
-                let item_def_id = self
-                    .tcx
-                    .associated_items(deref_trait)
-                    .in_definition_order()
-                    .find(|item| item.kind == ty::AssocKind::Type)
-                    .unwrap()
-                    .def_id;
-                let predicate =
-                    ty::PredicateKind::Projection(ty::Binder::bind(ty::ProjectionPredicate {
-                        // `<T as Deref>::Output`
-                        projection_ty: ty::ProjectionTy {
-                            // `T`
-                            substs: self.tcx.intern_substs(&[checked_ty.into()]),
-                            // `Deref::Output`
-                            item_def_id,
-                        },
-                        // `U`
-                        ty: expected,
-                    }))
-                    .to_predicate(self.tcx);
-                let obligation = traits::Obligation::new(self.misc(sp), self.param_env, predicate);
-                let impls_deref = self.infcx.predicate_may_hold(&obligation);
-
-                // For a suggestion to make sense, the type would need to be `Copy`.
-                let is_copy = self.infcx.type_is_copy_modulo_regions(self.param_env, expected, sp);
-
-                if is_copy && impls_deref {
-                    if let Ok(code) = sm.span_to_snippet(sp) {
-                        let message = if checked_ty.is_region_ptr() {
-                            "consider dereferencing the borrow"
-                        } else {
-                            "consider dereferencing the type"
-                        };
-                        let suggestion = if is_struct_pat_shorthand_field {
-                            format!("{}: *{}", code, code)
-                        } else {
-                            format!("*{}", code)
-                        };
-                        return Some((sp, message, suggestion, Applicability::MachineApplicable));
+                if let Some(steps) = self.deref_steps(checked_ty, expected) {
+                    if steps == 1 {
+                        // For a suggestion to make sense, the type would need to be `Copy`.
+                        if self.infcx.type_is_copy_modulo_regions(self.param_env, expected, sp) {
+                            if let Ok(code) = sm.span_to_snippet(sp) {
+                                let message = if checked_ty.is_region_ptr() {
+                                    "consider dereferencing the borrow"
+                                } else {
+                                    "consider dereferencing the type"
+                                };
+                                let suggestion = if is_struct_pat_shorthand_field {
+                                    format!("{}: *{}", code, code)
+                                } else {
+                                    format!("*{}", code)
+                                };
+                                return Some((
+                                    sp,
+                                    message,
+                                    suggestion,
+                                    Applicability::MachineApplicable,
+                                ));
+                            }
+                        }
                     }
                 }
             }
