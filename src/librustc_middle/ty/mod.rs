@@ -2040,6 +2040,8 @@ impl ReprOptions {
         self.flags.contains(ReprFlags::HIDE_NICHE)
     }
 
+    /// Returns the discriminant type, given these `repr` options.
+    /// This must only be called on enums!
     pub fn discr_type(&self) -> attr::IntType {
         self.int.unwrap_or(attr::SignedInt(ast::IntTy::Isize))
     }
@@ -2272,6 +2274,7 @@ impl<'tcx> AdtDef {
 
     #[inline]
     pub fn eval_explicit_discr(&self, tcx: TyCtxt<'tcx>, expr_did: DefId) -> Option<Discr<'tcx>> {
+        assert!(self.is_enum());
         let param_env = tcx.param_env(expr_did);
         let repr_type = self.repr.discr_type();
         match tcx.const_eval_poly(expr_did) {
@@ -2308,6 +2311,7 @@ impl<'tcx> AdtDef {
         &'tcx self,
         tcx: TyCtxt<'tcx>,
     ) -> impl Iterator<Item = (VariantIdx, Discr<'tcx>)> + Captures<'tcx> {
+        assert!(self.is_enum());
         let repr_type = self.repr.discr_type();
         let initial = repr_type.initial_discriminant(tcx);
         let mut prev_discr = None::<Discr<'tcx>>;
@@ -2340,6 +2344,7 @@ impl<'tcx> AdtDef {
         tcx: TyCtxt<'tcx>,
         variant_index: VariantIdx,
     ) -> Discr<'tcx> {
+        assert!(self.is_enum());
         let (val, offset) = self.discriminant_def_for_variant(variant_index);
         let explicit_value = val
             .and_then(|expr_did| self.eval_explicit_discr(tcx, expr_did))

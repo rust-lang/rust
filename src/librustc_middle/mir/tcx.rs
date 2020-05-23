@@ -173,9 +173,7 @@ impl<'tcx> Rvalue<'tcx> {
                 tcx.intern_tup(&[ty, tcx.types.bool])
             }
             Rvalue::UnaryOp(UnOp::Not | UnOp::Neg, ref operand) => operand.ty(local_decls, tcx),
-            Rvalue::Discriminant(ref place) => {
-                place.ty(local_decls, tcx).ty.discriminant_type(tcx)
-            }
+            Rvalue::Discriminant(ref place) => place.ty(local_decls, tcx).ty.discriminant_ty(tcx),
             Rvalue::NullaryOp(NullOp::Box, t) => tcx.mk_box(t),
             Rvalue::NullaryOp(NullOp::SizeOf, _) => tcx.types.usize,
             Rvalue::Aggregate(ref ak, ref ops) => match **ak {

@@ -2097,7 +2097,9 @@ impl<'tcx> TyS<'tcx> {
         variant_index: VariantIdx,
     ) -> Option<Discr<'tcx>> {
         match self.kind {
-            TyKind::Adt(adt, _) => Some(adt.discriminant_for_variant(tcx, variant_index)),
+            TyKind::Adt(adt, _) if adt.is_enum() => {
+                Some(adt.discriminant_for_variant(tcx, variant_index))
+            }
             TyKind::Generator(def_id, substs, _) => {
                 Some(substs.as_generator().discriminant_for_variant(def_id, tcx, variant_index))
             }
@@ -2106,11 +2108,14 @@ impl<'tcx> TyS<'tcx> {
     }
 
     /// Returns the type of the discriminant of this type.
-    pub fn discriminant_type(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+    pub fn discriminant_ty(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match self.kind {
-            ty::Adt(adt_def, _) => adt_def.repr.discr_type().to_ty(tcx),
+            ty::Adt(adt, _) if adt.is_enum() => adt.repr.discr_type().to_ty(tcx),
             ty::Generator(_, substs, _) => substs.as_generator().discr_ty(tcx),
-            _ => bug!("{:?} does not have a discriminant", self),
+            _ => {
+                // This can only be `0`, for now, so `u8` will suffice.
+                tcx.types.u8
+            }
         }
     }
 

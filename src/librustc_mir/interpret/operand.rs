@@ -581,10 +581,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         trace!("read_discriminant_value {:#?}", op.layout);
 
         // Get type and layout of the discriminant.
-        let discr_layout = self.layout_of(op.layout.ty.discriminant_type(*self.tcx))?;
+        let discr_layout = self.layout_of(op.layout.ty.discriminant_ty(*self.tcx))?;
         trace!("discriminant type: {:?}", discr_layout.ty);
 
-        // We use "discriminant" to refer to the value associated with a particualr enum variant.
+        // We use "discriminant" to refer to the value associated with a particular enum variant.
         // This is not to be confused with its "variant index", which is just determining its position in the
         // declared list of variants -- they can differ with explicitly assigned discriminants.
         // We use "tag" to refer to how the discriminant is encoded in memory, which can be either
