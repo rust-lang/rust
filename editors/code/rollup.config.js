@@ -6,7 +6,7 @@ import nodeBuiltins from 'builtin-modules';
 
 /** @type { import('rollup').RollupOptions } */
 export default {
-    input: 'out/main.js',
+    input: 'out/src/main.js',
     plugins: [
         resolve({
             preferBuiltins: true
@@ -20,7 +20,7 @@ export default {
     ],
     external: [...nodeBuiltins, 'vscode'],
     output: {
-        file: './out/main.js',
+        file: './out/src/main.js',
         format: 'cjs',
         exports: 'named'
     }
