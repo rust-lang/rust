@@ -478,7 +478,7 @@ Here is the list of currently supported register classes:
 >
 > Note #2: On x86-64 the high byte registers (e.g. `ah`) are only available when used as an explicit register. Specifying the `reg_byte` register class for an operand will always allocate a low byte register.
 >
-> Note #3: On NVPTX, register names are not supported.
+> Note #3: NVPTX doesn't have a fixed register set, so named registers are not supported.
 
 Additional register classes may be added in the future based on demand (e.g. MMX, x87, etc).
 
