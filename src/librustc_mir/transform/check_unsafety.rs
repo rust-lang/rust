@@ -726,6 +726,17 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: DefId) {
                 },
             ),
             UnsafetyViolationKind::UnsafeFnBorrowPacked => {
+                // When `unsafe_op_in_unsafe_fn` is disallowed, the behavior of safe and unsafe functions
+                // should be the same in terms of warnings and errors. Therefore, with `#[warn(safe_packed_borrows)]`,
+                // a safe packed borrow should emit a warning *but not an error* in an unsafe function,
+                // just like in a safe function, even if `unsafe_op_in_unsafe_fn` is `deny`.
+                //
+                // Also, `#[warn(unsafe_op_in_unsafe_fn)]` can't cause any new errors. Therefore, with
+                // `#[deny(safe_packed_borrows)]` and `#[warn(unsafe_op_in_unsafe_fn)]`, a packed borrow
+                // should only issue a warning for the sake of backwards compatibility.
+                //
+                // The solution those 2 expectations is to always take the minimum of both lints.
+                // This prevent any new errors (unless both lints are explicitely set to `deny`).
                 let lint = if tcx.lint_level_at_node(SAFE_PACKED_BORROWS, lint_root).0
                     <= tcx.lint_level_at_node(UNSAFE_OP_IN_UNSAFE_FN, lint_root).0
                 {
