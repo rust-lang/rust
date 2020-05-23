@@ -126,8 +126,8 @@ export class Cargo {
     }
 }
 
-// Mirrors `ra_env::get_path_for_executable` implementation
-function getCargoPathOrFail(): string {
+// Mirrors `ra_toolchain::cargo()` implementation
+export function getCargoPathOrFail(): string {
     const envVar = process.env.CARGO;
     const executableName = "cargo";
 

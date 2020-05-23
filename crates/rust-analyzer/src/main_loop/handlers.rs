@@ -40,6 +40,7 @@ use crate::{
     world::WorldSnapshot,
     LspError, Result,
 };
+use anyhow::Context;
 
 pub fn handle_analyzer_status(world: WorldSnapshot, _: ()) -> Result<String> {
     let _p = profile("handle_analyzer_status");
@@ -982,10 +983,15 @@ fn to_lsp_runnable(
             target.map_or_else(|| "run binary".to_string(), |t| format!("run {}", t))
         }
     };
+    let cargo_path = ra_toolchain::cargo()
+        .to_str()
+        .context("Path to cargo executable contains invalid UTF8 characters")?
+        .to_owned();
+
     Ok(lsp_ext::Runnable {
         range: to_proto::range(&line_index, runnable.range),
         label,
-        bin: "cargo".to_string(),
+        bin: cargo_path,
         args,
         extra_args,
         env: {

@@ -1364,6 +1364,7 @@ dependencies = [
  "ra_syntax",
  "ra_text_edit",
  "ra_tt",
+ "ra_toolchain",
  "ra_vfs",
  "rand",
  "relative-path",

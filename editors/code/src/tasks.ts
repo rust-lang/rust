@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { getCargoPathOrFail } from "./cargo";
 
 // This ends up as the `type` key in tasks.json. RLS also uses `cargo` and
 // our configuration should be compatible with it so use the same key.
@@ -24,6 +25,8 @@ class CargoTaskProvider implements vscode.TaskProvider {
         // set of tasks that always exist. These tasks cannot be removed in
         // tasks.json - only tweaked.
 
+        const cargoPath = getCargoPathOrFail();
+
         return [
             { command: 'build', group: vscode.TaskGroup.Build },
             { command: 'check', group: vscode.TaskGroup.Build },
@@ -46,7 +49,7 @@ class CargoTaskProvider implements vscode.TaskProvider {
                     `cargo ${command}`,
                     'rust',
                     // What to do when this command is executed.
-                    new vscode.ShellExecution('cargo', [command]),
+                    new vscode.ShellExecution(cargoPath, [command]),
                     // Problem matchers.
                     ['$rustc'],
                 );
