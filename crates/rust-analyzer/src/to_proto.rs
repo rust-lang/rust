@@ -455,7 +455,7 @@ pub(crate) fn snippet_text_document_edit(
     let edits = source_file_edit
         .edit
         .into_iter()
-        .map(|it| snippet_text_edit(&line_index, line_endings, is_snippet, it.clone()))
+        .map(|it| snippet_text_edit(&line_index, line_endings, is_snippet, it))
         .collect();
     Ok(lsp_ext::SnippetTextDocumentEdit { text_document, edits })
 }
