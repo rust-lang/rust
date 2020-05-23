@@ -97,7 +97,7 @@ jobs:
 
   typescript:
     name: TypeScript
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2
@@ -116,8 +116,17 @@ jobs:
     - run: npm run lint
       working-directory: ./editors/code
 
+    - name: Start xvfb
+      run: |
+        sudo apt-get install xvfb
+        set -e
+        /usr/bin/Xvfb :10 -ac >> /tmp/Xvfb.out 2>&1 &
+        disown -ar
+      
     - run: npm test
       working-directory: ./editors/code
+      env:
+        DISPLAY: :10
 
     - run: npm run package --scripts-prepend-node-path
       working-directory: ./editors/code
