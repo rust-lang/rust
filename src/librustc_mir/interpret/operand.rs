@@ -642,6 +642,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
             _ => bug!("multiple variants for non-adt non-generator"),
         };
+        trace!("discriminant type: {:?}", discr_ty);
 
         // Figure out which discriminant and variant this corresponds to.
         Ok(match *tag_kind {
@@ -651,8 +652,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     .map_err(|_| err_ub!(InvalidDiscriminant(tag_val.erase_tag())))?;
                 // Cast bits from tag layout to discriminant layout.
                 let discr_layout = self.layout_of(discr_ty)?;
-                let discr_val_cast =
-                    self.cast_from_scalar(tag_bits, tag_layout, discr_ty);
+                let discr_val_cast = self.cast_from_scalar(tag_bits, tag_layout, discr_ty);
                 let discr_bits = discr_val_cast.assert_bits(discr_layout.size);
                 // Convert discriminant to variant index, and catch invalid discriminants.
                 let index = match rval.layout.ty.kind {
