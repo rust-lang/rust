@@ -15,12 +15,12 @@ impl Foo for A {
 }
 
 fn foo(x: dyn Foo) {
-    //~^ ERROR: the size for values of type `(dyn Foo + 'static)` cannot be known at compilation time [E0277]
+    //~^ ERROR [E0277]
     x.foo()
 }
 
 fn main() {
     let x: Box<dyn Foo> = Box::new(A { v: 22 });
     foo(*x);
-    //~^ ERROR: the size for values of type `(dyn Foo + 'static)` cannot be known at compilation time [E0277]
+    //~^ ERROR [E0277]
 }

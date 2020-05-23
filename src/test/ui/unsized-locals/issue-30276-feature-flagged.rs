@@ -1,5 +1,5 @@
 #![feature(unsized_locals)]
-//~^ WARN the feature `unsized_locals` is incomplete and may not be safe to use and/or cause compiler crashes [incomplete_features]
+//~^ WARN the feature `unsized_locals` is incomplete
 
 struct Test([i32]);
 
