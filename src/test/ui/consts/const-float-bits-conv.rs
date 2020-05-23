@@ -1,20 +1,24 @@
+// -Zmir-opt-level=0
 // run-pass
 
 #![feature(const_panic)]
 #![feature(const_if_match)]
 #![feature(const_float_bits_conv)]
 
+// Don't promote
+const fn nop<T>(x: T) -> T { x }
+
 macro_rules! const_assert {
     ($a:expr) => {
         {
             const _: () = assert!($a);
-            assert!($a);
+            assert!(nop($a));
         }
     };
     ($a:expr, $b:expr) => {
         {
             const _: () = assert!($a == $b);
-            assert_eq!($a, $b);
+            assert_eq!(nop($a), nop($b));
         }
     };
 }
