@@ -1,14 +1,5 @@
-warning: the feature `unsized_locals` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/unsized-exprs2.rs:1:36
-   |
-LL | #![feature(unsized_tuple_coercion, unsized_locals, unsized_fn_params)]
-   |                                    ^^^^^^^^^^^^^^
-   |
-   = note: `#[warn(incomplete_features)]` on by default
-   = note: see issue #48055 <https://github.com/rust-lang/rust/issues/48055> for more information
-
 error[E0508]: cannot move out of type `[u8]`, a non-copy slice
-  --> $DIR/unsized-exprs2.rs:23:5
+  --> $DIR/unsized-exprs2.rs:22:5
    |
 LL |     udrop::<[u8]>(foo()[..]);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -16,6 +7,6 @@ LL |     udrop::<[u8]>(foo()[..]);
    |     cannot move out of here
    |     move occurs because value has type `[u8]`, which does not implement the `Copy` trait
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0508`.
