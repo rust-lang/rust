@@ -1119,6 +1119,7 @@ dependencies = [
  "memmap",
  "ra_mbe",
  "ra_proc_macro",
+ "ra_toolchain",
  "ra_tt",
  "serde_derive",
  "test_utils",

@@ -58,6 +58,10 @@ use std::collections::Spam;
     eprintln!("completion took {:?}", completion_start.elapsed());
 }
 
+fn cargo_path() -> String {
+    ra_toolchain::cargo().to_str().unwrap().to_owned()
+}
+
 #[test]
 fn test_runnables_no_project() {
     if skip_slow_tests() {
@@ -79,7 +83,7 @@ fn foo() {
           {
             "args": [ "test" ],
             "extraArgs": [ "foo", "--nocapture" ],
-            "bin": "cargo",
+            "bin": cargo_path(),
             "env": { "RUST_BACKTRACE": "short" },
             "cwd": null,
             "label": "test foo",
@@ -91,7 +95,7 @@ fn foo() {
           {
             "args": ["check", "--workspace"],
             "extraArgs": [],
-            "bin": "cargo",
+            "bin": cargo_path(),
             "env": {},
             "cwd": null,
             "label": "cargo check --workspace",
@@ -141,7 +145,7 @@ fn main() {}
             {
               "args": [ "test", "--package", "foo", "--test", "spam" ],
               "extraArgs": [ "test_eggs", "--exact", "--nocapture" ],
-              "bin": "cargo",
+              "bin": cargo_path(),
               "env": { "RUST_BACKTRACE": "short" },
               "label": "test test_eggs",
               "range": {
@@ -153,7 +157,7 @@ fn main() {}
             {
               "args": [ "check", "--package", "foo" ],
               "extraArgs": [],
-              "bin": "cargo",
+              "bin": cargo_path(),
               "env": {},
               "label": "cargo check -p foo",
               "range": {
@@ -165,7 +169,7 @@ fn main() {}
             {
               "args": [ "test", "--package", "foo" ],
               "extraArgs": [],
-              "bin": "cargo",
+              "bin": cargo_path(),
               "env": {},
               "label": "cargo test -p foo",
               "range": {
