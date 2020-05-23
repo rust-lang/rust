@@ -4,7 +4,7 @@ use crate::traits;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items;
-use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
+use rustc_middle::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
 use rustc_span::Span;
 use std::rc::Rc;
@@ -37,11 +37,41 @@ pub fn obligations<'a, 'tcx>(
     };
 
     let mut wf = WfPredicates { infcx, param_env, body_id, span, out: vec![], item: None };
-    wf.compute(ty);
+    wf.compute(ty.into());
     debug!("wf::obligations({:?}, body_id={:?}) = {:?}", ty, body_id, wf.out);
 
     let result = wf.normalize();
     debug!("wf::obligations({:?}, body_id={:?}) ~~> {:?}", ty, body_id, result);
+    Some(result)
+}
+
+/// Returns the set of obligations needed to make the `constant` well-formed.
+pub fn const_obligations<'a, 'tcx>(
+    infcx: &InferCtxt<'a, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    body_id: hir::HirId,
+    constant: &'tcx ty::Const<'tcx>,
+    span: Span,
+) -> Option<Vec<traits::PredicateObligation<'tcx>>> {
+    let constant = match constant.val {
+        ty::ConstKind::Infer(infer) => {
+            let resolved = infcx.shallow_resolve(infer);
+            if resolved == infer {
+                // No progress.
+                return None;
+            }
+
+            infcx.tcx.mk_const(ty::Const { val: ty::ConstKind::Infer(resolved), ..*constant })
+        }
+        _ => constant,
+    };
+
+    let mut wf = WfPredicates { infcx, param_env, body_id, span, out: vec![], item: None };
+    wf.compute(constant.into());
+    debug!("wf::const obligations({:?}, body_id={:?}) = {:?}", constant, body_id, wf.out);
+
+    let result = wf.normalize();
+    debug!("wf::const obligations({:?}, body_id={:?}) ~~> {:?}", constant, body_id, result);
     Some(result)
 }
 
@@ -78,33 +108,36 @@ pub fn predicate_obligations<'a, 'tcx>(
         }
         ty::PredicateKind::RegionOutlives(..) => {}
         ty::PredicateKind::TypeOutlives(t) => {
-            wf.compute(t.skip_binder().0);
+            wf.compute(t.skip_binder().0.into());
         }
         ty::PredicateKind::Projection(t) => {
             let t = t.skip_binder(); // (*)
             wf.compute_projection(t.projection_ty);
-            wf.compute(t.ty);
+            wf.compute(t.ty.into());
         }
         &ty::PredicateKind::WellFormed(t) => {
-            wf.compute(t);
+            wf.compute(t.into());
         }
         ty::PredicateKind::ObjectSafe(_) => {}
         ty::PredicateKind::ClosureKind(..) => {}
         ty::PredicateKind::Subtype(data) => {
-            wf.compute(data.skip_binder().a); // (*)
-            wf.compute(data.skip_binder().b); // (*)
+            wf.compute(data.skip_binder().a.into()); // (*)
+            wf.compute(data.skip_binder().b.into()); // (*)
         }
         &ty::PredicateKind::ConstEvaluatable(def_id, substs) => {
             let obligations = wf.nominal_obligations(def_id, substs);
             wf.out.extend(obligations);
 
-            for ty in substs.types() {
-                wf.compute(ty);
+            for subst in substs.iter().copied() {
+                wf.compute(subst);
             }
         }
         ty::PredicateKind::ConstEquate(c1, c2) => {
-            wf.compute(c1.ty);
-            wf.compute(c2.ty);
+            wf.compute(c1.ty.into());
+            wf.compute(c2.ty.into());
+        }
+        ty::Predicate::WellFormedConst(constant) => {
+            wf.compute(constant.into());
         }
     }
 
@@ -213,7 +246,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         self.infcx.tcx
     }
 
-    fn cause(&mut self, code: traits::ObligationCauseCode<'tcx>) -> traits::ObligationCause<'tcx> {
+    fn cause(&self, code: traits::ObligationCauseCode<'tcx>) -> traits::ObligationCause<'tcx> {
         traits::ObligationCause::new(self.span, self.body_id, code)
     }
 
@@ -300,22 +333,6 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         }
     }
 
-    /// Pushes the obligations required for an array length to be WF
-    /// into `self.out`.
-    fn compute_array_len(&mut self, constant: ty::Const<'tcx>) {
-        if let ty::ConstKind::Unevaluated(def_id, substs, promoted) = constant.val {
-            assert!(promoted.is_none());
-
-            let obligations = self.nominal_obligations(def_id, substs);
-            self.out.extend(obligations);
-
-            let predicate =
-                ty::PredicateKind::ConstEvaluatable(def_id, substs).to_predicate(self.tcx());
-            let cause = self.cause(traits::MiscObligation);
-            self.out.push(traits::Obligation::new(cause, self.param_env, predicate));
-        }
-    }
-
     fn require_sized(&mut self, subty: Ty<'tcx>, cause: traits::ObligationCauseCode<'tcx>) {
         if !subty.has_escaping_bound_vars() {
             let cause = self.cause(cause);
@@ -332,8 +349,8 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
     }
 
     /// Pushes all the predicates needed to validate that `ty` is WF into `out`.
-    fn compute(&mut self, ty: Ty<'tcx>) {
-        let mut walker = ty.walk();
+    fn compute(&mut self, arg: GenericArg<'tcx>) {
+        let mut walker = arg.walk();
         let param_env = self.param_env;
         while let Some(arg) = walker.next() {
             let ty = match arg.unpack() {
@@ -343,9 +360,43 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 // obligations are handled by the parent (e.g. `ty::Ref`).
                 GenericArgKind::Lifetime(_) => continue,
 
-                // FIXME(eddyb) this is wrong and needs to be replaced
-                // (see https://github.com/rust-lang/rust/pull/70107).
-                GenericArgKind::Const(_) => continue,
+                GenericArgKind::Const(constant) => {
+                    match constant.val {
+                        ty::ConstKind::Unevaluated(def_id, substs, promoted) => {
+                            assert!(promoted.is_none());
+
+                            let obligations = self.nominal_obligations(def_id, substs);
+                            self.out.extend(obligations);
+
+                            let predicate = ty::PredicateKind::ConstEvaluatable(def_id, substs).to_predicate(self.tcx());
+                            let cause = self.cause(traits::MiscObligation);
+                            self.out.push(traits::Obligation::new(
+                                cause,
+                                self.param_env,
+                                predicate,
+                            ));
+                        }
+                        ty::ConstKind::Infer(infer) => {
+                            let resolved = self.infcx.shallow_resolve(infer);
+                            // the `InferConst` changed, meaning that we made progress.
+                            if resolved != infer {
+                                let cause = self.cause(traits::MiscObligation);
+
+                                let resolved_constant = self.infcx.tcx.mk_const(ty::Const {
+                                    val: ty::ConstKind::Infer(resolved),
+                                    ..*constant
+                                });
+                                self.out.push(traits::Obligation::new(
+                                    cause,
+                                    self.param_env,
+                                    ty::PredicateKind::WellFormedConst(resolved_constant).to_predicate(self.tcx()),
+                                ));
+                            }
+                        }
+                        _ => (),
+                    }
+                    continue;
+                }
             };
 
             match ty.kind {
@@ -375,10 +426,8 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     self.require_sized(subty, traits::SliceOrArrayElem);
                 }
 
-                ty::Array(subty, len) => {
+                ty::Array(subty, _) => {
                     self.require_sized(subty, traits::SliceOrArrayElem);
-                    // FIXME(eddyb) handle `GenericArgKind::Const` above instead.
-                    self.compute_array_len(*len);
                 }
 
                 ty::Tuple(ref tys) => {
@@ -467,7 +516,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     walker.skip_current_subtree(); // subtree handled below
                     for upvar_ty in substs.as_closure().upvar_tys() {
                         // FIXME(eddyb) add the type to `walker` instead of recursing.
-                        self.compute(upvar_ty);
+                        self.compute(upvar_ty.into());
                     }
                 }
 
@@ -540,7 +589,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     } else {
                         // Yes, resolved, proceed with the result.
                         // FIXME(eddyb) add the type to `walker` instead of recursing.
-                        self.compute(ty);
+                        self.compute(ty.into());
                     }
                 }
             }
