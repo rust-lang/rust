@@ -884,7 +884,7 @@ impl f64 {
     /// Returns `max` if `self` is greater than `max`, and `min` if `self` is
     /// less than `min`. Otherwise this returns `self`.
     ///
-    /// Not that this function returns NaN if the initial value was NaN as
+    /// Note that this function returns NaN if the initial value was NaN as
     /// well.
     ///
     /// # Panics
