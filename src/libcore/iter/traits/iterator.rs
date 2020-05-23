@@ -942,6 +942,8 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[doc(alias = "drop_while")]
+    #[doc(alias = "dropwhile")]
     fn skip_while<P>(self, predicate: P) -> SkipWhile<Self, P>
     where
         Self: Sized,
