@@ -50,7 +50,7 @@ allocate, and which are found in this module. Here are a few examples:
 
 [subst]: ./generic_arguments.html#subst
 [`TraitRef`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TraitRef.html
-[`Predicate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.Predicate.html
+[`Predicate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Predicate.html
 
 [`ty::TyS`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyS.html
 
