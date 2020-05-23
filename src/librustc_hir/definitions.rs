@@ -327,7 +327,9 @@ impl Definitions {
 
     #[inline]
     pub fn local_def_id(&self, node: ast::NodeId) -> LocalDefId {
-        self.opt_local_def_id(node).unwrap()
+        self.opt_local_def_id(node).unwrap_or_else(|| {
+            panic!("no entry for node id: `{:?}` / `{:?}`", node, self.opt_node_id_to_hir_id(node))
+        })
     }
 
     #[inline]
