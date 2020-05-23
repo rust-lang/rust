@@ -500,7 +500,7 @@ impl<'a> Clean<WherePredicate> for ty::PolyTraitPredicate<'a> {
     fn clean(&self, cx: &DocContext<'_>) -> WherePredicate {
         let poly_trait_ref = self.map_bound(|pred| pred.trait_ref);
         WherePredicate::BoundPredicate {
-            ty: poly_trait_ref.self_ty().clean(cx),
+            ty: poly_trait_ref.skip_binder().self_ty().clean(cx),
             bounds: vec![poly_trait_ref.clean(cx)],
         }
     }
@@ -755,7 +755,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics, ty::GenericPredicates<'tcx
                 let mut projection = None;
                 let param_idx = (|| {
                     if let Some(trait_ref) = p.to_opt_poly_trait_ref() {
-                        if let ty::Param(param) = trait_ref.self_ty().kind {
+                        if let ty::Param(param) = trait_ref.skip_binder().self_ty().kind {
                             return Some(param.index);
                         }
                     } else if let Some(outlives) = p.to_opt_type_outlives() {
