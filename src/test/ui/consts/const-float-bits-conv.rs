@@ -4,6 +4,7 @@
 #![feature(const_panic)]
 #![feature(const_if_match)]
 #![feature(const_float_bits_conv)]
+#![feature(const_float_classify)]
 
 // Don't promote
 const fn nop<T>(x: T) -> T { x }
@@ -44,6 +45,9 @@ fn f32() {
     const MASKED_NAN1: u32 = f32::NAN.to_bits() ^ 0x002A_AAAA;
     const MASKED_NAN2: u32 = f32::NAN.to_bits() ^ 0x0055_5555;
 
+    const_assert!(f32::from_bits(MASKED_NAN1).is_nan());
+    const_assert!(f32::from_bits(MASKED_NAN1).is_nan());
+
     const_assert!(f32::from_bits(MASKED_NAN1).to_bits(), MASKED_NAN1);
     const_assert!(f32::from_bits(MASKED_NAN2).to_bits(), MASKED_NAN2);
 }
@@ -68,6 +72,9 @@ fn f64() {
     // 0xA is 0b1010; 0x5 is 0b0101 -- so these two together clobbers all the mantissa bits
     const MASKED_NAN1: u64 = f64::NAN.to_bits() ^ 0x000A_AAAA_AAAA_AAAA;
     const MASKED_NAN2: u64 = f64::NAN.to_bits() ^ 0x0005_5555_5555_5555;
+
+    const_assert!(f64::from_bits(MASKED_NAN1).is_nan());
+    const_assert!(f64::from_bits(MASKED_NAN1).is_nan());
 
     const_assert!(f64::from_bits(MASKED_NAN1).to_bits(), MASKED_NAN1);
     const_assert!(f64::from_bits(MASKED_NAN2).to_bits(), MASKED_NAN2);
