@@ -18,7 +18,7 @@ fn b(_1: &mut std::boxed::Box<T>) -> &mut T {
         _4 = &mut (*_1);                 // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:8:5: 8:6
         StorageLive(_5);                 // scope 1 at $SRC_DIR/liballoc/boxed.rs:LL:COL
         _5 = &mut (*(*_4));              // scope 1 at $SRC_DIR/liballoc/boxed.rs:LL:COL
-        _3 = _5;                         // scope 1 at $SRC_DIR/liballoc/boxed.rs:LL:COL
+        _3 = move _5;                    // scope 1 at $SRC_DIR/liballoc/boxed.rs:LL:COL
         StorageDead(_5);                 // scope 1 at $SRC_DIR/liballoc/boxed.rs:LL:COL
         _2 = &mut (*_3);                 // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:8:5: 8:15
         StorageDead(_4);                 // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:8:14: 8:15
