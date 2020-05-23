@@ -16,3 +16,39 @@ fn unitialized_zero_size_box() {
         NonNull::<MaybeUninit<String>>::dangling().as_ptr(),
     );
 }
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+struct Dummy {
+    _data: u8,
+}
+
+#[test]
+fn box_clone_and_clone_from_equivalence() {
+    for size in (0..8).map(|i| 2usize.pow(i)) {
+        let control = vec![Dummy { _data: 42 }; size].into_boxed_slice();
+        let clone = control.clone();
+        let mut copy = vec![Dummy { _data: 84 }; size].into_boxed_slice();
+        copy.clone_from(&control);
+        assert_eq!(control, clone);
+        assert_eq!(control, copy);
+    }
+}
+
+#[test]
+fn box_clone_from_ptr_stability() {
+    for size in (0..8).map(|i| 2usize.pow(i)) {
+        let control = vec![Dummy { _data: 42 }; size].into_boxed_slice();
+        let mut copy = vec![Dummy { _data: 84 }; size].into_boxed_slice();
+        let copy_raw = copy.as_ptr() as usize;
+        copy.clone_from(&control);
+        assert_eq!(copy.as_ptr() as usize, copy_raw);
+    }
+
+    for size in (0..8).map(|i| 2usize.pow(i)) {
+        let control = vec![Dummy { _data: 42 }; size].into_boxed_slice();
+        let mut copy = vec![Dummy { _data: 84 }; size + 1].into_boxed_slice();
+        let copy_raw = copy.as_ptr() as usize;
+        copy.clone_from(&control);
+        assert_ne!(copy.as_ptr() as usize, copy_raw);
+    }
+}
