@@ -97,7 +97,13 @@ jobs:
 
   typescript:
     name: TypeScript
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    runs-on: ${{ matrix.os }}
+    
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2
@@ -111,6 +117,7 @@ jobs:
       working-directory: ./editors/code
 
     - run: npm audit || { sleep 10 && npm audit; } || { sleep 30 && npm audit; }
+      if: runner.os == 'Linux'
       working-directory: ./editors/code
 
     - run: npm run lint
