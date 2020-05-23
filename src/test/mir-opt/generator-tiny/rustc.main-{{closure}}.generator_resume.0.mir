@@ -12,7 +12,7 @@ fn main::{{closure}}#0(_1: std::pin::Pin<&mut [generator@$DIR/generator-tiny.rs:
     let _8: ();                          // in scope 0 at $DIR/generator-tiny.rs:23:13: 23:21
     let mut _9: ();                      // in scope 0 at $DIR/generator-tiny.rs:19:25: 19:25
     let _10: u8;                         // in scope 0 at $DIR/generator-tiny.rs:19:17: 19:19
-    let mut _11: isize;                  // in scope 0 at $DIR/generator-tiny.rs:19:16: 25:6
+    let mut _11: u32;                    // in scope 0 at $DIR/generator-tiny.rs:19:16: 25:6
     scope 1 {
         debug _d => (((*(_1.0: &mut [generator@$DIR/generator-tiny.rs:19:16: 25:6 {u8, HasDrop, ()}])) as variant#3).0: HasDrop); // in scope 1 at $DIR/generator-tiny.rs:20:13: 20:15
     }
