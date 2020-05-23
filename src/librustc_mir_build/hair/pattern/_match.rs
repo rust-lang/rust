@@ -1025,11 +1025,11 @@ enum Fields<'p, 'tcx> {
     /// have not measured if it really made a difference.
     Slice(&'p [Pat<'tcx>]),
     Vec(SmallVec<[&'p Pat<'tcx>; 2]>),
-    /// Patterns where some of the fields need to be hidden. `len` caches the number of non-hidden
-    /// fields.
+    /// Patterns where some of the fields need to be hidden. `kept_count` caches the number of
+    /// non-hidden fields.
     Filtered {
         fields: SmallVec<[FilteredField<'p, 'tcx>; 2]>,
-        len: usize,
+        kept_count: usize,
     },
 }
 
@@ -1092,7 +1092,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                         if has_no_hidden_fields {
                             Fields::wildcards_from_tys(cx, field_tys)
                         } else {
-                            let mut len = 0;
+                            let mut kept_count = 0;
                             let fields = variant
                                 .fields
                                 .iter()
@@ -1109,12 +1109,12 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                                     if is_uninhabited && (!is_visible || is_non_exhaustive) {
                                         FilteredField::Hidden(ty)
                                     } else {
-                                        len += 1;
+                                        kept_count += 1;
                                         FilteredField::Kept(wildcard_from_ty(ty))
                                     }
                                 })
                                 .collect();
-                            Fields::Filtered { fields, len }
+                            Fields::Filtered { fields, kept_count }
                         }
                     }
                 }
@@ -1133,11 +1133,14 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
         ret
     }
 
+    /// Returns the number of patterns from the viewpoint of match-checking, i.e. excluding hidden
+    /// fields. This is what we want in most cases in this file, the only exception being
+    /// conversion to/from `Pat`.
     fn len(&self) -> usize {
         match self {
             Fields::Slice(pats) => pats.len(),
             Fields::Vec(pats) => pats.len(),
-            Fields::Filtered { len, .. } => *len,
+            Fields::Filtered { kept_count, .. } => *kept_count,
         }
     }
 
@@ -1207,7 +1210,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
         let pats: &[_] = cx.pattern_arena.alloc_from_iter(pats);
 
         match self {
-            Fields::Filtered { fields, len } => {
+            Fields::Filtered { fields, kept_count } => {
                 let mut pats = pats.iter();
                 let mut fields = fields.clone();
                 for f in &mut fields {
@@ -1216,7 +1219,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                         *p = pats.next().unwrap();
                     }
                 }
-                Fields::Filtered { fields, len: *len }
+                Fields::Filtered { fields, kept_count: *kept_count }
             }
             _ => Fields::Slice(pats),
         }
