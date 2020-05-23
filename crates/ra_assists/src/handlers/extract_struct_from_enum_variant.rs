@@ -127,12 +127,12 @@ fn extract_struct_def(
     } else {
         "".to_string()
     };
-    let mut buf = String::new();
     let indent = if let Some(indent) = leading_indent(enum_ast) {
         indent.to_string()
     } else {
         "".to_string()
     };
+    let mut buf = String::new();
 
     format_to!(
         buf,
@@ -161,7 +161,6 @@ fn update_variant(
         list_range.end().checked_sub(TextSize::from(1))?,
     );
     edit.perform(file_id, |builder| {
-        builder.set_file(file_id);
         builder.replace(inside_variant_range, variant_name);
     });
     Some(())
