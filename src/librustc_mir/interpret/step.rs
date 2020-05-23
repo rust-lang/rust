@@ -89,7 +89,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             SetDiscriminant { place, variant_index } => {
                 let dest = self.eval_place(**place)?;
-                self.write_discriminant_index(*variant_index, dest)?;
+                self.write_discriminant(*variant_index, dest)?;
             }
 
             // Mark locals as alive
@@ -174,7 +174,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Aggregate(ref kind, ref operands) => {
                 let (dest, active_field_index) = match **kind {
                     mir::AggregateKind::Adt(adt_def, variant_index, _, _, active_field_index) => {
-                        self.write_discriminant_index(variant_index, dest)?;
+                        self.write_discriminant(variant_index, dest)?;
                         if adt_def.is_enum() {
                             (self.place_downcast(dest, variant_index)?, active_field_index)
                         } else {
