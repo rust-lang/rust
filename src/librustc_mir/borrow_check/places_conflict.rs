@@ -138,7 +138,7 @@ fn place_components_conflict<'tcx>(
     }
 
     // loop invariant: borrow_c is always either equal to access_c or disjoint from it.
-    for (i, (borrow_c, access_c)) in
+    for (i, (borrow_c, &access_c)) in
         borrow_place.projection.iter().zip(access_place.projection.iter()).enumerate()
     {
         debug!("borrow_conflicts_with_place: borrow_c = {:?}", borrow_c);
@@ -163,8 +163,8 @@ fn place_components_conflict<'tcx>(
             body,
             borrow_local,
             borrow_proj_base,
-            &borrow_c,
-            &access_c,
+            borrow_c,
+            access_c,
             bias,
         ) {
             Overlap::Arbitrary => {
@@ -313,8 +313,8 @@ fn place_projection_conflict<'tcx>(
     body: &Body<'tcx>,
     pi1_local: Local,
     pi1_proj_base: &[PlaceElem<'tcx>],
-    pi1_elem: &PlaceElem<'tcx>,
-    pi2_elem: &PlaceElem<'tcx>,
+    pi1_elem: PlaceElem<'tcx>,
+    pi2_elem: PlaceElem<'tcx>,
     bias: PlaceConflictBias,
 ) -> Overlap {
     match (pi1_elem, pi2_elem) {
@@ -420,24 +420,24 @@ fn place_projection_conflict<'tcx>(
             }
         }
         (
-            &ProjectionElem::ConstantIndex {
+            ProjectionElem::ConstantIndex {
                 offset: offset_from_begin,
                 min_length: min_length1,
                 from_end: false,
             },
-            &ProjectionElem::ConstantIndex {
+            ProjectionElem::ConstantIndex {
                 offset: offset_from_end,
                 min_length: min_length2,
                 from_end: true,
             },
         )
         | (
-            &ProjectionElem::ConstantIndex {
+            ProjectionElem::ConstantIndex {
                 offset: offset_from_end,
                 min_length: min_length1,
                 from_end: true,
             },
-            &ProjectionElem::ConstantIndex {
+            ProjectionElem::ConstantIndex {
                 offset: offset_from_begin,
                 min_length: min_length2,
                 from_end: false,

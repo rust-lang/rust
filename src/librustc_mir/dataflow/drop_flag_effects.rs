@@ -12,12 +12,12 @@ pub fn move_path_children_matching<'tcx, F>(
     mut cond: F,
 ) -> Option<MovePathIndex>
 where
-    F: FnMut(&mir::PlaceElem<'tcx>) -> bool,
+    F: FnMut(mir::PlaceElem<'tcx>) -> bool,
 {
     let mut next_child = move_data.move_paths[path].first_child;
     while let Some(child_index) = next_child {
         let move_path_children = &move_data.move_paths[child_index];
-        if let Some(elem) = move_path_children.place.projection.last() {
+        if let Some(&elem) = move_path_children.place.projection.last() {
             if cond(elem) {
                 return Some(child_index);
             }

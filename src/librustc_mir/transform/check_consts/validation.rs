@@ -432,7 +432,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
         &mut self,
         place_local: Local,
         proj_base: &[PlaceElem<'tcx>],
-        elem: &PlaceElem<'tcx>,
+        elem: PlaceElem<'tcx>,
         context: PlaceContext,
         location: Location,
     ) {

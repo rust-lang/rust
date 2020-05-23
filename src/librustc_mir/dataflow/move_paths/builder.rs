@@ -158,7 +158,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             };
 
             if union_path.is_none() {
-                base = self.add_move_path(base, &elem, |tcx| Place {
+                base = self.add_move_path(base, elem, |tcx| Place {
                     local: place.local,
                     projection: tcx.intern_place_elems(&place.projection[..i + 1]),
                 });
@@ -176,7 +176,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
     fn add_move_path(
         &mut self,
         base: MovePathIndex,
-        elem: &PlaceElem<'tcx>,
+        elem: PlaceElem<'tcx>,
         mk_place: impl FnOnce(TyCtxt<'tcx>) -> Place<'tcx>,
     ) -> MovePathIndex {
         let MoveDataBuilder {
@@ -485,7 +485,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                 let elem =
                     ProjectionElem::ConstantIndex { offset, min_length: len, from_end: false };
                 let path =
-                    self.add_move_path(base_path, &elem, |tcx| tcx.mk_place_elem(base_place, elem));
+                    self.add_move_path(base_path, elem, |tcx| tcx.mk_place_elem(base_place, elem));
                 self.record_move(place, path);
             }
         } else {

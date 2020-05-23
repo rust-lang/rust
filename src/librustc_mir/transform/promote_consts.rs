@@ -340,7 +340,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                             // `let _: &'static _ = &(Cell::new(1), 2).1;`
                             let mut place_projection = &place.projection[..];
                             // FIXME(eddyb) use a forward loop instead of a reverse one.
-                            while let [proj_base @ .., elem] = place_projection {
+                            while let &[ref proj_base @ .., elem] = place_projection {
                                 // FIXME(eddyb) this is probably excessive, with
                                 // the exception of `union` member accesses.
                                 let ty =
@@ -676,7 +676,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 if has_mut_interior {
                     let mut place_projection = place.projection;
                     // FIXME(eddyb) use a forward loop instead of a reverse one.
-                    while let [proj_base @ .., elem] = place_projection {
+                    while let &[ref proj_base @ .., elem] = place_projection {
                         // FIXME(eddyb) this is probably excessive, with
                         // the exception of `union` member accesses.
                         let ty = Place::ty_from(place.local, proj_base, self.body, self.tcx)

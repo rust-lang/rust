@@ -206,8 +206,8 @@ where
     F: FnMut(Local) -> bool,
 {
     let mut projection = place.projection;
-    while let [ref proj_base @ .., proj_elem] = projection {
-        match *proj_elem {
+    while let &[ref proj_base @ .., proj_elem] = projection {
+        match proj_elem {
             ProjectionElem::Index(index) if in_local(index) => return true,
 
             ProjectionElem::Deref
