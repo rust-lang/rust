@@ -38,13 +38,6 @@ pub struct SyntaxTreeParams {
     pub range: Option<Range>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct ExpandedMacro {
-    pub name: String,
-    pub expansion: String,
-}
-
 pub enum ExpandMacro {}
 
 impl Request for ExpandMacro {
@@ -60,19 +53,26 @@ pub struct ExpandMacroParams {
     pub position: Option<Position>,
 }
 
-pub enum FindMatchingBrace {}
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ExpandedMacro {
+    pub name: String,
+    pub expansion: String,
+}
 
-impl Request for FindMatchingBrace {
-    type Params = FindMatchingBraceParams;
+pub enum MatchingBrace {}
+
+impl Request for MatchingBrace {
+    type Params = MatchingBraceParams;
     type Result = Vec<Position>;
-    const METHOD: &'static str = "rust-analyzer/findMatchingBrace";
+    const METHOD: &'static str = "experimental/matchingBrace";
 }
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct FindMatchingBraceParams {
+pub struct MatchingBraceParams {
     pub text_document: TextDocumentIdentifier,
-    pub offsets: Vec<Position>,
+    pub positions: Vec<Position>,
 }
 
 pub enum ParentModule {}

@@ -40,12 +40,11 @@ export interface ExpandedMacro {
 export const expandMacro = request<ExpandMacroParams, Option<ExpandedMacro>>("expandMacro");
 
 
-export interface FindMatchingBraceParams {
+export interface MatchingBraceParams {
     textDocument: lc.TextDocumentIdentifier;
-    offsets: Vec<lc.Position>;
+    positions: lc.Position[];
 }
-export const findMatchingBrace = request<FindMatchingBraceParams, Vec<lc.Position>>("findMatchingBrace");
-
+export const matchingBrace = new lc.RequestType<MatchingBraceParams, lc.Position[], unknown>('experimental/matchingBrace');
 
 export interface PublishDecorationsParams {
     uri: string;
