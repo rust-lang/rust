@@ -1,6 +1,5 @@
 use crate::mir::operand::OperandRef;
 use crate::traits::*;
-use rustc_index::vec::Idx;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{ConstValue, ErrorHandled};
 use rustc_middle::ty::layout::HasTyCtxt;
@@ -59,17 +58,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         constant
             .map(|val| {
                 let field_ty = ty.builtin_index().unwrap();
-                let fields = match ty.kind {
-                    ty::Array(_, n) => n.eval_usize(bx.tcx(), ty::ParamEnv::reveal_all()),
-                    _ => bug!("invalid simd shuffle type: {}", ty),
-                };
                 let c = ty::Const::from_value(bx.tcx(), val, ty);
-                let values: Vec<_> = (0..fields)
+                let values: Vec<_> = bx
+                    .tcx()
+                    .destructure_const(ty::ParamEnv::reveal_all().and(&c))
+                    .fields
+                    .into_iter()
                     .map(|field| {
-                        let field = bx.tcx().const_field(
-                            ty::ParamEnv::reveal_all().and((&c, mir::Field::new(field as usize))),
-                        );
-                        if let Some(prim) = field.try_to_scalar() {
+                        if let Some(prim) = field.val.try_to_scalar() {
                             let layout = bx.layout_of(field_ty);
                             let scalar = match layout.abi {
                                 Abi::Scalar(ref x) => x,

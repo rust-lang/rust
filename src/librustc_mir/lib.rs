@@ -56,10 +56,6 @@ pub fn provide(providers: &mut Providers<'_>) {
     providers.const_eval_validated = const_eval::const_eval_validated_provider;
     providers.const_eval_raw = const_eval::const_eval_raw_provider;
     providers.const_caller_location = const_eval::const_caller_location;
-    providers.const_field = |tcx, param_env_and_value| {
-        let (param_env, (value, field)) = param_env_and_value.into_parts();
-        const_eval::const_field(tcx, param_env, None, field, value)
-    };
     providers.destructure_const = |tcx, param_env_and_value| {
         let (param_env, value) = param_env_and_value.into_parts();
         const_eval::destructure_const(tcx, param_env, value)
