@@ -584,7 +584,7 @@ fn missing_unsafe_diagnostic_with_unsafe_method_call() {
 struct HasUnsafe;
 
 impl HasUnsafe {
-    unsafe fn unsafe_fn() {
+    unsafe fn unsafe_fn(&self) {
         let x = &5 as *const usize;
         let y = *x;
     }
