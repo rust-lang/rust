@@ -70,10 +70,10 @@ fn runnable_fn(
     let kind = if name_string == "main" {
         RunnableKind::Bin
     } else {
-        let test_id = if let Some(module) = sema.to_def(&fn_def).map(|def| def.module(sema.db)) {
-            let def = sema.to_def(&fn_def)?;
-            let impl_trait_name =
-                def.as_assoc_item(sema.db).and_then(|assoc_item| {
+        let test_id = match sema.to_def(&fn_def).map(|def| def.module(sema.db)) {
+            Some(module) => {
+                let def = sema.to_def(&fn_def)?;
+                let impl_trait_name = def.as_assoc_item(sema.db).and_then(|assoc_item| {
                     match assoc_item.container(sema.db) {
                         hir::AssocItemContainer::Trait(trait_item) => {
                             Some(trait_item.name(sema.db).to_string())
@@ -85,25 +85,25 @@ fn runnable_fn(
                     }
                 });
 
-            let path_iter = module
-                .path_to_root(sema.db)
-                .into_iter()
-                .rev()
-                .filter_map(|it| it.name(sema.db))
-                .map(|name| name.to_string());
+                let path_iter = module
+                    .path_to_root(sema.db)
+                    .into_iter()
+                    .rev()
+                    .filter_map(|it| it.name(sema.db))
+                    .map(|name| name.to_string());
 
-            let path = if let Some(impl_trait_name) = impl_trait_name {
-                path_iter
-                    .chain(std::iter::once(impl_trait_name))
-                    .chain(std::iter::once(name_string))
-                    .join("::")
-            } else {
-                path_iter.chain(std::iter::once(name_string)).join("::")
-            };
+                let path = if let Some(impl_trait_name) = impl_trait_name {
+                    path_iter
+                        .chain(std::iter::once(impl_trait_name))
+                        .chain(std::iter::once(name_string))
+                        .join("::")
+                } else {
+                    path_iter.chain(std::iter::once(name_string)).join("::")
+                };
 
-            TestId::Path(path)
-        } else {
-            TestId::Name(name_string)
+                TestId::Path(path)
+            }
+            None => TestId::Name(name_string),
         };
 
         if has_test_related_attribute(&fn_def) {
@@ -472,7 +472,7 @@ mod tests {
             Runnable {
                 range: 1..58,
                 kind: Test {
-                    test_id: Name(
+                    test_id: Path(
                         "test_foo1",
                     ),
                     attr: TestAttr {
@@ -509,7 +509,7 @@ mod tests {
             Runnable {
                 range: 1..80,
                 kind: Test {
-                    test_id: Name(
+                    test_id: Path(
                         "test_foo1",
                     ),
                     attr: TestAttr {
