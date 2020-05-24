@@ -384,7 +384,7 @@ impl HasUnsafeFn {
 }
 
 fn main() {
-    let x = &5 as *usize;
+    let x = &5 as *const usize;
     unsafe {
         unsafe_fn();
         HasUnsafeFn.unsafe_method();
