@@ -39,7 +39,6 @@ use crate::{
     world::WorldSnapshot,
     LspError, Result,
 };
-use hir::Attrs;
 
 pub fn handle_analyzer_status(world: WorldSnapshot, _: ()) -> Result<String> {
     let _p = profile("handle_analyzer_status");
@@ -1037,19 +1036,6 @@ fn to_lsp_runnable(
         },
         cwd: world.workspace_root_for(file_id).map(|root| root.to_owned()),
     })
-}
-
-fn get_features_needed(attrs: Attrs) -> Option<Vec<SmolStr>> {
-    let cfg_expr = attrs.by_key("cfg").tt_values().map(|subtree| ra_cfg::parse_cfg(subtree));
-    let features_needed = cfg_expr
-        .map(|cfg| {
-            let mut min_features = vec![];
-            collect_minimal_features_needed(&cfg, &mut min_features);
-            min_features
-        })
-        .flatten()
-        .collect();
-    Some(features_needed).filter(|it: &Vec<SmolStr>| !it.is_empty())
 }
 
 /// Fill minimal features needed

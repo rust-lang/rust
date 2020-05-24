@@ -5,7 +5,7 @@ use itertools::Itertools;
 use ra_ide_db::RootDatabase;
 use ra_syntax::{
     ast::{self, AstNode, AttrsOwner, ModuleItemOwner, NameOwner},
-    match_ast, SmolStr, SyntaxNode, TextRange,
+    match_ast, SyntaxNode, TextRange,
 };
 
 use crate::FileId;
