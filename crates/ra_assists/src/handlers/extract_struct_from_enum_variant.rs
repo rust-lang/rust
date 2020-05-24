@@ -6,7 +6,6 @@ use ra_syntax::{
     ast::{self, AstNode, NameOwner},
     SourceFile, SyntaxNode, TextRange, TextSize,
 };
-use stdx::format_to;
 
 use crate::{
     assist_context::{AssistBuilder, AssistDirector},
@@ -58,7 +57,7 @@ pub(crate) fn extract_struct_from_enum(acc: &mut Assists, ctx: &AssistContext) -
             let definition = Definition::ModuleDef(ModuleDef::EnumVariant(variant_hir));
             let res = definition.find_usages(&ctx.db, None);
             let start_offset = variant.parent_enum().syntax().text_range().start();
-            let mut visited_modules_set: FxHashSet<Module> = FxHashSet::default();
+            let mut visited_modules_set = FxHashSet::default();
             visited_modules_set.insert(current_module);
             for reference in res {
                 let source_file = ctx.sema.parse(reference.file_range.file_id);
@@ -132,10 +131,7 @@ fn extract_struct_def(
     } else {
         "".to_string()
     };
-    let mut buf = String::new();
-
-    format_to!(
-        buf,
+    let struct_def = format!(
         r#"{}struct {}{};
 
 {}"#,
@@ -145,7 +141,7 @@ fn extract_struct_def(
         indent
     );
     edit.perform(file_id, |builder| {
-        builder.insert(start_offset, buf);
+        builder.insert(start_offset, struct_def);
     });
     Some(())
 }
