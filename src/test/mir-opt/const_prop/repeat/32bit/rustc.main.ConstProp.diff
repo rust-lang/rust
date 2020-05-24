@@ -3,7 +3,7 @@
   
   fn main() -> () {
       let mut _0: ();                      // return place in scope 0 at $DIR/repeat.rs:5:11: 5:11
-      let _1: u32 as UserTypeProjection { base: UserType(0), projs: [] }; // in scope 0 at $DIR/repeat.rs:6:9: 6:10
+      let _1: u32;                         // in scope 0 at $DIR/repeat.rs:6:9: 6:10
       let mut _2: u32;                     // in scope 0 at $DIR/repeat.rs:6:18: 6:28
       let mut _3: [u32; 8];                // in scope 0 at $DIR/repeat.rs:6:18: 6:25
       let _4: usize;                       // in scope 0 at $DIR/repeat.rs:6:26: 6:27

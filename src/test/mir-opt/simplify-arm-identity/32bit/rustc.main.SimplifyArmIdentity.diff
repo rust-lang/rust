@@ -3,7 +3,7 @@
   
   fn main() -> () {
       let mut _0: ();                      // return place in scope 0 at $DIR/simplify-arm-identity.rs:17:11: 17:11
-      let _1: Src as UserTypeProjection { base: UserType(0), projs: [] }; // in scope 0 at $DIR/simplify-arm-identity.rs:18:9: 18:10
+      let _1: Src;                         // in scope 0 at $DIR/simplify-arm-identity.rs:18:9: 18:10
       let mut _2: Dst;                     // in scope 0 at $DIR/simplify-arm-identity.rs:19:18: 22:6
       let mut _3: isize;                   // in scope 0 at $DIR/simplify-arm-identity.rs:20:9: 20:20
       let mut _5: u8;                      // in scope 0 at $DIR/simplify-arm-identity.rs:20:33: 20:34

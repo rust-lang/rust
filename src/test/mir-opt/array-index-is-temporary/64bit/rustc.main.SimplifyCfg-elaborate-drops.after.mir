@@ -14,7 +14,7 @@ fn main() -> () {
         let mut _2: usize;               // in scope 1 at $DIR/array-index-is-temporary.rs:14:9: 14:14
         scope 2 {
             debug y => _2;               // in scope 2 at $DIR/array-index-is-temporary.rs:14:9: 14:14
-            let _3: *mut usize as UserTypeProjection { base: UserType(0), projs: [] }; // in scope 2 at $DIR/array-index-is-temporary.rs:15:9: 15:10
+            let _3: *mut usize;          // in scope 2 at $DIR/array-index-is-temporary.rs:15:9: 15:10
             scope 3 {
                 debug z => _3;           // in scope 3 at $DIR/array-index-is-temporary.rs:15:9: 15:10
                 scope 4 {
