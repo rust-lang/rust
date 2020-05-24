@@ -594,6 +594,7 @@ impl DummyResult {
             kind: if is_error { ast::ExprKind::Err } else { ast::ExprKind::Tup(Vec::new()) },
             span: sp,
             attrs: ast::AttrVec::new(),
+            tokens: None,
         })
     }
 

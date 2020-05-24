@@ -56,6 +56,7 @@ fn expr(kind: ExprKind) -> P<Expr> {
         kind,
         span: DUMMY_SP,
         attrs: ThinVec::new(),
+        tokens: None
     })
 }
 
@@ -200,6 +201,7 @@ impl MutVisitor for AddParens {
                 kind: ExprKind::Paren(e),
                 span: DUMMY_SP,
                 attrs: ThinVec::new(),
+                tokens: None
             })
         });
     }

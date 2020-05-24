@@ -70,7 +70,13 @@ impl<'a> ExtCtxt<'a> {
     pub fn anon_const(&self, span: Span, kind: ast::ExprKind) -> ast::AnonConst {
         ast::AnonConst {
             id: ast::DUMMY_NODE_ID,
-            value: P(ast::Expr { id: ast::DUMMY_NODE_ID, kind, span, attrs: AttrVec::new() }),
+            value: P(ast::Expr {
+                id: ast::DUMMY_NODE_ID,
+                kind,
+                span,
+                attrs: AttrVec::new(),
+                tokens: None,
+            }),
         }
     }
 
@@ -205,7 +211,7 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn expr(&self, span: Span, kind: ast::ExprKind) -> P<ast::Expr> {
-        P(ast::Expr { id: ast::DUMMY_NODE_ID, kind, span, attrs: AttrVec::new() })
+        P(ast::Expr { id: ast::DUMMY_NODE_ID, kind, span, attrs: AttrVec::new(), tokens: None })
     }
 
     pub fn expr_path(&self, path: ast::Path) -> P<ast::Expr> {
