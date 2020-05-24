@@ -430,7 +430,7 @@ fn check_recursion_limit<'tcx>(
     // Code that needs to instantiate the same function recursively
     // more than the recursion limit is assumed to be causing an
     // infinite expansion.
-    if adjusted_recursion_depth > tcx.sess.recursion_limit() {
+    if adjusted_recursion_depth >= tcx.sess.recursion_limit() {
         let error = format!("reached the recursion limit while instantiating `{}`", instance);
         if let Some(def_id) = def_id.as_local() {
             let hir_id = tcx.hir().as_local_hir_id(def_id);
