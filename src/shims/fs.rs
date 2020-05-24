@@ -378,9 +378,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         } else if this.tcx.sess.target.target.target_os == "macos"
             && cmd == this.eval_libc_i32("F_FULLFSYNC")?
         {
-            // On macOS, fsync does not wait for the underlying disk to finish writing, while this
-            // F_FULLFSYNC operation does. The standard library uses F_FULLFSYNC for both
-            // File::sync_data() and File::sync_all().
             let &[_, _] = check_arg_count(args)?;
             if let Some(FileHandle { file, writable: _ }) = this.machine.file_handler.handles.get_mut(&fd) {
                 let result = file.sync_all();
@@ -1118,6 +1115,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 
     fn fsync(&mut self, fd_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
+        // On macOS, `fsync` (unlike `fcntl(F_FULLFSYNC)`) does not wait for the
+        // underlying disk to finish writing. In the interest of host compatibility,
+        // we conservatively implement this with `sync_all`, which
+        // *does* wait for the disk.
+
         let this = self.eval_context_mut();
 
         this.check_no_isolation("fsync")?;

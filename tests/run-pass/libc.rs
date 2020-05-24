@@ -47,10 +47,10 @@ fn test_sync_file_range() {
     use std::os::unix::io::AsRawFd;
 
     let path = tmp().join("miri_test_libc_sync_file_range.txt");
-    // Cleanup before test
+    // Cleanup before test.
     remove_file(&path).ok();
 
-    // Write to a file
+    // Write to a file.
     let mut file = File::create(&path).unwrap();
     let bytes = b"Hello, World!\n";
     file.write(bytes).unwrap();
