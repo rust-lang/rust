@@ -1204,7 +1204,7 @@ mod tests {
         // compare different addresses with the same port
         assert!(v4_1 < v4_3);
         assert!(v6_1 < v6_3);
-        assert!(v4_1 > v4_3);
-        assert!(v6_1 > v6_3);
+        assert!(v4_3 > v4_1);
+        assert!(v6_3 > v6_1);
     }
 }
