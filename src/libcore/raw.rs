@@ -9,15 +9,15 @@
 //! Their definition should always match the ABI defined in
 //! `rustc_middle::ty::layout`.
 
-/// The representation of a trait object like `&SomeTrait`.
+/// The representation of a trait object like `&dyn SomeTrait`.
 ///
-/// This struct has the same layout as types like `&SomeTrait` and
+/// This struct has the same layout as types like `&dyn SomeTrait` and
 /// `Box<dyn AnotherTrait>`.
 ///
 /// `TraitObject` is guaranteed to match layouts, but it is not the
 /// type of trait objects (e.g., the fields are not directly accessible
-/// on a `&SomeTrait`) nor does it control that layout (changing the
-/// definition will not change the layout of a `&SomeTrait`). It is
+/// on a `&dyn SomeTrait`) nor does it control that layout (changing the
+/// definition will not change the layout of a `&dyn SomeTrait`). It is
 /// only designed to be used by unsafe code that needs to manipulate
 /// the low-level details.
 ///
