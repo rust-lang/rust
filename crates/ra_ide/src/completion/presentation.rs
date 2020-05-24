@@ -641,7 +641,7 @@ mod tests {
         assert_debug_snapshot!(
             do_reference_completion(
                 r"
-                fn with_args(x: i32, y: String, _z: bool) {}
+                fn with_args(x: i32, y: String) {}
                 fn main() { with_<|> }
                 "
             ),
@@ -649,8 +649,8 @@ mod tests {
         [
             CompletionItem {
                 label: "main()",
-                source_range: 90..95,
-                delete: 90..95,
+                source_range: 80..85,
+                delete: 80..85,
                 insert: "main()$0",
                 kind: Function,
                 lookup: "main",
@@ -658,12 +658,43 @@ mod tests {
             },
             CompletionItem {
                 label: "with_args(…)",
-                source_range: 90..95,
-                delete: 90..95,
-                insert: "with_args(${1:x}, ${2:y}, ${3:z})$0",
+                source_range: 80..85,
+                delete: 80..85,
+                insert: "with_args(${1:x}, ${2:y})$0",
                 kind: Function,
                 lookup: "with_args",
-                detail: "fn with_args(x: i32, y: String, _z: bool)",
+                detail: "fn with_args(x: i32, y: String)",
+                trigger_call_info: true,
+            },
+        ]
+        "###
+        );
+        assert_debug_snapshot!(
+            do_reference_completion(
+                r"
+                fn with_ignored_args(_foo: i32, b_a_r_: bool) {}
+                fn main() { with_<|> }
+                "
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "main()",
+                source_range: 94..99,
+                delete: 94..99,
+                insert: "main()$0",
+                kind: Function,
+                lookup: "main",
+                detail: "fn main()",
+            },
+            CompletionItem {
+                label: "with_ignored_args(…)",
+                source_range: 94..99,
+                delete: 94..99,
+                insert: "with_ignored_args(${1:foo}, ${2:b_a_r_})$0",
+                kind: Function,
+                lookup: "with_ignored_args",
+                detail: "fn with_ignored_args(_foo: i32, b_a_r_: bool)",
                 trigger_call_info: true,
             },
         ]
@@ -691,6 +722,33 @@ mod tests {
                 kind: Method,
                 lookup: "foo",
                 detail: "fn foo(&self)",
+            },
+        ]
+        "###
+        );
+        assert_debug_snapshot!(
+            do_reference_completion(
+                r"
+                struct S {}
+                impl S {
+                    fn foo_ignored_args(&self, _a: bool, b: i32) {}
+                }
+                fn bar(s: &S) {
+                    s.f<|>
+                }
+                "
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "foo_ignored_args(…)",
+                source_range: 194..195,
+                delete: 194..195,
+                insert: "foo_ignored_args(${1:a}, ${2:b})$0",
+                kind: Method,
+                lookup: "foo_ignored_args",
+                detail: "fn foo_ignored_args(&self, _a: bool, b: i32)",
+                trigger_call_info: true,
             },
         ]
         "###
