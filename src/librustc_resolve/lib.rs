@@ -1,3 +1,5 @@
+// ignore-tidy-filelength
+
 //! This crate is responsible for the part of name resolution that doesn't require type checker.
 //!
 //! Module structure of the crate is built here.
@@ -1266,15 +1268,60 @@ impl<'a> Resolver<'a> {
     }
 
     pub fn into_outputs(self) -> ResolverOutputs {
+        let definitions = self.definitions;
+        let extern_crate_map = self
+            .extern_crate_map
+            .into_iter()
+            .map(|(k, v)| (definitions.local_def_id(k).to_def_id(), v))
+            .collect();
+        let export_map = self
+            .export_map
+            .into_iter()
+            .map(|(k, v)| {
+                (
+                    k,
+                    v.into_iter()
+                        .map(|e| e.map_id(|id| definitions.node_id_to_hir_id(id)))
+                        .collect(),
+                )
+            })
+            .collect();
+        let trait_map = self
+            .trait_map
+            .into_iter()
+            .map(|(k, v)| {
+                (
+                    definitions.node_id_to_hir_id(k),
+                    v.into_iter()
+                        .map(|tc| tc.map_import_ids(|id| definitions.node_id_to_hir_id(id)))
+                        .collect(),
+                )
+            })
+            .collect();
+        let maybe_unused_trait_imports = self
+            .maybe_unused_trait_imports
+            .into_iter()
+            .map(|id| definitions.local_def_id(id))
+            .collect();
+        let maybe_unused_extern_crates = self
+            .maybe_unused_extern_crates
+            .into_iter()
+            .map(|(id, sp)| (definitions.local_def_id(id).to_def_id(), sp))
+            .collect();
+        let glob_map = self
+            .glob_map
+            .into_iter()
+            .map(|(id, names)| (definitions.local_def_id(id), names))
+            .collect();
         ResolverOutputs {
-            definitions: self.definitions,
+            definitions: definitions,
             cstore: Box::new(self.crate_loader.into_cstore()),
-            extern_crate_map: self.extern_crate_map,
-            export_map: self.export_map,
-            trait_map: self.trait_map,
-            glob_map: self.glob_map,
-            maybe_unused_trait_imports: self.maybe_unused_trait_imports,
-            maybe_unused_extern_crates: self.maybe_unused_extern_crates,
+            extern_crate_map,
+            export_map,
+            trait_map,
+            glob_map,
+            maybe_unused_trait_imports,
+            maybe_unused_extern_crates,
             extern_prelude: self
                 .extern_prelude
                 .iter()
@@ -1287,12 +1334,53 @@ impl<'a> Resolver<'a> {
         ResolverOutputs {
             definitions: self.definitions.clone(),
             cstore: Box::new(self.cstore().clone()),
-            extern_crate_map: self.extern_crate_map.clone(),
-            export_map: self.export_map.clone(),
-            trait_map: self.trait_map.clone(),
-            glob_map: self.glob_map.clone(),
-            maybe_unused_trait_imports: self.maybe_unused_trait_imports.clone(),
-            maybe_unused_extern_crates: self.maybe_unused_extern_crates.clone(),
+            extern_crate_map: self
+                .extern_crate_map
+                .iter()
+                .map(|(&k, &v)| (self.definitions.local_def_id(k).to_def_id(), v))
+                .collect(),
+            export_map: self
+                .export_map
+                .iter()
+                .map(|(&k, v)| {
+                    (
+                        k,
+                        v.iter()
+                            .map(|e| e.map_id(|id| self.definitions.node_id_to_hir_id(id)))
+                            .collect(),
+                    )
+                })
+                .collect(),
+            trait_map: self
+                .trait_map
+                .iter()
+                .map(|(&k, v)| {
+                    (
+                        self.definitions.node_id_to_hir_id(k),
+                        v.iter()
+                            .cloned()
+                            .map(|tc| {
+                                tc.map_import_ids(|id| self.definitions.node_id_to_hir_id(id))
+                            })
+                            .collect(),
+                    )
+                })
+                .collect(),
+            glob_map: self
+                .glob_map
+                .iter()
+                .map(|(&id, names)| (self.definitions.local_def_id(id), names.clone()))
+                .collect(),
+            maybe_unused_trait_imports: self
+                .maybe_unused_trait_imports
+                .iter()
+                .map(|&id| self.definitions.local_def_id(id))
+                .collect(),
+            maybe_unused_extern_crates: self
+                .maybe_unused_extern_crates
+                .iter()
+                .map(|&(id, sp)| (self.definitions.local_def_id(id).to_def_id(), sp))
+                .collect(),
             extern_prelude: self
                 .extern_prelude
                 .iter()
