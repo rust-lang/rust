@@ -142,7 +142,7 @@ impl<'a> InferenceContext<'a> {
                 // FIXME: Breakable block inference
                 self.infer_block(statements, *tail, expected)
             }
-            Expr::UnsafeBlock { body } => self.infer_expr(*body, expected),
+            Expr::Unsafe { body } => self.infer_expr(*body, expected),
             Expr::TryBlock { body } => {
                 let _inner = self.infer_expr(*body, expected);
                 // FIXME should be std::result::Result<{inner}, _>

@@ -340,7 +340,7 @@ pub fn unsafe_expressions(
     let expr_scopes = db.expr_scopes(def);
     for (id, expr) in body.exprs.iter() {
         match expr {
-            Expr::UnsafeBlock { body } => {
+            Expr::Unsafe { body } => {
                 if let Some(scope) = expr_scopes.scope_for(*body) {
                     unsafe_block_scopes.push(scope);
                 }

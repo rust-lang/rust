@@ -150,7 +150,7 @@ pub enum Expr {
     Tuple {
         exprs: Vec<ExprId>,
     },
-    UnsafeBlock {
+    Unsafe {
         body: ExprId,
     },
     Array(Array),
@@ -250,7 +250,7 @@ impl Expr {
                     f(*expr);
                 }
             }
-            Expr::TryBlock { body } | Expr::UnsafeBlock { body } => f(*body),
+            Expr::TryBlock { body } | Expr::Unsafe { body } => f(*body),
             Expr::Loop { body, .. } => f(*body),
             Expr::While { condition, body, .. } => {
                 f(*condition);
