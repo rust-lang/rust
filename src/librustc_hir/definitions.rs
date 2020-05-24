@@ -83,8 +83,9 @@ pub struct Definitions {
 
     // FIXME(eddyb) don't go through `ast::NodeId` to convert between `HirId`
     // and `LocalDefId` - ideally all `LocalDefId`s would be HIR owners.
+    def_id_to_hir_id: IndexVec<LocalDefId, Option<hir::HirId>>,
+
     node_id_to_def_id: FxHashMap<ast::NodeId, LocalDefId>,
-    def_id_to_node_id: IndexVec<LocalDefId, ast::NodeId>,
 
     pub(super) node_id_to_hir_id: IndexVec<ast::NodeId, Option<hir::HirId>>,
     /// The reverse mapping of `node_id_to_hir_id`.
@@ -354,14 +355,12 @@ impl Definitions {
 
     #[inline]
     pub fn local_def_id_to_hir_id(&self, id: LocalDefId) -> hir::HirId {
-        let node_id = self.def_id_to_node_id[id];
-        self.node_id_to_hir_id[node_id].unwrap()
+        self.def_id_to_hir_id[id].unwrap()
     }
 
     #[inline]
     pub fn opt_local_def_id_to_hir_id(&self, id: LocalDefId) -> Option<hir::HirId> {
-        let node_id = self.def_id_to_node_id[id];
-        self.node_id_to_hir_id[node_id]
+        self.def_id_to_hir_id[id]
     }
 
     #[inline]
@@ -397,7 +396,7 @@ impl Definitions {
         let root = LocalDefId { local_def_index: self.table.allocate(key, def_path_hash) };
         assert_eq!(root.local_def_index, CRATE_DEF_INDEX);
 
-        assert_eq!(self.def_id_to_node_id.push(ast::CRATE_NODE_ID), root);
+        assert_eq!(self.def_id_to_hir_id.push(None), root);
         assert_eq!(self.def_id_to_span.push(rustc_span::DUMMY_SP), root);
 
         self.node_id_to_def_id.insert(ast::CRATE_NODE_ID, root);
@@ -452,7 +451,7 @@ impl Definitions {
         // Create the definition.
         let def_id = LocalDefId { local_def_index: self.table.allocate(key, def_path_hash) };
 
-        assert_eq!(self.def_id_to_node_id.push(node_id), def_id);
+        assert_eq!(self.def_id_to_hir_id.push(None), def_id);
         assert_eq!(self.def_id_to_span.push(span), def_id);
 
         // Some things for which we allocate `LocalDefId`s don't correspond to
@@ -481,6 +480,11 @@ impl Definitions {
             "trying to initialize `NodeId` -> `HirId` mapping twice"
         );
         self.node_id_to_hir_id = mapping;
+
+        for (&node_id, &def_id) in self.node_id_to_def_id.iter() {
+            self.def_id_to_hir_id[def_id] =
+                self.node_id_to_hir_id.get(node_id).copied().unwrap_or(None);
+        }
 
         // Build the reverse mapping of `node_id_to_hir_id`.
         self.hir_id_to_node_id = self
