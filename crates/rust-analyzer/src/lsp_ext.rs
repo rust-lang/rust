@@ -38,13 +38,6 @@ pub struct SyntaxTreeParams {
     pub range: Option<Range>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct ExpandedMacro {
-    pub name: String,
-    pub expansion: String,
-}
-
 pub enum ExpandMacro {}
 
 impl Request for ExpandMacro {
@@ -59,6 +52,14 @@ pub struct ExpandMacroParams {
     pub text_document: TextDocumentIdentifier,
     pub position: Option<Position>,
 }
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ExpandedMacro {
+    pub name: String,
+    pub expansion: String,
+}
+
 
 pub enum MatchingBrace {}
 

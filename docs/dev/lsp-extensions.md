@@ -217,3 +217,65 @@ Moreover, it would be cool if editors didn't need to implement even basic langua
 * Should we return a a nested brace structure, to allow paredit-like actions of jump *out* of the current brace pair?
   This is how `SelectionRange` request works.
 * Alternatively, should we perhaps flag certain `SelectionRange`s as being brace pairs?
+
+## Analyzer Status
+
+**Method:** `rust-analyzer/analyzerStatus`
+
+**Request:** `null`
+
+**Response:** `string`
+
+Returns internal status message, mostly for debugging purposes.
+
+## Collect Garbage
+
+**Method:** `rust-analyzer/collectGarbage`
+
+**Request:** `null`
+
+**Response:** `null`
+
+Frees some caches. For internal use, and is mostly broken at the moment.
+
+## Syntax Tree
+
+**Method:** `rust-analyzer/syntaxTree`
+
+**Request:**
+
+```typescript
+interface SyntaxTeeParams {
+    textDocument: TextDocumentIdentifier,
+    range?: Range,
+}
+```
+
+**Response:** `string`
+
+Returns textual representation of a parse tree for the file/selected region.
+Primarily for debugging, but very useful for all people working on rust-analyzer itself.
+
+## Expand Macro
+
+**Method:** `rust-analyzer/expandMacro`
+
+**Request:**
+
+```typescript
+interface ExpandMacroParams {
+    textDocument: TextDocumentIdentifier,
+    position?: Position,
+}
+```
+
+**Response:**
+
+```typescript
+interface ExpandedMacro {
+    name: string,
+    expansion: string,
+}
+```
+
+Expands macro call at a given position.
