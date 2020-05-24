@@ -129,14 +129,14 @@ fn mutex_set_kind<'mir, 'tcx: 'mir>(
 fn mutex_get_id<'mir, 'tcx: 'mir>(
     ecx: &MiriEvalContext<'mir, 'tcx>,
     mutex_op: OpTy<'tcx, Tag>,
-) -> InterpResult<'tcx, ScalarMaybeUndef<Tag>> {
+) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
     get_at_offset(ecx, mutex_op, 4, ecx.machine.layouts.u32, PTHREAD_MUTEX_T_MIN_SIZE)
 }
 
 fn mutex_set_id<'mir, 'tcx: 'mir>(
     ecx: &mut MiriEvalContext<'mir, 'tcx>,
     mutex_op: OpTy<'tcx, Tag>,
-    id: impl Into<ScalarMaybeUndef<Tag>>,
+    id: impl Into<ScalarMaybeUninit<Tag>>,
 ) -> InterpResult<'tcx, ()> {
     set_at_offset(ecx, mutex_op, 4, id, ecx.machine.layouts.u32, PTHREAD_MUTEX_T_MIN_SIZE)
 }
@@ -176,7 +176,7 @@ fn rwlock_get_id<'mir, 'tcx: 'mir>(
 fn rwlock_set_id<'mir, 'tcx: 'mir>(
     ecx: &mut MiriEvalContext<'mir, 'tcx>,
     rwlock_op: OpTy<'tcx, Tag>,
-    id: impl Into<ScalarMaybeUndef<Tag>>,
+    id: impl Into<ScalarMaybeUninit<Tag>>,
 ) -> InterpResult<'tcx, ()> {
     set_at_offset(ecx, rwlock_op, 4, id, ecx.machine.layouts.u32, PTHREAD_RWLOCK_T_MIN_SIZE)
 }
@@ -208,14 +208,14 @@ const PTHREAD_CONDATTR_T_MIN_SIZE: u64 = 4;
 fn condattr_get_clock_id<'mir, 'tcx: 'mir>(
     ecx: &MiriEvalContext<'mir, 'tcx>,
     attr_op: OpTy<'tcx, Tag>,
-) -> InterpResult<'tcx, ScalarMaybeUndef<Tag>> {
+) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
     get_at_offset(ecx, attr_op, 0, ecx.machine.layouts.i32, PTHREAD_CONDATTR_T_MIN_SIZE)
 }
 
 fn condattr_set_clock_id<'mir, 'tcx: 'mir>(
     ecx: &mut MiriEvalContext<'mir, 'tcx>,
     attr_op: OpTy<'tcx, Tag>,
-    clock_id: impl Into<ScalarMaybeUndef<Tag>>,
+    clock_id: impl Into<ScalarMaybeUninit<Tag>>,
 ) -> InterpResult<'tcx, ()> {
     set_at_offset(ecx, attr_op, 0, clock_id, ecx.machine.layouts.i32, PTHREAD_CONDATTR_T_MIN_SIZE)
 }
@@ -234,14 +234,14 @@ const PTHREAD_COND_T_MIN_SIZE: u64 = 12;
 fn cond_get_id<'mir, 'tcx: 'mir>(
     ecx: &MiriEvalContext<'mir, 'tcx>,
     cond_op: OpTy<'tcx, Tag>,
-) -> InterpResult<'tcx, ScalarMaybeUndef<Tag>> {
+) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
     get_at_offset(ecx, cond_op, 4, ecx.machine.layouts.u32, PTHREAD_COND_T_MIN_SIZE)
 }
 
 fn cond_set_id<'mir, 'tcx: 'mir>(
     ecx: &mut MiriEvalContext<'mir, 'tcx>,
     cond_op: OpTy<'tcx, Tag>,
-    id: impl Into<ScalarMaybeUndef<Tag>>,
+    id: impl Into<ScalarMaybeUninit<Tag>>,
 ) -> InterpResult<'tcx, ()> {
     set_at_offset(ecx, cond_op, 4, id, ecx.machine.layouts.u32, PTHREAD_COND_T_MIN_SIZE)
 }
@@ -265,14 +265,14 @@ fn cond_get_or_create_id<'mir, 'tcx: 'mir>(
 fn cond_get_clock_id<'mir, 'tcx: 'mir>(
     ecx: &MiriEvalContext<'mir, 'tcx>,
     cond_op: OpTy<'tcx, Tag>,
-) -> InterpResult<'tcx, ScalarMaybeUndef<Tag>> {
+) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
     get_at_offset(ecx, cond_op, 8, ecx.machine.layouts.i32, PTHREAD_COND_T_MIN_SIZE)
 }
 
 fn cond_set_clock_id<'mir, 'tcx: 'mir>(
     ecx: &mut MiriEvalContext<'mir, 'tcx>,
     cond_op: OpTy<'tcx, Tag>,
-    clock_id: impl Into<ScalarMaybeUndef<Tag>>,
+    clock_id: impl Into<ScalarMaybeUninit<Tag>>,
 ) -> InterpResult<'tcx, ()> {
     set_at_offset(ecx, cond_op, 8, clock_id, ecx.machine.layouts.i32, PTHREAD_COND_T_MIN_SIZE)
 }
@@ -518,8 +518,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             throw_ub_format!("destroyed a locked mutex");
         }
 
-        mutex_set_kind(this, mutex_op, ScalarMaybeUndef::Undef)?;
-        mutex_set_id(this, mutex_op, ScalarMaybeUndef::Undef)?;
+        mutex_set_kind(this, mutex_op, ScalarMaybeUninit::Uninit)?;
+        mutex_set_id(this, mutex_op, ScalarMaybeUninit::Uninit)?;
 
         Ok(0)
     }
@@ -643,7 +643,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             throw_ub_format!("destroyed a locked rwlock");
         }
 
-        rwlock_set_id(this, rwlock_op, ScalarMaybeUndef::Undef)?;
+        rwlock_set_id(this, rwlock_op, ScalarMaybeUninit::Uninit)?;
 
         Ok(0)
     }
@@ -696,7 +696,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn pthread_condattr_destroy(&mut self, attr_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        condattr_set_clock_id(this, attr_op, ScalarMaybeUndef::Undef)?;
+        condattr_set_clock_id(this, attr_op, ScalarMaybeUninit::Uninit)?;
 
         Ok(0)
     }
@@ -835,8 +835,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         if this.condvar_is_awaited(id) {
             throw_ub_format!("destroyed an awaited conditional variable");
         }
-        cond_set_id(this, cond_op, ScalarMaybeUndef::Undef)?;
-        cond_set_clock_id(this, cond_op, ScalarMaybeUndef::Undef)?;
+        cond_set_id(this, cond_op, ScalarMaybeUninit::Uninit)?;
+        cond_set_clock_id(this, cond_op, ScalarMaybeUninit::Uninit)?;
 
         Ok(0)
     }
