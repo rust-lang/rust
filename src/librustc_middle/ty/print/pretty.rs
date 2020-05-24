@@ -1,5 +1,4 @@
 use crate::middle::cstore::{ExternCrate, ExternCrateSource};
-use crate::middle::region;
 use crate::mir::interpret::{sign_extend, truncate, AllocId, ConstValue, Pointer, Scalar};
 use crate::ty::layout::IntegerExt;
 use crate::ty::subst::{GenericArg, GenericArgKind, Subst};
@@ -1588,9 +1587,9 @@ impl<F: fmt::Write> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx, F> {
                 false
             }
 
-            ty::ReScope(_) | ty::ReVar(_) if identify_regions => true,
+            ty::ReVar(_) if identify_regions => true,
 
-            ty::ReVar(_) | ty::ReScope(_) | ty::ReErased => false,
+            ty::ReVar(_) | ty::ReErased => false,
 
             ty::ReStatic | ty::ReEmpty(_) => true,
         }
@@ -1666,32 +1665,12 @@ impl<F: fmt::Write> FmtPrinter<'_, '_, F> {
                     }
                 }
             }
-            ty::ReScope(scope) if identify_regions => {
-                match scope.data {
-                    region::ScopeData::Node => p!(write("'{}s", scope.item_local_id().as_usize())),
-                    region::ScopeData::CallSite => {
-                        p!(write("'{}cs", scope.item_local_id().as_usize()))
-                    }
-                    region::ScopeData::Arguments => {
-                        p!(write("'{}as", scope.item_local_id().as_usize()))
-                    }
-                    region::ScopeData::Destruction => {
-                        p!(write("'{}ds", scope.item_local_id().as_usize()))
-                    }
-                    region::ScopeData::Remainder(first_statement_index) => p!(write(
-                        "'{}_{}rs",
-                        scope.item_local_id().as_usize(),
-                        first_statement_index.index()
-                    )),
-                }
-                return Ok(self);
-            }
             ty::ReVar(region_vid) if identify_regions => {
                 p!(write("{:?}", region_vid));
                 return Ok(self);
             }
             ty::ReVar(_) => {}
-            ty::ReScope(_) | ty::ReErased => {}
+            ty::ReErased => {}
             ty::ReStatic => {
                 p!(write("'static"));
                 return Ok(self);

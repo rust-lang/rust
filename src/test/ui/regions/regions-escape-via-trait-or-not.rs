@@ -15,7 +15,7 @@ fn with<R:Deref, F>(f: F) -> isize where F: FnOnce(&isize) -> R {
 }
 
 fn return_it() -> isize {
-    with(|o| o) //~ ERROR cannot infer
+    with(|o| o) //~ ERROR lifetime may not live long enough
 }
 
 fn main() {

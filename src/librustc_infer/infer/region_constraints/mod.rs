@@ -758,11 +758,9 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
 
     pub fn universe(&self, region: Region<'tcx>) -> ty::UniverseIndex {
         match *region {
-            ty::ReScope(..)
-            | ty::ReStatic
-            | ty::ReErased
-            | ty::ReFree(..)
-            | ty::ReEarlyBound(..) => ty::UniverseIndex::ROOT,
+            ty::ReStatic | ty::ReErased | ty::ReFree(..) | ty::ReEarlyBound(..) => {
+                ty::UniverseIndex::ROOT
+            }
             ty::ReEmpty(ui) => ui,
             ty::RePlaceholder(placeholder) => placeholder.universe,
             ty::ReVar(vid) => self.var_universe(vid),

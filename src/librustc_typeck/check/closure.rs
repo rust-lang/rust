@@ -3,7 +3,6 @@
 use super::{check_fn, Expectation, FnCtxt, GeneratorTypes};
 
 use crate::astconv::AstConv;
-use crate::middle::region;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::{FutureTraitLangItem, GeneratorTraitLangItem};
@@ -12,12 +11,11 @@ use rustc_infer::infer::LateBoundRegionConversionTime;
 use rustc_infer::infer::{InferOk, InferResult};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::InternalSubsts;
-use rustc_middle::ty::{self, GenericParamDefKind, ToPredicate, Ty};
+use rustc_middle::ty::{self, GenericParamDefKind, Ty};
 use rustc_span::source_map::Span;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits::error_reporting::ArgKind;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
-use rustc_trait_selection::traits::Obligation;
 use std::cmp;
 use std::iter;
 
@@ -518,22 +516,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let InferOk { value: (), obligations } =
                     self.at(&cause, self.param_env).eq(*expected_ty, supplied_ty)?;
                 all_obligations.extend(obligations);
-
-                // Also, require that the supplied type must outlive
-                // the closure body.
-                let closure_body_region = self.tcx.mk_region(ty::ReScope(region::Scope {
-                    id: body.value.hir_id.local_id,
-                    data: region::ScopeData::Node,
-                }));
-                all_obligations.push(Obligation::new(
-                    cause,
-                    self.param_env,
-                    ty::PredicateKind::TypeOutlives(ty::Binder::dummy(ty::OutlivesPredicate(
-                        supplied_ty,
-                        closure_body_region,
-                    )))
-                    .to_predicate(self.tcx),
-                ));
             }
 
             let (supplied_output_ty, _) = self.infcx.replace_bound_vars_with_fresh_vars(

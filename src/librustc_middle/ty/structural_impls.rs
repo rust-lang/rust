@@ -87,8 +87,6 @@ impl fmt::Debug for ty::RegionKind {
 
             ty::ReFree(ref fr) => fr.fmt(f),
 
-            ty::ReScope(id) => write!(f, "ReScope({:?})", id),
-
             ty::ReStatic => write!(f, "ReStatic"),
 
             ty::ReVar(ref vid) => vid.fmt(f),

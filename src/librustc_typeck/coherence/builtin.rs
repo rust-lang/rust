@@ -11,7 +11,6 @@ use rustc_hir::ItemKind;
 use rustc_infer::infer;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{RegionckMode, TyCtxtInferExt};
-use rustc_middle::middle::region;
 use rustc_middle::ty::adjustment::CoerceUnsizedInfo;
 use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -293,11 +292,9 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDef
                     }
 
                     // Finally, resolve all regions.
-                    let region_scope_tree = region::ScopeTree::default();
                     let outlives_env = OutlivesEnvironment::new(param_env);
                     infcx.resolve_regions_and_report_errors(
                         impl_did.to_def_id(),
-                        &region_scope_tree,
                         &outlives_env,
                         RegionckMode::default(),
                     );
@@ -552,14 +549,8 @@ pub fn coerce_unsized_info(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUnsizedI
         }
 
         // Finally, resolve all regions.
-        let region_scope_tree = region::ScopeTree::default();
         let outlives_env = OutlivesEnvironment::new(param_env);
-        infcx.resolve_regions_and_report_errors(
-            impl_did,
-            &region_scope_tree,
-            &outlives_env,
-            RegionckMode::default(),
-        );
+        infcx.resolve_regions_and_report_errors(impl_did, &outlives_env, RegionckMode::default());
 
         CoerceUnsizedInfo { custom_kind: kind }
     })
