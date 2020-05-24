@@ -11,7 +11,8 @@ This implements [RFC1909]. When turned on, you can have unsized arguments and lo
 [RFC1909]: https://github.com/rust-lang/rfcs/blob/master/text/1909-unsized-rvalues.md
 
 ```rust
-#![feature(unsized_locals)]
+#![allow(incomplete_features)]
+#![feature(unsized_locals, unsized_fn_params)]
 
 use std::any::Any;
 
@@ -85,7 +86,7 @@ fn main() {
 With this feature, you can have by-value `self` arguments without `Self: Sized` bounds.
 
 ```rust
-#![feature(unsized_locals)]
+#![feature(unsized_fn_params)]
 
 trait Foo {
     fn foo(self) {}
@@ -102,7 +103,7 @@ fn main() {
 And `Foo` will also be object-safe.
 
 ```rust
-#![feature(unsized_locals)]
+#![feature(unsized_fn_params)]
 
 trait Foo {
     fn foo(self) {}
