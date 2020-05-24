@@ -25,12 +25,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // FIXME: In which cases should we trigger UB when the source is uninit?
         match cast_kind {
             Pointer(PointerCast::Unsize) => {
-                assert_eq!(
-                    cast_ty, dest.layout.ty,
-                    "mismatch of cast type {} and place type {}",
-                    cast_ty, dest.layout.ty
-                );
-                self.unsize_into(src, dest)?;
+                let cast_ty = self.layout_of(cast_ty)?;
+                self.unsize_into(src, cast_ty, dest)?;
             }
 
             Misc => {
@@ -266,11 +262,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         dest: PlaceTy<'tcx, M::PointerTag>,
         // The pointee types
         source_ty: Ty<'tcx>,
-        dest_ty: Ty<'tcx>,
+        cast_ty: Ty<'tcx>,
     ) -> InterpResult<'tcx> {
         // A<Struct> -> A<Trait> conversion
         let (src_pointee_ty, dest_pointee_ty) =
-            self.tcx.struct_lockstep_tails_erasing_lifetimes(source_ty, dest_ty, self.param_env);
+            self.tcx.struct_lockstep_tails_erasing_lifetimes(source_ty, cast_ty, self.param_env);
 
         match (&src_pointee_ty.kind, &dest_pointee_ty.kind) {
             (&ty::Array(_, length), &ty::Slice(_)) => {
@@ -298,32 +294,33 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.write_immediate(val, dest)
             }
 
-            _ => bug!("invalid unsizing {:?} -> {:?}", src.layout.ty, dest.layout.ty),
+            _ => bug!("invalid unsizing {:?} -> {:?}", src.layout.ty, cast_ty),
         }
     }
 
     fn unsize_into(
         &mut self,
         src: OpTy<'tcx, M::PointerTag>,
+        cast_ty: TyAndLayout<'tcx>,
         dest: PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
-        trace!("Unsizing {:?} of type {} into {:?}", *src, src.layout.ty, dest.layout.ty);
-        match (&src.layout.ty.kind, &dest.layout.ty.kind) {
-            (&ty::Ref(_, s, _), &ty::Ref(_, d, _) | &ty::RawPtr(TypeAndMut { ty: d, .. }))
-            | (&ty::RawPtr(TypeAndMut { ty: s, .. }), &ty::RawPtr(TypeAndMut { ty: d, .. })) => {
-                self.unsize_into_ptr(src, dest, s, d)
+        trace!("Unsizing {:?} of type {} into {:?}", *src, src.layout.ty, cast_ty.ty);
+        match (&src.layout.ty.kind, &cast_ty.ty.kind) {
+            (&ty::Ref(_, s, _), &ty::Ref(_, c, _) | &ty::RawPtr(TypeAndMut { ty: c, .. }))
+            | (&ty::RawPtr(TypeAndMut { ty: s, .. }), &ty::RawPtr(TypeAndMut { ty: c, .. })) => {
+                self.unsize_into_ptr(src, dest, s, c)
             }
             (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
                 assert_eq!(def_a, def_b);
                 if def_a.is_box() || def_b.is_box() {
                     if !def_a.is_box() || !def_b.is_box() {
-                        bug!("invalid unsizing between {:?} -> {:?}", src.layout, dest.layout);
+                        bug!("invalid unsizing between {:?} -> {:?}", src.layout.ty, cast_ty.ty);
                     }
                     return self.unsize_into_ptr(
                         src,
                         dest,
                         src.layout.ty.boxed_ty(),
-                        dest.layout.ty.boxed_ty(),
+                        cast_ty.ty.boxed_ty(),
                     );
                 }
 
@@ -331,15 +328,16 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // Example: `Arc<T>` -> `Arc<Trait>`
                 // here we need to increase the size of every &T thin ptr field to a fat ptr
                 for i in 0..src.layout.fields.count() {
-                    let dst_field = self.place_field(dest, i)?;
-                    if dst_field.layout.is_zst() {
+                    let cast_ty_field = cast_ty.field(self, i)?;
+                    if cast_ty_field.is_zst() {
                         continue;
                     }
                     let src_field = self.operand_field(src, i)?;
-                    if src_field.layout.ty == dst_field.layout.ty {
+                    let dst_field = self.place_field(dest, i)?;
+                    if src_field.layout.ty == cast_ty_field.ty {
                         self.copy_op(src_field, dst_field)?;
                     } else {
-                        self.unsize_into(src_field, dst_field)?;
+                        self.unsize_into(src_field, cast_ty_field, dst_field)?;
                     }
                 }
                 Ok(())
