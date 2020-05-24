@@ -187,6 +187,14 @@ impl FunctionSignature {
 
 impl From<&'_ ast::FnDef> for FunctionSignature {
     fn from(node: &ast::FnDef) -> FunctionSignature {
+        fn strip_leading_underscore(name: String) -> String {
+            if name.starts_with("_") {
+                name.get(1..).unwrap_or_default().to_string()
+            } else {
+                name
+            }
+        }
+
         fn param_list(node: &ast::FnDef) -> (bool, Vec<String>, Vec<String>) {
             let mut res = vec![];
             let mut res_types = vec![];
@@ -230,7 +238,7 @@ impl From<&'_ ast::FnDef> for FunctionSignature {
                     param_list
                         .params()
                         .map(|param| {
-                            Some(
+                            Some(strip_leading_underscore(
                                 param
                                     .pat()?
                                     .syntax()
@@ -238,7 +246,7 @@ impl From<&'_ ast::FnDef> for FunctionSignature {
                                     .find_map(ast::Name::cast)?
                                     .text()
                                     .to_string(),
-                            )
+                            ))
                         })
                         .map(|param| param.unwrap_or_default()),
                 );
