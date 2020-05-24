@@ -74,13 +74,22 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         }
 
         if let Some((_, fndecl)) = self.find_anon_type(anon, &br) {
-            if self.is_return_type_anon(scope_def_id, br, fndecl).is_some()
-                || self.is_self_anon(is_first, scope_def_id)
-            {
+            let return_type_anon = self.is_return_type_anon(scope_def_id, br, fndecl);
+            let is_self_anon = self.is_self_anon(is_first, scope_def_id);
+            debug!(
+                "try_report_named_anon_conflict: fndecl {:?} {:?} {}",
+                fndecl, return_type_anon, is_self_anon
+            );
+            if is_self_anon {
+                // We used to check for `return_type_anon.is_some()` here. Removing that improves
+                // some diagnostics, but we might have to readd the check if there are regressions
+                // in the wild.
                 return None;
             }
             if let FnRetTy::Return(ty) = &fndecl.output {
+                debug!("try_report_named_anon_conflict: ret ty {:?}", ty);
                 if let (TyKind::Def(_, _), ty::ReStatic) = (&ty.kind, sub) {
+                    debug!("try_report_named_anon_conflict: impl Trait + 'static");
                     // This is an impl Trait return that evaluates de need of 'static.
                     // We handle this case better in `static_impl_trait`.
                     return None;

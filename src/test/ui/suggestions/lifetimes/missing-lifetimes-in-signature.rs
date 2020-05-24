@@ -55,12 +55,12 @@ where
 }
 
 // After applying suggestion for `qux`:
-// FIXME: we should suggest be suggesting to change `dest` to `&'a mut T`.
 fn bat<'a, G: 'a, T>(g: G, dest: &mut T) -> impl FnOnce() + '_ + 'a
+//~^ ERROR explicit lifetime required in the type of `dest`
 where
     G: Get<T>
 {
-    move || { //~ ERROR cannot infer an appropriate lifetime
+    move || {
         *dest = g.get();
     }
 }

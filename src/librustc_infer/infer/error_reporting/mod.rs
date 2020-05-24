@@ -1917,14 +1917,15 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             "...",
         );
 
+        debug!("report_sub_sup_conflict: var_origin={:?}", var_origin);
+        debug!("report_sub_sup_conflict: sub_region={:?}", sub_region);
+        debug!("report_sub_sup_conflict: sub_origin={:?}", sub_origin);
+        debug!("report_sub_sup_conflict: sup_region={:?}", sup_region);
+        debug!("report_sub_sup_conflict: sup_origin={:?}", sup_origin);
+
         if let (&infer::Subtype(ref sup_trace), &infer::Subtype(ref sub_trace)) =
             (&sup_origin, &sub_origin)
         {
-            debug!("report_sub_sup_conflict: var_origin={:?}", var_origin);
-            debug!("report_sub_sup_conflict: sub_region={:?}", sub_region);
-            debug!("report_sub_sup_conflict: sub_origin={:?}", sub_origin);
-            debug!("report_sub_sup_conflict: sup_region={:?}", sup_region);
-            debug!("report_sub_sup_conflict: sup_origin={:?}", sup_origin);
             debug!("report_sub_sup_conflict: sup_trace={:?}", sup_trace);
             debug!("report_sub_sup_conflict: sub_trace={:?}", sub_trace);
             debug!("report_sub_sup_conflict: sup_trace.values={:?}", sup_trace.values);

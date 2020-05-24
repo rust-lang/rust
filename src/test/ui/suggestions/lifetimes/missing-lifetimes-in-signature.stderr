@@ -87,44 +87,13 @@ help: consider introducing an explicit lifetime bound to unify the type paramete
 LL | fn qux<'b, 'a, G: 'b + 'a, T>(g: G, dest: &mut T) -> impl FnOnce() + '_ + 'b
    |        ^^^     ^^^^^^^                                                  ^^^^
 
-error[E0495]: cannot infer an appropriate lifetime due to conflicting requirements
-  --> $DIR/missing-lifetimes-in-signature.rs:63:5
-   |
-LL | /     move || {
-LL | |         *dest = g.get();
-LL | |     }
-   | |_____^
-   |
-note: first, the lifetime cannot outlive the anonymous lifetime #1 defined on the function body at 59:1...
-  --> $DIR/missing-lifetimes-in-signature.rs:59:1
-   |
-LL | / fn bat<'a, G: 'a, T>(g: G, dest: &mut T) -> impl FnOnce() + '_ + 'a
-LL | | where
-LL | |     G: Get<T>
-LL | | {
-...  |
-LL | |     }
-LL | | }
-   | |_^
-note: ...so that the types are compatible
-  --> $DIR/missing-lifetimes-in-signature.rs:63:5
-   |
-LL | /     move || {
-LL | |         *dest = g.get();
-LL | |     }
-   | |_____^
-   = note: expected  `&mut T`
-              found  `&mut T`
-note: but, the lifetime must be valid for the lifetime `'a` as defined on the function body at 59:8...
-  --> $DIR/missing-lifetimes-in-signature.rs:59:8
+error[E0621]: explicit lifetime required in the type of `dest`
+  --> $DIR/missing-lifetimes-in-signature.rs:58:45
    |
 LL | fn bat<'a, G: 'a, T>(g: G, dest: &mut T) -> impl FnOnce() + '_ + 'a
-   |        ^^
-note: ...so that return value is valid for the call
-  --> $DIR/missing-lifetimes-in-signature.rs:59:45
-   |
-LL | fn bat<'a, G: 'a, T>(g: G, dest: &mut T) -> impl FnOnce() + '_ + 'a
-   |                                             ^^^^^^^^^^^^^^^^^^^^^^^
+   |                                  ------     ^^^^^^^^^^^^^^^^^^^^^^^ lifetime `'a` required
+   |                                  |
+   |                                  help: add explicit lifetime `'a` to the type of `dest`: `&'a mut T`
 
 error[E0309]: the parameter type `G` may not live long enough
   --> $DIR/missing-lifetimes-in-signature.rs:69:44
@@ -142,5 +111,5 @@ LL | fn bak<'a, G, T>(g: G, dest: &'a mut T) -> impl FnOnce() + 'a
 
 error: aborting due to 6 previous errors
 
-Some errors have detailed explanations: E0261, E0309, E0495.
+Some errors have detailed explanations: E0261, E0309, E0621.
 For more information about an error, try `rustc --explain E0261`.

@@ -5,7 +5,7 @@
 
 fn a<T>(items: &[T]) -> Box<dyn Iterator<Item=&T>> {
     //                      ^^^^^^^^^^^^^^^^^^^^^ bound *here* defaults to `'static`
-    Box::new(items.iter()) //~ ERROR cannot infer an appropriate lifetime
+    Box::new(items.iter()) //~ ERROR explicit lifetime required in the type of `items`
 }
 
 fn b<T>(items: &[T]) -> Box<dyn Iterator<Item=&T> + '_> {
