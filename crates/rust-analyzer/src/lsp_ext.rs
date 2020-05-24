@@ -60,7 +60,6 @@ pub struct ExpandedMacro {
     pub expansion: String,
 }
 
-
 pub enum MatchingBrace {}
 
 impl Request for MatchingBrace {

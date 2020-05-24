@@ -509,9 +509,7 @@ fn on_request(
         .on_sync::<lsp_types::request::SelectionRangeRequest>(|s, p| {
             handlers::handle_selection_range(s.snapshot(), p)
         })?
-        .on_sync::<lsp_ext::MatchingBrace>(|s, p| {
-            handlers::handle_matching_brace(s.snapshot(), p)
-        })?
+        .on_sync::<lsp_ext::MatchingBrace>(|s, p| handlers::handle_matching_brace(s.snapshot(), p))?
         .on::<lsp_ext::AnalyzerStatus>(handlers::handle_analyzer_status)?
         .on::<lsp_ext::SyntaxTree>(handlers::handle_syntax_tree)?
         .on::<lsp_ext::ExpandMacro>(handlers::handle_expand_macro)?
