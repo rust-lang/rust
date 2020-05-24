@@ -439,6 +439,8 @@ impl Step for Miri {
             cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(compiler));
             cargo.env("MIRI_PATH", miri);
 
+            cargo.arg("--").args(builder.config.cmd.test_args());
+
             builder.add_rustc_lib_path(compiler, &mut cargo);
 
             if !try_run(builder, &mut cargo.into()) {
@@ -544,6 +546,8 @@ impl Step for Clippy {
             cargo.env("TARGET_LIBS", target_libs);
             // clippy tests need to find the driver
             cargo.env("CLIPPY_DRIVER_PATH", clippy);
+
+            cargo.arg("--").args(builder.config.cmd.test_args());
 
             builder.add_rustc_lib_path(compiler, &mut cargo);
 
