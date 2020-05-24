@@ -633,14 +633,21 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                 let ty = self.monomorphize(ty);
                 visit_drop_use(self.tcx, ty, true, self.output);
             }
+            mir::TerminatorKind::InlineAsm { ref operands, .. } => {
+                for op in operands {
+                    if let mir::InlineAsmOperand::SymFn { value } = op {
+                        let fn_ty = self.monomorphize(value.literal.ty);
+                        visit_fn_use(self.tcx, fn_ty, false, &mut self.output);
+                    }
+                }
+            }
             mir::TerminatorKind::Goto { .. }
             | mir::TerminatorKind::SwitchInt { .. }
             | mir::TerminatorKind::Resume
             | mir::TerminatorKind::Abort
             | mir::TerminatorKind::Return
             | mir::TerminatorKind::Unreachable
-            | mir::TerminatorKind::Assert { .. }
-            | mir::TerminatorKind::InlineAsm { .. } => {}
+            | mir::TerminatorKind::Assert { .. } => {}
             mir::TerminatorKind::GeneratorDrop
             | mir::TerminatorKind::Yield { .. }
             | mir::TerminatorKind::FalseEdges { .. }
