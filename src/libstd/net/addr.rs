@@ -703,49 +703,9 @@ impl PartialOrd for SocketAddrV4 {
 }
 
 #[stable(feature = "socketaddr_ordering", since = "1.45.0")]
-impl PartialOrd<SocketAddr> for SocketAddrV4 {
-    fn partial_cmp(&self, other: &SocketAddr) -> Option<Ordering> {
-        match other {
-            SocketAddr::V4(v4) => self.partial_cmp(v4),
-            SocketAddr::V6(_) => Some(Ordering::Less),
-        }
-    }
-}
-
-#[stable(feature = "socketaddr_ordering", since = "1.45.0")]
-impl PartialOrd<SocketAddrV4> for SocketAddr {
-    fn partial_cmp(&self, other: &SocketAddrV4) -> Option<Ordering> {
-        match self {
-            SocketAddr::V4(v4) => v4.partial_cmp(other),
-            SocketAddr::V6(_) => Some(Ordering::Greater),
-        }
-    }
-}
-
-#[stable(feature = "socketaddr_ordering", since = "1.45.0")]
 impl PartialOrd for SocketAddrV6 {
     fn partial_cmp(&self, other: &SocketAddrV6) -> Option<Ordering> {
         Some(self.cmp(other))
-    }
-}
-
-#[stable(feature = "socketaddr_ordering", since = "1.45.0")]
-impl PartialOrd<SocketAddr> for SocketAddrV6 {
-    fn partial_cmp(&self, other: &SocketAddr) -> Option<Ordering> {
-        match other {
-            SocketAddr::V4(_) => Some(Ordering::Greater),
-            SocketAddr::V6(v6) => self.partial_cmp(v6),
-        }
-    }
-}
-
-#[stable(feature = "socketaddr_ordering", since = "1.45.0")]
-impl PartialOrd<SocketAddrV6> for SocketAddr {
-    fn partial_cmp(&self, other: &SocketAddrV6) -> Option<Ordering> {
-        match self {
-            SocketAddr::V4(_) => Some(Ordering::Less),
-            SocketAddr::V6(v6) => v6.partial_cmp(other),
-        }
     }
 }
 
@@ -1213,11 +1173,13 @@ mod tests {
         let v4_1 = "224.120.45.1:23456".parse::<SocketAddrV4>().unwrap();
         let v4_2 = "224.210.103.5:12345".parse::<SocketAddrV4>().unwrap();
         let v4_3 = "224.210.103.5:23456".parse::<SocketAddrV4>().unwrap();
-        let v6_1 = "[2001:db8:f00::1002]:1234".parse::<SocketAddrV6>().unwrap();
-        let v6_2 = "[2001:db8:f00::2001]:1234".parse::<SocketAddrV6>().unwrap();
-        let v6_3 = "[2001:db8:f00::2001]:2345".parse::<SocketAddrV6>().unwrap();
+        let v6_1 = "[2001:db8:f00::1002]:23456".parse::<SocketAddrV6>().unwrap();
+        let v6_2 = "[2001:db8:f00::2001]:12345".parse::<SocketAddrV6>().unwrap();
+        let v6_3 = "[2001:db8:f00::2001]:23456".parse::<SocketAddrV6>().unwrap();
 
         // equality
+        assert_eq!(v4_1, v4_1);
+        assert_eq!(v6_1, v6_1);
         assert_eq!(v4_1, SocketAddr::V4(v4_1));
         assert_eq!(v6_1, SocketAddr::V6(v6_1));
         assert_eq!(SocketAddr::V4(v4_1), SocketAddr::V4(v4_1));
@@ -1229,22 +1191,20 @@ mod tests {
 
         // compare different addresses
         assert!(v4_1 < v4_2);
-        assert!(v4_1 < SocketAddr::V4(v4_2));
-        assert!(SocketAddr::V4(v4_1) < v4_2);
-        assert!(SocketAddr::V4(v4_1) < SocketAddr::V4(v4_2));
         assert!(v6_1 < v6_2);
-        assert!(v6_1 < SocketAddr::V6(v6_2));
-        assert!(SocketAddr::V6(v6_1) < v6_2);
-        assert!(SocketAddr::V6(v6_1) < SocketAddr::V6(v6_2));
+        assert!(v4_2 > v4_1);
+        assert!(v6_2 > v6_1);
 
         // compare the same address with different ports
         assert!(v4_2 < v4_3);
-        assert!(v4_2 < SocketAddr::V4(v4_3));
-        assert!(SocketAddr::V4(v4_2) < v4_3);
-        assert!(SocketAddr::V4(v4_2) < SocketAddr::V4(v4_3));
         assert!(v6_2 < v6_3);
-        assert!(v6_2 < SocketAddr::V6(v6_3));
-        assert!(SocketAddr::V6(v6_2) < v6_3);
-        assert!(SocketAddr::V6(v6_2) < SocketAddr::V6(v6_3));
+        assert!(v4_3 > v4_2);
+        assert!(v6_3 > v6_2);
+
+        // compare different addresses with the same port
+        assert!(v4_1 < v4_3);
+        assert!(v6_1 < v6_3);
+        assert!(v4_1 > v4_3);
+        assert!(v6_1 > v6_3);
     }
 }
