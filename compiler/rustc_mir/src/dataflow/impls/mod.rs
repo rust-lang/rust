@@ -204,7 +204,7 @@ impl<'a, 'tcx> HasMoveData<'tcx> for DefinitelyInitializedPlaces<'a, 'tcx> {
 
 /// `EverInitializedPlaces` tracks all places that might have ever been
 /// initialized upon reaching a particular point in the control flow
-/// for a function, without an intervening `Storage Dead`.
+/// for a function, without an intervening `StorageDead`.
 ///
 /// This dataflow is used to determine if an immutable local variable may
 /// be assigned to.
