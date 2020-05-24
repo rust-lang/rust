@@ -1000,12 +1000,15 @@ trait InferCtxtPrivExt<'tcx> {
         trait_ref: &ty::PolyTraitRef<'tcx>,
     );
 
-    fn mk_obligation_for_def_id(
+    /// Creates a `PredicateObligation` with `new_self_ty` replacing the existing type in the
+    /// `trait_ref`.
+    ///
+    /// For this to work, `new_self_ty` must have no escaping bound variables.
+    fn mk_trait_obligation_with_new_self_ty(
         &self,
-        def_id: DefId,
-        output_ty: Ty<'tcx>,
-        cause: ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
+        trait_ref: &ty::PolyTraitRef<'tcx>,
+        new_self_ty: Ty<'tcx>,
     ) -> PredicateObligation<'tcx>;
 
     fn maybe_report_ambiguity(
@@ -1380,16 +1383,24 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
         }
     }
 
-    fn mk_obligation_for_def_id(
+    fn mk_trait_obligation_with_new_self_ty(
         &self,
-        def_id: DefId,
-        output_ty: Ty<'tcx>,
-        cause: ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
+        trait_ref: &ty::PolyTraitRef<'tcx>,
+        new_self_ty: Ty<'tcx>,
     ) -> PredicateObligation<'tcx> {
-        let new_trait_ref =
-            ty::TraitRef { def_id, substs: self.tcx.mk_substs_trait(output_ty, &[]) };
-        Obligation::new(cause, param_env, new_trait_ref.without_const().to_predicate(self.tcx))
+        assert!(!new_self_ty.has_escaping_bound_vars());
+
+        let trait_ref = trait_ref.map_bound_ref(|tr| ty::TraitRef {
+            substs: self.tcx.mk_substs_trait(new_self_ty, &tr.substs[1..]),
+            ..*tr
+        });
+
+        Obligation::new(
+            ObligationCause::dummy(),
+            param_env,
+            trait_ref.without_const().to_predicate(self.tcx),
+        )
     }
 
     fn maybe_report_ambiguity(

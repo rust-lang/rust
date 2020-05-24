@@ -3,12 +3,14 @@
 	font-family: 'Fira Sans';
 	font-style: normal;
 	font-weight: 400;
+	font-display: optional;
 	src: local('Fira Sans'), url("FiraSans-Regular.woff") format('woff');
 }
 @font-face {
 	font-family: 'Fira Sans';
 	font-style: normal;
 	font-weight: 500;
+	font-display: optional;
 	src: local('Fira Sans Medium'), url("FiraSans-Medium.woff") format('woff');
 }
 
@@ -17,18 +19,23 @@
 	font-family: 'Source Serif Pro';
 	font-style: normal;
 	font-weight: 400;
+	/* The difference for body text without this font is greater than other fonts,
+	 * so the 0~100ms block of fallback is preferred over optional, for legibility. */
+	font-display: fallback;
 	src: local('Source Serif Pro'), url("SourceSerifPro-Regular.ttf.woff") format('woff');
 }
 @font-face {
 	font-family: 'Source Serif Pro';
 	font-style: italic;
 	font-weight: 400;
+	font-display: optional;
 	src: local('Source Serif Pro Italic'), url("SourceSerifPro-It.ttf.woff") format('woff');
 }
 @font-face {
 	font-family: 'Source Serif Pro';
 	font-style: normal;
 	font-weight: 700;
+	font-display: optional;
 	src: local('Source Serif Pro Bold'), url("SourceSerifPro-Bold.ttf.woff") format('woff');
 }
 
@@ -37,6 +44,7 @@
 	font-family: 'Source Code Pro';
 	font-style: normal;
 	font-weight: 400;
+	font-display: optional;
 	/* Avoid using locally installed font because bad versions are in circulation:
 	 * see https://github.com/rust-lang/rust/issues/24355 */
 	src: url("SourceCodePro-Regular.woff") format('woff');
@@ -45,6 +53,7 @@
 	font-family: 'Source Code Pro';
 	font-style: normal;
 	font-weight: 600;
+	font-display: optional;
 	src: url("SourceCodePro-Semibold.woff") format('woff');
 }
 
