@@ -544,7 +544,7 @@ fn missing_unsafe_diagnostic_with_raw_ptr() {
         r"
 //- /lib.rs
 fn missing_unsafe() {
-    let x = &5 as *usize;
+    let x = &5 as *const usize;
     let y = *x;
 }
 ",
@@ -552,7 +552,7 @@ fn missing_unsafe() {
     .diagnostics()
     .0;
 
-    assert_snapshot!(diagnostics, @r#""fn missing_unsafe() {\n    let x = &5 as *usize;\n    let y = *x;\n}": Missing unsafe keyword on fn"#);
+    assert_snapshot!(diagnostics, @r#""fn missing_unsafe() {\n    let x = &5 as *const usize;\n    let y = *x;\n}": Missing unsafe keyword on fn"#);
 }
 
 #[test]
@@ -561,7 +561,7 @@ fn missing_unsafe_diagnostic_with_unsafe_call() {
         r"
 //- /lib.rs
 unsafe fn unsafe_fn() {
-    let x = &5 as *usize;
+    let x = &5 as *const usize;
     let y = *x;
 }
 
@@ -585,7 +585,7 @@ struct HasUnsafe;
 
 impl HasUnsafe {
     unsafe fn unsafe_fn() {
-        let x = &5 as *usize;
+        let x = &5 as *const usize;
         let y = *x;
     }
 }
@@ -609,7 +609,7 @@ fn no_missing_unsafe_diagnostic_with_raw_ptr_in_unsafe_block() {
 //- /lib.rs
 fn nothing_to_see_move_along() {
     unsafe {
-        let x = &5 as *usize;
+        let x = &5 as *const usize;
         let y = *x;
     }
 }
@@ -627,7 +627,7 @@ fn no_missing_unsafe_diagnostic_with_unsafe_call_in_unsafe_block() {
         r"
 //- /lib.rs
 unsafe fn unsafe_fn() {
-    let x = &5 as *usize;
+    let x = &5 as *const usize;
     let y = *x;
 }
 
@@ -653,7 +653,7 @@ struct HasUnsafe;
 
 impl HasUnsafe {
     unsafe fn unsafe_fn() {
-        let x = &5 as *usize;
+        let x = &5 as *const usize;
         let y = *x;
     }
 }
@@ -670,20 +670,6 @@ fn nothing_to_see_move_along() {
     .0;
 
     assert_snapshot!(diagnostics, @"");
-}
-
-#[test]
-fn unnecessary_unsafe_diagnostic() {
-    let diagnostics = TestDB::with_files(
-        r"
-//- /lib.rs
-unsafe fn actually_safe_fn() {}
-",
-    )
-    .diagnostics()
-    .0;
-
-    assert_snapshot!(diagnostics, @r#""unsafe fn actually_safe_fn() {}": Unnecessary unsafe keyword on fn"#);
 }
 
 #[test]

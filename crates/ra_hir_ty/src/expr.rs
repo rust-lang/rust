@@ -13,8 +13,8 @@ use crate::{
     db::HirDatabase,
     diagnostics::{
         MissingFields, MissingMatchArms, MissingOkInTailExpr, MissingPatFields, MissingUnsafe,
-        UnnecessaryUnsafe,
     },
+    lower::CallableDef,
     utils::variant_data,
     ApplicationTy, InferenceResult, Ty, TypeCtor,
     _match::{is_useful, MatchCheckCtx, Matrix, PatStack, Usefulness},
@@ -328,17 +328,14 @@ pub fn unsafe_expressions(
     for (id, expr) in body.exprs.iter() {
         match expr {
             Expr::Call { callee, .. } => {
-                if infer
-                    .method_resolution(/* id */ *callee)
-                    .map(|func| db.function_data(func).is_unsafe)
-                    .unwrap_or(false)
-                {
-                    unsafe_expr_ids.push(id);
-                }
+                let ty = &infer.type_of_expr[*callee];
+                if let &Ty::Apply(ApplicationTy {ctor: TypeCtor::FnDef(CallableDef::FunctionId(func)), .. }) = ty {
+                    if db.function_data(func).is_unsafe {
+                        unsafe_expr_ids.push(id);
+                    }
+                 }
             }
-            Expr::MethodCall {/*_receiver, method_name,*/ .. } => {
-                // let receiver_ty = &infer.type_of_expr[*receiver];
-                // receiver_ty
+            Expr::MethodCall { .. } => {
                 if infer
                     .method_resolution(id)
                     .map(|func| {
@@ -382,9 +379,7 @@ impl<'a, 'b> UnsafeValidator<'a, 'b> {
         let def = self.func.into();
         let unsafe_expressions = unsafe_expressions(db, self.infer.as_ref(), def);
         let func_data = db.function_data(self.func);
-        let unnecessary = func_data.is_unsafe && unsafe_expressions.len() == 0;
-        let missing = !func_data.is_unsafe && unsafe_expressions.len() > 0;
-        if !(unnecessary || missing) {
+        if func_data.is_unsafe || unsafe_expressions.len() == 0 {
             return;
         }
 
@@ -394,10 +389,6 @@ impl<'a, 'b> UnsafeValidator<'a, 'b> {
         let file = in_file.file_id;
         let fn_def = AstPtr::new(&in_file.value);
 
-        if unnecessary {
-            self.sink.push(UnnecessaryUnsafe { file, fn_def })
-        } else {
-            self.sink.push(MissingUnsafe { file, fn_def })
-        }
+        self.sink.push(MissingUnsafe { file, fn_def })
     }
 }

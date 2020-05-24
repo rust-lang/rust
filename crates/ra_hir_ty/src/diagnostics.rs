@@ -3,7 +3,10 @@
 use std::any::Any;
 
 use hir_expand::{db::AstDatabase, name::Name, HirFileId, InFile};
-use ra_syntax::{ast::{self, NameOwner}, AstNode, AstPtr, SyntaxNodePtr};
+use ra_syntax::{
+    ast::{self, NameOwner},
+    AstNode, AstPtr, SyntaxNodePtr,
+};
 use stdx::format_to;
 
 pub use hir_def::{diagnostics::UnresolvedModule, expr::MatchArm, path::Path};
@@ -189,34 +192,6 @@ impl Diagnostic for MissingUnsafe {
 }
 
 impl AstDiagnostic for MissingUnsafe {
-    type AST = ast::Name;
-
-    fn ast(&self, db: &impl AstDatabase) -> Self::AST {
-        let root = db.parse_or_expand(self.source().file_id).unwrap();
-        let node = self.source().value.to_node(&root);
-        ast::FnDef::cast(node).unwrap().name().unwrap()
-    }
-}
-
-#[derive(Debug)]
-pub struct UnnecessaryUnsafe {
-    pub file: HirFileId,
-    pub fn_def: AstPtr<ast::FnDef>,
-}
-
-impl Diagnostic for UnnecessaryUnsafe {
-    fn message(&self) -> String {
-        format!("Unnecessary unsafe keyword on fn")
-    }
-    fn source(&self) -> InFile<SyntaxNodePtr> {
-        InFile { file_id: self.file, value: self.fn_def.clone().into() }
-    }
-    fn as_any(&self) -> &(dyn Any + Send + 'static) {
-        self
-    }
-}
-
-impl AstDiagnostic for UnnecessaryUnsafe {
     type AST = ast::Name;
 
     fn ast(&self, db: &impl AstDatabase) -> Self::AST {

@@ -899,7 +899,7 @@ impl ast::LoopBodyOwner for LoopExpr {}
 impl LoopExpr {
     pub fn loop_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![loop]) }
 }
-/// Block expression with an optional prefix (label, try ketword,
+/// Block expression with an optional prefix (label, try keyword,
 /// unsafe keyword, async keyword...).
 ///
 /// ```
