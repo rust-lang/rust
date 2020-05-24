@@ -922,7 +922,6 @@ pub struct Resolver<'a> {
     dummy_ext_bang: Lrc<SyntaxExtension>,
     dummy_ext_derive: Lrc<SyntaxExtension>,
     non_macro_attrs: [Lrc<SyntaxExtension>; 2],
-    macro_defs: FxHashMap<ExpnId, DefId>,
     local_macro_def_scopes: FxHashMap<NodeId, Module<'a>>,
     ast_transform_scopes: FxHashMap<ExpnId, Module<'a>>,
     unused_macros: NodeMap<Span>,
@@ -1152,9 +1151,6 @@ impl<'a> Resolver<'a> {
         let mut invocation_parent_scopes = FxHashMap::default();
         invocation_parent_scopes.insert(ExpnId::root(), ParentScope::module(graph_root));
 
-        let mut macro_defs = FxHashMap::default();
-        macro_defs.insert(ExpnId::root(), root_def_id);
-
         let features = session.features_untracked();
         let non_macro_attr =
             |mark_used| Lrc::new(SyntaxExtension::non_macro_attr(mark_used, session.edition()));
@@ -1229,7 +1225,6 @@ impl<'a> Resolver<'a> {
             invocation_parent_scopes,
             output_macro_rules_scopes: Default::default(),
             helper_attrs: Default::default(),
-            macro_defs,
             local_macro_def_scopes: FxHashMap::default(),
             name_already_seen: FxHashMap::default(),
             potentially_unused_imports: Vec::new(),
@@ -1335,8 +1330,8 @@ impl<'a> Resolver<'a> {
 
     fn macro_def(&self, mut ctxt: SyntaxContext) -> DefId {
         loop {
-            match self.macro_defs.get(&ctxt.outer_expn()) {
-                Some(&def_id) => return def_id,
+            match ctxt.outer_expn().expn_data().macro_def_id {
+                Some(def_id) => return def_id,
                 None => ctxt.remove_mark(),
             };
         }
@@ -1820,7 +1815,7 @@ impl<'a> Resolver<'a> {
                 && module.expansion.is_descendant_of(parent.expansion)
             {
                 // The macro is a proc macro derive
-                if let Some(&def_id) = self.macro_defs.get(&module.expansion) {
+                if let Some(def_id) = module.expansion.expn_data().macro_def_id {
                     if let Some(ext) = self.get_macro_by_def_id(def_id) {
                         if !ext.is_builtin && ext.macro_kind() == MacroKind::Derive {
                             if parent.expansion.outer_expn_is_descendant_of(span.ctxt()) {
