@@ -189,7 +189,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         cast_ty: Ty<'tcx>,
     ) -> Scalar<M::PointerTag> {
         // Let's make sure v is sign-extended *if* it has a signed type.
-        let signed = src_layout.abi.is_signed(); // also checks that abi is `Scalar`.
+        let signed = src_layout.abi.is_signed(); // Also asserts that abi is `Scalar`.
         let v = if signed { self.sign_extend(v, src_layout) } else { v };
         trace!("cast_from_scalar: {}, {} -> {}", v, src_layout.ty, cast_ty);
         use rustc_middle::ty::TyKind::*;
