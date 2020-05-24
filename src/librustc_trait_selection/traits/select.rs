@@ -1058,20 +1058,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // Heuristics: show the diagnostics when there are no candidates in crate.
                 if let Ok(candidate_set) = self.assemble_candidates(stack) {
                     let mut no_candidates_apply = true;
-                    {
-                        let evaluated_candidates =
-                            candidate_set.vec.iter().map(|c| self.evaluate_candidate(stack, &c));
 
-                        for ec in evaluated_candidates {
-                            match ec {
-                                Ok(c) => {
-                                    if c.may_apply() {
-                                        no_candidates_apply = false;
-                                        break;
-                                    }
-                                }
-                                Err(e) => return Err(e.into()),
-                            }
+                    for c in candidate_set.vec.iter() {
+                        if self.evaluate_candidate(stack, &c)?.may_apply() {
+                            no_candidates_apply = false;
+                            break;
                         }
                     }
 
@@ -3182,11 +3173,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 assert_eq!(tys_a.len(), tys_b.len());
 
                 // The last field of the tuple has to exist.
-                let (&a_last, a_mid) = if let Some(x) = tys_a.split_last() {
-                    x
-                } else {
-                    return Err(Unimplemented);
-                };
+                let (&a_last, a_mid) = tys_a.split_last().ok_or(Unimplemented)?;
                 let &b_last = tys_b.last().unwrap();
 
                 // Check that the source tuple with the target's
