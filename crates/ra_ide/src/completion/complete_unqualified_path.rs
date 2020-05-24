@@ -298,6 +298,41 @@ mod tests {
     }
 
     #[test]
+    fn completes_bindings_from_for_with_in_prefix() {
+        assert_debug_snapshot!(
+            do_reference_completion(
+                r"
+                fn test() {
+                    for index in &[1, 2, 3] {
+                        let t = in<|>
+                    }
+                }
+                "
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "index",
+                source_range: 107..107,
+                delete: 107..107,
+                insert: "index",
+                kind: Binding,
+            },
+            CompletionItem {
+                label: "test()",
+                source_range: 107..107,
+                delete: 107..107,
+                insert: "test()$0",
+                kind: Function,
+                lookup: "test",
+                detail: "fn test()",
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
     fn completes_generic_params() {
         assert_debug_snapshot!(
             do_reference_completion(

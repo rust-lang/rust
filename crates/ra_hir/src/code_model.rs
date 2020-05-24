@@ -1363,6 +1363,7 @@ impl HirDisplay for Type {
 }
 
 /// For IDE only
+#[derive(Debug)]
 pub enum ScopeDef {
     ModuleDef(ModuleDef),
     MacroDef(MacroDef),

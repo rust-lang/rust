@@ -169,7 +169,16 @@ impl<'a> CompletionContext<'a> {
         match self.token.kind() {
             // workaroud when completion is triggered by trigger characters.
             IDENT => self.original_token.text_range(),
-            _ => TextRange::empty(self.offset),
+            _ => {
+                // If we haven't characters between keyword and our cursor we take the keyword start range to edit
+                if self.token.kind().is_keyword()
+                    && self.offset == self.original_token.text_range().end()
+                {
+                    TextRange::empty(self.original_token.text_range().start())
+                } else {
+                    TextRange::empty(self.offset)
+                }
+            }
         }
     }
 
