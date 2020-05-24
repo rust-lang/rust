@@ -169,7 +169,6 @@ impl<'hir> Map<'hir> {
         })
     }
 
-    // FIXME(eddyb) this function can and should return `LocalDefId`.
     #[inline]
     pub fn local_def_id(&self, hir_id: HirId) -> LocalDefId {
         self.opt_local_def_id(hir_id).unwrap_or_else(|| {
@@ -190,11 +189,6 @@ impl<'hir> Map<'hir> {
     #[inline]
     pub fn opt_local_def_id_from_node_id(&self, node: NodeId) -> Option<LocalDefId> {
         self.tcx.definitions.opt_local_def_id(node)
-    }
-
-    #[inline]
-    pub fn as_local_node_id(&self, def_id: DefId) -> Option<NodeId> {
-        self.tcx.definitions.as_local_node_id(def_id)
     }
 
     #[inline]

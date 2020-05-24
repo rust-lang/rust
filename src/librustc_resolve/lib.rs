@@ -37,7 +37,7 @@ use rustc_hir::def::{self, CtorOf, DefKind, NonMacroAttrKind, PartialRes};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, CRATE_DEF_INDEX};
 use rustc_hir::definitions::{DefKey, Definitions};
 use rustc_hir::PrimTy::{self, Bool, Char, Float, Int, Str, Uint};
-use rustc_hir::{GlobMap, TraitMap};
+use rustc_hir::TraitMap;
 use rustc_metadata::creader::{CStore, CrateLoader};
 use rustc_middle::hir::exports::ExportMap;
 use rustc_middle::middle::cstore::{CrateStore, MetadataLoaderDyn};
@@ -866,7 +866,7 @@ pub struct Resolver<'a> {
     label_res_map: NodeMap<NodeId>,
 
     /// `CrateNum` resolutions of `extern crate` items.
-    extern_crate_map: NodeMap<CrateNum>,
+    extern_crate_map: FxHashMap<LocalDefId, CrateNum>,
     export_map: ExportMap<NodeId>,
     trait_map: TraitMap<NodeId>,
 
@@ -895,11 +895,11 @@ pub struct Resolver<'a> {
     underscore_disambiguator: u32,
 
     /// Maps glob imports to the names of items actually imported.
-    glob_map: GlobMap,
+    glob_map: FxHashMap<LocalDefId, FxHashSet<Symbol>>,
 
     used_imports: FxHashSet<(NodeId, Namespace)>,
-    maybe_unused_trait_imports: NodeSet,
-    maybe_unused_extern_crates: Vec<(NodeId, Span)>,
+    maybe_unused_trait_imports: FxHashSet<LocalDefId>,
+    maybe_unused_extern_crates: Vec<(LocalDefId, Span)>,
 
     /// Privacy errors are delayed until the end in order to deduplicate them.
     privacy_errors: Vec<PrivacyError<'a>>,
@@ -924,7 +924,7 @@ pub struct Resolver<'a> {
     dummy_ext_bang: Lrc<SyntaxExtension>,
     dummy_ext_derive: Lrc<SyntaxExtension>,
     non_macro_attrs: [Lrc<SyntaxExtension>; 2],
-    local_macro_def_scopes: FxHashMap<NodeId, Module<'a>>,
+    local_macro_def_scopes: FxHashMap<LocalDefId, Module<'a>>,
     ast_transform_scopes: FxHashMap<ExpnId, Module<'a>>,
     unused_macros: NodeMap<Span>,
     proc_macro_stubs: NodeSet,
@@ -1269,11 +1269,7 @@ impl<'a> Resolver<'a> {
 
     pub fn into_outputs(self) -> ResolverOutputs {
         let definitions = self.definitions;
-        let extern_crate_map = self
-            .extern_crate_map
-            .into_iter()
-            .map(|(k, v)| (definitions.local_def_id(k).to_def_id(), v))
-            .collect();
+        let extern_crate_map = self.extern_crate_map;
         let export_map = self
             .export_map
             .into_iter()
@@ -1298,21 +1294,9 @@ impl<'a> Resolver<'a> {
                 )
             })
             .collect();
-        let maybe_unused_trait_imports = self
-            .maybe_unused_trait_imports
-            .into_iter()
-            .map(|id| definitions.local_def_id(id))
-            .collect();
-        let maybe_unused_extern_crates = self
-            .maybe_unused_extern_crates
-            .into_iter()
-            .map(|(id, sp)| (definitions.local_def_id(id).to_def_id(), sp))
-            .collect();
-        let glob_map = self
-            .glob_map
-            .into_iter()
-            .map(|(id, names)| (definitions.local_def_id(id), names))
-            .collect();
+        let maybe_unused_trait_imports = self.maybe_unused_trait_imports;
+        let maybe_unused_extern_crates = self.maybe_unused_extern_crates;
+        let glob_map = self.glob_map;
         ResolverOutputs {
             definitions: definitions,
             cstore: Box::new(self.crate_loader.into_cstore()),
@@ -1334,11 +1318,7 @@ impl<'a> Resolver<'a> {
         ResolverOutputs {
             definitions: self.definitions.clone(),
             cstore: Box::new(self.cstore().clone()),
-            extern_crate_map: self
-                .extern_crate_map
-                .iter()
-                .map(|(&k, &v)| (self.definitions.local_def_id(k).to_def_id(), v))
-                .collect(),
+            extern_crate_map: self.extern_crate_map.clone(),
             export_map: self
                 .export_map
                 .iter()
@@ -1366,21 +1346,9 @@ impl<'a> Resolver<'a> {
                     )
                 })
                 .collect(),
-            glob_map: self
-                .glob_map
-                .iter()
-                .map(|(&id, names)| (self.definitions.local_def_id(id), names.clone()))
-                .collect(),
-            maybe_unused_trait_imports: self
-                .maybe_unused_trait_imports
-                .iter()
-                .map(|&id| self.definitions.local_def_id(id))
-                .collect(),
-            maybe_unused_extern_crates: self
-                .maybe_unused_extern_crates
-                .iter()
-                .map(|&(id, sp)| (self.definitions.local_def_id(id).to_def_id(), sp))
-                .collect(),
+            glob_map: self.glob_map.clone(),
+            maybe_unused_trait_imports: self.maybe_unused_trait_imports.clone(),
+            maybe_unused_extern_crates: self.maybe_unused_extern_crates.clone(),
             extern_prelude: self
                 .extern_prelude
                 .iter()
@@ -1522,7 +1490,8 @@ impl<'a> Resolver<'a> {
     #[inline]
     fn add_to_glob_map(&mut self, import: &Import<'_>, ident: Ident) {
         if import.is_glob() {
-            self.glob_map.entry(import.id).or_default().insert(ident.name);
+            let def_id = self.definitions.local_def_id(import.id);
+            self.glob_map.entry(def_id).or_default().insert(ident.name);
         }
     }
 

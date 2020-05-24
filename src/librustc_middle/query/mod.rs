@@ -973,7 +973,9 @@ rustc_queries! {
             desc { "fetching what a crate is named" }
         }
         query item_children(_: DefId) -> &'tcx [Export<hir::HirId>] {}
-        query extern_mod_stmt_cnum(_: DefId) -> Option<CrateNum> {}
+        query extern_mod_stmt_cnum(_: LocalDefId) -> Option<CrateNum> {
+            desc { "fetching extern module statement" }
+        }
 
         query get_lib_features(_: CrateNum) -> LibFeatures {
             storage(ArenaCacheSelector<'tcx>)
@@ -1040,7 +1042,7 @@ rustc_queries! {
             desc { |tcx| "maybe_unused_trait_import for `{}`", tcx.def_path_str(def_id.to_def_id()) }
         }
         query maybe_unused_extern_crates(_: CrateNum)
-            -> &'tcx [(DefId, Span)] {
+            -> &'tcx [(LocalDefId, Span)] {
             eval_always
             desc { "looking up all possibly unused extern crates" }
         }
