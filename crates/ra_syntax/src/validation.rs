@@ -81,10 +81,8 @@ fn rustc_unescape_error_to_string(err: unescape::EscapeError) -> &'static str {
 
 pub(crate) fn validate(root: &SyntaxNode) -> Vec<SyntaxError> {
     // FIXME:
-    // * Add validation of character literal containing only a single char
-    // * Add validation of `crate` keyword not appearing in the middle of the symbol path
+    // * Add unescape validation of raw string literals and raw byte string literals
     // * Add validation of doc comments are being attached to nodes
-    // * Remove validation of unterminated literals (it is already implemented in `tokenize()`)
 
     let mut errors = Vec::new();
     for node in root.descendants() {
