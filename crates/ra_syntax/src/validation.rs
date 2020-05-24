@@ -2,15 +2,15 @@
 
 mod block;
 
-use std::convert::TryFrom;
-
-use rustc_lexer::unescape;
-
 use crate::{
     ast, match_ast, AstNode, SyntaxError,
     SyntaxKind::{BYTE, BYTE_STRING, CHAR, CONST_DEF, FN_DEF, INT_NUMBER, STRING, TYPE_ALIAS_DEF},
     SyntaxNode, SyntaxToken, TextSize, T,
 };
+use rustc_lexer::unescape::{
+    self, unescape_byte, unescape_byte_literal, unescape_char, unescape_literal, Mode,
+};
+use std::convert::TryFrom;
 
 fn rustc_unescape_error_to_string(err: unescape::EscapeError) -> &'static str {
     use unescape::EscapeError as EE;
@@ -81,10 +81,8 @@ fn rustc_unescape_error_to_string(err: unescape::EscapeError) -> &'static str {
 
 pub(crate) fn validate(root: &SyntaxNode) -> Vec<SyntaxError> {
     // FIXME:
-    // * Add validation of character literal containing only a single char
-    // * Add validation of `crate` keyword not appearing in the middle of the symbol path
+    // * Add unescape validation of raw string literals and raw byte string literals
     // * Add validation of doc comments are being attached to nodes
-    // * Remove validation of unterminated literals (it is already implemented in `tokenize()`)
 
     let mut errors = Vec::new();
     for node in root.descendants() {
@@ -121,18 +119,18 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
 
     match token.kind() {
         BYTE => {
-            if let Some(Err(e)) = unquote(text, 2, '\'').map(unescape::unescape_byte) {
+            if let Some(Err(e)) = unquote(text, 2, '\'').map(unescape_byte) {
                 push_err(2, e);
             }
         }
         CHAR => {
-            if let Some(Err(e)) = unquote(text, 1, '\'').map(unescape::unescape_char) {
+            if let Some(Err(e)) = unquote(text, 1, '\'').map(unescape_char) {
                 push_err(1, e);
             }
         }
         BYTE_STRING => {
             if let Some(without_quotes) = unquote(text, 2, '"') {
-                unescape::unescape_byte_str(without_quotes, &mut |range, char| {
+                unescape_byte_literal(without_quotes, Mode::ByteStr, &mut |range, char| {
                     if let Err(err) = char {
                         push_err(2, (range.start, err));
                     }
@@ -141,7 +139,7 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
         }
         STRING => {
             if let Some(without_quotes) = unquote(text, 1, '"') {
-                unescape::unescape_str(without_quotes, &mut |range, char| {
+                unescape_literal(without_quotes, Mode::Str, &mut |range, char| {
                     if let Err(err) = char {
                         push_err(1, (range.start, err));
                     }
