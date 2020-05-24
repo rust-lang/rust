@@ -25,7 +25,7 @@ use hir_expand::{
 use hir_ty::{
     autoderef,
     display::{HirDisplayError, HirFormatter},
-    expr::ExprValidator,
+    expr::{ExprValidator, UnsafeValidator},
     method_resolution, ApplicationTy, Canonical, GenericPredicate, InEnvironment, Substs,
     TraitEnvironment, Ty, TyDefId, TypeCtor,
 };
@@ -36,7 +36,6 @@ use rustc_hash::FxHashSet;
 
 use crate::{
     db::{DefDatabase, HirDatabase},
-    diagnostics::UnsafeValidator,
     has_source::HasSource,
     CallableDef, HirDisplay, InFile, Name,
 };
@@ -680,7 +679,7 @@ impl Function {
         infer.add_diagnostics(db, self.id, sink);
         let mut validator = ExprValidator::new(self.id, infer.clone(), sink);
         validator.validate_body(db);
-        let mut validator = UnsafeValidator::new(&self, infer, sink);
+        let mut validator = UnsafeValidator::new(self.id, infer, sink);
         validator.validate_body(db);
     }
 }

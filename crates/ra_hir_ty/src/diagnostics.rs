@@ -3,7 +3,7 @@
 use std::any::Any;
 
 use hir_expand::{db::AstDatabase, name::Name, HirFileId, InFile};
-use ra_syntax::{ast, AstNode, AstPtr, SyntaxNodePtr};
+use ra_syntax::{ast::{self, NameOwner}, AstNode, AstPtr, SyntaxNodePtr};
 use stdx::format_to;
 
 pub use hir_def::{diagnostics::UnresolvedModule, expr::MatchArm, path::Path};
@@ -174,12 +174,11 @@ impl AstDiagnostic for BreakOutsideOfLoop {
 pub struct MissingUnsafe {
     pub file: HirFileId,
     pub fn_def: AstPtr<ast::FnDef>,
-    pub fn_name: Name,
 }
 
 impl Diagnostic for MissingUnsafe {
     fn message(&self) -> String {
-        format!("Missing unsafe marker on fn `{}`", self.fn_name)
+        format!("Missing unsafe keyword on fn")
     }
     fn source(&self) -> InFile<SyntaxNodePtr> {
         InFile { file_id: self.file, value: self.fn_def.clone().into() }
@@ -190,12 +189,12 @@ impl Diagnostic for MissingUnsafe {
 }
 
 impl AstDiagnostic for MissingUnsafe {
-    type AST = ast::FnDef;
+    type AST = ast::Name;
 
     fn ast(&self, db: &impl AstDatabase) -> Self::AST {
         let root = db.parse_or_expand(self.source().file_id).unwrap();
         let node = self.source().value.to_node(&root);
-        ast::FnDef::cast(node).unwrap()
+        ast::FnDef::cast(node).unwrap().name().unwrap()
     }
 }
 
@@ -203,12 +202,11 @@ impl AstDiagnostic for MissingUnsafe {
 pub struct UnnecessaryUnsafe {
     pub file: HirFileId,
     pub fn_def: AstPtr<ast::FnDef>,
-    pub fn_name: Name,
 }
 
 impl Diagnostic for UnnecessaryUnsafe {
     fn message(&self) -> String {
-        format!("Unnecessary unsafe marker on fn `{}`", self.fn_name)
+        format!("Unnecessary unsafe keyword on fn")
     }
     fn source(&self) -> InFile<SyntaxNodePtr> {
         InFile { file_id: self.file, value: self.fn_def.clone().into() }
@@ -219,11 +217,11 @@ impl Diagnostic for UnnecessaryUnsafe {
 }
 
 impl AstDiagnostic for UnnecessaryUnsafe {
-    type AST = ast::FnDef;
+    type AST = ast::Name;
 
     fn ast(&self, db: &impl AstDatabase) -> Self::AST {
         let root = db.parse_or_expand(self.source().file_id).unwrap();
         let node = self.source().value.to_node(&root);
-        ast::FnDef::cast(node).unwrap()
+        ast::FnDef::cast(node).unwrap().name().unwrap()
     }
 }

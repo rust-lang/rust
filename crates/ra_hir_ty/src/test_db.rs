@@ -11,7 +11,11 @@ use ra_db::{salsa, CrateId, FileId, FileLoader, FileLoaderDelegate, SourceDataba
 use rustc_hash::FxHashSet;
 use stdx::format_to;
 
-use crate::{db::HirDatabase, diagnostics::Diagnostic, expr::ExprValidator};
+use crate::{
+    db::HirDatabase,
+    diagnostics::Diagnostic,
+    expr::{ExprValidator, UnsafeValidator},
+};
 
 #[salsa::database(
     ra_db::SourceDatabaseExtStorage,
@@ -119,7 +123,9 @@ impl TestDB {
                 let infer = self.infer(f.into());
                 let mut sink = DiagnosticSink::new(&mut cb);
                 infer.add_diagnostics(self, f, &mut sink);
-                let mut validator = ExprValidator::new(f, infer, &mut sink);
+                let mut validator = ExprValidator::new(f, infer.clone(), &mut sink);
+                validator.validate_body(self);
+                let mut validator = UnsafeValidator::new(f, infer, &mut sink);
                 validator.validate_body(self);
             }
         }

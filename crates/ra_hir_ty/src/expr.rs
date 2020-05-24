@@ -2,14 +2,19 @@
 
 use std::sync::Arc;
 
-use hir_def::{path::path, resolver::HasResolver, AdtId, DefWithBodyId, FunctionId};
+use hir_def::{
+    path::path, resolver::HasResolver, src::HasSource, AdtId, DefWithBodyId, FunctionId, Lookup,
+};
 use hir_expand::diagnostics::DiagnosticSink;
 use ra_syntax::{ast, AstPtr};
 use rustc_hash::FxHashSet;
 
 use crate::{
     db::HirDatabase,
-    diagnostics::{MissingFields, MissingMatchArms, MissingOkInTailExpr, MissingPatFields},
+    diagnostics::{
+        MissingFields, MissingMatchArms, MissingOkInTailExpr, MissingPatFields, MissingUnsafe,
+        UnnecessaryUnsafe,
+    },
     utils::variant_data,
     ApplicationTy, InferenceResult, Ty, TypeCtor,
     _match::{is_useful, MatchCheckCtx, Matrix, PatStack, Usefulness},
@@ -321,16 +326,63 @@ pub fn unsafe_expressions(
     let mut unsafe_expr_ids = vec![];
     let body = db.body(def);
     for (id, expr) in body.exprs.iter() {
-        if let Expr::Call { callee, .. } = expr {
-            if infer
-                .method_resolution(*callee)
-                .map(|func| db.function_data(func).is_unsafe)
-                .unwrap_or(false)
-            {
-                unsafe_expr_ids.push(id);
+        match expr {
+            Expr::Call { callee, .. } => {
+                if infer
+                    .method_resolution(*callee)
+                    .map(|func| db.function_data(func).is_unsafe)
+                    .unwrap_or(false)
+                {
+                    unsafe_expr_ids.push(id);
+                }
             }
+            Expr::UnaryOp { expr, op: UnaryOp::Deref } => {
+                if let Ty::Apply(ApplicationTy { ctor: TypeCtor::RawPtr(..), .. }) = &infer[*expr] {
+                    unsafe_expr_ids.push(id);
+                }
+            }
+            _ => {}
         }
     }
 
     unsafe_expr_ids
+}
+
+pub struct UnsafeValidator<'a, 'b: 'a> {
+    func: FunctionId,
+    infer: Arc<InferenceResult>,
+    sink: &'a mut DiagnosticSink<'b>,
+}
+
+impl<'a, 'b> UnsafeValidator<'a, 'b> {
+    pub fn new(
+        func: FunctionId,
+        infer: Arc<InferenceResult>,
+        sink: &'a mut DiagnosticSink<'b>,
+    ) -> UnsafeValidator<'a, 'b> {
+        UnsafeValidator { func, infer, sink }
+    }
+
+    pub fn validate_body(&mut self, db: &dyn HirDatabase) {
+        let def = self.func.into();
+        let unsafe_expressions = unsafe_expressions(db, self.infer.as_ref(), def);
+        let func_data = db.function_data(self.func);
+        let unnecessary = func_data.is_unsafe && unsafe_expressions.len() == 0;
+        let missing = !func_data.is_unsafe && unsafe_expressions.len() > 0;
+        if !(unnecessary || missing) {
+            return;
+        }
+
+        let loc = self.func.lookup(db.upcast());
+        let in_file = loc.source(db.upcast());
+
+        let file = in_file.file_id;
+        let fn_def = AstPtr::new(&in_file.value);
+
+        if unnecessary {
+            self.sink.push(UnnecessaryUnsafe { file, fn_def })
+        } else {
+            self.sink.push(MissingUnsafe { file, fn_def })
+        }
+    }
 }

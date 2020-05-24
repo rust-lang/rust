@@ -539,6 +539,84 @@ fn missing_record_pat_field_no_diagnostic_if_not_exhaustive() {
 }
 
 #[test]
+fn missing_unsafe_diagnostic_with_raw_ptr() {
+    let diagnostics = TestDB::with_files(
+        r"
+//- /lib.rs
+fn missing_unsafe() {
+    let x = &5 as *usize;
+    let y = *x;
+}
+",
+    )
+    .diagnostics()
+    .0;
+
+    assert_snapshot!(diagnostics, @r#""fn missing_unsafe() {\n    let x = &5 as *usize;\n    let y = *x;\n}": Missing unsafe keyword on fn"#);
+}
+
+#[test]
+fn missing_unsafe_diagnostic_with_unsafe_call() {
+    let diagnostics = TestDB::with_files(
+        r"
+//- /lib.rs
+unsafe fn unsafe_fn() {
+    let x = &5 as *usize;
+    let y = *x;
+}
+
+fn missing_unsafe() {
+    unsafe_fn();
+}
+",
+    )
+    .diagnostics()
+    .0;
+
+    assert_snapshot!(diagnostics, @r#""fn missing_unsafe() {\n    unsafe_fn();\n}": Missing unsafe keyword on fn"#);
+}
+
+#[test]
+fn missing_unsafe_diagnostic_with_unsafe_method_call() {
+    let diagnostics = TestDB::with_files(
+        r"
+//- /lib.rs
+struct HasUnsafe;
+
+impl HasUnsafe {
+    unsafe fn unsafe_fn() {
+        let x = &5 as *usize;
+        let y = *x;
+    }
+}
+
+fn missing_unsafe() {
+    HasUnsafe.unsafe_fn();
+}
+
+",
+    )
+    .diagnostics()
+    .0;
+
+    assert_snapshot!(diagnostics, @r#""fn missing_unsafe() {\n    HasUnsafe.unsafe_fn();\n}": Missing unsafe keyword on fn"#);
+}
+
+#[test]
+fn unnecessary_unsafe_diagnostic() {
+    let diagnostics = TestDB::with_files(
+        r"
+//- /lib.rs
+unsafe fn actually_safe_fn() {}
+",
+    )
+    .diagnostics()
+    .0;
+
+    assert_snapshot!(diagnostics, @r#""unsafe fn actually_safe_fn() {}": Unnecessary unsafe keyword on fn"#);
+}
+
+#[test]
 fn break_outside_of_loop() {
     let diagnostics = TestDB::with_files(
         r"

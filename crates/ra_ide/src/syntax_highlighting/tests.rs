@@ -384,9 +384,11 @@ impl HasUnsafeFn {
 }
 
 fn main() {
+    let x = &5 as *usize;
     unsafe {
         unsafe_fn();
         HasUnsafeFn.unsafe_method();
+        let y = *x;
     }
 }
 "#
