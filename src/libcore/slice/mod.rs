@@ -1654,7 +1654,7 @@ impl<T> [T] {
     ///
     /// ```
     /// let mut floats = [5f64, 4.0, 1.0, 3.0, 2.0];
-    /// floats.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    /// floats.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
     /// assert_eq!(floats, [1.0, 2.0, 3.0, 4.0, 5.0]);
     /// ```
     ///
