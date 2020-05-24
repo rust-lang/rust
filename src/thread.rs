@@ -377,6 +377,9 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
     }
 
     /// Register the given `callback` to be called once the `call_time` passes.
+    ///
+    /// The callback will be called with `thread` being the active thread, and
+    /// the callback may not change the active thread.
     fn register_timeout_callback(
         &mut self,
         thread: ThreadId,
@@ -452,10 +455,8 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         // https://pubs.opengroup.org/onlinepubs/9699919799/functions/pthread_cond_timedwait.html#
         let potential_sleep_time =
             self.timeout_callbacks.values().map(|info| info.call_time.get_wait_time()).min();
-        if let Some(sleep_time) = potential_sleep_time {
-            if sleep_time == Duration::new(0, 0) {
-                return Ok(SchedulingAction::ExecuteTimeoutCallback);
-            }
+        if potential_sleep_time == Some(Duration::new(0, 0)) {
+            return Ok(SchedulingAction::ExecuteTimeoutCallback);
         }
         // No callbacks scheduled, pick a regular thread to execute.
         if self.threads[self.active_thread].state == ThreadState::Enabled
@@ -699,6 +700,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
         let (thread, callback) =
             this.machine.threads.get_ready_callback().expect("no callback found");
+        // This back-and-forth with `set_active_thread` is here because of two
+        // design decisions:
+        // 1. Make the caller and not the callback responsible for changing
+        //    thread.
+        // 2. Make the scheduler the only place that can change the active
+        //    thread.
         let old_thread = this.set_active_thread(thread)?;
         callback(this)?;
         this.set_active_thread(old_thread)?;
