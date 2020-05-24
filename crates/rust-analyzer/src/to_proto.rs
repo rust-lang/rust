@@ -295,6 +295,7 @@ fn semantic_token_type_and_modifiers(
         HighlightTag::ByteLiteral | HighlightTag::NumericLiteral => {
             lsp_types::SemanticTokenType::NUMBER
         }
+        HighlightTag::BoolLiteral => semantic_tokens::BOOLEAN,
         HighlightTag::CharLiteral | HighlightTag::StringLiteral => {
             lsp_types::SemanticTokenType::STRING
         }

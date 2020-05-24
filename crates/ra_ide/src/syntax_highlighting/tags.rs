@@ -15,6 +15,7 @@ pub struct HighlightModifiers(u32);
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum HighlightTag {
     Attribute,
+    BoolLiteral,
     BuiltinType,
     ByteLiteral,
     CharLiteral,
@@ -60,6 +61,7 @@ impl HighlightTag {
     fn as_str(self) -> &'static str {
         match self {
             HighlightTag::Attribute => "attribute",
+            HighlightTag::BoolLiteral => "bool_literal",
             HighlightTag::BuiltinType => "builtin_type",
             HighlightTag::ByteLiteral => "byte_literal",
             HighlightTag::CharLiteral => "char_literal",
