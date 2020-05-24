@@ -1,10 +1,12 @@
 use std::iter;
 use std::convert::TryFrom;
 
+use rustc_attr as attr;
 use rustc_ast::ast::FloatTy;
 use rustc_middle::{mir, ty};
+use rustc_middle::ty::layout::IntegerExt;
 use rustc_apfloat::{Float, Round};
-use rustc_target::abi::{Align, LayoutOf, Size};
+use rustc_target::abi::{Align, Integer, LayoutOf};
 
 use crate::*;
 use helpers::check_arg_count;
@@ -563,11 +565,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         Ok(match dest_ty.kind {
             // Unsigned
             ty::Uint(t) => {
-                let width = t.bit_width().unwrap_or_else(|| this.pointer_size().bits());
-                let res = f.to_u128(usize::try_from(width).unwrap());
+                let size = Integer::from_attr(this, attr::IntType::UnsignedInt(t)).size();
+                let res = f.to_u128(size.bits_usize());
                 if res.status.is_empty() {
                     // No status flags means there was no further rounding or other loss of precision.
-                    Scalar::from_uint(res.value, Size::from_bits(width))
+                    Scalar::from_uint(res.value, size)
                 } else {
                     // `f` was not representable in this integer type.
                     throw_ub_format!(
@@ -578,11 +580,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             // Signed
             ty::Int(t) => {
-                let width = t.bit_width().unwrap_or_else(|| this.pointer_size().bits());
-                let res = f.to_i128(usize::try_from(width).unwrap());
+                let size = Integer::from_attr(this, attr::IntType::SignedInt(t)).size();
+                let res = f.to_i128(size.bits_usize());
                 if res.status.is_empty() {
                     // No status flags means there was no further rounding or other loss of precision.
-                    Scalar::from_int(res.value, Size::from_bits(width))
+                    Scalar::from_int(res.value, size)
                 } else {
                     // `f` was not representable in this integer type.
                     throw_ub_format!(

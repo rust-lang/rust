@@ -10,6 +10,7 @@
 #![allow(incomplete_features)]
 #![feature(const_generics)]
 
+extern crate rustc_attr;
 extern crate rustc_apfloat;
 extern crate rustc_ast;
 #[macro_use] extern crate rustc_middle;
