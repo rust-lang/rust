@@ -688,7 +688,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     ) -> Span {
         span.fresh_expansion(ExpnData {
             allow_internal_unstable,
-            ..ExpnData::default(ExpnKind::Desugaring(reason), span, self.sess.edition())
+            ..ExpnData::default(ExpnKind::Desugaring(reason), span, self.sess.edition(), None)
         })
     }
 
