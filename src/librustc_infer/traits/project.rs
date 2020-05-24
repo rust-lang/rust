@@ -95,6 +95,7 @@ pub enum ProjectionCacheEntry<'tcx> {
 }
 
 impl<'tcx> ProjectionCacheStorage<'tcx> {
+    #[inline]
     pub(crate) fn with_log<'a>(
         &'a mut self,
         undo_log: &'a mut InferCtxtUndoLogs<'tcx>,
@@ -104,6 +105,7 @@ impl<'tcx> ProjectionCacheStorage<'tcx> {
 }
 
 impl<'tcx> ProjectionCache<'_, 'tcx> {
+    #[inline]
     fn map(
         &mut self,
     ) -> SnapshotMapRef<
