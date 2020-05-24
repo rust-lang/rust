@@ -641,7 +641,7 @@ mod tests {
         assert_debug_snapshot!(
             do_reference_completion(
                 r"
-                fn with_args(x: i32, y: String) {}
+                fn with_args(x: i32, y: String, _z: bool) {}
                 fn main() { with_<|> }
                 "
             ),
@@ -649,8 +649,8 @@ mod tests {
         [
             CompletionItem {
                 label: "main()",
-                source_range: 80..85,
-                delete: 80..85,
+                source_range: 90..95,
+                delete: 90..95,
                 insert: "main()$0",
                 kind: Function,
                 lookup: "main",
@@ -658,12 +658,12 @@ mod tests {
             },
             CompletionItem {
                 label: "with_args(…)",
-                source_range: 80..85,
-                delete: 80..85,
-                insert: "with_args(${1:x}, ${2:y})$0",
+                source_range: 90..95,
+                delete: 90..95,
+                insert: "with_args(${1:x}, ${2:y}, ${3:z})$0",
                 kind: Function,
                 lookup: "with_args",
-                detail: "fn with_args(x: i32, y: String)",
+                detail: "fn with_args(x: i32, y: String, _z: bool)",
                 trigger_call_info: true,
             },
         ]
