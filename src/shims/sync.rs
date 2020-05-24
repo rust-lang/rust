@@ -58,7 +58,30 @@ fn set_at_offset<'mir, 'tcx: 'mir>(
 // store an i32 in the first four bytes equal to the corresponding libc mutex kind constant
 // (e.g. PTHREAD_MUTEX_NORMAL).
 
+/// A flag that allows to distinguish `PTHREAD_MUTEX_NORMAL` from
+/// `PTHREAD_MUTEX_DEFAULT`. Since in `glibc` they have the same numeric values,
+/// but different behaviour, we need a way to distinguish them. We do this by
+/// setting this bit flag to the `PTHREAD_MUTEX_NORMAL` mutexes. See the comment
+/// in `pthread_mutexattr_settype` function.
+const PTHREAD_MUTEX_NORMAL_FLAG: i32 = 0x8000000;
+
 const PTHREAD_MUTEXATTR_T_MIN_SIZE: u64 = 4;
+
+fn is_mutex_kind_default<'mir, 'tcx: 'mir>(
+    ecx: &mut MiriEvalContext<'mir, 'tcx>,
+    kind: Scalar<Tag>,
+) -> InterpResult<'tcx, bool> {
+    Ok(kind == ecx.eval_libc("PTHREAD_MUTEX_DEFAULT")?)
+}
+
+fn is_mutex_kind_normal<'mir, 'tcx: 'mir>(
+    ecx: &mut MiriEvalContext<'mir, 'tcx>,
+    kind: Scalar<Tag>,
+) -> InterpResult<'tcx, bool> {
+    let kind = kind.to_i32()?;
+    let mutex_normal_kind = ecx.eval_libc("PTHREAD_MUTEX_NORMAL")?.to_i32()?;
+    Ok(kind == (mutex_normal_kind | PTHREAD_MUTEX_NORMAL_FLAG))
+}
 
 fn mutexattr_get_kind<'mir, 'tcx: 'mir>(
     ecx: &MiriEvalContext<'mir, 'tcx>,
@@ -318,8 +341,20 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         let kind = this.read_scalar(kind_op)?.not_undef()?;
-        if kind == this.eval_libc("PTHREAD_MUTEX_DEFAULT")?
-            || kind == this.eval_libc("PTHREAD_MUTEX_NORMAL")?
+        if kind == this.eval_libc("PTHREAD_MUTEX_NORMAL")? {
+            // In `glibc` implementation, the numeric values of
+            // `PTHREAD_MUTEX_NORMAL` and `PTHREAD_MUTEX_DEFAULT` are equal, but
+            // they have different behaviour in some cases. Therefore, we add
+            // this flag to ensure that we can distinguish
+            // `PTHREAD_MUTEX_NORMAL` from `PTHREAD_MUTEX_DEFAULT`.
+            let normal_kind = kind.to_i32()? | PTHREAD_MUTEX_NORMAL_FLAG;
+            // Check that after setting the flag, the kind is distinguishable
+            // from all other kinds.
+            assert_ne!(normal_kind, this.eval_libc("PTHREAD_MUTEX_DEFAULT")?.to_i32()?);
+            assert_ne!(normal_kind, this.eval_libc("PTHREAD_MUTEX_ERRORCHECK")?.to_i32()?);
+            assert_ne!(normal_kind, this.eval_libc("PTHREAD_MUTEX_RECURSIVE")?.to_i32()?);
+            mutexattr_set_kind(this, attr_op, Scalar::from_i32(normal_kind))?;
+        } else if kind == this.eval_libc("PTHREAD_MUTEX_DEFAULT")?
             || kind == this.eval_libc("PTHREAD_MUTEX_ERRORCHECK")?
             || kind == this.eval_libc("PTHREAD_MUTEX_RECURSIVE")?
         {
@@ -378,14 +413,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 Ok(0)
             } else {
                 // Trying to acquire the same mutex again.
-                if kind == this.eval_libc("PTHREAD_MUTEX_DEFAULT")? {
-                    // FIXME: Sometimes this is actually a Deadlock.
-                    // https://github.com/rust-lang/miri/issues/1419
-                    throw_ub_format!(
-                        "trying to acquire already locked PTHREAD_MUTEX_DEFAULT (see #1419)"
-                    );
-                }
-                if kind == this.eval_libc("PTHREAD_MUTEX_NORMAL")? {
+                if is_mutex_kind_default(this, kind)? {
+                    throw_ub_format!("trying to acquire already locked PTHREAD_MUTEX_DEFAULT");
+                } else if is_mutex_kind_normal(this, kind)? {
                     throw_machine_stop!(TerminationInfo::Deadlock);
                 } else if kind == this.eval_libc("PTHREAD_MUTEX_ERRORCHECK")? {
                     this.eval_libc_i32("EDEADLK")
@@ -417,8 +447,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             if owner_thread != active_thread {
                 this.eval_libc_i32("EBUSY")
             } else {
-                if kind == this.eval_libc("PTHREAD_MUTEX_DEFAULT")?
-                    || kind == this.eval_libc("PTHREAD_MUTEX_NORMAL")?
+                if is_mutex_kind_default(this, kind)?
+                    || is_mutex_kind_normal(this, kind)?
                     || kind == this.eval_libc("PTHREAD_MUTEX_ERRORCHECK")?
                 {
                     this.eval_libc_i32("EBUSY")
@@ -452,11 +482,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // The mutex was locked by another thread or not locked at all. See
             // the “Unlock When Not Owner” column in
             // https://pubs.opengroup.org/onlinepubs/9699919799/functions/pthread_mutex_unlock.html.
-            if kind == this.eval_libc("PTHREAD_MUTEX_DEFAULT")? {
+            if is_mutex_kind_default(this, kind)? {
                 throw_ub_format!(
                     "unlocked a PTHREAD_MUTEX_DEFAULT mutex that was not locked by the current thread"
                 );
-            } else if kind == this.eval_libc("PTHREAD_MUTEX_NORMAL")? {
+            } else if is_mutex_kind_normal(this, kind)? {
                 throw_ub_format!(
                     "unlocked a PTHREAD_MUTEX_NORMAL mutex that was not locked by the current thread"
                 );
