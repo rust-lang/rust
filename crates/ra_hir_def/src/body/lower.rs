@@ -218,8 +218,12 @@ impl ExprCollector<'_> {
                     let body = self.collect_block_opt(e.block_expr());
                     self.alloc_expr(Expr::TryBlock { body }, syntax_ptr)
                 }
+                ast::Effect::Unsafe(_) => {
+                    let body = self.collect_block_opt(e.block_expr());
+                    self.alloc_expr(Expr::UnsafeBlock { body }, syntax_ptr)
+                }
                 // FIXME: we need to record these effects somewhere...
-                ast::Effect::Async(_) | ast::Effect::Label(_) | ast::Effect::Unsafe(_) => {
+                ast::Effect::Async(_) | ast::Effect::Label(_) => {
                     self.collect_block_opt(e.block_expr())
                 }
             },

@@ -608,10 +608,30 @@ fn no_missing_unsafe_diagnostic_with_raw_ptr_in_unsafe_block() {
         r"
 //- /lib.rs
 fn nothing_to_see_move_along() {
+    let x = &5 as *const usize;
     unsafe {
-        let x = &5 as *const usize;
         let y = *x;
     }
+}
+",
+    )
+    .diagnostics()
+    .0;
+
+    assert_snapshot!(diagnostics, @"");
+}
+
+#[test]
+fn missing_unsafe_diagnostic_with_raw_ptr_outside_unsafe_block() {
+    let diagnostics = TestDB::with_files(
+        r"
+//- /lib.rs
+fn nothing_to_see_move_along() {
+    let x = &5 as *const usize;
+    unsafe {
+        let y = *x;
+    }
+    let z = *x;
 }
 ",
     )

@@ -318,46 +318,74 @@ pub fn record_pattern_missing_fields(
     Some((variant_def, missed_fields, exhaustive))
 }
 
+pub struct UnsafeExpr {
+    expr: ExprId,
+    inside_unsafe_block: bool,
+}
+
+impl UnsafeExpr {
+    fn new(expr: ExprId) -> Self {
+        Self { expr, inside_unsafe_block: false }
+    }
+}
+
 pub fn unsafe_expressions(
     db: &dyn HirDatabase,
     infer: &InferenceResult,
     def: DefWithBodyId,
-) -> Vec<ExprId> {
-    let mut unsafe_expr_ids = vec![];
+) -> Vec<UnsafeExpr> {
+    let mut unsafe_exprs = vec![];
+    let mut unsafe_block_scopes = vec![];
     let body = db.body(def);
+    let expr_scopes = db.expr_scopes(def);
     for (id, expr) in body.exprs.iter() {
         match expr {
+            Expr::UnsafeBlock { body } => {
+                if let Some(scope) = expr_scopes.scope_for(*body) {
+                    unsafe_block_scopes.push(scope);
+                }
+            }
             Expr::Call { callee, .. } => {
                 let ty = &infer.type_of_expr[*callee];
-                if let &Ty::Apply(ApplicationTy {ctor: TypeCtor::FnDef(CallableDef::FunctionId(func)), .. }) = ty {
+                if let &Ty::Apply(ApplicationTy {
+                    ctor: TypeCtor::FnDef(CallableDef::FunctionId(func)),
+                    ..
+                }) = ty
+                {
                     if db.function_data(func).is_unsafe {
-                        unsafe_expr_ids.push(id);
+                        unsafe_exprs.push(UnsafeExpr::new(id));
                     }
-                 }
+                }
             }
             Expr::MethodCall { .. } => {
                 if infer
                     .method_resolution(id)
-                    .map(|func| {
-                        db.function_data(func).is_unsafe
-                    })
-                    .unwrap_or_else(|| {
-                        false
-                    })
+                    .map(|func| db.function_data(func).is_unsafe)
+                    .unwrap_or_else(|| false)
                 {
-                    unsafe_expr_ids.push(id);
+                    unsafe_exprs.push(UnsafeExpr::new(id));
                 }
             }
             Expr::UnaryOp { expr, op: UnaryOp::Deref } => {
                 if let Ty::Apply(ApplicationTy { ctor: TypeCtor::RawPtr(..), .. }) = &infer[*expr] {
-                    unsafe_expr_ids.push(id);
+                    unsafe_exprs.push(UnsafeExpr::new(id));
                 }
             }
             _ => {}
         }
     }
 
-    unsafe_expr_ids
+    'unsafe_exprs: for unsafe_expr in &mut unsafe_exprs {
+        let scope = expr_scopes.scope_for(unsafe_expr.expr);
+        for scope in expr_scopes.scope_chain(scope) {
+            if unsafe_block_scopes.contains(&scope) {
+                unsafe_expr.inside_unsafe_block = true;
+                continue 'unsafe_exprs;
+            }
+        }
+    }
+
+    unsafe_exprs
 }
 
 pub struct UnsafeValidator<'a, 'b: 'a> {
@@ -379,7 +407,13 @@ impl<'a, 'b> UnsafeValidator<'a, 'b> {
         let def = self.func.into();
         let unsafe_expressions = unsafe_expressions(db, self.infer.as_ref(), def);
         let func_data = db.function_data(self.func);
-        if func_data.is_unsafe || unsafe_expressions.len() == 0 {
+        if func_data.is_unsafe
+            || unsafe_expressions
+                .into_iter()
+                .filter(|unsafe_expr| !unsafe_expr.inside_unsafe_block)
+                .count()
+                == 0
+        {
             return;
         }
 
