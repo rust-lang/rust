@@ -246,6 +246,35 @@ mod tests {
     }
 
     #[test]
+    fn test_call_hierarchy_in_tests_mod() {
+        check_hierarchy(
+            r#"
+            //- /lib.rs cfg:test
+            fn callee() {}
+            fn caller1() {
+                call<|>ee();
+            }
+
+            #[cfg(test)]
+            mod tests {
+                use super::*;
+
+                #[test]
+                fn test_caller() {
+                    callee();
+                }
+            }
+            "#,
+            "callee FN_DEF FileId(1) 0..14 3..9",
+            &[
+                "caller1 FN_DEF FileId(1) 15..45 18..25 : [34..40]",
+                "test_caller FN_DEF FileId(1) 93..147 108..119 : [132..138]",
+            ],
+            &[],
+        );
+    }
+
+    #[test]
     fn test_call_hierarchy_in_different_files() {
         check_hierarchy(
             r#"
