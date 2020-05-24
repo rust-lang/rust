@@ -218,6 +218,7 @@ fn do_mir_borrowck<'a, 'tcx>(
         &mut flow_inits,
         &mdpe.move_data,
         &borrow_set,
+        &upvars,
     );
 
     // Dump MIR results into a file, if that is enabled. This let us
@@ -2301,30 +2302,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// be `self` in the current MIR, because that is the only time we directly access the fields
     /// of a closure type.
     pub fn is_upvar_field_projection(&self, place_ref: PlaceRef<'tcx>) -> Option<Field> {
-        let mut place_projection = place_ref.projection;
-        let mut by_ref = false;
-
-        if let [proj_base @ .., ProjectionElem::Deref] = place_projection {
-            place_projection = proj_base;
-            by_ref = true;
-        }
-
-        match place_projection {
-            [base @ .., ProjectionElem::Field(field, _ty)] => {
-                let tcx = self.infcx.tcx;
-                let base_ty = Place::ty_from(place_ref.local, base, self.body(), tcx).ty;
-
-                if (base_ty.is_closure() || base_ty.is_generator())
-                    && (!by_ref || self.upvars[field.index()].by_ref)
-                {
-                    Some(*field)
-                } else {
-                    None
-                }
-            }
-
-            _ => None,
-        }
+        path_utils::is_upvar_field_projection(self.infcx.tcx, &self.upvars, place_ref, self.body())
     }
 }
 
