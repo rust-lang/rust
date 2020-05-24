@@ -611,6 +611,10 @@
         ],
         "semanticTokenModifiers": [
             {
+                "id": "attribute",
+                "description": "Style for elements within attributes"
+            },
+            {
                 "id": "constant",
                 "description": "Style for compile-time constants"
             },
@@ -636,6 +640,9 @@
                     ],
                     "attribute": [
                         "meta.attribute.rust"
+                    ],
+                    "function.attribute": [
+                        "entity.name.function.attribute.rust"
                     ],
                     "builtinType": [
                         "support.type.primitive.rust"
