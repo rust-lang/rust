@@ -6,6 +6,7 @@ use crate::{
     ast::{AstToken, Comment, RawString, String, Whitespace},
     TextRange, TextSize,
 };
+use rustc_lexer::unescape::{unescape_literal, Mode};
 
 impl Comment {
     pub fn kind(&self) -> CommentKind {
@@ -147,7 +148,7 @@ impl HasStringValue for String {
 
         let mut buf = std::string::String::with_capacity(text.len());
         let mut has_error = false;
-        rustc_lexer::unescape::unescape_str(text, &mut |_, unescaped_char| match unescaped_char {
+        unescape_literal(text, Mode::Str, &mut |_, unescaped_char| match unescaped_char {
             Ok(c) => buf.push(c),
             Err(_) => has_error = true,
         });
@@ -498,7 +499,7 @@ impl HasFormatSpecifier for String {
         let offset = self.text_range_between_quotes()?.start() - self.syntax().text_range().start();
 
         let mut res = Vec::with_capacity(text.len());
-        rustc_lexer::unescape::unescape_str(text, &mut |range, unescaped_char| {
+        unescape_literal(text, Mode::Str, &mut |range, unescaped_char| {
             res.push((
                 TextRange::new(range.start.try_into().unwrap(), range.end.try_into().unwrap())
                     + offset,
