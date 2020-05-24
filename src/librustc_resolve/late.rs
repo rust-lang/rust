@@ -1621,11 +1621,10 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         let report_errors = |this: &mut Self, res: Option<Res>| {
             let (err, candidates) = this.smart_resolve_report_errors(path, span, source, res);
             let def_id = this.parent_scope.module.normal_ancestor_id;
-            let node_id = this.r.definitions.as_local_node_id(def_id).unwrap();
             let better = res.is_some();
             let suggestion =
                 if res.is_none() { this.report_missing_type_error(path) } else { None };
-            this.r.use_injections.push(UseError { err, candidates, node_id, better, suggestion });
+            this.r.use_injections.push(UseError { err, candidates, def_id, better, suggestion });
             PartialRes::new(Res::Err)
         };
 

@@ -1321,12 +1321,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
                                     .get_partial_res(bound_pred.bounded_ty.id)
                                     .map(|d| d.base_res())
                                 {
-                                    if let Some(node_id) =
-                                        self.resolver.definitions().as_local_node_id(def_id)
-                                    {
+                                    if let Some(def_id) = def_id.as_local() {
                                         for param in &generics.params {
                                             if let GenericParamKind::Type { .. } = param.kind {
-                                                if node_id == param.id {
+                                                if def_id
+                                                    == self
+                                                        .resolver
+                                                        .definitions()
+                                                        .local_def_id(param.id)
+                                                {
                                                     add_bounds
                                                         .entry(param.id)
                                                         .or_default()
