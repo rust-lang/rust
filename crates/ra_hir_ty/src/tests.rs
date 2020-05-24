@@ -603,6 +603,76 @@ fn missing_unsafe() {
 }
 
 #[test]
+fn no_missing_unsafe_diagnostic_with_raw_ptr_in_unsafe_block() {
+    let diagnostics = TestDB::with_files(
+        r"
+//- /lib.rs
+fn nothing_to_see_move_along() {
+    unsafe {
+        let x = &5 as *usize;
+        let y = *x;
+    }
+}
+",
+    )
+    .diagnostics()
+    .0;
+
+    assert_snapshot!(diagnostics, @"");
+}
+
+#[test]
+fn no_missing_unsafe_diagnostic_with_unsafe_call_in_unsafe_block() {
+    let diagnostics = TestDB::with_files(
+        r"
+//- /lib.rs
+unsafe fn unsafe_fn() {
+    let x = &5 as *usize;
+    let y = *x;
+}
+
+fn nothing_to_see_move_along() {
+    unsafe {
+        unsafe_fn();
+    }
+}
+",
+    )
+    .diagnostics()
+    .0;
+
+    assert_snapshot!(diagnostics, @"");
+}
+
+#[test]
+fn no_missing_unsafe_diagnostic_with_unsafe_method_call_in_unsafe_block() {
+    let diagnostics = TestDB::with_files(
+        r"
+//- /lib.rs
+struct HasUnsafe;
+
+impl HasUnsafe {
+    unsafe fn unsafe_fn() {
+        let x = &5 as *usize;
+        let y = *x;
+    }
+}
+
+fn nothing_to_see_move_along() {
+    unsafe {
+        HasUnsafe.unsafe_fn();
+    }
+}
+
+",
+    )
+    .diagnostics()
+    .0;
+
+    assert_snapshot!(diagnostics, @"");
+}
+
+#[test]
 fn unnecessary_unsafe_diagnostic() {
     let diagnostics = TestDB::with_files(
         r"

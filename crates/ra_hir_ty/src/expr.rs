@@ -329,9 +329,24 @@ pub fn unsafe_expressions(
         match expr {
             Expr::Call { callee, .. } => {
                 if infer
-                    .method_resolution(*callee)
+                    .method_resolution(/* id */ *callee)
                     .map(|func| db.function_data(func).is_unsafe)
                     .unwrap_or(false)
+                {
+                    unsafe_expr_ids.push(id);
+                }
+            }
+            Expr::MethodCall {/*_receiver, method_name,*/ .. } => {
+                // let receiver_ty = &infer.type_of_expr[*receiver];
+                // receiver_ty
+                if infer
+                    .method_resolution(id)
+                    .map(|func| {
+                        db.function_data(func).is_unsafe
+                    })
+                    .unwrap_or_else(|| {
+                        false
+                    })
                 {
                     unsafe_expr_ids.push(id);
                 }
