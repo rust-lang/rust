@@ -37,7 +37,6 @@ declare_clippy_lint! {
 declare_lint_pass!(MultipleCrateVersions => [MULTIPLE_CRATE_VERSIONS]);
 
 impl LateLintPass<'_, '_> for MultipleCrateVersions {
-    #[allow(clippy::find_map)]
     fn check_crate(&mut self, cx: &LateContext<'_, '_>, _: &Crate<'_>) {
         if !run_lints(cx, &[MULTIPLE_CRATE_VERSIONS], CRATE_HIR_ID) {
             return;
@@ -56,7 +55,9 @@ impl LateLintPass<'_, '_> for MultipleCrateVersions {
 
         if_chain! {
             if let Some(resolve) = &metadata.resolve;
-            if let Some(local_id) = packages.iter().find(|p| p.name == *local_name).map(|p| &p.id);
+            if let Some(local_id) = packages
+                .iter()
+                .find_map(|p| if p.name == *local_name { Some(&p.id) } else { None });
             then {
                 for (name, group) in &packages.iter().group_by(|p| p.name.clone()) {
                     let group: Vec<&Package> = group.collect();
