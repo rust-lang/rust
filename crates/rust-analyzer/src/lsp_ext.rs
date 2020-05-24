@@ -60,19 +60,19 @@ pub struct ExpandMacroParams {
     pub position: Option<Position>,
 }
 
-pub enum FindMatchingBrace {}
+pub enum MatchingBrace {}
 
-impl Request for FindMatchingBrace {
-    type Params = FindMatchingBraceParams;
+impl Request for MatchingBrace {
+    type Params = MatchingBraceParams;
     type Result = Vec<Position>;
-    const METHOD: &'static str = "rust-analyzer/findMatchingBrace";
+    const METHOD: &'static str = "experimental/matchingBrace";
 }
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct FindMatchingBraceParams {
+pub struct MatchingBraceParams {
     pub text_document: TextDocumentIdentifier,
-    pub offsets: Vec<Position>,
+    pub positions: Vec<Position>,
 }
 
 pub enum ParentModule {}

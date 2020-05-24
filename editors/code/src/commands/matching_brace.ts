@@ -9,9 +9,9 @@ export function matchingBrace(ctx: Ctx): Cmd {
         const client = ctx.client;
         if (!editor || !client) return;
 
-        const response = await client.sendRequest(ra.findMatchingBrace, {
+        const response = await client.sendRequest(ra.matchingBrace, {
             textDocument: { uri: editor.document.uri.toString() },
-            offsets: editor.selections.map(s =>
+            positions: editor.selections.map(s =>
                 client.code2ProtocolConverter.asPosition(s.active),
             ),
         });

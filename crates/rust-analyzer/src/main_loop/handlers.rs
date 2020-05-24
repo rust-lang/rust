@@ -126,15 +126,15 @@ pub fn handle_selection_range(
     Ok(Some(res?))
 }
 
-pub fn handle_find_matching_brace(
+pub fn handle_matching_brace(
     world: WorldSnapshot,
-    params: lsp_ext::FindMatchingBraceParams,
+    params: lsp_ext::MatchingBraceParams,
 ) -> Result<Vec<Position>> {
-    let _p = profile("handle_find_matching_brace");
+    let _p = profile("handle_matching_brace");
     let file_id = from_proto::file_id(&world, &params.text_document.uri)?;
     let line_index = world.analysis().file_line_index(file_id)?;
     let res = params
-        .offsets
+        .positions
         .into_iter()
         .map(|position| {
             let offset = from_proto::offset(&line_index, position);

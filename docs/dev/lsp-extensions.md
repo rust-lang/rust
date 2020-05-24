@@ -95,7 +95,7 @@ Invoking code action at this position will yield two code actions for importing 
 
 This request is send from client to server to handle "Join Lines" editor action.
 
-**Method:** `experimental/JoinLines`
+**Method:** `experimental/joinLines`
 
 **Request:**
 
@@ -172,3 +172,48 @@ SSR with query `foo($a:expr, $b:expr) ==>> ($a).foo($b)` will transform, eg `foo
 
 * Probably needs search without replace mode
 * Needs a way to limit the scope to certain files.
+
+## Matching Brace
+
+**Issue:** https://github.com/microsoft/language-server-protocol/issues/999
+
+**Server Capability:** `{ "matchingBrace": boolean }`
+
+This request is send from client to server to handle "Matching Brace" editor action.
+
+**Method:** `experimental/matchingBrace`
+
+**Request:**
+
+```typescript
+interface MatchingBraceParams {
+    textDocument: TextDocumentIdentifier,
+    /// Position for each cursor
+    positions: Position[],
+}
+```
+
+**Response:**
+
+```typescript
+Position[]
+```
+
+### Example
+
+```rust
+fn main() {
+    let x: Vec<()>/*cursor here*/ = vec![]
+}
+```
+
+`experimental/matchingBrace` yields the position of `<`.
+In many cases, matching braces can be handled by the editor.
+However, some cases (like disambiguating between generics and comparison operations) need a real parser.
+Moreover, it would be cool if editors didn't need to implement even basic language parsing
+
+### Unresolved Question
+
+* Should we return a a nested brace structure, to allow paredit-like actions of jump *out* of the current brace pair?
+  This is how `SelectionRange` request works.
+* Alternatively, should we perhaps flag certain `SelectionRange`s as being brace pairs?
