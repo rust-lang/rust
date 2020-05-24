@@ -626,3 +626,198 @@ void compute_zach_weight_error_b(const double *w, double *wb, double *err,
 }
 
 }
+
+#if 0
+//! Adept
+
+#include <adept_source.h>
+#include <adept.h>
+#include <adept_arrays.h>
+using adept::adouble;
+
+using adept::aVector;
+
+/* ===================================================================== */
+/*                                UTILS                                  */
+/* ===================================================================== */
+
+adouble sqsum(int n, aVector x)
+{
+    return adept::sum(x*x);
+}
+
+
+
+void cross(aVector a, aVector b, aVector out)
+{
+    out(0) = a(1) * b(2) - a(2) * b(1);
+    out(1) = a(2) * b(0) - a(0) * b(2);
+    out(2) = a(0) * b(1) - a(1) * b(0);
+}
+
+
+
+/* ===================================================================== */
+/*                               MAIN LOGIC                              */
+/* ===================================================================== */
+
+// rot: 3 rotation parameters
+// pt: 3 point to be rotated
+// rotatedPt: 3 rotated point
+// this is an efficient evaluation (part of
+// the Ceres implementation)
+// easy to understand calculation in matlab:
+//  theta = sqrt(sum(w. ^ 2));
+//  n = w / theta;
+//  n_x = au_cross_matrix(n);
+//  R = eye(3) + n_x*sin(theta) + n_x*n_x*(1 - cos(theta));
+void rodrigues_rotate_point(aVector rot, aVector pt, aVector rotatedPt)
+{
+    int i;
+    adouble sqtheta = sqsum(3, rot);
+    if (sqtheta != 0)
+    {
+        adouble theta, costheta, sintheta, theta_inverse;
+        aVector w_cross_pt(3);
+        adouble tmp;
+
+        theta = sqrt(sqtheta);
+        costheta = cos(theta);
+        sintheta = sin(theta);
+        theta_inverse = 1.0 / theta;
+
+        aVector w = rot * theta_inverse;
+
+        cross(w, pt, w_cross_pt);
+
+        tmp = adept::sum(w * pt) *
+            (1. - costheta);
+
+        rotatedPt = pt * costheta + w_cross_pt * sintheta + w * tmp;
+    }
+    else
+    {
+        aVector rot_cross_pt(3);
+        cross(rot, pt, rot_cross_pt);
+
+        rotatedPt = pt + rot_cross_pt;
+    }
+}
+
+
+
+void radial_distort(aVector rad_params, aVector proj)
+{
+    adouble rsq, L;
+    rsq = sqsum(2, proj);
+    L = 1. + rad_params(0) * rsq + rad_params(1) * rsq * rsq;
+    proj *= L;
+}
+
+
+
+void project(aVector cam, aVector X, aVector proj)
+{
+    auto C = cam(adept::range(3,adept::end));
+    aVector Xcam(3);
+
+    aVector Xo = X(adept::range(0, 3)) - C(adept::range(0, 3));
+
+    rodrigues_rotate_point(cam, Xo, Xcam);
+
+    proj(0) = Xcam(0) / Xcam(2);
+    proj(1) = Xcam(1) / Xcam(2);
+
+    radial_distort(cam(adept::range(9,adept::end)), proj);
+
+    proj(0) = proj(0) * cam(6) + cam(7);
+    proj(1) = proj(1) * cam(6) + cam(8);
+}
+
+
+
+// cam: 11 camera in format [r1 r2 r3 C1 C2 C3 f u0 v0 k1 k2]
+//            r1, r2, r3 are angle - axis rotation parameters(Rodrigues)
+//            [C1 C2 C3]' is the camera center
+//            f is the focal length in pixels
+//            [u0 v0]' is the principal point
+//            k1, k2 are radial distortion parameters
+// X: 3 point
+// feats: 2 feature (x,y coordinates)
+// reproj_err: 2
+// projection function:
+// Xcam = R * (X - C)
+// distorted = radial_distort(projective2euclidean(Xcam), radial_parameters)
+// proj = distorted * f + principal_point
+// err = sqsum(proj - measurement)
+void compute_reproj_error(
+    double const* __restrict cam,
+    double const* __restrict X,
+    double const* __restrict w,
+    double const* __restrict feat,
+    double * __restrict err
+)
+{
+    double proj[2];
+    project(cam, X, proj);
+
+    err[0] = (*w)*(proj[0] - feat[0]);
+    err[1] = (*w)*(proj[1] - feat[1]);
+}
+
+
+
+void compute_zach_weight_error(double const* w, double* err)
+{
+    *err = 1 - (*w)*(*w);
+}
+
+
+
+// n number of cameras
+// m number of points
+// p number of observations
+// cams: 11*n cameras in format [r1 r2 r3 C1 C2 C3 f u0 v0 k1 k2]
+//            r1, r2, r3 are angle - axis rotation parameters(Rodrigues)
+//            [C1 C2 C3]' is the camera center
+//            f is the focal length in pixels
+//            [u0 v0]' is the principal point
+//            k1, k2 are radial distortion parameters
+// X: 3*m points
+// obs: 2*p observations (pairs cameraIdx, pointIdx)
+// feats: 2*p features (x,y coordinates corresponding to observations)
+// reproj_err: 2*p errors of observations
+// w_err: p weight "error" terms
+void ba_objective(
+    int n,
+    int m,
+    int p,
+    double const* cams,
+    double const* X,
+    double const* w,
+    int const* obs,
+    double const* feats,
+    double* reproj_err,
+    double* w_err
+)
+{
+    int i;
+    for (i = 0; i < p; i++)
+    {
+        int camIdx = obs[i * 2 + 0];
+        int ptIdx = obs[i * 2 + 1];
+        compute_reproj_error(
+            &cams[camIdx * BA_NCAMPARAMS],
+            &X[ptIdx * 3],
+            &w[i],
+            &feats[i * 2],
+            &reproj_err[2 * i]
+        );
+    }
+
+    for (i = 0; i < p; i++)
+    {
+        compute_zach_weight_error(&w[i], &w_err[i]);
+    }
+}
+#endif

@@ -179,11 +179,11 @@ int main(const int argc, const char* argv[]) {
       gettimeofday(&start, NULL);
       calculate_jacobian<gmm_objective_b>(input, result);
       gettimeofday(&end, NULL);
-      printf("** Tapenade combined %0.6f\n", tdiff(&start, &end));
+      printf("Tapenade combined %0.6f\n", tdiff(&start, &end));
       for(unsigned i=0; i<5; i++) {
         printf("%f ", result.gradient[i]);
       }
-      printf("]\n");
+      printf("\n");
     }
 
     }
@@ -203,11 +203,11 @@ int main(const int argc, const char* argv[]) {
       gettimeofday(&start, NULL);
       calculate_jacobian<dgmm_objective>(input, result);
       gettimeofday(&end, NULL);
-      printf("++ Enzyme combined %0.6f\n", tdiff(&start, &end));
+      printf("Enzyme combined %0.6f\n", tdiff(&start, &end));
       for(unsigned i=0; i<5; i++) {
         printf("%f ", result.gradient[i]);
       }
-      printf("]\n");
+      printf("\n");
     }
 
     }

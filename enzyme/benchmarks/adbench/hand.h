@@ -591,11 +591,11 @@ int main(const int argc, const char* argv[]) {
       gettimeofday(&start, NULL);
       calculate_jacobian<hand_objective_d, hand_objective_complicated_d>(objective_input, input, result, params.is_complicated, theta_d, us_d, us_jacobian_column);
       gettimeofday(&end, NULL);
-      printf("** Tapenade combined %0.6f\n", tdiff(&start, &end));
+      printf("Tapenade combined %0.6f\n", tdiff(&start, &end));
       for(unsigned i=0; i<5; i++) {
         printf("%f ", result.jacobian[i]);
       }
-      printf("]\n");
+      printf("\n");
     }
 
     }
@@ -640,11 +640,11 @@ int main(const int argc, const char* argv[]) {
       gettimeofday(&start, NULL);
       calculate_jacobian<dhand_objective, dhand_objective_complicated>(objective_input, input, result, params.is_complicated, theta_d, us_d, us_jacobian_column);
       gettimeofday(&end, NULL);
-      printf("++ Enzyme combined %0.6f\n", tdiff(&start, &end));
+      printf("Enzyme combined %0.6f\n", tdiff(&start, &end));
       for(unsigned i=0; i<5; i++) {
         printf("%f ", result.jacobian[i]);
       }
-      printf("]\n");
+      printf("\n");
     }
 
     }

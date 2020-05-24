@@ -339,12 +339,13 @@ static inline typename std::map<K, V>::iterator insert_or_assign(std::map<K, V>&
 #include "llvm/IR/CFG.h"
 #include <functional>
 #include <deque>
-static inline void allFollowersOf(llvm::Instruction* inst, std::function<void(llvm::Instruction*)> f) {
+// Return true if should break early
+static inline void allFollowersOf(llvm::Instruction* inst, std::function<bool(llvm::Instruction*)> f) {
 
   //llvm::errs() << "all followers of: " << *inst << "\n";
   for(auto uinst = inst->getNextNode(); uinst != nullptr; uinst = uinst->getNextNode()) {
     //llvm::errs() << " + bb1: " << *uinst << "\n";
-    f(uinst);
+    if (f(uinst)) return;
   }
 
   std::deque<llvm::BasicBlock*> todo;
@@ -358,7 +359,7 @@ static inline void allFollowersOf(llvm::Instruction* inst, std::function<void(ll
     if (done.count(BB)) continue;
     done.insert(BB);
     for(auto &ni : *BB) {
-      f(&ni);
+      if (f(&ni)) return;
       if (&ni == inst) break;
     }
     for(auto suc : llvm::successors(BB)) {

@@ -362,11 +362,11 @@ int main(const int argc, const char* argv[]) {
       gettimeofday(&start, NULL);
       calculate_jacobian<compute_reproj_error_b, compute_zach_weight_error_b>(input, result);
       gettimeofday(&end, NULL);
-      printf("** Tapenade combined %0.6f\n", tdiff(&start, &end));
+      printf("Tapenade combined %0.6f\n", tdiff(&start, &end));
       for(unsigned i=0; i<5; i++) {
         printf("%f ", result.J.vals[i]);
       }
-      printf("]\n");
+      printf("\n");
     }
 
     }
@@ -408,7 +408,7 @@ int main(const int argc, const char* argv[]) {
       gettimeofday(&start, NULL);
       calculate_jacobian<dcompute_reproj_error, dcompute_zach_weight_error>(input, result);
       gettimeofday(&end, NULL);
-      printf("++ enzyme combined %0.6f\n", tdiff(&start, &end));
+      printf("Enzyme combined %0.6f\n", tdiff(&start, &end));
       for(unsigned i=0; i<5; i++) {
         printf("%f ", result.J.vals[i]);
       }

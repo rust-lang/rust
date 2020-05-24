@@ -148,18 +148,20 @@ bool is_load_uncacheable(LoadInst& li, AAResults& AA, GradientUtils* gutils, Tar
           }
         }
         if (called && isCertainMallocOrFree(called)) {
-          return;
+          return false;
         }
       }
 
       if (unnecessaryInstructions.count(inst2)) {
-        return;
+        return false;
       }
 
       if (llvm::isModSet(AA.getModRefInfo(inst2, MemoryLocation::get(&li)))) {
         can_modref = true;
-        return;
+        // Early exit
+        return true;
       }
+      return false;
     });
   }
 
@@ -225,11 +227,11 @@ std::map<Argument*, bool> compute_uncacheable_args_for_one_callsite(CallInst* ca
           }
         }
         if (called && isCertainMallocOrFree(called)) {
-          return;
+          return false;
         }
       }
 
-      if (unnecessaryInstructions.count(inst2)) return;
+      if (unnecessaryInstructions.count(inst2)) return false;
 
       for (unsigned i = 0; i < args.size(); i++) {
         if (llvm::isModSet(AA.getModRefInfo(inst2, MemoryLocation::getForArgument(callsite_op, i, TLI)))) {
@@ -237,6 +239,7 @@ std::map<Argument*, bool> compute_uncacheable_args_for_one_callsite(CallInst* ca
           //llvm::errs() << "Instruction " << *inst2 << " is maybe ModRef with call argument " << *args[i] << "\n";
         }
       }
+      return false;
   });
 
   std::map<Argument*, bool> uncacheable_args;
@@ -724,12 +727,14 @@ bool legalCombinedForwardReverse(CallInst &ci, const std::map<ReturnInst*,StoreI
 
     if (inst->mayWriteToMemory()) {
       auto consider = [&](Instruction* user) {
-        if (!user->mayReadFromMemory()) return;
+        if (!user->mayReadFromMemory()) return false;
         if (writesToMemoryReadBy(gutils->AA, /*maybeReader*/user, /*maybeWriter*/inst)) {
           //llvm::errs() << " memory deduced need follower of " << *inst << " - " << *user << "\n";
           propagate(user);
-          if (!legal) return;
+          // Fast return if not legal
+          if (!legal) return true;
         }
+        return false;
       };
       allFollowersOf(inst, consider);
       if (!legal) return false;
@@ -748,8 +753,8 @@ bool legalCombinedForwardReverse(CallInst &ci, const std::map<ReturnInst*,StoreI
   for (auto inst : usetree) {
     if (!inst->mayReadFromMemory()) continue;
     allFollowersOf(inst, [&](Instruction* post) {
-      if (unnecessaryInstructions.count(post)) return;
-      if (!post->mayWriteToMemory()) return;
+      if (unnecessaryInstructions.count(post)) return false;
+      if (!post->mayWriteToMemory()) return false;
       //llvm::errs() << " checking if illegal move of " << *inst << " due to " << *post << "\n";
       if (writesToMemoryReadBy(gutils->AA, /*maybeReader*/inst, /*maybeWriter*/post)) {
         if (called)
@@ -757,7 +762,9 @@ bool legalCombinedForwardReverse(CallInst &ci, const std::map<ReturnInst*,StoreI
         else
           llvm::errs() << " failed to replace function " << (*ci.getCalledValue()) << " due to " << *post << " usetree: " << *inst << "\n";
         legal = false;
+        return true;
       }
+      return false;
     });
     if (!legal) break;
   }
@@ -770,11 +777,11 @@ bool legalCombinedForwardReverse(CallInst &ci, const std::map<ReturnInst*,StoreI
       auto find = replacedReturns.find(ri);
       if (find != replacedReturns.end()) {
         postCreate.push_back(find->second);
-        return;
+        return false;
       }
     }
 
-    if (usetree.count(inst) == 0) return;
+    if (usetree.count(inst) == 0) return false;
     if (inst->getParent() != origop->getParent()) {
       // Don't move a writing instruction (may change speculatable/etc things)
       if (inst->mayWriteToMemory()) {
@@ -783,7 +790,8 @@ bool legalCombinedForwardReverse(CallInst &ci, const std::map<ReturnInst*,StoreI
         else
           llvm::errs() << " [nonspec] ailed to replace function " << (*ci.getCalledValue()) << " due to " << *inst << "\n";
         legal = false;
-        return;
+        // Early exit
+        return true;
       }
     }
     if (isa<CallInst>(inst) && gutils->originalToNewFn.find(inst) == gutils->originalToNewFn.end()) {
@@ -792,9 +800,11 @@ bool legalCombinedForwardReverse(CallInst &ci, const std::map<ReturnInst*,StoreI
         llvm::errs() << " [premove] failed to replace function " << (called->getName()) << " due to " << *inst << "\n";
       else
         llvm::errs() << " [premove] ailed to replace function " << (*ci.getCalledValue()) << " due to " << *inst << "\n";
-      return;
+      // Early exit
+      return true;
     }
     postCreate.push_back(gutils->getNewFromOriginal(inst));
+    return false;
   });
 
   if (!legal) return false;

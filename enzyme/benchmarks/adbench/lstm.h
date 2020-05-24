@@ -163,7 +163,7 @@ void calculate_jacobian(struct LSTMInput &input, struct LSTMOutput &result)
 int main(const int argc, const char* argv[]) {
     printf("starting main\n");
 
-    std::vector<std::string> paths = { "lstm_l2_c1024.txt", "lstm_l2_c4096.txt", "lstm_l4_c1024.txt", "lstm_l4_c4096.txt" };
+    std::vector<std::string> paths = { "lstm_l2_c1024.txt", "lstm_l4_c1024.txt", "lstm_l2_c4096.txt", "lstm_l4_c4096.txt" };
 
     for (auto path : paths) {
         printf("starting path %s\n", path.c_str());
@@ -189,11 +189,11 @@ int main(const int argc, const char* argv[]) {
       gettimeofday(&start, NULL);
       calculate_jacobian<lstm_objective_b>(input, result);
       gettimeofday(&end, NULL);
-      printf("** Tapenade combined %0.6f\n", tdiff(&start, &end));
+      printf("Tapenade combined %0.6f\n", tdiff(&start, &end));
       for(unsigned i=result.gradient.size()-5; i<result.gradient.size(); i++) {
         printf("%f ", result.gradient[i]);
       }
-      printf("]\n");
+      printf("\n");
     }
 
     }
@@ -216,11 +216,11 @@ int main(const int argc, const char* argv[]) {
       gettimeofday(&start, NULL);
       calculate_jacobian<dlstm_objective>(input, result);
       gettimeofday(&end, NULL);
-      printf("++ Enzyme combined %0.6f\n", tdiff(&start, &end));
+      printf("Enzyme combined %0.6f\n", tdiff(&start, &end));
       for(unsigned i=result.gradient.size()-5; i<result.gradient.size(); i++) {
         printf("%f ", result.gradient[i]);
       }
-      printf("]\n");
+      printf("\n");
     }
 
     }
