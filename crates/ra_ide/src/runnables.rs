@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use hir::{AsAssocItem, Semantics};
+use hir::{AsAssocItem, Attrs, HirFileId, InFile, Semantics};
 use itertools::Itertools;
 use ra_ide_db::RootDatabase;
 use ra_syntax::{
@@ -10,12 +10,14 @@ use ra_syntax::{
 
 use crate::FileId;
 use ast::DocCommentsOwner;
+use ra_cfg::CfgExpr;
 use std::fmt::Display;
 
 #[derive(Debug)]
 pub struct Runnable {
     pub range: TextRange,
     pub kind: RunnableKind,
+    pub cfg_exprs: Vec<CfgExpr>,
 }
 
 #[derive(Debug)]
@@ -45,20 +47,24 @@ pub enum RunnableKind {
 pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
     let sema = Semantics::new(db);
     let source_file = sema.parse(file_id);
-    source_file.syntax().descendants().filter_map(|i| runnable(&sema, i)).collect()
+    source_file.syntax().descendants().filter_map(|i| runnable(&sema, i, file_id)).collect()
 }
 
-fn runnable(sema: &Semantics<RootDatabase>, item: SyntaxNode) -> Option<Runnable> {
+fn runnable(sema: &Semantics<RootDatabase>, item: SyntaxNode, file_id: FileId) -> Option<Runnable> {
     match_ast! {
         match item {
-            ast::FnDef(it) => runnable_fn(sema, it),
-            ast::Module(it) => runnable_mod(sema, it),
+            ast::FnDef(it) => runnable_fn(sema, it, file_id),
+            ast::Module(it) => runnable_mod(sema, it, file_id),
             _ => None,
         }
     }
 }
 
-fn runnable_fn(sema: &Semantics<RootDatabase>, fn_def: ast::FnDef) -> Option<Runnable> {
+fn runnable_fn(
+    sema: &Semantics<RootDatabase>,
+    fn_def: ast::FnDef,
+    file_id: FileId,
+) -> Option<Runnable> {
     let name_string = fn_def.name()?.text().to_string();
 
     let kind = if name_string == "main" {
@@ -111,7 +117,12 @@ fn runnable_fn(sema: &Semantics<RootDatabase>, fn_def: ast::FnDef) -> Option<Run
             return None;
         }
     };
-    Some(Runnable { range: fn_def.syntax().text_range(), kind })
+
+    let attrs = Attrs::from_attrs_owner(sema.db, InFile::new(HirFileId::from(file_id), &fn_def));
+    let cfg_exprs =
+        attrs.by_key("cfg").tt_values().map(|subtree| ra_cfg::parse_cfg(subtree)).collect();
+
+    Some(Runnable { range: fn_def.syntax().text_range(), kind, cfg_exprs })
 }
 
 #[derive(Debug)]
@@ -147,7 +158,11 @@ fn has_doc_test(fn_def: &ast::FnDef) -> bool {
     fn_def.doc_comment_text().map_or(false, |comment| comment.contains("```"))
 }
 
-fn runnable_mod(sema: &Semantics<RootDatabase>, module: ast::Module) -> Option<Runnable> {
+fn runnable_mod(
+    sema: &Semantics<RootDatabase>,
+    module: ast::Module,
+    file_id: FileId,
+) -> Option<Runnable> {
     let has_test_function = module
         .item_list()?
         .items()
@@ -160,11 +175,20 @@ fn runnable_mod(sema: &Semantics<RootDatabase>, module: ast::Module) -> Option<R
         return None;
     }
     let range = module.syntax().text_range();
-    let module = sema.to_def(&module)?;
+    let module_def = sema.to_def(&module)?;
 
-    let path =
-        module.path_to_root(sema.db).into_iter().rev().filter_map(|it| it.name(sema.db)).join("::");
-    Some(Runnable { range, kind: RunnableKind::TestMod { path } })
+    let path = module_def
+        .path_to_root(sema.db)
+        .into_iter()
+        .rev()
+        .filter_map(|it| it.name(sema.db))
+        .join("::");
+
+    let attrs = Attrs::from_attrs_owner(sema.db, InFile::new(HirFileId::from(file_id), &module));
+    let cfg_exprs =
+        attrs.by_key("cfg").tt_values().map(|subtree| ra_cfg::parse_cfg(subtree)).collect();
+
+    Some(Runnable { range, kind: RunnableKind::TestMod { path }, cfg_exprs })
 }
 
 #[cfg(test)]
@@ -196,6 +220,7 @@ mod tests {
             Runnable {
                 range: 1..21,
                 kind: Bin,
+                cfg_exprs: [],
             },
             Runnable {
                 range: 22..46,
@@ -207,6 +232,7 @@ mod tests {
                         ignore: false,
                     },
                 },
+                cfg_exprs: [],
             },
             Runnable {
                 range: 47..81,
@@ -218,6 +244,7 @@ mod tests {
                         ignore: true,
                     },
                 },
+                cfg_exprs: [],
             },
         ]
         "###
@@ -245,6 +272,7 @@ mod tests {
             Runnable {
                 range: 1..21,
                 kind: Bin,
+                cfg_exprs: [],
             },
             Runnable {
                 range: 22..64,
@@ -253,6 +281,7 @@ mod tests {
                         "foo",
                     ),
                 },
+                cfg_exprs: [],
             },
         ]
         "###
@@ -283,6 +312,7 @@ mod tests {
             Runnable {
                 range: 1..21,
                 kind: Bin,
+                cfg_exprs: [],
             },
             Runnable {
                 range: 51..105,
@@ -291,6 +321,7 @@ mod tests {
                         "Data::foo",
                     ),
                 },
+                cfg_exprs: [],
             },
         ]
         "###
@@ -318,6 +349,7 @@ mod tests {
                 kind: TestMod {
                     path: "test_mod",
                 },
+                cfg_exprs: [],
             },
             Runnable {
                 range: 28..57,
@@ -329,6 +361,7 @@ mod tests {
                         ignore: false,
                     },
                 },
+                cfg_exprs: [],
             },
         ]
         "###
@@ -358,6 +391,7 @@ mod tests {
                 kind: TestMod {
                     path: "foo::test_mod",
                 },
+                cfg_exprs: [],
             },
             Runnable {
                 range: 46..79,
@@ -369,6 +403,7 @@ mod tests {
                         ignore: false,
                     },
                 },
+                cfg_exprs: [],
             },
         ]
         "###
@@ -400,6 +435,7 @@ mod tests {
                 kind: TestMod {
                     path: "foo::bar::test_mod",
                 },
+                cfg_exprs: [],
             },
             Runnable {
                 range: 68..105,
@@ -411,6 +447,89 @@ mod tests {
                         ignore: false,
                     },
                 },
+                cfg_exprs: [],
+            },
+        ]
+        "###
+                );
+    }
+
+    #[test]
+    fn test_runnables_with_feature() {
+        let (analysis, pos) = analysis_and_position(
+            r#"
+        //- /lib.rs crate:foo cfg:feature=foo
+        <|> //empty
+        #[test]
+        #[cfg(feature = "foo")]
+        fn test_foo1() {}
+        "#,
+        );
+        let runnables = analysis.runnables(pos.file_id).unwrap();
+        assert_debug_snapshot!(&runnables,
+        @r###"
+        [
+            Runnable {
+                range: 1..58,
+                kind: Test {
+                    test_id: Name(
+                        "test_foo1",
+                    ),
+                    attr: TestAttr {
+                        ignore: false,
+                    },
+                },
+                cfg_exprs: [
+                    KeyValue {
+                        key: "feature",
+                        value: "foo",
+                    },
+                ],
+            },
+        ]
+        "###
+                );
+    }
+
+    #[test]
+    fn test_runnables_with_features() {
+        let (analysis, pos) = analysis_and_position(
+            r#"
+        //- /lib.rs crate:foo cfg:feature=foo,feature=bar
+        <|> //empty
+        #[test]
+        #[cfg(all(feature = "foo", feature = "bar"))]
+        fn test_foo1() {}
+        "#,
+        );
+        let runnables = analysis.runnables(pos.file_id).unwrap();
+        assert_debug_snapshot!(&runnables,
+        @r###"
+        [
+            Runnable {
+                range: 1..80,
+                kind: Test {
+                    test_id: Name(
+                        "test_foo1",
+                    ),
+                    attr: TestAttr {
+                        ignore: false,
+                    },
+                },
+                cfg_exprs: [
+                    All(
+                        [
+                            KeyValue {
+                                key: "feature",
+                                value: "foo",
+                            },
+                            KeyValue {
+                                key: "feature",
+                                value: "bar",
+                            },
+                        ],
+                    ),
+                ],
             },
         ]
         "###

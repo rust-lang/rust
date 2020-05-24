@@ -81,7 +81,7 @@ impl Attrs {
         }
     }
 
-    fn from_attrs_owner(db: &dyn DefDatabase, owner: InFile<&dyn AttrsOwner>) -> Attrs {
+    pub fn from_attrs_owner(db: &dyn DefDatabase, owner: InFile<&dyn AttrsOwner>) -> Attrs {
         let hygiene = Hygiene::new(db.upcast(), owner.file_id);
         Attrs::new(owner.value, &hygiene)
     }

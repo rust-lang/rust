@@ -29,7 +29,7 @@ use crate::{
     AsMacroCall, DefWithBodyId, HasModule, Lookup, ModuleId,
 };
 
-/// A subset of Exander that only deals with cfg attributes. We only need it to
+/// A subset of Expander that only deals with cfg attributes. We only need it to
 /// avoid cyclic queries in crate def map during enum processing.
 pub(crate) struct CfgExpander {
     cfg_options: CfgOptions,

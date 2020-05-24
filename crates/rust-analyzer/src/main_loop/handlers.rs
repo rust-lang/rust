@@ -17,13 +17,14 @@ use lsp_types::{
     SemanticTokensParams, SemanticTokensRangeParams, SemanticTokensRangeResult,
     SemanticTokensResult, SymbolInformation, TextDocumentIdentifier, Url, WorkspaceEdit,
 };
+use ra_cfg::CfgExpr;
 use ra_ide::{
     FileId, FilePosition, FileRange, Query, RangeInfo, Runnable, RunnableKind, SearchScope,
     TextEdit,
 };
 use ra_prof::profile;
 use ra_project_model::TargetKind;
-use ra_syntax::{AstNode, SyntaxKind, TextRange, TextSize};
+use ra_syntax::{AstNode, SmolStr, SyntaxKind, TextRange, TextSize};
 use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::to_value;
@@ -978,7 +979,12 @@ fn to_lsp_runnable(
 ) -> Result<lsp_ext::Runnable> {
     let spec = CargoTargetSpec::for_file(world, file_id)?;
     let target = spec.as_ref().map(|s| s.target.clone());
-    let (args, extra_args) = CargoTargetSpec::runnable_args(spec, &runnable.kind)?;
+    let mut features_needed = vec![];
+    for cfg_expr in &runnable.cfg_exprs {
+        collect_minimal_features_needed(cfg_expr, &mut features_needed);
+    }
+    let (args, extra_args) =
+        CargoTargetSpec::runnable_args(spec, &runnable.kind, &features_needed)?;
     let line_index = world.analysis().file_line_index(file_id)?;
     let label = match &runnable.kind {
         RunnableKind::Test { test_id, .. } => format!("test {}", test_id),
@@ -1002,6 +1008,26 @@ fn to_lsp_runnable(
         },
         cwd: world.workspace_root_for(file_id).map(|root| root.to_owned()),
     })
+}
+
+/// Fill minimal features needed
+fn collect_minimal_features_needed(cfg_expr: &CfgExpr, features: &mut Vec<SmolStr>) {
+    match cfg_expr {
+        CfgExpr::KeyValue { key, value } if key == "feature" => features.push(value.clone()),
+        CfgExpr::All(preds) => {
+            preds.iter().for_each(|cfg| collect_minimal_features_needed(cfg, features));
+        }
+        CfgExpr::Any(preds) => {
+            for cfg in preds {
+                let len_features = features.len();
+                collect_minimal_features_needed(cfg, features);
+                if len_features != features.len() {
+                    break;
+                }
+            }
+        }
+        _ => {}
+    }
 }
 
 pub fn handle_inlay_hints(
@@ -1139,4 +1165,55 @@ pub fn handle_semantic_tokens_range(
     let highlights = world.analysis().highlight_range(frange)?;
     let semantic_tokens = to_proto::semantic_tokens(&text, &line_index, highlights);
     Ok(Some(semantic_tokens.into()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use mbe::{ast_to_token_tree, TokenMap};
+    use ra_cfg::parse_cfg;
+    use ra_syntax::{
+        ast::{self, AstNode},
+        SmolStr,
+    };
+
+    fn get_token_tree_generated(input: &str) -> (tt::Subtree, TokenMap) {
+        let source_file = ast::SourceFile::parse(input).ok().unwrap();
+        let tt = source_file.syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
+        ast_to_token_tree(&tt).unwrap()
+    }
+
+    #[test]
+    fn test_cfg_expr_minimal_features_needed() {
+        let (subtree, _) = get_token_tree_generated(r#"#![cfg(feature = "baz")]"#);
+        let cfg_expr = parse_cfg(&subtree);
+        let mut min_features = vec![];
+        collect_minimal_features_needed(&cfg_expr, &mut min_features);
+
+        assert_eq!(min_features, vec![SmolStr::new("baz")]);
+
+        let (subtree, _) =
+            get_token_tree_generated(r#"#![cfg(all(feature = "baz", feature = "foo"))]"#);
+        let cfg_expr = parse_cfg(&subtree);
+
+        let mut min_features = vec![];
+        collect_minimal_features_needed(&cfg_expr, &mut min_features);
+        assert_eq!(min_features, vec![SmolStr::new("baz"), SmolStr::new("foo")]);
+
+        let (subtree, _) =
+            get_token_tree_generated(r#"#![cfg(any(feature = "baz", feature = "foo", unix))]"#);
+        let cfg_expr = parse_cfg(&subtree);
+
+        let mut min_features = vec![];
+        collect_minimal_features_needed(&cfg_expr, &mut min_features);
+        assert_eq!(min_features, vec![SmolStr::new("baz")]);
+
+        let (subtree, _) = get_token_tree_generated(r#"#![cfg(foo)]"#);
+        let cfg_expr = parse_cfg(&subtree);
+
+        let mut min_features = vec![];
+        collect_minimal_features_needed(&cfg_expr, &mut min_features);
+        assert!(min_features.is_empty());
+    }
 }
