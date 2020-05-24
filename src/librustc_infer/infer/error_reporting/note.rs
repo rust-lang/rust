@@ -56,8 +56,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 err.span_note(
                     span,
                     &format!(
-                        "...so that the reference type `{}` does not outlive the \
-                                        data it points at",
+                        "...so that the reference type `{}` does not outlive the data it points at",
                         self.ty_to_string(ty)
                     ),
                 );
@@ -66,8 +65,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 err.span_note(
                     span,
                     &format!(
-                        "...so that the type `{}` will meet its required \
-                                        lifetime bounds",
+                        "...so that the type `{}` will meet its required lifetime bounds",
                         self.ty_to_string(t)
                     ),
                 );
@@ -81,8 +79,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             infer::CompareImplMethodObligation { span, .. } => {
                 err.span_note(
                     span,
-                    "...so that the definition in impl matches the definition from the \
-                               trait",
+                    "...so that the definition in impl matches the definition from the trait",
                 );
             }
         }
@@ -113,8 +110,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     self.tcx.sess,
                     span,
                     E0312,
-                    "lifetime of reference outlives lifetime of \
-                                                borrowed content..."
+                    "lifetime of reference outlives lifetime of borrowed content..."
                 );
                 note_and_explain_region(
                     self.tcx,
@@ -138,8 +134,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     self.tcx.sess,
                     span,
                     E0313,
-                    "lifetime of borrowed pointer outlives lifetime \
-                                                of captured variable `{}`...",
+                    "lifetime of borrowed pointer outlives lifetime of captured variable `{}`...",
                     var_name
                 );
                 note_and_explain_region(
@@ -163,8 +158,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     self.tcx.sess,
                     span,
                     E0476,
-                    "lifetime of the source pointer does not outlive \
-                                                lifetime bound of the object type"
+                    "lifetime of the source pointer does not outlive lifetime bound of the \
+                     object type"
                 );
                 note_and_explain_region(self.tcx, &mut err, "object type is valid for ", sub, "");
                 note_and_explain_region(
@@ -181,8 +176,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     self.tcx.sess,
                     span,
                     E0477,
-                    "the type `{}` does not fulfill the required \
-                                                lifetime",
+                    "the type `{}` does not fulfill the required lifetime",
                     self.ty_to_string(ty)
                 );
                 match *sub {
@@ -217,8 +211,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     self.tcx.sess,
                     span,
                     E0482,
-                    "lifetime of return value does not outlive the \
-                                                function call"
+                    "lifetime of return value does not outlive the function call"
                 );
                 note_and_explain_region(
                     self.tcx,

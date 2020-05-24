@@ -4,7 +4,7 @@ use crate::infer::error_reporting::msg_span_from_free_region;
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError;
 use rustc_errors::{Applicability, ErrorReported};
-use rustc_middle::ty::{BoundRegion, FreeRegion, RegionKind};
+use rustc_middle::ty::RegionKind;
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     /// Print the error message for lifetime errors when the return type is a static impl Trait.
@@ -37,13 +37,8 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                         err.span_note(lifetime_sp, &format!("...can't outlive {}", lifetime));
                     }
 
-                    let lifetime_name = match sup_r {
-                        RegionKind::ReFree(FreeRegion {
-                            bound_region: BoundRegion::BrNamed(_, ref name),
-                            ..
-                        }) => name.to_string(),
-                        _ => "'_".to_owned(),
-                    };
+                    let lifetime_name =
+                        if sup_r.has_name() { sup_r.to_string() } else { "'_".to_owned() };
                     let fn_return_span = return_ty.unwrap().1;
                     if let Ok(snippet) =
                         self.tcx().sess.source_map().span_to_snippet(fn_return_span)
@@ -54,9 +49,9 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                             err.span_suggestion(
                                 fn_return_span,
                                 &format!(
-                                    "you can add a bound to the return type to make it last \
-                                 less than `'static` and match {}",
-                                    lifetime,
+                                    "you can add a bound to the return type to make it last less \
+                                     than `'static` and match {}",
+                                    lifetime
                                 ),
                                 format!("{} + {}", snippet, lifetime_name),
                                 Applicability::Unspecified,
