@@ -874,7 +874,7 @@ impl f32 {
         // flip the exponent and mantissa bits in case of negative numbers.
         // We effectively convert the numbers to "two's complement" form.
         if left < 0 {
-            // i32::MAX corresponds the bit pattern of "all ones expect for the sign bit"
+            // i32::MAX corresponds the bit pattern of "all ones except for the sign bit"
             left ^= i32::MAX
         };
         if right < 0 {
