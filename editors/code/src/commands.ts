@@ -3,7 +3,7 @@ import * as lc from 'vscode-languageclient';
 import * as ra from './rust-analyzer-api';
 
 import { Ctx, Cmd } from './ctx';
-import { applySnippetWorkspaceEdit } from './snippets';
+import { applySnippetWorkspaceEdit, applySnippetTextEdits } from './snippets';
 import { spawnSync } from 'child_process';
 import { RunnableQuickPick, selectRunnable, createTask } from './run';
 import { AstInspector } from './ast_inspector';
@@ -102,7 +102,7 @@ export function onEnter(ctx: Ctx): Cmd {
 
         if (!editor || !client) return false;
 
-        const change = await client.sendRequest(ra.onEnter, {
+        const lcEdits = await client.sendRequest(ra.onEnter, {
             textDocument: { uri: editor.document.uri.toString() },
             position: client.code2ProtocolConverter.asPosition(
                 editor.selection.active,
@@ -111,10 +111,10 @@ export function onEnter(ctx: Ctx): Cmd {
             // client.logFailedRequest(OnEnterRequest.type, error);
             return null;
         });
-        if (!change) return false;
+        if (!lcEdits) return false;
 
-        const workspaceEdit = client.protocol2CodeConverter.asWorkspaceEdit(change);
-        await applySnippetWorkspaceEdit(workspaceEdit);
+        const edits = client.protocol2CodeConverter.asTextEdits(lcEdits);
+        await applySnippetTextEdits(editor, edits);
         return true;
     }
 

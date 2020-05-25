@@ -473,23 +473,14 @@ fn main() {{}}
             text_document: server.doc_id("src/m0.rs"),
             position: Position { line: 0, character: 5 },
         },
-        json!({
-          "documentChanges": [
-            {
-              "edits": [
-                {
-                  "insertTextFormat": 2,
-                  "newText": "\n/// $0",
-                  "range": {
-                    "end": { "character": 5, "line": 0 },
-                    "start": { "character": 5, "line": 0 }
-                  }
-                }
-              ],
-              "textDocument": { "uri": "file:///[..]src/m0.rs", "version": null }
+        json!([{
+            "insertTextFormat": 2,
+            "newText": "\n/// $0",
+            "range": {
+            "end": { "character": 5, "line": 0 },
+            "start": { "character": 5, "line": 0 }
             }
-          ]
-        }),
+        }]),
     );
     let elapsed = start.elapsed();
     assert!(elapsed.as_millis() < 2000, "typing enter took {:?}", elapsed);
@@ -519,23 +510,14 @@ version = \"0.0.0\"
             text_document: server.doc_id("src/main.rs"),
             position: Position { line: 0, character: 8 },
         },
-        json!({
-          "documentChanges": [
-            {
-              "edits": [
-                {
-                  "insertTextFormat": 2,
-                  "newText": "\r\n/// $0",
-                  "range": {
-                    "end": { "line": 0, "character": 8 },
-                    "start": { "line": 0, "character": 8 }
-                  }
-                }
-              ],
-              "textDocument": { "uri": "file:///[..]src/main.rs", "version": null }
+        json!([{
+            "insertTextFormat": 2,
+            "newText": "\r\n/// $0",
+            "range": {
+            "end": { "line": 0, "character": 8 },
+            "start": { "line": 0, "character": 8 }
             }
-          ]
-        }),
+        }]),
     );
 }
 

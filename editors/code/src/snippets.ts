@@ -8,7 +8,10 @@ export async function applySnippetWorkspaceEdit(edit: vscode.WorkspaceEdit) {
 
     const editor = vscode.window.visibleTextEditors.find((it) => it.document.uri.toString() === uri.toString());
     if (!editor) return;
+    await applySnippetTextEdits(editor, edits);
+}
 
+export async function applySnippetTextEdits(editor: vscode.TextEditor, edits: vscode.TextEdit[]) {
     let selection: vscode.Selection | undefined = undefined;
     let lineDelta = 0;
     await editor.edit((builder) => {

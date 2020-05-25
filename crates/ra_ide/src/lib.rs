@@ -309,7 +309,8 @@ impl Analysis {
 
     /// Returns an edit which should be applied when opening a new line, fixing
     /// up minor stuff like continuing the comment.
-    pub fn on_enter(&self, position: FilePosition) -> Cancelable<Option<SourceChange>> {
+    /// The edit will be a snippet (with `$0`).
+    pub fn on_enter(&self, position: FilePosition) -> Cancelable<Option<TextEdit>> {
         self.with_db(|db| typing::on_enter(&db, position))
     }
 
