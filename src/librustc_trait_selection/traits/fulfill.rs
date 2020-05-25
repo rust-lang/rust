@@ -357,7 +357,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                         // trait selection is because we don't have enough
                         // information about the types in the trait.
                         pending_obligation.stalled_on =
-                            trait_ref_type_vars(self.selcx, data.to_poly_trait_ref());
+                            trait_ref_infer_vars(self.selcx, data.to_poly_trait_ref());
 
                         debug!(
                             "process_predicate: pending obligation {:?} now stalled on {:?}",
@@ -435,7 +435,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                     Ok(None) => {
                         let tcx = self.selcx.tcx();
                         pending_obligation.stalled_on =
-                            trait_ref_type_vars(self.selcx, data.to_poly_trait_ref(tcx));
+                            trait_ref_infer_vars(self.selcx, data.to_poly_trait_ref(tcx));
                         ProcessResult::Unchanged
                     }
                     Ok(Some(os)) => ProcessResult::Changed(mk_pending(infcx, os)),
@@ -603,8 +603,8 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
     }
 }
 
-/// Returns the set of type inference variables contained in a trait ref.
-fn trait_ref_type_vars<'a, 'tcx>(
+/// Returns the set of inference variables contained in a trait ref.
+fn trait_ref_infer_vars<'a, 'tcx>(
     selcx: &mut SelectionContext<'a, 'tcx>,
     trait_ref: ty::PolyTraitRef<'tcx>,
 ) -> Vec<TyOrConstInferVar<'tcx>> {
