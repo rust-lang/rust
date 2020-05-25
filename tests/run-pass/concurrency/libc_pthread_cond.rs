@@ -34,7 +34,7 @@ fn test_timed_wait_timeout(clock_id: i32) {
             libc::ETIMEDOUT
         );
         let elapsed_time = current_time.elapsed().as_millis();
-        assert!(900 <= elapsed_time && elapsed_time <= 1100);
+        assert!(900 <= elapsed_time && elapsed_time <= 1300);
         assert_eq!(libc::pthread_mutex_unlock(&mut mutex as *mut _), 0);
         assert_eq!(libc::pthread_mutex_destroy(&mut mutex as *mut _), 0);
         assert_eq!(libc::pthread_cond_destroy(&mut cond as *mut _), 0);
