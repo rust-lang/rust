@@ -141,7 +141,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // This gives us an easier access to them without having to call
             // tcx.upvars again..
             if !upvar_list.is_empty() {
-                self.tables.borrow_mut().upvar_list.insert(closure_def_id, upvar_list);
+                self.tables.borrow_mut().closure_captures.insert(closure_def_id, upvar_list);
             }
         }
 
