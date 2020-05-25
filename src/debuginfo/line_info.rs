@@ -196,7 +196,7 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
         let mut func_end = 0;
 
         if let Some(ref mcr) = &context.mach_compile_result {
-            for &MachSrcLoc { start, end, loc } in mcr.sections.get_srclocs_sorted() {
+            for &MachSrcLoc { start, end, loc } in mcr.buffer.get_srclocs_sorted() {
                 line_program.row().address_offset = start as u64;
                 if !loc.is_default() {
                     let source_info = *source_info_set.get_index(loc.bits() as usize).unwrap();
@@ -209,7 +209,7 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
 
             line_program.end_sequence(func_end as u64);
 
-            func_end = mcr.sections.total_size();
+            func_end = mcr.buffer.total_size();
         } else {
             let encinfo = isa.encoding_info();
             let mut blocks = func.layout.blocks().collect::<Vec<_>>();
