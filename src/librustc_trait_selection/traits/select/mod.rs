@@ -1,5 +1,3 @@
-// ignore-tidy-filelength
-
 //! Candidate selection. See the [rustc dev guide] for more information on how this works.
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/resolution.html#selection
