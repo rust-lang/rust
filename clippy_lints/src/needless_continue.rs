@@ -424,7 +424,7 @@ fn erode_from_back(s: &str) -> String {
 }
 
 fn span_of_first_expr_in_block(block: &ast::Block) -> Option<Span> {
-    block.stmts.iter().next().map(|stmt| stmt.span)
+    block.stmts.get(0).map(|stmt| stmt.span)
 }
 
 #[cfg(test)]
