@@ -238,6 +238,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         match this.machine.threads.sync.rwlocks[id].readers.entry(reader) {
             Entry::Occupied(mut entry) => {
                 let count = entry.get_mut();
+                assert!(*count > 0, "rwlock locked with count == 0");
                 *count -= 1;
                 if *count == 0 {
                     entry.remove();

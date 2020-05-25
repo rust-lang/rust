@@ -335,16 +335,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let result = this.pthread_condattr_init(attr)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
-            "pthread_condattr_setclock" => {
-                let &[attr, clock_id] = check_arg_count(args)?;
-                let result = this.pthread_condattr_setclock(attr, clock_id)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
-            }
-            "pthread_condattr_getclock" => {
-                let &[attr, clock_id] = check_arg_count(args)?;
-                let result = this.pthread_condattr_getclock(attr, clock_id)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
-            }
             "pthread_condattr_destroy" => {
                 let &[attr] = check_arg_count(args)?;
                 let result = this.pthread_condattr_destroy(attr)?;
