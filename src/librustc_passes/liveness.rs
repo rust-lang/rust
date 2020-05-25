@@ -1460,26 +1460,20 @@ fn check_expr<'tcx>(this: &mut Liveness<'_, 'tcx>, expr: &'tcx Expr<'tcx>) {
         hir::ExprKind::InlineAsm(ref asm) => {
             for op in asm.operands {
                 match op {
-                    hir::InlineAsmOperand::In { expr, .. }
-                    | hir::InlineAsmOperand::Const { expr, .. }
-                    | hir::InlineAsmOperand::Sym { expr, .. } => this.visit_expr(expr),
                     hir::InlineAsmOperand::Out { expr, .. } => {
                         if let Some(expr) = expr {
                             this.check_place(expr);
-                            this.visit_expr(expr);
                         }
                     }
                     hir::InlineAsmOperand::InOut { expr, .. } => {
                         this.check_place(expr);
-                        this.visit_expr(expr);
                     }
-                    hir::InlineAsmOperand::SplitInOut { in_expr, out_expr, .. } => {
-                        this.visit_expr(in_expr);
+                    hir::InlineAsmOperand::SplitInOut { out_expr, .. } => {
                         if let Some(out_expr) = out_expr {
                             this.check_place(out_expr);
-                            this.visit_expr(out_expr);
                         }
                     }
+                    _ => {}
                 }
             }
         }
