@@ -142,6 +142,65 @@ impl<T: ?Sized> NonNull<T> {
     }
 }
 
+impl<T> NonNull<[T]> {
+    /// Creates a non-null raw slice from a thin pointer and a length.
+    ///
+    /// The `len` argument is the number of **elements**, not the number of bytes.
+    ///
+    /// This function is safe, but dereferencing the return value is unsafe.
+    /// See the documentation of [`slice::from_raw_parts`] for slice safety requirements.
+    ///
+    /// [`slice::from_raw_parts`]: ../../std/slice/fn.from_raw_parts.html
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(nonnull_slice_from_raw_parts)]
+    ///
+    /// use std::ptr::NonNull;
+    ///
+    /// // create a slice pointer when starting out with a pointer to the first element
+    /// let mut x = [5, 6, 7];
+    /// let nonnull_pointer = NonNull::new(x.as_mut_ptr()).unwrap();
+    /// let slice = NonNull::slice_from_raw_parts(nonnull_pointer, 3);
+    /// assert_eq!(unsafe { slice.as_ref()[2] }, 7);
+    /// ```
+    ///
+    /// (Note that this example artifically demonstrates a use of this method,
+    /// but `let slice = NonNull::from(&x[..]);` would be a better way to write code like this.)
+    #[unstable(feature = "nonnull_slice_from_raw_parts", issue = "71941")]
+    #[rustc_const_unstable(feature = "const_nonnull_slice_from_raw_parts", issue = "71941")]
+    #[inline]
+    pub const fn slice_from_raw_parts(data: NonNull<T>, len: usize) -> Self {
+        // SAFETY: `data` is a `NonNull` pointer which is necessarily non-null
+        unsafe { Self::new_unchecked(super::slice_from_raw_parts_mut(data.as_ptr(), len)) }
+    }
+
+    /// Returns the length of a non-null raw slice.
+    ///
+    /// The returned value is the number of **elements**, not the number of bytes.
+    ///
+    /// This function is safe, even when the non-null raw slice cannot be dereferenced to a slice
+    /// because the pointer does not have a valid address.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(slice_ptr_len, nonnull_slice_from_raw_parts)]
+    ///
+    /// use std::ptr::NonNull;
+    ///
+    /// let slice: NonNull<[i8]> = NonNull::slice_from_raw_parts(NonNull::dangling(), 3);
+    /// assert_eq!(slice.len(), 3);
+    /// ```
+    #[unstable(feature = "slice_ptr_len", issue = "71146")]
+    #[rustc_const_unstable(feature = "const_slice_ptr_len", issue = "71146")]
+    #[inline]
+    pub const fn len(self) -> usize {
+        self.as_ptr().len()
+    }
+}
+
 #[stable(feature = "nonnull", since = "1.25.0")]
 impl<T: ?Sized> Clone for NonNull<T> {
     #[inline]

@@ -377,11 +377,16 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     self.describe_field_from_ty(&ty, field, variant_index)
                 }
                 ty::Closure(def_id, _) | ty::Generator(def_id, _, _) => {
-                    // `tcx.upvars(def_id)` returns an `Option`, which is `None` in case
+                    // `tcx.upvars_mentioned(def_id)` returns an `Option`, which is `None` in case
                     // the closure comes from another crate. But in that case we wouldn't
                     // be borrowck'ing it, so we can just unwrap:
-                    let (&var_id, _) =
-                        self.infcx.tcx.upvars(def_id).unwrap().get_index(field.index()).unwrap();
+                    let (&var_id, _) = self
+                        .infcx
+                        .tcx
+                        .upvars_mentioned(def_id)
+                        .unwrap()
+                        .get_index(field.index())
+                        .unwrap();
 
                     self.infcx.tcx.hir().name(var_id).to_string()
                 }
@@ -809,7 +814,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let expr = &self.infcx.tcx.hir().expect_expr(hir_id).kind;
         debug!("closure_span: hir_id={:?} expr={:?}", hir_id, expr);
         if let hir::ExprKind::Closure(.., body_id, args_span, _) = expr {
-            for (upvar, place) in self.infcx.tcx.upvars(def_id)?.values().zip(places) {
+            for (upvar, place) in self.infcx.tcx.upvars_mentioned(def_id)?.values().zip(places) {
                 match place {
                     Operand::Copy(place) | Operand::Move(place)
                         if target_place == place.as_ref() =>
