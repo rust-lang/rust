@@ -857,7 +857,7 @@ impl f32 {
         let mut left = self.to_bits() as i32;
         let mut right = other.to_bits() as i32;
 
-        // In case of negatives, flip all the bits except the sign
+        // In case of negatives, flip all the bits expect the sign
         // to achieve a similar layout as two's complement integers
         //
         // Why does this work? IEEE 754 floats consist of three fields:
@@ -872,13 +872,15 @@ impl f32 {
         // To easily compare the floats as signed integers, we need to
         // flip the exponent and mantissa bits in case of negative numbers.
         // We effectively convert the numbers to "two's complement" form.
-        if left < 0 {
-            // i32::MAX corresponds the bit pattern of "all ones except for the sign bit"
-            left ^= i32::MAX
-        };
-        if right < 0 {
-            right ^= i32::MAX
-        };
+        //
+        // To do the flipping, we construct a mask and XOR against it.
+        // We branchlessly calculate an "all-ones expect for the sign bit"
+        // mask from negative-signed values: right shifting sign-extends
+        // the integer, so we "fill" the mask with sign bits, and then
+        // convert to unsigned to push one more zero bit.
+        // On positive values, the mask is all zeros, so it's a no-op.
+        left ^= (((left >> 31) as u32) >> 1) as i32;
+        right ^= (((right >> 31) as u32) >> 1) as i32;
 
         left.cmp(&right)
     }

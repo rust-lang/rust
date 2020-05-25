@@ -886,13 +886,15 @@ impl f64 {
         // To easily compare the floats as signed integers, we need to
         // flip the exponent and mantissa bits in case of negative numbers.
         // We effectively convert the numbers to "two's complement" form.
-        if left < 0 {
-            // i64::MAX corresponds the bit pattern of "all ones expect for the sign bit"
-            left ^= i64::MAX
-        };
-        if right < 0 {
-            right ^= i64::MAX
-        };
+        //
+        // To do the flipping, we construct a mask and XOR against it.
+        // We branchlessly calculate an "all-ones expect for the sign bit"
+        // mask from negative-signed values: right shifting sign-extends
+        // the integer, so we "fill" the mask with sign bits, and then
+        // convert to unsigned to push one more zero bit.
+        // On positive values, the mask is all zeros, so it's a no-op.
+        left ^= (((left >> 63) as u64) >> 1) as i64;
+        right ^= (((right >> 63) as u64) >> 1) as i64;
 
         left.cmp(&right)
     }
