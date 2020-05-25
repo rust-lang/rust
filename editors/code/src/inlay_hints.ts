@@ -1,6 +1,6 @@
 import * as lc from "vscode-languageclient";
 import * as vscode from 'vscode';
-import * as ra from './rust-analyzer-api';
+import * as ra from './lsp_ext';
 
 import { Ctx, Disposable } from './ctx';
 import { sendRequestWithRetry, isRustDocument, RustDocument, RustEditor, sleep } from './util';

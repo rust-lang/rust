@@ -1,7 +1,7 @@
 import * as os from "os";
 import * as vscode from 'vscode';
 import * as path from 'path';
-import * as ra from './rust-analyzer-api';
+import * as ra from './lsp_ext';
 
 import { Cargo } from './cargo';
 import { Ctx } from "./ctx";
