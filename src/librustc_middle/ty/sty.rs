@@ -2205,9 +2205,24 @@ impl<'tcx> Const<'tcx> {
             ),
         };
 
-        let expr = &tcx.hir().body(body_id).value;
-
         let ty = tcx.type_of(def_id.to_def_id());
+
+        let mut expr = &tcx.hir().body(body_id).value;
+        loop {
+            // Unwrap blocks, so that e.g. `{ P }` is recognised as a parameter. Const arguments
+            // currently have to be wrapped in curly brackets, so it's necessary to special-case.
+            match expr.kind {
+                hir::ExprKind::Block(block, _) if block.stmts.is_empty() => {
+                    if let Some(block_expr) = block.expr.as_ref() {
+                        expr = block_expr;
+                        continue;
+                    }
+                }
+                _ => (),
+            }
+
+            break;
+        }
 
         let lit_input = match expr.kind {
             hir::ExprKind::Lit(ref lit) => Some(LitToConstInput { lit: &lit.node, ty, neg: false }),
@@ -2229,15 +2244,6 @@ impl<'tcx> Const<'tcx> {
                 tcx.sess.delay_span_bug(expr.span, "Const::from_anon_const: couldn't lit_to_const");
             }
         }
-
-        // Unwrap a block, so that e.g. `{ P }` is recognised as a parameter. Const arguments
-        // currently have to be wrapped in curly brackets, so it's necessary to special-case.
-        let expr = match &expr.kind {
-            hir::ExprKind::Block(block, _) if block.stmts.is_empty() && block.expr.is_some() => {
-                block.expr.as_ref().unwrap()
-            }
-            _ => expr,
-        };
 
         use hir::{def::DefKind::ConstParam, def::Res, ExprKind, Path, QPath};
         let val = match expr.kind {
