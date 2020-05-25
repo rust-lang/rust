@@ -196,10 +196,10 @@ fn find(pattern: &SsrPattern, code: &SyntaxNode) -> SsrMatches {
     ) -> Option<Match> {
         let match_ = check_opt_nodes(pattern.path(), code.path(), placeholders, match_)?;
 
-        let mut pattern_fields =
-            pattern.record_field_list().map(|x| x.fields().collect()).unwrap_or(vec![]);
-        let mut code_fields =
-            code.record_field_list().map(|x| x.fields().collect()).unwrap_or(vec![]);
+        let mut pattern_fields: Vec<RecordField> =
+            pattern.record_field_list().map(|x| x.fields().collect()).unwrap_or_default();
+        let mut code_fields: Vec<RecordField> =
+            code.record_field_list().map(|x| x.fields().collect()).unwrap_or_default();
 
         if pattern_fields.len() != code_fields.len() {
             return None;
