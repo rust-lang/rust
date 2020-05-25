@@ -67,8 +67,7 @@ export interface JoinLinesParams {
 }
 export const joinLines = new lc.RequestType<JoinLinesParams, lc.TextEdit[], unknown>('experimental/joinLines');
 
-
-export const onEnter = request<lc.TextDocumentPositionParams, Option<lc.WorkspaceEdit>>("onEnter");
+export const onEnter = new lc.RequestType<lc.TextDocumentPositionParams, lc.TextEdit[], unknown>('experimental/onEnter');
 
 export interface RunnablesParams {
     textDocument: lc.TextDocumentIdentifier;

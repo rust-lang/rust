@@ -174,13 +174,17 @@ pub fn handle_join_lines(
 pub fn handle_on_enter(
     world: WorldSnapshot,
     params: lsp_types::TextDocumentPositionParams,
-) -> Result<Option<lsp_ext::SnippetWorkspaceEdit>> {
+) -> Result<Option<Vec<lsp_ext::SnippetTextEdit>>> {
     let _p = profile("handle_on_enter");
     let position = from_proto::file_position(&world, params)?;
-    match world.analysis().on_enter(position)? {
-        None => Ok(None),
-        Some(source_change) => to_proto::snippet_workspace_edit(&world, source_change).map(Some),
-    }
+    let edit = match world.analysis().on_enter(position)? {
+        None => return Ok(None),
+        Some(it) => it,
+    };
+    let line_index = world.analysis().file_line_index(position.file_id)?;
+    let line_endings = world.file_line_endings(position.file_id);
+    let edit = to_proto::snippet_text_edit_vec(&line_index, line_endings, true, edit);
+    Ok(Some(edit))
 }
 
 // Don't forget to add new trigger characters to `ServerCapabilities` in `caps.rs`.

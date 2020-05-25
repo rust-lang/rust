@@ -138,6 +138,59 @@ fn main() {
   Currently this is left to editor's discretion, but it might be useful to specify on the server via snippets.
   However, it then becomes unclear how it works with multi cursor.
 
+## On Enter
+
+**Issue:** https://github.com/microsoft/language-server-protocol/issues/1001
+
+**Server Capability:** `{ "onEnter": boolean }`
+
+This request is send from client to server to handle <kbd>Enter</kbd> keypress.
+
+**Method:** `experimental/onEnter`
+
+**Request:**: `TextDocumentPositionParams`
+
+**Response:**
+
+```typescript
+SnippetTextEdit[]
+```
+
+### Example
+
+```rust
+fn main() {
+    // Some /*cursor here*/ docs
+    let x = 92;
+}
+```
+
+`experimental/onEnter` returns the following snippet
+
+```rust
+fn main() {
+    // Some
+    // $0 docs
+    let x = 92;
+}
+```
+
+The primary goal of `onEnter` is to handle automatic indentation when opening a new line.
+This is not yet implemented.
+The secondary goal is to handle fixing up syntax, like continuing doc strings and comments, and escaping `\n` in string literals.
+
+As proper cursor positioning is raison-d'etat for `onEnter`, it uses `SnippetTextEdit`.
+
+### Unresolved Question
+
+* How to deal with synchronicity of the request?
+  One option is to require the client to block until the server returns the response.
+  Another option is to do a OT-style merging of edits from client and server.
+  A third option is to do a record-replay: client applies heuristic on enter immediatelly, then applies all user's keypresses.
+  When the server is ready with the response, the client rollbacks all the changes and applies the recorded actions on top of the correct response.
+* How to deal with multiple carets?
+* Should we extend this to arbitrary typed events and not just `onEnter`?
+
 ## Structural Search Replace (SSR)
 
 **Server Capability:** `{ "ssr": boolean }`

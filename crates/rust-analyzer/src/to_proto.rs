@@ -135,6 +135,18 @@ pub(crate) fn text_edit_vec(
     text_edit.into_iter().map(|indel| self::text_edit(line_index, line_endings, indel)).collect()
 }
 
+pub(crate) fn snippet_text_edit_vec(
+    line_index: &LineIndex,
+    line_endings: LineEndings,
+    is_snippet: bool,
+    text_edit: TextEdit,
+) -> Vec<lsp_ext::SnippetTextEdit> {
+    text_edit
+        .into_iter()
+        .map(|indel| self::snippet_text_edit(line_index, line_endings, is_snippet, indel))
+        .collect()
+}
+
 pub(crate) fn completion_item(
     line_index: &LineIndex,
     line_endings: LineEndings,

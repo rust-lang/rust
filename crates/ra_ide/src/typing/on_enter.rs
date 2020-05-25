@@ -11,9 +11,7 @@ use ra_syntax::{
 };
 use ra_text_edit::TextEdit;
 
-use crate::{SourceChange, SourceFileEdit};
-
-pub(crate) fn on_enter(db: &RootDatabase, position: FilePosition) -> Option<SourceChange> {
+pub(crate) fn on_enter(db: &RootDatabase, position: FilePosition) -> Option<TextEdit> {
     let parse = db.parse(position.file_id);
     let file = parse.tree();
     let comment = file
@@ -41,9 +39,7 @@ pub(crate) fn on_enter(db: &RootDatabase, position: FilePosition) -> Option<Sour
     let inserted = format!("\n{}{} $0", indent, prefix);
     let edit = TextEdit::insert(position.offset, inserted);
 
-    let mut res = SourceChange::from(SourceFileEdit { edit, file_id: position.file_id });
-    res.is_snippet = true;
-    Some(res)
+    Some(edit)
 }
 
 fn followed_by_comment(comment: &ast::Comment) -> bool {
@@ -90,9 +86,8 @@ mod tests {
         let (analysis, file_id) = single_file(&before);
         let result = analysis.on_enter(FilePosition { offset, file_id }).unwrap()?;
 
-        assert_eq!(result.source_file_edits.len(), 1);
         let mut actual = before.to_string();
-        result.source_file_edits[0].edit.apply(&mut actual);
+        result.apply(&mut actual);
         Some(actual)
     }
 
