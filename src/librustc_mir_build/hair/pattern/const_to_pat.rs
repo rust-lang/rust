@@ -124,8 +124,20 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                     traits::NonStructuralMatchTy::Dynamic => {
                         "trait objects cannot be used in patterns".to_string()
                     }
+                    traits::NonStructuralMatchTy::Opaque => {
+                        "opaque types cannot be used in patterns".to_string()
+                    }
+                    traits::NonStructuralMatchTy::Generator => {
+                        "generators cannot be used in patterns".to_string()
+                    }
                     traits::NonStructuralMatchTy::Param => {
-                        bug!("use of constant whose type is a parameter inside a pattern")
+                        bug!("use of a constant whose type is a parameter inside a pattern")
+                    }
+                    traits::NonStructuralMatchTy::Projection => {
+                        bug!("use of a constant whose type is a projection inside a pattern")
+                    }
+                    traits::NonStructuralMatchTy::Foreign => {
+                        bug!("use of a value of a foreign type inside a pattern")
                     }
                 };
 
