@@ -237,9 +237,7 @@ impl From<&'_ ast::FnDef> for FunctionSignature {
                                     .descendants()
                                     .find_map(ast::Name::cast)?
                                     .text()
-                                    .to_string()
-                                    .trim_start_matches('_')
-                                    .into(),
+                                    .to_string(),
                             )
                         })
                         .map(|param| param.unwrap_or_default()),

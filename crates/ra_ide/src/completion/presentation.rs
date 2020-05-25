@@ -211,7 +211,7 @@ impl Completions {
             .parameter_names
             .iter()
             .skip(if function_signature.has_self_param { 1 } else { 0 })
-            .cloned()
+            .map(|name| name.trim_start_matches('_').into())
             .collect();
 
         builder = builder.add_call_parens(ctx, name, Params::Named(params));
