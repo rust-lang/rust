@@ -1,13 +1,16 @@
 import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
-import * as ra from '../rust-analyzer-api';
+import * as ra from './rust-analyzer-api';
 
-import { Ctx, Cmd } from '../ctx';
-import { applySnippetWorkspaceEdit } from '../snippets';
+import { Ctx, Cmd } from './ctx';
+import { applySnippetWorkspaceEdit } from './snippets';
 import { spawnSync } from 'child_process';
+import { RunnableQuickPick, selectRunnable, createTask } from './run';
+import { AstInspector } from './ast_inspector';
+import { isRustDocument, sleep, isRustEditor } from './util';
 
-export * from './syntax_tree';
-export * from './runnables';
+export * from './ast_inspector';
+export * from './run';
 
 export function analyzerStatus(ctx: Ctx): Cmd {
     const tdcp = new class implements vscode.TextDocumentContentProvider {
@@ -193,6 +196,90 @@ export function toggleInlayHints(ctx: Ctx): Cmd {
             .update('enable', !ctx.config.inlayHints.enable, vscode.ConfigurationTarget.Workspace);
     };
 }
+
+export function run(ctx: Ctx): Cmd {
+    let prevRunnable: RunnableQuickPick | undefined;
+
+    return async () => {
+        const item = await selectRunnable(ctx, prevRunnable);
+        if (!item) return;
+
+        item.detail = 'rerun';
+        prevRunnable = item;
+        const task = createTask(item.runnable);
+        return await vscode.tasks.executeTask(task);
+    };
+}
+
+// Opens the virtual file that will show the syntax tree
+//
+// The contents of the file come from the `TextDocumentContentProvider`
+export function syntaxTree(ctx: Ctx): Cmd {
+    const tdcp = new class implements vscode.TextDocumentContentProvider {
+        readonly uri = vscode.Uri.parse('rust-analyzer://syntaxtree/tree.rast');
+        readonly eventEmitter = new vscode.EventEmitter<vscode.Uri>();
+        constructor() {
+            vscode.workspace.onDidChangeTextDocument(this.onDidChangeTextDocument, this, ctx.subscriptions);
+            vscode.window.onDidChangeActiveTextEditor(this.onDidChangeActiveTextEditor, this, ctx.subscriptions);
+        }
+
+        private onDidChangeTextDocument(event: vscode.TextDocumentChangeEvent) {
+            if (isRustDocument(event.document)) {
+                // We need to order this after language server updates, but there's no API for that.
+                // Hence, good old sleep().
+                void sleep(10).then(() => this.eventEmitter.fire(this.uri));
+            }
+        }
+        private onDidChangeActiveTextEditor(editor: vscode.TextEditor | undefined) {
+            if (editor && isRustEditor(editor)) {
+                this.eventEmitter.fire(this.uri);
+            }
+        }
+
+        provideTextDocumentContent(uri: vscode.Uri, ct: vscode.CancellationToken): vscode.ProviderResult<string> {
+            const rustEditor = ctx.activeRustEditor;
+            if (!rustEditor) return '';
+
+            // When the range based query is enabled we take the range of the selection
+            const range = uri.query === 'range=true' && !rustEditor.selection.isEmpty
+                ? ctx.client.code2ProtocolConverter.asRange(rustEditor.selection)
+                : null;
+
+            const params = { textDocument: { uri: rustEditor.document.uri.toString() }, range, };
+            return ctx.client.sendRequest(ra.syntaxTree, params, ct);
+        }
+
+        get onDidChange(): vscode.Event<vscode.Uri> {
+            return this.eventEmitter.event;
+        }
+    };
+
+    void new AstInspector(ctx);
+
+    ctx.pushCleanup(vscode.workspace.registerTextDocumentContentProvider('rust-analyzer', tdcp));
+    ctx.pushCleanup(vscode.languages.setLanguageConfiguration("ra_syntax_tree", {
+        brackets: [["[", ")"]],
+    }));
+
+    return async () => {
+        const editor = vscode.window.activeTextEditor;
+        const rangeEnabled = !!editor && !editor.selection.isEmpty;
+
+        const uri = rangeEnabled
+            ? vscode.Uri.parse(`${tdcp.uri.toString()}?range=true`)
+            : tdcp.uri;
+
+        const document = await vscode.workspace.openTextDocument(uri);
+
+        tdcp.eventEmitter.fire(uri);
+
+        void await vscode.window.showTextDocument(document, {
+            viewColumn: vscode.ViewColumn.Two,
+            preserveFocus: true
+        });
+    };
+}
+
 
 // Opens the virtual file that will show the syntax tree
 //
