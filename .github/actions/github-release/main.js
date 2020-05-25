@@ -16,7 +16,7 @@ async function runOnce() {
   const slug = process.env.GITHUB_REPOSITORY;
   const owner = slug.split('/')[0];
   const repo = slug.split('/')[1];
-  const sha = process.env.GITHUB_SHA;
+  const sha = process.env.HEAD_SHA;
 
   core.info(`files: ${files}`);
   core.info(`name: ${name}`);
