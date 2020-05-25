@@ -195,8 +195,15 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                 _ => "`self` value is a keyword only available in methods with a `self` parameter"
                      .to_string(),
             });
-            if let Some(span) = &self.diagnostic_metadata.current_function {
-                err.span_label(*span, "this function doesn't have a `self` parameter");
+            if let Some((fn_kind, span)) = &self.diagnostic_metadata.current_function {
+                // The current function has a `self' parameter, but we were unable to resolve
+                // a reference to `self`. This can only happen if the `self` identifier we
+                // are resolving came from a different hygiene context.
+                if fn_kind.decl().inputs.get(0).map(|p| p.is_self()).unwrap_or(false) {
+                    err.span_label(*span, "this function has a `self` parameter, but a macro invocation can only access identifiers it receives from parameters");
+                } else {
+                    err.span_label(*span, "this function doesn't have a `self` parameter");
+                }
             }
             return (err, Vec::new());
         }
