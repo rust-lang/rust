@@ -207,7 +207,7 @@
 		{
 			"comment": "Miscellaneous operator",
 			"name": "keyword.operator.misc.rust",
-			"match": "(=>|::)"
+			"match": "(=>|::|\\?)"
 		},
 		{
 			"comment": "Comparison operator",
