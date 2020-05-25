@@ -1614,11 +1614,11 @@ fn lint_or_fun_call<'a, 'tcx>(
         or_has_args: bool,
         span: Span,
     ) {
-        if let hir::ExprKind::MethodCall(ref path, _, ref args) = &arg.node {
+        if let hir::ExprKind::MethodCall(ref path, _, ref args) = &arg.kind {
             if path.ident.as_str() == "len" {
                 let ty = walk_ptrs_ty(cx.tables.expr_ty(&args[0]));
 
-                match ty.sty {
+                match ty.kind {
                     ty::Slice(_) | ty::Array(_, _) => return,
                     _ => (),
                 }
