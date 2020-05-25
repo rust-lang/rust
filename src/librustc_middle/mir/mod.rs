@@ -1072,7 +1072,8 @@ pub enum TerminatorKind<'tcx> {
     Abort,
 
     /// Indicates a normal return. The return place should have
-    /// been filled in by now. This should occur at most once.
+    /// been filled in before this executes. This can occur multiple times
+    /// in different basic blocks.
     Return,
 
     /// Indicates a terminator that can never be reached.
