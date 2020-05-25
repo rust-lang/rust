@@ -23,13 +23,13 @@ use crate::traits::error_reporting::InferCtxtExt;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::ErrorReported;
 use rustc_hir::def_id::DefId;
-use rustc_hir::lang_items::{FnOnceTraitLangItem, GeneratorTraitLangItem};
+use rustc_hir::lang_items::{FnOnceOutputLangItem, FnOnceTraitLangItem, GeneratorTraitLangItem};
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, WithConstness};
-use rustc_span::symbol::{sym, Ident};
+use rustc_span::symbol::sym;
 use rustc_span::DUMMY_SP;
 
 pub use rustc_middle::traits::Reveal;
@@ -1399,8 +1399,8 @@ fn confirm_callable_candidate<'cx, 'tcx>(
 
     debug!("confirm_callable_candidate({:?},{:?})", obligation, fn_sig);
 
-    // the `Output` associated type is declared on `FnOnce`
     let fn_once_def_id = tcx.require_lang_item(FnOnceTraitLangItem, None);
+    let fn_once_output_def_id = tcx.require_lang_item(FnOnceOutputLangItem, None);
 
     let predicate = super::util::closure_trait_ref_and_return_type(
         tcx,
@@ -1410,11 +1410,10 @@ fn confirm_callable_candidate<'cx, 'tcx>(
         flag,
     )
     .map_bound(|(trait_ref, ret_type)| ty::ProjectionPredicate {
-        projection_ty: ty::ProjectionTy::from_ref_and_name(
-            tcx,
-            trait_ref,
-            Ident::with_dummy_span(rustc_hir::FN_OUTPUT_NAME),
-        ),
+        projection_ty: ty::ProjectionTy {
+            substs: trait_ref.substs,
+            item_def_id: fn_once_output_def_id,
+        },
         ty: ret_type,
     });
 

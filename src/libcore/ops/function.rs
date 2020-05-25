@@ -224,6 +224,7 @@ pub trait FnMut<Args>: FnOnce<Args> {
 #[must_use = "closures are lazy and do nothing unless called"]
 pub trait FnOnce<Args> {
     /// The returned type after the call operator is used.
+    #[cfg_attr(not(bootstrap), lang = "fn_once_output")]
     #[stable(feature = "fn_once_output", since = "1.12.0")]
     type Output;
 

@@ -21,7 +21,10 @@ use rustc_session::parse::feature_err;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 
-fn target_from_impl_item<'tcx>(tcx: TyCtxt<'tcx>, impl_item: &hir::ImplItem<'_>) -> Target {
+pub(crate) fn target_from_impl_item<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    impl_item: &hir::ImplItem<'_>,
+) -> Target {
     match impl_item.kind {
         hir::ImplItemKind::Const(..) => Target::AssocConst,
         hir::ImplItemKind::Fn(..) => {

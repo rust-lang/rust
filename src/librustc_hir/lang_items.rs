@@ -25,7 +25,7 @@ use lazy_static::lazy_static;
 // So you probably just want to nip down to the end.
 macro_rules! language_item_table {
     (
-        $( $variant:ident, $name:expr, $method:ident, $target:path; )*
+        $( $variant:ident, $name:expr, $method:ident, $target:expr; )*
     ) => {
 
         enum_from_u32! {
@@ -206,6 +206,8 @@ language_item_table! {
     FnTraitLangItem,             "fn",                 fn_trait,                Target::Trait;
     FnMutTraitLangItem,          "fn_mut",             fn_mut_trait,            Target::Trait;
     FnOnceTraitLangItem,         "fn_once",            fn_once_trait,           Target::Trait;
+
+    FnOnceOutputLangItem,        "fn_once_output",     fn_once_output,          Target::AssocTy;
 
     FutureTraitLangItem,         "future_trait",       future_trait,            Target::Trait;
     GeneratorStateLangItem,      "generator_state",    gen_state,               Target::Enum;
