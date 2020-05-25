@@ -122,7 +122,7 @@ pub(super) fn op_to_const<'tcx>(
     } else {
         // It is guaranteed that any non-slice scalar pair is actually ByRef here.
         // When we come back from raw const eval, we are always by-ref. The only way our op here is
-        // by-val is if we are in const_field, i.e., if this is (a field of) something that we
+        // by-val is if we are in destructure_const, i.e., if this is (a field of) something that we
         // "tried to make immediate" before. We wouldn't do that for non-slice scalar pairs or
         // structs containing such.
         op.try_as_mplace(ecx)
