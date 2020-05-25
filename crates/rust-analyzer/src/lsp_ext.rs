@@ -50,7 +50,7 @@ impl Request for ExpandMacro {
 #[serde(rename_all = "camelCase")]
 pub struct ExpandMacroParams {
     pub text_document: TextDocumentIdentifier,
-    pub position: Option<Position>,
+    pub position: Position,
 }
 
 #[derive(Deserialize, Serialize, Debug)]

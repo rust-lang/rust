@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
-import * as ra from './rust-analyzer-api';
+import * as ra from './lsp_ext';
 
 import { Ctx, Cmd } from './ctx';
 import { startDebugSession, getDebugConfiguration } from './debug';

@@ -318,7 +318,7 @@ Primarily for debugging, but very useful for all people working on rust-analyzer
 ```typescript
 interface ExpandMacroParams {
     textDocument: TextDocumentIdentifier,
-    position?: Position,
+    position: Position,
 }
 ```
 

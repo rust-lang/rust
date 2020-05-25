@@ -72,15 +72,10 @@ pub fn handle_expand_macro(
     let _p = profile("handle_expand_macro");
     let file_id = from_proto::file_id(&world, &params.text_document.uri)?;
     let line_index = world.analysis().file_line_index(file_id)?;
-    let offset = params.position.map(|p| from_proto::offset(&line_index, p));
+    let offset = from_proto::offset(&line_index, params.position);
 
-    match offset {
-        None => Ok(None),
-        Some(offset) => {
-            let res = world.analysis().expand_macro(FilePosition { file_id, offset })?;
-            Ok(res.map(|it| lsp_ext::ExpandedMacro { name: it.name, expansion: it.expansion }))
-        }
-    }
+    let res = world.analysis().expand_macro(FilePosition { file_id, offset })?;
+    Ok(res.map(|it| lsp_ext::ExpandedMacro { name: it.name, expansion: it.expansion }))
 }
 
 pub fn handle_selection_range(
