@@ -166,6 +166,11 @@
                 "command": "rust-analyzer.serverVersion",
                 "title": "Show RA Version",
                 "category": "Rust Analyzer"
+            },
+            {
+                "command": "rust-analyzer.toggleInlayHints",
+                "title": "Toggle inlay hints",
+                "category": "Rust Analyzer"
             }
         ],
         "keybindings": [

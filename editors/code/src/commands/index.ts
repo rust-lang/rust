@@ -16,6 +16,7 @@ export * from './expand_macro';
 export * from './runnables';
 export * from './ssr';
 export * from './server_version';
+export * from './toggle_inlay_hints';
 
 export function collectGarbage(ctx: Ctx): Cmd {
     return async () => ctx.client.sendRequest(ra.collectGarbage, null);
