@@ -71,7 +71,6 @@ fn false_positive_capacity_too(x: &String) -> String {
 #[allow(dead_code)]
 fn test_cow_with_ref(c: &Cow<[i32]>) {}
 
-#[allow(dead_code)]
 fn test_cow(c: Cow<[i32]>) {
     let _c = c;
 }
@@ -83,4 +82,35 @@ trait Foo2 {
 // no error for &self references where self is of type String (#2293)
 impl Foo2 for String {
     fn do_string(&self) {}
+}
+
+// Check that the allow attribute on parameters is honored
+mod issue_5644 {
+    use std::borrow::Cow;
+
+    fn allowed(
+        #[allow(clippy::ptr_arg)] _v: &Vec<u32>,
+        #[allow(clippy::ptr_arg)] _s: &String,
+        #[allow(clippy::ptr_arg)] _c: &Cow<[i32]>,
+    ) {
+    }
+
+    struct S {}
+    impl S {
+        fn allowed(
+            #[allow(clippy::ptr_arg)] _v: &Vec<u32>,
+            #[allow(clippy::ptr_arg)] _s: &String,
+            #[allow(clippy::ptr_arg)] _c: &Cow<[i32]>,
+        ) {
+        }
+    }
+
+    trait T {
+        fn allowed(
+            #[allow(clippy::ptr_arg)] _v: &Vec<u32>,
+            #[allow(clippy::ptr_arg)] _s: &String,
+            #[allow(clippy::ptr_arg)] _c: &Cow<[i32]>,
+        ) {
+        }
+    }
 }
