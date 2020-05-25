@@ -741,8 +741,10 @@ impl FieldsShape {
         match self {
             FieldsShape::Arbitrary { padded_indices: Some((count, _)), .. } => *count as _,
             FieldsShape::Arbitrary { ref offsets, .. } => {
-                // + 1 for the padding.
-                offsets.len() + 1
+                // + 1 for the padding, but only if there are no fields (prevent unnecessary
+                // allocation in librustc_codegen_llvm for empty structures).
+                let count = offsets.len();
+                if count != 0 { count + 1 } else { count }
             }
             _ => unreachable!(
                 "FieldsShape::padded_field_count: only applicable to FieldsShape::Arbitrary"
