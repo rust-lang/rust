@@ -164,7 +164,7 @@ impl LangItems {
         T: Into<AttrDefId> + Copy,
     {
         if let Some(lang_item_name) = lang_attr(db, item) {
-            self.items.entry(lang_item_name.clone()).or_insert_with(|| constructor(item));
+            self.items.entry(lang_item_name).or_insert_with(|| constructor(item));
         }
     }
 }

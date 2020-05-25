@@ -290,8 +290,7 @@ fn trait_object_unsize_impl_datum(
     let self_trait_ref = TraitRef { trait_, substs: self_substs };
     let where_clauses = vec![GenericPredicate::Implemented(self_trait_ref)];
 
-    let impl_substs =
-        Substs::builder(2).push(self_ty).push(Ty::Dyn(target_bounds.clone().into())).build();
+    let impl_substs = Substs::builder(2).push(self_ty).push(Ty::Dyn(target_bounds.into())).build();
 
     let trait_ref = TraitRef { trait_: unsize_trait, substs: impl_substs };
 

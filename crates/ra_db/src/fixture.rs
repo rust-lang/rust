@@ -267,8 +267,8 @@ impl From<&FixtureMeta> for ParsedMeta {
                 ParsedMeta::Root { path: path.to_owned() }
             }
             FixtureMeta::File(f) => Self::File(FileMeta {
-                path: f.path.to_owned().into(),
-                krate: f.crate_name.to_owned().into(),
+                path: f.path.to_owned(),
+                krate: f.crate_name.to_owned(),
                 deps: f.deps.to_owned(),
                 cfg: f.cfg.to_owned(),
                 edition: f
