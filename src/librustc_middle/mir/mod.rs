@@ -2439,7 +2439,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                             };
                             let mut struct_fmt = fmt.debug_struct(&name);
 
-                            if let Some(upvars) = tcx.upvars(def_id) {
+                            if let Some(upvars) = tcx.upvars_mentioned(def_id) {
                                 for (&var_id, place) in upvars.keys().zip(places) {
                                     let var_name = tcx.hir().name(var_id);
                                     struct_fmt.field(&var_name.as_str(), place);
@@ -2458,7 +2458,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                             let name = format!("[generator@{:?}]", tcx.hir().span(hir_id));
                             let mut struct_fmt = fmt.debug_struct(&name);
 
-                            if let Some(upvars) = tcx.upvars(def_id) {
+                            if let Some(upvars) = tcx.upvars_mentioned(def_id) {
                                 for (&var_id, place) in upvars.keys().zip(places) {
                                     let var_name = tcx.hir().name(var_id);
                                     struct_fmt.field(&var_name.as_str(), place);

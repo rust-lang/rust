@@ -539,7 +539,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         debug!("walk_captures({:?})", closure_expr);
 
         let closure_def_id = self.tcx().hir().local_def_id(closure_expr.hir_id);
-        if let Some(upvars) = self.tcx().upvars(closure_def_id) {
+        if let Some(upvars) = self.tcx().upvars_mentioned(closure_def_id) {
             for &var_id in upvars.keys() {
                 let upvar_id = ty::UpvarId {
                     var_path: ty::UpvarPath { hir_id: var_id },

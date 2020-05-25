@@ -610,7 +610,7 @@ pub trait PrettyPrinter<'tcx>:
                         let mut sep = " ";
                         for (&var_id, upvar_ty) in self
                             .tcx()
-                            .upvars(did)
+                            .upvars_mentioned(did)
                             .as_ref()
                             .iter()
                             .flat_map(|v| v.keys())
@@ -659,7 +659,7 @@ pub trait PrettyPrinter<'tcx>:
                         let mut sep = " ";
                         for (&var_id, upvar_ty) in self
                             .tcx()
-                            .upvars(did)
+                            .upvars_mentioned(did)
                             .as_ref()
                             .iter()
                             .flat_map(|v| v.keys())
