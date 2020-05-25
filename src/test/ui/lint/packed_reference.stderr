@@ -14,10 +14,26 @@ LL | #![deny(packed_references)]
 error: reference to packed field is not allowed
   --> $DIR/packed_reference.rs:15:17
    |
+LL |         let _ = &good.data as *const _;
+   |                 ^^^^^^^^^^
+   |
+   = note: fields of packed structs might be misaligned, and creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
+
+error: reference to packed field is not allowed
+  --> $DIR/packed_reference.rs:16:27
+   |
+LL |         let _: *const _ = &good.data;
+   |                           ^^^^^^^^^^
+   |
+   = note: fields of packed structs might be misaligned, and creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
+
+error: reference to packed field is not allowed
+  --> $DIR/packed_reference.rs:17:17
+   |
 LL |         let _ = &good.data2[0];
    |                 ^^^^^^^^^^^^^^
    |
    = note: fields of packed structs might be misaligned, and creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
 
-error: aborting due to 2 previous errors
+error: aborting due to 4 previous errors
 

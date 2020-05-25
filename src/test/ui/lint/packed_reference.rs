@@ -12,6 +12,8 @@ fn main() {
         let good = Good { data: &0, data2: [&0, &0], aligned: [0; 32] };
 
         let _ = &good.data; //~ ERROR reference to packed field
+        let _ = &good.data as *const _; //~ ERROR reference to packed field
+        let _: *const _ = &good.data; //~ ERROR reference to packed field
         let _ = &good.data2[0]; //~ ERROR reference to packed field
         let _ = &*good.data; // ok, behind a pointer
         let _ = &good.aligned; // ok, has align 1
