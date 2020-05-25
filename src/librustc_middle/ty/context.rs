@@ -419,7 +419,7 @@ pub struct TypeckTables<'tcx> {
     /// The upvarID contains the HIR node ID and it also contains the full path
     /// leading to the member of the struct or tuple that is used instead of the
     /// entire variable.
-    pub upvar_list: ty::UpvarListMap,
+    pub closure_captures: ty::UpvarListMap,
 
     /// Stores the type, expression, span and optional scope span of all types
     /// that are live across the yield of this generator (if a generator).
@@ -447,7 +447,7 @@ impl<'tcx> TypeckTables<'tcx> {
             used_trait_imports: Lrc::new(Default::default()),
             tainted_by_errors: None,
             concrete_opaque_types: Default::default(),
-            upvar_list: Default::default(),
+            closure_captures: Default::default(),
             generator_interior_types: Default::default(),
         }
     }
@@ -688,7 +688,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TypeckTables<'tcx> {
             ref used_trait_imports,
             tainted_by_errors,
             ref concrete_opaque_types,
-            ref upvar_list,
+            ref closure_captures,
             ref generator_interior_types,
         } = *self;
 
@@ -721,7 +721,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TypeckTables<'tcx> {
             used_trait_imports.hash_stable(hcx, hasher);
             tainted_by_errors.hash_stable(hcx, hasher);
             concrete_opaque_types.hash_stable(hcx, hasher);
-            upvar_list.hash_stable(hcx, hasher);
+            closure_captures.hash_stable(hcx, hasher);
             generator_interior_types.hash_stable(hcx, hasher);
         })
     }
