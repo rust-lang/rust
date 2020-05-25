@@ -183,8 +183,8 @@ to be run inside the `rust` directory):
     `rust-clippy` repo (this has to be done in the Clippy repo, not in the
     rust-copy of Clippy):
     ```bash
+    git fetch origin && git fetch upstream
     git checkout sync-from-rust
-    git fetch upstream
     git merge upstream/master
     ```
 3. Open a PR to `rust-lang/rust-clippy` and wait for it to get merged (to
