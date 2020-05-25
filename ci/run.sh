@@ -7,9 +7,9 @@ export RUST_BACKTRACE=full
 
 cargo +nightly install rustup-toolchain-install-master
 if [ "${TRAVIS_OS_NAME}" = "windows" ]; then
-    rustup-toolchain-install-master -f -n master -c rustc-dev -i x86_64-pc-windows-msvc
+    rustup-toolchain-install-master -f -n master -c rustc-dev -c llvm-tools -i x86_64-pc-windows-msvc
 else
-    rustup-toolchain-install-master -f -n master -c rustc-dev
+    rustup-toolchain-install-master -f -n master -c rustc-dev -c llvm-tools
 fi
 rustup override set master
 
