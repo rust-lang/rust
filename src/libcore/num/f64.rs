@@ -865,7 +865,6 @@ impl f64 {
     /// #     .zip([-5.0, 0.1, 10.0, 99.0, f64::INFINITY, f64::NAN].iter())
     /// #     .all(|(a, b)| a.to_bits() == b.to_bits()))
     /// ```
-    #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "total_cmp", issue = "none")]
     #[inline]
     pub fn total_cmp(&self, other: &Self) -> crate::cmp::Ordering {
