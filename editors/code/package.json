@@ -587,6 +587,11 @@
                 "description": "Style for attributes"
             },
             {
+                "id": "boolean",
+                "description": "Style for boolean literals",
+                "superType": "keyword"
+            },
+            {
                 "id": "builtinType",
                 "description": "Style for builtin types",
                 "superType": "type"
@@ -594,6 +599,11 @@
             {
                 "id": "lifetime",
                 "description": "Style for lifetimes"
+            },
+            {
+                "id": "selfKeyword",
+                "description": "Style for the self keyword",
+                "superType": "keyword"
             },
             {
                 "id": "typeAlias",

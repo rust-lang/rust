@@ -414,6 +414,7 @@ fn highlight_element(
                 T![for] if !is_child_of_impl(element) => h | HighlightModifier::ControlFlow,
                 T![unsafe] => h | HighlightModifier::Unsafe,
                 T![true] | T![false] => HighlightTag::BoolLiteral.into(),
+                T![self] => HighlightTag::SelfKeyword.into(),
                 _ => h,
             }
         }
