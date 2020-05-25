@@ -274,6 +274,7 @@ fn semantic_token_type_and_modifiers(
         HighlightTag::TypeAlias => semantic_tokens::TYPE_ALIAS,
         HighlightTag::Trait => lsp_types::SemanticTokenType::INTERFACE,
         HighlightTag::BuiltinType => semantic_tokens::BUILTIN_TYPE,
+        HighlightTag::SelfKeyword => semantic_tokens::SELF_KEYWORD,
         HighlightTag::SelfType => lsp_types::SemanticTokenType::TYPE,
         HighlightTag::Field => lsp_types::SemanticTokenType::PROPERTY,
         HighlightTag::Function => lsp_types::SemanticTokenType::FUNCTION,

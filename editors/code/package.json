@@ -596,6 +596,11 @@
                 "description": "Style for lifetimes"
             },
             {
+                "id": "selfKeyword",
+                "description": "Style for the self keyword",
+                "superType": "keyword"
+            },
+            {
                 "id": "typeAlias",
                 "description": "Style for type aliases",
                 "superType": "type"

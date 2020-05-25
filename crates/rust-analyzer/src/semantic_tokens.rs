@@ -40,6 +40,7 @@ define_semantic_token_types![
     (BUILTIN_TYPE, "builtinType"),
     (ENUM_MEMBER, "enumMember"),
     (LIFETIME, "lifetime"),
+    (SELF_KEYWORD, "selfKeyword"),
     (TYPE_ALIAS, "typeAlias"),
     (UNION, "union"),
     (UNRESOLVED_REFERENCE, "unresolvedReference"),

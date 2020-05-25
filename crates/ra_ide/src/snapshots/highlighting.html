@@ -35,12 +35,12 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 }
 
 <span class="keyword">trait</span> <span class="trait declaration">Bar</span> {
-    <span class="keyword">fn</span> <span class="function declaration">bar</span>(&<span class="keyword">self</span>) -&gt; <span class="builtin_type">i32</span>;
+    <span class="keyword">fn</span> <span class="function declaration">bar</span>(&<span class="self_keyword">self</span>) -&gt; <span class="builtin_type">i32</span>;
 }
 
 <span class="keyword">impl</span> <span class="trait">Bar</span> <span class="keyword">for</span> <span class="struct">Foo</span> {
-    <span class="keyword">fn</span> <span class="function declaration">bar</span>(&<span class="keyword">self</span>) -&gt; <span class="builtin_type">i32</span> {
-        <span class="keyword">self</span>.<span class="field">x</span>
+    <span class="keyword">fn</span> <span class="function declaration">bar</span>(&<span class="self_keyword">self</span>) -&gt; <span class="builtin_type">i32</span> {
+        <span class="self_keyword">self</span>.<span class="field">x</span>
     }
 }
 
@@ -92,7 +92,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 <span class="keyword">use</span> <span class="enum">Option</span>::*;
 
 <span class="keyword">impl</span>&lt;<span class="type_param declaration">T</span>&gt; <span class="enum">Option</span>&lt;<span class="type_param">T</span>&gt; {
-    <span class="keyword">fn</span> <span class="function declaration">and</span>&lt;<span class="type_param declaration">U</span>&gt;(<span class="keyword">self</span>, <span class="variable declaration">other</span>: <span class="enum">Option</span>&lt;<span class="type_param">U</span>&gt;) -&gt; <span class="enum">Option</span>&lt;(<span class="type_param">T</span>, <span class="type_param">U</span>)&gt; {
+    <span class="keyword">fn</span> <span class="function declaration">and</span>&lt;<span class="type_param declaration">U</span>&gt;(<span class="self_keyword">self</span>, <span class="variable declaration">other</span>: <span class="enum">Option</span>&lt;<span class="type_param">U</span>&gt;) -&gt; <span class="enum">Option</span>&lt;(<span class="type_param">T</span>, <span class="type_param">U</span>)&gt; {
         <span class="keyword control">match</span> <span class="variable">other</span> {
             <span class="enum_variant">None</span> =&gt; <span class="macro">unimplemented!</span>(),
             <span class="variable declaration">Nope</span> =&gt; <span class="variable">Nope</span>,
