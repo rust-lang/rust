@@ -90,6 +90,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let result = this.prctl(option, arg2, arg3, arg4, arg5)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
+            "pthread_condattr_setclock" => {
+                let &[attr, clock_id] = check_arg_count(args)?;
+                let result = this.pthread_condattr_setclock(attr, clock_id)?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
+            }
+            "pthread_condattr_getclock" => {
+                let &[attr, clock_id] = check_arg_count(args)?;
+                let result = this.pthread_condattr_getclock(attr, clock_id)?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
+            }
 
             // Dynamically invoked syscalls
             "syscall" => {
