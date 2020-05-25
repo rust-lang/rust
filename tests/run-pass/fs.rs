@@ -188,7 +188,7 @@ fn test_file_sync() {
     let path = prepare_with_content("miri_test_fs_sync.txt", bytes);
 
     // Test that we can call sync_data and sync_all (can't readily test effects of this operation)
-    let file = File::open(&path).unwrap();
+    let file = OpenOptions::new().write(true).open(&path).unwrap();
     file.sync_data().unwrap();
     file.sync_all().unwrap();
 
