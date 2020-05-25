@@ -1,8 +1,8 @@
-error: use Vec::sort_by_key here instead
+error: use Vec::sort here instead
   --> $DIR/sort_by_key.rs:13:5
    |
 LL |     vec.sort_by(|a, b| a.cmp(b));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort_by_key(|&a| a)`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort()`
    |
    = note: `-D clippy::sort-by-key` implied by `-D warnings`
 

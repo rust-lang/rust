@@ -3,7 +3,7 @@ use crate::utils::paths;
 use crate::utils::sugg::Sugg;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, Mutability, Param, Pat, PatKind, Path, QPath};
+use rustc_hir::{Expr, ExprKind, Mutability, Param, Pat, PatKind, Path, PathSegment, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::Ident;
@@ -16,7 +16,7 @@ declare_clippy_lint! {
     /// **Why is this bad?**
     /// It is more clear to use `Vec::sort_by_key` (or
     /// `Vec::sort_by_key` and `std::cmp::Reverse` if necessary) than
-    /// using 
+    /// using
     ///
     /// **Known problems:** None.
     ///
@@ -36,7 +36,17 @@ declare_clippy_lint! {
 
 declare_lint_pass!(SortByKey => [SORT_BY_KEY]);
 
-struct LintTrigger {
+enum LintTrigger {
+    Sort(SortDetection),
+    SortByKey(SortByKeyDetection),
+}
+
+struct SortDetection {
+    vec_name: String,
+    unstable: bool,
+}
+
+struct SortByKeyDetection {
     vec_name: String,
     closure_arg: String,
     closure_body: String,
@@ -177,7 +187,18 @@ fn detect_lint(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> Option<LintTrigger>
             };
             let vec_name = Sugg::hir(cx, &args[0], "..").to_string();
             let unstable = name == "sort_unstable_by";
-            Some(LintTrigger { vec_name, unstable, closure_arg, closure_body })
+            if_chain! {
+                if let ExprKind::Path(QPath::Resolved(_, Path {
+                    segments: [PathSegment { ident: left_name, .. }], ..
+                })) = &left_expr.kind;
+                if left_name == left_ident;
+                then {
+                    Some(LintTrigger::Sort(SortDetection { vec_name, unstable }))
+                }
+                else {
+                    Some(LintTrigger::SortByKey(SortByKeyDetection { vec_name, unstable, closure_arg, closure_body }))
+                }
+            }
         } else {
             None
         }
@@ -186,8 +207,8 @@ fn detect_lint(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> Option<LintTrigger>
 
 impl LateLintPass<'_, '_> for SortByKey {
     fn check_expr(&mut self, cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
-        if let Some(trigger) = detect_lint(cx, expr) {
-            utils::span_lint_and_sugg(
+        match detect_lint(cx, expr) {
+            Some(LintTrigger::SortByKey(trigger)) => utils::span_lint_and_sugg(
                 cx,
                 SORT_BY_KEY,
                 expr.span,
@@ -201,7 +222,21 @@ impl LateLintPass<'_, '_> for SortByKey {
                     trigger.closure_body,
                 ),
                 Applicability::MachineApplicable,
-            );
+            ),
+            Some(LintTrigger::Sort(trigger)) => utils::span_lint_and_sugg(
+                cx,
+                SORT_BY_KEY,
+                expr.span,
+                "use Vec::sort here instead",
+                "try",
+                format!(
+                    "{}.sort{}()",
+                    trigger.vec_name,
+                    if trigger.unstable { "_unstable" } else { "" },
+                ),
+                Applicability::MachineApplicable,
+            ),
+            None => {},
         }
     }
 }

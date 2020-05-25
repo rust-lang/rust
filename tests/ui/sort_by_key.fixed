@@ -10,7 +10,7 @@ fn id(x: isize) -> isize {
 fn main() {
     let mut vec: Vec<isize> = vec![3, 6, 1, 2, 5];
     // Forward examples
-    vec.sort_by_key(|&a| a);
+    vec.sort();
     vec.sort_by_key(|&a| (a + 5).abs());
     vec.sort_by_key(|&a| id(-a));
     // Reverse examples
