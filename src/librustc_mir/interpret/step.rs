@@ -253,9 +253,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.write_scalar(Scalar::from_machine_usize(layout.size.bytes(), self), dest)?;
             }
 
-            Cast(kind, ref operand, _) => {
+            Cast(cast_kind, ref operand, cast_ty) => {
                 let src = self.eval_operand(operand, None)?;
-                self.cast(src, kind, dest)?;
+                let cast_ty = self.subst_from_current_frame_and_normalize_erasing_regions(cast_ty);
+                self.cast(src, cast_kind, cast_ty, dest)?;
             }
 
             Discriminant(place) => {
