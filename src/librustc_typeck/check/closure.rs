@@ -90,18 +90,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             base_substs.extend_to(self.tcx, expr_def_id.to_def_id(), |param, _| match param.kind {
                 GenericParamDefKind::Lifetime => span_bug!(expr.span, "closure has lifetime param"),
                 GenericParamDefKind::Type { .. } => if param.index as usize == tupled_upvars_idx {
-                    self.tcx.mk_tup(self.tcx.upvars(expr_def_id).iter().flat_map(|upvars| {
-                        upvars.iter().map(|(&var_hir_id, _)| {
-                            // Create type variables (for now) to represent the transformed
-                            // types of upvars. These will be unified during the upvar
-                            // inference phase (`upvar.rs`).
-                            self.infcx.next_ty_var(TypeVariableOrigin {
-                                // FIXME(eddyb) distinguish upvar inference variables from the rest.
-                                kind: TypeVariableOriginKind::ClosureSynthetic,
-                                span: self.tcx.hir().span(var_hir_id),
+                    self.tcx.mk_tup(self.tcx.upvars_mentioned(expr_def_id).iter().flat_map(
+                        |upvars| {
+                            upvars.iter().map(|(&var_hir_id, _)| {
+                                // Create type variables (for now) to represent the transformed
+                                // types of upvars. These will be unified during the upvar
+                                // inference phase (`upvar.rs`).
+                                self.infcx.next_ty_var(TypeVariableOrigin {
+                                    // FIXME(eddyb) distinguish upvar inference variables from the rest.
+                                    kind: TypeVariableOriginKind::ClosureSynthetic,
+                                    span: self.tcx.hir().span(var_hir_id),
+                                })
                             })
-                        })
-                    }))
+                        },
+                    ))
                 } else {
                     // Create type variables (for now) to represent the various
                     // pieces of information kept in `{Closure,Generic}Substs`.

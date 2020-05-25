@@ -1380,7 +1380,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         let mut interior_or_upvar_span = None;
         let mut interior_extra_info = None;
 
-        if let Some(upvars) = self.tcx.upvars(generator_did) {
+        if let Some(upvars) = self.tcx.upvars_mentioned(generator_did) {
             interior_or_upvar_span = upvars.iter().find_map(|(upvar_id, upvar)| {
                 let upvar_ty = tables.node_type(*upvar_id);
                 let upvar_ty = self.resolve_vars_if_possible(&upvar_ty);

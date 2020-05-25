@@ -61,7 +61,7 @@ macro_rules! arena_types {
             [few] privacy_access_levels: rustc_middle::middle::privacy::AccessLevels,
             [few] foreign_module: rustc_middle::middle::cstore::ForeignModule,
             [few] foreign_modules: Vec<rustc_middle::middle::cstore::ForeignModule>,
-            [] upvars: rustc_data_structures::fx::FxIndexMap<rustc_hir::HirId, rustc_hir::Upvar>,
+            [] upvars_mentioned: rustc_data_structures::fx::FxIndexMap<rustc_hir::HirId, rustc_hir::Upvar>,
             [] object_safety_violations: rustc_middle::traits::ObjectSafetyViolation,
             [] codegen_unit: rustc_middle::mir::mono::CodegenUnit<$tcx>,
             [] attribute: rustc_ast::ast::Attribute,

@@ -111,7 +111,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             None
         };
 
-        if let Some(upvars) = self.tcx.upvars(closure_def_id) {
+        if let Some(upvars) = self.tcx.upvars_mentioned(closure_def_id) {
             let mut upvar_list: FxIndexMap<hir::HirId, ty::UpvarId> =
                 FxIndexMap::with_capacity_and_hasher(upvars.len(), Default::default());
             for (&var_hir_id, _) in upvars.iter() {
@@ -218,7 +218,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let tcx = self.tcx;
         let closure_def_id = tcx.hir().local_def_id(closure_id);
 
-        tcx.upvars(closure_def_id)
+        tcx.upvars_mentioned(closure_def_id)
             .iter()
             .flat_map(|upvars| {
                 upvars.iter().map(|(&var_hir_id, _)| {

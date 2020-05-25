@@ -10,7 +10,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 
 pub fn provide(providers: &mut Providers<'_>) {
-    providers.upvars = |tcx, def_id| {
+    providers.upvars_mentioned = |tcx, def_id| {
         if !tcx.is_closure(def_id) {
             return None;
         }
@@ -89,7 +89,7 @@ impl Visitor<'tcx> for CaptureCollector<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         if let hir::ExprKind::Closure(..) = expr.kind {
             let closure_def_id = self.tcx.hir().local_def_id(expr.hir_id);
-            if let Some(upvars) = self.tcx.upvars(closure_def_id) {
+            if let Some(upvars) = self.tcx.upvars_mentioned(closure_def_id) {
                 // Every capture of a closure expression is a local in scope,
                 // that is moved/copied/borrowed into the closure value, and
                 // for this analysis they are like any other access to a local.
