@@ -6,7 +6,7 @@ on:
   push:
     branches:
     - release
-    - nightly
+    - trigger-nightly
 
 env:
   CARGO_INCREMENTAL: 0
