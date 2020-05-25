@@ -1,13 +1,13 @@
 import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
-import * as ra from '../rust-analyzer-api';
+import * as ra from './rust-analyzer-api';
 
-import { Ctx, Cmd } from '../ctx';
-import { startDebugSession, getDebugConfiguration } from '../debug';
+import { Ctx, Cmd } from './ctx';
+import { startDebugSession, getDebugConfiguration } from './debug';
 
 const quickPickButtons = [{ iconPath: new vscode.ThemeIcon("save"), tooltip: "Save as a launch.json configurtation." }];
 
-async function selectRunnable(ctx: Ctx, prevRunnable?: RunnableQuickPick, debuggeeOnly = false, showButtons: boolean = true): Promise<RunnableQuickPick | undefined> {
+export async function selectRunnable(ctx: Ctx, prevRunnable?: RunnableQuickPick, debuggeeOnly = false, showButtons: boolean = true): Promise<RunnableQuickPick | undefined> {
     const editor = ctx.activeRustEditor;
     const client = ctx.client;
     if (!editor || !client) return;
@@ -83,20 +83,6 @@ async function selectRunnable(ctx: Ctx, prevRunnable?: RunnableQuickPick, debugg
     });
 }
 
-export function run(ctx: Ctx): Cmd {
-    let prevRunnable: RunnableQuickPick | undefined;
-
-    return async () => {
-        const item = await selectRunnable(ctx, prevRunnable);
-        if (!item) return;
-
-        item.detail = 'rerun';
-        prevRunnable = item;
-        const task = createTask(item.runnable);
-        return await vscode.tasks.executeTask(task);
-    };
-}
-
 export function runSingle(ctx: Ctx): Cmd {
     return async (runnable: ra.Runnable) => {
         const editor = ctx.activeRustEditor;
@@ -165,7 +151,7 @@ export function newDebugConfig(ctx: Ctx): Cmd {
     };
 }
 
-class RunnableQuickPick implements vscode.QuickPickItem {
+export class RunnableQuickPick implements vscode.QuickPickItem {
     public label: string;
     public description?: string | undefined;
     public detail?: string | undefined;
@@ -184,7 +170,7 @@ interface CargoTaskDefinition extends vscode.TaskDefinition {
     env?: { [key: string]: string };
 }
 
-function createTask(spec: ra.Runnable): vscode.Task {
+export function createTask(spec: ra.Runnable): vscode.Task {
     const TASK_SOURCE = 'Rust';
     const definition: CargoTaskDefinition = {
         type: 'cargo',

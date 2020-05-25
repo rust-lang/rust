@@ -92,7 +92,6 @@ export async function activate(context: vscode.ExtensionContext) {
     ctx.registerCommand('runSingle', commands.runSingle);
     ctx.registerCommand('debugSingle', commands.debugSingle);
     ctx.registerCommand('showReferences', commands.showReferences);
-    ctx.registerCommand('applySourceChange', commands.applySourceChange);
     ctx.registerCommand('applySnippetWorkspaceEdit', commands.applySnippetWorkspaceEditCommand);
     ctx.registerCommand('applyActionGroup', commands.applyActionGroup);
 
