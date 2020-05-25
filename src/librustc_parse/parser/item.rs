@@ -106,11 +106,20 @@ impl<'a> Parser<'a> {
         });
 
         let mut unclosed_delims = vec![];
-        let (mut item, tokens) = self.collect_tokens(|this| {
+        let has_attrs = !attrs.is_empty();
+        let parse_item = |this: &mut Self| {
             let item = this.parse_item_common_(attrs, mac_allowed, attrs_allowed, req_name);
             unclosed_delims.append(&mut this.unclosed_delims);
             item
-        })?;
+        };
+
+        let (mut item, tokens) = if has_attrs {
+            let (item, tokens) = self.collect_tokens(parse_item)?;
+            (item, Some(tokens))
+        } else {
+            (parse_item(self)?, None)
+        };
+
         self.unclosed_delims.append(&mut unclosed_delims);
 
         // Once we've parsed an item and recorded the tokens we got while
@@ -127,9 +136,11 @@ impl<'a> Parser<'a> {
         // it (bad!). To work around this case for now we just avoid recording
         // `tokens` if we detect any inner attributes. This should help keep
         // expansion correct, but we should fix this bug one day!
-        if let Some(item) = &mut item {
-            if !item.attrs.iter().any(|attr| attr.style == AttrStyle::Inner) {
-                item.tokens = Some(tokens);
+        if let Some(tokens) = tokens {
+            if let Some(item) = &mut item {
+                if !item.attrs.iter().any(|attr| attr.style == AttrStyle::Inner) {
+                    item.tokens = Some(tokens);
+                }
             }
         }
         Ok(item)
