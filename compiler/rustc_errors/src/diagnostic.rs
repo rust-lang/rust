@@ -4,7 +4,9 @@ use crate::Level;
 use crate::Substitution;
 use crate::SubstitutionPart;
 use crate::SuggestionStyle;
+use crate::ToolMetadata;
 use rustc_lint_defs::Applicability;
+use rustc_serialize::json::Json;
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
 use std::fmt;
 
@@ -303,6 +305,7 @@ impl Diagnostic {
             msg: msg.to_owned(),
             style: SuggestionStyle::ShowCode,
             applicability,
+            tool_metadata: Default::default(),
         });
         self
     }
@@ -328,6 +331,7 @@ impl Diagnostic {
             msg: msg.to_owned(),
             style: SuggestionStyle::ShowCode,
             applicability,
+            tool_metadata: Default::default(),
         });
         self
     }
@@ -354,6 +358,7 @@ impl Diagnostic {
             msg: msg.to_owned(),
             style: SuggestionStyle::CompletelyHidden,
             applicability,
+            tool_metadata: Default::default(),
         });
         self
     }
@@ -408,6 +413,7 @@ impl Diagnostic {
             msg: msg.to_owned(),
             style,
             applicability,
+            tool_metadata: Default::default(),
         });
         self
     }
@@ -446,6 +452,7 @@ impl Diagnostic {
             msg: msg.to_owned(),
             style: SuggestionStyle::ShowCode,
             applicability,
+            tool_metadata: Default::default(),
         });
         self
     }
@@ -513,6 +520,23 @@ impl Diagnostic {
             SuggestionStyle::CompletelyHidden,
         );
         self
+    }
+
+    /// Adds a suggestion intended only for a tool. The intent is that the metadata encodes
+    /// the suggestion in a tool-specific way, as it may not even directly involve Rust code.
+    pub fn tool_only_suggestion_with_metadata(
+        &mut self,
+        msg: &str,
+        applicability: Applicability,
+        tool_metadata: Json,
+    ) {
+        self.suggestions.push(CodeSuggestion {
+            substitutions: vec![],
+            msg: msg.to_owned(),
+            style: SuggestionStyle::CompletelyHidden,
+            applicability,
+            tool_metadata: ToolMetadata::new(tool_metadata),
+        })
     }
 
     pub fn set_span<S: Into<MultiSpan>>(&mut self, sp: S) -> &mut Self {

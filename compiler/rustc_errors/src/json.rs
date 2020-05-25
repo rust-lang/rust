@@ -14,6 +14,7 @@ use rustc_span::source_map::{FilePathMapping, SourceMap};
 use crate::emitter::{Emitter, HumanReadableErrorType};
 use crate::registry::Registry;
 use crate::DiagnosticId;
+use crate::ToolMetadata;
 use crate::{CodeSuggestion, SubDiagnostic};
 use rustc_lint_defs::{Applicability, FutureBreakage};
 
@@ -180,6 +181,8 @@ struct Diagnostic {
     children: Vec<Diagnostic>,
     /// The message as rustc would render it.
     rendered: Option<String>,
+    /// Extra tool metadata
+    tool_metadata: ToolMetadata,
 }
 
 #[derive(Encodable)]
@@ -269,6 +272,7 @@ impl Diagnostic {
             spans: DiagnosticSpan::from_suggestion(sugg, je),
             children: vec![],
             rendered: None,
+            tool_metadata: sugg.tool_metadata.clone(),
         });
 
         // generate regular command line output and store it in the json
@@ -312,6 +316,7 @@ impl Diagnostic {
                 .chain(sugg)
                 .collect(),
             rendered: Some(output),
+            tool_metadata: ToolMetadata::default(),
         }
     }
 
@@ -327,6 +332,7 @@ impl Diagnostic {
                 .unwrap_or_else(|| DiagnosticSpan::from_multispan(&diag.span, je)),
             children: vec![],
             rendered: None,
+            tool_metadata: ToolMetadata::default(),
         }
     }
 }

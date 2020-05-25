@@ -376,7 +376,8 @@ mod foo {
         }
       ],
       "children": [],
-      "rendered": null
+      "rendered": null,
+      "tool_metadata": null
     }
   ],
   "rendered": "\u001b[0m\u001b[1m\u001b[38;5;9merror[E0412]\u001b[0m\u001b[0m\u001b[1m: cannot find type `Iter` in this scope\u001b[0m
@@ -397,7 +398,8 @@ mod foo {
 \u001b[0m   \u001b[0m\u001b[0m\u001b[1m\u001b[38;5;12m|\u001b[0m
 \u001b[0m     and 8 other candidates\u001b[0m
 
-"
+",
+  "tool_metadata": null
 }
 {
   "message": "aborting due to previous error",
@@ -407,7 +409,8 @@ mod foo {
   "children": [],
   "rendered": "\u001b[0m\u001b[1m\u001b[38;5;9merror\u001b[0m\u001b[0m\u001b[1m: aborting due to previous error\u001b[0m
 
-"
+",
+  "tool_metadata": null
 }
 {
   "message": "For more information about this error, try `rustc --explain E0412`.",
@@ -416,5 +419,6 @@ mod foo {
   "spans": [],
   "children": [],
   "rendered": "\u001b[0m\u001b[1mFor more information about this error, try `rustc --explain E0412`.\u001b[0m
-"
+",
+  "tool_metadata": null
 }

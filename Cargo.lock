@@ -726,9 +726,9 @@ dependencies = [
 
 [[package]]
 name = "const_fn"
-version = "0.4.2"
+version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ce90df4c658c62f12d78f7508cf92f9173e5184a539c10bfe54a3107b3ffd0f2"
+checksum = "c478836e029dcef17fb47c89023448c64f781a046e0300e257ad8225ae59afab"
 
 [[package]]
 name = "constant_time_eq"
@@ -3914,6 +3914,7 @@ dependencies = [
  "rustc_index",
  "rustc_middle",
  "rustc_parse_format",
+ "rustc_serialize",
  "rustc_session",
  "rustc_span",
  "rustc_target",
