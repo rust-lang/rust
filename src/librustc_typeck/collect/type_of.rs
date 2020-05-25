@@ -108,7 +108,11 @@ pub(super) fn const_param_of(tcx: TyCtxt<'_>, def_id: DefId) -> Option<DefId> {
                         tcx.generics_of(tcx.parent(def_id).unwrap())
                     }
                     Res::Def(_, def_id) => tcx.generics_of(def_id),
-                    res => span_bug!(
+                    Res::Err => {
+                        tcx.sess.delay_span_bug(tcx.def_span(def_id), "anon const with Res::Err");
+                        return None;
+                    }
+                    _ => span_bug!(
                         DUMMY_SP,
                         "unexpected anon const res {:?} in path: {:?}",
                         res,
