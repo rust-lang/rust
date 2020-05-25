@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as ra from '../rust-analyzer-api';
 
 import { Cmd, Ctx } from '../ctx';
-import { applySnippetWorkspaceEdit } from '.';
+import { applySnippetWorkspaceEdit } from '../snippets';
 
 async function handleKeypress(ctx: Ctx) {
     const editor = ctx.activeRustEditor;
