@@ -10,6 +10,8 @@ allow-unauthenticated = [
 
 [assign]
 
+[glacier]
+
 [ping.icebreakers-llvm]
 alias = ["llvm", "llvms"]
 message = """\
