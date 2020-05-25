@@ -1,5 +1,5 @@
 // run-rustfix
-#![warn(clippy::sort_by_key_reverse)]
+#![warn(clippy::sort_by_key)]
 
 use std::cmp::Reverse;
 
@@ -9,6 +9,11 @@ fn id(x: isize) -> isize {
 
 fn main() {
     let mut vec: Vec<isize> = vec![3, 6, 1, 2, 5];
+    // Forward examples
+    vec.sort_by_key(|&a| a);
+    vec.sort_by_key(|&a| (a + 5).abs());
+    vec.sort_by_key(|&a| id(-a));
+    // Reverse examples
     vec.sort_by_key(|&b| Reverse(b));
     vec.sort_by_key(|&b| Reverse((b + 5).abs()));
     vec.sort_by_key(|&b| Reverse(id(-b)));
@@ -18,5 +23,4 @@ fn main() {
     vec.sort_by(|_, b| b.cmp(&5));
     vec.sort_by(|_, b| b.cmp(c));
     vec.sort_by(|a, _| a.cmp(c));
-    vec.sort_by(|a, b| a.cmp(b));
 }

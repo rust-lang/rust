@@ -11,33 +11,35 @@ use rustc_span::symbol::Ident;
 declare_clippy_lint! {
     /// **What it does:**
     /// Detects when people use `Vec::sort_by` and pass in a function
-    /// which compares the second argument to the first.
+    /// which compares the two arguments, either directly or indirectly.
     ///
     /// **Why is this bad?**
-    /// It is more clear to use `Vec::sort_by_key` and `std::cmp::Reverse`
+    /// It is more clear to use `Vec::sort_by_key` (or
+    /// `Vec::sort_by_key` and `std::cmp::Reverse` if necessary) than
+    /// using 
     ///
     /// **Known problems:** None.
     ///
     /// **Example:**
     ///
     /// ```rust
-    /// vec.sort_by(|a, b| b.foo().cmp(&a.foo()));
+    /// vec.sort_by(|a, b| a.foo().cmp(b.foo()));
     /// ```
     /// Use instead:
     /// ```rust
-    /// vec.sort_by_key(|e| Reverse(e.foo()));
+    /// vec.sort_by_key(|a| a.foo());
     /// ```
-    pub SORT_BY_KEY_REVERSE,
+    pub SORT_BY_KEY,
     complexity,
     "Use of `Vec::sort_by` when `Vec::sort_by_key` would be clearer"
 }
 
-declare_lint_pass!(SortByKeyReverse => [SORT_BY_KEY_REVERSE]);
+declare_lint_pass!(SortByKey => [SORT_BY_KEY]);
 
 struct LintTrigger {
     vec_name: String,
     closure_arg: String,
-    closure_reverse_body: String,
+    closure_body: String,
     unstable: bool,
 }
 
@@ -154,43 +156,49 @@ fn detect_lint(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> Option<LintTrigger>
         if utils::match_type(cx, &cx.tables.expr_ty(vec), &paths::VEC);
         if let closure_body = cx.tcx.hir().body(*closure_body_id);
         if let &[
-            Param { pat: Pat { kind: PatKind::Binding(_, _, a_ident, _), .. }, ..},
-            Param { pat: Pat { kind: PatKind::Binding(_, _, b_ident, _), .. }, .. }
+            Param { pat: Pat { kind: PatKind::Binding(_, _, left_ident, _), .. }, ..},
+            Param { pat: Pat { kind: PatKind::Binding(_, _, right_ident, _), .. }, .. }
         ] = &closure_body.params;
-        if let ExprKind::MethodCall(method_path, _, [ref b_expr, ref a_expr]) = &closure_body.value.kind;
+        if let ExprKind::MethodCall(method_path, _, [ref left_expr, ref right_expr]) = &closure_body.value.kind;
         if method_path.ident.name.to_ident_string() == "cmp";
-        if mirrored_exprs(&cx, &a_expr, &a_ident, &b_expr, &b_ident);
         then {
+            let (closure_body, closure_arg) = if mirrored_exprs(
+                &cx,
+                &left_expr,
+                &left_ident,
+                &right_expr,
+                &right_ident
+            ) {
+                (Sugg::hir(cx, &left_expr, "..").to_string(), left_ident.name.to_string())
+            } else if mirrored_exprs(&cx, &left_expr, &right_ident, &right_expr, &left_ident) {
+                (format!("Reverse({})", Sugg::hir(cx, &left_expr, "..").to_string()), right_ident.name.to_string())
+            } else {
+                return None;
+            };
             let vec_name = Sugg::hir(cx, &args[0], "..").to_string();
             let unstable = name == "sort_unstable_by";
-            let closure_arg = format!("&{}", b_ident.name.to_ident_string());
-            let closure_reverse_body = Sugg::hir(cx, &b_expr, "..").to_string();
-            // Get rid of parentheses, because they aren't needed anymore
-            // while closure_reverse_body.chars().next() == Some('(') && closure_reverse_body.chars().last() == Some(')') {
-                // closure_reverse_body = String::from(&closure_reverse_body[1..closure_reverse_body.len()-1]);
-            // }
-            Some(LintTrigger { vec_name, unstable, closure_arg, closure_reverse_body })
+            Some(LintTrigger { vec_name, unstable, closure_arg, closure_body })
         } else {
             None
         }
     }
 }
 
-impl LateLintPass<'_, '_> for SortByKeyReverse {
+impl LateLintPass<'_, '_> for SortByKey {
     fn check_expr(&mut self, cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
         if let Some(trigger) = detect_lint(cx, expr) {
             utils::span_lint_and_sugg(
                 cx,
-                SORT_BY_KEY_REVERSE,
+                SORT_BY_KEY,
                 expr.span,
                 "use Vec::sort_by_key here instead",
                 "try",
                 format!(
-                    "{}.sort{}_by_key(|{}| Reverse({}))",
+                    "{}.sort{}_by_key(|&{}| {})",
                     trigger.vec_name,
                     if trigger.unstable { "_unstable" } else { "" },
                     trigger.closure_arg,
-                    trigger.closure_reverse_body,
+                    trigger.closure_body,
                 ),
                 Applicability::MachineApplicable,
             );

@@ -9,6 +9,11 @@ fn id(x: isize) -> isize {
 
 fn main() {
     let mut vec: Vec<isize> = vec![3, 6, 1, 2, 5];
+    // Forward examples
+    vec.sort_by(|a, b| a.cmp(b));
+    vec.sort_by(|a, b| (a + 5).abs().cmp(&(b + 5).abs()));
+    vec.sort_by(|a, b| id(-a).cmp(&id(-b)));
+    // Reverse examples
     vec.sort_by(|a, b| b.cmp(a));
     vec.sort_by(|a, b| (b + 5).abs().cmp(&(a + 5).abs()));
     vec.sort_by(|a, b| id(-b).cmp(&id(-a)));
@@ -18,5 +23,4 @@ fn main() {
     vec.sort_by(|_, b| b.cmp(&5));
     vec.sort_by(|_, b| b.cmp(c));
     vec.sort_by(|a, _| a.cmp(c));
-    vec.sort_by(|a, b| a.cmp(b));
 }
