@@ -1,18 +1,18 @@
 //! ARM's Transactional Memory Extensions (TME).
 //!
-//! This CPU feature is available on Aarch64 – ARMv8-A arch. onwards.
+//! This CPU feature is available on Aarch64 - A architecture profile.
 //! This feature is in the non-neon feature set. TME specific vendor documentation can
 //! be found [TME Intrinsics Introduction][tme_intrinsics_intro].
 //!
 //! The reference is [ACLE Q4 2019][acle_q4_2019_ref].
 //!
 //! ACLE has a section for TME extensions and state masks for aborts and failure codes.
-//! In addition to that [LLVM Aarch64 Intrinsics][llvm_aarch64_int] are
-//! self explanatory for what needs to be exported.
+//! [ARM A64 Architecture Register Datasheet][a_profile_future] also describes possible failure code scenarios.
 //!
 //! [acle_q4_2019_ref]: https://static.docs.arm.com/101028/0010/ACLE_2019Q4_release-0010.pdf
 //! [tme_intrinsics_intro]: https://developer.arm.com/docs/101028/0010/transactional-memory-extension-tme-intrinsics
 //! [llvm_aarch64_int]: https://github.com/llvm/llvm-project/commit/a36d31478c182903523e04eb271bbf102bfab2cc#diff-ff24e1c35f4d54f1110ce5d90c709319R626-R646
+//! [a_profile_future]: https://static.docs.arm.com/ddi0601/a/SysReg_xml_futureA-2019-04.pdf?_ga=2.116560387.441514988.1590524918-1110153136.1588469296
 
 #[cfg(test)]
 use stdarch_test::assert_instr;
@@ -37,33 +37,32 @@ pub const _TMFAILURE_REASON: u32 = 0x00007FFF_u32;
 /// Transaction retry is possible.
 pub const _TMFAILURE_RTRY: u32 = 1 << 15;
 
-/// Transaction cancelled.
+/// Transaction executed a TCANCEL instruction
 pub const _TMFAILURE_CNCL: u32 = 1 << 16;
 
-/// Transaction cancelled due to high memory usage.
+/// Transaction aborted because a conflict occurred
 pub const _TMFAILURE_MEM: u32 = 1 << 17;
 
-///
+/// Fallback error type for any other reason
 pub const _TMFAILURE_IMP: u32 = 1 << 18;
 
-///
+/// Transaction aborted because a non-permissible operation was attempted
 pub const _TMFAILURE_ERR: u32 = 1 << 19;
 
-///
+/// Transaction aborted due to read or write set limit was exceeded
 pub const _TMFAILURE_SIZE: u32 = 1 << 20;
 
-/// Transaction abort in a inner nested transaction.
+/// Transaction aborted due to transactional nesting level was exceeded
 pub const _TMFAILURE_NEST: u32 = 1 << 21;
 
-/// Transaction abort due to a debug trap.
+/// Transaction aborted due to a debug trap.
 pub const _TMFAILURE_DBG: u32 = 1 << 22;
 
-///
+/// Transaction failed from interrupt
 pub const _TMFAILURE_INT: u32 = 1 << 23;
 
-///
+/// Indicates a TRIVIAL version of TM is available
 pub const _TMFAILURE_TRIVIAL: u32 = 1 << 24;
-
 
 /// Starts a new transaction. When the transaction starts successfully the return value is 0.
 /// If the transaction fails, all state modifications are discarded and a cause of the failure
@@ -116,9 +115,71 @@ pub unsafe fn __ttest() -> u32 {
     aarch64_ttest() as _
 }
 
-/// Encodes cancellation reason, which is the parameter passed to [`__tcancel`]
-/// Takes cancellation reason flags and retry-ability.
-#[inline]
-pub const fn _tcancel_code(reason: u32, retryable: bool) -> u32 {
-    (retryable as i32) << 15 | (reason & _TMFAILURE_REASON)
+#[cfg(test)]
+mod tests {
+    use stdarch_test::simd_test;
+
+    use crate::core_arch::aarch64::*;
+
+    #[simd_test(enable = "tme")]
+    unsafe fn test_tstart() {
+        let mut x = 0;
+        for i in 0..10 {
+            let code = tme::__tstart();
+            if code == _TMSTART_SUCCESS {
+                x += 1;
+                assert_eq!(x, i+1);
+                break;
+            }
+            assert_eq!(x, 0);
+        }
+    }
+
+    #[simd_test(enable = "tme")]
+    unsafe fn test_tcommit() {
+        let mut x = 0;
+        for i in 0..10 {
+            let code = tme::__tstart();
+            if code == _TMSTART_SUCCESS {
+                x += 1;
+                assert_eq!(x, i+1);
+                tme::__tcommit();
+            }
+            assert_eq!(x, i+1);
+        }
+    }
+
+    #[simd_test(enable = "tme")]
+    unsafe fn test_tcancel() {
+        let reason = 0x123;
+        let cancel_code = (0 | (reason & _TMFAILURE_REASON) as i32) as u32;
+        let mut x = 0;
+
+        for i in 0..10 {
+            let code = tme::__tstart();
+            if code == _TMSTART_SUCCESS {
+                x += 1;
+                assert_eq!(x, i+1);
+                tme::__tcancel(cancel_code);
+                break;
+            }
+        }
+
+        assert_eq!(x, 0);
+    }
+
+    #[simd_test(enable = "tme")]
+    unsafe fn test_ttest() {
+        let reason = 0x123;
+        let cancel_code = (0 | (reason & _TMFAILURE_REASON) as i32) as u32;
+        for _ in 0..10 {
+            let code = tme::__tstart();
+            if code == _TMSTART_SUCCESS {
+                if tme::__ttest() == 2 {
+              	     tme::__tcancel(cancel_code);
+                  	 break;
+                }
+            }
+        }
+    }
 }

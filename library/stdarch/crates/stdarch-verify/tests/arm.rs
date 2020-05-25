@@ -366,6 +366,7 @@ fn verify_all_signatures() {
                     && !rust.file.ends_with("v6.rs\"")
                     && !rust.file.ends_with("v7.rs\"")
                     && !rust.file.ends_with("v8.rs\"")
+                    && !rust.file.ends_with("tme.rs\"")
                 {
                     println!(
                         "missing arm definition for {:?} in {}",
