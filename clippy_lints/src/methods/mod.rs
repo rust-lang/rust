@@ -1614,6 +1614,21 @@ fn lint_or_fun_call<'a, 'tcx>(
         or_has_args: bool,
         span: Span,
     ) {
+        if let hir::ExprKind::MethodCall(ref path, _, ref args) = &arg.kind {
+            if path.ident.as_str() == "len" {
+                let ty = walk_ptrs_ty(cx.tables.expr_ty(&args[0]));
+
+                match ty.kind {
+                    ty::Slice(_) | ty::Array(_, _) => return,
+                    _ => (),
+                }
+
+                if match_type(cx, ty, &paths::VEC) {
+                    return;
+                }
+            }
+        }
+
         // (path, fn_has_argument, methods, suffix)
         let know_types: &[(&[_], _, &[_], _)] = &[
             (&paths::BTREEMAP_ENTRY, false, &["or_insert"], "with"),
