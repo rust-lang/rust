@@ -10,3 +10,5 @@ fn try_identity(x: Result<u32, i32>) -> Result<u32, i32> {
 fn main() {
     let _ = try_identity(Ok(0));
 }
+
+// EMIT_MIR simplify_try.try_identity.DestinationPropagation.diff

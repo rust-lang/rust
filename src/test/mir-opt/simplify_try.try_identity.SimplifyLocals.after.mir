@@ -23,11 +23,11 @@ fn try_identity(_1: std::result::Result<u32, i32>) -> std::result::Result<u32, i
         }
     }
     scope 6 {
-        debug self => _1;                // in scope 6 at $SRC_DIR/core/src/result.rs:LL:COL
+        debug self => _0;                // in scope 6 at $SRC_DIR/core/src/result.rs:LL:COL
     }
 
     bb0: {
-        _0 = move _1;                    // scope 1 at $DIR/simplify_try.rs:7:5: 7:10
+        _0 = _1;                         // scope 0 at $DIR/simplify_try.rs:6:13: 6:14
         return;                          // scope 0 at $DIR/simplify_try.rs:8:2: 8:2
     }
 }
