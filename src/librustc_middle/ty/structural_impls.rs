@@ -889,11 +889,11 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
             ty::FnDef(def_id, substs) => ty::FnDef(def_id, substs.fold_with(folder)),
             ty::FnPtr(f) => ty::FnPtr(f.fold_with(folder)),
             ty::Ref(ref r, ty, mutbl) => ty::Ref(r.fold_with(folder), ty.fold_with(folder), mutbl),
-            ty::Generator(did, substs, movability) => {
-                ty::Generator(did, substs.fold_with(folder), movability)
+            ty::Generator(did, generator_substs, movability) => {
+                ty::Generator(did, generator_substs.fold_with(folder), movability)
             }
             ty::GeneratorWitness(types) => ty::GeneratorWitness(types.fold_with(folder)),
-            ty::Closure(did, substs) => ty::Closure(did, substs.fold_with(folder)),
+            ty::Closure(did, closure_substs) => ty::Closure(did, closure_substs.fold_with(folder)),
             ty::Projection(ref data) => ty::Projection(data.fold_with(folder)),
             ty::Opaque(did, substs) => ty::Opaque(did, substs.fold_with(folder)),
 
@@ -932,9 +932,9 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
             ty::FnDef(_, substs) => substs.visit_with(visitor),
             ty::FnPtr(ref f) => f.visit_with(visitor),
             ty::Ref(r, ty, _) => r.visit_with(visitor) || ty.visit_with(visitor),
-            ty::Generator(_did, ref substs, _) => substs.visit_with(visitor),
+            ty::Generator(_did, ref generator_substs, _) => generator_substs.visit_with(visitor),
             ty::GeneratorWitness(ref types) => types.visit_with(visitor),
-            ty::Closure(_did, ref substs) => substs.visit_with(visitor),
+            ty::Closure(_did, ref closure_substs) => closure_substs.visit_with(visitor),
             ty::Projection(ref data) => data.visit_with(visitor),
             ty::Opaque(_, ref substs) => substs.visit_with(visitor),
 

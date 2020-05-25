@@ -521,7 +521,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     ) {
         let self_ty = trait_ref.self_ty();
         let (def_id, output_ty, callable) = match self_ty.kind {
-            ty::Closure(def_id, substs) => (def_id, substs.as_closure().sig().output(), "closure"),
+            ty::Closure(def_id, closure_substs) => {
+                (def_id, closure_substs.sig().output(), "closure")
+            }
             ty::FnDef(def_id, _) => (def_id, self_ty.fn_sig(self.tcx).output(), "function"),
             _ => return,
         };

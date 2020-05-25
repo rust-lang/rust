@@ -178,7 +178,7 @@ impl<'tcx> Rvalue<'tcx> {
                 let ty = place.ty(local_decls, tcx).ty;
                 match ty.kind {
                     ty::Adt(adt_def, _) => adt_def.repr.discr_type().to_ty(tcx),
-                    ty::Generator(_, substs, _) => substs.as_generator().discr_ty(tcx),
+                    ty::Generator(_, generator_substs, _) => generator_substs.discr_ty(tcx),
                     _ => {
                         // This can only be `0`, for now, so `u8` will suffice.
                         tcx.types.u8
@@ -191,9 +191,9 @@ impl<'tcx> Rvalue<'tcx> {
                 AggregateKind::Array(ty) => tcx.mk_array(ty, ops.len() as u64),
                 AggregateKind::Tuple => tcx.mk_tup(ops.iter().map(|op| op.ty(local_decls, tcx))),
                 AggregateKind::Adt(def, _, substs, _, _) => tcx.type_of(def.did).subst(tcx, substs),
-                AggregateKind::Closure(did, substs) => tcx.mk_closure(did, substs),
-                AggregateKind::Generator(did, substs, movability) => {
-                    tcx.mk_generator(did, substs, movability)
+                AggregateKind::Closure(did, closure_substs) => tcx.mk_closure(did, closure_substs),
+                AggregateKind::Generator(did, generator_substs, movability) => {
+                    tcx.mk_generator(did, generator_substs, movability)
                 }
             },
         }

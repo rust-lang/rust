@@ -73,7 +73,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Pointer(PointerCast::ClosureFnPointer(_)) => {
                 // The src operand does not matter, just its type
                 match src.layout.ty.kind {
-                    ty::Closure(def_id, substs) => {
+                    ty::Closure(def_id, closure_substs) => {
                         // All reifications must be monomorphic, bail out otherwise.
                         if src.layout.ty.needs_subst() {
                             throw_inval!(TooGeneric);
@@ -82,7 +82,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         let instance = ty::Instance::resolve_closure(
                             *self.tcx,
                             def_id,
-                            substs,
+                            closure_substs,
                             ty::ClosureKind::FnOnce,
                         );
                         let fn_ptr = self.memory.create_fn_alloc(FnVal::Instance(instance));

@@ -143,7 +143,7 @@ fn mir_build(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Body<'_> {
             let (yield_ty, return_ty) = if body.generator_kind.is_some() {
                 let gen_ty = tcx.body_tables(body_id).node_type(id);
                 let gen_sig = match gen_ty.kind {
-                    ty::Generator(_, gen_substs, ..) => gen_substs.as_generator().sig(),
+                    ty::Generator(_, gen_substs, ..) => gen_substs.sig(),
                     _ => span_bug!(tcx.hir().span(id), "generator w/o generator type: {:?}", ty),
                 };
                 (Some(gen_sig.yield_ty), gen_sig.return_ty)
@@ -803,8 +803,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 closure_ty = ty;
             }
             let upvar_substs = match closure_ty.kind {
-                ty::Closure(_, substs) => ty::UpvarSubsts::Closure(substs),
-                ty::Generator(_, substs, _) => ty::UpvarSubsts::Generator(substs),
+                ty::Closure(_, closure_substs) => ty::UpvarSubsts::Closure(closure_substs),
+                ty::Generator(_, generator_substs, _) => ty::UpvarSubsts::Generator(generator_substs),
                 _ => span_bug!(self.fn_span, "upvars with non-closure env ty {:?}", closure_ty),
             };
             let upvar_tys = upvar_substs.upvar_tys();

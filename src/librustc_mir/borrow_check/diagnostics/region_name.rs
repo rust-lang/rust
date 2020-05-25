@@ -241,7 +241,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                         self.infcx.tcx.hir().as_local_hir_id(self.mir_def_id.expect_local());
                     let def_ty = self.regioncx.universal_regions().defining_ty;
 
-                    if let DefiningTy::Closure(_, substs) = def_ty {
+                    if let DefiningTy::Closure(_, closure_substs) = def_ty {
                         let args_span = if let hir::ExprKind::Closure(_, _, _, span, _) =
                             tcx.hir().expect_expr(mir_hir_id).kind
                         {
@@ -251,7 +251,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                         };
                         let region_name = self.synthesize_region_name();
 
-                        let closure_kind_ty = substs.as_closure().kind_ty();
+                        let closure_kind_ty = closure_substs.kind_ty();
                         let note = match closure_kind_ty.to_opt_closure_kind() {
                             Some(ty::ClosureKind::Fn) => {
                                 "closure implements `Fn`, so references to captured variables \

@@ -9,7 +9,7 @@ use rustc_hir::Node;
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
 use rustc_middle::ty::util::IntTypeExt;
-use rustc_middle::ty::{self, DefIdTree, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, ClosureSubsts, DefIdTree, GeneratorSubsts, Ty, TyCtxt, TypeFoldable};
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{Span, DUMMY_SP};
@@ -204,9 +204,9 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
         Node::Expr(&Expr { kind: ExprKind::Closure(.., gen), .. }) => {
             let substs = InternalSubsts::identity_for_item(tcx, def_id);
             if let Some(movability) = gen {
-                tcx.mk_generator(def_id, substs, movability)
+                tcx.mk_generator(def_id, GeneratorSubsts { substs }, movability)
             } else {
-                tcx.mk_closure(def_id, substs)
+                tcx.mk_closure(def_id, ClosureSubsts { substs })
             }
         }
 

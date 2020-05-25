@@ -11,7 +11,7 @@ use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKi
 use rustc_infer::infer::{self, InferCtxt, InferOk};
 use rustc_middle::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder, TypeVisitor};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, SubstsRef};
-use rustc_middle::ty::{self, GenericParamDefKind, Ty, TyCtxt};
+use rustc_middle::ty::{self, ClosureSubsts, GeneratorSubsts, GenericParamDefKind, Ty, TyCtxt};
 use rustc_session::config::nightly_options;
 use rustc_span::Span;
 
@@ -710,27 +710,27 @@ where
         }
 
         match ty.kind {
-            ty::Closure(_, ref substs) => {
+            ty::Closure(_, ref closure_substs) => {
                 // Skip lifetime parameters of the enclosing item(s)
 
-                for upvar_ty in substs.as_closure().upvar_tys() {
+                for upvar_ty in closure_substs.upvar_tys() {
                     upvar_ty.visit_with(self);
                 }
 
-                substs.as_closure().sig_as_fn_ptr_ty().visit_with(self);
+                closure_substs.sig_as_fn_ptr_ty().visit_with(self);
             }
 
-            ty::Generator(_, ref substs, _) => {
+            ty::Generator(_, ref generator_substs, _) => {
                 // Skip lifetime parameters of the enclosing item(s)
                 // Also skip the witness type, because that has no free regions.
 
-                for upvar_ty in substs.as_generator().upvar_tys() {
+                for upvar_ty in generator_substs.upvar_tys() {
                     upvar_ty.visit_with(self);
                 }
 
-                substs.as_generator().return_ty().visit_with(self);
-                substs.as_generator().yield_ty().visit_with(self);
-                substs.as_generator().resume_ty().visit_with(self);
+                generator_substs.return_ty().visit_with(self);
+                generator_substs.yield_ty().visit_with(self);
+                generator_substs.resume_ty().visit_with(self);
             }
             _ => {
                 ty.super_visit_with(self);
@@ -865,7 +865,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
         match ty.kind {
-            ty::Closure(def_id, substs) => {
+            ty::Closure(def_id, ClosureSubsts { substs }) => {
                 // I am a horrible monster and I pray for death. When
                 // we encounter a closure here, it is always a closure
                 // from within the function that we are currently
@@ -901,10 +901,10 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                     }
                 }));
 
-                self.tcx.mk_closure(def_id, substs)
+                self.tcx.mk_closure(def_id, ClosureSubsts { substs })
             }
 
-            ty::Generator(def_id, substs, movability) => {
+            ty::Generator(def_id, GeneratorSubsts { substs }, movability) => {
                 let generics = self.tcx.generics_of(def_id);
                 let substs = self.tcx.mk_substs(substs.iter().enumerate().map(|(index, &kind)| {
                     if index < generics.parent_count {
@@ -916,7 +916,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                     }
                 }));
 
-                self.tcx.mk_generator(def_id, substs, movability)
+                self.tcx.mk_generator(def_id, GeneratorSubsts { substs }, movability)
             }
 
             ty::Param(..) => {

@@ -213,13 +213,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     })
                     .collect();
                 let result = match substs {
-                    UpvarSubsts::Generator(substs) => {
+                    UpvarSubsts::Generator(generator_substs) => {
                         // We implicitly set the discriminant to 0. See
                         // librustc_mir/transform/deaggregator.rs for details.
                         let movability = movability.unwrap();
-                        box AggregateKind::Generator(closure_id, substs, movability)
+                        box AggregateKind::Generator(closure_id, generator_substs, movability)
                     }
-                    UpvarSubsts::Closure(substs) => box AggregateKind::Closure(closure_id, substs),
+                    UpvarSubsts::Closure(closure_substs) => box AggregateKind::Closure(closure_id, closure_substs),
                 };
                 block.and(Rvalue::Aggregate(result, operands))
             }

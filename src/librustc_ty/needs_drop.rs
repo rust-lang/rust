@@ -93,19 +93,18 @@ where
                 match component.kind {
                     _ if component.is_copy_modulo_regions(tcx, self.param_env, DUMMY_SP) => (),
 
-                    ty::Closure(_, substs) => {
-                        for upvar_ty in substs.as_closure().upvar_tys() {
+                    ty::Closure(_, closure_substs) => {
+                        for upvar_ty in closure_substs.upvar_tys() {
                             queue_type(self, upvar_ty);
                         }
                     }
 
-                    ty::Generator(_, substs, _) => {
-                        let substs = substs.as_generator();
-                        for upvar_ty in substs.upvar_tys() {
+                    ty::Generator(_, generator_substs, _) => {
+                        for upvar_ty in generator_substs.upvar_tys() {
                             queue_type(self, upvar_ty);
                         }
 
-                        let witness = substs.witness();
+                        let witness = generator_substs.witness();
                         let interior_tys = match &witness.kind {
                             ty::GeneratorWitness(tys) => tcx.erase_late_bound_regions(tys),
                             _ => bug!(),

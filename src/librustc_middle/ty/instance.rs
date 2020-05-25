@@ -352,14 +352,14 @@ impl<'tcx> Instance<'tcx> {
     pub fn resolve_closure(
         tcx: TyCtxt<'tcx>,
         def_id: DefId,
-        substs: ty::SubstsRef<'tcx>,
+        closure_substs: ty::ClosureSubsts<'tcx>,
         requested_kind: ty::ClosureKind,
     ) -> Instance<'tcx> {
-        let actual_kind = substs.as_closure().kind();
+        let actual_kind = closure_substs.kind();
 
         match needs_fn_once_adapter_shim(actual_kind, requested_kind) {
-            Ok(true) => Instance::fn_once_adapter_instance(tcx, def_id, substs),
-            _ => Instance::new(def_id, substs),
+            Ok(true) => Instance::fn_once_adapter_instance(tcx, def_id, closure_substs),
+            _ => Instance::new(def_id, closure_substs.substs),
         }
     }
 
@@ -372,9 +372,9 @@ impl<'tcx> Instance<'tcx> {
     pub fn fn_once_adapter_instance(
         tcx: TyCtxt<'tcx>,
         closure_did: DefId,
-        substs: ty::SubstsRef<'tcx>,
+        closure_substs: ty::ClosureSubsts<'tcx>,
     ) -> Instance<'tcx> {
-        debug!("fn_once_adapter_shim({:?}, {:?})", closure_did, substs);
+        debug!("fn_once_adapter_shim({:?}, {:?})", closure_did, closure_substs);
         let fn_once = tcx.require_lang_item(FnOnceTraitLangItem, None);
         let call_once = tcx
             .associated_items(fn_once)
@@ -384,9 +384,9 @@ impl<'tcx> Instance<'tcx> {
             .def_id;
         let def = ty::InstanceDef::ClosureOnceShim { call_once };
 
-        let self_ty = tcx.mk_closure(closure_did, substs);
+        let self_ty = tcx.mk_closure(closure_did, closure_substs);
 
-        let sig = substs.as_closure().sig();
+        let sig = closure_substs.sig();
         let sig = tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
         assert_eq!(sig.inputs().len(), 1);
         let substs = tcx.mk_substs_trait(self_ty, &[sig.inputs()[0].into()]);

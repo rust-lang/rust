@@ -1620,7 +1620,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         );
                         // Check if our `target` was captured by a closure.
                         if let Rvalue::Aggregate(
-                            box AggregateKind::Closure(def_id, substs),
+                            box AggregateKind::Closure(def_id, closure_substs),
                             operands,
                         ) = rvalue
                         {
@@ -1651,7 +1651,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 // into a place then we should annotate the closure in
                                 // case it ends up being assigned into the return place.
                                 annotated_closure =
-                                    self.annotate_fn_sig(*def_id, substs.as_closure().sig());
+                                    self.annotate_fn_sig(*def_id, closure_substs.sig());
                                 debug!(
                                     "annotate_argument_and_return_for_borrow: \
                                      annotated_closure={:?} assigned_from_local={:?} \

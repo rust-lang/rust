@@ -684,16 +684,16 @@ macro_rules! make_mir_visitor {
                             }
                             AggregateKind::Closure(
                                 _,
-                                closure_substs
+                                ClosureSubsts { substs }
                             ) => {
-                                self.visit_substs(closure_substs, location);
+                                self.visit_substs(substs, location);
                             }
                             AggregateKind::Generator(
                                 _,
-                                generator_substs,
+                                GeneratorSubsts { substs },
                                 _movability,
                             ) => {
-                                self.visit_substs(generator_substs, location);
+                                self.visit_substs(substs, location);
                             }
                         }
 

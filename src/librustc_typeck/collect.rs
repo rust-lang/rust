@@ -1537,10 +1537,8 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
             // To get the signature of a closure, you should use the
             // `sig` method on the `ClosureSubsts`:
             //
-            //    substs.as_closure().sig(def_id, tcx)
-            bug!(
-                "to get the signature of a closure, use `substs.as_closure().sig()` not `fn_sig()`",
-            );
+            //    closure_substs.sig(def_id, tcx)
+            bug!("to get the signature of a closure, use `closure_substs.sig()` not `fn_sig()`",);
         }
 
         x => {

@@ -210,14 +210,16 @@ fn dtorck_constraint_for_ty<'tcx>(
             Ok::<_, NoSolution>(())
         })?,
 
-        ty::Closure(_, substs) => rustc_data_structures::stack::ensure_sufficient_stack(|| {
-            for ty in substs.as_closure().upvar_tys() {
-                dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, ty, constraints)?;
-            }
-            Ok::<_, NoSolution>(())
-        })?,
+        ty::Closure(_, closure_substs) => {
+            rustc_data_structures::stack::ensure_sufficient_stack(|| {
+                for ty in closure_substs.upvar_tys() {
+                    dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, ty, constraints)?;
+                }
+                Ok::<_, NoSolution>(())
+            })?
+        }
 
-        ty::Generator(_, substs, _movability) => {
+        ty::Generator(_, generator_substs, _movability) => {
             // rust-lang/rust#49918: types can be constructed, stored
             // in the interior, and sit idle when generator yields
             // (and is subsequently dropped).
@@ -242,12 +244,9 @@ fn dtorck_constraint_for_ty<'tcx>(
             // argument, and we *do* incorporate those here.
 
             constraints.outlives.extend(
-                substs
-                    .as_generator()
-                    .upvar_tys()
-                    .map(|t| -> ty::subst::GenericArg<'tcx> { t.into() }),
+                generator_substs.upvar_tys().map(|t| -> ty::subst::GenericArg<'tcx> { t.into() }),
             );
-            constraints.outlives.push(substs.as_generator().resume_ty().into());
+            constraints.outlives.push(generator_substs.resume_ty().into());
         }
 
         ty::Adt(def, substs) => {

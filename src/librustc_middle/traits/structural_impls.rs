@@ -45,7 +45,7 @@ impl<'tcx, N: fmt::Debug> fmt::Debug for traits::VtableGeneratorData<'tcx, N> {
         write!(
             f,
             "VtableGeneratorData(generator_def_id={:?}, substs={:?}, nested={:?})",
-            self.generator_def_id, self.substs, self.nested
+            self.generator_def_id, self.generator_substs, self.nested
         )
     }
 }
@@ -55,7 +55,7 @@ impl<'tcx, N: fmt::Debug> fmt::Debug for traits::VtableClosureData<'tcx, N> {
         write!(
             f,
             "VtableClosureData(closure_def_id={:?}, substs={:?}, nested={:?})",
-            self.closure_def_id, self.substs, self.nested
+            self.closure_def_id, self.closure_substs, self.nested
         )
     }
 }
@@ -251,24 +251,26 @@ impl<'a, 'tcx> Lift<'tcx> for traits::Vtable<'a, ()> {
             traits::VtableAutoImpl(t) => Some(traits::VtableAutoImpl(t)),
             traits::VtableGenerator(traits::VtableGeneratorData {
                 generator_def_id,
-                substs,
+                generator_substs,
                 nested,
-            }) => tcx.lift(&substs).map(|substs| {
+            }) => tcx.lift(&generator_substs).map(|generator_substs| {
                 traits::VtableGenerator(traits::VtableGeneratorData {
                     generator_def_id,
-                    substs,
+                    generator_substs,
                     nested,
                 })
             }),
-            traits::VtableClosure(traits::VtableClosureData { closure_def_id, substs, nested }) => {
-                tcx.lift(&substs).map(|substs| {
-                    traits::VtableClosure(traits::VtableClosureData {
-                        closure_def_id,
-                        substs,
-                        nested,
-                    })
+            traits::VtableClosure(traits::VtableClosureData {
+                closure_def_id,
+                closure_substs,
+                nested,
+            }) => tcx.lift(&closure_substs).map(|closure_substs| {
+                traits::VtableClosure(traits::VtableClosureData {
+                    closure_def_id,
+                    closure_substs,
+                    nested,
                 })
-            }
+            }),
             traits::VtableFnPointer(traits::VtableFnPointerData { fn_ty, nested }) => {
                 tcx.lift(&fn_ty).map(|fn_ty| {
                     traits::VtableFnPointer(traits::VtableFnPointerData { fn_ty, nested })

@@ -27,8 +27,8 @@ use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::{GenericArgKind, Subst, SubstsRef, UserSubsts};
 use rustc_middle::ty::{
-    self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, RegionVid, ToPolyTraitRef, Ty,
-    TyCtxt, UserType, UserTypeAnnotationIndex,
+    self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, ClosureSubsts,
+    GeneratorSubsts, RegionVid, ToPolyTraitRef, Ty, TyCtxt, UserType, UserTypeAnnotationIndex,
 };
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
@@ -736,14 +736,14 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         let (variant, substs) = match base_ty {
             PlaceTy { ty, variant_index: Some(variant_index) } => match ty.kind {
                 ty::Adt(adt_def, substs) => (&adt_def.variants[variant_index], substs),
-                ty::Generator(def_id, substs, _) => {
-                    let mut variants = substs.as_generator().state_tys(def_id, tcx);
+                ty::Generator(def_id, generator_substs, _) => {
+                    let mut variants = generator_substs.state_tys(def_id, tcx);
                     let mut variant = match variants.nth(variant_index.into()) {
                         Some(v) => v,
                         None => bug!(
                             "variant_index of generator out of range: {:?}/{:?}",
                             variant_index,
-                            substs.as_generator().state_tys(def_id, tcx).count()
+                            generator_substs.state_tys(def_id, tcx).count()
                         ),
                     };
                     return match variant.nth(field.index()) {
@@ -757,21 +757,21 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                 ty::Adt(adt_def, substs) if !adt_def.is_enum() => {
                     (&adt_def.variants[VariantIdx::new(0)], substs)
                 }
-                ty::Closure(_, substs) => {
-                    return match substs.as_closure().upvar_tys().nth(field.index()) {
+                ty::Closure(_, closure_substs) => {
+                    return match closure_substs.upvar_tys().nth(field.index()) {
                         Some(ty) => Ok(ty),
                         None => Err(FieldAccessError::OutOfRange {
-                            field_count: substs.as_closure().upvar_tys().count(),
+                            field_count: closure_substs.upvar_tys().count(),
                         }),
                     };
                 }
-                ty::Generator(_, substs, _) => {
+                ty::Generator(_, generator_substs, _) => {
                     // Only prefix fields (upvars and current state) are
                     // accessible without a variant index.
-                    return match substs.as_generator().prefix_tys().nth(field.index()) {
+                    return match generator_substs.prefix_tys().nth(field.index()) {
                         Some(ty) => Ok(ty),
                         None => Err(FieldAccessError::OutOfRange {
-                            field_count: substs.as_generator().prefix_tys().count(),
+                            field_count: generator_substs.prefix_tys().count(),
                         }),
                     };
                 }
@@ -1949,22 +1949,22 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     Err(FieldAccessError::OutOfRange { field_count: variant.fields.len() })
                 }
             }
-            AggregateKind::Closure(_, substs) => {
-                match substs.as_closure().upvar_tys().nth(field_index) {
+            AggregateKind::Closure(_, closure_substs) => {
+                match closure_substs.upvar_tys().nth(field_index) {
                     Some(ty) => Ok(ty),
                     None => Err(FieldAccessError::OutOfRange {
-                        field_count: substs.as_closure().upvar_tys().count(),
+                        field_count: closure_substs.upvar_tys().count(),
                     }),
                 }
             }
-            AggregateKind::Generator(_, substs, _) => {
+            AggregateKind::Generator(_, generator_substs, _) => {
                 // It doesn't make sense to look at a field beyond the prefix;
                 // these require a variant index, and are not initialized in
                 // aggregate rvalues.
-                match substs.as_generator().prefix_tys().nth(field_index) {
+                match generator_substs.prefix_tys().nth(field_index) {
                     Some(ty) => Ok(ty),
                     None => Err(FieldAccessError::OutOfRange {
-                        field_count: substs.as_generator().prefix_tys().count(),
+                        field_count: generator_substs.prefix_tys().count(),
                     }),
                 }
             }
@@ -2091,7 +2091,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                     CastKind::Pointer(PointerCast::ClosureFnPointer(unsafety)) => {
                         let sig = match op.ty(body, tcx).kind {
-                            ty::Closure(_, substs) => substs.as_closure().sig(),
+                            ty::Closure(_, closure_substs) => closure_substs.sig(),
                             _ => bug!(),
                         };
                         let ty_fn_ptr_from = tcx.mk_fn_ptr(tcx.signature_unclosure(sig, *unsafety));
@@ -2596,8 +2596,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             // desugaring. A closure gets desugared to a struct, and
             // these extra requirements are basically like where
             // clauses on the struct.
-            AggregateKind::Closure(def_id, substs)
-            | AggregateKind::Generator(def_id, substs, _) => {
+            AggregateKind::Closure(def_id, ClosureSubsts { substs })
+            | AggregateKind::Generator(def_id, GeneratorSubsts { substs }, _) => {
                 self.prove_closure_bounds(tcx, def_id.expect_local(), substs, location)
             }
 

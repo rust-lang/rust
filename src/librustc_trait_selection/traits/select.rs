@@ -49,7 +49,8 @@ use rustc_middle::ty::fast_reject;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst, SubstsRef};
 use rustc_middle::ty::{
-    self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
+    self, ClosureSubsts, GeneratorSubsts, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable,
+    WithConstness,
 };
 use rustc_span::symbol::sym;
 use rustc_target::spec::abi::Abi;
@@ -2273,9 +2274,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Where(ty::Binder::bind(tys.iter().map(|k| k.expect_ty()).collect()))
             }
 
-            ty::Closure(_, substs) => {
+            ty::Closure(_, closure_substs) => {
                 // (*) binder moved here
-                Where(ty::Binder::bind(substs.as_closure().upvar_tys().collect()))
+                Where(ty::Binder::bind(closure_substs.upvar_tys().collect()))
             }
 
             ty::Adt(..) | ty::Projection(..) | ty::Param(..) | ty::Opaque(..) => {
@@ -2344,11 +2345,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 tys.iter().map(|k| k.expect_ty()).collect()
             }
 
-            ty::Closure(_, ref substs) => substs.as_closure().upvar_tys().collect(),
+            ty::Closure(_, ref closure_substs) => closure_substs.upvar_tys().collect(),
 
-            ty::Generator(_, ref substs, _) => {
-                let witness = substs.as_generator().witness();
-                substs.as_generator().upvar_tys().chain(iter::once(witness)).collect()
+            ty::Generator(_, ref generator_substs, _) => {
+                let witness = generator_substs.witness();
+                generator_substs.upvar_tys().chain(iter::once(witness)).collect()
             }
 
             ty::GeneratorWitness(types) => {
@@ -2838,14 +2839,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // touch bound regions, they just capture the in-scope
         // type/region parameters.
         let self_ty = self.infcx.shallow_resolve(*obligation.self_ty().skip_binder());
-        let (generator_def_id, substs) = match self_ty.kind {
-            ty::Generator(id, substs, _) => (id, substs),
+        let (generator_def_id, generator_substs) = match self_ty.kind {
+            ty::Generator(id, generator_substs, _) => (id, generator_substs),
             _ => bug!("closure candidate for non-closure {:?}", obligation),
         };
 
-        debug!("confirm_generator_candidate({:?},{:?},{:?})", obligation, generator_def_id, substs);
+        debug!(
+            "confirm_generator_candidate({:?},{:?},{:?})",
+            obligation, generator_def_id, generator_substs
+        );
 
-        let trait_ref = self.generator_trait_ref_unnormalized(obligation, substs);
+        let trait_ref = self.generator_trait_ref_unnormalized(obligation, generator_substs);
         let Normalized { value: trait_ref, mut obligations } = ensure_sufficient_stack(|| {
             normalize_with_depth(
                 self,
@@ -2869,7 +2873,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             trait_ref,
         )?);
 
-        Ok(VtableGeneratorData { generator_def_id, substs, nested: obligations })
+        Ok(VtableGeneratorData { generator_def_id, generator_substs, nested: obligations })
     }
 
     fn confirm_closure_candidate(
@@ -2887,12 +2891,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // touch bound regions, they just capture the in-scope
         // type/region parameters.
         let self_ty = self.infcx.shallow_resolve(*obligation.self_ty().skip_binder());
-        let (closure_def_id, substs) = match self_ty.kind {
-            ty::Closure(id, substs) => (id, substs),
+        let (closure_def_id, closure_substs) = match self_ty.kind {
+            ty::Closure(id, closure_substs) => (id, closure_substs),
             _ => bug!("closure candidate for non-closure {:?}", obligation),
         };
 
-        let trait_ref = self.closure_trait_ref_unnormalized(obligation, substs);
+        let trait_ref = self.closure_trait_ref_unnormalized(obligation, closure_substs);
         let Normalized { value: trait_ref, mut obligations } = ensure_sufficient_stack(|| {
             normalize_with_depth(
                 self,
@@ -2921,11 +2925,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             obligations.push(Obligation::new(
                 obligation.cause.clone(),
                 obligation.param_env,
-                ty::Predicate::ClosureKind(closure_def_id, substs, kind),
+                ty::Predicate::ClosureKind(closure_def_id, closure_substs, kind),
             ));
         }
 
-        Ok(VtableClosureData { closure_def_id, substs, nested: obligations })
+        Ok(VtableClosureData { closure_def_id, closure_substs, nested: obligations })
     }
 
     /// In the case of closure types and fn pointers,
@@ -3411,10 +3415,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn closure_trait_ref_unnormalized(
         &mut self,
         obligation: &TraitObligation<'tcx>,
-        substs: SubstsRef<'tcx>,
+        closure_substs: ClosureSubsts<'tcx>,
     ) -> ty::PolyTraitRef<'tcx> {
-        debug!("closure_trait_ref_unnormalized(obligation={:?}, substs={:?})", obligation, substs);
-        let closure_sig = substs.as_closure().sig();
+        debug!(
+            "closure_trait_ref_unnormalized(obligation={:?}, substs={:?})",
+            obligation, closure_substs
+        );
+        let closure_sig = closure_substs.sig();
 
         debug!("closure_trait_ref_unnormalized: closure_sig = {:?}", closure_sig);
 
@@ -3436,9 +3443,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn generator_trait_ref_unnormalized(
         &mut self,
         obligation: &TraitObligation<'tcx>,
-        substs: SubstsRef<'tcx>,
+        generator_substs: GeneratorSubsts<'tcx>,
     ) -> ty::PolyTraitRef<'tcx> {
-        let gen_sig = substs.as_generator().poly_sig();
+        let gen_sig = generator_substs.poly_sig();
 
         // (1) Feels icky to skip the binder here, but OTOH we know
         // that the self-type is an generator type and hence is

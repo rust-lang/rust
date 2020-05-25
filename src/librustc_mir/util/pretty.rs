@@ -16,7 +16,7 @@ use rustc_middle::mir::interpret::{
 };
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, TyCtxt, TypeFoldable, TypeVisitor};
+use rustc_middle::ty::{self, ClosureSubsts, GeneratorSubsts, TyCtxt, TypeFoldable, TypeVisitor};
 use rustc_target::abi::Size;
 
 const INDENT: &str = "    ";
@@ -396,13 +396,13 @@ impl Visitor<'tcx> for ExtraComments<'tcx> {
         self.super_rvalue(rvalue, location);
         if let Rvalue::Aggregate(kind, _) = rvalue {
             match **kind {
-                AggregateKind::Closure(def_id, substs) => {
+                AggregateKind::Closure(def_id, ClosureSubsts { substs }) => {
                     self.push("closure");
                     self.push(&format!("+ def_id: {:?}", def_id));
                     self.push(&format!("+ substs: {:#?}", substs));
                 }
 
-                AggregateKind::Generator(def_id, substs, movability) => {
+                AggregateKind::Generator(def_id, GeneratorSubsts { substs }, movability) => {
                     self.push("generator");
                     self.push(&format!("+ def_id: {:?}", def_id));
                     self.push(&format!("+ substs: {:#?}", substs));

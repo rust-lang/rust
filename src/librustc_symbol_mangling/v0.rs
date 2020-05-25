@@ -6,7 +6,7 @@ use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use rustc_middle::ty::print::{Print, Printer};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst};
-use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, ClosureSubsts, GeneratorSubsts, Instance, Ty, TyCtxt, TypeFoldable};
 use rustc_target::spec::abi::Abi;
 
 use std::fmt::Write;
@@ -413,8 +413,8 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
             | ty::FnDef(def_id, substs)
             | ty::Opaque(def_id, substs)
             | ty::Projection(ty::ProjectionTy { item_def_id: def_id, substs })
-            | ty::Closure(def_id, substs)
-            | ty::Generator(def_id, substs, _) => {
+            | ty::Closure(def_id, ClosureSubsts { substs })
+            | ty::Generator(def_id, GeneratorSubsts { substs }, _) => {
                 self = self.print_def_path(def_id, substs)?;
             }
             ty::Foreign(def_id) => {

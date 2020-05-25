@@ -28,6 +28,7 @@ use crate::ty::TyKind::*;
 use crate::ty::{self, DefIdTree, Ty, TypeAndMut};
 use crate::ty::{AdtDef, AdtKind, Const, Region};
 use crate::ty::{BindingMode, BoundVar};
+use crate::ty::{ClosureSubsts, GeneratorSubsts};
 use crate::ty::{ConstVid, FloatVar, FloatVid, IntVar, IntVid, TyVar, TyVid};
 use crate::ty::{ExistentialPredicate, InferTy, ParamTy, PolyFnSig, Predicate, ProjectionTy};
 use crate::ty::{InferConst, ParamConst};
@@ -2289,7 +2290,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    pub fn mk_closure(self, closure_id: DefId, closure_substs: SubstsRef<'tcx>) -> Ty<'tcx> {
+    pub fn mk_closure(self, closure_id: DefId, closure_substs: ClosureSubsts<'tcx>) -> Ty<'tcx> {
         self.mk_ty(Closure(closure_id, closure_substs))
     }
 
@@ -2297,7 +2298,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn mk_generator(
         self,
         id: DefId,
-        generator_substs: SubstsRef<'tcx>,
+        generator_substs: GeneratorSubsts<'tcx>,
         movability: hir::Movability,
     ) -> Ty<'tcx> {
         self.mk_ty(Generator(id, generator_substs, movability))

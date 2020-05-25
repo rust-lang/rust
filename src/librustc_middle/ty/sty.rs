@@ -160,11 +160,11 @@ pub enum TyKind<'tcx> {
 
     /// The anonymous type of a closure. Used to represent the type of
     /// `|a| a`.
-    Closure(DefId, SubstsRef<'tcx>),
+    Closure(DefId, ClosureSubsts<'tcx>),
 
     /// The anonymous type of a generator. Used to represent the type of
     /// `|a| yield a`.
-    Generator(DefId, SubstsRef<'tcx>, hir::Movability),
+    Generator(DefId, GeneratorSubsts<'tcx>, hir::Movability),
 
     /// A type representin the types stored inside a generator.
     /// This should only appear in GeneratorInteriors.
@@ -303,7 +303,20 @@ static_assert_size!(TyKind<'_>, 24);
 /// * `GR`: The "return type", which is the type of value returned upon
 ///   completion of the generator.
 /// * `GW`: The "generator witness".
-#[derive(Copy, Clone, Debug, TypeFoldable)]
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    TypeFoldable,
+    Eq,
+    PartialEq,
+    Ord,
+    PartialOrd,
+    Hash,
+    HashStable,
+    RustcEncodable,
+    RustcDecodable
+)]
 pub struct ClosureSubsts<'tcx> {
     /// Lifetime and type parameters from the enclosing function,
     /// concatenated with a tuple containing the types of the upvars.
@@ -384,7 +397,20 @@ impl<'tcx> ClosureSubsts<'tcx> {
 }
 
 /// Similar to `ClosureSubsts`; see the above documentation for more.
-#[derive(Copy, Clone, Debug, TypeFoldable)]
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    TypeFoldable,
+    Eq,
+    PartialEq,
+    Ord,
+    PartialOrd,
+    Hash,
+    HashStable,
+    RustcEncodable,
+    RustcDecodable
+)]
 pub struct GeneratorSubsts<'tcx> {
     pub substs: SubstsRef<'tcx>,
 }
@@ -560,16 +586,16 @@ impl<'tcx> GeneratorSubsts<'tcx> {
 
 #[derive(Debug, Copy, Clone)]
 pub enum UpvarSubsts<'tcx> {
-    Closure(SubstsRef<'tcx>),
-    Generator(SubstsRef<'tcx>),
+    Closure(ClosureSubsts<'tcx>),
+    Generator(GeneratorSubsts<'tcx>),
 }
 
 impl<'tcx> UpvarSubsts<'tcx> {
     #[inline]
     pub fn upvar_tys(self) -> impl Iterator<Item = Ty<'tcx>> + 'tcx {
         let tupled_upvars_ty = match self {
-            UpvarSubsts::Closure(substs) => substs.as_closure().split().tupled_upvars_ty,
-            UpvarSubsts::Generator(substs) => substs.as_generator().split().tupled_upvars_ty,
+            UpvarSubsts::Closure(closure_substs) => closure_substs.split().tupled_upvars_ty,
+            UpvarSubsts::Generator(generator_substs) => generator_substs.split().tupled_upvars_ty,
         };
         tupled_upvars_ty.expect_ty().tuple_fields()
     }
@@ -2038,9 +2064,9 @@ impl<'tcx> TyS<'tcx> {
                 // ignore errors (#54954)
                 ty::Binder::dummy(FnSig::fake())
             }
-            Closure(..) => bug!(
-                "to get the signature of a closure, use `substs.as_closure().sig()` not `fn_sig()`",
-            ),
+            Closure(..) => {
+                bug!("to get the signature of a closure, use `closure_substs.sig()` not `fn_sig()`",)
+            }
             _ => bug!("Ty::fn_sig() called on non-fn type: {:?}", self),
         }
     }
@@ -2093,8 +2119,8 @@ impl<'tcx> TyS<'tcx> {
     pub fn variant_range(&self, tcx: TyCtxt<'tcx>) -> Option<Range<VariantIdx>> {
         match self.kind {
             TyKind::Adt(adt, _) => Some(adt.variant_range()),
-            TyKind::Generator(def_id, substs, _) => {
-                Some(substs.as_generator().variant_range(def_id, tcx))
+            TyKind::Generator(def_id, generator_substs, _) => {
+                Some(generator_substs.variant_range(def_id, tcx))
             }
             _ => None,
         }
@@ -2112,8 +2138,8 @@ impl<'tcx> TyS<'tcx> {
     ) -> Option<Discr<'tcx>> {
         match self.kind {
             TyKind::Adt(adt, _) => Some(adt.discriminant_for_variant(tcx, variant_index)),
-            TyKind::Generator(def_id, substs, _) => {
-                Some(substs.as_generator().discriminant_for_variant(def_id, tcx, variant_index))
+            TyKind::Generator(def_id, generator_substs, _) => {
+                Some(generator_substs.discriminant_for_variant(def_id, tcx, variant_index))
             }
             _ => None,
         }

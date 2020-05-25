@@ -207,11 +207,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                     mir::CastKind::Pointer(PointerCast::ClosureFnPointer(_)) => {
                         match operand.layout.ty.kind {
-                            ty::Closure(def_id, substs) => {
+                            ty::Closure(def_id, closure_substs) => {
                                 let instance = Instance::resolve_closure(
                                     bx.cx().tcx(),
                                     def_id,
-                                    substs,
+                                    closure_substs,
                                     ty::ClosureKind::FnOnce,
                                 );
                                 OperandValue::Immediate(bx.cx().get_fn_addr(instance))

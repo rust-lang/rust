@@ -33,9 +33,9 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::truncate;
 use rustc_middle::mir::{self, Field, GeneratorLayout};
 use rustc_middle::ty::layout::{self, IntegerExt, PrimitiveExt, TyAndLayout};
-use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
+use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::Instance;
-use rustc_middle::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
+use rustc_middle::ty::{self, AdtKind, GeneratorSubsts, ParamEnv, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::{self, DebugInfo};
 use rustc_span::symbol::{Interner, Symbol};
@@ -660,8 +660,8 @@ pub fn type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>, usage_site_span: Sp
             // This is actually a function pointer, so wrap it in pointer DI.
             MetadataCreationResult::new(pointer_type_metadata(cx, t, fn_metadata), false)
         }
-        ty::Closure(def_id, substs) => {
-            let upvar_tys: Vec<_> = substs.as_closure().upvar_tys().collect();
+        ty::Closure(def_id, closure_substs) => {
+            let upvar_tys: Vec<_> = closure_substs.upvar_tys().collect();
             let containing_scope = get_namespace_for_item(cx, def_id);
             prepare_tuple_metadata(
                 cx,
@@ -673,9 +673,8 @@ pub fn type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>, usage_site_span: Sp
             )
             .finalize(cx)
         }
-        ty::Generator(def_id, substs, _) => {
-            let upvar_tys: Vec<_> = substs
-                .as_generator()
+        ty::Generator(def_id, generator_substs, _) => {
+            let upvar_tys: Vec<_> = generator_substs
                 .prefix_tys()
                 .map(|t| cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), t))
                 .collect();
@@ -1356,11 +1355,11 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
 
         let variant_info_for = |index: VariantIdx| match self.enum_type.kind {
             ty::Adt(adt, _) => VariantInfo::Adt(&adt.variants[index]),
-            ty::Generator(_, substs, _) => {
+            ty::Generator(_, generator_substs, _) => {
                 let (generator_layout, generator_saved_local_names) =
                     generator_variant_info_data.as_ref().unwrap();
                 VariantInfo::Generator {
-                    substs,
+                    generator_substs,
                     generator_layout: *generator_layout,
                     generator_saved_local_names,
                     variant_index: index,
@@ -1653,7 +1652,7 @@ enum EnumDiscriminantInfo<'ll> {
 enum VariantInfo<'a, 'tcx> {
     Adt(&'tcx ty::VariantDef),
     Generator {
-        substs: SubstsRef<'tcx>,
+        generator_substs: GeneratorSubsts<'tcx>,
         generator_layout: &'tcx GeneratorLayout<'tcx>,
         generator_saved_local_names: &'a IndexVec<mir::GeneratorSavedLocal, Option<Symbol>>,
         variant_index: VariantIdx,
@@ -1664,8 +1663,8 @@ impl<'tcx> VariantInfo<'_, 'tcx> {
     fn map_struct_name<R>(&self, f: impl FnOnce(&str) -> R) -> R {
         match self {
             VariantInfo::Adt(variant) => f(&variant.ident.as_str()),
-            VariantInfo::Generator { substs, variant_index, .. } => {
-                f(&substs.as_generator().variant_name(*variant_index))
+            VariantInfo::Generator { generator_substs, variant_index, .. } => {
+                f(&generator_substs.variant_name(*variant_index))
             }
         }
     }
@@ -1815,11 +1814,10 @@ fn prepare_enum_metadata(
                     }
                 })
                 .collect(),
-            ty::Generator(_, substs, _) => substs
-                .as_generator()
+            ty::Generator(_, generator_substs, _) => generator_substs
                 .variant_range(enum_def_id, cx.tcx)
                 .map(|variant_index| {
-                    let name = substs.as_generator().variant_name(variant_index);
+                    let name = generator_substs.variant_name(variant_index);
                     unsafe {
                         Some(llvm::LLVMRustDIBuilderCreateEnumerator(
                             DIB(cx),

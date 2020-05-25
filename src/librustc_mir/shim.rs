@@ -4,7 +4,7 @@ use rustc_hir::lang_items::FnMutTraitLangItem;
 use rustc_middle::mir::*;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, GeneratorSubsts, Ty, TyCtxt, TypeFoldable};
 use rustc_target::abi::VariantIdx;
 
 use rustc_index::vec::{Idx, IndexVec};
@@ -159,7 +159,10 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
     debug!("build_drop_shim(def_id={:?}, ty={:?})", def_id, ty);
 
     // Check if this is a generator, if so, return the drop glue for it
-    if let Some(&ty::TyS { kind: ty::Generator(gen_def_id, substs, _), .. }) = ty {
+    if let Some(&ty::TyS {
+        kind: ty::Generator(gen_def_id, GeneratorSubsts { substs }, _), ..
+    }) = ty
+    {
         let body = &**tcx.optimized_mir(gen_def_id).generator_drop.as_ref().unwrap();
         return body.subst(tcx, substs);
     }
@@ -329,8 +332,8 @@ fn build_clone_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -
             let len = len.eval_usize(tcx, param_env);
             builder.array_shim(dest, src, ty, len)
         }
-        ty::Closure(_, substs) => {
-            builder.tuple_like_shim(dest, src, substs.as_closure().upvar_tys())
+        ty::Closure(_, closure_substs) => {
+            builder.tuple_like_shim(dest, src, closure_substs.upvar_tys())
         }
         ty::Tuple(..) => builder.tuple_like_shim(dest, src, self_ty.tuple_fields()),
         _ => bug!("clone shim for `{:?}` which is not `Copy` and is not an aggregate", self_ty),

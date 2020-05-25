@@ -5,7 +5,7 @@ use rustc_middle::ty::{
     self,
     print::{PrettyPrinter, Print, Printer},
     subst::{GenericArg, GenericArgKind},
-    Ty, TyCtxt,
+    ClosureSubsts, GeneratorSubsts, Ty, TyCtxt,
 };
 use std::fmt::Write;
 
@@ -60,8 +60,10 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
             | ty::FnDef(def_id, substs)
             | ty::Opaque(def_id, substs)
             | ty::Projection(ty::ProjectionTy { item_def_id: def_id, substs })
-            | ty::Closure(def_id, substs)
-            | ty::Generator(def_id, substs, _) => self.print_def_path(def_id, substs),
+            | ty::Closure(def_id, ClosureSubsts { substs })
+            | ty::Generator(def_id, GeneratorSubsts { substs }, _) => {
+                self.print_def_path(def_id, substs)
+            }
             ty::Foreign(def_id) => self.print_def_path(def_id, &[]),
 
             ty::GeneratorWitness(_) => bug!("type_name: unexpected `GeneratorWitness`"),

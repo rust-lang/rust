@@ -5,7 +5,7 @@ use rustc_middle::ich::NodeIdHashingMode;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
 use rustc_middle::ty::print::{PrettyPrinter, Print, Printer};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
-use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, ClosureSubsts, GeneratorSubsts, Instance, Ty, TyCtxt, TypeFoldable};
 use rustc_middle::util::common::record_time;
 
 use log::debug;
@@ -216,8 +216,10 @@ impl Printer<'tcx> for SymbolPrinter<'tcx> {
             ty::FnDef(def_id, substs)
             | ty::Opaque(def_id, substs)
             | ty::Projection(ty::ProjectionTy { item_def_id: def_id, substs })
-            | ty::Closure(def_id, substs)
-            | ty::Generator(def_id, substs, _) => self.print_def_path(def_id, substs),
+            | ty::Closure(def_id, ClosureSubsts { substs })
+            | ty::Generator(def_id, GeneratorSubsts { substs }, _) => {
+                self.print_def_path(def_id, substs)
+            }
             _ => self.pretty_print_type(ty),
         }
     }

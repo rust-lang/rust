@@ -135,10 +135,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     fn is_closure_fn_mut(&self, fr: RegionVid) -> bool {
         if let Some(ty::ReFree(free_region)) = self.to_error_region(fr) {
             if let ty::BoundRegion::BrEnv = free_region.bound_region {
-                if let DefiningTy::Closure(_, substs) =
+                if let DefiningTy::Closure(_, closure_substs) =
                     self.regioncx.universal_regions().defining_ty
                 {
-                    return substs.as_closure().kind() == ty::ClosureKind::FnMut;
+                    return closure_substs.kind() == ty::ClosureKind::FnMut;
                 }
             }
         }

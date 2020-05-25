@@ -12,7 +12,7 @@ use rustc_infer::infer::LateBoundRegionConversionTime;
 use rustc_infer::infer::{InferOk, InferResult};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::InternalSubsts;
-use rustc_middle::ty::{self, GenericParamDefKind, Ty};
+use rustc_middle::ty::{self, ClosureSubsts, GeneratorSubsts, GenericParamDefKind, Ty};
 use rustc_span::source_map::Span;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits::error_reporting::ArgKind;
@@ -119,7 +119,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             });
         if let Some(GeneratorTypes { resume_ty, yield_ty, interior, movability }) = generator_types
         {
-            let generator_substs = substs.as_generator();
+            let generator_substs = GeneratorSubsts { substs };
             self.demand_eqtype(expr.span, resume_ty, generator_substs.resume_ty());
             self.demand_eqtype(expr.span, yield_ty, generator_substs.yield_ty());
             self.demand_eqtype(expr.span, liberated_sig.output(), generator_substs.return_ty());
@@ -128,8 +128,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // HACK(eddyb) this forces the types equated above into `substs` but
             // it should rely on `GeneratorSubsts` providing a constructor, instead.
             let substs = self.resolve_vars_if_possible(&substs);
+            let generator_substs = GeneratorSubsts { substs };
 
-            return self.tcx.mk_generator(expr_def_id.to_def_id(), substs, movability);
+            return self.tcx.mk_generator(expr_def_id.to_def_id(), generator_substs, movability);
         }
 
         // Tuple up the arguments and insert the resulting function type into
@@ -149,18 +150,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             expr_def_id, sig, opt_kind
         );
 
+        let closure_substs = ClosureSubsts { substs };
         let sig_fn_ptr_ty = self.tcx.mk_fn_ptr(sig);
-        self.demand_eqtype(expr.span, sig_fn_ptr_ty, substs.as_closure().sig_as_fn_ptr_ty());
+        self.demand_eqtype(expr.span, sig_fn_ptr_ty, closure_substs.sig_as_fn_ptr_ty());
 
         if let Some(kind) = opt_kind {
-            self.demand_eqtype(expr.span, kind.to_ty(self.tcx), substs.as_closure().kind_ty());
+            self.demand_eqtype(expr.span, kind.to_ty(self.tcx), closure_substs.kind_ty());
         }
 
         // HACK(eddyb) this forces the types equated above into `substs` but
         // it should rely on `ClosureSubsts` providing a constructor, instead.
         let substs = self.resolve_vars_if_possible(&substs);
+        let closure_substs = ClosureSubsts { substs };
 
-        let closure_type = self.tcx.mk_closure(expr_def_id.to_def_id(), substs);
+        let closure_type = self.tcx.mk_closure(expr_def_id.to_def_id(), closure_substs);
 
         debug!("check_closure: expr.hir_id={:?} closure_type={:?}", expr.hir_id, closure_type);
 

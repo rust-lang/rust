@@ -9,7 +9,8 @@ use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::subst::{Subst, SubstsRef};
 use crate::ty::{
-    self, AdtDef, CanonicalUserTypeAnnotations, List, Region, Ty, TyCtxt, UserTypeAnnotationIndex,
+    self, AdtDef, CanonicalUserTypeAnnotations, ClosureSubsts, GeneratorSubsts, List, Region, Ty,
+    TyCtxt, UserTypeAnnotationIndex,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, Namespace};
@@ -2258,8 +2259,8 @@ pub enum AggregateKind<'tcx> {
     /// active field index would identity the field `c`
     Adt(&'tcx AdtDef, VariantIdx, SubstsRef<'tcx>, Option<UserTypeAnnotationIndex>, Option<usize>),
 
-    Closure(DefId, SubstsRef<'tcx>),
-    Generator(DefId, SubstsRef<'tcx>, hir::Movability),
+    Closure(DefId, ClosureSubsts<'tcx>),
+    Generator(DefId, GeneratorSubsts<'tcx>, hir::Movability),
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable)]
@@ -2425,32 +2426,34 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                         }
                     }
 
-                    AggregateKind::Closure(def_id, substs) => ty::tls::with(|tcx| {
-                        if let Some(def_id) = def_id.as_local() {
-                            let hir_id = tcx.hir().as_local_hir_id(def_id);
-                            let name = if tcx.sess.opts.debugging_opts.span_free_formats {
-                                let substs = tcx.lift(&substs).unwrap();
-                                format!(
-                                    "[closure@{}]",
-                                    tcx.def_path_str_with_substs(def_id.to_def_id(), substs),
-                                )
-                            } else {
-                                format!("[closure@{:?}]", tcx.hir().span(hir_id))
-                            };
-                            let mut struct_fmt = fmt.debug_struct(&name);
+                    AggregateKind::Closure(def_id, ClosureSubsts { substs }) => {
+                        ty::tls::with(|tcx| {
+                            if let Some(def_id) = def_id.as_local() {
+                                let hir_id = tcx.hir().as_local_hir_id(def_id);
+                                let name = if tcx.sess.opts.debugging_opts.span_free_formats {
+                                    let substs = tcx.lift(&substs).unwrap();
+                                    format!(
+                                        "[closure@{}]",
+                                        tcx.def_path_str_with_substs(def_id.to_def_id(), substs),
+                                    )
+                                } else {
+                                    format!("[closure@{:?}]", tcx.hir().span(hir_id))
+                                };
+                                let mut struct_fmt = fmt.debug_struct(&name);
 
-                            if let Some(upvars) = tcx.upvars(def_id) {
-                                for (&var_id, place) in upvars.keys().zip(places) {
-                                    let var_name = tcx.hir().name(var_id);
-                                    struct_fmt.field(&var_name.as_str(), place);
+                                if let Some(upvars) = tcx.upvars(def_id) {
+                                    for (&var_id, place) in upvars.keys().zip(places) {
+                                        let var_name = tcx.hir().name(var_id);
+                                        struct_fmt.field(&var_name.as_str(), place);
+                                    }
                                 }
-                            }
 
-                            struct_fmt.finish()
-                        } else {
-                            write!(fmt, "[closure]")
-                        }
-                    }),
+                                struct_fmt.finish()
+                            } else {
+                                write!(fmt, "[closure]")
+                            }
+                        })
+                    }
 
                     AggregateKind::Generator(def_id, _, _) => ty::tls::with(|tcx| {
                         if let Some(def_id) = def_id.as_local() {

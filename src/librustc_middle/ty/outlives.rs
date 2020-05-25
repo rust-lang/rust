@@ -88,15 +88,15 @@ fn compute_components(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, out: &mut SmallVec<[Compo
                 compute_components(tcx, element, out);
             }
 
-            ty::Closure(_, ref substs) => {
-                for upvar_ty in substs.as_closure().upvar_tys() {
+            ty::Closure(_, ref closure_substs) => {
+                for upvar_ty in closure_substs.upvar_tys() {
                     compute_components(tcx, upvar_ty, out);
                 }
             }
 
-            ty::Generator(_, ref substs, _) => {
+            ty::Generator(_, ref generator_substs, _) => {
                 // Same as the closure case
-                for upvar_ty in substs.as_generator().upvar_tys() {
+                for upvar_ty in generator_substs.upvar_tys() {
                     compute_components(tcx, upvar_ty, out);
                 }
 

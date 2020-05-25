@@ -183,14 +183,14 @@ fn resolve_associated_item<'tcx>(
         }
         traits::VtableGenerator(generator_data) => Some(Instance {
             def: ty::InstanceDef::Item(generator_data.generator_def_id),
-            substs: generator_data.substs,
+            substs: generator_data.generator_substs.substs,
         }),
         traits::VtableClosure(closure_data) => {
             let trait_closure_kind = tcx.fn_trait_kind_from_lang_item(trait_id).unwrap();
             Some(Instance::resolve_closure(
                 tcx,
                 closure_data.closure_def_id,
-                closure_data.substs,
+                closure_data.closure_substs,
                 trait_closure_kind,
             ))
         }

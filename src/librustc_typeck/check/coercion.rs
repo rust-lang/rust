@@ -62,8 +62,7 @@ use rustc_middle::ty::adjustment::{
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::relate::RelateResult;
-use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{self, Ty, TypeAndMut};
+use rustc_middle::ty::{self, ClosureSubsts, Ty, TypeAndMut};
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::sym;
 use rustc_span::{self, Span};
@@ -774,7 +773,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     fn coerce_closure_to_fn(
         &self,
         a: Ty<'tcx>,
-        substs_a: SubstsRef<'tcx>,
+        substs_a: ClosureSubsts<'tcx>,
         b: Ty<'tcx>,
     ) -> CoerceResult<'tcx> {
         //! Attempts to coerce from the type of a non-capturing closure
@@ -784,14 +783,14 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         let b = self.shallow_resolve(b);
 
         match b.kind {
-            ty::FnPtr(fn_ty) if substs_a.as_closure().upvar_tys().next().is_none() => {
+            ty::FnPtr(fn_ty) if substs_a.upvar_tys().next().is_none() => {
                 // We coerce the closure, which has fn type
                 //     `extern "rust-call" fn((arg0,arg1,...)) -> _`
                 // to
                 //     `fn(arg0,arg1,...) -> _`
                 // or
                 //     `unsafe fn(arg0,arg1,...) -> _`
-                let closure_sig = substs_a.as_closure().sig();
+                let closure_sig = substs_a.sig();
                 let unsafety = fn_ty.unsafety();
                 let pointer_ty =
                     self.tcx.mk_fn_ptr(self.tcx.signature_unclosure(closure_sig, unsafety));
@@ -913,8 +912,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Function items or non-capturing closures of differing IDs or InternalSubsts.
         let (a_sig, b_sig) = {
             let is_capturing_closure = |ty| {
-                if let &ty::Closure(_, substs) = ty {
-                    substs.as_closure().upvar_tys().next().is_some()
+                if let &ty::Closure(_, closure_substs) = ty {
+                    closure_substs.upvar_tys().next().is_some()
                 } else {
                     false
                 }
@@ -936,29 +935,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             }
                         }
                     }
-                    (&ty::Closure(_, substs), &ty::FnDef(..)) => {
+                    (&ty::Closure(_, closure_substs), &ty::FnDef(..)) => {
                         let b_sig = new_ty.fn_sig(self.tcx);
-                        let a_sig = self
-                            .tcx
-                            .signature_unclosure(substs.as_closure().sig(), b_sig.unsafety());
+                        let a_sig =
+                            self.tcx.signature_unclosure(closure_substs.sig(), b_sig.unsafety());
                         (Some(a_sig), Some(b_sig))
                     }
-                    (&ty::FnDef(..), &ty::Closure(_, substs)) => {
+                    (&ty::FnDef(..), &ty::Closure(_, closure_substs)) => {
                         let a_sig = prev_ty.fn_sig(self.tcx);
-                        let b_sig = self
-                            .tcx
-                            .signature_unclosure(substs.as_closure().sig(), a_sig.unsafety());
+                        let b_sig =
+                            self.tcx.signature_unclosure(closure_substs.sig(), a_sig.unsafety());
                         (Some(a_sig), Some(b_sig))
                     }
                     (&ty::Closure(_, substs_a), &ty::Closure(_, substs_b)) => (
-                        Some(self.tcx.signature_unclosure(
-                            substs_a.as_closure().sig(),
-                            hir::Unsafety::Normal,
-                        )),
-                        Some(self.tcx.signature_unclosure(
-                            substs_b.as_closure().sig(),
-                            hir::Unsafety::Normal,
-                        )),
+                        Some(self.tcx.signature_unclosure(substs_a.sig(), hir::Unsafety::Normal)),
+                        Some(self.tcx.signature_unclosure(substs_b.sig(), hir::Unsafety::Normal)),
                     ),
                     _ => (None, None),
                 }

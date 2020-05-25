@@ -4907,7 +4907,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let hir = self.tcx.hir();
         let (def_id, sig) = match found.kind {
             ty::FnDef(def_id, _) => (def_id, found.fn_sig(self.tcx)),
-            ty::Closure(def_id, substs) => (def_id, substs.as_closure().sig()),
+            ty::Closure(def_id, closure_substs) => (def_id, closure_substs.sig()),
             _ => return false,
         };
 

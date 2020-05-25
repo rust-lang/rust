@@ -1,5 +1,5 @@
 use crate::ty::subst::{GenericArg, GenericArgKind};
-use crate::ty::{self, InferConst, Ty, TypeFlags};
+use crate::ty::{self, ClosureSubsts, GeneratorSubsts, InferConst, Ty, TypeFlags};
 
 #[derive(Debug)]
 pub struct FlagComputation {
@@ -77,7 +77,7 @@ impl FlagComputation {
                 self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
             }
 
-            &ty::Generator(_, ref substs, _) => {
+            &ty::Generator(_, GeneratorSubsts { ref substs }, _) => {
                 self.add_substs(substs);
             }
 
@@ -87,7 +87,7 @@ impl FlagComputation {
                 self.add_bound_computation(&computation);
             }
 
-            &ty::Closure(_, ref substs) => {
+            &ty::Closure(_, ClosureSubsts { ref substs }) => {
                 self.add_substs(substs);
             }
 

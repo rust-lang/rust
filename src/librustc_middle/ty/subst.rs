@@ -2,7 +2,6 @@
 
 use crate::infer::canonical::Canonical;
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
-use crate::ty::sty::{ClosureSubsts, GeneratorSubsts};
 use crate::ty::{self, Lift, List, ParamConst, Ty, TyCtxt};
 
 use rustc_hir::def_id::DefId;
@@ -186,22 +185,6 @@ pub type InternalSubsts<'tcx> = List<GenericArg<'tcx>>;
 pub type SubstsRef<'tcx> = &'tcx InternalSubsts<'tcx>;
 
 impl<'a, 'tcx> InternalSubsts<'tcx> {
-    /// Interpret these substitutions as the substitutions of a closure type.
-    /// Closure substitutions have a particular structure controlled by the
-    /// compiler that encodes information like the signature and closure kind;
-    /// see `ty::ClosureSubsts` struct for more comments.
-    pub fn as_closure(&'a self) -> ClosureSubsts<'a> {
-        ClosureSubsts { substs: self }
-    }
-
-    /// Interpret these substitutions as the substitutions of a generator type.
-    /// Closure substitutions have a particular structure controlled by the
-    /// compiler that encodes information like the signature and generator kind;
-    /// see `ty::GeneratorSubsts` struct for more comments.
-    pub fn as_generator(&'tcx self) -> GeneratorSubsts<'tcx> {
-        GeneratorSubsts { substs: self }
-    }
-
     /// Creates a `InternalSubsts` that maps each generic parameter to itself.
     pub fn identity_for_item(tcx: TyCtxt<'tcx>, def_id: DefId) -> SubstsRef<'tcx> {
         Self::for_item(tcx, def_id, |param, _| tcx.mk_param_from_def(param))

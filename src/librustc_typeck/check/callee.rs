@@ -12,8 +12,7 @@ use rustc_infer::{infer, traits};
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
 };
-use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, ClosureSubsts, Ty, TyCtxt, TypeFoldable};
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 use rustc_target::spec::abi;
@@ -100,14 +99,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return Some(CallStep::Builtin(adjusted_ty));
             }
 
-            ty::Closure(def_id, substs) => {
+            ty::Closure(def_id, closure_substs) => {
                 assert_eq!(def_id.krate, LOCAL_CRATE);
 
                 // Check whether this is a call to a closure where we
                 // haven't yet decided on whether the closure is fn vs
                 // fnmut vs fnonce. If so, we have to defer further processing.
-                if self.closure_kind(substs).is_none() {
-                    let closure_sig = substs.as_closure().sig();
+                if self.closure_kind(closure_substs).is_none() {
+                    let closure_sig = closure_substs.sig();
                     let closure_sig = self
                         .replace_bound_vars_with_fresh_vars(
                             call_expr.span,
@@ -124,7 +123,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             adjusted_ty,
                             adjustments,
                             fn_sig: closure_sig,
-                            closure_substs: substs,
+                            closure_substs,
                         },
                     );
                     return Some(CallStep::DeferredClosure(closure_sig));
@@ -464,7 +463,7 @@ pub struct DeferredCallResolution<'tcx> {
     adjusted_ty: Ty<'tcx>,
     adjustments: Vec<Adjustment<'tcx>>,
     fn_sig: ty::FnSig<'tcx>,
-    closure_substs: SubstsRef<'tcx>,
+    closure_substs: ClosureSubsts<'tcx>,
 }
 
 impl<'a, 'tcx> DeferredCallResolution<'tcx> {

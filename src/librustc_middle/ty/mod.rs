@@ -1047,7 +1047,7 @@ pub enum Predicate<'tcx> {
     /// No direct syntax. May be thought of as `where T: FnFoo<...>`
     /// for some substitutions `...` and `T` being a closure type.
     /// Satisfied (or refuted) once we know the closure's kind.
-    ClosureKind(DefId, SubstsRef<'tcx>, ClosureKind),
+    ClosureKind(DefId, ClosureSubsts<'tcx>, ClosureKind),
 
     /// `T1 <: T2`
     Subtype(PolySubtypePredicate<'tcx>),

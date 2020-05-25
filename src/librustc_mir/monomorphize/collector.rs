@@ -564,11 +564,11 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                 let source_ty = operand.ty(self.body, self.tcx);
                 let source_ty = self.monomorphize(source_ty);
                 match source_ty.kind {
-                    ty::Closure(def_id, substs) => {
+                    ty::Closure(def_id, closure_substs) => {
                         let instance = Instance::resolve_closure(
                             self.tcx,
                             def_id,
-                            substs,
+                            closure_substs,
                             ty::ClosureKind::FnOnce,
                         );
                         if should_monomorphize_locally(self.tcx, &instance) {

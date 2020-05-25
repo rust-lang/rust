@@ -29,7 +29,7 @@ use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
 use rustc_middle::ty::relate::RelateResult;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, SubstsRef};
 pub use rustc_middle::ty::IntVarValue;
-use rustc_middle::ty::{self, GenericParamDefKind, InferConst, Ty, TyCtxt};
+use rustc_middle::ty::{self, ClosureSubsts, GenericParamDefKind, InferConst, Ty, TyCtxt};
 use rustc_middle::ty::{ConstVid, FloatVid, IntVid, TyVid};
 use rustc_session::config::BorrowckMode;
 use rustc_span::symbol::Symbol;
@@ -1545,8 +1545,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// Obtains the latest type of the given closure; this may be a
     /// closure in the current function, in which case its
     /// `ClosureKind` may not yet be known.
-    pub fn closure_kind(&self, closure_substs: SubstsRef<'tcx>) -> Option<ty::ClosureKind> {
-        let closure_kind_ty = closure_substs.as_closure().kind_ty();
+    pub fn closure_kind(&self, closure_substs: ClosureSubsts<'tcx>) -> Option<ty::ClosureKind> {
+        let closure_kind_ty = closure_substs.kind_ty();
         let closure_kind_ty = self.shallow_resolve(closure_kind_ty);
         closure_kind_ty.to_opt_closure_kind()
     }

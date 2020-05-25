@@ -11,7 +11,7 @@ mod structural_impls;
 use crate::infer::canonical::Canonical;
 use crate::mir::interpret::ErrorHandled;
 use crate::ty::subst::SubstsRef;
-use crate::ty::{self, AdtKind, Ty, TyCtxt};
+use crate::ty::{self, AdtKind, ClosureSubsts, GeneratorSubsts, Ty, TyCtxt};
 
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -472,12 +472,12 @@ impl<'tcx, N> Vtable<'tcx, N> {
             }),
             VtableClosure(c) => VtableClosure(VtableClosureData {
                 closure_def_id: c.closure_def_id,
-                substs: c.substs,
+                closure_substs: c.closure_substs,
                 nested: c.nested.into_iter().map(f).collect(),
             }),
             VtableGenerator(c) => VtableGenerator(VtableGeneratorData {
                 generator_def_id: c.generator_def_id,
-                substs: c.substs,
+                generator_substs: c.generator_substs,
                 nested: c.nested.into_iter().map(f).collect(),
             }),
             VtableFnPointer(p) => VtableFnPointer(VtableFnPointerData {
@@ -513,7 +513,7 @@ pub struct VtableImplData<'tcx, N> {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
 pub struct VtableGeneratorData<'tcx, N> {
     pub generator_def_id: DefId,
-    pub substs: SubstsRef<'tcx>,
+    pub generator_substs: GeneratorSubsts<'tcx>,
     /// Nested obligations. This can be non-empty if the generator
     /// signature contains associated types.
     pub nested: Vec<N>,
@@ -522,7 +522,7 @@ pub struct VtableGeneratorData<'tcx, N> {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
 pub struct VtableClosureData<'tcx, N> {
     pub closure_def_id: DefId,
-    pub substs: SubstsRef<'tcx>,
+    pub closure_substs: ClosureSubsts<'tcx>,
     /// Nested obligations. This can be non-empty if the closure
     /// signature contains associated types.
     pub nested: Vec<N>,

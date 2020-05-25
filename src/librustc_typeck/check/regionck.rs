@@ -1230,8 +1230,8 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
 
         // A closure capture can't be borrowed for longer than the
         // reference to the closure.
-        if let ty::Closure(_, substs) = ty.kind {
-            match self.infcx.closure_kind(substs) {
+        if let ty::Closure(_, closure_substs) = ty.kind {
+            match self.infcx.closure_kind(closure_substs) {
                 Some(ty::ClosureKind::Fn | ty::ClosureKind::FnMut) => {
                     // Region of environment pointer
                     let env_region = self.tcx.mk_region(ty::ReFree(ty::FreeRegion {

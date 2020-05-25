@@ -376,9 +376,11 @@ fn make_mirror_unadjusted<'a, 'tcx>(
         hir::ExprKind::Closure(..) => {
             let closure_ty = cx.tables().expr_ty(expr);
             let (def_id, substs, movability) = match closure_ty.kind {
-                ty::Closure(def_id, substs) => (def_id, UpvarSubsts::Closure(substs), None),
-                ty::Generator(def_id, substs, movability) => {
-                    (def_id, UpvarSubsts::Generator(substs), Some(movability))
+                ty::Closure(def_id, closure_substs) => {
+                    (def_id, UpvarSubsts::Closure(closure_substs), None)
+                }
+                ty::Generator(def_id, generator_substs, movability) => {
+                    (def_id, UpvarSubsts::Generator(generator_substs), Some(movability))
                 }
                 _ => {
                     span_bug!(expr.span, "closure expr w/o closure type: {:?}", closure_ty);

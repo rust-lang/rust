@@ -595,7 +595,7 @@ pub trait PrettyPrinter<'tcx>:
                 })?);
             }
             ty::Str => p!(write("str")),
-            ty::Generator(did, substs, movability) => {
+            ty::Generator(did, generator_substs, movability) => {
                 match movability {
                     hir::Movability::Movable => p!(write("[generator")),
                     hir::Movability::Static => p!(write("[static generator")),
@@ -606,8 +606,8 @@ pub trait PrettyPrinter<'tcx>:
                     let hir_id = self.tcx().hir().as_local_hir_id(did);
                     p!(write("@{:?}", self.tcx().hir().span(hir_id)));
 
-                    if substs.as_generator().is_valid() {
-                        let upvar_tys = substs.as_generator().upvar_tys();
+                    if generator_substs.is_valid() {
+                        let upvar_tys = generator_substs.upvar_tys();
                         let mut sep = " ";
                         for (&var_id, upvar_ty) in self
                             .tcx()
@@ -624,8 +624,8 @@ pub trait PrettyPrinter<'tcx>:
                 } else {
                     p!(write("@{}", self.tcx().def_path_str(did)));
 
-                    if substs.as_generator().is_valid() {
-                        let upvar_tys = substs.as_generator().upvar_tys();
+                    if generator_substs.is_valid() {
+                        let upvar_tys = generator_substs.upvar_tys();
                         let mut sep = " ";
                         for (index, upvar_ty) in upvar_tys.enumerate() {
                             p!(write("{}{}:", sep, index), print(upvar_ty));
@@ -634,8 +634,8 @@ pub trait PrettyPrinter<'tcx>:
                     }
                 }
 
-                if substs.as_generator().is_valid() {
-                    p!(write(" "), print(substs.as_generator().witness()));
+                if generator_substs.is_valid() {
+                    p!(write(" "), print(generator_substs.witness()));
                 }
 
                 p!(write("]"))
@@ -643,20 +643,20 @@ pub trait PrettyPrinter<'tcx>:
             ty::GeneratorWitness(types) => {
                 p!(in_binder(&types));
             }
-            ty::Closure(did, substs) => {
+            ty::Closure(did, closure_substs) => {
                 p!(write("[closure"));
 
                 // FIXME(eddyb) should use `def_span`.
                 if let Some(did) = did.as_local() {
                     let hir_id = self.tcx().hir().as_local_hir_id(did);
                     if self.tcx().sess.opts.debugging_opts.span_free_formats {
-                        p!(write("@"), print_def_path(did.to_def_id(), substs));
+                        p!(write("@"), print_def_path(did.to_def_id(), closure_substs.substs));
                     } else {
                         p!(write("@{:?}", self.tcx().hir().span(hir_id)));
                     }
 
-                    if substs.as_closure().is_valid() {
-                        let upvar_tys = substs.as_closure().upvar_tys();
+                    if closure_substs.is_valid() {
+                        let upvar_tys = closure_substs.upvar_tys();
                         let mut sep = " ";
                         for (&var_id, upvar_ty) in self
                             .tcx()
@@ -673,8 +673,8 @@ pub trait PrettyPrinter<'tcx>:
                 } else {
                     p!(write("@{}", self.tcx().def_path_str(did)));
 
-                    if substs.as_closure().is_valid() {
-                        let upvar_tys = substs.as_closure().upvar_tys();
+                    if closure_substs.is_valid() {
+                        let upvar_tys = closure_substs.upvar_tys();
                         let mut sep = " ";
                         for (index, upvar_ty) in upvar_tys.enumerate() {
                             p!(write("{}{}:", sep, index), print(upvar_ty));
@@ -683,11 +683,11 @@ pub trait PrettyPrinter<'tcx>:
                     }
                 }
 
-                if self.tcx().sess.verbose() && substs.as_closure().is_valid() {
-                    p!(write(" closure_kind_ty="), print(substs.as_closure().kind_ty()));
+                if self.tcx().sess.verbose() && closure_substs.is_valid() {
+                    p!(write(" closure_kind_ty="), print(closure_substs.kind_ty()));
                     p!(
                         write(" closure_sig_as_fn_ptr_ty="),
-                        print(substs.as_closure().sig_as_fn_ptr_ty())
+                        print(closure_substs.sig_as_fn_ptr_ty())
                     );
                 }
 

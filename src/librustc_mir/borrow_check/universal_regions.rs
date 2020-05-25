@@ -23,7 +23,7 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc_infer::infer::{InferCtxt, NLLRegionVariableOrigin};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::{InternalSubsts, Subst, SubstsRef};
-use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt};
+use rustc_middle::ty::{self, ClosureSubsts, GeneratorSubsts, RegionVid, Ty, TyCtxt};
 use std::iter;
 
 use crate::borrow_check::nll::ToRegionVid;
@@ -93,12 +93,12 @@ pub struct UniversalRegions<'tcx> {
 pub enum DefiningTy<'tcx> {
     /// The MIR is a closure. The signature is found via
     /// `ClosureSubsts::closure_sig_ty`.
-    Closure(DefId, SubstsRef<'tcx>),
+    Closure(DefId, ClosureSubsts<'tcx>),
 
     /// The MIR is a generator. The signature is that generators take
     /// no parameters and return the result of
     /// `ClosureSubsts::generator_return_ty`.
-    Generator(DefId, SubstsRef<'tcx>, hir::Movability),
+    Generator(DefId, GeneratorSubsts<'tcx>, hir::Movability),
 
     /// The MIR is a fn item with the given `DefId` and substs. The signature
     /// of the function can be bound then with the `fn_sig` query.
@@ -117,9 +117,9 @@ impl<'tcx> DefiningTy<'tcx> {
     /// match up with the upvar order in the HIR, typesystem, and MIR.
     pub fn upvar_tys(self) -> impl Iterator<Item = Ty<'tcx>> + 'tcx {
         match self {
-            DefiningTy::Closure(_, substs) => Either::Left(substs.as_closure().upvar_tys()),
-            DefiningTy::Generator(_, substs, _) => {
-                Either::Right(Either::Left(substs.as_generator().upvar_tys()))
+            DefiningTy::Closure(_, closure_substs) => Either::Left(closure_substs.upvar_tys()),
+            DefiningTy::Generator(_, generator_substs, _) => {
+                Either::Right(Either::Left(generator_substs.upvar_tys()))
             }
             DefiningTy::FnDef(..) | DefiningTy::Const(..) => {
                 Either::Right(Either::Right(iter::empty()))
@@ -339,7 +339,7 @@ impl<'tcx> UniversalRegions<'tcx> {
     /// state.
     crate fn annotate(&self, tcx: TyCtxt<'tcx>, err: &mut DiagnosticBuilder<'_>) {
         match self.defining_ty {
-            DefiningTy::Closure(def_id, substs) => {
+            DefiningTy::Closure(def_id, ClosureSubsts { substs }) => {
                 err.note(&format!(
                     "defining type: {} with closure substs {:#?}",
                     tcx.def_path_str_with_substs(def_id, substs),
@@ -356,7 +356,7 @@ impl<'tcx> UniversalRegions<'tcx> {
                     err.note(&format!("late-bound region is {:?}", self.to_region_vid(r),));
                 });
             }
-            DefiningTy::Generator(def_id, substs, _) => {
+            DefiningTy::Generator(def_id, GeneratorSubsts { substs }, _) => {
                 err.note(&format!(
                     "defining type: {} with generator substs {:#?}",
                     tcx.def_path_str_with_substs(def_id, substs),
@@ -480,7 +480,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         debug!("build: local regions  = {}..{}", first_local_index, num_universals);
 
         let yield_ty = match defining_ty {
-            DefiningTy::Generator(_, substs, _) => Some(substs.as_generator().yield_ty()),
+            DefiningTy::Generator(_, generator_substs, _) => Some(generator_substs.yield_ty()),
             _ => None,
         };
 
@@ -525,9 +525,11 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                     self.infcx.replace_free_regions_with_nll_infer_vars(FR, &defining_ty);
 
                 match defining_ty.kind {
-                    ty::Closure(def_id, substs) => DefiningTy::Closure(def_id, substs),
-                    ty::Generator(def_id, substs, movability) => {
-                        DefiningTy::Generator(def_id, substs, movability)
+                    ty::Closure(def_id, closure_substs) => {
+                        DefiningTy::Closure(def_id, closure_substs)
+                    }
+                    ty::Generator(def_id, generator_substs, movability) => {
+                        DefiningTy::Generator(def_id, generator_substs, movability)
                     }
                     ty::FnDef(def_id, substs) => DefiningTy::FnDef(def_id, substs),
                     _ => span_bug!(
@@ -562,7 +564,8 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         let closure_base_def_id = tcx.closure_base_def_id(self.mir_def_id);
         let identity_substs = InternalSubsts::identity_for_item(tcx, closure_base_def_id);
         let fr_substs = match defining_ty {
-            DefiningTy::Closure(_, ref substs) | DefiningTy::Generator(_, ref substs, _) => {
+            DefiningTy::Closure(_, ClosureSubsts { ref substs })
+            | DefiningTy::Generator(_, GeneratorSubsts { ref substs }, _) => {
                 // In the case of closures, we rely on the fact that
                 // the first N elements in the ClosureSubsts are
                 // inherited from the `closure_base_def_id`.
@@ -592,11 +595,11 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
     ) -> ty::Binder<&'tcx ty::List<Ty<'tcx>>> {
         let tcx = self.infcx.tcx;
         match defining_ty {
-            DefiningTy::Closure(def_id, substs) => {
+            DefiningTy::Closure(def_id, closure_substs) => {
                 assert_eq!(self.mir_def_id, def_id);
-                let closure_sig = substs.as_closure().sig();
+                let closure_sig = closure_substs.sig();
                 let inputs_and_output = closure_sig.inputs_and_output();
-                let closure_ty = tcx.closure_env_ty(def_id, substs).unwrap();
+                let closure_ty = tcx.closure_env_ty(def_id, closure_substs).unwrap();
                 ty::Binder::fuse(closure_ty, inputs_and_output, |closure_ty, inputs_and_output| {
                     // The "inputs" of the closure in the
                     // signature appear as a tuple.  The MIR side
@@ -616,11 +619,11 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 })
             }
 
-            DefiningTy::Generator(def_id, substs, movability) => {
+            DefiningTy::Generator(def_id, generator_substs, movability) => {
                 assert_eq!(self.mir_def_id, def_id);
-                let resume_ty = substs.as_generator().resume_ty();
-                let output = substs.as_generator().return_ty();
-                let generator_ty = tcx.mk_generator(def_id, substs, movability);
+                let resume_ty = generator_substs.resume_ty();
+                let output = generator_substs.return_ty();
+                let generator_ty = tcx.mk_generator(def_id, generator_substs, movability);
                 let inputs_and_output =
                     self.infcx.tcx.intern_type_list(&[generator_ty, resume_ty, output]);
                 ty::Binder::dummy(inputs_and_output)

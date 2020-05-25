@@ -7,7 +7,7 @@ use crate::ty::layout::IntegerExt;
 use crate::ty::query::TyCtxtAt;
 use crate::ty::subst::{GenericArgKind, InternalSubsts, Subst, SubstsRef};
 use crate::ty::TyKind::*;
-use crate::ty::{self, DefIdTree, GenericParamDefKind, Ty, TyCtxt, TypeFoldable};
+use crate::ty::{self, ClosureSubsts, DefIdTree, GenericParamDefKind, Ty, TyCtxt, TypeFoldable};
 use rustc_apfloat::Float as _;
 use rustc_ast::ast;
 use rustc_attr::{self as attr, SignedInt, UnsignedInt};
@@ -496,11 +496,11 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn closure_env_ty(
         self,
         closure_def_id: DefId,
-        closure_substs: SubstsRef<'tcx>,
+        closure_substs: ClosureSubsts<'tcx>,
     ) -> Option<ty::Binder<Ty<'tcx>>> {
         let closure_ty = self.mk_closure(closure_def_id, closure_substs);
         let env_region = ty::ReLateBound(ty::INNERMOST, ty::BrEnv);
-        let closure_kind_ty = closure_substs.as_closure().kind_ty();
+        let closure_kind_ty = closure_substs.kind_ty();
         let closure_kind = closure_kind_ty.to_opt_closure_kind()?;
         let env_ty = match closure_kind {
             ty::ClosureKind::Fn => self.mk_imm_ref(self.mk_region(env_region), closure_ty),

@@ -318,8 +318,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         let ty_msg = match (local_visitor.found_node_ty, local_visitor.found_exact_method_call) {
             (_, Some(_)) => String::new(),
-            (Some(ty::TyS { kind: ty::Closure(_, substs), .. }), _) => {
-                let fn_sig = substs.as_closure().sig();
+            (Some(ty::TyS { kind: ty::Closure(_, closure_substs), .. }), _) => {
+                let fn_sig = closure_substs.sig();
                 let args = closure_args(&fn_sig);
                 let ret = fn_sig.output().skip_binder().to_string();
                 format!(" for the closure `fn({}) -> {}`", args, ret)
@@ -352,8 +352,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         );
 
         let suffix = match local_visitor.found_node_ty {
-            Some(ty::TyS { kind: ty::Closure(_, substs), .. }) => {
-                let fn_sig = substs.as_closure().sig();
+            Some(ty::TyS { kind: ty::Closure(_, closure_substs), .. }) => {
+                let fn_sig = closure_substs.sig();
                 let ret = fn_sig.output().skip_binder().to_string();
 
                 let closure_decl_and_body_id =

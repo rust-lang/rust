@@ -148,8 +148,8 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
             }
             ty::Adt(_, substs)
             | ty::Opaque(_, substs)
-            | ty::Closure(_, substs)
-            | ty::Generator(_, substs, _)
+            | ty::Closure(_, ty::ClosureSubsts { substs })
+            | ty::Generator(_, ty::GeneratorSubsts { substs }, _)
             | ty::Tuple(substs)
             | ty::FnDef(_, substs) => {
                 stack.extend(substs.iter().copied().rev());

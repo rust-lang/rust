@@ -628,12 +628,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     ty::Adt(adt, _) => {
                         adt.discriminants(self.tcx.tcx).find(|(_, var)| var.val == real_discr)
                     }
-                    ty::Generator(def_id, substs, _) => {
-                        let substs = substs.as_generator();
-                        substs
-                            .discriminants(def_id, self.tcx.tcx)
-                            .find(|(_, var)| var.val == real_discr)
-                    }
+                    ty::Generator(def_id, generator_substs, _) => generator_substs
+                        .discriminants(def_id, self.tcx.tcx)
+                        .find(|(_, var)| var.val == real_discr),
                     _ => bug!("tagged layout for non-adt non-generator"),
                 }
                 .ok_or_else(|| err_ub!(InvalidDiscriminant(raw_discr.erase_tag())))?;
