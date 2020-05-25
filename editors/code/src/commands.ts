@@ -138,10 +138,10 @@ export function parentModule(ctx: Ctx): Cmd {
             ),
         });
         const loc = response[0];
-        if (loc == null) return;
+        if (!loc) return;
 
-        const uri = client.protocol2CodeConverter.asUri(loc.uri);
-        const range = client.protocol2CodeConverter.asRange(loc.range);
+        const uri = client.protocol2CodeConverter.asUri(loc.targetUri);
+        const range = client.protocol2CodeConverter.asRange(loc.targetRange);
 
         const doc = await vscode.workspace.openTextDocument(uri);
         const e = await vscode.window.showTextDocument(doc);

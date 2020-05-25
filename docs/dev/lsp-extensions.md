@@ -87,6 +87,40 @@ Invoking code action at this position will yield two code actions for importing 
 * Is a fixed two-level structure enough?
 * Should we devise a general way to encode custom interaction protocols for GUI refactorings?
 
+## Parent Module
+
+**Issue:** https://github.com/microsoft/language-server-protocol/issues/1002
+
+**Server Capability:** `{ "parentModule": boolean }`
+
+This request is send from client to server to handle "Goto Parent Module" editor action.
+
+**Method:** `experimental/parentModule`
+
+**Request:** `TextDocumentPositionParams`
+
+**Response:** `Location | Location[] | LocationLink[] | null`
+
+
+### Example
+
+```rust
+// src/main.rs
+mod foo;
+// src/foo.rs
+
+/* cursor here*/
+```
+
+`experimental/parentModule` returns a single `Link` to the `mod foo;` declaration.
+
+### Unresolved Question
+
+* An alternative would be to use a more general "gotoSuper" request, which would work for super methods, super classes and super modules.
+  This is the approach IntelliJ Rust is takeing.
+  However, experience shows that super module (which generally has a feeling of navigation between files) should be separate.
+  If you want super module, but the cursor happens to be inside an overriden function, the behavior with single "gotoSuper" request is surprising.
+
 ## Join Lines
 
 **Issue:** https://github.com/microsoft/language-server-protocol/issues/992
@@ -108,11 +142,7 @@ interface JoinLinesParams {
 }
 ```
 
-**Response:**
-
-```typescript
-TextEdit[]
-```
+**Response:** `TextEdit[]`
 
 ### Example
 
