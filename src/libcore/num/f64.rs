@@ -871,7 +871,7 @@ impl f64 {
         let mut left = self.to_bits() as i64;
         let mut right = other.to_bits() as i64;
 
-        // In case of negatives, flip all the bits expect the sign
+        // In case of negatives, flip all the bits except the sign
         // to achieve a similar layout as two's complement integers
         //
         // Why does this work? IEEE 754 floats consist of three fields:
@@ -888,7 +888,7 @@ impl f64 {
         // We effectively convert the numbers to "two's complement" form.
         //
         // To do the flipping, we construct a mask and XOR against it.
-        // We branchlessly calculate an "all-ones expect for the sign bit"
+        // We branchlessly calculate an "all-ones except for the sign bit"
         // mask from negative-signed values: right shifting sign-extends
         // the integer, so we "fill" the mask with sign bits, and then
         // convert to unsigned to push one more zero bit.
