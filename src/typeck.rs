@@ -18,7 +18,7 @@ use rustc_middle::{
         error::TypeError,
         fold::TypeFoldable,
         subst::{GenericArg, InternalSubsts, SubstsRef},
-        GenericParamDefKind, ParamEnv, Predicate, TraitRef, Ty, TyCtxt,
+        GenericParamDefKind, ParamEnv, Predicate, PredicateKind, ToPredicate, TraitRef, Ty, TyCtxt,
     },
 };
 use rustc_trait_selection::traits::FulfillmentContext;
@@ -75,12 +75,13 @@ impl<'a, 'tcx> BoundContext<'a, 'tcx> {
         use rustc_hir::Constness;
         use rustc_middle::ty::{Binder, TraitPredicate};
 
-        let predicate = Predicate::Trait(
+        let predicate = PredicateKind::Trait(
             Binder::bind(TraitPredicate {
                 trait_ref: checked_trait_ref,
             }),
             Constness::NotConst,
-        );
+        )
+        .to_predicate(self.infcx.tcx);
         let obligation = Obligation::new(ObligationCause::dummy(), self.given_param_env, predicate);
         self.fulfill_cx
             .register_predicate_obligation(self.infcx, obligation);
@@ -218,7 +219,6 @@ impl<'a, 'tcx> TypeComparisonContext<'a, 'tcx> {
     ) -> Option<TypeError<'tcx2>> {
         use rustc_infer::infer::outlives::env::OutlivesEnvironment;
         use rustc_infer::infer::{InferOk, RegionckMode};
-        use rustc_middle::middle::region::ScopeTree;
         use rustc_middle::ty::Lift;
 
         let error = self
@@ -230,7 +230,6 @@ impl<'a, 'tcx> TypeComparisonContext<'a, 'tcx> {
             });
 
         if let Err(err) = error {
-            let scope_tree = ScopeTree::default();
             let outlives_env = OutlivesEnvironment::new(target_param_env);
 
             // The old code here added the bounds from the target param env by hand. However, at
@@ -246,7 +245,6 @@ impl<'a, 'tcx> TypeComparisonContext<'a, 'tcx> {
 
             self.infcx.resolve_regions_and_report_errors(
                 target_def_id,
-                &scope_tree,
                 &outlives_env,
                 RegionckMode::default(),
             );
