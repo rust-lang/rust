@@ -5,6 +5,8 @@ use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::Path;
 use std::time::SystemTime;
 
+use log::trace;
+
 use rustc_data_structures::fx::FxHashMap;
 use rustc_target::abi::{Align, LayoutOf, Size};
 
@@ -413,17 +415,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     fn read(
         &mut self,
-        fd_op: OpTy<'tcx, Tag>,
-        buf_op: OpTy<'tcx, Tag>,
-        count_op: OpTy<'tcx, Tag>,
+        fd: i32,
+        buf: Scalar<Tag>,
+        count: u64,
     ) -> InterpResult<'tcx, i64> {
         let this = self.eval_context_mut();
 
         this.check_no_isolation("read")?;
+        assert!(fd >= 3);
 
-        let fd = this.read_scalar(fd_op)?.to_i32()?;
-        let buf = this.read_scalar(buf_op)?.not_undef()?;
-        let count = this.read_scalar(count_op)?.to_machine_usize(&*this.tcx)?;
+        trace!("Reading from FD {}, size {}", fd, count);
 
         // Check that the *entire* buffer is actually valid memory.
         this.memory.check_ptr_access(
@@ -437,6 +438,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let count = count.min(this.machine_isize_max() as u64).min(isize::MAX as u64);
 
         if let Some(FileHandle { file, writable: _ }) = this.machine.file_handler.handles.get_mut(&fd) {
+            trace!("read: FD mapped to {:?}", file);
             // This can never fail because `count` was capped to be smaller than
             // `isize::MAX`.
             let count = isize::try_from(count).unwrap();
@@ -461,23 +463,21 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 }
             }
         } else {
+            trace!("read: FD not found");
             this.handle_not_found()
         }
     }
 
     fn write(
         &mut self,
-        fd_op: OpTy<'tcx, Tag>,
-        buf_op: OpTy<'tcx, Tag>,
-        count_op: OpTy<'tcx, Tag>,
+        fd: i32,
+        buf: Scalar<Tag>,
+        count: u64,
     ) -> InterpResult<'tcx, i64> {
         let this = self.eval_context_mut();
 
         this.check_no_isolation("write")?;
-
-        let fd = this.read_scalar(fd_op)?.to_i32()?;
-        let buf = this.read_scalar(buf_op)?.not_undef()?;
-        let count = this.read_scalar(count_op)?.to_machine_usize(&*this.tcx)?;
+        assert!(fd >= 3);
 
         // Check that the *entire* buffer is actually valid memory.
         this.memory.check_ptr_access(
