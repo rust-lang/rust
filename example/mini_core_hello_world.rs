@@ -239,7 +239,7 @@ fn main() {
 
     assert_eq!(((|()| 42u8) as fn(()) -> u8)(()), 42);
 
-    #[cfg(not(jit))]
+    #[cfg(not(any(jit, windows)))]
     {
         extern {
             #[linkage = "extern_weak"]
@@ -292,7 +292,7 @@ fn main() {
 
     from_decimal_string();
 
-    #[cfg(not(jit))]
+    #[cfg(not(any(jit, windows)))]
     test_tls();
 
     #[cfg(all(not(jit), target_os = "linux"))]
