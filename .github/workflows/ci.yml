@@ -90,9 +90,6 @@ jobs:
       - name: install WIX
         run: src/ci/scripts/install-wix.sh
         if: success() && !env.SKIP_JOB
-      - name: install InnoSetup
-        run: src/ci/scripts/install-innosetup.sh
-        if: success() && !env.SKIP_JOB
       - name: ensure the build happens on a partition with enough space
         run: src/ci/scripts/symlink-build-dir.sh
         if: success() && !env.SKIP_JOB
@@ -199,9 +196,6 @@ jobs:
         if: success() && !env.SKIP_JOB
       - name: install WIX
         run: src/ci/scripts/install-wix.sh
-        if: success() && !env.SKIP_JOB
-      - name: install InnoSetup
-        run: src/ci/scripts/install-innosetup.sh
         if: success() && !env.SKIP_JOB
       - name: ensure the build happens on a partition with enough space
         run: src/ci/scripts/symlink-build-dir.sh
@@ -551,9 +545,6 @@ jobs:
         if: success() && !env.SKIP_JOB
       - name: install WIX
         run: src/ci/scripts/install-wix.sh
-        if: success() && !env.SKIP_JOB
-      - name: install InnoSetup
-        run: src/ci/scripts/install-innosetup.sh
         if: success() && !env.SKIP_JOB
       - name: ensure the build happens on a partition with enough space
         run: src/ci/scripts/symlink-build-dir.sh
