@@ -3,7 +3,7 @@
 use std::{collections::HashMap, path::PathBuf};
 
 use lsp_types::request::Request;
-use lsp_types::{Location, Position, Range, TextDocumentIdentifier};
+use lsp_types::{Position, Range, TextDocumentIdentifier};
 use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 
@@ -79,8 +79,8 @@ pub enum ParentModule {}
 
 impl Request for ParentModule {
     type Params = lsp_types::TextDocumentPositionParams;
-    type Result = Vec<Location>;
-    const METHOD: &'static str = "rust-analyzer/parentModule";
+    type Result = Option<lsp_types::GotoDefinitionResponse>;
+    const METHOD: &'static str = "experimental/parentModule";
 }
 
 pub enum JoinLines {}

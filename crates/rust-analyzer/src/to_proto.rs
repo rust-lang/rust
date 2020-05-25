@@ -403,13 +403,20 @@ pub(crate) fn location(world: &WorldSnapshot, frange: FileRange) -> Result<lsp_t
 
 pub(crate) fn location_link(
     world: &WorldSnapshot,
-    src: FileRange,
+    src: Option<FileRange>,
     target: NavigationTarget,
 ) -> Result<lsp_types::LocationLink> {
-    let src_location = location(world, src)?;
+    let origin_selection_range = match src {
+        Some(src) => {
+            let line_index = world.analysis().file_line_index(src.file_id)?;
+            let range = range(&line_index, src.range);
+            Some(range)
+        }
+        None => None,
+    };
     let (target_uri, target_range, target_selection_range) = location_info(world, target)?;
     let res = lsp_types::LocationLink {
-        origin_selection_range: Some(src_location.range),
+        origin_selection_range,
         target_uri,
         target_range,
         target_selection_range,
@@ -432,7 +439,7 @@ fn location_info(
 
 pub(crate) fn goto_definition_response(
     world: &WorldSnapshot,
-    src: FileRange,
+    src: Option<FileRange>,
     targets: Vec<NavigationTarget>,
 ) -> Result<lsp_types::GotoDefinitionResponse> {
     if world.config.client_caps.location_link {

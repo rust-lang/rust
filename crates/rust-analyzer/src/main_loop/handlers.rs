@@ -344,11 +344,8 @@ pub fn handle_goto_definition(
         None => return Ok(None),
         Some(it) => it,
     };
-    let res = to_proto::goto_definition_response(
-        &world,
-        FileRange { file_id: position.file_id, range: nav_info.range },
-        nav_info.info,
-    )?;
+    let src = FileRange { file_id: position.file_id, range: nav_info.range };
+    let res = to_proto::goto_definition_response(&world, Some(src), nav_info.info)?;
     Ok(Some(res))
 }
 
@@ -362,11 +359,8 @@ pub fn handle_goto_implementation(
         None => return Ok(None),
         Some(it) => it,
     };
-    let res = to_proto::goto_definition_response(
-        &world,
-        FileRange { file_id: position.file_id, range: nav_info.range },
-        nav_info.info,
-    )?;
+    let src = FileRange { file_id: position.file_id, range: nav_info.range };
+    let res = to_proto::goto_definition_response(&world, Some(src), nav_info.info)?;
     Ok(Some(res))
 }
 
@@ -380,26 +374,20 @@ pub fn handle_goto_type_definition(
         None => return Ok(None),
         Some(it) => it,
     };
-    let res = to_proto::goto_definition_response(
-        &world,
-        FileRange { file_id: position.file_id, range: nav_info.range },
-        nav_info.info,
-    )?;
+    let src = FileRange { file_id: position.file_id, range: nav_info.range };
+    let res = to_proto::goto_definition_response(&world, Some(src), nav_info.info)?;
     Ok(Some(res))
 }
 
 pub fn handle_parent_module(
     world: WorldSnapshot,
     params: lsp_types::TextDocumentPositionParams,
-) -> Result<Vec<Location>> {
+) -> Result<Option<lsp_types::GotoDefinitionResponse>> {
     let _p = profile("handle_parent_module");
     let position = from_proto::file_position(&world, params)?;
-    world
-        .analysis()
-        .parent_module(position)?
-        .into_iter()
-        .map(|it| to_proto::location(&world, it.file_range()))
-        .collect::<Result<Vec<_>>>()
+    let navs = world.analysis().parent_module(position)?;
+    let res = to_proto::goto_definition_response(&world, None, navs)?;
+    Ok(Some(res))
 }
 
 pub fn handle_runnables(
