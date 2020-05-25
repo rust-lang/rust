@@ -1,4 +1,4 @@
-error: you should consider deriving a `Default` implementation for `Foo`
+error: you should consider adding a `Default` implementation for `Foo`
   --> $DIR/new_without_default.rs:8:5
    |
 LL | /     pub fn new() -> Foo {
@@ -9,10 +9,14 @@ LL | |     }
    = note: `-D clippy::new-without-default` implied by `-D warnings`
 help: try this
    |
-LL | #[derive(Default)]
+LL | impl Default for Foo {
+LL |     fn default() -> Self {
+LL |         Self::new()
+LL |     }
+LL | }
    |
 
-error: you should consider deriving a `Default` implementation for `Bar`
+error: you should consider adding a `Default` implementation for `Bar`
   --> $DIR/new_without_default.rs:16:5
    |
 LL | /     pub fn new() -> Self {
@@ -22,7 +26,11 @@ LL | |     }
    |
 help: try this
    |
-LL | #[derive(Default)]
+LL | impl Default for Bar {
+LL |     fn default() -> Self {
+LL |         Self::new()
+LL |     }
+LL | }
    |
 
 error: you should consider adding a `Default` implementation for `LtKo<'c>`
@@ -42,5 +50,22 @@ LL |     }
 LL | }
    |
 
-error: aborting due to 3 previous errors
+error: you should consider adding a `Default` implementation for `NewNotEqualToDerive`
+  --> $DIR/new_without_default.rs:157:5
+   |
+LL | /     pub fn new() -> Self {
+LL | |         NewNotEqualToDerive { foo: 1 }
+LL | |     }
+   | |_____^
+   |
+help: try this
+   |
+LL | impl Default for NewNotEqualToDerive {
+LL |     fn default() -> Self {
+LL |         Self::new()
+LL |     }
+LL | }
+   |
+
+error: aborting due to 4 previous errors
 
