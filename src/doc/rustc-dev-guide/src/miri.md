@@ -1,9 +1,9 @@
 # Miri
 
 Miri (**MIR** **I**nterpreter) is a virtual machine for executing MIR without
-compiling to machine code. It is usually invoked via `tcx.const_eval`.
+compiling to machine code. It is usually invoked via `tcx.const_eval_*` functions.
 
-If you start out with a constant
+If you start out with a constant:
 
 ```rust
 const FOO: usize = 1 << 12;
@@ -12,7 +12,7 @@ const FOO: usize = 1 << 12;
 rustc doesn't actually invoke anything until the constant is either used or
 placed into metadata.
 
-Once you have a use-site like
+Once you have a use-site like:
 
 ```rust,ignore
 type Foo = [u8; FOO - 42];
@@ -35,17 +35,17 @@ Invoking `tcx.const_eval(param_env.and(gid))` will now trigger the creation of
 the MIR of the array length expression. The MIR will look something like this:
 
 ```mir
-const Foo::{{initializer}}: usize = {
-    let mut _0: usize;                   // return pointer
+Foo::{{constant}}#0: usize = {
+    let mut _0: usize;
     let mut _1: (usize, bool);
 
     bb0: {
-        _1 = CheckedSub(const Unevaluated(FOO, Slice([])), const 42usize);
-        assert(!(_1.1: bool), "attempt to subtract with overflow") -> bb1;
+        _1 = CheckedSub(const FOO, const 42usize);
+        assert(!move (_1.1: bool), "attempt to subtract with overflow") -> bb1;
     }
 
     bb1: {
-        _0 = (_1.0: usize);
+        _0 = move (_1.0: usize);
         return;
     }
 }
@@ -55,16 +55,16 @@ Before the evaluation, a virtual memory location (in this case essentially a
 `vec![u8; 4]` or `vec![u8; 8]`) is created for storing the evaluation result.
 
 At the start of the evaluation, `_0` and `_1` are
-`Operand::Immediate(Immediate::Scalar(ScalarMaybeUndef::Undef))`.  This is quite
+`Operand::Immediate(Immediate::Scalar(ScalarMaybeUndef::Undef))`. This is quite
 a mouthful: [`Operand`] can represent either data stored somewhere in the
 [interpreter memory](#memory) (`Operand::Indirect`), or (as an optimization)
 immediate data stored in-line.  And [`Immediate`] can either be a single
 (potentially uninitialized) [scalar value][`Scalar`] (integer or thin pointer),
-or a pair of two of them.  In our case, the single scalar value is *not* (yet)
+or a pair of two of them. In our case, the single scalar value is *not* (yet)
 initialized.
 
 When the initialization of `_1` is invoked, the value of the `FOO` constant is
-required, and triggers another call to `tcx.const_eval`, which will not be shown
+required, and triggers another call to `tcx.const_eval_*`, which will not be shown
 here. If the evaluation of FOO is successful, `42` will be subtracted from its
 value `4096` and the result stored in `_1` as
 `Operand::Immediate(Immediate::ScalarPair(Scalar::Raw { data: 4054, .. },
@@ -200,8 +200,8 @@ division on pointer values.
 
 ## Interpretation
 
-Although the main entry point to constant evaluation is the `tcx.const_eval`
-query, there are additional functions in
+Although the main entry point to constant evaluation is the `tcx.const_eval_*`
+functions, there are additional functions in
 [librustc_mir/const_eval.rs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/const_eval/index.html)
 that allow accessing the fields of a `ConstValue` (`ByRef` or otherwise). You should
 never have to access an `Allocation` directly except for translating it to the
@@ -217,7 +217,7 @@ A stack frame is defined by the `Frame` type in
 and contains all the local
 variables memory (`None` at the start of evaluation). Each frame refers to the
 evaluation of either the root constant or subsequent calls to `const fn`. The
-evaluation of another constant simply calls `tcx.const_eval`, which produces an
+evaluation of another constant simply calls `tcx.const_eval_*`, which produce an
 entirely new and independent stack frame.
 
 The frames are just a `Vec<Frame>`, there's no way to actually refer to a
@@ -229,4 +229,4 @@ Miri now calls the `step` method (in
 ) until it either returns an error or has no further statements to execute. Each
 statement will now initialize or modify the locals or the virtual memory
 referred to by a local. This might require evaluating other constants or
-statics, which just recursively invokes `tcx.const_eval`.
+statics, which just recursively invokes `tcx.const_eval_*`.
