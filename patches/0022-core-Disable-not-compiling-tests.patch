@@ -119,5 +119,25 @@ index 6609bc3..241b497 100644
  
  #[test]
  #[should_panic(expected = "index 0 greater than length of slice")]
+diff --git a/src/libcore/tests/iter.rs b/src/libcore/tests/iter.rs
+index b73b621..d6cc3f8 100644
+--- a/src/libcore/tests/iter.rs
++++ b/src/libcore/tests/iter.rs
+@@ -2541,6 +2541,7 @@ fn test_steps_between() {
+ 
+     // Skip u64/i64 to avoid differences with 32-bit vs 64-bit platforms
+ 
++    /*
+     assert_eq!(Step::steps_between(&20_u128, &200_u128), Some(180_usize));
+     assert_eq!(Step::steps_between(&-20_i128, &80_i128), Some(100_usize));
+     if cfg!(target_pointer_width = "64") {
+@@ -2552,6 +2553,7 @@ fn test_steps_between() {
+         Step::steps_between(&-0x1_0000_0000_0000_0000_i128, &0x1_0000_0000_0000_0000_i128,),
+         None,
+     );
++    */
+ }
+ 
+ #[test]
 -- 
 2.21.0 (Apple Git-122)
