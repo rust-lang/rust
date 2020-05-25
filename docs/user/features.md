@@ -93,6 +93,12 @@ Shows internal statistic about memory usage of rust-analyzer.
 
 Show current rust-analyzer version.
 
+#### Toggle inlay hints
+
+Toggle inlay hints view for the current workspace.
+It is recommended to assign a shortcut for this command to quickly turn off
+inlay hints when they prevent you from reading/writing the code.
+
 #### Run Garbage Collection
 
 Manually triggers GC.

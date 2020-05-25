@@ -86,6 +86,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
     ctx.registerCommand('ssr', commands.ssr);
     ctx.registerCommand('serverVersion', commands.serverVersion);
+    ctx.registerCommand('toggleInlayHints', commands.toggleInlayHints);
 
     // Internal commands which are invoked by the server.
     ctx.registerCommand('runSingle', commands.runSingle);

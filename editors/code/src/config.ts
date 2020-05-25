@@ -8,7 +8,7 @@ export const NIGHTLY_TAG = "nightly";
 export class Config {
     readonly extensionId = "matklad.rust-analyzer";
 
-    private readonly rootSection = "rust-analyzer";
+    readonly rootSection = "rust-analyzer";
     private readonly requiresReloadOpts = [
         "serverPath",
         "cargo",
