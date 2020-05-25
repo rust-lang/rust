@@ -62,20 +62,31 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             "read" => {
                 let &[fd, buf, count] = check_arg_count(args)?;
-                let result = this.read(fd, buf, count)?;
+                let fd = this.read_scalar(fd)?.to_i32()?;
+                let buf = this.read_scalar(buf)?.not_undef()?;
+                let count = this.read_scalar(count)?.to_machine_usize(this)?;
+                let result = if fd == 0 {
+                    throw_unsup_format!("reading from stdin is not implemented")
+                } else if fd == 1 || fd == 2 {
+                    throw_unsup_format!("cannot read from stdout/stderr")
+                } else {
+                    this.read(fd, buf, count)?
+                };
                 this.write_scalar(Scalar::from_machine_isize(result, this), dest)?;
             }
             "write" => {
                 let &[fd, buf, n] = check_arg_count(args)?;
                 let fd = this.read_scalar(fd)?.to_i32()?;
                 let buf = this.read_scalar(buf)?.not_undef()?;
-                let n = this.read_scalar(n)?.to_machine_usize(this)?;
-                trace!("Called write({:?}, {:?}, {:?})", fd, buf, n);
-                let result = if fd == 1 || fd == 2 {
+                let count = this.read_scalar(n)?.to_machine_usize(this)?;
+                trace!("Called write({:?}, {:?}, {:?})", fd, buf, count);
+                let result = if fd == 0 {
+                    throw_unsup_format!("cannot write to stdin")
+                } else if fd == 1 || fd == 2 {
                     // stdout/stderr
                     use std::io::{self, Write};
 
-                    let buf_cont = this.memory.read_bytes(buf, Size::from_bytes(n))?;
+                    let buf_cont = this.memory.read_bytes(buf, Size::from_bytes(count))?;
                     // We need to flush to make sure this actually appears on the screen
                     let res = if fd == 1 {
                         // Stdout is buffered, flush to make sure it appears on the screen.
@@ -94,7 +105,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         Err(_) => -1,
                     }
                 } else {
-                    let &[fd, buf, count] = check_arg_count(args)?;
                     this.write(fd, buf, count)?
                 };
                 // Now, `result` is the value we return back to the program.
