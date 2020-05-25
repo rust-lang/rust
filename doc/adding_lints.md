@@ -465,6 +465,7 @@ Here are some pointers to things you are likely going to need for every lint:
 * [`from_expansion`][from_expansion] and [`in_external_macro`][in_external_macro]
 * [`Span`][span]
 * [`Applicability`][applicability]
+* [Common tools for writing lints](common_tools_writing_lints.md) helps with common operations
 * [The rustc-dev-guide][rustc-dev-guide] explains a lot of internal compiler concepts
 * [The nightly rustc docs][nightly_docs] which has been linked to throughout
   this guide
