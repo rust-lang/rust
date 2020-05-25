@@ -858,7 +858,7 @@ impl f32 {
         let mut left = self.to_bits() as i32;
         let mut right = other.to_bits() as i32;
 
-        // In case of negatives, flip all the bits expect the sign
+        // In case of negatives, flip all the bits except the sign
         // to achieve a similar layout as two's complement integers
         //
         // Why does this work? IEEE 754 floats consist of three fields:
