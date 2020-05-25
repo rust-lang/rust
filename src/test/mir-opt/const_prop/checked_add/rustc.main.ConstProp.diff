@@ -3,7 +3,7 @@
   
   fn main() -> () {
       let mut _0: ();                      // return place in scope 0 at $DIR/checked_add.rs:4:11: 4:11
-      let _1: u32 as UserTypeProjection { base: UserType(0), projs: [] }; // in scope 0 at $DIR/checked_add.rs:5:9: 5:10
+      let _1: u32;                         // in scope 0 at $DIR/checked_add.rs:5:9: 5:10
       let mut _2: (u32, bool);             // in scope 0 at $DIR/checked_add.rs:5:18: 5:23
       scope 1 {
           debug x => _1;                   // in scope 1 at $DIR/checked_add.rs:5:9: 5:10

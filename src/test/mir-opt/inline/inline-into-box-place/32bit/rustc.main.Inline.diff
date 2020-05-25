@@ -3,7 +3,7 @@
   
   fn main() -> () {
       let mut _0: ();                      // return place in scope 0 at $DIR/inline-into-box-place.rs:7:11: 7:11
-      let _1: std::boxed::Box<std::vec::Vec<u32>> as UserTypeProjection { base: UserType(0), projs: [] }; // in scope 0 at $DIR/inline-into-box-place.rs:8:9: 8:11
+      let _1: std::boxed::Box<std::vec::Vec<u32>>; // in scope 0 at $DIR/inline-into-box-place.rs:8:9: 8:11
       let mut _2: std::boxed::Box<std::vec::Vec<u32>>; // in scope 0 at $DIR/inline-into-box-place.rs:8:29: 8:43
       let mut _3: ();                      // in scope 0 at $DIR/inline-into-box-place.rs:8:42: 8:43
 +     let mut _4: &mut std::vec::Vec<u32>; // in scope 0 at $DIR/inline-into-box-place.rs:8:33: 8:43

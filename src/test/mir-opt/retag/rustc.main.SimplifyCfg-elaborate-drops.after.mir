@@ -24,7 +24,7 @@ fn main() -> () {
     scope 1 {
         debug x => _1;                   // in scope 1 at $DIR/retag.rs:30:9: 30:14
         let _3: &mut i32;                // in scope 1 at $DIR/retag.rs:32:13: 32:14
-        let _13: for<'r> fn(&'r i32) -> &'r i32 as UserTypeProjection { base: UserType(1), projs: [] }; // in scope 1 at $DIR/retag.rs:40:9: 40:10
+        let _13: for<'r> fn(&'r i32) -> &'r i32; // in scope 1 at $DIR/retag.rs:40:9: 40:10
         scope 2 {
             debug v => _3;               // in scope 2 at $DIR/retag.rs:32:13: 32:14
             let _8: &mut i32;            // in scope 2 at $DIR/retag.rs:33:13: 33:14
