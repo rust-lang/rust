@@ -330,6 +330,55 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let result = this.pthread_rwlock_destroy(rwlock)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
+            "pthread_condattr_init" => {
+                let &[attr] = check_arg_count(args)?;
+                let result = this.pthread_condattr_init(attr)?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
+            }
+            "pthread_condattr_setclock" => {
+                let &[attr, clock_id] = check_arg_count(args)?;
+                let result = this.pthread_condattr_setclock(attr, clock_id)?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
+            }
+            "pthread_condattr_getclock" => {
+                let &[attr, clock_id] = check_arg_count(args)?;
+                let result = this.pthread_condattr_getclock(attr, clock_id)?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
+            }
+            "pthread_condattr_destroy" => {
+                let &[attr] = check_arg_count(args)?;
+                let result = this.pthread_condattr_destroy(attr)?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
+            }
+            "pthread_cond_init" => {
+                let &[cond, attr] = check_arg_count(args)?;
+                let result = this.pthread_cond_init(cond, attr)?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
+            }
+            "pthread_cond_signal" => {
+                let &[cond] = check_arg_count(args)?;
+                let result = this.pthread_cond_signal(cond)?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
+            }
+            "pthread_cond_broadcast" => {
+                let &[cond] = check_arg_count(args)?;
+                let result = this.pthread_cond_broadcast(cond)?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
+            }
+            "pthread_cond_wait" => {
+                let &[cond, mutex] = check_arg_count(args)?;
+                let result = this.pthread_cond_wait(cond, mutex)?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
+            }
+            "pthread_cond_timedwait" => {
+                let &[cond, mutex, abstime] = check_arg_count(args)?;
+                this.pthread_cond_timedwait(cond, mutex, abstime, dest)?;
+            }
+            "pthread_cond_destroy" => {
+                let &[cond] = check_arg_count(args)?;
+                let result = this.pthread_cond_destroy(cond)?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
+            }
 
             // Threading
             "pthread_create" => {
@@ -391,16 +440,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             | "pthread_attr_init"
             | "pthread_attr_destroy"
-            | "pthread_condattr_init"
-            | "pthread_condattr_destroy"
-            | "pthread_cond_destroy"
             if this.frame().instance.to_string().starts_with("std::sys::unix::") => {
                 let &[_] = check_arg_count(args)?;
                 this.write_null(dest)?;
             }
-            | "pthread_cond_init"
             | "pthread_attr_setstacksize"
-            | "pthread_condattr_setclock"
             if this.frame().instance.to_string().starts_with("std::sys::unix::") => {
                 let &[_, _] = check_arg_count(args)?;
                 this.write_null(dest)?;

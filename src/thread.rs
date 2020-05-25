@@ -1,8 +1,10 @@
 //! Implements threads.
 
 use std::cell::RefCell;
+use std::collections::hash_map::Entry;
 use std::convert::TryFrom;
-use std::num::{NonZeroU32, TryFromIntError};
+use std::num::TryFromIntError;
+use std::time::{Duration, Instant, SystemTime};
 
 use log::trace;
 
@@ -15,17 +17,25 @@ use rustc_middle::{
     ty::{self, Instance},
 };
 
+use crate::sync::SynchronizationState;
 use crate::*;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SchedulingAction {
     /// Execute step on the active thread.
     ExecuteStep,
+    /// Execute a timeout callback.
+    ExecuteTimeoutCallback,
     /// Execute destructors of the active thread.
     ExecuteDtors,
     /// Stop the program.
     Stop,
 }
+
+/// Timeout callbacks can be created by synchronization primitives to tell the
+/// scheduler that they should be called once some period of time passes.
+type TimeoutCallback<'mir, 'tcx> =
+    Box<dyn FnOnce(&mut InterpCx<'mir, 'tcx, Evaluator<'mir, 'tcx>>) -> InterpResult<'tcx> + 'tcx>;
 
 /// A thread identifier.
 #[derive(Clone, Copy, Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
@@ -69,21 +79,6 @@ impl ThreadId {
     }
 }
 
-/// An identifier of a set of blocked threads. 0 is used to indicate the absence
-/// of a blockset identifier and, therefore, is not a valid identifier.
-#[derive(Clone, Copy, Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
-pub struct BlockSetId(NonZeroU32);
-
-impl BlockSetId {
-    /// Panics if `id` is 0.
-    pub fn new(id: u32) -> Self {
-        Self(NonZeroU32::new(id).expect("0 is not a valid blockset id"))
-    }
-    pub fn to_u32_scalar<'tcx>(&self) -> Scalar<Tag> {
-        Scalar::from_u32(self.0.get())
-    }
-}
-
 /// The state of a thread.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum ThreadState {
@@ -92,8 +87,10 @@ pub enum ThreadState {
     /// The thread tried to join the specified thread and is blocked until that
     /// thread terminates.
     BlockedOnJoin(ThreadId),
-    /// The thread is blocked and belongs to the given blockset.
-    Blocked(BlockSetId),
+    /// The thread is blocked on some synchronization primitive. It is the
+    /// responsibility of the synchronization primitives to track threads that
+    /// are blocked by them.
+    BlockedOnSync,
     /// The thread has terminated its execution (we do not delete terminated
     /// threads).
     Terminated,
@@ -162,6 +159,41 @@ impl<'mir, 'tcx> Default for Thread<'mir, 'tcx> {
     }
 }
 
+/// A specific moment in time.
+#[derive(Debug)]
+pub enum Time {
+    Monotonic(Instant),
+    RealTime(SystemTime),
+}
+
+impl Time {
+    /// How long do we have to wait from now until the specified time?
+    fn get_wait_time(&self) -> Duration {
+        match self {
+            Time::Monotonic(instant) => instant.saturating_duration_since(Instant::now()),
+            Time::RealTime(time) =>
+                time.duration_since(SystemTime::now()).unwrap_or(Duration::new(0, 0)),
+        }
+    }
+}
+
+/// Callbacks are used to implement timeouts. For example, waiting on a
+/// conditional variable with a timeout creates a callback that is called after
+/// the specified time and unblocks the thread. If another thread signals on the
+/// conditional variable, the signal handler deletes the callback.
+struct TimeoutCallbackInfo<'mir, 'tcx> {
+    /// The callback should be called no earlier than this time.
+    call_time: Time,
+    /// The called function.
+    callback: TimeoutCallback<'mir, 'tcx>,
+}
+
+impl<'mir, 'tcx> std::fmt::Debug for TimeoutCallbackInfo<'mir, 'tcx> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "TimeoutCallback({:?})", self.call_time)
+    }
+}
+
 /// A set of threads.
 #[derive(Debug)]
 pub struct ThreadManager<'mir, 'tcx> {
@@ -171,13 +203,16 @@ pub struct ThreadManager<'mir, 'tcx> {
     ///
     /// Note that this vector also contains terminated threads.
     threads: IndexVec<ThreadId, Thread<'mir, 'tcx>>,
-    /// A counter used to generate unique identifiers for blocksets.
-    blockset_counter: u32,
+    /// This field is pub(crate) because the synchronization primitives
+    /// (`crate::sync`) need a way to access it.
+    pub(crate) sync: SynchronizationState,
     /// A mapping from a thread-local static to an allocation id of a thread
     /// specific allocation.
     thread_local_alloc_ids: RefCell<FxHashMap<(DefId, ThreadId), AllocId>>,
     /// A flag that indicates that we should change the active thread.
     yield_active_thread: bool,
+    /// Callbacks that are called once the specified time passes.
+    timeout_callbacks: FxHashMap<ThreadId, TimeoutCallbackInfo<'mir, 'tcx>>,
 }
 
 impl<'mir, 'tcx> Default for ThreadManager<'mir, 'tcx> {
@@ -191,9 +226,10 @@ impl<'mir, 'tcx> Default for ThreadManager<'mir, 'tcx> {
         Self {
             active_thread: ThreadId::new(0),
             threads: threads,
-            blockset_counter: 0,
+            sync: SynchronizationState::default(),
             thread_local_alloc_ids: Default::default(),
             yield_active_thread: false,
+            timeout_callbacks: FxHashMap::default(),
         }
     }
 }
@@ -321,35 +357,59 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         self.active_thread_ref().thread_name()
     }
 
-    /// Allocate a new blockset id.
-    fn create_blockset(&mut self) -> BlockSetId {
-        self.blockset_counter = self.blockset_counter.checked_add(1).unwrap();
-        BlockSetId::new(self.blockset_counter)
-    }
-
-    /// Block the currently active thread and put it into the given blockset.
-    fn block_active_thread(&mut self, set: BlockSetId) {
-        let state = &mut self.active_thread_mut().state;
+    /// Put the thread into the blocked state.
+    fn block_thread(&mut self, thread: ThreadId) {
+        let state = &mut self.threads[thread].state;
         assert_eq!(*state, ThreadState::Enabled);
-        *state = ThreadState::Blocked(set);
+        *state = ThreadState::BlockedOnSync;
     }
 
-    /// Unblock any one thread from the given blockset if it contains at least
-    /// one. Return the id of the unblocked thread.
-    fn unblock_some_thread(&mut self, set: BlockSetId) -> Option<ThreadId> {
-        for (id, thread) in self.threads.iter_enumerated_mut() {
-            if thread.state == ThreadState::Blocked(set) {
-                trace!("unblocking {:?} in blockset {:?}", id, set);
-                thread.state = ThreadState::Enabled;
-                return Some(id);
-            }
-        }
-        None
+    /// Put the blocked thread into the enabled state.
+    fn unblock_thread(&mut self, thread: ThreadId) {
+        let state = &mut self.threads[thread].state;
+        assert_eq!(*state, ThreadState::BlockedOnSync);
+        *state = ThreadState::Enabled;
     }
 
     /// Change the active thread to some enabled thread.
     fn yield_active_thread(&mut self) {
         self.yield_active_thread = true;
+    }
+
+    /// Register the given `callback` to be called once the `call_time` passes.
+    ///
+    /// The callback will be called with `thread` being the active thread, and
+    /// the callback may not change the active thread.
+    fn register_timeout_callback(
+        &mut self,
+        thread: ThreadId,
+        call_time: Time,
+        callback: TimeoutCallback<'mir, 'tcx>,
+    ) {
+        self.timeout_callbacks
+            .insert(thread, TimeoutCallbackInfo { call_time, callback })
+            .unwrap_none();
+    }
+
+    /// Unregister the callback for the `thread`.
+    fn unregister_timeout_callback_if_exists(&mut self, thread: ThreadId) {
+        self.timeout_callbacks.remove(&thread);
+    }
+
+    /// Get a callback that is ready to be called.
+    fn get_ready_callback(&mut self) -> Option<(ThreadId, TimeoutCallback<'mir, 'tcx>)> {
+        // We iterate over all threads in the order of their indices because
+        // this allows us to have a deterministic scheduler.
+        for thread in self.threads.indices() {
+            match self.timeout_callbacks.entry(thread) {
+                Entry::Occupied(entry) =>
+                    if entry.get().call_time.get_wait_time() == Duration::new(0, 0) {
+                        return Some((thread, entry.remove().callback));
+                    },
+                Entry::Vacant(_) => {}
+            }
+        }
+        None
     }
 
     /// Decide which action to take next and on which thread.
@@ -385,6 +445,20 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
             }
             return Ok(SchedulingAction::Stop);
         }
+        // At least for `pthread_cond_timedwait` we need to report timeout when
+        // the function is called already after the specified time even if a
+        // signal is received before the thread gets scheduled. Therefore, we
+        // need to schedule all timeout callbacks before we continue regular
+        // execution.
+        //
+        // Documentation:
+        // https://pubs.opengroup.org/onlinepubs/9699919799/functions/pthread_cond_timedwait.html#
+        let potential_sleep_time =
+            self.timeout_callbacks.values().map(|info| info.call_time.get_wait_time()).min();
+        if potential_sleep_time == Some(Duration::new(0, 0)) {
+            return Ok(SchedulingAction::ExecuteTimeoutCallback);
+        }
+        // No callbacks scheduled, pick a regular thread to execute.
         if self.threads[self.active_thread].state == ThreadState::Enabled
             && !self.yield_active_thread
         {
@@ -406,7 +480,13 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         }
         // We have not found a thread to execute.
         if self.threads.iter().all(|thread| thread.state == ThreadState::Terminated) {
-            unreachable!();
+            unreachable!("all threads terminated without the main thread terminating?!");
+        } else if let Some(sleep_time) = potential_sleep_time {
+            // All threads are currently blocked, but we have unexecuted
+            // timeout_callbacks, which may unblock some of the threads. Hence,
+            // sleep until the first callback.
+            std::thread::sleep(sleep_time);
+            Ok(SchedulingAction::ExecuteTimeoutCallback)
         } else {
             throw_machine_stop!(TerminationInfo::Deadlock);
         }
@@ -577,27 +657,58 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 
     #[inline]
-    fn create_blockset(&mut self) -> InterpResult<'tcx, BlockSetId> {
+    fn block_thread(&mut self, thread: ThreadId) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        Ok(this.machine.threads.create_blockset())
+        Ok(this.machine.threads.block_thread(thread))
     }
 
     #[inline]
-    fn block_active_thread(&mut self, set: BlockSetId) -> InterpResult<'tcx> {
+    fn unblock_thread(&mut self, thread: ThreadId) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        Ok(this.machine.threads.block_active_thread(set))
-    }
-
-    #[inline]
-    fn unblock_some_thread(&mut self, set: BlockSetId) -> InterpResult<'tcx, Option<ThreadId>> {
-        let this = self.eval_context_mut();
-        Ok(this.machine.threads.unblock_some_thread(set))
+        Ok(this.machine.threads.unblock_thread(thread))
     }
 
     #[inline]
     fn yield_active_thread(&mut self) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         this.machine.threads.yield_active_thread();
+        Ok(())
+    }
+
+    #[inline]
+    fn register_timeout_callback(
+        &mut self,
+        thread: ThreadId,
+        call_time: Time,
+        callback: TimeoutCallback<'mir, 'tcx>,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        this.machine.threads.register_timeout_callback(thread, call_time, callback);
+        Ok(())
+    }
+
+    #[inline]
+    fn unregister_timeout_callback_if_exists(&mut self, thread: ThreadId) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        this.machine.threads.unregister_timeout_callback_if_exists(thread);
+        Ok(())
+    }
+
+    /// Execute a timeout callback on the callback's thread.
+    #[inline]
+    fn run_timeout_callback(&mut self) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        let (thread, callback) =
+            this.machine.threads.get_ready_callback().expect("no callback found");
+        // This back-and-forth with `set_active_thread` is here because of two
+        // design decisions:
+        // 1. Make the caller and not the callback responsible for changing
+        //    thread.
+        // 2. Make the scheduler the only place that can change the active
+        //    thread.
+        let old_thread = this.set_active_thread(thread)?;
+        callback(this)?;
+        this.set_active_thread(old_thread)?;
         Ok(())
     }
 
