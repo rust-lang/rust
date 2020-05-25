@@ -587,6 +587,11 @@
                 "description": "Style for attributes"
             },
             {
+                "id": "boolean",
+                "description": "Style for boolean literals",
+                "superType": "keyword"
+            },
+            {
                 "id": "builtinType",
                 "description": "Style for builtin types",
                 "superType": "type"
