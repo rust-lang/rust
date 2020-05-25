@@ -12,5 +12,23 @@ error: square can be computed more accurately
 LL |     let _ = x.powi(1 + 1);
    |             ^^^^^^^^^^^^^ help: consider using: `x * x`
 
-error: aborting due to 2 previous errors
+error: square can be computed more accurately
+  --> $DIR/floating_point_powi.rs:11:14
+   |
+LL |     let _ = (x.powi(2) + y).sqrt();
+   |              ^^^^^^^^^ help: consider using: `x * x`
+
+error: square can be computed more accurately
+  --> $DIR/floating_point_powi.rs:12:18
+   |
+LL |     let _ = (x + y.powi(2)).sqrt();
+   |                  ^^^^^^^^^ help: consider using: `y * y`
+
+error: hypotenuse can be computed more accurately
+  --> $DIR/floating_point_powi.rs:16:13
+   |
+LL |     let _ = (x.powi(2) + y.powi(2)).sqrt();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `x.hypot(y)`
+
+error: aborting due to 5 previous errors
 

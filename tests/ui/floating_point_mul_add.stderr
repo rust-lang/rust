@@ -54,5 +54,11 @@ error: multiply and add expressions can be calculated more efficiently and accur
 LL |     let _ = 1234.567_f64 * 45.67834_f64 + 0.0004_f64;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `1234.567_f64.mul_add(45.67834_f64, 0.0004_f64)`
 
-error: aborting due to 9 previous errors
+error: multiply and add expressions can be calculated more efficiently and accurately
+  --> $DIR/floating_point_mul_add.rs:22:13
+   |
+LL |     let _ = (a * a + b).sqrt();
+   |             ^^^^^^^^^^^ help: consider using: `a.mul_add(a, b)`
+
+error: aborting due to 10 previous errors
 

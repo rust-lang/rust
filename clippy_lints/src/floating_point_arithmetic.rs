@@ -2,10 +2,10 @@ use crate::consts::{
     constant, constant_simple, Constant,
     Constant::{Int, F32, F64},
 };
-use crate::utils::{higher, numeric_literal, span_lint_and_sugg, sugg, SpanlessEq};
+use crate::utils::{get_parent_expr, higher, numeric_literal, span_lint_and_sugg, sugg, SpanlessEq};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Expr, ExprKind, UnOp};
+use rustc_hir::{BinOpKind, Expr, ExprKind, PathSegment, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -296,6 +296,17 @@ fn check_powf(cx: &LateContext<'_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
 fn check_powi(cx: &LateContext<'_, '_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
     // Check argument
     if let Some((value, _)) = constant(cx, cx.tables, &args[1]) {
+        // TODO: need more specific check. this is too wide. remember also to include tests
+        if let Some(parent) = get_parent_expr(cx, expr) {
+            if let Some(grandparent) = get_parent_expr(cx, parent) {
+                if let ExprKind::MethodCall(PathSegment { ident: method_name, .. }, _, args) = grandparent.kind {
+                    if method_name.as_str() == "sqrt" && detect_hypot(cx, args).is_some() {
+                        return;
+                    }
+                }
+            }
+        }
+
         let (lint, help, suggestion) = match value {
             Int(2) => (
                 IMPRECISE_FLOPS,
@@ -312,6 +323,57 @@ fn check_powi(cx: &LateContext<'_, '_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
             help,
             "consider using",
             suggestion,
+            Applicability::MachineApplicable,
+        );
+    }
+}
+
+fn detect_hypot(cx: &LateContext<'_, '_>, args: &[Expr<'_>]) -> Option<String> {
+    if let ExprKind::Binary(
+        Spanned {
+            node: BinOpKind::Add, ..
+        },
+        ref add_lhs,
+        ref add_rhs,
+    ) = args[0].kind
+    {
+        // check if expression of the form x * x + y * y
+        if_chain! {
+            if let ExprKind::Binary(Spanned { node: BinOpKind::Mul, .. }, ref lmul_lhs, ref lmul_rhs) = add_lhs.kind;
+            if let ExprKind::Binary(Spanned { node: BinOpKind::Mul, .. }, ref rmul_lhs, ref rmul_rhs) = add_rhs.kind;
+            if are_exprs_equal(cx, lmul_lhs, lmul_rhs);
+            if are_exprs_equal(cx, rmul_lhs, rmul_rhs);
+            then {
+                return Some(format!("{}.hypot({})", Sugg::hir(cx, &lmul_lhs, ".."), Sugg::hir(cx, &rmul_lhs, "..")));
+            }
+        }
+
+        // check if expression of the form x.powi(2) + y.powi(2)
+        if_chain! {
+            if let ExprKind::MethodCall(PathSegment { ident: lmethod_name, .. }, ref _lspan, ref largs) = add_lhs.kind;
+            if let ExprKind::MethodCall(PathSegment { ident: rmethod_name, .. }, ref _rspan, ref rargs) = add_rhs.kind;
+            if lmethod_name.as_str() == "powi" && rmethod_name.as_str() == "powi";
+            if let Some((lvalue, _)) = constant(cx, cx.tables, &largs[1]);
+            if let Some((rvalue, _)) = constant(cx, cx.tables, &rargs[1]);
+            if Int(2) == lvalue && Int(2) == rvalue;
+            then {
+                return Some(format!("{}.hypot({})", Sugg::hir(cx, &largs[0], ".."), Sugg::hir(cx, &rargs[0], "..")));
+            }
+        }
+    }
+
+    None
+}
+
+fn check_hypot(cx: &LateContext<'_, '_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
+    if let Some(message) = detect_hypot(cx, args) {
+        span_lint_and_sugg(
+            cx,
+            IMPRECISE_FLOPS,
+            expr.span,
+            "hypotenuse can be computed more accurately",
+            "consider using",
+            message,
             Applicability::MachineApplicable,
         );
     }
@@ -368,6 +430,14 @@ fn check_mul_add(cx: &LateContext<'_>, expr: &Expr<'_>) {
         rhs,
     ) = &expr.kind
     {
+        if let Some(parent) = get_parent_expr(cx, expr) {
+            if let ExprKind::MethodCall(PathSegment { ident: method_name, .. }, _, args) = parent.kind {
+                if method_name.as_str() == "sqrt" && detect_hypot(cx, args).is_some() {
+                    return;
+                }
+            }
+        }
+
         let (recv, arg1, arg2) = if let Some((inner_lhs, inner_rhs)) = is_float_mul_expr(cx, lhs) {
             (inner_lhs, inner_rhs, rhs)
         } else if let Some((inner_lhs, inner_rhs)) = is_float_mul_expr(cx, rhs) {
@@ -514,6 +584,7 @@ impl<'tcx> LateLintPass<'tcx> for FloatingPointArithmetic {
                     "log" => check_log_base(cx, expr, args),
                     "powf" => check_powf(cx, expr, args),
                     "powi" => check_powi(cx, expr, args),
+                    "sqrt" => check_hypot(cx, expr, args),
                     _ => {},
                 }
             }
