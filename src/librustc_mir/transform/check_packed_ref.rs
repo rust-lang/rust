@@ -1,7 +1,7 @@
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_session::lint::builtin::PACKED_REFERENCES;
+use rustc_session::lint::builtin::UNALIGNED_REFERENCES;
 
 use crate::transform::{MirPass, MirSource};
 use crate::util;
@@ -47,13 +47,13 @@ impl<'a, 'tcx> Visitor<'tcx> for PackedRefChecker<'a, 'tcx> {
                     .assert_crate_local()
                     .lint_root;
                 self.tcx.struct_span_lint_hir(
-                    PACKED_REFERENCES,
+                    UNALIGNED_REFERENCES,
                     lint_root,
                     source_info.span,
                     |lint| {
-                        lint.build(&format!("reference to packed field is not allowed",))
+                        lint.build(&format!("reference to packed field is unaligned",))
                             .note(
-                                "fields of packed structs might be misaligned, and creating \
+                                "fields of packed structs are not properly aligned, and creating \
                                 a misaligned reference is undefined behavior (even if that \
                                 reference is never dereferenced)",
                             )

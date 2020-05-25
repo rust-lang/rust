@@ -1,4 +1,4 @@
-#![deny(packed_references)]
+#![deny(unaligned_references)]
 
 #[repr(packed)]
 pub struct Good {

@@ -217,7 +217,7 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub PACKED_REFERENCES,
+    pub UNALIGNED_REFERENCES,
     Allow,
     "detects unaligned references to fields of packed structs",
 }
@@ -551,7 +551,7 @@ declare_lint_pass! {
         INVALID_TYPE_PARAM_DEFAULT,
         CONST_ERR,
         RENAMED_AND_REMOVED_LINTS,
-        PACKED_REFERENCES,
+        UNALIGNED_REFERENCES,
         SAFE_PACKED_BORROWS,
         PATTERNS_IN_FNS_WITHOUT_BODY,
         MISSING_FRAGMENT_SPECIFIER,
