@@ -405,7 +405,7 @@ mod tests {
                 };
             }
         "#,
-            &["Foo\n___\n\n```rust\nfield_a: u32"],
+            &["Foo\n```\n\n```rust\nfield_a: u32"],
         );
 
         // Hovering over the field in the definition
@@ -422,7 +422,7 @@ mod tests {
                 };
             }
         "#,
-            &["Foo\n___\n\n```rust\nfield_a: u32"],
+            &["Foo\n```\n\n```rust\nfield_a: u32"],
         );
     }
 
@@ -475,7 +475,7 @@ fn main() {
             ",
         );
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(trim_markup_opt(hover.info.first()), Some("Option\n___\n\n```rust\nSome"));
+        assert_eq!(trim_markup_opt(hover.info.first()), Some("Option\n```\n\n```rust\nSome"));
 
         let (analysis, position) = single_file_with_position(
             "
@@ -503,11 +503,12 @@ fn main() {
         "#,
             &["
 Option
-___
+```
 
 ```rust
 None
 ```
+___
 
 The None variant
             "
@@ -527,11 +528,12 @@ The None variant
         "#,
             &["
 Option
-___
+```
 
 ```rust
 Some
 ```
+___
 
 The Some variant
             "
@@ -614,7 +616,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
         let hover = analysis.hover(position).unwrap().unwrap();
         assert_eq!(
             trim_markup_opt(hover.info.first()),
-            Some("wrapper::Thing\n___\n\n```rust\nfn new() -> Thing")
+            Some("wrapper::Thing\n```\n\n```rust\nfn new() -> Thing")
         );
     }
 
@@ -891,7 +893,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
                 fo<|>o();
             }
             ",
-            &["fn foo()\n```\n\n<- `\u{3000}` here"],
+            &["fn foo()\n```\n___\n\n<- `\u{3000}` here"],
         );
     }
 
