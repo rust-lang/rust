@@ -124,9 +124,22 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
             return;
         }
 
-        let mut conflicts = Conflicts::build(tcx, body, source);
+        let candidates = find_candidates(tcx, body);
+        if candidates.is_empty() {
+            debug!("{:?}: no dest prop candidates, done", source.def_id());
+            return;
+        }
+
+        // Collect all locals we care about. We only compute conflicts for these to save time.
+        let mut relevant_locals = BitSet::new_empty(body.local_decls.len());
+        for CandidateAssignment { dest, src, loc: _ } in &candidates {
+            relevant_locals.insert(dest.local);
+            relevant_locals.insert(*src);
+        }
+
+        let mut conflicts = Conflicts::build(tcx, body, source, &relevant_locals);
         let mut replacements = Replacements::new(body.local_decls.len());
-        for candidate @ CandidateAssignment { dest, src, loc } in find_candidates(tcx, body) {
+        for candidate @ CandidateAssignment { dest, src, loc } in candidates {
             // Merge locals that don't conflict.
             if conflicts.contains(dest.local, src) {
                 debug!("at assignment {:?}, conflict {:?} vs. {:?}", loc, dest.local, src);
@@ -370,16 +383,30 @@ struct Conflicts {
 }
 
 impl Conflicts {
-    fn build<'tcx>(tcx: TyCtxt<'tcx>, body: &'_ Body<'tcx>, source: MirSource<'tcx>) -> Self {
-        // We don't have to look out for locals that have their address taken, since `find_candidates`
-        // already takes care of that.
+    fn build<'tcx>(
+        tcx: TyCtxt<'tcx>,
+        body: &'_ Body<'tcx>,
+        source: MirSource<'tcx>,
+        relevant_locals: &BitSet<Local>,
+    ) -> Self {
+        // We don't have to look out for locals that have their address taken, since
+        // `find_candidates` already takes care of that.
+
+        debug!(
+            "Conflicts::build: {}/{} locals relevant",
+            relevant_locals.count(),
+            body.local_decls.len()
+        );
 
         let mut conflicts = BitMatrix::from_row_n(
             &BitSet::new_empty(body.local_decls.len()),
             body.local_decls.len(),
         );
 
-        let mut record_conflicts = |new_conflicts: &BitSet<_>| {
+        let mut record_conflicts = |new_conflicts: &mut BitSet<_>| {
+            // Remove all locals that are not candidates.
+            new_conflicts.intersect(relevant_locals);
+
             for local in new_conflicts.iter() {
                 conflicts.union_row_with(&new_conflicts, local);
             }
@@ -449,7 +476,7 @@ impl Conflicts {
             },
         );
 
-        let mut relevant_locals = Vec::new();
+        let mut live_and_init_locals = Vec::new();
 
         // Visit only reachable basic blocks. The exact order is not important.
         for (block, data) in traversal::preorder(body) {
@@ -462,7 +489,7 @@ impl Conflicts {
             // that, we first collect in the `MaybeInitializedLocals` results in a forwards
             // traversal.
 
-            relevant_locals.resize_with(data.statements.len() + 1, || {
+            live_and_init_locals.resize_with(data.statements.len() + 1, || {
                 BitSet::new_empty(body.local_decls.len())
             });
 
@@ -471,7 +498,7 @@ impl Conflicts {
                 let loc = Location { block, statement_index };
                 init.seek_before_primary_effect(loc);
 
-                relevant_locals[statement_index].clone_from(init.get());
+                live_and_init_locals[statement_index].clone_from(init.get());
             }
 
             // Now, go backwards and union with the liveness results.
@@ -479,11 +506,11 @@ impl Conflicts {
                 let loc = Location { block, statement_index };
                 live.seek_after_primary_effect(loc);
 
-                relevant_locals[statement_index].intersect(live.get());
+                live_and_init_locals[statement_index].intersect(live.get());
 
                 trace!("record conflicts at {:?}", loc);
 
-                record_conflicts(&relevant_locals[statement_index]);
+                record_conflicts(&mut live_and_init_locals[statement_index]);
             }
 
             init.seek_to_block_end(block);
@@ -492,7 +519,7 @@ impl Conflicts {
             conflicts.intersect(live.get());
             trace!("record conflicts at end of {:?}", block);
 
-            record_conflicts(&conflicts);
+            record_conflicts(&mut conflicts);
         }
 
         Self { matrix: conflicts, unify_cache: BitSet::new_empty(body.local_decls.len()) }
