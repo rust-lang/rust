@@ -976,7 +976,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_expr_asm(&mut self, sp: Span, asm: &InlineAsm) -> hir::ExprKind<'hir> {
         if self.sess.asm_arch.is_none() {
             struct_span_err!(self.sess, sp, E0472, "asm! is unsupported on this target").emit();
-        };
+        }
         if asm.options.contains(InlineAsmOptions::ATT_SYNTAX)
             && !matches!(
                 self.sess.asm_arch,
