@@ -31,9 +31,9 @@ use rustc_session::cgu_reuse_tracker::CguReuseTracker;
 use rustc_session::config::{self, CrateType, Lto, OutputFilenames, OutputType};
 use rustc_session::config::{Passes, Sanitizer, SwitchWithOptPath};
 use rustc_session::Session;
-use rustc_span::hygiene::ExpnId;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{sym, Symbol};
+use rustc_span::{BytePos, FileName, InnerSpan, Pos, Span};
 use rustc_target::spec::{MergeFunctions, PanicStrategy};
 
 use std::any::Any;
@@ -1551,7 +1551,7 @@ fn spawn_work<B: ExtraBackendMethods>(cgcx: CodegenContext<B>, work: WorkItem<B>
 
 enum SharedEmitterMessage {
     Diagnostic(Diagnostic),
-    InlineAsmError(u32, String),
+    InlineAsmError(u32, String, Option<(String, Vec<InnerSpan>)>),
     AbortIfErrors,
     Fatal(String),
 }
@@ -1572,8 +1572,13 @@ impl SharedEmitter {
         (SharedEmitter { sender }, SharedEmitterMain { receiver })
     }
 
-    pub fn inline_asm_error(&self, cookie: u32, msg: String) {
-        drop(self.sender.send(SharedEmitterMessage::InlineAsmError(cookie, msg)));
+    pub fn inline_asm_error(
+        &self,
+        cookie: u32,
+        msg: String,
+        source: Option<(String, Vec<InnerSpan>)>,
+    ) {
+        drop(self.sender.send(SharedEmitterMessage::InlineAsmError(cookie, msg, source)));
     }
 
     pub fn fatal(&self, msg: &str) {
@@ -1626,8 +1631,30 @@ impl SharedEmitterMain {
                     }
                     handler.emit_diagnostic(&d);
                 }
-                Ok(SharedEmitterMessage::InlineAsmError(cookie, msg)) => {
-                    sess.span_err(ExpnId::from_u32(cookie).expn_data().call_site, &msg)
+                Ok(SharedEmitterMessage::InlineAsmError(cookie, msg, source)) => {
+                    let msg = msg.strip_prefix("error: ").unwrap_or(&msg);
+
+                    // If the cookie is 0 then we don't have span information.
+                    let mut err = if cookie == 0 {
+                        sess.struct_err(&msg)
+                    } else {
+                        let pos = BytePos::from_u32(cookie);
+                        let span = Span::with_root_ctxt(pos, pos);
+                        sess.struct_span_err(span, &msg)
+                    };
+
+                    // Point to the generated assembly if it is available.
+                    if let Some((buffer, spans)) = source {
+                        let source = sess
+                            .source_map()
+                            .new_source_file(FileName::inline_asm_source_code(&buffer), buffer);
+                        let source_span = Span::with_root_ctxt(source.start_pos, source.end_pos);
+                        let spans: Vec<_> =
+                            spans.iter().map(|sp| source_span.from_inner(*sp)).collect();
+                        err.span_note(spans, "instantiated into assembly here");
+                    }
+
+                    err.emit();
                 }
                 Ok(SharedEmitterMessage::AbortIfErrors) => {
                     sess.abort_if_errors();

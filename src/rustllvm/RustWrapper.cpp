@@ -1216,10 +1216,33 @@ extern "C" void LLVMRustSetInlineAsmDiagnosticHandler(
   unwrap(C)->setInlineAsmDiagnosticHandler(H, CX);
 }
 
-extern "C" void LLVMRustWriteSMDiagnosticToString(LLVMSMDiagnosticRef D,
-                                                  RustStringRef Str) {
-  RawRustStringOstream OS(Str);
-  unwrap(D)->print("", OS);
+extern "C" bool LLVMRustUnpackSMDiagnostic(LLVMSMDiagnosticRef DRef,
+                                           RustStringRef MessageOut,
+                                           RustStringRef BufferOut,
+                                           unsigned* LocOut,
+                                           unsigned* RangesOut,
+                                           size_t* NumRanges) {
+  SMDiagnostic& D = *unwrap(DRef);
+  RawRustStringOstream MessageOS(MessageOut);
+  MessageOS << D.getMessage();
+
+  if (D.getLoc() == SMLoc())
+    return false;
+
+  const SourceMgr &LSM = *D.getSourceMgr();
+  const MemoryBuffer *LBuf = LSM.getMemoryBuffer(LSM.FindBufferContainingLoc(D.getLoc()));
+  LLVMRustStringWriteImpl(BufferOut, LBuf->getBufferStart(), LBuf->getBufferSize());
+
+  *LocOut = D.getLoc().getPointer() - LBuf->getBufferStart();
+
+  *NumRanges = std::min(*NumRanges, D.getRanges().size());
+  size_t LineStart = *LocOut - (size_t)D.getColumnNo();
+  for (size_t i = 0; i < *NumRanges; i++) {
+    RangesOut[i * 2] = LineStart + D.getRanges()[i].first;
+    RangesOut[i * 2 + 1] = LineStart + D.getRanges()[i].second;
+  }
+
+  return true;
 }
 
 extern "C" LLVMValueRef LLVMRustBuildCleanupPad(LLVMBuilderRef B,

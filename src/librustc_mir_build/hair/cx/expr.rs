@@ -513,6 +513,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
                 })
                 .collect(),
             options: asm.options,
+            line_spans: asm.line_spans,
         },
 
         hir::ExprKind::LlvmInlineAsm(ref asm) => ExprKind::LlvmInlineAsm {

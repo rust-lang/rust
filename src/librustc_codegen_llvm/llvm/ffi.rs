@@ -2070,7 +2070,14 @@ extern "C" {
     );
 
     #[allow(improper_ctypes)]
-    pub fn LLVMRustWriteSMDiagnosticToString(d: &SMDiagnostic, s: &RustString);
+    pub fn LLVMRustUnpackSMDiagnostic(
+        d: &SMDiagnostic,
+        message_out: &RustString,
+        buffer_out: &RustString,
+        loc_out: &mut c_uint,
+        ranges_out: *mut c_uint,
+        num_ranges: &mut usize,
+    ) -> bool;
 
     pub fn LLVMRustWriteArchive(
         Dst: *const c_char,
