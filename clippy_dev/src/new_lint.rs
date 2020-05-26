@@ -76,7 +76,8 @@ fn create_test(lint: &LintData) -> io::Result<()> {
 
         path.push("src");
         fs::create_dir(&path)?;
-        write_file(path.join("main.rs"), get_test_file_contents(lint_name))?;
+        let header = format!("// compile-flags: --crate-name={}", lint_name);
+        write_file(path.join("main.rs"), get_test_file_contents(lint_name, Some(&header)))?;
 
         Ok(())
     }
@@ -90,7 +91,7 @@ fn create_test(lint: &LintData) -> io::Result<()> {
         create_project_layout(lint.name, &test_dir, "pass", "This file should not trigger the lint")
     } else {
         let test_path = format!("tests/ui/{}.rs", lint.name);
-        let test_contents = get_test_file_contents(lint.name);
+        let test_contents = get_test_file_contents(lint.name, None);
         write_file(lint.project_root.join(test_path), test_contents)
     }
 }
@@ -119,8 +120,8 @@ fn to_camel_case(name: &str) -> String {
         .collect()
 }
 
-fn get_test_file_contents(lint_name: &str) -> String {
-    format!(
+fn get_test_file_contents(lint_name: &str, header_commands: Option<&str>) -> String {
+    let mut contents = format!(
         "#![warn(clippy::{})]
 
 fn main() {{
@@ -128,7 +129,13 @@ fn main() {{
 }}
 ",
         lint_name
-    )
+    );
+
+    if let Some(header) = header_commands {
+        contents = format!("{}\n{}", header, contents);
+    }
+
+    contents
 }
 
 fn get_manifest_contents(lint_name: &str, hint: &str) -> String {
