@@ -603,7 +603,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     let native_libs = tcx.native_libraries(LOCAL_CRATE);
 
     for lib in native_libs.iter() {
-        if lib.kind == cstore::NativeLibraryKind::NativeRawDylib {
+        if lib.kind == NativeLibKind::RawDylib {
             if let (Some(dll_name), Some(def_id)) = (lib.name, lib.foreign_module) {
                 let foreign_modules = tcx.foreign_modules(LOCAL_CRATE);
                 for f_mod in foreign_modules {
@@ -948,7 +948,10 @@ pub fn provide_both(providers: &mut Providers<'_>) {
             .native_libraries(krate)
             .iter()
             .filter(|lib| {
-                if !matches!(lib.kind, NativeLibKind::Dylib | NativeLibKind::Unspecified) {
+                if !matches!(
+                    lib.kind,
+                    NativeLibKind::Dylib | NativeLibKind::RawDylib | NativeLibKind::Unspecified
+                ) {
                     return false;
                 }
                 let cfg = match lib.cfg {
