@@ -132,7 +132,11 @@ struct SimilarNamesNameVisitor<'a, 'tcx, 'b>(&'b mut SimilarNamesLocalVisitor<'a
 impl<'a, 'tcx, 'b> Visitor<'tcx> for SimilarNamesNameVisitor<'a, 'tcx, 'b> {
     fn visit_pat(&mut self, pat: &'tcx Pat) {
         match pat.kind {
-            PatKind::Ident(_, ident, _) => self.check_ident(ident),
+            PatKind::Ident(_, ident, _) => {
+                if !pat.span.from_expansion() {
+                    self.check_ident(ident);
+                }
+            },
             PatKind::Struct(_, ref fields, _) => {
                 for field in fields {
                     if !field.is_shorthand {
