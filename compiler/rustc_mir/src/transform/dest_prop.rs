@@ -114,6 +114,8 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
+const MAX_LOCALS: usize = 500;
+
 pub struct DestinationPropagation;
 
 impl<'tcx> MirPass<'tcx> for DestinationPropagation {
@@ -137,7 +139,29 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
             relevant_locals.insert(*src);
         }
 
+        // This pass unfortunately has `O(l² * s)` performance, where `l` is the number of locals
+        // and `s` is the number of statements and terminators in the function.
+        // To prevent blowing up compile times too much, we bail out when there are too many locals.
+        let relevant = relevant_locals.count();
+        debug!(
+            "{:?}: {} locals ({} relevant), {} blocks",
+            source.def_id(),
+            body.local_decls.len(),
+            relevant,
+            body.basic_blocks().len()
+        );
+        if relevant > MAX_LOCALS {
+            warn!(
+                "too many candidate locals in {:?} ({}, max is {}), not optimizing",
+                source.def_id(),
+                relevant,
+                MAX_LOCALS
+            );
+            return;
+        }
+
         let mut conflicts = Conflicts::build(tcx, body, source, &relevant_locals);
+
         let mut replacements = Replacements::new(body.local_decls.len());
         for candidate @ CandidateAssignment { dest, src, loc } in candidates {
             // Merge locals that don't conflict.
@@ -391,12 +415,6 @@ impl Conflicts {
     ) -> Self {
         // We don't have to look out for locals that have their address taken, since
         // `find_candidates` already takes care of that.
-
-        debug!(
-            "Conflicts::build: {}/{} locals relevant",
-            relevant_locals.count(),
-            body.local_decls.len()
-        );
 
         let mut conflicts = BitMatrix::from_row_n(
             &BitSet::new_empty(body.local_decls.len()),
