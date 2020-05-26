@@ -83,12 +83,13 @@ pub(crate) fn rust_code_markup_with_doc(
 
     if let Some(mod_path) = mod_path {
         if !mod_path.is_empty() {
-            format_to!(buf, "{}\n___\n\n", mod_path);
+            format_to!(buf, "```rust\n{}\n```\n\n", mod_path);
         }
     }
     format_to!(buf, "```rust\n{}\n```", code);
 
     if let Some(doc) = doc {
+        format_to!(buf, "\n___");
         format_to!(buf, "\n\n{}", doc);
     }
 
