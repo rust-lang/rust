@@ -1144,40 +1144,22 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Constructs a `TyKind::Error` type and registers a `delay_span_bug` to ensure it gets used.
     #[track_caller]
     pub fn ty_error(self) -> Ty<'tcx> {
-        self.err_with_message_and_location(
-            DUMMY_SP,
-            "TyKind::Error constructed but no error reported",
-            std::panic::Location::caller(),
-        )
+        self.ty_error_with_message(DUMMY_SP, "TyKind::Error constructed but no error reported")
     }
 
     /// Constructs a `TyKind::Error` type and registers a `delay_span_bug` with the given `msg to
     /// ensure it gets used.
     #[track_caller]
     pub fn ty_error_with_message<S: Into<MultiSpan>>(self, span: S, msg: &str) -> Ty<'tcx> {
-        self.err_with_message_and_location(span, msg, std::panic::Location::caller())
-    }
-
-    pub fn err_with_message_and_location<S: Into<MultiSpan>>(
-        self,
-        span: S,
-        msg: &str,
-        loc: &'static std::panic::Location<'static>,
-    ) -> Ty<'tcx> {
-        self.sess.delay_span_bug(span, &format!("{}: {}", loc, msg));
+        self.sess.delay_span_bug(span, msg);
         self.mk_ty(Error(super::sty::DelaySpanBugEmitted(())))
     }
 
     /// Like `err` but for constants.
     #[track_caller]
     pub fn const_error(self, ty: Ty<'tcx>) -> &'tcx Const<'tcx> {
-        self.sess.delay_span_bug(
-            DUMMY_SP,
-            &format!(
-                "ty::ConstKind::Error constructed but no error reported. {}",
-                std::panic::Location::caller()
-            ),
-        );
+        self.sess
+            .delay_span_bug(DUMMY_SP, "ty::ConstKind::Error constructed but no error reported.");
         self.mk_const(ty::Const {
             val: ty::ConstKind::Error(super::sty::DelaySpanBugEmitted(())),
             ty,
