@@ -398,7 +398,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                             // These variants are trivially WF, so nothing to do here.
                         }
                         ty::ConstKind::Value(..) => {
-                            // FIXME: Enforce that values are structually-matchable.
+                            // FIXME: Enforce that values are structurally-matchable.
                         }
                     }
                     continue;
@@ -434,6 +434,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
 
                 ty::Array(subty, _) => {
                     self.require_sized(subty, traits::SliceOrArrayElem);
+                    // Note that we handle the len is implicitly checked while walking `arg`.
                 }
 
                 ty::Tuple(ref tys) => {
@@ -445,11 +446,11 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 }
 
                 ty::RawPtr(_) => {
-                    // simple cases that are WF if their type args are WF
+                    // Simple cases that are WF if their type args are WF.
                 }
 
                 ty::Projection(data) => {
-                    walker.skip_current_subtree(); // subtree handled by compute_projection
+                    walker.skip_current_subtree(); // Subtree handled by compute_projection.
                     self.compute_projection(data);
                 }
 

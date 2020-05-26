@@ -3389,8 +3389,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    /// Registers an obligation for checking later, during regionck, that the type `ty` must
-    /// outlive the region `r`.
+    /// Registers an obligation for checking later, during regionck, that `arg` is well-formed.
     pub fn register_wf_obligation(
         &self,
         arg: subst::GenericArg<'tcx>,
