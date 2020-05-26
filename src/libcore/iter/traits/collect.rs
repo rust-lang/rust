@@ -352,7 +352,9 @@ pub trait Extend<A> {
     ///
     /// The default implementation does nothing.
     #[unstable(feature = "extend_one", issue = "none")]
-    fn extend_reserve(&mut self, _additional: usize) {}
+    fn extend_reserve(&mut self, additional: usize) {
+        let _ = additional;
+    }
 }
 
 #[stable(feature = "extend_for_unit", since = "1.28.0")]
