@@ -343,7 +343,7 @@ pub trait Extend<A> {
     fn extend<T: IntoIterator<Item = A>>(&mut self, iter: T);
 
     /// Extends a collection with exactly one element.
-    #[unstable(feature = "extend_one", issue = "none")]
+    #[unstable(feature = "extend_one", issue = "72631")]
     fn extend_one(&mut self, item: A) {
         self.extend(Some(item));
     }
@@ -351,7 +351,7 @@ pub trait Extend<A> {
     /// Reserves capacity in a collection for the given number of additional elements.
     ///
     /// The default implementation does nothing.
-    #[unstable(feature = "extend_one", issue = "none")]
+    #[unstable(feature = "extend_one", issue = "72631")]
     fn extend_reserve(&mut self, additional: usize) {
         let _ = additional;
     }
