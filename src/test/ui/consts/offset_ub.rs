@@ -19,4 +19,7 @@ pub const DANGLING: *const u8 = unsafe { ptr::NonNull::<u8>::dangling().as_ptr()
 // Right now, a zero offset from null is UB
 pub const NULL_OFFSET_ZERO: *const u8 = unsafe { ptr::null::<u8>().offset(0) }; //~NOTE
 
+// Make sure that we don't panic when computing abs(offset*size_of::<T>())
+pub const UNDERFLOW_ABS: *const u8 = unsafe { (usize::MAX as *const u8).offset(isize::MIN) }; //~NOTE
+
 fn main() {}

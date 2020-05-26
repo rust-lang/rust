@@ -7,7 +7,7 @@ use std::convert::TryFrom;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::{
     self,
-    interpret::{ConstValue, GlobalId, InterpResult, Scalar},
+    interpret::{uabs, ConstValue, GlobalId, InterpResult, Scalar},
     BinOp,
 };
 use rustc_middle::ty;
@@ -438,6 +438,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         pointee_ty: Ty<'tcx>,
         offset_count: i64,
     ) -> InterpResult<'tcx, Scalar<M::PointerTag>> {
+        // We cannot overflow i64 as a type's size must be <= isize::MAX.
         let pointee_size = i64::try_from(self.layout_of(pointee_ty)?.size.bytes()).unwrap();
         // The computed offset, in bytes, cannot overflow an isize.
         let offset_bytes = offset_count
@@ -450,7 +451,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // memory between these pointers must be accessible. Note that we do not require the
         // pointers to be properly aligned (unlike a read/write operation).
         let min_ptr = if offset_bytes >= 0 { ptr } else { offset_ptr };
-        let size = offset_bytes.checked_abs().unwrap();
+        let size: u64 = uabs(offset_bytes);
         // This call handles checking for integer/NULL pointers.
         self.memory.check_ptr_access_align(
             min_ptr,
