@@ -71,7 +71,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UselessConversion {
                             cx,
                             USELESS_CONVERSION,
                             e.span,
-                            "Useless conversion to the same type",
+                            "useless conversion to the same type",
                             "consider removing `.into()`",
                             sugg,
                             Applicability::MachineApplicable, // snippet
@@ -87,7 +87,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UselessConversion {
                             cx,
                             USELESS_CONVERSION,
                             e.span,
-                            "Useless conversion to the same type",
+                            "useless conversion to the same type",
                             "consider removing `.into_iter()`",
                             sugg,
                             Applicability::MachineApplicable, // snippet
@@ -108,7 +108,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UselessConversion {
                                 cx,
                                 USELESS_CONVERSION,
                                 e.span,
-                                "Useless conversion to the same type",
+                                "useless conversion to the same type",
                                 None,
                                 "consider removing `.try_into()`",
                             );
@@ -139,7 +139,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UselessConversion {
                                     cx,
                                     USELESS_CONVERSION,
                                     e.span,
-                                    "Useless conversion to the same type",
+                                    "useless conversion to the same type",
                                     None,
                                     &hint,
                                 );
@@ -158,7 +158,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UselessConversion {
                                     cx,
                                     USELESS_CONVERSION,
                                     e.span,
-                                    "Useless conversion to the same type",
+                                    "useless conversion to the same type",
                                     &sugg_msg,
                                     sugg,
                                     Applicability::MachineApplicable, // snippet

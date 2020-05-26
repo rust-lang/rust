@@ -31,4 +31,12 @@ fn main() {
     let _ = String::try_from("foo".to_string()).unwrap();
     let _ = String::try_from(format!("A: {:04}", 123)).unwrap();
     let _: String = format!("Hello {}", "world").try_into().unwrap();
+    let _: String = "".to_owned().try_into().unwrap();
+    let _: String = match String::from("_").try_into() {
+        Ok(a) => a,
+        Err(_) => "".into(),
+    };
+    // FIXME this is a false negative
+    #[allow(clippy::cmp_owned)]
+    if String::from("a") == TryInto::<String>::try_into(String::from("a")).unwrap() {}
 }
