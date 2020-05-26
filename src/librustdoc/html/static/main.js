@@ -57,7 +57,6 @@ function defocusSearchBar() {
     getSearchInput().blur();
 }
 
-
 (function() {
     "use strict";
 
@@ -494,7 +493,8 @@ function defocusSearchBar() {
                     url = url.substring(0, url.length - match[0].length);
                 }
 
-                url += "/" + document.getElementsByClassName("version-selector")[0].value + stripped;
+                var selectedVersion = document.getElementsByClassName("version-selector")[0].value;
+                url += "/" + selectedVersion + stripped;
 
                 document.location.href = url;
             };
