@@ -814,8 +814,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 | ty::PredicateKind::ClosureKind(..)
                 | ty::PredicateKind::TypeOutlives(..)
                 | ty::PredicateKind::ConstEvaluatable(..)
-                | ty::PredicateKind::ConstEquate(..)
-                | ty::PredicateKind::WellFormedConst(..) => None,
+                | ty::PredicateKind::ConstEquate(..) => None,
             });
 
         self.elaborate_bounds(bounds, |this, poly_trait_ref, item| {

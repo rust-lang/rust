@@ -236,7 +236,7 @@ impl fmt::Debug for ty::PredicateKind<'tcx> {
             ty::PredicateKind::RegionOutlives(ref pair) => pair.fmt(f),
             ty::PredicateKind::TypeOutlives(ref pair) => pair.fmt(f),
             ty::PredicateKind::Projection(ref pair) => pair.fmt(f),
-            ty::PredicateKind::WellFormed(ty) => write!(f, "WellFormed({:?})", ty),
+            ty::PredicateKind::WellFormed(data) => write!(f, "WellFormed({:?})", data),
             ty::PredicateKind::ObjectSafe(trait_def_id) => {
                 write!(f, "ObjectSafe({:?})", trait_def_id)
             }
@@ -247,7 +247,6 @@ impl fmt::Debug for ty::PredicateKind<'tcx> {
                 write!(f, "ConstEvaluatable({:?}, {:?})", def_id, substs)
             }
             ty::PredicateKind::ConstEquate(c1, c2) => write!(f, "ConstEquate({:?}, {:?})", c1, c2),
-            ty::PredicateKind::WellFormedConst(c) => write!(f, "WellFormedConst({:?})", c),
         }
     }
 }
@@ -507,9 +506,6 @@ impl<'a, 'tcx> Lift<'tcx> for ty::PredicateKind<'a> {
             }
             ty::PredicateKind::ConstEquate(c1, c2) => {
                 tcx.lift(&(c1, c2)).map(|(c1, c2)| ty::PredicateKind::ConstEquate(c1, c2))
-            }
-            ty::PredicateKind::WellFormedConst(c) => {
-                tcx.lift(&c).map(ty::PredicateKind::WellFormedConst)
             }
         }
     }

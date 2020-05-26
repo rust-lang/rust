@@ -9,9 +9,9 @@ use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstnes
 use rustc_span::Span;
 use std::rc::Rc;
 
-/// Returns the set of obligations needed to make `ty` well-formed.
-/// If `ty` contains unresolved inference variables, this may include
-/// further WF obligations. However, if `ty` IS an unresolved
+/// Returns the set of obligations needed to make `arg` well-formed.
+/// If `arg` contains unresolved inference variables, this may include
+/// further WF obligations. However, if `arg` IS an unresolved
 /// inference variable, returns `None`, because we are not able to
 /// make any progress at all. This is to prevent "livelock" where we
 /// say "$0 is WF if $0 is WF".
@@ -19,59 +19,51 @@ pub fn obligations<'a, 'tcx>(
     infcx: &InferCtxt<'a, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     body_id: hir::HirId,
-    ty: Ty<'tcx>,
+    arg: GenericArg<'tcx>,
     span: Span,
 ) -> Option<Vec<traits::PredicateObligation<'tcx>>> {
     // Handle the "livelock" case (see comment above) by bailing out if necessary.
-    let ty = match ty.kind {
-        ty::Infer(ty::TyVar(_)) => {
-            let resolved_ty = infcx.shallow_resolve(ty);
-            if resolved_ty == ty {
-                // No progress, bail out to prevent "livelock".
-                return None;
-            }
+    let arg = match arg.unpack() {
+        GenericArgKind::Type(ty) => {
+            match ty.kind {
+                ty::Infer(ty::TyVar(_)) => {
+                    let resolved_ty = infcx.shallow_resolve(ty);
+                    if resolved_ty == ty {
+                        // No progress, bail out to prevent "livelock".
+                        return None;
+                    }
 
-            resolved_ty
+                    resolved_ty
+                }
+                _ => ty,
+            }
+            .into()
         }
-        _ => ty,
+        GenericArgKind::Const(ct) => {
+            match ct.val {
+                ty::ConstKind::Infer(infer) => {
+                    let resolved = infcx.shallow_resolve(infer);
+                    if resolved == infer {
+                        // No progress.
+                        return None;
+                    }
+
+                    infcx.tcx.mk_const(ty::Const { val: ty::ConstKind::Infer(resolved), ty: ct.ty })
+                }
+                _ => ct,
+            }
+            .into()
+        }
+        // There is nothing we have to do for lifetimes.
+        GenericArgKind::Lifetime(..) => return Some(Vec::new()),
     };
 
     let mut wf = WfPredicates { infcx, param_env, body_id, span, out: vec![], item: None };
-    wf.compute(ty.into());
-    debug!("wf::obligations({:?}, body_id={:?}) = {:?}", ty, body_id, wf.out);
+    wf.compute(arg);
+    debug!("wf::obligations({:?}, body_id={:?}) = {:?}", arg, body_id, wf.out);
 
     let result = wf.normalize();
-    debug!("wf::obligations({:?}, body_id={:?}) ~~> {:?}", ty, body_id, result);
-    Some(result)
-}
-
-/// Returns the set of obligations needed to make the `constant` well-formed.
-pub fn const_obligations<'a, 'tcx>(
-    infcx: &InferCtxt<'a, 'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    body_id: hir::HirId,
-    constant: &'tcx ty::Const<'tcx>,
-    span: Span,
-) -> Option<Vec<traits::PredicateObligation<'tcx>>> {
-    let constant = match constant.val {
-        ty::ConstKind::Infer(infer) => {
-            let resolved = infcx.shallow_resolve(infer);
-            if resolved == infer {
-                // No progress.
-                return None;
-            }
-
-            infcx.tcx.mk_const(ty::Const { val: ty::ConstKind::Infer(resolved), ..*constant })
-        }
-        _ => constant,
-    };
-
-    let mut wf = WfPredicates { infcx, param_env, body_id, span, out: vec![], item: None };
-    wf.compute(constant.into());
-    debug!("wf::const obligations({:?}, body_id={:?}) = {:?}", constant, body_id, wf.out);
-
-    let result = wf.normalize();
-    debug!("wf::const obligations({:?}, body_id={:?}) ~~> {:?}", constant, body_id, result);
+    debug!("wf::obligations({:?}, body_id={:?}) ~~> {:?}", arg, body_id, result);
     Some(result)
 }
 
@@ -115,8 +107,8 @@ pub fn predicate_obligations<'a, 'tcx>(
             wf.compute_projection(t.projection_ty);
             wf.compute(t.ty.into());
         }
-        &ty::PredicateKind::WellFormed(t) => {
-            wf.compute(t.into());
+        &ty::PredicateKind::WellFormed(arg) => {
+            wf.compute(arg);
         }
         ty::PredicateKind::ObjectSafe(_) => {}
         ty::PredicateKind::ClosureKind(..) => {}
@@ -128,16 +120,13 @@ pub fn predicate_obligations<'a, 'tcx>(
             let obligations = wf.nominal_obligations(def_id, substs);
             wf.out.extend(obligations);
 
-            for subst in substs.iter() {
-                wf.compute(subst);
+            for arg in substs.iter() {
+                wf.compute(arg);
             }
         }
         &ty::PredicateKind::ConstEquate(c1, c2) => {
             wf.compute(c1.into());
             wf.compute(c2.into());
-        }
-        &ty::PredicateKind::WellFormedConst(constant) => {
-            wf.compute(constant.into());
         }
     }
 
@@ -306,15 +295,22 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         }
 
         let tcx = self.tcx();
-        self.out.extend(trait_ref.substs.types().filter(|ty| !ty.has_escaping_bound_vars()).map(
-            |ty| {
-                traits::Obligation::new(
-                    cause.clone(),
-                    param_env,
-                    ty::PredicateKind::WellFormed(ty).to_predicate(tcx),
-                )
-            },
-        ));
+        self.out.extend(
+            trait_ref
+                .substs
+                .iter()
+                .filter(|arg| {
+                    matches!(arg.unpack(), GenericArgKind::Type(..) | GenericArgKind::Const(..))
+                })
+                .filter(|arg| !arg.has_escaping_bound_vars())
+                .map(|arg| {
+                    traits::Obligation::new(
+                        cause.clone(),
+                        param_env,
+                        ty::PredicateKind::WellFormed(arg).to_predicate(tcx),
+                    )
+                }),
+        );
     }
 
     /// Pushes the obligations required for `trait_ref::Item` to be WF
@@ -390,7 +386,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                                 self.out.push(traits::Obligation::new(
                                     cause,
                                     self.param_env,
-                                    ty::PredicateKind::WellFormedConst(resolved_constant)
+                                    ty::PredicateKind::WellFormed(resolved_constant.into())
                                         .to_predicate(self.tcx()),
                                 ));
                             }
@@ -594,7 +590,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                         self.out.push(traits::Obligation::new(
                             cause,
                             param_env,
-                            ty::PredicateKind::WellFormed(ty).to_predicate(self.tcx()),
+                            ty::PredicateKind::WellFormed(ty.into()).to_predicate(self.tcx()),
                         ));
                     } else {
                         // Yes, resolved, proceed with the result.

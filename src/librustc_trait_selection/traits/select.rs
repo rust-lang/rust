@@ -436,25 +436,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
-            &ty::PredicateKind::WellFormed(ty) => match wf::obligations(
+            &ty::PredicateKind::WellFormed(arg) => match wf::obligations(
                 self.infcx,
                 obligation.param_env,
                 obligation.cause.body_id,
-                ty,
-                obligation.cause.span,
-            ) {
-                Some(mut obligations) => {
-                    self.add_depth(obligations.iter_mut(), obligation.recursion_depth);
-                    self.evaluate_predicates_recursively(previous_stack, obligations.into_iter())
-                }
-                None => Ok(EvaluatedToAmbig),
-            },
-
-            ty::PredicateKind::WellFormedConst(constant) => match wf::const_obligations(
-                self.infcx,
-                obligation.param_env,
-                obligation.cause.body_id,
-                constant,
+                arg,
                 obligation.cause.span,
             ) {
                 Some(mut obligations) => {

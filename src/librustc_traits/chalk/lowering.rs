@@ -36,7 +36,7 @@ use rustc_middle::traits::{
     ChalkRustInterner as RustInterner,
 };
 use rustc_middle::ty::fold::TypeFolder;
-use rustc_middle::ty::subst::{GenericArg, SubstsRef};
+use rustc_middle::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
 use rustc_middle::ty::{
     self, Binder, BoundRegion, Region, RegionKind, Ty, TyCtxt, TyKind, TypeFoldable, TypeVisitor,
 };
@@ -126,8 +126,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::InEnvironment<chalk_ir::Goal<RustInterner<'
                     | ty::PredicateKind::ClosureKind(..)
                     | ty::PredicateKind::Subtype(..)
                     | ty::PredicateKind::ConstEvaluatable(..)
-                    | ty::PredicateKind::ConstEquate(..)
-                    | ty::PredicateKind::WellFormedConst(..) => {
+                    | ty::PredicateKind::ConstEquate(..) => {
                         bug!("unexpected predicate {}", predicate)
                     }
                 }
@@ -166,24 +165,31 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::GoalData<RustInterner<'tcx>>> for ty::Predi
                 chalk_ir::GoalData::All(chalk_ir::Goals::new(interner))
             }
             ty::PredicateKind::Projection(predicate) => predicate.lower_into(interner),
-            ty::PredicateKind::WellFormed(ty) => match ty.kind {
-                // These types are always WF.
-                ty::Str | ty::Placeholder(..) | ty::Error | ty::Never => {
+            ty::PredicateKind::WellFormed(arg) => match arg.unpack() {
+                GenericArgKind::Type(ty) => match ty.kind {
+                    // These types are always WF.
+                    ty::Str | ty::Placeholder(..) | ty::Error | ty::Never => {
+                        chalk_ir::GoalData::All(chalk_ir::Goals::new(interner))
+                    }
+
+                    // FIXME(chalk): Well-formed only if ref lifetime outlives type
+                    ty::Ref(..) => chalk_ir::GoalData::All(chalk_ir::Goals::new(interner)),
+
+                    ty::Param(..) => panic!("No Params expected."),
+
+                    // FIXME(chalk) -- ultimately I think this is what we
+                    // want to do, and we just have rules for how to prove
+                    // `WellFormed` for everything above, instead of
+                    // inlining a bit the rules of the proof here.
+                    _ => chalk_ir::GoalData::DomainGoal(chalk_ir::DomainGoal::WellFormed(
+                        chalk_ir::WellFormed::Ty(ty.lower_into(interner)),
+                    )),
+                },
+                // FIXME(chalk): handle well formed consts
+                GenericArgKind::Const(..) => {
                     chalk_ir::GoalData::All(chalk_ir::Goals::new(interner))
                 }
-
-                // FIXME(chalk): Well-formed only if ref lifetime outlives type
-                ty::Ref(..) => chalk_ir::GoalData::All(chalk_ir::Goals::new(interner)),
-
-                ty::Param(..) => panic!("No Params expected."),
-
-                // FIXME(chalk) -- ultimately I think this is what we
-                // want to do, and we just have rules for how to prove
-                // `WellFormed` for everything above, instead of
-                // inlining a bit the rules of the proof here.
-                _ => chalk_ir::GoalData::DomainGoal(chalk_ir::DomainGoal::WellFormed(
-                    chalk_ir::WellFormed::Ty(ty.lower_into(interner)),
-                )),
+                GenericArgKind::Lifetime(lt) => bug!("unexpect well formed predicate: {:?}", lt),
             },
 
             // FIXME(chalk): other predicates
@@ -194,8 +200,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::GoalData<RustInterner<'tcx>>> for ty::Predi
             | ty::PredicateKind::ClosureKind(..)
             | ty::PredicateKind::Subtype(..)
             | ty::PredicateKind::ConstEvaluatable(..)
-            | ty::PredicateKind::ConstEquate(..)
-            | ty::PredicateKind::WellFormedConst(..) => {
+            | ty::PredicateKind::ConstEquate(..) => {
                 chalk_ir::GoalData::All(chalk_ir::Goals::new(interner))
             }
         }
@@ -462,8 +467,7 @@ impl<'tcx> LowerInto<'tcx, Option<chalk_ir::QuantifiedWhereClause<RustInterner<'
             | ty::PredicateKind::ClosureKind(..)
             | ty::PredicateKind::Subtype(..)
             | ty::PredicateKind::ConstEvaluatable(..)
-            | ty::PredicateKind::ConstEquate(..)
-            | ty::PredicateKind::WellFormedConst(..) => bug!("unexpected predicate {}", &self),
+            | ty::PredicateKind::ConstEquate(..) => bug!("unexpected predicate {}", &self),
         }
     }
 }

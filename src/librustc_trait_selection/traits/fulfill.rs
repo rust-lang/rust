@@ -459,37 +459,22 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                 }
             }
 
-            &ty::PredicateKind::WellFormed(ty) => {
+            &ty::PredicateKind::WellFormed(arg) => {
                 match wf::obligations(
                     self.selcx.infcx(),
                     obligation.param_env,
                     obligation.cause.body_id,
-                    ty,
+                    arg,
                     obligation.cause.span,
                 ) {
                     None => {
                         pending_obligation.stalled_on =
-                            vec![TyOrConstInferVar::maybe_from_ty(ty).unwrap()];
+                            vec![TyOrConstInferVar::maybe_from_generic_arg(arg).unwrap()];
                         ProcessResult::Unchanged
                     }
                     Some(os) => ProcessResult::Changed(mk_pending(os)),
                 }
             }
-
-            ty::PredicateKind::WellFormedConst(constant) => match wf::const_obligations(
-                self.selcx.infcx(),
-                obligation.param_env,
-                obligation.cause.body_id,
-                constant,
-                obligation.cause.span,
-            ) {
-                Some(predicates) => ProcessResult::Changed(mk_pending(predicates)),
-                None => {
-                    pending_obligation.stalled_on =
-                        vec![TyOrConstInferVar::maybe_from_const(constant).unwrap()];
-                    ProcessResult::Unchanged
-                }
-            },
 
             &ty::PredicateKind::Subtype(subtype) => {
                 match self.selcx.infcx().subtype_predicate(

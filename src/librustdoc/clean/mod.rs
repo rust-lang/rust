@@ -491,8 +491,7 @@ impl<'a> Clean<Option<WherePredicate>> for ty::Predicate<'a> {
             | ty::PredicateKind::ObjectSafe(..)
             | ty::PredicateKind::ClosureKind(..)
             | ty::PredicateKind::ConstEvaluatable(..)
-            | ty::PredicateKind::ConstEquate(..)
-            | ty::PredicateKind::WellFormedConst(..) => panic!("not user writable"),
+            | ty::PredicateKind::ConstEquate(..) => panic!("not user writable"),
         }
     }
 }

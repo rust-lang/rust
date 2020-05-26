@@ -413,7 +413,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // the function type must also be well-formed (this is not
         // implied by the substs being well-formed because of inherent
         // impls and late-bound regions - see issue #28609).
-        self.register_wf_obligation(fty, self.span, traits::MiscObligation);
+        self.register_wf_obligation(fty.into(), self.span, traits::MiscObligation);
     }
 
     ///////////////////////////////////////////////////////////////////////////

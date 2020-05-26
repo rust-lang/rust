@@ -292,7 +292,7 @@ fn check_associated_item(
             ty::AssocKind::Const => {
                 let ty = fcx.tcx.type_of(item.def_id);
                 let ty = fcx.normalize_associated_types_in(span, &ty);
-                fcx.register_wf_obligation(ty, span, code.clone());
+                fcx.register_wf_obligation(ty.into(), span, code.clone());
             }
             ty::AssocKind::Fn => {
                 let sig = fcx.tcx.fn_sig(item.def_id);
@@ -313,7 +313,7 @@ fn check_associated_item(
                 if item.defaultness.has_value() {
                     let ty = fcx.tcx.type_of(item.def_id);
                     let ty = fcx.normalize_associated_types_in(span, &ty);
-                    fcx.register_wf_obligation(ty, span, code.clone());
+                    fcx.register_wf_obligation(ty.into(), span, code.clone());
                 }
             }
             ty::AssocKind::OpaqueTy => {
@@ -406,7 +406,7 @@ fn check_type_defn<'tcx, F>(
             // All field types must be well-formed.
             for field in &variant.fields {
                 fcx.register_wf_obligation(
-                    field.ty,
+                    field.ty.into(),
                     field.span,
                     ObligationCauseCode::MiscObligation,
                 )
@@ -601,7 +601,7 @@ fn check_item_type(tcx: TyCtxt<'_>, item_id: hir::HirId, ty_span: Span, allow_fo
             }
         }
 
-        fcx.register_wf_obligation(item_ty, ty_span, ObligationCauseCode::MiscObligation);
+        fcx.register_wf_obligation(item_ty.into(), ty_span, ObligationCauseCode::MiscObligation);
         if forbid_unsized {
             fcx.register_bound(
                 item_ty,
@@ -650,7 +650,7 @@ fn check_impl<'tcx>(
                 let self_ty = fcx.tcx.type_of(item_def_id);
                 let self_ty = fcx.normalize_associated_types_in(item.span, &self_ty);
                 fcx.register_wf_obligation(
-                    self_ty,
+                    self_ty.into(),
                     ast_self_ty.span,
                     ObligationCauseCode::MiscObligation,
                 );
@@ -698,7 +698,7 @@ fn check_where_clauses<'tcx, 'fcx>(
                 // be sure if it will error or not as user might always specify the other.
                 if !ty.needs_subst() {
                     fcx.register_wf_obligation(
-                        ty,
+                        ty.into(),
                         fcx.tcx.def_span(param.def_id),
                         ObligationCauseCode::MiscObligation,
                     );
@@ -841,13 +841,13 @@ fn check_fn_or_method<'fcx, 'tcx>(
     let sig = fcx.normalize_associated_types_in(span, &sig);
     let sig = fcx.tcx.liberate_late_bound_regions(def_id, &sig);
 
-    for (input_ty, span) in sig.inputs().iter().zip(hir_sig.decl.inputs.iter().map(|t| t.span)) {
-        fcx.register_wf_obligation(&input_ty, span, ObligationCauseCode::MiscObligation);
+    for (&input_ty, span) in sig.inputs().iter().zip(hir_sig.decl.inputs.iter().map(|t| t.span)) {
+        fcx.register_wf_obligation(input_ty.into(), span, ObligationCauseCode::MiscObligation);
     }
     implied_bounds.extend(sig.inputs());
 
     fcx.register_wf_obligation(
-        sig.output(),
+        sig.output().into(),
         hir_sig.decl.output.span(),
         ObligationCauseCode::ReturnType,
     );

@@ -94,7 +94,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         // we must check that return type of called functions is WF:
-        self.register_wf_obligation(output, call_expr.span, traits::MiscObligation);
+        self.register_wf_obligation(output.into(), call_expr.span, traits::MiscObligation);
 
         output
     }
