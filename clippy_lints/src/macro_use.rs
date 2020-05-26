@@ -29,6 +29,12 @@ declare_clippy_lint! {
 
 const BRACKETS: &[char] = &['<', '>'];
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct PathAndSpan {
+    path: String,
+    span: Span,
+}
+
 /// `MacroRefData` includes the name of the macro
 /// and the path from `SourceMap::span_to_filename`.
 #[derive(Debug, Clone)]
@@ -110,7 +116,8 @@ impl<'l, 'txc> LateLintPass<'l, 'txc> for MacroUseImports {
                 for kid in cx.tcx.item_children(id).iter() {
                     if let Res::Def(DefKind::Macro(_mac_type), mac_id) = kid.res {
                         let span = mac_attr.span;
-                        self.imports.push((cx.tcx.def_path_str(mac_id), span));
+                        let def_path = cx.tcx.def_path_str(mac_id);
+                        self.imports.push((def_path, span));
                     }
                 }
             } else {
@@ -147,127 +154,69 @@ impl<'l, 'txc> LateLintPass<'l, 'txc> for MacroUseImports {
     }
     #[allow(clippy::too_many_lines)]
     fn check_crate_post(&mut self, cx: &LateContext<'_, '_>, _krate: &hir::Crate<'_>) {
-        let mut import_map = FxHashMap::default();
+        let mut used = FxHashMap::default();
+        let mut check_dup = vec![];
         for (import, span) in &self.imports {
             let found_idx = self.mac_refs.iter().position(|mac| import.ends_with(&mac.name));
 
             if let Some(idx) = found_idx {
                 let _ = self.mac_refs.remove(idx);
-                proccess_macro_path(*span, import, &mut import_map);
-            }
-        }
-        // println!("{:#?}", import_map);
-        let mut imports = vec![];
-        for (root, rest) in import_map {
-            let mut path = format!("use {}::", root);
-            let mut attr_span = None;
-            // when a multiple nested paths are found one may be written to the string
-            // before it is found in this loop so we make note and skip it when this
-            // loop finds it
-            let mut found_nested = vec![];
-            let mut count = 1;
-            let rest_len = rest.len();
+                let seg = import.split("::").collect::<Vec<_>>();
 
-            if rest_len > 1 {
-                path.push_str("{");
-            }
-
-            for m in &rest {
-                if attr_span.is_none() {
-                    attr_span = Some(m.span());
-                }
-                if found_nested.contains(&m) {
-                    continue;
-                }
-                let comma = if rest_len == count { "" } else { ", " };
-                match m {
-                    ModPath::Item { item, .. } => {
-                        path.push_str(&format!("{}{}", item, comma));
+                match seg.as_slice() {
+                    [] => unreachable!("this should never be empty"),
+                    [_] => unreachable!("path must have two segments ?"),
+                    [root, item] => {
+                        if !check_dup.contains(&item.to_string()) {
+                            used.entry((root.to_string(), span))
+                                .or_insert(vec![])
+                                .push(item.to_string());
+                            check_dup.push(item.to_string());
+                        }
                     },
-                    ModPath::Nested { segments, item, .. } => {
-                        // do any other Nested paths match the current one
-                        let nested = rest
-                            .iter()
-                            // filter "self" out
-                            .filter(|other_m| other_m != &m)
-                            // filters out Nested we have previously seen
-                            .filter(|other_m| !found_nested.contains(other_m))
-                            // this matches the first path segment and filters non ModPath::Nested items
-                            .filter(|other_m| other_m.matches(0, m))
-                            .collect::<Vec<_>>();
-
-                        if nested.is_empty() {
-                            path.push_str(&format!("{}::{}{}", segments.join("::").to_string(), item, comma))
-                        // use mod_a::{mod_b::{one, two}, mod_c::item}
+                    [root, rest @ ..] => {
+                        if !rest.iter().all(|item| !check_dup.contains(&item.to_string())) {
+                            let mut rest = rest.to_vec();
+                            rest.sort();
+                            used.entry((root.to_string(), span))
+                                .or_insert(vec![])
+                                .push(rest.join("::"));
+                            check_dup.extend(rest.iter().map(ToString::to_string));
                         } else {
-                            found_nested.extend(nested.iter());
-                            found_nested.push(&m);
-                            // we check each segment for matches with other import paths if
-                            // one differs we have to open a new `{}`
-                            for (idx, seg) in segments.iter().enumerate() {
-                                path.push_str(&format!("{}::", seg));
-                                if nested.iter().all(|other_m| other_m.matches(idx, &m)) {
-                                    continue;
-                                }
-
-                                path.push_str("{");
-                                let matched_seg_items = nested
-                                    .iter()
-                                    .filter(|other_m| !other_m.matches(idx, &m))
-                                    .collect::<Vec<_>>();
-                                for item in matched_seg_items {
-                                    if let ModPath::Nested { item, .. } = item {
-                                        path.push_str(&format!(
-                                            "{}{}",
-                                            item,
-                                            if nested.len() == idx + 1 { "" } else { ", " }
-                                        ));
-                                    }
-                                }
-                                path.push_str("}");
-                            }
-                            path.push_str(&format!("{{{}{}", item, comma));
-                            for (i, item) in nested.iter().enumerate() {
-                                if let ModPath::Nested { item, segments: matched_seg, .. } = item {
-                                    path.push_str(&format!(
-                                        "{}{}{}",
-                                        if matched_seg > segments {
-                                            format!("{}::", matched_seg[segments.len()..].join("::"))
-                                        } else {
-                                            String::new()
-                                        },
-                                        item,
-                                        if nested.len() == i + 1 { "" } else { ", " }
-                                    ));
-                                }
-                            }
-                            path.push_str("}");
+                            let mut filtered = rest
+                                .iter()
+                                .filter(|item| !check_dup.contains(&item.to_string()))
+                                .map(ToString::to_string)
+                                .collect::<Vec<_>>();
+                            filtered.sort();
+                            used.entry((root.to_string(), span))
+                                .or_insert(vec![])
+                                .push(filtered.join("::"));
+                            check_dup.extend(filtered);
                         }
                     },
                 }
-                count += 1;
             }
-            if rest_len > 1 {
-                path.push_str("};");
+        }
+
+        let mut suggestions = vec![];
+        for ((root, span), path) in used {
+            if path.len() == 1 {
+                suggestions.push((span, format!("{}::{}", root, path[0])))
             } else {
-                path.push_str(";");
-            }
-            if let Some(span) = attr_span {
-                imports.push((span, path))
-            } else {
-                unreachable!("a span must always be attached to a macro_use attribute")
+                suggestions.push((span, format!("{}::{{{}}}", root, path.join(", "))))
             }
         }
 
         // If mac_refs is not empty we have encountered an import we could not handle
         // such as `std::prelude::v1::foo` or some other macro that expands to an import.
         if self.mac_refs.is_empty() {
-            for (span, import) in imports {
+            for (span, import) in suggestions {
                 let help = format!("use {}", import);
                 span_lint_and_sugg(
                     cx,
                     MACRO_USE_IMPORTS,
-                    span,
+                    *span,
                     "`macro_use` attributes are no longer needed in the Rust 2018 edition",
                     "remove the attribute and import the macro directly, try",
                     help,
@@ -275,80 +224,5 @@ impl<'l, 'txc> LateLintPass<'l, 'txc> for MacroUseImports {
                 )
             }
         }
-    }
-}
-
-#[derive(Debug, PartialEq)]
-enum ModPath {
-    Item {
-        item: String,
-        span: Span,
-    },
-    Nested {
-        segments: Vec<String>,
-        item: String,
-        span: Span,
-    },
-}
-
-impl ModPath {
-    fn span(&self) -> Span {
-        match self {
-            Self::Item { span, .. } | Self::Nested { span, .. } => *span,
-        }
-    }
-
-    fn item(&self) -> &str {
-        match self {
-            Self::Item { item, .. } | Self::Nested { item, .. } => item,
-        }
-    }
-
-    fn matches(&self, idx: usize, other: &ModPath) -> bool {
-        match (self, other) {
-            (Self::Item { item, .. }, Self::Item { item: other_item, .. }) => item == other_item,
-            (
-                Self::Nested { segments, .. },
-                Self::Nested {
-                    segments: other_names, ..
-                },
-            ) => match (segments.get(idx), other_names.get(idx)) {
-                (Some(seg), Some(other_seg)) => seg == other_seg,
-                (_, _) => false,
-            },
-            (_, _) => false,
-        }
-    }
-}
-
-#[allow(clippy::comparison_chain)]
-fn proccess_macro_path(span: Span, import: &str, import_map: &mut FxHashMap<String, Vec<ModPath>>) {
-    let mut mod_path = import.split("::").collect::<Vec<_>>();
-
-    if mod_path.len() == 2 {
-        let item_list = import_map.entry(mod_path[0].to_string()).or_insert_with(Vec::new);
-
-        if !item_list.iter().any(|mods| mods.item() == mod_path[1]) {
-            item_list.push(ModPath::Item {
-                item: mod_path[1].to_string(),
-                span,
-            });
-        }
-    } else if mod_path.len() > 2 {
-        let first = mod_path.remove(0);
-        let name = mod_path.remove(mod_path.len() - 1);
-
-        let nested = ModPath::Nested {
-            segments: mod_path.into_iter().map(ToString::to_string).collect(),
-            item: name.to_string(),
-            span,
-        };
-        // CLIPPY NOTE: this told me to use `or_insert_with(vec![])`
-        // import_map.entry(first.to_string()).or_insert(vec![]).push(nested);
-        // which failed as `vec!` is not a closure then told me to add `||` which failed
-        // with the redundant_closure lint so I finally gave up and used this.
-        import_map.entry(first.to_string()).or_insert_with(Vec::new).push(nested);
-    } else {
-        unreachable!("test to see if code path hit TODO REMOVE")
     }
 }
