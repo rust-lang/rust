@@ -90,8 +90,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                             return;
                         }
                         if sig.decl.inputs.is_empty() && name == sym!(new) && cx.access_levels.is_reachable(id) {
-                            let self_did = cx.tcx.hir().local_def_id(cx.tcx.hir().get_parent_item(id));
-                            let self_ty = cx.tcx.type_of(self_did);
+                            let self_def_id = cx.tcx.hir().local_def_id(cx.tcx.hir().get_parent_item(id));
+                            let self_ty = cx.tcx.type_of(self_def_id);
                             if_chain! {
                                 if same_tys(cx, self_ty, return_ty(cx, id));
                                 if let Some(default_trait_id) = get_trait_def_id(cx, &paths::DEFAULT_TRAIT);
@@ -112,10 +112,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                                     // generics
                                     if_chain! {
                                         if let Some(ref impling_types) = self.impling_types;
-                                        if let Some(self_def) = cx.tcx.type_of(self_did).ty_adt_def();
-                                        if let Some(self_def_id) = self_def.did.as_local();
+                                        if let Some(self_def) = cx.tcx.type_of(self_def_id).ty_adt_def();
+                                        if let Some(self_local_did) = self_def.did.as_local();
                                         then {
-                                            let self_id = cx.tcx.hir().local_def_id_to_hir_id(self_def_id);
+                                            let self_id = cx.tcx.hir().local_def_id_to_hir_id(self_local_did);
                                             if impling_types.contains(&self_id) {
                                                 return;
                                             }
