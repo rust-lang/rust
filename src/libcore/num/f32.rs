@@ -851,7 +851,7 @@ impl f32 {
     /// #     .zip([-5.0, 0.1, 10.0, 99.0, f32::INFINITY, f32::NAN].iter())
     /// #     .all(|(a, b)| a.to_bits() == b.to_bits()))
     /// ```
-    #[unstable(feature = "total_cmp", issue = "none")]
+    #[unstable(feature = "total_cmp", issue = "72599")]
     #[inline]
     pub fn total_cmp(&self, other: &Self) -> crate::cmp::Ordering {
         let mut left = self.to_bits() as i32;
