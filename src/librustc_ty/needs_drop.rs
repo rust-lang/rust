@@ -5,6 +5,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::util::{needs_drop_components, AlwaysRequiresDrop};
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_session::Limit;
 use rustc_span::DUMMY_SP;
 
 type NeedsDropResult<T> = Result<T, AlwaysRequiresDrop>;
@@ -30,7 +31,7 @@ struct NeedsDropTypes<'tcx, F> {
     /// if it needs drop. If the result depends on whether some other types
     /// need drop we push them onto the stack.
     unchecked_tys: Vec<(Ty<'tcx>, usize)>,
-    recursion_limit: usize,
+    recursion_limit: Limit,
     adt_components: F,
 }
 
@@ -66,7 +67,7 @@ where
         let tcx = self.tcx;
 
         while let Some((ty, level)) = self.unchecked_tys.pop() {
-            if level > self.recursion_limit {
+            if !self.recursion_limit.value_within_limit(level) {
                 // Not having a `Span` isn't great. But there's hopefully some other
                 // recursion limit error as well.
                 tcx.sess.span_err(

@@ -919,7 +919,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &Obligation<'tcx, T>,
         error_obligation: &Obligation<'tcx, V>,
     ) -> Result<(), OverflowError> {
-        if obligation.recursion_depth >= self.infcx.tcx.sess.recursion_limit() {
+        if !self.infcx.tcx.sess.recursion_limit().value_within_limit(obligation.recursion_depth) {
             match self.query_mode {
                 TraitQueryMode::Standard => {
                     self.infcx().report_overflow_error(error_obligation, true);
