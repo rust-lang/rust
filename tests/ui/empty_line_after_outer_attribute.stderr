@@ -1,5 +1,5 @@
 error: Found an empty line after an outer attribute. Perhaps you forgot to add a `!` to make it an inner attribute?
-  --> $DIR/empty_line_after_outer_attribute.rs:7:1
+  --> $DIR/empty_line_after_outer_attribute.rs:11:1
    |
 LL | / #[crate_type = "lib"]
 LL | |
@@ -10,7 +10,7 @@ LL | | fn with_one_newline_and_comment() { assert!(true) }
    = note: `-D clippy::empty-line-after-outer-attr` implied by `-D warnings`
 
 error: Found an empty line after an outer attribute. Perhaps you forgot to add a `!` to make it an inner attribute?
-  --> $DIR/empty_line_after_outer_attribute.rs:19:1
+  --> $DIR/empty_line_after_outer_attribute.rs:23:1
    |
 LL | / #[crate_type = "lib"]
 LL | |
@@ -18,7 +18,7 @@ LL | | fn with_one_newline() { assert!(true) }
    | |_
 
 error: Found an empty line after an outer attribute. Perhaps you forgot to add a `!` to make it an inner attribute?
-  --> $DIR/empty_line_after_outer_attribute.rs:24:1
+  --> $DIR/empty_line_after_outer_attribute.rs:28:1
    |
 LL | / #[crate_type = "lib"]
 LL | |
@@ -27,7 +27,7 @@ LL | | fn with_two_newlines() { assert!(true) }
    | |_
 
 error: Found an empty line after an outer attribute. Perhaps you forgot to add a `!` to make it an inner attribute?
-  --> $DIR/empty_line_after_outer_attribute.rs:31:1
+  --> $DIR/empty_line_after_outer_attribute.rs:35:1
    |
 LL | / #[crate_type = "lib"]
 LL | |
@@ -35,7 +35,7 @@ LL | | enum Baz {
    | |_
 
 error: Found an empty line after an outer attribute. Perhaps you forgot to add a `!` to make it an inner attribute?
-  --> $DIR/empty_line_after_outer_attribute.rs:39:1
+  --> $DIR/empty_line_after_outer_attribute.rs:43:1
    |
 LL | / #[crate_type = "lib"]
 LL | |
@@ -43,7 +43,7 @@ LL | | struct Foo {
    | |_
 
 error: Found an empty line after an outer attribute. Perhaps you forgot to add a `!` to make it an inner attribute?
-  --> $DIR/empty_line_after_outer_attribute.rs:47:1
+  --> $DIR/empty_line_after_outer_attribute.rs:51:1
    |
 LL | / #[crate_type = "lib"]
 LL | |

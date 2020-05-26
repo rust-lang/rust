@@ -248,7 +248,6 @@ declare_lint_pass!(Attributes => [
     INLINE_ALWAYS,
     DEPRECATED_SEMVER,
     USELESS_ATTRIBUTE,
-    EMPTY_LINE_AFTER_OUTER_ATTR,
     UNKNOWN_CLIPPY_LINTS,
 ]);
 
@@ -480,36 +479,6 @@ fn check_attrs(cx: &LateContext<'_, '_>, span: Span, name: Name, attrs: &[Attrib
     }
 
     for attr in attrs {
-        let attr_item = if let AttrKind::Normal(ref attr) = attr.kind {
-            attr
-        } else {
-            continue;
-        };
-
-        if attr.style == AttrStyle::Outer {
-            if attr_item.args.inner_tokens().is_empty() || !is_present_in_source(cx, attr.span) {
-                return;
-            }
-
-            let begin_of_attr_to_item = Span::new(attr.span.lo(), span.lo(), span.ctxt());
-            let end_of_attr_to_item = Span::new(attr.span.hi(), span.lo(), span.ctxt());
-
-            if let Some(snippet) = snippet_opt(cx, end_of_attr_to_item) {
-                let lines = snippet.split('\n').collect::<Vec<_>>();
-                let lines = without_block_comments(lines);
-
-                if lines.iter().filter(|l| l.trim().is_empty()).count() > 2 {
-                    span_lint(
-                        cx,
-                        EMPTY_LINE_AFTER_OUTER_ATTR,
-                        begin_of_attr_to_item,
-                        "Found an empty line after an outer attribute. \
-                         Perhaps you forgot to add a `!` to make it an inner attribute?",
-                    );
-                }
-            }
-        }
-
         if let Some(values) = attr.meta_item_list() {
             if values.len() != 1 || !attr.check_name(sym!(inline)) {
                 continue;
@@ -551,12 +520,54 @@ fn is_word(nmi: &NestedMetaItem, expected: Symbol) -> bool {
     }
 }
 
-declare_lint_pass!(EarlyAttributes => [DEPRECATED_CFG_ATTR, MISMATCHED_TARGET_OS]);
+declare_lint_pass!(EarlyAttributes => [
+    DEPRECATED_CFG_ATTR,
+    MISMATCHED_TARGET_OS,
+    EMPTY_LINE_AFTER_OUTER_ATTR,
+]);
 
 impl EarlyLintPass for EarlyAttributes {
+    fn check_item(&mut self, cx: &EarlyContext<'_>, item: &rustc_ast::ast::Item) {
+        check_empty_line_after_outer_attr(cx, item);
+    }
+
     fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &Attribute) {
         check_deprecated_cfg_attr(cx, attr);
         check_mismatched_target_os(cx, attr);
+    }
+}
+
+fn check_empty_line_after_outer_attr(cx: &EarlyContext<'_>, item: &rustc_ast::ast::Item) {
+    for attr in &item.attrs {
+        let attr_item = if let AttrKind::Normal(ref attr) = attr.kind {
+            attr
+        } else {
+            return;
+        };
+
+        if attr.style == AttrStyle::Outer {
+            if attr_item.args.inner_tokens().is_empty() || !is_present_in_source(cx, attr.span) {
+                return;
+            }
+
+            let begin_of_attr_to_item = Span::new(attr.span.lo(), item.span.lo(), item.span.ctxt());
+            let end_of_attr_to_item = Span::new(attr.span.hi(), item.span.lo(), item.span.ctxt());
+
+            if let Some(snippet) = snippet_opt(cx, end_of_attr_to_item) {
+                let lines = snippet.split('\n').collect::<Vec<_>>();
+                let lines = without_block_comments(lines);
+
+                if lines.iter().filter(|l| l.trim().is_empty()).count() > 2 {
+                    span_lint(
+                        cx,
+                        EMPTY_LINE_AFTER_OUTER_ATTR,
+                        begin_of_attr_to_item,
+                        "Found an empty line after an outer attribute. \
+                        Perhaps you forgot to add a `!` to make it an inner attribute?",
+                    );
+                }
+            }
+        }
     }
 }
 
