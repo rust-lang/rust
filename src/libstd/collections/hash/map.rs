@@ -2465,7 +2465,6 @@ where
 
     #[inline]
     fn extend_reserve(&mut self, additional: usize) {
-        // self.base.extend_reserve(additional);
         Extend::<(K, V)>::extend_reserve(self, additional)
     }
 }
