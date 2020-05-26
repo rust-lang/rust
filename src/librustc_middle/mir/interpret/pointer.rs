@@ -1,4 +1,4 @@
-use super::{AllocId, InterpResult};
+use super::{uabs, AllocId, InterpResult};
 
 use rustc_macros::HashStable;
 use rustc_target::abi::{HasDataLayout, Size};
@@ -48,15 +48,12 @@ pub trait PointerArithmetic: HasDataLayout {
 
     #[inline]
     fn overflowing_signed_offset(&self, val: u64, i: i64) -> (u64, bool) {
-        if i < 0 {
-            // Trickery to ensure that `i64::MIN` works fine: compute `n = -i`.
-            // This formula only works for true negative values; it overflows for zero!
-            let n = u64::MAX - (i as u64) + 1;
+        let n = uabs(i);
+        if i >= 0 {
+            self.overflowing_offset(val, n)
+        } else {
             let res = val.overflowing_sub(n);
             self.truncate_to_ptr(res)
-        } else {
-            // `i >= 0`, so the cast is safe.
-            self.overflowing_offset(val, i as u64)
         }
     }
 
