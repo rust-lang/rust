@@ -17,6 +17,7 @@ pub mod add_call_guards;
 pub mod add_moves_for_packed_drops;
 pub mod add_retag;
 pub mod check_consts;
+pub mod check_packed_ref;
 pub mod check_unsafety;
 pub mod cleanup_post_borrowck;
 pub mod const_prop;
@@ -228,10 +229,11 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> ConstQualifs {
     validator.qualifs_in_return_place()
 }
 
+/// Make MIR ready for const evaluation. This is run on all MIR, not just on consts!
 fn mir_const(tcx: TyCtxt<'_>, def_id: DefId) -> Steal<Body<'_>> {
     let def_id = def_id.expect_local();
 
-    // Unsafety check uses the raw mir, so make sure it is run
+    // Unsafety check uses the raw mir, so make sure it is run.
     let _ = tcx.unsafety_check_result(def_id);
 
     let mut body = tcx.mir_built(def_id).steal();
@@ -247,6 +249,8 @@ fn mir_const(tcx: TyCtxt<'_>, def_id: DefId) -> Steal<Body<'_>> {
         None,
         MirPhase::Const,
         &[&[
+            // MIR-level lints.
+            &check_packed_ref::CheckPackedRef,
             // What we need to do constant evaluation.
             &simplify::SimplifyCfg::new("initial"),
             &rustc_peek::SanityCheck,

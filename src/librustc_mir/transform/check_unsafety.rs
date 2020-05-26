@@ -14,7 +14,7 @@ use rustc_span::symbol::{sym, Symbol};
 
 use std::ops::Bound;
 
-use crate::const_eval::{is_const_fn, is_min_const_fn};
+use crate::const_eval::is_min_const_fn;
 use crate::util;
 
 pub struct UnsafetyChecker<'a, 'tcx> {
@@ -527,7 +527,7 @@ fn unsafety_check_result(tcx: TyCtxt<'_>, def_id: LocalDefId) -> UnsafetyCheckRe
     let (const_context, min_const_fn) = match tcx.hir().body_owner_kind(id) {
         hir::BodyOwnerKind::Closure => (false, false),
         hir::BodyOwnerKind::Fn => {
-            (is_const_fn(tcx, def_id.to_def_id()), is_min_const_fn(tcx, def_id.to_def_id()))
+            (tcx.is_const_fn_raw(def_id.to_def_id()), is_min_const_fn(tcx, def_id.to_def_id()))
         }
         hir::BodyOwnerKind::Const | hir::BodyOwnerKind::Static(_) => (true, false),
     };

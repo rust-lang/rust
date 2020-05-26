@@ -72,6 +72,12 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub UNUSED_CRATE_DEPENDENCIES,
+    Allow,
+    "crate dependencies that are never used"
+}
+
+declare_lint! {
     pub UNUSED_QUALIFICATIONS,
     Allow,
     "detects unnecessarily qualified names"
@@ -217,9 +223,15 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub UNALIGNED_REFERENCES,
+    Allow,
+    "detects unaligned references to fields of packed structs",
+}
+
+declare_lint! {
     pub SAFE_PACKED_BORROWS,
     Warn,
-    "safe borrows of fields of packed structs were was erroneously allowed",
+    "safe borrows of fields of packed structs were erroneously allowed",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #46043 <https://github.com/rust-lang/rust/issues/46043>",
         edition: None,
@@ -523,6 +535,7 @@ declare_lint_pass! {
         UNCONDITIONAL_PANIC,
         UNUSED_IMPORTS,
         UNUSED_EXTERN_CRATES,
+        UNUSED_CRATE_DEPENDENCIES,
         UNUSED_QUALIFICATIONS,
         UNKNOWN_LINTS,
         UNUSED_VARIABLES,
@@ -545,6 +558,7 @@ declare_lint_pass! {
         INVALID_TYPE_PARAM_DEFAULT,
         CONST_ERR,
         RENAMED_AND_REMOVED_LINTS,
+        UNALIGNED_REFERENCES,
         SAFE_PACKED_BORROWS,
         PATTERNS_IN_FNS_WITHOUT_BODY,
         MISSING_FRAGMENT_SPECIFIER,

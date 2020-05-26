@@ -1,11 +1,11 @@
 error: borrow of packed field is unsafe and requires unsafe function or block (error E0133)
-  --> $DIR/issue-27060.rs:26:13
+  --> $DIR/issue-27060.rs:21:13
    |
 LL |     let _ = &good.data;
    |             ^^^^^^^^^^
    |
 note: the lint level is defined here
-  --> $DIR/issue-27060.rs:13:8
+  --> $DIR/issue-27060.rs:8:8
    |
 LL | #[deny(safe_packed_borrows)]
    |        ^^^^^^^^^^^^^^^^^^^
@@ -14,7 +14,7 @@ LL | #[deny(safe_packed_borrows)]
    = note: fields of packed structs might be misaligned: dereferencing a misaligned pointer or even just creating a misaligned reference is undefined behavior
 
 error: borrow of packed field is unsafe and requires unsafe function or block (error E0133)
-  --> $DIR/issue-27060.rs:28:13
+  --> $DIR/issue-27060.rs:23:13
    |
 LL |     let _ = &good.data2[0];
    |             ^^^^^^^^^^^^^^
