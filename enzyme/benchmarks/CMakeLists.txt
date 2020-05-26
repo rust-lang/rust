@@ -58,3 +58,5 @@ add_subdirectory(gmm)
 add_subdirectory(ba)
 add_subdirectory(hand)
 add_subdirectory(lstm)
+
+add_subdirectory(library)

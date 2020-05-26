@@ -48,6 +48,20 @@ extern "C" {
     void lstm_objective_b(int l, int c, int b, const double *main_params, double *
         main_paramsb, const double *extra_params, double *extra_paramsb,
         double *state, const double *sequence, double *loss, double *lossb);
+
+    void adept_dlstm_objective(
+        int l,
+        int c,
+        int b,
+        double const* main_params,
+        double* dmain_params,
+        double const* extra_params,
+        double* dextra_params,
+        double* state,
+        double const* sequence,
+        double* loss,
+        double* dloss
+    );
 }
 
 void read_lstm_instance(const string& fn,
@@ -190,6 +204,33 @@ int main(const int argc, const char* argv[]) {
       calculate_jacobian<lstm_objective_b>(input, result);
       gettimeofday(&end, NULL);
       printf("Tapenade combined %0.6f\n", tdiff(&start, &end));
+      for(unsigned i=result.gradient.size()-5; i<result.gradient.size(); i++) {
+        printf("%f ", result.gradient[i]);
+      }
+      printf("\n");
+    }
+
+    }
+
+    {
+
+    struct LSTMInput input = {};
+
+    // Read instance
+    read_lstm_instance("data/" + path, &input.l, &input.c, &input.b, input.main_params, input.extra_params, input.state,
+                       input.sequence);
+
+    std::vector<double> state = std::vector<double>(input.state.size());
+
+    int Jcols = 8 * input.l * input.b + 3 * input.b;
+    struct LSTMOutput result = { 0, std::vector<double>(Jcols) };
+
+    {
+      struct timeval start, end;
+      gettimeofday(&start, NULL);
+      calculate_jacobian<adept_dlstm_objective>(input, result);
+      gettimeofday(&end, NULL);
+      printf("Adept combined %0.6f\n", tdiff(&start, &end));
       for(unsigned i=result.gradient.size()-5; i<result.gradient.size(); i++) {
         printf("%f ", result.gradient[i]);
       }

@@ -647,7 +647,7 @@ void hand_objective_complicated(
 extern int diffe_const;
 extern int diffe_dup;
 extern int diffe_dupnoneed;
-void __enzyme_autodiff(...);
+void __enzyme_autodiff(...) noexcept;
 
 // tapenade -o hand_tapenade -head "hand_objective(err)/(theta) hand_objective_complicated(err)/(theta us)" hand.c
 void dhand_objective(

@@ -60,7 +60,7 @@ void lstm_model(
 )
 {
     // TODO NOTE THIS
-    __builtin_assume(hsize > 0);
+    //__builtin_assume(hsize > 0);
 
     double* gates = (double*)malloc(4 * hsize * sizeof(double));
     double* forget = &(gates[0]);
@@ -114,14 +114,6 @@ void lstm_predict(
     for (i = 0; i <= 2 * l * b - 1; i += 2 * b)
     {
         lstm_model(b, &(w[i * 4]), &(w[(i + b) * 4]), &(s[i]), &(s[i + b]), xp);
-    /*
-     * int hsize,
-    double const* __restrict weight,
-    double const* __restrict bias,
-    double* __restrict hidden,
-    double* __restrict cell,
-    double const* __restrict input
-    */
         xp = &(s[i]);
     }
 
@@ -181,7 +173,7 @@ void lstm_objective(
 extern int diffe_const;
 extern int diffe_dup;
 extern int diffe_dupnoneed;
-void __enzyme_autodiff(...);
+void __enzyme_autodiff(...) noexcept;
 
 // *      tapenade -b -o lstm_tapenade -head "lstm_objective(loss)/(main_params extra_params)" lstm.c
 
@@ -547,3 +539,192 @@ void lstm_objective_b(int l, int c, int b, const double *main_params, double *
 
 
 }
+
+
+#if 1
+//! Adept
+#include <adept_source.h>
+#include <adept.h>
+#include <adept_arrays.h>
+using adept::adouble;
+using adept::aVector;
+
+namespace adeptTest {
+// Sigmoid on scalar
+template<typename T>
+T sigmoid(T x) {
+    return adouble(1) / (adouble(1) + exp(-x));
+}
+
+// log(sum(exp(x), 2))
+template<typename T>
+T logsumexp(const T* vect, int sz) {
+    T sum = 0.0;
+    for (int i = 0; i < sz; ++i)
+        sum += exp(vect[i]);
+    sum += adouble(2);
+    return log(sum);
+}
+
+// LSTM OBJECTIVE
+
+// The LSTM model
+template<typename T>
+void lstm_model(
+    int hsize,
+    T* weight,
+    T* bias,
+    T* hidden,
+    T* cell,
+    T* input
+)
+{
+
+    T* gates = new T[4*hsize];
+    T* forget = &(gates[0]);
+    T* ingate = &(gates[hsize]);
+    T* outgate = &(gates[2 * hsize]);
+    T* change = &(gates[3 * hsize]);
+
+    int i;
+    // caching input
+    // hidden (needed)
+    for (i = 0; i < hsize; i++)
+    {
+        forget[i] = sigmoid<adouble>(input[i] * weight[i] + bias[i]);
+        ingate[i] = sigmoid<adouble>(hidden[i] * weight[hsize + i] + bias[hsize + i]);
+        outgate[i] = sigmoid<adouble>(input[i] * weight[2 * hsize + i] + bias[2 * hsize + i]);
+        change[i] = tanh(hidden[i] * weight[3 * hsize + i] + bias[3 * hsize + i]);
+    }
+
+    // caching cell (needed)
+    for (i = 0; i < hsize; i++)
+    {
+        cell[i] = cell[i] * forget[i] + ingate[i] * change[i];
+    }
+
+    for (i = 0; i < hsize; i++)
+    {
+        hidden[i] = outgate[i] * tanh(cell[i]);
+    }
+
+    delete[] gates;
+}
+
+// Predict LSTM output given an input
+template<typename T>
+void lstm_predict(
+    int l,
+    int b,
+    T* w,
+    T* w2,
+    T* s,
+    T* x,
+    T* x2
+)
+{
+    int i;
+    for (i = 0; i < b; i++)
+    {
+        x2[i] = x[i] * w2[i];
+    }
+
+    T* xp = x2;
+    for (i = 0; i <= 2 * l * b - 1; i += 2 * b)
+    {
+        lstm_model(b, &(w[i * 4]), &(w[(i + b) * 4]), &(s[i]), &(s[i + b]), xp);
+        xp = &(s[i]);
+    }
+
+    for (i = 0; i < b; i++)
+    {
+        x2[i] = xp[i] * w2[b + i] + w2[2 * b + i];
+    }
+}
+
+// LSTM objective (loss function)
+template<typename T>
+void lstm_objective(
+    int l,
+    int c,
+    int b,
+    T * __restrict main_params,
+    T * __restrict extra_params,
+    T* __restrict state,
+    T * __restrict sequence,
+    T* __restrict loss
+)
+{
+    int i, t;
+    T total = 0.0;
+    int count = 0;
+    T* input = &(sequence[0]);
+    T* ypred = new T[b];
+    T* ynorm = new T[b];
+    T* ygold;
+    T lse;
+
+    __builtin_assume(b>0);
+    for (t = 0; t <= (c - 1) * b - 1; t += b)
+    {
+        lstm_predict(l, b, main_params, extra_params, state, input, ypred);
+        lse = logsumexp(ypred, b);
+        for (i = 0; i < b; i++)
+        {
+            ynorm[i] = ypred[i] - lse;
+        }
+
+        ygold = &(sequence[t + b]);
+        for (i = 0; i < b; i++)
+        {
+            total += ygold[i] * ynorm[i];
+        }
+
+        count += b;
+        input = ygold;
+    }
+
+    *loss = -total / adouble(count);
+
+    delete[] ypred;
+    delete[] ynorm;
+}
+};
+
+// Note ADBench did not have an adept impl
+void adept_dlstm_objective(int l, int c, int b, const double *main_params, double *
+        main_paramsb, const double *extra_params, double *extra_paramsb,
+        double *state, const double *sequence, double *loss, double *lossb) {
+
+    int main_sz = 2 * l * 4 * b;
+    int extra_sz = 3 * b;
+    int state_sz = 2 * l * b;
+    int seq_sz = c* b;
+
+  adept::Stack stack;
+
+  adouble *amain = new adouble[main_sz];
+  adouble *aextra = new adouble[extra_sz];
+  adouble *astate = new adouble[state_sz];
+  adouble *aseq = new adouble[seq_sz];
+
+      adept::set_values(amain, main_sz, main_params);
+      adept::set_values(aextra, extra_sz, extra_params);
+      adept::set_values(astate, state_sz, state);
+      adept::set_values(aseq, seq_sz, sequence);
+
+      adouble aloss;
+
+      stack.new_recording();
+      adouble aerr;
+
+      adeptTest::lstm_objective(l, c, b, amain, aextra, astate, aseq, &aloss);
+      aloss.set_gradient(1.); // only one J row here
+
+      stack.compute_adjoint();
+
+      adept::get_gradients(amain, main_sz, main_paramsb);
+      adept::get_gradients(aextra, extra_sz, extra_paramsb);
+
+}
+#endif

@@ -39,6 +39,11 @@ extern "C" {
         alphasb, const double *means, double *meansb, const double *icf,
         double *icfb, const double *x, Wishart wishart, double *err, double *
         errb);
+
+    void adept_dgmm_objective(int d, int k, int n, const double *alphas, double *
+        alphasb, const double *means, double *meansb, const double *icf,
+        double *icfb, const double *x, Wishart wishart, double *err, double *
+        errb);
 }
 
 void read_gmm_instance(const string& fn,
@@ -159,7 +164,9 @@ int main(const int argc, const char* argv[]) {
 
     std::vector<std::string> paths;// = { "1k/gmm_d10_K100.txt" };
 
-    getTests(paths);
+    getTests(paths, "data/1k", "1k/");
+    getTests(paths, "data/2.5k", "2.5k/");
+    getTests(paths, "data/10k", "10k/");
 
     for (auto path : paths) {
         printf("starting path %s\n", path.c_str());
@@ -184,6 +191,32 @@ int main(const int argc, const char* argv[]) {
         printf("%f ", result.gradient[i]);
       }
       printf("\n");
+    }
+
+    }
+
+    {
+
+    struct GMMInput input;
+    read_gmm_instance("data/" + path, &input.d, &input.k, &input.n,
+        input.alphas, input.means, input.icf, input.x, input.wishart, params.replicate_point);
+
+    int Jcols = (input.k * (input.d + 1) * (input.d + 2)) / 2;
+
+    struct GMMOutput result = { 0, std::vector<double>(Jcols) };
+
+    try {
+      struct timeval start, end;
+      gettimeofday(&start, NULL);
+      calculate_jacobian<adept_dgmm_objective>(input, result);
+      gettimeofday(&end, NULL);
+      printf("Adept combined %0.6f\n", tdiff(&start, &end));
+      for(unsigned i=0; i<5; i++) {
+        printf("%f ", result.gradient[i]);
+      }
+      printf("\n");
+    } catch(std::bad_alloc) {
+       printf("Adept combined 88888888 ooms\n");
     }
 
     }

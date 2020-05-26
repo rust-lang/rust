@@ -152,6 +152,20 @@ extern "C" {
     );
 
     void compute_zach_weight_error_b(double const* w, double* dw, double* err, double* derr);
+
+    void adept_compute_reproj_error(
+        double const* cam,
+        double * dcam,
+        double const* X,
+        double * dX,
+        double const* w,
+        double * wb,
+        double const* feat,
+        double *err,
+        double *derr
+    );
+
+    void adept_compute_zach_weight_error(double const* w, double* dw, double* err, double* derr);
 }
 
 void read_ba_instance(const string& fn,
@@ -363,6 +377,52 @@ int main(const int argc, const char* argv[]) {
       calculate_jacobian<compute_reproj_error_b, compute_zach_weight_error_b>(input, result);
       gettimeofday(&end, NULL);
       printf("Tapenade combined %0.6f\n", tdiff(&start, &end));
+      for(unsigned i=0; i<5; i++) {
+        printf("%f ", result.J.vals[i]);
+      }
+      printf("\n");
+    }
+
+    }
+
+    {
+
+    struct BAInput input;
+    read_ba_instance("data/" + path, input.n, input.m, input.p, input.cams, input.X, input.w, input.obs, input.feats);
+
+    struct BAOutput result = {
+        std::vector<double>(2 * input.p),
+        std::vector<double>(input.p),
+        BASparseMat(input.n, input.m, input.p)
+    };
+
+    //BASparseMat(this->input.n, this->input.m, this->input.p)
+
+    /*
+    ba_objective(
+        input.n,
+        input.m,
+        input.p,
+        input.cams.data(),
+        input.X.data(),
+        input.w.data(),
+        input.obs.data(),
+        input.feats.data(),
+        result.reproj_err.data(),
+        result.w_err.data()
+    );
+
+    for(unsigned i=0; i<input.p; i++) {
+        //printf("w_err[%d]=%f reproj_err[%d]=%f, reproj_err[%d]=%f\n", i, result.w_err[i], 2*i, result.reproj_err[2*i], 2*i+1, result.reproj_err[2*i+1]);
+    }
+    */
+
+    {
+      struct timeval start, end;
+      gettimeofday(&start, NULL);
+      calculate_jacobian<adept_compute_reproj_error, adept_compute_zach_weight_error>(input, result);
+      gettimeofday(&end, NULL);
+      printf("Adept combined %0.6f\n", tdiff(&start, &end));
       for(unsigned i=0; i<5; i++) {
         printf("%f ", result.J.vals[i]);
       }

@@ -232,7 +232,7 @@ void ba_objective(
 extern int diffe_const;
 extern int diffe_dup;
 extern int diffe_dupnoneed;
-void __enzyme_autodiff(...);
+void __enzyme_autodiff(...) noexcept;
 
 void dcompute_reproj_error(
     double const* cam,
@@ -627,114 +627,29 @@ void compute_zach_weight_error_b(const double *w, double *wb, double *err,
 
 }
 
-#if 0
-//! Adept
 
 #include <adept_source.h>
 #include <adept.h>
 #include <adept_arrays.h>
 using adept::adouble;
-
 using adept::aVector;
 
-/* ===================================================================== */
-/*                                UTILS                                  */
-/* ===================================================================== */
+namespace adeptTest {
 
-adouble sqsum(int n, aVector x)
+template<typename T>
+void cross(
+    const T* const a,
+    const T* const b,
+    T* out)
 {
-    return adept::sum(x*x);
+    out[0] = a[1] * b[2] - a[2] * b[1];
+    out[1] = a[2] * b[0] - a[0] * b[2];
+    out[2] = a[0] * b[1] - a[1] * b[0];
 }
 
-
-
-void cross(aVector a, aVector b, aVector out)
-{
-    out(0) = a(1) * b(2) - a(2) * b(1);
-    out(1) = a(2) * b(0) - a(0) * b(2);
-    out(2) = a(0) * b(1) - a(1) * b(0);
-}
-
-
-
-/* ===================================================================== */
-/*                               MAIN LOGIC                              */
-/* ===================================================================== */
-
-// rot: 3 rotation parameters
-// pt: 3 point to be rotated
-// rotatedPt: 3 rotated point
-// this is an efficient evaluation (part of
-// the Ceres implementation)
-// easy to understand calculation in matlab:
-//  theta = sqrt(sum(w. ^ 2));
-//  n = w / theta;
-//  n_x = au_cross_matrix(n);
-//  R = eye(3) + n_x*sin(theta) + n_x*n_x*(1 - cos(theta));
-void rodrigues_rotate_point(aVector rot, aVector pt, aVector rotatedPt)
-{
-    int i;
-    adouble sqtheta = sqsum(3, rot);
-    if (sqtheta != 0)
-    {
-        adouble theta, costheta, sintheta, theta_inverse;
-        aVector w_cross_pt(3);
-        adouble tmp;
-
-        theta = sqrt(sqtheta);
-        costheta = cos(theta);
-        sintheta = sin(theta);
-        theta_inverse = 1.0 / theta;
-
-        aVector w = rot * theta_inverse;
-
-        cross(w, pt, w_cross_pt);
-
-        tmp = adept::sum(w * pt) *
-            (1. - costheta);
-
-        rotatedPt = pt * costheta + w_cross_pt * sintheta + w * tmp;
-    }
-    else
-    {
-        aVector rot_cross_pt(3);
-        cross(rot, pt, rot_cross_pt);
-
-        rotatedPt = pt + rot_cross_pt;
-    }
-}
-
-
-
-void radial_distort(aVector rad_params, aVector proj)
-{
-    adouble rsq, L;
-    rsq = sqsum(2, proj);
-    L = 1. + rad_params(0) * rsq + rad_params(1) * rsq * rsq;
-    proj *= L;
-}
-
-
-
-void project(aVector cam, aVector X, aVector proj)
-{
-    auto C = cam(adept::range(3,adept::end));
-    aVector Xcam(3);
-
-    aVector Xo = X(adept::range(0, 3)) - C(adept::range(0, 3));
-
-    rodrigues_rotate_point(cam, Xo, Xcam);
-
-    proj(0) = Xcam(0) / Xcam(2);
-    proj(1) = Xcam(1) / Xcam(2);
-
-    radial_distort(cam(adept::range(9,adept::end)), proj);
-
-    proj(0) = proj(0) * cam(6) + cam(7);
-    proj(1) = proj(1) * cam(6) + cam(8);
-}
-
-
+////////////////////////////////////////////////////////////
+//////////////////// Declarations //////////////////////////
+////////////////////////////////////////////////////////////
 
 // cam: 11 camera in format [r1 r2 r3 C1 C2 C3 f u0 v0 k1 k2]
 //            r1, r2, r3 are angle - axis rotation parameters(Rodrigues)
@@ -750,29 +665,18 @@ void project(aVector cam, aVector X, aVector proj)
 // distorted = radial_distort(projective2euclidean(Xcam), radial_parameters)
 // proj = distorted * f + principal_point
 // err = sqsum(proj - measurement)
-void compute_reproj_error(
-    double const* __restrict cam,
-    double const* __restrict X,
-    double const* __restrict w,
-    double const* __restrict feat,
-    double * __restrict err
-)
-{
-    double proj[2];
-    project(cam, X, proj);
+template<typename T>
+void computeReprojError(
+    const T* const cam,
+    const T* const X,
+    const T* const w,
+    const double* const feat,
+    T *err);
 
-    err[0] = (*w)*(proj[0] - feat[0]);
-    err[1] = (*w)*(proj[1] - feat[1]);
-}
-
-
-
-void compute_zach_weight_error(double const* w, double* err)
-{
-    *err = 1 - (*w)*(*w);
-}
-
-
+// w: 1
+// w_err: 1
+template<typename T>
+void computeZachWeightError(const T* const w, T* err);
 
 // n number of cameras
 // m number of points
@@ -788,36 +692,222 @@ void compute_zach_weight_error(double const* w, double* err)
 // feats: 2*p features (x,y coordinates corresponding to observations)
 // reproj_err: 2*p errors of observations
 // w_err: p weight "error" terms
-void ba_objective(
-    int n,
-    int m,
-    int p,
-    double const* cams,
-    double const* X,
-    double const* w,
-    int const* obs,
-    double const* feats,
-    double* reproj_err,
-    double* w_err
-)
+// projection function:
+// Xcam = R * (X - C)
+// distorted = radial_distort(projective2euclidean(Xcam), radial_parameters)
+// proj = distorted * f + principal_point
+// err = sqsum(proj - measurement)
+template<typename T>
+void ba_objective(int n, int m, int p,
+    const T* const cams,
+    const T* const X,
+    const T* const w,
+    const int* const obs,
+    const double* const feats,
+    T* reproj_err,
+    T* w_err);
+
+// rot: 3 rotation parameters
+// pt: 3 point to be rotated
+// rotatedPt: 3 rotated point
+// this is an efficient evaluation (part of
+// the Ceres implementation)
+// easy to understand calculation in matlab:
+//  theta = sqrt(sum(w. ^ 2));
+//  n = w / theta;
+//  n_x = au_cross_matrix(n);
+//  R = eye(3) + n_x*sin(theta) + n_x*n_x*(1 - cos(theta));
+template<typename T>
+void rodrigues_rotate_point(
+    const T* const rot,
+    const T* const pt,
+    T *rotatedPt);
+
+////////////////////////////////////////////////////////////
+//////////////////// Definitions ///////////////////////////
+////////////////////////////////////////////////////////////
+
+template<typename T>
+T sqsum(int n, const T* const x)
 {
-    int i;
-    for (i = 0; i < p; i++)
+    T res = 0;
+    for (int i = 0; i < n; i++)
+        res = res + x[i] * x[i];
+    return res;
+}
+
+template<typename T>
+void rodrigues_rotate_point(
+    const T* const rot,
+    const T* const pt,
+    T *rotatedPt)
+{
+    T sqtheta = sqsum(3, rot);
+    if (sqtheta != 0)
+    {
+        T theta, costheta, sintheta, theta_inverse,
+            w[3], w_cross_pt[3], tmp;
+
+        theta = sqrt(sqtheta);
+        costheta = cos(theta);
+        sintheta = sin(theta);
+        theta_inverse = 1.0 / theta;
+
+        for (int i = 0; i < 3; i++)
+            w[i] = rot[i] * theta_inverse;
+
+        cross(w, pt, w_cross_pt);
+
+        tmp = (w[0] * pt[0] + w[1] * pt[1] + w[2] * pt[2]) *
+            (1. - costheta);
+
+        for (int i = 0; i < 3; i++)
+            rotatedPt[i] = pt[i] * costheta + w_cross_pt[i] * sintheta + w[i] * tmp;
+    }
+    else
+    {
+        T rot_cross_pt[3];
+        cross(rot, pt, rot_cross_pt);
+
+        for (int i = 0; i < 3; i++)
+            rotatedPt[i] = pt[i] + rot_cross_pt[i];
+    }
+}
+
+template<typename T>
+void radial_distort(
+    const T* const rad_params,
+    T *proj)
+{
+    T rsq, L;
+    rsq = sqsum(2, proj);
+    L = 1. + rad_params[0] * rsq + rad_params[1] * rsq * rsq;
+    proj[0] = proj[0] * L;
+    proj[1] = proj[1] * L;
+}
+
+template<typename T>
+void project(const T* const cam,
+    const T* const X,
+    T* proj)
+{
+    const T* const C = &cam[3];
+    T Xo[3], Xcam[3];
+
+    Xo[0] = X[0] - C[0];
+    Xo[1] = X[1] - C[1];
+    Xo[2] = X[2] - C[2];
+
+    rodrigues_rotate_point(&cam[0], Xo, Xcam);
+
+    proj[0] = Xcam[0] / Xcam[2];
+    proj[1] = Xcam[1] / Xcam[2];
+
+    radial_distort(&cam[9], proj);
+
+    proj[0] = proj[0] * cam[6] + cam[7];
+    proj[1] = proj[1] * cam[6] + cam[8];
+}
+
+template<typename T>
+void computeReprojError(
+    const T* const cam,
+    const T* const X,
+    const T* const w,
+    const double* const feat,
+    T *err)
+{
+    T proj[2];
+    project(cam, X, proj);
+
+    err[0] = (*w)*(proj[0] - feat[0]);
+    err[1] = (*w)*(proj[1] - feat[1]);
+}
+
+template<typename T>
+void computeZachWeightError(const T* const w, T* err)
+{
+    *err = 1 - (*w)*(*w);
+}
+
+template<typename T>
+void ba_objective(int n, int m, int p,
+    const T* const cams,
+    const T* const X,
+    const T* const w,
+    const int* const obs,
+    const double* const feats,
+    T* reproj_err,
+    T* w_err)
+{
+    for (int i = 0; i < p; i++)
     {
         int camIdx = obs[i * 2 + 0];
         int ptIdx = obs[i * 2 + 1];
-        compute_reproj_error(
-            &cams[camIdx * BA_NCAMPARAMS],
-            &X[ptIdx * 3],
-            &w[i],
-            &feats[i * 2],
-            &reproj_err[2 * i]
-        );
+        computeReprojError(&cams[camIdx * BA_NCAMPARAMS], &X[ptIdx * 3],
+            &w[i], &feats[i * 2], &reproj_err[2 * i]);
     }
 
-    for (i = 0; i < p; i++)
+    for (int i = 0; i < p; i++)
     {
-        compute_zach_weight_error(&w[i], &w_err[i]);
+        computeZachWeightError(&w[i], &w_err[i]);
     }
 }
-#endif
+};
+
+
+void adept_compute_reproj_error(
+    double const* cam,
+    double * dcam,
+    double const* X,
+    double * dX,
+    double const* w,
+    double * wb,
+    double const* feat,
+    double *err,
+    double *derr
+)
+{
+
+
+    adept::Stack stack;
+
+      adouble acam[BA_NCAMPARAMS];
+      adept::set_values(acam, BA_NCAMPARAMS, cam);
+
+      adouble aX[3];
+      adept::set_values(aX, 3, X);
+
+      adouble aw;
+      aw.set_value(*w);
+
+      adouble areproj_err[2];
+
+      stack.new_recording();
+
+      adeptTest::computeReprojError(acam, aX, &aw, feat, areproj_err);
+
+      for(unsigned i=0; i<2; i++) areproj_err[i].set_gradient(derr[i]);
+
+      stack.compute_adjoint();
+
+      *wb = aw.get_gradient();
+      adept::get_gradients(aX, 3, dX);
+      adept::get_gradients(acam, BA_NCAMPARAMS, dcam);
+}
+
+void adept_compute_zach_weight_error(double const* w, double* dw, double* err, double* derr) {
+    adept::Stack stack;
+
+      adouble aw;
+      aw.set_value(*w);
+
+      adouble aw_err;
+
+      stack.new_recording();
+      adeptTest::computeZachWeightError(&aw, &aw_err);
+      aw_err.set_gradient(1.);
+      stack.compute_adjoint();
+
+      *dw = aw.get_gradient();
+}
