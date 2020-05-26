@@ -7,19 +7,10 @@ pub struct Good {
     aligned: [u8; 32],
 }
 
-#[repr(packed)]
-pub struct JustArray {
-    array: [u32]
-}
-
 // kill this test when that turns to a hard error
 #[allow(safe_packed_borrows)]
 fn main() {
-    let good = Good {
-        data: &0,
-        data2: [&0, &0],
-        aligned: [0; 32]
-    };
+    let good = Good { data: &0, data2: [&0, &0], aligned: [0; 32] };
 
     unsafe {
         let _ = &good.data; // ok
