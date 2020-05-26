@@ -236,16 +236,28 @@ pub enum Base {
 }
 
 /// `rustc` allows files to have a shebang, e.g. "#!/usr/bin/rustrun",
-/// but shebang isn't a part of rust syntax, so this function
-/// skips the line if it starts with a shebang ("#!").
-/// Line won't be skipped if it represents a valid Rust syntax
-/// (e.g. "#![deny(missing_docs)]").
+/// but shebang isn't a part of rust syntax.
 pub fn strip_shebang(input: &str) -> Option<usize> {
-    debug_assert!(!input.is_empty());
-    if !input.starts_with("#!") || input.starts_with("#![") {
+    let first_line = input.lines().next()?;
+    // A shebang is intentionally loosely defined as `#! [non whitespace]` on the first line.
+    let could_be_shebang =
+        first_line.starts_with("#!") && first_line[2..].contains(|c| !is_whitespace(c));
+    if !could_be_shebang {
         return None;
     }
-    Some(input.find('\n').unwrap_or(input.len()))
+    let non_whitespace_tokens = tokenize(input).map(|tok| tok.kind).filter(|tok|
+        !matches!(tok, TokenKind::LineComment | TokenKind::BlockComment { .. } | TokenKind::Whitespace)
+    );
+    let prefix = [TokenKind::Pound, TokenKind::Not, TokenKind::OpenBracket];
+    let starts_with_attribute = non_whitespace_tokens.take(3).eq(prefix.iter().copied());
+    if starts_with_attribute {
+        // If the file starts with #![ then it's definitely not a shebang -- it couldn't be
+        // a rust program since a Rust program can't start with `[`
+        None
+    } else {
+        // It's a #!... and there isn't a `[` in sight, must be a shebang
+        Some(first_line.len())
+    }
 }
 
 /// Parses the first token from the provided input string.
