@@ -20,7 +20,7 @@ panic_unwind = { path = "../libpanic_unwind", optional = true }
 panic_abort = { path = "../libpanic_abort" }
 core = { path = "../libcore" }
 libc = { version = "0.2.51", default-features = false, features = ['rustc-dep-of-std'] }
-compiler_builtins = { version = "0.1.31" }
+compiler_builtins = { version = "0.1.32" }
 profiler_builtins = { path = "../libprofiler_builtins", optional = true }
 unwind = { path = "../libunwind" }
 hashbrown = { version = "0.6.2", default-features = false, features = ['rustc-dep-of-std'] }
