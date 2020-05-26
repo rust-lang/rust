@@ -128,7 +128,7 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
         // Only run at mir-opt-level=2 or higher for now (we don't fix up debuginfo and remove
         // storage statements at the moment).
-        if tcx.sess.opts.debugging_opts.mir_opt_level <= 1 {
+        if tcx.sess.opts.debugging_opts.mir_opt_level == 0 {
             return;
         }
 
