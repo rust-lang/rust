@@ -889,6 +889,8 @@ pub trait Iterator {
     ///
     /// [`skip`]: #method.skip
     ///
+    /// *Note: Some languages call this method: "drop_while" or "dropwhile".*
+    ///
     /// `skip_while()` takes a closure as an argument. It will call this
     /// closure on each element of the iterator, and ignore elements
     /// until it returns `false`.
@@ -942,8 +944,6 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[doc(alias = "drop_while")]
-    #[doc(alias = "dropwhile")]
     fn skip_while<P>(self, predicate: P) -> SkipWhile<Self, P>
     where
         Self: Sized,
