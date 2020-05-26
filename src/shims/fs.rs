@@ -1125,9 +1125,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.check_no_isolation("fsync")?;
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
-        if let Some(FileHandle { file, writable: _ }) = this.machine.file_handler.handles.get_mut(&fd) {
-            let result = file.sync_all();
-            this.try_unwrap_io_result(result.map(|_| 0i32))
+        if let Some(FileHandle { file, writable }) = this.machine.file_handler.handles.get_mut(&fd) {
+            if !*writable && cfg!(windows) {
+                // sync_all() will return an error on Windows hosts if the file is not opened for writing.
+                Ok(0i32)
+            } else {
+                let result = file.sync_all();
+                this.try_unwrap_io_result(result.map(|_| 0i32))
+            }
         } else {
             this.handle_not_found()
         }
@@ -1139,9 +1144,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.check_no_isolation("fdatasync")?;
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
-        if let Some(FileHandle { file, writable: _ }) = this.machine.file_handler.handles.get_mut(&fd) {
-            let result = file.sync_data();
-            this.try_unwrap_io_result(result.map(|_| 0i32))
+        if let Some(FileHandle { file, writable }) = this.machine.file_handler.handles.get_mut(&fd) {
+            if !*writable && cfg!(windows) {
+                // sync_data() will return an error on Windows hosts if the file is not opened for writing.
+                Ok(0i32)
+            } else {
+                let result = file.sync_data();
+                this.try_unwrap_io_result(result.map(|_| 0i32))
+            }
         } else {
             this.handle_not_found()
         }
