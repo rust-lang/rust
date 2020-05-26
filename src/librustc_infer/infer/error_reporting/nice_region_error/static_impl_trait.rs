@@ -20,16 +20,14 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             ) = error.clone()
             {
                 let anon_reg_sup = self.tcx().is_suitable_region(sup_r)?;
-                let return_ty = self.tcx().return_type_impl_trait(anon_reg_sup.def_id);
-                if sub_r == &RegionKind::ReStatic && return_ty.is_some() {
+                let (fn_return_span, is_dyn) =
+                    self.tcx().return_type_impl_or_dyn_trait(anon_reg_sup.def_id)?;
+                if sub_r == &RegionKind::ReStatic {
                     let sp = var_origin.span();
                     let return_sp = sub_origin.span();
                     let mut err =
                         self.tcx().sess.struct_span_err(sp, "cannot infer an appropriate lifetime");
-                    err.span_label(
-                        return_sp,
-                        "this return type evaluates to the `'static` lifetime...",
-                    );
+                    err.span_label(return_sp, "this evaluates to the `'static` lifetime...");
                     err.span_label(sup_origin.span(), "...but this borrow...");
 
                     let (lifetime, lt_sp_opt) = msg_span_from_free_region(self.tcx(), sup_r);
@@ -39,24 +37,22 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
 
                     let lifetime_name =
                         if sup_r.has_name() { sup_r.to_string() } else { "'_".to_owned() };
-                    let fn_return_span = return_ty.unwrap().1;
-                    if let Ok(snippet) =
-                        self.tcx().sess.source_map().span_to_snippet(fn_return_span)
-                    {
-                        // only apply this suggestion onto functions with
-                        // explicit non-desugar'able return.
-                        if fn_return_span.desugaring_kind().is_none() {
-                            err.span_suggestion(
-                                fn_return_span,
-                                &format!(
-                                    "you can add a bound to the return type to make it last less \
-                                     than `'static` and match {}",
-                                    lifetime
-                                ),
-                                format!("{} + {}", snippet, lifetime_name),
-                                Applicability::Unspecified,
-                            );
-                        }
+                    // only apply this suggestion onto functions with
+                    // explicit non-desugar'able return.
+                    if fn_return_span.desugaring_kind().is_none() {
+                        let msg = format!(
+                            "you can add a bound to the returned `{} Trait` to make it last less \
+                             than `'static` and match {}",
+                            if is_dyn { "dyn" } else { "impl" },
+                            lifetime
+                        );
+                        // FIXME: account for the need of parens in `&(dyn Trait + '_)`
+                        err.span_suggestion_verbose(
+                            fn_return_span.shrink_to_hi(),
+                            &msg,
+                            format!(" + {}", lifetime_name),
+                            Applicability::MaybeIncorrect,
+                        );
                     }
                     err.emit();
                     return Some(ErrorReported);

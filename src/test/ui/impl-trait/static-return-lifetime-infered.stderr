@@ -2,7 +2,7 @@ error: cannot infer an appropriate lifetime
   --> $DIR/static-return-lifetime-infered.rs:7:16
    |
 LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> {
-   |                                   ----------------------- this return type evaluates to the `'static` lifetime...
+   |                                   ----------------------- this evaluates to the `'static` lifetime...
 LL |         self.x.iter().map(|a| a.0)
    |         ------ ^^^^
    |         |
@@ -15,16 +15,16 @@ LL | /     fn iter_values_anon(&self) -> impl Iterator<Item=u32> {
 LL | |         self.x.iter().map(|a| a.0)
 LL | |     }
    | |_____^
-help: you can add a bound to the return type to make it last less than `'static` and match the anonymous lifetime #1 defined on the method body at 6:5
+help: you can add a bound to the returned `impl Trait` to make it last less than `'static` and match the anonymous lifetime #1 defined on the method body at 6:5
    |
 LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> + '_ {
-   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                                           ^^^^
 
 error: cannot infer an appropriate lifetime
   --> $DIR/static-return-lifetime-infered.rs:11:16
    |
 LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> {
-   |                                     ----------------------- this return type evaluates to the `'static` lifetime...
+   |                                     ----------------------- this evaluates to the `'static` lifetime...
 LL |         self.x.iter().map(|a| a.0)
    |         ------ ^^^^
    |         |
@@ -35,10 +35,10 @@ note: ...can't outlive the lifetime `'a` as defined on the method body at 10:20
    |
 LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> {
    |                    ^^
-help: you can add a bound to the return type to make it last less than `'static` and match the lifetime `'a` as defined on the method body at 10:20
+help: you can add a bound to the returned `impl Trait` to make it last less than `'static` and match the lifetime `'a` as defined on the method body at 10:20
    |
 LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> + 'a {
-   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                                             ^^^^
 
 error: aborting due to 2 previous errors
 

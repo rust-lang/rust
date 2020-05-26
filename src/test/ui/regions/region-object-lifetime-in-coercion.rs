@@ -11,20 +11,17 @@ fn a(v: &[u8]) -> Box<dyn Foo + 'static> {
 }
 
 fn b(v: &[u8]) -> Box<dyn Foo + 'static> {
-    Box::new(v)
-        //~^ ERROR explicit lifetime required in the type of `v` [E0621]
+    Box::new(v) //~ ERROR explicit lifetime required in the type of `v` [E0621]
 }
 
 fn c(v: &[u8]) -> Box<dyn Foo> {
     // same as previous case due to RFC 599
 
-    Box::new(v)
-        //~^ ERROR explicit lifetime required in the type of `v` [E0621]
+    Box::new(v) //~ ERROR cannot infer an appropriate lifetime
 }
 
 fn d<'a,'b>(v: &'a [u8]) -> Box<dyn Foo+'b> {
-    Box::new(v)
-        //~^ ERROR cannot infer an appropriate lifetime due to conflicting
+    Box::new(v) //~ ERROR cannot infer an appropriate lifetime due to conflicting
 }
 
 fn e<'a:'b,'b>(v: &'a [u8]) -> Box<dyn Foo+'b> {

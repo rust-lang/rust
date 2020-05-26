@@ -10,7 +10,7 @@ error: cannot infer an appropriate lifetime
   --> $DIR/missing-lifetimes-in-signature.rs:19:5
    |
 LL |   fn foo<G, T>(g: G, dest: &mut T) -> impl FnOnce()
-   |                                       ------------- this return type evaluates to the `'static` lifetime...
+   |                                       ------------- this evaluates to the `'static` lifetime...
 ...
 LL | /     move || {
 LL | |         *dest = g.get();
@@ -28,10 +28,10 @@ LL | | {
 LL | |     }
 LL | | }
    | |_^
-help: you can add a bound to the return type to make it last less than `'static` and match the anonymous lifetime #1 defined on the function body at 15:1
+help: you can add a bound to the returned `impl Trait` to make it last less than `'static` and match the anonymous lifetime #1 defined on the function body at 15:1
    |
 LL | fn foo<G, T>(g: G, dest: &mut T) -> impl FnOnce() + '_
-   |                                     ^^^^^^^^^^^^^^^^^^
+   |                                                   ^^^^
 
 error[E0311]: the parameter type `G` may not live long enough
   --> $DIR/missing-lifetimes-in-signature.rs:25:37

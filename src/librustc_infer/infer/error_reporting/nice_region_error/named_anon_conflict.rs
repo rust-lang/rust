@@ -21,8 +21,8 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         // where the anonymous region appears (there must always be one; we
         // only introduced anonymous regions in parameters) as well as a
         // version new_ty of its type where the anonymous region is replaced
-        // with the named one.//scope_def_id
-        let (named, anon, anon_param_info, region_info) = if self.is_named_region(sub)
+        // with the named one.
+        let (named, anon, anon_param_info, region_info) = if sub.has_name()
             && self.tcx().is_suitable_region(sup).is_some()
             && self.find_param_with_region(sup, sub).is_some()
         {
@@ -32,7 +32,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 self.find_param_with_region(sup, sub).unwrap(),
                 self.tcx().is_suitable_region(sup).unwrap(),
             )
-        } else if self.is_named_region(sup)
+        } else if sup.has_name()
             && self.tcx().is_suitable_region(sub).is_some()
             && self.find_param_with_region(sub, sup).is_some()
         {
@@ -74,24 +74,21 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         }
 
         if let Some((_, fndecl)) = self.find_anon_type(anon, &br) {
-            let return_type_anon = self.is_return_type_anon(scope_def_id, br, fndecl);
             let is_self_anon = self.is_self_anon(is_first, scope_def_id);
-            debug!(
-                "try_report_named_anon_conflict: fndecl {:?} {:?} {}",
-                fndecl, return_type_anon, is_self_anon
-            );
             if is_self_anon {
-                // We used to check for `return_type_anon.is_some()` here. Removing that improves
-                // some diagnostics, but we might have to readd the check if there are regressions
-                // in the wild.
                 return None;
             }
+
             if let FnRetTy::Return(ty) = &fndecl.output {
+                let mut v = ty::TraitObjectVisitor(vec![]);
+                rustc_hir::intravisit::walk_ty(&mut v, ty);
+
                 debug!("try_report_named_anon_conflict: ret ty {:?}", ty);
-                if let (TyKind::Def(_, _), ty::ReStatic) = (&ty.kind, sub) {
+                if sub == &ty::ReStatic && (matches!(ty.kind, TyKind::Def(_, _)) || v.0.len() == 1)
+                {
                     debug!("try_report_named_anon_conflict: impl Trait + 'static");
-                    // This is an impl Trait return that evaluates de need of 'static.
-                    // We handle this case better in `static_impl_trait`.
+                    // This is an `impl Trait` or `dyn Trait` return that evaluates de need of
+                    // `'static`. We handle this case better in `static_impl_trait`.
                     return None;
                 }
             }
@@ -122,18 +119,5 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         );
 
         Some(diag)
-    }
-
-    // This method returns whether the given Region is Named
-    pub(super) fn is_named_region(&self, region: ty::Region<'tcx>) -> bool {
-        match *region {
-            ty::ReStatic => true,
-            ty::ReFree(ref free_region) => match free_region.bound_region {
-                ty::BrNamed(..) => true,
-                _ => false,
-            },
-            ty::ReEarlyBound(ebr) => ebr.has_name(),
-            _ => false,
-        }
     }
 }

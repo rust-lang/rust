@@ -1,12 +1,24 @@
-error[E0621]: explicit lifetime required in the type of `items`
-  --> $DIR/dyn-trait-underscore.rs:8:5
+error: cannot infer an appropriate lifetime
+  --> $DIR/dyn-trait-underscore.rs:8:20
    |
-LL | fn a<T>(items: &[T]) -> Box<dyn Iterator<Item=&T>> {
-   |                ---- help: add explicit lifetime `'static` to the type of `items`: `&'static [T]`
-LL |     //                      ^^^^^^^^^^^^^^^^^^^^^ bound *here* defaults to `'static`
 LL |     Box::new(items.iter())
-   |     ^^^^^^^^^^^^^^^^^^^^^^ lifetime `'static` required
+   |     ---------------^^^^---
+   |     |        |
+   |     |        ...but this borrow...
+   |     this evaluates to the `'static` lifetime...
+   |
+note: ...can't outlive the anonymous lifetime #1 defined on the function body at 6:1
+  --> $DIR/dyn-trait-underscore.rs:6:1
+   |
+LL | / fn a<T>(items: &[T]) -> Box<dyn Iterator<Item=&T>> {
+LL | |     //                      ^^^^^^^^^^^^^^^^^^^^^ bound *here* defaults to `'static`
+LL | |     Box::new(items.iter())
+LL | | }
+   | |_^
+help: you can add a bound to the returned `dyn Trait` to make it last less than `'static` and match the anonymous lifetime #1 defined on the function body at 6:1
+   |
+LL | fn a<T>(items: &[T]) -> Box<dyn Iterator<Item=&T> + '_> {
+   |                                                   ^^^^
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0621`.
