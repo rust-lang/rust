@@ -5,23 +5,21 @@
 clean:
 	rm -f *.ll *.o results.txt *.o
 
-mylib.so: mylib.c
-	clang -shared $^ -ffast-math -O2 -fno-unroll-loops -fno-vectorize -fembed-bitcode -o $@
-
 %.o: %.c
-	clang -c $(BENCH) $^ -ffast-math -O2 -fno-unroll-loops -fno-vectorize -o $@ -flto
+	clang -flto -c $(BENCH) $^ -ffast-math -O2 -fno-unroll-loops -fno-vectorize -o $@
 
-library.ll: library.o
-	clang library.o -o $@ -S -emit-llvm
+# in fto mode these are just bc files by another name
+combined.bc: library.o mylib.o
+	llvm-link $^ -o $@
 
-raw.ll: library.ll
+raw.ll: combined.bc
 	opt $^ $(LOAD) -enzyme -mem2reg -early-cse -correlated-propagation -aggressive-instcombine -adce -loop-deletion -o $@ -S
 
 opt.ll: raw.ll
 	opt $^ -O2 -o $@ -S
 
 library.exe: opt.ll
-	clang $^ -o $@ -lblas -L. -lmylib.so $(BENCHLINK)
+	clang $^ -o $@ -lblas $(BENCHLINK)
 
 results.txt: library.exe
 	./$^ 10000000 | tee $@
