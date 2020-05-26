@@ -19,7 +19,7 @@ pub mod shift;
 pub mod udiv;
 
 /// Trait for some basic operations on integers
-pub trait Int:
+pub(crate) trait Int:
     Copy
     + PartialEq
     + PartialOrd
@@ -190,7 +190,7 @@ int_impl!(i64, u64, 64);
 int_impl!(i128, u128, 128);
 
 /// Trait to convert an integer to/from smaller parts
-pub trait LargeInt: Int {
+pub(crate) trait LargeInt: Int {
     type LowHalf: Int;
     type HighHalf: Int;
 
@@ -232,7 +232,7 @@ large_int!(u128, u64, u64, 64);
 large_int!(i128, u64, i64, 64);
 
 /// Trait to express (possibly lossy) casting of integers
-pub trait CastInto<T: Copy>: Copy {
+pub(crate) trait CastInto<T: Copy>: Copy {
     fn cast(self) -> T;
 }
 
@@ -256,7 +256,7 @@ cast_into!(i64);
 cast_into!(u128);
 cast_into!(i128);
 
-pub trait WideInt: Int {
+pub(crate) trait WideInt: Int {
     type Output: Int;
 
     fn wide_mul(self, other: Self) -> (Self, Self);
