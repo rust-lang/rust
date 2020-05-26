@@ -1,13 +1,12 @@
-use std::fs::{create_dir_all, File};
+use std::fs::{create_dir_all, read_to_string, File};
 use std::io::prelude::*;
-use std::path::PathBuf;
+use std::path::Path;
 
 use rustc_feature::UnstableFeatures;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::DUMMY_SP;
 
 use crate::config::{Options, RenderOptions};
-use crate::externalfiles::{load_string, LoadStringError};
 use crate::html::escape::Escape;
 use crate::html::markdown;
 use crate::html::markdown::{find_testable_code, ErrorCodes, IdMap, Markdown, MarkdownWithToc};
@@ -34,17 +33,16 @@ fn extract_leading_metadata(s: &str) -> (Vec<&str>, &str) {
 
 /// Render `input` (e.g., "foo.md") into an HTML file in `output`
 /// (e.g., output = "bar" => "bar/foo.html").
-pub fn render(
-    input: PathBuf,
+pub fn render<P: AsRef<Path>>(
+    input: P,
     options: RenderOptions,
-    diag: &rustc_errors::Handler,
     edition: Edition,
-) -> i32 {
+) -> Result<(), String> {
     if let Err(e) = create_dir_all(&options.output) {
-        diag.struct_err(&format!("{}: {}", options.output.display(), e)).emit();
-        return 4;
+        return Err(format!("{}: {}", options.output.display(), e));
     }
 
+    let input = input.as_ref();
     let mut output = options.output;
     output.push(input.file_name().unwrap());
     output.set_extension("html");
@@ -55,26 +53,15 @@ pub fn render(
         css.push_str(&s)
     }
 
-    let input_str = match load_string(&input, diag) {
-        Ok(s) => s,
-        Err(LoadStringError::ReadFail) => return 1,
-        Err(LoadStringError::BadUtf8) => return 2,
-    };
+    let input_str = read_to_string(input).map_err(|err| format!("{}: {}", input.display(), err))?;
     let playground_url = options.markdown_playground_url.or(options.playground_url);
     let playground = playground_url.map(|url| markdown::Playground { crate_name: None, url });
 
-    let mut out = match File::create(&output) {
-        Err(e) => {
-            diag.struct_err(&format!("{}: {}", output.display(), e)).emit();
-            return 4;
-        }
-        Ok(f) => f,
-    };
+    let mut out = File::create(&output).map_err(|e| format!("{}: {}", output.display(), e))?;
 
     let (metadata, text) = extract_leading_metadata(&input_str);
     if metadata.is_empty() {
-        diag.struct_err("invalid markdown file: no initial lines starting with `# ` or `%`").emit();
-        return 5;
+        return Err("invalid markdown file: no initial lines starting with `# ` or `%`".to_owned());
     }
     let title = metadata[0];
 
@@ -122,22 +109,15 @@ pub fn render(
     );
 
     match err {
-        Err(e) => {
-            diag.struct_err(&format!("cannot write to `{}`: {}", output.display(), e)).emit();
-            6
-        }
-        Ok(_) => 0,
+        Err(e) => Err(format!("cannot write to `{}`: {}", output.display(), e)),
+        Ok(_) => Ok(()),
     }
 }
 
 /// Runs any tests/code examples in the markdown file `input`.
-pub fn test(mut options: Options, diag: &rustc_errors::Handler) -> i32 {
-    let input_str = match load_string(&options.input, diag) {
-        Ok(s) => s,
-        Err(LoadStringError::ReadFail) => return 1,
-        Err(LoadStringError::BadUtf8) => return 2,
-    };
-
+pub fn test(mut options: Options) -> Result<(), String> {
+    let input_str = read_to_string(&options.input)
+        .map_err(|err| format!("{}: {}", options.input.display(), err))?;
     let mut opts = TestOptions::default();
     opts.no_crate_inject = true;
     opts.display_warnings = options.display_warnings;
@@ -161,5 +141,5 @@ pub fn test(mut options: Options, diag: &rustc_errors::Handler) -> i32 {
         collector.tests,
         Some(testing::Options::new().display_output(options.display_warnings)),
     );
-    0
+    Ok(())
 }

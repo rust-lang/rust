@@ -450,14 +450,29 @@ fn main_args(args: &[String]) -> i32 {
     rustc_interface::interface::default_thread_pool(options.edition, move || main_options(options))
 }
 
+fn wrap_return(diag: &rustc_errors::Handler, res: Result<(), String>) -> i32 {
+    match res {
+        Ok(()) => 0,
+        Err(err) => {
+            if !err.is_empty() {
+                diag.struct_err(&err).emit();
+            }
+            1
+        }
+    }
+}
+
 fn main_options(options: config::Options) -> i32 {
     let diag = core::new_handler(options.error_format, None, &options.debugging_options);
 
     match (options.should_test, options.markdown_input()) {
-        (true, true) => return markdown::test(options, &diag),
-        (true, false) => return test::run(options),
+        (true, true) => return wrap_return(&diag, markdown::test(options)),
+        (true, false) => return wrap_return(&diag, test::run(options)),
         (false, true) => {
-            return markdown::render(options.input, options.render_options, &diag, options.edition);
+            return wrap_return(
+                &diag,
+                markdown::render(&options.input, options.render_options, options.edition),
+            );
         }
         (false, false) => {}
     }

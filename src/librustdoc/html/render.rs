@@ -31,7 +31,6 @@ use std::cmp::Ordering;
 use std::collections::{BTreeMap, VecDeque};
 use std::default::Default;
 use std::error;
-
 use std::ffi::OsStr;
 use std::fmt::{self, Formatter, Write};
 use std::fs::{self, File};
@@ -40,6 +39,7 @@ use std::io::{self, BufReader};
 use std::path::{Component, Path, PathBuf};
 use std::rc::Rc;
 use std::str;
+use std::string::ToString;
 use std::sync::Arc;
 
 use rustc_ast_pretty::pprust;
@@ -92,7 +92,7 @@ crate fn ensure_trailing_slash(v: &str) -> impl fmt::Display + '_ {
 #[derive(Debug)]
 pub struct Error {
     pub file: PathBuf,
-    pub error: io::Error,
+    pub error: String,
 }
 
 impl error::Error for Error {}
@@ -109,8 +109,11 @@ impl std::fmt::Display for Error {
 }
 
 impl PathError for Error {
-    fn new<P: AsRef<Path>>(e: io::Error, path: P) -> Error {
-        Error { file: path.as_ref().to_path_buf(), error: e }
+    fn new<S, P: AsRef<Path>>(e: S, path: P) -> Error
+    where
+        S: ToString + Sized,
+    {
+        Error { file: path.as_ref().to_path_buf(), error: e.to_string() }
     }
 }
 
@@ -562,7 +565,7 @@ pub fn run(
 
     // Write shared runs within a flock; disable thread dispatching of IO temporarily.
     Arc::get_mut(&mut cx.shared).unwrap().fs.set_sync_only(true);
-    write_shared(&cx, &krate, index, &md_opts, diag)?;
+    write_shared(&cx, &krate, index, &md_opts)?;
     Arc::get_mut(&mut cx.shared).unwrap().fs.set_sync_only(false);
 
     // And finally render the whole crate's documentation
@@ -582,7 +585,6 @@ fn write_shared(
     krate: &clean::Crate,
     search_index: String,
     options: &RenderOptions,
-    diag: &rustc_errors::Handler,
 ) -> Result<(), Error> {
     // Write out the shared files. Note that these are shared among all rustdoc
     // docs placed in the output directory, so this needs to be a synchronized
@@ -928,7 +930,8 @@ themePicker.onblur = handleThemeButtonsBlur;
             md_opts.output = cx.dst.clone();
             md_opts.external_html = (*cx.shared).layout.external_html.clone();
 
-            crate::markdown::render(index_page, md_opts, diag, cx.shared.edition);
+            crate::markdown::render(&index_page, md_opts, cx.shared.edition)
+                .map_err(|e| Error::new(e, &index_page))?;
         } else {
             let dst = cx.dst.join("index.html");
             let page = layout::Page {

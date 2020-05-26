@@ -12,6 +12,7 @@
 use std::fs;
 use std::io;
 use std::path::Path;
+use std::string::ToString;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
 
@@ -25,7 +26,9 @@ macro_rules! try_err {
 }
 
 pub trait PathError {
-    fn new<P: AsRef<Path>>(e: io::Error, path: P) -> Self;
+    fn new<S, P: AsRef<Path>>(e: S, path: P) -> Self
+    where
+        S: ToString + Sized;
 }
 
 pub struct ErrorStorage {

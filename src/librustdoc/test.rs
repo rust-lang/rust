@@ -43,7 +43,7 @@ pub struct TestOptions {
     pub attrs: Vec<String>,
 }
 
-pub fn run(options: Options) -> i32 {
+pub fn run(options: Options) -> Result<(), String> {
     let input = config::Input::File(options.input.clone());
 
     let invalid_codeblock_attribute_name = rustc_lint::builtin::INVALID_CODEBLOCK_ATTRIBUTE.name;
@@ -151,7 +151,7 @@ pub fn run(options: Options) -> i32 {
     });
     let tests = match tests {
         Ok(tests) => tests,
-        Err(ErrorReported) => return 1,
+        Err(ErrorReported) => return Err(String::new()),
     };
 
     test_args.insert(0, "rustdoctest".to_string());
@@ -162,7 +162,7 @@ pub fn run(options: Options) -> i32 {
         Some(testing::Options::new().display_output(display_warnings)),
     );
 
-    0
+    Ok(())
 }
 
 // Look for `#![doc(test(no_crate_inject))]`, used by crates in the std facade.
