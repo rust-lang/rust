@@ -764,8 +764,8 @@ impl<'tcx> TraitRef<'tcx> {
 pub type PolyTraitRef<'tcx> = Binder<TraitRef<'tcx>>;
 
 impl<'tcx> PolyTraitRef<'tcx> {
-    pub fn self_ty(&self) -> Ty<'tcx> {
-        self.skip_binder().self_ty()
+    pub fn self_ty(&self) -> Binder<Ty<'tcx>> {
+        self.map_bound_ref(|tr| tr.self_ty())
     }
 
     pub fn def_id(&self) -> DefId {
