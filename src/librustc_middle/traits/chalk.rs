@@ -16,19 +16,6 @@ use std::cmp::Ordering;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
-/// Since Chalk doesn't have full support for all Rust builtin types yet, we
-/// need to use an enum here, rather than just `DefId`.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum RustDefId {
-    Adt(DefId),
-
-    FnDef(DefId),
-    Trait(DefId),
-    Impl(DefId),
-    AssocTy(DefId),
-    Opaque(DefId),
-}
-
 #[derive(Copy, Clone)]
 pub struct RustInterner<'tcx> {
     pub tcx: TyCtxt<'tcx>,
@@ -86,8 +73,8 @@ impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
     type InternedQuantifiedWhereClauses = Vec<chalk_ir::QuantifiedWhereClause<Self>>;
     type InternedVariableKinds = Vec<chalk_ir::VariableKind<Self>>;
     type InternedCanonicalVarKinds = Vec<chalk_ir::CanonicalVarKind<Self>>;
-    type DefId = RustDefId;
-    type InternedAdtId = RustDefId;
+    type DefId = DefId;
+    type InternedAdtId = DefId;
     type Identifier = ();
 
     fn debug_program_clause_implication(
