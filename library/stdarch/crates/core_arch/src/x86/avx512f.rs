@@ -99,7 +99,7 @@ pub unsafe fn _mm512_set1_epi64(a: i64) -> __m512i {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=727,1063,4909,1062,1062&text=_mm512_cmplt_epu64)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vpcmpuq))]
+#[cfg_attr(test, assert_instr(vpcmpltuq))]
 pub unsafe fn _mm512_cmplt_epu64_mask(a: __m512i, b: __m512i) -> __mmask8 {
     simd_bitmask::<__m512i, _>(simd_lt(a.as_u64x8(), b.as_u64x8()))
 }
