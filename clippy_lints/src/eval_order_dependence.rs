@@ -21,11 +21,17 @@ declare_clippy_lint! {
     /// **Example:**
     /// ```rust
     /// let mut x = 0;
+    ///
+    /// // Bad
     /// let a = {
     ///     x = 1;
     ///     1
     /// } + x;
     /// // Unclear whether a is 1 or 2.
+    ///
+    /// // Good
+    /// x = 1;
+    /// let a = 1 + x;
     /// ```
     pub EVAL_ORDER_DEPENDENCE,
     complexity,
