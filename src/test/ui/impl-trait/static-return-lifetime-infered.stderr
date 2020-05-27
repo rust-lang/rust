@@ -2,7 +2,7 @@ error: cannot infer an appropriate lifetime
   --> $DIR/static-return-lifetime-infered.rs:7:16
    |
 LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> {
-   |                                   ----------------------- this evaluates to the `'static` lifetime...
+   |                                   ----------------------- this is `'static`...
 LL |         self.x.iter().map(|a| a.0)
    |         ------ ^^^^
    |         |
@@ -24,7 +24,7 @@ error: cannot infer an appropriate lifetime
   --> $DIR/static-return-lifetime-infered.rs:11:16
    |
 LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> {
-   |                                     ----------------------- this evaluates to the `'static` lifetime...
+   |                                     ----------------------- this is `'static`...
 LL |         self.x.iter().map(|a| a.0)
    |         ------ ^^^^
    |         |

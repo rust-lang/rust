@@ -27,8 +27,23 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                     let return_sp = sub_origin.span();
                     let mut err =
                         self.tcx().sess.struct_span_err(sp, "cannot infer an appropriate lifetime");
-                    err.span_label(return_sp, "this evaluates to the `'static` lifetime...");
-                    err.span_label(sup_origin.span(), "...but this borrow...");
+                    if sp == sup_origin.span() && return_sp == sp {
+                        // Example: `ui/object-lifetime/object-lifetime-default-from-box-error.rs`
+                        err.span_label(
+                            sup_origin.span(),
+                            "this needs to be `'static` but the borrow...",
+                        );
+                    } else {
+                        err.span_label(return_sp, "this is `'static`...");
+                        // We try to make the output have fewer overlapping spans if possible.
+                        if sp == sup_origin.span() || !return_sp.overlaps(sup_origin.span()) {
+                            // When `sp == sup_origin` we already have overlapping spans in the
+                            // main diagnostic output, so we don't split this into its own note.
+                            err.span_label(sup_origin.span(), "...but this borrow...");
+                        } else {
+                            err.span_note(sup_origin.span(), "...but this borrow...");
+                        }
+                    }
 
                     let (lifetime, lt_sp_opt) = msg_span_from_free_region(self.tcx(), sup_r);
                     if let Some(lifetime_sp) = lt_sp_opt {

@@ -2,10 +2,7 @@ error: cannot infer an appropriate lifetime
   --> $DIR/object-lifetime-default-from-box-error.rs:18:5
    |
 LL |     ss.r
-   |     ^^^^
-   |     |
-   |     this evaluates to the `'static` lifetime...
-   |     ...but this borrow...
+   |     ^^^^ this needs to be `'static` but the borrow...
    |
 note: ...can't outlive the anonymous lifetime #2 defined on the function body at 14:1
   --> $DIR/object-lifetime-default-from-box-error.rs:14:1

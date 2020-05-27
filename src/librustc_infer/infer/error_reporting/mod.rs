@@ -1806,8 +1806,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             |err: &mut DiagnosticBuilder<'tcx>,
              type_param_span: Option<(Span, bool, bool)>,
              bound_kind: GenericKind<'tcx>| {
-                let msg = "consider introducing an explicit lifetime bound to unify the type \
-                    parameter and the output";
+                let msg = "consider introducing an explicit lifetime bound";
                 if let Some((sp, has_lifetimes, is_impl_trait)) = type_param_span {
                     let suggestion = if is_impl_trait {
                         (sp.shrink_to_hi(), format!(" + {}", new_lt))
