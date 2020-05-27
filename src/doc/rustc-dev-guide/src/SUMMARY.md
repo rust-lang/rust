@@ -9,6 +9,7 @@
     - [Getting Started](./getting-started.md)
     - [About the compiler team](./compiler-team.md)
     - [How to Build and Run the Compiler](./building/how-to-build-and-run.md)
+        - [Prerequisites](./building/prerequisites.md)
         - [Suggested Workflows](./building/suggested.md)
         - [Bootstrapping](./building/bootstrapping.md)
         - [Distribution artifacts](./building/build-install-distribution-artifacts.md)
