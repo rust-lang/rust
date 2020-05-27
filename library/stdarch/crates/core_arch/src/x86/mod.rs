@@ -346,6 +346,10 @@ types! {
 #[allow(non_camel_case_types)]
 pub type __mmask16 = u16;
 
+/// The `__mmask8` type used in AVX-512 intrinsics, a 8-bit integer
+#[allow(non_camel_case_types)]
+pub type __mmask8 = u8;
+
 #[cfg(test)]
 mod test;
 #[cfg(test)]
@@ -507,6 +511,11 @@ pub(crate) trait m512iExt: Sized {
 
     #[inline]
     fn as_i32x16(self) -> crate::core_arch::simd::i32x16 {
+        unsafe { transmute(self.as_m512i()) }
+    }
+
+    #[inline]
+    fn as_u64x8(self) -> crate::core_arch::simd::u64x8 {
         unsafe { transmute(self.as_m512i()) }
     }
 }
