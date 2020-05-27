@@ -664,7 +664,7 @@ mod tests {
         assert_debug_snapshot!(diagnostics, @r###"
         [
             Diagnostic {
-                message: "Missing structure fields:\n- b",
+                message: "Missing structure fields:\n- b\n",
                 range: 224..233,
                 severity: Error,
                 fix: Some(
