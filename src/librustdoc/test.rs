@@ -114,7 +114,7 @@ pub fn run(options: Options) -> Result<(), String> {
                 options,
                 false,
                 opts,
-                Some(compiler.source_map().clone()),
+                Some(compiler.session().parse_sess.clone_source_map()),
                 None,
                 enable_per_target_ignores,
             );
