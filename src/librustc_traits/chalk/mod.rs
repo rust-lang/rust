@@ -108,9 +108,6 @@ crate fn evaluate_goal<'tcx>(
                         TyData::Apply(_application_ty) => match _application_ty.name {
                             chalk_ir::TypeName::Adt(_struct_id) => match _struct_id.0 {
                                 RustDefId::Adt(_) => unimplemented!(),
-                                RustDefId::Never => unimplemented!(),
-                                RustDefId::Array => unimplemented!(),
-                                RustDefId::FnDef(_) => unimplemented!(),
                                 _ => panic!("Unexpected struct id"),
                             },
                             chalk_ir::TypeName::Scalar(scalar) => match scalar {

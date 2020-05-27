@@ -21,10 +21,8 @@ use std::hash::{Hash, Hasher};
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum RustDefId {
     Adt(DefId),
-    Never,
-    Array,
-    FnDef(DefId),
 
+    FnDef(DefId),
     Trait(DefId),
     Impl(DefId),
     AssocTy(DefId),
