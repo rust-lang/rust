@@ -362,3 +362,66 @@ interface ExpandedMacro {
 ```
 
 Expands macro call at a given position.
+
+## Inlay Hints
+
+**Method:** `rust-analyzer/inlayHints`
+
+This request is send from client to server to render "inlay hints" -- virtual text inserted into editor to show things like inferred types.
+Generally, the client should re-query inlay hints after every modification.
+Note that we plan to move this request to `experimental/inlayHints`, as it is not really Rust-specific, but the current API is not necessary the right one.
+Upstream issue: https://github.com/microsoft/language-server-protocol/issues/956
+
+**Request:**
+
+```typescript
+interface InlayHintsParams {
+    textDocument: TextDocumentIdentifier,
+}
+```
+
+**Response:** `InlayHint[]`
+
+```typescript
+interface InlayHint {
+    kind: "TypeHint" | "ParameterHint" | "ChainingHints",
+    range: Range,
+    label: string,
+}
+```
+
+## Runnables
+
+**Method:** `rust-analyzer/runnables`
+
+This request is send from client to server to get the list of things that can be run (tests, binaries, `cargo check -p`).
+Note that we plan to move this request to `experimental/runnables`, as it is not really Rust-specific, but the current API is not necessary the right one.
+Upstream issue: https://github.com/microsoft/language-server-protocol/issues/944
+
+**Request:**
+
+```typescript
+interface RunnablesParams {
+    textDocument: TextDocumentIdentifier;
+    /// If null, compute runnables for the whole file.
+    position?: Position;
+}
+```
+
+**Response:** `Runnable[]`
+
+```typescript
+interface Runnable {
+    /// The range this runnable is applicable for.
+    range: lc.Range;
+    /// The label to show in the UI.
+    label: string;
+    /// The following fields describe a process to spawn.
+    bin: string;
+    args: string[];
+    /// Args for cargo after `--`.
+    extraArgs: string[];
+    env: { [key: string]: string };
+    cwd: string | null;
+}
+```
