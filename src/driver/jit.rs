@@ -52,7 +52,6 @@ pub(super) fn run_jit(tcx: TyCtxt<'_>) -> ! {
         .into_iter()
         .collect::<Vec<(_, (_, _))>>();
 
-    // FIXME register with unwind runtime
     let mut unwind_context = UnwindContext::new(tcx, &mut jit_module);
 
     super::time(tcx, "codegen mono items", || {
