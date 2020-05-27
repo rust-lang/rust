@@ -867,12 +867,10 @@ impl<T: ?Sized> Arc<T> {
     unsafe fn drop_slow(&mut self) {
         // Destroy the data at this time, even though we may not free the box
         // allocation itself (there may still be weak pointers lying around).
-        ptr::drop_in_place(&mut self.ptr.as_mut().data);
+        ptr::drop_in_place(Self::get_mut_unchecked(self));
 
-        if self.inner().weak.fetch_sub(1, Release) == 1 {
-            acquire!(self.inner().weak);
-            Global.dealloc(self.ptr.cast(), Layout::for_value(self.ptr.as_ref()))
-        }
+        // Drop the weak ref collectively held by all strong references
+        drop(Weak { ptr: self.ptr });
     }
 
     #[inline]
@@ -1204,7 +1202,7 @@ impl<T: Clone> Arc<T> {
 
         // As with `get_mut()`, the unsafety is ok because our reference was
         // either unique to begin with, or became one upon cloning the contents.
-        unsafe { &mut this.ptr.as_mut().data }
+        unsafe { Self::get_mut_unchecked(this) }
     }
 }
 
@@ -1280,7 +1278,9 @@ impl<T: ?Sized> Arc<T> {
     #[inline]
     #[unstable(feature = "get_mut_unchecked", issue = "63292")]
     pub unsafe fn get_mut_unchecked(this: &mut Self) -> &mut T {
-        &mut this.ptr.as_mut().data
+        // We are careful to *not* create a reference covering the "count" fields, as
+        // this would alias with concurrent access to the reference counts (e.g. by `Weak`).
+        &mut (*this.ptr.as_ptr()).data
     }
 
     /// Determine whether this is the unique reference (including weak refs) to
@@ -1571,6 +1571,13 @@ impl<T> Weak<T> {
     }
 }
 
+/// Helper type to allow accessing the reference counts without
+/// making any assertions about the data field.
+struct WeakInner<'a> {
+    weak: &'a atomic::AtomicUsize,
+    strong: &'a atomic::AtomicUsize,
+}
+
 impl<T: ?Sized> Weak<T> {
     /// Attempts to upgrade the `Weak` pointer to an [`Arc`], delaying
     /// dropping of the inner value if successful.
@@ -1678,8 +1685,18 @@ impl<T: ?Sized> Weak<T> {
     /// Returns `None` when the pointer is dangling and there is no allocated `ArcInner`,
     /// (i.e., when this `Weak` was created by `Weak::new`).
     #[inline]
-    fn inner(&self) -> Option<&ArcInner<T>> {
-        if is_dangling(self.ptr) { None } else { Some(unsafe { self.ptr.as_ref() }) }
+    fn inner(&self) -> Option<WeakInner<'_>> {
+        if is_dangling(self.ptr) {
+            None
+        } else {
+            // We are careful to *not* create a reference covering the "data" field, as
+            // the field may be mutated concurrently (for example, if the last `Arc`
+            // is dropped, the data field will be dropped in-place).
+            Some(unsafe {
+                let ptr = self.ptr.as_ptr();
+                WeakInner { strong: &(*ptr).strong, weak: &(*ptr).weak }
+            })
+        }
     }
 
     /// Returns `true` if the two `Weak`s point to the same allocation (similar to
