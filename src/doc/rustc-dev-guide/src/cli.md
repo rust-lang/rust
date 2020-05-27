@@ -13,14 +13,14 @@ flags should be documented there. Unstable flags should be documented in the
   such as `-C embed-bitcode=no`.
 - Consider the behavior if the flag is passed multiple times. In some
   situations, the values should be accumulated (in order!). In other
-  situations, subsequence flags should override previous flags (for example,
+  situations, subsequent flags should override previous flags (for example,
   the lint-level flags). And some flags (like `-o`) should generate an error
   if it is too ambiguous what multiple flags would mean.
 - Always give options a long descriptive name, if only for more understandable
   compiler scripts.
 - The `--verbose` flag is for adding verbose information to `rustc` output
   when not compiling a program. For example, using it with the `--version`
-  flag gives information about the hashes of the code.
+  flag gives information about the hashes of the compiler code.
 - Experimental flags and options must be guarded behind the `-Z
   unstable-options` flag.
 
