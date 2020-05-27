@@ -224,7 +224,7 @@ declare_lint! {
 
 declare_lint! {
     pub UNALIGNED_REFERENCES,
-    Allow,
+    Deny,
     "detects unaligned references to fields of packed structs",
 }
 
