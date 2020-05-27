@@ -849,11 +849,11 @@ impl<T: ?Sized> RefCell<T> {
     /// ```
     /// use std::cell::RefCell;
     ///
-    /// let c = RefCell::new(5);
+    /// let c = RefCell::new("hello".to_owned());
     ///
-    /// *c.borrow_mut() = 7;
+    /// *c.borrow_mut() = "bonjour".to_owned();
     ///
-    /// assert_eq!(*c.borrow(), 7);
+    /// assert_eq!(&*c.borrow(), "bonjour");
     /// ```
     ///
     /// An example of panic:
