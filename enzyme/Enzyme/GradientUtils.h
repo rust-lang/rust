@@ -1233,7 +1233,7 @@ public:
       if (op1 == nullptr) goto endCheck;
       auto op2 = getOp(SAFE(op,getOperand(2)));
       if (op2 == nullptr) goto endCheck;
-      auto toreturn = BuilderM.CreateSelect(op0, op1, op2);
+      auto toreturn = BuilderM.CreateSelect(op0, op1, op2, op->getName()+"_unwrap");
       if (auto newi = dyn_cast<Instruction>(toreturn)) newi->copyIRFlags(op);
       unwrap_cache[cidx] = toreturn;
       assert(val->getType() == toreturn->getType());

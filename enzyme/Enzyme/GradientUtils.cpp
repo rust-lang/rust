@@ -1335,6 +1335,7 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopCo
             for (BasicBlock* ExitBB : ExitingBlocks) {
               assert(L->contains(ExitBB));
               auto EL = SE.computeExitLimit(L, ExitBB, /*AllowPredicates*/true);
+
               //llvm::errs() << "MaxNotTaken:" << *EL.MaxNotTaken << "\n";
               //llvm::errs() << "ExactNotTaken:" << *EL.ExactNotTaken << "\n";
 
@@ -1342,6 +1343,12 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopCo
                 if (!MayExitMaxBECount || EL.ExactNotTaken == SE.getCouldNotCompute())
                   MayExitMaxBECount = EL.ExactNotTaken;
                 else {
+                  if (MayExitMaxBECount != EL.ExactNotTaken) {
+                    llvm::errs() << "Optimization opportunity! could allocate max!\n";
+                    MayExitMaxBECount = SE.getCouldNotCompute();
+                    break;
+                  }
+
                   MayExitMaxBECount =
                       SE.getUMaxFromMismatchedTypes(MayExitMaxBECount, EL.ExactNotTaken);
                 }
