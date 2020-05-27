@@ -73,7 +73,7 @@ codes.
 The descriptions are written in markdown, and all of them are linked in the
 [`librustc_error_codes`] crate.
 
-<!-- TODO: When should an error use an error code, and when shouldn't it? -->
+TODO: When should an error use an error code, and when shouldn't it?
 
 [`librustc_error_codes`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_error_codes/error_codes/index.html
 [error index]: https://doc.rust-lang.org/error-index.html
@@ -82,11 +82,12 @@ The descriptions are written in markdown, and all of them are linked in the
 ### Lints versus fixed diagnostics
 
 Some messages are emitted via [lints](#lints), where the user can control the
-level. Some are hard-coded such that the user cannot control the level.
+level. Most diagnostics are hard-coded such that the user cannot control the
+level.
 
-Hard-coded warnings should be avoided for normal code, preferring to use lints
-instead. Some cases, such as warnings with CLI flags will require the use of
-hard-coded warnings.
+Hard-coded warnings (those using the `span_warn` methods) should be avoided
+for normal code, preferring to use lints instead. Some cases, such as warnings
+with CLI flags, will require the use of hard-coded warnings.
 
 See the `deny` [lint level](#diagnostic-levels) below for guidelines when to
 use an error-level lint instead of a fixed error.
@@ -104,7 +105,8 @@ use an error-level lint instead of a fixed error.
   flag. That said, don't make it so terse that it's hard to understand.
 - The word "illegal" is illegal. Prefer "invalid" or a more specific word
   instead.
-- Errors should document the span of code where they occur – the `librustc_errors::diagnostic_builder::DiagnosticBuilder`  `span_*` 
+- Errors should document the span of code where they occur – the
+  [`rustc_errors::diagnostic_builder::DiagnosticBuilder`][diagbuild]  `span_*`
   methods allow to easily do this. Also `note` other spans that have
   contributed to the error if the span isn't too large.
 - When emitting a message with span, try to reduce the span to the smallest
@@ -112,8 +114,9 @@ use an error-level lint instead of a fixed error.
 - Try not to emit multiple error messages for the same error. This may require
   detecting duplicates.
 - When the compiler has too little information for a specific error message,
-  lobby for annotations for library code that allow adding more. For example
-  see [`#[rustc_on_unimplemented]`](#rustc_on_unimplemented). Use these
+  consult with the compiler team to add new attributes for library code that
+  allow adding more information. For example see
+  [`#[rustc_on_unimplemented]`](#rustc_on_unimplemented). Use these
   annotations when available!
 - Keep in mind that Rust's learning curve is rather steep, and that the
   compiler messages are an important learning tool.
@@ -183,9 +186,13 @@ Guidelines for different diagnostic levels:
     rustfmt.
 
 - `help`: emitted following an `error` or `warning` to give additional
-  information to the user about how to solve their problem. The error or
-  warning portion should *not* suggest how to fix the problem, only the "help"
-  sub-diagnostic should.
+  information to the user about how to solve their problem. These messages
+  often include a suggestion string and [`rustc_errors::Applicability`]
+  confidence level to guide automated source fixes by tools. See the
+  [Suggestions](#suggestions) section for more details.
+
+  The error or warning portion should *not* suggest how to fix the problem,
+  only the "help" sub-diagnostic should.
 
 - `note`: emitted to identify additional circumstances and parts of the code
   that caused the warning or error. For example, the borrow checker will note
@@ -215,6 +222,7 @@ Not to be confused with *lint levels*, whose guidelines are:
 More information about lint levels can be found in the [rustc
 book][rustc-lint-levels] and the [reference][reference-diagnostics].
 
+[`rustc_errors::Applicability`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/enum.Applicability.html
 [reference-diagnostics]: https://doc.rust-lang.org/nightly/reference/attributes/diagnostics.html#lint-check-attributes
 [rustc-lint-levels]: https://doc.rust-lang.org/nightly/rustc/lints/levels.html
 
