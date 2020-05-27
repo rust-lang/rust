@@ -53,6 +53,7 @@ static M256D: Type = Type::M256D;
 static M512: Type = Type::M512;
 static M512I: Type = Type::M512I;
 static M512D: Type = Type::M512D;
+static MMASK8: Type = Type::MMASK8;
 static MMASK16: Type = Type::MMASK16;
 
 static TUPLE: Type = Type::Tuple;
@@ -76,6 +77,7 @@ enum Type {
     M512,
     M512D,
     M512I,
+    MMASK8,
     MMASK16,
     Tuple,
     CpuidResult,
@@ -653,6 +655,7 @@ fn equate(t: &Type, intel: &str, intrinsic: &str, is_const: bool) -> Result<(), 
         (&Type::ConstPtr(&Type::M512I), "__m512i const*") => {}
         (&Type::ConstPtr(&Type::M512D), "__m512d const*") => {}
 
+        (&Type::MMASK8, "__mmask8") => {}
         (&Type::MMASK16, "__mmask16") => {}
 
         // This is a macro (?) in C which seems to mutate its arguments, but

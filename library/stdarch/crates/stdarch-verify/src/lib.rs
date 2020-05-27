@@ -145,6 +145,7 @@ fn to_type(t: &syn::Type) -> proc_macro2::TokenStream {
             "__m512" => quote! { &M512 },
             "__m512d" => quote! { &M512D },
             "__m512i" => quote! { &M512I },
+            "__mmask8" => quote! { &MMASK8 },
             "__mmask16" => quote! { &MMASK16 },
             "__m64" => quote! { &M64 },
             "bool" => quote! { &BOOL },
