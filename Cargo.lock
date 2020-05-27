@@ -433,9 +433,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "chalk-base"
+version = "0.10.1-dev"
+source = "git+https://github.com/rust-lang/chalk.git?rev=f4977ab4c781e4f3b7fdb9310edbdab6daf56e29#f4977ab4c781e4f3b7fdb9310edbdab6daf56e29"
+dependencies = [
+ "lazy_static 1.4.0",
+]
+
+[[package]]
 name = "chalk-derive"
 version = "0.10.1-dev"
-source = "git+https://github.com/rust-lang/chalk.git?rev=3e9c2503ae9c5277c2acb74624dc267876dd89b3#3e9c2503ae9c5277c2acb74624dc267876dd89b3"
+source = "git+https://github.com/rust-lang/chalk.git?rev=f4977ab4c781e4f3b7fdb9310edbdab6daf56e29#f4977ab4c781e4f3b7fdb9310edbdab6daf56e29"
 dependencies = [
  "proc-macro2 1.0.3",
  "quote 1.0.2",
@@ -446,52 +454,33 @@ dependencies = [
 [[package]]
 name = "chalk-engine"
 version = "0.10.1-dev"
-source = "git+https://github.com/rust-lang/chalk.git?rev=3e9c2503ae9c5277c2acb74624dc267876dd89b3#3e9c2503ae9c5277c2acb74624dc267876dd89b3"
+source = "git+https://github.com/rust-lang/chalk.git?rev=f4977ab4c781e4f3b7fdb9310edbdab6daf56e29#f4977ab4c781e4f3b7fdb9310edbdab6daf56e29"
 dependencies = [
- "chalk-macros",
+ "chalk-base",
+ "chalk-derive",
+ "chalk-ir",
  "rustc-hash",
 ]
 
 [[package]]
 name = "chalk-ir"
 version = "0.10.1-dev"
-source = "git+https://github.com/rust-lang/chalk.git?rev=3e9c2503ae9c5277c2acb74624dc267876dd89b3#3e9c2503ae9c5277c2acb74624dc267876dd89b3"
+source = "git+https://github.com/rust-lang/chalk.git?rev=f4977ab4c781e4f3b7fdb9310edbdab6daf56e29#f4977ab4c781e4f3b7fdb9310edbdab6daf56e29"
 dependencies = [
+ "chalk-base",
  "chalk-derive",
- "chalk-engine",
- "chalk-macros",
-]
-
-[[package]]
-name = "chalk-macros"
-version = "0.10.1-dev"
-source = "git+https://github.com/rust-lang/chalk.git?rev=3e9c2503ae9c5277c2acb74624dc267876dd89b3#3e9c2503ae9c5277c2acb74624dc267876dd89b3"
-dependencies = [
- "lazy_static",
-]
-
-[[package]]
-name = "chalk-rust-ir"
-version = "0.10.1-dev"
-source = "git+https://github.com/rust-lang/chalk.git?rev=3e9c2503ae9c5277c2acb74624dc267876dd89b3#3e9c2503ae9c5277c2acb74624dc267876dd89b3"
-dependencies = [
- "chalk-derive",
- "chalk-engine",
- "chalk-ir",
- "chalk-macros",
 ]
 
 [[package]]
 name = "chalk-solve"
 version = "0.10.1-dev"
-source = "git+https://github.com/rust-lang/chalk.git?rev=3e9c2503ae9c5277c2acb74624dc267876dd89b3#3e9c2503ae9c5277c2acb74624dc267876dd89b3"
+source = "git+https://github.com/rust-lang/chalk.git?rev=f4977ab4c781e4f3b7fdb9310edbdab6daf56e29#f4977ab4c781e4f3b7fdb9310edbdab6daf56e29"
 dependencies = [
+ "chalk-base",
  "chalk-derive",
  "chalk-engine",
  "chalk-ir",
- "chalk-macros",
- "chalk-rust-ir",
- "ena 0.13.1",
+ "ena 0.14.0",
  "itertools 0.9.0",
  "petgraph",
  "rustc-hash",
@@ -1175,9 +1164,9 @@ dependencies = [
 
 [[package]]
 name = "fixedbitset"
-version = "0.1.9"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "86d4de0081402f5e88cdac65c8dcdcc73118c1a7a465e2a05f0da05843a8ea33"
+checksum = "37ab347416e802de484e4d03c7316c48f1ecb56574dfd4a46a80f173ce1de04d"
 
 [[package]]
 name = "flate2"
@@ -2365,12 +2354,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ordermap"
-version = "0.3.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a86ed3f5f244b372d6b1a00b72ef7f8876d0bc6a78a4c9985c53614041512063"
-
-[[package]]
 name = "ordslice"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2540,12 +2523,12 @@ dependencies = [
 
 [[package]]
 name = "petgraph"
-version = "0.4.13"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9c3659d1ee90221741f65dd128d9998311b0e40c5d3c23a62445938214abce4f"
+checksum = "467d164a6de56270bd7c4d070df81d07beace25012d5103ced4e9ff08d6afdb7"
 dependencies = [
  "fixedbitset",
- "ordermap",
+ "indexmap",
 ]
 
 [[package]]
@@ -3493,12 +3476,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-hash"
-version = "1.0.1"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7540fc8b0c49f096ee9c961cda096467dce8084bec6bdca2fc83895fd9b28cb8"
-dependencies = [
- "byteorder",
-]
+checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
 
 [[package]]
 name = "rustc-main"
@@ -4367,7 +4347,6 @@ name = "rustc_traits"
 version = "0.0.0"
 dependencies = [
  "chalk-ir",
- "chalk-rust-ir",
  "chalk-solve",
  "log",
  "rustc_ast",
