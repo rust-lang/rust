@@ -18,10 +18,9 @@ endif
 
 
 all:
-	rustc $(COMPILE_FLAGS) test.rs
-	RUST_BACKTRACE=1 ./test 2> $(SNAPSHOT).actual && exit 1 || true
-	# $(RUSTC) $(COMPILE_FLAGS) test.rs
-	# $(call FAIL,test) > $(SNAPSHOT).actual
+	$(RUSTC) $(COMPILE_FLAGS) test.rs
+	# TODO: put $(SNAPSHOT).actual in a tmpdir somewhere.
+	$(call FAIL,test) > $(SNAPSHOT).actual
 	[ -n "$(BLESS)" ] && echo "updating snapshot $(SNAPSHOT)" && mv $(SNAPSHOT).actual $(SNAPSHOT) \
 		|| ( \
 			diff -u $(SNAPSHOT).actual $(SNAPSHOT) && true rm $(SNAPSHOT).actual \
