@@ -337,7 +337,7 @@ dependencies = [
  "rustc-workspace-hack",
  "rustfix",
  "same-file",
- "semver",
+ "semver 0.10.0",
  "serde",
  "serde_ignored",
  "serde_json",
@@ -389,7 +389,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "929766d993a2fde7a0ae962ee82429069cd7b68839cd9375b98efd719df65d3a"
 dependencies = [
  "failure",
- "semver",
+ "semver 0.9.0",
  "serde",
  "serde_derive",
  "serde_json",
@@ -401,7 +401,7 @@ version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "46e3374c604fb39d1a2f35ed5e4a4e30e60d01fab49446e08f1b3e9a90aef202"
 dependencies = [
- "semver",
+ "semver 0.9.0",
  "serde",
  "serde_derive",
  "serde_json",
@@ -540,7 +540,7 @@ dependencies = [
  "lazy_static 1.4.0",
  "rustc-workspace-hack",
  "rustc_tools_util 0.2.0",
- "semver",
+ "semver 0.9.0",
  "serde",
  "tempfile",
  "tester",
@@ -561,7 +561,7 @@ dependencies = [
  "pulldown-cmark 0.7.1",
  "quine-mc_cluskey",
  "regex-syntax",
- "semver",
+ "semver 0.9.0",
  "serde",
  "smallvec 1.4.0",
  "toml",
@@ -2090,7 +2090,7 @@ dependencies = [
  "rayon",
  "regex",
  "reqwest",
- "semver",
+ "semver 0.9.0",
  "serde",
  "serde_derive",
  "serde_json",
@@ -4443,7 +4443,7 @@ version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "138e3e0acb6c9fb258b19b67cb8abd63c00679d2851805ea151465464fe9030a"
 dependencies = [
- "semver",
+ "semver 0.9.0",
 ]
 
 [[package]]
@@ -4599,6 +4599,16 @@ name = "semver"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1d7eb9ef2c18661902cc47e535f9bc51b78acd254da71d375c2f6720d9a40403"
+dependencies = [
+ "semver-parser",
+ "serde",
+]
+
+[[package]]
+name = "semver"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "394cec28fa623e00903caf7ba4fa6fb9a0e260280bb8cdbbba029611108a0190"
 dependencies = [
  "semver-parser",
  "serde",
