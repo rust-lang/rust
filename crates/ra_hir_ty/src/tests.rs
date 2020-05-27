@@ -552,7 +552,7 @@ fn missing_unsafe() {
     .diagnostics()
     .0;
 
-    assert_snapshot!(diagnostics, @r#""fn missing_unsafe() {\n    let x = &5 as *const usize;\n    let y = *x;\n}": Missing unsafe keyword on fn"#);
+    assert_snapshot!(diagnostics, @r#""*x": This operation is unsafe and requires an unsafe function or block"#);
 }
 
 #[test]
@@ -573,7 +573,7 @@ fn missing_unsafe() {
     .diagnostics()
     .0;
 
-    assert_snapshot!(diagnostics, @r#""fn missing_unsafe() {\n    unsafe_fn();\n}": Missing unsafe keyword on fn"#);
+    assert_snapshot!(diagnostics, @r#""unsafe_fn()": This operation is unsafe and requires an unsafe function or block"#);
 }
 
 #[test]
@@ -599,7 +599,7 @@ fn missing_unsafe() {
     .diagnostics()
     .0;
 
-    assert_snapshot!(diagnostics, @r#""fn missing_unsafe() {\n    HasUnsafe.unsafe_fn();\n}": Missing unsafe keyword on fn"#);
+    assert_snapshot!(diagnostics, @r#""HasUnsafe.unsafe_fn()": This operation is unsafe and requires an unsafe function or block"#);
 }
 
 #[test]

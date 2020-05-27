@@ -3,10 +3,7 @@
 use std::any::Any;
 
 use hir_expand::{db::AstDatabase, name::Name, HirFileId, InFile};
-use ra_syntax::{
-    ast::{self, NameOwner},
-    AstNode, AstPtr, SyntaxNodePtr,
-};
+use ra_syntax::{ast, AstNode, AstPtr, SyntaxNodePtr};
 use stdx::format_to;
 
 pub use hir_def::{diagnostics::UnresolvedModule, expr::MatchArm, path::Path};
@@ -176,15 +173,15 @@ impl AstDiagnostic for BreakOutsideOfLoop {
 #[derive(Debug)]
 pub struct MissingUnsafe {
     pub file: HirFileId,
-    pub fn_def: AstPtr<ast::FnDef>,
+    pub expr: AstPtr<ast::Expr>,
 }
 
 impl Diagnostic for MissingUnsafe {
     fn message(&self) -> String {
-        format!("Missing unsafe keyword on fn")
+        format!("This operation is unsafe and requires an unsafe function or block")
     }
     fn source(&self) -> InFile<SyntaxNodePtr> {
-        InFile { file_id: self.file, value: self.fn_def.clone().into() }
+        InFile { file_id: self.file, value: self.expr.clone().into() }
     }
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
         self
@@ -192,11 +189,11 @@ impl Diagnostic for MissingUnsafe {
 }
 
 impl AstDiagnostic for MissingUnsafe {
-    type AST = ast::Name;
+    type AST = ast::Expr;
 
     fn ast(&self, db: &impl AstDatabase) -> Self::AST {
         let root = db.parse_or_expand(self.source().file_id).unwrap();
         let node = self.source().value.to_node(&root);
-        ast::FnDef::cast(node).unwrap().name().unwrap()
+        ast::Expr::cast(node).unwrap()
     }
 }

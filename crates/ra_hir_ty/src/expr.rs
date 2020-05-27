@@ -2,9 +2,7 @@
 
 use std::sync::Arc;
 
-use hir_def::{
-    path::path, resolver::HasResolver, src::HasSource, AdtId, DefWithBodyId, FunctionId, Lookup,
-};
+use hir_def::{path::path, resolver::HasResolver, AdtId, DefWithBodyId, FunctionId};
 use hir_expand::diagnostics::DiagnosticSink;
 use ra_syntax::{ast, AstPtr};
 use rustc_hash::FxHashSet;
@@ -346,7 +344,7 @@ pub fn unsafe_expressions(
                 }
             }
             Expr::Call { callee, .. } => {
-                let ty = &infer.type_of_expr[*callee];
+                let ty = &infer[*callee];
                 if let &Ty::Apply(ApplicationTy {
                     ctor: TypeCtor::FnDef(CallableDef::FunctionId(func)),
                     ..
@@ -361,7 +359,7 @@ pub fn unsafe_expressions(
                 if infer
                     .method_resolution(id)
                     .map(|func| db.function_data(func).is_unsafe)
-                    .unwrap_or_else(|| false)
+                    .unwrap_or(false)
                 {
                     unsafe_exprs.push(UnsafeExpr::new(id));
                 }
@@ -409,7 +407,7 @@ impl<'a, 'b> UnsafeValidator<'a, 'b> {
         let func_data = db.function_data(self.func);
         if func_data.is_unsafe
             || unsafe_expressions
-                .into_iter()
+                .iter()
                 .filter(|unsafe_expr| !unsafe_expr.inside_unsafe_block)
                 .count()
                 == 0
@@ -417,12 +415,11 @@ impl<'a, 'b> UnsafeValidator<'a, 'b> {
             return;
         }
 
-        let loc = self.func.lookup(db.upcast());
-        let in_file = loc.source(db.upcast());
-
-        let file = in_file.file_id;
-        let fn_def = AstPtr::new(&in_file.value);
-
-        self.sink.push(MissingUnsafe { file, fn_def })
+        let (_, body_source) = db.body_with_source_map(def);
+        for unsafe_expr in unsafe_expressions {
+            if let Ok(in_file) = body_source.as_ref().expr_syntax(unsafe_expr.expr) {
+                self.sink.push(MissingUnsafe { file: in_file.file_id, expr: in_file.value })
+            }
+        }
     }
 }
