@@ -309,6 +309,13 @@ if (enzyme_preopt) {
       }
    }
 
+
+   {
+      DominatorTree DT(*NewF);
+      AssumptionCache AC(*NewF);
+      promoteMemoryToRegister(*NewF, DT, AC);
+   }
+
    {
      FunctionAnalysisManager AM;
      AM.registerPass([] { return AAManager(); });
@@ -329,20 +336,20 @@ if (enzyme_preopt) {
 #endif
      AM.registerPass([] { return LazyValueAnalysis(); });
 #if LLVM_VERSION_MAJOR > 6
-     InstSimplifyPass().run(*NewF, AM);
+     //InstSimplifyPass().run(*NewF, AM);
 #endif
-     InstCombinePass().run(*NewF, AM);
+     //InstCombinePass().run(*NewF, AM);
 
-     EarlyCSEPass(/*memoryssa*/true).run(*NewF, AM);
+     //EarlyCSEPass(/*memoryssa*/true).run(*NewF, AM);
 
-     GVN().run(*NewF, AM);
+     //GVN().run(*NewF, AM);
      SROA().run(*NewF, AM);
 
-     CorrelatedValuePropagationPass().run(*NewF, AM);
+     //CorrelatedValuePropagationPass().run(*NewF, AM);
 
-     DCEPass().run(*NewF, AM);
-     DSEPass().run(*NewF, AM);
-     MemCpyOptPass().run(*NewF, AM);
+     //DCEPass().run(*NewF, AM);
+     //DSEPass().run(*NewF, AM);
+     //MemCpyOptPass().run(*NewF, AM);
      SimplifyCFGOptions scfgo(/*unsigned BonusThreshold=*/1, /*bool ForwardSwitchCond=*/false, /*bool SwitchToLookup=*/false, /*bool CanonicalLoops=*/true, /*bool SinkCommon=*/true, /*AssumptionCache *AssumpCache=*/nullptr);
      SimplifyCFGPass(scfgo).run(*NewF, AM);
    }

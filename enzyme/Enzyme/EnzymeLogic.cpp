@@ -419,7 +419,6 @@ bool is_value_needed_in_reverse(TypeResults &TR, const GradientUtils* gutils, co
       }
     }
 
-
     if (auto op = dyn_cast<BinaryOperator>(user)) {
       if (op->getOpcode() == Instruction::FAdd || op->getOpcode() == Instruction::FSub) {
         continue;
@@ -433,6 +432,8 @@ bool is_value_needed_in_reverse(TypeResults &TR, const GradientUtils* gutils, co
         bool needed = false;
         if (op->getOperand(1) == inst && !gutils->isConstantValue(op->getOperand(1))) needed = true;
         if (op->getOperand(1) == inst && !gutils->isConstantValue(op->getOperand(0))) needed = true;
+        if (op->getOperand(0) == inst && !gutils->isConstantValue(op->getOperand(1))) needed = true;
+        //llvm::errs() << "needed " << *inst << " in div " << *op << " - needed:" << needed << "\n";
         if (!needed) continue;
       } else continue;
     }

@@ -6,7 +6,8 @@ clean:
 	rm -f *.ll *.o results.txt
 
 %-unopt.ll: %.cpp
-	clang++ $(BENCH) $^ -O2 -fno-vectorize -fno-slp-vectorize -ffast-math -fno-unroll-loops -Xclang -new-struct-path-tbaa -o $@ -S -emit-llvm
+	#clang++ $(BENCH) $^ -O2 -fno-vectorize -fno-slp-vectorize -ffast-math -fno-unroll-loops -Xclang -new-struct-path-tbaa -o $@ -S -emit-llvm
+	clang++ $(BENCH) $^ -O1 -disable-llvm-optzns -fno-vectorize -fno-slp-vectorize -ffast-math -fno-unroll-loops -Xclang -new-struct-path-tbaa -o $@ -S -emit-llvm
 
 %-raw.ll: %-unopt.ll
 	opt $^ $(LOAD) -enzyme -o $@ -S
@@ -15,7 +16,8 @@ clean:
 	opt $^ -O2 -o $@ -S
 
 ba.o: ba-opt.ll
-	clang++ $^ -o $@ -lblas $(BENCHLINK)
+	#clang++ $^ -o $@ -lblas $(BENCHLINK)
+	clang++ -O2 $^ -o $@ -lblas $(BENCHLINK)
 
 results.txt: ba.o
 	./$^ | tee $@
