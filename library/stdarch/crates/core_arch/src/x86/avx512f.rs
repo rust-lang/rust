@@ -94,25 +94,6 @@ pub unsafe fn _mm512_set1_epi64(a: i64) -> __m512i {
     transmute(i64x8::splat(a))
 }
 
-/// Sets packed 64-bit integers in `dst` with the supplied values.
-///
-/// [Intel's documentation]( https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=727,1063,4909,1062,1062,4909&text=_mm512_set_epi64)
-#[inline]
-#[target_feature(enable = "avx512f")]
-pub unsafe fn _mm512_set_epi64(
-    e7: i64,
-    e6: i64,
-    e5: i64,
-    e4: i64,
-    e3: i64,
-    e2: i64,
-    e1: i64,
-    e0: i64,
-) -> __m512i {
-    let r = i64x8(e0, e1, e2, e3, e4, e5, e6, e7);
-    transmute(r)
-}
-
 /// Compare packed unsigned 64-bit integers in a and b for less-than, and store the results in a mask vector.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=727,1063,4909,1062,1062&text=_mm512_cmplt_epu64)
