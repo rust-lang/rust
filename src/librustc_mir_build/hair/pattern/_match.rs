@@ -376,6 +376,7 @@ impl<'tcx> PatternFolder<'tcx> for LiteralExpander<'tcx> {
                         Const {
                             val: ty::ConstKind::Value(val),
                             ty: ty::TyS { kind: ty::Ref(_, crty, _), .. },
+                            ..
                         },
                 },
             ) => Pat {
@@ -399,7 +400,7 @@ impl<'tcx> PatternFolder<'tcx> for LiteralExpander<'tcx> {
             (
                 &ty::Ref(_, rty, _),
                 &PatKind::Constant {
-                    value: Const { val, ty: ty::TyS { kind: ty::Ref(_, crty, _), .. } },
+                    value: Const { val, ty: ty::TyS { kind: ty::Ref(_, crty, _), .. }, .. },
                 },
             ) => bug!("cannot deref {:#?}, {} -> {}", val, crty, rty),
 

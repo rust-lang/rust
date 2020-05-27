@@ -291,7 +291,10 @@ pub fn decode_const<D>(decoder: &mut D) -> Result<&'tcx ty::Const<'tcx>, D::Erro
 where
     D: TyDecoder<'tcx>,
 {
-    Ok(decoder.tcx().mk_const(Decodable::decode(decoder)?))
+    // FIXME: we temporarily have a `Const` on the stack here,
+    // as we compare `Const`s using ptr equality, this is dangerous.
+    let ct: ty::Const<'tcx> = Decodable::decode(decoder)?;
+    Ok(decoder.tcx().mk_const(ct.ty, ct.val))
 }
 
 #[inline]

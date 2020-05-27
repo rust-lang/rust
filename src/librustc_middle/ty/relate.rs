@@ -617,7 +617,7 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
         }
         _ => Err(TypeError::ConstMismatch(expected_found(relation, &a, &b))),
     };
-    new_const_val.map(|val| tcx.mk_const(ty::Const { val, ty: a.ty }))
+    new_const_val.map(|val| tcx.mk_const(a.ty, val))
 }
 
 impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::ExistentialPredicate<'tcx>> {

@@ -954,9 +954,9 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 Operand::Constant(Box::new(Constant {
                     span,
                     user_ty: None,
-                    literal: tcx.mk_const(ty::Const {
+                    literal: tcx.mk_const(
                         ty,
-                        val: ty::ConstKind::Unevaluated(
+                        ty::ConstKind::Unevaluated(
                             def_id,
                             InternalSubsts::for_item(tcx, def_id, |param, _| {
                                 if let ty::GenericParamDefKind::Lifetime = param.kind {
@@ -967,7 +967,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                             }),
                             Some(promoted_id),
                         ),
-                    }),
+                    ),
                 }))
             };
             let (blocks, local_decls) = self.source.basic_blocks_and_local_decls_mut();

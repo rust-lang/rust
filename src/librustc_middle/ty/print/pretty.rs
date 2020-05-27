@@ -1160,7 +1160,7 @@ pub trait PrettyPrinter<'tcx>:
             (_, ty::Array(..) | ty::Tuple(..) | ty::Adt(..)) if !ty.has_param_types_or_consts() => {
                 let contents = self.tcx().destructure_const(
                     ty::ParamEnv::reveal_all()
-                        .and(self.tcx().mk_const(ty::Const { val: ty::ConstKind::Value(ct), ty })),
+                        .and(self.tcx().mk_const(ty, ty::ConstKind::Value(ct))),
                 );
                 let fields = contents.fields.iter().copied();
 

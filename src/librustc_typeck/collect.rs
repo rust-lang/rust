@@ -319,7 +319,7 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
     ) -> &'tcx Const<'tcx> {
         bad_placeholder_type(self.tcx(), vec![span]).emit();
 
-        self.tcx().mk_const(ty::Const { val: ty::ConstKind::Error, ty })
+        self.tcx().mk_const(ty, ty::ConstKind::Error)
     }
 
     fn projected_ty_from_poly_trait_ref(
@@ -2043,8 +2043,7 @@ fn associated_item_predicates(
             }
             ty::GenericParamDefKind::Const => {
                 unimplemented_error("const");
-                tcx.mk_const(ty::Const { val: ty::ConstKind::Error, ty: tcx.type_of(param.def_id) })
-                    .into()
+                tcx.mk_const(tcx.type_of(param.def_id), ty::ConstKind::Error).into()
             }
         }
     };

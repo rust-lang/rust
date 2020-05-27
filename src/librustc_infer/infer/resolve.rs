@@ -228,7 +228,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {
             match c.val {
                 ty::ConstKind::Infer(InferConst::Var(vid)) => {
                     self.err = Some(FixupError::UnresolvedConst(vid));
-                    return self.tcx().mk_const(ty::Const { val: ty::ConstKind::Error, ty: c.ty });
+                    return self.tcx().mk_const(c.ty, ty::ConstKind::Error);
                 }
                 ty::ConstKind::Infer(InferConst::Fresh(_)) => {
                     bug!("Unexpected const in full const resolver: {:?}", c);

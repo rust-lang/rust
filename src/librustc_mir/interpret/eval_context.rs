@@ -849,8 +849,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // recursion deeper than one level, because the `tcx.const_eval` above is guaranteed to not
         // return `ConstValue::Unevaluated`, which is the only way that `eval_const_to_op` will call
         // `ecx.const_eval`.
-        let const_ = ty::Const { val: ty::ConstKind::Value(val), ty };
-        self.eval_const_to_op(&const_, None)
+        let const_ = self.tcx.mk_const(ty, ty::ConstKind::Value(val));
+        self.eval_const_to_op(const_, None)
     }
 
     pub fn const_eval_raw(

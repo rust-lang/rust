@@ -509,10 +509,10 @@ impl<'a, 'tcx> TypeFolder<'tcx> for BoundVarReplacer<'a, 'tcx> {
     }
 
     fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
-        if let ty::Const { val: ty::ConstKind::Bound(debruijn, bound_const), ty } = *ct {
+        if let ty::ConstKind::Bound(debruijn, bound_const) = ct.val {
             if debruijn == self.current_index {
                 let fld_c = &mut self.fld_c;
-                let ct = fld_c(bound_const, ty);
+                let ct = fld_c(bound_const, ct.ty);
                 ty::fold::shift_vars(self.tcx, &ct, self.current_index.as_u32())
             } else {
                 ct
@@ -551,9 +551,7 @@ impl<'tcx> TyCtxt<'tcx> {
     {
         // identity for bound types and consts
         let fld_t = |bound_ty| self.mk_ty(ty::Bound(ty::INNERMOST, bound_ty));
-        let fld_c = |bound_ct, ty| {
-            self.mk_const(ty::Const { val: ty::ConstKind::Bound(ty::INNERMOST, bound_ct), ty })
-        };
+        let fld_c = |bound_ct, ty| self.mk_const(ty, ty::ConstKind::Bound(ty::INNERMOST, bound_ct));
         self.replace_escaping_bound_vars(value.skip_binder(), fld_r, fld_t, fld_c)
     }
 
@@ -788,7 +786,7 @@ impl TypeFolder<'tcx> for Shifter<'tcx> {
     }
 
     fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
-        if let ty::Const { val: ty::ConstKind::Bound(debruijn, bound_ct), ty } = *ct {
+        if let ty::ConstKind::Bound(debruijn, bound_ct) = ct.val {
             if self.amount == 0 || debruijn < self.current_index {
                 ct
             } else {
@@ -799,7 +797,7 @@ impl TypeFolder<'tcx> for Shifter<'tcx> {
                         debruijn.shifted_out(self.amount)
                     }
                 };
-                self.tcx.mk_const(ty::Const { val: ty::ConstKind::Bound(debruijn, bound_ct), ty })
+                self.tcx.mk_const(ct.ty, ty::ConstKind::Bound(debruijn, bound_ct))
             }
         } else {
             ct.super_fold_with(self)

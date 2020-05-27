@@ -971,7 +971,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                             )
                             .emit();
 
-                        self.tcx().mk_const(ty::Const { val: ty::ConstKind::Error, ty: ct.ty })
+                        self.tcx().mk_const(ct.ty, ty::ConstKind::Error)
                     }
                 }
             }

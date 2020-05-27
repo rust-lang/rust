@@ -28,9 +28,9 @@ use crate::ty::TyKind::*;
 use crate::ty::{self, DefIdTree, Ty, TypeAndMut};
 use crate::ty::{AdtDef, AdtKind, Const, Region};
 use crate::ty::{BindingMode, BoundVar};
+use crate::ty::{ConstKind, InferConst, ParamConst};
 use crate::ty::{ConstVid, FloatVar, FloatVid, IntVar, IntVid, TyVar, TyVid};
 use crate::ty::{ExistentialPredicate, Predicate, PredicateKind};
-use crate::ty::{InferConst, ParamConst};
 use crate::ty::{InferTy, ParamTy, PolyFnSig, ProjectionTy};
 use crate::ty::{List, TyKind, TyS};
 use rustc_ast::ast;
@@ -856,9 +856,10 @@ impl<'tcx> CommonConsts<'tcx> {
         let mk_const = |c| interners.const_.intern(c, |c| Interned(interners.arena.alloc(c))).0;
 
         CommonConsts {
-            unit: mk_const(ty::Const {
-                val: ty::ConstKind::Value(ConstValue::Scalar(Scalar::zst())),
+            unit: mk_const(Const {
                 ty: types.unit,
+                val: ty::ConstKind::Value(ConstValue::Scalar(Scalar::zst())),
+                _priv: ty::sty::PrivateMarker(()),
             }),
         }
     }
@@ -1909,6 +1910,21 @@ impl<'tcx> Borrow<TyKind<'tcx>> for Interned<'tcx, TyS<'tcx>> {
     }
 }
 
+impl<'tcx> PartialEq for Interned<'tcx, Const<'tcx>> {
+    fn eq(&self, other: &Interned<'tcx, Const<'tcx>>) -> bool {
+        self.0.ty == other.0.ty && self.0.val == other.0.val
+    }
+}
+
+impl<'tcx> Eq for Interned<'tcx, Const<'tcx>> {}
+
+impl<'tcx> Hash for Interned<'tcx, Const<'tcx>> {
+    fn hash<H: Hasher>(&self, s: &mut H) {
+        self.0.ty.hash(s);
+        self.0.val.hash(s);
+    }
+}
+
 // N.B., an `Interned<List<T>>` compares and hashes as its elements.
 impl<'tcx, T: PartialEq> PartialEq for Interned<'tcx, List<T>> {
     fn eq(&self, other: &Interned<'tcx, List<T>>) -> bool {
@@ -2022,7 +2038,6 @@ macro_rules! direct_interners {
 
 direct_interners!(
     region: mk_region(RegionKind),
-    const_: mk_const(Const<'tcx>),
     predicate_kind: intern_predicate_kind(PredicateKind<'tcx>),
 );
 
@@ -2084,6 +2099,13 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn mk_ty(&self, st: TyKind<'tcx>) -> Ty<'tcx> {
         self.interners.intern_ty(st)
+    }
+
+    #[inline]
+    pub fn mk_const(&self, ty: Ty<'tcx>, val: ConstKind<'tcx>) -> &'tcx Const<'tcx> {
+        let ct = Const { ty, val, _priv: super::sty::PrivateMarker(()) };
+
+        self.interners.const_.intern(ct, |ct| Interned(self.arena.alloc(ct))).0
     }
 
     #[inline]
@@ -2307,7 +2329,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_const_var(self, v: ConstVid<'tcx>, ty: Ty<'tcx>) -> &'tcx Const<'tcx> {
-        self.mk_const(ty::Const { val: ty::ConstKind::Infer(InferConst::Var(v)), ty })
+        self.mk_const(ty, ty::ConstKind::Infer(InferConst::Var(v)))
     }
 
     #[inline]
@@ -2327,7 +2349,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_const_infer(self, ic: InferConst<'tcx>, ty: Ty<'tcx>) -> &'tcx ty::Const<'tcx> {
-        self.mk_const(ty::Const { val: ty::ConstKind::Infer(ic), ty })
+        self.mk_const(ty, ty::ConstKind::Infer(ic))
     }
 
     #[inline]
@@ -2337,7 +2359,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_const_param(self, index: u32, name: Symbol, ty: Ty<'tcx>) -> &'tcx Const<'tcx> {
-        self.mk_const(ty::Const { val: ty::ConstKind::Param(ParamConst { index, name }), ty })
+        self.mk_const(ty, ty::ConstKind::Param(ParamConst { index, name }))
     }
 
     pub fn mk_param_from_def(self, param: &ty::GenericParamDef) -> GenericArg<'tcx> {

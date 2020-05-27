@@ -836,7 +836,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             self.ct_infer(ty, Some(param), span).into()
                         } else {
                             // We've already errored above about the mismatch.
-                            tcx.mk_const(ty::Const { val: ty::ConstKind::Error, ty }).into()
+                            tcx.mk_const(ty, ty::ConstKind::Error).into()
                         }
                     }
                 }

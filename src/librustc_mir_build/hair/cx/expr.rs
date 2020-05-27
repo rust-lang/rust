@@ -627,10 +627,11 @@ fn make_mirror_unadjusted<'a, 'tcx>(
                             // in case we are offsetting from a computed discriminant
                             // and not the beginning of discriminants (which is always `0`)
                             let substs = InternalSubsts::identity_for_item(cx.tcx(), did);
-                            let lhs = mk_const(cx.tcx().mk_const(ty::Const {
-                                val: ty::ConstKind::Unevaluated(did, substs, None),
-                                ty: var_ty,
-                            }));
+                            let lhs =
+                                mk_const(cx.tcx().mk_const(
+                                    var_ty,
+                                    ty::ConstKind::Unevaluated(did, substs, None),
+                                ));
                             let bin = ExprKind::Binary { op: BinOp::Add, lhs, rhs: offset };
                             Expr { temp_lifetime, ty: var_ty, span: expr.span, kind: bin }.to_ref()
                         }
@@ -814,7 +815,7 @@ fn convert_path_expr<'a, 'tcx>(
             let name = cx.tcx.hir().name(hir_id);
             let val = ty::ConstKind::Param(ty::ParamConst::new(index, name));
             ExprKind::Literal {
-                literal: cx.tcx.mk_const(ty::Const { val, ty: cx.tables().node_type(expr.hir_id) }),
+                literal: cx.tcx.mk_const(cx.tables().node_type(expr.hir_id), val),
                 user_ty: None,
             }
         }
@@ -823,10 +824,10 @@ fn convert_path_expr<'a, 'tcx>(
             let user_ty = user_substs_applied_to_res(cx, expr.hir_id, res);
             debug!("convert_path_expr: (const) user_ty={:?}", user_ty);
             ExprKind::Literal {
-                literal: cx.tcx.mk_const(ty::Const {
-                    val: ty::ConstKind::Unevaluated(def_id, substs, None),
-                    ty: cx.tables().node_type(expr.hir_id),
-                }),
+                literal: cx.tcx.mk_const(
+                    cx.tables().node_type(expr.hir_id),
+                    ty::ConstKind::Unevaluated(def_id, substs, None),
+                ),
                 user_ty,
             }
         }

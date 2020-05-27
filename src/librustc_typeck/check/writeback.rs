@@ -698,7 +698,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
                 debug!("Resolver::fold_const: input const `{:?}` not fully resolvable", ct);
                 self.report_const_error(ct);
                 self.replaced_with_error = true;
-                self.tcx().mk_const(ty::Const { val: ty::ConstKind::Error, ty: ct.ty })
+                self.tcx().mk_const(ct.ty, ty::ConstKind::Error)
             }
         }
     }

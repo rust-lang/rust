@@ -71,6 +71,8 @@ macro_rules! arena_types {
             // Interned types
             [] tys: rustc_middle::ty::TyS<$tcx>,
 
+            [] const_: rustc_middle::ty::Const<$tcx>,
+
             // HIR query types
             [few] indexed_hir: rustc_middle::hir::map::IndexedHir<$tcx>,
             [few] hir_definitions: rustc_hir::definitions::Definitions,

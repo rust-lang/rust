@@ -309,7 +309,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
 
     /// Pushes the obligations required for an array length to be WF
     /// into `self.out`.
-    fn compute_array_len(&mut self, constant: ty::Const<'tcx>) {
+    fn compute_array_len(&mut self, constant: &ty::Const<'tcx>) {
         if let ty::ConstKind::Unevaluated(def_id, substs, promoted) = constant.val {
             assert!(promoted.is_none());
 
@@ -385,7 +385,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 ty::Array(subty, len) => {
                     self.require_sized(subty, traits::SliceOrArrayElem);
                     // FIXME(eddyb) handle `GenericArgKind::Const` above instead.
-                    self.compute_array_len(*len);
+                    self.compute_array_len(len);
                 }
 
                 ty::Tuple(ref tys) => {

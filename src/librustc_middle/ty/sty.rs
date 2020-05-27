@@ -25,10 +25,12 @@ use rustc_macros::HashStable;
 use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_target::abi::{Size, VariantIdx};
 use rustc_target::spec::abi;
+
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::marker::PhantomData;
 use std::ops::Range;
+use std::ptr;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
 #[derive(HashStable, TypeFoldable, Lift)]
@@ -2178,13 +2180,30 @@ impl<'tcx> TyS<'tcx> {
 }
 
 /// Typed constant value.
-#[derive(Copy, Clone, Debug, Hash, RustcEncodable, RustcDecodable, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Debug, Hash, RustcEncodable, RustcDecodable, Eq, Ord, PartialOrd)]
 #[derive(HashStable)]
 pub struct Const<'tcx> {
     pub ty: Ty<'tcx>,
 
     pub val: ConstKind<'tcx>,
+
+    /// We compare `Const` by pointer equality. This would be incorrect
+    /// if we were able to create Const values on the stack.
+    ///
+    /// Only allow the creation of consts using `tcx.mk_const(ty, val)`.
+    pub _priv: PrivateMarker,
 }
+
+impl<'tcx> PartialEq for Const<'tcx> {
+    fn eq(&self, other: &Const<'tcx>) -> bool {
+        // All `Const` should be interned.
+        ptr::eq(self, other)
+    }
+}
+
+#[derive(Debug, Hash, RustcEncodable, RustcDecodable, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(HashStable)]
+pub struct PrivateMarker(pub(super) ());
 
 #[cfg(target_arch = "x86_64")]
 static_assert_size!(Const<'_>, 48);
@@ -2192,7 +2211,7 @@ static_assert_size!(Const<'_>, 48);
 impl<'tcx> Const<'tcx> {
     /// Literals and const generic parameters are eagerly converted to a constant, everything else
     /// becomes `Unevaluated`.
-    pub fn from_anon_const(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx Self {
+    pub fn from_anon_const(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx Const<'tcx> {
         debug!("Const::from_anon_const(id={:?})", def_id);
 
         let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
@@ -2260,13 +2279,13 @@ impl<'tcx> Const<'tcx> {
             ),
         };
 
-        tcx.mk_const(ty::Const { val, ty })
+        tcx.mk_const(ty, val)
     }
 
     #[inline]
     /// Interns the given value as a constant.
     pub fn from_value(tcx: TyCtxt<'tcx>, val: ConstValue<'tcx>, ty: Ty<'tcx>) -> &'tcx Self {
-        tcx.mk_const(Self { val: ConstKind::Value(val), ty })
+        tcx.mk_const(ty, ConstKind::Value(val))
     }
 
     #[inline]
@@ -2357,7 +2376,7 @@ impl<'tcx> Const<'tcx> {
                 Ok(val) => Const::from_value(tcx, val, self.ty),
                 Err(ErrorHandled::TooGeneric | ErrorHandled::Linted) => self,
                 Err(ErrorHandled::Reported(ErrorReported)) => {
-                    tcx.mk_const(ty::Const { val: ty::ConstKind::Error, ty: self.ty })
+                    tcx.mk_const(self.ty, ty::ConstKind::Error)
                 }
             }
         } else {

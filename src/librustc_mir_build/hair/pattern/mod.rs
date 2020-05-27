@@ -936,7 +936,7 @@ macro_rules! CloneImpls {
 }
 
 CloneImpls! { <'tcx>
-    Span, Field, Mutability, Symbol, hir::HirId, usize, ty::Const<'tcx>,
+    Span, Field, Mutability, Symbol, hir::HirId, usize, &'tcx ty::Const<'tcx>,
     Region<'tcx>, Ty<'tcx>, BindingMode, &'tcx AdtDef,
     SubstsRef<'tcx>, &'tcx GenericArg<'tcx>, UserType<'tcx>,
     UserTypeProjection, PatTyProj<'tcx>
