@@ -435,7 +435,7 @@ dependencies = [
 [[package]]
 name = "chalk-base"
 version = "0.10.1-dev"
-source = "git+https://github.com/jackh726/chalk.git?rev=58e5a31f48ddd4b940c682e7079d3e79e6ffaa1b#58e5a31f48ddd4b940c682e7079d3e79e6ffaa1b"
+source = "git+https://github.com/jackh726/chalk.git?rev=c8f342bf5e48051333d0b2c7fab81347fc21c474#c8f342bf5e48051333d0b2c7fab81347fc21c474"
 dependencies = [
  "lazy_static",
 ]
@@ -443,7 +443,7 @@ dependencies = [
 [[package]]
 name = "chalk-derive"
 version = "0.10.1-dev"
-source = "git+https://github.com/jackh726/chalk.git?rev=58e5a31f48ddd4b940c682e7079d3e79e6ffaa1b#58e5a31f48ddd4b940c682e7079d3e79e6ffaa1b"
+source = "git+https://github.com/jackh726/chalk.git?rev=c8f342bf5e48051333d0b2c7fab81347fc21c474#c8f342bf5e48051333d0b2c7fab81347fc21c474"
 dependencies = [
  "proc-macro2 1.0.3",
  "quote 1.0.2",
@@ -454,7 +454,7 @@ dependencies = [
 [[package]]
 name = "chalk-engine"
 version = "0.10.1-dev"
-source = "git+https://github.com/jackh726/chalk.git?rev=58e5a31f48ddd4b940c682e7079d3e79e6ffaa1b#58e5a31f48ddd4b940c682e7079d3e79e6ffaa1b"
+source = "git+https://github.com/jackh726/chalk.git?rev=c8f342bf5e48051333d0b2c7fab81347fc21c474#c8f342bf5e48051333d0b2c7fab81347fc21c474"
 dependencies = [
  "chalk-base",
  "chalk-derive",
@@ -465,7 +465,7 @@ dependencies = [
 [[package]]
 name = "chalk-ir"
 version = "0.10.1-dev"
-source = "git+https://github.com/jackh726/chalk.git?rev=58e5a31f48ddd4b940c682e7079d3e79e6ffaa1b#58e5a31f48ddd4b940c682e7079d3e79e6ffaa1b"
+source = "git+https://github.com/jackh726/chalk.git?rev=c8f342bf5e48051333d0b2c7fab81347fc21c474#c8f342bf5e48051333d0b2c7fab81347fc21c474"
 dependencies = [
  "chalk-base",
  "chalk-derive",
@@ -474,7 +474,7 @@ dependencies = [
 [[package]]
 name = "chalk-solve"
 version = "0.10.1-dev"
-source = "git+https://github.com/jackh726/chalk.git?rev=58e5a31f48ddd4b940c682e7079d3e79e6ffaa1b#58e5a31f48ddd4b940c682e7079d3e79e6ffaa1b"
+source = "git+https://github.com/jackh726/chalk.git?rev=c8f342bf5e48051333d0b2c7fab81347fc21c474#c8f342bf5e48051333d0b2c7fab81347fc21c474"
 dependencies = [
  "chalk-base",
  "chalk-derive",

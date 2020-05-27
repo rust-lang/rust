@@ -321,10 +321,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         opaque_ty_id: chalk_ir::OpaqueTyId<RustInterner<'tcx>>,
     ) -> Arc<chalk_solve::rust_ir::OpaqueTyDatum<RustInterner<'tcx>>> {
         // FIXME(chalk): actually lower opaque ty
-        let hidden_ty =
-            self.tcx.mk_ty(ty::Tuple(self.tcx.intern_substs(&[]))).lower_into(&self.interner);
         let value = chalk_solve::rust_ir::OpaqueTyDatumBound {
-            hidden_ty,
             bounds: chalk_ir::Binders::new(chalk_ir::VariableKinds::new(&self.interner), vec![]),
         };
         Arc::new(chalk_solve::rust_ir::OpaqueTyDatum {
@@ -417,6 +414,14 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
 
     fn is_object_safe(&self, trait_id: chalk_ir::TraitId<RustInterner<'tcx>>) -> bool {
         self.tcx.is_object_safe(trait_id.0)
+    }
+
+    fn hidden_opaque_type(
+        &self,
+        _id: chalk_ir::OpaqueTyId<RustInterner<'tcx>>,
+    ) -> chalk_ir::Ty<RustInterner<'tcx>> {
+        // FIXME(chalk): actually get hidden ty
+        self.tcx.mk_ty(ty::Tuple(self.tcx.intern_substs(&[]))).lower_into(&self.interner)
     }
 }
 
