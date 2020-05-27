@@ -14,17 +14,17 @@ LL | fn b(v: &[u8]) -> Box<dyn Foo + 'static> {
 LL |     Box::new(v)
    |     ^^^^^^^^^^^ lifetime `'static` required
 
-error[E0621]: explicit lifetime required in the type of `v`
-  --> $DIR/region-object-lifetime-in-coercion.rs:21:5
+error: lifetime may not live long enough
+  --> $DIR/region-object-lifetime-in-coercion.rs:20:5
    |
 LL | fn c(v: &[u8]) -> Box<dyn Foo> {
-   |         ----- help: add explicit lifetime `'static` to the type of `v`: `&'static [u8]`
+   |         - let's call the lifetime of this reference `'1`
 ...
 LL |     Box::new(v)
-   |     ^^^^^^^^^^^ lifetime `'static` required
+   |     ^^^^^^^^^^^ returning this value requires that `'1` must outlive `'static`
 
 error: lifetime may not live long enough
-  --> $DIR/region-object-lifetime-in-coercion.rs:26:5
+  --> $DIR/region-object-lifetime-in-coercion.rs:24:5
    |
 LL | fn d<'a,'b>(v: &'a [u8]) -> Box<dyn Foo+'b> {
    |      -- -- lifetime `'b` defined here
