@@ -274,3 +274,62 @@ try`. This is helpful when you want to examine the resulting build of a PR
 without doing the build yourself.
 
 [rtim]: https://github.com/kennytm/rustup-toolchain-install-master
+
+## Debugging type layouts
+
+The (permanently) unstable `#[rustc_layout]` attribute can be used to dump
+the [`Layout`] of the type it is attached to. For example:
+
+```rust
+#![feature(rustc_attrs)]
+
+#[rustc_layout(debug)]
+type T<'a> = &'a u32;
+```
+
+Will emit the following:
+
+```text
+error: layout_of(&'a u32) = Layout {
+    fields: Primitive,
+    variants: Single {
+        index: 0,
+    },
+    abi: Scalar(
+        Scalar {
+            value: Pointer,
+            valid_range: 1..=18446744073709551615,
+        },
+    ),
+    largest_niche: Some(
+        Niche {
+            offset: Size {
+                raw: 0,
+            },
+            scalar: Scalar {
+                value: Pointer,
+                valid_range: 1..=18446744073709551615,
+            },
+        },
+    ),
+    align: AbiAndPrefAlign {
+        abi: Align {
+            pow2: 3,
+        },
+        pref: Align {
+            pow2: 3,
+        },
+    },
+    size: Size {
+        raw: 8,
+    },
+}
+ --> src/lib.rs:4:1
+  |
+4 | type T<'a> = &'a u32;
+  | ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+```
+
+[`Layout`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_target/abi/struct.Layout.html
