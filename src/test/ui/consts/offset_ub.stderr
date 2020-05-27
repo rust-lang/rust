@@ -51,7 +51,7 @@ error: any use of this value will cause an error
 LL |         intrinsics::offset(self, count)
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |         |
-   |         inbounds pointer arithmetic: overflow computing offset
+   |         overflowing in-bounds pointer arithmetic
    |         inside `std::ptr::const_ptr::<impl *const u16>::offset` at $SRC_DIR/libcore/ptr/const_ptr.rs:LL:COL
    |         inside `OVERFLOW` at $DIR/offset_ub.rs:11:43
    | 
@@ -66,7 +66,7 @@ error: any use of this value will cause an error
 LL |         intrinsics::offset(self, count)
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |         |
-   |         inbounds pointer arithmetic: overflow computing offset
+   |         overflowing in-bounds pointer arithmetic
    |         inside `std::ptr::const_ptr::<impl *const u16>::offset` at $SRC_DIR/libcore/ptr/const_ptr.rs:LL:COL
    |         inside `UNDERFLOW` at $DIR/offset_ub.rs:12:44
    | 

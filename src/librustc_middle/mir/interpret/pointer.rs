@@ -25,6 +25,12 @@ pub trait PointerArithmetic: HasDataLayout {
     }
 
     #[inline]
+    fn machine_isize_min(&self) -> i64 {
+        let max_isize_plus_1 = 1i128 << (self.pointer_size().bits() - 1);
+        i64::try_from(-max_isize_plus_1).unwrap()
+    }
+
+    #[inline]
     fn machine_isize_max(&self) -> i64 {
         let max_isize_plus_1 = 1u128 << (self.pointer_size().bits() - 1);
         i64::try_from(max_isize_plus_1 - 1).unwrap()
@@ -42,18 +48,23 @@ pub trait PointerArithmetic: HasDataLayout {
 
     #[inline]
     fn overflowing_offset(&self, val: u64, i: u64) -> (u64, bool) {
+        // We do not need to check if i fits in a machine usize. If it doesn't,
+        // either the wrapping_add will wrap or res will not fit in a pointer.
         let res = val.overflowing_add(i);
         self.truncate_to_ptr(res)
     }
 
     #[inline]
     fn overflowing_signed_offset(&self, val: u64, i: i64) -> (u64, bool) {
+        // We need to make sure that i fits in a machine isize.
         let n = uabs(i);
         if i >= 0 {
-            self.overflowing_offset(val, n)
+            let (val, over) = self.overflowing_offset(val, n);
+            (val, over || i > self.machine_isize_max())
         } else {
             let res = val.overflowing_sub(n);
-            self.truncate_to_ptr(res)
+            let (val, over) = self.truncate_to_ptr(res);
+            (val, over || i < self.machine_isize_min())
         }
     }
 
