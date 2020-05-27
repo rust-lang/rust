@@ -384,7 +384,7 @@ interface InlayHintsParams {
 
 ```typescript
 interface InlayHint {
-    kind: "TypeHint" | "ParameterHint" | "ChainingHints",
+    kind: "TypeHint" | "ParameterHint" | "ChainingHint",
     range: Range,
     label: string,
 }
