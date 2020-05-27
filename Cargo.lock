@@ -434,9 +434,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-derive"
-version = "0.11.0"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b9bd01eab87277d973183a1d2e56bace1c11f8242c52c20636fb7dddf343ac9"
+checksum = "d463e01905d607e181de72e8608721d3269f29176c9a14ce037011316ae7131d"
 dependencies = [
  "proc-macro2 1.0.3",
  "quote 1.0.2",
@@ -446,20 +446,21 @@ dependencies = [
 
 [[package]]
 name = "chalk-engine"
-version = "0.11.0"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6c7a637c3d17ed555aef16e16952a5d1e127bd55178cc30be22afeb92da90c7d"
+checksum = "efaf428f5398d36284f79690cf988762b7c091249f50a6c11db613a46c057000"
 dependencies = [
  "chalk-derive",
  "chalk-ir",
  "rustc-hash",
+ "tracing",
 ]
 
 [[package]]
 name = "chalk-ir"
-version = "0.11.0"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "595e5735ded16c3f3dc348f7b15bbb2521a0080b1863cac38ad5271589944670"
+checksum = "fd3fdc1e9f68498ffe80f4a23b0b95f1ca6fb21d5a4c9b0c085fab3ca712bdbe"
 dependencies = [
  "chalk-derive",
  "lazy_static",
@@ -467,9 +468,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-solve"
-version = "0.11.0"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d9d938139db425867a30cc0cfec0269406d8238d0571d829041eaa7a8455d11"
+checksum = "5b9fd4102807b7ebe8fb034fa0f488c5656e1966d3261b558b81a08d519cdb29"
 dependencies = [
  "chalk-derive",
  "chalk-engine",
@@ -478,6 +479,7 @@ dependencies = [
  "itertools 0.9.0",
  "petgraph",
  "rustc-hash",
+ "tracing",
 ]
 
 [[package]]
@@ -5330,6 +5332,37 @@ dependencies = [
  "darling",
  "quote 0.6.12",
  "syn 0.15.35",
+]
+
+[[package]]
+name = "tracing"
+version = "0.1.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a41f40ed0e162c911ac6fcb53ecdc8134c46905fdbbae8c50add462a538b495f"
+dependencies = [
+ "cfg-if",
+ "tracing-attributes",
+ "tracing-core",
+]
+
+[[package]]
+name = "tracing-attributes"
+version = "0.1.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "99bbad0de3fd923c9c3232ead88510b783e5a4d16a6154adffa3d53308de984c"
+dependencies = [
+ "proc-macro2 1.0.3",
+ "quote 1.0.2",
+ "syn 1.0.11",
+]
+
+[[package]]
+name = "tracing-core"
+version = "0.1.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0aa83a9a47081cd522c09c81b31aec2c9273424976f922ad61c053b58350b715"
+dependencies = [
+ "lazy_static",
 ]
 
 [[package]]

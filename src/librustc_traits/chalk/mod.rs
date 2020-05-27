@@ -133,6 +133,7 @@ crate fn evaluate_goal<'tcx>(
                             },
                             chalk_ir::TypeName::Array => unimplemented!(),
                             chalk_ir::TypeName::FnDef(_) => unimplemented!(),
+                            chalk_ir::TypeName::Closure(_) => unimplemented!(),
                             chalk_ir::TypeName::Never => unimplemented!(),
                             chalk_ir::TypeName::Tuple(_size) => unimplemented!(),
                             chalk_ir::TypeName::Slice => unimplemented!(),

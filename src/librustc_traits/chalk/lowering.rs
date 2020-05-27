@@ -43,6 +43,8 @@ use rustc_span::def_id::DefId;
 
 use std::collections::btree_map::{BTreeMap, Entry};
 
+use chalk_ir::fold::shift::Shift;
+
 /// Essentially an `Into` with a `&RustInterner` parameter
 crate trait LowerInto<'tcx, T> {
     /// Lower a rustc construct (e.g., `ty::TraitPredicate`) to a chalk type, consuming `self`.
@@ -82,7 +84,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::InEnvironment<chalk_ir::Goal<RustInterner<'
                             collect_bound_vars(interner, interner.tcx, predicate);
 
                         Some(
-                            chalk_ir::ProgramClauseData::ForAll(chalk_ir::Binders::new(
+                            chalk_ir::ProgramClauseData(chalk_ir::Binders::new(
                                 binders,
                                 chalk_ir::ProgramClauseImplication {
                                     consequence: chalk_ir::DomainGoal::FromEnv(
@@ -102,7 +104,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::InEnvironment<chalk_ir::Goal<RustInterner<'
                             collect_bound_vars(interner, interner.tcx, predicate);
 
                         Some(
-                            chalk_ir::ProgramClauseData::ForAll(chalk_ir::Binders::new(
+                            chalk_ir::ProgramClauseData(chalk_ir::Binders::new(
                                 binders,
                                 chalk_ir::ProgramClauseImplication {
                                     consequence: chalk_ir::DomainGoal::Holds(
@@ -127,7 +129,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::InEnvironment<chalk_ir::Goal<RustInterner<'
                             collect_bound_vars(interner, interner.tcx, predicate);
 
                         Some(
-                            chalk_ir::ProgramClauseData::ForAll(chalk_ir::Binders::new(
+                            chalk_ir::ProgramClauseData(chalk_ir::Binders::new(
                                 binders,
                                 chalk_ir::ProgramClauseImplication {
                                     consequence: chalk_ir::DomainGoal::Holds(
@@ -153,13 +155,16 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::InEnvironment<chalk_ir::Goal<RustInterner<'
                 }
             }
             ChalkEnvironmentClause::TypeFromEnv(ty) => Some(
-                chalk_ir::ProgramClauseData::Implies(chalk_ir::ProgramClauseImplication {
-                    consequence: chalk_ir::DomainGoal::FromEnv(chalk_ir::FromEnv::Ty(
-                        ty.lower_into(interner),
-                    )),
-                    conditions: chalk_ir::Goals::new(interner),
-                    priority: chalk_ir::ClausePriority::High,
-                })
+                chalk_ir::ProgramClauseData(chalk_ir::Binders::new(
+                    chalk_ir::VariableKinds::new(interner),
+                    chalk_ir::ProgramClauseImplication {
+                        consequence: chalk_ir::DomainGoal::FromEnv(chalk_ir::FromEnv::Ty(
+                            ty.lower_into(interner).shifted_in(interner),
+                        )),
+                        conditions: chalk_ir::Goals::new(interner),
+                        priority: chalk_ir::ClausePriority::High,
+                    },
+                ))
                 .intern(interner),
             ),
         });
@@ -416,12 +421,15 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
                 })
                 .intern(interner)
             }
-            // FIXME(chalk): add region
-            Dynamic(predicates, _region) => {
-                TyData::Dyn(chalk_ir::DynTy { bounds: predicates.lower_into(interner) })
-                    .intern(interner)
-            }
-            Closure(_def_id, _) => unimplemented!(),
+            Dynamic(predicates, region) => TyData::Dyn(chalk_ir::DynTy {
+                bounds: predicates.lower_into(interner),
+                lifetime: region.lower_into(interner),
+            })
+            .intern(interner),
+            Closure(def_id, substs) => apply(
+                chalk_ir::TypeName::Closure(chalk_ir::ClosureId(def_id)),
+                substs.lower_into(interner),
+            ),
             Generator(_def_id, _substs, _) => unimplemented!(),
             GeneratorWitness(_) => unimplemented!(),
             Never => apply(chalk_ir::TypeName::Never, empty()),
@@ -624,7 +632,7 @@ crate fn collect_bound_vars<'a, 'tcx, T: TypeFoldable<'tcx>>(
     }
 
     (0..parameters.len()).for_each(|i| {
-        parameters.get(&(i as u32)).expect("Skipped bound var index.");
+        parameters.get(&(i as u32)).expect(&format!("Skipped bound var index `{:?}`.", i));
     });
 
     let binders = chalk_ir::VariableKinds::from(interner, parameters.into_iter().map(|(_, v)| v));
