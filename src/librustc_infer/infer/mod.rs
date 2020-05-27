@@ -217,18 +217,22 @@ impl<'tcx> InferCtxtInner<'tcx> {
         }
     }
 
+    #[inline]
     pub fn region_obligations(&self) -> &[(hir::HirId, RegionObligation<'tcx>)] {
         &self.region_obligations
     }
 
+    #[inline]
     pub fn projection_cache(&mut self) -> traits::ProjectionCache<'_, 'tcx> {
         self.projection_cache.with_log(&mut self.undo_log)
     }
 
+    #[inline]
     fn type_variables(&mut self) -> type_variable::TypeVariableTable<'_, 'tcx> {
         self.type_variable_storage.with_log(&mut self.undo_log)
     }
 
+    #[inline]
     fn int_unification_table(
         &mut self,
     ) -> ut::UnificationTable<
@@ -241,6 +245,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
         self.int_unification_storage.with_log(&mut self.undo_log)
     }
 
+    #[inline]
     fn float_unification_table(
         &mut self,
     ) -> ut::UnificationTable<
@@ -253,6 +258,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
         self.float_unification_storage.with_log(&mut self.undo_log)
     }
 
+    #[inline]
     fn const_unification_table(
         &mut self,
     ) -> ut::UnificationTable<
@@ -265,6 +271,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
         self.const_unification_storage.with_log(&mut self.undo_log)
     }
 
+    #[inline]
     pub fn unwrap_region_constraints(&mut self) -> RegionConstraintCollector<'_, 'tcx> {
         self.region_constraint_storage
             .as_mut()
@@ -1602,14 +1609,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// having to resort to storing full `GenericArg`s in `stalled_on`.
     #[inline(always)]
     pub fn ty_or_const_infer_var_changed(&self, infer_var: TyOrConstInferVar<'tcx>) -> bool {
-        let mut inner = self.inner.borrow_mut();
         match infer_var {
             TyOrConstInferVar::Ty(v) => {
                 use self::type_variable::TypeVariableValue;
 
                 // If `inlined_probe` returns a `Known` value, it never equals
                 // `ty::Infer(ty::TyVar(v))`.
-                match inner.type_variables().inlined_probe(v) {
+                match self.inner.borrow_mut().type_variables().inlined_probe(v) {
                     TypeVariableValue::Unknown { .. } => false,
                     TypeVariableValue::Known { .. } => true,
                 }
@@ -1619,7 +1625,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 // If `inlined_probe_value` returns a value it's always a
                 // `ty::Int(_)` or `ty::UInt(_)`, which never matches a
                 // `ty::Infer(_)`.
-                inner.int_unification_table().inlined_probe_value(v).is_some()
+                self.inner.borrow_mut().int_unification_table().inlined_probe_value(v).is_some()
             }
 
             TyOrConstInferVar::TyFloat(v) => {
@@ -1627,7 +1633,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 // `ty::Float(_)`, which never matches a `ty::Infer(_)`.
                 //
                 // Not `inlined_probe_value(v)` because this call site is colder.
-                inner.float_unification_table().probe_value(v).is_some()
+                self.inner.borrow_mut().float_unification_table().probe_value(v).is_some()
             }
 
             TyOrConstInferVar::Const(v) => {
@@ -1635,7 +1641,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 // `ty::ConstKind::Infer(ty::InferConst::Var(v))`.
                 //
                 // Not `inlined_probe_value(v)` because this call site is colder.
-                match inner.const_unification_table().probe_value(v).val {
+                match self.inner.borrow_mut().const_unification_table().probe_value(v).val {
                     ConstVariableValue::Unknown { .. } => false,
                     ConstVariableValue::Known { .. } => true,
                 }

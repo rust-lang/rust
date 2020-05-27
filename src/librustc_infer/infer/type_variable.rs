@@ -87,11 +87,7 @@ pub struct TypeVariableStorage<'tcx> {
 }
 
 pub struct TypeVariableTable<'a, 'tcx> {
-    values: &'a mut sv::SnapshotVecStorage<Delegate>,
-
-    eq_relations: &'a mut ut::UnificationTableStorage<TyVidEqKey<'tcx>>,
-
-    sub_relations: &'a mut ut::UnificationTableStorage<ty::TyVid>,
+    storage: &'a mut TypeVariableStorage<'tcx>,
 
     undo_log: &'a mut InferCtxtUndoLogs<'tcx>,
 }
@@ -165,12 +161,12 @@ impl<'tcx> TypeVariableStorage<'tcx> {
         }
     }
 
+    #[inline]
     pub(crate) fn with_log<'a>(
         &'a mut self,
         undo_log: &'a mut InferCtxtUndoLogs<'tcx>,
     ) -> TypeVariableTable<'a, 'tcx> {
-        let TypeVariableStorage { values, eq_relations, sub_relations } = self;
-        TypeVariableTable { values, eq_relations, sub_relations, undo_log }
+        TypeVariableTable { storage: self, undo_log }
     }
 }
 
@@ -180,7 +176,7 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
     /// Note that this function does not return care whether
     /// `vid` has been unified with something else or not.
     pub fn var_diverges(&self, vid: ty::TyVid) -> bool {
-        self.values.get(vid.index as usize).diverging
+        self.storage.values.get(vid.index as usize).diverging
     }
 
     /// Returns the origin that was given when `vid` was created.
@@ -188,7 +184,7 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
     /// Note that this function does not return care whether
     /// `vid` has been unified with something else or not.
     pub fn var_origin(&self, vid: ty::TyVid) -> &TypeVariableOrigin {
-        &self.values.get(vid.index as usize).origin
+        &self.storage.values.get(vid.index as usize).origin
     }
 
     /// Records that `a == b`, depending on `dir`.
@@ -265,7 +261,7 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
 
     /// Returns the number of type variables created thus far.
     pub fn num_vars(&self) -> usize {
-        self.values.len()
+        self.storage.values.len()
     }
 
     /// Returns the "root" variable of `vid` in the `eq_relations`
@@ -319,18 +315,21 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
         }
     }
 
+    #[inline]
     fn values(
         &mut self,
     ) -> sv::SnapshotVec<Delegate, &mut Vec<TypeVariableData>, &mut InferCtxtUndoLogs<'tcx>> {
-        self.values.with_log(self.undo_log)
+        self.storage.values.with_log(self.undo_log)
     }
 
+    #[inline]
     fn eq_relations(&mut self) -> super::UnificationTable<'_, 'tcx, TyVidEqKey<'tcx>> {
-        self.eq_relations.with_log(self.undo_log)
+        self.storage.eq_relations.with_log(self.undo_log)
     }
 
+    #[inline]
     fn sub_relations(&mut self) -> super::UnificationTable<'_, 'tcx, ty::TyVid> {
-        self.sub_relations.with_log(self.undo_log)
+        self.storage.sub_relations.with_log(self.undo_log)
     }
 
     /// Returns a range of the type variables created during the snapshot.
@@ -342,7 +341,7 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
         (
             range.start..range.end,
             (range.start.index..range.end.index)
-                .map(|index| self.values.get(index as usize).origin)
+                .map(|index| self.storage.values.get(index as usize).origin)
                 .collect(),
         )
     }
@@ -378,7 +377,7 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
                         // quick check to see if this variable was
                         // created since the snapshot started or not.
                         let mut eq_relations = ut::UnificationTable::with_log(
-                            &mut *self.eq_relations,
+                            &mut self.storage.eq_relations,
                             &mut *self.undo_log,
                         );
                         let escaping_type = match eq_relations.probe_value(vid) {
@@ -400,7 +399,7 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
     /// Returns indices of all variables that are not yet
     /// instantiated.
     pub fn unsolved_variables(&mut self) -> Vec<ty::TyVid> {
-        (0..self.values.len())
+        (0..self.storage.values.len())
             .filter_map(|i| {
                 let vid = ty::TyVid { index: i as u32 };
                 match self.probe(vid) {
