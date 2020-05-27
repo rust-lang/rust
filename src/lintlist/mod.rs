@@ -2421,7 +2421,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     Lint {
         name: "useless_conversion",
         group: "complexity",
-        desc: "calls to `Into`/`From`/`IntoIter` that performs useless conversions to the same type",
+        desc: "calls to `Into`, `TryInto`, `From`, `TryFrom`, `IntoIter` that performs useless conversions to the same type",
         deprecation: None,
         module: "useless_conversion",
     },
