@@ -274,7 +274,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
         use TyKind::*;
 
         let empty = || chalk_ir::Substitution::empty(interner);
-        let struct_ty = |def_id| chalk_ir::TypeName::Struct(chalk_ir::StructId(def_id));
+        let struct_ty = |def_id| chalk_ir::TypeName::Adt(chalk_ir::AdtId(def_id));
         let apply = |name, substitution| {
             TyData::Apply(chalk_ir::ApplicationTy { name, substitution }).intern(interner)
         };
@@ -314,14 +314,14 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
                 struct_ty(RustDefId::Array),
                 chalk_ir::Substitution::from1(
                     interner,
-                    chalk_ir::ParameterKind::Ty(ty.lower_into(interner)).intern(interner),
+                    chalk_ir::GenericArgData::Ty(ty.lower_into(interner)).intern(interner),
                 ),
             ),
             Slice(ty) => apply(
                 chalk_ir::TypeName::Slice,
                 chalk_ir::Substitution::from1(
                     interner,
-                    chalk_ir::ParameterKind::Ty(ty.lower_into(interner)).intern(interner),
+                    chalk_ir::GenericArgData::Ty(ty.lower_into(interner)).intern(interner),
                 ),
             ),
             RawPtr(ptr) => {
@@ -341,9 +341,9 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
                     chalk_ir::Substitution::from(
                         interner,
                         &[
-                            chalk_ir::ParameterKind::Lifetime(region.lower_into(interner))
+                            chalk_ir::GenericArgData::Lifetime(region.lower_into(interner))
                                 .intern(interner),
-                            chalk_ir::ParameterKind::Ty(ty.lower_into(interner)).intern(interner),
+                            chalk_ir::GenericArgData::Ty(ty.lower_into(interner)).intern(interner),
                         ],
                     ),
                 )
@@ -357,7 +357,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
                     substitution: chalk_ir::Substitution::from(
                         interner,
                         inputs_and_outputs.iter().map(|ty| {
-                            chalk_ir::ParameterKind::Ty(ty.lower_into(interner)).intern(interner)
+                            chalk_ir::GenericArgData::Ty(ty.lower_into(interner)).intern(interner)
                         }),
                     ),
                 })
@@ -439,16 +439,16 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Lifetime<RustInterner<'tcx>>> for Region<'t
     }
 }
 
-impl<'tcx> LowerInto<'tcx, chalk_ir::Parameter<RustInterner<'tcx>>> for GenericArg<'tcx> {
-    fn lower_into(self, interner: &RustInterner<'tcx>) -> chalk_ir::Parameter<RustInterner<'tcx>> {
+impl<'tcx> LowerInto<'tcx, chalk_ir::GenericArg<RustInterner<'tcx>>> for GenericArg<'tcx> {
+    fn lower_into(self, interner: &RustInterner<'tcx>) -> chalk_ir::GenericArg<RustInterner<'tcx>> {
         match self.unpack() {
             ty::subst::GenericArgKind::Type(ty) => {
-                chalk_ir::ParameterKind::Ty(ty.lower_into(interner))
+                chalk_ir::GenericArgData::Ty(ty.lower_into(interner))
             }
             ty::subst::GenericArgKind::Lifetime(lifetime) => {
-                chalk_ir::ParameterKind::Lifetime(lifetime.lower_into(interner))
+                chalk_ir::GenericArgData::Lifetime(lifetime.lower_into(interner))
             }
-            ty::subst::GenericArgKind::Const(_) => chalk_ir::ParameterKind::Ty(
+            ty::subst::GenericArgKind::Const(_) => chalk_ir::GenericArgData::Ty(
                 chalk_ir::TyData::Apply(chalk_ir::ApplicationTy {
                     name: chalk_ir::TypeName::Tuple(0),
                     substitution: chalk_ir::Substitution::empty(interner),
@@ -507,7 +507,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Binders<chalk_ir::QuantifiedWhereClauses<Ru
         let where_clauses = predicates.into_iter().map(|predicate| match predicate {
             ty::ExistentialPredicate::Trait(ty::ExistentialTraitRef { def_id, substs }) => {
                 chalk_ir::Binders::new(
-                    chalk_ir::ParameterKinds::new(interner),
+                    chalk_ir::VariableKinds::new(interner),
                     chalk_ir::WhereClause::Implemented(chalk_ir::TraitRef {
                         trait_id: chalk_ir::TraitId(RustDefId::Trait(*def_id)),
                         substitution: substs.lower_into(interner),
@@ -516,7 +516,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Binders<chalk_ir::QuantifiedWhereClauses<Ru
             }
             ty::ExistentialPredicate::Projection(_predicate) => unimplemented!(),
             ty::ExistentialPredicate::AutoTrait(def_id) => chalk_ir::Binders::new(
-                chalk_ir::ParameterKinds::new(interner),
+                chalk_ir::VariableKinds::new(interner),
                 chalk_ir::WhereClause::Implemented(chalk_ir::TraitRef {
                     trait_id: chalk_ir::TraitId(RustDefId::Trait(*def_id)),
                     substitution: chalk_ir::Substitution::empty(interner),
@@ -541,7 +541,7 @@ crate fn collect_bound_vars<'a, 'tcx, T: TypeFoldable<'tcx>>(
     interner: &RustInterner<'tcx>,
     tcx: TyCtxt<'tcx>,
     ty: &'a Binder<T>,
-) -> (T, chalk_ir::ParameterKinds<RustInterner<'tcx>>, BTreeMap<DefId, u32>) {
+) -> (T, chalk_ir::VariableKinds<RustInterner<'tcx>>, BTreeMap<DefId, u32>) {
     let mut bound_vars_collector = BoundVarsCollector::new();
     ty.skip_binder().visit_with(&mut bound_vars_collector);
     let mut parameters = bound_vars_collector.parameters;
@@ -556,25 +556,25 @@ crate fn collect_bound_vars<'a, 'tcx, T: TypeFoldable<'tcx>>(
     let new_ty = ty.skip_binder().fold_with(&mut bound_var_substitutor);
 
     for var in named_parameters.values() {
-        parameters.insert(*var, chalk_ir::ParameterKind::Lifetime(()));
+        parameters.insert(*var, chalk_ir::VariableKind::Lifetime);
     }
 
     (0..parameters.len()).for_each(|i| {
         parameters.get(&(i as u32)).expect("Skipped bound var index.");
     });
 
-    let binders = chalk_ir::ParameterKinds::from(interner, parameters.into_iter().map(|(_, v)| v));
+    let binders = chalk_ir::VariableKinds::from(interner, parameters.into_iter().map(|(_, v)| v));
 
     (new_ty, binders, named_parameters)
 }
 
-crate struct BoundVarsCollector {
+crate struct BoundVarsCollector<'tcx> {
     binder_index: ty::DebruijnIndex,
-    crate parameters: BTreeMap<u32, chalk_ir::ParameterKind<()>>,
+    crate parameters: BTreeMap<u32, chalk_ir::VariableKind<RustInterner<'tcx>>>,
     crate named_parameters: Vec<DefId>,
 }
 
-impl BoundVarsCollector {
+impl<'tcx> BoundVarsCollector<'tcx> {
     crate fn new() -> Self {
         BoundVarsCollector {
             binder_index: ty::INNERMOST,
@@ -584,7 +584,7 @@ impl BoundVarsCollector {
     }
 }
 
-impl<'tcx> TypeVisitor<'tcx> for BoundVarsCollector {
+impl<'tcx> TypeVisitor<'tcx> for BoundVarsCollector<'tcx> {
     fn visit_binder<T: TypeFoldable<'tcx>>(&mut self, t: &Binder<T>) -> bool {
         self.binder_index.shift_in(1);
         let result = t.super_visit_with(self);
@@ -597,11 +597,12 @@ impl<'tcx> TypeVisitor<'tcx> for BoundVarsCollector {
             ty::Bound(debruijn, bound_ty) if debruijn == self.binder_index => {
                 match self.parameters.entry(bound_ty.var.as_u32()) {
                     Entry::Vacant(entry) => {
-                        entry.insert(chalk_ir::ParameterKind::Ty(()));
+                        entry.insert(chalk_ir::VariableKind::Ty(chalk_ir::TyKind::General));
                     }
-                    Entry::Occupied(entry) => {
-                        entry.get().assert_ty_ref();
-                    }
+                    Entry::Occupied(entry) => match entry.get() {
+                        chalk_ir::VariableKind::Ty(_) => {}
+                        _ => panic!(),
+                    },
                 }
             }
 
@@ -622,11 +623,12 @@ impl<'tcx> TypeVisitor<'tcx> for BoundVarsCollector {
 
                 ty::BoundRegion::BrAnon(var) => match self.parameters.entry(*var) {
                     Entry::Vacant(entry) => {
-                        entry.insert(chalk_ir::ParameterKind::Lifetime(()));
+                        entry.insert(chalk_ir::VariableKind::Lifetime);
                     }
-                    Entry::Occupied(entry) => {
-                        entry.get().assert_lifetime_ref();
-                    }
+                    Entry::Occupied(entry) => match entry.get() {
+                        chalk_ir::VariableKind::Lifetime => {}
+                        _ => panic!(),
+                    },
                 },
 
                 ty::BrEnv => unimplemented!(),

@@ -55,25 +55,23 @@ crate fn evaluate_goal<'tcx>(
                     CanonicalVarKind::PlaceholderTy(_ty) => unimplemented!(),
                     CanonicalVarKind::PlaceholderRegion(_ui) => unimplemented!(),
                     CanonicalVarKind::Ty(ty) => match ty {
-                        CanonicalTyVarKind::General(ui) => {
-                            chalk_ir::ParameterKind::Ty(chalk_ir::UniverseIndex {
-                                counter: ui.index(),
-                            })
-                        }
-                        CanonicalTyVarKind::Int | CanonicalTyVarKind::Float => {
-                            // FIXME(chalk) - this is actually really important
-                            // These variable kinds put some limits on the
-                            // types that can be substituted (floats or ints).
-                            // While it's unclear exactly the design here, we
-                            // probably want some way to "register" these.
-                            chalk_ir::ParameterKind::Ty(chalk_ir::UniverseIndex::root())
-                        }
+                        CanonicalTyVarKind::General(ui) => chalk_ir::WithKind::new(
+                            chalk_ir::VariableKind::Ty(chalk_ir::TyKind::General),
+                            chalk_ir::UniverseIndex { counter: ui.index() },
+                        ),
+                        CanonicalTyVarKind::Int => chalk_ir::WithKind::new(
+                            chalk_ir::VariableKind::Ty(chalk_ir::TyKind::Integer),
+                            chalk_ir::UniverseIndex::root(),
+                        ),
+                        CanonicalTyVarKind::Float => chalk_ir::WithKind::new(
+                            chalk_ir::VariableKind::Ty(chalk_ir::TyKind::Float),
+                            chalk_ir::UniverseIndex::root(),
+                        ),
                     },
-                    CanonicalVarKind::Region(ui) => {
-                        chalk_ir::ParameterKind::Lifetime(chalk_ir::UniverseIndex {
-                            counter: ui.index(),
-                        })
-                    }
+                    CanonicalVarKind::Region(ui) => chalk_ir::WithKind::new(
+                        chalk_ir::VariableKind::Lifetime,
+                        chalk_ir::UniverseIndex { counter: ui.index() },
+                    ),
                     CanonicalVarKind::Const(_ui) => unimplemented!(),
                     CanonicalVarKind::PlaceholderConst(_pc) => unimplemented!(),
                 }),
@@ -101,14 +99,14 @@ crate fn evaluate_goal<'tcx>(
             // essentially inverse of lowering a `GenericArg`.
             let _data = p.data(&interner);
             match _data {
-                chalk_ir::ParameterKind::Ty(_t) => {
+                chalk_ir::GenericArgData::Ty(_t) => {
                     use chalk_ir::TyData;
                     use rustc_ast::ast;
 
                     let _data = _t.data(&interner);
                     let kind = match _data {
                         TyData::Apply(_application_ty) => match _application_ty.name {
-                            chalk_ir::TypeName::Struct(_struct_id) => match _struct_id.0 {
+                            chalk_ir::TypeName::Adt(_struct_id) => match _struct_id.0 {
                                 RustDefId::Adt(_) => unimplemented!(),
                                 RustDefId::Never => unimplemented!(),
                                 RustDefId::Array => unimplemented!(),
@@ -139,6 +137,9 @@ crate fn evaluate_goal<'tcx>(
                                     chalk_ir::FloatTy::F64 => ty::Float(ast::FloatTy::F64),
                                 },
                             },
+                            chalk_ir::TypeName::Array => unimplemented!(),
+                            chalk_ir::TypeName::FnDef(_) => unimplemented!(),
+                            chalk_ir::TypeName::Never => unimplemented!(),
                             chalk_ir::TypeName::Tuple(_size) => unimplemented!(),
                             chalk_ir::TypeName::Slice => unimplemented!(),
                             chalk_ir::TypeName::Raw(_) => unimplemented!(),
@@ -160,14 +161,14 @@ crate fn evaluate_goal<'tcx>(
                                 kind: ty::BoundTyKind::Anon,
                             },
                         ),
-                        TyData::InferenceVar(_) => unimplemented!(),
+                        TyData::InferenceVar(_, _) => unimplemented!(),
                         TyData::Dyn(_) => unimplemented!(),
                     };
                     let _ty: Ty<'_> = tcx.mk_ty(kind);
                     let _arg: GenericArg<'_> = _ty.into();
                     var_values.push(_arg);
                 }
-                chalk_ir::ParameterKind::Lifetime(_l) => {
+                chalk_ir::GenericArgData::Lifetime(_l) => {
                     let _data = _l.data(&interner);
                     let _lifetime: Region<'_> = match _data {
                         chalk_ir::LifetimeData::BoundVar(_var) => {
@@ -185,6 +186,7 @@ crate fn evaluate_goal<'tcx>(
                     let _arg: GenericArg<'_> = _lifetime.into();
                     var_values.push(_arg);
                 }
+                chalk_ir::GenericArgData::Const(_) => unimplemented!(),
             }
         });
         let sol = Canonical {
