@@ -207,12 +207,4 @@ mod tests {
         );
         assert_eq_m512i(r, e);
     }
-
-    #[simd_test(enable = "avx512f")]
-    unsafe fn test_mm512_cmplt_epu64_mask() {
-        let a = _mm512_set_epi64(0, 1, -1, u64::MAX as i64, i64::MAX, i64::MIN, 100, -100);
-        let b = _mm512_set1_epi64(-1);
-        let m = _mm512_cmplt_epu64_mask(a, b);
-        assert_eq!(m, 0b11001111);
-    }
 }
