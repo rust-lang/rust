@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `f64: Foo` is not satisfied
-  --> $DIR/type_inference.rs:22:5
+  --> $DIR/type_inference.rs:21:5
    |
 LL | fn only_foo<T: Foo>(_x: T) { }
    |                --- required by this bound in `only_foo`
@@ -7,6 +7,15 @@ LL | fn only_foo<T: Foo>(_x: T) { }
 LL |     only_foo(x);
    |     ^^^^^^^^ the trait `Foo` is not implemented for `f64`
 
-error: aborting due to previous error
+error[E0277]: the trait bound `f64: Bar` is not satisfied
+  --> $DIR/type_inference.rs:25:5
+   |
+LL | fn only_bar<T: Bar>(_x: T) { }
+   |                --- required by this bound in `only_bar`
+...
+LL |     only_bar(x);
+   |     ^^^^^^^^ the trait `Bar` is not implemented for `f64`
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0277`.
