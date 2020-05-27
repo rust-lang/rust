@@ -60,7 +60,7 @@ use rustc_errors::{pluralize, struct_span_err};
 use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_hir::Node;
+use rustc_hir::{Item, ItemKind, Node};
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{
     self,
@@ -1685,12 +1685,26 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let hir = &self.tcx.hir();
         // Attempt to obtain the span of the parameter so we can
         // suggest adding an explicit lifetime bound to it.
-        let generics = self
-            .in_progress_tables
-            .and_then(|table| table.borrow().hir_owner)
-            .map(|table_owner| self.tcx.generics_of(table_owner.to_def_id()));
+        let generics =
+            self.in_progress_tables.and_then(|table| table.borrow().hir_owner).map(|table_owner| {
+                let hir_id = hir.as_local_hir_id(table_owner);
+                let parent_id = hir.get_parent_item(hir_id);
+                (
+                    // Parent item could be a `mod`, so we check the HIR before calling:
+                    if let Some(Node::Item(Item {
+                        kind: ItemKind::Trait(..) | ItemKind::Impl { .. },
+                        ..
+                    })) = hir.find(parent_id)
+                    {
+                        Some(self.tcx.generics_of(hir.local_def_id(parent_id).to_def_id()))
+                    } else {
+                        None
+                    },
+                    self.tcx.generics_of(table_owner.to_def_id()),
+                )
+            });
         let type_param_span = match (generics, bound_kind) {
-            (Some(ref generics), GenericKind::Param(ref param)) => {
+            (Some((_, ref generics)), GenericKind::Param(ref param)) => {
                 // Account for the case where `param` corresponds to `Self`,
                 // which doesn't have the expected type argument.
                 if !(generics.has_self && param.index == 0) {
@@ -1727,21 +1741,29 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         };
         let new_lt = generics
             .as_ref()
-            .and_then(|g| {
+            .and_then(|(parent_g, g)| {
                 let possible = ["'a", "'b", "'c", "'d", "'e", "'f", "'g", "'h", "'i", "'j", "'k"];
-                let lts_names = g
+                let mut lts_names = g
                     .params
                     .iter()
                     .filter(|p| matches!(p.kind, ty::GenericParamDefKind::Lifetime))
                     .map(|p| p.name.as_str())
                     .collect::<Vec<_>>();
+                if let Some(g) = parent_g {
+                    lts_names.extend(
+                        g.params
+                            .iter()
+                            .filter(|p| matches!(p.kind, ty::GenericParamDefKind::Lifetime))
+                            .map(|p| p.name.as_str()),
+                    );
+                }
                 let lts = lts_names.iter().map(|s| -> &str { &*s }).collect::<Vec<_>>();
                 possible.iter().filter(|&candidate| !lts.contains(&*candidate)).next().map(|s| *s)
             })
             .unwrap_or("'lt");
         let add_lt_sugg = generics
             .as_ref()
-            .and_then(|g| g.params.first())
+            .and_then(|(_, g)| g.params.first())
             .and_then(|param| param.def_id.as_local())
             .map(|def_id| {
                 (hir.span(hir.as_local_hir_id(def_id)).shrink_to_lo(), format!("{}, ", new_lt))

@@ -54,6 +54,16 @@ where
     }
 }
 
+// Same as above, but show that we pay attention to lifetime names from parent item
+impl<'a> Foo {
+    fn qux<'b, G: Get<T> + 'b, T>(g: G, dest: &mut T) -> impl FnOnce() + '_ {
+        //~^ ERROR the parameter type `G` may not live long enough
+        move || {
+            *dest = g.get();
+        }
+    }
+}
+
 // After applying suggestion for `qux`:
 fn bat<'a, G: 'a, T>(g: G, dest: &mut T) -> impl FnOnce() + '_ + 'a
 //~^ ERROR explicit lifetime required in the type of `dest`
