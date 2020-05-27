@@ -112,7 +112,7 @@ const ATTRIBUTES: &[AttrCompletion] = &[
     AttrCompletion { label: "repr", snippet: Some("repr(${0:C})"), should_be_inner: false },
     AttrCompletion {
         label: "should_panic",
-        snippet: Some(r#"expected = "${0:reason}""#),
+        snippet: Some(r#"should_panic(expected = "${0:reason}")"#),
         should_be_inner: false,
     },
     AttrCompletion {
@@ -571,7 +571,7 @@ mod tests {
                 label: "should_panic",
                 source_range: 19..19,
                 delete: 19..19,
-                insert: "expected = \"${0:reason}\"",
+                insert: "should_panic(expected = \"${0:reason}\")",
                 kind: Attribute,
             },
             CompletionItem {
@@ -810,7 +810,7 @@ mod tests {
                 label: "should_panic",
                 source_range: 20..20,
                 delete: 20..20,
-                insert: "expected = \"${0:reason}\"",
+                insert: "should_panic(expected = \"${0:reason}\")",
                 kind: Attribute,
             },
             CompletionItem {
