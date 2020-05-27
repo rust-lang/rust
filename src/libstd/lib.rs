@@ -311,6 +311,7 @@
 #![feature(test)]
 #![feature(thread_local)]
 #![feature(toowned_clone_into)]
+#![feature(total_cmp)]
 #![feature(trace_macros)]
 #![feature(track_caller)]
 #![feature(try_reserve)]
