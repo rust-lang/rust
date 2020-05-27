@@ -53,7 +53,6 @@ impl Step for Std {
             cargo,
             args(builder.kind),
             &libstd_stamp(builder, compiler, target),
-            vec![],
             true,
         );
 
@@ -102,7 +101,6 @@ impl Step for Rustc {
             cargo,
             args(builder.kind),
             &librustc_stamp(builder, compiler, target),
-            vec![],
             true,
         );
 
@@ -160,7 +158,6 @@ macro_rules! tool_check_step {
                     cargo,
                     args(builder.kind),
                     &stamp(builder, compiler, target),
-                    vec![],
                     true,
                 );
 

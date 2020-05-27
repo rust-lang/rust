@@ -64,17 +64,13 @@ impl Step for Std {
             return;
         }
 
-        let mut target_deps = builder.ensure(StartupObjects { compiler, target });
+        builder.ensure(StartupObjects { compiler, target });
+        copy_third_party_objects(builder, &compiler, target);
 
         let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
         if compiler_to_use != compiler {
             builder.ensure(Std { compiler: compiler_to_use, target });
             builder.info(&format!("Uplifting stage1 std ({} -> {})", compiler_to_use.host, target));
-
-            // Even if we're not building std this stage, the new sysroot must
-            // still contain the third party objects needed by various targets.
-            copy_third_party_objects(builder, &compiler, target);
-
             builder.ensure(StdLink {
                 compiler: compiler_to_use,
                 target_compiler: compiler,
@@ -83,7 +79,6 @@ impl Step for Std {
             return;
         }
 
-        target_deps.extend(copy_third_party_objects(builder, &compiler, target).into_iter());
 
         let mut cargo = builder.cargo(compiler, Mode::Std, target, "build");
         std_cargo(builder, target, compiler.stage, &mut cargo);
@@ -97,7 +92,6 @@ impl Step for Std {
             cargo,
             vec![],
             &libstd_stamp(builder, compiler, target),
-            target_deps,
             false,
         );
 
@@ -114,15 +108,12 @@ fn copy_third_party_objects(
     builder: &Builder<'_>,
     compiler: &Compiler,
     target: Interned<String>,
-) -> Vec<PathBuf> {
+) {
     let libdir = builder.sysroot_libdir(*compiler, target);
 
-    let mut target_deps = vec![];
-
-    let mut copy_and_stamp = |sourcedir: &Path, name: &str| {
+    let copy = |sourcedir: &Path, name: &str| {
         let target = libdir.join(name);
         builder.copy(&sourcedir.join(name), &target);
-        target_deps.push(target);
     };
 
     // Copies the CRT objects.
@@ -135,11 +126,11 @@ fn copy_third_party_objects(
     if target.contains("musl") {
         let srcdir = builder.musl_root(target).unwrap().join("lib");
         for &obj in &["crt1.o", "Scrt1.o", "rcrt1.o", "crti.o", "crtn.o"] {
-            copy_and_stamp(&srcdir, obj);
+            copy(&srcdir, obj);
         }
     } else if target.ends_with("-wasi") {
         let srcdir = builder.wasi_root(target).unwrap().join("lib/wasm32-wasi");
-        copy_and_stamp(&srcdir, "crt1.o");
+        copy(&srcdir, "crt1.o");
     }
 
     // Copies libunwind.a compiled to be linked with x86_64-fortanix-unknown-sgx.
@@ -151,16 +142,14 @@ fn copy_third_party_objects(
         let src_path_env = "X86_FORTANIX_SGX_LIBS";
         let src =
             env::var(src_path_env).unwrap_or_else(|_| panic!("{} not found in env", src_path_env));
-        copy_and_stamp(Path::new(&src), "libunwind.a");
+        copy(Path::new(&src), "libunwind.a");
     }
 
     if builder.config.sanitizers && compiler.stage != 0 {
         // The sanitizers are only copied in stage1 or above,
         // to avoid creating dependency on LLVM.
-        target_deps.extend(copy_sanitizers(builder, &compiler, target));
+        copy_sanitizers(builder, &compiler, target);
     }
-
-    target_deps
 }
 
 /// Configure cargo to compile the standard library, adding appropriate env vars
@@ -287,14 +276,13 @@ fn copy_sanitizers(
     builder: &Builder<'_>,
     compiler: &Compiler,
     target: Interned<String>,
-) -> Vec<PathBuf> {
+) {
     let runtimes: Vec<native::SanitizerRuntime> = builder.ensure(native::Sanitizers { target });
 
     if builder.config.dry_run {
-        return Vec::new();
+        return;
     }
 
-    let mut target_deps = Vec::new();
     let libdir = builder.sysroot_libdir(*compiler, target);
 
     for runtime in &runtimes {
@@ -311,11 +299,7 @@ fn copy_sanitizers(
                 .expect("failed to execute `install_name_tool`");
             assert!(status.success());
         }
-
-        target_deps.push(dst);
     }
-
-    target_deps
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -325,7 +309,7 @@ pub struct StartupObjects {
 }
 
 impl Step for StartupObjects {
-    type Output = Vec<PathBuf>;
+    type Output = ();
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/rtstartup")
@@ -344,14 +328,12 @@ impl Step for StartupObjects {
     /// They don't require any library support as they're just plain old object
     /// files, so we just use the nightly snapshot compiler to always build them (as
     /// no other compilers are guaranteed to be available).
-    fn run(self, builder: &Builder<'_>) -> Vec<PathBuf> {
+    fn run(self, builder: &Builder<'_>) {
         let for_compiler = self.compiler;
         let target = self.target;
         if !target.contains("windows-gnu") {
-            return vec![];
+            return ();
         }
-
-        let mut target_deps = vec![];
 
         let src_dir = &builder.src.join("src/rtstartup");
         let dst_dir = &builder.native_dir(target).join("rtstartup");
@@ -378,17 +360,13 @@ impl Step for StartupObjects {
 
             let target = sysroot_dir.join((*file).to_string() + ".o");
             builder.copy(dst_file, &target);
-            target_deps.push(target);
         }
 
         for obj in ["crt2.o", "dllcrt2.o"].iter() {
             let src = compiler_file(builder, builder.cc(target), target, obj);
             let target = sysroot_dir.join(obj);
             builder.copy(&src, &target);
-            target_deps.push(target);
         }
-
-        target_deps
     }
 }
 
@@ -462,7 +440,6 @@ impl Step for Rustc {
             cargo,
             vec![],
             &librustc_stamp(builder, compiler, target),
-            vec![],
             false,
         );
 
@@ -814,7 +791,6 @@ pub fn run_cargo(
     cargo: Cargo,
     tail_args: Vec<String>,
     stamp: &Path,
-    additional_target_deps: Vec<PathBuf>,
     is_check: bool,
 ) -> Vec<PathBuf> {
     if builder.config.dry_run {
@@ -931,7 +907,6 @@ pub fn run_cargo(
         deps.push((path_to_add.into(), false));
     }
 
-    deps.extend(additional_target_deps.into_iter().map(|d| (d, false)));
     deps.sort();
     let mut new_contents = Vec::new();
     for (dep, proc_macro) in deps.iter() {
