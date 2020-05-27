@@ -32,8 +32,7 @@
 //! variables from the current `Binder`.
 
 use rustc_middle::traits::{
-    ChalkEnvironmentAndGoal, ChalkEnvironmentClause, ChalkRustDefId as RustDefId,
-    ChalkRustInterner as RustInterner,
+    ChalkEnvironmentAndGoal, ChalkEnvironmentClause, ChalkRustInterner as RustInterner,
 };
 use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
@@ -62,7 +61,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Substitution<RustInterner<'tcx>>> for Subst
 impl<'tcx> LowerInto<'tcx, chalk_ir::AliasTy<RustInterner<'tcx>>> for ty::ProjectionTy<'tcx> {
     fn lower_into(self, interner: &RustInterner<'tcx>) -> chalk_ir::AliasTy<RustInterner<'tcx>> {
         chalk_ir::AliasTy::Projection(chalk_ir::ProjectionTy {
-            associated_ty_id: chalk_ir::AssocTypeId(RustDefId::AssocTy(self.item_def_id)),
+            associated_ty_id: chalk_ir::AssocTypeId(self.item_def_id),
             substitution: self.substs.lower_into(interner),
         })
     }
@@ -203,7 +202,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::TraitRef<RustInterner<'tcx>>>
 {
     fn lower_into(self, interner: &RustInterner<'tcx>) -> chalk_ir::TraitRef<RustInterner<'tcx>> {
         chalk_ir::TraitRef {
-            trait_id: chalk_ir::TraitId(RustDefId::Trait(self.def_id)),
+            trait_id: chalk_ir::TraitId(self.def_id),
             substitution: self.substs.lower_into(interner),
         }
     }
@@ -296,9 +295,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
                 ast::FloatTy::F32 => float(chalk_ir::FloatTy::F32),
                 ast::FloatTy::F64 => float(chalk_ir::FloatTy::F64),
             },
-            Adt(def, substs) => {
-                apply(struct_ty(RustDefId::Adt(def.did)), substs.lower_into(interner))
-            }
+            Adt(def, substs) => apply(struct_ty(def.did), substs.lower_into(interner)),
             Foreign(_def_id) => unimplemented!(),
             Str => apply(chalk_ir::TypeName::Str, empty()),
             Array(ty, _) => apply(
@@ -352,7 +349,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
                 )
             }
             FnDef(def_id, substs) => apply(
-                chalk_ir::TypeName::FnDef(chalk_ir::FnDefId(RustDefId::FnDef(def_id))),
+                chalk_ir::TypeName::FnDef(chalk_ir::FnDefId(def_id)),
                 substs.lower_into(interner),
             ),
             FnPtr(sig) => {
@@ -384,7 +381,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
             Projection(proj) => TyData::Alias(proj.lower_into(interner)).intern(interner),
             Opaque(def_id, substs) => {
                 TyData::Alias(chalk_ir::AliasTy::Opaque(chalk_ir::OpaqueTy {
-                    opaque_ty_id: chalk_ir::OpaqueTyId(RustDefId::Opaque(def_id)),
+                    opaque_ty_id: chalk_ir::OpaqueTyId(def_id),
                     substitution: substs.lower_into(interner),
                 }))
                 .intern(interner)
@@ -515,7 +512,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Binders<chalk_ir::QuantifiedWhereClauses<Ru
                 chalk_ir::Binders::new(
                     chalk_ir::VariableKinds::new(interner),
                     chalk_ir::WhereClause::Implemented(chalk_ir::TraitRef {
-                        trait_id: chalk_ir::TraitId(RustDefId::Trait(*def_id)),
+                        trait_id: chalk_ir::TraitId(*def_id),
                         substitution: substs.lower_into(interner),
                     }),
                 )
@@ -524,7 +521,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Binders<chalk_ir::QuantifiedWhereClauses<Ru
             ty::ExistentialPredicate::AutoTrait(def_id) => chalk_ir::Binders::new(
                 chalk_ir::VariableKinds::new(interner),
                 chalk_ir::WhereClause::Implemented(chalk_ir::TraitRef {
-                    trait_id: chalk_ir::TraitId(RustDefId::Trait(*def_id)),
+                    trait_id: chalk_ir::TraitId(*def_id),
                     substitution: chalk_ir::Substitution::empty(interner),
                 }),
             ),

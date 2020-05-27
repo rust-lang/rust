@@ -22,7 +22,7 @@ use rustc_middle::ty::{
 use rustc_infer::infer::canonical::{
     Canonical, CanonicalVarValues, Certainty, QueryRegionConstraints, QueryResponse,
 };
-use rustc_infer::traits::{self, ChalkCanonicalGoal, ChalkRustDefId as RustDefId};
+use rustc_infer::traits::{self, ChalkCanonicalGoal};
 
 use crate::chalk::db::RustIrDatabase as ChalkRustIrDatabase;
 use crate::chalk::lowering::{LowerInto, ParamsSubstitutor};
@@ -106,10 +106,7 @@ crate fn evaluate_goal<'tcx>(
                     let _data = _t.data(&interner);
                     let kind = match _data {
                         TyData::Apply(_application_ty) => match _application_ty.name {
-                            chalk_ir::TypeName::Adt(_struct_id) => match _struct_id.0 {
-                                RustDefId::Adt(_) => unimplemented!(),
-                                _ => panic!("Unexpected struct id"),
-                            },
+                            chalk_ir::TypeName::Adt(_struct_id) => unimplemented!(),
                             chalk_ir::TypeName::Scalar(scalar) => match scalar {
                                 chalk_ir::Scalar::Bool => ty::Bool,
                                 chalk_ir::Scalar::Char => ty::Char,
