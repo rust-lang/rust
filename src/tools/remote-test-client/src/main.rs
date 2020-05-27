@@ -44,7 +44,11 @@ fn main() {
             args.next().map(|s| s.into()),
         ),
         "push" => push(Path::new(&args.next().unwrap())),
-        "run" => run(args.next().unwrap(), args.collect()),
+        "run" => run(
+            args.next().unwrap(),
+            args.next().and_then(|count| count.parse().ok()).unwrap(),
+            args.collect(),
+        ),
         "help" | "-h" | "--help" => help(),
         cmd => {
             println!("unknown command: {}", cmd);
@@ -197,11 +201,13 @@ fn push(path: &Path) {
     println!("done pushing {:?}", path);
 }
 
-fn run(files: String, args: Vec<String>) {
+fn run(exe: String, support_lib_count: usize, all_args: Vec<String>) {
     let device_address = env::var(REMOTE_ADDR_ENV).unwrap_or(DEFAULT_ADDR.to_string());
     let client = t!(TcpStream::connect(device_address));
     let mut client = BufWriter::new(client);
     t!(client.write_all(b"run "));
+
+    let (support_libs, args) = all_args.split_at(support_lib_count);
 
     // Send over the args
     for arg in args {
@@ -227,9 +233,7 @@ fn run(files: String, args: Vec<String>) {
     t!(client.write_all(&[0]));
 
     // Send over support libraries
-    let mut files = files.split(':');
-    let exe = files.next().unwrap();
-    for file in files.map(Path::new) {
+    for file in support_libs.iter().map(Path::new) {
         send(&file, &mut client);
     }
     t!(client.write_all(&[0]));
