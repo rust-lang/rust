@@ -8,12 +8,9 @@ trait Bar {
 
 impl Foo for i32 { }
 
-// FIXME(chalk): blocked on better handling of builtin traits for non-struct
-// application types (or a workaround)
-/*
 impl Foo for str { }
-//^ ERROR the size for values of type `str` cannot be known at compilation time
-*/
+//~^ ERROR the size for values of type `str` cannot be known at compilation time
+
 
 // Implicit `T: Sized` bound.
 impl<T> Foo for Option<T> { }

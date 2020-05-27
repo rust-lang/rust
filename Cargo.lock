@@ -435,15 +435,15 @@ dependencies = [
 [[package]]
 name = "chalk-base"
 version = "0.10.1-dev"
-source = "git+https://github.com/rust-lang/chalk.git?rev=f4977ab4c781e4f3b7fdb9310edbdab6daf56e29#f4977ab4c781e4f3b7fdb9310edbdab6daf56e29"
+source = "git+https://github.com/jackh726/chalk.git?rev=58e5a31f48ddd4b940c682e7079d3e79e6ffaa1b#58e5a31f48ddd4b940c682e7079d3e79e6ffaa1b"
 dependencies = [
- "lazy_static 1.4.0",
+ "lazy_static",
 ]
 
 [[package]]
 name = "chalk-derive"
 version = "0.10.1-dev"
-source = "git+https://github.com/rust-lang/chalk.git?rev=f4977ab4c781e4f3b7fdb9310edbdab6daf56e29#f4977ab4c781e4f3b7fdb9310edbdab6daf56e29"
+source = "git+https://github.com/jackh726/chalk.git?rev=58e5a31f48ddd4b940c682e7079d3e79e6ffaa1b#58e5a31f48ddd4b940c682e7079d3e79e6ffaa1b"
 dependencies = [
  "proc-macro2 1.0.3",
  "quote 1.0.2",
@@ -454,7 +454,7 @@ dependencies = [
 [[package]]
 name = "chalk-engine"
 version = "0.10.1-dev"
-source = "git+https://github.com/rust-lang/chalk.git?rev=f4977ab4c781e4f3b7fdb9310edbdab6daf56e29#f4977ab4c781e4f3b7fdb9310edbdab6daf56e29"
+source = "git+https://github.com/jackh726/chalk.git?rev=58e5a31f48ddd4b940c682e7079d3e79e6ffaa1b#58e5a31f48ddd4b940c682e7079d3e79e6ffaa1b"
 dependencies = [
  "chalk-base",
  "chalk-derive",
@@ -465,7 +465,7 @@ dependencies = [
 [[package]]
 name = "chalk-ir"
 version = "0.10.1-dev"
-source = "git+https://github.com/rust-lang/chalk.git?rev=f4977ab4c781e4f3b7fdb9310edbdab6daf56e29#f4977ab4c781e4f3b7fdb9310edbdab6daf56e29"
+source = "git+https://github.com/jackh726/chalk.git?rev=58e5a31f48ddd4b940c682e7079d3e79e6ffaa1b#58e5a31f48ddd4b940c682e7079d3e79e6ffaa1b"
 dependencies = [
  "chalk-base",
  "chalk-derive",
@@ -474,13 +474,13 @@ dependencies = [
 [[package]]
 name = "chalk-solve"
 version = "0.10.1-dev"
-source = "git+https://github.com/rust-lang/chalk.git?rev=f4977ab4c781e4f3b7fdb9310edbdab6daf56e29#f4977ab4c781e4f3b7fdb9310edbdab6daf56e29"
+source = "git+https://github.com/jackh726/chalk.git?rev=58e5a31f48ddd4b940c682e7079d3e79e6ffaa1b#58e5a31f48ddd4b940c682e7079d3e79e6ffaa1b"
 dependencies = [
  "chalk-base",
  "chalk-derive",
  "chalk-engine",
  "chalk-ir",
- "ena 0.14.0",
+ "ena",
  "itertools 0.9.0",
  "petgraph",
  "rustc-hash",
@@ -1042,15 +1042,6 @@ dependencies = [
  "serde_json",
  "strum",
  "strum_macros",
-]
-
-[[package]]
-name = "ena"
-version = "0.13.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8944dc8fa28ce4a38f778bd46bf7d923fe73eed5a439398507246c8e017e6f36"
-dependencies = [
- "log",
 ]
 
 [[package]]
@@ -3273,7 +3264,7 @@ dependencies = [
  "bitflags",
  "cfg-if",
  "crossbeam-utils 0.7.2",
- "ena 0.14.0",
+ "ena",
  "indexmap",
  "jobserver",
  "lazy_static",
@@ -3729,7 +3720,7 @@ dependencies = [
  "bitflags",
  "cfg-if",
  "crossbeam-utils 0.7.2",
- "ena 0.14.0",
+ "ena",
  "indexmap",
  "jobserver",
  "lazy_static",

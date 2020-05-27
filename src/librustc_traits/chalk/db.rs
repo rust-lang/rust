@@ -175,9 +175,39 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
 
     fn fn_def_datum(
         &self,
-        _fn_def_id: chalk_ir::FnDefId<RustInterner<'tcx>>,
+        fn_def_id: chalk_ir::FnDefId<RustInterner<'tcx>>,
     ) -> Arc<chalk_solve::rust_ir::FnDefDatum<RustInterner<'tcx>>> {
-        unimplemented!()
+        let def_id = match fn_def_id.0 {
+            RustDefId::FnDef(def_id) => def_id,
+            _ => bug!("Did not use `FnDef` variant when expecting FnDef."),
+        };
+        let bound_vars = bound_vars_for_item(self.tcx, def_id);
+        let binders = binders_for(&self.interner, bound_vars);
+
+        let predicates = self.tcx.predicates_defined_on(def_id).predicates;
+        let where_clauses: Vec<_> = predicates
+            .into_iter()
+            .map(|(wc, _)| wc.subst(self.tcx, &bound_vars))
+            .filter_map(|wc| LowerInto::<Option<chalk_ir::QuantifiedWhereClause<RustInterner<'tcx>>>>::lower_into(wc, &self.interner)).collect();
+
+        let sig = self.tcx.fn_sig(def_id);
+        // FIXME(chalk): Why does this have a Binder
+        let argument_types = sig
+            .inputs()
+            .skip_binder()
+            .iter()
+            .map(|t| t.subst(self.tcx, &bound_vars).lower_into(&self.interner))
+            .collect();
+
+        let return_type =
+            sig.output().skip_binder().subst(self.tcx, &bound_vars).lower_into(&self.interner);
+
+        let bound =
+            chalk_solve::rust_ir::FnDefDatumBound { argument_types, where_clauses, return_type };
+        Arc::new(chalk_solve::rust_ir::FnDefDatum {
+            id: fn_def_id,
+            binders: chalk_ir::Binders::new(binders, bound),
+        })
     }
 
     fn impl_datum(

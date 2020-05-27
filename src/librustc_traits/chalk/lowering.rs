@@ -167,20 +167,11 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::GoalData<RustInterner<'tcx>>> for ty::Predi
             ty::PredicateKind::Projection(predicate) => predicate.lower_into(interner),
             ty::PredicateKind::WellFormed(arg) => match arg.unpack() {
                 GenericArgKind::Type(ty) => match ty.kind {
-                    // These types are always WF.
-                    ty::Str | ty::Placeholder(..) | ty::Error(_) | ty::Never => {
-                        chalk_ir::GoalData::All(chalk_ir::Goals::new(interner))
-                    }
+                    // FIXME(chalk): In Chalk, a placeholder is WellFormed if it
+                    // `FromEnv`. However, when we "lower" Params, we don't update
+                    // the environment.
+                    ty::Placeholder(..) => chalk_ir::GoalData::All(chalk_ir::Goals::new(interner)),
 
-                    // FIXME(chalk): Well-formed only if ref lifetime outlives type
-                    ty::Ref(..) => chalk_ir::GoalData::All(chalk_ir::Goals::new(interner)),
-
-                    ty::Param(..) => panic!("No Params expected."),
-
-                    // FIXME(chalk) -- ultimately I think this is what we
-                    // want to do, and we just have rules for how to prove
-                    // `WellFormed` for everything above, instead of
-                    // inlining a bit the rules of the proof here.
                     _ => chalk_ir::GoalData::DomainGoal(chalk_ir::DomainGoal::WellFormed(
                         chalk_ir::WellFormed::Ty(ty.lower_into(interner)),
                     )),
@@ -360,9 +351,9 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
                     ),
                 )
             }
-            FnDef(def_id, _) => apply(
+            FnDef(def_id, substs) => apply(
                 chalk_ir::TypeName::FnDef(chalk_ir::FnDefId(RustDefId::FnDef(def_id))),
-                empty(),
+                substs.lower_into(interner),
             ),
             FnPtr(sig) => {
                 let (inputs_and_outputs, binders, _named_regions) =
