@@ -4022,7 +4022,7 @@ Function* CreatePrimalAndGradient(Function* todiff, DIFFE_TYPE retType, const st
     if (guaranteedUnreachable.find(&oBB) != guaranteedUnreachable.end()) {
         std::vector<Instruction*> toerase;
         for(auto &I: oBB) { toerase.push_back(&I); }
-        for(auto I : toerase) { maker.eraseIfUnused(*I, /*erase*/true, /*check*/false); }
+        for(auto I : toerase) { maker.eraseIfUnused(*I, /*erase*/true, /*check*/topLevel == true); }
         auto newBB = cast<BasicBlock>(gutils->getNewFromOriginal(&oBB));
         if (newBB->getTerminator())
           newBB->getTerminator()->eraseFromParent();

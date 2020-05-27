@@ -62,23 +62,22 @@ attributes #6 = { nounwind }
 
 ; CHECK: define internal void @diffefoo(float* nocapture %fdst, float* nocapture %"fdst'", float* nocapture readonly %fsrc, float* nocapture %"fsrc'", i32 %fN)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %[[uw:.+]] = bitcast float* %fdst to i8*
 ; CHECK-NEXT:   %[[ipc:.+]] = bitcast float* %"fdst'" to i8*
-; CHECK-NEXT:   %[[uw1:.+]] = bitcast float* %fsrc to i8*
+; CHECK-NEXT:   %[[uw:.+]] = bitcast float* %fdst to i8*
 ; CHECK-NEXT:   %[[ipc2:.+]] = bitcast float* %"fsrc'" to i8*
+; CHECK-NEXT:   %[[uw1:.+]] = bitcast float* %fsrc to i8*
 ; CHECK-NEXT:   %[[mul:.+]] = shl i32 %fN, 2
 ; CHECK-NEXT:   call void @diffesubmemcpy(i8* %[[uw]], i8* %[[ipc]], i8* %[[uw1]], i8* %[[ipc2]], i32 %[[mul]])
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal void @diffesubmemcpy(i8* nocapture %sdst, i8* nocapture %"sdst'", i8* nocapture readonly %ssrc, i8* nocapture %"ssrc'", i32 %sN) 
+; CHECK: define internal void @diffesubmemcpy(i8* nocapture %sdst, i8* nocapture %"sdst'", i8* nocapture readonly %ssrc, i8* nocapture %"ssrc'", i32 %sN)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %conv = sext i32 %sN to i64
 ; CHECK-NEXT:   tail call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %sdst, i8* align 1 %ssrc, i64 %conv, i1 false)
 ; CHECK-NEXT:   %0 = bitcast i8* %"sdst'" to float*
 ; CHECK-NEXT:   %1 = bitcast i8* %"ssrc'" to float*
-; CHECK-NEXT:   %conv_unwrap = sext i32 %sN to i64
-; CHECK-NEXT:   %2 = lshr i64 %conv_unwrap, 2
+; CHECK-NEXT:   %2 = lshr i64 %conv, 2
 ; CHECK-NEXT:   call void @__enzyme_memcpyadd_floatda1sa1(float* %0, float* %1, i64 %2)
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

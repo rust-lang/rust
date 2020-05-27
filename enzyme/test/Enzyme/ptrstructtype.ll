@@ -61,18 +61,18 @@ attributes #2 = { nounwind }
 
 ; CHECK: define internal void @diffe_ZL6matvecPKN5Eigen6MatrixIdLi2ELi2ELi0ELi2ELi2EEES3_PS1_(double* %ad, double* %"ad'", double* noalias %arraydecay, double* %"arraydecay'") #1 {
 ; CHECK-NEXT: entry:
+; CHECK-NEXT:   %[[a1ipc:.+]] = bitcast double* %"ad'" to <2 x double>*
 ; CHECK-NEXT:   %a1 = bitcast double* %ad to <2 x double>*
 ; CHECK-NEXT:   %a2 = load <2 x double>, <2 x double>* %a1, align 16, !tbaa !2
 ; CHECK-NEXT:   %add = fadd <2 x double> %a2, %a2
+; CHECK-NEXT:   %[[arrayidxipge:.+]] = getelementptr inbounds double, double* %"arraydecay'", i64 2
 ; CHECK-NEXT:   %arrayidx = getelementptr inbounds double, double* %arraydecay, i64 2
+; CHECK-NEXT:   %[[a8ipc:.+]] = bitcast double* %[[arrayidxipge]] to <2 x double>*
 ; CHECK-NEXT:   %a8 = bitcast double* %arrayidx to <2 x double>*
 ; CHECK-NEXT:   store <2 x double> %add, <2 x double>* %a8, align 16, !tbaa !2
-; CHECK-NEXT:   %[[arrayidxipge:.+]] = getelementptr inbounds double, double* %"arraydecay'", i64 2
-; CHECK-NEXT:   %[[a8ipc:.+]] = bitcast double* %[[arrayidxipge]] to <2 x double>*
 ; CHECK-NEXT:   %0 = load <2 x double>, <2 x double>* %[[a8ipc]], align 16
 ; CHECK-NEXT:   store <2 x double> zeroinitializer, <2 x double>* %[[a8ipc]], align 16
 ; CHECK-NEXT:   %1 = fadd fast <2 x double> %0, %0
-; CHECK-NEXT:   %[[a1ipc:.+]] = bitcast double* %"ad'" to <2 x double>*
 ; CHECK-NEXT:   %2 = load <2 x double>, <2 x double>* %[[a1ipc]], align 16
 ; CHECK-NEXT:   %3 = fadd fast <2 x double> %2, %1
 ; CHECK-NEXT:   store <2 x double> %3, <2 x double>* %[[a1ipc]], align 16

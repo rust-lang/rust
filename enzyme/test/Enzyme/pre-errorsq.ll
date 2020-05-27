@@ -129,23 +129,24 @@ exit:                                             ; preds = %end2
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = extractvalue { i64, double* } %tapeArg, 1
 ; CHECK-NEXT:   %rows = extractvalue { i64, double* } %tapeArg, 0
+; CHECK-NEXT:   %[[_unwrap:.+]] = add i64 %rows, -2
 ; CHECK-NEXT:   br label %invertend2
 
 ; CHECK: invertentry:                                      ; preds = %invertfor1
-; CHECK-NEXT:   %1 = bitcast double* %0 to i8*
-; CHECK-NEXT:   tail call void @free(i8* nonnull %1)
+; CHECK-NEXT:   %[[tofree:.+]] = bitcast double* %0 to i8*
+; CHECK-NEXT:   tail call void @free(i8* nonnull %[[tofree]])
 ; CHECK-NEXT:   ret void
 
 ; CHECK: invertfor1:                                       ; preds = %invertfor2
-; CHECK-NEXT:   %2 = icmp eq i64 %"iv'ac.0", 0
-; CHECK-NEXT:   br i1 %2, label %invertentry, label %incinvertfor1
+; CHECK-NEXT:   %[[ieq:.+]] = icmp eq i64 %"iv'ac.0", 0
+; CHECK-NEXT:   br i1 %[[ieq]], label %invertentry, label %incinvertfor1
 
 ; CHECK: incinvertfor1:                                    ; preds = %invertfor1
 ; CHECK-NEXT:   %[[sub1:.+]] = add nsw i64 %"iv'ac.0", -1
 ; CHECK-NEXT:   br label %invertend2
 
 ; CHECK: invertfor2:                                       ; preds = %invertend2, %incinvertfor2
-; CHECK-NEXT:   %"iv1'ac.0" = phi i64 [ %[[_unwrap:.+]], %invertend2 ], [ %[[sub:.+]], %incinvertfor2 ]
+; CHECK-NEXT:   %"iv1'ac.0" = phi i64 [ %[[_unwrap]], %invertend2 ], [ %[[sub:.+]], %incinvertfor2 ]
 ; CHECK-NEXT:   %[[ev:.+]] = extractvalue { i64, double* } %tapeArg, 1
 ; CHECK-NEXT:   %[[mul:.+]] = mul nuw nsw i64 %"iv1'ac.0", 4
 ; CHECK-NEXT:   %[[idx:.+]] = add nuw nsw i64 %"iv'ac.0", %[[mul]]
@@ -174,7 +175,5 @@ exit:                                             ; preds = %end2
 ; CHECK-NEXT:   %[[dtostore:.+]] = load double, double* %[[tostoreipg]], align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %[[tostoreipg]], align 8
 ; CHECK-NEXT:   %[[dadd]] = fadd fast double %"add'de.1", %[[dtostore]]
-; CHECK-NEXT:   %[[rows_unwrap:.+]] = extractvalue { i64, double* } %tapeArg, 0
-; CHECK-NEXT:   %[[_unwrap]] = add i64 %[[rows_unwrap]], -2
 ; CHECK-NEXT:   br label %invertfor2
 ; CHECK-NEXT: }

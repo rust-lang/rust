@@ -89,39 +89,36 @@ attributes #8 = { noreturn nounwind }
 
 ; CHECK: define internal { double } @diffetaylorlog(double %x, i64 %SINCOSN, double %differeturn)
 ; CHECK-NEXT: entry:
+; CHECK-NEXT:   %[[iters:.+]] = add i64 %SINCOSN, -1
 ; CHECK-NEXT:   br label %for.body
 
 ; CHECK: for.body:                                         ; preds = %for.body, %entry
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %for.body ], [ 0, %entry ]
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
 ; CHECK-NEXT:   %exitcond = icmp eq i64 %iv.next, %SINCOSN
-; CHECK-NEXT:   br i1 %exitcond, label %invertfor.cond.cleanup, label %for.body
+; CHECK-NEXT:   br i1 %exitcond, label %invertfor.body, label %for.body
 
 ; CHECK: invertentry:                                      ; preds = %invertfor.body
-; CHECK-NEXT:   %0 = insertvalue { double } undef, double %5, 0
-; CHECK-NEXT:   ret { double } %0
+; CHECK-NEXT:   %[[res:.+]] = insertvalue { double } undef, double %[[fadd:.+]], 0
+; CHECK-NEXT:   ret { double } %[[res]]
 
-; CHECK: invertfor.body:                                   ; preds = %invertfor.cond.cleanup, %incinvertfor.body
-; CHECK-NEXT:   %"x'de.0" = phi double [ 0.000000e+00, %invertfor.cond.cleanup ], [ %5, %incinvertfor.body ]
-; CHECK-NEXT:   %"add'de.0" = phi double [ %differeturn, %invertfor.cond.cleanup ], [ %7, %incinvertfor.body ]
-; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %_unwrap, %invertfor.cond.cleanup ], [ %8, %incinvertfor.body ]
+; CHECK: invertfor.body:
+; CHECK-NEXT:   %"x'de.0" = phi double [ %[[fadd]], %incinvertfor.body ], [ 0.000000e+00, %for.body ]
+; CHECK-NEXT:   %"add'de.0" = phi double [ %[[sel:.+]], %incinvertfor.body ], [ %differeturn, %for.body ]
+; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %[[sub:.+]], %incinvertfor.body ], [ %[[iters]], %for.body ]
 ; CHECK-NEXT:   %iv.next_unwrap = add nuw nsw i64 %"iv'ac.0", 1
 ; CHECK-NEXT:   %conv_unwrap = sitofp i64 %iv.next_unwrap to double
 ; CHECK-NEXT:   %d0diffepow = fdiv fast double %"add'de.0", %conv_unwrap
-; CHECK-NEXT:   %1 = fsub fast double %conv_unwrap, 1.000000e+00
-; CHECK-NEXT:   %2 = tail call fast double @llvm.pow.f64(double %x, double %1)
-; CHECK-NEXT:   %3 = fmul fast double %d0diffepow, %2
-; CHECK-NEXT:   %4 = fmul fast double %3, %conv_unwrap
-; CHECK-NEXT:   %5 = fadd fast double %"x'de.0", %4
-; CHECK-NEXT:   %6 = icmp eq i64 %"iv'ac.0", 0
-; CHECK-NEXT:   %7 = select{{( fast)?}} i1 %6, double 0.000000e+00, double %"add'de.0"
-; CHECK-NEXT:   br i1 %6, label %invertentry, label %incinvertfor.body
+; CHECK-NEXT:   %[[fsub:.+]] = fsub fast double %conv_unwrap, 1.000000e+00
+; CHECK-NEXT:   %[[pow:.+]] = tail call fast double @llvm.pow.f64(double %x, double %[[fsub]])
+; CHECK-NEXT:   %[[fmul:.+]] = fmul fast double %d0diffepow, %[[pow]]
+; CHECK-NEXT:   %[[fmul2:.+]] = fmul fast double %[[fmul]], %conv_unwrap
+; CHECK-NEXT:   %[[fadd]] = fadd fast double %"x'de.0", %[[fmul2]]
+; CHECK-NEXT:   %[[cmp:.+]] = icmp eq i64 %"iv'ac.0", 0
+; CHECK-NEXT:   %[[sel]] = select{{( fast)?}} i1 %[[cmp]], double 0.000000e+00, double %"add'de.0"
+; CHECK-NEXT:   br i1 %[[cmp]], label %invertentry, label %incinvertfor.body
 
 ; CHECK: incinvertfor.body:                                ; preds = %invertfor.body
-; CHECK-NEXT:   %8 = add nsw i64 %"iv'ac.0", -1
-; CHECK-NEXT:   br label %invertfor.body
-
-; CHECK: invertfor.cond.cleanup:                           ; preds = %for.body
-; CHECK-NEXT:   %_unwrap = add i64 %SINCOSN, -1
+; CHECK-NEXT:   %[[sub]] = add nsw i64 %"iv'ac.0", -1
 ; CHECK-NEXT:   br label %invertfor.body
 ; CHECK-NEXT: }

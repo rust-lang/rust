@@ -470,6 +470,7 @@ attributes #22 = { readnone speculatable }
 ; CHECK-NEXT:   %"call.i.i.i.i.i.i.i13'mi" = call noalias nonnull i8* @malloc(i64 128) #8
 ; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull %"call.i.i.i.i.i.i.i13'mi", i8 0, i64 128, i1 false)
 ; CHECK-NEXT:   %"'ipc8" = bitcast i8* %"call.i.i.i.i.i.i.i13'mi" to double*
+; CHECK-NEXT:   %[[unwrap:.+]] = bitcast i8* %call.i.i.i.i.i.i.i13 to double*
 ; CHECK-NEXT:   br label %for.body.i
 
 ; CHECK: for.body.i:                                       ; preds = %for.body.i, %_ZN5Eigen8internal26call_dense_assignment_loopINS_6MatrixIdLin1ELin1ELi0ELin1ELin1EEENS_13CwiseBinaryOpINS0_20scalar_difference_opIddEEKS3_S7_EENS0_9assign_opIddEEEEvRT_RKT0_RKT1_.exit
@@ -501,16 +502,16 @@ attributes #22 = { readnone speculatable }
 ; CHECK: invertfor.body.i.i:                               ; preds = %invert_ZN5Eigen8internal26call_dense_assignment_loopINS_6MatrixIdLin1ELin1ELi0ELin1ELin1EEENS_13CwiseBinaryOpINS0_20scalar_difference_opIddEEKS3_S7_EENS0_9assign_opIddEEEEvRT_RKT0_RKT1_.exit, %incinvertfor.body.i.i
 ; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ 15, %invert_ZN5Eigen8internal26call_dense_assignment_loopINS_6MatrixIdLin1ELin1ELi0ELin1ELin1EEENS_13CwiseBinaryOpINS0_20scalar_difference_opIddEEKS3_S7_EENS0_9assign_opIddEEEEvRT_RKT0_RKT1_.exit ], [ %[[ivsub:.+]], %incinvertfor.body.i.i ]
 ; CHECK-NEXT:   %"Oi'ipg_unwrap" = getelementptr inbounds double, double* %"'ipc", i64 %"iv'ac.0"
-; CHECK-NEXT:   %3 = load double, double* %"Oi'ipg_unwrap", align 8
+; CHECK-NEXT:   %[[Oil:.+]] = load double, double* %"Oi'ipg_unwrap", align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"Oi'ipg_unwrap", align 8
-; CHECK-NEXT:   %[[neg:.+]] = fsub fast double 0.000000e+00, %3
+; CHECK-NEXT:   %[[neg:.+]] = fsub fast double 0.000000e+00, %[[Oil]]
 ; CHECK-NEXT:   %"arrayidx.i2.i.i.i.i'ipg_unwrap" = getelementptr inbounds double, double* %"M'", i64 %"iv'ac.0"
 ; CHECK-NEXT:   %[[prea:.+]] = load double, double* %"arrayidx.i2.i.i.i.i'ipg_unwrap", align 8
 ; CHECK-NEXT:   %[[posta:.+]] = fadd fast double %[[prea]], %[[neg]]
 ; CHECK-NEXT:   store double %[[posta]], double* %"arrayidx.i2.i.i.i.i'ipg_unwrap", align 8
 ; CHECK-NEXT:   %"arrayidx.i.i.i.i.i'ipg_unwrap" = getelementptr inbounds double, double* %"W'", i64 %"iv'ac.0"
 ; CHECK-NEXT:   %[[pre:.+]] = load double, double* %"arrayidx.i.i.i.i.i'ipg_unwrap", align 8
-; CHECK-NEXT:   %[[post:.+]] = fadd fast double %[[pre]], %3
+; CHECK-NEXT:   %[[post:.+]] = fadd fast double %[[pre]], %[[Oil]]
 ; CHECK-NEXT:   store double %[[post]], double* %"arrayidx.i.i.i.i.i'ipg_unwrap", align 8
 ; CHECK-NEXT:   %[[ivcmp:.+]] = icmp eq i64 %"iv'ac.0", 0
 ; CHECK-NEXT:   br i1 %[[ivcmp]], label %invertentry, label %incinvertfor.body.i.i
@@ -520,8 +521,7 @@ attributes #22 = { readnone speculatable }
 ; CHECK-NEXT:   br label %invertfor.body.i.i
 
 ; CHECK: invert_ZN5Eigen8internal26call_dense_assignment_loopINS_6MatrixIdLin1ELin1ELi0ELin1ELin1EEENS_13CwiseBinaryOpINS0_20scalar_difference_opIddEEKS3_S7_EENS0_9assign_opIddEEEEvRT_RKT0_RKT1_.exit: ; preds = %invertfor.body.i
-; CHECK-NEXT:   %_unwrap = bitcast i8* %call.i.i.i.i.i.i.i13 to double*
-; CHECK-NEXT:   call void @diffesubfn(double* %_unwrap, double* nonnull %"'ipc8", double* %0, double* nonnull %"'ipc")
+; CHECK-NEXT:   call void @diffesubfn(double* %[[unwrap]], double* nonnull %"'ipc8", double* %0, double* nonnull %"'ipc")
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %"call.i.i.i.i.i.i.i13'mi")
 ; CHECK-NEXT:   tail call void @free(i8* %call.i.i.i.i.i.i.i13)
 ; CHECK-NEXT:   br label %invertfor.body.i.i
@@ -550,10 +550,10 @@ attributes #22 = { readnone speculatable }
 ; CHECK-NEXT:   br label %invertfor.body14.i
 
 ; CHECK: invertfor.body14.i:                               ; preds = %incinvertfor.body14.i, %invertfor.cond.cleanup13.i
-; CHECK-NEXT:   %"'de11.1" = phi i64 [ %".lcssa'de.0", %invertfor.cond.cleanup13.i ], [ %[[bcsel:.+]], %incinvertfor.body14.i ]
+; CHECK-NEXT:   %[[de11:.+]] = phi i64 [ %".lcssa'de.0", %invertfor.cond.cleanup13.i ], [ %[[bcsel:.+]], %incinvertfor.body14.i ]
 ; CHECK-NEXT:   %"add.i.i'de.1" = phi double [ %"add.i.i.lcssa'de.0", %invertfor.cond.cleanup13.i ], [ 0.000000e+00, %incinvertfor.body14.i ]
 ; CHECK-NEXT:   %"iv5'ac.0" = phi i64 [ 3, %invertfor.cond.cleanup13.i ], [ %[[iv5inc:.+]], %incinvertfor.body14.i ]
-; CHECK-NEXT:   %[[padd:.+]] = bitcast i64 %"'de11.1" to double
+; CHECK-NEXT:   %[[padd:.+]] = bitcast i64 %[[de11]] to double
 ; CHECK-NEXT:   %[[aadd:.+]] = fadd fast double %"add.i.i'de.1", %[[padd]]
 ; CHECK-NEXT:   %[[abc:.+]] = bitcast double %[[aadd]] to i64
 ; CHECK-NEXT:   %mul.i.i_unwrap = mul nsw i64 4, %"iv3'ac.0"

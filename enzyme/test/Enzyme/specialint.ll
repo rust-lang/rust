@@ -56,13 +56,11 @@ attributes #3 = { readnone }
 ; CHECK-NEXT:   %dims = getelementptr inbounds %Type, %Type* %evaluator.i.i, i64 0, i32 1
 ; CHECK-NEXT:   %call = call i64 @augmented_total(i64* nonnull %dims, i64* nonnull %[[dimsipge]])
 ; CHECK-NEXT:   %flt = uitofp i64 %call to float
+; CHECK-NEXT:   %[[dataipge:.+]] = getelementptr inbounds %Type, %Type* %"evaluator.i.i'", i64 0, i32 0
 ; CHECK-NEXT:   %data = getelementptr inbounds %Type, %Type* %evaluator.i.i, i64 0, i32 0
 ; CHECK-NEXT:   store float %flt, float* %data, align 4
-; CHECK-NEXT:   %[[dataipge:.+]] = getelementptr inbounds %Type, %Type* %"evaluator.i.i'", i64 0, i32 0
 ; CHECK-NEXT:   store float 0.000000e+00, float* %[[dataipge]], align 4
-; CHECK-NEXT:   %dims_unwrap = getelementptr inbounds %Type, %Type* %evaluator.i.i, i64 0, i32 1
-; CHECK-NEXT:   %[[dimsipge_unwrap:.+]] = getelementptr inbounds %Type, %Type* %"evaluator.i.i'", i64 0, i32 1
-; CHECK-NEXT:   call void @diffetotal(i64* nonnull %dims_unwrap, i64* nonnull %[[dimsipge_unwrap]])
+; CHECK-NEXT:   call void @diffetotal(i64* nonnull %dims, i64* nonnull %[[dimsipge]])
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 

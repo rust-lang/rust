@@ -197,10 +197,8 @@ attributes #8 = { noreturn nounwind }
 
 ; CHECK: invertfor.cond.cleanup:                           ; preds = %entry, %for.body
 ; CHECK-NEXT:   %_cache.0 = phi double* [ undef, %entry ], [ %_malloccache, %for.body ]
-; CHECK-NEXT:   %mul_unwrap = mul nsw i32 %n, %b
-; CHECK-NEXT:   %cmp119_unwrap = icmp sgt i32 %mul_unwrap, 0
-; CHECK-NEXT:   %11 = select{{( fast)?}} i1 %cmp119_unwrap, double %differeturn, double 0.000000e+00
-; CHECK-NEXT:   br i1 %cmp119_unwrap, label %invertfor.cond.cleanup.loopexit, label %invertentry
+; CHECK-NEXT:   %11 = select{{( fast)?}} i1 %cmp119, double %differeturn, double 0.000000e+00
+; CHECK-NEXT:   br i1 %cmp119, label %invertfor.cond.cleanup.loopexit, label %invertentry
 
 ; CHECK: invertfor.body:                                   ; preds = %incinvertfor.body, %invertfor.cond.cleanup.loopexit
 ; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %_unwrap4.zext, %invertfor.cond.cleanup.loopexit ], [ %19, %incinvertfor.body ]

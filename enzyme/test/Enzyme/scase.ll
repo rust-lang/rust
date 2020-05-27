@@ -98,14 +98,13 @@ attributes #8 = { noreturn nounwind }
 ; CHECK: define internal { double } @diffetaylorlog(double %x, i32 %SINCOSN, double %differeturn) #2 {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %cmp8 = icmp eq i32 %SINCOSN, 0
-; CHECK-NEXT:   %cmp8_unwrap = icmp eq i32 %SINCOSN, 0
 ; CHECK-NEXT:   %lcmp.mod_unwrap = icmp ne i32 %SINCOSN, 1
-; CHECK-NEXT:   %anot1_ = xor i1 %cmp8_unwrap, true
+; CHECK-NEXT:   %anot1_ = xor i1 %cmp8, true
 ; CHECK-NEXT:   %andVal = and i1 %lcmp.mod_unwrap, %anot1_
 ; CHECK-NEXT:   %bnot1_ = xor i1 %lcmp.mod_unwrap, true
 ; CHECK-NEXT:   %0 = select{{( fast)?}} i1 %bnot1_, double %differeturn, double 0.000000e+00
 ; CHECK-NEXT:   %1 = select{{( fast)?}} i1 %andVal, double %differeturn, double 0.000000e+00
-; CHECK-NEXT:   br i1 %cmp8_unwrap, label %invertentry, label %staging
+; CHECK-NEXT:   br i1 %cmp8, label %invertentry, label %staging
 
 ; CHECK: invertentry:                                      ; preds = %invertfor.body, %entry
 ; CHECK-NEXT:   %"x'de.0" = phi double [ %0, %entry ], [ %7, %invertfor.body ]

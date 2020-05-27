@@ -46,11 +46,11 @@ declare dso_local void @__enzyme_autodiff(i8*, ...)
 
 ; CHECK: define internal void @diffesub(i64* %inp, i64* %"inp'", i64 %idx) {
 ; CHECK-NEXT: entry:
+; CHECK-NEXT:   %[[gepp:.+]] = getelementptr inbounds i64, i64* %"inp'", i64 %idx
 ; CHECK-NEXT:   %gep = getelementptr inbounds i64, i64* %inp, i64 %idx
+; CHECK-NEXT:   %[[cstp:.+]] = bitcast i64* %[[gepp]] to double*
 ; CHECK-NEXT:   %cst = bitcast i64* %gep to double*
 ; CHECK-NEXT:   store double 0.000000e+00, double* %cst, align 8, !tbaa !2
-; CHECK-NEXT:   %[[gepp:.+]] = getelementptr inbounds i64, i64* %"inp'", i64 %idx
-; CHECK-NEXT:   %[[cstp:.+]] = bitcast i64* %[[gepp]] to double*
 ; CHECK-NEXT:   store double 0.000000e+00, double* %[[cstp]], align 8
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

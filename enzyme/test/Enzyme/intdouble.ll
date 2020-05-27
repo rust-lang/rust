@@ -80,11 +80,11 @@ attributes #5 = { nounwind "correctly-rounded-divide-sqrt-fp-math"="false" "disa
 
 ; CHECK: define internal {{(dso_local )?}}void @diffeintcast(i64* nocapture readonly %x, i64* nocapture %"x'", double %differeturn)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %_unwrap = bitcast i64* %x to double*
-; CHECK-NEXT:   %[[uw1:.+]] = load double, double* %_unwrap
+; CHECK-NEXT:   %[[ipc:.+]] = bitcast i64* %"x'" to double*
+; CHECK-NEXT:   %[[uw:.+]] = bitcast i64* %x to double*
+; CHECK-NEXT:   %[[uw1:.+]] = load double, double* %[[uw]]
 ; CHECK-NEXT:   %m0diffe = fmul fast double %differeturn, %[[uw1]]
 ; CHECK-NEXT:   %[[added:.+]] = fadd fast double %m0diffe, %m0diffe
-; CHECK-NEXT:   %[[ipc:.+]] = bitcast i64* %"x'" to double*
 ; CHECK-NEXT:   %[[prev:.+]] = load double, double* %[[ipc]]
 ; CHECK-NEXT:   %[[tostore:.+]] = fadd fast double %[[prev]], %[[added]]
 ; CHECK-NEXT:   store double %[[tostore]], double* %[[ipc]]

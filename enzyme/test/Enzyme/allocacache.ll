@@ -442,6 +442,7 @@ attributes #11 = { alwaysinline cold }
 ; CHECK: define internal void @diffematvec(<2 x double>* %Wptr, <2 x double>* %"Wptr'", double* %B, double* %"B'", <2 x double>* %outvec, <2 x double>* %"outvec'") #3 {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %B1 = load double, double* %B, align 8
+; CHECK-NEXT:   %[[B2pprime:.+]] = getelementptr inbounds double, double* %"B'", i64 1
 ; CHECK-NEXT:   %B2p = getelementptr inbounds double, double* %B, i64 1
 ; CHECK-NEXT:   %B2 = load double, double* %B2p, align 8
 ; CHECK-NEXT:   %call_augmented = call { { <2 x double>, <2 x double>, i8*, i8* }, <2 x double> } @augmented_subfn(<2 x double>* %Wptr, <2 x double>* %"Wptr'", double %B1, double %B2, i64 0)
@@ -452,7 +453,6 @@ attributes #11 = { alwaysinline cold }
 ; CHECK-NEXT:   %[[subfnret:.+]] = call { double, double } @diffesubfn(<2 x double>* %Wptr, <2 x double>* %"Wptr'", double %B1, double %B2, i64 0, <2 x double> %[[copyext]], { <2 x double>, <2 x double>, i8*, i8* } %[[calltape]])
 ; CHECK-NEXT:   %[[sub0:.+]] = extractvalue { double, double } %[[subfnret]], 0
 ; CHECK-NEXT:   %[[sub1:.+]] = extractvalue { double, double } %[[subfnret]], 1
-; CHECK-NEXT:   %[[B2pprime:.+]] = getelementptr inbounds double, double* %"B'", i64 1
 ; CHECK-NEXT:   %[[preb2:.+]] = load double, double* %[[B2pprime]], align 8
 ; CHECK-NEXT:   %[[addb2:.+]] = fadd fast double %[[preb2]], %[[sub1]]
 ; CHECK-NEXT:   store double %[[addb2]], double* %[[B2pprime]], align 8
@@ -510,17 +510,20 @@ attributes #11 = { alwaysinline cold }
 
 ; CHECK: define internal { double, double } @diffesubfn(<2 x double>* %W, <2 x double>* %"W'", double %B1, double %B2, i64 %row, <2 x double> %differeturn, { <2 x double>, <2 x double>, i8*, i8* } %tapeArg) #8 {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %preb2 = insertelement <2 x double> undef, double %B2, i32 0
-; CHECK-NEXT:   %B22 = shufflevector <2 x double> %preb2, <2 x double> undef, <2 x i32> zeroinitializer
-; CHECK-NEXT:   %m0diffeW34 = fmul fast <2 x double> %B22, %differeturn
-; CHECK-NEXT:   %W34_fromtape_unwrap = extractvalue { <2 x double>, <2 x double>, i8*, i8* } %tapeArg, 1
-; CHECK-NEXT:   %m1diffeB22 = fmul fast <2 x double> %W34_fromtape_unwrap, %differeturn
 ; CHECK-NEXT:   %[[malloccall:.+]] = extractvalue { <2 x double>, <2 x double>, i8*, i8* } %tapeArg, 2
-; CHECK-NEXT:   %[[Bref:.+]] = bitcast i8* %[[malloccall]] to <2 x double>*
 ; CHECK-NEXT:   %[[malloccallmi:.+]] = extractvalue { <2 x double>, <2 x double>, i8*, i8* } %tapeArg, 3
 ; CHECK-NEXT:   %[[Brefipc:.+]] = bitcast i8* %[[malloccallmi]] to <2 x double>*
+; CHECK-NEXT:   %[[Bref:.+]] = bitcast i8* %[[malloccall]] to <2 x double>*
+; CHECK-NEXT:   %[[W34pipge:.+]] = getelementptr inbounds <2 x double>, <2 x double>* %"W'", i64 1
 
+; CHECK-NEXT:   %[[W34:.+]] = extractvalue { <2 x double>, <2 x double>, i8*, i8* } %tapeArg, 1
+
+; CHECK-NEXT:   %preb2 = insertelement <2 x double> undef, double %B2, i32 0
+; CHECK-NEXT:   %B22 = shufflevector <2 x double> %preb2, <2 x double> undef, <2 x i32> zeroinitializer
 ; CHECK-NEXT:   %[[loadmultape:.+]] = extractvalue { <2 x double>, <2 x double>, i8*, i8* } %tapeArg, 0
+; CHECK-NEXT:   %m0diffeW34 = fmul fast <2 x double> %B22, %differeturn
+; CHECK-NEXT:   %m1diffeB22 = fmul fast <2 x double> %[[W34]], %differeturn
+
 
 ; CHECK-NEXT:   call void @diffeloadmul(<2 x double>* %W, <2 x double>* %"W'", <2 x double>* %[[Bref]], <2 x double>* %[[Brefipc]], <2 x double> %differeturn, <2 x double> %[[loadmultape]])
 ; CHECK-NEXT:   %[[lbref:.+]] = load <2 x double>, <2 x double>* %[[Brefipc]], align 16
@@ -531,7 +534,6 @@ attributes #11 = { alwaysinline cold }
 ; CHECK-NEXT:   %[[bref1:.+]] = extractelement <2 x double> %[[lbref]], i32 1
 ; CHECK-NEXT:   %[[bref0:.+]] = extractelement <2 x double> %[[lbref]], i32 0
 ; CHECK-NEXT:   %[[addbref:.+]] = fadd fast double %[[bref1]], %[[bref0]]
-; CHECK-NEXT:   %[[W34pipge:.+]] = getelementptr inbounds <2 x double>, <2 x double>* %"W'", i64 1
 ; CHECK-NEXT:   %[[lW34:.+]] = load <2 x double>, <2 x double>* %[[W34pipge]], align 16
 ; CHECK-NEXT:   %[[addW34:.+]] = fadd fast <2 x double> %[[lW34]], %m0diffeW34
 ; CHECK-NEXT:   store <2 x double> %[[addW34]], <2 x double>* %[[W34pipge]], align 16

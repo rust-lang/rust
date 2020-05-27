@@ -110,6 +110,7 @@ exit:                                             ; preds = %end2
 
 ; CHECK: define internal void @diffesubfn(double* %place, double* %"place'", i64* %m_rows, i64 %rows) {
 ; CHECK-NEXT: entry:
+; CHECK-NEXT:   %[[_unwrap:.+]] = add i64 %rows, -2
 ; CHECK-NEXT:   br label %invertend2
 
 ; CHECK: invertentry:                                      ; preds = %invertfor1
@@ -124,7 +125,7 @@ exit:                                             ; preds = %end2
 ; CHECK-NEXT:   br label %invertend2
 
 ; CHECK: invertfor2:                                       ; preds = %invertend2, %incinvertfor2
-; CHECK-NEXT:   %"iv1'ac.0" = phi i64 [ %_unwrap, %invertend2 ], [ %[[sub:.+]], %incinvertfor2 ]
+; CHECK-NEXT:   %"iv1'ac.0" = phi i64 [ %[[_unwrap:.+]], %invertend2 ], [ %[[sub:.+]], %incinvertfor2 ]
 ; CHECK-NEXT:   %m0diffeloaded = fmul fast double %[[addde:.+]], 2.000000e+00
 ; CHECK-NEXT:   %iv.next2_unwrap = add nuw nsw i64 %"iv1'ac.0", 1
 ; CHECK-NEXT:   %[[arrayidxipg:.+]] = getelementptr inbounds double, double* %"place'", i64 %iv.next2_unwrap
@@ -146,6 +147,5 @@ exit:                                             ; preds = %end2
 ; CHECK-NEXT:   %[[ldst:.+]] = load double, double* %[[tostoreipg]], align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %[[tostoreipg:.+]], align 8
 ; CHECK-NEXT:   %[[addde]] = fadd fast double %"add'de.1", %[[ldst]]
-; CHECK-NEXT:   %_unwrap = add i64 %rows, -2
 ; CHECK-NEXT:   br label %invertfor2
 ; CHECK-NEXT: }

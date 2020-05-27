@@ -60,16 +60,15 @@ declare double @__enzyme_autodiff(i8*, double)
 ; CHECK: exit:
 ; CHECK-NEXT:   %a3 = zext i32 %inc to i64
 ; CHECK-NEXT:   %call2 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([46 x i8], [46 x i8]* @.str, i64 0, i64 0), double %t, double 0x400921FAFC8B007A, double -2.000000e-01, i64 %a3)
-; CHECK-NEXT:   %{{.*}} = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([46 x i8], [46 x i8]* @.str, i64 0, i64 0), double %t, double 0x400921FAFC8B007A, double -2.000000e-01, i64 %a3)
 ; CHECK-NEXT:   br label %invertwhile
 
 ; CHECK: invertentry:                                      ; preds = %invertwhile
-; CHECK-NEXT:   %[[res:.+]] = insertvalue { double } undef, double %9, 0
+; CHECK-NEXT:   %[[res:.+]] = insertvalue { double } undef, double %[[dt2:.+]], 0
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %_realloccache)
 ; CHECK-NEXT:   ret { double } %[[res]]
 
 ; CHECK: invertwhile:                                      ; preds = %exit, %incinvertwhile
-; CHECK-NEXT:   %"t'de.0" = phi double [ 0.000000e+00, %exit ], [ %[[dt2:.+]], %incinvertwhile ]
+; CHECK-NEXT:   %"t'de.0" = phi double [ 0.000000e+00, %exit ], [ %[[dt2]], %incinvertwhile ]
 ; CHECK-NEXT:   %"mul2'de.0" = phi double [ %differeturn, %exit ], [ %[[m0diffe:.+]], %incinvertwhile ]
 ; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %iv, %exit ], [ %[[dinc:.+]], %incinvertwhile ]
 ; CHECK-NEXT:   %[[philoc:.+]] = getelementptr inbounds double, double* %_realloccast, i64 %"iv'ac.0"

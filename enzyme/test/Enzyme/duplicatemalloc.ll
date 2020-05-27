@@ -2,12 +2,12 @@
 
 ; #include <stdlib.h>
 ; #include <stdio.h>
-; 
+;
 ; __attribute__((noinline))
 ; double f(double* x) {
 ;     return x[0];
 ; }
-; 
+;
 ; double malloced(double x, unsigned long n) {
 ;     double *array = malloc(sizeof(double)*n);
 ;     array[0] = x;
@@ -15,11 +15,11 @@
 ;     free(array);
 ;     return res * res;
 ; }
-; 
+;
 ; double derivative(double x, unsigned long n) {
 ;     return __builtin_autodiff(malloced, x, n);
 ; }
-; 
+;
 ; int main(int argc, char** argv) {
 ;     double x = atof(argv[1]);
 ;     int n = atoi(argv[2]);
@@ -83,12 +83,12 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %call.i = tail call i8* @malloc(i64 %mul.i)
 ; CHECK-NEXT:   %"call'mi.i" = tail call noalias nonnull i8* @malloc(i64 %mul.i)
 ; CHECK-NEXT:   tail call void @llvm.memset.p0i8.i64(i8* nonnull {{(align 1 )?}}%"call'mi.i", i8 0, i64 %mul.i, {{(i32 1, )?}}i1 false)
-; CHECK-NEXT:   %0 = bitcast i8* %call.i to double*
-; CHECK-NEXT:   store double %x, double* %0, align 8, !tbaa !2
+; CHECK-NEXT:   %[[ipci:.+]] = bitcast i8* %"call'mi.i" to double*
+; CHECK-NEXT:   %[[bccall:.+]] = bitcast i8* %call.i to double*
+; CHECK-NEXT:   store double %x, double* %[[bccall]], align 8, !tbaa !2
 ; CHECK-NEXT:   %[[fresult:.+]] = tail call fastcc double @augmented_f(double %x)
 ;; TODO MAKE NON AUGMENTED:   %[[fresult:.+]] = tail call fast double @f(double* %0)
 ; CHECK-NEXT:   %factor = fmul fast double %[[fresult]], 2.000000e+00
-; CHECK-NEXT:   %[[ipci:.+]] = bitcast i8* %"call'mi.i" to double*
 ; CHECK-NEXT:   tail call fastcc void @diffef(double* nonnull %[[ipci]], double %factor)
 ; NOTE BETTER 03 / dead store elimination can get rid of the next line which is optional
 ;   since its being free'd next

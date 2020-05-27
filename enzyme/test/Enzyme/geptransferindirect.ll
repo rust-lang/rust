@@ -46,15 +46,15 @@ declare double @__enzyme_autodiff(i8*, ...)
 ; CHECK-NEXT:   %"ptr3'ac" = extractvalue { i64*, i64* } %ptr3_augmented, 1
 ; CHECK-NEXT:   %ptr3 = extractvalue { i64*, i64* } %ptr3_augmented, 0
 ; CHECK-NEXT:   store i64 %loadnotype, i64* %ptr3, align 4
+; CHECK-NEXT:   %[[cptr2ipge:.+]] = getelementptr inbounds i64, i64* %"ptr'", i64 2
 ; CHECK-NEXT:   %cptr2 = getelementptr inbounds i64, i64* %ptr, i64 2
 ; CHECK-NEXT:   %loadtype = load i64, i64* %cptr2, align 4
+; CHECK-NEXT:   %[[cptr4ipge:.+]] = getelementptr inbounds i64, i64* %"ptr'", i64 4
 ; CHECK-NEXT:   %cptr4 = getelementptr inbounds i64, i64* %ptr, i64 4
 ; CHECK-NEXT:   store i64 %loadtype, i64* %cptr4, align 4, !tbaa !0
-; CHECK-NEXT:   %[[cptr4ipge:.+]] = getelementptr inbounds i64, i64* %"ptr'", i64 4
 ; CHECK-NEXT:   %0 = bitcast i64* %[[cptr4ipge]] to double*
 ; CHECK-NEXT:   %1 = load double, double* %0, align 8
 ; CHECK-NEXT:   store i64 0, i64* %[[cptr4ipge]], align 4
-; CHECK-NEXT:   %[[cptr2ipge:.+]] = getelementptr inbounds i64, i64* %"ptr'", i64 2
 ; CHECK-NEXT:   %2 = bitcast i64* %[[cptr2ipge]] to double*
 ; CHECK-NEXT:   %3 = load double, double* %2, align 8
 ; CHECK-NEXT:   %4 = fadd fast double %3, %1

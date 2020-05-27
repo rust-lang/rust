@@ -2,15 +2,15 @@
 
 ; #include <math.h>
 ; #include <stdio.h>
-; 
+;
 ; __attribute__((noinline))
 ; void store(double *x, double *y) {
 ;   unsigned long long *xl = (unsigned long long*)x;
 ;   unsigned long long *yl = (unsigned long long*)y;
 ;   *yl = *xl;
 ; }
-; 
-; 
+;
+;
 ; void test_derivative(double* x, double *xp, double* y, double* yp) {
 ;   __builtin_autodiff(store, x, xp, y, yp);
 ; }
@@ -51,14 +51,14 @@ attributes #2 = { nounwind }
 
 ; CHECK: define internal {{(dso_local )?}}void @diffestore(double* nocapture readonly %x, double* nocapture %"x'", double* nocapture %y, double* nocapture %"y'")
 ; CHECK-NEXT: entry:
+; CHECK-NEXT:   %[[ipc2:.+]] = bitcast double* %"x'" to i64*
 ; CHECK-NEXT:   %0 = bitcast double* %x to i64*
+; CHECK-NEXT:   %[[ipc:.+]] = bitcast double* %"y'" to i64*
 ; CHECK-NEXT:   %1 = bitcast double* %y to i64*
 ; CHECK-NEXT:   %2 = load i64, i64* %0
 ; CHECK-NEXT:   store i64 %2, i64* %1
-; CHECK-NEXT:   %[[ipc:.+]] = bitcast double* %"y'" to i64*
 ; CHECK-NEXT:   %3 = load i64, i64* %[[ipc]]
 ; CHECK-NEXT:   store i64 0, i64* %[[ipc]]
-; CHECK-NEXT:   %[[ipc2:.+]] = bitcast double* %"x'" to i64*
 ; CHECK-NEXT:   %4 = load i64, i64* %[[ipc2]]
 ; CHECK-NEXT:   %5 = bitcast i64 %3 to double
 ; CHECK-NEXT:   %6 = bitcast i64 %4 to double

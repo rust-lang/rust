@@ -823,15 +823,11 @@ attributes #11 = { cold }
 
 ; CHECK: one:                                              ; preds = %entry
 ; CHECK-NEXT:   store double 1.000000e+00, double* %a9, align 8
-; CHECK-NEXT:   %[[a9ipl_uw:.+]] = load double*, double** %[[m_datai17ipge:.+]], align 8
-; CHECK-NEXT:   store double 0.000000e+00, double* %[[a9ipl_uw]], align 8
+; CHECK-NEXT:   store double 0.000000e+00, double* %"a9'ipl", align 8
 ; CHECK-NEXT:   br label %invertentry
 
 ; CHECK: invertentry:                                      ; preds = %entry, %one
-; CHECK-NEXT:   %a9_unwrap = load double*, double** %m_data.i17, align 8, !tbaa !9
-; CHECK-NEXT:   %a8_unwrap = load i64, i64* %m_rows.i19, align 8, !tbaa !2
-; TODO there should be an a9'ipl unwrap here too
-; CHECK-NEXT:   call void @diffesub(double* %a9_unwrap, double* %"a9'ipl", i64 %a8_unwrap) #9
+; CHECK-NEXT:   call void @diffesub(double* %a9, double* %"a9'ipl", i64 %a8) #9
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
@@ -895,5 +891,8 @@ attributes #11 = { cold }
 
 ; CHECK: define internal void @diffefinal(double* %array, double* %"array'", i64 %finalsize)
 ; CHECK-NEXT: entry:
+; CHECK-NEXT:   br label %invertentry
+
+; CHECK:      invertentry:
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

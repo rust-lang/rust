@@ -35,30 +35,28 @@ declare double @__enzyme_autodiff(i8*, ...)
 
 ; CHECK: define internal void @diffecallee(i64* %ptr, i64* %"ptr'") {
 ; CHECK-NEXT: entry:
+; CHECK-NEXT:   %[[ptr2ipge:.+]] = getelementptr inbounds i64, i64* %"ptr'", i64 2
 ; CHECK-NEXT:   %ptr2 = getelementptr inbounds i64, i64* %ptr, i64 2
 ; CHECK-NEXT:   %loadnotype = load i64, i64* %ptr2, align 4
+; CHECK-NEXT:   %[[ptr3ipge:.+]] = getelementptr inbounds i64, i64* %"ptr'", i64 3
 ; CHECK-NEXT:   %ptr3 = getelementptr inbounds i64, i64* %ptr, i64 3
 ; CHECK-NEXT:   store i64 %loadnotype, i64* %ptr3, align 4, !tbaa !0
+; CHECK-NEXT:   %[[dptr2:.+]] = getelementptr inbounds i64, i64* %"ptr'", i64 2
+; CHECK-NEXT:   %[[dptr4:.+]] = getelementptr inbounds i64, i64* %"ptr'", i64 4
 ; CHECK-NEXT:   %[[ptr4:.+]] = getelementptr inbounds i64, i64* %ptr, i64 4
 ; CHECK-NEXT:   store i64 %loadnotype, i64* %[[ptr4]], align 4
-; CHECK-NEXT:   %[[dptr4:.+]] = getelementptr inbounds i64, i64* %"ptr'", i64 4
 ; CHECK-NEXT:   %[[double_ptr4:.+]] = bitcast i64* %[[dptr4]] to double*
 ; CHECK-NEXT:   %[[ldouble_ptr4:.+]] = load double, double* %[[double_ptr4]], align 8
 ; CHECK-NEXT:   store i64 0, i64* %[[dptr4]], align 4
-; CHECK-NEXT:   %[[dptr2:.+]] = getelementptr inbounds i64, i64* %"ptr'", i64 2
 ; CHECK-NEXT:   %[[double_dptr2:.+]] = bitcast i64* %[[dptr2]] to double*
 ; CHECK-NEXT:   %[[ldouble_dptr2:.+]] = load double, double* %[[double_dptr2]], align 8
 ; CHECK-NEXT:   %7 = fadd fast double %[[ldouble_dptr2]], %[[ldouble_ptr4]]
 ; CHECK-NEXT:   %8 = bitcast i64* %[[dptr2]] to double*
 ; CHECK-NEXT:   store double %7, double* %8, align 8
-; CHECK-NEXT:   %[[ptr3ipge:.+]] = getelementptr inbounds i64, i64* %"ptr'", i64 3
 ; CHECK-NEXT:   %9 = bitcast i64* %[[ptr3ipge]] to double*
 ; CHECK-NEXT:   %10 = load double, double* %9, align 8
 ; CHECK-NEXT:   store i64 0, i64* %[[ptr3ipge]], align 4
-; CHECK-NEXT:   %[[ptr2ipge:.+]] = getelementptr inbounds i64, i64* %"ptr'", i64 2
-; CHECK-NEXT:   %[[double_dptr2:.+]] = bitcast i64* %[[ptr2ipge]] to double*
-; CHECK-NEXT:   %[[nv:.+]] = load double, double* %[[double_dptr2]]
-; CHECK-NEXT:   %[[final:.+]] = fadd fast double %[[nv]], %10
+; CHECK-NEXT:   %[[final:.+]] = fadd fast double %7, %10
 ; CHECK-NEXT:   %[[double2_dptr2:.+]] = bitcast i64* %[[ptr2ipge]] to double*
 ; CHECK-NEXT:   store double %[[final]], double* %[[double2_dptr2]], align 8
 ; CHECK-NEXT:   ret void

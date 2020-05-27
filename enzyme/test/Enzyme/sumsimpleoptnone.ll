@@ -49,7 +49,7 @@ attributes #0 = { noinline nounwind uwtable optnone }
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %for.body ], [ 0, %entry ]
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
 ; CHECK-NEXT:   %cmp = icmp ne i64 %iv, %0
-; CHECK-NEXT:   br i1 %cmp, label %for.body, label %invertfor.end
+; CHECK-NEXT:   br i1 %cmp, label %for.body, label %invertfor.cond
 
 ; CHECK: for.body:
 ; CHECK-NEXT:   %2 = load double, double* %x
@@ -67,7 +67,7 @@ attributes #0 = { noinline nounwind uwtable optnone }
 ; CHECK-NEXT:   ret void
 
 ; CHECK: invertfor.cond:
-; CHECK-NEXT:   %[[ivp:.+]] = phi i64 [ %0, %invertfor.end ], [ %[[sub:.+]], %incinvertfor.cond ]
+; CHECK-NEXT:   %[[ivp:.+]] = phi i64 [ %[[sub:.+]], %incinvertfor.cond ], [ %0, %for.cond ]
 ; CHECK-NEXT:   %[[cmp:.+]] = icmp eq i64 %[[ivp]], 0
 ; CHECK-NEXT:   br i1 %[[cmp]], label %invertentry, label %incinvertfor.cond
 
@@ -80,9 +80,6 @@ attributes #0 = { noinline nounwind uwtable optnone }
 ; CHECK-NEXT:   %11 = load double, double* %"x'"
 ; CHECK-NEXT:   %12 = fadd fast double %11, %10
 ; CHECK-NEXT:   store double %12, double* %"x'"
-; CHECK-NEXT:   br label %invertfor.cond
-
-; CHECK: invertfor.end:
 ; CHECK-NEXT:   br label %invertfor.cond
 ; CHECK-NEXT: }
 

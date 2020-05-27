@@ -125,23 +125,18 @@ attributes #6 = { noreturn nounwind }
 ; CHECK-NEXT:   %cond.i = select{{( fast)?}} i1 %cmp.i, double %cond.i28, double %.pre
 ; CHECK-NEXT:   %indvars.iv.next = add nuw i64 %[[idxadd]], 1
 ; CHECK-NEXT:   %[[pcond:.+]] = icmp eq i64 %indvars.iv.next, %n
-; CHECK-NEXT:   br i1 %[[pcond]], label %invertfor.cond.cleanup, label %for.body.for.body_crit_edge
+; CHECK-NEXT:   br i1 %[[pcond]], label %invertfor.body.for.body_crit_edge, label %for.body.for.body_crit_edge
 
 ; CHECK: invertfor.body.preheader:                         ; preds = %invertfor.body.for.body_crit_edge
 ; CHECK-NEXT:   %[[lastload:.+]] = load double, double* %"x'"
 ; CHECK-NEXT:   %[[output:.+]] = fadd fast double %[[lastload]], %[[decarry:.+]]
 ; CHECK-NEXT:   store double %[[output]], double* %"x'"
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %malloccall)
-; CHECK-NEXT:   %[[printer:.+]] = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([19 x i8], [19 x i8]* @.str.3, i64 0, i64 0), double 0.000000e+00)
 ; CHECK-NEXT:   ret void
 
-; CHECK: invertfor.cond.cleanup:                           ; preds = %for.body.for.body_crit_edge
-; CHECK-NEXT:   %[[nm210:.+]] = add i64 %n, -2
-; CHECK-NEXT:   br label %invertfor.body.for.body_crit_edge
-
 ; CHECK: invertfor.body.for.body_crit_edge:
-; CHECK-NEXT:   %"cond.i'de.0" = phi double [ -1.000000e+00, %invertfor.cond.cleanup ], [ %[[diffecond:.+]], %incinvertfor.body.for.body_crit_edge ]
-; CHECK-NEXT:   %[[antivar:.+]] = phi i64 [ %[[nm210]], %invertfor.cond.cleanup ], [ %[[subd:.+]], %incinvertfor.body.for.body_crit_edge ]
+; CHECK-NEXT:   %"cond.i'de.0" = phi double [ %[[diffecond:.+]], %incinvertfor.body.for.body_crit_edge ], [ -1.000000e+00, %for.body.for.body_crit_edge ]
+; CHECK-NEXT:   %[[antivar:.+]] = phi i64 [ %[[subd:.+]], %incinvertfor.body.for.body_crit_edge ], [ %[[nm2]], %for.body.for.body_crit_edge ]
 ; CHECK-NEXT:   %[[gep1:.+]] = getelementptr inbounds i1, i1* %cmp.i_malloccache, i64 %[[antivar]]
 ; CHECK-NEXT:   %[[reload:.+]] = load i1, i1* %[[gep1]]
 ; CHECK-NEXT:   %[[diffecond]] = select{{( fast)?}} i1 %[[reload]], double %"cond.i'de.0", double 0.000000e+00

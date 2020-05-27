@@ -26,8 +26,8 @@ define dso_local double @_Z11matvec_realPdS_(double* nocapture readonly %mat, do
 ; CHECK-NEXT:   %mload = load double, double* %mat
 ; CHECK-NEXT:   %arrayidx = getelementptr inbounds double, double* %vec, i64 1
 ; CHECK-NEXT:   %vload = load double, double* %arrayidx
-; CHECK-NEXT:   %mul_unwrap = fmul fast double %vload, %mload
-; CHECK-NEXT:   %m0diffemul = fmul fast double %differeturn, %mul_unwrap
+; CHECK-NEXT:   %[[mul:.+]] = fmul fast double %vload, %mload
+; CHECK-NEXT:   %m0diffemul = fmul fast double %differeturn, %[[mul]]
 ; CHECK-NEXT:   %[[dtot:.+]] = fadd fast double %m0diffemul, %m0diffemul
 ; CHECK-NEXT:   %m1diffemload = fmul fast double %[[dtot]], %vload
 ; CHECK-NEXT:   %[[pmat:.+]] = load double, double* %"mat'"

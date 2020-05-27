@@ -52,9 +52,9 @@ attributes #3 = { readnone }
 ; CHECK-NEXT:   %dims = getelementptr inbounds %Type, %Type* %evaluator.i.i, i64 0, i32 1
 ; CHECK-NEXT:   %call = call fast double @augmented_total(double* %dims, double* %[[dimsipge]])
 ; CHECK-NEXT:   %flt = fptrunc double %call to float
+; CHECK-NEXT:   %[[dataipge:.+]] = getelementptr inbounds %Type, %Type* %"evaluator.i.i'", i64 0, i32 0
 ; CHECK-NEXT:   %data = getelementptr inbounds %Type, %Type* %evaluator.i.i, i64 0, i32 0
 ; CHECK-NEXT:   store float %flt, float* %data, align 4
-; CHECK-NEXT:   %[[dataipge:.+]] = getelementptr inbounds %Type, %Type* %"evaluator.i.i'", i64 0, i32 0
 ; CHECK-NEXT:   %0 = load float, float* %[[dataipge:.+]], align 4
 ; CHECK-NEXT:   store float 0.000000e+00, float* %[[dataipge:.+]], align 4
 ; CHECK-NEXT:   %1 = fpext float %0 to double

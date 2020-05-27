@@ -366,28 +366,28 @@ attributes #22 = { readnone speculatable }
 ; CHECK-NEXT:   br label %invertfor.body14.i
 
 ; CHECK: invertfor.body14.i:                               ; preds = %incinvertfor.body14.i, %invertfor.cond.cleanup13.i
-; CHECK-NEXT:   %"'de11.1" = phi i64 [ %".lcssa'de.0", %invertfor.cond.cleanup13.i ], [ %[[dessa:.+]], %incinvertfor.body14.i ]
+; CHECK-NEXT:   %[[de11:.+]] = phi i64 [ %".lcssa'de.0", %invertfor.cond.cleanup13.i ], [ %[[dessa:.+]], %incinvertfor.body14.i ]
 ; CHECK-NEXT:   %"add.i.i'de.1" = phi double [ %"add.i.i.lcssa'de.0", %invertfor.cond.cleanup13.i ], [ 0.000000e+00, %incinvertfor.body14.i ]
 ; CHECK-NEXT:   %"iv5'ac.0" = phi i64 [ 3, %invertfor.cond.cleanup13.i ], [ %[[iv5sub:.+]], %incinvertfor.body14.i ]
-; CHECK-NEXT:   %[[dedd:.+]] = bitcast i64 %"'de11.1" to double
+; CHECK-NEXT:   %[[dedd:.+]] = bitcast i64 %[[de11:.+]] to double
 ; CHECK-NEXT:   %[[fad:.+]] = fadd fast double %"add.i.i'de.1", %[[dedd]]
 ; CHECK-NEXT:   %[[iv54:.+]] = mul nuw nsw i64 %"iv5'ac.0", 4
 ; CHECK-NEXT:   %[[iv35a:.+]] = add nuw nsw i64 %"iv3'ac.0", %[[iv54]]
 ; CHECK-NEXT:   %[[bcq:.+]] = getelementptr inbounds i64, i64* %res.i.sroa.0.2_malloccache, i64 %[[iv35a]]
 ; CHECK-NEXT:   %[[ilx:.+]] = load i64, i64* %[[bcq]], align 8, !invariant.group !6, !enzyme_fromcache !7
-; CHECK-NEXT:   %_unwrap13 = bitcast i64 %[[ilx]] to double
-; CHECK-NEXT:   %m0diffe = fmul fast double %[[fad]], %_unwrap13
+; CHECK-NEXT:   %[[unwrap13:.+]] = bitcast i64 %[[ilx]] to double
+; CHECK-NEXT:   %m0diffe = fmul fast double %[[fad]], %[[unwrap13]]
 ; CHECK-NEXT:   %[[m2a:.+]] = fadd fast double %m0diffe, %m0diffe
 ; CHECK-NEXT:   %[[dessa:.+]] = bitcast double %[[m2a]] to i64
 ; CHECK-NEXT:   %mul.i.i_unwrap = mul nsw i64 4, %"iv3'ac.0"
 ; CHECK-NEXT:   %add.i4.i_unwrap = add nsw i64 %mul.i.i_unwrap, %"iv5'ac.0"
 ; CHECK-NEXT:   %"arrayidx.i.i'ipg_unwrap" = getelementptr inbounds double, double* %"'ipc8", i64 %add.i4.i_unwrap
-; CHECK-NEXT:   %"'ipc16_unwrap" = bitcast double* %"arrayidx.i.i'ipg_unwrap" to i64*
-; CHECK-NEXT:   %[[prepc:.+]] = load i64, i64* %"'ipc16_unwrap", align 8
+; CHECK-NEXT:   %[[ipc16:.+]] = bitcast double* %"arrayidx.i.i'ipg_unwrap" to i64*
+; CHECK-NEXT:   %[[prepc:.+]] = load i64, i64* %[[ipc16]], align 8
 ; CHECK-NEXT:   %[[ddpc:.+]] = bitcast i64 %[[prepc]] to double
 ; CHECK-NEXT:   %[[ddpost:.+]] = fadd fast double %[[ddpc]], %[[fad]]
 ; CHECK-NEXT:   %[[iipost:.+]] = bitcast double %[[ddpost]] to i64
-; CHECK-NEXT:   store i64 %[[iipost]], i64* %"'ipc16_unwrap", align 8
+; CHECK-NEXT:   store i64 %[[iipost]], i64* %[[ipc16]], align 8
 ; CHECK-NEXT:   %[[iv5cmp:.+]] = icmp eq i64 %"iv5'ac.0", 0
 ; CHECK-NEXT:   %[[selo2:.+]] = bitcast double %[[m2a]] to i64
 ; CHECK-NEXT:   %[[selcsa]] = select{{( fast)?}} i1 %[[iv5cmp]], i64 %[[selo2]], i64 0
@@ -409,7 +409,7 @@ attributes #22 = { readnone speculatable }
 
 ; CHECK: for.body:                                         ; preds = %for.body, %entry
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %for.body ], [ 0, %entry ]
-; CHECK-NEXT:   %res.0 = phi double [ 0.000000e+00, %entry ], [ %add.i, %for.body ] 
+; CHECK-NEXT:   %res.0 = phi double [ 0.000000e+00, %entry ], [ %add.i, %for.body ]
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
 ; CHECK-NEXT:   %mul.i.i.i = mul nsw i64 4, %iv
 ; CHECK-NEXT:   %arrayidx.i.i.i = getelementptr inbounds double, double* %a3, i64 %mul.i.i.i

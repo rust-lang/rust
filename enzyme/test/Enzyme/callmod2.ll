@@ -85,10 +85,10 @@ attributes #4 = { nounwind }
 
 ; CHECK: define internal {{(dso_local )?}}{ double } @diffesub(double %x, double %differeturn, { float, double } %tapeArg)
 ; CHECK-NEXT: entry:
+; CHECK-NEXT:   %[[readextract:.+]] = extractvalue { float, double } %tapeArg, 1
 ; CHECK-NEXT:   %[[flreadextract:.+]] = extractvalue { float, double } %tapeArg, 0
 ; CHECK-NEXT:   %[[fpext:.+]] = fpext float %[[flreadextract]] to double
 ; CHECK-NEXT:   %[[fmul:.+]] = fmul fast double %differeturn, %[[fpext]]
-; CHECK-NEXT:   %[[readextract:.+]] = extractvalue { float, double } %tapeArg, 1
 ; CHECK-NEXT:   %[[fmul2:.+]] = fmul fast double %[[fmul]], %[[readextract]]
 ; CHECK-NEXT:   %[[ret:.+]] = insertvalue { double } undef, double %[[fmul2]], 0
 ; CHECK-NEXT:   ret { double } %[[ret]]
