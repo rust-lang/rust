@@ -22,8 +22,6 @@ opt-level = 0
 opt-level = 0
 [profile.release.package.chalk-derive]
 opt-level = 0
-[profile.release.package.chalk-macros]
-opt-level = 0
 [profile.release.package.salsa-macros]
 opt-level = 0
 [profile.release.package.xtask]
