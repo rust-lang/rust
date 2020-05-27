@@ -694,6 +694,70 @@
                     ]
                 }
             }
-        ]
+        ],
+        "menus": {
+            "commandPalette": [
+                {
+                    "command": "rust-analyzer.syntaxTree",
+                    "when": "inRustProject"
+                },
+                {
+                    "command": "rust-analyzer.expandMacro",
+                    "when": "inRustProject"
+                },
+                {
+                    "command": "rust-analyzer.matchingBrace",
+                    "when": "inRustProject"
+                },
+                {
+                    "command": "rust-analyzer.parentModule",
+                    "when": "inRustProject"
+                },
+                {
+                    "command": "rust-analyzer.joinLines",
+                    "when": "inRustProject"
+                },
+                {
+                    "command": "rust-analyzer.run",
+                    "when": "inRustProject"
+                },
+                {
+                    "command": "rust-analyzer.debug",
+                    "when": "inRustProject"
+                },
+                {
+                    "command": "rust-analyzer.newDebugConfig",
+                    "when": "inRustProject"
+                },
+                {
+                    "command": "rust-analyzer.analyzerStatus",
+                    "when": "inRustProject"
+                },
+                {
+                    "command": "rust-analyzer.collectGarbage",
+                    "when": "inRustProject"
+                },
+                {
+                    "command": "rust-analyzer.reload",
+                    "when": "inRustProject"
+                },
+                {
+                    "command": "rust-analyzer.onEnter",
+                    "when": "inRustProject"
+                },
+                {
+                    "command": "rust-analyzer.ssr",
+                    "when": "inRustProject"
+                },
+                {
+                    "command": "rust-analyzer.serverVersion",
+                    "when": "inRustProject"
+                },
+                {
+                    "command": "rust-analyzer.toggleInlayHints",
+                    "when": "inRustProject"
+                }
+            ]
+        }
     }
 }

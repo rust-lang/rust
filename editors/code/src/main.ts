@@ -12,9 +12,12 @@ import { log, assert, isValidExecutable } from './util';
 import { PersistentState } from './persistent_state';
 import { fetchRelease, download } from './net';
 import { activateTaskProvider } from './tasks';
+import { setContextValue } from './util';
 import { exec } from 'child_process';
 
 let ctx: Ctx | undefined;
+
+const RUST_PROJECT_CONTEXT_NAME = "inRustProject";
 
 export async function activate(context: vscode.ExtensionContext) {
     // Register a "dumb" onEnter command for the case where server fails to
@@ -53,6 +56,8 @@ export async function activate(context: vscode.ExtensionContext) {
     //
     // This a horribly, horribly wrong way to deal with this problem.
     ctx = await Ctx.create(config, context, serverPath, workspaceFolder.uri.fsPath);
+
+    setContextValue(RUST_PROJECT_CONTEXT_NAME, true);
 
     // Commands which invokes manually via command palette, shortcut, etc.
 
@@ -109,6 +114,7 @@ export async function activate(context: vscode.ExtensionContext) {
 }
 
 export async function deactivate() {
+    setContextValue(RUST_PROJECT_CONTEXT_NAME, undefined);
     await ctx?.client.stop();
     ctx = undefined;
 }
