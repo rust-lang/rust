@@ -10,10 +10,22 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         err: &mut DiagnosticBuilder<'_>,
         origin: &SubregionOrigin<'tcx>,
     ) {
+        let mut label_or_note = |span, msg| {
+            let sub_count = err.children.iter().filter(|d| d.span.is_dummy()).count();
+            let expanded_sub_count = err.children.iter().filter(|d| !d.span.is_dummy()).count();
+            let span_is_primary = err.span.primary_spans().iter().all(|&sp| sp == span);
+            if span_is_primary && sub_count == 0 && expanded_sub_count == 0 {
+                err.span_label(span, msg);
+            } else if span_is_primary && expanded_sub_count == 0 {
+                err.note(msg);
+            } else {
+                err.span_note(span, msg);
+            }
+        };
         match *origin {
             infer::Subtype(ref trace) => {
                 if let Some((expected, found)) = self.values_str(&trace.values) {
-                    err.span_note(
+                    label_or_note(
                         trace.cause.span,
                         &format!("...so that the {}", trace.cause.as_requirement_str()),
                     );
@@ -24,27 +36,27 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     // handling of region checking when type errors are present is
                     // *terrible*.
 
-                    err.span_note(
+                    label_or_note(
                         trace.cause.span,
                         &format!("...so that {}", trace.cause.as_requirement_str()),
                     );
                 }
             }
             infer::Reborrow(span) => {
-                err.span_note(span, "...so that reference does not outlive borrowed content");
+                label_or_note(span, "...so that reference does not outlive borrowed content");
             }
             infer::ReborrowUpvar(span, ref upvar_id) => {
                 let var_name = self.tcx.hir().name(upvar_id.var_path.hir_id);
-                err.span_note(span, &format!("...so that closure can access `{}`", var_name));
+                label_or_note(span, &format!("...so that closure can access `{}`", var_name));
             }
             infer::RelateObjectBound(span) => {
-                err.span_note(span, "...so that it can be closed over into an object");
+                label_or_note(span, "...so that it can be closed over into an object");
             }
             infer::CallReturn(span) => {
-                err.span_note(span, "...so that return value is valid for the call");
+                label_or_note(span, "...so that return value is valid for the call");
             }
             infer::DataBorrowed(ty, span) => {
-                err.span_note(
+                label_or_note(
                     span,
                     &format!(
                         "...so that the type `{}` is not borrowed for too long",
@@ -53,7 +65,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 );
             }
             infer::ReferenceOutlivesReferent(ty, span) => {
-                err.span_note(
+                label_or_note(
                     span,
                     &format!(
                         "...so that the reference type `{}` does not outlive the data it points at",
@@ -62,7 +74,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 );
             }
             infer::RelateParamBound(span, t) => {
-                err.span_note(
+                label_or_note(
                     span,
                     &format!(
                         "...so that the type `{}` will meet its required lifetime bounds",
@@ -71,13 +83,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 );
             }
             infer::RelateRegionParamBound(span) => {
-                err.span_note(
+                label_or_note(
                     span,
                     "...so that the declared lifetime parameter bounds are satisfied",
                 );
             }
             infer::CompareImplMethodObligation { span, .. } => {
-                err.span_note(
+                label_or_note(
                     span,
                     "...so that the definition in impl matches the definition from the trait",
                 );

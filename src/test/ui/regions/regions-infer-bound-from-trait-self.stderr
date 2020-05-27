@@ -5,11 +5,7 @@ LL |         check_bound(x, self)
    |         ^^^^^^^^^^^
    |
    = help: consider adding an explicit lifetime bound `Self: 'a`...
-note: ...so that the type `Self` will meet its required lifetime bounds
-  --> $DIR/regions-infer-bound-from-trait-self.rs:46:9
-   |
-LL |         check_bound(x, self)
-   |         ^^^^^^^^^^^
+   = note: ...so that the type `Self` will meet its required lifetime bounds
 
 error: aborting due to previous error
 

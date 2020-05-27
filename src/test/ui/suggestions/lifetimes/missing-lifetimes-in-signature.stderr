@@ -99,15 +99,9 @@ error[E0309]: the parameter type `G` may not live long enough
   --> $DIR/missing-lifetimes-in-signature.rs:69:44
    |
 LL | fn bak<'a, G, T>(g: G, dest: &'a mut T) -> impl FnOnce() + 'a
-   |            -                               ^^^^^^^^^^^^^^^^^^
+   |            -                               ^^^^^^^^^^^^^^^^^^ ...so that the type `[closure@$DIR/missing-lifetimes-in-signature.rs:74:5: 76:6 g:G, dest:&mut T]` will meet its required lifetime bounds
    |            |
    |            help: consider adding an explicit lifetime bound...: `G: 'a`
-   |
-note: ...so that the type `[closure@$DIR/missing-lifetimes-in-signature.rs:74:5: 76:6 g:G, dest:&mut T]` will meet its required lifetime bounds
-  --> $DIR/missing-lifetimes-in-signature.rs:69:44
-   |
-LL | fn bak<'a, G, T>(g: G, dest: &'a mut T) -> impl FnOnce() + 'a
-   |                                            ^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 6 previous errors
 
