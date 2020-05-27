@@ -1040,17 +1040,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         stack: &TraitObligationStack<'o, 'tcx>,
     ) -> SelectionResult<'tcx, SelectionCandidate<'tcx>> {
-        if stack.obligation.predicate.references_error() {
-            // If we encounter a `Error`, we generally prefer the
-            // most "optimistic" result in response -- that is, the
-            // one least likely to report downstream errors. But
-            // because this routine is shared by coherence and by
-            // trait selection, there isn't an obvious "right" choice
-            // here in that respect, so we opt to just return
-            // ambiguity and let the upstream clients sort it out.
-            return Ok(None);
-        }
-
         if let Some(conflict) = self.is_knowable(stack) {
             debug!("coherence stage: not knowable");
             if self.intercrate_ambiguity_causes.is_some() {
