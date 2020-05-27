@@ -29,7 +29,6 @@
     - [Emitting Errors and other Diagnostics](diagnostics.md)
         - [`LintStore`](./diagnostics/lintstore.md)
         - [Diagnostic Codes](./diagnostics/diagnostic-codes.md)
-    - [Command-line arguments](./cli.md)
     - [ICE-breaker teams](ice-breaker/about.md)
         - ["Cleanup Crew" ICE-breakers](ice-breaker/cleanup-crew.md)
         - [LLVM ICE-breakers](ice-breaker/llvm.md)
@@ -48,6 +47,7 @@
     - [Parallel Compilation](./parallel-rustc.md)
 
 - [Part 3: Source Code Representations](./part-3-intro.md)
+    - [Command-line arguments](./cli.md)
     - [The Rustc Driver and Interface](./rustc-driver.md)
         - [Rustdoc](./rustdoc.md)
         - [Ex: Type checking through `rustc_interface`](./rustc-driver-interacting-with-the-ast.md)
