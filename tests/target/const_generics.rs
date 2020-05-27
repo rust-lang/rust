@@ -22,3 +22,7 @@ fn foo<const X: usize>() {
 }
 
 type Foo<const N: usize> = [i32; N + 1];
+
+pub trait Foo: Bar<{ Baz::COUNT }> {
+    const ASD: usize;
+}

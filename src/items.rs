@@ -1141,14 +1141,15 @@ pub(crate) fn format_trait(
         }
         result.push('{');
 
-        let snippet = context.snippet(item.span);
+        let block_span = mk_sp(generics.where_clause.span.hi(), item.span.hi());
+        let snippet = context.snippet(block_span);
         let open_pos = snippet.find_uncommented("{")? + 1;
         let outer_indent_str = offset.block_only().to_string_with_newline(context.config);
 
         if !trait_items.is_empty() || contains_comment(&snippet[open_pos..]) {
             let mut visitor = FmtVisitor::from_context(context);
             visitor.block_indent = offset.block_only().block_indent(context.config);
-            visitor.last_pos = item.span.lo() + BytePos(open_pos as u32);
+            visitor.last_pos = block_span.lo() + BytePos(open_pos as u32);
 
             for item in trait_items {
                 visitor.visit_trait_item(item);
