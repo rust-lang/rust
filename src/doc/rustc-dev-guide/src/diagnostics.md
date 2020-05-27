@@ -85,12 +85,29 @@ Some messages are emitted via [lints](#lints), where the user can control the
 level. Most diagnostics are hard-coded such that the user cannot control the
 level.
 
+Usually it is obvious whether a diagnostic should be "fixed" or a lint, but
+there are some grey areas.
+
+Here are a few examples:
+
+- Borrow checker errors: these are fixed errors. The user cannot adjust the
+  level of these diagnostics to silence the borrow checker.
+- Dead code: this is a lint. While the user probably doesn't want dead code in
+  their crate, making this a hard error would make refactoring and development
+  very painful.
+- [safe_packed_borrows future compatibility warning][safe_packed_borrows]:
+  this is a silencable lint related to safety. It was judged that the making
+  this a hard (fixed) error would cause too much breakage, so instead a
+  warning is emitted that eventually will be turned into a hard error.
+
 Hard-coded warnings (those using the `span_warn` methods) should be avoided
 for normal code, preferring to use lints instead. Some cases, such as warnings
 with CLI flags, will require the use of hard-coded warnings.
 
 See the `deny` [lint level](#diagnostic-levels) below for guidelines when to
 use an error-level lint instead of a fixed error.
+
+[safe_packed_borrows]: https://github.com/rust-lang/rust/issues/46043
 
 ## Diagnostic output style guide
 
