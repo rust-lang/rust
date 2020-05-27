@@ -29,6 +29,7 @@
     - [Emitting Errors and other Diagnostics](diagnostics.md)
         - [`LintStore`](./diagnostics/lintstore.md)
         - [Diagnostic Codes](./diagnostics/diagnostic-codes.md)
+    - [Command-line arguments](./cli.md)
     - [ICE-breaker teams](ice-breaker/about.md)
         - ["Cleanup Crew" ICE-breakers](ice-breaker/cleanup-crew.md)
         - [LLVM ICE-breakers](ice-breaker/llvm.md)
