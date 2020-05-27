@@ -532,7 +532,7 @@ impl Adt {
         Some(self.module(db).krate())
     }
 
-    pub fn name(&self, db: &dyn HirDatabase) -> Name {
+    pub fn name(self, db: &dyn HirDatabase) -> Name {
         match self {
             Adt::Struct(s) => s.name(db),
             Adt::Union(u) => u.name(db),
@@ -1018,15 +1018,15 @@ impl ImplDef {
         impls.lookup_impl_defs_for_trait(trait_.id).map(Self::from).collect()
     }
 
-    pub fn target_trait(&self, db: &dyn HirDatabase) -> Option<TypeRef> {
+    pub fn target_trait(self, db: &dyn HirDatabase) -> Option<TypeRef> {
         db.impl_data(self.id).target_trait.clone()
     }
 
-    pub fn target_type(&self, db: &dyn HirDatabase) -> TypeRef {
+    pub fn target_type(self, db: &dyn HirDatabase) -> TypeRef {
         db.impl_data(self.id).target_type.clone()
     }
 
-    pub fn target_ty(&self, db: &dyn HirDatabase) -> Type {
+    pub fn target_ty(self, db: &dyn HirDatabase) -> Type {
         let impl_data = db.impl_data(self.id);
         let resolver = self.id.resolver(db.upcast());
         let ctx = hir_ty::TyLoweringContext::new(db, &resolver);
@@ -1038,23 +1038,23 @@ impl ImplDef {
         }
     }
 
-    pub fn items(&self, db: &dyn HirDatabase) -> Vec<AssocItem> {
+    pub fn items(self, db: &dyn HirDatabase) -> Vec<AssocItem> {
         db.impl_data(self.id).items.iter().map(|it| (*it).into()).collect()
     }
 
-    pub fn is_negative(&self, db: &dyn HirDatabase) -> bool {
+    pub fn is_negative(self, db: &dyn HirDatabase) -> bool {
         db.impl_data(self.id).is_negative
     }
 
-    pub fn module(&self, db: &dyn HirDatabase) -> Module {
+    pub fn module(self, db: &dyn HirDatabase) -> Module {
         self.id.lookup(db.upcast()).container.module(db.upcast()).into()
     }
 
-    pub fn krate(&self, db: &dyn HirDatabase) -> Crate {
+    pub fn krate(self, db: &dyn HirDatabase) -> Crate {
         Crate { id: self.module(db).id.krate }
     }
 
-    pub fn is_builtin_derive(&self, db: &dyn HirDatabase) -> Option<InFile<ast::Attr>> {
+    pub fn is_builtin_derive(self, db: &dyn HirDatabase) -> Option<InFile<ast::Attr>> {
         let src = self.source(db);
         let item = src.file_id.is_builtin_derive(db.upcast())?;
         let hygenic = hir_expand::hygiene::Hygiene::new(db.upcast(), item.file_id);
