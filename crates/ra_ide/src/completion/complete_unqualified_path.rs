@@ -299,6 +299,7 @@ mod tests {
 
     #[test]
     fn completes_bindings_from_for_with_in_prefix() {
+        mark::check!(completes_bindings_from_for_with_in_prefix);
         assert_debug_snapshot!(
             do_reference_completion(
                 r"

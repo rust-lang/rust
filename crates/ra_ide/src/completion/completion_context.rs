@@ -12,6 +12,7 @@ use ra_syntax::{
 use ra_text_edit::Indel;
 
 use crate::{call_info::ActiveParameter, completion::CompletionConfig, FilePosition};
+use test_utils::mark;
 
 /// `CompletionContext` is created early during completion to figure out, where
 /// exactly is the cursor, syntax-wise.
@@ -174,6 +175,7 @@ impl<'a> CompletionContext<'a> {
                 if self.token.kind().is_keyword()
                     && self.offset == self.original_token.text_range().end()
                 {
+                    mark::hit!(completes_bindings_from_for_with_in_prefix);
                     TextRange::empty(self.original_token.text_range().start())
                 } else {
                     TextRange::empty(self.offset)
