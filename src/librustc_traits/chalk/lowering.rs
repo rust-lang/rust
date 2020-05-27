@@ -311,10 +311,22 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
             Foreign(_def_id) => unimplemented!(),
             Str => apply(chalk_ir::TypeName::Str, empty()),
             Array(ty, _) => apply(
-                struct_ty(RustDefId::Array),
-                chalk_ir::Substitution::from1(
+                chalk_ir::TypeName::Array,
+                chalk_ir::Substitution::from(
                     interner,
-                    chalk_ir::GenericArgData::Ty(ty.lower_into(interner)).intern(interner),
+                    &[
+                        chalk_ir::GenericArgData::Ty(ty.lower_into(interner)).intern(interner),
+                        chalk_ir::GenericArgData::Const(
+                            chalk_ir::ConstData {
+                                ty: apply(chalk_ir::TypeName::Tuple(0), empty()),
+                                value: chalk_ir::ConstValue::Concrete(chalk_ir::ConcreteConst {
+                                    interned: 0,
+                                }),
+                            }
+                            .intern(interner),
+                        )
+                        .intern(interner),
+                    ],
                 ),
             ),
             Slice(ty) => apply(
@@ -348,7 +360,10 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
                     ),
                 )
             }
-            FnDef(def_id, _) => apply(struct_ty(RustDefId::FnDef(def_id)), empty()),
+            FnDef(def_id, _) => apply(
+                chalk_ir::TypeName::FnDef(chalk_ir::FnDefId(RustDefId::FnDef(def_id))),
+                empty(),
+            ),
             FnPtr(sig) => {
                 let (inputs_and_outputs, binders, _named_regions) =
                     collect_bound_vars(interner, interner.tcx, &sig.inputs_and_output());
@@ -371,7 +386,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
             Closure(_def_id, _) => unimplemented!(),
             Generator(_def_id, _substs, _) => unimplemented!(),
             GeneratorWitness(_) => unimplemented!(),
-            Never => apply(struct_ty(RustDefId::Never), empty()),
+            Never => apply(chalk_ir::TypeName::Never, empty()),
             Tuple(substs) => {
                 apply(chalk_ir::TypeName::Tuple(substs.len()), substs.lower_into(interner))
             }

@@ -168,35 +168,6 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
                 });
                 struct_datum
             }
-            RustDefId::Array => {
-                return Arc::new(chalk_solve::rust_ir::AdtDatum {
-                    id: struct_id,
-                    binders: chalk_ir::Binders::new(
-                        chalk_ir::VariableKinds::from(
-                            &self.interner,
-                            Some(chalk_ir::VariableKind::Ty(chalk_ir::TyKind::General)),
-                        ),
-                        chalk_solve::rust_ir::AdtDatumBound {
-                            fields: vec![],
-                            where_clauses: vec![],
-                        },
-                    ),
-                    flags: chalk_solve::rust_ir::AdtFlags { upstream: false, fundamental: false },
-                });
-            }
-            RustDefId::Never | RustDefId::FnDef(_) => {
-                return Arc::new(chalk_solve::rust_ir::AdtDatum {
-                    id: struct_id,
-                    binders: chalk_ir::Binders::new(
-                        chalk_ir::VariableKinds::new(&self.interner),
-                        chalk_solve::rust_ir::AdtDatumBound {
-                            fields: vec![],
-                            where_clauses: vec![],
-                        },
-                    ),
-                    flags: chalk_solve::rust_ir::AdtFlags { upstream: false, fundamental: false },
-                });
-            }
 
             v => bug!("Used not struct variant ({:?}) when expecting struct variant.", v),
         }
@@ -287,8 +258,6 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         // FIXME(chalk): this match can be removed when builtin types supported
         match struct_id.0 {
             RustDefId::Adt(_) => {}
-            RustDefId::Never => return false,
-            RustDefId::Array => return false,
             _ => bug!("Did not use `Adt` variant when expecting adt."),
         }
         let adt_def_id: DefId = match struct_id.0 {
@@ -385,8 +354,6 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
                     chalk_ir::TypeName::Adt(chalk_ir::AdtId(rust_def_id)) => {
                         use rustc_middle::traits::ChalkRustDefId::*;
                         match rust_def_id {
-                            Never | Array | FnDef(_) => Some(true),
-
                             Adt(adt_def_id) => {
                                 let adt_def = self.tcx.adt_def(adt_def_id);
                                 match adt_def.adt_kind() {
@@ -402,7 +369,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
                                 }
                             }
 
-                            Trait(_) | Impl(_) | AssocTy(_) | Opaque(_) => panic!(),
+                            FnDef(_) | Trait(_) | Impl(_) | AssocTy(_) | Opaque(_) => panic!(),
                         }
                     }
                     _ => None,
@@ -420,8 +387,6 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
                     chalk_ir::TypeName::Adt(chalk_ir::AdtId(rust_def_id)) => {
                         use rustc_middle::traits::ChalkRustDefId::*;
                         match rust_def_id {
-                            Never => Some(false),
-                            FnDef(_) | Array => Some(true),
                             Adt(adt_def_id) => {
                                 let adt_def = self.tcx.adt_def(adt_def_id);
                                 match adt_def.adt_kind() {
@@ -436,7 +401,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
                                     }
                                 }
                             }
-                            Trait(_) | Impl(_) | AssocTy(_) | Opaque(_) => panic!(),
+                            FnDef(_) | Trait(_) | Impl(_) | AssocTy(_) | Opaque(_) => panic!(),
                         }
                     }
                     _ => None,
