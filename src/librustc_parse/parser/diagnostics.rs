@@ -935,6 +935,19 @@ impl<'a> Parser<'a> {
             return self.expect(&token::Semi).map(drop);
         } else if !sm.is_multiline(self.prev_token.span.until(self.token.span)) {
             // The current token is in the same line as the prior token, not recoverable.
+        } else if [token::Comma, token::Colon].contains(&self.token.kind)
+            && &self.prev_token.kind == &token::CloseDelim(token::Paren)
+        {
+            // Likely typo: The current token is on a new line and is expected to be
+            // `.`, `;`, `?`, or an operator after a close delimiter token.
+            //
+            // let a = std::process::Command::new("echo")
+            //         .arg("1")
+            //         ,arg("2")
+            //         ^
+            // https://github.com/rust-lang/rust/issues/72253
+            self.expect(&token::Semi)?;
+            return Ok(());
         } else if self.look_ahead(1, |t| {
             t == &token::CloseDelim(token::Brace) || t.can_begin_expr() && t.kind != token::Colon
         }) && [token::Comma, token::Colon].contains(&self.token.kind)
