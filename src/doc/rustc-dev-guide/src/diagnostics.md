@@ -3,7 +3,7 @@
 A lot of effort has been put into making `rustc` have great error messages.
 This chapter is about how to emit compile errors and lints from the compiler.
 
-## Diagnostic output style guide
+## Diagnostic structure
 
 The main parts of a diagnostic error are the following:
 
@@ -60,6 +60,163 @@ error: the fobrulator needs to be krontrificated
 
 When code or an identifier must appear in an message or label, it should be
 surrounded with single acute accents \`.
+
+### Error explanations
+
+Some errors include long form descriptions. They may be viewed with the
+`--explain` flag, or via the [error index]. Each explanation comes with an
+example of how to trigger it and advice on how to fix it.
+
+Please read [RFC 1567] for details on how to format and write long error
+codes.
+
+The descriptions are written in markdown, and all of them are linked in the
+[`librustc_error_codes`] crate.
+
+<!-- TODO: When should an error use an error code, and when shouldn't it? -->
+
+[`librustc_error_codes`]: https://github.com/rust-lang/rust/blob/master/src/librustc_error_codes/error_codes.rs
+[error index]: https://doc.rust-lang.org/error-index.html
+[RFC 1567]: https://github.com/rust-lang/rfcs/blob/master/text/1567-long-error-codes-explanation-normalization.md
+
+### Lints versus fixed diagnostics
+
+Some messages are emitted via [lints](#lints), where the user can control the
+level. Some are hard-coded such that the user cannot control the level.
+
+Hard-coded warnings should be avoided for normal code, preferring to use lints
+instead. Some cases, such as warnings with CLI flags will require the use of
+hard-coded warnings.
+
+See the `deny` [lint level](#diagnostic-levels) below for guidelines when to
+use an error-level lint instead of a fixed error.
+
+## Diagnostic output style guide
+
+- Write in plain simple English. If your message, when shown on a – possibly
+  small – screen (which hasn't been cleaned for a while), cannot be understood
+  by a normal programmer, who just came out of bed after a night partying,
+  it's too complex.
+- `Error`, `Warning`, `Note`, and `Help` messages start with a lowercase
+  letter and do not end with punctuation.
+- Error messages should be succinct. Users will see these error messages many
+  times, and more verbose descriptions can be viewed with the `--explain`
+  flag. That said, don't make it so terse that it's hard to understand.
+- The word "illegal" is illegal. Prefer "invalid" or a more specific word
+  instead.
+- Errors should document the span of code where they occur – the `span_..`
+  methods allow to easily do this. Also `note` other spans that have
+  contributed to the error if the span isn't too large.
+- When emitting a message with span, try to reduce the span to the smallest
+  amount possible that still signifies the issue
+- Try not to emit multiple error messages for the same error. This may require
+  detecting duplicates.
+- When the compiler has too little information for a specific error message,
+  lobby for annotations for library code that allow adding more. For example
+  see [`#[rustc_on_unimplemented]`](#rustc_on_unimplemented). Use these
+  annotations when available!
+- Keep in mind that Rust's learning curve is rather steep, and that the
+  compiler messages are an important learning tool.
+- When talking about the compiler, call it `the compiler`, not `Rust` or
+  `rustc`.
+
+### Lint naming
+
+From [RFC 0344], lint names should be consistent, with the following
+guidelines:
+
+The basic rule is: the lint name should make sense when read as "allow
+*lint-name*" or "allow *lint-name* items". For example, "allow
+`deprecated` items" and "allow `dead_code`" makes sense, while "allow
+`unsafe_block`" is ungrammatical (should be plural).
+
+- Lint names should state the bad thing being checked for, e.g. `deprecated`,
+  so that `#[allow(deprecated)]` (items) reads correctly. Thus `ctypes` is not
+  an appropriate name; `improper_ctypes` is.
+
+- Lints that apply to arbitrary items (like the stability lints) should just
+  mention what they check for: use `deprecated` rather than
+  `deprecated_items`. This keeps lint names short. (Again, think "allow
+  *lint-name* items".)
+
+- If a lint applies to a specific grammatical class, mention that class and
+  use the plural form: use `unused_variables` rather than `unused_variable`.
+  This makes `#[allow(unused_variables)]` read correctly.
+
+- Lints that catch unnecessary, unused, or useless aspects of code should use
+  the term `unused`, e.g. `unused_imports`, `unused_typecasts`.
+
+- Use snake case in the same way you would for function names.
+
+[RFC 0344]: https://github.com/rust-lang/rfcs/blob/master/text/0344-conventions-galore.md#lints
+
+### Diagnostic levels
+
+Guidelines for different diagnostic levels:
+
+- `error`: emitted when the compiler detects a problem that makes it unable to
+  compile the program, either because the program is invalid or the programmer
+  has decided to make a specific `warning` into an error.
+
+- `warning`: emitted when the compiler detects something odd about a program.
+  Care should be taken when adding warnings to avoid warning fatigue, and
+  avoid false-positives where there really isn't a problem with the code. Some
+  examples of when it is appropriate to issue a warning:
+
+  - A situation where the user *should* take action, such as swap out a
+    deprecated item, or use a `Result`, but otherwise doesn't prevent
+    compilation.
+  - Unnecessary syntax that can be removed without affecting the semantics of
+    the code. For example, unused code, or unnecessary `unsafe`.
+  - Code that is very likely to be incorrect, dangerous, or confusing, but the
+    language technically allows, and is not ready or confident enough to make
+    an error. For example `unused_comparisons` (out of bounds comparisons) or
+    `bindings_with_variant_name` (the user likely did not intend to create a
+    binding in a pattern).
+  - [Future-incompatible lints](#future-incompatible), where something was
+    accidentally or erroneously accepted in the past, but rejecting would
+    cause excessive breakage in the ecosystem.
+  - Stylistic choices. For example, camel or snake case, or the `dyn` trait
+    warning in the 2018 edition. These have a high bar to be added, and should
+    only be used in exceptional circumstances. Other stylistic choices should
+    either be allow-by-default lints, or part of other tools like Clippy or
+    rustfmt.
+
+- `help`: emitted following an `error` or `warning` to give additional
+  information to the user about how to solve their problem. The error or
+  warning portion should *not* suggest how to fix the problem, only the "help"
+  sub-diagnostic should.
+
+- `note`: emitted to identify additional circumstances and parts of the code
+  that caused the warning or error. For example, the borrow checker will note
+  any previous conflicting borrows.
+
+Not to be confused with *lint levels*, whose guidelines are:
+
+- `forbid`: Lints should never default to `forbid`.
+- `deny`: Equivalent to `error` diagnostic level. Some examples:
+
+  - A future-incompatible or edition-based lint that has graduated from the
+    warning level.
+  - Something that has an extremely high confidence that is incorrect, but
+    still want an escape hatch to allow it to pass.
+
+- `warn`: Equivalent to the `warning` diagnostic level. See `warning` above
+  for guidelines.
+- `allow`: Examples of the kinds of lints that should default to `allow`:
+
+  - The lint has a too high false positive rate.
+  - The lint is too opinionated.
+  - The lint is experimental.
+  - The lint is used for enforcing something that is not normally enforced.
+    For example, the `unsafe_code` lint can be used to prevent usage of unsafe
+    code.
+
+More information about lint levels can be found in the [rustc
+book][rustc-lint-levels] and the [reference][reference-diagnostics].
+
+[reference-diagnostics]: https://doc.rust-lang.org/nightly/reference/attributes/diagnostics.html#lint-check-attributes
+[rustc-lint-levels]: https://doc.rust-lang.org/nightly/rustc/lints/levels.html
 
 ## Helpful tips and options
 
@@ -373,6 +530,7 @@ If you need a combination of options that's not supported by the
 `declare_lint!` macro, you can always define your own static with a type of
 `&Lint` but this is currently linted against in the compiler tree.
 
+<a id="future-incompatible"></a>
 ####  Guidelines for creating a future incompatibility lint
 
 - Create a lint defaulting to warn as normal, with ideally the same error
