@@ -10,7 +10,7 @@ the [def-id] of some item, will compute the type of that item and return
 it to you.
 
 [def-id]: appendix/glossary.md#def-id
-[hl]: high-level-overview.html
+[hl]: compiler-src.html
 
 Query execution is **memoized** – so the first time you invoke a
 query, it will go do the computation, but the next time, the result is
