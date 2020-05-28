@@ -7,9 +7,9 @@
 )]
 
 use crate::cmp::Ordering;
-use crate::fmt;
+use crate::fmt::{self, Write as FmtWrite};
 use crate::hash;
-use crate::io::Write;
+use crate::io::Write as IoWrite;
 use crate::sys::net::netc as c;
 use crate::sys_common::{AsInner, FromInner};
 
@@ -1532,102 +1532,100 @@ impl Ipv6Addr {
     }
 }
 
+/// Write an Ipv6Addr, conforming to the canonical style described by
+/// [RFC 5952](https://tools.ietf.org/html/rfc5952).
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for Ipv6Addr {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // Note: The calls to write should never fail, hence the unwraps in the function
-        // Long enough for the longest possible IPv6: 39
-        const IPV6_BUF_LEN: usize = 39;
-        let mut buf = [0u8; IPV6_BUF_LEN];
-        let mut buf_slice = &mut buf[..];
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // If there are no alignment requirements, write out the IP address to
+        // f. Otherwise, write it to a local buffer, then use f.pad.
+        if f.precision().is_none() && f.width().is_none() {
+            let segments = self.segments();
 
-        match self.segments() {
-            // We need special cases for :: and ::1, otherwise they're formatted
-            // as ::0.0.0.[01]
-            [0, 0, 0, 0, 0, 0, 0, 0] => write!(buf_slice, "::").unwrap(),
-            [0, 0, 0, 0, 0, 0, 0, 1] => write!(buf_slice, "::1").unwrap(),
-            // Ipv4 Compatible address
-            [0, 0, 0, 0, 0, 0, g, h] => {
-                write!(
-                    buf_slice,
-                    "::{}.{}.{}.{}",
-                    (g >> 8) as u8,
-                    g as u8,
-                    (h >> 8) as u8,
-                    h as u8
-                )
-                .unwrap();
-            }
-            // Ipv4-Mapped address
-            [0, 0, 0, 0, 0, 0xffff, g, h] => {
-                write!(
-                    buf_slice,
-                    "::ffff:{}.{}.{}.{}",
-                    (g >> 8) as u8,
-                    g as u8,
-                    (h >> 8) as u8,
-                    h as u8
-                )
-                .unwrap();
-            }
-            _ => {
-                fn find_zero_slice(segments: &[u16; 8]) -> (usize, usize) {
-                    let mut longest_span_len = 0;
-                    let mut longest_span_at = 0;
-                    let mut cur_span_len = 0;
-                    let mut cur_span_at = 0;
+            // Special case for :: and ::1; otherwise they get written with the
+            // IPv4 formatter
+            if self.is_unspecified() {
+                f.write_str("::")
+            } else if self.is_loopback() {
+                f.write_str("::1")
+            } else if let Some(ipv4) = self.to_ipv4() {
+                match segments[5] {
+                    // IPv4 Compatible address
+                    0 => write!(f, "::{}", ipv4),
+                    // IPv4 Mapped address
+                    0xffff => write!(f, "::ffff:{}", ipv4),
+                    _ => unreachable!(),
+                }
+            } else {
+                #[derive(Copy, Clone, Default)]
+                struct Span {
+                    start: usize,
+                    len: usize,
+                }
 
-                    for i in 0..8 {
-                        if segments[i] == 0 {
-                            if cur_span_len == 0 {
-                                cur_span_at = i;
+                // Find the inner 0 span
+                let zeroes = {
+                    let mut longest = Span::default();
+                    let mut current = Span::default();
+
+                    for (i, &segment) in segments.iter().enumerate() {
+                        if segment == 0 {
+                            if current.len == 0 {
+                                current.start = i;
                             }
 
-                            cur_span_len += 1;
+                            current.len += 1;
 
-                            if cur_span_len > longest_span_len {
-                                longest_span_len = cur_span_len;
-                                longest_span_at = cur_span_at;
+                            if current.len > longest.len {
+                                longest = current;
                             }
                         } else {
-                            cur_span_len = 0;
-                            cur_span_at = 0;
+                            current = Span::default();
                         }
                     }
 
-                    (longest_span_at, longest_span_len)
+                    longest
+                };
+
+                /// Write a colon-separated part of the address
+                #[inline]
+                fn fmt_subslice(f: &mut fmt::Formatter<'_>, chunk: &[u16]) -> fmt::Result {
+                    if let Some(first) = chunk.first() {
+                        fmt::LowerHex::fmt(first, f)?;
+                        for segment in &chunk[1..] {
+                            f.write_char(':')?;
+                            fmt::LowerHex::fmt(segment, f)?;
+                        }
+                    }
+                    Ok(())
                 }
 
-                let (zeros_at, zeros_len) = find_zero_slice(&self.segments());
-
-                if zeros_len > 1 {
-                    fn fmt_subslice(segments: &[u16], buf: &mut &mut [u8]) {
-                        if !segments.is_empty() {
-                            write!(*buf, "{:x}", segments[0]).unwrap();
-                            for &seg in &segments[1..] {
-                                write!(*buf, ":{:x}", seg).unwrap();
-                            }
-                        }
-                    }
-
-                    fmt_subslice(&self.segments()[..zeros_at], &mut buf_slice);
-                    write!(buf_slice, "::").unwrap();
-                    fmt_subslice(&self.segments()[zeros_at + zeros_len..], &mut buf_slice);
+                if zeroes.len > 1 {
+                    fmt_subslice(f, &segments[..zeroes.start])?;
+                    f.write_str("::")?;
+                    fmt_subslice(f, &segments[zeroes.start + zeroes.len..])
                 } else {
-                    let &[a, b, c, d, e, f, g, h] = &self.segments();
-                    write!(
-                        buf_slice,
-                        "{:x}:{:x}:{:x}:{:x}:{:x}:{:x}:{:x}:{:x}",
-                        a, b, c, d, e, f, g, h
-                    )
-                    .unwrap();
+                    fmt_subslice(f, &segments)
                 }
             }
+        } else {
+            // Slow path: write the address to a local buffer, the use f.pad.
+            // Defined recursively by using the fast path to write to the
+            // buffer.
+
+            // This is the largest possible size of an IPv6 address
+            const IPV6_BUF_LEN: usize = (4 * 8) + 7;
+            let mut buf = [0u8; IPV6_BUF_LEN];
+            let mut buf_slice = &mut buf[..];
+
+            // Note: This call to write should never fail, so unwrap is okay.
+            write!(buf_slice, "{}", self).unwrap();
+            let len = IPV6_BUF_LEN - buf_slice.len();
+
+            // This is safe because we know exactly what can be in this buffer
+            let buf = unsafe { crate::str::from_utf8_unchecked(&buf[..len]) };
+            f.pad(buf)
         }
-        let len = IPV6_BUF_LEN - buf_slice.len();
-        // This is safe because we know exactly what can be in this buffer
-        let buf = unsafe { crate::str::from_utf8_unchecked(&buf[..len]) };
-        fmt.pad(buf)
     }
 }
 
