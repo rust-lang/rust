@@ -638,7 +638,7 @@ fn nothing_to_see_move_along() {
     .diagnostics()
     .0;
 
-    assert_snapshot!(diagnostics, @"");
+    assert_snapshot!(diagnostics, @r#""*x": This operation is unsafe and requires an unsafe function or block"#);
 }
 
 #[test]

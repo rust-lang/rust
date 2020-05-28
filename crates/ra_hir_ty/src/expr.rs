@@ -333,15 +333,12 @@ pub fn unsafe_expressions(
     def: DefWithBodyId,
 ) -> Vec<UnsafeExpr> {
     let mut unsafe_exprs = vec![];
-    let mut unsafe_block_scopes = vec![];
+    let mut unsafe_block_exprs = FxHashSet::default();
     let body = db.body(def);
-    let expr_scopes = db.expr_scopes(def);
     for (id, expr) in body.exprs.iter() {
         match expr {
-            Expr::Unsafe { body } => {
-                if let Some(scope) = expr_scopes.scope_for(*body) {
-                    unsafe_block_scopes.push(scope);
-                }
+            Expr::Unsafe { .. } => {
+                unsafe_block_exprs.insert(id);
             }
             Expr::Call { callee, .. } => {
                 let ty = &infer[*callee];
@@ -374,12 +371,13 @@ pub fn unsafe_expressions(
     }
 
     'unsafe_exprs: for unsafe_expr in &mut unsafe_exprs {
-        let scope = expr_scopes.scope_for(unsafe_expr.expr);
-        for scope in expr_scopes.scope_chain(scope) {
-            if unsafe_block_scopes.contains(&scope) {
+        let mut child = unsafe_expr.expr;
+        while let Some(parent) = body.parent_map.get(&child) {
+            if unsafe_block_exprs.contains(parent) {
                 unsafe_expr.inside_unsafe_block = true;
                 continue 'unsafe_exprs;
             }
+            child = *parent;
         }
     }
 
@@ -417,8 +415,10 @@ impl<'a, 'b> UnsafeValidator<'a, 'b> {
 
         let (_, body_source) = db.body_with_source_map(def);
         for unsafe_expr in unsafe_expressions {
-            if let Ok(in_file) = body_source.as_ref().expr_syntax(unsafe_expr.expr) {
-                self.sink.push(MissingUnsafe { file: in_file.file_id, expr: in_file.value })
+            if !unsafe_expr.inside_unsafe_block {
+                if let Ok(in_file) = body_source.as_ref().expr_syntax(unsafe_expr.expr) {
+                    self.sink.push(MissingUnsafe { file: in_file.file_id, expr: in_file.value })
+                }
             }
         }
     }
