@@ -580,7 +580,6 @@ public:
             llvm::errs() << "ret: " << *ret << "\n";
             llvm::errs() << "malloc: " << *malloc << "\n";
           }
-          assert(innerType == malloc->getType());
         }
 
         AllocaInst* cache = createCacheForScope(BuilderQ.GetInsertBlock(), innerType, "mdyncache_fromtape", true, false);
