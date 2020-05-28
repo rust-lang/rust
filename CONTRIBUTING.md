@@ -12,14 +12,16 @@ anything, feel free to ask questions on issues or visit the `#clippy` on [Discor
 
 All contributors are expected to follow the [Rust Code of Conduct].
 
-* [Getting started](#getting-started)
-  * [Finding something to fix/improve](#finding-something-to-fiximprove)
-* [Writing code](#writing-code)
-* [How Clippy works](#how-clippy-works)
-* [Fixing nightly build failures](#fixing-build-failures-caused-by-rust)
-* [Issue and PR Triage](#issue-and-pr-triage)
-* [Bors and Homu](#bors-and-homu)
-* [Contributions](#contributions)
+- [Contributing to Clippy](#contributing-to-clippy)
+  - [Getting started](#getting-started)
+    - [Finding something to fix/improve](#finding-something-to-fiximprove)
+  - [Writing code](#writing-code)
+  - [Getting code-completion for rustc internals to work](#getting-code-completion-for-rustc-internals-to-work)
+  - [How Clippy works](#how-clippy-works)
+  - [Fixing build failures caused by Rust](#fixing-build-failures-caused-by-rust)
+  - [Issue and PR triage](#issue-and-pr-triage)
+  - [Bors and Homu](#bors-and-homu)
+  - [Contributions](#contributions)
 
 [Discord]: https://discord.gg/rust-lang
 [Rust Code of Conduct]: https://www.rust-lang.org/policies/code-of-conduct
@@ -90,6 +92,24 @@ quick read.
 [clippy_rfc]: https://github.com/rust-lang/rfcs/blob/master/text/2476-clippy-uno.md
 [rfc_stability]: https://github.com/rust-lang/rfcs/blob/master/text/2476-clippy-uno.md#stability-guarantees
 [rfc_lint_cats]: https://github.com/rust-lang/rfcs/blob/master/text/2476-clippy-uno.md#lint-audit-and-categories
+
+## Getting code-completion for rustc internals to work
+
+Unfortunately, [`rust-analyzer`][ra_homepage] does not (yet?) understand how Clippy uses compiler-internals 
+using `extern crate` and it also needs to be able to read the source files of the rustc-compiler which are not 
+available via a `rustup` component at the time of writing.  
+To work around this, you need to have a copy of the [rustc-repo][rustc_repo] available which can be obtained via  
+`git clone https://github.com/rust-lang/rust/`.  
+Then you can run a `cargo dev` command to automatically make Clippy use the rustc-repo via path-dependencies 
+which rust-analyzer will be able to understand.  
+Run `cargo dev ra-setup --repo-path <repo-path>` where `<repo-path>` is an absolute path to the rustc repo 
+you just cloned.  
+The command will add path-dependencies pointing towards rustc-crates inside the rustc repo to 
+Clippys `Cargo.toml`s and should allow rust-analyzer to understand most of the types that Clippy uses.
+Just make sure to remove the dependencies again before finally making a pull request!
+
+[ra_homepage]: https://rust-analyzer.github.io/
+[rustc_repo]: https://github.com/rust-lang/rust/
 
 ## How Clippy works
 
