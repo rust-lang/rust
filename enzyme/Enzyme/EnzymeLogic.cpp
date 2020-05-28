@@ -2492,11 +2492,12 @@ void DerivativeMaker<const AugmentedReturn*>::visitCallInst(llvm::CallInst &call
     }
         //sub_index_map = fnandtapetype.tapeIndices;
 
+    assert(newcalled);
+    FunctionType* FT = cast<FunctionType>(cast<PointerType>(newcalled->getType())->getElementType());
+
         //llvm::errs() << "seeing sub_index_map of " << sub_index_map->size() << " in ap " << cast<Function>(called)->getName() << "\n";
         if (topLevel) {
 
-          assert(newcalled);
-          FunctionType* FT = cast<FunctionType>(cast<PointerType>(newcalled->getType())->getElementType());
           if (false) {
         badaugmentedfn:;
                 auto NC = dyn_cast<Function>(newcalled);
@@ -2541,6 +2542,12 @@ void DerivativeMaker<const AugmentedReturn*>::visitCallInst(llvm::CallInst &call
         } else {
           if (subdata && subdata->returns.find(AugmentedStruct::Tape) == subdata->returns.end()) {
           } else {
+            //assert(!tape);
+            //assert(subdata);
+            if (!tape) {
+              assert(tapeIdx != 0xDEADBEEF);
+              tape = BuilderZ.CreatePHI( (tapeIdx == -1) ? FT->getReturnType() : cast<StructType>(FT->getReturnType())->getElementType(tapeIdx), 1, "tapeArg" );
+            }
             tape = gutils->addMalloc(BuilderZ, tape, getIndex(orig, CacheType::Tape) );
           }
 

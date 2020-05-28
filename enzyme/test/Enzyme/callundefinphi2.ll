@@ -525,11 +525,11 @@ attributes #22 = { readnone speculatable }
 ; CHECK: invertif.end.i.i:                                 ; preds = %invertif.exit
 ; CHECK-NEXT:   %add.ptr_unwrap = getelementptr inbounds double, double* %w9, i64 %"iv1'ac.0"
 ; CHECK-NEXT:   %"add.ptr'ipg_unwrap" = getelementptr inbounds double, double* %"w9'", i64 %"iv1'ac.0"
-; CHECK-NEXT:   %_unwrap3 = mul nuw nsw i64 %"iv1'ac.0", 4
-; CHECK-NEXT:   %_unwrap4 = add nuw nsw i64 %"iv'ac.0", %_unwrap3
-; CHECK-NEXT:   %_unwrap5 = getelementptr inbounds double*, double** %tapeArg, i64 %_unwrap4
-; CHECK-NEXT:   %_unwrap6 = load double*, double** %_unwrap5
-; CHECK-NEXT:   call void @diffesumsq(double* %add.ptr_unwrap, double* %"add.ptr'ipg_unwrap", double %[[ddret:.+]], double* %_unwrap6)
+; CHECK-NEXT:   %[[unwrap3:.+]] = mul nuw nsw i64 %"iv1'ac.0", 4
+; CHECK-NEXT:   %[[unwrap4:.+]] = add nuw nsw i64 %"iv'ac.0", %[[unwrap3]]
+; CHECK-NEXT:   %[[unwrap5:.+]] = getelementptr inbounds double*, double** %tapeArg, i64 %[[unwrap4]]
+; CHECK-NEXT:   %[[unwrap6:.+]] = load double*, double** %[[unwrap5]]
+; CHECK-NEXT:   call void @diffesumsq(double* %add.ptr_unwrap, double* %"add.ptr'ipg_unwrap", double %[[ddret:.+]], double* %[[unwrap6:.+]])
 ; CHECK-NEXT:   br label %invertfor.body5
 
 ; CHECK: invertif.exit:                                    ; preds = %invertfor.cond.cleanup4, %incinvertfor.body5

@@ -55,6 +55,8 @@
 
 using namespace llvm;
 
+extern llvm::cl::opt<bool> efficientBoolCache;
+
 enum class AugmentedStruct;
 typedef struct {
   PHINode* var;
@@ -566,7 +568,11 @@ public:
           assert(isa<PointerType>(innerType));
           innerType = cast<PointerType>(innerType)->getElementType();
         }
-        if (malloc) {
+
+        assert(malloc);
+        if (efficientBoolCache && malloc->getType()->isIntegerTy() && cast<IntegerType>(malloc->getType())->getBitWidth() == 1 && innerType != ret->getType()) {
+          assert(innerType == Type::getInt8Ty(malloc->getContext()));
+        } else {
           if (innerType != malloc->getType()) {
             llvm::errs() << *cast<Instruction>(malloc)->getParent()->getParent() << "\n";
             llvm::errs() << "innerType: " << *innerType << "\n";
@@ -578,9 +584,11 @@ public:
         }
 
         AllocaInst* cache = createCacheForScope(BuilderQ.GetInsertBlock(), innerType, "mdyncache_fromtape", true, false);
+        assert(malloc);
+        bool isi1 = malloc->getType()->isIntegerTy() && cast<IntegerType>(malloc->getType())->getBitWidth() == 1;
         entryBuilder.CreateStore(ret, cache);
 
-        auto v = lookupValueFromCache(BuilderQ, BuilderQ.GetInsertBlock(), cache);
+        auto v = lookupValueFromCache(BuilderQ, BuilderQ.GetInsertBlock(), cache, isi1);
         if (malloc) {
           assert(v->getType() == malloc->getType());
         }
@@ -795,15 +803,19 @@ public:
       for(const auto unused : getSubLimits(BuilderQ.GetInsertBlock()) ) {
         innerType = cast<PointerType>(innerType)->getElementType();
       }
-      if (innerType != malloc->getType()) {
-        llvm::errs() << "oldFunc:" << *oldFunc << "\n";
-        llvm::errs() << "newFunc: " << *newFunc << "\n";
-        llvm::errs() << " toadd: " << *toadd << "\n";
-        llvm::errs() << "innerType: " << *innerType << "\n";
-        llvm::errs() << "malloc: " << *malloc << "\n";
-      }
-      assert(innerType == malloc->getType());
 
+      if (efficientBoolCache && malloc->getType()->isIntegerTy() && toadd->getType() != innerType && cast<IntegerType>(malloc->getType())->getBitWidth() == 1) {
+        assert(innerType == Type::getInt8Ty(toadd->getContext()));
+      } else {
+        if (innerType != malloc->getType()) {
+          llvm::errs() << "oldFunc:" << *oldFunc << "\n";
+          llvm::errs() << "newFunc: " << *newFunc << "\n";
+          llvm::errs() << " toadd: " << *toadd << "\n";
+          llvm::errs() << "innerType: " << *innerType << "\n";
+          llvm::errs() << "malloc: " << *malloc << "\n";
+        }
+        assert(innerType == malloc->getType());
+      }
       addedMallocs.push_back(toadd);
       return malloc;
     }
@@ -1482,6 +1494,8 @@ endCheck:
 
         /* goes from inner loop to outer loop*/
         std::vector<Type*> types = {T};
+        bool isi1 = T->isIntegerTy() && cast<IntegerType>(T)->getBitWidth() == 1;
+        if (efficientBoolCache && isi1 && sublimits.size() != 0) types[0] = Type::getInt8Ty(T->getContext());
         for(const auto sublimit: sublimits) {
             types.push_back(PointerType::getUnqual(types.back()));
         }
@@ -1498,6 +1512,7 @@ endCheck:
             }
         }
 
+
         Type *BPTy = Type::getInt8PtrTy(ctx->getContext());
         auto realloc = newFunc->getParent()->getOrInsertFunction("realloc", BPTy, BPTy, Type::getInt64Ty(ctx->getContext()));
 
@@ -1508,7 +1523,6 @@ endCheck:
         for(int i=sublimits.size()-1; i>=0; i--) {
             const auto& containedloops = sublimits[i].second;
 
-            Value* size = sublimits[i].first;
             //llvm::errs() << " + size: " << *size << " ph: " << containedloops.back().first.preheader->getName() << " header: " << containedloops.back().first.header->getName() << "\n";
             Type* myType = types[i];
 
@@ -1517,6 +1531,11 @@ endCheck:
             if (allocateInternal) {
 
                 IRBuilder <> allocationBuilder(&containedloops.back().first.preheader->back());
+
+                Value* size = sublimits[i].first;
+                if (efficientBoolCache && isi1 && i == 0) {
+                  size = allocationBuilder.CreateLShr(allocationBuilder.CreateAdd(size, ConstantInt::get(Type::getInt64Ty(ctx->getContext()), 7), "", true), ConstantInt::get(Type::getInt64Ty(ctx->getContext()), 3));
+                }
 
                 StoreInst* storealloc = nullptr;
                 if (!sublimits[i].second.back().first.dynamic) {
@@ -1666,7 +1685,7 @@ endCheck:
         return alloc;
     }
 
-    Value* getCachePointer(IRBuilder <>& BuilderM, BasicBlock* ctx, Value* cache, bool storeInStoresMap=false) {
+    Value* getCachePointer(IRBuilder <>& BuilderM, BasicBlock* ctx, Value* cache, bool isi1, bool storeInStoresMap=false) {
         assert(ctx);
         assert(cache);
 
@@ -1733,6 +1752,7 @@ endCheck:
                 for(unsigned ind=1; ind<indices.size(); ind++) {
                   idx = BuilderM.CreateAdd(idx, BuilderM.CreateMul(indices[ind], limits[ind-1], "", /*NUW*/true, /*NSW*/true), "", /*NUW*/true, /*NSW*/true);
                 }
+                if (efficientBoolCache && isi1 && i == 0) idx = BuilderM.CreateLShr(idx, ConstantInt::get(Type::getInt64Ty(ctx->getContext()), 3));
                 next = BuilderM.CreateGEP(next, {idx});
                 cast<GetElementPtrInst>(next)->setIsInBounds(true);
                 if (storeInStoresMap && isa<AllocaInst>(cache)) scopeStores[cast<AllocaInst>(cache)].push_back(next);
@@ -1742,8 +1762,9 @@ endCheck:
         return next;
     }
 
-    LoadInst* lookupValueFromCache(IRBuilder<>& BuilderM, BasicBlock* ctx, Value* cache) {
-        auto result = BuilderM.CreateLoad(getCachePointer(BuilderM, ctx, cache));
+    Value* lookupValueFromCache(IRBuilder<>& BuilderM, BasicBlock* ctx, Value* cache, bool isi1) {
+        auto cptr = getCachePointer(BuilderM, ctx, cache, isi1);
+        auto result = BuilderM.CreateLoad(cptr);
 
         if (valueInvariantGroups.find(cache) == valueInvariantGroups.end()) {
             MDNode* invgroup = MDNode::getDistinct(cache->getContext(), {});
@@ -1757,6 +1778,14 @@ endCheck:
         unsigned bsize = (unsigned)byteSizeOfType->getZExtValue();
         if ((bsize & (bsize - 1)) == 0) {
             result->setAlignment(bsize);
+        }
+        if (efficientBoolCache && isi1) {
+          if (auto gep = dyn_cast<GetElementPtrInst>(cptr)) {
+            auto bo = cast<BinaryOperator>(*gep->idx_begin());
+            assert(bo->getOpcode() == BinaryOperator::LShr);
+            Value* res = BuilderM.CreateLShr(result, BuilderM.CreateAnd( BuilderM.CreateTrunc(bo->getOperand(0), Type::getInt8Ty(cache->getContext()) ), ConstantInt::get(Type::getInt8Ty(cache->getContext()), 7))  ) ;
+            return BuilderM.CreateTrunc(res, Type::getInt1Ty(result->getContext()));
+          }
         }
         return result;
     }
@@ -1785,10 +1814,36 @@ endCheck:
                 }
             }
         }
-        Value* loc = getCachePointer(v, ctx, cache, /*storeinstorecache*/true);
-        assert(cast<PointerType>(loc->getType())->getElementType() == val->getType());
-        StoreInst* storeinst = v.CreateStore(val, loc);
-        if (valueInvariantGroups.find(cache) == valueInvariantGroups.end()) {
+        bool isi1 = val->getType()->isIntegerTy() && cast<IntegerType>(val->getType())->getBitWidth() == 1;
+        Value* loc = getCachePointer(v, ctx, cache, isi1, /*storeinstorecache*/true);
+        //if (!isi1) assert(cast<PointerType>(loc->getType())->getElementType() == val->getType());
+        //else  assert(cast<PointerType>(loc->getType())->getElementType() == Type::getInt8Ty(val->getContext()));
+
+        Value* tostore = val;
+        if (efficientBoolCache && isi1) {
+          if (auto gep = dyn_cast<GetElementPtrInst>(loc)) {
+            auto bo = cast<BinaryOperator>(*gep->idx_begin());
+            assert(bo->getOpcode() == BinaryOperator::LShr);
+            auto subidx = v.CreateAnd(v.CreateTrunc(bo->getOperand(0), Type::getInt8Ty(cache->getContext()) ), ConstantInt::get(Type::getInt8Ty(cache->getContext()), 7));
+            auto mask = v.CreateNot(v.CreateShl( ConstantInt::get(Type::getInt8Ty(cache->getContext()), 1), subidx ));
+
+            auto cleared = v.CreateAnd(v.CreateLoad(loc), mask);
+
+            auto toset = v.CreateShl( v.CreateZExt(val, Type::getInt8Ty(cache->getContext())), subidx);
+            tostore = v.CreateOr(cleared, toset);
+            assert(tostore->getType() == cast<PointerType>(loc->getType())->getElementType());
+          }
+        }
+
+        if (tostore->getType() != cast<PointerType>(loc->getType())->getElementType()) {
+          llvm::errs() << "val: " << *val << "\n";
+          llvm::errs() << "tostore: " << *tostore << "\n";
+          llvm::errs() << "loc: " << *loc << "\n";
+        }
+        assert(tostore->getType() == cast<PointerType>(loc->getType())->getElementType());
+        StoreInst* storeinst = v.CreateStore(tostore, loc);
+
+        if (tostore == val && valueInvariantGroups.find(cache) == valueInvariantGroups.end()) {
             MDNode* invgroup = MDNode::getDistinct(cache->getContext(), {});
             valueInvariantGroups[cache] = invgroup;
         }

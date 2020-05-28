@@ -193,9 +193,9 @@ attributes #5 = { nounwind }
 ; CHECK-NEXT:   ret i8* %[[aug_aas]]
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}fastcc double @diffemeta(i32 %n, i8* nocapture %tapeArg)
+; CHECK: define internal {{(dso_local )?}}fastcc double @diffemeta(i32 %n, i8* nocapture %[[tapeArg:.+]])
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %[[ret:.+]] = tail call fastcc double @diffeallocateAndSet(i32 %n, i8* %tapeArg)
+; CHECK-NEXT:   %[[ret:.+]] = tail call fastcc double @diffeallocateAndSet(i32 %n, i8* %[[tapeArg]])
 ; CHECK-NEXT:   ret double %[[ret]]
 ; CHECK-NEXT: }
 

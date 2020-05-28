@@ -35,6 +35,11 @@
 
 #include <algorithm>
 
+cl::opt<bool> efficientBoolCache(
+            "enzyme_smallbool", cl::init(false), cl::Hidden,
+            cl::desc("Place 8 bools together in a single byte"));
+
+
   //! Given an edge from BB to branchingBlock get the corresponding block to branch to in the reverse pass
   BasicBlock* GradientUtils::getReverseOrLatchMerge(BasicBlock* BB, BasicBlock* branchingBlock) {
     assert(BB);
@@ -81,7 +86,7 @@
 
             Value* lim = nullptr;
             if (lc.dynamic) {
-                lim = lookupValueFromCache(tbuild, lc.preheader, cast<AllocaInst>(lc.limit));
+                lim = lookupValueFromCache(tbuild, lc.preheader, cast<AllocaInst>(lc.limit), /*isi1*/false);
             } else {
                 lim = lookupM(lc.limit, tbuild);
             }
@@ -109,9 +114,13 @@ bool GradientUtils::legalRecompute(const Value* val, const ValueToValueMapTy& av
     return true;
   }
 
-  if (isa<PHINode>(val)) {
+  if (auto phi = dyn_cast<PHINode>(val)) {
     if (auto dli = dyn_cast_or_null<LoadInst>(hasUninverted(val))) {
       return legalRecompute(dli, available); // TODO ADD && !TR.intType(getOriginal(dli), /*mustfind*/false).isPossibleFloat();
+    }
+    if (SE.isSCEVable(phi->getType())) {
+      auto scev = const_cast<GradientUtils*>(this)->SE.getSCEV(const_cast<Value*>(val));
+      //llvm::errs() << "phi: " << *val << " scev: " << *scev << "\n";
     }
     //llvm::errs() << "illegal recompute: " << *val << "\n";
     return false;
@@ -662,6 +671,7 @@ void removeRedundantIVs(const Loop* L, BasicBlock* Header, BasicBlock* Preheader
         const SCEV *S = SE.getSCEV(PN);
         if (SE.getCouldNotCompute() == S) continue;
         Value *NewIV = Exp.expandCodeFor(S, S->getType(), CanonicalIV);
+        //llvm::errs() << " pn: " << *PN << " scev: " << *S << " for NewIV: " << *NewIV << "\n";
         if (NewIV == PN) {
           continue;
         }
@@ -1637,7 +1647,8 @@ Value* GradientUtils::lookupM(Value* val, IRBuilder<>& BuilderM, const ValueToVa
 
     ensureLookupCached(inst);
     assert(scopeMap[inst]);
-    Value* result = lookupValueFromCache(BuilderM, inst->getParent(), scopeMap[inst]);
+    bool isi1 = inst->getType()->isIntegerTy() && cast<IntegerType>(inst->getType())->getBitWidth() == 1;
+    Value* result = lookupValueFromCache(BuilderM, inst->getParent(), scopeMap[inst], isi1);
     assert(result->getType() == inst->getType());
     lookup_cache[idx] = result;
     assert(result);
@@ -2025,7 +2036,8 @@ void GradientUtils::branchToCorrespondingTarget(BasicBlock* ctx, IRBuilder <>& B
   }
   }
 
-  Value* which = lookupValueFromCache(BuilderM, ctx, cache);
+  bool isi1 = T->isIntegerTy() && cast<IntegerType>(T)->getBitWidth() == 1;
+  Value* which = lookupValueFromCache(BuilderM, ctx, cache, isi1);
   assert(which);
   assert(which->getType() == T);
 
