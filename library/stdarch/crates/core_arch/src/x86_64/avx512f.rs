@@ -1,6 +1,6 @@
 use crate::{
-    core_arch::{simd::*, simd_llvm::*, x86_64::*},
-    mem::{self, transmute},
+    core_arch::{simd::*, x86::*},
+    mem::transmute,
 };
 
 /// Sets packed 64-bit integers in `dst` with the supplied values.
@@ -9,16 +9,16 @@ use crate::{
 #[inline]
 #[target_feature(enable = "avx512f")]
 pub unsafe fn _mm512_set_epi64(
-    e7: i64,
-    e6: i64,
-    e5: i64,
-    e4: i64,
-    e3: i64,
-    e2: i64,
-    e1: i64,
     e0: i64,
+    e1: i64,
+    e2: i64,
+    e3: i64,
+    e4: i64,
+    e5: i64,
+    e6: i64,
+    e7: i64,
 ) -> __m512i {
-    _mm512_setr_epi64(e7, e6, e5, e4, e3, e2, e1, e0);
+    _mm512_setr_epi64(e7, e6, e5, e4, e3, e2, e1, e0)
 }
 
 /// Sets packed 64-bit integers in `dst` with the supplied values in
@@ -28,16 +28,16 @@ pub unsafe fn _mm512_set_epi64(
 #[inline]
 #[target_feature(enable = "avx512f")]
 pub unsafe fn _mm512_setr_epi64(
-    e7: i64,
-    e6: i64,
-    e5: i64,
-    e4: i64,
-    e3: i64,
-    e2: i64,
-    e1: i64,
     e0: i64,
+    e1: i64,
+    e2: i64,
+    e3: i64,
+    e4: i64,
+    e5: i64,
+    e6: i64,
+    e7: i64,
 ) -> __m512i {
-    let r = i64x8(e0, e1, e2, e3, e4, e5, e6, e7);
+    let r = i64x8::new(e0, e1, e2, e3, e4, e5, e6, e7);
     transmute(r)
 }
 
