@@ -1,6 +1,5 @@
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
 #![feature(rustc_private)]
-#![feature(str_strip)]
 
 // FIXME: switch to something more ergonomic here, once available.
 // (Currently there is no way to opt into sysroot crates without `extern crate`.)
