@@ -289,21 +289,21 @@ fn print_expr(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, indent: usize) {
             println!("{}operands:", ind);
             for op in asm.operands {
                 match op {
-                    hir::InlineAsmOperand::In { expr, .. } => print_expr(cx, expr, indent + 1),
+                    hir::InlineAsmOperand::In { expr, .. }
+                    | hir::InlineAsmOperand::InOut { expr, .. }
+                    | hir::InlineAsmOperand::Const { expr }
+                    | hir::InlineAsmOperand::Sym { expr } => print_expr(cx, expr, indent + 1),
                     hir::InlineAsmOperand::Out { expr, .. } => {
                         if let Some(expr) = expr {
                             print_expr(cx, expr, indent + 1);
                         }
                     },
-                    hir::InlineAsmOperand::InOut { expr, .. } => print_expr(cx, expr, indent + 1),
                     hir::InlineAsmOperand::SplitInOut { in_expr, out_expr, .. } => {
                         print_expr(cx, in_expr, indent + 1);
                         if let Some(out_expr) = out_expr {
                             print_expr(cx, out_expr, indent + 1);
                         }
                     },
-                    hir::InlineAsmOperand::Const { expr } => print_expr(cx, expr, indent + 1),
-                    hir::InlineAsmOperand::Sym { expr } => print_expr(cx, expr, indent + 1),
                 }
             }
         },

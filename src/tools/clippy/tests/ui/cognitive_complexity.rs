@@ -1,6 +1,6 @@
 #![allow(clippy::all)]
 #![warn(clippy::cognitive_complexity)]
-#![allow(unused)]
+#![allow(unused, unused_crate_dependencies)]
 
 #[rustfmt::skip]
 fn main() {

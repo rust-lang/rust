@@ -530,7 +530,7 @@ pub trait DiagnosticBuilderExt<'a, T: LintContext> {
 
     /// Suggest to add an item before another.
     ///
-    /// The item should not be indented (expect for inner indentation).
+    /// The item should not be indented (except for inner indentation).
     ///
     /// # Example
     ///

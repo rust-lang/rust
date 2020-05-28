@@ -379,7 +379,7 @@ impl EarlyLintPass for MiscEarlyLints {
             let left_binding = match left {
                 BindingMode::ByRef(Mutability::Mut) => "ref mut ",
                 BindingMode::ByRef(Mutability::Not) => "ref ",
-                _ => "",
+                BindingMode::ByValue(..) => "",
             };
 
             if let PatKind::Wild = right.kind {

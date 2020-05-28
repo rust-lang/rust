@@ -32,5 +32,5 @@ else
     TOOLCHAIN=()
 fi
 
-rustup-toolchain-install-master -f -n master "${TOOLCHAIN[@]}" -c rustc-dev -- "$RUST_COMMIT"
+rustup-toolchain-install-master -f -n master "${TOOLCHAIN[@]}" -c rustc-dev -c llvm-tools -- "$RUST_COMMIT"
 rustup override set master

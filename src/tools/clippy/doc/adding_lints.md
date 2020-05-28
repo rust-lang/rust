@@ -42,8 +42,10 @@ case), and we don't need type information so it will have an early pass type
 `cargo dev new_lint --name=foo_functions --pass=early --category=pedantic`
 (category will default to nursery if not provided). This command will create
 two files: `tests/ui/foo_functions.rs` and `clippy_lints/src/foo_functions.rs`,
-as well as run `cargo dev update_lints` to register the new lint. Next, we'll
-open up these files and add our lint!
+as well as run `cargo dev update_lints` to register the new lint. For cargo lints,
+two project hierarchies (fail/pass) will be created by default under `tests/ui-cargo`.
+
+Next, we'll open up these files and add our lint!
 
 ## Testing
 
@@ -104,6 +106,24 @@ Running `TESTNAME=foo_functions cargo uitest` should pass then. When we commit
 our lint, we need to commit the generated `.stderr` files, too. In general, you
 should only commit files changed by `tests/ui/update-all-references.sh` for the
 specific lint you are creating/editing.
+
+### Cargo lints
+
+For cargo lints, the process of testing differs in that we are interested in
+the `Cargo.toml` manifest file. We also need a minimal crate associated
+with that manifest.
+
+If our new lint is named e.g. `foo_categories`, after running `cargo dev new_lint` 
+we will find by default two new crates, each with its manifest file:
+
+* `tests/ui-cargo/foo_categories/fail/Cargo.toml`: this file should cause the new lint to raise an error.
+* `tests/ui-cargo/foo_categories/pass/Cargo.toml`: this file should not trigger the lint.
+
+If you need more cases, you can copy one of those crates (under `foo_categories`) and rename it.
+
+The process of generating the `.stderr` file is the same, and prepending the `TESTNAME`
+variable to `cargo uitest` works too, but the script to update the references
+is in another path: `tests/ui-cargo/update-all-references.sh`.
 
 ## Rustfix tests
 
@@ -445,6 +465,7 @@ Here are some pointers to things you are likely going to need for every lint:
 * [`from_expansion`][from_expansion] and [`in_external_macro`][in_external_macro]
 * [`Span`][span]
 * [`Applicability`][applicability]
+* [Common tools for writing lints](common_tools_writing_lints.md) helps with common operations
 * [The rustc-dev-guide][rustc-dev-guide] explains a lot of internal compiler concepts
 * [The nightly rustc docs][nightly_docs] which has been linked to throughout
   this guide

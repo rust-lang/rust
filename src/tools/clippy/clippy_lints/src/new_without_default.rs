@@ -1,26 +1,19 @@
 use crate::utils::paths;
 use crate::utils::sugg::DiagnosticBuilderExt;
-use crate::utils::{get_trait_def_id, implements_trait, return_ty, same_tys, span_lint_hir_and_then};
+use crate::utils::{get_trait_def_id, return_ty, same_tys, span_lint_hir_and_then};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
 use rustc_hir::HirIdSet;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::Ty;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::source_map::Span;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for types with a `fn new() -> Self` method and no
     /// implementation of
     /// [`Default`](https://doc.rust-lang.org/std/default/trait.Default.html).
-    ///
-    /// It detects both the case when a manual
-    /// [`Default`](https://doc.rust-lang.org/std/default/trait.Default.html)
-    /// implementation is required and also when it can be created with
-    /// `#[derive(Default)]`
     ///
     /// **Why is this bad?** The user might expect to be able to use
     /// [`Default`](https://doc.rust-lang.org/std/default/trait.Default.html) as the
@@ -40,46 +33,17 @@ declare_clippy_lint! {
     /// }
     /// ```
     ///
-    /// Instead, use:
+    /// To fix the lint, and a `Default` implementation that delegates to `new`:
     ///
     /// ```ignore
     /// struct Foo(Bar);
     ///
     /// impl Default for Foo {
     ///     fn default() -> Self {
-    ///         Foo(Bar::new())
+    ///         Foo::new()
     ///     }
     /// }
     /// ```
-    ///
-    /// Or, if
-    /// [`Default`](https://doc.rust-lang.org/std/default/trait.Default.html)
-    /// can be derived by `#[derive(Default)]`:
-    ///
-    /// ```rust
-    /// struct Foo;
-    ///
-    /// impl Foo {
-    ///     fn new() -> Self {
-    ///         Foo
-    ///     }
-    /// }
-    /// ```
-    ///
-    /// Instead, use:
-    ///
-    /// ```rust
-    /// #[derive(Default)]
-    /// struct Foo;
-    ///
-    /// impl Foo {
-    ///     fn new() -> Self {
-    ///         Foo
-    ///     }
-    /// }
-    /// ```
-    ///
-    /// You can also have `new()` call `Default::default()`.
     pub NEW_WITHOUT_DEFAULT,
     style,
     "`fn new() -> Self` method without `Default` implementation"
@@ -126,8 +90,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                             return;
                         }
                         if sig.decl.inputs.is_empty() && name == sym!(new) && cx.access_levels.is_reachable(id) {
-                            let self_did = cx.tcx.hir().local_def_id(cx.tcx.hir().get_parent_item(id));
-                            let self_ty = cx.tcx.type_of(self_did);
+                            let self_def_id = cx.tcx.hir().local_def_id(cx.tcx.hir().get_parent_item(id));
+                            let self_ty = cx.tcx.type_of(self_def_id);
                             if_chain! {
                                 if same_tys(cx, self_ty, return_ty(cx, id));
                                 if let Some(default_trait_id) = get_trait_def_id(cx, &paths::DEFAULT_TRAIT);
@@ -148,56 +112,35 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                                     // generics
                                     if_chain! {
                                         if let Some(ref impling_types) = self.impling_types;
-                                        if let Some(self_def) = cx.tcx.type_of(self_did).ty_adt_def();
-                                        if let Some(self_def_id) = self_def.did.as_local();
+                                        if let Some(self_def) = cx.tcx.type_of(self_def_id).ty_adt_def();
+                                        if let Some(self_local_did) = self_def.did.as_local();
                                         then {
-                                            let self_id = cx.tcx.hir().local_def_id_to_hir_id(self_def_id);
+                                            let self_id = cx.tcx.hir().local_def_id_to_hir_id(self_local_did);
                                             if impling_types.contains(&self_id) {
                                                 return;
                                             }
                                         }
                                     }
 
-                                    if let Some(sp) = can_derive_default(self_ty, cx, default_trait_id) {
-                                        span_lint_hir_and_then(
-                                            cx,
-                                            NEW_WITHOUT_DEFAULT,
-                                            id,
-                                            impl_item.span,
-                                            &format!(
-                                                "you should consider deriving a `Default` implementation for `{}`",
-                                                self_ty
-                                            ),
-                                            |diag| {
-                                                diag.suggest_item_with_attr(
-                                                    cx,
-                                                    sp,
-                                                    "try this",
-                                                    "#[derive(Default)]",
-                                                    Applicability::MaybeIncorrect,
-                                                );
-                                            });
-                                    } else {
-                                        span_lint_hir_and_then(
-                                            cx,
-                                            NEW_WITHOUT_DEFAULT,
-                                            id,
-                                            impl_item.span,
-                                            &format!(
-                                                "you should consider adding a `Default` implementation for `{}`",
-                                                self_ty
-                                            ),
-                                            |diag| {
-                                                diag.suggest_prepend_item(
-                                                    cx,
-                                                    item.span,
-                                                    "try this",
-                                                    &create_new_without_default_suggest_msg(self_ty),
-                                                    Applicability::MaybeIncorrect,
-                                                );
-                                            },
-                                        );
-                                    }
+                                    span_lint_hir_and_then(
+                                        cx,
+                                        NEW_WITHOUT_DEFAULT,
+                                        id,
+                                        impl_item.span,
+                                        &format!(
+                                            "you should consider adding a `Default` implementation for `{}`",
+                                            self_ty
+                                        ),
+                                        |diag| {
+                                            diag.suggest_prepend_item(
+                                                cx,
+                                                item.span,
+                                                "try this",
+                                                &create_new_without_default_suggest_msg(self_ty),
+                                                Applicability::MaybeIncorrect,
+                                            );
+                                        },
+                                    );
                                 }
                             }
                         }
@@ -216,19 +159,4 @@ fn create_new_without_default_suggest_msg(ty: Ty<'_>) -> String {
         Self::new()
     }}
 }}", ty)
-}
-
-fn can_derive_default<'t, 'c>(ty: Ty<'t>, cx: &LateContext<'c, 't>, default_trait_id: DefId) -> Option<Span> {
-    match ty.kind {
-        ty::Adt(adt_def, substs) if adt_def.is_struct() => {
-            for field in adt_def.all_fields() {
-                let f_ty = field.ty(cx.tcx, substs);
-                if !implements_trait(cx, f_ty, default_trait_id, &[]) {
-                    return None;
-                }
-            }
-            Some(cx.tcx.def_span(adt_def.did))
-        },
-        _ => None,
-    }
 }

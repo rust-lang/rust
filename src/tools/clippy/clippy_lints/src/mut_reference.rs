@@ -6,7 +6,7 @@ use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:** Detects giving a mutable reference to a function that only
+    /// **What it does:** Detects passing a mutable reference to a function that only
     /// requires an immutable reference.
     ///
     /// **Why is this bad?** The immutable reference rules out all other references
