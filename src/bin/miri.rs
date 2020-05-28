@@ -1,4 +1,5 @@
 #![feature(rustc_private)]
+#![feature(str_strip)]
 
 extern crate rustc_middle;
 extern crate rustc_driver;
@@ -208,7 +209,7 @@ fn main() {
                     if seed.is_some() {
                         panic!("Cannot specify -Zmiri-seed multiple times!");
                     }
-                    let seed_raw = hex::decode(arg.trim_start_matches("-Zmiri-seed="))
+                    let seed_raw = hex::decode(arg.strip_prefix("-Zmiri-seed=").unwrap())
                         .unwrap_or_else(|err| match err {
                             FromHexError::InvalidHexCharacter { .. } => panic!(
                                 "-Zmiri-seed should only contain valid hex digits [0-9a-fA-F]"
@@ -230,10 +231,10 @@ fn main() {
                 }
                 arg if arg.starts_with("-Zmiri-env-exclude=") => {
                     excluded_env_vars
-                        .push(arg.trim_start_matches("-Zmiri-env-exclude=").to_owned());
+                        .push(arg.strip_prefix("-Zmiri-env-exclude=").unwrap().to_owned());
                 }
                 arg if arg.starts_with("-Zmiri-track-pointer-tag=") => {
-                    let id: u64 = match arg.trim_start_matches("-Zmiri-track-pointer-tag=").parse()
+                    let id: u64 = match arg.strip_prefix("-Zmiri-track-pointer-tag=").unwrap().parse()
                     {
                         Ok(id) => id,
                         Err(err) => panic!(
@@ -248,7 +249,7 @@ fn main() {
                     }
                 }
                 arg if arg.starts_with("-Zmiri-track-alloc-id=") => {
-                    let id: u64 = match arg.trim_start_matches("-Zmiri-track-alloc-id=").parse()
+                    let id: u64 = match arg.strip_prefix("-Zmiri-track-alloc-id=").unwrap().parse()
                     {
                         Ok(id) => id,
                         Err(err) => panic!(
