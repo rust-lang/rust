@@ -18,7 +18,7 @@ use rustc_session::lint;
 use rustc_session::parse::{CrateConfig, ParseSess};
 use rustc_session::{DiagnosticOutput, Session};
 use rustc_span::edition;
-use rustc_span::source_map::{FileLoader, FileName, SourceMap};
+use rustc_span::source_map::{FileLoader, FileName};
 use std::path::PathBuf;
 use std::result;
 use std::sync::{Arc, Mutex};
@@ -31,7 +31,6 @@ pub type Result<T> = result::Result<T, ErrorReported>;
 pub struct Compiler {
     pub(crate) sess: Lrc<Session>,
     codegen_backend: Lrc<Box<dyn CodegenBackend>>,
-    source_map: Lrc<SourceMap>,
     pub(crate) input: Input,
     pub(crate) input_path: Option<PathBuf>,
     pub(crate) output_dir: Option<PathBuf>,
@@ -48,9 +47,6 @@ impl Compiler {
     }
     pub fn codegen_backend(&self) -> &Lrc<Box<dyn CodegenBackend>> {
         &self.codegen_backend
-    }
-    pub fn source_map(&self) -> &Lrc<SourceMap> {
-        &self.source_map
     }
     pub fn input(&self) -> &Input {
         &self.input
@@ -168,7 +164,7 @@ pub fn run_compiler_in_existing_thread_pool<R>(
     f: impl FnOnce(&Compiler) -> R,
 ) -> R {
     let registry = &config.registry;
-    let (sess, codegen_backend, source_map) = util::create_session(
+    let (sess, codegen_backend) = util::create_session(
         config.opts,
         config.crate_cfg,
         config.diagnostic_output,
@@ -181,7 +177,6 @@ pub fn run_compiler_in_existing_thread_pool<R>(
     let compiler = Compiler {
         sess,
         codegen_backend,
-        source_map,
         input: config.input,
         input_path: config.input_path,
         output_dir: config.output_dir,
