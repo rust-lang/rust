@@ -56,6 +56,7 @@ unsafe extern "C" fn tcs_init(secondary: bool) {
 // able to specify this
 #[cfg(not(test))]
 #[no_mangle]
+#[allow(improper_ctypes_definitions)]
 extern "C" fn entry(p1: u64, p2: u64, p3: u64, secondary: bool, p4: u64, p5: u64) -> (u64, u64) {
     // FIXME: how to support TLS in library mode?
     let tls = Box::new(tls::Tls::new());
