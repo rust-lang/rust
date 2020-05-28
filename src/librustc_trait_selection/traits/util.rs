@@ -81,12 +81,10 @@ impl<'tcx> TraitAliasExpansionInfo<'tcx> {
 
 pub fn expand_trait_aliases<'tcx>(
     tcx: TyCtxt<'tcx>,
-    trait_refs: impl IntoIterator<Item = (ty::PolyTraitRef<'tcx>, Span)>,
+    trait_refs: impl Iterator<Item = (ty::PolyTraitRef<'tcx>, Span)>,
 ) -> TraitAliasExpander<'tcx> {
-    let items: Vec<_> = trait_refs
-        .into_iter()
-        .map(|(trait_ref, span)| TraitAliasExpansionInfo::new(trait_ref, span))
-        .collect();
+    let items: Vec<_> =
+        trait_refs.map(|(trait_ref, span)| TraitAliasExpansionInfo::new(trait_ref, span)).collect();
     TraitAliasExpander { tcx, stack: items }
 }
 
@@ -99,7 +97,7 @@ impl<'tcx> TraitAliasExpander<'tcx> {
     fn expand(&mut self, item: &TraitAliasExpansionInfo<'tcx>) -> bool {
         let tcx = self.tcx;
         let trait_ref = item.trait_ref();
-        let pred = trait_ref.without_const().to_predicate();
+        let pred = trait_ref.without_const().to_predicate(tcx);
 
         debug!("expand_trait_aliases: trait_ref={:?}", trait_ref);
 
@@ -110,9 +108,9 @@ impl<'tcx> TraitAliasExpander<'tcx> {
         }
 
         // Don't recurse if this trait alias is already on the stack for the DFS search.
-        let anon_pred = anonymize_predicate(tcx, &pred);
+        let anon_pred = anonymize_predicate(tcx, pred);
         if item.path.iter().rev().skip(1).any(|(tr, _)| {
-            anonymize_predicate(tcx, &tr.without_const().to_predicate()) == anon_pred
+            anonymize_predicate(tcx, tr.without_const().to_predicate(tcx)) == anon_pred
         }) {
             return false;
         }
@@ -199,7 +197,7 @@ pub fn impl_trait_ref_and_oblig<'a, 'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     impl_def_id: DefId,
     impl_substs: SubstsRef<'tcx>,
-) -> (ty::TraitRef<'tcx>, Vec<PredicateObligation<'tcx>>) {
+) -> (ty::TraitRef<'tcx>, impl Iterator<Item = PredicateObligation<'tcx>>) {
     let impl_trait_ref = selcx.tcx().impl_trait_ref(impl_def_id).unwrap();
     let impl_trait_ref = impl_trait_ref.subst(selcx.tcx(), impl_substs);
     let Normalized { value: impl_trait_ref, obligations: normalization_obligations1 } =
@@ -210,39 +208,33 @@ pub fn impl_trait_ref_and_oblig<'a, 'tcx>(
     let Normalized { value: predicates, obligations: normalization_obligations2 } =
         super::normalize(selcx, param_env, ObligationCause::dummy(), &predicates);
     let impl_obligations =
-        predicates_for_generics(ObligationCause::dummy(), 0, param_env, &predicates);
+        predicates_for_generics(ObligationCause::dummy(), 0, param_env, predicates);
 
-    let impl_obligations: Vec<_> = impl_obligations
-        .into_iter()
-        .chain(normalization_obligations1)
-        .chain(normalization_obligations2)
-        .collect();
+    let impl_obligations = impl_obligations
+        .chain(normalization_obligations1.into_iter())
+        .chain(normalization_obligations2.into_iter());
 
     (impl_trait_ref, impl_obligations)
 }
 
-/// See [`super::obligations_for_generics`].
 pub fn predicates_for_generics<'tcx>(
     cause: ObligationCause<'tcx>,
     recursion_depth: usize,
     param_env: ty::ParamEnv<'tcx>,
-    generic_bounds: &ty::InstantiatedPredicates<'tcx>,
-) -> Vec<PredicateObligation<'tcx>> {
+    generic_bounds: ty::InstantiatedPredicates<'tcx>,
+) -> impl Iterator<Item = PredicateObligation<'tcx>> {
     debug!("predicates_for_generics(generic_bounds={:?})", generic_bounds);
 
-    generic_bounds
-        .predicates
-        .iter()
-        .map(|&predicate| Obligation {
-            cause: cause.clone(),
-            recursion_depth,
-            param_env,
-            predicate,
-        })
-        .collect()
+    generic_bounds.predicates.into_iter().map(move |predicate| Obligation {
+        cause: cause.clone(),
+        recursion_depth,
+        param_env,
+        predicate,
+    })
 }
 
 pub fn predicate_for_trait_ref<'tcx>(
+    tcx: TyCtxt<'tcx>,
     cause: ObligationCause<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     trait_ref: ty::TraitRef<'tcx>,
@@ -252,7 +244,7 @@ pub fn predicate_for_trait_ref<'tcx>(
         cause,
         param_env,
         recursion_depth,
-        predicate: trait_ref.without_const().to_predicate(),
+        predicate: trait_ref.without_const().to_predicate(tcx),
     }
 }
 
@@ -267,7 +259,7 @@ pub fn predicate_for_trait_def(
 ) -> PredicateObligation<'tcx> {
     let trait_ref =
         ty::TraitRef { def_id: trait_def_id, substs: tcx.mk_substs_trait(self_ty, params) };
-    predicate_for_trait_ref(cause, param_env, trait_ref, recursion_depth)
+    predicate_for_trait_ref(tcx, cause, param_env, trait_ref, recursion_depth)
 }
 
 /// Casts a trait reference into a reference to one of its super
@@ -293,7 +285,7 @@ pub fn count_own_vtable_entries(tcx: TyCtxt<'tcx>, trait_ref: ty::PolyTraitRef<'
     // Count number of methods and add them to the total offset.
     // Skip over associated types and constants.
     for trait_item in tcx.associated_items(trait_ref.def_id()).in_definition_order() {
-        if trait_item.kind == ty::AssocKind::Method {
+        if trait_item.kind == ty::AssocKind::Fn {
             entries += 1;
         }
     }
@@ -315,10 +307,10 @@ pub fn get_vtable_index_of_object_method<N>(
     for trait_item in tcx.associated_items(object.upcast_trait_ref.def_id()).in_definition_order() {
         if trait_item.def_id == method_def_id {
             // The item with the ID we were given really ought to be a method.
-            assert_eq!(trait_item.kind, ty::AssocKind::Method);
+            assert_eq!(trait_item.kind, ty::AssocKind::Fn);
             return entries;
         }
-        if trait_item.kind == ty::AssocKind::Method {
+        if trait_item.kind == ty::AssocKind::Fn {
             entries += 1;
         }
     }

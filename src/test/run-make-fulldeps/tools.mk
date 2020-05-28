@@ -44,8 +44,13 @@ RUN = PATH="$(PATH):$(TARGET_RPATH_DIR)" $(RUN_BINFILE)
 FAIL = PATH="$(PATH):$(TARGET_RPATH_DIR)" $(RUN_BINFILE) && exit 1 || exit 0
 DYLIB_GLOB = $(1)*.dll
 DYLIB = $(TMPDIR)/$(1).dll
+ifdef IS_MSVC
 STATICLIB = $(TMPDIR)/$(1).lib
 STATICLIB_GLOB = $(1)*.lib
+else
+STATICLIB = $(TMPDIR)/lib$(1).a
+STATICLIB_GLOB = lib$(1)*.a
+endif
 BIN = $(1).exe
 LLVM_FILECHECK := $(shell cygpath -u "$(LLVM_FILECHECK)")
 else

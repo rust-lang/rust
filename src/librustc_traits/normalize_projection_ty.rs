@@ -1,10 +1,8 @@
-use rustc_hir as hir;
 use rustc_infer::infer::canonical::{Canonical, QueryResponse};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::TraitEngineExt as _;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{ParamEnvAnd, TyCtxt};
-use rustc_span::DUMMY_SP;
 use rustc_trait_selection::infer::InferCtxtBuilderExt;
 use rustc_trait_selection::traits::query::{
     normalize::NormalizationResult, CanonicalProjectionGoal, NoSolution,
@@ -27,7 +25,7 @@ fn normalize_projection_ty<'tcx>(
         &goal,
         |infcx, fulfill_cx, ParamEnvAnd { param_env, value: goal }| {
             let selcx = &mut SelectionContext::new(infcx);
-            let cause = ObligationCause::misc(DUMMY_SP, hir::DUMMY_HIR_ID);
+            let cause = ObligationCause::dummy();
             let mut obligations = vec![];
             let answer = traits::normalize_projection_type(
                 selcx,

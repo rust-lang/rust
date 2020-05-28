@@ -11,10 +11,15 @@
 #![allow(deprecated)]
 
 #[stable(feature = "raw_ext", since = "1.1.0")]
+#[allow(non_camel_case_types)]
 pub type uid_t = u32;
+
 #[stable(feature = "raw_ext", since = "1.1.0")]
+#[allow(non_camel_case_types)]
 pub type gid_t = u32;
+
 #[stable(feature = "raw_ext", since = "1.1.0")]
+#[allow(non_camel_case_types)]
 pub type pid_t = i32;
 
 #[doc(inline)]

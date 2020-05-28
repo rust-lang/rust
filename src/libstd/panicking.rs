@@ -271,43 +271,11 @@ pub unsafe fn r#try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>>
     let mut data = Data { f: ManuallyDrop::new(f) };
 
     let data_ptr = &mut data as *mut _ as *mut u8;
-    return if do_try(do_call::<F, R>, data_ptr, do_catch::<F, R>) == 0 {
+    return if intrinsics::r#try(do_call::<F, R>, data_ptr, do_catch::<F, R>) == 0 {
         Ok(ManuallyDrop::into_inner(data.r))
     } else {
         Err(ManuallyDrop::into_inner(data.p))
     };
-
-    // Compatibility wrapper around the try intrinsic for bootstrap.
-    //
-    // We also need to mark it #[inline(never)] to work around a bug on MinGW
-    // targets: the unwinding implementation was relying on UB, but this only
-    // becomes a problem in practice if inlining is involved.
-    #[cfg(not(bootstrap))]
-    use intrinsics::r#try as do_try;
-    #[cfg(bootstrap)]
-    #[inline(never)]
-    unsafe fn do_try(try_fn: fn(*mut u8), data: *mut u8, catch_fn: fn(*mut u8, *mut u8)) -> i32 {
-        use crate::mem::MaybeUninit;
-        #[cfg(target_env = "msvc")]
-        type TryPayload = [u64; 2];
-        #[cfg(not(target_env = "msvc"))]
-        type TryPayload = *mut u8;
-
-        let mut payload: MaybeUninit<TryPayload> = MaybeUninit::uninit();
-        let payload_ptr = payload.as_mut_ptr() as *mut u8;
-        let r = intrinsics::r#try(try_fn, data, payload_ptr);
-        if r != 0 {
-            #[cfg(target_env = "msvc")]
-            {
-                catch_fn(data, payload_ptr)
-            }
-            #[cfg(not(target_env = "msvc"))]
-            {
-                catch_fn(data, payload.assume_init())
-            }
-        }
-        r
-    }
 
     // We consider unwinding to be rare, so mark this function as cold. However,
     // do not mark it no-inline -- that decision is best to leave to the
@@ -320,9 +288,7 @@ pub unsafe fn r#try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>>
         obj
     }
 
-    // See comment on do_try above for why #[inline(never)] is needed on bootstrap.
-    #[cfg_attr(bootstrap, inline(never))]
-    #[cfg_attr(not(bootstrap), inline)]
+    #[inline]
     fn do_call<F: FnOnce() -> R, R>(data: *mut u8) {
         unsafe {
             let data = data as *mut Data<F, R>;
@@ -366,7 +332,10 @@ pub fn panicking() -> bool {
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 pub fn begin_panic_fmt(msg: &fmt::Arguments<'_>) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
-        unsafe { intrinsics::abort() }
+        #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // remove `unsafe` on bootstrap bump
+        unsafe {
+            intrinsics::abort()
+        }
     }
 
     let info = PanicInfo::internal_constructor(Some(msg), Location::caller());
@@ -432,7 +401,10 @@ pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
 #[track_caller]
 pub fn begin_panic<M: Any + Send>(msg: M) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
-        unsafe { intrinsics::abort() }
+        #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // remove `unsafe` on bootstrap bump
+        unsafe {
+            intrinsics::abort()
+        }
     }
 
     rust_panic_with_hook(&mut PanicPayload::new(msg), None, Location::caller());
@@ -492,7 +464,10 @@ fn rust_panic_with_hook(
             "thread panicked while processing \
                                        panic. aborting.\n"
         ));
-        unsafe { intrinsics::abort() }
+        #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // remove `unsafe` on bootstrap bump
+        unsafe {
+            intrinsics::abort()
+        }
     }
 
     unsafe {
@@ -527,7 +502,10 @@ fn rust_panic_with_hook(
             "thread panicked while panicking. \
                                        aborting.\n"
         ));
-        unsafe { intrinsics::abort() }
+        #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // remove `unsafe` on bootstrap bump
+        unsafe {
+            intrinsics::abort()
+        }
     }
 
     rust_panic(payload)

@@ -99,6 +99,9 @@ impl<K> GenKillAnalysis<'tcx> for MaybeBorrowedLocals<K>
 where
     K: BorrowAnalysisKind<'tcx>,
 {
+    // The generator transform relies on the fact that this analysis does **not** use "before"
+    // effects.
+
     fn statement_effect(
         &self,
         trans: &mut impl GenKill<Self::Idx>,
@@ -203,6 +206,7 @@ where
             | TerminatorKind::FalseUnwind { .. }
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::Goto { .. }
+            | TerminatorKind::InlineAsm { .. }
             | TerminatorKind::Resume
             | TerminatorKind::Return
             | TerminatorKind::SwitchInt { .. }

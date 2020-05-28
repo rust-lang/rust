@@ -130,3 +130,5 @@ warning: unused unary operation that must be used
 LL |     *val_pointer;
    |     ^^^^^^^^^^^^
 
+warning: 21 warnings emitted
+

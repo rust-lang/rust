@@ -1,7 +1,7 @@
 use crate::expand::{self, AstFragment, Invocation};
 use crate::module::DirectoryOwnership;
 
-use rustc_ast::ast::{self, Attribute, Name, NodeId, PatKind};
+use rustc_ast::ast::{self, Attribute, NodeId, PatKind};
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::ptr::P;
 use rustc_ast::token;
@@ -13,6 +13,7 @@ use rustc_data_structures::sync::{self, Lrc};
 use rustc_errors::{DiagnosticBuilder, ErrorReported};
 use rustc_parse::{self, parser, MACRO_ARGUMENTS};
 use rustc_session::parse::ParseSess;
+use rustc_span::def_id::DefId;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{AstPass, ExpnData, ExpnId, ExpnKind};
 use rustc_span::source_map::SourceMap;
@@ -593,6 +594,7 @@ impl DummyResult {
             kind: if is_error { ast::ExprKind::Err } else { ast::ExprKind::Tup(Vec::new()) },
             span: sp,
             attrs: ast::AttrVec::new(),
+            tokens: None,
         })
     }
 
@@ -796,7 +798,7 @@ impl SyntaxExtension {
         span: Span,
         helper_attrs: Vec<Symbol>,
         edition: Edition,
-        name: Name,
+        name: Symbol,
         attrs: &[ast::Attribute],
     ) -> SyntaxExtension {
         let allow_internal_unstable = attr::allow_internal_unstable(&attrs, &sess.span_diagnostic)
@@ -857,7 +859,13 @@ impl SyntaxExtension {
         SyntaxExtension::default(SyntaxExtensionKind::NonMacroAttr { mark_used }, edition)
     }
 
-    pub fn expn_data(&self, parent: ExpnId, call_site: Span, descr: Symbol) -> ExpnData {
+    pub fn expn_data(
+        &self,
+        parent: ExpnId,
+        call_site: Span,
+        descr: Symbol,
+        macro_def_id: Option<DefId>,
+    ) -> ExpnData {
         ExpnData {
             kind: ExpnKind::Macro(self.macro_kind(), descr),
             parent,
@@ -867,6 +875,7 @@ impl SyntaxExtension {
             allow_internal_unsafe: self.allow_internal_unsafe,
             local_inner_macros: self.local_inner_macros,
             edition: self.edition,
+            macro_def_id,
         }
     }
 }
@@ -885,7 +894,7 @@ pub trait Resolver {
 
     fn resolve_dollar_crates(&mut self);
     fn visit_ast_fragment_with_placeholders(&mut self, expn_id: ExpnId, fragment: &AstFragment);
-    fn register_builtin_macro(&mut self, ident: ast::Ident, ext: SyntaxExtension);
+    fn register_builtin_macro(&mut self, ident: Ident, ext: SyntaxExtension);
 
     fn expansion_for_ast_pass(
         &mut self,
@@ -913,7 +922,7 @@ pub trait Resolver {
 
 #[derive(Clone)]
 pub struct ModuleData {
-    pub mod_path: Vec<ast::Ident>,
+    pub mod_path: Vec<Ident>,
     pub directory: PathBuf,
 }
 
@@ -1052,16 +1061,16 @@ impl<'a> ExtCtxt<'a> {
     pub fn set_trace_macros(&mut self, x: bool) {
         self.ecfg.trace_mac = x
     }
-    pub fn ident_of(&self, st: &str, sp: Span) -> ast::Ident {
-        ast::Ident::from_str_and_span(st, sp)
+    pub fn ident_of(&self, st: &str, sp: Span) -> Ident {
+        Ident::from_str_and_span(st, sp)
     }
-    pub fn std_path(&self, components: &[Symbol]) -> Vec<ast::Ident> {
+    pub fn std_path(&self, components: &[Symbol]) -> Vec<Ident> {
         let def_site = self.with_def_site_ctxt(DUMMY_SP);
         iter::once(Ident::new(kw::DollarCrate, def_site))
             .chain(components.iter().map(|&s| Ident::with_dummy_span(s)))
             .collect()
     }
-    pub fn name_of(&self, st: &str) -> ast::Name {
+    pub fn name_of(&self, st: &str) -> Symbol {
         Symbol::intern(st)
     }
 

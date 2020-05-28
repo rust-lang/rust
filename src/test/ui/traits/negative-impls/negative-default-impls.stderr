@@ -1,5 +1,5 @@
 error[E0750]: negative impls cannot be default impls
-  --> $DIR/negative-default-impls.rs:8:14
+  --> $DIR/negative-default-impls.rs:8:1
    |
 LL | default impl !MyTrait for u32 {}
    | ^^^^^^^      ^

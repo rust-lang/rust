@@ -3,6 +3,7 @@ use super::lattice::{self, LatticeDir};
 use super::InferCtxt;
 use super::Subtype;
 
+use crate::infer::combine::ConstEquateRelation;
 use crate::traits::ObligationCause;
 use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -114,5 +115,11 @@ impl<'combine, 'infcx, 'tcx> LatticeDir<'infcx, 'tcx> for Glb<'combine, 'infcx, 
         sub.relate(&v, &a)?;
         sub.relate(&v, &b)?;
         Ok(())
+    }
+}
+
+impl<'tcx> ConstEquateRelation<'tcx> for Glb<'_, '_, 'tcx> {
+    fn const_equate_obligation(&mut self, a: &'tcx ty::Const<'tcx>, b: &'tcx ty::Const<'tcx>) {
+        self.fields.add_const_equate_obligation(self.a_is_expected, a, b);
     }
 }

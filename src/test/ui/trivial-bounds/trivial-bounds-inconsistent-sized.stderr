@@ -18,3 +18,5 @@ warning: Trait bound str: std::marker::Sized does not depend on any type or life
 LL | fn return_str() -> str where str: Sized {
    |                                   ^^^^^
 
+warning: 3 warnings emitted
+

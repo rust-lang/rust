@@ -106,7 +106,7 @@ LL | fn test6_b<T>(_: _, _: T) { }
    |
 help: use type parameters instead
    |
-LL | fn test6_b<T, K>(_: K, _: T) { }
+LL | fn test6_b<T, U>(_: U, _: T) { }
    |             ^^^     ^
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures
@@ -117,7 +117,7 @@ LL | fn test6_c<T, K, L, A, B>(_: _, _: (T, K, L, A, B)) { }
    |
 help: use type parameters instead
    |
-LL | fn test6_c<T, K, L, A, B, C>(_: C, _: (T, K, L, A, B)) { }
+LL | fn test6_c<T, K, L, A, B, U>(_: U, _: (T, K, L, A, B)) { }
    |                         ^^^     ^
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures
@@ -377,7 +377,7 @@ LL | struct BadStruct2<_, T>(_, T);
    |
 help: use type parameters instead
    |
-LL | struct BadStruct2<K, T>(K, T);
+LL | struct BadStruct2<U, T>(U, T);
    |                   ^     ^
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures

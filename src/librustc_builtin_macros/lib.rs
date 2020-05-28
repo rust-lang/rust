@@ -6,6 +6,7 @@
 #![feature(crate_visibility_modifier)]
 #![feature(decl_macro)]
 #![feature(nll)]
+#![feature(or_patterns)]
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_quote)]
 
@@ -13,12 +14,12 @@ extern crate proc_macro;
 
 use crate::deriving::*;
 
-use rustc_ast::ast::Ident;
 use rustc_expand::base::{MacroExpanderFn, Resolver, SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::proc_macro::BangProcMacro;
 use rustc_span::edition::Edition;
-use rustc_span::symbol::sym;
+use rustc_span::symbol::{sym, Ident};
 
+mod asm;
 mod assert;
 mod cfg;
 mod cfg_accessible;
@@ -61,7 +62,7 @@ pub fn register_builtin_macros(resolver: &mut dyn Resolver, edition: Edition) {
     }
 
     register_bang! {
-        asm: llvm_asm::expand_llvm_asm,
+        asm: asm::expand_asm,
         assert: assert::expand_assert,
         cfg: cfg::expand_cfg,
         column: source_util::expand_column,

@@ -209,7 +209,9 @@ where
                     // schedule its successors for examination.
                     self.stack.push(Event { node, becomes: Settled });
                     for succ in self.graph.successors(node) {
-                        self.stack.push(Event { node: succ, becomes: Visited });
+                        if !visitor.ignore_edge(node, succ) {
+                            self.stack.push(Event { node: succ, becomes: Visited });
+                        }
                     }
                 }
             }
@@ -255,15 +257,20 @@ where
     /// [CLR]: https://en.wikipedia.org/wiki/Introduction_to_Algorithms
     fn node_examined(
         &mut self,
-        _target: G::Node,
+        _node: G::Node,
         _prior_status: Option<NodeStatus>,
     ) -> ControlFlow<Self::BreakVal> {
         ControlFlow::Continue
     }
 
     /// Called after all nodes reachable from this one have been examined.
-    fn node_settled(&mut self, _target: G::Node) -> ControlFlow<Self::BreakVal> {
+    fn node_settled(&mut self, _node: G::Node) -> ControlFlow<Self::BreakVal> {
         ControlFlow::Continue
+    }
+
+    /// Behave as if no edges exist from `source` to `target`.
+    fn ignore_edge(&mut self, _source: G::Node, _target: G::Node) -> bool {
+        false
     }
 }
 

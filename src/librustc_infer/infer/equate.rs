@@ -1,4 +1,4 @@
-use super::combine::{CombineFields, RelationDir};
+use super::combine::{CombineFields, ConstEquateRelation, RelationDir};
 use super::Subtype;
 
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
@@ -72,14 +72,14 @@ impl TypeRelation<'tcx> for Equate<'combine, 'infcx, 'tcx> {
         }
 
         let infcx = self.fields.infcx;
-        let a = infcx.inner.borrow_mut().type_variables.replace_if_possible(a);
-        let b = infcx.inner.borrow_mut().type_variables.replace_if_possible(b);
+        let a = infcx.inner.borrow_mut().type_variables().replace_if_possible(a);
+        let b = infcx.inner.borrow_mut().type_variables().replace_if_possible(b);
 
         debug!("{}.tys: replacements ({:?}, {:?})", self.tag(), a, b);
 
         match (&a.kind, &b.kind) {
             (&ty::Infer(TyVar(a_id)), &ty::Infer(TyVar(b_id))) => {
-                infcx.inner.borrow_mut().type_variables.equate(a_id, b_id);
+                infcx.inner.borrow_mut().type_variables().equate(a_id, b_id);
             }
 
             (&ty::Infer(TyVar(a_id)), _) => {
@@ -138,5 +138,11 @@ impl TypeRelation<'tcx> for Equate<'combine, 'infcx, 'tcx> {
             self.relate(a.skip_binder(), b.skip_binder())?;
             Ok(a.clone())
         }
+    }
+}
+
+impl<'tcx> ConstEquateRelation<'tcx> for Equate<'_, '_, 'tcx> {
+    fn const_equate_obligation(&mut self, a: &'tcx ty::Const<'tcx>, b: &'tcx ty::Const<'tcx>) {
+        self.fields.add_const_equate_obligation(self.a_is_expected, a, b);
     }
 }

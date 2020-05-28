@@ -360,6 +360,7 @@ impl<'a> fmt::Display for Html<'a> {
                         "fuchsia" => "Fuchsia",
                         "haiku" => "Haiku",
                         "hermit" => "HermitCore",
+                        "illumos" => "illumos",
                         "ios" => "iOS",
                         "l4re" => "L4Re",
                         "linux" => "Linux",

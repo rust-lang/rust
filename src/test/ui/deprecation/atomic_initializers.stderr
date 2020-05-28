@@ -6,3 +6,5 @@ LL | static FOO: AtomicIsize = ATOMIC_ISIZE_INIT;
    |
    = note: `#[warn(deprecated)]` on by default
 
+warning: 1 warning emitted
+

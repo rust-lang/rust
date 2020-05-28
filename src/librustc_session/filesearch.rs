@@ -7,7 +7,7 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crate::search_paths::{PathKind, SearchPath};
+use crate::search_paths::{PathKind, SearchPath, SearchPathFile};
 use log::debug;
 use rustc_fs_util::fix_windows_verbatim_for_gcc;
 
@@ -43,28 +43,28 @@ impl<'a> FileSearch<'a> {
 
     pub fn search<F>(&self, mut pick: F)
     where
-        F: FnMut(&Path, PathKind) -> FileMatch,
+        F: FnMut(&SearchPathFile, PathKind) -> FileMatch,
     {
         for search_path in self.search_paths() {
             debug!("searching {}", search_path.dir.display());
-            fn is_rlib(p: &Path) -> bool {
-                p.extension() == Some("rlib".as_ref())
+            fn is_rlib(spf: &SearchPathFile) -> bool {
+                if let Some(f) = &spf.file_name_str { f.ends_with(".rlib") } else { false }
             }
             // Reading metadata out of rlibs is faster, and if we find both
             // an rlib and a dylib we only read one of the files of
             // metadata, so in the name of speed, bring all rlib files to
             // the front of the search list.
-            let files1 = search_path.files.iter().filter(|p| is_rlib(p));
-            let files2 = search_path.files.iter().filter(|p| !is_rlib(p));
-            for path in files1.chain(files2) {
-                debug!("testing {}", path.display());
-                let maybe_picked = pick(path, search_path.kind);
+            let files1 = search_path.files.iter().filter(|spf| is_rlib(&spf));
+            let files2 = search_path.files.iter().filter(|spf| !is_rlib(&spf));
+            for spf in files1.chain(files2) {
+                debug!("testing {}", spf.path.display());
+                let maybe_picked = pick(spf, search_path.kind);
                 match maybe_picked {
                     FileMatches => {
-                        debug!("picked {}", path.display());
+                        debug!("picked {}", spf.path.display());
                     }
                     FileDoesntMatch => {
-                        debug!("rejected {}", path.display());
+                        debug!("rejected {}", spf.path.display());
                     }
                 }
             }

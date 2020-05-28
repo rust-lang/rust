@@ -2,7 +2,6 @@
 
 //! Asynchronous values.
 
-#[cfg(not(bootstrap))]
 use crate::{
     ops::{Generator, GeneratorState},
     pin::Pin,
@@ -11,8 +10,20 @@ use crate::{
 };
 
 mod future;
+mod into_future;
+mod pending;
+mod ready;
+
 #[stable(feature = "futures_api", since = "1.36.0")]
 pub use self::future::Future;
+
+#[unstable(feature = "into_future", issue = "67644")]
+pub use into_future::IntoFuture;
+
+#[unstable(feature = "future_readiness_fns", issue = "70921")]
+pub use pending::{pending, Pending};
+#[unstable(feature = "future_readiness_fns", issue = "70921")]
+pub use ready::{ready, Ready};
 
 /// This type is needed because:
 ///
@@ -24,16 +35,13 @@ pub use self::future::Future;
 /// It also simplifies the HIR lowering of `.await`.
 #[doc(hidden)]
 #[unstable(feature = "gen_future", issue = "50547")]
-#[cfg(not(bootstrap))]
 #[derive(Debug, Copy, Clone)]
 pub struct ResumeTy(NonNull<Context<'static>>);
 
 #[unstable(feature = "gen_future", issue = "50547")]
-#[cfg(not(bootstrap))]
 unsafe impl Send for ResumeTy {}
 
 #[unstable(feature = "gen_future", issue = "50547")]
-#[cfg(not(bootstrap))]
 unsafe impl Sync for ResumeTy {}
 
 /// Wrap a generator in a future.
@@ -43,7 +51,6 @@ unsafe impl Sync for ResumeTy {}
 // This is `const` to avoid extra errors after we recover from `const async fn`
 #[doc(hidden)]
 #[unstable(feature = "gen_future", issue = "50547")]
-#[cfg(not(bootstrap))]
 #[inline]
 pub const fn from_generator<T>(gen: T) -> impl Future<Output = T::Return>
 where
@@ -75,11 +82,7 @@ where
 
 #[doc(hidden)]
 #[unstable(feature = "gen_future", issue = "50547")]
-#[cfg(not(bootstrap))]
 #[inline]
-pub unsafe fn poll_with_context<F>(f: Pin<&mut F>, mut cx: ResumeTy) -> Poll<F::Output>
-where
-    F: Future,
-{
-    F::poll(f, cx.0.as_mut())
+pub unsafe fn get_context<'a, 'b>(cx: ResumeTy) -> &'a mut Context<'b> {
+    &mut *cx.0.as_ptr().cast()
 }

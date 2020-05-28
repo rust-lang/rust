@@ -29,7 +29,8 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     ) -> Option<(&hir::Ty<'_>, &hir::FnDecl<'_>)> {
         if let Some(anon_reg) = self.tcx().is_suitable_region(region) {
             let def_id = anon_reg.def_id;
-            if let Some(hir_id) = self.tcx().hir().as_local_hir_id(def_id) {
+            if let Some(def_id) = def_id.as_local() {
+                let hir_id = self.tcx().hir().as_local_hir_id(def_id);
                 let fndecl = match self.tcx().hir().get(hir_id) {
                     Node::Item(&hir::Item { kind: hir::ItemKind::Fn(ref m, ..), .. })
                     | Node::TraitItem(&hir::TraitItem {
@@ -46,8 +47,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 return fndecl
                     .inputs
                     .iter()
-                    .filter_map(|arg| self.find_component_for_bound_region(arg, br))
-                    .next()
+                    .find_map(|arg| self.find_component_for_bound_region(arg, br))
                     .map(|ty| (ty, &**fndecl));
             }
         }
@@ -164,12 +164,17 @@ impl Visitor<'tcx> for FindNestedTypeVisitor<'tcx> {
                         }
                     }
 
-                    (Some(rl::Region::Static), _)
-                    | (Some(rl::Region::Free(_, _)), _)
-                    | (Some(rl::Region::EarlyBound(_, _, _)), _)
-                    | (Some(rl::Region::LateBound(_, _, _)), _)
-                    | (Some(rl::Region::LateBoundAnon(_, _)), _)
-                    | (None, _) => {
+                    (
+                        Some(
+                            rl::Region::Static
+                            | rl::Region::Free(_, _)
+                            | rl::Region::EarlyBound(_, _, _)
+                            | rl::Region::LateBound(_, _, _)
+                            | rl::Region::LateBoundAnon(_, _),
+                        )
+                        | None,
+                        _,
+                    ) => {
                         debug!("no arg found");
                     }
                 }
@@ -244,12 +249,17 @@ impl Visitor<'tcx> for TyPathVisitor<'tcx> {
                 }
             }
 
-            (Some(rl::Region::Static), _)
-            | (Some(rl::Region::EarlyBound(_, _, _)), _)
-            | (Some(rl::Region::LateBound(_, _, _)), _)
-            | (Some(rl::Region::LateBoundAnon(_, _)), _)
-            | (Some(rl::Region::Free(_, _)), _)
-            | (None, _) => {
+            (
+                Some(
+                    rl::Region::Static
+                    | rl::Region::EarlyBound(_, _, _)
+                    | rl::Region::LateBound(_, _, _)
+                    | rl::Region::LateBoundAnon(_, _)
+                    | rl::Region::Free(_, _),
+                )
+                | None,
+                _,
+            ) => {
                 debug!("no arg found");
             }
         }

@@ -11,7 +11,7 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::print::Print;
 use rustc_middle::ty::{self, DefIdTree, Ty, TyCtxt};
-use rustc_span::Span;
+use rustc_span::{symbol::sym, Span};
 use rustc_target::abi::VariantIdx;
 
 use super::borrow_set::BorrowData;
@@ -97,7 +97,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
                 debug!("add_moved_or_invoked_closure_note: closure={:?}", closure);
                 if let ty::Closure(did, _) = self.body.local_decls[closure].ty.kind {
-                    let hir_id = self.infcx.tcx.hir().as_local_hir_id(did).unwrap();
+                    let did = did.expect_local();
+                    let hir_id = self.infcx.tcx.hir().as_local_hir_id(did);
 
                     if let Some((span, name)) =
                         self.infcx.tcx.typeck_tables_of(did).closure_kind_origins().get(hir_id)
@@ -119,7 +120,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // Check if we are just moving a closure after it has been invoked.
         if let Some(target) = target {
             if let ty::Closure(did, _) = self.body.local_decls[target].ty.kind {
-                let hir_id = self.infcx.tcx.hir().as_local_hir_id(did).unwrap();
+                let did = did.expect_local();
+                let hir_id = self.infcx.tcx.hir().as_local_hir_id(did);
 
                 if let Some((span, name)) =
                     self.infcx.tcx.typeck_tables_of(did).closure_kind_origins().get(hir_id)
@@ -200,7 +202,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 if self.body.local_decls[local].is_ref_to_static() =>
             {
                 let local_info = &self.body.local_decls[local].local_info;
-                if let LocalInfo::StaticRef { def_id, .. } = *local_info {
+                if let Some(box LocalInfo::StaticRef { def_id, .. }) = *local_info {
                     buf.push_str(&self.infcx.tcx.item_name(def_id).as_str());
                 } else {
                     unreachable!();
@@ -331,8 +333,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 }
                 ProjectionElem::Downcast(_, variant_index) => {
                     let base_ty =
-                        Place::ty_from(place.local, place.projection, *self.body, self.infcx.tcx)
-                            .ty;
+                        Place::ty_from(place.local, place.projection, self.body, self.infcx.tcx).ty;
                     self.describe_field_from_ty(&base_ty, field, Some(*variant_index))
                 }
                 ProjectionElem::Field(_, field_type) => {
@@ -376,11 +377,16 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     self.describe_field_from_ty(&ty, field, variant_index)
                 }
                 ty::Closure(def_id, _) | ty::Generator(def_id, _, _) => {
-                    // `tcx.upvars(def_id)` returns an `Option`, which is `None` in case
+                    // `tcx.upvars_mentioned(def_id)` returns an `Option`, which is `None` in case
                     // the closure comes from another crate. But in that case we wouldn't
                     // be borrowck'ing it, so we can just unwrap:
-                    let (&var_id, _) =
-                        self.infcx.tcx.upvars(def_id).unwrap().get_index(field.index()).unwrap();
+                    let (&var_id, _) = self
+                        .infcx
+                        .tcx
+                        .upvars_mentioned(def_id)
+                        .unwrap()
+                        .get_index(field.index())
+                        .unwrap();
 
                     self.infcx.tcx.hir().name(var_id).to_string()
                 }
@@ -449,7 +455,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     }) = bbd.terminator
                     {
                         if let Some(source) =
-                            BorrowedContentSource::from_call(func.ty(*self.body, tcx), tcx)
+                            BorrowedContentSource::from_call(func.ty(self.body, tcx), tcx)
                         {
                             return source;
                         }
@@ -462,7 +468,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         // If we didn't find an overloaded deref or index, then assume it's a
         // built in deref and check the type of the base.
-        let base_ty = Place::ty_from(deref_base.local, deref_base.projection, *self.body, tcx).ty;
+        let base_ty = Place::ty_from(deref_base.local, deref_base.projection, self.body, tcx).ty;
         if base_ty.is_unsafe_ptr() {
             BorrowedContentSource::DerefRawPointer
         } else if base_ty.is_mutable_ptr() {
@@ -484,9 +490,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // this by hooking into the pretty printer and telling it to label the
         // lifetimes without names with the value `'0`.
         match ty.kind {
-            ty::Ref(ty::RegionKind::ReLateBound(_, br), _, _)
-            | ty::Ref(
-                ty::RegionKind::RePlaceholder(ty::PlaceholderRegion { name: br, .. }),
+            ty::Ref(
+                ty::RegionKind::ReLateBound(_, br)
+                | ty::RegionKind::RePlaceholder(ty::PlaceholderRegion { name: br, .. }),
                 _,
                 _,
             ) => printer.region_highlight_mode.highlighting_bound_region(*br, counter),
@@ -632,20 +638,20 @@ pub(super) enum BorrowedContentSource<'tcx> {
 }
 
 impl BorrowedContentSource<'tcx> {
-    pub(super) fn describe_for_unnamed_place(&self) -> String {
+    pub(super) fn describe_for_unnamed_place(&self, tcx: TyCtxt<'_>) -> String {
         match *self {
             BorrowedContentSource::DerefRawPointer => "a raw pointer".to_string(),
             BorrowedContentSource::DerefSharedRef => "a shared reference".to_string(),
             BorrowedContentSource::DerefMutableRef => "a mutable reference".to_string(),
-            BorrowedContentSource::OverloadedDeref(ty) => {
-                if ty.is_rc() {
+            BorrowedContentSource::OverloadedDeref(ty) => match ty.kind {
+                ty::Adt(def, _) if tcx.is_diagnostic_item(sym::Rc, def.did) => {
                     "an `Rc`".to_string()
-                } else if ty.is_arc() {
-                    "an `Arc`".to_string()
-                } else {
-                    format!("dereference of `{}`", ty)
                 }
-            }
+                ty::Adt(def, _) if tcx.is_diagnostic_item(sym::Arc, def.did) => {
+                    "an `Arc`".to_string()
+                }
+                _ => format!("dereference of `{}`", ty),
+            },
             BorrowedContentSource::OverloadedIndex(ty) => format!("index of `{}`", ty),
         }
     }
@@ -662,22 +668,22 @@ impl BorrowedContentSource<'tcx> {
         }
     }
 
-    pub(super) fn describe_for_immutable_place(&self) -> String {
+    pub(super) fn describe_for_immutable_place(&self, tcx: TyCtxt<'_>) -> String {
         match *self {
             BorrowedContentSource::DerefRawPointer => "a `*const` pointer".to_string(),
             BorrowedContentSource::DerefSharedRef => "a `&` reference".to_string(),
             BorrowedContentSource::DerefMutableRef => {
                 bug!("describe_for_immutable_place: DerefMutableRef isn't immutable")
             }
-            BorrowedContentSource::OverloadedDeref(ty) => {
-                if ty.is_rc() {
+            BorrowedContentSource::OverloadedDeref(ty) => match ty.kind {
+                ty::Adt(def, _) if tcx.is_diagnostic_item(sym::Rc, def.did) => {
                     "an `Rc`".to_string()
-                } else if ty.is_arc() {
-                    "an `Arc`".to_string()
-                } else {
-                    format!("a dereference of `{}`", ty)
                 }
-            }
+                ty::Adt(def, _) if tcx.is_diagnostic_item(sym::Arc, def.did) => {
+                    "an `Arc`".to_string()
+                }
+                _ => format!("a dereference of `{}`", ty),
+            },
             BorrowedContentSource::OverloadedIndex(ty) => format!("an index of `{}`", ty),
         }
     }
@@ -804,11 +810,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             "closure_span: def_id={:?} target_place={:?} places={:?}",
             def_id, target_place, places
         );
-        let hir_id = self.infcx.tcx.hir().as_local_hir_id(def_id)?;
+        let hir_id = self.infcx.tcx.hir().as_local_hir_id(def_id.as_local()?);
         let expr = &self.infcx.tcx.hir().expect_expr(hir_id).kind;
         debug!("closure_span: hir_id={:?} expr={:?}", hir_id, expr);
         if let hir::ExprKind::Closure(.., body_id, args_span, _) = expr {
-            for (upvar, place) in self.infcx.tcx.upvars(def_id)?.values().zip(places) {
+            for (upvar, place) in self.infcx.tcx.upvars_mentioned(def_id)?.values().zip(places) {
                 match place {
                     Operand::Copy(place) | Operand::Move(place)
                         if target_place == place.as_ref() =>

@@ -12,6 +12,7 @@ use rustc_metadata::creader::LoadedMacro;
 use rustc_middle::ty;
 use rustc_mir::const_eval::is_min_const_fn;
 use rustc_span::hygiene::MacroKind;
+use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 
 use crate::clean::{self, GetDefId, ToSource, TypeKind};
@@ -37,7 +38,7 @@ type Attrs<'hir> = rustc_middle::ty::Attributes<'hir>;
 pub fn try_inline(
     cx: &DocContext<'_>,
     res: Res,
-    name: ast::Name,
+    name: Symbol,
     attrs: Option<Attrs<'_>>,
     visited: &mut FxHashSet<DefId>,
 ) -> Option<Vec<clean::Item>> {
@@ -47,7 +48,7 @@ pub fn try_inline(
     }
     let mut ret = Vec::new();
 
-    let attrs_clone = attrs.clone();
+    let attrs_clone = attrs;
 
     let inner = match res {
         Res::Def(DefKind::Trait, did) => {
@@ -278,7 +279,7 @@ fn build_type_alias_type(cx: &DocContext<'_>, did: DefId) -> Option<clean::Type>
 }
 
 pub fn build_ty(cx: &DocContext, did: DefId) -> Option<clean::Type> {
-    match cx.tcx.def_kind(did)? {
+    match cx.tcx.def_kind(did) {
         DefKind::Struct | DefKind::Union | DefKind::Enum | DefKind::Const | DefKind::Static => {
             Some(cx.tcx.type_of(did).clean(cx))
         }
@@ -292,7 +293,7 @@ pub fn build_impls(cx: &DocContext<'_>, did: DefId, attrs: Option<Attrs<'_>>) ->
     let mut impls = Vec::new();
 
     for &did in tcx.inherent_impls(did).iter() {
-        build_impl(cx, did, attrs.clone(), &mut impls);
+        build_impl(cx, did, attrs, &mut impls);
     }
 
     impls
@@ -340,7 +341,8 @@ pub fn build_impl(
         }
     }
 
-    let for_ = if let Some(hir_id) = tcx.hir().as_local_hir_id(did) {
+    let for_ = if let Some(did) = did.as_local() {
+        let hir_id = tcx.hir().as_local_hir_id(did);
         match tcx.hir().expect_item(hir_id).kind {
             hir::ItemKind::Impl { self_ty, .. } => self_ty.clean(cx),
             _ => panic!("did given to build_impl was not an impl"),
@@ -360,7 +362,8 @@ pub fn build_impl(
     }
 
     let predicates = tcx.explicit_predicates_of(did);
-    let (trait_items, generics) = if let Some(hir_id) = tcx.hir().as_local_hir_id(did) {
+    let (trait_items, generics) = if let Some(did) = did.as_local() {
+        let hir_id = tcx.hir().as_local_hir_id(did);
         match tcx.hir().expect_item(hir_id).kind {
             hir::ItemKind::Impl { ref generics, ref items, .. } => (
                 items.iter().map(|item| tcx.hir().impl_item(item.id).clean(cx)).collect::<Vec<_>>(),
@@ -451,7 +454,11 @@ fn build_module(cx: &DocContext<'_>, did: DefId, visited: &mut FxHashSet<DefId>)
                         name: None,
                         attrs: clean::Attributes::default(),
                         source: clean::Span::empty(),
-                        def_id: cx.tcx.hir().local_def_id_from_node_id(ast::CRATE_NODE_ID),
+                        def_id: cx
+                            .tcx
+                            .hir()
+                            .local_def_id_from_node_id(ast::CRATE_NODE_ID)
+                            .to_def_id(),
                         visibility: clean::Public,
                         stability: None,
                         deprecation: None,
@@ -482,7 +489,8 @@ fn build_module(cx: &DocContext<'_>, did: DefId, visited: &mut FxHashSet<DefId>)
 }
 
 pub fn print_inlined_const(cx: &DocContext<'_>, did: DefId) -> String {
-    if let Some(hir_id) = cx.tcx.hir().as_local_hir_id(did) {
+    if let Some(did) = did.as_local() {
+        let hir_id = cx.tcx.hir().as_local_hir_id(did);
         rustc_hir_pretty::id_to_string(&cx.tcx.hir(), hir_id)
     } else {
         cx.tcx.rendered_const(did)
@@ -494,11 +502,9 @@ fn build_const(cx: &DocContext<'_>, did: DefId) -> clean::Constant {
         type_: cx.tcx.type_of(did).clean(cx),
         expr: print_inlined_const(cx, did),
         value: clean::utils::print_evaluated_const(cx, did),
-        is_literal: cx
-            .tcx
-            .hir()
-            .as_local_hir_id(did)
-            .map_or(false, |hir_id| clean::utils::is_literal_expr(cx, hir_id)),
+        is_literal: did.as_local().map_or(false, |did| {
+            clean::utils::is_literal_expr(cx, cx.tcx.hir().as_local_hir_id(did))
+        }),
     }
 }
 
@@ -510,7 +516,7 @@ fn build_static(cx: &DocContext<'_>, did: DefId, mutable: bool) -> clean::Static
     }
 }
 
-fn build_macro(cx: &DocContext<'_>, did: DefId, name: ast::Name) -> clean::ItemEnum {
+fn build_macro(cx: &DocContext<'_>, did: DefId, name: Symbol) -> clean::ItemEnum {
     let imported_from = cx.tcx.original_crate_name(did.krate);
     match cx.enter_resolver(|r| r.cstore().load_macro_untracked(did, cx.sess())) {
         LoadedMacro::MacroDef(def, _) => {

@@ -7,7 +7,7 @@ use rustc_feature::{AttributeGate, BUILTIN_ATTRIBUTE_MAP};
 use rustc_feature::{Features, GateIssue, UnstableFeatures};
 use rustc_session::parse::{feature_err, feature_err_issue, ParseSess};
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::sym;
+use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 
 use log::debug;
@@ -252,7 +252,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         }
     }
 
-    fn visit_name(&mut self, sp: Span, name: ast::Name) {
+    fn visit_name(&mut self, sp: Span, name: Symbol) {
         if !name.as_str().is_ascii() {
             gate_feature_post!(
                 &self,

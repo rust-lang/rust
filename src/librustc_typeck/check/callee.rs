@@ -3,7 +3,6 @@ use super::method::MethodCallee;
 use super::{Expectation, FnCtxt, Needs, TupleArgumentsFlag};
 use crate::type_error_struct;
 
-use rustc_ast::ast::Ident;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
@@ -15,6 +14,7 @@ use rustc_middle::ty::adjustment::{
 };
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc_span::symbol::Ident;
 use rustc_span::Span;
 use rustc_target::spec::abi;
 

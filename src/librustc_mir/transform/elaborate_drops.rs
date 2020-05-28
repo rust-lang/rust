@@ -1,10 +1,10 @@
 use crate::dataflow;
+use crate::dataflow::impls::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
 use crate::dataflow::move_paths::{LookupResult, MoveData, MovePathIndex};
 use crate::dataflow::on_lookup_result_bits;
 use crate::dataflow::MoveDataParamEnv;
 use crate::dataflow::{on_all_children_bits, on_all_drop_children_bits};
 use crate::dataflow::{Analysis, ResultsCursor};
-use crate::dataflow::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
 use crate::transform::{MirPass, MirSource};
 use crate::util::elaborate_drops::{elaborate_drop, DropFlagState, Unwind};
 use crate::util::elaborate_drops::{DropElaborator, DropFlagMode, DropStyle};
@@ -21,7 +21,7 @@ use std::fmt;
 pub struct ElaborateDrops;
 
 impl<'tcx> MirPass<'tcx> for ElaborateDrops {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
         debug!("elaborate_drops({:?} @ {:?})", src, body.span);
 
         let def_id = src.def_id();
@@ -101,7 +101,7 @@ fn find_dead_unwinds<'tcx>(
             }
         };
 
-        flow_inits.seek_before(body.terminator_loc(bb));
+        flow_inits.seek_before_primary_effect(body.terminator_loc(bb));
         debug!(
             "find_dead_unwinds @ {:?}: path({:?})={:?}; init_data={:?}",
             bb,
@@ -131,8 +131,8 @@ struct InitializationData<'mir, 'tcx> {
 
 impl InitializationData<'_, '_> {
     fn seek_before(&mut self, loc: Location) {
-        self.inits.seek_before(loc);
-        self.uninits.seek_before(loc);
+        self.inits.seek_before_primary_effect(loc);
+        self.uninits.seek_before_primary_effect(loc);
     }
 
     fn maybe_live_dead(&self, path: MovePathIndex) -> (bool, bool) {
@@ -213,7 +213,7 @@ impl<'a, 'b, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, 'b, 'tcx> {
 
     fn field_subpath(&self, path: Self::Path, field: Field) -> Option<Self::Path> {
         dataflow::move_path_children_matching(self.ctxt.move_data(), path, |e| match e {
-            ProjectionElem::Field(idx, _) => *idx == field,
+            ProjectionElem::Field(idx, _) => idx == field,
             _ => false,
         })
     }
@@ -221,9 +221,9 @@ impl<'a, 'b, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, 'b, 'tcx> {
     fn array_subpath(&self, path: Self::Path, index: u32, size: u32) -> Option<Self::Path> {
         dataflow::move_path_children_matching(self.ctxt.move_data(), path, |e| match e {
             ProjectionElem::ConstantIndex { offset, min_length, from_end } => {
-                debug_assert!(size == *min_length, "min_length should be exact for arrays");
+                debug_assert!(size == min_length, "min_length should be exact for arrays");
                 assert!(!from_end, "from_end should not be used for array element ConstantIndex");
-                *offset == index
+                offset == index
             }
             _ => false,
         })
@@ -231,13 +231,13 @@ impl<'a, 'b, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, 'b, 'tcx> {
 
     fn deref_subpath(&self, path: Self::Path) -> Option<Self::Path> {
         dataflow::move_path_children_matching(self.ctxt.move_data(), path, |e| {
-            *e == ProjectionElem::Deref
+            e == ProjectionElem::Deref
         })
     }
 
     fn downcast_subpath(&self, path: Self::Path, variant: VariantIdx) -> Option<Self::Path> {
         dataflow::move_path_children_matching(self.ctxt.move_data(), path, |e| match e {
-            ProjectionElem::Downcast(_, idx) => *idx == variant,
+            ProjectionElem::Downcast(_, idx) => idx == variant,
             _ => false,
         })
     }

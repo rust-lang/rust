@@ -131,3 +131,5 @@ help: the bound will not be checked when the type alias is used, and should be r
 LL | type _TaInline6<T> = T;
    |                 --
 
+warning: 12 warnings emitted
+

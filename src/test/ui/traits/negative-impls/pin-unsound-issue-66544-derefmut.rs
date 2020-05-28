@@ -10,9 +10,9 @@ use std::pin::Pin;
 struct MyType<'a>(Cell<Option<&'a mut MyType<'a>>>, PhantomPinned);
 
 impl<'a> DerefMut for &'a MyType<'a> {
-    //~^ ERROR E0748
+    //~^ ERROR E0751
     fn deref_mut(&mut self) -> &mut MyType<'a> {
-        self.0.replace(None).unwrap()
+        self.0.take().unwrap()
     }
 }
 

@@ -34,7 +34,7 @@ LL | |     (a, b)
 LL | | }
    | |_^
    |
-   = note: hidden type `(&u8, &u8)` captures lifetime '_#4r
+   = note: hidden type `(&u8, &u8)` captures lifetime '_#5r
 
 error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
   --> $DIR/ret-impl-trait-no-fg.rs:9:1
@@ -48,7 +48,7 @@ LL | |     (a, b)
 LL | | }
    | |_^
    |
-   = note: hidden type `(&u8, &u8)` captures lifetime '_#5r
+   = note: hidden type `(&u8, &u8)` captures lifetime '_#6r
 
 error: aborting due to 5 previous errors
 

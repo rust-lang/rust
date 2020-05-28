@@ -487,9 +487,9 @@ impl Error {
     /// }
     ///
     /// fn main() {
-    ///     // Will print "No inner error".
+    ///     // Will print "Other".
     ///     print_error(Error::last_os_error());
-    ///     // Will print "Inner error: ...".
+    ///     // Will print "AddrInUse".
     ///     print_error(Error::new(ErrorKind::AddrInUse, "oh no!"));
     /// }
     /// ```

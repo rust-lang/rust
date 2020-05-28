@@ -29,7 +29,7 @@ fn binop_right_homogeneous(op: mir::BinOp) -> bool {
     }
 }
 
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
+impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn run(&mut self) -> InterpResult<'tcx> {
         while self.step()? {}
         Ok(())
@@ -42,12 +42,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// This is marked `#inline(always)` to work around adverserial codegen when `opt-level = 3`
     #[inline(always)]
     pub fn step(&mut self) -> InterpResult<'tcx, bool> {
-        if self.stack.is_empty() {
+        if self.stack().is_empty() {
             return Ok(false);
         }
 
-        let block = match self.frame().block {
-            Some(block) => block,
+        let loc = match self.frame().loc {
+            Some(loc) => loc,
             None => {
                 // We are unwinding and this fn has no cleanup code.
                 // Just go on unwinding.
@@ -56,14 +56,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 return Ok(true);
             }
         };
-        let stmt_id = self.frame().stmt;
-        let body = self.body();
-        let basic_block = &body.basic_blocks()[block];
+        let basic_block = &self.body().basic_blocks()[loc.block];
 
-        let old_frames = self.cur_frame();
+        let old_frames = self.frame_idx();
 
-        if let Some(stmt) = basic_block.statements.get(stmt_id) {
-            assert_eq!(old_frames, self.cur_frame());
+        if let Some(stmt) = basic_block.statements.get(loc.statement_index) {
+            assert_eq!(old_frames, self.frame_idx());
             self.statement(stmt)?;
             return Ok(true);
         }
@@ -71,7 +69,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         M::before_terminator(self)?;
 
         let terminator = basic_block.terminator();
-        assert_eq!(old_frames, self.cur_frame());
+        assert_eq!(old_frames, self.frame_idx());
         self.terminator(terminator)?;
         Ok(true)
     }
@@ -84,7 +82,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         // Some statements (e.g., box) push new stack frames.
         // We have to record the stack frame number *before* executing the statement.
-        let frame_idx = self.cur_frame();
+        let frame_idx = self.frame_idx();
 
         match &stmt.kind {
             Assign(box (place, rvalue)) => self.eval_rvalue_into_place(rvalue, *place)?,
@@ -126,7 +124,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             LlvmInlineAsm { .. } => throw_unsup_format!("inline assembly is not supported"),
         }
 
-        self.stack[frame_idx].stmt += 1;
+        self.stack_mut()[frame_idx].loc.as_mut().unwrap().statement_index += 1;
         Ok(())
     }
 
@@ -255,9 +253,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.write_scalar(Scalar::from_machine_usize(layout.size.bytes(), self), dest)?;
             }
 
-            Cast(kind, ref operand, _) => {
+            Cast(cast_kind, ref operand, cast_ty) => {
                 let src = self.eval_operand(operand, None)?;
-                self.cast(src, kind, dest)?;
+                let cast_ty = self.subst_from_current_frame_and_normalize_erasing_regions(cast_ty);
+                self.cast(src, cast_kind, cast_ty, dest)?;
             }
 
             Discriminant(place) => {
@@ -278,9 +277,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         self.set_span(terminator.source_info.span);
 
         self.eval_terminator(terminator)?;
-        if !self.stack.is_empty() {
-            if let Some(block) = self.frame().block {
-                info!("// executing {:?}", block);
+        if !self.stack().is_empty() {
+            if let Some(loc) = self.frame().loc {
+                info!("// executing {:?}", loc.block);
             }
         }
         Ok(())

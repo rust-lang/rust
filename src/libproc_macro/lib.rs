@@ -24,11 +24,10 @@
 #![feature(decl_macro)]
 #![feature(extern_types)]
 #![feature(in_band_lifetimes)]
-#![cfg_attr(not(bootstrap), feature(negative_impls))]
+#![feature(negative_impls)]
 #![feature(optin_builtin_traits)]
 #![feature(rustc_attrs)]
-#![cfg_attr(bootstrap, feature(specialization))]
-#![cfg_attr(not(bootstrap), feature(min_specialization))]
+#![feature(min_specialization)]
 #![recursion_limit = "256"]
 
 #[unstable(feature = "proc_macro_internals", issue = "27812")]
@@ -40,10 +39,29 @@ mod diagnostic;
 #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
 pub use diagnostic::{Diagnostic, Level, MultiSpan};
 
+use std::cmp::Ordering;
 use std::ops::{Bound, RangeBounds};
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::{error, fmt, iter, mem};
+
+/// Determines whether proc_macro has been made accessible to the currently
+/// running program.
+///
+/// The proc_macro crate is only intended for use inside the implementation of
+/// procedural macros. All the functions in this crate panic if invoked from
+/// outside of a procedural macro, such as from a build script or unit test or
+/// ordinary Rust binary.
+///
+/// With consideration for Rust libraries that are designed to support both
+/// macro and non-macro use cases, `proc_macro::is_available()` provides a
+/// non-panicking way to detect whether the infrastructure required to use the
+/// API of proc_macro is presently available. Returns true if invoked from
+/// inside of a procedural macro, false if invoked from any other binary.
+#[unstable(feature = "proc_macro_is_available", issue = "71436")]
+pub fn is_available() -> bool {
+    bridge::Bridge::is_available()
+}
 
 /// The main type provided by this crate, representing an abstract stream of
 /// tokens, or, more specifically, a sequence of token trees.
@@ -138,6 +156,13 @@ impl fmt::Debug for TokenStream {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("TokenStream ")?;
         f.debug_list().entries(self.clone()).finish()
+    }
+}
+
+#[stable(feature = "proc_macro_token_stream_default", since = "1.45.0")]
+impl Default for TokenStream {
+    fn default() -> Self {
+        TokenStream::new()
     }
 }
 
@@ -256,14 +281,14 @@ impl !Send for Span {}
 impl !Sync for Span {}
 
 macro_rules! diagnostic_method {
-    ($name:ident, $level:expr) => (
+    ($name:ident, $level:expr) => {
         /// Creates a new `Diagnostic` with the given `message` at the span
         /// `self`.
         #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
         pub fn $name<T: Into<String>>(self, message: T) -> Diagnostic {
             Diagnostic::spanned(self, $level, message)
         }
-    )
+    };
 }
 
 impl Span {
@@ -286,7 +311,7 @@ impl Span {
     /// definition site (local variables, labels, `$crate`) and sometimes at the macro
     /// call site (everything else).
     /// The span location is taken from the call-site.
-    #[unstable(feature = "proc_macro_mixed_site", issue = "65049")]
+    #[stable(feature = "proc_macro_mixed_site", since = "1.45.0")]
     pub fn mixed_site() -> Span {
         Span(bridge::client::Span::mixed_site())
     }
@@ -334,14 +359,14 @@ impl Span {
 
     /// Creates a new span with the same line/column information as `self` but
     /// that resolves symbols as though it were at `other`.
-    #[unstable(feature = "proc_macro_span", issue = "54725")]
+    #[stable(feature = "proc_macro_span_resolved_at", since = "1.45.0")]
     pub fn resolved_at(&self, other: Span) -> Span {
         Span(self.0.resolved_at(other.0))
     }
 
     /// Creates a new span with the same name resolution behavior as `self` but
     /// with the line/column information of `other`.
-    #[unstable(feature = "proc_macro_span", issue = "54725")]
+    #[stable(feature = "proc_macro_span_located_at", since = "1.45.0")]
     pub fn located_at(&self, other: Span) -> Span {
         other.resolved_at(*self)
     }
@@ -395,6 +420,20 @@ pub struct LineColumn {
 impl !Send for LineColumn {}
 #[unstable(feature = "proc_macro_span", issue = "54725")]
 impl !Sync for LineColumn {}
+
+#[unstable(feature = "proc_macro_span", issue = "54725")]
+impl Ord for LineColumn {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.line.cmp(&other.line).then(self.column.cmp(&other.column))
+    }
+}
+
+#[unstable(feature = "proc_macro_span", issue = "54725")]
+impl PartialOrd for LineColumn {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
 
 /// The source file of a given `Span`.
 #[unstable(feature = "proc_macro_span", issue = "54725")]
@@ -1117,7 +1156,6 @@ impl fmt::Display for Literal {
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl fmt::Debug for Literal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // FIXME(eddyb) `Literal` should not expose internal `Debug` impls.
         self.0.fmt(f)
     }
 }

@@ -4,3 +4,5 @@ warning: `#[test]` attribute should not be used on macros. Use `#[cfg(test)]` in
 LL | foo!();
    | ^^^^^^^
 
+warning: 1 warning emitted
+

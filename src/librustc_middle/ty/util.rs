@@ -1,6 +1,7 @@
 //! Miscellaneous type-system utilities that are too small to deserve their own modules.
 
 use crate::ich::NodeIdHashingMode;
+use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::mir::interpret::{sign_extend, truncate};
 use crate::ty::layout::IntegerExt;
 use crate::ty::query::TyCtxtAt;
@@ -16,7 +17,6 @@ use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
-use rustc_hir::definitions::DefPathData;
 use rustc_macros::HashStable;
 use rustc_span::Span;
 use rustc_target::abi::{Integer, Size, TargetDataLayout};
@@ -316,10 +316,8 @@ impl<'tcx> TyCtxt<'tcx> {
                         break;
                     }
                 }
-                (ty::Projection(_), _)
-                | (ty::Opaque(..), _)
-                | (_, ty::Projection(_))
-                | (_, ty::Opaque(..)) => {
+                (ty::Projection(_) | ty::Opaque(..), _)
+                | (_, ty::Projection(_) | ty::Opaque(..)) => {
                     // If either side is a projection, attempt to
                     // progress via normalization. (Should be safe to
                     // apply to both sides as normalization is
@@ -415,7 +413,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let result = item_substs
             .iter()
             .zip(impl_substs.iter())
-            .filter(|&(_, &k)| {
+            .filter(|&(_, k)| {
                 match k.unpack() {
                     GenericArgKind::Lifetime(&ty::RegionKind::ReEarlyBound(ref ebr)) => {
                         !impl_generics.region_param(ebr, self).pure_wrt_drop
@@ -435,7 +433,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     }
                 }
             })
-            .map(|(&item_param, _)| item_param)
+            .map(|(item_param, _)| item_param)
             .collect();
         debug!("destructor_constraint({:?}) = {:?}", def.did, result);
         result
@@ -448,24 +446,24 @@ impl<'tcx> TyCtxt<'tcx> {
     /// those are not yet phased out). The parent of the closure's
     /// `DefId` will also be the context where it appears.
     pub fn is_closure(self, def_id: DefId) -> bool {
-        self.def_key(def_id).disambiguated_data.data == DefPathData::ClosureExpr
+        matches!(self.def_kind(def_id), DefKind::Closure | DefKind::Generator)
     }
 
     /// Returns `true` if `def_id` refers to a trait (i.e., `trait Foo { ... }`).
     pub fn is_trait(self, def_id: DefId) -> bool {
-        self.def_kind(def_id) == Some(DefKind::Trait)
+        self.def_kind(def_id) == DefKind::Trait
     }
 
     /// Returns `true` if `def_id` refers to a trait alias (i.e., `trait Foo = ...;`),
     /// and `false` otherwise.
     pub fn is_trait_alias(self, def_id: DefId) -> bool {
-        self.def_kind(def_id) == Some(DefKind::TraitAlias)
+        self.def_kind(def_id) == DefKind::TraitAlias
     }
 
     /// Returns `true` if this `DefId` refers to the implicit constructor for
     /// a tuple struct like `struct Foo(u32)`, and `false` otherwise.
     pub fn is_constructor(self, def_id: DefId) -> bool {
-        self.def_key(def_id).disambiguated_data.data == DefPathData::Ctor
+        matches!(self.def_kind(def_id), DefKind::Ctor(..))
     }
 
     /// Given the def-ID of a fn or closure, returns the def-ID of
@@ -529,6 +527,11 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Returns `true` if the node pointed to by `def_id` is a `static` item.
     pub fn is_static(&self, def_id: DefId) -> bool {
         self.static_mutability(def_id).is_some()
+    }
+
+    /// Returns `true` if this is a `static` item with the `#[thread_local]` attribute.
+    pub fn is_thread_local_static(&self, def_id: DefId) -> bool {
+        self.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::THREAD_LOCAL)
     }
 
     /// Returns `true` if the node pointed to by `def_id` is a mutable `static` item.
@@ -742,8 +745,7 @@ impl<'tcx> ty::TyS<'tcx> {
             | ty::Opaque(..)
             | ty::Param(_)
             | ty::Placeholder(_)
-            | ty::Projection(_)
-            | ty::UnnormalizedProjection(_) => false,
+            | ty::Projection(_) => false,
         }
     }
 
@@ -1047,10 +1049,7 @@ pub fn needs_drop_components(
         // Foreign types can never have destructors.
         ty::Foreign(..) => Ok(SmallVec::new()),
 
-        // Pessimistically assume that all generators will require destructors
-        // as we don't know if a destructor is a noop or not until after the MIR
-        // state transformation pass.
-        ty::Generator(..) | ty::Dynamic(..) | ty::Error => Err(AlwaysRequiresDrop),
+        ty::Dynamic(..) | ty::Error => Err(AlwaysRequiresDrop),
 
         ty::Slice(ty) => needs_drop_components(ty, target_layout),
         ty::Array(elem_ty, size) => {
@@ -1077,13 +1076,13 @@ pub fn needs_drop_components(
         // These require checking for `Copy` bounds or `Adt` destructors.
         ty::Adt(..)
         | ty::Projection(..)
-        | ty::UnnormalizedProjection(..)
         | ty::Param(_)
         | ty::Bound(..)
         | ty::Placeholder(..)
         | ty::Opaque(..)
         | ty::Infer(_)
-        | ty::Closure(..) => Ok(smallvec![ty]),
+        | ty::Closure(..)
+        | ty::Generator(..) => Ok(smallvec![ty]),
     }
 }
 

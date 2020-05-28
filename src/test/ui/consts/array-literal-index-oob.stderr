@@ -30,3 +30,5 @@ warning: erroneous constant used
 LL |     &{ [1, 2, 3][4] };
    |     ^^^^^^^^^^^^^^^^^ referenced constant has errors
 
+warning: 3 warnings emitted
+

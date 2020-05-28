@@ -59,7 +59,7 @@ fn reserve_does_not_overallocate() {
         let mut v: RawVec<u32> = RawVec::new();
         v.reserve(0, 7);
         assert_eq!(7, v.capacity());
-        // 97 if more than double of 7, so `reserve` should work
+        // 97 is more than double of 7, so `reserve` should work
         // like `reserve_exact`.
         v.reserve(7, 90);
         assert_eq!(97, v.capacity());

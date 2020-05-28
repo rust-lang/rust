@@ -16,7 +16,7 @@ use either::Either;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::DiagnosticBuilder;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items;
 use rustc_hir::{BodyOwnerKind, HirId};
 use rustc_index::vec::{Idx, IndexVec};
@@ -53,6 +53,13 @@ pub struct UniversalRegions<'tcx> {
 
     /// The total number of universal region variables instantiated.
     num_universals: usize,
+
+    /// A special region variable created for the `'empty(U0)` region.
+    /// Note that this is **not** a "universal" region, as it doesn't
+    /// represent a universally bound placeholder or any such thing.
+    /// But we do create it here in this type because it's a useful region
+    /// to have around in a few limited cases.
+    pub root_empty: RegionVid,
 
     /// The "defining" type for this function, with all universal
     /// regions instantiated. For a closure or generator, this is the
@@ -220,12 +227,13 @@ impl<'tcx> UniversalRegions<'tcx> {
     /// known between those regions.
     pub fn new(
         infcx: &InferCtxt<'_, 'tcx>,
-        mir_def_id: DefId,
+        mir_def_id: LocalDefId,
         param_env: ty::ParamEnv<'tcx>,
     ) -> Self {
         let tcx = infcx.tcx;
-        let mir_hir_id = tcx.hir().as_local_hir_id(mir_def_id).unwrap();
-        UniversalRegionsBuilder { infcx, mir_def_id, mir_hir_id, param_env }.build()
+        let mir_hir_id = tcx.hir().as_local_hir_id(mir_def_id);
+        UniversalRegionsBuilder { infcx, mir_def_id: mir_def_id.to_def_id(), mir_hir_id, param_env }
+            .build()
     }
 
     /// Given a reference to a closure type, extracts all the values
@@ -316,7 +324,11 @@ impl<'tcx> UniversalRegions<'tcx> {
 
     /// See `UniversalRegionIndices::to_region_vid`.
     pub fn to_region_vid(&self, r: ty::Region<'tcx>) -> RegionVid {
-        self.indices.to_region_vid(r)
+        if let ty::ReEmpty(ty::UniverseIndex::ROOT) = r {
+            self.root_empty
+        } else {
+            self.indices.to_region_vid(r)
+        }
     }
 
     /// As part of the NLL unit tests, you can annotate a function with
@@ -472,10 +484,16 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             _ => None,
         };
 
+        let root_empty = self
+            .infcx
+            .next_nll_region_var(NLLRegionVariableOrigin::RootEmptyRegion)
+            .to_region_vid();
+
         UniversalRegions {
             indices,
             fr_static,
             fr_fn_body,
+            root_empty,
             first_extern_index,
             first_local_index,
             num_universals,
@@ -497,7 +515,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 let defining_ty = if self.mir_def_id == closure_base_def_id {
                     tcx.type_of(closure_base_def_id)
                 } else {
-                    let tables = tcx.typeck_tables_of(self.mir_def_id);
+                    let tables = tcx.typeck_tables_of(self.mir_def_id.expect_local());
                     tables.node_type(self.mir_hir_id)
                 };
 
@@ -777,7 +795,7 @@ fn for_each_late_bound_region_defined_on<'tcx>(
             let region_def_id = tcx.hir().local_def_id(hir_id);
             let liberated_region = tcx.mk_region(ty::ReFree(ty::FreeRegion {
                 scope: fn_def_id,
-                bound_region: ty::BoundRegion::BrNamed(region_def_id, name),
+                bound_region: ty::BoundRegion::BrNamed(region_def_id.to_def_id(), name),
             }));
             f(liberated_region);
         }

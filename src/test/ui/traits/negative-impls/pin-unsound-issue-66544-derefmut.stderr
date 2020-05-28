@@ -1,4 +1,4 @@
-error[E0748]: found both positive and negative implementation of trait `std::ops::DerefMut` for type `&MyType<'_>`:
+error[E0751]: found both positive and negative implementation of trait `std::ops::DerefMut` for type `&MyType<'_>`:
   --> $DIR/pin-unsound-issue-66544-derefmut.rs:12:1
    |
 LL | impl<'a> DerefMut for &'a MyType<'a> {
@@ -8,4 +8,4 @@ LL | impl<'a> DerefMut for &'a MyType<'a> {
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0748`.
+For more information about this error, try `rustc --explain E0751`.

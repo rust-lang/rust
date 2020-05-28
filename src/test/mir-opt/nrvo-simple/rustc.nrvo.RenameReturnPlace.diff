@@ -1,0 +1,41 @@
+- // MIR for `nrvo` before RenameReturnPlace
++ // MIR for `nrvo` after RenameReturnPlace
+  
+  fn nrvo(_1: for<'r> fn(&'r mut [u8; 1024])) -> [u8; 1024] {
+      debug init => _1;                    // in scope 0 at $DIR/nrvo-simple.rs:2:9: 2:13
+-     let mut _0: [u8; 1024];              // return place in scope 0 at $DIR/nrvo-simple.rs:2:39: 2:49
++     let mut _0: [u8; 1024];              // return place in scope 0 at $DIR/nrvo-simple.rs:3:9: 3:16
+      let mut _2: [u8; 1024];              // in scope 0 at $DIR/nrvo-simple.rs:3:9: 3:16
+      let _3: ();                          // in scope 0 at $DIR/nrvo-simple.rs:4:5: 4:19
+      let mut _4: for<'r> fn(&'r mut [u8; 1024]); // in scope 0 at $DIR/nrvo-simple.rs:4:5: 4:9
+      let mut _5: &mut [u8; 1024];         // in scope 0 at $DIR/nrvo-simple.rs:4:10: 4:18
+      let mut _6: &mut [u8; 1024];         // in scope 0 at $DIR/nrvo-simple.rs:4:10: 4:18
+      scope 1 {
+-         debug buf => _2;                 // in scope 1 at $DIR/nrvo-simple.rs:3:9: 3:16
++         debug buf => _0;                 // in scope 1 at $DIR/nrvo-simple.rs:3:9: 3:16
+      }
+  
+      bb0: {
+-         StorageLive(_2);                 // scope 0 at $DIR/nrvo-simple.rs:3:9: 3:16
+-         _2 = [const 0u8; 1024];          // scope 0 at $DIR/nrvo-simple.rs:3:19: 3:28
++         _0 = [const 0u8; 1024];          // scope 0 at $DIR/nrvo-simple.rs:3:19: 3:28
+                                           // ty::Const
+                                           // + ty: u8
+                                           // + val: Value(Scalar(0x00))
+                                           // mir::Constant
+                                           // + span: $DIR/nrvo-simple.rs:3:20: 3:21
+                                           // + literal: Const { ty: u8, val: Value(Scalar(0x00)) }
+          StorageLive(_3);                 // scope 1 at $DIR/nrvo-simple.rs:4:5: 4:19
+-         _6 = &mut _2;                    // scope 1 at $DIR/nrvo-simple.rs:4:10: 4:18
++         _6 = &mut _0;                    // scope 1 at $DIR/nrvo-simple.rs:4:10: 4:18
+          _3 = move _1(move _6) -> bb1;    // scope 1 at $DIR/nrvo-simple.rs:4:5: 4:19
+      }
+  
+      bb1: {
+          StorageDead(_3);                 // scope 1 at $DIR/nrvo-simple.rs:4:19: 4:20
+-         _0 = _2;                         // scope 1 at $DIR/nrvo-simple.rs:5:5: 5:8
+-         StorageDead(_2);                 // scope 0 at $DIR/nrvo-simple.rs:6:1: 6:2
+          return;                          // scope 0 at $DIR/nrvo-simple.rs:6:2: 6:2
+      }
+  }
+  

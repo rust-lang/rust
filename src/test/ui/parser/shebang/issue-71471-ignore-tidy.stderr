@@ -1,0 +1,8 @@
+error: expected `[`, found `B`
+  --> $DIR/issue-71471-ignore-tidy.rs:2:3
+   |
+LL | #!B
+   |   ^ expected `[`
+
+error: aborting due to previous error
+

@@ -386,7 +386,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
             };
             let upvars = cx
                 .tcx
-                .upvars(def_id)
+                .upvars_mentioned(def_id)
                 .iter()
                 .flat_map(|upvars| upvars.iter())
                 .zip(substs.upvar_tys())
@@ -400,6 +400,121 @@ fn make_mirror_unadjusted<'a, 'tcx>(
             convert_path_expr(cx, expr, res)
         }
 
+        hir::ExprKind::InlineAsm(ref asm) => ExprKind::InlineAsm {
+            template: asm.template,
+            operands: asm
+                .operands
+                .iter()
+                .map(|op| {
+                    match *op {
+                        hir::InlineAsmOperand::In { reg, ref expr } => {
+                            InlineAsmOperand::In { reg, expr: expr.to_ref() }
+                        }
+                        hir::InlineAsmOperand::Out { reg, late, ref expr } => {
+                            InlineAsmOperand::Out {
+                                reg,
+                                late,
+                                expr: expr.as_ref().map(|expr| expr.to_ref()),
+                            }
+                        }
+                        hir::InlineAsmOperand::InOut { reg, late, ref expr } => {
+                            InlineAsmOperand::InOut { reg, late, expr: expr.to_ref() }
+                        }
+                        hir::InlineAsmOperand::SplitInOut {
+                            reg,
+                            late,
+                            ref in_expr,
+                            ref out_expr,
+                        } => InlineAsmOperand::SplitInOut {
+                            reg,
+                            late,
+                            in_expr: in_expr.to_ref(),
+                            out_expr: out_expr.as_ref().map(|expr| expr.to_ref()),
+                        },
+                        hir::InlineAsmOperand::Const { ref expr } => {
+                            InlineAsmOperand::Const { expr: expr.to_ref() }
+                        }
+                        hir::InlineAsmOperand::Sym { ref expr } => {
+                            let qpath = match expr.kind {
+                                hir::ExprKind::Path(ref qpath) => qpath,
+                                _ => span_bug!(
+                                    expr.span,
+                                    "asm `sym` operand should be a path, found {:?}",
+                                    expr.kind
+                                ),
+                            };
+                            let temp_lifetime =
+                                cx.region_scope_tree.temporary_scope(expr.hir_id.local_id);
+                            let res = cx.tables().qpath_res(qpath, expr.hir_id);
+                            let ty;
+                            match res {
+                                Res::Def(DefKind::Fn, _) | Res::Def(DefKind::AssocFn, _) => {
+                                    ty = cx.tables().node_type(expr.hir_id);
+                                    let user_ty = user_substs_applied_to_res(cx, expr.hir_id, res);
+                                    InlineAsmOperand::SymFn {
+                                        expr: Expr {
+                                            ty,
+                                            temp_lifetime,
+                                            span: expr.span,
+                                            kind: ExprKind::Literal {
+                                                literal: ty::Const::zero_sized(cx.tcx, ty),
+                                                user_ty,
+                                            },
+                                        }
+                                        .to_ref(),
+                                    }
+                                }
+
+                                Res::Def(DefKind::Static, id) => {
+                                    ty = cx.tcx.static_ptr_ty(id);
+                                    let ptr = cx.tcx.create_static_alloc(id);
+                                    InlineAsmOperand::SymStatic {
+                                        expr: Expr {
+                                            ty,
+                                            temp_lifetime,
+                                            span: expr.span,
+                                            kind: ExprKind::StaticRef {
+                                                literal: ty::Const::from_scalar(
+                                                    cx.tcx,
+                                                    Scalar::Ptr(ptr.into()),
+                                                    ty,
+                                                ),
+                                                def_id: id,
+                                            },
+                                        }
+                                        .to_ref(),
+                                    }
+                                }
+
+                                _ => {
+                                    cx.tcx.sess.span_err(
+                                        expr.span,
+                                        "asm `sym` operand must point to a fn or static",
+                                    );
+
+                                    // Not a real fn, but we're not reaching codegen anyways...
+                                    ty = cx.tcx.types.err;
+                                    InlineAsmOperand::SymFn {
+                                        expr: Expr {
+                                            ty,
+                                            temp_lifetime,
+                                            span: expr.span,
+                                            kind: ExprKind::Literal {
+                                                literal: ty::Const::zero_sized(cx.tcx, ty),
+                                                user_ty: None,
+                                            },
+                                        }
+                                        .to_ref(),
+                                    }
+                                }
+                            }
+                        }
+                    }
+                })
+                .collect(),
+            options: asm.options,
+        },
+
         hir::ExprKind::LlvmInlineAsm(ref asm) => ExprKind::LlvmInlineAsm {
             asm: &asm.inner,
             outputs: asm.outputs_exprs.to_ref(),
@@ -408,7 +523,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
 
         // Now comes the rote stuff:
         hir::ExprKind::Repeat(ref v, ref count) => {
-            let count_def_id = cx.tcx.hir().local_def_id(count.hir_id).expect_local();
+            let count_def_id = cx.tcx.hir().local_def_id(count.hir_id);
             let count = ty::Const::from_anon_const(cx.tcx, count_def_id);
 
             ExprKind::Repeat { value: v.to_ref(), count }
@@ -690,12 +805,12 @@ fn convert_path_expr<'a, 'tcx>(
         }
 
         Res::Def(DefKind::ConstParam, def_id) => {
-            let hir_id = cx.tcx.hir().as_local_hir_id(def_id).unwrap();
+            let hir_id = cx.tcx.hir().as_local_hir_id(def_id.expect_local());
             let item_id = cx.tcx.hir().get_parent_node(hir_id);
             let item_def_id = cx.tcx.hir().local_def_id(item_id);
             let generics = cx.tcx.generics_of(item_def_id);
             let local_def_id = cx.tcx.hir().local_def_id(hir_id);
-            let index = generics.param_def_id_to_index[&local_def_id];
+            let index = generics.param_def_id_to_index[&local_def_id.to_def_id()];
             let name = cx.tcx.hir().name(hir_id);
             let val = ty::ConstKind::Param(ty::ParamConst::new(index, name));
             ExprKind::Literal {
@@ -740,7 +855,7 @@ fn convert_path_expr<'a, 'tcx>(
         // a constant reference (or constant raw pointer for `static mut`) in MIR
         Res::Def(DefKind::Static, id) => {
             let ty = cx.tcx.static_ptr_ty(id);
-            let ptr = cx.tcx.alloc_map.lock().create_static_alloc(id);
+            let ptr = cx.tcx.create_static_alloc(id);
             let temp_lifetime = cx.region_scope_tree.temporary_scope(expr.hir_id.local_id);
             ExprKind::Deref {
                 arg: Expr {
@@ -962,7 +1077,7 @@ fn capture_upvar<'tcx>(
 ) -> ExprRef<'tcx> {
     let upvar_id = ty::UpvarId {
         var_path: ty::UpvarPath { hir_id: var_hir_id },
-        closure_expr_id: cx.tcx.hir().local_def_id(closure_expr.hir_id).expect_local(),
+        closure_expr_id: cx.tcx.hir().local_def_id(closure_expr.hir_id),
     };
     let upvar_capture = cx.tables().upvar_capture(upvar_id);
     let temp_lifetime = cx.region_scope_tree.temporary_scope(closure_expr.hir_id.local_id);

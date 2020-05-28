@@ -45,6 +45,6 @@ LL | #![forbid(test_lint)]
 LL | #[allow(test_lint)]
    |         ^^^^^^^^^ overruled by previous forbid
 
-error: aborting due to 4 previous errors
+error: aborting due to 4 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0453`.

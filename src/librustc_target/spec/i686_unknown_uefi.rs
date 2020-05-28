@@ -8,7 +8,7 @@
 use crate::spec::{LinkerFlavor, LldFlavor, Target, TargetResult};
 
 pub fn target() -> TargetResult {
-    let mut base = super::uefi_base::opts();
+    let mut base = super::uefi_msvc_base::opts();
     base.cpu = "pentium4".to_string();
     base.max_atomic_width = Some(64);
 
@@ -22,11 +22,6 @@ pub fn target() -> TargetResult {
     // If you initialize FP units yourself, you can override these flags with custom linker
     // arguments, thus giving you access to full MMX/SSE acceleration.
     base.features = "-mmx,-sse,+soft-float".to_string();
-
-    // UEFI mirrors the calling-conventions used on windows. In case of i686 this means small
-    // structs will be returned as int. This shouldn't matter much, since the restrictions placed
-    // by the UEFI specifications forbid any ABI to return structures.
-    base.abi_return_struct_as_int = true;
 
     // Use -GNU here, because of the reason below:
     // Background and Problem:

@@ -2,7 +2,7 @@ error[E0277]: the trait bound `T: std::marker::Copy` is not satisfied
   --> $DIR/wf-in-fn-type-arg.rs:9:5
    |
 LL | struct MustBeCopy<T:Copy> {
-   | ------------------------- required by `MustBeCopy`
+   |                     ---- required by this bound in `MustBeCopy`
 ...
 LL |     x: fn(MustBeCopy<T>)
    |     ^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `T`

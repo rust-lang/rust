@@ -6,44 +6,50 @@ LL | #[derive(Default)]
    |
    = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
+error: asm template must be a string literal
+  --> $DIR/macros-nonfatal-errors.rs:13:10
+   |
+LL |     asm!(invalid);
+   |          ^^^^^^^
+
 error: inline assembly must be a string literal
-  --> $DIR/macros-nonfatal-errors.rs:13:15
+  --> $DIR/macros-nonfatal-errors.rs:14:15
    |
 LL |     llvm_asm!(invalid);
    |               ^^^^^^^
 
 error: concat_idents! requires ident args.
-  --> $DIR/macros-nonfatal-errors.rs:15:5
+  --> $DIR/macros-nonfatal-errors.rs:16:5
    |
 LL |     concat_idents!("not", "idents");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: argument must be a string literal
-  --> $DIR/macros-nonfatal-errors.rs:17:17
+  --> $DIR/macros-nonfatal-errors.rs:18:17
    |
 LL |     option_env!(invalid);
    |                 ^^^^^^^
 
 error: expected string literal
-  --> $DIR/macros-nonfatal-errors.rs:18:10
+  --> $DIR/macros-nonfatal-errors.rs:19:10
    |
 LL |     env!(invalid);
    |          ^^^^^^^
 
 error: expected string literal
-  --> $DIR/macros-nonfatal-errors.rs:19:10
+  --> $DIR/macros-nonfatal-errors.rs:20:10
    |
 LL |     env!(foo, abr, baz);
    |          ^^^
 
 error: environment variable `RUST_HOPEFULLY_THIS_DOESNT_EXIST` not defined
-  --> $DIR/macros-nonfatal-errors.rs:20:5
+  --> $DIR/macros-nonfatal-errors.rs:21:5
    |
 LL |     env!("RUST_HOPEFULLY_THIS_DOESNT_EXIST");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: format argument must be a string literal
-  --> $DIR/macros-nonfatal-errors.rs:22:13
+  --> $DIR/macros-nonfatal-errors.rs:23:13
    |
 LL |     format!(invalid);
    |             ^^^^^^^
@@ -54,19 +60,19 @@ LL |     format!("{}", invalid);
    |             ^^^^^
 
 error: argument must be a string literal
-  --> $DIR/macros-nonfatal-errors.rs:24:14
+  --> $DIR/macros-nonfatal-errors.rs:25:14
    |
 LL |     include!(invalid);
    |              ^^^^^^^
 
 error: argument must be a string literal
-  --> $DIR/macros-nonfatal-errors.rs:26:18
+  --> $DIR/macros-nonfatal-errors.rs:27:18
    |
 LL |     include_str!(invalid);
    |                  ^^^^^^^
 
 error: couldn't read $DIR/i'd be quite surprised if a file with this name existed: $FILE_NOT_FOUND_MSG (os error 2)
-  --> $DIR/macros-nonfatal-errors.rs:27:5
+  --> $DIR/macros-nonfatal-errors.rs:28:5
    |
 LL |     include_str!("i'd be quite surprised if a file with this name existed");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -74,13 +80,13 @@ LL |     include_str!("i'd be quite surprised if a file with this name existed")
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: argument must be a string literal
-  --> $DIR/macros-nonfatal-errors.rs:28:20
+  --> $DIR/macros-nonfatal-errors.rs:29:20
    |
 LL |     include_bytes!(invalid);
    |                    ^^^^^^^
 
 error: couldn't read $DIR/i'd be quite surprised if a file with this name existed: $FILE_NOT_FOUND_MSG (os error 2)
-  --> $DIR/macros-nonfatal-errors.rs:29:5
+  --> $DIR/macros-nonfatal-errors.rs:30:5
    |
 LL |     include_bytes!("i'd be quite surprised if a file with this name existed");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -88,11 +94,11 @@ LL |     include_bytes!("i'd be quite surprised if a file with this name existed
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: trace_macros! accepts only `true` or `false`
-  --> $DIR/macros-nonfatal-errors.rs:31:5
+  --> $DIR/macros-nonfatal-errors.rs:32:5
    |
 LL |     trace_macros!(invalid);
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 14 previous errors
+error: aborting due to 15 previous errors
 
 For more information about this error, try `rustc --explain E0665`.

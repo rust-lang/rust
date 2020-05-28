@@ -316,9 +316,7 @@ LL | type Test = Result<i32, i32>;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: layout_of(i32) = Layout {
-    fields: Union(
-        0,
-    ),
+    fields: Primitive,
     variants: Single {
         index: 0,
     },

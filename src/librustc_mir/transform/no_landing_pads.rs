@@ -5,6 +5,7 @@ use crate::transform::{MirPass, MirSource};
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
+use rustc_target::spec::PanicStrategy;
 
 pub struct NoLandingPads<'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -17,13 +18,13 @@ impl<'tcx> NoLandingPads<'tcx> {
 }
 
 impl<'tcx> MirPass<'tcx> for NoLandingPads<'tcx> {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, _: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, _: MirSource<'tcx>, body: &mut Body<'tcx>) {
         no_landing_pads(tcx, body)
     }
 }
 
-pub fn no_landing_pads<'tcx>(tcx: TyCtxt<'tcx>, body: &mut BodyAndCache<'tcx>) {
-    if tcx.sess.no_landing_pads() {
+pub fn no_landing_pads<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+    if tcx.sess.panic_strategy() == PanicStrategy::Abort {
         NoLandingPads::new(tcx).visit_body(body);
     }
 }

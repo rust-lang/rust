@@ -24,7 +24,7 @@ use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_hir::TraitCandidate;
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
-use rustc_span::symbol::{kw, sym};
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 use smallvec::{smallvec, SmallVec};
 
@@ -237,18 +237,21 @@ impl<'a> PathSource<'a> {
     crate fn is_expected(self, res: Res) -> bool {
         match self {
             PathSource::Type => match res {
-                Res::Def(DefKind::Struct, _)
-                | Res::Def(DefKind::Union, _)
-                | Res::Def(DefKind::Enum, _)
-                | Res::Def(DefKind::Trait, _)
-                | Res::Def(DefKind::TraitAlias, _)
-                | Res::Def(DefKind::TyAlias, _)
-                | Res::Def(DefKind::AssocTy, _)
+                Res::Def(
+                    DefKind::Struct
+                    | DefKind::Union
+                    | DefKind::Enum
+                    | DefKind::Trait
+                    | DefKind::TraitAlias
+                    | DefKind::TyAlias
+                    | DefKind::AssocTy
+                    | DefKind::TyParam
+                    | DefKind::OpaqueTy
+                    | DefKind::ForeignTy,
+                    _,
+                )
                 | Res::PrimTy(..)
-                | Res::Def(DefKind::TyParam, _)
-                | Res::SelfTy(..)
-                | Res::Def(DefKind::OpaqueTy, _)
-                | Res::Def(DefKind::ForeignTy, _) => true,
+                | Res::SelfTy(..) => true,
                 _ => false,
             },
             PathSource::Trait(AliasPossibility::No) => match res {
@@ -256,27 +259,29 @@ impl<'a> PathSource<'a> {
                 _ => false,
             },
             PathSource::Trait(AliasPossibility::Maybe) => match res {
-                Res::Def(DefKind::Trait, _) => true,
-                Res::Def(DefKind::TraitAlias, _) => true,
+                Res::Def(DefKind::Trait | DefKind::TraitAlias, _) => true,
                 _ => false,
             },
             PathSource::Expr(..) => match res {
-                Res::Def(DefKind::Ctor(_, CtorKind::Const), _)
-                | Res::Def(DefKind::Ctor(_, CtorKind::Fn), _)
-                | Res::Def(DefKind::Const, _)
-                | Res::Def(DefKind::Static, _)
+                Res::Def(
+                    DefKind::Ctor(_, CtorKind::Const | CtorKind::Fn)
+                    | DefKind::Const
+                    | DefKind::Static
+                    | DefKind::Fn
+                    | DefKind::AssocFn
+                    | DefKind::AssocConst
+                    | DefKind::ConstParam,
+                    _,
+                )
                 | Res::Local(..)
-                | Res::Def(DefKind::Fn, _)
-                | Res::Def(DefKind::AssocFn, _)
-                | Res::Def(DefKind::AssocConst, _)
-                | Res::SelfCtor(..)
-                | Res::Def(DefKind::ConstParam, _) => true,
+                | Res::SelfCtor(..) => true,
                 _ => false,
             },
             PathSource::Pat => match res {
-                Res::Def(DefKind::Ctor(_, CtorKind::Const), _)
-                | Res::Def(DefKind::Const, _)
-                | Res::Def(DefKind::AssocConst, _)
+                Res::Def(
+                    DefKind::Ctor(_, CtorKind::Const) | DefKind::Const | DefKind::AssocConst,
+                    _,
+                )
                 | Res::SelfCtor(..) => true,
                 _ => false,
             },
@@ -285,20 +290,19 @@ impl<'a> PathSource<'a> {
                 _ => false,
             },
             PathSource::Struct => match res {
-                Res::Def(DefKind::Struct, _)
-                | Res::Def(DefKind::Union, _)
-                | Res::Def(DefKind::Variant, _)
-                | Res::Def(DefKind::TyAlias, _)
-                | Res::Def(DefKind::AssocTy, _)
+                Res::Def(
+                    DefKind::Struct
+                    | DefKind::Union
+                    | DefKind::Variant
+                    | DefKind::TyAlias
+                    | DefKind::AssocTy,
+                    _,
+                )
                 | Res::SelfTy(..) => true,
                 _ => false,
             },
             PathSource::TraitItem(ns) => match res {
-                Res::Def(DefKind::AssocConst, _) | Res::Def(DefKind::AssocFn, _)
-                    if ns == ValueNS =>
-                {
-                    true
-                }
+                Res::Def(DefKind::AssocConst | DefKind::AssocFn, _) if ns == ValueNS => true,
                 Res::Def(DefKind::AssocTy, _) if ns == TypeNS => true,
                 _ => false,
             },
@@ -316,8 +320,8 @@ impl<'a> PathSource<'a> {
             (PathSource::Struct, false) => error_code!(E0422),
             (PathSource::Expr(..), true) => error_code!(E0423),
             (PathSource::Expr(..), false) => error_code!(E0425),
-            (PathSource::Pat, true) | (PathSource::TupleStruct, true) => error_code!(E0532),
-            (PathSource::Pat, false) | (PathSource::TupleStruct, false) => error_code!(E0531),
+            (PathSource::Pat | PathSource::TupleStruct, true) => error_code!(E0532),
+            (PathSource::Pat | PathSource::TupleStruct, false) => error_code!(E0531),
             (PathSource::TraitItem(..), true) => error_code!(E0575),
             (PathSource::TraitItem(..), false) => error_code!(E0576),
         }
@@ -343,7 +347,7 @@ struct DiagnosticMetadata<'ast> {
     currently_processing_generics: bool,
 
     /// The current enclosing function (used for better errors).
-    current_function: Option<Span>,
+    current_function: Option<(FnKind<'ast>, Span)>,
 
     /// A list of labels as of yet unused. Labels will be removed from this map when
     /// they are used (in a `break` or `continue` statement)
@@ -459,10 +463,11 @@ impl<'a, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
         let rib_kind = match fn_kind {
             // Bail if there's no body.
             FnKind::Fn(.., None) => return visit::walk_fn(self, fn_kind, sp),
-            FnKind::Fn(FnCtxt::Free, ..) | FnKind::Fn(FnCtxt::Foreign, ..) => FnItemRibKind,
+            FnKind::Fn(FnCtxt::Free | FnCtxt::Foreign, ..) => FnItemRibKind,
             FnKind::Fn(FnCtxt::Assoc(_), ..) | FnKind::Closure(..) => NormalRibKind,
         };
-        let previous_value = replace(&mut self.diagnostic_metadata.current_function, Some(sp));
+        let previous_value =
+            replace(&mut self.diagnostic_metadata.current_function, Some((fn_kind, sp)));
         debug!("(resolving function) entering function");
         let declaration = fn_kind.decl();
 
@@ -745,7 +750,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         debug!("resolve_adt");
         self.with_current_self_item(item, |this| {
             this.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
-                let item_def_id = this.r.definitions.local_def_id(item.id);
+                let item_def_id = this.r.definitions.local_def_id(item.id).to_def_id();
                 this.with_self_rib(Res::SelfTy(None, Some(item_def_id)), |this| {
                     visit::walk_item(this, item);
                 });
@@ -825,7 +830,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             ItemKind::Trait(.., ref generics, ref bounds, ref trait_items) => {
                 // Create a new rib for the trait-wide type parameters.
                 self.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
-                    let local_def_id = this.r.definitions.local_def_id(item.id);
+                    let local_def_id = this.r.definitions.local_def_id(item.id).to_def_id();
                     this.with_self_rib(Res::SelfTy(Some(local_def_id), None), |this| {
                         this.visit_generics(generics);
                         walk_list!(this, visit_param_bound, bounds);
@@ -866,7 +871,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             ItemKind::TraitAlias(ref generics, ref bounds) => {
                 // Create a new rib for the trait-wide type parameters.
                 self.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
-                    let local_def_id = this.r.definitions.local_def_id(item.id);
+                    let local_def_id = this.r.definitions.local_def_id(item.id).to_def_id();
                     this.with_self_rib(Res::SelfTy(Some(local_def_id), None), |this| {
                         this.visit_generics(generics);
                         walk_list!(this, visit_param_bound, bounds);
@@ -947,7 +952,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             seen_bindings.entry(ident).or_insert(param.ident.span);
 
             // Plain insert (no renaming).
-            let res = Res::Def(def_kind, self.r.definitions.local_def_id(param.id));
+            let res = Res::Def(def_kind, self.r.definitions.local_def_id(param.id).to_def_id());
 
             match param.kind {
                 GenericParamKind::Type { .. } => {
@@ -1097,7 +1102,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             this.with_self_rib(Res::SelfTy(None, None), |this| {
                 // Resolve the trait reference, if necessary.
                 this.with_optional_trait_ref(opt_trait_reference.as_ref(), |this, trait_id| {
-                    let item_def_id = this.r.definitions.local_def_id(item_id);
+                    let item_def_id = this.r.definitions.local_def_id(item_id).to_def_id();
                     this.with_self_rib(Res::SelfTy(trait_id, Some(item_def_id)), |this| {
                         if let Some(trait_ref) = opt_trait_reference.as_ref() {
                             // Resolve type arguments in the trait path.
@@ -1190,7 +1195,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
     fn check_trait_item<F>(&mut self, ident: Ident, ns: Namespace, span: Span, err: F)
     where
-        F: FnOnce(Name, &str) -> ResolutionError<'_>,
+        F: FnOnce(Symbol, &str) -> ResolutionError<'_>,
     {
         // If there is a TraitRef in scope for an impl, then the method must be in the
         // trait.
@@ -1518,22 +1523,26 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         ident: Ident,
         has_sub: bool,
     ) -> Option<Res> {
+        // An immutable (no `mut`) by-value (no `ref`) binding pattern without
+        // a sub pattern (no `@ $pat`) is syntactically ambiguous as it could
+        // also be interpreted as a path to e.g. a constant, variant, etc.
+        let is_syntactic_ambiguity = !has_sub && bm == BindingMode::ByValue(Mutability::Not);
+
         let ls_binding = self.resolve_ident_in_lexical_scope(ident, ValueNS, None, pat.span)?;
         let (res, binding) = match ls_binding {
-            LexicalScopeBinding::Item(binding) if binding.is_ambiguity() => {
+            LexicalScopeBinding::Item(binding)
+                if is_syntactic_ambiguity && binding.is_ambiguity() =>
+            {
                 // For ambiguous bindings we don't know all their definitions and cannot check
                 // whether they can be shadowed by fresh bindings or not, so force an error.
+                // issues/33118#issuecomment-233962221 (see below) still applies here,
+                // but we have to ignore it for backward compatibility.
                 self.r.record_use(ident, ValueNS, binding, false);
                 return None;
             }
             LexicalScopeBinding::Item(binding) => (binding.res(), Some(binding)),
             LexicalScopeBinding::Res(res) => (res, None),
         };
-
-        // An immutable (no `mut`) by-value (no `ref`) binding pattern without
-        // a sub pattern (no `@ $pat`) is syntactically ambiguous as it could
-        // also be interpreted as a path to e.g. a constant, variant, etc.
-        let is_syntactic_ambiguity = !has_sub && bm == BindingMode::ByValue(Mutability::Not);
 
         match res {
             Res::SelfCtor(_) // See #70549.
@@ -1906,7 +1915,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             if let StmtKind::Item(ref item) = stmt.kind {
                 if let ItemKind::MacroDef(..) = item.kind {
                     num_macro_definition_ribs += 1;
-                    let res = self.r.definitions.local_def_id(item.id);
+                    let res = self.r.definitions.local_def_id(item.id).to_def_id();
                     self.ribs[ValueNS].push(Rib::new(MacroDefinition(res)));
                     self.label_ribs.push(Rib::new(MacroDefinition(res)));
                 }
@@ -1992,7 +2001,9 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     this.visit_expr(cond);
                     this.visit_block(then);
                 });
-                opt_else.as_ref().map(|expr| self.visit_expr(expr));
+                if let Some(expr) = opt_else {
+                    self.visit_expr(expr);
+                }
             }
 
             ExprKind::Loop(ref block, label) => self.resolve_labeled_block(label, expr.id, &block),
@@ -2147,7 +2158,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     return;
                 }
                 match binding.res() {
-                    Res::Def(DefKind::Trait, _) | Res::Def(DefKind::TraitAlias, _) => {
+                    Res::Def(DefKind::Trait | DefKind::TraitAlias, _) => {
                         collected_traits.push((name, binding))
                     }
                     _ => (),

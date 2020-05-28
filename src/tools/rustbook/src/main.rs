@@ -108,7 +108,9 @@ pub fn linkcheck(
                 is_real_error = true;
             }
             Reason::UnsuccessfulServerResponse(status) => {
-                if status.is_client_error() {
+                if status.as_u16() == 429 {
+                    eprintln!("Received 429 (TOO_MANY_REQUESTS) for link `{}`", link.link.uri);
+                } else if status.is_client_error() {
                     is_real_error = true;
                 } else {
                     eprintln!("Unsuccessful server response for link `{}`", link.link.uri);

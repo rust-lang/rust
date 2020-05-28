@@ -6,7 +6,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   file \
   curl \
   ca-certificates \
-  python \
+  python3 \
   git \
   cmake \
   sudo \
@@ -33,7 +33,7 @@ ENV EMCC_CFLAGS=-O1
 # Emscripten installation is user-specific
 ENV NO_CHANGE_USER=1
 
-ENV SCRIPT python2.7 ../x.py test --target $TARGETS
+ENV SCRIPT python3 ../x.py test --target $TARGETS
 
 # This is almost identical to the wasm32-unknown-emscripten target, so
 # running with assertions again is not useful

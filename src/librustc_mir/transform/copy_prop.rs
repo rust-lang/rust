@@ -23,15 +23,14 @@ use crate::transform::{MirPass, MirSource};
 use crate::util::def_use::DefUseAnalysis;
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::{
-    read_only, Body, BodyAndCache, Constant, Local, LocalKind, Location, Operand, Place, Rvalue,
-    StatementKind,
+    Body, Constant, Local, LocalKind, Location, Operand, Place, Rvalue, StatementKind,
 };
 use rustc_middle::ty::TyCtxt;
 
 pub struct CopyPropagation;
 
 impl<'tcx> MirPass<'tcx> for CopyPropagation {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, _source: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, _source: MirSource<'tcx>, body: &mut Body<'tcx>) {
         // We only run when the MIR optimization level is > 1.
         // This avoids a slow pass, and messing up debug info.
         if tcx.sess.opts.debugging_opts.mir_opt_level <= 1 {
@@ -40,10 +39,10 @@ impl<'tcx> MirPass<'tcx> for CopyPropagation {
 
         let mut def_use_analysis = DefUseAnalysis::new(body);
         loop {
-            def_use_analysis.analyze(read_only!(body));
+            def_use_analysis.analyze(body);
 
             if eliminate_self_assignments(body, &def_use_analysis) {
-                def_use_analysis.analyze(read_only!(body));
+                def_use_analysis.analyze(body);
             }
 
             let mut changed = false;
@@ -74,7 +73,12 @@ impl<'tcx> MirPass<'tcx> for CopyPropagation {
                     }
                     // Conservatively gives up if the dest is an argument,
                     // because there may be uses of the original argument value.
-                    if body.local_kind(dest_local) == LocalKind::Arg {
+                    // Also gives up on the return place, as we cannot propagate into its implicit
+                    // use by `return`.
+                    if matches!(
+                        body.local_kind(dest_local),
+                        LocalKind::Arg | LocalKind::ReturnPointer
+                    ) {
                         debug!("  Can't copy-propagate local: dest {:?} (argument)", dest_local);
                         continue;
                     }
@@ -156,8 +160,10 @@ fn eliminate_self_assignments(body: &mut Body<'_>, def_use_analysis: &DefUseAnal
             let location = def.location;
             if let Some(stmt) = body[location.block].statements.get(location.statement_index) {
                 match &stmt.kind {
-                    StatementKind::Assign(box (place, Rvalue::Use(Operand::Copy(src_place))))
-                    | StatementKind::Assign(box (place, Rvalue::Use(Operand::Move(src_place)))) => {
+                    StatementKind::Assign(box (
+                        place,
+                        Rvalue::Use(Operand::Copy(src_place) | Operand::Move(src_place)),
+                    )) => {
                         if let (Some(local), Some(src_local)) =
                             (place.as_local(), src_place.as_local())
                         {
@@ -245,12 +251,12 @@ impl<'tcx> Action<'tcx> {
     }
 
     fn constant(src_constant: &Constant<'tcx>) -> Option<Action<'tcx>> {
-        Some(Action::PropagateConstant((*src_constant).clone()))
+        Some(Action::PropagateConstant(*src_constant))
     }
 
     fn perform(
         self,
-        body: &mut BodyAndCache<'tcx>,
+        body: &mut Body<'tcx>,
         def_use_analysis: &DefUseAnalysis,
         dest_local: Local,
         location: Location,
@@ -370,7 +376,7 @@ impl<'tcx> MutVisitor<'tcx> for ConstantPropagationVisitor<'tcx> {
             _ => return,
         }
 
-        *operand = Operand::Constant(box self.constant.clone());
+        *operand = Operand::Constant(box self.constant);
         self.uses_replaced += 1
     }
 }

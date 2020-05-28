@@ -85,7 +85,6 @@ pub struct Config {
 
     pub use_lld: bool,
     pub lld_enabled: bool,
-    pub lldb_enabled: bool,
     pub llvm_tools_enabled: bool,
 
     pub llvm_cflags: Option<String>,
@@ -98,6 +97,7 @@ pub struct Config {
     pub rust_codegen_units: Option<u32>,
     pub rust_codegen_units_std: Option<u32>,
     pub rust_debug_assertions: bool,
+    pub rust_debug_assertions_std: bool,
     pub rust_debuginfo_level_rustc: u32,
     pub rust_debuginfo_level_std: u32,
     pub rust_debuginfo_level_tools: u32,
@@ -212,6 +212,8 @@ struct Build {
     host: Vec<String>,
     #[serde(default)]
     target: Vec<String>,
+    // This is ignored, the rust code always gets the build directory from the `BUILD_DIR` env variable
+    build_dir: Option<String>,
     cargo: Option<String>,
     rustc: Option<String>,
     rustfmt: Option<String>, /* allow bootstrap.py to use rustfmt key */
@@ -313,6 +315,7 @@ struct Rust {
     codegen_units: Option<u32>,
     codegen_units_std: Option<u32>,
     debug_assertions: Option<bool>,
+    debug_assertions_std: Option<bool>,
     debuginfo_level: Option<u32>,
     debuginfo_level_rustc: Option<u32>,
     debuginfo_level_std: Option<u32>,
@@ -335,7 +338,6 @@ struct Rust {
     lld: Option<bool>,
     use_lld: Option<bool>,
     llvm_tools: Option<bool>,
-    lldb: Option<bool>,
     deny_warnings: Option<bool>,
     backtrace_on_ice: Option<bool>,
     verify_llvm_ir: Option<bool>,
@@ -518,6 +520,7 @@ impl Config {
         let mut llvm_assertions = None;
         let mut debug = None;
         let mut debug_assertions = None;
+        let mut debug_assertions_std = None;
         let mut debuginfo_level = None;
         let mut debuginfo_level_rustc = None;
         let mut debuginfo_level_std = None;
@@ -560,6 +563,7 @@ impl Config {
         if let Some(ref rust) = toml.rust {
             debug = rust.debug;
             debug_assertions = rust.debug_assertions;
+            debug_assertions_std = rust.debug_assertions_std;
             debuginfo_level = rust.debuginfo_level;
             debuginfo_level_rustc = rust.debuginfo_level_rustc;
             debuginfo_level_std = rust.debuginfo_level_std;
@@ -583,7 +587,6 @@ impl Config {
             }
             set(&mut config.use_lld, rust.use_lld);
             set(&mut config.lld_enabled, rust.lld);
-            set(&mut config.lldb_enabled, rust.lldb);
             set(&mut config.llvm_tools_enabled, rust.llvm_tools);
             config.rustc_parallel = rust.parallel_compiler.unwrap_or(false);
             config.rustc_default_linker = rust.default_linker.clone();
@@ -659,6 +662,8 @@ impl Config {
 
         let default = debug == Some(true);
         config.rust_debug_assertions = debug_assertions.unwrap_or(default);
+        config.rust_debug_assertions_std =
+            debug_assertions_std.unwrap_or(config.rust_debug_assertions);
 
         let with_defaults = |debuginfo_level_specific: Option<u32>| {
             debuginfo_level_specific.or(debuginfo_level).unwrap_or(if debug == Some(true) {

@@ -1,3 +1,5 @@
+// ignore-sgx std::os::fortanix_sgx::usercalls::raw::Result changes compiler suggestions
+
 use foo::MyEnum::Result;
 use foo::NoResult; // Through a re-export
 

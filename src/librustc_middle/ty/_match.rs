@@ -68,9 +68,12 @@ impl TypeRelation<'tcx> for Match<'tcx> {
         }
 
         match (&a.kind, &b.kind) {
-            (_, &ty::Infer(ty::FreshTy(_)))
-            | (_, &ty::Infer(ty::FreshIntTy(_)))
-            | (_, &ty::Infer(ty::FreshFloatTy(_))) => Ok(a),
+            (
+                _,
+                &ty::Infer(ty::FreshTy(_))
+                | &ty::Infer(ty::FreshIntTy(_))
+                | &ty::Infer(ty::FreshFloatTy(_)),
+            ) => Ok(a),
 
             (&ty::Infer(_), _) | (_, &ty::Infer(_)) => {
                 Err(TypeError::Sorts(relate::expected_found(self, &a, &b)))

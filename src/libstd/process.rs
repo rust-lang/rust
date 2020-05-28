@@ -245,6 +245,10 @@ impl Write for ChildStdin {
         self.inner.write_vectored(bufs)
     }
 
+    fn is_write_vectored(&self) -> bool {
+        self.inner.is_write_vectored()
+    }
+
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }
@@ -301,6 +305,11 @@ impl Read for ChildStdout {
     }
 
     #[inline]
+    fn is_read_vectored(&self) -> bool {
+        self.inner.is_read_vectored()
+    }
+
+    #[inline]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
     }
@@ -354,6 +363,11 @@ impl Read for ChildStderr {
 
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         self.inner.read_vectored(bufs)
+    }
+
+    #[inline]
+    fn is_read_vectored(&self) -> bool {
+        self.inner.is_read_vectored()
     }
 
     #[inline]
@@ -1606,7 +1620,7 @@ pub fn exit(code: i32) -> ! {
 /// [panic hook]: ../../std/panic/fn.set_hook.html
 #[stable(feature = "process_abort", since = "1.17.0")]
 pub fn abort() -> ! {
-    unsafe { crate::sys::abort_internal() };
+    crate::sys::abort_internal();
 }
 
 /// Returns the OS-assigned process identifier associated with this process.
@@ -2091,8 +2105,8 @@ mod tests {
     }
 
     #[test]
-    fn test_command_implements_send() {
-        fn take_send_type<T: Send>(_: T) {}
-        take_send_type(Command::new(""))
+    fn test_command_implements_send_sync() {
+        fn take_send_sync_type<T: Send + Sync>(_: T) {}
+        take_send_sync_type(Command::new(""))
     }
 }

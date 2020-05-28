@@ -21,6 +21,7 @@ const OS_TABLE: &'static [(&'static str, &'static str)] = &[
     ("fuchsia", "fuchsia"),
     ("haiku", "haiku"),
     ("hermit", "hermit"),
+    ("illumos", "illumos"),
     ("ios", "ios"),
     ("l4re", "l4re"),
     ("linux", "linux"),

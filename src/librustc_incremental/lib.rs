@@ -15,7 +15,7 @@ pub mod assert_module_sources;
 mod persist;
 
 pub use assert_dep_graph::assert_dep_graph;
-pub use persist::copy_cgu_workproducts_to_incr_comp_cache_dir;
+pub use persist::copy_cgu_workproduct_to_incr_comp_cache_dir;
 pub use persist::delete_workproduct_files;
 pub use persist::dep_graph_tcx_init;
 pub use persist::finalize_session_directory;

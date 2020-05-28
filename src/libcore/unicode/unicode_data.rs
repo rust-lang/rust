@@ -94,7 +94,7 @@ fn skip_search<const SOR: usize, const OFFSETS: usize>(
     offset_idx % 2 == 1
 }
 
-pub const UNICODE_VERSION: (u32, u32, u32) = (13, 0, 0);
+pub const UNICODE_VERSION: (u8, u8, u8) = (13, 0, 0);
 
 #[rustfmt::skip]
 pub mod alphabetic {

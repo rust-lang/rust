@@ -3,18 +3,30 @@ use rustc_middle::ty::{self, ConstVid, FloatVid, IntVid, RegionVid, Ty, TyCtxt, 
 
 use super::type_variable::TypeVariableOrigin;
 use super::InferCtxt;
-use super::{ConstVariableOrigin, RegionVariableOrigin};
+use super::{ConstVariableOrigin, RegionVariableOrigin, UnificationTable};
 
+use rustc_data_structures::snapshot_vec as sv;
 use rustc_data_structures::unify as ut;
 use ut::UnifyKey;
 
 use std::ops::Range;
 
+fn vars_since_snapshot<'tcx, T>(
+    table: &mut UnificationTable<'_, 'tcx, T>,
+    snapshot_var_len: usize,
+) -> Range<T>
+where
+    T: UnifyKey,
+    super::UndoLog<'tcx>: From<sv::UndoLog<ut::Delegate<T>>>,
+{
+    T::from_index(snapshot_var_len as u32)..T::from_index(table.len() as u32)
+}
+
 fn const_vars_since_snapshot<'tcx>(
-    table: &mut ut::UnificationTable<ut::InPlace<ConstVid<'tcx>>>,
-    snapshot: &ut::Snapshot<ut::InPlace<ConstVid<'tcx>>>,
+    table: &mut UnificationTable<'_, 'tcx, ConstVid<'tcx>>,
+    snapshot_var_len: usize,
 ) -> (Range<ConstVid<'tcx>>, Vec<ConstVariableOrigin>) {
-    let range = table.vars_since_snapshot(snapshot);
+    let range = vars_since_snapshot(table, snapshot_var_len);
     (
         range.start..range.end,
         (range.start.index..range.end.index)
@@ -23,7 +35,26 @@ fn const_vars_since_snapshot<'tcx>(
     )
 }
 
+struct VariableLengths {
+    type_var_len: usize,
+    const_var_len: usize,
+    int_var_len: usize,
+    float_var_len: usize,
+    region_constraints_len: usize,
+}
+
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
+    fn variable_lengths(&self) -> VariableLengths {
+        let mut inner = self.inner.borrow_mut();
+        VariableLengths {
+            type_var_len: inner.type_variables().num_vars(),
+            const_var_len: inner.const_unification_table().len(),
+            int_var_len: inner.int_unification_table().len(),
+            float_var_len: inner.float_unification_table().len(),
+            region_constraints_len: inner.unwrap_region_constraints().num_region_vars(),
+        }
+    }
+
     /// This rather funky routine is used while processing expected
     /// types. What happens here is that we want to propagate a
     /// coercion through the return type of a fn to its
@@ -70,7 +101,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     {
         debug!("fudge_inference_if_ok()");
 
-        let (mut fudger, value) = self.probe(|snapshot| {
+        let variable_lengths = self.variable_lengths();
+        let (mut fudger, value) = self.probe(|_| {
             match f() {
                 Ok(value) => {
                     let value = self.resolve_vars_if_possible(&value);
@@ -83,17 +115,21 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
                     let mut inner = self.inner.borrow_mut();
                     let type_vars =
-                        inner.type_variables.vars_since_snapshot(&snapshot.type_snapshot);
-                    let int_vars =
-                        inner.int_unification_table.vars_since_snapshot(&snapshot.int_snapshot);
-                    let float_vars =
-                        inner.float_unification_table.vars_since_snapshot(&snapshot.float_snapshot);
+                        inner.type_variables().vars_since_snapshot(variable_lengths.type_var_len);
+                    let int_vars = vars_since_snapshot(
+                        &mut inner.int_unification_table(),
+                        variable_lengths.int_var_len,
+                    );
+                    let float_vars = vars_since_snapshot(
+                        &mut inner.float_unification_table(),
+                        variable_lengths.float_var_len,
+                    );
                     let region_vars = inner
                         .unwrap_region_constraints()
-                        .vars_since_snapshot(&snapshot.region_constraints_snapshot);
+                        .vars_since_snapshot(variable_lengths.region_constraints_len);
                     let const_vars = const_vars_since_snapshot(
-                        &mut inner.const_unification_table,
-                        &snapshot.const_snapshot,
+                        &mut inner.const_unification_table(),
+                        variable_lengths.const_var_len,
                     );
 
                     let fudger = InferenceFudger {
@@ -161,7 +197,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for InferenceFudger<'a, 'tcx> {
                     // that it is unbound, so we can just return
                     // it.
                     debug_assert!(
-                        self.infcx.inner.borrow_mut().type_variables.probe(vid).is_unknown()
+                        self.infcx.inner.borrow_mut().type_variables().probe(vid).is_unknown()
                     );
                     ty
                 }

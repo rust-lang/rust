@@ -1,16 +1,16 @@
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::bit_set::HybridBitSet;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
-use rustc_middle::mir::{BasicBlock, ConstraintCategory, Local, Location, ReadOnlyBodyAndCache};
+use rustc_middle::mir::{BasicBlock, Body, ConstraintCategory, Local, Location};
 use rustc_middle::ty::{Ty, TypeFoldable};
 use rustc_trait_selection::traits::query::dropck_outlives::DropckOutlivesResult;
 use rustc_trait_selection::traits::query::type_op::outlives::DropckOutlives;
 use rustc_trait_selection::traits::query::type_op::TypeOp;
 use std::rc::Rc;
 
+use crate::dataflow::impls::MaybeInitializedPlaces;
 use crate::dataflow::indexes::MovePathIndex;
 use crate::dataflow::move_paths::{HasMoveData, MoveData};
-use crate::dataflow::MaybeInitializedPlaces;
 use crate::dataflow::ResultsCursor;
 
 use crate::borrow_check::{
@@ -37,7 +37,7 @@ use crate::borrow_check::{
 /// this respects `#[may_dangle]` annotations).
 pub(super) fn trace(
     typeck: &mut TypeChecker<'_, 'tcx>,
-    body: ReadOnlyBodyAndCache<'_, 'tcx>,
+    body: &Body<'tcx>,
     elements: &Rc<RegionValueElements>,
     flow_inits: &mut ResultsCursor<'mir, 'tcx, MaybeInitializedPlaces<'mir, 'tcx>>,
     move_data: &MoveData<'tcx>,
@@ -76,7 +76,7 @@ struct LivenessContext<'me, 'typeck, 'flow, 'tcx> {
     elements: &'me RegionValueElements,
 
     /// MIR we are analyzing.
-    body: ReadOnlyBodyAndCache<'me, 'tcx>,
+    body: &'me Body<'tcx>,
 
     /// Mapping to/from the various indices used for initialization tracking.
     move_data: &'me MoveData<'tcx>,
@@ -303,7 +303,7 @@ impl LivenessResults<'me, 'typeck, 'flow, 'tcx> {
         }
 
         let body = self.cx.body;
-        for &pred_block in body.predecessors_for(block).iter() {
+        for &pred_block in body.predecessors()[block].iter() {
             debug!("compute_drop_live_points_for_block: pred_block = {:?}", pred_block,);
 
             // Check whether the variable is (at least partially)
@@ -408,7 +408,7 @@ impl LivenessContext<'_, '_, '_, 'tcx> {
     /// DROP of some local variable will have an effect -- note that
     /// drops, as they may unwind, are always terminators.
     fn initialized_at_terminator(&mut self, block: BasicBlock, mpi: MovePathIndex) -> bool {
-        self.flow_inits.seek_before(self.body.terminator_loc(block));
+        self.flow_inits.seek_before_primary_effect(self.body.terminator_loc(block));
         self.initialized_at_curr_loc(mpi)
     }
 
@@ -418,7 +418,7 @@ impl LivenessContext<'_, '_, '_, 'tcx> {
     /// **Warning:** Does not account for the result of `Call`
     /// instructions.
     fn initialized_at_exit(&mut self, block: BasicBlock, mpi: MovePathIndex) -> bool {
-        self.flow_inits.seek_after(self.body.terminator_loc(block));
+        self.flow_inits.seek_after_primary_effect(self.body.terminator_loc(block));
         self.initialized_at_curr_loc(mpi)
     }
 

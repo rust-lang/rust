@@ -21,6 +21,11 @@ impl<R: Read + ?Sized> Read for &mut R {
     }
 
     #[inline]
+    fn is_read_vectored(&self) -> bool {
+        (**self).is_read_vectored()
+    }
+
+    #[inline]
     unsafe fn initializer(&self) -> Initializer {
         (**self).initializer()
     }
@@ -50,6 +55,11 @@ impl<W: Write + ?Sized> Write for &mut W {
     #[inline]
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         (**self).write_vectored(bufs)
+    }
+
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        (**self).is_write_vectored()
     }
 
     #[inline]
@@ -110,6 +120,11 @@ impl<R: Read + ?Sized> Read for Box<R> {
     }
 
     #[inline]
+    fn is_read_vectored(&self) -> bool {
+        (**self).is_read_vectored()
+    }
+
+    #[inline]
     unsafe fn initializer(&self) -> Initializer {
         (**self).initializer()
     }
@@ -139,6 +154,11 @@ impl<W: Write + ?Sized> Write for Box<W> {
     #[inline]
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         (**self).write_vectored(bufs)
+    }
+
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        (**self).is_write_vectored()
     }
 
     #[inline]
@@ -241,6 +261,11 @@ impl Read for &[u8] {
     }
 
     #[inline]
+    fn is_read_vectored(&self) -> bool {
+        true
+    }
+
+    #[inline]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
     }
@@ -317,6 +342,11 @@ impl Write for &mut [u8] {
     }
 
     #[inline]
+    fn is_write_vectored(&self) -> bool {
+        true
+    }
+
+    #[inline]
     fn write_all(&mut self, data: &[u8]) -> io::Result<()> {
         if self.write(data)? == data.len() {
             Ok(())
@@ -349,6 +379,11 @@ impl Write for Vec<u8> {
             self.extend_from_slice(buf);
         }
         Ok(len)
+    }
+
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        true
     }
 
     #[inline]

@@ -11,7 +11,7 @@ type NeedsDropResult<T> = Result<T, AlwaysRequiresDrop>;
 
 fn needs_drop_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
     let adt_fields =
-        move |adt_def: &ty::AdtDef| tcx.adt_drop_tys(adt_def.did).map(|tys| tys.iter().copied());
+        move |adt_def: &ty::AdtDef| tcx.adt_drop_tys(adt_def.did).map(|tys| tys.iter());
     // If we don't know a type doesn't need drop, for example if it's a type
     // parameter without a `Copy` bound, then we conservatively return that it
     // needs drop.
@@ -43,14 +43,13 @@ impl<'tcx, F> NeedsDropTypes<'tcx, F> {
     ) -> Self {
         let mut seen_tys = FxHashSet::default();
         seen_tys.insert(ty);
-        let recursion_limit = *tcx.sess.recursion_limit.get();
         Self {
             tcx,
             param_env,
             seen_tys,
             query_ty: ty,
             unchecked_tys: vec![(ty, 0)],
-            recursion_limit,
+            recursion_limit: tcx.sess.recursion_limit(),
             adt_components,
         }
     }
@@ -96,6 +95,23 @@ where
                     ty::Closure(_, substs) => {
                         for upvar_ty in substs.as_closure().upvar_tys() {
                             queue_type(self, upvar_ty);
+                        }
+                    }
+
+                    ty::Generator(_, substs, _) => {
+                        let substs = substs.as_generator();
+                        for upvar_ty in substs.upvar_tys() {
+                            queue_type(self, upvar_ty);
+                        }
+
+                        let witness = substs.witness();
+                        let interior_tys = match &witness.kind {
+                            ty::GeneratorWitness(tys) => tcx.erase_late_bound_regions(tys),
+                            _ => bug!(),
+                        };
+
+                        for interior_ty in interior_tys {
+                            queue_type(self, interior_ty);
                         }
                     }
 

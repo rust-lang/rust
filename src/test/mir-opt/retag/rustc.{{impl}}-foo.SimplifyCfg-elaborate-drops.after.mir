@@ -1,0 +1,20 @@
+// MIR for `<impl at $DIR/retag.rs:11:1: 19:2>::foo` after SimplifyCfg-elaborate-drops
+
+fn <impl at $DIR/retag.rs:11:1: 19:2>::foo(_1: &Test, _2: &mut i32) -> &mut i32 {
+    debug self => _1;                    // in scope 0 at $DIR/retag.rs:13:16: 13:21
+    debug x => _2;                       // in scope 0 at $DIR/retag.rs:13:23: 13:24
+    let mut _0: &mut i32;                // return place in scope 0 at $DIR/retag.rs:13:42: 13:53
+    let mut _3: &mut i32;                // in scope 0 at $DIR/retag.rs:14:9: 14:10
+
+    bb0: {
+        Retag([fn entry] _1);            // scope 0 at $DIR/retag.rs:13:5: 15:6
+        Retag([fn entry] _2);            // scope 0 at $DIR/retag.rs:13:5: 15:6
+        StorageLive(_3);                 // scope 0 at $DIR/retag.rs:14:9: 14:10
+        _3 = &mut (*_2);                 // scope 0 at $DIR/retag.rs:14:9: 14:10
+        Retag(_3);                       // scope 0 at $DIR/retag.rs:14:9: 14:10
+        _0 = &mut (*_3);                 // scope 0 at $DIR/retag.rs:14:9: 14:10
+        Retag(_0);                       // scope 0 at $DIR/retag.rs:14:9: 14:10
+        StorageDead(_3);                 // scope 0 at $DIR/retag.rs:15:5: 15:6
+        return;                          // scope 0 at $DIR/retag.rs:15:6: 15:6
+    }
+}

@@ -25,3 +25,5 @@ warning: variable `theOtherTwo` should have a snake case name
 LL |     let theOtherTwo = 2;
    |         ^^^^^^^^^^^ help: convert the identifier to snake case: `the_other_two`
 
+warning: 3 warnings emitted
+

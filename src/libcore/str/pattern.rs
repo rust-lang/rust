@@ -1,7 +1,41 @@
 //! The string Pattern API.
 //!
+//! The Pattern API provides a generic mechanism for using different pattern
+//! types when searching through a string.
+//!
 //! For more details, see the traits [`Pattern`], [`Searcher`],
 //! [`ReverseSearcher`], and [`DoubleEndedSearcher`].
+//!
+//! Although this API is unstable, it is exposed via stable APIs on the
+//! [`str`] type.
+//!
+//! # Examples
+//!
+//! [`Pattern`] is [implemented][pattern-impls] in the stable API for
+//! [`&str`], [`char`], slices of [`char`], and functions and closures
+//! implementing `FnMut(char) -> bool`.
+//!
+//! ```
+//! let s = "Can you find a needle in a haystack?";
+//!
+//! // &str pattern
+//! assert_eq!(s.find("you"), Some(4));
+//! // char pattern
+//! assert_eq!(s.find('n'), Some(2));
+//! // slice of chars pattern
+//! assert_eq!(s.find(&['a', 'e', 'i', 'o', 'u'][..]), Some(1));
+//! // closure pattern
+//! assert_eq!(s.find(|c: char| c.is_ascii_punctuation()), Some(35));
+//! ```
+//!
+//! [`&str`]: ../../../std/primitive.str.html
+//! [`char`]: ../../../std/primitive.char.html
+//! [`str`]: ../../../std/primitive.str.html
+//! [`DoubleEndedSearcher`]: trait.DoubleEndedSearcher.html
+//! [`Pattern`]: trait.Pattern.html
+//! [`ReverseSearcher`]: trait.ReverseSearcher.html
+//! [`Searcher`]: trait.Searcher.html
+//! [pattern-impls]: trait.Pattern.html#implementors
 
 #![unstable(
     feature = "pattern",
@@ -12,7 +46,6 @@
 use crate::cmp;
 use crate::fmt;
 use crate::slice::memchr;
-use crate::usize;
 
 // Pattern
 
@@ -451,7 +484,13 @@ unsafe impl<'a> ReverseSearcher<'a> for CharSearcher<'a> {
 
 impl<'a> DoubleEndedSearcher<'a> for CharSearcher<'a> {}
 
-/// Searches for chars that are equal to a given char
+/// Searches for chars that are equal to a given `char`.
+///
+/// # Examples
+///
+/// ```
+/// assert_eq!("Hello world".find('o'), Some(4));
+/// ```
 impl<'a> Pattern<'a> for char {
     type Searcher = CharSearcher<'a>;
 
@@ -696,7 +735,14 @@ unsafe impl<'a, 'b> ReverseSearcher<'a> for CharSliceSearcher<'a, 'b> {
 
 impl<'a, 'b> DoubleEndedSearcher<'a> for CharSliceSearcher<'a, 'b> {}
 
-/// Searches for chars that are equal to any of the chars in the array
+/// Searches for chars that are equal to any of the chars in the slice.
+///
+/// # Examples
+///
+/// ```
+/// assert_eq!("Hello world".find(&['l', 'l'] as &[_]), Some(2));
+/// assert_eq!("Hello world".find(&['l', 'l'][..]), Some(2));
+/// ```
 impl<'a, 'b> Pattern<'a> for &'b [char] {
     pattern_methods!(CharSliceSearcher<'a, 'b>, MultiCharEqPattern, CharSliceSearcher);
 }
@@ -738,7 +784,14 @@ where
 
 impl<'a, F> DoubleEndedSearcher<'a> for CharPredicateSearcher<'a, F> where F: FnMut(char) -> bool {}
 
-/// Searches for chars that match the given predicate
+/// Searches for chars that match the given predicate.
+///
+/// # Examples
+///
+/// ```
+/// assert_eq!("Hello world".find(char::is_uppercase), Some(0));
+/// assert_eq!("Hello world".find(|c| "aeiou".contains(c)), Some(1));
+/// ```
 impl<'a, F> Pattern<'a> for F
 where
     F: FnMut(char) -> bool,
@@ -763,6 +816,12 @@ impl<'a, 'b, 'c> Pattern<'a> for &'c &'b str {
 ///
 /// Will handle the pattern `""` as returning empty matches at each character
 /// boundary.
+///
+/// # Examples
+///
+/// ```
+/// assert_eq!("Hello world".find("world"), Some(6));
+/// ```
 impl<'a, 'b> Pattern<'a> for &'b str {
     type Searcher = StrSearcher<'a, 'b>;
 
@@ -771,7 +830,7 @@ impl<'a, 'b> Pattern<'a> for &'b str {
         StrSearcher::new(haystack, self)
     }
 
-    /// Checks whether the pattern matches at the front of the haystack
+    /// Checks whether the pattern matches at the front of the haystack.
     #[inline]
     fn is_prefix_of(self, haystack: &'a str) -> bool {
         haystack.as_bytes().starts_with(self.as_bytes())
@@ -788,7 +847,7 @@ impl<'a, 'b> Pattern<'a> for &'b str {
         }
     }
 
-    /// Checks whether the pattern matches at the back of the haystack
+    /// Checks whether the pattern matches at the back of the haystack.
     #[inline]
     fn is_suffix_of(self, haystack: &'a str) -> bool {
         haystack.as_bytes().ends_with(self.as_bytes())

@@ -2,8 +2,8 @@ use crate::build::matches::ArmHasGuard;
 use crate::build::ForGuard::OutsideGuard;
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 use crate::hair::*;
-use rustc_middle::mir::*;
 use rustc_hir as hir;
+use rustc_middle::mir::*;
 use rustc_span::Span;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -26,14 +26,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.in_opt_scope(opt_destruction_scope.map(|de| (de, source_info)), move |this| {
             this.in_scope((region_scope, source_info), LintLevel::Inherited, move |this| {
                 if targeted_by_break {
-                    // This is a `break`-able block
-                    let exit_block = this.cfg.start_new_block();
-                    let block_exit =
-                        this.in_breakable_scope(None, exit_block, destination.clone(), |this| {
-                            this.ast_block_stmts(destination, block, span, stmts, expr, safety_mode)
-                        });
-                    this.cfg.goto(unpack!(block_exit), source_info, exit_block);
-                    exit_block.unit()
+                    this.in_breakable_scope(None, destination, span, |this| {
+                        Some(this.ast_block_stmts(
+                            destination,
+                            block,
+                            span,
+                            stmts,
+                            expr,
+                            safety_mode,
+                        ))
+                    })
                 } else {
                     this.ast_block_stmts(destination, block, span, stmts, expr, safety_mode)
                 }
@@ -145,7 +147,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         }));
 
                         debug!("ast_block_stmts: pattern={:?}", pattern);
-                        this.visit_bindings(
+                        this.visit_primary_bindings(
                             &pattern,
                             UserTypeProjections::none(),
                             &mut |this, _, _, _, node, span, _, _| {
@@ -173,7 +175,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         if let Some(expr) = expr {
             let tail_result_is_ignored =
                 destination_ty.is_unit() || this.block_context.currently_ignores_tail_results();
-            this.block_context.push(BlockFrame::TailExpr { tail_result_is_ignored });
+            let span = match expr {
+                ExprRef::Hair(expr) => expr.span,
+                ExprRef::Mirror(ref expr) => expr.span,
+            };
+            this.block_context.push(BlockFrame::TailExpr { tail_result_is_ignored, span });
 
             unpack!(block = this.into(destination, block, expr));
             let popped = this.block_context.pop();
@@ -187,7 +193,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             if destination_ty.is_unit() {
                 // We only want to assign an implicit `()` as the return value of the block if the
                 // block does not diverge. (Otherwise, we may try to assign a unit to a `!`-type.)
-                this.cfg.push_assign_unit(block, source_info, destination);
+                this.cfg.push_assign_unit(block, source_info, destination, this.hir.tcx());
             }
         }
         // Finally, we pop all the let scopes before exiting out from the scope of block

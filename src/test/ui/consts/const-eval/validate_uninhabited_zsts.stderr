@@ -48,6 +48,6 @@ LL | const BAR: [Empty; 3] = [unsafe { std::mem::transmute(()) }; 3];
    |
    = note: enums with no variants have no valid value
 
-error: aborting due to previous error
+error: aborting due to previous error; 3 warnings emitted
 
 For more information about this error, try `rustc --explain E0080`.

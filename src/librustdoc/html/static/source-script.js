@@ -1,5 +1,5 @@
 // From rust:
-/* global sourcesIndex */
+/* global search, sourcesIndex */
 
 // Local js definitions:
 /* global addClass, getCurrentValue, hasClass, removeClass, updateLocalStorage */

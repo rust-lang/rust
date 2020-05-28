@@ -81,7 +81,7 @@ fn uncached_llvm_type<'a, 'tcx>(
     };
 
     match layout.fields {
-        FieldsShape::Union(_) => {
+        FieldsShape::Primitive | FieldsShape::Union(_) => {
             let fill = cx.type_padding_filler(layout.size, layout.align.abi);
             let packed = false;
             match name {
@@ -368,7 +368,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
             _ => {}
         }
         match self.fields {
-            FieldsShape::Union(_) => {
+            FieldsShape::Primitive | FieldsShape::Union(_) => {
                 bug!("TyAndLayout::llvm_field_index({:?}): not applicable", self)
             }
 

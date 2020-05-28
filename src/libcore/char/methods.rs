@@ -9,6 +9,243 @@ use super::*;
 
 #[lang = "char"]
 impl char {
+    /// The highest valid code point a `char` can have.
+    ///
+    /// A `char` is a [Unicode Scalar Value], which means that it is a [Code
+    /// Point], but only ones within a certain range. `MAX` is the highest valid
+    /// code point that's a valid [Unicode Scalar Value].
+    ///
+    /// [Unicode Scalar Value]: http://www.unicode.org/glossary/#unicode_scalar_value
+    /// [Code Point]: http://www.unicode.org/glossary/#code_point
+    #[unstable(feature = "assoc_char_consts", reason = "recently added", issue = "71763")]
+    pub const MAX: char = '\u{10ffff}';
+
+    /// `U+FFFD REPLACEMENT CHARACTER` (�) is used in Unicode to represent a
+    /// decoding error.
+    ///
+    /// It can occur, for example, when giving ill-formed UTF-8 bytes to
+    /// [`String::from_utf8_lossy`](string/struct.String.html#method.from_utf8_lossy).
+    #[unstable(feature = "assoc_char_consts", reason = "recently added", issue = "71763")]
+    pub const REPLACEMENT_CHARACTER: char = '\u{FFFD}';
+
+    /// The version of [Unicode](http://www.unicode.org/) that the Unicode parts of
+    /// `char` and `str` methods are based on.
+    ///
+    /// New versions of Unicode are released regularly and subsequently all methods
+    /// in the standard library depending on Unicode are updated. Therefore the
+    /// behavior of some `char` and `str` methods and the value of this constant
+    /// changes over time. This is *not* considered to be a breaking change.
+    ///
+    /// The version numbering scheme is explained in
+    /// [Unicode 11.0 or later, Section 3.1 Versions of the Unicode Standard](https://www.unicode.org/versions/Unicode11.0.0/ch03.pdf#page=4).
+    #[unstable(feature = "assoc_char_consts", reason = "recently added", issue = "71763")]
+    pub const UNICODE_VERSION: (u8, u8, u8) = crate::unicode::UNICODE_VERSION;
+
+    /// Creates an iterator over the UTF-16 encoded code points in `iter`,
+    /// returning unpaired surrogates as `Err`s.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use std::char::decode_utf16;
+    ///
+    /// // 𝄞mus<invalid>ic<invalid>
+    /// let v = [
+    ///     0xD834, 0xDD1E, 0x006d, 0x0075, 0x0073, 0xDD1E, 0x0069, 0x0063, 0xD834,
+    /// ];
+    ///
+    /// assert_eq!(
+    ///     decode_utf16(v.iter().cloned())
+    ///         .map(|r| r.map_err(|e| e.unpaired_surrogate()))
+    ///         .collect::<Vec<_>>(),
+    ///     vec![
+    ///         Ok('𝄞'),
+    ///         Ok('m'), Ok('u'), Ok('s'),
+    ///         Err(0xDD1E),
+    ///         Ok('i'), Ok('c'),
+    ///         Err(0xD834)
+    ///     ]
+    /// );
+    /// ```
+    ///
+    /// A lossy decoder can be obtained by replacing `Err` results with the replacement character:
+    ///
+    /// ```
+    /// use std::char::{decode_utf16, REPLACEMENT_CHARACTER};
+    ///
+    /// // 𝄞mus<invalid>ic<invalid>
+    /// let v = [
+    ///     0xD834, 0xDD1E, 0x006d, 0x0075, 0x0073, 0xDD1E, 0x0069, 0x0063, 0xD834,
+    /// ];
+    ///
+    /// assert_eq!(
+    ///     decode_utf16(v.iter().cloned())
+    ///        .map(|r| r.unwrap_or(REPLACEMENT_CHARACTER))
+    ///        .collect::<String>(),
+    ///     "𝄞mus�ic�"
+    /// );
+    /// ```
+    #[unstable(feature = "assoc_char_funcs", reason = "recently added", issue = "71763")]
+    #[inline]
+    pub fn decode_utf16<I: IntoIterator<Item = u16>>(iter: I) -> DecodeUtf16<I::IntoIter> {
+        super::decode::decode_utf16(iter)
+    }
+
+    /// Converts a `u32` to a `char`.
+    ///
+    /// Note that all `char`s are valid [`u32`]s, and can be cast to one with
+    /// `as`:
+    ///
+    /// ```
+    /// let c = '💯';
+    /// let i = c as u32;
+    ///
+    /// assert_eq!(128175, i);
+    /// ```
+    ///
+    /// However, the reverse is not true: not all valid [`u32`]s are valid
+    /// `char`s. `from_u32()` will return `None` if the input is not a valid value
+    /// for a `char`.
+    ///
+    /// [`u32`]: primitive.u32.html
+    ///
+    /// For an unsafe version of this function which ignores these checks, see
+    /// [`from_u32_unchecked`].
+    ///
+    /// [`from_u32_unchecked`]: #method.from_u32_unchecked
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use std::char;
+    ///
+    /// let c = char::from_u32(0x2764);
+    ///
+    /// assert_eq!(Some('❤'), c);
+    /// ```
+    ///
+    /// Returning `None` when the input is not a valid `char`:
+    ///
+    /// ```
+    /// use std::char;
+    ///
+    /// let c = char::from_u32(0x110000);
+    ///
+    /// assert_eq!(None, c);
+    /// ```
+    #[unstable(feature = "assoc_char_funcs", reason = "recently added", issue = "71763")]
+    #[inline]
+    pub fn from_u32(i: u32) -> Option<char> {
+        super::convert::from_u32(i)
+    }
+
+    /// Converts a `u32` to a `char`, ignoring validity.
+    ///
+    /// Note that all `char`s are valid [`u32`]s, and can be cast to one with
+    /// `as`:
+    ///
+    /// ```
+    /// let c = '💯';
+    /// let i = c as u32;
+    ///
+    /// assert_eq!(128175, i);
+    /// ```
+    ///
+    /// However, the reverse is not true: not all valid [`u32`]s are valid
+    /// `char`s. `from_u32_unchecked()` will ignore this, and blindly cast to
+    /// `char`, possibly creating an invalid one.
+    ///
+    /// [`u32`]: primitive.u32.html
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe, as it may construct invalid `char` values.
+    ///
+    /// For a safe version of this function, see the [`from_u32`] function.
+    ///
+    /// [`from_u32`]: #method.from_u32
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use std::char;
+    ///
+    /// let c = unsafe { char::from_u32_unchecked(0x2764) };
+    ///
+    /// assert_eq!('❤', c);
+    /// ```
+    #[unstable(feature = "assoc_char_funcs", reason = "recently added", issue = "71763")]
+    #[inline]
+    pub unsafe fn from_u32_unchecked(i: u32) -> char {
+        super::convert::from_u32_unchecked(i)
+    }
+
+    /// Converts a digit in the given radix to a `char`.
+    ///
+    /// A 'radix' here is sometimes also called a 'base'. A radix of two
+    /// indicates a binary number, a radix of ten, decimal, and a radix of
+    /// sixteen, hexadecimal, to give some common values. Arbitrary
+    /// radices are supported.
+    ///
+    /// `from_digit()` will return `None` if the input is not a digit in
+    /// the given radix.
+    ///
+    /// # Panics
+    ///
+    /// Panics if given a radix larger than 36.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use std::char;
+    ///
+    /// let c = char::from_digit(4, 10);
+    ///
+    /// assert_eq!(Some('4'), c);
+    ///
+    /// // Decimal 11 is a single digit in base 16
+    /// let c = char::from_digit(11, 16);
+    ///
+    /// assert_eq!(Some('b'), c);
+    /// ```
+    ///
+    /// Returning `None` when the input is not a digit:
+    ///
+    /// ```
+    /// use std::char;
+    ///
+    /// let c = char::from_digit(20, 10);
+    ///
+    /// assert_eq!(None, c);
+    /// ```
+    ///
+    /// Passing a large radix, causing a panic:
+    ///
+    /// ```
+    /// use std::thread;
+    /// use std::char;
+    ///
+    /// let result = thread::spawn(|| {
+    ///     // this panics
+    ///     let c = char::from_digit(1, 37);
+    /// }).join();
+    ///
+    /// assert!(result.is_err());
+    /// ```
+    #[unstable(feature = "assoc_char_funcs", reason = "recently added", issue = "71763")]
+    #[inline]
+    pub fn from_digit(num: u32, radix: u32) -> Option<char> {
+        super::convert::from_digit(num, radix)
+    }
+
     /// Checks if a `char` is a digit in the given radix.
     ///
     /// A 'radix' here is sometimes also called a 'base'. A radix of two
@@ -575,8 +812,9 @@ impl char {
     /// assert!(!'A'.is_lowercase());
     /// assert!(!'Δ'.is_lowercase());
     ///
-    /// // The various Chinese scripts do not have case, and so:
+    /// // The various Chinese scripts and punctuation do not have case, and so:
     /// assert!(!'中'.is_lowercase());
+    /// assert!(!' '.is_lowercase());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -606,8 +844,9 @@ impl char {
     /// assert!('A'.is_uppercase());
     /// assert!('Δ'.is_uppercase());
     ///
-    /// // The various Chinese scripts do not have case, and so:
+    /// // The various Chinese scripts and punctuation do not have case, and so:
     /// assert!(!'中'.is_uppercase());
+    /// assert!(!' '.is_uppercase());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]

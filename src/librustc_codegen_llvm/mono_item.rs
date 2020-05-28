@@ -47,7 +47,7 @@ impl PreDefineMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         visibility: Visibility,
         symbol_name: &str,
     ) {
-        assert!(!instance.substs.needs_infer() && !instance.substs.has_param_types());
+        assert!(!instance.substs.needs_infer() && !instance.substs.has_param_types_or_consts());
 
         let fn_abi = FnAbi::of_instance(self, instance, &[]);
         let lldecl = self.declare_fn(symbol_name, &fn_abi);

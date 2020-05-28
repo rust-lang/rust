@@ -14,8 +14,8 @@
 //!   int)` and `rec(x=int, y=int, z=int)` will have the same `llvm::Type`.
 
 use crate::back::write::{
-    start_async_codegen, submit_codegened_module_to_llvm, submit_post_lto_module_to_llvm,
-    submit_pre_lto_module_to_llvm, OngoingCodegen,
+    compute_per_cgu_lto_type, start_async_codegen, submit_codegened_module_to_llvm,
+    submit_post_lto_module_to_llvm, submit_pre_lto_module_to_llvm, ComputedLtoType, OngoingCodegen,
 };
 use crate::common::{IntPredicate, RealPredicate, TypeKind};
 use crate::meth;
@@ -30,7 +30,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::print_time_passes_entry;
 use rustc_data_structures::sync::{par_iter, Lock, ParallelIterator};
 use rustc_hir as hir;
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::def_id::{LocalDefId, LOCAL_CRATE};
 use rustc_hir::lang_items::StartFnLangItem;
 use rustc_index::vec::Idx;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
@@ -43,7 +43,8 @@ use rustc_middle::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_session::cgu_reuse_tracker::CguReuse;
-use rustc_session::config::{self, EntryFnType, Lto};
+use rustc_session::config::{self, EntryFnType};
+use rustc_session::utils::NativeLibKind;
 use rustc_session::Session;
 use rustc_span::Span;
 use rustc_symbol_mangling::test as symbol_names_test;
@@ -182,8 +183,7 @@ pub fn unsize_thin_ptr<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 ) -> (Bx::Value, Bx::Value) {
     debug!("unsize_thin_ptr: {:?} => {:?}", src_ty, dst_ty);
     match (&src_ty.kind, &dst_ty.kind) {
-        (&ty::Ref(_, a, _), &ty::Ref(_, b, _))
-        | (&ty::Ref(_, a, _), &ty::RawPtr(ty::TypeAndMut { ty: b, .. }))
+        (&ty::Ref(_, a, _), &ty::Ref(_, b, _) | &ty::RawPtr(ty::TypeAndMut { ty: b, .. }))
         | (&ty::RawPtr(ty::TypeAndMut { ty: a, .. }), &ty::RawPtr(ty::TypeAndMut { ty: b, .. })) => {
             assert!(bx.cx().type_is_sized(a));
             let ptr_ty = bx.cx().type_ptr_to(bx.cx().backend_type(bx.cx().layout_of(b)));
@@ -232,9 +232,7 @@ pub fn coerce_unsized_into<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let src_ty = src.layout.ty;
     let dst_ty = dst.layout.ty;
     match (&src_ty.kind, &dst_ty.kind) {
-        (&ty::Ref(..), &ty::Ref(..))
-        | (&ty::Ref(..), &ty::RawPtr(..))
-        | (&ty::RawPtr(..), &ty::RawPtr(..)) => {
+        (&ty::Ref(..), &ty::Ref(..) | &ty::RawPtr(..)) | (&ty::RawPtr(..), &ty::RawPtr(..)) => {
             let (base, info) = match bx.load_operand(src).val {
                 OperandValue::Pair(base, info) => {
                     // fat-ptr to fat-ptr unsize preserves the vtable
@@ -400,7 +398,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         None => return None,
     };
 
-    let instance = Instance::mono(cx.tcx(), main_def_id);
+    let instance = Instance::mono(cx.tcx(), main_def_id.to_def_id());
 
     if !cx.codegen_unit().contains_item(&MonoItem::Fn(instance)) {
         // We want to create the wrapper in the same codegen unit as Rust's main
@@ -419,7 +417,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         cx: &'a Bx::CodegenCx,
         sp: Span,
         rust_main: Bx::Value,
-        rust_main_def_id: DefId,
+        rust_main_def_id: LocalDefId,
         use_start_lang_item: bool,
     ) -> Bx::Function {
         // The entry function is either `int main(void)` or `int main(int argc, char **argv)`,
@@ -468,6 +466,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                     start_def_id,
                     cx.tcx().intern_substs(&[main_ret_ty.into()]),
                 )
+                .unwrap()
                 .unwrap(),
             );
             (
@@ -507,7 +506,7 @@ fn get_argc_argv<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     }
 }
 
-pub const CODEGEN_WORKER_ID: usize = ::std::usize::MAX;
+pub const CODEGEN_WORKER_ID: usize = usize::MAX;
 
 pub fn codegen_crate<B: ExtraBackendMethods>(
     backend: B,
@@ -533,7 +532,6 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     // Run the monomorphization collector and partition the collected items into
     // codegen units.
     let codegen_units = tcx.collect_and_partition_mono_items(LOCAL_CRATE).1;
-    let codegen_units = (*codegen_units).clone();
 
     // Force all codegen_unit queries so they are already either red or green
     // when compile_codegen_unit accesses them. We are not able to re-execute
@@ -541,8 +539,8 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     // lead to having to re-execute compile_codegen_unit, possibly
     // unnecessarily.
     if tcx.dep_graph.is_fully_enabled() {
-        for cgu in &codegen_units {
-            tcx.codegen_unit(cgu.name());
+        for cgu in codegen_units {
+            tcx.ensure().codegen_unit(cgu.name());
         }
     }
 
@@ -603,7 +601,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     // We sort the codegen units by size. This way we can schedule work for LLVM
     // a bit more efficiently.
     let codegen_units = {
-        let mut codegen_units = codegen_units;
+        let mut codegen_units = codegen_units.iter().collect::<Vec<_>>();
         codegen_units.sort_by_cached_key(|cgu| cmp::Reverse(cgu.size_estimate()));
         codegen_units
     };
@@ -898,7 +896,7 @@ pub fn provide_both(providers: &mut Providers<'_>) {
             .native_libraries(krate)
             .iter()
             .filter(|lib| {
-                if lib.kind != cstore::NativeLibraryKind::NativeUnknown {
+                if !matches!(lib.kind, NativeLibKind::Dylib | NativeLibKind::Unspecified) {
                     return false;
                 }
                 let cfg = match lib.cfg {
@@ -911,7 +909,7 @@ pub fn provide_both(providers: &mut Providers<'_>) {
             .map(|id| &module_map[&id])
             .flat_map(|module| module.foreign_items.iter().cloned())
             .collect();
-        tcx.arena.alloc(dllimports)
+        dllimports
     };
 
     providers.is_dllimport_foreign_item =
@@ -944,8 +942,18 @@ fn determine_cgu_reuse<'tcx>(tcx: TyCtxt<'tcx>, cgu: &CodegenUnit<'tcx>) -> CguR
     );
 
     if tcx.dep_graph.try_mark_green(tcx, &dep_node).is_some() {
-        // We can re-use either the pre- or the post-thinlto state
-        if tcx.sess.lto() != Lto::No { CguReuse::PreLto } else { CguReuse::PostLto }
+        // We can re-use either the pre- or the post-thinlto state. If no LTO is
+        // being performed then we can use post-LTO artifacts, otherwise we must
+        // reuse pre-LTO artifacts
+        match compute_per_cgu_lto_type(
+            &tcx.sess.lto(),
+            &tcx.sess.opts,
+            &tcx.sess.crate_types(),
+            ModuleKind::Regular,
+        ) {
+            ComputedLtoType::No => CguReuse::PostLto,
+            _ => CguReuse::PreLto,
+        }
     } else {
         CguReuse::No
     }

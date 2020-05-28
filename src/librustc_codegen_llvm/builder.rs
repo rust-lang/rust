@@ -18,7 +18,6 @@ use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_session::config::{self, Sanitizer};
 use rustc_target::abi::{self, Align, Size};
 use rustc_target::spec::{HasTargetSpec, Target};
 use std::borrow::Cow;
@@ -310,7 +309,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         let new_kind = match ty.kind {
             Int(t @ Isize) => Int(t.normalize(self.tcx.sess.target.ptr_width)),
             Uint(t @ Usize) => Uint(t.normalize(self.tcx.sess.target.ptr_width)),
-            ref t @ Uint(_) | ref t @ Int(_) => t.clone(),
+            ref t @ (Uint(_) | Int(_)) => t.clone(),
             _ => panic!("tried to get overflow intrinsic for op applied to non-int type"),
         };
 
@@ -1243,14 +1242,7 @@ impl Builder<'a, 'll, 'tcx> {
             return;
         }
 
-        let opts = &self.cx.sess().opts;
-        let emit = match opts.debugging_opts.sanitizer {
-            // Some sanitizer use lifetime intrinsics. When they are in use,
-            // emit lifetime intrinsics regardless of optimization level.
-            Some(Sanitizer::Address) | Some(Sanitizer::Memory) => true,
-            _ => opts.optimize != config::OptLevel::No,
-        };
-        if !emit {
+        if !self.cx().sess().emit_lifetime_markers() {
             return;
         }
 

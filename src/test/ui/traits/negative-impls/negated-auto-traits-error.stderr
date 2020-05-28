@@ -13,7 +13,7 @@ error[E0277]: `dummy::TestType` cannot be sent between threads safely
   --> $DIR/negated-auto-traits-error.rs:23:5
    |
 LL | struct Outer<T: Send>(T);
-   | ------------------------- required by `Outer`
+   |                 ---- required by this bound in `Outer`
 ...
 LL |     Outer(TestType);
    |     ^^^^^^^^^^^^^^^ `dummy::TestType` cannot be sent between threads safely
@@ -24,7 +24,7 @@ error[E0277]: `dummy1b::TestType` cannot be sent between threads safely
   --> $DIR/negated-auto-traits-error.rs:32:13
    |
 LL | fn is_send<T: Send>(_: T) {}
-   |    -------    ---- required by this bound in `is_send`
+   |               ---- required by this bound in `is_send`
 ...
 LL |     is_send(TestType);
    |             ^^^^^^^^ `dummy1b::TestType` cannot be sent between threads safely
@@ -35,7 +35,7 @@ error[E0277]: `dummy1c::TestType` cannot be sent between threads safely
   --> $DIR/negated-auto-traits-error.rs:40:13
    |
 LL | fn is_send<T: Send>(_: T) {}
-   |    -------    ---- required by this bound in `is_send`
+   |               ---- required by this bound in `is_send`
 ...
 LL |     is_send((8, TestType));
    |             ^^^^^^^^^^^^^ `dummy1c::TestType` cannot be sent between threads safely
@@ -47,7 +47,7 @@ error[E0277]: `dummy2::TestType` cannot be sent between threads safely
   --> $DIR/negated-auto-traits-error.rs:48:13
    |
 LL | fn is_send<T: Send>(_: T) {}
-   |    -------    ---- required by this bound in `is_send`
+   |               ---- required by this bound in `is_send`
 ...
 LL |     is_send(Box::new(TestType));
    |             ^^^^^^^^^^^^^^^^^^
@@ -63,7 +63,7 @@ error[E0277]: `dummy3::TestType` cannot be sent between threads safely
   --> $DIR/negated-auto-traits-error.rs:56:13
    |
 LL | fn is_send<T: Send>(_: T) {}
-   |    -------    ---- required by this bound in `is_send`
+   |               ---- required by this bound in `is_send`
 ...
 LL |     is_send(Box::new(Outer2(TestType)));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ `dummy3::TestType` cannot be sent between threads safely
@@ -77,7 +77,7 @@ error[E0277]: `main::TestType` cannot be sent between threads safely
   --> $DIR/negated-auto-traits-error.rs:66:13
    |
 LL | fn is_sync<T: Sync>(_: T) {}
-   |    -------    ---- required by this bound in `is_sync`
+   |               ---- required by this bound in `is_sync`
 ...
 LL |     is_sync(Outer2(TestType));
    |             ^^^^^^^^^^^^^^^^

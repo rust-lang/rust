@@ -47,6 +47,11 @@ impl<N: Idx, S: Idx> Sccs<N, S> {
     }
 
     /// Returns an iterator over the SCCs in the graph.
+    ///
+    /// The SCCs will be iterated in **dependency order** (or **post order**),
+    /// meaning that if `S1 -> S2`, we will visit `S2` first and `S1` after.
+    /// This is convenient when the edges represent dependencies: when you visit
+    /// `S1`, the value for `S2` will already have been computed.
     pub fn all_sccs(&self) -> impl Iterator<Item = S> {
         (0..self.scc_data.len()).map(S::new)
     }

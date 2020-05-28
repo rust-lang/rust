@@ -1,9 +1,7 @@
 use super::ty::AllowPlus;
 use super::{BlockMode, Parser, PathStyle, SemiColonMode, SeqSep, TokenExpectType, TokenType};
 
-use rustc_ast::ast::{
-    self, BinOpKind, BindingMode, BlockCheckMode, Expr, ExprKind, Ident, Item, Param,
-};
+use rustc_ast::ast::{self, BinOpKind, BindingMode, BlockCheckMode, Expr, ExprKind, Item, Param};
 use rustc_ast::ast::{AttrVec, ItemKind, Mutability, Pat, PatKind, PathSegment, QSelf, Ty, TyKind};
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Lit, LitKind, TokenKind};
@@ -13,7 +11,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{pluralize, struct_span_err};
 use rustc_errors::{Applicability, DiagnosticBuilder, Handler, PResult};
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::kw;
+use rustc_span::symbol::{kw, Ident};
 use rustc_span::{MultiSpan, Span, SpanSnippetError, DUMMY_SP};
 
 use log::{debug, trace};
@@ -97,6 +95,7 @@ impl RecoverQPath for Expr {
             kind: ExprKind::Path(qself, path),
             attrs: AttrVec::new(),
             id: ast::DUMMY_NODE_ID,
+            tokens: None,
         }
     }
 }
@@ -508,11 +507,11 @@ impl<'a> Parser<'a> {
                 // `x == y == z`
                 (BinOpKind::Eq, AssocOp::Equal) |
                 // `x < y < z` and friends.
-                (BinOpKind::Lt, AssocOp::Less) | (BinOpKind::Lt, AssocOp::LessEqual) |
-                (BinOpKind::Le, AssocOp::LessEqual) | (BinOpKind::Le, AssocOp::Less) |
+                (BinOpKind::Lt, AssocOp::Less | AssocOp::LessEqual) |
+                (BinOpKind::Le, AssocOp::LessEqual | AssocOp::Less) |
                 // `x > y > z` and friends.
-                (BinOpKind::Gt, AssocOp::Greater) | (BinOpKind::Gt, AssocOp::GreaterEqual) |
-                (BinOpKind::Ge, AssocOp::GreaterEqual) | (BinOpKind::Ge, AssocOp::Greater) => {
+                (BinOpKind::Gt, AssocOp::Greater | AssocOp::GreaterEqual) |
+                (BinOpKind::Ge, AssocOp::GreaterEqual | AssocOp::Greater) => {
                     let expr_to_str = |e: &Expr| {
                         self.span_to_snippet(e.span)
                             .unwrap_or_else(|_| pprust::expr_to_string(&e))
@@ -526,8 +525,7 @@ impl<'a> Parser<'a> {
                     false // Keep the current parse behavior, where the AST is `(x < y) < z`.
                 }
                 // `x == y < z`
-                (BinOpKind::Eq, AssocOp::Less) | (BinOpKind::Eq, AssocOp::LessEqual) |
-                (BinOpKind::Eq, AssocOp::Greater) | (BinOpKind::Eq, AssocOp::GreaterEqual) => {
+                (BinOpKind::Eq, AssocOp::Less | AssocOp::LessEqual | AssocOp::Greater | AssocOp::GreaterEqual) => {
                     // Consume `z`/outer-op-rhs.
                     let snapshot = self.clone();
                     match self.parse_expr() {
@@ -545,8 +543,7 @@ impl<'a> Parser<'a> {
                     }
                 }
                 // `x > y == z`
-                (BinOpKind::Lt, AssocOp::Equal) | (BinOpKind::Le, AssocOp::Equal) |
-                (BinOpKind::Gt, AssocOp::Equal) | (BinOpKind::Ge, AssocOp::Equal) => {
+                (BinOpKind::Lt | BinOpKind::Le | BinOpKind::Gt | BinOpKind::Ge, AssocOp::Equal) => {
                     let snapshot = self.clone();
                     // At this point it is always valid to enclose the lhs in parentheses, no
                     // further checks are necessary.
@@ -579,11 +576,13 @@ impl<'a> Parser<'a> {
     /// Keep in mind that given that `outer_op.is_comparison()` holds and comparison ops are left
     /// associative we can infer that we have:
     ///
+    /// ```text
     ///           outer_op
     ///           /   \
     ///     inner_op   r2
     ///        /  \
     ///      l1    r1
+    /// ```
     pub(super) fn check_no_chained_comparison(
         &mut self,
         inner_op: &Expr,
@@ -929,13 +928,26 @@ impl<'a> Parser<'a> {
             return Ok(());
         }
         let sm = self.sess.source_map();
-        let msg = format!("expected `;`, found `{}`", super::token_descr(&self.token));
+        let msg = format!("expected `;`, found {}", super::token_descr(&self.token));
         let appl = Applicability::MachineApplicable;
         if self.token.span == DUMMY_SP || self.prev_token.span == DUMMY_SP {
             // Likely inside a macro, can't provide meaningful suggestions.
             return self.expect(&token::Semi).map(drop);
         } else if !sm.is_multiline(self.prev_token.span.until(self.token.span)) {
             // The current token is in the same line as the prior token, not recoverable.
+        } else if [token::Comma, token::Colon].contains(&self.token.kind)
+            && &self.prev_token.kind == &token::CloseDelim(token::Paren)
+        {
+            // Likely typo: The current token is on a new line and is expected to be
+            // `.`, `;`, `?`, or an operator after a close delimiter token.
+            //
+            // let a = std::process::Command::new("echo")
+            //         .arg("1")
+            //         ,arg("2")
+            //         ^
+            // https://github.com/rust-lang/rust/issues/72253
+            self.expect(&token::Semi)?;
+            return Ok(());
         } else if self.look_ahead(1, |t| {
             t == &token::CloseDelim(token::Brace) || t.can_begin_expr() && t.kind != token::Colon
         }) && [token::Comma, token::Colon].contains(&self.token.kind)
@@ -1051,6 +1063,39 @@ impl<'a> Parser<'a> {
                     Applicability::MachineApplicable,
                 )
                 .emit();
+        }
+    }
+
+    pub(super) fn try_macro_suggestion(&mut self) -> PResult<'a, P<Expr>> {
+        let is_try = self.token.is_keyword(kw::Try);
+        let is_questionmark = self.look_ahead(1, |t| t == &token::Not); //check for !
+        let is_open = self.look_ahead(2, |t| t == &token::OpenDelim(token::Paren)); //check for (
+
+        if is_try && is_questionmark && is_open {
+            let lo = self.token.span;
+            self.bump(); //remove try
+            self.bump(); //remove !
+            let try_span = lo.to(self.token.span); //we take the try!( span
+            self.bump(); //remove (
+            let is_empty = self.token == token::CloseDelim(token::Paren); //check if the block is empty
+            self.consume_block(token::Paren, ConsumeClosingDelim::No); //eat the block
+            let hi = self.token.span;
+            self.bump(); //remove )
+            let mut err = self.struct_span_err(lo.to(hi), "use of deprecated `try` macro");
+            err.note("in the 2018 edition `try` is a reserved keyword, and the `try!()` macro is deprecated");
+            let prefix = if is_empty { "" } else { "alternatively, " };
+            if !is_empty {
+                err.multipart_suggestion(
+                    "you can use the `?` operator instead",
+                    vec![(try_span, "".to_owned()), (hi, "?".to_owned())],
+                    Applicability::MachineApplicable,
+                );
+            }
+            err.span_suggestion(lo.shrink_to_lo(), &format!("{}you can still access the deprecated `try!()` macro using the \"raw identifier\" syntax", prefix), "r#".to_string(), Applicability::MachineApplicable);
+            err.emit();
+            Ok(self.mk_expr_err(lo.to(hi)))
+        } else {
+            Err(self.expected_expression_found()) // The user isn't trying to invoke the try! macro
         }
     }
 

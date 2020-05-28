@@ -1,9 +1,10 @@
 use super::*;
 use crate::infer::{CombinedSnapshot, PlaceholderMap};
+use rustc_data_structures::undo_log::UndoLogs;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::relate::RelateResult;
 
-impl<'tcx> RegionConstraintCollector<'tcx> {
+impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     /// Searches region constraints created since `snapshot` that
     /// affect one of the placeholders in `placeholder_map`, returning
     /// an error if any of the placeholders are related to another
@@ -31,7 +32,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
     ) -> RelateResult<'tcx, ()> {
         debug!("leak_check(placeholders={:?})", placeholder_map);
 
-        assert!(self.in_snapshot());
+        assert!(UndoLogs::<super::UndoLog<'_>>::in_snapshot(&self.undo_log));
 
         // Go through each placeholder that we created.
         for &placeholder_region in placeholder_map.values() {
@@ -45,7 +46,11 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
             // in some way. This means any region that either outlives
             // or is outlived by a placeholder.
             let mut taint_set = TaintSet::new(TaintDirections::both(), placeholder_region);
-            taint_set.fixed_point(tcx, &self.undo_log, &self.data.verifys);
+            taint_set.fixed_point(
+                tcx,
+                self.undo_log.region_constraints(),
+                &self.storage.data.verifys,
+            );
             let tainted_regions = taint_set.into_set();
 
             // Report an error if two placeholders in the same universe
@@ -88,19 +93,21 @@ impl<'tcx> TaintSet<'tcx> {
         TaintSet { directions, regions }
     }
 
-    fn fixed_point(
+    fn fixed_point<'a>(
         &mut self,
         tcx: TyCtxt<'tcx>,
-        undo_log: &[UndoLog<'tcx>],
+        undo_log: impl IntoIterator<Item = &'a UndoLog<'tcx>> + Clone,
         verifys: &[Verify<'tcx>],
-    ) {
+    ) where
+        'tcx: 'a,
+    {
         let mut prev_len = 0;
         while prev_len < self.len() {
             debug!("tainted: prev_len = {:?} new_len = {:?}", prev_len, self.len());
 
             prev_len = self.len();
 
-            for undo_entry in undo_log {
+            for undo_entry in undo_log.clone() {
                 match undo_entry {
                     &AddConstraint(Constraint::VarSubVar(a, b)) => {
                         self.add_edge(tcx.mk_region(ReVar(a)), tcx.mk_region(ReVar(b)));

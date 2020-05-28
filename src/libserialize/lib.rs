@@ -10,7 +10,7 @@ Core encoding and decoding interfaces.
     test(attr(allow(unused_variables), deny(warnings)))
 )]
 #![feature(box_syntax)]
-#![feature(specialization)]
+#![feature(specialization)] // FIXME: min_specialization does not work
 #![feature(never_type)]
 #![feature(nll)]
 #![feature(associated_type_bounds)]
@@ -25,7 +25,6 @@ pub use self::serialize::{UseSpecializedDecodable, UseSpecializedEncodable};
 mod collection_impls;
 mod serialize;
 
-pub mod hex;
 pub mod json;
 
 pub mod leb128;

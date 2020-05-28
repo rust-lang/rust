@@ -8,7 +8,7 @@ use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::traversal;
 use rustc_middle::mir::visit::{MutatingUseContext, NonUseContext, PlaceContext, Visitor};
-use rustc_middle::mir::{self, Body, Local, Location, ReadOnlyBodyAndCache};
+use rustc_middle::mir::{self, Body, Local, Location};
 use rustc_middle::ty::{RegionVid, TyCtxt};
 use std::fmt;
 use std::ops::Index;
@@ -90,7 +90,7 @@ crate enum LocalsStateAtExit {
 impl LocalsStateAtExit {
     fn build(
         locals_are_invalidated_at_exit: bool,
-        body: ReadOnlyBodyAndCache<'_, 'tcx>,
+        body: &Body<'tcx>,
         move_data: &MoveData<'tcx>,
     ) -> Self {
         struct HasStorageDead(BitSet<Local>);
@@ -122,7 +122,7 @@ impl LocalsStateAtExit {
 impl<'tcx> BorrowSet<'tcx> {
     pub fn build(
         tcx: TyCtxt<'tcx>,
-        body: ReadOnlyBodyAndCache<'_, 'tcx>,
+        body: &Body<'tcx>,
         locals_are_invalidated_at_exit: bool,
         move_data: &MoveData<'tcx>,
     ) -> Self {

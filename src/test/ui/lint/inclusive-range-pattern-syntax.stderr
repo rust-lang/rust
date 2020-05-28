@@ -16,3 +16,5 @@ warning: `...` range patterns are deprecated
 LL |         &1...2 => {}
    |         ^^^^^^ help: use `..=` for an inclusive range: `&(1..=2)`
 
+warning: 2 warnings emitted
+

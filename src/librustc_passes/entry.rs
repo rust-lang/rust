@@ -1,14 +1,14 @@
 use rustc_ast::attr;
 use rustc_ast::entry::EntryPointType;
 use rustc_errors::struct_span_err;
-use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::{HirId, ImplItem, Item, ItemKind, TraitItem};
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::EntryFnType;
-use rustc_session::{config, Session};
+use rustc_session::config::{CrateType, EntryFnType};
+use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, DUMMY_SP};
 
@@ -34,7 +34,7 @@ struct EntryContext<'a, 'tcx> {
 impl<'a, 'tcx> ItemLikeVisitor<'tcx> for EntryContext<'a, 'tcx> {
     fn visit_item(&mut self, item: &'tcx Item<'tcx>) {
         let def_id = self.map.local_def_id(item.hir_id);
-        let def_key = self.map.def_key(def_id.expect_local());
+        let def_key = self.map.def_key(def_id);
         let at_root = def_key.parent == Some(CRATE_DEF_INDEX);
         find_item(item, self, at_root);
     }
@@ -48,11 +48,10 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for EntryContext<'a, 'tcx> {
     }
 }
 
-fn entry_fn(tcx: TyCtxt<'_>, cnum: CrateNum) -> Option<(DefId, EntryFnType)> {
+fn entry_fn(tcx: TyCtxt<'_>, cnum: CrateNum) -> Option<(LocalDefId, EntryFnType)> {
     assert_eq!(cnum, LOCAL_CRATE);
 
-    let any_exe =
-        tcx.sess.crate_types.borrow().iter().any(|ty| *ty == config::CrateType::Executable);
+    let any_exe = tcx.sess.crate_types().iter().any(|ty| *ty == CrateType::Executable);
     if !any_exe {
         // No need to find a main function.
         return None;
@@ -143,7 +142,10 @@ fn find_item(item: &Item<'_>, ctxt: &mut EntryContext<'_, '_>, at_root: bool) {
     }
 }
 
-fn configure_main(tcx: TyCtxt<'_>, visitor: &EntryContext<'_, '_>) -> Option<(DefId, EntryFnType)> {
+fn configure_main(
+    tcx: TyCtxt<'_>,
+    visitor: &EntryContext<'_, '_>,
+) -> Option<(LocalDefId, EntryFnType)> {
     if let Some((hir_id, _)) = visitor.start_fn {
         Some((tcx.hir().local_def_id(hir_id), EntryFnType::Start))
     } else if let Some((hir_id, _)) = visitor.attr_main_fn {
@@ -211,7 +213,7 @@ fn no_main_err(tcx: TyCtxt<'_>, visitor: &EntryContext<'_, '_>) {
     err.emit();
 }
 
-pub fn find_entry_point(tcx: TyCtxt<'_>) -> Option<(DefId, EntryFnType)> {
+pub fn find_entry_point(tcx: TyCtxt<'_>) -> Option<(LocalDefId, EntryFnType)> {
     tcx.entry_fn(LOCAL_CRATE)
 }
 

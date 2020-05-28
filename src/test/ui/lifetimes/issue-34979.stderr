@@ -1,0 +1,14 @@
+error[E0283]: type annotations needed
+  --> $DIR/issue-34979.rs:6:13
+   |
+LL | trait Foo {}
+   | --------- required by this bound in `Foo`
+...
+LL |     &'a (): Foo,
+   |             ^^^ cannot infer type for reference `&'a ()`
+   |
+   = note: cannot satisfy `&'a (): Foo`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0283`.

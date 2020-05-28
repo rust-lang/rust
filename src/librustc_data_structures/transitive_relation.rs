@@ -289,7 +289,7 @@ impl<T: Clone + Debug + Eq + Hash> TransitiveRelation<T> {
     ///
     /// - A != B
     /// - A R B is true
-    /// - for each i, j: B[i] R B[j] does not hold
+    /// - for each i, j: `B[i]` R `B[j]` does not hold
     ///
     /// The intuition is that this moves "one step up" through a lattice
     /// (where the relation is encoding the `<=` relation for the lattice).

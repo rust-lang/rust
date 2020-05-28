@@ -1,6 +1,9 @@
 error[E0277]: the size for values of type `[()]` cannot be known at compilation time
   --> $DIR/issue-61631-default-type-param-can-reference-self-in-trait.rs:19:6
    |
+LL | trait Tsized<P: Sized = [Self]> {}
+   |              - required by this bound in `Tsized`
+LL | 
 LL | impl Tsized for () {}
    |      ^^^^^^ doesn't have a size known at compile-time
    |

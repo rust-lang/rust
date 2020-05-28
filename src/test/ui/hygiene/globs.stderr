@@ -4,7 +4,7 @@ error[E0425]: cannot find function `f` in this scope
 LL |         f();
    |         ^ not found in this scope
    |
-help: possible candidate is found in another module, you can import it into scope
+help: consider importing one of these items
    |
 LL | use foo::f;
    |
@@ -23,7 +23,7 @@ LL | |     }
    | |_____- in this macro invocation
    |
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
-help: possible candidates are found in other modules, you can import them into scope
+help: consider importing one of these items
    |
 LL | use bar::g;
    |
@@ -41,7 +41,7 @@ LL | n!(f);
 LL |         n!(f);
    |            ^ not found in this scope
    |
-   = note: possible candidate is found in another module, you can import it into scope:
+   = note: consider importing one of these items:
            foo::f
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -54,7 +54,7 @@ LL | n!(f);
 LL |                 f
    |                 ^ not found in this scope
    |
-   = note: possible candidate is found in another module, you can import it into scope:
+   = note: consider importing one of these items:
            foo::f
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 

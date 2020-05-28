@@ -25,6 +25,7 @@
     )
 )]
 #[doc(alias = "?")]
+#[cfg_attr(not(bootstrap), lang = "try")]
 pub trait Try {
     /// The type of this value when viewed as successful.
     #[unstable(feature = "try_trait", issue = "42327")]

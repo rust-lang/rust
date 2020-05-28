@@ -82,21 +82,12 @@ fn naked(val: &'ll Value, is_naked: bool) {
 
 pub fn set_frame_pointer_elimination(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     if cx.sess().must_not_eliminate_frame_pointers() {
-        if llvm_util::get_major_version() >= 8 {
-            llvm::AddFunctionAttrStringValue(
-                llfn,
-                llvm::AttributePlace::Function,
-                const_cstr!("frame-pointer"),
-                const_cstr!("all"),
-            );
-        } else {
-            llvm::AddFunctionAttrStringValue(
-                llfn,
-                llvm::AttributePlace::Function,
-                const_cstr!("no-frame-pointer-elim"),
-                const_cstr!("true"),
-            );
-        }
+        llvm::AddFunctionAttrStringValue(
+            llfn,
+            llvm::AttributePlace::Function,
+            const_cstr!("frame-pointer"),
+            const_cstr!("all"),
+        );
     }
 }
 
@@ -133,7 +124,7 @@ fn set_probestack(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     // sanitizer and thread sanitizer. With asan we're already protected from
     // stack overflow anyway so we don't really need stack probes regardless.
     match cx.sess().opts.debugging_opts.sanitizer {
-        Some(Sanitizer::Address) | Some(Sanitizer::Thread) => return,
+        Some(Sanitizer::Address | Sanitizer::Thread) => return,
         _ => {}
     }
 
@@ -261,7 +252,7 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
         inline(cx, llfn, attributes::InlineAttr::Hint);
     }
 
-    inline(cx, llfn, codegen_fn_attrs.inline);
+    inline(cx, llfn, codegen_fn_attrs.inline.clone());
 
     // The `uwtable` attribute according to LLVM is:
     //
@@ -279,7 +270,7 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
     //
     // You can also find more info on why Windows is whitelisted here in:
     //      https://bugzilla.mozilla.org/show_bug.cgi?id=1302078
-    if !cx.sess().no_landing_pads() || cx.sess().target.target.options.requires_uwtable {
+    if cx.sess().must_emit_unwind_tables() {
         attributes::emit_uwtable(llfn, true);
     }
 
@@ -292,6 +283,12 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
     }
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::FFI_RETURNS_TWICE) {
         Attribute::ReturnsTwice.apply_llfn(Function, llfn);
+    }
+    if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::FFI_PURE) {
+        Attribute::ReadOnly.apply_llfn(Function, llfn);
+    }
+    if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::FFI_CONST) {
+        Attribute::ReadNone.apply_llfn(Function, llfn);
     }
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
         naked(llfn, true);
@@ -356,15 +353,12 @@ pub fn provide(providers: &mut Providers<'_>) {
         if tcx.sess.opts.actually_rustdoc {
             // rustdoc needs to be able to document functions that use all the features, so
             // whitelist them all
-            tcx.arena
-                .alloc(llvm_util::all_known_features().map(|(a, b)| (a.to_string(), b)).collect())
+            llvm_util::all_known_features().map(|(a, b)| (a.to_string(), b)).collect()
         } else {
-            tcx.arena.alloc(
-                llvm_util::target_feature_whitelist(tcx.sess)
-                    .iter()
-                    .map(|&(a, b)| (a.to_string(), b))
-                    .collect(),
-            )
+            llvm_util::target_feature_whitelist(tcx.sess)
+                .iter()
+                .map(|&(a, b)| (a.to_string(), b))
+                .collect()
         }
     };
 
@@ -373,8 +367,8 @@ pub fn provide(providers: &mut Providers<'_>) {
 
 pub fn provide_extern(providers: &mut Providers<'_>) {
     providers.wasm_import_module_map = |tcx, cnum| {
-        // Build up a map from DefId to a `NativeLibrary` structure, where
-        // `NativeLibrary` internally contains information about
+        // Build up a map from DefId to a `NativeLib` structure, where
+        // `NativeLib` internally contains information about
         // `#[link(wasm_import_module = "...")]` for example.
         let native_libs = tcx.native_libraries(cnum);
 
@@ -396,7 +390,7 @@ pub fn provide_extern(providers: &mut Providers<'_>) {
             }));
         }
 
-        tcx.arena.alloc(ret)
+        ret
     };
 }
 

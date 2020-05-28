@@ -4,7 +4,7 @@ use super::{FollowedByType, Parser, PathStyle};
 
 use crate::maybe_whole;
 
-use rustc_ast::ast::{self, AttrStyle, AttrVec, Attribute, Ident, DUMMY_NODE_ID};
+use rustc_ast::ast::{self, AttrStyle, AttrVec, Attribute, DUMMY_NODE_ID};
 use rustc_ast::ast::{AssocItem, AssocItemKind, ForeignItemKind, Item, ItemKind, Mod};
 use rustc_ast::ast::{Async, Const, Defaultness, IsAuto, Mutability, Unsafe, UseTree, UseTreeKind};
 use rustc_ast::ast::{BindingMode, Block, FnDecl, FnSig, Param, SelfKind};
@@ -18,7 +18,7 @@ use rustc_ast_pretty::pprust;
 use rustc_errors::{struct_span_err, Applicability, PResult, StashKey};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{self, Span};
-use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 
 use log::debug;
 use std::convert::TryFrom;
@@ -743,7 +743,7 @@ impl<'a> Parser<'a> {
 
     /// Parses a `UseTree`.
     ///
-    /// ```
+    /// ```text
     /// USE_TREE = [`::`] `*` |
     ///            [`::`] `{` USE_TREE_LIST `}` |
     ///            PATH `::` `*` |
@@ -792,7 +792,7 @@ impl<'a> Parser<'a> {
 
     /// Parses a `UseTreeKind::Nested(list)`.
     ///
-    /// ```
+    /// ```text
     /// USE_TREE_LIST = Ø | (USE_TREE `,`)* USE_TREE [`,`]
     /// ```
     fn parse_use_tree_list(&mut self) -> PResult<'a, Vec<(UseTree, ast::NodeId)>> {
@@ -804,7 +804,7 @@ impl<'a> Parser<'a> {
         if self.eat_keyword(kw::As) { self.parse_ident_or_underscore().map(Some) } else { Ok(None) }
     }
 
-    fn parse_ident_or_underscore(&mut self) -> PResult<'a, ast::Ident> {
+    fn parse_ident_or_underscore(&mut self) -> PResult<'a, Ident> {
         match self.token.ident() {
             Some((ident @ Ident { name: kw::Underscore, .. }, false)) => {
                 self.bump();
@@ -834,7 +834,7 @@ impl<'a> Parser<'a> {
         Ok((item_name, ItemKind::ExternCrate(orig_name)))
     }
 
-    fn parse_crate_name_with_dashes(&mut self) -> PResult<'a, ast::Ident> {
+    fn parse_crate_name_with_dashes(&mut self) -> PResult<'a, Ident> {
         let error_msg = "crate name using dashes are not valid in `extern crate` statements";
         let suggestion_msg = "if the original crate name uses dashes you need to use underscores \
                               in the code";
@@ -1550,7 +1550,7 @@ impl<'a> Parser<'a> {
         if span.rust_2015() {
             let diag = self.diagnostic();
             struct_span_err!(diag, span, E0670, "`async fn` is not permitted in the 2015 edition")
-                .note("to use `async fn`, switch to Rust 2018")
+                .span_label(span, "to use `async fn`, switch to Rust 2018")
                 .help("set `edition = \"2018\"` in `Cargo.toml`")
                 .note("for more on editions, read https://doc.rust-lang.org/edition-guide")
                 .emit();
@@ -1650,7 +1650,7 @@ impl<'a> Parser<'a> {
                 // Recover from attempting to parse the argument as a type without pattern.
                 Err(mut err) => {
                     err.cancel();
-                    mem::replace(self, parser_snapshot_before_ty);
+                    *self = parser_snapshot_before_ty;
                     self.recover_arg_parse()?
                 }
             }

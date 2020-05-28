@@ -8,6 +8,7 @@
 
 use crate::cell::UnsafeCell;
 use crate::cmp;
+use crate::fmt::Debug;
 use crate::hash::Hash;
 use crate::hash::Hasher;
 
@@ -90,7 +91,7 @@ impl<T: ?Sized> !Send for *mut T {}
             ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>"
 )]
 #[fundamental] // for Default, for example, which requires that `[T]: !Default` be evaluatable
-#[cfg_attr(not(bootstrap), rustc_specialization_trait)]
+#[rustc_specialization_trait]
 pub trait Sized {
     // Empty.
 }
@@ -363,6 +364,13 @@ pub trait StructuralEq {
 /// [impls]: #implementors
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "copy"]
+// FIXME(matthewjasper) This allows copying a type that doesn't implement
+// `Copy` because of unsatisfied lifetime bounds (copying `A<'_>` when only
+// `A<'static>: Copy` and `A<'_>: Clone`).
+// We have this attribute here for now only because there are quite a few
+// existing specializations on `Copy` that already exist in the standard
+// library, and there's no way to safely have this behavior right now.
+#[rustc_unsafe_specialization_marker]
 pub trait Copy: Clone {
     // Empty.
 }
@@ -672,6 +680,37 @@ mod impls {
     unsafe impl<T: Send + ?Sized> Send for &mut T {}
 }
 
+/// Compiler-internal trait used to indicate the type of enum discriminants.
+///
+/// This trait is automatically implemented for every type and does not add any
+/// guarantees to [`mem::Discriminant`]. It is **undefined behavior** to transmute
+/// between `DiscriminantKind::Discriminant` and `mem::Discriminant`.
+///
+/// [`mem::Discriminant`]: https://doc.rust-lang.org/stable/core/mem/struct.Discriminant.html
+#[unstable(
+    feature = "discriminant_kind",
+    issue = "none",
+    reason = "this trait is unlikely to ever be stabilized, use `mem::discriminant` instead"
+)]
+#[cfg_attr(not(bootstrap), lang = "discriminant_kind")]
+pub trait DiscriminantKind {
+    /// The type of the dicriminant, which must satisfy the trait
+    /// bounds required by `mem::Discriminant`.
+    type Discriminant: Clone + Copy + Debug + Eq + PartialEq + Hash + Send + Sync + Unpin;
+}
+
+// Manually implement `DiscriminantKind` for all types during bootstrap
+// to reduce the required amount of conditional compilation.
+#[unstable(
+    feature = "discriminant_kind",
+    issue = "none",
+    reason = "this trait is unlikely to ever be stabilized, use `mem::discriminant` instead"
+)]
+#[cfg(bootstrap)]
+impl<T: ?Sized> DiscriminantKind for T {
+    type Discriminant = u64;
+}
+
 /// Compiler-internal trait used to determine whether a type contains
 /// any `UnsafeCell` internally, but not through an indirection.
 /// This affects, for example, whether a `static` of that type is
@@ -709,6 +748,7 @@ unsafe impl<T: ?Sized> Freeze for &mut T {}
 /// So this, for example, can only be done on types implementing `Unpin`:
 ///
 /// ```rust
+/// # #![allow(unused_must_use)]
 /// use std::mem;
 /// use std::pin::Pin;
 ///

@@ -1,10 +1,6 @@
-// run-pass
-
-#![allow(unused_macros)]
+// check-pass
 // aux-build:hygiene_example_codegen.rs
 // aux-build:hygiene_example.rs
-
-#![feature(proc_macro_hygiene)]
 
 extern crate hygiene_example;
 use hygiene_example::hello;

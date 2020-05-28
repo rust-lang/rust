@@ -62,6 +62,32 @@ fn compute_components(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, out: &mut SmallVec<[Compo
     // in the `subtys` iterator (e.g., when encountering a
     // projection).
     match ty.kind {
+            ty::FnDef(_, substs) => {
+                // HACK(eddyb) ignore lifetimes found shallowly in `substs`.
+                // This is inconsistent with `ty::Adt` (including all substs)
+                // and with `ty::Closure` (ignoring all substs other than
+                // upvars, of which a `ty::FnDef` doesn't have any), but
+                // consistent with previous (accidental) behavior.
+                // See https://github.com/rust-lang/rust/issues/70917
+                // for further background and discussion.
+                for child in substs {
+                    match child.unpack() {
+                        GenericArgKind::Type(ty) => {
+                            compute_components(tcx, ty, out);
+                        }
+                        GenericArgKind::Lifetime(_) => {}
+                        GenericArgKind::Const(_) => {
+                            compute_components_recursive(tcx, child, out);
+                        }
+                    }
+                }
+            }
+
+            ty::Array(element, _) => {
+                // Don't look into the len const as it doesn't affect regions
+                compute_components(tcx, element, out);
+            }
+
             ty::Closure(_, ref substs) => {
                 for upvar_ty in substs.as_closure().upvar_tys() {
                     compute_components(tcx, upvar_ty, out);
@@ -114,8 +140,6 @@ fn compute_components(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, out: &mut SmallVec<[Compo
                 }
             }
 
-            ty::UnnormalizedProjection(..) => bug!("only used with chalk-engine"),
-
             // We assume that inference variables are fully resolved.
             // So, if we encounter an inference variable, just record
             // the unresolved variable as a component.
@@ -136,23 +160,21 @@ fn compute_components(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, out: &mut SmallVec<[Compo
             ty::Float(..) |       // OutlivesScalar
             ty::Never |           // ...
             ty::Adt(..) |         // OutlivesNominalType
-            ty::Opaque(..) |        // OutlivesNominalType (ish)
+            ty::Opaque(..) |      // OutlivesNominalType (ish)
             ty::Foreign(..) |     // OutlivesNominalType
             ty::Str |             // OutlivesScalar (ish)
-            ty::Array(..) |       // ...
             ty::Slice(..) |       // ...
             ty::RawPtr(..) |      // ...
             ty::Ref(..) |         // OutlivesReference
             ty::Tuple(..) |       // ...
-            ty::FnDef(..) |       // OutlivesFunction (*)
             ty::FnPtr(_) |        // OutlivesFunction (*)
-            ty::Dynamic(..) |       // OutlivesObject, OutlivesFragment (*)
+            ty::Dynamic(..) |     // OutlivesObject, OutlivesFragment (*)
             ty::Placeholder(..) |
             ty::Bound(..) |
             ty::Error => {
-                // (*) Bare functions and traits are both binders. In the
-                // RFC, this means we would add the bound regions to the
-                // "bound regions list".  In our representation, no such
+                // (*) Function pointers and trait objects are both binders.
+                // In the RFC, this means we would add the bound regions to
+                // the "bound regions list".  In our representation, no such
                 // list is maintained explicitly, because bound regions
                 // themselves can be readily identified.
                 compute_components_recursive(tcx, ty.into(), out);

@@ -26,7 +26,6 @@ use rustc_span::symbol::Symbol;
 use rustc_target::spec::Target;
 use std::any::Any;
 use std::path::Path;
-use std::sync::Arc;
 
 pub struct NoLlvmMetadataLoader;
 
@@ -54,10 +53,10 @@ impl CodegenBackend for TheBackend {
         rustc_symbol_mangling::provide(providers);
 
         providers.target_features_whitelist = |tcx, _cnum| {
-            tcx.arena.alloc(Default::default()) // Just a dummy
+            Default::default() // Just a dummy
         };
         providers.is_reachable_non_generic = |_tcx, _defid| true;
-        providers.exported_symbols = |_tcx, _crate| Arc::new(Vec::new());
+        providers.exported_symbols = |_tcx, _crate| &[];
     }
 
     fn provide_extern(&self, providers: &mut Providers) {

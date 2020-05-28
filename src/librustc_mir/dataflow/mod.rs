@@ -4,20 +4,16 @@ use rustc_span::symbol::{sym, Symbol};
 
 pub(crate) use self::drop_flag_effects::*;
 pub use self::framework::{
-    visit_results, Analysis, AnalysisDomain, BorrowckFlowState, BorrowckResults, BottomValue,
-    Engine, GenKill, GenKillAnalysis, Results, ResultsCursor, ResultsRefCursor, ResultsVisitor,
-};
-pub use self::impls::{
-    borrows::Borrows, DefinitelyInitializedPlaces, EverInitializedPlaces, MaybeBorrowedLocals,
-    MaybeInitializedPlaces, MaybeMutBorrowedLocals, MaybeRequiresStorage, MaybeStorageLive,
-    MaybeUninitializedPlaces,
+    visit_results, Analysis, AnalysisDomain, Backward, BorrowckFlowState, BorrowckResults,
+    BottomValue, Engine, Forward, GenKill, GenKillAnalysis, Results, ResultsCursor,
+    ResultsRefCursor, ResultsVisitor,
 };
 
 use self::move_paths::MoveData;
 
 pub mod drop_flag_effects;
 mod framework;
-mod impls;
+pub mod impls;
 pub mod move_paths;
 
 pub(crate) mod indexes {

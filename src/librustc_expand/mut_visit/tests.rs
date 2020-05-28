@@ -1,9 +1,10 @@
 use crate::tests::{matches_codepattern, string_to_crate};
 
-use rustc_ast::ast::{self, Ident};
+use rustc_ast::ast;
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::with_default_globals;
 use rustc_ast_pretty::pprust;
+use rustc_span::symbol::Ident;
 
 // This version doesn't care about getting comments or doc-strings in.
 fn fake_print_crate(s: &mut pprust::State<'_>, krate: &ast::Crate) {
@@ -14,7 +15,7 @@ fn fake_print_crate(s: &mut pprust::State<'_>, krate: &ast::Crate) {
 struct ToZzIdentMutVisitor;
 
 impl MutVisitor for ToZzIdentMutVisitor {
-    fn visit_ident(&mut self, ident: &mut ast::Ident) {
+    fn visit_ident(&mut self, ident: &mut Ident) {
         *ident = Ident::from_str("zz");
     }
     fn visit_mac(&mut self, mac: &mut ast::MacCall) {

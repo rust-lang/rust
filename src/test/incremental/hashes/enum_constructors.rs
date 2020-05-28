@@ -274,14 +274,14 @@ pub enum Clike2 {
 // Change constructor path (C-like) --------------------------------------
 #[cfg(cfail1)]
 pub fn change_constructor_path_c_like() {
-    let _ = Clike::B;
+    let _x = Clike::B;
 }
 
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir,mir_built,typeck_tables_of")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_constructor_path_c_like() {
-    let _ = Clike2::B;
+    let _x = Clike2::B;
 }
 
 
@@ -289,14 +289,14 @@ pub fn change_constructor_path_c_like() {
 // Change constructor variant (C-like) --------------------------------------
 #[cfg(cfail1)]
 pub fn change_constructor_variant_c_like() {
-    let _ = Clike::A;
+    let _x = Clike::A;
 }
 
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir,mir_built")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_constructor_variant_c_like() {
-    let _ = Clike::C;
+    let _x = Clike::C;
 }
 
 

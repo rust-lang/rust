@@ -235,9 +235,7 @@ impl<'a> Classifier<'a> {
             // If this '&' or '*' token is followed by a non-whitespace token, assume that it's the
             // reference or dereference operator or a reference or pointer type, instead of the
             // bit-and or multiplication operator.
-            token::BinOp(token::And) | token::BinOp(token::Star)
-                if self.peek()? != &token::Whitespace =>
-            {
+            token::BinOp(token::And | token::Star) if self.peek()? != &token::Whitespace => {
                 Class::RefKeyWord
             }
 
@@ -275,9 +273,7 @@ impl<'a> Classifier<'a> {
             | token::ModSep
             | token::LArrow
             | token::OpenDelim(_)
-            | token::CloseDelim(token::Brace)
-            | token::CloseDelim(token::Paren)
-            | token::CloseDelim(token::NoDelim) => Class::None,
+            | token::CloseDelim(token::Brace | token::Paren | token::NoDelim) => Class::None,
 
             token::Question => Class::QuestionMark,
 

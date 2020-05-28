@@ -1,6 +1,9 @@
 error[E0277]: `std::rc::Rc<i8>` cannot be sent between threads safely
   --> $DIR/builtin-superkinds-simple.rs:6:6
    |
+LL | trait Foo : Send { }
+   |             ---- required by this bound in `Foo`
+LL | 
 LL | impl Foo for std::rc::Rc<i8> { }
    |      ^^^ `std::rc::Rc<i8>` cannot be sent between threads safely
    |

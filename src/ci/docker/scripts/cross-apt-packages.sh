@@ -19,7 +19,7 @@ apt-get update && apt-get install -y --no-install-recommends \
   make \
   patch \
   pkg-config \
-  python2.7 \
+  python3 \
   sudo \
   texinfo \
   unzip \

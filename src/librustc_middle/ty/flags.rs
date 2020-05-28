@@ -28,7 +28,7 @@ impl FlagComputation {
     }
 
     fn add_flags(&mut self, flags: TypeFlags) {
-        self.flags = self.flags | (flags & TypeFlags::NOMINAL_FLAGS);
+        self.flags = self.flags | flags;
     }
 
     /// indicates that `self` refers to something at binding level `binder`
@@ -70,14 +70,7 @@ impl FlagComputation {
             | &ty::Str
             | &ty::Foreign(..) => {}
 
-            // You might think that we could just return Error for
-            // any type containing Error as a component, and get
-            // rid of the TypeFlags::HAS_TY_ERR flag -- likewise for ty_bot (with
-            // the exception of function types that return bot).
-            // But doing so caused sporadic memory corruption, and
-            // neither I (tjc) nor nmatsakis could figure out why,
-            // so we're doing it this way.
-            &ty::Error => self.add_flags(TypeFlags::HAS_TY_ERR),
+            &ty::Error => self.add_flags(TypeFlags::HAS_ERROR),
 
             &ty::Param(_) => {
                 self.add_flags(TypeFlags::HAS_TY_PARAM);
@@ -109,13 +102,12 @@ impl FlagComputation {
             }
 
             &ty::Infer(infer) => {
-                self.add_flags(TypeFlags::HAS_TY_INFER);
                 self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
                 match infer {
                     ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) => {}
 
                     ty::TyVar(_) | ty::IntVar(_) | ty::FloatVar(_) => {
-                        self.add_flags(TypeFlags::KEEP_IN_LOCAL_TCX)
+                        self.add_flags(TypeFlags::HAS_TY_INFER)
                     }
                 }
             }
@@ -129,11 +121,6 @@ impl FlagComputation {
                 self.add_projection_ty(data);
             }
 
-            &ty::UnnormalizedProjection(ref data) => {
-                self.add_flags(TypeFlags::HAS_TY_PROJECTION);
-                self.add_projection_ty(data);
-            }
-
             &ty::Opaque(_, substs) => {
                 self.add_flags(TypeFlags::HAS_TY_OPAQUE);
                 self.add_substs(substs);
@@ -142,7 +129,7 @@ impl FlagComputation {
             &ty::Dynamic(ref obj, r) => {
                 let mut computation = FlagComputation::new();
                 for predicate in obj.skip_binder().iter() {
-                    match *predicate {
+                    match predicate {
                         ty::ExistentialPredicate::Trait(tr) => computation.add_substs(tr.substs),
                         ty::ExistentialPredicate::Projection(p) => {
                             let mut proj_computation = FlagComputation::new();
@@ -221,11 +208,10 @@ impl FlagComputation {
                 self.add_flags(TypeFlags::HAS_CT_PROJECTION);
             }
             ty::ConstKind::Infer(infer) => {
-                self.add_flags(TypeFlags::HAS_CT_INFER);
                 self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
                 match infer {
                     InferConst::Fresh(_) => {}
-                    InferConst::Var(_) => self.add_flags(TypeFlags::KEEP_IN_LOCAL_TCX),
+                    InferConst::Var(_) => self.add_flags(TypeFlags::HAS_CT_INFER),
                 }
             }
             ty::ConstKind::Bound(debruijn, _) => {
@@ -241,6 +227,7 @@ impl FlagComputation {
                 self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
             }
             ty::ConstKind::Value(_) => {}
+            ty::ConstKind::Error => self.add_flags(TypeFlags::HAS_ERROR),
         }
     }
 

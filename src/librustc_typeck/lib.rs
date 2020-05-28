@@ -91,13 +91,12 @@ mod variance;
 
 use rustc_errors::{struct_span_err, ErrorReported};
 use rustc_hir as hir;
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::def_id::{LocalDefId, LOCAL_CRATE};
 use rustc_hir::Node;
 use rustc_infer::infer::{InferOk, TyCtxtInferExt};
 use rustc_infer::traits::TraitEngineExt as _;
 use rustc_middle::middle;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::util;
 use rustc_session::config::EntryFnType;
@@ -111,10 +110,6 @@ use rustc_trait_selection::traits::{
 use std::iter;
 
 use astconv::{AstConv, Bounds};
-pub struct TypeAndSubsts<'tcx> {
-    substs: SubstsRef<'tcx>,
-    ty: Ty<'tcx>,
-}
 
 fn require_c_abi_if_c_variadic(tcx: TyCtxt<'_>, decl: &hir::FnDecl<'_>, abi: Abi, span: Span) {
     if decl.c_variadic && !(abi == Abi::C || abi == Abi::Cdecl) {
@@ -157,14 +152,14 @@ fn require_same_types<'tcx>(
     })
 }
 
-fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
-    let main_id = tcx.hir().as_local_hir_id(main_def_id).unwrap();
+fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: LocalDefId) {
+    let main_id = tcx.hir().as_local_hir_id(main_def_id);
     let main_span = tcx.def_span(main_def_id);
     let main_t = tcx.type_of(main_def_id);
     match main_t.kind {
         ty::FnDef(..) => {
             if let Some(Node::Item(it)) = tcx.hir().find(main_id) {
-                if let hir::ItemKind::Fn(.., ref generics, _) = it.kind {
+                if let hir::ItemKind::Fn(ref sig, ref generics, _) = it.kind {
                     let mut error = false;
                     if !generics.params.is_empty() {
                         let msg = "`main` function is not allowed to have generic \
@@ -184,6 +179,18 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
                             "`main` function is not allowed to have a `where` clause"
                         )
                         .span_label(sp, "`main` cannot have a `where` clause")
+                        .emit();
+                        error = true;
+                    }
+                    if let hir::IsAsync::Async = sig.header.asyncness {
+                        let span = tcx.sess.source_map().guess_head_span(it.span);
+                        struct_span_err!(
+                            tcx.sess,
+                            span,
+                            E0752,
+                            "`main` function is not allowed to be `async`"
+                        )
+                        .span_label(span, "`main` function is not allowed to be `async`")
                         .emit();
                         error = true;
                     }
@@ -224,14 +231,14 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
     }
 }
 
-fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
-    let start_id = tcx.hir().as_local_hir_id(start_def_id).unwrap();
+fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: LocalDefId) {
+    let start_id = tcx.hir().as_local_hir_id(start_def_id);
     let start_span = tcx.def_span(start_def_id);
     let start_t = tcx.type_of(start_def_id);
     match start_t.kind {
         ty::FnDef(..) => {
             if let Some(Node::Item(it)) = tcx.hir().find(start_id) {
-                if let hir::ItemKind::Fn(.., ref generics, _) = it.kind {
+                if let hir::ItemKind::Fn(ref sig, ref generics, _) = it.kind {
                     let mut error = false;
                     if !generics.params.is_empty() {
                         struct_span_err!(
@@ -252,6 +259,18 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
                             "start function is not allowed to have a `where` clause"
                         )
                         .span_label(sp, "start function cannot have a `where` clause")
+                        .emit();
+                        error = true;
+                    }
+                    if let hir::IsAsync::Async = sig.header.asyncness {
+                        let span = tcx.sess.source_map().guess_head_span(it.span);
+                        struct_span_err!(
+                            tcx.sess,
+                            span,
+                            E0752,
+                            "start is not allowed to be `async`"
+                        )
+                        .span_label(span, "start is not allowed to be `async`")
                         .emit();
                         error = true;
                     }
@@ -359,7 +378,7 @@ pub fn hir_ty_to_ty<'tcx>(tcx: TyCtxt<'tcx>, hir_ty: &hir::Ty<'_>) -> Ty<'tcx> {
     // scope.  This is derived from the enclosing item-like thing.
     let env_node_id = tcx.hir().get_parent_item(hir_ty.hir_id);
     let env_def_id = tcx.hir().local_def_id(env_node_id);
-    let item_cx = self::collect::ItemCtxt::new(tcx, env_def_id);
+    let item_cx = self::collect::ItemCtxt::new(tcx, env_def_id.to_def_id());
 
     astconv::AstConv::ast_ty_to_ty(&item_cx, hir_ty)
 }
@@ -367,20 +386,21 @@ pub fn hir_ty_to_ty<'tcx>(tcx: TyCtxt<'tcx>, hir_ty: &hir::Ty<'_>) -> Ty<'tcx> {
 pub fn hir_trait_to_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
     hir_trait: &hir::TraitRef<'_>,
+    self_ty: Ty<'tcx>,
 ) -> Bounds<'tcx> {
     // In case there are any projections, etc., find the "environment"
     // def-ID that will be used to determine the traits/predicates in
     // scope.  This is derived from the enclosing item-like thing.
     let env_hir_id = tcx.hir().get_parent_item(hir_trait.hir_ref_id);
     let env_def_id = tcx.hir().local_def_id(env_hir_id);
-    let item_cx = self::collect::ItemCtxt::new(tcx, env_def_id);
+    let item_cx = self::collect::ItemCtxt::new(tcx, env_def_id.to_def_id());
     let mut bounds = Bounds::default();
     let _ = AstConv::instantiate_poly_trait_ref_inner(
         &item_cx,
         hir_trait,
         DUMMY_SP,
         hir::Constness::NotConst,
-        tcx.types.err,
+        self_ty,
         &mut bounds,
         true,
     );

@@ -1,0 +1,12 @@
+error[E0282]: type annotations needed
+  --> $DIR/macro-rules-capture.rs:16:24
+   |
+LL | reemit! { foo => 45u32.into() }
+   |                  ------^^^^--
+   |                  |     |
+   |                  |     cannot infer type for type parameter `T` declared on the trait `Into`
+   |                  this method call resolves to `T`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0282`.

@@ -6,7 +6,7 @@
 // mappings. That mapping code resides here.
 
 use rustc_errors::struct_span_err;
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeFoldable};
 use rustc_span::Span;
@@ -19,15 +19,15 @@ mod orphan;
 mod unsafety;
 
 /// Obtains the span of just the impl header of `impl_def_id`.
-fn impl_header_span(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Span {
-    tcx.sess.source_map().guess_head_span(tcx.span_of_impl(impl_def_id).unwrap())
+fn impl_header_span(tcx: TyCtxt<'_>, impl_def_id: LocalDefId) -> Span {
+    tcx.sess.source_map().guess_head_span(tcx.span_of_impl(impl_def_id.to_def_id()).unwrap())
 }
 
-fn check_impl(tcx: TyCtxt<'_>, impl_def_id: DefId, trait_ref: ty::TraitRef<'_>) {
+fn check_impl(tcx: TyCtxt<'_>, impl_def_id: LocalDefId, trait_ref: ty::TraitRef<'_>) {
     debug!(
         "(checking implementation) adding impl for trait '{:?}', item '{}'",
         trait_ref,
-        tcx.def_path_str(impl_def_id)
+        tcx.def_path_str(impl_def_id.to_def_id())
     );
 
     // Skip impls where one of the self type is an error type.
@@ -40,11 +40,28 @@ fn check_impl(tcx: TyCtxt<'_>, impl_def_id: DefId, trait_ref: ty::TraitRef<'_>) 
     enforce_empty_impls_for_marker_traits(tcx, impl_def_id, trait_ref.def_id);
 }
 
-fn enforce_trait_manually_implementable(tcx: TyCtxt<'_>, impl_def_id: DefId, trait_def_id: DefId) {
+fn enforce_trait_manually_implementable(
+    tcx: TyCtxt<'_>,
+    impl_def_id: LocalDefId,
+    trait_def_id: DefId,
+) {
     let did = Some(trait_def_id);
     let li = tcx.lang_items();
 
-    // Disallow *all* explicit impls of `Sized` and `Unsize` for now.
+    // Disallow *all* explicit impls of `DiscriminantKind`, `Sized` and `Unsize` for now.
+    if did == li.discriminant_kind_trait() {
+        let span = impl_header_span(tcx, impl_def_id);
+        struct_span_err!(
+            tcx.sess,
+            span,
+            E0322,
+            "explicit impls for the `DiscriminantKind` trait are not permitted"
+        )
+        .span_label(span, "impl of 'DiscriminantKind' not allowed")
+        .emit();
+        return;
+    }
+
     if did == li.sized_trait() {
         let span = impl_header_span(tcx, impl_def_id);
         struct_span_err!(
@@ -117,7 +134,11 @@ fn enforce_trait_manually_implementable(tcx: TyCtxt<'_>, impl_def_id: DefId, tra
 
 /// We allow impls of marker traits to overlap, so they can't override impls
 /// as that could make it ambiguous which associated item to use.
-fn enforce_empty_impls_for_marker_traits(tcx: TyCtxt<'_>, impl_def_id: DefId, trait_def_id: DefId) {
+fn enforce_empty_impls_for_marker_traits(
+    tcx: TyCtxt<'_>,
+    impl_def_id: LocalDefId,
+    trait_def_id: DefId,
+) {
     if !tcx.trait_def(trait_def_id).is_marker {
         return;
     }
@@ -148,7 +169,7 @@ pub fn provide(providers: &mut Providers<'_>) {
 fn coherent_trait(tcx: TyCtxt<'_>, def_id: DefId) {
     // Trigger building the specialization graph for the trait. This will detect and report any
     // overlap errors.
-    tcx.specialization_graph_of(def_id);
+    tcx.ensure().specialization_graph_of(def_id);
 
     let impls = tcx.hir().trait_impls(def_id);
     for &hir_id in impls {
@@ -177,7 +198,7 @@ pub fn check_coherence(tcx: TyCtxt<'_>) {
 /// Checks whether an impl overlaps with the automatic `impl Trait for dyn Trait`.
 fn check_object_overlap<'tcx>(
     tcx: TyCtxt<'tcx>,
-    impl_def_id: DefId,
+    impl_def_id: LocalDefId,
     trait_ref: ty::TraitRef<'tcx>,
 ) {
     let trait_def_id = trait_ref.def_id;

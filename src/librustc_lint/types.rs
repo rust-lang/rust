@@ -43,14 +43,14 @@ declare_lint! {
 #[derive(Copy, Clone)]
 pub struct TypeLimits {
     /// Id of the last visited negated expression
-    negated_expr_id: hir::HirId,
+    negated_expr_id: Option<hir::HirId>,
 }
 
 impl_lint_pass!(TypeLimits => [UNUSED_COMPARISONS, OVERFLOWING_LITERALS]);
 
 impl TypeLimits {
     pub fn new() -> TypeLimits {
-        TypeLimits { negated_expr_id: hir::DUMMY_HIR_ID }
+        TypeLimits { negated_expr_id: None }
     }
 }
 
@@ -134,7 +134,7 @@ fn get_bin_hex_repr(cx: &LateContext<'_, '_>, lit: &hir::Lit) -> Option<String> 
 
     if firstch == '0' {
         match src.chars().nth(1) {
-            Some('x') | Some('b') => return Some(src),
+            Some('x' | 'b') => return Some(src),
             _ => return None,
         }
     }
@@ -244,7 +244,7 @@ fn lint_int_literal<'a, 'tcx>(
     let int_type = t.normalize(cx.sess().target.ptr_width);
     let (min, max) = int_ty_range(int_type);
     let max = max as u128;
-    let negative = type_limits.negated_expr_id == e.hir_id;
+    let negative = type_limits.negated_expr_id == Some(e.hir_id);
 
     // Detect literal value out of range [min, max] inclusive
     // avoiding use of -min to prevent overflow/panic
@@ -356,8 +356,7 @@ fn lint_literal<'a, 'tcx>(
     match cx.tables.node_type(e.hir_id).kind {
         ty::Int(t) => {
             match lit.node {
-                ast::LitKind::Int(v, ast::LitIntType::Signed(_))
-                | ast::LitKind::Int(v, ast::LitIntType::Unsuffixed) => {
+                ast::LitKind::Int(v, ast::LitIntType::Signed(_) | ast::LitIntType::Unsuffixed) => {
                     lint_int_literal(cx, type_limits, e, lit, t, v)
                 }
                 _ => bug!(),
@@ -397,8 +396,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
         match e.kind {
             hir::ExprKind::Unary(hir::UnOp::UnNeg, ref expr) => {
                 // propagate negation, if the negation itself isn't negated
-                if self.negated_expr_id != e.hir_id {
-                    self.negated_expr_id = expr.hir_id;
+                if self.negated_expr_id != Some(e.hir_id) {
+                    self.negated_expr_id = Some(expr.hir_id);
                 }
             }
             hir::ExprKind::Binary(binop, ref l, ref r) => {
@@ -455,8 +454,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                     let (min, max) = int_ty_range(int_ty);
                     let lit_val: i128 = match lit.kind {
                         hir::ExprKind::Lit(ref li) => match li.node {
-                            ast::LitKind::Int(v, ast::LitIntType::Signed(_))
-                            | ast::LitKind::Int(v, ast::LitIntType::Unsuffixed) => v as i128,
+                            ast::LitKind::Int(
+                                v,
+                                ast::LitIntType::Signed(_) | ast::LitIntType::Unsuffixed,
+                            ) => v as i128,
                             _ => return true,
                         },
                         _ => bug!(),
@@ -887,7 +888,6 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             | ty::Generator(..)
             | ty::GeneratorWitness(..)
             | ty::Placeholder(..)
-            | ty::UnnormalizedProjection(..)
             | ty::Projection(..)
             | ty::Opaque(..)
             | ty::FnDef(..) => bug!("unexpected type in foreign function: {:?}", ty),
@@ -1030,8 +1030,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VariantSizeDifferences {
             let ty = cx.tcx.erase_regions(&t);
             let layout = match cx.layout_of(ty) {
                 Ok(layout) => layout,
-                Err(ty::layout::LayoutError::Unknown(_))
-                | Err(ty::layout::LayoutError::SizeOverflow(_)) => return,
+                Err(
+                    ty::layout::LayoutError::Unknown(_) | ty::layout::LayoutError::SizeOverflow(_),
+                ) => return,
             };
             let (variants, tag) = match layout.variants {
                 Variants::Multiple {

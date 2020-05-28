@@ -11,26 +11,24 @@ depending on whether a particular sanitizer is enabled or not.
 
 ## Examples
 
-``` rust
+```rust
 #![feature(cfg_sanitize)]
 
 #[cfg(sanitize = "thread")]
 fn a() {
-  // ...
+    // ...
 }
 
 #[cfg(not(sanitize = "thread"))]
 fn a() {
-  // ...
+    // ...
 }
 
 fn b() {
-  if cfg!(sanitize = "leak") {
-    // ...
-  } else {
-    // ...
-  }
+    if cfg!(sanitize = "leak") {
+        // ...
+    } else {
+        // ...
+    }
 }
-
 ```
-

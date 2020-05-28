@@ -1,11 +1,11 @@
-use crate::dep_graph::{self, DepConstructor, DepNode, DepNodeParams};
+use crate::dep_graph::{self, DepNode, DepNodeParams};
 use crate::hir::exports::Export;
 use crate::hir::map;
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintLevelMap;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
-use crate::middle::cstore::{CrateSource, DepKind, NativeLibraryKind};
-use crate::middle::cstore::{ExternCrate, ForeignModule, LinkagePreference, NativeLibrary};
+use crate::middle::cstore::{CrateSource, DepKind};
+use crate::middle::cstore::{ExternCrate, ForeignModule, LinkagePreference, NativeLib};
 use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use crate::middle::lib_features::LibFeatures;
 use crate::middle::privacy::AccessLevels;
@@ -27,7 +27,6 @@ use crate::traits::query::{
     OutlivesBound,
 };
 use crate::traits::specialization_graph;
-use crate::traits::Clauses;
 use crate::traits::{self, Vtable};
 use crate::ty::steal::Steal;
 use crate::ty::subst::{GenericArg, SubstsRef};
@@ -47,6 +46,7 @@ use rustc_hir::lang_items::{LangItem, LanguageItems};
 use rustc_hir::{Crate, HirIdSet, ItemLocalId, TraitCandidate};
 use rustc_index::vec::IndexVec;
 use rustc_session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolManglingVersion};
+use rustc_session::utils::NativeLibKind;
 use rustc_session::CrateDisambiguator;
 use rustc_target::spec::PanicStrategy;
 
@@ -189,3 +189,31 @@ pub fn force_from_dep_node<'tcx>(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> bool 
 pub(crate) fn try_load_from_on_disk_cache<'tcx>(tcx: TyCtxt<'tcx>, dep_node: &DepNode) {
     rustc_dep_node_try_load_from_on_disk_cache!(dep_node, tcx)
 }
+
+mod sealed {
+    use super::{DefId, LocalDefId};
+
+    /// An analogue of the `Into` trait that's intended only for query paramaters.
+    ///
+    /// This exists to allow queries to accept either `DefId` or `LocalDefId` while requiring that the
+    /// user call `to_def_id` to convert between them everywhere else.
+    pub trait IntoQueryParam<P> {
+        fn into_query_param(self) -> P;
+    }
+
+    impl<P> IntoQueryParam<P> for P {
+        #[inline(always)]
+        fn into_query_param(self) -> P {
+            self
+        }
+    }
+
+    impl IntoQueryParam<DefId> for LocalDefId {
+        #[inline(always)]
+        fn into_query_param(self) -> DefId {
+            self.to_def_id()
+        }
+    }
+}
+
+use sealed::IntoQueryParam;

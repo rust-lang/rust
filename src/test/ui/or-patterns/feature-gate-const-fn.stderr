@@ -52,19 +52,6 @@ LL |         let Ok(y) | Err(y) = x;
    = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
-error[E0019]: constant contains unimplemented expression type
-  --> $DIR/feature-gate-const-fn.rs:31:25
-   |
-LL |         let Ok(y) | Err(y) = x;
-   |                         ^
+error: aborting due to 6 previous errors
 
-error[E0019]: constant contains unimplemented expression type
-  --> $DIR/feature-gate-const-fn.rs:31:16
-   |
-LL |         let Ok(y) | Err(y) = x;
-   |                ^
-
-error: aborting due to 8 previous errors
-
-Some errors have detailed explanations: E0019, E0658.
-For more information about an error, try `rustc --explain E0019`.
+For more information about this error, try `rustc --explain E0658`.

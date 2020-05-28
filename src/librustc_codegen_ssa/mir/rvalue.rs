@@ -277,8 +277,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             bug!("unexpected non-pair operand");
                         }
                     }
-                    mir::CastKind::Pointer(PointerCast::MutToConstPointer)
-                    | mir::CastKind::Pointer(PointerCast::ArrayToPointer)
+                    mir::CastKind::Pointer(
+                        PointerCast::MutToConstPointer | PointerCast::ArrayToPointer,
+                    )
                     | mir::CastKind::Misc => {
                         assert!(bx.cx().is_backend_immediate(cast));
                         let ll_t_out = bx.cx().immediate_backend_type(cast);
@@ -358,10 +359,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                     bx.uitofp(llval, ll_t_out)
                                 }
                             }
-                            (CastTy::Ptr(_), CastTy::Ptr(_)) | (CastTy::FnPtr, CastTy::Ptr(_)) => {
+                            (CastTy::Ptr(_) | CastTy::FnPtr, CastTy::Ptr(_)) => {
                                 bx.pointercast(llval, ll_t_out)
                             }
-                            (CastTy::Ptr(_), CastTy::Int(_)) | (CastTy::FnPtr, CastTy::Int(_)) => {
+                            (CastTy::Ptr(_) | CastTy::FnPtr, CastTy::Int(_)) => {
                                 bx.ptrtoint(llval, ll_t_out)
                             }
                             (CastTy::Int(_), CastTy::Ptr(_)) => {
@@ -472,7 +473,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             mir::Rvalue::Discriminant(ref place) => {
-                let discr_ty = rvalue.ty(*self.mir, bx.tcx());
+                let discr_ty = rvalue.ty(self.mir, bx.tcx());
                 let discr = self
                     .codegen_place(&mut bx, place.as_ref())
                     .codegen_get_discr(&mut bx, discr_ty);
@@ -528,7 +529,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::Rvalue::Repeat(..) | mir::Rvalue::Aggregate(..) => {
                 // According to `rvalue_creates_operand`, only ZST
                 // aggregate rvalues are allowed to be operands.
-                let ty = rvalue.ty(*self.mir, self.cx.tcx());
+                let ty = rvalue.ty(self.mir, self.cx.tcx());
                 let operand =
                     OperandRef::new_zst(&mut bx, self.cx.layout_of(self.monomorphize(&ty)));
                 (bx, operand)
@@ -748,7 +749,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 true,
             mir::Rvalue::Repeat(..) |
             mir::Rvalue::Aggregate(..) => {
-                let ty = rvalue.ty(*self.mir, self.cx.tcx());
+                let ty = rvalue.ty(self.mir, self.cx.tcx());
                 let ty = self.monomorphize(&ty);
                 self.cx.spanned_layout_of(ty, span).is_zst()
             }
@@ -767,7 +768,7 @@ fn cast_float_to_int<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 ) -> Bx::Value {
     let fptosui_result = if signed { bx.fptosi(x, int_ty) } else { bx.fptoui(x, int_ty) };
 
-    if !bx.cx().sess().opts.debugging_opts.saturating_float_casts {
+    if let Some(false) = bx.cx().sess().opts.debugging_opts.saturating_float_casts {
         return fptosui_result;
     }
 

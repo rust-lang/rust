@@ -17,7 +17,7 @@ use crate::traits::select::IntercrateAmbiguityCause;
 use crate::traits::{self, coherence, FutureCompatOverlapErrorKind, ObligationCause, TraitEngine};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::lint::LintDiagnosticBuilder;
 use rustc_middle::ty::subst::{InternalSubsts, Subst, SubstsRef};
 use rustc_middle::ty::{self, TyCtxt};
@@ -189,26 +189,22 @@ fn fulfill_implication<'a, 'tcx>(
 
     let selcx = &mut SelectionContext::new(&infcx);
     let target_substs = infcx.fresh_substs_for_item(DUMMY_SP, target_impl);
-    let (target_trait_ref, mut obligations) =
+    let (target_trait_ref, obligations) =
         impl_trait_ref_and_oblig(selcx, param_env, target_impl, target_substs);
-    debug!(
-        "fulfill_implication: target_trait_ref={:?}, obligations={:?}",
-        target_trait_ref, obligations
-    );
 
     // do the impls unify? If not, no specialization.
-    match infcx.at(&ObligationCause::dummy(), param_env).eq(source_trait_ref, target_trait_ref) {
-        Ok(InferOk { obligations: o, .. }) => {
-            obligations.extend(o);
-        }
-        Err(_) => {
-            debug!(
-                "fulfill_implication: {:?} does not unify with {:?}",
-                source_trait_ref, target_trait_ref
-            );
-            return Err(());
-        }
-    }
+    let more_obligations =
+        match infcx.at(&ObligationCause::dummy(), param_env).eq(source_trait_ref, target_trait_ref)
+        {
+            Ok(InferOk { obligations, .. }) => obligations,
+            Err(_) => {
+                debug!(
+                    "fulfill_implication: {:?} does not unify with {:?}",
+                    source_trait_ref, target_trait_ref
+                );
+                return Err(());
+            }
+        };
 
     // attempt to prove all of the predicates for impl2 given those for impl1
     // (which are packed up in penv)
@@ -226,7 +222,7 @@ fn fulfill_implication<'a, 'tcx>(
         // we already make a mockery out of the region system, so
         // why not ignore them a bit earlier?
         let mut fulfill_cx = FulfillmentContext::new_ignoring_regions();
-        for oblig in obligations.into_iter() {
+        for oblig in obligations.chain(more_obligations) {
             fulfill_cx.register_predicate_obligation(&infcx, oblig);
         }
         match fulfill_cx.select_all_or_error(infcx) {
@@ -258,10 +254,10 @@ fn fulfill_implication<'a, 'tcx>(
 pub(super) fn specialization_graph_provider(
     tcx: TyCtxt<'_>,
     trait_id: DefId,
-) -> &specialization_graph::Graph {
+) -> specialization_graph::Graph {
     let mut sg = specialization_graph::Graph::new();
 
-    let mut trait_impls = tcx.all_impls(trait_id);
+    let mut trait_impls: Vec<_> = tcx.all_impls(trait_id).collect();
 
     // The coherence checking implementation seems to rely on impls being
     // iterated over (roughly) in definition order, so we are sorting by
@@ -271,9 +267,9 @@ pub(super) fn specialization_graph_provider(
         .sort_unstable_by_key(|def_id| (-(def_id.krate.as_u32() as i64), def_id.index.index()));
 
     for impl_def_id in trait_impls {
-        if impl_def_id.is_local() {
+        if let Some(impl_def_id) = impl_def_id.as_local() {
             // This is where impl overlap checking happens:
-            let insert_result = sg.insert(tcx, impl_def_id);
+            let insert_result = sg.insert(tcx, impl_def_id.to_def_id());
             // Report error if there was one.
             let (overlap, used_to_be_allowed) = match insert_result {
                 Err(overlap) => (Some(overlap), None),
@@ -290,17 +286,17 @@ pub(super) fn specialization_graph_provider(
         }
     }
 
-    tcx.arena.alloc(sg)
+    sg
 }
 
 fn report_overlap_conflict(
     tcx: TyCtxt<'_>,
     overlap: OverlapError,
-    impl_def_id: DefId,
+    impl_def_id: LocalDefId,
     used_to_be_allowed: Option<FutureCompatOverlapErrorKind>,
     sg: &mut specialization_graph::Graph,
 ) {
-    let impl_polarity = tcx.impl_polarity(impl_def_id);
+    let impl_polarity = tcx.impl_polarity(impl_def_id.to_def_id());
     let other_polarity = tcx.impl_polarity(overlap.with_impl);
     match (impl_polarity, other_polarity) {
         (ty::ImplPolarity::Negative, ty::ImplPolarity::Positive) => {
@@ -308,7 +304,7 @@ fn report_overlap_conflict(
                 tcx,
                 &overlap,
                 impl_def_id,
-                impl_def_id,
+                impl_def_id.to_def_id(),
                 overlap.with_impl,
                 sg,
             );
@@ -320,7 +316,7 @@ fn report_overlap_conflict(
                 &overlap,
                 impl_def_id,
                 overlap.with_impl,
-                impl_def_id,
+                impl_def_id.to_def_id(),
                 sg,
             );
         }
@@ -334,18 +330,20 @@ fn report_overlap_conflict(
 fn report_negative_positive_conflict(
     tcx: TyCtxt<'_>,
     overlap: &OverlapError,
-    local_impl_def_id: DefId,
+    local_impl_def_id: LocalDefId,
     negative_impl_def_id: DefId,
     positive_impl_def_id: DefId,
     sg: &mut specialization_graph::Graph,
 ) {
-    let impl_span =
-        tcx.sess.source_map().guess_head_span(tcx.span_of_impl(local_impl_def_id).unwrap());
+    let impl_span = tcx
+        .sess
+        .source_map()
+        .guess_head_span(tcx.span_of_impl(local_impl_def_id.to_def_id()).unwrap());
 
     let mut err = struct_span_err!(
         tcx.sess,
         impl_span,
-        E0748,
+        E0751,
         "found both positive and negative implementation of trait `{}`{}:",
         overlap.trait_desc,
         overlap.self_desc.clone().map_or(String::new(), |ty| format!(" for type `{}`", ty))
@@ -382,11 +380,12 @@ fn report_negative_positive_conflict(
 fn report_conflicting_impls(
     tcx: TyCtxt<'_>,
     overlap: OverlapError,
-    impl_def_id: DefId,
+    impl_def_id: LocalDefId,
     used_to_be_allowed: Option<FutureCompatOverlapErrorKind>,
     sg: &mut specialization_graph::Graph,
 ) {
-    let impl_span = tcx.sess.source_map().guess_head_span(tcx.span_of_impl(impl_def_id).unwrap());
+    let impl_span =
+        tcx.sess.source_map().guess_head_span(tcx.span_of_impl(impl_def_id.to_def_id()).unwrap());
 
     // Work to be done after we've built the DiagnosticBuilder. We have to define it
     // now because the struct_lint methods don't return back the DiagnosticBuilder
@@ -449,7 +448,7 @@ fn report_conflicting_impls(
             };
             tcx.struct_span_lint_hir(
                 lint,
-                tcx.hir().as_local_hir_id(impl_def_id).unwrap(),
+                tcx.hir().as_local_hir_id(impl_def_id),
                 impl_span,
                 decorate,
             )

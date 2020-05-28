@@ -9,6 +9,7 @@ use rustc_middle::hir::map::Map;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
+use rustc_span::hygiene::DesugaringKind;
 use rustc_span::Span;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -68,7 +69,9 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                 self.with_context(LabeledBlock, |v| v.visit_block(&b));
             }
             hir::ExprKind::Break(label, ref opt_expr) => {
-                opt_expr.as_ref().map(|e| self.visit_expr(e));
+                if let Some(e) = opt_expr {
+                    self.visit_expr(e);
+                }
 
                 if self.require_label_in_labeled_block(e.span, &label, "break") {
                     // If we emitted an error about an unlabeled break in a labeled
@@ -77,31 +80,31 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                 }
 
                 let loop_id = match label.target_id {
-                    Ok(loop_id) => loop_id,
-                    Err(hir::LoopIdError::OutsideLoopScope) => hir::DUMMY_HIR_ID,
+                    Ok(loop_id) => Some(loop_id),
+                    Err(hir::LoopIdError::OutsideLoopScope) => None,
                     Err(hir::LoopIdError::UnlabeledCfInWhileCondition) => {
                         self.emit_unlabled_cf_in_while_condition(e.span, "break");
-                        hir::DUMMY_HIR_ID
+                        None
                     }
-                    Err(hir::LoopIdError::UnresolvedLabel) => hir::DUMMY_HIR_ID,
+                    Err(hir::LoopIdError::UnresolvedLabel) => None,
                 };
 
-                if loop_id != hir::DUMMY_HIR_ID {
+                if let Some(loop_id) = loop_id {
                     if let Node::Block(_) = self.hir_map.find(loop_id).unwrap() {
                         return;
                     }
                 }
 
                 if opt_expr.is_some() {
-                    let loop_kind = if loop_id == hir::DUMMY_HIR_ID {
-                        None
-                    } else {
+                    let loop_kind = if let Some(loop_id) = loop_id {
                         Some(match self.hir_map.expect_expr(loop_id).kind {
                             hir::ExprKind::Loop(_, _, source) => source,
                             ref r => {
                                 span_bug!(e.span, "break label resolved to a non-loop: {:?}", r)
                             }
                         })
+                    } else {
+                        None
                     };
                     match loop_kind {
                         None | Some(hir::LoopSource::Loop) => (),
@@ -201,7 +204,7 @@ impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
         label: &Destination,
         cf_type: &str,
     ) -> bool {
-        if self.cx == LabeledBlock {
+        if !span.is_desugaring(DesugaringKind::QuestionMark) && self.cx == LabeledBlock {
             if label.label.is_none() {
                 struct_span_err!(
                     self.sess,

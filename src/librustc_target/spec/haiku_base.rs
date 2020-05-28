@@ -1,5 +1,4 @@
 use crate::spec::{RelroLevel, TargetOptions};
-use std::default::Default;
 
 pub fn opts() -> TargetOptions {
     TargetOptions {

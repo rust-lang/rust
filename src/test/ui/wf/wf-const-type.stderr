@@ -2,7 +2,7 @@ error[E0277]: the trait bound `NotCopy: std::marker::Copy` is not satisfied
   --> $DIR/wf-const-type.rs:10:12
    |
 LL | struct IsCopy<T:Copy> { t: T }
-   | --------------------- required by `IsCopy`
+   |                 ---- required by this bound in `IsCopy`
 ...
 LL | const FOO: IsCopy<Option<NotCopy>> = IsCopy { t: None };
    |            ^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `NotCopy`

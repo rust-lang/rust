@@ -431,6 +431,7 @@ impl<'cx, 'tcx> crate::borrow_check::MirBorrowckCtxt<'cx, 'tcx> {
     crate fn cannot_capture_in_long_lived_closure(
         &self,
         closure_span: Span,
+        closure_kind: &str,
         borrowed_path: &str,
         capture_span: Span,
     ) -> DiagnosticBuilder<'cx> {
@@ -438,9 +439,10 @@ impl<'cx, 'tcx> crate::borrow_check::MirBorrowckCtxt<'cx, 'tcx> {
             self,
             closure_span,
             E0373,
-            "closure may outlive the current function, \
+            "{} may outlive the current function, \
              but it borrows {}, \
              which is owned by the current function",
+            closure_kind,
             borrowed_path,
         );
         err.span_label(capture_span, format!("{} is borrowed here", borrowed_path))

@@ -2,11 +2,16 @@ error[E0271]: type mismatch resolving `for<'a> <<T as Baz>::Baa<'a> as std::ops:
   --> $DIR/construct_with_other_type.rs:19:9
    |
 LL | impl<T> Baz for T where T: Foo {
-   |         ^^^ expected type parameter `T`, found associated type
+   |      -  ^^^ expected type parameter `T`, found associated type
+   |      |
+   |      this type parameter
    |
    = note: expected associated type `<T as Foo>::Bar<'_, 'static>`
               found associated type `<<T as Baz>::Quux<'_> as Foo>::Bar<'_, 'static>`
-   = note: you might be missing a type parameter or trait bound
+help: consider further restricting this bound
+   |
+LL | impl<T> Baz for T where T: Foo + Baz<Quux = T> {
+   |                                ^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

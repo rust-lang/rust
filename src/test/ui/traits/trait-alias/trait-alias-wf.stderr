@@ -2,7 +2,7 @@ error[E0277]: the trait bound `T: Foo` is not satisfied
   --> $DIR/trait-alias-wf.rs:5:14
    |
 LL | trait A<T: Foo> {}
-   | --------------- required by `A`
+   |            --- required by this bound in `A`
 LL | trait B<T> = A<T>;
    |              ^^^^ the trait `Foo` is not implemented for `T`
    |

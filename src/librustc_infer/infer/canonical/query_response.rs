@@ -5,7 +5,7 @@
 //! For an overview of what canonicaliation is and how it fits into
 //! rustc, check out the [chapter in the rustc dev guide][c].
 //!
-//! [c]: https://rustc-dev-guide.rust-lang.org/traits/canonicalization.html
+//! [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html
 
 use crate::infer::canonical::substitute::{substitute_value, CanonicalExt};
 use crate::infer::canonical::{
@@ -16,7 +16,7 @@ use crate::infer::nll_relate::{NormalizationStrategy, TypeRelating, TypeRelating
 use crate::infer::region_constraints::{Constraint, RegionConstraintData};
 use crate::infer::{InferCtxt, InferOk, InferResult, NLLRegionVariableOrigin};
 use crate::traits::query::{Fallible, NoSolution};
-use crate::traits::{DomainGoal, TraitEngine};
+use crate::traits::TraitEngine;
 use crate::traits::{Obligation, ObligationCause, PredicateObligation};
 use rustc_data_structures::captures::Captures;
 use rustc_index::vec::Idx;
@@ -25,7 +25,7 @@ use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
-use rustc_middle::ty::{self, BoundVar, Ty, TyCtxt};
+use rustc_middle::ty::{self, BoundVar, Const, ToPredicate, Ty, TyCtxt};
 use std::fmt::Debug;
 
 impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
@@ -154,7 +154,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     /// To get a good understanding of what is happening here, check
     /// out the [chapter in the rustc dev guide][c].
     ///
-    /// [c]: https://rustc-dev-guide.rust-lang.org/traits/canonicalization.html#processing-the-canonicalized-query-result
+    /// [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html#processing-the-canonicalized-query-result
     pub fn instantiate_query_response_and_region_obligations<R>(
         &self,
         cause: &ObligationCause<'tcx>,
@@ -464,12 +464,12 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                     if info.is_existential() {
                         match opt_values[BoundVar::new(index)] {
                             Some(k) => k,
-                            None => self.instantiate_canonical_var(cause.span, *info, |u| {
+                            None => self.instantiate_canonical_var(cause.span, info, |u| {
                                 universe_map[u.as_usize()]
                             }),
                         }
                     } else {
-                        self.instantiate_canonical_var(cause.span, *info, |u| {
+                        self.instantiate_canonical_var(cause.span, info, |u| {
                             universe_map[u.as_usize()]
                         })
                     }
@@ -532,12 +532,14 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                 cause.clone(),
                 param_env,
                 match k1.unpack() {
-                    GenericArgKind::Lifetime(r1) => ty::Predicate::RegionOutlives(
+                    GenericArgKind::Lifetime(r1) => ty::PredicateKind::RegionOutlives(
                         ty::Binder::bind(ty::OutlivesPredicate(r1, r2)),
-                    ),
-                    GenericArgKind::Type(t1) => {
-                        ty::Predicate::TypeOutlives(ty::Binder::bind(ty::OutlivesPredicate(t1, r2)))
-                    }
+                    )
+                    .to_predicate(self.tcx),
+                    GenericArgKind::Type(t1) => ty::PredicateKind::TypeOutlives(ty::Binder::bind(
+                        ty::OutlivesPredicate(t1, r2),
+                    ))
+                    .to_predicate(self.tcx),
                     GenericArgKind::Const(..) => {
                         // Consts cannot outlive one another, so we don't expect to
                         // ecounter this branch.
@@ -664,15 +666,19 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for QueryTypeRelatingDelegate<'_, 'tcx> {
         self.obligations.push(Obligation {
             cause: self.cause.clone(),
             param_env: self.param_env,
-            predicate: ty::Predicate::RegionOutlives(ty::Binder::dummy(ty::OutlivesPredicate(
+            predicate: ty::PredicateKind::RegionOutlives(ty::Binder::dummy(ty::OutlivesPredicate(
                 sup, sub,
-            ))),
+            )))
+            .to_predicate(self.infcx.tcx),
             recursion_depth: 0,
         });
     }
 
-    fn push_domain_goal(&mut self, _: DomainGoal<'tcx>) {
-        bug!("should never be invoked with eager normalization")
+    fn const_equate(&mut self, _a: &'tcx Const<'tcx>, _b: &'tcx Const<'tcx>) {
+        span_bug!(
+            self.cause.span(self.infcx.tcx),
+            "lazy_normalization_consts: unreachable `const_equate`"
+        );
     }
 
     fn normalization() -> NormalizationStrategy {

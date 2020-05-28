@@ -1,0 +1,27 @@
+error[E0277]: the trait bound `(std::option::Option<T>, f32): Foo` is not satisfied
+  --> $DIR/generic_impls.rs:12:13
+   |
+LL | fn gimme<F: Foo>() { }
+   |             --- required by this bound in `gimme`
+...
+LL |     gimme::<(Option<T>, f32)>();
+   |             ^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `(std::option::Option<T>, f32)`
+   |
+   = help: the following implementations were found:
+             <(T, u32) as Foo>
+
+error[E0277]: the trait bound `(i32, f32): Foo` is not satisfied
+  --> $DIR/generic_impls.rs:17:13
+   |
+LL | fn gimme<F: Foo>() { }
+   |             --- required by this bound in `gimme`
+...
+LL |     gimme::<(i32, f32)>();
+   |             ^^^^^^^^^^ the trait `Foo` is not implemented for `(i32, f32)`
+   |
+   = help: the following implementations were found:
+             <(T, u32) as Foo>
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

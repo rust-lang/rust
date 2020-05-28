@@ -660,6 +660,11 @@ impl Read for File {
     }
 
     #[inline]
+    fn is_read_vectored(&self) -> bool {
+        self.inner.is_read_vectored()
+    }
+
+    #[inline]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
     }
@@ -672,6 +677,11 @@ impl Write for File {
 
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.inner.write_vectored(bufs)
+    }
+
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        self.inner.is_write_vectored()
     }
 
     fn flush(&mut self) -> io::Result<()> {
@@ -695,6 +705,11 @@ impl Read for &File {
     }
 
     #[inline]
+    fn is_read_vectored(&self) -> bool {
+        self.inner.is_read_vectored()
+    }
+
+    #[inline]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
     }
@@ -707,6 +722,11 @@ impl Write for &File {
 
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.inner.write_vectored(bufs)
+    }
+
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        self.inner.is_write_vectored()
     }
 
     fn flush(&mut self) -> io::Result<()> {

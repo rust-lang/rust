@@ -14,5 +14,6 @@ fn main() {
     let v = f; //~ ERROR `f` is ambiguous
     match v {
         f => {} //~ ERROR `f` is ambiguous
+        mut f => {} // OK, unambiguously a fresh binding due to `mut`
     }
 }

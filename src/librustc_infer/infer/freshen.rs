@@ -127,7 +127,6 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
             ty::ReStatic
             | ty::ReEarlyBound(..)
             | ty::ReFree(_)
-            | ty::ReScope(_)
             | ty::ReVar(_)
             | ty::RePlaceholder(..)
             | ty::ReEmpty(_)
@@ -147,7 +146,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
 
         match t.kind {
             ty::Infer(ty::TyVar(v)) => {
-                let opt_ty = self.infcx.inner.borrow_mut().type_variables.probe(v).known();
+                let opt_ty = self.infcx.inner.borrow_mut().type_variables().probe(v).known();
                 self.freshen_ty(opt_ty, ty::TyVar(v), ty::FreshTy)
             }
 
@@ -155,7 +154,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
                 self.infcx
                     .inner
                     .borrow_mut()
-                    .int_unification_table
+                    .int_unification_table()
                     .probe_value(v)
                     .map(|v| v.to_type(tcx)),
                 ty::IntVar(v),
@@ -166,16 +165,14 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
                 self.infcx
                     .inner
                     .borrow_mut()
-                    .float_unification_table
+                    .float_unification_table()
                     .probe_value(v)
                     .map(|v| v.to_type(tcx)),
                 ty::FloatVar(v),
                 ty::FreshFloatTy,
             ),
 
-            ty::Infer(ty::FreshTy(ct))
-            | ty::Infer(ty::FreshIntTy(ct))
-            | ty::Infer(ty::FreshFloatTy(ct)) => {
+            ty::Infer(ty::FreshTy(ct) | ty::FreshIntTy(ct) | ty::FreshFloatTy(ct)) => {
                 if ct >= self.ty_freshen_count {
                     bug!(
                         "Encountered a freshend type with id {} \
@@ -206,7 +203,6 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
             | ty::Never
             | ty::Tuple(..)
             | ty::Projection(..)
-            | ty::UnnormalizedProjection(..)
             | ty::Foreign(..)
             | ty::Param(..)
             | ty::Closure(..)
@@ -224,7 +220,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
                     .infcx
                     .inner
                     .borrow_mut()
-                    .const_unification_table
+                    .const_unification_table()
                     .probe_value(v)
                     .val
                     .known();
@@ -251,7 +247,10 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
                 bug!("unexpected const {:?}", ct)
             }
 
-            ty::ConstKind::Param(_) | ty::ConstKind::Value(_) | ty::ConstKind::Unevaluated(..) => {}
+            ty::ConstKind::Param(_)
+            | ty::ConstKind::Value(_)
+            | ty::ConstKind::Unevaluated(..)
+            | ty::ConstKind::Error => {}
         }
 
         ct.super_fold_with(self)

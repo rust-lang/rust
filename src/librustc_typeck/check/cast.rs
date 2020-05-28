@@ -115,7 +115,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::Foreign(..) => Some(PointerKind::Thin),
             // We should really try to normalize here.
             ty::Projection(ref pi) => Some(PointerKind::OfProjection(pi)),
-            ty::UnnormalizedProjection(..) => bug!("only used with chalk-engine"),
             ty::Opaque(def_id, substs) => Some(PointerKind::OfOpaque(def_id, substs)),
             ty::Param(ref p) => Some(PointerKind::OfParam(p)),
             // Insufficient type information.
@@ -536,7 +535,10 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 match self.expr_ty.kind {
                     ty::FnDef(..) => {
                         // Attempt a coercion to a fn pointer type.
-                        let f = self.expr_ty.fn_sig(fcx.tcx);
+                        let f = fcx.normalize_associated_types_in(
+                            self.expr.span,
+                            &self.expr_ty.fn_sig(fcx.tcx),
+                        );
                         let res = fcx.try_coerce(
                             self.expr,
                             self.expr_ty,
@@ -561,8 +563,9 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                                 ty::Int(_)
                                 | ty::Uint(_)
                                 | ty::Float(_)
-                                | ty::Infer(ty::InferTy::IntVar(_))
-                                | ty::Infer(ty::InferTy::FloatVar(_)) => Err(CastError::NeedDeref),
+                                | ty::Infer(ty::InferTy::IntVar(_) | ty::InferTy::FloatVar(_)) => {
+                                    Err(CastError::NeedDeref)
+                                }
                                 _ => Err(CastError::NeedViaPtr),
                             },
                             // array-ptr-cast
@@ -580,7 +583,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
 
         match (t_from, t_cast) {
             // These types have invariants! can't cast into them.
-            (_, Int(CEnum)) | (_, FnPtr) => Err(CastError::NonScalar),
+            (_, Int(CEnum) | FnPtr) => Err(CastError::NonScalar),
 
             // * -> Bool
             (_, Int(Bool)) => Err(CastError::CastToBool),
@@ -590,16 +593,11 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             (_, Int(Char)) => Err(CastError::CastToChar),
 
             // prim -> float,ptr
-            (Int(Bool), Float) | (Int(CEnum), Float) | (Int(Char), Float) => {
-                Err(CastError::NeedViaInt)
-            }
+            (Int(Bool) | Int(CEnum) | Int(Char), Float) => Err(CastError::NeedViaInt),
 
-            (Int(Bool), Ptr(_))
-            | (Int(CEnum), Ptr(_))
-            | (Int(Char), Ptr(_))
-            | (Ptr(_), Float)
-            | (FnPtr, Float)
-            | (Float, Ptr(_)) => Err(CastError::IllegalCast),
+            (Int(Bool) | Int(CEnum) | Int(Char) | Float, Ptr(_)) | (Ptr(_) | FnPtr, Float) => {
+                Err(CastError::IllegalCast)
+            }
 
             // ptr -> *
             (Ptr(m_e), Ptr(m_c)) => self.check_ptr_ptr_cast(fcx, m_e, m_c), // ptr-ptr-cast
@@ -612,11 +610,9 @@ impl<'a, 'tcx> CastCheck<'tcx> {
 
             // prim -> prim
             (Int(CEnum), Int(_)) => Ok(CastKind::EnumCast),
-            (Int(Char), Int(_)) | (Int(Bool), Int(_)) => Ok(CastKind::PrimIntCast),
+            (Int(Char) | Int(Bool), Int(_)) => Ok(CastKind::PrimIntCast),
 
-            (Int(_), Int(_)) | (Int(_), Float) | (Float, Int(_)) | (Float, Float) => {
-                Ok(CastKind::NumericCast)
-            }
+            (Int(_) | Float, Int(_) | Float) => Ok(CastKind::NumericCast),
         }
     }
 

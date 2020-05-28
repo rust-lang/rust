@@ -11,3 +11,5 @@ LL | #![warn(unused)]
    |         ^^^^^^
    = note: `#[warn(unused_variables)]` implied by `#[warn(unused)]`
 
+warning: 1 warning emitted
+

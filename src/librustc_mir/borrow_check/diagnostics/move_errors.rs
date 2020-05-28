@@ -103,14 +103,14 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         //
                         // opt_match_place is None for let [mut] x = ... statements,
                         // whether or not the right-hand side is a place expression
-                        if let LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
+                        if let Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
                             VarBindingForm {
                                 opt_match_place: Some((opt_match_place, match_span)),
                                 binding_mode: _,
                                 opt_ty_info: _,
                                 pat_span: _,
                             },
-                        ))) = local_decl.local_info
+                        )))) = local_decl.local_info
                         {
                             let stmt_source_info = self.body.source_info(location);
                             self.append_binding_error(
@@ -296,7 +296,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         // Inspect the type of the content behind the
         // borrow to provide feedback about why this
         // was a move rather than a copy.
-        let ty = deref_target_place.ty(*self.body, self.infcx.tcx).ty;
+        let ty = deref_target_place.ty(self.body, self.infcx.tcx).ty;
         let upvar_field = self
             .prefixes(move_place.as_ref(), PrefixSet::All)
             .find_map(|p| self.is_upvar_field_projection(p));
@@ -377,12 +377,15 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         span,
                         &format!("`{}` which is behind a {}", place_desc, source_desc),
                     ),
-                    (_, _) => self.cannot_move_out_of(span, &source.describe_for_unnamed_place()),
+                    (_, _) => self.cannot_move_out_of(
+                        span,
+                        &source.describe_for_unnamed_place(self.infcx.tcx),
+                    ),
                 }
             }
         };
         if let Ok(snippet) = self.infcx.tcx.sess.source_map().span_to_snippet(span) {
-            let def_id = match move_place.ty(*self.body, self.infcx.tcx).ty.kind {
+            let def_id = match move_place.ty(self.body, self.infcx.tcx).ty.kind {
                 ty::Adt(self_def, _) => self_def.did,
                 ty::Foreign(def_id)
                 | ty::FnDef(def_id, _)
@@ -438,7 +441,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 }
 
                 if binds_to.is_empty() {
-                    let place_ty = move_from.ty(*self.body, self.infcx.tcx).ty;
+                    let place_ty = move_from.ty(self.body, self.infcx.tcx).ty;
                     let place_desc = match self.describe_place(move_from.as_ref()) {
                         Some(desc) => format!("`{}`", desc),
                         None => "value".to_string(),
@@ -461,7 +464,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             // No binding. Nothing to suggest.
             GroupedMoveError::OtherIllegalMove { ref original_path, use_spans, .. } => {
                 let span = use_spans.var_or_use();
-                let place_ty = original_path.ty(*self.body, self.infcx.tcx).ty;
+                let place_ty = original_path.ty(self.body, self.infcx.tcx).ty;
                 let place_desc = match self.describe_place(original_path.as_ref()) {
                     Some(desc) => format!("`{}`", desc),
                     None => "value".to_string(),
@@ -479,10 +482,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let mut suggestions: Vec<(Span, &str, String)> = Vec::new();
         for local in binds_to {
             let bind_to = &self.body.local_decls[*local];
-            if let LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
-                pat_span,
-                ..
-            }))) = bind_to.local_info
+            if let Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
+                VarBindingForm { pat_span, .. },
+            )))) = bind_to.local_info
             {
                 if let Ok(pat_snippet) = self.infcx.tcx.sess.source_map().span_to_snippet(pat_span)
                 {

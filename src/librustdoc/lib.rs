@@ -7,6 +7,7 @@
 #![feature(box_syntax)]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
+#![feature(or_patterns)]
 #![feature(test)]
 #![feature(vec_remove_item)]
 #![feature(ptr_offset_from)]
@@ -15,7 +16,6 @@
 #![recursion_limit = "256"]
 
 extern crate env_logger;
-extern crate getopts;
 extern crate rustc_ast;
 extern crate rustc_ast_pretty;
 extern crate rustc_attr;
@@ -51,6 +51,7 @@ use std::panic;
 use std::process;
 
 use rustc_session::config::{make_crate_type_option, ErrorOutputType, RustcOptGroup};
+use rustc_session::getopts;
 use rustc_session::{early_error, early_warn};
 
 #[macro_use]
@@ -449,14 +450,29 @@ fn main_args(args: &[String]) -> i32 {
     rustc_interface::interface::default_thread_pool(options.edition, move || main_options(options))
 }
 
+fn wrap_return(diag: &rustc_errors::Handler, res: Result<(), String>) -> i32 {
+    match res {
+        Ok(()) => 0,
+        Err(err) => {
+            if !err.is_empty() {
+                diag.struct_err(&err).emit();
+            }
+            1
+        }
+    }
+}
+
 fn main_options(options: config::Options) -> i32 {
     let diag = core::new_handler(options.error_format, None, &options.debugging_options);
 
     match (options.should_test, options.markdown_input()) {
-        (true, true) => return markdown::test(options, &diag),
-        (true, false) => return test::run(options),
+        (true, true) => return wrap_return(&diag, markdown::test(options)),
+        (true, false) => return wrap_return(&diag, test::run(options)),
         (false, true) => {
-            return markdown::render(options.input, options.render_options, &diag, options.edition);
+            return wrap_return(
+                &diag,
+                markdown::render(&options.input, options.render_options, options.edition),
+            );
         }
         (false, false) => {}
     }

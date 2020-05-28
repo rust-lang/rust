@@ -1,3 +1,5 @@
+// ignore-sgx std::os::fortanix_sgx::usercalls::raw::Result changes compiler suggestions
+
 pub struct GslResult {
     pub val: f64,
     pub err: f64

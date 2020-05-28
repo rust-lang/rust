@@ -21,7 +21,7 @@ use rustc_parse::parser::Parser;
 use rustc_session::parse::ParseSess;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::Transparency;
-use rustc_span::symbol::{kw, sym, MacroRulesNormalizedIdent, Symbol};
+use rustc_span::symbol::{kw, sym, Ident, MacroRulesNormalizedIdent, Symbol};
 use rustc_span::Span;
 
 use log::debug;
@@ -39,7 +39,7 @@ crate struct ParserAnyMacro<'a> {
     /// Span of the expansion site of the macro this parser is for
     site_span: Span,
     /// The ident of the macro we're parsing
-    macro_ident: ast::Ident,
+    macro_ident: Ident,
     arm_span: Span,
 }
 
@@ -88,7 +88,7 @@ fn emit_frag_parse_err(
     parser: &Parser<'_>,
     orig_parser: &mut Parser<'_>,
     site_span: Span,
-    macro_ident: ast::Ident,
+    macro_ident: Ident,
     arm_span: Span,
     kind: AstFragmentKind,
 ) {
@@ -166,7 +166,7 @@ impl<'a> ParserAnyMacro<'a> {
 }
 
 struct MacroRulesMacroExpander {
-    name: ast::Ident,
+    name: Ident,
     span: Span,
     transparency: Transparency,
     lhses: Vec<mbe::TokenTree>,
@@ -215,7 +215,7 @@ fn generic_extension<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
     def_span: Span,
-    name: ast::Ident,
+    name: Ident,
     transparency: Transparency,
     arg: TokenStream,
     lhses: &[mbe::TokenTree],
@@ -400,9 +400,9 @@ pub fn compile_declarative_macro(
     };
 
     let diag = &sess.span_diagnostic;
-    let lhs_nm = ast::Ident::new(sym::lhs, def.span);
-    let rhs_nm = ast::Ident::new(sym::rhs, def.span);
-    let tt_spec = ast::Ident::new(sym::tt, def.span);
+    let lhs_nm = Ident::new(sym::lhs, def.span);
+    let rhs_nm = Ident::new(sym::rhs, def.span);
+    let tt_spec = Ident::new(sym::tt, def.span);
 
     // Parse the macro_rules! invocation
     let (macro_rules, body) = match &def.kind {

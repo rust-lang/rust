@@ -11,3 +11,5 @@ LL | #![warn(unused)]
    |         ^^^^^^
    = note: `#[warn(dead_code)]` implied by `#[warn(unused)]`
 
+warning: 1 warning emitted
+

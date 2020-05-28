@@ -38,7 +38,7 @@ pub fn add_type() {
 
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2",
-    except="hir_owner_nodes,typeck_tables_of,mir_built,optimized_mir")]
+    except="hir_owner_nodes,typeck_tables_of,mir_built")]
 #[rustc_clean(cfg="cfail3")]
 pub fn add_type() {
     let _x: u32 = 2u32;

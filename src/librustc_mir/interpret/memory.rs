@@ -9,6 +9,7 @@
 use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::convert::TryFrom;
+use std::fmt;
 use std::ptr;
 
 use rustc_ast::ast::Mutability;
@@ -17,9 +18,10 @@ use rustc_middle::ty::{self, query::TyCtxtAt, Instance, ParamEnv};
 use rustc_target::abi::{Align, HasDataLayout, Size, TargetDataLayout};
 
 use super::{
-    AllocId, AllocMap, Allocation, AllocationExtra, CheckInAllocMsg, ErrorHandled, GlobalAlloc,
-    GlobalId, InterpResult, Machine, MayLeak, Pointer, PointerArithmetic, Scalar,
+    AllocId, AllocMap, Allocation, AllocationExtra, CheckInAllocMsg, GlobalAlloc, GlobalId,
+    InterpResult, Machine, MayLeak, Pointer, PointerArithmetic, Scalar,
 };
+use crate::util::pretty;
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum MemoryKind<T> {
@@ -41,6 +43,17 @@ impl<T: MayLeak> MayLeak for MemoryKind<T> {
             MemoryKind::Vtable => true,
             MemoryKind::CallerLocation => true,
             MemoryKind::Machine(k) => k.may_leak(),
+        }
+    }
+}
+
+impl<T: fmt::Display> fmt::Display for MemoryKind<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            MemoryKind::Stack => write!(f, "stack variable"),
+            MemoryKind::Vtable => write!(f, "vtable"),
+            MemoryKind::CallerLocation => write!(f, "caller location"),
+            MemoryKind::Machine(m) => write!(f, "{}", m),
         }
     }
 }
@@ -140,10 +153,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         fn_val: FnVal<'tcx, M::ExtraFnVal>,
     ) -> Pointer<M::PointerTag> {
         let id = match fn_val {
-            FnVal::Instance(instance) => self.tcx.alloc_map.lock().create_fn_alloc(instance),
+            FnVal::Instance(instance) => self.tcx.create_fn_alloc(instance),
             FnVal::Other(extra) => {
                 // FIXME(RalfJung): Should we have a cache here?
-                let id = self.tcx.alloc_map.lock().reserve();
+                let id = self.tcx.reserve_alloc_id();
                 let old = self.extra_fn_ptr_map.insert(id, extra);
                 assert!(old.is_none());
                 id
@@ -176,7 +189,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         alloc: Allocation,
         kind: MemoryKind<M::MemoryKind>,
     ) -> Pointer<M::PointerTag> {
-        let id = self.tcx.alloc_map.lock().reserve();
+        let id = self.tcx.reserve_alloc_id();
         debug_assert_ne!(
             Some(kind),
             M::GLOBAL_KIND.map(MemoryKind::Machine),
@@ -241,13 +254,15 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             );
         }
 
+        M::before_deallocation(&mut self.extra, ptr.alloc_id)?;
+
         let (alloc_kind, mut alloc) = match self.alloc_map.remove(&ptr.alloc_id) {
             Some(alloc) => alloc,
             None => {
                 // Deallocating global memory -- always an error
-                return Err(match self.tcx.alloc_map.lock().get(ptr.alloc_id) {
+                return Err(match self.tcx.get_global_alloc(ptr.alloc_id) {
                     Some(GlobalAlloc::Function(..)) => err_ub_format!("deallocating a function"),
-                    Some(GlobalAlloc::Static(..)) | Some(GlobalAlloc::Memory(..)) => {
+                    Some(GlobalAlloc::Static(..) | GlobalAlloc::Memory(..)) => {
                         err_ub_format!("deallocating static memory")
                     }
                     None => err_ub!(PointerUseAfterFree(ptr.alloc_id)),
@@ -258,7 +273,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
 
         if alloc_kind != kind {
             throw_ub_format!(
-                "deallocating `{:?}` memory using `{:?}` deallocation operation",
+                "deallocating {} memory using {} deallocation operation",
                 alloc_kind,
                 kind
             );
@@ -308,12 +323,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         size: Size,
         align: Align,
     ) -> InterpResult<'tcx, Option<Pointer<M::PointerTag>>> {
-        let align = M::CHECK_ALIGN.then_some(align);
+        let align = M::enforce_alignment(&self.extra).then_some(align);
         self.check_ptr_access_align(sptr, size, align, CheckInAllocMsg::MemoryAccessTest)
     }
 
     /// Like `check_ptr_access`, but *definitely* checks alignment when `align`
-    /// is `Some` (overriding `M::CHECK_ALIGN`). Also lets the caller control
+    /// is `Some` (overriding `M::enforce_alignment`). Also lets the caller control
     /// the error message for the out-of-bounds case.
     pub fn check_ptr_access_align(
         &self,
@@ -350,7 +365,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 assert!(size.bytes() == 0);
                 // Must be non-NULL.
                 if bits == 0 {
-                    throw_ub!(InvalidIntPointerUsage(0))
+                    throw_ub!(DanglingIntPointer(0, msg))
                 }
                 // Must be aligned.
                 if let Some(align) = align {
@@ -414,8 +429,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         id: AllocId,
         is_write: bool,
     ) -> InterpResult<'tcx, Cow<'tcx, Allocation<M::PointerTag, M::AllocExtra>>> {
-        let alloc = tcx.alloc_map.lock().get(id);
-        let (alloc, def_id) = match alloc {
+        let (alloc, def_id) = match tcx.get_global_alloc(id) {
             Some(GlobalAlloc::Memory(mem)) => {
                 // Memory of a constant or promoted or anonymous memory referenced by a static.
                 (mem, None)
@@ -427,7 +441,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 // thing here: one maps to `GlobalAlloc::Static`, this is the "lazy" ID,
                 // and the other one is maps to `GlobalAlloc::Memory`, this is returned by
                 // `const_eval_raw` and it is the "resolved" ID.
-                // The resolved ID is never used by the interpreted progrma, it is hidden.
+                // The resolved ID is never used by the interpreted program, it is hidden.
+                // This is relied upon for soundness of const-patterns; a pointer to the resolved
+                // ID would "sidestep" the checks that make sure consts do not point to statics!
                 // The `GlobalAlloc::Memory` branch here is still reachable though; when a static
                 // contains a reference to memory that was created during its evaluation (i.e., not
                 // to another static), those inner references only exist in "resolved" form.
@@ -447,14 +463,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                         // no need to report anything, the const_eval call takes care of that
                         // for statics
                         assert!(tcx.is_static(def_id));
-                        match err {
-                            ErrorHandled::Reported => err_inval!(ReferencedConstant),
-                            ErrorHandled::TooGeneric => err_inval!(TooGeneric),
-                        }
+                        err
                     })?;
                 // Make sure we use the ID of the resolved memory, not the lazy one!
                 let id = raw_const.alloc_id;
-                let allocation = tcx.alloc_map.lock().unwrap_memory(id);
+                let allocation = tcx.global_alloc(id).unwrap_memory();
 
                 (allocation, Some(def_id))
             }
@@ -577,8 +590,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         // # Statics
         // Can't do this in the match argument, we may get cycle errors since the lock would
         // be held throughout the match.
-        let alloc = self.tcx.alloc_map.lock().get(id);
-        match alloc {
+        match self.tcx.get_global_alloc(id) {
             Some(GlobalAlloc::Static(did)) => {
                 // Use size and align of the type.
                 let ty = self.tcx.type_of(did);
@@ -613,7 +625,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         if let Some(extra) = self.extra_fn_ptr_map.get(&id) {
             Some(FnVal::Other(*extra))
         } else {
-            match self.tcx.alloc_map.lock().get(id) {
+            match self.tcx.get_global_alloc(id) {
                 Some(GlobalAlloc::Function(instance)) => Some(FnVal::Instance(instance)),
                 _ => None,
             }
@@ -644,81 +656,90 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         self.dump_allocs(vec![id]);
     }
 
-    fn dump_alloc_helper<Tag, Extra>(
-        &self,
-        allocs_seen: &mut FxHashSet<AllocId>,
-        allocs_to_print: &mut VecDeque<AllocId>,
-        alloc: &Allocation<Tag, Extra>,
-    ) {
-        for &(_, (_, target_id)) in alloc.relocations().iter() {
-            if allocs_seen.insert(target_id) {
-                allocs_to_print.push_back(target_id);
-            }
-        }
-        crate::util::pretty::write_allocation(self.tcx.tcx, alloc, &mut std::io::stderr(), "")
-            .unwrap();
-    }
-
     /// Print a list of allocations and all allocations they point to, recursively.
     /// This prints directly to stderr, ignoring RUSTC_LOG! It is up to the caller to
     /// control for this.
     pub fn dump_allocs(&self, mut allocs: Vec<AllocId>) {
+        // Cannot be a closure because it is generic in `Tag`, `Extra`.
+        fn write_allocation_track_relocs<'tcx, Tag: Copy + fmt::Debug, Extra>(
+            tcx: TyCtxtAt<'tcx>,
+            allocs_to_print: &mut VecDeque<AllocId>,
+            alloc: &Allocation<Tag, Extra>,
+        ) {
+            for &(_, target_id) in alloc.relocations().values() {
+                allocs_to_print.push_back(target_id);
+            }
+            pretty::write_allocation(tcx.tcx, alloc, &mut std::io::stderr()).unwrap();
+        }
+
         allocs.sort();
         allocs.dedup();
         let mut allocs_to_print = VecDeque::from(allocs);
-        let mut allocs_seen = FxHashSet::default();
+        // `allocs_printed` contains all allocations that we have already printed.
+        let mut allocs_printed = FxHashSet::default();
 
         while let Some(id) = allocs_to_print.pop_front() {
-            eprint!("Alloc {:<5}: ", id);
-            fn msg<Tag, Extra>(alloc: &Allocation<Tag, Extra>, extra: &str) {
-                eprintln!(
-                    "({} bytes, alignment {}){}",
-                    alloc.size.bytes(),
-                    alloc.align.bytes(),
-                    extra
-                )
-            };
+            if !allocs_printed.insert(id) {
+                // Already printed, so skip this.
+                continue;
+            }
 
-            // normal alloc?
-            match self.alloc_map.get_or(id, || Err(())) {
-                Ok((kind, alloc)) => {
-                    match kind {
-                        MemoryKind::Stack => msg(alloc, " (stack)"),
-                        MemoryKind::Vtable => msg(alloc, " (vtable)"),
-                        MemoryKind::CallerLocation => msg(alloc, " (caller_location)"),
-                        MemoryKind::Machine(m) => msg(alloc, &format!(" ({:?})", m)),
-                    };
-                    self.dump_alloc_helper(&mut allocs_seen, &mut allocs_to_print, alloc);
+            eprint!("{}", id);
+            match self.alloc_map.get(id) {
+                Some(&(kind, ref alloc)) => {
+                    // normal alloc
+                    eprint!(" ({}, ", kind);
+                    write_allocation_track_relocs(self.tcx, &mut allocs_to_print, alloc);
                 }
-                Err(()) => {
-                    // global alloc?
-                    match self.tcx.alloc_map.lock().get(id) {
+                None => {
+                    // global alloc
+                    match self.tcx.get_global_alloc(id) {
                         Some(GlobalAlloc::Memory(alloc)) => {
-                            msg(alloc, " (immutable)");
-                            self.dump_alloc_helper(&mut allocs_seen, &mut allocs_to_print, alloc);
+                            eprint!(" (unchanged global, ");
+                            write_allocation_track_relocs(self.tcx, &mut allocs_to_print, alloc);
                         }
                         Some(GlobalAlloc::Function(func)) => {
-                            eprintln!("{}", func);
+                            eprint!(" (fn: {})", func);
                         }
                         Some(GlobalAlloc::Static(did)) => {
-                            eprintln!("{:?}", did);
+                            eprint!(" (static: {})", self.tcx.def_path_str(did));
                         }
                         None => {
-                            eprintln!("(deallocated)");
+                            eprint!(" (deallocated)");
                         }
                     }
                 }
-            };
+            }
+            eprintln!();
         }
     }
 
     pub fn leak_report(&self) -> usize {
-        let leaks: Vec<_> = self
-            .alloc_map
-            .filter_map_collect(|&id, &(kind, _)| if kind.may_leak() { None } else { Some(id) });
+        // Collect the set of allocations that are *reachable* from `Global` allocations.
+        let reachable = {
+            let mut reachable = FxHashSet::default();
+            let global_kind = M::GLOBAL_KIND.map(MemoryKind::Machine);
+            let mut todo: Vec<_> = self.alloc_map.filter_map_collect(move |&id, &(kind, _)| {
+                if Some(kind) == global_kind { Some(id) } else { None }
+            });
+            while let Some(id) = todo.pop() {
+                if reachable.insert(id) {
+                    // This is a new allocation, add its relocations to `todo`.
+                    if let Some((_, alloc)) = self.alloc_map.get(id) {
+                        todo.extend(alloc.relocations().values().map(|&(_, target_id)| target_id));
+                    }
+                }
+            }
+            reachable
+        };
+
+        // All allocations that are *not* `reachable` and *not* `may_leak` are considered leaking.
+        let leaks: Vec<_> = self.alloc_map.filter_map_collect(|&id, &(kind, _)| {
+            if kind.may_leak() || reachable.contains(&id) { None } else { Some(id) }
+        });
         let n = leaks.len();
         if n > 0 {
-            eprintln!("### LEAK REPORT ###");
+            eprintln!("The following memory was leaked:");
             self.dump_allocs(leaks);
         }
         n

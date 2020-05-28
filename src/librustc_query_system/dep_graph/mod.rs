@@ -6,7 +6,6 @@ mod query;
 mod serialized;
 
 pub use dep_node::{DepNode, DepNodeParams, WorkProductId};
-pub use graph::WorkProductFileKind;
 pub use graph::{hash_result, DepGraph, DepNodeColor, DepNodeIndex, TaskDeps, WorkProduct};
 pub use prev::PreviousDepGraph;
 pub use query::DepGraphQuery;
@@ -28,6 +27,7 @@ pub trait DepContext: Copy {
     fn create_stable_hashing_context(&self) -> Self::StableHashingContext;
 
     fn debug_dep_tasks(&self) -> bool;
+    fn debug_dep_node(&self) -> bool;
 
     /// Try to force a dep node to execute and see if it's green.
     fn try_force_from_dep_node(&self, dep_node: &DepNode<Self::DepKind>) -> bool;
@@ -77,9 +77,9 @@ pub trait DepKind: Copy + fmt::Debug + Eq + Ord + Hash {
         OP: FnOnce() -> R;
 
     /// Access dependencies from current implicit context.
-    fn read_deps<OP>(op: OP) -> ()
+    fn read_deps<OP>(op: OP)
     where
-        OP: for<'a> FnOnce(Option<&'a Lock<TaskDeps<Self>>>) -> ();
+        OP: for<'a> FnOnce(Option<&'a Lock<TaskDeps<Self>>>);
 
     fn can_reconstruct_query_key(&self) -> bool;
 }

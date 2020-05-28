@@ -7,7 +7,6 @@
 pub use crate::def_id::DefPathHash;
 use crate::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use crate::hir;
-use crate::hir_id::DUMMY_HIR_ID;
 
 use rustc_ast::ast;
 use rustc_ast::crate_disambiguator::CrateDisambiguator;
@@ -87,7 +86,7 @@ pub struct Definitions {
     node_id_to_def_id: FxHashMap<ast::NodeId, LocalDefId>,
     def_id_to_node_id: IndexVec<LocalDefId, ast::NodeId>,
 
-    pub(super) node_id_to_hir_id: IndexVec<ast::NodeId, hir::HirId>,
+    pub(super) node_id_to_hir_id: IndexVec<ast::NodeId, Option<hir::HirId>>,
     /// The reverse mapping of `node_id_to_hir_id`.
     pub(super) hir_id_to_node_id: FxHashMap<hir::HirId, ast::NodeId>,
 
@@ -247,7 +246,7 @@ impl DefPath {
 
         let mut opt_delimiter = None;
         for component in &self.data {
-            opt_delimiter.map(|d| s.push(d));
+            s.extend(opt_delimiter);
             opt_delimiter = Some('-');
             if component.disambiguator == 0 {
                 write!(s, "{}", component.data.as_symbol()).unwrap();
@@ -326,10 +325,11 @@ impl Definitions {
         self.node_id_to_def_id.get(&node).copied()
     }
 
-    // FIXME(eddyb) this function can and should return `LocalDefId`.
     #[inline]
-    pub fn local_def_id(&self, node: ast::NodeId) -> DefId {
-        self.opt_local_def_id(node).unwrap().to_def_id()
+    pub fn local_def_id(&self, node: ast::NodeId) -> LocalDefId {
+        self.opt_local_def_id(node).unwrap_or_else(|| {
+            panic!("no entry for node id: `{:?}` / `{:?}`", node, self.opt_node_id_to_hir_id(node))
+        })
     }
 
     #[inline]
@@ -344,13 +344,8 @@ impl Definitions {
     }
 
     #[inline]
-    pub fn as_local_hir_id(&self, def_id: DefId) -> Option<hir::HirId> {
-        if let Some(def_id) = def_id.as_local() {
-            let hir_id = self.local_def_id_to_hir_id(def_id);
-            if hir_id != DUMMY_HIR_ID { Some(hir_id) } else { None }
-        } else {
-            None
-        }
+    pub fn as_local_hir_id(&self, def_id: LocalDefId) -> hir::HirId {
+        self.local_def_id_to_hir_id(def_id)
     }
 
     #[inline]
@@ -360,11 +355,22 @@ impl Definitions {
 
     #[inline]
     pub fn node_id_to_hir_id(&self, node_id: ast::NodeId) -> hir::HirId {
+        self.node_id_to_hir_id[node_id].unwrap()
+    }
+
+    #[inline]
+    pub fn opt_node_id_to_hir_id(&self, node_id: ast::NodeId) -> Option<hir::HirId> {
         self.node_id_to_hir_id[node_id]
     }
 
     #[inline]
     pub fn local_def_id_to_hir_id(&self, id: LocalDefId) -> hir::HirId {
+        let node_id = self.def_id_to_node_id[id];
+        self.node_id_to_hir_id[node_id].unwrap()
+    }
+
+    #[inline]
+    pub fn opt_local_def_id_to_hir_id(&self, id: LocalDefId) -> Option<hir::HirId> {
         let node_id = self.def_id_to_node_id[id];
         self.node_id_to_hir_id[node_id]
     }
@@ -471,7 +477,10 @@ impl Definitions {
 
     /// Initializes the `ast::NodeId` to `HirId` mapping once it has been generated during
     /// AST to HIR lowering.
-    pub fn init_node_id_to_hir_id_mapping(&mut self, mapping: IndexVec<ast::NodeId, hir::HirId>) {
+    pub fn init_node_id_to_hir_id_mapping(
+        &mut self,
+        mapping: IndexVec<ast::NodeId, Option<hir::HirId>>,
+    ) {
         assert!(
             self.node_id_to_hir_id.is_empty(),
             "trying to initialize `NodeId` -> `HirId` mapping twice"
@@ -482,7 +491,7 @@ impl Definitions {
         self.hir_id_to_node_id = self
             .node_id_to_hir_id
             .iter_enumerated()
-            .map(|(node_id, &hir_id)| (hir_id, node_id))
+            .filter_map(|(node_id, &hir_id)| hir_id.map(|hir_id| (hir_id, node_id)))
             .collect();
     }
 

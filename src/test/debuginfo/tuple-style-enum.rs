@@ -1,8 +1,6 @@
 // ignore-tidy-linelength
 
-// Require LLVM with DW_TAG_variant_part and a gdb and lldb that can
-// read it.
-// min-system-llvm-version: 8.0
+// Require a gdb or lldb that can read DW_TAG_variant_part.
 // min-gdb-version: 8.2
 // rust-lldb
 

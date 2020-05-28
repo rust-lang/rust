@@ -47,11 +47,19 @@ impl TcpStream {
         match self.0 {}
     }
 
+    pub fn is_read_vectored(&self) -> bool {
+        match self.0 {}
+    }
+
     pub fn write(&self, _: &[u8]) -> io::Result<usize> {
         match self.0 {}
     }
 
     pub fn write_vectored(&self, _: &[IoSlice<'_>]) -> io::Result<usize> {
+        match self.0 {}
+    }
+
+    pub fn is_write_vectored(&self) -> bool {
         match self.0 {}
     }
 

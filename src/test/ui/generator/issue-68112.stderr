@@ -1,0 +1,40 @@
+error: generator cannot be sent between threads safely
+  --> $DIR/issue-68112.rs:33:5
+   |
+LL | fn require_send(_: impl Send) {}
+   |                         ---- required by this bound in `require_send`
+...
+LL |     require_send(send_gen);
+   |     ^^^^^^^^^^^^ generator is not `Send`
+   |
+   = help: the trait `std::marker::Sync` is not implemented for `std::cell::RefCell<i32>`
+note: generator is not `Send` as this value is used across a yield
+  --> $DIR/issue-68112.rs:31:9
+   |
+LL |         let _non_send_gen = make_non_send_generator();
+   |             ------------- has type `impl std::ops::Generator` which is not `Send`
+LL |         yield;
+   |         ^^^^^ yield occurs here, with `_non_send_gen` maybe used later
+LL |     };
+   |     - `_non_send_gen` is later dropped here
+
+error[E0277]: `std::cell::RefCell<i32>` cannot be shared between threads safely
+  --> $DIR/issue-68112.rs:52:5
+   |
+LL | fn require_send(_: impl Send) {}
+   |                         ---- required by this bound in `require_send`
+...
+LL |     require_send(send_gen);
+   |     ^^^^^^^^^^^^ `std::cell::RefCell<i32>` cannot be shared between threads safely
+   |
+   = help: the trait `std::marker::Sync` is not implemented for `std::cell::RefCell<i32>`
+   = note: required because of the requirements on the impl of `std::marker::Send` for `std::sync::Arc<std::cell::RefCell<i32>>`
+   = note: required because it appears within the type `[generator@$DIR/issue-68112.rs:38:5: 41:6 t:std::sync::Arc<std::cell::RefCell<i32>> {()}]`
+   = note: required because it appears within the type `impl std::ops::Generator`
+   = note: required because it appears within the type `impl std::ops::Generator`
+   = note: required because it appears within the type `{impl std::ops::Generator, ()}`
+   = note: required because it appears within the type `[generator@$DIR/issue-68112.rs:48:20: 51:6 {impl std::ops::Generator, ()}]`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

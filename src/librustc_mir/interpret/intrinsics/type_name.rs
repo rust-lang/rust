@@ -60,7 +60,6 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
             | ty::FnDef(def_id, substs)
             | ty::Opaque(def_id, substs)
             | ty::Projection(ty::ProjectionTy { item_def_id: def_id, substs })
-            | ty::UnnormalizedProjection(ty::ProjectionTy { item_def_id: def_id, substs })
             | ty::Closure(def_id, substs)
             | ty::Generator(def_id, substs, _) => self.print_def_path(def_id, substs),
             ty::Foreign(def_id) => self.print_def_path(def_id, &[]),

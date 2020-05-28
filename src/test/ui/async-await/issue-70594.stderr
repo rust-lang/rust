@@ -32,11 +32,8 @@ error[E0277]: the trait bound `(): std::future::Future` is not satisfied
    |
 LL |     [1; ().await];
    |         ^^^^^^^^ the trait `std::future::Future` is not implemented for `()`
-   | 
-  ::: $SRC_DIR/libcore/future/mod.rs:LL:COL
    |
-LL |     F: Future,
-   |        ------ required by this bound in `std::future::poll_with_context`
+   = note: required by `std::future::Future::poll`
 
 error: aborting due to 5 previous errors
 

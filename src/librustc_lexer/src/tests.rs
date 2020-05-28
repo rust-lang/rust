@@ -145,4 +145,61 @@ mod tests {
             }),
         );
     }
+
+    #[test]
+    fn test_valid_shebang() {
+        // https://github.com/rust-lang/rust/issues/70528
+        let input = "#!/usr/bin/rustrun\nlet x = 5;";
+        assert_eq!(strip_shebang(input), Some(18));
+    }
+
+    #[test]
+    fn test_invalid_shebang_valid_rust_syntax() {
+        // https://github.com/rust-lang/rust/issues/70528
+        let input = "#!    [bad_attribute]";
+        assert_eq!(strip_shebang(input), None);
+    }
+
+    #[test]
+    fn test_shebang_second_line() {
+        // Because shebangs are interpreted by the kernel, they must be on the first line
+        let input = "\n#!/bin/bash";
+        assert_eq!(strip_shebang(input), None);
+    }
+
+    #[test]
+    fn test_shebang_space() {
+        let input = "#!    /bin/bash";
+        assert_eq!(strip_shebang(input), Some(input.len()));
+    }
+
+    #[test]
+    fn test_shebang_empty_shebang() {
+        let input = "#!    \n[attribute(foo)]";
+        assert_eq!(strip_shebang(input), None);
+    }
+
+    #[test]
+    fn test_invalid_shebang_comment() {
+        let input = "#!//bin/ami/a/comment\n[";
+        assert_eq!(strip_shebang(input), None)
+    }
+
+    #[test]
+    fn test_invalid_shebang_another_comment() {
+        let input = "#!/*bin/ami/a/comment*/\n[attribute";
+        assert_eq!(strip_shebang(input), None)
+    }
+
+    #[test]
+    fn test_shebang_valid_rust_after() {
+        let input = "#!/*bin/ami/a/comment*/\npub fn main() {}";
+        assert_eq!(strip_shebang(input), Some(23))
+    }
+
+    #[test]
+    fn test_shebang_followed_by_attrib() {
+        let input = "#!/bin/rust-scripts\n#![allow_unused(true)]";
+        assert_eq!(strip_shebang(input), Some(19));
+    }
 }

@@ -11,7 +11,6 @@ pub use self::CandidateSource::*;
 pub use self::MethodError::*;
 
 use crate::check::FnCtxt;
-use rustc_ast::ast;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
@@ -22,6 +21,7 @@ use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
 use rustc_middle::ty::GenericParamDefKind;
 use rustc_middle::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TypeFoldable, WithConstness};
+use rustc_span::symbol::Ident;
 use rustc_span::Span;
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
@@ -104,7 +104,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Determines whether the type `self_ty` supports a method name `method_name` or not.
     pub fn method_exists(
         &self,
-        method_name: ast::Ident,
+        method_name: Ident,
         self_ty: Ty<'tcx>,
         call_expr_id: hir::HirId,
         allow_private: bool,
@@ -133,7 +133,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         err: &mut DiagnosticBuilder<'a>,
         msg: &str,
-        method_name: ast::Ident,
+        method_name: Ident,
         self_ty: Ty<'tcx>,
         call_expr: &hir::Expr<'_>,
     ) {
@@ -171,11 +171,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// Given a method call like `foo.bar::<T1,...Tn>(...)`:
     ///
-    /// * `fcx`:                   the surrounding `FnCtxt` (!)
-    /// * `span`:                  the span for the method call
-    /// * `method_name`:           the name of the method being called (`bar`)
+    /// * `self`:                  the surrounding `FnCtxt` (!)
     /// * `self_ty`:               the (unadjusted) type of the self expression (`foo`)
-    /// * `supplied_method_types`: the explicit method type parameters, if any (`T1..Tn`)
+    /// * `segment`:               the name and generic arguments of the method (`bar::<T1, ...Tn>`)
+    /// * `span`:                  the span for the method call
+    /// * `call_expr`:             the complete method call: (`foo.bar::<T1,...Tn>(...)`)
     /// * `self_expr`:             the self expression (`foo`)
     pub fn lookup_method(
         &self,
@@ -198,7 +198,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             debug!("used_trait_import: {:?}", import_def_id);
             Lrc::get_mut(&mut self.tables.borrow_mut().used_trait_imports)
                 .unwrap()
-                .insert(import_def_id);
+                .insert(import_def_id.to_def_id());
         }
 
         self.tcx.check_stability(pick.item.def_id, Some(call_expr.hir_id), span);
@@ -260,7 +260,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn lookup_probe(
         &self,
         span: Span,
-        method_name: ast::Ident,
+        method_name: Ident,
         self_ty: Ty<'tcx>,
         call_expr: &'tcx hir::Expr<'tcx>,
         scope: ProbeScope,
@@ -290,7 +290,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn lookup_method_in_trait(
         &self,
         span: Span,
-        m_name: ast::Ident,
+        m_name: Ident,
         trait_def_id: DefId,
         self_ty: Ty<'tcx>,
         opt_input_types: Option<&[Ty<'tcx>]>,
@@ -324,7 +324,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             span,
             self.body_id,
             self.param_env,
-            poly_trait_ref.without_const().to_predicate(),
+            poly_trait_ref.without_const().to_predicate(self.tcx),
         );
 
         // Now we want to know if this can be matched
@@ -390,7 +390,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         assert!(!bounds.has_escaping_bound_vars());
 
         let cause = traits::ObligationCause::misc(span, self.body_id);
-        obligations.extend(traits::predicates_for_generics(cause.clone(), self.param_env, &bounds));
+        obligations.extend(traits::predicates_for_generics(cause.clone(), self.param_env, bounds));
 
         // Also add an obligation for the method type being well-formed.
         let method_ty = tcx.mk_fn_ptr(ty::Binder::bind(fn_sig));
@@ -401,7 +401,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         obligations.push(traits::Obligation::new(
             cause,
             self.param_env,
-            ty::Predicate::WellFormed(method_ty),
+            ty::PredicateKind::WellFormed(method_ty).to_predicate(tcx),
         ));
 
         let callee = MethodCallee { def_id, substs: trait_ref.substs, sig: fn_sig };
@@ -414,7 +414,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn resolve_ufcs(
         &self,
         span: Span,
-        method_name: ast::Ident,
+        method_name: Ident,
         self_ty: Ty<'tcx>,
         expr_id: hir::HirId,
     ) -> Result<(DefKind, DefId), MethodError<'tcx>> {
@@ -463,11 +463,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             for import_id in pick.import_ids {
                 let import_def_id = tcx.hir().local_def_id(import_id);
                 debug!("resolve_ufcs: used_trait_import: {:?}", import_def_id);
-                used_trait_imports.insert(import_def_id);
+                used_trait_imports.insert(import_def_id.to_def_id());
             }
         }
 
-        let def_kind = pick.item.def_kind();
+        let def_kind = pick.item.kind.as_def_kind();
         debug!("resolve_ufcs: def_kind={:?}, def_id={:?}", def_kind, pick.item.def_id);
         tcx.check_stability(pick.item.def_id, Some(expr_id), span);
         Ok((def_kind, pick.item.def_id))
@@ -478,7 +478,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn associated_item(
         &self,
         def_id: DefId,
-        item_name: ast::Ident,
+        item_name: Ident,
         ns: Namespace,
     ) -> Option<ty::AssocItem> {
         self.tcx

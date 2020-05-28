@@ -231,7 +231,10 @@ impl CodeSuggestion {
                             }
                         }
                         if let Some(cur_line) = sf.get_line(cur_lo.line - 1) {
-                            let end = std::cmp::min(cur_line.len(), cur_lo.col.to_usize());
+                            let end = match cur_line.char_indices().nth(cur_lo.col.to_usize()) {
+                                Some((i, _)) => i,
+                                None => cur_line.len(),
+                            };
                             buf.push_str(&cur_line[..end]);
                         }
                     }
@@ -312,6 +315,9 @@ struct HandlerInner {
     /// The stashed diagnostics count towards the total error count.
     /// When `.abort_if_errors()` is called, these are also emitted.
     stashed_diagnostics: FxIndexMap<(Span, StashKey), Diagnostic>,
+
+    /// The warning count, used for a recap upon finishing
+    deduplicated_warn_count: usize,
 }
 
 /// A key denoting where from a diagnostic was stashed.
@@ -414,6 +420,7 @@ impl Handler {
                 flags,
                 err_count: 0,
                 deduplicated_err_count: 0,
+                deduplicated_warn_count: 0,
                 emitter,
                 delayed_span_bugs: Vec::new(),
                 taught_diagnostics: Default::default(),
@@ -439,6 +446,7 @@ impl Handler {
         let mut inner = self.inner.borrow_mut();
         inner.err_count = 0;
         inner.deduplicated_err_count = 0;
+        inner.deduplicated_warn_count = 0;
 
         // actually free the underlying memory (which `clear` would not do)
         inner.delayed_span_bugs = Default::default();
@@ -745,6 +753,8 @@ impl HandlerInner {
             self.emitter.emit_diagnostic(diagnostic);
             if diagnostic.is_error() {
                 self.deduplicated_err_count += 1;
+            } else if diagnostic.level == Warning {
+                self.deduplicated_warn_count += 1;
             }
         }
         if diagnostic.is_error() {
@@ -763,8 +773,13 @@ impl HandlerInner {
     fn print_error_count(&mut self, registry: &Registry) {
         self.emit_stashed_diagnostics();
 
-        let s = match self.deduplicated_err_count {
-            0 => return,
+        let warnings = match self.deduplicated_warn_count {
+            0 => String::new(),
+            1 => "1 warning emitted".to_string(),
+            count => format!("{} warnings emitted", count),
+        };
+        let errors = match self.deduplicated_err_count {
+            0 => String::new(),
             1 => "aborting due to previous error".to_string(),
             count => format!("aborting due to {} previous errors", count),
         };
@@ -772,7 +787,16 @@ impl HandlerInner {
             return;
         }
 
-        let _ = self.fatal(&s);
+        match (errors.len(), warnings.len()) {
+            (0, 0) => return,
+            (0, _) => self.emit_diagnostic(&Diagnostic::new(Level::Warning, &warnings)),
+            (_, 0) => {
+                let _ = self.fatal(&errors);
+            }
+            (_, _) => {
+                let _ = self.fatal(&format!("{}; {}", &errors, &warnings));
+            }
+        }
 
         let can_show_explain = self.emitter.should_show_explain();
         let are_there_diagnostics = !self.emitted_diagnostic_codes.is_empty();
@@ -845,7 +869,10 @@ impl HandlerInner {
     }
 
     fn delay_span_bug(&mut self, sp: impl Into<MultiSpan>, msg: &str) {
-        if self.treat_err_as_bug() {
+        // This is technically `self.treat_err_as_bug()` but `delay_span_bug` is called before
+        // incrementing `err_count` by one, so we need to +1 the comparing.
+        // FIXME: Would be nice to increment err_count in a more coherent way.
+        if self.flags.treat_err_as_bug.map(|c| self.err_count() + 1 >= c).unwrap_or(false) {
             // FIXME: don't abort here if report_delayed_bugs is off
             self.span_bug(sp, msg);
         }

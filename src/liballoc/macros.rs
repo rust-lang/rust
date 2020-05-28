@@ -42,10 +42,9 @@ macro_rules! vec {
     ($elem:expr; $n:expr) => (
         $crate::vec::from_elem($elem, $n)
     );
-    ($($x:expr),*) => (
-        <[_]>::into_vec(box [$($x),*])
+    ($($x:expr),+ $(,)?) => (
+        <[_]>::into_vec(box [$($x),+])
     );
-    ($($x:expr,)*) => ($crate::vec![$($x),*])
 }
 
 // HACK(japaric): with cfg(test) the inherent `[T]::into_vec` method, which is

@@ -28,5 +28,5 @@ warning: `...` range patterns are deprecated
 LL |         box 0...9 => {}
    |              ^^^ help: use `..=` for an inclusive range
 
-error: aborting due to 2 previous errors
+error: aborting due to 2 previous errors; 2 warnings emitted
 

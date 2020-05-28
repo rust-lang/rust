@@ -1,6 +1,5 @@
 use crate::mir::operand::OperandRef;
 use crate::traits::*;
-use rustc_index::vec::Idx;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{ConstValue, ErrorHandled};
 use rustc_middle::ty::layout::HasTyCtxt;
@@ -16,25 +15,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         bx: &mut Bx,
         constant: &mir::Constant<'tcx>,
     ) -> Result<OperandRef<'tcx, Bx::Value>, ErrorHandled> {
-        match constant.literal.val {
-            // Special case unevaluated statics, because statics have an identity and thus should
-            // use `get_static` to get at their id.
-            // FIXME(oli-obk): can we unify this somehow, maybe by making const eval of statics
-            // always produce `&STATIC`. This may also simplify how const eval works with statics.
-            ty::ConstKind::Unevaluated(def_id, substs, None) if self.cx.tcx().is_static(def_id) => {
-                assert!(substs.is_empty(), "we don't support generic statics yet");
-                let static_ = bx.get_static(def_id);
-                // we treat operands referring to statics as if they were `&STATIC` instead
-                let ptr_ty = self.cx.tcx().mk_mut_ptr(self.monomorphize(&constant.literal.ty));
-                let layout = bx.layout_of(ptr_ty);
-                Ok(OperandRef::from_immediate_or_packed_pair(bx, static_, layout))
-            }
-            _ => {
-                let val = self.eval_mir_constant(constant)?;
-                let ty = self.monomorphize(&constant.literal.ty);
-                Ok(OperandRef::from_const(bx, val, ty))
-            }
-        }
+        let val = self.eval_mir_constant(constant)?;
+        let ty = self.monomorphize(&constant.literal.ty);
+        Ok(OperandRef::from_const(bx, val, ty))
     }
 
     pub fn eval_mir_constant(
@@ -75,17 +58,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         constant
             .map(|val| {
                 let field_ty = ty.builtin_index().unwrap();
-                let fields = match ty.kind {
-                    ty::Array(_, n) => n.eval_usize(bx.tcx(), ty::ParamEnv::reveal_all()),
-                    _ => bug!("invalid simd shuffle type: {}", ty),
-                };
                 let c = ty::Const::from_value(bx.tcx(), val, ty);
-                let values: Vec<_> = (0..fields)
+                let values: Vec<_> = bx
+                    .tcx()
+                    .destructure_const(ty::ParamEnv::reveal_all().and(&c))
+                    .fields
+                    .into_iter()
                     .map(|field| {
-                        let field = bx.tcx().const_field(
-                            ty::ParamEnv::reveal_all().and((&c, mir::Field::new(field as usize))),
-                        );
-                        if let Some(prim) = field.try_to_scalar() {
+                        if let Some(prim) = field.val.try_to_scalar() {
                             let layout = bx.layout_of(field_ty);
                             let scalar = match layout.abi {
                                 Abi::Scalar(ref x) => x,

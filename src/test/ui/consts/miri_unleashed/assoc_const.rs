@@ -11,7 +11,7 @@ trait Foo<T> {
 }
 
 trait Bar<T, U: Foo<T>> {
-    const F: u32 = (U::X, 42).1; //~ WARN skipping const checks
+    const F: u32 = (U::X, 42).1;
 }
 
 impl Foo<u32> for () {

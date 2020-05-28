@@ -171,7 +171,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn signum(self) -> f64 {
-        if self.is_nan() { NAN } else { 1.0_f64.copysign(self) }
+        if self.is_nan() { Self::NAN } else { 1.0_f64.copysign(self) }
     }
 
     /// Returns a number composed of the magnitude of `self` and the sign of
@@ -834,8 +834,8 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn asinh(self) -> f64 {
-        if self == NEG_INFINITY {
-            NEG_INFINITY
+        if self == Self::NEG_INFINITY {
+            Self::NEG_INFINITY
         } else {
             (self + ((self * self) + 1.0).sqrt()).ln().copysign(self)
         }
@@ -857,7 +857,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn acosh(self) -> f64 {
-        if self < 1.0 { NAN } else { (self + ((self * self) - 1.0).sqrt()).ln() }
+        if self < 1.0 { Self::NAN } else { (self + ((self * self) - 1.0).sqrt()).ln() }
     }
 
     /// Inverse hyperbolic tangent function.
@@ -884,7 +884,7 @@ impl f64 {
     /// Returns `max` if `self` is greater than `max`, and `min` if `self` is
     /// less than `min`. Otherwise this returns `self`.
     ///
-    /// Not that this function returns NaN if the initial value was NaN as
+    /// Note that this function returns NaN if the initial value was NaN as
     /// well.
     ///
     /// # Panics
@@ -919,23 +919,23 @@ impl f64 {
     // because of their non-standard behavior (e.g., log(-n) returns -Inf instead
     // of expected NaN).
     fn log_wrapper<F: Fn(f64) -> f64>(self, log_fn: F) -> f64 {
-        if !cfg!(target_os = "solaris") {
+        if !cfg!(any(target_os = "solaris", target_os = "illumos")) {
             log_fn(self)
         } else {
             if self.is_finite() {
                 if self > 0.0 {
                     log_fn(self)
                 } else if self == 0.0 {
-                    NEG_INFINITY // log(0) = -Inf
+                    Self::NEG_INFINITY // log(0) = -Inf
                 } else {
-                    NAN // log(-n) = NaN
+                    Self::NAN // log(-n) = NaN
                 }
             } else if self.is_nan() {
                 self // log(NaN) = NaN
             } else if self > 0.0 {
                 self // log(Inf) = Inf
             } else {
-                NAN // log(-Inf) = NaN
+                Self::NAN // log(-Inf) = NaN
             }
         }
     }

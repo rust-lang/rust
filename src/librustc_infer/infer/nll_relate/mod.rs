@@ -21,9 +21,9 @@
 //!   thing we relate in chalk are basically domain goals and their
 //!   constituents)
 
+use crate::infer::combine::ConstEquateRelation;
 use crate::infer::InferCtxt;
 use crate::infer::{ConstVarValue, ConstVariableValue};
-use crate::traits::DomainGoal;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::fold::{TypeFoldable, TypeVisitor};
@@ -78,9 +78,7 @@ pub trait TypeRelatingDelegate<'tcx> {
     /// delegate.
     fn push_outlives(&mut self, sup: ty::Region<'tcx>, sub: ty::Region<'tcx>);
 
-    /// Push a domain goal that will need to be proved for the two types to
-    /// be related. Used for lazy normalization.
-    fn push_domain_goal(&mut self, domain_goal: DomainGoal<'tcx>);
+    fn const_equate(&mut self, a: &'tcx ty::Const<'tcx>, b: &'tcx ty::Const<'tcx>);
 
     /// Creates a new universe index. Used when instantiating placeholders.
     fn create_next_universe(&mut self) -> ty::UniverseIndex;
@@ -265,7 +263,6 @@ where
         value_ty: Ty<'tcx>,
     ) -> Ty<'tcx> {
         use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-        use crate::traits::WhereClause;
         use rustc_span::DUMMY_SP;
 
         match value_ty.kind {
@@ -279,12 +276,7 @@ where
                 var
             }
 
-            _ => {
-                let projection = ty::ProjectionPredicate { projection_ty, ty: value_ty };
-                self.delegate
-                    .push_domain_goal(DomainGoal::Holds(WhereClause::ProjectionEq(projection)));
-                value_ty
-            }
+            _ => bug!("should never be invoked with eager normalization"),
         }
     }
 
@@ -322,7 +314,7 @@ where
         match value_ty.kind {
             ty::Infer(ty::TyVar(value_vid)) => {
                 // Two type variables: just equate them.
-                self.infcx.inner.borrow_mut().type_variables.equate(vid, value_vid);
+                self.infcx.inner.borrow_mut().type_variables().equate(vid, value_vid);
                 return Ok(value_ty);
             }
 
@@ -343,7 +335,7 @@ where
             assert!(!generalized_ty.has_infer_types_or_consts());
         }
 
-        self.infcx.inner.borrow_mut().type_variables.instantiate(vid, generalized_ty);
+        self.infcx.inner.borrow_mut().type_variables().instantiate(vid, generalized_ty);
 
         // The generalized values we extract from `canonical_var_values` have
         // been fully instantiated and hence the set of scopes we have
@@ -373,7 +365,7 @@ where
             delegate: &mut self.delegate,
             first_free_index: ty::INNERMOST,
             ambient_variance: self.ambient_variance,
-            for_vid_sub_root: self.infcx.inner.borrow_mut().type_variables.sub_root_var(for_vid),
+            for_vid_sub_root: self.infcx.inner.borrow_mut().type_variables().sub_root_var(for_vid),
             universe,
         };
 
@@ -668,7 +660,7 @@ where
             // Reset the ambient variance to covariant. This is needed
             // to correctly handle cases like
             //
-            //     for<'a> fn(&'a u32, &'a u3) == for<'b, 'c> fn(&'b u32, &'c u32)
+            //     for<'a> fn(&'a u32, &'a u32) == for<'b, 'c> fn(&'b u32, &'c u32)
             //
             // Somewhat surprisingly, these two types are actually
             // **equal**, even though the one on the right looks more
@@ -723,6 +715,15 @@ where
         }
 
         Ok(a.clone())
+    }
+}
+
+impl<'tcx, D> ConstEquateRelation<'tcx> for TypeRelating<'_, 'tcx, D>
+where
+    D: TypeRelatingDelegate<'tcx>,
+{
+    fn const_equate_obligation(&mut self, a: &'tcx ty::Const<'tcx>, b: &'tcx ty::Const<'tcx>) {
+        self.delegate.const_equate(a, b);
     }
 }
 
@@ -870,7 +871,8 @@ where
             }
 
             ty::Infer(ty::TyVar(vid)) => {
-                let variables = &mut self.infcx.inner.borrow_mut().type_variables;
+                let mut inner = self.infcx.inner.borrow_mut();
+                let variables = &mut inner.type_variables();
                 let vid = variables.root_var(vid);
                 let sub_vid = variables.sub_root_var(vid);
                 if sub_vid == self.for_vid_sub_root {
@@ -904,7 +906,7 @@ where
                 }
             }
 
-            ty::Infer(ty::IntVar(_)) | ty::Infer(ty::FloatVar(_)) => {
+            ty::Infer(ty::IntVar(_) | ty::FloatVar(_)) => {
                 // No matter what mode we are in,
                 // integer/floating-point types must be equal to be
                 // relatable.
@@ -972,7 +974,8 @@ where
                 bug!("unexpected inference variable encountered in NLL generalization: {:?}", a);
             }
             ty::ConstKind::Infer(InferConst::Var(vid)) => {
-                let variable_table = &mut self.infcx.inner.borrow_mut().const_unification_table;
+                let mut inner = self.infcx.inner.borrow_mut();
+                let variable_table = &mut inner.const_unification_table();
                 let var_value = variable_table.probe_value(vid);
                 match var_value.val.known() {
                     Some(u) => self.relate(&u, &u),
@@ -985,6 +988,7 @@ where
                     }
                 }
             }
+            ty::ConstKind::Unevaluated(..) if self.tcx().lazy_normalization() => Ok(a),
             _ => relate::super_relate_consts(self, a, a),
         }
     }

@@ -8,9 +8,6 @@
 #![feature(nll)]
 #![recursion_limit = "256"]
 
-pub extern crate getopts;
-#[cfg(unix)]
-extern crate libc;
 #[macro_use]
 extern crate log;
 #[macro_use]
@@ -37,6 +34,7 @@ use rustc_save_analysis::DumpHandler;
 use rustc_serialize::json::{self, ToJson};
 use rustc_session::config::nightly_options;
 use rustc_session::config::{ErrorOutputType, Input, OutputType, PrintRequest};
+use rustc_session::getopts;
 use rustc_session::lint::{Lint, LintId};
 use rustc_session::{config, DiagnosticOutput, Session};
 use rustc_session::{early_error, early_warn};
@@ -588,7 +586,7 @@ impl RustcDefaultCalls {
         if let Input::File(file) = compiler.input() {
             // FIXME: #![crate_type] and #![crate_name] support not implemented yet
             let attrs = vec![];
-            sess.crate_types.set(collect_crate_types(sess, &attrs));
+            sess.init_crate_types(collect_crate_types(sess, &attrs));
             let outputs = compiler.build_output_filenames(&sess, &attrs);
             let rlink_data = fs::read_to_string(file).unwrap_or_else(|err| {
                 sess.fatal(&format!("failed to read rlink file: {}", err));
@@ -620,15 +618,15 @@ impl RustcDefaultCalls {
     ) -> Compilation {
         let r = matches.opt_strs("Z");
         if r.iter().any(|s| *s == "ls") {
-            match input {
-                &Input::File(ref ifile) => {
+            match *input {
+                Input::File(ref ifile) => {
                     let path = &(*ifile);
                     let mut v = Vec::new();
                     locator::list_file_metadata(&sess.target.target, path, metadata_loader, &mut v)
                         .unwrap();
                     println!("{}", String::from_utf8(v).unwrap());
                 }
-                &Input::Str { .. } => {
+                Input::Str { .. } => {
                     early_error(ErrorOutputType::default(), "cannot list metadata for stdin");
                 }
             }
@@ -957,32 +955,17 @@ fn describe_codegen_flags() {
 
 fn print_flag_list<T>(
     cmdline_opt: &str,
-    flag_list: &[(&'static str, T, Option<&'static str>, &'static str)],
+    flag_list: &[(&'static str, T, &'static str, &'static str)],
 ) {
-    let max_len = flag_list
-        .iter()
-        .map(|&(name, _, opt_type_desc, _)| {
-            let extra_len = match opt_type_desc {
-                Some(..) => 4,
-                None => 0,
-            };
-            name.chars().count() + extra_len
-        })
-        .max()
-        .unwrap_or(0);
+    let max_len = flag_list.iter().map(|&(name, _, _, _)| name.chars().count()).max().unwrap_or(0);
 
-    for &(name, _, opt_type_desc, desc) in flag_list {
-        let (width, extra) = match opt_type_desc {
-            Some(..) => (max_len - 4, "=val"),
-            None => (max_len, ""),
-        };
+    for &(name, _, _, desc) in flag_list {
         println!(
-            "    {} {:>width$}{} -- {}",
+            "    {} {:>width$}=val -- {}",
             cmdline_opt,
             name.replace("_", "-"),
-            extra,
             desc,
-            width = width
+            width = max_len
         );
     }
 }
@@ -1155,6 +1138,16 @@ pub fn catch_fatal_errors<F: FnOnce() -> R, R>(f: F) -> Result<R, ErrorReported>
     })
 }
 
+/// Variant of `catch_fatal_errors` for the `interface::Result` return type
+/// that also computes the exit code.
+pub fn catch_with_exit_code(f: impl FnOnce() -> interface::Result<()>) -> i32 {
+    let result = catch_fatal_errors(f).and_then(|result| result);
+    match result {
+        Ok(()) => EXIT_SUCCESS,
+        Err(_) => EXIT_FAILURE,
+    }
+}
+
 lazy_static! {
     static ref DEFAULT_HOOK: Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 'static> = {
         let hook = panic::take_hook();
@@ -1245,12 +1238,12 @@ pub fn init_rustc_env_logger() {
     env_logger::init_from_env("RUSTC_LOG");
 }
 
-pub fn main() {
+pub fn main() -> ! {
     let start = Instant::now();
     init_rustc_env_logger();
     let mut callbacks = TimePassesCallbacks::default();
     install_ice_hook();
-    let result = catch_fatal_errors(|| {
+    let exit_code = catch_with_exit_code(|| {
         let args = env::args_os()
             .enumerate()
             .map(|(i, arg)| {
@@ -1263,13 +1256,8 @@ pub fn main() {
             })
             .collect::<Vec<_>>();
         run_compiler(&args, &mut callbacks, None, None)
-    })
-    .and_then(|result| result);
-    let exit_code = match result {
-        Ok(_) => EXIT_SUCCESS,
-        Err(_) => EXIT_FAILURE,
-    };
+    });
     // The extra `\t` is necessary to align this label with the others.
     print_time_passes_entry(callbacks.time_passes, "\ttotal", start.elapsed());
-    process::exit(exit_code);
+    process::exit(exit_code)
 }

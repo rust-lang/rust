@@ -3,6 +3,8 @@ error[E0019]: constant function contains unimplemented expression type
    |
 LL |         self.state = x;
    |         ^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
 error[E0658]: references in constants may only refer to immutable values
   --> $DIR/const_let_assign3.rs:16:5
@@ -27,6 +29,8 @@ error[E0019]: constant contains unimplemented expression type
    |
 LL |     *y = 42;
    |     ^^^^^^^
+   |
+   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
 error: aborting due to 4 previous errors
 

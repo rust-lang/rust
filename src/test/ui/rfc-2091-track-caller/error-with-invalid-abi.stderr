@@ -4,6 +4,12 @@ error[E0737]: `#[track_caller]` requires Rust ABI
 LL | #[track_caller]
    | ^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error[E0737]: `#[track_caller]` requires Rust ABI
+  --> $DIR/error-with-invalid-abi.rs:8:5
+   |
+LL |     #[track_caller]
+   |     ^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0737`.

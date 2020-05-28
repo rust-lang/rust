@@ -6,7 +6,7 @@ use rustc_middle::ty::TyCtxt;
 pub struct Deaggregator;
 
 impl<'tcx> MirPass<'tcx> for Deaggregator {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, _source: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, _source: MirSource<'tcx>, body: &mut Body<'tcx>) {
         let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
         let local_decls = &*local_decls;
         for bb in basic_blocks {

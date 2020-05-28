@@ -10,6 +10,8 @@ allow-unauthenticated = [
 
 [assign]
 
+[glacier]
+
 [ping.icebreakers-llvm]
 alias = ["llvm", "llvms"]
 message = """\
@@ -33,3 +35,13 @@ Thanks! <3
 [instructions]: https://rustc-dev-guide.rust-lang.org/ice-breaker/cleanup-crew.html
 """
 label = "ICEBreaker-Cleanup-Crew"
+
+[prioritize]
+label = "I-prioritize"
+prioritize_on = ["regression-from-stable-to-stable", "regression-from-stable-to-beta", "regression-from-stable-to-nightly"]
+exclude_labels = [
+    "P-*",
+    "T-infra",
+    "T-release",
+]
+zulip_stream = 227806

@@ -436,9 +436,10 @@ impl Step for Miri {
 
             // miri tests need to know about the stage sysroot
             cargo.env("MIRI_SYSROOT", miri_sysroot);
-            cargo.env("RUSTC_TEST_SUITE", builder.rustc(compiler));
             cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(compiler));
             cargo.env("MIRI_PATH", miri);
+
+            cargo.arg("--").args(builder.config.cmd.test_args());
 
             builder.add_rustc_lib_path(compiler, &mut cargo);
 
@@ -528,7 +529,7 @@ impl Step for Clippy {
                 host,
                 "test",
                 "src/tools/clippy",
-                SourceType::Submodule,
+                SourceType::InTree,
                 &[],
             );
 
@@ -546,11 +547,11 @@ impl Step for Clippy {
             // clippy tests need to find the driver
             cargo.env("CLIPPY_DRIVER_PATH", clippy);
 
+            cargo.arg("--").args(builder.config.cmd.test_args());
+
             builder.add_rustc_lib_path(compiler, &mut cargo);
 
-            if try_run(builder, &mut cargo.into()) {
-                builder.save_toolstate("clippy-driver", ToolState::TestPass);
-            }
+            try_run(builder, &mut cargo.into());
         } else {
             eprintln!("failed to test clippy: could not build");
         }
@@ -627,8 +628,14 @@ impl Step for RustdocJSStd {
         if let Some(ref nodejs) = builder.config.nodejs {
             let mut command = Command::new(nodejs);
             command
-                .arg(builder.src.join("src/tools/rustdoc-js-std/tester.js"))
+                .arg(builder.src.join("src/tools/rustdoc-js/tester.js"))
+                .arg("--crate-name")
+                .arg("std")
+                .arg("--resource-suffix")
+                .arg(crate::channel::CFG_RELEASE_NUM)
+                .arg("--doc-folder")
                 .arg(builder.doc_out(self.target))
+                .arg("--test-folder")
                 .arg(builder.src.join("src/test/rustdoc-js-std"));
             builder.ensure(crate::doc::Std { target: self.target, stage: builder.top_stage });
             builder.run(&mut command);
@@ -894,8 +901,6 @@ default_test!(CompileFail {
     suite: "compile-fail"
 });
 
-default_test!(RunFail { path: "src/test/run-fail", mode: "run-fail", suite: "run-fail" });
-
 default_test!(RunPassValgrind {
     path: "src/test/run-pass-valgrind",
     mode: "run-pass-valgrind",
@@ -925,13 +930,6 @@ host_test!(UiFullDeps { path: "src/test/ui-fulldeps", mode: "ui", suite: "ui-ful
 host_test!(Rustdoc { path: "src/test/rustdoc", mode: "rustdoc", suite: "rustdoc" });
 
 host_test!(Pretty { path: "src/test/pretty", mode: "pretty", suite: "pretty" });
-test!(RunFailPretty {
-    path: "src/test/run-fail/pretty",
-    mode: "pretty",
-    suite: "run-fail",
-    default: false,
-    host: true
-});
 test!(RunPassValgrindPretty {
     path: "src/test/run-pass-valgrind/pretty",
     mode: "pretty",
@@ -1102,20 +1100,15 @@ impl Step for Compiletest {
                     .to_string()
             })
         };
-        let lldb_exe = if builder.config.lldb_enabled {
-            // Test against the lldb that was just built.
-            builder.llvm_out(target).join("bin").join("lldb")
-        } else {
-            PathBuf::from("lldb")
-        };
-        let lldb_version = Command::new(&lldb_exe)
+        let lldb_exe = "lldb";
+        let lldb_version = Command::new(lldb_exe)
             .arg("--version")
             .output()
             .map(|output| String::from_utf8_lossy(&output.stdout).to_string())
             .ok();
         if let Some(ref vers) = lldb_version {
             cmd.arg("--lldb-version").arg(vers);
-            let lldb_python_dir = run(Command::new(&lldb_exe).arg("-P")).ok();
+            let lldb_python_dir = run(Command::new(lldb_exe).arg("-P")).ok();
             if let Some(ref dir) = lldb_python_dir {
                 cmd.arg("--lldb-python-dir").arg(dir);
             }
@@ -1719,7 +1712,7 @@ impl Step for Crate {
         let mut cargo = builder.cargo(compiler, mode, target, test_kind.subcommand());
         match mode {
             Mode::Std => {
-                compile::std_cargo(builder, target, &mut cargo);
+                compile::std_cargo(builder, target, compiler.stage, &mut cargo);
             }
             Mode::Rustc => {
                 builder.ensure(compile::Rustc { compiler, target });

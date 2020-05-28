@@ -144,6 +144,7 @@ symbols! {
         any,
         arbitrary_enum_discriminant,
         arbitrary_self_types,
+        Arc,
         Arguments,
         ArgumentV1,
         arm_target_feature,
@@ -159,6 +160,7 @@ symbols! {
         attr,
         attributes,
         attr_literals,
+        att_syntax,
         augmented_assignments,
         automatically_derived,
         avx512_target_feature,
@@ -191,6 +193,7 @@ symbols! {
         cfg_target_has_atomic,
         cfg_target_thread_local,
         cfg_target_vendor,
+        cfg_version,
         char,
         clippy,
         clone,
@@ -319,6 +322,8 @@ symbols! {
         f32,
         f64,
         feature,
+        ffi_const,
+        ffi_pure,
         ffi_returns_twice,
         field,
         field_init_shorthand,
@@ -347,6 +352,7 @@ symbols! {
         generators,
         generic_associated_types,
         generic_param_attrs,
+        get_context,
         global_allocator,
         global_asm,
         globs,
@@ -373,6 +379,8 @@ symbols! {
         if_let,
         if_while_or_patterns,
         ignore,
+        inlateout,
+        inout,
         impl_header_lifetime_elision,
         impl_lint_pass,
         impl_trait_in_bindings,
@@ -408,6 +416,7 @@ symbols! {
         label_break_value,
         lang,
         lang_items,
+        lateout,
         let_chains,
         lhs,
         lib,
@@ -492,12 +501,15 @@ symbols! {
         no_link,
         no_main,
         no_mangle,
+        nomem,
         non_ascii_idents,
         None,
         non_exhaustive,
         non_modrs_mods,
-        no_sanitize,
+        noreturn,
         no_niche,
+        no_sanitize,
+        nostack,
         no_stack_check,
         no_start,
         no_std,
@@ -516,11 +528,13 @@ symbols! {
         option,
         Option,
         option_env,
+        options,
         opt_out_copy,
         or,
         or_patterns,
         Ord,
         Ordering,
+        out,
         Output,
         overlapping_marker_traits,
         packed,
@@ -546,13 +560,14 @@ symbols! {
         plugin,
         plugin_registrar,
         plugins,
+        poll,
         Poll,
-        poll_with_context,
         powerpc_target_feature,
         precise_pointer_size_matching,
         pref_align_of,
         prelude,
         prelude_import,
+        preserves_flags,
         primitive,
         proc_dash_macro: "proc-macro",
         proc_macro,
@@ -569,6 +584,7 @@ symbols! {
         profiler_runtime,
         ptr_offset_from,
         pub_restricted,
+        pure,
         pushpop_unsafe,
         quad_precision_float,
         question_mark,
@@ -582,6 +598,8 @@ symbols! {
         raw_dylib,
         raw_identifiers,
         raw_ref_op,
+        Rc,
+        readonly,
         Ready,
         reason,
         recursion_limit,
@@ -603,6 +621,7 @@ symbols! {
         Result,
         Return,
         rhs,
+        riscv_target_feature,
         rlib,
         rotate_left,
         rotate_right,
@@ -652,6 +671,7 @@ symbols! {
         rustc_partition_reused,
         rustc_peek,
         rustc_peek_definite_init,
+        rustc_peek_liveness,
         rustc_peek_maybe_init,
         rustc_peek_maybe_uninit,
         rustc_peek_indirectly_mutable,
@@ -717,8 +737,10 @@ symbols! {
         sty,
         sub_with_overflow,
         suggestion,
+        sym,
         sync_trait,
         target_feature,
+        target_feature_11,
         target_has_atomic,
         target_has_atomic_load_store,
         target_thread_local,
@@ -801,6 +823,7 @@ symbols! {
         var,
         vec,
         Vec,
+        version,
         vis,
         visible_private_types,
         volatile,
@@ -1151,12 +1174,20 @@ impl Interner {
 }
 
 // This module has a very short name because it's used a lot.
+/// This module contains all the defined keyword `Symbol`s.
+///
+/// Given that `kw` is imported, use them like `kw::keyword_name`.
+/// For example `kw::Loop` or `kw::Break`.
 pub mod kw {
     use super::Symbol;
     keywords!();
 }
 
 // This module has a very short name because it's used a lot.
+/// This module contains all the defined non-keyword `Symbol`s.
+///
+/// Given that `sym` is imported, use them like `sym::symbol_name`.
+/// For example `sym::rustfmt` or `sym::u8`.
 #[allow(rustc::default_hash_types)]
 pub mod sym {
     use super::Symbol;
@@ -1171,8 +1202,8 @@ pub mod sym {
     // have a static symbol and therefore are fast.
     pub fn integer<N: TryInto<usize> + Copy + ToString>(n: N) -> Symbol {
         if let Result::Ok(idx) = n.try_into() {
-            if let Option::Some(&sym) = digits_array.get(idx) {
-                return sym;
+            if let Option::Some(&sym_) = digits_array.get(idx) {
+                return sym_;
             }
         }
         Symbol::intern(&n.to_string())

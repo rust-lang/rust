@@ -409,6 +409,11 @@ impl File {
         self.handle.read_vectored(bufs)
     }
 
+    #[inline]
+    pub fn is_read_vectored(&self) -> bool {
+        self.handle.is_read_vectored()
+    }
+
     pub fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
         self.handle.read_at(buf, offset)
     }
@@ -419,6 +424,11 @@ impl File {
 
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.handle.write_vectored(bufs)
+    }
+
+    #[inline]
+    pub fn is_write_vectored(&self) -> bool {
+        self.handle.is_write_vectored()
     }
 
     pub fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {

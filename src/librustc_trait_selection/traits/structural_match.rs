@@ -4,6 +4,7 @@ use crate::traits::{self, ConstPatternStructural, TraitEngine};
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
+use rustc_hir::lang_items::{StructuralPeqTraitLangItem, StructuralTeqTraitLangItem};
 use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt, TypeFoldable, TypeVisitor};
 use rustc_span::Span;
 
@@ -11,6 +12,11 @@ use rustc_span::Span;
 pub enum NonStructuralMatchTy<'tcx> {
     Adt(&'tcx AdtDef),
     Param,
+    Dynamic,
+    Foreign,
+    Opaque,
+    Generator,
+    Projection,
 }
 
 /// This method traverses the structure of `ty`, trying to find an
@@ -68,7 +74,7 @@ pub fn type_marked_structural(
     let mut fulfillment_cx = traits::FulfillmentContext::new();
     let cause = ObligationCause::new(span, id, ConstPatternStructural);
     // require `#[derive(PartialEq)]`
-    let structural_peq_def_id = infcx.tcx.lang_items().structural_peq_trait().unwrap();
+    let structural_peq_def_id = infcx.tcx.require_lang_item(StructuralPeqTraitLangItem, Some(span));
     fulfillment_cx.register_bound(
         infcx,
         ty::ParamEnv::empty(),
@@ -79,7 +85,7 @@ pub fn type_marked_structural(
     // for now, require `#[derive(Eq)]`. (Doing so is a hack to work around
     // the type `for<'a> fn(&'a ())` failing to implement `Eq` itself.)
     let cause = ObligationCause::new(span, id, ConstPatternStructural);
-    let structural_teq_def_id = infcx.tcx.lang_items().structural_teq_trait().unwrap();
+    let structural_teq_def_id = infcx.tcx.require_lang_item(StructuralTeqTraitLangItem, Some(span));
     fulfillment_cx.register_bound(
         infcx,
         ty::ParamEnv::empty(),
@@ -137,6 +143,26 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for Search<'a, 'tcx> {
                 self.found = Some(NonStructuralMatchTy::Param);
                 return true; // Stop visiting.
             }
+            ty::Dynamic(..) => {
+                self.found = Some(NonStructuralMatchTy::Dynamic);
+                return true; // Stop visiting.
+            }
+            ty::Foreign(_) => {
+                self.found = Some(NonStructuralMatchTy::Foreign);
+                return true; // Stop visiting.
+            }
+            ty::Opaque(..) => {
+                self.found = Some(NonStructuralMatchTy::Opaque);
+                return true; // Stop visiting.
+            }
+            ty::Projection(..) => {
+                self.found = Some(NonStructuralMatchTy::Projection);
+                return true; // Stop visiting.
+            }
+            ty::Generator(..) | ty::GeneratorWitness(..) => {
+                self.found = Some(NonStructuralMatchTy::Generator);
+                return true; // Stop visiting.
+            }
             ty::RawPtr(..) => {
                 // structural-match ignores substructure of
                 // `*const _`/`*mut _`, so skip `super_visit_with`.
@@ -153,14 +179,14 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for Search<'a, 'tcx> {
                 // structural equality on `T` does not recur into the raw
                 // pointer. Therefore, one can still use `C` in a pattern.
 
-                // (But still tell caller to continue search.)
+                // (But still tell the caller to continue search.)
                 return false;
             }
             ty::FnDef(..) | ty::FnPtr(..) => {
-                // types of formals and return in `fn(_) -> _` are also irrelevant;
+                // Types of formals and return in `fn(_) -> _` are also irrelevant;
                 // so we do not recur into them via `super_visit_with`
                 //
-                // (But still tell caller to continue search.)
+                // (But still tell the caller to continue search.)
                 return false;
             }
             ty::Array(_, n)
@@ -168,17 +194,40 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for Search<'a, 'tcx> {
             {
                 // rust-lang/rust#62336: ignore type of contents
                 // for empty array.
+                //
+                // (But still tell the caller to continue search.)
                 return false;
             }
-            _ => {
+            ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Str | ty::Never => {
+                // These primitive types are always structural match.
+                //
+                // `Never` is kind of special here, but as it is not inhabitable, this should be fine.
+                //
+                // (But still tell the caller to continue search.)
+                return false;
+            }
+
+            ty::Array(..) | ty::Slice(_) | ty::Ref(..) | ty::Tuple(..) => {
+                // First check all contained types and then tell the caller to continue searching.
                 ty.super_visit_with(self);
+                return false;
+            }
+            ty::Closure(..) | ty::Infer(_) | ty::Placeholder(_) | ty::Bound(..) => {
+                bug!("unexpected type during structural-match checking: {:?}", ty);
+            }
+            ty::Error => {
+                self.tcx().sess.delay_span_bug(self.span, "ty::Error in structural-match check");
+                // We still want to check other types after encountering an error,
+                // as this may still emit relevant errors.
+                //
+                // So we continue searching here.
                 return false;
             }
         };
 
         if !self.seen.insert(adt_def.did) {
             debug!("Search already seen adt_def: {:?}", adt_def);
-            // let caller continue its search
+            // Let caller continue its search.
             return false;
         }
 

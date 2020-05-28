@@ -131,7 +131,7 @@ impl<K, V> BoxedNode<K, V> {
     }
 
     unsafe fn from_ptr(ptr: NonNull<LeafNode<K, V>>) -> Self {
-        BoxedNode { ptr: Unique::from(ptr) }
+        BoxedNode { ptr: Unique::new_unchecked(ptr.as_ptr()) }
     }
 
     fn as_ptr(&self) -> NonNull<LeafNode<K, V>> {
@@ -161,7 +161,7 @@ impl<K, V> Root<K, V> {
         NodeRef {
             height: self.height,
             node: self.node.as_ptr(),
-            root: self as *const _ as *mut _,
+            root: ptr::null(),
             _marker: PhantomData,
         }
     }
@@ -179,7 +179,7 @@ impl<K, V> Root<K, V> {
         NodeRef {
             height: self.height,
             node: self.node.as_ptr(),
-            root: ptr::null_mut(), // FIXME: Is there anything better to do here?
+            root: ptr::null(),
             _marker: PhantomData,
         }
     }

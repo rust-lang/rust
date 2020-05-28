@@ -67,7 +67,7 @@ LL |     let _: E = E::Struct;
    |                ^^^^^^^^^
 LL |     let _: E = E::Unit;
    |                ^^^^^^^
-help: possible better candidates are found in other modules, you can import them into scope
+help: consider importing one of these items instead
    |
 LL | use std::f32::consts::E;
    |
@@ -99,7 +99,7 @@ LL |     let _: E = E::Struct;
    |                ^^^^^^^^^
 LL |     let _: E = E::Unit;
    |                ^^^^^^^
-help: possible better candidates are found in other modules, you can import them into scope
+help: consider importing one of these items instead
    |
 LL | use std::f32::consts::E;
    |
@@ -130,7 +130,7 @@ help: an enum with a similar name exists
    |
 LL |     let _: E = m::n::Z;
    |            ^
-help: possible candidate is found in another module, you can import it into scope
+help: consider importing this enum
    |
 LL | use m::n::Z;
    |
@@ -163,7 +163,7 @@ help: an enum with a similar name exists
    |
 LL |     let _: E = m::n::Z::Fn;
    |            ^
-help: possible candidate is found in another module, you can import it into scope
+help: consider importing this enum
    |
 LL | use m::n::Z;
    |
@@ -181,7 +181,7 @@ help: an enum with a similar name exists
    |
 LL |     let _: E = m::n::Z::Struct;
    |            ^
-help: possible candidate is found in another module, you can import it into scope
+help: consider importing this enum
    |
 LL | use m::n::Z;
    |
@@ -210,7 +210,7 @@ help: an enum with a similar name exists
    |
 LL |     let _: E = m::n::Z::Unit {};
    |            ^
-help: possible candidate is found in another module, you can import it into scope
+help: consider importing this enum
    |
 LL | use m::n::Z;
    |

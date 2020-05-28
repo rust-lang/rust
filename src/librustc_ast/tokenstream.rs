@@ -66,23 +66,6 @@ impl TokenTree {
         }
     }
 
-    // See comments in `Nonterminal::to_tokenstream` for why we care about
-    // *probably* equal here rather than actual equality
-    //
-    // This is otherwise the same as `eq_unspanned`, only recursing with a
-    // different method.
-    pub fn probably_equal_for_proc_macro(&self, other: &TokenTree) -> bool {
-        match (self, other) {
-            (TokenTree::Token(token), TokenTree::Token(token2)) => {
-                token.probably_equal_for_proc_macro(token2)
-            }
-            (TokenTree::Delimited(_, delim, tts), TokenTree::Delimited(_, delim2, tts2)) => {
-                delim == delim2 && tts.probably_equal_for_proc_macro(&tts2)
-            }
-            _ => false,
-        }
-    }
-
     /// Retrieves the TokenTree's span.
     pub fn span(&self) -> Span {
         match self {
@@ -299,49 +282,6 @@ impl TokenStream {
         let mut t2 = other.trees();
         for (t1, t2) in t1.by_ref().zip(t2.by_ref()) {
             if !t1.eq_unspanned(&t2) {
-                return false;
-            }
-        }
-        t1.next().is_none() && t2.next().is_none()
-    }
-
-    // See comments in `Nonterminal::to_tokenstream` for why we care about
-    // *probably* equal here rather than actual equality
-    //
-    // This is otherwise the same as `eq_unspanned`, only recursing with a
-    // different method.
-    pub fn probably_equal_for_proc_macro(&self, other: &TokenStream) -> bool {
-        // When checking for `probably_eq`, we ignore certain tokens that aren't
-        // preserved in the AST. Because they are not preserved, the pretty
-        // printer arbitrarily adds or removes them when printing as token
-        // streams, making a comparison between a token stream generated from an
-        // AST and a token stream which was parsed into an AST more reliable.
-        fn semantic_tree(tree: &TokenTree) -> bool {
-            if let TokenTree::Token(token) = tree {
-                if let
-                    // The pretty printer tends to add trailing commas to
-                    // everything, and in particular, after struct fields.
-                    | token::Comma
-                    // The pretty printer emits `NoDelim` as whitespace.
-                    | token::OpenDelim(DelimToken::NoDelim)
-                    | token::CloseDelim(DelimToken::NoDelim)
-                    // The pretty printer collapses many semicolons into one.
-                    | token::Semi
-                    // The pretty printer collapses whitespace arbitrarily and can
-                    // introduce whitespace from `NoDelim`.
-                    | token::Whitespace
-                    // The pretty printer can turn `$crate` into `::crate_name`
-                    | token::ModSep = token.kind {
-                    return false;
-                }
-            }
-            true
-        }
-
-        let mut t1 = self.trees().filter(semantic_tree);
-        let mut t2 = other.trees().filter(semantic_tree);
-        for (t1, t2) in t1.by_ref().zip(t2.by_ref()) {
-            if !t1.probably_equal_for_proc_macro(&t2) {
                 return false;
             }
         }

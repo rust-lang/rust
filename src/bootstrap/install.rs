@@ -214,10 +214,8 @@ install!((self, builder, _config),
         }
     };
     Clippy, "clippy", Self::should_build(_config), only_hosts: true, {
-        if builder.ensure(dist::Clippy {
-            compiler: self.compiler,
-            target: self.target,
-        }).is_some() || Self::should_install(builder) {
+        builder.ensure(dist::Clippy { compiler: self.compiler, target: self.target });
+        if Self::should_install(builder) {
             install_clippy(builder, self.compiler.stage, self.target);
         } else {
             builder.info(

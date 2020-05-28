@@ -202,10 +202,16 @@ impl Clone for Literal {
     }
 }
 
-// FIXME(eddyb) `Literal` should not expose internal `Debug` impls.
 impl fmt::Debug for Literal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.debug())
+        f.debug_struct("Literal")
+            // format the kind without quotes, as in `kind: Float`
+            .field("kind", &format_args!("{}", &self.debug_kind()))
+            .field("symbol", &self.symbol())
+            // format `Some("...")` on one line even in {:#?} mode
+            .field("suffix", &format_args!("{:?}", &self.suffix()))
+            .field("span", &self.span())
+            .finish()
     }
 }
 
@@ -290,6 +296,13 @@ impl BridgeState<'_> {
 }
 
 impl Bridge<'_> {
+    pub(crate) fn is_available() -> bool {
+        BridgeState::with(|state| match state {
+            BridgeState::Connected(_) | BridgeState::InUse => true,
+            BridgeState::NotConnected => false,
+        })
+    }
+
     fn enter<R>(self, f: impl FnOnce() -> R) -> R {
         // Hide the default panic output within `proc_macro` expansions.
         // NB. the server can't do this because it may use a different libstd.

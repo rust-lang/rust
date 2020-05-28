@@ -26,6 +26,7 @@ const GATED_CFGS: &[GatedCfg] = &[
     (sym::target_has_atomic, sym::cfg_target_has_atomic, cfg_fn!(cfg_target_has_atomic)),
     (sym::target_has_atomic_load_store, sym::cfg_target_has_atomic, cfg_fn!(cfg_target_has_atomic)),
     (sym::sanitize, sym::cfg_sanitize, cfg_fn!(cfg_sanitize)),
+    (sym::version, sym::cfg_version, cfg_fn!(cfg_version)),
 ];
 
 /// Find a gated cfg determined by the `pred`icate which is given the cfg's name.
@@ -330,6 +331,8 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
 
     gated!(ffi_returns_twice, Whitelisted, template!(Word), experimental!(ffi_returns_twice)),
+    gated!(ffi_pure, Whitelisted, template!(Word), experimental!(ffi_pure)),
+    gated!(ffi_const, Whitelisted, template!(Word), experimental!(ffi_const)),
     gated!(track_caller, Whitelisted, template!(Word), experimental!(track_caller)),
     gated!(
         register_attr, CrateLevel, template!(List: "attr1, attr2, ..."),

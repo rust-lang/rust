@@ -213,10 +213,8 @@ pub fn struct_lint_level<'s, 'd>(
             }
             (Level::Warn, Some(span)) => sess.struct_span_warn(span, ""),
             (Level::Warn, None) => sess.struct_warn(""),
-            (Level::Deny, Some(span)) | (Level::Forbid, Some(span)) => {
-                sess.struct_span_err(span, "")
-            }
-            (Level::Deny, None) | (Level::Forbid, None) => sess.struct_err(""),
+            (Level::Deny | Level::Forbid, Some(span)) => sess.struct_span_err(span, ""),
+            (Level::Deny | Level::Forbid, None) => sess.struct_err(""),
         };
 
         // Check for future incompatibility lints and issue a stronger warning.

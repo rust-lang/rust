@@ -3,8 +3,9 @@ use crate::build::scope::DropKind;
 use crate::hair::cx::Cx;
 use crate::hair::{BindingMode, LintLevel, PatKind};
 use rustc_attr::{self as attr, UnwindAttr};
+use rustc_errors::ErrorReported;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items;
 use rustc_hir::{GeneratorKind, HirIdMap, Node};
 use rustc_index::vec::{Idx, IndexVec};
@@ -20,13 +21,13 @@ use rustc_target::spec::PanicStrategy;
 
 use super::lints;
 
-crate fn mir_built(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::steal::Steal<BodyAndCache<'_>> {
+crate fn mir_built(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::steal::Steal<Body<'_>> {
     tcx.alloc_steal_mir(mir_build(tcx, def_id))
 }
 
 /// Construct the MIR for a given `DefId`.
-fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> BodyAndCache<'_> {
-    let id = tcx.hir().as_local_hir_id(def_id).unwrap();
+fn mir_build(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Body<'_> {
+    let id = tcx.hir().as_local_hir_id(def_id);
 
     // Figure out what primary body this item has.
     let (body_id, return_ty_span) = match tcx.hir().get(id) {
@@ -45,8 +46,10 @@ fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> BodyAndCache<'_> {
             kind: hir::TraitItemKind::Fn(hir::FnSig { decl, .. }, hir::TraitFn::Provided(body_id)),
             ..
         }) => (*body_id, decl.output.span()),
-        Node::Item(hir::Item { kind: hir::ItemKind::Static(ty, _, body_id), .. })
-        | Node::Item(hir::Item { kind: hir::ItemKind::Const(ty, body_id), .. })
+        Node::Item(hir::Item {
+            kind: hir::ItemKind::Static(ty, _, body_id) | hir::ItemKind::Const(ty, body_id),
+            ..
+        })
         | Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Const(ty, body_id), .. })
         | Node::TraitItem(hir::TraitItem {
             kind: hir::TraitItemKind::Const(ty, Some(body_id)),
@@ -59,7 +62,7 @@ fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> BodyAndCache<'_> {
 
     tcx.infer_ctxt().enter(|infcx| {
         let cx = Cx::new(&infcx, id);
-        let body = if cx.tables().tainted_by_errors {
+        let body = if let Some(ErrorReported) = cx.tables().tainted_by_errors {
             build::construct_error(cx, body_id)
         } else if cx.body_owner_kind.is_fn_or_closure() {
             // fetch the fully liberated fn signature (that is, all bound
@@ -180,9 +183,6 @@ fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> BodyAndCache<'_> {
 
         lints::check(tcx, &body, def_id);
 
-        let mut body = BodyAndCache::new(body);
-        body.ensure_predecessors();
-
         // The borrow checker will replace all the regions here with its own
         // inference variables. There's no point having non-erased regions here.
         // The exception is `body.user_type_annotations`, which is used unmodified
@@ -242,6 +242,9 @@ enum BlockFrame {
         ///
         /// Example: `let _ = { STMT_1; EXPR };`
         tail_result_is_ignored: bool,
+
+        /// `Span` of the tail expression.
+        span: Span,
     },
 
     /// Generic mark meaning that the block occurred as a subexpression
@@ -324,11 +327,6 @@ struct Builder<'a, 'tcx> {
 
     var_debug_info: Vec<VarDebugInfo<'tcx>>,
 
-    /// Cached block with the `RESUME` terminator; this is created
-    /// when first set of cleanups are built.
-    cached_resume_block: Option<BasicBlock>,
-    /// Cached block with the `RETURN` terminator.
-    cached_return_block: Option<BasicBlock>,
     /// Cached block with the `UNREACHABLE` terminator.
     cached_unreachable_block: Option<BasicBlock>,
 }
@@ -369,8 +367,8 @@ impl BlockContext {
             match bf {
                 BlockFrame::SubExpr => continue,
                 BlockFrame::Statement { .. } => break,
-                &BlockFrame::TailExpr { tail_result_is_ignored } => {
-                    return Some(BlockTailInfo { tail_result_is_ignored });
+                &BlockFrame::TailExpr { tail_result_is_ignored, span } => {
+                    return Some(BlockTailInfo { tail_result_is_ignored, span });
                 }
             }
         }
@@ -393,8 +391,10 @@ impl BlockContext {
             Some(BlockFrame::SubExpr) => false,
 
             // otherwise: use accumulated is_ignored state.
-            Some(BlockFrame::TailExpr { tail_result_is_ignored: ignored })
-            | Some(BlockFrame::Statement { ignores_expr_result: ignored }) => *ignored,
+            Some(
+                BlockFrame::TailExpr { tail_result_is_ignored: ignored, .. }
+                | BlockFrame::Statement { ignores_expr_result: ignored },
+            ) => *ignored,
         }
     }
 }
@@ -521,18 +521,13 @@ macro_rules! unpack {
     }};
 }
 
-fn should_abort_on_panic(tcx: TyCtxt<'_>, fn_def_id: DefId, _abi: Abi) -> bool {
+fn should_abort_on_panic(tcx: TyCtxt<'_>, fn_def_id: LocalDefId, _abi: Abi) -> bool {
     // Validate `#[unwind]` syntax regardless of platform-specific panic strategy.
-    let attrs = &tcx.get_attrs(fn_def_id);
+    let attrs = &tcx.get_attrs(fn_def_id.to_def_id());
     let unwind_attr = attr::find_unwind_attr(Some(tcx.sess.diagnostic()), attrs);
 
     // We never unwind, so it's not relevant to stop an unwind.
     if tcx.sess.panic_strategy() != PanicStrategy::Unwind {
-        return false;
-    }
-
-    // We cannot add landing pads, so don't add one.
-    if tcx.sess.no_landing_pads() {
         return false;
     }
 
@@ -590,50 +585,34 @@ where
         region::Scope { id: body.value.hir_id.local_id, data: region::ScopeData::CallSite };
     let arg_scope =
         region::Scope { id: body.value.hir_id.local_id, data: region::ScopeData::Arguments };
-    let mut block = START_BLOCK;
     let source_info = builder.source_info(span);
     let call_site_s = (call_site_scope, source_info);
-    unpack!(
-        block = builder.in_scope(call_site_s, LintLevel::Inherited, |builder| {
-            if should_abort_on_panic(tcx, fn_def_id, abi) {
-                builder.schedule_abort();
-            }
-
-            let arg_scope_s = (arg_scope, source_info);
-            // `return_block` is called when we evaluate a `return` expression, so
-            // we just use `START_BLOCK` here.
-            unpack!(
-                block = builder.in_breakable_scope(
-                    None,
-                    START_BLOCK,
-                    Place::return_place(),
-                    |builder| {
-                        builder.in_scope(arg_scope_s, LintLevel::Inherited, |builder| {
-                            builder.args_and_body(
-                                block,
-                                fn_def_id,
-                                &arguments,
-                                arg_scope,
-                                &body.value,
-                            )
-                        })
-                    },
-                )
-            );
-            // Attribute epilogue to function's closing brace
-            let fn_end = span.shrink_to_hi();
-            let source_info = builder.source_info(fn_end);
-            let return_block = builder.return_block();
-            builder.cfg.goto(block, source_info, return_block);
-            builder.cfg.terminate(return_block, source_info, TerminatorKind::Return);
-            // Attribute any unreachable codepaths to the function's closing brace
-            if let Some(unreachable_block) = builder.cached_unreachable_block {
-                builder.cfg.terminate(unreachable_block, source_info, TerminatorKind::Unreachable);
-            }
-            return_block.unit()
-        })
-    );
-    assert_eq!(block, builder.return_block());
+    unpack!(builder.in_scope(call_site_s, LintLevel::Inherited, |builder| {
+        let arg_scope_s = (arg_scope, source_info);
+        // Attribute epilogue to function's closing brace
+        let fn_end = span.shrink_to_hi();
+        let return_block =
+            unpack!(builder.in_breakable_scope(None, Place::return_place(), fn_end, |builder| {
+                Some(builder.in_scope(arg_scope_s, LintLevel::Inherited, |builder| {
+                    builder.args_and_body(
+                        START_BLOCK,
+                        fn_def_id.to_def_id(),
+                        &arguments,
+                        arg_scope,
+                        &body.value,
+                    )
+                }))
+            }));
+        let source_info = builder.source_info(fn_end);
+        builder.cfg.terminate(return_block, source_info, TerminatorKind::Return);
+        let should_abort = should_abort_on_panic(tcx, fn_def_id, abi);
+        builder.build_drop_trees(should_abort);
+        // Attribute any unreachable codepaths to the function's closing brace
+        if let Some(unreachable_block) = builder.cached_unreachable_block {
+            builder.cfg.terminate(unreachable_block, source_info, TerminatorKind::Unreachable);
+        }
+        return_block.unit()
+    }));
 
     let spread_arg = if abi == Abi::RustCall {
         // RustCall pseudo-ABI untuples the last argument.
@@ -641,7 +620,7 @@ where
     } else {
         None
     };
-    debug!("fn_id {:?} has attrs {:?}", fn_def_id, tcx.get_attrs(fn_def_id));
+    debug!("fn_id {:?} has attrs {:?}", fn_def_id, tcx.get_attrs(fn_def_id.to_def_id()));
 
     let mut body = builder.finish();
     body.spread_arg = spread_arg;
@@ -667,8 +646,7 @@ fn construct_const<'a, 'tcx>(
     let source_info = builder.source_info(span);
     builder.cfg.terminate(block, source_info, TerminatorKind::Return);
 
-    // Constants can't `return` so a return block should not be created.
-    assert_eq!(builder.cached_return_block, None);
+    builder.build_drop_trees(false);
 
     // Constants may be match expressions in which case an unreachable block may
     // be created, so terminate it properly.
@@ -708,15 +686,7 @@ fn construct_error<'a, 'tcx>(hir: Cx<'a, 'tcx>, body_id: hir::BodyId) -> Body<'t
     // Some MIR passes will expect the number of parameters to match the
     // function declaration.
     for _ in 0..num_params {
-        builder.local_decls.push(LocalDecl {
-            mutability: Mutability::Mut,
-            ty,
-            user_ty: UserTypeProjections::none(),
-            source_info,
-            internal: false,
-            local_info: LocalInfo::Other,
-            is_block_tail: None,
-        });
+        builder.local_decls.push(LocalDecl::with_source_info(ty, source_info));
     }
     builder.cfg.terminate(START_BLOCK, source_info, TerminatorKind::Unreachable);
     let mut body = builder.finish();
@@ -743,24 +713,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             fn_span: span,
             arg_count,
             generator_kind,
-            scopes: Default::default(),
+            scopes: scope::Scopes::new(),
             block_context: BlockContext::new(),
             source_scopes: IndexVec::new(),
             source_scope: OUTERMOST_SOURCE_SCOPE,
             guard_context: vec![],
             push_unsafe_count: 0,
             unpushed_unsafe: safety,
-            local_decls: IndexVec::from_elem_n(
-                LocalDecl::new_return_place(return_ty, return_span),
-                1,
-            ),
+            local_decls: IndexVec::from_elem_n(LocalDecl::new(return_ty, return_span), 1),
             canonical_user_type_annotations: IndexVec::new(),
             upvar_mutbls: vec![],
             var_indices: Default::default(),
             unit_temp: None,
             var_debug_info: vec![],
-            cached_resume_block: None,
-            cached_return_block: None,
             cached_unreachable_block: None,
         };
 
@@ -804,19 +769,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) -> BlockAnd<()> {
         // Allocate locals for the function arguments
         for &ArgInfo(ty, _, arg_opt, _) in arguments.iter() {
-            let source_info = SourceInfo {
-                scope: OUTERMOST_SOURCE_SCOPE,
-                span: arg_opt.map_or(self.fn_span, |arg| arg.pat.span),
-            };
-            let arg_local = self.local_decls.push(LocalDecl {
-                mutability: Mutability::Mut,
-                ty,
-                user_ty: UserTypeProjections::none(),
-                source_info,
-                internal: false,
-                local_info: LocalInfo::Other,
-                is_block_tail: None,
-            });
+            let source_info =
+                SourceInfo::outermost(arg_opt.map_or(self.fn_span, |arg| arg.pat.span));
+            let arg_local = self.local_decls.push(LocalDecl::with_source_info(ty, source_info));
 
             // If this is a simple binding pattern, give debuginfo a nice name.
             if let Some(arg) = arg_opt {
@@ -885,10 +840,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     self.var_debug_info.push(VarDebugInfo {
                         name,
-                        source_info: SourceInfo {
-                            scope: OUTERMOST_SOURCE_SCOPE,
-                            span: tcx_hir.span(var_id),
-                        },
+                        source_info: SourceInfo::outermost(tcx_hir.span(var_id)),
                         place: Place {
                             local: closure_env_arg,
                             projection: tcx.intern_place_elems(&projs),
@@ -933,17 +885,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         self.local_decls[local].mutability = mutability;
                         self.local_decls[local].source_info.scope = self.source_scope;
                         self.local_decls[local].local_info = if let Some(kind) = self_binding {
-                            LocalInfo::User(ClearCrossCrate::Set(BindingForm::ImplicitSelf(*kind)))
+                            Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::ImplicitSelf(*kind))))
                         } else {
                             let binding_mode = ty::BindingMode::BindByValue(mutability);
-                            LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
+                            Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
                                 VarBindingForm {
                                     binding_mode,
                                     opt_ty_info,
                                     opt_match_place: Some((Some(place), span)),
                                     pat_span: span,
                                 },
-                            )))
+                            ))))
                         };
                         self.var_indices.insert(var, LocalsForNode::One(local));
                     }
@@ -1002,17 +954,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let tmp = self.temp(ty, fn_span);
                 self.unit_temp = Some(tmp);
                 tmp
-            }
-        }
-    }
-
-    fn return_block(&mut self) -> BasicBlock {
-        match self.cached_return_block {
-            Some(rb) => rb,
-            None => {
-                let rb = self.cfg.start_new_block();
-                self.cached_return_block = Some(rb);
-                rb
             }
         }
     }

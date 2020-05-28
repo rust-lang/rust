@@ -1,14 +1,16 @@
 error[E0277]: `<P as Process<'_>>::Item` is not an iterator
   --> $DIR/issue-22872.rs:20:40
    |
-LL | fn push_process<P>(process: P) where P: Process<'static> {
-   |                                                         - help: consider further restricting the associated type: `, <P as Process<'_>>::Item: std::iter::Iterator`
 LL |     let _: Box<dyn for<'b> Wrap<'b>> = Box::new(Wrapper(process));
    |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^ `<P as Process<'_>>::Item` is not an iterator
    |
    = help: the trait `std::iter::Iterator` is not implemented for `<P as Process<'_>>::Item`
    = note: required because of the requirements on the impl of `for<'b> Wrap<'b>` for `Wrapper<P>`
    = note: required for the cast to the object type `dyn for<'b> Wrap<'b>`
+help: consider further restricting the associated type
+   |
+LL | fn push_process<P>(process: P) where P: Process<'static>, <P as Process<'_>>::Item: std::iter::Iterator {
+   |                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

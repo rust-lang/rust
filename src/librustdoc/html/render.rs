@@ -31,7 +31,6 @@ use std::cmp::Ordering;
 use std::collections::{BTreeMap, VecDeque};
 use std::default::Default;
 use std::error;
-
 use std::ffi::OsStr;
 use std::fmt::{self, Formatter, Write};
 use std::fs::{self, File};
@@ -40,6 +39,7 @@ use std::io::{self, BufReader};
 use std::path::{Component, Path, PathBuf};
 use std::rc::Rc;
 use std::str;
+use std::string::ToString;
 use std::sync::Arc;
 
 use rustc_ast_pretty::pprust;
@@ -47,7 +47,7 @@ use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_feature::UnstableFeatures;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::Mutability;
 use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::middle::stability;
@@ -92,7 +92,7 @@ crate fn ensure_trailing_slash(v: &str) -> impl fmt::Display + '_ {
 #[derive(Debug)]
 pub struct Error {
     pub file: PathBuf,
-    pub error: io::Error,
+    pub error: String,
 }
 
 impl error::Error for Error {}
@@ -109,8 +109,11 @@ impl std::fmt::Display for Error {
 }
 
 impl PathError for Error {
-    fn new<P: AsRef<Path>>(e: io::Error, path: P) -> Error {
-        Error { file: path.as_ref().to_path_buf(), error: e }
+    fn new<S, P: AsRef<Path>>(e: S, path: P) -> Error
+    where
+        S: ToString + Sized,
+    {
+        Error { file: path.as_ref().to_path_buf(), error: e.to_string() }
     }
 }
 
@@ -293,7 +296,12 @@ impl Serialize for IndexItem {
     where
         S: Serializer,
     {
-        assert_eq!(self.parent.is_some(), self.parent_idx.is_some());
+        assert_eq!(
+            self.parent.is_some(),
+            self.parent_idx.is_some(),
+            "`{}` is missing idx",
+            self.name
+        );
 
         (self.ty, &self.name, &self.path, &self.desc, self.parent_idx, &self.search_type)
             .serialize(serializer)
@@ -557,7 +565,7 @@ pub fn run(
 
     // Write shared runs within a flock; disable thread dispatching of IO temporarily.
     Arc::get_mut(&mut cx.shared).unwrap().fs.set_sync_only(true);
-    write_shared(&cx, &krate, index, &md_opts, diag)?;
+    write_shared(&cx, &krate, index, &md_opts)?;
     Arc::get_mut(&mut cx.shared).unwrap().fs.set_sync_only(false);
 
     // And finally render the whole crate's documentation
@@ -577,7 +585,6 @@ fn write_shared(
     krate: &clean::Crate,
     search_index: String,
     options: &RenderOptions,
-    diag: &rustc_errors::Handler,
 ) -> Result<(), Error> {
     // Write out the shared files. Note that these are shared among all rustdoc
     // docs placed in the output directory, so this needs to be a synchronized
@@ -789,40 +796,34 @@ themePicker.onblur = handleThemeButtonsBlur;
         Ok((ret, krates))
     }
 
-    fn show_item(item: &IndexItem, krate: &str) -> String {
-        format!(
-            "{{'crate':'{}','ty':{},'name':'{}','desc':'{}','p':'{}'{}}}",
-            krate,
-            item.ty as usize,
-            item.name,
-            item.desc.replace("'", "\\'"),
-            item.path,
-            if let Some(p) = item.parent_idx { format!(",'parent':{}", p) } else { String::new() }
-        )
-    }
+    fn collect_json(path: &Path, krate: &str) -> io::Result<(Vec<String>, Vec<String>)> {
+        let mut ret = Vec::new();
+        let mut krates = Vec::new();
 
-    let dst = cx.dst.join(&format!("aliases{}.js", cx.shared.resource_suffix));
-    {
-        let (mut all_aliases, _) = try_err!(collect(&dst, &krate.name, "ALIASES"), &dst);
-        let mut output = String::with_capacity(100);
-        for (alias, items) in &cx.cache.aliases {
-            if items.is_empty() {
-                continue;
+        if path.exists() {
+            for line in BufReader::new(File::open(path)?).lines() {
+                let line = line?;
+                if !line.starts_with('"') {
+                    continue;
+                }
+                if line.starts_with(&format!("\"{}\"", krate)) {
+                    continue;
+                }
+                if line.ends_with(",\\") {
+                    ret.push(line[..line.len() - 2].to_string());
+                } else {
+                    // Ends with "\\" (it's the case for the last added crate line)
+                    ret.push(line[..line.len() - 1].to_string());
+                }
+                krates.push(
+                    line.split('"')
+                        .find(|s| !s.is_empty())
+                        .map(|s| s.to_owned())
+                        .unwrap_or_else(String::new),
+                );
             }
-            output.push_str(&format!(
-                "\"{}\":[{}],",
-                alias,
-                items.iter().map(|v| show_item(v, &krate.name)).collect::<Vec<_>>().join(",")
-            ));
         }
-        all_aliases.push(format!("ALIASES[\"{}\"] = {{{}}};", krate.name, output));
-        all_aliases.sort();
-        let mut v = Buffer::html();
-        writeln!(&mut v, "var ALIASES = {{}};");
-        for aliases in &all_aliases {
-            writeln!(&mut v, "{}", aliases);
-        }
-        cx.shared.fs.write(&dst, v.into_inner().into_bytes())?;
+        Ok((ret, krates))
     }
 
     use std::ffi::OsString;
@@ -909,18 +910,18 @@ themePicker.onblur = handleThemeButtonsBlur;
 
     // Update the search index
     let dst = cx.dst.join(&format!("search-index{}.js", cx.shared.resource_suffix));
-    let (mut all_indexes, mut krates) = try_err!(collect(&dst, &krate.name, "searchIndex"), &dst);
+    let (mut all_indexes, mut krates) = try_err!(collect_json(&dst, &krate.name), &dst);
     all_indexes.push(search_index);
 
     // Sort the indexes by crate so the file will be generated identically even
     // with rustdoc running in parallel.
     all_indexes.sort();
     {
-        let mut v = String::from("var searchIndex={};\n");
-        v.push_str(&all_indexes.join("\n"));
+        let mut v = String::from("var searchIndex = JSON.parse('{\\\n");
+        v.push_str(&all_indexes.join(",\\\n"));
         // "addSearchOptions" has to be called first so the crate filtering can be set before the
         // search might start (if it's set into the URL for example).
-        v.push_str("\naddSearchOptions(searchIndex);initSearch(searchIndex);");
+        v.push_str("\\\n}');\naddSearchOptions(searchIndex);initSearch(searchIndex);");
         cx.shared.fs.write(&dst, &v)?;
     }
     if options.enable_index_page {
@@ -929,7 +930,8 @@ themePicker.onblur = handleThemeButtonsBlur;
             md_opts.output = cx.dst.clone();
             md_opts.external_html = (*cx.shared).layout.external_html.clone();
 
-            crate::markdown::render(index_page, md_opts, diag, cx.shared.edition);
+            crate::markdown::render(&index_page, md_opts, cx.shared.edition)
+                .map_err(|e| Error::new(e, &index_page))?;
         } else {
             let dst = cx.dst.join("index.html");
             let page = layout::Page {
@@ -1623,14 +1625,14 @@ impl Context {
             _ => return None,
         };
 
-        let (krate, path) = if item.def_id.is_local() {
+        let (krate, path) = if item.source.cnum == LOCAL_CRATE {
             if let Some(path) = self.shared.local_sources.get(file) {
                 (&self.shared.layout.krate, path)
             } else {
                 return None;
             }
         } else {
-            let (krate, src_root) = match *self.cache.extern_locations.get(&item.def_id.krate)? {
+            let (krate, src_root) = match *self.cache.extern_locations.get(&item.source.cnum)? {
                 (ref name, ref src, Local) => (name, src),
                 (ref name, ref src, Remote(ref s)) => {
                     root = s.to_string();
@@ -2250,7 +2252,10 @@ fn short_stability(item: &clean::Item, cx: &Context) -> Vec<String> {
             );
             message.push_str(&format!(": {}", html.to_string()));
         }
-        stability.push(format!("<div class='stab deprecated'>{}</div>", message));
+        stability.push(format!(
+            "<div class='stab deprecated'><span class='emoji'>👎</span> {}</div>",
+            message,
+        ));
     }
 
     if let Some(stab) = item.stability.as_ref().filter(|stab| stab.level == stability::Unstable) {
@@ -3382,8 +3387,8 @@ fn render_assoc_items(
                 write!(
                     w,
                     "\
-                    <h2 id='methods' class='small-section-header'>\
-                      Methods<a href='#methods' class='anchor'></a>\
+                    <h2 id='implementations' class='small-section-header'>\
+                      Implementations<a href='#implementations' class='anchor'></a>\
                     </h2>\
                 "
                 );
@@ -3444,10 +3449,10 @@ fn render_assoc_items(
             write!(
                 w,
                 "\
-                <h2 id='implementations' class='small-section-header'>\
-                  Trait Implementations<a href='#implementations' class='anchor'></a>\
+                <h2 id='trait-implementations' class='small-section-header'>\
+                  Trait Implementations<a href='#trait-implementations' class='anchor'></a>\
                 </h2>\
-                <div id='implementations-list'>{}</div>",
+                <div id='trait-implementations-list'>{}</div>",
                 impls
             );
         }
@@ -3496,14 +3501,13 @@ fn render_deref_methods(
         .inner_impl()
         .items
         .iter()
-        .filter_map(|item| match item.inner {
+        .find_map(|item| match item.inner {
             clean::TypedefItem(ref t, true) => Some(match *t {
                 clean::Typedef { item_type: Some(ref type_), .. } => (type_, &t.type_),
                 _ => (&t.type_, &t.type_),
             }),
             _ => None,
         })
-        .next()
         .expect("Expected associated type binding");
     let what =
         AssocItemRender::DerefFor { trait_: deref_type, type_: real_target, deref_mut_: deref_mut };
@@ -4067,8 +4071,8 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
             ret.sort();
             if !ret.is_empty() {
                 out.push_str(&format!(
-                    "<a class=\"sidebar-title\" href=\"#methods\">Methods\
-                                       </a><div class=\"sidebar-links\">{}</div>",
+                    "<a class=\"sidebar-title\" href=\"#implementations\">Methods</a>\
+                     <div class=\"sidebar-links\">{}</div>",
                     ret.join("")
                 ));
             }
@@ -4080,18 +4084,14 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
                 .filter(|i| i.inner_impl().trait_.is_some())
                 .find(|i| i.inner_impl().trait_.def_id() == c.deref_trait_did)
             {
-                if let Some((target, real_target)) = impl_
-                    .inner_impl()
-                    .items
-                    .iter()
-                    .filter_map(|item| match item.inner {
+                if let Some((target, real_target)) =
+                    impl_.inner_impl().items.iter().find_map(|item| match item.inner {
                         clean::TypedefItem(ref t, true) => Some(match *t {
                             clean::Typedef { item_type: Some(ref type_), .. } => (type_, &t.type_),
                             _ => (&t.type_, &t.type_),
                         }),
                         _ => None,
                     })
-                    .next()
                 {
                     let inner_impl = target
                         .def_id()
@@ -4165,8 +4165,8 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
 
             if !concrete_format.is_empty() {
                 out.push_str(
-                    "<a class=\"sidebar-title\" href=\"#implementations\">\
-                              Trait Implementations</a>",
+                    "<a class=\"sidebar-title\" href=\"#trait-implementations\">\
+                        Trait Implementations</a>",
                 );
                 out.push_str(&format!("<div class=\"sidebar-links\">{}</div>", concrete_format));
             }
@@ -4174,7 +4174,7 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
             if !synthetic_format.is_empty() {
                 out.push_str(
                     "<a class=\"sidebar-title\" href=\"#synthetic-implementations\">\
-                              Auto Trait Implementations</a>",
+                        Auto Trait Implementations</a>",
                 );
                 out.push_str(&format!("<div class=\"sidebar-links\">{}</div>", synthetic_format));
             }
@@ -4182,7 +4182,7 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
             if !blanket_format.is_empty() {
                 out.push_str(
                     "<a class=\"sidebar-title\" href=\"#blanket-implementations\">\
-                              Blanket Implementations</a>",
+                        Blanket Implementations</a>",
                 );
                 out.push_str(&format!("<div class=\"sidebar-links\">{}</div>", blanket_format));
             }
@@ -4318,20 +4318,19 @@ fn sidebar_trait(buf: &mut Buffer, it: &clean::Item, t: &clean::Trait) {
         let mut res = implementors
             .iter()
             .filter(|i| i.inner_impl().for_.def_id().map_or(false, |d| !c.paths.contains_key(&d)))
-            .filter_map(|i| match extract_for_impl_name(&i.impl_item) {
-                Some((ref name, ref id)) => {
-                    Some(format!("<a href=\"#{}\">{}</a>", id, Escape(name)))
-                }
-                _ => None,
-            })
-            .collect::<Vec<String>>();
+            .filter_map(|i| extract_for_impl_name(&i.impl_item))
+            .collect::<Vec<_>>();
+
         if !res.is_empty() {
             res.sort();
             sidebar.push_str(&format!(
                 "<a class=\"sidebar-title\" href=\"#foreign-impls\">\
                                        Implementations on Foreign Types</a><div \
                                        class=\"sidebar-links\">{}</div>",
-                res.join("")
+                res.into_iter()
+                    .map(|(name, id)| format!("<a href=\"#{}\">{}</a>", id, Escape(&name)))
+                    .collect::<Vec<_>>()
+                    .join("")
             ));
         }
     }

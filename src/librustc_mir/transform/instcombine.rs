@@ -1,12 +1,11 @@
 //! Performs various peephole optimizations.
 
 use crate::transform::{MirPass, MirSource};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_index::vec::Idx;
 use rustc_middle::mir::visit::{MutVisitor, Visitor};
 use rustc_middle::mir::{
-    read_only, Body, BodyAndCache, Constant, Local, Location, Operand, Place, PlaceRef,
-    ProjectionElem, Rvalue,
+    Body, Constant, Local, Location, Mutability, Operand, Place, PlaceRef, ProjectionElem, Rvalue,
 };
 use rustc_middle::ty::{self, TyCtxt};
 use std::mem;
@@ -14,19 +13,13 @@ use std::mem;
 pub struct InstCombine;
 
 impl<'tcx> MirPass<'tcx> for InstCombine {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, _: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>) {
-        // We only run when optimizing MIR (at any level).
-        if tcx.sess.opts.debugging_opts.mir_opt_level == 0 {
-            return;
-        }
-
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, _: MirSource<'tcx>, body: &mut Body<'tcx>) {
         // First, find optimization opportunities. This is done in a pre-pass to keep the MIR
         // read-only so that we can do global analyses on the MIR in the process (e.g.
         // `Place::ty()`).
         let optimizations = {
-            let read_only_cache = read_only!(body);
             let mut optimization_finder = OptimizationFinder::new(body, tcx);
-            optimization_finder.visit_body(&read_only_cache);
+            optimization_finder.visit_body(body);
             optimization_finder.optimizations
         };
 
@@ -46,7 +39,7 @@ impl<'tcx> MutVisitor<'tcx> for InstCombineVisitor<'tcx> {
     }
 
     fn visit_rvalue(&mut self, rvalue: &mut Rvalue<'tcx>, location: Location) {
-        if self.optimizations.and_stars.remove(&location) {
+        if let Some(mtbl) = self.optimizations.and_stars.remove(&location) {
             debug!("replacing `&*`: {:?}", rvalue);
             let new_place = match rvalue {
                 Rvalue::Ref(_, _, place) => {
@@ -64,7 +57,10 @@ impl<'tcx> MutVisitor<'tcx> for InstCombineVisitor<'tcx> {
                 }
                 _ => bug!("Detected `&*` but didn't find `&*`!"),
             };
-            *rvalue = Rvalue::Use(Operand::Copy(new_place))
+            *rvalue = Rvalue::Use(match mtbl {
+                Mutability::Mut => Operand::Move(new_place),
+                Mutability::Not => Operand::Copy(new_place),
+            });
         }
 
         if let Some(constant) = self.optimizations.arrays_lengths.remove(&location) {
@@ -95,8 +91,10 @@ impl Visitor<'tcx> for OptimizationFinder<'b, 'tcx> {
             if let PlaceRef { local, projection: &[ref proj_base @ .., ProjectionElem::Deref] } =
                 place.as_ref()
             {
-                if Place::ty_from(local, proj_base, self.body, self.tcx).ty.is_region_ptr() {
-                    self.optimizations.and_stars.insert(location);
+                // The dereferenced place must have type `&_`.
+                let ty = Place::ty_from(local, proj_base, self.body, self.tcx).ty;
+                if let ty::Ref(_, _, mtbl) = ty.kind {
+                    self.optimizations.and_stars.insert(location, mtbl);
                 }
             }
         }
@@ -116,6 +114,6 @@ impl Visitor<'tcx> for OptimizationFinder<'b, 'tcx> {
 
 #[derive(Default)]
 struct OptimizationList<'tcx> {
-    and_stars: FxHashSet<Location>,
+    and_stars: FxHashMap<Location, Mutability>,
     arrays_lengths: FxHashMap<Location, Constant<'tcx>>,
 }
