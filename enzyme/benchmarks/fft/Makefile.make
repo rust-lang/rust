@@ -13,11 +13,12 @@ clean:
 	opt $^ $(LOAD) -enzyme -o $@ -S
 
 %-opt.ll: %-raw.ll
-	opt-8 $^ -O2 -o $@ -S
+	opt $^ -o $@ -S
+	#opt-8 $^ -O2 -o $@ -S
 
 fft.o: fft-opt.ll
-	clang++ $^ -o $@ -lblas $(BENCHLINK)
-	#clang++ -O2 $^ -o $@ -lblas $(BENCHLINK)
+	#clang++ $^ -o $@ -lblas $(BENCHLINK)
+	clang++ -O2 $^ -o $@ -lblas $(BENCHLINK)
 
 results.txt: fft.o
 	./$^ 1048576 | tee $@

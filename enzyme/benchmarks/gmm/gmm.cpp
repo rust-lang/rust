@@ -188,11 +188,11 @@ void Qtimesx(
     }
 
     //caching lparams as scev doesn't replicate index calculation
-    //changed to d-1
-    for (i = 0; i < d-1; i++)
+    // todo note changing to strengthened form
+    //int Lparamsidx = 0;
+    for (i = 0; i < d; i++)
     {
-        int Lparamsidx = (i)*(2*d-i-1)/2;
-
+    	int Lparamsidx = i*(2*d-i-1)/2;
         for (j = i + 1; j < d; j++)
         {
             // and this x
