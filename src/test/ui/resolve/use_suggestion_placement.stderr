@@ -30,6 +30,8 @@ help: consider importing one of these items
    |
 LL | use std::collections::HashMap;
    |
+LL | use std::collections::hash_map::HashMap;
+   |
 
 error: aborting due to 3 previous errors
 
