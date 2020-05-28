@@ -385,6 +385,26 @@ fn test(a: &u32, b: &mut u32, c: *const u32, d: *mut u32) {
 }
 
 #[test]
+fn infer_raw_ref() {
+    assert_snapshot!(
+        infer(r#"
+fn test(a: i32) {
+    &raw mut a;
+    &raw const a;
+}
+"#),
+        @r###"
+    9..10 'a': i32
+    17..54 '{     ...t a; }': ()
+    23..33 '&raw mut a': *mut i32
+    32..33 'a': i32
+    39..51 '&raw const a': *const i32
+    50..51 'a': i32
+    "###
+    );
+}
+
+#[test]
 fn infer_literals() {
     assert_snapshot!(
         infer(r##"
