@@ -241,14 +241,14 @@ fn check_inclusive_range_minus_one(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
 }
 
 fn check_reversed_empty_range(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
-    fn inside_indexing_expr(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
-        matches!(
-            get_parent_expr(cx, expr),
-            Some(Expr {
+    fn inside_indexing_expr<'a>(cx: &'a LateContext<'_, '_>, expr: &Expr<'_>) -> Option<&'a Expr<'a>> {
+        match get_parent_expr(cx, expr) {
+            parent_expr @ Some(Expr {
                 kind: ExprKind::Index(..),
                 ..
-            })
-        )
+            }) => parent_expr,
+            _ => None,
+        }
     }
 
     fn is_empty_range(limits: RangeLimits, ordering: Ordering) -> bool {
@@ -267,18 +267,32 @@ fn check_reversed_empty_range(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
         if let Some(ordering) = Constant::partial_cmp(cx.tcx, ty, &start_idx, &end_idx);
         if is_empty_range(limits, ordering);
         then {
-            if inside_indexing_expr(cx, expr) {
+            if let Some(parent_expr) = inside_indexing_expr(cx, expr) {
                 let (reason, outcome) = if ordering == Ordering::Equal {
                     ("empty", "always yield an empty slice")
                 } else {
                     ("reversed", "panic at run-time")
                 };
 
-                span_lint(
+                span_lint_and_then(
                     cx,
                     REVERSED_EMPTY_RANGES,
                     expr.span,
                     &format!("this range is {} and using it to index a slice will {}", reason, outcome),
+                    |diag| {
+                        if_chain! {
+                            if ordering == Ordering::Equal;
+                            if let ty::Slice(slice_ty) = cx.tables.expr_ty(parent_expr).kind;
+                            then {
+                                diag.span_suggestion(
+                                    parent_expr.span,
+                                    "if you want an empty slice, use",
+                                    format!("[] as &[{}]", slice_ty),
+                                    Applicability::MaybeIncorrect
+                                );
+                            }
+                        }
+                    }
                 );
             } else {
                 span_lint_and_then(

@@ -94,7 +94,7 @@ jobs:
       run: cargo update
 
     - name: Cache cargo dir
-      uses: actions/cache@v1
+      uses: actions/cache@v2
       with:
         path: ~/.cargo
         key: ${{ runner.os }}-${{ matrix.host }}-${{ hashFiles('Cargo.lock') }}
@@ -190,7 +190,7 @@ jobs:
       run: cargo update
 
     - name: Cache cargo dir
-      uses: actions/cache@v1
+      uses: actions/cache@v2
       with:
         path: ~/.cargo
         key: ${{ runner.os }}-x86_64-unknown-linux-gnu-${{ hashFiles('Cargo.lock') }}
@@ -269,7 +269,7 @@ jobs:
       run: cargo update
 
     - name: Cache cargo dir
-      uses: actions/cache@v1
+      uses: actions/cache@v2
       with:
         path: ~/.cargo
         key: ${{ runner.os }}-x86_64-unknown-linux-gnu-${{ hashFiles('Cargo.lock') }}
@@ -312,7 +312,7 @@ jobs:
     name: bors test finished
     if: github.event.pusher.name == 'bors' && success()
     runs-on: ubuntu-latest
-    needs: [base, integration]
+    needs: [changelog, base, integration_build, integration]
 
     steps:
       - name: Mark the job as successful
@@ -322,7 +322,7 @@ jobs:
     name: bors test finished
     if: github.event.pusher.name == 'bors' && (failure() || cancelled())
     runs-on: ubuntu-latest
-    needs: [base, integration]
+    needs: [changelog, base, integration_build, integration]
 
     steps:
       - name: Mark the job as a failure

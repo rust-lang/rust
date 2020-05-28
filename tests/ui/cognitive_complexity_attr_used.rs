@@ -1,5 +1,5 @@
-#![warn(clippy::cognitive_complexity)]
-#![warn(unused)]
+#![warn(unused, clippy::cognitive_complexity)]
+#![allow(unused_crate_dependencies)]
 
 fn main() {
     kaboom();

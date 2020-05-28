@@ -47,17 +47,32 @@ error: future cannot be sent between threads safely
   --> $DIR/future_not_send.rs:20:63
    |
 LL | async fn private_future2(rc: Rc<[u8]>, cell: &Cell<usize>) -> bool {
-   |                                                               ^^^^
+   |                                                               ^^^^ future returned by `private_future2` is not `Send`
    |
+note: captured value is not `Send`
+  --> $DIR/future_not_send.rs:20:26
+   |
+LL | async fn private_future2(rc: Rc<[u8]>, cell: &Cell<usize>) -> bool {
+   |                          ^^ has type `std::rc::Rc<[u8]>` which is not `Send`
    = note: `std::rc::Rc<[u8]>` doesn't implement `std::marker::Send`
+note: captured value is not `Send`
+  --> $DIR/future_not_send.rs:20:40
+   |
+LL | async fn private_future2(rc: Rc<[u8]>, cell: &Cell<usize>) -> bool {
+   |                                        ^^^^ has type `&std::cell::Cell<usize>` which is not `Send`
    = note: `std::cell::Cell<usize>` doesn't implement `std::marker::Sync`
 
 error: future cannot be sent between threads safely
   --> $DIR/future_not_send.rs:24:43
    |
 LL | pub async fn public_future2(rc: Rc<[u8]>) {}
-   |                                           ^
+   |                                           ^ future returned by `public_future2` is not `Send`
    |
+note: captured value is not `Send`
+  --> $DIR/future_not_send.rs:24:29
+   |
+LL | pub async fn public_future2(rc: Rc<[u8]>) {}
+   |                             ^^ has type `std::rc::Rc<[u8]>` which is not `Send`
    = note: `std::rc::Rc<[u8]>` doesn't implement `std::marker::Send`
 
 error: future cannot be sent between threads safely
@@ -117,8 +132,13 @@ error: future cannot be sent between threads safely
   --> $DIR/future_not_send.rs:66:34
    |
 LL | async fn unclear_future<T>(t: T) {}
-   |                                  ^
+   |                                  ^ future returned by `unclear_future` is not `Send`
    |
+note: captured value is not `Send`
+  --> $DIR/future_not_send.rs:66:28
+   |
+LL | async fn unclear_future<T>(t: T) {}
+   |                            ^ has type `T` which is not `Send`
    = note: `T` doesn't implement `std::marker::Send`
 
 error: aborting due to 8 previous errors

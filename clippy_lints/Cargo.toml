@@ -32,6 +32,8 @@ semver = "0.9.0"
 # NOTE: cargo requires serde feat in its url dep
 # see <https://github.com/rust-lang/rust/pull/63587#issuecomment-522343864>
 url = { version =  "2.1.0", features = ["serde"] }
+quote = "1"
+syn = { version = "1", features = ["full"] }
 
 [features]
 deny-warnings = []
