@@ -61,10 +61,8 @@ pub struct TransparentCustomZst(i32, ZeroSize);
 pub struct ZeroSizeWithPhantomData(PhantomData<i32>);
 
 pub extern "C" fn ptr_type1(size: *const Foo) { }
-//~^ ERROR: uses type `Foo`
 
 pub extern "C" fn ptr_type2(size: *const Foo) { }
-//~^ ERROR: uses type `Foo`
 
 pub extern "C" fn slice_type(p: &[u32]) { }
 //~^ ERROR: uses type `[u32]`
@@ -159,7 +157,6 @@ pub extern "C" fn good1(size: *const libc::c_int) { }
 pub extern "C" fn good2(size: *const libc::c_uint) { }
 
 pub extern "C" fn unused_generic1<T>(size: *const Foo) { }
-//~^ ERROR: uses type `Foo`
 
 pub extern "C" fn unused_generic2<T>() -> PhantomData<bool> {
 //~^ ERROR uses type `std::marker::PhantomData<bool>`
@@ -169,7 +166,6 @@ pub extern "C" fn unused_generic2<T>() -> PhantomData<bool> {
 pub extern "C" fn used_generic1<T>(x: T) { }
 
 pub extern "C" fn used_generic2<T>(x: T, size: *const Foo) { }
-//~^ ERROR: uses type `Foo`
 
 pub extern "C" fn used_generic3<T: Default>() -> T {
     Default::default()

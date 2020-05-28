@@ -14,7 +14,7 @@ use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt, TypeFoldable};
 use rustc_span::source_map;
 use rustc_span::symbol::sym;
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{Integer, LayoutOf, TagEncoding, VariantIdx, Variants};
 use rustc_target::spec::abi::Abi;
 
@@ -817,6 +817,15 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 reason: "tuples have unspecified layout".into(),
                 help: Some("consider using a struct instead".into()),
             },
+
+            ty::RawPtr(ty::TypeAndMut { ty, .. }) | ty::Ref(_, ty, _)
+                if {
+                    matches!(self.mode, ImproperCTypesMode::Definitions)
+                        && ty.is_sized(self.cx.tcx.at(DUMMY_SP), self.cx.param_env)
+                } =>
+            {
+                FfiSafe
+            }
 
             ty::RawPtr(ty::TypeAndMut { ty, .. }) | ty::Ref(_, ty, _) => {
                 self.check_type_for_ffi(cache, ty)
