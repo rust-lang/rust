@@ -408,7 +408,7 @@ unsafe impl Step for char {
         let start = start as u32;
         let end = end as u32;
         if start <= end {
-            let count = end - start + 1;
+            let count = end - start;
             if start < 0xD800 && 0xE000 <= end {
                 usize::try_from(count - 0x800).ok()
             } else {
