@@ -9,8 +9,6 @@
 :caution-caption: :fire:
 :warning-caption: :warning:
 
-
-
 // Master copy of this document lives in the https://github.com/rust-analyzer/rust-analyzer repository
 
 At its core, rust-analyzer is a *library* for semantic analysis of Rust code as it changes over time.
@@ -20,6 +18,8 @@ The LSP allows various code editors, like VS Code, Emacs or Vim, to implement se
 
 To improve this document, send a pull request against
 https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/user/readme.adoc[this file].
+
+If you have questions about using rust-analyzer, please ask them in the https://users.rust-lang.org/c/ide/14["`IDEs and Editors`"] topic of Rust users forum.
 
 == Installation
 
