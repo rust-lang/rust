@@ -65,6 +65,16 @@ The server binary is stored in:
 
 Note that we only support two most recent versions of VS Code.
 
+==== Special `when` clause context for keybindings.
+You may use `inRustProject` context to configure keybindings for rust projects only. For example:
+[source,json]
+----
+{ "key": "ctrl+shift+f5", "command": "workbench.action.debug.restart", "when": "inDebugMode && !inRustProject"},
+{ "key": "ctrl+shift+f5", "command": "rust-analyzer.debug", "when": "inRustProject"},
+{ "key": "ctrl+i", "command": "rust-analyzer.toggleInlayHints", "when": "inRustProject" }
+----
+More about `when` clause contexts https://code.visualstudio.com/docs/getstarted/keybindings#_when-clause-contexts[here].
+
 ==== Updates
 
 The extension will be updated automatically as new versions become available. It will ask your permission to download the matching language server version binary if needed.
