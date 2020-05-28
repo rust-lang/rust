@@ -18,7 +18,7 @@ pub unsafe fn _mm512_set_epi64(
     e1: i64,
     e0: i64,
 ) -> __m512i {
-  _mm512_setr_epi64(e7, e6, e5, e4, e3, e2, e1, e0);
+    _mm512_setr_epi64(e7, e6, e5, e4, e3, e2, e1, e0);
 }
 
 /// Sets packed 64-bit integers in `dst` with the supplied values in
@@ -60,12 +60,12 @@ mod tests {
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_set_epi64() {
         let r = _mm512_setr_epi64(0, 1, 2, 3, 4, 5, 6, 7);
-	assert_eq_m512i(r, _mm512_set_epi64(7, 6, 5, 4, 3, 2, 1, 0))
+        assert_eq_m512i(r, _mm512_set_epi64(7, 6, 5, 4, 3, 2, 1, 0))
     }
 
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_setr_epi64() {
         let r = _mm512_set_epi64(0, 1, 2, 3, 4, 5, 6, 7);
-	assert_eq_m512i(r, _mm512_setr_epi64(7, 6, 5, 4, 3, 2, 1, 0))
+        assert_eq_m512i(r, _mm512_setr_epi64(7, 6, 5, 4, 3, 2, 1, 0))
     }
 }
