@@ -344,7 +344,7 @@ types! {
 
 /// The `__mmask16` type used in AVX-512 intrinsics, a 16-bit integer
 #[allow(non_camel_case_types)]
-pub type __mmask16 = i16;
+pub type __mmask16 = u16;
 
 #[cfg(test)]
 mod test;
