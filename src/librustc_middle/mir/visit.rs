@@ -903,7 +903,7 @@ macro_rules! visit_place_fns {
             let mut projection = Cow::Borrowed(projection);
 
             for i in 0..projection.len() {
-                if let Some(elem) = projection.get(i) {
+                if let Some(&elem) = projection.get(i) {
                     if let Some(elem) = self.process_projection_elem(elem, location) {
                         // This converts the borrowed projection into `Cow::Owned(_)` and returns a
                         // clone of the projection so we can mutate and reintern later.
@@ -921,19 +921,19 @@ macro_rules! visit_place_fns {
 
         fn process_projection_elem(
             &mut self,
-            elem: &PlaceElem<'tcx>,
+            elem: PlaceElem<'tcx>,
             location: Location,
         ) -> Option<PlaceElem<'tcx>> {
             match elem {
                 PlaceElem::Index(local) => {
-                    let mut new_local = *local;
+                    let mut new_local = local;
                     self.visit_local(
                         &mut new_local,
                         PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy),
                         location,
                     );
 
-                    if new_local == *local { None } else { Some(PlaceElem::Index(new_local)) }
+                    if new_local == local { None } else { Some(PlaceElem::Index(new_local)) }
                 }
                 PlaceElem::Deref
                 | PlaceElem::Field(..)
@@ -959,7 +959,7 @@ macro_rules! visit_place_fns {
             &mut self,
             local: Local,
             proj_base: &[PlaceElem<'tcx>],
-            elem: &PlaceElem<'tcx>,
+            elem: PlaceElem<'tcx>,
             context: PlaceContext,
             location: Location,
         ) {
@@ -990,7 +990,7 @@ macro_rules! visit_place_fns {
             location: Location,
         ) {
             let mut cursor = projection;
-            while let [proj_base @ .., elem] = cursor {
+            while let &[ref proj_base @ .., elem] = cursor {
                 cursor = proj_base;
                 self.visit_projection_elem(local, cursor, elem, context, location);
             }
@@ -1000,7 +1000,7 @@ macro_rules! visit_place_fns {
             &mut self,
             _local: Local,
             _proj_base: &[PlaceElem<'tcx>],
-            elem: &PlaceElem<'tcx>,
+            elem: PlaceElem<'tcx>,
             _context: PlaceContext,
             location: Location,
         ) {
@@ -1010,7 +1010,7 @@ macro_rules! visit_place_fns {
                 }
                 ProjectionElem::Index(local) => {
                     self.visit_local(
-                        local,
+                        &local,
                         PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy),
                         location,
                     );

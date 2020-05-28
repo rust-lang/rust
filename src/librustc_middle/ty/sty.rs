@@ -669,7 +669,7 @@ impl<'tcx> List<ExistentialPredicate<'tcx>> {
     pub fn projection_bounds<'a>(
         &'a self,
     ) -> impl Iterator<Item = ExistentialProjection<'tcx>> + 'a {
-        self.iter().filter_map(|predicate| match *predicate {
+        self.iter().filter_map(|predicate| match predicate {
             ExistentialPredicate::Projection(projection) => Some(projection),
             _ => None,
         })
@@ -677,7 +677,7 @@ impl<'tcx> List<ExistentialPredicate<'tcx>> {
 
     #[inline]
     pub fn auto_traits<'a>(&'a self) -> impl Iterator<Item = DefId> + 'a {
-        self.iter().filter_map(|predicate| match *predicate {
+        self.iter().filter_map(|predicate| match predicate {
             ExistentialPredicate::AutoTrait(did) => Some(did),
             _ => None,
         })
@@ -708,7 +708,7 @@ impl<'tcx> Binder<&'tcx List<ExistentialPredicate<'tcx>>> {
     pub fn iter<'a>(
         &'a self,
     ) -> impl DoubleEndedIterator<Item = Binder<ExistentialPredicate<'tcx>>> + 'tcx {
-        self.skip_binder().iter().cloned().map(Binder::bind)
+        self.skip_binder().iter().map(Binder::bind)
     }
 }
 

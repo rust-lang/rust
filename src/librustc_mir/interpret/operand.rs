@@ -400,10 +400,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn operand_projection(
         &self,
         base: OpTy<'tcx, M::PointerTag>,
-        proj_elem: &mir::PlaceElem<'tcx>,
+        proj_elem: mir::PlaceElem<'tcx>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         use rustc_middle::mir::ProjectionElem::*;
-        Ok(match *proj_elem {
+        Ok(match proj_elem {
             Field(field, _) => self.operand_field(base, field.index())?,
             Downcast(_, variant) => self.operand_downcast(base, variant)?,
             Deref => self.deref_operand(base)?.into(),

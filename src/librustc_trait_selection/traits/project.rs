@@ -872,7 +872,7 @@ fn assemble_candidates_from_param_env<'cx, 'tcx>(
         obligation_trait_ref,
         candidate_set,
         ProjectionTyCandidate::ParamEnv,
-        obligation.param_env.caller_bounds.iter().cloned(),
+        obligation.param_env.caller_bounds.iter(),
     );
 }
 
@@ -1541,14 +1541,14 @@ fn assoc_ty_def(
 crate trait ProjectionCacheKeyExt<'tcx>: Sized {
     fn from_poly_projection_predicate(
         selcx: &mut SelectionContext<'cx, 'tcx>,
-        predicate: &ty::PolyProjectionPredicate<'tcx>,
+        predicate: ty::PolyProjectionPredicate<'tcx>,
     ) -> Option<Self>;
 }
 
 impl<'tcx> ProjectionCacheKeyExt<'tcx> for ProjectionCacheKey<'tcx> {
     fn from_poly_projection_predicate(
         selcx: &mut SelectionContext<'cx, 'tcx>,
-        predicate: &ty::PolyProjectionPredicate<'tcx>,
+        predicate: ty::PolyProjectionPredicate<'tcx>,
     ) -> Option<Self> {
         let infcx = selcx.infcx();
         // We don't do cross-snapshot caching of obligations with escaping regions,

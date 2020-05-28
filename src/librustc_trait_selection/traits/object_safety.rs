@@ -658,7 +658,6 @@ fn receiver_is_dispatchable<'tcx>(
         let caller_bounds: Vec<Predicate<'tcx>> = param_env
             .caller_bounds
             .iter()
-            .cloned()
             .chain(iter::once(unsize_predicate))
             .chain(iter::once(trait_predicate))
             .collect();

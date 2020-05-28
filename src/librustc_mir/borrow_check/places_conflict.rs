@@ -138,7 +138,7 @@ fn place_components_conflict<'tcx>(
     }
 
     // loop invariant: borrow_c is always either equal to access_c or disjoint from it.
-    for (i, (borrow_c, access_c)) in
+    for (i, (borrow_c, &access_c)) in
         borrow_place.projection.iter().zip(access_place.projection.iter()).enumerate()
     {
         debug!("borrow_conflicts_with_place: borrow_c = {:?}", borrow_c);
@@ -313,8 +313,8 @@ fn place_projection_conflict<'tcx>(
     body: &Body<'tcx>,
     pi1_local: Local,
     pi1_proj_base: &[PlaceElem<'tcx>],
-    pi1_elem: &PlaceElem<'tcx>,
-    pi2_elem: &PlaceElem<'tcx>,
+    pi1_elem: PlaceElem<'tcx>,
+    pi2_elem: PlaceElem<'tcx>,
     bias: PlaceConflictBias,
 ) -> Overlap {
     match (pi1_elem, pi2_elem) {
@@ -449,7 +449,7 @@ fn place_projection_conflict<'tcx>(
             // element (like -1 in Python) and `min_length` the first.
             // Therefore, `min_length - offset_from_end` gives the minimal possible
             // offset from the beginning
-            if *offset_from_begin >= *min_length - *offset_from_end {
+            if offset_from_begin >= min_length - offset_from_end {
                 debug!("place_element_conflict: DISJOINT-OR-EQ-ARRAY-CONSTANT-INDEX-FE");
                 Overlap::EqualOrDisjoint
             } else {

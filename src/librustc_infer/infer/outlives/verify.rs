@@ -50,7 +50,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
                 // for further background and discussion.
                 let mut bounds = substs
                     .iter()
-                    .filter_map(|&child| match child.unpack() {
+                    .filter_map(|child| match child.unpack() {
                         GenericArgKind::Type(ty) => Some(self.type_bound(ty)),
                         GenericArgKind::Lifetime(_) => None,
                         GenericArgKind::Const(_) => Some(self.recursive_bound(child)),
@@ -334,10 +334,10 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     fn collect_outlives_from_predicate_list(
         &self,
         compare_ty: impl Fn(Ty<'tcx>) -> bool,
-        predicates: impl Iterator<Item = impl AsRef<ty::Predicate<'tcx>>>,
+        predicates: impl Iterator<Item = ty::Predicate<'tcx>>,
     ) -> impl Iterator<Item = ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>> {
         predicates
-            .filter_map(|p| p.as_ref().to_opt_type_outlives())
+            .filter_map(|p| p.to_opt_type_outlives())
             .filter_map(|p| p.no_bound_vars())
             .filter(move |p| compare_ty(p.0))
     }

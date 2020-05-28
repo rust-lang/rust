@@ -372,7 +372,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                 }
             }
 
-            ty::PredicateKind::RegionOutlives(ref binder) => {
+            &ty::PredicateKind::RegionOutlives(binder) => {
                 match infcx.region_outlives_predicate(&obligation.cause, binder) {
                     Ok(()) => ProcessResult::Changed(vec![]),
                     Err(_) => ProcessResult::Error(CodeSelectionError(Unimplemented)),
@@ -475,7 +475,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                 }
             }
 
-            ty::PredicateKind::Subtype(subtype) => {
+            &ty::PredicateKind::Subtype(subtype) => {
                 match self.selcx.infcx().subtype_predicate(
                     &obligation.cause,
                     obligation.param_env,

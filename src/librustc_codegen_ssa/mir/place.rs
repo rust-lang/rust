@@ -429,7 +429,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 self.codegen_consume(bx, mir::PlaceRef { local, projection: proj_base })
                     .deref(bx.cx())
             }
-            mir::PlaceRef { local, projection: [proj_base @ .., elem] } => {
+            mir::PlaceRef { local, projection: &[ref proj_base @ .., elem] } => {
                 // FIXME turn this recursion into iteration
                 let cg_base =
                     self.codegen_place(bx, mir::PlaceRef { local, projection: proj_base });
@@ -440,7 +440,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         cg_base.project_field(bx, field.index())
                     }
                     mir::ProjectionElem::Index(index) => {
-                        let index = &mir::Operand::Copy(mir::Place::from(*index));
+                        let index = &mir::Operand::Copy(mir::Place::from(index));
                         let index = self.codegen_operand(bx, index);
                         let llindex = index.immediate();
                         cg_base.project_index(bx, llindex)
@@ -450,7 +450,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         from_end: false,
                         min_length: _,
                     } => {
-                        let lloffset = bx.cx().const_usize(*offset as u64);
+                        let lloffset = bx.cx().const_usize(offset as u64);
                         cg_base.project_index(bx, lloffset)
                     }
                     mir::ProjectionElem::ConstantIndex {
@@ -458,14 +458,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         from_end: true,
                         min_length: _,
                     } => {
-                        let lloffset = bx.cx().const_usize(*offset as u64);
+                        let lloffset = bx.cx().const_usize(offset as u64);
                         let lllen = cg_base.len(bx.cx());
                         let llindex = bx.sub(lllen, lloffset);
                         cg_base.project_index(bx, llindex)
                     }
                     mir::ProjectionElem::Subslice { from, to, from_end } => {
                         let mut subslice =
-                            cg_base.project_index(bx, bx.cx().const_usize(*from as u64));
+                            cg_base.project_index(bx, bx.cx().const_usize(from as u64));
                         let projected_ty =
                             PlaceTy::from_ty(cg_base.layout.ty).projection_ty(tcx, elem).ty;
                         subslice.layout = bx.cx().layout_of(self.monomorphize(&projected_ty));
@@ -474,7 +474,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             assert!(from_end, "slice subslices should be `from_end`");
                             subslice.llextra = Some(bx.sub(
                                 cg_base.llextra.unwrap(),
-                                bx.cx().const_usize((*from as u64) + (*to as u64)),
+                                bx.cx().const_usize((from as u64) + (to as u64)),
                             ));
                         }
 
@@ -487,7 +487,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                         subslice
                     }
-                    mir::ProjectionElem::Downcast(_, v) => cg_base.project_downcast(bx, *v),
+                    mir::ProjectionElem::Downcast(_, v) => cg_base.project_downcast(bx, v),
                 }
             }
         };

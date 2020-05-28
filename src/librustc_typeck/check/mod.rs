@@ -2759,7 +2759,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         ty::GenericPredicates {
             parent: None,
             predicates: tcx.arena.alloc_from_iter(self.param_env.caller_bounds.iter().filter_map(
-                |&predicate| match predicate.kind() {
+                |predicate| match predicate.kind() {
                     ty::PredicateKind::Trait(ref data, _)
                         if data.skip_binder().self_ty().is_param(index) =>
                     {

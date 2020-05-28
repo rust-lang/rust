@@ -179,7 +179,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::Dynamic(ref object_type, ..) => {
                 let sig = object_type.projection_bounds().find_map(|pb| {
                     let pb = pb.with_self_ty(self.tcx, self.tcx.types.trait_object_dummy_self);
-                    self.deduce_sig_from_projection(None, &pb)
+                    self.deduce_sig_from_projection(None, pb)
                 });
                 let kind = object_type
                     .principal_def_id()
@@ -206,8 +206,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     obligation.predicate
                 );
 
-                if let ty::PredicateKind::Projection(ref proj_predicate) =
-                    obligation.predicate.kind()
+                if let &ty::PredicateKind::Projection(proj_predicate) = obligation.predicate.kind()
                 {
                     // Given a Projection predicate, we can potentially infer
                     // the complete signature.
@@ -238,7 +237,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn deduce_sig_from_projection(
         &self,
         cause_span: Option<Span>,
-        projection: &ty::PolyProjectionPredicate<'tcx>,
+        projection: ty::PolyProjectionPredicate<'tcx>,
     ) -> Option<ExpectedSig<'tcx>> {
         let tcx = self.tcx;
 
@@ -628,7 +627,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // where R is the return type we are expecting. This type `T`
         // will be our output.
         let output_ty = self.obligations_for_self_ty(ret_vid).find_map(|(_, obligation)| {
-            if let ty::PredicateKind::Projection(ref proj_predicate) = obligation.predicate.kind() {
+            if let &ty::PredicateKind::Projection(proj_predicate) = obligation.predicate.kind() {
                 self.deduce_future_output_from_projection(obligation.cause.span, proj_predicate)
             } else {
                 None
@@ -649,7 +648,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn deduce_future_output_from_projection(
         &self,
         cause_span: Span,
-        predicate: &ty::PolyProjectionPredicate<'tcx>,
+        predicate: ty::PolyProjectionPredicate<'tcx>,
     ) -> Option<Ty<'tcx>> {
         debug!("deduce_future_output_from_projection(predicate={:?})", predicate);
 

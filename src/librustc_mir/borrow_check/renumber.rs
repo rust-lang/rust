@@ -66,14 +66,14 @@ impl<'a, 'tcx> MutVisitor<'tcx> for NLLVisitor<'a, 'tcx> {
 
     fn process_projection_elem(
         &mut self,
-        elem: &PlaceElem<'tcx>,
+        elem: PlaceElem<'tcx>,
         _: Location,
     ) -> Option<PlaceElem<'tcx>> {
         if let PlaceElem::Field(field, ty) = elem {
-            let new_ty = self.renumber_regions(ty);
+            let new_ty = self.renumber_regions(&ty);
 
-            if new_ty != *ty {
-                return Some(PlaceElem::Field(*field, new_ty));
+            if new_ty != ty {
+                return Some(PlaceElem::Field(field, new_ty));
             }
         }
 

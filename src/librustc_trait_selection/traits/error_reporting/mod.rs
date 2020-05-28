@@ -146,9 +146,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             continue;
                         }
 
-                        if self.error_implies(&error2.predicate, &error.predicate)
+                        if self.error_implies(error2.predicate, error.predicate)
                             && !(error2.index >= error.index
-                                && self.error_implies(&error.predicate, &error2.predicate))
+                                && self.error_implies(error.predicate, error2.predicate))
                         {
                             info!("skipping {:?} (implied by {:?})", error, error2);
                             is_suppressed[index] = true;
@@ -504,7 +504,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     ty::PredicateKind::RegionOutlives(ref predicate) => {
                         let predicate = self.resolve_vars_if_possible(predicate);
                         let err = self
-                            .region_outlives_predicate(&obligation.cause, &predicate)
+                            .region_outlives_predicate(&obligation.cause, predicate)
                             .err()
                             .unwrap();
                         struct_span_err!(
@@ -959,7 +959,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 trait InferCtxtPrivExt<'tcx> {
     // returns if `cond` not occurring implies that `error` does not occur - i.e., that
     // `error` occurring implies that `cond` occurs.
-    fn error_implies(&self, cond: &ty::Predicate<'tcx>, error: &ty::Predicate<'tcx>) -> bool;
+    fn error_implies(&self, cond: ty::Predicate<'tcx>, error: ty::Predicate<'tcx>) -> bool;
 
     fn report_fulfillment_error(
         &self,
@@ -1049,7 +1049,7 @@ trait InferCtxtPrivExt<'tcx> {
 impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
     // returns if `cond` not occurring implies that `error` does not occur - i.e., that
     // `error` occurring implies that `cond` occurs.
-    fn error_implies(&self, cond: &ty::Predicate<'tcx>, error: &ty::Predicate<'tcx>) -> bool {
+    fn error_implies(&self, cond: ty::Predicate<'tcx>, error: ty::Predicate<'tcx>) -> bool {
         if cond == error {
             return true;
         }
@@ -1062,7 +1062,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
         };
 
-        for obligation in super::elaborate_predicates(self.tcx, std::iter::once(*cond)) {
+        for obligation in super::elaborate_predicates(self.tcx, std::iter::once(cond)) {
             if let ty::PredicateKind::Trait(implication, _) = obligation.predicate.kind() {
                 let error = error.to_poly_trait_ref();
                 let implication = implication.to_poly_trait_ref();

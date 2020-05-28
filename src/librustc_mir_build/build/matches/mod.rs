@@ -1042,7 +1042,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 matched_candidates.iter().flat_map(|candidate| &candidate.bindings)
             {
                 if let Some(i) =
-                    source.projection.iter().rposition(|elem| *elem == ProjectionElem::Deref)
+                    source.projection.iter().rposition(|elem| elem == ProjectionElem::Deref)
                 {
                     let proj_base = &source.projection[..i];
 

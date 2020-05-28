@@ -223,7 +223,7 @@ fn unconstrained_parent_impl_substs<'tcx>(
         .iter()
         .enumerate()
         .filter(|&(idx, _)| !constrained_params.contains(&(idx as u32)))
-        .map(|(_, arg)| *arg)
+        .map(|(_, arg)| arg)
         .collect()
 }
 
@@ -323,16 +323,13 @@ fn check_predicates<'tcx>(
     // which is sound because we forbid impls like the following
     //
     // impl<D: Debug> AlwaysApplicable for D { }
-    let always_applicable_traits = impl1_predicates
-        .predicates
-        .iter()
-        .filter(|predicate| {
+    let always_applicable_traits =
+        impl1_predicates.predicates.iter().copied().filter(|&predicate| {
             matches!(
                 trait_predicate_kind(tcx, predicate),
                 Some(TraitSpecializationKind::AlwaysApplicable)
             )
-        })
-        .copied();
+        });
 
     // Include the well-formed predicates of the type parameters of the impl.
     for ty in tcx.impl_trait_ref(impl1_def_id).unwrap().substs.types() {
@@ -355,12 +352,12 @@ fn check_predicates<'tcx>(
 
     for predicate in impl1_predicates.predicates {
         if !impl2_predicates.predicates.contains(&predicate) {
-            check_specialization_on(tcx, &predicate, span)
+            check_specialization_on(tcx, predicate, span)
         }
     }
 }
 
-fn check_specialization_on<'tcx>(tcx: TyCtxt<'tcx>, predicate: &ty::Predicate<'tcx>, span: Span) {
+fn check_specialization_on<'tcx>(tcx: TyCtxt<'tcx>, predicate: ty::Predicate<'tcx>, span: Span) {
     debug!("can_specialize_on(predicate = {:?})", predicate);
     match predicate.kind() {
         // Global predicates are either always true or always false, so we
@@ -393,7 +390,7 @@ fn check_specialization_on<'tcx>(tcx: TyCtxt<'tcx>, predicate: &ty::Predicate<'t
 
 fn trait_predicate_kind<'tcx>(
     tcx: TyCtxt<'tcx>,
-    predicate: &ty::Predicate<'tcx>,
+    predicate: ty::Predicate<'tcx>,
 ) -> Option<TraitSpecializationKind> {
     match predicate.kind() {
         ty::PredicateKind::Trait(pred, hir::Constness::NotConst) => {

@@ -2077,10 +2077,10 @@ impl Debug for Place<'_> {
                 ProjectionElem::ConstantIndex { offset, min_length, from_end: true } => {
                     write!(fmt, "[-{:?} of {:?}]", offset, min_length)?;
                 }
-                ProjectionElem::Subslice { from, to, from_end: true } if *to == 0 => {
+                ProjectionElem::Subslice { from, to, from_end: true } if to == 0 => {
                     write!(fmt, "[{:?}:]", from)?;
                 }
-                ProjectionElem::Subslice { from, to, from_end: true } if *from == 0 => {
+                ProjectionElem::Subslice { from, to, from_end: true } if from == 0 => {
                     write!(fmt, "[:-{:?}]", to)?;
                 }
                 ProjectionElem::Subslice { from, to, from_end: true } => {

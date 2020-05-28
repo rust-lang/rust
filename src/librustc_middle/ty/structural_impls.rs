@@ -1091,7 +1091,7 @@ where
     // Look for the first element that changed
     if let Some((i, new_t)) = iter.by_ref().enumerate().find_map(|(i, t)| {
         let new_t = t.fold_with(folder);
-        if new_t == *t { None } else { Some((i, new_t)) }
+        if new_t == t { None } else { Some((i, new_t)) }
     }) {
         // An element changed, prepare to intern the resulting list
         let mut new_list = SmallVec::<[_; 8]>::with_capacity(list.len());

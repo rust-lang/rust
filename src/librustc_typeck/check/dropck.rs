@@ -201,7 +201,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
     // just to look for all the predicates directly.
 
     assert_eq!(dtor_predicates.parent, None);
-    for (predicate, predicate_sp) in dtor_predicates.predicates {
+    for &(predicate, predicate_sp) in dtor_predicates.predicates {
         // (We do not need to worry about deep analysis of type
         // expressions etc because the Drop impls are already forced
         // to take on a structure that is roughly an alpha-renaming of
@@ -224,7 +224,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
         // This implementation solves (Issue #59497) and (Issue #58311).
         // It is unclear to me at the moment whether the approach based on `relate`
         // could be extended easily also to the other `Predicate`.
-        let predicate_matches_closure = |p: &'_ Predicate<'tcx>| {
+        let predicate_matches_closure = |p: Predicate<'tcx>| {
             let mut relator: SimpleEqRelation<'tcx> = SimpleEqRelation::new(tcx, self_param_env);
             match (predicate.kind(), p.kind()) {
                 (ty::PredicateKind::Trait(a, _), ty::PredicateKind::Trait(b, _)) => {
@@ -237,12 +237,12 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
             }
         };
 
-        if !assumptions_in_impl_context.iter().any(predicate_matches_closure) {
+        if !assumptions_in_impl_context.iter().copied().any(predicate_matches_closure) {
             let item_span = tcx.hir().span(self_type_hir_id);
             let self_descr = tcx.def_kind(self_type_did).descr(self_type_did.to_def_id());
             struct_span_err!(
                 tcx.sess,
-                *predicate_sp,
+                predicate_sp,
                 E0367,
                 "`Drop` impl requires `{}` but the {} it is implemented for does not",
                 predicate,

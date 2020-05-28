@@ -647,7 +647,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         // shifting.
         let id_substs = InternalSubsts::identity_for_item(self.tcx, def_id);
         let map: FxHashMap<GenericArg<'tcx>, GenericArg<'tcx>> =
-            substs.iter().enumerate().map(|(index, subst)| (*subst, id_substs[index])).collect();
+            substs.iter().enumerate().map(|(index, subst)| (subst, id_substs[index])).collect();
 
         // Convert the type from the function into a type valid outside
         // the function, by replacing invalid regions with 'static,
@@ -890,7 +890,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                 // during codegen.
 
                 let generics = self.tcx.generics_of(def_id);
-                let substs = self.tcx.mk_substs(substs.iter().enumerate().map(|(index, &kind)| {
+                let substs = self.tcx.mk_substs(substs.iter().enumerate().map(|(index, kind)| {
                     if index < generics.parent_count {
                         // Accommodate missing regions in the parent kinds...
                         self.fold_kind_mapping_missing_regions_to_empty(kind)
@@ -905,7 +905,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
 
             ty::Generator(def_id, substs, movability) => {
                 let generics = self.tcx.generics_of(def_id);
-                let substs = self.tcx.mk_substs(substs.iter().enumerate().map(|(index, &kind)| {
+                let substs = self.tcx.mk_substs(substs.iter().enumerate().map(|(index, kind)| {
                     if index < generics.parent_count {
                         // Accommodate missing regions in the parent kinds...
                         self.fold_kind_mapping_missing_regions_to_empty(kind)

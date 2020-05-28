@@ -611,14 +611,14 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
     fn sanitize_projection(
         &mut self,
         base: PlaceTy<'tcx>,
-        pi: &PlaceElem<'tcx>,
+        pi: PlaceElem<'tcx>,
         place: &Place<'tcx>,
         location: Location,
     ) -> PlaceTy<'tcx> {
         debug!("sanitize_projection: {:?} {:?} {:?}", base, pi, place);
         let tcx = self.tcx();
         let base_ty = base.ty;
-        match *pi {
+        match pi {
             ProjectionElem::Deref => {
                 let deref_ty = base_ty.builtin_deref(true);
                 PlaceTy::from_ty(deref_ty.map(|t| t.ty).unwrap_or_else(|| {

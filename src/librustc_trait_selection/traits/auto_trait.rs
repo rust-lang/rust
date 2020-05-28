@@ -281,9 +281,8 @@ impl AutoTraitFinder<'tcx> {
             },
         }));
 
-        let computed_preds = param_env.caller_bounds.iter().cloned();
-        let mut user_computed_preds: FxHashSet<_> =
-            user_env.caller_bounds.iter().cloned().collect();
+        let computed_preds = param_env.caller_bounds.iter();
+        let mut user_computed_preds: FxHashSet<_> = user_env.caller_bounds.iter().collect();
 
         let mut new_env = param_env;
         let dummy_cause = ObligationCause::dummy();
@@ -768,12 +767,12 @@ impl AutoTraitFinder<'tcx> {
                         }
                     }
                 }
-                ty::PredicateKind::RegionOutlives(ref binder) => {
+                &ty::PredicateKind::RegionOutlives(binder) => {
                     if select.infcx().region_outlives_predicate(&dummy_cause, binder).is_err() {
                         return false;
                     }
                 }
-                ty::PredicateKind::TypeOutlives(ref binder) => {
+                &ty::PredicateKind::TypeOutlives(binder) => {
                     match (
                         binder.no_bound_vars(),
                         binder.map_bound_ref(|pred| pred.0).no_bound_vars(),

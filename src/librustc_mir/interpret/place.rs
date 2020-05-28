@@ -517,10 +517,10 @@ where
     pub(super) fn mplace_projection(
         &self,
         base: MPlaceTy<'tcx, M::PointerTag>,
-        proj_elem: &mir::PlaceElem<'tcx>,
+        proj_elem: mir::PlaceElem<'tcx>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
         use rustc_middle::mir::ProjectionElem::*;
-        Ok(match *proj_elem {
+        Ok(match proj_elem {
             Field(field, _) => self.mplace_field(base, field.index())?,
             Downcast(_, variant) => self.mplace_downcast(base, variant)?,
             Deref => self.deref_operand(base.into())?,
@@ -605,10 +605,10 @@ where
     pub fn place_projection(
         &mut self,
         base: PlaceTy<'tcx, M::PointerTag>,
-        proj_elem: &mir::ProjectionElem<mir::Local, Ty<'tcx>>,
+        &proj_elem: &mir::ProjectionElem<mir::Local, Ty<'tcx>>,
     ) -> InterpResult<'tcx, PlaceTy<'tcx, M::PointerTag>> {
         use rustc_middle::mir::ProjectionElem::*;
-        Ok(match *proj_elem {
+        Ok(match proj_elem {
             Field(field, _) => self.place_field(base, field.index())?,
             Downcast(_, variant) => self.place_downcast(base, variant)?,
             Deref => self.deref_operand(self.place_to_op(base)?)?.into(),
@@ -634,7 +634,7 @@ where
         };
 
         for elem in place.projection.iter() {
-            place_ty = self.place_projection(place_ty, elem)?
+            place_ty = self.place_projection(place_ty, &elem)?
         }
 
         self.dump_place(place_ty.place);

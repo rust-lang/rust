@@ -415,13 +415,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         match obligation.predicate.kind() {
-            ty::PredicateKind::Trait(t, _) => {
+            &ty::PredicateKind::Trait(t, _) => {
                 debug_assert!(!t.has_escaping_bound_vars());
-                let obligation = obligation.with(*t);
+                let obligation = obligation.with(t);
                 self.evaluate_trait_predicate_recursively(previous_stack, obligation)
             }
 
-            ty::PredicateKind::Subtype(p) => {
+            &ty::PredicateKind::Subtype(p) => {
                 // Does this code ever run?
                 match self.infcx.subtype_predicate(&obligation.cause, obligation.param_env, p) {
                     Some(Ok(InferOk { mut obligations, .. })) => {
@@ -463,8 +463,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
-            ty::PredicateKind::Projection(data) => {
-                let project_obligation = obligation.with(*data);
+            &ty::PredicateKind::Projection(data) => {
+                let project_obligation = obligation.with(data);
                 match project::poly_project_and_unify_type(self, &project_obligation) {
                     Ok(Some(mut subobligations)) => {
                         self.add_depth(subobligations.iter_mut(), obligation.recursion_depth);
@@ -962,7 +962,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         debug_assert!(!stack.obligation.predicate.has_escaping_bound_vars());
 
         if let Some(c) =
-            self.check_candidate_cache(stack.obligation.param_env, &cache_fresh_trait_pred)
+            self.check_candidate_cache(stack.obligation.param_env, cache_fresh_trait_pred)
         {
             debug!("CACHE HIT: SELECT({:?})={:?}", cache_fresh_trait_pred, c);
             return c;
@@ -1238,7 +1238,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn check_candidate_cache(
         &mut self,
         param_env: ty::ParamEnv<'tcx>,
-        cache_fresh_trait_pred: &ty::PolyTraitPredicate<'tcx>,
+        cache_fresh_trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> Option<SelectionResult<'tcx, SelectionCandidate<'tcx>>> {
         let tcx = self.tcx();
         let trait_ref = &cache_fresh_trait_pred.skip_binder().trait_ref;
@@ -3145,7 +3145,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 // Check that the source struct with the target's
                 // unsizing parameters is equal to the target.
-                let substs = tcx.mk_substs(substs_a.iter().enumerate().map(|(i, &k)| {
+                let substs = tcx.mk_substs(substs_a.iter().enumerate().map(|(i, k)| {
                     if unsizing_params.contains(i as u32) { substs_b[i] } else { k }
                 }));
                 let new_struct = tcx.mk_adt(def, substs);
