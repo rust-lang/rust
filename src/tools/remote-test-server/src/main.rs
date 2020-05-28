@@ -41,6 +41,7 @@ macro_rules! t {
 
 static TEST: AtomicUsize = AtomicUsize::new(0);
 
+#[derive(Copy, Clone)]
 struct Config {
     pub remote: bool,
     pub verbose: bool,
@@ -71,6 +72,12 @@ impl Config {
     }
 }
 
+fn print_verbose(s: &str, conf: Config) {
+    if conf.verbose {
+        println!("{}", s);
+    }
+}
+
 fn main() {
     println!("starting test server");
 
@@ -92,7 +99,7 @@ fn main() {
         tmp_dir.push("tmp");
         (work_dir, tmp_dir)
     };
-    println!("listening!");
+    println!("listening on {}!", bind_addr);
 
     t!(fs::create_dir_all(&work));
     t!(fs::create_dir_all(&tmp));
@@ -106,23 +113,25 @@ fn main() {
             continue;
         }
         if &buf[..] == b"ping" {
+            print_verbose("Received ping", config);
             t!(socket.write_all(b"pong"));
         } else if &buf[..] == b"push" {
-            handle_push(socket, &work);
+            handle_push(socket, &work, config);
         } else if &buf[..] == b"run " {
             let lock = lock.clone();
             let work = work.clone();
             let tmp = tmp.clone();
-            thread::spawn(move || handle_run(socket, &work, &tmp, &lock));
+            thread::spawn(move || handle_run(socket, &work, &tmp, &lock, config));
         } else {
             panic!("unknown command {:?}", buf);
         }
     }
 }
 
-fn handle_push(socket: TcpStream, work: &Path) {
+fn handle_push(socket: TcpStream, work: &Path, config: Config) {
     let mut reader = BufReader::new(socket);
-    recv(&work, &mut reader);
+    let dst = recv(&work, &mut reader);
+    print_verbose(&format!("push {:#?}", dst), config);
 
     let mut socket = reader.into_inner();
     t!(socket.write_all(b"ack "));
@@ -138,7 +147,7 @@ impl Drop for RemoveOnDrop<'_> {
     }
 }
 
-fn handle_run(socket: TcpStream, work: &Path, tmp: &Path, lock: &Mutex<()>) {
+fn handle_run(socket: TcpStream, work: &Path, tmp: &Path, lock: &Mutex<()>, config: Config) {
     let mut arg = Vec::new();
     let mut reader = BufReader::new(socket);
 
@@ -205,6 +214,7 @@ fn handle_run(socket: TcpStream, work: &Path, tmp: &Path, lock: &Mutex<()>) {
     // binary is and then we'll download it all to the exe path we calculated
     // earlier.
     let exe = recv(&path, &mut reader);
+    print_verbose(&format!("run {:#?}", exe), config);
 
     let mut cmd = Command::new(&exe);
     cmd.args(args);
