@@ -83,16 +83,19 @@ fn main() {
     };
 
     let listener = t!(TcpListener::bind(bind_addr));
-    let work: PathBuf = if cfg!(target_os = "android") {
-        "/data/tmp/work".into()
+    let (work, tmp): (PathBuf, PathBuf) = if cfg!(target_os = "android") {
+        ("/data/tmp/work".into(), "/data/tmp/work/tmp".into())
     } else {
-        let mut temp_dir = env::temp_dir();
-        temp_dir.push("work");
-        temp_dir
+        let mut work_dir = env::temp_dir();
+        work_dir.push("work");
+        let mut tmp_dir = work_dir.clone();
+        tmp_dir.push("tmp");
+        (work_dir, tmp_dir)
     };
     println!("listening!");
 
     t!(fs::create_dir_all(&work));
+    t!(fs::create_dir_all(&tmp));
 
     let lock = Arc::new(Mutex::new(()));
 
@@ -109,7 +112,8 @@ fn main() {
         } else if &buf[..] == b"run " {
             let lock = lock.clone();
             let work = work.clone();
-            thread::spawn(move || handle_run(socket, &work, &lock));
+            let tmp = tmp.clone();
+            thread::spawn(move || handle_run(socket, &work, &tmp, &lock));
         } else {
             panic!("unknown command {:?}", buf);
         }
@@ -134,7 +138,7 @@ impl Drop for RemoveOnDrop<'_> {
     }
 }
 
-fn handle_run(socket: TcpStream, work: &Path, lock: &Mutex<()>) {
+fn handle_run(socket: TcpStream, work: &Path, tmp: &Path, lock: &Mutex<()>) {
     let mut arg = Vec::new();
     let mut reader = BufReader::new(socket);
 
@@ -225,6 +229,9 @@ fn handle_run(socket: TcpStream, work: &Path, lock: &Mutex<()>) {
     } else {
         cmd.env("LD_LIBRARY_PATH", format!("{}:{}", work.display(), path.display()));
     }
+
+    // Some tests assume RUST_TEST_TMPDIR exists
+    cmd.env("RUST_TEST_TMPDIR", tmp.to_owned());
 
     // Spawn the child and ferry over stdout/stderr to the socket in a framed
     // fashion (poor man's style)
