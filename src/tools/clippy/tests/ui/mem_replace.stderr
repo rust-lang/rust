@@ -1,0 +1,36 @@
+error: replacing an `Option` with `None`
+  --> $DIR/mem_replace.rs:14:13
+   |
+LL |     let _ = mem::replace(&mut an_option, None);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider `Option::take()` instead: `an_option.take()`
+   |
+   = note: `-D clippy::mem-replace-option-with-none` implied by `-D warnings`
+
+error: replacing an `Option` with `None`
+  --> $DIR/mem_replace.rs:16:13
+   |
+LL |     let _ = mem::replace(an_option, None);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider `Option::take()` instead: `an_option.take()`
+
+error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
+  --> $DIR/mem_replace.rs:21:13
+   |
+LL |     let _ = std::mem::replace(&mut s, String::default());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(&mut s)`
+   |
+   = note: `-D clippy::mem-replace-with-default` implied by `-D warnings`
+
+error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
+  --> $DIR/mem_replace.rs:23:13
+   |
+LL |     let _ = std::mem::replace(s, String::default());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(s)`
+
+error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
+  --> $DIR/mem_replace.rs:24:13
+   |
+LL |     let _ = std::mem::replace(s, Default::default());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(s)`
+
+error: aborting due to 5 previous errors
+

@@ -1,0 +1,34 @@
+error: lint `clippy::cyclomatic_complexity` has been renamed to `clippy::cognitive_complexity`
+  --> $DIR/rename.rs:10:9
+   |
+LL | #![warn(clippy::cyclomatic_complexity)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::cognitive_complexity`
+   |
+   = note: `-D renamed-and-removed-lints` implied by `-D warnings`
+
+error: lint `clippy::stutter` has been renamed to `clippy::module_name_repetitions`
+  --> $DIR/rename.rs:12:8
+   |
+LL | #[warn(clippy::stutter)]
+   |        ^^^^^^^^^^^^^^^ help: use the new name: `clippy::module_name_repetitions`
+
+error: lint `clippy::new_without_default_derive` has been renamed to `clippy::new_without_default`
+  --> $DIR/rename.rs:15:8
+   |
+LL | #[warn(clippy::new_without_default_derive)]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::new_without_default`
+
+error: lint `clippy::const_static_lifetime` has been renamed to `clippy::redundant_static_lifetimes`
+  --> $DIR/rename.rs:18:8
+   |
+LL | #[warn(clippy::const_static_lifetime)]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::redundant_static_lifetimes`
+
+error: lint `clippy::cyclomatic_complexity` has been renamed to `clippy::cognitive_complexity`
+  --> $DIR/rename.rs:10:9
+   |
+LL | #![warn(clippy::cyclomatic_complexity)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::cognitive_complexity`
+
+error: aborting due to 5 previous errors
+

@@ -1,0 +1,23 @@
+error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
+  --> $DIR/single_match_else.rs:12:5
+   |
+LL | /     match ExprNode::Butterflies {
+LL | |         ExprNode::ExprAddrOf => Some(&NODE),
+LL | |         _ => {
+LL | |             let x = 5;
+LL | |             None
+LL | |         },
+LL | |     }
+   | |_____^
+   |
+   = note: `-D clippy::single-match-else` implied by `-D warnings`
+help: try this
+   |
+LL |     if let ExprNode::ExprAddrOf = ExprNode::Butterflies { Some(&NODE) } else {
+LL |         let x = 5;
+LL |         None
+LL |     }
+   |
+
+error: aborting due to previous error
+

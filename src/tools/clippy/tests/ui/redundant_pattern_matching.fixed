@@ -1,0 +1,119 @@
+// run-rustfix
+
+#![warn(clippy::all)]
+#![warn(clippy::redundant_pattern_matching)]
+#![allow(clippy::unit_arg, unused_must_use, clippy::needless_bool, deprecated)]
+
+fn main() {
+    if Ok::<i32, i32>(42).is_ok() {}
+
+    if Err::<i32, i32>(42).is_err() {}
+
+    if None::<()>.is_none() {}
+
+    if Some(42).is_some() {}
+
+    if Some(42).is_some() {
+        foo();
+    } else {
+        bar();
+    }
+
+    while Some(42).is_some() {}
+
+    while Some(42).is_none() {}
+
+    while None::<()>.is_none() {}
+
+    while Ok::<i32, i32>(10).is_ok() {}
+
+    while Ok::<i32, i32>(10).is_err() {}
+
+    let mut v = vec![1, 2, 3];
+    while v.pop().is_some() {
+        foo();
+    }
+
+    if Ok::<i32, i32>(42).is_ok() {}
+
+    if Err::<i32, i32>(42).is_err() {}
+
+    if None::<i32>.is_none() {}
+
+    if Some(42).is_some() {}
+
+    if let Ok(x) = Ok::<i32, i32>(42) {
+        println!("{}", x);
+    }
+
+    Ok::<i32, i32>(42).is_ok();
+
+    Ok::<i32, i32>(42).is_err();
+
+    Err::<i32, i32>(42).is_err();
+
+    Err::<i32, i32>(42).is_ok();
+
+    Some(42).is_some();
+
+    None::<()>.is_none();
+
+    let _ = None::<()>.is_none();
+
+    let _ = if Ok::<usize, ()>(4).is_ok() { true } else { false };
+
+    let opt = Some(false);
+    let x = if opt.is_some() { true } else { false };
+    takes_bool(x);
+
+    issue5504();
+
+    let _ = if gen_opt().is_some() {
+        1
+    } else if gen_opt().is_none() {
+        2
+    } else if gen_res().is_ok() {
+        3
+    } else if gen_res().is_err() {
+        4
+    } else {
+        5
+    };
+}
+
+fn gen_opt() -> Option<()> {
+    None
+}
+
+fn gen_res() -> Result<(), ()> {
+    Ok(())
+}
+
+fn takes_bool(_: bool) {}
+
+fn foo() {}
+
+fn bar() {}
+
+macro_rules! m {
+    () => {
+        Some(42u32)
+    };
+}
+
+fn issue5504() {
+    fn result_opt() -> Result<Option<i32>, i32> {
+        Err(42)
+    }
+
+    fn try_result_opt() -> Result<i32, i32> {
+        while r#try!(result_opt()).is_some() {}
+        if r#try!(result_opt()).is_some() {}
+        Ok(42)
+    }
+
+    try_result_opt();
+
+    if m!().is_some() {}
+    while m!().is_some() {}
+}

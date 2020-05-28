@@ -1,0 +1,38 @@
+error: this let-binding has unit value
+  --> $DIR/let_unit.rs:14:5
+   |
+LL |     let _x = println!("x");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ help: omit the `let` binding: `println!("x");`
+   |
+   = note: `-D clippy::let-unit-value` implied by `-D warnings`
+
+error: this let-binding has unit value
+  --> $DIR/let_unit.rs:18:9
+   |
+LL |         let _a = ();
+   |         ^^^^^^^^^^^^ help: omit the `let` binding: `();`
+
+error: this let-binding has unit value
+  --> $DIR/let_unit.rs:53:5
+   |
+LL | /     let _ = v
+LL | |         .into_iter()
+LL | |         .map(|i| i * 2)
+LL | |         .filter(|i| i % 2 == 0)
+LL | |         .map(|_| ())
+LL | |         .next()
+LL | |         .unwrap();
+   | |__________________^
+   |
+help: omit the `let` binding
+   |
+LL |     v
+LL |         .into_iter()
+LL |         .map(|i| i * 2)
+LL |         .filter(|i| i % 2 == 0)
+LL |         .map(|_| ())
+LL |         .next()
+ ...
+
+error: aborting due to 3 previous errors
+

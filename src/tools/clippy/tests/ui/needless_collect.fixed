@@ -1,0 +1,21 @@
+// run-rustfix
+
+#![allow(unused, clippy::suspicious_map)]
+
+use std::collections::{BTreeSet, HashMap, HashSet};
+
+#[warn(clippy::needless_collect)]
+#[allow(unused_variables, clippy::iter_cloned_collect)]
+fn main() {
+    let sample = [1; 5];
+    let len = sample.iter().count();
+    if sample.iter().next().is_none() {
+        // Empty
+    }
+    sample.iter().cloned().any(|x| x == 1);
+    sample.iter().map(|x| (x, x)).count();
+    // Notice the `HashSet`--this should not be linted
+    sample.iter().collect::<HashSet<_>>().len();
+    // Neither should this
+    sample.iter().collect::<BTreeSet<_>>().len();
+}

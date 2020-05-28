@@ -1,0 +1,88 @@
+error: length comparison to zero
+  --> $DIR/len_zero.rs:61:8
+   |
+LL |     if x.len() == 0 {
+   |        ^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `x.is_empty()`
+   |
+   = note: `-D clippy::len-zero` implied by `-D warnings`
+
+error: length comparison to zero
+  --> $DIR/len_zero.rs:65:8
+   |
+LL |     if "".len() == 0 {}
+   |        ^^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `"".is_empty()`
+
+error: length comparison to zero
+  --> $DIR/len_zero.rs:80:8
+   |
+LL |     if has_is_empty.len() == 0 {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `has_is_empty.is_empty()`
+
+error: length comparison to zero
+  --> $DIR/len_zero.rs:83:8
+   |
+LL |     if has_is_empty.len() != 0 {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^ help: using `!is_empty` is clearer and more explicit: `!has_is_empty.is_empty()`
+
+error: length comparison to zero
+  --> $DIR/len_zero.rs:86:8
+   |
+LL |     if has_is_empty.len() > 0 {
+   |        ^^^^^^^^^^^^^^^^^^^^^^ help: using `!is_empty` is clearer and more explicit: `!has_is_empty.is_empty()`
+
+error: length comparison to one
+  --> $DIR/len_zero.rs:89:8
+   |
+LL |     if has_is_empty.len() < 1 {
+   |        ^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `has_is_empty.is_empty()`
+
+error: length comparison to one
+  --> $DIR/len_zero.rs:92:8
+   |
+LL |     if has_is_empty.len() >= 1 {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^ help: using `!is_empty` is clearer and more explicit: `!has_is_empty.is_empty()`
+
+error: length comparison to zero
+  --> $DIR/len_zero.rs:103:8
+   |
+LL |     if 0 == has_is_empty.len() {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `has_is_empty.is_empty()`
+
+error: length comparison to zero
+  --> $DIR/len_zero.rs:106:8
+   |
+LL |     if 0 != has_is_empty.len() {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^ help: using `!is_empty` is clearer and more explicit: `!has_is_empty.is_empty()`
+
+error: length comparison to zero
+  --> $DIR/len_zero.rs:109:8
+   |
+LL |     if 0 < has_is_empty.len() {
+   |        ^^^^^^^^^^^^^^^^^^^^^^ help: using `!is_empty` is clearer and more explicit: `!has_is_empty.is_empty()`
+
+error: length comparison to one
+  --> $DIR/len_zero.rs:112:8
+   |
+LL |     if 1 <= has_is_empty.len() {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^ help: using `!is_empty` is clearer and more explicit: `!has_is_empty.is_empty()`
+
+error: length comparison to one
+  --> $DIR/len_zero.rs:115:8
+   |
+LL |     if 1 > has_is_empty.len() {
+   |        ^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `has_is_empty.is_empty()`
+
+error: length comparison to zero
+  --> $DIR/len_zero.rs:129:8
+   |
+LL |     if with_is_empty.len() == 0 {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `with_is_empty.is_empty()`
+
+error: length comparison to zero
+  --> $DIR/len_zero.rs:142:8
+   |
+LL |     if b.len() != 0 {}
+   |        ^^^^^^^^^^^^ help: using `!is_empty` is clearer and more explicit: `!b.is_empty()`
+
+error: aborting due to 14 previous errors
+

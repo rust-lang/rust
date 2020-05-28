@@ -1,0 +1,22 @@
+error: empty `loop {}` detected. You may want to either use `panic!()` or add `std::thread::sleep(..);` to the loop body.
+  --> $DIR/empty_loop.rs:9:5
+   |
+LL |     loop {}
+   |     ^^^^^^^
+   |
+   = note: `-D clippy::empty-loop` implied by `-D warnings`
+
+error: empty `loop {}` detected. You may want to either use `panic!()` or add `std::thread::sleep(..);` to the loop body.
+  --> $DIR/empty_loop.rs:11:9
+   |
+LL |         loop {}
+   |         ^^^^^^^
+
+error: empty `loop {}` detected. You may want to either use `panic!()` or add `std::thread::sleep(..);` to the loop body.
+  --> $DIR/empty_loop.rs:15:9
+   |
+LL |         'inner: loop {}
+   |         ^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

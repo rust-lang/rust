@@ -1,0 +1,110 @@
+error: using `print!()` with a format string that ends in a single newline
+  --> $DIR/print_with_newline.rs:8:5
+   |
+LL |     print!("Hello/n");
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::print-with-newline` implied by `-D warnings`
+help: use `println!` instead
+   |
+LL |     println!("Hello");
+   |     ^^^^^^^       --
+
+error: using `print!()` with a format string that ends in a single newline
+  --> $DIR/print_with_newline.rs:9:5
+   |
+LL |     print!("Hello {}/n", "world");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `println!` instead
+   |
+LL |     println!("Hello {}", "world");
+   |     ^^^^^^^          --
+
+error: using `print!()` with a format string that ends in a single newline
+  --> $DIR/print_with_newline.rs:10:5
+   |
+LL |     print!("Hello {} {}/n", "world", "#2");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `println!` instead
+   |
+LL |     println!("Hello {} {}", "world", "#2");
+   |     ^^^^^^^             --
+
+error: using `print!()` with a format string that ends in a single newline
+  --> $DIR/print_with_newline.rs:11:5
+   |
+LL |     print!("{}/n", 1265);
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `println!` instead
+   |
+LL |     println!("{}", 1265);
+   |     ^^^^^^^    --
+
+error: using `print!()` with a format string that ends in a single newline
+  --> $DIR/print_with_newline.rs:30:5
+   |
+LL |     print!("//n"); // should fail
+   |     ^^^^^^^^^^^^^^
+   |
+help: use `println!` instead
+   |
+LL |     println!("/"); // should fail
+   |     ^^^^^^^    --
+
+error: using `print!()` with a format string that ends in a single newline
+  --> $DIR/print_with_newline.rs:37:5
+   |
+LL | /     print!(
+LL | |         "
+LL | | "
+LL | |     );
+   | |_____^
+   |
+help: use `println!` instead
+   |
+LL |     println!(
+LL |         ""
+   |
+
+error: using `print!()` with a format string that ends in a single newline
+  --> $DIR/print_with_newline.rs:41:5
+   |
+LL | /     print!(
+LL | |         r"
+LL | | "
+LL | |     );
+   | |_____^
+   |
+help: use `println!` instead
+   |
+LL |     println!(
+LL |         r""
+   |
+
+error: using `print!()` with a format string that ends in a single newline
+  --> $DIR/print_with_newline.rs:49:5
+   |
+LL |     print!("/r/n"); //~ ERROR
+   |     ^^^^^^^^^^^^^^^
+   |
+help: use `println!` instead
+   |
+LL |     println!("/r"); //~ ERROR
+   |     ^^^^^^^     --
+
+error: using `print!()` with a format string that ends in a single newline
+  --> $DIR/print_with_newline.rs:50:5
+   |
+LL |     print!("foo/rbar/n") // ~ ERROR
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `println!` instead
+   |
+LL |     println!("foo/rbar") // ~ ERROR
+   |     ^^^^^^^          --
+
+error: aborting due to 9 previous errors
+

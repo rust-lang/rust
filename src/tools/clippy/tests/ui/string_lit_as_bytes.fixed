@@ -1,0 +1,22 @@
+// run-rustfix
+
+#![allow(dead_code, unused_variables)]
+#![warn(clippy::string_lit_as_bytes)]
+
+fn str_lit_as_bytes() {
+    let bs = b"hello there";
+
+    let bs = br###"raw string with 3# plus " ""###;
+
+    // no warning, because these cannot be written as byte string literals:
+    let ubs = "☃".as_bytes();
+    let ubs = "hello there! this is a very long string".as_bytes();
+
+    let strify = stringify!(foobar).as_bytes();
+
+    let includestr = include_bytes!("entry_unfixable.rs");
+
+    let _ = b"string with newline\t\n";
+}
+
+fn main() {}

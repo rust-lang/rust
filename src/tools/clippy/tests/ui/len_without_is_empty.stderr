@@ -1,0 +1,54 @@
+error: item `PubOne` has a public `len` method but no corresponding `is_empty` method
+  --> $DIR/len_without_is_empty.rs:6:1
+   |
+LL | / impl PubOne {
+LL | |     pub fn len(self: &Self) -> isize {
+LL | |         1
+LL | |     }
+LL | | }
+   | |_^
+   |
+   = note: `-D clippy::len-without-is-empty` implied by `-D warnings`
+
+error: trait `PubTraitsToo` has a `len` method but no (possibly inherited) `is_empty` method
+  --> $DIR/len_without_is_empty.rs:37:1
+   |
+LL | / pub trait PubTraitsToo {
+LL | |     fn len(self: &Self) -> isize;
+LL | | }
+   | |_^
+
+error: item `HasIsEmpty` has a public `len` method but a private `is_empty` method
+  --> $DIR/len_without_is_empty.rs:49:1
+   |
+LL | / impl HasIsEmpty {
+LL | |     pub fn len(self: &Self) -> isize {
+LL | |         1
+LL | |     }
+...  |
+LL | |     }
+LL | | }
+   | |_^
+
+error: item `HasWrongIsEmpty` has a public `len` method but no corresponding `is_empty` method
+  --> $DIR/len_without_is_empty.rs:61:1
+   |
+LL | / impl HasWrongIsEmpty {
+LL | |     pub fn len(self: &Self) -> isize {
+LL | |         1
+LL | |     }
+...  |
+LL | |     }
+LL | | }
+   | |_^
+
+error: trait `DependsOnFoo` has a `len` method but no (possibly inherited) `is_empty` method
+  --> $DIR/len_without_is_empty.rs:141:1
+   |
+LL | / pub trait DependsOnFoo: Foo {
+LL | |     fn len(&mut self) -> usize;
+LL | | }
+   | |_^
+
+error: aborting due to 5 previous errors
+

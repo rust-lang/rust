@@ -1,0 +1,21 @@
+// run-rustfix
+
+#[allow(dead_code, unused_assignments)]
+#[warn(clippy::assign_op_pattern)]
+fn main() {
+    let mut a = 5;
+    a += 1;
+    a += 1;
+    a -= 1;
+    a *= 99;
+    a *= 42;
+    a /= 2;
+    a %= 5;
+    a &= 1;
+    a = 1 - a;
+    a = 5 / a;
+    a = 42 % a;
+    a = 6 << a;
+    let mut s = String::new();
+    s += "bla";
+}

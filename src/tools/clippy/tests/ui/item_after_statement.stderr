@@ -1,0 +1,20 @@
+error: adding items after statements is confusing, since items exist from the start of the scope
+  --> $DIR/item_after_statement.rs:12:5
+   |
+LL | /     fn foo() {
+LL | |         println!("foo");
+LL | |     }
+   | |_____^
+   |
+   = note: `-D clippy::items-after-statements` implied by `-D warnings`
+
+error: adding items after statements is confusing, since items exist from the start of the scope
+  --> $DIR/item_after_statement.rs:19:5
+   |
+LL | /     fn foo() {
+LL | |         println!("foo");
+LL | |     }
+   | |_____^
+
+error: aborting due to 2 previous errors
+

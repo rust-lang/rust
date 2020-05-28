@@ -1,0 +1,16 @@
+error: this call for this type may be undefined behavior
+  --> $DIR/uninit.rs:6:29
+   |
+LL |     let _: usize = unsafe { MaybeUninit::uninit().assume_init() };
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[deny(clippy::uninit_assumed_init)]` on by default
+
+error: this call for this type may be undefined behavior
+  --> $DIR/uninit.rs:9:31
+   |
+LL |     let _: [u8; 0] = unsafe { MaybeUninit::uninit().assume_init() };
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

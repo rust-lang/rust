@@ -1,0 +1,10 @@
+error: called `map_or(None, Some)` on a `Result` value. This can be done more directly by calling `ok()` instead
+  --> $DIR/result_map_or_into_option.rs:7:13
+   |
+LL |     let _ = opt.map_or(None, Some);
+   |             ^^^^^^^^^^^^^^^^^^^^^^ help: try using `ok` instead: `opt.ok()`
+   |
+   = note: `-D clippy::result-map-or-into-option` implied by `-D warnings`
+
+error: aborting due to previous error
+

@@ -1,0 +1,22 @@
+error: called `.nth(0)` on a `std::iter::Iterator`
+  --> $DIR/iter_nth_zero.rs:20:14
+   |
+LL |     let _x = s.iter().nth(0);
+   |              ^^^^^^^^^^^^^^^ help: try calling: `s.iter().next()`
+   |
+   = note: `-D clippy::iter-nth-zero` implied by `-D warnings`
+
+error: called `.nth(0)` on a `std::iter::Iterator`
+  --> $DIR/iter_nth_zero.rs:25:14
+   |
+LL |     let _y = iter.nth(0);
+   |              ^^^^^^^^^^^ help: try calling: `iter.next()`
+
+error: called `.nth(0)` on a `std::iter::Iterator`
+  --> $DIR/iter_nth_zero.rs:30:22
+   |
+LL |     let _unwrapped = iter2.nth(0).unwrap();
+   |                      ^^^^^^^^^^^^ help: try calling: `iter2.next()`
+
+error: aborting due to 3 previous errors
+

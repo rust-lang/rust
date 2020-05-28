@@ -1,0 +1,329 @@
+name: Clippy Test (bors)
+
+on:
+  push:
+    branches:
+      - auto
+      - try
+
+env:
+  RUST_BACKTRACE: 1
+  CARGO_TARGET_DIR: '${{ github.workspace }}/target'
+  NO_FMT_TEST: 1
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
+      with:
+        github_token: "${{ secrets.github_token }}"
+    - name: Checkout
+      uses: actions/checkout@v2.0.0
+      with:
+        ref: ${{ github.ref }}
+
+    # Run
+    - name: Check Changelog
+      run: |
+        MESSAGE=$(git log --format=%B -n 1)
+        PR=$(echo "$MESSAGE" | grep -o "#[0-9]*" | head -1 | sed -e 's/^#//')
+        output=$(curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" -s "https://api.github.com/repos/rust-lang/rust-clippy/pulls/$PR" | \
+          python -c "import sys, json; print(json.load(sys.stdin)['body'])" | \
+          grep "^changelog: " | \
+          sed "s/changelog: //g")
+        if [[ -z "$output" ]]; then
+          echo "ERROR: PR body must contain 'changelog: ...'"
+          exit 1
+        elif [[ "$output" = "none" ]]; then
+          echo "WARNING: changelog is 'none'"
+        fi
+      env:
+        PYTHONIOENCODING: 'utf-8'
+  base:
+    needs: changelog
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        host: [x86_64-unknown-linux-gnu, i686-unknown-linux-gnu, x86_64-apple-darwin, x86_64-pc-windows-msvc]
+        exclude:
+        - os: ubuntu-latest
+          host: x86_64-apple-darwin
+        - os: ubuntu-latest
+          host: x86_64-pc-windows-msvc
+        - os: macos-latest
+          host: x86_64-unknown-linux-gnu
+        - os: macos-latest
+          host: i686-unknown-linux-gnu
+        - os: macos-latest
+          host: x86_64-pc-windows-msvc
+        - os: windows-latest
+          host: x86_64-unknown-linux-gnu
+        - os: windows-latest
+          host: i686-unknown-linux-gnu
+        - os: windows-latest
+          host: x86_64-apple-darwin
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    # Setup
+    - uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
+      with:
+        github_token: "${{ secrets.github_token }}"
+
+    - name: Install dependencies (Linux-i686)
+      run: |
+        sudo dpkg --add-architecture i386
+        sudo apt-get update
+        sudo apt-get install gcc-multilib libssl-dev:i386 libgit2-dev:i386
+      if: matrix.host == 'i686-unknown-linux-gnu'
+
+    - name: rust-toolchain
+      uses: actions-rs/toolchain@v1.0.3
+      with:
+        toolchain: nightly
+        target: ${{ matrix.host }}
+        profile: minimal
+
+    - name: Checkout
+      uses: actions/checkout@v2.0.0
+
+    - name: Run cargo update
+      run: cargo update
+
+    - name: Cache cargo dir
+      uses: actions/cache@v1
+      with:
+        path: ~/.cargo
+        key: ${{ runner.os }}-${{ matrix.host }}-${{ hashFiles('Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ matrix.host }}
+
+    - name: Master Toolchain Setup
+      run: bash setup-toolchain.sh
+      env:
+        HOST_TOOLCHAIN: ${{ matrix.host }}
+      shell: bash
+
+    # Run
+    - name: Set LD_LIBRARY_PATH (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        SYSROOT=$(rustc --print sysroot)
+        echo "::set-env name=LD_LIBRARY_PATH::${SYSROOT}/lib${LD_LIBRARY_PATH+:${LD_LIBRARY_PATH}}"
+    - name: Link rustc dylib (MacOS)
+      if: runner.os == 'macOS'
+      run: |
+        SYSROOT=$(rustc --print sysroot)
+        sudo mkdir -p /usr/local/lib
+        sudo find "${SYSROOT}/lib" -maxdepth 1 -name '*dylib' -exec ln -s {} /usr/local/lib \;
+    - name: Set PATH (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        $sysroot = rustc --print sysroot
+        $env:PATH += ';' + $sysroot + '\bin'
+        echo "::set-env name=PATH::$env:PATH"
+
+    - name: Build
+      run: cargo build --features deny-warnings
+      shell: bash
+
+    - name: Test
+      run: cargo test --features deny-warnings
+      shell: bash
+
+    - name: Test clippy_lints
+      run: cargo test --features deny-warnings
+      shell: bash
+      working-directory: clippy_lints
+
+    - name: Test rustc_tools_util
+      run: cargo test --features deny-warnings
+      shell: bash
+      working-directory: rustc_tools_util
+
+    - name: Test clippy_dev
+      run: cargo test --features deny-warnings
+      shell: bash
+      working-directory: clippy_dev
+
+    - name: Test cargo-clippy
+      run: ../target/debug/cargo-clippy
+      shell: bash
+      working-directory: clippy_workspace_tests
+
+    - name: Test clippy-driver
+      run: bash .github/driver.sh
+      shell: bash
+      env:
+        OS: ${{ runner.os }}
+
+    # Cleanup
+    - name: Run cargo-cache --autoclean
+      run: |
+        cargo +nightly install cargo-cache --no-default-features --features ci-autoclean cargo-cache
+        cargo cache
+      shell: bash
+  integration_build:
+    needs: changelog
+    runs-on: ubuntu-latest
+
+    steps:
+    # Setup
+    - uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
+      with:
+        github_token: "${{ secrets.github_token }}"
+
+    - name: rust-toolchain
+      uses: actions-rs/toolchain@v1.0.3
+      with:
+        toolchain: nightly
+        target: x86_64-unknown-linux-gnu
+        profile: minimal
+
+    - name: Checkout
+      uses: actions/checkout@v2.0.0
+
+    - name: Run cargo update
+      run: cargo update
+
+    - name: Cache cargo dir
+      uses: actions/cache@v1
+      with:
+        path: ~/.cargo
+        key: ${{ runner.os }}-x86_64-unknown-linux-gnu-${{ hashFiles('Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-x86_64-unknown-linux-gnu
+
+    - name: Master Toolchain Setup
+      run: bash setup-toolchain.sh
+
+    # Run
+    - name: Build Integration Test
+      run: cargo test --test integration --features integration --no-run
+
+    # Upload
+    - name: Extract Binaries
+      run: |
+        DIR=$CARGO_TARGET_DIR/debug
+        rm $DIR/deps/integration-*.d
+        mv $DIR/deps/integration-* $DIR/integration
+        find $DIR ! -executable -o -type d ! -path $DIR | xargs rm -rf
+        rm -rf $CARGO_TARGET_DIR/release
+
+    - name: Upload Binaries
+      uses: actions/upload-artifact@v1
+      with:
+        name: target
+        path: target
+
+    # Cleanup
+    - name: Run cargo-cache --autoclean
+      run: |
+        cargo +nightly install cargo-cache --no-default-features --features ci-autoclean cargo-cache
+        cargo cache
+  integration:
+    needs: integration_build
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        integration:
+        - 'rust-lang/cargo'
+        - 'rust-lang/rls'
+        - 'rust-lang/chalk'
+        - 'rust-lang/rustfmt'
+        - 'Marwes/combine'
+        - 'Geal/nom'
+        - 'rust-lang/stdarch'
+        - 'serde-rs/serde'
+        - 'chronotope/chrono'
+        - 'hyperium/hyper'
+        - 'rust-random/rand'
+        - 'rust-lang/futures-rs'
+        - 'rust-itertools/itertools'
+        - 'rust-lang-nursery/failure'
+        - 'rust-lang/log'
+
+    runs-on: ubuntu-latest
+
+    steps:
+    # Setup
+    - uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
+      with:
+        github_token: "${{ secrets.github_token }}"
+
+    - name: rust-toolchain
+      uses: actions-rs/toolchain@v1.0.3
+      with:
+        toolchain: nightly
+        target: x86_64-unknown-linux-gnu
+        profile: minimal
+
+    - name: Checkout
+      uses: actions/checkout@v2.0.0
+
+    - name: Run cargo update
+      run: cargo update
+
+    - name: Cache cargo dir
+      uses: actions/cache@v1
+      with:
+        path: ~/.cargo
+        key: ${{ runner.os }}-x86_64-unknown-linux-gnu-${{ hashFiles('Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-x86_64-unknown-linux-gnu
+
+    - name: Master Toolchain Setup
+      run: bash setup-toolchain.sh
+
+    # Download
+    - name: Download target dir
+      uses: actions/download-artifact@v1
+      with:
+        name: target
+        path: target
+
+    - name: Make Binaries Executable
+      run: chmod +x $CARGO_TARGET_DIR/debug/*
+
+    # Run
+    - name: Test ${{ matrix.integration }}
+      run: $CARGO_TARGET_DIR/debug/integration
+      env:
+        INTEGRATION: ${{ matrix.integration }}
+        RUSTUP_TOOLCHAIN: master
+
+    # Cleanup
+    - name: Run cargo-cache --autoclean
+      run: |
+        cargo +nightly install cargo-cache --no-default-features --features ci-autoclean cargo-cache
+        cargo cache
+
+  # These jobs doesn't actually test anything, but they're only used to tell
+  # bors the build completed, as there is no practical way to detect when a
+  # workflow is successful listening to webhooks only.
+  #
+  # ALL THE PREVIOUS JOBS NEED TO BE ADDED TO THE `needs` SECTION OF THIS JOB!
+
+  end-success:
+    name: bors test finished
+    if: github.event.pusher.name == 'bors' && success()
+    runs-on: ubuntu-latest
+    needs: [base, integration]
+
+    steps:
+      - name: Mark the job as successful
+        run: exit 0
+
+  end-failure:
+    name: bors test finished
+    if: github.event.pusher.name == 'bors' && (failure() || cancelled())
+    runs-on: ubuntu-latest
+    needs: [base, integration]
+
+    steps:
+      - name: Mark the job as a failure
+        run: exit 1

@@ -1,0 +1,40 @@
+error: written amount is not handled. Use `Write::write_all` instead
+  --> $DIR/unused_io_amount.rs:7:5
+   |
+LL |     s.write(b"test")?;
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::unused-io-amount` implied by `-D warnings`
+
+error: read amount is not handled. Use `Read::read_exact` instead
+  --> $DIR/unused_io_amount.rs:9:5
+   |
+LL |     s.read(&mut buf)?;
+   |     ^^^^^^^^^^^^^^^^^
+
+error: written amount is not handled. Use `Write::write_all` instead
+  --> $DIR/unused_io_amount.rs:14:5
+   |
+LL |     s.write(b"test").unwrap();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: read amount is not handled. Use `Read::read_exact` instead
+  --> $DIR/unused_io_amount.rs:16:5
+   |
+LL |     s.read(&mut buf).unwrap();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: read amount is not handled
+  --> $DIR/unused_io_amount.rs:20:5
+   |
+LL |     s.read_vectored(&mut [io::IoSliceMut::new(&mut [])])?;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: written amount is not handled
+  --> $DIR/unused_io_amount.rs:21:5
+   |
+LL |     s.write_vectored(&[io::IoSlice::new(&[])])?;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+

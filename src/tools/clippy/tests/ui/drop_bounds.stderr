@@ -1,0 +1,16 @@
+error: Bounds of the form `T: Drop` are useless. Use `std::mem::needs_drop` to detect if a type has drop glue.
+  --> $DIR/drop_bounds.rs:2:11
+   |
+LL | fn foo<T: Drop>() {}
+   |           ^^^^
+   |
+   = note: `#[deny(clippy::drop_bounds)]` on by default
+
+error: Bounds of the form `T: Drop` are useless. Use `std::mem::needs_drop` to detect if a type has drop glue.
+  --> $DIR/drop_bounds.rs:5:8
+   |
+LL |     T: Drop,
+   |        ^^^^
+
+error: aborting due to 2 previous errors
+
