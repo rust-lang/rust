@@ -12,7 +12,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .string_literal     { color: #CC9393; }
 .field              { color: #94BFF3; }
 .function           { color: #93E0E3; }
-.function.unsafe    { color: #BC8383; }
+.function.unsafe    { color: #E28C14; }
 .operator.unsafe    { color: #BC8383; }
 .parameter          { color: #94BFF3; }
 .text               { color: #DCDCCC; }
@@ -47,7 +47,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="keyword unsafe">unsafe</span> {
         <span class="function unsafe">unsafe_fn</span>();
         <span class="struct">HasUnsafeFn</span>.<span class="function unsafe">unsafe_method</span>();
-        <span class="keyword">let</span> <span class="variable declaration">y</span> = <span class="operator unsafe">*</span>(<span class="variable">x</span>);
+        <span class="keyword">let</span> <span class="variable declaration">y</span> = <span class="function unsafe">*</span><span class="variable">x</span>;
         <span class="keyword">let</span> <span class="variable declaration">z</span> = -<span class="variable">x</span>;
     }
 }</code></pre>

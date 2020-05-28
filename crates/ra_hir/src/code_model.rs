@@ -25,9 +25,11 @@ use hir_expand::{
 use hir_ty::{
     autoderef,
     display::{HirDisplayError, HirFormatter},
-    expr::{ExprValidator, UnsafeValidator},
-    method_resolution, ApplicationTy, Canonical, GenericPredicate, InEnvironment, Substs,
-    TraitEnvironment, Ty, TyDefId, TypeCtor,
+    expr::ExprValidator,
+    method_resolution,
+    method_resolution, ApplicationTy, Canonical, InEnvironment, Substs, TraitEnvironment, Ty,
+    TyDefId, TypeCtor,
+    unsafe_validation::UnsafeValidator,
 };
 use ra_db::{CrateId, CrateName, Edition, FileId};
 use ra_prof::profile;

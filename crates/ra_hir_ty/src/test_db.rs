@@ -12,9 +12,8 @@ use rustc_hash::FxHashSet;
 use stdx::format_to;
 
 use crate::{
-    db::HirDatabase,
-    diagnostics::Diagnostic,
-    expr::{ExprValidator, UnsafeValidator},
+    db::HirDatabase, diagnostics::Diagnostic, expr::ExprValidator,
+    unsafe_validation::UnsafeValidator,
 };
 
 #[salsa::database(

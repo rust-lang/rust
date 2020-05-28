@@ -9,9 +9,7 @@ use rustc_hash::FxHashSet;
 
 use crate::{
     db::HirDatabase,
-    diagnostics::{
-        MissingFields, MissingMatchArms, MissingOkInTailExpr, MissingPatFields, MissingUnsafe,
-    },
+    diagnostics::{MissingFields, MissingMatchArms, MissingOkInTailExpr, MissingPatFields},
     lower::CallableDef,
     utils::variant_data,
     ApplicationTy, InferenceResult, Ty, TypeCtor,
@@ -317,8 +315,8 @@ pub fn record_pattern_missing_fields(
 }
 
 pub struct UnsafeExpr {
-    expr: ExprId,
-    inside_unsafe_block: bool,
+    pub expr: ExprId,
+    pub inside_unsafe_block: bool,
 }
 
 impl UnsafeExpr {
@@ -382,44 +380,4 @@ pub fn unsafe_expressions(
     }
 
     unsafe_exprs
-}
-
-pub struct UnsafeValidator<'a, 'b: 'a> {
-    func: FunctionId,
-    infer: Arc<InferenceResult>,
-    sink: &'a mut DiagnosticSink<'b>,
-}
-
-impl<'a, 'b> UnsafeValidator<'a, 'b> {
-    pub fn new(
-        func: FunctionId,
-        infer: Arc<InferenceResult>,
-        sink: &'a mut DiagnosticSink<'b>,
-    ) -> UnsafeValidator<'a, 'b> {
-        UnsafeValidator { func, infer, sink }
-    }
-
-    pub fn validate_body(&mut self, db: &dyn HirDatabase) {
-        let def = self.func.into();
-        let unsafe_expressions = unsafe_expressions(db, self.infer.as_ref(), def);
-        let func_data = db.function_data(self.func);
-        if func_data.is_unsafe
-            || unsafe_expressions
-                .iter()
-                .filter(|unsafe_expr| !unsafe_expr.inside_unsafe_block)
-                .count()
-                == 0
-        {
-            return;
-        }
-
-        let (_, body_source) = db.body_with_source_map(def);
-        for unsafe_expr in unsafe_expressions {
-            if !unsafe_expr.inside_unsafe_block {
-                if let Ok(in_file) = body_source.as_ref().expr_syntax(unsafe_expr.expr) {
-                    self.sink.push(MissingUnsafe { file: in_file.file_id, expr: in_file.value })
-                }
-            }
-        }
-    }
 }
