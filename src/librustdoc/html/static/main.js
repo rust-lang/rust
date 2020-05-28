@@ -81,6 +81,7 @@ function getSearchElement() {
 
     var disableShortcuts = getCurrentValue("rustdoc-disable-shortcuts") === "true";
     var search_input = getSearchInput();
+    var searchTimeout = null;
 
     // On the search screen, so you remain on the last tab you opened.
     //
@@ -344,6 +345,10 @@ function getSearchElement() {
         if (hasClass(help, "hidden") === false) {
             displayHelp(false, ev, help);
         } else if (hasClass(search, "hidden") === false) {
+            if (searchTimeout !== null) {
+                clearTimeout(searchTimeout);
+                searchTimeout = null;
+            }
             ev.preventDefault();
             hideSearchResults(search);
             document.title = titleBeforeSearch;
@@ -1799,7 +1804,6 @@ function getSearchElement() {
         }
 
         function startSearch() {
-            var searchTimeout;
             var callback = function() {
                 clearTimeout(searchTimeout);
                 if (search_input.value.length === 0) {
@@ -1815,7 +1819,10 @@ function getSearchElement() {
             search_input.oninput = callback;
             document.getElementsByClassName("search-form")[0].onsubmit = function(e) {
                 e.preventDefault();
-                clearTimeout(searchTimeout);
+                if (searchTimeout !== null) {
+                    clearTimeout(searchTimeout);
+                    searchTimeout = null;
+                }
                 search();
             };
             search_input.onchange = function(e) {
@@ -1824,7 +1831,10 @@ function getSearchElement() {
                     return;
                 }
                 // Do NOT e.preventDefault() here. It will prevent pasting.
-                clearTimeout(searchTimeout);
+                if (searchTimeout !== null) {
+                    clearTimeout(searchTimeout);
+                    searchTimeout = null;
+                }
                 // zero-timeout necessary here because at the time of event handler execution the
                 // pasted content is not in the input field yet. Shouldn’t make any difference for
                 // change, though.
