@@ -83,7 +83,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         }
         let mut visitor = AssocTypeFinder(FxIndexSet::default());
         trait_fn_sig.output().visit_with(&mut visitor);
-        if let Some(id) = tcx.hir().as_local_hir_id(trait_def_id) {
+        if let Some(id) = trait_def_id.as_local().map(|id| tcx.hir().as_local_hir_id(id)) {
             let parent_id = tcx.hir().get_parent_item(id);
             let trait_item = tcx.hir().expect_item(parent_id);
             if let ItemKind::Trait(_, _, generics, _, _) = &trait_item.kind {
@@ -103,9 +103,10 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         let assoc_item = self.tcx().associated_item(trait_def_id);
         let mut visitor = TypeParamSpanVisitor { tcx: self.tcx(), types: vec![] };
         match assoc_item.kind {
-            ty::AssocKind::Method => {
+            ty::AssocKind::Fn => {
                 let hir = self.tcx().hir();
-                if let Some(hir_id) = hir.as_local_hir_id(assoc_item.def_id) {
+                if let Some(hir_id) = assoc_item.def_id.as_local().map(|id| hir.as_local_hir_id(id))
+                {
                     if let Some(decl) = hir.fn_decl_by_hir_id(hir_id) {
                         visitor.visit_fn_decl(decl);
                     }
