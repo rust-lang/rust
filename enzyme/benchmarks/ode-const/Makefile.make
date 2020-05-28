@@ -14,7 +14,7 @@ ode-unopt.ll: ode.cpp
 	clang++ $(BENCH) $^ -fno-exceptions -Xclang -disable-llvm-passes -fno-use-cxa-atexit -fno-vectorize -fno-slp-vectorize -ffast-math -fno-unroll-loops -o $@ -S -emit-llvm
 
 ode-raw.ll: ode-adept-unopt.ll ode-unopt.ll
-	opt ode-unopt.ll -mem2reg -sroa -deadargelim -o ode-pp.ll S
+	opt ode-unopt.ll -mem2reg -sroa -deadargelim -o ode-pp.ll -S
 	opt ode-pp.ll $(LOAD) -enzyme -o ode-enzyme.ll -S
 	llvm-link ode-adept-unopt.ll ode-enzyme.ll -o $@
 

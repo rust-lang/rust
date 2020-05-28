@@ -813,13 +813,14 @@ void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
         }
         */
 
-        //llvm::errs() << "gep: " << gep << "\n";
+	auto unmerged = pointerAnalysis.UnmergeIndices(off, maxSize);
+        llvm::errs() << "gep: " << gep << " prev:" << getAnalysis(&gep).str() << " unmerged: " << unmerged.str() << "\n";
 
-        updateAnalysis(&gep, pointerAnalysis.UnmergeIndices(off, maxSize), &gep);
+        updateAnalysis(&gep, unmerged, &gep);
 
         auto merged = getAnalysis(&gep).MergeIndices(off);
 
-        //llvm::errs()  << " + prevanalysis: " << getAnalysis(gep.getPointerOperand()).str() << " merged: " << merged.str() << " g2:[";
+        llvm::errs()  << " + prevanalysis: " << getAnalysis(gep.getPointerOperand()).str() << " merged: " << merged.str() << " g2:\n";
 
         updateAnalysis(gep.getPointerOperand(), merged, &gep);
     }
@@ -1110,10 +1111,6 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
         //llvm::errs() << "I: " << I << "\n";
         //llvm::errs() << "op(0): " << getAnalysis(I.getOperand(0)).str() << "\n";
         //llvm::errs() << "op(1): " << getAnalysis(I.getOperand(1)).str() << "\n";
-
-		ValueData vd = getAnalysis(I.getOperand(0));
-        vd.pointerIntMerge(getAnalysis(I.getOperand(1)), I.getOpcode());
-
 
 		ValueData vd = getAnalysis(I.getOperand(0));
         vd.pointerIntMerge(getAnalysis(I.getOperand(1)), I.getOpcode());
@@ -1727,10 +1724,13 @@ void TypeAnalyzer::visitIPOCall(CallInst& call, Function& fn) {
 		typeInfo.first.insert(std::pair<Argument*, ValueData>(&arg, dt));
         typeInfo.knownValues.insert(std::pair<Argument*, std::set<int64_t>>(&arg, fntypeinfo.isConstantInt(call.getArgOperand(argnum), DT, intseen)));
 		argnum++;
+	
 	}
+
 
     typeInfo.second = getAnalysis(&call);
 
+    if (printtype) llvm::errs() << " starting IPO of " << call << "\n";
 
 	auto a = fn.arg_begin();
 	for(size_t i=0; i<call.getNumArgOperands(); i++) {

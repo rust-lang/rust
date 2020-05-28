@@ -376,7 +376,7 @@ public:
 
     //returns whether changed
     bool operator&=(const DataType dt) {
-        andIn(dt, /*assertIfIllegal*/true);
+        return andIn(dt, /*assertIfIllegal*/true);
     }
 
     bool operator<(const DataType dt) const {
@@ -795,7 +795,7 @@ public:
     }
 
     bool operator&=(const ValueData &v) {
-        andIn(v, /*assertIfIllegal*/true);
+        return andIn(v, /*assertIfIllegal*/true);
     }
 
     bool andIn(const ValueData &v, bool assertIfIllegal=true) {
