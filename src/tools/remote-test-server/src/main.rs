@@ -83,12 +83,12 @@ fn main() {
     };
 
     let listener = t!(TcpListener::bind(bind_addr));
-    let work: PathBuf = if cfg!(windows) {
-        env::var_os("RUST_TEMP").expect("Set RUST_TEMP to your preferred temp folder").into()
-    } else if cfg!(target_os = "android") {
+    let work: PathBuf = if cfg!(target_os = "android") {
         "/data/tmp/work".into()
     } else {
-        "/tmp/work".into()
+        let mut temp_dir = env::temp_dir();
+        temp_dir.push("work");
+        temp_dir
     };
     println!("listening!");
 
