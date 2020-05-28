@@ -8,7 +8,7 @@ extern crate proc_macro2;
 #[macro_use]
 extern crate quote;
 
-use proc_macro2::{Ident, Literal, Span, TokenStream, TokenTree};
+use proc_macro2::{Delimiter, Ident, Literal, Span, TokenStream, TokenTree};
 use quote::ToTokens;
 use std::env;
 
@@ -146,8 +146,15 @@ fn find_name(item: TokenStream) -> Ident {
         }
     }
 
-    match tokens.next() {
-        Some(TokenTree::Ident(word)) => word,
-        _ => panic!("failed to find function name"),
+    fn get_ident(tt: TokenTree) -> Option<Ident> {
+        match tt {
+            TokenTree::Ident(i) => Some(i),
+            TokenTree::Group(g) if g.delimiter() == Delimiter::None => {
+                get_ident(g.stream().into_iter().next()?)
+            }
+            _ => None,
+        }
     }
+
+    tokens.next().and_then(get_ident).expect("failed to find function name")
 }
