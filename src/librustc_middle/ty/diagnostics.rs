@@ -7,7 +7,6 @@ use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{QPath, TyKind, WhereBoundPredicate, WherePredicate};
-use rustc_span::{BytePos, Span};
 
 impl<'tcx> TyS<'tcx> {
     /// Similar to `TyS::is_primitive`, but also considers inferred numeric values to be primitive.
@@ -221,18 +220,16 @@ pub fn suggest_constraining_type_param(
             }
         }
 
-        let where_clause_span = generics.where_clause.span_for_predicates_or_empty_place();
         // Account for `fn foo<T>(t: T) where T: Foo,` so we don't suggest two trailing commas.
-        let mut trailing_comma = false;
-        if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(where_clause_span) {
-            trailing_comma = snippet.ends_with(',');
-        }
-        let where_clause_span = if trailing_comma {
-            let hi = where_clause_span.hi();
-            Span::new(hi - BytePos(1), hi, where_clause_span.ctxt())
-        } else {
-            where_clause_span.shrink_to_hi()
-        };
+        let end = generics.where_clause.span_for_predicates_or_empty_place().shrink_to_hi();
+        let where_clause_span = generics
+            .where_clause
+            .predicates
+            .last()
+            .map(|p| p.span())
+            .unwrap_or(end)
+            .shrink_to_hi()
+            .to(end);
 
         match &param_spans[..] {
             &[&param_span] => suggest_restrict(param_span.shrink_to_hi()),

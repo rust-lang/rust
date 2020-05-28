@@ -169,8 +169,17 @@ pub trait InferCtxtExt<'tcx> {
 }
 
 fn predicate_constraint(generics: &hir::Generics<'_>, pred: String) -> (Span, String) {
+    let end = generics.where_clause.span_for_predicates_or_empty_place().shrink_to_hi();
     (
-        generics.where_clause.span_for_predicates_or_empty_place().shrink_to_hi(),
+        // Account for `where T: Foo,` so we don't suggest two trailing commas.
+        generics
+            .where_clause
+            .predicates
+            .last()
+            .map(|p| p.span())
+            .unwrap_or(end)
+            .shrink_to_hi()
+            .to(end),
         format!(
             "{} {}",
             if !generics.where_clause.predicates.is_empty() { "," } else { " where" },
