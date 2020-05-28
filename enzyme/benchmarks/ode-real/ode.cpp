@@ -48,7 +48,8 @@ using namespace boost::numeric::odeint;
 #include <assert.h>
 #define RANGE(min, max, i, N) ((max-min)/(N-1)*i + min)
 #define GETnb(x, i, j) (x)[N*i+j]
-#define GET(x, i, j) ({ assert(i >=0); assert( j>=0); assert(j<N); assert(j<N); GETnb(x, i, j); })
+#define GET(x, i, j) GETnb(x, i, j)
+//#define GET(x, i, j) ({ assert(i >=0); assert( j>=0); assert(j<N); assert(j<N); GETnb(x, i, j); })
 
 template <typename T>
 T brusselator_f(T x, T y, T t) {
@@ -231,6 +232,85 @@ double brusselator_f_nodiff(double x, double y, double t) {
         return 0.0;
 }
 
+#if 1
+void brusselator_2d_loop_b(double *du, double *dub, double *dv, double *dvb,
+        const double *u, double *ub, const double *v, double *vb, const double *p, double *pb,
+        double t) {
+    double A = p[0];
+    double Ab = 0.0;
+    double B = p[1];
+    double Bb = 0.0;
+    double alpha = p[2];
+    double alphab = 0.0;
+    double dx = (double)1/(N-1);
+    alpha = alpha/(dx*dx);
+    for (int i = 0; i < N; ++i)
+        for (int j = 0; j < N; ++j) {
+            double x = (xmax-xmin)/(N-1)*i + xmin;
+            double y = (ymax-ymin)/(N-1)*j + ymin;
+            unsigned int ip1 = (i == N - 1 ? i : i + 1);
+            unsigned int im1 = (i == 0 ? i : i - 1);
+            unsigned int jp1 = (j == N - 1 ? j : j + 1);
+            unsigned int jm1 = (j == 0 ? j : j - 1);
+            double u2v = u[N*i+j]*u[N*i+j]*v[N*i+j];
+            double result1;
+            pushInteger4(jm1);
+            pushInteger4(jp1);
+            pushInteger4(im1);
+            pushInteger4(ip1);
+        }
+    *ub = 0.0;
+    *vb = 0.0;
+    alphab = 0.0;
+    Ab = 0.0;
+    Bb = 0.0;
+    for (int i = N-1; i > -1; --i)
+        for (int j = N-1; j > -1; --j) {
+            double x;
+            double y;
+            unsigned int ip1;
+            unsigned int im1;
+            unsigned int jp1;
+            unsigned int jm1;
+            double u2v;
+            double u2vb = 0.0;
+            double result1;
+            double temp;
+            double tempb;
+            popInteger4((int*)&ip1);
+            popInteger4((int*)&im1);
+            popInteger4((int*)&jp1);
+            popInteger4((int*)&jm1);
+            temp = u[N*i + j];
+            alphab = alphab + (v[N*im1+j]+v[N*ip1+j]+v[N*i+jp1]+v[N*i+jm1]
+                -4*v[N*i+j])*dvb[N*i+j] + (u[N*im1+j]+u[N*ip1+j]+u[N*i+
+                jp1]+u[N*i+jm1]-4*u[N*i+j])*dub[N*i+j];
+            tempb = alpha*dvb[N*i+j];
+            Ab = Ab + u[N*i+j]*dvb[N*i+j] - u[N*i+j]*dub[N*i+j];
+            ub[N*i + j] = ub[N*i + j] + A*dvb[N*i+j] - (A+1)*dub[N*i+j];
+            u2vb = dub[N*i + j] - dvb[N*i + j];
+            dvb[N*i + j] = 0.0;
+            vb[N*im1 + j] = vb[N*im1 + j] + tempb;
+            vb[N*ip1 + j] = vb[N*ip1 + j] + tempb;
+            vb[N*i + jp1] = vb[N*i + jp1] + tempb;
+            vb[N*i + jm1] = vb[N*i + jm1] + tempb;
+            vb[N*i + j] = vb[N*i + j] + temp*temp*u2vb - 4*tempb;
+            tempb = alpha*dub[N*i+j];
+            Bb = Bb + dub[N*i + j];
+            dub[N*i + j] = 0.0;
+            ub[N*im1 + j] = ub[N*im1 + j] + tempb;
+            ub[N*ip1 + j] = ub[N*ip1 + j] + tempb;
+            ub[N*i + jp1] = ub[N*i + jp1] + tempb;
+            ub[N*i + jm1] = ub[N*i + jm1] + tempb;
+            ub[N*i + j] = ub[N*i + j] + 2*temp*v[N*i+j]*u2vb - 4*tempb;
+        }
+    alphab = alphab/(dx*dx);
+    pb[2] = pb[2] + alphab;
+    pb[1] = pb[1] + Bb;
+    pb[0] = pb[0] + Ab;
+
+}
+#else
 /*
   Differentiation of brusselator_2d_loop in reverse (adjoint) mode (with options i4 dr8 r4):
    gradient     of useful results: *du *dv
@@ -397,6 +477,7 @@ void brusselator_2d_loop_b(double *du, double *dub, double *dv, double *dvb,
     pb[1] = pb[1] + Bb;
     pb[0] = pb[0] + Ab;
 }
+#endif
 }
 
 double tfoobar(const double* p, const state_type x, const state_type adjoint, double t) {
