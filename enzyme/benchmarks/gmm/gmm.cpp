@@ -184,7 +184,6 @@ void Qtimesx(
     int i, j;
     for (i = 0; i < d; i++)
     {
-        // storing separately this X
         out[i] = Qdiag[i] * x[i];
     }
 

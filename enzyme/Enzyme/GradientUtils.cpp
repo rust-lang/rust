@@ -243,7 +243,7 @@ bool GradientUtils::shouldRecompute(const Value* val, const ValueToValueMapTy& a
       }
 
       forceCache:;
-      llvm::errs() << "choosing to cache " << *val << " because of " << *op << "\n";
+      //llvm::errs() << "choosing to cache " << *val << " because of " << *op << "\n";
       return false;
     }
   }
@@ -1868,6 +1868,12 @@ void GradientUtils::branchToCorrespondingTarget(BasicBlock* ctx, IRBuilder <>& B
     }
   }
 
+  BasicBlock* forwardBlock = BuilderM.GetInsertBlock();
+
+  if (!isOriginalBlock(*forwardBlock)) {
+      forwardBlock = originalForReverseBlock(*forwardBlock);
+  }
+
   for(auto block : blocks) {
       std::set<BasicBlock*> foundtargets;
       for (BasicBlock* succ : successors(block)) {
@@ -1887,8 +1893,11 @@ void GradientUtils::branchToCorrespondingTarget(BasicBlock* ctx, IRBuilder <>& B
           //llvm::errs() << " | failed to use " << block->getName() << " since noneq targets\n";
           goto nextpair;
       }
-      equivalentTerminator = block->getTerminator();
-      goto fast;
+
+      if (forwardBlock == block || DT.dominates(block, forwardBlock)) {
+        equivalentTerminator = block->getTerminator();
+        goto fast;
+      }
 
       nextpair:;
   }
