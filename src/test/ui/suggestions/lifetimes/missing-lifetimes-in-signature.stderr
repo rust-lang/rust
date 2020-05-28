@@ -10,25 +10,16 @@ error: cannot infer an appropriate lifetime
   --> $DIR/missing-lifetimes-in-signature.rs:19:5
    |
 LL |   fn foo<G, T>(g: G, dest: &mut T) -> impl FnOnce()
-   |                                       ------------- this is `'static`...
+   |                            ------     ------------- ...is required to be `'static` by this...
+   |                            |
+   |                            data with this lifetime...
 ...
 LL | /     move || {
 LL | |         *dest = g.get();
 LL | |     }
-   | |_____^ ...but this borrow...
+   | |_____^ ...and is captured here
    |
-note: ...can't outlive the anonymous lifetime #1 defined on the function body at 15:1
-  --> $DIR/missing-lifetimes-in-signature.rs:15:1
-   |
-LL | / fn foo<G, T>(g: G, dest: &mut T) -> impl FnOnce()
-LL | | where
-LL | |     G: Get<T>
-LL | | {
-...  |
-LL | |     }
-LL | | }
-   | |_^
-help: you can add a bound to the returned `impl Trait` to make it last less than `'static` and match the anonymous lifetime #1 defined on the function body at 15:1
+help: to permit non-static references in an `impl Trait` value, you can add an explicit bound for the anonymous lifetime #1 defined on the function body at 15:1
    |
 LL | fn foo<G, T>(g: G, dest: &mut T) -> impl FnOnce() + '_
    |                                                   ^^^^

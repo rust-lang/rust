@@ -27,28 +27,32 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                     let return_sp = sub_origin.span();
                     let mut err =
                         self.tcx().sess.struct_span_err(sp, "cannot infer an appropriate lifetime");
-                    if sp == sup_origin.span() && return_sp == sp {
-                        // Example: `ui/object-lifetime/object-lifetime-default-from-box-error.rs`
-                        err.span_label(
-                            sup_origin.span(),
-                            "this needs to be `'static` but the borrow...",
-                        );
-                    } else {
-                        err.span_label(return_sp, "this is `'static`...");
-                        // We try to make the output have fewer overlapping spans if possible.
-                        if sp == sup_origin.span() || !return_sp.overlaps(sup_origin.span()) {
-                            // When `sp == sup_origin` we already have overlapping spans in the
-                            // main diagnostic output, so we don't split this into its own note.
-                            err.span_label(sup_origin.span(), "...but this borrow...");
+                    let param_info = self.find_param_with_region(sup_r, sub_r)?;
+                    err.span_label(param_info.param_ty_span, "data with this lifetime...");
+
+                    // We try to make the output have fewer overlapping spans if possible.
+                    if (sp == sup_origin.span() || !return_sp.overlaps(sup_origin.span()))
+                        && sup_origin.span() != return_sp
+                    {
+                        // FIXME: account for `async fn` like in `async-await/issues/issue-62097.rs`
+
+                        // Customize the spans and labels depending on their relative order so
+                        // that split sentences flow correctly.
+                        if sup_origin.span().shrink_to_hi() <= return_sp.shrink_to_lo() {
+                            err.span_label(sup_origin.span(), "...is captured here...");
+                            err.span_label(return_sp, "...and required to be `'static` by this");
                         } else {
-                            err.span_note(sup_origin.span(), "...but this borrow...");
+                            err.span_label(return_sp, "...is required to be `'static` by this...");
+                            err.span_label(sup_origin.span(), "...and is captured here");
                         }
+                    } else {
+                        err.span_label(
+                            return_sp,
+                            "...is captured and required to be `'static` here",
+                        );
                     }
 
-                    let (lifetime, lt_sp_opt) = msg_span_from_free_region(self.tcx(), sup_r);
-                    if let Some(lifetime_sp) = lt_sp_opt {
-                        err.span_note(lifetime_sp, &format!("...can't outlive {}", lifetime));
-                    }
+                    let (lifetime, _) = msg_span_from_free_region(self.tcx(), sup_r);
 
                     let lifetime_name =
                         if sup_r.has_name() { sup_r.to_string() } else { "'_".to_owned() };
@@ -56,10 +60,11 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                     // explicit non-desugar'able return.
                     if fn_return_span.desugaring_kind().is_none() {
                         let msg = format!(
-                            "you can add a bound to the returned `{} Trait` to make it last less \
-                             than `'static` and match {}",
+                            "to permit non-static references in {} `{} Trait` value, you can add \
+                             an explicit bound for {}",
+                            if is_dyn { "a" } else { "an" },
                             if is_dyn { "dyn" } else { "impl" },
-                            lifetime
+                            lifetime,
                         );
                         // FIXME: account for the need of parens in `&(dyn Trait + '_)`
                         err.span_suggestion_verbose(

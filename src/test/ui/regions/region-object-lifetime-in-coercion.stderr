@@ -17,22 +17,16 @@ LL |     Box::new(v)
 error: cannot infer an appropriate lifetime
   --> $DIR/region-object-lifetime-in-coercion.rs:20:14
    |
+LL | fn c(v: &[u8]) -> Box<dyn Foo> {
+   |         ----- data with this lifetime...
+...
 LL |     Box::new(v)
    |     ---------^-
    |     |        |
-   |     |        ...but this borrow...
-   |     this is `'static`...
+   |     |        ...and is captured here
+   |     ...is required to be `'static` by this...
    |
-note: ...can't outlive the anonymous lifetime #1 defined on the function body at 17:1
-  --> $DIR/region-object-lifetime-in-coercion.rs:17:1
-   |
-LL | / fn c(v: &[u8]) -> Box<dyn Foo> {
-LL | |     // same as previous case due to RFC 599
-LL | |
-LL | |     Box::new(v)
-LL | | }
-   | |_^
-help: you can add a bound to the returned `dyn Trait` to make it last less than `'static` and match the anonymous lifetime #1 defined on the function body at 17:1
+help: to permit non-static references in a `dyn Trait` value, you can add an explicit bound for the anonymous lifetime #1 defined on the function body at 17:1
    |
 LL | fn c(v: &[u8]) -> Box<dyn Foo + '_> {
    |                               ^^^^

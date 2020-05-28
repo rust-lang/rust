@@ -2,16 +2,12 @@ error: cannot infer an appropriate lifetime
   --> $DIR/must_outlive_least_region_or_bound.rs:3:35
    |
 LL | fn elided(x: &i32) -> impl Copy { x }
-   |                       ---------   ^ ...but this borrow...
-   |                       |
-   |                       this is `'static`...
+   |              ----     ---------   ^ ...and is captured here
+   |              |        |
+   |              |        ...is required to be `'static` by this...
+   |              data with this lifetime...
    |
-note: ...can't outlive the anonymous lifetime #1 defined on the function body at 3:1
-  --> $DIR/must_outlive_least_region_or_bound.rs:3:1
-   |
-LL | fn elided(x: &i32) -> impl Copy { x }
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: you can add a bound to the returned `impl Trait` to make it last less than `'static` and match the anonymous lifetime #1 defined on the function body at 3:1
+help: to permit non-static references in an `impl Trait` value, you can add an explicit bound for the anonymous lifetime #1 defined on the function body at 3:1
    |
 LL | fn elided(x: &i32) -> impl Copy + '_ { x }
    |                                 ^^^^
@@ -20,16 +16,12 @@ error: cannot infer an appropriate lifetime
   --> $DIR/must_outlive_least_region_or_bound.rs:6:44
    |
 LL | fn explicit<'a>(x: &'a i32) -> impl Copy { x }
-   |                                ---------   ^ ...but this borrow...
-   |                                |
-   |                                this is `'static`...
+   |                    -------     ---------   ^ ...and is captured here
+   |                    |           |
+   |                    |           ...is required to be `'static` by this...
+   |                    data with this lifetime...
    |
-note: ...can't outlive the lifetime `'a` as defined on the function body at 6:13
-  --> $DIR/must_outlive_least_region_or_bound.rs:6:13
-   |
-LL | fn explicit<'a>(x: &'a i32) -> impl Copy { x }
-   |             ^^
-help: you can add a bound to the returned `impl Trait` to make it last less than `'static` and match the lifetime `'a` as defined on the function body at 6:13
+help: to permit non-static references in an `impl Trait` value, you can add an explicit bound for the lifetime `'a` as defined on the function body at 6:13
    |
 LL | fn explicit<'a>(x: &'a i32) -> impl Copy + 'a { x }
    |                                          ^^^^
@@ -38,16 +30,12 @@ error: cannot infer an appropriate lifetime
   --> $DIR/must_outlive_least_region_or_bound.rs:12:69
    |
 LL | fn with_bound<'a>(x: &'a i32) -> impl LifetimeTrait<'a> + 'static { x }
-   |                                  --------------------------------   ^ ...but this borrow...
-   |                                  |
-   |                                  this is `'static`...
+   |                      -------     --------------------------------   ^ ...and is captured here
+   |                      |           |
+   |                      |           ...is required to be `'static` by this...
+   |                      data with this lifetime...
    |
-note: ...can't outlive the lifetime `'a` as defined on the function body at 12:15
-  --> $DIR/must_outlive_least_region_or_bound.rs:12:15
-   |
-LL | fn with_bound<'a>(x: &'a i32) -> impl LifetimeTrait<'a> + 'static { x }
-   |               ^^
-help: you can add a bound to the returned `impl Trait` to make it last less than `'static` and match the lifetime `'a` as defined on the function body at 12:15
+help: to permit non-static references in an `impl Trait` value, you can add an explicit bound for the lifetime `'a` as defined on the function body at 12:15
    |
 LL | fn with_bound<'a>(x: &'a i32) -> impl LifetimeTrait<'a> + 'static + 'a { x }
    |                                                                   ^^^^
