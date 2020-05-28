@@ -60,7 +60,7 @@ impl<W: Wake + Send + Sync + 'static> From<Arc<W>> for RawWaker {
 fn raw_waker<W: Wake + Send + Sync + 'static>(waker: Arc<W>) -> RawWaker {
     // Increment the reference count of the arc to clone it.
     unsafe fn clone_waker<W: Wake + Send + Sync + 'static>(waker: *const ()) -> RawWaker {
-        Arc::incr_strong_count(waker as *const W);
+        unsafe { Arc::incr_strong_count(waker as *const W) };
         RawWaker::new(
             waker as *const (),
             &RawWakerVTable::new(clone_waker::<W>, wake::<W>, wake_by_ref::<W>, drop_waker::<W>),
@@ -69,19 +69,20 @@ fn raw_waker<W: Wake + Send + Sync + 'static>(waker: Arc<W>) -> RawWaker {
 
     // Wake by value, moving the Arc into the Wake::wake function
     unsafe fn wake<W: Wake + Send + Sync + 'static>(waker: *const ()) {
-        let waker: Arc<W> = Arc::from_raw(waker as *const W);
+        let waker: Arc<W> = unsafe { Arc::from_raw(waker as *const W) };
         <W as Wake>::wake(waker);
     }
 
     // Wake by reference, wrap the waker in ManuallyDrop to avoid dropping it
     unsafe fn wake_by_ref<W: Wake + Send + Sync + 'static>(waker: *const ()) {
-        let waker: ManuallyDrop<Arc<W>> = ManuallyDrop::new(Arc::from_raw(waker as *const W));
+        let waker: ManuallyDrop<Arc<W>> =
+            unsafe { ManuallyDrop::new(Arc::from_raw(waker as *const W)) };
         <W as Wake>::wake_by_ref(&waker);
     }
 
     // Decrement the reference count of the Arc on drop
     unsafe fn drop_waker<W: Wake + Send + Sync + 'static>(waker: *const ()) {
-        Arc::decr_strong_count(waker as *const W);
+        unsafe { Arc::decr_strong_count(waker as *const W) };
     }
 
     RawWaker::new(

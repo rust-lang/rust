@@ -304,7 +304,7 @@ impl<T: ?Sized> Rc<T> {
     }
 
     unsafe fn from_ptr(ptr: *mut RcBox<T>) -> Self {
-        Self::from_inner(NonNull::new_unchecked(ptr))
+        Self::from_inner(unsafe { NonNull::new_unchecked(ptr) })
     }
 }
 
@@ -544,7 +544,7 @@ impl<T> Rc<[mem::MaybeUninit<T>]> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
     pub unsafe fn assume_init(self) -> Rc<[T]> {
-        Rc::from_ptr(mem::ManuallyDrop::new(self).ptr.as_ptr() as _)
+        unsafe { Rc::from_ptr(mem::ManuallyDrop::new(self).ptr.as_ptr() as _) }
     }
 }
 
@@ -643,13 +643,13 @@ impl<T: ?Sized> Rc<T> {
     /// ```
     #[stable(feature = "rc_raw", since = "1.17.0")]
     pub unsafe fn from_raw(ptr: *const T) -> Self {
-        let offset = data_offset(ptr);
+        let offset = unsafe { data_offset(ptr) };
 
         // Reverse the offset to find the original RcBox.
         let fake_ptr = ptr as *mut RcBox<T>;
-        let rc_ptr = set_data_ptr(fake_ptr, (ptr as *mut u8).offset(-offset));
+        let rc_ptr = unsafe { set_data_ptr(fake_ptr, (ptr as *mut u8).offset(-offset)) };
 
-        Self::from_ptr(rc_ptr)
+        unsafe { Self::from_ptr(rc_ptr) }
     }
 
     /// Consumes the `Rc`, returning the wrapped pointer as `NonNull<T>`.
@@ -805,7 +805,7 @@ impl<T: ?Sized> Rc<T> {
     #[inline]
     #[unstable(feature = "get_mut_unchecked", issue = "63292")]
     pub unsafe fn get_mut_unchecked(this: &mut Self) -> &mut T {
-        &mut this.ptr.as_mut().value
+        unsafe { &mut this.ptr.as_mut().value }
     }
 
     #[inline]
@@ -964,10 +964,12 @@ impl<T: ?Sized> Rc<T> {
 
         // Initialize the RcBox
         let inner = mem_to_rcbox(mem.ptr.as_ptr());
-        debug_assert_eq!(Layout::for_value(&*inner), layout);
+        unsafe {
+            debug_assert_eq!(Layout::for_value(&*inner), layout);
 
-        ptr::write(&mut (*inner).strong, Cell::new(1));
-        ptr::write(&mut (*inner).weak, Cell::new(1));
+            ptr::write(&mut (*inner).strong, Cell::new(1));
+            ptr::write(&mut (*inner).weak, Cell::new(1));
+        }
 
         inner
     }
@@ -975,9 +977,11 @@ impl<T: ?Sized> Rc<T> {
     /// Allocates an `RcBox<T>` with sufficient space for an unsized inner value
     unsafe fn allocate_for_ptr(ptr: *const T) -> *mut RcBox<T> {
         // Allocate for the `RcBox<T>` using the given value.
-        Self::allocate_for_layout(Layout::for_value(&*ptr), |mem| {
-            set_data_ptr(ptr as *mut T, mem) as *mut RcBox<T>
-        })
+        unsafe {
+            Self::allocate_for_layout(Layout::for_value(&*ptr), |mem| {
+                set_data_ptr(ptr as *mut T, mem) as *mut RcBox<T>
+            })
+        }
     }
 
     fn from_box(v: Box<T>) -> Rc<T> {
@@ -1006,9 +1010,11 @@ impl<T: ?Sized> Rc<T> {
 impl<T> Rc<[T]> {
     /// Allocates an `RcBox<[T]>` with the given length.
     unsafe fn allocate_for_slice(len: usize) -> *mut RcBox<[T]> {
-        Self::allocate_for_layout(Layout::array::<T>(len).unwrap(), |mem| {
-            ptr::slice_from_raw_parts_mut(mem as *mut T, len) as *mut RcBox<[T]>
-        })
+        unsafe {
+            Self::allocate_for_layout(Layout::array::<T>(len).unwrap(), |mem| {
+                ptr::slice_from_raw_parts_mut(mem as *mut T, len) as *mut RcBox<[T]>
+            })
+        }
     }
 }
 
@@ -1017,7 +1023,9 @@ impl<T> Rc<[T]> {
 /// For a slice/trait object, this sets the `data` field and leaves the rest
 /// unchanged. For a sized raw pointer, this simply sets the pointer.
 unsafe fn set_data_ptr<T: ?Sized, U>(mut ptr: *mut T, data: *mut U) -> *mut T {
-    ptr::write(&mut ptr as *mut _ as *mut *mut u8, data as *mut u8);
+    unsafe {
+        ptr::write(&mut ptr as *mut _ as *mut *mut u8, data as *mut u8);
+    }
     ptr
 }
 
@@ -1026,11 +1034,11 @@ impl<T> Rc<[T]> {
     ///
     /// Unsafe because the caller must either take ownership or bind `T: Copy`
     unsafe fn copy_from_slice(v: &[T]) -> Rc<[T]> {
-        let ptr = Self::allocate_for_slice(v.len());
-
-        ptr::copy_nonoverlapping(v.as_ptr(), &mut (*ptr).value as *mut [T] as *mut T, v.len());
-
-        Self::from_ptr(ptr)
+        unsafe {
+            let ptr = Self::allocate_for_slice(v.len());
+            ptr::copy_nonoverlapping(v.as_ptr(), &mut (*ptr).value as *mut [T] as *mut T, v.len());
+            Self::from_ptr(ptr)
+        }
     }
 
     /// Constructs an `Rc<[T]>` from an iterator known to be of a certain size.
@@ -1058,25 +1066,27 @@ impl<T> Rc<[T]> {
             }
         }
 
-        let ptr = Self::allocate_for_slice(len);
+        unsafe {
+            let ptr = Self::allocate_for_slice(len);
 
-        let mem = ptr as *mut _ as *mut u8;
-        let layout = Layout::for_value(&*ptr);
+            let mem = ptr as *mut _ as *mut u8;
+            let layout = Layout::for_value(&*ptr);
 
-        // Pointer to first element
-        let elems = &mut (*ptr).value as *mut [T] as *mut T;
+            // Pointer to first element
+            let elems = &mut (*ptr).value as *mut [T] as *mut T;
 
-        let mut guard = Guard { mem: NonNull::new_unchecked(mem), elems, layout, n_elems: 0 };
+            let mut guard = Guard { mem: NonNull::new_unchecked(mem), elems, layout, n_elems: 0 };
 
-        for (i, item) in iter.enumerate() {
-            ptr::write(elems.add(i), item);
-            guard.n_elems += 1;
+            for (i, item) in iter.enumerate() {
+                ptr::write(elems.add(i), item);
+                guard.n_elems += 1;
+            }
+
+            // All clear. Forget the guard so it doesn't free the new RcBox.
+            forget(guard);
+
+            Self::from_ptr(ptr)
         }
-
-        // All clear. Forget the guard so it doesn't free the new RcBox.
-        forget(guard);
-
-        Self::from_ptr(ptr)
     }
 }
 
@@ -1786,10 +1796,12 @@ impl<T> Weak<T> {
             Self::new()
         } else {
             // See Rc::from_raw for details
-            let offset = data_offset(ptr);
-            let fake_ptr = ptr as *mut RcBox<T>;
-            let ptr = set_data_ptr(fake_ptr, (ptr as *mut u8).offset(-offset));
-            Weak { ptr: NonNull::new(ptr).expect("Invalid pointer passed to from_raw") }
+            unsafe {
+                let offset = data_offset(ptr);
+                let fake_ptr = ptr as *mut RcBox<T>;
+                let ptr = set_data_ptr(fake_ptr, (ptr as *mut u8).offset(-offset));
+                Weak { ptr: NonNull::new(ptr).expect("Invalid pointer passed to from_raw") }
+            }
         }
     }
 }
@@ -2106,7 +2118,7 @@ unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> isize {
     // Because it is ?Sized, it will always be the last field in memory.
     // Note: This is a detail of the current implementation of the compiler,
     // and is not a guaranteed language detail. Do not rely on it outside of std.
-    data_offset_align(align_of_val(&*ptr))
+    unsafe { data_offset_align(align_of_val(&*ptr)) }
 }
 
 /// Computes the offset of the data field within `RcBox`.

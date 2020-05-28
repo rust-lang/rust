@@ -831,8 +831,7 @@ where
 {
     let len = v.len();
     let v = v.as_mut_ptr();
-    let v_mid = v.add(mid);
-    let v_end = v.add(len);
+    let (v_mid, v_end) = unsafe { (v.add(mid), v.add(len)) };
 
     // The merge process first copies the shorter run into `buf`. Then it traces the newly copied
     // run and the longer run forwards (or backwards), comparing their next unconsumed elements and
@@ -855,8 +854,10 @@ where
 
     if mid <= len - mid {
         // The left run is shorter.
-        ptr::copy_nonoverlapping(v, buf, mid);
-        hole = MergeHole { start: buf, end: buf.add(mid), dest: v };
+        unsafe {
+            ptr::copy_nonoverlapping(v, buf, mid);
+            hole = MergeHole { start: buf, end: buf.add(mid), dest: v };
+        }
 
         // Initially, these pointers point to the beginnings of their arrays.
         let left = &mut hole.start;
@@ -866,17 +867,21 @@ where
         while *left < hole.end && right < v_end {
             // Consume the lesser side.
             // If equal, prefer the left run to maintain stability.
-            let to_copy = if is_less(&*right, &**left) {
-                get_and_increment(&mut right)
-            } else {
-                get_and_increment(left)
-            };
-            ptr::copy_nonoverlapping(to_copy, get_and_increment(out), 1);
+            unsafe {
+                let to_copy = if is_less(&*right, &**left) {
+                    get_and_increment(&mut right)
+                } else {
+                    get_and_increment(left)
+                };
+                ptr::copy_nonoverlapping(to_copy, get_and_increment(out), 1);
+            }
         }
     } else {
         // The right run is shorter.
-        ptr::copy_nonoverlapping(v_mid, buf, len - mid);
-        hole = MergeHole { start: buf, end: buf.add(len - mid), dest: v_mid };
+        unsafe {
+            ptr::copy_nonoverlapping(v_mid, buf, len - mid);
+            hole = MergeHole { start: buf, end: buf.add(len - mid), dest: v_mid };
+        }
 
         // Initially, these pointers point past the ends of their arrays.
         let left = &mut hole.dest;
@@ -886,12 +891,14 @@ where
         while v < *left && buf < *right {
             // Consume the greater side.
             // If equal, prefer the right run to maintain stability.
-            let to_copy = if is_less(&*right.offset(-1), &*left.offset(-1)) {
-                decrement_and_get(left)
-            } else {
-                decrement_and_get(right)
-            };
-            ptr::copy_nonoverlapping(to_copy, decrement_and_get(&mut out), 1);
+            unsafe {
+                let to_copy = if is_less(&*right.offset(-1), &*left.offset(-1)) {
+                    decrement_and_get(left)
+                } else {
+                    decrement_and_get(right)
+                };
+                ptr::copy_nonoverlapping(to_copy, decrement_and_get(&mut out), 1);
+            }
         }
     }
     // Finally, `hole` gets dropped. If the shorter run was not fully consumed, whatever remains of
@@ -899,12 +906,12 @@ where
 
     unsafe fn get_and_increment<T>(ptr: &mut *mut T) -> *mut T {
         let old = *ptr;
-        *ptr = ptr.offset(1);
+        *ptr = unsafe { ptr.offset(1) };
         old
     }
 
     unsafe fn decrement_and_get<T>(ptr: &mut *mut T) -> *mut T {
-        *ptr = ptr.offset(-1);
+        *ptr = unsafe { ptr.offset(-1) };
         *ptr
     }
 

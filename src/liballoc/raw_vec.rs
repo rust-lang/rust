@@ -108,7 +108,7 @@ impl<T> RawVec<T, Global> {
     /// If the `ptr` and `capacity` come from a `RawVec`, then this is guaranteed.
     #[inline]
     pub unsafe fn from_raw_parts(ptr: *mut T, capacity: usize) -> Self {
-        Self::from_raw_parts_in(ptr, capacity, Global)
+        unsafe { Self::from_raw_parts_in(ptr, capacity, Global) }
     }
 
     /// Converts a `Box<[T]>` into a `RawVec<T>`.
@@ -139,8 +139,10 @@ impl<T> RawVec<T, Global> {
         );
 
         let me = ManuallyDrop::new(self);
-        let slice = slice::from_raw_parts_mut(me.ptr() as *mut MaybeUninit<T>, len);
-        Box::from_raw(slice)
+        unsafe {
+            let slice = slice::from_raw_parts_mut(me.ptr() as *mut MaybeUninit<T>, len);
+            Box::from_raw(slice)
+        }
     }
 }
 
@@ -192,7 +194,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
     /// If the `ptr` and `capacity` come from a `RawVec` created via `a`, then this is guaranteed.
     #[inline]
     pub unsafe fn from_raw_parts_in(ptr: *mut T, capacity: usize, a: A) -> Self {
-        Self { ptr: Unique::new_unchecked(ptr), cap: capacity, alloc: a }
+        Self { ptr: unsafe { Unique::new_unchecked(ptr) }, cap: capacity, alloc: a }
     }
 
     /// Gets a raw pointer to the start of the allocation. Note that this is

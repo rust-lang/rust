@@ -724,7 +724,7 @@ impl String {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn from_raw_parts(buf: *mut u8, length: usize, capacity: usize) -> String {
-        String { vec: Vec::from_raw_parts(buf, length, capacity) }
+        unsafe { String { vec: Vec::from_raw_parts(buf, length, capacity) } }
     }
 
     /// Converts a vector of bytes to a `String` without checking that the
@@ -1329,9 +1329,11 @@ impl String {
         let amt = bytes.len();
         self.vec.reserve(amt);
 
-        ptr::copy(self.vec.as_ptr().add(idx), self.vec.as_mut_ptr().add(idx + amt), len - idx);
-        ptr::copy(bytes.as_ptr(), self.vec.as_mut_ptr().add(idx), amt);
-        self.vec.set_len(len + amt);
+        unsafe {
+            ptr::copy(self.vec.as_ptr().add(idx), self.vec.as_mut_ptr().add(idx + amt), len - idx);
+            ptr::copy(bytes.as_ptr(), self.vec.as_mut_ptr().add(idx), amt);
+            self.vec.set_len(len + amt);
+        }
     }
 
     /// Inserts a string slice into this `String` at a byte position.
