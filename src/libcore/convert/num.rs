@@ -445,3 +445,38 @@ nzint_impl_from! { NonZeroU16, NonZeroI128, #[stable(feature = "nz_int_conv", si
 nzint_impl_from! { NonZeroU32, NonZeroI64, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
 nzint_impl_from! { NonZeroU32, NonZeroI128, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
 nzint_impl_from! { NonZeroU64, NonZeroI128, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+
+macro_rules! nzint_impl_try_from {
+    (@PER_ITEM  $NonZeroType: ident; $SameButZeroType: ident; $PossiblyZeroType: ty; #[$attr:meta]; $doc: expr) => {
+                #[$attr]
+                #[doc = $doc]
+                impl TryFrom<$PossiblyZeroType> for $NonZeroType {
+                    type Error = TryFromIntError;
+                    #[inline]
+                    fn try_from(value: $PossiblyZeroType) -> Result<Self,Self::Error> {
+                        <$SameButZeroType as TryFrom<$PossiblyZeroType>>::try_from(value)
+                            .ok()
+                            .into_iter()
+                            .flat_map($NonZeroType::new)
+                            .next()
+                            .ok_or_else(|| TryFromIntError(()))
+                    }
+                }
+    };
+    ($NonZeroType: ident, $SameButZeroType: ident => {$($PossiblyZeroType: ty),*} #[$attr:meta]) => {
+            $(nzint_impl_try_from!{@PER_ITEM $NonZeroType; $SameButZeroType; $PossiblyZeroType; #[$attr]; concat!("Converts `",stringify!($PossiblyZeroType),"` to `",stringify!($NonZeroType),"` if possible.")})*
+    };
+}
+
+nzint_impl_try_from! { NonZeroU8, u8 => { i8, u8, i16, u16, i32, u32, i64, u64, isize, usize, i128, u128 } #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_try_from! { NonZeroI8, i8 => { i8, u8, i16, u16, i32, u32, i64, u64, isize, usize, i128, u128 } #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_try_from! { NonZeroU16, u16 => { i8, u8, i16, u16, i32, u32, i64, u64, isize, usize, i128, u128 } #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_try_from! { NonZeroI16, i16 => { i8, u8, i16, u16, i32, u32, i64, u64, isize, usize, i128, u128 } #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_try_from! { NonZeroU32, u32 => { i8, u8, i16, u16, i32, u32, i64, u64, isize, usize, i128, u128 } #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_try_from! { NonZeroI32, i32 => { i8, u8, i16, u16, i32, u32, i64, u64, isize, usize, i128, u128 } #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_try_from! { NonZeroU64, u64 => { i8, u8, i16, u16, i32, u32, i64, u64, isize, usize, i128, u128 } #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_try_from! { NonZeroI64, i64 => { i8, u8, i16, u16, i32, u32, i64, u64, isize, usize, i128, u128 } #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_try_from! { NonZeroU128, u128 => { i8, u8, i16, u16, i32, u32, i64, u64, isize, usize, i128, u128 } #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_try_from! { NonZeroI128, i128 => { i8, u8, i16, u16, i32, u32, i64, u64, isize, usize, i128, u128 } #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_try_from! { NonZeroUsize, usize => { i8, u8, i16, u16, i32, u32, i64, u64, isize, usize, i128, u128 } #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_try_from! { NonZeroIsize, isize => { i8, u8, i16, u16, i32, u32, i64, u64, isize, usize, i128, u128 } #[stable(feature = "nz_int_conv", since = "1.41.0")] }
