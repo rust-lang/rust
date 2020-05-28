@@ -194,7 +194,10 @@ source.
 Error annotations specify the errors that the compiler is expected to
 emit. They are "attached" to the line in source where the error is
 located. Error annotations are considered during tidy lints of line
-length and should be formatted according to tidy requirements. 
+length and should be formatted according to tidy requirements. You may
+use an error message prefix sub-string if necessary to meet line length 
+requirements.  Make sure that the text is long enough for the error 
+message to be self-documenting.
 
 The error annotation definition and source line definition association
 is defined with the following set of idioms:
