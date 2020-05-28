@@ -1,12 +1,12 @@
 #![feature(inner_deref)]
 
 use std::env;
+use std::ffi::OsString;
 use std::fs::{self, File};
 use std::io::{self, BufRead, Write};
 use std::ops::Not;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::ffi::OsString;
 
 use rustc_version::VersionMeta;
 
@@ -94,6 +94,9 @@ fn get_arg_flag_value(name: &str) -> Option<String> {
 
 /// Returns the path to the `miri` binary
 fn find_miri() -> PathBuf {
+    if let Some(path) = env::var_os("MIRI") {
+        return path.into();
+    }
     let mut path = std::env::current_exe().expect("current executable path invalid");
     path.set_file_name("miri");
     path
@@ -265,7 +268,8 @@ fn setup(subcommand: MiriCommand) {
             let sysroot = std::str::from_utf8(&sysroot).unwrap();
             let sysroot = Path::new(sysroot.trim_end_matches('\n'));
             // Check for `$SYSROOT/lib/rustlib/src/rust/src`; test if that contains `libstd/lib.rs`.
-            let rustup_src = sysroot.join("lib").join("rustlib").join("src").join("rust").join("src");
+            let rustup_src =
+                sysroot.join("lib").join("rustlib").join("src").join("rust").join("src");
             if !rustup_src.join("libstd").join("lib.rs").exists() {
                 // Ask the user to install the `rust-src` component, and use that.
                 let mut cmd = Command::new("rustup");
@@ -363,8 +367,7 @@ path = "lib.rs"
     let sysroot = if target == &host { dir.join("HOST") } else { PathBuf::from(dir) };
     std::env::set_var("MIRI_SYSROOT", &sysroot); // pass the env var to the processes we spawn, which will turn it into "--sysroot" flags
     // Figure out what to print.
-    let print_sysroot = subcommand == MiriCommand::Setup
-        && has_arg_flag("--print-sysroot"); // whether we just print the sysroot path
+    let print_sysroot = subcommand == MiriCommand::Setup && has_arg_flag("--print-sysroot"); // whether we just print the sysroot path
     if print_sysroot {
         // Print just the sysroot and nothing else; this way we do not need any escaping.
         println!("{}", sysroot.display());
@@ -564,6 +567,8 @@ fn main() {
         // dependencies get dispatched to `rustc`, the final test/binary to `miri`.
         inside_cargo_rustc();
     } else {
-        show_error(format!("`cargo-miri` must be called with either `miri` or `rustc` as first argument."))
+        show_error(format!(
+            "`cargo-miri` must be called with either `miri` or `rustc` as first argument."
+        ))
     }
 }

@@ -1,6 +1,6 @@
 [package]
-authors = ["Scott Olson <scott@solson.me>"]
-description = "An experimental interpreter for Rust MIR."
+authors = ["Miri Team"]
+description = "An experimental interpreter for Rust MIR (core driver)."
 license = "MIT/Apache-2.0"
 name = "miri"
 repository = "https://github.com/rust-lang/miri"
@@ -18,23 +18,12 @@ test = false # we have no unit tests
 doctest = false # and no doc tests
 
 [[bin]]
-name = "cargo-miri"
-test = false # we have no unit tests
-doctest = false # and no doc tests
-required-features = ["cargo_miri"]
-
-[[bin]]
 name = "miri-rustc-tests"
 test = false # we have no unit tests
 doctest = false # and no doc tests
 required-features = ["rustc_tests"]
 
 [dependencies]
-cargo_metadata = { version = "0.9.0", optional = true }
-directories = { version = "2.0", optional = true }
-rustc_version = { version = "0.2.3", optional = true }
-serde_json = { version = "1.0.40", optional = true }
-
 getrandom = { version = "0.1.8", features = ["std"] }
 byteorder = "1.3"
 env_logger = "0.7.1"
@@ -48,19 +37,15 @@ rand = "0.7"
 # for more information.
 rustc-workspace-hack = "1.0.0"
 
-# Some extra dependency for better feature control to avoid having to rebuild
-# between "cargo build" and "cargo intall".
-num-traits = "*"
-serde = { version = "*", features = ["derive"] }
-
-[build-dependencies]
-vergen = "3"
+# Enable some feature flags that dev-dependencies need but dependencies
+# do not.  This makes `./miri install` after `./miri build` faster.
+[target."cfg(unix)".dependencies]
+libc = "0.2"
 
 [dev-dependencies]
 compiletest_rs = { version = "0.5", features = ["tmp"] }
+rustc_version = "0.2.3"
 colored = "1.6"
 
 [features]
-default = ["cargo_miri"]
-cargo_miri = ["cargo_metadata", "directories", "rustc_version", "serde_json"]
 rustc_tests = []

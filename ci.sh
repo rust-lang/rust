@@ -4,7 +4,7 @@ set -euo pipefail
 # Determine configuration
 export RUST_TEST_NOCAPTURE=1
 export RUST_BACKTRACE=1
-export RUSTC_EXTRA_FLAGS="-D warnings"
+export RUSTFLAGS="-D warnings"
 export CARGO_INCREMENTAL=0
 export CARGO_EXTRA_FLAGS="--all-features"
 
@@ -48,4 +48,7 @@ elif [ "${TRAVIS_OS_NAME:-}" == osx ]; then
 elif [ "${CI_WINDOWS:-}" == True ]; then
   MIRI_TEST_TARGET=x86_64-unknown-linux-gnu run_tests
   MIRI_TEST_TARGET=x86_64-apple-darwin run_tests
+else
+  echo "FATAL: unknown CI platform"
+  exit 1
 fi
