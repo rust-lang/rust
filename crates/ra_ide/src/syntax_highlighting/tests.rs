@@ -389,6 +389,7 @@ fn main() {
         unsafe_fn();
         HasUnsafeFn.unsafe_method();
         let y = *x;
+        let z = -x;
     }
 }
 "#
