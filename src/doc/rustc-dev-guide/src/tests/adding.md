@@ -193,15 +193,76 @@ source.
 
 Error annotations specify the errors that the compiler is expected to
 emit. They are "attached" to the line in source where the error is
-located.
+located. Error annotations are considered during tidy lints of line
+length and should be formatted according to tidy requirements. 
+
+The error annotation definition and source line definition association
+is defined with the following set of idioms:
 
 * `~`: Associates the following error level and message with the
   current line
 * `~|`: Associates the following error level and message with the same
   line as the previous comment
 * `~^`: Associates the following error level and message with the
-  previous line. Each caret (`^`) that you add adds a line to this, so
-  `~^^^^^^^` is seven lines up.
+  previous error annotation line. Each caret (`^`) that you add adds 
+  a line to this, so `~^^^` is three lines above the error annotation
+  line.
+
+### Error annotation examples
+
+Here are examples of error annotations on different lines of UI test
+source.
+
+#### Positioned on error line
+
+Use the `//~ ERROR` idiom:
+
+```rust,ignore
+fn main() {
+    let x = (1, 2, 3);
+    match x {
+        (_a, _x @ ..) => {} //~ ERROR `_x @` is not allowed in a tuple
+        _ => {}
+    }
+}
+```
+
+#### Positioned below error line
+
+Use the `//~^` idiom with number of carets in the string to indicate the
+number of lines above.  In the example below, the error line is four 
+lines above the error annotation line so four carets are included in 
+the annotation.
+
+```rust,ignore
+fn main() {
+    let x = (1, 2, 3);
+    match x {
+        (_a, _x @ ..) => {}  // <- the error is on this line
+        _ => {}
+    }
+}
+//~^^^^ ERROR `_x @` is not allowed in a tuple
+```
+
+#### Use same error line as defined on error annotation line above
+
+Use the `//~|` idiom to define the same error line as 
+the error annotation line above:
+
+```rust,ignore
+struct Binder(i32, i32, i32);
+
+fn main() {
+    let x = Binder(1, 2, 3);
+    match x {
+        Binder(_a, _x @ ..) => {}  // <- the error is on this line
+        _ => {}
+    }
+}
+//~^^^^ ERROR `_x @` is not allowed in a tuple struct
+//~| ERROR this pattern has 1 field, but the corresponding tuple struct has 3 fields [E0023]
+```
 
 The error levels that you can have are:
 
