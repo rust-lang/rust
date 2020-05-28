@@ -315,7 +315,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
     /// `used_capacity + needed_extra_capacity` elements. If it doesn't already,
     /// will reallocate the minimum possible amount of memory necessary.
     /// Generally this will be exactly the amount of memory necessary,
-    /// but in principle the allocator is free to give back more than
+    /// but in principle the allocator is free to give back more than what
     /// we asked for.
     ///
     /// If `used_capacity` exceeds `self.capacity()`, this may fail to actually allocate
