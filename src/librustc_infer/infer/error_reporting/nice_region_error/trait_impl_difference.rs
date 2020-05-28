@@ -6,6 +6,7 @@ use crate::infer::{Subtype, TyCtxtInferExt, ValuePairs};
 use crate::traits::ObligationCauseCode::CompareImplMethodObligation;
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
+use rustc_hir::def::Res;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_middle::ty::error::ExpectedFound;
@@ -124,15 +125,17 @@ impl Visitor<'tcx> for TypeParamSpanVisitor<'tcx> {
 
     fn visit_ty(&mut self, arg: &'tcx hir::Ty<'tcx>) {
         match arg.kind {
-            hir::TyKind::Slice(_) | hir::TyKind::Tup(_) | hir::TyKind::Array(..) => {
-                hir::intravisit::walk_ty(self, arg);
+            hir::TyKind::Rptr(_, ref mut_ty) => {
+                // We don't want to suggest looking into borrowing `&T` or `&Self`.
+                hir::intravisit::walk_ty(self, mut_ty.ty);
+                return;
             }
             hir::TyKind::Path(hir::QPath::Resolved(None, path)) => match &path.segments {
                 [segment]
                     if segment
                         .res
                         .map(|res| match res {
-                            hir::def::Res::Def(hir::def::DefKind::TyParam, _) => true,
+                            Res::SelfTy(_, _) | Res::Def(hir::def::DefKind::TyParam, _) => true,
                             _ => false,
                         })
                         .unwrap_or(false) =>
@@ -143,5 +146,6 @@ impl Visitor<'tcx> for TypeParamSpanVisitor<'tcx> {
             },
             _ => {}
         }
+        hir::intravisit::walk_ty(self, arg);
     }
 }
