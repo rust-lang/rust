@@ -242,7 +242,14 @@ fn iterator_drops() {
     assert_eq!(i.get(), 5);
 }
 
+// This test does not work on targets without panic=unwind support.
+// To work around this problem, test is marked is should_panic, so it will
+// be automagically skipped on unsuitable targets, such as
+// wasm32-unknown-unkown.
+//
+// It means that we use panic for indicating success.
 #[test]
+#[should_panic(expected = "test succeeded")]
 fn array_default_impl_avoids_leaks_on_panic() {
     use core::sync::atomic::{AtomicUsize, Ordering::Relaxed};
     static COUNTER: AtomicUsize = AtomicUsize::new(0);
@@ -274,6 +281,7 @@ fn array_default_impl_avoids_leaks_on_panic() {
     assert_eq!(*panic_msg, "bomb limit exceeded");
     // check that all bombs are successfully dropped
     assert_eq!(COUNTER.load(Relaxed), 0);
+    panic!("test succeeded")
 }
 
 #[test]
