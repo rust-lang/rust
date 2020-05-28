@@ -409,8 +409,6 @@ public:
 	}
 };
 
-DataType parseTBAA(llvm::Instruction* inst);
-
 static inline std::string to_string(const DataType dt) {
 	return dt.str();
 }
@@ -536,6 +534,27 @@ public:
         if (dat != DataType(IntType::Unknown)) {
             insert({}, dat);
         }
+    }
+
+    bool isKnown() {
+        for(auto &pair : mapping) {
+            // we should assert here as we shouldn't keep any unknown maps for efficiency
+            assert(pair.second.isKnown());
+        }
+        return mapping.size() != 0;
+    }
+
+    bool isKnownPastPointer() {
+        for(auto &pair : mapping) {
+            // we should assert here as we shouldn't keep any unknown maps for efficiency
+            assert(pair.second.isKnown());
+            if (pair.first.size() == 0) {
+                assert(pair.second == IntType::Pointer);
+                continue;
+            }
+            return true;
+        }
+        return false;
     }
 
     static ValueData Unknown() {

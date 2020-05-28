@@ -43,20 +43,18 @@ entry:
 
 ; CHECK: define internal void @diffetodiff(%"struct.std::array.6"* dereferenceable(16) %arr, %"struct.std::array.6"* %"arr'", i64 %identity) {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %"arr.i'ipa" = alloca %"struct.std::array.6", align 8
-; CHECK-NEXT:   store %"struct.std::array.6" zeroinitializer, %"struct.std::array.6"* %"arr.i'ipa", align 8
 ; CHECK-NEXT:   %arr.i = alloca %"struct.std::array.6", align 8
 ; CHECK-NEXT:   %agg.tmp.sroa.0.0..sroa_idx = getelementptr inbounds %"struct.std::array.6", %"struct.std::array.6"* %arr, i64 0, i32 0, i64 0
 ; CHECK-NEXT:   %agg.tmp.sroa.0.0.copyload = load i64, i64* %agg.tmp.sroa.0.0..sroa_idx, align 8, !tbaa !2
 ; CHECK-NEXT:   %agg.tmp.sroa.2.0..sroa_idx1 = getelementptr inbounds %"struct.std::array.6", %"struct.std::array.6"* %arr, i64 0, i32 0, i64 1
 ; CHECK-NEXT:   %agg.tmp.sroa.2.0.copyload = load i64, i64* %agg.tmp.sroa.2.0..sroa_idx1, align 8, !tbaa !2
-; CHECK-NEXT:   %[[ipge1:.+]] = getelementptr inbounds %"struct.std::array.6", %"struct.std::array.6"* %"arr.i'ipa", i64 0, i32 0, i64 0
+; TODO:   %[[ipge1:.+]] = getelementptr inbounds %"struct.std::array.6", %"struct.std::array.6"* %"arr.i'ipa", i64 0, i32 0, i64 0
 ; CHECK-NEXT:   %[[realgep:.+]] = getelementptr inbounds %"struct.std::array.6", %"struct.std::array.6"* %arr.i, i64 0, i32 0, i64 0
-; CHECK-NEXT:   store i64 %agg.tmp.sroa.0.0.copyload, i64* %[[ipge1]], align 8
+; TODO:   store i64 %agg.tmp.sroa.0.0.copyload, i64* %[[ipge1]], align 8
 ; CHECK-NEXT:   store i64 %agg.tmp.sroa.0.0.copyload, i64* %[[realgep]], align 8
-; CHECK-NEXT:   %[[ipge:.+]] = getelementptr inbounds %"struct.std::array.6", %"struct.std::array.6"* %"arr.i'ipa", i64 0, i32 0, i64 1
+; TODO:   %[[ipge:.+]] = getelementptr inbounds %"struct.std::array.6", %"struct.std::array.6"* %"arr.i'ipa", i64 0, i32 0, i64 1
 ; CHECK-NEXT:   %[[origep:.+]] = getelementptr inbounds %"struct.std::array.6", %"struct.std::array.6"* %arr.i, i64 0, i32 0, i64 1
-; CHECK-NEXT:   store i64 %agg.tmp.sroa.2.0.copyload, i64* %[[ipge]], align 8
+; TODO:   store i64 %agg.tmp.sroa.2.0.copyload, i64* %[[ipge]], align 8
 ; CHECK-NEXT:   store i64 %agg.tmp.sroa.2.0.copyload, i64* %[[origep]], align 8
 ; CHECK-NEXT:   br label %invertentry
 

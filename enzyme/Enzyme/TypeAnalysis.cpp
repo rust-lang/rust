@@ -125,8 +125,9 @@ cl::opt<bool> printtype(
             "enzyme_printtype", cl::init(false), cl::Hidden,
             cl::desc("Print type detection algorithm"));
 
-DataType parseTBAA(Instruction* inst) {
-    auto typeNameStringRef = getAccessNameTBAA(inst, {"long long", "long", "int", "bool", "any pointer", "vtable pointer", "float", "double"});
+std::string validTBAA[] = {"long long", "long", "int", "bool", "any pointer", "vtable pointer", "float", "double"};
+
+DataType getTypeFromTBAAString(std::string typeNameStringRef, Instruction* inst) {
     if (typeNameStringRef == "long long" || typeNameStringRef == "long" || typeNameStringRef == "int" || typeNameStringRef == "bool") {// || typeNameStringRef == "omnipotent char") {
         if (printtype) {
             llvm::errs() << "known tbaa " << *inst << " " << typeNameStringRef << "\n";
@@ -148,6 +149,68 @@ DataType parseTBAA(Instruction* inst) {
     } else {
         return DataType(IntType::Unknown);
     }
+}
+
+//Modified from MDNode::isTBAAVtableAccess()
+static inline ValueData parseTBAA(const MDNode* M, Instruction* inst) {
+    if (!isStructPathTBAA(M)) {
+        if (M->getNumOperands() < 1)
+          return ValueData();
+        if (const MDString *Tag1 = dyn_cast<MDString>(M->getOperand(0))) {
+          return ValueData(getTypeFromTBAAString(Tag1->getString().str(), inst)).Only({0});
+        }
+        return ValueData();
+    }
+
+  // For struct-path aware TBAA, we use the access type of the tag.
+  //llvm::errs() << "M: " << *M << "\n";
+  TBAAStructTagNode Tag(M);
+  //llvm::errs() << "AT: " << *Tag.getAccessType() << "\n";
+  TBAAStructTypeNode AccessType(Tag.getAccessType());
+
+  //llvm::errs() << "numfields: " << AccessType.getNumFields() << "\n";
+
+  // TODO make this more robust
+
+  while (AccessType.getNumFields() > 0) {
+
+    if(auto *Id = dyn_cast<MDString>(AccessType.getId())) {
+      //llvm::errs() << "cur access type: " << Id->getString() << "\n";
+      auto dt = getTypeFromTBAAString(Id->getString().str(), inst);
+      if (dt.isKnown()) {
+        return ValueData(dt).Only({0});
+      }
+    }
+
+    AccessType = AccessType.getFieldType(0);
+    //llvm::errs() << "numfields: " << AccessType.getNumFields() << "\n";
+  }
+
+  if(auto *Id = dyn_cast<MDString>(AccessType.getId())) {
+    //llvm::errs() << "access type: " << Id->getString() << "\n";
+    return ValueData(getTypeFromTBAAString(Id->getString().str(), inst)).Only({0});
+  }
+  return ValueData();
+}
+
+
+static inline ValueData parseTBAA(Instruction* Inst) {
+    ValueData dat;
+    if (const MDNode *M = Inst->getMetadata(LLVMContext::MD_tbaa_struct)) {
+        for(unsigned i=0; i<M->getNumOperands(); i+=3) {
+            if (const MDNode *M2 = dyn_cast<MDNode>(M->getOperand(i+2))) {
+                auto vd = parseTBAA(M2, Inst);
+                auto start = cast<ConstantInt>(cast<ConstantAsMetadata>(M->getOperand(i))->getValue())->getLimitedValue();
+                auto len = cast<ConstantInt>(cast<ConstantAsMetadata>(M->getOperand(i+1))->getValue())->getLimitedValue();
+                dat |= vd.AtMost(len).MergeIndices({start});
+            }
+        }
+    }
+    if (const MDNode *M = Inst->getMetadata(LLVMContext::MD_tbaa)) {
+        dat |= parseTBAA(M, Inst);
+    }
+    dat |= ValueData(IntType::Pointer);
+    return dat;
 }
 
 TypeAnalyzer::TypeAnalyzer(const NewFnTypeInfo& fn, TypeAnalysis& TA) : intseen(), fntypeinfo(fn), interprocedural(TA), DT(*fn.function) {
@@ -348,11 +411,9 @@ void TypeAnalyzer::prepareArgs() {
 void TypeAnalyzer::considerTBAA() {
     for(auto &BB: *fntypeinfo.function) {
         for(auto &inst : BB) {
-            auto dt = parseTBAA(&inst);
-            if (!dt.isKnown()) continue;
 
-            ValueData vdptr = ValueData(dt).Only({0});
-            vdptr |= ValueData(IntType::Pointer);
+            auto vdptr = parseTBAA(&inst);
+            if (!vdptr.isKnownPastPointer()) continue;
 
             if (auto call = dyn_cast<CallInst>(&inst)) {
                 if (call->getCalledFunction() && (call->getCalledFunction()->getIntrinsicID() == Intrinsic::memcpy || call->getCalledFunction()->getIntrinsicID() == Intrinsic::memmove)) {
@@ -360,28 +421,22 @@ void TypeAnalyzer::considerTBAA() {
                     for(auto val : fntypeinfo.isConstantInt(call->getOperand(2), DT, intseen)) {
                         sz = max(sz, val);
                     }
-                    for(int64_t i=0; i<sz; i++) {
-                            ValueData iptr = ValueData(dt).Only({i});
-                            iptr |= ValueData(IntType::Pointer);
-
-                            updateAnalysis(call->getOperand(0), iptr, call);
-                            updateAnalysis(call->getOperand(1), iptr, call);
-                    }
+                    auto update = vdptr.UnmergeIndices(0, sz);
+                    updateAnalysis(call->getOperand(0), update, call);
+                    updateAnalysis(call->getOperand(1), update, call);
                     continue;
                 } else if (call->getType()->isPointerTy()) {
-                    updateAnalysis(call, ValueData(dt).Only({-1}), call);
+                    updateAnalysis(call, vdptr, call);
                 } else {
+                    llvm::errs() << " inst: " << inst << " vdptr: " << vdptr.str() << "\n";
                     assert(0 && "unknown tbaa call instruction user");
                 }
             } else if (auto si = dyn_cast<StoreInst>(&inst)) {
-                //TODO why?
-                if (dt == IntType::Pointer) continue;
                 updateAnalysis(si->getPointerOperand(), vdptr, si);
-                updateAnalysis(si->getValueOperand(), ValueData(dt), si);
             } else if (auto li = dyn_cast<LoadInst>(&inst)) {
                 updateAnalysis(li->getPointerOperand(), vdptr, li);
-                updateAnalysis(li, ValueData(dt), li);
             } else {
+                llvm::errs() << " inst: " << inst << " vdptr: " << vdptr.str() << "\n";
                 assert(0 && "unknown tbaa instruction user");
             }
         }
@@ -813,14 +868,14 @@ void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
         }
         */
 
-	auto unmerged = pointerAnalysis.UnmergeIndices(off, maxSize);
-        llvm::errs() << "gep: " << gep << " prev:" << getAnalysis(&gep).str() << " unmerged: " << unmerged.str() << "\n";
+	   auto unmerged = pointerAnalysis.UnmergeIndices(off, maxSize);
+        //llvm::errs() << "gep: " << gep << " prev:" << getAnalysis(&gep).str() << " unmerged: " << unmerged.str() << "\n";
 
         updateAnalysis(&gep, unmerged, &gep);
 
         auto merged = getAnalysis(&gep).MergeIndices(off);
 
-        llvm::errs()  << " + prevanalysis: " << getAnalysis(gep.getPointerOperand()).str() << " merged: " << merged.str() << " g2:\n";
+        //llvm::errs()  << " + prevanalysis: " << getAnalysis(gep.getPointerOperand()).str() << " merged: " << merged.str() << " g2:\n";
 
         updateAnalysis(gep.getPointerOperand(), merged, &gep);
     }
@@ -1724,7 +1779,7 @@ void TypeAnalyzer::visitIPOCall(CallInst& call, Function& fn) {
 		typeInfo.first.insert(std::pair<Argument*, ValueData>(&arg, dt));
         typeInfo.knownValues.insert(std::pair<Argument*, std::set<int64_t>>(&arg, fntypeinfo.isConstantInt(call.getArgOperand(argnum), DT, intseen)));
 		argnum++;
-	
+
 	}
 
 

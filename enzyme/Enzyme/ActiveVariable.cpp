@@ -369,8 +369,9 @@ bool isconstantM(TypeResults &TR, Instruction* inst, SmallPtrSetImpl<Value*> &co
         return true;
     }
 
-	if (isa<StoreInst>(inst)) {
-		if (parseTBAA(inst).typeEnum == IntType::Integer) {
+	if (auto storeinst = dyn_cast<StoreInst>(inst)) {
+        auto storeSize = storeinst->getParent()->getParent()->getParent()->getDataLayout().getTypeSizeInBits(storeinst->getValueOperand()->getType()) / 8;
+		if (TR.firstPointer(storeSize, storeinst->getPointerOperand(), /*errifnotfound*/false, /*pointerIntSame*/false).isIntegral()) {
 			if (printconst)
 				llvm::errs() << " constant instruction from TBAA " << *inst << "\n";
 			constants.insert(inst);
