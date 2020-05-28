@@ -10,7 +10,7 @@
 	font-family: 'Fira Sans';
 	font-style: normal;
 	font-weight: 500;
-	font-display: swap;
+	font-display: fallback;
 	src: local('Fira Sans Medium'), url("FiraSans-Medium.woff") format('woff');
 }
 
@@ -19,7 +19,9 @@
 	font-family: 'Source Serif Pro';
 	font-style: normal;
 	font-weight: 400;
-	font-display: fallback;
+	/* This is currently the base font for the entire cascade. It is important
+	 * that it loads in order for rustdoc to look even slightly correct. */
+	font-display: swap;
 	src: local('Source Serif Pro'), url("SourceSerifPro-Regular.ttf.woff") format('woff');
 }
 @font-face {
@@ -42,7 +44,7 @@
 	font-family: 'Source Code Pro';
 	font-style: normal;
 	font-weight: 400;
-	font-display: fallback;
+	font-display: swap;
 	/* Avoid using locally installed font because bad versions are in circulation:
 	 * see https://github.com/rust-lang/rust/issues/24355 */
 	src: url("SourceCodePro-Regular.woff") format('woff');
@@ -51,7 +53,7 @@
 	font-family: 'Source Code Pro';
 	font-style: normal;
 	font-weight: 600;
-	font-display: swap;
+	font-display: fallback;
 	src: url("SourceCodePro-Semibold.woff") format('woff');
 }
 
