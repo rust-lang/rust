@@ -169,6 +169,7 @@ int main(const int argc, const char* argv[]) {
     getTests(paths, "data/10k", "10k/");
 
     for (auto path : paths) {
+    	if (path == "10k/gmm_d128_K200.txt" || path == "10k/gmm_d128_K100.txt" || path == "10k/gmm_d64_K200.txt" || path == "10k/gmm_d128_K50.txt" || path == "10k/gmm_d64_K100.txt") continue;
         printf("starting path %s\n", path.c_str());
 
     {

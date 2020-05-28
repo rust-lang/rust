@@ -7,7 +7,7 @@ clean:
 
 %-unopt.ll: %.cpp
 	#clang++ $(BENCH) $^ -O2 -fno-use-cxa-atexit -fno-vectorize -fno-slp-vectorize -ffast-math -fno-unroll-loops -o $@ -S -emit-llvm
-	clang++ $(BENCH) $^ -O1 -disable-llvm-optzns -fno-use-cxa-atexit -fno-vectorize -fno-slp-vectorize -ffast-math -fno-unroll-loops -o $@ -S -emit-llvm
+	clang++ $(BENCH) $^ -O1 -Xclang -disable-llvm-passes -fno-use-cxa-atexit -fno-vectorize -fno-slp-vectorize -ffast-math -fno-unroll-loops -o $@ -S -emit-llvm
 
 %-raw.ll: %-unopt.ll
 	opt $^ $(LOAD) -enzyme -o $@ -S

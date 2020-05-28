@@ -994,7 +994,10 @@ public:
             if (res == "active") return false;
         }
         if (nonmarkedglobals_inactive) return true;
-        goto err;
+        if (gv->getName() == "_ZNSt12placeholders2_1E") {
+		return true;
+	}
+	goto err;
     }
     if (isa<GlobalValue>(val)) {
         if (nonmarkedglobals_inactive) return true;
