@@ -1,4 +1,4 @@
-use crate::spec::{abi::Abi, LinkerFlavor, PanicStrategy, Target, TargetOptions, TargetResult};
+use crate::spec::{abi::Abi, LinkerFlavor, PanicStrategy, Target, TargetOptions, TargetResult, RelocModel};
 
 pub fn target() -> TargetResult {
     Ok(Target {
@@ -27,7 +27,7 @@ pub fn target() -> TargetResult {
 
             // Similarly, one almost always never wants to use relocatable
             // code because of the extra costs it involves.
-            relocation_model: "static".to_string(),
+            relocation_model: RelocModel::Static,
 
             // See the thumb_base.rs file for an explanation of this value
             emit_debug_gdb_scripts: false,
