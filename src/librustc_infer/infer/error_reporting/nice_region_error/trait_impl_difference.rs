@@ -4,16 +4,13 @@ use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError;
 use crate::infer::{Subtype, TyCtxtInferExt, ValuePairs};
 use crate::traits::ObligationCauseCode::CompareImplMethodObligation;
-use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::ItemKind;
 use rustc_middle::ty::error::ExpectedFound;
-use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_span::Span;
+use rustc_span::{MultiSpan, Span};
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     /// Print the error message for lifetime errors when the `impl` doesn't conform to the `trait`.
@@ -63,41 +60,6 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             .struct_span_err(sp, "`impl` item signature doesn't match `trait` item signature");
         err.span_label(sp, &format!("found `{:?}`", found));
         err.span_label(trait_sp, &format!("expected `{:?}`", expected));
-        let trait_fn_sig = tcx.fn_sig(trait_def_id);
-
-        // Check the `trait`'s method's output to look for type parameters that might have
-        // unconstrained lifetimes. If the method returns a type parameter and the `impl` has a
-        // borrow as the type parameter being implemented, the lifetimes will not match because
-        // a new lifetime is being introduced in the `impl` that is not present in the `trait`.
-        // Because this is confusing as hell the first time you see it, we give a short message
-        // explaining the situation and proposing constraining the type param with a named lifetime
-        // so that the `impl` will have one to tie them together.
-        struct AssocTypeFinder(FxIndexSet<ty::ParamTy>);
-        impl<'tcx> ty::fold::TypeVisitor<'tcx> for AssocTypeFinder {
-            fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
-                if let ty::Param(param) = ty.kind {
-                    self.0.insert(param);
-                }
-                ty.super_visit_with(self)
-            }
-        }
-        let mut visitor = AssocTypeFinder(FxIndexSet::default());
-        trait_fn_sig.output().visit_with(&mut visitor);
-        if let Some(id) = trait_def_id.as_local().map(|id| tcx.hir().as_local_hir_id(id)) {
-            let parent_id = tcx.hir().get_parent_item(id);
-            let trait_item = tcx.hir().expect_item(parent_id);
-            if let ItemKind::Trait(_, _, generics, _, _) = &trait_item.kind {
-                for param_ty in &visitor.0 {
-                    if let Some(generic) = generics.get_named(param_ty.name) {
-                        err.span_label(
-                            generic.span,
-                            "this type parameter might not have a lifetime compatible with the \
-                             `impl`",
-                        );
-                    }
-                }
-            }
-        }
 
         // Get the span of all the used type parameters in the method.
         let assoc_item = self.tcx().associated_item(trait_def_id);
@@ -114,11 +76,12 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             }
             _ => {}
         }
-        for span in visitor.types {
-            err.span_label(
+        let mut type_param_span: MultiSpan =
+            visitor.types.iter().cloned().collect::<Vec<_>>().into();
+        for &span in &visitor.types {
+            type_param_span.push_span_label(
                 span,
-                "you might want to borrow this type parameter in the trait to make it match the \
-                 `impl`",
+                "consider borrowing this type parameter in the trait".to_string(),
             );
         }
 
@@ -132,11 +95,17 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             // This fallback shouldn't be necessary, but let's keep it in just in case.
             err.note(&format!("expected `{:?}`\n   found `{:?}`", expected, found));
         }
-        err.note("the lifetime requirements from the `trait` could not be satisfied by the `impl`");
-        err.help(
-            "verify the lifetime relationships in the `trait` and `impl` between the `self` \
-             argument, the other inputs and its output",
+        err.span_help(
+            type_param_span,
+            "the lifetime requirements from the `impl` do not correspond to the requirements in \
+             the `trait`",
         );
+        if visitor.types.is_empty() {
+            err.help(
+                "verify the lifetime relationships in the `trait` and `impl` between the `self` \
+                 argument, the other inputs and its output",
+            );
+        }
         err.emit();
     }
 }
