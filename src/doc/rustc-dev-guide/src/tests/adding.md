@@ -134,6 +134,8 @@ Some examples of `X` in `ignore-X`:
   `musl`.
 * Pointer width: `32bit`, `64bit`.
 * Stage: `stage0`, `stage1`, `stage2`.
+* When cross compiling: `cross-compile`
+* When remote testing is used: `remote`
 
 ### Other Header Commands
 
