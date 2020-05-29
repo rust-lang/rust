@@ -17,10 +17,13 @@ Compiler
 --------
 - [Rustc now respects the `-C codegen-units` flag in incremental mode.][70156]
   Additionally when in incremental mode rustc defaults to 256 codegen units.
-- [Added tier 3\* support for the `aarch64-unknown-none` and
-  `aarch64-unknown-none-softfloat` targets.][68334]
 - [Refactored `catch_unwind`, to have zero-cost unless unwinding is enabled and
   a panic is thrown.][67502]
+- [Added tier 3\* support for the `aarch64-unknown-none` and
+  `aarch64-unknown-none-softfloat` targets.][68334]
+- [Added tier 3 support for `arm64-apple-tvos` and
+  `x86_64-apple-tvos` targets.][68191]
+
 
 Libraries
 ---------
@@ -33,6 +36,9 @@ Libraries
 - [`String` now implements `From<&mut str>`.][69661]
 - [`IoSlice` now implements `Copy`.][69403]
 - [`Vec<T>` now implements `From<[T; N]>`.][68692] Where `N` is less than 32.
+- [`proc_macro::LexError` now implements `fmt::Display` and `Error`.][68899]
+- [`from_le_bytes`, `to_le_bytes`, `from_be_bytes`, and `to_be_bytes` methods are
+  now `const` for all integer types.][69373]
 
 Stabilized APIs
 ---------------
@@ -84,6 +90,9 @@ Compatibility Notes
   source file rather than the previous format of `<NAME macros>`.][70969]
   **Note:** this may not point a file that actually exists on the user's system.
 - [The minimum required external LLVM version has been bumped to LLVM 8.][71147]
+- [`mem::{zeroed, uninitialised, MaybeUninit}` will now panic when used with types
+  that do not allow zero initialization such as `NonZeroU8`.][66059] This was
+  previously a warning.
 
 Internal Only
 -------------
@@ -94,7 +103,10 @@ related tools.
 - [dep_graph Avoid allocating a set on when the number reads are small.][69778]
 - [Replace big JS dict with JSON parsing.][71250]
 
-
+[69373]: https://github.com/rust-lang/rust/pull/69373/
+[66059]: https://github.com/rust-lang/rust/pull/66059/
+[68191]: https://github.com/rust-lang/rust/pull/68191/
+[68899]: https://github.com/rust-lang/rust/pull/68899/
 [71147]: https://github.com/rust-lang/rust/pull/71147/
 [71250]: https://github.com/rust-lang/rust/pull/71250/
 [70937]: https://github.com/rust-lang/rust/pull/70937/
