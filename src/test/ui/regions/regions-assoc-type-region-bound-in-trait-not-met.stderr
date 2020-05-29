@@ -14,8 +14,8 @@ note: ...so that the types are compatible
    |
 LL | impl<'a> Foo<'static> for &'a i32 {
    |          ^^^^^^^^^^^^
-   = note: expected  `Foo<'static>`
-              found  `Foo<'static>`
+   = note: expected `Foo<'static>`
+              found `Foo<'static>`
    = note: but, the lifetime must be valid for the static lifetime...
 note: ...so that the type `&i32` will meet its required lifetime bounds
   --> $DIR/regions-assoc-type-region-bound-in-trait-not-met.rs:14:10
@@ -39,8 +39,8 @@ note: ...so that the types are compatible
    |
 LL | impl<'a,'b> Foo<'b> for &'a i64 {
    |             ^^^^^^^
-   = note: expected  `Foo<'b>`
-              found  `Foo<'_>`
+   = note: expected `Foo<'b>`
+              found `Foo<'_>`
 note: but, the lifetime must be valid for the lifetime `'b` as defined on the impl at 19:9...
   --> $DIR/regions-assoc-type-region-bound-in-trait-not-met.rs:19:9
    |

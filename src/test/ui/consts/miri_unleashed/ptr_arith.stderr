@@ -1,39 +1,28 @@
 error[E0080]: could not evaluate static initializer
-  --> $DIR/ptr_arith.rs:10:14
+  --> $DIR/ptr_arith.rs:9:14
    |
 LL |     let _v = x == x;
    |              ^^^^^^ "pointer arithmetic or comparison" needs an rfc before being allowed inside constants
 
 error[E0080]: could not evaluate static initializer
-  --> $DIR/ptr_arith.rs:17:14
+  --> $DIR/ptr_arith.rs:16:14
    |
 LL |     let _v = x + 0;
    |              ^^^^^ "pointer-to-integer cast" needs an rfc before being allowed inside constants
 
-error[E0080]: could not evaluate static initializer
-  --> $DIR/ptr_arith.rs:24:14
-   |
-LL |     let _v = core::intrinsics::offset(x, 0);
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ "calling intrinsic `offset`" needs an rfc before being allowed inside constants
-
 warning: skipping const checks
    |
 help: skipping check for `const_compare_raw_pointers` feature
-  --> $DIR/ptr_arith.rs:10:14
+  --> $DIR/ptr_arith.rs:9:14
    |
 LL |     let _v = x == x;
    |              ^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/ptr_arith.rs:16:20
+  --> $DIR/ptr_arith.rs:15:20
    |
 LL |     let x: usize = std::mem::transmute(&0);
    |                    ^^^^^^^^^^^^^^^^^^^^^^^
-help: skipping check that does not even have a feature gate
-  --> $DIR/ptr_arith.rs:24:14
-   |
-LL |     let _v = core::intrinsics::offset(x, 0);
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 3 previous errors; 1 warning emitted
+error: aborting due to 2 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0080`.

@@ -1194,9 +1194,10 @@ fn link_output_kind(sess: &Session, crate_type: CrateType) -> LinkOutputKind {
     };
 
     // Adjust the output kind to target capabilities.
-    let pic_exe_supported = sess.target.target.options.position_independent_executables;
-    let static_pic_exe_supported = false; // FIXME: Add this option to target specs.
-    let static_dylib_supported = sess.target.target.options.crt_static_allows_dylibs;
+    let opts = &sess.target.target.options;
+    let pic_exe_supported = opts.position_independent_executables;
+    let static_pic_exe_supported = opts.static_position_independent_executables;
+    let static_dylib_supported = opts.crt_static_allows_dylibs;
     match kind {
         LinkOutputKind::DynamicPicExe if !pic_exe_supported => LinkOutputKind::DynamicNoPicExe,
         LinkOutputKind::StaticPicExe if !static_pic_exe_supported => LinkOutputKind::StaticNoPicExe,
@@ -1580,16 +1581,7 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     }
 
     // NO-OPT-OUT, OBJECT-FILES-NO, AUDIT-ORDER
-    // FIXME: Support `StaticPicExe` correctly.
-    match link_output_kind {
-        LinkOutputKind::DynamicPicExe | LinkOutputKind::StaticPicExe => {
-            cmd.position_independent_executable()
-        }
-        LinkOutputKind::DynamicNoPicExe | LinkOutputKind::StaticNoPicExe => {
-            cmd.no_position_independent_executable()
-        }
-        _ => {}
-    }
+    cmd.set_output_kind(link_output_kind, out_filename);
 
     // OBJECT-FILES-NO, AUDIT-ORDER
     add_relro_args(cmd, sess);
@@ -1617,17 +1609,6 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
         codegen_results,
         tmpdir,
     );
-
-    // NO-OPT-OUT, OBJECT-FILES-NO, AUDIT-ORDER
-    // FIXME: Merge with the previous `link_output_kind` match,
-    // and support `StaticPicExe` and `StaticDylib` correctly.
-    match link_output_kind {
-        LinkOutputKind::StaticNoPicExe | LinkOutputKind::StaticPicExe => {
-            cmd.build_static_executable()
-        }
-        LinkOutputKind::DynamicDylib | LinkOutputKind::StaticDylib => cmd.build_dylib(out_filename),
-        _ => {}
-    }
 
     // OBJECT-FILES-NO, AUDIT-ORDER
     if sess.opts.cg.profile_generate.enabled() {

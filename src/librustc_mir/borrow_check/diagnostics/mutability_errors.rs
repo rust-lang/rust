@@ -492,7 +492,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         err.span_label(sp, format!("cannot {}", act));
 
         let hir = self.infcx.tcx.hir();
-        let closure_id = hir.as_local_hir_id(self.mir_def_id.expect_local());
+        let closure_id = hir.as_local_hir_id(self.mir_def_id);
         let fn_call_id = hir.get_parent_node(closure_id);
         let node = hir.get(fn_call_id);
         let item_id = hir.get_parent_item(fn_call_id);
