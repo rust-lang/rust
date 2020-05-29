@@ -1,0 +1,28 @@
+error: wildcard match will miss any future added variants
+  --> $DIR/match_wildcard_for_single_variants.rs:24:9
+   |
+LL |         _ => {},
+   |         ^ help: try this: `Foo::C`
+   |
+   = note: `-D clippy::match-wildcard-for-single-variants` implied by `-D warnings`
+
+error: wildcard match will miss any future added variants
+  --> $DIR/match_wildcard_for_single_variants.rs:34:9
+   |
+LL |         _ => {},
+   |         ^ help: try this: `Color::Blue`
+
+error: wildcard match will miss any future added variants
+  --> $DIR/match_wildcard_for_single_variants.rs:42:9
+   |
+LL |         _ => {},
+   |         ^ help: try this: `Color::Blue`
+
+error: wildcard match will miss any future added variants
+  --> $DIR/match_wildcard_for_single_variants.rs:48:9
+   |
+LL |         _ => {},
+   |         ^ help: try this: `Color::Blue`
+
+error: aborting due to 4 previous errors
+

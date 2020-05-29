@@ -1,5 +1,5 @@
 error: this range is empty so it will yield no values
-  --> $DIR/reversed_empty_ranges_fixable.rs:7:5
+  --> $DIR/reversed_empty_ranges_fixable.rs:11:5
    |
 LL |     (42..=21).for_each(|x| println!("{}", x));
    |     ^^^^^^^^^
@@ -11,7 +11,7 @@ LL |     (21..=42).rev().for_each(|x| println!("{}", x));
    |     ^^^^^^^^^^^^^^^
 
 error: this range is empty so it will yield no values
-  --> $DIR/reversed_empty_ranges_fixable.rs:8:13
+  --> $DIR/reversed_empty_ranges_fixable.rs:12:13
    |
 LL |     let _ = (ANSWER..21).filter(|x| x % 2 == 0).take(10).collect::<Vec<_>>();
    |             ^^^^^^^^^^^^
@@ -22,7 +22,7 @@ LL |     let _ = (21..ANSWER).rev().filter(|x| x % 2 == 0).take(10).collect::<Ve
    |             ^^^^^^^^^^^^^^^^^^
 
 error: this range is empty so it will yield no values
-  --> $DIR/reversed_empty_ranges_fixable.rs:10:14
+  --> $DIR/reversed_empty_ranges_fixable.rs:14:14
    |
 LL |     for _ in -21..=-42 {}
    |              ^^^^^^^^^
@@ -33,7 +33,7 @@ LL |     for _ in (-42..=-21).rev() {}
    |              ^^^^^^^^^^^^^^^^^
 
 error: this range is empty so it will yield no values
-  --> $DIR/reversed_empty_ranges_fixable.rs:11:14
+  --> $DIR/reversed_empty_ranges_fixable.rs:15:14
    |
 LL |     for _ in 42u32..21u32 {}
    |              ^^^^^^^^^^^^
@@ -43,5 +43,11 @@ help: consider using the following if you are attempting to iterate over this ra
 LL |     for _ in (21u32..42u32).rev() {}
    |              ^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 4 previous errors
+error: this range is empty and using it to index a slice will always yield an empty slice
+  --> $DIR/reversed_empty_ranges_fixable.rs:17:18
+   |
+LL |     let _ = &arr[3..3];
+   |              ----^^^^- help: if you want an empty slice, use: `[] as &[i32]`
+
+error: aborting due to 5 previous errors
 

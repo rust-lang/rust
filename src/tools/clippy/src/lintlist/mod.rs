@@ -1195,8 +1195,15 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "match_wild_err_arm",
-        group: "style",
+        group: "pedantic",
         desc: "a `match` with `Err(_)` arm and take drastic actions",
+        deprecation: None,
+        module: "matches",
+    },
+    Lint {
+        name: "match_wildcard_for_single_variants",
+        group: "pedantic",
+        desc: "a wildcard enum match for a single variant",
         deprecation: None,
         module: "matches",
     },
@@ -2414,7 +2421,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     Lint {
         name: "useless_conversion",
         group: "complexity",
-        desc: "calls to `Into`/`From`/`IntoIter` that performs useless conversions to the same type",
+        desc: "calls to `Into`, `TryInto`, `From`, `TryFrom`, `IntoIter` that performs useless conversions to the same type",
         deprecation: None,
         module: "useless_conversion",
     },

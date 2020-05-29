@@ -1,0 +1,7 @@
+[package]
+name = "wildcard_dependencies"
+version = "0.1.0"
+publish = false
+
+[dependencies]
+regex = "1"

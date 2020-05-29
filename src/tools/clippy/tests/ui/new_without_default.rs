@@ -148,4 +148,15 @@ impl AllowDerive {
     }
 }
 
+pub struct NewNotEqualToDerive {
+    foo: i32,
+}
+
+impl NewNotEqualToDerive {
+    // This `new` implementation is not equal to a derived `Default`, so do not suggest deriving.
+    pub fn new() -> Self {
+        NewNotEqualToDerive { foo: 1 }
+    }
+}
+
 fn main() {}

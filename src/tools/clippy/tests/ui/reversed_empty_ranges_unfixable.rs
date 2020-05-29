@@ -9,7 +9,6 @@ fn main() {
     let arr = [1, 2, 3, 4, 5];
     let _ = &arr[3usize..=1usize];
     let _ = &arr[SOME_NUM..1];
-    let _ = &arr[3..3];
 
     for _ in ANSWER..ANSWER {}
 }

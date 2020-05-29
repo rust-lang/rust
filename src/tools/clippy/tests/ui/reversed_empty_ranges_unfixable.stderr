@@ -18,17 +18,11 @@ error: this range is reversed and using it to index a slice will panic at run-ti
 LL |     let _ = &arr[SOME_NUM..1];
    |                  ^^^^^^^^^^^
 
-error: this range is empty and using it to index a slice will always yield an empty slice
-  --> $DIR/reversed_empty_ranges_unfixable.rs:12:18
-   |
-LL |     let _ = &arr[3..3];
-   |                  ^^^^
-
 error: this range is empty so it will yield no values
-  --> $DIR/reversed_empty_ranges_unfixable.rs:14:14
+  --> $DIR/reversed_empty_ranges_unfixable.rs:13:14
    |
 LL |     for _ in ANSWER..ANSWER {}
    |              ^^^^^^^^^^^^^^
 
-error: aborting due to 5 previous errors
+error: aborting due to 4 previous errors
 

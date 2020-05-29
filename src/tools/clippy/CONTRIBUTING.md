@@ -155,47 +155,77 @@ That's why the `else_if_without_else` example uses the `register_early_pass` fun
 
 ## Fixing build failures caused by Rust
 
-Clippy will sometimes fail to build from source because building it depends on unstable internal Rust features. Most of
-the times we have to adapt to the changes and only very rarely there's an actual bug in Rust. Fixing build failures
-caused by Rust updates, can be a good way to learn about Rust internals.
+Clippy currently gets built with `rustc` of the `rust-lang/rust` `master`
+branch. Most of the times we have to adapt to the changes and only very rarely
+there's an actual bug in Rust.
 
-In order to find out why Clippy does not work properly with a new Rust commit, you can use the [rust-toolstate commit
-history][toolstate_commit_history]. You will then have to look for the last commit that contains
-`test-pass -> build-fail` or `test-pass -> test-fail` for the `clippy-driver` component.
-[Here][toolstate_commit] is an example.
+If you decide to make Clippy work again with a Rust commit that breaks it, you
+have to sync the `rust-lang/rust-clippy` repository with the `subtree` copy of
+Clippy in the `rust-lang/rust` repository.
 
-The commit message contains a link to the PR. The PRs are usually small enough to discover the breaking API change and
-if they are bigger, they likely include some discussion that may help you to fix Clippy.
+For general information about `subtree`s in the Rust repository see [Rust's
+`CONTRIBUTING.md`][subtree].
 
-To check if Clippy is available for a specific target platform, you can check
-the [rustup component history][rustup_component_history].
+Here is a TL;DR version of the sync process (all of the following commands have
+to be run inside the `rust` directory):
 
-If you decide to make Clippy work again with a Rust commit that breaks it,
-you probably want to install the latest Rust from master locally and run Clippy
-using that version of Rust.
+1. Clone the [`rust-lang/rust`] repository
+2. Sync the changes to the rust-copy of Clippy to your Clippy fork:
+    ```bash
+    # Make sure to change `your-github-name` to your github name in the following command
+    git subtree push -P src/tools/clippy git@github.com:your-github-name/rust-clippy sync-from-rust
+    ```
+    _Note:_ This will directly push to the remote repository. You can also push
+    to your local copy by replacing the remote address with `/path/to/rust-clippy`
+    directory.
 
-You can set up the master toolchain by running `./setup-toolchain.sh`. That script will install
-[rustup-toolchain-install-master][rtim] and master toolchain, then run `rustup override set master`.
+    _Note:_ Most of the time you have to create a merge commit in the
+    `rust-clippy` repo (this has to be done in the Clippy repo, not in the
+    rust-copy of Clippy):
+    ```bash
+    git fetch origin && git fetch upstream
+    git checkout sync-from-rust
+    git merge upstream/master
+    ```
+3. Open a PR to `rust-lang/rust-clippy` and wait for it to get merged (to
+   accelerate the process ping the `@rust-lang/clippy` team in your PR and/or
+   ~~annoy~~ ask them in the [Discord] channel.)
+4. Sync the `rust-lang/rust-clippy` master to the rust-copy of Clippy:
+    ```bash
+    git checkout -b sync-from-clippy
+    git subtree pull -P src/tools/clippy https://github.com/rust-lang/rust-clippy master
+    ```
+5. Open a PR to [`rust-lang/rust`]
 
-After fixing the build failure on this repository, we can submit a pull request
-to [`rust-lang/rust`] to fix the toolstate.
-
-To submit a pull request, you should follow these steps:
+Also, you may want to define remotes, so you don't have to type out the remote
+addresses on every sync. You can do this with the following commands (these
+commands still have to be run inside the `rust` directory):
 
 ```bash
-# Assuming you already cloned the rust-lang/rust repo and you're in the correct directory
-git submodule update --remote src/tools/clippy
-cargo update -p clippy
-git add -u
-git commit -m "Update Clippy"
-./x.py test -i --stage 1 src/tools/clippy # This is optional and should succeed anyway
-# Open a PR in rust-lang/rust
+# Set clippy-upstream remote for pulls
+$ git remote add clippy-upstream https://github.com/rust-lang/rust-clippy
+# Make sure to not push to the upstream repo
+$ git remote set-url --push clippy-upstream DISABLED
+# Set clippy-origin remote to your fork for pushes
+$ git remote add clippy-origin git@github.com:your-github-name/rust-clippy
+# Set a local remote
+$ git remote add clippy-local /path/to/rust-clippy
 ```
 
-[rustup_component_history]: https://rust-lang.github.io/rustup-components-history
-[toolstate_commit_history]: https://github.com/rust-lang-nursery/rust-toolstate/commits/master
-[toolstate_commit]: https://github.com/rust-lang-nursery/rust-toolstate/commit/aad74d8294e198a7cf8ac81a91aebb7f3bbcf727
-[rtim]: https://github.com/kennytm/rustup-toolchain-install-master
+You can then sync with the remote names from above, e.g.:
+
+```bash
+$ git subtree push -P src/tools/clippy clippy-local sync-from-rust
+```
+
+_Note:_ The first time running `git subtree push` a cache has to be built. This
+involves going through the complete Clippy history once. For this you have to
+increase the stack limit though, which you can do with `ulimit -s 60000`. For
+this to work, you will need the fix of `git subtree` available
+[here][gitgitgadget-pr].
+
+[gitgitgadget-pr]: https://github.com/gitgitgadget/git/pull/493
+[subtree]: https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md#external-dependencies-subtree
 [`rust-lang/rust`]: https://github.com/rust-lang/rust
 
 ## Issue and PR triage

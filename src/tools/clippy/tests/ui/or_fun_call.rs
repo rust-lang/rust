@@ -95,6 +95,15 @@ fn test_or_with_ctors() {
     let b = "b".to_string();
     let _ = Some(Bar("a".to_string(), Duration::from_secs(1)))
         .or(Some(Bar(b, Duration::from_secs(2))));
+
+    let vec = vec!["foo"];
+    let _ = opt.ok_or(vec.len());
+
+    let array = ["foo"];
+    let _ = opt.ok_or(array.len());
+
+    let slice = &["foo"][..];
+    let _ = opt.ok_or(slice.len());
 }
 
 // Issue 4514 - early return
