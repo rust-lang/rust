@@ -293,7 +293,7 @@ where
 {
     // FIXME: we temporarily have a `Const` on the stack here,
     // as we compare `Const`s using ptr equality, this is dangerous.
-    let ct: ty::Const<'tcx> = Decodable::decode(decoder)?;
+    let ct: ty::InternedConst<'tcx> = Decodable::decode(decoder)?;
     Ok(decoder.tcx().mk_const(ct.ty, ct.val))
 }
 
