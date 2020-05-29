@@ -21,6 +21,8 @@ use rustc_macros::HashStable_Generic;
 use rustc_span::{Span, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
 
+use log::debug;
+
 use std::{iter, mem};
 
 /// When the main rust parser encounters a syntax-extension invocation, it
