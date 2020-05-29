@@ -25,13 +25,6 @@ declare_clippy_lint! {
     /// if i != 0 {
     ///     i -= 1;
     /// }
-    /// ```
-    /// Use instead:
-    /// ```rust
-    /// let end: u32 = 10;
-    /// let start: u32 = 5;
-    ///
-    /// let mut i: u32 = end - start;
     ///
     /// // Good
     /// i = i.saturating_sub(1);
