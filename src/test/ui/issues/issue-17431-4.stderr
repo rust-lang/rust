@@ -2,11 +2,18 @@ error[E0072]: recursive type `Foo` has infinite size
   --> $DIR/issue-17431-4.rs:3:1
    |
 LL | struct Foo<T> { foo: Option<Option<Foo<T>>>, marker: marker::PhantomData<T> }
-   | ^^^^^^^^^^^^^   --------------------------- recursive without indirection
+   | ^^^^^^^^^^^^^        ---------------------- recursive without indirection
    | |
    | recursive type has infinite size
    |
-   = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `Foo` representable
+help: insert some indirection to make `Foo` representable
+   |
+LL | struct Foo<T> { foo: Box<Option<Option<Foo<T>>>>, marker: marker::PhantomData<T> }
+   |                      ^^^^                      ^
+LL | struct Foo<T> { foo: Rc<Option<Option<Foo<T>>>>, marker: marker::PhantomData<T> }
+   |                      ^^^                      ^
+LL | struct Foo<T> { foo: &Option<Option<Foo<T>>>, marker: marker::PhantomData<T> }
+   |                      ^
 
 error: aborting due to previous error
 

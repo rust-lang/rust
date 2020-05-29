@@ -6,7 +6,14 @@ LL | enum Foo { Voo(Option<Option<Foo>>) }
    | |
    | recursive type has infinite size
    |
-   = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `Foo` representable
+help: insert some indirection to make `Foo` representable
+   |
+LL | enum Foo { Voo(Box<Option<Option<Foo>>>) }
+   |                ^^^^                   ^
+LL | enum Foo { Voo(Rc<Option<Option<Foo>>>) }
+   |                ^^^                   ^
+LL | enum Foo { Voo(&Option<Option<Foo>>) }
+   |                ^
 
 error: aborting due to previous error
 
