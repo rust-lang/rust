@@ -2,7 +2,10 @@ error[E0040]: explicit use of destructor method
   --> $DIR/illegal-ufcs-drop.rs:8:5
    |
 LL |     Drop::drop(&mut Foo)
-   |     ^^^^^^^^^^ explicit destructor calls not allowed
+   |     ^^^^^^^^^^
+   |     |
+   |     explicit destructor calls not allowed
+   |     help: consider using `drop` function: `drop`
 
 error: aborting due to previous error
 
