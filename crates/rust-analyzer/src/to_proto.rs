@@ -317,6 +317,7 @@ fn semantic_token_type_and_modifiers(
         HighlightTag::Keyword => lsp_types::SemanticTokenType::KEYWORD,
         HighlightTag::UnresolvedReference => semantic_tokens::UNRESOLVED_REFERENCE,
         HighlightTag::FormatSpecifier => semantic_tokens::FORMAT_SPECIFIER,
+        HighlightTag::Operator => lsp_types::SemanticTokenType::OPERATOR,
     };
 
     for modifier in highlight.modifiers.iter() {
