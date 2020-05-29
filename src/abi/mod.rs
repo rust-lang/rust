@@ -4,6 +4,7 @@ mod pass_mode;
 mod returning;
 
 use rustc_target::spec::abi::Abi;
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 
 use cranelift_codegen::ir::AbiParam;
 
@@ -431,6 +432,7 @@ pub(crate) fn codegen_fn_prelude<'tcx>(
 pub(crate) fn codegen_terminator_call<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     span: Span,
+    current_block: Block,
     func: &Operand<'tcx>,
     args: &[Operand<'tcx>],
     destination: Option<(Place<'tcx>, BasicBlock)>,
@@ -439,8 +441,6 @@ pub(crate) fn codegen_terminator_call<'tcx>(
     let fn_sig = fx
         .tcx
         .normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &fn_ty.fn_sig(fx.tcx));
-
-    // FIXME mark the current block as cold when calling a `#[cold]` function.
 
     let destination = destination.map(|(place, bb)| (trans_place(fx, place), bb));
 
@@ -478,6 +478,15 @@ pub(crate) fn codegen_terminator_call<'tcx>(
     } else {
         None
     };
+
+    let is_cold =
+        instance.map(|inst|
+            fx.tcx.codegen_fn_attrs(inst.def_id())
+                .flags.contains(CodegenFnAttrFlags::COLD))
+                .unwrap_or(false);
+    if is_cold {
+        fx.cold_blocks.insert(current_block);
+    }
 
     // Unpack arguments tuple for closures
     let args = if fn_sig.abi == Abi::RustCall {
