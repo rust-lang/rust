@@ -374,14 +374,14 @@ pub fn exp2(mut x: f64) -> f64 {
     let mut i0 = ui as u32;
     i0 = i0.wrapping_add(TBLSIZE as u32 / 2);
     let ku = i0 / TBLSIZE as u32 * TBLSIZE as u32;
-    let ki = ku as i32 / TBLSIZE as i32;
+    let ki = div!(ku as i32, TBLSIZE as i32);
     i0 %= TBLSIZE as u32;
     let uf = f64::from_bits(ui) - redux;
     let mut z = x - uf;
 
     /* Compute r = exp2(y) = exp2t[i0] * p(z - eps[i]). */
-    let t = f64::from_bits(TBL[2 * i0 as usize]); /* exp2t[i0] */
-    z -= f64::from_bits(TBL[2 * i0 as usize + 1]); /* eps[i0]   */
+    let t = f64::from_bits(i!(TBL, 2 * i0 as usize)); /* exp2t[i0] */
+    z -= f64::from_bits(i!(TBL, 2 * i0 as usize + 1)); /* eps[i0]   */
     let r = t + t * z * (p1 + z * (p2 + z * (p3 + z * (p4 + z * p5))));
 
     scalbn(r, ki)

@@ -56,7 +56,7 @@ pub fn atanf(mut x: f32) -> f32 {
         if x.is_nan() {
             return x;
         }
-        z = ATAN_HI[3] + x1p_120;
+        z = i!(ATAN_HI, 3) + x1p_120;
         return if sign { -z } else { z };
     }
     let id = if ix < 0x3ee00000 {
@@ -97,13 +97,13 @@ pub fn atanf(mut x: f32) -> f32 {
     z = x * x;
     let w = z * z;
     /* break sum from i=0 to 10 aT[i]z**(i+1) into odd and even poly */
-    let s1 = z * (A_T[0] + w * (A_T[2] + w * A_T[4]));
-    let s2 = w * (A_T[1] + w * A_T[3]);
+    let s1 = z * (i!(A_T, 0) + w * (i!(A_T, 2) + w * i!(A_T, 4)));
+    let s2 = w * (i!(A_T, 1) + w * i!(A_T, 3));
     if id < 0 {
         return x - x * (s1 + s2);
     }
     let id = id as usize;
-    let z = ATAN_HI[id] - ((x * (s1 + s2) - ATAN_LO[id]) - x);
+    let z = i!(ATAN_HI, id) - ((x * (s1 + s2) - i!(ATAN_LO, id)) - x);
     if sign {
         -z
     } else {

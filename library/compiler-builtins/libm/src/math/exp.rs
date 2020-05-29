@@ -124,7 +124,7 @@ pub fn exp(mut x: f64) -> f64 {
         /* if |x| > 0.5 ln2 */
         if hx >= 0x3ff0a2b2 {
             /* if |x| >= 1.5 ln2 */
-            k = (INVLN2 * x + HALF[sign as usize]) as i32;
+            k = (INVLN2 * x + i!(HALF, sign as usize)) as i32;
         } else {
             k = 1 - sign - sign;
         }

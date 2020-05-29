@@ -58,6 +58,24 @@ macro_rules! i {
     };
 }
 
+// Temporary macro to avoid panic codegen for division (in debug mode too). At
+// the time of this writing this is only used in a few places, and once
+// rust-lang/rust#72751 is fixed then this macro will no longer be necessary and
+// the native `/` operator can be used and panics won't be codegen'd.
+#[cfg(any(debug_assertions, not(feature = "unstable")))]
+macro_rules! div {
+    ($a:expr, $b:expr) => {
+        $a / $b
+    };
+}
+
+#[cfg(all(not(debug_assertions), feature = "unstable"))]
+macro_rules! div {
+    ($a:expr, $b:expr) => {
+        unsafe { core::intrinsics::unchecked_div($a, $b) }
+    };
+}
+
 macro_rules! llvm_intrinsically_optimized {
     (#[cfg($($clause:tt)*)] $e:expr) => {
         #[cfg(all(feature = "unstable", $($clause)*))]

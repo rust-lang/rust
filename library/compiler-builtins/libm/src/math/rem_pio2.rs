@@ -167,21 +167,21 @@ pub(crate) fn rem_pio2(x: f64) -> (i32, f64, f64) {
     let mut z = f64::from_bits(ui);
     let mut tx = [0.0; 3];
     for i in 0..2 {
-        tx[i] = z as i32 as f64;
-        z = (z - tx[i]) * x1p24;
+        i!(tx,i, =, z as i32 as f64);
+        z = (z - i!(tx, i)) * x1p24;
     }
-    tx[2] = z;
+    i!(tx,2, =, z);
     /* skip zero terms, first term is non-zero */
     let mut i = 2;
-    while i != 0 && tx[i] == 0.0 {
+    while i != 0 && i!(tx, i) == 0.0 {
         i -= 1;
     }
     let mut ty = [0.0; 3];
     let n = rem_pio2_large(&tx[..=i], &mut ty, ((ix as i32) >> 20) - (0x3ff + 23), 1);
     if sign != 0 {
-        return (-n, -ty[0], -ty[1]);
+        return (-n, -i!(ty, 0), -i!(ty, 1));
     }
-    (n, ty[0], ty[1])
+    (n, i!(ty, 0), i!(ty, 1))
 }
 
 #[cfg(test)]

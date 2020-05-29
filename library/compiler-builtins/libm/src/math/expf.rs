@@ -70,7 +70,7 @@ pub fn expf(mut x: f32) -> f32 {
         /* if |x| > 0.5 ln2 */
         if hx > 0x3f851592 {
             /* if |x| > 1.5 ln2 */
-            k = (INV_LN2 * x + HALF[sign as usize]) as i32;
+            k = (INV_LN2 * x + i!(HALF, sign as usize)) as i32;
         } else {
             k = 1 - sign - sign;
         }

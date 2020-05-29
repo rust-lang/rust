@@ -299,8 +299,8 @@ pub fn pow(x: f64, y: f64) -> f64 {
         ax = with_set_high_word(ax, ix as u32);
 
         /* compute ss = s_h+s_l = (x-1)/(x+1) or (x-1.5)/(x+1.5) */
-        let u: f64 = ax - BP[k as usize]; /* bp[0]=1.0, bp[1]=1.5 */
-        let v: f64 = 1.0 / (ax + BP[k as usize]);
+        let u: f64 = ax - i!(BP, k as usize); /* bp[0]=1.0, bp[1]=1.5 */
+        let v: f64 = 1.0 / (ax + i!(BP, k as usize));
         let ss: f64 = u * v;
         let s_h = with_set_low_word(ss, 0);
 
@@ -309,7 +309,7 @@ pub fn pow(x: f64, y: f64) -> f64 {
             0.0,
             ((ix as u32 >> 1) | 0x20000000) + 0x00080000 + ((k as u32) << 18),
         );
-        let t_l: f64 = ax - (t_h - BP[k as usize]);
+        let t_l: f64 = ax - (t_h - i!(BP, k as usize));
         let s_l: f64 = v * ((u - s_h * t_h) - s_h * t_l);
 
         /* compute log(ax) */
@@ -328,12 +328,12 @@ pub fn pow(x: f64, y: f64) -> f64 {
         let p_h: f64 = with_set_low_word(u + v, 0);
         let p_l = v - (p_h - u);
         let z_h: f64 = CP_H * p_h; /* cp_h+cp_l = 2/(3*log2) */
-        let z_l: f64 = CP_L * p_h + p_l * CP + DP_L[k as usize];
+        let z_l: f64 = CP_L * p_h + p_l * CP + i!(DP_L, k as usize);
 
         /* log2(ax) = (ss+..)*2/(3*log2) = n + dp_h + z_h + z_l */
         let t: f64 = n as f64;
-        t1 = with_set_low_word(((z_h + z_l) + DP_H[k as usize]) + t, 0);
-        t2 = z_l - (((t1 - t) - DP_H[k as usize]) - z_h);
+        t1 = with_set_low_word(((z_h + z_l) + i!(DP_H, k as usize)) + t, 0);
+        t2 = z_l - (((t1 - t) - i!(DP_H, k as usize)) - z_h);
     }
 
     /* split up y into y1+y2 and compute (y1+y2)*(t1+t2) */

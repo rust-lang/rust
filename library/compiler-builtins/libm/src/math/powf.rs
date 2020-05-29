@@ -238,8 +238,8 @@ pub fn powf(x: f32, y: f32) -> f32 {
         ax = f32::from_bits(ix as u32);
 
         /* compute s = s_h+s_l = (x-1)/(x+1) or (x-1.5)/(x+1.5) */
-        u = ax - BP[k as usize]; /* bp[0]=1.0, bp[1]=1.5 */
-        v = 1.0 / (ax + BP[k as usize]);
+        u = ax - i!(BP, k as usize); /* bp[0]=1.0, bp[1]=1.5 */
+        v = 1.0 / (ax + i!(BP, k as usize));
         s = u * v;
         s_h = s;
         is = s_h.to_bits() as i32;
@@ -247,7 +247,7 @@ pub fn powf(x: f32, y: f32) -> f32 {
         /* t_h=ax+bp[k] High */
         is = (((ix as u32 >> 1) & 0xfffff000) | 0x20000000) as i32;
         t_h = f32::from_bits(is as u32 + 0x00400000 + ((k as u32) << 21));
-        t_l = ax - (t_h - BP[k as usize]);
+        t_l = ax - (t_h - i!(BP, k as usize));
         s_l = v * ((u - s_h * t_h) - s_h * t_l);
         /* compute log(ax) */
         s2 = s * s;
@@ -267,13 +267,13 @@ pub fn powf(x: f32, y: f32) -> f32 {
         p_h = f32::from_bits(is as u32 & 0xfffff000);
         p_l = v - (p_h - u);
         z_h = CP_H * p_h; /* cp_h+cp_l = 2/(3*log2) */
-        z_l = CP_L * p_h + p_l * CP + DP_L[k as usize];
+        z_l = CP_L * p_h + p_l * CP + i!(DP_L, k as usize);
         /* log2(ax) = (s+..)*2/(3*log2) = n + dp_h + z_h + z_l */
         t = n as f32;
-        t1 = ((z_h + z_l) + DP_H[k as usize]) + t;
+        t1 = ((z_h + z_l) + i!(DP_H, k as usize)) + t;
         is = t1.to_bits() as i32;
         t1 = f32::from_bits(is as u32 & 0xfffff000);
-        t2 = z_l - (((t1 - t) - DP_H[k as usize]) - z_h);
+        t2 = z_l - (((t1 - t) - i!(DP_H, k as usize)) - z_h);
     };
 
     /* split up y into y1+y2 and compute (y1+y2)*(t1+t2) */
