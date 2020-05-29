@@ -526,6 +526,12 @@ declare_lint! {
     "using only a subset of a register for inline asm inputs",
 }
 
+declare_lint! {
+    pub UNSAFE_OP_IN_UNSAFE_FN,
+    Allow,
+    "unsafe operations in unsafe functions without an explicit unsafe block are deprecated",
+}
+
 declare_lint_pass! {
     /// Does nothing as a lint pass, but registers some `Lint`s
     /// that are used by other parts of the compiler.
@@ -597,6 +603,7 @@ declare_lint_pass! {
         SOFT_UNSTABLE,
         INLINE_NO_SANITIZE,
         ASM_SUB_REGISTER,
+        UNSAFE_OP_IN_UNSAFE_FN,
     ]
 }
 
