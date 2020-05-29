@@ -34,6 +34,11 @@ fn box_clone_and_clone_from_equivalence() {
     }
 }
 
+/// This test might give a false positive in case the box realocates, but the alocator keeps the
+/// original pointer.
+///
+/// On the other hand it won't give a false negative, if it fails than the memory was definitly not
+/// reused
 #[test]
 fn box_clone_from_ptr_stability() {
     for size in (0..8).map(|i| 2usize.pow(i)) {
@@ -42,13 +47,5 @@ fn box_clone_from_ptr_stability() {
         let copy_raw = copy.as_ptr() as usize;
         copy.clone_from(&control);
         assert_eq!(copy.as_ptr() as usize, copy_raw);
-    }
-
-    for size in (0..8).map(|i| 2usize.pow(i)) {
-        let control = vec![Dummy { _data: 42 }; size].into_boxed_slice();
-        let mut copy = vec![Dummy { _data: 84 }; size + 1].into_boxed_slice();
-        let copy_raw = copy.as_ptr() as usize;
-        copy.clone_from(&control);
-        assert_ne!(copy.as_ptr() as usize, copy_raw);
     }
 }
