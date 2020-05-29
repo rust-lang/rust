@@ -12,6 +12,8 @@ pub fn no_box() {
     let boxed_array = <Box<[i32; 33]>>::try_from(boxed_slice);
     //~^ ERROR the trait bound `std::boxed::Box<[i32; 33]>: std::convert::From<std::boxed::Box<[i32]>>` is not satisfied
     //~^^ ERROR the trait bound `std::boxed::Box<[i32; 33]>: std::convert::TryFrom<std::boxed::Box<[i32]>>` is not satisfied
+    let boxed_slice = <Box<[i32]>>::from([0; 33]);
+    //~^ 15:42: 15:49: arrays only have std trait implementations for lengths 0..=32 [E0277]
 }
 
 pub fn no_rc() {
