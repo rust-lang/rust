@@ -236,7 +236,7 @@ impl<'a, 'tcx> TypeRelation<'tcx> for MismatchRelation<'a, 'tcx> {
                 }
             }
             (&TyKind::Tuple(as_), &TyKind::Tuple(bs)) => {
-                let _ = as_.iter().zip(bs).map(|(a, b)| self.relate(a, b));
+                let _ = as_.iter().zip(bs).map(|(a, b)| self.relate(&a, &b));
                 None
             }
             (&TyKind::Projection(a_data), &TyKind::Projection(b_data)) => {
