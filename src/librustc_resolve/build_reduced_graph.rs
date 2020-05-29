@@ -130,7 +130,7 @@ impl<'a> Resolver<'a> {
             Some(def_id) => def_id,
             None => return self.ast_transform_scopes.get(&expn_id).unwrap_or(&self.graph_root),
         };
-        if let Some(id) = self.definitions.as_local_node_id(def_id) {
+        if let Some(id) = def_id.as_local() {
             self.local_macro_def_scopes[&id]
         } else {
             let module_def_id = ty::DefIdTree::parent(&*self, def_id).unwrap();
@@ -640,9 +640,10 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 } else if orig_name == Some(kw::SelfLower) {
                     self.r.graph_root
                 } else {
+                    let def_id = self.r.definitions.local_def_id(item.id);
                     let crate_id =
                         self.r.crate_loader.process_extern_crate(item, &self.r.definitions);
-                    self.r.extern_crate_map.insert(item.id, crate_id);
+                    self.r.extern_crate_map.insert(def_id, crate_id);
                     self.r.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX })
                 };
 
@@ -1173,10 +1174,10 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             _ => unreachable!(),
         };
 
-        let def_id = self.r.definitions.local_def_id(item.id).to_def_id();
-        let res = Res::Def(DefKind::Macro(ext.macro_kind()), def_id);
-        self.r.macro_map.insert(def_id, ext);
-        self.r.local_macro_def_scopes.insert(item.id, parent_scope.module);
+        let def_id = self.r.definitions.local_def_id(item.id);
+        let res = Res::Def(DefKind::Macro(ext.macro_kind()), def_id.to_def_id());
+        self.r.macro_map.insert(def_id.to_def_id(), ext);
+        self.r.local_macro_def_scopes.insert(def_id, parent_scope.module);
 
         if macro_rules {
             let ident = ident.normalize_to_macros_2_0();
