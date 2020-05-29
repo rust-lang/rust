@@ -498,7 +498,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let mut diag =
             self.infcx.tcx.sess.struct_span_err(*span, "lifetime may not live long enough");
 
-        let (_, mir_def_name) = self.infcx.tcx.article_and_description(self.mir_def_id);
+        let (_, mir_def_name) = self.infcx.tcx.article_and_description(self.mir_def_id.to_def_id());
 
         let fr_name = self.give_region_a_name(*fr).unwrap();
         fr_name.highlight_region_name(&mut diag);
