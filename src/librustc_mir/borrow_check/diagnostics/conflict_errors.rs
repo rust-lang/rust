@@ -214,7 +214,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     let generics = tcx.generics_of(self.mir_def_id);
                     let param = generics.type_param(&param_ty, tcx);
                     if let Some(generics) =
-                        tcx.hir().get_generics(tcx.closure_base_def_id(self.mir_def_id))
+                        tcx.hir().get_generics(tcx.closure_base_def_id(self.mir_def_id.to_def_id()))
                     {
                         suggest_constraining_type_param(
                             tcx,
@@ -865,49 +865,42 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 format!("`{}` would have to be valid for `{}`...", name, region_name),
             );
 
-            if let Some(def_id) = self.mir_def_id.as_local() {
-                let fn_hir_id = self.infcx.tcx.hir().as_local_hir_id(def_id);
-                err.span_label(
-                    drop_span,
-                    format!(
-                        "...but `{}` will be dropped here, when the {} returns",
-                        name,
-                        self.infcx
-                            .tcx
-                            .hir()
-                            .opt_name(fn_hir_id)
-                            .map(|name| format!("function `{}`", name))
-                            .unwrap_or_else(|| {
-                                match &self
-                                    .infcx
-                                    .tcx
-                                    .typeck_tables_of(def_id)
-                                    .node_type(fn_hir_id)
-                                    .kind
-                                {
-                                    ty::Closure(..) => "enclosing closure",
-                                    ty::Generator(..) => "enclosing generator",
-                                    kind => bug!("expected closure or generator, found {:?}", kind),
-                                }
-                                .to_string()
-                            })
-                    ),
-                );
+            let fn_hir_id = self.infcx.tcx.hir().as_local_hir_id(self.mir_def_id);
+            err.span_label(
+                drop_span,
+                format!(
+                    "...but `{}` will be dropped here, when the {} returns",
+                    name,
+                    self.infcx
+                        .tcx
+                        .hir()
+                        .opt_name(fn_hir_id)
+                        .map(|name| format!("function `{}`", name))
+                        .unwrap_or_else(|| {
+                            match &self
+                                .infcx
+                                .tcx
+                                .typeck_tables_of(self.mir_def_id)
+                                .node_type(fn_hir_id)
+                                .kind
+                            {
+                                ty::Closure(..) => "enclosing closure",
+                                ty::Generator(..) => "enclosing generator",
+                                kind => bug!("expected closure or generator, found {:?}", kind),
+                            }
+                            .to_string()
+                        })
+                ),
+            );
 
-                err.note(
-                    "functions cannot return a borrow to data owned within the function's scope, \
-                     functions can only return borrows to data passed as arguments",
-                );
-                err.note(
-                    "to learn more, visit <https://doc.rust-lang.org/book/ch04-02-\
-                     references-and-borrowing.html#dangling-references>",
-                );
-            } else {
-                err.span_label(
-                    drop_span,
-                    format!("...but `{}` dropped here while still borrowed", name),
-                );
-            }
+            err.note(
+                "functions cannot return a borrow to data owned within the function's scope, \
+                    functions can only return borrows to data passed as arguments",
+            );
+            err.note(
+                "to learn more, visit <https://doc.rust-lang.org/book/ch04-02-\
+                    references-and-borrowing.html#dangling-references>",
+            );
 
             if let BorrowExplanation::MustBeValidFor { .. } = explanation {
             } else {
@@ -1237,7 +1230,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     ) -> DiagnosticBuilder<'cx> {
         let tcx = self.infcx.tcx;
 
-        let (_, escapes_from) = tcx.article_and_description(self.mir_def_id);
+        let (_, escapes_from) = tcx.article_and_description(self.mir_def_id.to_def_id());
 
         let mut err =
             borrowck_errors::borrowed_data_escapes_closure(tcx, escape_span, escapes_from);
@@ -1572,14 +1565,16 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     ) -> Option<AnnotatedBorrowFnSignature<'tcx>> {
         // Define a fallback for when we can't match a closure.
         let fallback = || {
-            let is_closure = self.infcx.tcx.is_closure(self.mir_def_id);
+            let is_closure = self.infcx.tcx.is_closure(self.mir_def_id.to_def_id());
             if is_closure {
                 None
             } else {
                 let ty = self.infcx.tcx.type_of(self.mir_def_id);
                 match ty.kind {
-                    ty::FnDef(_, _) | ty::FnPtr(_) => self
-                        .annotate_fn_sig(self.mir_def_id, self.infcx.tcx.fn_sig(self.mir_def_id)),
+                    ty::FnDef(_, _) | ty::FnPtr(_) => self.annotate_fn_sig(
+                        self.mir_def_id.to_def_id(),
+                        self.infcx.tcx.fn_sig(self.mir_def_id),
+                    ),
                     _ => None,
                 }
             }
