@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches:
+      - master
+
+jobs:
+  build_and_test:
+    strategy:
+      fail-fast: false
+      matrix:
+        toolchain:
+          - x86_64-unknown-linux-gnu
+          - x86_64-apple-darwin
+          - x86_64-pc-windows-msvc
+        include:
+        - toolchain: x86_64-unknown-linux-gnu
+          builder: ubuntu-latest
+          os: linux
+        - toolchain: x86_64-apple-darwin
+          builder: macos-latest
+          os: macos
+        - toolchain: x86_64-pc-windows-msvc
+          builder: windows-latest
+          os: windows
+
+    name: nightly - ${{ matrix.toolchain }}
+    runs-on: ${{ matrix.builder }}
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Run tests
+        run: sh ci/run.sh ${{ matrix.os }}

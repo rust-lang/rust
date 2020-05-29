@@ -2,11 +2,15 @@
 
 set -ex
 
+OS=${1}
+
 export RUST_BACKTRACE=full
 #export RUST_TEST_NOCAPTURE=1
 
+rustup update nightly
+
 cargo +nightly install rustup-toolchain-install-master
-if [ "${TRAVIS_OS_NAME}" = "windows" ]; then
+if [ "${OS}" = "windows" ]; then
     rustup-toolchain-install-master -f -n master -c rustc-dev -c llvm-tools -i x86_64-pc-windows-msvc
 else
     rustup-toolchain-install-master -f -n master -c rustc-dev -c llvm-tools
@@ -16,12 +20,7 @@ rustup override set master
 cargo build
 cargo test --verbose -- --nocapture
 
-# avoid weird cygwin issues for now
-if [ -n "$APPVEYOR" ]; then
-    exit 0
-fi
-
-case "${TRAVIS_OS_NAME}" in
+case "${OS}" in
     *"linux"*)
         TEST_TARGET=x86_64-unknown-linux-gnu cargo test --verbose -- --nocapture
         ;;
@@ -33,11 +32,6 @@ case "${TRAVIS_OS_NAME}" in
         ;;
 esac
 
-# FIXME: Sometimes we couldn't install semverver on Travis' Windows builder.
-if [ "${TRAVIS_OS_NAME}" != "linux" ]; then
-    exit 0
-fi
-
 # install
 mkdir -p ~/rust/cargo/bin
 cp target/debug/cargo-semver ~/rust/cargo/bin
@@ -46,7 +40,7 @@ cp target/debug/rust-semverver ~/rust/cargo/bin
 # become semververver
 #
 # Note: Because we rely on rust nightly building the previously published
-#       semver can often fail.  To avoid failing the build we first check
+#       semver can often fail. To avoid failing the build we first check
 #       if we can compile the previously published version.
 if cargo install --root "$(mktemp -d)" semverver > /dev/null 2>/dev/null; then
     PATH=~/rust/cargo/bin:$PATH cargo semver | tee semver_out
@@ -64,5 +58,5 @@ if cargo install --root "$(mktemp -d)" semverver > /dev/null 2>/dev/null; then
         exit 1
     fi
 else
-    echo 'Failed to check semver-compliance of semverver.  Failed to compiled previous version.' >&2
+    echo 'Failed to check semver-compliance of semverver. Failed to compiled previous version.' >&2
 fi
