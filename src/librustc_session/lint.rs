@@ -347,14 +347,14 @@ pub trait LintPass {
     fn name(&self) -> &'static str;
 }
 
-/// Implements `LintPass for $name` with the given list of `Lint` statics.
+/// Implements `LintPass for $ty` with the given list of `Lint` statics.
 #[macro_export]
 macro_rules! impl_lint_pass {
-    ($name:ident => [$($lint:expr),* $(,)?]) => {
-        impl $crate::lint::LintPass for $name {
-            fn name(&self) -> &'static str { stringify!($name) }
+    ($ty:ty => [$($lint:expr),* $(,)?]) => {
+        impl $crate::lint::LintPass for $ty {
+            fn name(&self) -> &'static str { stringify!($ty) }
         }
-        impl $name {
+        impl $ty {
             pub fn get_lints() -> $crate::lint::LintArray { $crate::lint_array!($($lint),*) }
         }
     };
