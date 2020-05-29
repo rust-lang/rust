@@ -4,6 +4,7 @@ use crate::infer::error_reporting::msg_span_from_free_region;
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError;
 use rustc_errors::{Applicability, ErrorReported};
+use rustc_hir::{GenericBound, ItemKind, Lifetime, LifetimeName, TyKind};
 use rustc_middle::ty::RegionKind;
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
@@ -20,8 +21,9 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             ) = error.clone()
             {
                 let anon_reg_sup = self.tcx().is_suitable_region(sup_r)?;
-                let (fn_return_span, is_dyn) =
-                    self.tcx().return_type_impl_or_dyn_trait(anon_reg_sup.def_id)?;
+                let fn_return = self.tcx().return_type_impl_or_dyn_trait(anon_reg_sup.def_id)?;
+                let is_dyn = matches!(fn_return.kind, TyKind::TraitObject(..));
+                let fn_return_span = fn_return.span;
                 if sub_r == &RegionKind::ReStatic {
                     let sp = var_origin.span();
                     let return_sp = sub_origin.span();
@@ -67,12 +69,58 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                             lifetime,
                         );
                         // FIXME: account for the need of parens in `&(dyn Trait + '_)`
-                        err.span_suggestion_verbose(
-                            fn_return_span.shrink_to_hi(),
-                            &msg,
-                            format!(" + {}", lifetime_name),
-                            Applicability::MaybeIncorrect,
-                        );
+                        match fn_return.kind {
+                            TyKind::Def(item_id, _) => {
+                                let item = self.tcx().hir().item(item_id.id);
+                                let opaque = if let ItemKind::OpaqueTy(opaque) = &item.kind {
+                                    opaque
+                                } else {
+                                    err.emit();
+                                    return Some(ErrorReported);
+                                };
+                                let (span, sugg) = opaque
+                                    .bounds
+                                    .iter()
+                                    .filter_map(|arg| match arg {
+                                        GenericBound::Outlives(Lifetime {
+                                            name: LifetimeName::Static,
+                                            span,
+                                            ..
+                                        }) => Some((*span, lifetime_name.clone())),
+                                        _ => None,
+                                    })
+                                    .next()
+                                    .unwrap_or_else(|| {
+                                        (
+                                            fn_return_span.shrink_to_hi(),
+                                            format!(" + {}", lifetime_name),
+                                        )
+                                    });
+
+                                err.span_suggestion_verbose(
+                                    span,
+                                    &msg,
+                                    sugg,
+                                    Applicability::MaybeIncorrect,
+                                );
+                            }
+                            TyKind::TraitObject(_, lt) => {
+                                let (span, sugg) = match lt.name {
+                                    LifetimeName::ImplicitObjectLifetimeDefault => (
+                                        fn_return_span.shrink_to_hi(),
+                                        format!(" + {}", lifetime_name),
+                                    ),
+                                    _ => (lt.span, lifetime_name),
+                                };
+                                err.span_suggestion_verbose(
+                                    span,
+                                    &msg,
+                                    sugg,
+                                    Applicability::MaybeIncorrect,
+                                );
+                            }
+                            _ => {}
+                        }
                     }
                     err.emit();
                     return Some(ErrorReported);
