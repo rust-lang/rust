@@ -90,7 +90,7 @@ fn main() {
         }
 
         let linker_args = read_linker_args(&ok);
-        for mut arg in linker_args.split('S') {
+        for arg in linker_args.split('S') {
             expected_libs.remove(arg);
         }
 
