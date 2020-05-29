@@ -32,7 +32,10 @@ case $1 in
         ;;
 esac
 
-NM=nm
+NM=$(find $(rustc --print sysroot) -name llvm-nm)
+if [ "$NM" = "" ]; then
+  NM=${PREFIX}nm
+fi
 
 if [ -d /target ]; then
     path=/target/${1}/debug/deps/libcompiler_builtins-*.rlib
@@ -47,8 +50,7 @@ for rlib in $(echo $path); do
     echo checking $rlib for duplicate symbols
     echo "================================================================"
 
-    stdout=$($PREFIX$NM -g --defined-only $rlib 2>&1)
-
+    stdout=$($NM -g --defined-only $rlib 2>&1)
     # NOTE On i586, It's normal that the get_pc_thunk symbol appears several
     # times so ignore it
     #
@@ -94,7 +96,7 @@ CARGO_PROFILE_RELEASE_LTO=true \
 # Ensure no references to a panicking function
 for rlib in $(echo $path); do
     set +ex
-    $PREFIX$NM -u $rlib 2>&1 | grep panicking
+    $NM -u $rlib 2>&1 | grep panicking
 
     if test $? = 0; then
         exit 1

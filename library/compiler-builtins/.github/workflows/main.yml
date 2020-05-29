@@ -7,30 +7,6 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        target:
-        - aarch64-unknown-linux-gnu
-        - arm-unknown-linux-gnueabi
-        - arm-unknown-linux-gnueabihf
-        - i586-unknown-linux-gnu
-        - i686-unknown-linux-gnu
-        - mips-unknown-linux-gnu
-        - mips64-unknown-linux-gnuabi64
-        - mips64el-unknown-linux-gnuabi64
-        - mipsel-unknown-linux-gnu
-        - powerpc-unknown-linux-gnu
-        - powerpc64-unknown-linux-gnu
-        - powerpc64le-unknown-linux-gnu
-        - thumbv6m-none-eabi
-        - thumbv7em-none-eabi
-        - thumbv7em-none-eabihf
-        - thumbv7m-none-eabi
-        - wasm32-unknown-unknown
-        - x86_64-unknown-linux-gnu
-        - x86_64-apple-darwin
-        - i686-pc-windows-msvc
-        - x86_64-pc-windows-msvc
-        - i686-pc-windows-gnu
-        - x86_64-pc-windows-gnu
         include:
         - target: aarch64-unknown-linux-gnu
           os: ubuntu-latest
@@ -109,6 +85,7 @@ jobs:
       run: rustup update ${{ matrix.rust }} --no-self-update && rustup default ${{ matrix.rust }}
       shell: bash
     - run: rustup target add ${{ matrix.target }}
+    - run: rustup component add llvm-tools-preview
     - name: Download compiler-rt reference sources
       run: |
         curl -L -o code.tar.gz https://github.com/rust-lang/llvm-project/archive/rustc/8.0-2019-03-18.tar.gz
@@ -121,13 +98,9 @@ jobs:
       if: matrix.os != 'ubuntu-latest'
       shell: bash
 
-    # Wasm is special and is just build as a smoke test
-    - run: cargo build --target ${{ matrix.target }}
-      if: matrix.target == 'wasm32-unknown-unknown'
-
     # Otherwise we use our docker containers to run builds
     - run: cargo generate-lockfile && ./ci/run-docker.sh ${{ matrix.target }}
-      if: matrix.target != 'wasm32-unknown-unknown' && matrix.os == 'ubuntu-latest'
+      if: matrix.os == 'ubuntu-latest'
 
   rustfmt:
     name: Rustfmt

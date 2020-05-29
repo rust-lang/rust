@@ -31,7 +31,7 @@
 extern crate core;
 
 fn abort() -> ! {
-    unsafe { core::intrinsics::abort() }
+    core::intrinsics::abort()
 }
 
 #[macro_use]

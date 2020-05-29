@@ -14,7 +14,7 @@
 
 extern crate panic_handler;
 
-#[cfg(all(not(thumb), not(windows)))]
+#[cfg(all(not(thumb), not(windows), not(target_arch = "wasm32")))]
 #[link(name = "c")]
 extern "C" {}
 
@@ -340,11 +340,11 @@ fn run() {
     something_with_a_dtor(&|| assert_eq!(bb(1), 1));
 
     extern "C" {
-        fn rust_begin_unwind();
+        fn rust_begin_unwind(x: usize);
     }
     // if bb(false) {
     unsafe {
-        rust_begin_unwind();
+        rust_begin_unwind(0);
     }
     // }
 }
