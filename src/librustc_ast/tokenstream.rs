@@ -290,6 +290,8 @@ impl TokenStream {
         t1.next().is_none() && t2.next().is_none()
     }
 
+
+
     pub fn map_enumerated<F: FnMut(usize, TokenTree) -> TokenTree>(self, mut f: F) -> TokenStream {
         TokenStream(Lrc::new(
             self.0
