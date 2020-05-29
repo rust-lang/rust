@@ -33,7 +33,7 @@ use rustc_session::output::{filename_for_input, filename_for_metadata};
 use rustc_session::search_paths::PathKind;
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
-use rustc_span::FileName;
+use rustc_span::{FileName, RealFileName};
 use rustc_trait_selection::traits;
 use rustc_typeck as typeck;
 
@@ -569,13 +569,16 @@ fn write_out_deps(
                 for cnum in resolver.cstore().crates_untracked() {
                     let source = resolver.cstore().crate_source_untracked(cnum);
                     if let Some((path, _)) = source.dylib {
-                        files.push(escape_dep_filename(&FileName::Real(path)));
+                        let file_name = FileName::Real(RealFileName::Named(path));
+                        files.push(escape_dep_filename(&file_name));
                     }
                     if let Some((path, _)) = source.rlib {
-                        files.push(escape_dep_filename(&FileName::Real(path)));
+                        let file_name = FileName::Real(RealFileName::Named(path));
+                        files.push(escape_dep_filename(&file_name));
                     }
                     if let Some((path, _)) = source.rmeta {
-                        files.push(escape_dep_filename(&FileName::Real(path)));
+                        let file_name = FileName::Real(RealFileName::Named(path));
+                        files.push(escape_dep_filename(&file_name));
                     }
                 }
             });

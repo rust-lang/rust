@@ -71,7 +71,7 @@ crate fn parse_external_mod(
     // Extract the directory path for submodules of `module`.
     let path = sess.source_map().span_to_unmapped_path(module.inner);
     let mut path = match path {
-        FileName::Real(path) => path,
+        FileName::Real(name) => name.into_local_path(),
         other => PathBuf::from(other.to_string()),
     };
     path.pop();
@@ -189,7 +189,8 @@ fn error_cannot_declare_mod_here<'a, T>(
     let mut err =
         sess.span_diagnostic.struct_span_err(span, "cannot declare a new module at this location");
     if !span.is_dummy() {
-        if let FileName::Real(src_path) = sess.source_map().span_to_filename(span) {
+        if let FileName::Real(src_name) = sess.source_map().span_to_filename(span) {
+            let src_path = src_name.into_local_path();
             if let Some(stem) = src_path.file_stem() {
                 let mut dest_path = src_path.clone();
                 dest_path.set_file_name(stem);

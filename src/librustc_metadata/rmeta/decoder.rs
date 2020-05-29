@@ -1471,15 +1471,22 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
             if let Some(virtual_dir) = virtual_rust_source_base_dir {
                 if let Some(real_dir) = &sess.real_rust_source_base_dir {
-                    if let rustc_span::FileName::Real(path) = name {
-                        if let Ok(rest) = path.strip_prefix(virtual_dir) {
-                            let new_path = real_dir.join(rest);
-                            debug!(
-                                "try_to_translate_virtual_to_real: `{}` -> `{}`",
-                                path.display(),
-                                new_path.display(),
-                            );
-                            *path = new_path;
+                    if let rustc_span::FileName::Real(old_name) = name {
+                        if let rustc_span::RealFileName::Named(one_path) = old_name {
+                            if let Ok(rest) = one_path.strip_prefix(virtual_dir) {
+                                let virtual_name = one_path.clone();
+                                let new_path = real_dir.join(rest);
+                                debug!(
+                                    "try_to_translate_virtual_to_real: `{}` -> `{}`",
+                                    virtual_name.display(),
+                                    new_path.display(),
+                                );
+                                let new_name = rustc_span::RealFileName::Devirtualized {
+                                    local_path: new_path,
+                                    virtual_name,
+                                };
+                                *old_name = new_name;
+                            }
                         }
                     }
                 }

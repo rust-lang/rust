@@ -1095,7 +1095,7 @@ impl<'a> ExtCtxt<'a> {
         if !path.is_absolute() {
             let callsite = span.source_callsite();
             let mut result = match self.source_map().span_to_unmapped_path(callsite) {
-                FileName::Real(path) => path,
+                FileName::Real(name) => name.into_local_path(),
                 FileName::DocTest(path, _) => path,
                 other => {
                     return Err(self.struct_span_err(

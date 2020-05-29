@@ -235,7 +235,7 @@ impl SourceMap {
 
     fn try_new_source_file(
         &self,
-        filename: FileName,
+        mut filename: FileName,
         src: String,
     ) -> Result<Lrc<SourceFile>, OffsetOverflowError> {
         // The path is used to determine the directory for loading submodules and
@@ -245,13 +245,22 @@ impl SourceMap {
         // be empty, so the working directory will be used.
         let unmapped_path = filename.clone();
 
-        let (filename, was_remapped) = match filename {
-            FileName::Real(filename) => {
-                let (filename, was_remapped) = self.path_mapping.map_prefix(filename);
-                (FileName::Real(filename), was_remapped)
+        let was_remapped;
+        if let FileName::Real(real_filename) = &mut filename {
+            match real_filename {
+                RealFileName::Named(path_to_be_remapped)
+                | RealFileName::Devirtualized {
+                    local_path: path_to_be_remapped,
+                    virtual_name: _,
+                } => {
+                    let mapped = self.path_mapping.map_prefix(path_to_be_remapped.clone());
+                    was_remapped = mapped.1;
+                    *path_to_be_remapped = mapped.0;
+                }
             }
-            other => (other, false),
-        };
+        } else {
+            was_remapped = false;
+        }
 
         let file_id =
             StableSourceFileId::new_from_pieces(&filename, was_remapped, Some(&unmapped_path));
@@ -998,7 +1007,7 @@ impl SourceMap {
     }
     pub fn ensure_source_file_source_present(&self, source_file: Lrc<SourceFile>) -> bool {
         source_file.add_external_src(|| match source_file.name {
-            FileName::Real(ref name) => self.file_loader.read_file(name).ok(),
+            FileName::Real(ref name) => self.file_loader.read_file(name.local_path()).ok(),
             _ => None,
         })
     }
