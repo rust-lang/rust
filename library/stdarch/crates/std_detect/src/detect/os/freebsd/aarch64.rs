@@ -17,5 +17,6 @@ mod tests {
         println!("rdm: {:?}", is_aarch64_feature_detected!("rdm"));
         println!("rcpc: {:?}", is_aarch64_feature_detected!("rcpc"));
         println!("dotprod: {:?}", is_aarch64_feature_detected!("dotprod"));
+        println!("tme: {:?}", is_aarch64_feature_detected!("tme"));
     }
 }

@@ -44,6 +44,7 @@ pub(crate) fn detect_features() -> cache::Initializer {
         enable_feature(Feature::pmull, pmull);
         // Crypto is specified as AES + PMULL + SHA1 + SHA2 per LLVM/hosts.cpp
         enable_feature(Feature::crypto, aes && pmull && sha1 && sha2);
+        enable_feature(Feature::tme, bits_shift(aa64isar0, 27, 24) == 1);
         enable_feature(Feature::lse, bits_shift(aa64isar0, 23, 20) >= 1);
         enable_feature(Feature::crc, bits_shift(aa64isar0, 19, 16) >= 1);
 

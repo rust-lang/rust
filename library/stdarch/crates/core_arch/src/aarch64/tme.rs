@@ -19,50 +19,50 @@ use stdarch_test::assert_instr;
 
 extern "C" {
     #[link_name = "llvm.aarch64.tstart"]
-    fn aarch64_tstart() -> i32;
+    fn aarch64_tstart() -> u64;
     #[link_name = "llvm.aarch64.tcommit"]
     fn aarch64_tcommit() -> ();
     #[link_name = "llvm.aarch64.tcancel"]
-    fn aarch64_tcancel(imm0: i64) -> ();
+    fn aarch64_tcancel(imm0: u64) -> ();
     #[link_name = "llvm.aarch64.ttest"]
-    fn aarch64_ttest() -> i32;
+    fn aarch64_ttest() -> u64;
 }
 
 /// Transaction successfully started.
-pub const _TMSTART_SUCCESS: u32 = 0x00_u32;
+pub const _TMSTART_SUCCESS: u64 = 0x00_u64;
 
 /// Extraction mask for failure reason
-pub const _TMFAILURE_REASON: u32 = 0x00007FFF_u32;
+pub const _TMFAILURE_REASON: u64 = 0x00007FFF_u64;
 
 /// Transaction retry is possible.
-pub const _TMFAILURE_RTRY: u32 = 1 << 15;
+pub const _TMFAILURE_RTRY: u64 = 1 << 15;
 
 /// Transaction executed a TCANCEL instruction
-pub const _TMFAILURE_CNCL: u32 = 1 << 16;
+pub const _TMFAILURE_CNCL: u64 = 1 << 16;
 
 /// Transaction aborted because a conflict occurred
-pub const _TMFAILURE_MEM: u32 = 1 << 17;
+pub const _TMFAILURE_MEM: u64 = 1 << 17;
 
 /// Fallback error type for any other reason
-pub const _TMFAILURE_IMP: u32 = 1 << 18;
+pub const _TMFAILURE_IMP: u64 = 1 << 18;
 
 /// Transaction aborted because a non-permissible operation was attempted
-pub const _TMFAILURE_ERR: u32 = 1 << 19;
+pub const _TMFAILURE_ERR: u64 = 1 << 19;
 
 /// Transaction aborted due to read or write set limit was exceeded
-pub const _TMFAILURE_SIZE: u32 = 1 << 20;
+pub const _TMFAILURE_SIZE: u64 = 1 << 20;
 
 /// Transaction aborted due to transactional nesting level was exceeded
-pub const _TMFAILURE_NEST: u32 = 1 << 21;
+pub const _TMFAILURE_NEST: u64 = 1 << 21;
 
 /// Transaction aborted due to a debug trap.
-pub const _TMFAILURE_DBG: u32 = 1 << 22;
+pub const _TMFAILURE_DBG: u64 = 1 << 22;
 
 /// Transaction failed from interrupt
-pub const _TMFAILURE_INT: u32 = 1 << 23;
+pub const _TMFAILURE_INT: u64 = 1 << 23;
 
 /// Indicates a TRIVIAL version of TM is available
-pub const _TMFAILURE_TRIVIAL: u32 = 1 << 24;
+pub const _TMFAILURE_TRIVIAL: u64 = 1 << 24;
 
 /// Starts a new transaction. When the transaction starts successfully the return value is 0.
 /// If the transaction fails, all state modifications are discarded and a cause of the failure
@@ -72,8 +72,8 @@ pub const _TMFAILURE_TRIVIAL: u32 = 1 << 24;
 #[inline]
 #[target_feature(enable = "tme")]
 #[cfg_attr(test, assert_instr(tstart))]
-pub unsafe fn __tstart() -> u32 {
-    aarch64_tstart() as _
+pub unsafe fn __tstart() -> u64 {
+    aarch64_tstart()
 }
 
 /// Commits the current transaction. For a nested transaction, the only effect is that the
@@ -95,7 +95,7 @@ pub unsafe fn __tcommit() {
 #[target_feature(enable = "tme")]
 #[cfg_attr(test, assert_instr(tcancel, imm0 = 0x0))]
 #[rustc_args_required_const(0)]
-pub unsafe fn __tcancel(imm0: u32) {
+pub unsafe fn __tcancel(imm0: u64) {
     macro_rules! call {
         ($imm0:expr) => {
             aarch64_tcancel($imm0)
@@ -111,8 +111,8 @@ pub unsafe fn __tcancel(imm0: u32) {
 #[inline]
 #[target_feature(enable = "tme")]
 #[cfg_attr(test, assert_instr(ttest))]
-pub unsafe fn __ttest() -> u32 {
-    aarch64_ttest() as _
+pub unsafe fn __ttest() -> u64 {
+    aarch64_ttest()
 }
 
 #[cfg(test)]
@@ -121,6 +121,8 @@ mod tests {
 
     use crate::core_arch::aarch64::*;
 
+    const CANCEL_CODE: u64 = (0 | (0x123 & _TMFAILURE_REASON) as u64) as u64;
+
     #[simd_test(enable = "tme")]
     unsafe fn test_tstart() {
         let mut x = 0;
@@ -128,7 +130,7 @@ mod tests {
             let code = tme::__tstart();
             if code == _TMSTART_SUCCESS {
                 x += 1;
-                assert_eq!(x, i+1);
+                assert_eq!(x, i + 1);
                 break;
             }
             assert_eq!(x, 0);
@@ -142,25 +144,23 @@ mod tests {
             let code = tme::__tstart();
             if code == _TMSTART_SUCCESS {
                 x += 1;
-                assert_eq!(x, i+1);
+                assert_eq!(x, i + 1);
                 tme::__tcommit();
             }
-            assert_eq!(x, i+1);
+            assert_eq!(x, i + 1);
         }
     }
 
     #[simd_test(enable = "tme")]
     unsafe fn test_tcancel() {
-        let reason = 0x123;
-        let cancel_code = (0 | (reason & _TMFAILURE_REASON) as i32) as u32;
         let mut x = 0;
 
         for i in 0..10 {
             let code = tme::__tstart();
             if code == _TMSTART_SUCCESS {
                 x += 1;
-                assert_eq!(x, i+1);
-                tme::__tcancel(cancel_code);
+                assert_eq!(x, i + 1);
+                tme::__tcancel(CANCEL_CODE);
                 break;
             }
         }
@@ -170,14 +170,12 @@ mod tests {
 
     #[simd_test(enable = "tme")]
     unsafe fn test_ttest() {
-        let reason = 0x123;
-        let cancel_code = (0 | (reason & _TMFAILURE_REASON) as i32) as u32;
         for _ in 0..10 {
             let code = tme::__tstart();
             if code == _TMSTART_SUCCESS {
                 if tme::__ttest() == 2 {
-              	     tme::__tcancel(cancel_code);
-                  	 break;
+                    tme::__tcancel(CANCEL_CODE);
+                    break;
                 }
             }
         }

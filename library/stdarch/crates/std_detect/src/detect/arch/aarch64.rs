@@ -33,4 +33,6 @@ features! {
     /// Release consistent Processor consistent (RcPc)
     @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] dotprod: "dotprod";
     /// Vector Dot-Product (ASIMDDP)
+    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] tme: "tme";
+    /// Transactional Memory Extensions (TME)
 }

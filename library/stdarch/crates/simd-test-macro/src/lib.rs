@@ -156,5 +156,8 @@ fn find_name(item: TokenStream) -> Ident {
         }
     }
 
-    tokens.next().and_then(get_ident).expect("failed to find function name")
+    tokens
+        .next()
+        .and_then(get_ident)
+        .expect("failed to find function name")
 }
