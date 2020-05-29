@@ -1,11 +1,14 @@
 //! lint on multiple versions of a crate being used
 
 use crate::utils::{run_lints, span_lint};
+use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::{Crate, CRATE_HIR_ID};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::DUMMY_SP;
 
+use cargo_metadata::{DependencyKind, MetadataCommand, Node, Package, PackageId};
+use if_chain::if_chain;
 use itertools::Itertools;
 
 declare_clippy_lint! {
@@ -39,30 +42,61 @@ impl LateLintPass<'_, '_> for MultipleCrateVersions {
             return;
         }
 
-        let metadata = if let Ok(metadata) = cargo_metadata::MetadataCommand::new().exec() {
+        let metadata = if let Ok(metadata) = MetadataCommand::new().exec() {
             metadata
         } else {
             span_lint(cx, MULTIPLE_CRATE_VERSIONS, DUMMY_SP, "could not read cargo metadata");
-
             return;
         };
 
+        let local_name = cx.tcx.crate_name(LOCAL_CRATE).as_str();
         let mut packages = metadata.packages;
         packages.sort_by(|a, b| a.name.cmp(&b.name));
 
-        for (name, group) in &packages.into_iter().group_by(|p| p.name.clone()) {
-            let group: Vec<cargo_metadata::Package> = group.collect();
+        if_chain! {
+            if let Some(resolve) = &metadata.resolve;
+            if let Some(local_id) = packages
+                .iter()
+                .find_map(|p| if p.name == *local_name { Some(&p.id) } else { None });
+            then {
+                for (name, group) in &packages.iter().group_by(|p| p.name.clone()) {
+                    let group: Vec<&Package> = group.collect();
 
-            if group.len() > 1 {
-                let versions = group.into_iter().map(|p| p.version).join(", ");
+                    if group.len() <= 1 {
+                        continue;
+                    }
 
-                span_lint(
-                    cx,
-                    MULTIPLE_CRATE_VERSIONS,
-                    DUMMY_SP,
-                    &format!("multiple versions for dependency `{}`: {}", name, versions),
-                );
+                    if group.iter().all(|p| is_normal_dep(&resolve.nodes, local_id, &p.id)) {
+                        let mut versions: Vec<_> = group.into_iter().map(|p| &p.version).collect();
+                        versions.sort();
+                        let versions = versions.iter().join(", ");
+
+                        span_lint(
+                            cx,
+                            MULTIPLE_CRATE_VERSIONS,
+                            DUMMY_SP,
+                            &format!("multiple versions for dependency `{}`: {}", name, versions),
+                        );
+                    }
+                }
             }
         }
     }
+}
+
+fn is_normal_dep(nodes: &[Node], local_id: &PackageId, dep_id: &PackageId) -> bool {
+    fn depends_on(node: &Node, dep_id: &PackageId) -> bool {
+        node.deps.iter().any(|dep| {
+            dep.pkg == *dep_id
+                && dep
+                    .dep_kinds
+                    .iter()
+                    .any(|info| matches!(info.kind, DependencyKind::Normal))
+        })
+    }
+
+    nodes
+        .iter()
+        .filter(|node| depends_on(node, dep_id))
+        .any(|node| node.id == *local_id || is_normal_dep(nodes, local_id, &node.id))
 }

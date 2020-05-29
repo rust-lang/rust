@@ -23,6 +23,7 @@ declare_clippy_lint! {
     /// [package]
     /// name = "clippy"
     /// version = "0.0.212"
+    /// authors = ["Someone <someone@rust-lang.org>"]
     /// description = "A bunch of helpful lints to avoid common pitfalls in Rust"
     /// repository = "https://github.com/rust-lang/rust-clippy"
     /// readme = "README.md"

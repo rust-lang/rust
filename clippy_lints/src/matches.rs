@@ -168,7 +168,7 @@ declare_clippy_lint! {
     /// **What it does:** Checks for arm which matches all errors with `Err(_)`
     /// and take drastic actions like `panic!`.
     ///
-    /// **Why is this bad?** It is generally a bad practice, just like
+    /// **Why is this bad?** It is generally a bad practice, similar to
     /// catching all exceptions in java with `catch(Exception)`
     ///
     /// **Known problems:** None.
@@ -182,7 +182,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     pub MATCH_WILD_ERR_ARM,
-    style,
+    pedantic,
     "a `match` with `Err(_)` arm and take drastic actions"
 }
 
@@ -220,13 +220,47 @@ declare_clippy_lint! {
     /// # enum Foo { A(usize), B(usize) }
     /// # let x = Foo::B(1);
     /// match x {
-    ///     A => {},
+    ///     Foo::A(_) => {},
     ///     _ => {},
     /// }
     /// ```
     pub WILDCARD_ENUM_MATCH_ARM,
     restriction,
     "a wildcard enum match arm using `_`"
+}
+
+declare_clippy_lint! {
+    /// **What it does:** Checks for wildcard enum matches for a single variant.
+    ///
+    /// **Why is this bad?** New enum variants added by library updates can be missed.
+    ///
+    /// **Known problems:** Suggested replacements may not use correct path to enum
+    /// if it's not present in the current scope.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// # enum Foo { A, B, C }
+    /// # let x = Foo::B;
+    /// match x {
+    ///     Foo::A => {},
+    ///     Foo::B => {},
+    ///     _ => {},
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// # enum Foo { A, B, C }
+    /// # let x = Foo::B;
+    /// match x {
+    ///     Foo::A => {},
+    ///     Foo::B => {},
+    ///     Foo::C => {},
+    /// }
+    /// ```
+    pub MATCH_WILDCARD_FOR_SINGLE_VARIANTS,
+    pedantic,
+    "a wildcard enum match for a single variant"
 }
 
 declare_clippy_lint! {
@@ -356,6 +390,7 @@ impl_lint_pass!(Matches => [
     MATCH_WILD_ERR_ARM,
     MATCH_AS_REF,
     WILDCARD_ENUM_MATCH_ARM,
+    MATCH_WILDCARD_FOR_SINGLE_VARIANTS,
     WILDCARD_IN_OR_PATTERNS,
     MATCH_SINGLE_BINDING,
     INFALLIBLE_DESTRUCTURING_MATCH,
@@ -676,7 +711,7 @@ fn check_wild_err_arm(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>])
                                 arm.pat.span,
                                 &format!("`Err({})` matches all errors", &ident_bind_name),
                                 None,
-                                "match each error separately or use the error output",
+                                "match each error separately or use the error output, or use `.except(msg)` if the error case is unreachable",
                             );
                         }
                     }
@@ -729,9 +764,21 @@ fn check_wild_enum_match(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_
                 if let QPath::Resolved(_, p) = path {
                     missing_variants.retain(|e| e.ctor_def_id != Some(p.res.def_id()));
                 }
-            } else if let PatKind::TupleStruct(ref path, ..) = arm.pat.kind {
+            } else if let PatKind::TupleStruct(ref path, ref patterns, ..) = arm.pat.kind {
                 if let QPath::Resolved(_, p) = path {
-                    missing_variants.retain(|e| e.ctor_def_id != Some(p.res.def_id()));
+                    // Some simple checks for exhaustive patterns.
+                    // There is a room for improvements to detect more cases,
+                    // but it can be more expensive to do so.
+                    let is_pattern_exhaustive = |pat: &&Pat<'_>| {
+                        if let PatKind::Wild | PatKind::Binding(.., None) = pat.kind {
+                            true
+                        } else {
+                            false
+                        }
+                    };
+                    if patterns.iter().all(is_pattern_exhaustive) {
+                        missing_variants.retain(|e| e.ctor_def_id != Some(p.res.def_id()));
+                    }
                 }
             }
         }
@@ -766,6 +813,19 @@ fn check_wild_enum_match(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_
             }
         }
 
+        if suggestion.len() == 1 {
+            // No need to check for non-exhaustive enum as in that case len would be greater than 1
+            span_lint_and_sugg(
+                cx,
+                MATCH_WILDCARD_FOR_SINGLE_VARIANTS,
+                wildcard_span,
+                message,
+                "try this",
+                suggestion[0].clone(),
+                Applicability::MaybeIncorrect,
+            )
+        };
+
         span_lint_and_sugg(
             cx,
             WILDCARD_ENUM_MATCH_ARM,
@@ -773,7 +833,7 @@ fn check_wild_enum_match(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_
             message,
             "try this",
             suggestion.join(" | "),
-            Applicability::MachineApplicable,
+            Applicability::MaybeIncorrect,
         )
     }
 }

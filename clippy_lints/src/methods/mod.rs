@@ -1496,17 +1496,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
             if let ty::Opaque(def_id, _) = ret_ty.kind {
                 // one of the associated types must be Self
                 for predicate in cx.tcx.predicates_of(def_id).predicates {
-                    match predicate.0.kind() {
-                        ty::PredicateKind::Projection(poly_projection_predicate) => {
-                            let binder = poly_projection_predicate.ty();
-                            let associated_type = binder.skip_binder();
+                    if let ty::PredicateKind::Projection(poly_projection_predicate) = predicate.0.kind() {
+                        let binder = poly_projection_predicate.ty();
+                        let associated_type = binder.skip_binder();
 
-                            // walk the associated type and check for Self
-                            if contains_self_ty(associated_type) {
-                                return;
-                            }
-                        },
-                        _ => {},
+                        // walk the associated type and check for Self
+                        if contains_self_ty(associated_type) {
+                            return;
+                        }
                     }
                 }
             }
@@ -1617,6 +1614,21 @@ fn lint_or_fun_call<'a, 'tcx>(
         or_has_args: bool,
         span: Span,
     ) {
+        if let hir::ExprKind::MethodCall(ref path, _, ref args) = &arg.kind {
+            if path.ident.as_str() == "len" {
+                let ty = walk_ptrs_ty(cx.tables.expr_ty(&args[0]));
+
+                match ty.kind {
+                    ty::Slice(_) | ty::Array(_, _) => return,
+                    _ => (),
+                }
+
+                if match_type(cx, ty, &paths::VEC) {
+                    return;
+                }
+            }
+        }
+
         // (path, fn_has_argument, methods, suffix)
         let know_types: &[(&[_], _, &[_], _)] = &[
             (&paths::BTREEMAP_ENTRY, false, &["or_insert"], "with"),
