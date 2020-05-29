@@ -12,4 +12,6 @@ stack backtrace:
    9: std::rt::lang_start_internal
   10: std::rt::lang_start
   11: main
+  12: __libc_start_main
+  13: _start
 note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
