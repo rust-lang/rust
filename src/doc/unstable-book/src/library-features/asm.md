@@ -468,12 +468,17 @@ Here is the list of currently supported register classes:
 | ARM | `qreg` | `q[0-15]` | `w` |
 | ARM | `qreg_low8` | `q[0-7]` | `t` |
 | ARM | `qreg_low4` | `q[0-3]` | `x` |
+| NVPTX | `reg16` | None\* | `h` |
+| NVPTX | `reg32` | None\* | `r` |
+| NVPTX | `reg64` | None\* | `l` |
 | RISC-V | `reg` | `x1`, `x[5-7]`, `x[9-15]`, `x[16-31]` (non-RV32E) | `r` |
 | RISC-V | `freg` | `f[0-31]` | `f` |
 
 > **Note**: On x86 we treat `reg_byte` differently from `reg` because the compiler can allocate `al` and `ah` separately whereas `reg` reserves the whole register.
 >
 > Note #2: On x86-64 the high byte registers (e.g. `ah`) are only available when used as an explicit register. Specifying the `reg_byte` register class for an operand will always allocate a low byte register.
+>
+> Note #3: NVPTX doesn't have a fixed register set, so named registers are not supported.
 
 Additional register classes may be added in the future based on demand (e.g. MMX, x87, etc).
 
@@ -495,6 +500,9 @@ Each register class has constraints on which value types they can be used with. 
 | ARM | `sreg` | `vfp2` | `i32`, `f32` |
 | ARM | `dreg` | `vfp2` | `i64`, `f64`, `i8x8`, `i16x4`, `i32x2`, `i64x1`, `f32x2` |
 | ARM | `qreg` | `neon` | `i8x16`, `i16x8`, `i32x4`, `i64x2`, `f32x4` |
+| NVPTX | `reg16` | None | `i8`, `i16` |
+| NVPTX | `reg32` | None | `i8`, `i16`, `i32`, `f32` |
+| NVPTX | `reg64` | None | `i8`, `i16`, `i32`, `f32`, `i64`, `f64` |
 | RISC-V32 | `reg` | None | `i8`, `i16`, `i32`, `f32` |
 | RISC-V64 | `reg` | None | `i8`, `i16`, `i32`, `f32`, `i64`, `f64` |
 | RISC-V | `freg` | `f` | `f32` |
@@ -610,6 +618,9 @@ The supported modifiers are a subset of LLVM's (and GCC's) [asm template argumen
 | ARM | `dreg` | None | `d0` | `P` |
 | ARM | `qreg` | None | `q0` | `q` |
 | ARM | `qreg` | `e` / `f` | `d0` / `d1` | `e` / `f` |
+| NVPTX | `reg16` | None | `rs0` | None |
+| NVPTX | `reg32` | None | `r0` | None |
+| NVPTX | `reg64` | None | `rd0` | None |
 | RISC-V | `reg` | None | `x1` | None |
 | RISC-V | `freg` | None | `f0` | None |
 
