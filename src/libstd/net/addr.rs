@@ -1,3 +1,4 @@
+use crate::cmp::Ordering;
 use crate::convert::TryInto;
 use crate::fmt;
 use crate::hash;
@@ -36,7 +37,7 @@ use crate::vec;
 /// assert_eq!(socket.port(), 8080);
 /// assert_eq!(socket.is_ipv4(), true);
 /// ```
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum SocketAddr {
     /// An IPv4 socket address.
@@ -653,10 +654,74 @@ impl PartialEq for SocketAddrV6 {
             && self.inner.sin6_scope_id == other.inner.sin6_scope_id
     }
 }
+#[stable(feature = "socketaddr_ordering", since = "1.45.0")]
+impl PartialEq<SocketAddrV4> for SocketAddr {
+    fn eq(&self, other: &SocketAddrV4) -> bool {
+        match self {
+            SocketAddr::V4(v4) => v4 == other,
+            SocketAddr::V6(_) => false,
+        }
+    }
+}
+#[stable(feature = "socketaddr_ordering", since = "1.45.0")]
+impl PartialEq<SocketAddrV6> for SocketAddr {
+    fn eq(&self, other: &SocketAddrV6) -> bool {
+        match self {
+            SocketAddr::V4(_) => false,
+            SocketAddr::V6(v6) => v6 == other,
+        }
+    }
+}
+#[stable(feature = "socketaddr_ordering", since = "1.45.0")]
+impl PartialEq<SocketAddr> for SocketAddrV4 {
+    fn eq(&self, other: &SocketAddr) -> bool {
+        match other {
+            SocketAddr::V4(v4) => self == v4,
+            SocketAddr::V6(_) => false,
+        }
+    }
+}
+#[stable(feature = "socketaddr_ordering", since = "1.45.0")]
+impl PartialEq<SocketAddr> for SocketAddrV6 {
+    fn eq(&self, other: &SocketAddr) -> bool {
+        match other {
+            SocketAddr::V4(_) => false,
+            SocketAddr::V6(v6) => self == v6,
+        }
+    }
+}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Eq for SocketAddrV4 {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Eq for SocketAddrV6 {}
+
+#[stable(feature = "socketaddr_ordering", since = "1.45.0")]
+impl PartialOrd for SocketAddrV4 {
+    fn partial_cmp(&self, other: &SocketAddrV4) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+#[stable(feature = "socketaddr_ordering", since = "1.45.0")]
+impl PartialOrd for SocketAddrV6 {
+    fn partial_cmp(&self, other: &SocketAddrV6) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+#[stable(feature = "socketaddr_ordering", since = "1.45.0")]
+impl Ord for SocketAddrV4 {
+    fn cmp(&self, other: &SocketAddrV4) -> Ordering {
+        self.ip().cmp(other.ip()).then(self.port().cmp(&other.port()))
+    }
+}
+
+#[stable(feature = "socketaddr_ordering", since = "1.45.0")]
+impl Ord for SocketAddrV6 {
+    fn cmp(&self, other: &SocketAddrV6) -> Ordering {
+        self.ip().cmp(other.ip()).then(self.port().cmp(&other.port()))
+    }
+}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl hash::Hash for SocketAddrV4 {
@@ -1101,5 +1166,45 @@ mod tests {
         ));
         assert!(!v6.is_ipv4());
         assert!(v6.is_ipv6());
+    }
+
+    #[test]
+    fn compare() {
+        let v4_1 = "224.120.45.1:23456".parse::<SocketAddrV4>().unwrap();
+        let v4_2 = "224.210.103.5:12345".parse::<SocketAddrV4>().unwrap();
+        let v4_3 = "224.210.103.5:23456".parse::<SocketAddrV4>().unwrap();
+        let v6_1 = "[2001:db8:f00::1002]:23456".parse::<SocketAddrV6>().unwrap();
+        let v6_2 = "[2001:db8:f00::2001]:12345".parse::<SocketAddrV6>().unwrap();
+        let v6_3 = "[2001:db8:f00::2001]:23456".parse::<SocketAddrV6>().unwrap();
+
+        // equality
+        assert_eq!(v4_1, v4_1);
+        assert_eq!(v6_1, v6_1);
+        assert_eq!(v4_1, SocketAddr::V4(v4_1));
+        assert_eq!(v6_1, SocketAddr::V6(v6_1));
+        assert_eq!(SocketAddr::V4(v4_1), SocketAddr::V4(v4_1));
+        assert_eq!(SocketAddr::V6(v6_1), SocketAddr::V6(v6_1));
+        assert!(v4_1 != SocketAddr::V6(v6_1));
+        assert!(v6_1 != SocketAddr::V4(v4_1));
+        assert!(v4_1 != v4_2);
+        assert!(v6_1 != v6_2);
+
+        // compare different addresses
+        assert!(v4_1 < v4_2);
+        assert!(v6_1 < v6_2);
+        assert!(v4_2 > v4_1);
+        assert!(v6_2 > v6_1);
+
+        // compare the same address with different ports
+        assert!(v4_2 < v4_3);
+        assert!(v6_2 < v6_3);
+        assert!(v4_3 > v4_2);
+        assert!(v6_3 > v6_2);
+
+        // compare different addresses with the same port
+        assert!(v4_1 < v4_3);
+        assert!(v6_1 < v6_3);
+        assert!(v4_3 > v4_1);
+        assert!(v6_3 > v6_1);
     }
 }
