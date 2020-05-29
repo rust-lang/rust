@@ -27,7 +27,43 @@ LL | fn explicit<'a>(x: &'a i32) -> impl Copy + 'a { x }
    |                                          ^^^^
 
 error: cannot infer an appropriate lifetime
-  --> $DIR/must_outlive_least_region_or_bound.rs:12:69
+  --> $DIR/must_outlive_least_region_or_bound.rs:9:46
+   |
+LL | fn elided2(x: &i32) -> impl Copy + 'static { x }
+   |               ----     -------------------   ^ ...and is captured here
+   |               |        |
+   |               |        ...is required to be `'static` by this...
+   |               data with this lifetime...
+   |
+help: to permit non-static references in an `impl Trait` value, you can add an explicit bound for the anonymous lifetime #1 defined on the function body at 9:1
+   |
+LL | fn elided2(x: &i32) -> impl Copy + '_ { x }
+   |                                    ^^
+
+error: cannot infer an appropriate lifetime
+  --> $DIR/must_outlive_least_region_or_bound.rs:12:55
+   |
+LL | fn explicit2<'a>(x: &'a i32) -> impl Copy + 'static { x }
+   |                     -------     -------------------   ^ ...and is captured here
+   |                     |           |
+   |                     |           ...is required to be `'static` by this...
+   |                     data with this lifetime...
+   |
+help: to permit non-static references in an `impl Trait` value, you can add an explicit bound for the lifetime `'a` as defined on the function body at 12:14
+   |
+LL | fn explicit2<'a>(x: &'a i32) -> impl Copy + 'a { x }
+   |                                             ^^
+
+error[E0621]: explicit lifetime required in the type of `x`
+  --> $DIR/must_outlive_least_region_or_bound.rs:15:24
+   |
+LL | fn foo<'a>(x: &i32) -> impl Copy + 'a { x }
+   |               ----     ^^^^^^^^^^^^^^ lifetime `'a` required
+   |               |
+   |               help: add explicit lifetime `'a` to the type of `x`: `&'a i32`
+
+error: cannot infer an appropriate lifetime
+  --> $DIR/must_outlive_least_region_or_bound.rs:33:69
    |
 LL | fn with_bound<'a>(x: &'a i32) -> impl LifetimeTrait<'a> + 'static { x }
    |                      -------     --------------------------------   ^ ...and is captured here
@@ -35,13 +71,13 @@ LL | fn with_bound<'a>(x: &'a i32) -> impl LifetimeTrait<'a> + 'static { x }
    |                      |           ...is required to be `'static` by this...
    |                      data with this lifetime...
    |
-help: to permit non-static references in an `impl Trait` value, you can add an explicit bound for the lifetime `'a` as defined on the function body at 12:15
+help: to permit non-static references in an `impl Trait` value, you can add an explicit bound for the lifetime `'a` as defined on the function body at 33:15
    |
-LL | fn with_bound<'a>(x: &'a i32) -> impl LifetimeTrait<'a> + 'static + 'a { x }
-   |                                                                   ^^^^
+LL | fn with_bound<'a>(x: &'a i32) -> impl LifetimeTrait<'a> + 'a { x }
+   |                                                           ^^
 
 error[E0623]: lifetime mismatch
-  --> $DIR/must_outlive_least_region_or_bound.rs:17:61
+  --> $DIR/must_outlive_least_region_or_bound.rs:38:61
    |
 LL | fn move_lifetime_into_fn<'a, 'b>(x: &'a u32, y: &'b u32) -> impl Fn(&'a u32) {
    |                                                 -------     ^^^^^^^^^^^^^^^^
@@ -50,14 +86,79 @@ LL | fn move_lifetime_into_fn<'a, 'b>(x: &'a u32, y: &'b u32) -> impl Fn(&'a u32
    |                                                 this parameter and the return type are declared with different lifetimes...
 
 error[E0310]: the parameter type `T` may not live long enough
-  --> $DIR/must_outlive_least_region_or_bound.rs:22:51
+  --> $DIR/must_outlive_least_region_or_bound.rs:43:51
    |
 LL | fn ty_param_wont_outlive_static<T:Debug>(x: T) -> impl Debug + 'static {
    |                                 --                ^^^^^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
    |                                 |
    |                                 help: consider adding an explicit lifetime bound...: `T: 'static +`
 
-error: aborting due to 5 previous errors
+error: cannot infer an appropriate lifetime
+  --> $DIR/must_outlive_least_region_or_bound.rs:18:50
+   |
+LL | fn elided3(x: &i32) -> Box<dyn Debug> { Box::new(x) }
+   |               ----                      ---------^-
+   |               |                         |        |
+   |               |                         |        ...and is captured here
+   |               |                         ...is required to be `'static` by this...
+   |               data with this lifetime...
+   |
+help: to permit non-static references in a `dyn Trait` value, you can add an explicit bound for the anonymous lifetime #1 defined on the function body at 18:1
+   |
+LL | fn elided3(x: &i32) -> Box<dyn Debug + '_> { Box::new(x) }
+   |                                      ^^^^
 
-Some errors have detailed explanations: E0310, E0623.
+error: cannot infer an appropriate lifetime
+  --> $DIR/must_outlive_least_region_or_bound.rs:21:59
+   |
+LL | fn explicit3<'a>(x: &'a i32) -> Box<dyn Debug> { Box::new(x) }
+   |                     -------                      ---------^-
+   |                     |                            |        |
+   |                     |                            |        ...and is captured here
+   |                     |                            ...is required to be `'static` by this...
+   |                     data with this lifetime...
+   |
+help: to permit non-static references in a `dyn Trait` value, you can add an explicit bound for the lifetime `'a` as defined on the function body at 21:14
+   |
+LL | fn explicit3<'a>(x: &'a i32) -> Box<dyn Debug + 'a> { Box::new(x) }
+   |                                               ^^^^
+
+error[E0621]: explicit lifetime required in the type of `x`
+  --> $DIR/must_outlive_least_region_or_bound.rs:24:51
+   |
+LL | fn elided4(x: &i32) -> Box<dyn Debug + 'static> { Box::new(x) }
+   |               ----                                ^^^^^^^^^^^ lifetime `'static` required
+   |               |
+   |               help: add explicit lifetime `'static` to the type of `x`: `&'static i32`
+
+error[E0495]: cannot infer an appropriate lifetime due to conflicting requirements
+  --> $DIR/must_outlive_least_region_or_bound.rs:27:69
+   |
+LL | fn explicit4<'a>(x: &'a i32) -> Box<dyn Debug + 'static> { Box::new(x) }
+   |                                                                     ^
+   |
+note: first, the lifetime cannot outlive the lifetime `'a` as defined on the function body at 27:14...
+  --> $DIR/must_outlive_least_region_or_bound.rs:27:14
+   |
+LL | fn explicit4<'a>(x: &'a i32) -> Box<dyn Debug + 'static> { Box::new(x) }
+   |              ^^
+note: ...so that the expression is assignable
+  --> $DIR/must_outlive_least_region_or_bound.rs:27:69
+   |
+LL | fn explicit4<'a>(x: &'a i32) -> Box<dyn Debug + 'static> { Box::new(x) }
+   |                                                                     ^
+   = note: expected  `&i32`
+              found  `&'a i32`
+   = note: but, the lifetime must be valid for the static lifetime...
+note: ...so that the expression is assignable
+  --> $DIR/must_outlive_least_region_or_bound.rs:27:60
+   |
+LL | fn explicit4<'a>(x: &'a i32) -> Box<dyn Debug + 'static> { Box::new(x) }
+   |                                                            ^^^^^^^^^^^
+   = note: expected  `std::boxed::Box<(dyn std::fmt::Debug + 'static)>`
+              found  `std::boxed::Box<dyn std::fmt::Debug>`
+
+error: aborting due to 12 previous errors
+
+Some errors have detailed explanations: E0310, E0495, E0621, E0623.
 For more information about an error, try `rustc --explain E0310`.
