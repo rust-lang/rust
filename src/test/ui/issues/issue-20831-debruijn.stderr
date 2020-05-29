@@ -87,8 +87,8 @@ note: ...so that the types are compatible
    |
 LL |     fn subscribe(&mut self, t : Box<dyn Subscriber<Input=<Self as Publisher>::Output> + 'a>) {
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: expected  `Publisher<'_>`
-              found  `Publisher<'_>`
+   = note: expected `Publisher<'_>`
+              found `Publisher<'_>`
 
 error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
   --> $DIR/issue-20831-debruijn.rs:28:33
@@ -117,8 +117,8 @@ note: ...so that the types are compatible
    |
 LL |     fn subscribe(&mut self, t : Box<dyn Subscriber<Input=<Self as Publisher>::Output> + 'a>) {
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: expected  `Publisher<'_>`
-              found  `Publisher<'_>`
+   = note: expected `Publisher<'_>`
+              found `Publisher<'_>`
 
 error: aborting due to 4 previous errors
 

@@ -14,8 +14,8 @@ note: ...so that the types are compatible
    |
 LL |     match (&t,) {
    |           ^^^^^
-   = note: expected  `(&&(T,),)`
-              found  `(&&'a (T,),)`
+   = note: expected `(&&(T,),)`
+              found `(&&'a (T,),)`
 note: but, the lifetime must be valid for the lifetime `'b` as defined on the function body at 1:27...
   --> $DIR/issue-52213.rs:1:27
    |
