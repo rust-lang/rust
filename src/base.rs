@@ -77,7 +77,6 @@ pub(crate) fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
     let local_map = fx.local_map;
     let cold_blocks = fx.cold_blocks;
 
-    #[cfg(debug_assertions)]
     crate::pretty_clif::write_clif_file(cx.tcx, "unopt", instance, &context.func, &clif_comments, None);
 
     // Verify function
@@ -106,7 +105,6 @@ pub(crate) fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
     );
 
     // Write optimized function to file for debugging
-    #[cfg(debug_assertions)]
     {
         let value_ranges = context
             .build_value_labels_ranges(cx.module.isa())

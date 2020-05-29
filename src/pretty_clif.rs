@@ -6,6 +6,8 @@ use cranelift_codegen::{
     write::{FuncWriter, PlainWriter},
 };
 
+use rustc_session::config::OutputType;
+
 use crate::prelude::*;
 
 /// This module provides the [CommentWriter] which makes it possible
@@ -198,7 +200,6 @@ impl<B: Backend + 'static> FunctionCx<'_, '_, B> {
     }
 }
 
-#[cfg(debug_assertions)]
 pub(crate) fn write_clif_file<'tcx>(
     tcx: TyCtxt<'tcx>,
     postfix: &str,
@@ -207,6 +208,10 @@ pub(crate) fn write_clif_file<'tcx>(
     mut clif_comments: &CommentWriter,
     value_ranges: Option<&cranelift_codegen::ValueLabelsRanges>,
 ) {
+    if !(cfg!(debug_assertions) || tcx.sess.opts.output_types.contains_key(&OutputType::LlvmAssembly)) {
+        return;
+    }
+
     use std::io::Write;
 
     let symbol_name = tcx.symbol_name(instance).name.as_str();
