@@ -86,6 +86,8 @@ impl FileLoader for RealFileLoader {
 #[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug)]
 pub struct StableSourceFileId(u128);
 
+// FIXME: we need a more globally consistent approach to the problem solved by
+// StableSourceFileId, perhaps built atop source_file.name_hash.
 impl StableSourceFileId {
     pub fn new(source_file: &SourceFile) -> StableSourceFileId {
         StableSourceFileId::new_from_pieces(
@@ -102,7 +104,14 @@ impl StableSourceFileId {
     ) -> StableSourceFileId {
         let mut hasher = StableHasher::new();
 
-        name.hash(&mut hasher);
+        if let FileName::Real(real_name) = name {
+            // rust-lang/rust#70924: Use the stable (virtualized) name when
+            // available. (We do not want artifacts from transient file system
+            // paths for libstd to leak into our build artifacts.)
+            real_name.stable_name().hash(&mut hasher)
+        } else {
+            name.hash(&mut hasher);
+        }
         name_was_remapped.hash(&mut hasher);
         unmapped_path.hash(&mut hasher);
 

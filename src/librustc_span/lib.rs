@@ -99,6 +99,7 @@ pub enum RealFileName {
 
 impl RealFileName {
     /// Returns the path suitable for reading from the file system on the local host.
+    /// Avoid embedding this in build artifacts; see `stable_name` for that.
     pub fn local_path(&self) -> &Path {
         match self {
             RealFileName::Named(p)
@@ -107,10 +108,22 @@ impl RealFileName {
     }
 
     /// Returns the path suitable for reading from the file system on the local host.
+    /// Avoid embedding this in build artifacts; see `stable_name` for that.
     pub fn into_local_path(self) -> PathBuf {
         match self {
             RealFileName::Named(p)
             | RealFileName::Devirtualized { local_path: p, virtual_name: _ } => p,
+        }
+    }
+
+    /// Returns the path suitable for embedding into build artifacts. Note that
+    /// a virtualized path will not correspond to a valid file system path; see
+    /// `local_path` for something that is more likely to return paths into the
+    /// local host file system.
+    pub fn stable_name(&self) -> &Path {
+        match self {
+            RealFileName::Named(p)
+            | RealFileName::Devirtualized { local_path: _, virtual_name: p } => &p,
         }
     }
 }
