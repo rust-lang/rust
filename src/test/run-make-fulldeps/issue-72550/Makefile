@@ -2,31 +2,32 @@
 
 
 ifeq ($(UNAME),Darwin)
-SNAPSHOT := apple.stderr
+SNAPSHOT_NAME := apple.stderr
 else
 ifdef IS_WINDOWS
 # TODO: Actually get the line numbers for windows and linux
 # TODO: Find a way to prevent the snapshot from changing every time the
 #       implementation files chage. Probably using `sed` or `cat-and-grep`?
-SNAPSHOT := windows.stderr
+SNAPSHOT_NAME := windows.stderr
 else
 # TODO: which other platforms use this branch?
-SNAPSHOT := linux.stderr
+SNAPSHOT_NAME := linux.stderr
 endif
 endif
 
+ifdef BLESS
+COMPARE_SNAPSHOTS := echo "updating snapshot $(SNAPSHOT_NAME)" && mv $(TMPDIR)/panic.stderr.actual $(SNAPSHOT_NAME)
+else
+COMPARE_SNAPSHOTS := diff -u $(TMPDIR)/panic.stderr.actual $(SNAPSHOT_NAME) \
+	|| ( \
+		echo "stderr does not match snapshot $(SNAPSHOT_NAME)." && \
+		echo "Re-run with BLESS=1 to update." && \
+		exit 1 \
+	)
+endif
 
 
 all:
 	$(RUSTC) $(COMPILE_FLAGS) test.rs
-	# TODO: put $(SNAPSHOT).actual in a tmpdir somewhere.
-	$(call FAIL,test) > $(SNAPSHOT).actual
-	[ -n "$(BLESS)" ] && echo "updating snapshot $(SNAPSHOT)" && mv $(SNAPSHOT).actual $(SNAPSHOT) \
-		|| ( \
-			diff -u $(SNAPSHOT).actual $(SNAPSHOT) && true rm $(SNAPSHOT).actual \
-		) \
-		|| ( \
-			echo "stderr does not match snapshot $(SNAPSHOT)." && \
-			echo "Re-run with BLESS=1 to update." && \
-			exit 1 \
-		)
+	RUST_BACKTRACE=1 $(call RUN,test) 2> $(TMPDIR)/panic.stderr.actual && exit 1 || exit 0
+	$(COMPARE_SNAPSHOTS)
