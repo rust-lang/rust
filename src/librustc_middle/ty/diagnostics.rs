@@ -220,22 +220,11 @@ pub fn suggest_constraining_type_param(
             }
         }
 
-        // Account for `fn foo<T>(t: T) where T: Foo,` so we don't suggest two trailing commas.
-        let end = generics.where_clause.span_for_predicates_or_empty_place().shrink_to_hi();
-        let where_clause_span = generics
-            .where_clause
-            .predicates
-            .last()
-            .map(|p| p.span())
-            .unwrap_or(end)
-            .shrink_to_hi()
-            .to(end);
-
         match &param_spans[..] {
             &[&param_span] => suggest_restrict(param_span.shrink_to_hi()),
             _ => {
                 err.span_suggestion_verbose(
-                    where_clause_span,
+                    generics.where_clause.tail_span_for_suggestion(),
                     &msg_restrict_type_further,
                     format!(", {}: {}", param_name, constraint),
                     Applicability::MachineApplicable,
