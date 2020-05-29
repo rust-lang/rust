@@ -112,17 +112,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4785bdd1c96b2a846b2bd7cc02e86b6b3dbf14e7e53446c4f54c92a361040822"
 
 [[package]]
-name = "chalk-base"
-version = "0.10.1-dev"
-source = "git+https://github.com/rust-lang/chalk.git?rev=5a3b871ca17529ab5aa5787594fabad1634936cb#5a3b871ca17529ab5aa5787594fabad1634936cb"
-dependencies = [
- "lazy_static",
-]
-
-[[package]]
 name = "chalk-derive"
 version = "0.10.1-dev"
-source = "git+https://github.com/rust-lang/chalk.git?rev=5a3b871ca17529ab5aa5787594fabad1634936cb#5a3b871ca17529ab5aa5787594fabad1634936cb"
+source = "git+https://github.com/rust-lang/chalk.git?rev=329b7f3fdd2431ed6f6778cde53f22374c7d094c#329b7f3fdd2431ed6f6778cde53f22374c7d094c"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -133,9 +125,8 @@ dependencies = [
 [[package]]
 name = "chalk-engine"
 version = "0.10.1-dev"
-source = "git+https://github.com/rust-lang/chalk.git?rev=5a3b871ca17529ab5aa5787594fabad1634936cb#5a3b871ca17529ab5aa5787594fabad1634936cb"
+source = "git+https://github.com/rust-lang/chalk.git?rev=329b7f3fdd2431ed6f6778cde53f22374c7d094c#329b7f3fdd2431ed6f6778cde53f22374c7d094c"
 dependencies = [
- "chalk-base",
  "chalk-derive",
  "chalk-ir",
  "rustc-hash",
@@ -144,18 +135,17 @@ dependencies = [
 [[package]]
 name = "chalk-ir"
 version = "0.10.1-dev"
-source = "git+https://github.com/rust-lang/chalk.git?rev=5a3b871ca17529ab5aa5787594fabad1634936cb#5a3b871ca17529ab5aa5787594fabad1634936cb"
+source = "git+https://github.com/rust-lang/chalk.git?rev=329b7f3fdd2431ed6f6778cde53f22374c7d094c#329b7f3fdd2431ed6f6778cde53f22374c7d094c"
 dependencies = [
- "chalk-base",
  "chalk-derive",
+ "lazy_static",
 ]
 
 [[package]]
 name = "chalk-solve"
 version = "0.10.1-dev"
-source = "git+https://github.com/rust-lang/chalk.git?rev=5a3b871ca17529ab5aa5787594fabad1634936cb#5a3b871ca17529ab5aa5787594fabad1634936cb"
+source = "git+https://github.com/rust-lang/chalk.git?rev=329b7f3fdd2431ed6f6778cde53f22374c7d094c#329b7f3fdd2431ed6f6778cde53f22374c7d094c"
 dependencies = [
- "chalk-base",
  "chalk-derive",
  "chalk-engine",
  "chalk-ir",
