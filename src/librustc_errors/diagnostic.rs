@@ -193,9 +193,18 @@ impl Diagnostic {
         expected_extra: &dyn fmt::Display,
         found_extra: &dyn fmt::Display,
     ) -> &mut Self {
-        let expected_label = format!("expected {}", expected_label);
-
-        let found_label = format!("found {}", found_label);
+        let expected_label = expected_label.to_string();
+        let expected_label = if expected_label.is_empty() {
+            "expected".to_string()
+        } else {
+            format!("expected {}", expected_label)
+        };
+        let found_label = found_label.to_string();
+        let found_label = if found_label.is_empty() {
+            "found".to_string()
+        } else {
+            format!("found {}", found_label)
+        };
         let (found_padding, expected_padding) = if expected_label.len() > found_label.len() {
             (expected_label.len() - found_label.len(), 0)
         } else {

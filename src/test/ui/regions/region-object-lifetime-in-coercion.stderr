@@ -39,8 +39,8 @@ note: ...so that the expression is assignable
    |
 LL |     Box::new(v)
    |              ^
-   = note: expected  `&[u8]`
-              found  `&'a [u8]`
+   = note: expected `&[u8]`
+              found `&'a [u8]`
 note: but, the lifetime must be valid for the lifetime `'b` as defined on the function body at 25:9...
   --> $DIR/region-object-lifetime-in-coercion.rs:25:9
    |
@@ -51,8 +51,8 @@ note: ...so that the expression is assignable
    |
 LL |     Box::new(v)
    |     ^^^^^^^^^^^
-   = note: expected  `std::boxed::Box<(dyn Foo + 'b)>`
-              found  `std::boxed::Box<dyn Foo>`
+   = note: expected `std::boxed::Box<(dyn Foo + 'b)>`
+              found `std::boxed::Box<dyn Foo>`
 
 error: aborting due to 4 previous errors
 

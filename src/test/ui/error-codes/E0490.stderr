@@ -58,8 +58,8 @@ note: ...so that the expression is assignable
    |
 LL |     let x: &'a _ = &y;
    |                    ^^
-   = note: expected  `&'a &()`
-              found  `&'a &'b ()`
+   = note: expected `&'a &()`
+              found `&'a &'b ()`
 note: but, the lifetime must be valid for the lifetime `'a` as defined on the function body at 1:6...
   --> $DIR/E0490.rs:1:6
    |
