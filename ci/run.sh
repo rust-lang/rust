@@ -33,8 +33,8 @@ case "${TRAVIS_OS_NAME}" in
         ;;
 esac
 
-# FIXME: Somehow we couldn't install semverver on Travis' Windows builder.
-if [ "${TRAVIS_OS_NAME}" = "windows" ]; then
+# FIXME: Sometimes we couldn't install semverver on Travis' Windows builder.
+if [ "${TRAVIS_OS_NAME}" != "linux" ]; then
     exit 0
 fi
 
