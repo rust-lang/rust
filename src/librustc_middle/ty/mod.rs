@@ -57,7 +57,7 @@ pub use self::sty::{Binder, BoundTy, BoundTyKind, BoundVar, DebruijnIndex, INNER
 pub use self::sty::{BoundRegion, EarlyBoundRegion, FreeRegion, Region};
 pub use self::sty::{CanonicalPolyFnSig, FnSig, GenSig, PolyFnSig, PolyGenSig};
 pub use self::sty::{ClosureSubsts, GeneratorSubsts, TypeAndMut, UpvarSubsts};
-pub use self::sty::{Const, ConstKind, ExistentialProjection, PolyExistentialProjection};
+pub use self::sty::{Const, InternedConst, ConstKind, ExistentialProjection, PolyExistentialProjection};
 pub use self::sty::{ConstVid, FloatVid, IntVid, RegionVid, TyVid};
 pub use self::sty::{ExistentialPredicate, InferConst, InferTy, ParamConst, ParamTy, ProjectionTy};
 pub use self::sty::{ExistentialTraitRef, PolyExistentialTraitRef};

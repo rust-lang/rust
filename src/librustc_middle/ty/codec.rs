@@ -490,6 +490,13 @@ macro_rules! implement_ty_decoder {
                 }
             }
 
+            impl<$($typaram),*> SpecializedDecoder<&'tcx $crate::ty::InternedConst<'tcx>>
+            for $DecoderName<$($typaram),*> {
+                fn specialized_decode(&mut self) -> Result<&'tcx ty::InternedConst<'tcx>, Self::Error> {
+                    decode_const(self).map(|ct| unsafe { std::mem::transmute(ct) })
+                }
+            }
+
             impl<$($typaram),*> SpecializedDecoder<&'tcx $crate::mir::interpret::Allocation>
             for $DecoderName<$($typaram),*> {
                 fn specialized_decode(

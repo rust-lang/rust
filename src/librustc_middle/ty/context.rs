@@ -856,7 +856,7 @@ impl<'tcx> CommonConsts<'tcx> {
         let mk_const = |ct| interners.const_.intern(ct, |ct| Interned(interners.arena.alloc(unsafe { std::mem::transmute(ct) }))).0;
 
         CommonConsts {
-            unit: mk_const(super::sty::InternedConst { ty: types.unit, val: ty::ConstKind::Value(ConstValue::Scalar(Scalar::zst())) }),
+            unit: mk_const(super::InternedConst { ty: types.unit, val: ty::ConstKind::Value(ConstValue::Scalar(Scalar::zst())) }),
         }
     }
 }
