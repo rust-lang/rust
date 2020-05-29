@@ -1957,6 +1957,18 @@ fn test_range() {
 }
 
 #[test]
+fn test_char_range() {
+    use std::char;
+    assert!(('\0'..=char::MAX).eq((0..=char::MAX as u32).filter_map(char::from_u32)));
+    assert!(('\0'..=char::MAX).rev().eq((0..=char::MAX as u32).filter_map(char::from_u32).rev()));
+
+    assert_eq!(('\u{D7FF}'..='\u{E000}').count(), 2);
+    assert_eq!(('\u{D7FF}'..='\u{E000}').size_hint(), (2, Some(2)));
+    assert_eq!(('\u{D7FF}'..'\u{E000}').count(), 1);
+    assert_eq!(('\u{D7FF}'..'\u{E000}').size_hint(), (1, Some(1)));
+}
+
+#[test]
 fn test_range_exhaustion() {
     let mut r = 10..10;
     assert!(r.is_empty());
