@@ -853,14 +853,10 @@ impl<'tcx> CommonLifetimes<'tcx> {
 
 impl<'tcx> CommonConsts<'tcx> {
     fn new(interners: &CtxtInterners<'tcx>, types: &CommonTypes<'tcx>) -> CommonConsts<'tcx> {
-        let mk_const = |c| interners.const_.intern(c, |c| Interned(interners.arena.alloc(c))).0;
+        let mk_const = |ct| interners.const_.intern(ct, |ct| Interned(interners.arena.alloc(unsafe { std::mem::transmute(ct) }))).0;
 
         CommonConsts {
-            unit: mk_const(Const {
-                ty: types.unit,
-                val: ty::ConstKind::Value(ConstValue::Scalar(Scalar::zst())),
-                _priv: ty::sty::PrivateMarker(()),
-            }),
+            unit: mk_const(super::sty::InternedConst { ty: types.unit, val: ty::ConstKind::Value(ConstValue::Scalar(Scalar::zst())) }),
         }
     }
 }
@@ -1990,9 +1986,9 @@ impl<'tcx> Borrow<[Predicate<'tcx>]> for Interned<'tcx, List<Predicate<'tcx>>> {
     }
 }
 
-impl<'tcx> Borrow<Const<'tcx>> for Interned<'tcx, Const<'tcx>> {
-    fn borrow<'a>(&'a self) -> &'a Const<'tcx> {
-        &self.0
+impl<'tcx> Borrow<super::sty::InternedConst<'tcx>> for Interned<'tcx, Const<'tcx>> {
+    fn borrow<'a>(&'a self) -> &'a super::sty::InternedConst<'tcx> {
+        unsafe { mem::transmute(self) }
     }
 }
 
@@ -2103,9 +2099,8 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_const(&self, ty: Ty<'tcx>, val: ConstKind<'tcx>) -> &'tcx Const<'tcx> {
-        let ct = Const { ty, val, _priv: super::sty::PrivateMarker(()) };
-
-        self.interners.const_.intern(ct, |ct| Interned(self.arena.alloc(ct))).0
+        let ct = super::sty::InternedConst { ty, val };
+        self.interners.const_.intern(ct, |ct| Interned(self.arena.alloc(unsafe { mem::transmute(ct) }))).0
     }
 
     #[inline]

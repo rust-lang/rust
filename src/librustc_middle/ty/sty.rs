@@ -30,7 +30,6 @@ use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::marker::PhantomData;
 use std::ops::Range;
-use std::ptr;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
 #[derive(HashStable, TypeFoldable, Lift)]
@@ -2180,30 +2179,24 @@ impl<'tcx> TyS<'tcx> {
 }
 
 /// Typed constant value.
-#[derive(Debug, Hash, RustcEncodable, RustcDecodable, Eq, Ord, PartialOrd)]
+#[derive(Debug, Hash, RustcEncodable, RustcDecodable, PartialEq, Eq, Ord, PartialOrd)]
 #[derive(HashStable)]
+#[repr(C)]
 pub struct Const<'tcx> {
     pub ty: Ty<'tcx>,
 
     pub val: ConstKind<'tcx>,
-
-    /// We compare `Const` by pointer equality. This would be incorrect
-    /// if we were able to create Const values on the stack.
-    ///
-    /// Only allow the creation of consts using `tcx.mk_const(ty, val)`.
-    pub _priv: PrivateMarker,
 }
 
-impl<'tcx> PartialEq for Const<'tcx> {
-    fn eq(&self, other: &Const<'tcx>) -> bool {
-        // All `Const` should be interned.
-        ptr::eq(self, other)
-    }
-}
-
-#[derive(Debug, Hash, RustcEncodable, RustcDecodable, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Debug, Hash, RustcEncodable, RustcDecodable, PartialEq, Eq, Ord, PartialOrd)]
 #[derive(HashStable)]
-pub struct PrivateMarker(pub(super) ());
+#[repr(C)]
+pub struct InternedConst<'tcx> {
+    pub ty: Ty<'tcx>,
+    pub val: ConstKind<'tcx>,
+}
+
+
 
 #[cfg(target_arch = "x86_64")]
 static_assert_size!(Const<'_>, 48);
