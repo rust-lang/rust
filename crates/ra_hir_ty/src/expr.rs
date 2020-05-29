@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use hir_def::{path::path, resolver::HasResolver, AdtId, DefWithBodyId, FunctionId};
+use hir_def::{path::path, resolver::HasResolver, AdtId, FunctionId};
 use hir_expand::diagnostics::DiagnosticSink;
 use ra_syntax::{ast, AstPtr};
 use rustc_hash::FxHashSet;
@@ -10,7 +10,6 @@ use rustc_hash::FxHashSet;
 use crate::{
     db::HirDatabase,
     diagnostics::{MissingFields, MissingMatchArms, MissingOkInTailExpr, MissingPatFields},
-    lower::CallableDef,
     utils::variant_data,
     ApplicationTy, InferenceResult, Ty, TypeCtor,
     _match::{is_useful, MatchCheckCtx, Matrix, PatStack, Usefulness},
@@ -312,72 +311,4 @@ pub fn record_pattern_missing_fields(
         return None;
     }
     Some((variant_def, missed_fields, exhaustive))
-}
-
-pub struct UnsafeExpr {
-    pub expr: ExprId,
-    pub inside_unsafe_block: bool,
-}
-
-impl UnsafeExpr {
-    fn new(expr: ExprId) -> Self {
-        Self { expr, inside_unsafe_block: false }
-    }
-}
-
-pub fn unsafe_expressions(
-    db: &dyn HirDatabase,
-    infer: &InferenceResult,
-    def: DefWithBodyId,
-) -> Vec<UnsafeExpr> {
-    let mut unsafe_exprs = vec![];
-    let mut unsafe_block_exprs = FxHashSet::default();
-    let body = db.body(def);
-    for (id, expr) in body.exprs.iter() {
-        match expr {
-            Expr::Unsafe { .. } => {
-                unsafe_block_exprs.insert(id);
-            }
-            Expr::Call { callee, .. } => {
-                let ty = &infer[*callee];
-                if let &Ty::Apply(ApplicationTy {
-                    ctor: TypeCtor::FnDef(CallableDef::FunctionId(func)),
-                    ..
-                }) = ty
-                {
-                    if db.function_data(func).is_unsafe {
-                        unsafe_exprs.push(UnsafeExpr::new(id));
-                    }
-                }
-            }
-            Expr::MethodCall { .. } => {
-                if infer
-                    .method_resolution(id)
-                    .map(|func| db.function_data(func).is_unsafe)
-                    .unwrap_or(false)
-                {
-                    unsafe_exprs.push(UnsafeExpr::new(id));
-                }
-            }
-            Expr::UnaryOp { expr, op: UnaryOp::Deref } => {
-                if let Ty::Apply(ApplicationTy { ctor: TypeCtor::RawPtr(..), .. }) = &infer[*expr] {
-                    unsafe_exprs.push(UnsafeExpr::new(id));
-                }
-            }
-            _ => {}
-        }
-    }
-
-    'unsafe_exprs: for unsafe_expr in &mut unsafe_exprs {
-        let mut child = unsafe_expr.expr;
-        while let Some(parent) = body.parent_map.get(&child) {
-            if unsafe_block_exprs.contains(parent) {
-                unsafe_expr.inside_unsafe_block = true;
-                continue 'unsafe_exprs;
-            }
-            child = *parent;
-        }
-    }
-
-    unsafe_exprs
 }

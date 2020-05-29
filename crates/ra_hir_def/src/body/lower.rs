@@ -7,7 +7,7 @@ use hir_expand::{
     name::{name, AsName, Name},
     HirFileId, MacroDefId, MacroDefKind,
 };
-use ra_arena::Arena;
+use ra_arena::{map::ArenaMap, Arena};
 use ra_syntax::{
     ast::{
         self, ArgListOwner, ArrayExprKind, LiteralKind, LoopBodyOwner, ModuleItemOwner, NameOwner,
@@ -15,7 +15,6 @@ use ra_syntax::{
     },
     AstNode, AstPtr,
 };
-use rustc_hash::FxHashMap;
 use test_utils::mark;
 
 use crate::{
@@ -75,7 +74,7 @@ pub(super) fn lower(
             params: Vec::new(),
             body_expr: dummy_expr_id(),
             item_scope: Default::default(),
-            parent_map: FxHashMap::default(),
+            parent_map: ArenaMap::default(),
         },
         item_trees: {
             let mut map = FxHashMap::default();
@@ -95,6 +94,40 @@ struct ExprCollector<'a> {
     source_map: BodySourceMap,
 
     item_trees: FxHashMap<HirFileId, Arc<ItemTree>>,
+}
+
+macro_rules! track_parent {
+    (@build $collector:ident, $parent:expr $(,)?) => {
+        $parent
+    };
+    (@build $collector:ident, $parent:expr, opt $expr:ident $($rest:tt)*) => {
+        {
+            if let Some(expr) = $expr {
+                $collector.body.parent_map.insert(expr, $parent);
+            }
+            track_parent!(@build $collector, $parent $($rest)*)
+        }
+    };
+    (@build $collector:ident, $parent:expr, vec $expr:ident $($rest:tt)*) => {
+        {
+            for expr in $expr {
+                $collector.body.parent_map.insert(expr, $parent);
+            }
+            track_parent!(@build $collector, $parent $($rest)*)
+        }
+    };
+    (@build $collector:ident, $parent:expr, $expr:ident $($rest:tt)*) => {
+        {
+            $collector.body.parent_map.insert($expr, $parent);
+            track_parent!(@build $collector, $parent $($rest)*)
+        }
+    };
+    ($collector:ident, $parent:expr, $($rest:tt)*) => {
+        {
+            let parent = $parent;
+            track_parent!(@build $collector, parent, $($rest)*)
+        }
+    }
 }
 
 impl ExprCollector<'_> {
@@ -185,14 +218,42 @@ impl ExprCollector<'_> {
     }
 
     fn collect_expr(&mut self, expr: ast::Expr) -> ExprId {
-        let parent_and_children = self.collect_expr_inner(expr);
-        self.update_parent_map(parent_and_children)
+        let expr_id = self.collect_expr_inner(expr);
+
+        debug_assert!({
+            let mut found_count = 0;
+            let mut incr = || {
+                found_count += 1;
+                true
+            };
+            let mut all_children_found = true;
+            self.body[expr_id].walk_child_exprs(|child| {
+                all_children_found = all_children_found
+                    && self
+                        .body
+                        .parent_map
+                        .get(child)
+                        .map(|parent| *parent == expr_id)
+                        .unwrap_or(false)
+                    && incr()
+            });
+
+            if all_children_found {
+                let child_count_in_map =
+                    self.body.parent_map.iter().filter(|&(_, parent)| *parent == expr_id).count();
+                found_count == child_count_in_map
+            } else {
+                false
+            }
+        });
+
+        expr_id
     }
 
-    fn collect_expr_inner(&mut self, expr: ast::Expr) -> (ExprId, Vec<ExprId>) {
+    fn collect_expr_inner(&mut self, expr: ast::Expr) -> ExprId {
         let syntax_ptr = AstPtr::new(&expr);
         if !self.expander.is_cfg_enabled(&expr) {
-            return (self.missing_expr(), vec![]);
+            return self.missing_expr();
         }
 
         match expr {
@@ -224,48 +285,40 @@ impl ExprCollector<'_> {
                                     guard: None,
                                 },
                             ];
-                            let children_exprs = if let Some(else_branch) = else_branch {
-                                vec![match_expr, then_branch, else_branch]
-                            } else {
-                                vec![match_expr, then_branch]
-                            };
-                            return (
+                            let arm_exprs = arms.iter().map(|arm| arm.expr).collect::<Vec<_>>();
+                            return track_parent!(
+                                self,
                                 self.alloc_expr(Expr::Match { expr: match_expr, arms }, syntax_ptr),
-                                children_exprs,
+                                match_expr, vec arm_exprs
                             );
                         }
                     },
                 };
 
-                let children_exprs = if let Some(else_branch) = else_branch {
-                    vec![then_branch, else_branch, condition]
-                } else {
-                    vec![then_branch, condition]
-                };
-
-                (
+                track_parent!(
+                    self,
                     self.alloc_expr(Expr::If { condition, then_branch, else_branch }, syntax_ptr),
-                    children_exprs,
+                    then_branch, opt else_branch, condition
                 )
             }
             ast::Expr::EffectExpr(e) => match e.effect() {
                 ast::Effect::Try(_) => {
                     let body = self.collect_block_opt(e.block_expr());
-                    (self.alloc_expr(Expr::TryBlock { body }, syntax_ptr), vec![body])
+                    track_parent!(self, self.alloc_expr(Expr::TryBlock { body }, syntax_ptr), body)
                 }
                 ast::Effect::Unsafe(_) => {
                     let body = self.collect_block_opt(e.block_expr());
-                    (self.alloc_expr(Expr::Unsafe { body }, syntax_ptr), vec![body])
+                    track_parent!(self, self.alloc_expr(Expr::Unsafe { body }, syntax_ptr), body)
                 }
                 // FIXME: we need to record these effects somewhere...
                 ast::Effect::Async(_) | ast::Effect::Label(_) => {
-                    (self.collect_block_opt(e.block_expr()), vec![])
+                    self.collect_block_opt(e.block_expr())
                 }
             },
-            ast::Expr::BlockExpr(e) => (self.collect_block(e), vec![]),
+            ast::Expr::BlockExpr(e) => self.collect_block(e),
             ast::Expr::LoopExpr(e) => {
                 let body = self.collect_block_opt(e.loop_body());
-                (self.alloc_expr(
+                track_parent!(self, self.alloc_expr(Expr::Loop { body }, syntax_ptr), vec![body])
                     Expr::Loop {
                         body,
                         label: e
@@ -274,7 +327,7 @@ impl ExprCollector<'_> {
                             .map(|l| Name::new_lifetime(&l)),
                     },
                     syntax_ptr,
-                ), vec![body])
+                ), body)
             }
             ast::Expr::WhileExpr(e) => {
                 let body = self.collect_block_opt(e.loop_body());
@@ -285,7 +338,6 @@ impl ExprCollector<'_> {
                         None => self.collect_expr_opt(condition.expr()),
                         // if let -- desugar to match
                         Some(pat) => {
-                            // FIXME(pfaria) track the break and arms parents here?
                             mark::hit!(infer_resolve_while_let);
                             let pat = self.collect_pat(pat);
                             let match_expr = self.collect_expr_opt(condition.expr());
@@ -298,7 +350,7 @@ impl ExprCollector<'_> {
                             ];
                             let match_expr =
                                 self.alloc_expr_desugared(Expr::Match { expr: match_expr, arms });
-                            return (self.alloc_expr(
+                            return track_parent!(self, self.alloc_expr(
                                 Expr::Loop {
                                     body: match_expr,
                                     label: e
@@ -307,12 +359,12 @@ impl ExprCollector<'_> {
                                         .map(|l| Name::new_lifetime(&l)),
                                 },
                                 syntax_ptr,
-                            ), vec![match_expr]);
+                            ), match_expr);
                         }
                     },
                 };
 
-                (self.alloc_expr(
+                track_parent!(self, self.alloc_expr(
                     Expr::While {
                         condition,
                         body,
@@ -322,13 +374,13 @@ impl ExprCollector<'_> {
                             .map(|l| Name::new_lifetime(&l)),
                     },
                     syntax_ptr,
-                ), vec![body, condition])
+                ), body, condition)
             }
             ast::Expr::ForExpr(e) => {
                 let iterable = self.collect_expr_opt(e.iterable());
                 let pat = self.collect_pat_opt(e.pat());
                 let body = self.collect_block_opt(e.loop_body());
-                (self.alloc_expr(
+                track_parent!(self, self.alloc_expr(
                     Expr::For {
                         iterable,
                         pat,
@@ -339,7 +391,7 @@ impl ExprCollector<'_> {
                             .map(|l| Name::new_lifetime(&l)),
                     },
                     syntax_ptr,
-                ), vec![iterable, body])
+                ), iterable, body)
             }
             ast::Expr::CallExpr(e) => {
                 let callee = self.collect_expr_opt(e.expr());
@@ -348,9 +400,7 @@ impl ExprCollector<'_> {
                 } else {
                     Vec::new()
                 };
-                let mut children_exprs = args.clone();
-                children_exprs.push(callee);
-                (self.alloc_expr(Expr::Call { callee, args }, syntax_ptr), children_exprs)
+                track_parent!(self, self.alloc_expr(Expr::Call { callee, args: args.clone() }, syntax_ptr), callee, vec args)
             }
             ast::Expr::MethodCallExpr(e) => {
                 let receiver = self.collect_expr_opt(e.expr());
@@ -362,19 +412,24 @@ impl ExprCollector<'_> {
                 let method_name = e.name_ref().map(|nr| nr.as_name()).unwrap_or_else(Name::missing);
                 let generic_args =
                     e.type_arg_list().and_then(|it| GenericArgs::from_ast(&self.ctx(), it));
-                let mut children_exprs = args.clone();
-                children_exprs.push(receiver);
-                (
+                track_parent!(
+                    self,
                     self.alloc_expr(
-                        Expr::MethodCall { receiver, method_name, args, generic_args },
+                        Expr::MethodCall {
+                            receiver,
+                            method_name,
+                            args: args.clone(),
+                            generic_args
+                        },
                         syntax_ptr,
                     ),
-                    children_exprs,
+                    receiver,
+                    vec args
                 )
             }
             ast::Expr::MatchExpr(e) => {
                 let expr = self.collect_expr_opt(e.expr());
-                let (arms, mut children_exprs): (Vec<_>, Vec<_>) =
+                let (arms, children_exprs): (Vec<_>, Vec<_>) =
                     if let Some(match_arm_list) = e.match_arm_list() {
                         match_arm_list
                             .arms()
@@ -396,8 +451,7 @@ impl ExprCollector<'_> {
                     } else {
                         (vec![], vec![])
                     };
-                children_exprs.push(expr);
-                (self.alloc_expr(Expr::Match { expr, arms }, syntax_ptr), children_exprs)
+                track_parent!(self, self.alloc_expr(Expr::Match { expr, arms: arms.clone() }, syntax_ptr), expr, vec children_exprs)
             }
             ast::Expr::PathExpr(e) => {
                 let path = e
@@ -405,7 +459,7 @@ impl ExprCollector<'_> {
                     .and_then(|path| self.expander.parse_path(path))
                     .map(Expr::Path)
                     .unwrap_or(Expr::Missing);
-                (self.alloc_expr(path, syntax_ptr), vec![])
+                self.alloc_expr(path, syntax_ptr)
             }
             ast::Expr::ContinueExpr(e) => (self.alloc_expr(
                 Expr::Continue { label: e.lifetime_token().map(|l| Name::new_lifetime(&l)) },
@@ -413,21 +467,21 @@ impl ExprCollector<'_> {
             ), vec![]),
             ast::Expr::BreakExpr(e) => {
                 let expr = e.expr().map(|e| self.collect_expr(e));
-                (self.alloc_expr(
+                track_parent!(self, self.alloc_expr(
                     Expr::Break { expr, label: e.lifetime_token().map(|l| Name::new_lifetime(&l)) },
                     syntax_ptr,
-                ), expr.into_iter().collect())
+                ), opt expr)
             }
             ast::Expr::ParenExpr(e) => {
                 let inner = self.collect_expr_opt(e.expr());
                 // make the paren expr point to the inner expression as well
                 let src = self.expander.to_source(syntax_ptr);
                 self.source_map.expr_map.insert(src, inner);
-                (inner, vec![])
+                inner
             }
             ast::Expr::ReturnExpr(e) => {
                 let expr = e.expr().map(|e| self.collect_expr(e));
-                (self.alloc_expr(Expr::Return { expr }, syntax_ptr), expr.into_iter().collect())
+                track_parent!(self, self.alloc_expr(Expr::Return { expr }, syntax_ptr), opt expr)
             }
             ast::Expr::RecordLit(e) => {
                 let path = e.path().and_then(|path| self.expander.parse_path(path));
@@ -463,7 +517,7 @@ impl ExprCollector<'_> {
                     let src = self.expander.to_source(ptr);
                     self.source_map.field_map.insert((res, i), src);
                 }
-                (res, children)
+                track_parent!(self, res, vec children)
             }
             ast::Expr::FieldExpr(e) => {
                 let expr = self.collect_expr_opt(e.expr());
@@ -471,20 +525,24 @@ impl ExprCollector<'_> {
                     Some(kind) => kind.as_name(),
                     _ => Name::missing(),
                 };
-                (self.alloc_expr(Expr::Field { expr, name }, syntax_ptr), vec![expr])
+                track_parent!(self, self.alloc_expr(Expr::Field { expr, name }, syntax_ptr), expr)
             }
             ast::Expr::AwaitExpr(e) => {
                 let expr = self.collect_expr_opt(e.expr());
-                (self.alloc_expr(Expr::Await { expr }, syntax_ptr), vec![expr])
+                track_parent!(self, self.alloc_expr(Expr::Await { expr }, syntax_ptr), expr)
             }
             ast::Expr::TryExpr(e) => {
                 let expr = self.collect_expr_opt(e.expr());
-                (self.alloc_expr(Expr::Try { expr }, syntax_ptr), vec![expr])
+                track_parent!(self, self.alloc_expr(Expr::Try { expr }, syntax_ptr), expr)
             }
             ast::Expr::CastExpr(e) => {
                 let expr = self.collect_expr_opt(e.expr());
                 let type_ref = TypeRef::from_ast_opt(&self.ctx(), e.type_ref());
-                (self.alloc_expr(Expr::Cast { expr, type_ref }, syntax_ptr), vec![expr])
+                track_parent!(
+                    self,
+                    self.alloc_expr(Expr::Cast { expr, type_ref }, syntax_ptr),
+                    expr
+                )
             }
             ast::Expr::RefExpr(e) => {
                 let expr = self.collect_expr_opt(e.expr());
@@ -501,15 +559,22 @@ impl ExprCollector<'_> {
                     Mutability::from_mutable(e.mut_token().is_some())
                 };
                 let rawness = Rawness::from_raw(raw_tok);
-
-                self.alloc_expr(Expr::Ref { expr, rawness, mutability }, syntax_ptr)
+                track_parent!(
+                    self,
+                    self.alloc_expr(Expr::Ref { expr, rawness, mutability }, syntax_ptr),
+                    expr
+                )
             }
             ast::Expr::PrefixExpr(e) => {
                 let expr = self.collect_expr_opt(e.expr());
                 if let Some(op) = e.op_kind() {
-                    (self.alloc_expr(Expr::UnaryOp { expr, op }, syntax_ptr), vec![expr])
+                    track_parent!(
+                        self,
+                        self.alloc_expr(Expr::UnaryOp { expr, op }, syntax_ptr),
+                        expr
+                    )
                 } else {
-                    (self.alloc_expr(Expr::Missing, syntax_ptr), vec![])
+                    self.alloc_expr(Expr::Missing, syntax_ptr)
                 }
             }
             ast::Expr::LambdaExpr(e) => {
@@ -529,24 +594,30 @@ impl ExprCollector<'_> {
                     .and_then(|r| r.type_ref())
                     .map(|it| TypeRef::from_ast(&self.ctx(), it));
                 let body = self.collect_expr_opt(e.body());
-                (
+                track_parent!(
+                    self,
                     self.alloc_expr(Expr::Lambda { args, arg_types, ret_type, body }, syntax_ptr),
-                    vec![body],
+                    body,
                 )
             }
             ast::Expr::BinExpr(e) => {
                 let lhs = self.collect_expr_opt(e.lhs());
                 let rhs = self.collect_expr_opt(e.rhs());
                 let op = e.op_kind().map(BinaryOp::from);
-                (self.alloc_expr(Expr::BinaryOp { lhs, rhs, op }, syntax_ptr), vec![lhs, rhs])
+                track_parent!(
+                    self,
+                    self.alloc_expr(Expr::BinaryOp { lhs, rhs, op }, syntax_ptr),
+                    lhs,
+                    rhs
+                )
             }
             ast::Expr::TupleExpr(e) => {
                 let exprs = e.exprs().map(|expr| self.collect_expr(expr)).collect::<Vec<_>>();
-                (self.alloc_expr(Expr::Tuple { exprs: exprs.clone() }, syntax_ptr), exprs)
+                track_parent!(self, self.alloc_expr(Expr::Tuple { exprs: exprs.clone() }, syntax_ptr), vec exprs)
             }
             ast::Expr::BoxExpr(e) => {
                 let expr = self.collect_expr_opt(e.expr());
-                (self.alloc_expr(Expr::Box { expr }, syntax_ptr), vec![expr])
+                track_parent!(self, self.alloc_expr(Expr::Box { expr }, syntax_ptr), expr)
             }
 
             ast::Expr::ArrayExpr(e) => {
@@ -555,45 +626,51 @@ impl ExprCollector<'_> {
                 match kind {
                     ArrayExprKind::ElementList(e) => {
                         let exprs = e.map(|expr| self.collect_expr(expr)).collect::<Vec<_>>();
-                        (
+                        track_parent!(self,
                             self.alloc_expr(
                                 Expr::Array(Array::ElementList(exprs.clone())),
                                 syntax_ptr,
                             ),
-                            exprs,
+                            vec exprs,
                         )
                     }
                     ArrayExprKind::Repeat { initializer, repeat } => {
                         let initializer = self.collect_expr_opt(initializer);
                         let repeat = self.collect_expr_opt(repeat);
-                        (
+                        track_parent!(
+                            self,
                             self.alloc_expr(
                                 Expr::Array(Array::Repeat { initializer, repeat }),
                                 syntax_ptr,
                             ),
-                            vec![initializer, repeat],
+                            initializer,
+                            repeat,
                         )
                     }
                 }
             }
 
-            ast::Expr::Literal(e) => {
-                (self.alloc_expr(Expr::Literal(e.kind().into()), syntax_ptr), vec![])
-            }
+            ast::Expr::Literal(e) => self.alloc_expr(Expr::Literal(e.kind().into()), syntax_ptr),
             ast::Expr::IndexExpr(e) => {
                 let base = self.collect_expr_opt(e.base());
                 let index = self.collect_expr_opt(e.index());
-                (self.alloc_expr(Expr::Index { base, index }, syntax_ptr), vec![base, index])
+                track_parent!(
+                    self,
+                    self.alloc_expr(Expr::Index { base, index }, syntax_ptr),
+                    base,
+                    index
+                )
             }
             ast::Expr::RangeExpr(e) => {
                 let lhs = e.start().map(|lhs| self.collect_expr(lhs));
                 let rhs = e.end().map(|rhs| self.collect_expr(rhs));
                 match e.op_kind() {
-                    Some(range_type) => (
+                    Some(range_type) => track_parent!(
+                        self,
                         self.alloc_expr(Expr::Range { lhs, rhs, range_type }, syntax_ptr),
-                        lhs.into_iter().chain(rhs.into_iter()).collect(),
+                        opt lhs, opt rhs
                     ),
-                    None => (self.alloc_expr(Expr::Missing, syntax_ptr), vec![]),
+                    None => self.alloc_expr(Expr::Missing, syntax_ptr),
                 }
             }
             ast::Expr::MacroCall(e) => {
@@ -607,7 +684,7 @@ impl ExprCollector<'_> {
                     self.body.item_scope.define_legacy_macro(name, mac);
 
                     // FIXME: do we still need to allocate this as missing ?
-                    (self.alloc_expr(Expr::Missing, syntax_ptr), vec![])
+                    self.alloc_expr(Expr::Missing, syntax_ptr)
                 } else {
                     let macro_call = self.expander.to_source(AstPtr::new(&e));
                     match self.expander.enter_expand(self.db, Some(&self.body.item_scope), e) {
@@ -620,15 +697,15 @@ impl ExprCollector<'_> {
                             self.item_trees.insert(self.expander.current_file_id, item_tree);
                             let id = self.collect_expr(expansion);
                             self.expander.exit(self.db, mark);
-                            (id, vec![])
+                            id
                         }
-                        None => (self.alloc_expr(Expr::Missing, syntax_ptr), vec![]),
+                        None => self.alloc_expr(Expr::Missing, syntax_ptr),
                     }
                 }
             }
 
             // FIXME implement HIR for these:
-            ast::Expr::Label(_e) => (self.alloc_expr(Expr::Missing, syntax_ptr), vec![]),
+            ast::Expr::Label(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
         }
     }
 
