@@ -208,7 +208,7 @@ pub(crate) fn write_clif_file<'tcx>(
     mut clif_comments: &CommentWriter,
     value_ranges: Option<&cranelift_codegen::ValueLabelsRanges>,
 ) {
-    if !(cfg!(debug_assertions) || tcx.sess.opts.output_types.contains_key(&OutputType::LlvmAssembly)) {
+    if !cfg!(debug_assertions) && !tcx.sess.opts.output_types.contains_key(&OutputType::LlvmAssembly) {
         return;
     }
 
