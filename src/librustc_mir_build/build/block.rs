@@ -4,6 +4,8 @@ use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 use crate::hair::*;
 use rustc_hir as hir;
 use rustc_middle::mir::*;
+use rustc_session::lint::builtin::UNSAFE_OP_IN_UNSAFE_FN;
+use rustc_session::lint::Level;
 use rustc_span::Span;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -217,6 +219,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 assert_eq!(self.push_unsafe_count, 0);
                 match self.unpushed_unsafe {
                     Safety::Safe => {}
+                    // no longer treat `unsafe fn`s as `unsafe` contexts (see RFC #2585)
+                    Safety::FnUnsafe
+                        if self.hir.tcx().lint_level_at_node(UNSAFE_OP_IN_UNSAFE_FN, hir_id).0
+                            != Level::Allow => {}
                     _ => return,
                 }
                 self.unpushed_unsafe = Safety::ExplicitUnsafe(hir_id);
@@ -231,7 +237,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     .push_unsafe_count
                     .checked_sub(1)
                     .unwrap_or_else(|| span_bug!(span, "unsafe count underflow"));
-                if self.push_unsafe_count == 0 { Some(self.unpushed_unsafe) } else { None }
+                if self.push_unsafe_count == 0 {
+                    Some(self.unpushed_unsafe)
+                } else {
+                    None
+                }
             }
         };
 

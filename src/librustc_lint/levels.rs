@@ -14,11 +14,11 @@ use rustc_middle::lint::LintDiagnosticBuilder;
 use rustc_middle::lint::{struct_lint_level, LintLevelMap, LintLevelSets, LintSet, LintSource};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::lint::{builtin, Level, Lint};
+use rustc_session::lint::{builtin, Level, Lint, LintId};
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
-use rustc_span::source_map::MultiSpan;
 use rustc_span::symbol::{sym, Symbol};
+use rustc_span::{source_map::MultiSpan, Span, DUMMY_SP};
 
 use std::cmp;
 
@@ -80,11 +80,13 @@ impl<'s> LintLevelsBuilder<'s> {
             let level = cmp::min(level, self.sets.lint_cap);
 
             let lint_flag_val = Symbol::intern(lint_name);
+
             let ids = match store.find_lints(&lint_name) {
                 Ok(ids) => ids,
                 Err(_) => continue, // errors handled in check_lint_name_cmdline above
             };
             for id in ids {
+                self.check_gated_lint(id, DUMMY_SP);
                 let src = LintSource::CommandLine(lint_flag_val);
                 specs.insert(id, (level, src));
             }
@@ -213,6 +215,7 @@ impl<'s> LintLevelsBuilder<'s> {
                     CheckLintNameResult::Ok(ids) => {
                         let src = LintSource::Node(name, li.span(), reason);
                         for id in ids {
+                            self.check_gated_lint(*id, attr.span);
                             specs.insert(*id, (level, src));
                         }
                     }
@@ -381,6 +384,20 @@ impl<'s> LintLevelsBuilder<'s> {
         }
 
         BuilderPush { prev, changed: prev != self.cur }
+    }
+
+    fn check_gated_lint(&self, id: LintId, span: Span) {
+        if id == LintId::of(builtin::UNSAFE_OP_IN_UNSAFE_FN)
+            && !self.sess.features_untracked().unsafe_block_in_unsafe_fn
+        {
+            feature_err(
+                &self.sess.parse_sess,
+                sym::unsafe_block_in_unsafe_fn,
+                span,
+                "the `unsafe_op_in_unsafe_fn` lint is unstable",
+            )
+            .emit();
+        }
     }
 
     /// Called after `push` when the scope of a set of attributes are exited.
