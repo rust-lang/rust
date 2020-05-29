@@ -15,8 +15,8 @@ use rustc_target::abi::{Abi, DiscriminantKind, HasDataLayout, LayoutOf, Size};
 use rustc_target::abi::{VariantIdx, Variants};
 
 use super::{
-    from_known_layout, ConstValue, GlobalId, InterpCx, InterpResult, MPlaceTy, Machine, MemPlace,
-    Place, PlaceTy, Pointer, Scalar, ScalarMaybeUninit,
+    from_known_layout, mir_assign_valid_types, ConstValue, GlobalId, InterpCx, InterpResult,
+    MPlaceTy, Machine, MemPlace, Place, PlaceTy, Pointer, Scalar, ScalarMaybeUninit,
 };
 
 /// An `Immediate` represents a single immediate self-contained Rust value.
@@ -469,6 +469,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             .try_fold(base_op, |op, elem| self.operand_projection(op, elem))?;
 
         trace!("eval_place_to_op: got {:?}", *op);
+        // Sanity-check the type we ended up with.
+        debug_assert!(mir_assign_valid_types(
+            *self.tcx,
+            self.layout_of(self.subst_from_current_frame_and_normalize_erasing_regions(
+                place.ty(&self.frame().body.local_decls, *self.tcx).ty
+            ))?,
+            op.layout,
+        ));
         Ok(op)
     }
 
