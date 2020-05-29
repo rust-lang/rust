@@ -29,6 +29,7 @@ use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::marker::PhantomData;
 use std::ops::Range;
+use ty::util::IntTypeExt;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
 #[derive(HashStable, TypeFoldable, Lift)]
@@ -2096,11 +2097,25 @@ impl<'tcx> TyS<'tcx> {
         variant_index: VariantIdx,
     ) -> Option<Discr<'tcx>> {
         match self.kind {
-            TyKind::Adt(adt, _) => Some(adt.discriminant_for_variant(tcx, variant_index)),
+            TyKind::Adt(adt, _) if adt.is_enum() => {
+                Some(adt.discriminant_for_variant(tcx, variant_index))
+            }
             TyKind::Generator(def_id, substs, _) => {
                 Some(substs.as_generator().discriminant_for_variant(def_id, tcx, variant_index))
             }
             _ => None,
+        }
+    }
+
+    /// Returns the type of the discriminant of this type.
+    pub fn discriminant_ty(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+        match self.kind {
+            ty::Adt(adt, _) if adt.is_enum() => adt.repr.discr_type().to_ty(tcx),
+            ty::Generator(_, substs, _) => substs.as_generator().discr_ty(tcx),
+            _ => {
+                // This can only be `0`, for now, so `u8` will suffice.
+                tcx.types.u8
+            }
         }
     }
 

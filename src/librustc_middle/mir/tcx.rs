@@ -5,7 +5,6 @@
 
 use crate::mir::*;
 use crate::ty::subst::Subst;
-use crate::ty::util::IntTypeExt;
 use crate::ty::{self, Ty, TyCtxt};
 use rustc_hir as hir;
 use rustc_target::abi::VariantIdx;
@@ -174,17 +173,7 @@ impl<'tcx> Rvalue<'tcx> {
                 tcx.intern_tup(&[ty, tcx.types.bool])
             }
             Rvalue::UnaryOp(UnOp::Not | UnOp::Neg, ref operand) => operand.ty(local_decls, tcx),
-            Rvalue::Discriminant(ref place) => {
-                let ty = place.ty(local_decls, tcx).ty;
-                match ty.kind {
-                    ty::Adt(adt_def, _) => adt_def.repr.discr_type().to_ty(tcx),
-                    ty::Generator(_, substs, _) => substs.as_generator().discr_ty(tcx),
-                    _ => {
-                        // This can only be `0`, for now, so `u8` will suffice.
-                        tcx.types.u8
-                    }
-                }
-            }
+            Rvalue::Discriminant(ref place) => place.ty(local_decls, tcx).ty.discriminant_ty(tcx),
             Rvalue::NullaryOp(NullOp::Box, t) => tcx.mk_box(t),
             Rvalue::NullaryOp(NullOp::SizeOf, _) => tcx.types.usize,
             Rvalue::Aggregate(ref ak, ref ops) => match **ak {
