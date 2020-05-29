@@ -884,7 +884,7 @@ fn convert_var<'tcx>(
 ) -> ExprKind<'tcx> {
     let upvar_index = cx
         .tables()
-        .upvar_list
+        .closure_captures
         .get(&cx.body_owner)
         .and_then(|upvars| upvars.get_full(&var_hir_id).map(|(i, _, _)| i));
 

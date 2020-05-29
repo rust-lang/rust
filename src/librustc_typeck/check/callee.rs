@@ -21,11 +21,31 @@ use rustc_target::spec::abi;
 /// Checks that it is legal to call methods of the trait corresponding
 /// to `trait_id` (this only cares about the trait, not the specific
 /// method that is called).
-pub fn check_legal_trait_for_method_call(tcx: TyCtxt<'_>, span: Span, trait_id: DefId) {
+pub fn check_legal_trait_for_method_call(
+    tcx: TyCtxt<'_>,
+    span: Span,
+    receiver: Option<Span>,
+    trait_id: DefId,
+) {
     if tcx.lang_items().drop_trait() == Some(trait_id) {
-        struct_span_err!(tcx.sess, span, E0040, "explicit use of destructor method")
-            .span_label(span, "explicit destructor calls not allowed")
-            .emit();
+        let mut err = struct_span_err!(tcx.sess, span, E0040, "explicit use of destructor method");
+        err.span_label(span, "explicit destructor calls not allowed");
+
+        let snippet = receiver
+            .and_then(|s| tcx.sess.source_map().span_to_snippet(s).ok())
+            .unwrap_or_default();
+
+        let suggestion =
+            if snippet.is_empty() { "drop".to_string() } else { format!("drop({})", snippet) };
+
+        err.span_suggestion(
+            span,
+            &format!("consider using `drop` function: `{}`", suggestion),
+            String::new(),
+            Applicability::Unspecified,
+        );
+
+        err.emit();
     }
 }
 

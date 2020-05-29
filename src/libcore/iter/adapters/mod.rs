@@ -1619,6 +1619,69 @@ impl<I: Iterator> Peekable<I> {
         let iter = &mut self.iter;
         self.peeked.get_or_insert_with(|| iter.next()).as_ref()
     }
+
+    /// Consume the next value of this iterator if a condition is true.
+    ///
+    /// If `func` returns `true` for the next value of this iterator, consume and return it.
+    /// Otherwise, return `None`.
+    ///
+    /// # Examples
+    /// Consume a number if it's equal to 0.
+    /// ```
+    /// #![feature(peekable_next_if)]
+    /// let mut iter = (0..5).peekable();
+    /// // The first item of the iterator is 0; consume it.
+    /// assert_eq!(iter.next_if(|&x| x == 0), Some(0));
+    /// // The next item returned is now 1, so `consume` will return `false`.
+    /// assert_eq!(iter.next_if(|&x| x == 0), None);
+    /// // `next_if` saves the value of the next item if it was not equal to `expected`.
+    /// assert_eq!(iter.next(), Some(1));
+    /// ```
+    ///
+    /// Consume any number less than 10.
+    /// ```
+    /// #![feature(peekable_next_if)]
+    /// let mut iter = (1..20).peekable();
+    /// // Consume all numbers less than 10
+    /// while iter.next_if(|&x| x < 10).is_some() {}
+    /// // The next value returned will be 10
+    /// assert_eq!(iter.next(), Some(10));
+    /// ```
+    #[unstable(feature = "peekable_next_if", issue = "72480")]
+    pub fn next_if(&mut self, func: impl FnOnce(&I::Item) -> bool) -> Option<I::Item> {
+        match self.next() {
+            Some(matched) if func(&matched) => Some(matched),
+            other => {
+                // Since we called `self.next()`, we consumed `self.peeked`.
+                assert!(self.peeked.is_none());
+                self.peeked = Some(other);
+                None
+            }
+        }
+    }
+
+    /// Consume the next item if it is equal to `expected`.
+    ///
+    /// # Example
+    /// Consume a number if it's equal to 0.
+    /// ```
+    /// #![feature(peekable_next_if)]
+    /// let mut iter = (0..5).peekable();
+    /// // The first item of the iterator is 0; consume it.
+    /// assert_eq!(iter.next_if_eq(&0), Some(0));
+    /// // The next item returned is now 1, so `consume` will return `false`.
+    /// assert_eq!(iter.next_if_eq(&0), None);
+    /// // `next_if_eq` saves the value of the next item if it was not equal to `expected`.
+    /// assert_eq!(iter.next(), Some(1));
+    /// ```
+    #[unstable(feature = "peekable_next_if", issue = "72480")]
+    pub fn next_if_eq<R>(&mut self, expected: &R) -> Option<I::Item>
+    where
+        R: ?Sized,
+        I::Item: PartialEq<R>,
+    {
+        self.next_if(|next| next == expected)
+    }
 }
 
 /// An iterator that rejects elements while `predicate` returns `true`.
