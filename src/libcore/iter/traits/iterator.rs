@@ -1180,6 +1180,17 @@ pub trait Iterator {
     /// assert_eq!(iter.next(), Some(2));
     /// assert_eq!(iter.next(), None);
     /// ```
+    ///
+    /// If less than `n` elements are available,
+    /// `take` will limit itself to the size of the underlying iterator:
+    ///
+    /// ```
+    /// let v = vec![1, 2];
+    /// let mut iter = v.into_iter().take(5);
+    /// assert_eq!(iter.next(), Some(1));
+    /// assert_eq!(iter.next(), Some(2));
+    /// assert_eq!(iter.next(), None);
+    /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn take(self, n: usize) -> Take<Self>
