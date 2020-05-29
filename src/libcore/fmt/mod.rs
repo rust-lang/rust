@@ -1618,7 +1618,8 @@ impl<'a> Formatter<'a> {
         self.width
     }
 
-    /// Optionally specified precision for numeric types.
+    /// Optionally specified precision for numeric types. Alternatively, the
+    /// maximum width for string types.
     ///
     /// # Examples
     ///
