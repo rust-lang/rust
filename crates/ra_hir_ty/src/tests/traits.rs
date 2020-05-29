@@ -2665,7 +2665,6 @@ fn test() {
     Enum::Variant.test();
 }
 "#, true),
-        // wrong result, because the built-in Copy impl for fn defs doesn't exist in Chalk yet
         @r###"
     42..44 '{}': ()
     61..62 'T': {unknown}
@@ -2674,13 +2673,13 @@ fn test() {
     146..150 'self': &Self
     202..282 '{     ...t(); }': ()
     208..211 'foo': fn foo()
-    208..218 'foo.test()': {unknown}
+    208..218 'foo.test()': bool
     224..227 'bar': fn bar<{unknown}>({unknown}) -> {unknown}
-    224..234 'bar.test()': {unknown}
+    224..234 'bar.test()': bool
     240..246 'Struct': Struct(usize) -> Struct
-    240..253 'Struct.test()': {unknown}
+    240..253 'Struct.test()': bool
     259..272 'Enum::Variant': Variant(usize) -> Enum
-    259..279 'Enum::...test()': {unknown}
+    259..279 'Enum::...test()': bool
     "###
     );
 }
@@ -2753,4 +2752,49 @@ fn test() {
     200..205 '"foo"': &str
     "###
     );
+}
+
+#[test]
+fn integer_range_iterate() {
+    let t = type_at(
+        r#"
+//- /main.rs crate:main deps:std
+fn test() {
+    for x in 0..100 { x<|>; }
+}
+
+//- /std.rs crate:std
+pub mod ops {
+    pub struct Range<Idx> {
+        pub start: Idx,
+        pub end: Idx,
+    }
+}
+
+pub mod iter {
+    pub trait Iterator {
+        type Item;
+    }
+
+    pub trait IntoIterator {
+        type Item;
+        type IntoIter: Iterator<Item = Self::Item>;
+    }
+
+    impl<T> IntoIterator for T where T: Iterator {
+        type Item = <T as Iterator>::Item;
+        type IntoIter = Self;
+    }
+}
+
+trait Step {}
+impl Step for i32 {}
+impl Step for i64 {}
+
+impl<A: Step> iter::Iterator for ops::Range<A> {
+    type Item = A;
+}
+"#,
+    );
+    assert_eq!(t, "i32");
 }
