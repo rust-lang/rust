@@ -449,6 +449,12 @@ impl<R: Seek> Seek for BufReader<R> {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct BufWriter<W: Write> {
     inner: Option<W>,
+    // FIXME: Replace this with a VecDeque. Because VecDeque is a Ring buffer,
+    // this would enable BufWriter to operate without any interior copies.
+    // It was also allow a much simpler implementation of flush_buf. The main
+    // blocker here is that VecDeque doesn't currently have the same
+    // slice-specific specializations (extend_from_slice, `Extend`
+    // specializations)
     buf: Vec<u8>,
     // #30888: If the inner writer panics in a call to write, we don't want to
     // write the buffered data a second time in BufWriter's destructor. This
@@ -519,6 +525,13 @@ impl<W: Write> BufWriter<W> {
         BufWriter { inner: Some(inner), buf: Vec::with_capacity(capacity), panicked: false }
     }
 
+    /// Send data in our local buffer into the inner writer, looping as
+    /// necessary until either it's all been sent or an error occurs.
+    ///
+    /// Because all the data in the buffer has been reported to our owner as
+    /// "successfully written" (by returning nonzero success values from
+    /// `write`), any 0-length writes from `inner` must be reported as i/o
+    /// errors from this method.
     fn flush_buf(&mut self) -> io::Result<()> {
         let mut written = 0;
         let len = self.buf.len();
@@ -546,6 +559,17 @@ impl<W: Write> BufWriter<W> {
             self.buf.drain(..written);
         }
         ret
+    }
+
+    /// Buffer some data without flushing it, regardless of the size of the
+    /// data. Writes as much as possible without exceeding capacity. Returns
+    /// the number of bytes written.
+    #[inline]
+    fn write_to_buffer(&mut self, buf: &[u8]) -> usize {
+        let available = self.buf.capacity() - self.buf.len();
+        let amt_to_buffer = available.min(buf.len());
+        self.buf.extend_from_slice(&buf[..amt_to_buffer]);
+        amt_to_buffer
     }
 
     /// Gets a reference to the underlying writer.
@@ -665,7 +689,22 @@ impl<W: Write> Write for BufWriter<W> {
             self.panicked = false;
             r
         } else {
-            self.buf.write(buf)
+            Ok(self.write_to_buffer(buf))
+        }
+    }
+
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        if self.buf.len() + buf.len() > self.buf.capacity() {
+            self.flush_buf()?;
+        }
+        if buf.len() >= self.buf.capacity() {
+            self.panicked = true;
+            let r = self.get_mut().write_all(buf);
+            self.panicked = false;
+            r
+        } else {
+            self.write_to_buffer(buf);
+            Ok(())
         }
     }
 
@@ -818,6 +857,200 @@ impl<W> fmt::Display for IntoInnerError<W> {
     }
 }
 
+/// Private helper struct for implementing the line-buffered writing logic.
+/// This shim temporarily wraps a BufWriter, and uses its internals to
+/// implement a line-buffered writer (specifically by using the internal
+/// methods like write_to_buffer and flush_buffer). In this way, a more
+/// efficient abstraction can be created than one that only had access to
+/// `write` and `flush`, without needlessly duplicating a lot of the
+/// implementation details of BufWriter. This also allows existing
+/// `BufWriters` to be temporarily given line-buffering logic; this is what
+/// enables Stdout to be alternately in line-buffered or block-buffered mode.
+#[derive(Debug)]
+pub(super) struct LineWriterShim<'a, W: Write> {
+    inner: &'a mut BufWriter<W>,
+}
+
+impl<'a, W: Write> LineWriterShim<'a, W> {
+    pub fn new(inner: &'a mut BufWriter<W>) -> Self {
+        Self { inner }
+    }
+}
+
+impl<'a, W: Write> Write for LineWriterShim<'a, W> {
+    /// Write some data into this BufReader with line buffering. This means
+    /// that, if any newlines are present in the data, the data up to the last
+    /// newline is sent directly to the underlying writer, and data after it
+    /// is buffered. Returns the number of bytes written.
+    ///
+    /// This function operates on a "best effort basis"; in keeping with the
+    /// convention of `Write::write`, it makes at most one attempt to write
+    /// new data to the underlying writer. If that write only reports a partial
+    /// success, the remaining data will be buffered.
+    ///
+    /// Because this function attempts to send completed lines to the underlying
+    /// writer, it will also flush the existing buffer if it contains any
+    /// newlines, even if the incoming data does not contain any newlines.
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        // If there are no new newlines (that is, if this write is less than
+        // one line), just do a regular buffered write
+        let newline_idx = match memchr::memrchr(b'\n', buf) {
+            None => {
+                // Check for prior partial line writes that need to be retried
+                if memchr::memchr(b'\n', &self.inner.buffer()).is_some() {
+                    self.inner.flush_buf()?;
+                }
+                return self.inner.write(buf);
+            }
+            Some(i) => i,
+        };
+
+        // Flush existing content to prepare for our write
+        self.inner.flush_buf()?;
+
+        // This is what we're going to try to write directly to the inner
+        // writer. The rest will be buffered, if nothing goes wrong.
+        let lines = &buf[..newline_idx + 1];
+
+        // Write `lines` directly to the inner writer. In keeping with the
+        // `write` convention, make at most one attempt to add new (unbuffered)
+        // data. Because this write doesn't touch the BufWriter state directly,
+        // and the buffer is known to be empty, we don't need to worry about
+        // self.panicked here.
+        let flushed = self.inner.get_mut().write(lines)?;
+
+        // Now that the write has succeeded, buffer the rest (or as much of
+        // the rest as possible). If there were any unwritten newlines, we
+        // only buffer out to the last unwritten newline; this helps prevent
+        // flushing partial lines on subsequent calls to write_buffered_lines.
+        let tail = &buf[flushed..];
+        let buffered = match memchr::memrchr(b'\n', tail) {
+            None => self.inner.write_to_buffer(tail),
+            Some(i) => self.inner.write_to_buffer(&tail[..i + 1]),
+        };
+        Ok(flushed + buffered)
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        self.inner.flush()
+    }
+
+    /// Write some vectored data into this BufReader with line buffering. This
+    /// means that, if any newlines are present in the data, the data up to
+    /// and including the buffer containing the last newline is sent directly
+    /// to the inner writer, and the data after it is buffered. Returns the
+    /// number of bytes written.
+    ///
+    /// This function operates on a "best effort basis"; in keeping with the
+    /// convention of `Write::write`, it makes at most one attempt to write
+    /// new data to the underlying writer.
+    ///
+    /// Because this function attempts to send completed lines to the underlying
+    /// writer, it will also flush the existing buffer if it contains any
+    /// newlines.
+    ///
+    /// Because sorting through an array of `IoSlice` can be a bit convoluted,
+    /// This method differs from write in the following ways:
+    ///
+    /// - It attempts to write all the buffers up to and including the one
+    ///   containing the last newline. This means that it may attempt to
+    ///   write a partial line.
+    /// - If the write only reports partial success, it does not attempt to
+    ///   find the precise location of the written bytes and buffer the rest.
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        // Find the buffer containing the last newline
+        let last_newline_buf_idx = bufs
+            .iter()
+            .enumerate()
+            .rev()
+            .find_map(|(i, buf)| memchr::memchr(b'\n', buf).map(|_| i));
+
+        // If there are no new newlines (that is, if this write is less than
+        // one line), just do a regular buffered write
+        let last_newline_buf_idx = match last_newline_buf_idx {
+            // No newlines; just do a normal buffered write
+            None => {
+                // Check for prior partial line writes that need to be retried
+                if memchr::memchr(b'\n', &self.inner.buffer()).is_some() {
+                    self.inner.flush_buf()?;
+                }
+                return self.inner.write_vectored(bufs);
+            }
+            Some(i) => i,
+        };
+
+        // Flush existing content to prepare for our write
+        self.inner.flush_buf()?;
+
+        // This is what we're going to try to write directly to the inner
+        // writer. The rest will be buffered, if nothing goes wrong.
+        let (lines, tail) = bufs.split_at(last_newline_buf_idx + 1);
+
+        // Write `lines` directly to the inner writer. In keeping with the
+        // `write` convention, make at most one attempt to add new (unbuffered)
+        // data. Because this write doesn't touch the BufWriter state directly,
+        // and the buffer is known to be empty, we don't need to worry about
+        // self.panicked here.
+        let flushed = self.inner.write_vectored(lines)?;
+
+        // Don't try to reconstruct the exact amount written; just bail
+        // in the event of a partial write
+        let lines_len = lines.iter().map(|buf| buf.len()).sum();
+        if flushed < lines_len {
+            return Ok(flushed);
+        }
+
+        // Now that the write has succeeded, buffer the rest (or as much of the
+        // rest as possible)
+        let buffered: usize =
+            tail.iter().map(|buf| self.inner.write_to_buffer(buf)).take_while(|&n| n > 0).sum();
+
+        Ok(flushed + buffered)
+    }
+
+    fn is_write_vectored(&self) -> bool {
+        self.inner.is_write_vectored()
+    }
+
+    /// Write some data into this BufReader with line buffering. This means
+    /// that, if any newlines are present in the data, the data up to the last
+    /// newline is sent directly to the underlying writer, and data after it
+    /// is buffered.
+    ///
+    /// Because this function attempts to send completed lines to the underlying
+    /// writer, it will also flush the existing buffer if it contains any
+    /// newlines, even if the incoming data does not contain any newlines.
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        // If there are no new newlines (that is, if this write is less than
+        // one line), just do a regular buffered write
+        let newline_idx = match memchr::memrchr(b'\n', buf) {
+            None => {
+                // Check for prior partial line writes that need to be retried
+                if memchr::memchr(b'\n', &self.inner.buffer()).is_some() {
+                    self.inner.flush_buf()?;
+                }
+                return self.inner.write_all(buf);
+            }
+            Some(i) => i,
+        };
+
+        // Flush existing content to prepare for our write
+        self.inner.flush_buf()?;
+
+        // This is what we're going to try to write directly to the inner
+        // writer. The rest will be buffered, if nothing goes wrong.
+        let (lines, tail) = buf.split_at(newline_idx + 1);
+
+        // Write `lines` directly to the inner writer, bypassing the buffer.
+        self.inner.get_mut().write_all(lines)?;
+
+        // Now that the write has succeeded, buffer the rest with BufWriter::write_all.
+        // This will buffer as much as possible, but continue flushing as
+        // necessary if our tail is huge.
+        self.inner.write_all(tail)
+    }
+}
+
 /// Wraps a writer and buffers output to it, flushing whenever a newline
 /// (`0x0a`, `'\n'`) is detected.
 ///
@@ -885,7 +1118,6 @@ impl<W> fmt::Display for IntoInnerError<W> {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct LineWriter<W: Write> {
     inner: BufWriter<W>,
-    need_flush: bool,
 }
 
 impl<W: Write> LineWriter<W> {
@@ -926,7 +1158,7 @@ impl<W: Write> LineWriter<W> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(capacity: usize, inner: W) -> LineWriter<W> {
-        LineWriter { inner: BufWriter::with_capacity(capacity, inner), need_flush: false }
+        LineWriter { inner: BufWriter::with_capacity(capacity, inner) }
     }
 
     /// Gets a reference to the underlying writer.
@@ -1000,110 +1232,40 @@ impl<W: Write> LineWriter<W> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_inner(self) -> Result<W, IntoInnerError<LineWriter<W>>> {
-        self.inner.into_inner().map_err(|IntoInnerError(buf, e)| {
-            IntoInnerError(LineWriter { inner: buf, need_flush: false }, e)
-        })
+        self.inner
+            .into_inner()
+            .map_err(|IntoInnerError(buf, e)| IntoInnerError(LineWriter { inner: buf }, e))
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<W: Write> Write for LineWriter<W> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        if self.need_flush {
-            self.flush()?;
-        }
-
-        // Find the last newline character in the buffer provided. If found then
-        // we're going to write all the data up to that point and then flush,
-        // otherwise we just write the whole block to the underlying writer.
-        let i = match memchr::memrchr(b'\n', buf) {
-            Some(i) => i,
-            None => return self.inner.write(buf),
-        };
-
-        // Ok, we're going to write a partial amount of the data given first
-        // followed by flushing the newline. After we've successfully written
-        // some data then we *must* report that we wrote that data, so future
-        // errors are ignored. We set our internal `need_flush` flag, though, in
-        // case flushing fails and we need to try it first next time.
-        let n = self.inner.write(&buf[..=i])?;
-        self.need_flush = true;
-        if self.flush().is_err() || n != i + 1 {
-            return Ok(n);
-        }
-
-        // At this point we successfully wrote `i + 1` bytes and flushed it out,
-        // meaning that the entire line is now flushed out on the screen. While
-        // we can attempt to finish writing the rest of the data provided.
-        // Remember though that we ignore errors here as we've successfully
-        // written data, so we need to report that.
-        match self.inner.write(&buf[i + 1..]) {
-            Ok(i) => Ok(n + i),
-            Err(_) => Ok(n),
-        }
-    }
-
-    // Vectored writes are very similar to the writes above, but adjusted for
-    // the list of buffers that we have to write.
-    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        if self.need_flush {
-            self.flush()?;
-        }
-
-        // Find the last newline, and failing that write the whole buffer
-        let last_newline = bufs.iter().enumerate().rev().find_map(|(i, buf)| {
-            let pos = memchr::memrchr(b'\n', buf)?;
-            Some((i, pos))
-        });
-        let (i, j) = match last_newline {
-            Some(pair) => pair,
-            None => return self.inner.write_vectored(bufs),
-        };
-        let (prefix, suffix) = bufs.split_at(i);
-        let (buf, suffix) = suffix.split_at(1);
-        let buf = &buf[0];
-
-        // Write everything up to the last newline, flushing afterwards. Note
-        // that only if we finished our entire `write_vectored` do we try the
-        // subsequent
-        // `write`
-        let mut n = 0;
-        let prefix_amt = prefix.iter().map(|i| i.len()).sum();
-        if prefix_amt > 0 {
-            n += self.inner.write_vectored(prefix)?;
-            self.need_flush = true;
-        }
-        if n == prefix_amt {
-            match self.inner.write(&buf[..=j]) {
-                Ok(m) => n += m,
-                Err(e) if n == 0 => return Err(e),
-                Err(_) => return Ok(n),
-            }
-            self.need_flush = true;
-        }
-        if self.flush().is_err() || n != j + 1 + prefix_amt {
-            return Ok(n);
-        }
-
-        // ... and now write out everything remaining
-        match self.inner.write(&buf[j + 1..]) {
-            Ok(i) => n += i,
-            Err(_) => return Ok(n),
-        }
-
-        if suffix.iter().map(|s| s.len()).sum::<usize>() == 0 {
-            return Ok(n);
-        }
-        match self.inner.write_vectored(suffix) {
-            Ok(i) => Ok(n + i),
-            Err(_) => Ok(n),
-        }
+        LineWriterShim::new(&mut self.inner).write(buf)
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        self.inner.flush()?;
-        self.need_flush = false;
-        Ok(())
+        self.inner.flush()
+    }
+
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        LineWriterShim::new(&mut self.inner).write_vectored(bufs)
+    }
+
+    fn is_write_vectored(&self) -> bool {
+        self.inner.is_write_vectored()
+    }
+
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        LineWriterShim::new(&mut self.inner).write_all(buf)
+    }
+
+    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        LineWriterShim::new(&mut self.inner).write_all_vectored(bufs)
+    }
+
+    fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> io::Result<()> {
+        LineWriterShim::new(&mut self.inner).write_fmt(fmt)
     }
 }
 
@@ -1137,7 +1299,11 @@ mod tests {
 
     impl Read for ShortReader {
         fn read(&mut self, _: &mut [u8]) -> io::Result<usize> {
-            if self.lengths.is_empty() { Ok(0) } else { Ok(self.lengths.remove(0)) }
+            if self.lengths.is_empty() {
+                Ok(0)
+            } else {
+                Ok(self.lengths.remove(0))
+            }
         }
     }
 
