@@ -45,9 +45,7 @@ impl<'a> InferenceContext<'a> {
                 self.coerce_merge_branch(&ptr_ty1, &ptr_ty2)
             } else {
                 mark::hit!(coerce_merge_fail_fallback);
-                // For incompatible types, we use the latter one as result
-                // to be better recovery for `if` without `else`.
-                ty2.clone()
+                ty1.clone()
             }
         }
     }
