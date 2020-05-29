@@ -103,6 +103,11 @@ Compatibility Notes
 - [`mem::{zeroed, uninitialised, MaybeUninit}` will now panic when used with types
   that do not allow zero initialization such as `NonZeroU8`.][66059] This was
   previously a warning.
+- [In 1.45.0 (the next release) converting a `f64` to `u32` using the `as`
+  operator has been defined as a saturating operation.][71269] This was previously
+  undefined behaviour, you can use the `{f64, f32}::to_int_unchecked` methods to
+  continue using the current behaviour which may desirable in rare performance
+  sensitive situations.
 
 Internal Only
 -------------
@@ -127,6 +132,7 @@ related tools.
 [70048]: https://github.com/rust-lang/rust/pull/70048/
 [70081]: https://github.com/rust-lang/rust/pull/70081/
 [70156]: https://github.com/rust-lang/rust/pull/70156/
+[71269]: https://github.com/rust-lang/rust/pull/71269/
 [69838]: https://github.com/rust-lang/rust/pull/69838/
 [69929]: https://github.com/rust-lang/rust/pull/69929/
 [69661]: https://github.com/rust-lang/rust/pull/69661/
