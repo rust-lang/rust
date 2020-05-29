@@ -67,9 +67,10 @@ ValueData ValueData::KeepForCast(const llvm::DataLayout& dl, llvm::Type* from, l
 
         if (!fromOpaque && !toOpaque)
         {
-        uint64_t fromsize = dl.getTypeSizeInBits(from) / 8;
+        uint64_t fromsize = ( dl.getTypeSizeInBits(from) + 7 ) / 8;
+        if (fromsize == 0) llvm::errs() << "from: " << *from << "\n";
         assert(fromsize > 0);
-        uint64_t tosize = dl.getTypeSizeInBits(to) / 8;
+        uint64_t tosize = ( dl.getTypeSizeInBits(to) + 7 ) / 8;
         assert(tosize > 0);
 
         // If the sizes are the same, whatever the original one is okay [ since tomemory[ i*sizeof(from) ] indeed the start of an object of type to since tomemory is "aligned" to type to

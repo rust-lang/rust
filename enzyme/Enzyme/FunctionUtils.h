@@ -243,4 +243,30 @@ static inline void calculateUnusedValues(const llvm::Function& oldFunc, llvm::Sm
   }
 
 }
+
+static inline void calculateUnusedStores(const llvm::Function& oldFunc, llvm::SmallPtrSetImpl<const llvm::Instruction*> &unnecessaryStores, std::function<bool(const llvm::Instruction*)> needStore) {
+
+  std::deque<const llvm::Instruction*> todo;
+
+  for(const llvm::BasicBlock &BB : oldFunc) {
+    for(auto & inst : BB) {
+        if (&inst == BB.getTerminator()) continue;
+        todo.push_back(&inst);
+    }
+  }
+
+  while (!todo.empty()) {
+    auto inst = todo.front();
+    todo.pop_front();
+
+    if (unnecessaryStores.count(inst)) {
+        continue;
+    }
+
+    if (needStore(inst)) continue;
+    
+    unnecessaryStores.insert(inst);
+  }
+
+}
 #endif

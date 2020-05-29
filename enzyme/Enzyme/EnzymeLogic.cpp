@@ -853,17 +853,20 @@ public:
 
   const SmallPtrSetImpl<const Value*> &unnecessaryValues;
   const SmallPtrSetImpl<const Instruction*> &unnecessaryInstructions;
+  const SmallPtrSetImpl<const Instruction*> &unnecessaryStores;
 
   AllocaInst* dretAlloca;
   DerivativeMaker(DerivativeMode mode, GradientUtils *gutils, const std::vector<DIFFE_TYPE> &constant_args, TypeResults &TR, std::function<unsigned(Instruction*, CacheType)> getIndex,
     const std::map<CallInst*, const std::map<Argument*, bool> > uncacheable_args_map, const SmallPtrSetImpl<Instruction*> *returnuses, AugmentedReturnType augmentedReturn,
     std::vector<Instruction*>* fakeTBAA, const std::map<ReturnInst*,StoreInst*>* replacedReturns,
     const SmallPtrSetImpl<const Value*> &unnecessaryValues,
-    const SmallPtrSetImpl<const Instruction*> &unnecessaryInstructions, AllocaInst* dretAlloca
+    const SmallPtrSetImpl<const Instruction*> &unnecessaryInstructions, 
+    const SmallPtrSetImpl<const Instruction*> &unnecessaryStores, 
+    AllocaInst* dretAlloca
     ) : mode(mode), gutils(gutils), constant_args(constant_args), TR(TR),
         getIndex(getIndex), uncacheable_args_map(uncacheable_args_map),
         returnuses(returnuses), augmentedReturn(augmentedReturn), fakeTBAA(fakeTBAA), replacedReturns(replacedReturns),
-        unnecessaryValues(unnecessaryValues), unnecessaryInstructions(unnecessaryInstructions), dretAlloca(dretAlloca) {
+        unnecessaryValues(unnecessaryValues), unnecessaryInstructions(unnecessaryInstructions), unnecessaryStores(unnecessaryStores), dretAlloca(dretAlloca) {
 
     assert(TR.info.function == gutils->oldFunc);
     for(auto &pair : TR.analysis.analyzedFunctions.find(TR.info)->second.analysis) {
@@ -1074,6 +1077,11 @@ public:
     Value* orig_val = SI.getValueOperand();
     Value* val  = gutils->getNewFromOriginal(orig_val);
     Type* valType = orig_val->getType();
+
+    if (unnecessaryStores.count(&SI)) {
+      eraseIfUnused(SI);
+      return;
+    }
 
 
     if (gutils->isConstantValue(orig_ptr)) {
@@ -1482,7 +1490,7 @@ public:
       erased.insert(&MS);
       gutils->erase(gutils->getNewFromOriginal(&MS));
     }
-
+    
     if (gutils->isConstantInstruction(&MS)) return;
 
     Value* orig_op0 = MS.getOperand(0);
@@ -1532,6 +1540,12 @@ public:
       eraseIfUnused(MTI);
       return;
     }
+    
+    if (unnecessaryStores.count(&MTI)) {
+      eraseIfUnused(MTI);
+      return;
+    }
+
 
     Value* orig_op0 = MTI.getOperand(0);
     Value* op0 = gutils->getNewFromOriginal(orig_op0);
@@ -1555,9 +1569,25 @@ public:
 
     //llvm::errs() << *gutils->oldFunc << "\n";
     //TR.dump();
-    //llvm::errs() << "MIT: " << MTI << "|size: " << size << " dr: " << tr.str() << "\n";
+    
+    llvm::errs() << "MIT: " << MTI << "|size: " << size << " dr: " << TR.query(orig_op0).str() << "\n";
+    Type* secretty;
+    if (looseTypeAnalysis) {
+        auto vd = TR.firstPointer(size, orig_op0, /*errifnotfound*/false, /*pointerIntSame*/true);
+        if (vd.isKnown()) {
+            secretty = vd.isFloat();
+        } else if (isa<CastInst>(orig_op0) && cast<CastInst>(orig_op0)->getSrcTy()->isPointerTy() && cast<PointerType>(cast<CastInst>(orig_op0)->getSrcTy())->getElementType()->isFPOrFPVectorTy()) {
+            secretty = cast<PointerType>(cast<CastInst>(orig_op0)->getSrcTy())->getElementType()->getScalarType();
+        } else {
+            llvm::errs() << "cannot deduce type for mti: " << MTI << " " << *orig_op0 << "\n";
+            auto vd = TR.firstPointer(size, orig_op0, /*errifnotfound*/true, /*pointerIntSame*/true);
+            assert(0 && "bad mti");
+        }
+    } else {
+        secretty = TR.firstPointer(size, orig_op0, /*errifnotfound*/true, /*pointerIntSame*/true).isFloat();
+    }
 
-    if (Type* secretty = TR.firstPointer(size, orig_op0, /*errifnotfound*/true, /*pointerIntSame*/true).isFloat()) {
+    if (secretty) {
       //no change to forward pass if represents floats
       if (mode == DerivativeMode::Reverse || mode == DerivativeMode::Both) {
         IRBuilder<> Builder2 = getReverseBuilder(MTI.getParent());
@@ -3043,6 +3073,7 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, DIFFE_TYPE retTyp
     }
 
     if (auto si = dyn_cast<StoreInst>(inst)) {
+      if (isa<UndefValue>(si->getValueOperand())) return false;
       auto at = GetUnderlyingObject(si->getPointerOperand(), gutils->oldFunc->getParent()->getDataLayout(), 100);
       if (auto arg = dyn_cast<Argument>(at)) {
         if (constant_args[arg->getArgNo()] == DIFFE_TYPE::DUP_NONEED) {
@@ -3058,9 +3089,66 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, DIFFE_TYPE retTyp
           return false;
         }
       }
+      if (auto ai = dyn_cast<AllocaInst>(at)) {
+          bool foundStore = false;
+          allInstructionsBetween(gutils->OrigLI, ai, const_cast<MemTransferInst*>(mti), [&](Instruction* I) {
+            if (!I->mayWriteToMemory()) return;
+            if (unnecessaryInstructions.count(I)) return;
+
+            //if (I == &MTI) return;
+            if (writesToMemoryReadBy(gutils->AA, /*maybeReader*/const_cast<MemTransferInst*>(mti), /*maybeWriter*/I)) {
+              foundStore = true;
+              return;
+            }
+          });
+          if (!foundStore) {
+            return false;
+          }
+      }
     }
 
     return inst->mayWriteToMemory() || is_value_needed_in_reverse(TR, gutils, inst, /*topLevel*/false);
+  });
+
+  SmallPtrSet<const Instruction*, 4> unnecessaryStores;
+  calculateUnusedStores(*gutils->oldFunc, unnecessaryStores, [&](const Instruction* inst) {
+
+    if (auto si = dyn_cast<StoreInst>(inst)) {
+      if (isa<UndefValue>(si->getValueOperand())) return false;
+      auto at = GetUnderlyingObject(si->getPointerOperand(), gutils->oldFunc->getParent()->getDataLayout(), 100);
+      if (auto arg = dyn_cast<Argument>(at)) {
+        if (constant_args[arg->getArgNo()] == DIFFE_TYPE::DUP_NONEED) {
+          return false;
+        }
+      }
+    }
+
+    if (auto mti = dyn_cast<MemTransferInst>(inst)) {
+      auto at = GetUnderlyingObject(mti->getArgOperand(0), gutils->oldFunc->getParent()->getDataLayout(), 100);
+      if (auto arg = dyn_cast<Argument>(at)) {
+        if (constant_args[arg->getArgNo()] == DIFFE_TYPE::DUP_NONEED) {
+          return false;
+        }
+      }
+      if (auto ai = dyn_cast<AllocaInst>(at)) {
+          bool foundStore = false;
+          allInstructionsBetween(gutils->OrigLI, ai, const_cast<MemTransferInst*>(mti), [&](Instruction* I) {
+            if (!I->mayWriteToMemory()) return;
+            if (unnecessaryInstructions.count(I)) return;
+
+            //if (I == &MTI) return;
+            if (writesToMemoryReadBy(gutils->AA, /*maybeReader*/const_cast<MemTransferInst*>(mti), /*maybeWriter*/I)) {
+              foundStore = true;
+              return;
+            }
+          });
+          if (!foundStore) {
+            return false;
+          }
+      }
+    }
+
+    return true;
   });
 
   const std::map<CallInst*, const std::map<Argument*, bool> > uncacheable_args_map =
@@ -3126,7 +3214,7 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, DIFFE_TYPE retTyp
     }
   }
 
-  DerivativeMaker<AugmentedReturn*> maker(DerivativeMode::Forward, gutils, constant_args, TR, getIndex, uncacheable_args_map, &returnuses, &cachedfunctions.find(tup)->second, nullptr, nullptr, unnecessaryValues, unnecessaryInstructions, nullptr);
+  DerivativeMaker<AugmentedReturn*> maker(DerivativeMode::Forward, gutils, constant_args, TR, getIndex, uncacheable_args_map, &returnuses, &cachedfunctions.find(tup)->second, nullptr, nullptr, unnecessaryValues, unnecessaryInstructions, unnecessaryStores, nullptr);
 
   for(BasicBlock& oBB: *gutils->oldFunc) {
       auto term = oBB.getTerminator();
@@ -3917,6 +4005,7 @@ Function* CreatePrimalAndGradient(Function* todiff, DIFFE_TYPE retType, const st
     }
 
     if (auto si = dyn_cast<StoreInst>(inst)) {
+      if (isa<UndefValue>(si->getValueOperand())) return false;
       auto at = GetUnderlyingObject(si->getPointerOperand(), gutils->oldFunc->getParent()->getDataLayout(), 100);
       if (auto arg = dyn_cast<Argument>(at)) {
         if (constant_args[arg->getArgNo()] == DIFFE_TYPE::DUP_NONEED) {
@@ -3932,9 +4021,61 @@ Function* CreatePrimalAndGradient(Function* todiff, DIFFE_TYPE retType, const st
           return false;
         }
       }
+      //llvm::errs() << "origop for mti: " << *mti << " at:" << *at << "\n";
+      if (auto ai = dyn_cast<AllocaInst>(at)) {
+          bool foundStore = false;
+          allInstructionsBetween(gutils->OrigLI, ai, const_cast<MemTransferInst*>(mti), [&](Instruction* I) {
+            if (!I->mayWriteToMemory()) return;
+            if (unnecessaryInstructions.count(I)) return;
+
+            //if (I == &MTI) return;
+            if (writesToMemoryReadBy(gutils->AA, /*maybeReader*/const_cast<MemTransferInst*>(mti), /*maybeWriter*/I)) {
+              //llvm::errs() << " mti: - " << *mti << " stored into by " << *I << "\n";
+              foundStore = true;
+              return;
+            }
+          });
+          if (!foundStore) {
+            //llvm::errs() << "warning - performing a memcpy out of unitialized memory: " << *mti << "\n";
+            return false;
+          }
+      }
     }
 
     return (topLevel && inst->mayWriteToMemory()) || is_value_needed_in_reverse(TR, gutils, inst, /*topLevel*/topLevel);
+  });
+  
+  SmallPtrSet<const Instruction*, 4> unnecessaryStores;
+  calculateUnusedStores(*gutils->oldFunc, unnecessaryStores, [&](const Instruction* inst) {
+
+    if (auto si = dyn_cast<StoreInst>(inst)) {
+      if (isa<UndefValue>(si->getValueOperand())) return false;
+    }
+
+    if (auto mti = dyn_cast<MemTransferInst>(inst)) {
+      auto at = GetUnderlyingObject(mti->getArgOperand(0), gutils->oldFunc->getParent()->getDataLayout(), 100);
+      //llvm::errs() << "origop for mti: " << *mti << " at:" << *at << "\n";
+      if (auto ai = dyn_cast<AllocaInst>(at)) {
+          bool foundStore = false;
+          allInstructionsBetween(gutils->OrigLI, ai, const_cast<MemTransferInst*>(mti), [&](Instruction* I) {
+            if (!I->mayWriteToMemory()) return;
+            if (unnecessaryInstructions.count(I)) return;
+
+            //if (I == &MTI) return;
+            if (writesToMemoryReadBy(gutils->AA, /*maybeReader*/const_cast<MemTransferInst*>(mti), /*maybeWriter*/I)) {
+              //llvm::errs() << " mti: - " << *mti << " stored into by " << *I << "\n";
+              foundStore = true;
+              return;
+            }
+          });
+          if (!foundStore) {
+            //llvm::errs() << "warning - performing a memcpy out of unitialized memory: " << *mti << "\n";
+            return false;
+          }
+      }
+    }
+
+    return true;
   });
 
   const std::map<CallInst*, const std::map<Argument*, bool> > uncacheable_args_map = (augmenteddata) ? augmenteddata->uncacheable_args_map :
@@ -4043,7 +4184,7 @@ Function* CreatePrimalAndGradient(Function* todiff, DIFFE_TYPE retType, const st
     }
   }
 
-  DerivativeMaker<const AugmentedReturn*> maker( topLevel ? DerivativeMode::Both : DerivativeMode::Reverse, gutils, constant_args, TR, getIndex, uncacheable_args_map, /*returnuses*/nullptr, augmenteddata, &fakeTBAA, &replacedReturns, unnecessaryValues, unnecessaryInstructions, dretAlloca);
+  DerivativeMaker<const AugmentedReturn*> maker( topLevel ? DerivativeMode::Both : DerivativeMode::Reverse, gutils, constant_args, TR, getIndex, uncacheable_args_map, /*returnuses*/nullptr, augmenteddata, &fakeTBAA, &replacedReturns, unnecessaryValues, unnecessaryInstructions, unnecessaryStores, dretAlloca);
 
   for(BasicBlock& oBB: *gutils->oldFunc) {
     // Don't create derivatives for code that results in termination
