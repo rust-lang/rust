@@ -1,5 +1,4 @@
 #![feature(rustc_private)]
-#![feature(str_strip)]
 
 extern crate rustc_middle;
 extern crate rustc_driver;
