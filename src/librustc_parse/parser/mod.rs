@@ -672,6 +672,26 @@ impl<'a> Parser<'a> {
                                 }
                             }
 
+                            // If this was a missing `@` in a binding pattern
+                            // bail with a suggestion
+                            // https://github.com/rust-lang/rust/issues/72373
+                            if self.prev_token.is_ident() && &self.token.kind == &token::DotDot {
+                                let msg = format!(
+                                    "if you meant to bind the contents of \
+                                    the rest of the array pattern into `{}`, use `@`",
+                                    pprust::token_to_string(&self.prev_token)
+                                );
+                                expect_err
+                                    .span_suggestion_verbose(
+                                        self.prev_token.span.shrink_to_hi().until(self.token.span),
+                                        &msg,
+                                        " @ ".to_string(),
+                                        Applicability::MaybeIncorrect,
+                                    )
+                                    .emit();
+                                break;
+                            }
+
                             // Attempt to keep parsing if it was an omitted separator.
                             match f(self) {
                                 Ok(t) => {
