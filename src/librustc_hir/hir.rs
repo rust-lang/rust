@@ -10,7 +10,6 @@ pub use rustc_ast::ast::{CaptureBy, Movability, Mutability};
 use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::util::parser::ExprPrecedence;
-use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::{par_for_each_in, Send, Sync};
 use rustc_macros::HashStable_Generic;
 use rustc_span::source_map::{SourceMap, Spanned};
@@ -2663,10 +2662,6 @@ impl<ID> TraitCandidate<ID> {
 
 // Trait method resolution
 pub type TraitMap<ID = HirId> = NodeMap<Vec<TraitCandidate<ID>>>;
-
-// Map from the NodeId of a glob import to a list of items which are actually
-// imported.
-pub type GlobMap = NodeMap<FxHashSet<Symbol>>;
 
 #[derive(Copy, Clone, Debug, HashStable_Generic)]
 pub enum Node<'hir> {
