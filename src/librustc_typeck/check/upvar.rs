@@ -112,7 +112,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         if let Some(upvars) = self.tcx.upvars_mentioned(closure_def_id) {
-            let mut upvar_list: FxIndexMap<hir::HirId, ty::UpvarId> =
+            let mut closure_captures: FxIndexMap<hir::HirId, ty::UpvarId> =
                 FxIndexMap::with_capacity_and_hasher(upvars.len(), Default::default());
             for (&var_hir_id, _) in upvars.iter() {
                 let upvar_id = ty::UpvarId {
@@ -122,7 +122,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 debug!("seed upvar_id {:?}", upvar_id);
                 // Adding the upvar Id to the list of Upvars, which will be added
                 // to the map for the closure at the end of the for loop.
-                upvar_list.insert(var_hir_id, upvar_id);
+                closure_captures.insert(var_hir_id, upvar_id);
 
                 let capture_kind = match capture_clause {
                     hir::CaptureBy::Value => ty::UpvarCapture::ByValue,
@@ -140,8 +140,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Add the vector of upvars to the map keyed with the closure id.
             // This gives us an easier access to them without having to call
             // tcx.upvars again..
-            if !upvar_list.is_empty() {
-                self.tables.borrow_mut().upvar_list.insert(closure_def_id, upvar_list);
+            if !closure_captures.is_empty() {
+                self.tables.borrow_mut().closure_captures.insert(closure_def_id, closure_captures);
             }
         }
 

@@ -142,7 +142,7 @@ fn do_mir_borrowck<'a, 'tcx>(
         infcx.set_tainted_by_errors();
     }
     let upvars: Vec<_> = tables
-        .upvar_list
+        .closure_captures
         .get(&def_id.to_def_id())
         .into_iter()
         .flat_map(|v| v.values())

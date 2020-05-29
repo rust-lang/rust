@@ -790,11 +790,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let hir_tables = self.hir.tables();
 
         // In analyze_closure() in upvar.rs we gathered a list of upvars used by a
-        // closure and we stored in a map called upvar_list in TypeckTables indexed
+        // indexed closure and we stored in a map called closure_captures in TypeckTables
         // with the closure's DefId. Here, we run through that vec of UpvarIds for
         // the given closure and use the necessary information to create upvar
         // debuginfo and to fill `self.upvar_mutbls`.
-        if let Some(upvars) = hir_tables.upvar_list.get(&fn_def_id) {
+        if let Some(upvars) = hir_tables.closure_captures.get(&fn_def_id) {
             let closure_env_arg = Local::new(1);
             let mut closure_env_projs = vec![];
             let mut closure_ty = self.local_decls[closure_env_arg].ty;
