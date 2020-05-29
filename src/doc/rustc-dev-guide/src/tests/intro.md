@@ -147,10 +147,81 @@ the Docker image, run it, build Rust within the image, and run the tests.
 [src/ci/docker]: https://github.com/rust-lang/rust/tree/master/src/ci/docker
 [src/ci/docker/run.sh]: https://github.com/rust-lang/rust/blob/master/src/ci/docker/run.sh
 
+## Running tests on a remote machine
+
+Tests may be run on a remote machine (e.g. to test builds for a different
+architecture). This is done using `remote-test-client` on the build machine
+to send test programs to `remote-test-server` running on the remote machine.
+`remote-test-server` executes the test programs and sends the results back to
+the build machine. `remote-test-server` provides *unauthenticated remote code
+execution* so be careful where it is used.
+
+To do this, first build `remote-test-server` for the remote
+machine, e.g. for RISC-V
+```sh
+./x.py build src/tools/remote-test-server --target riscv64gc-unknown-linux-gnu
+```
+
+The binary will be created at
+`./build/$HOST_ARCH/stage2-tools/$TARGET_ARCH/release/remote-test-server`. Copy
+this over to the remote machine.
+
+On the remote machine, run the `remote-test-server` with the `remote` argument
+(and optionally `-v` for verbose output). Output should look like this:
+```sh
+$ ./remote-test-server -v remote
+starting test server
+listening on 0.0.0.0:12345!
+```
+
+You can test if the `remote-test-server` is working by connecting to it and
+sending `ping\n`. It should reply `pong`:
+```sh
+$ nc $REMOTE_IP 12345
+ping
+pong
+```
+
+To run tests using the remote runner, set the `TEST_DEVICE_ADDR` environment
+variable then use `x.py` as usual. For example, to run `ui` tests for a RISC-V
+machine with the IP address `1.2.3.4` use
+```sh
+export TEST_DEVICE_ADDR="1.2.3.4:12345"
+./x.py test src/test/ui --target riscv64gc-unknown-linux-gnu
+```
+
+If `remote-test-server` was run with the verbose flag, output on the test machine
+may look something like
+```
+[...]
+run "/tmp/work/test1007/a"
+run "/tmp/work/test1008/a"
+run "/tmp/work/test1009/a"
+run "/tmp/work/test1010/a"
+run "/tmp/work/test1011/a"
+run "/tmp/work/test1012/a"
+run "/tmp/work/test1013/a"
+run "/tmp/work/test1014/a"
+run "/tmp/work/test1015/a"
+run "/tmp/work/test1016/a"
+run "/tmp/work/test1017/a"
+run "/tmp/work/test1018/a"
+[...]
+```
+
+Tests are built on the machine running `x.py` not on the remote machine. Tests
+which fail to build unexpectedly (or `ui` tests producing incorrect build
+output) may fail without ever running on the remote machine.
+
 ## Testing on emulators
 
 Some platforms are tested via an emulator for architectures that aren't
-readily available.  There is a set of tools for orchestrating running the
+readily available. For architectures where the standard library is well
+supported and the host operating system supports TCP/IP networking, see the
+above instructions for testing on a remote machine (in this case the
+remote machine is emulated).
+
+There is also a set of tools for orchestrating running the
 tests within the emulator.  Platforms such as `arm-android` and
 `arm-unknown-linux-gnueabihf` are set up to automatically run the tests under
 emulation on Travis.  The following will take a look at how a target's tests
@@ -165,15 +236,8 @@ reading the results.  The Docker image is set up to launch
 communicate with the server to coordinate running tests (see
 [src/bootstrap/test.rs]).
 
-> TODO: What are the steps for manually running tests within an emulator?
-> `./src/ci/docker/run.sh armhf-gnu` will do everything, but takes hours to
-> run and doesn't offer much help with interacting within the emulator.
->
-> Is there any support for emulating other (non-Android) platforms, such as
-> running on an iOS emulator?
->
-> Is there anything else interesting that can be said here about running tests
-> remotely on real hardware?
+> TODO:
+> Is there any support for using an iOS emulator?
 >
 > It's also unclear to me how the wasm or asm.js tests are run.
 
