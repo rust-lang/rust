@@ -14,16 +14,16 @@ note: ...so that the expression is assignable
    |
 LL |    bar(foo, x)
    |             ^
-   = note: expected  `Type<'_>`
-              found  `Type<'a>`
+   = note: expected `Type<'_>`
+              found `Type<'a>`
    = note: but, the lifetime must be valid for the static lifetime...
 note: ...so that the expression is assignable
   --> $DIR/project-fn-ret-invariant.rs:48:4
    |
 LL |    bar(foo, x)
    |    ^^^^^^^^^^^
-   = note: expected  `Type<'static>`
-              found  `Type<'_>`
+   = note: expected `Type<'static>`
+              found `Type<'_>`
 
 error: aborting due to previous error
 

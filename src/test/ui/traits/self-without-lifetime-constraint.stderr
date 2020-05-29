@@ -1,0 +1,19 @@
+error: `impl` item signature doesn't match `trait` item signature
+  --> $DIR/self-without-lifetime-constraint.rs:45:5
+   |
+LL |     fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self, &Self>;
+   |     -------------------------------------------------------------------- expected `fn(ValueRef<'_>) -> std::result::Result<(&str, &&str), FromSqlError>`
+...
+LL |     fn column_result(value: ValueRef<'_>) -> FromSqlResult<&str, &&str> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found `fn(ValueRef<'_>) -> std::result::Result<(&str, &&str), FromSqlError>`
+   |
+   = note: expected `fn(ValueRef<'_>) -> std::result::Result<(&str, &&str), _>`
+              found `fn(ValueRef<'_>) -> std::result::Result<(&str, &&str), _>`
+help: the lifetime requirements from the `impl` do not correspond to the requirements in the `trait`
+  --> $DIR/self-without-lifetime-constraint.rs:41:60
+   |
+LL |     fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self, &Self>;
+   |                                                            ^^^^ consider borrowing this type parameter in the trait
+
+error: aborting due to previous error
+

@@ -19,8 +19,8 @@ note: ...so that the types are compatible
    |
 LL | impl<'a,'b> T2<'a, 'b> for S<'a, 'b> {
    |             ^^^^^^^^^^
-   = note: expected  `T1<'a>`
-              found  `T1<'_>`
+   = note: expected `T1<'a>`
+              found `T1<'_>`
 
 error: aborting due to previous error
 

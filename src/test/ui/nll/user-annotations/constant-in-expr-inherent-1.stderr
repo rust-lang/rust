@@ -14,8 +14,8 @@ note: ...so that the types are compatible
    |
 LL |     <Foo<'a>>::C
    |     ^^^^^^^^^^^^
-   = note: expected  `Foo<'_>`
-              found  `Foo<'a>`
+   = note: expected `Foo<'_>`
+              found `Foo<'a>`
    = note: but, the lifetime must be valid for the static lifetime...
 note: ...so that reference does not outlive borrowed content
   --> $DIR/constant-in-expr-inherent-1.rs:8:5

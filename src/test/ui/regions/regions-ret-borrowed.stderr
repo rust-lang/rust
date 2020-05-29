@@ -14,8 +14,8 @@ note: ...so that the expression is assignable
    |
 LL |     with(|o| o)
    |              ^
-   = note: expected  `&isize`
-              found  `&isize`
+   = note: expected `&isize`
+              found `&isize`
 note: but, the lifetime must be valid for the lifetime `'a` as defined on the function body at 12:14...
   --> $DIR/regions-ret-borrowed.rs:12:14
    |
