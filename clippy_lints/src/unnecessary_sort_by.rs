@@ -14,9 +14,9 @@ declare_clippy_lint! {
     /// which compares the two arguments, either directly or indirectly.
     ///
     /// **Why is this bad?**
-    /// It is more clear to use `Vec::sort_by_key` (or
-    /// `Vec::sort_by_key` and `std::cmp::Reverse` if necessary) than
-    /// using
+    /// It is more clear to use `Vec::sort_by_key` (or `Vec::sort` if
+    /// possible) than to use `Vec::sort_by` and and a more complicated
+    /// closure.
     ///
     /// **Known problems:** None.
     ///
@@ -29,12 +29,12 @@ declare_clippy_lint! {
     /// ```rust
     /// vec.sort_by_key(|a| a.foo());
     /// ```
-    pub SORT_BY_KEY,
+    pub UNNECESSARY_SORT_BY,
     complexity,
-    "Use of `Vec::sort_by` when `Vec::sort_by_key` would be clearer"
+    "Use of `Vec::sort_by` when `Vec::sort_by_key` or `Vec::sort` would be clearer"
 }
 
-declare_lint_pass!(SortByKey => [SORT_BY_KEY]);
+declare_lint_pass!(UnnecessarySortBy => [UNNECESSARY_SORT_BY]);
 
 enum LintTrigger {
     Sort(SortDetection),
@@ -205,12 +205,12 @@ fn detect_lint(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> Option<LintTrigger>
     }
 }
 
-impl LateLintPass<'_, '_> for SortByKey {
+impl LateLintPass<'_, '_> for UnnecessarySortBy {
     fn check_expr(&mut self, cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
         match detect_lint(cx, expr) {
             Some(LintTrigger::SortByKey(trigger)) => utils::span_lint_and_sugg(
                 cx,
-                SORT_BY_KEY,
+                UNNECESSARY_SORT_BY,
                 expr.span,
                 "use Vec::sort_by_key here instead",
                 "try",
@@ -225,7 +225,7 @@ impl LateLintPass<'_, '_> for SortByKey {
             ),
             Some(LintTrigger::Sort(trigger)) => utils::span_lint_and_sugg(
                 cx,
-                SORT_BY_KEY,
+                UNNECESSARY_SORT_BY,
                 expr.span,
                 "use Vec::sort here instead",
                 "try",
