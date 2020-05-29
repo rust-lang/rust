@@ -455,11 +455,7 @@ macro_rules! nzint_impl_try_from {
                     #[inline]
                     fn try_from(value: $PossiblyZeroType) -> Result<Self,Self::Error> {
                         <$SameButZeroType as TryFrom<$PossiblyZeroType>>::try_from(value)
-                            .ok()
-                            .into_iter()
-                            .flat_map($NonZeroType::new)
-                            .next()
-                            .ok_or_else(|| TryFromIntError(()))
+                            .ok().and_then($NonZeroType::new).ok_or(TryFromIntError(()))
                     }
                 }
     };
