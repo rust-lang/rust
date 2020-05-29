@@ -289,7 +289,7 @@ fn recv<B: BufRead>(dir: &Path, io: &mut B) -> PathBuf {
 
 #[cfg(not(windows))]
 fn set_permissions(path: &Path) {
-    t!(fs::set_permissions(&dst, Permissions::from_mode(0o755)));
+    t!(fs::set_permissions(&path, Permissions::from_mode(0o755)));
 }
 #[cfg(windows)]
 fn set_permissions(_path: &Path) {}
