@@ -5,4 +5,8 @@ impl Struct {
     //~^ ERROR the size for values of type
 }
 
+struct Vec<T> {
+    t: T,
+}
+
 fn main() {}

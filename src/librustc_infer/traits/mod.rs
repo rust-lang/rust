@@ -1,6 +1,6 @@
-//! Trait Resolution. See the [rustc guide] for more information on how this works.
+//! Trait Resolution. See the [rustc-dev-guide] for more information on how this works.
 //!
-//! [rustc guide]: https://rust-lang.github.io/rustc-guide/traits/resolution.html
+//! [rustc-dev-guide]: https://rustc-dev-guide.rust-lang.org/traits/resolution.html
 
 mod engine;
 pub mod error_reporting;
@@ -10,7 +10,7 @@ pub mod util;
 
 use rustc_hir as hir;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, Const, Ty};
 use rustc_span::Span;
 
 pub use self::FulfillmentErrorCode::*;
@@ -20,9 +20,10 @@ pub use self::Vtable::*;
 
 pub use self::engine::{TraitEngine, TraitEngineExt};
 pub use self::project::MismatchedProjectionTypes;
+pub(crate) use self::project::UndoLog;
 pub use self::project::{
     Normalized, NormalizedTy, ProjectionCache, ProjectionCacheEntry, ProjectionCacheKey,
-    ProjectionCacheSnapshot, Reveal,
+    ProjectionCacheStorage, Reveal,
 };
 crate use self::util::elaborate_predicates;
 
@@ -58,7 +59,7 @@ pub type TraitObligation<'tcx> = Obligation<'tcx, ty::PolyTraitPredicate<'tcx>>;
 
 // `PredicateObligation` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
-static_assert_size!(PredicateObligation<'_>, 112);
+static_assert_size!(PredicateObligation<'_>, 88);
 
 pub type Obligations<'tcx, O> = Vec<Obligation<'tcx, O>>;
 pub type PredicateObligations<'tcx> = Vec<PredicateObligation<'tcx>>;
@@ -80,6 +81,7 @@ pub enum FulfillmentErrorCode<'tcx> {
     CodeSelectionError(SelectionError<'tcx>),
     CodeProjectionError(MismatchedProjectionTypes<'tcx>),
     CodeSubtypeError(ExpectedFound<Ty<'tcx>>, TypeError<'tcx>), // always comes from a SubtypePredicate
+    CodeConstEquateError(ExpectedFound<&'tcx Const<'tcx>>, TypeError<'tcx>),
     CodeAmbiguity,
 }
 

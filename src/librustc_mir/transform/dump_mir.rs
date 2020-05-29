@@ -7,7 +7,7 @@ use std::io;
 
 use crate::transform::{MirPass, MirSource};
 use crate::util as mir_util;
-use rustc_middle::mir::{Body, BodyAndCache};
+use rustc_middle::mir::Body;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{OutputFilenames, OutputType};
 
@@ -18,13 +18,7 @@ impl<'tcx> MirPass<'tcx> for Marker {
         Cow::Borrowed(self.0)
     }
 
-    fn run_pass(
-        &self,
-        _tcx: TyCtxt<'tcx>,
-        _source: MirSource<'tcx>,
-        _body: &mut BodyAndCache<'tcx>,
-    ) {
-    }
+    fn run_pass(&self, _tcx: TyCtxt<'tcx>, _source: MirSource<'tcx>, _body: &mut Body<'tcx>) {}
 }
 
 pub struct Disambiguator {

@@ -20,7 +20,6 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::Ordering;
 
 use log::debug;
-use std::env;
 use std::fs;
 use std::io;
 
@@ -64,9 +63,6 @@ pub trait FileLoader {
     /// Query the existence of a file.
     fn file_exists(&self, path: &Path) -> bool;
 
-    /// Returns an absolute path to a file, if possible.
-    fn abs_path(&self, path: &Path) -> Option<PathBuf>;
-
     /// Read the contents of an UTF-8 file into memory.
     fn read_file(&self, path: &Path) -> io::Result<String>;
 }
@@ -77,14 +73,6 @@ pub struct RealFileLoader;
 impl FileLoader for RealFileLoader {
     fn file_exists(&self, path: &Path) -> bool {
         fs::metadata(path).is_ok()
-    }
-
-    fn abs_path(&self, path: &Path) -> Option<PathBuf> {
-        if path.is_absolute() {
-            Some(path.to_path_buf())
-        } else {
-            env::current_dir().ok().map(|cwd| cwd.join(path))
-        }
     }
 
     fn read_file(&self, path: &Path) -> io::Result<String> {
@@ -922,14 +910,23 @@ impl SourceMap {
 
     pub fn generate_fn_name_span(&self, span: Span) -> Option<Span> {
         let prev_span = self.span_extend_to_prev_str(span, "fn", true);
-        self.span_to_snippet(prev_span)
-            .map(|snippet| {
-                let len = snippet
-                    .find(|c: char| !c.is_alphanumeric() && c != '_')
-                    .expect("no label after fn");
-                prev_span.with_hi(BytePos(prev_span.lo().0 + len as u32))
-            })
-            .ok()
+        if let Ok(snippet) = self.span_to_snippet(prev_span) {
+            debug!(
+                "generate_fn_name_span: span={:?}, prev_span={:?}, snippet={:?}",
+                span, prev_span, snippet
+            );
+
+            if snippet.is_empty() {
+                return None;
+            };
+
+            let len = snippet
+                .find(|c: char| !c.is_alphanumeric() && c != '_')
+                .expect("no label after fn");
+            Some(prev_span.with_hi(BytePos(prev_span.lo().0 + len as u32)))
+        } else {
+            None
+        }
     }
 
     /// Takes the span of a type parameter in a function signature and try to generate a span for

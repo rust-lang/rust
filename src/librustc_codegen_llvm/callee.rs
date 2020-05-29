@@ -29,7 +29,7 @@ pub fn get_fn(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>) -> &'ll Value
 
     assert!(!instance.substs.needs_infer());
     assert!(!instance.substs.has_escaping_bound_vars());
-    assert!(!instance.substs.has_param_types());
+    assert!(!instance.substs.has_param_types_or_consts());
 
     if let Some(&llfn) = cx.instances.borrow().get(&instance) {
         return llfn;
@@ -116,7 +116,7 @@ pub fn get_fn(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>) -> &'ll Value
                 if cx.tcx.sess.opts.share_generics() {
                     // We are in share_generics mode.
 
-                    if instance_def_id.is_local() {
+                    if let Some(instance_def_id) = instance_def_id.as_local() {
                         // This is a definition from the current crate. If the
                         // definition is unreachable for downstream crates or
                         // the current crate does not re-export generics, the

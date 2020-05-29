@@ -20,7 +20,6 @@
 use crate::owning_ref::{Erased, OwningRef};
 use std::collections::HashMap;
 use std::hash::{BuildHasher, Hash};
-use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 
 pub use std::sync::atomic::Ordering;
@@ -230,6 +229,8 @@ cfg_if! {
         pub use std::cell::RefMut as LockGuard;
         pub use std::cell::RefMut as MappedLockGuard;
 
+        pub use once_cell::unsync::OnceCell;
+
         use std::cell::RefCell as InnerRwLock;
         use std::cell::RefCell as InnerLock;
 
@@ -312,6 +313,8 @@ cfg_if! {
 
         pub use parking_lot::MutexGuard as LockGuard;
         pub use parking_lot::MappedMutexGuard as MappedLockGuard;
+
+        pub use once_cell::sync::OnceCell;
 
         pub use std::sync::atomic::{AtomicBool, AtomicUsize, AtomicU32, AtomicU64};
 
@@ -429,134 +432,6 @@ pub trait HashMapExt<K, V> {
 impl<K: Eq + Hash, V: Eq, S: BuildHasher> HashMapExt<K, V> for HashMap<K, V, S> {
     fn insert_same(&mut self, key: K, value: V) {
         self.entry(key).and_modify(|old| assert!(*old == value)).or_insert(value);
-    }
-}
-
-/// A type whose inner value can be written once and then will stay read-only
-// This contains a PhantomData<T> since this type conceptually owns a T outside the Mutex once
-// initialized. This ensures that Once<T> is Sync only if T is. If we did not have PhantomData<T>
-// we could send a &Once<Cell<bool>> to multiple threads and call `get` on it to get access
-// to &Cell<bool> on those threads.
-pub struct Once<T>(Lock<Option<T>>, PhantomData<T>);
-
-impl<T> Once<T> {
-    /// Creates an Once value which is uninitialized
-    #[inline(always)]
-    pub fn new() -> Self {
-        Once(Lock::new(None), PhantomData)
-    }
-
-    /// Consumes the value and returns Some(T) if it was initialized
-    #[inline(always)]
-    pub fn into_inner(self) -> Option<T> {
-        self.0.into_inner()
-    }
-
-    /// Tries to initialize the inner value to `value`.
-    /// Returns `None` if the inner value was uninitialized and `value` was consumed setting it
-    /// otherwise if the inner value was already set it returns `value` back to the caller
-    #[inline]
-    pub fn try_set(&self, value: T) -> Option<T> {
-        let mut lock = self.0.lock();
-        if lock.is_some() {
-            return Some(value);
-        }
-        *lock = Some(value);
-        None
-    }
-
-    /// Tries to initialize the inner value to `value`.
-    /// Returns `None` if the inner value was uninitialized and `value` was consumed setting it
-    /// otherwise if the inner value was already set it asserts that `value` is equal to the inner
-    /// value and then returns `value` back to the caller
-    #[inline]
-    pub fn try_set_same(&self, value: T) -> Option<T>
-    where
-        T: Eq,
-    {
-        let mut lock = self.0.lock();
-        if let Some(ref inner) = *lock {
-            assert!(*inner == value);
-            return Some(value);
-        }
-        *lock = Some(value);
-        None
-    }
-
-    /// Tries to initialize the inner value to `value` and panics if it was already initialized
-    #[inline]
-    pub fn set(&self, value: T) {
-        assert!(self.try_set(value).is_none());
-    }
-
-    /// Initializes the inner value if it wasn't already done by calling the provided closure. It
-    /// ensures that no-one else can access the value in the mean time by holding a lock for the
-    /// duration of the closure.
-    /// A reference to the inner value is returned.
-    #[inline]
-    pub fn init_locking<F: FnOnce() -> T>(&self, f: F) -> &T {
-        {
-            let mut lock = self.0.lock();
-            if lock.is_none() {
-                *lock = Some(f());
-            }
-        }
-
-        self.borrow()
-    }
-
-    /// Tries to initialize the inner value by calling the closure without ensuring that no-one
-    /// else can access it. This mean when this is called from multiple threads, multiple
-    /// closures may concurrently be computing a value which the inner value should take.
-    /// Only one of these closures are used to actually initialize the value.
-    /// If some other closure already set the value,
-    /// we return the value our closure computed wrapped in a `Option`.
-    /// If our closure set the value, `None` is returned.
-    /// If the value is already initialized, the closure is not called and `None` is returned.
-    #[inline]
-    pub fn init_nonlocking<F: FnOnce() -> T>(&self, f: F) -> Option<T> {
-        if self.0.lock().is_some() { None } else { self.try_set(f()) }
-    }
-
-    /// Tries to initialize the inner value by calling the closure without ensuring that no-one
-    /// else can access it. This mean when this is called from multiple threads, multiple
-    /// closures may concurrently be computing a value which the inner value should take.
-    /// Only one of these closures are used to actually initialize the value.
-    /// If some other closure already set the value, we assert that it our closure computed
-    /// a value equal to the value already set and then
-    /// we return the value our closure computed wrapped in a `Option`.
-    /// If our closure set the value, `None` is returned.
-    /// If the value is already initialized, the closure is not called and `None` is returned.
-    #[inline]
-    pub fn init_nonlocking_same<F: FnOnce() -> T>(&self, f: F) -> Option<T>
-    where
-        T: Eq,
-    {
-        if self.0.lock().is_some() { None } else { self.try_set_same(f()) }
-    }
-
-    /// Tries to get a reference to the inner value, returns `None` if it is not yet initialized
-    #[inline(always)]
-    pub fn try_get(&self) -> Option<&T> {
-        let lock = &*self.0.lock();
-        if let Some(ref inner) = *lock {
-            // This is safe since we won't mutate the inner value
-            unsafe { Some(&*(inner as *const T)) }
-        } else {
-            None
-        }
-    }
-
-    /// Gets reference to the inner value, panics if it is not yet initialized
-    #[inline(always)]
-    pub fn get(&self) -> &T {
-        self.try_get().expect("value was not set")
-    }
-
-    /// Gets reference to the inner value, panics if it is not yet initialized
-    #[inline(always)]
-    pub fn borrow(&self) -> &T {
-        self.get()
     }
 }
 

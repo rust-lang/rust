@@ -5,7 +5,7 @@ LL | fn foo() -> dyn Trait { Struct }
    |             ^^^^^^^^^ doesn't have a size known at compile-time
    |
    = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
-help: return `impl Trait` instead, as all return paths are of type `Struct`, which implements `Trait`
+help: use `impl Trait` as the return type, as all return paths are of type `Struct`, which implements `Trait`
    |
 LL | fn foo() -> impl Trait { Struct }
    |             ^^^^^^^^^^
@@ -17,7 +17,7 @@ LL | fn bar() -> dyn Trait {
    |             ^^^^^^^^^ doesn't have a size known at compile-time
    |
    = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
-help: return `impl Trait` instead, as all return paths are of type `{integer}`, which implements `Trait`
+help: use `impl Trait` as the return type, as all return paths are of type `{integer}`, which implements `Trait`
    |
 LL | fn bar() -> impl Trait {
    |             ^^^^^^^^^^

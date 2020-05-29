@@ -1,6 +1,6 @@
 use rustc_data_structures::svh::Svh;
 use rustc_hir as hir;
-use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use rustc_middle::hir::map as hir_map;
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, WithConstness};
@@ -47,8 +47,6 @@ fn sized_constraint_for_ty<'tcx>(
             vec![ty]
         }
 
-        UnnormalizedProjection(..) => bug!("only used with chalk-engine"),
-
         Param(..) => {
             // perf hack: if there is a `T: Sized` bound, then
             // we know that `T` is Sized and do not need to check
@@ -63,7 +61,7 @@ fn sized_constraint_for_ty<'tcx>(
                 substs: tcx.mk_substs_trait(ty, &[]),
             })
             .without_const()
-            .to_predicate();
+            .to_predicate(tcx);
             let predicates = tcx.predicates_of(adtdef.did).predicates;
             if predicates.iter().any(|(p, _)| *p == sized_predicate) { vec![] } else { vec![ty] }
         }
@@ -78,14 +76,14 @@ fn sized_constraint_for_ty<'tcx>(
 
 fn associated_item_from_trait_item_ref(
     tcx: TyCtxt<'_>,
-    parent_def_id: DefId,
+    parent_def_id: LocalDefId,
     parent_vis: &hir::Visibility<'_>,
     trait_item_ref: &hir::TraitItemRef,
 ) -> ty::AssocItem {
     let def_id = tcx.hir().local_def_id(trait_item_ref.id.hir_id);
     let (kind, has_self) = match trait_item_ref.kind {
         hir::AssocItemKind::Const => (ty::AssocKind::Const, false),
-        hir::AssocItemKind::Method { has_self } => (ty::AssocKind::Method, has_self),
+        hir::AssocItemKind::Fn { has_self } => (ty::AssocKind::Fn, has_self),
         hir::AssocItemKind::Type => (ty::AssocKind::Type, false),
         hir::AssocItemKind::OpaqueTy => bug!("only impls can have opaque types"),
     };
@@ -96,21 +94,21 @@ fn associated_item_from_trait_item_ref(
         // Visibility of trait items is inherited from their traits.
         vis: ty::Visibility::from_hir(parent_vis, trait_item_ref.id.hir_id, tcx),
         defaultness: trait_item_ref.defaultness,
-        def_id,
-        container: ty::TraitContainer(parent_def_id),
-        method_has_self_argument: has_self,
+        def_id: def_id.to_def_id(),
+        container: ty::TraitContainer(parent_def_id.to_def_id()),
+        fn_has_self_parameter: has_self,
     }
 }
 
 fn associated_item_from_impl_item_ref(
     tcx: TyCtxt<'_>,
-    parent_def_id: DefId,
+    parent_def_id: LocalDefId,
     impl_item_ref: &hir::ImplItemRef<'_>,
 ) -> ty::AssocItem {
     let def_id = tcx.hir().local_def_id(impl_item_ref.id.hir_id);
     let (kind, has_self) = match impl_item_ref.kind {
         hir::AssocItemKind::Const => (ty::AssocKind::Const, false),
-        hir::AssocItemKind::Method { has_self } => (ty::AssocKind::Method, has_self),
+        hir::AssocItemKind::Fn { has_self } => (ty::AssocKind::Fn, has_self),
         hir::AssocItemKind::Type => (ty::AssocKind::Type, false),
         hir::AssocItemKind::OpaqueTy => (ty::AssocKind::OpaqueTy, false),
     };
@@ -121,14 +119,14 @@ fn associated_item_from_impl_item_ref(
         // Visibility of trait impl items doesn't matter.
         vis: ty::Visibility::from_hir(&impl_item_ref.vis, impl_item_ref.id.hir_id, tcx),
         defaultness: impl_item_ref.defaultness,
-        def_id,
-        container: ty::ImplContainer(parent_def_id),
-        method_has_self_argument: has_self,
+        def_id: def_id.to_def_id(),
+        container: ty::ImplContainer(parent_def_id.to_def_id()),
+        fn_has_self_parameter: has_self,
     }
 }
 
 fn associated_item(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AssocItem {
-    let id = tcx.hir().as_local_hir_id(def_id).unwrap();
+    let id = tcx.hir().as_local_hir_id(def_id.expect_local());
     let parent_id = tcx.hir().get_parent_item(id);
     let parent_def_id = tcx.hir().local_def_id(parent_id);
     let parent_item = tcx.hir().expect_item(parent_id);
@@ -166,7 +164,7 @@ fn associated_item(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AssocItem {
 }
 
 fn impl_defaultness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::Defaultness {
-    let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+    let hir_id = tcx.hir().as_local_hir_id(def_id.expect_local());
     let item = tcx.hir().expect_item(hir_id);
     if let hir::ItemKind::Impl { defaultness, .. } = item.kind {
         defaultness
@@ -200,29 +198,29 @@ fn adt_sized_constraint(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AdtSizedConstrain
 }
 
 fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: DefId) -> &[DefId] {
-    let id = tcx.hir().as_local_hir_id(def_id).unwrap();
+    let id = tcx.hir().as_local_hir_id(def_id.expect_local());
     let item = tcx.hir().expect_item(id);
     match item.kind {
         hir::ItemKind::Trait(.., ref trait_item_refs) => tcx.arena.alloc_from_iter(
             trait_item_refs
                 .iter()
                 .map(|trait_item_ref| trait_item_ref.id)
-                .map(|id| tcx.hir().local_def_id(id.hir_id)),
+                .map(|id| tcx.hir().local_def_id(id.hir_id).to_def_id()),
         ),
         hir::ItemKind::Impl { ref items, .. } => tcx.arena.alloc_from_iter(
             items
                 .iter()
                 .map(|impl_item_ref| impl_item_ref.id)
-                .map(|id| tcx.hir().local_def_id(id.hir_id)),
+                .map(|id| tcx.hir().local_def_id(id.hir_id).to_def_id()),
         ),
         hir::ItemKind::TraitAlias(..) => &[],
         _ => span_bug!(item.span, "associated_item_def_ids: not impl or trait"),
     }
 }
 
-fn associated_items(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::AssociatedItems {
+fn associated_items(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AssociatedItems<'_> {
     let items = tcx.associated_item_def_ids(def_id).iter().map(|did| tcx.associated_item(*did));
-    tcx.arena.alloc(ty::AssociatedItems::new(items))
+    ty::AssociatedItems::new(items)
 }
 
 fn def_span(tcx: TyCtxt<'_>, def_id: DefId) -> Span {
@@ -262,12 +260,18 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     // are any errors at that point, so after type checking you can be
     // sure that this will succeed without errors anyway.
 
-    let unnormalized_env =
-        ty::ParamEnv::new(tcx.intern_predicates(&predicates), traits::Reveal::UserFacing, None);
+    let unnormalized_env = ty::ParamEnv::new(
+        tcx.intern_predicates(&predicates),
+        traits::Reveal::UserFacing,
+        tcx.sess.opts.debugging_opts.chalk.then_some(def_id),
+    );
 
-    let body_id = tcx.hir().as_local_hir_id(def_id).map_or(hir::DUMMY_HIR_ID, |id| {
-        tcx.hir().maybe_body_owned_by(id).map_or(id, |body| body.hir_id)
-    });
+    let body_id = def_id
+        .as_local()
+        .map(|def_id| tcx.hir().as_local_hir_id(def_id))
+        .map_or(hir::CRATE_HIR_ID, |id| {
+            tcx.hir().maybe_body_owned_by(id).map_or(id, |body| body.hir_id)
+        });
     let cause = traits::ObligationCause::misc(tcx.def_span(def_id), body_id);
     traits::normalize_param_env_or_error(tcx, def_id, unnormalized_env, cause)
 }
@@ -304,7 +308,7 @@ fn instance_def_size_estimate<'tcx>(
 
 /// If `def_id` is an issue 33140 hack impl, returns its self type; otherwise, returns `None`.
 ///
-/// See [`ImplOverlapKind::Issue33140`] for more details.
+/// See [`ty::ImplOverlapKind::Issue33140`] for more details.
 fn issue33140_self_ty(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Ty<'_>> {
     debug!("issue33140_self_ty({:?})", def_id);
 
@@ -352,10 +356,7 @@ fn issue33140_self_ty(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Ty<'_>> {
 
 /// Check if a function is async.
 fn asyncness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::IsAsync {
-    let hir_id = tcx
-        .hir()
-        .as_local_hir_id(def_id)
-        .unwrap_or_else(|| bug!("asyncness: expected local `DefId`, got `{:?}`", def_id));
+    let hir_id = tcx.hir().as_local_hir_id(def_id.expect_local());
 
     let node = tcx.hir().get(hir_id);
 

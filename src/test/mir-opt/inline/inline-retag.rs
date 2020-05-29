@@ -6,6 +6,7 @@ fn main() {
     println!("{}", bar());
 }
 
+// EMIT_MIR rustc.bar.Inline.after.mir
 fn bar() -> bool {
     let f = foo;
     f(&1, &-1)
@@ -15,23 +16,3 @@ fn bar() -> bool {
 fn foo(x: &i32, y: &i32) -> bool {
     *x == *y
 }
-
-// END RUST SOURCE
-// START rustc.bar.Inline.after.mir
-// ...
-//     bb0: {
-//         ...
-//         Retag(_3);
-//         ...
-//         Retag(_3);
-//         Retag(_6);
-//         StorageLive(_11);
-//         _11 = (*_3);
-//         StorageLive(_12);
-//         _12 = (*_6);
-//         _0 = Eq(move _11, move _12);
-//         ...
-//         return;
-//     }
-// ...
-// END rustc.bar.Inline.after.mir

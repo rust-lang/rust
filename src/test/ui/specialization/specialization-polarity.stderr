@@ -1,4 +1,4 @@
-error[E0748]: found both positive and negative implementation of trait `Foo` for type `u8`:
+error[E0751]: found both positive and negative implementation of trait `Foo` for type `u8`:
   --> $DIR/specialization-polarity.rs:10:1
    |
 LL | impl<T> Foo for T {}
@@ -6,7 +6,7 @@ LL | impl<T> Foo for T {}
 LL | impl !Foo for u8 {}
    | ^^^^^^^^^^^^^^^^ negative implementation here
 
-error[E0748]: found both positive and negative implementation of trait `Bar` for type `u8`:
+error[E0751]: found both positive and negative implementation of trait `Bar` for type `u8`:
   --> $DIR/specialization-polarity.rs:15:1
    |
 LL | impl<T> !Bar for T {}
@@ -16,4 +16,4 @@ LL | impl Bar for u8 {}
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0748`.
+For more information about this error, try `rustc --explain E0751`.

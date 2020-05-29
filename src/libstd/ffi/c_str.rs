@@ -730,6 +730,17 @@ impl From<&CStr> for Box<CStr> {
     }
 }
 
+#[stable(feature = "box_from_cow", since = "1.45.0")]
+impl From<Cow<'_, CStr>> for Box<CStr> {
+    #[inline]
+    fn from(cow: Cow<'_, CStr>) -> Box<CStr> {
+        match cow {
+            Cow::Borrowed(s) => Box::from(s),
+            Cow::Owned(s) => Box::from(s),
+        }
+    }
+}
+
 #[stable(feature = "c_string_from_box", since = "1.18.0")]
 impl From<Box<CStr>> for CString {
     /// Converts a [`Box`]`<CStr>` into a [`CString`] without copying or allocating.
@@ -1329,6 +1340,12 @@ impl ToOwned for CStr {
     fn to_owned(&self) -> CString {
         CString { inner: self.to_bytes_with_nul().into() }
     }
+
+    fn clone_into(&self, target: &mut CString) {
+        let mut b = Vec::from(mem::take(&mut target.inner));
+        self.to_bytes_with_nul().clone_into(&mut b);
+        target.inner = b.into_boxed_slice();
+    }
 }
 
 #[stable(feature = "cstring_asref", since = "1.7.0")]
@@ -1508,6 +1525,17 @@ mod tests {
     fn boxed_default() {
         let boxed = <Box<CStr>>::default();
         assert_eq!(boxed.to_bytes_with_nul(), &[0]);
+    }
+
+    #[test]
+    fn test_c_str_clone_into() {
+        let mut c_string = CString::new("lorem").unwrap();
+        let c_ptr = c_string.as_ptr();
+        let c_str = CStr::from_bytes_with_nul(b"ipsum\0").unwrap();
+        c_str.clone_into(&mut c_string);
+        assert_eq!(c_str, c_string.as_c_str());
+        // The exact same size shouldn't have needed to move its allocation
+        assert_eq!(c_ptr, c_string.as_ptr());
     }
 
     #[test]

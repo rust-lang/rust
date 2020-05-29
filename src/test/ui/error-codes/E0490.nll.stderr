@@ -1,0 +1,28 @@
+error: lifetime may not live long enough
+  --> $DIR/E0490.rs:2:12
+   |
+LL | fn f<'a, 'b>(y: &'b ()) {
+   |      --  -- lifetime `'b` defined here
+   |      |
+   |      lifetime `'a` defined here
+LL |     let x: &'a _ = &y;
+   |            ^^^^^ type annotation requires that `'b` must outlive `'a`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+
+error[E0597]: `y` does not live long enough
+  --> $DIR/E0490.rs:2:20
+   |
+LL | fn f<'a, 'b>(y: &'b ()) {
+   |      -- lifetime `'a` defined here
+LL |     let x: &'a _ = &y;
+   |            -----   ^^ borrowed value does not live long enough
+   |            |
+   |            type annotation requires that `y` is borrowed for `'a`
+...
+LL | }
+   |  - `y` dropped here while still borrowed
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

@@ -30,3 +30,5 @@ LL | #[should_panic(expected = "foo", bar)]
    |
    = note: errors in this attribute were erroneously allowed and will become a hard error in a future release.
 
+warning: 4 warnings emitted
+

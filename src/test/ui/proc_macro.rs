@@ -2,8 +2,6 @@
 // aux-build:proc_macro_def.rs
 // ignore-cross-compile
 
-#![feature(proc_macro_hygiene)]
-
 extern crate proc_macro_def;
 
 use proc_macro_def::{attr_tru, attr_identity, identity, ret_tru, tru};

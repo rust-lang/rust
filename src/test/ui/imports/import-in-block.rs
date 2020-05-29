@@ -4,7 +4,7 @@
 pub fn main() {
     use std::mem::replace;
     let mut x = 5;
-    replace(&mut x, 6);
+    let _ = replace(&mut x, 6);
     {
         use std::mem::*;
         let mut y = 6;

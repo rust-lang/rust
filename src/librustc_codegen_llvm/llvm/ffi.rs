@@ -124,6 +124,8 @@ pub enum Attribute {
     NonLazyBind = 23,
     OptimizeNone = 24,
     ReturnsTwice = 25,
+    ReadNone = 26,
+    InaccessibleMemOnly = 27,
 }
 
 /// LLVMIntPredicate
@@ -445,8 +447,7 @@ pub struct SanitizerOptions {
 /// LLVMRelocMode
 #[derive(Copy, Clone, PartialEq)]
 #[repr(C)]
-pub enum RelocMode {
-    Default,
+pub enum RelocModel {
     Static,
     PIC,
     DynamicNoPic,
@@ -459,9 +460,7 @@ pub enum RelocMode {
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub enum CodeModel {
-    // FIXME: figure out if this variant is needed at all.
-    #[allow(dead_code)]
-    Other,
+    Tiny,
     Small,
     Kernel,
     Medium,
@@ -1656,7 +1655,6 @@ extern "C" {
 
     pub fn LLVMRustDIBuilderCreateSubroutineType(
         Builder: &DIBuilder<'a>,
-        File: &'a DIFile,
         ParameterTypes: &'a DIArray,
     ) -> &'a DICompositeType;
 
@@ -1683,7 +1681,6 @@ extern "C" {
         Name: *const c_char,
         NameLen: size_t,
         SizeInBits: u64,
-        AlignInBits: u32,
         Encoding: c_uint,
     ) -> &'a DIBasicType;
 
@@ -1881,9 +1878,6 @@ extern "C" {
         Name: *const c_char,
         NameLen: size_t,
         Ty: &'a DIType,
-        File: &'a DIFile,
-        LineNo: c_uint,
-        ColumnNo: c_uint,
     ) -> &'a DITemplateTypeParameter;
 
     pub fn LLVMRustDIBuilderCreateNameSpace(
@@ -1946,10 +1940,9 @@ extern "C" {
         Features: *const c_char,
         Abi: *const c_char,
         Model: CodeModel,
-        Reloc: RelocMode,
+        Reloc: RelocModel,
         Level: CodeGenOptLevel,
         UseSoftFP: bool,
-        PositionIndependentExecutable: bool,
         FunctionSections: bool,
         DataSections: bool,
         TrapUnreachable: bool,
@@ -1957,6 +1950,7 @@ extern "C" {
         AsmComments: bool,
         EmitStackSizeSection: bool,
         RelaxELFRelocations: bool,
+        UseInitArray: bool,
     ) -> Option<&'static mut TargetMachine>;
     pub fn LLVMRustDisposeTargetMachine(T: &'static mut TargetMachine);
     pub fn LLVMRustAddBuilderLibraryInfo(
@@ -2000,6 +1994,7 @@ extern "C" {
         SLPVectorize: bool,
         LoopVectorize: bool,
         DisableSimplifyLibCalls: bool,
+        EmitLifetimeMarkers: bool,
         SanitizerOptions: Option<&SanitizerOptions>,
         PGOGenPath: *const c_char,
         PGOUsePath: *const c_char,
@@ -2138,6 +2133,11 @@ extern "C" {
         len: usize,
         Identifier: *const c_char,
     ) -> Option<&Module>;
+    pub fn LLVMRustGetBitcodeSliceFromObjectData(
+        Data: *const u8,
+        len: usize,
+        out_len: &mut usize,
+    ) -> *const u8;
     pub fn LLVMRustThinLTOGetDICompileUnit(
         M: &Module,
         CU1: &mut *mut c_void,

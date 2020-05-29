@@ -139,58 +139,52 @@ LL |         TyKind::Projection(..) => (),
 error: usage of `ty::TyKind::<kind>`
   --> $DIR/ty_tykind_usage.rs:35:9
    |
-LL |         TyKind::UnnormalizedProjection(..) => (),
+LL |         TyKind::Opaque(..) => (),
    |         ^^^^^^ help: try using ty::<kind> directly: `ty`
 
 error: usage of `ty::TyKind::<kind>`
   --> $DIR/ty_tykind_usage.rs:36:9
    |
-LL |         TyKind::Opaque(..) => (),
+LL |         TyKind::Param(..) => (),
    |         ^^^^^^ help: try using ty::<kind> directly: `ty`
 
 error: usage of `ty::TyKind::<kind>`
   --> $DIR/ty_tykind_usage.rs:37:9
    |
-LL |         TyKind::Param(..) => (),
+LL |         TyKind::Bound(..) => (),
    |         ^^^^^^ help: try using ty::<kind> directly: `ty`
 
 error: usage of `ty::TyKind::<kind>`
   --> $DIR/ty_tykind_usage.rs:38:9
    |
-LL |         TyKind::Bound(..) => (),
+LL |         TyKind::Placeholder(..) => (),
    |         ^^^^^^ help: try using ty::<kind> directly: `ty`
 
 error: usage of `ty::TyKind::<kind>`
   --> $DIR/ty_tykind_usage.rs:39:9
    |
-LL |         TyKind::Placeholder(..) => (),
+LL |         TyKind::Infer(..) => (),
    |         ^^^^^^ help: try using ty::<kind> directly: `ty`
 
 error: usage of `ty::TyKind::<kind>`
   --> $DIR/ty_tykind_usage.rs:40:9
    |
-LL |         TyKind::Infer(..) => (),
-   |         ^^^^^^ help: try using ty::<kind> directly: `ty`
-
-error: usage of `ty::TyKind::<kind>`
-  --> $DIR/ty_tykind_usage.rs:41:9
-   |
 LL |         TyKind::Error => (),
    |         ^^^^^^ help: try using ty::<kind> directly: `ty`
 
 error: usage of `ty::TyKind::<kind>`
-  --> $DIR/ty_tykind_usage.rs:46:12
+  --> $DIR/ty_tykind_usage.rs:45:12
    |
 LL |     if let TyKind::Int(int_ty) = kind {}
    |            ^^^^^^ help: try using ty::<kind> directly: `ty`
 
 error: usage of `ty::TyKind`
-  --> $DIR/ty_tykind_usage.rs:48:24
+  --> $DIR/ty_tykind_usage.rs:47:24
    |
 LL |     fn ty_kind(ty_bad: TyKind<'_>, ty_good: Ty<'_>) {}
    |                        ^^^^^^^^^^
    |
    = help: try using `Ty` instead
 
-error: aborting due to 31 previous errors
+error: aborting due to 30 previous errors
 

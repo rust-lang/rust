@@ -1,8 +1,6 @@
 use core::num::dec2flt::rawfp::RawFloat;
 use core::num::dec2flt::rawfp::{fp_to_float, next_float, prev_float, round_normal};
 use core::num::diy_float::Fp;
-use std::f32;
-use std::f64;
 
 fn integer_decode(f: f64) -> (u64, i16, i8) {
     RawFloat::integer_decode(f)

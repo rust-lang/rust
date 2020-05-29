@@ -3,8 +3,11 @@ error[E0277]: the trait bound `f64: trait_bounds_on_structs_and_enums_xc::Trait`
    |
 LL |     let bar: Bar<f64> = return;
    |              ^^^^^^^^ the trait `trait_bounds_on_structs_and_enums_xc::Trait` is not implemented for `f64`
+   | 
+  ::: $DIR/auxiliary/trait_bounds_on_structs_and_enums_xc.rs:9:16
    |
-   = note: required by `trait_bounds_on_structs_and_enums_xc::Bar`
+LL | pub enum Bar<T:Trait> {
+   |                ----- required by this bound in `trait_bounds_on_structs_and_enums_xc::Bar`
 
 error[E0277]: the trait bound `{integer}: trait_bounds_on_structs_and_enums_xc::Trait` is not satisfied
   --> $DIR/trait-bounds-on-structs-and-enums-xc1.rs:8:15

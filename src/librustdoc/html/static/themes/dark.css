@@ -32,6 +32,28 @@ pre {
 	background-color: #505050;
 }
 
+/* Improve the scrollbar display on firefox */
+* {
+	scrollbar-color: rgb(64, 65, 67) #717171;
+}
+.sidebar {
+	scrollbar-color: rgba(32,34,37,.6) transparent;
+}
+
+/* Improve the scrollbar display on webkit-based browsers */
+::-webkit-scrollbar-track {
+	background-color: #717171;
+}
+::-webkit-scrollbar-thumb {
+	background-color: rgba(32, 34, 37, .6);
+}
+.sidebar::-webkit-scrollbar-track {
+	background-color: #717171;
+}
+.sidebar::-webkit-scrollbar-thumb {
+	background-color: rgba(32, 34, 37, .6);
+}
+
 .sidebar .current {
 	background-color: #333;
 }

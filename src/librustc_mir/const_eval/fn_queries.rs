@@ -84,23 +84,26 @@ pub fn is_min_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 
 pub fn is_parent_const_impl_raw(tcx: TyCtxt<'_>, hir_id: hir::HirId) -> bool {
     let parent_id = tcx.hir().get_parent_did(hir_id);
-    if !parent_id.is_top_level_module() {
-        is_const_impl_raw(tcx, parent_id.expect_local())
-    } else {
-        false
-    }
+    if !parent_id.is_top_level_module() { is_const_impl_raw(tcx, parent_id) } else { false }
 }
 
 /// Checks whether the function has a `const` modifier or, in case it is an intrinsic, whether
 /// said intrinsic is on the whitelist for being const callable.
 fn is_const_fn_raw(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    let hir_id =
-        tcx.hir().as_local_hir_id(def_id).expect("Non-local call to local provider is_const_fn");
+    let hir_id = tcx.hir().as_local_hir_id(def_id.expect_local());
 
     let node = tcx.hir().get(hir_id);
 
-    if let Some(whitelisted) = is_const_intrinsic(tcx, def_id) {
-        whitelisted
+    if let hir::Node::ForeignItem(hir::ForeignItem { kind: hir::ForeignItemKind::Fn(..), .. }) =
+        node
+    {
+        // Intrinsics use `rustc_const_{un,}stable` attributes to indicate constness. All other
+        // foreign items cannot be evaluated at compile-time.
+        if let Abi::RustIntrinsic | Abi::PlatformIntrinsic = tcx.hir().get_foreign_abi(hir_id) {
+            tcx.lookup_const_stability(def_id).is_some()
+        } else {
+            false
+        }
     } else if let Some(fn_like) = FnLikeNode::from_node(node) {
         if fn_like.constness() == hir::Constness::Const {
             return true;
@@ -113,21 +116,6 @@ fn is_const_fn_raw(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         true
     } else {
         false
-    }
-}
-
-/// Const evaluability whitelist is here to check evaluability at the
-/// top level beforehand.
-fn is_const_intrinsic(tcx: TyCtxt<'_>, def_id: DefId) -> Option<bool> {
-    if tcx.is_closure(def_id) {
-        return None;
-    }
-
-    match tcx.fn_sig(def_id).abi() {
-        Abi::RustIntrinsic | Abi::PlatformIntrinsic => {
-            Some(tcx.lookup_const_stability(def_id).is_some())
-        }
-        _ => None,
     }
 }
 

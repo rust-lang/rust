@@ -1,5 +1,3 @@
-// build-fail
-
 #![feature(track_caller)]
 
 fn main() {

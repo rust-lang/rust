@@ -1,3 +1,10 @@
+use std::collections::BTreeSet;
+use std::fmt::Write as _;
+use std::fmt::{Debug, Display};
+use std::fs;
+use std::io::{self, Write};
+use std::path::{Path, PathBuf};
+
 use super::graphviz::write_mir_fn_graphviz;
 use crate::transform::MirSource;
 use either::Either;
@@ -5,18 +12,12 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_index::vec::Idx;
 use rustc_middle::mir::interpret::{
-    read_target_uint, AllocId, Allocation, ConstValue, GlobalAlloc,
+    read_target_uint, AllocId, Allocation, ConstValue, GlobalAlloc, Pointer,
 };
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt, TypeFoldable, TypeVisitor};
 use rustc_target::abi::Size;
-use std::collections::BTreeSet;
-use std::fmt::Display;
-use std::fmt::Write as _;
-use std::fs;
-use std::io::{self, Write};
-use std::path::{Path, PathBuf};
 
 const INDENT: &str = "    ";
 /// Alignment for lining up comments following MIR statements
@@ -254,6 +255,7 @@ pub fn write_mir_pretty<'tcx>(
     Ok(())
 }
 
+/// Write out a human-readable textual representation for the given function.
 pub fn write_mir_fn<'tcx, F>(
     tcx: TyCtxt<'tcx>,
     src: MirSource<'tcx>,
@@ -304,9 +306,9 @@ where
         let indented_body = format!("{0}{0}{1:?};", INDENT, statement);
         writeln!(
             w,
-            "{:A$} // {:?}: {}",
+            "{:A$} // {}{}",
             indented_body,
-            current_location,
+            if tcx.sess.verbose() { format!("{:?}: ", current_location) } else { String::new() },
             comment(tcx, statement.source_info),
             A = ALIGN,
         )?;
@@ -325,9 +327,9 @@ where
     let indented_terminator = format!("{0}{0}{1:?};", INDENT, data.terminator().kind);
     writeln!(
         w,
-        "{:A$} // {:?}: {}",
+        "{:A$} // {}{}",
         indented_terminator,
-        current_location,
+        if tcx.sess.verbose() { format!("{:?}: ", current_location) } else { String::new() },
         comment(tcx, data.terminator().source_info),
         A = ALIGN,
     )?;
@@ -454,7 +456,7 @@ fn write_scope_tree(
         )?;
     }
 
-    // Local variable types (including the user's name in a comment).
+    // Local variable types.
     for (local, local_decl) in body.local_decls.iter_enumerated() {
         if (1..body.arg_count + 1).contains(&local.index()) {
             // Skip over argument locals, they're printed in the signature.
@@ -470,8 +472,10 @@ fn write_scope_tree(
 
         let mut indented_decl =
             format!("{0:1$}let {2}{3:?}: {4:?}", INDENT, indent, mut_str, local, local_decl.ty);
-        for user_ty in local_decl.user_ty.projections() {
-            write!(indented_decl, " as {:?}", user_ty).unwrap();
+        if let Some(user_ty) = &local_decl.user_ty {
+            for user_ty in user_ty.projections() {
+                write!(indented_decl, " as {:?}", user_ty).unwrap();
+            }
         }
         indented_decl.push_str(";");
 
@@ -567,30 +571,24 @@ pub fn write_allocations<'tcx>(
     }
     let mut visitor = CollectAllocIds(Default::default());
     body.visit_with(&mut visitor);
+    // `seen` contains all seen allocations, including the ones we have *not* printed yet.
+    // The protocol is to first `insert` into `seen`, and only if that returns `true`
+    // then push to `todo`.
     let mut seen = visitor.0;
     let mut todo: Vec<_> = seen.iter().copied().collect();
     while let Some(id) = todo.pop() {
-        let mut write_header_and_allocation =
+        let mut write_allocation_track_relocs =
             |w: &mut dyn Write, alloc: &Allocation| -> io::Result<()> {
-                write!(w, "size: {}, align: {})", alloc.size.bytes(), alloc.align.bytes())?;
-                if alloc.size == Size::ZERO {
-                    write!(w, " {{}}")?;
-                } else {
-                    writeln!(w, " {{")?;
-                    write_allocation(tcx, alloc, w, "    ")?;
-                    write!(w, "}}")?;
-                    // `.rev()` because we are popping them from the back of the `todo` vector.
-                    for id in alloc_ids_from_alloc(alloc).rev() {
-                        if seen.insert(id) {
-                            todo.push(id);
-                        }
+                // `.rev()` because we are popping them from the back of the `todo` vector.
+                for id in alloc_ids_from_alloc(alloc).rev() {
+                    if seen.insert(id) {
+                        todo.push(id);
                     }
                 }
-                Ok(())
+                write_allocation(tcx, alloc, w)
             };
         write!(w, "\n{}", id)?;
-        let alloc = tcx.alloc_map.lock().get(id);
-        match alloc {
+        match tcx.get_global_alloc(id) {
             // This can't really happen unless there are bugs, but it doesn't cost us anything to
             // gracefully handle it and allow buggy rustc to be debugged via allocation printing.
             None => write!(w, " (deallocated)")?,
@@ -599,7 +597,7 @@ pub fn write_allocations<'tcx>(
                 match tcx.const_eval_poly(did) {
                     Ok(ConstValue::ByRef { alloc, .. }) => {
                         write!(w, " (static: {}, ", tcx.def_path_str(did))?;
-                        write_header_and_allocation(w, alloc)?;
+                        write_allocation_track_relocs(w, alloc)?;
                     }
                     Ok(_) => {
                         span_bug!(tcx.def_span(did), " static item without `ByRef` initializer")
@@ -616,12 +614,43 @@ pub fn write_allocations<'tcx>(
             }
             Some(GlobalAlloc::Memory(alloc)) => {
                 write!(w, " (")?;
-                write_header_and_allocation(w, alloc)?
+                write_allocation_track_relocs(w, alloc)?
             }
         }
-
         writeln!(w)?;
     }
+    Ok(())
+}
+
+/// Dumps the size and metadata and content of an allocation to the given writer.
+/// The expectation is that the caller first prints other relevant metadata, so the exact
+/// format of this function is (*without* leading or trailing newline):
+/// ```
+/// size: {}, align: {}) {
+///     <bytes>
+/// }
+/// ```
+///
+/// The byte format is similar to how hex editors print bytes. Each line starts with the address of
+/// the start of the line, followed by all bytes in hex format (space separated).
+/// If the allocation is small enough to fit into a single line, no start address is given.
+/// After the hex dump, an ascii dump follows, replacing all unprintable characters (control
+/// characters or characters whose value is larger than 127) with a `.`
+/// This also prints relocations adequately.
+pub fn write_allocation<Tag: Copy + Debug, Extra>(
+    tcx: TyCtxt<'tcx>,
+    alloc: &Allocation<Tag, Extra>,
+    w: &mut dyn Write,
+) -> io::Result<()> {
+    write!(w, "size: {}, align: {})", alloc.size.bytes(), alloc.align.bytes())?;
+    if alloc.size == Size::ZERO {
+        // We are done.
+        return write!(w, " {{}}");
+    }
+    // Write allocation bytes.
+    writeln!(w, " {{")?;
+    write_allocation_bytes(tcx, alloc, w, "    ")?;
+    write!(w, "}}")?;
     Ok(())
 }
 
@@ -649,18 +678,10 @@ fn write_allocation_newline(
     Ok(line_start)
 }
 
-/// Dumps the bytes of an allocation to the given writer. This also prints relocations instead of
-/// the raw bytes where applicable.
-/// The byte format is similar to how hex editors print bytes. Each line starts with the address of
-/// the start of the line, followed by all bytes in hex format (space separated).
-/// If the allocation is small enough to fit into a single line, no start address is given.
-/// After the hex dump, an ascii dump follows, replacing all unprintable characters (control
-/// characters or characters whose value is larger than 127) with a `.`
-///
 /// The `prefix` argument allows callers to add an arbitrary prefix before each line (even if there
 /// is only one line). Note that your prefix should contain a trailing space as the lines are
 /// printed directly after it.
-pub fn write_allocation<Tag, Extra>(
+fn write_allocation_bytes<Tag: Copy + Debug, Extra>(
     tcx: TyCtxt<'tcx>,
     alloc: &Allocation<Tag, Extra>,
     w: &mut dyn Write,
@@ -696,14 +717,20 @@ pub fn write_allocation<Tag, Extra>(
         if i != line_start {
             write!(w, " ")?;
         }
-        if let Some(&(_, target_id)) = alloc.relocations().get(&i) {
+        if let Some(&(tag, target_id)) = alloc.relocations().get(&i) {
             // Memory with a relocation must be defined
             let j = i.bytes_usize();
             let offset =
                 alloc.inspect_with_undef_and_ptr_outside_interpreter(j..j + ptr_size.bytes_usize());
             let offset = read_target_uint(tcx.data_layout.endian, offset).unwrap();
+            let offset = Size::from_bytes(offset);
             let relocation_width = |bytes| bytes * 3;
-            let mut target = format!("{}+{}", target_id, offset);
+            let ptr = Pointer::new_with_tag(target_id, offset, tag);
+            let mut target = format!("{:?}", ptr);
+            if target.len() > relocation_width(ptr_size.bytes_usize() - 1) {
+                // This is too long, try to save some space.
+                target = format!("{:#?}", ptr);
+            }
             if ((i - line_start) + ptr_size).bytes_usize() > BYTES_PER_LINE {
                 // This branch handles the situation where a relocation starts in the current line
                 // but ends in the next one.
@@ -748,7 +775,7 @@ pub fn write_allocation<Tag, Extra>(
                 ascii.push('╼');
                 i += ptr_size;
             }
-        } else if alloc.undef_mask().is_range_defined(i, i + Size::from_bytes(1)).is_ok() {
+        } else if alloc.init_mask().is_range_initialized(i, i + Size::from_bytes(1)).is_ok() {
             let j = i.bytes_usize();
 
             // Checked definedness (and thus range) and relocations. This access also doesn't
@@ -788,17 +815,17 @@ fn write_mir_sig(
     trace!("write_mir_sig: {:?}", src.instance);
     let kind = tcx.def_kind(src.def_id());
     let is_function = match kind {
-        Some(DefKind::Fn) | Some(DefKind::AssocFn) | Some(DefKind::Ctor(..)) => true,
+        DefKind::Fn | DefKind::AssocFn | DefKind::Ctor(..) => true,
         _ => tcx.is_closure(src.def_id()),
     };
     match (kind, src.promoted) {
         (_, Some(i)) => write!(w, "{:?} in ", i)?,
-        (Some(DefKind::Const), _) | (Some(DefKind::AssocConst), _) => write!(w, "const ")?,
-        (Some(DefKind::Static), _) => {
+        (DefKind::Const | DefKind::AssocConst, _) => write!(w, "const ")?,
+        (DefKind::Static, _) => {
             write!(w, "static {}", if tcx.is_mutable_static(src.def_id()) { "mut " } else { "" })?
         }
         (_, _) if is_function => write!(w, "fn ")?,
-        (None, _) => {} // things like anon const, not an item
+        (DefKind::AnonConst, _) => {} // things like anon const, not an item
         _ => bug!("Unexpected def kind {:?}", kind),
     }
 
@@ -849,5 +876,9 @@ fn write_user_type_annotations(body: &Body<'_>, w: &mut dyn Write) -> io::Result
 }
 
 pub fn dump_mir_def_ids(tcx: TyCtxt<'_>, single: Option<DefId>) -> Vec<DefId> {
-    if let Some(i) = single { vec![i] } else { tcx.mir_keys(LOCAL_CRATE).iter().cloned().collect() }
+    if let Some(i) = single {
+        vec![i]
+    } else {
+        tcx.mir_keys(LOCAL_CRATE).iter().map(|def_id| def_id.to_def_id()).collect()
+    }
 }

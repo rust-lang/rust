@@ -56,3 +56,5 @@ warning: missing documentation for a function
 LL | baz2!(pub fn undocumented2() {});
    |       ^^^^^^^^^^^^^^^^^^^^^^
 
+warning: 6 warnings emitted
+

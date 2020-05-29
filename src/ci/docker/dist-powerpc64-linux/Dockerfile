@@ -36,4 +36,4 @@ ENV \
 ENV HOSTS=powerpc64-unknown-linux-gnu
 
 ENV RUST_CONFIGURE_ARGS --enable-extended --disable-docs
-ENV SCRIPT python2.7 ../x.py dist --host $HOSTS --target $HOSTS
+ENV SCRIPT python3 ../x.py dist --host $HOSTS --target $HOSTS

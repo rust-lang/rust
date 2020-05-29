@@ -18,6 +18,6 @@ error[E0224]: at least one trait is required for an object type
 LL | type X<'a> = (?'a) +;
    |              ^^^^^^^
 
-error: aborting due to 2 previous errors
+error: aborting due to 2 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0224`.

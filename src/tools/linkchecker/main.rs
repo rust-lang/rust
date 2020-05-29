@@ -114,7 +114,7 @@ fn walk(cache: &mut Cache, root: &Path, dir: &Path, errors: &mut bool) {
 }
 
 fn check(cache: &mut Cache, root: &Path, file: &Path, errors: &mut bool) -> Option<PathBuf> {
-    // Ignore none HTML files.
+    // Ignore non-HTML files.
     if file.extension().and_then(|s| s.to_str()) != Some("html") {
         return None;
     }

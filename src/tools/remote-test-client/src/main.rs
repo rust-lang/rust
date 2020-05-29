@@ -18,6 +18,7 @@ use std::thread;
 use std::time::Duration;
 
 const REMOTE_ADDR_ENV: &str = "TEST_DEVICE_ADDR";
+const DEFAULT_ADDR: &str = "127.0.0.1:12345";
 
 macro_rules! t {
     ($e:expr) => {
@@ -30,8 +31,12 @@ macro_rules! t {
 
 fn main() {
     let mut args = env::args().skip(1);
+    let next = args.next();
+    if next.is_none() {
+        return help();
+    }
 
-    match &args.next().unwrap()[..] {
+    match &next.unwrap()[..] {
         "spawn-emulator" => spawn_emulator(
             &args.next().unwrap(),
             Path::new(&args.next().unwrap()),
@@ -40,12 +45,16 @@ fn main() {
         ),
         "push" => push(Path::new(&args.next().unwrap())),
         "run" => run(args.next().unwrap(), args.collect()),
-        cmd => panic!("unknown command: {}", cmd),
+        "help" | "-h" | "--help" => help(),
+        cmd => {
+            println!("unknown command: {}", cmd);
+            help();
+        }
     }
 }
 
 fn spawn_emulator(target: &str, server: &Path, tmpdir: &Path, rootfs: Option<PathBuf>) {
-    let device_address = env::var(REMOTE_ADDR_ENV).unwrap_or("127.0.0.1:12345".to_string());
+    let device_address = env::var(REMOTE_ADDR_ENV).unwrap_or(DEFAULT_ADDR.to_string());
 
     if env::var(REMOTE_ADDR_ENV).is_ok() {
         println!("Connecting to remote device {} ...", device_address);
@@ -172,7 +181,7 @@ fn start_qemu_emulator(target: &str, rootfs: &Path, server: &Path, tmpdir: &Path
 }
 
 fn push(path: &Path) {
-    let device_address = env::var(REMOTE_ADDR_ENV).unwrap_or("127.0.0.1:12345".to_string());
+    let device_address = env::var(REMOTE_ADDR_ENV).unwrap_or(DEFAULT_ADDR.to_string());
     let client = t!(TcpStream::connect(device_address));
     let mut client = BufWriter::new(client);
     t!(client.write_all(b"push"));
@@ -189,7 +198,7 @@ fn push(path: &Path) {
 }
 
 fn run(files: String, args: Vec<String>) {
-    let device_address = env::var(REMOTE_ADDR_ENV).unwrap_or("127.0.0.1:12345".to_string());
+    let device_address = env::var(REMOTE_ADDR_ENV).unwrap_or(DEFAULT_ADDR.to_string());
     let client = t!(TcpStream::connect(device_address));
     let mut client = BufWriter::new(client);
     t!(client.write_all(b"run "));
@@ -283,4 +292,41 @@ fn send(path: &Path, dst: &mut dyn Write) {
     let amt = t!(file.metadata()).len();
     t!(dst.write_all(&[(amt >> 24) as u8, (amt >> 16) as u8, (amt >> 8) as u8, (amt >> 0) as u8,]));
     t!(io::copy(&mut file, dst));
+}
+
+fn help() {
+    println!(
+        "
+Usage: {0} <command> [<args>]
+
+Sub-commands:
+    spawn-emulator <target> <server> <tmpdir> [rootfs]   See below
+    push <path>                                          Copy <path> to emulator
+    run <files> [args...]                                Run program on emulator
+    help                                                 Display help message
+
+Spawning an emulator:
+
+For Android <target>s, adb will push the <server>, set up TCP forwarding and run
+the <server>. Otherwise qemu emulates the target using a rootfs image created in
+<tmpdir> and generated from <rootfs> plus the <server> executable.
+If {1} is set in the environment, this step is skipped.
+
+Pushing a path to a running emulator:
+
+A running emulator or adb device is connected to at the IP address and port in
+the {1} environment variable or {2} if this isn't
+specified. The file at <path> is sent to this target.
+
+Executing commands on a running emulator:
+
+First the target emulator/adb session is connected to as for pushing files. Next
+the colon separated list of <files> is pushed to the target. Finally, the first
+file in <files> is executed in the emulator, preserving the current environment.
+That command's status code is returned.
+",
+        env::args().next().unwrap(),
+        REMOTE_ADDR_ENV,
+        DEFAULT_ADDR
+    );
 }

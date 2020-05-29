@@ -237,13 +237,6 @@ LL |     const MATCH: i32 = match 0 { 1 => 2, _ => 0 };
    = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
-error[E0019]: constant contains unimplemented expression type
-  --> $DIR/feature-gate-const-if-match.rs:114:21
-   |
-LL |         if let Some(x) = Some(x) { x } else { 1 }
-   |                     ^
+error: aborting due to 24 previous errors
 
-error: aborting due to 25 previous errors
-
-Some errors have detailed explanations: E0019, E0658.
-For more information about an error, try `rustc --explain E0019`.
+For more information about this error, try `rustc --explain E0658`.

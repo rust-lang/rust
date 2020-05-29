@@ -2,9 +2,7 @@
 
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
-use rustc_middle::mir::{
-    Body, BodyAndCache, Local, Location, PlaceElem, ReadOnlyBodyAndCache, VarDebugInfo,
-};
+use rustc_middle::mir::{Body, Local, Location, VarDebugInfo};
 use rustc_middle::ty::TyCtxt;
 use std::mem;
 
@@ -30,7 +28,7 @@ impl DefUseAnalysis {
         DefUseAnalysis { info: IndexVec::from_elem_n(Info::new(), body.local_decls.len()) }
     }
 
-    pub fn analyze(&mut self, body: ReadOnlyBodyAndCache<'_, '_>) {
+    pub fn analyze(&mut self, body: &Body<'_>) {
         self.clear();
 
         let mut finder = DefUseFinder {
@@ -55,7 +53,7 @@ impl DefUseAnalysis {
     fn mutate_defs_and_uses(
         &self,
         local: Local,
-        body: &mut BodyAndCache<'tcx>,
+        body: &mut Body<'tcx>,
         new_local: Local,
         tcx: TyCtxt<'tcx>,
     ) {
@@ -74,7 +72,7 @@ impl DefUseAnalysis {
     pub fn replace_all_defs_and_uses_with(
         &self,
         local: Local,
-        body: &mut BodyAndCache<'tcx>,
+        body: &mut Body<'tcx>,
         new_local: Local,
         tcx: TyCtxt<'tcx>,
     ) {
@@ -155,15 +153,6 @@ impl MutVisitor<'tcx> for MutateUseVisitor<'tcx> {
     fn visit_local(&mut self, local: &mut Local, _context: PlaceContext, _location: Location) {
         if *local == self.query {
             *local = self.new_local;
-        }
-    }
-
-    fn process_projection_elem(&mut self, elem: &PlaceElem<'tcx>) -> Option<PlaceElem<'tcx>> {
-        match elem {
-            PlaceElem::Index(local) if *local == self.query => {
-                Some(PlaceElem::Index(self.new_local))
-            }
-            _ => None,
         }
     }
 }

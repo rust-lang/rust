@@ -68,7 +68,6 @@ pub fn target() -> Result<Target, String> {
             PRE_LINK_ARGS.iter().cloned().map(String::from).collect(),
         ))
         .collect(),
-        post_link_objects: vec!["libunwind.a".into()],
         override_export_symbols: Some(EXPORT_SYMBOLS.iter().cloned().map(String::from).collect()),
         relax_elf_relocations: true,
         ..Default::default()

@@ -30,6 +30,8 @@ fn main() {
         }
     } else if target.contains("solaris") {
         println!("cargo:rustc-link-lib=gcc_s");
+    } else if target.contains("illumos") {
+        println!("cargo:rustc-link-lib=gcc_s");
     } else if target.contains("dragonfly") {
         println!("cargo:rustc-link-lib=gcc_pic");
     } else if target.contains("pc-windows-gnu") {
@@ -87,6 +89,7 @@ mod llvm_libunwind {
             cfg.flag("-fno-rtti");
             cfg.flag("-fstrict-aliasing");
             cfg.flag("-funwind-tables");
+            cfg.flag("-fvisibility=hidden");
         }
 
         let mut unwind_sources = vec![

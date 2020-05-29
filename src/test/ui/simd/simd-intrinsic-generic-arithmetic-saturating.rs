@@ -1,6 +1,5 @@
 // run-pass
 // ignore-emscripten
-// min-llvm-version 8.0
 
 #![allow(non_camel_case_types)]
 #![feature(repr_simd, platform_intrinsics)]

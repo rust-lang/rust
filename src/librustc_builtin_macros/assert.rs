@@ -7,7 +7,7 @@ use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_ast_pretty::pprust;
 use rustc_expand::base::*;
 use rustc_parse::parser::Parser;
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 
 pub fn expand_assert<'cx>(

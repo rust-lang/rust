@@ -82,10 +82,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         match &node {
             hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(sig, _, body_id), .. }) => {
                 self.describe_generator(*body_id).or_else(|| {
-                    Some(if let hir::FnHeader { asyncness: hir::IsAsync::Async, .. } = sig.header {
-                        "an async function"
-                    } else {
-                        "a function"
+                    Some(match sig.header {
+                        hir::FnHeader { asyncness: hir::IsAsync::Async, .. } => "an async function",
+                        _ => "a function",
                     })
                 })
             }
@@ -97,10 +96,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 kind: hir::ImplItemKind::Fn(sig, body_id),
                 ..
             }) => self.describe_generator(*body_id).or_else(|| {
-                Some(if let hir::FnHeader { asyncness: hir::IsAsync::Async, .. } = sig.header {
-                    "an async method"
-                } else {
-                    "a method"
+                Some(match sig.header {
+                    hir::FnHeader { asyncness: hir::IsAsync::Async, .. } => "an async method",
+                    _ => "a method",
                 })
             }),
             hir::Node::Expr(hir::Expr {
@@ -134,7 +132,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         match obligation.cause.code {
             ObligationCauseCode::BuiltinDerivedObligation(..)
-            | ObligationCauseCode::ImplDerivedObligation(..) => {}
+            | ObligationCauseCode::ImplDerivedObligation(..)
+            | ObligationCauseCode::DerivedObligation(..) => {}
             _ => {
                 // this is a "direct", user-specified, rather than derived,
                 // obligation.
@@ -142,7 +141,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
         }
 
-        if let ObligationCauseCode::ItemObligation(item) = obligation.cause.code {
+        if let ObligationCauseCode::ItemObligation(item)
+        | ObligationCauseCode::BindingObligation(item, _) = obligation.cause.code
+        {
             // FIXME: maybe also have some way of handling methods
             // from other traits? That would require name resolution,
             // which we might want to be some sort of hygienic.

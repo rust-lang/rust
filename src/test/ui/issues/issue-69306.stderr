@@ -8,8 +8,6 @@ LL |     const C: S0<u8> = Self(0);
    |
    = note: expected type parameter `T`
                         found type `{integer}`
-   = help: type parameters must be constrained to match other types
-   = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 
 error[E0308]: mismatched types
   --> $DIR/issue-69306.rs:5:23
@@ -21,8 +19,6 @@ LL |     const C: S0<u8> = Self(0);
    |
    = note: expected struct `S0<u8>`
               found struct `S0<T>`
-   = help: type parameters must be constrained to match other types
-   = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 
 error[E0308]: mismatched types
   --> $DIR/issue-69306.rs:10:14
@@ -35,8 +31,6 @@ LL |         Self(0);
    |
    = note: expected type parameter `T`
                         found type `{integer}`
-   = help: type parameters must be constrained to match other types
-   = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 
 error[E0308]: mismatched types
   --> $DIR/issue-69306.rs:27:14
@@ -49,8 +43,6 @@ LL |         Self(0);
    |
    = note: expected type parameter `T`
                         found type `{integer}`
-   = help: type parameters must be constrained to match other types
-   = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 
 error[E0308]: mismatched types
   --> $DIR/issue-69306.rs:33:32
@@ -62,8 +54,6 @@ LL |     const C: S1<u8, u8> = Self(0, 1);
    |
    = note: expected type parameter `T`
                         found type `{integer}`
-   = help: type parameters must be constrained to match other types
-   = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 
 error[E0308]: mismatched types
   --> $DIR/issue-69306.rs:33:27
@@ -75,8 +65,6 @@ LL |     const C: S1<u8, u8> = Self(0, 1);
    |
    = note: expected struct `S1<u8, _>`
               found struct `S1<T, _>`
-   = help: type parameters must be constrained to match other types
-   = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 
 error[E0308]: mismatched types
   --> $DIR/issue-69306.rs:41:14

@@ -25,10 +25,6 @@ except ImportError:
 # read privileges on it). CI will fail otherwise.
 MAINTAINERS = {
     'miri': {'oli-obk', 'RalfJung', 'eddyb'},
-    'clippy-driver': {
-        'Manishearth', 'llogiq', 'mcarton', 'oli-obk', 'phansch', 'flip1995',
-        'yaahc',
-    },
     'rls': {'Xanewok'},
     'rustfmt': {'topecongiro'},
     'book': {'carols10cents', 'steveklabnik'},
@@ -39,13 +35,25 @@ MAINTAINERS = {
         'adamgreig', 'andre-richter', 'jamesmunns', 'korken89',
         'ryankurte', 'thejpster', 'therealprof',
     },
-    'edition-guide': {'ehuss', 'Centril', 'steveklabnik'},
+    'edition-guide': {'ehuss', 'steveklabnik'},
     'rustc-dev-guide': {'mark-i-m', 'spastorino', 'amanjeev', 'JohnTitor'},
+}
+
+LABELS = {
+    'miri': ['A-miri', 'C-bug'],
+    'rls': ['A-rls', 'C-bug'],
+    'rustfmt': ['C-bug'],
+    'book': ['C-bug'],
+    'nomicon': ['C-bug'],
+    'reference': ['C-bug'],
+    'rust-by-example': ['C-bug'],
+    'embedded-book': ['C-bug'],
+    'edition-guide': ['C-bug'],
+    'rustc-dev-guide': ['C-bug'],
 }
 
 REPOS = {
     'miri': 'https://github.com/rust-lang/miri',
-    'clippy-driver': 'https://github.com/rust-lang/rust-clippy',
     'rls': 'https://github.com/rust-lang/rls',
     'rustfmt': 'https://github.com/rust-lang/rustfmt',
     'book': 'https://github.com/rust-lang/book',
@@ -57,6 +65,13 @@ REPOS = {
     'rustc-dev-guide': 'https://github.com/rust-lang/rustc-dev-guide',
 }
 
+def load_json_from_response(resp):
+    content = resp.read()
+    if isinstance(content, bytes):
+        content = content.decode('utf-8')
+    else:
+        print("Refusing to decode " + str(type(content)) + " to str")
+    return json.loads(content)
 
 def validate_maintainers(repo, github_token):
     '''Ensure all maintainers are assignable on a GitHub repo'''
@@ -71,7 +86,7 @@ def validate_maintainers(repo, github_token):
             # Properly load nested teams.
             'Accept': 'application/vnd.github.hellcat-preview+json',
         }))
-        assignable.extend(user['login'] for user in json.load(response))
+        assignable.extend(user['login'] for user in load_json_from_response(response))
         # Load the next page if available
         url = None
         link_header = response.headers.get('Link')
@@ -130,6 +145,7 @@ def issue(
     assignees,
     relevant_pr_number,
     relevant_pr_user,
+    labels,
 ):
     # Open an issue about the toolstate failure.
     if status == 'test-fail':
@@ -153,6 +169,7 @@ def issue(
         )),
         'title': '`{}` no longer builds after {}'.format(tool, relevant_pr_number),
         'assignees': list(assignees),
+        'labels': labels,
     })
     print("Creating issue:\n{}".format(request))
     response = urllib2.urlopen(urllib2.Request(
@@ -176,7 +193,7 @@ def update_latest(
 ):
     '''Updates `_data/latest.json` to match build result of the given commit.
     '''
-    with open('_data/latest.json', 'rb+') as f:
+    with open('_data/latest.json', 'r+') as f:
         latest = json.load(f, object_pairs_hook=collections.OrderedDict)
 
         current_status = {
@@ -233,7 +250,7 @@ def update_latest(
                 try:
                     issue(
                         tool, create_issue_for_status, MAINTAINERS.get(tool, ''),
-                        relevant_pr_number, relevant_pr_user,
+                        relevant_pr_number, relevant_pr_user, LABELS.get(tool, ''),
                     )
                 except urllib2.HTTPError as e:
                     # network errors will simply end up not creating an issue, but that's better

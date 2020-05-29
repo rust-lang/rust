@@ -132,7 +132,7 @@ impl Thread {
         }
     }
 
-    #[cfg(target_os = "solaris")]
+    #[cfg(any(target_os = "solaris", target_os = "illumos"))]
     pub fn set_name(name: &CStr) {
         weak! {
             fn pthread_setname_np(
@@ -155,7 +155,7 @@ impl Thread {
         target_os = "redox"
     ))]
     pub fn set_name(_name: &CStr) {
-        // Newlib, Illumos, Haiku, and Emscripten have no way to set a thread name.
+        // Newlib, Haiku, and Emscripten have no way to set a thread name.
     }
     #[cfg(target_os = "fuchsia")]
     pub fn set_name(_name: &CStr) {

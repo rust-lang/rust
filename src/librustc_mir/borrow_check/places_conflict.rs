@@ -138,7 +138,7 @@ fn place_components_conflict<'tcx>(
     }
 
     // loop invariant: borrow_c is always either equal to access_c or disjoint from it.
-    for (i, (borrow_c, access_c)) in
+    for (i, (borrow_c, &access_c)) in
         borrow_place.projection.iter().zip(access_place.projection.iter()).enumerate()
     {
         debug!("borrow_conflicts_with_place: borrow_c = {:?}", borrow_c);
@@ -313,8 +313,8 @@ fn place_projection_conflict<'tcx>(
     body: &Body<'tcx>,
     pi1_local: Local,
     pi1_proj_base: &[PlaceElem<'tcx>],
-    pi1_elem: &PlaceElem<'tcx>,
-    pi2_elem: &PlaceElem<'tcx>,
+    pi1_elem: PlaceElem<'tcx>,
+    pi2_elem: PlaceElem<'tcx>,
     bias: PlaceConflictBias,
 ) -> Overlap {
     match (pi1_elem, pi2_elem) {
@@ -377,11 +377,16 @@ fn place_projection_conflict<'tcx>(
                 Overlap::Disjoint
             }
         }
-        (ProjectionElem::Index(..), ProjectionElem::Index(..))
-        | (ProjectionElem::Index(..), ProjectionElem::ConstantIndex { .. })
-        | (ProjectionElem::Index(..), ProjectionElem::Subslice { .. })
-        | (ProjectionElem::ConstantIndex { .. }, ProjectionElem::Index(..))
-        | (ProjectionElem::Subslice { .. }, ProjectionElem::Index(..)) => {
+        (
+            ProjectionElem::Index(..),
+            ProjectionElem::Index(..)
+            | ProjectionElem::ConstantIndex { .. }
+            | ProjectionElem::Subslice { .. },
+        )
+        | (
+            ProjectionElem::ConstantIndex { .. } | ProjectionElem::Subslice { .. },
+            ProjectionElem::Index(..),
+        ) => {
             // Array indexes (`a[0]` vs. `a[i]`). These can either be disjoint
             // (if the indexes differ) or equal (if they are the same).
             match bias {
@@ -444,7 +449,7 @@ fn place_projection_conflict<'tcx>(
             // element (like -1 in Python) and `min_length` the first.
             // Therefore, `min_length - offset_from_end` gives the minimal possible
             // offset from the beginning
-            if *offset_from_begin >= *min_length - *offset_from_end {
+            if offset_from_begin >= min_length - offset_from_end {
                 debug!("place_element_conflict: DISJOINT-OR-EQ-ARRAY-CONSTANT-INDEX-FE");
                 Overlap::EqualOrDisjoint
             } else {
@@ -519,12 +524,15 @@ fn place_projection_conflict<'tcx>(
             debug!("place_element_conflict: DISJOINT-OR-EQ-SLICE-SUBSLICES");
             Overlap::EqualOrDisjoint
         }
-        (ProjectionElem::Deref, _)
-        | (ProjectionElem::Field(..), _)
-        | (ProjectionElem::Index(..), _)
-        | (ProjectionElem::ConstantIndex { .. }, _)
-        | (ProjectionElem::Subslice { .. }, _)
-        | (ProjectionElem::Downcast(..), _) => bug!(
+        (
+            ProjectionElem::Deref
+            | ProjectionElem::Field(..)
+            | ProjectionElem::Index(..)
+            | ProjectionElem::ConstantIndex { .. }
+            | ProjectionElem::Subslice { .. }
+            | ProjectionElem::Downcast(..),
+            _,
+        ) => bug!(
             "mismatched projections in place_element_conflict: {:?} and {:?}",
             pi1_elem,
             pi2_elem

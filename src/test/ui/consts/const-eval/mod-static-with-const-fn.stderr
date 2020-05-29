@@ -3,6 +3,8 @@ error[E0019]: static contains unimplemented expression type
    |
 LL |     *FOO.0.get() = 5;
    |     ^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
 error[E0015]: calls in statics are limited to constant functions, tuple structs and tuple variants
   --> $DIR/mod-static-with-const-fn.rs:21:5

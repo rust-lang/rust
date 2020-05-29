@@ -42,6 +42,31 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         match ty.kind {
             ty::Param(p) => self.param_bound(p),
             ty::Projection(data) => self.projection_bound(data),
+            ty::FnDef(_, substs) => {
+                // HACK(eddyb) ignore lifetimes found shallowly in `substs`.
+                // This is inconsistent with `ty::Adt` (including all substs),
+                // but consistent with previous (accidental) behavior.
+                // See https://github.com/rust-lang/rust/issues/70917
+                // for further background and discussion.
+                let mut bounds = substs
+                    .iter()
+                    .filter_map(|child| match child.unpack() {
+                        GenericArgKind::Type(ty) => Some(self.type_bound(ty)),
+                        GenericArgKind::Lifetime(_) => None,
+                        GenericArgKind::Const(_) => Some(self.recursive_bound(child)),
+                    })
+                    .filter(|bound| {
+                        // Remove bounds that must hold, since they are not interesting.
+                        !bound.must_hold()
+                    });
+
+                match (bounds.next(), bounds.next()) {
+                    (Some(first), None) => first,
+                    (first, second) => VerifyBound::AllBounds(
+                        first.into_iter().chain(second).chain(bounds).collect(),
+                    ),
+                }
+            }
             _ => self.recursive_bound(ty.into()),
         }
     }
@@ -198,7 +223,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         // like `T` and `T::Item`. It may not work as well for things
         // like `<T as Foo<'a>>::Item`.
         let c_b = self.param_env.caller_bounds;
-        let param_bounds = self.collect_outlives_from_predicate_list(&compare_ty, c_b);
+        let param_bounds = self.collect_outlives_from_predicate_list(&compare_ty, c_b.into_iter());
 
         // Next, collect regions we scraped from the well-formedness
         // constraints in the fn signature. To do that, we walk the list
@@ -290,13 +315,12 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         let tcx = self.tcx;
         let assoc_item = tcx.associated_item(assoc_item_def_id);
         let trait_def_id = assoc_item.container.assert_trait();
-        let trait_predicates =
-            tcx.predicates_of(trait_def_id).predicates.iter().map(|(p, _)| *p).collect();
+        let trait_predicates = tcx.predicates_of(trait_def_id).predicates.iter().map(|(p, _)| *p);
         let identity_substs = InternalSubsts::identity_for_item(tcx, assoc_item_def_id);
         let identity_proj = tcx.mk_projection(assoc_item_def_id, identity_substs);
         self.collect_outlives_from_predicate_list(
             move |ty| ty == identity_proj,
-            traits::elaborate_predicates(tcx, trait_predicates),
+            traits::elaborate_predicates(tcx, trait_predicates).map(|o| o.predicate),
         )
         .map(|b| b.1)
     }
@@ -310,11 +334,10 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     fn collect_outlives_from_predicate_list(
         &self,
         compare_ty: impl Fn(Ty<'tcx>) -> bool,
-        predicates: impl IntoIterator<Item = impl AsRef<ty::Predicate<'tcx>>>,
+        predicates: impl Iterator<Item = ty::Predicate<'tcx>>,
     ) -> impl Iterator<Item = ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>> {
         predicates
-            .into_iter()
-            .filter_map(|p| p.as_ref().to_opt_type_outlives())
+            .filter_map(|p| p.to_opt_type_outlives())
             .filter_map(|p| p.no_bound_vars())
             .filter(move |p| compare_ty(p.0))
     }

@@ -45,9 +45,12 @@ error[E0423]: expected value, found struct `T`
   --> $DIR/E0423.rs:14:8
    |
 LL |     if T {} == T {} { println!("Ok"); }
-   |        ^---
-   |        |
-   |        help: surround the struct literal with parenthesis: `(T {})`
+   |        ^
+   |
+help: surround the struct literal with parentheses
+   |
+LL |     if (T {}) == T {} { println!("Ok"); }
+   |        ^    ^
 
 error: aborting due to 5 previous errors
 

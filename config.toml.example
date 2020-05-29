@@ -84,8 +84,9 @@
 #link-shared = false
 
 # When building llvm, this configures what is being appended to the version.
-# If absent, we let the version as-is.
-#version-suffix = "-rust"
+# The default is "-rust-$version-$channel", except for dev channel where rustc
+# version number is omitted. To use LLVM version as is, provide an empty string.
+#version-suffix = "-rust-dev"
 
 # On MSVC you can compile LLVM with clang-cl, but the test suite doesn't pass
 # with clang-cl, so this is special in that it only compiles LLVM with clang-cl
@@ -130,6 +131,10 @@
 # for each target triple.
 #target = ["x86_64-unknown-linux-gnu"] # defaults to just the build triple
 
+# Use this directory to store build artifacts.
+# You can use "$ROOT" to indicate the root of the git repository.
+#build-dir = "build"
+
 # Instead of downloading the src/stage0.txt version of Cargo specified, use
 # this Cargo binary instead to build all Rust code
 #cargo = "/path/to/bin/cargo"
@@ -168,11 +173,9 @@
 
 # Python interpreter to use for various tasks throughout the build, notably
 # rustdoc tests, the lldb python interpreter, and some dist bits and pieces.
-# Note that Python 2 is currently required.
 #
-# Defaults to python2.7, then python2. If neither executable can be found, then
-# it defaults to the Python interpreter used to execute x.py.
-#python = "python2.7"
+# Defaults to the Python interpreter used to execute x.py.
+#python = "python"
 
 # Force Cargo to check that Cargo.lock describes the precise dependency
 # set that all the Cargo.toml files create, instead of updating it.
@@ -309,7 +312,11 @@
 
 # Whether or not debug assertions are enabled for the compiler and standard
 # library.
-#debug-assertions = false
+#debug-assertions = debug
+
+# Whether or not debug assertions are enabled for the standard library.
+# Overrides the `debug-assertions` option, if defined.
+#debug-assertions-std = debug-assertions
 
 # Debuginfo level for most of Rust code, corresponds to the `-C debuginfo=N` option of `rustc`.
 # `0` - no debug info
@@ -407,10 +414,6 @@
 # Indicates whether some LLVM tools, like llvm-objdump, will be made available in the
 # sysroot.
 #llvm-tools = false
-
-# Indicates whether LLDB will be made available in the sysroot.
-# This is only built if LLVM is also being built.
-#lldb = false
 
 # Whether to deny warnings in crates
 #deny-warnings = true

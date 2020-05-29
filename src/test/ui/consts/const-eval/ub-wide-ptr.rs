@@ -42,11 +42,11 @@ const MY_STR_LENGTH_PTR: &MyStr = unsafe { mem::transmute((&42u8, &3)) };
 const MY_STR_MUCH_TOO_LONG: &MyStr = unsafe { mem::transmute((&42u8, usize::MAX)) };
 //~^ ERROR it is undefined behavior to use this value
 
-// invalid UTF-8
-const STR_NO_UTF8: &str = unsafe { mem::transmute::<&[u8], _>(&[0xFF]) };
+// uninitialized byte
+const STR_NO_INIT: &str = unsafe { mem::transmute::<&[_], _>(&[MaybeUninit::<u8> { uninit: () }]) };
 //~^ ERROR it is undefined behavior to use this value
-// invalid UTF-8 in user-defined str-like
-const MYSTR_NO_UTF8: &MyStr = unsafe { mem::transmute::<&[u8], _>(&[0xFF]) };
+// uninitialized byte in user-defined str-like
+const MYSTR_NO_INIT: &MyStr = unsafe { mem::transmute::<&[_], _>(&[MaybeUninit::<u8> { uninit: () }]) };
 //~^ ERROR it is undefined behavior to use this value
 
 // # slice
@@ -103,6 +103,14 @@ const TRAIT_OBJ_SHORT_VTABLE_2: &dyn Trait = unsafe { mem::transmute((&92u8, &3u
 //~^ ERROR it is undefined behavior to use this value
 // bad trait object
 const TRAIT_OBJ_INT_VTABLE: &dyn Trait = unsafe { mem::transmute((&92u8, 4usize)) };
+//~^ ERROR it is undefined behavior to use this value
+const TRAIT_OBJ_UNALIGNED_VTABLE: &dyn Trait = unsafe { mem::transmute((&92u8, &[0u8; 128])) };
+//~^ ERROR it is undefined behavior to use this value
+const TRAIT_OBJ_BAD_DROP_FN_NULL: &dyn Trait = unsafe { mem::transmute((&92u8, &[0usize; 8])) };
+//~^ ERROR it is undefined behavior to use this value
+const TRAIT_OBJ_BAD_DROP_FN_INT: &dyn Trait = unsafe { mem::transmute((&92u8, &[1usize; 8])) };
+//~^ ERROR it is undefined behavior to use this value
+const TRAIT_OBJ_BAD_DROP_FN_NOT_FN_PTR: &dyn Trait = unsafe { mem::transmute((&92u8, &[&42u8; 8])) };
 //~^ ERROR it is undefined behavior to use this value
 
 // bad data *inside* the trait object

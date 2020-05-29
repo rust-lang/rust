@@ -33,7 +33,7 @@ error[E0423]: expected value, found struct `xcrate::S`
 LL |     xcrate::S;
    |     ^^^^^^^^^ constructor is not visible here due to private fields
    |
-help: possible better candidate is found in another module, you can import it into scope
+help: consider importing this tuple struct instead
    |
 LL | use m::S;
    |

@@ -9,10 +9,14 @@
 #![feature(const_if_match)]
 #![feature(const_fn)]
 #![feature(const_panic)]
-#![cfg_attr(not(bootstrap), feature(negative_impls))]
+#![feature(negative_impls)]
 #![feature(nll)]
 #![feature(optin_builtin_traits)]
-#![feature(specialization)]
+#![feature(min_specialization)]
+
+// FIXME(#56935): Work around ICEs during cross-compilation.
+#[allow(unused)]
+extern crate rustc_macros;
 
 use rustc_data_structures::AtomicRef;
 use rustc_macros::HashStable_Generic;
@@ -657,7 +661,8 @@ impl MultiSpan {
         MultiSpan { primary_spans: vec![primary_span], span_labels: vec![] }
     }
 
-    pub fn from_spans(vec: Vec<Span>) -> MultiSpan {
+    pub fn from_spans(mut vec: Vec<Span>) -> MultiSpan {
+        vec.sort();
         MultiSpan { primary_spans: vec, span_labels: vec![] }
     }
 
@@ -1192,8 +1197,10 @@ impl SourceFile {
                 kind: src_kind @ ExternalSourceKind::AbsentOk, ..
             } = &mut *external_src
             {
-                if let Some(src) = src {
+                if let Some(mut src) = src {
+                    // The src_hash needs to be computed on the pre-normalized src.
                     if self.src_hash.matches(&src) {
+                        normalize_src(&mut src, BytePos::from_usize(0));
                         *src_kind = ExternalSourceKind::Present(Lrc::new(src));
                         return true;
                     }

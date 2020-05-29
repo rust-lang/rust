@@ -44,6 +44,6 @@ warning: erroneous constant used
 LL |     println!("{} {}", X, Y);
    |                          ^ referenced constant has errors
 
-error: aborting due to 2 previous errors
+error: aborting due to 2 previous errors; 4 warnings emitted
 
 For more information about this error, try `rustc --explain E0080`.

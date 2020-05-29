@@ -205,8 +205,6 @@ test_impl_from! { test_u32f64, u32, f64 }
 // Float -> Float
 #[test]
 fn test_f32f64() {
-    use core::f32;
-
     let max: f64 = f32::MAX.into();
     assert_eq!(max as f32, f32::MAX);
     assert!(max.is_normal());
@@ -704,5 +702,5 @@ macro_rules! test_float {
     };
 }
 
-test_float!(f32, f32, ::core::f32::INFINITY, ::core::f32::NEG_INFINITY, ::core::f32::NAN);
-test_float!(f64, f64, ::core::f64::INFINITY, ::core::f64::NEG_INFINITY, ::core::f64::NAN);
+test_float!(f32, f32, f32::INFINITY, f32::NEG_INFINITY, f32::NAN);
+test_float!(f64, f64, f64::INFINITY, f64::NEG_INFINITY, f64::NAN);

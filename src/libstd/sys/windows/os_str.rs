@@ -159,6 +159,10 @@ impl Slice {
         Buf { inner: buf }
     }
 
+    pub fn clone_into(&self, buf: &mut Buf) {
+        self.inner.clone_into(&mut buf.inner)
+    }
+
     #[inline]
     pub fn into_box(&self) -> Box<Slice> {
         unsafe { mem::transmute(self.inner.into_box()) }

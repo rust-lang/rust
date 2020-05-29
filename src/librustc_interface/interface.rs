@@ -193,7 +193,7 @@ pub fn run_compiler_in_existing_thread_pool<R>(
 
     let r = {
         let _sess_abort_error = OnDrop(|| {
-            compiler.sess.diagnostic().print_error_count(registry);
+            compiler.sess.finish_diagnostics(registry);
         });
 
         f(&compiler)

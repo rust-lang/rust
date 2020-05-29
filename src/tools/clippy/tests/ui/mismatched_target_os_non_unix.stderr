@@ -1,0 +1,51 @@
+error: operating system used in target family position
+  --> $DIR/mismatched_target_os_non_unix.rs:6:1
+   |
+LL | #[cfg(cloudabi)]
+   | ^^^^^^--------^^
+   |       |
+   |       help: try: `target_os = "cloudabi"`
+   |
+   = note: `-D clippy::mismatched-target-os` implied by `-D warnings`
+
+error: operating system used in target family position
+  --> $DIR/mismatched_target_os_non_unix.rs:9:1
+   |
+LL | #[cfg(hermit)]
+   | ^^^^^^------^^
+   |       |
+   |       help: try: `target_os = "hermit"`
+
+error: operating system used in target family position
+  --> $DIR/mismatched_target_os_non_unix.rs:12:1
+   |
+LL | #[cfg(wasi)]
+   | ^^^^^^----^^
+   |       |
+   |       help: try: `target_os = "wasi"`
+
+error: operating system used in target family position
+  --> $DIR/mismatched_target_os_non_unix.rs:15:1
+   |
+LL | #[cfg(none)]
+   | ^^^^^^----^^
+   |       |
+   |       help: try: `target_os = "none"`
+
+error: operating system used in target family position
+  --> $DIR/mismatched_target_os_non_unix.rs:19:1
+   |
+LL | #[cfg(all(not(any(windows, cloudabi)), wasi))]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL | #[cfg(all(not(any(windows, target_os = "cloudabi")), wasi))]
+   |                            ^^^^^^^^^^^^^^^^^^^^^^
+help: try
+   |
+LL | #[cfg(all(not(any(windows, cloudabi)), target_os = "wasi"))]
+   |                                        ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+

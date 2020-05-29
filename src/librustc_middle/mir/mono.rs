@@ -7,7 +7,7 @@ use rustc_data_structures::base_n;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::HirId;
 use rustc_session::config::OptLevel;
 use rustc_span::source_map::Span;
@@ -95,7 +95,7 @@ impl<'tcx> MonoItem<'tcx> {
                 // linkage, then we'll be creating a globally shared version.
                 if self.explicit_linkage(tcx).is_some()
                     || !instance.def.generates_cgu_internal_copy(tcx)
-                    || Some(instance.def_id()) == entry_def_id
+                    || Some(instance.def_id()) == entry_def_id.map(LocalDefId::to_def_id)
                 {
                     return InstantiationMode::GloballyShared { may_conflict: false };
                 }
@@ -197,8 +197,12 @@ impl<'tcx> MonoItem<'tcx> {
 
     pub fn local_span(&self, tcx: TyCtxt<'tcx>) -> Option<Span> {
         match *self {
-            MonoItem::Fn(Instance { def, .. }) => tcx.hir().as_local_hir_id(def.def_id()),
-            MonoItem::Static(def_id) => tcx.hir().as_local_hir_id(def_id),
+            MonoItem::Fn(Instance { def, .. }) => {
+                def.def_id().as_local().map(|def_id| tcx.hir().as_local_hir_id(def_id))
+            }
+            MonoItem::Static(def_id) => {
+                def_id.as_local().map(|def_id| tcx.hir().as_local_hir_id(def_id))
+            }
             MonoItem::GlobalAsm(hir_id) => Some(hir_id),
         }
         .map(|hir_id| tcx.hir().span(hir_id))
@@ -235,6 +239,9 @@ pub struct CodegenUnit<'tcx> {
     size_estimate: Option<usize>,
 }
 
+/// Specifies the linkage type for a `MonoItem`.
+///
+/// See https://llvm.org/docs/LangRef.html#linkage-types for more details about these variants.
 #[derive(Copy, Clone, PartialEq, Debug, RustcEncodable, RustcDecodable, HashStable)]
 pub enum Linkage {
     External,
@@ -339,7 +346,9 @@ impl<'tcx> CodegenUnit<'tcx> {
                             // instances into account. The others don't matter for
                             // the codegen tests and can even make item order
                             // unstable.
-                            InstanceDef::Item(def_id) => tcx.hir().as_local_hir_id(def_id),
+                            InstanceDef::Item(def_id) => {
+                                def_id.as_local().map(|def_id| tcx.hir().as_local_hir_id(def_id))
+                            }
                             InstanceDef::VtableShim(..)
                             | InstanceDef::ReifyShim(..)
                             | InstanceDef::Intrinsic(..)
@@ -350,7 +359,9 @@ impl<'tcx> CodegenUnit<'tcx> {
                             | InstanceDef::CloneShim(..) => None,
                         }
                     }
-                    MonoItem::Static(def_id) => tcx.hir().as_local_hir_id(def_id),
+                    MonoItem::Static(def_id) => {
+                        def_id.as_local().map(|def_id| tcx.hir().as_local_hir_id(def_id))
+                    }
                     MonoItem::GlobalAsm(hir_id) => Some(hir_id),
                 },
                 item.symbol_name(tcx),

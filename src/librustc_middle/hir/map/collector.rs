@@ -250,23 +250,16 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                     None => format!("{:?}", node),
                 };
 
-                let forgot_str = if hir_id == hir::DUMMY_HIR_ID {
-                    format!("\nMaybe you forgot to lower the node id {:?}?", node_id)
-                } else {
-                    String::new()
-                };
-
                 span_bug!(
                     span,
                     "inconsistent DepNode at `{:?}` for `{}`: \
-                     current_dep_node_owner={} ({:?}), hir_id.owner={} ({:?}){}",
+                     current_dep_node_owner={} ({:?}), hir_id.owner={} ({:?})",
                     self.source_map.span_to_string(span),
                     node_str,
                     self.definitions.def_path(self.current_dep_node_owner).to_string_no_crate(),
                     self.current_dep_node_owner,
                     self.definitions.def_path(hir_id.owner).to_string_no_crate(),
                     hir_id.owner,
-                    forgot_str,
                 )
             }
         }

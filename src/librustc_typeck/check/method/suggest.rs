@@ -2,7 +2,6 @@
 //! found or is otherwise invalid.
 
 use crate::check::FnCtxt;
-use rustc_ast::ast;
 use rustc_ast::util::lev_distance;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
@@ -18,7 +17,7 @@ use rustc_middle::ty::print::with_crate_prefix;
 use rustc_middle::ty::{
     self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
 };
-use rustc_span::symbol::kw;
+use rustc_span::symbol::{kw, Ident};
 use rustc_span::{source_map, FileName, Span};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::Obligation;
@@ -59,7 +58,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             span,
                             self.body_id,
                             self.param_env,
-                            poly_trait_ref.without_const().to_predicate(),
+                            poly_trait_ref.without_const().to_predicate(tcx),
                         );
                         self.predicate_may_hold(&obligation)
                     })
@@ -72,7 +71,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         span: Span,
         rcvr_ty: Ty<'tcx>,
-        item_name: ast::Ident,
+        item_name: Ident,
         source: SelfSource<'b>,
         error: MethodError<'tcx>,
         args: Option<&'tcx [hir::Expr<'tcx>]>,
@@ -117,7 +116,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             .span_if_local(item.def_id)
                             .or_else(|| self.tcx.hir().span_if_local(impl_did));
 
-                        let impl_ty = self.impl_self_ty(span, impl_did).ty;
+                        let impl_ty = self.tcx.at(span).type_of(impl_did);
 
                         let insertion = match self.tcx.impl_trait_ref(impl_did) {
                             None => String::new(),
@@ -162,7 +161,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 ty::AssocKind::Const
                                 | ty::AssocKind::Type
                                 | ty::AssocKind::OpaqueTy => rcvr_ty,
-                                ty::AssocKind::Method => self
+                                ty::AssocKind::Fn => self
                                     .tcx
                                     .fn_sig(item.def_id)
                                     .inputs()
@@ -179,6 +178,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 path,
                                 ty,
                                 item.kind,
+                                item.def_id,
                                 sugg_span,
                                 idx,
                                 self.tcx.sess.source_map(),
@@ -220,6 +220,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             path,
                             rcvr_ty,
                             item.kind,
+                            item.def_id,
                             sugg_span,
                             idx,
                             self.tcx.sess.source_map(),
@@ -271,11 +272,35 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let mut candidates = all_traits(self.tcx).into_iter().filter_map(|info| {
                         self.associated_item(info.def_id, item_name, Namespace::ValueNS)
                     });
-                    if let (true, false, SelfSource::MethodCall(expr), Some(_)) = (
+                    // There are methods that are defined on the primitive types and won't be
+                    // found when exploring `all_traits`, but we also need them to be acurate on
+                    // our suggestions (#47759).
+                    let fund_assoc = |opt_def_id: Option<DefId>| {
+                        opt_def_id
+                            .and_then(|id| self.associated_item(id, item_name, Namespace::ValueNS))
+                            .is_some()
+                    };
+                    let lang_items = tcx.lang_items();
+                    let found_candidate = candidates.next().is_some()
+                        || fund_assoc(lang_items.i8_impl())
+                        || fund_assoc(lang_items.i16_impl())
+                        || fund_assoc(lang_items.i32_impl())
+                        || fund_assoc(lang_items.i64_impl())
+                        || fund_assoc(lang_items.i128_impl())
+                        || fund_assoc(lang_items.u8_impl())
+                        || fund_assoc(lang_items.u16_impl())
+                        || fund_assoc(lang_items.u32_impl())
+                        || fund_assoc(lang_items.u64_impl())
+                        || fund_assoc(lang_items.u128_impl())
+                        || fund_assoc(lang_items.f32_impl())
+                        || fund_assoc(lang_items.f32_runtime_impl())
+                        || fund_assoc(lang_items.f64_impl())
+                        || fund_assoc(lang_items.f64_runtime_impl());
+                    if let (true, false, SelfSource::MethodCall(expr), true) = (
                         actual.is_numeric(),
                         actual.has_concrete_skeleton(),
                         source,
-                        candidates.next(),
+                        found_candidate,
                     ) {
                         let mut err = struct_span_err!(
                             tcx.sess,
@@ -513,7 +538,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // When the "method" is resolved through dereferencing, we really want the
                         // original type that has the associated function for accurate suggestions.
                         // (#61411)
-                        let ty = self.impl_self_ty(span, *impl_did).ty;
+                        let ty = tcx.at(span).type_of(*impl_did);
                         match (&ty.peel_refs().kind, &actual.peel_refs().kind) {
                             (ty::Adt(def, _), ty::Adt(def_actual, _)) if def == def_actual => {
                                 // Use `actual` as it will have more `substs` filled in.
@@ -549,15 +574,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let mut bound_spans = vec![];
                     let mut collect_type_param_suggestions =
                         |self_ty: Ty<'_>, parent_pred: &ty::Predicate<'_>, obligation: &str| {
-                            if let (ty::Param(_), ty::Predicate::Trait(p, _)) =
-                                (&self_ty.kind, parent_pred)
+                            if let (ty::Param(_), ty::PredicateKind::Trait(p, _)) =
+                                (&self_ty.kind, parent_pred.kind())
                             {
                                 if let ty::Adt(def, _) = p.skip_binder().trait_ref.self_ty().kind {
-                                    let node = self
-                                        .tcx
-                                        .hir()
-                                        .as_local_hir_id(def.did)
-                                        .map(|id| self.tcx.hir().get(id));
+                                    let node = def.did.as_local().map(|def_id| {
+                                        self.tcx.hir().get(self.tcx.hir().as_local_hir_id(def_id))
+                                    });
                                     if let Some(hir::Node::Item(hir::Item { kind, .. })) = node {
                                         if let Some(g) = kind.generics() {
                                             let key = match &g.where_clause.predicates[..] {
@@ -603,9 +626,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             _ => {}
                         }
                     };
-                    let mut format_pred = |pred| {
-                        match pred {
-                            ty::Predicate::Projection(pred) => {
+                    let mut format_pred = |pred: ty::Predicate<'tcx>| {
+                        match pred.kind() {
+                            ty::PredicateKind::Projection(pred) => {
                                 // `<Foo as Iterator>::Item = String`.
                                 let trait_ref =
                                     pred.skip_binder().projection_ty.trait_ref(self.tcx);
@@ -623,7 +646,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 bound_span_label(trait_ref.self_ty(), &obligation, &quiet);
                                 Some((obligation, trait_ref.self_ty()))
                             }
-                            ty::Predicate::Trait(poly_trait_ref, _) => {
+                            ty::PredicateKind::Trait(poly_trait_ref, _) => {
                                 let p = poly_trait_ref.skip_binder().trait_ref;
                                 let self_ty = p.self_ty();
                                 let path = p.print_only_trait_path();
@@ -740,7 +763,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         err.span_label(span, msg);
                     }
                 } else if let Some(lev_candidate) = lev_candidate {
-                    let def_kind = lev_candidate.def_kind();
+                    let def_kind = lev_candidate.kind.as_def_kind();
                     err.span_suggestion(
                         span,
                         &format!(
@@ -831,7 +854,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         candidates: Vec<DefId>,
     ) {
         let module_did = self.tcx.parent_module(self.body_id);
-        let module_id = self.tcx.hir().as_local_hir_id(module_did.to_def_id()).unwrap();
+        let module_id = self.tcx.hir().as_local_hir_id(module_did);
         let krate = self.tcx.hir().krate();
         let (span, found_use) = UsePlacementFinder::check(self.tcx, krate, module_id);
         if let Some(span) = span {
@@ -899,7 +922,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err: &mut DiagnosticBuilder<'_>,
         span: Span,
         rcvr_ty: Ty<'tcx>,
-        item_name: ast::Ident,
+        item_name: Ident,
         source: SelfSource<'b>,
         valid_out_of_scope_traits: Vec<DefId>,
         unsatisfied_predicates: &[(ty::Predicate<'tcx>, Option<ty::Predicate<'tcx>>)],
@@ -923,18 +946,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // this isn't perfect (that is, there are cases when
                 // implementing a trait would be legal but is rejected
                 // here).
-                !unsatisfied_predicates.iter().any(|(p, _)| match p {
+                unsatisfied_predicates.iter().all(|(p, _)| match p.kind() {
                     // Hide traits if they are present in predicates as they can be fixed without
                     // having to implement them.
-                    ty::Predicate::Trait(t, _) => t.def_id() != info.def_id,
-                    ty::Predicate::Projection(p) => p.item_def_id() != info.def_id,
-                    _ => true,
+                    ty::PredicateKind::Trait(t, _) => t.def_id() == info.def_id,
+                    ty::PredicateKind::Projection(p) => p.item_def_id() == info.def_id,
+                    _ => false,
                 }) && (type_is_local || info.def_id.is_local())
                     && self
                         .associated_item(info.def_id, item_name, Namespace::ValueNS)
                         .filter(|item| {
-                            if let ty::AssocKind::Method = item.kind {
-                                let id = self.tcx.hir().as_local_hir_id(item.def_id);
+                            if let ty::AssocKind::Fn = item.kind {
+                                let id = item
+                                    .def_id
+                                    .as_local()
+                                    .map(|def_id| self.tcx.hir().as_local_hir_id(def_id));
                                 if let Some(hir::Node::TraitItem(hir::TraitItem {
                                     kind: hir::TraitItemKind::Fn(fn_sig, method),
                                     ..
@@ -945,23 +971,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                             ident.name == kw::SelfLower
                                         }
                                         hir::TraitFn::Provided(body_id) => {
-                                            match &self.tcx.hir().body(*body_id).params[..] {
-                                                [hir::Param {
-                                                    pat:
-                                                        hir::Pat {
-                                                            kind:
-                                                                hir::PatKind::Binding(
-                                                                    _,
-                                                                    _,
-                                                                    ident,
-                                                                    ..,
-                                                                ),
-                                                            ..
-                                                        },
-                                                    ..
-                                                }, ..] => ident.name == kw::SelfLower,
-                                                _ => false,
-                                            }
+                                            self.tcx.hir().body(*body_id).params.first().map_or(
+                                                false,
+                                                |param| {
+                                                    matches!(
+                                                        param.pat.kind,
+                                                        hir::PatKind::Binding(_, _, ident, _)
+                                                            if ident.name == kw::SelfLower
+                                                    )
+                                                },
+                                            )
                                         }
                                         _ => false,
                                     };
@@ -1026,7 +1045,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let generics = self.tcx.generics_of(table_owner.to_def_id());
                     let type_param = generics.type_param(param, self.tcx);
                     let hir = &self.tcx.hir();
-                    if let Some(id) = hir.as_local_hir_id(type_param.def_id) {
+                    if let Some(def_id) = type_param.def_id.as_local() {
+                        let id = hir.as_local_hir_id(def_id);
                         // Get the `hir::Param` to verify whether it already has any bounds.
                         // We do this to avoid suggesting code that ends up as `T: FooBar`,
                         // instead we suggest `T: Foo + Bar` in that case.
@@ -1232,7 +1252,7 @@ fn compute_all_traits(tcx: TyCtxt<'_>) -> Vec<DefId> {
             match i.kind {
                 hir::ItemKind::Trait(..) | hir::ItemKind::TraitAlias(..) => {
                     let def_id = self.map.local_def_id(i.hir_id);
-                    self.traits.push(def_id);
+                    self.traits.push(def_id.to_def_id());
                 }
                 _ => (),
             }
@@ -1255,7 +1275,7 @@ fn compute_all_traits(tcx: TyCtxt<'_>) -> Vec<DefId> {
         res: Res,
     ) {
         match res {
-            Res::Def(DefKind::Trait, def_id) | Res::Def(DefKind::TraitAlias, def_id) => {
+            Res::Def(DefKind::Trait | DefKind::TraitAlias, def_id) => {
                 traits.push(def_id);
             }
             Res::Def(DefKind::Mod, def_id) => {
@@ -1357,18 +1377,19 @@ impl intravisit::Visitor<'tcx> for UsePlacementFinder<'tcx> {
 }
 
 fn print_disambiguation_help(
-    item_name: ast::Ident,
+    item_name: Ident,
     args: Option<&'tcx [hir::Expr<'tcx>]>,
     err: &mut DiagnosticBuilder<'_>,
     trait_name: String,
     rcvr_ty: Ty<'_>,
     kind: ty::AssocKind,
+    def_id: DefId,
     span: Span,
     candidate: Option<usize>,
     source_map: &source_map::SourceMap,
 ) {
     let mut applicability = Applicability::MachineApplicable;
-    let sugg_args = if let (ty::AssocKind::Method, Some(args)) = (kind, args) {
+    let sugg_args = if let (ty::AssocKind::Fn, Some(args)) = (kind, args) {
         format!(
             "({}{})",
             if rcvr_ty.is_region_ptr() {
@@ -1392,7 +1413,7 @@ fn print_disambiguation_help(
         span,
         &format!(
             "disambiguate the {} for {}",
-            kind.suggestion_descr(),
+            kind.as_def_kind().descr(def_id),
             if let Some(candidate) = candidate {
                 format!("candidate #{}", candidate)
             } else {

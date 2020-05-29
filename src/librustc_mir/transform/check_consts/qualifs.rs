@@ -2,16 +2,19 @@
 //!
 //! See the `Qualif` trait for more info.
 
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, AdtDef, Ty};
+use rustc_middle::ty::{self, subst::SubstsRef, AdtDef, Ty};
 use rustc_span::DUMMY_SP;
+use rustc_trait_selection::traits;
 
-use super::Item as ConstCx;
+use super::ConstCx;
 
 pub fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> ConstQualifs {
     ConstQualifs {
         has_mut_interior: HasMutInterior::in_any_value_of_ty(cx, ty),
         needs_drop: NeedsDrop::in_any_value_of_ty(cx, ty),
+        custom_eq: CustomEq::in_any_value_of_ty(cx, ty),
     }
 }
 
@@ -53,7 +56,11 @@ pub trait Qualif {
     /// with a custom `Drop` impl is inherently `NeedsDrop`.
     ///
     /// Returning `true` for `in_adt_inherently` but `false` for `in_any_value_of_ty` is unsound.
-    fn in_adt_inherently(cx: &ConstCx<'_, 'tcx>, adt: &AdtDef) -> bool;
+    fn in_adt_inherently(
+        cx: &ConstCx<'_, 'tcx>,
+        adt: &'tcx AdtDef,
+        substs: SubstsRef<'tcx>,
+    ) -> bool;
 }
 
 /// Constant containing interior mutability (`UnsafeCell<T>`).
@@ -74,7 +81,7 @@ impl Qualif for HasMutInterior {
         !ty.is_freeze(cx.tcx, cx.param_env, DUMMY_SP)
     }
 
-    fn in_adt_inherently(cx: &ConstCx<'_, 'tcx>, adt: &AdtDef) -> bool {
+    fn in_adt_inherently(cx: &ConstCx<'_, 'tcx>, adt: &'tcx AdtDef, _: SubstsRef<'tcx>) -> bool {
         // Exactly one type, `UnsafeCell`, has the `HasMutInterior` qualif inherently.
         // It arises structurally for all other types.
         Some(adt.did) == cx.tcx.lang_items().unsafe_cell_type()
@@ -99,8 +106,41 @@ impl Qualif for NeedsDrop {
         ty.needs_drop(cx.tcx, cx.param_env)
     }
 
-    fn in_adt_inherently(cx: &ConstCx<'_, 'tcx>, adt: &AdtDef) -> bool {
+    fn in_adt_inherently(cx: &ConstCx<'_, 'tcx>, adt: &'tcx AdtDef, _: SubstsRef<'tcx>) -> bool {
         adt.has_dtor(cx.tcx)
+    }
+}
+
+/// A constant that cannot be used as part of a pattern in a `match` expression.
+pub struct CustomEq;
+
+impl Qualif for CustomEq {
+    const ANALYSIS_NAME: &'static str = "flow_custom_eq";
+
+    fn in_qualifs(qualifs: &ConstQualifs) -> bool {
+        qualifs.custom_eq
+    }
+
+    fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool {
+        // If *any* component of a composite data type does not implement `Structural{Partial,}Eq`,
+        // we know that at least some values of that type are not structural-match. I say "some"
+        // because that component may be part of an enum variant (e.g.,
+        // `Option::<NonStructuralMatchTy>::Some`), in which case some values of this type may be
+        // structural-match (`Option::None`).
+        let id = cx.tcx.hir().local_def_id_to_hir_id(cx.def_id.as_local().unwrap());
+        traits::search_for_structural_match_violation(id, cx.body.span, cx.tcx, ty).is_some()
+    }
+
+    fn in_adt_inherently(
+        cx: &ConstCx<'_, 'tcx>,
+        adt: &'tcx AdtDef,
+        substs: SubstsRef<'tcx>,
+    ) -> bool {
+        let ty = cx.tcx.mk_ty(ty::Adt(adt, substs));
+        let id = cx.tcx.hir().local_def_id_to_hir_id(cx.def_id.as_local().unwrap());
+        cx.tcx
+            .infer_ctxt()
+            .enter(|infcx| !traits::type_marked_structural(id, cx.body.span, &infcx, ty))
     }
 }
 
@@ -113,7 +153,7 @@ where
     F: FnMut(Local) -> bool,
 {
     match rvalue {
-        Rvalue::NullaryOp(..) => Q::in_any_value_of_ty(cx, rvalue.ty(*cx.body, cx.tcx)),
+        Rvalue::NullaryOp(..) => Q::in_any_value_of_ty(cx, rvalue.ty(cx.body, cx.tcx)),
 
         Rvalue::Discriminant(place) | Rvalue::Len(place) => {
             in_place::<Q, _>(cx, in_local, place.as_ref())
@@ -131,7 +171,7 @@ where
         Rvalue::Ref(_, _, place) | Rvalue::AddressOf(_, place) => {
             // Special-case reborrows to be more like a copy of the reference.
             if let &[ref proj_base @ .., ProjectionElem::Deref] = place.projection.as_ref() {
-                let base_ty = Place::ty_from(place.local, proj_base, *cx.body, cx.tcx).ty;
+                let base_ty = Place::ty_from(place.local, proj_base, cx.body, cx.tcx).ty;
                 if let ty::Ref(..) = base_ty.kind {
                     return in_place::<Q, _>(
                         cx,
@@ -147,8 +187,8 @@ where
         Rvalue::Aggregate(kind, operands) => {
             // Return early if we know that the struct or enum being constructed is always
             // qualified.
-            if let AggregateKind::Adt(def, ..) = **kind {
-                if Q::in_adt_inherently(cx, def) {
+            if let AggregateKind::Adt(def, _, substs, ..) = **kind {
+                if Q::in_adt_inherently(cx, def, substs) {
                     return true;
                 }
             }
@@ -166,8 +206,8 @@ where
     F: FnMut(Local) -> bool,
 {
     let mut projection = place.projection;
-    while let [ref proj_base @ .., proj_elem] = projection {
-        match *proj_elem {
+    while let &[ref proj_base @ .., proj_elem] = projection {
+        match proj_elem {
             ProjectionElem::Index(index) if in_local(index) => return true,
 
             ProjectionElem::Deref
@@ -178,7 +218,7 @@ where
             | ProjectionElem::Index(_) => {}
         }
 
-        let base_ty = Place::ty_from(place.local, proj_base, *cx.body, cx.tcx);
+        let base_ty = Place::ty_from(place.local, proj_base, cx.body, cx.tcx);
         let proj_ty = base_ty.projection_ty(cx.tcx, proj_elem).ty;
         if !Q::in_any_value_of_ty(cx, proj_ty) {
             return false;

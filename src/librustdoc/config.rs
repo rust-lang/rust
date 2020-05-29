@@ -10,6 +10,7 @@ use rustc_session::config::{
     nightly_options,
 };
 use rustc_session::config::{CodegenOptions, DebuggingOptions, ErrorOutputType, Externs};
+use rustc_session::getopts;
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
 use rustc_span::edition::{Edition, DEFAULT_EDITION};
@@ -446,7 +447,7 @@ impl Options {
             None => return Err(3),
         };
 
-        match matches.opt_str("r").as_ref().map(|s| &**s) {
+        match matches.opt_str("r").as_deref() {
             Some("rust") | None => {}
             Some(s) => {
                 diag.struct_err(&format!("unknown input format: {}", s)).emit();

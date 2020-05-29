@@ -9,7 +9,7 @@ pub use mc::{Place, PlaceBase, Projection};
 
 use rustc_hir as hir;
 use rustc_hir::def::Res;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::PatKind;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::ty::{self, adjustment, TyCtxt};
@@ -84,7 +84,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     pub fn new(
         delegate: &'a mut (dyn Delegate<'tcx> + 'a),
         infcx: &'a InferCtxt<'a, 'tcx>,
-        body_owner: DefId,
+        body_owner: LocalDefId,
         param_env: ty::ParamEnv<'tcx>,
         tables: &'a ty::TypeckTables<'tcx>,
     ) -> Self {
@@ -218,6 +218,30 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 // for the lifetime `scope_r` of the resulting ptr:
                 let bk = ty::BorrowKind::from_mutbl(m);
                 self.borrow_expr(&base, bk);
+            }
+
+            hir::ExprKind::InlineAsm(ref asm) => {
+                for op in asm.operands {
+                    match op {
+                        hir::InlineAsmOperand::In { expr, .. }
+                        | hir::InlineAsmOperand::Const { expr, .. }
+                        | hir::InlineAsmOperand::Sym { expr, .. } => self.consume_expr(expr),
+                        hir::InlineAsmOperand::Out { expr, .. } => {
+                            if let Some(expr) = expr {
+                                self.mutate_expr(expr);
+                            }
+                        }
+                        hir::InlineAsmOperand::InOut { expr, .. } => {
+                            self.mutate_expr(expr);
+                        }
+                        hir::InlineAsmOperand::SplitInOut { in_expr, out_expr, .. } => {
+                            self.consume_expr(in_expr);
+                            if let Some(out_expr) = out_expr {
+                                self.mutate_expr(out_expr);
+                            }
+                        }
+                    }
+                }
             }
 
             hir::ExprKind::LlvmInlineAsm(ref ia) => {
@@ -515,11 +539,11 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         debug!("walk_captures({:?})", closure_expr);
 
         let closure_def_id = self.tcx().hir().local_def_id(closure_expr.hir_id);
-        if let Some(upvars) = self.tcx().upvars(closure_def_id) {
+        if let Some(upvars) = self.tcx().upvars_mentioned(closure_def_id) {
             for &var_id in upvars.keys() {
                 let upvar_id = ty::UpvarId {
                     var_path: ty::UpvarPath { hir_id: var_id },
-                    closure_expr_id: closure_def_id.expect_local(),
+                    closure_expr_id: closure_def_id,
                 };
                 let upvar_capture = self.mc.tables.upvar_capture(upvar_id);
                 let captured_place = return_if_err!(self.cat_captured_var(

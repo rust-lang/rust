@@ -30,7 +30,7 @@
 //! - `ty`: the type of data found at the address `A`.
 //!
 //! The resulting categorization tree differs somewhat from the expressions
-//! themselves. For example, auto-derefs are explicit. Also, an index a[b] is
+//! themselves. For example, auto-derefs are explicit. Also, an index `a[b]` is
 //! decomposed into two operations: a dereference to reach the array data and
 //! then an index to jump forward to the relevant item.
 //!
@@ -55,7 +55,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::PatKind;
 use rustc_infer::infer::InferCtxt;
 use rustc_span::Span;
@@ -140,7 +140,7 @@ crate struct MemCategorizationContext<'a, 'tcx> {
     crate tables: &'a ty::TypeckTables<'tcx>,
     infcx: &'a InferCtxt<'a, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    body_owner: DefId,
+    body_owner: LocalDefId,
     upvars: Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>>,
 }
 
@@ -151,7 +151,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     crate fn new(
         infcx: &'a InferCtxt<'a, 'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        body_owner: DefId,
+        body_owner: LocalDefId,
         tables: &'a ty::TypeckTables<'tcx>,
     ) -> MemCategorizationContext<'a, 'tcx> {
         MemCategorizationContext {
@@ -159,7 +159,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             infcx,
             param_env,
             body_owner,
-            upvars: infcx.tcx.upvars(body_owner),
+            upvars: infcx.tcx.upvars_mentioned(body_owner),
         }
     }
 
@@ -405,6 +405,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             | hir::ExprKind::Continue(..)
             | hir::ExprKind::Struct(..)
             | hir::ExprKind::Repeat(..)
+            | hir::ExprKind::InlineAsm(..)
             | hir::ExprKind::LlvmInlineAsm(..)
             | hir::ExprKind::Box(..)
             | hir::ExprKind::Err => Ok(self.cat_rvalue(expr.hir_id, expr.span, expr_ty)),
@@ -421,12 +422,15 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         debug!("cat_res: id={:?} expr={:?} def={:?}", hir_id, expr_ty, res);
 
         match res {
-            Res::Def(DefKind::Ctor(..), _)
-            | Res::Def(DefKind::Const, _)
-            | Res::Def(DefKind::ConstParam, _)
-            | Res::Def(DefKind::AssocConst, _)
-            | Res::Def(DefKind::Fn, _)
-            | Res::Def(DefKind::AssocFn, _)
+            Res::Def(
+                DefKind::Ctor(..)
+                | DefKind::Const
+                | DefKind::ConstParam
+                | DefKind::AssocConst
+                | DefKind::Fn
+                | DefKind::AssocFn,
+                _,
+            )
             | Res::SelfCtor(..) => Ok(self.cat_rvalue(hir_id, span, expr_ty)),
 
             Res::Def(DefKind::Static, _) => Ok(Place {
@@ -470,7 +474,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
 
         let upvar_id = ty::UpvarId {
             var_path: ty::UpvarPath { hir_id: var_id },
-            closure_expr_id: closure_expr_def_id.expect_local(),
+            closure_expr_id: closure_expr_def_id,
         };
         let var_ty = self.node_ty(var_id)?;
 

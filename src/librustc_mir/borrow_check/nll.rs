@@ -2,12 +2,12 @@
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Diagnostic;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::mir::{
-    BasicBlock, Body, BodyAndCache, ClosureOutlivesSubject, ClosureRegionRequirements, LocalKind,
-    Location, Promoted, ReadOnlyBodyAndCache,
+    BasicBlock, Body, ClosureOutlivesSubject, ClosureRegionRequirements, LocalKind, Location,
+    Promoted,
 };
 use rustc_middle::ty::{self, RegionKind, RegionVid};
 use rustc_span::symbol::sym;
@@ -21,8 +21,8 @@ use std::str::FromStr;
 use self::mir_util::PassWhere;
 use polonius_engine::{Algorithm, Output};
 
+use crate::dataflow::impls::MaybeInitializedPlaces;
 use crate::dataflow::move_paths::{InitKind, InitLocation, MoveData};
-use crate::dataflow::MaybeInitializedPlaces;
 use crate::dataflow::ResultsCursor;
 use crate::transform::MirSource;
 use crate::util as mir_util;
@@ -60,13 +60,13 @@ pub(in crate::borrow_check) fn replace_regions_in_mir<'cx, 'tcx>(
     infcx: &InferCtxt<'cx, 'tcx>,
     def_id: DefId,
     param_env: ty::ParamEnv<'tcx>,
-    body: &mut BodyAndCache<'tcx>,
-    promoted: &mut IndexVec<Promoted, BodyAndCache<'tcx>>,
+    body: &mut Body<'tcx>,
+    promoted: &mut IndexVec<Promoted, Body<'tcx>>,
 ) -> UniversalRegions<'tcx> {
     debug!("replace_regions_in_mir(def_id={:?})", def_id);
 
     // Compute named region information. This also renumbers the inputs/outputs.
-    let universal_regions = UniversalRegions::new(infcx, def_id, param_env);
+    let universal_regions = UniversalRegions::new(infcx, def_id.expect_local(), param_env);
 
     // Replace all remaining regions with fresh inference variables.
     renumber::renumber_mir(infcx, body, promoted);
@@ -157,10 +157,10 @@ fn populate_polonius_move_facts(
 /// This may result in errors being reported.
 pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
     infcx: &InferCtxt<'cx, 'tcx>,
-    def_id: DefId,
+    def_id: LocalDefId,
     universal_regions: UniversalRegions<'tcx>,
-    body: ReadOnlyBodyAndCache<'_, 'tcx>,
-    promoted: &IndexVec<Promoted, ReadOnlyBodyAndCache<'_, 'tcx>>,
+    body: &Body<'tcx>,
+    promoted: &IndexVec<Promoted, Body<'tcx>>,
     location_table: &LocationTable,
     param_env: ty::ParamEnv<'tcx>,
     flow_inits: &mut ResultsCursor<'cx, 'tcx, MaybeInitializedPlaces<'cx, 'tcx>>,
@@ -272,7 +272,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
     // Dump facts if requested.
     let polonius_output = all_facts.and_then(|all_facts| {
         if infcx.tcx.sess.opts.debugging_opts.nll_facts {
-            let def_path = infcx.tcx.def_path(def_id);
+            let def_path = infcx.tcx.def_path(def_id.to_def_id());
             let dir_path =
                 PathBuf::from("nll-facts").join(def_path.to_filename_friendly_no_crate());
             all_facts.write_to_dir(dir_path, location_table).unwrap();
@@ -292,7 +292,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
 
     // Solve the region constraints.
     let (closure_region_requirements, nll_errors) =
-        regioncx.solve(infcx, &body, def_id, polonius_output.clone());
+        regioncx.solve(infcx, &body, def_id.to_def_id(), polonius_output.clone());
 
     if !nll_errors.is_empty() {
         // Suppress unhelpful extra errors in `infer_opaque_types`.

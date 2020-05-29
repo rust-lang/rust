@@ -163,7 +163,7 @@ fn dtorck_constraint_for_ty<'tcx>(
 ) -> Result<(), NoSolution> {
     debug!("dtorck_constraint_for_ty({:?}, {:?}, {:?}, {:?})", span, for_ty, depth, ty);
 
-    if depth >= *tcx.sess.recursion_limit.get() {
+    if depth >= tcx.sess.recursion_limit() {
         constraints.overflows.push(ty);
         return Ok(());
     }
@@ -191,10 +191,12 @@ fn dtorck_constraint_for_ty<'tcx>(
 
         ty::Array(ety, _) | ty::Slice(ety) => {
             // single-element containers, behave like their element
-            dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, ety, constraints)?;
+            rustc_data_structures::stack::ensure_sufficient_stack(|| {
+                dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, ety, constraints)
+            })?;
         }
 
-        ty::Tuple(tys) => {
+        ty::Tuple(tys) => rustc_data_structures::stack::ensure_sufficient_stack(|| {
             for ty in tys.iter() {
                 dtorck_constraint_for_ty(
                     tcx,
@@ -205,13 +207,15 @@ fn dtorck_constraint_for_ty<'tcx>(
                     constraints,
                 )?;
             }
-        }
+            Ok::<_, NoSolution>(())
+        })?,
 
-        ty::Closure(_, substs) => {
+        ty::Closure(_, substs) => rustc_data_structures::stack::ensure_sufficient_stack(|| {
             for ty in substs.as_closure().upvar_tys() {
                 dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, ty, constraints)?;
             }
-        }
+            Ok::<_, NoSolution>(())
+        })?,
 
         ty::Generator(_, substs, _movability) => {
             // rust-lang/rust#49918: types can be constructed, stored
@@ -266,8 +270,6 @@ fn dtorck_constraint_for_ty<'tcx>(
         ty::Projection(..) | ty::Opaque(..) | ty::Param(..) => {
             constraints.dtorck_types.push(ty);
         }
-
-        ty::UnnormalizedProjection(..) => bug!("only used with chalk-engine"),
 
         ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) | ty::Error => {
             // By the time this code runs, all type variables ought to

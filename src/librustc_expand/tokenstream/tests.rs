@@ -1,10 +1,9 @@
 use crate::tests::string_to_stream;
 
-use rustc_ast::ast::Name;
 use rustc_ast::token;
 use rustc_ast::tokenstream::{TokenStream, TokenStreamBuilder, TokenTree};
 use rustc_ast::with_default_globals;
-use rustc_span::{BytePos, Span};
+use rustc_span::{BytePos, Span, Symbol};
 use smallvec::smallvec;
 
 fn string_to_ts(string: &str) -> TokenStream {
@@ -87,7 +86,7 @@ fn test_is_empty() {
     with_default_globals(|| {
         let test0: TokenStream = Vec::<TokenTree>::new().into_iter().collect();
         let test1: TokenStream =
-            TokenTree::token(token::Ident(Name::intern("a"), false), sp(0, 1)).into();
+            TokenTree::token(token::Ident(Symbol::intern("a"), false), sp(0, 1)).into();
         let test2 = string_to_ts("foo(bar::baz)");
 
         assert_eq!(test0.is_empty(), true);

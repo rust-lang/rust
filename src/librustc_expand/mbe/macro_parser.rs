@@ -76,7 +76,6 @@ use TokenTreeOrTokenTreeSlice::*;
 
 use crate::mbe::{self, TokenTree};
 
-use rustc_ast::ast::Name;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, DocComment, Nonterminal, Token};
 use rustc_ast_pretty::pprust;
@@ -588,8 +587,10 @@ fn inner_parse_loop<'root, 'tt>(
                 //
                 // At the beginning of the loop, if we reach the end of the delimited submatcher,
                 // we pop the stack to backtrack out of the descent.
-                seq @ TokenTree::Delimited(..)
-                | seq @ TokenTree::Token(Token { kind: DocComment(..), .. }) => {
+                seq
+                @
+                (TokenTree::Delimited(..)
+                | TokenTree::Token(Token { kind: DocComment(..), .. })) => {
                     let lower_elts = mem::replace(&mut item.top_elts, Tt(seq));
                     let idx = item.idx;
                     item.stack.push(MatcherTtFrame { elts: lower_elts, idx });
@@ -764,7 +765,7 @@ fn get_macro_ident(token: &Token) -> Option<(Ident, bool)> {
 ///
 /// Returning `false` is a *stability guarantee* that such a matcher will *never* begin with that
 /// token. Be conservative (return true) if not sure.
-fn may_begin_with(token: &Token, name: Name) -> bool {
+fn may_begin_with(token: &Token, name: Symbol) -> bool {
     /// Checks whether the non-terminal may contain a single (non-keyword) identifier.
     fn may_be_ident(nt: &token::Nonterminal) -> bool {
         match *nt {

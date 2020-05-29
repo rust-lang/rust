@@ -1,4 +1,4 @@
-error: expected `;`, found `keyword `let``
+error: expected `;`, found keyword `let`
   --> $DIR/recover-missing-semi.rs:2:22
    |
 LL |     let _: usize = ()
@@ -7,7 +7,7 @@ LL |     let _: usize = ()
 LL |     let _ = 3;
    |     --- unexpected token
 
-error: expected `;`, found `keyword `return``
+error: expected `;`, found keyword `return`
   --> $DIR/recover-missing-semi.rs:9:22
    |
 LL |     let _: usize = ()

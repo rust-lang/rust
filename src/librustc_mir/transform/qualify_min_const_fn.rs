@@ -3,7 +3,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::*;
 use rustc_middle::ty::subst::GenericArgKind;
-use rustc_middle::ty::{self, adjustment::PointerCast, Predicate, Ty, TyCtxt};
+use rustc_middle::ty::{self, adjustment::PointerCast, Ty, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use std::borrow::Cow;
@@ -13,7 +13,7 @@ type McfResult = Result<(), (Span, Cow<'static, str>)>;
 pub fn is_min_const_fn(tcx: TyCtxt<'tcx>, def_id: DefId, body: &'a Body<'tcx>) -> McfResult {
     // Prevent const trait methods from being annotated as `stable`.
     if tcx.features().staged_api {
-        let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+        let hir_id = tcx.hir().as_local_hir_id(def_id.expect_local());
         if crate::const_eval::is_parent_const_impl_raw(tcx, hir_id) {
             return Err((body.span, "trait methods cannot be stable const fn".into()));
         }
@@ -23,27 +23,30 @@ pub fn is_min_const_fn(tcx: TyCtxt<'tcx>, def_id: DefId, body: &'a Body<'tcx>) -
     loop {
         let predicates = tcx.predicates_of(current);
         for (predicate, _) in predicates.predicates {
-            match predicate {
-                Predicate::RegionOutlives(_)
-                | Predicate::TypeOutlives(_)
-                | Predicate::WellFormed(_)
-                | Predicate::Projection(_)
-                | Predicate::ConstEvaluatable(..) => continue,
-                Predicate::ObjectSafe(_) => {
+            match predicate.kind() {
+                ty::PredicateKind::RegionOutlives(_)
+                | ty::PredicateKind::TypeOutlives(_)
+                | ty::PredicateKind::WellFormed(_)
+                | ty::PredicateKind::Projection(_)
+                | ty::PredicateKind::ConstEvaluatable(..)
+                | ty::PredicateKind::ConstEquate(..) => continue,
+                ty::PredicateKind::ObjectSafe(_) => {
                     bug!("object safe predicate on function: {:#?}", predicate)
                 }
-                Predicate::ClosureKind(..) => {
+                ty::PredicateKind::ClosureKind(..) => {
                     bug!("closure kind predicate on function: {:#?}", predicate)
                 }
-                Predicate::Subtype(_) => bug!("subtype predicate on function: {:#?}", predicate),
-                Predicate::Trait(pred, constness) => {
+                ty::PredicateKind::Subtype(_) => {
+                    bug!("subtype predicate on function: {:#?}", predicate)
+                }
+                &ty::PredicateKind::Trait(pred, constness) => {
                     if Some(pred.def_id()) == tcx.lang_items().sized_trait() {
                         continue;
                     }
                     match pred.skip_binder().self_ty().kind {
                         ty::Param(ref p) => {
                             // Allow `T: ?const Trait`
-                            if *constness == hir::Constness::NotConst
+                            if constness == hir::Constness::NotConst
                                 && feature_allowed(tcx, def_id, sym::const_trait_bound_opt_out)
                             {
                                 continue;
@@ -165,21 +168,26 @@ fn check_rvalue(
             let cast_in = CastTy::from_ty(operand.ty(body, tcx)).expect("bad input type for cast");
             let cast_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
             match (cast_in, cast_out) {
-                (CastTy::Ptr(_), CastTy::Int(_)) | (CastTy::FnPtr, CastTy::Int(_)) => {
+                (CastTy::Ptr(_) | CastTy::FnPtr, CastTy::Int(_)) => {
                     Err((span, "casting pointers to ints is unstable in const fn".into()))
                 }
                 _ => check_operand(tcx, operand, span, def_id, body),
             }
         }
-        Rvalue::Cast(CastKind::Pointer(PointerCast::MutToConstPointer), operand, _)
-        | Rvalue::Cast(CastKind::Pointer(PointerCast::ArrayToPointer), operand, _) => {
-            check_operand(tcx, operand, span, def_id, body)
-        }
-        Rvalue::Cast(CastKind::Pointer(PointerCast::UnsafeFnPointer), _, _)
-        | Rvalue::Cast(CastKind::Pointer(PointerCast::ClosureFnPointer(_)), _, _)
-        | Rvalue::Cast(CastKind::Pointer(PointerCast::ReifyFnPointer), _, _) => {
-            Err((span, "function pointer casts are not allowed in const fn".into()))
-        }
+        Rvalue::Cast(
+            CastKind::Pointer(PointerCast::MutToConstPointer | PointerCast::ArrayToPointer),
+            operand,
+            _,
+        ) => check_operand(tcx, operand, span, def_id, body),
+        Rvalue::Cast(
+            CastKind::Pointer(
+                PointerCast::UnsafeFnPointer
+                | PointerCast::ClosureFnPointer(_)
+                | PointerCast::ReifyFnPointer,
+            ),
+            _,
+            _,
+        ) => Err((span, "function pointer casts are not allowed in const fn".into())),
         Rvalue::Cast(CastKind::Pointer(PointerCast::Unsize), _, _) => {
             Err((span, "unsizing casts are not allowed in const fn".into()))
         }
@@ -281,11 +289,6 @@ fn check_place(
     while let &[ref proj_base @ .., elem] = cursor {
         cursor = proj_base;
         match elem {
-            ProjectionElem::Downcast(..) if !feature_allowed(tcx, def_id, sym::const_if_match) => {
-                return Err((span, "`match` or `if let` in `const fn` is unstable".into()));
-            }
-            ProjectionElem::Downcast(_symbol, _variant_index) => {}
-
             ProjectionElem::Field(..) => {
                 let base_ty = Place::ty_from(place.local, &proj_base, body, tcx).ty;
                 if let Some(def) = base_ty.ty_adt_def() {
@@ -298,6 +301,7 @@ fn check_place(
                 }
             }
             ProjectionElem::ConstantIndex { .. }
+            | ProjectionElem::Downcast(..)
             | ProjectionElem::Subslice { .. }
             | ProjectionElem::Deref
             | ProjectionElem::Index(_) => {}
@@ -339,7 +343,8 @@ fn check_terminator(
         | TerminatorKind::FalseUnwind { .. }
         | TerminatorKind::Goto { .. }
         | TerminatorKind::Return
-        | TerminatorKind::Resume => Ok(()),
+        | TerminatorKind::Resume
+        | TerminatorKind::Unreachable => Ok(()),
 
         TerminatorKind::Drop { location, .. } => check_place(tcx, *location, span, def_id, body),
         TerminatorKind::DropAndReplace { location, value, .. } => {
@@ -355,12 +360,7 @@ fn check_terminator(
             check_operand(tcx, discr, span, def_id, body)
         }
 
-        // FIXME(ecstaticmorse): We probably want to allow `Unreachable` unconditionally.
-        TerminatorKind::Unreachable if feature_allowed(tcx, def_id, sym::const_if_match) => Ok(()),
-
-        TerminatorKind::Abort | TerminatorKind::Unreachable => {
-            Err((span, "const fn with unreachable code is not stable".into()))
-        }
+        TerminatorKind::Abort => Err((span, "abort is not stable in const fn".into())),
         TerminatorKind::GeneratorDrop | TerminatorKind::Yield { .. } => {
             Err((span, "const fn generators are unstable".into()))
         }
@@ -393,6 +393,10 @@ fn check_terminator(
 
         TerminatorKind::Assert { cond, expected: _, msg: _, target: _, cleanup: _ } => {
             check_operand(tcx, cond, span, def_id, body)
+        }
+
+        TerminatorKind::InlineAsm { .. } => {
+            Err((span, "cannot use inline assembly in const fn".into()))
         }
     }
 }

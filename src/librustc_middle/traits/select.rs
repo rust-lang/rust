@@ -34,7 +34,7 @@ impl<'tcx> SelectionCache<'tcx> {
 /// clauses, and so forth that might resolve an obligation. Sometimes
 /// we'll be able to say definitively that (e.g.) an impl does not
 /// apply to the obligation: perhaps it is defined for `usize` but the
-/// obligation is for `int`. In that case, we drop the impl out of the
+/// obligation is for `i32`. In that case, we drop the impl out of the
 /// list. But the other cases are considered *candidates*.
 ///
 /// For selection to succeed, there must be exactly one matching
@@ -54,12 +54,14 @@ impl<'tcx> SelectionCache<'tcx> {
 /// will always be satisfied) picking the blanket impl will be wrong
 /// for at least *some* substitutions. To make this concrete, if we have
 ///
-///    trait AsDebug { type Out : fmt::Debug; fn debug(self) -> Self::Out; }
-///    impl<T: fmt::Debug> AsDebug for T {
-///        type Out = T;
-///        fn debug(self) -> fmt::Debug { self }
-///    }
-///    fn foo<T: AsDebug>(t: T) { println!("{:?}", <T as AsDebug>::debug(t)); }
+/// ```rust, ignore
+/// trait AsDebug { type Out: fmt::Debug; fn debug(self) -> Self::Out; }
+/// impl<T: fmt::Debug> AsDebug for T {
+///     type Out = T;
+///     fn debug(self) -> fmt::Debug { self }
+/// }
+/// fn foo<T: AsDebug>(t: T) { println!("{:?}", <T as AsDebug>::debug(t)); }
+/// ```
 ///
 /// we can't just use the impl to resolve the `<T as AsDebug>` obligation
 /// -- a type from another crate (that doesn't implement `fmt::Debug`) could
@@ -79,14 +81,16 @@ impl<'tcx> SelectionCache<'tcx> {
 /// inference variables. The can lead to inference making "leaps of logic",
 /// for example in this situation:
 ///
-///    pub trait Foo<T> { fn foo(&self) -> T; }
-///    impl<T> Foo<()> for T { fn foo(&self) { } }
-///    impl Foo<bool> for bool { fn foo(&self) -> bool { *self } }
+/// ```rust, ignore
+/// pub trait Foo<T> { fn foo(&self) -> T; }
+/// impl<T> Foo<()> for T { fn foo(&self) { } }
+/// impl Foo<bool> for bool { fn foo(&self) -> bool { *self } }
 ///
-///    pub fn foo<T>(t: T) where T: Foo<bool> {
-///       println!("{:?}", <T as Foo<_>>::foo(&t));
-///    }
-///    fn main() { foo(false); }
+/// pub fn foo<T>(t: T) where T: Foo<bool> {
+///     println!("{:?}", <T as Foo<_>>::foo(&t));
+/// }
+/// fn main() { foo(false); }
+/// ```
 ///
 /// Here the obligation `<T as Foo<$0>>` can be matched by both the blanket
 /// impl and the where-clause. We select the where-clause and unify `$0=bool`,
@@ -127,6 +131,9 @@ pub enum SelectionCandidate<'tcx> {
     /// Implementation of a `Fn`-family trait by one of the anonymous
     /// types generated for a fn pointer type (e.g., `fn(int) -> int`)
     FnPointerCandidate,
+
+    /// Builtin implementation of `DiscriminantKind`.
+    DiscriminantKindCandidate,
 
     TraitAliasCandidate(DefId),
 

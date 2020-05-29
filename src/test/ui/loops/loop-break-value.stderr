@@ -151,7 +151,7 @@ LL |         break;
    |         expected integer, found `()`
    |         help: give it a value of the expected type: `break value`
 
-error: aborting due to 16 previous errors
+error: aborting due to 16 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0308, E0571.
 For more information about an error, try `rustc --explain E0308`.

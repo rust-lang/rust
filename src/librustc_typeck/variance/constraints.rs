@@ -3,7 +3,7 @@
 //! The second pass over the AST determines the set of constraints.
 //! We walk the set of items and, for each member, generate new constraints.
 
-use hir::def_id::DefId;
+use hir::def_id::{DefId, LocalDefId};
 use rustc_hir as hir;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
@@ -128,16 +128,16 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         self.terms_cx.tcx
     }
 
-    fn build_constraints_for_item(&mut self, def_id: DefId) {
+    fn build_constraints_for_item(&mut self, def_id: LocalDefId) {
         let tcx = self.tcx();
-        debug!("build_constraints_for_item({})", tcx.def_path_str(def_id));
+        debug!("build_constraints_for_item({})", tcx.def_path_str(def_id.to_def_id()));
 
         // Skip items with no generics - there's nothing to infer in them.
         if tcx.generics_of(def_id).count() == 0 {
             return;
         }
 
-        let id = tcx.hir().as_local_hir_id(def_id).unwrap();
+        let id = tcx.hir().as_local_hir_id(def_id);
         let inferred_start = self.terms_cx.inferred_starts[&id];
         let current_item = &CurrentItem { inferred_start };
         match tcx.type_of(def_id).kind {
@@ -291,7 +291,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             }
 
             ty::Tuple(subtys) => {
-                for &subty in subtys {
+                for subty in subtys {
                     self.add_constraints_from_ty(current, subty.expect_ty(), variance);
                 }
             }
@@ -315,11 +315,9 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.add_constraints_from_region(current, r, contra);
 
                 if let Some(poly_trait_ref) = data.principal() {
-                    let poly_trait_ref =
-                        poly_trait_ref.with_self_ty(self.tcx(), self.tcx().types.err);
-                    self.add_constraints_from_trait_ref(
+                    self.add_constraints_from_invariant_substs(
                         current,
-                        *poly_trait_ref.skip_binder(),
+                        poly_trait_ref.skip_binder().substs,
                         variance,
                     );
                 }
@@ -346,11 +344,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 // types, where we use Error as the Self type
             }
 
-            ty::Placeholder(..)
-            | ty::UnnormalizedProjection(..)
-            | ty::GeneratorWitness(..)
-            | ty::Bound(..)
-            | ty::Infer(..) => {
+            ty::Placeholder(..) | ty::GeneratorWitness(..) | ty::Bound(..) | ty::Infer(..) => {
                 bug!(
                     "unexpected type encountered in \
                       variance inference: {}",
@@ -379,7 +373,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             return;
         }
 
-        let (local, remote) = if let Some(id) = self.tcx().hir().as_local_hir_id(def_id) {
+        let (local, remote) = if let Some(def_id) = def_id.as_local() {
+            let id = self.tcx().hir().as_local_hir_id(def_id);
             (Some(self.terms_cx.inferred_starts[&id]), None)
         } else {
             (None, Some(self.tcx().variances_of(def_id)))
@@ -449,7 +444,6 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             }
 
             ty::ReFree(..)
-            | ty::ReScope(..)
             | ty::ReVar(..)
             | ty::RePlaceholder(..)
             | ty::ReEmpty(_)

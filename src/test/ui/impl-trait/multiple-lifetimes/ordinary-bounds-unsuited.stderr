@@ -4,17 +4,11 @@ error[E0700]: hidden type for `impl Trait` captures lifetime that does not appea
 LL | fn upper_bounds<'a, 'b>(a: Ordinary<'a>, b: Ordinary<'b>) -> impl Trait<'a, 'b>
    |                                                              ^^^^^^^^^^^^^^^^^^
    |
-note: hidden type `Ordinary<'_>` captures the scope of call-site for function at 22:1
-  --> $DIR/ordinary-bounds-unsuited.rs:22:1
+note: hidden type `Ordinary<'_>` captures lifetime smaller than the function body
+  --> $DIR/ordinary-bounds-unsuited.rs:20:62
    |
-LL | / {
-LL | |     // We return a value:
-LL | |     //
-LL | |     // ```
-...  |
-LL | |     if condition() { a } else { b }
-LL | | }
-   | |_^
+LL | fn upper_bounds<'a, 'b>(a: Ordinary<'a>, b: Ordinary<'b>) -> impl Trait<'a, 'b>
+   |                                                              ^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

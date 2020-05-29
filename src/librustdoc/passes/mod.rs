@@ -338,7 +338,7 @@ pub fn look_for_tests<'tcx>(
 
     let mut tests = Tests { found_tests: 0 };
 
-    find_testable_code(&dox, &mut tests, ErrorCodes::No, false);
+    find_testable_code(&dox, &mut tests, ErrorCodes::No, false, None);
 
     if check_missing_code && tests.found_tests == 0 {
         let sp = span_of_attrs(&item.attrs).unwrap_or(item.source.span());

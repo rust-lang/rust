@@ -2,7 +2,7 @@ error[E0275]: overflow evaluating the requirement `Bar<Bar<Bar<Bar<Bar<Bar<Bar<B
   --> $DIR/E0275.rs:5:33
    |
 LL | trait Foo {}
-   | --------- required by `Foo`
+   | --------- required by this bound in `Foo`
 ...
 LL | impl<T> Foo for T where Bar<T>: Foo {}
    |                                 ^^^

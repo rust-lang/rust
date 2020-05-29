@@ -108,6 +108,7 @@ use crate::sys_common::poison::{self, LockResult, TryLockError, TryLockResult};
 /// *guard += 1;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "mutex_type")]
 pub struct Mutex<T: ?Sized> {
     // Note that this mutex is in a *box*, not inlined into the struct itself.
     // Once a native mutex has been used once, its address can never change (it

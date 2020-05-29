@@ -1,0 +1,47 @@
+error: called `filter(p).map(q)` on an `Iterator`
+  --> $DIR/filter_methods.rs:5:21
+   |
+LL |     let _: Vec<_> = vec![5; 6].into_iter().filter(|&x| x == 0).map(|x| x * 2).collect();
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::filter-map` implied by `-D warnings`
+   = help: this is more succinctly expressed by calling `.filter_map(..)` instead
+
+error: called `filter(p).flat_map(q)` on an `Iterator`
+  --> $DIR/filter_methods.rs:7:21
+   |
+LL |       let _: Vec<_> = vec![5_i8; 6]
+   |  _____________________^
+LL | |         .into_iter()
+LL | |         .filter(|&x| x == 0)
+LL | |         .flat_map(|x| x.checked_mul(2))
+   | |_______________________________________^
+   |
+   = help: this is more succinctly expressed by calling `.flat_map(..)` and filtering by returning `iter::empty()`
+
+error: called `filter_map(p).flat_map(q)` on an `Iterator`
+  --> $DIR/filter_methods.rs:13:21
+   |
+LL |       let _: Vec<_> = vec![5_i8; 6]
+   |  _____________________^
+LL | |         .into_iter()
+LL | |         .filter_map(|x| x.checked_mul(2))
+LL | |         .flat_map(|x| x.checked_mul(2))
+   | |_______________________________________^
+   |
+   = help: this is more succinctly expressed by calling `.flat_map(..)` and filtering by returning `iter::empty()`
+
+error: called `filter_map(p).map(q)` on an `Iterator`
+  --> $DIR/filter_methods.rs:19:21
+   |
+LL |       let _: Vec<_> = vec![5_i8; 6]
+   |  _____________________^
+LL | |         .into_iter()
+LL | |         .filter_map(|x| x.checked_mul(2))
+LL | |         .map(|x| x.checked_mul(2))
+   | |__________________________________^
+   |
+   = help: this is more succinctly expressed by only calling `.filter_map(..)` instead
+
+error: aborting due to 4 previous errors
+

@@ -1,3 +1,4 @@
+// normalize-stderr-64bit "0x0000000000" -> "0x00"
 #![feature(const_transmute, never_type)]
 #![allow(const_err)] // make sure we cannot allow away the errors tested here
 

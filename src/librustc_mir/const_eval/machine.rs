@@ -1,7 +1,7 @@
 use rustc_middle::mir;
 use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::{self, Ty};
-use std::borrow::{Borrow, Cow};
+use std::borrow::Borrow;
 use std::collections::hash_map::Entry;
 use std::hash::Hash;
 
@@ -13,13 +13,13 @@ use rustc_middle::mir::AssertMessage;
 use rustc_span::symbol::Symbol;
 
 use crate::interpret::{
-    self, AllocId, Allocation, GlobalId, ImmTy, InterpCx, InterpResult, Memory, MemoryKind, OpTy,
-    PlaceTy, Pointer, Scalar,
+    self, compile_time_machine, AllocId, Allocation, Frame, GlobalId, ImmTy, InterpCx,
+    InterpResult, Memory, OpTy, PlaceTy, Pointer, Scalar,
 };
 
 use super::error::*;
 
-impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter> {
+impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>> {
     /// Evaluate a const function where all arguments (if any) are zero-sized types.
     /// The evaluation is memoized thanks to the query system.
     ///
@@ -86,23 +86,31 @@ impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter> {
 }
 
 /// Extra machine state for CTFE, and the Machine instance
-pub struct CompileTimeInterpreter {
+pub struct CompileTimeInterpreter<'mir, 'tcx> {
     /// For now, the number of terminators that can be evaluated before we throw a resource
     /// exhuastion error.
     ///
     /// Setting this to `0` disables the limit and allows the interpreter to run forever.
     pub steps_remaining: usize,
+
+    /// The virtual call stack.
+    pub(crate) stack: Vec<Frame<'mir, 'tcx, (), ()>>,
 }
 
 #[derive(Copy, Clone, Debug)]
 pub struct MemoryExtra {
-    /// Whether this machine may read from statics
+    /// We need to make sure consts never point to anything mutable, even recursively. That is
+    /// relied on for pattern matching on consts with references.
+    /// To achieve this, two pieces have to work together:
+    /// * Interning makes everything outside of statics immutable.
+    /// * Pointers to allocations inside of statics can never leak outside, to a non-static global.
+    /// This boolean here controls the second part.
     pub(super) can_access_statics: bool,
 }
 
-impl CompileTimeInterpreter {
+impl<'mir, 'tcx> CompileTimeInterpreter<'mir, 'tcx> {
     pub(super) fn new(const_eval_limit: usize) -> Self {
-        CompileTimeInterpreter { steps_remaining: const_eval_limit }
+        CompileTimeInterpreter { steps_remaining: const_eval_limit, stack: Vec::new() }
     }
 }
 
@@ -156,7 +164,8 @@ impl<K: Hash + Eq, V> interpret::AllocMap<K, V> for FxHashMap<K, V> {
     }
 }
 
-crate type CompileTimeEvalContext<'mir, 'tcx> = InterpCx<'mir, 'tcx, CompileTimeInterpreter>;
+crate type CompileTimeEvalContext<'mir, 'tcx> =
+    InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>;
 
 impl interpret::MayLeak for ! {
     #[inline(always)]
@@ -166,27 +175,10 @@ impl interpret::MayLeak for ! {
     }
 }
 
-impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter {
-    type MemoryKind = !;
-    type PointerTag = ();
-    type ExtraFnVal = !;
+impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir, 'tcx> {
+    compile_time_machine!(<'mir, 'tcx>);
 
-    type FrameExtra = ();
     type MemoryExtra = MemoryExtra;
-    type AllocExtra = ();
-
-    type MemoryMap = FxHashMap<AllocId, (MemoryKind<!>, Allocation)>;
-
-    const GLOBAL_KIND: Option<!> = None; // no copying of globals from `tcx` to machine memory
-
-    // We do not check for alignment to avoid having to carry an `Align`
-    // in `ConstValue::ByRef`.
-    const CHECK_ALIGN: bool = false;
-
-    #[inline(always)]
-    fn enforce_validity(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
-        false // for now, we don't enforce validity
-    }
 
     fn find_mir_or_eval_fn(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
@@ -219,7 +211,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter {
         }
         // This is a const fn. Call it.
         Ok(Some(match ecx.load_mir(instance.def, None) {
-            Ok(body) => *body,
+            Ok(body) => body,
             Err(err) => {
                 if let err_unsup!(NoMirFor(did)) = err.kind {
                     let path = ecx.tcx.def_path_str(did);
@@ -232,16 +224,6 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter {
                 return Err(err);
             }
         }))
-    }
-
-    fn call_extra_fn(
-        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        fn_val: !,
-        _args: &[OpTy<'tcx>],
-        _ret: Option<(PlaceTy<'tcx>, mir::BasicBlock)>,
-        _unwind: Option<mir::BasicBlock>,
-    ) -> InterpResult<'tcx> {
-        match fn_val {}
     }
 
     fn call_intrinsic(
@@ -303,20 +285,6 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter {
         Err(ConstEvalErrKind::NeedsRfc("pointer arithmetic or comparison".to_string()).into())
     }
 
-    #[inline(always)]
-    fn init_allocation_extra<'b>(
-        _memory_extra: &MemoryExtra,
-        _id: AllocId,
-        alloc: Cow<'b, Allocation>,
-        _kind: Option<MemoryKind<!>>,
-    ) -> (Cow<'b, Allocation<Self::PointerTag>>, Self::PointerTag) {
-        // We do not use a tag so we can just cheaply forward the allocation
-        (alloc, ())
-    }
-
-    #[inline(always)]
-    fn tag_global_base_pointer(_memory_extra: &MemoryExtra, _id: AllocId) -> Self::PointerTag {}
-
     fn box_alloc(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         _dest: PlaceTy<'tcx>,
@@ -339,8 +307,17 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter {
     }
 
     #[inline(always)]
-    fn stack_push(_ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
-        Ok(())
+    fn stack(
+        ecx: &'a InterpCx<'mir, 'tcx, Self>,
+    ) -> &'a [Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>] {
+        &ecx.machine.stack
+    }
+
+    #[inline(always)]
+    fn stack_mut(
+        ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
+    ) -> &'a mut Vec<Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>> {
+        &mut ecx.machine.stack
     }
 
     fn before_access_global(
@@ -350,15 +327,34 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter {
         static_def_id: Option<DefId>,
         is_write: bool,
     ) -> InterpResult<'tcx> {
-        if is_write && allocation.mutability == Mutability::Not {
-            Err(err_ub!(WriteToReadOnly(alloc_id)).into())
-        } else if is_write {
-            Err(ConstEvalErrKind::ModifiedGlobal.into())
-        } else if memory_extra.can_access_statics || static_def_id.is_none() {
-            // `static_def_id.is_none()` indicates this is not a static, but a const or so.
-            Ok(())
+        if is_write {
+            // Write access. These are never allowed, but we give a targeted error message.
+            if allocation.mutability == Mutability::Not {
+                Err(err_ub!(WriteToReadOnly(alloc_id)).into())
+            } else {
+                Err(ConstEvalErrKind::ModifiedGlobal.into())
+            }
         } else {
-            Err(ConstEvalErrKind::ConstAccessesStatic.into())
+            // Read access. These are usually allowed, with some exceptions.
+            if memory_extra.can_access_statics {
+                // Machine configuration allows us read from anything (e.g., `static` initializer).
+                Ok(())
+            } else if static_def_id.is_some() {
+                // Machine configuration does not allow us to read statics
+                // (e.g., `const` initializer).
+                // See const_eval::machine::MemoryExtra::can_access_statics for why
+                // this check is so important: if we could read statics, we could read pointers
+                // to mutable allocations *inside* statics. These allocations are not themselves
+                // statics, so pointers to them can get around the check in `validity.rs`.
+                Err(ConstEvalErrKind::ConstAccessesStatic.into())
+            } else {
+                // Immutable global, this read is fine.
+                // But make sure we never accept a read from something mutable, that would be
+                // unsound. The reason is that as the content of this allocation may be different
+                // now and at run-time, so if we permit reading now we might return the wrong value.
+                assert_eq!(allocation.mutability, Mutability::Not);
+                Ok(())
+            }
         }
     }
 }

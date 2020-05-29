@@ -20,6 +20,11 @@ impl Stdin {
         //    .read(data)
         Ok(0)
     }
+
+    #[inline]
+    pub fn is_read_vectored(&self) -> bool {
+        true
+    }
 }
 
 impl Stdout {
@@ -49,6 +54,11 @@ impl Stdout {
         } else {
             Ok(len as usize)
         }
+    }
+
+    #[inline]
+    pub fn is_write_vectored(&self) -> bool {
+        true
     }
 
     pub fn flush(&self) -> io::Result<()> {
@@ -83,6 +93,11 @@ impl Stderr {
         } else {
             Ok(len as usize)
         }
+    }
+
+    #[inline]
+    pub fn is_write_vectored(&self) -> bool {
+        true
     }
 
     pub fn flush(&self) -> io::Result<()> {

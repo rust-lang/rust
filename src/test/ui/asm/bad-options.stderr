@@ -1,0 +1,32 @@
+error: the `nomem` and `readonly` options are mutually exclusive
+  --> $DIR/bad-options.rs:8:18
+   |
+LL |         asm!("", options(nomem, readonly));
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: the `pure` and `noreturn` options are mutually exclusive
+  --> $DIR/bad-options.rs:10:18
+   |
+LL |         asm!("", options(pure, nomem, noreturn));
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: asm with `pure` option must have at least one output
+  --> $DIR/bad-options.rs:10:18
+   |
+LL |         asm!("", options(pure, nomem, noreturn));
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: asm with `pure` option must have at least one output
+  --> $DIR/bad-options.rs:13:33
+   |
+LL |         asm!("{}", in(reg) foo, options(pure, nomem));
+   |                                 ^^^^^^^^^^^^^^^^^^^^
+
+error: asm outputs are not allowed with the `noreturn` option
+  --> $DIR/bad-options.rs:15:20
+   |
+LL |         asm!("{}", out(reg) foo, options(noreturn));
+   |                    ^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+

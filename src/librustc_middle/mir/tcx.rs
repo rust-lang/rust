@@ -56,8 +56,8 @@ impl<'tcx> PlaceTy<'tcx> {
     /// Convenience wrapper around `projection_ty_core` for
     /// `PlaceElem`, where we can just use the `Ty` that is already
     /// stored inline on field projection elems.
-    pub fn projection_ty(self, tcx: TyCtxt<'tcx>, elem: &PlaceElem<'tcx>) -> PlaceTy<'tcx> {
-        self.projection_ty_core(tcx, ty::ParamEnv::empty(), elem, |_, _, ty| ty)
+    pub fn projection_ty(self, tcx: TyCtxt<'tcx>, elem: PlaceElem<'tcx>) -> PlaceTy<'tcx> {
+        self.projection_ty_core(tcx, ty::ParamEnv::empty(), &elem, |_, _, ty| ty)
     }
 
     /// `place_ty.projection_ty_core(tcx, elem, |...| { ... })`
@@ -124,7 +124,7 @@ impl<'tcx> Place<'tcx> {
     {
         projection
             .iter()
-            .fold(PlaceTy::from_ty(local_decls.local_decls()[local].ty), |place_ty, elem| {
+            .fold(PlaceTy::from_ty(local_decls.local_decls()[local].ty), |place_ty, &elem| {
                 place_ty.projection_ty(tcx, elem)
             })
     }
@@ -173,9 +173,7 @@ impl<'tcx> Rvalue<'tcx> {
                 let ty = op.ty(tcx, lhs_ty, rhs_ty);
                 tcx.intern_tup(&[ty, tcx.types.bool])
             }
-            Rvalue::UnaryOp(UnOp::Not, ref operand) | Rvalue::UnaryOp(UnOp::Neg, ref operand) => {
-                operand.ty(local_decls, tcx)
-            }
+            Rvalue::UnaryOp(UnOp::Not | UnOp::Neg, ref operand) => operand.ty(local_decls, tcx),
             Rvalue::Discriminant(ref place) => {
                 let ty = place.ty(local_decls, tcx).ty;
                 match ty.kind {

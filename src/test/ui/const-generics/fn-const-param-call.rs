@@ -1,7 +1,7 @@
 // run-pass
 
 #![feature(const_generics, const_compare_raw_pointers)]
-//~^ WARN the feature `const_generics` is incomplete and may cause the compiler to crash
+//~^ WARN the feature `const_generics` is incomplete
 
 fn function() -> u32 {
     17

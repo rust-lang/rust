@@ -1,0 +1,18 @@
+error: legacy asm! syntax is no longer supported
+  --> $DIR/rustfix-asm.rs:10:9
+   |
+LL |         asm!("" :: "r" (x));
+   |         ----^^^^^^^^^^^^^^^^
+   |         |
+   |         help: replace with: `llvm_asm!`
+
+error: legacy asm! syntax is no longer supported
+  --> $DIR/rustfix-asm.rs:12:9
+   |
+LL |         asm!("" : "=r" (y));
+   |         ----^^^^^^^^^^^^^^^^
+   |         |
+   |         help: replace with: `llvm_asm!`
+
+error: aborting due to 2 previous errors
+

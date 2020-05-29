@@ -3,8 +3,6 @@ use crate::cmp::Ordering::{self, Equal, Greater, Less};
 use crate::intrinsics;
 use crate::mem;
 
-// ignore-tidy-undocumented-unsafe
-
 #[lang = "const_ptr"]
 impl<T: ?Sized> *const T {
     /// Returns `true` if the pointer is null.
@@ -152,6 +150,7 @@ impl<T: ?Sized> *const T {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use = "returns a new pointer rather than modifying its argument"]
     #[inline]
     pub unsafe fn offset(self, count: isize) -> *const T
     where
@@ -210,11 +209,13 @@ impl<T: ?Sized> *const T {
     /// }
     /// ```
     #[stable(feature = "ptr_wrapping_offset", since = "1.16.0")]
+    #[must_use = "returns a new pointer rather than modifying its argument"]
     #[inline]
     pub fn wrapping_offset(self, count: isize) -> *const T
     where
         T: Sized,
     {
+        // SAFETY: the `arith_offset` intrinsic has no prerequisites to be called.
         unsafe { intrinsics::arith_offset(self, count) }
     }
 
@@ -391,6 +392,7 @@ impl<T: ?Sized> *const T {
     /// }
     /// ```
     #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[must_use = "returns a new pointer rather than modifying its argument"]
     #[inline]
     pub unsafe fn add(self, count: usize) -> Self
     where
@@ -452,6 +454,7 @@ impl<T: ?Sized> *const T {
     /// }
     /// ```
     #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[must_use = "returns a new pointer rather than modifying its argument"]
     #[inline]
     pub unsafe fn sub(self, count: usize) -> Self
     where
@@ -507,6 +510,7 @@ impl<T: ?Sized> *const T {
     /// }
     /// ```
     #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[must_use = "returns a new pointer rather than modifying its argument"]
     #[inline]
     pub fn wrapping_add(self, count: usize) -> Self
     where
@@ -562,6 +566,7 @@ impl<T: ?Sized> *const T {
     /// }
     /// ```
     #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[must_use = "returns a new pointer rather than modifying its argument"]
     #[inline]
     pub fn wrapping_sub(self, count: usize) -> Self
     where
@@ -702,7 +707,37 @@ impl<T: ?Sized> *const T {
         if !align.is_power_of_two() {
             panic!("align_offset: align is not a power-of-two");
         }
+        // SAFETY: `align` has been checked to be a power of 2 above
         unsafe { align_offset(self, align) }
+    }
+}
+
+#[lang = "const_slice_ptr"]
+impl<T> *const [T] {
+    /// Returns the length of a raw slice.
+    ///
+    /// The returned value is the number of **elements**, not the number of bytes.
+    ///
+    /// This function is safe, even when the raw slice cannot be cast to a slice
+    /// reference because the pointer is null or unaligned.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(slice_ptr_len)]
+    ///
+    /// use std::ptr;
+    ///
+    /// let slice: *const [i8] = ptr::slice_from_raw_parts(ptr::null(), 3);
+    /// assert_eq!(slice.len(), 3);
+    /// ```
+    #[inline]
+    #[unstable(feature = "slice_ptr_len", issue = "71146")]
+    #[rustc_const_unstable(feature = "const_slice_ptr_len", issue = "71146")]
+    pub const fn len(self) -> usize {
+        // SAFETY: this is safe because `*const [T]` and `FatPtr<T>` have the same layout.
+        // Only `std` can make this guarantee.
+        unsafe { Repr { rust: self }.raw }.len
     }
 }
 

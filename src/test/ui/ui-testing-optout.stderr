@@ -8,21 +8,21 @@ error[E0412]: cannot find type `B` in this scope
   | similarly named type alias `A` defined here
 
 error[E0412]: cannot find type `D` in this scope
-  --> $DIR/ui-testing-optout.rs:10:10
-   |
-4  | type A = B;
-   | ----------- similarly named type alias `A` defined here
+ --> $DIR/ui-testing-optout.rs:7:10
+  |
+4 | type A = B;
+  | ----------- similarly named type alias `A` defined here
 ...
-10 | type C = D;
-   |          ^ help: a type alias with a similar name exists: `A`
+7 | type C = D;
+  |          ^ help: a type alias with a similar name exists: `A`
 
 error[E0412]: cannot find type `F` in this scope
-  --> $DIR/ui-testing-optout.rs:95:10
+  --> $DIR/ui-testing-optout.rs:92:10
    |
 4  | type A = B;
    | ----------- similarly named type alias `A` defined here
 ...
-95 | type E = F;
+92 | type E = F;
    |          ^ help: a type alias with a similar name exists: `A`
 
 error: aborting due to 3 previous errors

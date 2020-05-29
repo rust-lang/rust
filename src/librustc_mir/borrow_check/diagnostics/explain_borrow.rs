@@ -156,23 +156,32 @@ impl BorrowExplanation {
                         err.span_label(body.source_info(drop_loc).span, message);
 
                         if let Some(info) = &local_decl.is_block_tail {
-                            // FIXME: use span_suggestion instead, highlighting the
-                            // whole block tail expression.
-                            let msg = if info.tail_result_is_ignored {
-                                "The temporary is part of an expression at the end of a block. \
-                                 Consider adding semicolon after the expression so its temporaries \
-                                 are dropped sooner, before the local variables declared by the \
-                                 block are dropped."
+                            if info.tail_result_is_ignored {
+                                err.span_suggestion_verbose(
+                                    info.span.shrink_to_hi(),
+                                    "consider adding semicolon after the expression so its \
+                                     temporaries are dropped sooner, before the local variables \
+                                     declared by the block are dropped",
+                                    ";".to_string(),
+                                    Applicability::MaybeIncorrect,
+                                );
                             } else {
-                                "The temporary is part of an expression at the end of a block. \
-                                 Consider forcing this temporary to be dropped sooner, before \
-                                 the block's local variables are dropped. \
-                                 For example, you could save the expression's value in a new \
-                                 local variable `x` and then make `x` be the expression \
-                                 at the end of the block."
+                                err.note(
+                                    "the temporary is part of an expression at the end of a \
+                                     block;\nconsider forcing this temporary to be dropped sooner, \
+                                     before the block's local variables are dropped",
+                                );
+                                err.multipart_suggestion(
+                                    "for example, you could save the expression's value in a new \
+                                     local variable `x` and then make `x` be the expression at the \
+                                     end of the block",
+                                    vec![
+                                        (info.span.shrink_to_lo(), "let x = ".to_string()),
+                                        (info.span.shrink_to_hi(), "; x".to_string()),
+                                    ],
+                                    Applicability::MaybeIncorrect,
+                                );
                             };
-
-                            err.note(msg);
                         }
                     }
                 }

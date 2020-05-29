@@ -17,7 +17,7 @@ cfg_if::cfg_if! {
     if #[cfg(any(
         target_os = "dragonfly", target_os = "freebsd",
         target_os = "ios", target_os = "macos",
-        target_os = "openbsd", target_os = "netbsd",
+        target_os = "openbsd", target_os = "netbsd", target_os = "illumos",
         target_os = "solaris", target_os = "haiku", target_os = "l4re"))] {
         use crate::sys::net::netc::IPV6_JOIN_GROUP as IPV6_ADD_MEMBERSHIP;
         use crate::sys::net::netc::IPV6_LEAVE_GROUP as IPV6_DROP_MEMBERSHIP;
@@ -43,7 +43,7 @@ cfg_if::cfg_if! {
     if #[cfg(any(
         target_os = "dragonfly", target_os = "freebsd",
         target_os = "openbsd", target_os = "netbsd",
-        target_os = "solaris"))] {
+        target_os = "solaris", target_os = "illumos"))] {
         use libc::c_uchar;
         type IpV4MultiCastType = c_uchar;
     } else {
@@ -265,6 +265,11 @@ impl TcpStream {
         self.inner.read_vectored(bufs)
     }
 
+    #[inline]
+    pub fn is_read_vectored(&self) -> bool {
+        self.inner.is_read_vectored()
+    }
+
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         let len = cmp::min(buf.len(), <wrlen_t>::max_value() as usize) as wrlen_t;
         let ret = cvt(unsafe {
@@ -275,6 +280,11 @@ impl TcpStream {
 
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.inner.write_vectored(bufs)
+    }
+
+    #[inline]
+    pub fn is_write_vectored(&self) -> bool {
+        self.inner.is_write_vectored()
     }
 
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
@@ -358,12 +368,15 @@ impl TcpListener {
 
         let sock = Socket::new(addr, c::SOCK_STREAM)?;
 
-        // On platforms with Berkeley-derived sockets, this allows
-        // to quickly rebind a socket, without needing to wait for
-        // the OS to clean up the previous one.
-        if !cfg!(windows) {
-            setsockopt(&sock, c::SOL_SOCKET, c::SO_REUSEADDR, 1 as c_int)?;
-        }
+        // On platforms with Berkeley-derived sockets, this allows to quickly
+        // rebind a socket, without needing to wait for the OS to clean up the
+        // previous one.
+        //
+        // On Windows, this allows rebinding sockets which are actively in use,
+        // which allows “socket hijacking”, so we explicitly don't set it here.
+        // https://docs.microsoft.com/en-us/windows/win32/winsock/using-so-reuseaddr-and-so-exclusiveaddruse
+        #[cfg(not(windows))]
+        setsockopt(&sock, c::SOL_SOCKET, c::SO_REUSEADDR, 1 as c_int)?;
 
         // Bind our new socket
         let (addrp, len) = addr.into_inner();

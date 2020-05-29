@@ -11,6 +11,7 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_mir::util::{write_mir_graphviz, write_mir_pretty};
 use rustc_session::config::{Input, PpMode, PpSourceMode};
 use rustc_session::Session;
+use rustc_span::symbol::Ident;
 use rustc_span::FileName;
 
 use std::cell::Cell;
@@ -284,7 +285,7 @@ impl<'a> PrinterSupport for HygieneAnnotation<'a> {
 impl<'a> pprust::PpAnn for HygieneAnnotation<'a> {
     fn post(&self, s: &mut pprust::State<'_>, node: pprust::AnnNode<'_>) {
         match node {
-            pprust::AnnNode::Ident(&ast::Ident { name, span }) => {
+            pprust::AnnNode::Ident(&Ident { name, span }) => {
                 s.s.space();
                 s.synth_comment(format!("{}{:?}", name.as_u32(), span.ctxt()))
             }
@@ -322,7 +323,7 @@ impl<'b, 'tcx> HirPrinterSupport<'tcx> for TypedAnnotation<'b, 'tcx> {
     }
 
     fn node_path(&self, id: hir::HirId) -> Option<String> {
-        Some(self.tcx.def_path_str(self.tcx.hir().local_def_id(id)))
+        Some(self.tcx.def_path_str(self.tcx.hir().local_def_id(id).to_def_id()))
     }
 }
 
@@ -395,7 +396,7 @@ pub fn print_after_parsing(
                 annotation.pp_ann(),
                 false,
                 parse.edition,
-                parse.injected_crate_name.try_get().is_some(),
+                parse.injected_crate_name.get().is_some(),
             )
         })
     } else {
@@ -437,7 +438,7 @@ pub fn print_after_hir_lowering<'tcx>(
                     annotation.pp_ann(),
                     true,
                     parse.edition,
-                    parse.injected_crate_name.try_get().is_some(),
+                    parse.injected_crate_name.get().is_some(),
                 )
             })
         }

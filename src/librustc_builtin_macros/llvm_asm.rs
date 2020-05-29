@@ -61,6 +61,7 @@ pub fn expand_llvm_asm<'cx>(
         kind: ast::ExprKind::LlvmInlineAsm(P(inline_asm)),
         span: cx.with_def_site_ctxt(sp),
         attrs: ast::AttrVec::new(),
+        tokens: None,
     }))
 }
 
@@ -86,8 +87,7 @@ fn parse_inline_asm<'a>(
     let first_colon = tts
         .trees()
         .position(|tt| match tt {
-            tokenstream::TokenTree::Token(Token { kind: token::Colon, .. })
-            | tokenstream::TokenTree::Token(Token { kind: token::ModSep, .. }) => true,
+            tokenstream::TokenTree::Token(Token { kind: token::Colon | token::ModSep, .. }) => true,
             _ => false,
         })
         .unwrap_or(tts.len());

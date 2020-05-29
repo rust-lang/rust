@@ -1,0 +1,90 @@
+// run-rustfix
+
+#![warn(clippy::match_single_binding)]
+#![allow(unused_variables, clippy::many_single_char_names, clippy::toplevel_ref_arg)]
+
+struct Point {
+    x: i32,
+    y: i32,
+}
+
+fn coords() -> Point {
+    Point { x: 1, y: 2 }
+}
+
+macro_rules! foo {
+    ($param:expr) => {
+        match $param {
+            _ => println!("whatever"),
+        }
+    };
+}
+
+fn main() {
+    let a = 1;
+    let b = 2;
+    let c = 3;
+    // Lint
+    let (x, y, z) = (a, b, c);
+    {
+        println!("{} {} {}", x, y, z);
+    }
+    // Lint
+    let (x, y, z) = (a, b, c);
+    println!("{} {} {}", x, y, z);
+    // Ok
+    foo!(a);
+    // Ok
+    match a {
+        2 => println!("2"),
+        _ => println!("Not 2"),
+    }
+    // Ok
+    let d = Some(5);
+    match d {
+        Some(d) => println!("{}", d),
+        _ => println!("None"),
+    }
+    // Lint
+    println!("whatever");
+    // Lint
+    {
+        let x = 29;
+        println!("x has a value of {}", x);
+    }
+    // Lint
+    {
+        let e = 5 * a;
+        if e >= 5 {
+            println!("e is superior to 5");
+        }
+    }
+    // Lint
+    let p = Point { x: 0, y: 7 };
+    let Point { x, y } = p;
+    println!("Coords: ({}, {})", x, y);
+    // Lint
+    let Point { x: x1, y: y1 } = p;
+    println!("Coords: ({}, {})", x1, y1);
+    // Lint
+    let x = 5;
+    let ref r = x;
+    println!("Got a reference to {}", r);
+    // Lint
+    let mut x = 5;
+    let ref mut mr = x;
+    println!("Got a mutable reference to {}", mr);
+    // Lint
+    let Point { x, y } = coords();
+    let product = x * y;
+    // Lint
+    let v = vec![Some(1), Some(2), Some(3), Some(4)];
+    #[allow(clippy::let_and_return)]
+    let _ = v
+        .iter()
+        .map(|i| {
+            let unwrapped = i.unwrap();
+            unwrapped
+        })
+        .collect::<Vec<u8>>();
+}

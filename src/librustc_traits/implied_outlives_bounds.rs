@@ -62,7 +62,7 @@ fn compute_implied_outlives_bounds<'tcx>(
         // unresolved inference variables here anyway, but there might be
         // during typeck under some circumstances.)
         let obligations =
-            wf::obligations(infcx, param_env, hir::DUMMY_HIR_ID, ty, DUMMY_SP).unwrap_or(vec![]);
+            wf::obligations(infcx, param_env, hir::CRATE_HIR_ID, ty, DUMMY_SP).unwrap_or(vec![]);
 
         // N.B., all of these predicates *ought* to be easily proven
         // true. In fact, their correctness is (mostly) implied by
@@ -94,27 +94,28 @@ fn compute_implied_outlives_bounds<'tcx>(
         // region relationships.
         implied_bounds.extend(obligations.into_iter().flat_map(|obligation| {
             assert!(!obligation.has_escaping_bound_vars());
-            match obligation.predicate {
-                ty::Predicate::Trait(..)
-                | ty::Predicate::Subtype(..)
-                | ty::Predicate::Projection(..)
-                | ty::Predicate::ClosureKind(..)
-                | ty::Predicate::ObjectSafe(..)
-                | ty::Predicate::ConstEvaluatable(..) => vec![],
+            match obligation.predicate.kind() {
+                ty::PredicateKind::Trait(..)
+                | ty::PredicateKind::Subtype(..)
+                | ty::PredicateKind::Projection(..)
+                | ty::PredicateKind::ClosureKind(..)
+                | ty::PredicateKind::ObjectSafe(..)
+                | ty::PredicateKind::ConstEvaluatable(..)
+                | ty::PredicateKind::ConstEquate(..) => vec![],
 
-                ty::Predicate::WellFormed(subty) => {
+                ty::PredicateKind::WellFormed(subty) => {
                     wf_types.push(subty);
                     vec![]
                 }
 
-                ty::Predicate::RegionOutlives(ref data) => match data.no_bound_vars() {
+                ty::PredicateKind::RegionOutlives(ref data) => match data.no_bound_vars() {
                     None => vec![],
                     Some(ty::OutlivesPredicate(r_a, r_b)) => {
                         vec![OutlivesBound::RegionSubRegion(r_b, r_a)]
                     }
                 },
 
-                ty::Predicate::TypeOutlives(ref data) => match data.no_bound_vars() {
+                ty::PredicateKind::TypeOutlives(ref data) => match data.no_bound_vars() {
                     None => vec![],
                     Some(ty::OutlivesPredicate(ty_a, r_b)) => {
                         let ty_a = infcx.resolve_vars_if_possible(&ty_a);

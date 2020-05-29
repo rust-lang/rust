@@ -11,3 +11,5 @@ note: inlining requested here
 LL | #[inline(always)]
    | ^^^^^^^^^^^^^^^^^
 
+warning: 1 warning emitted
+

@@ -96,6 +96,7 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
                         span: source_span,
                         ty: &ty,
                         scope_span,
+                        yield_span: yield_data.span,
                         expr: expr.map(|e| e.hir_id),
                     })
                     .or_insert(entries);
@@ -235,9 +236,10 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
                         // Direct calls never need to keep the callee `ty::FnDef`
                         // ZST in a temporary, so skip its type, just in case it
                         // can significantly complicate the generator type.
-                        Res::Def(DefKind::Fn, _)
-                        | Res::Def(DefKind::AssocFn, _)
-                        | Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) => {
+                        Res::Def(
+                            DefKind::Fn | DefKind::AssocFn | DefKind::Ctor(_, CtorKind::Fn),
+                            _,
+                        ) => {
                             // NOTE(eddyb) this assumes a path expression has
                             // no nested expressions to keep track of.
                             self.expr_count += 1;

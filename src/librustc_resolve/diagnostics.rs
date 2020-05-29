@@ -2,7 +2,7 @@ use std::cmp::Reverse;
 use std::ptr;
 
 use log::debug;
-use rustc_ast::ast::{self, Ident, Path};
+use rustc_ast::ast::{self, Path};
 use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
@@ -16,7 +16,7 @@ use rustc_middle::ty::{self, DefIdTree};
 use rustc_session::Session;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::SourceMap;
-use rustc_span::symbol::{kw, Symbol};
+use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::{BytePos, MultiSpan, Span};
 
 use crate::imports::{Import, ImportKind, ImportResolver};
@@ -47,6 +47,7 @@ impl TypoSuggestion {
 /// A free importable items suggested in case of resolution failure.
 crate struct ImportSuggestion {
     pub did: Option<DefId>,
+    pub descr: &'static str,
     pub path: Path,
 }
 
@@ -300,13 +301,40 @@ impl<'a> Resolver<'a> {
                 }
                 err
             }
-            ResolutionError::SelfImportsOnlyAllowedWithin => struct_span_err!(
-                self.session,
-                span,
-                E0429,
-                "{}",
-                "`self` imports are only allowed within a { } list"
-            ),
+            ResolutionError::SelfImportsOnlyAllowedWithin { root, span_with_rename } => {
+                let mut err = struct_span_err!(
+                    self.session,
+                    span,
+                    E0429,
+                    "{}",
+                    "`self` imports are only allowed within a { } list"
+                );
+
+                // None of the suggestions below would help with a case like `use self`.
+                if !root {
+                    // use foo::bar::self        -> foo::bar
+                    // use foo::bar::self as abc -> foo::bar as abc
+                    err.span_suggestion(
+                        span,
+                        "consider importing the module directly",
+                        "".to_string(),
+                        Applicability::MachineApplicable,
+                    );
+
+                    // use foo::bar::self        -> foo::bar::{self}
+                    // use foo::bar::self as abc -> foo::bar::{self as abc}
+                    let braces = vec![
+                        (span_with_rename.shrink_to_lo(), "{".to_string()),
+                        (span_with_rename.shrink_to_hi(), "}".to_string()),
+                    ];
+                    err.multipart_suggestion(
+                        "alternatively, use the multi-path `use` syntax to import `self`",
+                        braces,
+                        Applicability::MachineApplicable,
+                    );
+                }
+                err
+            }
             ResolutionError::SelfImportCanOnlyAppearOnceInTheList => {
                 let mut err = struct_span_err!(
                     self.session,
@@ -652,7 +680,7 @@ impl<'a> Resolver<'a> {
                                 Res::Def(DefKind::Ctor(..), did) => this.parent(did),
                                 _ => res.opt_def_id(),
                             };
-                            candidates.push(ImportSuggestion { did, path });
+                            candidates.push(ImportSuggestion { did, descr: res.descr(), path });
                         }
                     }
                 }
@@ -1031,7 +1059,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
 
     /// Suggest a missing `self::` if that resolves to an correct module.
     ///
-    /// ```
+    /// ```text
     ///    |
     /// LL | use foo::Bar;
     ///    |     ^^^ did you mean `self::foo`?
@@ -1051,7 +1079,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
 
     /// Suggests a missing `crate::` if that resolves to an correct module.
     ///
-    /// ```
+    /// ```text
     ///    |
     /// LL | use foo::Bar;
     ///    |     ^^^ did you mean `crate::foo`?
@@ -1083,7 +1111,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
 
     /// Suggests a missing `super::` if that resolves to an correct module.
     ///
-    /// ```
+    /// ```text
     ///    |
     /// LL | use foo::Bar;
     ///    |     ^^^ did you mean `super::foo`?
@@ -1103,7 +1131,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
 
     /// Suggests a missing external crate name if that resolves to an correct module.
     ///
-    /// ```
+    /// ```text
     ///    |
     /// LL | use foobar::Baz;
     ///    |     ^^^^^^ did you mean `baz::foobar`?
@@ -1147,7 +1175,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
     /// Suggests importing a macro from the root of the crate rather than a module within
     /// the crate.
     ///
-    /// ```
+    /// ```text
     /// help: a macro with this name exists at the root of the crate
     ///    |
     /// LL | use issue_59764::makro;
@@ -1445,7 +1473,7 @@ fn find_span_immediately_after_crate_name(
 crate fn show_candidates(
     err: &mut DiagnosticBuilder<'_>,
     // This is `None` if all placement locations are inside expansions
-    span: Option<Span>,
+    use_placement_span: Option<Span>,
     candidates: &[ImportSuggestion],
     better: bool,
     found_use: bool,
@@ -1453,6 +1481,7 @@ crate fn show_candidates(
     if candidates.is_empty() {
         return;
     }
+
     // we want consistent results across executions, but candidates are produced
     // by iterating through a hash map, so make sure they are ordered:
     let mut path_strings: Vec<_> =
@@ -1460,14 +1489,15 @@ crate fn show_candidates(
     path_strings.sort();
     path_strings.dedup();
 
-    let better = if better { "better " } else { "" };
-    let msg_diff = match path_strings.len() {
-        1 => " is found in another module, you can import it",
-        _ => "s are found in other modules, you can import them",
+    let (determiner, kind) = if candidates.len() == 1 {
+        ("this", candidates[0].descr)
+    } else {
+        ("one of these", "items")
     };
-    let msg = format!("possible {}candidate{} into scope", better, msg_diff);
+    let instead = if better { " instead" } else { "" };
+    let msg = format!("consider importing {} {}{}", determiner, kind, instead);
 
-    if let Some(span) = span {
+    if let Some(span) = use_placement_span {
         for candidate in &mut path_strings {
             // produce an additional newline to separate the new use statement
             // from the directly following item.

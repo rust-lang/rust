@@ -4,11 +4,11 @@
 pub use PtrTy::*;
 pub use Ty::*;
 
-use rustc_ast::ast::{self, Expr, GenericArg, GenericParamKind, Generics, Ident, SelfKind};
+use rustc_ast::ast::{self, Expr, GenericArg, GenericParamKind, Generics, SelfKind};
 use rustc_ast::ptr::P;
 use rustc_expand::base::ExtCtxt;
 use rustc_span::source_map::{respan, DUMMY_SP};
-use rustc_span::symbol::kw;
+use rustc_span::symbol::{kw, Ident};
 use rustc_span::Span;
 
 /// The types of pointers
@@ -98,7 +98,7 @@ pub enum Ty<'a> {
     Self_,
     /// &/Box/ Ty
     Ptr(Box<Ty<'a>>, PtrTy),
-    /// mod::mod::Type<[lifetime], [Params...]>, including a plain type
+    /// `mod::mod::Type<[lifetime], [Params...]>`, including a plain type
     /// parameter, and things like `i32`
     Literal(Path<'a>),
     /// includes unit

@@ -2,18 +2,20 @@
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/resolution.html
 
+mod chalk;
 pub mod query;
 pub mod select;
 pub mod specialization_graph;
 mod structural_impls;
 
+use crate::infer::canonical::Canonical;
 use crate::mir::interpret::ErrorHandled;
 use crate::ty::subst::SubstsRef;
-use crate::ty::{self, AdtKind, List, Ty, TyCtxt};
+use crate::ty::{self, AdtKind, Ty, TyCtxt};
 
-use rustc_ast::ast;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
 use smallvec::SmallVec;
 
@@ -23,9 +25,16 @@ use std::rc::Rc;
 
 pub use self::select::{EvaluationCache, EvaluationResult, OverflowError, SelectionCache};
 
+pub type ChalkCanonicalGoal<'tcx> = Canonical<'tcx, ChalkEnvironmentAndGoal<'tcx>>;
+
 pub use self::ObligationCauseCode::*;
 pub use self::SelectionError::*;
 pub use self::Vtable::*;
+
+pub use self::chalk::{
+    ChalkEnvironmentAndGoal, ChalkEnvironmentClause, RustDefId as ChalkRustDefId,
+    RustInterner as ChalkRustInterner,
+};
 
 /// Depending on the stage of compilation, we want projection to be
 /// more or less conservative.
@@ -171,6 +180,8 @@ pub enum ObligationCauseCode<'tcx> {
     SizedReturnType,
     /// Yield type must be `Sized`.
     SizedYieldType,
+    /// Inline asm operand type must be `Sized`.
+    InlineAsmSized,
     /// `[T, ..n]` implies that `T` must be `Copy`.
     /// If `true`, suggest `const_in_array_repeat_expressions` feature flag.
     RepeatVec(bool),
@@ -191,16 +202,21 @@ pub enum ObligationCauseCode<'tcx> {
 
     ImplDerivedObligation(DerivedObligationCause<'tcx>),
 
+    DerivedObligation(DerivedObligationCause<'tcx>),
+
+    /// Error derived when matching traits/impls; see ObligationCause for more details
+    CompareImplConstObligation,
+
     /// Error derived when matching traits/impls; see ObligationCause for more details
     CompareImplMethodObligation {
-        item_name: ast::Name,
+        item_name: Symbol,
         impl_item_def_id: DefId,
         trait_item_def_id: DefId,
     },
 
     /// Error derived when matching traits/impls; see ObligationCause for more details
     CompareImplTypeObligation {
-        item_name: ast::Name,
+        item_name: Symbol,
         impl_item_def_id: DefId,
         trait_item_def_id: DefId,
     },
@@ -257,26 +273,20 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// #[feature(trivial_bounds)] is not enabled
     TrivialBound,
-
-    AssocTypeBound(Box<AssocTypeBoundData>),
 }
 
 impl ObligationCauseCode<'_> {
     // Return the base obligation, ignoring derived obligations.
     pub fn peel_derives(&self) -> &Self {
         let mut base_cause = self;
-        while let BuiltinDerivedObligation(cause) | ImplDerivedObligation(cause) = base_cause {
+        while let BuiltinDerivedObligation(cause)
+        | ImplDerivedObligation(cause)
+        | DerivedObligation(cause) = base_cause
+        {
             base_cause = &cause.parent_code;
         }
         base_cause
     }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct AssocTypeBoundData {
-    pub impl_span: Option<Span>,
-    pub original: Span,
-    pub bounds: Vec<Span>,
 }
 
 // `ObligationCauseCode` is used a lot. Make sure it doesn't unintentionally get bigger.
@@ -309,162 +319,6 @@ pub struct DerivedObligationCause<'tcx> {
 
     /// The parent trait had this cause.
     pub parent_code: Rc<ObligationCauseCode<'tcx>>,
-}
-
-/// The following types:
-/// * `WhereClause`,
-/// * `WellFormed`,
-/// * `FromEnv`,
-/// * `DomainGoal`,
-/// * `Goal`,
-/// * `Clause`,
-/// * `Environment`,
-/// * `InEnvironment`,
-/// are used for representing the trait system in the form of
-/// logic programming clauses. They are part of the interface
-/// for the chalk SLG solver.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable, TypeFoldable, Lift)]
-pub enum WhereClause<'tcx> {
-    Implemented(ty::TraitPredicate<'tcx>),
-    ProjectionEq(ty::ProjectionPredicate<'tcx>),
-    RegionOutlives(ty::RegionOutlivesPredicate<'tcx>),
-    TypeOutlives(ty::TypeOutlivesPredicate<'tcx>),
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable, TypeFoldable, Lift)]
-pub enum WellFormed<'tcx> {
-    Trait(ty::TraitPredicate<'tcx>),
-    Ty(Ty<'tcx>),
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable, TypeFoldable, Lift)]
-pub enum FromEnv<'tcx> {
-    Trait(ty::TraitPredicate<'tcx>),
-    Ty(Ty<'tcx>),
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable, TypeFoldable, Lift)]
-pub enum DomainGoal<'tcx> {
-    Holds(WhereClause<'tcx>),
-    WellFormed(WellFormed<'tcx>),
-    FromEnv(FromEnv<'tcx>),
-    Normalize(ty::ProjectionPredicate<'tcx>),
-}
-
-pub type PolyDomainGoal<'tcx> = ty::Binder<DomainGoal<'tcx>>;
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable)]
-pub enum QuantifierKind {
-    Universal,
-    Existential,
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable, TypeFoldable, Lift)]
-pub enum GoalKind<'tcx> {
-    Implies(Clauses<'tcx>, Goal<'tcx>),
-    And(Goal<'tcx>, Goal<'tcx>),
-    Not(Goal<'tcx>),
-    DomainGoal(DomainGoal<'tcx>),
-    Quantified(QuantifierKind, ty::Binder<Goal<'tcx>>),
-    Subtype(Ty<'tcx>, Ty<'tcx>),
-    CannotProve,
-}
-
-pub type Goal<'tcx> = &'tcx GoalKind<'tcx>;
-
-pub type Goals<'tcx> = &'tcx List<Goal<'tcx>>;
-
-impl<'tcx> DomainGoal<'tcx> {
-    pub fn into_goal(self) -> GoalKind<'tcx> {
-        GoalKind::DomainGoal(self)
-    }
-
-    pub fn into_program_clause(self) -> ProgramClause<'tcx> {
-        ProgramClause {
-            goal: self,
-            hypotheses: ty::List::empty(),
-            category: ProgramClauseCategory::Other,
-        }
-    }
-}
-
-impl<'tcx> GoalKind<'tcx> {
-    pub fn from_poly_domain_goal(
-        domain_goal: PolyDomainGoal<'tcx>,
-        tcx: TyCtxt<'tcx>,
-    ) -> GoalKind<'tcx> {
-        match domain_goal.no_bound_vars() {
-            Some(p) => p.into_goal(),
-            None => GoalKind::Quantified(
-                QuantifierKind::Universal,
-                domain_goal.map_bound(|p| tcx.mk_goal(p.into_goal())),
-            ),
-        }
-    }
-}
-
-/// This matches the definition from Page 7 of "A Proof Procedure for the Logic of Hereditary
-/// Harrop Formulas".
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable, TypeFoldable)]
-pub enum Clause<'tcx> {
-    Implies(ProgramClause<'tcx>),
-    ForAll(ty::Binder<ProgramClause<'tcx>>),
-}
-
-impl Clause<'tcx> {
-    pub fn category(self) -> ProgramClauseCategory {
-        match self {
-            Clause::Implies(clause) => clause.category,
-            Clause::ForAll(clause) => clause.skip_binder().category,
-        }
-    }
-}
-
-/// Multiple clauses.
-pub type Clauses<'tcx> = &'tcx List<Clause<'tcx>>;
-
-/// A "program clause" has the form `D :- G1, ..., Gn`. It is saying
-/// that the domain goal `D` is true if `G1...Gn` are provable. This
-/// is equivalent to the implication `G1..Gn => D`; we usually write
-/// it with the reverse implication operator `:-` to emphasize the way
-/// that programs are actually solved (via backchaining, which starts
-/// with the goal to solve and proceeds from there).
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable, TypeFoldable)]
-pub struct ProgramClause<'tcx> {
-    /// This goal will be considered true ...
-    pub goal: DomainGoal<'tcx>,
-
-    /// ... if we can prove these hypotheses (there may be no hypotheses at all):
-    pub hypotheses: Goals<'tcx>,
-
-    /// Useful for filtering clauses.
-    pub category: ProgramClauseCategory,
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable)]
-pub enum ProgramClauseCategory {
-    ImpliedBound,
-    WellFormed,
-    Other,
-}
-
-/// A set of clauses that we assume to be true.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable, TypeFoldable)]
-pub struct Environment<'tcx> {
-    pub clauses: Clauses<'tcx>,
-}
-
-impl Environment<'tcx> {
-    pub fn with<G>(self, goal: G) -> InEnvironment<'tcx, G> {
-        InEnvironment { environment: self, goal }
-    }
-}
-
-/// Something (usually a goal), along with an environment.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable, TypeFoldable)]
-pub struct InEnvironment<'tcx, G> {
-    pub environment: Environment<'tcx>,
-    pub goal: G,
 }
 
 #[derive(Clone, Debug, TypeFoldable)]
@@ -557,6 +411,9 @@ pub enum Vtable<'tcx, N> {
     /// Same as above, but for a function pointer type with the given signature.
     VtableFnPointer(VtableFnPointerData<'tcx, N>),
 
+    /// Vtable for a builtin `DeterminantKind` trait implementation.
+    VtableDiscriminantKind(VtableDiscriminantKindData),
+
     /// Vtable automatically generated for a generator.
     VtableGenerator(VtableGeneratorData<'tcx, N>),
 
@@ -575,6 +432,7 @@ impl<'tcx, N> Vtable<'tcx, N> {
             VtableGenerator(c) => c.nested,
             VtableObject(d) => d.nested,
             VtableFnPointer(d) => d.nested,
+            VtableDiscriminantKind(VtableDiscriminantKindData) => Vec::new(),
             VtableTraitAlias(d) => d.nested,
         }
     }
@@ -589,6 +447,7 @@ impl<'tcx, N> Vtable<'tcx, N> {
             VtableGenerator(c) => &c.nested[..],
             VtableObject(d) => &d.nested[..],
             VtableFnPointer(d) => &d.nested[..],
+            VtableDiscriminantKind(VtableDiscriminantKindData) => &[],
             VtableTraitAlias(d) => &d.nested[..],
         }
     }
@@ -630,6 +489,9 @@ impl<'tcx, N> Vtable<'tcx, N> {
                 fn_ty: p.fn_ty,
                 nested: p.nested.into_iter().map(f).collect(),
             }),
+            VtableDiscriminantKind(VtableDiscriminantKindData) => {
+                VtableDiscriminantKind(VtableDiscriminantKindData)
+            }
             VtableTraitAlias(d) => VtableTraitAlias(VtableTraitAliasData {
                 alias_def_id: d.alias_def_id,
                 substs: d.substs,
@@ -706,6 +568,10 @@ pub struct VtableFnPointerData<'tcx, N> {
     pub nested: Vec<N>,
 }
 
+// FIXME(@lcnr): This should be  refactored and merged with other builtin vtables.
+#[derive(Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
+pub struct VtableDiscriminantKindData;
+
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
 pub struct VtableTraitAliasData<'tcx, N> {
     pub alias_def_id: DefId,
@@ -723,10 +589,10 @@ pub enum ObjectSafetyViolation {
     SupertraitSelf(SmallVec<[Span; 1]>),
 
     /// Method has something illegal.
-    Method(ast::Name, MethodViolationCode, Span),
+    Method(Symbol, MethodViolationCode, Span),
 
     /// Associated const.
-    AssocConst(ast::Name, Span),
+    AssocConst(Symbol, Span),
 }
 
 impl ObjectSafetyViolation {

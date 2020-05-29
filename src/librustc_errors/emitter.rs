@@ -285,21 +285,18 @@ pub trait Emitter {
         let has_macro_spans = iter::once(&*span)
             .chain(children.iter().map(|child| &child.span))
             .flat_map(|span| span.primary_spans())
-            .copied()
-            .flat_map(|sp| {
-                sp.macro_backtrace().filter_map(|expn_data| {
-                    match expn_data.kind {
-                        ExpnKind::Root => None,
+            .flat_map(|sp| sp.macro_backtrace())
+            .find_map(|expn_data| {
+                match expn_data.kind {
+                    ExpnKind::Root => None,
 
-                        // Skip past non-macro entries, just in case there
-                        // are some which do actually involve macros.
-                        ExpnKind::Desugaring(..) | ExpnKind::AstPass(..) => None,
+                    // Skip past non-macro entries, just in case there
+                    // are some which do actually involve macros.
+                    ExpnKind::Desugaring(..) | ExpnKind::AstPass(..) => None,
 
-                        ExpnKind::Macro(macro_kind, _) => Some(macro_kind),
-                    }
-                })
-            })
-            .next();
+                    ExpnKind::Macro(macro_kind, _) => Some(macro_kind),
+                }
+            });
 
         if !backtrace {
             self.fix_multispans_in_extern_macros(source_map, span, children);
@@ -1361,7 +1358,7 @@ impl EmitterWriter {
                 let mut multilines = FxHashMap::default();
 
                 // Get the left-side margin to remove it
-                let mut whitespace_margin = std::usize::MAX;
+                let mut whitespace_margin = usize::MAX;
                 for line_idx in 0..annotated_file.lines.len() {
                     let file = annotated_file.file.clone();
                     let line = &annotated_file.lines[line_idx];
@@ -1373,19 +1370,19 @@ impl EmitterWriter {
                         }
                     }
                 }
-                if whitespace_margin == std::usize::MAX {
+                if whitespace_margin == usize::MAX {
                     whitespace_margin = 0;
                 }
 
                 // Left-most column any visible span points at.
-                let mut span_left_margin = std::usize::MAX;
+                let mut span_left_margin = usize::MAX;
                 for line in &annotated_file.lines {
                     for ann in &line.annotations {
                         span_left_margin = min(span_left_margin, ann.start_col);
                         span_left_margin = min(span_left_margin, ann.end_col);
                     }
                 }
-                if span_left_margin == std::usize::MAX {
+                if span_left_margin == usize::MAX {
                     span_left_margin = 0;
                 }
 
@@ -1421,7 +1418,7 @@ impl EmitterWriter {
                 } else {
                     termize::dimensions()
                         .map(|(w, _)| w.saturating_sub(code_offset))
-                        .unwrap_or(std::usize::MAX)
+                        .unwrap_or(usize::MAX)
                 };
 
                 let margin = Margin::new(
@@ -2005,7 +2002,7 @@ fn emit_to_destination(
     let _buffer_lock = lock::acquire_global_lock("rustc_errors");
     for (pos, line) in rendered_buffer.iter().enumerate() {
         for part in line {
-            dst.apply_style(lvl.clone(), part.style)?;
+            dst.apply_style(*lvl, part.style)?;
             write!(dst, "{}", part.text)?;
             dst.reset()?;
         }

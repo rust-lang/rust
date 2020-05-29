@@ -1,0 +1,19 @@
+error: use of `File::read_to_end`
+  --> $DIR/verbose_file_reads.rs:23:5
+   |
+LL |     f.read_to_end(&mut buffer)?;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::verbose-file-reads` implied by `-D warnings`
+   = help: consider using `fs::read` instead
+
+error: use of `File::read_to_string`
+  --> $DIR/verbose_file_reads.rs:26:5
+   |
+LL |     f.read_to_string(&mut string_buffer)?;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using `fs::read_to_string` instead
+
+error: aborting due to 2 previous errors
+

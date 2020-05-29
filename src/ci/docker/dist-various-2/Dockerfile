@@ -17,7 +17,7 @@ RUN apt-get update && apt-get build-dep -y clang llvm && apt-get install -y --no
   libmpfr-dev \
   ninja-build \
   nodejs \
-  python2.7-dev \
+  python3-dev \
   software-properties-common \
   unzip \
   # Needed for apt-key to work:
@@ -110,4 +110,4 @@ ENV RUST_CONFIGURE_ARGS --enable-extended --enable-lld --disable-docs \
   --set target.wasm32-wasi.wasi-root=/wasm32-wasi \
   --musl-root-armv7=/musl-armv7
 
-ENV SCRIPT python2.7 ../x.py dist --target $TARGETS
+ENV SCRIPT python3 ../x.py dist --target $TARGETS

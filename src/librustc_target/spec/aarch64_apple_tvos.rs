@@ -19,6 +19,7 @@ pub fn target() -> TargetResult {
             eliminate_frame_pointer: false,
             max_atomic_width: Some(128),
             abi_blacklist: super::arm_base::abi_blacklist(),
+            forces_embed_bitcode: true,
             ..base
         },
     })

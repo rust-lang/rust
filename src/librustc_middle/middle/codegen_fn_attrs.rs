@@ -77,6 +77,12 @@ bitflags! {
         const NO_SANITIZE_THREAD  = 1 << 14;
         /// All `#[no_sanitize(...)]` attributes.
         const NO_SANITIZE_ANY = Self::NO_SANITIZE_ADDRESS.bits | Self::NO_SANITIZE_MEMORY.bits | Self::NO_SANITIZE_THREAD.bits;
+        /// #[ffi_pure]: applies clang's `pure` attribute to a foreign function
+        /// declaration.
+        const FFI_PURE = 1 << 15;
+        /// #[ffi_const]: applies clang's `const` attribute to a foreign function
+        /// declaration.
+        const FFI_CONST = 1 << 16;
     }
 }
 
@@ -114,7 +120,7 @@ impl CodegenFnAttrs {
             || match self.linkage {
                 // These are private, so make sure we don't try to consider
                 // them external.
-                None | Some(Linkage::Internal) | Some(Linkage::Private) => false,
+                None | Some(Linkage::Internal | Linkage::Private) => false,
                 Some(_) => true,
             }
     }

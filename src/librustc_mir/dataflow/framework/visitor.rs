@@ -1,50 +1,41 @@
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::{self, BasicBlock, Location};
 
-use super::{Analysis, Results};
+use super::{Analysis, Direction, Results};
 use crate::dataflow::impls::{borrows::Borrows, EverInitializedPlaces, MaybeUninitializedPlaces};
 
 /// Calls the corresponding method in `ResultsVisitor` for every location in a `mir::Body` with the
 /// dataflow state at that location.
-pub fn visit_results<F>(
+pub fn visit_results<F, V>(
     body: &'mir mir::Body<'tcx>,
     blocks: impl IntoIterator<Item = BasicBlock>,
-    results: &impl ResultsVisitable<'tcx, FlowState = F>,
+    results: &V,
     vis: &mut impl ResultsVisitor<'mir, 'tcx, FlowState = F>,
-) {
+) where
+    V: ResultsVisitable<'tcx, FlowState = F>,
+{
     let mut state = results.new_flow_state(body);
 
     for block in blocks {
         let block_data = &body[block];
-        results.reset_to_block_start(&mut state, block);
-
-        for (statement_index, stmt) in block_data.statements.iter().enumerate() {
-            let loc = Location { block, statement_index };
-
-            results.reconstruct_before_statement_effect(&mut state, stmt, loc);
-            vis.visit_statement(&state, stmt, loc);
-
-            results.reconstruct_statement_effect(&mut state, stmt, loc);
-            vis.visit_statement_exit(&state, stmt, loc);
-        }
-
-        let loc = body.terminator_loc(block);
-        let term = block_data.terminator();
-
-        results.reconstruct_before_terminator_effect(&mut state, term, loc);
-        vis.visit_terminator(&state, term, loc);
-
-        results.reconstruct_terminator_effect(&mut state, term, loc);
-        vis.visit_terminator_exit(&state, term, loc);
+        V::Direction::visit_results_in_block(&mut state, block, block_data, results, vis);
     }
 }
 
 pub trait ResultsVisitor<'mir, 'tcx> {
     type FlowState;
 
+    fn visit_block_start(
+        &mut self,
+        _state: &Self::FlowState,
+        _block_data: &'mir mir::BasicBlockData<'tcx>,
+        _block: BasicBlock,
+    ) {
+    }
+
     /// Called with the `before_statement_effect` of the given statement applied to `state` but not
     /// its `statement_effect`.
-    fn visit_statement(
+    fn visit_statement_before_primary_effect(
         &mut self,
         _state: &Self::FlowState,
         _statement: &'mir mir::Statement<'tcx>,
@@ -54,7 +45,7 @@ pub trait ResultsVisitor<'mir, 'tcx> {
 
     /// Called with both the `before_statement_effect` and the `statement_effect` of the given
     /// statement applied to `state`.
-    fn visit_statement_exit(
+    fn visit_statement_after_primary_effect(
         &mut self,
         _state: &Self::FlowState,
         _statement: &'mir mir::Statement<'tcx>,
@@ -64,7 +55,7 @@ pub trait ResultsVisitor<'mir, 'tcx> {
 
     /// Called with the `before_terminator_effect` of the given terminator applied to `state` but not
     /// its `terminator_effect`.
-    fn visit_terminator(
+    fn visit_terminator_before_primary_effect(
         &mut self,
         _state: &Self::FlowState,
         _terminator: &'mir mir::Terminator<'tcx>,
@@ -76,11 +67,19 @@ pub trait ResultsVisitor<'mir, 'tcx> {
     /// terminator applied to `state`.
     ///
     /// The `call_return_effect` (if one exists) will *not* be applied to `state`.
-    fn visit_terminator_exit(
+    fn visit_terminator_after_primary_effect(
         &mut self,
         _state: &Self::FlowState,
         _terminator: &'mir mir::Terminator<'tcx>,
         _location: Location,
+    ) {
+    }
+
+    fn visit_block_end(
+        &mut self,
+        _state: &Self::FlowState,
+        _block_data: &'mir mir::BasicBlockData<'tcx>,
+        _block: BasicBlock,
     ) {
     }
 }
@@ -90,15 +89,16 @@ pub trait ResultsVisitor<'mir, 'tcx> {
 /// This trait exists so that we can visit the results of multiple dataflow analyses simultaneously.
 /// DO NOT IMPLEMENT MANUALLY. Instead, use the `impl_visitable` macro below.
 pub trait ResultsVisitable<'tcx> {
+    type Direction: Direction;
     type FlowState;
 
     /// Creates an empty `FlowState` to hold the transient state for these dataflow results.
     ///
-    /// The value of the newly created `FlowState` will be overwritten by `reset_to_block_start`
+    /// The value of the newly created `FlowState` will be overwritten by `reset_to_block_entry`
     /// before it can be observed by a `ResultsVisitor`.
     fn new_flow_state(&self, body: &mir::Body<'tcx>) -> Self::FlowState;
 
-    fn reset_to_block_start(&self, state: &mut Self::FlowState, block: BasicBlock);
+    fn reset_to_block_entry(&self, state: &mut Self::FlowState, block: BasicBlock);
 
     fn reconstruct_before_statement_effect(
         &self,
@@ -135,11 +135,13 @@ where
 {
     type FlowState = BitSet<A::Idx>;
 
+    type Direction = A::Direction;
+
     fn new_flow_state(&self, body: &mir::Body<'tcx>) -> Self::FlowState {
         BitSet::new_empty(self.analysis.bits_per_block(body))
     }
 
-    fn reset_to_block_start(&self, state: &mut Self::FlowState, block: BasicBlock) {
+    fn reset_to_block_entry(&self, state: &mut Self::FlowState, block: BasicBlock) {
         state.overwrite(&self.entry_set_for_block(block));
     }
 
@@ -204,10 +206,11 @@ macro_rules! impl_visitable {
     ( $(
         $T:ident { $( $field:ident : $A:ident ),* $(,)? }
     )* ) => { $(
-        impl<'tcx, $($A),*> ResultsVisitable<'tcx> for $T<$( Results<'tcx, $A> ),*>
+        impl<'tcx, $($A),*, D: Direction> ResultsVisitable<'tcx> for $T<$( Results<'tcx, $A> ),*>
         where
-            $( $A: Analysis<'tcx>, )*
+            $( $A: Analysis<'tcx, Direction = D>, )*
         {
+            type Direction = D;
             type FlowState = $T<$( BitSet<$A::Idx> ),*>;
 
             fn new_flow_state(&self, body: &mir::Body<'tcx>) -> Self::FlowState {
@@ -216,12 +219,12 @@ macro_rules! impl_visitable {
                 }
             }
 
-            fn reset_to_block_start(
+            fn reset_to_block_entry(
                 &self,
                 state: &mut Self::FlowState,
                 block: BasicBlock,
             ) {
-                $( state.$field.overwrite(&self.$field.entry_sets[block]); )*
+                $( state.$field.overwrite(&self.$field.entry_set_for_block(block)); )*
             }
 
             fn reconstruct_before_statement_effect(

@@ -12,18 +12,26 @@ error[E0277]: the trait bound `&dyn std::io::Write: std::io::Write` is not satis
    |
 LL |     let fp = BufWriter::new(fp);
    |              ^^^^^^^^^^^^^^ the trait `std::io::Write` is not implemented for `&dyn std::io::Write`
+   | 
+  ::: $SRC_DIR/libstd/io/buffered.rs:LL:COL
+   |
+LL | pub struct BufWriter<W: Write> {
+   |                         ----- required by this bound in `std::io::BufWriter`
    |
    = note: `std::io::Write` is implemented for `&mut dyn std::io::Write`, but not for `&dyn std::io::Write`
-   = note: required by `std::io::BufWriter`
 
 error[E0277]: the trait bound `&dyn std::io::Write: std::io::Write` is not satisfied
   --> $DIR/mut-borrow-needed-by-trait.rs:17:14
    |
 LL |     let fp = BufWriter::new(fp);
    |              ^^^^^^^^^^^^^^^^^^ the trait `std::io::Write` is not implemented for `&dyn std::io::Write`
+   | 
+  ::: $SRC_DIR/libstd/io/buffered.rs:LL:COL
+   |
+LL | pub struct BufWriter<W: Write> {
+   |                         ----- required by this bound in `std::io::BufWriter`
    |
    = note: `std::io::Write` is implemented for `&mut dyn std::io::Write`, but not for `&dyn std::io::Write`
-   = note: required by `std::io::BufWriter`
 
 error[E0599]: no method named `write_fmt` found for struct `std::io::BufWriter<&dyn std::io::Write>` in the current scope
   --> $DIR/mut-borrow-needed-by-trait.rs:22:5

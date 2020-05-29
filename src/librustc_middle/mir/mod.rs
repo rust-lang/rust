@@ -19,9 +19,9 @@ use rustc_target::abi::VariantIdx;
 
 use polonius_engine::Atom;
 pub use rustc_ast::ast::Mutability;
-use rustc_ast::ast::Name;
+use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::graph::dominators::Dominators;
+use rustc_data_structures::graph::dominators::{dominators, Dominators};
 use rustc_data_structures::graph::{self, GraphSuccessors};
 use rustc_index::bit_set::BitMatrix;
 use rustc_index::vec::{Idx, IndexVec};
@@ -29,19 +29,19 @@ use rustc_macros::HashStable;
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
+use rustc_target::asm::InlineAsmRegOrRegClass;
 use std::borrow::Cow;
 use std::fmt::{self, Debug, Display, Formatter, Write};
-use std::ops::Index;
+use std::ops::{Index, IndexMut};
 use std::slice;
 use std::{iter, mem, option};
 
-pub use self::cache::{BodyAndCache, ReadOnlyBodyAndCache};
+use self::predecessors::{PredecessorCache, Predecessors};
 pub use self::query::*;
-pub use crate::read_only;
 
-mod cache;
 pub mod interpret;
 pub mod mono;
+mod predecessors;
 mod query;
 pub mod tcx;
 pub mod traversal;
@@ -108,7 +108,7 @@ pub struct Body<'tcx> {
     pub yield_ty: Option<Ty<'tcx>>,
 
     /// Generator drop glue.
-    pub generator_drop: Option<Box<BodyAndCache<'tcx>>>,
+    pub generator_drop: Option<Box<Body<'tcx>>>,
 
     /// The layout of a generator. Produced by the state transformation.
     pub generator_layout: Option<GeneratorLayout<'tcx>>,
@@ -155,15 +155,21 @@ pub struct Body<'tcx> {
     /// A span representing this MIR, for error reporting.
     pub span: Span,
 
-    /// The user may be writing e.g. &[(SOME_CELL, 42)][i].1 and this would get promoted, because
+    /// Constants that are required to evaluate successfully for this MIR to be well-formed.
+    /// We hold in this field all the constants we are not able to evaluate yet.
+    pub required_consts: Vec<Constant<'tcx>>,
+
+    /// The user may be writing e.g. `&[(SOME_CELL, 42)][i].1` and this would get promoted, because
     /// we'd statically know that no thing with interior mutability will ever be available to the
     /// user without some serious unsafe code.  Now this means that our promoted is actually
-    /// &[(SOME_CELL, 42)] and the MIR using it will do the &promoted[i].1 projection because the
+    /// `&[(SOME_CELL, 42)]` and the MIR using it will do the `&promoted[i].1` projection because the
     /// index may be a runtime value. Such a promoted value is illegal because it has reachable
     /// interior mutability. This flag just makes this situation very obvious where the previous
     /// implementation without the flag hid this situation silently.
     /// FIXME(oli-obk): rewrite the promoted during promotion to eliminate the cell components.
     pub ignore_interior_mut_in_const_validation: bool,
+
+    predecessor_cache: PredecessorCache,
 }
 
 impl<'tcx> Body<'tcx> {
@@ -200,8 +206,10 @@ impl<'tcx> Body<'tcx> {
             spread_arg: None,
             var_debug_info,
             span,
+            required_consts: Vec::new(),
             ignore_interior_mut_in_const_validation: false,
             control_flow_destroyed,
+            predecessor_cache: PredecessorCache::new(),
         }
     }
 
@@ -223,16 +231,37 @@ impl<'tcx> Body<'tcx> {
             arg_count: 0,
             spread_arg: None,
             span: DUMMY_SP,
+            required_consts: Vec::new(),
             control_flow_destroyed: Vec::new(),
             generator_kind: None,
             var_debug_info: Vec::new(),
             ignore_interior_mut_in_const_validation: false,
+            predecessor_cache: PredecessorCache::new(),
         }
     }
 
     #[inline]
     pub fn basic_blocks(&self) -> &IndexVec<BasicBlock, BasicBlockData<'tcx>> {
         &self.basic_blocks
+    }
+
+    #[inline]
+    pub fn basic_blocks_mut(&mut self) -> &mut IndexVec<BasicBlock, BasicBlockData<'tcx>> {
+        // Because the user could mutate basic block terminators via this reference, we need to
+        // invalidate the predecessor cache.
+        //
+        // FIXME: Use a finer-grained API for this, so only transformations that alter terminators
+        // invalidate the predecessor cache.
+        self.predecessor_cache.invalidate();
+        &mut self.basic_blocks
+    }
+
+    #[inline]
+    pub fn basic_blocks_and_local_decls_mut(
+        &mut self,
+    ) -> (&mut IndexVec<BasicBlock, BasicBlockData<'tcx>>, &mut LocalDecls<'tcx>) {
+        self.predecessor_cache.invalidate();
+        (&mut self.basic_blocks, &mut self.local_decls)
     }
 
     /// Returns `true` if a cycle exists in the control-flow graph that is reachable from the
@@ -357,13 +386,25 @@ impl<'tcx> Body<'tcx> {
     }
 
     /// Returns the return type; it always return first element from `local_decls` array.
+    #[inline]
     pub fn return_ty(&self) -> Ty<'tcx> {
         self.local_decls[RETURN_PLACE].ty
     }
 
     /// Gets the location of the terminator for the given block.
+    #[inline]
     pub fn terminator_loc(&self, bb: BasicBlock) -> Location {
         Location { block: bb, statement_index: self[bb].statements.len() }
+    }
+
+    #[inline]
+    pub fn predecessors(&self) -> impl std::ops::Deref<Target = Predecessors> + '_ {
+        self.predecessor_cache.compute(&self.basic_blocks)
+    }
+
+    #[inline]
+    pub fn dominators(&self) -> Dominators<BasicBlock> {
+        dominators(self)
     }
 }
 
@@ -384,6 +425,13 @@ impl<'tcx> Index<BasicBlock> for Body<'tcx> {
     #[inline]
     fn index(&self, index: BasicBlock) -> &BasicBlockData<'tcx> {
         &self.basic_blocks()[index]
+    }
+}
+
+impl<'tcx> IndexMut<BasicBlock> for Body<'tcx> {
+    #[inline]
+    fn index_mut(&mut self, index: BasicBlock) -> &mut BasicBlockData<'tcx> {
+        &mut self.basic_blocks_mut()[index]
     }
 }
 
@@ -425,6 +473,13 @@ pub struct SourceInfo {
     /// The source scope, keeping track of which bindings can be
     /// seen by debuginfo, active lint levels, `unsafe {...}`, etc.
     pub scope: SourceScope,
+}
+
+impl SourceInfo {
+    #[inline]
+    pub fn outermost(span: Span) -> Self {
+        SourceInfo { span, scope: OUTERMOST_SOURCE_SCOPE }
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -625,6 +680,9 @@ pub struct BlockTailInfo {
     /// Examples include `{ ...; tail };` and `let _ = { ...; tail };`
     /// but not e.g., `let _x = { ...; tail };`
     pub tail_result_is_ignored: bool,
+
+    /// `Span` of the tail expression.
+    pub span: Span,
 }
 
 /// A MIR local.
@@ -639,7 +697,7 @@ pub struct LocalDecl<'tcx> {
     pub mutability: Mutability,
 
     // FIXME(matthewjasper) Don't store in this in `Body`
-    pub local_info: LocalInfo<'tcx>,
+    pub local_info: Option<Box<LocalInfo<'tcx>>>,
 
     /// `true` if this is an internal local.
     ///
@@ -675,7 +733,7 @@ pub struct LocalDecl<'tcx> {
     /// borrow checker needs this information since it can affect
     /// region inference.
     // FIXME(matthewjasper) Don't store in this in `Body`
-    pub user_ty: UserTypeProjections,
+    pub user_ty: Option<Box<UserTypeProjections>>,
 
     /// The *syntactic* (i.e., not visibility) source scope the local is defined
     /// in. If the local was defined in a let-statement, this
@@ -759,7 +817,13 @@ pub struct LocalDecl<'tcx> {
     pub source_info: SourceInfo,
 }
 
-/// Extra information about a local that's used for diagnostics.
+// `LocalDecl` is used a lot. Make sure it doesn't unintentionally get bigger.
+#[cfg(target_arch = "x86_64")]
+static_assert_size!(LocalDecl<'_>, 56);
+
+/// Extra information about a some locals that's used for diagnostics. (Not
+/// used for non-StaticRef temporaries, the return place, or anonymous function
+/// parameters.)
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
 pub enum LocalInfo<'tcx> {
     /// A user-defined local variable or function parameter
@@ -770,8 +834,6 @@ pub enum LocalInfo<'tcx> {
     User(ClearCrossCrate<BindingForm<'tcx>>),
     /// A temporary created that references the static with the given `DefId`.
     StaticRef { def_id: DefId, is_thread_local: bool },
-    /// Any other temporary, the return place, or an anonymous function parameter.
-    Other,
 }
 
 impl<'tcx> LocalDecl<'tcx> {
@@ -783,16 +845,16 @@ impl<'tcx> LocalDecl<'tcx> {
     /// - or `match ... { C(x) => ... }`
     pub fn can_be_made_mutable(&self) -> bool {
         match self.local_info {
-            LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
+            Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
                 binding_mode: ty::BindingMode::BindByValue(_),
                 opt_ty_info: _,
                 opt_match_place: _,
                 pat_span: _,
-            }))) => true,
+            })))) => true,
 
-            LocalInfo::User(ClearCrossCrate::Set(BindingForm::ImplicitSelf(
+            Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::ImplicitSelf(
                 ImplicitSelfKind::Imm,
-            ))) => true,
+            )))) => true,
 
             _ => false,
         }
@@ -803,14 +865,14 @@ impl<'tcx> LocalDecl<'tcx> {
     /// mutable bindings, but the inverse does not necessarily hold).
     pub fn is_nonref_binding(&self) -> bool {
         match self.local_info {
-            LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
+            Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
                 binding_mode: ty::BindingMode::BindByValue(_),
                 opt_ty_info: _,
                 opt_match_place: _,
                 pat_span: _,
-            }))) => true,
+            })))) => true,
 
-            LocalInfo::User(ClearCrossCrate::Set(BindingForm::ImplicitSelf(_))) => true,
+            Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::ImplicitSelf(_)))) => true,
 
             _ => false,
         }
@@ -821,7 +883,7 @@ impl<'tcx> LocalDecl<'tcx> {
     #[inline]
     pub fn is_user_variable(&self) -> bool {
         match self.local_info {
-            LocalInfo::User(_) => true,
+            Some(box LocalInfo::User(_)) => true,
             _ => false,
         }
     }
@@ -831,7 +893,7 @@ impl<'tcx> LocalDecl<'tcx> {
     /// match arm.
     pub fn is_ref_for_guard(&self) -> bool {
         match self.local_info {
-            LocalInfo::User(ClearCrossCrate::Set(BindingForm::RefForGuard)) => true,
+            Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::RefForGuard))) => true,
             _ => false,
         }
     }
@@ -840,7 +902,7 @@ impl<'tcx> LocalDecl<'tcx> {
     /// access that static
     pub fn is_ref_to_static(&self) -> bool {
         match self.local_info {
-            LocalInfo::StaticRef { .. } => true,
+            Some(box LocalInfo::StaticRef { .. }) => true,
             _ => false,
         }
     }
@@ -849,7 +911,7 @@ impl<'tcx> LocalDecl<'tcx> {
     /// access that static
     pub fn is_ref_to_thread_local(&self) -> bool {
         match self.local_info {
-            LocalInfo::StaticRef { is_thread_local, .. } => is_thread_local,
+            Some(box LocalInfo::StaticRef { is_thread_local, .. }) => is_thread_local,
             _ => false,
         }
     }
@@ -861,10 +923,31 @@ impl<'tcx> LocalDecl<'tcx> {
         self.source_info.span.desugaring_kind().is_some()
     }
 
-    /// Creates a new `LocalDecl` for a temporary.
+    /// Creates a new `LocalDecl` for a temporary: mutable, non-internal.
     #[inline]
-    pub fn new_temp(ty: Ty<'tcx>, span: Span) -> Self {
-        Self::new_local(ty, Mutability::Mut, false, span)
+    pub fn new(ty: Ty<'tcx>, span: Span) -> Self {
+        Self::with_source_info(ty, SourceInfo::outermost(span))
+    }
+
+    /// Like `LocalDecl::new`, but takes a `SourceInfo` instead of a `Span`.
+    #[inline]
+    pub fn with_source_info(ty: Ty<'tcx>, source_info: SourceInfo) -> Self {
+        LocalDecl {
+            mutability: Mutability::Mut,
+            local_info: None,
+            internal: false,
+            is_block_tail: None,
+            ty,
+            user_ty: None,
+            source_info,
+        }
+    }
+
+    /// Converts `self` into same `LocalDecl` except tagged as internal.
+    #[inline]
+    pub fn internal(mut self) -> Self {
+        self.internal = true;
+        self
     }
 
     /// Converts `self` into same `LocalDecl` except tagged as immutable.
@@ -881,47 +964,12 @@ impl<'tcx> LocalDecl<'tcx> {
         self.is_block_tail = Some(info);
         self
     }
-
-    /// Creates a new `LocalDecl` for a internal temporary.
-    #[inline]
-    pub fn new_internal(ty: Ty<'tcx>, span: Span) -> Self {
-        Self::new_local(ty, Mutability::Mut, true, span)
-    }
-
-    #[inline]
-    fn new_local(ty: Ty<'tcx>, mutability: Mutability, internal: bool, span: Span) -> Self {
-        LocalDecl {
-            mutability,
-            ty,
-            user_ty: UserTypeProjections::none(),
-            source_info: SourceInfo { span, scope: OUTERMOST_SOURCE_SCOPE },
-            internal,
-            local_info: LocalInfo::Other,
-            is_block_tail: None,
-        }
-    }
-
-    /// Builds a `LocalDecl` for the return place.
-    ///
-    /// This must be inserted into the `local_decls` list as the first local.
-    #[inline]
-    pub fn new_return_place(return_ty: Ty<'_>, span: Span) -> LocalDecl<'_> {
-        LocalDecl {
-            mutability: Mutability::Mut,
-            ty: return_ty,
-            user_ty: UserTypeProjections::none(),
-            source_info: SourceInfo { span, scope: OUTERMOST_SOURCE_SCOPE },
-            internal: false,
-            is_block_tail: None,
-            local_info: LocalInfo::Other,
-        }
-    }
 }
 
 /// Debug information pertaining to a user variable.
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
 pub struct VarDebugInfo<'tcx> {
-    pub name: Name,
+    pub name: Symbol,
 
     /// Source info of the user variable, including the scope
     /// within which the variable is visible (to debuginfo)
@@ -1132,6 +1180,23 @@ pub enum TerminatorKind<'tcx> {
         /// of the `remove_noop_landing_pads` and `no_landing_pads` passes.
         unwind: Option<BasicBlock>,
     },
+
+    /// Block ends with an inline assembly block. This is a terminator since
+    /// inline assembly is allowed to diverge.
+    InlineAsm {
+        /// The template for the inline assembly, with placeholders.
+        template: &'tcx [InlineAsmTemplatePiece],
+
+        /// The operands for the inline assembly, as `Operand`s or `Place`s.
+        operands: Vec<InlineAsmOperand<'tcx>>,
+
+        /// Miscellaneous options for the inline assembly.
+        options: InlineAsmOptions,
+
+        /// Destination block after the inline assembly returns, unless it is
+        /// diverging (InlineAsmOptions::NORETURN).
+        destination: Option<BasicBlock>,
+    },
 }
 
 /// Information about an assertion failure.
@@ -1144,6 +1209,34 @@ pub enum AssertKind<O> {
     RemainderByZero,
     ResumedAfterReturn(GeneratorKind),
     ResumedAfterPanic(GeneratorKind),
+}
+
+#[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
+pub enum InlineAsmOperand<'tcx> {
+    In {
+        reg: InlineAsmRegOrRegClass,
+        value: Operand<'tcx>,
+    },
+    Out {
+        reg: InlineAsmRegOrRegClass,
+        late: bool,
+        place: Option<Place<'tcx>>,
+    },
+    InOut {
+        reg: InlineAsmRegOrRegClass,
+        late: bool,
+        in_value: Operand<'tcx>,
+        out_place: Option<Place<'tcx>>,
+    },
+    Const {
+        value: Operand<'tcx>,
+    },
+    SymFn {
+        value: Box<Constant<'tcx>>,
+    },
+    SymStatic {
+        value: Box<Constant<'tcx>>,
+    },
 }
 
 /// Type for MIR `Assert` terminator error messages.
@@ -1196,7 +1289,8 @@ impl<'tcx> TerminatorKind<'tcx> {
             | GeneratorDrop
             | Return
             | Unreachable
-            | Call { destination: None, cleanup: None, .. } => None.into_iter().chain(&[]),
+            | Call { destination: None, cleanup: None, .. }
+            | InlineAsm { destination: None, .. } => None.into_iter().chain(&[]),
             Goto { target: ref t }
             | Call { destination: None, cleanup: Some(ref t), .. }
             | Call { destination: Some((_, ref t)), cleanup: None, .. }
@@ -1204,7 +1298,8 @@ impl<'tcx> TerminatorKind<'tcx> {
             | DropAndReplace { target: ref t, unwind: None, .. }
             | Drop { target: ref t, unwind: None, .. }
             | Assert { target: ref t, cleanup: None, .. }
-            | FalseUnwind { real_target: ref t, unwind: None } => Some(t).into_iter().chain(&[]),
+            | FalseUnwind { real_target: ref t, unwind: None }
+            | InlineAsm { destination: Some(ref t), .. } => Some(t).into_iter().chain(&[]),
             Call { destination: Some((_, ref t)), cleanup: Some(ref u), .. }
             | Yield { resume: ref t, drop: Some(ref u), .. }
             | DropAndReplace { target: ref t, unwind: Some(ref u), .. }
@@ -1228,7 +1323,8 @@ impl<'tcx> TerminatorKind<'tcx> {
             | GeneratorDrop
             | Return
             | Unreachable
-            | Call { destination: None, cleanup: None, .. } => None.into_iter().chain(&mut []),
+            | Call { destination: None, cleanup: None, .. }
+            | InlineAsm { destination: None, .. } => None.into_iter().chain(&mut []),
             Goto { target: ref mut t }
             | Call { destination: None, cleanup: Some(ref mut t), .. }
             | Call { destination: Some((_, ref mut t)), cleanup: None, .. }
@@ -1236,9 +1332,8 @@ impl<'tcx> TerminatorKind<'tcx> {
             | DropAndReplace { target: ref mut t, unwind: None, .. }
             | Drop { target: ref mut t, unwind: None, .. }
             | Assert { target: ref mut t, cleanup: None, .. }
-            | FalseUnwind { real_target: ref mut t, unwind: None } => {
-                Some(t).into_iter().chain(&mut [])
-            }
+            | FalseUnwind { real_target: ref mut t, unwind: None }
+            | InlineAsm { destination: Some(ref mut t), .. } => Some(t).into_iter().chain(&mut []),
             Call { destination: Some((_, ref mut t)), cleanup: Some(ref mut u), .. }
             | Yield { resume: ref mut t, drop: Some(ref mut u), .. }
             | DropAndReplace { target: ref mut t, unwind: Some(ref mut u), .. }
@@ -1264,7 +1359,8 @@ impl<'tcx> TerminatorKind<'tcx> {
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::Yield { .. }
             | TerminatorKind::SwitchInt { .. }
-            | TerminatorKind::FalseEdges { .. } => None,
+            | TerminatorKind::FalseEdges { .. }
+            | TerminatorKind::InlineAsm { .. } => None,
             TerminatorKind::Call { cleanup: ref unwind, .. }
             | TerminatorKind::Assert { cleanup: ref unwind, .. }
             | TerminatorKind::DropAndReplace { ref unwind, .. }
@@ -1283,7 +1379,8 @@ impl<'tcx> TerminatorKind<'tcx> {
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::Yield { .. }
             | TerminatorKind::SwitchInt { .. }
-            | TerminatorKind::FalseEdges { .. } => None,
+            | TerminatorKind::FalseEdges { .. }
+            | TerminatorKind::InlineAsm { .. } => None,
             TerminatorKind::Call { cleanup: ref mut unwind, .. }
             | TerminatorKind::Assert { cleanup: ref mut unwind, .. }
             | TerminatorKind::DropAndReplace { ref mut unwind, .. }
@@ -1356,10 +1453,7 @@ impl<'tcx> BasicBlockData<'tcx> {
         let mut gap = self.statements.len()..self.statements.len() + extra_stmts;
         self.statements.resize(
             gap.end,
-            Statement {
-                source_info: SourceInfo { span: DUMMY_SP, scope: OUTERMOST_SOURCE_SCOPE },
-                kind: StatementKind::Nop,
-            },
+            Statement { source_info: SourceInfo::outermost(DUMMY_SP), kind: StatementKind::Nop },
         );
         for (splice_start, new_stmts) in splices.into_iter().rev() {
             let splice_end = splice_start + new_stmts.size_hint().0;
@@ -1401,6 +1495,21 @@ impl<O> AssertKind<O> {
             ResumedAfterPanic(GeneratorKind::Gen) => "generator resumed after panicking",
             ResumedAfterPanic(GeneratorKind::Async(_)) => "`async fn` resumed after panicking",
             BoundsCheck { .. } => bug!("Unexpected AssertKind"),
+        }
+    }
+
+    /// Format the message arguments for the `assert(cond, msg..)` terminator in MIR printing.
+    fn fmt_assert_args<W: Write>(&self, f: &mut W) -> fmt::Result
+    where
+        O: Debug,
+    {
+        match self {
+            AssertKind::BoundsCheck { ref len, ref index } => write!(
+                f,
+                "\"index out of bounds: the len is {{}} but the index is {{}}\", {:?}, {:?}",
+                len, index
+            ),
+            _ => write!(f, "\"{}\"", self.description()),
         }
     }
 }
@@ -1480,10 +1589,56 @@ impl<'tcx> TerminatorKind<'tcx> {
                 if !expected {
                     write!(fmt, "!")?;
                 }
-                write!(fmt, "{:?}, \"{:?}\")", cond, msg)
+                write!(fmt, "{:?}, ", cond)?;
+                msg.fmt_assert_args(fmt)?;
+                write!(fmt, ")")
             }
             FalseEdges { .. } => write!(fmt, "falseEdges"),
             FalseUnwind { .. } => write!(fmt, "falseUnwind"),
+            InlineAsm { template, ref operands, options, destination: _ } => {
+                write!(fmt, "asm!(\"{}\"", InlineAsmTemplatePiece::to_string(template))?;
+                for op in operands {
+                    write!(fmt, ", ")?;
+                    let print_late = |&late| if late { "late" } else { "" };
+                    match op {
+                        InlineAsmOperand::In { reg, value } => {
+                            write!(fmt, "in({}) {:?}", reg, value)?;
+                        }
+                        InlineAsmOperand::Out { reg, late, place: Some(place) } => {
+                            write!(fmt, "{}out({}) {:?}", print_late(late), reg, place)?;
+                        }
+                        InlineAsmOperand::Out { reg, late, place: None } => {
+                            write!(fmt, "{}out({}) _", print_late(late), reg)?;
+                        }
+                        InlineAsmOperand::InOut {
+                            reg,
+                            late,
+                            in_value,
+                            out_place: Some(out_place),
+                        } => {
+                            write!(
+                                fmt,
+                                "in{}out({}) {:?} => {:?}",
+                                print_late(late),
+                                reg,
+                                in_value,
+                                out_place
+                            )?;
+                        }
+                        InlineAsmOperand::InOut { reg, late, in_value, out_place: None } => {
+                            write!(fmt, "in{}out({}) {:?} => _", print_late(late), reg, in_value)?;
+                        }
+                        InlineAsmOperand::Const { value } => {
+                            write!(fmt, "const {:?}", value)?;
+                        }
+                        InlineAsmOperand::SymFn { value }
+                        | InlineAsmOperand::SymStatic { value } => {
+                            write!(fmt, "sym {:?}", value)?;
+                        }
+                    }
+                }
+                write!(fmt, ", options({:?}))", options)
+            }
         }
     }
 
@@ -1526,6 +1681,8 @@ impl<'tcx> TerminatorKind<'tcx> {
             FalseEdges { .. } => vec!["real".into(), "imaginary".into()],
             FalseUnwind { unwind: Some(_), .. } => vec!["real".into(), "cleanup".into()],
             FalseUnwind { unwind: None, .. } => vec!["real".into()],
+            InlineAsm { destination: Some(_), .. } => vec!["".into()],
+            InlineAsm { destination: None, .. } => vec![],
         }
     }
 }
@@ -1920,10 +2077,10 @@ impl Debug for Place<'_> {
                 ProjectionElem::ConstantIndex { offset, min_length, from_end: true } => {
                     write!(fmt, "[-{:?} of {:?}]", offset, min_length)?;
                 }
-                ProjectionElem::Subslice { from, to, from_end: true } if *to == 0 => {
+                ProjectionElem::Subslice { from, to, from_end: true } if to == 0 => {
                     write!(fmt, "[{:?}:]", from)?;
                 }
-                ProjectionElem::Subslice { from, to, from_end: true } if *from == 0 => {
+                ProjectionElem::Subslice { from, to, from_end: true } if from == 0 => {
                     write!(fmt, "[:-{:?}]", to)?;
                 }
                 ProjectionElem::Subslice { from, to, from_end: true } => {
@@ -2057,7 +2214,7 @@ pub enum Rvalue<'tcx> {
     /// or when casting a reference to a raw pointer.
     AddressOf(Mutability, Place<'tcx>),
 
-    /// length of a [X] or [X;n] value
+    /// length of a `[X]` or `[X;n]` value
     Len(Place<'tcx>),
 
     Cast(CastKind, Operand<'tcx>, Ty<'tcx>),
@@ -2225,39 +2382,41 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             }
 
             Aggregate(ref kind, ref places) => {
-                fn fmt_tuple(fmt: &mut Formatter<'_>, places: &[Operand<'_>]) -> fmt::Result {
-                    let mut tuple_fmt = fmt.debug_tuple("");
+                let fmt_tuple = |fmt: &mut Formatter<'_>, name: &str| {
+                    let mut tuple_fmt = fmt.debug_tuple(name);
                     for place in places {
                         tuple_fmt.field(place);
                     }
                     tuple_fmt.finish()
-                }
+                };
 
                 match **kind {
                     AggregateKind::Array(_) => write!(fmt, "{:?}", places),
 
-                    AggregateKind::Tuple => match places.len() {
-                        0 => write!(fmt, "()"),
-                        1 => write!(fmt, "({:?},)", places[0]),
-                        _ => fmt_tuple(fmt, places),
-                    },
+                    AggregateKind::Tuple => {
+                        if places.is_empty() {
+                            write!(fmt, "()")
+                        } else {
+                            fmt_tuple(fmt, "")
+                        }
+                    }
 
                     AggregateKind::Adt(adt_def, variant, substs, _user_ty, _) => {
                         let variant_def = &adt_def.variants[variant];
 
-                        let f = &mut *fmt;
-                        ty::tls::with(|tcx| {
+                        let name = ty::tls::with(|tcx| {
+                            let mut name = String::new();
                             let substs = tcx.lift(&substs).expect("could not lift for printing");
-                            FmtPrinter::new(tcx, f, Namespace::ValueNS)
+                            FmtPrinter::new(tcx, &mut name, Namespace::ValueNS)
                                 .print_def_path(variant_def.def_id, substs)?;
-                            Ok(())
+                            Ok(name)
                         })?;
 
                         match variant_def.ctor_kind {
-                            CtorKind::Const => Ok(()),
-                            CtorKind::Fn => fmt_tuple(fmt, places),
+                            CtorKind::Const => fmt.write_str(&name),
+                            CtorKind::Fn => fmt_tuple(fmt, &name),
                             CtorKind::Fictive => {
-                                let mut struct_fmt = fmt.debug_struct("");
+                                let mut struct_fmt = fmt.debug_struct(&name);
                                 for (field, place) in variant_def.fields.iter().zip(places) {
                                     struct_fmt.field(&field.ident.as_str(), place);
                                 }
@@ -2267,19 +2426,20 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                     }
 
                     AggregateKind::Closure(def_id, substs) => ty::tls::with(|tcx| {
-                        if let Some(hir_id) = tcx.hir().as_local_hir_id(def_id) {
+                        if let Some(def_id) = def_id.as_local() {
+                            let hir_id = tcx.hir().as_local_hir_id(def_id);
                             let name = if tcx.sess.opts.debugging_opts.span_free_formats {
                                 let substs = tcx.lift(&substs).unwrap();
                                 format!(
                                     "[closure@{}]",
-                                    tcx.def_path_str_with_substs(def_id, substs),
+                                    tcx.def_path_str_with_substs(def_id.to_def_id(), substs),
                                 )
                             } else {
                                 format!("[closure@{:?}]", tcx.hir().span(hir_id))
                             };
                             let mut struct_fmt = fmt.debug_struct(&name);
 
-                            if let Some(upvars) = tcx.upvars(def_id) {
+                            if let Some(upvars) = tcx.upvars_mentioned(def_id) {
                                 for (&var_id, place) in upvars.keys().zip(places) {
                                     let var_name = tcx.hir().name(var_id);
                                     struct_fmt.field(&var_name.as_str(), place);
@@ -2293,11 +2453,12 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                     }),
 
                     AggregateKind::Generator(def_id, _, _) => ty::tls::with(|tcx| {
-                        if let Some(hir_id) = tcx.hir().as_local_hir_id(def_id) {
+                        if let Some(def_id) = def_id.as_local() {
+                            let hir_id = tcx.hir().as_local_hir_id(def_id);
                             let name = format!("[generator@{:?}]", tcx.hir().span(hir_id));
                             let mut struct_fmt = fmt.debug_struct(&name);
 
-                            if let Some(upvars) = tcx.upvars(def_id) {
+                            if let Some(upvars) = tcx.upvars_mentioned(def_id) {
                                 for (&var_id, place) in upvars.keys().zip(places) {
                                     let var_name = tcx.hir().name(var_id);
                                     struct_fmt.field(&var_name.as_str(), place);
@@ -2322,7 +2483,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 /// this does not necessarily mean that they are "==" in Rust -- in
 /// particular one must be wary of `NaN`!
 
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, Copy, PartialEq, RustcEncodable, RustcDecodable, HashStable)]
 pub struct Constant<'tcx> {
     pub span: Span,
 
@@ -2339,13 +2500,9 @@ pub struct Constant<'tcx> {
 impl Constant<'tcx> {
     pub fn check_static_ptr(&self, tcx: TyCtxt<'_>) -> Option<DefId> {
         match self.literal.val.try_to_scalar() {
-            Some(Scalar::Ptr(ptr)) => match tcx.alloc_map.lock().get(ptr.alloc_id) {
-                Some(GlobalAlloc::Static(def_id)) => Some(def_id),
-                Some(_) => None,
-                None => {
-                    tcx.sess.delay_span_bug(DUMMY_SP, "MIR cannot contain dangling const pointers");
-                    None
-                }
+            Some(Scalar::Ptr(ptr)) => match tcx.global_alloc(ptr.alloc_id) {
+                GlobalAlloc::Static(def_id) => Some(def_id),
+                _ => None,
             },
             _ => None,
         }
@@ -2386,12 +2543,16 @@ impl Constant<'tcx> {
 /// &'static str`.
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
 pub struct UserTypeProjections {
-    pub(crate) contents: Vec<(UserTypeProjection, Span)>,
+    pub contents: Vec<(UserTypeProjection, Span)>,
 }
 
 impl<'tcx> UserTypeProjections {
     pub fn none() -> Self {
         UserTypeProjections { contents: vec![] }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.contents.is_empty()
     }
 
     pub fn from_projections(projs: impl Iterator<Item = (UserTypeProjection, Span)>) -> Self {
@@ -2572,18 +2733,21 @@ impl<'tcx> graph::DirectedGraph for Body<'tcx> {
 }
 
 impl<'tcx> graph::WithNumNodes for Body<'tcx> {
+    #[inline]
     fn num_nodes(&self) -> usize {
         self.basic_blocks.len()
     }
 }
 
 impl<'tcx> graph::WithStartNode for Body<'tcx> {
+    #[inline]
     fn start_node(&self) -> Self::Node {
         START_BLOCK
     }
 }
 
 impl<'tcx> graph::WithSuccessors for Body<'tcx> {
+    #[inline]
     fn successors(&self, node: Self::Node) -> <Self as GraphSuccessors<'_>>::Iter {
         self.basic_blocks[node].terminator().successors().cloned()
     }
@@ -2594,14 +2758,26 @@ impl<'a, 'b> graph::GraphSuccessors<'b> for Body<'a> {
     type Iter = iter::Cloned<Successors<'b>>;
 }
 
+impl graph::GraphPredecessors<'graph> for Body<'tcx> {
+    type Item = BasicBlock;
+    type Iter = smallvec::IntoIter<[BasicBlock; 4]>;
+}
+
+impl graph::WithPredecessors for Body<'tcx> {
+    #[inline]
+    fn predecessors(&self, node: Self::Node) -> <Self as graph::GraphPredecessors<'_>>::Iter {
+        self.predecessors()[node].clone().into_iter()
+    }
+}
+
+/// `Location` represents the position of the start of the statement; or, if
+/// `statement_index` equals the number of statements, then the start of the
+/// terminator.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Ord, PartialOrd, HashStable)]
 pub struct Location {
     /// The block that the location is within.
     pub block: BasicBlock,
 
-    /// The location is the position of the start of the statement; or, if
-    /// `statement_index` equals the number of statements, then the start of the
-    /// terminator.
     pub statement_index: usize,
 }
 
@@ -2623,25 +2799,23 @@ impl Location {
     }
 
     /// Returns `true` if `other` is earlier in the control flow graph than `self`.
-    pub fn is_predecessor_of<'tcx>(
-        &self,
-        other: Location,
-        body: ReadOnlyBodyAndCache<'_, 'tcx>,
-    ) -> bool {
+    pub fn is_predecessor_of<'tcx>(&self, other: Location, body: &Body<'tcx>) -> bool {
         // If we are in the same block as the other location and are an earlier statement
         // then we are a predecessor of `other`.
         if self.block == other.block && self.statement_index < other.statement_index {
             return true;
         }
 
+        let predecessors = body.predecessors();
+
         // If we're in another block, then we want to check that block is a predecessor of `other`.
-        let mut queue: Vec<BasicBlock> = body.predecessors_for(other.block).to_vec();
+        let mut queue: Vec<BasicBlock> = predecessors[other.block].to_vec();
         let mut visited = FxHashSet::default();
 
         while let Some(block) = queue.pop() {
             // If we haven't visited this block before, then make sure we visit it's predecessors.
             if visited.insert(block) {
-                queue.extend(body.predecessors_for(block).iter().cloned());
+                queue.extend(predecessors[block].iter().cloned());
             } else {
                 continue;
             }

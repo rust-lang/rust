@@ -92,6 +92,11 @@ impl RawHandle {
         crate::io::default_read_vectored(|buf| self.read(buf), bufs)
     }
 
+    #[inline]
+    pub fn is_read_vectored(&self) -> bool {
+        false
+    }
+
     pub fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
         let mut read = 0;
         let len = cmp::min(buf.len(), <c::DWORD>::max_value() as usize) as c::DWORD;
@@ -169,6 +174,11 @@ impl RawHandle {
 
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         crate::io::default_write_vectored(|buf| self.write(buf), bufs)
+    }
+
+    #[inline]
+    pub fn is_write_vectored(&self) -> bool {
+        false
     }
 
     pub fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {

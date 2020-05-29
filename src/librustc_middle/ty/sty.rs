@@ -6,7 +6,6 @@ use self::InferTy::*;
 use self::TyKind::*;
 
 use crate::infer::canonical::Canonical;
-use crate::middle::region;
 use crate::mir::interpret::ConstValue;
 use crate::mir::interpret::{LitToConstInput, Scalar};
 use crate::mir::Promoted;
@@ -16,13 +15,14 @@ use crate::ty::{
 };
 use crate::ty::{List, ParamEnv, ParamEnvAnd, TyS};
 use polonius_engine::Atom;
-use rustc_ast::ast::{self, Ident};
+use rustc_ast::ast;
 use rustc_data_structures::captures::Captures;
+use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::vec::Idx;
 use rustc_macros::HashStable;
-use rustc_span::symbol::{kw, Symbol};
+use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_target::abi::{Size, VariantIdx};
 use rustc_target::spec::abi;
 use std::borrow::Cow;
@@ -179,11 +179,6 @@ pub enum TyKind<'tcx> {
     /// The projection of an associated type. For example,
     /// `<T as Trait<..>>::N`.
     Projection(ProjectionTy<'tcx>),
-
-    /// A placeholder type used when we do not have enough information
-    /// to normalize the projection of an associated type to an
-    /// existing concrete type. Currently only used with chalk-engine.
-    UnnormalizedProjection(ProjectionTy<'tcx>),
 
     /// Opaque (`impl Trait`) type found in a return type.
     /// The `DefId` comes either from
@@ -616,15 +611,16 @@ impl<'tcx> Binder<ExistentialPredicate<'tcx>> {
         use crate::ty::ToPredicate;
         match *self.skip_binder() {
             ExistentialPredicate::Trait(tr) => {
-                Binder(tr).with_self_ty(tcx, self_ty).without_const().to_predicate()
+                Binder(tr).with_self_ty(tcx, self_ty).without_const().to_predicate(tcx)
             }
             ExistentialPredicate::Projection(p) => {
-                ty::Predicate::Projection(Binder(p.with_self_ty(tcx, self_ty)))
+                ty::PredicateKind::Projection(Binder(p.with_self_ty(tcx, self_ty)))
+                    .to_predicate(tcx)
             }
             ExistentialPredicate::AutoTrait(did) => {
                 let trait_ref =
                     Binder(ty::TraitRef { def_id: did, substs: tcx.mk_substs_trait(self_ty, &[]) });
-                trait_ref.without_const().to_predicate()
+                trait_ref.without_const().to_predicate(tcx)
             }
         }
     }
@@ -673,7 +669,7 @@ impl<'tcx> List<ExistentialPredicate<'tcx>> {
     pub fn projection_bounds<'a>(
         &'a self,
     ) -> impl Iterator<Item = ExistentialProjection<'tcx>> + 'a {
-        self.iter().filter_map(|predicate| match *predicate {
+        self.iter().filter_map(|predicate| match predicate {
             ExistentialPredicate::Projection(projection) => Some(projection),
             _ => None,
         })
@@ -681,7 +677,7 @@ impl<'tcx> List<ExistentialPredicate<'tcx>> {
 
     #[inline]
     pub fn auto_traits<'a>(&'a self) -> impl Iterator<Item = DefId> + 'a {
-        self.iter().filter_map(|predicate| match *predicate {
+        self.iter().filter_map(|predicate| match predicate {
             ExistentialPredicate::AutoTrait(did) => Some(did),
             _ => None,
         })
@@ -712,7 +708,7 @@ impl<'tcx> Binder<&'tcx List<ExistentialPredicate<'tcx>>> {
     pub fn iter<'a>(
         &'a self,
     ) -> impl DoubleEndedIterator<Item = Binder<ExistentialPredicate<'tcx>>> + 'tcx {
-        self.skip_binder().iter().cloned().map(Binder::bind)
+        self.skip_binder().iter().map(Binder::bind)
     }
 }
 
@@ -1182,17 +1178,15 @@ rustc_index::newtype_index! {
 
 pub type Region<'tcx> = &'tcx RegionKind;
 
-/// Representation of (lexical) regions. Note that the NLL checker
-/// uses a distinct representation of regions. For this reason, it
-/// internally replaces all the regions with inference variables --
-/// the index of the variable is then used to index into internal NLL
-/// data structures. See `rustc_mir::borrow_check` module for more
-/// information.
+/// Representation of regions. Note that the NLL checker uses a distinct
+/// representation of regions. For this reason, it internally replaces all the
+/// regions with inference variables -- the index of the variable is then used
+/// to index into internal NLL data structures. See `rustc_mir::borrow_check`
+/// module for more information.
 ///
 /// ## The Region lattice within a given function
 ///
-/// In general, the (lexical, and hence deprecated) region lattice
-/// looks like
+/// In general, the region lattice looks like
 ///
 /// ```
 /// static ----------+-----...------+       (greatest)
@@ -1200,7 +1194,6 @@ pub type Region<'tcx> = &'tcx RegionKind;
 /// early-bound and  |              |
 /// free regions     |              |
 /// |                |              |
-/// scope regions    |              |
 /// |                |              |
 /// empty(root)   placeholder(U1)   |
 /// |            /                  |
@@ -1215,13 +1208,7 @@ pub type Region<'tcx> = &'tcx RegionKind;
 /// Early-bound/free regions are the named lifetimes in scope from the
 /// function declaration. They have relationships to one another
 /// determined based on the declared relationships from the
-/// function. They all collectively outlive the scope regions. (See
-/// `RegionRelations` type, and particularly
-/// `crate::infer::outlives::free_region_map::FreeRegionMap`.)
-///
-/// The scope regions are related to one another based on the AST
-/// structure. (See `RegionRelations` type, and particularly the
-/// `rustc_middle::middle::region::ScopeTree`.)
+/// function.
 ///
 /// Note that inference variables and bound regions are not included
 /// in this diagram. In the case of inference variables, they should
@@ -1309,11 +1296,6 @@ pub enum RegionKind {
     /// that refer to bound region parameters are modified to refer to free
     /// region parameters.
     ReFree(FreeRegion),
-
-    /// A concrete region naming some statically determined scope
-    /// (e.g., an expression or sequence of statements) within the
-    /// current function.
-    ReScope(region::Scope),
 
     /// Static data that has an "infinite" lifetime. Top in the region lattice.
     ReStatic,
@@ -1538,7 +1520,6 @@ impl RegionKind {
             RegionKind::ReEarlyBound(ebr) => ebr.has_name(),
             RegionKind::ReLateBound(_, br) => br.is_named(),
             RegionKind::ReFree(fr) => fr.bound_region.is_named(),
-            RegionKind::ReScope(..) => false,
             RegionKind::ReStatic => true,
             RegionKind::ReVar(..) => false,
             RegionKind::RePlaceholder(placeholder) => placeholder.name.is_named(),
@@ -1605,7 +1586,6 @@ impl RegionKind {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
                 flags = flags | TypeFlags::HAS_FREE_LOCAL_REGIONS;
                 flags = flags | TypeFlags::HAS_RE_INFER;
-                flags = flags | TypeFlags::KEEP_IN_LOCAL_TCX;
                 flags = flags | TypeFlags::STILL_FURTHER_SPECIALIZABLE;
             }
             ty::RePlaceholder(..) => {
@@ -1620,7 +1600,7 @@ impl RegionKind {
                 flags = flags | TypeFlags::HAS_RE_PARAM;
                 flags = flags | TypeFlags::STILL_FURTHER_SPECIALIZABLE;
             }
-            ty::ReFree { .. } | ty::ReScope { .. } => {
+            ty::ReFree { .. } => {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
                 flags = flags | TypeFlags::HAS_FREE_LOCAL_REGIONS;
             }
@@ -1865,24 +1845,6 @@ impl<'tcx> TyS<'tcx> {
         self.is_region_ptr() || self.is_unsafe_ptr() || self.is_fn_ptr()
     }
 
-    /// Returns `true` if this type is an `Arc<T>`.
-    #[inline]
-    pub fn is_arc(&self) -> bool {
-        match self.kind {
-            Adt(def, _) => def.is_arc(),
-            _ => false,
-        }
-    }
-
-    /// Returns `true` if this type is an `Rc<T>`.
-    #[inline]
-    pub fn is_rc(&self) -> bool {
-        match self.kind {
-            Adt(def, _) => def.is_rc(),
-            _ => false,
-        }
-    }
-
     #[inline]
     pub fn is_box(&self) -> bool {
         match self.kind {
@@ -1905,8 +1867,15 @@ impl<'tcx> TyS<'tcx> {
     #[inline]
     pub fn is_scalar(&self) -> bool {
         match self.kind {
-            Bool | Char | Int(_) | Float(_) | Uint(_) | Infer(IntVar(_)) | Infer(FloatVar(_))
-            | FnDef(..) | FnPtr(_) | RawPtr(_) => true,
+            Bool
+            | Char
+            | Int(_)
+            | Float(_)
+            | Uint(_)
+            | Infer(IntVar(_) | FloatVar(_))
+            | FnDef(..)
+            | FnPtr(_)
+            | RawPtr(_) => true,
             _ => false,
         }
     }
@@ -2172,8 +2141,7 @@ impl<'tcx> TyS<'tcx> {
     /// `false` means nothing -- could be sized, might not be.
     pub fn is_trivially_sized(&self, tcx: TyCtxt<'tcx>) -> bool {
         match self.kind {
-            ty::Infer(ty::IntVar(_))
-            | ty::Infer(ty::FloatVar(_))
+            ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
             | ty::Uint(_)
             | ty::Int(_)
             | ty::Bool
@@ -2198,15 +2166,11 @@ impl<'tcx> TyS<'tcx> {
 
             ty::Projection(_) | ty::Param(_) | ty::Opaque(..) => false,
 
-            ty::UnnormalizedProjection(..) => bug!("only used with chalk-engine"),
-
             ty::Infer(ty::TyVar(_)) => false,
 
             ty::Bound(..)
             | ty::Placeholder(..)
-            | ty::Infer(ty::FreshTy(_))
-            | ty::Infer(ty::FreshIntTy(_))
-            | ty::Infer(ty::FreshFloatTy(_)) => {
+            | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 bug!("`is_trivially_sized` applied to unexpected type: {:?}", self)
             }
         }
@@ -2280,11 +2244,12 @@ impl<'tcx> Const<'tcx> {
             ExprKind::Path(QPath::Resolved(_, &Path { res: Res::Def(ConstParam, def_id), .. })) => {
                 // Find the name and index of the const parameter by indexing the generics of
                 // the parent item and construct a `ParamConst`.
-                let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+                let hir_id = tcx.hir().as_local_hir_id(def_id.expect_local());
                 let item_id = tcx.hir().get_parent_node(hir_id);
                 let item_def_id = tcx.hir().local_def_id(item_id);
-                let generics = tcx.generics_of(item_def_id);
-                let index = generics.param_def_id_to_index[&tcx.hir().local_def_id(hir_id)];
+                let generics = tcx.generics_of(item_def_id.to_def_id());
+                let index =
+                    generics.param_def_id_to_index[&tcx.hir().local_def_id(hir_id).to_def_id()];
                 let name = tcx.hir().name(hir_id);
                 ty::ConstKind::Param(ty::ParamConst::new(index, name))
             }
@@ -2358,43 +2323,45 @@ impl<'tcx> Const<'tcx> {
     /// Tries to evaluate the constant if it is `Unevaluated`. If that doesn't succeed, return the
     /// unevaluated constant.
     pub fn eval(&self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> &Const<'tcx> {
-        let try_const_eval = |did, param_env: ParamEnv<'tcx>, substs, promoted| {
+        if let ConstKind::Unevaluated(did, substs, promoted) = self.val {
+            use crate::mir::interpret::ErrorHandled;
+
             let param_env_and_substs = param_env.with_reveal_all().and(substs);
 
-            // Avoid querying `tcx.const_eval(...)` with any e.g. inference vars.
-            if param_env_and_substs.has_local_value() {
-                return None;
-            }
+            // HACK(eddyb) this erases lifetimes even though `const_eval_resolve`
+            // also does later, but we want to do it before checking for
+            // inference variables.
+            let param_env_and_substs = tcx.erase_regions(&param_env_and_substs);
 
+            // HACK(eddyb) when the query key would contain inference variables,
+            // attempt using identity substs and `ParamEnv` instead, that will succeed
+            // when the expression doesn't depend on any parameters.
+            // FIXME(eddyb, skinny121) pass `InferCtxt` into here when it's available, so that
+            // we can call `infcx.const_eval_resolve` which handles inference variables.
+            let param_env_and_substs = if param_env_and_substs.needs_infer() {
+                tcx.param_env(did).and(InternalSubsts::identity_for_item(tcx, did))
+            } else {
+                param_env_and_substs
+            };
+
+            // FIXME(eddyb) maybe the `const_eval_*` methods should take
+            // `ty::ParamEnvAnd<SubstsRef>` instead of having them separate.
             let (param_env, substs) = param_env_and_substs.into_parts();
-
             // try to resolve e.g. associated constants to their definition on an impl, and then
             // evaluate the const.
-            tcx.const_eval_resolve(param_env, did, substs, promoted, None)
-                .ok()
-                .map(|val| Const::from_value(tcx, val, self.ty))
-        };
-
-        match self.val {
-            ConstKind::Unevaluated(did, substs, promoted) => {
-                // HACK(eddyb) when substs contain e.g. inference variables,
-                // attempt using identity substs instead, that will succeed
-                // when the expression doesn't depend on any parameters.
-                // FIXME(eddyb, skinny121) pass `InferCtxt` into here when it's available, so that
-                // we can call `infcx.const_eval_resolve` which handles inference variables.
-                if substs.has_local_value() {
-                    let identity_substs = InternalSubsts::identity_for_item(tcx, did);
-                    // The `ParamEnv` needs to match the `identity_substs`.
-                    let identity_param_env = tcx.param_env(did);
-                    match try_const_eval(did, identity_param_env, identity_substs, promoted) {
-                        Some(ct) => ct.subst(tcx, substs),
-                        None => self,
-                    }
-                } else {
-                    try_const_eval(did, param_env, substs, promoted).unwrap_or(self)
+            match tcx.const_eval_resolve(param_env, did, substs, promoted, None) {
+                // NOTE(eddyb) `val` contains no lifetimes/types/consts,
+                // and we use the original type, so nothing from `substs`
+                // (which may be identity substs, see above),
+                // can leak through `val` into the const we return.
+                Ok(val) => Const::from_value(tcx, val, self.ty),
+                Err(ErrorHandled::TooGeneric | ErrorHandled::Linted) => self,
+                Err(ErrorHandled::Reported(ErrorReported)) => {
+                    tcx.mk_const(ty::Const { val: ty::ConstKind::Error, ty: self.ty })
                 }
             }
-            _ => self,
+        } else {
+            self
         }
     }
 
@@ -2450,6 +2417,10 @@ pub enum ConstKind<'tcx> {
 
     /// Used to hold computed value.
     Value(ConstValue<'tcx>),
+
+    /// A placeholder for a const which could not be computed; this is
+    /// propagated to avoid useless error messages.
+    Error,
 }
 
 #[cfg(target_arch = "x86_64")]

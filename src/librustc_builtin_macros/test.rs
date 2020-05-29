@@ -7,7 +7,7 @@ use rustc_ast::attr;
 use rustc_ast_pretty::pprust;
 use rustc_expand::base::*;
 use rustc_span::source_map::respan;
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
 
 use std::iter;
@@ -105,7 +105,7 @@ pub fn expand_test_or_bench(
 
     let (sp, attr_sp) = (cx.with_def_site_ctxt(item.span), cx.with_def_site_ctxt(attr_sp));
 
-    let test_id = ast::Ident::new(sym::test, attr_sp);
+    let test_id = Ident::new(sym::test, attr_sp);
 
     // creates test::$name
     let test_path = |name| cx.path(sp, vec![test_id, cx.ident_of(name, sp)]);
@@ -172,12 +172,12 @@ pub fn expand_test_or_bench(
 
     let mut test_const = cx.item(
         sp,
-        ast::Ident::new(item.ident.name, sp),
+        Ident::new(item.ident.name, sp),
         vec![
             // #[cfg(test)]
             cx.attribute(attr::mk_list_item(
-                ast::Ident::new(sym::cfg, attr_sp),
-                vec![attr::mk_nested_word_item(ast::Ident::new(sym::test, attr_sp))],
+                Ident::new(sym::cfg, attr_sp),
+                vec![attr::mk_nested_word_item(Ident::new(sym::test, attr_sp))],
             )),
             // #[rustc_test_marker]
             cx.attribute(cx.meta_word(attr_sp, sym::rustc_test_marker)),
@@ -288,7 +288,7 @@ pub fn expand_test_or_bench(
     ]
 }
 
-fn item_path(mod_path: &[ast::Ident], item_ident: &ast::Ident) -> String {
+fn item_path(mod_path: &[Ident], item_ident: &Ident) -> String {
     mod_path
         .iter()
         .chain(iter::once(item_ident))

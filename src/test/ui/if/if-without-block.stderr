@@ -6,6 +6,8 @@ LL |     if 5 == {
 ...
 LL | }
    | ^ expected `{`
+   |
+   = help: maybe you forgot the right operand of the condition?
 
 error: aborting due to previous error
 

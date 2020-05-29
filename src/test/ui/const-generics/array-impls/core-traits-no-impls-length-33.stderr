@@ -39,9 +39,9 @@ LL |     for _ in &[0_usize; 33] {
    |              ^^^^^^^^^^^^^^ the trait `std::iter::IntoIterator` is not implemented for `&[usize; 33]`
    |
    = help: the following implementations were found:
-             <&'a [T; _] as std::iter::IntoIterator>
+             <&'a [T; N] as std::iter::IntoIterator>
              <&'a [T] as std::iter::IntoIterator>
-             <&'a mut [T; _] as std::iter::IntoIterator>
+             <&'a mut [T; N] as std::iter::IntoIterator>
              <&'a mut [T] as std::iter::IntoIterator>
    = note: required by `std::iter::IntoIterator::into_iter`
 

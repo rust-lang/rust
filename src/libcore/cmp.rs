@@ -191,6 +191,7 @@ use self::Ordering::*;
 /// assert_eq!(x.eq(&y), false);
 /// ```
 ///
+/// [`Eq`]: Eq
 /// [`eq`]: PartialEq::eq
 /// [`ne`]: PartialEq::ne
 #[lang = "eq"]
@@ -858,7 +859,7 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn le(&self, other: &Rhs) -> bool {
-        matches!(self.partial_cmp(other), Some(Less) | Some(Equal))
+        matches!(self.partial_cmp(other), Some(Less | Equal))
     }
 
     /// This method tests greater than (for `self` and `other`) and is used by the `>` operator.
@@ -895,7 +896,7 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn ge(&self, other: &Rhs) -> bool {
-        matches!(self.partial_cmp(other), Some(Greater) | Some(Equal))
+        matches!(self.partial_cmp(other), Some(Greater | Equal))
     }
 }
 

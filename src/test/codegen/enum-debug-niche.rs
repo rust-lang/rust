@@ -1,9 +1,7 @@
-// This test depends on a patch that was committed to upstream LLVM
-// before 7.0, then backported to the Rust LLVM fork.  It tests that
-// optimized enum debug info accurately reflects the enum layout.
+// This tests that optimized enum debug info accurately reflects the enum layout.
+// This is ignored for the fallback mode on MSVC due to problems with PDB.
 
-// ignore-windows
-// min-system-llvm-version 8.0
+// ignore-msvc
 
 // compile-flags: -g -C no-prepopulate-passes
 

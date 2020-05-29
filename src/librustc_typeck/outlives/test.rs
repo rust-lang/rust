@@ -18,7 +18,7 @@ impl ItemLikeVisitor<'tcx> for OutlivesTest<'tcx> {
 
         // For unit testing: check for a special "rustc_outlives"
         // attribute and report an error with various results if found.
-        if self.tcx.has_attr(item_def_id, sym::rustc_outlives) {
+        if self.tcx.has_attr(item_def_id.to_def_id(), sym::rustc_outlives) {
             let inferred_outlives_of = self.tcx.inferred_outlives_of(item_def_id);
             struct_span_err!(self.tcx.sess, item.span, E0640, "{:?}", inferred_outlives_of).emit();
         }

@@ -1,12 +1,16 @@
-error[E0046]: not all trait items implemented, missing: `CONSTANT`, `Type`, `method`
+error[E0046]: not all trait items implemented, missing: `CONSTANT`, `Type`, `method`, `method2`, `method3`, `method4`, `method5`
   --> $DIR/m2.rs:9:1
    |
 LL | impl m1::X for X {
-   | ^^^^^^^^^^^^^^^^ missing `CONSTANT`, `Type`, `method` in implementation
+   | ^^^^^^^^^^^^^^^^ missing `CONSTANT`, `Type`, `method`, `method2`, `method3`, `method4`, `method5` in implementation
    |
    = help: implement the missing item: `const CONSTANT: u32 = 42;`
    = help: implement the missing item: `type Type = Type;`
    = help: implement the missing item: `fn method(&self, _: std::string::String) -> <Self as m1::X>::Type { todo!() }`
+   = help: implement the missing item: `fn method2(self: std::boxed::Box<Self>, _: std::string::String) -> <Self as m1::X>::Type { todo!() }`
+   = help: implement the missing item: `fn method3(_: &Self, _: std::string::String) -> <Self as m1::X>::Type { todo!() }`
+   = help: implement the missing item: `fn method4(&self, _: &Self) -> <Self as m1::X>::Type { todo!() }`
+   = help: implement the missing item: `fn method5(self: &std::boxed::Box<Self>) -> <Self as m1::X>::Type { todo!() }`
 
 error: aborting due to previous error
 

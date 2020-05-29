@@ -2,7 +2,7 @@ error[E0277]: the trait bound `for<'ccx> B: Bar<'ccx>` is not satisfied
   --> $DIR/hrtb-higher-ranker-supertraits-transitive.rs:47:26
    |
 LL | fn want_bar_for_any_ccx<B>(b: &B)
-   |    --------------------
+   |    -------------------- required by a bound in this
 LL |     where B : for<'ccx> Bar<'ccx>
    |               ------------------- required by this bound in `want_bar_for_any_ccx`
 ...

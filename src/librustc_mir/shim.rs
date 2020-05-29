@@ -1,5 +1,6 @@
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_hir::lang_items::FnMutTraitLangItem;
 use rustc_middle::mir::*;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
@@ -26,7 +27,7 @@ pub fn provide(providers: &mut Providers<'_>) {
     providers.mir_shims = make_shim;
 }
 
-fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> &'tcx BodyAndCache<'tcx> {
+fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'tcx> {
     debug!("make_shim({:?})", instance);
 
     let mut result = match instance {
@@ -47,7 +48,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> &'tcx 
             let trait_ = tcx.trait_of_item(def_id).unwrap();
             let adjustment = match tcx.fn_trait_kind_from_lang_item(trait_) {
                 Some(ty::ClosureKind::FnOnce) => Adjustment::Identity,
-                Some(ty::ClosureKind::FnMut) | Some(ty::ClosureKind::Fn) => Adjustment::Deref,
+                Some(ty::ClosureKind::FnMut | ty::ClosureKind::Fn) => Adjustment::Deref,
                 None => bug!("fn pointer {:?} is not an fn", ty),
             };
             // HACK: we need the "real" argument types for the MIR,
@@ -70,11 +71,11 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> &'tcx 
             build_call_shim(tcx, instance, None, CallKind::Direct(def_id), None)
         }
         ty::InstanceDef::ClosureOnceShim { call_once: _ } => {
-            let fn_mut = tcx.lang_items().fn_mut_trait().unwrap();
+            let fn_mut = tcx.require_lang_item(FnMutTraitLangItem, None);
             let call_mut = tcx
                 .associated_items(fn_mut)
                 .in_definition_order()
-                .find(|it| it.kind == ty::AssocKind::Method)
+                .find(|it| it.kind == ty::AssocKind::Fn)
                 .unwrap()
                 .def_id;
 
@@ -117,19 +118,18 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> &'tcx 
         instance,
         None,
         MirPhase::Const,
-        &[
+        &[&[
             &add_moves_for_packed_drops::AddMovesForPackedDrops,
             &no_landing_pads::NoLandingPads::new(tcx),
             &remove_noop_landing_pads::RemoveNoopLandingPads,
             &simplify::SimplifyCfg::new("make_shim"),
             &add_call_guards::CriticalCallEdges,
-        ],
+        ]],
     );
 
     debug!("make_shim({:?}) = {:?}", instance, result);
 
-    result.ensure_predecessors();
-    tcx.arena.alloc(result)
+    result
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -146,33 +146,16 @@ enum CallKind {
     Direct(DefId),
 }
 
-fn temp_decl(mutability: Mutability, ty: Ty<'_>, span: Span) -> LocalDecl<'_> {
-    let source_info = SourceInfo { scope: OUTERMOST_SOURCE_SCOPE, span };
-    LocalDecl {
-        mutability,
-        ty,
-        user_ty: UserTypeProjections::none(),
-        source_info,
-        internal: false,
-        local_info: LocalInfo::Other,
-        is_block_tail: None,
-    }
-}
-
 fn local_decls_for_sig<'tcx>(
     sig: &ty::FnSig<'tcx>,
     span: Span,
 ) -> IndexVec<Local, LocalDecl<'tcx>> {
-    iter::once(temp_decl(Mutability::Mut, sig.output(), span))
-        .chain(sig.inputs().iter().map(|ity| temp_decl(Mutability::Not, ity, span)))
+    iter::once(LocalDecl::new(sig.output(), span))
+        .chain(sig.inputs().iter().map(|ity| LocalDecl::new(ity, span).immutable()))
         .collect()
 }
 
-fn build_drop_shim<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    def_id: DefId,
-    ty: Option<Ty<'tcx>>,
-) -> BodyAndCache<'tcx> {
+fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>) -> Body<'tcx> {
     debug!("build_drop_shim(def_id={:?}, ty={:?})", def_id, ty);
 
     // Check if this is a generator, if so, return the drop glue for it
@@ -190,7 +173,7 @@ fn build_drop_shim<'tcx>(
     let sig = tcx.erase_late_bound_regions(&sig);
     let span = tcx.def_span(def_id);
 
-    let source_info = SourceInfo { span, scope: OUTERMOST_SOURCE_SCOPE };
+    let source_info = SourceInfo::outermost(span);
 
     let return_block = BasicBlock::new(1);
     let mut blocks = IndexVec::with_capacity(2);
@@ -204,9 +187,7 @@ fn build_drop_shim<'tcx>(
     block(&mut blocks, TerminatorKind::Goto { target: return_block });
     block(&mut blocks, TerminatorKind::Return);
 
-    let body = new_body(blocks, local_decls_for_sig(&sig, span), sig.inputs().len(), span);
-
-    let mut body = BodyAndCache::new(body);
+    let mut body = new_body(blocks, local_decls_for_sig(&sig, span), sig.inputs().len(), span);
 
     if let Some(..) = ty {
         // The first argument (index 0), but add 1 for the return value.
@@ -296,7 +277,18 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for DropShimElaborator<'a, 'tcx> {
     }
 
     fn drop_style(&self, _path: Self::Path, mode: DropFlagMode) -> DropStyle {
-        if let DropFlagMode::Shallow = mode { DropStyle::Static } else { DropStyle::Open }
+        match mode {
+            DropFlagMode::Shallow => {
+                // Drops for the contained fields are "shallow" and "static" - they will simply call
+                // the field's own drop glue.
+                DropStyle::Static
+            }
+            DropFlagMode::Deep => {
+                // The top-level drop is "deep" and "open" - it will be elaborated to a drop ladder
+                // dropping each field contained in the value.
+                DropStyle::Open
+            }
+        }
     }
 
     fn get_drop_flag(&mut self, _path: Self::Path) -> Option<Operand<'tcx>> {
@@ -320,11 +312,7 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for DropShimElaborator<'a, 'tcx> {
 }
 
 /// Builds a `Clone::clone` shim for `self_ty`. Here, `def_id` is `Clone::clone`.
-fn build_clone_shim<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    def_id: DefId,
-    self_ty: Ty<'tcx>,
-) -> BodyAndCache<'tcx> {
+fn build_clone_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -> Body<'tcx> {
     debug!("build_clone_shim(def_id={:?})", def_id);
 
     let param_env = tcx.param_env(def_id);
@@ -348,7 +336,7 @@ fn build_clone_shim<'tcx>(
         _ => bug!("clone shim for `{:?}` which is not `Copy` and is not an aggregate", self_ty),
     };
 
-    BodyAndCache::new(builder.into_mir())
+    builder.into_mir()
 }
 
 struct CloneShimBuilder<'tcx> {
@@ -385,7 +373,7 @@ impl CloneShimBuilder<'tcx> {
     }
 
     fn source_info(&self) -> SourceInfo {
-        SourceInfo { span: self.span, scope: OUTERMOST_SOURCE_SCOPE }
+        SourceInfo::outermost(self.span)
     }
 
     fn block(
@@ -425,7 +413,11 @@ impl CloneShimBuilder<'tcx> {
 
     fn make_place(&mut self, mutability: Mutability, ty: Ty<'tcx>) -> Place<'tcx> {
         let span = self.span;
-        Place::from(self.local_decls.push(temp_decl(mutability, ty, span)))
+        let mut local = LocalDecl::new(ty, span);
+        if mutability == Mutability::Not {
+            local = local.immutable();
+        }
+        Place::from(self.local_decls.push(local))
     }
 
     fn make_clone_call(
@@ -509,7 +501,7 @@ impl CloneShimBuilder<'tcx> {
         let tcx = self.tcx;
         let span = self.span;
 
-        let beg = self.local_decls.push(temp_decl(Mutability::Mut, tcx.types.usize, span));
+        let beg = self.local_decls.push(LocalDecl::new(tcx.types.usize, span));
         let end = self.make_place(Mutability::Not, tcx.types.usize);
 
         // BB #0
@@ -538,7 +530,7 @@ impl CloneShimBuilder<'tcx> {
         // BB #2
         // `dest[i] = Clone::clone(src[beg])`;
         // Goto #3 if ok, #5 if unwinding happens.
-        let dest_field = self.tcx.mk_place_index(dest.clone(), beg);
+        let dest_field = self.tcx.mk_place_index(dest, beg);
         let src_field = self.tcx.mk_place_index(src, beg);
         self.make_clone_call(dest_field, src_field, ty, BasicBlock::new(3), BasicBlock::new(5));
 
@@ -564,7 +556,7 @@ impl CloneShimBuilder<'tcx> {
         // `let mut beg = 0;`
         // goto #6;
         let end = beg;
-        let beg = self.local_decls.push(temp_decl(Mutability::Mut, tcx.types.usize, span));
+        let beg = self.local_decls.push(LocalDecl::new(tcx.types.usize, span));
         let init = self.make_statement(StatementKind::Assign(box (
             Place::from(beg),
             Rvalue::Use(Operand::Constant(self.make_usize(0))),
@@ -620,9 +612,9 @@ impl CloneShimBuilder<'tcx> {
         let mut previous_field = None;
         for (i, ity) in tys.enumerate() {
             let field = Field::new(i);
-            let src_field = self.tcx.mk_place_field(src.clone(), field, ity);
+            let src_field = self.tcx.mk_place_field(src, field, ity);
 
-            let dest_field = self.tcx.mk_place_field(dest.clone(), field, ity);
+            let dest_field = self.tcx.mk_place_field(dest, field, ity);
 
             // #(2i + 1) is the cleanup block for the previous clone operation
             let cleanup_block = self.block_index_offset(1);
@@ -633,7 +625,7 @@ impl CloneShimBuilder<'tcx> {
             // BB #(2i)
             // `dest.i = Clone::clone(&src.i);`
             // Goto #(2i + 2) if ok, #(2i + 1) if unwinding happens.
-            self.make_clone_call(dest_field.clone(), src_field, ity, next_block, cleanup_block);
+            self.make_clone_call(dest_field, src_field, ity, next_block, cleanup_block);
 
             // BB #(2i + 1) (cleanup)
             if let Some((previous_field, previous_cleanup)) = previous_field.take() {
@@ -671,7 +663,7 @@ fn build_call_shim<'tcx>(
     rcvr_adjustment: Option<Adjustment>,
     call_kind: CallKind,
     untuple_args: Option<&[Ty<'tcx>]>,
-) -> BodyAndCache<'tcx> {
+) -> Body<'tcx> {
     debug!(
         "build_call_shim(instance={:?}, rcvr_adjustment={:?}, \
             call_kind={:?}, untuple_args={:?})",
@@ -698,7 +690,7 @@ fn build_call_shim<'tcx>(
     debug!("build_call_shim: sig={:?}", sig);
 
     let mut local_decls = local_decls_for_sig(&sig, span);
-    let source_info = SourceInfo { span, scope: OUTERMOST_SOURCE_SCOPE };
+    let source_info = SourceInfo::outermost(span);
 
     let rcvr_place = || {
         assert!(rcvr_adjustment.is_some());
@@ -708,18 +700,20 @@ fn build_call_shim<'tcx>(
 
     let rcvr = rcvr_adjustment.map(|rcvr_adjustment| match rcvr_adjustment {
         Adjustment::Identity => Operand::Move(rcvr_place()),
-        Adjustment::Deref => Operand::Copy(tcx.mk_place_deref(rcvr_place())),
+        Adjustment::Deref => Operand::Move(tcx.mk_place_deref(rcvr_place())), // Can't copy `&mut`
         Adjustment::DerefMove => Operand::Move(tcx.mk_place_deref(rcvr_place())),
         Adjustment::RefMut => {
             // let rcvr = &mut rcvr;
-            let ref_rcvr = local_decls.push(temp_decl(
-                Mutability::Not,
-                tcx.mk_ref(
-                    tcx.lifetimes.re_erased,
-                    ty::TypeAndMut { ty: sig.inputs()[0], mutbl: hir::Mutability::Mut },
-                ),
-                span,
-            ));
+            let ref_rcvr = local_decls.push(
+                LocalDecl::new(
+                    tcx.mk_ref(
+                        tcx.lifetimes.re_erased,
+                        ty::TypeAndMut { ty: sig.inputs()[0], mutbl: hir::Mutability::Mut },
+                    ),
+                    span,
+                )
+                .immutable(),
+            );
             let borrow_kind = BorrowKind::Mut { allow_two_phase_borrow: false };
             statements.push(Statement {
                 source_info,
@@ -835,10 +829,11 @@ fn build_call_shim<'tcx>(
     if let Abi::RustCall = sig.abi {
         body.spread_arg = Some(Local::new(sig.inputs().len()));
     }
-    BodyAndCache::new(body)
+
+    body
 }
 
-pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> &BodyAndCache<'_> {
+pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
     debug_assert!(tcx.is_constructor(ctor_id));
 
     let span =
@@ -859,7 +854,7 @@ pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> &BodyAndCache<'_> {
 
     let local_decls = local_decls_for_sig(&sig, span);
 
-    let source_info = SourceInfo { span, scope: OUTERMOST_SOURCE_SCOPE };
+    let source_info = SourceInfo::outermost(span);
 
     let variant_index = if adt_def.is_enum() {
         adt_def.variant_index_with_ctor_id(ctor_id)
@@ -905,7 +900,5 @@ pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> &BodyAndCache<'_> {
         |_, _| Ok(()),
     );
 
-    let mut body = BodyAndCache::new(body);
-    body.ensure_predecessors();
-    tcx.arena.alloc(body)
+    body
 }

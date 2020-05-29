@@ -224,6 +224,11 @@ impl LocalDefId {
     pub fn to_def_id(self) -> DefId {
         DefId { krate: LOCAL_CRATE, index: self.local_def_index }
     }
+
+    #[inline]
+    pub fn is_top_level_module(self) -> bool {
+        self.local_def_index == CRATE_DEF_INDEX
+    }
 }
 
 impl fmt::Debug for LocalDefId {

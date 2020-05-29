@@ -2,7 +2,7 @@ error[E0277]: expected a `std::ops::Fn<()>` closure, found `extern "C" fn() {f}`
   --> $DIR/extern-wrong-value-type.rs:9:11
    |
 LL | fn is_fn<F>(_: F) where F: Fn() {}
-   |    -----                   ---- required by this bound in `is_fn`
+   |                            ---- required by this bound in `is_fn`
 ...
 LL |     is_fn(f);
    |           ^ expected an `Fn<()>` closure, found `extern "C" fn() {f}`

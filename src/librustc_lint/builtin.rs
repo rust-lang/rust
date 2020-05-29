@@ -28,8 +28,8 @@ use rustc_ast::visit::{FnCtxt, FnKind};
 use rustc_ast_pretty::pprust::{self, expr_to_string};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, DiagnosticBuilder};
-use rustc_feature::Stability;
 use rustc_feature::{deprecated_attributes, AttributeGate, AttributeTemplate, AttributeType};
+use rustc_feature::{GateIssue, Stability};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -41,7 +41,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::lint::FutureIncompatibleInfo;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, Span};
 use rustc_target::abi::VariantIdx;
 use rustc_trait_selection::traits::misc::can_type_implement_copy;
@@ -436,7 +436,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
                 // If the trait is private, add the impl items to `private_traits` so they don't get
                 // reported for missing docs.
                 let real_trait = trait_ref.path.res.def_id();
-                if let Some(hir_id) = cx.tcx.hir().as_local_hir_id(real_trait) {
+                if let Some(def_id) = real_trait.as_local() {
+                    let hir_id = cx.tcx.hir().as_local_hir_id(def_id);
                     if let Some(Node::Item(item)) = cx.tcx.hir().find(hir_id) {
                         if let hir::VisibilityKind::Inherited = item.vis.node {
                             for impl_item_ref in items {
@@ -461,7 +462,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
         };
 
         let def_id = cx.tcx.hir().local_def_id(it.hir_id);
-        let (article, desc) = cx.tcx.article_and_description(def_id);
+        let (article, desc) = cx.tcx.article_and_description(def_id.to_def_id());
 
         self.check_missing_docs_attrs(cx, Some(it.hir_id), &it.attrs, it.span, article, desc);
     }
@@ -472,7 +473,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
         }
 
         let def_id = cx.tcx.hir().local_def_id(trait_item.hir_id);
-        let (article, desc) = cx.tcx.article_and_description(def_id);
+        let (article, desc) = cx.tcx.article_and_description(def_id.to_def_id());
 
         self.check_missing_docs_attrs(
             cx,
@@ -491,7 +492,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
         }
 
         let def_id = cx.tcx.hir().local_def_id(impl_item.hir_id);
-        let (article, desc) = cx.tcx.article_and_description(def_id);
+        let (article, desc) = cx.tcx.article_and_description(def_id.to_def_id());
         self.check_missing_docs_attrs(
             cx,
             Some(impl_item.hir_id),
@@ -609,8 +610,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDebugImplementations {
             let mut impls = HirIdSet::default();
             cx.tcx.for_each_impl(debug, |d| {
                 if let Some(ty_def) = cx.tcx.type_of(d).ty_adt_def() {
-                    if let Some(hir_id) = cx.tcx.hir().as_local_hir_id(ty_def.did) {
-                        impls.insert(hir_id);
+                    if let Some(def_id) = ty_def.did.as_local() {
+                        impls.insert(cx.tcx.hir().as_local_hir_id(def_id));
                     }
                 }
             });
@@ -1166,7 +1167,7 @@ declare_lint_pass!(
 );
 
 fn check_const(cx: &LateContext<'_, '_>, body_id: hir::BodyId) {
-    let def_id = cx.tcx.hir().body_owner_def_id(body_id);
+    let def_id = cx.tcx.hir().body_owner_def_id(body_id).to_def_id();
     // trigger the query once for all constants since that will already report the errors
     // FIXME: Use ensure here
     let _ = cx.tcx.const_eval_poly(def_id);
@@ -1201,13 +1202,13 @@ declare_lint_pass!(
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TrivialConstraints {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::Item<'tcx>) {
         use rustc_middle::ty::fold::TypeFoldable;
-        use rustc_middle::ty::Predicate::*;
+        use rustc_middle::ty::PredicateKind::*;
 
         if cx.tcx.features().trivial_bounds {
             let def_id = cx.tcx.hir().local_def_id(item.hir_id);
             let predicates = cx.tcx.predicates_of(def_id);
             for &(predicate, span) in predicates.predicates {
-                let predicate_kind_name = match predicate {
+                let predicate_kind_name = match predicate.kind() {
                     Trait(..) => "Trait",
                     TypeOutlives(..) |
                     RegionOutlives(..) => "Lifetime",
@@ -1220,7 +1221,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TrivialConstraints {
                     ObjectSafe(..) |
                     ClosureKind(..) |
                     Subtype(..) |
-                    ConstEvaluatable(..) => continue,
+                    ConstEvaluatable(..) |
+                    ConstEquate(..) => continue,
                 };
                 if predicate.is_global() {
                     cx.struct_span_lint(TRIVIAL_BOUNDS, span, |lint| {
@@ -1354,7 +1356,7 @@ declare_lint! {
 }
 
 pub struct UnnameableTestItems {
-    boundary: hir::HirId, // HirId of the item under which things are not nameable
+    boundary: Option<hir::HirId>, // HirId of the item under which things are not nameable
     items_nameable: bool,
 }
 
@@ -1362,7 +1364,7 @@ impl_lint_pass!(UnnameableTestItems => [UNNAMEABLE_TEST_ITEMS]);
 
 impl UnnameableTestItems {
     pub fn new() -> Self {
-        Self { boundary: hir::DUMMY_HIR_ID, items_nameable: true }
+        Self { boundary: None, items_nameable: true }
     }
 }
 
@@ -1372,7 +1374,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnnameableTestItems {
             if let hir::ItemKind::Mod(..) = it.kind {
             } else {
                 self.items_nameable = false;
-                self.boundary = it.hir_id;
+                self.boundary = Some(it.hir_id);
             }
             return;
         }
@@ -1385,7 +1387,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnnameableTestItems {
     }
 
     fn check_item_post(&mut self, _cx: &LateContext<'_, '_>, it: &hir::Item<'_>) {
-        if !self.items_nameable && self.boundary == it.hir_id {
+        if !self.items_nameable && self.boundary == Some(it.hir_id) {
             self.items_nameable = true;
         }
     }
@@ -1427,7 +1429,7 @@ impl KeywordIdents {
         &mut self,
         cx: &EarlyContext<'_>,
         UnderMacro(under_macro): UnderMacro,
-        ident: ast::Ident,
+        ident: Ident,
     ) {
         let next_edition = match cx.sess.edition() {
             Edition::Edition2015 => {
@@ -1481,7 +1483,7 @@ impl EarlyLintPass for KeywordIdents {
     fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &ast::MacCall) {
         self.check_tokens(cx, mac.args.inner_tokens());
     }
-    fn check_ident(&mut self, cx: &EarlyContext<'_>, ident: ast::Ident) {
+    fn check_ident(&mut self, cx: &EarlyContext<'_>, ident: Ident) {
         self.check_ident_token(cx, UnderMacro(false), ident);
     }
 }
@@ -1495,8 +1497,8 @@ impl ExplicitOutlivesRequirements {
     ) -> Vec<ty::Region<'tcx>> {
         inferred_outlives
             .iter()
-            .filter_map(|(pred, _)| match pred {
-                ty::Predicate::RegionOutlives(outlives) => {
+            .filter_map(|(pred, _)| match pred.kind() {
+                ty::PredicateKind::RegionOutlives(outlives) => {
                     let outlives = outlives.skip_binder();
                     match outlives.0 {
                         ty::ReEarlyBound(ebr) if ebr.index == index => Some(outlives.1),
@@ -1514,8 +1516,8 @@ impl ExplicitOutlivesRequirements {
     ) -> Vec<ty::Region<'tcx>> {
         inferred_outlives
             .iter()
-            .filter_map(|(pred, _)| match pred {
-                ty::Predicate::TypeOutlives(outlives) => {
+            .filter_map(|(pred, _)| match pred.kind() {
+                ty::PredicateKind::TypeOutlives(outlives) => {
                     let outlives = outlives.skip_binder();
                     outlives.0.is_param(index).then_some(outlives.1)
                 }
@@ -1531,7 +1533,8 @@ impl ExplicitOutlivesRequirements {
         inferred_outlives: &'tcx [(ty::Predicate<'tcx>, Span)],
         ty_generics: &'tcx ty::Generics,
     ) -> Vec<ty::Region<'tcx>> {
-        let index = ty_generics.param_def_id_to_index[&tcx.hir().local_def_id(param.hir_id)];
+        let index =
+            ty_generics.param_def_id_to_index[&tcx.hir().local_def_id(param.hir_id).to_def_id()];
 
         match param.kind {
             hir::GenericParamKind::Lifetime { .. } => {
@@ -1815,13 +1818,21 @@ impl EarlyLintPass for IncompleteFeatures {
             .map(|(name, span, _)| (name, span))
             .chain(features.declared_lib_features.iter().map(|(name, span)| (name, span)))
             .filter(|(name, _)| rustc_feature::INCOMPLETE_FEATURES.iter().any(|f| name == &f))
-            .for_each(|(name, &span)| {
+            .for_each(|(&name, &span)| {
                 cx.struct_span_lint(INCOMPLETE_FEATURES, span, |lint| {
-                    lint.build(&format!(
-                        "the feature `{}` is incomplete and may cause the compiler to crash",
+                    let mut builder = lint.build(&format!(
+                        "the feature `{}` is incomplete and may not be safe to use \
+                         and/or cause compiler crashes",
                         name,
-                    ))
-                    .emit()
+                    ));
+                    if let Some(n) = rustc_feature::find_feature_issue(name, GateIssue::Language) {
+                        builder.note(&format!(
+                            "see issue #{} <https://github.com/rust-lang/rust/issues/{}> \
+                             for more information",
+                            n, n,
+                        ));
+                    }
+                    builder.emit();
                 })
             });
     }

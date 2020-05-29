@@ -146,6 +146,7 @@ use core::ptr::{self, NonNull, Unique};
 use core::task::{Context, Poll};
 
 use crate::alloc::{self, AllocInit, AllocRef, Global};
+use crate::borrow::Cow;
 use crate::raw_vec::RawVec;
 use crate::str::from_boxed_utf8_unchecked;
 use crate::vec::Vec;
@@ -238,6 +239,16 @@ impl<T> Box<T> {
     #[inline(always)]
     pub fn pin(x: T) -> Pin<Box<T>> {
         (box x).into()
+    }
+
+    /// Converts a `Box<T>` into a `Box<[T]>`
+    ///
+    /// This conversion does not allocate on the heap and happens in place.
+    ///
+    #[unstable(feature = "box_into_boxed_slice", issue = "71582")]
+    pub fn into_boxed_slice(boxed: Box<T>) -> Box<[T]> {
+        // *mut T and *mut [T; 1] have the same size and alignment
+        unsafe { Box::from_raw(Box::into_raw(boxed) as *mut [T; 1] as *mut [T]) }
     }
 }
 
@@ -428,7 +439,12 @@ impl<T: ?Sized> Box<T> {
     #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
     pub fn into_raw(b: Box<T>) -> *mut T {
-        Box::into_raw_non_null(b).as_ptr()
+        // Box is recognized as a "unique pointer" by Stacked Borrows, but internally it is a
+        // raw pointer for the type system. Turning it directly into a raw pointer would not be
+        // recognized as "releasing" the unique pointer to permit aliased raw accesses,
+        // so all raw pointer methods go through `leak` which creates a (unique)
+        // mutable reference. Turning *that* to a raw pointer behaves correctly.
+        Box::leak(b) as *mut T
     }
 
     /// Consumes the `Box`, returning the wrapped pointer as `NonNull<T>`.
@@ -451,6 +467,7 @@ impl<T: ?Sized> Box<T> {
     ///
     /// ```
     /// #![feature(box_into_raw_non_null)]
+    /// #![allow(deprecated)]
     ///
     /// let x = Box::new(5);
     /// let ptr = Box::into_raw_non_null(x);
@@ -460,24 +477,34 @@ impl<T: ?Sized> Box<T> {
     /// let x = unsafe { Box::from_raw(ptr.as_ptr()) };
     /// ```
     #[unstable(feature = "box_into_raw_non_null", issue = "47336")]
+    #[rustc_deprecated(
+        since = "1.44.0",
+        reason = "use `Box::leak(b).into()` or `NonNull::from(Box::leak(b))` instead"
+    )]
     #[inline]
     pub fn into_raw_non_null(b: Box<T>) -> NonNull<T> {
-        Box::into_unique(b).into()
+        // Box is recognized as a "unique pointer" by Stacked Borrows, but internally it is a
+        // raw pointer for the type system. Turning it directly into a raw pointer would not be
+        // recognized as "releasing" the unique pointer to permit aliased raw accesses,
+        // so all raw pointer methods go through `leak` which creates a (unique)
+        // mutable reference. Turning *that* to a raw pointer behaves correctly.
+        Box::leak(b).into()
     }
 
-    #[unstable(feature = "ptr_internals", issue = "none", reason = "use into_raw_non_null instead")]
+    #[unstable(
+        feature = "ptr_internals",
+        issue = "none",
+        reason = "use `Box::leak(b).into()` or `Unique::from(Box::leak(b))` instead"
+    )]
     #[inline]
     #[doc(hidden)]
     pub fn into_unique(b: Box<T>) -> Unique<T> {
-        let b = mem::ManuallyDrop::new(b);
-        let mut unique = b.0;
-        // Box is kind-of a library type, but recognized as a "unique pointer" by
-        // Stacked Borrows.  This function here corresponds to "reborrowing to
-        // a raw pointer", but there is no actual reborrow here -- so
-        // without some care, the pointer we are returning here still carries
-        // the tag of `b`, with `Unique` permission.
-        // We round-trip through a mutable reference to avoid that.
-        unsafe { Unique::new_unchecked(unique.as_mut() as *mut T) }
+        // Box is recognized as a "unique pointer" by Stacked Borrows, but internally it is a
+        // raw pointer for the type system. Turning it directly into a raw pointer would not be
+        // recognized as "releasing" the unique pointer to permit aliased raw accesses,
+        // so all raw pointer methods go through `leak` which creates a (unique)
+        // mutable reference. Turning *that* to a raw pointer behaves correctly.
+        Box::leak(b).into()
     }
 
     /// Consumes and leaks the `Box`, returning a mutable reference,
@@ -523,7 +550,7 @@ impl<T: ?Sized> Box<T> {
     where
         T: 'a, // Technically not needed, but kept to be explicit.
     {
-        unsafe { &mut *Box::into_raw(b) }
+        unsafe { &mut *mem::ManuallyDrop::new(b).0.as_ptr() }
     }
 
     /// Converts a `Box<T>` into a `Pin<Box<T>>`
@@ -774,6 +801,17 @@ impl<T: Copy> From<&[T]> for Box<[T]> {
     }
 }
 
+#[stable(feature = "box_from_cow", since = "1.45.0")]
+impl<T: Copy> From<Cow<'_, [T]>> for Box<[T]> {
+    #[inline]
+    fn from(cow: Cow<'_, [T]>) -> Box<[T]> {
+        match cow {
+            Cow::Borrowed(slice) => Box::from(slice),
+            Cow::Owned(slice) => Box::from(slice),
+        }
+    }
+}
+
 #[stable(feature = "box_from_slice", since = "1.17.0")]
 impl From<&str> for Box<str> {
     /// Converts a `&str` into a `Box<str>`
@@ -789,6 +827,17 @@ impl From<&str> for Box<str> {
     #[inline]
     fn from(s: &str) -> Box<str> {
         unsafe { from_boxed_utf8_unchecked(Box::from(s.as_bytes())) }
+    }
+}
+
+#[stable(feature = "box_from_cow", since = "1.45.0")]
+impl From<Cow<'_, str>> for Box<str> {
+    #[inline]
+    fn from(cow: Cow<'_, str>) -> Box<str> {
+        match cow {
+            Cow::Borrowed(s) => Box::from(s),
+            Cow::Owned(s) => Box::from(s),
+        }
     }
 }
 

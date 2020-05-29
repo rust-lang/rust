@@ -2,19 +2,29 @@ use crate::dep_graph::DepNodeIndex;
 use crate::query::plumbing::{QueryLookup, QueryState};
 use crate::query::QueryContext;
 
+use arena::TypedArena;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sharded::Sharded;
+use rustc_data_structures::sync::WorkerLocal;
 use std::default::Default;
 use std::hash::Hash;
 use std::marker::PhantomData;
 
-pub trait CacheSelector<K: Hash, V> {
-    type Cache: QueryCache<Key = K, Value = V>;
+pub trait CacheSelector<K, V> {
+    type Cache;
 }
 
-pub trait QueryCache: Default {
-    type Key: Hash;
+pub trait QueryStorage: Default {
     type Value;
+    type Stored: Clone;
+
+    /// Store a value without putting it in the cache.
+    /// This is meant to be used with cycle errors.
+    fn store_nocache(&self, value: Self::Value) -> Self::Stored;
+}
+
+pub trait QueryCache: QueryStorage {
+    type Key: Hash;
     type Sharded: Default;
 
     /// Checks if the query is already computed and in the cache.
@@ -30,7 +40,7 @@ pub trait QueryCache: Default {
         on_miss: OnMiss,
     ) -> R
     where
-        OnHit: FnOnce(&Self::Value, DepNodeIndex) -> R,
+        OnHit: FnOnce(&Self::Stored, DepNodeIndex) -> R,
         OnMiss: FnOnce(Self::Key, QueryLookup<'_, CTX, Self::Key, Self::Sharded>) -> R;
 
     fn complete<CTX: QueryContext>(
@@ -40,7 +50,7 @@ pub trait QueryCache: Default {
         key: Self::Key,
         value: Self::Value,
         index: DepNodeIndex,
-    );
+    ) -> Self::Stored;
 
     fn iter<R, L>(
         &self,
@@ -66,9 +76,19 @@ impl<K, V> Default for DefaultCache<K, V> {
     }
 }
 
+impl<K: Eq + Hash, V: Clone> QueryStorage for DefaultCache<K, V> {
+    type Value = V;
+    type Stored = V;
+
+    #[inline]
+    fn store_nocache(&self, value: Self::Value) -> Self::Stored {
+        // We have no dedicated storage
+        value
+    }
+}
+
 impl<K: Eq + Hash, V: Clone> QueryCache for DefaultCache<K, V> {
     type Key = K;
-    type Value = V;
     type Sharded = FxHashMap<K, (V, DepNodeIndex)>;
 
     #[inline(always)]
@@ -99,8 +119,94 @@ impl<K: Eq + Hash, V: Clone> QueryCache for DefaultCache<K, V> {
         key: K,
         value: V,
         index: DepNodeIndex,
-    ) {
-        lock_sharded_storage.insert(key, (value, index));
+    ) -> Self::Stored {
+        lock_sharded_storage.insert(key, (value.clone(), index));
+        value
+    }
+
+    fn iter<R, L>(
+        &self,
+        shards: &Sharded<L>,
+        get_shard: impl Fn(&mut L) -> &mut Self::Sharded,
+        f: impl for<'a> FnOnce(Box<dyn Iterator<Item = (&'a K, &'a V, DepNodeIndex)> + 'a>) -> R,
+    ) -> R {
+        let mut shards = shards.lock_shards();
+        let mut shards: Vec<_> = shards.iter_mut().map(|shard| get_shard(shard)).collect();
+        let results = shards.iter_mut().flat_map(|shard| shard.iter()).map(|(k, v)| (k, &v.0, v.1));
+        f(Box::new(results))
+    }
+}
+
+pub struct ArenaCacheSelector<'tcx>(PhantomData<&'tcx ()>);
+
+impl<'tcx, K: Eq + Hash, V: 'tcx> CacheSelector<K, V> for ArenaCacheSelector<'tcx> {
+    type Cache = ArenaCache<'tcx, K, V>;
+}
+
+pub struct ArenaCache<'tcx, K, V> {
+    arena: WorkerLocal<TypedArena<(V, DepNodeIndex)>>,
+    phantom: PhantomData<(K, &'tcx V)>,
+}
+
+impl<'tcx, K, V> Default for ArenaCache<'tcx, K, V> {
+    fn default() -> Self {
+        ArenaCache { arena: WorkerLocal::new(|_| TypedArena::default()), phantom: PhantomData }
+    }
+}
+
+impl<'tcx, K: Eq + Hash, V: 'tcx> QueryStorage for ArenaCache<'tcx, K, V> {
+    type Value = V;
+    type Stored = &'tcx V;
+
+    #[inline]
+    fn store_nocache(&self, value: Self::Value) -> Self::Stored {
+        let value = self.arena.alloc((value, DepNodeIndex::INVALID));
+        let value = unsafe { &*(&value.0 as *const _) };
+        &value
+    }
+}
+
+impl<'tcx, K: Eq + Hash, V: 'tcx> QueryCache for ArenaCache<'tcx, K, V> {
+    type Key = K;
+    type Sharded = FxHashMap<K, &'tcx (V, DepNodeIndex)>;
+
+    #[inline(always)]
+    fn lookup<CTX: QueryContext, R, OnHit, OnMiss>(
+        &self,
+        state: &QueryState<CTX, Self>,
+        key: K,
+        on_hit: OnHit,
+        on_miss: OnMiss,
+    ) -> R
+    where
+        OnHit: FnOnce(&&'tcx V, DepNodeIndex) -> R,
+        OnMiss: FnOnce(K, QueryLookup<'_, CTX, K, Self::Sharded>) -> R,
+    {
+        let mut lookup = state.get_lookup(&key);
+        let lock = &mut *lookup.lock;
+
+        let result = lock.cache.raw_entry().from_key_hashed_nocheck(lookup.key_hash, &key);
+
+        if let Some((_, value)) = result {
+            on_hit(&&value.0, value.1)
+        } else {
+            on_miss(key, lookup)
+        }
+    }
+
+    #[inline]
+    fn complete<CTX: QueryContext>(
+        &self,
+        _: CTX,
+        lock_sharded_storage: &mut Self::Sharded,
+        key: K,
+        value: V,
+        index: DepNodeIndex,
+    ) -> Self::Stored {
+        let value = self.arena.alloc((value, index));
+        let value = unsafe { &*(value as *const _) };
+        lock_sharded_storage.insert(key, value);
+        &value.0
     }
 
     fn iter<R, L>(

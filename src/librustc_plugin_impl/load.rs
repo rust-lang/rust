@@ -1,12 +1,12 @@
 //! Used by `rustc` when loading a plugin.
 
 use crate::Registry;
-use rustc_ast::ast::{Crate, Ident};
+use rustc_ast::ast::Crate;
 use rustc_errors::struct_span_err;
 use rustc_metadata::locator;
 use rustc_middle::middle::cstore::MetadataLoader;
 use rustc_session::Session;
-use rustc_span::symbol::sym;
+use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 
 use std::borrow::ToOwned;
@@ -76,7 +76,7 @@ fn dylink_registrar(
     // Make sure the path contains a / or the linker will search for it.
     let path = env::current_dir().unwrap().join(&path);
 
-    let lib = match DynamicLibrary::open(Some(&path)) {
+    let lib = match DynamicLibrary::open(&path) {
         Ok(lib) => lib,
         // this is fatal: there are almost certainly macros we need
         // inside this crate, so continue would spew "macro undefined"

@@ -99,6 +99,11 @@ impl TcpStream {
         Ok(size)
     }
 
+    #[inline]
+    pub fn is_read_vectored(&self) -> bool {
+        true
+    }
+
     pub fn write(&self, buffer: &[u8]) -> io::Result<usize> {
         self.write_vectored(&[IoSlice::new(buffer)])
     }
@@ -112,6 +117,11 @@ impl TcpStream {
         }
 
         Ok(size)
+    }
+
+    #[inline]
+    pub fn is_write_vectored(&self) -> bool {
+        true
     }
 
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {

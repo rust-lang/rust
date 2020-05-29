@@ -50,6 +50,7 @@ const MAXIMUM_ZST_CAPACITY: usize = 1 << (64 - 1); // Largest possible power of 
 /// [`pop_front`]: #method.pop_front
 /// [`extend`]: #method.extend
 /// [`append`]: #method.append
+#[cfg_attr(not(test), rustc_diagnostic_item = "vecdeque_type")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct VecDeque<T> {
     // tail and head are pointers into the buffer. Tail always points
@@ -72,7 +73,7 @@ pub struct VecDeque<T> {
 /// It produces the following sequence of matching slices:
 ///
 /// ([0 1], [a b])
-/// ([2], [c])
+/// (\[2\], \[c\])
 /// ([3 4], [d e])
 ///
 /// and the uneven remainder of either A or B is skipped.
@@ -488,7 +489,7 @@ impl<T> VecDeque<T> {
         VecDeque { tail: 0, head: 0, buf: RawVec::with_capacity(cap) }
     }
 
-    /// Retrieves an element in the `VecDeque` by index.
+    /// Provides a reference to the element at the given index.
     ///
     /// Element at index 0 is the front of the queue.
     ///
@@ -513,7 +514,7 @@ impl<T> VecDeque<T> {
         }
     }
 
-    /// Retrieves an element in the `VecDeque` mutably by index.
+    /// Provides a mutable reference to the element at the given index.
     ///
     /// Element at index 0 is the front of the queue.
     ///
@@ -651,7 +652,7 @@ impl<T> VecDeque<T> {
         }
     }
 
-    /// Tries to reserves the minimum capacity for exactly `additional` more elements to
+    /// Tries to reserve the minimum capacity for exactly `additional` more elements to
     /// be inserted in the given `VecDeque<T>`. After calling `reserve_exact`,
     /// capacity will be greater than or equal to `self.len() + additional`.
     /// Does nothing if the capacity is already sufficient.
@@ -662,7 +663,7 @@ impl<T> VecDeque<T> {
     ///
     /// # Errors
     ///
-    /// If the capacity overflows, or the allocator reports a failure, then an error
+    /// If the capacity overflows `usize`, or the allocator reports a failure, then an error
     /// is returned.
     ///
     /// # Examples
@@ -678,7 +679,7 @@ impl<T> VecDeque<T> {
     ///     // Pre-reserve the memory, exiting if we can't
     ///     output.try_reserve_exact(data.len())?;
     ///
-    ///     // Now we know this can't OOM in the middle of our complex work
+    ///     // Now we know this can't OOM(Out-Of-Memory) in the middle of our complex work
     ///     output.extend(data.iter().map(|&val| {
     ///         val * 2 + 5 // very complicated
     ///     }));
@@ -700,7 +701,7 @@ impl<T> VecDeque<T> {
     ///
     /// # Errors
     ///
-    /// If the capacity overflows, or the allocator reports a failure, then an error
+    /// If the capacity overflows `usize`, or the allocator reports a failure, then an error
     /// is returned.
     ///
     /// # Examples
@@ -1353,7 +1354,9 @@ impl<T> VecDeque<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn push_front(&mut self, value: T) {
-        self.grow_if_necessary();
+        if self.is_full() {
+            self.grow();
+        }
 
         self.tail = self.wrap_sub(self.tail, 1);
         let tail = self.tail;
@@ -1376,7 +1379,9 @@ impl<T> VecDeque<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn push_back(&mut self, value: T) {
-        self.grow_if_necessary();
+        if self.is_full() {
+            self.grow();
+        }
 
         let head = self.head;
         self.head = self.wrap_add(self.head, 1);
@@ -1391,7 +1396,7 @@ impl<T> VecDeque<T> {
     /// Removes an element from anywhere in the `VecDeque` and returns it,
     /// replacing it with the first element.
     ///
-    /// This does not preserve ordering, but is O(1).
+    /// This does not preserve ordering, but is `O(1)`.
     ///
     /// Returns `None` if `index` is out of bounds.
     ///
@@ -1426,7 +1431,7 @@ impl<T> VecDeque<T> {
     /// Removes an element from anywhere in the `VecDeque` and returns it, replacing it with the
     /// last element.
     ///
-    /// This does not preserve ordering, but is O(1).
+    /// This does not preserve ordering, but is `O(1)`.
     ///
     /// Returns `None` if `index` is out of bounds.
     ///
@@ -1484,7 +1489,9 @@ impl<T> VecDeque<T> {
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
     pub fn insert(&mut self, index: usize, value: T) {
         assert!(index <= self.len(), "index out of bounds");
-        self.grow_if_necessary();
+        if self.is_full() {
+            self.grow();
+        }
 
         // Move the least number of elements in the ring buffer and insert
         // the given object
@@ -2002,11 +2009,13 @@ impl<T> VecDeque<T> {
     }
 
     // This may panic or abort
-    #[inline]
-    fn grow_if_necessary(&mut self) {
+    #[inline(never)]
+    fn grow(&mut self) {
         if self.is_full() {
             let old_cap = self.cap();
-            self.buf.double();
+            // Double the buffer size.
+            self.buf.reserve_exact(old_cap, old_cap);
+            assert!(self.cap() == old_cap * 2);
             unsafe {
                 self.handle_capacity_increase(old_cap);
             }
@@ -2104,7 +2113,7 @@ impl<T> VecDeque<T> {
     ///     assert_eq!(slice, &[3, 2, 1] as &[_]);
     /// }
     /// ```
-    #[unstable(feature = "deque_make_contiguous", issue = "none")]
+    #[unstable(feature = "deque_make_contiguous", issue = "70929")]
     pub fn make_contiguous(&mut self) -> &mut [T] {
         if self.is_contiguous() {
             let tail = self.tail;
@@ -2927,7 +2936,7 @@ impl<T> From<VecDeque<T>> for Vec<T> {
     /// [`Vec<T>`]: crate::vec::Vec
     /// [`VecDeque<T>`]: crate::collections::VecDeque
     ///
-    /// This never needs to re-allocate, but does need to do O(n) data movement if
+    /// This never needs to re-allocate, but does need to do `O(n)` data movement if
     /// the circular buffer doesn't happen to be at the beginning of the allocation.
     ///
     /// # Examples

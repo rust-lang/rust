@@ -1,0 +1,37 @@
+[package]
+name = "clippy_lints"
+# begin automatic update
+version = "0.0.212"
+# end automatic update
+authors = [
+	"Manish Goregaokar <manishsmail@gmail.com>",
+	"Andre Bogus <bogusandre@gmail.com>",
+	"Georg Brandl <georg@python.org>",
+	"Martin Carton <cartonmartin@gmail.com>"
+]
+description = "A bunch of helpful lints to avoid common pitfalls in Rust"
+repository = "https://github.com/rust-lang/rust-clippy"
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+keywords = ["clippy", "lint", "plugin"]
+edition = "2018"
+
+[dependencies]
+cargo_metadata = "0.9.0"
+if_chain = "1.0.0"
+itertools = "0.9"
+lazy_static = "1.0.2"
+pulldown-cmark = { version = "0.7", default-features = false }
+quine-mc_cluskey = "0.2.2"
+regex-syntax = "0.6"
+serde = { version = "1.0", features = ["derive"] }
+smallvec = { version = "1", features = ["union"] }
+toml = "0.5.3"
+unicode-normalization = "0.1"
+semver = "0.9.0"
+# NOTE: cargo requires serde feat in its url dep
+# see <https://github.com/rust-lang/rust/pull/63587#issuecomment-522343864>
+url = { version =  "2.1.0", features = ["serde"] }
+
+[features]
+deny-warnings = []

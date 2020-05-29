@@ -41,13 +41,13 @@ dlmalloc = { version = "0.1", features = ['rustc-dep-of-std'] }
 fortanix-sgx-abi = { version = "0.3.2", features = ['rustc-dep-of-std'] }
 
 [target.'cfg(all(any(target_arch = "x86_64", target_arch = "aarch64"), target_os = "hermit"))'.dependencies]
-hermit-abi = { version = "0.1.10", features = ['rustc-dep-of-std'] }
+hermit-abi = { version = "0.1.13", features = ['rustc-dep-of-std'] }
 
 [target.wasm32-wasi.dependencies]
 wasi = { version = "0.9.0", features = ['rustc-dep-of-std'], default-features = false }
 
 [features]
-default = ["std_detect_file_io", "std_detect_dlsym_getauxval"]
+default = ["std_detect_file_io", "std_detect_dlsym_getauxval", "panic-unwind"]
 
 backtrace = [
   "backtrace_rs/dbghelp",          # backtrace/symbolize on MSVC

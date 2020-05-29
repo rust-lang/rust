@@ -10,13 +10,13 @@ note: the lint level is defined here
 LL | #![deny(dead_code)]
    |         ^^^^^^^^^
 
-error: static item is never used: `priv_static`
+error: static is never used: `priv_static`
   --> $DIR/lint-dead-code-1.rs:20:1
    |
 LL | static priv_static: isize = 0;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: constant item is never used: `priv_const`
+error: constant is never used: `priv_const`
   --> $DIR/lint-dead-code-1.rs:27:1
    |
 LL | const priv_const: isize = 0;

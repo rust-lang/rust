@@ -4,10 +4,9 @@ use crate::mir::{self, interpret};
 use crate::ty::codec::{self as ty_codec, TyDecoder, TyEncoder};
 use crate::ty::context::TyCtxt;
 use crate::ty::{self, Ty};
-use rustc_ast::ast::Ident;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sync::{HashMapExt, Lock, Lrc, Once};
+use rustc_data_structures::sync::{HashMapExt, Lock, Lrc, OnceCell};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::Diagnostic;
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, LOCAL_CRATE};
@@ -20,6 +19,7 @@ use rustc_serialize::{
 use rustc_session::{CrateDisambiguator, Session};
 use rustc_span::hygiene::{ExpnId, SyntaxContext};
 use rustc_span::source_map::{SourceMap, StableSourceFileId};
+use rustc_span::symbol::Ident;
 use rustc_span::CachingSourceMapView;
 use rustc_span::{BytePos, SourceFile, Span, DUMMY_SP};
 use std::mem;
@@ -49,7 +49,7 @@ pub struct OnDiskCache<'sess> {
     current_diagnostics: Lock<FxHashMap<DepNodeIndex, Vec<Diagnostic>>>,
 
     prev_cnums: Vec<(u32, String, CrateDisambiguator)>,
-    cnum_map: Once<IndexVec<CrateNum, Option<CrateNum>>>,
+    cnum_map: OnceCell<IndexVec<CrateNum, Option<CrateNum>>>,
 
     source_map: &'sess SourceMap,
     file_index_to_stable_id: FxHashMap<SourceFileIndex, StableSourceFileId>,
@@ -128,7 +128,7 @@ impl<'sess> OnDiskCache<'sess> {
             file_index_to_stable_id: footer.file_index_to_stable_id,
             file_index_to_file: Default::default(),
             prev_cnums: footer.prev_cnums,
-            cnum_map: Once::new(),
+            cnum_map: OnceCell::new(),
             source_map: sess.source_map(),
             current_diagnostics: Default::default(),
             query_result_index: footer.query_result_index.into_iter().collect(),
@@ -144,7 +144,7 @@ impl<'sess> OnDiskCache<'sess> {
             file_index_to_stable_id: Default::default(),
             file_index_to_file: Default::default(),
             prev_cnums: vec![],
-            cnum_map: Once::new(),
+            cnum_map: OnceCell::new(),
             source_map,
             current_diagnostics: Default::default(),
             query_result_index: Default::default(),
@@ -370,14 +370,14 @@ impl<'sess> OnDiskCache<'sess> {
     {
         let pos = index.get(&dep_node_index).cloned()?;
 
-        // Initialize `cnum_map` using the value from the thread that finishes the closure first.
-        self.cnum_map.init_nonlocking_same(|| Self::compute_cnum_map(tcx, &self.prev_cnums[..]));
+        let cnum_map =
+            self.cnum_map.get_or_init(|| Self::compute_cnum_map(tcx, &self.prev_cnums[..]));
 
         let mut decoder = CacheDecoder {
             tcx,
             opaque: opaque::Decoder::new(&self.serialized_data[..], pos.to_usize()),
             source_map: self.source_map,
-            cnum_map: self.cnum_map.get(),
+            cnum_map,
             synthetic_syntax_contexts: &self.synthetic_syntax_contexts,
             file_index_to_file: &self.file_index_to_file,
             file_index_to_stable_id: &self.file_index_to_stable_id,
@@ -922,6 +922,7 @@ where
 {
     type Error = E::Error;
 
+    #[inline]
     fn emit_unit(&mut self) -> Result<(), Self::Error> {
         Ok(())
     }
@@ -1008,7 +1009,7 @@ where
 
     state.iter_results(|results| {
         for (key, value, dep_node) in results {
-            if Q::cache_on_disk(tcx, key.clone(), Some(&value)) {
+            if Q::cache_on_disk(tcx, &key, Some(&value)) {
                 let dep_node = SerializedDepNodeIndex::new(dep_node.index());
 
                 // Record position of the cache entry.

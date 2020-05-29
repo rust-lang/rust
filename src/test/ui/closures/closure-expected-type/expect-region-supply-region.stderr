@@ -1,87 +1,22 @@
-error: borrowed data cannot be stored outside of its closure
-  --> $DIR/expect-region-supply-region.rs:18:18
+error[E0521]: borrowed data escapes outside of closure
+  --> $DIR/expect-region-supply-region.rs:20:9
    |
 LL |     let mut f: Option<&u32> = None;
-   |         ----- borrowed data cannot be stored into here...
+   |         ----- `f` declared here, outside of the closure body
 LL |     closure_expecting_bound(|x| {
-   |                             --- ...because it cannot outlive this closure
+   |                              - `x` is a reference that is only valid in the closure body
 LL |         f = Some(x);
-   |                  ^ cannot be stored outside of its closure
+   |         ^^^^^^^^^^^ `x` escapes the closure body here
 
-error: borrowed data cannot be stored outside of its closure
-  --> $DIR/expect-region-supply-region.rs:28:18
+error[E0521]: borrowed data escapes outside of closure
+  --> $DIR/expect-region-supply-region.rs:30:9
    |
 LL |     let mut f: Option<&u32> = None;
-   |         ----- borrowed data cannot be stored into here...
+   |         ----- `f` declared here, outside of the closure body
 LL |     closure_expecting_bound(|x: &u32| {
-   |                             --------- ...because it cannot outlive this closure
+   |                              - `x` is a reference that is only valid in the closure body
 LL |         f = Some(x);
-   |                  ^ cannot be stored outside of its closure
+   |         ^^^^^^^^^^^ `x` escapes the closure body here
 
-error[E0308]: mismatched types
-  --> $DIR/expect-region-supply-region.rs:37:33
-   |
-LL |     closure_expecting_bound(|x: &'x u32| {
-   |                                 ^^^^^^^ lifetime mismatch
-   |
-   = note: expected reference `&u32`
-              found reference `&'x u32`
-note: the anonymous lifetime #2 defined on the body at 37:29...
-  --> $DIR/expect-region-supply-region.rs:37:29
-   |
-LL |       closure_expecting_bound(|x: &'x u32| {
-   |  _____________________________^
-LL | |
-LL | |
-LL | |
-...  |
-LL | |
-LL | |     });
-   | |_____^
-note: ...does not necessarily outlive the lifetime `'x` as defined on the function body at 32:30
-  --> $DIR/expect-region-supply-region.rs:32:30
-   |
-LL | fn expect_bound_supply_named<'x>() {
-   |                              ^^
+error: aborting due to 2 previous errors
 
-error[E0308]: mismatched types
-  --> $DIR/expect-region-supply-region.rs:37:33
-   |
-LL |     closure_expecting_bound(|x: &'x u32| {
-   |                                 ^^^^^^^ lifetime mismatch
-   |
-   = note: expected reference `&u32`
-              found reference `&'x u32`
-note: the lifetime `'x` as defined on the function body at 32:30...
-  --> $DIR/expect-region-supply-region.rs:32:30
-   |
-LL | fn expect_bound_supply_named<'x>() {
-   |                              ^^
-note: ...does not necessarily outlive the anonymous lifetime #2 defined on the body at 37:29
-  --> $DIR/expect-region-supply-region.rs:37:29
-   |
-LL |       closure_expecting_bound(|x: &'x u32| {
-   |  _____________________________^
-LL | |
-LL | |
-LL | |
-...  |
-LL | |
-LL | |     });
-   | |_____^
-
-error: borrowed data cannot be stored outside of its closure
-  --> $DIR/expect-region-supply-region.rs:42:18
-   |
-LL |     let mut f: Option<&u32> = None;
-   |         ----- borrowed data cannot be stored into here...
-...
-LL |     closure_expecting_bound(|x: &'x u32| {
-   |                             ------------ ...because it cannot outlive this closure
-...
-LL |         f = Some(x);
-   |                  ^ cannot be stored outside of its closure
-
-error: aborting due to 5 previous errors
-
-For more information about this error, try `rustc --explain E0308`.

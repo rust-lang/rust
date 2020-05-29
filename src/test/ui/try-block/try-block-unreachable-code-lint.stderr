@@ -36,3 +36,5 @@ LL |
 LL |           42
    |           ^^ unreachable expression
 
+warning: 3 warnings emitted
+

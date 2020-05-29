@@ -20,9 +20,10 @@ use rustc_parse::validate_attr;
 use rustc_session::lint::builtin::PATTERNS_IN_FNS_WITHOUT_BODY;
 use rustc_session::lint::LintBuffer;
 use rustc_session::Session;
-use rustc_span::symbol::{kw, sym};
+use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
 use std::mem;
+use std::ops::DerefMut;
 
 const MORE_EXTERN: &str =
     "for more information, visit https://doc.rust-lang.org/std/keyword.extern.html";
@@ -561,28 +562,6 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    /// We currently do not permit const generics in `const fn`,
-    /// as this is tantamount to allowing compile-time dependent typing.
-    ///
-    /// FIXME(const_generics): Is this really true / necessary? Discuss with @varkor.
-    /// At any rate, the restriction feels too syntactic. Consider moving it to e.g. typeck.
-    fn check_const_fn_const_generic(&self, span: Span, sig: &FnSig, generics: &Generics) {
-        if let Const::Yes(const_span) = sig.header.constness {
-            // Look for const generics and error if we find any.
-            for param in &generics.params {
-                if let GenericParamKind::Const { .. } = param.kind {
-                    self.err_handler()
-                        .struct_span_err(
-                            span,
-                            "const parameters are not permitted in const functions",
-                        )
-                        .span_label(const_span, "`const` because of this")
-                        .emit();
-                }
-            }
-        }
-    }
-
     fn check_item_named(&self, ident: Ident, kind: &str) {
         if ident.name != kw::Underscore {
             return;
@@ -591,6 +570,35 @@ impl<'a> AstValidator<'a> {
             .struct_span_err(ident.span, &format!("`{}` items in this context need a name", kind))
             .span_label(ident.span, format!("`_` is not a valid name for this `{}` item", kind))
             .emit();
+    }
+
+    fn check_nomangle_item_asciionly(&self, ident: Ident, item_span: Span) {
+        if ident.name.as_str().is_ascii() {
+            return;
+        }
+        let head_span = self.session.source_map().guess_head_span(item_span);
+        struct_span_err!(
+            self.session,
+            head_span,
+            E0754,
+            "`#[no_mangle]` requires ASCII identifier"
+        )
+        .emit();
+    }
+
+    fn check_mod_file_item_asciionly(&self, ident: Ident) {
+        if ident.name.as_str().is_ascii() {
+            return;
+        }
+        struct_span_err!(
+            self.session,
+            ident.span,
+            E0754,
+            "trying to load file for module `{}` with non ascii identifer name",
+            ident.name
+        )
+        .help("consider using `#[path]` attribute to specify filesystem path")
+        .emit();
     }
 
     fn deny_generic_params(&self, generics: &Generics, ident_span: Span) {
@@ -887,6 +895,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             self.has_proc_macro_decls = true;
         }
 
+        if attr::contains_name(&item.attrs, sym::no_mangle) {
+            self.check_nomangle_item_asciionly(item.ident, item.span);
+        }
+
         match item.kind {
             ItemKind::Impl {
                 unsafety,
@@ -966,9 +978,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         .emit();
                 }
             }
-            ItemKind::Fn(def, ref sig, ref generics, ref body) => {
+            ItemKind::Fn(def, _, _, ref body) => {
                 self.check_defaultness(item.span, def);
-                self.check_const_fn_const_generic(item.span, sig, generics);
 
                 if body.is_none() {
                     let msg = "free function without a body";
@@ -1014,9 +1025,11 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 walk_list!(self, visit_attribute, &item.attrs);
                 return;
             }
-            ItemKind::Mod(_) => {
+            ItemKind::Mod(Mod { inline, .. }) => {
                 // Ensure that `path` attributes on modules are recorded as used (cf. issue #35584).
-                attr::first_attr_value_str_by_name(&item.attrs, sym::path);
+                if !inline && !attr::contains_name(&item.attrs, sym::path) {
+                    self.check_mod_file_item_asciionly(item.ident);
+                }
             }
             ItemKind::Union(ref vdata, _) => {
                 if let VariantData::Tuple(..) | VariantData::Unit(..) = vdata {
@@ -1136,17 +1149,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
         for predicate in &generics.where_clause.predicates {
             if let WherePredicate::EqPredicate(ref predicate) = *predicate {
-                self.err_handler()
-                    .struct_span_err(
-                        predicate.span,
-                        "equality constraints are not yet supported in `where` clauses",
-                    )
-                    .span_label(predicate.span, "not supported")
-                    .note(
-                        "see issue #20041 <https://github.com/rust-lang/rust/issues/20041> \
-                         for more information",
-                    )
-                    .emit();
+                deny_equality_constraints(self, predicate, generics);
             }
         }
 
@@ -1321,6 +1324,89 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
         self.with_in_trait_impl(false, |this| visit::walk_assoc_item(this, item, ctxt));
     }
+}
+
+/// When encountering an equality constraint in a `where` clause, emit an error. If the code seems
+/// like it's setting an associated type, provide an appropriate suggestion.
+fn deny_equality_constraints(
+    this: &mut AstValidator<'_>,
+    predicate: &WhereEqPredicate,
+    generics: &Generics,
+) {
+    let mut err = this.err_handler().struct_span_err(
+        predicate.span,
+        "equality constraints are not yet supported in `where` clauses",
+    );
+    err.span_label(predicate.span, "not supported");
+
+    // Given `<A as Foo>::Bar = RhsTy`, suggest `A: Foo<Bar = RhsTy>`.
+    if let TyKind::Path(Some(qself), full_path) = &predicate.lhs_ty.kind {
+        if let TyKind::Path(None, path) = &qself.ty.kind {
+            match &path.segments[..] {
+                [PathSegment { ident, args: None, .. }] => {
+                    for param in &generics.params {
+                        if param.ident == *ident {
+                            let param = ident;
+                            match &full_path.segments[qself.position..] {
+                                [PathSegment { ident, .. }] => {
+                                    // Make a new `Path` from `foo::Bar` to `Foo<Bar = RhsTy>`.
+                                    let mut assoc_path = full_path.clone();
+                                    // Remove `Bar` from `Foo::Bar`.
+                                    assoc_path.segments.pop();
+                                    let len = assoc_path.segments.len() - 1;
+                                    // Build `<Bar = RhsTy>`.
+                                    let arg = AngleBracketedArg::Constraint(AssocTyConstraint {
+                                        id: rustc_ast::node_id::DUMMY_NODE_ID,
+                                        ident: *ident,
+                                        kind: AssocTyConstraintKind::Equality {
+                                            ty: predicate.rhs_ty.clone(),
+                                        },
+                                        span: ident.span,
+                                    });
+                                    // Add `<Bar = RhsTy>` to `Foo`.
+                                    match &mut assoc_path.segments[len].args {
+                                        Some(args) => match args.deref_mut() {
+                                            GenericArgs::Parenthesized(_) => continue,
+                                            GenericArgs::AngleBracketed(args) => {
+                                                args.args.push(arg);
+                                            }
+                                        },
+                                        empty_args => {
+                                            *empty_args = AngleBracketedArgs {
+                                                span: ident.span,
+                                                args: vec![arg],
+                                            }
+                                            .into();
+                                        }
+                                    }
+                                    err.span_suggestion_verbose(
+                                        predicate.span,
+                                        &format!(
+                                            "if `{}` is an associated type you're trying to set, \
+                                            use the associated type binding syntax",
+                                            ident
+                                        ),
+                                        format!(
+                                            "{}: {}",
+                                            param,
+                                            pprust::path_to_string(&assoc_path)
+                                        ),
+                                        Applicability::MaybeIncorrect,
+                                    );
+                                }
+                                _ => {}
+                            };
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    err.note(
+        "see issue #20041 <https://github.com/rust-lang/rust/issues/20041> for more information",
+    );
+    err.emit();
 }
 
 pub fn check_crate(session: &Session, krate: &Crate, lints: &mut LintBuffer) -> bool {

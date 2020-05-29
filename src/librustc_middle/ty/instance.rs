@@ -1,9 +1,10 @@
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::{self, SubstsRef, Ty, TyCtxt, TypeFoldable};
+use rustc_errors::ErrorReported;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::{CrateNum, DefId};
-use rustc_hir::lang_items::DropInPlaceFnLangItem;
+use rustc_hir::lang_items::{DropInPlaceFnLangItem, FnOnceTraitLangItem};
 use rustc_macros::HashStable;
 
 use std::fmt;
@@ -91,7 +92,7 @@ impl<'tcx> Instance<'tcx> {
         // There shouldn't be any params - if there are, then
         // Instance.ty_env should have been used to provide the proper
         // ParamEnv
-        if self.substs.has_param_types() {
+        if self.substs.has_param_types_or_consts() {
             bug!("Instance.ty called for type {:?} with params in substs: {:?}", ty, self.substs);
         }
         tcx.subst_and_normalize_erasing_regions(self.substs, ty::ParamEnv::reveal_all(), &ty)
@@ -268,29 +269,41 @@ impl<'tcx> Instance<'tcx> {
     /// this is used to find the precise code that will run for a trait method invocation,
     /// if known.
     ///
-    /// Returns `None` if we cannot resolve `Instance` to a specific instance.
+    /// Returns `Ok(None)` if we cannot resolve `Instance` to a specific instance.
     /// For example, in a context like this,
     ///
     /// ```
     /// fn foo<T: Debug>(t: T) { ... }
     /// ```
     ///
-    /// trying to resolve `Debug::fmt` applied to `T` will yield `None`, because we do not
+    /// trying to resolve `Debug::fmt` applied to `T` will yield `Ok(None)`, because we do not
     /// know what code ought to run. (Note that this setting is also affected by the
     /// `RevealMode` in the parameter environment.)
     ///
     /// Presuming that coherence and type-check have succeeded, if this method is invoked
     /// in a monomorphic context (i.e., like during codegen), then it is guaranteed to return
-    /// `Some`.
+    /// `Ok(Some(instance))`.
+    ///
+    /// Returns `Err(ErrorReported)` when the `Instance` resolution process
+    /// couldn't complete due to errors elsewhere - this is distinct
+    /// from `Ok(None)` to avoid misleading diagnostics when an error
+    /// has already been/will be emitted, for the original cause
     pub fn resolve(
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         def_id: DefId,
         substs: SubstsRef<'tcx>,
-    ) -> Option<Instance<'tcx>> {
+    ) -> Result<Option<Instance<'tcx>>, ErrorReported> {
         // All regions in the result of this query are erased, so it's
         // fine to erase all of the input regions.
-        tcx.resolve_instance((tcx.erase_regions(&param_env), def_id, tcx.erase_regions(&substs)))
+
+        // HACK(eddyb) erase regions in `substs` first, so that `param_env.and(...)`
+        // below is more likely to ignore the bounds in scope (e.g. if the only
+        // generic parameters mentioned by `substs` were lifetime ones).
+        let substs = tcx.erase_regions(&substs);
+
+        // FIXME(eddyb) should this always use `param_env.with_reveal_all()`?
+        tcx.resolve_instance(tcx.erase_regions(&param_env.and((def_id, substs))))
     }
 
     pub fn resolve_for_fn_ptr(
@@ -300,7 +313,7 @@ impl<'tcx> Instance<'tcx> {
         substs: SubstsRef<'tcx>,
     ) -> Option<Instance<'tcx>> {
         debug!("resolve(def_id={:?}, substs={:?})", def_id, substs);
-        Instance::resolve(tcx, param_env, def_id, substs).map(|mut resolved| {
+        Instance::resolve(tcx, param_env, def_id, substs).ok().flatten().map(|mut resolved| {
             match resolved.def {
                 InstanceDef::Item(def_id) if resolved.def.requires_caller_location(tcx) => {
                     debug!(" => fn pointer created for function with #[track_caller]");
@@ -332,7 +345,7 @@ impl<'tcx> Instance<'tcx> {
             debug!(" => associated item with unsizeable self: Self");
             Some(Instance { def: InstanceDef::VtableShim(def_id), substs })
         } else {
-            Instance::resolve(tcx, param_env, def_id, substs)
+            Instance::resolve(tcx, param_env, def_id, substs).ok().flatten()
         }
     }
 
@@ -353,7 +366,7 @@ impl<'tcx> Instance<'tcx> {
     pub fn resolve_drop_in_place(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ty::Instance<'tcx> {
         let def_id = tcx.require_lang_item(DropInPlaceFnLangItem, None);
         let substs = tcx.intern_substs(&[ty.into()]);
-        Instance::resolve(tcx, ty::ParamEnv::reveal_all(), def_id, substs).unwrap()
+        Instance::resolve(tcx, ty::ParamEnv::reveal_all(), def_id, substs).unwrap().unwrap()
     }
 
     pub fn fn_once_adapter_instance(
@@ -362,11 +375,11 @@ impl<'tcx> Instance<'tcx> {
         substs: ty::SubstsRef<'tcx>,
     ) -> Instance<'tcx> {
         debug!("fn_once_adapter_shim({:?}, {:?})", closure_did, substs);
-        let fn_once = tcx.lang_items().fn_once_trait().unwrap();
+        let fn_once = tcx.require_lang_item(FnOnceTraitLangItem, None);
         let call_once = tcx
             .associated_items(fn_once)
             .in_definition_order()
-            .find(|it| it.kind == ty::AssocKind::Method)
+            .find(|it| it.kind == ty::AssocKind::Fn)
             .unwrap()
             .def_id;
         let def = ty::InstanceDef::ClosureOnceShim { call_once };
@@ -426,8 +439,7 @@ fn needs_fn_once_adapter_shim(
             // basically the same thing, so we can just return llfn.
             Ok(false)
         }
-        (ty::ClosureKind::Fn, ty::ClosureKind::FnOnce)
-        | (ty::ClosureKind::FnMut, ty::ClosureKind::FnOnce) => {
+        (ty::ClosureKind::Fn | ty::ClosureKind::FnMut, ty::ClosureKind::FnOnce) => {
             // The closure fn `llfn` is a `fn(&self, ...)` or `fn(&mut
             // self, ...)`.  We want a `fn(self, ...)`. We can produce
             // this by doing something like:
@@ -438,6 +450,6 @@ fn needs_fn_once_adapter_shim(
             // These are both the same at codegen time.
             Ok(true)
         }
-        (ty::ClosureKind::FnMut, _) | (ty::ClosureKind::FnOnce, _) => Err(()),
+        (ty::ClosureKind::FnMut | ty::ClosureKind::FnOnce, _) => Err(()),
     }
 }

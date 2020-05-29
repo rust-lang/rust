@@ -79,7 +79,7 @@ impl<'a> Parser<'a> {
         }
 
         let expr = if self.check(&token::OpenDelim(token::Brace)) {
-            self.parse_struct_expr(lo, path, AttrVec::new())?
+            self.parse_struct_expr(path, AttrVec::new())?
         } else {
             let hi = self.prev_token.span;
             self.mk_expr(lo.to(hi), ExprKind::Path(None, path), AttrVec::new())
@@ -163,8 +163,8 @@ impl<'a> Parser<'a> {
                 Ok(ty) => (None, Some(ty)),
                 Err(mut err) => {
                     // Rewind to before attempting to parse the type and continue parsing.
-                    let parser_snapshot_after_type = self.clone();
-                    mem::replace(self, parser_snapshot_before_type);
+                    let parser_snapshot_after_type =
+                        mem::replace(self, parser_snapshot_before_type);
                     if let Ok(snip) = self.span_to_snippet(pat.span) {
                         err.span_label(pat.span, format!("while parsing the type for `{}`", snip));
                     }
@@ -201,7 +201,7 @@ impl<'a> Parser<'a> {
                 // Couldn't parse the type nor the initializer, only raise the type error and
                 // return to the parser state before parsing the type as the initializer.
                 // let x: <parse_error>;
-                mem::replace(self, snapshot);
+                *self = snapshot;
                 return Err(ty_err);
             }
             (Err(err), None) => {

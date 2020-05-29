@@ -1,7 +1,7 @@
 // check-pass
 
 #![feature(const_generics)]
-//~^ WARN the feature `const_generics` is incomplete and may cause the compiler to crash
+//~^ WARN the feature `const_generics` is incomplete
 
 fn takes_closure_of_array_3<F>(f: F) where F: Fn([i32; 3]) {
     f([1, 2, 3]);

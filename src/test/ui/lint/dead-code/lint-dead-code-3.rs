@@ -12,7 +12,7 @@ extern {
 
 struct Foo; //~ ERROR: struct is never constructed
 impl Foo {
-    fn foo(&self) { //~ ERROR: method is never used
+    fn foo(&self) { //~ ERROR: associated function is never used
         bar()
     }
 }
@@ -58,7 +58,7 @@ mod blah {
 
 enum c_void {} //~ ERROR: enum is never used
 extern {
-    fn free(p: *const c_void); //~ ERROR: foreign function is never used
+    fn free(p: *const c_void); //~ ERROR: function is never used
 }
 
 // Check provided method

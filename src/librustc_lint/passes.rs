@@ -5,6 +5,7 @@ use rustc_data_structures::sync;
 use rustc_hir as hir;
 use rustc_session::lint::builtin::HardwiredLints;
 use rustc_session::lint::LintPass;
+use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::Span;
 
 #[macro_export]
@@ -14,7 +15,7 @@ macro_rules! late_lint_methods {
             fn check_param(a: &$hir hir::Param<$hir>);
             fn check_body(a: &$hir hir::Body<$hir>);
             fn check_body_post(a: &$hir hir::Body<$hir>);
-            fn check_name(a: Span, b: ast::Name);
+            fn check_name(a: Span, b: Symbol);
             fn check_crate(a: &$hir hir::Crate<$hir>);
             fn check_crate_post(a: &$hir hir::Crate<$hir>);
             fn check_mod(a: &$hir hir::Mod<$hir>, b: Span, c: hir::HirId);
@@ -155,7 +156,7 @@ macro_rules! early_lint_methods {
     ($macro:path, $args:tt) => (
         $macro!($args, [
             fn check_param(a: &ast::Param);
-            fn check_ident(a: ast::Ident);
+            fn check_ident(a: Ident);
             fn check_crate(a: &ast::Crate);
             fn check_crate_post(a: &ast::Crate);
             fn check_mod(a: &ast::Mod, b: Span, c: ast::NodeId);

@@ -5,7 +5,7 @@ pub use crate::options::*;
 
 use crate::lint;
 use crate::search_paths::SearchPath;
-use crate::utils::NativeLibraryKind;
+use crate::utils::NativeLibKind;
 use crate::{early_error, early_warn, Session};
 
 use rustc_data_structures::fx::FxHashSet;
@@ -67,6 +67,19 @@ impl FromStr for Sanitizer {
             _ => Err(()),
         }
     }
+}
+
+/// The different settings that the `-Z strip` flag can have.
+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+pub enum Strip {
+    /// Do not strip at all.
+    None,
+
+    /// Strip debuginfo.
+    Debuginfo,
+
+    /// Strip all symbols.
+    Symbols,
 }
 
 /// The different settings that the `-Z control_flow_guard` flag can have.
@@ -617,10 +630,6 @@ impl Options {
 }
 
 impl DebuggingOptions {
-    pub fn ui_testing(&self) -> bool {
-        self.ui_testing.unwrap_or(false)
-    }
-
     pub fn diagnostic_handler_flags(&self, can_emit_warnings: bool) -> HandlerFlags {
         HandlerFlags {
             can_emit_warnings,
@@ -628,7 +637,7 @@ impl DebuggingOptions {
             dont_buffer_diagnostics: self.dont_buffer_diagnostics,
             report_delayed_bugs: self.report_delayed_bugs,
             macro_backtrace: self.macro_backtrace,
-            deduplicate_diagnostics: self.deduplicate_diagnostics.unwrap_or(true),
+            deduplicate_diagnostics: self.deduplicate_diagnostics,
         }
     }
 }
@@ -1017,7 +1026,15 @@ pub fn get_cmd_lint_options(
     let mut describe_lints = false;
 
     for &level in &[lint::Allow, lint::Warn, lint::Deny, lint::Forbid] {
-        for (arg_pos, lint_name) in matches.opt_strs_pos(level.as_str()) {
+        for (passed_arg_pos, lint_name) in matches.opt_strs_pos(level.as_str()) {
+            let arg_pos = if let lint::Forbid = level {
+                // HACK: forbid is always specified last, so it can't be overridden.
+                // FIXME: remove this once <https://github.com/rust-lang/rust/issues/70819> is
+                // fixed and `forbid` works as expected.
+                usize::max_value()
+            } else {
+                passed_arg_pos
+            };
             if lint_name == "help" {
                 describe_lints = true;
             } else {
@@ -1307,18 +1324,6 @@ fn collect_print_requests(
         prints.push(PrintRequest::TargetFeatures);
         cg.target_feature = String::new();
     }
-    if cg.relocation_model.as_ref().map_or(false, |s| s == "help") {
-        prints.push(PrintRequest::RelocationModels);
-        cg.relocation_model = None;
-    }
-    if cg.code_model.as_ref().map_or(false, |s| s == "help") {
-        prints.push(PrintRequest::CodeModels);
-        cg.code_model = None;
-    }
-    if dopts.tls_model.as_ref().map_or(false, |s| s == "help") {
-        prints.push(PrintRequest::TlsModels);
-        dopts.tls_model = None;
-    }
 
     prints.extend(matches.opt_strs("print").into_iter().map(|s| match &*s {
         "crate-name" => PrintRequest::CrateName,
@@ -1387,15 +1392,14 @@ fn parse_opt_level(
     if max_o > max_c {
         OptLevel::Default
     } else {
-        match cg.opt_level.as_ref().map(String::as_ref) {
-            None => OptLevel::No,
-            Some("0") => OptLevel::No,
-            Some("1") => OptLevel::Less,
-            Some("2") => OptLevel::Default,
-            Some("3") => OptLevel::Aggressive,
-            Some("s") => OptLevel::Size,
-            Some("z") => OptLevel::SizeMin,
-            Some(arg) => {
+        match cg.opt_level.as_ref() {
+            "0" => OptLevel::No,
+            "1" => OptLevel::Less,
+            "2" => OptLevel::Default,
+            "3" => OptLevel::Aggressive,
+            "s" => OptLevel::Size,
+            "z" => OptLevel::SizeMin,
+            arg => {
                 early_error(
                     error_format,
                     &format!(
@@ -1428,10 +1432,10 @@ fn select_debuginfo(
         DebugInfo::Full
     } else {
         match cg.debuginfo {
-            None | Some(0) => DebugInfo::None,
-            Some(1) => DebugInfo::Limited,
-            Some(2) => DebugInfo::Full,
-            Some(arg) => {
+            0 => DebugInfo::None,
+            1 => DebugInfo::Limited,
+            2 => DebugInfo::Full,
+            arg => {
                 early_error(
                     error_format,
                     &format!(
@@ -1448,7 +1452,7 @@ fn select_debuginfo(
 fn parse_libs(
     matches: &getopts::Matches,
     error_format: ErrorOutputType,
-) -> Vec<(String, Option<String>, Option<NativeLibraryKind>)> {
+) -> Vec<(String, Option<String>, NativeLibKind)> {
     matches
         .opt_strs("l")
         .into_iter()
@@ -1458,13 +1462,11 @@ fn parse_libs(
             let mut parts = s.splitn(2, '=');
             let kind = parts.next().unwrap();
             let (name, kind) = match (parts.next(), kind) {
-                (None, name) => (name, None),
-                (Some(name), "dylib") => (name, Some(NativeLibraryKind::NativeUnknown)),
-                (Some(name), "framework") => (name, Some(NativeLibraryKind::NativeFramework)),
-                (Some(name), "static") => (name, Some(NativeLibraryKind::NativeStatic)),
-                (Some(name), "static-nobundle") => {
-                    (name, Some(NativeLibraryKind::NativeStaticNobundle))
-                }
+                (None, name) => (name, NativeLibKind::Unspecified),
+                (Some(name), "dylib") => (name, NativeLibKind::Dylib),
+                (Some(name), "framework") => (name, NativeLibKind::Framework),
+                (Some(name), "static") => (name, NativeLibKind::StaticBundle),
+                (Some(name), "static-nobundle") => (name, NativeLibKind::StaticNoBundle),
                 (_, s) => {
                     early_error(
                         error_format,
@@ -1476,9 +1478,7 @@ fn parse_libs(
                     );
                 }
             };
-            if kind == Some(NativeLibraryKind::NativeStaticNobundle)
-                && !nightly_options::is_nightly_build()
-            {
+            if kind == NativeLibKind::StaticNoBundle && !nightly_options::is_nightly_build() {
                 early_error(
                     error_format,
                     "the library kind 'static-nobundle' is only \
@@ -1494,10 +1494,10 @@ fn parse_libs(
 }
 
 fn parse_borrowck_mode(dopts: &DebuggingOptions, error_format: ErrorOutputType) -> BorrowckMode {
-    match dopts.borrowck.as_ref().map(|s| &s[..]) {
-        None | Some("migrate") => BorrowckMode::Migrate,
-        Some("mir") => BorrowckMode::Mir,
-        Some(m) => early_error(error_format, &format!("unknown borrowck mode `{}`", m)),
+    match dopts.borrowck.as_ref() {
+        "migrate" => BorrowckMode::Migrate,
+        "mir" => BorrowckMode::Mir,
+        m => early_error(error_format, &format!("unknown borrowck mode `{}`", m)),
     }
 }
 
@@ -1647,7 +1647,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     let output_types = parse_output_types(&debugging_opts, matches, error_format);
 
     let mut cg = build_codegen_options(matches, error_format);
-    let (disable_thinlto, codegen_units) = should_override_cgus_and_disable_thinlto(
+    let (disable_thinlto, mut codegen_units) = should_override_cgus_and_disable_thinlto(
         &output_types,
         matches,
         error_format,
@@ -1664,12 +1664,32 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
             "can't instrument with gcov profiling when compiling incrementally",
         );
     }
+    if debugging_opts.profile {
+        match codegen_units {
+            Some(1) => {}
+            None => codegen_units = Some(1),
+            Some(_) => early_error(
+                error_format,
+                "can't instrument with gcov profiling with multiple codegen units",
+            ),
+        }
+    }
 
     if cg.profile_generate.enabled() && cg.profile_use.is_some() {
         early_error(
             error_format,
             "options `-C profile-generate` and `-C profile-use` are exclusive",
         );
+    }
+
+    if !cg.embed_bitcode {
+        match cg.lto {
+            LtoCli::No | LtoCli::Unspecified => {}
+            LtoCli::Yes | LtoCli::NoParam | LtoCli::Thin | LtoCli::Fat => early_error(
+                error_format,
+                "options `-C embed-bitcode=no` and `-C lto` are incompatible",
+            ),
+        }
     }
 
     let prints = collect_print_requests(&mut cg, &mut debugging_opts, matches, error_format);
@@ -1934,11 +1954,9 @@ impl PpMode {
         use PpMode::*;
         use PpSourceMode::*;
         match *self {
-            PpmSource(PpmNormal) | PpmSource(PpmEveryBodyLoops) | PpmSource(PpmIdentified) => false,
+            PpmSource(PpmNormal | PpmEveryBodyLoops | PpmIdentified) => false,
 
-            PpmSource(PpmExpanded)
-            | PpmSource(PpmExpandedIdentified)
-            | PpmSource(PpmExpandedHygiene)
+            PpmSource(PpmExpanded | PpmExpandedIdentified | PpmExpandedHygiene)
             | PpmHir(_)
             | PpmHirTree(_)
             | PpmMir
@@ -1981,10 +1999,11 @@ crate mod dep_tracking {
         SymbolManglingVersion,
     };
     use crate::lint;
-    use crate::utils::NativeLibraryKind;
+    use crate::utils::NativeLibKind;
     use rustc_feature::UnstableFeatures;
     use rustc_span::edition::Edition;
-    use rustc_target::spec::{MergeFunctions, PanicStrategy, RelroLevel, TargetTriple};
+    use rustc_target::spec::{CodeModel, MergeFunctions, PanicStrategy, RelocModel};
+    use rustc_target::spec::{RelroLevel, TargetTriple, TlsModel};
     use std::collections::hash_map::DefaultHasher;
     use std::collections::BTreeMap;
     use std::hash::Hash;
@@ -2032,11 +2051,13 @@ crate mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(Option<(String, u64)>);
     impl_dep_tracking_hash_via_hash!(Option<Vec<String>>);
     impl_dep_tracking_hash_via_hash!(Option<MergeFunctions>);
+    impl_dep_tracking_hash_via_hash!(Option<RelocModel>);
+    impl_dep_tracking_hash_via_hash!(Option<CodeModel>);
+    impl_dep_tracking_hash_via_hash!(Option<TlsModel>);
     impl_dep_tracking_hash_via_hash!(Option<PanicStrategy>);
     impl_dep_tracking_hash_via_hash!(Option<RelroLevel>);
     impl_dep_tracking_hash_via_hash!(Option<lint::Level>);
     impl_dep_tracking_hash_via_hash!(Option<PathBuf>);
-    impl_dep_tracking_hash_via_hash!(Option<NativeLibraryKind>);
     impl_dep_tracking_hash_via_hash!(CrateType);
     impl_dep_tracking_hash_via_hash!(MergeFunctions);
     impl_dep_tracking_hash_via_hash!(PanicStrategy);
@@ -2047,7 +2068,7 @@ crate mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(DebugInfo);
     impl_dep_tracking_hash_via_hash!(UnstableFeatures);
     impl_dep_tracking_hash_via_hash!(OutputTypes);
-    impl_dep_tracking_hash_via_hash!(NativeLibraryKind);
+    impl_dep_tracking_hash_via_hash!(NativeLibKind);
     impl_dep_tracking_hash_via_hash!(Sanitizer);
     impl_dep_tracking_hash_via_hash!(Option<Sanitizer>);
     impl_dep_tracking_hash_via_hash!(CFGuard);
@@ -2062,11 +2083,7 @@ crate mod dep_tracking {
     impl_dep_tracking_hash_for_sortable_vec_of!(PathBuf);
     impl_dep_tracking_hash_for_sortable_vec_of!(CrateType);
     impl_dep_tracking_hash_for_sortable_vec_of!((String, lint::Level));
-    impl_dep_tracking_hash_for_sortable_vec_of!((
-        String,
-        Option<String>,
-        Option<NativeLibraryKind>
-    ));
+    impl_dep_tracking_hash_for_sortable_vec_of!((String, Option<String>, NativeLibKind));
     impl_dep_tracking_hash_for_sortable_vec_of!((String, u64));
     impl_dep_tracking_hash_for_sortable_vec_of!(Sanitizer);
 

@@ -4,6 +4,7 @@
 
 #[allow(dead_code)]
 pub mod auto_trait;
+mod chalk_fulfill;
 pub mod codegen;
 mod coherence;
 mod engine;
@@ -27,11 +28,12 @@ use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_middle::middle::region;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
-use rustc_middle::ty::{self, GenericParamDefKind, ToPredicate, Ty, TyCtxt, WithConstness};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_middle::ty::{
+    self, GenericParamDefKind, ParamEnv, ToPredicate, Ty, TyCtxt, WithConstness,
+};
+use rustc_span::Span;
 
 use std::fmt::Debug;
 
@@ -68,6 +70,8 @@ pub use self::util::{
 pub use self::util::{
     supertrait_def_ids, supertraits, transitive_bounds, SupertraitDefIds, Supertraits,
 };
+
+pub use self::chalk_fulfill::FulfillmentContext as ChalkFulfillmentContext;
 
 pub use rustc_infer::traits::*;
 
@@ -110,8 +114,8 @@ pub enum TraitQueryMode {
 pub fn predicates_for_generics<'tcx>(
     cause: ObligationCause<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    generic_bounds: &ty::InstantiatedPredicates<'tcx>,
-) -> PredicateObligations<'tcx> {
+    generic_bounds: ty::InstantiatedPredicates<'tcx>,
+) -> impl Iterator<Item = PredicateObligation<'tcx>> {
     util::predicates_for_generics(cause, 0, param_env, generic_bounds)
 }
 
@@ -136,9 +140,9 @@ pub fn type_known_to_meet_bound_modulo_regions<'a, 'tcx>(
     let trait_ref = ty::TraitRef { def_id, substs: infcx.tcx.mk_substs_trait(ty, &[]) };
     let obligation = Obligation {
         param_env,
-        cause: ObligationCause::misc(span, hir::DUMMY_HIR_ID),
+        cause: ObligationCause::misc(span, hir::CRATE_HIR_ID),
         recursion_depth: 0,
-        predicate: trait_ref.without_const().to_predicate(),
+        predicate: trait_ref.without_const().to_predicate(infcx.tcx),
     };
 
     let result = infcx.predicate_must_hold_modulo_regions(&obligation);
@@ -163,7 +167,7 @@ pub fn type_known_to_meet_bound_modulo_regions<'a, 'tcx>(
         // We can use a dummy node-id here because we won't pay any mind
         // to region obligations that arise (there shouldn't really be any
         // anyhow).
-        let cause = ObligationCause::misc(span, hir::DUMMY_HIR_ID);
+        let cause = ObligationCause::misc(span, hir::CRATE_HIR_ID);
 
         fulfill_cx.register_bound(infcx, param_env, ty, def_id, cause);
 
@@ -232,15 +236,12 @@ fn do_normalize_predicates<'tcx>(
 
         debug!("do_normalize_predictes: normalized predicates = {:?}", predicates);
 
-        let region_scope_tree = region::ScopeTree::default();
-
         // We can use the `elaborated_env` here; the region code only
         // cares about declarations like `'a: 'b`.
         let outlives_env = OutlivesEnvironment::new(elaborated_env);
 
         infcx.resolve_regions_and_report_errors(
             region_context,
-            &region_scope_tree,
             &outlives_env,
             RegionckMode::default(),
         );
@@ -259,8 +260,8 @@ fn do_normalize_predicates<'tcx>(
                 return Err(ErrorReported);
             }
         };
-        if predicates.has_local_value() {
-            // FIXME: shouldn't we, you know, actually report an error here? or an ICE?
+        if predicates.needs_infer() {
+            tcx.sess.delay_span_bug(span, "encountered inference variables after `fully_resolve`");
             Err(ErrorReported)
         } else {
             Ok(predicates)
@@ -297,7 +298,9 @@ pub fn normalize_param_env_or_error<'tcx>(
     );
 
     let mut predicates: Vec<_> =
-        util::elaborate_predicates(tcx, unnormalized_env.caller_bounds.to_vec()).collect();
+        util::elaborate_predicates(tcx, unnormalized_env.caller_bounds.into_iter())
+            .map(|obligation| obligation.predicate)
+            .collect();
 
     debug!("normalize_param_env_or_error: elaborated-predicates={:?}", predicates);
 
@@ -326,8 +329,8 @@ pub fn normalize_param_env_or_error<'tcx>(
     // This works fairly well because trait matching  does not actually care about param-env
     // TypeOutlives predicates - these are normally used by regionck.
     let outlives_predicates: Vec<_> = predicates
-        .drain_filter(|predicate| match predicate {
-            ty::Predicate::TypeOutlives(..) => true,
+        .drain_filter(|predicate| match predicate.kind() {
+            ty::PredicateKind::TypeOutlives(..) => true,
             _ => false,
         })
         .collect();
@@ -473,7 +476,7 @@ fn vtable_methods<'tcx>(
         let trait_methods = tcx
             .associated_items(trait_ref.def_id())
             .in_definition_order()
-            .filter(|item| item.kind == ty::AssocKind::Method);
+            .filter(|item| item.kind == ty::AssocKind::Fn);
 
         // Now list each method's DefId and InternalSubsts (for within its trait).
         // If the method can never be called from this object, produce None.
@@ -518,6 +521,43 @@ fn vtable_methods<'tcx>(
     }))
 }
 
+/// Check whether a `ty` implements given trait(trait_def_id).
+///
+/// NOTE: Always return `false` for a type which needs inference.
+fn type_implements_trait<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    key: (
+        DefId,    // trait_def_id,
+        Ty<'tcx>, // type
+        SubstsRef<'tcx>,
+        ParamEnv<'tcx>,
+    ),
+) -> bool {
+    let (trait_def_id, ty, params, param_env) = key;
+
+    debug!(
+        "type_implements_trait: trait_def_id={:?}, type={:?}, params={:?}, param_env={:?}",
+        trait_def_id, ty, params, param_env
+    );
+
+    // Do not check on infer_types to avoid panic in evaluate_obligation.
+    if ty.has_infer_types() {
+        return false;
+    }
+
+    let ty = tcx.erase_regions(&ty);
+
+    let trait_ref = ty::TraitRef { def_id: trait_def_id, substs: tcx.mk_substs_trait(ty, params) };
+
+    let obligation = Obligation {
+        cause: ObligationCause::dummy(),
+        param_env,
+        recursion_depth: 0,
+        predicate: trait_ref.without_const().to_predicate(tcx),
+    };
+    tcx.infer_ctxt().enter(|infcx| infcx.predicate_must_hold_modulo_regions(&obligation))
+}
+
 pub fn provide(providers: &mut ty::query::Providers<'_>) {
     object_safety::provide(providers);
     *providers = ty::query::Providers {
@@ -526,6 +566,7 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
         codegen_fulfill_obligation: codegen::codegen_fulfill_obligation,
         vtable_methods,
         substitute_normalize_and_test_predicates,
+        type_implements_trait,
         ..*providers
     };
 }

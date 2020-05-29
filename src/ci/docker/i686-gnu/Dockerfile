@@ -6,7 +6,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   file \
   curl \
   ca-certificates \
-  python2.7 \
+  python3 \
   git \
   cmake \
   sudo \
@@ -20,7 +20,7 @@ RUN sh /scripts/sccache.sh
 ENV RUST_CONFIGURE_ARGS --build=i686-unknown-linux-gnu
 # Exclude some tests that are unlikely to be platform specific, to speed up
 # this slow job.
-ENV SCRIPT python2.7 ../x.py test \
+ENV SCRIPT python3 ../x.py test \
   --exclude src/bootstrap \
   --exclude src/test/rustdoc-js \
   --exclude src/tools/error_index_generator \

@@ -5,12 +5,12 @@
 #![feature(drain_filter)]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
+#![feature(or_patterns)]
 #![feature(proc_macro_internals)]
-#![feature(specialization)]
+#![feature(specialization)] // FIXME: min_specialization ICEs
 #![feature(stmt_expr_attributes)]
 #![recursion_limit = "256"]
 
-extern crate libc;
 extern crate proc_macro;
 
 #[macro_use]

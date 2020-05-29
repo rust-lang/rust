@@ -33,10 +33,10 @@ impl SymbolNamesTest<'tcx> {
     fn process_attrs(&mut self, hir_id: hir::HirId) {
         let tcx = self.tcx;
         let def_id = tcx.hir().local_def_id(hir_id);
-        for attr in tcx.get_attrs(def_id).iter() {
+        for attr in tcx.get_attrs(def_id.to_def_id()).iter() {
             if attr.check_name(SYMBOL_NAME) {
                 // for now, can only use on monomorphic names
-                let instance = Instance::mono(tcx, def_id);
+                let instance = Instance::mono(tcx, def_id.to_def_id());
                 let mangled = self.tcx.symbol_name(instance);
                 tcx.sess.span_err(attr.span, &format!("symbol-name({})", mangled));
                 if let Ok(demangling) = rustc_demangle::try_demangle(&mangled.name.as_str()) {
@@ -44,7 +44,7 @@ impl SymbolNamesTest<'tcx> {
                     tcx.sess.span_err(attr.span, &format!("demangling-alt({:#})", demangling));
                 }
             } else if attr.check_name(DEF_PATH) {
-                let path = tcx.def_path_str(def_id);
+                let path = tcx.def_path_str(def_id.to_def_id());
                 tcx.sess.span_err(attr.span, &format!("def-path({})", path));
             }
 

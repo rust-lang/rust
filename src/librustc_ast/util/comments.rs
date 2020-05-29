@@ -226,11 +226,11 @@ pub fn gather_comments(sm: &SourceMap, path: FileName, src: String) -> Vec<Comme
             rustc_lexer::TokenKind::BlockComment { terminated: _ } => {
                 if !is_block_doc_comment(token_text) {
                     let code_to_the_right = match text[pos + token.len..].chars().next() {
-                        Some('\r') | Some('\n') => false,
+                        Some('\r' | '\n') => false,
                         _ => true,
                     };
                     let style = match (code_to_the_left, code_to_the_right) {
-                        (true, true) | (false, true) => Mixed,
+                        (_, true) => Mixed,
                         (false, false) => Isolated,
                         (true, false) => Trailing,
                     };

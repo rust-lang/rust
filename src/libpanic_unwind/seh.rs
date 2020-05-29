@@ -213,7 +213,6 @@ extern "C" {
 //
 // This is fine since the MSVC runtime uses string comparison on the type name
 // to match TypeDescriptors rather than pointer equality.
-#[cfg_attr(bootstrap, lang = "eh_catch_typeinfo")]
 static mut TYPE_DESCRIPTOR: _TypeDescriptor = _TypeDescriptor {
     pVFTable: unsafe { &TYPE_INFO_VTABLE } as *const _ as *const _,
     spare: core::ptr::null_mut(),
@@ -328,5 +327,8 @@ pub unsafe fn cleanup(payload: *mut u8) -> Box<dyn Any + Send> {
 #[lang = "eh_personality"]
 #[cfg(not(test))]
 fn rust_eh_personality() {
-    unsafe { core::intrinsics::abort() }
+    #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // remove `unsafe` on bootstrap bump
+    unsafe {
+        core::intrinsics::abort()
+    }
 }

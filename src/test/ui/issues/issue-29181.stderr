@@ -4,6 +4,18 @@ error[E0599]: no method named `homura` found for type `{integer}` in the current
 LL |     0.homura();
    |       ^^^^^^ method not found in `{integer}`
 
-error: aborting due to previous error
+error[E0689]: can't call method `exp` on ambiguous numeric type `{float}`
+  --> $DIR/issue-29181.rs:8:30
+   |
+LL |     let _ = |x: f64| x * 2.0.exp();
+   |                              ^^^
+   |
+help: you must specify a concrete type for this numeric value, like `f32`
+   |
+LL |     let _ = |x: f64| x * 2.0_f32.exp();
+   |                          ^^^^^^^
 
-For more information about this error, try `rustc --explain E0599`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0599, E0689.
+For more information about an error, try `rustc --explain E0599`.

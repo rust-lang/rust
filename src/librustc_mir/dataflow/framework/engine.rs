@@ -9,13 +9,57 @@ use rustc_data_structures::work_queue::WorkQueue;
 use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
-use rustc_middle::mir::{self, traversal, BasicBlock, Location};
+use rustc_middle::mir::{self, traversal, BasicBlock};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
 
 use super::graphviz;
-use super::{Analysis, GenKillAnalysis, GenKillSet, Results};
+use super::{
+    visit_results, Analysis, Direction, GenKillAnalysis, GenKillSet, ResultsCursor, ResultsVisitor,
+};
 use crate::util::pretty::dump_enabled;
+
+/// A dataflow analysis that has converged to fixpoint.
+pub struct Results<'tcx, A>
+where
+    A: Analysis<'tcx>,
+{
+    pub analysis: A,
+    pub(super) entry_sets: IndexVec<BasicBlock, BitSet<A::Idx>>,
+}
+
+impl<A> Results<'tcx, A>
+where
+    A: Analysis<'tcx>,
+{
+    /// Creates a `ResultsCursor` that can inspect these `Results`.
+    pub fn into_results_cursor(self, body: &'mir mir::Body<'tcx>) -> ResultsCursor<'mir, 'tcx, A> {
+        ResultsCursor::new(body, self)
+    }
+
+    /// Gets the dataflow state for the given block.
+    pub fn entry_set_for_block(&self, block: BasicBlock) -> &BitSet<A::Idx> {
+        &self.entry_sets[block]
+    }
+
+    pub fn visit_with(
+        &self,
+        body: &'mir mir::Body<'tcx>,
+        blocks: impl IntoIterator<Item = BasicBlock>,
+        vis: &mut impl ResultsVisitor<'mir, 'tcx, FlowState = BitSet<A::Idx>>,
+    ) {
+        visit_results(body, blocks, self, vis)
+    }
+
+    pub fn visit_in_rpo_with(
+        &self,
+        body: &'mir mir::Body<'tcx>,
+        vis: &mut impl ResultsVisitor<'mir, 'tcx, FlowState = BitSet<A::Idx>>,
+    ) {
+        let blocks = mir::traversal::reverse_postorder(body);
+        visit_results(body, blocks.map(|(bb, _)| bb), self, vis)
+    }
+}
 
 /// A solver for dataflow problems.
 pub struct Engine<'a, 'tcx, A>
@@ -61,17 +105,7 @@ where
 
         for (block, block_data) in body.basic_blocks().iter_enumerated() {
             let trans = &mut trans_for_block[block];
-
-            for (i, statement) in block_data.statements.iter().enumerate() {
-                let loc = Location { block, statement_index: i };
-                analysis.before_statement_effect(trans, statement, loc);
-                analysis.statement_effect(trans, statement, loc);
-            }
-
-            let terminator = block_data.terminator();
-            let loc = Location { block, statement_index: block_data.statements.len() };
-            analysis.before_terminator_effect(trans, terminator, loc);
-            analysis.terminator_effect(trans, terminator, loc);
+            A::Direction::gen_kill_effects_in_block(&analysis, trans, block, block_data);
         }
 
         Self::new(tcx, body, def_id, analysis, Some(trans_for_block))
@@ -111,8 +145,12 @@ where
             BitSet::new_empty(bits_per_block)
         };
 
-        let mut entry_sets = IndexVec::from_elem(bottom_value_set, body.basic_blocks());
+        let mut entry_sets = IndexVec::from_elem(bottom_value_set.clone(), body.basic_blocks());
         analysis.initialize_start_block(body, &mut entry_sets[mir::START_BLOCK]);
+
+        if A::Direction::is_backward() && entry_sets[mir::START_BLOCK] != bottom_value_set {
+            bug!("`initialize_start_block` is not yet supported for backward dataflow analyses");
+        }
 
         Engine {
             analysis,
@@ -137,250 +175,78 @@ where
     }
 
     /// Computes the fixpoint for this dataflow problem and returns it.
-    pub fn iterate_to_fixpoint(mut self) -> Results<'tcx, A> {
-        let mut temp_state = BitSet::new_empty(self.bits_per_block);
+    pub fn iterate_to_fixpoint(self) -> Results<'tcx, A> {
+        let Engine {
+            analysis,
+            bits_per_block,
+            body,
+            dead_unwinds,
+            def_id,
+            mut entry_sets,
+            tcx,
+            trans_for_block,
+            ..
+        } = self;
 
         let mut dirty_queue: WorkQueue<BasicBlock> =
-            WorkQueue::with_none(self.body.basic_blocks().len());
+            WorkQueue::with_none(body.basic_blocks().len());
 
-        for (bb, _) in traversal::reverse_postorder(self.body) {
-            dirty_queue.insert(bb);
+        if A::Direction::is_forward() {
+            for (bb, _) in traversal::reverse_postorder(body) {
+                dirty_queue.insert(bb);
+            }
+        } else {
+            // Reverse post-order on the reverse CFG may generate a better iteration order for
+            // backward dataflow analyses, but probably not enough to matter.
+            for (bb, _) in traversal::postorder(body) {
+                dirty_queue.insert(bb);
+            }
         }
 
         // Add blocks that are not reachable from START_BLOCK to the work queue. These blocks will
         // be processed after the ones added above.
-        for bb in self.body.basic_blocks().indices() {
+        //
+        // FIXME(ecstaticmorse): Is this actually necessary? In principle, we shouldn't need to
+        // know the dataflow state in unreachable basic blocks.
+        for bb in body.basic_blocks().indices() {
             dirty_queue.insert(bb);
         }
 
+        let mut state = BitSet::new_empty(bits_per_block);
         while let Some(bb) = dirty_queue.pop() {
-            let bb_data = &self.body[bb];
-            let on_entry = &self.entry_sets[bb];
+            let bb_data = &body[bb];
 
-            temp_state.overwrite(on_entry);
-            self.apply_whole_block_effect(&mut temp_state, bb, bb_data);
+            // Apply the block transfer function, using the cached one if it exists.
+            state.overwrite(&entry_sets[bb]);
+            match &trans_for_block {
+                Some(trans_for_block) => trans_for_block[bb].apply(&mut state),
+                None => A::Direction::apply_effects_in_block(&analysis, &mut state, bb, bb_data),
+            }
 
-            self.propagate_bits_into_graph_successors_of(
-                &mut temp_state,
+            A::Direction::join_state_into_successors_of(
+                &analysis,
+                tcx,
+                body,
+                dead_unwinds,
+                &mut state,
                 (bb, bb_data),
-                &mut dirty_queue,
+                |target: BasicBlock, state: &BitSet<A::Idx>| {
+                    let set_changed = analysis.join(&mut entry_sets[target], state);
+                    if set_changed {
+                        dirty_queue.insert(target);
+                    }
+                },
             );
         }
 
-        let Engine { tcx, body, def_id, trans_for_block, entry_sets, analysis, .. } = self;
         let results = Results { analysis, entry_sets };
 
-        let res = write_graphviz_results(tcx, def_id, body, &results, trans_for_block);
+        let res = write_graphviz_results(tcx, def_id, &body, &results, trans_for_block);
         if let Err(e) = res {
             warn!("Failed to write graphviz dataflow results: {}", e);
         }
 
         results
-    }
-
-    /// Applies the cumulative effect of an entire block, excluding the call return effect if one
-    /// exists.
-    fn apply_whole_block_effect(
-        &self,
-        state: &mut BitSet<A::Idx>,
-        block: BasicBlock,
-        block_data: &mir::BasicBlockData<'tcx>,
-    ) {
-        // Use the cached block transfer function if available.
-        if let Some(trans_for_block) = &self.trans_for_block {
-            trans_for_block[block].apply(state);
-            return;
-        }
-
-        // Otherwise apply effects one-by-one.
-
-        for (statement_index, statement) in block_data.statements.iter().enumerate() {
-            let location = Location { block, statement_index };
-            self.analysis.apply_before_statement_effect(state, statement, location);
-            self.analysis.apply_statement_effect(state, statement, location);
-        }
-
-        let terminator = block_data.terminator();
-        let location = Location { block, statement_index: block_data.statements.len() };
-        self.analysis.apply_before_terminator_effect(state, terminator, location);
-        self.analysis.apply_terminator_effect(state, terminator, location);
-    }
-
-    fn propagate_bits_into_graph_successors_of(
-        &mut self,
-        in_out: &mut BitSet<A::Idx>,
-        (bb, bb_data): (BasicBlock, &'a mir::BasicBlockData<'tcx>),
-        dirty_list: &mut WorkQueue<BasicBlock>,
-    ) {
-        use mir::TerminatorKind::*;
-
-        match bb_data.terminator().kind {
-            Return | Resume | Abort | GeneratorDrop | Unreachable => {}
-
-            Goto { target }
-            | Assert { target, cleanup: None, .. }
-            | Drop { target, location: _, unwind: None }
-            | DropAndReplace { target, value: _, location: _, unwind: None } => {
-                self.propagate_bits_into_entry_set_for(in_out, target, dirty_list)
-            }
-
-            Yield { resume: target, drop, resume_arg, .. } => {
-                if let Some(drop) = drop {
-                    self.propagate_bits_into_entry_set_for(in_out, drop, dirty_list);
-                }
-
-                self.analysis.apply_yield_resume_effect(in_out, target, resume_arg);
-                self.propagate_bits_into_entry_set_for(in_out, target, dirty_list);
-            }
-
-            Assert { target, cleanup: Some(unwind), .. }
-            | Drop { target, location: _, unwind: Some(unwind) }
-            | DropAndReplace { target, value: _, location: _, unwind: Some(unwind) } => {
-                self.propagate_bits_into_entry_set_for(in_out, target, dirty_list);
-                if self.dead_unwinds.map_or(true, |bbs| !bbs.contains(bb)) {
-                    self.propagate_bits_into_entry_set_for(in_out, unwind, dirty_list);
-                }
-            }
-
-            SwitchInt { ref targets, ref values, ref discr, .. } => {
-                let Engine { tcx, body, .. } = *self;
-                let enum_ = discr
-                    .place()
-                    .and_then(|discr| switch_on_enum_discriminant(tcx, body, bb_data, discr));
-                match enum_ {
-                    // If this is a switch on an enum discriminant, a custom effect may be applied
-                    // along each outgoing edge.
-                    Some((enum_place, enum_def)) => {
-                        self.propagate_bits_into_enum_discriminant_switch_successors(
-                            in_out, bb, enum_def, enum_place, dirty_list, &*values, &*targets,
-                        );
-                    }
-
-                    // Otherwise, it's just a normal `SwitchInt`, and every successor sees the same
-                    // exit state.
-                    None => {
-                        for target in targets.iter().copied() {
-                            self.propagate_bits_into_entry_set_for(&in_out, target, dirty_list);
-                        }
-                    }
-                }
-            }
-
-            Call { cleanup, ref destination, ref func, ref args, .. } => {
-                if let Some(unwind) = cleanup {
-                    if self.dead_unwinds.map_or(true, |bbs| !bbs.contains(bb)) {
-                        self.propagate_bits_into_entry_set_for(in_out, unwind, dirty_list);
-                    }
-                }
-
-                if let Some((dest_place, dest_bb)) = *destination {
-                    // N.B.: This must be done *last*, otherwise the unwind path will see the call
-                    // return effect.
-                    self.analysis.apply_call_return_effect(in_out, bb, func, args, dest_place);
-                    self.propagate_bits_into_entry_set_for(in_out, dest_bb, dirty_list);
-                }
-            }
-
-            FalseEdges { real_target, imaginary_target } => {
-                self.propagate_bits_into_entry_set_for(in_out, real_target, dirty_list);
-                self.propagate_bits_into_entry_set_for(in_out, imaginary_target, dirty_list);
-            }
-
-            FalseUnwind { real_target, unwind } => {
-                self.propagate_bits_into_entry_set_for(in_out, real_target, dirty_list);
-                if let Some(unwind) = unwind {
-                    if self.dead_unwinds.map_or(true, |bbs| !bbs.contains(bb)) {
-                        self.propagate_bits_into_entry_set_for(in_out, unwind, dirty_list);
-                    }
-                }
-            }
-        }
-    }
-
-    fn propagate_bits_into_entry_set_for(
-        &mut self,
-        in_out: &BitSet<A::Idx>,
-        bb: BasicBlock,
-        dirty_queue: &mut WorkQueue<BasicBlock>,
-    ) {
-        let entry_set = &mut self.entry_sets[bb];
-        let set_changed = self.analysis.join(entry_set, &in_out);
-        if set_changed {
-            dirty_queue.insert(bb);
-        }
-    }
-
-    fn propagate_bits_into_enum_discriminant_switch_successors(
-        &mut self,
-        in_out: &mut BitSet<A::Idx>,
-        bb: BasicBlock,
-        enum_def: &'tcx ty::AdtDef,
-        enum_place: mir::Place<'tcx>,
-        dirty_list: &mut WorkQueue<BasicBlock>,
-        values: &[u128],
-        targets: &[BasicBlock],
-    ) {
-        // MIR building adds discriminants to the `values` array in the same order as they
-        // are yielded by `AdtDef::discriminants`. We rely on this to match each
-        // discriminant in `values` to its corresponding variant in linear time.
-        let mut tmp = BitSet::new_empty(in_out.domain_size());
-        let mut discriminants = enum_def.discriminants(self.tcx);
-        for (value, target) in values.iter().zip(targets.iter().copied()) {
-            let (variant_idx, _) = discriminants.find(|&(_, discr)| discr.val == *value).expect(
-                "Order of `AdtDef::discriminants` differed from that of `SwitchInt::values`",
-            );
-
-            tmp.overwrite(in_out);
-            self.analysis.apply_discriminant_switch_effect(
-                &mut tmp,
-                bb,
-                enum_place,
-                enum_def,
-                variant_idx,
-            );
-            self.propagate_bits_into_entry_set_for(&tmp, target, dirty_list);
-        }
-
-        std::mem::drop(tmp);
-
-        // Propagate dataflow state along the "otherwise" edge.
-        let otherwise = targets.last().copied().unwrap();
-        self.propagate_bits_into_entry_set_for(&in_out, otherwise, dirty_list);
-    }
-}
-
-/// Inspect a `SwitchInt`-terminated basic block to see if the condition of that `SwitchInt` is
-/// an enum discriminant.
-///
-/// We expect such blocks to have a call to `discriminant` as their last statement like so:
-///   _42 = discriminant(_1)
-///   SwitchInt(_42, ..)
-///
-/// If the basic block matches this pattern, this function returns the place corresponding to the
-/// enum (`_1` in the example above) as well as the `AdtDef` of that enum.
-fn switch_on_enum_discriminant(
-    tcx: TyCtxt<'tcx>,
-    body: &'mir mir::Body<'tcx>,
-    block: &'mir mir::BasicBlockData<'tcx>,
-    switch_on: mir::Place<'tcx>,
-) -> Option<(mir::Place<'tcx>, &'tcx ty::AdtDef)> {
-    match block.statements.last().map(|stmt| &stmt.kind) {
-        Some(mir::StatementKind::Assign(box (lhs, mir::Rvalue::Discriminant(discriminated))))
-            if *lhs == switch_on =>
-        {
-            match &discriminated.ty(body, tcx).ty.kind {
-                ty::Adt(def, _) => Some((*discriminated, def)),
-
-                // `Rvalue::Discriminant` is also used to get the active yield point for a
-                // generator, but we do not need edge-specific effects in that case. This may
-                // change in the future.
-                ty::Generator(..) => None,
-
-                t => bug!("`discriminant` called on unexpected type {:?}", t),
-            }
-        }
-
-        _ => None,
     }
 }
 
@@ -431,12 +297,12 @@ where
             if let Some(trans_for_block) = block_transfer_functions {
                 Box::new(graphviz::BlockTransferFunc::new(body, trans_for_block))
             } else {
-                Box::new(graphviz::SimpleDiff::new(bits_per_block))
+                Box::new(graphviz::SimpleDiff::new(body, &results))
             }
         }
 
         // Default to the `SimpleDiff` output style.
-        _ => Box::new(graphviz::SimpleDiff::new(bits_per_block)),
+        _ => Box::new(graphviz::SimpleDiff::new(body, &results)),
     };
 
     debug!("printing dataflow results for {:?} to {}", def_id, path.display());

@@ -15,11 +15,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         subpatterns
             .iter()
             .map(|fieldpat| {
-                let place = self.hir.tcx().mk_place_field(
-                    place.clone(),
-                    fieldpat.field,
-                    fieldpat.pattern.ty,
-                );
+                let place =
+                    self.hir.tcx().mk_place_field(place, fieldpat.field, fieldpat.pattern.ty);
                 MatchPair::new(place, &fieldpat.pattern)
             })
             .collect()
@@ -44,14 +41,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         match_pairs.extend(prefix.iter().enumerate().map(|(idx, subpattern)| {
             let elem =
                 ProjectionElem::ConstantIndex { offset: idx as u32, min_length, from_end: false };
-            let place = tcx.mk_place_elem(place.clone(), elem);
+            let place = tcx.mk_place_elem(*place, elem);
             MatchPair::new(place, subpattern)
         }));
 
         if let Some(subslice_pat) = opt_slice {
             let suffix_len = suffix.len() as u32;
             let subslice = tcx.mk_place_elem(
-                place.clone(),
+                *place,
                 ProjectionElem::Subslice {
                     from: prefix.len() as u32,
                     to: if exact_size { min_length - suffix_len } else { suffix_len },
@@ -68,7 +65,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 min_length,
                 from_end: !exact_size,
             };
-            let place = tcx.mk_place_elem(place.clone(), elem);
+            let place = tcx.mk_place_elem(*place, elem);
             MatchPair::new(place, subpattern)
         }));
     }

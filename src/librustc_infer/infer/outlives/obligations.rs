@@ -61,13 +61,16 @@
 
 use crate::infer::outlives::env::RegionBoundPairs;
 use crate::infer::outlives::verify::VerifyBoundCx;
-use crate::infer::{self, GenericKind, InferCtxt, RegionObligation, SubregionOrigin, VerifyBound};
+use crate::infer::{
+    self, GenericKind, InferCtxt, RegionObligation, SubregionOrigin, UndoLog, VerifyBound,
+};
 use crate::traits::ObligationCause;
 use rustc_middle::ty::outlives::Component;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, Region, Ty, TyCtxt, TypeFoldable};
 
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::undo_log::UndoLogs;
 use rustc_hir as hir;
 use smallvec::smallvec;
 
@@ -84,7 +87,9 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     ) {
         debug!("register_region_obligation(body_id={:?}, obligation={:?})", body_id, obligation);
 
-        self.inner.borrow_mut().region_obligations.push((body_id, obligation));
+        let mut inner = self.inner.borrow_mut();
+        inner.undo_log.push(UndoLog::PushRegionObligation);
+        inner.region_obligations.push((body_id, obligation));
     }
 
     pub fn register_region_obligation_with_cause(
@@ -452,7 +457,7 @@ where
         // even though a satisfactory solution exists.
         let generic = GenericKind::Projection(projection_ty);
         let verify_bound = self.verify_bound.generic_bound(generic);
-        self.delegate.push_verify(origin, generic.clone(), region, verify_bound);
+        self.delegate.push_verify(origin, generic, region, verify_bound);
     }
 }
 

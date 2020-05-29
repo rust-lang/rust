@@ -65,15 +65,6 @@ use rustc_span::Span;
 // variant argument) that does not require visiting, as in
 // `is_cleanup` above.
 
-macro_rules! body_type {
-    (mut $tcx:lifetime) => {
-        &mut BodyAndCache<$tcx>
-    };
-    ($tcx:lifetime) => {
-        &Body<$tcx>
-    };
-}
-
 macro_rules! make_mir_visitor {
     ($visitor_trait_name:ident, $($mutability:ident)?) => {
         pub trait $visitor_trait_name<'tcx> {
@@ -82,7 +73,7 @@ macro_rules! make_mir_visitor {
 
             fn visit_body(
                 &mut self,
-                body: body_type!($($mutability)? 'tcx)
+                body: &$($mutability)? Body<'tcx>,
             ) {
                 self.super_body(body);
             }
@@ -161,13 +152,6 @@ macro_rules! make_mir_visitor {
                             context: PlaceContext,
                             location: Location) {
                 self.super_place(place, context, location);
-            }
-
-            fn visit_place_base(&mut self,
-                                local: & $($mutability)? Local,
-                                context: PlaceContext,
-                                location: Location) {
-                self.super_place_base(local, context, location);
             }
 
             visit_place_fns!($($mutability)?);
@@ -254,14 +238,14 @@ macro_rules! make_mir_visitor {
 
             fn super_body(
                 &mut self,
-                $($mutability)? body: body_type!($($mutability)? 'tcx)
+                body: &$($mutability)? Body<'tcx>,
             ) {
                 let span = body.span;
                 if let Some(yield_ty) = &$($mutability)? body.yield_ty {
-                    self.visit_ty(yield_ty, TyContext::YieldTy(SourceInfo {
-                        span,
-                        scope: OUTERMOST_SOURCE_SCOPE,
-                    }));
+                    self.visit_ty(
+                        yield_ty,
+                        TyContext::YieldTy(SourceInfo::outermost(span))
+                    );
                 }
 
                 // for best performance, we want to use an iterator rather
@@ -275,15 +259,14 @@ macro_rules! make_mir_visitor {
                     self.visit_basic_block_data(bb, data);
                 }
 
-                let body: & $($mutability)? Body<'_> = & $($mutability)? body;
                 for scope in &$($mutability)? body.source_scopes {
                     self.visit_source_scope_data(scope);
                 }
 
-                self.visit_ty(&$($mutability)? body.return_ty(), TyContext::ReturnTy(SourceInfo {
-                    span: body.span,
-                    scope: OUTERMOST_SOURCE_SCOPE,
-                }));
+                self.visit_ty(
+                    &$($mutability)? body.return_ty(),
+                    TyContext::ReturnTy(SourceInfo::outermost(body.span))
+                );
 
                 for local in body.local_decls.indices() {
                     self.visit_local_decl(local, & $($mutability)? body.local_decls[local]);
@@ -305,6 +288,11 @@ macro_rules! make_mir_visitor {
                 }
 
                 self.visit_span(&$($mutability)? body.span);
+
+                for const_ in &$($mutability)? body.required_consts {
+                    let location = START_BLOCK.start_location();
+                    self.visit_constant(const_, location);
+                }
             }
 
             fn super_basic_block_data(&mut self,
@@ -439,11 +427,27 @@ macro_rules! make_mir_visitor {
                     TerminatorKind::Goto { .. } |
                     TerminatorKind::Resume |
                     TerminatorKind::Abort |
-                    TerminatorKind::Return |
                     TerminatorKind::GeneratorDrop |
                     TerminatorKind::Unreachable |
                     TerminatorKind::FalseEdges { .. } |
                     TerminatorKind::FalseUnwind { .. } => {
+                    }
+
+                    TerminatorKind::Return => {
+                        // `return` logically moves from the return place `_0`. Note that the place
+                        // cannot be changed by any visitor, though.
+                        let $($mutability)? local = RETURN_PLACE;
+                        self.visit_local(
+                            & $($mutability)? local,
+                            PlaceContext::NonMutatingUse(NonMutatingUseContext::Move),
+                            source_location,
+                        );
+
+                        assert_eq!(
+                            local,
+                            RETURN_PLACE,
+                            "`MutVisitor` tried to mutate return place of `return` terminator"
+                        );
                     }
 
                     TerminatorKind::SwitchInt {
@@ -522,11 +526,49 @@ macro_rules! make_mir_visitor {
                         self.visit_operand(value, source_location);
                         self.visit_place(
                             resume_arg,
-                            PlaceContext::MutatingUse(MutatingUseContext::Store),
+                            PlaceContext::MutatingUse(MutatingUseContext::Yield),
                             source_location,
                         );
                     }
 
+                    TerminatorKind::InlineAsm {
+                        template: _,
+                        operands,
+                        options: _,
+                        destination: _,
+                    } => {
+                        for op in operands {
+                            match op {
+                                InlineAsmOperand::In { value, .. }
+                                | InlineAsmOperand::Const { value } => {
+                                    self.visit_operand(value, source_location);
+                                }
+                                InlineAsmOperand::Out { place, .. } => {
+                                    if let Some(place) = place {
+                                        self.visit_place(
+                                            place,
+                                            PlaceContext::MutatingUse(MutatingUseContext::Store),
+                                            source_location,
+                                        );
+                                    }
+                                }
+                                InlineAsmOperand::InOut { in_value, out_place, .. } => {
+                                    self.visit_operand(in_value, source_location);
+                                    if let Some(out_place) = out_place {
+                                        self.visit_place(
+                                            out_place,
+                                            PlaceContext::MutatingUse(MutatingUseContext::Store),
+                                            source_location,
+                                        );
+                                    }
+                                }
+                                InlineAsmOperand::SymFn { value }
+                                | InlineAsmOperand::SymStatic { value } => {
+                                    self.visit_constant(value, source_location);
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
@@ -710,13 +752,6 @@ macro_rules! make_mir_visitor {
                 );
             }
 
-            fn super_place_base(&mut self,
-                                local: & $($mutability)? Local,
-                                context: PlaceContext,
-                                location: Location) {
-                self.visit_local(local, context, location);
-            }
-
             fn super_local_decl(&mut self,
                                 local: Local,
                                 local_decl: & $($mutability)? LocalDecl<'tcx>) {
@@ -734,8 +769,10 @@ macro_rules! make_mir_visitor {
                     local,
                     source_info: *source_info,
                 });
-                for (user_ty, _) in & $($mutability)? user_ty.contents {
-                    self.visit_user_type_projection(user_ty);
+                if let Some(user_ty) = user_ty {
+                    for (user_ty, _) in & $($mutability)? user_ty.contents {
+                        self.visit_user_type_projection(user_ty);
+                    }
                 }
                 self.visit_source_info(source_info);
             }
@@ -819,10 +856,14 @@ macro_rules! make_mir_visitor {
 
             fn visit_location(
                 &mut self,
-                body: body_type!($($mutability)? 'tcx),
+                body: &$($mutability)? Body<'tcx>,
                 location: Location
             ) {
-                let basic_block = & $($mutability)? body[location.block];
+                macro_rules! basic_blocks {
+                    (mut) => (body.basic_blocks_mut());
+                    () => (body.basic_blocks());
+                };
+                let basic_block = & $($mutability)? basic_blocks!($($mutability)?)[location.block];
                 if basic_block.statements.len() == location.statement_index {
                     if let Some(ref $($mutability)? terminator) = basic_block.terminator {
                         self.visit_terminator(terminator, location)
@@ -838,7 +879,7 @@ macro_rules! make_mir_visitor {
 }
 
 macro_rules! visit_place_fns {
-    (mut) => (
+    (mut) => {
         fn tcx<'a>(&'a self) -> TyCtxt<'tcx>;
 
         fn super_place(
@@ -847,9 +888,9 @@ macro_rules! visit_place_fns {
             context: PlaceContext,
             location: Location,
         ) {
-            self.visit_place_base(&mut place.local, context, location);
+            self.visit_local(&mut place.local, context, location);
 
-            if let Some(new_projection) = self.process_projection(&place.projection) {
+            if let Some(new_projection) = self.process_projection(&place.projection, location) {
                 place.projection = self.tcx().intern_place_elems(&new_projection);
             }
         }
@@ -857,12 +898,13 @@ macro_rules! visit_place_fns {
         fn process_projection(
             &mut self,
             projection: &'a [PlaceElem<'tcx>],
+            location: Location,
         ) -> Option<Vec<PlaceElem<'tcx>>> {
             let mut projection = Cow::Borrowed(projection);
 
             for i in 0..projection.len() {
-                if let Some(elem) = projection.get(i) {
-                    if let Some(elem) = self.process_projection_elem(elem) {
+                if let Some(&elem) = projection.get(i) {
+                    if let Some(elem) = self.process_projection_elem(elem, location) {
                         // This converts the borrowed projection into `Cow::Owned(_)` and returns a
                         // clone of the projection so we can mutate and reintern later.
                         let vec = projection.to_mut();
@@ -879,13 +921,30 @@ macro_rules! visit_place_fns {
 
         fn process_projection_elem(
             &mut self,
-            _elem: &PlaceElem<'tcx>,
+            elem: PlaceElem<'tcx>,
+            location: Location,
         ) -> Option<PlaceElem<'tcx>> {
-            None
-        }
-    );
+            match elem {
+                PlaceElem::Index(local) => {
+                    let mut new_local = local;
+                    self.visit_local(
+                        &mut new_local,
+                        PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy),
+                        location,
+                    );
 
-    () => (
+                    if new_local == local { None } else { Some(PlaceElem::Index(new_local)) }
+                }
+                PlaceElem::Deref
+                | PlaceElem::Field(..)
+                | PlaceElem::ConstantIndex { .. }
+                | PlaceElem::Subslice { .. }
+                | PlaceElem::Downcast(..) => None,
+            }
+        }
+    };
+
+    () => {
         fn visit_projection(
             &mut self,
             local: Local,
@@ -900,19 +959,14 @@ macro_rules! visit_place_fns {
             &mut self,
             local: Local,
             proj_base: &[PlaceElem<'tcx>],
-            elem: &PlaceElem<'tcx>,
+            elem: PlaceElem<'tcx>,
             context: PlaceContext,
             location: Location,
         ) {
             self.super_projection_elem(local, proj_base, elem, context, location);
         }
 
-        fn super_place(
-            &mut self,
-            place: &Place<'tcx>,
-            context: PlaceContext,
-            location: Location,
-        ) {
+        fn super_place(&mut self, place: &Place<'tcx>, context: PlaceContext, location: Location) {
             let mut context = context;
 
             if !place.projection.is_empty() {
@@ -923,12 +977,9 @@ macro_rules! visit_place_fns {
                 };
             }
 
-            self.visit_place_base(&place.local, context, location);
+            self.visit_local(&place.local, context, location);
 
-            self.visit_projection(place.local,
-                                  &place.projection,
-                                  context,
-                                  location);
+            self.visit_projection(place.local, &place.projection, context, location);
         }
 
         fn super_projection(
@@ -939,7 +990,7 @@ macro_rules! visit_place_fns {
             location: Location,
         ) {
             let mut cursor = projection;
-            while let [proj_base @ .., elem] = cursor {
+            while let &[ref proj_base @ .., elem] = cursor {
                 cursor = proj_base;
                 self.visit_projection_elem(local, cursor, elem, context, location);
             }
@@ -949,7 +1000,7 @@ macro_rules! visit_place_fns {
             &mut self,
             _local: Local,
             _proj_base: &[PlaceElem<'tcx>],
-            elem: &PlaceElem<'tcx>,
+            elem: PlaceElem<'tcx>,
             _context: PlaceContext,
             location: Location,
         ) {
@@ -959,21 +1010,18 @@ macro_rules! visit_place_fns {
                 }
                 ProjectionElem::Index(local) => {
                     self.visit_local(
-                        local,
+                        &local,
                         PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy),
-                        location
+                        location,
                     );
                 }
-                ProjectionElem::Deref |
-                ProjectionElem::Subslice { from: _, to: _, from_end: _ } |
-                ProjectionElem::ConstantIndex { offset: _,
-                                                min_length: _,
-                                                from_end: _ } |
-                ProjectionElem::Downcast(_, _) => {
-                }
+                ProjectionElem::Deref
+                | ProjectionElem::Subslice { from: _, to: _, from_end: _ }
+                | ProjectionElem::ConstantIndex { offset: _, min_length: _, from_end: _ }
+                | ProjectionElem::Downcast(_, _) => {}
             }
         }
-    );
+    };
 }
 
 make_mir_visitor!(Visitor,);
@@ -1060,6 +1108,8 @@ pub enum MutatingUseContext {
     AsmOutput,
     /// Destination of a call.
     Call,
+    /// Destination of a yield.
+    Yield,
     /// Being dropped.
     Drop,
     /// Mutable borrow.
@@ -1108,9 +1158,11 @@ impl PlaceContext {
     /// Returns `true` if this place context represents a borrow.
     pub fn is_borrow(&self) -> bool {
         match *self {
-            PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow)
-            | PlaceContext::NonMutatingUse(NonMutatingUseContext::ShallowBorrow)
-            | PlaceContext::NonMutatingUse(NonMutatingUseContext::UniqueBorrow)
+            PlaceContext::NonMutatingUse(
+                NonMutatingUseContext::SharedBorrow
+                | NonMutatingUseContext::ShallowBorrow
+                | NonMutatingUseContext::UniqueBorrow,
+            )
             | PlaceContext::MutatingUse(MutatingUseContext::Borrow) => true,
             _ => false,
         }
@@ -1119,8 +1171,7 @@ impl PlaceContext {
     /// Returns `true` if this place context represents a storage live or storage dead marker.
     pub fn is_storage_marker(&self) -> bool {
         match *self {
-            PlaceContext::NonUse(NonUseContext::StorageLive)
-            | PlaceContext::NonUse(NonUseContext::StorageDead) => true,
+            PlaceContext::NonUse(NonUseContext::StorageLive | NonUseContext::StorageDead) => true,
             _ => false,
         }
     }
@@ -1168,9 +1219,11 @@ impl PlaceContext {
     /// Returns `true` if this place context represents an assignment statement.
     pub fn is_place_assignment(&self) -> bool {
         match *self {
-            PlaceContext::MutatingUse(MutatingUseContext::Store)
-            | PlaceContext::MutatingUse(MutatingUseContext::Call)
-            | PlaceContext::MutatingUse(MutatingUseContext::AsmOutput) => true,
+            PlaceContext::MutatingUse(
+                MutatingUseContext::Store
+                | MutatingUseContext::Call
+                | MutatingUseContext::AsmOutput,
+            ) => true,
             _ => false,
         }
     }

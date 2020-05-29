@@ -2,9 +2,9 @@
 //!
 //! - **Traits.** Trait resolution is implemented in the `traits` module.
 //!
-//! For more information about how rustc works, see the [rustc guide].
+//! For more information about how rustc works, see the [rustc-dev-guide].
 //!
-//! [rustc guide]: https://rust-lang.github.io/rustc-guide/
+//! [rustc-dev-guide]: https://rustc-dev-guide.rust-lang.org/
 //!
 //! # Note
 //!
@@ -16,6 +16,8 @@
 #![feature(in_band_lifetimes)]
 #![feature(crate_visibility_modifier)]
 #![feature(or_patterns)]
+#![feature(str_strip)]
+#![feature(option_zip)]
 #![recursion_limit = "512"] // For rustdoc
 
 #[macro_use]

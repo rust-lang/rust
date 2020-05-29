@@ -55,3 +55,5 @@ warning: unused comparison that must be used
 LL |     m == n;
    |     ^^^^^^
 
+warning: 8 warnings emitted
+

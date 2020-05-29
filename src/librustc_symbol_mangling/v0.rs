@@ -153,7 +153,7 @@ impl SymbolMangler<'tcx> {
 
         // Write a separating `_` if necessary (leading digit or `_`).
         match ident.chars().next() {
-            Some('_') | Some('0'..='9') => {
+            Some('_' | '0'..='9') => {
                 self.push("_");
             }
             _ => {}
@@ -413,7 +413,6 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
             | ty::FnDef(def_id, substs)
             | ty::Opaque(def_id, substs)
             | ty::Projection(ty::ProjectionTy { item_def_id: def_id, substs })
-            | ty::UnnormalizedProjection(ty::ProjectionTy { item_def_id: def_id, substs })
             | ty::Closure(def_id, substs)
             | ty::Generator(def_id, substs, _) => {
                 self = self.print_def_path(def_id, substs)?;
@@ -478,7 +477,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
         predicates: &'tcx ty::List<ty::ExistentialPredicate<'tcx>>,
     ) -> Result<Self::DynExistential, Self::Error> {
         for predicate in predicates {
-            match *predicate {
+            match predicate {
                 ty::ExistentialPredicate::Trait(trait_ref) => {
                     // Use a type that can't appear in defaults of type parameters.
                     let dummy_self = self.tcx.mk_ty_infer(ty::FreshTy(0));

@@ -86,7 +86,7 @@ impl Step for Std {
         target_deps.extend(copy_third_party_objects(builder, &compiler, target).into_iter());
 
         let mut cargo = builder.cargo(compiler, Mode::Std, target, "build");
-        std_cargo(builder, target, &mut cargo);
+        std_cargo(builder, target, compiler.stage, &mut cargo);
 
         builder.info(&format!(
             "Building stage{} std artifacts ({} -> {})",
@@ -125,15 +125,16 @@ fn copy_third_party_objects(
         target_deps.push(target);
     };
 
-    // Copies the crt(1,i,n).o startup objects
+    // Copies the CRT objects.
     //
-    // Since musl supports fully static linking, we can cross link for it even
-    // with a glibc-targeting toolchain, given we have the appropriate startup
-    // files. As those shipped with glibc won't work, copy the ones provided by
-    // musl so we have them on linux-gnu hosts.
+    // rustc historically provides a more self-contained installation for musl targets
+    // not requiring the presence of a native musl toolchain. For example, it can fall back
+    // to using gcc from a glibc-targeting toolchain for linking.
+    // To do that we have to distribute musl startup objects as a part of Rust toolchain
+    // and link with them manually in the self-contained mode.
     if target.contains("musl") {
         let srcdir = builder.musl_root(target).unwrap().join("lib");
-        for &obj in &["crt1.o", "crti.o", "crtn.o"] {
+        for &obj in &["crt1.o", "Scrt1.o", "rcrt1.o", "crti.o", "crtn.o"] {
             copy_and_stamp(&srcdir, obj);
         }
     } else if target.ends_with("-wasi") {
@@ -164,7 +165,7 @@ fn copy_third_party_objects(
 
 /// Configure cargo to compile the standard library, adding appropriate env vars
 /// and such.
-pub fn std_cargo(builder: &Builder<'_>, target: Interned<String>, cargo: &mut Cargo) {
+pub fn std_cargo(builder: &Builder<'_>, target: Interned<String>, stage: u32, cargo: &mut Cargo) {
     if let Some(target) = env::var_os("MACOSX_STD_DEPLOYMENT_TARGET") {
         cargo.env("MACOSX_DEPLOYMENT_TARGET", target);
     }
@@ -186,6 +187,8 @@ pub fn std_cargo(builder: &Builder<'_>, target: Interned<String>, cargo: &mut Ca
     // `compiler-rt` is located.
     let compiler_builtins_root = builder.src.join("src/llvm-project/compiler-rt");
     let compiler_builtins_c_feature = if compiler_builtins_root.exists() {
+        // Note that `libprofiler_builtins/build.rs` also computes this so if
+        // you're changing something here please also change that.
         cargo.env("RUST_COMPILER_RT_ROOT", &compiler_builtins_root);
         " compiler-builtins-c".to_string()
     } else {
@@ -228,6 +231,18 @@ pub fn std_cargo(builder: &Builder<'_>, target: Interned<String>, cargo: &mut Ca
                 cargo.rustflag("-L").rustflag(&root);
             }
         }
+    }
+
+    // By default, rustc uses `-Cembed-bitcode=yes`, and Cargo overrides that
+    // with `-Cembed-bitcode=no` for non-LTO builds. However, libstd must be
+    // built with bitcode so that the produced rlibs can be used for both LTO
+    // builds (which use bitcode) and non-LTO builds (which use object code).
+    // So we override the override here!
+    //
+    // But we don't bother for the stage 0 compiler because it's never used
+    // with LTO.
+    if stage >= 1 {
+        cargo.rustflag("-Cembed-bitcode=yes");
     }
 }
 
@@ -503,9 +518,13 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: Interne
     // librustc_llvm and librustc_codegen_llvm.
     //
     // Note that this is disabled if LLVM itself is disabled or we're in a check
-    // build, where if we're in a check build there's no need to build all of
-    // LLVM and such.
-    if builder.config.llvm_enabled() && builder.kind != Kind::Check {
+    // build. If we are in a check build we still go ahead here presuming we've
+    // detected that LLVM is alreay built and good to go which helps prevent
+    // busting caches (e.g. like #71152).
+    if builder.config.llvm_enabled()
+        && (builder.kind != Kind::Check
+            || crate::native::prebuilt_llvm_config(builder, target).is_ok())
+    {
         if builder.is_rust_llvm(target) {
             cargo.env("LLVM_RUSTLLVM", "1");
         }
@@ -754,7 +773,8 @@ impl Step for Assemble {
 
         // Ensure that `libLLVM.so` ends up in the newly build compiler directory,
         // so that it can be found when the newly built `rustc` is run.
-        dist::maybe_install_llvm_dylib(builder, target_compiler.host, &sysroot);
+        dist::maybe_install_llvm_runtime(builder, target_compiler.host, &sysroot);
+        dist::maybe_install_llvm_target(builder, target_compiler.host, &sysroot);
 
         // Link the compiler binary itself into place
         let out_dir = builder.cargo_out(build_compiler, Mode::Rustc, host);
@@ -997,5 +1017,8 @@ pub enum CargoMessage<'a> {
     },
     BuildScriptExecuted {
         package_id: Cow<'a, str>,
+    },
+    BuildFinished {
+        success: bool,
     },
 }

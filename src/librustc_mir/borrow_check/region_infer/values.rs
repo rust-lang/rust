@@ -2,7 +2,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_index::bit_set::{HybridBitSet, SparseBitMatrix};
 use rustc_index::vec::Idx;
 use rustc_index::vec::IndexVec;
-use rustc_middle::mir::{BasicBlock, Body, Location, ReadOnlyBodyAndCache};
+use rustc_middle::mir::{BasicBlock, Body, Location};
 use rustc_middle::ty::{self, RegionVid};
 use std::fmt::Debug;
 use std::rc::Rc;
@@ -80,7 +80,7 @@ impl RegionValueElements {
     /// Pushes all predecessors of `index` onto `stack`.
     crate fn push_predecessors(
         &self,
-        body: ReadOnlyBodyAndCache<'_, '_>,
+        body: &Body<'_>,
         index: PointIndex,
         stack: &mut Vec<PointIndex>,
     ) {
@@ -89,7 +89,7 @@ impl RegionValueElements {
             // If this is a basic block head, then the predecessors are
             // the terminators of other basic blocks
             stack.extend(
-                body.predecessors_for(block)
+                body.predecessors()[block]
                     .iter()
                     .map(|&pred_bb| body.terminator_loc(pred_bb))
                     .map(|pred_loc| self.point_from_location(pred_loc)),

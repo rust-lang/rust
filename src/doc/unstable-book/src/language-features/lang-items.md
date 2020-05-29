@@ -287,6 +287,7 @@ the source code.
   - `unsize`: `libcore/marker.rs`
   - `sync`: `libcore/marker.rs`
   - `phantom_data`: `libcore/marker.rs`
+  - `discriminant_kind`: `libcore/marker.rs`
   - `freeze`: `libcore/marker.rs`
   - `debug_trait`: `libcore/fmt/mod.rs`
   - `non_zero`: `libcore/nonzero.rs`

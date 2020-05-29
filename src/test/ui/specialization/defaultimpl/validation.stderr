@@ -25,13 +25,13 @@ LL | default impl !Send for Z {}
    | default because of this
 
 error[E0750]: negative impls cannot be default impls
-  --> $DIR/validation.rs:10:14
+  --> $DIR/validation.rs:10:1
    |
 LL | default impl !Send for Z {}
    | ^^^^^^^      ^
 
 error[E0750]: negative impls cannot be default impls
-  --> $DIR/validation.rs:14:14
+  --> $DIR/validation.rs:14:1
    |
 LL | default impl !Tr for S {}
    | ^^^^^^^      ^

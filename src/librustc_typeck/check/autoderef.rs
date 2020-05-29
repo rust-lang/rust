@@ -1,7 +1,6 @@
 use super::method::MethodCallee;
 use super::{FnCtxt, Needs, PlaceOp};
 
-use rustc_ast::ast::Ident;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_infer::infer::{InferCtxt, InferOk};
@@ -9,6 +8,7 @@ use rustc_middle::ty::adjustment::{Adjust, Adjustment, OverloadedDeref};
 use rustc_middle::ty::{self, TraitRef, Ty, TyCtxt, WithConstness};
 use rustc_middle::ty::{ToPredicate, TypeFoldable};
 use rustc_session::DiagnosticMessageId;
+use rustc_span::symbol::Ident;
 use rustc_span::Span;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{self, TraitEngine};
@@ -48,7 +48,7 @@ impl<'a, 'tcx> Iterator for Autoderef<'a, 'tcx> {
             return Some((self.cur_ty, 0));
         }
 
-        if self.steps.len() >= *tcx.sess.recursion_limit.get() {
+        if self.steps.len() >= tcx.sess.recursion_limit() {
             if !self.silence_errors {
                 report_autoderef_recursion_limit_error(tcx, self.span, self.cur_ty);
             }
@@ -114,10 +114,10 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
 
         let tcx = self.infcx.tcx;
 
-        // <cur_ty as Deref>
+        // <ty as Deref>
         let trait_ref = TraitRef {
             def_id: tcx.lang_items().deref_trait()?,
-            substs: tcx.mk_substs_trait(self.cur_ty, &[]),
+            substs: tcx.mk_substs_trait(ty, &[]),
         };
 
         let cause = traits::ObligationCause::misc(self.span, self.body_id);
@@ -125,7 +125,7 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
         let obligation = traits::Obligation::new(
             cause.clone(),
             self.param_env,
-            trait_ref.without_const().to_predicate(),
+            trait_ref.without_const().to_predicate(tcx),
         );
         if !self.infcx.predicate_may_hold(&obligation) {
             debug!("overloaded_deref_ty: cannot match obligation");
@@ -236,7 +236,7 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
 
 pub fn report_autoderef_recursion_limit_error<'tcx>(tcx: TyCtxt<'tcx>, span: Span, ty: Ty<'tcx>) {
     // We've reached the recursion limit, error gracefully.
-    let suggested_limit = *tcx.sess.recursion_limit.get() * 2;
+    let suggested_limit = tcx.sess.recursion_limit() * 2;
     let msg = format!("reached the recursion limit while auto-dereferencing `{:?}`", ty);
     let error_id = (DiagnosticMessageId::ErrorId(55), Some(span), msg);
     let fresh = tcx.sess.one_time_diagnostics.borrow_mut().insert(error_id);

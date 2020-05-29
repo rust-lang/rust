@@ -5,10 +5,19 @@ LL | use foo as self;
    |            ^^^^ expected identifier, found keyword
 
 error[E0429]: `self` imports are only allowed within a { } list
-  --> $DIR/import-self.rs:12:5
+  --> $DIR/import-self.rs:12:8
    |
 LL | use foo::self;
-   |     ^^^^^^^^^
+   |        ^^^^^^
+   |
+help: consider importing the module directly
+   |
+LL | use foo;
+   |       --
+help: alternatively, use the multi-path `use` syntax to import `self`
+   |
+LL | use foo::{self};
+   |          ^    ^
 
 error[E0255]: the name `foo` is defined multiple times
   --> $DIR/import-self.rs:6:11
@@ -25,6 +34,21 @@ help: you can use `as` to change the binding name of the import
 LL | use foo::{self as other_foo};
    |           ^^^^^^^^^^^^^^^^^
 
+error[E0255]: the name `foo` is defined multiple times
+  --> $DIR/import-self.rs:12:5
+   |
+LL | mod foo {
+   | ------- previous definition of the module `foo` here
+...
+LL | use foo::self;
+   |     ^^^^^^^^^ `foo` reimported here
+   |
+   = note: `foo` must be defined only once in the type namespace of this module
+help: you can use `as` to change the binding name of the import
+   |
+LL | use foo as other_foo;
+   |     ^^^^^^^^^^^^^^^^
+
 error[E0252]: the name `A` is defined multiple times
   --> $DIR/import-self.rs:16:11
    |
@@ -39,7 +63,7 @@ help: you can use `as` to change the binding name of the import
 LL | use foo::{self as OtherA};
    |           ^^^^^^^^^^^^^^
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 
 Some errors have detailed explanations: E0252, E0255, E0429.
 For more information about an error, try `rustc --explain E0252`.

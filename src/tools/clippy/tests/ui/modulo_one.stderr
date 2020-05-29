@@ -1,0 +1,30 @@
+error: any number modulo 1 will be 0
+  --> $DIR/modulo_one.rs:7:5
+   |
+LL |     10 % 1;
+   |     ^^^^^^
+   |
+   = note: `-D clippy::modulo-one` implied by `-D warnings`
+
+error: the operation is ineffective. Consider reducing it to `1`
+  --> $DIR/modulo_one.rs:10:22
+   |
+LL |     const ONE: u32 = 1 * 1;
+   |                      ^^^^^
+   |
+   = note: `-D clippy::identity-op` implied by `-D warnings`
+
+error: the operation is ineffective. Consider reducing it to `1`
+  --> $DIR/modulo_one.rs:10:22
+   |
+LL |     const ONE: u32 = 1 * 1;
+   |                      ^^^^^
+
+error: any number modulo 1 will be 0
+  --> $DIR/modulo_one.rs:12:5
+   |
+LL |     2 % ONE;
+   |     ^^^^^^^
+
+error: aborting due to 4 previous errors
+

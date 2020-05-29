@@ -100,7 +100,7 @@ pub fn compile_codegen_unit(
     tcx: TyCtxt<'tcx>,
     cgu_name: Symbol,
 ) -> (ModuleCodegen<ModuleLlvm>, u64) {
-    let prof_timer = tcx.prof.generic_activity("codegen_module");
+    let prof_timer = tcx.prof.generic_activity_with_arg("codegen_module", cgu_name.to_string());
     let start_time = Instant::now();
 
     let dep_node = tcx.codegen_unit(cgu_name).codegen_dep_node(tcx);

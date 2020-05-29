@@ -3,10 +3,9 @@
 use super::{check_fn, Expectation, FnCtxt, GeneratorTypes};
 
 use crate::astconv::AstConv;
-use crate::middle::region;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_hir::lang_items;
+use rustc_hir::lang_items::{FutureTraitLangItem, GeneratorTraitLangItem};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::LateBoundRegionConversionTime;
 use rustc_infer::infer::{InferOk, InferResult};
@@ -17,7 +16,6 @@ use rustc_span::source_map::Span;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits::error_reporting::ArgKind;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
-use rustc_trait_selection::traits::Obligation;
 use std::cmp;
 use std::iter;
 
@@ -71,49 +69,54 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let expr_def_id = self.tcx.hir().local_def_id(expr.hir_id);
 
         let ClosureSignatures { bound_sig, liberated_sig } =
-            self.sig_of_closure(expr_def_id, decl, body, expected_sig);
+            self.sig_of_closure(expr_def_id.to_def_id(), decl, body, expected_sig);
 
         debug!("check_closure: ty_of_closure returns {:?}", liberated_sig);
 
         let generator_types =
             check_fn(self, self.param_env, liberated_sig, decl, expr.hir_id, body, gen).1;
 
-        let base_substs =
-            InternalSubsts::identity_for_item(self.tcx, self.tcx.closure_base_def_id(expr_def_id));
+        let base_substs = InternalSubsts::identity_for_item(
+            self.tcx,
+            self.tcx.closure_base_def_id(expr_def_id.to_def_id()),
+        );
         // HACK(eddyb) this hardcodes indices into substs but it should rely on
         // `ClosureSubsts` and `GeneratorSubsts` providing constructors, instead.
         // That would also remove the need for most of the inference variables,
         // as they immediately unified with the actual type below, including
         // the `InferCtxt::closure_sig` and `ClosureSubsts::sig_ty` methods.
         let tupled_upvars_idx = base_substs.len() + if generator_types.is_some() { 4 } else { 2 };
-        let substs = base_substs.extend_to(self.tcx, expr_def_id, |param, _| match param.kind {
-            GenericParamDefKind::Lifetime => span_bug!(expr.span, "closure has lifetime param"),
-            GenericParamDefKind::Type { .. } => if param.index as usize == tupled_upvars_idx {
-                self.tcx.mk_tup(self.tcx.upvars(expr_def_id).iter().flat_map(|upvars| {
-                    upvars.iter().map(|(&var_hir_id, _)| {
-                        // Create type variables (for now) to represent the transformed
-                        // types of upvars. These will be unified during the upvar
-                        // inference phase (`upvar.rs`).
-                        self.infcx.next_ty_var(TypeVariableOrigin {
-                            // FIXME(eddyb) distinguish upvar inference variables from the rest.
-                            kind: TypeVariableOriginKind::ClosureSynthetic,
-                            span: self.tcx.hir().span(var_hir_id),
-                        })
+        let substs =
+            base_substs.extend_to(self.tcx, expr_def_id.to_def_id(), |param, _| match param.kind {
+                GenericParamDefKind::Lifetime => span_bug!(expr.span, "closure has lifetime param"),
+                GenericParamDefKind::Type { .. } => if param.index as usize == tupled_upvars_idx {
+                    self.tcx.mk_tup(self.tcx.upvars_mentioned(expr_def_id).iter().flat_map(
+                        |upvars| {
+                            upvars.iter().map(|(&var_hir_id, _)| {
+                                // Create type variables (for now) to represent the transformed
+                                // types of upvars. These will be unified during the upvar
+                                // inference phase (`upvar.rs`).
+                                self.infcx.next_ty_var(TypeVariableOrigin {
+                                    // FIXME(eddyb) distinguish upvar inference variables from the rest.
+                                    kind: TypeVariableOriginKind::ClosureSynthetic,
+                                    span: self.tcx.hir().span(var_hir_id),
+                                })
+                            })
+                        },
+                    ))
+                } else {
+                    // Create type variables (for now) to represent the various
+                    // pieces of information kept in `{Closure,Generic}Substs`.
+                    // They will either be unified below, or later during the upvar
+                    // inference phase (`upvar.rs`)
+                    self.infcx.next_ty_var(TypeVariableOrigin {
+                        kind: TypeVariableOriginKind::ClosureSynthetic,
+                        span: expr.span,
                     })
-                }))
-            } else {
-                // Create type variables (for now) to represent the various
-                // pieces of information kept in `{Closure,Generic}Substs`.
-                // They will either be unified below, or later during the upvar
-                // inference phase (`upvar.rs`)
-                self.infcx.next_ty_var(TypeVariableOrigin {
-                    kind: TypeVariableOriginKind::ClosureSynthetic,
-                    span: expr.span,
-                })
-            }
-            .into(),
-            GenericParamDefKind::Const => span_bug!(expr.span, "closure has const param"),
-        });
+                }
+                .into(),
+                GenericParamDefKind::Const => span_bug!(expr.span, "closure has const param"),
+            });
         if let Some(GeneratorTypes { resume_ty, yield_ty, interior, movability }) = generator_types
         {
             let generator_substs = substs.as_generator();
@@ -126,7 +129,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // it should rely on `GeneratorSubsts` providing a constructor, instead.
             let substs = self.resolve_vars_if_possible(&substs);
 
-            return self.tcx.mk_generator(expr_def_id, substs, movability);
+            return self.tcx.mk_generator(expr_def_id.to_def_id(), substs, movability);
         }
 
         // Tuple up the arguments and insert the resulting function type into
@@ -157,7 +160,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // it should rely on `ClosureSubsts` providing a constructor, instead.
         let substs = self.resolve_vars_if_possible(&substs);
 
-        let closure_type = self.tcx.mk_closure(expr_def_id, substs);
+        let closure_type = self.tcx.mk_closure(expr_def_id.to_def_id(), substs);
 
         debug!("check_closure: expr.hir_id={:?} closure_type={:?}", expr.hir_id, closure_type);
 
@@ -174,13 +177,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         match expected_ty.kind {
             ty::Dynamic(ref object_type, ..) => {
-                let sig = object_type
-                    .projection_bounds()
-                    .filter_map(|pb| {
-                        let pb = pb.with_self_ty(self.tcx, self.tcx.types.err);
-                        self.deduce_sig_from_projection(None, &pb)
-                    })
-                    .next();
+                let sig = object_type.projection_bounds().find_map(|pb| {
+                    let pb = pb.with_self_ty(self.tcx, self.tcx.types.trait_object_dummy_self);
+                    self.deduce_sig_from_projection(None, pb)
+                });
                 let kind = object_type
                     .principal_def_id()
                     .and_then(|did| self.tcx.fn_trait_kind_from_lang_item(did));
@@ -206,7 +206,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     obligation.predicate
                 );
 
-                if let ty::Predicate::Projection(ref proj_predicate) = obligation.predicate {
+                if let &ty::PredicateKind::Projection(proj_predicate) = obligation.predicate.kind()
+                {
                     // Given a Projection predicate, we can potentially infer
                     // the complete signature.
                     self.deduce_sig_from_projection(Some(obligation.cause.span), proj_predicate)
@@ -236,7 +237,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn deduce_sig_from_projection(
         &self,
         cause_span: Option<Span>,
-        projection: &ty::PolyProjectionPredicate<'tcx>,
+        projection: ty::PolyProjectionPredicate<'tcx>,
     ) -> Option<ExpectedSig<'tcx>> {
         let tcx = self.tcx;
 
@@ -245,7 +246,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let trait_ref = projection.to_poly_trait_ref(tcx);
 
         let is_fn = tcx.fn_trait_kind_from_lang_item(trait_ref.def_id()).is_some();
-        let gen_trait = tcx.require_lang_item(lang_items::GeneratorTraitLangItem, cause_span);
+        let gen_trait = tcx.require_lang_item(GeneratorTraitLangItem, cause_span);
         let is_gen = gen_trait == trait_ref.def_id();
         if !is_fn && !is_gen {
             debug!("deduce_sig_from_projection: not fn or generator");
@@ -516,21 +517,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let InferOk { value: (), obligations } =
                     self.at(&cause, self.param_env).eq(*expected_ty, supplied_ty)?;
                 all_obligations.extend(obligations);
-
-                // Also, require that the supplied type must outlive
-                // the closure body.
-                let closure_body_region = self.tcx.mk_region(ty::ReScope(region::Scope {
-                    id: body.value.hir_id.local_id,
-                    data: region::ScopeData::Node,
-                }));
-                all_obligations.push(Obligation::new(
-                    cause,
-                    self.param_env,
-                    ty::Predicate::TypeOutlives(ty::Binder::dummy(ty::OutlivesPredicate(
-                        supplied_ty,
-                        closure_body_region,
-                    ))),
-                ));
             }
 
             let (supplied_output_ty, _) = self.infcx.replace_bound_vars_with_fresh_vars(
@@ -641,7 +627,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // where R is the return type we are expecting. This type `T`
         // will be our output.
         let output_ty = self.obligations_for_self_ty(ret_vid).find_map(|(_, obligation)| {
-            if let ty::Predicate::Projection(ref proj_predicate) = obligation.predicate {
+            if let &ty::PredicateKind::Projection(proj_predicate) = obligation.predicate.kind() {
                 self.deduce_future_output_from_projection(obligation.cause.span, proj_predicate)
             } else {
                 None
@@ -662,7 +648,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn deduce_future_output_from_projection(
         &self,
         cause_span: Span,
-        predicate: &ty::PolyProjectionPredicate<'tcx>,
+        predicate: ty::PolyProjectionPredicate<'tcx>,
     ) -> Option<Ty<'tcx>> {
         debug!("deduce_future_output_from_projection(predicate={:?})", predicate);
 
@@ -678,7 +664,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Check that this is a projection from the `Future` trait.
         let trait_ref = predicate.projection_ty.trait_ref(self.tcx);
-        let future_trait = self.tcx.lang_items().future_trait().unwrap();
+        let future_trait = self.tcx.require_lang_item(FutureTraitLangItem, Some(cause_span));
         if trait_ref.def_id != future_trait {
             debug!("deduce_future_output_from_projection: not a future");
             return None;

@@ -85,25 +85,29 @@ error[E0277]: the trait bound `<Self as Foo2<T>>::Baz: std::clone::Clone` is not
   --> $DIR/defaults-suitability.rs:72:15
    |
 LL | trait Foo2<T> {
-   | -------------- help: consider further restricting the associated type: `where <Self as Foo2<T>>::Baz: std::clone::Clone`
-   | |
-   | required by `Foo2`
+   | ------------- required by `Foo2`
 LL |     type Bar: Clone = Vec<Self::Baz>;
    |               ^^^^^ the trait `std::clone::Clone` is not implemented for `<Self as Foo2<T>>::Baz`
    |
    = note: required because of the requirements on the impl of `std::clone::Clone` for `std::vec::Vec<<Self as Foo2<T>>::Baz>`
+help: consider further restricting the associated type
+   |
+LL | trait Foo2<T> where <Self as Foo2<T>>::Baz: std::clone::Clone {
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `<Self as Foo25<T>>::Baz: std::clone::Clone` is not satisfied
   --> $DIR/defaults-suitability.rs:81:15
    |
 LL | trait Foo25<T: Clone> {
-   | ---------------------- help: consider further restricting the associated type: `where <Self as Foo25<T>>::Baz: std::clone::Clone`
-   | |
-   | required by `Foo25`
+   | --------------------- required by `Foo25`
 LL |     type Bar: Clone = Vec<Self::Baz>;
    |               ^^^^^ the trait `std::clone::Clone` is not implemented for `<Self as Foo25<T>>::Baz`
    |
    = note: required because of the requirements on the impl of `std::clone::Clone` for `std::vec::Vec<<Self as Foo25<T>>::Baz>`
+help: consider further restricting the associated type
+   |
+LL | trait Foo25<T: Clone> where <Self as Foo25<T>>::Baz: std::clone::Clone {
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `T: std::clone::Clone` is not satisfied
   --> $DIR/defaults-suitability.rs:90:16
@@ -128,10 +132,14 @@ error[E0277]: the size for values of type `[u8]` cannot be known at compilation 
    |
 LL |     type Ty = Vec<[u8]>;
    |     ^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   | 
+  ::: $SRC_DIR/liballoc/vec.rs:LL:COL
+   |
+LL | pub struct Vec<T> {
+   |                - required by this bound in `std::vec::Vec`
    |
    = help: the trait `std::marker::Sized` is not implemented for `[u8]`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
-   = note: required by `std::vec::Vec`
 
 error: aborting due to 11 previous errors
 

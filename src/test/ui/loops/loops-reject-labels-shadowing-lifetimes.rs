@@ -1,7 +1,7 @@
 // Issue #21633: reject duplicate loop labels in function bodies.
 // This is testing interaction between lifetime-params and labels.
 
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 
 #![allow(dead_code, unused_variables)]
 

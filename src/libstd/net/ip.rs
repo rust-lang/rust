@@ -856,16 +856,23 @@ impl From<Ipv6Addr> for IpAddr {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for Ipv4Addr {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        const IPV4_BUF_LEN: usize = 15; // Long enough for the longest possible IPv4 address
-        let mut buf = [0u8; IPV4_BUF_LEN];
-        let mut buf_slice = &mut buf[..];
         let octets = self.octets();
-        // Note: The call to write should never fail, hence the unwrap
-        write!(buf_slice, "{}.{}.{}.{}", octets[0], octets[1], octets[2], octets[3]).unwrap();
-        let len = IPV4_BUF_LEN - buf_slice.len();
-        // This unsafe is OK because we know what is being written to the buffer
-        let buf = unsafe { crate::str::from_utf8_unchecked(&buf[..len]) };
-        fmt.pad(buf)
+        // Fast Path: if there's no alignment stuff, write directly to the buffer
+        if fmt.precision().is_none() && fmt.width().is_none() {
+            write!(fmt, "{}.{}.{}.{}", octets[0], octets[1], octets[2], octets[3])
+        } else {
+            const IPV4_BUF_LEN: usize = 15; // Long enough for the longest possible IPv4 address
+            let mut buf = [0u8; IPV4_BUF_LEN];
+            let mut buf_slice = &mut buf[..];
+
+            // Note: The call to write should never fail, hence the unwrap
+            write!(buf_slice, "{}.{}.{}.{}", octets[0], octets[1], octets[2], octets[3]).unwrap();
+            let len = IPV4_BUF_LEN - buf_slice.len();
+
+            // This unsafe is OK because we know what is being written to the buffer
+            let buf = unsafe { crate::str::from_utf8_unchecked(&buf[..len]) };
+            fmt.pad(buf)
+        }
     }
 }
 

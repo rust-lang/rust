@@ -7,7 +7,6 @@
 //! errors. We still look for those primitives in the MIR const-checker to ensure nothing slips
 //! through, but errors for structured control flow in a `const` should be emitted here.
 
-use rustc_ast::ast::Mutability;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -18,8 +17,6 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::config::nightly_options;
 use rustc_session::parse::feature_err;
 use rustc_span::{sym, Span, Symbol};
-
-use std::fmt;
 
 /// An expression that is not *always* legal in a const context.
 #[derive(Clone, Copy)]
@@ -52,8 +49,9 @@ impl NonConstExpr {
 
             Self::Loop(While)
             | Self::Loop(WhileLet)
-            | Self::Match(WhileDesugar)
-            | Self::Match(WhileLetDesugar) => &[sym::const_loop, sym::const_if_match],
+            | Self::Match(WhileDesugar | WhileLetDesugar) => {
+                &[sym::const_loop, sym::const_if_match]
+            }
 
             // A `for` loop's desugaring contains a call to `IntoIterator::into_iter`,
             // so they are not yet allowed with `#![feature(const_loop)]`.
@@ -61,46 +59,6 @@ impl NonConstExpr {
         };
 
         Some(gates)
-    }
-}
-
-#[derive(Copy, Clone)]
-enum ConstKind {
-    Static,
-    StaticMut,
-    ConstFn,
-    Const,
-    AnonConst,
-}
-
-impl ConstKind {
-    fn for_body(body: &hir::Body<'_>, hir_map: Map<'_>) -> Option<Self> {
-        let is_const_fn = |id| hir_map.fn_sig_by_hir_id(id).unwrap().header.is_const();
-
-        let owner = hir_map.body_owner(body.id());
-        let const_kind = match hir_map.body_owner_kind(owner) {
-            hir::BodyOwnerKind::Const => Self::Const,
-            hir::BodyOwnerKind::Static(Mutability::Mut) => Self::StaticMut,
-            hir::BodyOwnerKind::Static(Mutability::Not) => Self::Static,
-
-            hir::BodyOwnerKind::Fn if is_const_fn(owner) => Self::ConstFn,
-            hir::BodyOwnerKind::Fn | hir::BodyOwnerKind::Closure => return None,
-        };
-
-        Some(const_kind)
-    }
-}
-
-impl fmt::Display for ConstKind {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s = match self {
-            Self::Static => "static",
-            Self::StaticMut => "static mut",
-            Self::Const | Self::AnonConst => "const",
-            Self::ConstFn => "const fn",
-        };
-
-        write!(f, "{}", s)
     }
 }
 
@@ -116,7 +74,7 @@ pub(crate) fn provide(providers: &mut Providers<'_>) {
 #[derive(Copy, Clone)]
 struct CheckConstVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
-    const_kind: Option<ConstKind>,
+    const_kind: Option<hir::ConstContext>,
 }
 
 impl<'tcx> CheckConstVisitor<'tcx> {
@@ -146,7 +104,8 @@ impl<'tcx> CheckConstVisitor<'tcx> {
         let const_kind = self
             .const_kind
             .expect("`const_check_violated` may only be called inside a const context");
-        let msg = format!("{} is not allowed in a `{}`", expr.name(), const_kind);
+
+        let msg = format!("{} is not allowed in a `{}`", expr.name(), const_kind.keyword_name());
 
         let required_gates = required_gates.unwrap_or(&[]);
         let missing_gates: Vec<_> =
@@ -190,7 +149,7 @@ impl<'tcx> CheckConstVisitor<'tcx> {
     }
 
     /// Saves the parent `const_kind` before calling `f` and restores it afterwards.
-    fn recurse_into(&mut self, kind: Option<ConstKind>, f: impl FnOnce(&mut Self)) {
+    fn recurse_into(&mut self, kind: Option<hir::ConstContext>, f: impl FnOnce(&mut Self)) {
         let parent_kind = self.const_kind;
         self.const_kind = kind;
         f(self);
@@ -206,12 +165,13 @@ impl<'tcx> Visitor<'tcx> for CheckConstVisitor<'tcx> {
     }
 
     fn visit_anon_const(&mut self, anon: &'tcx hir::AnonConst) {
-        let kind = Some(ConstKind::AnonConst);
+        let kind = Some(hir::ConstContext::Const);
         self.recurse_into(kind, |this| intravisit::walk_anon_const(this, anon));
     }
 
     fn visit_body(&mut self, body: &'tcx hir::Body<'tcx>) {
-        let kind = ConstKind::for_body(body, self.tcx.hir());
+        let owner = self.tcx.hir().body_owner_def_id(body.id());
+        let kind = self.tcx.hir().body_const_context(owner);
         self.recurse_into(kind, |this| intravisit::walk_body(this, body));
     }
 

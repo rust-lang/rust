@@ -108,3 +108,5 @@ help: the bound will not be checked when the type alias is used, and should be r
 LL | type T6<U> = ::std::vec::Vec<U>;
    |         --
 
+warning: 9 warnings emitted
+

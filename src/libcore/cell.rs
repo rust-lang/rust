@@ -133,10 +133,9 @@
 //! `Cell<T>`.
 //!
 //! ```
-//! #![feature(core_intrinsics)]
 //! use std::cell::Cell;
 //! use std::ptr::NonNull;
-//! use std::intrinsics::abort;
+//! use std::process::abort;
 //! use std::marker::PhantomData;
 //!
 //! struct Rc<T: ?Sized> {
@@ -173,7 +172,7 @@
 //!             .strong
 //!             .set(self.strong()
 //!                      .checked_add(1)
-//!                      .unwrap_or_else(|| unsafe { abort() }));
+//!                      .unwrap_or_else(|| abort() ));
 //!     }
 //! }
 //!
@@ -850,11 +849,11 @@ impl<T: ?Sized> RefCell<T> {
     /// ```
     /// use std::cell::RefCell;
     ///
-    /// let c = RefCell::new(5);
+    /// let c = RefCell::new("hello".to_owned());
     ///
-    /// *c.borrow_mut() = 7;
+    /// *c.borrow_mut() = "bonjour".to_owned();
     ///
-    /// assert_eq!(*c.borrow(), 7);
+    /// assert_eq!(&*c.borrow(), "bonjour");
     /// ```
     ///
     /// An example of panic:
@@ -1020,6 +1019,31 @@ impl<T: ?Sized> RefCell<T> {
         } else {
             Err(BorrowError { _private: () })
         }
+    }
+}
+
+impl<T: Default> RefCell<T> {
+    /// Takes the wrapped value, leaving `Default::default()` in its place.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the value is currently borrowed.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(refcell_take)]
+    /// use std::cell::RefCell;
+    ///
+    /// let c = RefCell::new(5);
+    /// let five = c.take();
+    ///
+    /// assert_eq!(five, 5);
+    /// assert_eq!(c.into_inner(), 0);
+    /// ```
+    #[unstable(feature = "refcell_take", issue = "71395")]
+    pub fn take(&self) -> T {
+        self.replace(Default::default())
     }
 }
 

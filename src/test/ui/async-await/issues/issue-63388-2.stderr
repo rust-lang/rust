@@ -4,9 +4,13 @@ error[E0106]: missing lifetime specifier
 LL |         foo: &dyn Foo, bar: &'a dyn Foo
    |              --------       -----------
 LL |     ) -> &dyn Foo
-   |          ^ help: consider using the named lifetime: `&'a`
+   |          ^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from `foo` or `bar`
+help: consider using the `'a` lifetime
+   |
+LL |     ) -> &'a dyn Foo
+   |          ^^^
 
 error: aborting due to previous error
 

@@ -115,7 +115,7 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
                     }
                 }
 
-                (def_id, &*variances)
+                (def_id.to_def_id(), &*variances)
             })
             .collect()
     }

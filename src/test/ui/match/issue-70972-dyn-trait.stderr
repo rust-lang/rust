@@ -1,0 +1,8 @@
+error: trait objects cannot be used in patterns
+  --> $DIR/issue-70972-dyn-trait.rs:6:9
+   |
+LL |         F => panic!(),
+   |         ^
+
+error: aborting due to previous error
+

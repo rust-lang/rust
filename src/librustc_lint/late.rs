@@ -19,12 +19,13 @@ use rustc_ast::ast;
 use rustc_ast::walk_list;
 use rustc_data_structures::sync::{join, par_iter, ParallelIterator};
 use rustc_hir as hir;
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::def_id::{LocalDefId, LOCAL_CRATE};
 use rustc_hir::intravisit as hir_visit;
 use rustc_hir::intravisit::Visitor;
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint::LintPass;
+use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 
 use log::debug;
@@ -192,7 +193,7 @@ impl<'a, 'tcx, T: LateLintPass<'a, 'tcx>> hir_visit::Visitor<'tcx>
     fn visit_variant_data(
         &mut self,
         s: &'tcx hir::VariantData<'tcx>,
-        _: ast::Name,
+        _: Symbol,
         _: &'tcx hir::Generics<'tcx>,
         _: hir::HirId,
         _: Span,
@@ -227,7 +228,7 @@ impl<'a, 'tcx, T: LateLintPass<'a, 'tcx>> hir_visit::Visitor<'tcx>
         hir_visit::walk_ty(self, t);
     }
 
-    fn visit_name(&mut self, sp: Span, name: ast::Name) {
+    fn visit_name(&mut self, sp: Span, name: Symbol) {
         lint_callback!(self, check_name, sp, name);
     }
 
@@ -353,7 +354,7 @@ crate::late_lint_methods!(late_lint_pass_impl, [], ['tcx]);
 
 fn late_lint_mod_pass<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
     tcx: TyCtxt<'tcx>,
-    module_def_id: DefId,
+    module_def_id: LocalDefId,
     pass: T,
 ) {
     let access_levels = &tcx.privacy_access_levels(LOCAL_CRATE);
@@ -364,7 +365,7 @@ fn late_lint_mod_pass<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
         param_env: ty::ParamEnv::empty(),
         access_levels,
         lint_store: unerased_lint_store(tcx),
-        last_node_with_lint_attrs: tcx.hir().as_local_hir_id(module_def_id).unwrap(),
+        last_node_with_lint_attrs: tcx.hir().as_local_hir_id(module_def_id),
         generics: None,
         only_module: true,
     };
@@ -382,7 +383,7 @@ fn late_lint_mod_pass<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
 
 pub fn late_lint_mod<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
     tcx: TyCtxt<'tcx>,
-    module_def_id: DefId,
+    module_def_id: LocalDefId,
     builtin_lints: T,
 ) {
     if tcx.sess.opts.debugging_opts.no_interleave_lints {

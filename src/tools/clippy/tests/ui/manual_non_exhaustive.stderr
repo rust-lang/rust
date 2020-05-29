@@ -1,0 +1,103 @@
+error: this seems like a manual implementation of the non-exhaustive pattern
+  --> $DIR/manual_non_exhaustive.rs:5:5
+   |
+LL |       enum E {
+   |       ^-----
+   |       |
+   |  _____help: add the attribute: `#[non_exhaustive] enum E`
+   | |
+LL | |         A,
+LL | |         B,
+LL | |         #[doc(hidden)]
+LL | |         _C,
+LL | |     }
+   | |_____^
+   |
+   = note: `-D clippy::manual-non-exhaustive` implied by `-D warnings`
+help: remove this variant
+  --> $DIR/manual_non_exhaustive.rs:9:9
+   |
+LL |         _C,
+   |         ^^
+
+error: this seems like a manual implementation of the non-exhaustive pattern
+  --> $DIR/manual_non_exhaustive.rs:14:5
+   |
+LL | /     enum Ep {
+LL | |         A,
+LL | |         B,
+LL | |         #[doc(hidden)]
+LL | |         _C,
+LL | |     }
+   | |_____^
+   |
+help: remove this variant
+  --> $DIR/manual_non_exhaustive.rs:18:9
+   |
+LL |         _C,
+   |         ^^
+
+error: this seems like a manual implementation of the non-exhaustive pattern
+  --> $DIR/manual_non_exhaustive.rs:68:5
+   |
+LL |       struct S {
+   |       ^-------
+   |       |
+   |  _____help: add the attribute: `#[non_exhaustive] struct S`
+   | |
+LL | |         pub a: i32,
+LL | |         pub b: i32,
+LL | |         _c: (),
+LL | |     }
+   | |_____^
+   |
+help: remove this field
+  --> $DIR/manual_non_exhaustive.rs:71:9
+   |
+LL |         _c: (),
+   |         ^^^^^^
+
+error: this seems like a manual implementation of the non-exhaustive pattern
+  --> $DIR/manual_non_exhaustive.rs:76:5
+   |
+LL | /     struct Sp {
+LL | |         pub a: i32,
+LL | |         pub b: i32,
+LL | |         _c: (),
+LL | |     }
+   | |_____^
+   |
+help: remove this field
+  --> $DIR/manual_non_exhaustive.rs:79:9
+   |
+LL |         _c: (),
+   |         ^^^^^^
+
+error: this seems like a manual implementation of the non-exhaustive pattern
+  --> $DIR/manual_non_exhaustive.rs:117:5
+   |
+LL |     struct T(pub i32, pub i32, ());
+   |     --------^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     help: add the attribute: `#[non_exhaustive] struct T`
+   |
+help: remove this field
+  --> $DIR/manual_non_exhaustive.rs:117:32
+   |
+LL |     struct T(pub i32, pub i32, ());
+   |                                ^^
+
+error: this seems like a manual implementation of the non-exhaustive pattern
+  --> $DIR/manual_non_exhaustive.rs:121:5
+   |
+LL |     struct Tp(pub i32, pub i32, ());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove this field
+  --> $DIR/manual_non_exhaustive.rs:121:33
+   |
+LL |     struct Tp(pub i32, pub i32, ());
+   |                                 ^^
+
+error: aborting due to 6 previous errors
+

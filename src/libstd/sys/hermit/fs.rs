@@ -301,12 +301,22 @@ impl File {
         crate::io::default_read_vectored(|buf| self.read(buf), bufs)
     }
 
+    #[inline]
+    pub fn is_read_vectored(&self) -> bool {
+        false
+    }
+
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         self.0.write(buf)
     }
 
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         crate::io::default_write_vectored(|buf| self.write(buf), bufs)
+    }
+
+    #[inline]
+    pub fn is_write_vectored(&self) -> bool {
+        false
     }
 
     pub fn flush(&self) -> io::Result<()> {

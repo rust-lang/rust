@@ -187,13 +187,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             // to store all of the necessary region/lifetime bounds in the InferContext, as well as
             // an additional sanity check.
             let mut fulfill = FulfillmentContext::new();
-            fulfill.register_bound(
-                &infcx,
-                full_env,
-                ty,
-                trait_did,
-                ObligationCause::misc(DUMMY_SP, hir::DUMMY_HIR_ID),
-            );
+            fulfill.register_bound(&infcx, full_env, ty, trait_did, ObligationCause::dummy());
             fulfill.select_all_or_error(&infcx).unwrap_or_else(|e| {
                 panic!("Unable to fulfill trait {:?} for '{:?}': {:?}", trait_did, ty, e)
             });
@@ -201,7 +195,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             let body_id_map: FxHashMap<_, _> = infcx
                 .inner
                 .borrow()
-                .region_obligations
+                .region_obligations()
                 .iter()
                 .map(|&(id, _)| (id, vec![]))
                 .collect();
@@ -287,12 +281,11 @@ impl AutoTraitFinder<'tcx> {
             },
         }));
 
-        let mut computed_preds: FxHashSet<_> = param_env.caller_bounds.iter().cloned().collect();
-        let mut user_computed_preds: FxHashSet<_> =
-            user_env.caller_bounds.iter().cloned().collect();
+        let computed_preds = param_env.caller_bounds.iter();
+        let mut user_computed_preds: FxHashSet<_> = user_env.caller_bounds.iter().collect();
 
         let mut new_env = param_env;
-        let dummy_cause = ObligationCause::misc(DUMMY_SP, hir::DUMMY_HIR_ID);
+        let dummy_cause = ObligationCause::dummy();
 
         while let Some(pred) = predicates.pop_front() {
             infcx.clear_caches();
@@ -347,7 +340,8 @@ impl AutoTraitFinder<'tcx> {
                         already_visited.remove(&pred);
                         self.add_user_pred(
                             &mut user_computed_preds,
-                            ty::Predicate::Trait(pred, hir::Constness::NotConst),
+                            ty::PredicateKind::Trait(pred, hir::Constness::NotConst)
+                                .to_predicate(self.tcx),
                         );
                         predicates.push_back(pred);
                     } else {
@@ -364,9 +358,11 @@ impl AutoTraitFinder<'tcx> {
                 _ => panic!("Unexpected error for '{:?}': {:?}", ty, result),
             };
 
-            computed_preds.extend(user_computed_preds.iter().cloned());
-            let normalized_preds =
-                elaborate_predicates(tcx, computed_preds.iter().cloned().collect());
+            let normalized_preds = elaborate_predicates(
+                tcx,
+                computed_preds.clone().chain(user_computed_preds.iter().cloned()),
+            )
+            .map(|o| o.predicate);
             new_env =
                 ty::ParamEnv::new(tcx.mk_predicates(normalized_preds), param_env.reveal, None);
         }
@@ -415,8 +411,10 @@ impl AutoTraitFinder<'tcx> {
     ) {
         let mut should_add_new = true;
         user_computed_preds.retain(|&old_pred| {
-            if let (&ty::Predicate::Trait(new_trait, _), ty::Predicate::Trait(old_trait, _)) =
-                (&new_pred, old_pred)
+            if let (
+                ty::PredicateKind::Trait(new_trait, _),
+                ty::PredicateKind::Trait(old_trait, _),
+            ) = (new_pred.kind(), old_pred.kind())
             {
                 if new_trait.def_id() == old_trait.def_id() {
                     let new_substs = new_trait.skip_binder().trait_ref.substs;
@@ -614,7 +612,7 @@ impl AutoTraitFinder<'tcx> {
         select: &mut SelectionContext<'_, 'tcx>,
         only_projections: bool,
     ) -> bool {
-        let dummy_cause = ObligationCause::misc(DUMMY_SP, hir::DUMMY_HIR_ID);
+        let dummy_cause = ObligationCause::dummy();
 
         for (obligation, mut predicate) in nested.map(|o| (o.clone(), o.predicate)) {
             let is_new_pred = fresh_preds.insert(self.clean_pred(select.infcx(), predicate));
@@ -634,8 +632,8 @@ impl AutoTraitFinder<'tcx> {
             //
             // We check this by calling is_of_param on the relevant types
             // from the various possible predicates
-            match &predicate {
-                &ty::Predicate::Trait(p, _) => {
+            match predicate.kind() {
+                &ty::PredicateKind::Trait(p, _) => {
                     if self.is_param_no_infer(p.skip_binder().trait_ref.substs)
                         && !only_projections
                         && is_new_pred
@@ -644,7 +642,7 @@ impl AutoTraitFinder<'tcx> {
                     }
                     predicates.push_back(p);
                 }
-                &ty::Predicate::Projection(p) => {
+                &ty::PredicateKind::Projection(p) => {
                     debug!(
                         "evaluate_nested_obligations: examining projection predicate {:?}",
                         predicate
@@ -744,7 +742,7 @@ impl AutoTraitFinder<'tcx> {
                             if p.ty().skip_binder().has_infer_types() {
                                 if !self.evaluate_nested_obligations(
                                     ty,
-                                    v.clone().iter().cloned(),
+                                    v.into_iter(),
                                     computed_preds,
                                     fresh_preds,
                                     predicates,
@@ -769,12 +767,12 @@ impl AutoTraitFinder<'tcx> {
                         }
                     }
                 }
-                &ty::Predicate::RegionOutlives(ref binder) => {
+                &ty::PredicateKind::RegionOutlives(binder) => {
                     if select.infcx().region_outlives_predicate(&dummy_cause, binder).is_err() {
                         return false;
                     }
                 }
-                &ty::Predicate::TypeOutlives(ref binder) => {
+                &ty::PredicateKind::TypeOutlives(binder) => {
                     match (
                         binder.no_bound_vars(),
                         binder.map_bound_ref(|pred| pred.0).no_bound_vars(),

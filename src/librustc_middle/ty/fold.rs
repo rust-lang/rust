@@ -82,9 +82,9 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
         self.has_type_flags(TypeFlags::HAS_TY_OPAQUE)
     }
     fn references_error(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_TY_ERR)
+        self.has_type_flags(TypeFlags::HAS_ERROR)
     }
-    fn has_param_types(&self) -> bool {
+    fn has_param_types_or_consts(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_TY_PARAM | TypeFlags::HAS_CT_PARAM)
     }
     fn has_infer_types(&self) -> bool {
@@ -95,9 +95,6 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     }
     fn has_infer_consts(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_CT_INFER)
-    }
-    fn has_local_value(&self) -> bool {
-        self.has_type_flags(TypeFlags::KEEP_IN_LOCAL_TCX)
     }
     fn needs_infer(&self) -> bool {
         self.has_type_flags(TypeFlags::NEEDS_INFER)

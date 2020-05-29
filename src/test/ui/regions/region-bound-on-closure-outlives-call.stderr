@@ -19,6 +19,6 @@ LL |     (|x| f(x))(call_rec(f))
    |      |   borrow occurs due to use in closure
    |      borrow of `f` occurs here
 
-error: aborting due to previous error
+error: aborting due to previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0505`.

@@ -205,7 +205,7 @@ impl<T> Packet<T> {
             // Messages which actually popped from the queue shouldn't count as
             // a steal, so offset the decrement here (we already have our
             // "steal" factored into the channel count above).
-            data @ Ok(..) | data @ Err(Upgraded(..)) => unsafe {
+            data @ (Ok(..) | Err(Upgraded(..))) => unsafe {
                 *self.queue.consumer_addition().steals.get() -= 1;
                 data
             },
@@ -329,7 +329,7 @@ impl<T> Packet<T> {
             );
             cnt != DISCONNECTED && cnt != steals
         } {
-            while let Some(_) = self.queue.pop() {
+            while self.queue.pop().is_some() {
                 steals += 1;
             }
         }

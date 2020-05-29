@@ -282,7 +282,7 @@ impl<'a, 'f: 'a> DerefMut for VaList<'a, 'f> {
 mod sealed_trait {
     /// Trait which whitelists the allowed types to be used with [VaList::arg]
     ///
-    /// [VaList::va_arg]: struct.VaList.html#method.arg
+    /// [VaList::arg]: ../struct.VaList.html#method.arg
     #[unstable(
         feature = "c_variadic",
         reason = "the `c_variadic` feature has not been properly tested on \

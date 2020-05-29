@@ -47,7 +47,7 @@ impl<'tcx> PlaceExt<'tcx> for Place<'tcx> {
         for (i, elem) in self.projection.iter().enumerate() {
             let proj_base = &self.projection[..i];
 
-            if *elem == ProjectionElem::Deref {
+            if elem == ProjectionElem::Deref {
                 let ty = Place::ty_from(self.local, proj_base, body, tcx).ty;
                 match ty.kind {
                     ty::Ref(_, _, hir::Mutability::Not) if i == 0 => {

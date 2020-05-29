@@ -61,3 +61,5 @@ LL |
 LL |         'many_used_shadowed: for _ in 0..10 {
    |         ^^^^^^^^^^^^^^^^^^^ lifetime 'many_used_shadowed already in scope
 
+warning: 9 warnings emitted
+

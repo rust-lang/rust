@@ -11,7 +11,7 @@ use rustc_hir::def_id::{DefId, DefIndex};
 use rustc_hir::lang_items;
 use rustc_index::vec::IndexVec;
 use rustc_middle::hir::exports::Export;
-use rustc_middle::middle::cstore::{DepKind, ForeignModule, LinkagePreference, NativeLibrary};
+use rustc_middle::middle::cstore::{DepKind, ForeignModule, LinkagePreference, NativeLib};
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use rustc_middle::mir;
 use rustc_middle::ty::{self, ReprOptions, Ty};
@@ -190,7 +190,7 @@ crate struct CrateRoot<'tcx> {
     lang_items: Lazy<[(DefIndex, usize)]>,
     lang_items_missing: Lazy<[lang_items::LangItem]>,
     diagnostic_items: Lazy<[(Symbol, DefIndex)]>,
-    native_libraries: Lazy<[NativeLibrary]>,
+    native_libraries: Lazy<[NativeLib]>,
     foreign_modules: Lazy<[ForeignModule]>,
     source_map: Lazy<[rustc_span::SourceFile]>,
     def_path_table: Lazy<rustc_hir::definitions::DefPathTable>,
@@ -215,7 +215,7 @@ crate struct CrateRoot<'tcx> {
 
 #[derive(RustcEncodable, RustcDecodable)]
 crate struct CrateDep {
-    pub name: ast::Name,
+    pub name: Symbol,
     pub hash: Svh,
     pub host_hash: Option<Svh>,
     pub kind: DepKind,
@@ -275,8 +275,8 @@ define_tables! {
     // Also, as an optimization, a missing entry indicates an empty `&[]`.
     inferred_outlives: Table<DefIndex, Lazy!(&'tcx [(ty::Predicate<'tcx>, Span)])>,
     super_predicates: Table<DefIndex, Lazy!(ty::GenericPredicates<'tcx>)>,
-    mir: Table<DefIndex, Lazy!(mir::BodyAndCache<'tcx>)>,
-    promoted_mir: Table<DefIndex, Lazy!(IndexVec<mir::Promoted, mir::BodyAndCache<'tcx>>)>,
+    mir: Table<DefIndex, Lazy!(mir::Body<'tcx>)>,
+    promoted_mir: Table<DefIndex, Lazy!(IndexVec<mir::Promoted, mir::Body<'tcx>>)>,
 }
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
@@ -327,7 +327,7 @@ struct ModData {
 struct FnData {
     asyncness: hir::IsAsync,
     constness: hir::Constness,
-    param_names: Lazy<[ast::Name]>,
+    param_names: Lazy<[Symbol]>,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]

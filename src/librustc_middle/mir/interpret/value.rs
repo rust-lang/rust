@@ -28,7 +28,7 @@ pub struct RawConst<'tcx> {
 pub enum ConstValue<'tcx> {
     /// Used only for types with `layout::abi::Scalar` ABI and ZSTs.
     ///
-    /// Not using the enum `Value` to encode that this must not be `Undef`.
+    /// Not using the enum `Value` to encode that this must not be `Uninit`.
     Scalar(Scalar),
 
     /// Used only for `&[u8]` and `&str`
@@ -89,7 +89,7 @@ impl<'tcx> ConstValue<'tcx> {
 /// of a simple value or a pointer into another `Allocation`
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, RustcEncodable, RustcDecodable, Hash)]
 #[derive(HashStable)]
-pub enum Scalar<Tag = (), Id = AllocId> {
+pub enum Scalar<Tag = ()> {
     /// The raw bytes of a simple value.
     Raw {
         /// The first `size` bytes of `data` are the value.
@@ -101,13 +101,15 @@ pub enum Scalar<Tag = (), Id = AllocId> {
     /// A pointer into an `Allocation`. An `Allocation` in the `memory` module has a list of
     /// relocations, but a `Scalar` is only large enough to contain one, so we just represent the
     /// relocation and its associated offset together as a `Pointer` here.
-    Ptr(Pointer<Tag, Id>),
+    Ptr(Pointer<Tag>),
 }
 
 #[cfg(target_arch = "x86_64")]
 static_assert_size!(Scalar, 24);
 
-impl<Tag: fmt::Debug, Id: fmt::Debug> fmt::Debug for Scalar<Tag, Id> {
+// We want the `Debug` output to be readable as it is used by `derive(Debug)` for
+// all the Miri types.
+impl<Tag: fmt::Debug> fmt::Debug for Scalar<Tag> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Scalar::Ptr(ptr) => write!(f, "{:?}", ptr),
@@ -125,11 +127,11 @@ impl<Tag: fmt::Debug, Id: fmt::Debug> fmt::Debug for Scalar<Tag, Id> {
     }
 }
 
-impl<Tag> fmt::Display for Scalar<Tag> {
+impl<Tag: fmt::Debug> fmt::Display for Scalar<Tag> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Scalar::Ptr(_) => write!(f, "a pointer"),
-            Scalar::Raw { data, .. } => write!(f, "{}", data),
+            Scalar::Ptr(ptr) => write!(f, "pointer to {}", ptr),
+            Scalar::Raw { .. } => fmt::Debug::fmt(self, f),
         }
     }
 }
@@ -393,7 +395,12 @@ impl<'tcx, Tag> Scalar<Tag> {
         assert_ne!(target_size.bytes(), 0, "you should never look at the bits of a ZST");
         match self {
             Scalar::Raw { data, size } => {
-                assert_eq!(target_size.bytes(), u64::from(size));
+                if target_size.bytes() != u64::from(size) {
+                    throw_ub!(ScalarSizeMismatch {
+                        target_size: target_size.bytes(),
+                        data_size: u64::from(size),
+                    });
+                }
                 Scalar::check_data(data, size);
                 Ok(data)
             }
@@ -535,60 +542,62 @@ impl<Tag> From<Pointer<Tag>> for Scalar<Tag> {
 }
 
 #[derive(Clone, Copy, Eq, PartialEq, RustcEncodable, RustcDecodable, HashStable, Hash)]
-pub enum ScalarMaybeUndef<Tag = (), Id = AllocId> {
-    Scalar(Scalar<Tag, Id>),
-    Undef,
+pub enum ScalarMaybeUninit<Tag = ()> {
+    Scalar(Scalar<Tag>),
+    Uninit,
 }
 
-impl<Tag> From<Scalar<Tag>> for ScalarMaybeUndef<Tag> {
+impl<Tag> From<Scalar<Tag>> for ScalarMaybeUninit<Tag> {
     #[inline(always)]
     fn from(s: Scalar<Tag>) -> Self {
-        ScalarMaybeUndef::Scalar(s)
+        ScalarMaybeUninit::Scalar(s)
     }
 }
 
-impl<Tag> From<Pointer<Tag>> for ScalarMaybeUndef<Tag> {
+impl<Tag> From<Pointer<Tag>> for ScalarMaybeUninit<Tag> {
     #[inline(always)]
     fn from(s: Pointer<Tag>) -> Self {
-        ScalarMaybeUndef::Scalar(s.into())
+        ScalarMaybeUninit::Scalar(s.into())
     }
 }
 
-impl<Tag: fmt::Debug, Id: fmt::Debug> fmt::Debug for ScalarMaybeUndef<Tag, Id> {
+// We want the `Debug` output to be readable as it is used by `derive(Debug)` for
+// all the Miri types.
+impl<Tag: fmt::Debug> fmt::Debug for ScalarMaybeUninit<Tag> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ScalarMaybeUndef::Undef => write!(f, "Undef"),
-            ScalarMaybeUndef::Scalar(s) => write!(f, "{:?}", s),
+            ScalarMaybeUninit::Uninit => write!(f, "<uninitialized>"),
+            ScalarMaybeUninit::Scalar(s) => write!(f, "{:?}", s),
         }
     }
 }
 
-impl<Tag> fmt::Display for ScalarMaybeUndef<Tag> {
+impl<Tag: fmt::Debug> fmt::Display for ScalarMaybeUninit<Tag> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ScalarMaybeUndef::Undef => write!(f, "uninitialized bytes"),
-            ScalarMaybeUndef::Scalar(s) => write!(f, "{}", s),
+            ScalarMaybeUninit::Uninit => write!(f, "uninitialized bytes"),
+            ScalarMaybeUninit::Scalar(s) => write!(f, "{}", s),
         }
     }
 }
 
-impl<'tcx, Tag> ScalarMaybeUndef<Tag> {
+impl<'tcx, Tag> ScalarMaybeUninit<Tag> {
     /// Erase the tag from the scalar, if any.
     ///
     /// Used by error reporting code to avoid having the error type depend on `Tag`.
     #[inline]
-    pub fn erase_tag(self) -> ScalarMaybeUndef {
+    pub fn erase_tag(self) -> ScalarMaybeUninit {
         match self {
-            ScalarMaybeUndef::Scalar(s) => ScalarMaybeUndef::Scalar(s.erase_tag()),
-            ScalarMaybeUndef::Undef => ScalarMaybeUndef::Undef,
+            ScalarMaybeUninit::Scalar(s) => ScalarMaybeUninit::Scalar(s.erase_tag()),
+            ScalarMaybeUninit::Uninit => ScalarMaybeUninit::Uninit,
         }
     }
 
     #[inline]
     pub fn not_undef(self) -> InterpResult<'static, Scalar<Tag>> {
         match self {
-            ScalarMaybeUndef::Scalar(scalar) => Ok(scalar),
-            ScalarMaybeUndef::Undef => throw_ub!(InvalidUndefBytes(None)),
+            ScalarMaybeUninit::Scalar(scalar) => Ok(scalar),
+            ScalarMaybeUninit::Uninit => throw_ub!(InvalidUninitBytes(None)),
         }
     }
 

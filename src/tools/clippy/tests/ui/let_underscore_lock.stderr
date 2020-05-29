@@ -1,0 +1,51 @@
+error: non-binding let on a synchronization lock
+  --> $DIR/let_underscore_lock.rs:7:5
+   |
+LL |     let _ = m.lock();
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::let-underscore-lock` implied by `-D warnings`
+   = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
+
+error: non-binding let on a synchronization lock
+  --> $DIR/let_underscore_lock.rs:8:5
+   |
+LL |     let _ = rw.read();
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
+
+error: non-binding let on a synchronization lock
+  --> $DIR/let_underscore_lock.rs:9:5
+   |
+LL |     let _ = rw.write();
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
+
+error: non-binding let on a synchronization lock
+  --> $DIR/let_underscore_lock.rs:10:5
+   |
+LL |     let _ = m.try_lock();
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
+
+error: non-binding let on a synchronization lock
+  --> $DIR/let_underscore_lock.rs:11:5
+   |
+LL |     let _ = rw.try_read();
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
+
+error: non-binding let on a synchronization lock
+  --> $DIR/let_underscore_lock.rs:12:5
+   |
+LL |     let _ = rw.try_write();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
+
+error: aborting due to 6 previous errors
+

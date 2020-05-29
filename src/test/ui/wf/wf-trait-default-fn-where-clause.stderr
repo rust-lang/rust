@@ -2,12 +2,15 @@ error[E0277]: the trait bound `Self: std::cmp::Eq` is not satisfied
   --> $DIR/wf-trait-default-fn-where-clause.rs:11:31
    |
 LL | trait Bar<T:Eq+?Sized> { }
-   | ---------------------- required by `Bar`
+   |             -- required by this bound in `Bar`
 ...
 LL |     fn bar<A>(&self) where A: Bar<Self> {
-   |                               ^^^^^^^^^- help: consider further restricting `Self`: `, Self: std::cmp::Eq`
-   |                               |
-   |                               the trait `std::cmp::Eq` is not implemented for `Self`
+   |                               ^^^^^^^^^ the trait `std::cmp::Eq` is not implemented for `Self`
+   |
+help: consider further restricting `Self`
+   |
+LL |     fn bar<A>(&self) where A: Bar<Self>, Self: std::cmp::Eq {
+   |                                        ^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

@@ -216,7 +216,6 @@ pub const SOCK_STREAM: c_int = 1;
 pub const SOL_SOCKET: c_int = 0xffff;
 pub const SO_RCVTIMEO: c_int = 0x1006;
 pub const SO_SNDTIMEO: c_int = 0x1005;
-pub const SO_REUSEADDR: c_int = 0x0004;
 pub const IPPROTO_IP: c_int = 0;
 pub const IPPROTO_TCP: c_int = 6;
 pub const IPPROTO_IPV6: c_int = 41;

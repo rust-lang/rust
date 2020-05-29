@@ -5,7 +5,7 @@ use crate::deriving::path_std;
 use rustc_ast::ast::{self, Expr, GenericArg, Generics, ItemKind, MetaItem, VariantData};
 use rustc_ast::ptr::P;
 use rustc_expand::base::{Annotatable, ExtCtxt};
-use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 
 pub fn expand_deriving_clone(
@@ -135,8 +135,7 @@ fn cs_clone_shallow(
     let mut stmts = Vec::new();
     if is_union {
         // let _: AssertParamIsCopy<Self>;
-        let self_ty =
-            cx.ty_path(cx.path_ident(trait_span, ast::Ident::with_dummy_span(kw::SelfUpper)));
+        let self_ty = cx.ty_path(cx.path_ident(trait_span, Ident::with_dummy_span(kw::SelfUpper)));
         assert_ty_bounds(cx, &mut stmts, self_ty, trait_span, "AssertParamIsCopy");
     } else {
         match *substr.fields {

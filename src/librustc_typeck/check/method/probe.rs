@@ -28,7 +28,7 @@ use rustc_middle::ty::{
 };
 use rustc_session::config::nightly_options;
 use rustc_session::lint;
-use rustc_span::{symbol::Symbol, Span, DUMMY_SP};
+use rustc_span::{symbol::Ident, Span, Symbol, DUMMY_SP};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::query::method_autoderef::MethodAutoderefBadTy;
 use rustc_trait_selection::traits::query::method_autoderef::{
@@ -55,7 +55,7 @@ struct ProbeContext<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
     span: Span,
     mode: Mode,
-    method_name: Option<ast::Ident>,
+    method_name: Option<Ident>,
     return_type: Option<Ty<'tcx>>,
 
     /// This is the OriginalQueryValues for the steps queries
@@ -268,7 +268,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         span: Span,
         mode: Mode,
-        item_name: ast::Ident,
+        item_name: Ident,
         is_suggestion: IsSuggestion,
         self_ty: Ty<'tcx>,
         scope_expr_id: hir::HirId,
@@ -295,7 +295,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &'a self,
         span: Span,
         mode: Mode,
-        method_name: Option<ast::Ident>,
+        method_name: Option<Ident>,
         return_type: Option<Ty<'tcx>>,
         is_suggestion: IsSuggestion,
         self_ty: Ty<'tcx>,
@@ -452,7 +452,7 @@ fn method_autoderef_steps<'tcx>(
     tcx.infer_ctxt().enter_with_canonical(DUMMY_SP, &goal, |ref infcx, goal, inference_vars| {
         let ParamEnvAnd { param_env, value: self_ty } = goal;
 
-        let mut autoderef = Autoderef::new(infcx, param_env, hir::DUMMY_HIR_ID, DUMMY_SP, self_ty)
+        let mut autoderef = Autoderef::new(infcx, param_env, hir::CRATE_HIR_ID, DUMMY_SP, self_ty)
             .include_raw_pointers()
             .silence_errors();
         let mut reached_raw_pointer = false;
@@ -518,7 +518,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         fcx: &'a FnCtxt<'a, 'tcx>,
         span: Span,
         mode: Mode,
-        method_name: Option<ast::Ident>,
+        method_name: Option<Ident>,
         return_type: Option<Ty<'tcx>>,
         orig_steps_var_values: OriginalQueryValues<'tcx>,
         steps: Lrc<Vec<CandidateStep<'tcx>>>,
@@ -570,7 +570,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 self.extension_candidates.push(candidate);
             }
         } else if self.private_candidate.is_none() {
-            self.private_candidate = Some((candidate.item.def_kind(), candidate.item.def_id));
+            self.private_candidate =
+                Some((candidate.item.kind.as_def_kind(), candidate.item.def_id));
         }
     }
 
@@ -648,11 +649,16 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 }
             }
             ty::RawPtr(ty::TypeAndMut { ty: _, mutbl }) => {
-                let lang_def_id = match mutbl {
-                    hir::Mutability::Not => lang_items.const_ptr_impl(),
-                    hir::Mutability::Mut => lang_items.mut_ptr_impl(),
+                let (lang_def_id1, lang_def_id2) = match mutbl {
+                    hir::Mutability::Not => {
+                        (lang_items.const_ptr_impl(), lang_items.const_slice_ptr_impl())
+                    }
+                    hir::Mutability::Mut => {
+                        (lang_items.mut_ptr_impl(), lang_items.mut_slice_ptr_impl())
+                    }
                 };
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
+                self.assemble_inherent_impl_for_primitive(lang_def_id1);
+                self.assemble_inherent_impl_for_primitive(lang_def_id2);
             }
             ty::Int(i) => {
                 let lang_def_id = match i {
@@ -790,22 +796,26 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     fn assemble_inherent_candidates_from_param(&mut self, param_ty: ty::ParamTy) {
         // FIXME: do we want to commit to this behavior for param bounds?
 
-        let bounds = self.param_env.caller_bounds.iter().filter_map(|predicate| match *predicate {
-            ty::Predicate::Trait(ref trait_predicate, _) => {
-                match trait_predicate.skip_binder().trait_ref.self_ty().kind {
-                    ty::Param(ref p) if *p == param_ty => Some(trait_predicate.to_poly_trait_ref()),
-                    _ => None,
+        let bounds =
+            self.param_env.caller_bounds.iter().filter_map(|predicate| match predicate.kind() {
+                ty::PredicateKind::Trait(ref trait_predicate, _) => {
+                    match trait_predicate.skip_binder().trait_ref.self_ty().kind {
+                        ty::Param(ref p) if *p == param_ty => {
+                            Some(trait_predicate.to_poly_trait_ref())
+                        }
+                        _ => None,
+                    }
                 }
-            }
-            ty::Predicate::Subtype(..)
-            | ty::Predicate::Projection(..)
-            | ty::Predicate::RegionOutlives(..)
-            | ty::Predicate::WellFormed(..)
-            | ty::Predicate::ObjectSafe(..)
-            | ty::Predicate::ClosureKind(..)
-            | ty::Predicate::TypeOutlives(..)
-            | ty::Predicate::ConstEvaluatable(..) => None,
-        });
+                ty::PredicateKind::Subtype(..)
+                | ty::PredicateKind::Projection(..)
+                | ty::PredicateKind::RegionOutlives(..)
+                | ty::PredicateKind::WellFormed(..)
+                | ty::PredicateKind::ObjectSafe(..)
+                | ty::PredicateKind::ClosureKind(..)
+                | ty::PredicateKind::TypeOutlives(..)
+                | ty::PredicateKind::ConstEvaluatable(..)
+                | ty::PredicateKind::ConstEquate(..) => None,
+            });
 
         self.elaborate_bounds(bounds, |this, poly_trait_ref, item| {
             let trait_ref = this.erase_late_bound_regions(&poly_trait_ref);
@@ -859,9 +869,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         &mut self,
         expr_hir_id: hir::HirId,
     ) -> Result<(), MethodError<'tcx>> {
-        if expr_hir_id == hir::DUMMY_HIR_ID {
-            return Ok(());
-        }
         let mut duplicates = FxHashSet::default();
         let opt_applicable_traits = self.tcx.in_scope_traits(expr_hir_id);
         if let Some(applicable_traits) = opt_applicable_traits {
@@ -896,7 +903,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         expected: Ty<'tcx>,
     ) -> bool {
         match method.kind {
-            ty::AssocKind::Method => {
+            ty::AssocKind::Fn => {
                 let fty = self.tcx.fn_sig(method.def_id);
                 self.probe(|_| {
                     let substs = self.fresh_substs_for_item(self.span, method.def_id);
@@ -975,7 +982,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         Ok(())
     }
 
-    fn candidate_method_names(&self) -> Vec<ast::Ident> {
+    fn candidate_method_names(&self) -> Vec<Ident> {
         let mut set = FxHashSet::default();
         let mut names: Vec<_> = self
             .inherent_candidates
@@ -1128,8 +1135,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     ) -> Option<PickResult<'tcx>> {
         let tcx = self.tcx;
 
-        // In general, during probing we erase regions. See
-        // `impl_self_ty()` for an explanation.
+        // In general, during probing we erase regions.
         let region = tcx.lifetimes.re_erased;
 
         let autoref_ty = tcx.mk_ref(region, ty::TypeAndMut { ty: self_ty, mutbl });
@@ -1340,7 +1346,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             // clauses) that must be considered. Make sure that those
             // match as well (or at least may match, sometimes we
             // don't have enough information to fully evaluate).
-            let candidate_obligations: Vec<_> = match probe.kind {
+            match probe.kind {
                 InherentImplCandidate(ref substs, ref ref_obligations) => {
                     // Check whether the impl imposes obligations we have to worry about.
                     let impl_def_id = probe.item.container.id();
@@ -1351,23 +1357,27 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
                     // Convert the bounds into obligations.
                     let impl_obligations =
-                        traits::predicates_for_generics(cause, self.param_env, &impl_bounds);
+                        traits::predicates_for_generics(cause, self.param_env, impl_bounds);
 
-                    debug!("impl_obligations={:?}", impl_obligations);
-                    impl_obligations
-                        .into_iter()
+                    let candidate_obligations = impl_obligations
                         .chain(norm_obligations.into_iter())
-                        .chain(ref_obligations.iter().cloned())
-                        .collect()
+                        .chain(ref_obligations.iter().cloned());
+                    // Evaluate those obligations to see if they might possibly hold.
+                    for o in candidate_obligations {
+                        let o = self.resolve_vars_if_possible(&o);
+                        if !self.predicate_may_hold(&o) {
+                            result = ProbeResult::NoMatch;
+                            possibly_unsatisfied_predicates.push((o.predicate, None));
+                        }
+                    }
                 }
 
                 ObjectCandidate | WhereClauseCandidate(..) => {
                     // These have no additional conditions to check.
-                    vec![]
                 }
 
                 TraitCandidate(trait_ref) => {
-                    let predicate = trait_ref.without_const().to_predicate();
+                    let predicate = trait_ref.without_const().to_predicate(self.tcx);
                     let obligation = traits::Obligation::new(cause, self.param_env, predicate);
                     if !self.predicate_may_hold(&obligation) {
                         result = ProbeResult::NoMatch;
@@ -1410,17 +1420,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                             return ProbeResult::NoMatch;
                         }
                     }
-                    vec![]
                 }
-            };
-
-            debug!(
-                "consider_probe - candidate_obligations={:?} sub_obligations={:?}",
-                candidate_obligations, sub_obligations
-            );
+            }
 
             // Evaluate those obligations to see if they might possibly hold.
-            for o in candidate_obligations.into_iter().chain(sub_obligations) {
+            for o in sub_obligations {
                 let o = self.resolve_vars_if_possible(&o);
                 if !self.predicate_may_hold(&o) {
                     result = ProbeResult::NoMatch;
@@ -1513,7 +1517,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             );
             pcx.allow_similar_names = true;
             pcx.assemble_inherent_candidates();
-            pcx.assemble_extension_candidates_for_traits_in_scope(hir::DUMMY_HIR_ID)?;
 
             let method_names = pcx.candidate_method_names();
             pcx.allow_similar_names = false;
@@ -1523,10 +1526,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     pcx.reset();
                     pcx.method_name = Some(method_name);
                     pcx.assemble_inherent_candidates();
-                    pcx.assemble_extension_candidates_for_traits_in_scope(hir::DUMMY_HIR_ID)
-                        .map_or(None, |_| {
-                            pcx.pick_core().and_then(|pick| pick.ok()).map(|pick| pick.item)
-                        })
+                    pcx.pick_core().and_then(|pick| pick.ok()).map(|pick| pick.item)
                 })
                 .collect();
 
@@ -1554,10 +1554,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         // In Path mode (i.e., resolving a value like `T::next`), consider any
         // associated value (i.e., methods, constants) but not types.
         match self.mode {
-            Mode::MethodCall => item.method_has_self_argument,
+            Mode::MethodCall => item.fn_has_self_parameter,
             Mode::Path => match item.kind {
                 ty::AssocKind::OpaqueTy | ty::AssocKind::Type => false,
-                ty::AssocKind::Method | ty::AssocKind::Const => true,
+                ty::AssocKind::Fn | ty::AssocKind::Const => true,
             },
         }
         // FIXME -- check for types that deref to `Self`,
@@ -1578,7 +1578,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         impl_ty: Ty<'tcx>,
         substs: SubstsRef<'tcx>,
     ) -> (Ty<'tcx>, Option<Ty<'tcx>>) {
-        if item.kind == ty::AssocKind::Method && self.mode == Mode::MethodCall {
+        if item.kind == ty::AssocKind::Fn && self.mode == Mode::MethodCall {
             let sig = self.xform_method_sig(item.def_id, substs);
             (sig.inputs()[0], Some(sig.output()))
         } else {
@@ -1614,8 +1614,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 } else {
                     match param.kind {
                         GenericParamDefKind::Lifetime => {
-                            // In general, during probe we erase regions. See
-                            // `impl_self_ty()` for an explanation.
+                            // In general, during probe we erase regions.
                             self.tcx.lifetimes.re_erased.into()
                         }
                         GenericParamDefKind::Type { .. } | GenericParamDefKind::Const => {

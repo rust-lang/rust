@@ -4,13 +4,13 @@ use crate::creader::CrateMetadataRef;
 use crate::rmeta::table::{FixedSizeEncoding, Table};
 use crate::rmeta::*;
 
-use rustc_ast::ast::{self, Ident};
+use rustc_ast::ast;
 use rustc_attr as attr;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::sync::{AtomicCell, Lock, LockGuard, Lrc, Once};
+use rustc_data_structures::sync::{AtomicCell, Lock, LockGuard, Lrc, OnceCell};
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, ProcMacroDerive};
 use rustc_hir as hir;
@@ -23,17 +23,17 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::dep_graph::{self, DepNode, DepNodeExt, DepNodeIndex};
 use rustc_middle::hir::exports::Export;
 use rustc_middle::middle::cstore::{CrateSource, ExternCrate};
-use rustc_middle::middle::cstore::{ForeignModule, LinkagePreference, NativeLibrary};
+use rustc_middle::middle::cstore::{ForeignModule, LinkagePreference, NativeLib};
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
-use rustc_middle::mir::{self, interpret, BodyAndCache, Promoted};
+use rustc_middle::mir::{self, interpret, Body, Promoted};
 use rustc_middle::ty::codec::TyDecoder;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::util::common::record_time;
 use rustc_serialize::{opaque, Decodable, Decoder, SpecializedDecoder};
 use rustc_session::Session;
 use rustc_span::source_map::{respan, Spanned};
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{self, hygiene::MacroKind, BytePos, Pos, Span, DUMMY_SP};
 
 use log::debug;
@@ -79,7 +79,7 @@ crate struct CrateMetadata {
     /// Proc macro descriptions for this crate, if it's a proc macro crate.
     raw_proc_macros: Option<&'static [ProcMacro]>,
     /// Source maps for code from the crate.
-    source_map_import_info: Once<Vec<ImportedSourceFile>>,
+    source_map_import_info: OnceCell<Vec<ImportedSourceFile>>,
     /// Used for decoding interpret::AllocIds in a cached & thread-safe manner.
     alloc_decoding_state: AllocDecodingState,
     /// The `DepNodeIndex` of the `DepNode` representing this upstream crate.
@@ -562,8 +562,8 @@ impl MetadataBlob {
 }
 
 impl EntryKind {
-    fn def_kind(&self) -> Option<DefKind> {
-        Some(match *self {
+    fn def_kind(&self) -> DefKind {
+        match *self {
             EntryKind::Const(..) => DefKind::Const,
             EntryKind::AssocConst(..) => DefKind::AssocConst,
             EntryKind::ImmStatic
@@ -587,14 +587,13 @@ impl EntryKind {
             EntryKind::Enum(..) => DefKind::Enum,
             EntryKind::MacroDef(_) => DefKind::Macro(MacroKind::Bang),
             EntryKind::ForeignType => DefKind::ForeignTy,
-
-            EntryKind::ForeignMod
-            | EntryKind::GlobalAsm
-            | EntryKind::Impl(_)
-            | EntryKind::Field
-            | EntryKind::Generator(_)
-            | EntryKind::Closure => return None,
-        })
+            EntryKind::Impl(_) => DefKind::Impl,
+            EntryKind::Closure => DefKind::Closure,
+            EntryKind::ForeignMod => DefKind::ForeignMod,
+            EntryKind::GlobalAsm => DefKind::GlobalAsm,
+            EntryKind::Field => DefKind::Field,
+            EntryKind::Generator(_) => DefKind::Generator,
+        }
     }
 }
 
@@ -679,11 +678,11 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         }
     }
 
-    fn def_kind(&self, index: DefIndex) -> Option<DefKind> {
+    fn def_kind(&self, index: DefIndex) -> DefKind {
         if !self.is_proc_macro(index) {
             self.kind(index).def_kind()
         } else {
-            Some(DefKind::Macro(macro_kind(self.raw_proc_macro(index))))
+            DefKind::Macro(macro_kind(self.raw_proc_macro(index)))
         }
     }
 
@@ -918,7 +917,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     /// Iterates over all the stability attributes in the given crate.
-    fn get_lib_features(&self, tcx: TyCtxt<'tcx>) -> &'tcx [(ast::Name, Option<ast::Name>)] {
+    fn get_lib_features(&self, tcx: TyCtxt<'tcx>) -> &'tcx [(Symbol, Option<Symbol>)] {
         // FIXME: For a proc macro crate, not sure whether we should return the "host"
         // features or an empty Vec. Both don't cause ICEs.
         tcx.arena.alloc_from_iter(self.root.lib_features.decode(self))
@@ -940,8 +939,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     /// Iterates over the diagnostic items in the given crate.
-    fn get_diagnostic_items(&self, tcx: TyCtxt<'tcx>) -> &'tcx FxHashMap<Symbol, DefId> {
-        tcx.arena.alloc(if self.root.is_proc_macro_crate() {
+    fn get_diagnostic_items(&self) -> FxHashMap<Symbol, DefId> {
+        if self.root.is_proc_macro_crate() {
             // Proc macro crates do not export any diagnostic-items to the target.
             Default::default()
         } else {
@@ -950,7 +949,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 .decode(self)
                 .map(|(name, def_index)| (name, self.local_def_id(def_index)))
                 .collect()
-        })
+        }
     }
 
     /// Iterates over each child of the given item.
@@ -1009,20 +1008,19 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                             .get(self, child_index)
                             .unwrap_or(Lazy::empty());
                         for child_index in child_children.decode((self, sess)) {
-                            if let Some(kind) = self.def_kind(child_index) {
-                                callback(Export {
-                                    res: Res::Def(kind, self.local_def_id(child_index)),
-                                    ident: self.item_ident(child_index, sess),
-                                    vis: self.get_visibility(child_index),
-                                    span: self
-                                        .root
-                                        .tables
-                                        .span
-                                        .get(self, child_index)
-                                        .unwrap()
-                                        .decode((self, sess)),
-                                });
-                            }
+                            let kind = self.def_kind(child_index);
+                            callback(Export {
+                                res: Res::Def(kind, self.local_def_id(child_index)),
+                                ident: self.item_ident(child_index, sess),
+                                vis: self.get_visibility(child_index),
+                                span: self
+                                    .root
+                                    .tables
+                                    .span
+                                    .get(self, child_index)
+                                    .unwrap()
+                                    .decode((self, sess)),
+                            });
                         }
                         continue;
                     }
@@ -1033,10 +1031,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
                 let def_key = self.def_key(child_index);
                 let span = self.get_span(child_index, sess);
-                if let (Some(kind), true) = (
-                    self.def_kind(child_index),
-                    def_key.disambiguated_data.data.get_opt_name().is_some(),
-                ) {
+                if def_key.disambiguated_data.data.get_opt_name().is_some() {
+                    let kind = self.def_kind(child_index);
                     let ident = self.item_ident(child_index, sess);
                     let vis = self.get_visibility(child_index);
                     let def_id = self.local_def_id(child_index);
@@ -1099,9 +1095,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         !self.is_proc_macro(id) && self.root.tables.mir.get(self, id).is_some()
     }
 
-    fn get_optimized_mir(&self, tcx: TyCtxt<'tcx>, id: DefIndex) -> BodyAndCache<'tcx> {
-        let mut cache = self
-            .root
+    fn get_optimized_mir(&self, tcx: TyCtxt<'tcx>, id: DefIndex) -> Body<'tcx> {
+        self.root
             .tables
             .mir
             .get(self, id)
@@ -1109,18 +1104,11 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .unwrap_or_else(|| {
                 bug!("get_optimized_mir: missing MIR for `{:?}`", self.local_def_id(id))
             })
-            .decode((self, tcx));
-        cache.ensure_predecessors();
-        cache
+            .decode((self, tcx))
     }
 
-    fn get_promoted_mir(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        id: DefIndex,
-    ) -> IndexVec<Promoted, BodyAndCache<'tcx>> {
-        let mut cache = self
-            .root
+    fn get_promoted_mir(&self, tcx: TyCtxt<'tcx>, id: DefIndex) -> IndexVec<Promoted, Body<'tcx>> {
+        self.root
             .tables
             .promoted_mir
             .get(self, id)
@@ -1128,19 +1116,20 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .unwrap_or_else(|| {
                 bug!("get_promoted_mir: missing MIR for `{:?}`", self.local_def_id(id))
             })
-            .decode((self, tcx));
-        for body in cache.iter_mut() {
-            body.ensure_predecessors();
-        }
-        cache
+            .decode((self, tcx))
     }
 
     fn mir_const_qualif(&self, id: DefIndex) -> mir::ConstQualifs {
         match self.kind(id) {
             EntryKind::Const(qualif, _)
-            | EntryKind::AssocConst(AssocContainer::ImplDefault, qualif, _)
-            | EntryKind::AssocConst(AssocContainer::ImplFinal, qualif, _) => qualif,
-            _ => bug!(),
+            | EntryKind::AssocConst(
+                AssocContainer::ImplDefault
+                | AssocContainer::ImplFinal
+                | AssocContainer::TraitWithDefault,
+                qualif,
+                _,
+            ) => qualif,
+            _ => bug!("mir_const_qualif: unexpected kind"),
         }
     }
 
@@ -1153,7 +1142,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             EntryKind::AssocConst(container, _, _) => (ty::AssocKind::Const, container, false),
             EntryKind::AssocFn(data) => {
                 let data = data.decode(self);
-                (ty::AssocKind::Method, data.container, data.has_self)
+                (ty::AssocKind::Fn, data.container, data.has_self)
             }
             EntryKind::AssocType(container) => (ty::AssocKind::Type, container, false),
             EntryKind::AssocOpaqueTy(container) => (ty::AssocKind::OpaqueTy, container, false),
@@ -1167,7 +1156,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             defaultness: container.defaultness(),
             def_id: self.local_def_id(id),
             container: container.with_def_id(parent),
-            method_has_self_argument: has_self,
+            fn_has_self_parameter: has_self,
         }
     }
 
@@ -1196,7 +1185,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         }
     }
 
-    fn get_item_attrs(&self, node_id: DefIndex, sess: &Session) -> Lrc<[ast::Attribute]> {
+    fn get_item_attrs(&self, node_id: DefIndex, sess: &Session) -> Vec<ast::Attribute> {
         // The attributes for a tuple struct/variant are attached to the definition, not the ctor;
         // we assume that someone passing in a tuple struct ctor is actually wanting to
         // look at the definition
@@ -1207,18 +1196,16 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             node_id
         };
 
-        Lrc::from(
-            self.root
-                .tables
-                .attributes
-                .get(self, item_id)
-                .unwrap_or(Lazy::empty())
-                .decode((self, sess))
-                .collect::<Vec<_>>(),
-        )
+        self.root
+            .tables
+            .attributes
+            .get(self, item_id)
+            .unwrap_or(Lazy::empty())
+            .decode((self, sess))
+            .collect::<Vec<_>>()
     }
 
-    fn get_struct_field_names(&self, id: DefIndex, sess: &Session) -> Vec<Spanned<ast::Name>> {
+    fn get_struct_field_names(&self, id: DefIndex, sess: &Session) -> Vec<Spanned<Symbol>> {
         self.root
             .tables
             .children
@@ -1291,7 +1278,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         })
     }
 
-    fn get_native_libraries(&self, sess: &Session) -> Vec<NativeLibrary> {
+    fn get_native_libraries(&self, sess: &Session) -> Vec<NativeLib> {
         if self.root.is_proc_macro_crate() {
             // Proc macro crates do not have any *target* native libraries.
             vec![]
@@ -1330,25 +1317,25 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         }
     }
 
-    fn get_fn_param_names(&self, id: DefIndex) -> Vec<ast::Name> {
+    fn get_fn_param_names(&self, tcx: TyCtxt<'tcx>, id: DefIndex) -> &'tcx [Symbol] {
         let param_names = match self.kind(id) {
             EntryKind::Fn(data) | EntryKind::ForeignFn(data) => data.decode(self).param_names,
             EntryKind::AssocFn(data) => data.decode(self).fn_data.param_names,
             _ => Lazy::empty(),
         };
-        param_names.decode(self).collect()
+        tcx.arena.alloc_from_iter(param_names.decode(self))
     }
 
     fn exported_symbols(
         &self,
         tcx: TyCtxt<'tcx>,
-    ) -> Vec<(ExportedSymbol<'tcx>, SymbolExportLevel)> {
+    ) -> &'tcx [(ExportedSymbol<'tcx>, SymbolExportLevel)] {
         if self.root.is_proc_macro_crate() {
             // If this crate is a custom derive crate, then we're not even going to
             // link those in so we skip those crates.
-            vec![]
+            &[]
         } else {
-            self.root.exported_symbols.decode((self, tcx)).collect()
+            tcx.arena.alloc_from_iter(self.root.exported_symbols.decode((self, tcx)))
         }
     }
 
@@ -1499,7 +1486,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             }
         };
 
-        self.cdata.source_map_import_info.init_locking(|| {
+        self.cdata.source_map_import_info.get_or_init(|| {
             let external_source_map = self.root.source_map.decode(self);
 
             external_source_map
@@ -1613,7 +1600,7 @@ impl CrateMetadata {
             def_path_table,
             trait_impls,
             raw_proc_macros,
-            source_map_import_info: Once::new(),
+            source_map_import_info: OnceCell::new(),
             alloc_decoding_state,
             dep_node_index: AtomicCell::new(DepNodeIndex::INVALID),
             cnum,

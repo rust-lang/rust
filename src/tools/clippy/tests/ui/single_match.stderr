@@ -1,0 +1,69 @@
+error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
+  --> $DIR/single_match.rs:8:5
+   |
+LL | /     match x {
+LL | |         Some(y) => {
+LL | |             println!("{:?}", y);
+LL | |         },
+LL | |         _ => (),
+LL | |     };
+   | |_____^
+   |
+   = note: `-D clippy::single-match` implied by `-D warnings`
+help: try this
+   |
+LL |     if let Some(y) = x {
+LL |         println!("{:?}", y);
+LL |     };
+   |
+
+error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
+  --> $DIR/single_match.rs:16:5
+   |
+LL | /     match x {
+LL | |         // Note the missing block braces.
+LL | |         // We suggest `if let Some(y) = x { .. }` because the macro
+LL | |         // is expanded before we can do anything.
+LL | |         Some(y) => println!("{:?}", y),
+LL | |         _ => (),
+LL | |     }
+   | |_____^ help: try this: `if let Some(y) = x { println!("{:?}", y) }`
+
+error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
+  --> $DIR/single_match.rs:25:5
+   |
+LL | /     match z {
+LL | |         (2..=3, 7..=9) => dummy(),
+LL | |         _ => {},
+LL | |     };
+   | |_____^ help: try this: `if let (2..=3, 7..=9) = z { dummy() }`
+
+error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
+  --> $DIR/single_match.rs:54:5
+   |
+LL | /     match x {
+LL | |         Some(y) => dummy(),
+LL | |         None => (),
+LL | |     };
+   | |_____^ help: try this: `if let Some(y) = x { dummy() }`
+
+error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
+  --> $DIR/single_match.rs:59:5
+   |
+LL | /     match y {
+LL | |         Ok(y) => dummy(),
+LL | |         Err(..) => (),
+LL | |     };
+   | |_____^ help: try this: `if let Ok(y) = y { dummy() }`
+
+error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
+  --> $DIR/single_match.rs:66:5
+   |
+LL | /     match c {
+LL | |         Cow::Borrowed(..) => dummy(),
+LL | |         Cow::Owned(..) => (),
+LL | |     };
+   | |_____^ help: try this: `if let Cow::Borrowed(..) = c { dummy() }`
+
+error: aborting due to 6 previous errors
+

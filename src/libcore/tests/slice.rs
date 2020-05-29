@@ -1108,14 +1108,14 @@ mod slice_index {
 
             // note: using 0 specifically ensures that the result of overflowing is 0..0,
             //       so that `get` doesn't simply return None for the wrong reason.
-            bad: data[0 ..= ::std::usize::MAX];
+            bad: data[0 ..= usize::MAX];
             message: "maximum usize";
         }
 
         in mod rangetoinclusive_overflow {
             data: [0, 1];
 
-            bad: data[..= ::std::usize::MAX];
+            bad: data[..= usize::MAX];
             message: "maximum usize";
         }
     } // panic_cases!
@@ -1227,15 +1227,9 @@ fn sort_unstable() {
     use core::slice::heapsort;
     use rand::{rngs::StdRng, seq::SliceRandom, Rng, SeedableRng};
 
-    #[cfg(not(miri))] // Miri is too slow
-    let large_range = 500..510;
-    #[cfg(not(miri))] // Miri is too slow
-    let rounds = 100;
-
-    #[cfg(miri)]
-    let large_range = 0..0; // empty range
-    #[cfg(miri)]
-    let rounds = 1;
+    // Miri is too slow
+    let large_range = if cfg!(miri) { 0..0 } else { 500..510 };
+    let rounds = if cfg!(miri) { 1 } else { 100 };
 
     let mut v = [0; 600];
     let mut tmp = [0; 600];
@@ -1709,7 +1703,7 @@ fn test_is_sorted() {
     assert!(![1, 3, 2].is_sorted());
     assert!([0].is_sorted());
     assert!(empty.is_sorted());
-    assert!(![0.0, 1.0, std::f32::NAN].is_sorted());
+    assert!(![0.0, 1.0, f32::NAN].is_sorted());
     assert!([-2, -1, 0, 3].is_sorted());
     assert!(![-2i32, -1, 0, 3].is_sorted_by_key(|n| n.abs()));
     assert!(!["c", "bb", "aaa"].is_sorted());

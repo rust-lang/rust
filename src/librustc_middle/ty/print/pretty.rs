@@ -1,6 +1,7 @@
 use crate::middle::cstore::{ExternCrate, ExternCrateSource};
-use crate::middle::region;
-use crate::mir::interpret::{sign_extend, truncate, AllocId, ConstValue, Pointer, Scalar};
+use crate::mir::interpret::{
+    sign_extend, truncate, AllocId, ConstValue, GlobalAlloc, Pointer, Scalar,
+};
 use crate::ty::layout::IntegerExt;
 use crate::ty::subst::{GenericArg, GenericArgKind, Subst};
 use crate::ty::{self, DefIdTree, ParamConst, Ty, TyCtxt, TypeFoldable};
@@ -9,10 +10,10 @@ use rustc_apfloat::Float;
 use rustc_ast::ast;
 use rustc_attr::{SignedInt, UnsignedInt};
 use rustc_hir as hir;
-use rustc_hir::def::{DefKind, Namespace};
+use rustc_hir::def::{CtorKind, DefKind, Namespace};
 use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
-use rustc_span::symbol::{kw, Symbol};
+use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_target::abi::{Integer, Size};
 use rustc_target::spec::abi::Abi;
 
@@ -150,13 +151,10 @@ impl RegionHighlightMode {
 
     /// Returns `Some(n)` with the number to use for the given region, if any.
     fn region_highlighted(&self, region: ty::Region<'_>) -> Option<usize> {
-        self.highlight_regions
-            .iter()
-            .filter_map(|h| match h {
-                Some((r, n)) if r == region => Some(*n),
-                _ => None,
-            })
-            .next()
+        self.highlight_regions.iter().find_map(|h| match h {
+            Some((r, n)) if r == region => Some(*n),
+            _ => None,
+        })
     }
 
     /// Highlight the given bound region.
@@ -498,16 +496,9 @@ pub trait PrettyPrinter<'tcx>:
             }
             ty::Never => p!(write("!")),
             ty::Tuple(ref tys) => {
-                p!(write("("));
-                let mut tys = tys.iter();
-                if let Some(&ty) = tys.next() {
-                    p!(print(ty), write(","));
-                    if let Some(&ty) = tys.next() {
-                        p!(write(" "), print(ty));
-                        for &ty in tys {
-                            p!(write(", "), print(ty));
-                        }
-                    }
+                p!(write("("), comma_sep(tys.iter()));
+                if tys.len() == 1 {
+                    p!(write(","));
                 }
                 p!(write(")"))
             }
@@ -550,9 +541,6 @@ pub trait PrettyPrinter<'tcx>:
                 p!(print_def_path(def_id, &[]));
             }
             ty::Projection(ref data) => p!(print(data)),
-            ty::UnnormalizedProjection(ref data) => {
-                p!(write("Unnormalized("), print(data), write(")"))
-            }
             ty::Placeholder(placeholder) => p!(write("Placeholder({:?})", placeholder)),
             ty::Opaque(def_id, substs) => {
                 // FIXME(eddyb) print this with `print_def_path`.
@@ -570,15 +558,10 @@ pub trait PrettyPrinter<'tcx>:
                     let def_key = self.tcx().def_key(def_id);
                     if let Some(name) = def_key.disambiguated_data.data.get_opt_name() {
                         p!(write("{}", name));
-                        let mut substs = substs.iter();
                         // FIXME(eddyb) print this with `print_def_path`.
-                        if let Some(first) = substs.next() {
-                            p!(write("::<"));
-                            p!(print(first));
-                            for subst in substs {
-                                p!(write(", "), print(subst));
-                            }
-                            p!(write(">"));
+                        if !substs.is_empty() {
+                            p!(write("::"));
+                            p!(generic_delimiters(|cx| cx.comma_sep(substs.iter())));
                         }
                         return Ok(self);
                     }
@@ -620,7 +603,8 @@ pub trait PrettyPrinter<'tcx>:
                 }
 
                 // FIXME(eddyb) should use `def_span`.
-                if let Some(hir_id) = self.tcx().hir().as_local_hir_id(did) {
+                if let Some(did) = did.as_local() {
+                    let hir_id = self.tcx().hir().as_local_hir_id(did);
                     p!(write("@{:?}", self.tcx().hir().span(hir_id)));
 
                     if substs.as_generator().is_valid() {
@@ -628,7 +612,7 @@ pub trait PrettyPrinter<'tcx>:
                         let mut sep = " ";
                         for (&var_id, upvar_ty) in self
                             .tcx()
-                            .upvars(did)
+                            .upvars_mentioned(did)
                             .as_ref()
                             .iter()
                             .flat_map(|v| v.keys())
@@ -639,9 +623,7 @@ pub trait PrettyPrinter<'tcx>:
                         }
                     }
                 } else {
-                    // Cross-crate closure types should only be
-                    // visible in codegen bug reports, I imagine.
-                    p!(write("@{:?}", did));
+                    p!(write("@{}", self.tcx().def_path_str(did)));
 
                     if substs.as_generator().is_valid() {
                         let upvar_tys = substs.as_generator().upvar_tys();
@@ -666,9 +648,10 @@ pub trait PrettyPrinter<'tcx>:
                 p!(write("[closure"));
 
                 // FIXME(eddyb) should use `def_span`.
-                if let Some(hir_id) = self.tcx().hir().as_local_hir_id(did) {
+                if let Some(did) = did.as_local() {
+                    let hir_id = self.tcx().hir().as_local_hir_id(did);
                     if self.tcx().sess.opts.debugging_opts.span_free_formats {
-                        p!(write("@"), print_def_path(did, substs));
+                        p!(write("@"), print_def_path(did.to_def_id(), substs));
                     } else {
                         p!(write("@{:?}", self.tcx().hir().span(hir_id)));
                     }
@@ -678,7 +661,7 @@ pub trait PrettyPrinter<'tcx>:
                         let mut sep = " ";
                         for (&var_id, upvar_ty) in self
                             .tcx()
-                            .upvars(did)
+                            .upvars_mentioned(did)
                             .as_ref()
                             .iter()
                             .flat_map(|v| v.keys())
@@ -689,9 +672,7 @@ pub trait PrettyPrinter<'tcx>:
                         }
                     }
                 } else {
-                    // Cross-crate closure types should only be
-                    // visible in codegen bug reports, I imagine.
-                    p!(write("@{:?}", did));
+                    p!(write("@{}", self.tcx().def_path_str(did)));
 
                     if substs.as_closure().is_valid() {
                         let upvar_tys = substs.as_closure().upvar_tys();
@@ -718,12 +699,14 @@ pub trait PrettyPrinter<'tcx>:
                 if self.tcx().sess.verbose() {
                     p!(write("{:?}", sz));
                 } else if let ty::ConstKind::Unevaluated(..) = sz.val {
-                    // do not try to evaluate unevaluated constants. If we are const evaluating an
+                    // Do not try to evaluate unevaluated constants. If we are const evaluating an
                     // array length anon const, rustc will (with debug assertions) print the
                     // constant's path. Which will end up here again.
                     p!(write("_"));
                 } else if let Some(n) = sz.val.try_to_bits(self.tcx().data_layout.pointer_size) {
                     p!(write("{}", n));
+                } else if let ty::ConstKind::Param(param) = sz.val {
+                    p!(write("{}", param));
                 } else {
                     p!(write("_"));
                 }
@@ -854,16 +837,12 @@ pub trait PrettyPrinter<'tcx>:
     ) -> Result<Self, Self::Error> {
         define_scoped_cx!(self);
 
-        p!(write("("));
-        let mut inputs = inputs.iter();
-        if let Some(&ty) = inputs.next() {
-            p!(print(ty));
-            for &ty in inputs {
-                p!(write(", "), print(ty));
+        p!(write("("), comma_sep(inputs.iter().copied()));
+        if c_variadic {
+            if !inputs.is_empty() {
+                p!(write(", "));
             }
-            if c_variadic {
-                p!(write(", ..."));
-            }
+            p!(write("..."));
         }
         p!(write(")"));
         if !output.is_unit() {
@@ -909,9 +888,9 @@ pub trait PrettyPrinter<'tcx>:
                     p!(write("::{:?}", promoted));
                 } else {
                     match self.tcx().def_kind(did) {
-                        Some(DefKind::Static)
-                        | Some(DefKind::Const)
-                        | Some(DefKind::AssocConst) => p!(print_value_path(did, substs)),
+                        DefKind::Static | DefKind::Const | DefKind::AssocConst => {
+                            p!(print_value_path(did, substs))
+                        }
                         _ => {
                             if did.is_local() {
                                 let span = self.tcx().def_span(did);
@@ -938,6 +917,7 @@ pub trait PrettyPrinter<'tcx>:
                 self.pretty_print_bound_var(debruijn, bound_var)?
             }
             ty::ConstKind::Placeholder(placeholder) => p!(write("Placeholder({:?})", placeholder)),
+            ty::ConstKind::Error => p!(write("[const error]")),
         };
         Ok(self)
     }
@@ -973,16 +953,20 @@ pub trait PrettyPrinter<'tcx>:
                     },
                     _,
                 ),
-            ) => {
-                let byte_str = self
-                    .tcx()
-                    .alloc_map
-                    .lock()
-                    .unwrap_memory(ptr.alloc_id)
-                    .get_bytes(&self.tcx(), ptr, Size::from_bytes(*data))
-                    .unwrap();
-                p!(pretty_print_byte_str(byte_str));
-            }
+            ) => match self.tcx().get_global_alloc(ptr.alloc_id) {
+                Some(GlobalAlloc::Memory(alloc)) => {
+                    if let Ok(byte_str) = alloc.get_bytes(&self.tcx(), ptr, Size::from_bytes(*data))
+                    {
+                        p!(pretty_print_byte_str(byte_str))
+                    } else {
+                        p!(write("<too short allocation>"))
+                    }
+                }
+                // FIXME: for statics and functions, we could in principle print more detail.
+                Some(GlobalAlloc::Static(def_id)) => p!(write("<static({:?})>", def_id)),
+                Some(GlobalAlloc::Function(_)) => p!(write("<function>")),
+                None => p!(write("<dangling pointer>")),
+            },
             // Bool
             (Scalar::Raw { data: 0, .. }, ty::Bool) => p!(write("false")),
             (Scalar::Raw { data: 1, .. }, ty::Bool) => p!(write("true")),
@@ -1041,10 +1025,10 @@ pub trait PrettyPrinter<'tcx>:
                 )?;
             }
             (Scalar::Ptr(ptr), ty::FnPtr(_)) => {
-                let instance = {
-                    let alloc_map = self.tcx().alloc_map.lock();
-                    alloc_map.unwrap_fn(ptr.alloc_id)
-                };
+                // FIXME: this can ICE when the ptr is dangling or points to a non-function.
+                // We should probably have a helper method to share code with the "Byte strings"
+                // printing above (which also has to handle pointers to all sorts of things).
+                let instance = self.tcx().global_alloc(ptr.alloc_id).unwrap_fn();
                 self = self.typed_value(
                     |this| this.print_value_path(instance.def_id(), instance.substs),
                     |this| this.print_type(ty),
@@ -1053,19 +1037,6 @@ pub trait PrettyPrinter<'tcx>:
             }
             // For function type zsts just printing the path is enough
             (Scalar::Raw { size: 0, .. }, ty::FnDef(d, s)) => p!(print_value_path(*d, s)),
-            // Empty tuples are frequently occurring, so don't print the fallback.
-            (Scalar::Raw { size: 0, .. }, ty::Tuple(ts)) if ts.is_empty() => p!(write("()")),
-            // Zero element arrays have a trivial representation.
-            (
-                Scalar::Raw { size: 0, .. },
-                ty::Array(
-                    _,
-                    ty::Const {
-                        val: ty::ConstKind::Value(ConstValue::Scalar(Scalar::Raw { data: 0, .. })),
-                        ..
-                    },
-                ),
-            ) => p!(write("[]")),
             // Nontrivial types with scalar bit representation
             (Scalar::Raw { data, size }, _) => {
                 let print = |mut this: Self| {
@@ -1134,14 +1105,14 @@ pub trait PrettyPrinter<'tcx>:
         define_scoped_cx!(self);
 
         if self.tcx().sess.verbose() {
-            p!(write("ConstValue({:?}: {:?})", ct, ty));
+            p!(write("ConstValue({:?}: ", ct), print(ty), write(")"));
             return Ok(self);
         }
 
         let u8_type = self.tcx().types.u8;
 
         match (ct, &ty.kind) {
-            (ConstValue::Scalar(scalar), _) => self.pretty_print_const_scalar(scalar, ty, print_ty),
+            // Byte/string slices, printed as (byte) string literals.
             (
                 ConstValue::Slice { data, start, end },
                 ty::Ref(_, ty::TyS { kind: ty::Slice(t), .. }, _),
@@ -1175,6 +1146,66 @@ pub trait PrettyPrinter<'tcx>:
                 p!(pretty_print_byte_str(byte_str));
                 Ok(self)
             }
+
+            // Aggregates, printed as array/tuple/struct/variant construction syntax.
+            //
+            // NB: the `has_param_types_or_consts` check ensures that we can use
+            // the `destructure_const` query with an empty `ty::ParamEnv` without
+            // introducing ICEs (e.g. via `layout_of`) from missing bounds.
+            // E.g. `transmute([0usize; 2]): (u8, *mut T)` needs to know `T: Sized`
+            // to be able to destructure the tuple into `(0u8, *mut T)
+            //
+            // FIXME(eddyb) for `--emit=mir`/`-Z dump-mir`, we should provide the
+            // correct `ty::ParamEnv` to allow printing *all* constant values.
+            (_, ty::Array(..) | ty::Tuple(..) | ty::Adt(..)) if !ty.has_param_types_or_consts() => {
+                let contents = self.tcx().destructure_const(
+                    ty::ParamEnv::reveal_all()
+                        .and(self.tcx().mk_const(ty::Const { val: ty::ConstKind::Value(ct), ty })),
+                );
+                let fields = contents.fields.iter().copied();
+
+                match ty.kind {
+                    ty::Array(..) => {
+                        p!(write("["), comma_sep(fields), write("]"));
+                    }
+                    ty::Tuple(..) => {
+                        p!(write("("), comma_sep(fields));
+                        if contents.fields.len() == 1 {
+                            p!(write(","));
+                        }
+                        p!(write(")"));
+                    }
+                    ty::Adt(def, substs) => {
+                        let variant_def = &def.variants[contents.variant];
+                        p!(print_value_path(variant_def.def_id, substs));
+
+                        match variant_def.ctor_kind {
+                            CtorKind::Const => {}
+                            CtorKind::Fn => {
+                                p!(write("("), comma_sep(fields), write(")"));
+                            }
+                            CtorKind::Fictive => {
+                                p!(write(" {{ "));
+                                let mut first = true;
+                                for (field_def, field) in variant_def.fields.iter().zip(fields) {
+                                    if !first {
+                                        p!(write(", "));
+                                    }
+                                    p!(write("{}: ", field_def.ident), print(field));
+                                    first = false;
+                                }
+                                p!(write(" }}"));
+                            }
+                        }
+                    }
+                    _ => unreachable!(),
+                }
+
+                Ok(self)
+            }
+
+            (ConstValue::Scalar(scalar), _) => self.pretty_print_const_scalar(scalar, ty, print_ty),
+
             // FIXME(oli-obk): also pretty print arrays and other aggregate constants by reading
             // their fields instead of just dumping the memory.
             _ => {
@@ -1429,7 +1460,7 @@ impl<F: fmt::Write> Printer<'tcx> for FmtPrinter<'_, 'tcx, F> {
             if !self.empty_path {
                 write!(self, "::")?;
             }
-            if ast::Ident::from_str(&name).is_raw_guess() {
+            if Ident::from_str(&name).is_raw_guess() {
                 write!(self, "r#")?;
             }
             write!(self, "{}", name)?;
@@ -1566,9 +1597,9 @@ impl<F: fmt::Write> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx, F> {
                 false
             }
 
-            ty::ReScope(_) | ty::ReVar(_) if identify_regions => true,
+            ty::ReVar(_) if identify_regions => true,
 
-            ty::ReVar(_) | ty::ReScope(_) | ty::ReErased => false,
+            ty::ReVar(_) | ty::ReErased => false,
 
             ty::ReStatic | ty::ReEmpty(_) => true,
         }
@@ -1644,32 +1675,12 @@ impl<F: fmt::Write> FmtPrinter<'_, '_, F> {
                     }
                 }
             }
-            ty::ReScope(scope) if identify_regions => {
-                match scope.data {
-                    region::ScopeData::Node => p!(write("'{}s", scope.item_local_id().as_usize())),
-                    region::ScopeData::CallSite => {
-                        p!(write("'{}cs", scope.item_local_id().as_usize()))
-                    }
-                    region::ScopeData::Arguments => {
-                        p!(write("'{}as", scope.item_local_id().as_usize()))
-                    }
-                    region::ScopeData::Destruction => {
-                        p!(write("'{}ds", scope.item_local_id().as_usize()))
-                    }
-                    region::ScopeData::Remainder(first_statement_index) => p!(write(
-                        "'{}_{}rs",
-                        scope.item_local_id().as_usize(),
-                        first_statement_index.index()
-                    )),
-                }
-                return Ok(self);
-            }
             ty::ReVar(region_vid) if identify_regions => {
                 p!(write("{:?}", region_vid));
                 return Ok(self);
             }
             ty::ReVar(_) => {}
-            ty::ReScope(_) | ty::ReErased => {}
+            ty::ReErased => {}
             ty::ReStatic => {
                 p!(write("'static"));
                 return Ok(self);
@@ -1913,15 +1924,7 @@ define_print_and_forward_display! {
     (self, cx):
 
     &'tcx ty::List<Ty<'tcx>> {
-        p!(write("{{"));
-        let mut tys = self.iter();
-        if let Some(&ty) = tys.next() {
-            p!(print(ty));
-            for &ty in tys {
-                p!(write(", "), print(ty));
-            }
-        }
-        p!(write("}}"))
+        p!(write("{{"), comma_sep(self.iter()), write("}}"))
     }
 
     ty::TypeAndMut<'tcx> {
@@ -2017,32 +2020,39 @@ define_print_and_forward_display! {
     }
 
     ty::Predicate<'tcx> {
-        match *self {
-            ty::Predicate::Trait(ref data, constness) => {
+        match self.kind() {
+            &ty::PredicateKind::Trait(ref data, constness) => {
                 if let hir::Constness::Const = constness {
                     p!(write("const "));
                 }
                 p!(print(data))
             }
-            ty::Predicate::Subtype(ref predicate) => p!(print(predicate)),
-            ty::Predicate::RegionOutlives(ref predicate) => p!(print(predicate)),
-            ty::Predicate::TypeOutlives(ref predicate) => p!(print(predicate)),
-            ty::Predicate::Projection(ref predicate) => p!(print(predicate)),
-            ty::Predicate::WellFormed(ty) => p!(print(ty), write(" well-formed")),
-            ty::Predicate::ObjectSafe(trait_def_id) => {
+            ty::PredicateKind::Subtype(predicate) => p!(print(predicate)),
+            ty::PredicateKind::RegionOutlives(predicate) => p!(print(predicate)),
+            ty::PredicateKind::TypeOutlives(predicate) => p!(print(predicate)),
+            ty::PredicateKind::Projection(predicate) => p!(print(predicate)),
+            ty::PredicateKind::WellFormed(ty) => p!(print(ty), write(" well-formed")),
+            &ty::PredicateKind::ObjectSafe(trait_def_id) => {
                 p!(write("the trait `"),
                    print_def_path(trait_def_id, &[]),
                    write("` is object-safe"))
             }
-            ty::Predicate::ClosureKind(closure_def_id, _closure_substs, kind) => {
+            &ty::PredicateKind::ClosureKind(closure_def_id, _closure_substs, kind) => {
                 p!(write("the closure `"),
                    print_value_path(closure_def_id, &[]),
                    write("` implements the trait `{}`", kind))
             }
-            ty::Predicate::ConstEvaluatable(def_id, substs) => {
+            &ty::PredicateKind::ConstEvaluatable(def_id, substs) => {
                 p!(write("the constant `"),
                    print_value_path(def_id, substs),
                    write("` can be evaluated"))
+            }
+            ty::PredicateKind::ConstEquate(c1, c2) => {
+                p!(write("the constant `"),
+                   print(c1),
+                   write("` equals `"),
+                   print(c2),
+                   write("`"))
             }
         }
     }

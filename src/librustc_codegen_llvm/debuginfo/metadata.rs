@@ -16,11 +16,9 @@ use crate::llvm::debuginfo::{
     DIArray, DICompositeType, DIDescriptor, DIFile, DIFlags, DILexicalBlock, DIScope, DIType,
     DebugEmissionKind,
 };
-use crate::llvm_util;
 use crate::value::Value;
 
 use log::debug;
-use rustc_ast::ast;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::const_cstr;
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -94,7 +92,7 @@ pub const UNKNOWN_COLUMN_NUMBER: c_uint = 0;
 pub const NO_SCOPE_METADATA: Option<&DIScope> = None;
 
 #[derive(Copy, Debug, Hash, Eq, PartialEq, Clone)]
-pub struct UniqueTypeId(ast::Name);
+pub struct UniqueTypeId(Symbol);
 
 /// The `TypeMap` is where the `CrateDebugContext` holds the type metadata nodes
 /// created so far. The metadata nodes are indexed by `UniqueTypeId`, and, for
@@ -449,7 +447,6 @@ fn subroutine_type_metadata(
         unsafe {
             llvm::LLVMRustDIBuilderCreateSubroutineType(
                 DIB(cx),
-                unknown_file_metadata(cx),
                 create_DIArray(DIB(cx), &signature_metadata[..]),
             )
         },
@@ -637,14 +634,12 @@ pub fn type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>, usage_site_span: Sp
                     // anything reading the debuginfo for a recursive
                     // type is going to see *something* weird - the only
                     // question is what exactly it will see.
-                    let (size, align) = cx.size_and_align_of(t);
                     let name = "<recur_type>";
                     llvm::LLVMRustDIBuilderCreateBasicType(
                         DIB(cx),
                         name.as_ptr().cast(),
                         name.len(),
-                        size.bits(),
-                        align.bits() as u32,
+                        cx.size_of(t).bits(),
                         DW_ATE_unsigned,
                     )
                 }
@@ -843,14 +838,12 @@ fn basic_type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll DIType {
         _ => bug!("debuginfo::basic_type_metadata - `t` is invalid type"),
     };
 
-    let (size, align) = cx.size_and_align_of(t);
     let ty_metadata = unsafe {
         llvm::LLVMRustDIBuilderCreateBasicType(
             DIB(cx),
             name.as_ptr().cast(),
             name.len(),
-            size.bits(),
-            align.bits() as u32,
+            cx.size_of(t).bits(),
             encoding,
         )
     };
@@ -1289,22 +1282,11 @@ fn prepare_union_metadata(
 // Enums
 //=-----------------------------------------------------------------------------
 
-/// DWARF variant support is only available starting in LLVM 8.
-/// Although the earlier enum debug info output did not work properly
-/// in all situations, it is better for the time being to continue to
-/// sometimes emit the old style rather than emit something completely
-/// useless when rust is compiled against LLVM 6 or older. LLVM 7
-/// contains an early version of the DWARF variant support, and will
-/// crash when handling the new debug info format. This function
-/// decides which representation will be emitted.
+/// DWARF variant support is only available starting in LLVM 8, but
+/// on MSVC we have to use the fallback mode, because LLVM doesn't
+/// lower variant parts to PDB.
 fn use_enum_fallback(cx: &CodegenCx<'_, '_>) -> bool {
-    // On MSVC we have to use the fallback mode, because LLVM doesn't
-    // lower variant parts to PDB.
     cx.sess().target.target.options.is_like_msvc
-        // LLVM version 7 did not release with an important bug fix;
-        // but the required patch is in the LLVM 8.  Rust LLVM reports
-        // 8 as well.
-        || llvm_util::get_major_version() < 8
 }
 
 // FIXME(eddyb) maybe precompute this? Right now it's computed once
@@ -1312,7 +1294,7 @@ fn use_enum_fallback(cx: &CodegenCx<'_, '_>) -> bool {
 fn generator_layout_and_saved_local_names(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
-) -> (&'tcx GeneratorLayout<'tcx>, IndexVec<mir::GeneratorSavedLocal, Option<ast::Name>>) {
+) -> (&'tcx GeneratorLayout<'tcx>, IndexVec<mir::GeneratorSavedLocal, Option<Symbol>>) {
     let body = tcx.optimized_mir(def_id);
     let generator_layout = body.generator_layout.as_ref().unwrap();
     let mut generator_saved_local_names = IndexVec::from_elem(None, &generator_layout.field_tys);
@@ -1668,7 +1650,7 @@ enum VariantInfo<'a, 'tcx> {
     Generator {
         substs: SubstsRef<'tcx>,
         generator_layout: &'tcx GeneratorLayout<'tcx>,
-        generator_saved_local_names: &'a IndexVec<mir::GeneratorSavedLocal, Option<ast::Name>>,
+        generator_saved_local_names: &'a IndexVec<mir::GeneratorSavedLocal, Option<Symbol>>,
         variant_index: VariantIdx,
     },
 }
@@ -2200,9 +2182,6 @@ fn compute_type_parameters(cx: &CodegenCx<'ll, 'tcx>, ty: Ty<'tcx>) -> Option<&'
                                 name.as_ptr().cast(),
                                 name.len(),
                                 actual_type_metadata,
-                                unknown_file_metadata(cx),
-                                0,
-                                0,
                             ))
                         })
                     } else {

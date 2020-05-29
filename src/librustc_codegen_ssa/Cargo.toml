@@ -15,7 +15,7 @@ cc = "1.0.1"
 num_cpus = "1.0"
 memmap = "0.7"
 log = "0.4.5"
-libc = "0.2.44"
+libc = "0.2.50"
 jobserver = "0.1.11"
 tempfile = "3.1"
 
@@ -34,4 +34,3 @@ rustc_incremental = { path = "../librustc_incremental" }
 rustc_index = { path = "../librustc_index" }
 rustc_target = { path = "../librustc_target" }
 rustc_session = { path = "../librustc_session" }
-rustc_metadata = { path = "../librustc_metadata" }

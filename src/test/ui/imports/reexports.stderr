@@ -56,7 +56,7 @@ note: the lint level is defined here
 LL | #![warn(unused_imports)]
    |         ^^^^^^^^^^^^^^
 
-error: aborting due to 3 previous errors
+error: aborting due to 3 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0364, E0603.
 For more information about an error, try `rustc --explain E0364`.

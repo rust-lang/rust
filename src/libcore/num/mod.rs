@@ -8,6 +8,7 @@ use crate::convert::Infallible;
 use crate::fmt;
 use crate::intrinsics;
 use crate::mem;
+use crate::ops::{BitOr, BitOrAssign};
 use crate::str::FromStr;
 
 // Used because the `?` operator is not allowed in a const context.
@@ -107,6 +108,57 @@ assert_eq!(size_of::<Option<core::num::", stringify!($Ty), ">>(), size_of::<", s
                     fn from(nonzero: $Ty) -> Self {
                         nonzero.0
                     }
+                }
+            }
+
+            #[stable(feature = "nonzero_bitor", since = "1.45.0")]
+            impl BitOr for $Ty {
+                type Output = Self;
+                #[inline]
+                fn bitor(self, rhs: Self) -> Self::Output {
+                    // Safety: since `self` and `rhs` are both nonzero, the
+                    // result of the bitwise-or will be nonzero.
+                    unsafe { $Ty::new_unchecked(self.get() | rhs.get()) }
+                }
+            }
+
+            #[stable(feature = "nonzero_bitor", since = "1.45.0")]
+            impl BitOr<$Int> for $Ty {
+                type Output = Self;
+                #[inline]
+                fn bitor(self, rhs: $Int) -> Self::Output {
+                    // Safety: since `self` is nonzero, the result of the
+                    // bitwise-or will be nonzero regardless of the value of
+                    // `rhs`.
+                    unsafe { $Ty::new_unchecked(self.get() | rhs) }
+                }
+            }
+
+            #[stable(feature = "nonzero_bitor", since = "1.45.0")]
+            impl BitOr<$Ty> for $Int {
+                type Output = $Ty;
+                #[inline]
+                fn bitor(self, rhs: $Ty) -> Self::Output {
+                    // Safety: since `rhs` is nonzero, the result of the
+                    // bitwise-or will be nonzero regardless of the value of
+                    // `self`.
+                    unsafe { $Ty::new_unchecked(self | rhs.get()) }
+                }
+            }
+
+            #[stable(feature = "nonzero_bitor", since = "1.45.0")]
+            impl BitOrAssign for $Ty {
+                #[inline]
+                fn bitor_assign(&mut self, rhs: Self) {
+                    *self = *self | rhs;
+                }
+            }
+
+            #[stable(feature = "nonzero_bitor", since = "1.45.0")]
+            impl BitOrAssign<$Int> for $Ty {
+                #[inline]
+                fn bitor_assign(&mut self, rhs: $Int) {
+                    *self = *self | rhs;
                 }
             }
 
@@ -698,6 +750,23 @@ $EndFeature, "
         }
 
         doc_comment! {
+            concat!("Unchecked integer addition. Computes `self + rhs, assuming overflow
+cannot occur. This results in undefined behavior when `self + rhs > ", stringify!($SelfT),
+"::max_value()` or `self + rhs < ", stringify!($SelfT), "::min_value()`."),
+            #[unstable(
+                feature = "unchecked_math",
+                reason = "niche optimization path",
+                issue = "none",
+            )]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
+            #[inline]
+            pub unsafe fn unchecked_add(self, rhs: Self) -> Self {
+                intrinsics::unchecked_add(self, rhs)
+            }
+        }
+
+        doc_comment! {
             concat!("Checked integer subtraction. Computes `self - rhs`, returning `None` if
 overflow occurred.
 
@@ -723,6 +792,23 @@ $EndFeature, "
         }
 
         doc_comment! {
+            concat!("Unchecked integer subtraction. Computes `self - rhs, assuming overflow
+cannot occur. This results in undefined behavior when `self - rhs > ", stringify!($SelfT),
+"::max_value()` or `self - rhs < ", stringify!($SelfT), "::min_value()`."),
+            #[unstable(
+                feature = "unchecked_math",
+                reason = "niche optimization path",
+                issue = "none",
+            )]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
+            #[inline]
+            pub unsafe fn unchecked_sub(self, rhs: Self) -> Self {
+                intrinsics::unchecked_sub(self, rhs)
+            }
+        }
+
+        doc_comment! {
             concat!("Checked integer multiplication. Computes `self * rhs`, returning `None` if
 overflow occurred.
 
@@ -744,6 +830,23 @@ $EndFeature, "
             pub const fn checked_mul(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_mul(rhs);
                 if b {None} else {Some(a)}
+            }
+        }
+
+        doc_comment! {
+            concat!("Unchecked integer multiplication. Computes `self * rhs, assuming overflow
+cannot occur. This results in undefined behavior when `self * rhs > ", stringify!($SelfT),
+"::max_value()` or `self * rhs < ", stringify!($SelfT), "::min_value()`."),
+            #[unstable(
+                feature = "unchecked_math",
+                reason = "niche optimization path",
+                issue = "none",
+            )]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
+            #[inline]
+            pub unsafe fn unchecked_mul(self, rhs: Self) -> Self {
+                intrinsics::unchecked_mul(self, rhs)
             }
         }
 
@@ -1062,8 +1165,7 @@ instead of overflowing.
 Basic usage:
 
 ```
-", $Feature, "#![feature(saturating_neg)]
-assert_eq!(100", stringify!($SelfT), ".saturating_neg(), -100);
+", $Feature, "assert_eq!(100", stringify!($SelfT), ".saturating_neg(), -100);
 assert_eq!((-100", stringify!($SelfT), ").saturating_neg(), 100);
 assert_eq!(", stringify!($SelfT), "::MIN.saturating_neg(), ", stringify!($SelfT),
 "::MAX);
@@ -1072,7 +1174,7 @@ assert_eq!(", stringify!($SelfT), "::MAX.saturating_neg(), ", stringify!($SelfT)
 $EndFeature, "
 ```"),
 
-            #[unstable(feature = "saturating_neg", issue = "59983")]
+            #[stable(feature = "saturating_neg", since = "1.45.0")]
             #[rustc_const_unstable(feature = "const_saturating_int_methods", issue = "53718")]
             #[inline]
             pub const fn saturating_neg(self) -> Self {
@@ -1089,8 +1191,7 @@ MIN` instead of overflowing.
 Basic usage:
 
 ```
-", $Feature, "#![feature(saturating_neg)]
-assert_eq!(100", stringify!($SelfT), ".saturating_abs(), 100);
+", $Feature, "assert_eq!(100", stringify!($SelfT), ".saturating_abs(), 100);
 assert_eq!((-100", stringify!($SelfT), ").saturating_abs(), 100);
 assert_eq!(", stringify!($SelfT), "::MIN.saturating_abs(), ", stringify!($SelfT),
 "::MAX);
@@ -1099,7 +1200,7 @@ assert_eq!((", stringify!($SelfT), "::MIN + 1).saturating_abs(), ", stringify!($
 $EndFeature, "
 ```"),
 
-            #[unstable(feature = "saturating_neg", issue = "59983")]
+            #[stable(feature = "saturating_neg", since = "1.45.0")]
             #[rustc_const_unstable(feature = "const_saturating_int_methods", issue = "53718")]
             #[inline]
             pub const fn saturating_abs(self) -> Self {
@@ -1396,8 +1497,8 @@ any high-order bits of `rhs` that would cause the shift to exceed the bitwidth o
 
 Note that this is *not* the same as a rotate-left; the RHS of a wrapping shift-left is restricted to
 the range of the type, rather than the bits shifted out of the LHS being returned to the other end.
-The primitive integer types all implement a `rotate_left` function, which may be what you want
-instead.
+The primitive integer types all implement a `[`rotate_left`](#method.rotate_left) function,
+which may be what you want instead.
 
 # Examples
 
@@ -1428,8 +1529,8 @@ removes any high-order bits of `rhs` that would cause the shift to exceed the bi
 
 Note that this is *not* the same as a rotate-right; the RHS of a wrapping shift-right is restricted
 to the range of the type, rather than the bits shifted out of the LHS being returned to the other
-end. The primitive integer types all implement a `rotate_right` function, which may be what you want
-instead.
+end. The primitive integer types all implement a [`rotate_right`](#method.rotate_right) function,
+which may be what you want instead.
 
 # Examples
 
@@ -2885,6 +2986,23 @@ assert_eq!((", stringify!($SelfT), "::MAX - 2).checked_add(3), None);", $EndFeat
         }
 
         doc_comment! {
+            concat!("Unchecked integer addition. Computes `self + rhs, assuming overflow
+cannot occur. This results in undefined behavior when `self + rhs > ", stringify!($SelfT),
+"::max_value()` or `self + rhs < ", stringify!($SelfT), "::min_value()`."),
+            #[unstable(
+                feature = "unchecked_math",
+                reason = "niche optimization path",
+                issue = "none",
+            )]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
+            #[inline]
+            pub unsafe fn unchecked_add(self, rhs: Self) -> Self {
+                intrinsics::unchecked_add(self, rhs)
+            }
+        }
+
+        doc_comment! {
             concat!("Checked integer subtraction. Computes `self - rhs`, returning
 `None` if overflow occurred.
 
@@ -2908,6 +3026,23 @@ assert_eq!(0", stringify!($SelfT), ".checked_sub(1), None);", $EndFeature, "
         }
 
         doc_comment! {
+            concat!("Unchecked integer subtraction. Computes `self - rhs, assuming overflow
+cannot occur. This results in undefined behavior when `self - rhs > ", stringify!($SelfT),
+"::max_value()` or `self - rhs < ", stringify!($SelfT), "::min_value()`."),
+            #[unstable(
+                feature = "unchecked_math",
+                reason = "niche optimization path",
+                issue = "none",
+            )]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
+            #[inline]
+            pub unsafe fn unchecked_sub(self, rhs: Self) -> Self {
+                intrinsics::unchecked_sub(self, rhs)
+            }
+        }
+
+        doc_comment! {
             concat!("Checked integer multiplication. Computes `self * rhs`, returning
 `None` if overflow occurred.
 
@@ -2927,6 +3062,23 @@ assert_eq!(", stringify!($SelfT), "::MAX.checked_mul(2), None);", $EndFeature, "
             pub const fn checked_mul(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_mul(rhs);
                 if b {None} else {Some(a)}
+            }
+        }
+
+        doc_comment! {
+            concat!("Unchecked integer multiplication. Computes `self * rhs, assuming overflow
+cannot occur. This results in undefined behavior when `self * rhs > ", stringify!($SelfT),
+"::max_value()` or `self * rhs < ", stringify!($SelfT), "::min_value()`."),
+            #[unstable(
+                feature = "unchecked_math",
+                reason = "niche optimization path",
+                issue = "none",
+            )]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
+            #[inline]
+            pub unsafe fn unchecked_mul(self, rhs: Self) -> Self {
+                intrinsics::unchecked_mul(self, rhs)
             }
         }
 
@@ -3456,8 +3608,8 @@ Note that this is *not* the same as a rotate-left; the
 RHS of a wrapping shift-left is restricted to the range
 of the type, rather than the bits shifted out of the LHS
 being returned to the other end. The primitive integer
-types all implement a `rotate_left` function, which may
-be what you want instead.
+types all implement a [`rotate_left`](#method.rotate_left) function,
+which may be what you want instead.
 
 # Examples
 
@@ -3490,8 +3642,8 @@ Note that this is *not* the same as a rotate-right; the
 RHS of a wrapping shift-right is restricted to the range
 of the type, rather than the bits shifted out of the LHS
 being returned to the other end. The primitive integer
-types all implement a `rotate_right` function, which may
-be what you want instead.
+types all implement a [`rotate_right`](#method.rotate_right) function,
+which may be what you want instead.
 
 # Examples
 

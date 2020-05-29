@@ -59,8 +59,11 @@ Diagnostics have the following format:
     "spans": [
         {
             /* The file where the span is located.
-               For spans located within a macro expansion, this will be the
-               name of the expanded macro in the format "<MACRONAME macros>".
+               Note that this path may not exist. For example, if the path
+               points to the standard library, and the rust src is not
+               available in the sysroot, then it may point to a non-existent
+               file. Beware that this may also point to the source of an
+               external crate.
             */
             "file_name": "lib.rs",
             /* The byte offset where the span starts (0-based, inclusive). */
