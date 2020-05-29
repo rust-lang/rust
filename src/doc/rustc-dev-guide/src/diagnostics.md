@@ -457,7 +457,7 @@ crate.
 
 Every lint is implemented via a `struct` that implements the `LintPass` `trait`
 (you also implement one of the more specific lint pass traits, either
-`EarlyLintPass` or `LateLintPass`).  The trait implementation allows you to
+`EarlyLintPass` or `LateLintPass`). The trait implementation allows you to
 check certain syntactic constructs as the linter walks the source code. You can
 then choose to emit lints in a very similar way to compile errors.
 
@@ -482,35 +482,45 @@ declare_lint! {
     "suggest using `loop { }` instead of `while true { }`"
 }
 
-// Define a struct and `impl LintPass` for it.
-#[derive(Copy, Clone)]
-pub struct WhileTrue;
-
-// This declares a lint pass, providing a list of associated lints.  The
+// This declares a struct and a lint pass, providing a list of associated lints. The
 // compiler currently doesn't use the associated lints directly (e.g., to not
 // run the pass or otherwise check that the pass emits the appropriate set of
 // lints). However, it's good to be accurate here as it's possible that we're
 // going to register the lints via the get_lints method on our lint pass (that
 // this macro generates).
-impl_lint_pass!(
-    WhileTrue => [WHILE_TRUE],
-);
+declare_lint_pass!(WhileTrue => [WHILE_TRUE]);
 
-// LateLintPass has lots of methods. We only override the definition of
+// Helper function for `WhileTrue` lint.
+// Traverse through any amount of parenthesis and return the first non-parens expression.
+fn pierce_parens(mut expr: &ast::Expr) -> &ast::Expr {
+    while let ast::ExprKind::Paren(sub) = &expr.kind {
+        expr = sub;
+    }
+    expr
+}
+
+// `EarlyLintPass` has lots of methods. We only override the definition of
 // `check_expr` for this lint because that's all we need, but you could
 // override other methods for your own lint. See the rustc docs for a full
 // list of methods.
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for WhileTrue {
-    fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
-        if let hir::ExprWhile(ref cond, ..) = e.node {
-            if let hir::ExprLit(ref lit) = cond.node {
-                if let ast::LitKind::Bool(true) = lit.node {
-                    if lit.span.ctxt() == SyntaxContext::empty() {
+impl EarlyLintPass for WhileTrue {
+    fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
+        if let ast::ExprKind::While(cond, ..) = &e.kind {
+            if let ast::ExprKind::Lit(ref lit) = pierce_parens(cond).kind {
+                if let ast::LitKind::Bool(true) = lit.kind {
+                    if !lit.span.from_expansion() {
                         let msg = "denote infinite loops with `loop { ... }`";
-                        let condition_span = cx.tcx.sess.source_map().def_span(e.span);
-                        let mut err = cx.struct_span_lint(WHILE_TRUE, condition_span, msg);
-                        err.span_suggestion_short(condition_span, "use `loop`", "loop".to_owned());
-                        err.emit();
+                        let condition_span = cx.sess.source_map().guess_head_span(e.span);
+                        cx.struct_span_lint(WHILE_TRUE, condition_span, |lint| {
+                            lint.build(msg)
+                                .span_suggestion_short(
+                                    condition_span,
+                                    "use `loop`",
+                                    "loop".to_owned(),
+                                    Applicability::MachineApplicable,
+                                )
+                                .emit();
+                        })
                     }
                 }
             }
