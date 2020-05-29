@@ -95,7 +95,7 @@ impl StableSourceFileId {
         )
     }
 
-    pub fn new_from_pieces(
+    fn new_from_pieces(
         name: &FileName,
         name_was_remapped: bool,
         unmapped_path: Option<&FileName>,
