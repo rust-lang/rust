@@ -992,9 +992,11 @@ public:
       return internal_isConstantValue.find(arg)->second;
     }
 
-    //! False so we can replace function with augmentation
-    if (isa<Function>(val)) {
-      return false;
+    //! Functions must be false so we can replace function with augmentation, fallback to analysis
+    if (isa<Function>(val) || isa<InlineAsm>(val) || isa<Constant>(val) || isa<UndefValue>(val) || isa<MetadataAsValue>(val)) {
+      // Note that not actually passing in type results here as (hopefully) it shouldn't be needed
+      TypeResults TR(TA, NewFnTypeInfo(oldFunc));
+      return const_cast<GradientUtils*>(this)->isConstantValueInternal(val, AA, TR);
     }
 
     if (auto gv = dyn_cast<GlobalVariable>(val)) {
@@ -1005,9 +1007,6 @@ public:
             if (res == "active") return false;
         }
         if (nonmarkedglobals_inactive) return true;
-        if (gv->getName() == "_ZNSt12placeholders2_1E") {
-		return true;
-	}
 	goto err;
     }
     if (isa<GlobalValue>(val)) {
@@ -1015,9 +1014,6 @@ public:
         goto err;
     }
 
-    //TODO allow gv/inline asm
-    //if (isa<GlobalValue>(val) || isa<InlineAsm>(val)) return isConstantValueInternal(val);
-    if (isa<Constant>(val) || isa<UndefValue>(val) || isa<MetadataAsValue>(val)) return true;
 
     err:;
     llvm::errs() << *oldFunc << "\n";

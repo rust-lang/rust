@@ -228,24 +228,72 @@ TypeAnalyzer::TypeAnalyzer(const NewFnTypeInfo& fn, TypeAnalysis& TA) : intseen(
     }
 }
 
+ValueData getConstantAnalysis(Constant* val) {
+    if (auto ca = dyn_cast<ConstantAggregate>(val)) {
+        return getConstantAnalysis(ca->getOperand(0));
+    }
+
+    if (isa<Function>(val)) {
+        return DataType(IntType::Pointer);
+    }
+
+    if (isa<ConstantData>(val)) {
+        if (auto fp = dyn_cast<ConstantFP>(val)) {
+            if (fp->isExactlyValue(0.0)) return DataType(IntType::Anything);
+            return DataType(fp->getType());
+        }
+        if (isa<ConstantAggregateZero>(val)) return DataType(IntType::Anything);
+
+        if (auto ci = dyn_cast<ConstantInt>(val)) {
+            if (ci->getLimitedValue() >=1 && ci->getLimitedValue() <= 4096) {
+                return ValueData(DataType(IntType::Integer));
+            }
+            if (ci->getType()->getBitWidth() == 8 && ci->getLimitedValue() == 0) {
+                return ValueData(DataType(IntType::Integer));
+            }
+            if (ci->getLimitedValue() == 0) return DataType(IntType::Anything);
+            return DataType(IntType::Anything);
+        }
+        if (auto seq = dyn_cast<ConstantDataSequential>(val)) {
+            return getConstantAnalysis(seq->getElementAsConstant(0));
+        }
+        return ValueData(); //ValueData(DataType(IntType::Anything));
+    }
+
+    if (auto gv = dyn_cast<GlobalVariable>(val)) {
+        if (gv->isConstant()) {
+            ValueData vd = DataType(IntType::Pointer);
+            vd |= getConstantAnalysis(gv->getInitializer()).Only({0});
+            return vd;
+        }
+        auto globalSize = gv->getParent()->getDataLayout().getTypeSizeInBits(gv->getValueType()) / 8;
+        // since halfs are 16bit (2 byte) and pointers are >=32bit (4 byte) any single byte object must be integral
+        if (globalSize == 1) {
+            ValueData vd = ValueData(DataType(IntType::Integer)).Only({-1});
+            for(unsigned i=0; i<globalSize; i++)
+                vd |= ValueData(DataType(IntType::Integer)).Only({i});
+            return vd;
+        }
+
+    }
+
+    return ValueData();
+}
+
 ValueData TypeAnalyzer::getAnalysis(Value* val) {
 	if (val->getType()->isIntegerTy() && cast<IntegerType>(val->getType())->getBitWidth() == 1) return ValueData(DataType(IntType::Integer));
-    if (isa<ConstantData>(val)) {
-		if (auto ci = dyn_cast<ConstantInt>(val)) {
-			if (ci->getLimitedValue() >=1 && ci->getLimitedValue() <= 4096) {
-				return ValueData(DataType(IntType::Integer));
-			}
-            if (ci->getType()->getBitWidth() == 8 && ci->getLimitedValue() == 0) {
-				return ValueData(DataType(IntType::Integer));
-            }
-		}
-		return ValueData(DataType(IntType::Anything));
-	}
+
 
 	Type* vt = val->getType();
 	if (vt->isPointerTy()) {
 		vt = cast<PointerType>(vt)->getElementType();
 	}
+
+    if (auto con = dyn_cast<Constant>(val)) {
+        if (!isa<ConstantExpr>(val)) {
+            return getConstantAnalysis(con);
+        }
+    }
 
     /*
 	DataType dt = IntType::Unknown;
@@ -343,7 +391,8 @@ void TypeAnalyzer::updateAnalysis(Value* val, ValueData data, Value* origin) {
     }
 
     if (val->getType()->isPointerTy() && data[{}] == IntType::Integer) {
-        llvm::errs () << "illegal gep update\n";
+        llvm::errs () << "illegal gep update for val: " << *val << "\n";
+        if (origin) llvm::errs() << " + " << *origin << "\n";
         assert(0 && "illegal gep update");
     }
 
@@ -1864,16 +1913,8 @@ ValueData TypeAnalysis::query(Value* val, const NewFnTypeInfo& fn) {
     assert(val->getType());
 
     //TODO more concrete constant that avoid global issues
-	if (isa<Constant>(val) && !val->getType()->isPointerTy()) {
-		if (auto ci = dyn_cast<ConstantInt>(val)) {
-			if (ci->getLimitedValue() >=1 && ci->getLimitedValue() <= 4096) {
-				return ValueData(DataType(IntType::Integer));
-			}
-            if (ci->getType()->getBitWidth() == 8 && ci->getLimitedValue() == 0) {
-				return ValueData(DataType(IntType::Integer));
-            }
-		}
-		return ValueData(DataType(IntType::Anything));
+	if (auto con = dyn_cast<Constant>(val)) {
+        return getConstantAnalysis(con);
 	}
 
 	Function* func = nullptr;

@@ -775,6 +775,7 @@ bool isconstantValueM(TypeResults &TR, Value* val, SmallPtrSetImpl<Value*> &cons
 	//assert(directions >= 0);
 	assert(directions <= 3);
 
+    //llvm::errs() << "looking for: " << *val << "\n";
     if (val->getType()->isVoidTy()) return true;
 
     //! False so we can replace function with augmentation
@@ -782,8 +783,14 @@ bool isconstantValueM(TypeResults &TR, Value* val, SmallPtrSetImpl<Value*> &cons
         return false;
     }
 
-    if (isa<ConstantData>(val) || isa<ConstantAggregate>(val) || isa<Function>(val)) return true;
-	if (isa<BasicBlock>(val)) return true;
+    if (isa<UndefValue>(val) || isa<MetadataAsValue>(val)) return true;
+
+    if (isa<ConstantData>(val) || isa<ConstantAggregate>(val)) {
+        if (printconst)
+            llvm::errs() << " VALUE const as constdata: " << *val << "\n";
+        return true;
+	}
+    if (isa<BasicBlock>(val)) return true;
     assert(!isa<InlineAsm>(val));
 
     if((constants.find(val) != constants.end())) {
@@ -791,8 +798,8 @@ bool isconstantValueM(TypeResults &TR, Value* val, SmallPtrSetImpl<Value*> &cons
     }
 
     if((constantvals.find(val) != constantvals.end())) {
-        if (printconst)
-		    llvm::errs() << " VALUE const from precomputation " << *val << "\n";
+        //if (printconst)
+		//    llvm::errs() << " VALUE const from precomputation " << *val << "\n";
         return true;
     }
 
@@ -808,6 +815,23 @@ bool isconstantValueM(TypeResults &TR, Value* val, SmallPtrSetImpl<Value*> &cons
         assert(0 && "must've put arguments in constant/nonconstant");
     }
 
+    //! This value is certainly an integer (and only and integer, not a pointer or float). Therefore its value is constant
+    if (TR.intType(val, /*errIfNotFound*/false).isIntegral()) {
+        if (printconst)
+            llvm::errs() << " Value const as integral " << (int)directions << " " << *val << " " << TR.intType(val, /*errIfNotFound*/false).str() << "\n";
+        constantvals.insert(val);
+        return true;
+    }
+
+    //! This value is certainly a pointer to an integer (and only and integer, not a pointer or float). Therefore its value is constant
+    //TODO use typeInfo for more aggressive activity analysis
+    if (val->getType()->isPointerTy() && cast<PointerType>(val->getType())->isIntOrIntVectorTy() && TR.firstPointer(1, val, /*errifnotfound*/false).isIntegral() ) {
+        if (printconst)
+            llvm::errs() << " Value const as integral pointer" << (int)directions << " " << *val << "\n";
+        constantvals.insert(val);
+        return true;
+    }
+
     if (auto gi = dyn_cast<GlobalVariable>(val)) {
         if (!hasMetadata(gi, "enzyme_shadow") && nonmarkedglobals_inactive) {
             constantvals.insert(val);
@@ -818,40 +842,41 @@ bool isconstantValueM(TypeResults &TR, Value* val, SmallPtrSetImpl<Value*> &cons
         if (gi->isConstant() && isconstantValueM(TR, gi->getInitializer(), constants, nonconstant, constantvals, retvals, AA, directions)) {
             constantvals.insert(val);
             gi->setMetadata("enzyme_activity_value", MDNode::get(gi->getContext(), MDString::get(gi->getContext(), "const")));
+            if (printconst)
+              llvm::errs() << " VALUE const global " << *val << "\n";
             return true;
         }
+        auto res = TR.query(gi);
+        if (res[{-1}].isIntegral()) {
+            if (printconst)
+                llvm::errs() << " VALUE const as global int pointer " << *val << " type - " << res.str() << "\n";
+            return true;
+        }
+        if (printconst)
+            llvm::errs() << " VALUE nonconst unknown global " << *val << " type - " << TR.query(val).str() << "\n";
+        return false;
     }
 
     if (auto ce = dyn_cast<ConstantExpr>(val)) {
         if (ce->isCast()) {
             if (isconstantValueM(TR, ce->getOperand(0), constants, nonconstant, constantvals, retvals, AA, directions)) {
+                if (printconst)
+                    llvm::errs() << " VALUE const cast from from operand " << *val << "\n";
                 constantvals.insert(val);
                 return true;
             }
         }
         if (ce->isGEPWithNoNotionalOverIndexing()) {
             if (isconstantValueM(TR, ce->getOperand(0), constants, nonconstant, constantvals, retvals, AA, directions)) {
+                if (printconst)
+                    llvm::errs() << " VALUE const cast from gep operand " << *val << "\n";
                 constantvals.insert(val);
                 return true;
             }
         }
-    }
-
-    //! This value is certainly an integer (and only and integer, not a pointer or float). Therefore its value is constant
-    if (TR.intType(val, /*errIfNotFound*/false).isIntegral()) {
-		if (printconst)
-			llvm::errs() << " Value const as integral " << (int)directions << " " << *val << " " << TR.intType(val, /*errIfNotFound*/false).str() << "\n";
-        constantvals.insert(val);
-        return true;
-    }
-
-    //! This value is certainly a pointer to an integer (and only and integer, not a pointer or float). Therefore its value is constant
-    //TODO use typeInfo for more aggressive activity analysis
-    if (val->getType()->isPointerTy() && cast<PointerType>(val->getType())->isIntOrIntVectorTy() && TR.firstPointer(1, val, /*errifnotfound*/false).isIntegral() ) {
-		if (printconst)
-			llvm::errs() << " Value const as integral pointer" << (int)directions << " " << *val << "\n";
-        constantvals.insert(val);
-        return true;
+        if (printconst)
+            llvm::errs() << " VALUE nonconst unknown expr " << *val << "\n";
+        return false;
     }
 
     if (auto inst = dyn_cast<Instruction>(val)) {

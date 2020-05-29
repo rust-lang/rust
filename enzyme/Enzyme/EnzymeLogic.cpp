@@ -50,6 +50,10 @@ using namespace llvm;
 llvm::cl::opt<bool> enzyme_print("enzyme_print", cl::init(false), cl::Hidden,
                 cl::desc("Print before and after fns for autodiff"));
 
+cl::opt<bool> looseTypeAnalysis(
+            "enzyme_loosetypes", cl::init(false), cl::Hidden,
+            cl::desc("Allow looser use of types"));
+
 cl::opt<bool> cache_reads_always(
             "enzyme_always_cache_reads", cl::init(false), cl::Hidden,
             cl::desc("Force always caching of all reads"));
@@ -1046,7 +1050,12 @@ public:
       }
     }
 
-    if (type->isFPOrFPVectorTy() || (type->isIntOrIntVectorTy() && TR.intType(&LI).isFloat() )) {
+    bool isfloat = type->isFPOrFPVectorTy();
+    if (!isfloat && type->isIntOrIntVectorTy()) {
+        isfloat = TR.intType(&LI, /*errIfNotFound*/!looseTypeAnalysis).isFloat();
+    }
+
+    if (isfloat) {
       IRBuilder<> Builder2 = getReverseBuilder(parent);
       auto prediff = diffe(&LI, Builder2);
       setDiffe(&LI, Constant::getNullValue(type), Builder2);
@@ -1082,6 +1091,17 @@ public:
     if (valType->isFPOrFPVectorTy()) {
       FT = valType->getScalarType();
     } else if (!valType->isPointerTy()) {
+      if (looseTypeAnalysis) {
+        auto fp = TR.firstPointer(storeSize, orig_ptr, /*errifnotfound*/false, /*pointerIntSame*/true);
+        if (fp.isKnown()) {
+            FT = fp.isFloat();
+        } else if (isa<ConstantInt>(orig_val)) {
+            FT = nullptr;
+        } else {
+            llvm::errs() << "cannot deduce type of store " << SI << "\n";
+            assert(0 && "cannot deduce");
+        }
+      } else
       FT = TR.firstPointer(storeSize, orig_ptr, /*errifnotfound*/true, /*pointerIntSame*/true).isFloat();
     }
 
