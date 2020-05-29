@@ -18,7 +18,7 @@ use rustc_span::{FileName, SourceFile, Span};
 use std::path::Path;
 use std::str;
 
-use log::info;
+use log::{debug, info};
 
 pub const MACRO_ARGUMENTS: Option<&'static str> = Some("macro arguments");
 
