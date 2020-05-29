@@ -85,6 +85,7 @@
 #![feature(const_panic)]
 #![feature(const_fn_union)]
 #![feature(const_generics)]
+#![feature(const_ptr_offset)]
 #![feature(const_ptr_offset_from)]
 #![feature(const_result)]
 #![feature(const_slice_from_raw_parts)]
