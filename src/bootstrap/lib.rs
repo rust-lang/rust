@@ -344,13 +344,19 @@ impl Build {
         // we always try to use git for LLVM builds
         let in_tree_llvm_info = channel::GitInfo::new(false, &src.join("src/llvm-project"));
 
-        let initial_sysroot = config.initial_rustc.parent().unwrap().parent().unwrap();
-        let initial_lld = initial_sysroot
-            .join("lib")
-            .join("rustlib")
-            .join(config.build)
-            .join("bin")
-            .join("rust-lld");
+        let initial_target_libdir = if config.dry_run {
+            "/dummy/path/to/lib/".to_string()
+        } else {
+            output(
+                Command::new(&config.initial_rustc)
+                    .arg("--target")
+                    .arg(config.build)
+                    .arg("--print")
+                    .arg("target-libdir"),
+            )
+        };
+        let initial_lld =
+            Path::new(&initial_target_libdir).parent().unwrap().join("bin").join("rust-lld");
 
         let mut build = Build {
             initial_rustc: config.initial_rustc.clone(),
