@@ -24,8 +24,8 @@ note: ...so that the expression is assignable
    |
 LL |     ss
    |     ^^
-   = note: expected  `&'b (dyn SomeTrait + 'b)`
-              found  `&dyn SomeTrait`
+   = note: expected `&'b (dyn SomeTrait + 'b)`
+              found `&dyn SomeTrait`
 
 error[E0495]: cannot infer an appropriate lifetime due to conflicting requirements
   --> $DIR/object-lifetime-default-elision.rs:71:5
@@ -53,8 +53,8 @@ note: ...so that the expression is assignable
    |
 LL |     ss
    |     ^^
-   = note: expected  `&'b (dyn SomeTrait + 'b)`
-              found  `&dyn SomeTrait`
+   = note: expected `&'b (dyn SomeTrait + 'b)`
+              found `&dyn SomeTrait`
 
 error: aborting due to 2 previous errors
 

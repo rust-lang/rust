@@ -27,8 +27,8 @@ note: ...so that the types are compatible
    |
 LL |         self.foo();
    |              ^^^
-   = note: expected  `&'a Self`
-              found  `&Self`
+   = note: expected `&'a Self`
+              found `&Self`
 
 error: aborting due to previous error
 

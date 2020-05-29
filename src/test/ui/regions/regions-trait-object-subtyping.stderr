@@ -41,8 +41,8 @@ note: ...so that the expression is assignable
    |
 LL |     x
    |     ^
-   = note: expected  `&'b mut (dyn Dummy + 'b)`
-              found  `&mut (dyn Dummy + 'b)`
+   = note: expected `&'b mut (dyn Dummy + 'b)`
+              found `&mut (dyn Dummy + 'b)`
 
 error[E0308]: mismatched types
   --> $DIR/regions-trait-object-subtyping.rs:22:5

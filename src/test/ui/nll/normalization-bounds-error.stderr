@@ -19,8 +19,8 @@ note: ...so that the types are compatible
    |
 LL | fn visit_seq<'d, 'a: 'd>() -> <&'a () as Visitor<'d>>::Value {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: expected  `Visitor<'d>`
-              found  `Visitor<'_>`
+   = note: expected `Visitor<'d>`
+              found `Visitor<'_>`
 
 error: aborting due to previous error
 
