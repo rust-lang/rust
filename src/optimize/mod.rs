@@ -18,7 +18,6 @@ pub(crate) fn optimize_function<'tcx>(
         return; // FIXME classify optimizations over opt levels
     }
     self::stack2reg::optimize_function(ctx, clif_comments);
-    #[cfg(debug_assertions)]
     crate::pretty_clif::write_clif_file(tcx, "stack2reg", instance, &ctx.func, &*clif_comments, None);
     crate::base::verify_func(tcx, &*clif_comments, &ctx.func);
 }
