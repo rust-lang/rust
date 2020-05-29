@@ -159,6 +159,16 @@ links against.
 This `stage2/bin/rustc` compiler is shipped to end-users, along with the
 `stage 1 {std,rustc}` artifacts.
 
+## Passing stage-specific flags to `rustc`
+
+`x.py` allows you to pass stage-specific flags to `rustc` when bootstrapping.
+The `RUSTFLAGS_STAGE_0`, `RUSTFLAGS_STAGE_1` and `RUSTFLAGS_STAGE_2`
+environment variables pass the given flags when building stage 0, 1, and 2
+artifacts respectively.
+
+Additionally, the `RUSTFLAGS_STAGE_NOT_0` variable, as its name suggests, pass
+the given arguments if the stage is not 0.
+
 ## Environment Variables
 
 During bootstrapping, there are a bunch of compiler-internal environment
