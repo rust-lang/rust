@@ -19,7 +19,7 @@ use ra_syntax::ast::RangeOp;
 use crate::{
     builtin_type::{BuiltinFloat, BuiltinInt},
     path::{GenericArgs, Path},
-    type_ref::{Mutability, TypeRef},
+    type_ref::{Mutability, Rawness, TypeRef},
 };
 
 pub type ExprId = Idx<Expr>;
@@ -110,6 +110,7 @@ pub enum Expr {
     },
     Ref {
         expr: ExprId,
+        rawness: Rawness,
         mutability: Mutability,
     },
     Box {

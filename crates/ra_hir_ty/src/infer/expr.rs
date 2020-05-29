@@ -17,8 +17,8 @@ use crate::{
     autoderef, method_resolution, op,
     traits::InEnvironment,
     utils::{generics, variant_data, Generics},
-    ApplicationTy, Binders, CallableDef, InferTy, IntTy, Mutability, Obligation, Substs, TraitRef,
-    Ty, TypeCtor, Uncertain,
+    ApplicationTy, Binders, CallableDef, InferTy, IntTy, Mutability, Obligation, Rawness, Substs,
+    TraitRef, Ty, TypeCtor, Uncertain,
 };
 
 use super::{
@@ -350,19 +350,28 @@ impl<'a> InferenceContext<'a> {
                 // FIXME check the cast...
                 cast_ty
             }
-            Expr::Ref { expr, mutability } => {
-                let expectation =
-                    if let Some((exp_inner, exp_mutability)) = &expected.ty.as_reference() {
-                        if *exp_mutability == Mutability::Mut && *mutability == Mutability::Shared {
-                            // FIXME: throw type error - expected mut reference but found shared ref,
-                            // which cannot be coerced
-                        }
-                        Expectation::rvalue_hint(Ty::clone(exp_inner))
-                    } else {
-                        Expectation::none()
-                    };
+            Expr::Ref { expr, rawness, mutability } => {
+                let expectation = if let Some((exp_inner, exp_rawness, exp_mutability)) =
+                    &expected.ty.as_reference_or_ptr()
+                {
+                    if *exp_mutability == Mutability::Mut && *mutability == Mutability::Shared {
+                        // FIXME: throw type error - expected mut reference but found shared ref,
+                        // which cannot be coerced
+                    }
+                    if *exp_rawness == Rawness::Ref && *rawness == Rawness::RawPtr {
+                        // FIXME: throw type error - expected reference but found ptr,
+                        // which cannot be coerced
+                    }
+                    Expectation::rvalue_hint(Ty::clone(exp_inner))
+                } else {
+                    Expectation::none()
+                };
                 let inner_ty = self.infer_expr_inner(*expr, &expectation);
-                Ty::apply_one(TypeCtor::Ref(*mutability), inner_ty)
+                let ty = match rawness {
+                    Rawness::RawPtr => TypeCtor::RawPtr(*mutability),
+                    Rawness::Ref => TypeCtor::Ref(*mutability),
+                };
+                Ty::apply_one(ty, inner_ty)
             }
             Expr::Box { expr } => {
                 let inner_ty = self.infer_expr_inner(*expr, &Expectation::none());

@@ -1235,6 +1235,8 @@ impl CastExpr {
 /// ```
 /// ❰ &foo ❱;
 /// ❰ &mut bar ❱;
+/// ❰ &raw const bar ❱;
+/// ❰ &raw mut bar ❱;
 /// ```
 ///
 /// [Reference](https://doc.rust-lang.org/reference/expressions/operator-expr.html#borrow-operators)
@@ -1247,6 +1249,7 @@ impl RefExpr {
     pub fn amp_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![&]) }
     pub fn raw_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![raw]) }
     pub fn mut_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![mut]) }
+    pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
 /// Prefix operator call. This is either `!` or `*` or `-`.

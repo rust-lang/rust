@@ -28,7 +28,7 @@ use crate::{
     },
     item_scope::BuiltinShadowMode,
     path::{GenericArgs, Path},
-    type_ref::{Mutability, TypeRef},
+    type_ref::{Mutability, Rawness, TypeRef},
     AdtId, ConstLoc, ContainerId, DefWithBodyId, EnumLoc, FunctionLoc, Intern, ModuleDefId,
     StaticLoc, StructLoc, TraitLoc, TypeAliasLoc, UnionLoc,
 };
@@ -378,8 +378,21 @@ impl ExprCollector<'_> {
             }
             ast::Expr::RefExpr(e) => {
                 let expr = self.collect_expr_opt(e.expr());
-                let mutability = Mutability::from_mutable(e.mut_token().is_some());
-                self.alloc_expr(Expr::Ref { expr, mutability }, syntax_ptr)
+                let raw_tok = e.raw_token().is_some();
+                let mutability = if raw_tok {
+                    if e.mut_token().is_some() {
+                        Mutability::Mut
+                    } else if e.const_token().is_some() {
+                        Mutability::Shared
+                    } else {
+                        unreachable!("parser only remaps to raw_token() if matching mutability token follows")
+                    }
+                } else {
+                    Mutability::from_mutable(e.mut_token().is_some())
+                };
+                let rawness = Rawness::from_raw(raw_tok);
+
+                self.alloc_expr(Expr::Ref { expr, rawness, mutability }, syntax_ptr)
             }
             ast::Expr::PrefixExpr(e) => {
                 let expr = self.collect_expr_opt(e.expr());
