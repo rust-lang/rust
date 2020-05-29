@@ -323,6 +323,7 @@ impl Ty {
         resolution: TypeNs,
         resolved_segment: PathSegment<'_>,
         remaining_segments: PathSegments<'_>,
+        infer_args: bool,
     ) -> (Ty, Option<TypeNs>) {
         let ty = match resolution {
             TypeNs::TraitId(trait_) => {
@@ -400,9 +401,15 @@ impl Ty {
                 ctx.db.ty(adt.into()).subst(&substs)
             }
 
-            TypeNs::AdtId(it) => Ty::from_hir_path_inner(ctx, resolved_segment, it.into()),
-            TypeNs::BuiltinType(it) => Ty::from_hir_path_inner(ctx, resolved_segment, it.into()),
-            TypeNs::TypeAliasId(it) => Ty::from_hir_path_inner(ctx, resolved_segment, it.into()),
+            TypeNs::AdtId(it) => {
+                Ty::from_hir_path_inner(ctx, resolved_segment, it.into(), infer_args)
+            }
+            TypeNs::BuiltinType(it) => {
+                Ty::from_hir_path_inner(ctx, resolved_segment, it.into(), infer_args)
+            }
+            TypeNs::TypeAliasId(it) => {
+                Ty::from_hir_path_inner(ctx, resolved_segment, it.into(), infer_args)
+            }
             // FIXME: report error
             TypeNs::EnumVariantId(_) => return (Ty::Unknown, None),
         };
@@ -428,7 +435,13 @@ impl Ty {
             ),
             Some(i) => (path.segments().get(i - 1).unwrap(), path.segments().skip(i)),
         };
-        Ty::from_partly_resolved_hir_path(ctx, resolution, resolved_segment, remaining_segments)
+        Ty::from_partly_resolved_hir_path(
+            ctx,
+            resolution,
+            resolved_segment,
+            remaining_segments,
+            false,
+        )
     }
 
     fn select_associated_type(
@@ -474,13 +487,14 @@ impl Ty {
         ctx: &TyLoweringContext<'_>,
         segment: PathSegment<'_>,
         typable: TyDefId,
+        infer_args: bool,
     ) -> Ty {
         let generic_def = match typable {
             TyDefId::BuiltinType(_) => None,
             TyDefId::AdtId(it) => Some(it.into()),
             TyDefId::TypeAliasId(it) => Some(it.into()),
         };
-        let substs = substs_from_path_segment(ctx, segment, generic_def, false);
+        let substs = substs_from_path_segment(ctx, segment, generic_def, infer_args);
         ctx.db.ty(typable).subst(&substs)
     }
 
@@ -493,6 +507,7 @@ impl Ty {
         // `ValueTyDefId` is just a convenient way to pass generics and
         // special-case enum variants
         resolved: ValueTyDefId,
+        infer_args: bool,
     ) -> Substs {
         let last = path.segments().last().expect("path should have at least one segment");
         let (segment, generic_def) = match resolved {
@@ -515,22 +530,27 @@ impl Ty {
                 (segment, Some(var.parent.into()))
             }
         };
-        substs_from_path_segment(ctx, segment, generic_def, false)
+        substs_from_path_segment(ctx, segment, generic_def, infer_args)
     }
 }
 
-pub(super) fn substs_from_path_segment(
+fn substs_from_path_segment(
     ctx: &TyLoweringContext<'_>,
     segment: PathSegment<'_>,
     def_generic: Option<GenericDefId>,
-    _add_self_param: bool,
+    infer_args: bool,
 ) -> Substs {
     let mut substs = Vec::new();
     let def_generics = def_generic.map(|def| generics(ctx.db.upcast(), def));
 
     let (parent_params, self_params, type_params, impl_trait_params) =
         def_generics.map_or((0, 0, 0, 0), |g| g.provenance_split());
+    let total_len = parent_params + self_params + type_params + impl_trait_params;
+
     substs.extend(iter::repeat(Ty::Unknown).take(parent_params));
+
+    let mut had_explicit_args = false;
+
     if let Some(generic_args) = &segment.args_and_bindings {
         if !generic_args.has_self_type {
             substs.extend(iter::repeat(Ty::Unknown).take(self_params));
@@ -542,30 +562,34 @@ pub(super) fn substs_from_path_segment(
         for arg in generic_args.args.iter().skip(skip).take(expected_num) {
             match arg {
                 GenericArg::Type(type_ref) => {
+                    had_explicit_args = true;
                     let ty = Ty::from_hir(ctx, type_ref);
                     substs.push(ty);
                 }
             }
         }
     }
-    let total_len = parent_params + self_params + type_params + impl_trait_params;
+
+    // handle defaults. In expression or pattern path segments without
+    // explicitly specified type arguments, missing type arguments are inferred
+    // (i.e. defaults aren't used).
+    if !infer_args || had_explicit_args {
+        if let Some(def_generic) = def_generic {
+            let default_substs = ctx.db.generic_defaults(def_generic);
+            assert_eq!(total_len, default_substs.len());
+
+            for default_ty in default_substs.iter().skip(substs.len()) {
+                substs.push(default_ty.clone());
+            }
+        }
+    }
+
     // add placeholders for args that were not provided
+    // FIXME: emit diagnostics in contexts where this is not allowed
     for _ in substs.len()..total_len {
         substs.push(Ty::Unknown);
     }
     assert_eq!(substs.len(), total_len);
-
-    // handle defaults
-    if let Some(def_generic) = def_generic {
-        let default_substs = ctx.db.generic_defaults(def_generic);
-        assert_eq!(substs.len(), default_substs.len());
-
-        for (i, default_ty) in default_substs.iter().enumerate() {
-            if substs[i] == Ty::Unknown {
-                substs[i] = default_ty.clone();
-            }
-        }
-    }
 
     Substs(substs.into())
 }
@@ -615,9 +639,7 @@ impl TraitRef {
         segment: PathSegment<'_>,
         resolved: TraitId,
     ) -> Substs {
-        let has_self_param =
-            segment.args_and_bindings.as_ref().map(|a| a.has_self_type).unwrap_or(false);
-        substs_from_path_segment(ctx, segment, Some(resolved.into()), !has_self_param)
+        substs_from_path_segment(ctx, segment, Some(resolved.into()), false)
     }
 
     pub(crate) fn from_type_bound(

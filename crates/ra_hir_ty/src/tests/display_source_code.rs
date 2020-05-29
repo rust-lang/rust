@@ -29,7 +29,7 @@ fn omit_default_type_parameters() {
         //- /main.rs
         struct Foo<T = u8> { t: T }
         fn main() {
-            let foo = Foo { t: 5 };
+            let foo = Foo { t: 5u8 };
             foo<|>;
         }
         ",
@@ -41,7 +41,7 @@ fn omit_default_type_parameters() {
         //- /main.rs
         struct Foo<K, T = u8> { k: K, t: T }
         fn main() {
-            let foo = Foo { k: 400, t: 5 };
+            let foo = Foo { k: 400, t: 5u8 };
             foo<|>;
         }
         ",

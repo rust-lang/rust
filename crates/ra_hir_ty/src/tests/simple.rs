@@ -1997,3 +1997,111 @@ fn foo() {
     "###
     );
 }
+
+#[test]
+fn generic_default() {
+    assert_snapshot!(
+        infer(r#"
+struct Thing<T = ()> { t: T }
+enum OtherThing<T = ()> {
+    One { t: T },
+    Two(T),
+}
+
+fn test(t1: Thing, t2: OtherThing, t3: Thing<i32>, t4: OtherThing<i32>) {
+    t1.t;
+    t3.t;
+    match t2 {
+        OtherThing::One { t } => { t; },
+        OtherThing::Two(t) => { t; },
+    }
+    match t4 {
+        OtherThing::One { t } => { t; },
+        OtherThing::Two(t) => { t; },
+    }
+}
+"#),
+        @r###"
+    98..100 't1': Thing<()>
+    109..111 't2': OtherThing<()>
+    125..127 't3': Thing<i32>
+    141..143 't4': OtherThing<i32>
+    162..385 '{     ...   } }': ()
+    168..170 't1': Thing<()>
+    168..172 't1.t': ()
+    178..180 't3': Thing<i32>
+    178..182 't3.t': i32
+    188..283 'match ...     }': ()
+    194..196 't2': OtherThing<()>
+    207..228 'OtherT... { t }': OtherThing<()>
+    225..226 't': ()
+    232..238 '{ t; }': ()
+    234..235 't': ()
+    248..266 'OtherT...Two(t)': OtherThing<()>
+    264..265 't': ()
+    270..276 '{ t; }': ()
+    272..273 't': ()
+    288..383 'match ...     }': ()
+    294..296 't4': OtherThing<i32>
+    307..328 'OtherT... { t }': OtherThing<i32>
+    325..326 't': i32
+    332..338 '{ t; }': ()
+    334..335 't': i32
+    348..366 'OtherT...Two(t)': OtherThing<i32>
+    364..365 't': i32
+    370..376 '{ t; }': ()
+    372..373 't': i32
+    "###
+    );
+}
+
+#[test]
+fn generic_default_in_struct_literal() {
+    assert_snapshot!(
+        infer(r#"
+struct Thing<T = ()> { t: T }
+enum OtherThing<T = ()> {
+    One { t: T },
+    Two(T),
+}
+
+fn test() {
+    let x = Thing { t: loop {} };
+    let y = Thing { t: () };
+    let z = Thing { t: 1i32 };
+    if let Thing { t } = z {
+        t;
+    }
+
+    let a = OtherThing::One { t: 1i32 };
+    let b = OtherThing::Two(1i32);
+}
+"#),
+        @r###"
+    100..320 '{     ...32); }': ()
+    110..111 'x': Thing<!>
+    114..134 'Thing ...p {} }': Thing<!>
+    125..132 'loop {}': !
+    130..132 '{}': ()
+    144..145 'y': Thing<()>
+    148..163 'Thing { t: () }': Thing<()>
+    159..161 '()': ()
+    173..174 'z': Thing<i32>
+    177..194 'Thing ...1i32 }': Thing<i32>
+    188..192 '1i32': i32
+    200..241 'if let...     }': ()
+    207..218 'Thing { t }': Thing<i32>
+    215..216 't': i32
+    221..222 'z': Thing<i32>
+    223..241 '{     ...     }': ()
+    233..234 't': i32
+    251..252 'a': OtherThing<i32>
+    255..282 'OtherT...1i32 }': OtherThing<i32>
+    276..280 '1i32': i32
+    292..293 'b': OtherThing<i32>
+    296..311 'OtherThing::Two': Two<i32>(i32) -> OtherThing<i32>
+    296..317 'OtherT...(1i32)': OtherThing<i32>
+    312..316 '1i32': i32
+    "###
+    );
+}

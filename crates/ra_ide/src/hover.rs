@@ -529,7 +529,7 @@ struct Test<K, T = u8> {
 }
 
 fn main() {
-    let zz<|> = Test { t: 23, k: 33 };
+    let zz<|> = Test { t: 23u8, k: 33 };
 }"#,
             &["Test<i32, u8>"],
         );
