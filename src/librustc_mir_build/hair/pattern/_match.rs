@@ -1025,11 +1025,11 @@ enum Fields<'p, 'tcx> {
     /// have not measured if it really made a difference.
     Slice(&'p [Pat<'tcx>]),
     Vec(SmallVec<[&'p Pat<'tcx>; 2]>),
-    /// Patterns where some of the fields need to be hidden. `len` caches the number of non-hidden
-    /// fields.
+    /// Patterns where some of the fields need to be hidden. `kept_count` caches the number of
+    /// non-hidden fields.
     Filtered {
         fields: SmallVec<[FilteredField<'p, 'tcx>; 2]>,
-        len: usize,
+        kept_count: usize,
     },
 }
 
@@ -1066,10 +1066,9 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
         constructor: &Constructor<'tcx>,
         ty: Ty<'tcx>,
     ) -> Self {
-        debug!("Fields::wildcards({:#?}, {:?})", constructor, ty);
         let wildcard_from_ty = |ty| &*cx.pattern_arena.alloc(Pat::wildcard_from_ty(ty));
 
-        match constructor {
+        let ret = match constructor {
             Single | Variant(_) => match ty.kind {
                 ty::Tuple(ref fs) => {
                     Fields::wildcards_from_tys(cx, fs.into_iter().map(|ty| ty.expect_ty()))
@@ -1093,7 +1092,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                         if has_no_hidden_fields {
                             Fields::wildcards_from_tys(cx, field_tys)
                         } else {
-                            let mut len = 0;
+                            let mut kept_count = 0;
                             let fields = variant
                                 .fields
                                 .iter()
@@ -1110,12 +1109,12 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                                     if is_uninhabited && (!is_visible || is_non_exhaustive) {
                                         FilteredField::Hidden(ty)
                                     } else {
-                                        len += 1;
+                                        kept_count += 1;
                                         FilteredField::Kept(wildcard_from_ty(ty))
                                     }
                                 })
                                 .collect();
-                            Fields::Filtered { fields, len }
+                            Fields::Filtered { fields, kept_count }
                         }
                     }
                 }
@@ -1129,14 +1128,19 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                 _ => bug!("bad slice pattern {:?} {:?}", constructor, ty),
             },
             ConstantValue(..) | FloatRange(..) | IntRange(..) | NonExhaustive => Fields::empty(),
-        }
+        };
+        debug!("Fields::wildcards({:?}, {:?}) = {:#?}", constructor, ty, ret);
+        ret
     }
 
+    /// Returns the number of patterns from the viewpoint of match-checking, i.e. excluding hidden
+    /// fields. This is what we want in most cases in this file, the only exception being
+    /// conversion to/from `Pat`.
     fn len(&self) -> usize {
         match self {
             Fields::Slice(pats) => pats.len(),
             Fields::Vec(pats) => pats.len(),
-            Fields::Filtered { len, .. } => *len,
+            Fields::Filtered { kept_count, .. } => *kept_count,
         }
     }
 
@@ -1206,7 +1210,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
         let pats: &[_] = cx.pattern_arena.alloc_from_iter(pats);
 
         match self {
-            Fields::Filtered { fields, len } => {
+            Fields::Filtered { fields, kept_count } => {
                 let mut pats = pats.iter();
                 let mut fields = fields.clone();
                 for f in &mut fields {
@@ -1215,7 +1219,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                         *p = pats.next().unwrap();
                     }
                 }
-                Fields::Filtered { fields, len: *len }
+                Fields::Filtered { fields, kept_count: *kept_count }
             }
             _ => Fields::Slice(pats),
         }
@@ -1866,11 +1870,13 @@ crate fn is_useful<'p, 'tcx>(
         return if any_is_useful { Useful(unreachable_pats) } else { NotUseful };
     }
 
-    let pcx = PatCtxt { ty: v.head().ty, span: v.head().span };
+    // FIXME(Nadrieril): Hack to work around type normalization issues (see #72476).
+    let ty = matrix.heads().next().map(|r| r.ty).unwrap_or(v.head().ty);
+    let pcx = PatCtxt { ty, span: v.head().span };
 
     debug!("is_useful_expand_first_col: pcx={:#?}, expanding {:#?}", pcx, v.head());
 
-    if let Some(constructor) = pat_constructor(cx.tcx, cx.param_env, v.head()) {
+    let ret = if let Some(constructor) = pat_constructor(cx.tcx, cx.param_env, v.head()) {
         debug!("is_useful - expanding constructor: {:#?}", constructor);
         split_grouped_constructors(
             cx.tcx,
@@ -1901,11 +1907,11 @@ crate fn is_useful<'p, 'tcx>(
 
         let used_ctors: Vec<Constructor<'_>> =
             matrix.heads().filter_map(|p| pat_constructor(cx.tcx, cx.param_env, p)).collect();
-        debug!("used_ctors = {:#?}", used_ctors);
+        debug!("is_useful_used_ctors = {:#?}", used_ctors);
         // `all_ctors` are all the constructors for the given type, which
         // should all be represented (or caught with the wild pattern `_`).
         let all_ctors = all_constructors(cx, pcx);
-        debug!("all_ctors = {:#?}", all_ctors);
+        debug!("is_useful_all_ctors = {:#?}", all_ctors);
 
         // `missing_ctors` is the set of constructors from the same type as the
         // first column of `matrix` that are matched only by wildcard patterns
@@ -1920,7 +1926,7 @@ crate fn is_useful<'p, 'tcx>(
         // can be big.
         let missing_ctors = MissingConstructors::new(all_ctors, used_ctors);
 
-        debug!("missing_ctors.empty()={:#?}", missing_ctors.is_empty(),);
+        debug!("is_useful_missing_ctors.empty()={:#?}", missing_ctors.is_empty(),);
 
         if missing_ctors.is_empty() {
             let (all_ctors, _) = missing_ctors.into_inner();
@@ -1988,7 +1994,9 @@ crate fn is_useful<'p, 'tcx>(
                 usefulness.apply_missing_ctors(cx, pcx.ty, &missing_ctors)
             }
         }
-    }
+    };
+    debug!("is_useful::returns({:#?}, {:#?}) = {:?}", matrix, v, ret);
+    ret
 }
 
 /// A shorthand for the `U(S(c, P), S(c, q))` operation from the paper. I.e., `is_useful` applied
@@ -2647,7 +2655,10 @@ fn specialize_one_pattern<'p, 'tcx>(
 
         PatKind::Or { .. } => bug!("Or-pattern should have been expanded earlier on."),
     };
-    debug!("specialize({:#?}, {:#?}) = {:#?}", pat, ctor_wild_subpatterns, result);
+    debug!(
+        "specialize({:#?}, {:#?}, {:#?}) = {:#?}",
+        pat, constructor, ctor_wild_subpatterns, result
+    );
 
     result
 }
