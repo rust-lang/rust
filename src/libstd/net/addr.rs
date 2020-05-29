@@ -2,7 +2,7 @@ use crate::cmp::Ordering;
 use crate::convert::TryInto;
 use crate::fmt;
 use crate::hash;
-use crate::io;
+use crate::io::{self, Write};
 use crate::iter;
 use crate::mem;
 use crate::net::{htons, ntohs, IpAddr, Ipv4Addr, Ipv6Addr};
@@ -600,7 +600,26 @@ impl fmt::Display for SocketAddr {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for SocketAddrV4 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}:{}", self.ip(), self.port())
+        // Fast path: if there's no alignment stuff, write to the output buffer
+        // directly
+        if f.precision().is_none() && f.width().is_none() {
+            write!(f, "{}:{}", self.ip(), self.port())
+        } else {
+            const IPV4_SOCKET_BUF_LEN: usize = (3 * 4)  // the segments
+                + 3  // the separators
+                + 1 + 5; // the port
+            let mut buf = [0; IPV4_SOCKET_BUF_LEN];
+            let mut buf_slice = &mut buf[..];
+
+            // Unwrap is fine because writing to a sufficiently-sized
+            // buffer is infallible
+            write!(buf_slice, "{}:{}", self.ip(), self.port()).unwrap();
+            let len = IPV4_SOCKET_BUF_LEN - buf_slice.len();
+
+            // This unsafe is OK because we know what is being written to the buffer
+            let buf = unsafe { crate::str::from_utf8_unchecked(&buf[..len]) };
+            f.pad(buf)
+        }
     }
 }
 
@@ -614,7 +633,28 @@ impl fmt::Debug for SocketAddrV4 {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for SocketAddrV6 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "[{}]:{}", self.ip(), self.port())
+        // Fast path: if there's no alignment stuff, write to the output
+        // buffer directly
+        if f.precision().is_none() && f.width().is_none() {
+            write!(f, "[{}]:{}", self.ip(), self.port())
+        } else {
+            const IPV6_SOCKET_BUF_LEN: usize = (4 * 8)  // The address
+            + 7  // The colon separators
+            + 2  // The brackets
+            + 1 + 5; // The port
+
+            let mut buf = [0; IPV6_SOCKET_BUF_LEN];
+            let mut buf_slice = &mut buf[..];
+
+            // Unwrap is fine because writing to a sufficiently-sized
+            // buffer is infallible
+            write!(buf_slice, "[{}]:{}", self.ip(), self.port()).unwrap();
+            let len = IPV6_SOCKET_BUF_LEN - buf_slice.len();
+
+            // This unsafe is OK because we know what is being written to the buffer
+            let buf = unsafe { crate::str::from_utf8_unchecked(&buf[..len]) };
+            f.pad(buf)
+        }
     }
 }
 
@@ -1166,6 +1206,28 @@ mod tests {
         ));
         assert!(!v6.is_ipv4());
         assert!(v6.is_ipv6());
+    }
+
+    #[test]
+    fn socket_v4_to_str() {
+        let socket = SocketAddrV4::new(Ipv4Addr::new(192, 168, 0, 1), 8080);
+
+        assert_eq!(format!("{}", socket), "192.168.0.1:8080");
+        assert_eq!(format!("{:<20}", socket), "192.168.0.1:8080    ");
+        assert_eq!(format!("{:>20}", socket), "    192.168.0.1:8080");
+        assert_eq!(format!("{:^20}", socket), "  192.168.0.1:8080  ");
+        assert_eq!(format!("{:.10}", socket), "192.168.0.");
+    }
+
+    #[test]
+    fn socket_v6_to_str() {
+        let socket: SocketAddrV6 = "[2a02:6b8:0:1::1]:53".parse().unwrap();
+
+        assert_eq!(format!("{}", socket), "[2a02:6b8:0:1::1]:53");
+        assert_eq!(format!("{:<24}", socket), "[2a02:6b8:0:1::1]:53    ");
+        assert_eq!(format!("{:>24}", socket), "    [2a02:6b8:0:1::1]:53");
+        assert_eq!(format!("{:^24}", socket), "  [2a02:6b8:0:1::1]:53  ");
+        assert_eq!(format!("{:.15}", socket), "[2a02:6b8:0:1::");
     }
 
     #[test]
