@@ -366,7 +366,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // FIXME(#14407)
     ungated!(rustc_const_stable, Whitelisted, template!(List: r#"feature = "name""#)),
     gated!(
-        allow_internal_unstable, Normal, template!(Word, List: "feat1, feat2, ..."),
+        allow_internal_unstable, Whitelisted, template!(Word, List: "feat1, feat2, ..."),
         "allow_internal_unstable side-steps feature gating and stability checks",
     ),
     gated!(

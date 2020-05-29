@@ -606,7 +606,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         Operand::Constant(Box::new(Constant {
             span,
             user_ty: None,
-            literal: self.tcx.mk_const(*ty::Const::from_scalar(self.tcx, scalar, ty)),
+            literal: ty::Const::from_scalar(self.tcx, scalar, ty),
         }))
     }
 
