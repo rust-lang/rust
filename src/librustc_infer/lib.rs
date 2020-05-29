@@ -16,6 +16,7 @@
 #![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
+#![feature(extend_one)]
 #![feature(never_type)]
 #![feature(or_patterns)]
 #![feature(range_is_empty)]
