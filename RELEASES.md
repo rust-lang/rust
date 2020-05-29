@@ -9,6 +9,14 @@ Language
 **Syntax-only changes**
 
 - [Expansion-driven outline module parsing][69838]
+```rust
+#[cfg(FALSE)]
+mod foo {
+    mod bar {
+        mod baz; // `foo/bar/baz.rs` doesn't exist, but no error!
+    }
+}
+```
 
 These are still rejected semantically, so you will likely receive an error but
 these changes can be seen and parsed by macros and conditional compilation.
@@ -53,6 +61,7 @@ Stabilized APIs
 - [`Layout::align_to`]
 - [`Layout::pad_to_align`]
 - [`Layout::array`]
+- [`Layout::extend`]
 
 Cargo
 -----
@@ -128,17 +137,18 @@ related tools.
 [68334]: https://github.com/rust-lang/rust/pull/68334/
 [67502]: https://github.com/rust-lang/rust/pull/67502/
 [cargo/8062]: https://github.com/rust-lang/cargo/pull/8062/
-[`PathBuf::with_capacity`]: https://doc.rust-lang.org/beta/std/path/struct.PathBuf.html#method.with_capacity
-[`PathBuf::capacity`]: https://doc.rust-lang.org/beta/std/path/struct.PathBuf.html#method.capacity
-[`PathBuf::clear`]: https://doc.rust-lang.org/beta/std/path/struct.PathBuf.html#method.clear
-[`PathBuf::reserve`]: https://doc.rust-lang.org/beta/std/path/struct.PathBuf.html#method.reserve
-[`PathBuf::reserve_exact`]: https://doc.rust-lang.org/beta/std/path/struct.PathBuf.html#method.reserve_exact
-[`PathBuf::shrink_to_fit`]: https://doc.rust-lang.org/beta/std/path/struct.PathBuf.html#method.shrink_to_fit
-[`f32::to_int_unchecked`]: https://doc.rust-lang.org/beta/std/primitive.f32.html#method.to_int_unchecked
-[`f64::to_int_unchecked`]: https://doc.rust-lang.org/beta/std/primitive.f64.html#method.to_int_unchecked
-[`Layout::align_to`]: https://doc.rust-lang.org/beta/std/alloc/struct.Layout.html#method.align_to
-[`Layout::pad_to_align`]: https://doc.rust-lang.org/beta/std/alloc/struct.Layout.html#method.pad_to_align
-[`Layout::array`]: https://doc.rust-lang.org/beta/std/alloc/struct.Layout.html#method.array
+[`PathBuf::with_capacity`]: https://doc.rust-lang.org/std/path/struct.PathBuf.html#method.with_capacity
+[`PathBuf::capacity`]: https://doc.rust-lang.org/std/path/struct.PathBuf.html#method.capacity
+[`PathBuf::clear`]: https://doc.rust-lang.org/std/path/struct.PathBuf.html#method.clear
+[`PathBuf::reserve`]: https://doc.rust-lang.org/std/path/struct.PathBuf.html#method.reserve
+[`PathBuf::reserve_exact`]: https://doc.rust-lang.org/std/path/struct.PathBuf.html#method.reserve_exact
+[`PathBuf::shrink_to_fit`]: https://doc.rust-lang.org/std/path/struct.PathBuf.html#method.shrink_to_fit
+[`f32::to_int_unchecked`]: https://doc.rust-lang.org/std/primitive.f32.html#method.to_int_unchecked
+[`f64::to_int_unchecked`]: https://doc.rust-lang.org/std/primitive.f64.html#method.to_int_unchecked
+[`Layout::align_to`]: https://doc.rust-lang.org/std/alloc/struct.Layout.html#method.align_to
+[`Layout::pad_to_align`]: https://doc.rust-lang.org/std/alloc/struct.Layout.html#method.pad_to_align
+[`Layout::array`]: https://doc.rust-lang.org/std/alloc/struct.Layout.html#method.array
+[`Layout::extend`]: https://doc.rust-lang.org/std/alloc/struct.Layout.html#method.extend
 
 
 Version 1.43.1 (2020-05-07)
