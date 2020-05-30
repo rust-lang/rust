@@ -33,22 +33,18 @@ impl Assist {
 
         fn collect_file(acc: &mut Vec<Assist>, path: &Path) -> Result<()> {
             let text = fs::read_to_string(path)?;
-            let comment_blocks = extract_comment_blocks_with_empty_lines(&text);
+            let comment_blocks = extract_comment_blocks_with_empty_lines("Assist", &text);
 
             for block in comment_blocks {
                 // FIXME: doesn't support blank lines yet, need to tweak
                 // `extract_comment_blocks` for that.
-                let mut lines = block.iter();
-                let first_line = lines.next().unwrap();
-                if !first_line.starts_with("Assist: ") {
-                    continue;
-                }
-                let id = first_line["Assist: ".len()..].to_string();
+                let id = block.id;
                 assert!(
                     id.chars().all(|it| it.is_ascii_lowercase() || it == '_'),
                     "invalid assist id: {:?}",
                     id
                 );
+                let mut lines = block.contents.iter();
 
                 let doc = take_until(lines.by_ref(), "```").trim().to_string();
                 assert!(

@@ -61,8 +61,24 @@ fn extract_comment_blocks(text: &str) -> Vec<Vec<String>> {
     do_extract_comment_blocks(text, false)
 }
 
-fn extract_comment_blocks_with_empty_lines(text: &str) -> Vec<Vec<String>> {
-    do_extract_comment_blocks(text, true)
+fn extract_comment_blocks_with_empty_lines(tag: &str, text: &str) -> Vec<CommentBlock> {
+    assert!(tag.starts_with(char::is_uppercase));
+    let tag = format!("{}:", tag);
+    let mut res = Vec::new();
+    for mut block in do_extract_comment_blocks(text, true) {
+        let first = block.remove(0);
+        if first.starts_with(&tag) {
+            let id = first[tag.len()..].trim().to_string();
+            let block = CommentBlock { id, contents: block };
+            res.push(block);
+        }
+    }
+    res
+}
+
+struct CommentBlock {
+    id: String,
+    contents: Vec<String>,
 }
 
 fn do_extract_comment_blocks(text: &str, allow_blocks_with_empty_lines: bool) -> Vec<Vec<String>> {
