@@ -6,6 +6,16 @@ use core::task::{Context, Poll};
 
 struct T;
 
+struct UnionStruct(i32);
+
+struct Struct {
+    a: i32
+}
+
+enum Enum {
+    A
+}
+
 impl Future for T {
     type Output = Result<(), ()>;
 
@@ -26,7 +36,19 @@ async fn bar() -> Result<(), ()> {
 async fn baz() -> Result<(), ()> {
     let t = T;
     t?; //~ ERROR the `?` operator can only be applied to values that implement `std::ops::Try`
+
+    let _: i32 = async {
+        UnionStruct(1i32)
+    }.0; //~ ERROR no field `0`
+
+    let _: i32 = async {
+        Struct { a: 1i32 }
+    }.a; //~ ERROR no field `a`
+
+    if let Enum::A = async { Enum::A } {} //~ ERROR mismatched type
+
     Ok(())
 }
+
 
 fn main() {}
