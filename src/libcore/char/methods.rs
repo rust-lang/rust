@@ -593,16 +593,7 @@ impl char {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn len_utf8(self) -> usize {
-        let code = self as u32;
-        if code < MAX_ONE_B {
-            1
-        } else if code < MAX_TWO_B {
-            2
-        } else if code < MAX_THREE_B {
-            3
-        } else {
-            4
-        }
+        len_utf8(self as u32)
     }
 
     /// Returns the number of 16-bit code units this `char` would need if
@@ -670,36 +661,7 @@ impl char {
     #[stable(feature = "unicode_encode_char", since = "1.15.0")]
     #[inline]
     pub fn encode_utf8(self, dst: &mut [u8]) -> &mut str {
-        let code = self as u32;
-        let len = self.len_utf8();
-        match (len, &mut dst[..]) {
-            (1, [a, ..]) => {
-                *a = code as u8;
-            }
-            (2, [a, b, ..]) => {
-                *a = (code >> 6 & 0x1F) as u8 | TAG_TWO_B;
-                *b = (code & 0x3F) as u8 | TAG_CONT;
-            }
-            (3, [a, b, c, ..]) => {
-                *a = (code >> 12 & 0x0F) as u8 | TAG_THREE_B;
-                *b = (code >> 6 & 0x3F) as u8 | TAG_CONT;
-                *c = (code & 0x3F) as u8 | TAG_CONT;
-            }
-            (4, [a, b, c, d, ..]) => {
-                *a = (code >> 18 & 0x07) as u8 | TAG_FOUR_B;
-                *b = (code >> 12 & 0x3F) as u8 | TAG_CONT;
-                *c = (code >> 6 & 0x3F) as u8 | TAG_CONT;
-                *d = (code & 0x3F) as u8 | TAG_CONT;
-            }
-            _ => panic!(
-                "encode_utf8: need {} bytes to encode U+{:X}, but the buffer has {}",
-                len,
-                code,
-                dst.len(),
-            ),
-        };
-        // SAFETY: We just wrote UTF-8 content in, so converting to str is fine.
-        unsafe { from_utf8_unchecked_mut(&mut dst[..len]) }
+        encode_utf8_raw(self as u32, dst)
     }
 
     /// Encodes this character as UTF-16 into the provided `u16` buffer,
@@ -1672,4 +1634,61 @@ impl char {
             _ => false,
         }
     }
+}
+
+#[inline]
+fn len_utf8(code: u32) -> usize {
+    if code < MAX_ONE_B {
+        1
+    } else if code < MAX_TWO_B {
+        2
+    } else if code < MAX_THREE_B {
+        3
+    } else {
+        4
+    }
+}
+
+/// Encodes a raw u32 value as UTF-8 into the provided byte buffer,
+/// and then returns the subslice of the buffer that contains the encoded character.
+///
+/// Unlike `char::encode_utf8`, this method can be called on codepoints in the surrogate range.
+///
+/// # Panics
+///
+/// Panics if the buffer is not large enough.
+/// A buffer of length four is large enough to encode any `char`.
+#[unstable(feature = "char_internals", reason = "exposed only for libstd", issue = "none")]
+#[doc(hidden)]
+#[inline]
+pub fn encode_utf8_raw(code: u32, dst: &mut [u8]) -> &mut str {
+    let len = len_utf8(code);
+    match (len, &mut dst[..]) {
+        (1, [a, ..]) => {
+            *a = code as u8;
+        }
+        (2, [a, b, ..]) => {
+            *a = (code >> 6 & 0x1F) as u8 | TAG_TWO_B;
+            *b = (code & 0x3F) as u8 | TAG_CONT;
+        }
+        (3, [a, b, c, ..]) => {
+            *a = (code >> 12 & 0x0F) as u8 | TAG_THREE_B;
+            *b = (code >> 6 & 0x3F) as u8 | TAG_CONT;
+            *c = (code & 0x3F) as u8 | TAG_CONT;
+        }
+        (4, [a, b, c, d, ..]) => {
+            *a = (code >> 18 & 0x07) as u8 | TAG_FOUR_B;
+            *b = (code >> 12 & 0x3F) as u8 | TAG_CONT;
+            *c = (code >> 6 & 0x3F) as u8 | TAG_CONT;
+            *d = (code & 0x3F) as u8 | TAG_CONT;
+        }
+        _ => panic!(
+            "encode_utf8: need {} bytes to encode U+{:X}, but the buffer has {}",
+            len,
+            code,
+            dst.len(),
+        ),
+    };
+    // SAFETY: We just wrote UTF-8 content in, so converting to str is fine.
+    unsafe { from_utf8_unchecked_mut(&mut dst[..len]) }
 }

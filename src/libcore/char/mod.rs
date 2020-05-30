@@ -37,6 +37,10 @@ pub use self::decode::{decode_utf16, DecodeUtf16, DecodeUtf16Error};
 #[stable(feature = "unicode_version", since = "1.45.0")]
 pub use crate::unicode::UNICODE_VERSION;
 
+// perma-unstable re-exports
+#[unstable(feature = "char_internals", reason = "exposed only for libstd", issue = "none")]
+pub use self::methods::encode_utf8_raw;
+
 use crate::fmt::{self, Write};
 use crate::iter::FusedIterator;
 
