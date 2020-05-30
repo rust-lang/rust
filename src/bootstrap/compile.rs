@@ -244,6 +244,16 @@ pub fn std_cargo(builder: &Builder<'_>, target: Interned<String>, stage: u32, ca
     if stage >= 1 {
         cargo.rustflag("-Cembed-bitcode=yes");
     }
+
+    // By default, rustc does not include unwind tables unless they are required
+    // for a particular target. They are not required by RISC-V targets, but
+    // compiling the standard library with them means that users can get
+    // backtraces without having to recompile the standard library themselves.
+    //
+    // This choice was discussed in https://github.com/rust-lang/rust/pull/69890
+    if target.contains("riscv") {
+        cargo.rustflag("-Cforce-unwind-tables=yes");
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
