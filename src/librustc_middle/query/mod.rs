@@ -133,6 +133,13 @@ rustc_queries! {
             cache_on_disk_if { key.is_local() }
         }
 
+        /// Returns the list of predicates that can be used for
+        /// `SelectionCandidate::ProjectionCandidate` and
+        /// `ProjectionTyCandidate::TraitDef`.
+        query projection_predicates(key: DefId) -> &'tcx ty::List<ty::Predicate<'tcx>> {
+            desc { |tcx| "finding projection predicates for `{}`", tcx.def_path_str(key) }
+        }
+
         query native_libraries(_: CrateNum) -> Lrc<Vec<NativeLib>> {
             desc { "looking up the native libraries of a linked crate" }
         }

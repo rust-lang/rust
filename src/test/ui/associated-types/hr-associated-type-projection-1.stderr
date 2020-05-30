@@ -1,0 +1,30 @@
+error[E0277]: the trait bound `for<'b> <T as UnsafeCopy<'b, T>>::Item: std::ops::Deref` is not satisfied
+  --> $DIR/hr-associated-type-projection-1.rs:15:17
+   |
+LL | trait UnsafeCopy<'a, T: Copy>
+   |       ---------- required by a bound in this
+LL | where
+LL |     for<'b> <Self as UnsafeCopy<'b, T>>::Item: std::ops::Deref<Target = T>,
+   |                                                --------------------------- required by this bound in `UnsafeCopy`
+...
+LL |     type Item = T;
+   |                 ^ the trait `for<'b> std::ops::Deref` is not implemented for `<T as UnsafeCopy<'b, T>>::Item`
+   |
+   = help: the following implementations were found:
+             <&T as std::ops::Deref>
+             <&mut T as std::ops::Deref>
+
+error[E0277]: the trait bound `<T as UnsafeCopy<'b, T>>::Item: std::ops::Deref` is not satisfied
+  --> $DIR/hr-associated-type-projection-1.rs:13:33
+   |
+LL | impl<T: Copy + std::ops::Deref> UnsafeCopy<'_, T> for T {
+   |                                 ^^^^^^^^^^^^^^^^^ the trait `std::ops::Deref` is not implemented for `<T as UnsafeCopy<'b, T>>::Item`
+   |
+help: consider further restricting the associated type
+   |
+LL | impl<T: Copy + std::ops::Deref> UnsafeCopy<'_, T> for T where <T as UnsafeCopy<'b, T>>::Item: std::ops::Deref {
+   |                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

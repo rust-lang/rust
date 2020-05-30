@@ -2124,7 +2124,7 @@ fn check_impl_items_against_trait<'tcx>(
                             &ty_trait_item,
                             impl_trait_ref,
                             opt_trait_span,
-                        )
+                        );
                     } else {
                         let mut err = struct_span_err!(
                             tcx.sess,
