@@ -112,7 +112,7 @@ There is no way to list all the infinite things Miri cannot do, but the
 interpreter will explicitly tell you when it finds something unsupported:
 
 ```
-error: unsupported operation: Miri does not support threading
+error: unsupported operation: can't call foreign function: bind
     ...
     = help: this is likely not a bug in the program; it indicates that the program \
             performed an operation that the interpreter does not support
