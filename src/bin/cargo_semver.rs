@@ -73,11 +73,11 @@ fn main() {
     }
 
     let config_res = config.configure(
-        0, // verbose
+        0,                        // verbose
         matches.opt_present("q"), // quiet
-        None,  // color
-        false, // frozen
-        false, // locked
+        None,                     // color
+        false,                    // frozen
+        false,                    // locked
         matches.opt_present("offline"),
         &None, // target_dir
         &[],   // unstable_flags
