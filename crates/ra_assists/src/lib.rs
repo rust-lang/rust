@@ -112,6 +112,7 @@ mod handlers {
     mod add_turbo_fish;
     mod apply_demorgan;
     mod auto_import;
+    mod change_lifetime_anon_to_named;
     mod change_return_type_to_result;
     mod change_visibility;
     mod early_return;
@@ -151,6 +152,7 @@ mod handlers {
             add_turbo_fish::add_turbo_fish,
             apply_demorgan::apply_demorgan,
             auto_import::auto_import,
+            change_lifetime_anon_to_named::change_lifetime_anon_to_named,
             change_return_type_to_result::change_return_type_to_result,
             change_visibility::change_visibility,
             early_return::convert_to_guarded_return,

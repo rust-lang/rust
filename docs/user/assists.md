@@ -259,6 +259,30 @@ fn main() {
 }
 ```
 
+## `change_lifetime_anon_to_named`
+
+Change an anonymous lifetime to a named lifetime.
+
+```rust
+// BEFORE
+impl Cursor<'_┃> {
+    fn node(self) -> &SyntaxNode {
+        match self {
+            Cursor::Replace(node) | Cursor::Before(node) => node,
+        }
+    }
+}
+
+// AFTER
+impl<'a> Cursor<'a> {
+    fn node(self) -> &SyntaxNode {
+        match self {
+            Cursor::Replace(node) | Cursor::Before(node) => node,
+        }
+    }
+}
+```
+
 ## `change_return_type_to_result`
 
 Change the function's return type to Result.
