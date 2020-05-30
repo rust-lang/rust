@@ -7,7 +7,7 @@ use rustc_middle::{
         BasicBlock, Body, Location, Operand, Rvalue, Statement, StatementKind, Terminator,
         TerminatorKind,
     },
-    ty::{self, ParamEnv, TyCtxt},
+    ty::{self, fold::BottomUpFolder, ParamEnv, Ty, TyCtxt, TypeFoldable},
 };
 
 #[derive(Copy, Clone, Debug)]
@@ -83,6 +83,40 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     }
 }
 
+/// Check if src can be assigned into dest.
+/// This is not precise, it will accept some incorrect assignments.
+fn mir_assign_valid_types<'tcx>(tcx: TyCtxt<'tcx>, src: Ty<'tcx>, dest: Ty<'tcx>) -> bool {
+    if src == dest {
+        // Equal types, all is good.
+        return true;
+    }
+
+    // Type-changing assignments can happen for (at least) two reasons:
+    // 1. `&mut T` -> `&T` gets optimized from a reborrow to a mere assignment.
+    // 2. Subtyping is used. While all normal lifetimes are erased, higher-ranked types
+    //    with their late-bound lifetimes are still around and can lead to type differences.
+    // Normalize both of them away.
+    // FIXME: Share this code with `interpret/eval_context.rs`.
+    let normalize = |ty: Ty<'tcx>| {
+        ty.fold_with(&mut BottomUpFolder {
+            tcx,
+            // Normalize all references to immutable.
+            ty_op: |ty| match ty.kind {
+                ty::Ref(_, pointee, _) => tcx.mk_imm_ref(tcx.lifetimes.re_erased, pointee),
+                _ => ty,
+            },
+            // We just erase all late-bound lifetimes, but this is not fully correct (FIXME):
+            // lifetimes in invariant positions could matter (e.g. through associated types).
+            // But that just means we miss some potential incompatible types, it will not
+            // lead to wrong errors.
+            lt_op: |_| tcx.lifetimes.re_erased,
+            // Leave consts unchanged.
+            ct_op: |ct| ct,
+        })
+    };
+    normalize(src) == normalize(dest)
+}
+
 impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
     fn visit_operand(&mut self, operand: &Operand<'tcx>, location: Location) {
         // `Operand::Copy` is only supposed to be used with `Copy` types.
@@ -99,9 +133,23 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
     }
 
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
-        // The sides of an assignment must not alias. Currently this just checks whether the places
-        // are identical.
         if let StatementKind::Assign(box (dest, rvalue)) = &statement.kind {
+            // LHS and RHS of the assignment must have the same type.
+            let left_ty = dest.ty(&self.body.local_decls, self.tcx).ty;
+            let right_ty = rvalue.ty(&self.body.local_decls, self.tcx);
+            if !mir_assign_valid_types(self.tcx, right_ty, left_ty) {
+                self.fail(
+                    location,
+                    format!(
+                        "encountered `Assign` statement with incompatible types:\n\
+                        left-hand side has type: {}\n\
+                        right-hand side has type: {}",
+                        left_ty, right_ty,
+                    ),
+                );
+            }
+            // The sides of an assignment must not alias. Currently this just checks whether the places
+            // are identical.
             match rvalue {
                 Rvalue::Use(Operand::Copy(src) | Operand::Move(src)) => {
                     if dest == src {
