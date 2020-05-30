@@ -606,9 +606,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             if this.rwlock_is_locked(id) {
                 // No more readers owning the lock. Give it to a writer if there
                 // is any.
-                if let Some(writer) = this.rwlock_dequeue_and_unblock_writer(id) {
-                    this.rwlock_writer_lock(id, writer);
-                }
+                this.rwlock_dequeue_and_lock_writer(id);
             }
             Ok(0)
         } else if Some(active_thread) == this.rwlock_writer_unlock(id) {
@@ -617,13 +615,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // We are prioritizing writers here against the readers. As a
             // result, not only readers can starve writers, but also writers can
             // starve readers.
-            if let Some(writer) = this.rwlock_dequeue_and_unblock_writer(id) {
-                // Give the lock to another writer.
-                this.rwlock_writer_lock(id, writer);
+            if this.rwlock_dequeue_and_lock_writer(id) {
+                // Someone got the write lock, nice.
             } else {
                 // Give the lock to all readers.
-                while let Some(reader) = this.rwlock_dequeue_and_unblock_reader(id) {
-                    this.rwlock_reader_lock(id, reader);
+                while this.rwlock_dequeue_and_lock_reader(id) {
+                    // Rinse and repeat.
                 }
             }
             Ok(0)

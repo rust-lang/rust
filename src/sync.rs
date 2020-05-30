@@ -170,9 +170,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 mutex.owner = None;
                 // The mutex is completely unlocked. Try transfering ownership
                 // to another thread.
-                if let Some(new_owner) = this.mutex_dequeue_and_unblock(id) {
-                    this.mutex_lock(id, new_owner);
-                }
+                this.mutex_dequeue_and_lock(id);
             }
             Ok(Some(old_lock_count))
         } else {
@@ -182,7 +180,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 
     #[inline]
-    /// Put the thread into the queue waiting for the lock.
+    /// Put the thread into the queue waiting for the mutex.
     fn mutex_enqueue_and_block(&mut self, id: MutexId, thread: ThreadId) {
         let this = self.eval_context_mut();
         assert!(this.mutex_is_locked(id), "queing on unlocked mutex");
@@ -191,14 +189,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 
     #[inline]
-    /// Take a thread out of the queue waiting for the lock.
-    fn mutex_dequeue_and_unblock(&mut self, id: MutexId) -> Option<ThreadId> {
+    /// Take a thread out of the queue waiting for the mutex, and lock
+    /// the mutex for it. Returns `true` if some thread has the mutex now.
+    fn mutex_dequeue_and_lock(&mut self, id: MutexId) -> bool {
         let this = self.eval_context_mut();
         if let Some(thread) = this.machine.threads.sync.mutexes[id].queue.pop_front() {
             this.unblock_thread(thread);
-            Some(thread)
+            this.mutex_lock(id, thread);
+            true
         } else {
-            None
+            false
         }
     }
 
@@ -266,13 +266,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     #[inline]
     /// Take a reader out the queue waiting for the lock.
-    fn rwlock_dequeue_and_unblock_reader(&mut self, id: RwLockId) -> Option<ThreadId> {
+    /// Returns `true` if some thread got the rwlock.
+    fn rwlock_dequeue_and_lock_reader(&mut self, id: RwLockId) -> bool {
         let this = self.eval_context_mut();
         if let Some(reader) = this.machine.threads.sync.rwlocks[id].reader_queue.pop_front() {
             this.unblock_thread(reader);
-            Some(reader)
+            this.rwlock_reader_lock(id, reader);
+            true
         } else {
-            None
+            false
         }
     }
 
@@ -306,13 +308,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     #[inline]
     /// Take the writer out the queue waiting for the lock.
-    fn rwlock_dequeue_and_unblock_writer(&mut self, id: RwLockId) -> Option<ThreadId> {
+    /// Returns `true` if some thread got the rwlock.
+    fn rwlock_dequeue_and_lock_writer(&mut self, id: RwLockId) -> bool {
         let this = self.eval_context_mut();
         if let Some(writer) = this.machine.threads.sync.rwlocks[id].writer_queue.pop_front() {
             this.unblock_thread(writer);
-            Some(writer)
+            this.rwlock_writer_lock(id, writer);
+            true
         } else {
-            None
+            false
         }
     }
 
