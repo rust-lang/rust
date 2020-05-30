@@ -191,6 +191,11 @@ pub struct Parser<'a> {
     append_newline: bool,
     /// Whether this formatting string is a literal or it comes from a macro.
     is_literal: bool,
+    /// Start position of the current line.
+    cur_line_start: usize,
+    /// Start and end byte offset of every line of the format string. Excludes
+    /// newline characters and leading whitespace.
+    pub line_spans: Vec<InnerSpan>,
 }
 
 impl<'a> Iterator for Parser<'a> {
@@ -235,10 +240,15 @@ impl<'a> Iterator for Parser<'a> {
                         None
                     }
                 }
-                '\n' => Some(String(self.string(pos))),
                 _ => Some(String(self.string(pos))),
             }
         } else {
+            if self.is_literal && self.cur_line_start != self.input.len() {
+                let start = self.to_span_index(self.cur_line_start);
+                let end = self.to_span_index(self.input.len());
+                self.line_spans.push(start.to(end));
+                self.cur_line_start = self.input.len();
+            }
             None
         }
     }
@@ -266,6 +276,8 @@ impl<'a> Parser<'a> {
             last_opening_brace: None,
             append_newline,
             is_literal,
+            cur_line_start: 0,
+            line_spans: vec![],
         }
     }
 
@@ -433,7 +445,17 @@ impl<'a> Parser<'a> {
                 '{' | '}' => {
                     return &self.input[start..pos];
                 }
+                '\n' if self.is_literal => {
+                    let start = self.to_span_index(self.cur_line_start);
+                    let end = self.to_span_index(pos);
+                    self.line_spans.push(start.to(end));
+                    self.cur_line_start = pos + 1;
+                    self.cur.next();
+                }
                 _ => {
+                    if self.is_literal && pos == self.cur_line_start && c.is_whitespace() {
+                        self.cur_line_start = pos + c.len_utf8();
+                    }
                     self.cur.next();
                 }
             }

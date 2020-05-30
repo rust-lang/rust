@@ -1,31 +1,16 @@
-error[E0495]: cannot infer an appropriate lifetime for autoref due to conflicting requirements
+error: cannot infer an appropriate lifetime
   --> $DIR/dyn-trait-underscore.rs:8:20
    |
+LL | fn a<T>(items: &[T]) -> Box<dyn Iterator<Item=&T>> {
+   |                ---- data with this lifetime...
+LL |     //                      ^^^^^^^^^^^^^^^^^^^^^ bound *here* defaults to `'static`
 LL |     Box::new(items.iter())
-   |                    ^^^^
+   |     ---------------^^^^--- ...is captured and required to be `'static` here
    |
-note: first, the lifetime cannot outlive the anonymous lifetime #1 defined on the function body at 6:1...
-  --> $DIR/dyn-trait-underscore.rs:6:1
+help: to permit non-static references in a `dyn Trait` value, you can add an explicit bound for the anonymous lifetime #1 defined on the function body at 6:1
    |
-LL | / fn a<T>(items: &[T]) -> Box<dyn Iterator<Item=&T>> {
-LL | |     //                      ^^^^^^^^^^^^^^^^^^^^^ bound *here* defaults to `'static`
-LL | |     Box::new(items.iter())
-LL | | }
-   | |_^
-note: ...so that reference does not outlive borrowed content
-  --> $DIR/dyn-trait-underscore.rs:8:14
-   |
-LL |     Box::new(items.iter())
-   |              ^^^^^
-   = note: but, the lifetime must be valid for the static lifetime...
-note: ...so that the expression is assignable
-  --> $DIR/dyn-trait-underscore.rs:8:5
-   |
-LL |     Box::new(items.iter())
-   |     ^^^^^^^^^^^^^^^^^^^^^^
-   = note: expected `std::boxed::Box<(dyn std::iter::Iterator<Item = &T> + 'static)>`
-              found `std::boxed::Box<dyn std::iter::Iterator<Item = &T>>`
+LL | fn a<T>(items: &[T]) -> Box<dyn Iterator<Item=&T> + '_> {
+   |                                                   ^^^^
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0495`.

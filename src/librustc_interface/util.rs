@@ -23,7 +23,7 @@ use rustc_session::parse::CrateConfig;
 use rustc_session::CrateDisambiguator;
 use rustc_session::{early_error, filesearch, output, DiagnosticOutput, Session};
 use rustc_span::edition::Edition;
-use rustc_span::source_map::{FileLoader, SourceMap};
+use rustc_span::source_map::FileLoader;
 use rustc_span::symbol::{sym, Symbol};
 use smallvec::SmallVec;
 use std::env;
@@ -65,8 +65,8 @@ pub fn create_session(
     input_path: Option<PathBuf>,
     lint_caps: FxHashMap<lint::LintId, lint::Level>,
     descriptions: Registry,
-) -> (Lrc<Session>, Lrc<Box<dyn CodegenBackend>>, Lrc<SourceMap>) {
-    let (mut sess, source_map) = session::build_session_with_source_map(
+) -> (Lrc<Session>, Lrc<Box<dyn CodegenBackend>>) {
+    let mut sess = session::build_session(
         sopts,
         input_path,
         descriptions,
@@ -81,7 +81,7 @@ pub fn create_session(
     add_configuration(&mut cfg, &mut sess, &*codegen_backend);
     sess.parse_sess.config = cfg;
 
-    (Lrc::new(sess), Lrc::new(codegen_backend), source_map)
+    (Lrc::new(sess), Lrc::new(codegen_backend))
 }
 
 const STACK_SIZE: usize = 8 * 1024 * 1024;

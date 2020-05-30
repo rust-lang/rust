@@ -831,6 +831,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         template: &[ast::InlineAsmTemplatePiece],
         operands: &[mir::InlineAsmOperand<'tcx>],
         options: ast::InlineAsmOptions,
+        line_spans: &[Span],
         destination: Option<mir::BasicBlock>,
     ) {
         let span = terminator.source_info.span;
@@ -930,7 +931,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             })
             .collect();
 
-        bx.codegen_inline_asm(template, &operands, options, span);
+        bx.codegen_inline_asm(template, &operands, options, line_spans);
 
         if let Some(target) = destination {
             helper.funclet_br(self, &mut bx, target);
@@ -1033,7 +1034,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bug!("borrowck false edges in codegen")
             }
 
-            mir::TerminatorKind::InlineAsm { template, ref operands, options, destination } => {
+            mir::TerminatorKind::InlineAsm {
+                template,
+                ref operands,
+                options,
+                line_spans,
+                destination,
+            } => {
                 self.codegen_asm_terminator(
                     helper,
                     bx,
@@ -1041,6 +1048,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     template,
                     operands,
                     options,
+                    line_spans,
                     destination,
                 );
             }

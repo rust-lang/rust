@@ -77,6 +77,7 @@ pub fn expand_env<'cx>(
         return DummyResult::any(sp);
     }
 
+    let sp = cx.with_def_site_ctxt(sp);
     let e = match env::var(&*var.as_str()) {
         Err(_) => {
             cx.span_err(sp, &msg.as_str());

@@ -1,11 +1,11 @@
-error[E0621]: explicit lifetime required in the type of `ss`
+error: lifetime may not live long enough
   --> $DIR/object-lifetime-default-from-box-error.rs:18:5
    |
 LL | fn load(ss: &mut SomeStruct) -> Box<dyn SomeTrait> {
-   |             --------------- help: add explicit lifetime `'static` to the type of `ss`: `&mut SomeStruct<'static>`
+   |         -- has type `&mut SomeStruct<'1>`
 ...
 LL |     ss.r
-   |     ^^^^ lifetime `'static` required
+   |     ^^^^ returning this value requires that `'1` must outlive `'static`
 
 error[E0507]: cannot move out of `ss.r` which is behind a mutable reference
   --> $DIR/object-lifetime-default-from-box-error.rs:18:5

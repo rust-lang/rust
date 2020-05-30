@@ -4067,9 +4067,9 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
                 .filter(|i| i.inner_impl().trait_.is_none())
                 .flat_map(move |i| get_methods(i.inner_impl(), false, used_links_bor, false))
                 .collect::<Vec<_>>();
-            // We want links' order to be reproducible so we don't use unstable sort.
-            ret.sort();
             if !ret.is_empty() {
+                // We want links' order to be reproducible so we don't use unstable sort.
+                ret.sort();
                 out.push_str(&format!(
                     "<a class=\"sidebar-title\" href=\"#implementations\">Methods</a>\
                      <div class=\"sidebar-links\">{}</div>",
@@ -4240,7 +4240,7 @@ fn is_negative_impl(i: &clean::Impl) -> bool {
 fn sidebar_trait(buf: &mut Buffer, it: &clean::Item, t: &clean::Trait) {
     let mut sidebar = String::new();
 
-    let types = t
+    let mut types = t
         .items
         .iter()
         .filter_map(|m| match m.name {
@@ -4249,8 +4249,8 @@ fn sidebar_trait(buf: &mut Buffer, it: &clean::Item, t: &clean::Trait) {
             }
             _ => None,
         })
-        .collect::<String>();
-    let consts = t
+        .collect::<Vec<_>>();
+    let mut consts = t
         .items
         .iter()
         .filter_map(|m| match m.name {
@@ -4259,7 +4259,7 @@ fn sidebar_trait(buf: &mut Buffer, it: &clean::Item, t: &clean::Trait) {
             }
             _ => None,
         })
-        .collect::<String>();
+        .collect::<Vec<_>>();
     let mut required = t
         .items
         .iter()
@@ -4282,24 +4282,26 @@ fn sidebar_trait(buf: &mut Buffer, it: &clean::Item, t: &clean::Trait) {
         .collect::<Vec<String>>();
 
     if !types.is_empty() {
+        types.sort();
         sidebar.push_str(&format!(
             "<a class=\"sidebar-title\" href=\"#associated-types\">\
-                                   Associated Types</a><div class=\"sidebar-links\">{}</div>",
-            types
+                Associated Types</a><div class=\"sidebar-links\">{}</div>",
+            types.join("")
         ));
     }
     if !consts.is_empty() {
+        consts.sort();
         sidebar.push_str(&format!(
             "<a class=\"sidebar-title\" href=\"#associated-const\">\
-                                   Associated Constants</a><div class=\"sidebar-links\">{}</div>",
-            consts
+                Associated Constants</a><div class=\"sidebar-links\">{}</div>",
+            consts.join("")
         ));
     }
     if !required.is_empty() {
         required.sort();
         sidebar.push_str(&format!(
             "<a class=\"sidebar-title\" href=\"#required-methods\">\
-                                   Required Methods</a><div class=\"sidebar-links\">{}</div>",
+                Required Methods</a><div class=\"sidebar-links\">{}</div>",
             required.join("")
         ));
     }
@@ -4307,7 +4309,7 @@ fn sidebar_trait(buf: &mut Buffer, it: &clean::Item, t: &clean::Trait) {
         provided.sort();
         sidebar.push_str(&format!(
             "<a class=\"sidebar-title\" href=\"#provided-methods\">\
-                                   Provided Methods</a><div class=\"sidebar-links\">{}</div>",
+                Provided Methods</a><div class=\"sidebar-links\">{}</div>",
             provided.join("")
         ));
     }
@@ -4325,8 +4327,8 @@ fn sidebar_trait(buf: &mut Buffer, it: &clean::Item, t: &clean::Trait) {
             res.sort();
             sidebar.push_str(&format!(
                 "<a class=\"sidebar-title\" href=\"#foreign-impls\">\
-                                       Implementations on Foreign Types</a><div \
-                                       class=\"sidebar-links\">{}</div>",
+                    Implementations on Foreign Types</a><div \
+                    class=\"sidebar-links\">{}</div>",
                 res.into_iter()
                     .map(|(name, id)| format!("<a href=\"#{}\">{}</a>", id, Escape(&name)))
                     .collect::<Vec<_>>()
@@ -4339,7 +4341,7 @@ fn sidebar_trait(buf: &mut Buffer, it: &clean::Item, t: &clean::Trait) {
     if t.auto {
         sidebar.push_str(
             "<a class=\"sidebar-title\" \
-                          href=\"#synthetic-implementors\">Auto Implementors</a>",
+                href=\"#synthetic-implementors\">Auto Implementors</a>",
         );
     }
 
@@ -4365,18 +4367,18 @@ fn sidebar_typedef(buf: &mut Buffer, it: &clean::Item) {
 }
 
 fn get_struct_fields_name(fields: &[clean::Item]) -> String {
-    fields
+    let mut fields = fields
         .iter()
         .filter(|f| if let clean::StructFieldItem(..) = f.inner { true } else { false })
         .filter_map(|f| match f.name {
-            Some(ref name) => Some(format!(
-                "<a href=\"#structfield.{name}\">\
-                                              {name}</a>",
-                name = name
-            )),
+            Some(ref name) => {
+                Some(format!("<a href=\"#structfield.{name}\">{name}</a>", name = name))
+            }
             _ => None,
         })
-        .collect()
+        .collect::<Vec<_>>();
+    fields.sort();
+    fields.join("")
 }
 
 fn sidebar_union(buf: &mut Buffer, it: &clean::Item, u: &clean::Union) {
@@ -4386,7 +4388,7 @@ fn sidebar_union(buf: &mut Buffer, it: &clean::Item, u: &clean::Union) {
     if !fields.is_empty() {
         sidebar.push_str(&format!(
             "<a class=\"sidebar-title\" href=\"#fields\">Fields</a>\
-                                   <div class=\"sidebar-links\">{}</div>",
+             <div class=\"sidebar-links\">{}</div>",
             fields
         ));
     }
@@ -4401,23 +4403,20 @@ fn sidebar_union(buf: &mut Buffer, it: &clean::Item, u: &clean::Union) {
 fn sidebar_enum(buf: &mut Buffer, it: &clean::Item, e: &clean::Enum) {
     let mut sidebar = String::new();
 
-    let variants = e
+    let mut variants = e
         .variants
         .iter()
         .filter_map(|v| match v.name {
-            Some(ref name) => Some(format!(
-                "<a href=\"#variant.{name}\">{name}\
-                                                                 </a>",
-                name = name
-            )),
+            Some(ref name) => Some(format!("<a href=\"#variant.{name}\">{name}</a>", name = name)),
             _ => None,
         })
-        .collect::<String>();
+        .collect::<Vec<_>>();
     if !variants.is_empty() {
+        variants.sort_unstable();
         sidebar.push_str(&format!(
             "<a class=\"sidebar-title\" href=\"#variants\">Variants</a>\
-                                   <div class=\"sidebar-links\">{}</div>",
-            variants
+             <div class=\"sidebar-links\">{}</div>",
+            variants.join(""),
         ));
     }
 

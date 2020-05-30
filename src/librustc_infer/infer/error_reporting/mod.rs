@@ -60,7 +60,7 @@ use rustc_errors::{pluralize, struct_span_err};
 use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_hir::Node;
+use rustc_hir::{Item, ItemKind, Node};
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{
     self,
@@ -1682,49 +1682,92 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         bound_kind: GenericKind<'tcx>,
         sub: Region<'tcx>,
     ) -> DiagnosticBuilder<'a> {
+        let hir = &self.tcx.hir();
         // Attempt to obtain the span of the parameter so we can
         // suggest adding an explicit lifetime bound to it.
-        let type_param_span = match (self.in_progress_tables, bound_kind) {
-            (Some(ref table), GenericKind::Param(ref param)) => {
-                let table_owner = table.borrow().hir_owner;
-                table_owner.and_then(|table_owner| {
-                    let generics = self.tcx.generics_of(table_owner.to_def_id());
-                    // Account for the case where `param` corresponds to `Self`,
-                    // which doesn't have the expected type argument.
-                    if !(generics.has_self && param.index == 0) {
-                        let type_param = generics.type_param(param, self.tcx);
-                        let hir = &self.tcx.hir();
-                        type_param.def_id.as_local().map(|def_id| {
-                            // Get the `hir::Param` to verify whether it already has any bounds.
-                            // We do this to avoid suggesting code that ends up as `T: 'a'b`,
-                            // instead we suggest `T: 'a + 'b` in that case.
-                            let id = hir.as_local_hir_id(def_id);
-                            let mut has_bounds = false;
-                            if let Node::GenericParam(param) = hir.get(id) {
-                                has_bounds = !param.bounds.is_empty();
-                            }
-                            let sp = hir.span(id);
-                            // `sp` only covers `T`, change it so that it covers
-                            // `T:` when appropriate
-                            let is_impl_trait = bound_kind.to_string().starts_with("impl ");
-                            let sp = if has_bounds && !is_impl_trait {
-                                sp.to(self
-                                    .tcx
-                                    .sess
-                                    .source_map()
-                                    .next_point(self.tcx.sess.source_map().next_point(sp)))
-                            } else {
-                                sp
-                            };
-                            (sp, has_bounds, is_impl_trait)
-                        })
+        let generics =
+            self.in_progress_tables.and_then(|table| table.borrow().hir_owner).map(|table_owner| {
+                let hir_id = hir.as_local_hir_id(table_owner);
+                let parent_id = hir.get_parent_item(hir_id);
+                (
+                    // Parent item could be a `mod`, so we check the HIR before calling:
+                    if let Some(Node::Item(Item {
+                        kind: ItemKind::Trait(..) | ItemKind::Impl { .. },
+                        ..
+                    })) = hir.find(parent_id)
+                    {
+                        Some(self.tcx.generics_of(hir.local_def_id(parent_id).to_def_id()))
                     } else {
                         None
-                    }
-                })
+                    },
+                    self.tcx.generics_of(table_owner.to_def_id()),
+                )
+            });
+        let type_param_span = match (generics, bound_kind) {
+            (Some((_, ref generics)), GenericKind::Param(ref param)) => {
+                // Account for the case where `param` corresponds to `Self`,
+                // which doesn't have the expected type argument.
+                if !(generics.has_self && param.index == 0) {
+                    let type_param = generics.type_param(param, self.tcx);
+                    type_param.def_id.as_local().map(|def_id| {
+                        // Get the `hir::Param` to verify whether it already has any bounds.
+                        // We do this to avoid suggesting code that ends up as `T: 'a'b`,
+                        // instead we suggest `T: 'a + 'b` in that case.
+                        let id = hir.as_local_hir_id(def_id);
+                        let mut has_bounds = false;
+                        if let Node::GenericParam(param) = hir.get(id) {
+                            has_bounds = !param.bounds.is_empty();
+                        }
+                        let sp = hir.span(id);
+                        // `sp` only covers `T`, change it so that it covers
+                        // `T:` when appropriate
+                        let is_impl_trait = bound_kind.to_string().starts_with("impl ");
+                        let sp = if has_bounds && !is_impl_trait {
+                            sp.to(self
+                                .tcx
+                                .sess
+                                .source_map()
+                                .next_point(self.tcx.sess.source_map().next_point(sp)))
+                        } else {
+                            sp
+                        };
+                        (sp, has_bounds, is_impl_trait)
+                    })
+                } else {
+                    None
+                }
             }
             _ => None,
         };
+        let new_lt = generics
+            .as_ref()
+            .and_then(|(parent_g, g)| {
+                let possible: Vec<_> = (b'a'..=b'z').map(|c| format!("'{}", c as char)).collect();
+                let mut lts_names = g
+                    .params
+                    .iter()
+                    .filter(|p| matches!(p.kind, ty::GenericParamDefKind::Lifetime))
+                    .map(|p| p.name.as_str())
+                    .collect::<Vec<_>>();
+                if let Some(g) = parent_g {
+                    lts_names.extend(
+                        g.params
+                            .iter()
+                            .filter(|p| matches!(p.kind, ty::GenericParamDefKind::Lifetime))
+                            .map(|p| p.name.as_str()),
+                    );
+                }
+                let lts = lts_names.iter().map(|s| -> &str { &*s }).collect::<Vec<_>>();
+                possible.into_iter().find(|candidate| !lts.contains(&candidate.as_str()))
+            })
+            .unwrap_or("'lt".to_string());
+        let add_lt_sugg = generics
+            .as_ref()
+            .and_then(|(_, g)| g.params.first())
+            .and_then(|param| param.def_id.as_local())
+            .map(|def_id| {
+                (hir.span(hir.as_local_hir_id(def_id)).shrink_to_lo(), format!("{}, ", new_lt))
+            });
 
         let labeled_user_string = match bound_kind {
             GenericKind::Param(ref p) => format!("the parameter type `{}`", p),
@@ -1781,6 +1824,29 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
         }
 
+        let new_binding_suggestion =
+            |err: &mut DiagnosticBuilder<'tcx>,
+             type_param_span: Option<(Span, bool, bool)>,
+             bound_kind: GenericKind<'tcx>| {
+                let msg = "consider introducing an explicit lifetime bound";
+                if let Some((sp, has_lifetimes, is_impl_trait)) = type_param_span {
+                    let suggestion = if is_impl_trait {
+                        (sp.shrink_to_hi(), format!(" + {}", new_lt))
+                    } else {
+                        let tail = if has_lifetimes { " +" } else { "" };
+                        (sp, format!("{}: {}{}", bound_kind, new_lt, tail))
+                    };
+                    let mut sugg =
+                        vec![suggestion, (span.shrink_to_hi(), format!(" + {}", new_lt))];
+                    if let Some(lt) = add_lt_sugg {
+                        sugg.push(lt);
+                        sugg.rotate_right(1);
+                    }
+                    // `MaybeIncorrect` due to issue #41966.
+                    err.multipart_suggestion(msg, sugg, Applicability::MaybeIncorrect);
+                }
+            };
+
         let mut err = match *sub {
             ty::ReEarlyBound(ty::EarlyBoundRegion { name, .. })
             | ty::ReFree(ty::FreeRegion { bound_region: ty::BrNamed(_, name), .. }) => {
@@ -1822,10 +1888,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     "{} may not live long enough",
                     labeled_user_string
                 );
-                err.help(&format!(
-                    "consider adding an explicit lifetime bound for `{}`",
-                    bound_kind
-                ));
                 note_and_explain_region(
                     self.tcx,
                     &mut err,
@@ -1833,6 +1895,21 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     sub,
                     "...",
                 );
+                if let Some(infer::RelateParamBound(_, t)) = origin {
+                    let t = self.resolve_vars_if_possible(&t);
+                    match t.kind {
+                        // We've got:
+                        // fn get_later<G, T>(g: G, dest: &mut T) -> impl FnOnce() + '_
+                        // suggest:
+                        // fn get_later<'a, G: 'a, T>(g: G, dest: &mut T) -> impl FnOnce() + '_ + 'a
+                        ty::Closure(_, _substs) | ty::Opaque(_, _substs) => {
+                            new_binding_suggestion(&mut err, type_param_span, bound_kind);
+                        }
+                        _ => {
+                            binding_suggestion(&mut err, type_param_span, bound_kind, new_lt);
+                        }
+                    }
+                }
                 err
             }
         };
@@ -1861,14 +1938,15 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             "...",
         );
 
+        debug!("report_sub_sup_conflict: var_origin={:?}", var_origin);
+        debug!("report_sub_sup_conflict: sub_region={:?}", sub_region);
+        debug!("report_sub_sup_conflict: sub_origin={:?}", sub_origin);
+        debug!("report_sub_sup_conflict: sup_region={:?}", sup_region);
+        debug!("report_sub_sup_conflict: sup_origin={:?}", sup_origin);
+
         if let (&infer::Subtype(ref sup_trace), &infer::Subtype(ref sub_trace)) =
             (&sup_origin, &sub_origin)
         {
-            debug!("report_sub_sup_conflict: var_origin={:?}", var_origin);
-            debug!("report_sub_sup_conflict: sub_region={:?}", sub_region);
-            debug!("report_sub_sup_conflict: sub_origin={:?}", sub_origin);
-            debug!("report_sub_sup_conflict: sup_region={:?}", sup_region);
-            debug!("report_sub_sup_conflict: sup_origin={:?}", sup_origin);
             debug!("report_sub_sup_conflict: sup_trace={:?}", sup_trace);
             debug!("report_sub_sup_conflict: sub_trace={:?}", sub_trace);
             debug!("report_sub_sup_conflict: sup_trace.values={:?}", sup_trace.values);

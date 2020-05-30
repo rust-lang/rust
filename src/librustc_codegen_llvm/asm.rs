@@ -14,7 +14,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_middle::span_bug;
 use rustc_middle::ty::layout::TyAndLayout;
-use rustc_span::Span;
+use rustc_span::{Pos, Span};
 use rustc_target::abi::*;
 use rustc_target::asm::*;
 
@@ -97,7 +97,7 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             ia.volatile,
             ia.alignstack,
             ia.dialect,
-            span,
+            &[span],
         );
         if r.is_none() {
             return false;
@@ -119,7 +119,7 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         template: &[InlineAsmTemplatePiece],
         operands: &[InlineAsmOperandRef<'tcx, Self>],
         options: InlineAsmOptions,
-        span: Span,
+        line_spans: &[Span],
     ) {
         let asm_arch = self.tcx.sess.asm_arch.unwrap();
 
@@ -287,9 +287,9 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             volatile,
             alignstack,
             dialect,
-            span,
+            line_spans,
         )
-        .unwrap_or_else(|| span_bug!(span, "LLVM asm constraint validation failed"));
+        .unwrap_or_else(|| span_bug!(line_spans[0], "LLVM asm constraint validation failed"));
 
         if options.contains(InlineAsmOptions::PURE) {
             if options.contains(InlineAsmOptions::NOMEM) {
@@ -341,7 +341,7 @@ fn inline_asm_call(
     volatile: bool,
     alignstack: bool,
     dia: LlvmAsmDialect,
-    span: Span,
+    line_spans: &[Span],
 ) -> Option<&'ll Value> {
     let volatile = if volatile { llvm::True } else { llvm::False };
     let alignstack = if alignstack { llvm::True } else { llvm::False };
@@ -382,8 +382,24 @@ fn inline_asm_call(
                 key.len() as c_uint,
             );
 
-            let val: &'ll Value = bx.const_i32(span.ctxt().outer_expn().as_u32() as i32);
-            llvm::LLVMSetMetadata(call, kind, llvm::LLVMMDNodeInContext(bx.llcx, &val, 1));
+            // srcloc contains one integer for each line of assembly code.
+            // Unfortunately this isn't enough to encode a full span so instead
+            // we just encode the start position of each line.
+            // FIXME: Figure out a way to pass the entire line spans.
+            let mut srcloc = vec![];
+            if dia == LlvmAsmDialect::Intel && line_spans.len() > 1 {
+                // LLVM inserts an extra line to add the ".intel_syntax", so add
+                // a dummy srcloc entry for it.
+                //
+                // Don't do this if we only have 1 line span since that may be
+                // due to the asm template string coming from a macro. LLVM will
+                // default to the first srcloc for lines that don't have an
+                // associated srcloc.
+                srcloc.push(bx.const_i32(0));
+            }
+            srcloc.extend(line_spans.iter().map(|span| bx.const_i32(span.lo().to_u32() as i32)));
+            let md = llvm::LLVMMDNodeInContext(bx.llcx, srcloc.as_ptr(), srcloc.len() as u32);
+            llvm::LLVMSetMetadata(call, kind, md);
 
             Some(call)
         } else {

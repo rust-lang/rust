@@ -1,0 +1,10 @@
+error: lifetime may not live long enough
+  --> $DIR/issue-16922.rs:4:5
+   |
+LL | fn foo<T: Any>(value: &T) -> Box<dyn Any> {
+   |                       - let's call the lifetime of this reference `'1`
+LL |     Box::new(value) as Box<dyn Any>
+   |     ^^^^^^^^^^^^^^^ cast requires that `'1` must outlive `'static`
+
+error: aborting due to previous error
+

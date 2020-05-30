@@ -174,6 +174,10 @@ impl ParseSess {
         &self.source_map
     }
 
+    pub fn clone_source_map(&self) -> Lrc<SourceMap> {
+        self.source_map.clone()
+    }
+
     pub fn buffer_lint(
         &self,
         lint: &'static Lint,

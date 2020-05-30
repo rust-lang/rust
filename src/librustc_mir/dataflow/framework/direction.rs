@@ -482,7 +482,7 @@ impl Direction for Forward {
                 }
             }
 
-            InlineAsm { template: _, operands: _, options: _, destination } => {
+            InlineAsm { template: _, operands: _, options: _, line_spans: _, destination } => {
                 if let Some(target) = destination {
                     propagate(target, exit_state);
                 }
