@@ -87,12 +87,18 @@ impl Attrs {
     }
 
     pub(crate) fn new(owner: &dyn AttrsOwner, hygiene: &Hygiene) -> Attrs {
+        let docs = ast::CommentIter::from_syntax_node(owner.syntax()).doc_comment_text().map(
+            |docs_text| Attr {
+                input: Some(AttrInput::Literal(SmolStr::new(docs_text))),
+                path: ModPath::from(hir_expand::name!(doc)),
+            },
+        );
         let mut attrs = owner.attrs().peekable();
         let entries = if attrs.peek().is_none() {
             // Avoid heap allocation
             None
         } else {
-            Some(attrs.flat_map(|ast| Attr::from_src(ast, hygiene)).collect())
+            Some(attrs.flat_map(|ast| Attr::from_src(ast, hygiene)).chain(docs).collect())
         };
         Attrs { entries }
     }

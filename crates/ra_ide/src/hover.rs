@@ -169,13 +169,19 @@ fn hover_text_from_name_kind(db: &RootDatabase, def: Definition) -> Option<Strin
     return match def {
         Definition::Macro(it) => {
             let src = it.source(db);
-            hover_text(src.value.doc_comment_text(), Some(macro_label(&src.value)), mod_path)
+            let doc_comment_text = src.value.doc_comment_text();
+            let doc_attr_text = expand_doc_attrs(&src.value);
+            let docs = merge_doc_comments_and_attrs(doc_comment_text, doc_attr_text);
+            hover_text(docs, Some(macro_label(&src.value)), mod_path)
         }
         Definition::Field(it) => {
             let src = it.source(db);
             match src.value {
                 FieldSource::Named(it) => {
-                    hover_text(it.doc_comment_text(), it.short_label(), mod_path)
+                    let doc_comment_text = it.doc_comment_text();
+                    let doc_attr_text = expand_doc_attrs(&it);
+                    let docs = merge_doc_comments_and_attrs(doc_comment_text, doc_attr_text);
+                    hover_text(docs, it.short_label(), mod_path)
                 }
                 _ => None,
             }
@@ -183,7 +189,10 @@ fn hover_text_from_name_kind(db: &RootDatabase, def: Definition) -> Option<Strin
         Definition::ModuleDef(it) => match it {
             ModuleDef::Module(it) => match it.definition_source(db).value {
                 ModuleSource::Module(it) => {
-                    hover_text(it.doc_comment_text(), it.short_label(), mod_path)
+                    let doc_comment_text = it.doc_comment_text();
+                    let doc_attr_text = expand_doc_attrs(&it);
+                    let docs = merge_doc_comments_and_attrs(doc_comment_text, doc_attr_text);
+                    hover_text(docs, it.short_label(), mod_path)
                 }
                 _ => None,
             },
@@ -208,10 +217,46 @@ fn hover_text_from_name_kind(db: &RootDatabase, def: Definition) -> Option<Strin
     fn from_def_source<A, D>(db: &RootDatabase, def: D, mod_path: Option<String>) -> Option<String>
     where
         D: HasSource<Ast = A>,
-        A: ast::DocCommentsOwner + ast::NameOwner + ShortLabel,
+        A: ast::DocCommentsOwner + ast::NameOwner + ShortLabel + ast::AttrsOwner,
     {
         let src = def.source(db);
-        hover_text(src.value.doc_comment_text(), src.value.short_label(), mod_path)
+        let doc_comment_text = src.value.doc_comment_text();
+        let doc_attr_text = expand_doc_attrs(&src.value);
+        let docs = merge_doc_comments_and_attrs(doc_comment_text, doc_attr_text);
+        hover_text(docs, src.value.short_label(), mod_path)
+    }
+}
+
+fn merge_doc_comments_and_attrs(
+    doc_comment_text: Option<String>,
+    doc_attr_text: Option<String>,
+) -> Option<String> {
+    match (doc_comment_text, doc_attr_text) {
+        (Some(mut comment_text), Some(attr_text)) => {
+            comment_text.push_str("\n\n");
+            comment_text.push_str(&attr_text);
+            Some(comment_text)
+        }
+        (Some(comment_text), None) => Some(comment_text),
+        (None, Some(attr_text)) => Some(attr_text),
+        (None, None) => None,
+    }
+}
+
+fn expand_doc_attrs(owner: &dyn ast::AttrsOwner) -> Option<String> {
+    let mut docs = String::new();
+    for attr in owner.attrs() {
+        if let Some(("doc", value)) =
+            attr.as_simple_key_value().as_ref().map(|(k, v)| (k.as_str(), v.as_str()))
+        {
+            docs.push_str(value);
+            docs.push_str("\n\n");
+        }
+    }
+    if docs.is_empty() {
+        None
+    } else {
+        Some(docs)
     }
 }
 
