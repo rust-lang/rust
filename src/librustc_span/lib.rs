@@ -81,7 +81,10 @@ impl Globals {
 
 scoped_tls::scoped_thread_local!(pub static GLOBALS: Globals);
 
-/// FIXME: Perhaps this should not implement Rustc{Decodable, Encodable}
+// FIXME: Perhaps this should not implement Rustc{Decodable, Encodable}
+//
+// FIXME: We should use this enum or something like it to get rid of the
+// use of magic `/rust/1.x/...` paths across the board.
 #[derive(Debug, Eq, PartialEq, Clone, Ord, PartialOrd, Hash, RustcDecodable, RustcEncodable)]
 #[derive(HashStable_Generic)]
 pub enum RealFileName {
