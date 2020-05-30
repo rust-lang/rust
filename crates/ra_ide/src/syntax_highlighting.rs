@@ -391,6 +391,7 @@ fn highlight_element(
         INT_NUMBER | FLOAT_NUMBER => HighlightTag::NumericLiteral.into(),
         BYTE => HighlightTag::ByteLiteral.into(),
         CHAR => HighlightTag::CharLiteral.into(),
+        QUESTION => Highlight::new(HighlightTag::Operator) | HighlightModifier::ControlFlow,
         LIFETIME => {
             let h = Highlight::new(HighlightTag::Lifetime);
             match element.parent().map(|it| it.kind()) {

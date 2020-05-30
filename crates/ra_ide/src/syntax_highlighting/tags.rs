@@ -42,6 +42,7 @@ pub enum HighlightTag {
     Local,
     UnresolvedReference,
     FormatSpecifier,
+    Operator,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -89,6 +90,7 @@ impl HighlightTag {
             HighlightTag::Local => "variable",
             HighlightTag::UnresolvedReference => "unresolved_reference",
             HighlightTag::FormatSpecifier => "format_specifier",
+            HighlightTag::Operator => "operator",
         }
     }
 }
