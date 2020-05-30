@@ -390,8 +390,8 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     InvalidBool(u8),
     /// Using a non-character `u32` as character.
     InvalidChar(u32),
-    /// An enum discriminant was set to a value which was outside the range of valid values.
-    InvalidDiscriminant(Scalar),
+    /// The tag of an enum does not encode an actual discriminant.
+    InvalidTag(Scalar),
     /// Using a pointer-not-to-a-function as function pointer.
     InvalidFunctionPointer(Pointer),
     /// Using a string that is not valid UTF-8,
@@ -463,7 +463,7 @@ impl fmt::Display for UndefinedBehaviorInfo<'_> {
             InvalidChar(c) => {
                 write!(f, "interpreting an invalid 32-bit value as a char: 0x{:08x}", c)
             }
-            InvalidDiscriminant(val) => write!(f, "enum value has invalid discriminant: {}", val),
+            InvalidTag(val) => write!(f, "enum value has invalid tag: {}", val),
             InvalidFunctionPointer(p) => {
                 write!(f, "using {} as function pointer but it does not point to a function", p)
             }

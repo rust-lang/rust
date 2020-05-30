@@ -11,7 +11,7 @@ use rustc_middle::ty::layout::{PrimitiveExt, TyAndLayout};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter, Printer};
 use rustc_middle::ty::Ty;
 use rustc_middle::{mir, ty};
-use rustc_target::abi::{Abi, TagEncoding, HasDataLayout, LayoutOf, Size};
+use rustc_target::abi::{Abi, HasDataLayout, LayoutOf, Size, TagEncoding};
 use rustc_target::abi::{VariantIdx, Variants};
 
 use super::{
@@ -641,7 +641,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             TagEncoding::Direct => {
                 let tag_bits = self
                     .force_bits(tag_val, tag_layout.size)
-                    .map_err(|_| err_ub!(InvalidDiscriminant(tag_val.erase_tag())))?;
+                    .map_err(|_| err_ub!(InvalidTag(tag_val.erase_tag())))?;
                 // Cast bits from tag layout to discriminant layout.
                 let discr_val = self.cast_from_scalar(tag_bits, tag_layout, discr_layout.ty);
                 let discr_bits = discr_val.assert_bits(discr_layout.size);
@@ -658,7 +658,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     }
                     _ => bug!("tagged layout for non-adt non-generator"),
                 }
-                .ok_or_else(|| err_ub!(InvalidDiscriminant(tag_val.erase_tag())))?;
+                .ok_or_else(|| err_ub!(InvalidTag(tag_val.erase_tag())))?;
                 // Return the cast value, and the index.
                 (discr_val, index.0)
             }
@@ -674,7 +674,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             && variants_start == variants_end
                             && !self.memory.ptr_may_be_null(ptr);
                         if !ptr_valid {
-                            throw_ub!(InvalidDiscriminant(tag_val.erase_tag()))
+                            throw_ub!(InvalidTag(tag_val.erase_tag()))
                         }
                         dataful_variant
                     }

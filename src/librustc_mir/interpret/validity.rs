@@ -696,8 +696,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         try_validation!(
             self.walk_value(op),
             self.path,
-            err_ub!(InvalidDiscriminant(val)) =>
-                { "{}", val } expected { "a valid enum discriminant" },
+            err_ub!(InvalidTag(val)) =>
+                { "{}", val } expected { "a valid enum tag" },
             err_unsup!(ReadPointerAsBytes) =>
                 { "a pointer" } expected { "plain (non-pointer) bytes" },
         );
