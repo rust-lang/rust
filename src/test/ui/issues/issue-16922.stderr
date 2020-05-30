@@ -9,7 +9,7 @@ LL |     Box::new(value) as Box<dyn Any>
    |     |        ...and is captured here
    |     ...is required to be `'static` by this...
    |
-help: to permit non-static references in a `dyn Trait` value, you can add an explicit bound for the anonymous lifetime #1 defined on the function body at 3:1
+help: to permit non-static references in a trait object value, you can add an explicit bound for the anonymous lifetime #1 defined on the function body at 3:1
    |
 LL | fn foo<T: Any>(value: &T) -> Box<dyn Any + '_> {
    |                                          ^^^^

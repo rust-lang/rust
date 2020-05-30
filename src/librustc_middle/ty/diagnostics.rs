@@ -247,7 +247,10 @@ impl<'v> hir::intravisit::Visitor<'v> for TraitObjectVisitor<'v> {
     fn visit_ty(&mut self, ty: &'v hir::Ty<'v>) {
         if let hir::TyKind::TraitObject(
             _,
-            hir::Lifetime { name: hir::LifetimeName::ImplicitObjectLifetimeDefault, .. },
+            hir::Lifetime {
+                name: hir::LifetimeName::ImplicitObjectLifetimeDefault | hir::LifetimeName::Static,
+                ..
+            },
         ) = ty.kind
         {
             self.0.push(ty);

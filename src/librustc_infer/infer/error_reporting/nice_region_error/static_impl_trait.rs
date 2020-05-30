@@ -10,6 +10,7 @@ use rustc_middle::ty::RegionKind;
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     /// Print the error message for lifetime errors when the return type is a static impl Trait.
     pub(super) fn try_report_static_impl_trait(&self) -> Option<ErrorReported> {
+        debug!("try_report_static_impl_trait(error={:?})", self.error);
         if let Some(ref error) = self.error {
             if let RegionResolutionError::SubSupConflict(
                 _,
@@ -18,19 +19,24 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 sub_r,
                 sup_origin,
                 sup_r,
-            ) = error.clone()
+            ) = error
             {
+                debug!(
+                    "try_report_static_impl_trait(var={:?}, sub={:?} {:?} sup={:?} {:?})",
+                    var_origin, sub_origin, sub_r, sup_origin, sup_r
+                );
                 let anon_reg_sup = self.tcx().is_suitable_region(sup_r)?;
+                debug!("try_report_static_impl_trait: anon_reg_sup={:?}", anon_reg_sup);
                 let fn_return = self.tcx().return_type_impl_or_dyn_trait(anon_reg_sup.def_id)?;
-                let is_dyn = matches!(fn_return.kind, TyKind::TraitObject(..));
-                let fn_return_span = fn_return.span;
-                if sub_r == &RegionKind::ReStatic {
+                debug!("try_report_static_impl_trait: fn_return={:?}", fn_return);
+                if **sub_r == RegionKind::ReStatic {
                     let sp = var_origin.span();
                     let return_sp = sub_origin.span();
+                    let param_info = self.find_param_with_region(sup_r, sub_r)?;
                     let mut err =
                         self.tcx().sess.struct_span_err(sp, "cannot infer an appropriate lifetime");
-                    let param_info = self.find_param_with_region(sup_r, sub_r)?;
                     err.span_label(param_info.param_ty_span, "data with this lifetime...");
+                    debug!("try_report_static_impl_trait: param_info={:?}", param_info);
 
                     // We try to make the output have fewer overlapping spans if possible.
                     if (sp == sup_origin.span() || !return_sp.overlaps(sup_origin.span()))
@@ -60,14 +66,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                         if sup_r.has_name() { sup_r.to_string() } else { "'_".to_owned() };
                     // only apply this suggestion onto functions with
                     // explicit non-desugar'able return.
-                    if fn_return_span.desugaring_kind().is_none() {
-                        let msg = format!(
-                            "to permit non-static references in {} `{} Trait` value, you can add \
-                             an explicit bound for {}",
-                            if is_dyn { "a" } else { "an" },
-                            if is_dyn { "dyn" } else { "impl" },
-                            lifetime,
-                        );
+                    if fn_return.span.desugaring_kind().is_none() {
                         // FIXME: account for the need of parens in `&(dyn Trait + '_)`
                         match fn_return.kind {
                             TyKind::Def(item_id, _) => {
@@ -78,7 +77,8 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                                     err.emit();
                                     return Some(ErrorReported);
                                 };
-                                let (span, sugg) = opaque
+
+                                if let Some(span) = opaque
                                     .bounds
                                     .iter()
                                     .filter_map(|arg| match arg {
@@ -86,38 +86,71 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                                             name: LifetimeName::Static,
                                             span,
                                             ..
-                                        }) => Some((*span, lifetime_name.clone())),
+                                        }) => Some(*span),
                                         _ => None,
                                     })
                                     .next()
-                                    .unwrap_or_else(|| {
-                                        (
-                                            fn_return_span.shrink_to_hi(),
-                                            format!(" + {}", lifetime_name),
-                                        )
-                                    });
-
-                                err.span_suggestion_verbose(
-                                    span,
-                                    &msg,
-                                    sugg,
-                                    Applicability::MaybeIncorrect,
-                                );
+                                {
+                                    err.span_suggestion_verbose(
+                                        span,
+                                        "consider changing the `impl Trait`'s explicit \
+                                         `'static` bound",
+                                        lifetime_name,
+                                        Applicability::MaybeIncorrect,
+                                    );
+                                    err.span_suggestion_verbose(
+                                        param_info.param_ty_span,
+                                        "alternatively, set an explicit `'static` lifetime to \
+                                         this parameter",
+                                        param_info.param_ty.to_string(),
+                                        Applicability::MaybeIncorrect,
+                                    );
+                                } else {
+                                    err.span_suggestion_verbose(
+                                        fn_return.span.shrink_to_hi(),
+                                        &format!(
+                                            "to permit non-static references in an `impl Trait` \
+                                             value, you can add an explicit bound for {}",
+                                            lifetime,
+                                        ),
+                                        format!(" + {}", lifetime_name),
+                                        Applicability::MaybeIncorrect,
+                                    );
+                                };
                             }
                             TyKind::TraitObject(_, lt) => {
-                                let (span, sugg) = match lt.name {
-                                    LifetimeName::ImplicitObjectLifetimeDefault => (
-                                        fn_return_span.shrink_to_hi(),
-                                        format!(" + {}", lifetime_name),
-                                    ),
-                                    _ => (lt.span, lifetime_name),
-                                };
-                                err.span_suggestion_verbose(
-                                    span,
-                                    &msg,
-                                    sugg,
-                                    Applicability::MaybeIncorrect,
-                                );
+                                match lt.name {
+                                    LifetimeName::ImplicitObjectLifetimeDefault => {
+                                        err.span_suggestion_verbose(
+                                            fn_return.span.shrink_to_hi(),
+                                            &format!(
+                                                "to permit non-static references in a trait object \
+                                                 value, you can add an explicit bound for {}",
+                                                lifetime,
+                                            ),
+                                            format!(" + {}", lifetime_name),
+                                            Applicability::MaybeIncorrect,
+                                        );
+                                    }
+                                    _ => {
+                                        err.span_suggestion_verbose(
+                                            lt.span,
+                                            "consider changing the trait object's explicit \
+                                             `'static` bound",
+                                            lifetime_name,
+                                            Applicability::MaybeIncorrect,
+                                        );
+                                        err.span_suggestion_verbose(
+                                            param_info.param_ty_span,
+                                            &format!(
+                                                "alternatively, set an explicit `'static` lifetime \
+                                                 in this parameter",
+                                            ),
+                                            param_info.param_ty.to_string(),
+                                            Applicability::MaybeIncorrect,
+                                        );
+                                    }
+                                }
                             }
                             _ => {}
                         }
