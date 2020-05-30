@@ -55,9 +55,9 @@ impl<'cx, 'tcx> NiceRegionError<'cx, 'tcx> {
                 diag.emit();
                 ErrorReported
             })
+            .or_else(|| self.try_report_impl_not_conforming_to_trait())
             .or_else(|| self.try_report_anon_anon_conflict())
             .or_else(|| self.try_report_static_impl_trait())
-            .or_else(|| self.try_report_impl_not_conforming_to_trait())
     }
 
     pub fn regions(&self) -> Option<(Span, ty::Region<'tcx>, ty::Region<'tcx>)> {

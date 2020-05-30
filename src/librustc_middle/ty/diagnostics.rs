@@ -249,3 +249,22 @@ pub fn suggest_constraining_type_param(
         true
     }
 }
+
+pub struct TraitObjectVisitor(pub Vec<rustc_span::Span>);
+impl<'v> hir::intravisit::Visitor<'v> for TraitObjectVisitor {
+    type Map = rustc_hir::intravisit::ErasedMap<'v>;
+
+    fn nested_visit_map(&mut self) -> hir::intravisit::NestedVisitorMap<Self::Map> {
+        hir::intravisit::NestedVisitorMap::None
+    }
+
+    fn visit_ty(&mut self, ty: &hir::Ty<'_>) {
+        if let hir::TyKind::TraitObject(
+            _,
+            hir::Lifetime { name: hir::LifetimeName::ImplicitObjectLifetimeDefault, .. },
+        ) = ty.kind
+        {
+            self.0.push(ty.span);
+        }
+    }
+}

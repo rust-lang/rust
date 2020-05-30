@@ -2,15 +2,10 @@ error: cannot infer an appropriate lifetime
   --> $DIR/arbitrary_self_types_pin_lifetime_impl_trait-async.rs:8:16
    |
 LL |     async fn f(self: Pin<&Self>) -> impl Clone { self }
-   |                ^^^^                 ---------- this return type evaluates to the `'static` lifetime...
-   |                |
-   |                ...but this borrow...
-   |
-note: ...can't outlive the lifetime `'_` as defined on the method body at 8:26
-  --> $DIR/arbitrary_self_types_pin_lifetime_impl_trait-async.rs:8:26
-   |
-LL |     async fn f(self: Pin<&Self>) -> impl Clone { self }
-   |                          ^
+   |                ^^^^  ----------     ---------- ...and required to be `'static` by this
+   |                |     |
+   |                |     data with this lifetime...
+   |                ...is captured here...
 
 error: aborting due to previous error
 
