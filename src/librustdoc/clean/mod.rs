@@ -1549,11 +1549,11 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
             ty::FnDef(..) | ty::FnPtr(_) => {
                 let ty = cx.tcx.lift(self).expect("FnPtr lift failed");
                 let sig = ty.fn_sig(cx.tcx);
-                let local_def_id = cx.tcx.hir().local_def_id_from_node_id(ast::CRATE_NODE_ID);
+                let def_id = DefId::local(CRATE_DEF_INDEX);
                 BareFunction(box BareFunctionDecl {
                     unsafety: sig.unsafety(),
                     generic_params: Vec::new(),
-                    decl: (local_def_id.to_def_id(), sig).clean(cx),
+                    decl: (def_id, sig).clean(cx),
                     abi: sig.abi(),
                 })
             }
@@ -2255,7 +2255,7 @@ impl Clean<Vec<Item>> for doctree::Import<'_> {
             name: None,
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
-            def_id: cx.tcx.hir().local_def_id_from_node_id(ast::CRATE_NODE_ID).to_def_id(),
+            def_id: DefId::local(CRATE_DEF_INDEX),
             visibility: self.vis.clean(cx),
             stability: None,
             deprecation: None,
