@@ -39,6 +39,8 @@ pub use crate::unicode::UNICODE_VERSION;
 
 // perma-unstable re-exports
 #[unstable(feature = "char_internals", reason = "exposed only for libstd", issue = "none")]
+pub use self::methods::encode_utf16_raw;
+#[unstable(feature = "char_internals", reason = "exposed only for libstd", issue = "none")]
 pub use self::methods::encode_utf8_raw;
 
 use crate::fmt::{self, Write};

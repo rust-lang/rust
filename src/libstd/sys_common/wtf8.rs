@@ -828,8 +828,7 @@ impl<'a> Iterator for EncodeWide<'a> {
 
         let mut buf = [0; 2];
         self.code_points.next().map(|code_point| {
-            let c = unsafe { char::from_u32_unchecked(code_point.value) };
-            let n = c.encode_utf16(&mut buf).len();
+            let n = char::encode_utf16_raw(code_point.value, &mut buf).len();
             if n == 2 {
                 self.extra = buf[1];
             }
