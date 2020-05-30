@@ -5,9 +5,9 @@ LL |     fn f(self: Pin<&Self>) -> impl Clone { self }
    |                ----------     ----------   ^^^^ ...and is captured here
    |                |              |
    |                |              ...is required to be `'static` by this...
-   |                data with this lifetime...
+   |                this data with the anonymous lifetime `'_`...
    |
-help: to permit non-static references in an `impl Trait` value, you can add an explicit bound for the anonymous lifetime #1 defined on the method body at 6:5
+help: to permit non-static references in an `impl Trait` value, you can add an explicit bound for the anonymous lifetime `'_`
    |
 LL |     fn f(self: Pin<&Self>) -> impl Clone + '_ { self }
    |                                          ^^^^

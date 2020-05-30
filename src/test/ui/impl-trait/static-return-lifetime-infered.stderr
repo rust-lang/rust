@@ -4,13 +4,13 @@ error: cannot infer an appropriate lifetime
 LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> {
    |                         -----     ----------------------- ...is required to be `'static` by this...
    |                         |
-   |                         data with this lifetime...
+   |                         this data with the anonymous lifetime `'_`...
 LL |         self.x.iter().map(|a| a.0)
    |         ------ ^^^^
    |         |
    |         ...and is captured here
    |
-help: to permit non-static references in an `impl Trait` value, you can add an explicit bound for the anonymous lifetime #1 defined on the method body at 6:5
+help: to permit non-static references in an `impl Trait` value, you can add an explicit bound for the anonymous lifetime `'_`
    |
 LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> + '_ {
    |                                                           ^^^^
@@ -21,13 +21,13 @@ error: cannot infer an appropriate lifetime
 LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> {
    |                        --------     ----------------------- ...is required to be `'static` by this...
    |                        |
-   |                        data with this lifetime...
+   |                        this data with lifetime `'a`...
 LL |         self.x.iter().map(|a| a.0)
    |         ------ ^^^^
    |         |
    |         ...and is captured here
    |
-help: to permit non-static references in an `impl Trait` value, you can add an explicit bound for the lifetime `'a` as defined on the method body at 10:20
+help: to permit non-static references in an `impl Trait` value, you can add an explicit bound for lifetime `'a`
    |
 LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> + 'a {
    |                                                             ^^^^
