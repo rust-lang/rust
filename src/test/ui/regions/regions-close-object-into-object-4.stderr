@@ -4,13 +4,8 @@ error: cannot infer an appropriate lifetime
 LL | fn i<'a, T, U>(v: Box<dyn A<U>+'a>) -> Box<dyn X + 'static> {
    |                   ---------------- this data with lifetime `'a`...
 LL |     box B(&*v) as Box<dyn X>
-   |           ^^^ ...is captured here...
+   |           ^^^ ...is captured here with a `'static` requirement
    |
-note: ...and required to be `'static` by this
-  --> $DIR/regions-close-object-into-object-4.rs:10:5
-   |
-LL |     box B(&*v) as Box<dyn X>
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider changing the trait object's explicit `'static` bound to lifetime `'a`
    |
 LL | fn i<'a, T, U>(v: Box<dyn A<U>+'a>) -> Box<dyn X + 'a> {
