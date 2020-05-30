@@ -228,6 +228,7 @@ impl Duration {
     /// # Examples
     ///
     /// ```
+    /// #![feature(duration_zero)]
     /// use std::time::Duration;
     ///
     /// let duration = Duration::zero();
@@ -247,6 +248,7 @@ impl Duration {
     /// # Examples
     ///
     /// ```
+    /// #![feature(duration_zero)]
     /// use std::time::Duration;
     ///
     /// assert!(Duration::zero().is_zero());
