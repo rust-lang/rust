@@ -1,8 +1,6 @@
 use crate::spec::{LinkArgs, LinkerFlavor, TargetOptions};
 
 pub fn opts() -> TargetOptions {
-    let mut args_crt = LinkArgs::new();
-    args_crt.insert(LinkerFlavor::Gcc, vec!["--static-crt".to_string()]);
     let mut args = LinkArgs::new();
     args.insert(
         LinkerFlavor::Gcc,
@@ -29,7 +27,6 @@ pub fn opts() -> TargetOptions {
         pre_link_args: args,
         position_independent_executables: false,
         has_elf_tls: true,
-        pre_link_args_crt: args_crt,
         crt_static_default: true,
         crt_static_respected: true,
         crt_static_allows_dylibs: true,
