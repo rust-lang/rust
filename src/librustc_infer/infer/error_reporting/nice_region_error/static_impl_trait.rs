@@ -76,12 +76,10 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                             //    |           |
                             //    |           this data with the anonymous lifetime `'_`...
                             //    |
-                            // note: ...is required to be `'static` by this
-                            //    |
-                            // LL | fn elided3(x: &i32) -> Box<dyn Debug> { Box::new(x) }
-                            //    |                                         ^^^^^^^^^^^
-                            err.span_label(sup_origin.span(), "...is captured here...");
-                            err.span_note(return_sp, "...and required to be `'static` by this");
+                            err.span_label(
+                                sup_origin.span(),
+                                "...is captured here with a `'static` requirement",
+                            );
                         } else if sup_origin.span() <= return_sp {
                             err.span_label(sup_origin.span(), "...is captured here...");
                             err.span_label(return_sp, "...and required to be `'static` by this");
