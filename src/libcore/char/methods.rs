@@ -661,7 +661,8 @@ impl char {
     #[stable(feature = "unicode_encode_char", since = "1.15.0")]
     #[inline]
     pub fn encode_utf8(self, dst: &mut [u8]) -> &mut str {
-        encode_utf8_raw(self as u32, dst)
+        // SAFETY: `char` is not a surrogate, so this is valid UTF-8.
+        unsafe { from_utf8_unchecked_mut(encode_utf8_raw(self as u32, dst)) }
     }
 
     /// Encodes this character as UTF-16 into the provided `u16` buffer,
@@ -1631,7 +1632,11 @@ fn len_utf8(code: u32) -> usize {
 /// Encodes a raw u32 value as UTF-8 into the provided byte buffer,
 /// and then returns the subslice of the buffer that contains the encoded character.
 ///
-/// Unlike `char::encode_utf8`, this method can be called on codepoints in the surrogate range.
+/// Unlike `char::encode_utf8`, this method also handles codepoints in the surrogate range.
+/// (Creating a `char` in the surrogate range is UB.)
+/// The result is valid [generalized UTF-8] but not valid UTF-8.
+///
+/// [generalized UTF-8]: https://simonsapin.github.io/wtf-8/#generalized-utf8
 ///
 /// # Panics
 ///
@@ -1640,7 +1645,7 @@ fn len_utf8(code: u32) -> usize {
 #[unstable(feature = "char_internals", reason = "exposed only for libstd", issue = "none")]
 #[doc(hidden)]
 #[inline]
-pub fn encode_utf8_raw(code: u32, dst: &mut [u8]) -> &mut str {
+pub fn encode_utf8_raw(code: u32, dst: &mut [u8]) -> &mut [u8] {
     let len = len_utf8(code);
     match (len, &mut dst[..]) {
         (1, [a, ..]) => {
@@ -1668,14 +1673,14 @@ pub fn encode_utf8_raw(code: u32, dst: &mut [u8]) -> &mut str {
             dst.len(),
         ),
     };
-    // SAFETY: We just wrote UTF-8 content in, so converting to str is fine.
-    unsafe { from_utf8_unchecked_mut(&mut dst[..len]) }
+    &mut dst[..len]
 }
 
 /// Encodes a raw u32 value as UTF-16 into the provided `u16` buffer,
 /// and then returns the subslice of the buffer that contains the encoded character.
 ///
-/// Unlike `char::encode_utf16`, this method can be called on codepoints in the surrogate range.
+/// Unlike `char::encode_utf16`, this method also handles codepoints in the surrogate range.
+/// (Creating a `char` in the surrogate range is UB.)
 ///
 /// # Panics
 ///
@@ -1688,7 +1693,7 @@ pub fn encode_utf16_raw(mut code: u32, dst: &mut [u16]) -> &mut [u16] {
     // SAFETY: each arm checks whether there are enough bits to write into
     unsafe {
         if (code & 0xFFFF) == code && !dst.is_empty() {
-            // The BMP falls through (assuming non-surrogate, as it should)
+            // The BMP falls through
             *dst.get_unchecked_mut(0) = code as u16;
             slice::from_raw_parts_mut(dst.as_mut_ptr(), 1)
         } else if dst.len() >= 2 {

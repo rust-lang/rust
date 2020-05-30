@@ -202,7 +202,7 @@ impl Wtf8Buf {
     /// This does **not** include the WTF-8 concatenation check.
     fn push_code_point_unchecked(&mut self, code_point: CodePoint) {
         let mut bytes = [0; 4];
-        let bytes = char::encode_utf8_raw(code_point.value, &mut bytes).as_bytes();
+        let bytes = char::encode_utf8_raw(code_point.value, &mut bytes);
         self.bytes.extend_from_slice(bytes)
     }
 
