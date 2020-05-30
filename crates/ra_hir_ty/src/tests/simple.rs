@@ -1943,3 +1943,57 @@ fn test() {
     "###
     );
 }
+
+#[test]
+fn infer_labelled_break_with_val() {
+    assert_snapshot!(
+        infer(r#"
+fn foo() {
+    let _x = || 'outer: loop {
+        let inner = 'inner: loop {
+            let i = Default::default();
+            if (break 'outer i) {
+                loop { break 'inner 5i8; };
+            } else if true {
+                break 'inner 6;
+            }
+            break 7;
+        };
+        break inner < 8;
+    };
+}
+"#),
+        @r###"
+    10..336 '{     ...  }; }': ()
+    20..22 '_x': || -> bool
+    25..333 '|| 'ou...     }': || -> bool
+    28..333 ''outer...     }': bool
+    41..333 '{     ...     }': ()
+    55..60 'inner': i32
+    63..301 ''inner...     }': i32
+    76..301 '{     ...     }': ()
+    94..95 'i': i32
+    98..114 'Defaul...efault': {unknown}
+    98..116 'Defaul...ault()': i32
+    130..270 'if (br...     }': ()
+    134..148 'break 'outer i': !
+    147..148 'i': i32
+    150..209 '{     ...     }': ()
+    168..194 'loop {...5i8; }': i8
+    173..194 '{ brea...5i8; }': ()
+    175..191 'break ...er 5i8': !
+    188..191 '5i8': i8
+    215..270 'if tru...     }': ()
+    218..222 'true': bool
+    223..270 '{     ...     }': ()
+    241..255 'break 'inner 6': !
+    254..255 '6': i32
+    283..290 'break 7': !
+    289..290 '7': i32
+    311..326 'break inner < 8': !
+    317..322 'inner': i32
+    317..326 'inner < 8': bool
+    325..326 '8': i32
+    "###
+    );
+}
