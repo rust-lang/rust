@@ -1,5 +1,6 @@
 use std::convert::TryInto;
 use std::time::{Duration, SystemTime};
+use std::ops::Not;
 
 use rustc_middle::ty::{layout::TyAndLayout, TyKind, TypeAndMut};
 use rustc_target::abi::{LayoutOf, Size};
@@ -603,7 +604,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         if this.rwlock_reader_unlock(id, active_thread) {
             // The thread was a reader.
-            if this.rwlock_is_locked(id) {
+            if this.rwlock_is_locked(id).not() {
                 // No more readers owning the lock. Give it to a writer if there
                 // is any.
                 this.rwlock_dequeue_and_lock_writer(id);

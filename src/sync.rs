@@ -282,7 +282,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// Lock by setting the writer that owns the lock.
     fn rwlock_writer_lock(&mut self, id: RwLockId, writer: ThreadId) {
         let this = self.eval_context_mut();
-        assert!(!this.rwlock_is_locked(id), "the relock is already locked");
+        assert!(!this.rwlock_is_locked(id), "the rwlock is already locked");
         this.machine.threads.sync.rwlocks[id].writer = Some(writer);
     }
 
