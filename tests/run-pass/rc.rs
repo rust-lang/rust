@@ -1,4 +1,3 @@
-#![feature(weak_into_raw)]
 #![feature(new_uninit)]
 #![feature(get_mut_unchecked)]
 

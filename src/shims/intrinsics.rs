@@ -1,5 +1,4 @@
 use std::iter;
-use std::convert::TryFrom;
 
 use rustc_attr as attr;
 use rustc_ast::ast::FloatTy;
