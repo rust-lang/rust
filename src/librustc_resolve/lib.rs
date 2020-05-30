@@ -23,7 +23,7 @@ use rustc_ast::ast::{self, FloatTy, IntTy, NodeId, UintTy};
 use rustc_ast::ast::{Crate, CRATE_NODE_ID};
 use rustc_ast::ast::{ItemKind, Path};
 use rustc_ast::attr;
-use rustc_ast::node_id::{NodeMap, NodeSet};
+use rustc_ast::node_id::NodeMap;
 use rustc_ast::unwrap_or;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast_pretty::pprust;
@@ -253,21 +253,31 @@ impl<'a> From<&'a ast::PathSegment> for Segment {
     }
 }
 
-struct UsePlacementFinder {
-    target_module: NodeId,
+struct UsePlacementFinder<'d> {
+    definitions: &'d Definitions,
+    target_module: LocalDefId,
     span: Option<Span>,
     found_use: bool,
 }
 
-impl UsePlacementFinder {
-    fn check(krate: &Crate, target_module: NodeId) -> (Option<Span>, bool) {
-        let mut finder = UsePlacementFinder { target_module, span: None, found_use: false };
-        visit::walk_crate(&mut finder, krate);
-        (finder.span, finder.found_use)
+impl<'d> UsePlacementFinder<'d> {
+    fn check(
+        definitions: &'d Definitions,
+        krate: &Crate,
+        target_module: DefId,
+    ) -> (Option<Span>, bool) {
+        if let Some(target_module) = target_module.as_local() {
+            let mut finder =
+                UsePlacementFinder { definitions, target_module, span: None, found_use: false };
+            visit::walk_crate(&mut finder, krate);
+            (finder.span, finder.found_use)
+        } else {
+            (None, false)
+        }
     }
 }
 
-impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
+impl<'tcx, 'd> Visitor<'tcx> for UsePlacementFinder<'d> {
     fn visit_mod(
         &mut self,
         module: &'tcx ast::Mod,
@@ -278,7 +288,7 @@ impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
         if self.span.is_some() {
             return;
         }
-        if node_id != self.target_module {
+        if self.definitions.local_def_id(node_id) != self.target_module {
             visit::walk_mod(self, module);
             return;
         }
@@ -611,7 +621,7 @@ struct UseError<'a> {
     /// Attach `use` statements for these candidates.
     candidates: Vec<ImportSuggestion>,
     /// The `NodeId` of the module to place the use-statements in.
-    node_id: NodeId,
+    def_id: DefId,
     /// Whether the diagnostic should state that it's "better".
     better: bool,
     /// Extra free form suggestion. Currently used to suggest new type parameter.
@@ -926,8 +936,8 @@ pub struct Resolver<'a> {
     non_macro_attrs: [Lrc<SyntaxExtension>; 2],
     local_macro_def_scopes: FxHashMap<LocalDefId, Module<'a>>,
     ast_transform_scopes: FxHashMap<ExpnId, Module<'a>>,
-    unused_macros: NodeMap<Span>,
-    proc_macro_stubs: NodeSet,
+    unused_macros: FxHashMap<LocalDefId, (NodeId, Span)>,
+    proc_macro_stubs: FxHashSet<LocalDefId>,
     /// Traces collected during macro resolution and validated when it's complete.
     single_segment_macro_resolutions:
         Vec<(Ident, MacroKind, ParentScope<'a>, Option<&'a NameBinding<'a>>)>,
@@ -2567,10 +2577,10 @@ impl<'a> Resolver<'a> {
     }
 
     fn report_with_use_injections(&mut self, krate: &Crate) {
-        for UseError { mut err, candidates, node_id, better, suggestion } in
+        for UseError { mut err, candidates, def_id, better, suggestion } in
             self.use_injections.drain(..)
         {
-            let (span, found_use) = UsePlacementFinder::check(krate, node_id);
+            let (span, found_use) = UsePlacementFinder::check(&self.definitions, krate, def_id);
             if !candidates.is_empty() {
                 diagnostics::show_candidates(&mut err, span, &candidates, better, found_use);
             } else if let Some((span, msg, sugg, appl)) = suggestion {
