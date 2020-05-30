@@ -806,7 +806,8 @@ impl<'a> CommentRewrite<'a> {
         let should_wrap_comment = self.fmt.config.wrap_comments()
             && !is_markdown_header_doc_comment
             && unicode_str_width(line) > self.fmt.shape.width
-            && !has_url(line);
+            && !has_url(line)
+            && !is_table_item(line);
 
         if should_wrap_comment {
             match rewrite_string(line, &self.fmt, self.max_width) {
@@ -939,6 +940,18 @@ fn has_url(s: &str) -> bool {
         || s.contains("ftp://")
         || s.contains("file://")
         || REFERENCE_LINK_URL.is_match(s)
+}
+
+/// Returns true if the given string may be part of a Markdown talble.
+fn is_table_item(mut s: &str) -> bool {
+    // This function may return false positive, but should get its job done in most cases (i.e.
+    // markdown tables with two column delimiters).
+    s = s.trim_start();
+    return s.starts_with('|')
+        && match s.rfind('|') {
+            Some(0) | None => false,
+            _ => true,
+        };
 }
 
 /// Given the span, rewrite the missing comment inside it if available.
