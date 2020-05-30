@@ -238,26 +238,25 @@ pub enum Base {
 /// `rustc` allows files to have a shebang, e.g. "#!/usr/bin/rustrun",
 /// but shebang isn't a part of rust syntax.
 pub fn strip_shebang(input: &str) -> Option<usize> {
-    let first_line = input.lines().next()?;
-    // A shebang is intentionally loosely defined as `#! [non whitespace]` on the first line.
-    let could_be_shebang =
-        first_line.starts_with("#!") && first_line[2..].contains(|c| !is_whitespace(c));
-    if !could_be_shebang {
-        return None;
+    // Shebang must start with `#!` literally, without any preceding whitespace.
+    if input.starts_with("#!") {
+        let input_tail = &input[2..];
+        // Shebang must have something non-whitespace after `#!` on the first line.
+        let first_line_tail = input_tail.lines().next()?;
+        if first_line_tail.contains(|c| !is_whitespace(c)) {
+            // Ok, this is a shebang but if the next non-whitespace token is `[` or maybe
+            // a doc comment (due to `TokenKind::(Line,Block)Comment` ambiguity at lexer level),
+            // then it may be valid Rust code, so consider it Rust code.
+            let next_non_whitespace_token = tokenize(input_tail).map(|tok| tok.kind).filter(|tok|
+                !matches!(tok, TokenKind::Whitespace | TokenKind::LineComment | TokenKind::BlockComment { .. })
+            ).next();
+            if next_non_whitespace_token != Some(TokenKind::OpenBracket) {
+                // No other choice than to consider this a shebang.
+                return Some(2 + first_line_tail.len());
+            }
+        }
     }
-    let non_whitespace_tokens = tokenize(input).map(|tok| tok.kind).filter(|tok|
-        !matches!(tok, TokenKind::LineComment | TokenKind::BlockComment { .. } | TokenKind::Whitespace)
-    );
-    let prefix = [TokenKind::Pound, TokenKind::Not, TokenKind::OpenBracket];
-    let starts_with_attribute = non_whitespace_tokens.take(3).eq(prefix.iter().copied());
-    if starts_with_attribute {
-        // If the file starts with #![ then it's definitely not a shebang -- it couldn't be
-        // a rust program since a Rust program can't start with `[`
-        None
-    } else {
-        // It's a #!... and there isn't a `[` in sight, must be a shebang
-        Some(first_line.len())
-    }
+    None
 }
 
 /// Parses the first token from the provided input string.
