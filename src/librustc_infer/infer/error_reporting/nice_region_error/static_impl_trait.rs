@@ -53,7 +53,36 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
 
                         // Customize the spans and labels depending on their relative order so
                         // that split sentences flow correctly.
-                        if sup_origin.span().shrink_to_hi() <= return_sp.shrink_to_lo() {
+                        if sup_origin.span().overlaps(return_sp) && sp == sup_origin.span() {
+                            // Avoid the following:
+                            //
+                            // error: cannot infer an appropriate lifetime
+                            //   --> $DIR/must_outlive_least_region_or_bound.rs:18:50
+                            //    |
+                            // LL | fn foo(x: &i32) -> Box<dyn Debug> { Box::new(x) }
+                            //    |           ----                      ---------^-
+                            //    |           |                         |        |
+                            //    |           |                         |   ...and is captured here
+                            //    |           |           ...is required to be `'static` by this...
+                            //    |           this data with the anonymous lifetime `'_`...
+                            //
+                            // and instead show:
+                            //
+                            // error: cannot infer an appropriate lifetime
+                            //   --> $DIR/must_outlive_least_region_or_bound.rs:18:50
+                            //    |
+                            // LL | fn foo(x: &i32) -> Box<dyn Debug> { Box::new(x) }
+                            //    |           ----                               ^ ...is captured here with a `'static` requirement
+                            //    |           |
+                            //    |           this data with the anonymous lifetime `'_`...
+                            //    |
+                            // note: ...is required to be `'static` by this
+                            //    |
+                            // LL | fn elided3(x: &i32) -> Box<dyn Debug> { Box::new(x) }
+                            //    |                                         ^^^^^^^^^^^
+                            err.span_label(sup_origin.span(), "...is captured here...");
+                            err.span_note(return_sp, "...and required to be `'static` by this");
+                        } else if sup_origin.span() <= return_sp {
                             err.span_label(sup_origin.span(), "...is captured here...");
                             err.span_label(return_sp, "...and required to be `'static` by this");
                         } else {
