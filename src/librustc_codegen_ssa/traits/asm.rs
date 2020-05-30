@@ -52,7 +52,7 @@ pub trait AsmBuilderMethods<'tcx>: BackendTypes {
         template: &[InlineAsmTemplatePiece],
         operands: &[InlineAsmOperandRef<'tcx, Self>],
         options: InlineAsmOptions,
-        span: Span,
+        line_spans: &[Span],
     );
 }
 

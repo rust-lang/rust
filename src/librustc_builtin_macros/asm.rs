@@ -513,10 +513,16 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, sp: Span, args: AsmArgs) -> P<ast
         }
     }
 
-    let inline_asm = ast::InlineAsm { template, operands, options: args.options };
+    let line_spans = if parser.line_spans.is_empty() {
+        vec![template_sp]
+    } else {
+        parser.line_spans.iter().map(|span| template_span.from_inner(*span)).collect()
+    };
+
+    let inline_asm = ast::InlineAsm { template, operands, options: args.options, line_spans };
     P(ast::Expr {
         id: ast::DUMMY_NODE_ID,
-        kind: ast::ExprKind::InlineAsm(inline_asm),
+        kind: ast::ExprKind::InlineAsm(P(inline_asm)),
         span: sp,
         attrs: ast::AttrVec::new(),
         tokens: None,
