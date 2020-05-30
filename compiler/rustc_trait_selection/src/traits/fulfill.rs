@@ -570,14 +570,15 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
         offset: &WatcherOffset,
         f: impl FnMut(<Self::Obligation as ForestObligation>::Variable),
     ) {
-        self.selcx.infcx().drain_modifications(offset, f);
+        let infcx = self.selcx.infcx();
+        infcx.drain_modifications(offset, f);
     }
 
-    fn register(&self) -> WatcherOffset {
+    fn register_variable_watcher(&self) -> WatcherOffset {
         self.selcx.infcx().register_unify_watcher()
     }
 
-    fn deregister(&self, offset: WatcherOffset) {
+    fn deregister_variable_watcher(&self, offset: WatcherOffset) {
         self.selcx.infcx().deregister_unify_watcher(offset);
     }
 

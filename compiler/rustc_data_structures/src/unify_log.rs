@@ -8,6 +8,9 @@ pub enum Undo<T> {
     NewGroup { index: T },
 }
 
+/// Tracks which variables (represented by indices) that has been unified with eachother.
+/// Since there is often only a few variables that are interesting one must call `watch_variable`
+/// before this records any variables unified with that variable.
 pub struct UnifyLog<T: Idx> {
     unified_vars: IndexVec<T, usize>,
     groups: Vec<Vec<T>>,
@@ -22,8 +25,8 @@ fn pick2_mut<T, I: Idx>(self_: &mut [T], a: I, b: I) -> (&mut T, &mut T) {
         let (c1, c2) = self_.split_at_mut(bi);
         (&mut c1[ai], &mut c2[0])
     } else {
-        let (c2, c1) = pick2_mut(self_, b, a);
-        (c1, c2)
+        let (c1, c2) = self_.split_at_mut(ai);
+        (&mut c2[0], &mut c1[bi])
     }
 }
 
@@ -40,35 +43,40 @@ impl<T: Idx> UnifyLog<T> {
         if !self.needs_log(other) {
             return;
         }
-        self.unified_vars.ensure_contains_elem(root, usize::max_value);
-        self.unified_vars.ensure_contains_elem(other, usize::max_value);
+        self.unified_vars.ensure_contains_elem(root.max(other), usize::max_value);
         let mut root_group = self.unified_vars[root];
         let other_group = self.unified_vars[other];
 
-        if other_group == usize::max_value() {
-            let root_vec = if root_group == usize::max_value() {
+        match (root_group, other_group) {
+            (usize::MAX, usize::MAX) => {
+                // Neither variable is part of a group, create a new one at the root and associate
+                // other
                 root_group = self.groups.len();
                 self.unified_vars[root] = root_group;
-                self.groups.push(Vec::new());
+                self.groups.push(vec![other]);
                 undo_log.push(Undo::NewGroup { index: root });
-                self.groups.last_mut().unwrap()
-            } else {
-                let root_vec = &mut self.groups[root_group];
-                undo_log.push(Undo::Extend { group_index: root_group, len: root_vec.len() });
-                root_vec
-            };
-            root_vec.push(other);
-        } else {
-            if root_group == usize::max_value() {
+            }
+            (usize::MAX, _) => {
+                // `other` has a group, point `root` to it and associate other
                 let group = &mut self.unified_vars[root];
                 undo_log.push(Undo::Move { index: root, old: *group });
                 *group = other_group;
                 self.groups[other_group].push(other);
-            } else {
+            }
+            (_, usize::MAX) => {
+                // `root` hasa group, just associate `other`
+                let root_vec = &mut self.groups[root_group];
+                undo_log.push(Undo::Extend { group_index: root_group, len: root_vec.len() });
+                root_vec.push(other);
+            }
+            _ => {
+                // Both variables has their own groups, associate all of `other` to root
                 let (root_vec, other_vec) = pick2_mut(&mut self.groups, root_group, other_group);
                 undo_log.push(Undo::Extend { group_index: root_group, len: root_vec.len() });
                 root_vec.extend_from_slice(other_vec);
 
+                // We only need to add `other` if there is a watcher for it (there might only be
+                // watchers for the other variables in its group)
                 if self.reference_counts.get(other).map_or(false, |c| *c != 0) {
                     root_vec.push(other);
                 }

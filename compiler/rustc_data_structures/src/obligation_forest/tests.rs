@@ -99,8 +99,12 @@ where
         _f: impl FnMut(<Self::Obligation as ForestObligation>::Variable),
     ) {
     }
-    fn register(&self) -> <Self::Obligation as ForestObligation>::WatcherOffset {}
-    fn deregister(&self, _offset: <Self::Obligation as ForestObligation>::WatcherOffset) {}
+    fn register_variable_watcher(&self) -> <Self::Obligation as ForestObligation>::WatcherOffset {}
+    fn deregister_variable_watcher(
+        &self,
+        _offset: <Self::Obligation as ForestObligation>::WatcherOffset,
+    ) {
+    }
     fn watch_variable(&self, _var: <Self::Obligation as ForestObligation>::Variable) {}
     fn unwatch_variable(&self, _var: <Self::Obligation as ForestObligation>::Variable) {}
 }

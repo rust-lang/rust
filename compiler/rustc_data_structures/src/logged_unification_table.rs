@@ -107,7 +107,6 @@ where
         K::Value: ut::UnifyValue<Error = ut::NoError>,
     {
         if self.storage.unify_log.needs_log(vid) {
-            warn!("ModifiedSet {:?} => {:?}", vid, ty);
             self.storage.modified_set.set(&mut self.undo_log, vid);
         }
         let vid = vid.into();
