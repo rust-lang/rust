@@ -629,7 +629,7 @@ impl<'a> Resolver<'a> {
         &mut self,
         lookup_ident: Ident,
         namespace: Namespace,
-        _parent_scope: &ParentScope<'a>,
+        parent_scope: &ParentScope<'a>,
         start_module: Module<'a>,
         crate_name: Ident,
         filter_fn: FilterFn,
@@ -656,7 +656,11 @@ impl<'a> Resolver<'a> {
                 }
 
                 // collect results based on the filter function
-                if ident.name == lookup_ident.name && ns == namespace {
+                // avoid suggesting anything from the same module in which we are resolving
+                if ident.name == lookup_ident.name
+                    && ns == namespace
+                    && !ptr::eq(in_module, parent_scope.module)
+                {
                     let res = name_binding.res();
                     if filter_fn(res) {
                         // create the path
