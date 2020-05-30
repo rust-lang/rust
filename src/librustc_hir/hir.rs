@@ -2106,6 +2106,7 @@ pub struct InlineAsm<'hir> {
     pub template: &'hir [InlineAsmTemplatePiece],
     pub operands: &'hir [InlineAsmOperand<'hir>],
     pub options: InlineAsmOptions,
+    pub line_spans: &'hir [Span],
 }
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug, HashStable_Generic, PartialEq)]

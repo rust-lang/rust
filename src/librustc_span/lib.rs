@@ -101,6 +101,8 @@ pub enum FileName {
     /// Custom sources for explicit parser calls from plugins and drivers.
     Custom(String),
     DocTest(PathBuf, isize),
+    /// Post-substitution inline assembly from LLVM
+    InlineAsm(u64),
 }
 
 impl std::fmt::Display for FileName {
@@ -116,6 +118,7 @@ impl std::fmt::Display for FileName {
             CliCrateAttr(_) => write!(fmt, "<crate attribute>"),
             Custom(ref s) => write!(fmt, "<{}>", s),
             DocTest(ref path, _) => write!(fmt, "{}", path.display()),
+            InlineAsm(_) => write!(fmt, "<inline asm>"),
         }
     }
 }
@@ -139,7 +142,8 @@ impl FileName {
             | CliCrateAttr(_)
             | Custom(_)
             | QuoteExpansion(_)
-            | DocTest(_, _) => false,
+            | DocTest(_, _)
+            | InlineAsm(_) => false,
         }
     }
 
@@ -181,6 +185,12 @@ impl FileName {
 
     pub fn doc_test_source_code(path: PathBuf, line: isize) -> FileName {
         FileName::DocTest(path, line)
+    }
+
+    pub fn inline_asm_source_code(src: &str) -> FileName {
+        let mut hasher = StableHasher::new();
+        src.hash(&mut hasher);
+        FileName::InlineAsm(hasher.finish())
     }
 }
 

@@ -82,6 +82,8 @@ macro_rules! arena_types {
             // (during lowering) and the `librustc_middle` arena (for decoding MIR)
             [decode] asm_template: rustc_ast::ast::InlineAsmTemplatePiece,
 
+            // This is used to decode the &'tcx [Span] for InlineAsm's line_spans.
+            [decode] span: rustc_span::Span,
         ], $tcx);
     )
 }

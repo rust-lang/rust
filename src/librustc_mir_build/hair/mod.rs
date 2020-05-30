@@ -283,6 +283,7 @@ crate enum ExprKind<'tcx> {
         template: &'tcx [InlineAsmTemplatePiece],
         operands: Vec<InlineAsmOperand<'tcx>>,
         options: InlineAsmOptions,
+        line_spans: &'tcx [Span],
     },
     LlvmInlineAsm {
         asm: &'tcx hir::LlvmInlineAsmInner,

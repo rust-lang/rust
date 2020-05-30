@@ -535,6 +535,7 @@ macro_rules! make_mir_visitor {
                         template: _,
                         operands,
                         options: _,
+                        line_spans: _,
                         destination: _,
                     } => {
                         for op in operands {
