@@ -1,13 +1,13 @@
-error: cannot infer an appropriate lifetime
+error[E0758]: cannot infer an appropriate lifetime
   --> $DIR/arbitrary_self_types_pin_lifetime_impl_trait.rs:6:44
    |
 LL |     fn f(self: Pin<&Self>) -> impl Clone { self }
    |                ----------     ----------   ^^^^ ...and is captured here
    |                |              |
-   |                |              ...is required to be `'static` by this...
-   |                this data with the anonymous lifetime `'_`...
+   |                |              ...is required to live as long as `'static` by this...
+   |                this data with an anonymous lifetime `'_`...
    |
-help: to permit non-static references in an `impl Trait` value, you can add an explicit bound for the anonymous lifetime `'_`
+help: to permit non-static references in an `impl Trait` value, you can add an explicit bound for an anonymous lifetime `'_`
    |
 LL |     fn f(self: Pin<&Self>) -> impl Clone + '_ { self }
    |                                          ^^^^
