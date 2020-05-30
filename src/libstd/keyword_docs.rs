@@ -1220,7 +1220,7 @@ mod unsafe_keyword {}
 /// though a number of convenient shortcuts are supported:
 ///
 ///   * Simultaneously binding a list of paths with a common prefix,
-///     using the glob-like brace syntax use `a::b::{c, d, e::f, g::h::i};`
+///     using the glob-like brace syntax `use a::b::{c, d, e::f, g::h::i};`
 ///   * Simultaneously binding a list of paths with a common prefix and their common parent module,
 ///     using the [`self`] keyword, such as `use a::b::{self, c, d::e};`
 ///   * Rebinding the target name as a new local name, using the syntax `use p::q::r as x;`.
@@ -1230,7 +1230,7 @@ mod unsafe_keyword {}
 ///   * Nesting groups of the previous features multiple times,
 ///     such as `use a::b::{self as ab, c, d::{*, e::f}};`
 ///   * Reexporting with visibility modifiers such as `pub use a::b;`
-///   * Importing with `_` to only import the methods of the item without binding it to a name
+///   * Importing with `_` to only import the methods of a trait without binding it to a name
 ///     (to avoid conflict for example): `use ::std::io::Read as _;`.
 ///
 /// Using path qualifiers like [`crate`], [`super`] or [`self`] is supported: `use crate::a::b;`.
