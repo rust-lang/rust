@@ -97,8 +97,28 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::InEnvironment<chalk_ir::Goal<RustInterner<'
                             .intern(interner),
                         )
                     }
-                    // FIXME(chalk): need to add RegionOutlives/TypeOutlives
-                    ty::PredicateKind::RegionOutlives(_) => None,
+                    ty::PredicateKind::RegionOutlives(predicate) => {
+                        let (predicate, binders, _named_regions) =
+                            collect_bound_vars(interner, interner.tcx, predicate);
+        
+                        Some(
+                            chalk_ir::ProgramClauseData::ForAll(chalk_ir::Binders::new(
+                                binders,
+                                chalk_ir::ProgramClauseImplication {
+                                    consequence: chalk_ir::DomainGoal::Holds(
+                                        chalk_ir::WhereClause::LifetimeOutlives(chalk_ir::LifetimeOutlives {
+                                            a: predicate.0.lower_into(interner),
+                                            b: predicate.1.lower_into(interner),
+                                        })
+                                    ),
+                                    conditions: chalk_ir::Goals::new(interner),
+                                    priority: chalk_ir::ClausePriority::High,
+                                },
+                            ))
+                            .intern(interner),
+                        )
+                    },
+                    // FIXME(chalk): need to add TypeOutlives
                     ty::PredicateKind::TypeOutlives(_) => None,
                     ty::PredicateKind::Projection(predicate) => {
                         let (predicate, binders, _named_regions) =
@@ -156,10 +176,24 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::GoalData<RustInterner<'tcx>>> for ty::Predi
     fn lower_into(self, interner: &RustInterner<'tcx>) -> chalk_ir::GoalData<RustInterner<'tcx>> {
         match self.kind() {
             ty::PredicateKind::Trait(predicate, _) => predicate.lower_into(interner),
-            // FIXME(chalk): we need to register constraints.
-            ty::PredicateKind::RegionOutlives(_predicate) => {
-                chalk_ir::GoalData::All(chalk_ir::Goals::new(interner))
+            ty::PredicateKind::RegionOutlives(predicate) => {
+                let (predicate, binders, _named_regions) =
+                    collect_bound_vars(interner, interner.tcx, predicate);
+
+                chalk_ir::GoalData::Quantified(
+                    chalk_ir::QuantifierKind::ForAll,
+                    chalk_ir::Binders::new(
+                        binders,
+                        chalk_ir::GoalData::DomainGoal(chalk_ir::DomainGoal::Holds(
+                            chalk_ir::WhereClause::LifetimeOutlives(chalk_ir::LifetimeOutlives {
+                                a: predicate.0.lower_into(interner),
+                                b: predicate.1.lower_into(interner),
+                            })
+                        )).intern(interner)
+                    )
+                )
             }
+            // FIXME(chalk): TypeOutlives
             ty::PredicateKind::TypeOutlives(_predicate) => {
                 chalk_ir::GoalData::All(chalk_ir::Goals::new(interner))
             }
@@ -182,12 +216,15 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::GoalData<RustInterner<'tcx>>> for ty::Predi
                 GenericArgKind::Lifetime(lt) => bug!("unexpect well formed predicate: {:?}", lt),
             },
 
+            ty::PredicateKind::ObjectSafe(t) => {
+                chalk_ir::GoalData::DomainGoal(chalk_ir::DomainGoal::ObjectSafe(chalk_ir::TraitId(*t)))
+            }
+
             // FIXME(chalk): other predicates
             //
             // We can defer this, but ultimately we'll want to express
             // some of these in terms of chalk operations.
-            ty::PredicateKind::ObjectSafe(..)
-            | ty::PredicateKind::ClosureKind(..)
+            ty::PredicateKind::ClosureKind(..)
             | ty::PredicateKind::Subtype(..)
             | ty::PredicateKind::ConstEvaluatable(..)
             | ty::PredicateKind::ConstEquate(..) => {
@@ -484,7 +521,19 @@ impl<'tcx> LowerInto<'tcx, Option<chalk_ir::QuantifiedWhereClause<RustInterner<'
                     chalk_ir::WhereClause::Implemented(predicate.trait_ref.lower_into(interner)),
                 ))
             }
-            ty::PredicateKind::RegionOutlives(_predicate) => None,
+            ty::PredicateKind::RegionOutlives(predicate) => {
+                let (predicate, binders, _named_regions) =
+                    collect_bound_vars(interner, interner.tcx, predicate);
+
+                Some(chalk_ir::Binders::new(
+                    binders,
+                    chalk_ir::WhereClause::LifetimeOutlives(chalk_ir::LifetimeOutlives {
+                        a: predicate.0.lower_into(interner),
+                        b: predicate.1.lower_into(interner),
+                    }),
+                ))
+
+            },
             ty::PredicateKind::TypeOutlives(_predicate) => None,
             ty::PredicateKind::Projection(_predicate) => None,
             ty::PredicateKind::WellFormed(_ty) => None,

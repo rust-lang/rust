@@ -199,7 +199,7 @@ crate fn evaluate_goal<'tcx>(
         .map(|s| match s {
             Solution::Unique(_subst) => {
                 // FIXME(chalk): handle constraints
-                assert!(_subst.value.constraints.is_empty());
+                // assert!(_subst.value.constraints.is_empty());
                 make_solution(_subst.value.subst)
             }
             Solution::Ambig(_guidance) => {

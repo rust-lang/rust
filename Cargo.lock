@@ -433,17 +433,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "chalk-base"
-version = "0.10.1-dev"
-source = "git+https://github.com/jackh726/chalk.git?rev=c8f342bf5e48051333d0b2c7fab81347fc21c474#c8f342bf5e48051333d0b2c7fab81347fc21c474"
-dependencies = [
- "lazy_static",
-]
-
-[[package]]
 name = "chalk-derive"
 version = "0.10.1-dev"
-source = "git+https://github.com/jackh726/chalk.git?rev=c8f342bf5e48051333d0b2c7fab81347fc21c474#c8f342bf5e48051333d0b2c7fab81347fc21c474"
+source = "git+https://github.com/rust-lang/chalk.git?rev=ea1ca4ddc43abcfed77420f294a3713fac714e18#ea1ca4ddc43abcfed77420f294a3713fac714e18"
 dependencies = [
  "proc-macro2 1.0.3",
  "quote 1.0.2",
@@ -454,9 +446,8 @@ dependencies = [
 [[package]]
 name = "chalk-engine"
 version = "0.10.1-dev"
-source = "git+https://github.com/jackh726/chalk.git?rev=c8f342bf5e48051333d0b2c7fab81347fc21c474#c8f342bf5e48051333d0b2c7fab81347fc21c474"
+source = "git+https://github.com/rust-lang/chalk.git?rev=ea1ca4ddc43abcfed77420f294a3713fac714e18#ea1ca4ddc43abcfed77420f294a3713fac714e18"
 dependencies = [
- "chalk-base",
  "chalk-derive",
  "chalk-ir",
  "rustc-hash",
@@ -465,18 +456,17 @@ dependencies = [
 [[package]]
 name = "chalk-ir"
 version = "0.10.1-dev"
-source = "git+https://github.com/jackh726/chalk.git?rev=c8f342bf5e48051333d0b2c7fab81347fc21c474#c8f342bf5e48051333d0b2c7fab81347fc21c474"
+source = "git+https://github.com/rust-lang/chalk.git?rev=ea1ca4ddc43abcfed77420f294a3713fac714e18#ea1ca4ddc43abcfed77420f294a3713fac714e18"
 dependencies = [
- "chalk-base",
  "chalk-derive",
+ "lazy_static 1.4.0",
 ]
 
 [[package]]
 name = "chalk-solve"
 version = "0.10.1-dev"
-source = "git+https://github.com/jackh726/chalk.git?rev=c8f342bf5e48051333d0b2c7fab81347fc21c474#c8f342bf5e48051333d0b2c7fab81347fc21c474"
+source = "git+https://github.com/rust-lang/chalk.git?rev=ea1ca4ddc43abcfed77420f294a3713fac714e18#ea1ca4ddc43abcfed77420f294a3713fac714e18"
 dependencies = [
- "chalk-base",
  "chalk-derive",
  "chalk-engine",
  "chalk-ir",
