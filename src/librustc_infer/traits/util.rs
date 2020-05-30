@@ -81,6 +81,14 @@ impl Extend<ty::Predicate<'tcx>> for PredicateSet<'tcx> {
             self.insert(pred);
         }
     }
+
+    fn extend_one(&mut self, pred: ty::Predicate<'tcx>) {
+        self.insert(pred);
+    }
+
+    fn extend_reserve(&mut self, additional: usize) {
+        Extend::<ty::Predicate<'tcx>>::extend_reserve(&mut self.set, additional);
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////

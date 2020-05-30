@@ -263,6 +263,7 @@
 #![feature(duration_constants)]
 #![feature(exact_size_is_empty)]
 #![feature(exhaustive_patterns)]
+#![feature(extend_one)]
 #![feature(external_doc)]
 #![feature(fn_traits)]
 #![feature(format_args_nl)]

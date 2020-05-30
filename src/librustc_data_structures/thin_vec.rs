@@ -53,6 +53,20 @@ impl<T> Extend<T> for ThinVec<T> {
             ThinVec(None) => *self = iter.into_iter().collect::<Vec<_>>().into(),
         }
     }
+
+    fn extend_one(&mut self, item: T) {
+        match *self {
+            ThinVec(Some(ref mut vec)) => vec.push(item),
+            ThinVec(None) => *self = vec![item].into(),
+        }
+    }
+
+    fn extend_reserve(&mut self, additional: usize) {
+        match *self {
+            ThinVec(Some(ref mut vec)) => vec.reserve(additional),
+            ThinVec(None) => *self = Vec::with_capacity(additional).into(),
+        }
+    }
 }
 
 impl<T: HashStable<CTX>, CTX> HashStable<CTX> for ThinVec<T> {
