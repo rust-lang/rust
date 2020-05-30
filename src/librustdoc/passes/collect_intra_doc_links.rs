@@ -204,7 +204,10 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                         return Ok((res, Some(path_str.to_owned())));
                     }
                     other => {
-                        debug!("failed to resolve {} in namespace {:?} (got {:?})", path_str, ns, other);
+                        debug!(
+                            "failed to resolve {} in namespace {:?} (got {:?})",
+                            path_str, ns, other
+                        );
                         debug!("extra_fragment is {:?}", extra_fragment);
                         return Ok((res, extra_fragment.clone()));
                     }
@@ -564,10 +567,9 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
             let mut path_str;
             let (res, fragment) = {
                 let mut kind = None;
-                path_str = if let Some(prefix) =
-                    ["struct@", "enum@", "type@", "trait@", "union@"]
-                        .iter()
-                        .find(|p| link.starts_with(**p))
+                path_str = if let Some(prefix) = ["struct@", "enum@", "type@", "trait@", "union@"]
+                    .iter()
+                    .find(|p| link.starts_with(**p))
                 {
                     kind = Some(TypeNS);
                     link.trim_start_matches(prefix)
@@ -766,22 +768,30 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
             if let Res::PrimTy(_) = res {
                 item.attrs.links.push((ori_link, None, fragment));
             } else {
-                // ~~WRONG: TODO: I think this happens too late and we need to instead put this in `self.resolve`~~
-                debug!("item {:?} resolved to {:?}", item, res);
+                debug!("linked item {} resolved to {:?}", path_str, res);
                 if let Some(local) = res.opt_def_id().and_then(|def_id| def_id.as_local()) {
+                    use rustc_hir::def_id::LOCAL_CRATE;
+
                     let hir_id = self.cx.tcx.hir().as_local_hir_id(local);
-                    if !self.cx.tcx.privacy_access_levels(rustc_hir::def_id::LOCAL_CRATE).is_exported(hir_id) {
+                    if !self.cx.tcx.privacy_access_levels(LOCAL_CRATE).is_exported(hir_id)
+                        && !self.cx.render_options.document_private
+                    {
                         let item_name = item.name.as_deref().unwrap_or("<unknown>");
+                        let err_msg = format!(
+                            "public documentation for `{}` links to a private item",
+                            item_name
+                        );
                         build_diagnostic(
                             cx,
                             &item,
                             path_str,
                             &dox,
                             link_range,
-                            &format!("public documentation for `{}` links to a private item", item_name),
+                            &err_msg,
                             "this item is private",
                             None,
                         );
+                        continue;
                     }
                 }
                 let id = register_res(cx, res);
