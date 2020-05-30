@@ -3,6 +3,8 @@ error: environment variable `__HOPEFULLY_NOT_DEFINED__` not defined
    |
 LL |     env!("__HOPEFULLY_NOT_DEFINED__");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

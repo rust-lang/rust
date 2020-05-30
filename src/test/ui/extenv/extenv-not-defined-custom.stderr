@@ -3,6 +3,8 @@ error: my error message
    |
 LL | fn main() { env!("__HOPEFULLY_NOT_DEFINED__", "my error message"); }
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 
