@@ -31,6 +31,13 @@ fn generated_assists_are_fresh() {
 }
 
 #[test]
+fn generated_features_are_fresh() {
+    if let Err(error) = codegen::generate_feature_docs(Mode::Verify) {
+        panic!("{}. Please update features by running `cargo xtask codegen`", error);
+    }
+}
+
+#[test]
 fn check_code_formatting() {
     if let Err(error) = run_rustfmt(Mode::Verify) {
         panic!("{}. Please format the code by running `cargo format`", error);

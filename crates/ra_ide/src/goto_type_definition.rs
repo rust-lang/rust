@@ -5,6 +5,9 @@ use ra_syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, TokenAtOffs
 
 use crate::{display::ToNav, FilePosition, NavigationTarget, RangeInfo};
 
+// Feature: Go To Type Definition
+//
+// Navigates to the type of an identifier.
 pub(crate) fn goto_type_definition(
     db: &RootDatabase,
     position: FilePosition,

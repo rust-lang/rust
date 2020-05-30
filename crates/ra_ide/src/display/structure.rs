@@ -18,6 +18,19 @@ pub struct StructureNode {
     pub deprecated: bool,
 }
 
+// Feature: File Structure
+//
+// Provides a tree of the symbols defined in the file. Can be used to
+//
+// * fuzzy search symbol in a file (super useful)
+// * draw breadcrumbs to describe the context around the cursor
+// * draw outline of the file
+//
+// |===
+// | Editor  | Shortcut
+//
+// | VS Code | kbd:[Ctrl+Shift+O]
+// |===
 pub fn file_structure(file: &SourceFile) -> Vec<StructureNode> {
     let mut res = Vec::new();
     let mut stack = Vec::new();

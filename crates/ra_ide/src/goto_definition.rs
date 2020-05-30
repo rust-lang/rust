@@ -17,6 +17,15 @@ use crate::{
     FilePosition, NavigationTarget, RangeInfo,
 };
 
+// Feature: Go To Definition
+//
+// Navigates to the definition of an identifier.
+//
+// |===
+// | Editor  | Shortcut
+//
+// | VS Code | kbd:[F12]
+// |===
 pub(crate) fn goto_definition(
     db: &RootDatabase,
     position: FilePosition,

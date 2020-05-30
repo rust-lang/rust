@@ -2,58 +2,6 @@ This document is an index of features that the rust-analyzer language server
 provides. Shortcuts are for the default VS Code layout. If there's no shortcut,
 you can use <kbd>Ctrl+Shift+P</kbd> to search for the corresponding action.
 
-### Workspace Symbol <kbd>ctrl+t</kbd>
-
-Uses fuzzy-search to find types, modules and functions by name across your
-project and dependencies. This is **the** most useful feature, which improves code
-navigation tremendously. It mostly works on top of the built-in LSP
-functionality, however `#` and `*` symbols can be used to narrow down the
-search. Specifically,
-
-- `Foo` searches for `Foo` type in the current workspace
-- `foo#` searches for `foo` function in the current workspace
-- `Foo*` searches for `Foo` type among dependencies, including `stdlib`
-- `foo#*` searches for `foo` function among dependencies
-
-That is, `#` switches from "types" to all symbols, `*` switches from the current
-workspace to dependencies.
-
-### Document Symbol <kbd>ctrl+shift+o</kbd>
-
-Provides a tree of the symbols defined in the file. Can be used to
-
-* fuzzy search symbol in a file (super useful)
-* draw breadcrumbs to describe the context around the cursor
-* draw outline of the file
-
-### On Typing Assists
-
-Some features trigger on typing certain characters:
-
-- typing `let =` tries to smartly add `;` if `=` is followed by an existing expression
-- Enter inside comments automatically inserts `///`
-- typing `.` in a chain method call auto-indents
-
-### Extend Selection
-
-Extends the current selection to the encompassing syntactic construct
-(expression, statement, item, module, etc). It works with multiple cursors. This
-is a relatively new feature of LSP:
-https://github.com/Microsoft/language-server-protocol/issues/613, check your
-editor's LSP library to see if this feature is supported.
-
-### Go to Definition
-
-Navigates to the definition of an identifier.
-
-### Go to Implementation
-
-Navigates to the impl block of structs, enums or traits. Also implemented as a code lens.
-
-### Go to Type Defintion
-
-Navigates to the type of an identifier.
-
 ### Commands <kbd>ctrl+shift+p</kbd>
 
 #### Run

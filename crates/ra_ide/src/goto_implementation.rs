@@ -6,6 +6,15 @@ use ra_syntax::{algo::find_node_at_offset, ast, AstNode};
 
 use crate::{display::ToNav, FilePosition, NavigationTarget, RangeInfo};
 
+// Feature: Go To Implementation
+//
+// Navigates to the impl block of structs, enums or traits. Also implemented as a code lens.
+//
+// |===
+// | Editor  | Shortcut
+//
+// | VS Code | kbd:[Ctrl+F12]
+// |===
 pub(crate) fn goto_implementation(
     db: &RootDatabase,
     position: FilePosition,

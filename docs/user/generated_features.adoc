@@ -1,0 +1,98 @@
+=== Extend Selection
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/extend_selection.rs[extend_selection.rs]
+
+
+Extends the current selection to the encompassing syntactic construct
+(expression, statement, item, module, etc). It works with multiple cursors.
+
+|===
+| Editor  | Shortcut
+
+| VS Code | kbd:[Ctrl+Shift+→]
+|===
+
+
+=== File Structure
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/display/structure.rs[structure.rs]
+
+
+Provides a tree of the symbols defined in the file. Can be used to
+
+* fuzzy search symbol in a file (super useful)
+* draw breadcrumbs to describe the context around the cursor
+* draw outline of the file
+
+|===
+| Editor  | Shortcut
+
+| VS Code | kbd:[Ctrl+Shift+O]
+|===
+
+
+=== Go To Definition
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/goto_definition.rs[goto_definition.rs]
+
+
+Navigates to the definition of an identifier.
+
+|===
+| Editor  | Shortcut
+
+| VS Code | kbd:[F12]
+|===
+
+
+=== Go To Implementation
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/goto_implementation.rs[goto_implementation.rs]
+
+
+Navigates to the impl block of structs, enums or traits. Also implemented as a code lens.
+
+|===
+| Editor  | Shortcut
+
+| VS Code | kbd:[Ctrl+F12]
+|===
+
+
+=== Go To Type Definition
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/goto_type_definition.rs[goto_type_definition.rs]
+
+
+Navigates to the type of an identifier.
+
+
+=== On Typing Assists
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/typing.rs[typing.rs]
+
+
+Some features trigger on typing certain characters:
+
+- typing `let =` tries to smartly add `;` if `=` is followed by an existing expression
+- Enter inside comments automatically inserts `///`
+- typing `.` in a chain method call auto-indents
+
+
+=== Workspace Symbol
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide_db/src/symbol_index.rs[symbol_index.rs]
+
+
+Uses fuzzy-search to find types, modules and functions by name across your
+project and dependencies. This is **the** most useful feature, which improves code
+navigation tremendously. It mostly works on top of the built-in LSP
+functionality, however `#` and `*` symbols can be used to narrow down the
+search. Specifically,
+
+- `Foo` searches for `Foo` type in the current workspace
+- `foo#` searches for `foo` function in the current workspace
+- `Foo*` searches for `Foo` type among dependencies, including `stdlib`
+- `foo#*` searches for `foo` function among dependencies
+
+That is, `#` switches from "types" to all symbols, `*` switches from the current
+workspace to dependencies.
+
+|===
+| Editor  | Shortcut
+
+| VS Code | kbd:[Ctrl+T]
+|===

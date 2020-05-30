@@ -110,6 +110,27 @@ fn file_symbols(db: &impl SymbolsDatabase, file_id: FileId) -> Arc<SymbolIndex> 
     Arc::new(SymbolIndex::new(symbols))
 }
 
+// Feature: Workspace Symbol
+//
+// Uses fuzzy-search to find types, modules and functions by name across your
+// project and dependencies. This is **the** most useful feature, which improves code
+// navigation tremendously. It mostly works on top of the built-in LSP
+// functionality, however `#` and `*` symbols can be used to narrow down the
+// search. Specifically,
+//
+// - `Foo` searches for `Foo` type in the current workspace
+// - `foo#` searches for `foo` function in the current workspace
+// - `Foo*` searches for `Foo` type among dependencies, including `stdlib`
+// - `foo#*` searches for `foo` function among dependencies
+//
+// That is, `#` switches from "types" to all symbols, `*` switches from the current
+// workspace to dependencies.
+//
+// |===
+// | Editor  | Shortcut
+//
+// | VS Code | kbd:[Ctrl+T]
+// |===
 pub fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol> {
     /// Need to wrap Snapshot to provide `Clone` impl for `map_with`
     struct Snap(salsa::Snapshot<RootDatabase>);

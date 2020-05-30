@@ -8,14 +8,15 @@
 mod gen_syntax;
 mod gen_parser_tests;
 mod gen_assists_docs;
+mod gen_feature_docs;
 
 use std::{mem, path::Path};
 
 use crate::{not_bash::fs2, Result};
 
 pub use self::{
-    gen_assists_docs::generate_assists_docs, gen_parser_tests::generate_parser_tests,
-    gen_syntax::generate_syntax,
+    gen_assists_docs::generate_assists_docs, gen_feature_docs::generate_feature_docs,
+    gen_parser_tests::generate_parser_tests, gen_syntax::generate_syntax,
 };
 
 const GRAMMAR_DIR: &str = "crates/ra_parser/src/grammar";
