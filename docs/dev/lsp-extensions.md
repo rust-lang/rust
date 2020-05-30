@@ -154,7 +154,7 @@ fn main() {
 }
 ```
 
-`experimental/joinLines` yields (curly braces are automagiacally removed)
+`experimental/joinLines` yields (curly braces are automagically removed)
 
 ```rust
 fn main() {
