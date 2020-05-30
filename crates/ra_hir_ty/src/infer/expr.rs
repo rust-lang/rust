@@ -140,13 +140,13 @@ impl<'a> InferenceContext<'a> {
 
                 let mut sig_tys = Vec::new();
 
-                for (arg_pat, arg_type) in args.iter().zip(arg_types.iter()) {
-                    let expected = if let Some(type_ref) = arg_type {
+                // collect explicitly written argument types
+                for arg_type in arg_types.iter() {
+                    let arg_ty = if let Some(type_ref) = arg_type {
                         self.make_ty(type_ref)
                     } else {
-                        Ty::Unknown
+                        self.table.new_type_var()
                     };
-                    let arg_ty = self.infer_pat(*arg_pat, &expected, BindingMode::default());
                     sig_tys.push(arg_ty);
                 }
 
@@ -158,7 +158,7 @@ impl<'a> InferenceContext<'a> {
                 sig_tys.push(ret_ty.clone());
                 let sig_ty = Ty::apply(
                     TypeCtor::FnPtr { num_args: sig_tys.len() as u16 - 1 },
-                    Substs(sig_tys.into()),
+                    Substs(sig_tys.clone().into()),
                 );
                 let closure_ty =
                     Ty::apply_one(TypeCtor::Closure { def: self.owner, expr: tgt_expr }, sig_ty);
@@ -167,6 +167,12 @@ impl<'a> InferenceContext<'a> {
                 // type, otherwise we often won't have enough information to
                 // infer the body.
                 self.coerce(&closure_ty, &expected.ty);
+
+                // Now go through the argument patterns
+                for (arg_pat, arg_ty) in args.iter().zip(sig_tys) {
+                    let resolved = self.resolve_ty_as_possible(arg_ty);
+                    self.infer_pat(*arg_pat, &resolved, BindingMode::default());
+                }
 
                 let prev_diverges = mem::replace(&mut self.diverges, Diverges::Maybe);
                 let prev_ret_ty = mem::replace(&mut self.return_ty, ret_ty.clone());
