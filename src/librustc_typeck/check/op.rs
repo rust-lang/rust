@@ -121,9 +121,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let tcx = self.tcx;
         match BinOpCategory::from(op) {
             BinOpCategory::Shortcircuit => {
-                self.demand_suptype(*lhs_span, tcx.mk_bool(), lhs_ty);
-                self.demand_suptype(*rhs_span, tcx.mk_bool(), rhs_ty);
-                tcx.mk_bool()
+                self.demand_suptype(*lhs_span, tcx.types.bool, lhs_ty);
+                self.demand_suptype(*rhs_span, tcx.types.bool, rhs_ty);
+                tcx.types.bool
             }
 
             BinOpCategory::Shift => {
@@ -140,7 +140,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             BinOpCategory::Comparison => {
                 // both LHS and RHS and result will have the same type
                 self.demand_suptype(*rhs_span, lhs_ty, rhs_ty);
-                tcx.mk_bool()
+                tcx.types.bool
             }
         }
     }
