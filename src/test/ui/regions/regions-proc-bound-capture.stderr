@@ -5,11 +5,13 @@ LL | fn static_proc(x: &isize) -> Box<dyn FnMut() -> (isize) + 'static> {
    |                   ------ this data with the anonymous lifetime `'_`...
 LL |     // This is illegal, because the region bound on `proc` is 'static.
 LL |     Box::new(move || { *x })
-   |     ---------^^^^^^^^^^^^^^-
-   |     |        |
-   |     |        ...and is captured here
-   |     ...is required to be `'static` by this...
+   |              ^^^^^^^^^^^^^^ ...is captured here...
    |
+note: ...and required to be `'static` by this
+  --> $DIR/regions-proc-bound-capture.rs:9:5
+   |
+LL |     Box::new(move || { *x })
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider changing the trait object's explicit `'static` bound to the anonymous lifetime `'_`
    |
 LL | fn static_proc(x: &isize) -> Box<dyn FnMut() -> (isize) + '_> {

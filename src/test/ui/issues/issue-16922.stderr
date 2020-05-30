@@ -4,11 +4,13 @@ error: cannot infer an appropriate lifetime
 LL | fn foo<T: Any>(value: &T) -> Box<dyn Any> {
    |                       -- this data with the anonymous lifetime `'_`...
 LL |     Box::new(value) as Box<dyn Any>
-   |     ---------^^^^^-
-   |     |        |
-   |     |        ...and is captured here
-   |     ...is required to be `'static` by this...
+   |              ^^^^^ ...is captured here...
    |
+note: ...and required to be `'static` by this
+  --> $DIR/issue-16922.rs:4:5
+   |
+LL |     Box::new(value) as Box<dyn Any>
+   |     ^^^^^^^^^^^^^^^
 help: to permit non-static references in a trait object value, you can add an explicit bound for the anonymous lifetime `'_`
    |
 LL | fn foo<T: Any>(value: &T) -> Box<dyn Any + '_> {
