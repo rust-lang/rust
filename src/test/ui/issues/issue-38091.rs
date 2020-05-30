@@ -1,4 +1,3 @@
-// run-pass
 #![feature(specialization)]
 
 trait Iterate<'a> {
@@ -7,6 +6,7 @@ trait Iterate<'a> {
 }
 impl<'a, T> Iterate<'a> for T where T: Check {
     default type Ty = ();
+    //~^ ERROR the trait bound `(): Valid` is not satisfied
     default fn iterate(self) {}
 }
 

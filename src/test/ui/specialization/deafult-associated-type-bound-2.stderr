@@ -1,0 +1,14 @@
+error[E0277]: can't compare `&'static B` with `B`
+  --> $DIR/deafult-associated-type-bound-2.rs:15:5
+   |
+LL | trait X<T> {
+   | ---------- required by `X`
+...
+LL |     default type U = &'static B;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no implementation for `&'static B == B`
+   |
+   = help: the trait `std::cmp::PartialEq<B>` is not implemented for `&'static B`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.
