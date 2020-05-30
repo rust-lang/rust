@@ -572,7 +572,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Binders<chalk_ir::QuantifiedWhereClauses<Ru
                 chalk_ir::Binders::new(
                     chalk_ir::VariableKinds::new(interner),
                     chalk_ir::WhereClause::Implemented(chalk_ir::TraitRef {
-                        trait_id: chalk_ir::TraitId(*def_id),
+                        trait_id: chalk_ir::TraitId(def_id),
                         substitution: substs.lower_into(interner),
                     }),
                 )
@@ -581,7 +581,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Binders<chalk_ir::QuantifiedWhereClauses<Ru
             ty::ExistentialPredicate::AutoTrait(def_id) => chalk_ir::Binders::new(
                 chalk_ir::VariableKinds::new(interner),
                 chalk_ir::WhereClause::Implemented(chalk_ir::TraitRef {
-                    trait_id: chalk_ir::TraitId(*def_id),
+                    trait_id: chalk_ir::TraitId(def_id),
                     substitution: chalk_ir::Substitution::empty(interner),
                 }),
             ),

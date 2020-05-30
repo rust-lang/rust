@@ -459,7 +459,7 @@ version = "0.10.1-dev"
 source = "git+https://github.com/rust-lang/chalk.git?rev=ea1ca4ddc43abcfed77420f294a3713fac714e18#ea1ca4ddc43abcfed77420f294a3713fac714e18"
 dependencies = [
  "chalk-derive",
- "lazy_static 1.4.0",
+ "lazy_static",
 ]
 
 [[package]]
