@@ -1992,7 +1992,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.var_debug_info.push(VarDebugInfo {
             name,
             source_info: debug_source_info,
-            place: for_arm_body.into(),
+            value: VarDebugInfoContents::Place(for_arm_body.into()),
         });
         let locals = if has_guard.0 {
             let ref_for_guard = self.local_decls.push(LocalDecl::<'tcx> {
@@ -2011,7 +2011,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.var_debug_info.push(VarDebugInfo {
                 name,
                 source_info: debug_source_info,
-                place: ref_for_guard.into(),
+                value: VarDebugInfoContents::Place(ref_for_guard.into()),
             });
             LocalsForNode::ForGuard { ref_for_guard, for_arm_body }
         } else {

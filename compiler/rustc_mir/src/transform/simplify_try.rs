@@ -246,14 +246,19 @@ fn get_arm_identity_info<'a, 'tcx>(
         tmp_assigned_vars.insert(*r);
     }
 
-    let dbg_info_to_adjust: Vec<_> =
-        debug_info
-            .iter()
-            .enumerate()
-            .filter_map(|(i, var_info)| {
-                if tmp_assigned_vars.contains(var_info.place.local) { Some(i) } else { None }
-            })
-            .collect();
+    let dbg_info_to_adjust: Vec<_> = debug_info
+        .iter()
+        .enumerate()
+        .filter_map(|(i, var_info)| {
+            if let VarDebugInfoContents::Place(p) = var_info.value {
+                if tmp_assigned_vars.contains(p.local) {
+                    return Some(i);
+                }
+            }
+
+            None
+        })
+        .collect();
 
     Some(ArmIdentityInfo {
         local_temp_0: local_tmp_s0,
@@ -340,9 +345,11 @@ fn optimization_applies<'tcx>(
     // Check that debug info only points to full Locals and not projections.
     for dbg_idx in &opt_info.dbg_info_to_adjust {
         let dbg_info = &var_debug_info[*dbg_idx];
-        if !dbg_info.place.projection.is_empty() {
-            trace!("NO: debug info for {:?} had a projection {:?}", dbg_info.name, dbg_info.place);
-            return false;
+        if let VarDebugInfoContents::Place(p) = dbg_info.value {
+            if !p.projection.is_empty() {
+                trace!("NO: debug info for {:?} had a projection {:?}", dbg_info.name, p);
+                return false;
+            }
         }
     }
 
@@ -423,9 +430,15 @@ impl<'tcx> MirPass<'tcx> for SimplifyArmIdentity {
                 // Fix the debug info to point to the right local
                 for dbg_index in opt_info.dbg_info_to_adjust {
                     let dbg_info = &mut debug_info[dbg_index];
-                    assert!(dbg_info.place.projection.is_empty());
-                    dbg_info.place.local = opt_info.local_0;
-                    dbg_info.place.projection = opt_info.dbg_projection;
+                    assert!(
+                        matches!(dbg_info.value, VarDebugInfoContents::Place(_)),
+                        "value was not a Place"
+                    );
+                    if let VarDebugInfoContents::Place(p) = &mut dbg_info.value {
+                        assert!(p.projection.is_empty());
+                        p.local = opt_info.local_0;
+                        p.projection = opt_info.dbg_projection;
+                    }
                 }
 
                 trace!("block is now {:?}", bb.statements);
