@@ -2,12 +2,12 @@ error: cannot infer an appropriate lifetime
   --> $DIR/object-lifetime-default-from-box-error.rs:18:5
    |
 LL | fn load(ss: &mut SomeStruct) -> Box<dyn SomeTrait> {
-   |             --------------- data with this lifetime...
+   |             --------------- this data with the anonymous lifetime `'_`...
 ...
 LL |     ss.r
    |     ^^^^ ...is captured and required to be `'static` here
    |
-help: to permit non-static references in a trait object value, you can add an explicit bound for the anonymous lifetime #2 defined on the function body at 14:1
+help: to permit non-static references in a trait object value, you can add an explicit bound for the anonymous lifetime `'_`
    |
 LL | fn load(ss: &mut SomeStruct) -> Box<dyn SomeTrait + '_> {
    |                                                   ^^^^

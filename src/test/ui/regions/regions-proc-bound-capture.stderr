@@ -2,7 +2,7 @@ error: cannot infer an appropriate lifetime
   --> $DIR/regions-proc-bound-capture.rs:9:14
    |
 LL | fn static_proc(x: &isize) -> Box<dyn FnMut() -> (isize) + 'static> {
-   |                   ------ data with this lifetime...
+   |                   ------ this data with the anonymous lifetime `'_`...
 LL |     // This is illegal, because the region bound on `proc` is 'static.
 LL |     Box::new(move || { *x })
    |     ---------^^^^^^^^^^^^^^-
@@ -10,7 +10,7 @@ LL |     Box::new(move || { *x })
    |     |        ...and is captured here
    |     ...is required to be `'static` by this...
    |
-help: consider changing the trait object's explicit `'static` bound
+help: consider changing the trait object's explicit `'static` bound to the anonymous lifetime `'_`
    |
 LL | fn static_proc(x: &isize) -> Box<dyn FnMut() -> (isize) + '_> {
    |                                                           ^^

@@ -2,14 +2,14 @@ error: cannot infer an appropriate lifetime
   --> $DIR/regions-close-object-into-object-2.rs:10:11
    |
 LL | fn g<'a, T: 'static>(v: Box<dyn A<T> + 'a>) -> Box<dyn X + 'static> {
-   |                         ------------------ data with this lifetime...
+   |                         ------------------ this data with lifetime `'a`...
 LL |     box B(&*v) as Box<dyn X>
    |     ------^^^---------------
    |     |     |
    |     |     ...and is captured here
    |     ...is required to be `'static` by this...
    |
-help: consider changing the trait object's explicit `'static` bound
+help: consider changing the trait object's explicit `'static` bound to lifetime `'a`
    |
 LL | fn g<'a, T: 'static>(v: Box<dyn A<T> + 'a>) -> Box<dyn X + 'a> {
    |                                                            ^^

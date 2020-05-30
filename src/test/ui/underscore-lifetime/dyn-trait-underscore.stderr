@@ -2,12 +2,12 @@ error: cannot infer an appropriate lifetime
   --> $DIR/dyn-trait-underscore.rs:8:20
    |
 LL | fn a<T>(items: &[T]) -> Box<dyn Iterator<Item=&T>> {
-   |                ---- data with this lifetime...
+   |                ---- this data with the anonymous lifetime `'_`...
 LL |     //                      ^^^^^^^^^^^^^^^^^^^^^ bound *here* defaults to `'static`
 LL |     Box::new(items.iter())
    |     ---------------^^^^--- ...is captured and required to be `'static` here
    |
-help: to permit non-static references in a trait object value, you can add an explicit bound for the anonymous lifetime #1 defined on the function body at 6:1
+help: to permit non-static references in a trait object value, you can add an explicit bound for the anonymous lifetime `'_`
    |
 LL | fn a<T>(items: &[T]) -> Box<dyn Iterator<Item=&T> + '_> {
    |                                                   ^^^^

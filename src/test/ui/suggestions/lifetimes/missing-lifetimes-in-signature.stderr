@@ -12,14 +12,14 @@ error: cannot infer an appropriate lifetime
 LL |   fn foo<G, T>(g: G, dest: &mut T) -> impl FnOnce()
    |                            ------     ------------- ...is required to be `'static` by this...
    |                            |
-   |                            data with this lifetime...
+   |                            this data with the anonymous lifetime `'_`...
 ...
 LL | /     move || {
 LL | |         *dest = g.get();
 LL | |     }
    | |_____^ ...and is captured here
    |
-help: to permit non-static references in an `impl Trait` value, you can add an explicit bound for the anonymous lifetime #1 defined on the function body at 15:1
+help: to permit non-static references in an `impl Trait` value, you can add an explicit bound for the anonymous lifetime `'_`
    |
 LL | fn foo<G, T>(g: G, dest: &mut T) -> impl FnOnce() + '_
    |                                                   ^^^^
