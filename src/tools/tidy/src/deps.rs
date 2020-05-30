@@ -79,7 +79,6 @@ const WHITELIST: &[&str] = &[
     "byteorder",
     "cc",
     "cfg-if",
-    "chalk-base",
     "chalk-derive",
     "chalk-ir",
     "cloudabi",
