@@ -151,10 +151,16 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
 ///
 /// The `RangeFrom` `start..` contains all values with `x >= start`.
 ///
-/// *Note*: Currently, no overflow checking is done for the [`Iterator`]
-/// implementation; if you use an integer range and the integer overflows, it
-/// might panic in debug mode or create an endless loop in release mode. **This
-/// overflow behavior might change in the future.**
+/// *Note*: Overflow in the [`Iterator`] implementation (when the contained
+/// data type reaches its numerical limit) is allowed to panic, wrap, or
+/// saturate. This behavior is defined by the implementation of the [`Step`]
+/// trait. For primitive integers, this follows the normal rules, and respects
+/// the overflow checks profile (panic in debug, wrap in release). Note also
+/// that overflow happens earlier than you might assume: the overflow happens
+/// in the call to `next` that yields the maximum value, as the range must be
+/// set to a state to yield the next value.
+///
+/// [`Step`]: crate::iter::Step
 ///
 /// # Examples
 ///

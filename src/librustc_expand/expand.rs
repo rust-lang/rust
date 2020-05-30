@@ -24,6 +24,7 @@ use rustc_parse::validate_attr;
 use rustc_session::lint::builtin::UNUSED_DOC_COMMENTS;
 use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::parse::{feature_err, ParseSess};
+use rustc_session::Limit;
 use rustc_span::source_map::respan;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{FileName, Span, DUMMY_SP};
@@ -664,7 +665,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     ) -> ExpandResult<AstFragment, Invocation> {
         let recursion_limit =
             self.cx.reduced_recursion_limit.unwrap_or(self.cx.ecfg.recursion_limit);
-        if self.cx.current_expansion.depth > recursion_limit {
+        if !recursion_limit.value_within_limit(self.cx.current_expansion.depth) {
             if self.cx.reduced_recursion_limit.is_none() {
                 self.error_recursion_limit_reached();
             }
@@ -1784,7 +1785,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
 pub struct ExpansionConfig<'feat> {
     pub crate_name: String,
     pub features: Option<&'feat Features>,
-    pub recursion_limit: usize,
+    pub recursion_limit: Limit,
     pub trace_mac: bool,
     pub should_test: bool, // If false, strip `#[test]` nodes
     pub keep_macs: bool,
@@ -1795,7 +1796,7 @@ impl<'feat> ExpansionConfig<'feat> {
         ExpansionConfig {
             crate_name,
             features: None,
-            recursion_limit: 1024,
+            recursion_limit: Limit::new(1024),
             trace_mac: false,
             should_test: false,
             keep_macs: false,

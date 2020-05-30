@@ -974,20 +974,18 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_expr_asm(&mut self, sp: Span, asm: &InlineAsm) -> hir::ExprKind<'hir> {
-        let asm_arch = if let Some(asm_arch) = self.sess.asm_arch {
-            asm_arch
-        } else {
+        if self.sess.asm_arch.is_none() {
             struct_span_err!(self.sess, sp, E0472, "asm! is unsupported on this target").emit();
-            return hir::ExprKind::Err;
-        };
-        if asm.options.contains(InlineAsmOptions::ATT_SYNTAX) {
-            match asm_arch {
-                asm::InlineAsmArch::X86 | asm::InlineAsmArch::X86_64 => {}
-                _ => self
-                    .sess
-                    .struct_span_err(sp, "the `att_syntax` option is only supported on x86")
-                    .emit(),
-            }
+        }
+        if asm.options.contains(InlineAsmOptions::ATT_SYNTAX)
+            && !matches!(
+                self.sess.asm_arch,
+                Some(asm::InlineAsmArch::X86 | asm::InlineAsmArch::X86_64)
+            )
+        {
+            self.sess
+                .struct_span_err(sp, "the `att_syntax` option is only supported on x86")
+                .emit();
         }
 
         // Lower operands to HIR, filter_map skips any operands with invalid
@@ -1001,10 +999,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     Some(match reg {
                         InlineAsmRegOrRegClass::Reg(s) => asm::InlineAsmRegOrRegClass::Reg(
                             asm::InlineAsmReg::parse(
-                                asm_arch,
-                                |feature| {
-                                    self.sess.target_features.contains(&Symbol::intern(feature))
-                                },
+                                sess.asm_arch?,
+                                |feature| sess.target_features.contains(&Symbol::intern(feature)),
                                 s,
                             )
                             .map_err(|e| {
@@ -1015,7 +1011,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         ),
                         InlineAsmRegOrRegClass::RegClass(s) => {
                             asm::InlineAsmRegOrRegClass::RegClass(
-                                asm::InlineAsmRegClass::parse(asm_arch, s)
+                                asm::InlineAsmRegClass::parse(sess.asm_arch?, s)
                                     .map_err(|e| {
                                         let msg = format!(
                                             "invalid register class `{}`: {}",
@@ -1029,33 +1025,38 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         }
                     })
                 };
-                let op = match op {
-                    InlineAsmOperand::In { reg, expr } => hir::InlineAsmOperand::In {
-                        reg: lower_reg(*reg)?,
+
+                // lower_reg is executed last because we need to lower all
+                // sub-expressions even if we throw them away later.
+                let op = match *op {
+                    InlineAsmOperand::In { reg, ref expr } => hir::InlineAsmOperand::In {
                         expr: self.lower_expr_mut(expr),
+                        reg: lower_reg(reg)?,
                     },
-                    InlineAsmOperand::Out { reg, late, expr } => hir::InlineAsmOperand::Out {
-                        reg: lower_reg(*reg)?,
-                        late: *late,
+                    InlineAsmOperand::Out { reg, late, ref expr } => hir::InlineAsmOperand::Out {
+                        late,
                         expr: expr.as_ref().map(|expr| self.lower_expr_mut(expr)),
+                        reg: lower_reg(reg)?,
                     },
-                    InlineAsmOperand::InOut { reg, late, expr } => hir::InlineAsmOperand::InOut {
-                        reg: lower_reg(*reg)?,
-                        late: *late,
-                        expr: self.lower_expr_mut(expr),
-                    },
-                    InlineAsmOperand::SplitInOut { reg, late, in_expr, out_expr } => {
-                        hir::InlineAsmOperand::SplitInOut {
-                            reg: lower_reg(*reg)?,
-                            late: *late,
-                            in_expr: self.lower_expr_mut(in_expr),
-                            out_expr: out_expr.as_ref().map(|expr| self.lower_expr_mut(expr)),
+                    InlineAsmOperand::InOut { reg, late, ref expr } => {
+                        hir::InlineAsmOperand::InOut {
+                            late,
+                            expr: self.lower_expr_mut(expr),
+                            reg: lower_reg(reg)?,
                         }
                     }
-                    InlineAsmOperand::Const { expr } => {
+                    InlineAsmOperand::SplitInOut { reg, late, ref in_expr, ref out_expr } => {
+                        hir::InlineAsmOperand::SplitInOut {
+                            late,
+                            in_expr: self.lower_expr_mut(in_expr),
+                            out_expr: out_expr.as_ref().map(|expr| self.lower_expr_mut(expr)),
+                            reg: lower_reg(reg)?,
+                        }
+                    }
+                    InlineAsmOperand::Const { ref expr } => {
                         hir::InlineAsmOperand::Const { expr: self.lower_expr_mut(expr) }
                     }
-                    InlineAsmOperand::Sym { expr } => {
+                    InlineAsmOperand::Sym { ref expr } => {
                         hir::InlineAsmOperand::Sym { expr: self.lower_expr_mut(expr) }
                     }
                 };
@@ -1069,6 +1070,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
 
         // Validate template modifiers against the register classes for the operands
+        let asm_arch = sess.asm_arch.unwrap();
         for p in &asm.template {
             if let InlineAsmTemplatePiece::Placeholder {
                 operand_idx,

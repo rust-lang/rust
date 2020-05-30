@@ -430,7 +430,7 @@ fn check_recursion_limit<'tcx>(
     // Code that needs to instantiate the same function recursively
     // more than the recursion limit is assumed to be causing an
     // infinite expansion.
-    if adjusted_recursion_depth > tcx.sess.recursion_limit() {
+    if !tcx.sess.recursion_limit().value_within_limit(adjusted_recursion_depth) {
         let error = format!("reached the recursion limit while instantiating `{}`", instance);
         if let Some(def_id) = def_id.as_local() {
             let hir_id = tcx.hir().as_local_hir_id(def_id);
@@ -463,7 +463,7 @@ fn check_type_length_limit<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
     // which means that rustc basically hangs.
     //
     // Bail out in these cases to avoid that bad user experience.
-    if type_length > tcx.sess.type_length_limit() {
+    if !tcx.sess.type_length_limit().value_within_limit(type_length) {
         // The instance name is already known to be too long for rustc.
         // Show only the first and last 32 characters to avoid blasting
         // the user's terminal with thousands of lines of type-name.
@@ -632,14 +632,21 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                 let ty = self.monomorphize(ty);
                 visit_drop_use(self.tcx, ty, true, self.output);
             }
+            mir::TerminatorKind::InlineAsm { ref operands, .. } => {
+                for op in operands {
+                    if let mir::InlineAsmOperand::SymFn { value } = op {
+                        let fn_ty = self.monomorphize(value.literal.ty);
+                        visit_fn_use(self.tcx, fn_ty, false, &mut self.output);
+                    }
+                }
+            }
             mir::TerminatorKind::Goto { .. }
             | mir::TerminatorKind::SwitchInt { .. }
             | mir::TerminatorKind::Resume
             | mir::TerminatorKind::Abort
             | mir::TerminatorKind::Return
             | mir::TerminatorKind::Unreachable
-            | mir::TerminatorKind::Assert { .. }
-            | mir::TerminatorKind::InlineAsm { .. } => {}
+            | mir::TerminatorKind::Assert { .. } => {}
             mir::TerminatorKind::GeneratorDrop
             | mir::TerminatorKind::Yield { .. }
             | mir::TerminatorKind::FalseEdges { .. }

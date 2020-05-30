@@ -579,8 +579,8 @@ fn unsafety_check_result(tcx: TyCtxt<'_>, def_id: LocalDefId) -> UnsafetyCheckRe
     }
 }
 
-fn unsafe_derive_on_repr_packed(tcx: TyCtxt<'_>, def_id: DefId) {
-    let lint_hir_id = tcx.hir().as_local_hir_id(def_id.expect_local());
+fn unsafe_derive_on_repr_packed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
+    let lint_hir_id = tcx.hir().as_local_hir_id(def_id);
 
     tcx.struct_span_lint_hir(SAFE_PACKED_BORROWS, lint_hir_id, tcx.def_span(def_id), |lint| {
         // FIXME: when we make this a hard error, this should have its
@@ -659,16 +659,15 @@ fn builtin_derive_def_id(tcx: TyCtxt<'_>, def_id: DefId) -> Option<DefId> {
     }
 }
 
-pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: DefId) {
+pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     debug!("check_unsafety({:?})", def_id);
 
     // closures are handled by their parent fn.
-    if tcx.is_closure(def_id) {
+    if tcx.is_closure(def_id.to_def_id()) {
         return;
     }
 
-    let UnsafetyCheckResult { violations, unsafe_blocks } =
-        tcx.unsafety_check_result(def_id.expect_local());
+    let UnsafetyCheckResult { violations, unsafe_blocks } = tcx.unsafety_check_result(def_id);
 
     for &UnsafetyViolation { source_info, lint_root, description, details, kind } in
         violations.iter()
@@ -693,8 +692,10 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: DefId) {
                 .emit();
             }
             UnsafetyViolationKind::BorrowPacked => {
-                if let Some(impl_def_id) = builtin_derive_def_id(tcx, def_id) {
-                    tcx.ensure().unsafe_derive_on_repr_packed(impl_def_id);
+                if let Some(impl_def_id) = builtin_derive_def_id(tcx, def_id.to_def_id()) {
+                    // If a method is defined in the local crate,
+                    // the impl containing that method should also be.
+                    tcx.ensure().unsafe_derive_on_repr_packed(impl_def_id.expect_local());
                 } else {
                     tcx.struct_span_lint_hir(
                         SAFE_PACKED_BORROWS,

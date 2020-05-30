@@ -619,15 +619,7 @@ impl<A: Step> Iterator for ops::RangeFrom<A> {
 
     #[inline]
     fn nth(&mut self, n: usize) -> Option<A> {
-        // If we would jump over the maximum value, panic immediately.
-        // This is consistent with behavior before the Step redesign,
-        // even though it's inconsistent with n `next` calls.
-        // To get consistent behavior, change it to use `forward` instead.
-        // This change should go through FCP separately to the redesign, so is for now left as a
-        // FIXME: make this consistent
-        let plus_n =
-            Step::forward_checked(self.start.clone(), n).expect("overflow in RangeFrom::nth");
-        // The final step should always be debug-checked.
+        let plus_n = Step::forward(self.start.clone(), n);
         self.start = Step::forward(plus_n.clone(), 1);
         Some(plus_n)
     }

@@ -333,10 +333,10 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
 
                     Reveal::All => {
                         let recursion_limit = self.tcx().sess.recursion_limit();
-                        if self.depth >= recursion_limit {
+                        if !recursion_limit.value_within_limit(self.depth) {
                             let obligation = Obligation::with_depth(
                                 self.cause.clone(),
-                                recursion_limit,
+                                recursion_limit.0,
                                 self.param_env,
                                 ty,
                             );
@@ -522,7 +522,7 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
             // But for now, let's classify this as an overflow:
             let recursion_limit = selcx.tcx().sess.recursion_limit();
             let obligation =
-                Obligation::with_depth(cause, recursion_limit, param_env, projection_ty);
+                Obligation::with_depth(cause, recursion_limit.0, param_env, projection_ty);
             selcx.infcx().report_overflow_error(&obligation, false);
         }
         Err(ProjectionCacheEntry::NormalizedTy(ty)) => {
@@ -814,8 +814,7 @@ fn project_type<'cx, 'tcx>(
 ) -> Result<ProjectedTy<'tcx>, ProjectionTyError<'tcx>> {
     debug!("project(obligation={:?})", obligation);
 
-    let recursion_limit = selcx.tcx().sess.recursion_limit();
-    if obligation.recursion_depth >= recursion_limit {
+    if !selcx.tcx().sess.recursion_limit().value_within_limit(obligation.recursion_depth) {
         debug!("project: overflow!");
         return Err(ProjectionTyError::TraitSelectionError(SelectionError::Overflow));
     }

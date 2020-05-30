@@ -48,7 +48,7 @@ impl<'a, 'tcx> Iterator for Autoderef<'a, 'tcx> {
             return Some((self.cur_ty, 0));
         }
 
-        if self.steps.len() >= tcx.sess.recursion_limit() {
+        if !tcx.sess.recursion_limit().value_within_limit(self.steps.len()) {
             if !self.silence_errors {
                 report_autoderef_recursion_limit_error(tcx, self.span, self.cur_ty);
             }

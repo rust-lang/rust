@@ -1109,6 +1109,14 @@ impl<T: Clone> Clone for Box<[T]> {
     fn clone(&self) -> Self {
         self.to_vec().into_boxed_slice()
     }
+
+    fn clone_from(&mut self, other: &Self) {
+        if self.len() == other.len() {
+            self.clone_from_slice(&other);
+        } else {
+            *self = other.clone();
+        }
+    }
 }
 
 #[stable(feature = "box_borrow", since = "1.1.0")]
