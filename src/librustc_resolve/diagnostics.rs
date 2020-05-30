@@ -629,6 +629,7 @@ impl<'a> Resolver<'a> {
         &mut self,
         lookup_ident: Ident,
         namespace: Namespace,
+        _parent_scope: &ParentScope<'a>,
         start_module: Module<'a>,
         crate_name: Ident,
         filter_fn: FilterFn,
@@ -722,6 +723,7 @@ impl<'a> Resolver<'a> {
         &mut self,
         lookup_ident: Ident,
         namespace: Namespace,
+        parent_scope: &ParentScope<'a>,
         filter_fn: FilterFn,
     ) -> Vec<ImportSuggestion>
     where
@@ -730,6 +732,7 @@ impl<'a> Resolver<'a> {
         let mut suggestions = self.lookup_import_candidates_from_module(
             lookup_ident,
             namespace,
+            parent_scope,
             self.graph_root,
             Ident::with_dummy_span(kw::Crate),
             &filter_fn,
@@ -754,6 +757,7 @@ impl<'a> Resolver<'a> {
                     suggestions.extend(self.lookup_import_candidates_from_module(
                         lookup_ident,
                         namespace,
+                        parent_scope,
                         crate_root,
                         ident,
                         &filter_fn,

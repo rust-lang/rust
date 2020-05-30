@@ -212,7 +212,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
         let ident = path.last().unwrap().ident;
         let candidates = self
             .r
-            .lookup_import_candidates(ident, ns, is_expected)
+            .lookup_import_candidates(ident, ns, &self.parent_scope, is_expected)
             .drain(..)
             .filter(|ImportSuggestion { did, .. }| {
                 match (did, res.and_then(|res| res.opt_def_id())) {
@@ -223,7 +223,8 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
             .collect::<Vec<_>>();
         let crate_def_id = DefId::local(CRATE_DEF_INDEX);
         if candidates.is_empty() && is_expected(Res::Def(DefKind::Enum, crate_def_id)) {
-            let enum_candidates = self.r.lookup_import_candidates(ident, ns, is_enum_variant);
+            let enum_candidates =
+                self.r.lookup_import_candidates(ident, ns, &self.parent_scope, is_enum_variant);
             let mut enum_candidates = enum_candidates
                 .iter()
                 .map(|suggestion| import_candidate_to_enum_paths(&suggestion))
