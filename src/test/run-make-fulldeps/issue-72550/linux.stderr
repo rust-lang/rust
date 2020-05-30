@@ -9,6 +9,7 @@ stack backtrace:
    6: std::panicking::begin_panic
              at /checkout/src/libstd/panicking.rs:410
    7: test::main
+             at ./test.rs:2
    8: std::rt::lang_start::{{closure}}
              at /checkout/src/libstd/rt.rs:67
    9: std::rt::lang_start_internal
