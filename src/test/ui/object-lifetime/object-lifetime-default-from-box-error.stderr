@@ -1,13 +1,13 @@
-error: cannot infer an appropriate lifetime
+error[E0758]: cannot infer an appropriate lifetime
   --> $DIR/object-lifetime-default-from-box-error.rs:18:5
    |
 LL | fn load(ss: &mut SomeStruct) -> Box<dyn SomeTrait> {
-   |             --------------- this data with the anonymous lifetime `'_`...
+   |             --------------- this data with an anonymous lifetime `'_`...
 ...
 LL |     ss.r
-   |     ^^^^ ...is captured and required to be `'static` here
+   |     ^^^^ ...is captured and required live as long as `'static` here
    |
-help: to permit non-static references in a trait object value, you can add an explicit bound for the anonymous lifetime `'_`
+help: to permit non-static references in a trait object value, you can add an explicit bound for an anonymous lifetime `'_`
    |
 LL | fn load(ss: &mut SomeStruct) -> Box<dyn SomeTrait + '_> {
    |                                                   ^^^^

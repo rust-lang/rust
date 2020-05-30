@@ -2,7 +2,7 @@
 
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError;
-use rustc_errors::{Applicability, ErrorReported};
+use rustc_errors::{struct_span_err, Applicability, ErrorReported};
 use rustc_hir::{GenericBound, ItemKind, Lifetime, LifetimeName, TyKind};
 use rustc_middle::ty::RegionKind;
 
@@ -35,10 +35,14 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                     let (lifetime_name, lifetime) = if sup_r.has_name() {
                         (sup_r.to_string(), format!("lifetime `{}`", sup_r))
                     } else {
-                        ("'_".to_owned(), "the anonymous lifetime `'_`".to_string())
+                        ("'_".to_owned(), "an anonymous lifetime `'_`".to_string())
                     };
-                    let mut err =
-                        self.tcx().sess.struct_span_err(sp, "cannot infer an appropriate lifetime");
+                    let mut err = struct_span_err!(
+                        self.tcx().sess,
+                        sp,
+                        E0758,
+                        "cannot infer an appropriate lifetime"
+                    );
                     err.span_label(
                         param_info.param_ty_span,
                         &format!("this data with {}...", lifetime),
@@ -61,10 +65,6 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                             //    |
                             // LL | fn foo(x: &i32) -> Box<dyn Debug> { Box::new(x) }
                             //    |           ----                      ---------^-
-                            //    |           |                         |        |
-                            //    |           |                         |   ...and is captured here
-                            //    |           |           ...is required to be `'static` by this...
-                            //    |           this data with the anonymous lifetime `'_`...
                             //
                             // and instead show:
                             //
@@ -72,25 +72,28 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                             //   --> $DIR/must_outlive_least_region_or_bound.rs:18:50
                             //    |
                             // LL | fn foo(x: &i32) -> Box<dyn Debug> { Box::new(x) }
-                            //    |           ----                               ^ ...is captured here with a `'static` requirement
-                            //    |           |
-                            //    |           this data with the anonymous lifetime `'_`...
-                            //    |
+                            //    |           ----                               ^
                             err.span_label(
                                 sup_origin.span(),
-                                "...is captured here with a `'static` requirement",
+                                "...is captured here requiring it to live as long as `'static`",
                             );
                         } else if sup_origin.span() <= return_sp {
                             err.span_label(sup_origin.span(), "...is captured here...");
-                            err.span_label(return_sp, "...and required to be `'static` by this");
+                            err.span_label(
+                                return_sp,
+                                "...and required to live as long as `'static` by this",
+                            );
                         } else {
-                            err.span_label(return_sp, "...is required to be `'static` by this...");
+                            err.span_label(
+                                return_sp,
+                                "...is required to live as long as `'static` by this...",
+                            );
                             err.span_label(sup_origin.span(), "...and is captured here");
                         }
                     } else {
                         err.span_label(
                             return_sp,
-                            "...is captured and required to be `'static` here",
+                            "...is captured and required live as long as `'static` here",
                         );
                     }
 

@@ -1,24 +1,24 @@
-error: cannot infer an appropriate lifetime
+error[E0758]: cannot infer an appropriate lifetime
   --> $DIR/must_outlive_least_region_or_bound.rs:3:35
    |
 LL | fn elided(x: &i32) -> impl Copy { x }
    |              ----     ---------   ^ ...and is captured here
    |              |        |
-   |              |        ...is required to be `'static` by this...
-   |              this data with the anonymous lifetime `'_`...
+   |              |        ...is required to live as long as `'static` by this...
+   |              this data with an anonymous lifetime `'_`...
    |
-help: to permit non-static references in an `impl Trait` value, you can add an explicit bound for the anonymous lifetime `'_`
+help: to permit non-static references in an `impl Trait` value, you can add an explicit bound for an anonymous lifetime `'_`
    |
 LL | fn elided(x: &i32) -> impl Copy + '_ { x }
    |                                 ^^^^
 
-error: cannot infer an appropriate lifetime
+error[E0758]: cannot infer an appropriate lifetime
   --> $DIR/must_outlive_least_region_or_bound.rs:6:44
    |
 LL | fn explicit<'a>(x: &'a i32) -> impl Copy { x }
    |                    -------     ---------   ^ ...and is captured here
    |                    |           |
-   |                    |           ...is required to be `'static` by this...
+   |                    |           ...is required to live as long as `'static` by this...
    |                    this data with lifetime `'a`...
    |
 help: to permit non-static references in an `impl Trait` value, you can add an explicit bound for lifetime `'a`
@@ -26,16 +26,16 @@ help: to permit non-static references in an `impl Trait` value, you can add an e
 LL | fn explicit<'a>(x: &'a i32) -> impl Copy + 'a { x }
    |                                          ^^^^
 
-error: cannot infer an appropriate lifetime
+error[E0758]: cannot infer an appropriate lifetime
   --> $DIR/must_outlive_least_region_or_bound.rs:9:46
    |
 LL | fn elided2(x: &i32) -> impl Copy + 'static { x }
    |               ----     -------------------   ^ ...and is captured here
    |               |        |
-   |               |        ...is required to be `'static` by this...
-   |               this data with the anonymous lifetime `'_`...
+   |               |        ...is required to live as long as `'static` by this...
+   |               this data with an anonymous lifetime `'_`...
    |
-help: consider changing the `impl Trait`'s explicit `'static` bound to the anonymous lifetime `'_`
+help: consider changing the `impl Trait`'s explicit `'static` bound to an anonymous lifetime `'_`
    |
 LL | fn elided2(x: &i32) -> impl Copy + '_ { x }
    |                                    ^^
@@ -44,13 +44,13 @@ help: alternatively, set an explicit `'static` lifetime to this parameter
 LL | fn elided2(x: &'static i32) -> impl Copy + 'static { x }
    |               ^^^^^^^^^^^^
 
-error: cannot infer an appropriate lifetime
+error[E0758]: cannot infer an appropriate lifetime
   --> $DIR/must_outlive_least_region_or_bound.rs:12:55
    |
 LL | fn explicit2<'a>(x: &'a i32) -> impl Copy + 'static { x }
    |                     -------     -------------------   ^ ...and is captured here
    |                     |           |
-   |                     |           ...is required to be `'static` by this...
+   |                     |           ...is required to live as long as `'static` by this...
    |                     this data with lifetime `'a`...
    |
 help: consider changing the `impl Trait`'s explicit `'static` bound to lifetime `'a`
@@ -70,13 +70,13 @@ LL | fn foo<'a>(x: &i32) -> impl Copy + 'a { x }
    |               |
    |               help: add explicit lifetime `'a` to the type of `x`: `&'a i32`
 
-error: cannot infer an appropriate lifetime
+error[E0758]: cannot infer an appropriate lifetime
   --> $DIR/must_outlive_least_region_or_bound.rs:33:69
    |
 LL | fn with_bound<'a>(x: &'a i32) -> impl LifetimeTrait<'a> + 'static { x }
    |                      -------     --------------------------------   ^ ...and is captured here
    |                      |           |
-   |                      |           ...is required to be `'static` by this...
+   |                      |           ...is required to live as long as `'static` by this...
    |                      this data with lifetime `'a`...
    |
 help: consider changing the `impl Trait`'s explicit `'static` bound to lifetime `'a`
@@ -105,24 +105,24 @@ LL | fn ty_param_wont_outlive_static<T:Debug>(x: T) -> impl Debug + 'static {
    |                                 |
    |                                 help: consider adding an explicit lifetime bound...: `T: 'static +`
 
-error: cannot infer an appropriate lifetime
+error[E0758]: cannot infer an appropriate lifetime
   --> $DIR/must_outlive_least_region_or_bound.rs:18:50
    |
 LL | fn elided3(x: &i32) -> Box<dyn Debug> { Box::new(x) }
-   |               ----                               ^ ...is captured here with a `'static` requirement
+   |               ----                               ^ ...is captured here requiring it to live as long as `'static`
    |               |
-   |               this data with the anonymous lifetime `'_`...
+   |               this data with an anonymous lifetime `'_`...
    |
-help: to permit non-static references in a trait object value, you can add an explicit bound for the anonymous lifetime `'_`
+help: to permit non-static references in a trait object value, you can add an explicit bound for an anonymous lifetime `'_`
    |
 LL | fn elided3(x: &i32) -> Box<dyn Debug + '_> { Box::new(x) }
    |                                      ^^^^
 
-error: cannot infer an appropriate lifetime
+error[E0758]: cannot infer an appropriate lifetime
   --> $DIR/must_outlive_least_region_or_bound.rs:21:59
    |
 LL | fn explicit3<'a>(x: &'a i32) -> Box<dyn Debug> { Box::new(x) }
-   |                     -------                               ^ ...is captured here with a `'static` requirement
+   |                     -------                               ^ ...is captured here requiring it to live as long as `'static`
    |                     |
    |                     this data with lifetime `'a`...
    |
@@ -131,15 +131,15 @@ help: to permit non-static references in a trait object value, you can add an ex
 LL | fn explicit3<'a>(x: &'a i32) -> Box<dyn Debug + 'a> { Box::new(x) }
    |                                               ^^^^
 
-error: cannot infer an appropriate lifetime
+error[E0758]: cannot infer an appropriate lifetime
   --> $DIR/must_outlive_least_region_or_bound.rs:24:60
    |
 LL | fn elided4(x: &i32) -> Box<dyn Debug + 'static> { Box::new(x) }
-   |               ----                                         ^ ...is captured here with a `'static` requirement
+   |               ----                                         ^ ...is captured here requiring it to live as long as `'static`
    |               |
-   |               this data with the anonymous lifetime `'_`...
+   |               this data with an anonymous lifetime `'_`...
    |
-help: consider changing the trait object's explicit `'static` bound to the anonymous lifetime `'_`
+help: consider changing the trait object's explicit `'static` bound to an anonymous lifetime `'_`
    |
 LL | fn elided4(x: &i32) -> Box<dyn Debug + '_> { Box::new(x) }
    |                                        ^^
@@ -148,11 +148,11 @@ help: alternatively, set an explicit `'static` lifetime in this parameter
 LL | fn elided4(x: &'static i32) -> Box<dyn Debug + 'static> { Box::new(x) }
    |               ^^^^^^^^^^^^
 
-error: cannot infer an appropriate lifetime
+error[E0758]: cannot infer an appropriate lifetime
   --> $DIR/must_outlive_least_region_or_bound.rs:27:69
    |
 LL | fn explicit4<'a>(x: &'a i32) -> Box<dyn Debug + 'static> { Box::new(x) }
-   |                     ------- this data with lifetime `'a`...         ^ ...is captured here with a `'static` requirement
+   |                     ------- this data with lifetime `'a`...         ^ ...is captured here requiring it to live as long as `'static`
    |
 help: consider changing the trait object's explicit `'static` bound to lifetime `'a`
    |

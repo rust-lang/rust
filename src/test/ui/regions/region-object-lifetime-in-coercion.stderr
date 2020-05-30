@@ -1,12 +1,12 @@
-error: cannot infer an appropriate lifetime
+error[E0758]: cannot infer an appropriate lifetime
   --> $DIR/region-object-lifetime-in-coercion.rs:8:46
    |
 LL | fn a(v: &[u8]) -> Box<dyn Foo + 'static> {
-   |         ----- this data with the anonymous lifetime `'_`...
+   |         ----- this data with an anonymous lifetime `'_`...
 LL |     let x: Box<dyn Foo + 'static> = Box::new(v);
-   |                                              ^ ...is captured here with a `'static` requirement
+   |                                              ^ ...is captured here requiring it to live as long as `'static`
    |
-help: consider changing the trait object's explicit `'static` bound to the anonymous lifetime `'_`
+help: consider changing the trait object's explicit `'static` bound to an anonymous lifetime `'_`
    |
 LL | fn a(v: &[u8]) -> Box<dyn Foo + '_> {
    |                                 ^^
@@ -15,15 +15,15 @@ help: alternatively, set an explicit `'static` lifetime in this parameter
 LL | fn a(v: &'static [u8]) -> Box<dyn Foo + 'static> {
    |         ^^^^^^^^^^^^^
 
-error: cannot infer an appropriate lifetime
+error[E0758]: cannot infer an appropriate lifetime
   --> $DIR/region-object-lifetime-in-coercion.rs:13:14
    |
 LL | fn b(v: &[u8]) -> Box<dyn Foo + 'static> {
-   |         ----- this data with the anonymous lifetime `'_`...
+   |         ----- this data with an anonymous lifetime `'_`...
 LL |     Box::new(v)
-   |              ^ ...is captured here with a `'static` requirement
+   |              ^ ...is captured here requiring it to live as long as `'static`
    |
-help: consider changing the trait object's explicit `'static` bound to the anonymous lifetime `'_`
+help: consider changing the trait object's explicit `'static` bound to an anonymous lifetime `'_`
    |
 LL | fn b(v: &[u8]) -> Box<dyn Foo + '_> {
    |                                 ^^
@@ -32,16 +32,16 @@ help: alternatively, set an explicit `'static` lifetime in this parameter
 LL | fn b(v: &'static [u8]) -> Box<dyn Foo + 'static> {
    |         ^^^^^^^^^^^^^
 
-error: cannot infer an appropriate lifetime
+error[E0758]: cannot infer an appropriate lifetime
   --> $DIR/region-object-lifetime-in-coercion.rs:19:14
    |
 LL | fn c(v: &[u8]) -> Box<dyn Foo> {
-   |         ----- this data with the anonymous lifetime `'_`...
+   |         ----- this data with an anonymous lifetime `'_`...
 ...
 LL |     Box::new(v)
-   |              ^ ...is captured here with a `'static` requirement
+   |              ^ ...is captured here requiring it to live as long as `'static`
    |
-help: to permit non-static references in a trait object value, you can add an explicit bound for the anonymous lifetime `'_`
+help: to permit non-static references in a trait object value, you can add an explicit bound for an anonymous lifetime `'_`
    |
 LL | fn c(v: &[u8]) -> Box<dyn Foo + '_> {
    |                               ^^^^

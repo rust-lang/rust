@@ -1,13 +1,13 @@
-error: cannot infer an appropriate lifetime
+error[E0758]: cannot infer an appropriate lifetime
   --> $DIR/issue-62097.rs:12:31
    |
 LL |     pub async fn run_dummy_fn(&self) {
    |                               ^^^^^
    |                               |
-   |                               this data with the anonymous lifetime `'_`...
+   |                               this data with an anonymous lifetime `'_`...
    |                               ...is captured here...
 LL |         foo(|| self.bar()).await;
-   |         --- ...and required to be `'static` by this
+   |         --- ...and required to live as long as `'static` by this
 
 error: aborting due to previous error
 
