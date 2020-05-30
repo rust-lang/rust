@@ -284,15 +284,16 @@ fn reacquire_cond_mutex<'mir, 'tcx: 'mir>(
     thread: ThreadId,
     mutex: MutexId,
 ) -> InterpResult<'tcx> {
+    ecx.unblock_thread(thread);
     if ecx.mutex_is_locked(mutex) {
-        ecx.mutex_enqueue(mutex, thread);
+        ecx.mutex_enqueue_and_block(mutex, thread);
     } else {
         ecx.mutex_lock(mutex, thread);
-        ecx.unblock_thread(thread)?;
     }
     Ok(())
 }
 
+/// After a thread waiting on a condvar was signalled:
 /// Reacquire the conditional variable and remove the timeout callback if any
 /// was registered.
 fn post_cond_signal<'mir, 'tcx: 'mir>(
@@ -303,12 +304,13 @@ fn post_cond_signal<'mir, 'tcx: 'mir>(
     reacquire_cond_mutex(ecx, thread, mutex)?;
     // Waiting for the mutex is not included in the waiting time because we need
     // to acquire the mutex always even if we get a timeout.
-    ecx.unregister_timeout_callback_if_exists(thread)
+    ecx.unregister_timeout_callback_if_exists(thread);
+    Ok(())
 }
 
 /// Release the mutex associated with the condition variable because we are
 /// entering the waiting state.
-fn release_cond_mutex<'mir, 'tcx: 'mir>(
+fn release_cond_mutex_and_block<'mir, 'tcx: 'mir>(
     ecx: &mut MiriEvalContext<'mir, 'tcx>,
     active_thread: ThreadId,
     mutex: MutexId,
@@ -320,7 +322,7 @@ fn release_cond_mutex<'mir, 'tcx: 'mir>(
     } else {
         throw_ub_format!("awaiting on unlocked or owned by a different thread mutex");
     }
-    ecx.block_thread(active_thread)?;
+    ecx.block_thread(active_thread);
     Ok(())
 }
 
@@ -411,14 +413,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let kind = mutex_get_kind(this, mutex_op)?.not_undef()?;
         let id = mutex_get_or_create_id(this, mutex_op)?;
-        let active_thread = this.get_active_thread()?;
+        let active_thread = this.get_active_thread();
 
         if this.mutex_is_locked(id) {
             let owner_thread = this.mutex_get_owner(id);
             if owner_thread != active_thread {
-                // Block the active thread.
-                this.block_thread(active_thread)?;
-                this.mutex_enqueue(id, active_thread);
+                // Enqueue the active thread.
+                this.mutex_enqueue_and_block(id, active_thread);
                 Ok(0)
             } else {
                 // Trying to acquire the same mutex again.
@@ -449,7 +450,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let kind = mutex_get_kind(this, mutex_op)?.not_undef()?;
         let id = mutex_get_or_create_id(this, mutex_op)?;
-        let active_thread = this.get_active_thread()?;
+        let active_thread = this.get_active_thread();
 
         if this.mutex_is_locked(id) {
             let owner_thread = this.mutex_get_owner(id);
@@ -482,7 +483,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let kind = mutex_get_kind(this, mutex_op)?.not_undef()?;
         let id = mutex_get_or_create_id(this, mutex_op)?;
-        let active_thread = this.get_active_thread()?;
+        let active_thread = this.get_active_thread();
 
         if let Some(_old_locked_count) = this.mutex_unlock(id, active_thread)? {
             // The mutex was locked by the current thread.
@@ -528,10 +529,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         let id = rwlock_get_or_create_id(this, rwlock_op)?;
-        let active_thread = this.get_active_thread()?;
+        let active_thread = this.get_active_thread();
 
         if this.rwlock_is_write_locked(id) {
-            this.rwlock_enqueue_and_block_reader(id, active_thread)?;
+            this.rwlock_enqueue_and_block_reader(id, active_thread);
             Ok(0)
         } else {
             this.rwlock_reader_lock(id, active_thread);
@@ -543,7 +544,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         let id = rwlock_get_or_create_id(this, rwlock_op)?;
-        let active_thread = this.get_active_thread()?;
+        let active_thread = this.get_active_thread();
 
         if this.rwlock_is_write_locked(id) {
             this.eval_libc_i32("EBUSY")
@@ -557,7 +558,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         let id = rwlock_get_or_create_id(this, rwlock_op)?;
-        let active_thread = this.get_active_thread()?;
+        let active_thread = this.get_active_thread();
 
         if this.rwlock_is_locked(id) {
             // Note: this will deadlock if the lock is already locked by this
@@ -565,14 +566,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             //
             // Relevant documentation:
             // https://pubs.opengroup.org/onlinepubs/9699919799/functions/pthread_rwlock_wrlock.html
-            // An in depth discussion on this topic:
+            // An in-depth discussion on this topic:
             // https://github.com/rust-lang/rust/issues/53127
             //
             // FIXME: Detect and report the deadlock proactively. (We currently
             // report the deadlock only when no thread can continue execution,
             // but we could detect that this lock is already locked and report
             // an error.)
-            this.rwlock_enqueue_and_block_writer(id, active_thread)?;
+            this.rwlock_enqueue_and_block_writer(id, active_thread);
         } else {
             this.rwlock_writer_lock(id, active_thread);
         }
@@ -584,7 +585,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         let id = rwlock_get_or_create_id(this, rwlock_op)?;
-        let active_thread = this.get_active_thread()?;
+        let active_thread = this.get_active_thread();
 
         if this.rwlock_is_locked(id) {
             this.eval_libc_i32("EBUSY")
@@ -598,15 +599,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         let id = rwlock_get_or_create_id(this, rwlock_op)?;
-        let active_thread = this.get_active_thread()?;
+        let active_thread = this.get_active_thread();
 
         if this.rwlock_reader_unlock(id, active_thread) {
             // The thread was a reader.
             if this.rwlock_is_locked(id) {
                 // No more readers owning the lock. Give it to a writer if there
                 // is any.
-                if let Some(writer) = this.rwlock_dequeue_writer(id) {
-                    this.unblock_thread(writer)?;
+                if let Some(writer) = this.rwlock_dequeue_and_unblock_writer(id) {
                     this.rwlock_writer_lock(id, writer);
                 }
             }
@@ -617,14 +617,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // We are prioritizing writers here against the readers. As a
             // result, not only readers can starve writers, but also writers can
             // starve readers.
-            if let Some(writer) = this.rwlock_dequeue_writer(id) {
+            if let Some(writer) = this.rwlock_dequeue_and_unblock_writer(id) {
                 // Give the lock to another writer.
-                this.unblock_thread(writer)?;
                 this.rwlock_writer_lock(id, writer);
             } else {
                 // Give the lock to all readers.
-                while let Some(reader) = this.rwlock_dequeue_reader(id) {
-                    this.unblock_thread(reader)?;
+                while let Some(reader) = this.rwlock_dequeue_and_unblock_reader(id) {
                     this.rwlock_reader_lock(id, reader);
                 }
             }
@@ -753,9 +751,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let id = cond_get_or_create_id(this, cond_op)?;
         let mutex_id = mutex_get_or_create_id(this, mutex_op)?;
-        let active_thread = this.get_active_thread()?;
+        let active_thread = this.get_active_thread();
 
-        release_cond_mutex(this, active_thread, mutex_id)?;
+        release_cond_mutex_and_block(this, active_thread, mutex_id)?;
         this.condvar_wait(id, active_thread, mutex_id);
 
         Ok(0)
@@ -774,9 +772,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let id = cond_get_or_create_id(this, cond_op)?;
         let mutex_id = mutex_get_or_create_id(this, mutex_op)?;
-        let active_thread = this.get_active_thread()?;
+        let active_thread = this.get_active_thread();
 
-        release_cond_mutex(this, active_thread, mutex_id)?;
+        release_cond_mutex_and_block(this, active_thread, mutex_id)?;
         this.condvar_wait(id, active_thread, mutex_id);
 
         // We return success for now and override it in the timeout callback.
@@ -823,7 +821,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
                 Ok(())
             }),
-        )?;
+        );
 
         Ok(())
     }
@@ -833,7 +831,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let id = cond_get_or_create_id(this, cond_op)?;
         if this.condvar_is_awaited(id) {
-            throw_ub_format!("destroyed an awaited conditional variable");
+            throw_ub_format!("destroying an awaited conditional variable");
         }
         cond_set_id(this, cond_op, ScalarMaybeUninit::Uninit)?;
         cond_set_clock_id(this, cond_op, ScalarMaybeUninit::Uninit)?;

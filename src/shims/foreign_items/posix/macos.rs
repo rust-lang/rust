@@ -98,7 +98,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let dtor = this.read_scalar(dtor)?.not_undef()?;
                 let dtor = this.memory.get_fn(dtor)?.as_instance()?;
                 let data = this.read_scalar(data)?.not_undef()?;
-                let active_thread = this.get_active_thread()?;
+                let active_thread = this.get_active_thread();
                 this.machine.tls.set_macos_thread_dtor(active_thread, dtor, data)?;
             }
 

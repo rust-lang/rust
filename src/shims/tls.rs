@@ -232,8 +232,8 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// yet.
     fn schedule_windows_tls_dtors(&mut self) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let active_thread = this.get_active_thread()?;
-        assert_eq!(this.get_total_thread_count()?, 1, "concurrency on Windows not supported");
+        let active_thread = this.get_active_thread();
+        assert_eq!(this.get_total_thread_count(), 1, "concurrency on Windows not supported");
         // Windows has a special magic linker section that is run on certain events.
         // Instead of searching for that section and supporting arbitrary hooks in there
         // (that would be basically https://github.com/rust-lang/miri/issues/450),
@@ -252,7 +252,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             StackPopCleanup::None { cleanup: true },
         )?;
 
-        this.enable_thread(active_thread)?;
+        this.enable_thread(active_thread);
         Ok(())
     }
 
@@ -262,7 +262,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// Note: It is safe to call this function also on other Unixes.
     fn schedule_macos_tls_dtor(&mut self) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();
-        let thread_id = this.get_active_thread()?;
+        let thread_id = this.get_active_thread();
         if let Some((instance, data)) = this.machine.tls.macos_thread_dtors.remove(&thread_id) {
             trace!("Running macos dtor {:?} on {:?} at {:?}", instance, data, thread_id);
 
@@ -278,7 +278,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // we just scheduled. Since we deleted the destructor, it is
             // guaranteed that we will schedule it again. The `dtors_running`
             // flag will prevent the code from adding the destructor again.
-            this.enable_thread(thread_id)?;
+            this.enable_thread(thread_id);
             Ok(true)
         } else {
             Ok(false)
@@ -289,9 +289,9 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// a destructor to schedule, and `false` otherwise.
     fn schedule_next_pthread_tls_dtor(&mut self) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();
-        let active_thread = this.get_active_thread()?;
+        let active_thread = this.get_active_thread();
 
-        assert!(this.has_terminated(active_thread)?, "running TLS dtors for non-terminated thread");
+        assert!(this.has_terminated(active_thread), "running TLS dtors for non-terminated thread");
         // Fetch next dtor after `key`.
         let last_key = this.machine.tls.dtors_running[&active_thread].last_dtor_key.clone();
         let dtor = match this.machine.tls.fetch_tls_dtor(last_key, active_thread) {
@@ -314,7 +314,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 StackPopCleanup::None { cleanup: true },
             )?;
 
-            this.enable_thread(active_thread)?;
+            this.enable_thread(active_thread);
             return Ok(true);
         }
         this.machine.tls.dtors_running.get_mut(&active_thread).unwrap().last_dtor_key = None;
@@ -340,7 +340,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// https://github.com/rust-lang/rust/issues/28129.
     fn schedule_next_tls_dtor_for_active_thread(&mut self) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let active_thread = this.get_active_thread()?;
+        let active_thread = this.get_active_thread();
 
         if !this.machine.tls.set_dtors_running_for_thread(active_thread) {
             // This is the first time we got asked to schedule a destructor. The

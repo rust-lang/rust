@@ -581,9 +581,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 
     #[inline]
-    fn create_thread(&mut self) -> InterpResult<'tcx, ThreadId> {
+    fn create_thread(&mut self) -> ThreadId {
         let this = self.eval_context_mut();
-        Ok(this.machine.threads.create_thread())
+        this.machine.threads.create_thread()
     }
 
     #[inline]
@@ -599,34 +599,33 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 
     #[inline]
-    fn set_active_thread(&mut self, thread_id: ThreadId) -> InterpResult<'tcx, ThreadId> {
+    fn set_active_thread(&mut self, thread_id: ThreadId) -> ThreadId {
         let this = self.eval_context_mut();
-        Ok(this.machine.threads.set_active_thread_id(thread_id))
+        this.machine.threads.set_active_thread_id(thread_id)
     }
 
     #[inline]
-    fn get_active_thread(&self) -> InterpResult<'tcx, ThreadId> {
+    fn get_active_thread(&self) -> ThreadId {
         let this = self.eval_context_ref();
-        Ok(this.machine.threads.get_active_thread_id())
+        this.machine.threads.get_active_thread_id()
     }
 
     #[inline]
-    fn get_total_thread_count(&self) -> InterpResult<'tcx, usize> {
+    fn get_total_thread_count(&self) -> usize {
         let this = self.eval_context_ref();
-        Ok(this.machine.threads.get_total_thread_count())
+        this.machine.threads.get_total_thread_count()
     }
 
     #[inline]
-    fn has_terminated(&self, thread_id: ThreadId) -> InterpResult<'tcx, bool> {
+    fn has_terminated(&self, thread_id: ThreadId) -> bool {
         let this = self.eval_context_ref();
-        Ok(this.machine.threads.has_terminated(thread_id))
+        this.machine.threads.has_terminated(thread_id)
     }
 
     #[inline]
-    fn enable_thread(&mut self, thread_id: ThreadId) -> InterpResult<'tcx> {
+    fn enable_thread(&mut self, thread_id: ThreadId) {
         let this = self.eval_context_mut();
         this.machine.threads.enable_thread(thread_id);
-        Ok(())
     }
 
     #[inline]
@@ -642,37 +641,36 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 
     #[inline]
-    fn set_active_thread_name(&mut self, new_thread_name: Vec<u8>) -> InterpResult<'tcx, ()> {
+    fn set_active_thread_name(&mut self, new_thread_name: Vec<u8>) {
         let this = self.eval_context_mut();
-        Ok(this.machine.threads.set_thread_name(new_thread_name))
+        this.machine.threads.set_thread_name(new_thread_name);
     }
 
     #[inline]
-    fn get_active_thread_name<'c>(&'c self) -> InterpResult<'tcx, &'c [u8]>
+    fn get_active_thread_name<'c>(&'c self) -> &'c [u8]
     where
         'mir: 'c,
     {
         let this = self.eval_context_ref();
-        Ok(this.machine.threads.get_thread_name())
+        this.machine.threads.get_thread_name()
     }
 
     #[inline]
-    fn block_thread(&mut self, thread: ThreadId) -> InterpResult<'tcx> {
+    fn block_thread(&mut self, thread: ThreadId) {
         let this = self.eval_context_mut();
-        Ok(this.machine.threads.block_thread(thread))
+        this.machine.threads.block_thread(thread);
     }
 
     #[inline]
-    fn unblock_thread(&mut self, thread: ThreadId) -> InterpResult<'tcx> {
+    fn unblock_thread(&mut self, thread: ThreadId) {
         let this = self.eval_context_mut();
-        Ok(this.machine.threads.unblock_thread(thread))
+        this.machine.threads.unblock_thread(thread);
     }
 
     #[inline]
-    fn yield_active_thread(&mut self) -> InterpResult<'tcx> {
+    fn yield_active_thread(&mut self) {
         let this = self.eval_context_mut();
         this.machine.threads.yield_active_thread();
-        Ok(())
     }
 
     #[inline]
@@ -681,17 +679,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         thread: ThreadId,
         call_time: Time,
         callback: TimeoutCallback<'mir, 'tcx>,
-    ) -> InterpResult<'tcx> {
+    ) {
         let this = self.eval_context_mut();
         this.machine.threads.register_timeout_callback(thread, call_time, callback);
-        Ok(())
     }
 
     #[inline]
-    fn unregister_timeout_callback_if_exists(&mut self, thread: ThreadId) -> InterpResult<'tcx> {
+    fn unregister_timeout_callback_if_exists(&mut self, thread: ThreadId) {
         let this = self.eval_context_mut();
         this.machine.threads.unregister_timeout_callback_if_exists(thread);
-        Ok(())
     }
 
     /// Execute a timeout callback on the callback's thread.
@@ -706,9 +702,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         //    thread.
         // 2. Make the scheduler the only place that can change the active
         //    thread.
-        let old_thread = this.set_active_thread(thread)?;
+        let old_thread = this.set_active_thread(thread);
         callback(this)?;
-        this.set_active_thread(old_thread)?;
+        this.set_active_thread(old_thread);
         Ok(())
     }
 

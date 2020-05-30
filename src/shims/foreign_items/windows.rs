@@ -163,14 +163,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "TlsGetValue" => {
                 let &[key] = check_arg_count(args)?;
                 let key = u128::from(this.read_scalar(key)?.to_u32()?);
-                let active_thread = this.get_active_thread()?;
+                let active_thread = this.get_active_thread();
                 let ptr = this.machine.tls.load_tls(key, active_thread, this)?;
                 this.write_scalar(ptr, dest)?;
             }
             "TlsSetValue" => {
                 let &[key, new_ptr] = check_arg_count(args)?;
                 let key = u128::from(this.read_scalar(key)?.to_u32()?);
-                let active_thread = this.get_active_thread()?;
+                let active_thread = this.get_active_thread();
                 let new_ptr = this.read_scalar(new_ptr)?.not_undef()?;
                 this.machine.tls.store_tls(key, active_thread, this.test_null(new_ptr)?)?;
 
@@ -291,7 +291,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             if this.frame().instance.to_string().starts_with("std::sys::windows::") => {
                 #[allow(non_snake_case)]
                 let &[_lpCriticalSection] = check_arg_count(args)?;
-                assert_eq!(this.get_total_thread_count()?, 1, "concurrency on Windows not supported");
+                assert_eq!(this.get_total_thread_count(), 1, "concurrency on Windows not supported");
                 // Nothing to do, not even a return value.
                 // (Windows locks are reentrant, and we have only 1 thread,
                 // so not doing any futher checks here is at least not incorrect.)
@@ -300,7 +300,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             if this.frame().instance.to_string().starts_with("std::sys::windows::") => {
                 #[allow(non_snake_case)]
                 let &[_lpCriticalSection] = check_arg_count(args)?;
-                assert_eq!(this.get_total_thread_count()?, 1, "concurrency on Windows not supported");
+                assert_eq!(this.get_total_thread_count(), 1, "concurrency on Windows not supported");
                 // There is only one thread, so this always succeeds and returns TRUE
                 this.write_scalar(Scalar::from_i32(1), dest)?;
             }
