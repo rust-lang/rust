@@ -1151,9 +1151,16 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             .as_ref()
                             .and_then(|args| args.args.get(0))
                             .and_then(|arg| match arg {
-                                hir::GenericArg::Type(ty) => {
-                                    sess.source_map().span_to_snippet(ty.span).ok()
+                                hir::GenericArg::Type(ty) => match ty.kind {
+                                    hir::TyKind::Tup(t) => t
+                                        .iter()
+                                        .map(|e| sess.source_map().span_to_snippet(e.span))
+                                        .collect::<Result<Vec<_>, _>>()
+                                        .map(|a| a.join(", ")),
+                                    _ => sess.source_map().span_to_snippet(ty.span),
                                 }
+                                .map(|s| format!("({})", s))
+                                .ok(),
                                 _ => None,
                             })
                             .unwrap_or_else(|| "()".to_string()),
