@@ -22,7 +22,7 @@ fn explicit3<'a>(x: &'a i32) -> Box<dyn Debug> { Box::new(x) }
 //~^ ERROR cannot infer an appropriate lifetime
 
 fn elided4(x: &i32) -> Box<dyn Debug + 'static> { Box::new(x) }
-//~^ ERROR explicit lifetime required in the type of `x`
+//~^ ERROR cannot infer an appropriate lifetime
 
 fn explicit4<'a>(x: &'a i32) -> Box<dyn Debug + 'static> { Box::new(x) }
 //~^ ERROR cannot infer an appropriate lifetime

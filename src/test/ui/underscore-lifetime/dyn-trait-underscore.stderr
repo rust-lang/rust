@@ -7,7 +7,7 @@ LL |     //                      ^^^^^^^^^^^^^^^^^^^^^ bound *here* defaults to 
 LL |     Box::new(items.iter())
    |     ---------------^^^^--- ...is captured and required to be `'static` here
    |
-help: to permit non-static references in a `dyn Trait` value, you can add an explicit bound for the anonymous lifetime #1 defined on the function body at 6:1
+help: to permit non-static references in a trait object value, you can add an explicit bound for the anonymous lifetime #1 defined on the function body at 6:1
    |
 LL | fn a<T>(items: &[T]) -> Box<dyn Iterator<Item=&T> + '_> {
    |                                                   ^^^^
