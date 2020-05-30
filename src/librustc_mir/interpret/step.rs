@@ -262,8 +262,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Discriminant(place) => {
                 let op = self.eval_place_to_op(place, None)?;
                 let discr_val = self.read_discriminant(op)?.0;
-                let size = dest.layout.size;
-                self.write_scalar(Scalar::from_uint(discr_val, size), dest)?;
+                self.write_scalar(discr_val, dest)?;
             }
         }
 

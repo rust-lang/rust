@@ -638,6 +638,14 @@ where
         }
 
         self.dump_place(place_ty.place);
+        // Sanity-check the type we ended up with.
+        debug_assert!(mir_assign_valid_types(
+            *self.tcx,
+            self.layout_of(self.subst_from_current_frame_and_normalize_erasing_regions(
+                place.ty(&self.frame().body.local_decls, *self.tcx).ty
+            ))?,
+            place_ty.layout,
+        ));
         Ok(place_ty)
     }
 
