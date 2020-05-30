@@ -18,7 +18,7 @@ endif
 ifdef BLESS
 COMPARE_SNAPSHOTS := echo "updating snapshot $(SNAPSHOT_NAME)" && mv $(TMPDIR)/panic.stderr.actual $(SNAPSHOT_NAME)
 else
-COMPARE_SNAPSHOTS := diff -u $(TMPDIR)/panic.stderr.actual $(SNAPSHOT_NAME) \
+COMPARE_SNAPSHOTS := diff -u $(SNAPSHOT_NAME) $(TMPDIR)/panic.stderr.actual \
 	|| ( \
 		echo "stderr does not match snapshot $(SNAPSHOT_NAME)." && \
 		echo "Re-run with BLESS=1 to update." && \
@@ -28,6 +28,6 @@ endif
 
 
 all:
-	$(RUSTC) $(COMPILE_FLAGS) test.rs
+	$(RUSTC) -C debuginfo=2 test.rs
 	RUST_BACKTRACE=1 $(call RUN,test) 2> $(TMPDIR)/panic.stderr.actual && exit 1 || exit 0
 	$(COMPARE_SNAPSHOTS)

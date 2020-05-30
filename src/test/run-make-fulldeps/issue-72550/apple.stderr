@@ -1,15 +1,44 @@
 thread 'main' panicked at 'explicit panic', test.rs:2:5
 stack backtrace:
-   0: <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt
-   1: core::fmt::write
-   2: std::io::Write::write_fmt
-   3: std::panicking::default_hook::{{closure}}
-   4: std::panicking::default_hook
-   5: std::panicking::rust_panic_with_hook
-   6: std::panicking::begin_panic
-   7: test::main
-   8: std::rt::lang_start::{{closure}}
-   9: std::rt::lang_start_internal
-  10: std::rt::lang_start
-  11: main
+   0: backtrace::backtrace::libunwind::trace
+             at /Users/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.46/src/backtrace/libunwind.rs:86
+   1: backtrace::backtrace::trace_unsynchronized
+             at /Users/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.46/src/backtrace/mod.rs:66
+   2: std::sys_common::backtrace::_print_fmt
+             at src/libstd/sys_common/backtrace.rs:78
+   3: <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt
+             at src/libstd/sys_common/backtrace.rs:59
+   4: core::fmt::write
+             at src/libcore/fmt/mod.rs:1069
+   5: std::io::Write::write_fmt
+             at src/libstd/io/mod.rs:1439
+   6: std::sys_common::backtrace::_print
+             at src/libstd/sys_common/backtrace.rs:62
+   7: std::sys_common::backtrace::print
+             at src/libstd/sys_common/backtrace.rs:49
+   8: std::panicking::default_hook::{{closure}}
+             at src/libstd/panicking.rs:198
+   9: std::panicking::default_hook
+             at src/libstd/panicking.rs:218
+  10: std::panicking::rust_panic_with_hook
+             at src/libstd/panicking.rs:511
+  11: std::panicking::begin_panic
+             at src/libcore/unicode/unicode_data.rs:82
+  12: test::main
+             at ./test.rs:2
+  13: std::rt::lang_start::{{closure}}
+             at /Users/alsuren/.rustup/toolchains/nightly-x86_64-apple-darwin/lib/rustlib/src/rust/src/libstd/rt.rs:67
+  14: std::rt::lang_start_internal::{{closure}}
+             at src/libstd/rt.rs:52
+  15: std::panicking::try::do_call
+             at src/libstd/panicking.rs:331
+  16: std::panicking::try
+             at src/libstd/panicking.rs:274
+  17: std::panic::catch_unwind
+             at src/libstd/panic.rs:394
+  18: std::rt::lang_start_internal
+             at src/libstd/rt.rs:51
+  19: std::rt::lang_start
+             at /Users/alsuren/.rustup/toolchains/nightly-x86_64-apple-darwin/lib/rustlib/src/rust/src/libstd/rt.rs:67
+  20: main
 note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
