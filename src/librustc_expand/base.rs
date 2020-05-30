@@ -12,7 +12,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{self, Lrc};
 use rustc_errors::{DiagnosticBuilder, ErrorReported};
 use rustc_parse::{self, parser, MACRO_ARGUMENTS};
-use rustc_session::parse::ParseSess;
+use rustc_session::{parse::ParseSess, Limit};
 use rustc_span::def_id::DefId;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{AstPass, ExpnData, ExpnId, ExpnKind};
@@ -941,7 +941,7 @@ pub struct ExpansionData {
 pub struct ExtCtxt<'a> {
     pub parse_sess: &'a ParseSess,
     pub ecfg: expand::ExpansionConfig<'a>,
-    pub reduced_recursion_limit: Option<usize>,
+    pub reduced_recursion_limit: Option<Limit>,
     pub root_path: PathBuf,
     pub resolver: &'a mut dyn Resolver,
     pub current_expansion: ExpansionData,

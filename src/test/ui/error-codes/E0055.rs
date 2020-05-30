@@ -1,4 +1,4 @@
-#![recursion_limit="5"]
+#![recursion_limit="4"]
 struct Foo;
 
 impl Foo {
