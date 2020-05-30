@@ -333,7 +333,7 @@ impl<'a> base::Resolver for Resolver<'a> {
     }
 
     fn check_unused_macros(&mut self) {
-        for (&node_id, &span) in self.unused_macros.iter() {
+        for (_, &(node_id, span)) in self.unused_macros.iter() {
             self.lint_buffer.buffer_lint(UNUSED_MACROS, node_id, span, "unused macro definition");
         }
     }
@@ -416,9 +416,9 @@ impl<'a> Resolver<'a> {
 
         match res {
             Res::Def(DefKind::Macro(_), def_id) => {
-                if let Some(node_id) = self.definitions.as_local_node_id(def_id) {
-                    self.unused_macros.remove(&node_id);
-                    if self.proc_macro_stubs.contains(&node_id) {
+                if let Some(def_id) = def_id.as_local() {
+                    self.unused_macros.remove(&def_id);
+                    if self.proc_macro_stubs.contains(&def_id) {
                         self.session.span_err(
                             path.span,
                             "can't use a procedural macro from the same crate that defines it",

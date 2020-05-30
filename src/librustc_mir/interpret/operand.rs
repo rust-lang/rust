@@ -7,15 +7,15 @@ use std::fmt::Write;
 use rustc_errors::ErrorReported;
 use rustc_hir::def::Namespace;
 use rustc_macros::HashStable;
-use rustc_middle::ty::layout::{IntegerExt, PrimitiveExt, TyAndLayout};
+use rustc_middle::ty::layout::{PrimitiveExt, TyAndLayout};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter, Printer};
 use rustc_middle::ty::Ty;
 use rustc_middle::{mir, ty};
-use rustc_target::abi::{Abi, DiscriminantKind, HasDataLayout, Integer, LayoutOf, Size};
+use rustc_target::abi::{Abi, DiscriminantKind, HasDataLayout, LayoutOf, Size};
 use rustc_target::abi::{VariantIdx, Variants};
 
 use super::{
-    from_known_layout, sign_extend, truncate, ConstValue, GlobalId, InterpCx, InterpResult,
+    from_known_layout, mir_assign_valid_types, ConstValue, GlobalId, InterpCx, InterpResult,
     MPlaceTy, Machine, MemPlace, Place, PlaceTy, Pointer, Scalar, ScalarMaybeUninit,
 };
 
@@ -469,6 +469,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             .try_fold(base_op, |op, elem| self.operand_projection(op, elem))?;
 
         trace!("eval_place_to_op: got {:?}", *op);
+        // Sanity-check the type we ended up with.
+        debug_assert!(mir_assign_valid_types(
+            *self.tcx,
+            self.layout_of(self.subst_from_current_frame_and_normalize_erasing_regions(
+                place.ty(&self.frame().body.local_decls, *self.tcx).ty
+            ))?,
+            op.layout,
+        ));
         Ok(op)
     }
 
@@ -576,98 +584,113 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Read discriminant, return the runtime value as well as the variant index.
     pub fn read_discriminant(
         &self,
-        rval: OpTy<'tcx, M::PointerTag>,
-    ) -> InterpResult<'tcx, (u128, VariantIdx)> {
-        trace!("read_discriminant_value {:#?}", rval.layout);
+        op: OpTy<'tcx, M::PointerTag>,
+    ) -> InterpResult<'tcx, (Scalar<M::PointerTag>, VariantIdx)> {
+        trace!("read_discriminant_value {:#?}", op.layout);
 
-        let (discr_layout, discr_kind, discr_index) = match rval.layout.variants {
+        // Get type and layout of the discriminant.
+        let discr_layout = self.layout_of(op.layout.ty.discriminant_ty(*self.tcx))?;
+        trace!("discriminant type: {:?}", discr_layout.ty);
+
+        // We use "discriminant" to refer to the value associated with a particular enum variant.
+        // This is not to be confused with its "variant index", which is just determining its position in the
+        // declared list of variants -- they can differ with explicitly assigned discriminants.
+        // We use "tag" to refer to how the discriminant is encoded in memory, which can be either
+        // straight-forward (`DiscriminantKind::Tag`) or with a niche (`DiscriminantKind::Niche`).
+        // Unfortunately, the rest of the compiler calls the latter "discriminant", too, which makes things
+        // rather confusing.
+        let (tag_scalar_layout, tag_kind, tag_index) = match op.layout.variants {
             Variants::Single { index } => {
-                let discr_val = rval
-                    .layout
-                    .ty
-                    .discriminant_for_variant(*self.tcx, index)
-                    .map_or(u128::from(index.as_u32()), |discr| discr.val);
-                return Ok((discr_val, index));
+                let discr = match op.layout.ty.discriminant_for_variant(*self.tcx, index) {
+                    Some(discr) => {
+                        // This type actually has discriminants.
+                        assert_eq!(discr.ty, discr_layout.ty);
+                        Scalar::from_uint(discr.val, discr_layout.size)
+                    }
+                    None => {
+                        // On a type without actual discriminants, variant is 0.
+                        assert_eq!(index.as_u32(), 0);
+                        Scalar::from_uint(index.as_u32(), discr_layout.size)
+                    }
+                };
+                return Ok((discr, index));
             }
-            Variants::Multiple { discr: ref discr_layout, ref discr_kind, discr_index, .. } => {
-                (discr_layout, discr_kind, discr_index)
+            Variants::Multiple { ref discr, ref discr_kind, discr_index, .. } => {
+                (discr, discr_kind, discr_index)
             }
         };
 
-        // read raw discriminant value
-        let discr_op = self.operand_field(rval, discr_index)?;
-        let discr_val = self.read_immediate(discr_op)?;
-        let raw_discr = discr_val.to_scalar_or_undef();
-        trace!("discr value: {:?}", raw_discr);
-        // post-process
-        Ok(match *discr_kind {
+        // There are *three* layouts that come into play here:
+        // - The discriminant has a type for typechecking. This is `discr_layout`, and is used for
+        //   the `Scalar` we return.
+        // - The tag (encoded discriminant) has layout `tag_layout`. This is always an integer type,
+        //   and used to interpret the value we read from the tag field.
+        //   For the return value, a cast to `discr_layout` is performed.
+        // - The field storing the tag has a layout, which is very similar to `tag_layout` but
+        //   may be a pointer. This is `tag_val.layout`; we just use it for sanity checks.
+
+        // Get layout for tag.
+        let tag_layout = self.layout_of(tag_scalar_layout.value.to_int_ty(*self.tcx))?;
+
+        // Read tag and sanity-check `tag_layout`.
+        let tag_val = self.read_immediate(self.operand_field(op, tag_index)?)?;
+        assert_eq!(tag_layout.size, tag_val.layout.size);
+        assert_eq!(tag_layout.abi.is_signed(), tag_val.layout.abi.is_signed());
+        let tag_val = tag_val.to_scalar()?;
+        trace!("tag value: {:?}", tag_val);
+
+        // Figure out which discriminant and variant this corresponds to.
+        Ok(match *tag_kind {
             DiscriminantKind::Tag => {
-                let bits_discr = raw_discr
-                    .not_undef()
-                    .and_then(|raw_discr| self.force_bits(raw_discr, discr_val.layout.size))
-                    .map_err(|_| err_ub!(InvalidDiscriminant(raw_discr.erase_tag())))?;
-                let real_discr = if discr_val.layout.abi.is_signed() {
-                    // going from layout tag type to typeck discriminant type
-                    // requires first sign extending with the discriminant layout
-                    let sexted = sign_extend(bits_discr, discr_val.layout.size);
-                    // and then zeroing with the typeck discriminant type
-                    let discr_ty = rval
-                        .layout
-                        .ty
-                        .ty_adt_def()
-                        .expect("tagged layout corresponds to adt")
-                        .repr
-                        .discr_type();
-                    let size = Integer::from_attr(self, discr_ty).size();
-                    truncate(sexted, size)
-                } else {
-                    bits_discr
-                };
-                // Make sure we catch invalid discriminants
-                let index = match rval.layout.ty.kind {
+                let tag_bits = self
+                    .force_bits(tag_val, tag_layout.size)
+                    .map_err(|_| err_ub!(InvalidDiscriminant(tag_val.erase_tag())))?;
+                // Cast bits from tag layout to discriminant layout.
+                let discr_val_cast = self.cast_from_scalar(tag_bits, tag_layout, discr_layout.ty);
+                let discr_bits = discr_val_cast.assert_bits(discr_layout.size);
+                // Convert discriminant to variant index, and catch invalid discriminants.
+                let index = match op.layout.ty.kind {
                     ty::Adt(adt, _) => {
-                        adt.discriminants(self.tcx.tcx).find(|(_, var)| var.val == real_discr)
+                        adt.discriminants(self.tcx.tcx).find(|(_, var)| var.val == discr_bits)
                     }
                     ty::Generator(def_id, substs, _) => {
                         let substs = substs.as_generator();
                         substs
                             .discriminants(def_id, self.tcx.tcx)
-                            .find(|(_, var)| var.val == real_discr)
+                            .find(|(_, var)| var.val == discr_bits)
                     }
                     _ => bug!("tagged layout for non-adt non-generator"),
                 }
-                .ok_or_else(|| err_ub!(InvalidDiscriminant(raw_discr.erase_tag())))?;
-                (real_discr, index.0)
+                .ok_or_else(|| err_ub!(InvalidDiscriminant(tag_val.erase_tag())))?;
+                // Return the cast value, and the index.
+                (discr_val_cast, index.0)
             }
             DiscriminantKind::Niche { dataful_variant, ref niche_variants, niche_start } => {
+                // Compute the variant this niche value/"tag" corresponds to. With niche layout,
+                // discriminant (encoded in niche/tag) and variant index are the same.
                 let variants_start = niche_variants.start().as_u32();
                 let variants_end = niche_variants.end().as_u32();
-                let raw_discr = raw_discr
-                    .not_undef()
-                    .map_err(|_| err_ub!(InvalidDiscriminant(ScalarMaybeUninit::Uninit)))?;
-                match raw_discr.to_bits_or_ptr(discr_val.layout.size, self) {
+                let variant = match tag_val.to_bits_or_ptr(tag_layout.size, self) {
                     Err(ptr) => {
                         // The niche must be just 0 (which an inbounds pointer value never is)
                         let ptr_valid = niche_start == 0
                             && variants_start == variants_end
                             && !self.memory.ptr_may_be_null(ptr);
                         if !ptr_valid {
-                            throw_ub!(InvalidDiscriminant(raw_discr.erase_tag().into()))
+                            throw_ub!(InvalidDiscriminant(tag_val.erase_tag()))
                         }
-                        (u128::from(dataful_variant.as_u32()), dataful_variant)
+                        dataful_variant
                     }
-                    Ok(raw_discr) => {
+                    Ok(tag_bits) => {
                         // We need to use machine arithmetic to get the relative variant idx:
-                        // variant_index_relative = discr_val - niche_start_val
-                        let discr_layout =
-                            self.layout_of(discr_layout.value.to_int_ty(*self.tcx))?;
-                        let discr_val = ImmTy::from_uint(raw_discr, discr_layout);
-                        let niche_start_val = ImmTy::from_uint(niche_start, discr_layout);
+                        // variant_index_relative = tag_val - niche_start_val
+                        let tag_val = ImmTy::from_uint(tag_bits, tag_layout);
+                        let niche_start_val = ImmTy::from_uint(niche_start, tag_layout);
                         let variant_index_relative_val =
-                            self.binary_op(mir::BinOp::Sub, discr_val, niche_start_val)?;
+                            self.binary_op(mir::BinOp::Sub, tag_val, niche_start_val)?;
                         let variant_index_relative = variant_index_relative_val
                             .to_scalar()?
-                            .assert_bits(discr_val.layout.size);
+                            .assert_bits(tag_val.layout.size);
                         // Check if this is in the range that indicates an actual discriminant.
                         if variant_index_relative <= u128::from(variants_end - variants_start) {
                             let variant_index_relative = u32::try_from(variant_index_relative)
@@ -676,7 +699,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             let variant_index = variants_start
                                 .checked_add(variant_index_relative)
                                 .expect("overflow computing absolute variant idx");
-                            let variants_len = rval
+                            let variants_len = op
                                 .layout
                                 .ty
                                 .ty_adt_def()
@@ -684,12 +707,16 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                                 .variants
                                 .len();
                             assert!(usize::try_from(variant_index).unwrap() < variants_len);
-                            (u128::from(variant_index), VariantIdx::from_u32(variant_index))
+                            VariantIdx::from_u32(variant_index)
                         } else {
-                            (u128::from(dataful_variant.as_u32()), dataful_variant)
+                            dataful_variant
                         }
                     }
-                }
+                };
+                // Compute the size of the scalar we need to return.
+                // No need to cast, because the variant index directly serves as discriminant and is
+                // encoded in the tag.
+                (Scalar::from_uint(variant.as_u32(), discr_layout.size), variant)
             }
         })
     }

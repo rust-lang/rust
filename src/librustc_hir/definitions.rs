@@ -333,17 +333,6 @@ impl Definitions {
     }
 
     #[inline]
-    pub fn as_local_node_id(&self, def_id: DefId) -> Option<ast::NodeId> {
-        if let Some(def_id) = def_id.as_local() {
-            let node_id = self.def_id_to_node_id[def_id];
-            if node_id != ast::DUMMY_NODE_ID {
-                return Some(node_id);
-            }
-        }
-        None
-    }
-
-    #[inline]
     pub fn as_local_hir_id(&self, def_id: LocalDefId) -> hir::HirId {
         self.local_def_id_to_hir_id(def_id)
     }

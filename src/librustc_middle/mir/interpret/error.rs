@@ -1,4 +1,4 @@
-use super::{AllocId, Pointer, RawConst, ScalarMaybeUninit};
+use super::{AllocId, Pointer, RawConst, Scalar};
 
 use crate::mir::interpret::ConstValue;
 use crate::ty::layout::LayoutError;
@@ -391,7 +391,7 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     /// Using a non-character `u32` as character.
     InvalidChar(u32),
     /// An enum discriminant was set to a value which was outside the range of valid values.
-    InvalidDiscriminant(ScalarMaybeUninit),
+    InvalidDiscriminant(Scalar),
     /// Using a pointer-not-to-a-function as function pointer.
     InvalidFunctionPointer(Pointer),
     /// Using a string that is not valid UTF-8,

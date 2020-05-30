@@ -3,6 +3,7 @@ use super::{ImplTraitContext, LoweringContext, ParamMode};
 use rustc_ast::ast::*;
 use rustc_ast::ptr::P;
 use rustc_data_structures::stack::ensure_sufficient_stack;
+use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_span::symbol::Ident;
@@ -102,10 +103,36 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // Note that unlike for slice patterns,
             // where `xs @ ..` is a legal sub-slice pattern,
             // it is not a legal sub-tuple pattern.
-            if pat.is_rest() {
-                rest = Some((idx, pat.span));
-                break;
+            match pat.kind {
+                // Found a sub-tuple rest pattern
+                PatKind::Rest => {
+                    rest = Some((idx, pat.span));
+                    break;
+                }
+                // Found a sub-tuple pattern `$binding_mode $ident @ ..`.
+                // This is not allowed as a sub-tuple pattern
+                PatKind::Ident(ref _bm, ident, Some(ref sub)) if sub.is_rest() => {
+                    rest = Some((idx, pat.span));
+                    let sp = pat.span;
+                    self.diagnostic()
+                        .struct_span_err(
+                            sp,
+                            &format!("`{} @` is not allowed in a {}", ident.name, ctx),
+                        )
+                        .span_label(sp, "this is only allowed in slice patterns")
+                        .help("remove this and bind each tuple field independently")
+                        .span_suggestion_verbose(
+                            sp,
+                            &format!("if you don't need to use the contents of {}, discard the tuple's remaining fields", ident),
+                            "..".to_string(),
+                            Applicability::MaybeIncorrect,
+                        )
+                        .emit();
+                    break;
+                }
+                _ => {}
             }
+
             // It was not a sub-tuple pattern so lower it normally.
             elems.push(self.lower_pat(pat));
         }

@@ -1,3 +1,163 @@
+Version 1.44.0 (2020-06-04)
+==========================
+
+Language
+--------
+- [You can now use `async/.await` with `#[no_std]` enabled.][69033]
+- [Added the `unused_braces` lint.][70081]
+
+**Syntax-only changes**
+
+- [Expansion-driven outline module parsing][69838]
+```rust
+#[cfg(FALSE)]
+mod foo {
+    mod bar {
+        mod baz; // `foo/bar/baz.rs` doesn't exist, but no error!
+    }
+}
+```
+
+These are still rejected semantically, so you will likely receive an error but
+these changes can be seen and parsed by macros and conditional compilation.
+
+Compiler
+--------
+- [Rustc now respects the `-C codegen-units` flag in incremental mode.][70156]
+  Additionally when in incremental mode rustc defaults to 256 codegen units.
+- [Refactored `catch_unwind`, to have zero-cost unless unwinding is enabled and
+  a panic is thrown.][67502]
+- [Added tier 3\* support for the `aarch64-unknown-none` and
+  `aarch64-unknown-none-softfloat` targets.][68334]
+- [Added tier 3 support for `arm64-apple-tvos` and
+  `x86_64-apple-tvos` targets.][68191]
+
+
+Libraries
+---------
+- [Special cased `vec![]` to map directly to `Vec::new()`.][70632] This allows
+  `vec![]` to be able to be used in `const` contexts.
+- [`convert::Infallible` now implements `Hash`.][70281]
+- [`OsString` now implements `DerefMut` and `IndexMut` returning
+  a `&mut OsStr`.][70048]
+- [Unicode 13 is now supported.][69929]
+- [`String` now implements `From<&mut str>`.][69661]
+- [`IoSlice` now implements `Copy`.][69403]
+- [`Vec<T>` now implements `From<[T; N]>`.][68692] Where `N` is less than 32.
+- [`proc_macro::LexError` now implements `fmt::Display` and `Error`.][68899]
+- [`from_le_bytes`, `to_le_bytes`, `from_be_bytes`, `to_be_bytes`,
+  `from_ne_bytes`, and `to_ne_bytes` methods are now `const` for all
+  integer types.][69373]
+
+Stabilized APIs
+---------------
+- [`PathBuf::with_capacity`]
+- [`PathBuf::capacity`]
+- [`PathBuf::clear`]
+- [`PathBuf::reserve`]
+- [`PathBuf::reserve_exact`]
+- [`PathBuf::shrink_to_fit`]
+- [`f32::to_int_unchecked`]
+- [`f64::to_int_unchecked`]
+- [`Layout::align_to`]
+- [`Layout::pad_to_align`]
+- [`Layout::array`]
+- [`Layout::extend`]
+
+Cargo
+-----
+- [Added the `cargo tree` command which will print a tree graph of
+  your dependencies.][cargo/8062] E.g.
+  ```
+    mdbook v0.3.2 (/Users/src/rust/mdbook)
+  ├── ammonia v3.0.0
+  │   ├── html5ever v0.24.0
+  │   │   ├── log v0.4.8
+  │   │   │   └── cfg-if v0.1.9
+  │   │   ├── mac v0.1.1
+  │   │   └── markup5ever v0.9.0
+  │   │       ├── log v0.4.8 (*)
+  │   │       ├── phf v0.7.24
+  │   │       │   └── phf_shared v0.7.24
+  │   │       │       ├── siphasher v0.2.3
+  │   │       │       └── unicase v1.4.2
+  │   │       │           [build-dependencies]
+  │   │       │           └── version_check v0.1.5
+  ...
+  ```
+
+Misc
+----
+- [Rustdoc now allows you to specify `--crate-version` to have rustdoc include
+  the version in the sidebar.][69494]
+
+Compatibility Notes
+-------------------
+- [Rustc now correctly generates static libraries on Windows GNU targets with
+  the `.a` extension, rather than the previous `.lib`.][70937]
+- [Removed the `-C no_integrated_as` flag from rustc.][70345]
+- [The `file_name` property in JSON output of macro errors now points the actual
+  source file rather than the previous format of `<NAME macros>`.][70969]
+  **Note:** this may not point a file that actually exists on the user's system.
+- [The minimum required external LLVM version has been bumped to LLVM 8.][71147]
+- [`mem::{zeroed, uninitialised, MaybeUninit}` will now panic when used with types
+  that do not allow zero initialization such as `NonZeroU8`.][66059] This was
+  previously a warning.
+- [In 1.45.0 (the next release) converting a `f64` to `u32` using the `as`
+  operator has been defined as a saturating operation.][71269] This was previously
+  undefined behaviour, you can use the `{f64, f32}::to_int_unchecked` methods to
+  continue using the current behaviour which may desirable in rare performance
+  sensitive situations.
+
+Internal Only
+-------------
+These changes provide no direct user facing benefits, but represent significant
+improvements to the internals and overall performance of rustc and
+related tools.
+
+- [dep_graph Avoid allocating a set on when the number reads are small.][69778]
+- [Replace big JS dict with JSON parsing.][71250]
+
+[69373]: https://github.com/rust-lang/rust/pull/69373/
+[66059]: https://github.com/rust-lang/rust/pull/66059/
+[68191]: https://github.com/rust-lang/rust/pull/68191/
+[68899]: https://github.com/rust-lang/rust/pull/68899/
+[71147]: https://github.com/rust-lang/rust/pull/71147/
+[71250]: https://github.com/rust-lang/rust/pull/71250/
+[70937]: https://github.com/rust-lang/rust/pull/70937/
+[70969]: https://github.com/rust-lang/rust/pull/70969/
+[70632]: https://github.com/rust-lang/rust/pull/70632/
+[70281]: https://github.com/rust-lang/rust/pull/70281/
+[70345]: https://github.com/rust-lang/rust/pull/70345/
+[70048]: https://github.com/rust-lang/rust/pull/70048/
+[70081]: https://github.com/rust-lang/rust/pull/70081/
+[70156]: https://github.com/rust-lang/rust/pull/70156/
+[71269]: https://github.com/rust-lang/rust/pull/71269/
+[69838]: https://github.com/rust-lang/rust/pull/69838/
+[69929]: https://github.com/rust-lang/rust/pull/69929/
+[69661]: https://github.com/rust-lang/rust/pull/69661/
+[69778]: https://github.com/rust-lang/rust/pull/69778/
+[69494]: https://github.com/rust-lang/rust/pull/69494/
+[69403]: https://github.com/rust-lang/rust/pull/69403/
+[69033]: https://github.com/rust-lang/rust/pull/69033/
+[68692]: https://github.com/rust-lang/rust/pull/68692/
+[68334]: https://github.com/rust-lang/rust/pull/68334/
+[67502]: https://github.com/rust-lang/rust/pull/67502/
+[cargo/8062]: https://github.com/rust-lang/cargo/pull/8062/
+[`PathBuf::with_capacity`]: https://doc.rust-lang.org/std/path/struct.PathBuf.html#method.with_capacity
+[`PathBuf::capacity`]: https://doc.rust-lang.org/std/path/struct.PathBuf.html#method.capacity
+[`PathBuf::clear`]: https://doc.rust-lang.org/std/path/struct.PathBuf.html#method.clear
+[`PathBuf::reserve`]: https://doc.rust-lang.org/std/path/struct.PathBuf.html#method.reserve
+[`PathBuf::reserve_exact`]: https://doc.rust-lang.org/std/path/struct.PathBuf.html#method.reserve_exact
+[`PathBuf::shrink_to_fit`]: https://doc.rust-lang.org/std/path/struct.PathBuf.html#method.shrink_to_fit
+[`f32::to_int_unchecked`]: https://doc.rust-lang.org/std/primitive.f32.html#method.to_int_unchecked
+[`f64::to_int_unchecked`]: https://doc.rust-lang.org/std/primitive.f64.html#method.to_int_unchecked
+[`Layout::align_to`]: https://doc.rust-lang.org/std/alloc/struct.Layout.html#method.align_to
+[`Layout::pad_to_align`]: https://doc.rust-lang.org/std/alloc/struct.Layout.html#method.pad_to_align
+[`Layout::array`]: https://doc.rust-lang.org/std/alloc/struct.Layout.html#method.array
+[`Layout::extend`]: https://doc.rust-lang.org/std/alloc/struct.Layout.html#method.extend
+
+
 Version 1.43.1 (2020-05-07)
 ===========================
 

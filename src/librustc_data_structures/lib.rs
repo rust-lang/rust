@@ -22,6 +22,7 @@
 #![feature(test)]
 #![feature(associated_type_bounds)]
 #![feature(thread_id_value)]
+#![feature(extend_one)]
 #![allow(rustc::default_hash_types)]
 
 #[macro_use]

@@ -386,6 +386,17 @@ impl Extend<CodePoint> for Wtf8Buf {
         self.bytes.reserve(low);
         iterator.for_each(move |code_point| self.push(code_point));
     }
+
+    #[inline]
+    fn extend_one(&mut self, code_point: CodePoint) {
+        self.push(code_point);
+    }
+
+    #[inline]
+    fn extend_reserve(&mut self, additional: usize) {
+        // Lower bound of one byte per code point (ASCII only)
+        self.bytes.reserve(additional);
+    }
 }
 
 /// A borrowed slice of well-formed WTF-8 data.
