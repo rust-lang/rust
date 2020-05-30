@@ -1,48 +1,20 @@
 thread 'main' panicked at 'explicit panic', test.rs:2:5
 stack backtrace:
-   0: backtrace::backtrace::libunwind::trace
-             at /cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.44/src/backtrace/libunwind.rs:86
-   1: backtrace::backtrace::trace_unsynchronized
-             at /cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.44/src/backtrace/mod.rs:66
-   2: std::sys_common::backtrace::_print_fmt
-             at src/libstd/sys_common/backtrace.rs:78
-   3: <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt
-             at src/libstd/sys_common/backtrace.rs:59
-   4: core::fmt::write
-             at src/libcore/fmt/mod.rs:1063
-   5: std::io::Write::write_fmt
-             at src/libstd/io/mod.rs:1426
-   6: std::sys_common::backtrace::_print
-             at src/libstd/sys_common/backtrace.rs:62
-   7: std::sys_common::backtrace::print
-             at src/libstd/sys_common/backtrace.rs:49
-   8: std::panicking::default_hook::{{closure}}
-             at src/libstd/panicking.rs:204
-   9: std::panicking::default_hook
-             at src/libstd/panicking.rs:224
-  10: std::panicking::rust_panic_with_hook
-             at src/libstd/panicking.rs:470
-  11: std::panicking::begin_panic
-             at /rustc/8d69840ab92ea7f4d323420088dd8c9775f180cd/src/libstd/panicking.rs:397
-  12: test::main
-             at ./test.rs:2
-  13: std::rt::lang_start::{{closure}}
-             at /rustc/8d69840ab92ea7f4d323420088dd8c9775f180cd/src/libstd/rt.rs:67
-  14: std::rt::lang_start_internal::{{closure}}
-             at src/libstd/rt.rs:52
-  15: std::panicking::try::do_call
-             at src/libstd/panicking.rs:303
-  16: __rust_maybe_catch_panic
-             at src/libpanic_unwind/lib.rs:86
-  17: std::panicking::try
-             at src/libstd/panicking.rs:281
-  18: std::panic::catch_unwind
-             at src/libstd/panic.rs:394
-  19: std::rt::lang_start_internal
-             at src/libstd/rt.rs:51
-  20: std::rt::lang_start
-             at /rustc/8d69840ab92ea7f4d323420088dd8c9775f180cd/src/libstd/rt.rs:67
-  21: main
-  22: __libc_start_main
-  23: _start
+   0: <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt
+   1: core::fmt::write
+   2: std::io::Write::write_fmt
+   3: std::panicking::default_hook::{{closure}}
+   4: std::panicking::default_hook
+   5: std::panicking::rust_panic_with_hook
+   6: std::panicking::begin_panic
+             at /checkout/src/libstd/panicking.rs:410
+   7: test::main
+   8: std::rt::lang_start::{{closure}}
+             at /checkout/src/libstd/rt.rs:67
+   9: std::rt::lang_start_internal
+  10: std::rt::lang_start
+             at /checkout/src/libstd/rt.rs:67
+  11: main
+  12: __libc_start_main
+  13: _start
 note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
