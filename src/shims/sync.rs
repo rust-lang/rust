@@ -316,7 +316,7 @@ fn release_cond_mutex_and_block<'mir, 'tcx: 'mir>(
     active_thread: ThreadId,
     mutex: MutexId,
 ) -> InterpResult<'tcx> {
-    if let Some(old_locked_count) = ecx.mutex_unlock(mutex, active_thread)? {
+    if let Some(old_locked_count) = ecx.mutex_unlock(mutex, active_thread) {
         if old_locked_count != 1 {
             throw_unsup_format!("awaiting on a lock acquired multiple times is not supported");
         }
@@ -486,7 +486,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let id = mutex_get_or_create_id(this, mutex_op)?;
         let active_thread = this.get_active_thread();
 
-        if let Some(_old_locked_count) = this.mutex_unlock(id, active_thread)? {
+        if let Some(_old_locked_count) = this.mutex_unlock(id, active_thread) {
             // The mutex was locked by the current thread.
             Ok(0)
         } else {

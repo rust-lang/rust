@@ -153,14 +153,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         &mut self,
         id: MutexId,
         expected_owner: ThreadId,
-    ) -> InterpResult<'tcx, Option<usize>> {
+    ) -> Option<usize> {
         let this = self.eval_context_mut();
         let mutex = &mut this.machine.threads.sync.mutexes[id];
         if let Some(current_owner) = mutex.owner {
             // Mutex is locked.
             if current_owner != expected_owner {
                 // Only the owner can unlock the mutex.
-                return Ok(None);
+                return None;
             }
             let old_lock_count = mutex.lock_count;
             mutex.lock_count = old_lock_count
@@ -172,10 +172,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // to another thread.
                 this.mutex_dequeue_and_lock(id);
             }
-            Ok(Some(old_lock_count))
+            Some(old_lock_count)
         } else {
             // Mutex is unlocked.
-            Ok(None)
+            None
         }
     }
 
