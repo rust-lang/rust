@@ -21,6 +21,7 @@ pub mod check_consts;
 pub mod check_packed_ref;
 pub mod check_unsafety;
 pub mod cleanup_post_borrowck;
+pub mod const_debuginfo;
 pub mod const_prop;
 pub mod copy_prop;
 pub mod deaggregator;
@@ -479,6 +480,7 @@ fn run_optimization_passes<'tcx>(
         &simplify::SimplifyCfg::new("after-remove-noop-landing-pads"),
         &simplify::SimplifyCfg::new("final"),
         &nrvo::RenameReturnPlace,
+        &const_debuginfo::ConstDebugInfo,
         &simplify::SimplifyLocals,
     ];
 
