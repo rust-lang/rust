@@ -21,7 +21,7 @@ use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
 use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticId, ErrorReported};
 use rustc_span::edition::Edition;
-use rustc_span::source_map::{self, FileLoader, MultiSpan, RealFileLoader, SourceMap, Span};
+use rustc_span::source_map::{FileLoader, MultiSpan, RealFileLoader, SourceMap, Span};
 use rustc_span::{SourceFileHashAlgorithm, Symbol};
 use rustc_target::asm::InlineAsmArch;
 use rustc_target::spec::{CodeModel, PanicStrategy, RelocModel, RelroLevel};
@@ -523,7 +523,7 @@ impl Session {
     }
 
     #[inline]
-    pub fn source_map(&self) -> &source_map::SourceMap {
+    pub fn source_map(&self) -> &SourceMap {
         self.parse_sess.source_map()
     }
     pub fn verbose(&self) -> bool {
@@ -1026,26 +1026,10 @@ impl Session {
     }
 }
 
-pub fn build_session(
-    sopts: config::Options,
-    local_crate_source_file: Option<PathBuf>,
-    registry: rustc_errors::registry::Registry,
-) -> Session {
-    build_session_with_source_map(
-        sopts,
-        local_crate_source_file,
-        registry,
-        DiagnosticOutput::Default,
-        Default::default(),
-        None,
-    )
-    .0
-}
-
 fn default_emitter(
     sopts: &config::Options,
     registry: rustc_errors::registry::Registry,
-    source_map: &Lrc<source_map::SourceMap>,
+    source_map: Lrc<SourceMap>,
     emitter_dest: Option<Box<dyn Write + Send>>,
 ) -> Box<dyn Emitter + sync::Send> {
     let macro_backtrace = sopts.debugging_opts.macro_backtrace;
@@ -1054,17 +1038,14 @@ fn default_emitter(
             let (short, color_config) = kind.unzip();
 
             if let HumanReadableErrorType::AnnotateSnippet(_) = kind {
-                let emitter = AnnotateSnippetEmitterWriter::new(
-                    Some(source_map.clone()),
-                    short,
-                    macro_backtrace,
-                );
+                let emitter =
+                    AnnotateSnippetEmitterWriter::new(Some(source_map), short, macro_backtrace);
                 Box::new(emitter.ui_testing(sopts.debugging_opts.ui_testing))
             } else {
                 let emitter = match dst {
                     None => EmitterWriter::stderr(
                         color_config,
-                        Some(source_map.clone()),
+                        Some(source_map),
                         short,
                         sopts.debugging_opts.teach,
                         sopts.debugging_opts.terminal_width,
@@ -1072,7 +1053,7 @@ fn default_emitter(
                     ),
                     Some(dst) => EmitterWriter::new(
                         dst,
-                        Some(source_map.clone()),
+                        Some(source_map),
                         short,
                         false, // no teach messages when writing to a buffer
                         false, // no colors when writing to a buffer
@@ -1084,20 +1065,14 @@ fn default_emitter(
             }
         }
         (config::ErrorOutputType::Json { pretty, json_rendered }, None) => Box::new(
-            JsonEmitter::stderr(
-                Some(registry),
-                source_map.clone(),
-                pretty,
-                json_rendered,
-                macro_backtrace,
-            )
-            .ui_testing(sopts.debugging_opts.ui_testing),
+            JsonEmitter::stderr(Some(registry), source_map, pretty, json_rendered, macro_backtrace)
+                .ui_testing(sopts.debugging_opts.ui_testing),
         ),
         (config::ErrorOutputType::Json { pretty, json_rendered }, Some(dst)) => Box::new(
             JsonEmitter::new(
                 dst,
                 Some(registry),
-                source_map.clone(),
+                source_map,
                 pretty,
                 json_rendered,
                 macro_backtrace,
@@ -1112,14 +1087,14 @@ pub enum DiagnosticOutput {
     Raw(Box<dyn Write + Send>),
 }
 
-pub fn build_session_with_source_map(
+pub fn build_session(
     sopts: config::Options,
     local_crate_source_file: Option<PathBuf>,
     registry: rustc_errors::registry::Registry,
     diagnostics_output: DiagnosticOutput,
     driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
     file_loader: Option<Box<dyn FileLoader + Send + Sync + 'static>>,
-) -> (Session, Lrc<SourceMap>) {
+) -> Session {
     // FIXME: This is not general enough to make the warning lint completely override
     // normal diagnostic warnings, since the warning lint can also be denied and changed
     // later via the source code.
@@ -1157,7 +1132,7 @@ pub fn build_session_with_source_map(
         sopts.file_path_mapping(),
         hash_kind,
     ));
-    let emitter = default_emitter(&sopts, registry, &source_map, write_dest);
+    let emitter = default_emitter(&sopts, registry, source_map.clone(), write_dest);
 
     let span_diagnostic = rustc_errors::Handler::with_emitter_and_flags(
         emitter,
@@ -1185,7 +1160,7 @@ pub fn build_session_with_source_map(
         None
     };
 
-    let parse_sess = ParseSess::with_span_handler(span_diagnostic, source_map.clone());
+    let parse_sess = ParseSess::with_span_handler(span_diagnostic, source_map);
     let sysroot = match &sopts.maybe_sysroot {
         Some(sysroot) => sysroot.clone(),
         None => filesearch::get_or_default_sysroot(),
@@ -1308,7 +1283,7 @@ pub fn build_session_with_source_map(
 
     validate_commandline_args_with_session_available(&sess);
 
-    (sess, source_map)
+    sess
 }
 
 // If it is useful to have a Session available already for validating a
