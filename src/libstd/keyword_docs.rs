@@ -1238,8 +1238,7 @@ mod unsafe_keyword {}
 /// Note that when the wildcard `*` is used on a type, it does not import its methods (though
 /// for `enum`s it imports the variants, as shown in the example below).
 ///
-/// ```compile_fail
-/// # fn main() {
+/// ```compile_fail,edition2018
 /// enum ExampleEnum {
 ///     VariantA,
 ///     VariantB,
@@ -1258,7 +1257,6 @@ mod unsafe_keyword {}
 ///
 /// // Does not compile !
 /// let n = new();
-/// # }
 /// ```
 ///
 /// For more information on `use` and paths in general, see the [Reference].
