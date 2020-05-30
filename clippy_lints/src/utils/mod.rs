@@ -323,6 +323,11 @@ pub fn implements_trait<'a, 'tcx>(
     trait_id: DefId,
     ty_params: &[GenericArg<'tcx>],
 ) -> bool {
+    // Do not check on infer_types to avoid panic in evaluate_obligation.
+    if ty.has_infer_types() {
+        return false;
+    }
+    let ty = cx.tcx.erase_regions(&ty);
     let ty_params = cx.tcx.mk_substs(ty_params.iter());
     cx.tcx.type_implements_trait((trait_id, ty, ty_params, cx.param_env))
 }
