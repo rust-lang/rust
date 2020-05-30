@@ -100,16 +100,18 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::InEnvironment<chalk_ir::Goal<RustInterner<'
                     ty::PredicateKind::RegionOutlives(predicate) => {
                         let (predicate, binders, _named_regions) =
                             collect_bound_vars(interner, interner.tcx, predicate);
-        
+
                         Some(
                             chalk_ir::ProgramClauseData::ForAll(chalk_ir::Binders::new(
                                 binders,
                                 chalk_ir::ProgramClauseImplication {
                                     consequence: chalk_ir::DomainGoal::Holds(
-                                        chalk_ir::WhereClause::LifetimeOutlives(chalk_ir::LifetimeOutlives {
-                                            a: predicate.0.lower_into(interner),
-                                            b: predicate.1.lower_into(interner),
-                                        })
+                                        chalk_ir::WhereClause::LifetimeOutlives(
+                                            chalk_ir::LifetimeOutlives {
+                                                a: predicate.0.lower_into(interner),
+                                                b: predicate.1.lower_into(interner),
+                                            },
+                                        ),
                                     ),
                                     conditions: chalk_ir::Goals::new(interner),
                                     priority: chalk_ir::ClausePriority::High,
@@ -117,7 +119,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::InEnvironment<chalk_ir::Goal<RustInterner<'
                             ))
                             .intern(interner),
                         )
-                    },
+                    }
                     // FIXME(chalk): need to add TypeOutlives
                     ty::PredicateKind::TypeOutlives(_) => None,
                     ty::PredicateKind::Projection(predicate) => {
@@ -188,9 +190,10 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::GoalData<RustInterner<'tcx>>> for ty::Predi
                             chalk_ir::WhereClause::LifetimeOutlives(chalk_ir::LifetimeOutlives {
                                 a: predicate.0.lower_into(interner),
                                 b: predicate.1.lower_into(interner),
-                            })
-                        )).intern(interner)
-                    )
+                            }),
+                        ))
+                        .intern(interner),
+                    ),
                 )
             }
             // FIXME(chalk): TypeOutlives
@@ -216,9 +219,9 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::GoalData<RustInterner<'tcx>>> for ty::Predi
                 GenericArgKind::Lifetime(lt) => bug!("unexpect well formed predicate: {:?}", lt),
             },
 
-            ty::PredicateKind::ObjectSafe(t) => {
-                chalk_ir::GoalData::DomainGoal(chalk_ir::DomainGoal::ObjectSafe(chalk_ir::TraitId(*t)))
-            }
+            ty::PredicateKind::ObjectSafe(t) => chalk_ir::GoalData::DomainGoal(
+                chalk_ir::DomainGoal::ObjectSafe(chalk_ir::TraitId(*t)),
+            ),
 
             // FIXME(chalk): other predicates
             //
@@ -335,25 +338,34 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
             Adt(def, substs) => apply(struct_ty(def.did), substs.lower_into(interner)),
             Foreign(_def_id) => unimplemented!(),
             Str => apply(chalk_ir::TypeName::Str, empty()),
-            Array(ty, _) => apply(
-                chalk_ir::TypeName::Array,
-                chalk_ir::Substitution::from(
-                    interner,
-                    &[
-                        chalk_ir::GenericArgData::Ty(ty.lower_into(interner)).intern(interner),
-                        chalk_ir::GenericArgData::Const(
-                            chalk_ir::ConstData {
-                                ty: apply(chalk_ir::TypeName::Tuple(0), empty()),
-                                value: chalk_ir::ConstValue::Concrete(chalk_ir::ConcreteConst {
-                                    interned: 0,
-                                }),
-                            }
+            Array(ty, len) => {
+                let value = match len.val {
+                    ty::ConstKind::Value(val) => {
+                        chalk_ir::ConstValue::Concrete(chalk_ir::ConcreteConst { interned: val })
+                    }
+                    ty::ConstKind::Bound(db, bound) => {
+                        chalk_ir::ConstValue::BoundVar(chalk_ir::BoundVar::new(
+                            chalk_ir::DebruijnIndex::new(db.as_u32()),
+                            bound.index(),
+                        ))
+                    }
+                    _ => unimplemented!("Const not implemented. {:?}", len.val),
+                };
+                apply(
+                    chalk_ir::TypeName::Array,
+                    chalk_ir::Substitution::from(
+                        interner,
+                        &[
+                            chalk_ir::GenericArgData::Ty(ty.lower_into(interner)).intern(interner),
+                            chalk_ir::GenericArgData::Const(
+                                chalk_ir::ConstData { ty: len.ty.lower_into(interner), value }
+                                    .intern(interner),
+                            )
                             .intern(interner),
-                        )
-                        .intern(interner),
-                    ],
-                ),
-            ),
+                        ],
+                    ),
+                )
+            }
             Slice(ty) => apply(
                 chalk_ir::TypeName::Slice,
                 chalk_ir::Substitution::from1(
@@ -532,8 +544,7 @@ impl<'tcx> LowerInto<'tcx, Option<chalk_ir::QuantifiedWhereClause<RustInterner<'
                         b: predicate.1.lower_into(interner),
                     }),
                 ))
-
-            },
+            }
             ty::PredicateKind::TypeOutlives(_predicate) => None,
             ty::PredicateKind::Projection(_predicate) => None,
             ty::PredicateKind::WellFormed(_ty) => None,

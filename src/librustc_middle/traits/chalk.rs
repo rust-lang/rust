@@ -5,6 +5,7 @@
 //! its name suggest, is to provide an abstraction boundary for creating
 //! interned Chalk types.
 
+use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
@@ -63,7 +64,7 @@ impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
     type InternedType = Box<chalk_ir::TyData<Self>>;
     type InternedLifetime = Box<chalk_ir::LifetimeData<Self>>;
     type InternedConst = Box<chalk_ir::ConstData<Self>>;
-    type InternedConcreteConst = u32;
+    type InternedConcreteConst = ConstValue<'tcx>;
     type InternedGenericArg = Box<chalk_ir::GenericArgData<Self>>;
     type InternedGoal = Box<chalk_ir::GoalData<Self>>;
     type InternedGoals = Vec<chalk_ir::Goal<Self>>;
