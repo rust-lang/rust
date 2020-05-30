@@ -1,5 +1,4 @@
 use std::iter;
-use std::convert::TryFrom;
 
 use rustc_attr as attr;
 use rustc_ast::ast::FloatTy;
@@ -99,26 +98,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     .ok_or_else(|| err_ub_format!("overflow computing total size of `write_bytes`"))?;
                 this.memory
                     .write_bytes(ptr, iter::repeat(val_byte).take(byte_count.bytes() as usize))?;
-            }
-
-            // Pointer arithmetic
-            "arith_offset" => {
-                let &[ptr, offset] = check_arg_count(args)?;
-                let ptr = this.read_scalar(ptr)?.not_undef()?;
-                let offset = this.read_scalar(offset)?.to_machine_isize(this)?;
-
-                let pointee_ty = substs.type_at(0);
-                let pointee_size = i64::try_from(this.layout_of(pointee_ty)?.size.bytes()).unwrap();
-                let offset = offset.overflowing_mul(pointee_size).0;
-                let result_ptr = ptr.ptr_wrapping_signed_offset(offset, this);
-                this.write_scalar(result_ptr, dest)?;
-            }
-            "offset" => {
-                let &[ptr, offset] = check_arg_count(args)?;
-                let ptr = this.read_scalar(ptr)?.not_undef()?;
-                let offset = this.read_scalar(offset)?.to_machine_isize(this)?;
-                let result_ptr = this.pointer_offset_inbounds(ptr, substs.type_at(0), offset)?;
-                this.write_scalar(result_ptr, dest)?;
             }
 
             // Floating-point operations

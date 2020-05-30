@@ -1,6 +1,5 @@
 // This should fail even without validation
 // compile-flags: -Zmiri-disable-validation
-#![feature(weak_into_raw)]
 
 use std::rc::{Rc, Weak};
 use std::ptr;
