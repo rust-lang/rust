@@ -10,8 +10,6 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::map::Map;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
-use std::marker::PhantomData;
-
 declare_clippy_lint! {
     /// **What it does:**
     /// Lints usage of  `if let Some(v) = ... { y } else { x }` which is more
@@ -88,19 +86,17 @@ struct OptionIfLetElseOccurence {
     wrap_braces: bool,
 }
 
-struct ReturnBreakContinueVisitor<'tcx> {
+struct ReturnBreakContinueMacroVisitor {
     seen_return_break_continue: bool,
-    phantom_data: PhantomData<&'tcx bool>,
 }
-impl<'tcx> ReturnBreakContinueVisitor<'tcx> {
-    fn new() -> ReturnBreakContinueVisitor<'tcx> {
-        ReturnBreakContinueVisitor {
+impl ReturnBreakContinueMacroVisitor {
+    fn new() -> ReturnBreakContinueMacroVisitor {
+        ReturnBreakContinueMacroVisitor {
             seen_return_break_continue: false,
-            phantom_data: PhantomData,
         }
     }
 }
-impl<'tcx> Visitor<'tcx> for ReturnBreakContinueVisitor<'tcx> {
+impl<'tcx> Visitor<'tcx> for ReturnBreakContinueMacroVisitor {
     type Map = Map<'tcx>;
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None
@@ -119,14 +115,18 @@ impl<'tcx> Visitor<'tcx> for ReturnBreakContinueVisitor<'tcx> {
             // desugaring, as this will detect a break if there's a while loop
             // or a for loop inside the expression.
             _ => {
-                rustc_hir::intravisit::walk_expr(self, ex);
+                if utils::in_macro(ex.span) {
+                    self.seen_return_break_continue = true;
+                } else {
+                    rustc_hir::intravisit::walk_expr(self, ex);
+                }
             },
         }
     }
 }
 
-fn contains_return_break_continue<'tcx>(expression: &'tcx Expr<'tcx>) -> bool {
-    let mut recursive_visitor: ReturnBreakContinueVisitor<'tcx> = ReturnBreakContinueVisitor::new();
+fn contains_return_break_continue_macro(expression: &Expr<'_>) -> bool {
+    let mut recursive_visitor = ReturnBreakContinueMacroVisitor::new();
     recursive_visitor.visit_expr(expression);
     recursive_visitor.seen_return_break_continue
 }
@@ -205,8 +205,8 @@ fn detect_option_if_let_else<'a>(cx: &LateContext<'_, 'a>, expr: &'a Expr<'a>) -
         if let PatKind::TupleStruct(struct_qpath, &[inner_pat], _) = &arms[0].pat.kind;
         if utils::match_qpath(struct_qpath, &paths::OPTION_SOME);
         if let PatKind::Binding(bind_annotation, _, id, _) = &inner_pat.kind;
-        if !contains_return_break_continue(arms[0].body);
-        if !contains_return_break_continue(arms[1].body);
+        if !contains_return_break_continue_macro(arms[0].body);
+        if !contains_return_break_continue_macro(arms[1].body);
         then {
             let capture_mut = if bind_annotation == &BindingAnnotation::Mutable { "mut " } else { "" };
             let some_body = extract_body_from_arm(&arms[0])?;
