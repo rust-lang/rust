@@ -2902,7 +2902,7 @@ impl<'a> Resolver<'a> {
         span: Span,
         path_str: &str,
         ns: Namespace,
-        module_id: NodeId,
+        module_id: LocalDefId,
     ) -> Result<(ast::Path, Res), ()> {
         let path = if path_str.starts_with("::") {
             ast::Path {
@@ -2922,10 +2922,7 @@ impl<'a> Resolver<'a> {
                     .collect(),
             }
         };
-        let module = self.block_map.get(&module_id).copied().unwrap_or_else(|| {
-            let def_id = self.definitions.local_def_id(module_id);
-            self.module_map.get(&def_id).copied().unwrap_or(self.graph_root)
-        });
+        let module = self.module_map.get(&module_id).copied().unwrap_or(self.graph_root);
         let parent_scope = &ParentScope::module(module);
         let res = self.resolve_ast_path(&path, ns, parent_scope).map_err(|_| ())?;
         Ok((path, res))

@@ -1971,32 +1971,8 @@ impl<'tcx, T: Hash> Hash for Interned<'tcx, List<T>> {
     }
 }
 
-impl<'tcx> Borrow<[Ty<'tcx>]> for Interned<'tcx, List<Ty<'tcx>>> {
-    fn borrow<'a>(&'a self) -> &'a [Ty<'tcx>] {
-        &self.0[..]
-    }
-}
-
-impl<'tcx> Borrow<[CanonicalVarInfo]> for Interned<'tcx, List<CanonicalVarInfo>> {
-    fn borrow(&self) -> &[CanonicalVarInfo] {
-        &self.0[..]
-    }
-}
-
-impl<'tcx> Borrow<[GenericArg<'tcx>]> for Interned<'tcx, InternalSubsts<'tcx>> {
-    fn borrow<'a>(&'a self) -> &'a [GenericArg<'tcx>] {
-        &self.0[..]
-    }
-}
-
-impl<'tcx> Borrow<[ProjectionKind]> for Interned<'tcx, List<ProjectionKind>> {
-    fn borrow(&self) -> &[ProjectionKind] {
-        &self.0[..]
-    }
-}
-
-impl<'tcx> Borrow<[PlaceElem<'tcx>]> for Interned<'tcx, List<PlaceElem<'tcx>>> {
-    fn borrow(&self) -> &[PlaceElem<'tcx>] {
+impl<'tcx, T> Borrow<[T]> for Interned<'tcx, List<T>> {
+    fn borrow<'a>(&'a self) -> &'a [T] {
         &self.0[..]
     }
 }
@@ -2007,31 +1983,9 @@ impl<'tcx> Borrow<RegionKind> for Interned<'tcx, RegionKind> {
     }
 }
 
-impl<'tcx> Borrow<[ExistentialPredicate<'tcx>]>
-    for Interned<'tcx, List<ExistentialPredicate<'tcx>>>
-{
-    fn borrow<'a>(&'a self) -> &'a [ExistentialPredicate<'tcx>] {
-        &self.0[..]
-    }
-}
-
-impl<'tcx> Borrow<[Predicate<'tcx>]> for Interned<'tcx, List<Predicate<'tcx>>> {
-    fn borrow<'a>(&'a self) -> &'a [Predicate<'tcx>] {
-        &self.0[..]
-    }
-}
-
 impl<'tcx> Borrow<Const<'tcx>> for Interned<'tcx, Const<'tcx>> {
     fn borrow<'a>(&'a self) -> &'a Const<'tcx> {
         &self.0
-    }
-}
-
-impl<'tcx> Borrow<[traits::ChalkEnvironmentClause<'tcx>]>
-    for Interned<'tcx, List<traits::ChalkEnvironmentClause<'tcx>>>
-{
-    fn borrow<'a>(&'a self) -> &'a [traits::ChalkEnvironmentClause<'tcx>] {
-        &self.0[..]
     }
 }
 
