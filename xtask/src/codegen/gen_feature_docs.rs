@@ -3,7 +3,7 @@
 use std::{fmt, fs, path::PathBuf};
 
 use crate::{
-    codegen::{self, extract_comment_blocks_with_empty_lines, Mode},
+    codegen::{self, extract_comment_blocks_with_empty_lines, Location, Mode},
     project_root, rust_files, Result,
 };
 
@@ -19,7 +19,7 @@ pub fn generate_feature_docs(mode: Mode) -> Result<()> {
 #[derive(Debug)]
 struct Feature {
     id: String,
-    path: PathBuf,
+    location: Location,
     doc: String,
 }
 
@@ -40,7 +40,7 @@ impl Feature {
                 let id = block.id;
                 assert!(is_valid_feature_name(&id), "invalid feature name: {:?}", id);
                 let doc = block.contents.join("\n");
-                acc.push(Feature { id, path: path.clone(), doc })
+                acc.push(Feature { id, location: Location::new(path.clone()), doc })
             }
 
             Ok(())
@@ -69,20 +69,6 @@ fn is_valid_feature_name(feature: &str) -> bool {
 
 impl fmt::Display for Feature {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "=== {}", self.id)?;
-        let path = self.path.strip_prefix(&project_root()).unwrap().display().to_string();
-        let path = path.replace('\\', "/");
-        let name = self.path.file_name().unwrap();
-
-        //FIXME: generate line number as well
-        writeln!(
-            f,
-            "**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/{}[{}]",
-            path,
-            name.to_str().unwrap(),
-        )?;
-
-        writeln!(f, "{}", self.doc)?;
-        Ok(())
+        writeln!(f, "=== {}\n**Source:** {}\n{}", self.id, self.location, self.doc)
     }
 }
