@@ -1,5 +1,3 @@
-//! FIXME: write short doc here
-
 use std::{fmt, iter::FromIterator, sync::Arc};
 
 use hir::MacroFile;
@@ -26,6 +24,15 @@ fn macro_syntax_tree_stats(db: &RootDatabase) -> SyntaxTreeStats {
     db.query(hir::db::ParseMacroQuery).entries::<SyntaxTreeStats>()
 }
 
+// Feature: Status
+//
+// Shows internal statistic about memory usage of rust-analyzer.
+//
+// |===
+// | Editor  | Action Name
+//
+// | VS Code | **Rust Analyzer: Status**
+// |===
 pub(crate) fn status(db: &RootDatabase) -> String {
     let files_stats = db.query(FileTextQuery).entries::<FilesStats>();
     let syntax_tree_stats = syntax_tree_stats(db);

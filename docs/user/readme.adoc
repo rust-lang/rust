@@ -272,3 +272,10 @@ Gnome Builder currently has support for RLS, and there's no way to configure the
 == Features
 
 include::./generated_features.adoc[]
+
+== Assists (Code Actions)
+
+Assists, or code actions, are small local refactorings, available in a particular context.
+They are usually triggered by a shortcut or by clicking a light bulb icon in the editor.
+
+See [assists.md](./assists.md) for the list of available assists.
