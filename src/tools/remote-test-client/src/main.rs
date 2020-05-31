@@ -45,8 +45,10 @@ fn main() {
         ),
         "push" => push(Path::new(&args.next().unwrap())),
         "run" => run(
-            args.next().unwrap(),
             args.next().and_then(|count| count.parse().ok()).unwrap(),
+            // the last required parameter must remain the executable
+            // path so that the client works as a cargo runner
+            args.next().unwrap(),
             args.collect(),
         ),
         "help" | "-h" | "--help" => help(),
@@ -201,7 +203,7 @@ fn push(path: &Path) {
     println!("done pushing {:?}", path);
 }
 
-fn run(exe: String, support_lib_count: usize, all_args: Vec<String>) {
+fn run(support_lib_count: usize, exe: String, all_args: Vec<String>) {
     let device_address = env::var(REMOTE_ADDR_ENV).unwrap_or(DEFAULT_ADDR.to_string());
     let client = t!(TcpStream::connect(device_address));
     let mut client = BufWriter::new(client);
@@ -306,7 +308,7 @@ Usage: {0} <command> [<args>]
 Sub-commands:
     spawn-emulator <target> <server> <tmpdir> [rootfs]   See below
     push <path>                                          Copy <path> to emulator
-    run <file> <support_lib_count> [support_libs...] [args...]
+    run <support_lib_count> <file> [support_libs...] [args...]
                                                          Run program on emulator
     help                                                 Display help message
 

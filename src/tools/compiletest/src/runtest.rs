@@ -1608,8 +1608,7 @@ impl<'test> TestCx<'test> {
                 let mut test_client =
                     Command::new(self.config.remote_test_client.as_ref().unwrap());
                 test_client
-                    .args(&["run", &prog])
-                    .arg(support_libs.len().to_string())
+                    .args(&["run", &support_libs.len().to_string(), &prog])
                     .args(support_libs)
                     .args(args)
                     .envs(env.clone());
