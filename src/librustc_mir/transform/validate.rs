@@ -9,7 +9,7 @@ use rustc_middle::{
     },
     ty::{self, ParamEnv, TyCtxt},
 };
-use rustc_span::{def_id::DefId, Span, DUMMY_SP};
+use rustc_span::def_id::DefId;
 
 pub struct Validator {
     /// Describes at which point in the pipeline this validation is happening.
@@ -33,18 +33,25 @@ struct TypeChecker<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
-    fn fail(&self, span: Span, msg: impl AsRef<str>) {
+    fn fail(&self, location: Location, msg: impl AsRef<str>) {
+        let span = self.body.source_info(location).span;
         // We use `delay_span_bug` as we might see broken MIR when other errors have already
         // occurred.
         self.tcx.sess.diagnostic().delay_span_bug(
             span,
-            &format!("broken MIR in {:?} ({}): {}", self.def_id, self.when, msg.as_ref()),
+            &format!(
+                "broken MIR in {:?} ({}) at {:?}:\n{}",
+                self.def_id,
+                self.when,
+                location,
+                msg.as_ref()
+            ),
         );
     }
 
-    fn check_bb(&self, span: Span, bb: BasicBlock) {
+    fn check_bb(&self, location: Location, bb: BasicBlock) {
         if self.body.basic_blocks().get(bb).is_none() {
-            self.fail(span, format!("encountered jump to invalid basic block {:?}", bb))
+            self.fail(location, format!("encountered jump to invalid basic block {:?}", bb))
         }
     }
 }
@@ -57,7 +64,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             let span = self.body.source_info(location).span;
 
             if !ty.is_copy_modulo_regions(self.tcx, self.param_env, span) {
-                self.fail(span, format!("`Operand::Copy` with non-`Copy` type {}", ty));
+                self.fail(location, format!("`Operand::Copy` with non-`Copy` type {}", ty));
             }
         }
 
@@ -72,11 +79,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 Rvalue::Use(Operand::Copy(src) | Operand::Move(src)) => {
                     if dest == src {
                         self.fail(
-                            DUMMY_SP,
-                            format!(
-                                "encountered `Assign` statement with overlapping memory at {:?}",
-                                location
-                            ),
+                            location,
+                            "encountered `Assign` statement with overlapping memory",
                         );
                     }
                 }
@@ -85,15 +89,15 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         }
     }
 
-    fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, _location: Location) {
+    fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
         match &terminator.kind {
             TerminatorKind::Goto { target } => {
-                self.check_bb(terminator.source_info.span, *target);
+                self.check_bb(location, *target);
             }
             TerminatorKind::SwitchInt { targets, values, .. } => {
                 if targets.len() != values.len() + 1 {
                     self.fail(
-                        terminator.source_info.span,
+                        location,
                         format!(
                             "encountered `SwitchInt` terminator with {} values, but {} targets (should be values+1)",
                             values.len(),
@@ -102,19 +106,19 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     );
                 }
                 for target in targets {
-                    self.check_bb(terminator.source_info.span, *target);
+                    self.check_bb(location, *target);
                 }
             }
             TerminatorKind::Drop { target, unwind, .. } => {
-                self.check_bb(terminator.source_info.span, *target);
+                self.check_bb(location, *target);
                 if let Some(unwind) = unwind {
-                    self.check_bb(terminator.source_info.span, *unwind);
+                    self.check_bb(location, *unwind);
                 }
             }
             TerminatorKind::DropAndReplace { target, unwind, .. } => {
-                self.check_bb(terminator.source_info.span, *target);
+                self.check_bb(location, *target);
                 if let Some(unwind) = unwind {
-                    self.check_bb(terminator.source_info.span, *unwind);
+                    self.check_bb(location, *unwind);
                 }
             }
             TerminatorKind::Call { func, destination, cleanup, .. } => {
@@ -122,52 +126,52 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 match func_ty.kind {
                     ty::FnPtr(..) | ty::FnDef(..) => {}
                     _ => self.fail(
-                        terminator.source_info.span,
+                        location,
                         format!("encountered non-callable type {} in `Call` terminator", func_ty),
                     ),
                 }
                 if let Some((_, target)) = destination {
-                    self.check_bb(terminator.source_info.span, *target);
+                    self.check_bb(location, *target);
                 }
                 if let Some(cleanup) = cleanup {
-                    self.check_bb(terminator.source_info.span, *cleanup);
+                    self.check_bb(location, *cleanup);
                 }
             }
             TerminatorKind::Assert { cond, target, cleanup, .. } => {
                 let cond_ty = cond.ty(&self.body.local_decls, self.tcx);
                 if cond_ty != self.tcx.types.bool {
                     self.fail(
-                        terminator.source_info.span,
+                        location,
                         format!(
                             "encountered non-boolean condition of type {} in `Assert` terminator",
                             cond_ty
                         ),
                     );
                 }
-                self.check_bb(terminator.source_info.span, *target);
+                self.check_bb(location, *target);
                 if let Some(cleanup) = cleanup {
-                    self.check_bb(terminator.source_info.span, *cleanup);
+                    self.check_bb(location, *cleanup);
                 }
             }
             TerminatorKind::Yield { resume, drop, .. } => {
-                self.check_bb(terminator.source_info.span, *resume);
+                self.check_bb(location, *resume);
                 if let Some(drop) = drop {
-                    self.check_bb(terminator.source_info.span, *drop);
+                    self.check_bb(location, *drop);
                 }
             }
             TerminatorKind::FalseEdges { real_target, imaginary_target } => {
-                self.check_bb(terminator.source_info.span, *real_target);
-                self.check_bb(terminator.source_info.span, *imaginary_target);
+                self.check_bb(location, *real_target);
+                self.check_bb(location, *imaginary_target);
             }
             TerminatorKind::FalseUnwind { real_target, unwind } => {
-                self.check_bb(terminator.source_info.span, *real_target);
+                self.check_bb(location, *real_target);
                 if let Some(unwind) = unwind {
-                    self.check_bb(terminator.source_info.span, *unwind);
+                    self.check_bb(location, *unwind);
                 }
             }
             TerminatorKind::InlineAsm { destination, .. } => {
                 if let Some(destination) = destination {
-                    self.check_bb(terminator.source_info.span, *destination);
+                    self.check_bb(location, *destination);
                 }
             }
             // Nothing to validate for these.
