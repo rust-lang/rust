@@ -37,7 +37,7 @@
 [submodule "src/llvm-project"]
 	path = src/llvm-project
 	url = https://github.com/mabezdev/llvm-project.git
-	branch = xtensa_release_9.0.1_with_rust_patches
+	branch = xtensa_release_9.0.1_with_rust_patches-31-05-2020
 [submodule "src/doc/embedded-book"]
 	path = src/doc/embedded-book
 	url = https://github.com/rust-embedded/book.git
