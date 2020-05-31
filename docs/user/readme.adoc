@@ -8,6 +8,7 @@
 :important-caption: :heavy_exclamation_mark:
 :caution-caption: :fire:
 :warning-caption: :warning:
+:source-highlighter: rouge
 :experimental:
 
 // Master copy of this document lives in the https://github.com/rust-analyzer/rust-analyzer repository

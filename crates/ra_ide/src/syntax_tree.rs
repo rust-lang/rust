@@ -1,4 +1,4 @@
-use ra_db::SourceDatabase;
+use ra_db::{FileId, SourceDatabase};
 use ra_ide_db::RootDatabase;
 use ra_syntax::{
     algo, AstNode, NodeOrToken, SourceFile,

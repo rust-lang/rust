@@ -50,12 +50,12 @@ impl Feature {
 
 fn is_valid_feature_name(feature: &str) -> bool {
     'word: for word in feature.split_whitespace() {
-        for &short in ["to"].iter() {
+        for &short in ["to", "and"].iter() {
             if word == short {
                 continue 'word;
             }
         }
-        for &short in ["To"].iter() {
+        for &short in ["To", "And"].iter() {
             if word == short {
                 return false;
             }

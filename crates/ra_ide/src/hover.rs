@@ -1,10 +1,10 @@
-//! Logic for computing info that is displayed when the user hovers over any
-//! source code items (e.g. function call, struct field, variable symbol...)
+use std::iter::once;
 
 use hir::{
     Adt, AsAssocItem, AssocItemContainer, FieldSource, HasSource, HirDisplay, ModuleDef,
     ModuleSource, Semantics,
 };
+use itertools::Itertools;
 use ra_db::SourceDatabase;
 use ra_ide_db::{
     defs::{classify_name, classify_name_ref, Definition},
@@ -21,8 +21,6 @@ use crate::{
     display::{macro_label, rust_code_markup, rust_code_markup_with_doc, ShortLabel},
     FilePosition, RangeInfo,
 };
-use itertools::Itertools;
-use std::iter::once;
 
 /// Contains the results when hovering over an item
 #[derive(Debug, Default)]
@@ -60,6 +58,63 @@ impl HoverResult {
     pub fn to_markup(&self) -> String {
         self.results.join("\n\n---\n")
     }
+}
+
+// Feature: Hover
+//
+// Shows additional information, like type of an expression or documentation for definition when "focusing" code.
+// Focusing is usually hovering with a mouse, but can also be triggered with a shortcut.
+pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeInfo<HoverResult>> {
+    let sema = Semantics::new(db);
+    let file = sema.parse(position.file_id).syntax().clone();
+    let token = pick_best(file.token_at_offset(position.offset))?;
+    let token = sema.descend_into_macros(token);
+
+    let mut res = HoverResult::new();
+
+    if let Some((node, name_kind)) = match_ast! {
+        match (token.parent()) {
+            ast::NameRef(name_ref) => {
+                classify_name_ref(&sema, &name_ref).map(|d| (name_ref.syntax().clone(), d.definition()))
+            },
+            ast::Name(name) => {
+                classify_name(&sema, &name).map(|d| (name.syntax().clone(), d.definition()))
+            },
+            _ => None,
+        }
+    } {
+        let range = sema.original_range(&node).range;
+        res.extend(hover_text_from_name_kind(db, name_kind));
+
+        if !res.is_empty() {
+            return Some(RangeInfo::new(range, res));
+        }
+    }
+
+    let node = token
+        .ancestors()
+        .find(|n| ast::Expr::cast(n.clone()).is_some() || ast::Pat::cast(n.clone()).is_some())?;
+
+    let ty = match_ast! {
+        match node {
+            ast::MacroCall(_it) => {
+                // If this node is a MACRO_CALL, it means that `descend_into_macros` failed to resolve.
+                // (e.g expanding a builtin macro). So we give up here.
+                return None;
+            },
+            ast::Expr(it) => {
+                sema.type_of_expr(&it)
+            },
+            ast::Pat(it) => {
+                sema.type_of_pat(&it)
+            },
+            _ => None,
+        }
+    }?;
+
+    res.extend(Some(rust_code_markup(&ty.display(db))));
+    let range = sema.original_range(&node).range;
+    Some(RangeInfo::new(range, res))
 }
 
 fn hover_text(
@@ -158,59 +213,6 @@ fn hover_text_from_name_kind(db: &RootDatabase, def: Definition) -> Option<Strin
         let src = def.source(db);
         hover_text(src.value.doc_comment_text(), src.value.short_label(), mod_path)
     }
-}
-
-pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeInfo<HoverResult>> {
-    let sema = Semantics::new(db);
-    let file = sema.parse(position.file_id).syntax().clone();
-    let token = pick_best(file.token_at_offset(position.offset))?;
-    let token = sema.descend_into_macros(token);
-
-    let mut res = HoverResult::new();
-
-    if let Some((node, name_kind)) = match_ast! {
-        match (token.parent()) {
-            ast::NameRef(name_ref) => {
-                classify_name_ref(&sema, &name_ref).map(|d| (name_ref.syntax().clone(), d.definition()))
-            },
-            ast::Name(name) => {
-                classify_name(&sema, &name).map(|d| (name.syntax().clone(), d.definition()))
-            },
-            _ => None,
-        }
-    } {
-        let range = sema.original_range(&node).range;
-        res.extend(hover_text_from_name_kind(db, name_kind));
-
-        if !res.is_empty() {
-            return Some(RangeInfo::new(range, res));
-        }
-    }
-
-    let node = token
-        .ancestors()
-        .find(|n| ast::Expr::cast(n.clone()).is_some() || ast::Pat::cast(n.clone()).is_some())?;
-
-    let ty = match_ast! {
-        match node {
-            ast::MacroCall(_it) => {
-                // If this node is a MACRO_CALL, it means that `descend_into_macros` failed to resolve.
-                // (e.g expanding a builtin macro). So we give up here.
-                return None;
-            },
-            ast::Expr(it) => {
-                sema.type_of_expr(&it)
-            },
-            ast::Pat(it) => {
-                sema.type_of_pat(&it)
-            },
-            _ => None,
-        }
-    }?;
-
-    res.extend(Some(rust_code_markup(&ty.display(db))));
-    let range = sema.original_range(&node).range;
-    Some(RangeInfo::new(range, res))
 }
 
 fn pick_best(tokens: TokenAtOffset<SyntaxToken>) -> Option<SyntaxToken> {

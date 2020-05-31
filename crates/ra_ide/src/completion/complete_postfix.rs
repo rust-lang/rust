@@ -1,12 +1,11 @@
 //! FIXME: write short doc here
-
+use ra_assists::utils::TryEnum;
 use ra_syntax::{
     ast::{self, AstNode},
     TextRange, TextSize,
 };
 use ra_text_edit::TextEdit;
 
-use super::completion_config::SnippetCap;
 use crate::{
     completion::{
         completion_context::CompletionContext,
@@ -14,7 +13,8 @@ use crate::{
     },
     CompletionItem,
 };
-use ra_assists::utils::TryEnum;
+
+use super::completion_config::SnippetCap;
 
 pub(super) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
     if !ctx.config.enable_postfix_completions {
