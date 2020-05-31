@@ -10,9 +10,12 @@ mod gen_parser_tests;
 mod gen_assists_docs;
 mod gen_feature_docs;
 
-use std::{mem, path::Path};
+use std::{
+    fmt, mem,
+    path::{Path, PathBuf},
+};
 
-use crate::{not_bash::fs2, Result};
+use crate::{not_bash::fs2, project_root, Result};
 
 pub use self::{
     gen_assists_docs::generate_assists_docs, gen_feature_docs::generate_feature_docs,
@@ -29,7 +32,6 @@ const AST_TOKENS: &str = "crates/ra_syntax/src/ast/generated/tokens.rs";
 
 const ASSISTS_DIR: &str = "crates/ra_assists/src/handlers";
 const ASSISTS_TESTS: &str = "crates/ra_assists/src/tests/generated.rs";
-const ASSISTS_DOCS: &str = "docs/user/assists.md";
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Mode {
@@ -106,4 +108,29 @@ fn do_extract_comment_blocks(text: &str, allow_blocks_with_empty_lines: bool) ->
         res.push(mem::replace(&mut block, Vec::new()))
     }
     res
+}
+
+#[derive(Debug)]
+struct Location {
+    file: PathBuf,
+}
+
+impl Location {
+    fn new(file: PathBuf) -> Self {
+        Self { file }
+    }
+}
+
+impl fmt::Display for Location {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let path = self.file.strip_prefix(&project_root()).unwrap().display().to_string();
+        let path = path.replace('\\', "/");
+        let name = self.file.file_name().unwrap();
+        write!(
+            f,
+            "https://github.com/rust-analyzer/rust-analyzer/blob/master/{}[{}]",
+            path,
+            name.to_str().unwrap()
+        )
+    }
 }

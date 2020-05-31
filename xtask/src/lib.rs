@@ -191,7 +191,7 @@ Release: release:{}[]
     let path = changelog_dir.join(format!("{}-changelog-{}.adoc", today, changelog_n));
     fs2::write(&path, &contents)?;
 
-    for &adoc in ["manual.adoc", "generated_features.adoc"].iter() {
+    for &adoc in ["manual.adoc", "generated_features.adoc", "generated_assists.adoc"].iter() {
         let src = project_root().join("./docs/user/").join(adoc);
         let dst = website_root.join(adoc);
         fs2::copy(src, dst)?;

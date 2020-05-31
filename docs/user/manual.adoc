@@ -278,5 +278,6 @@ include::./generated_features.adoc[]
 
 Assists, or code actions, are small local refactorings, available in a particular context.
 They are usually triggered by a shortcut or by clicking a light bulb icon in the editor.
+Cursor position or selection is signified by `┃` character.
 
-See [assists.md](./assists.md) for the list of available assists.
+include::./generated_assists.adoc[]

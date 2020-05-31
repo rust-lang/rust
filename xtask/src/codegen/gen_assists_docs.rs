@@ -1,22 +1,28 @@
 //! Generates `assists.md` documentation.
 
-use std::{fs, path::Path};
+use std::{fmt, fs, path::Path};
 
 use crate::{
-    codegen::{self, extract_comment_blocks_with_empty_lines, Mode},
+    codegen::{self, extract_comment_blocks_with_empty_lines, Location, Mode},
     project_root, rust_files, Result,
 };
 
 pub fn generate_assists_docs(mode: Mode) -> Result<()> {
     let assists = Assist::collect()?;
     generate_tests(&assists, mode)?;
-    generate_docs(&assists, mode)?;
+
+    let contents = assists.into_iter().map(|it| it.to_string()).collect::<Vec<_>>().join("\n\n");
+    let contents = contents.trim().to_string() + "\n";
+    let dst = project_root().join("docs/user/generated_assists.adoc");
+    codegen::update(&dst, &contents, mode)?;
+
     Ok(())
 }
 
 #[derive(Debug)]
 struct Assist {
     id: String,
+    location: Location,
     doc: String,
     before: String,
     after: String,
@@ -58,7 +64,8 @@ impl Assist {
                 assert_eq!(lines.next().unwrap().as_str(), "->");
                 assert_eq!(lines.next().unwrap().as_str(), "```");
                 let after = take_until(lines.by_ref(), "```");
-                acc.push(Assist { id, doc, before, after })
+                let location = Location::new(path.to_path_buf());
+                acc.push(Assist { id, location, doc, before, after })
             }
 
             fn take_until<'a>(lines: impl Iterator<Item = &'a String>, marker: &str) -> String {
@@ -73,6 +80,31 @@ impl Assist {
             }
             Ok(())
         }
+    }
+}
+
+impl fmt::Display for Assist {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let before = self.before.replace("<|>", "┃"); // Unicode pseudo-graphics bar
+        let after = self.after.replace("<|>", "┃");
+        writeln!(
+            f,
+            "[discrete]\n=== `{}`
+
+{}
+
+.Before
+```rust
+{}```
+
+.After
+```rust
+{}```",
+            self.id,
+            self.doc,
+            hide_hash_comments(&before),
+            hide_hash_comments(&after)
+        )
     }
 }
 
@@ -101,37 +133,6 @@ r#####"
     }
     let buf = crate::reformat(buf)?;
     codegen::update(&project_root().join(codegen::ASSISTS_TESTS), &buf, mode)
-}
-
-fn generate_docs(assists: &[Assist], mode: Mode) -> Result<()> {
-    let mut buf = String::from(
-        "# Assists\n\nCursor position or selection is signified by `┃` character.\n\n",
-    );
-
-    for assist in assists {
-        let before = assist.before.replace("<|>", "┃"); // Unicode pseudo-graphics bar
-        let after = assist.after.replace("<|>", "┃");
-        let docs = format!(
-            "
-## `{}`
-
-{}
-
-```rust
-// BEFORE
-{}
-// AFTER
-{}```
-",
-            assist.id,
-            assist.doc,
-            hide_hash_comments(&before),
-            hide_hash_comments(&after)
-        );
-        buf.push_str(&docs);
-    }
-
-    codegen::update(&project_root().join(codegen::ASSISTS_DOCS), &buf, mode)
 }
 
 fn hide_hash_comments(text: &str) -> String {
