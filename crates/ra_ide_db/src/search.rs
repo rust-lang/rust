@@ -124,29 +124,33 @@ impl Definition {
 
         let vis = self.visibility(db);
 
-        // FIXME:
-        // The following logic are wrong that it does not search
-        // for submodules within other files recursively.
-
         if let Some(Visibility::Module(module)) = vis.and_then(|it| it.into()) {
             let module: Module = module.into();
             let mut res = FxHashMap::default();
-            let src = module.definition_source(db);
-            let file_id = src.file_id.original_file(db);
 
-            match src.value {
-                ModuleSource::Module(m) => {
-                    let range = Some(m.syntax().text_range());
-                    res.insert(file_id, range);
-                }
-                ModuleSource::SourceFile(_) => {
-                    res.insert(file_id, None);
-                    res.extend(module.children(db).map(|m| {
-                        let src = m.definition_source(db);
-                        (src.file_id.original_file(db), None)
-                    }));
-                }
+            let mut to_visit = vec![module];
+            let mut is_first = true;
+            while let Some(module) = to_visit.pop() {
+                let src = module.definition_source(db);
+                let file_id = src.file_id.original_file(db);
+                match src.value {
+                    ModuleSource::Module(m) => {
+                        if is_first {
+                            let range = Some(m.syntax().text_range());
+                            res.insert(file_id, range);
+                        } else {
+                            // We have already added the enclosing file to the search scope,
+                            // so do nothing.
+                        }
+                    }
+                    ModuleSource::SourceFile(_) => {
+                        res.insert(file_id, None);
+                    }
+                };
+                is_first = false;
+                to_visit.extend(module.children(db));
             }
+
             return SearchScope::new(res);
         }
 
