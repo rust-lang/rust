@@ -1309,11 +1309,7 @@ mod tests {
 
     impl Read for ShortReader {
         fn read(&mut self, _: &mut [u8]) -> io::Result<usize> {
-            if self.lengths.is_empty() {
-                Ok(0)
-            } else {
-                Ok(self.lengths.remove(0))
-            }
+            if self.lengths.is_empty() { Ok(0) } else { Ok(self.lengths.remove(0)) }
         }
     }
 
