@@ -100,8 +100,8 @@ Compatibility Notes
   source file rather than the previous format of `<NAME macros>`.][70969]
   **Note:** this may not point a file that actually exists on the user's system.
 - [The minimum required external LLVM version has been bumped to LLVM 8.][71147]
-- [`mem::{zeroed, uninitialised, MaybeUninit}` will now panic when used with types
-  that do not allow zero initialization such as `NonZeroU8`.][66059] This was
+- [`mem::{zeroed, uninitialised}` will now panic when used with types that do
+  not allow zero initialization such as `NonZeroU8`.][66059] This was
   previously a warning.
 - [In 1.45.0 (the next release) converting a `f64` to `u32` using the `as`
   operator has been defined as a saturating operation.][71269] This was previously
