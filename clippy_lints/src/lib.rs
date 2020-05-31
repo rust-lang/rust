@@ -325,6 +325,7 @@ mod unwrap;
 mod use_self;
 mod useless_conversion;
 mod vec;
+mod vec_resize_to_zero;
 mod verbose_file_reads;
 mod wildcard_dependencies;
 mod wildcard_imports;
@@ -847,6 +848,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &utils::internal_lints::OUTER_EXPN_EXPN_DATA,
         &utils::internal_lints::PRODUCE_ICE,
         &vec::USELESS_VEC,
+        &vec_resize_to_zero::VEC_RESIZE_TO_ZERO,
         &verbose_file_reads::VERBOSE_FILE_READS,
         &wildcard_dependencies::WILDCARD_DEPENDENCIES,
         &wildcard_imports::ENUM_GLOB_USE,
@@ -1062,6 +1064,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(|| box manual_non_exhaustive::ManualNonExhaustive);
     store.register_late_pass(|| box manual_async_fn::ManualAsyncFn);
     store.register_early_pass(|| box redundant_field_names::RedundantFieldNames);
+    store.register_late_pass(|| box vec_resize_to_zero::VecResizeToZero);
     let single_char_binding_names_threshold = conf.single_char_binding_names_threshold;
     store.register_early_pass(move || box non_expressive_names::NonExpressiveNames {
         single_char_binding_names_threshold,
@@ -1430,6 +1433,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&unwrap::UNNECESSARY_UNWRAP),
         LintId::of(&useless_conversion::USELESS_CONVERSION),
         LintId::of(&vec::USELESS_VEC),
+        LintId::of(&vec_resize_to_zero::VEC_RESIZE_TO_ZERO),
         LintId::of(&write::PRINTLN_EMPTY_STRING),
         LintId::of(&write::PRINT_LITERAL),
         LintId::of(&write::PRINT_WITH_NEWLINE),
@@ -1677,6 +1681,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&unnamed_address::VTABLE_ADDRESS_COMPARISONS),
         LintId::of(&unused_io_amount::UNUSED_IO_AMOUNT),
         LintId::of(&unwrap::PANICKING_UNWRAP),
+        LintId::of(&vec_resize_to_zero::VEC_RESIZE_TO_ZERO),
     ]);
 
     store.register_group(true, "clippy::perf", Some("clippy_perf"), vec![
