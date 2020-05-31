@@ -417,7 +417,7 @@ interface Runnable {
     /// The label to show in the UI.
     label: string;
     /// The following fields describe a process to spawn.
-    bin: string;
+    kind: "cargo" | "rustc" | "rustup";
     args: string[];
     /// Args for cargo after `--`.
     extraArgs: string[];

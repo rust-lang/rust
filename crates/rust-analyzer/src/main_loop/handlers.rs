@@ -40,7 +40,6 @@ use crate::{
     world::WorldSnapshot,
     LspError, Result,
 };
-use anyhow::Context;
 
 pub fn handle_analyzer_status(world: WorldSnapshot, _: ()) -> Result<String> {
     let _p = profile("handle_analyzer_status");
@@ -427,7 +426,7 @@ pub fn handle_runnables(
                 res.push(lsp_ext::Runnable {
                     range: Default::default(),
                     label: format!("cargo {} -p {}", cmd, spec.package),
-                    bin: cargo_path()?,
+                    kind: lsp_ext::RunnableKind::Cargo,
                     args: vec![cmd.to_string(), "--package".to_string(), spec.package.clone()],
                     extra_args: Vec::new(),
                     env: FxHashMap::default(),
@@ -439,7 +438,7 @@ pub fn handle_runnables(
             res.push(lsp_ext::Runnable {
                 range: Default::default(),
                 label: "cargo check --workspace".to_string(),
-                bin: cargo_path()?,
+                kind: lsp_ext::RunnableKind::Cargo,
                 args: vec!["check".to_string(), "--workspace".to_string()],
                 extra_args: Vec::new(),
                 env: FxHashMap::default(),
@@ -448,13 +447,6 @@ pub fn handle_runnables(
         }
     }
     Ok(res)
-}
-
-fn cargo_path() -> Result<String> {
-    Ok(ra_toolchain::cargo()
-        .to_str()
-        .context("Path to `cargo` executable contains invalid UTF8 characters")?
-        .to_owned())
 }
 
 pub fn handle_completion(
@@ -994,7 +986,7 @@ fn to_lsp_runnable(
     Ok(lsp_ext::Runnable {
         range: to_proto::range(&line_index, runnable.range),
         label,
-        bin: cargo_path()?,
+        kind: lsp_ext::RunnableKind::Cargo,
         args,
         extra_args,
         env: {

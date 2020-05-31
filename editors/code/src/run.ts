@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
 import * as ra from './lsp_ext';
+import * as toolchain from "./toolchain";
 
 import { Ctx, Cmd } from './ctx';
 import { startDebugSession, getDebugConfiguration } from './debug';
@@ -175,7 +176,7 @@ export function createTask(spec: ra.Runnable): vscode.Task {
     const definition: CargoTaskDefinition = {
         type: 'cargo',
         label: spec.label,
-        command: spec.bin,
+        command: toolchain.getPathForExecutable(spec.kind),
         args: spec.extraArgs ? [...spec.args, '--', ...spec.extraArgs] : spec.args,
         env: spec.env,
     };

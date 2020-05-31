@@ -121,12 +121,21 @@ pub struct RunnablesParams {
     pub position: Option<Position>,
 }
 
+// Must strictly correspond to the executable name
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "lowercase")]
+pub enum RunnableKind {
+    Cargo,
+    Rustc,
+    Rustup,
+}
+
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Runnable {
     pub range: Range,
     pub label: String,
-    pub bin: String,
+    pub kind: RunnableKind,
     pub args: Vec<String>,
     pub extra_args: Vec<String>,
     pub env: FxHashMap<String, String>,

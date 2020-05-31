@@ -99,3 +99,21 @@ export function isValidExecutable(path: string): boolean {
 export function setContextValue(key: string, value: any): Thenable<void> {
     return vscode.commands.executeCommand('setContext', key, value);
 }
+
+/**
+ * Returns a higher-order function that caches the results of invoking the
+ * underlying function.
+ */
+export function memoize<Ret, TThis, Param extends string>(func: (this: TThis, arg: Param) => Ret) {
+    const cache = new Map<string, Ret>();
+
+    return function(this: TThis, arg: Param) {
+        const cached = cache.get(arg);
+        if (cached) return cached;
+
+        const result = func.call(this, arg);
+        cache.set(arg, result);
+
+        return result;
+    };
+}

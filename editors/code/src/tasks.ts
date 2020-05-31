@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { getCargoPathOrFail } from "./cargo";
+import * as toolchain from "./toolchain";
 
 // This ends up as the `type` key in tasks.json. RLS also uses `cargo` and
 // our configuration should be compatible with it so use the same key.
@@ -25,7 +25,7 @@ class CargoTaskProvider implements vscode.TaskProvider {
         // set of tasks that always exist. These tasks cannot be removed in
         // tasks.json - only tweaked.
 
-        const cargoPath = getCargoPathOrFail();
+        const cargoPath = toolchain.cargoPath();
 
         return [
             { command: 'build', group: vscode.TaskGroup.Build },

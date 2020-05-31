@@ -3,7 +3,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as ra from './lsp_ext';
 
-import { Cargo } from './cargo';
+import { Cargo } from './toolchain';
 import { Ctx } from "./ctx";
 
 const debugOutput = vscode.window.createOutputChannel("Debug");

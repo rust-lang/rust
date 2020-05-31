@@ -48,7 +48,6 @@ hir = { path = "../ra_hir", package = "ra_hir" }
 hir_def = { path = "../ra_hir_def", package = "ra_hir_def" }
 hir_ty = { path = "../ra_hir_ty", package = "ra_hir_ty" }
 ra_proc_macro_srv = { path = "../ra_proc_macro_srv" }
-ra_toolchain = { path = "../ra_toolchain" }
 
 [target.'cfg(windows)'.dependencies]
 winapi = "0.3.8"
