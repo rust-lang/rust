@@ -90,11 +90,15 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             TerminatorKind::Goto { target } => {
                 self.check_bb(terminator.source_info.span, *target);
             }
-            TerminatorKind::SwitchInt { targets, .. } => {
-                if targets.is_empty() {
+            TerminatorKind::SwitchInt { targets, values, .. } => {
+                if targets.len() != values.len() + 1 {
                     self.fail(
                         terminator.source_info.span,
-                        "encountered `SwitchInt` terminator with no target to jump to",
+                        format!(
+                            "encountered `SwitchInt` terminator with {} values, but {} targets (should be values+1)",
+                            values.len(),
+                            targets.len(),
+                        ),
                     );
                 }
                 for target in targets {
