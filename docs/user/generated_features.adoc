@@ -1,5 +1,5 @@
 === Expand Macro Recursively
-**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/expand_macro.rs[expand_macro.rs]
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/expand_macro.rs#L15[expand_macro.rs]
 
 Shows the full macro expansion of the macro at current cursor.
 
@@ -11,7 +11,7 @@ Shows the full macro expansion of the macro at current cursor.
 
 
 === Extend Selection
-**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/extend_selection.rs[extend_selection.rs]
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/extend_selection.rs#L15[extend_selection.rs]
 
 Extends the current selection to the encompassing syntactic construct
 (expression, statement, item, module, etc). It works with multiple cursors.
@@ -24,7 +24,7 @@ Extends the current selection to the encompassing syntactic construct
 
 
 === File Structure
-**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/display/structure.rs[structure.rs]
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/display/structure.rs#L17[structure.rs]
 
 Provides a tree of the symbols defined in the file. Can be used to
 
@@ -40,7 +40,7 @@ Provides a tree of the symbols defined in the file. Can be used to
 
 
 === Go to Definition
-**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/goto_definition.rs[goto_definition.rs]
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/goto_definition.rs#L18[goto_definition.rs]
 
 Navigates to the definition of an identifier.
 
@@ -52,7 +52,7 @@ Navigates to the definition of an identifier.
 
 
 === Go to Implementation
-**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/goto_implementation.rs[goto_implementation.rs]
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/goto_implementation.rs#L7[goto_implementation.rs]
 
 Navigates to the impl block of structs, enums or traits. Also implemented as a code lens.
 
@@ -64,7 +64,7 @@ Navigates to the impl block of structs, enums or traits. Also implemented as a c
 
 
 === Go to Type Definition
-**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/goto_type_definition.rs[goto_type_definition.rs]
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/goto_type_definition.rs#L6[goto_type_definition.rs]
 
 Navigates to the type of an identifier.
 
@@ -76,14 +76,14 @@ Navigates to the type of an identifier.
 
 
 === Hover
-**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/hover.rs[hover.rs]
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/hover.rs#L63[hover.rs]
 
 Shows additional information, like type of an expression or documentation for definition when "focusing" code.
 Focusing is usually hovering with a mouse, but can also be triggered with a shortcut.
 
 
 === Inlay Hints
-**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/inlay_hints.rs[inlay_hints.rs]
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/inlay_hints.rs#L40[inlay_hints.rs]
 
 rust-analyzer shows additional information inline with the source code.
 Editors usually render this using read-only virtual text snippets interspersed with code.
@@ -106,7 +106,7 @@ https://github.com/rust-analyzer/rust-analyzer/issues/1623[1], https://github.co
 
 
 === Join Lines
-**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/join_lines.rs[join_lines.rs]
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/join_lines.rs#L12[join_lines.rs]
 
 Join selected lines into one, smartly fixing up whitespace, trailing commas, and braces.
 
@@ -118,7 +118,7 @@ Join selected lines into one, smartly fixing up whitespace, trailing commas, and
 
 
 === Magic Completions
-**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/completion.rs[completion.rs]
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/completion.rs#L38[completion.rs]
 
 In addition to usual reference completion, rust-analyzer provides some ✨magic✨
 completions as well:
@@ -163,7 +163,7 @@ mod tests {
 
 
 === Matching Brace
-**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/matching_brace.rs[matching_brace.rs]
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/matching_brace.rs#L3[matching_brace.rs]
 
 If the cursor is on any brace (`<>(){}[]`) which is a part of a brace-pair,
 moves cursor to the matching brace. It uses the actual parser to determine
@@ -177,7 +177,7 @@ braces, so it won't confuse generics with comparisons.
 
 
 === On Typing Assists
-**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/typing.rs[typing.rs]
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/typing.rs#L35[typing.rs]
 
 Some features trigger on typing certain characters:
 
@@ -187,7 +187,7 @@ Some features trigger on typing certain characters:
 
 
 === Parent Module
-**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/parent_module.rs[parent_module.rs]
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/parent_module.rs#L12[parent_module.rs]
 
 Navigates to the parent module of the current module.
 
@@ -199,7 +199,7 @@ Navigates to the parent module of the current module.
 
 
 === Run
-**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/runnables.rs[runnables.rs]
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/runnables.rs#L45[runnables.rs]
 
 Shows a popup suggesting to run a test/benchmark/binary **at the current cursor
 location**. Super useful for repeatedly running just a single test. Do bind this
@@ -213,7 +213,7 @@ to a shortcut!
 
 
 === Semantic Syntax Highlighting
-**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/syntax_highlighting.rs[syntax_highlighting.rs]
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/syntax_highlighting.rs#L33[syntax_highlighting.rs]
 
 rust-analyzer highlights the code semantically.
 For example, `bar` in `foo::Bar` might be colored differently depending on whether `Bar` is an enum or a trait.
@@ -225,7 +225,7 @@ We also give special modifier for `mut` and `&mut` local variables.
 
 
 === Show Syntax Tree
-**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/syntax_tree.rs[syntax_tree.rs]
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/syntax_tree.rs#L9[syntax_tree.rs]
 
 Shows the parse tree of the current file. It exists mostly for debugging
 rust-analyzer itself.
@@ -238,7 +238,7 @@ rust-analyzer itself.
 
 
 === Status
-**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/status.rs[status.rs]
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/status.rs#L27[status.rs]
 
 Shows internal statistic about memory usage of rust-analyzer.
 
@@ -250,7 +250,7 @@ Shows internal statistic about memory usage of rust-analyzer.
 
 
 === Structural Seach and Replace
-**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/ssr.rs[ssr.rs]
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/ssr.rs#L26[ssr.rs]
 
 Search and replace with named wildcards that will match any expression.
 The syntax for a structural search replace command is `<search_pattern> ==>> <replace_pattern>`.
@@ -275,7 +275,7 @@ String::from((y + 5).foo(z))
 
 
 === Workspace Symbol
-**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide_db/src/symbol_index.rs[symbol_index.rs]
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide_db/src/symbol_index.rs#L113[symbol_index.rs]
 
 Uses fuzzy-search to find types, modules and functions by name across your
 project and dependencies. This is **the** most useful feature, which improves code

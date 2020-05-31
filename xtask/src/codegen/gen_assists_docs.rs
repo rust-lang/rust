@@ -64,7 +64,7 @@ impl Assist {
                 assert_eq!(lines.next().unwrap().as_str(), "->");
                 assert_eq!(lines.next().unwrap().as_str(), "```");
                 let after = take_until(lines.by_ref(), "```");
-                let location = Location::new(path.to_path_buf());
+                let location = Location::new(path.to_path_buf(), block.line);
                 acc.push(Assist { id, location, doc, before, after })
             }
 
@@ -90,6 +90,7 @@ impl fmt::Display for Assist {
         writeln!(
             f,
             "[discrete]\n=== `{}`
+**Source:** {}
 
 {}
 
@@ -101,6 +102,7 @@ impl fmt::Display for Assist {
 ```rust
 {}```",
             self.id,
+            self.location,
             self.doc,
             hide_hash_comments(&before),
             hide_hash_comments(&after)

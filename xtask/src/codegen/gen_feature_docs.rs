@@ -40,7 +40,8 @@ impl Feature {
                 let id = block.id;
                 assert!(is_valid_feature_name(&id), "invalid feature name: {:?}", id);
                 let doc = block.contents.join("\n");
-                acc.push(Feature { id, location: Location::new(path.clone()), doc })
+                let location = Location::new(path.clone(), block.line);
+                acc.push(Feature { id, location, doc })
             }
 
             Ok(())
