@@ -10,7 +10,7 @@ use crate::{
 pub fn generate_feature_docs(mode: Mode) -> Result<()> {
     let features = Feature::collect()?;
     let contents = features.into_iter().map(|it| it.to_string()).collect::<Vec<_>>().join("\n\n");
-
+    let contents = contents.trim().to_string() + "\n";
     let dst = project_root().join("docs/user/generated_features.adoc");
     codegen::update(&dst, &contents, mode)?;
     Ok(())
@@ -81,7 +81,7 @@ impl fmt::Display for Feature {
             name.to_str().unwrap(),
         )?;
 
-        writeln!(f, "\n{}", self.doc)?;
+        writeln!(f, "{}", self.doc)?;
         Ok(())
     }
 }
