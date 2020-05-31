@@ -37,6 +37,11 @@ impl Name {
         Name(Repr::TupleField(idx))
     }
 
+    pub fn new_lifetime(lt: &ra_syntax::SyntaxToken) -> Name {
+        assert!(lt.kind() == ra_syntax::SyntaxKind::LIFETIME);
+        Name(Repr::Text(lt.text().clone()))
+    }
+
     /// Shortcut to create inline plain text name
     const fn new_inline_ascii(text: &[u8]) -> Name {
         Name::new_text(SmolStr::new_inline_from_ascii(text.len(), text))

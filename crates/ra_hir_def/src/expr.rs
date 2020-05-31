@@ -52,18 +52,22 @@ pub enum Expr {
     Block {
         statements: Vec<Statement>,
         tail: Option<ExprId>,
+        label: Option<Name>,
     },
     Loop {
         body: ExprId,
+        label: Option<Name>,
     },
     While {
         condition: ExprId,
         body: ExprId,
+        label: Option<Name>,
     },
     For {
         iterable: ExprId,
         pat: PatId,
         body: ExprId,
+        label: Option<Name>,
     },
     Call {
         callee: ExprId,
@@ -79,9 +83,12 @@ pub enum Expr {
         expr: ExprId,
         arms: Vec<MatchArm>,
     },
-    Continue,
+    Continue {
+        label: Option<Name>,
+    },
     Break {
         expr: Option<ExprId>,
+        label: Option<Name>,
     },
     Return {
         expr: Option<ExprId>,
@@ -225,7 +232,7 @@ impl Expr {
                     f(*else_branch);
                 }
             }
-            Expr::Block { statements, tail } => {
+            Expr::Block { statements, tail, .. } => {
                 for stmt in statements {
                     match stmt {
                         Statement::Let { initializer, .. } => {
@@ -241,8 +248,8 @@ impl Expr {
                 }
             }
             Expr::TryBlock { body } => f(*body),
-            Expr::Loop { body } => f(*body),
-            Expr::While { condition, body } => {
+            Expr::Loop { body, .. } => f(*body),
+            Expr::While { condition, body, .. } => {
                 f(*condition);
                 f(*body);
             }
@@ -268,8 +275,8 @@ impl Expr {
                     f(arm.expr);
                 }
             }
-            Expr::Continue => {}
-            Expr::Break { expr } | Expr::Return { expr } => {
+            Expr::Continue { .. } => {},
+            Expr::Break { expr, .. } | Expr::Return { expr } => {
                 if let Some(expr) = expr {
                     f(*expr);
                 }

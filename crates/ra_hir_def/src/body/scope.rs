@@ -138,10 +138,10 @@ fn compute_block_scopes(
 fn compute_expr_scopes(expr: ExprId, body: &Body, scopes: &mut ExprScopes, scope: ScopeId) {
     scopes.set_scope(expr, scope);
     match &body[expr] {
-        Expr::Block { statements, tail } => {
+        Expr::Block { statements, tail, .. } => {
             compute_block_scopes(&statements, *tail, body, scopes, scope);
         }
-        Expr::For { iterable, pat, body: body_expr } => {
+        Expr::For { iterable, pat, body: body_expr, .. } => {
             compute_expr_scopes(*iterable, body, scopes, scope);
             let scope = scopes.new_scope(scope);
             scopes.add_bindings(body, scope, *pat);
