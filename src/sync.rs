@@ -145,25 +145,22 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         mutex.lock_count = mutex.lock_count.checked_add(1).unwrap();
     }
 
-    /// Try unlocking by decreasing the lock count and returning the old owner
-    /// and the old lock count. If the lock count reaches 0, release the lock
-    /// and potentially give to a new owner. If the lock was not locked, return
-    /// `None`.
-    ///
-    /// Note: It is the caller's responsibility to check that the thread that
-    /// unlocked the lock actually is the same one, which owned it.
+    /// Try unlocking by decreasing the lock count and returning the old lock
+    /// count. If the lock count reaches 0, release the lock and potentially
+    /// give to a new owner. If the lock was not locked by `expected_owner`,
+    /// return `None`.
     fn mutex_unlock(
         &mut self,
         id: MutexId,
         expected_owner: ThreadId,
-    ) -> InterpResult<'tcx, Option<usize>> {
+    ) -> Option<usize> {
         let this = self.eval_context_mut();
         let mutex = &mut this.machine.threads.sync.mutexes[id];
         if let Some(current_owner) = mutex.owner {
             // Mutex is locked.
             if current_owner != expected_owner {
                 // Only the owner can unlock the mutex.
-                return Ok(None);
+                return None;
             }
             let old_lock_count = mutex.lock_count;
             mutex.lock_count = old_lock_count
@@ -173,31 +170,36 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 mutex.owner = None;
                 // The mutex is completely unlocked. Try transfering ownership
                 // to another thread.
-                if let Some(new_owner) = this.mutex_dequeue(id) {
-                    this.mutex_lock(id, new_owner);
-                    this.unblock_thread(new_owner)?;
-                }
+                this.mutex_dequeue_and_lock(id);
             }
-            Ok(Some(old_lock_count))
+            Some(old_lock_count)
         } else {
             // Mutex is unlocked.
-            Ok(None)
+            None
         }
     }
 
     #[inline]
-    /// Put the thread into the queue waiting for the lock.
-    fn mutex_enqueue(&mut self, id: MutexId, thread: ThreadId) {
+    /// Put the thread into the queue waiting for the mutex.
+    fn mutex_enqueue_and_block(&mut self, id: MutexId, thread: ThreadId) {
         let this = self.eval_context_mut();
         assert!(this.mutex_is_locked(id), "queing on unlocked mutex");
         this.machine.threads.sync.mutexes[id].queue.push_back(thread);
+        this.block_thread(thread);
     }
 
     #[inline]
-    /// Take a thread out of the queue waiting for the lock.
-    fn mutex_dequeue(&mut self, id: MutexId) -> Option<ThreadId> {
+    /// Take a thread out of the queue waiting for the mutex, and lock
+    /// the mutex for it. Returns `true` if some thread has the mutex now.
+    fn mutex_dequeue_and_lock(&mut self, id: MutexId) -> bool {
         let this = self.eval_context_mut();
-        this.machine.threads.sync.mutexes[id].queue.pop_front()
+        if let Some(thread) = this.machine.threads.sync.mutexes[id].queue.pop_front() {
+            this.unblock_thread(thread);
+            this.mutex_lock(id, thread);
+            true
+        } else {
+            false
+        }
     }
 
     #[inline]
@@ -255,25 +257,32 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         &mut self,
         id: RwLockId,
         reader: ThreadId,
-    ) -> InterpResult<'tcx> {
+    ) {
         let this = self.eval_context_mut();
         assert!(this.rwlock_is_write_locked(id), "queueing on not write locked lock");
         this.machine.threads.sync.rwlocks[id].reader_queue.push_back(reader);
-        this.block_thread(reader)
+        this.block_thread(reader);
     }
 
     #[inline]
     /// Take a reader out the queue waiting for the lock.
-    fn rwlock_dequeue_reader(&mut self, id: RwLockId) -> Option<ThreadId> {
+    /// Returns `true` if some thread got the rwlock.
+    fn rwlock_dequeue_and_lock_reader(&mut self, id: RwLockId) -> bool {
         let this = self.eval_context_mut();
-        this.machine.threads.sync.rwlocks[id].reader_queue.pop_front()
+        if let Some(reader) = this.machine.threads.sync.rwlocks[id].reader_queue.pop_front() {
+            this.unblock_thread(reader);
+            this.rwlock_reader_lock(id, reader);
+            true
+        } else {
+            false
+        }
     }
 
     #[inline]
     /// Lock by setting the writer that owns the lock.
     fn rwlock_writer_lock(&mut self, id: RwLockId, writer: ThreadId) {
         let this = self.eval_context_mut();
-        assert!(!this.rwlock_is_locked(id), "the lock is already locked");
+        assert!(!this.rwlock_is_locked(id), "the rwlock is already locked");
         this.machine.threads.sync.rwlocks[id].writer = Some(writer);
     }
 
@@ -290,18 +299,25 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         &mut self,
         id: RwLockId,
         writer: ThreadId,
-    ) -> InterpResult<'tcx> {
+    ) {
         let this = self.eval_context_mut();
         assert!(this.rwlock_is_locked(id), "queueing on unlocked lock");
         this.machine.threads.sync.rwlocks[id].writer_queue.push_back(writer);
-        this.block_thread(writer)
+        this.block_thread(writer);
     }
 
     #[inline]
     /// Take the writer out the queue waiting for the lock.
-    fn rwlock_dequeue_writer(&mut self, id: RwLockId) -> Option<ThreadId> {
+    /// Returns `true` if some thread got the rwlock.
+    fn rwlock_dequeue_and_lock_writer(&mut self, id: RwLockId) -> bool {
         let this = self.eval_context_mut();
-        this.machine.threads.sync.rwlocks[id].writer_queue.pop_front()
+        if let Some(writer) = this.machine.threads.sync.rwlocks[id].writer_queue.pop_front() {
+            this.unblock_thread(writer);
+            this.rwlock_writer_lock(id, writer);
+            true
+        } else {
+            false
+        }
     }
 
     #[inline]

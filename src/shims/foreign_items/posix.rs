@@ -254,14 +254,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "pthread_getspecific" => {
                 let &[key] = check_arg_count(args)?;
                 let key = this.force_bits(this.read_scalar(key)?.not_undef()?, key.layout.size)?;
-                let active_thread = this.get_active_thread()?;
+                let active_thread = this.get_active_thread();
                 let ptr = this.machine.tls.load_tls(key, active_thread, this)?;
                 this.write_scalar(ptr, dest)?;
             }
             "pthread_setspecific" => {
                 let &[key, new_ptr] = check_arg_count(args)?;
                 let key = this.force_bits(this.read_scalar(key)?.not_undef()?, key.layout.size)?;
-                let active_thread = this.get_active_thread()?;
+                let active_thread = this.get_active_thread();
                 let new_ptr = this.read_scalar(new_ptr)?.not_undef()?;
                 this.machine.tls.store_tls(key, active_thread, this.test_null(new_ptr)?)?;
 
