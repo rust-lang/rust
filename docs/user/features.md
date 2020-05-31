@@ -4,12 +4,6 @@ you can use <kbd>Ctrl+Shift+P</kbd> to search for the corresponding action.
 
 ### Commands <kbd>ctrl+shift+p</kbd>
 
-#### Run
-
-Shows a popup suggesting to run a test/benchmark/binary **at the current cursor
-location**. Super useful for repeatedly running just a single test. Do bind this
-to a shortcut!
-
 #### Parent Module
 
 Navigates to the parent module of the current module.

@@ -17,7 +17,7 @@ use crate::{
     FilePosition, NavigationTarget, RangeInfo,
 };
 
-// Feature: Go To Definition
+// Feature: Go to Definition
 //
 // Navigates to the definition of an identifier.
 //

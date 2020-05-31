@@ -6,7 +6,7 @@ use ra_syntax::{algo::find_node_at_offset, ast, AstNode};
 
 use crate::{display::ToNav, FilePosition, NavigationTarget, RangeInfo};
 
-// Feature: Go To Implementation
+// Feature: Go to Implementation
 //
 // Navigates to the impl block of structs, enums or traits. Also implemented as a code lens.
 //

@@ -38,11 +38,7 @@ impl Feature {
 
             for block in comment_blocks {
                 let id = block.id;
-                assert!(
-                    id.split_ascii_whitespace().all(|it| it.starts_with(char::is_uppercase)),
-                    "bad feature: {}",
-                    id
-                );
+                assert!(is_valid_feature_name(&id), "invalid feature name: {:?}", id);
                 let doc = block.contents.join("\n");
                 acc.push(Feature { id, path: path.clone(), doc })
             }
@@ -50,6 +46,25 @@ impl Feature {
             Ok(())
         }
     }
+}
+
+fn is_valid_feature_name(feature: &str) -> bool {
+    'word: for word in feature.split_whitespace() {
+        for &short in ["to"].iter() {
+            if word == short {
+                continue 'word;
+            }
+        }
+        for &short in ["To"].iter() {
+            if word == short {
+                return false;
+            }
+        }
+        if !word.starts_with(char::is_uppercase) {
+            return false;
+        }
+    }
+    true
 }
 
 impl fmt::Display for Feature {

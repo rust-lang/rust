@@ -5,9 +5,15 @@ use ra_syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, TokenAtOffs
 
 use crate::{display::ToNav, FilePosition, NavigationTarget, RangeInfo};
 
-// Feature: Go To Type Definition
+// Feature: Go to Type Definition
 //
 // Navigates to the type of an identifier.
+//
+// |===
+// | Editor  | Action Name
+//
+// | VS Code | **Go to Type Definition*
+// |===
 pub(crate) fn goto_type_definition(
     db: &RootDatabase,
     position: FilePosition,
