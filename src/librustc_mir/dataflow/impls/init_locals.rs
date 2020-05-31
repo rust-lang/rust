@@ -8,7 +8,24 @@ use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::{self, BasicBlock, Local, Location};
 
-pub struct MaybeInitializedLocals;
+pub struct MaybeInitializedLocals {
+    deinit_on_move: bool,
+}
+
+impl MaybeInitializedLocals {
+    /// Creates a new default `MaybeInitializedLocals` analysis.
+    pub fn new() -> Self {
+        Self { deinit_on_move: true }
+    }
+
+    /// Creates a new `MaybeInitializedLocals` analysis that does not consider a move from a local
+    /// to deinitialize it.
+    ///
+    /// `StorageDead` still deinitializes locals.
+    pub fn no_deinit_on_move() -> Self {
+        Self { deinit_on_move: false }
+    }
+}
 
 impl BottomValue for MaybeInitializedLocals {
     /// bottom = uninit
@@ -42,7 +59,8 @@ impl dataflow::GenKillAnalysis<'tcx> for MaybeInitializedLocals {
         statement: &mir::Statement<'tcx>,
         loc: Location,
     ) {
-        TransferFunction { trans }.visit_statement(statement, loc)
+        TransferFunction { trans, deinit_on_move: self.deinit_on_move }
+            .visit_statement(statement, loc)
     }
 
     fn terminator_effect(
@@ -51,7 +69,8 @@ impl dataflow::GenKillAnalysis<'tcx> for MaybeInitializedLocals {
         terminator: &mir::Terminator<'tcx>,
         loc: Location,
     ) {
-        TransferFunction { trans }.visit_terminator(terminator, loc)
+        TransferFunction { trans, deinit_on_move: self.deinit_on_move }
+            .visit_terminator(terminator, loc)
     }
 
     fn call_return_effect(
@@ -77,6 +96,7 @@ impl dataflow::GenKillAnalysis<'tcx> for MaybeInitializedLocals {
 }
 
 struct TransferFunction<'a, T> {
+    deinit_on_move: bool,
     trans: &'a mut T,
 }
 
@@ -95,8 +115,12 @@ where
 
             // If the local is moved out of, or if it gets marked `StorageDead`, consider it no
             // longer initialized.
-            PlaceContext::NonUse(NonUseContext::StorageDead)
-            | PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) => self.trans.kill(local),
+            PlaceContext::NonUse(NonUseContext::StorageDead) => self.trans.kill(local),
+            PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) => {
+                if self.deinit_on_move {
+                    self.trans.kill(local)
+                }
+            }
 
             // All other uses do not affect this analysis.
             PlaceContext::NonUse(

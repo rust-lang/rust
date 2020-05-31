@@ -452,7 +452,7 @@ fn locals_live_across_suspend_points(
         .iterate_to_fixpoint()
         .into_results_cursor(body);
 
-    let mut init = MaybeInitializedLocals
+    let mut init = MaybeInitializedLocals::new()
         .into_engine(tcx, body, def_id)
         .iterate_to_fixpoint()
         .into_results_cursor(body);
