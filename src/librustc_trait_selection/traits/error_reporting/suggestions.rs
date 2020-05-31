@@ -170,7 +170,7 @@ pub trait InferCtxtExt<'tcx> {
 
 fn predicate_constraint(generics: &hir::Generics<'_>, pred: String) -> (Span, String) {
     (
-        generics.where_clause.span_for_predicates_or_empty_place().shrink_to_hi(),
+        generics.where_clause.tail_span_for_suggestion(),
         format!(
             "{} {}",
             if !generics.where_clause.predicates.is_empty() { "," } else { " where" },
