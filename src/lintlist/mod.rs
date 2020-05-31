@@ -166,7 +166,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "cast_ptr_alignment",
-        group: "correctness",
+        group: "pedantic",
         desc: "cast from a pointer to a more-strictly-aligned pointer",
         deprecation: None,
         module: "types",

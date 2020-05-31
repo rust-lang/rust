@@ -974,7 +974,8 @@ declare_clippy_lint! {
     /// behavior.
     ///
     /// **Known problems:** Using `std::ptr::read_unaligned` and `std::ptr::write_unaligned` or similar
-    /// on the resulting pointer is fine.
+    /// on the resulting pointer is fine. Is over-zealous: Casts with manual alignment checks or casts like
+    /// u64-> u8 -> u16 can be fine. Miri is able to do a more in-depth analysis.
     ///
     /// **Example:**
     /// ```rust
@@ -982,7 +983,7 @@ declare_clippy_lint! {
     /// let _ = (&mut 1u8 as *mut u8) as *mut u16;
     /// ```
     pub CAST_PTR_ALIGNMENT,
-    correctness,
+    pedantic,
     "cast from a pointer to a more-strictly-aligned pointer"
 }
 
