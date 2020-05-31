@@ -7,14 +7,10 @@ LL |     head: u8,
 LL |     tail: Option<ListNode>,
    |           ---------------- recursive without indirection
    |
-help: insert some indirection to make `ListNode` representable
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `ListNode` representable
    |
 LL |     tail: Box<Option<ListNode>>,
    |           ^^^^                ^
-LL |     tail: Rc<Option<ListNode>>,
-   |           ^^^                ^
-LL |     tail: &Option<ListNode>,
-   |           ^
 
 error: aborting due to previous error
 

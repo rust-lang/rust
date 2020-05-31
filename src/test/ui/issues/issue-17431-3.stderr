@@ -6,14 +6,10 @@ LL | struct Foo { foo: Mutex<Option<Foo>> }
    | |
    | recursive type has infinite size
    |
-help: insert some indirection to make `Foo` representable
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `Foo` representable
    |
 LL | struct Foo { foo: Box<Mutex<Option<Foo>>> }
    |                   ^^^^                  ^
-LL | struct Foo { foo: Rc<Mutex<Option<Foo>>> }
-   |                   ^^^                  ^
-LL | struct Foo { foo: &Mutex<Option<Foo>> }
-   |                   ^
 
 error: aborting due to previous error
 

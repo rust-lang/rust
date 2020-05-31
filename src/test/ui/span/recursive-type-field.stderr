@@ -6,14 +6,10 @@ LL | struct Foo<'a> {
 LL |     bar: Bar<'a>,
    |          ------- recursive without indirection
    |
-help: insert some indirection to make `Foo` representable
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `Foo` representable
    |
 LL |     bar: Box<Bar<'a>>,
    |          ^^^^       ^
-LL |     bar: Rc<Bar<'a>>,
-   |          ^^^       ^
-LL |     bar: &Bar<'a>,
-   |          ^
 
 error[E0072]: recursive type `Bar` has infinite size
   --> $DIR/recursive-type-field.rs:8:1

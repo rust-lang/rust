@@ -1759,48 +1759,27 @@ pub fn recursive_type_with_infinite_size_error(
     for &span in &spans {
         err.span_label(span, "recursive without indirection");
     }
-    let short_msg = format!("insert some indirection to make `{}` representable", path);
     let msg = format!(
         "insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `{}` representable",
         path,
     );
-    match &spans[..] {
-        [span] => {
-            err.multipart_suggestions(
-                &short_msg,
-                vec![
+    if spans.len() <= 4 {
+        err.multipart_suggestion(
+            &msg,
+            spans
+                .iter()
+                .flat_map(|&span| {
                     vec![
                         (span.shrink_to_lo(), "Box<".to_string()),
                         (span.shrink_to_hi(), ">".to_string()),
-                    ],
-                    vec![
-                        (span.shrink_to_lo(), "Rc<".to_string()),
-                        (span.shrink_to_hi(), ">".to_string()),
-                    ],
-                    vec![(span.shrink_to_lo(), "&".to_string())],
-                ],
-                Applicability::HasPlaceholders,
-            );
-        }
-        _ if spans.len() <= 4 => {
-            err.multipart_suggestion(
-                &msg,
-                spans
-                    .iter()
-                    .flat_map(|&span| {
-                        vec![
-                            (span.shrink_to_lo(), "Box<".to_string()),
-                            (span.shrink_to_hi(), ">".to_string()),
-                        ]
-                        .into_iter()
-                    })
-                    .collect(),
-                Applicability::HasPlaceholders,
-            );
-        }
-        _ => {
-            err.help(&msg);
-        }
+                    ]
+                    .into_iter()
+                })
+                .collect(),
+            Applicability::HasPlaceholders,
+        );
+    } else {
+        err.help(&msg);
     }
     err.emit();
 }
