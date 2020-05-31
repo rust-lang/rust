@@ -91,6 +91,7 @@ function defocusSearchBar() {
 
     var disableShortcuts = getCurrentValue("rustdoc-disable-shortcuts") === "true";
     var search_input = getSearchInput();
+    var searchTimeout = null;
 
     // On the search screen, so you remain on the last tab you opened.
     //
@@ -100,6 +101,13 @@ function defocusSearchBar() {
     var currentTab = 0;
 
     var titleBeforeSearch = document.title;
+
+    function clearInputTimeout() {
+        if (searchTimeout !== null) {
+            clearTimeout(searchTimeout);
+            searchTimeout = null;
+        }
+    }
 
     function getPageId() {
         var id = document.location.href.split("#")[1];
@@ -355,6 +363,7 @@ function defocusSearchBar() {
         if (hasClass(help, "hidden") === false) {
             displayHelp(false, ev, help);
         } else if (hasClass(search, "hidden") === false) {
+            clearInputTimeout();
             ev.preventDefault();
             hideSearchResults(search);
             document.title = titleBeforeSearch;
@@ -1810,9 +1819,8 @@ function defocusSearchBar() {
         }
 
         function startSearch() {
-            var searchTimeout;
             var callback = function() {
-                clearTimeout(searchTimeout);
+                clearInputTimeout();
                 if (search_input.value.length === 0) {
                     if (browserSupportsHistoryApi()) {
                         history.replaceState("", window.currentCrate + " - Rust", "?search=");
@@ -1826,7 +1834,7 @@ function defocusSearchBar() {
             search_input.oninput = callback;
             document.getElementsByClassName("search-form")[0].onsubmit = function(e) {
                 e.preventDefault();
-                clearTimeout(searchTimeout);
+                clearInputTimeout();
                 search();
             };
             search_input.onchange = function(e) {
@@ -1835,7 +1843,7 @@ function defocusSearchBar() {
                     return;
                 }
                 // Do NOT e.preventDefault() here. It will prevent pasting.
-                clearTimeout(searchTimeout);
+                clearInputTimeout();
                 // zero-timeout necessary here because at the time of event handler execution the
                 // pasted content is not in the input field yet. Shouldn’t make any difference for
                 // change, though.
