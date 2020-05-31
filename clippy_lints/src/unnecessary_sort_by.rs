@@ -18,15 +18,25 @@ declare_clippy_lint! {
     /// possible) than to use `Vec::sort_by` and and a more complicated
     /// closure.
     ///
-    /// **Known problems:** None.
+    /// **Known problems:**
+    /// If the suggested `Vec::sort_by_key` uses Reverse and it isn't
+    /// imported by a use statement in the current frame, then a `use`
+    /// statement that imports it will need to be added (which this lint
+    /// can't do).
     ///
     /// **Example:**
     ///
     /// ```rust
-    /// vec.sort_by(|a, b| a.foo().cmp(b.foo()));
+    /// # struct A;
+    /// # impl A { fn foo(&self) {} }
+    /// # let mut vec: Vec<A> = Vec::new();
+    /// vec.sort_by(|a, b| a.foo().cmp(&b.foo()));
     /// ```
     /// Use instead:
     /// ```rust
+    /// # struct A;
+    /// # impl A { fn foo(&self) {} }
+    /// # let mut vec: Vec<A> = Vec::new();
     /// vec.sort_by_key(|a| a.foo());
     /// ```
     pub UNNECESSARY_SORT_BY,
@@ -50,6 +60,7 @@ struct SortByKeyDetection {
     vec_name: String,
     closure_arg: String,
     closure_body: String,
+    reverse: bool,
     unstable: bool,
 }
 
@@ -172,16 +183,16 @@ fn detect_lint(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> Option<LintTrigger>
         if let ExprKind::MethodCall(method_path, _, [ref left_expr, ref right_expr]) = &closure_body.value.kind;
         if method_path.ident.name.to_ident_string() == "cmp";
         then {
-            let (closure_body, closure_arg) = if mirrored_exprs(
+            let (closure_body, closure_arg, reverse) = if mirrored_exprs(
                 &cx,
                 &left_expr,
                 &left_ident,
                 &right_expr,
                 &right_ident
             ) {
-                (Sugg::hir(cx, &left_expr, "..").to_string(), left_ident.name.to_string())
+                (Sugg::hir(cx, &left_expr, "..").to_string(), left_ident.name.to_string(), false)
             } else if mirrored_exprs(&cx, &left_expr, &right_ident, &right_expr, &left_ident) {
-                (format!("Reverse({})", Sugg::hir(cx, &left_expr, "..").to_string()), right_ident.name.to_string())
+                (Sugg::hir(cx, &left_expr, "..").to_string(), right_ident.name.to_string(), true)
             } else {
                 return None;
             };
@@ -196,7 +207,13 @@ fn detect_lint(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> Option<LintTrigger>
                     Some(LintTrigger::Sort(SortDetection { vec_name, unstable }))
                 }
                 else {
-                    Some(LintTrigger::SortByKey(SortByKeyDetection { vec_name, unstable, closure_arg, closure_body }))
+                    Some(LintTrigger::SortByKey(SortByKeyDetection {
+                        vec_name,
+                        unstable,
+                        closure_arg,
+                        closure_body,
+                        reverse
+                    }))
                 }
             }
         } else {
@@ -219,9 +236,17 @@ impl LateLintPass<'_, '_> for UnnecessarySortBy {
                     trigger.vec_name,
                     if trigger.unstable { "_unstable" } else { "" },
                     trigger.closure_arg,
-                    trigger.closure_body,
+                    if trigger.reverse {
+                        format!("Reverse({})", trigger.closure_body)
+                    } else {
+                        trigger.closure_body.to_string()
+                    },
                 ),
-                Applicability::MachineApplicable,
+                if trigger.reverse {
+                    Applicability::MaybeIncorrect
+                } else {
+                    Applicability::MachineApplicable
+                },
             ),
             Some(LintTrigger::Sort(trigger)) => utils::span_lint_and_sugg(
                 cx,
