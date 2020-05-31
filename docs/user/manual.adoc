@@ -2,12 +2,7 @@
 :toc: preamble
 :sectanchors:
 :page-layout: post
-// https://gist.github.com/dcode/0cfbf2699a1fe9b46ff04c41721dda74#admonitions
-:tip-caption: :bulb:
-:note-caption: :information_source:
-:important-caption: :heavy_exclamation_mark:
-:caution-caption: :fire:
-:warning-caption: :warning:
+:icons: font
 :source-highlighter: rouge
 :experimental:
 
@@ -67,16 +62,6 @@ The server binary is stored in:
 
 Note that we only support two most recent versions of VS Code.
 
-==== Special `when` clause context for keybindings.
-You may use `inRustProject` context to configure keybindings for rust projects only. For example:
-[source,json]
-----
-{ "key": "ctrl+shift+f5", "command": "workbench.action.debug.restart", "when": "inDebugMode && !inRustProject"},
-{ "key": "ctrl+shift+f5", "command": "rust-analyzer.debug", "when": "inRustProject"},
-{ "key": "ctrl+i", "command": "rust-analyzer.toggleInlayHints", "when": "inRustProject" }
-----
-More about `when` clause contexts https://code.visualstudio.com/docs/getstarted/keybindings#_when-clause-contexts[here].
-
 ==== Updates
 
 The extension will be updated automatically as new versions become available. It will ask your permission to download the matching language server version binary if needed.
@@ -124,10 +109,23 @@ Here are some useful self-diagnostic commands:
 * To log all LSP requests, add `"rust-analyzer.trace.server": "verbose"` to the settings and look for `Server Trace` in the panel.
 * To enable client-side logging, add `"rust-analyzer.trace.extension": true` to the settings and open the `Console` tab of VS Code developer tools.
 
+==== Special `when` clause context for keybindings.
+You may use `inRustProject` context to configure keybindings for rust projects only. For example:
+[source,json]
+----
+{
+  "key": "ctrl+i",
+  "command": "rust-analyzer.toggleInlayHints",
+  "when": "inRustProject"
+}
+----
+More about `when` clause contexts https://code.visualstudio.com/docs/getstarted/keybindings#_when-clause-contexts[here].
+
 === rust-analyzer Language Server Binary
 
 Other editors generally require the `rust-analyzer` binary to be in `$PATH`.
-You can download the pre-built binary from the https://github.com/rust-analyzer/rust-analyzer/releases[releases] page. Typically, you then need to rename the binary for your platform, e.g. `rust-analyzer-mac` if you're on Mac OS, to `rust-analyzer` and make it executable in addition to moving it into a directory in your `$PATH`.
+You can download the pre-built binary from the https://github.com/rust-analyzer/rust-analyzer/releases[releases] page.
+Typically, you then need to rename the binary for your platform, e.g. `rust-analyzer-mac` if you're on Mac OS, to `rust-analyzer` and make it executable in addition to moving it into a directory in your `$PATH`.
 
 On Linux to install the `rust-analyzer` binary into `~/.local/bin`, this commands could be used
 
@@ -147,7 +145,8 @@ $ git clone https://github.com/rust-analyzer/rust-analyzer.git && cd rust-analyz
 $ cargo xtask install --server
 ----
 
-If your editor can't find the binary even though the binary is on your `$PATH`, the likely explanation is that it doesn't see the same `$PATH` as the shell, see https://github.com/rust-analyzer/rust-analyzer/issues/1811[this issue]. On Unix, running the editor from a shell or changing the `.desktop` file to set the environment should help.
+If your editor can't find the binary even though the binary is on your `$PATH`, the likely explanation is that it doesn't see the same `$PATH` as the shell, see https://github.com/rust-analyzer/rust-analyzer/issues/1811[this issue].
+On Unix, running the editor from a shell or changing the `.desktop` file to set the environment should help.
 
 ==== Arch Linux
 
