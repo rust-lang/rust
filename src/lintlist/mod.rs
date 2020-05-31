@@ -1985,13 +1985,6 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "slow_vector_initialization",
     },
     Lint {
-        name: "sort_by_key_reverse",
-        group: "complexity",
-        desc: "Use of `Vec::sort_by` when `Vec::sort_by_key` would be clearer",
-        deprecation: None,
-        module: "sort_by_key_reverse",
-    },
-    Lint {
         name: "string_add",
         group: "restriction",
         desc: "using `x + ..` where x is a `String` instead of `push_str()`",
@@ -2298,6 +2291,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         desc: "outer expressions with no effect",
         deprecation: None,
         module: "no_effect",
+    },
+    Lint {
+        name: "unnecessary_sort_by",
+        group: "complexity",
+        desc: "Use of `Vec::sort_by` when `Vec::sort_by_key` or `Vec::sort` would be clearer",
+        deprecation: None,
+        module: "unnecessary_sort_by",
     },
     Lint {
         name: "unnecessary_unwrap",
