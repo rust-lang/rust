@@ -70,14 +70,15 @@ fn is_valid_feature_name(feature: &str) -> bool {
 impl fmt::Display for Feature {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "=== {}", self.id)?;
-        let path = self.path.strip_prefix(&project_root()).unwrap();
+        let path = self.path.strip_prefix(&project_root()).unwrap().display().to_string();
+        let path = path.replace('\\', "/");
         let name = self.path.file_name().unwrap();
 
         //FIXME: generate line number as well
         writeln!(
             f,
             "**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/{}[{}]",
-            path.display(),
+            path,
             name.to_str().unwrap(),
         )?;
 
