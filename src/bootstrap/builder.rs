@@ -344,10 +344,12 @@ impl<'a> Builder<'a> {
                 tool::Rls,
                 tool::Rustdoc,
                 tool::Clippy,
+                tool::CargoClippy,
                 native::Llvm,
                 native::Sanitizers,
                 tool::Rustfmt,
                 tool::Miri,
+                tool::CargoMiri,
                 native::Lld
             ),
             Kind::Check | Kind::Clippy | Kind::Fix | Kind::Format => {
