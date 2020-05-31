@@ -932,7 +932,7 @@ impl<'a, W: Write> Write for LineWriterShim<'a, W> {
                 };
                 Ok(flushed + buffered)
             }
-        };
+        }
     }
 
     fn flush(&mut self) -> io::Result<()> {
@@ -1027,9 +1027,9 @@ impl<'a, W: Write> Write for LineWriterShim<'a, W> {
     /// writer, it will also flush the existing buffer if it contains any
     /// newlines, even if the incoming data does not contain any newlines.
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
-        // If there are no new newlines (that is, if this write is less than
-        // one line), just do a regular buffered write
-        let newline_idx = match memchr::memrchr(b'\n', buf) {
+        match memchr::memrchr(b'\n', buf) {
+            // If there are no new newlines (that is, if this write is less than
+            // one line), just do a regular buffered write
             None => {
                 // Check for prior partial line writes that need to be retried.
                 // Only retry if the buffer contains a completed line, to
@@ -1037,25 +1037,27 @@ impl<'a, W: Write> Write for LineWriterShim<'a, W> {
                 if let Some(b'\n') = self.inner.buffer().last().copied() {
                     self.inner.flush_buf()?;
                 }
-                return self.inner.write_all(buf);
+                self.inner.write_all(buf)
             }
-            Some(i) => i,
-        };
+            // Otherwise, arrange for the lines to be written directly to the
+            // inner writer.
+            Some(newline_idx) => {
+                // Flush existing content to prepare for our write
+                self.inner.flush_buf()?;
 
-        // Flush existing content to prepare for our write
-        self.inner.flush_buf()?;
+                // This is what we're going to try to write directly to the inner
+                // writer. The rest will be buffered, if nothing goes wrong.
+                let (lines, tail) = buf.split_at(newline_idx + 1);
 
-        // This is what we're going to try to write directly to the inner
-        // writer. The rest will be buffered, if nothing goes wrong.
-        let (lines, tail) = buf.split_at(newline_idx + 1);
+                // Write `lines` directly to the inner writer, bypassing the buffer.
+                self.inner.get_mut().write_all(lines)?;
 
-        // Write `lines` directly to the inner writer, bypassing the buffer.
-        self.inner.get_mut().write_all(lines)?;
-
-        // Now that the write has succeeded, buffer the rest with BufWriter::write_all.
-        // This will buffer as much as possible, but continue flushing as
-        // necessary if our tail is huge.
-        self.inner.write_all(tail)
+                // Now that the write has succeeded, buffer the rest with BufWriter::write_all.
+                // This will buffer as much as possible, but continue flushing as
+                // necessary if our tail is huge.
+                self.inner.write_all(tail)
+            }
+        }
     }
 }
 
