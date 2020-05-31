@@ -13,7 +13,7 @@ use rustc_data_structures::sync::{self, Lrc};
 use rustc_errors::{DiagnosticBuilder, ErrorReported};
 use rustc_parse::{self, parser, MACRO_ARGUMENTS};
 use rustc_session::{parse::ParseSess, Limit};
-use rustc_span::def_id::DefId;
+use rustc_span::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{AstPass, ExpnData, ExpnId, ExpnKind};
 use rustc_span::source_map::SourceMap;
@@ -870,6 +870,7 @@ impl SyntaxExtension {
             kind: ExpnKind::Macro(self.macro_kind(), descr),
             parent,
             call_site,
+            def_id: DefId::local(CRATE_DEF_INDEX),
             def_site: self.span,
             allow_internal_unstable: self.allow_internal_unstable.clone(),
             allow_internal_unsafe: self.allow_internal_unsafe,

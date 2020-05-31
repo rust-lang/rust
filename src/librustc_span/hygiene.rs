@@ -25,7 +25,7 @@
 // because getting it wrong can lead to nested `HygieneData::with` calls that
 // trigger runtime aborts. (Fortunately these are obvious and easy to fix.)
 
-use crate::def_id::{DefId, CRATE_DEF_INDEX};
+use crate::def_id::{DefId, LocalDefId, CRATE_DEF_INDEX};
 use crate::edition::Edition;
 use crate::symbol::{kw, sym, Symbol};
 use crate::GLOBALS;
@@ -140,6 +140,12 @@ impl ExpnId {
             last_macro = Some(expn_data.call_site);
         }
         last_macro
+    }
+
+    pub fn set_def_id(self, def_id: LocalDefId) {
+        HygieneData::with(|data| {
+            data.expn_data[self.0 as usize].as_mut().map(|data| data.def_id = def_id.to_def_id());
+        })
     }
 }
 
@@ -659,6 +665,7 @@ pub struct ExpnData {
     /// call_site span would have its own ExpnData, with the call_site
     /// pointing to the `foo!` invocation.
     pub call_site: Span,
+    pub def_id: DefId,
 
     // --- The part specific to the macro/desugaring definition.
     // --- It may be reasonable to share this part between expansions with the same definition,
@@ -696,6 +703,7 @@ impl ExpnData {
             kind,
             parent: ExpnId::root(),
             call_site,
+            def_id: DefId::local(CRATE_DEF_INDEX),
             def_site: DUMMY_SP,
             allow_internal_unstable: None,
             allow_internal_unsafe: false,

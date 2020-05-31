@@ -8,7 +8,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_hir::definitions::*;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::symbol::{kw, sym};
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 
 crate fn collect_definitions(
     definitions: &mut Definitions,
@@ -58,7 +58,10 @@ impl<'a> DefCollector<'a> {
     }
 
     fn visit_macro_invoc(&mut self, id: NodeId) {
-        self.definitions.set_invocation_parent(id.placeholder_to_expn_id(), self.parent_def);
+        let expn_id = id.placeholder_to_expn_id();
+        self.definitions.set_invocation_parent(expn_id, self.parent_def);
+        let def_id = self.create_def(DUMMY_NODE_ID, DefPathData::Misc, DUMMY_SP);
+        expn_id.set_def_id(def_id);
     }
 }
 
