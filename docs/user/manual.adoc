@@ -19,7 +19,7 @@ https://microsoft.github.io/language-server-protocol/[Language Server Protocol] 
 The LSP allows various code editors, like VS Code, Emacs or Vim, to implement semantic features like completion or goto definition by talking to an external language server process.
 
 To improve this document, send a pull request against
-https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/user/readme.adoc[this file].
+https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/user/manual.adoc[this file].
 
 If you have questions about using rust-analyzer, please ask them in the https://users.rust-lang.org/c/ide/14["`IDEs and Editors`"] topic of Rust users forum.
 
