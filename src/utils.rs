@@ -101,6 +101,14 @@ pub(crate) fn format_constness(constness: ast::Const) -> &'static str {
 }
 
 #[inline]
+pub(crate) fn format_constness_right(constness: ast::Const) -> &'static str {
+    match constness {
+        ast::Const::Yes(..) => " const",
+        ast::Const::No => "",
+    }
+}
+
+#[inline]
 pub(crate) fn format_defaultness(defaultness: ast::Defaultness) -> &'static str {
     match defaultness {
         ast::Defaultness::Default(..) => "default ",

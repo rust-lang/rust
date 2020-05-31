@@ -160,3 +160,11 @@ impl<'a, 'b, 'c> SomeThing<Something> for (&'a mut SomethingLong, &'b mut Someth
 
 // #2746
 impl<'seq1, 'seq2, 'body, 'scope, Channel> Adc12< Dual, MasterRunningDma<'seq1, 'body, 'scope, Channel>, SlaveRunningDma<'seq2, 'body, 'scope>, > where Channel: DmaChannel, {}
+
+// #4084
+impl     const       std::default::Default for Struct {
+    #[inline]
+    fn default() -> Self {
+        Self { f: 12.5 }
+    }
+}

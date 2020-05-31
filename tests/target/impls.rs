@@ -234,3 +234,11 @@ where
     Channel: DmaChannel,
 {
 }
+
+// #4084
+impl const std::default::Default for Struct {
+    #[inline]
+    fn default() -> Self {
+        Self { f: 12.5 }
+    }
+}
