@@ -129,7 +129,14 @@ pub fn render<T: Print, S: Print>(
                 suffix = page.resource_suffix
             )
         } else {
-            String::new()
+            // No CSS extension means there's probably no font overrides, so
+            // we add a preloading hint for fonts we always load remotely.
+            format!(
+                "<link {font_attrs} href='{static_root_path}SourceCodePro-Regular.woff'>\
+                <link {font_attrs} href='{static_root_path}SourceCodePro-Semibold.woff'>",
+                font_attrs = "rel='preload' type='font/woff' as='font'",
+                static_root_path = static_root_path
+            )
         },
         content = Buffer::html().to_display(t),
         static_root_path = static_root_path,
