@@ -2173,7 +2173,7 @@ impl<T> [T] {
     ///
     /// The length of `src` must be the same as `self`.
     ///
-    /// If `src` implements `Copy`, it can be more performant to use
+    /// If `T` implements `Copy`, it can be more performant to use
     /// [`copy_from_slice`].
     ///
     /// # Panics
@@ -2244,7 +2244,7 @@ impl<T> [T] {
     ///
     /// The length of `src` must be the same as `self`.
     ///
-    /// If `src` does not implement `Copy`, use [`clone_from_slice`].
+    /// If `T` does not implement `Copy`, use [`clone_from_slice`].
     ///
     /// # Panics
     ///
