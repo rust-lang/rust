@@ -41,7 +41,7 @@ pub enum Mode {
 /// With verify = false,
 fn update(path: &Path, contents: &str, mode: Mode) -> Result<()> {
     match fs2::read_to_string(path) {
-        Ok(ref old_contents) if normalize(old_contents) == normalize(contents) => {
+        Ok(old_contents) if normalize(&old_contents) == normalize(contents) => {
             return Ok(());
         }
         _ => (),
