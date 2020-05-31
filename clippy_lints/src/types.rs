@@ -10,7 +10,7 @@ use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::intravisit::{walk_body, walk_expr, walk_ty, FnKind, NestedVisitorMap, Visitor};
 use rustc_hir::{
-    BinOpKind, Body, Expr, ExprKind, FnDecl, FnRetTy, FnSig, GenericArg, GenericParamKind, HirId, ImplItem,
+    BinOpKind, Block, Body, Expr, ExprKind, FnDecl, FnRetTy, FnSig, GenericArg, GenericParamKind, HirId, ImplItem,
     ImplItemKind, Item, ItemKind, Lifetime, Local, MatchSource, MutTy, Mutability, QPath, Stmt, StmtKind, TraitFn,
     TraitItem, TraitItemKind, TyKind, UnOp,
 };
@@ -29,10 +29,10 @@ use rustc_typeck::hir_ty_to_ty;
 use crate::consts::{constant, Constant};
 use crate::utils::paths;
 use crate::utils::{
-    clip, comparisons, differing_macro_contexts, higher, in_constant, int_bits, is_type_diagnostic_item,
+    clip, comparisons, differing_macro_contexts, higher, in_constant, indent_of, int_bits, is_type_diagnostic_item,
     last_path_segment, match_def_path, match_path, method_chain_args, multispan_sugg, numeric_literal::NumericLiteral,
-    qpath_res, same_tys, sext, snippet, snippet_opt, snippet_with_applicability, snippet_with_macro_callsite,
-    span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then, unsext,
+    qpath_res, same_tys, sext, snippet, snippet_block_with_applicability, snippet_opt, snippet_with_applicability,
+    snippet_with_macro_callsite, span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then, unsext,
 };
 
 declare_clippy_lint! {
@@ -847,6 +847,7 @@ fn lint_unit_args(cx: &LateContext<'_, '_>, expr: &Expr<'_>, args_to_recover: &[
                 });
             let sugg = args_to_recover
                 .iter()
+                .filter(|arg| !is_empty_block(arg))
                 .enumerate()
                 .map(|(i, arg)| {
                     let indent = if i == 0 {
@@ -860,16 +861,20 @@ fn lint_unit_args(cx: &LateContext<'_, '_>, expr: &Expr<'_>, args_to_recover: &[
                         snippet_block_with_applicability(cx, arg.span, "..", Some(expr.span), &mut applicability)
                     )
                 })
-                .collect::<Vec<String>>()
-                .join("\n");
-            db.span_suggestion(
-                expr.span.with_hi(expr.span.lo()),
-                &format!("{}move the expression{} in front of the call...", or, plural),
-                format!("{}\n", sugg),
-                applicability,
-            );
+                .collect::<Vec<String>>();
+            let mut and = "";
+            if !sugg.is_empty() {
+                let plural = if sugg.len() > 1 { "s" } else { "" };
+                db.span_suggestion(
+                    expr.span.with_hi(expr.span.lo()),
+                    &format!("{}move the expression{} in front of the call...", or, plural),
+                    format!("{}\n", sugg.join("\n")),
+                    applicability,
+                );
+                and = "...and "
+            }
             db.multipart_suggestion(
-                &format!("...and use {}unit literal{} instead", singular, plural),
+                &format!("{}use {}unit literal{} instead", and, singular, plural),
                 args_to_recover
                     .iter()
                     .map(|arg| (arg.span, "()".to_string()))
@@ -878,6 +883,18 @@ fn lint_unit_args(cx: &LateContext<'_, '_>, expr: &Expr<'_>, args_to_recover: &[
             );
         },
     );
+}
+
+fn is_empty_block(expr: &Expr<'_>) -> bool {
+    matches!(
+        expr.kind,
+        ExprKind::Block(
+            Block {
+                stmts: &[], expr: None, ..
+            },
+            _,
+        )
+    )
 }
 
 fn is_questionmark_desugar_marked_call(expr: &Expr<'_>) -> bool {
