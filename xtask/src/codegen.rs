@@ -61,18 +61,18 @@ fn update(path: &Path, contents: &str, mode: Mode) -> Result<()> {
 }
 
 fn extract_comment_blocks(text: &str) -> Vec<Vec<String>> {
-    do_extract_comment_blocks(text, false)
+    do_extract_comment_blocks(text, false).into_iter().map(|(_line, block)| block).collect()
 }
 
 fn extract_comment_blocks_with_empty_lines(tag: &str, text: &str) -> Vec<CommentBlock> {
     assert!(tag.starts_with(char::is_uppercase));
     let tag = format!("{}:", tag);
     let mut res = Vec::new();
-    for mut block in do_extract_comment_blocks(text, true) {
+    for (line, mut block) in do_extract_comment_blocks(text, true) {
         let first = block.remove(0);
         if first.starts_with(&tag) {
             let id = first[tag.len()..].trim().to_string();
-            let block = CommentBlock { id, contents: block };
+            let block = CommentBlock { id, line, contents: block };
             res.push(block);
         }
     }
@@ -81,31 +81,38 @@ fn extract_comment_blocks_with_empty_lines(tag: &str, text: &str) -> Vec<Comment
 
 struct CommentBlock {
     id: String,
+    line: usize,
     contents: Vec<String>,
 }
 
-fn do_extract_comment_blocks(text: &str, allow_blocks_with_empty_lines: bool) -> Vec<Vec<String>> {
+fn do_extract_comment_blocks(
+    text: &str,
+    allow_blocks_with_empty_lines: bool,
+) -> Vec<(usize, Vec<String>)> {
     let mut res = Vec::new();
 
     let prefix = "// ";
     let lines = text.lines().map(str::trim_start);
 
-    let mut block = vec![];
-    for line in lines {
+    let mut block = (0, vec![]);
+    for (line_num, line) in lines.enumerate() {
         if line == "//" && allow_blocks_with_empty_lines {
-            block.push(String::new());
+            block.1.push(String::new());
             continue;
         }
 
         let is_comment = line.starts_with(prefix);
         if is_comment {
-            block.push(line[prefix.len()..].to_string());
-        } else if !block.is_empty() {
-            res.push(mem::replace(&mut block, Vec::new()));
+            block.1.push(line[prefix.len()..].to_string());
+        } else {
+            if !block.1.is_empty() {
+                res.push(mem::take(&mut block));
+            }
+            block.0 = line_num + 2;
         }
     }
-    if !block.is_empty() {
-        res.push(mem::replace(&mut block, Vec::new()))
+    if !block.1.is_empty() {
+        res.push(block)
     }
     res
 }
@@ -113,11 +120,12 @@ fn do_extract_comment_blocks(text: &str, allow_blocks_with_empty_lines: bool) ->
 #[derive(Debug)]
 struct Location {
     file: PathBuf,
+    line: usize,
 }
 
 impl Location {
-    fn new(file: PathBuf) -> Self {
-        Self { file }
+    fn new(file: PathBuf, line: usize) -> Self {
+        Self { file, line }
     }
 }
 
@@ -128,8 +136,9 @@ impl fmt::Display for Location {
         let name = self.file.file_name().unwrap();
         write!(
             f,
-            "https://github.com/rust-analyzer/rust-analyzer/blob/master/{}[{}]",
+            "https://github.com/rust-analyzer/rust-analyzer/blob/master/{}#L{}[{}]",
             path,
+            self.line,
             name.to_str().unwrap()
         )
     }

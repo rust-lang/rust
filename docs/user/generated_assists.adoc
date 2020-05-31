@@ -1,5 +1,6 @@
 [discrete]
 === `add_custom_impl`
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_assists/src/handlers/add_custom_impl.rs#L14[add_custom_impl.rs]
 
 Adds impl block for derived trait.
 
@@ -22,6 +23,7 @@ impl Debug for S {
 
 [discrete]
 === `add_derive`
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_assists/src/handlers/add_derive.rs#L9[add_derive.rs]
 
 Adds a new `#[derive()]` clause to a struct or enum.
 
@@ -45,6 +47,7 @@ struct Point {
 
 [discrete]
 === `add_explicit_type`
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_assists/src/handlers/add_explicit_type.rs#L9[add_explicit_type.rs]
 
 Specify type for a let binding.
 
@@ -65,6 +68,7 @@ fn main() {
 
 [discrete]
 === `add_from_impl_for_enum`
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_assists/src/handlers/add_from_impl_for_enum.rs#L7[add_from_impl_for_enum.rs]
 
 Adds a From impl for an enum variant with one tuple field.
 
@@ -87,6 +91,7 @@ impl From<u32> for A {
 
 [discrete]
 === `add_function`
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_assists/src/handlers/add_function.rs#L19[add_function.rs]
 
 Adds a stub function with a signature matching the function under the cursor.
 
@@ -117,6 +122,7 @@ fn bar(arg: &str, baz: Baz) {
 
 [discrete]
 === `add_hash`
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_assists/src/handlers/raw_string.rs#L65[raw_string.rs]
 
 Adds a hash to a raw string literal.
 
@@ -137,6 +143,7 @@ fn main() {
 
 [discrete]
 === `add_impl`
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_assists/src/handlers/add_impl.rs#L6[add_impl.rs]
 
 Adds a new inherent impl for a type.
 
@@ -161,6 +168,7 @@ impl<T: Clone> Ctx<T> {
 
 [discrete]
 === `add_impl_default_members`
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_assists/src/handlers/add_missing_impl_members.rs#L64[add_missing_impl_members.rs]
 
 Adds scaffold for overriding default impl members.
 
@@ -198,6 +206,7 @@ impl Trait for () {
 
 [discrete]
 === `add_impl_missing_members`
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_assists/src/handlers/add_missing_impl_members.rs#L24[add_missing_impl_members.rs]
 
 Adds scaffold for required impl members.
 
@@ -233,6 +242,7 @@ impl Trait<u32> for () {
 
 [discrete]
 === `add_new`
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_assists/src/handlers/add_new.rs#L12[add_new.rs]
 
 Adds a new inherent impl for a type.
 
@@ -258,6 +268,7 @@ impl<T: Clone> Ctx<T> {
 
 [discrete]
 === `add_turbo_fish`
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_assists/src/handlers/add_turbo_fish.rs#L10[add_turbo_fish.rs]
 
 Adds `::<_>` to a call of a generic method or function.
 
@@ -280,6 +291,7 @@ fn main() {
 
 [discrete]
 === `apply_demorgan`
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_assists/src/handlers/apply_demorgan.rs#L5[apply_demorgan.rs]
 
 Apply [De Morgan's law](https://en.wikipedia.org/wiki/De_Morgan%27s_laws).
 This transforms expressions of the form `!l || !r` into `!(l && r)`.
@@ -304,6 +316,7 @@ fn main() {
 
 [discrete]
 === `auto_import`
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_assists/src/handlers/auto_import.rs#L18[auto_import.rs]
 
 If the name is unresolved, provides all possible imports for it.
 
@@ -326,6 +339,7 @@ fn main() {
 
 [discrete]
 === `change_lifetime_anon_to_named`
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_assists/src/handlers/change_lifetime_anon_to_named.rs#L9[change_lifetime_anon_to_named.rs]
 
 Change an anonymous lifetime to a named lifetime.
 
@@ -354,6 +368,7 @@ impl<'a> Cursor<'a> {
 
 [discrete]
 === `change_return_type_to_result`
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_assists/src/handlers/change_return_type_to_result.rs#L8[change_return_type_to_result.rs]
 
 Change the function's return type to Result.
 
@@ -370,6 +385,7 @@ fn foo() -> Result<i32, ${0:_}> { Ok(42i32) }
 
 [discrete]
 === `change_visibility`
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_assists/src/handlers/change_visibility.rs#L14[change_visibility.rs]
 
 Adds or changes existing visibility specifier.
 
@@ -386,6 +402,7 @@ pub(crate) fn frobnicate() {}
 
 [discrete]
 === `convert_to_guarded_return`
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_assists/src/handlers/early_return.rs#L21[early_return.rs]
 
 Replace a large conditional with a guarded return.
 
@@ -413,6 +430,7 @@ fn main() {
 
 [discrete]
 === `fill_match_arms`
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_assists/src/handlers/fill_match_arms.rs#L14[fill_match_arms.rs]
 
 Adds missing clauses to a `match` expression.
 
@@ -442,6 +460,7 @@ fn handle(action: Action) {
 
 [discrete]
 === `fix_visibility`
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_assists/src/handlers/fix_visibility.rs#L13[fix_visibility.rs]
 
 Makes inaccessible item public.
 
@@ -468,6 +487,7 @@ fn main() {
 
 [discrete]
 === `flip_binexpr`
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_assists/src/handlers/flip_binexpr.rs#L5[flip_binexpr.rs]
 
 Flips operands of a binary expression.
 
@@ -488,6 +508,7 @@ fn main() {
 
 [discrete]
 === `flip_comma`
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_assists/src/handlers/flip_comma.rs#L5[flip_comma.rs]
 
 Flips two comma-separated items.
 
@@ -508,6 +529,7 @@ fn main() {
 
 [discrete]
 === `flip_trait_bound`
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_assists/src/handlers/flip_trait_bound.rs#L9[flip_trait_bound.rs]
 
 Flips two trait bounds.
 
@@ -524,6 +546,7 @@ fn foo<T: Copy + Clone>() { }
 
 [discrete]
 === `inline_local_variable`
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_assists/src/handlers/inline_local_variable.rs#L13[inline_local_variable.rs]
 
 Inlines local variable.
 
@@ -545,6 +568,7 @@ fn main() {
 
 [discrete]
 === `introduce_variable`
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_assists/src/handlers/introduce_variable.rs#L14[introduce_variable.rs]
 
 Extracts subexpression into a variable.
 
@@ -566,6 +590,7 @@ fn main() {
 
 [discrete]
 === `invert_if`
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_assists/src/handlers/invert_if.rs#L12[invert_if.rs]
 
 Apply invert_if
 This transforms if expressions of the form `if !x {A} else {B}` into `if x {B} else {A}`
@@ -589,6 +614,7 @@ fn main() {
 
 [discrete]
 === `make_raw_string`
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_assists/src/handlers/raw_string.rs#L10[raw_string.rs]
 
 Adds `r#` to a plain string literal.
 
@@ -609,6 +635,7 @@ fn main() {
 
 [discrete]
 === `make_usual_string`
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_assists/src/handlers/raw_string.rs#L39[raw_string.rs]
 
 Turns a raw string into a plain string.
 
@@ -629,6 +656,7 @@ fn main() {
 
 [discrete]
 === `merge_imports`
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_assists/src/handlers/merge_imports.rs#L14[merge_imports.rs]
 
 Merges two imports with a common prefix.
 
@@ -646,6 +674,7 @@ use std::{fmt::Formatter, io};
 
 [discrete]
 === `merge_match_arms`
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_assists/src/handlers/merge_match_arms.rs#L11[merge_match_arms.rs]
 
 Merges identical match arms.
 
@@ -675,6 +704,7 @@ fn handle(action: Action) {
 
 [discrete]
 === `move_arm_cond_to_match_guard`
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_assists/src/handlers/move_guard.rs#L56[move_guard.rs]
 
 Moves if expression from match arm body into a guard.
 
@@ -705,6 +735,7 @@ fn handle(action: Action) {
 
 [discrete]
 === `move_bounds_to_where_clause`
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_assists/src/handlers/move_bounds.rs#L10[move_bounds.rs]
 
 Moves inline type bounds to a where clause.
 
@@ -725,6 +756,7 @@ fn apply<T, U, F>(f: F, x: T) -> U where F: FnOnce(T) -> U {
 
 [discrete]
 === `move_guard_to_arm_body`
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_assists/src/handlers/move_guard.rs#L8[move_guard.rs]
 
 Moves match guard into match arm body.
 
@@ -755,6 +787,7 @@ fn handle(action: Action) {
 
 [discrete]
 === `remove_dbg`
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_assists/src/handlers/remove_dbg.rs#L8[remove_dbg.rs]
 
 Removes `dbg!()` macro call.
 
@@ -775,6 +808,7 @@ fn main() {
 
 [discrete]
 === `remove_hash`
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_assists/src/handlers/raw_string.rs#L89[raw_string.rs]
 
 Removes a hash from a raw string literal.
 
@@ -795,6 +829,7 @@ fn main() {
 
 [discrete]
 === `remove_mut`
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_assists/src/handlers/remove_mut.rs#L5[remove_mut.rs]
 
 Removes the `mut` keyword.
 
@@ -815,6 +850,7 @@ impl Walrus {
 
 [discrete]
 === `reorder_fields`
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_assists/src/handlers/reorder_fields.rs#L10[reorder_fields.rs]
 
 Reorder the fields of record literals and record patterns in the same order as in
 the definition.
@@ -834,6 +870,7 @@ const test: Foo = Foo {foo: 1, bar: 0}
 
 [discrete]
 === `replace_if_let_with_match`
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_assists/src/handlers/replace_if_let_with_match.rs#L13[replace_if_let_with_match.rs]
 
 Replaces `if let` with an else branch with a `match` expression.
 
@@ -865,6 +902,7 @@ fn handle(action: Action) {
 
 [discrete]
 === `replace_let_with_if_let`
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_assists/src/handlers/replace_let_with_if_let.rs#L14[replace_let_with_if_let.rs]
 
 Replaces `let` with an `if-let`.
 
@@ -892,6 +930,7 @@ fn compute() -> Option<i32> { None }
 
 [discrete]
 === `replace_qualified_name_with_use`
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_assists/src/handlers/replace_qualified_name_with_use.rs#L6[replace_qualified_name_with_use.rs]
 
 Adds a use statement for a given fully-qualified name.
 
@@ -910,6 +949,7 @@ fn process(map: HashMap<String, String>) {}
 
 [discrete]
 === `replace_unwrap_with_match`
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_assists/src/handlers/replace_unwrap_with_match.rs#L17[replace_unwrap_with_match.rs]
 
 Replaces `unwrap` a `match` expression. Works for Result and Option.
 
@@ -937,6 +977,7 @@ fn main() {
 
 [discrete]
 === `split_import`
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_assists/src/handlers/split_import.rs#L7[split_import.rs]
 
 Wraps the tail of import into braces.
 
@@ -953,6 +994,7 @@ use std::{collections::HashMap};
 
 [discrete]
 === `unwrap_block`
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_assists/src/handlers/unwrap_block.rs#L9[unwrap_block.rs]
 
 This assist removes if...else, for, while and loop control statements to just keep the body.
 
