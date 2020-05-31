@@ -247,6 +247,7 @@
 #![feature(cfg_target_has_atomic)]
 #![feature(cfg_target_thread_local)]
 #![feature(char_error_internals)]
+#![feature(char_internals)]
 #![feature(clamp)]
 #![feature(concat_idents)]
 #![feature(const_cstr_unchecked)]
