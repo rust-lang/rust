@@ -4,9 +4,9 @@ use test_utils::mark;
 
 use crate::{utils::FamousDefs, AssistContext, AssistId, Assists};
 
-// Assist add_from_impl_for_enum
+// Assist: add_from_impl_for_enum
 //
-// Adds a From impl for an enum variant with one tuple field
+// Adds a From impl for an enum variant with one tuple field.
 //
 // ```
 // enum A { <|>One(u32) }

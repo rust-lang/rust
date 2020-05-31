@@ -1,5 +1,3 @@
-//! This module defines multiple types of inlay hints and their visibility
-
 use hir::{Adt, HirDisplay, Semantics, Type};
 use ra_ide_db::RootDatabase;
 use ra_prof::profile;
@@ -39,6 +37,26 @@ pub struct InlayHint {
     pub label: SmolStr,
 }
 
+// Feature: Inlay Hints
+//
+// rust-analyzer shows additional information inline with the source code.
+// Editors usually render this using read-only virtual text snippets interspersed with code.
+//
+// rust-analyzer shows hits for
+//
+// * types of local variables
+// * names of function arguments
+// * types of chained expressions
+//
+// **Note:** VS Code does not have native support for inlay hints https://github.com/microsoft/vscode/issues/16221[yet] and the hints are implemented using decorations.
+// This approach has limitations, the caret movement and bracket highlighting near the edges of the hint may be weird:
+// https://github.com/rust-analyzer/rust-analyzer/issues/1623[1], https://github.com/rust-analyzer/rust-analyzer/issues/3453[2].
+//
+// |===
+// | Editor  | Action Name
+//
+// | VS Code | **Rust Analyzer: Toggle inlay hints*
+// |===
 pub(crate) fn inlay_hints(
     db: &RootDatabase,
     file_id: FileId,

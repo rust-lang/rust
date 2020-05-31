@@ -1,5 +1,3 @@
-//! FIXME: write short doc here
-
 use itertools::Itertools;
 use ra_fmt::{compute_ws, extract_trivial_expression};
 use ra_syntax::{
@@ -11,6 +9,15 @@ use ra_syntax::{
 };
 use ra_text_edit::{TextEdit, TextEditBuilder};
 
+// Feature: Join Lines
+//
+// Join selected lines into one, smartly fixing up whitespace, trailing commas, and braces.
+//
+// |===
+// | Editor  | Action Name
+//
+// | VS Code | **Rust Analyzer: Join lines**
+// |===
 pub fn join_lines(file: &SourceFile, range: TextRange) -> TextEdit {
     let range = if range.is_empty() {
         let syntax = file.syntax();

@@ -75,6 +75,7 @@ FLAGS:
             codegen::generate_syntax(Mode::Overwrite)?;
             codegen::generate_parser_tests(Mode::Overwrite)?;
             codegen::generate_assists_docs(Mode::Overwrite)?;
+            codegen::generate_feature_docs(Mode::Overwrite)?;
             Ok(())
         }
         "format" => {

@@ -1,5 +1,3 @@
-//! FIXME: write short doc here
-
 use hir::Semantics;
 use ra_ide_db::{
     defs::{classify_name, classify_name_ref},
@@ -17,6 +15,15 @@ use crate::{
     FilePosition, NavigationTarget, RangeInfo,
 };
 
+// Feature: Go to Definition
+//
+// Navigates to the definition of an identifier.
+//
+// |===
+// | Editor  | Shortcut
+//
+// | VS Code | kbd:[F12]
+// |===
 pub(crate) fn goto_definition(
     db: &RootDatabase,
     position: FilePosition,

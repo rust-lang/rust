@@ -1,5 +1,3 @@
-//! Implements syntax highlighting.
-
 mod tags;
 mod html;
 #[cfg(test)]
@@ -32,81 +30,15 @@ pub struct HighlightedRange {
     pub binding_hash: Option<u64>,
 }
 
-#[derive(Debug)]
-struct HighlightedRangeStack {
-    stack: Vec<Vec<HighlightedRange>>,
-}
-
-/// We use a stack to implement the flattening logic for the highlighted
-/// syntax ranges.
-impl HighlightedRangeStack {
-    fn new() -> Self {
-        Self { stack: vec![Vec::new()] }
-    }
-
-    fn push(&mut self) {
-        self.stack.push(Vec::new());
-    }
-
-    /// Flattens the highlighted ranges.
-    ///
-    /// For example `#[cfg(feature = "foo")]` contains the nested ranges:
-    /// 1) parent-range: Attribute [0, 23)
-    /// 2) child-range: String [16, 21)
-    ///
-    /// The following code implements the flattening, for our example this results to:
-    /// `[Attribute [0, 16), String [16, 21), Attribute [21, 23)]`
-    fn pop(&mut self) {
-        let children = self.stack.pop().unwrap();
-        let prev = self.stack.last_mut().unwrap();
-        let needs_flattening = !children.is_empty()
-            && !prev.is_empty()
-            && prev.last().unwrap().range.contains_range(children.first().unwrap().range);
-        if !needs_flattening {
-            prev.extend(children);
-        } else {
-            let mut parent = prev.pop().unwrap();
-            for ele in children {
-                assert!(parent.range.contains_range(ele.range));
-                let mut cloned = parent.clone();
-                parent.range = TextRange::new(parent.range.start(), ele.range.start());
-                cloned.range = TextRange::new(ele.range.end(), cloned.range.end());
-                if !parent.range.is_empty() {
-                    prev.push(parent);
-                }
-                prev.push(ele);
-                parent = cloned;
-            }
-            if !parent.range.is_empty() {
-                prev.push(parent);
-            }
-        }
-    }
-
-    fn add(&mut self, range: HighlightedRange) {
-        self.stack
-            .last_mut()
-            .expect("during DFS traversal, the stack must not be empty")
-            .push(range)
-    }
-
-    fn flattened(mut self) -> Vec<HighlightedRange> {
-        assert_eq!(
-            self.stack.len(),
-            1,
-            "after DFS traversal, the stack should only contain a single element"
-        );
-        let mut res = self.stack.pop().unwrap();
-        res.sort_by_key(|range| range.range.start());
-        // Check that ranges are sorted and disjoint
-        assert!(res
-            .iter()
-            .zip(res.iter().skip(1))
-            .all(|(left, right)| left.range.end() <= right.range.start()));
-        res
-    }
-}
-
+// Feature: Semantic Syntax Highlighting
+//
+// rust-analyzer highlights the code semantically.
+// For example, `bar` in `foo::Bar` might be colored differently depending on whether `Bar` is an enum or a trait.
+// rust-analyzer does not specify colors directly, instead it assigns tag (like `struct`) and a set of modifiers (like `declaration`) to each token.
+// It's up to the client to map those to specific colors.
+//
+// The general rule is that a reference to an entity gets colored the same way as the entity itself.
+// We also give special modifier for `mut` and `&mut` local variables.
 pub(crate) fn highlight(
     db: &RootDatabase,
     file_id: FileId,
@@ -289,6 +221,81 @@ pub(crate) fn highlight(
     }
 
     stack.flattened()
+}
+
+#[derive(Debug)]
+struct HighlightedRangeStack {
+    stack: Vec<Vec<HighlightedRange>>,
+}
+
+/// We use a stack to implement the flattening logic for the highlighted
+/// syntax ranges.
+impl HighlightedRangeStack {
+    fn new() -> Self {
+        Self { stack: vec![Vec::new()] }
+    }
+
+    fn push(&mut self) {
+        self.stack.push(Vec::new());
+    }
+
+    /// Flattens the highlighted ranges.
+    ///
+    /// For example `#[cfg(feature = "foo")]` contains the nested ranges:
+    /// 1) parent-range: Attribute [0, 23)
+    /// 2) child-range: String [16, 21)
+    ///
+    /// The following code implements the flattening, for our example this results to:
+    /// `[Attribute [0, 16), String [16, 21), Attribute [21, 23)]`
+    fn pop(&mut self) {
+        let children = self.stack.pop().unwrap();
+        let prev = self.stack.last_mut().unwrap();
+        let needs_flattening = !children.is_empty()
+            && !prev.is_empty()
+            && prev.last().unwrap().range.contains_range(children.first().unwrap().range);
+        if !needs_flattening {
+            prev.extend(children);
+        } else {
+            let mut parent = prev.pop().unwrap();
+            for ele in children {
+                assert!(parent.range.contains_range(ele.range));
+                let mut cloned = parent.clone();
+                parent.range = TextRange::new(parent.range.start(), ele.range.start());
+                cloned.range = TextRange::new(ele.range.end(), cloned.range.end());
+                if !parent.range.is_empty() {
+                    prev.push(parent);
+                }
+                prev.push(ele);
+                parent = cloned;
+            }
+            if !parent.range.is_empty() {
+                prev.push(parent);
+            }
+        }
+    }
+
+    fn add(&mut self, range: HighlightedRange) {
+        self.stack
+            .last_mut()
+            .expect("during DFS traversal, the stack must not be empty")
+            .push(range)
+    }
+
+    fn flattened(mut self) -> Vec<HighlightedRange> {
+        assert_eq!(
+            self.stack.len(),
+            1,
+            "after DFS traversal, the stack should only contain a single element"
+        );
+        let mut res = self.stack.pop().unwrap();
+        res.sort_by_key(|range| range.range.start());
+        // Check that ranges are sorted and disjoint
+        assert!(res
+            .iter()
+            .zip(res.iter().skip(1))
+            .all(|(left, right)| left.range.end() <= right.range.start()));
+        res
+    }
 }
 
 fn highlight_format_specifier(kind: FormatSpecifier) -> Option<HighlightTag> {

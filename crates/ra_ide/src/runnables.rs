@@ -1,5 +1,3 @@
-//! FIXME: write short doc here
-
 use hir::{AsAssocItem, Attrs, HirFileId, InFile, Semantics};
 use itertools::Itertools;
 use ra_ide_db::RootDatabase;
@@ -44,6 +42,17 @@ pub enum RunnableKind {
     Bin,
 }
 
+// Feature: Run
+//
+// Shows a popup suggesting to run a test/benchmark/binary **at the current cursor
+// location**. Super useful for repeatedly running just a single test. Do bind this
+// to a shortcut!
+//
+// |===
+// | Editor  | Action Name
+//
+// | VS Code | **Rust Analyzer: Run**
+// |===
 pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
     let sema = Semantics::new(db);
     let source_file = sema.parse(file_id);

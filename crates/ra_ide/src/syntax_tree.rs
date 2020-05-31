@@ -1,6 +1,4 @@
-//! FIXME: write short doc here
-
-use ra_db::SourceDatabase;
+use ra_db::{FileId, SourceDatabase};
 use ra_ide_db::RootDatabase;
 use ra_syntax::{
     algo, AstNode, NodeOrToken, SourceFile,
@@ -8,8 +6,16 @@ use ra_syntax::{
     SyntaxToken, TextRange, TextSize,
 };
 
-pub use ra_db::FileId;
-
+// Feature: Show Syntax Tree
+//
+// Shows the parse tree of the current file. It exists mostly for debugging
+// rust-analyzer itself.
+//
+// |===
+// | Editor  | Action Name
+//
+// | VS Code | **Rust Analyzer: Show Syntax Tree**
+// |===
 pub(crate) fn syntax_tree(
     db: &RootDatabase,
     file_id: FileId,

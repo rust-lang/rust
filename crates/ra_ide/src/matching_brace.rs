@@ -1,7 +1,16 @@
-//! FIXME: write short doc here
-
 use ra_syntax::{ast::AstNode, SourceFile, SyntaxKind, TextSize, T};
 
+// Feature: Matching Brace
+//
+// If the cursor is on any brace (`<>(){}[]`) which is a part of a brace-pair,
+// moves cursor to the matching brace. It uses the actual parser to determine
+// braces, so it won't confuse generics with comparisons.
+//
+// |===
+// | Editor  | Action Name
+//
+// | VS Code | **Rust Analyzer: Find matching brace**
+// |===
 pub fn matching_brace(file: &SourceFile, offset: TextSize) -> Option<TextSize> {
     const BRACES: &[SyntaxKind] =
         &[T!['{'], T!['}'], T!['['], T![']'], T!['('], T![')'], T![<], T![>]];

@@ -8,14 +8,15 @@
 mod gen_syntax;
 mod gen_parser_tests;
 mod gen_assists_docs;
+mod gen_feature_docs;
 
 use std::{mem, path::Path};
 
 use crate::{not_bash::fs2, Result};
 
 pub use self::{
-    gen_assists_docs::generate_assists_docs, gen_parser_tests::generate_parser_tests,
-    gen_syntax::generate_syntax,
+    gen_assists_docs::generate_assists_docs, gen_feature_docs::generate_feature_docs,
+    gen_parser_tests::generate_parser_tests, gen_syntax::generate_syntax,
 };
 
 const GRAMMAR_DIR: &str = "crates/ra_parser/src/grammar";
@@ -40,7 +41,7 @@ pub enum Mode {
 /// With verify = false,
 fn update(path: &Path, contents: &str, mode: Mode) -> Result<()> {
     match fs2::read_to_string(path) {
-        Ok(ref old_contents) if normalize(old_contents) == normalize(contents) => {
+        Ok(old_contents) if normalize(&old_contents) == normalize(contents) => {
             return Ok(());
         }
         _ => (),
@@ -61,8 +62,24 @@ fn extract_comment_blocks(text: &str) -> Vec<Vec<String>> {
     do_extract_comment_blocks(text, false)
 }
 
-fn extract_comment_blocks_with_empty_lines(text: &str) -> Vec<Vec<String>> {
-    do_extract_comment_blocks(text, true)
+fn extract_comment_blocks_with_empty_lines(tag: &str, text: &str) -> Vec<CommentBlock> {
+    assert!(tag.starts_with(char::is_uppercase));
+    let tag = format!("{}:", tag);
+    let mut res = Vec::new();
+    for mut block in do_extract_comment_blocks(text, true) {
+        let first = block.remove(0);
+        if first.starts_with(&tag) {
+            let id = first[tag.len()..].trim().to_string();
+            let block = CommentBlock { id, contents: block };
+            res.push(block);
+        }
+    }
+    res
+}
+
+struct CommentBlock {
+    id: String,
+    contents: Vec<String>,
 }
 
 fn do_extract_comment_blocks(text: &str, allow_blocks_with_empty_lines: bool) -> Vec<Vec<String>> {

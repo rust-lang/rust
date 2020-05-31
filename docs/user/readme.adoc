@@ -8,6 +8,8 @@
 :important-caption: :heavy_exclamation_mark:
 :caution-caption: :fire:
 :warning-caption: :warning:
+:source-highlighter: rouge
+:experimental:
 
 // Master copy of this document lives in the https://github.com/rust-analyzer/rust-analyzer repository
 
@@ -268,6 +270,13 @@ Gnome Builder currently has support for RLS, and there's no way to configure the
 1. Rename, symlink or copy the `rust-analyzer` binary to `rls` and place it somewhere Builder can find (in `PATH`, or under `~/.cargo/bin`).
 2. Enable the Rust Builder plugin.
 
-== Usage
+== Features
 
-See https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/user/features.md[features.md].
+include::./generated_features.adoc[]
+
+== Assists (Code Actions)
+
+Assists, or code actions, are small local refactorings, available in a particular context.
+They are usually triggered by a shortcut or by clicking a light bulb icon in the editor.
+
+See [assists.md](./assists.md) for the list of available assists.

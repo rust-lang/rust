@@ -56,6 +56,24 @@ fn main() {
 }
 ```
 
+## `add_from_impl_for_enum`
+
+Adds a From impl for an enum variant with one tuple field.
+
+```rust
+// BEFORE
+enum A { ┃One(u32) }
+
+// AFTER
+enum A { One(u32) }
+
+impl From<u32> for A {
+    fn from(v: u32) -> Self {
+        A::One(v)
+    }
+}
+```
+
 ## `add_function`
 
 Adds a stub function with a signature matching the function under the cursor.
