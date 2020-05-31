@@ -1,5 +1,3 @@
-//! FIXME: write short doc here
-
 use std::iter::successors;
 
 use hir::Semantics;

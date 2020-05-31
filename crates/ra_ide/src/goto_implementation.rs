@@ -1,5 +1,3 @@
-//! FIXME: write short doc here
-
 use hir::{Crate, ImplDef, Semantics};
 use ra_ide_db::RootDatabase;
 use ra_syntax::{algo::find_node_at_offset, ast, AstNode};

@@ -68,6 +68,34 @@ Navigates to the type of an identifier.
 |===
 
 
+=== Join Lines
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/join_lines.rs[join_lines.rs]
+
+
+Join selected lines into one, smartly fixing up whitespace, trailing commas, and braces.
+
+|===
+| Editor  | Action Name
+
+| VS Code | **Rust Analyzer: Join lines**
+|===
+
+
+=== Matching Brace
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/matching_brace.rs[matching_brace.rs]
+
+
+If the cursor is on any brace (`<>(){}[]`) which is a part of a brace-pair,
+moves cursor to the matching brace. It uses the actual parser to determine
+braces, so it won't confuse generics with comparisons.
+
+|===
+| Editor  | Action Name
+
+| VS Code | **Rust Analyzer: Find matching brace**
+|===
+
+
 === On Typing Assists
 **Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/typing.rs[typing.rs]
 
@@ -77,6 +105,19 @@ Some features trigger on typing certain characters:
 - typing `let =` tries to smartly add `;` if `=` is followed by an existing expression
 - Enter inside comments automatically inserts `///`
 - typing `.` in a chain method call auto-indents
+
+
+=== Parent Module
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/parent_module.rs[parent_module.rs]
+
+
+Navigates to the parent module of the current module.
+
+|===
+| Editor  | Action Name
+
+| VS Code | **Rust Analyzer: Locate parent module**
+|===
 
 
 === Run
@@ -91,6 +132,20 @@ to a shortcut!
 | Editor  | Action Name
 
 | VS Code | **Rust Analyzer: Run**
+|===
+
+
+=== Show Syntax Tree
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/syntax_tree.rs[syntax_tree.rs]
+
+
+Shows the parse tree of the current file. It exists mostly for debugging
+rust-analyzer itself.
+
+|===
+| Editor  | Action Name
+
+| VS Code | **Rust Analyzer: Show Syntax Tree**
 |===
 
 

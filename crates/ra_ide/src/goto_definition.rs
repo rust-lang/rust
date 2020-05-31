@@ -1,5 +1,3 @@
-//! FIXME: write short doc here
-
 use hir::Semantics;
 use ra_ide_db::{
     defs::{classify_name, classify_name_ref},

@@ -1,5 +1,3 @@
-//! FIXME: write short doc here
-
 use ra_ide_db::RootDatabase;
 use ra_syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, TokenAtOffset};
 

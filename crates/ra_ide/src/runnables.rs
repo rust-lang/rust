@@ -1,5 +1,3 @@
-//! FIXME: write short doc here
-
 use hir::{AsAssocItem, Attrs, HirFileId, InFile, Semantics};
 use itertools::Itertools;
 use ra_ide_db::RootDatabase;

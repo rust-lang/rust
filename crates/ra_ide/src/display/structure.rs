@@ -1,10 +1,6 @@
-//! FIXME: write short doc here
-
-use crate::TextRange;
-
 use ra_syntax::{
     ast::{self, AttrsOwner, NameOwner, TypeAscriptionOwner, TypeParamsOwner},
-    match_ast, AstNode, SourceFile, SyntaxKind, SyntaxNode, WalkEvent,
+    match_ast, AstNode, SourceFile, SyntaxKind, SyntaxNode, TextRange, WalkEvent,
 };
 
 #[derive(Debug, Clone)]

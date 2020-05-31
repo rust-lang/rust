@@ -4,24 +4,8 @@ you can use <kbd>Ctrl+Shift+P</kbd> to search for the corresponding action.
 
 ### Commands <kbd>ctrl+shift+p</kbd>
 
-#### Parent Module
 
-Navigates to the parent module of the current module.
 
-#### Matching Brace
-
-If the cursor is on any brace (`<>(){}[]`) which is a part of a brace-pair,
-moves cursor to the matching brace. It uses the actual parser to determine
-braces, so it won't confuse generics with comparisons.
-
-#### Join Lines
-
-Join selected lines into one, smartly fixing up whitespace and trailing commas.
-
-#### Show Syntax Tree
-
-Shows the parse tree of the current file. It exists mostly for debugging
-rust-analyzer itself.
 
 #### Expand Macro Recursively
 

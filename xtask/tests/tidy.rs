@@ -102,7 +102,7 @@ impl TidyDocs {
     fn visit(&mut self, path: &Path, text: &str) {
         // Test hopefully don't really need comments, and for assists we already
         // have special comments which are source of doc tests and user docs.
-        if is_exclude_dir(path, &["tests", "test_data", "handlers"]) {
+        if is_exclude_dir(path, &["tests", "test_data"]) {
             return;
         }
 
@@ -117,9 +117,12 @@ impl TidyDocs {
 
         if first_line.starts_with("//!") {
             if first_line.contains("FIXME") {
-                self.contains_fixme.push(path.to_path_buf())
+                self.contains_fixme.push(path.to_path_buf());
             }
         } else {
+            if text.contains("// Feature:") || text.contains("// Assist:") {
+                return;
+            }
             self.missing_docs.push(path.display().to_string());
         }
 
