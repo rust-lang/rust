@@ -1,48 +1,40 @@
 error: use Vec::sort here instead
-  --> $DIR/sort_by_key.rs:13:5
+  --> $DIR/unnecessary_sort_by.rs:12:5
    |
 LL |     vec.sort_by(|a, b| a.cmp(b));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort()`
    |
-   = note: `-D clippy::sort-by-key` implied by `-D warnings`
+   = note: `-D clippy::unnecessary-sort-by` implied by `-D warnings`
 
 error: use Vec::sort_by_key here instead
-  --> $DIR/sort_by_key.rs:14:5
+  --> $DIR/unnecessary_sort_by.rs:13:5
    |
 LL |     vec.sort_by(|a, b| (a + 5).abs().cmp(&(b + 5).abs()));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort_by_key(|&a| (a + 5).abs())`
 
 error: use Vec::sort_by_key here instead
-  --> $DIR/sort_by_key.rs:15:5
+  --> $DIR/unnecessary_sort_by.rs:14:5
    |
 LL |     vec.sort_by(|a, b| id(-a).cmp(&id(-b)));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort_by_key(|&a| id(-a))`
 
 error: use Vec::sort_by_key here instead
-  --> $DIR/sort_by_key.rs:17:5
+  --> $DIR/unnecessary_sort_by.rs:16:5
    |
 LL |     vec.sort_by(|a, b| b.cmp(a));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort_by_key(|&b| Reverse(b))`
 
 error: use Vec::sort_by_key here instead
-  --> $DIR/sort_by_key.rs:18:5
+  --> $DIR/unnecessary_sort_by.rs:17:5
    |
 LL |     vec.sort_by(|a, b| (b + 5).abs().cmp(&(a + 5).abs()));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort_by_key(|&b| Reverse((b + 5).abs()))`
 
 error: use Vec::sort_by_key here instead
-  --> $DIR/sort_by_key.rs:19:5
+  --> $DIR/unnecessary_sort_by.rs:18:5
    |
 LL |     vec.sort_by(|a, b| id(-b).cmp(&id(-a)));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort_by_key(|&b| Reverse(id(-b)))`
 
-error: unknown clippy lint: clippy::sort_by_key_reverse
-  --> $DIR/sort_by_key.rs:2:9
-   |
-LL | #![warn(clippy::sort_by_key_reverse)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: did you mean: `clippy::sort_by_key`
-   |
-   = note: `-D clippy::unknown-clippy-lints` implied by `-D warnings`
-
-error: aborting due to 7 previous errors
+error: aborting due to 6 previous errors
 

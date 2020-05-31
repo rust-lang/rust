@@ -1,5 +1,4 @@
 // run-rustfix
-#![warn(clippy::sort_by_key_reverse)]
 
 use std::cmp::Reverse;
 
