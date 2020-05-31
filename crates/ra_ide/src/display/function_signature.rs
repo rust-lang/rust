@@ -207,7 +207,18 @@ impl From<&'_ ast::FnDef> for FunctionSignature {
                     res.push(raw_param);
                 }
 
-                res.extend(param_list.params().map(|param| param.syntax().text().to_string()));
+                // macro-generated functions are missing whitespace
+                fn fmt_param(param: ast::Param) -> String {
+                    let text = param.syntax().text().to_string();
+                    match text.find(':') {
+                        Some(pos) if 1 + pos < text.len() => {
+                            format!("{} {}", &text[0..1 + pos].trim(), &text[1 + pos..].trim())
+                        }
+                        _ => text,
+                    }
+                }
+
+                res.extend(param_list.params().map(fmt_param));
                 res_types.extend(param_list.params().map(|param| {
                     let param_text = param.syntax().text().to_string();
                     match param_text.split(':').nth(1).and_then(|it| it.get(1..)) {
