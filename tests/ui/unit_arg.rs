@@ -20,7 +20,6 @@ impl Bar {
 }
 
 fn bad() {
-    foo({});
     foo({
         1;
     });
@@ -29,7 +28,6 @@ fn bad() {
         foo(1);
         foo(2);
     });
-    foo3({}, 2, 2);
     let b = Bar;
     b.bar({
         1;

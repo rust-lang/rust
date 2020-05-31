@@ -1,27 +1,12 @@
 error: passing a unit value to a function
   --> $DIR/unit_arg.rs:23:5
    |
-LL |     foo({});
-   |     ^^^^^^^
-   |
-   = note: `-D clippy::unit-arg` implied by `-D warnings`
-help: move the expression in front of the call...
-   |
-LL |     {};
-   |
-help: ...and use a unit literal instead
-   |
-LL |     foo(());
-   |         ^^
-
-error: passing a unit value to a function
-  --> $DIR/unit_arg.rs:24:5
-   |
 LL | /     foo({
 LL | |         1;
 LL | |     });
    | |______^
    |
+   = note: `-D clippy::unit-arg` implied by `-D warnings`
 help: remove the semicolon from the last statement in the block
    |
 LL |         1
@@ -38,7 +23,7 @@ LL |     foo(());
    |         ^^
 
 error: passing a unit value to a function
-  --> $DIR/unit_arg.rs:27:5
+  --> $DIR/unit_arg.rs:26:5
    |
 LL |     foo(foo(1));
    |     ^^^^^^^^^^^
@@ -53,7 +38,7 @@ LL |     foo(());
    |         ^^
 
 error: passing a unit value to a function
-  --> $DIR/unit_arg.rs:28:5
+  --> $DIR/unit_arg.rs:27:5
    |
 LL | /     foo({
 LL | |         foo(1);
@@ -80,21 +65,6 @@ LL |     foo(());
 error: passing a unit value to a function
   --> $DIR/unit_arg.rs:32:5
    |
-LL |     foo3({}, 2, 2);
-   |     ^^^^^^^^^^^^^^
-   |
-help: move the expression in front of the call...
-   |
-LL |     {};
-   |
-help: ...and use a unit literal instead
-   |
-LL |     foo3((), 2, 2);
-   |          ^^
-
-error: passing a unit value to a function
-  --> $DIR/unit_arg.rs:34:5
-   |
 LL | /     b.bar({
 LL | |         1;
 LL | |     });
@@ -116,7 +86,7 @@ LL |     b.bar(());
    |           ^^
 
 error: passing unit values to a function
-  --> $DIR/unit_arg.rs:37:5
+  --> $DIR/unit_arg.rs:35:5
    |
 LL |     taking_multiple_units(foo(0), foo(1));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -132,7 +102,7 @@ LL |     taking_multiple_units((), ());
    |                           ^^  ^^
 
 error: passing unit values to a function
-  --> $DIR/unit_arg.rs:38:5
+  --> $DIR/unit_arg.rs:36:5
    |
 LL | /     taking_multiple_units(foo(0), {
 LL | |         foo(1);
@@ -158,7 +128,7 @@ LL |     taking_multiple_units((), ());
    |                           ^^  ^^
 
 error: passing unit values to a function
-  --> $DIR/unit_arg.rs:42:5
+  --> $DIR/unit_arg.rs:40:5
    |
 LL | /     taking_multiple_units(
 LL | |         {
@@ -193,7 +163,7 @@ LL |         (),
    |
 
 error: passing a unit value to a function
-  --> $DIR/unit_arg.rs:84:5
+  --> $DIR/unit_arg.rs:82:5
    |
 LL |     Some(foo(1))
    |     ^^^^^^^^^^^^
@@ -207,5 +177,5 @@ help: ...and use a unit literal instead
 LL |     Some(())
    |          ^^
 
-error: aborting due to 10 previous errors
+error: aborting due to 8 previous errors
 
