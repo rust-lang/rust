@@ -93,7 +93,7 @@ declare_clippy_lint! {
     /// ```rust
     /// let x = 1.2331f64;
     /// let y = 1.2332f64;
-    /// 
+    ///
     /// // Bad
     /// if y == 1.23f64 { }
     /// if y != x {} // where both are floats

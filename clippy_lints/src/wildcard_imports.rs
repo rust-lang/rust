@@ -19,8 +19,14 @@ declare_clippy_lint! {
     /// still around.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```rust,ignore
+    /// // Bad
     /// use std::cmp::Ordering::*;
+    /// foo(Less);
+    ///
+    /// // Good
+    /// use std::cmp::Ordering;
+    /// foo(Ordering::Less)
     /// ```
     pub ENUM_GLOB_USE,
     pedantic,
@@ -60,15 +66,15 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     ///
-    /// Bad:
     /// ```rust,ignore
+    /// // Bad
     /// use crate1::*;
     ///
     /// foo();
     /// ```
     ///
-    /// Good:
     /// ```rust,ignore
+    /// // Good
     /// use crate1::foo;
     ///
     /// foo();
