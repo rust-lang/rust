@@ -615,6 +615,33 @@ mod tests {
         );
     }
 
+    #[test]
+    fn test_find_all_refs_nested_module() {
+        let code = r#"
+            //- /lib.rs
+            mod foo {
+                mod bar;
+            }
+
+            fn f<|>() {}
+
+            //- /foo/bar.rs
+            use crate::f;
+
+            fn g() {
+                f();
+            }
+        "#;
+
+        let (analysis, pos) = analysis_and_position(code);
+        let refs = analysis.find_all_refs(pos, None).unwrap().unwrap();
+        check_result(
+            refs,
+            "f FN_DEF FileId(1) 25..34 28..29 Other",
+            &["FileId(2) 11..12 Other", "FileId(2) 27..28 StructLiteral"],
+        );
+    }
+
     fn get_all_refs(text: &str) -> ReferenceSearchResult {
         let (analysis, position) = single_file_with_position(text);
         analysis.find_all_refs(position, None).unwrap().unwrap()
