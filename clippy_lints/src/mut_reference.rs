@@ -16,7 +16,11 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```ignore
+    /// // Bad
     /// my_vec.push(&mut value)
+    ///
+    /// // Good
+    /// my_vec.push(&value)
     /// ```
     pub UNNECESSARY_MUT_PASSED,
     style,

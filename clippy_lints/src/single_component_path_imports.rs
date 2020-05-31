@@ -16,7 +16,7 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     ///
-    /// ```rust, ignore
+    /// ```rust,ignore
     /// use regex;
     ///
     /// fn main() {
@@ -24,7 +24,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Better as
-    /// ```rust, ignore
+    /// ```rust,ignore
     /// fn main() {
     ///     regex::Regex::new(r"^\d{4}-\d{2}-\d{2}$").unwrap();
     /// }

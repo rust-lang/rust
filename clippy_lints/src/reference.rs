@@ -16,8 +16,13 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust,ignore
+    /// // Bad
     /// let a = f(*&mut b);
     /// let c = *&d;
+    ///
+    /// // Good
+    /// let a = f(b);
+    /// let c = d;
     /// ```
     pub DEREF_ADDROF,
     complexity,

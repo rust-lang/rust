@@ -24,7 +24,11 @@ declare_clippy_lint! {
     /// **Example:**
     ///
     /// ```rust
+    /// // Bad
     /// let x: u64 = 61864918973511;
+    ///
+    /// // Good
+    /// let x: u64 = 61_864_918_973_511;
     /// ```
     pub UNREADABLE_LITERAL,
     pedantic,
@@ -44,7 +48,11 @@ declare_clippy_lint! {
     /// **Example:**
     ///
     /// ```rust
+    /// // Probably mistyped
     /// 2_32;
+    ///
+    /// // Good
+    /// 2_i32;
     /// ```
     pub MISTYPED_LITERAL_SUFFIXES,
     correctness,
@@ -63,7 +71,11 @@ declare_clippy_lint! {
     /// **Example:**
     ///
     /// ```rust
+    /// // Bad
     /// let x: u64 = 618_64_9189_73_511;
+    ///
+    /// // Good
+    /// let x: u64 = 61_864_918_973_511;
     /// ```
     pub INCONSISTENT_DIGIT_GROUPING,
     style,

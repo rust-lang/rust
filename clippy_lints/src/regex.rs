@@ -86,11 +86,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Regex {
             if let Some(span) = is_expn_of(expr.span, "regex");
             then {
                 if !self.spans.contains(&span) {
-                    span_lint(cx,
-                              REGEX_MACRO,
-                              span,
-                              "`regex!(_)` found. \
-                              Please use `Regex::new(_)`, which is faster for now.");
+                    span_lint(
+                        cx,
+                        REGEX_MACRO,
+                        span,
+                        "`regex!(_)` found. \
+                        Please use `Regex::new(_)`, which is faster for now."
+                    );
                     self.spans.insert(span);
                 }
                 self.last = Some(block.hir_id);

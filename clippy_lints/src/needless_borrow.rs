@@ -18,12 +18,16 @@ declare_clippy_lint! {
     /// **Why is this bad?** Suggests that the receiver of the expression borrows
     /// the expression.
     ///
+    /// **Known problems:** None.
+    ///
     /// **Example:**
     /// ```rust
+    /// // Bad
     /// let x: &i32 = &&&&&&5;
-    /// ```
     ///
-    /// **Known problems:** None.
+    /// // Good
+    /// let x: &i32 = &5;
+    /// ```
     pub NEEDLESS_BORROW,
     nursery,
     "taking a reference that is going to be automatically dereferenced"
