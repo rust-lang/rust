@@ -297,12 +297,6 @@ pub fn main() {
     exit(rustc_driver::catch_with_exit_code(move || {
         let mut orig_args: Vec<String> = env::args().collect();
 
-        if orig_args.iter().any(|a| a == "--version" || a == "-V") {
-            let version_info = rustc_tools_util::get_version_info!();
-            println!("{}", version_info);
-            exit(0);
-        }
-
         // Get the sysroot, looking from most specific to this invocation to the least:
         // - command line
         // - runtime environment
@@ -347,6 +341,29 @@ pub fn main() {
             })
             .map(|pb| pb.to_string_lossy().to_string())
             .expect("need to specify SYSROOT env var during clippy compilation, or use rustup or multirust");
+
+        // make "clippy-driver --rustc" work like a subcommand that passes further args to "rustc"
+        // for example `clippy-driver --rustc --version` will print the rustc version that clippy-driver
+        // uses
+        if let Some(pos) = orig_args.iter().position(|arg| arg == "--rustc") {
+            orig_args.remove(pos);
+            orig_args[0] = "rustc".to_string();
+
+            // if we call "rustc", we need to pass --sysroot here as well
+            let mut args: Vec<String> = orig_args.clone();
+            if !have_sys_root_arg {
+                args.extend(vec!["--sysroot".into(), sys_root]);
+            };
+
+            println!("args: {:?}", args);
+            return rustc_driver::run_compiler(&args, &mut DefaultCallbacks, None, None);
+        }
+
+        if orig_args.iter().any(|a| a == "--version" || a == "-V") {
+            let version_info = rustc_tools_util::get_version_info!();
+            println!("{}", version_info);
+            exit(0);
+        }
 
         // Setting RUSTC_WRAPPER causes Cargo to pass 'rustc' as the first argument.
         // We're invoking the compiler programmatically, so we ignore this/
