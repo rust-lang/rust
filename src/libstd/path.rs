@@ -1080,13 +1080,8 @@ impl FusedIterator for Ancestors<'_> {}
 ///
 /// Which method works best depends on what kind of situation you're in.
 #[derive(Clone)]
+#[repr(transparent)]
 #[stable(feature = "rust1", since = "1.0.0")]
-// FIXME:
-// `PathBuf::as_mut_vec` current implementation relies
-// on `PathBuf` being layout-compatible with `Vec<u8>`.
-// When attribute privacy is implemented, `PathBuf` should be annotated as `#[repr(transparent)]`.
-// Anyway, `PathBuf` representation and layout are considered implementation detail, are
-// not documented and must not be relied upon.
 pub struct PathBuf {
     inner: OsString,
 }
@@ -1728,13 +1723,8 @@ impl AsRef<OsStr> for PathBuf {
 /// let extension = path.extension();
 /// assert_eq!(extension, Some(OsStr::new("txt")));
 /// ```
+#[repr(transparent)]
 #[stable(feature = "rust1", since = "1.0.0")]
-// FIXME:
-// `Path::new` current implementation relies
-// on `Path` being layout-compatible with `OsStr`.
-// When attribute privacy is implemented, `Path` should be annotated as `#[repr(transparent)]`.
-// Anyway, `Path` representation and layout are considered implementation detail, are
-// not documented and must not be relied upon.
 pub struct Path {
     inner: OsStr,
 }
