@@ -1081,6 +1081,7 @@ pub struct BlockExpr {
 impl ast::AttrsOwner for BlockExpr {}
 impl ast::ModuleItemOwner for BlockExpr {}
 impl BlockExpr {
+    pub fn label(&self) -> Option<Label> { support::child(&self.syntax) }
     pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
     pub fn statements(&self) -> AstChildren<Stmt> { support::children(&self.syntax) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }

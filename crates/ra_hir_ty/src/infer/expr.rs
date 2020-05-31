@@ -22,8 +22,8 @@ use crate::{
 };
 
 use super::{
-    BindingMode, BreakableContext, Diverges, Expectation, InferenceContext, InferenceDiagnostic,
-    TypeMismatch,
+    find_breakable, BindingMode, BreakableContext, Diverges, Expectation, InferenceContext,
+    InferenceDiagnostic, TypeMismatch,
 };
 
 impl<'a> InferenceContext<'a> {
@@ -86,16 +86,20 @@ impl<'a> InferenceContext<'a> {
 
                 self.coerce_merge_branch(&then_ty, &else_ty)
             }
-            Expr::Block { statements, tail } => self.infer_block(statements, *tail, expected),
+            Expr::Block { statements, tail, .. } => {
+                // FIXME: Breakable block inference
+                self.infer_block(statements, *tail, expected)
+            }
             Expr::TryBlock { body } => {
                 let _inner = self.infer_expr(*body, expected);
                 // FIXME should be std::result::Result<{inner}, _>
                 Ty::Unknown
             }
-            Expr::Loop { body } => {
+            Expr::Loop { body, label } => {
                 self.breakables.push(BreakableContext {
                     may_break: false,
                     break_ty: self.table.new_type_var(),
+                    label: label.clone(),
                 });
                 self.infer_expr(*body, &Expectation::has_type(Ty::unit()));
 
@@ -110,8 +114,12 @@ impl<'a> InferenceContext<'a> {
                     Ty::simple(TypeCtor::Never)
                 }
             }
-            Expr::While { condition, body } => {
-                self.breakables.push(BreakableContext { may_break: false, break_ty: Ty::Unknown });
+            Expr::While { condition, body, label } => {
+                self.breakables.push(BreakableContext {
+                    may_break: false,
+                    break_ty: Ty::Unknown,
+                    label: label.clone(),
+                });
                 // while let is desugared to a match loop, so this is always simple while
                 self.infer_expr(*condition, &Expectation::has_type(Ty::simple(TypeCtor::Bool)));
                 self.infer_expr(*body, &Expectation::has_type(Ty::unit()));
@@ -120,10 +128,14 @@ impl<'a> InferenceContext<'a> {
                 self.diverges = Diverges::Maybe;
                 Ty::unit()
             }
-            Expr::For { iterable, body, pat } => {
+            Expr::For { iterable, body, pat, label } => {
                 let iterable_ty = self.infer_expr(*iterable, &Expectation::none());
 
-                self.breakables.push(BreakableContext { may_break: false, break_ty: Ty::Unknown });
+                self.breakables.push(BreakableContext {
+                    may_break: false,
+                    break_ty: Ty::Unknown,
+                    label: label.clone(),
+                });
                 let pat_ty =
                     self.resolve_associated_type(iterable_ty, self.resolve_into_iter_item());
 
@@ -236,23 +248,24 @@ impl<'a> InferenceContext<'a> {
                 let resolver = resolver_for_expr(self.db.upcast(), self.owner, tgt_expr);
                 self.infer_path(&resolver, p, tgt_expr.into()).unwrap_or(Ty::Unknown)
             }
-            Expr::Continue => Ty::simple(TypeCtor::Never),
-            Expr::Break { expr } => {
+            Expr::Continue { .. } => Ty::simple(TypeCtor::Never),
+            Expr::Break { expr, label } => {
                 let val_ty = if let Some(expr) = expr {
                     self.infer_expr(*expr, &Expectation::none())
                 } else {
                     Ty::unit()
                 };
 
-                let last_ty = if let Some(ctxt) = self.breakables.last() {
-                    ctxt.break_ty.clone()
-                } else {
-                    Ty::Unknown
-                };
+                let last_ty =
+                    if let Some(ctxt) = find_breakable(&mut self.breakables, label.as_ref()) {
+                        ctxt.break_ty.clone()
+                    } else {
+                        Ty::Unknown
+                    };
 
                 let merged_type = self.coerce_merge_branch(&last_ty, &val_ty);
 
-                if let Some(ctxt) = self.breakables.last_mut() {
+                if let Some(ctxt) = find_breakable(&mut self.breakables, label.as_ref()) {
                     ctxt.break_ty = merged_type;
                     ctxt.may_break = true;
                 } else {

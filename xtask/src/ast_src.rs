@@ -1058,7 +1058,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         /// [Reference](https://doc.rust-lang.org/reference/expressions/block-expr.html)
         /// [Labels for blocks RFC](https://github.com/rust-lang/rfcs/blob/master/text/2046-label-break-value.md)
         struct BlockExpr: AttrsOwner, ModuleItemOwner {
-            T!['{'], statements: [Stmt], Expr, T!['}'],
+            Label, T!['{'], statements: [Stmt], Expr, T!['}'],
         }
 
         /// Return expression.

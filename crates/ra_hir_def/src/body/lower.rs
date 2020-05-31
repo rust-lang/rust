@@ -134,7 +134,7 @@ impl ExprCollector<'_> {
         self.make_expr(expr, Err(SyntheticSyntax))
     }
     fn empty_block(&mut self) -> ExprId {
-        self.alloc_expr_desugared(Expr::Block { statements: Vec::new(), tail: None })
+        self.alloc_expr_desugared(Expr::Block { statements: Vec::new(), tail: None, label: None })
     }
     fn missing_expr(&mut self) -> ExprId {
         self.alloc_expr_desugared(Expr::Missing)
@@ -215,7 +215,16 @@ impl ExprCollector<'_> {
             ast::Expr::BlockExpr(e) => self.collect_block(e),
             ast::Expr::LoopExpr(e) => {
                 let body = self.collect_block_opt(e.loop_body());
-                self.alloc_expr(Expr::Loop { body }, syntax_ptr)
+                self.alloc_expr(
+                    Expr::Loop {
+                        body,
+                        label: e
+                            .label()
+                            .and_then(|l| l.lifetime_token())
+                            .map(|l| Name::new_lifetime(&l)),
+                    },
+                    syntax_ptr,
+                )
             }
             ast::Expr::WhileExpr(e) => {
                 let body = self.collect_block_opt(e.loop_body());
@@ -230,25 +239,56 @@ impl ExprCollector<'_> {
                             let pat = self.collect_pat(pat);
                             let match_expr = self.collect_expr_opt(condition.expr());
                             let placeholder_pat = self.missing_pat();
-                            let break_ = self.alloc_expr_desugared(Expr::Break { expr: None });
+                            let break_ =
+                                self.alloc_expr_desugared(Expr::Break { expr: None, label: None });
                             let arms = vec![
                                 MatchArm { pat, expr: body, guard: None },
                                 MatchArm { pat: placeholder_pat, expr: break_, guard: None },
                             ];
                             let match_expr =
                                 self.alloc_expr_desugared(Expr::Match { expr: match_expr, arms });
-                            return self.alloc_expr(Expr::Loop { body: match_expr }, syntax_ptr);
+                            return self.alloc_expr(
+                                Expr::Loop {
+                                    body: match_expr,
+                                    label: e
+                                        .label()
+                                        .and_then(|l| l.lifetime_token())
+                                        .map(|l| Name::new_lifetime(&l)),
+                                },
+                                syntax_ptr,
+                            );
                         }
                     },
                 };
 
-                self.alloc_expr(Expr::While { condition, body }, syntax_ptr)
+                self.alloc_expr(
+                    Expr::While {
+                        condition,
+                        body,
+                        label: e
+                            .label()
+                            .and_then(|l| l.lifetime_token())
+                            .map(|l| Name::new_lifetime(&l)),
+                    },
+                    syntax_ptr,
+                )
             }
             ast::Expr::ForExpr(e) => {
                 let iterable = self.collect_expr_opt(e.iterable());
                 let pat = self.collect_pat_opt(e.pat());
                 let body = self.collect_block_opt(e.loop_body());
-                self.alloc_expr(Expr::For { iterable, pat, body }, syntax_ptr)
+                self.alloc_expr(
+                    Expr::For {
+                        iterable,
+                        pat,
+                        body,
+                        label: e
+                            .label()
+                            .and_then(|l| l.lifetime_token())
+                            .map(|l| Name::new_lifetime(&l)),
+                    },
+                    syntax_ptr,
+                )
             }
             ast::Expr::CallExpr(e) => {
                 let callee = self.collect_expr_opt(e.expr());
@@ -301,13 +341,16 @@ impl ExprCollector<'_> {
                     .unwrap_or(Expr::Missing);
                 self.alloc_expr(path, syntax_ptr)
             }
-            ast::Expr::ContinueExpr(_e) => {
-                // FIXME: labels
-                self.alloc_expr(Expr::Continue, syntax_ptr)
-            }
+            ast::Expr::ContinueExpr(e) => self.alloc_expr(
+                Expr::Continue { label: e.lifetime_token().map(|l| Name::new_lifetime(&l)) },
+                syntax_ptr,
+            ),
             ast::Expr::BreakExpr(e) => {
                 let expr = e.expr().map(|e| self.collect_expr(e));
-                self.alloc_expr(Expr::Break { expr }, syntax_ptr)
+                self.alloc_expr(
+                    Expr::Break { expr, label: e.lifetime_token().map(|l| Name::new_lifetime(&l)) },
+                    syntax_ptr,
+                )
             }
             ast::Expr::ParenExpr(e) => {
                 let inner = self.collect_expr_opt(e.expr());
@@ -529,7 +572,8 @@ impl ExprCollector<'_> {
             })
             .collect();
         let tail = block.expr().map(|e| self.collect_expr(e));
-        self.alloc_expr(Expr::Block { statements, tail }, syntax_node_ptr)
+        let label = block.label().and_then(|l| l.lifetime_token()).map(|t| Name::new_lifetime(&t));
+        self.alloc_expr(Expr::Block { statements, tail, label }, syntax_node_ptr)
     }
 
     fn collect_block_items(&mut self, block: &ast::BlockExpr) {
