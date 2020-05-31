@@ -306,7 +306,8 @@ Usage: {0} <command> [<args>]
 Sub-commands:
     spawn-emulator <target> <server> <tmpdir> [rootfs]   See below
     push <path>                                          Copy <path> to emulator
-    run <files> [args...]                                Run program on emulator
+    run <file> <support_lib_count> [support_libs...] [args...]
+                                                         Run program on emulator
     help                                                 Display help message
 
 Spawning an emulator:
@@ -325,8 +326,8 @@ specified. The file at <path> is sent to this target.
 Executing commands on a running emulator:
 
 First the target emulator/adb session is connected to as for pushing files. Next
-the colon separated list of <files> is pushed to the target. Finally, the first
-file in <files> is executed in the emulator, preserving the current environment.
+the <file> and any specified support libs are pushed to the target. Finally, the
+<file> is executed in the emulator, preserving the current environment.
 That command's status code is returned.
 ",
         env::args().next().unwrap(),
