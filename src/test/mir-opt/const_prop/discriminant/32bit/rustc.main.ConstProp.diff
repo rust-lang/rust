@@ -23,8 +23,22 @@
                                            // + span: $DIR/discriminant.rs:6:39: 6:43
                                            // + literal: Const { ty: bool, val: Value(Scalar(0x01)) }
           discriminant(_3) = 1;            // scope 0 at $DIR/discriminant.rs:6:34: 6:44
-          _4 = discriminant(_3);           // scope 0 at $DIR/discriminant.rs:6:21: 6:31
-          switchInt(move _4) -> [1isize: bb2, otherwise: bb1]; // scope 0 at $DIR/discriminant.rs:6:21: 6:31
+-         _4 = discriminant(_3);           // scope 0 at $DIR/discriminant.rs:6:21: 6:31
+-         switchInt(move _4) -> [1isize: bb2, otherwise: bb1]; // scope 0 at $DIR/discriminant.rs:6:21: 6:31
++         _4 = const 1isize;               // scope 0 at $DIR/discriminant.rs:6:21: 6:31
++                                          // ty::Const
++                                          // + ty: isize
++                                          // + val: Value(Scalar(0x00000001))
++                                          // mir::Constant
++                                          // + span: $DIR/discriminant.rs:6:21: 6:31
++                                          // + literal: Const { ty: isize, val: Value(Scalar(0x00000001)) }
++         switchInt(const 1isize) -> [1isize: bb2, otherwise: bb1]; // scope 0 at $DIR/discriminant.rs:6:21: 6:31
++                                          // ty::Const
++                                          // + ty: isize
++                                          // + val: Value(Scalar(0x00000001))
++                                          // mir::Constant
++                                          // + span: $DIR/discriminant.rs:6:21: 6:31
++                                          // + literal: Const { ty: isize, val: Value(Scalar(0x00000001)) }
       }
   
       bb1: {

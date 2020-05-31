@@ -11,7 +11,14 @@
           StorageLive(_1);                 // scope 0 at $DIR/issue-66971.rs:16:5: 16:23
           StorageLive(_2);                 // scope 0 at $DIR/issue-66971.rs:16:12: 16:22
           StorageLive(_3);                 // scope 0 at $DIR/issue-66971.rs:16:13: 16:15
-          (_2.0: ()) = move _3;            // scope 0 at $DIR/issue-66971.rs:16:12: 16:22
+-         (_2.0: ()) = move _3;            // scope 0 at $DIR/issue-66971.rs:16:12: 16:22
++         (_2.0: ()) = const ();           // scope 0 at $DIR/issue-66971.rs:16:12: 16:22
++                                          // ty::Const
++                                          // + ty: ()
++                                          // + val: Value(Scalar(<ZST>))
++                                          // mir::Constant
++                                          // + span: $DIR/issue-66971.rs:16:12: 16:22
++                                          // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           (_2.1: u8) = const 0u8;          // scope 0 at $DIR/issue-66971.rs:16:12: 16:22
                                            // ty::Const
                                            // + ty: u8

@@ -163,7 +163,14 @@
                                            // mir::Constant
                                            // + span: $DIR/optimizes_into_variable.rs:14:32: 14:34
                                            // + literal: Const { ty: u32, val: Value(Scalar(0x0000002a)) }
-          _8 = (_9.1: u32);                // scope 2 at $DIR/optimizes_into_variable.rs:14:13: 14:38
+-         _8 = (_9.1: u32);                // scope 2 at $DIR/optimizes_into_variable.rs:14:13: 14:38
++         _8 = const 42u32;                // scope 2 at $DIR/optimizes_into_variable.rs:14:13: 14:38
++                                          // ty::Const
++                                          // + ty: u32
++                                          // + val: Value(Scalar(0x0000002a))
++                                          // mir::Constant
++                                          // + span: $DIR/optimizes_into_variable.rs:14:13: 14:38
++                                          // + literal: Const { ty: u32, val: Value(Scalar(0x0000002a)) }
           StorageDead(_9);                 // scope 2 at $DIR/optimizes_into_variable.rs:14:38: 14:39
           _0 = const ();                   // scope 0 at $DIR/optimizes_into_variable.rs:11:11: 15:2
                                            // ty::Const

@@ -793,10 +793,11 @@ impl<'tcx> Visitor<'tcx> for CanConstProp {
                         // end of the block anyway, and inside the block we overwrite previous
                         // states as applicable.
                         ConstPropMode::OnlyInsideOwnBlock => {}
+                        mode @ ConstPropMode::FullConstProp => *mode = ConstPropMode::OnlyInsideOwnBlock,
                         other => {
                             trace!(
-                                "local {:?} can't be propagated because of multiple assignments",
-                                local,
+                                "local {:?} can't be propagated because of multiple assignments. Previous state: {:?}",
+                                local, other,
                             );
                             *other = ConstPropMode::NoPropagation;
                         }
