@@ -177,7 +177,7 @@ export function createTask(spec: ra.Runnable): vscode.Task {
         label: spec.label,
         command: spec.bin,
         args: spec.extraArgs ? [...spec.args, '--', ...spec.extraArgs] : spec.args,
-        env: spec.env,
+        env: Object.assign({}, process.env, spec.env),
     };
 
     const execOption: vscode.ShellExecutionOptions = {
