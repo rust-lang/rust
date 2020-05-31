@@ -115,7 +115,7 @@ pub unsafe fn _mm512_mask_cmplt_epu64_mask(m: __mmask8, a: __m512i, b: __m512i) 
     _mm512_cmplt_epu64_mask(a, b) & m
 }
 
-/// Compare packed unsigned 64-bit integers in a and b for less-than, and store the results in a mask vector.
+/// Compare packed unsigned 64-bit integers in a and b for greater-than, and store the results in a mask vector.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=727,1063,4909,1062,1062&text=_mm512_cmpgt_epu64)
 #[inline]
@@ -125,7 +125,7 @@ pub unsafe fn _mm512_cmpgt_epu64_mask(a: __m512i, b: __m512i) -> __mmask8 {
     simd_bitmask::<__m512i, _>(simd_gt(a.as_u64x8(), b.as_u64x8()))
 }
 
-///Compare packed unsigned 64-bit integers in a and b for less-than, and store the results in a mask vector k
+///Compare packed unsigned 64-bit integers in a and b for greater-than, and store the results in a mask vector k
 /// using zeromask m (elements are zeroed out when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=727,1063,4909,1062,1062,1063&text=_mm512_mask_cmpgt_epu64)
@@ -136,7 +136,7 @@ pub unsafe fn _mm512_mask_cmpgt_epu64_mask(m: __mmask8, a: __m512i, b: __m512i) 
     _mm512_cmpgt_epu64_mask(a, b) & m
 }
 
-/// Compare packed unsigned 64-bit integers in a and b for less-than, and store the results in a mask vector.
+/// Compare packed unsigned 64-bit integers in a and b for less-than-or-equal, and store the results in a mask vector.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=727,1063,4909,1062,1062&text=_mm512_cmple_epu64)
 #[inline]
@@ -146,7 +146,7 @@ pub unsafe fn _mm512_cmple_epu64_mask(a: __m512i, b: __m512i) -> __mmask8 {
     _mm512_cmpgt_epu64_mask(b, a)
 }
 
-///Compare packed unsigned 64-bit integers in a and b for less-than, and store the results in a mask vector k
+///Compare packed unsigned 64-bit integers in a and b for less-than-or-equal, and store the results in a mask vector k
 /// using zeromask m (elements are zeroed out when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=727,1063,4909,1062,1062,1063&text=_mm512_mask_cmple_epu64)
@@ -157,7 +157,7 @@ pub unsafe fn _mm512_mask_cmple_epu64_mask(m: __mmask8, a: __m512i, b: __m512i) 
     _mm512_cmpgt_epu64_mask(b, a) & m
 }
 
-/// Compare packed unsigned 64-bit integers in a and b for less-than, and store the results in a mask vector.
+/// Compare packed unsigned 64-bit integers in a and b for greater-than-or-equal, and store the results in a mask vector.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=727,1063,4909,1062,1062&text=_mm512_cmpge_epu64)
 #[inline]
@@ -167,7 +167,7 @@ pub unsafe fn _mm512_cmpge_epu64_mask(a: __m512i, b: __m512i) -> __mmask8 {
     _mm512_cmplt_epu64_mask(b, a)
 }
 
-///Compare packed unsigned 64-bit integers in a and b for less-than, and store the results in a mask vector k
+///Compare packed unsigned 64-bit integers in a and b for greater-than-or-equal, and store the results in a mask vector k
 /// using zeromask m (elements are zeroed out when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=727,1063,4909,1062,1062,1063&text=_mm512_mask_cmpge_epu64)
@@ -178,7 +178,7 @@ pub unsafe fn _mm512_mask_cmpge_epu64_mask(m: __mmask8, a: __m512i, b: __m512i) 
     _mm512_cmplt_epu64_mask(b, a) & m
 }
 
-/// Compare packed unsigned 64-bit integers in a and b for less-than, and store the results in a mask vector.
+/// Compare packed unsigned 64-bit integers in a and b for equality, and store the results in a mask vector.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=727,1063,4909,1062,1062&text=_mm512_cmpeq_epu64)
 #[inline]
@@ -188,7 +188,7 @@ pub unsafe fn _mm512_cmpeq_epu64_mask(a: __m512i, b: __m512i) -> __mmask8 {
     simd_bitmask::<__m512i, _>(simd_eq(a.as_u64x8(), b.as_u64x8()))
 }
 
-///Compare packed unsigned 64-bit integers in a and b for less-than, and store the results in a mask vector k
+///Compare packed unsigned 64-bit integers in a and b for equality, and store the results in a mask vector k
 /// using zeromask m (elements are zeroed out when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=727,1063,4909,1062,1062,1063&text=_mm512_mask_cmpeq_epu64)
@@ -220,7 +220,7 @@ pub unsafe fn _mm512_mask_cmplt_epi64_mask(m: __mmask8, a: __m512i, b: __m512i) 
     _mm512_cmplt_epi64_mask(a, b) & m
 }
 
-/// Compare packed unsigned 64-bit integers in a and b for less-than, and store the results in a mask vector.
+/// Compare packed unsigned 64-bit integers in a and b for greater-than, and store the results in a mask vector.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=727,1063,4909,1062,1062&text=_mm512_cmpgt_epi64)
 #[inline]
@@ -230,7 +230,7 @@ pub unsafe fn _mm512_cmpgt_epi64_mask(a: __m512i, b: __m512i) -> __mmask8 {
     simd_bitmask::<__m512i, _>(simd_gt(a.as_i64x8(), b.as_i64x8()))
 }
 
-///Compare packed unsigned 64-bit integers in a and b for less-than, and store the results in a mask vector k
+///Compare packed unsigned 64-bit integers in a and b for greater-than, and store the results in a mask vector k
 /// using zeromask m (elements are zeroed out when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=727,1063,4909,1062,1062,1063&text=_mm512_mask_cmpgt_epi64)
@@ -241,7 +241,7 @@ pub unsafe fn _mm512_mask_cmpgt_epi64_mask(m: __mmask8, a: __m512i, b: __m512i) 
     _mm512_cmpgt_epi64_mask(a, b) & m
 }
 
-/// Compare packed unsigned 64-bit integers in a and b for less-than, and store the results in a mask vector.
+/// Compare packed unsigned 64-bit integers in a and b for less-than-or-equal, and store the results in a mask vector.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=727,1063,4909,1062,1062&text=_mm512_cmple_epi64)
 #[inline]
@@ -251,7 +251,7 @@ pub unsafe fn _mm512_cmple_epi64_mask(a: __m512i, b: __m512i) -> __mmask8 {
     _mm512_cmpgt_epi64_mask(b, a)
 }
 
-///Compare packed unsigned 64-bit integers in a and b for less-than, and store the results in a mask vector k
+///Compare packed unsigned 64-bit integers in a and b for less-than-or-equal, and store the results in a mask vector k
 /// using zeromask m (elements are zeroed out when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=727,1063,4909,1062,1062,1063&text=_mm512_mask_cmple_epi64)
@@ -262,7 +262,7 @@ pub unsafe fn _mm512_mask_cmple_epi64_mask(m: __mmask8, a: __m512i, b: __m512i) 
     _mm512_cmpgt_epi64_mask(b, a) & m
 }
 
-/// Compare packed unsigned 64-bit integers in a and b for less-than, and store the results in a mask vector.
+/// Compare packed unsigned 64-bit integers in a and b for greater-than-or-equal, and store the results in a mask vector.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=727,1063,4909,1062,1062&text=_mm512_cmpge_epi64)
 #[inline]
@@ -272,7 +272,7 @@ pub unsafe fn _mm512_cmpge_epi64_mask(a: __m512i, b: __m512i) -> __mmask8 {
     _mm512_cmplt_epi64_mask(b, a)
 }
 
-///Compare packed unsigned 64-bit integers in a and b for less-than, and store the results in a mask vector k
+///Compare packed unsigned 64-bit integers in a and b for greater-than-or-equal, and store the results in a mask vector k
 /// using zeromask m (elements are zeroed out when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=727,1063,4909,1062,1062,1063&text=_mm512_mask_cmpge_epi64)
@@ -283,7 +283,7 @@ pub unsafe fn _mm512_mask_cmpge_epi64_mask(m: __mmask8, a: __m512i, b: __m512i) 
     _mm512_cmplt_epi64_mask(b, a) & m
 }
 
-/// Compare packed unsigned 64-bit integers in a and b for less-than, and store the results in a mask vector.
+/// Compare packed unsigned 64-bit integers in a and b for equality, and store the results in a mask vector.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=727,1063,4909,1062,1062&text=_mm512_cmpeq_epi64)
 #[inline]
@@ -293,7 +293,7 @@ pub unsafe fn _mm512_cmpeq_epi64_mask(a: __m512i, b: __m512i) -> __mmask8 {
     simd_bitmask::<__m512i, _>(simd_eq(a.as_i64x8(), b.as_i64x8()))
 }
 
-///Compare packed unsigned 64-bit integers in a and b for less-than, and store the results in a mask vector k
+///Compare packed unsigned 64-bit integers in a and b for equality, and store the results in a mask vector k
 /// using zeromask m (elements are zeroed out when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=727,1063,4909,1062,1062,1063&text=_mm512_mask_cmpeq_epi64)
