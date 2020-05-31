@@ -341,7 +341,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         let mut module = ModuleData {
             mod_path: vec![Ident::from_str(&self.cx.ecfg.crate_name)],
             directory: match self.cx.source_map().span_to_unmapped_path(krate.span) {
-                FileName::Real(path) => path,
+                FileName::Real(name) => name.into_local_path(),
                 other => PathBuf::from(other.to_string()),
             },
         };

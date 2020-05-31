@@ -396,6 +396,7 @@ impl<'tcx> EncodeContext<'tcx> {
                     // any relative paths are potentially relative to a
                     // wrong directory.
                     FileName::Real(ref name) => {
+                        let name = name.stable_name();
                         let mut adapted = (**source_file).clone();
                         adapted.name = Path::new(&working_dir).join(name).into();
                         adapted.name_hash = {

@@ -602,7 +602,8 @@ impl server::SourceFile for Rustc<'_> {
     }
     fn path(&mut self, file: &Self::SourceFile) -> String {
         match file.name {
-            FileName::Real(ref path) => path
+            FileName::Real(ref name) => name
+                .local_path()
                 .to_str()
                 .expect("non-UTF8 file path in `proc_macro::SourceFile::path`")
                 .to_string(),
