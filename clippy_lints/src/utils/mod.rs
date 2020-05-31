@@ -153,11 +153,7 @@ pub fn is_type_diagnostic_item(cx: &LateContext<'_>, ty: Ty<'_>, diag_item: Symb
 pub fn match_trait_method(cx: &LateContext<'_>, expr: &Expr<'_>, path: &[&str]) -> bool {
     let def_id = cx.tables().type_dependent_def_id(expr.hir_id).unwrap();
     let trt_id = cx.tcx.trait_of_item(def_id);
-    if let Some(trt_id) = trt_id {
-        match_def_path(cx, trt_id, path)
-    } else {
-        false
-    }
+    trt_id.map_or(false, |trt_id| match_def_path(cx, trt_id, path))
 }
 
 /// Checks if an expression references a variable of the given name.
@@ -600,21 +596,13 @@ pub fn snippet_block_with_applicability<'a, T: LintContext>(
 /// //  ^^^^^^^^^^
 /// ```
 pub fn first_line_of_span<T: LintContext>(cx: &T, span: Span) -> Span {
-    if let Some(first_char_pos) = first_char_in_first_line(cx, span) {
-        span.with_lo(first_char_pos)
-    } else {
-        span
-    }
+    first_char_in_first_line(cx, span).map_or(span, |first_char_pos| span.with_lo(first_char_pos))
 }
 
 fn first_char_in_first_line<T: LintContext>(cx: &T, span: Span) -> Option<BytePos> {
     let line_span = line_span(cx, span);
-    if let Some(snip) = snippet_opt(cx, line_span) {
-        snip.find(|c: char| !c.is_whitespace())
-            .map(|pos| line_span.lo() + BytePos::from_usize(pos))
-    } else {
-        None
-    }
+    snippet_opt(cx, line_span).and_then(|snip| snip.find(|c: char| !c.is_whitespace())
+            .map(|pos| line_span.lo() + BytePos::from_usize(pos)))
 }
 
 /// Returns the indentation of the line of a span
@@ -626,11 +614,7 @@ fn first_char_in_first_line<T: LintContext>(cx: &T, span: Span) -> Option<BytePo
 /// //          ^^ -- will return 4
 /// ```
 pub fn indent_of<T: LintContext>(cx: &T, span: Span) -> Option<usize> {
-    if let Some(snip) = snippet_opt(cx, line_span(cx, span)) {
-        snip.find(|c: char| !c.is_whitespace())
-    } else {
-        None
-    }
+    snippet_opt(cx, line_span(cx, span)).and_then(|snip| snip.find(|c: char| !c.is_whitespace()))
 }
 
 /// Extends the span to the beginning of the spans line, incl. whitespaces.
@@ -738,8 +722,7 @@ pub fn get_enclosing_block<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Optio
     let enclosing_node = map
         .get_enclosing_scope(hir_id)
         .and_then(|enclosing_id| map.find(enclosing_id));
-    if let Some(node) = enclosing_node {
-        match node {
+    enclosing_node.and_then(|node| match node {
             Node::Block(block) => Some(block),
             Node::Item(&Item {
                 kind: ItemKind::Fn(_, _, eid),
@@ -753,10 +736,7 @@ pub fn get_enclosing_block<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Optio
                 _ => None,
             },
             _ => None,
-        }
-    } else {
-        None
-    }
+        })
 }
 
 /// Returns the base type for HIR references and pointers.
@@ -1328,11 +1308,7 @@ pub fn is_must_use_func_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
         _ => None,
     };
 
-    if let Some(did) = did {
-        must_use_attr(&cx.tcx.get_attrs(did)).is_some()
-    } else {
-        false
-    }
+    did.map_or(false, |did| must_use_attr(&cx.tcx.get_attrs(did)).is_some())
 }
 
 pub fn is_no_std_crate(krate: &Crate<'_>) -> bool {

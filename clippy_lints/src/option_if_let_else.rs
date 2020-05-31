@@ -37,6 +37,7 @@ declare_clippy_lint! {
     ///
     /// ```rust
     /// # let optional: Option<u32> = Some(0);
+    /// # fn do_complicated_function() -> u32 { 5 };
     /// let _ = if let Some(foo) = optional {
     ///     foo
     /// } else {
@@ -54,9 +55,10 @@ declare_clippy_lint! {
     ///
     /// ```rust
     /// # let optional: Option<u32> = Some(0);
+    /// # fn do_complicated_function() -> u32 { 5 };
     /// let _ = optional.map_or(5, |foo| foo);
     /// let _ = optional.map_or_else(||{
-    ///     let y = do_complicated_function;
+    ///     let y = do_complicated_function();
     ///     y*y
     /// }, |foo| foo);
     /// ```

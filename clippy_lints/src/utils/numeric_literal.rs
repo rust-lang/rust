@@ -200,12 +200,10 @@ impl<'a> NumericLiteral<'a> {
 
 fn split_suffix<'a>(src: &'a str, lit_kind: &LitKind) -> (&'a str, Option<&'a str>) {
     debug_assert!(lit_kind.is_numeric());
-    if let Some(suffix_length) = lit_suffix_length(lit_kind) {
+    lit_suffix_length(lit_kind).map_or((src, None), |suffix_length| {
         let (unsuffixed, suffix) = src.split_at(src.len() - suffix_length);
         (unsuffixed, Some(suffix))
-    } else {
-        (src, None)
-    }
+    })
 }
 
 fn lit_suffix_length(lit_kind: &LitKind) -> Option<usize> {

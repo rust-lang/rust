@@ -65,8 +65,7 @@ pub fn get_attr<'a>(
         };
         let attr_segments = &attr.path.segments;
         if attr_segments.len() == 2 && attr_segments[0].ident.to_string() == "clippy" {
-            if let Some(deprecation_status) =
-                BUILTIN_ATTRIBUTES
+            BUILTIN_ATTRIBUTES
                     .iter()
                     .find_map(|(builtin_name, deprecation_status)| {
                         if *builtin_name == attr_segments[1].ident.to_string() {
@@ -74,8 +73,10 @@ pub fn get_attr<'a>(
                         } else {
                             None
                         }
-                    })
-            {
+                    }).map_or_else(|| {
+                sess.span_err(attr_segments[1].ident.span, "Usage of unknown attribute");
+                false
+            }, |deprecation_status| {
                 let mut diag = sess.struct_span_err(attr_segments[1].ident.span, "Usage of deprecated attribute");
                 match *deprecation_status {
                     DeprecationStatus::Deprecated => {
@@ -97,10 +98,7 @@ pub fn get_attr<'a>(
                         attr_segments[1].ident.to_string() == name
                     },
                 }
-            } else {
-                sess.span_err(attr_segments[1].ident.span, "Usage of unknown attribute");
-                false
-            }
+            })
         } else {
             false
         }

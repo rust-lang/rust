@@ -78,11 +78,7 @@ fn check_expression<'tcx>(cx: &LateContext<'tcx>, arg_id: hir::HirId, expr: &'tc
             (true, true)
         },
         hir::ExprKind::Block(ref block, _) => {
-            if let Some(expr) = &block.expr {
-                check_expression(cx, arg_id, &expr)
-            } else {
-                (false, false)
-            }
+            block.expr.as_ref().map_or((false, false), |expr| check_expression(cx, arg_id, &expr))
         },
         hir::ExprKind::Match(_, arms, _) => {
             let mut found_mapping = false;
