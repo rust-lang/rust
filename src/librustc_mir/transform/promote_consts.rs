@@ -147,7 +147,6 @@ struct Collector<'a, 'tcx> {
     ccx: &'a ConstCx<'a, 'tcx>,
     temps: IndexVec<Local, TempState>,
     candidates: Vec<Candidate>,
-    span: Span,
 }
 
 impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
@@ -254,10 +253,6 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
             _ => {}
         }
     }
-
-    fn visit_source_info(&mut self, source_info: &SourceInfo) {
-        self.span = source_info.span;
-    }
 }
 
 pub fn collect_temps_and_candidates(
@@ -267,7 +262,6 @@ pub fn collect_temps_and_candidates(
     let mut collector = Collector {
         temps: IndexVec::from_elem(TempState::Undefined, &ccx.body.local_decls),
         candidates: vec![],
-        span: ccx.body.span,
         ccx,
     };
     for (bb, data) in rpo {
