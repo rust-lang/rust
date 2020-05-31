@@ -172,25 +172,18 @@ fn extend_cause_with_original_assoc_item_obligation<'tcx>(
         };
     match pred.kind() {
         ty::PredicateKind::Projection(proj) => {
-            // The obligation comes not from the current `impl` nor the `trait` being
-            // implemented, but rather from a "second order" obligation, like in
-            // `src/test/ui/associated-types/point-at-type-on-obligation-failure.rs`.
-            let trait_assoc_item = tcx.associated_item(proj.projection_def_id());
-            if let Some(impl_item_span) =
-                items.iter().find(|item| item.ident == trait_assoc_item.ident).map(fix_span)
-            {
-                cause.span = impl_item_span;
-            } else {
-                let kind = &proj.ty().skip_binder().kind;
-                if let ty::Projection(projection_ty) = kind {
-                    // This happens when an associated type has a projection coming from another
-                    // associated type. See `traits-assoc-type-in-supertrait-bad.rs`.
-                    let trait_assoc_item = tcx.associated_item(projection_ty.item_def_id);
-                    if let Some(impl_item_span) =
-                        items.iter().find(|item| item.ident == trait_assoc_item.ident).map(fix_span)
-                    {
-                        cause.span = impl_item_span;
-                    }
+            // The obligation comes not from the current `impl` nor the `trait` being implemented,
+            // but rather from a "second order" obligation, where an associated type has a
+            // projection coming from another associated type. See
+            // `src/test/ui/associated-types/point-at-type-on-obligation-failure.rs` and
+            // `traits-assoc-type-in-supertrait-bad.rs`.
+            let kind = &proj.ty().skip_binder().kind;
+            if let ty::Projection(projection_ty) = kind {
+                let trait_assoc_item = tcx.associated_item(projection_ty.item_def_id);
+                if let Some(impl_item_span) =
+                    items.iter().find(|item| item.ident == trait_assoc_item.ident).map(fix_span)
+                {
+                    cause.span = impl_item_span;
                 }
             }
         }
