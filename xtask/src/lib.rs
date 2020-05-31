@@ -191,7 +191,11 @@ Release: release:{}[]
     let path = changelog_dir.join(format!("{}-changelog-{}.adoc", today, changelog_n));
     fs2::write(&path, &contents)?;
 
-    fs2::copy(project_root().join("./docs/user/readme.adoc"), website_root.join("manual.adoc"))?;
+    for &adoc in ["manual.adoc", "generated_features.adoc"].iter() {
+        let src = project_root().join("./docs/user/").join(adoc);
+        let dst = website_root.join(adoc);
+        fs2::copy(src, dst)?;
+    }
 
     let tags = run!("git tag --list"; echo = false)?;
     let prev_tag = tags.lines().filter(|line| is_release_tag(line)).last().unwrap();
