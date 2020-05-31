@@ -75,9 +75,10 @@ pub struct FulfillmentContext<'tcx> {
 #[derive(Clone, Debug)]
 pub struct PendingPredicateObligation<'tcx> {
     pub obligation: PredicateObligation<'tcx>,
-    // FIXME(eddyb) look into whether this could be a `SmallVec`.
-    // Judging by the comment in `process_obligation`, the 1-element case
-    // is common so this could be a `SmallVec<[TyOrConstInferVar<'tcx>; 1]>`.
+    // This is far more often read than modified, meaning that we
+    // should mostly optimize for reading speed, while modifying is not as relevant.
+    //
+    // For whatever reason using a boxed slice is slower than using a `Vec` here.
     pub stalled_on: Vec<TyOrConstInferVar<'tcx>>,
 }
 
