@@ -731,14 +731,14 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
         }
     }
 
-    fn visit_terminator_kind(&mut self, kind: &mut TerminatorKind<'tcx>, loc: Location) {
+    fn visit_terminator(&mut self, terminator: &mut Terminator<'tcx>, loc: Location) {
         // Don't try to modify the implicit `_0` access on return (`return` terminators are
         // replaced down below anyways).
-        if !matches!(kind, TerminatorKind::Return) {
-            self.super_terminator_kind(kind, loc);
+        if !matches!(terminator.kind, TerminatorKind::Return) {
+            self.super_terminator(terminator, loc);
         }
 
-        match *kind {
+        match terminator.kind {
             TerminatorKind::GeneratorDrop | TerminatorKind::Yield { .. } => bug!(),
             TerminatorKind::Goto { ref mut target } => {
                 *target = self.update_target(*target);
@@ -782,11 +782,11 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
                 }
             }
             TerminatorKind::Return => {
-                *kind = TerminatorKind::Goto { target: self.return_block };
+                terminator.kind = TerminatorKind::Goto { target: self.return_block };
             }
             TerminatorKind::Resume => {
                 if let Some(tgt) = self.cleanup_block {
-                    *kind = TerminatorKind::Goto { target: tgt }
+                    terminator.kind = TerminatorKind::Goto { target: tgt }
                 }
             }
             TerminatorKind::Abort => {}

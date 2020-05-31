@@ -1,5 +1,7 @@
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
-use rustc_middle::mir::{Local, Location, Place, Statement, StatementKind, TerminatorKind};
+use rustc_middle::mir::{
+    Local, Location, Place, Statement, StatementKind, Terminator, TerminatorKind,
+};
 
 use rustc_data_structures::fx::FxHashSet;
 
@@ -62,9 +64,9 @@ impl GatherUsedMutsVisitor<'_, '_, '_> {
 }
 
 impl<'visit, 'cx, 'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'visit, 'cx, 'tcx> {
-    fn visit_terminator_kind(&mut self, kind: &TerminatorKind<'tcx>, _location: Location) {
-        debug!("visit_terminator_kind: kind={:?}", kind);
-        match &kind {
+    fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, _location: Location) {
+        debug!("visit_terminator: terminator={:?}", terminator);
+        match &terminator.kind {
             TerminatorKind::Call { destination: Some((into, _)), .. } => {
                 self.remove_never_initialized_mut_locals(*into);
             }
@@ -73,6 +75,8 @@ impl<'visit, 'cx, 'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'visit, 'cx, 'tc
             }
             _ => {}
         }
+
+        // FIXME: no super_terminator?
     }
 
     fn visit_statement(&mut self, statement: &Statement<'tcx>, _location: Location) {
@@ -84,6 +88,8 @@ impl<'visit, 'cx, 'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'visit, 'cx, 'tc
             );
             self.remove_never_initialized_mut_locals(*into);
         }
+
+        // FIXME: no super_statement?
     }
 
     fn visit_local(&mut self, local: &Local, place_context: PlaceContext, location: Location) {
@@ -101,5 +107,7 @@ impl<'visit, 'cx, 'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'visit, 'cx, 'tc
                 }
             }
         }
+
+        // FIXME: no super_local?
     }
 }

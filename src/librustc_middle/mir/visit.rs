@@ -108,12 +108,6 @@ macro_rules! make_mir_visitor {
                 self.super_terminator(terminator, location);
             }
 
-            fn visit_terminator_kind(&mut self,
-                                     kind: & $($mutability)? TerminatorKind<'tcx>,
-                                     location: Location) {
-                self.super_terminator_kind(kind, location);
-            }
-
             fn visit_assert_message(&mut self,
                                     msg: & $($mutability)? AssertMessage<'tcx>,
                                     location: Location) {
@@ -413,16 +407,10 @@ macro_rules! make_mir_visitor {
 
             fn super_terminator(&mut self,
                                 terminator: &$($mutability)? Terminator<'tcx>,
-                                location: Location) {
+                                source_location: Location) {
                 let Terminator { source_info, kind } = terminator;
 
                 self.visit_source_info(source_info);
-                self.visit_terminator_kind(kind, location);
-            }
-
-            fn super_terminator_kind(&mut self,
-                                     kind: & $($mutability)? TerminatorKind<'tcx>,
-                                     source_location: Location) {
                 match kind {
                     TerminatorKind::Goto { .. } |
                     TerminatorKind::Resume |

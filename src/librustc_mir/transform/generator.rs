@@ -93,13 +93,13 @@ impl<'tcx> MutVisitor<'tcx> for RenameLocalVisitor<'tcx> {
         }
     }
 
-    fn visit_terminator_kind(&mut self, kind: &mut TerminatorKind<'tcx>, location: Location) {
-        match kind {
+    fn visit_terminator(&mut self, terminator: &mut Terminator<'tcx>, location: Location) {
+        match terminator.kind {
             TerminatorKind::Return => {
                 // Do not replace the implicit `_0` access here, as that's not possible. The
                 // transform already handles `return` correctly.
             }
-            _ => self.super_terminator_kind(kind, location),
+            _ => self.super_terminator(terminator, location),
         }
     }
 }

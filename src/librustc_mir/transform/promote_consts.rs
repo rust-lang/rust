@@ -216,10 +216,10 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
         }
     }
 
-    fn visit_terminator_kind(&mut self, kind: &TerminatorKind<'tcx>, location: Location) {
-        self.super_terminator_kind(kind, location);
+    fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
+        self.super_terminator(terminator, location);
 
-        match *kind {
+        match terminator.kind {
             TerminatorKind::Call { ref func, .. } => {
                 if let ty::FnDef(def_id, _) = func.ty(self.ccx.body, self.ccx.tcx).kind {
                     let fn_sig = self.ccx.tcx.fn_sig(def_id);

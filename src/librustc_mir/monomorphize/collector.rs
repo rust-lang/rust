@@ -616,11 +616,11 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
         self.super_const(constant);
     }
 
-    fn visit_terminator_kind(&mut self, kind: &mir::TerminatorKind<'tcx>, location: Location) {
-        debug!("visiting terminator {:?} @ {:?}", kind, location);
+    fn visit_terminator(&mut self, terminator: &mir::Terminator<'tcx>, location: Location) {
+        debug!("visiting terminator {:?} @ {:?}", terminator, location);
 
         let tcx = self.tcx;
-        match *kind {
+        match terminator.kind {
             mir::TerminatorKind::Call { ref func, .. } => {
                 let callee_ty = func.ty(self.body, tcx);
                 let callee_ty = self.monomorphize(callee_ty);
@@ -663,7 +663,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
             | mir::TerminatorKind::FalseUnwind { .. } => bug!(),
         }
 
-        self.super_terminator_kind(kind, location);
+        self.super_terminator(terminator, location);
     }
 
     fn visit_local(
