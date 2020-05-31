@@ -133,34 +133,37 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
     }
 
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
-        if let StatementKind::Assign(box (dest, rvalue)) = &statement.kind {
-            // LHS and RHS of the assignment must have the same type.
-            let left_ty = dest.ty(&self.body.local_decls, self.tcx).ty;
-            let right_ty = rvalue.ty(&self.body.local_decls, self.tcx);
-            if !mir_assign_valid_types(self.tcx, right_ty, left_ty) {
-                self.fail(
-                    location,
-                    format!(
-                        "encountered `Assign` statement with incompatible types:\n\
-                        left-hand side has type: {}\n\
-                        right-hand side has type: {}",
-                        left_ty, right_ty,
-                    ),
-                );
-            }
-            // The sides of an assignment must not alias. Currently this just checks whether the places
-            // are identical.
-            match rvalue {
-                Rvalue::Use(Operand::Copy(src) | Operand::Move(src)) => {
-                    if dest == src {
-                        self.fail(
-                            location,
-                            "encountered `Assign` statement with overlapping memory",
-                        );
-                    }
+        match &statement.kind {
+            StatementKind::Assign(box (dest, rvalue)) => {
+                // LHS and RHS of the assignment must have the same type.
+                let left_ty = dest.ty(&self.body.local_decls, self.tcx).ty;
+                let right_ty = rvalue.ty(&self.body.local_decls, self.tcx);
+                if !mir_assign_valid_types(self.tcx, right_ty, left_ty) {
+                    self.fail(
+                        location,
+                        format!(
+                            "encountered `Assign` statement with incompatible types:\n\
+                            left-hand side has type: {}\n\
+                            right-hand side has type: {}",
+                            left_ty, right_ty,
+                        ),
+                    );
                 }
-                _ => {}
+                // The sides of an assignment must not alias. Currently this just checks whether the places
+                // are identical.
+                match rvalue {
+                    Rvalue::Use(Operand::Copy(src) | Operand::Move(src)) => {
+                        if dest == src {
+                            self.fail(
+                                location,
+                                "encountered `Assign` statement with overlapping memory",
+                            );
+                        }
+                    }
+                    _ => {}
+                }
             }
+            _ => {}
         }
     }
 
