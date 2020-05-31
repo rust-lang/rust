@@ -239,6 +239,7 @@ pub(super) fn mir_assign_valid_types<'tcx>(
     // 2. Subtyping is used. While all normal lifetimes are erased, higher-ranked types
     //    with their late-bound lifetimes are still around and can lead to type differences.
     // Normalize both of them away.
+    // Also see the related but slightly different pre-monomorphization method in `transform/validate.rs`.
     let normalize = |ty: Ty<'tcx>| {
         ty.fold_with(&mut BottomUpFolder {
             tcx,
