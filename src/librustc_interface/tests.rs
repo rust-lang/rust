@@ -506,6 +506,7 @@ fn test_debugging_options_tracking_hash() {
     untracked!(save_analysis, true);
     untracked!(self_profile, SwitchWithOptPath::Enabled(None));
     untracked!(self_profile_events, Some(vec![String::new()]));
+    untracked!(span_debug, true);
     untracked!(span_free_formats, true);
     untracked!(strip, Strip::None);
     untracked!(terminal_width, Some(80));
