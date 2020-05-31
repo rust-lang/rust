@@ -892,9 +892,9 @@ impl<'a, W: Write> Write for LineWriterShim<'a, W> {
     /// writer, it will also flush the existing buffer if it contains any
     /// newlines, even if the incoming data does not contain any newlines.
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        // If there are no new newlines (that is, if this write is less than
-        // one line), just do a regular buffered write
-        let newline_idx = match memchr::memrchr(b'\n', buf) {
+        match memchr::memrchr(b'\n', buf) {
+            // If there are no new newlines (that is, if this write is less than
+            // one line), just do a regular buffered write
             None => {
                 // Check for prior partial line writes that need to be retried.
                 // Only retry if the buffer contains a completed line, to
@@ -902,35 +902,37 @@ impl<'a, W: Write> Write for LineWriterShim<'a, W> {
                 if let Some(b'\n') = self.inner.buffer().last().copied() {
                     self.inner.flush_buf()?;
                 }
-                return self.inner.write(buf);
+                self.inner.write(buf)
             }
-            Some(i) => i,
+            // Otherwise, arrange for the lines to be written directly to the
+            // inner writer.
+            Some(newline_idx) => {
+                // Flush existing content to prepare for our write
+                self.inner.flush_buf()?;
+
+                // This is what we're going to try to write directly to the inner
+                // writer. The rest will be buffered, if nothing goes wrong.
+                let lines = &buf[..newline_idx + 1];
+
+                // Write `lines` directly to the inner writer. In keeping with the
+                // `write` convention, make at most one attempt to add new (unbuffered)
+                // data. Because this write doesn't touch the BufWriter state directly,
+                // and the buffer is known to be empty, we don't need to worry about
+                // self.inner.panicked here.
+                let flushed = self.inner.get_mut().write(lines)?;
+
+                // Now that the write has succeeded, buffer the rest (or as much of
+                // the rest as possible). If there were any unwritten newlines, we
+                // only buffer out to the last unwritten newline; this helps prevent
+                // flushing partial lines on subsequent calls to LineWriterShim::write.
+                let tail = &buf[flushed..];
+                let buffered = match memchr::memrchr(b'\n', tail) {
+                    None => self.inner.write_to_buffer(tail),
+                    Some(i) => self.inner.write_to_buffer(&tail[..i + 1]),
+                };
+                Ok(flushed + buffered)
+            }
         };
-
-        // Flush existing content to prepare for our write
-        self.inner.flush_buf()?;
-
-        // This is what we're going to try to write directly to the inner
-        // writer. The rest will be buffered, if nothing goes wrong.
-        let lines = &buf[..newline_idx + 1];
-
-        // Write `lines` directly to the inner writer. In keeping with the
-        // `write` convention, make at most one attempt to add new (unbuffered)
-        // data. Because this write doesn't touch the BufWriter state directly,
-        // and the buffer is known to be empty, we don't need to worry about
-        // self.inner.panicked here.
-        let flushed = self.inner.get_mut().write(lines)?;
-
-        // Now that the write has succeeded, buffer the rest (or as much of
-        // the rest as possible). If there were any unwritten newlines, we
-        // only buffer out to the last unwritten newline; this helps prevent
-        // flushing partial lines on subsequent calls to LineWriterShim::write.
-        let tail = &buf[flushed..];
-        let buffered = match memchr::memrchr(b'\n', tail) {
-            None => self.inner.write_to_buffer(tail),
-            Some(i) => self.inner.write_to_buffer(&tail[..i + 1]),
-        };
-        Ok(flushed + buffered)
     }
 
     fn flush(&mut self) -> io::Result<()> {
