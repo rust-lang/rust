@@ -256,7 +256,7 @@ fn expand_doc_attrs(owner: &dyn ast::AttrsOwner) -> Option<String> {
     if docs.is_empty() {
         None
     } else {
-        Some(docs)
+        Some(docs.trim_end_matches("\n\n").to_owned())
     }
 }
 
@@ -994,6 +994,108 @@ fn func(foo: i32) { if true { <|>foo; }; }
             fn my() {}
             ",
             &["mod my"],
+        );
+    }
+
+    #[test]
+    fn test_hover_struct_doc_comment() {
+        check_hover_result(
+            r#"
+            //- /lib.rs
+            /// bar docs
+            struct Bar;
+
+            fn foo() {
+                let bar = Ba<|>r;
+            }
+            "#,
+            &["struct Bar\n```\n___\n\nbar docs"],
+        );
+    }
+
+    #[test]
+    fn test_hover_struct_doc_attr() {
+        check_hover_result(
+            r#"
+            //- /lib.rs
+            #[doc = "bar docs"]
+            struct Bar;
+
+            fn foo() {
+                let bar = Ba<|>r;
+            }
+            "#,
+            &["struct Bar\n```\n___\n\nbar docs"],
+        );
+    }
+
+    #[test]
+    fn test_hover_struct_doc_attr_multiple_and_mixed() {
+        check_hover_result(
+            r#"
+            //- /lib.rs
+            /// bar docs 0
+            #[doc = "bar docs 1"]
+            #[doc = "bar docs 2"]
+            struct Bar;
+
+            fn foo() {
+                let bar = Ba<|>r;
+            }
+            "#,
+            &["struct Bar\n```\n___\n\nbar docs 0\n\nbar docs 1\n\nbar docs 2"],
+        );
+    }
+
+    #[test]
+    fn test_hover_macro_generated_struct_fn_doc_comment() {
+        check_hover_result(
+            r#"
+            //- /lib.rs
+            macro_rules! bar {
+                () => {
+                    struct Bar;
+                    impl Bar {
+                        /// Do the foo
+                        fn foo(&self) {}
+                    }
+                }
+            }
+
+            bar!();
+
+            fn foo() {
+                let bar = Bar;
+                bar.fo<|>o();
+            }
+            "#,
+            &["Bar\n```\n\n```rust\nfn foo(&self)\n```\n___\n\n Do the foo"],
+        );
+    }
+
+    #[test]
+    fn test_hover_macro_generated_struct_fn_doc_attr() {
+        check_hover_result(
+            r#"
+            //- /lib.rs
+            macro_rules! bar {
+                () => {
+                    struct Bar;
+                    impl Bar {
+                        #[doc = "Do the foo"]
+                        fn foo(&self) {}
+                    }
+                }
+            }
+
+            bar!();
+
+            fn foo() {
+                let bar = Bar;
+                bar.fo<|>o();
+            }
+            "#,
+            &["Bar\n```\n\n```rust\nfn foo(&self)\n```\n___\n\nDo the foo"],
         );
     }
 }

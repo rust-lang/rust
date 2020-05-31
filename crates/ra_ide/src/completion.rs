@@ -125,3 +125,81 @@ pub(crate) fn completions(
 
     Some(acc)
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::completion::completion_config::CompletionConfig;
+    use crate::mock_analysis::analysis_and_position;
+
+    struct DetailAndDocumentation<'a> {
+        detail: &'a str,
+        documentation: &'a str,
+    }
+
+    fn check_detail_and_documentation(fixture: &str, expected: DetailAndDocumentation) {
+        let (analysis, position) = analysis_and_position(fixture);
+        let config = CompletionConfig::default();
+        let completions = analysis.completions(&config, position).unwrap().unwrap();
+        for item in completions {
+            if item.detail() == Some(expected.detail) {
+                let opt = item.documentation();
+                let doc = opt.as_ref().map(|it| it.as_str());
+                assert_eq!(doc, Some(expected.documentation));
+                return;
+            }
+        }
+        panic!("completion detail not found: {}", expected.detail)
+    }
+
+    #[test]
+    fn test_completion_detail_from_macro_generated_struct_fn_doc_attr() {
+        check_detail_and_documentation(
+            r#"
+            //- /lib.rs
+            macro_rules! bar {
+                () => {
+                    struct Bar;
+                    impl Bar {
+                        #[doc = "Do the foo"]
+                        fn foo(&self) {}
+                    }
+                }
+            }
+
+            bar!();
+
+            fn foo() {
+                let bar = Bar;
+                bar.fo<|>;
+            }
+            "#,
+            DetailAndDocumentation { detail: "fn foo(&self)", documentation: "Do the foo" },
+        );
+    }
+
+    #[test]
+    fn test_completion_detail_from_macro_generated_struct_fn_doc_comment() {
+        check_detail_and_documentation(
+            r#"
+            //- /lib.rs
+            macro_rules! bar {
+                () => {
+                    struct Bar;
+                    impl Bar {
+                        /// Do the foo
+                        fn foo(&self) {}
+                    }
+                }
+            }
+
+            bar!();
+
+            fn foo() {
+                let bar = Bar;
+                bar.fo<|>;
+            }
+            "#,
+            DetailAndDocumentation { detail: "fn foo(&self)", documentation: " Do the foo" },
+        );
+    }
+}

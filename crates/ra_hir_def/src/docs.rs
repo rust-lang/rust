@@ -109,6 +109,6 @@ fn expand_doc_attrs(owner: &dyn ast::AttrsOwner) -> Option<String> {
     if docs.is_empty() {
         None
     } else {
-        Some(docs)
+        Some(docs.trim_end_matches("\n\n").to_owned())
     }
 }
