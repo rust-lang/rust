@@ -1,4 +1,3 @@
-use rustc_ast::ast::CRATE_NODE_ID;
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::{self, Lrc};
@@ -7,7 +6,7 @@ use rustc_errors::emitter::{Emitter, EmitterWriter};
 use rustc_errors::json::JsonEmitter;
 use rustc_feature::UnstableFeatures;
 use rustc_hir::def::Namespace::TypeNS;
-use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::HirId;
 use rustc_interface::interface;
 use rustc_middle::middle::cstore::CrateStore;
@@ -390,7 +389,12 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                 resolver.borrow_mut().access(|resolver| {
                     for extern_name in &extern_names {
                         resolver
-                            .resolve_str_path_error(DUMMY_SP, extern_name, TypeNS, CRATE_NODE_ID)
+                            .resolve_str_path_error(
+                                DUMMY_SP,
+                                extern_name,
+                                TypeNS,
+                                LocalDefId { local_def_index: CRATE_DEF_INDEX },
+                            )
                             .unwrap_or_else(|()| {
                                 panic!("Unable to resolve external crate {}", extern_name)
                             });
