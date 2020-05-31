@@ -155,7 +155,9 @@
                     head: val[0].text,
                     value: val,
                     stable: val.some((elem) => {
-                      return !!elem.text && elem.text.includes("**Stable**: Yes")
+                      return elem.type === "list" &&
+                        !!elem.raw &&
+                        elem.raw.includes("**Stable**: Yes");
                     }),
                     text: val.reduce((result, next) => {
                       return next.text != null
