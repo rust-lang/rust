@@ -92,6 +92,13 @@ function getSearchElement() {
 
     var titleBeforeSearch = document.title;
 
+    function clearInputTimeout() {
+        if (searchTimeout !== null) {
+            clearTimeout(searchTimeout);
+            searchTimeout = null;
+        }
+    }
+
     function getPageId() {
         var id = document.location.href.split("#")[1];
         if (id) {
@@ -345,10 +352,7 @@ function getSearchElement() {
         if (hasClass(help, "hidden") === false) {
             displayHelp(false, ev, help);
         } else if (hasClass(search, "hidden") === false) {
-            if (searchTimeout !== null) {
-                clearTimeout(searchTimeout);
-                searchTimeout = null;
-            }
+            clearInputTimeout();
             ev.preventDefault();
             hideSearchResults(search);
             document.title = titleBeforeSearch;
@@ -1805,7 +1809,7 @@ function getSearchElement() {
 
         function startSearch() {
             var callback = function() {
-                clearTimeout(searchTimeout);
+                clearInputTimeout();
                 if (search_input.value.length === 0) {
                     if (browserSupportsHistoryApi()) {
                         history.replaceState("", window.currentCrate + " - Rust", "?search=");
@@ -1819,10 +1823,7 @@ function getSearchElement() {
             search_input.oninput = callback;
             document.getElementsByClassName("search-form")[0].onsubmit = function(e) {
                 e.preventDefault();
-                if (searchTimeout !== null) {
-                    clearTimeout(searchTimeout);
-                    searchTimeout = null;
-                }
+                clearInputTimeout();
                 search();
             };
             search_input.onchange = function(e) {
@@ -1831,10 +1832,7 @@ function getSearchElement() {
                     return;
                 }
                 // Do NOT e.preventDefault() here. It will prevent pasting.
-                if (searchTimeout !== null) {
-                    clearTimeout(searchTimeout);
-                    searchTimeout = null;
-                }
+                clearInputTimeout();
                 // zero-timeout necessary here because at the time of event handler execution the
                 // pasted content is not in the input field yet. Shouldn’t make any difference for
                 // change, though.
