@@ -85,6 +85,8 @@ Cargo
   │   │       │           └── version_check v0.1.5
   ...
   ```
+  You can also display dependencies on multiple versions of the same crate with
+  `cargo tree -d` (short for `cargo tree --duplicates`).
 
 Misc
 ----
