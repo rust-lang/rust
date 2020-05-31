@@ -1,15 +1,15 @@
-error[E0391]: cycle detected when processing `Foo::T`
+error[E0391]: cycle detected when computing type of `Foo::T`
   --> $DIR/issue-34373.rs:7:30
    |
 LL | pub struct Foo<T = Box<Trait<DefaultFoo>>>;
    |                              ^^^^^^^^^^
    |
-note: ...which requires processing `DefaultFoo`...
+note: ...which requires computing type of `DefaultFoo`...
   --> $DIR/issue-34373.rs:8:19
    |
 LL | type DefaultFoo = Foo;
    |                   ^^^
-   = note: ...which again requires processing `Foo::T`, completing the cycle
+   = note: ...which again requires computing type of `Foo::T`, completing the cycle
 note: cycle used when collecting item types in top-level module
   --> $DIR/issue-34373.rs:1:1
    |

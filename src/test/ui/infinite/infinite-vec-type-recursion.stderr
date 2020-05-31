@@ -1,10 +1,10 @@
-error[E0391]: cycle detected when processing `X`
+error[E0391]: cycle detected when computing type of `X`
   --> $DIR/infinite-vec-type-recursion.rs:1:14
    |
 LL | type X = Vec<X>;
    |              ^
    |
-   = note: ...which again requires processing `X`, completing the cycle
+   = note: ...which again requires computing type of `X`, completing the cycle
 note: cycle used when collecting item types in top-level module
   --> $DIR/infinite-vec-type-recursion.rs:1:1
    |

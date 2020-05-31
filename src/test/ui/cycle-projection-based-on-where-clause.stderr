@@ -5,7 +5,7 @@ LL |           T : Add<T::Item>
    |                   ^^^^^^^
    |
    = note: ...which again requires computing the bounds for type parameter `T`, completing the cycle
-note: cycle used when processing `A`
+note: cycle used when computing explicit predicates of `A`
   --> $DIR/cycle-projection-based-on-where-clause.rs:17:19
    |
 LL |           T : Add<T::Item>
