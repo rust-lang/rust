@@ -6,14 +6,10 @@ LL | struct Bar { x: Bar }
    | |
    | recursive type has infinite size
    |
-help: insert some indirection to make `Bar` representable
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `Bar` representable
    |
 LL | struct Bar { x: Box<Bar> }
    |                 ^^^^   ^
-LL | struct Bar { x: Rc<Bar> }
-   |                 ^^^   ^
-LL | struct Bar { x: &Bar }
-   |                 ^
 
 error: aborting due to previous error
 

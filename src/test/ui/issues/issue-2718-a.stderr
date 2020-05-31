@@ -7,14 +7,10 @@ LL |     pub struct Pong(SendPacket<Ping>);
    |     |               recursive without indirection
    |     recursive type has infinite size
    |
-help: insert some indirection to make `pingpong::Pong` representable
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `pingpong::Pong` representable
    |
 LL |     pub struct Pong(Box<SendPacket<Ping>>);
    |                     ^^^^                ^
-LL |     pub struct Pong(Rc<SendPacket<Ping>>);
-   |                     ^^^                ^
-LL |     pub struct Pong(&SendPacket<Ping>);
-   |                     ^
 
 error: aborting due to previous error
 

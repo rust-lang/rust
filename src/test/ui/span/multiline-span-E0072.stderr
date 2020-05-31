@@ -10,14 +10,10 @@ LL | |     tail: Option<ListNode>,
 LL | | }
    | |_^ recursive type has infinite size
    |
-help: insert some indirection to make `ListNode` representable
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `ListNode` representable
    |
 LL |     tail: Box<Option<ListNode>>,
    |           ^^^^                ^
-LL |     tail: Rc<Option<ListNode>>,
-   |           ^^^                ^
-LL |     tail: &Option<ListNode>,
-   |           ^
 
 error: aborting due to previous error
 

@@ -7,14 +7,10 @@ LL |     a: u8,
 LL |     b: U,
    |        - recursive without indirection
    |
-help: insert some indirection to make `U` representable
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `U` representable
    |
 LL |     b: Box<U>,
    |        ^^^^ ^
-LL |     b: Rc<U>,
-   |        ^^^ ^
-LL |     b: &U,
-   |        ^
 
 error: aborting due to previous error
 

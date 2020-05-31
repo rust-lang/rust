@@ -6,14 +6,10 @@ LL | struct Bar<T> { x: Bar<Foo> , marker: marker::PhantomData<T> }
    | |
    | recursive type has infinite size
    |
-help: insert some indirection to make `Bar` representable
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `Bar` representable
    |
 LL | struct Bar<T> { x: Box<Bar<Foo>> , marker: marker::PhantomData<T> }
    |                    ^^^^        ^
-LL | struct Bar<T> { x: Rc<Bar<Foo>> , marker: marker::PhantomData<T> }
-   |                    ^^^        ^
-LL | struct Bar<T> { x: &Bar<Foo> , marker: marker::PhantomData<T> }
-   |                    ^
 
 error: aborting due to previous error
 

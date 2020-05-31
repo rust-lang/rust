@@ -7,14 +7,10 @@ LL |     foo: isize,
 LL |     foolish: T1
    |              -- recursive without indirection
    |
-help: insert some indirection to make `T1` representable
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `T1` representable
    |
 LL |     foolish: Box<T1>
    |              ^^^^  ^
-LL |     foolish: Rc<T1>
-   |              ^^^  ^
-LL |     foolish: &T1
-   |              ^
 
 error: aborting due to previous error
 

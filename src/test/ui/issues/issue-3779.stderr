@@ -7,14 +7,10 @@ LL |
 LL |     element: Option<S>
    |              --------- recursive without indirection
    |
-help: insert some indirection to make `S` representable
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `S` representable
    |
 LL |     element: Box<Option<S>>
    |              ^^^^         ^
-LL |     element: Rc<Option<S>>
-   |              ^^^         ^
-LL |     element: &Option<S>
-   |              ^
 
 error: aborting due to previous error
 
