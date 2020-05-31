@@ -275,7 +275,7 @@ impl Expr {
                     f(arm.expr);
                 }
             }
-            Expr::Continue { .. } => {},
+            Expr::Continue { .. } => {}
             Expr::Break { expr, .. } | Expr::Return { expr } => {
                 if let Some(expr) = expr {
                     f(*expr);
