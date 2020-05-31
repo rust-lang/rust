@@ -896,8 +896,10 @@ impl<'a, W: Write> Write for LineWriterShim<'a, W> {
         // one line), just do a regular buffered write
         let newline_idx = match memchr::memrchr(b'\n', buf) {
             None => {
-                // Check for prior partial line writes that need to be retried
-                if memchr::memchr(b'\n', &self.inner.buffer()).is_some() {
+                // Check for prior partial line writes that need to be retried.
+                // Only retry if the buffer contains a completed line, to
+                // avoid flushing partial lines.
+                if let Some(b'\n') = self.inner.buffer().last().copied() {
                     self.inner.flush_buf()?;
                 }
                 return self.inner.write(buf);
@@ -916,13 +918,13 @@ impl<'a, W: Write> Write for LineWriterShim<'a, W> {
         // `write` convention, make at most one attempt to add new (unbuffered)
         // data. Because this write doesn't touch the BufWriter state directly,
         // and the buffer is known to be empty, we don't need to worry about
-        // self.panicked here.
+        // self.inner.panicked here.
         let flushed = self.inner.get_mut().write(lines)?;
 
         // Now that the write has succeeded, buffer the rest (or as much of
         // the rest as possible). If there were any unwritten newlines, we
         // only buffer out to the last unwritten newline; this helps prevent
-        // flushing partial lines on subsequent calls to write_buffered_lines.
+        // flushing partial lines on subsequent calls to LineWriterShim::write.
         let tail = &buf[flushed..];
         let buffered = match memchr::memrchr(b'\n', tail) {
             None => self.inner.write_to_buffer(tail),
@@ -970,8 +972,10 @@ impl<'a, W: Write> Write for LineWriterShim<'a, W> {
         let last_newline_buf_idx = match last_newline_buf_idx {
             // No newlines; just do a normal buffered write
             None => {
-                // Check for prior partial line writes that need to be retried
-                if memchr::memchr(b'\n', &self.inner.buffer()).is_some() {
+                // Check for prior partial line writes that need to be retried.
+                // Only retry if the buffer contains a completed line, to
+                // avoid flushing partial lines.
+                if let Some(b'\n') = self.inner.buffer().last().copied() {
                     self.inner.flush_buf()?;
                 }
                 return self.inner.write_vectored(bufs);
@@ -1025,8 +1029,10 @@ impl<'a, W: Write> Write for LineWriterShim<'a, W> {
         // one line), just do a regular buffered write
         let newline_idx = match memchr::memrchr(b'\n', buf) {
             None => {
-                // Check for prior partial line writes that need to be retried
-                if memchr::memchr(b'\n', &self.inner.buffer()).is_some() {
+                // Check for prior partial line writes that need to be retried.
+                // Only retry if the buffer contains a completed line, to
+                // avoid flushing partial lines.
+                if let Some(b'\n') = self.inner.buffer().last().copied() {
                     self.inner.flush_buf()?;
                 }
                 return self.inner.write_all(buf);
