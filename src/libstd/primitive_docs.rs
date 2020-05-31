@@ -592,6 +592,11 @@ mod prim_array {}
 /// x[1] = 7;
 /// assert_eq!(x, &[1, 7, 3]);
 /// ```
+///
+/// It is also possible to put a slice in a box, when all you have are a pointer
+/// and a length: `Box::from_raw(slice::from_raw_parts_mut(ptr, len) as *mut [u8])`.
+/// Note that those functions are `unsafe` and their respective invariants
+/// should be checked.
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_slice {}
 
