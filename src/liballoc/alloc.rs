@@ -215,14 +215,16 @@ unsafe impl AllocRef for Global {
             }
             ReallocPlacement::MayMove => {
                 // `realloc` probably checks for `new_size > size` or something similar.
-                unsafe {
+                let ptr = unsafe {
                     intrinsics::assume(new_size > size);
-                    let ptr = realloc(ptr.as_ptr(), layout, new_size);
-                    let memory =
-                        MemoryBlock { ptr: NonNull::new(ptr).ok_or(AllocErr)?, size: new_size };
+                    realloc(ptr.as_ptr(), layout, new_size)
+                };
+                let memory =
+                    MemoryBlock { ptr: NonNull::new(ptr).ok_or(AllocErr)?, size: new_size };
+                unsafe {
                     init.init_offset(memory, size);
-                    Ok(memory)
                 }
+                Ok(memory)
             }
         }
     }
@@ -255,11 +257,11 @@ unsafe impl AllocRef for Global {
             }
             ReallocPlacement::MayMove => {
                 // `realloc` probably checks for `new_size < size` or something similar.
-                unsafe {
+                let ptr = unsafe {
                     intrinsics::assume(new_size < size);
-                    let ptr = realloc(ptr.as_ptr(), layout, new_size);
-                    Ok(MemoryBlock { ptr: NonNull::new(ptr).ok_or(AllocErr)?, size: new_size })
-                }
+                    realloc(ptr.as_ptr(), layout, new_size)
+                };
+                Ok(MemoryBlock { ptr: NonNull::new(ptr).ok_or(AllocErr)?, size: new_size })
             }
         }
     }
