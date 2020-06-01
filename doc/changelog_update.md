@@ -32,8 +32,9 @@ bullet points might be helpful:
   need to select the Rust release tag from the dropdown and then check the
   commit of the Clippy directory:
 
-  ![Explanation of how to find the commit hash](https://user-images.githubusercontent.com/2042399/62846160-1f8b0480-bcce-11e9-9da8-7964ca034e7a.png)
-
+To find the commit hash, click on "History" of the relevant branch in github
+and search for the latest "Merge commit '<hash>' into <branch>" commit.
+The <hash> part is then the most recent commit in the clippy repo.
 
 ### 2. Fetching the PRs between those commits
 
@@ -74,5 +75,5 @@ relevant commit ranges.
 
 [changelog]: https://github.com/rust-lang/rust-clippy/blob/master/CHANGELOG.md
 [forge]: https://forge.rust-lang.org/
-[rust_master_tools]: https://github.com/rust-lang/rust/tree/master/src/tools
-[rust_beta_tools]: https://github.com/rust-lang/rust/tree/beta/src/tools
+[rust_master_tools]: https://github.com/rust-lang/rust/tree/master/src/tools/clippy
+[rust_beta_tools]: https://github.com/rust-lang/rust/tree/beta/src/tools/clippy

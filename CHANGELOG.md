@@ -31,17 +31,17 @@ Current beta, release 2020-07-16
 * Downgrade [`match_bool`] to pedantic [#5408](https://github.com/rust-lang/rust-clippy/pull/5408)
 * Downgrade [`match_wild_err_arm`] to pedantic and update help messages. [#5622](https://github.com/rust-lang/rust-clippy/pull/5622)
 * Downgrade [`useless_let_if_seq`] to nursery. [#5599](https://github.com/rust-lang/rust-clippy/pull/5599)
-* Generalize [`option_and_then_some`] and rename to [`bind_instead_of_map`]. [#5529](https://github.com/rust-lang/rust-clippy/pull/5529)
-* Rename [`identity_conversion`] to [`useless_conversion`]. [#5568](https://github.com/rust-lang/rust-clippy/pull/5568)
-* Merge [`block_in_if_condition_expr`] and [`block_in_if_condition_stmt`] into [`blocks_in_if_conditions`].
+* Generalize `option_and_then_some` and rename to [`bind_instead_of_map`]. [#5529](https://github.com/rust-lang/rust-clippy/pull/5529)
+* Rename `identity_conversion` to [`useless_conversion`]. [#5568](https://github.com/rust-lang/rust-clippy/pull/5568)
+* Merge `block_in_if_condition_expr` and `block_in_if_condition_stmt` into [`blocks_in_if_conditions`].
 [#5563](https://github.com/rust-lang/rust-clippy/pull/5563)
-* Merge [`option_map_unwrap_or`], [`option_map_unwrap_or_else`] and [`result_map_unwrap_or_else`] into [`map_unwrap_or`].
+* Merge `option_map_unwrap_or`, `option_map_unwrap_or_else` and `result_map_unwrap_or_else` into [`map_unwrap_or`].
 [#5563](https://github.com/rust-lang/rust-clippy/pull/5563)
-* Merge [`option_unwrap_used`] and [`result_unwrap_used`] into [`unwrap_used`].
+* Merge `option_unwrap_used` and `result_unwrap_used` into [`unwrap_used`].
 [#5563](https://github.com/rust-lang/rust-clippy/pull/5563)
-* Merge [`option_expect_used`] and [`result_expect_used`] into [`expect_used`].
+* Merge `option_expect_used` and `result_expect_used` into [`expect_used`].
 [#5563](https://github.com/rust-lang/rust-clippy/pull/5563)
-* Merge [`for_loop_over_option`] and [`for_loop_over_result`] into [`for_loops_over_fallibles`].
+* Merge `for_loop_over_option` and `for_loop_over_result` into [`for_loops_over_fallibles`].
 [#5563](https://github.com/rust-lang/rust-clippy/pull/5563)
 
 ### Enhancements
@@ -61,10 +61,11 @@ Current beta, release 2020-07-16
 * Don't trigger [`borrowed_box`] on mutable references. [#5491](https://github.com/rust-lang/rust-clippy/pull/5491)
 * Allow `1 << 0` in [`identity_op`]. [#5602](https://github.com/rust-lang/rust-clippy/pull/5602)
 * Allow `use super::*;` glob imports in [`wildcard_imports`]. [#5564](https://github.com/rust-lang/rust-clippy/pull/5564)
-* Add ignores to the list of words of [`clippy::doc_markdown`]. [#5611](https://github.com/rust-lang/rust-clippy/pull/5611)
+* Add ignores to the list of words of [`doc_markdown`]. [#5611](https://github.com/rust-lang/rust-clippy/pull/5611)
 * Skip dev and build deps in [`multiple_crate_versions`]. [#5636](https://github.com/rust-lang/rust-clippy/pull/5636)
 * Honor `allow` attribute on arguments in [`ptr_arg`]. [#5647](https://github.com/rust-lang/rust-clippy/pull/5647)
-* Honor lint level attributes for [`redundant_field_names`] and [`non_expressive_names`]. [#5651](https://github.com/rust-lang/rust-clippy/pull/5651)
+* Honor lint level attributes for [`redundant_field_names`], [`just_underscores_and_digits`], [`many_single_char_names`]
+and [`similar_names`]. [#5651](https://github.com/rust-lang/rust-clippy/pull/5651)
 * Ignore calls to `len` in [`or_fun_call`]. [#4429](https://github.com/rust-lang/rust-clippy/pull/4429)
 
 ### Suggestion Improvements
