@@ -301,7 +301,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             machine,
             tcx,
             param_env,
-            memory: Memory::new(tcx, memory_extra),
+            memory: Memory::new(*tcx, memory_extra),
             vtables: FxHashMap::default(),
         }
     }
@@ -309,7 +309,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     #[inline(always)]
     pub fn set_span(&mut self, span: Span) {
         self.tcx.span = span;
-        self.memory.tcx.span = span;
     }
 
     #[inline(always)]
