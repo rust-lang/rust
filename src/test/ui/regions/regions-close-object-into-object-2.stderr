@@ -4,13 +4,13 @@ error[E0758]: cannot infer an appropriate lifetime
 LL | fn g<'a, T: 'static>(v: Box<dyn A<T> + 'a>) -> Box<dyn X + 'static> {
    |                         ------------------ this data with lifetime `'a`...
 LL |     box B(&*v) as Box<dyn X>
-   |           ^^^ ...is captured here requiring it to live as long as `'static`
+   |           ^^^ ...is captured here, requiring it to live as long as `'static`
    |
-help: consider changing the trait object's explicit `'static` bound to lifetime `'a`
+help: consider changing the trait object's explicit `'static` bound to argument `v`
    |
 LL | fn g<'a, T: 'static>(v: Box<dyn A<T> + 'a>) -> Box<dyn X + 'a> {
    |                                                            ^^
-help: alternatively, set an explicit `'static` lifetime in this parameter
+help: alternatively, add an explicit `'static` bound to this reference
    |
 LL | fn g<'a, T: 'static>(v: std::boxed::Box<(dyn A<T> + 'static)>) -> Box<dyn X + 'static> {
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

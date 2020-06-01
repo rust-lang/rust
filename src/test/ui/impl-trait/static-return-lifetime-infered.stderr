@@ -2,7 +2,7 @@ error[E0758]: cannot infer an appropriate lifetime
   --> $DIR/static-return-lifetime-infered.rs:7:16
    |
 LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> {
-   |                         -----     ----------------------- ...is required to live as long as `'static` by this...
+   |                         -----     ----------------------- ...is required to live as long as `'static` here...
    |                         |
    |                         this data with an anonymous lifetime `'_`...
 LL |         self.x.iter().map(|a| a.0)
@@ -10,7 +10,7 @@ LL |         self.x.iter().map(|a| a.0)
    |         |
    |         ...and is captured here
    |
-help: to permit non-static references in an `impl Trait` value, you can add an explicit bound for an anonymous lifetime `'_`
+help: to declare that the `impl Trait` captures data from argument `self`, you can add an explicit `'_` lifetime bound
    |
 LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> + '_ {
    |                                                           ^^^^
@@ -19,7 +19,7 @@ error[E0758]: cannot infer an appropriate lifetime
   --> $DIR/static-return-lifetime-infered.rs:11:16
    |
 LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> {
-   |                        --------     ----------------------- ...is required to live as long as `'static` by this...
+   |                        --------     ----------------------- ...is required to live as long as `'static` here...
    |                        |
    |                        this data with lifetime `'a`...
 LL |         self.x.iter().map(|a| a.0)
@@ -27,7 +27,7 @@ LL |         self.x.iter().map(|a| a.0)
    |         |
    |         ...and is captured here
    |
-help: to permit non-static references in an `impl Trait` value, you can add an explicit bound for lifetime `'a`
+help: to declare that the `impl Trait` captures data from argument `self`, you can add an explicit `'a` lifetime bound
    |
 LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> + 'a {
    |                                                             ^^^^

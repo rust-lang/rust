@@ -7,7 +7,7 @@ LL | fn load(ss: &mut SomeStruct) -> Box<dyn SomeTrait> {
 LL |     ss.r
    |     ^^^^ ...is captured and required live as long as `'static` here
    |
-help: to permit non-static references in a trait object value, you can add an explicit bound for an anonymous lifetime `'_`
+help: to declare that the trait object captures data from argument `ss`, you can add an explicit `'_` lifetime bound
    |
 LL | fn load(ss: &mut SomeStruct) -> Box<dyn SomeTrait + '_> {
    |                                                   ^^^^

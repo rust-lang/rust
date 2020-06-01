@@ -7,7 +7,7 @@ LL |     pub async fn run_dummy_fn(&self) {
    |                               this data with an anonymous lifetime `'_`...
    |                               ...is captured here...
 LL |         foo(|| self.bar()).await;
-   |         --- ...and required to live as long as `'static` by this
+   |         --- ...and is required to live as long as `'static` here
 
 error: aborting due to previous error
 

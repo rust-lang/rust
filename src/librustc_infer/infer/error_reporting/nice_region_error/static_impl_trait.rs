@@ -75,18 +75,18 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                             //    |           ----                               ^
                             err.span_label(
                                 sup_origin.span(),
-                                "...is captured here requiring it to live as long as `'static`",
+                                "...is captured here, requiring it to live as long as `'static`",
                             );
                         } else if sup_origin.span() <= return_sp {
                             err.span_label(sup_origin.span(), "...is captured here...");
                             err.span_label(
                                 return_sp,
-                                "...and required to live as long as `'static` by this",
+                                "...and is required to live as long as `'static` here",
                             );
                         } else {
                             err.span_label(
                                 return_sp,
-                                "...is required to live as long as `'static` by this...",
+                                "...is required to live as long as `'static` here...",
                             );
                             err.span_label(sup_origin.span(), "...and is captured here");
                         }
@@ -101,6 +101,20 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                     // explicit non-desugar'able return.
                     if fn_return.span.desugaring_kind().is_none() {
                         // FIXME: account for the need of parens in `&(dyn Trait + '_)`
+
+                        let consider = "consider changing the";
+                        let declare = "to declare that the";
+                        let arg = match param_info.param.pat.simple_ident() {
+                            Some(simple_ident) => format!("argument `{}`", simple_ident),
+                            None => "the argument".to_string(),
+                        };
+                        let explicit =
+                            format!("you can add an explicit `{}` lifetime bound", lifetime_name);
+                        let explicit_static = format!("explicit `'static` bound to {}", arg);
+                        let captures = format!("captures data from {}", arg);
+                        let add_static_bound =
+                            "alternatively, add an explicit `'static` bound to this reference";
+                        let plus_lt = format!(" + {}", lifetime_name);
                         match fn_return.kind {
                             TyKind::Def(item_id, _) => {
                                 let item = self.tcx().hir().item(item_id.id);
@@ -126,18 +140,13 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                                 {
                                     err.span_suggestion_verbose(
                                         span,
-                                        &format!(
-                                            "consider changing the `impl Trait`'s explicit \
-                                             `'static` bound to {}",
-                                            lifetime,
-                                        ),
+                                        &format!("{} `impl Trait`'s {}", consider, explicit_static),
                                         lifetime_name,
                                         Applicability::MaybeIncorrect,
                                     );
                                     err.span_suggestion_verbose(
                                         param_info.param_ty_span,
-                                        "alternatively, set an explicit `'static` lifetime to \
-                                         this parameter",
+                                        add_static_bound,
                                         param_info.param_ty.to_string(),
                                         Applicability::MaybeIncorrect,
                                     );
@@ -145,11 +154,12 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                                     err.span_suggestion_verbose(
                                         fn_return.span.shrink_to_hi(),
                                         &format!(
-                                            "to permit non-static references in an `impl Trait` \
-                                             value, you can add an explicit bound for {}",
-                                            lifetime,
+                                            "{declare} `impl Trait` {captures}, {explicit}",
+                                            declare = declare,
+                                            captures = captures,
+                                            explicit = explicit,
                                         ),
-                                        format!(" + {}", lifetime_name),
+                                        plus_lt,
                                         Applicability::MaybeIncorrect,
                                     );
                                 };
@@ -159,31 +169,25 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                                     err.span_suggestion_verbose(
                                         fn_return.span.shrink_to_hi(),
                                         &format!(
-                                            "to permit non-static references in a trait object \
-                                             value, you can add an explicit bound for {}",
-                                            lifetime,
+                                            "{declare} trait object {captures}, {explicit}",
+                                            declare = declare,
+                                            captures = captures,
+                                            explicit = explicit,
                                         ),
-                                        format!(" + {}", lifetime_name),
+                                        plus_lt,
                                         Applicability::MaybeIncorrect,
                                     );
                                 }
                                 _ => {
                                     err.span_suggestion_verbose(
                                         lt.span,
-                                        &format!(
-                                            "consider changing the trait object's explicit \
-                                             `'static` bound to {}",
-                                            lifetime,
-                                        ),
+                                        &format!("{} trait object's {}", consider, explicit_static),
                                         lifetime_name,
                                         Applicability::MaybeIncorrect,
                                     );
                                     err.span_suggestion_verbose(
                                         param_info.param_ty_span,
-                                        &format!(
-                                            "alternatively, set an explicit `'static` lifetime \
-                                             in this parameter",
-                                        ),
+                                        add_static_bound,
                                         param_info.param_ty.to_string(),
                                         Applicability::MaybeIncorrect,
                                     );
