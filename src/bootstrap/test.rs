@@ -360,7 +360,12 @@ impl Step for Miri {
 
         let miri =
             builder.ensure(tool::Miri { compiler, target: self.host, extra_features: Vec::new() });
-        if let Some(miri) = miri {
+        let cargo_miri = builder.ensure(tool::CargoMiri {
+            compiler,
+            target: self.host,
+            extra_features: Vec::new(),
+        });
+        if let (Some(miri), Some(_cargo_miri)) = (miri, cargo_miri) {
             let mut cargo = builder.cargo(compiler, Mode::ToolRustc, host, "install");
             cargo.arg("xargo");
             // Configure `cargo install` path. cargo adds a `bin/`.
@@ -378,14 +383,16 @@ impl Step for Miri {
                 Mode::ToolRustc,
                 host,
                 "run",
-                "src/tools/miri",
+                "src/tools/miri/cargo-miri",
                 SourceType::Submodule,
                 &[],
             );
-            cargo.arg("--bin").arg("cargo-miri").arg("--").arg("miri").arg("setup");
+            cargo.arg("--").arg("miri").arg("setup");
 
             // Tell `cargo miri setup` where to find the sources.
             cargo.env("XARGO_RUST_SRC", builder.src.join("src"));
+            // Tell it where to find Miri.
+            cargo.env("MIRI", &miri);
             // Debug things.
             cargo.env("RUST_BACKTRACE", "1");
             // Overwrite bootstrap's `rustc` wrapper overwriting our flags.
@@ -437,7 +444,7 @@ impl Step for Miri {
             // miri tests need to know about the stage sysroot
             cargo.env("MIRI_SYSROOT", miri_sysroot);
             cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(compiler));
-            cargo.env("MIRI_PATH", miri);
+            cargo.env("MIRI", miri);
 
             cargo.arg("--").args(builder.config.cmd.test_args());
 
