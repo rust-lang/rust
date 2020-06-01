@@ -90,7 +90,7 @@ pub trait InferCtxtBuilderExt<'tcx> {
     where
         K: TypeFoldable<'tcx>,
         R: Debug + TypeFoldable<'tcx>,
-        Canonical<'tcx, QueryResponse<'tcx, R>>: ArenaAllocatable;
+        Canonical<'tcx, QueryResponse<'tcx, R>>: ArenaAllocatable<'tcx>;
 }
 
 impl<'tcx> InferCtxtBuilderExt<'tcx> for InferCtxtBuilder<'tcx> {
@@ -118,7 +118,7 @@ impl<'tcx> InferCtxtBuilderExt<'tcx> for InferCtxtBuilder<'tcx> {
     where
         K: TypeFoldable<'tcx>,
         R: Debug + TypeFoldable<'tcx>,
-        Canonical<'tcx, QueryResponse<'tcx, R>>: ArenaAllocatable,
+        Canonical<'tcx, QueryResponse<'tcx, R>>: ArenaAllocatable<'tcx>,
     {
         self.enter_with_canonical(
             DUMMY_SP,

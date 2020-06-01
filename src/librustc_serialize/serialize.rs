@@ -635,24 +635,6 @@ impl<T> Decodable for PhantomData<T> {
     }
 }
 
-impl<'a, T: ?Sized + Encodable> Encodable for &'a T {
-    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        (**self).encode(s)
-    }
-}
-
-impl<T: ?Sized + Encodable> Encodable for Box<T> {
-    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        (**self).encode(s)
-    }
-}
-
-impl<T: Decodable> Decodable for Box<T> {
-    fn decode<D: Decoder>(d: &mut D) -> Result<Box<T>, D::Error> {
-        Ok(box Decodable::decode(d)?)
-    }
-}
-
 impl<T: Decodable> Decodable for Box<[T]> {
     fn decode<D: Decoder>(d: &mut D) -> Result<Box<[T]>, D::Error> {
         let v: Vec<T> = Decodable::decode(d)?;
@@ -1008,8 +990,20 @@ impl<T: UseSpecializedDecodable> Decodable for T {
 // for this exact reason.
 // May be fixable in a simpler fashion via the
 // more complex lattice model for specialization.
-impl<'a, T: ?Sized + Encodable> UseSpecializedEncodable for &'a T {}
-impl<T: ?Sized + Encodable> UseSpecializedEncodable for Box<T> {}
-impl<T: Decodable> UseSpecializedDecodable for Box<T> {}
+impl<'a, T: ?Sized + Encodable> UseSpecializedEncodable for &'a T {
+    fn default_encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        (**self).encode(s)
+    }
+}
+impl<T: ?Sized + Encodable> UseSpecializedEncodable for Box<T> {
+    fn default_encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        (**self).encode(s)
+    }
+}
+impl<T: Decodable> UseSpecializedDecodable for Box<T> {
+    fn default_decode<D: Decoder>(d: &mut D) -> Result<Box<T>, D::Error> {
+        Ok(box Decodable::decode(d)?)
+    }
+}
 impl<'a, T: Decodable> UseSpecializedDecodable for &'a T {}
 impl<'a, T: Decodable> UseSpecializedDecodable for &'a [T] {}

@@ -1,6 +1,6 @@
 use crate::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
+use crate::mir::interpret;
 use crate::mir::interpret::{AllocDecodingSession, AllocDecodingState};
-use crate::mir::{self, interpret};
 use crate::ty::codec::{self as ty_codec, TyDecoder, TyEncoder};
 use crate::ty::context::TyCtxt;
 use crate::ty::{self, Ty};
@@ -25,9 +25,6 @@ use rustc_span::{BytePos, SourceFile, Span, DUMMY_SP};
 use std::mem;
 
 const TAG_FILE_FOOTER: u128 = 0xC0FFEE_C0FFEE_C0FFEE_C0FFEE_C0FFEE;
-
-const TAG_CLEAR_CROSS_CRATE_CLEAR: u8 = 0;
-const TAG_CLEAR_CROSS_CRATE_SET: u8 = 1;
 
 const TAG_NO_EXPN_DATA: u8 = 0;
 const TAG_EXPN_DATA_SHORTHAND: u8 = 1;
@@ -667,24 +664,6 @@ impl<'a, 'tcx> SpecializedDecoder<Fingerprint> for CacheDecoder<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx, T: Decodable> SpecializedDecoder<mir::ClearCrossCrate<T>>
-    for CacheDecoder<'a, 'tcx>
-{
-    #[inline]
-    fn specialized_decode(&mut self) -> Result<mir::ClearCrossCrate<T>, Self::Error> {
-        let discr = u8::decode(self)?;
-
-        match discr {
-            TAG_CLEAR_CROSS_CRATE_CLEAR => Ok(mir::ClearCrossCrate::Clear),
-            TAG_CLEAR_CROSS_CRATE_SET => {
-                let val = T::decode(self)?;
-                Ok(mir::ClearCrossCrate::Set(val))
-            }
-            _ => unreachable!(),
-        }
-    }
-}
-
 //- ENCODING -------------------------------------------------------------------
 
 /// An encoder that can write the incr. comp. cache.
@@ -828,17 +807,20 @@ where
     }
 }
 
-impl<'a, 'tcx, E> SpecializedEncoder<Ty<'tcx>> for CacheEncoder<'a, 'tcx, E>
+impl<'a, 'b, 'c, 'tcx, E> SpecializedEncoder<&'b ty::TyS<'c>> for CacheEncoder<'a, 'tcx, E>
 where
     E: 'a + TyEncoder,
+    &'b ty::TyS<'c>: UseSpecializedEncodable,
 {
     #[inline]
-    fn specialized_encode(&mut self, ty: &Ty<'tcx>) -> Result<(), Self::Error> {
+    fn specialized_encode(&mut self, ty: &&'b ty::TyS<'c>) -> Result<(), Self::Error> {
+        debug_assert!(self.tcx.lift(ty).is_some());
+        let ty = unsafe { std::mem::transmute::<&&'b ty::TyS<'c>, &&'tcx ty::TyS<'tcx>>(ty) };
         ty_codec::encode_with_shorthand(self, ty, |encoder| &mut encoder.type_shorthands)
     }
 }
 
-impl<'a, 'tcx, E> SpecializedEncoder<&'tcx [(ty::Predicate<'tcx>, Span)]>
+impl<'a, 'b, 'c, 'tcx, E> SpecializedEncoder<&'b [(ty::Predicate<'c>, Span)]>
     for CacheEncoder<'a, 'tcx, E>
 where
     E: 'a + TyEncoder,
@@ -846,8 +828,15 @@ where
     #[inline]
     fn specialized_encode(
         &mut self,
-        predicates: &&'tcx [(ty::Predicate<'tcx>, Span)],
+        predicates: &&'b [(ty::Predicate<'c>, Span)],
     ) -> Result<(), Self::Error> {
+        debug_assert!(self.tcx.lift(*predicates).is_some());
+        let predicates = unsafe {
+            std::mem::transmute::<
+                &&'b [(ty::Predicate<'c>, Span)],
+                &&'tcx [(ty::Predicate<'tcx>, Span)],
+            >(predicates)
+        };
         ty_codec::encode_spanned_predicates(self, predicates, |encoder| {
             &mut encoder.predicate_shorthands
         })
@@ -887,23 +876,6 @@ where
 impl<'a, 'tcx> SpecializedEncoder<Fingerprint> for CacheEncoder<'a, 'tcx, opaque::Encoder> {
     fn specialized_encode(&mut self, f: &Fingerprint) -> Result<(), Self::Error> {
         f.encode_opaque(&mut self.encoder)
-    }
-}
-
-impl<'a, 'tcx, E, T> SpecializedEncoder<mir::ClearCrossCrate<T>> for CacheEncoder<'a, 'tcx, E>
-where
-    E: 'a + TyEncoder,
-    T: Encodable,
-{
-    #[inline]
-    fn specialized_encode(&mut self, val: &mir::ClearCrossCrate<T>) -> Result<(), Self::Error> {
-        match *val {
-            mir::ClearCrossCrate::Clear => TAG_CLEAR_CROSS_CRATE_CLEAR.encode(self),
-            mir::ClearCrossCrate::Set(ref val) => {
-                TAG_CLEAR_CROSS_CRATE_SET.encode(self)?;
-                val.encode(self)
-            }
-        }
     }
 }
 
@@ -995,7 +967,7 @@ fn encode_query_results<'a, 'tcx, Q, E>(
     query_result_index: &mut EncodedQueryResultIndex,
 ) -> Result<(), E::Error>
 where
-    Q: super::QueryDescription<TyCtxt<'tcx>>,
+    Q: super::QueryDescription<TyCtxt<'tcx>> + super::QueryAccessors<TyCtxt<'tcx>>,
     Q::Value: Encodable,
     E: 'a + TyEncoder,
 {
