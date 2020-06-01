@@ -32,18 +32,22 @@ impl Trait3<usize> for S {
 fn main() {
     let _ = S;
 
-    let _ = Struct1 { field: 1 }; // ERROR use of unstable library feature 'unstable_default'
-    let _: Struct1 = Struct1 { field: 1 }; // ERROR use of unstable library feature 'unstable_default'
     let _: Struct1<isize> = Struct1 { field: 1 }; //~ ERROR use of unstable library feature 'unstable_default'
 
     let _ = STRUCT1; // ok
     let _: Struct1 = STRUCT1; // ok
     let _: Struct1<usize> = STRUCT1; //~ ERROR use of unstable library feature 'unstable_default'
-    let _: Struct1<usize> = STRUCT1; //~ ERROR use of unstable library feature 'unstable_default'
-    let _ = STRUCT1.field; // ok
-    let _: usize = STRUCT1.field; // ERROR use of unstable library feature 'unstable_default'
-    let _ = STRUCT1.field + 1; // ERROR use of unstable library feature 'unstable_default'
-    let _ = STRUCT1.field + 1usize; // ERROR use of unstable library feature 'unstable_default'
+    let _: Struct1<isize> = STRUCT1; //~ ERROR use of unstable library feature 'unstable_default'
+
+    // Instability is not enforced for generic type parameters used in public fields.
+    // Note how the unstable type default `usize` leaks,
+    // and can be used without the 'unstable_default' feature.
+    let _ = STRUCT1.field;
+    let _ = Struct1 { field: 1 };
+    let _: Struct1 = Struct1 { field: 1 };
+    let _: usize = STRUCT1.field;
+    let _ = STRUCT1.field + 1;
+    let _ = STRUCT1.field + 1usize;
 
     let _ = Struct2 { field: 1 }; // ok
     let _: Struct2 = Struct2 { field: 1 }; // ok
