@@ -18,7 +18,7 @@ use rustc_middle::middle::cstore::{
     CrateSource, ExternCrate, ExternCrateSource, MetadataLoaderDyn,
 };
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{self, CrateType};
+use rustc_session::config::{self, CrateType, ExternLocation};
 use rustc_session::lint;
 use rustc_session::output::validate_crate_name;
 use rustc_session::search_paths::PathKind;
@@ -850,7 +850,11 @@ impl<'a> CrateLoader<'a> {
         // Make a point span rather than covering the whole file
         let span = krate.span.shrink_to_lo();
         // Complain about anything left over
-        for (name, _) in self.sess.opts.externs.iter() {
+        for (name, entry) in self.sess.opts.externs.iter() {
+            if let ExternLocation::FoundInLibrarySearchDirectories = entry.location {
+                // Don't worry about pathless `--extern foo` sysroot references
+                continue;
+            }
             if !self.used_extern_options.contains(&Symbol::intern(name)) {
                 self.sess.parse_sess.buffer_lint(
                     lint::builtin::UNUSED_CRATE_DEPENDENCIES,
