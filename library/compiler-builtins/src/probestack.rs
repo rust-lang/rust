@@ -109,7 +109,12 @@ macro_rules! define_rust_probestack {
 //
 // The ABI here is that the stack frame size is located in `%rax`. Upon
 // return we're not supposed to modify `%rsp` or `%rax`.
-#[cfg(target_arch = "x86_64")]
+//
+// Any changes to this function should be replicated to the SGX version below.
+#[cfg(all(
+    target_arch = "x86_64",
+    not(all(target_env = "sgx", target_vendor = "fortanix"))
+))]
 global_asm!(define_rust_probestack!(
     "
     .cfi_startproc
@@ -159,6 +164,69 @@ global_asm!(define_rust_probestack!(
     .cfi_def_cfa_register %rsp
     .cfi_adjust_cfa_offset -8
     ret
+    .cfi_endproc
+    "
+));
+
+// This function is the same as above, except that some instructions are
+// [manually patched for LVI].
+//
+// [manually patched for LVI]: https://software.intel.com/security-software-guidance/insights/deep-dive-load-value-injection#specialinstructions
+#[cfg(all(
+    target_arch = "x86_64",
+    all(target_env = "sgx", target_vendor = "fortanix")
+))]
+global_asm!(define_rust_probestack!(
+    "
+    .cfi_startproc
+    pushq  %rbp
+    .cfi_adjust_cfa_offset 8
+    .cfi_offset %rbp, -16
+    movq   %rsp, %rbp
+    .cfi_def_cfa_register %rbp
+
+    mov    %rax,%r11        // duplicate %rax as we're clobbering %r11
+
+    // Main loop, taken in one page increments. We're decrementing rsp by
+    // a page each time until there's less than a page remaining. We're
+    // guaranteed that this function isn't called unless there's more than a
+    // page needed.
+    //
+    // Note that we're also testing against `8(%rsp)` to account for the 8
+    // bytes pushed on the stack orginally with our return address. Using
+    // `8(%rsp)` simulates us testing the stack pointer in the caller's
+    // context.
+
+    // It's usually called when %rax >= 0x1000, but that's not always true.
+    // Dynamic stack allocation, which is needed to implement unsized
+    // rvalues, triggers stackprobe even if %rax < 0x1000.
+    // Thus we have to check %r11 first to avoid segfault.
+    cmp    $0x1000,%r11
+    jna    3f
+2:
+    sub    $0x1000,%rsp
+    test   %rsp,8(%rsp)
+    sub    $0x1000,%r11
+    cmp    $0x1000,%r11
+    ja     2b
+
+3:
+    // Finish up the last remaining stack space requested, getting the last
+    // bits out of r11
+    sub    %r11,%rsp
+    test   %rsp,8(%rsp)
+
+    // Restore the stack pointer to what it previously was when entering
+    // this function. The caller will readjust the stack pointer after we
+    // return.
+    add    %rax,%rsp
+
+    leave
+    .cfi_def_cfa_register %rsp
+    .cfi_adjust_cfa_offset -8
+    pop %r11
+    lfence
+    jmp *%r11
     .cfi_endproc
     "
 ));
