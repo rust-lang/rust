@@ -9,7 +9,6 @@ pub struct W<T>(T);
 extern "C" {
     pub fn bare() -> ();
     pub fn normalize() -> <() as ToOwned>::Owned;
-    //~^ ERROR uses type `()`
     pub fn transparent() -> W<()>;
     //~^ ERROR uses type `W<()>`
 }
