@@ -111,7 +111,7 @@ assert_eq!(size_of::<Option<core::num::", stringify!($Ty), ">>(), size_of::<", s
                     }
                 }
             }
-            
+
             #[stable(feature = "try_from", since = "1.34.0")]
             impl TryFrom<$Int> for $Ty {
                type Error = TryFromIntError;
@@ -119,7 +119,6 @@ assert_eq!(size_of::<Option<core::num::", stringify!($Ty), ">>(), size_of::<", s
                    Self::new(n).ok_or(TryFromIntError(()))
                }
             }
-
 
             #[stable(feature = "nonzero_bitor", since = "1.45.0")]
             impl BitOr for $Ty {
