@@ -30,8 +30,11 @@ declare_clippy_lint! {
     /// // Unclear whether a is 1 or 2.
     ///
     /// // Good
-    /// x = 1;
-    /// let a = 1 + x;
+    /// let tmp = {
+    ///     x = 1;
+    ///     1
+    /// };
+    /// let a = tmp + x;
     /// ```
     pub EVAL_ORDER_DEPENDENCE,
     complexity,

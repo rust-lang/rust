@@ -30,7 +30,7 @@ declare_clippy_lint! {
     /// xs.map(|x| foo(x))
     ///
     /// // Good
-    /// foo(xs)
+    /// xs.map(foo)
     /// ```
     /// where `foo(_)` is a plain function that takes the exact argument type of
     /// `x`.

@@ -18,7 +18,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust,ignore
+    /// ```rust
     /// struct Foo(i32);
     ///
     /// // Bad
@@ -27,13 +27,21 @@ declare_clippy_lint! {
     ///         Foo(s.parse().unwrap())
     ///     }
     /// }
+    /// ```
     ///
+    /// ```rust
     /// // Good
+    /// struct Foo(i32);
+    ///
     /// use std::convert::TryFrom;
     /// impl TryFrom<String> for Foo {
     ///     type Error = ();
     ///     fn try_from(s: String) -> Result<Self, Self::Error> {
-    ///         s.parse()
+    ///         if let Ok(parsed) = s.parse() {
+    ///             Ok(Foo(parsed))
+    ///         } else {
+    ///             Err(())
+    ///         }
     ///     }
     /// }
     /// ```

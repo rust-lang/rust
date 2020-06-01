@@ -436,7 +436,11 @@ declare_clippy_lint! {
     /// vec.iter().filter(|x| **x == 0).map(|x| *x * 2);
     ///
     /// // Good
-    /// vec.iter().filter_map(|x| Some(*x * 2));
+    /// vec.iter().filter_map(|x| if *x == 0 {
+    ///     Some(*x * 2)
+    /// } else {
+    ///     None
+    /// });
     /// ```
     pub FILTER_MAP,
     pedantic,

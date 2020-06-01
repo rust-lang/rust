@@ -29,7 +29,7 @@ declare_clippy_lint! {
     /// ```
     /// Could be written as:
     /// ```rust
-    /// fn foo() {}
+    /// fn foo<T>() {}
     /// ```
     pub DROP_BOUNDS,
     correctness,

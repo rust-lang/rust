@@ -52,7 +52,7 @@ declare_clippy_lint! {
     /// ```rust
     /// fn im_too_long() {
     ///     println!("");
-    /// // ... 100 more LoC
+    ///     // ... 100 more LoC
     ///     println!("");
     /// }
     /// ```
