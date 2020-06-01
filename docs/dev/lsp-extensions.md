@@ -7,6 +7,8 @@ All capabilities are enabled via `experimental` field of `ClientCapabilities` or
 Requests which we hope to upstream live under `experimental/` namespace.
 Requests, which are likely to always remain specific to `rust-analyzer` are under `rust-analyzer/` namespace.
 
+If you want to be notified about the changes to this document, subscribe to [#4604](https://github.com/rust-analyzer/rust-analyzer/issues/4604).
+
 ## `initializationOptions`
 
 As `initializationOptions`, `rust-analyzer` expects `"rust-analyzer"` section of the configuration.
