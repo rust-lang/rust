@@ -7,6 +7,14 @@ All capabilities are enabled via `experimental` field of `ClientCapabilities` or
 Requests which we hope to upstream live under `experimental/` namespace.
 Requests, which are likely to always remain specific to `rust-analyzer` are under `rust-analyzer/` namespace.
 
+## `initializationOptions`
+
+As `initializationOptions`, `rust-analyzer` expects `"rust-analyzer"` section of the configuration.
+That is, `rust-analyzer` usually sends `"workspace/configuration"` request with `{ "items": ["rust-analyzer"] }` payload.
+`initializationOptions` should contain the same data that would be in the first item of the result.
+It's OK to not send anything, then all the settings would take their default values.
+However, some settings can not be changed after startup at the moment.
+
 ## Snippet `TextEdit`
 
 **Issue:** https://github.com/microsoft/language-server-protocol/issues/724
