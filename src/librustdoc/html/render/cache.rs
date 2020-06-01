@@ -173,7 +173,7 @@ impl Cache {
         // Cache where all our extern crates are located
         for &(n, ref e) in &krate.externs {
             let src_root = match e.src {
-                FileName::Real(ref p) => match p.parent() {
+                FileName::Real(ref p) => match p.local_path().parent() {
                     Some(p) => p.to_path_buf(),
                     None => PathBuf::new(),
                 },
