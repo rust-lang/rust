@@ -22,6 +22,7 @@ use rustc_middle::{
     },
 };
 use rustc_span::symbol::{sym, Symbol};
+use rustc_span::def_id::DefId;
 use rustc_target::abi::{LayoutOf, Size};
 
 use crate::*;
@@ -416,10 +417,18 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         Ok(())
     }
 
+    fn thread_local_alloc_id(
+        ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        def_id: DefId,
+    ) -> InterpResult<'tcx, AllocId> {
+        ecx.get_or_create_thread_local_alloc_id(def_id)
+    }
+
     fn adjust_global_const(
         ecx: &InterpCx<'mir, 'tcx, Self>,
         mut val: mir::interpret::ConstValue<'tcx>,
     ) -> InterpResult<'tcx, mir::interpret::ConstValue<'tcx>> {
+        // FIXME: Remove this, do The Right Thing in `thread_local_alloc_id` instead.
         ecx.remap_thread_local_alloc_ids(&mut val)?;
         Ok(val)
     }
