@@ -5,6 +5,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::convert::Infallible;
+use crate::convert::TryFrom;
 use crate::fmt;
 use crate::intrinsics;
 use crate::mem;
@@ -110,6 +111,20 @@ assert_eq!(size_of::<Option<core::num::", stringify!($Ty), ">>(), size_of::<", s
                     }
                 }
             }
+            
+            #[stable(feature = "try_from", since = "1.34.0")]
+            impl TryFrom<$Int> for $Ty {
+               type Error = TryFromIntError;
+               fn try_from(n: $Int) -> Result<Self, Self::Error> {
+                   if n != 0 {
+                        // SAFETY: we just checked that there's no `0`
+                        Ok(unsafe { Self(n) })
+                   } else {
+                        Err(TryFromIntError(()))
+                   }
+               }
+            }
+
 
             #[stable(feature = "nonzero_bitor", since = "1.45.0")]
             impl BitOr for $Ty {
