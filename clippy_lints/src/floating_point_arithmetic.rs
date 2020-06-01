@@ -293,13 +293,13 @@ fn check_powf(cx: &LateContext<'_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
     }
 }
 
-fn check_powi(cx: &LateContext<'_, '_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
+fn check_powi(cx: &LateContext<'_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
     // Check argument
-    if let Some((value, _)) = constant(cx, cx.tables, &args[1]) {
+    if let Some((value, _)) = constant(cx, cx.tables(), &args[1]) {
         // TODO: need more specific check. this is too wide. remember also to include tests
         if let Some(parent) = get_parent_expr(cx, expr) {
             if let Some(grandparent) = get_parent_expr(cx, parent) {
-                if let ExprKind::MethodCall(PathSegment { ident: method_name, .. }, _, args) = grandparent.kind {
+                if let ExprKind::MethodCall(PathSegment { ident: method_name, .. }, _, args, _) = grandparent.kind {
                     if method_name.as_str() == "sqrt" && detect_hypot(cx, args).is_some() {
                         return;
                     }
@@ -328,7 +328,7 @@ fn check_powi(cx: &LateContext<'_, '_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
     }
 }
 
-fn detect_hypot(cx: &LateContext<'_, '_>, args: &[Expr<'_>]) -> Option<String> {
+fn detect_hypot(cx: &LateContext<'_>, args: &[Expr<'_>]) -> Option<String> {
     if let ExprKind::Binary(
         Spanned {
             node: BinOpKind::Add, ..
@@ -350,11 +350,11 @@ fn detect_hypot(cx: &LateContext<'_, '_>, args: &[Expr<'_>]) -> Option<String> {
 
         // check if expression of the form x.powi(2) + y.powi(2)
         if_chain! {
-            if let ExprKind::MethodCall(PathSegment { ident: lmethod_name, .. }, ref _lspan, ref largs) = add_lhs.kind;
-            if let ExprKind::MethodCall(PathSegment { ident: rmethod_name, .. }, ref _rspan, ref rargs) = add_rhs.kind;
+            if let ExprKind::MethodCall(PathSegment { ident: lmethod_name, .. }, ref _lspan, ref largs, _) = add_lhs.kind;
+            if let ExprKind::MethodCall(PathSegment { ident: rmethod_name, .. }, ref _rspan, ref rargs, _) = add_rhs.kind;
             if lmethod_name.as_str() == "powi" && rmethod_name.as_str() == "powi";
-            if let Some((lvalue, _)) = constant(cx, cx.tables, &largs[1]);
-            if let Some((rvalue, _)) = constant(cx, cx.tables, &rargs[1]);
+            if let Some((lvalue, _)) = constant(cx, cx.tables(), &largs[1]);
+            if let Some((rvalue, _)) = constant(cx, cx.tables(), &rargs[1]);
             if Int(2) == lvalue && Int(2) == rvalue;
             then {
                 return Some(format!("{}.hypot({})", Sugg::hir(cx, &largs[0], ".."), Sugg::hir(cx, &rargs[0], "..")));
@@ -365,7 +365,7 @@ fn detect_hypot(cx: &LateContext<'_, '_>, args: &[Expr<'_>]) -> Option<String> {
     None
 }
 
-fn check_hypot(cx: &LateContext<'_, '_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
+fn check_hypot(cx: &LateContext<'_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
     if let Some(message) = detect_hypot(cx, args) {
         span_lint_and_sugg(
             cx,
@@ -431,7 +431,7 @@ fn check_mul_add(cx: &LateContext<'_>, expr: &Expr<'_>) {
     ) = &expr.kind
     {
         if let Some(parent) = get_parent_expr(cx, expr) {
-            if let ExprKind::MethodCall(PathSegment { ident: method_name, .. }, _, args) = parent.kind {
+            if let ExprKind::MethodCall(PathSegment { ident: method_name, .. }, _, args, _) = parent.kind {
                 if method_name.as_str() == "sqrt" && detect_hypot(cx, args).is_some() {
                     return;
                 }
@@ -573,6 +573,50 @@ fn check_custom_abs(cx: &LateContext<'_>, expr: &Expr<'_>) {
     }
 }
 
+fn are_same_base_logs(cx: &LateContext<'_>, expr_a: &Expr<'_>, expr_b: &Expr<'_>) -> bool {
+    if_chain! {
+        if let ExprKind::MethodCall(PathSegment { ident: method_name_a, .. }, _, ref args_a, _) = expr_a.kind;
+        if let ExprKind::MethodCall(PathSegment { ident: method_name_b, .. }, _, ref args_b, _) = expr_b.kind;
+        then {
+            return method_name_a.as_str() == method_name_b.as_str() &&
+                args_a.len() == args_b.len() &&
+                (
+                    ["ln", "log2", "log10"].contains(&&*method_name_a.as_str()) ||
+                    method_name_a.as_str() == "log" && args_a.len() == 2 && are_exprs_equal(cx, &args_a[1], &args_b[1])
+                );
+        }
+    }
+
+    false
+}
+
+fn check_log_division(cx: &LateContext<'_>, expr: &Expr<'_>) {
+    // check if expression of the form x.logN() / y.logN()
+    if_chain! {
+        if let ExprKind::Binary(
+            Spanned {
+                node: BinOpKind::Div, ..
+            },
+            lhs,
+            rhs,
+        ) = &expr.kind;
+        if are_same_base_logs(cx, lhs, rhs);
+        if let ExprKind::MethodCall(_, _, ref largs, _) = lhs.kind;
+        if let ExprKind::MethodCall(_, _, ref rargs, _) = rhs.kind;
+        then {
+            span_lint_and_sugg(
+                cx,
+                SUBOPTIMAL_FLOPS,
+                expr.span,
+                "division of logarithms can be calculated more efficiently and accurately",
+                "consider using",
+                format!("{}.log({})", Sugg::hir(cx, &largs[0], ".."), Sugg::hir(cx, &rargs[0], ".."),),
+                Applicability::MachineApplicable,
+            );
+        }
+    }
+}
+
 impl<'tcx> LateLintPass<'tcx> for FloatingPointArithmetic {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::MethodCall(ref path, _, args, _) = &expr.kind {
@@ -592,6 +636,7 @@ impl<'tcx> LateLintPass<'tcx> for FloatingPointArithmetic {
             check_expm1(cx, expr);
             check_mul_add(cx, expr);
             check_custom_abs(cx, expr);
+            check_log_division(cx, expr);
         }
     }
 }
