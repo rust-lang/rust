@@ -5,6 +5,7 @@
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/3.0.1/github-markdown.css" />
       <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
       <script src="https://cdn.jsdelivr.net/npm/vue@2.6.10/dist/vue.js"></script>
+      <script src="https://unpkg.com/vue-async-computed@3.8.1"></script>
       <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.18.0/axios.min.js"></script>
       <style>
         @media (max-width: 767px) {
@@ -59,6 +60,14 @@
                   <label for="stable">stable: </label>
                   <input type="checkbox" id="stable" v-model="shouldStable">
               </div>
+              <div>
+                  <label for="version">version: </label>
+                  <select name="version" id="version" v-model="version">
+                    <option v-for="option in versionOptions" v-bind:value="option">
+                      {{ option }}
+                    </option>
+                  </select>
+              </div>
             </div>
             <div v-html="aboutHtml"></div>
             <div v-html="configurationAboutHtml"></div>
@@ -66,53 +75,72 @@
           </article>
         </div>
         <script>
-            const ConfigurationMdUrl = 'https://raw.githubusercontent.com/rust-lang/rustfmt/master/Configurations.md';
+            const MajorVersionBounds = {min: 1, max: 2};
+            const RusfmtTagsUrl = 'https://api.github.com/repos/rust-lang/rustfmt/tags';
             const UrlHash = window.location.hash.replace(/^#/, '');
             new Vue({
               el: '#app',
-              data() {
-                const configurationDescriptions = [];
-                configurationDescriptions.links = {};
-                return {
-                  aboutHtml: '',
-                  configurationAboutHtml: '',
-                  searchCondition: UrlHash,
-                  configurationDescriptions,
-                  shouldStable: false
-                }
+              data: {
+                aboutHtml: '',
+                configurationAboutHtml: '',
+                configurationDescriptions: [],
+                searchCondition: UrlHash,
+                shouldStable: false,
+                version: 'master',
+                oldVersion: undefined,
+                versionOptions: ['master']
               },
-              computed: {
-                outputHtml() {
-                  const ast = this.configurationDescriptions
-                                  .filter(({ head, text, stable }) => {
+              asyncComputed: {
+                async outputHtml() {
+                  if (this.version !== this.oldVersion) {
+                    const ConfigurationMdUrl =
+                      `https://raw.githubusercontent.com/rust-lang/rustfmt/${this.version}/Configurations.md`;
+                    const res = await axios.get(ConfigurationMdUrl);
+                    const {
+                      about,
+                      configurationAbout,
+                      configurationDescriptions
+                    } = parseMarkdownAst(res.data);
+                    this.aboutHtml = marked.parser(about);
+                    this.configurationAboutHtml = marked.parser(configurationAbout);
+                    this.configurationDescriptions = configurationDescriptions;
+                    this.oldVersion = this.version;
+                  }
 
-                                    if (
-                                      text.includes(this.searchCondition) === false &&
-                                      head.includes(this.searchCondition) === false
-                                    ) {
-                                      return false;
-                                    }
-                                    return (this.shouldStable)
-                                      ? stable === true
-                                      : true;
-                                  })
-                                  .reduce((stack, { value }) => {
-                                    return stack.concat(value);
-                                  }, []);
+                  const ast = this.configurationDescriptions
+                      .filter(({ head, text, stable }) => {
+                        if (text.includes(this.searchCondition) === false &&
+                          head.includes(this.searchCondition) === false) {
+                          return false;
+                        }
+                        return (this.shouldStable)
+                          ? stable === true
+                          : true;
+                      })
+                      .reduce((stack, { value }) => {
+                        return stack.concat(value);
+                      }, []);
                   ast.links = {};
                   return marked.parser(ast);
                 }
               },
               created: async function() {
-                const res = await axios.get(ConfigurationMdUrl);
-                const {
-                  about,
-                  configurationAbout,
-                  configurationDescriptions
-                } = parseMarkdownAst(res.data);
-                this.aboutHtml = marked.parser(about);
-                this.configurationAboutHtml = marked.parser(configurationAbout);
-                this.configurationDescriptions = configurationDescriptions;
+                const {data: tags} = await axios.get(RusfmtTagsUrl);
+                const reMajorVersion = /v(\d+)/;
+                const tagOptions = tags
+                  .map(tag => tag.name)
+                  .filter(tag => {
+                    const versionMatches = tag.match(reMajorVersion);
+                    if (!versionMatches || !versionMatches[1]) {
+                      return false;
+                    }
+                    const majorVersion = +versionMatches[1];
+                    // There are some superfluous version tags (e.g. a v8.1 tag), so we do some
+                    // sanity checking of the tags here.
+                    return majorVersion >= MajorVersionBounds.min &&
+                      majorVersion <= MajorVersionBounds.max;
+                  });
+                this.versionOptions = this.versionOptions.concat(tagOptions);
               },
               mounted() {
                 if (UrlHash === '') return;
