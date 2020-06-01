@@ -302,7 +302,7 @@ impl<'tcx> TyS<'tcx> {
 
 // `TyS` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(TyS<'_>, 32);
+static_assert_size!(TyS<'_>, 40);
 
 impl<'tcx> Ord for TyS<'tcx> {
     fn cmp(&self, other: &TyS<'tcx>) -> Ordering {
@@ -366,7 +366,7 @@ crate struct PredicateInner<'tcx> {
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(PredicateInner<'_>, 40);
+static_assert_size!(PredicateInner<'_>, 48);
 
 #[derive(Clone, Copy, Lift)]
 pub struct Predicate<'tcx> {
