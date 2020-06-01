@@ -288,31 +288,6 @@ pub mod std { pub mod collections { pub struct HashMap { } } }
 }
 
 #[test]
-fn doctest_change_lifetime_anon_to_named() {
-    check_doc_test(
-        "change_lifetime_anon_to_named",
-        r#####"
-impl Cursor<'_<|>> {
-    fn node(self) -> &SyntaxNode {
-        match self {
-            Cursor::Replace(node) | Cursor::Before(node) => node,
-        }
-    }
-}
-"#####,
-        r#####"
-impl<'a> Cursor<'a> {
-    fn node(self) -> &SyntaxNode {
-        match self {
-            Cursor::Replace(node) | Cursor::Before(node) => node,
-        }
-    }
-}
-"#####,
-    )
-}
-
-#[test]
 fn doctest_change_return_type_to_result() {
     check_doc_test(
         "change_return_type_to_result",
@@ -471,6 +446,31 @@ fn main() {
         r#####"
 fn main() {
     (1 + 2) * 4;
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_introduce_named_lifetime() {
+    check_doc_test(
+        "introduce_named_lifetime",
+        r#####"
+impl Cursor<'_<|>> {
+    fn node(self) -> &SyntaxNode {
+        match self {
+            Cursor::Replace(node) | Cursor::Before(node) => node,
+        }
+    }
+}
+"#####,
+        r#####"
+impl<'a> Cursor<'a> {
+    fn node(self) -> &SyntaxNode {
+        match self {
+            Cursor::Replace(node) | Cursor::Before(node) => node,
+        }
+    }
 }
 "#####,
     )

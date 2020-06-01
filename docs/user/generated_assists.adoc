@@ -338,35 +338,6 @@ fn main() {
 
 
 [discrete]
-=== `change_lifetime_anon_to_named`
-**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_assists/src/handlers/change_lifetime_anon_to_named.rs#L9[change_lifetime_anon_to_named.rs]
-
-Change an anonymous lifetime to a named lifetime.
-
-.Before
-```rust
-impl Cursor<'_┃> {
-    fn node(self) -> &SyntaxNode {
-        match self {
-            Cursor::Replace(node) | Cursor::Before(node) => node,
-        }
-    }
-}
-```
-
-.After
-```rust
-impl<'a> Cursor<'a> {
-    fn node(self) -> &SyntaxNode {
-        match self {
-            Cursor::Replace(node) | Cursor::Before(node) => node,
-        }
-    }
-}
-```
-
-
-[discrete]
 === `change_return_type_to_result`
 **Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_assists/src/handlers/change_return_type_to_result.rs#L8[change_return_type_to_result.rs]
 
@@ -562,6 +533,35 @@ fn main() {
 ```rust
 fn main() {
     (1 + 2) * 4;
+}
+```
+
+
+[discrete]
+=== `introduce_named_lifetime`
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_assists/src/handlers/introduce_named_lifetime.rs#L12[introduce_named_lifetime.rs]
+
+Change an anonymous lifetime to a named lifetime.
+
+.Before
+```rust
+impl Cursor<'_┃> {
+    fn node(self) -> &SyntaxNode {
+        match self {
+            Cursor::Replace(node) | Cursor::Before(node) => node,
+        }
+    }
+}
+```
+
+.After
+```rust
+impl<'a> Cursor<'a> {
+    fn node(self) -> &SyntaxNode {
+        match self {
+            Cursor::Replace(node) | Cursor::Before(node) => node,
+        }
+    }
 }
 ```
 
