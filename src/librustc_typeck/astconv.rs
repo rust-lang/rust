@@ -491,7 +491,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             "constant" => ParamKindOrd::Const,
             // It's more concise to match on the string representation, though it means
             // the match is non-exhaustive.
-            _ => bug!("invalid generic parameter kind"),
+            _ => bug!("invalid generic parameter kind {}", kind),
         };
         let arg_ord = match arg {
             GenericArg::Lifetime(_) => ParamKindOrd::Lifetime,
