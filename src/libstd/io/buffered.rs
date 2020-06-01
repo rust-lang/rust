@@ -961,7 +961,19 @@ impl<'a, W: Write> Write for LineWriterShim<'a, W> {
     ///   write a partial line.
     /// - If the write only reports partial success, it does not attempt to
     ///   find the precise location of the written bytes and buffer the rest.
+    ///
+    /// If the underlying vector doesn't support vectored writing, we instead
+    /// simply write the first non-empty buffer with `write`. This way, we
+    /// get the benefits of more granular partial-line handling without losing
+    /// anything in efficiency
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        if !self.is_write_vectored() {
+            return match bufs.iter().find(|buf| !buf.is_empty()) {
+                Some(buf) => self.write(buf),
+                None => Ok(0),
+            }
+        }
+
         // Find the buffer containing the last newline
         let last_newline_buf_idx = bufs
             .iter()
