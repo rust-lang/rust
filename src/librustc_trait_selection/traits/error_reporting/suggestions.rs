@@ -1909,6 +1909,12 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
                 let self_ty = self.resolve_vars_if_possible(&trait_ref.self_ty());
 
+                // Do not check on infer_types to avoid panic in evaluate_obligation.
+                if self_ty.has_infer_types() {
+                    return;
+                }
+                let self_ty = self.tcx.erase_regions(&self_ty);
+
                 let impls_future = self.tcx.type_implements_trait((
                     future_trait,
                     self_ty,
