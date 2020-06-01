@@ -89,6 +89,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             // Equal types, all is good.
             return true;
         }
+        // Normalize projections and things like that.
+        let src = self.tcx.normalize_erasing_regions(self.param_env, src);
+        let dest = self.tcx.normalize_erasing_regions(self.param_env, dest);
+        // It's worth checking equality again.
+        if src == dest {
+            return true;
+        }
 
         // Type-changing assignments can happen for (at least) two reasons:
         // 1. `&mut T` -> `&T` gets optimized from a reborrow to a mere assignment.
