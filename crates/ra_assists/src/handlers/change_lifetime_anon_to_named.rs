@@ -1,7 +1,10 @@
-use crate::{assist_context::AssistBuilder, AssistContext, AssistId, Assists};
-use ast::{NameOwner, ParamList, TypeAscriptionOwner, TypeParamList, TypeRef};
-use ra_syntax::{ast, ast::TypeParamsOwner, AstNode, SyntaxKind, TextRange, TextSize};
+use ra_syntax::{
+    ast::{self, NameOwner, TypeAscriptionOwner, TypeParamsOwner},
+    AstNode, SyntaxKind, TextRange, TextSize,
+};
 use rustc_hash::FxHashSet;
+
+use crate::{assist_context::AssistBuilder, AssistContext, AssistId, Assists};
 
 static ASSIST_NAME: &str = "change_lifetime_anon_to_named";
 static ASSIST_LABEL: &str = "Give anonymous lifetime a name";
@@ -52,7 +55,7 @@ fn generate_fn_def_assist(
     fn_def: &ast::FnDef,
     lifetime_loc: TextRange,
 ) -> Option<()> {
-    let param_list: ParamList = fn_def.param_list()?;
+    let param_list: ast::ParamList = fn_def.param_list()?;
     let new_lifetime_param = generate_unique_lifetime_param_name(&fn_def.type_param_list())?;
     let end_of_fn_ident = fn_def.name()?.ident_token()?.text_range().end();
     let self_param =
@@ -67,7 +70,7 @@ fn generate_fn_def_assist(
         let fn_params_without_lifetime: Vec<_> = param_list
             .params()
             .filter_map(|param| match param.ascribed_type() {
-                Some(TypeRef::ReferenceType(ascribed_type))
+                Some(ast::TypeRef::ReferenceType(ascribed_type))
                     if ascribed_type.lifetime_token() == None =>
                 {
                     Some(ascribed_type.amp_token()?.text_range().end())
@@ -106,7 +109,7 @@ fn generate_impl_def_assist(
 /// Given a type parameter list, generate a unique lifetime parameter name
 /// which is not in the list
 fn generate_unique_lifetime_param_name(
-    existing_type_param_list: &Option<TypeParamList>,
+    existing_type_param_list: &Option<ast::TypeParamList>,
 ) -> Option<char> {
     match existing_type_param_list {
         Some(type_params) => {
