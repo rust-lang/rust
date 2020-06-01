@@ -2293,6 +2293,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "no_effect",
     },
     Lint {
+        name: "unnecessary_sort_by",
+        group: "complexity",
+        desc: "Use of `Vec::sort_by` when `Vec::sort_by_key` or `Vec::sort` would be clearer",
+        deprecation: None,
+        module: "unnecessary_sort_by",
+    },
+    Lint {
         name: "unnecessary_unwrap",
         group: "complexity",
         desc: "checks for calls of `unwrap[_err]()` that cannot fail",

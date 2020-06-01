@@ -1,0 +1,26 @@
+// run-rustfix
+
+use std::cmp::Reverse;
+
+fn id(x: isize) -> isize {
+    x
+}
+
+fn main() {
+    let mut vec: Vec<isize> = vec![3, 6, 1, 2, 5];
+    // Forward examples
+    vec.sort();
+    vec.sort_unstable();
+    vec.sort_by_key(|&a| (a + 5).abs());
+    vec.sort_unstable_by_key(|&a| id(-a));
+    // Reverse examples
+    vec.sort_by_key(|&b| Reverse(b));
+    vec.sort_by_key(|&b| Reverse((b + 5).abs()));
+    vec.sort_unstable_by_key(|&b| Reverse(id(-b)));
+    // Negative examples (shouldn't be changed)
+    let c = &7;
+    vec.sort_by(|a, b| (b - a).cmp(&(a - b)));
+    vec.sort_by(|_, b| b.cmp(&5));
+    vec.sort_by(|_, b| b.cmp(c));
+    vec.sort_unstable_by(|a, _| a.cmp(c));
+}
