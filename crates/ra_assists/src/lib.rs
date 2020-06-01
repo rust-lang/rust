@@ -112,7 +112,6 @@ mod handlers {
     mod add_turbo_fish;
     mod apply_demorgan;
     mod auto_import;
-    mod change_lifetime_anon_to_named;
     mod change_return_type_to_result;
     mod change_visibility;
     mod early_return;
@@ -122,6 +121,7 @@ mod handlers {
     mod flip_comma;
     mod flip_trait_bound;
     mod inline_local_variable;
+    mod introduce_named_lifetime;
     mod introduce_variable;
     mod invert_if;
     mod merge_imports;
@@ -152,7 +152,6 @@ mod handlers {
             add_turbo_fish::add_turbo_fish,
             apply_demorgan::apply_demorgan,
             auto_import::auto_import,
-            change_lifetime_anon_to_named::change_lifetime_anon_to_named,
             change_return_type_to_result::change_return_type_to_result,
             change_visibility::change_visibility,
             early_return::convert_to_guarded_return,
@@ -162,6 +161,7 @@ mod handlers {
             flip_comma::flip_comma,
             flip_trait_bound::flip_trait_bound,
             inline_local_variable::inline_local_variable,
+            introduce_named_lifetime::introduce_named_lifetime,
             introduce_variable::introduce_variable,
             invert_if::invert_if,
             merge_imports::merge_imports,

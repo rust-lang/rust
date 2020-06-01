@@ -6,10 +6,10 @@ use rustc_hash::FxHashSet;
 
 use crate::{assist_context::AssistBuilder, AssistContext, AssistId, Assists};
 
-static ASSIST_NAME: &str = "change_lifetime_anon_to_named";
-static ASSIST_LABEL: &str = "Give anonymous lifetime a name";
+static ASSIST_NAME: &str = "introduce_named_lifetime";
+static ASSIST_LABEL: &str = "Introduce named lifetime";
 
-// Assist: change_lifetime_anon_to_named
+// Assist: introduce_named_lifetime
 //
 // Change an anonymous lifetime to a named lifetime.
 //
@@ -34,7 +34,7 @@ static ASSIST_LABEL: &str = "Give anonymous lifetime a name";
 // ```
 // FIXME: How can we handle renaming any one of multiple anonymous lifetimes?
 // FIXME: should also add support for the case fun(f: &Foo) -> &<|>Foo
-pub(crate) fn change_lifetime_anon_to_named(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn introduce_named_lifetime(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let lifetime_token = ctx
         .find_token_at_offset(SyntaxKind::LIFETIME)
         .filter(|lifetime| lifetime.text() == "'_")?;
@@ -154,7 +154,7 @@ mod tests {
     #[test]
     fn test_example_case() {
         check_assist(
-            change_lifetime_anon_to_named,
+            introduce_named_lifetime,
             r#"impl Cursor<'_<|>> {
                 fn node(self) -> &SyntaxNode {
                     match self {
@@ -175,7 +175,7 @@ mod tests {
     #[test]
     fn test_example_case_simplified() {
         check_assist(
-            change_lifetime_anon_to_named,
+            introduce_named_lifetime,
             r#"impl Cursor<'_<|>> {"#,
             r#"impl<'a> Cursor<'a> {"#,
         );
@@ -184,7 +184,7 @@ mod tests {
     #[test]
     fn test_example_case_cursor_after_tick() {
         check_assist(
-            change_lifetime_anon_to_named,
+            introduce_named_lifetime,
             r#"impl Cursor<'<|>_> {"#,
             r#"impl<'a> Cursor<'a> {"#,
         );
@@ -193,7 +193,7 @@ mod tests {
     #[test]
     fn test_example_case_cursor_before_tick() {
         check_assist(
-            change_lifetime_anon_to_named,
+            introduce_named_lifetime,
             r#"impl Cursor<<|>'_> {"#,
             r#"impl<'a> Cursor<'a> {"#,
         );
@@ -201,23 +201,20 @@ mod tests {
 
     #[test]
     fn test_not_applicable_cursor_position() {
-        check_assist_not_applicable(change_lifetime_anon_to_named, r#"impl Cursor<'_><|> {"#);
-        check_assist_not_applicable(change_lifetime_anon_to_named, r#"impl Cursor<|><'_> {"#);
+        check_assist_not_applicable(introduce_named_lifetime, r#"impl Cursor<'_><|> {"#);
+        check_assist_not_applicable(introduce_named_lifetime, r#"impl Cursor<|><'_> {"#);
     }
 
     #[test]
     fn test_not_applicable_lifetime_already_name() {
-        check_assist_not_applicable(change_lifetime_anon_to_named, r#"impl Cursor<'a<|>> {"#);
-        check_assist_not_applicable(
-            change_lifetime_anon_to_named,
-            r#"fn my_fun<'a>() -> X<'a<|>>"#,
-        );
+        check_assist_not_applicable(introduce_named_lifetime, r#"impl Cursor<'a<|>> {"#);
+        check_assist_not_applicable(introduce_named_lifetime, r#"fn my_fun<'a>() -> X<'a<|>>"#);
     }
 
     #[test]
     fn test_with_type_parameter() {
         check_assist(
-            change_lifetime_anon_to_named,
+            introduce_named_lifetime,
             r#"impl<T> Cursor<T, '_<|>>"#,
             r#"impl<T, 'a> Cursor<T, 'a>"#,
         );
@@ -226,7 +223,7 @@ mod tests {
     #[test]
     fn test_with_existing_lifetime_name_conflict() {
         check_assist(
-            change_lifetime_anon_to_named,
+            introduce_named_lifetime,
             r#"impl<'a, 'b> Cursor<'a, 'b, '_<|>>"#,
             r#"impl<'a, 'b, 'c> Cursor<'a, 'b, 'c>"#,
         );
@@ -235,7 +232,7 @@ mod tests {
     #[test]
     fn test_function_return_value_anon_lifetime_param() {
         check_assist(
-            change_lifetime_anon_to_named,
+            introduce_named_lifetime,
             r#"fn my_fun() -> X<'_<|>>"#,
             r#"fn my_fun<'a>() -> X<'a>"#,
         );
@@ -244,7 +241,7 @@ mod tests {
     #[test]
     fn test_function_return_value_anon_reference_lifetime() {
         check_assist(
-            change_lifetime_anon_to_named,
+            introduce_named_lifetime,
             r#"fn my_fun() -> &'_<|> X"#,
             r#"fn my_fun<'a>() -> &'a X"#,
         );
@@ -253,7 +250,7 @@ mod tests {
     #[test]
     fn test_function_param_anon_lifetime() {
         check_assist(
-            change_lifetime_anon_to_named,
+            introduce_named_lifetime,
             r#"fn my_fun(x: X<'_<|>>)"#,
             r#"fn my_fun<'a>(x: X<'a>)"#,
         );
@@ -262,7 +259,7 @@ mod tests {
     #[test]
     fn test_function_add_lifetime_to_params() {
         check_assist(
-            change_lifetime_anon_to_named,
+            introduce_named_lifetime,
             r#"fn my_fun(f: &Foo) -> X<'_<|>>"#,
             r#"fn my_fun<'a>(f: &'a Foo) -> X<'a>"#,
         );
@@ -271,7 +268,7 @@ mod tests {
     #[test]
     fn test_function_add_lifetime_to_params_in_presence_of_other_lifetime() {
         check_assist(
-            change_lifetime_anon_to_named,
+            introduce_named_lifetime,
             r#"fn my_fun<'other>(f: &Foo, b: &'other Bar) -> X<'_<|>>"#,
             r#"fn my_fun<'other, 'a>(f: &'a Foo, b: &'other Bar) -> X<'a>"#,
         );
@@ -281,7 +278,7 @@ mod tests {
     fn test_function_not_applicable_without_self_and_multiple_unnamed_param_lifetimes() {
         // this is not permitted under lifetime elision rules
         check_assist_not_applicable(
-            change_lifetime_anon_to_named,
+            introduce_named_lifetime,
             r#"fn my_fun(f: &Foo, b: &Bar) -> X<'_<|>>"#,
         );
     }
@@ -289,7 +286,7 @@ mod tests {
     #[test]
     fn test_function_add_lifetime_to_self_ref_param() {
         check_assist(
-            change_lifetime_anon_to_named,
+            introduce_named_lifetime,
             r#"fn my_fun<'other>(&self, f: &Foo, b: &'other Bar) -> X<'_<|>>"#,
             r#"fn my_fun<'other, 'a>(&'a self, f: &Foo, b: &'other Bar) -> X<'a>"#,
         );
@@ -298,7 +295,7 @@ mod tests {
     #[test]
     fn test_function_add_lifetime_to_param_with_non_ref_self() {
         check_assist(
-            change_lifetime_anon_to_named,
+            introduce_named_lifetime,
             r#"fn my_fun<'other>(self, f: &Foo, b: &'other Bar) -> X<'_<|>>"#,
             r#"fn my_fun<'other, 'a>(self, f: &'a Foo, b: &'other Bar) -> X<'a>"#,
         );
