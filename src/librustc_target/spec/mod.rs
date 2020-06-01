@@ -54,6 +54,7 @@ mod arm_base;
 mod cloudabi_base;
 mod dragonfly_base;
 mod freebsd_base;
+mod freestanding_base;
 mod fuchsia_base;
 mod haiku_base;
 mod hermit_base;
@@ -578,6 +579,8 @@ supported_targets! {
 
     ("aarch64-fuchsia", aarch64_fuchsia),
     ("x86_64-fuchsia", x86_64_fuchsia),
+
+    ("avr-unknown-unknown", avr_unknown_unknown),
 
     ("x86_64-unknown-l4re-uclibc", x86_64_unknown_l4re_uclibc),
 

@@ -77,6 +77,14 @@ pub fn initialize_available_targets() {
         LLVMInitializeAMDGPUAsmParser
     );
     init_target!(
+        llvm_component = "avr",
+        LLVMInitializeAVRTargetInfo,
+        LLVMInitializeAVRTarget,
+        LLVMInitializeAVRTargetMC,
+        LLVMInitializeAVRAsmPrinter,
+        LLVMInitializeAVRAsmParser
+    );
+    init_target!(
         llvm_component = "mips",
         LLVMInitializeMipsTargetInfo,
         LLVMInitializeMipsTarget,

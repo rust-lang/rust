@@ -1345,14 +1345,24 @@ macro_rules! fnptr_impls_safety_abi {
         #[stable(feature = "fnptr_impls", since = "1.4.0")]
         impl<Ret, $($Arg),*> fmt::Pointer for $FnTy {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                fmt::Pointer::fmt(&(*self as *const ()), f)
+                // HACK: The intermediate cast as usize is required for AVR
+                // so that the address space of the source function pointer
+                // is preserved in the final function pointer.
+                //
+                // https://github.com/avr-rust/rust/issues/143
+                fmt::Pointer::fmt(&(*self as usize as *const ()), f)
             }
         }
 
         #[stable(feature = "fnptr_impls", since = "1.4.0")]
         impl<Ret, $($Arg),*> fmt::Debug for $FnTy {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                fmt::Pointer::fmt(&(*self as *const ()), f)
+                // HACK: The intermediate cast as usize is required for AVR
+                // so that the address space of the source function pointer
+                // is preserved in the final function pointer.
+                //
+                // https://github.com/avr-rust/rust/issues/143
+                fmt::Pointer::fmt(&(*self as usize as *const ()), f)
             }
         }
     }

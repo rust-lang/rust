@@ -4,7 +4,7 @@
 //[legacy]compile-flags: -Z symbol-mangling-version=legacy
     //[v0]compile-flags: -Z symbol-mangling-version=v0
 //[legacy]normalize-stderr-32bit: "h5ef5dfc14aeecbfc" -> "SYMBOL_HASH"
-//[legacy]normalize-stderr-64bit: "h9e54d216f70fcbc5" -> "SYMBOL_HASH"
+//[legacy]normalize-stderr-64bit: "hd9e82dc29c74d643" -> "SYMBOL_HASH"
 
 #![feature(optin_builtin_traits, rustc_attrs)]
 #![allow(dead_code)]
