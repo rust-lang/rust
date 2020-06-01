@@ -7,7 +7,7 @@ use std::thread;
 #[thread_local]
 static A: u8 = 0;
 
-// Make sure we catch executing inline assembly.
+// Make sure we catch accessing thread-local storage.
 static TEST_BAD: () = {
     unsafe { let _val = A; }
     //~^ ERROR could not evaluate static initializer
