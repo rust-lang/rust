@@ -75,7 +75,6 @@
           </article>
         </div>
         <script>
-            const MajorVersionBounds = {min: 1, max: 2};
             const RusfmtTagsUrl = 'https://api.github.com/repos/rust-lang/rustfmt/tags';
             const UrlHash = window.location.hash.replace(/^#/, '');
             new Vue({
@@ -129,17 +128,7 @@
                 const reMajorVersion = /v(\d+)/;
                 const tagOptions = tags
                   .map(tag => tag.name)
-                  .filter(tag => {
-                    const versionMatches = tag.match(reMajorVersion);
-                    if (!versionMatches || !versionMatches[1]) {
-                      return false;
-                    }
-                    const majorVersion = +versionMatches[1];
-                    // There are some superfluous version tags (e.g. a v8.1 tag), so we do some
-                    // sanity checking of the tags here.
-                    return majorVersion >= MajorVersionBounds.min &&
-                      majorVersion <= MajorVersionBounds.max;
-                  });
+                  .filter(tag => tag.startsWith('v'));
                 this.versionOptions = this.versionOptions.concat(tagOptions);
               },
               mounted() {
@@ -172,7 +161,7 @@
                   const lastIndex = stack.length - 1;
                   stack[lastIndex].push(next);
                   return stack;
-                }, 
+                },
                 [[]]);
               });
             }
@@ -209,7 +198,7 @@
                 configurationAbout, ...configurationDescriptions
               ] = configurations;
               configurationAbout.value.links = {};
-              
+
               return {
                 about,
                 configurationAbout: configurationAbout.value,
