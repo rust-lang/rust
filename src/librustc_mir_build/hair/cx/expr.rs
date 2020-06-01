@@ -856,20 +856,17 @@ fn convert_path_expr<'a, 'tcx>(
         // a constant reference (or constant raw pointer for `static mut`) in MIR
         Res::Def(DefKind::Static, id) => {
             let ty = cx.tcx.static_ptr_ty(id);
-            let ptr = cx.tcx.create_static_alloc(id);
             let temp_lifetime = cx.region_scope_tree.temporary_scope(expr.hir_id.local_id);
-            ExprKind::Deref {
-                arg: Expr {
-                    ty,
-                    temp_lifetime,
-                    span: expr.span,
-                    kind: ExprKind::StaticRef {
-                        literal: ty::Const::from_scalar(cx.tcx, Scalar::Ptr(ptr.into()), ty),
-                        def_id: id,
-                    },
+            let kind = if cx.tcx.is_thread_local_static(id) {
+                ExprKind::ThreadLocalRef(id)
+            } else {
+                let ptr = cx.tcx.create_static_alloc(id);
+                ExprKind::StaticRef {
+                    literal: ty::Const::from_scalar(cx.tcx, Scalar::Ptr(ptr.into()), ty),
+                    def_id: id,
                 }
-                .to_ref(),
-            }
+            };
+            ExprKind::Deref { arg: Expr { ty, temp_lifetime, span: expr.span, kind }.to_ref() }
         }
 
         Res::Local(var_hir_id) => convert_var(cx, expr, var_hir_id),

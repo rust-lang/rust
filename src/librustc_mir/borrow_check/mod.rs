@@ -1296,6 +1296,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 );
             }
 
+            Rvalue::ThreadLocalRef(_) => {}
+
             Rvalue::Use(ref operand)
             | Rvalue::Repeat(ref operand, _)
             | Rvalue::UnaryOp(_ /*un_op*/, ref operand)

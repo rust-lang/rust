@@ -263,11 +263,11 @@ impl Validator<'mir, 'tcx> {
     }
 
     fn check_static(&mut self, def_id: DefId, span: Span) {
-        if self.tcx.is_thread_local_static(def_id) {
-            self.check_op_spanned(ops::ThreadLocalAccess, span)
-        } else {
-            self.check_op_spanned(ops::StaticAccess, span)
-        }
+        assert!(
+            !self.tcx.is_thread_local_static(def_id),
+            "tls access is checked in `Rvalue::ThreadLocalRef"
+        );
+        self.check_op_spanned(ops::StaticAccess, span)
     }
 }
 
@@ -332,6 +332,8 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
         self.super_rvalue(rvalue, location);
 
         match *rvalue {
+            Rvalue::ThreadLocalRef(_) => self.check_op(ops::ThreadLocalAccess),
+
             Rvalue::Use(_)
             | Rvalue::Repeat(..)
             | Rvalue::UnaryOp(UnOp::Neg, _)

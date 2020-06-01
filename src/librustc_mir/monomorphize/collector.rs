@@ -1143,6 +1143,7 @@ fn create_mono_items_for_default_impls<'tcx>(
 fn collect_miri<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut Vec<MonoItem<'tcx>>) {
     match tcx.global_alloc(alloc_id) {
         GlobalAlloc::Static(def_id) => {
+            assert!(!tcx.is_thread_local_static(def_id));
             let instance = Instance::mono(tcx, def_id);
             if should_monomorphize_locally(tcx, &instance) {
                 trace!("collecting static {:?}", def_id);

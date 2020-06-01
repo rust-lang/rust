@@ -63,10 +63,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             if let Some(tail_info) = this.block_context.currently_in_block_tail() {
                 local_decl = local_decl.block_tail(tail_info);
             }
-            if let ExprKind::StaticRef { def_id, .. } = expr.kind {
-                let is_thread_local = this.hir.tcx().is_thread_local_static(def_id);
-                local_decl.internal = true;
-                local_decl.local_info = Some(box LocalInfo::StaticRef { def_id, is_thread_local });
+            match expr.kind {
+                ExprKind::StaticRef { def_id, .. } => {
+                    assert!(!this.hir.tcx().is_thread_local_static(def_id));
+                    local_decl.internal = true;
+                    local_decl.local_info = Some(box LocalInfo::StaticRef { def_id, is_thread_local: false });
+                }
+                ExprKind::ThreadLocalRef(def_id) => {
+                    assert!(this.hir.tcx().is_thread_local_static(def_id));
+                    local_decl.internal = true;
+                    local_decl.local_info = Some(box LocalInfo::StaticRef { def_id, is_thread_local: true });
+                }
+                _ => {}
             }
             this.local_decls.push(local_decl)
         };

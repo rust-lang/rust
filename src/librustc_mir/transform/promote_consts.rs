@@ -603,6 +603,8 @@ impl<'tcx> Validator<'_, 'tcx> {
         }
 
         match rvalue {
+            Rvalue::ThreadLocalRef(_) => Err(Unpromotable),
+
             Rvalue::NullaryOp(..) => Ok(()),
 
             Rvalue::Discriminant(place) | Rvalue::Len(place) => self.validate_place(place.as_ref()),

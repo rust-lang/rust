@@ -177,6 +177,7 @@ impl<'tcx> TypeFoldable<'tcx> for Rvalue<'tcx> {
         match *self {
             Use(ref op) => Use(op.fold_with(folder)),
             Repeat(ref op, len) => Repeat(op.fold_with(folder), len),
+            ThreadLocalRef(did) => ThreadLocalRef(did.fold_with(folder)),
             Ref(region, bk, ref place) => {
                 Ref(region.fold_with(folder), bk, place.fold_with(folder))
             }
@@ -220,6 +221,7 @@ impl<'tcx> TypeFoldable<'tcx> for Rvalue<'tcx> {
         match *self {
             Use(ref op) => op.visit_with(visitor),
             Repeat(ref op, _) => op.visit_with(visitor),
+            ThreadLocalRef(did) => did.visit_with(visitor),
             Ref(region, _, ref place) => region.visit_with(visitor) || place.visit_with(visitor),
             AddressOf(_, ref place) => place.visit_with(visitor),
             Len(ref place) => place.visit_with(visitor),

@@ -259,6 +259,7 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                     GlobalAlloc::Function(fn_instance) => self.get_fn_addr(fn_instance),
                     GlobalAlloc::Static(def_id) => {
                         assert!(self.tcx.is_static(def_id));
+                        assert!(!self.tcx.is_thread_local_static(def_id));
                         self.get_static(def_id)
                     }
                 };

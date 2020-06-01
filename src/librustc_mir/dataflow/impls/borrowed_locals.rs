@@ -176,6 +176,7 @@ where
 
             mir::Rvalue::Cast(..)
             | mir::Rvalue::Use(..)
+            | mir::Rvalue::ThreadLocalRef(..)
             | mir::Rvalue::Repeat(..)
             | mir::Rvalue::Len(..)
             | mir::Rvalue::BinaryOp(..)

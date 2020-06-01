@@ -151,6 +151,13 @@ impl<'tcx> Rvalue<'tcx> {
             Rvalue::Repeat(ref operand, count) => {
                 tcx.mk_ty(ty::Array(operand.ty(local_decls, tcx), count))
             }
+            Rvalue::ThreadLocalRef(did) => {
+                if tcx.is_mutable_static(did) {
+                    tcx.mk_mut_ptr(tcx.type_of(did))
+                } else {
+                    tcx.mk_imm_ref(tcx.lifetimes.re_static, tcx.type_of(did))
+                }
+            }
             Rvalue::Ref(reg, bk, ref place) => {
                 let place_ty = place.ty(local_decls, tcx).ty;
                 tcx.mk_ref(reg, ty::TypeAndMut { ty: place_ty, mutbl: bk.to_mutbl_lossy() })

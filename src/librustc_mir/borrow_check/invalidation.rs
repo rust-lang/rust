@@ -301,6 +301,8 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
                 self.access_place(location, place, access_kind, LocalMutationIsAllowed::No);
             }
 
+            Rvalue::ThreadLocalRef(_) => {}
+
             Rvalue::Use(ref operand)
             | Rvalue::Repeat(ref operand, _)
             | Rvalue::UnaryOp(_ /*un_op*/, ref operand)

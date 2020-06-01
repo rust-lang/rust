@@ -445,6 +445,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::Tuple { .. }
             | ExprKind::Closure { .. }
             | ExprKind::Literal { .. }
+            | ExprKind::ThreadLocalRef(_)
             | ExprKind::StaticRef { .. } => {
                 debug_assert!(match Category::of(&expr.kind).unwrap() {
                     // should be handled above
