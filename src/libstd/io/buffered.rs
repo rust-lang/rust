@@ -1766,6 +1766,15 @@ mod tests {
         }
     }
 
+    /// Previously the `LineWriter` could successfully write some bytes but
+    /// then fail to report that it has done so. Additionally, an erroneous
+    /// flush after a successful write was permanently ignored.
+    ///
+    /// Test that a line writer correctly reports the number of written bytes,
+    /// and that it attempts to flush buffered lines from previous writes
+    /// before processing new data
+    ///
+    /// Regression test for #37807
     #[test]
     fn erroneous_flush_retried() {
         let a = AcceptOneThenFail { written: false, flushed: false };
