@@ -246,7 +246,6 @@ impl<'hir> PathSegment<'hir> {
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub struct ConstArg {
     pub value: AnonConst,
-    pub span: Span,
 }
 
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
