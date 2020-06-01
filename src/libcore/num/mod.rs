@@ -116,12 +116,7 @@ assert_eq!(size_of::<Option<core::num::", stringify!($Ty), ">>(), size_of::<", s
             impl TryFrom<$Int> for $Ty {
                type Error = TryFromIntError;
                fn try_from(n: $Int) -> Result<Self, Self::Error> {
-                   if n != 0 {
-                        // SAFETY: we just checked that there's no `0`
-                        Ok(unsafe { Self(n) })
-                   } else {
-                        Err(TryFromIntError(()))
-                   }
+                   Self::new(n).ok_or(TryFromIntError(()))
                }
             }
 
