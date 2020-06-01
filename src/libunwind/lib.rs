@@ -10,7 +10,16 @@
 cfg_if::cfg_if! {
     if #[cfg(target_env = "msvc")] {
         // no extra unwinder support needed
-    } else if #[cfg(all(target_arch = "wasm32", not(target_os = "emscripten")))] {
+    } else if #[cfg(
+        any(
+            all(target_arch = "wasm32", not(target_os = "emscripten")),
+            target_os = "none",
+            target_os = "hermit",
+            target_os = "uefi",
+            target_os = "cuda",
+            target_os = "l4re",
+        ))]
+    {
         // no unwinder on the system!
     } else {
         mod libunwind;

@@ -10,7 +10,7 @@ pub const UNIX_EPOCH: SystemTime = SystemTime(Duration::from_secs(0));
 
 impl Instant {
     pub fn now() -> Instant {
-        panic!("time not implemented on wasm32-unknown-unknown")
+        panic!("time not implemented on this platform")
     }
 
     pub const fn zero() -> Instant {
@@ -36,7 +36,7 @@ impl Instant {
 
 impl SystemTime {
     pub fn now() -> SystemTime {
-        panic!("time not implemented on wasm32-unknown-unknown")
+        panic!("time not implemented on this platform")
     }
 
     pub fn sub_time(&self, other: &SystemTime) -> Result<Duration, Duration> {

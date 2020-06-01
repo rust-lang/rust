@@ -5,9 +5,10 @@ pub struct Mutex {
 }
 
 unsafe impl Send for Mutex {}
-unsafe impl Sync for Mutex {} // no threads on wasm
+unsafe impl Sync for Mutex {} // no threads on this platform
 
 impl Mutex {
+    #[rustc_const_stable(feature = "const_sys_mutex_new", since = "1.0.0")]
     pub const fn new() -> Mutex {
         Mutex { locked: UnsafeCell::new(false) }
     }
@@ -42,8 +43,8 @@ impl Mutex {
     pub unsafe fn destroy(&self) {}
 }
 
-// All empty stubs because wasm has no threads yet, so lock acquisition always
-// succeeds.
+// All empty stubs because this platform does not yet support threads, so lock
+// acquisition always succeeds.
 pub struct ReentrantMutex {}
 
 impl ReentrantMutex {

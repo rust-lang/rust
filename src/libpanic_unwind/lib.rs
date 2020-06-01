@@ -41,7 +41,7 @@ cfg_if::cfg_if! {
     if #[cfg(target_os = "emscripten")] {
         #[path = "emcc.rs"]
         mod real_imp;
-    } else if #[cfg(target_arch = "wasm32")] {
+    } else if #[cfg(any(target_arch = "wasm32", target_os = "none"))] {
         #[path = "dummy.rs"]
         mod real_imp;
     } else if #[cfg(target_os = "hermit")] {

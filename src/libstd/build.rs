@@ -64,4 +64,7 @@ fn main() {
         println!("cargo:rustc-link-lib=compiler_rt");
     }
     println!("cargo:rustc-env=STD_ENV_ARCH={}", env::var("CARGO_CFG_TARGET_ARCH").unwrap());
+    if target.contains("-none") || target.contains("nvptx") {
+        println!("cargo:rustc-cfg=feature=\"restricted-std\"");
+    }
 }
