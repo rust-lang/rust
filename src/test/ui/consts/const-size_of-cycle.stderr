@@ -27,7 +27,7 @@ LL |     pub fn size_of<T>() -> usize;
    = note: ...which requires computing layout of `Foo`...
    = note: ...which requires normalizing `[u8; _]`...
    = note: ...which again requires const-evaluating + checking `Foo::bytes::{{constant}}#0`, completing the cycle
-note: cycle used when processing `Foo`
+note: cycle used when checking that `Foo` is well-formed
   --> $DIR/const-size_of-cycle.rs:3:1
    |
 LL | struct Foo {
