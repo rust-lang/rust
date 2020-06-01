@@ -404,7 +404,10 @@ where
                     // to get some code to work that probably ought to work.
                     field_layout.align.abi
                 }
-                None => span_bug!(self.cur_span(), "cannot compute offset for extern type field at non-0 offset"),
+                None => span_bug!(
+                    self.cur_span(),
+                    "cannot compute offset for extern type field at non-0 offset"
+                ),
             };
             (base.meta, offset.align_to(align))
         } else {
@@ -440,7 +443,11 @@ where
                 assert!(!field_layout.is_unsized());
                 base.offset(offset, MemPlaceMeta::None, field_layout, self)
             }
-            _ => span_bug!(self.cur_span(), "`mplace_index` called on non-array type {:?}", base.layout.ty),
+            _ => span_bug!(
+                self.cur_span(),
+                "`mplace_index` called on non-array type {:?}",
+                base.layout.ty
+            ),
         }
     }
 
@@ -484,7 +491,9 @@ where
         // (that have count 0 in their layout).
         let from_offset = match base.layout.fields {
             FieldsShape::Array { stride, .. } => stride * from, // `Size` multiplication is checked
-            _ => span_bug!(self.cur_span(), "unexpected layout of index access: {:#?}", base.layout),
+            _ => {
+                span_bug!(self.cur_span(), "unexpected layout of index access: {:#?}", base.layout)
+            }
         };
 
         // Compute meta and new layout
@@ -497,7 +506,9 @@ where
                 let len = Scalar::from_machine_usize(inner_len, self);
                 (MemPlaceMeta::Meta(len), base.layout.ty)
             }
-            _ => span_bug!(self.cur_span(), "cannot subslice non-array type: `{:?}`", base.layout.ty),
+            _ => {
+                span_bug!(self.cur_span(), "cannot subslice non-array type: `{:?}`", base.layout.ty)
+            }
         };
         let layout = self.layout_of(ty)?;
         base.offset(from_offset, meta, layout, self)
@@ -776,9 +787,11 @@ where
             Immediate::Scalar(scalar) => {
                 match dest.layout.abi {
                     Abi::Scalar(_) => {} // fine
-                    _ => {
-                        span_bug!(self.cur_span(), "write_immediate_to_mplace: invalid Scalar layout: {:#?}", dest.layout)
-                    }
+                    _ => span_bug!(
+                        self.cur_span(),
+                        "write_immediate_to_mplace: invalid Scalar layout: {:#?}",
+                        dest.layout
+                    ),
                 }
                 self.memory.get_raw_mut(ptr.alloc_id)?.write_scalar(
                     &tcx,

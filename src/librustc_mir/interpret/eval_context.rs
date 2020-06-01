@@ -314,8 +314,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     #[inline(always)]
     pub fn cur_span(&self) -> Span {
-        self
-            .stack()
+        self.stack()
             .last()
             .and_then(|f| f.current_source_info())
             .map(|si| si.span)
@@ -419,7 +418,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let did = instance.def_id();
         if let Some(did) = did.as_local() {
             if self.tcx_at().has_typeck_tables(did) {
-                if let Some(error_reported) = self.tcx_at().typeck_tables_of(did).tainted_by_errors {
+                if let Some(error_reported) = self.tcx_at().typeck_tables_of(did).tainted_by_errors
+                {
                     throw_inval!(TypeckError(error_reported))
                 }
             }

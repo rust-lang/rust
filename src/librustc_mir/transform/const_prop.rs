@@ -405,7 +405,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             Ok(op) => Some(op),
             Err(error) => {
                 let tcx = self.ecx.tcx.at(c.span);
-                let err = error_to_const_error(&self.ecx, error);
+                let err = error_to_const_error(&self.ecx, error, Some(c.span));
                 if let Some(lint_root) = self.lint_root(source_info) {
                     let lint_only = match c.literal.val {
                         // Promoteds must lint and not error as the user didn't ask for them
@@ -417,12 +417,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     if lint_only {
                         // Out of backwards compatibility we cannot report hard errors in unused
                         // generic functions using associated constants of the generic parameters.
-                        err.report_as_lint(
-                            tcx,
-                            "erroneous constant used",
-                            lint_root,
-                            Some(c.span),
-                        );
+                        err.report_as_lint(tcx, "erroneous constant used", lint_root, Some(c.span));
                     } else {
                         err.report_as_error(tcx, "erroneous constant used");
                     }

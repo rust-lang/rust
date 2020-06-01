@@ -213,7 +213,7 @@ fn validate_and_turn_into_const<'tcx>(
     })();
 
     val.map_err(|error| {
-        let err = error_to_const_error(&ecx, error);
+        let err = error_to_const_error(&ecx, error, None);
         err.struct_error(ecx.tcx_at(), "it is undefined behavior to use this value", |mut diag| {
             diag.note(note_on_undefined_behavior_error());
             diag.emit();
@@ -312,7 +312,7 @@ pub fn const_eval_raw_provider<'tcx>(
     res.and_then(|body| eval_body_using_ecx(&mut ecx, cid, &body))
         .map(|place| RawConst { alloc_id: place.ptr.assert_ptr().alloc_id, ty: place.layout.ty })
         .map_err(|error| {
-            let err = error_to_const_error(&ecx, error);
+            let err = error_to_const_error(&ecx, error, None);
             // errors in statics are always emitted as fatal errors
             if is_static {
                 // Ensure that if the above error was either `TooGeneric` or `Reported`
