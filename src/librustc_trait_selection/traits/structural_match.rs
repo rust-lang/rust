@@ -251,7 +251,11 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for Search<'a, 'tcx> {
         // fields of ADT.
         let tcx = self.tcx();
         for field_ty in adt_def.all_fields().map(|field| field.ty(tcx, substs)) {
-            if field_ty.visit_with(self) {
+            assert!(!field_ty.needs_subst());
+            let ty = self.tcx().normalize_erasing_regions(ty::ParamEnv::reveal_all(), field_ty);
+            debug!("structural-match ADT: field_ty={:?}, ty={:?}", field_ty, ty);
+
+            if ty.visit_with(self) {
                 // found an ADT without structural-match; halt visiting!
                 assert!(self.found.is_some());
                 return true;
