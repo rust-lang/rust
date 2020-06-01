@@ -49,13 +49,12 @@ impl<'a> StringReader<'a> {
         // Make sure external source is loaded first, before accessing it.
         // While this can't show up during normal parsing, `retokenize` may
         // be called with a source file from an external crate.
-        sess.source_map().ensure_source_file_source_present(source_file.clone());
+        sess.source_map().ensure_source_file_source_present(Lrc::clone(&source_file));
 
-        // FIXME(eddyb) use `Lrc<str>` or similar to avoid cloning the `String`.
         let src = if let Some(src) = &source_file.src {
-            src.clone()
+            Lrc::clone(&src)
         } else if let Some(src) = source_file.external_src.borrow().get_source() {
-            src.clone()
+            Lrc::clone(&src)
         } else {
             sess.span_diagnostic
                 .bug(&format!("cannot lex `source_file` without source: {}", source_file.name));
@@ -125,10 +124,7 @@ impl<'a> StringReader<'a> {
 
         debug!("try_next_token: {:?}({:?})", token.kind, self.str_from(start));
 
-        // This could use `?`, but that makes code significantly (10-20%) slower.
-        // https://github.com/rust-lang/rust/issues/37939
         let kind = self.cook_lexer_token(token.kind, start);
-
         let span = self.mk_sp(start, self.pos);
         Token::new(kind, span)
     }
@@ -151,15 +147,6 @@ impl<'a> StringReader<'a> {
     /// Report a lexical error spanning [`from_pos`, `to_pos`).
     fn err_span_(&self, from_pos: BytePos, to_pos: BytePos, m: &str) {
         self.err_span(self.mk_sp(from_pos, to_pos), m)
-    }
-
-    fn struct_span_fatal(
-        &self,
-        from_pos: BytePos,
-        to_pos: BytePos,
-        m: &str,
-    ) -> DiagnosticBuilder<'a> {
-        self.sess.span_diagnostic.struct_span_fatal(self.mk_sp(from_pos, to_pos), m)
     }
 
     fn struct_fatal_span_char(
@@ -380,12 +367,7 @@ impl<'a> StringReader<'a> {
             }
             rustc_lexer::LiteralKind::Float { base, empty_exponent } => {
                 if empty_exponent {
-                    let mut err = self.struct_span_fatal(
-                        start,
-                        self.pos,
-                        "expected at least one digit in exponent",
-                    );
-                    err.emit();
+                    self.err_span_(start, self.pos, "expected at least one digit in exponent");
                 }
 
                 match base {
@@ -475,8 +457,7 @@ impl<'a> StringReader<'a> {
         self.struct_fatal_span_char(
             start,
             self.pos,
-            "found invalid character; only `#` is allowed \
-                 in raw string delimitation",
+            "found invalid character; only `#` is allowed in raw string delimitation",
             bad_char,
         )
         .emit();
