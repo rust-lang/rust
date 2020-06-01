@@ -1,3 +1,5 @@
+// check-pass
+
 #![deny(improper_ctypes)]
 
 // This test checks that return types are normalized before being checked for FFI-safety, and that
@@ -10,7 +12,6 @@ extern "C" {
     pub fn bare() -> ();
     pub fn normalize() -> <() as ToOwned>::Owned;
     pub fn transparent() -> W<()>;
-    //~^ ERROR uses type `W<()>`
 }
 
 fn main() {}
