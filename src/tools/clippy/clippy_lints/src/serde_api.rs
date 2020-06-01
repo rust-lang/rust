@@ -35,8 +35,8 @@ impl<'tcx> LateLintPass<'tcx> for SerdeApi {
                     let mut seen_string = None;
                     for item in items {
                         match &*item.ident.as_str() {
-                            "visit_str" => seen_str = Some(item.span),
-                            "visit_string" => seen_string = Some(item.span),
+                            "visit_str" => seen_str = Some(cx.tcx.hir().span_with_body(item.id.hir_id())),
+                            "visit_string" => seen_string = Some(cx.tcx.hir().span_with_body(item.id.hir_id())),
                             _ => {},
                         }
                     }

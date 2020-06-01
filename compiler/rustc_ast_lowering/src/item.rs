@@ -948,7 +948,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         hir::ImplItemRef {
             id: hir::ImplItemId { def_id: self.lower_node_id(i.id, i.span).expect_owner() },
             ident: i.ident,
-            span: i.span,
             vis: self.lower_visibility(&i.vis, Some(i.id)),
             defaultness,
             kind: match &i.kind {

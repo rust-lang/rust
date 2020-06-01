@@ -2838,7 +2838,6 @@ pub struct ImplItemRef<'hir> {
     #[stable_hasher(project(name))]
     pub ident: Ident,
     pub kind: AssocItemKind,
-    pub span: Span,
     pub vis: Visibility<'hir>,
     pub defaultness: Defaultness,
 }

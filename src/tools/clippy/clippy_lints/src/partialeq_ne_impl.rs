@@ -46,7 +46,7 @@ impl<'tcx> LateLintPass<'tcx> for PartialEqNeImpl {
                             cx,
                             PARTIALEQ_NE_IMPL,
                             impl_item.id.hir_id(),
-                            impl_item.span,
+                            cx.tcx.hir().span_with_body(impl_item.id.hir_id()),
                             "re-implementing `PartialEq::ne` is unnecessary",
                         );
                     }

@@ -852,7 +852,8 @@ fn foo(&self) -> Self::T { String::new() }
                 for item in &items[..] {
                     if let hir::AssocItemKind::Type = item.kind {
                         if self.type_of(item.id.def_id) == found {
-                            db.span_label(item.span, "expected this associated type");
+                            let item_span = self.hir().span(item.id.hir_id());
+                            db.span_label(item_span, "expected this associated type");
                             return true;
                         }
                     }
