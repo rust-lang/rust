@@ -56,5 +56,5 @@ pub fn error_to_const_error<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>>(
 ) -> ConstEvalErr<'tcx> {
     error.print_backtrace();
     let stacktrace = ecx.generate_stacktrace();
-    ConstEvalErr { error: error.kind, stacktrace, span: ecx.tcx.span }
+    ConstEvalErr { error: error.kind, stacktrace, span: ecx.cur_span() }
 }

@@ -14,7 +14,7 @@ use std::ptr;
 
 use rustc_ast::ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_middle::ty::{self, TyCtxt, Instance, ParamEnv};
+use rustc_middle::ty::{self, Instance, ParamEnv, TyCtxt};
 use rustc_target::abi::{Align, HasDataLayout, Size, TargetDataLayout};
 
 use super::{

@@ -69,7 +69,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         (fn_val, caller_abi)
                     }
                     ty::FnDef(def_id, substs) => {
-                        let sig = func.layout.ty.fn_sig(*self.tcx);
+                        let sig = func.layout.ty.fn_sig(self.tcx);
                         (FnVal::Instance(self.resolve(def_id, substs)?), sig.abi())
                     }
                     _ => span_bug!(
@@ -96,7 +96,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let ty = place.layout.ty;
                 trace!("TerminatorKind::drop: {:?}, type {}", location, ty);
 
-                let instance = Instance::resolve_drop_in_place(*self.tcx, ty);
+                let instance = Instance::resolve_drop_in_place(self.tcx, ty);
                 self.drop_in_place(place, instance, target, unwind)?;
             }
 
@@ -227,9 +227,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // ABI check
         {
             let callee_abi = {
-                let instance_ty = instance.ty_env(*self.tcx, self.param_env);
+                let instance_ty = instance.ty_env(self.tcx, self.param_env);
                 match instance_ty.kind {
-                    ty::FnDef(..) => instance_ty.fn_sig(*self.tcx).abi(),
+                    ty::FnDef(..) => instance_ty.fn_sig(self.tcx).abi(),
                     ty::Closure(..) => Abi::RustCall,
                     ty::Generator(..) => Abi::Rust,
                     _ => bug!("unexpected callee ty: {:?}", instance_ty),

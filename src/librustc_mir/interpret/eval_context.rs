@@ -33,7 +33,11 @@ pub struct InterpCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     pub machine: M,
 
     /// The results of the type checker, from rustc.
-    pub tcx: TyCtxtAt<'tcx>,
+    pub tcx: TyCtxt<'tcx>,
+
+    /// The span of the "root" of the evaluation, i.e., the const
+    /// we are evaluating (if this is CTFE).
+    pub(super) root_span: Span,
 
     /// Bounds in scope for polymorphic evaluations.
     pub(crate) param_env: ty::ParamEnv<'tcx>,
@@ -196,7 +200,7 @@ where
 {
     #[inline]
     fn tcx(&self) -> TyCtxt<'tcx> {
-        *self.tcx
+        self.tcx
     }
 }
 
@@ -209,13 +213,13 @@ where
     }
 }
 
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> LayoutOf for InterpCx<'mir, 'tcx, M> {
+impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> LayoutOf for InterpCx<'mir, 'tcx, M> {
     type Ty = Ty<'tcx>;
     type TyAndLayout = InterpResult<'tcx, TyAndLayout<'tcx>>;
 
     #[inline]
     fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyAndLayout {
-        self.tcx
+        self.tcx_at()
             .layout_of(self.param_env.and(ty))
             .map_err(|layout| err_inval!(Layout(layout)).into())
     }
@@ -292,7 +296,8 @@ pub(super) fn from_known_layout<'tcx>(
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn new(
-        tcx: TyCtxtAt<'tcx>,
+        tcx: TyCtxt<'tcx>,
+        root_span: Span,
         param_env: ty::ParamEnv<'tcx>,
         machine: M,
         memory_extra: M::MemoryExtra,
@@ -300,15 +305,26 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         InterpCx {
             machine,
             tcx,
+            root_span,
             param_env,
-            memory: Memory::new(*tcx, memory_extra),
+            memory: Memory::new(tcx, memory_extra),
             vtables: FxHashMap::default(),
         }
     }
 
     #[inline(always)]
-    pub fn set_span(&mut self, span: Span) {
-        self.tcx.span = span;
+    pub fn cur_span(&self) -> Span {
+        self
+            .stack()
+            .last()
+            .and_then(|f| f.current_source_info())
+            .map(|si| si.span)
+            .unwrap_or(self.root_span)
+    }
+
+    #[inline(always)]
+    pub fn tcx_at(&self) -> TyCtxtAt<'tcx> {
+        self.tcx.at(self.cur_span())
     }
 
     #[inline(always)]
@@ -386,12 +402,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     #[inline]
     pub fn type_is_sized(&self, ty: Ty<'tcx>) -> bool {
-        ty.is_sized(self.tcx, self.param_env)
+        ty.is_sized(self.tcx_at(), self.param_env)
     }
 
     #[inline]
     pub fn type_is_freeze(&self, ty: Ty<'tcx>) -> bool {
-        ty.is_freeze(*self.tcx, self.param_env, DUMMY_SP)
+        ty.is_freeze(self.tcx, self.param_env, self.cur_span())
     }
 
     pub fn load_mir(
@@ -402,20 +418,20 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // do not continue if typeck errors occurred (can only occur in local crate)
         let did = instance.def_id();
         if let Some(did) = did.as_local() {
-            if self.tcx.has_typeck_tables(did) {
-                if let Some(error_reported) = self.tcx.typeck_tables_of(did).tainted_by_errors {
+            if self.tcx_at().has_typeck_tables(did) {
+                if let Some(error_reported) = self.tcx_at().typeck_tables_of(did).tainted_by_errors {
                     throw_inval!(TypeckError(error_reported))
                 }
             }
         }
         trace!("load mir(instance={:?}, promoted={:?})", instance, promoted);
         if let Some(promoted) = promoted {
-            return Ok(&self.tcx.promoted_mir(did)[promoted]);
+            return Ok(&self.tcx_at().promoted_mir(did)[promoted]);
         }
         match instance {
             ty::InstanceDef::Item(def_id) => {
-                if self.tcx.is_mir_available(did) {
-                    Ok(self.tcx.optimized_mir(did))
+                if self.tcx_at().is_mir_available(did) {
+                    Ok(self.tcx_at().optimized_mir(did))
                 } else {
                     throw_unsup!(NoMirFor(def_id))
                 }
@@ -456,7 +472,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         trace!("resolve: {:?}, {:#?}", def_id, substs);
         trace!("param_env: {:#?}", self.param_env);
         trace!("substs: {:#?}", substs);
-        match ty::Instance::resolve(*self.tcx, self.param_env, def_id, substs) {
+        match ty::Instance::resolve(self.tcx, self.param_env, def_id, substs) {
             Ok(Some(instance)) => Ok(instance),
             Ok(None) => throw_inval!(TooGeneric),
 
@@ -475,7 +491,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // have to support that case (mostly by skipping all caching).
         match frame.locals.get(local).and_then(|state| state.layout.get()) {
             None => {
-                let layout = from_known_layout(self.tcx, layout, || {
+                let layout = from_known_layout(self.tcx_at(), layout, || {
                     let local_ty = frame.body.local_decls[local].ty;
                     let local_ty =
                         self.subst_from_frame_and_normalize_erasing_regions(frame, local_ty);
@@ -560,7 +576,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let size = size.align_to(align);
 
                 // Check if this brought us over the size limit.
-                if size.bytes() >= self.tcx.data_layout().obj_size_bound() {
+                if size.bytes() >= self.tcx.data_layout.obj_size_bound() {
                     throw_ub!(InvalidMeta("total size is bigger than largest supported object"));
                 }
                 Ok(Some((size, align)))
@@ -576,7 +592,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let elem = layout.field(self, 0)?;
 
                 // Make sure the slice is not too big.
-                let size = elem.size.checked_mul(len, &*self.tcx).ok_or_else(|| {
+                let size = elem.size.checked_mul(len, self).ok_or_else(|| {
                     err_ub!(InvalidMeta("slice is bigger than largest supported object"))
                 })?;
                 Ok(Some((size, elem.align.abi)))
@@ -627,7 +643,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let mut locals = IndexVec::from_elem(dummy, &body.local_decls);
 
         // Now mark those locals as dead that we do not want to initialize
-        match self.tcx.def_kind(instance.def_id()) {
+        match self.tcx_at().def_kind(instance.def_id()) {
             // statics and constants don't have `Storage*` statements, no need to look for them
             //
             // FIXME: The above is likely untrue. See
@@ -842,7 +858,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         } else {
             self.param_env
         };
-        let val = self.tcx.const_eval_global_id(param_env, gid, Some(self.tcx.span))?;
+        let val = self.tcx.const_eval_global_id(param_env, gid, Some(self.cur_span()))?;
 
         // Even though `ecx.const_eval` is called from `eval_const_to_op` we can never have a
         // recursion deeper than one level, because the `tcx.const_eval` above is guaranteed to not
@@ -873,7 +889,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // FIXME: We can hit delay_span_bug if this is an invalid const, interning finds
         // that problem, but we never run validation to show an error. Can we ensure
         // this does not happen?
-        let val = self.tcx.const_eval_raw(param_env.and(gid))?;
+        let val = self.tcx_at().const_eval_raw(param_env.and(gid))?;
         self.raw_const_to_mplace(val)
     }
 
