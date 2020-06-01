@@ -1010,9 +1010,6 @@ impl<'a> WasmLd<'a> {
         //   sharing memory and instantiating the module multiple times. As a
         //   result if it were exported then we'd just have no sharing.
         //
-        // * `--passive-segments` - all memory segments should be passive to
-        //   prevent each module instantiation from reinitializing memory.
-        //
         // * `--export=__wasm_init_memory` - when using `--passive-segments` the
         //   linker will synthesize this function, and so we need to make sure
         //   that our usage of `--export` below won't accidentally cause this
@@ -1026,7 +1023,6 @@ impl<'a> WasmLd<'a> {
             cmd.arg("--shared-memory");
             cmd.arg("--max-memory=1073741824");
             cmd.arg("--import-memory");
-            cmd.arg("--passive-segments");
             cmd.arg("--export=__wasm_init_memory");
             cmd.arg("--export=__wasm_init_tls");
             cmd.arg("--export=__tls_size");
