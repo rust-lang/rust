@@ -971,7 +971,7 @@ impl<'a, W: Write> Write for LineWriterShim<'a, W> {
             return match bufs.iter().find(|buf| !buf.is_empty()) {
                 Some(buf) => self.write(buf),
                 None => Ok(0),
-            }
+            };
         }
 
         // Find the buffer containing the last newline
@@ -1321,7 +1321,11 @@ mod tests {
 
     impl Read for ShortReader {
         fn read(&mut self, _: &mut [u8]) -> io::Result<usize> {
-            if self.lengths.is_empty() { Ok(0) } else { Ok(self.lengths.remove(0)) }
+            if self.lengths.is_empty() {
+                Ok(0)
+            } else {
+                Ok(self.lengths.remove(0))
+            }
         }
     }
 
@@ -1742,27 +1746,48 @@ mod tests {
         b.iter(|| BufWriter::new(io::sink()));
     }
 
-    struct AcceptOneThenFail {
-        written: bool,
+    #[derive(Default, Clone)]
+    struct ProgrammableSink {
+        // Writes append to this slice
+        buffer: Vec<u8>,
+
+        // Flushes set this flag
         flushed: bool,
+
+        // If true, writes & flushes will always be an error
+        return_error: bool,
+
+        // If set, only up to this number of bytes will be written in a single
+        // call to `write`
+        accept_prefix: Option<usize>,
+
+        // If set, counts down with each write, and writes return an error
+        // when it hits 0
+        max_writes: Option<usize>,
     }
 
-    impl Write for AcceptOneThenFail {
+    impl Write for ProgrammableSink {
         fn write(&mut self, data: &[u8]) -> io::Result<usize> {
-            if !self.written {
-                assert_eq!(data, b"a\nb\n");
-                self.written = true;
-                Ok(data.len())
+            if self.return_error {
+                Err(io::Error::new(io::ErrorKind::Other, "test"))
             } else {
-                Err(io::Error::new(io::ErrorKind::NotFound, "test"))
+                let len = match self.accept_prefix {
+                    None => data.len(),
+                    Some(prefix) => prefix.min(prefix),
+                };
+                let data = &data[..len];
+                self.buffer.extend_from_slice(data);
+                Ok(len)
             }
         }
 
         fn flush(&mut self) -> io::Result<()> {
-            assert!(self.written);
-            assert!(!self.flushed);
-            self.flushed = true;
-            Err(io::Error::new(io::ErrorKind::Other, "test"))
+            if self.return_error {
+                Err(io::Error::new(io::ErrorKind::Other, "test"))
+            } else {
+                self.flushed = true;
+                Ok(())
+            }
         }
     }
 
@@ -1777,15 +1802,7 @@ mod tests {
     /// Regression test for #37807
     #[test]
     fn erroneous_flush_retried() {
-        let a = AcceptOneThenFail { written: false, flushed: false };
-
-        let mut l = LineWriter::new(a);
-        assert_eq!(l.write(b"a\nb\na").unwrap(), 4);
-        assert!(l.get_ref().written);
-        assert!(l.get_ref().flushed);
-        l.get_mut().flushed = false;
-
-        assert_eq!(l.write(b"a").unwrap_err().kind(), io::ErrorKind::Other)
+        todo!()
     }
 
     #[test]
@@ -1894,5 +1911,51 @@ mod tests {
         fn err() -> io::Error {
             io::Error::new(io::ErrorKind::Other, "x")
         }
+    }
+
+    /// Test that, given this input:
+    ///
+    /// Line 1\n
+    /// Line 2\n
+    /// Line 3\n
+    /// Line 4
+    ///
+    /// And given a result that only writes to midway through Line 2
+    ///
+    /// That only up to the end of Line 3 is buffered
+    ///
+    /// This behavior is desirable because it prevents flushing partial lines
+    #[test]
+    fn test_partial_write_buffers_line() {
+        todo!()
+    }
+
+    /// Test that, given this input:
+    ///
+    /// Line 1\n
+    /// Line 2\n
+    /// Line 3
+    ///
+    /// And given that the full write of lines 1 and 2 was successful
+    /// That data up to Line 3 is buffered
+    #[test]
+    fn test_partial_line_buffered_after_line_write() {
+        todo!()
+    }
+
+    /// Test that, given a partial line that exceeds the length of
+    /// LineBuffer's buffer (that is, without a trailing newline), that that
+    /// line is written to the inner writer
+    #[test]
+    fn test_long_line_flushed() {
+        todo!()
+    }
+
+    /// Test that, given a very long partial line *after* successfully
+    /// flushing a complete line, that that line is buffered unconditionally,
+    /// and no additional writes take place
+    #[test]
+    fn test_long_tail_not_flushed() {
+        todo!()
     }
 }
