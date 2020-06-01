@@ -840,7 +840,10 @@ fn foo(&self) -> Self::T { String::new() }
                     match item.kind {
                         hir::AssocItemKind::Type => {
                             if self.type_of(self.hir().local_def_id(item.id.hir_id)) == found {
-                                db.span_label(item.span, "expected this associated type");
+                                db.span_label(
+                                    self.hir().span(item.id.hir_id),
+                                    "expected this associated type",
+                                );
                                 return true;
                             }
                         }

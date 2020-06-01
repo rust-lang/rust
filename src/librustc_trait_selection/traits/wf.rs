@@ -190,7 +190,7 @@ fn extend_cause_with_original_assoc_item_obligation<'tcx>(
     let fix_span =
         |impl_item_ref: &hir::ImplItemRef<'_>| match tcx.hir().impl_item(impl_item_ref.id).kind {
             hir::ImplItemKind::Const(ty, _) | hir::ImplItemKind::TyAlias(ty) => ty.span,
-            _ => impl_item_ref.span,
+            _ => tcx.hir().span(impl_item_ref.id.hir_id),
         };
     match pred.kind() {
         ty::PredicateKind::Projection(proj) => {
