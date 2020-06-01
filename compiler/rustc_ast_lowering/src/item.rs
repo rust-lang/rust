@@ -930,7 +930,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         hir::ImplItemRef {
             id: hir::ImplItemId { hir_id: self.lower_node_id(i.id, i.span) },
             ident: i.ident,
-            span: i.span,
             vis: self.lower_visibility(&i.vis, Some(i.id)),
             defaultness,
             kind: match &i.kind {
