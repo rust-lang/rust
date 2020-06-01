@@ -453,13 +453,21 @@ bool is_value_needed_in_reverse(TypeResults &TR, const GradientUtils* gutils, co
         if (!indexuse) continue;
     }
 
+    if (auto si = dyn_cast<SelectInst>(use)) {
+        // only need the condition if select is active
+        if (gutils->isConstantValue(const_cast<SelectInst*>(si))) continue;
+        //   none of the other operands are needed otherwise
+        if (si->getCondition() != inst) {
+            continue;
+        }
+    }
+
     //We don't need any of the input operands to compute the adjoint of a store instance
     if (isa<StoreInst>(use)) {
         continue;
     }
 
     if (isa<CmpInst>(use) || isa<BranchInst>(use) || isa<CastInst>(use) || isa<PHINode>(use) || isa<ReturnInst>(use) || isa<FPExtInst>(use) ||
-        (isa<SelectInst>(use) && cast<SelectInst>(use)->getCondition() != inst) ||
         (isa<InsertElementInst>(use) && cast<InsertElementInst>(use)->getOperand(2) != inst) ||
         (isa<ExtractElementInst>(use) && cast<ExtractElementInst>(use)->getIndexOperand() != inst)
         //isa<LoadInst>(use) || (isa<SelectInst>(use) && cast<SelectInst>(use)->getCondition() != inst) //TODO remove load?
@@ -480,6 +488,9 @@ bool is_value_needed_in_reverse(TypeResults &TR, const GradientUtils* gutils, co
       }
       continue;
     }
+
+    if (auto inst = dyn_cast<Instruction>(use))
+        if (gutils->isConstantInstruction(const_cast<Instruction*>(inst))) continue;
 
     //llvm::errs() << " + must have in reverse from considering use : " << *user << " of " <<  *inst << "\n";
     return seen[idx] = true;
@@ -1570,7 +1581,7 @@ public:
     //llvm::errs() << *gutils->oldFunc << "\n";
     //TR.dump();
     
-    llvm::errs() << "MIT: " << MTI << "|size: " << size << " dr: " << TR.query(orig_op0).str() << "\n";
+    //llvm::errs() << "MIT: " << MTI << "|size: " << size << " dr: " << TR.query(orig_op0).str() << "\n";
     Type* secretty;
     if (looseTypeAnalysis) {
         auto vd = TR.firstPointer(size, orig_op0, /*errifnotfound*/false, /*pointerIntSame*/true);
@@ -1580,7 +1591,7 @@ public:
             secretty = cast<PointerType>(cast<CastInst>(orig_op0)->getSrcTy())->getElementType()->getScalarType();
         } else {
             llvm::errs() << "cannot deduce type for mti: " << MTI << " " << *orig_op0 << "\n";
-            auto vd = TR.firstPointer(size, orig_op0, /*errifnotfound*/true, /*pointerIntSame*/true);
+            TR.firstPointer(size, orig_op0, /*errifnotfound*/true, /*pointerIntSame*/true);
             assert(0 && "bad mti");
         }
     } else {

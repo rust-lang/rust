@@ -75,6 +75,7 @@ void init_brusselator(double* __restrict u, double* __restrict v) {
   }
 }
 
+__attribute__((noinline))
 void brusselator_2d_loop(double* __restrict du, double* __restrict dv, const double* __restrict u, const double* __restrict v, const double* __restrict p, double t) {
   double A = p[0];
   double B = p[1];

@@ -647,6 +647,32 @@ bool isconstantM(TypeResults &TR, Instruction* inst, SmallPtrSetImpl<Value*> &co
                 return true;
             }
             */
+        } else if (auto si = dyn_cast<SelectInst>(inst)) {
+            SmallPtrSet<Value*, 20> constants2;
+            constants2.insert(constants.begin(), constants.end());
+            SmallPtrSet<Value*, 20> nonconstant2;
+            nonconstant2.insert(nonconstant.begin(), nonconstant.end());
+            SmallPtrSet<Value*, 20> constantvals2;
+            constantvals2.insert(constantvals.begin(), constantvals.end());
+            SmallPtrSet<Value*, 20> retvals2;
+            retvals2.insert(retvals.begin(), retvals.end());
+            constants2.insert(inst);
+
+            if (isconstantValueM(TR, si->getTrueValue(),  constants2, nonconstant2, constantvals2, retvals2, AA, UP) &&
+                isconstantValueM(TR, si->getFalseValue(), constants2, nonconstant2, constantvals2, retvals2, AA, UP)) {
+                constants.insert(inst);
+                constants.insert(constants2.begin(), constants2.end());
+                constants.insert(constants_tmp.begin(), constants_tmp.end());
+                constantvals.insert(constantvals2.begin(), constantvals2.end());
+                constantvals.insert(constantvals_tmp.begin(), constantvals_tmp.end());
+                // Note: not adding nonconstant here since if had full updown might not have been nonconstant
+
+                if (printconst)
+                  llvm::errs() << "constant(" << (int)directions << ") up-sel:" << *inst << "\n";
+                return true;
+
+            }
+            
         } else {
             bool seenuse = false;
 
