@@ -850,7 +850,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
         let id = hir::TraitItemId { hir_id: self.lower_node_id(i.id, i.span) };
         let defaultness = hir::Defaultness::Default { has_value: has_default };
-        hir::TraitItemRef { id, ident: i.ident, span: i.span, defaultness, kind }
+        hir::TraitItemRef { id, ident: i.ident, defaultness, kind }
     }
 
     /// Construct `ExprKind::Err` for the given `span`.

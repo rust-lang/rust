@@ -816,7 +816,7 @@ fn foo(&self) -> Self::T { String::new() }
                             {
                                 if self.type_of(self.hir().local_def_id(item.id.hir_id)) == found {
                                     db.span_label(
-                                        item.span,
+                                        self.hir().span(item.id.hir_id),
                                         "associated type defaults can't be assumed inside the \
                                             trait defining them",
                                     );

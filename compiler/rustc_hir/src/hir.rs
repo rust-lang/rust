@@ -2581,7 +2581,6 @@ pub struct TraitItemRef {
     #[stable_hasher(project(name))]
     pub ident: Ident,
     pub kind: AssocItemKind,
-    pub span: Span,
     pub defaultness: Defaultness,
 }
 
