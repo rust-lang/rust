@@ -1877,7 +1877,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         }
                         err_for_ct = true;
                         has_err = true;
-                        (ct.span, "const")
+                        (self.tcx().hir().span(ct.value.hir_id), "const")
                     }
                 };
                 let mut err = struct_span_err!(

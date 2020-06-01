@@ -1312,16 +1312,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 id: node_id,
                                 value: rustc_ast::ptr::P(path_expr),
                             });
-                            return GenericArg::Const(ConstArg { value: ct, span: ty.span });
+                            return GenericArg::Const(ConstArg { value: ct });
                         }
                     }
                 }
                 GenericArg::Type(self.lower_ty_direct(&ty, itctx))
             }
-            ast::GenericArg::Const(ct) => GenericArg::Const(ConstArg {
-                value: self.lower_anon_const(&ct),
-                span: ct.value.span,
-            }),
+            ast::GenericArg::Const(ct) => {
+                GenericArg::Const(ConstArg { value: self.lower_anon_const(&ct) })
+            }
         }
     }
 

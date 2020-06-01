@@ -250,7 +250,6 @@ impl<'hir> PathSegment<'hir> {
 #[derive(Encodable, Debug, HashStable_Generic)]
 pub struct ConstArg {
     pub value: AnonConst,
-    pub span: Span,
 }
 
 #[derive(Debug, HashStable_Generic)]
