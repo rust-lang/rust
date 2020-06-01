@@ -3,9 +3,11 @@
     <head>
       <meta name="viewport" content="width=device-width">
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/3.0.1/github-markdown.css" />
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.0.0/styles/github-gist.min.css">
       <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
       <script src="https://cdn.jsdelivr.net/npm/vue@2.6.10/dist/vue.js"></script>
       <script src="https://unpkg.com/vue-async-computed@3.8.1"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.0.0/highlight.min.js"></script>
       <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.18.0/axios.min.js"></script>
       <style>
         @media (max-width: 767px) {
@@ -120,7 +122,12 @@
                         return stack.concat(value);
                       }, []);
                   ast.links = {};
-                  return marked.parser(ast);
+
+                  return marked.parser(ast, {
+                    highlight(code, lang) {
+                      return hljs.highlight(lang ? lang : 'rust', code).value;
+                    }
+                  });
                 }
               },
               created: async function() {
