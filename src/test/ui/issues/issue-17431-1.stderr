@@ -2,11 +2,14 @@ error[E0072]: recursive type `Foo` has infinite size
   --> $DIR/issue-17431-1.rs:1:1
    |
 LL | struct Foo { foo: Option<Option<Foo>> }
-   | ^^^^^^^^^^   ------------------------ recursive without indirection
+   | ^^^^^^^^^^        ------------------- recursive without indirection
    | |
    | recursive type has infinite size
    |
-   = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `Foo` representable
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `Foo` representable
+   |
+LL | struct Foo { foo: Box<Option<Option<Foo>>> }
+   |                   ^^^^                   ^
 
 error: aborting due to previous error
 
