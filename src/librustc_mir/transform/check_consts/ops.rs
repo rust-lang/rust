@@ -12,9 +12,6 @@ use super::ConstCx;
 
 /// An operation that is not *always* allowed in a const context.
 pub trait NonConstOp: std::fmt::Debug {
-    /// Whether this operation can be evaluated by miri.
-    const IS_SUPPORTED_IN_MIRI: bool = true;
-
     /// Returns the `Symbol` corresponding to the feature gate that would enable this operation,
     /// or `None` if such a feature gate does not exist.
     fn feature_gate() -> Option<Symbol> {
@@ -356,8 +353,6 @@ impl NonConstOp for StaticAccess {
 #[derive(Debug)]
 pub struct ThreadLocalAccess;
 impl NonConstOp for ThreadLocalAccess {
-    const IS_SUPPORTED_IN_MIRI: bool = false;
-
     fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
         struct_span_err!(
             ccx.tcx.sess,
