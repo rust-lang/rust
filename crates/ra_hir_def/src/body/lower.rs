@@ -313,20 +313,20 @@ impl ExprCollector<'_> {
                 } else {
                     Vec::new()
                 };
-                self.alloc_expr(Expr::Call { callee, args: args.clone() }, syntax_ptr)
+                self.alloc_expr(Expr::Call { callee, args }, syntax_ptr)
             }
             ast::Expr::MethodCallExpr(e) => {
                 let receiver = self.collect_expr_opt(e.expr());
                 let args = if let Some(arg_list) = e.arg_list() {
                     arg_list.args().map(|e| self.collect_expr(e)).collect()
                 } else {
-                    vec![]
+                    Vec::new()
                 };
                 let method_name = e.name_ref().map(|nr| nr.as_name()).unwrap_or_else(Name::missing);
                 let generic_args =
                     e.type_arg_list().and_then(|it| GenericArgs::from_ast(&self.ctx(), it));
                 self.alloc_expr(
-                    Expr::MethodCall { receiver, method_name, args: args.clone(), generic_args },
+                    Expr::MethodCall { receiver, method_name, args, generic_args },
                     syntax_ptr,
                 )
             }
@@ -345,7 +345,7 @@ impl ExprCollector<'_> {
                         })
                         .collect()
                 } else {
-                    vec![]
+                    Vec::new()
                 };
                 self.alloc_expr(Expr::Match { expr, arms }, syntax_ptr)
             }
@@ -392,15 +392,17 @@ impl ExprCollector<'_> {
                             }
                             let name = field.field_name()?.as_name();
 
-                            let expr = match field.expr() {
-                                Some(e) => self.collect_expr(e),
-                                None => self.missing_expr(),
-                            };
-                            Some(RecordLitField { name, expr })
+                            Some(RecordLitField {
+                                name,
+                                expr: match field.expr() {
+                                    Some(e) => self.collect_expr(e),
+                                    None => self.missing_expr(),
+                                },
+                            })
                         })
                         .collect();
                     let spread = nfl.spread().map(|s| self.collect_expr(s));
-                    Expr::RecordLit { path, fields, spread: spread }
+                    Expr::RecordLit { path, fields, spread }
                 } else {
                     Expr::RecordLit { path, fields: Vec::new(), spread: None }
                 };
@@ -484,8 +486,8 @@ impl ExprCollector<'_> {
                 self.alloc_expr(Expr::BinaryOp { lhs, rhs, op }, syntax_ptr)
             }
             ast::Expr::TupleExpr(e) => {
-                let exprs = e.exprs().map(|expr| self.collect_expr(expr)).collect::<Vec<_>>();
-                self.alloc_expr(Expr::Tuple { exprs: exprs.clone() }, syntax_ptr)
+                let exprs = e.exprs().map(|expr| self.collect_expr(expr)).collect();
+                self.alloc_expr(Expr::Tuple { exprs }, syntax_ptr)
             }
             ast::Expr::BoxExpr(e) => {
                 let expr = self.collect_expr_opt(e.expr());
@@ -497,8 +499,8 @@ impl ExprCollector<'_> {
 
                 match kind {
                     ArrayExprKind::ElementList(e) => {
-                        let exprs = e.map(|expr| self.collect_expr(expr)).collect::<Vec<_>>();
-                        self.alloc_expr(Expr::Array(Array::ElementList(exprs.clone())), syntax_ptr)
+                        let exprs = e.map(|expr| self.collect_expr(expr)).collect();
+                        self.alloc_expr(Expr::Array(Array::ElementList(exprs)), syntax_ptr)
                     }
                     ArrayExprKind::Repeat { initializer, repeat } => {
                         let initializer = self.collect_expr_opt(initializer);
