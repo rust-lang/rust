@@ -14,7 +14,7 @@ fn match_bool(_1: bool) -> usize {
     }
 
     bb2: {
-        falseEdges -> [real: bb4, imaginary: bb3]; // scope 0 at $DIR/simple-match.rs:7:9: 7:13
+        falseEdge -> [real: bb4, imaginary: bb3]; // scope 0 at $DIR/simple-match.rs:7:9: 7:13
     }
 
     bb3: {

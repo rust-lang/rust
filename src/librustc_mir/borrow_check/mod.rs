@@ -770,7 +770,7 @@ impl<'cx, 'tcx> dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tc
             | TerminatorKind::Resume
             | TerminatorKind::Return
             | TerminatorKind::GeneratorDrop
-            | TerminatorKind::FalseEdges { real_target: _, imaginary_target: _ }
+            | TerminatorKind::FalseEdge { real_target: _, imaginary_target: _ }
             | TerminatorKind::FalseUnwind { real_target: _, unwind: _ } => {
                 // no data used, thus irrelevant to borrowck
             }
@@ -814,7 +814,7 @@ impl<'cx, 'tcx> dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tc
             | TerminatorKind::Call { .. }
             | TerminatorKind::Drop { .. }
             | TerminatorKind::DropAndReplace { .. }
-            | TerminatorKind::FalseEdges { real_target: _, imaginary_target: _ }
+            | TerminatorKind::FalseEdge { real_target: _, imaginary_target: _ }
             | TerminatorKind::FalseUnwind { real_target: _, unwind: _ }
             | TerminatorKind::Goto { .. }
             | TerminatorKind::SwitchInt { .. }

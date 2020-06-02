@@ -53,7 +53,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyBranches {
                 } if (c.literal.try_eval_bool(tcx, param_env) == Some(true)) == expected => {
                     TerminatorKind::Goto { target }
                 }
-                TerminatorKind::FalseEdges { real_target, .. } => {
+                TerminatorKind::FalseEdge { real_target, .. } => {
                     TerminatorKind::Goto { target: real_target }
                 }
                 TerminatorKind::FalseUnwind { real_target, .. } => {

@@ -129,7 +129,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             // These should never occur for MIR we actually run.
             DropAndReplace { .. }
-            | FalseEdges { .. }
+            | FalseEdge { .. }
             | FalseUnwind { .. }
             | Yield { .. }
             | GeneratorDrop => span_bug!(

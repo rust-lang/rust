@@ -39,7 +39,7 @@ fn complicated_match(_1: bool, _2: (bool, bool, std::string::String)) -> i32 {
     }
 
     bb2: {
-        falseEdges -> [real: bb9, imaginary: bb4]; // scope 0 at $DIR/match-arm-scopes.rs:16:9: 16:22
+        falseEdge -> [real: bb9, imaginary: bb4]; // scope 0 at $DIR/match-arm-scopes.rs:16:9: 16:22
     }
 
     bb3: {
@@ -47,7 +47,7 @@ fn complicated_match(_1: bool, _2: (bool, bool, std::string::String)) -> i32 {
     }
 
     bb4: {
-        falseEdges -> [real: bb18, imaginary: bb6]; // scope 0 at $DIR/match-arm-scopes.rs:16:25: 16:38
+        falseEdge -> [real: bb18, imaginary: bb6]; // scope 0 at $DIR/match-arm-scopes.rs:16:25: 16:38
     }
 
     bb5: {
@@ -55,7 +55,7 @@ fn complicated_match(_1: bool, _2: (bool, bool, std::string::String)) -> i32 {
     }
 
     bb6: {
-        falseEdges -> [real: bb26, imaginary: bb7]; // scope 0 at $DIR/match-arm-scopes.rs:17:9: 17:21
+        falseEdge -> [real: bb26, imaginary: bb7]; // scope 0 at $DIR/match-arm-scopes.rs:17:9: 17:21
     }
 
     bb7: {
@@ -92,7 +92,7 @@ fn complicated_match(_1: bool, _2: (bool, bool, std::string::String)) -> i32 {
     }
 
     bb10: {
-        falseEdges -> [real: bb12, imaginary: bb11]; // scope 0 at $DIR/match-arm-scopes.rs:16:42: 16:73
+        falseEdge -> [real: bb12, imaginary: bb11]; // scope 0 at $DIR/match-arm-scopes.rs:16:42: 16:73
     }
 
     bb11: {
@@ -145,7 +145,7 @@ fn complicated_match(_1: bool, _2: (bool, bool, std::string::String)) -> i32 {
         StorageDead(_9);                 // scope 0 at $DIR/match-arm-scopes.rs:16:78: 16:79
         StorageDead(_8);                 // scope 0 at $DIR/match-arm-scopes.rs:16:78: 16:79
         StorageDead(_6);                 // scope 0 at $DIR/match-arm-scopes.rs:16:78: 16:79
-        falseEdges -> [real: bb3, imaginary: bb4]; // scope 0 at $DIR/match-arm-scopes.rs:16:42: 16:73
+        falseEdge -> [real: bb3, imaginary: bb4]; // scope 0 at $DIR/match-arm-scopes.rs:16:42: 16:73
     }
 
     bb18: {
@@ -163,7 +163,7 @@ fn complicated_match(_1: bool, _2: (bool, bool, std::string::String)) -> i32 {
     }
 
     bb19: {
-        falseEdges -> [real: bb21, imaginary: bb20]; // scope 0 at $DIR/match-arm-scopes.rs:16:42: 16:73
+        falseEdge -> [real: bb21, imaginary: bb20]; // scope 0 at $DIR/match-arm-scopes.rs:16:42: 16:73
     }
 
     bb20: {
@@ -204,7 +204,7 @@ fn complicated_match(_1: bool, _2: (bool, bool, std::string::String)) -> i32 {
         StorageDead(_12);                // scope 0 at $DIR/match-arm-scopes.rs:16:78: 16:79
         StorageDead(_8);                 // scope 0 at $DIR/match-arm-scopes.rs:16:78: 16:79
         StorageDead(_6);                 // scope 0 at $DIR/match-arm-scopes.rs:16:78: 16:79
-        falseEdges -> [real: bb5, imaginary: bb6]; // scope 0 at $DIR/match-arm-scopes.rs:16:42: 16:73
+        falseEdge -> [real: bb5, imaginary: bb6]; // scope 0 at $DIR/match-arm-scopes.rs:16:42: 16:73
     }
 
     bb24: {

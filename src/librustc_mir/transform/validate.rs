@@ -159,7 +159,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     self.check_bb(location, *drop);
                 }
             }
-            TerminatorKind::FalseEdges { real_target, imaginary_target } => {
+            TerminatorKind::FalseEdge { real_target, imaginary_target } => {
                 self.check_bb(location, *real_target);
                 self.check_bb(location, *imaginary_target);
             }

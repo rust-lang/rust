@@ -1160,7 +1160,7 @@ pub enum TerminatorKind<'tcx> {
 
     /// A block where control flow only ever takes one real path, but borrowck
     /// needs to be more conservative.
-    FalseEdges {
+    FalseEdge {
         /// The target normal control flow will take.
         real_target: BasicBlock,
         /// A block control flow could conceptually jump to, but won't in
@@ -1314,7 +1314,7 @@ impl<'tcx> TerminatorKind<'tcx> {
                 Some(t).into_iter().chain(slice::from_ref(u))
             }
             SwitchInt { ref targets, .. } => None.into_iter().chain(&targets[..]),
-            FalseEdges { ref real_target, ref imaginary_target } => {
+            FalseEdge { ref real_target, ref imaginary_target } => {
                 Some(real_target).into_iter().chain(slice::from_ref(imaginary_target))
             }
         }
@@ -1348,7 +1348,7 @@ impl<'tcx> TerminatorKind<'tcx> {
                 Some(t).into_iter().chain(slice::from_mut(u))
             }
             SwitchInt { ref mut targets, .. } => None.into_iter().chain(&mut targets[..]),
-            FalseEdges { ref mut real_target, ref mut imaginary_target } => {
+            FalseEdge { ref mut real_target, ref mut imaginary_target } => {
                 Some(real_target).into_iter().chain(slice::from_mut(imaginary_target))
             }
         }
@@ -1364,7 +1364,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::Yield { .. }
             | TerminatorKind::SwitchInt { .. }
-            | TerminatorKind::FalseEdges { .. }
+            | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::InlineAsm { .. } => None,
             TerminatorKind::Call { cleanup: ref unwind, .. }
             | TerminatorKind::Assert { cleanup: ref unwind, .. }
@@ -1384,7 +1384,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::Yield { .. }
             | TerminatorKind::SwitchInt { .. }
-            | TerminatorKind::FalseEdges { .. }
+            | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::InlineAsm { .. } => None,
             TerminatorKind::Call { cleanup: ref mut unwind, .. }
             | TerminatorKind::Assert { cleanup: ref mut unwind, .. }
@@ -1598,7 +1598,7 @@ impl<'tcx> TerminatorKind<'tcx> {
                 msg.fmt_assert_args(fmt)?;
                 write!(fmt, ")")
             }
-            FalseEdges { .. } => write!(fmt, "falseEdges"),
+            FalseEdge { .. } => write!(fmt, "falseEdge"),
             FalseUnwind { .. } => write!(fmt, "falseUnwind"),
             InlineAsm { template, ref operands, options, .. } => {
                 write!(fmt, "asm!(\"{}\"", InlineAsmTemplatePiece::to_string(template))?;
@@ -1683,7 +1683,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             }
             Assert { cleanup: None, .. } => vec!["".into()],
             Assert { .. } => vec!["success".into(), "unwind".into()],
-            FalseEdges { .. } => vec!["real".into(), "imaginary".into()],
+            FalseEdge { .. } => vec!["real".into(), "imaginary".into()],
             FalseUnwind { unwind: Some(_), .. } => vec!["real".into(), "cleanup".into()],
             FalseUnwind { unwind: None, .. } => vec!["real".into()],
             InlineAsm { destination: Some(_), .. } => vec!["".into()],

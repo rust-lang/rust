@@ -609,7 +609,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
             // instead.
             TerminatorKind::Abort
             | TerminatorKind::Assert { .. }
-            | TerminatorKind::FalseEdges { .. }
+            | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. }
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::Goto { .. }

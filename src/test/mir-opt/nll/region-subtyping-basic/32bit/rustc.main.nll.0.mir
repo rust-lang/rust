@@ -102,7 +102,7 @@ fn main() -> () {
     }
 
     bb3: {
-        falseEdges -> [real: bb5, imaginary: bb4]; // bb3[0]: scope 3 at $DIR/region-subtyping-basic.rs:20:5: 24:6
+        falseEdge -> [real: bb5, imaginary: bb4]; // bb3[0]: scope 3 at $DIR/region-subtyping-basic.rs:20:5: 24:6
     }
 
     bb4: {

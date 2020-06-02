@@ -60,11 +60,11 @@ fn full_tested_match() -> () {
     }
 
     bb3: {
-        falseEdges -> [real: bb6, imaginary: bb4]; // scope 0 at $DIR/match_false_edges.rs:16:9: 16:16
+        falseEdge -> [real: bb6, imaginary: bb4]; // scope 0 at $DIR/match_false_edges.rs:16:9: 16:16
     }
 
     bb4: {
-        falseEdges -> [real: bb10, imaginary: bb2]; // scope 0 at $DIR/match_false_edges.rs:17:9: 17:16
+        falseEdge -> [real: bb10, imaginary: bb2]; // scope 0 at $DIR/match_false_edges.rs:17:9: 17:16
     }
 
     bb5: {

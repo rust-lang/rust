@@ -342,7 +342,7 @@ fn check_terminator(
 ) -> McfResult {
     let span = terminator.source_info.span;
     match &terminator.kind {
-        TerminatorKind::FalseEdges { .. }
+        TerminatorKind::FalseEdge { .. }
         | TerminatorKind::FalseUnwind { .. }
         | TerminatorKind::Goto { .. }
         | TerminatorKind::Return

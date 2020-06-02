@@ -61,7 +61,7 @@ fn main() -> () {
     }
 
     bb2: {
-        falseEdges -> [real: bb9, imaginary: bb6]; // scope 2 at $DIR/match_test.rs:13:9: 13:14
+        falseEdge -> [real: bb9, imaginary: bb6]; // scope 2 at $DIR/match_test.rs:13:9: 13:14
     }
 
     bb3: {
@@ -98,7 +98,7 @@ fn main() -> () {
     }
 
     bb6: {
-        falseEdges -> [real: bb12, imaginary: bb8]; // scope 2 at $DIR/match_test.rs:14:9: 14:16
+        falseEdge -> [real: bb12, imaginary: bb8]; // scope 2 at $DIR/match_test.rs:14:9: 14:16
     }
 
     bb7: {
@@ -106,7 +106,7 @@ fn main() -> () {
     }
 
     bb8: {
-        falseEdges -> [real: bb13, imaginary: bb3]; // scope 2 at $DIR/match_test.rs:15:9: 15:11
+        falseEdge -> [real: bb13, imaginary: bb3]; // scope 2 at $DIR/match_test.rs:15:9: 15:11
     }
 
     bb9: {
@@ -131,7 +131,7 @@ fn main() -> () {
 
     bb11: {
         StorageDead(_9);                 // scope 2 at $DIR/match_test.rs:13:24: 13:25
-        falseEdges -> [real: bb3, imaginary: bb6]; // scope 2 at $DIR/match_test.rs:13:18: 13:19
+        falseEdge -> [real: bb3, imaginary: bb6]; // scope 2 at $DIR/match_test.rs:13:18: 13:19
     }
 
     bb12: {

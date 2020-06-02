@@ -87,7 +87,7 @@ fn match_tuple(_1: (u32, bool, std::option::Option<i32>, u32)) -> u32 {
     }
 
     bb8: {
-        falseEdges -> [real: bb9, imaginary: bb1]; // scope 0 at $DIR/exponential-or.rs:8:9: 8:79
+        falseEdge -> [real: bb9, imaginary: bb1]; // scope 0 at $DIR/exponential-or.rs:8:9: 8:79
     }
 
     bb9: {
