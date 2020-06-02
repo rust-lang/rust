@@ -2002,7 +2002,7 @@ mod tests {
         assert_eq!(count, 8);
         assert_eq!(
             writer.get_ref().buffer.as_slice(),
-            b"Line 1\nLine 2\nLine 3\nLine 4\n Line 5".as_ref()
+            b"Line 1\nLine 2\nLine 3\nLine 4\nLine 5\n".as_ref()
         );
     }
 
