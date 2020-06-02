@@ -30,8 +30,7 @@ rustc_serialize = { path = "../librustc_serialize" }
 rustc_ast = { path = "../librustc_ast" }
 rustc_span = { path = "../librustc_span" }
 byteorder = { version = "1.3" }
-chalk-ir =      { git = "https://github.com/rust-lang/chalk.git", rev = "ea1ca4ddc43abcfed77420f294a3713fac714e18" }
-#chalk-ir = "0.10.0"
+chalk-ir = "0.11.0"
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }
 measureme = "0.7.1"
 rustc_session = { path = "../librustc_session" }
