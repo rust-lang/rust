@@ -2,14 +2,17 @@ error[E0758]: cannot infer an appropriate lifetime
   --> $DIR/static-return-lifetime-infered.rs:7:16
    |
 LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> {
-   |                         -----     ----------------------- ...is required to live as long as `'static` here...
-   |                         |
-   |                         this data with an anonymous lifetime `'_`...
+   |                         ----- this data with an anonymous lifetime `'_`...
 LL |         self.x.iter().map(|a| a.0)
    |         ------ ^^^^
    |         |
-   |         ...and is captured here
+   |         ...is captured here...
    |
+note: ...and is required to live as long as `'static` here
+  --> $DIR/static-return-lifetime-infered.rs:6:35
+   |
+LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> {
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^
 help: to declare that the `impl Trait` captures data from argument `self`, you can add an explicit `'_` lifetime bound
    |
 LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> + '_ {
@@ -19,14 +22,17 @@ error[E0758]: cannot infer an appropriate lifetime
   --> $DIR/static-return-lifetime-infered.rs:11:16
    |
 LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> {
-   |                        --------     ----------------------- ...is required to live as long as `'static` here...
-   |                        |
-   |                        this data with lifetime `'a`...
+   |                        -------- this data with lifetime `'a`...
 LL |         self.x.iter().map(|a| a.0)
    |         ------ ^^^^
    |         |
-   |         ...and is captured here
+   |         ...is captured here...
    |
+note: ...and is required to live as long as `'static` here
+  --> $DIR/static-return-lifetime-infered.rs:10:37
+   |
+LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> {
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^
 help: to declare that the `impl Trait` captures data from argument `self`, you can add an explicit `'a` lifetime bound
    |
 LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> + 'a {

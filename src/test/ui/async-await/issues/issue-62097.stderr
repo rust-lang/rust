@@ -6,8 +6,12 @@ LL |     pub async fn run_dummy_fn(&self) {
    |                               |
    |                               this data with an anonymous lifetime `'_`...
    |                               ...is captured here...
+   |
+note: ...and is required to live as long as `'static` here
+  --> $DIR/issue-62097.rs:13:9
+   |
 LL |         foo(|| self.bar()).await;
-   |         --- ...and is required to live as long as `'static` here
+   |         ^^^
 
 error: aborting due to previous error
 

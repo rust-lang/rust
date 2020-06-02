@@ -10,15 +10,18 @@ error[E0758]: cannot infer an appropriate lifetime
   --> $DIR/missing-lifetimes-in-signature.rs:19:5
    |
 LL |   fn foo<G, T>(g: G, dest: &mut T) -> impl FnOnce()
-   |                            ------     ------------- ...is required to live as long as `'static` here...
-   |                            |
-   |                            this data with an anonymous lifetime `'_`...
+   |                            ------ this data with an anonymous lifetime `'_`...
 ...
 LL | /     move || {
 LL | |         *dest = g.get();
 LL | |     }
-   | |_____^ ...and is captured here
+   | |_____^ ...is captured here...
    |
+note: ...and is required to live as long as `'static` here
+  --> $DIR/missing-lifetimes-in-signature.rs:15:37
+   |
+LL | fn foo<G, T>(g: G, dest: &mut T) -> impl FnOnce()
+   |                                     ^^^^^^^^^^^^^
 help: to declare that the `impl Trait` captures data from argument `dest`, you can add an explicit `'_` lifetime bound
    |
 LL | fn foo<G, T>(g: G, dest: &mut T) -> impl FnOnce() + '_

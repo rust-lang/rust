@@ -2,11 +2,15 @@ error[E0758]: cannot infer an appropriate lifetime
   --> $DIR/arbitrary_self_types_pin_lifetime_impl_trait.rs:6:44
    |
 LL |     fn f(self: Pin<&Self>) -> impl Clone { self }
-   |                ----------     ----------   ^^^^ ...and is captured here
-   |                |              |
-   |                |              ...is required to live as long as `'static` here...
+   |                ----------                  ^^^^ ...is captured here...
+   |                |
    |                this data with an anonymous lifetime `'_`...
    |
+note: ...and is required to live as long as `'static` here
+  --> $DIR/arbitrary_self_types_pin_lifetime_impl_trait.rs:6:31
+   |
+LL |     fn f(self: Pin<&Self>) -> impl Clone { self }
+   |                               ^^^^^^^^^^
 help: to declare that the `impl Trait` captures data from argument `self`, you can add an explicit `'_` lifetime bound
    |
 LL |     fn f(self: Pin<&Self>) -> impl Clone + '_ { self }
