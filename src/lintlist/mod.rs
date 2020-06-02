@@ -1023,7 +1023,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         group: "style",
         desc: "creating a let-binding and then immediately returning it like `let x = expr; x` at the end of a block",
         deprecation: None,
-        module: "returns",
+        module: "let_and_return",
     },
     Lint {
         name: "let_underscore_lock",
