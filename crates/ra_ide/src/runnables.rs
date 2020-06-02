@@ -1,19 +1,19 @@
+use std::fmt;
+
 use hir::{AsAssocItem, Attrs, HirFileId, InFile, Semantics};
 use itertools::Itertools;
+use ra_cfg::CfgExpr;
 use ra_ide_db::RootDatabase;
 use ra_syntax::{
-    ast::{self, AstNode, AttrsOwner, ModuleItemOwner, NameOwner},
-    match_ast, SyntaxNode, TextRange,
+    ast::{self, AstNode, AttrsOwner, DocCommentsOwner, ModuleItemOwner, NameOwner},
+    match_ast, SyntaxNode,
 };
 
-use crate::FileId;
-use ast::DocCommentsOwner;
-use ra_cfg::CfgExpr;
-use std::fmt::Display;
+use crate::{display::ToNav, FileId, NavigationTarget};
 
 #[derive(Debug)]
 pub struct Runnable {
-    pub range: TextRange,
+    pub nav: NavigationTarget,
     pub kind: RunnableKind,
     pub cfg_exprs: Vec<CfgExpr>,
 }
@@ -24,8 +24,8 @@ pub enum TestId {
     Path(String),
 }
 
-impl Display for TestId {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+impl fmt::Display for TestId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             TestId::Name(name) => write!(f, "{}", name),
             TestId::Path(path) => write!(f, "{}", path),
@@ -131,7 +131,8 @@ fn runnable_fn(
     let cfg_exprs =
         attrs.by_key("cfg").tt_values().map(|subtree| ra_cfg::parse_cfg(subtree)).collect();
 
-    Some(Runnable { range: fn_def.syntax().text_range(), kind, cfg_exprs })
+    let nav = NavigationTarget::from_named(sema.db, InFile::new(file_id.into(), &fn_def));
+    Some(Runnable { nav, kind, cfg_exprs })
 }
 
 #[derive(Debug)]
@@ -183,7 +184,6 @@ fn runnable_mod(
     if !has_test_function {
         return None;
     }
-    let range = module.syntax().text_range();
     let module_def = sema.to_def(&module)?;
 
     let path = module_def
@@ -197,7 +197,8 @@ fn runnable_mod(
     let cfg_exprs =
         attrs.by_key("cfg").tt_values().map(|subtree| ra_cfg::parse_cfg(subtree)).collect();
 
-    Some(Runnable { range, kind: RunnableKind::TestMod { path }, cfg_exprs })
+    let nav = module_def.to_nav(sema.db);
+    Some(Runnable { nav, kind: RunnableKind::TestMod { path }, cfg_exprs })
 }
 
 #[cfg(test)]

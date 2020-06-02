@@ -23,7 +23,6 @@ use ra_ide::{
 use ra_prof::profile;
 use ra_project_model::TargetKind;
 use ra_syntax::{AstNode, SyntaxKind, TextRange, TextSize};
-use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::to_value;
 use stdx::format_to;
@@ -401,7 +400,7 @@ pub fn handle_runnables(
     let cargo_spec = CargoTargetSpec::for_file(&world, file_id)?;
     for runnable in world.analysis().runnables(file_id)? {
         if let Some(offset) = offset {
-            if !runnable.range.contains_inclusive(offset) {
+            if !runnable.nav.full_range().contains_inclusive(offset) {
                 continue;
             }
         }
@@ -422,25 +421,31 @@ pub fn handle_runnables(
         Some(spec) => {
             for &cmd in ["check", "test"].iter() {
                 res.push(lsp_ext::Runnable {
-                    range: Default::default(),
                     label: format!("cargo {} -p {}", cmd, spec.package),
+                    location: None,
                     kind: lsp_ext::RunnableKind::Cargo,
-                    args: vec![cmd.to_string(), "--package".to_string(), spec.package.clone()],
-                    extra_args: Vec::new(),
-                    env: FxHashMap::default(),
-                    cwd: workspace_root.map(|root| root.to_owned()),
+                    args: lsp_ext::CargoRunnable {
+                        workspace_root: workspace_root.map(|root| root.to_owned()),
+                        cargo_args: vec![
+                            cmd.to_string(),
+                            "--package".to_string(),
+                            spec.package.clone(),
+                        ],
+                        executable_args: Vec::new(),
+                    },
                 })
             }
         }
         None => {
             res.push(lsp_ext::Runnable {
-                range: Default::default(),
                 label: "cargo check --workspace".to_string(),
+                location: None,
                 kind: lsp_ext::RunnableKind::Cargo,
-                args: vec!["check".to_string(), "--workspace".to_string()],
-                extra_args: Vec::new(),
-                env: FxHashMap::default(),
-                cwd: workspace_root.map(|root| root.to_owned()),
+                args: lsp_ext::CargoRunnable {
+                    workspace_root: workspace_root.map(|root| root.to_owned()),
+                    cargo_args: vec!["check".to_string(), "--workspace".to_string()],
+                    executable_args: Vec::new(),
+                },
             });
         }
     }
@@ -782,10 +787,11 @@ pub fn handle_code_lens(
                 }
             };
 
-            let mut r = to_proto::runnable(&world, file_id, runnable)?;
+            let range = to_proto::range(&line_index, runnable.nav.range());
+            let r = to_proto::runnable(&world, file_id, runnable)?;
             if world.config.lens.run {
                 let lens = CodeLens {
-                    range: r.range,
+                    range,
                     command: Some(Command {
                         title: run_title.to_string(),
                         command: "rust-analyzer.runSingle".into(),
@@ -797,13 +803,8 @@ pub fn handle_code_lens(
             }
 
             if debugee && world.config.lens.debug {
-                if r.args[0] == "run" {
-                    r.args[0] = "build".into();
-                } else {
-                    r.args.push("--no-run".into());
-                }
                 let debug_lens = CodeLens {
-                    range: r.range,
+                    range,
                     command: Some(Command {
                         title: "Debug".into(),
                         command: "rust-analyzer.debugSingle".into(),

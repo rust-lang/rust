@@ -8,7 +8,6 @@ use ra_ide::{
 };
 use ra_syntax::{SyntaxKind, TextRange, TextSize};
 use ra_vfs::LineEndings;
-use rustc_hash::FxHashMap;
 
 use crate::{
     cargo_target_spec::CargoTargetSpec, lsp_ext, semantic_tokens, world::WorldSnapshot, Result,
@@ -638,9 +637,8 @@ pub(crate) fn runnable(
 ) -> Result<lsp_ext::Runnable> {
     let spec = CargoTargetSpec::for_file(world, file_id)?;
     let target = spec.as_ref().map(|s| s.target.clone());
-    let (args, extra_args) =
+    let (cargo_args, executable_args) =
         CargoTargetSpec::runnable_args(spec, &runnable.kind, &runnable.cfg_exprs)?;
-    let line_index = world.analysis().file_line_index(file_id)?;
     let label = match &runnable.kind {
         RunnableKind::Test { test_id, .. } => format!("test {}", test_id),
         RunnableKind::TestMod { path } => format!("test-mod {}", path),
@@ -650,18 +648,16 @@ pub(crate) fn runnable(
             target.map_or_else(|| "run binary".to_string(), |t| format!("run {}", t))
         }
     };
+    let location = location_link(world, None, runnable.nav)?;
 
     Ok(lsp_ext::Runnable {
-        range: range(&line_index, runnable.range),
         label,
+        location: Some(location),
         kind: lsp_ext::RunnableKind::Cargo,
-        args,
-        extra_args,
-        env: {
-            let mut m = FxHashMap::default();
-            m.insert("RUST_BACKTRACE".to_string(), "short".to_string());
-            m
+        args: lsp_ext::CargoRunnable {
+            workspace_root: world.workspace_root_for(file_id).map(|root| root.to_owned()),
+            cargo_args,
+            executable_args,
         },
-        cwd: world.workspace_root_for(file_id).map(|root| root.to_owned()),
     })
 }

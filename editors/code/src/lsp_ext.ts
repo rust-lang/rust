@@ -46,16 +46,15 @@ export interface RunnablesParams {
     position: lc.Position | null;
 }
 
-export type RunnableKind = "cargo" | "rustc" | "rustup";
-
 export interface Runnable {
-    range: lc.Range;
     label: string;
-    kind: RunnableKind;
-    args: string[];
-    extraArgs: string[];
-    env: { [key: string]: string };
-    cwd: string | null;
+    location?: lc.LocationLink;
+    kind: "cargo";
+    args: {
+        workspaceRoot?: string;
+        cargoArgs: string[];
+        executableArgs: string[];
+    };
 }
 export const runnables = new lc.RequestType<RunnablesParams, Runnable[], void>("rust-analyzer/runnables");
 
