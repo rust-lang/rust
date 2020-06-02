@@ -214,7 +214,6 @@ use crate::mem::ManuallyDrop;
 /// remain `#[repr(transparent)]`. That said, `MaybeUninit<T>` will *always* guarantee that it has
 /// the same size, alignment, and ABI as `T`; it's just that the way `MaybeUninit` implements that
 /// guarantee may evolve.
-#[allow(missing_debug_implementations)]
 #[stable(feature = "maybe_uninit", since = "1.36.0")]
 // Lang item so we can wrap other types in it. This is useful for generators.
 #[lang = "maybe_uninit"]
