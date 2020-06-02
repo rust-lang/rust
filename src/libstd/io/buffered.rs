@@ -450,7 +450,7 @@ impl<R: Seek> Seek for BufReader<R> {
 pub struct BufWriter<W: Write> {
     // FIXME: Can this just be W, instead of Option<W>? I don't see any code
     // paths that lead to this being None, or that ever check if it IS none,
-    // even in drop implementations.
+    // even in drop implementations. #72925.
     inner: Option<W>,
     // FIXME: Replace this with a VecDeque. Because VecDeque is a Ring buffer,
     // this would enable BufWriter to operate without any interior copies.
@@ -715,7 +715,7 @@ impl<W: Write> Write for BufWriter<W> {
         if self.buf.len() + buf.len() > self.buf.capacity() {
             self.flush_buf()?;
         }
-        // FIXME: Why no len > capacity? Why not buffer len == capacity?
+        // FIXME: Why no len > capacity? Why not buffer len == capacity? #72919
         if buf.len() >= self.buf.capacity() {
             self.panicked = true;
             let r = self.get_mut().write(buf);
@@ -735,7 +735,7 @@ impl<W: Write> Write for BufWriter<W> {
         if self.buf.len() + buf.len() > self.buf.capacity() {
             self.flush_buf()?;
         }
-        // FIXME: Why no len > capacity? Why not buffer len == capacity?
+        // FIXME: Why no len > capacity? Why not buffer len == capacity? #72919
         if buf.len() >= self.buf.capacity() {
             self.panicked = true;
             let r = self.get_mut().write_all(buf);
@@ -752,7 +752,7 @@ impl<W: Write> Write for BufWriter<W> {
         if self.buf.len() + total_len > self.buf.capacity() {
             self.flush_buf()?;
         }
-        // FIXME: Why no len > capacity? Why not buffer len == capacity?
+        // FIXME: Why no len > capacity? Why not buffer len == capacity? #72919
         if total_len >= self.buf.capacity() {
             self.panicked = true;
             let r = self.get_mut().write_vectored(bufs);
