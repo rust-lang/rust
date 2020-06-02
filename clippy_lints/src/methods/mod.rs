@@ -26,7 +26,7 @@ use rustc_span::symbol::{sym, SymbolStr};
 use crate::consts::{constant, Constant};
 use crate::utils::usage::mutated_variables;
 use crate::utils::{
-    get_arg_name, get_parent_expr, get_trait_def_id, has_iter_method, implements_trait, in_macro, is_copy,
+    get_arg_name, get_parent_expr, get_trait_def_id, has_iter_method, higher, implements_trait, in_macro, is_copy,
     is_ctor_or_promotable_const_function, is_expn_of, is_type_diagnostic_item, iter_input_pats, last_path_segment,
     match_def_path, match_qpath, match_trait_method, match_type, match_var, method_calls, method_chain_args, paths,
     remove_blocks, return_ty, same_tys, single_segment_path, snippet, snippet_with_applicability,
@@ -1242,6 +1242,32 @@ declare_clippy_lint! {
     "using `as_ref().map(Deref::deref)`, which is more succinctly expressed as `as_deref()`"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Checks for usage of `iter().next()` on a Slice or an Array
+    ///
+    /// **Why is this bad?** These can be shortened into `.get()`
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// # let a = [1, 2, 3];
+    /// # let b = vec![1, 2, 3];
+    /// a[2..].iter().next();
+    /// b.iter().next();
+    /// ```
+    /// should be written as:
+    /// ```rust
+    /// # let a = [1, 2, 3];
+    /// # let b = vec![1, 2, 3];
+    /// a.get(2);
+    /// b.get(0);
+    /// ```
+    pub ITER_NEXT_SLICE,
+    style,
+    "using `.iter().next()` on a sliced array, which can be shortened to just `.get()`"
+}
+
 declare_lint_pass!(Methods => [
     UNWRAP_USED,
     EXPECT_USED,
@@ -1273,6 +1299,7 @@ declare_lint_pass!(Methods => [
     FIND_MAP,
     MAP_FLATTEN,
     ITERATOR_STEP_BY_ZERO,
+    ITER_NEXT_SLICE,
     ITER_NTH,
     ITER_NTH_ZERO,
     ITER_SKIP_NEXT,
@@ -1320,6 +1347,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
             },
             ["next", "filter"] => lint_filter_next(cx, expr, arg_lists[1]),
             ["next", "skip_while"] => lint_skip_while_next(cx, expr, arg_lists[1]),
+            ["next", "iter"] => lint_iter_next(cx, expr, arg_lists[1]),
             ["map", "filter"] => lint_filter_map(cx, expr, arg_lists[1], arg_lists[0]),
             ["map", "filter_map"] => lint_filter_map_map(cx, expr, arg_lists[1], arg_lists[0]),
             ["next", "filter_map"] => lint_filter_map_next(cx, expr, arg_lists[1]),
@@ -2196,6 +2224,60 @@ fn lint_step_by<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &hir::Expr<'_>, args
                 "Iterator::step_by(0) will panic at runtime",
             );
         }
+    }
+}
+
+fn lint_iter_next<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr<'_>, iter_args: &'tcx [hir::Expr<'_>]) {
+    let caller_expr = &iter_args[0];
+
+    // Skip lint if the `iter().next()` expression is a for loop argument,
+    // since it is already covered by `&loops::ITER_NEXT_LOOP`
+    let mut parent_expr_opt = get_parent_expr(cx, expr);
+    while let Some(parent_expr) = parent_expr_opt {
+        if higher::for_loop(parent_expr).is_some() {
+            return;
+        }
+        parent_expr_opt = get_parent_expr(cx, parent_expr);
+    }
+
+    if derefs_to_slice(cx, caller_expr, cx.tables.expr_ty(caller_expr)).is_some() {
+        // caller is a Slice
+        if_chain! {
+            if let hir::ExprKind::Index(ref caller_var, ref index_expr) = &caller_expr.kind;
+            if let Some(higher::Range { start: Some(start_expr), end: None, limits: ast::RangeLimits::HalfOpen })
+                = higher::range(cx, index_expr);
+            if let hir::ExprKind::Lit(ref start_lit) = &start_expr.kind;
+            if let ast::LitKind::Int(start_idx, _) = start_lit.node;
+            then {
+                let mut applicability = Applicability::MachineApplicable;
+                span_lint_and_sugg(
+                    cx,
+                    ITER_NEXT_SLICE,
+                    expr.span,
+                    "Using `.iter().next()` on a Slice without end index.",
+                    "try calling",
+                    format!("{}.get({})", snippet_with_applicability(cx, caller_var.span, "..", &mut applicability), start_idx),
+                    applicability,
+                );
+            }
+        }
+    } else if is_type_diagnostic_item(cx, cx.tables.expr_ty(caller_expr), sym!(vec_type))
+        || matches!(&walk_ptrs_ty(cx.tables.expr_ty(caller_expr)).kind, ty::Array(_, _))
+    {
+        // caller is a Vec or an Array
+        let mut applicability = Applicability::MachineApplicable;
+        span_lint_and_sugg(
+            cx,
+            ITER_NEXT_SLICE,
+            expr.span,
+            "Using `.iter().next()` on an array",
+            "try calling",
+            format!(
+                "{}.get(0)",
+                snippet_with_applicability(cx, caller_expr.span, "..", &mut applicability)
+            ),
+            applicability,
+        );
     }
 }
 
