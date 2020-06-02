@@ -43,7 +43,7 @@ Libraries
 - [Unicode 13 is now supported.][69929]
 - [`String` now implements `From<&mut str>`.][69661]
 - [`IoSlice` now implements `Copy`.][69403]
-- [`Vec<T>` now implements `From<[T; N]>`.][68692] Where `N` is less than 32.
+- [`Vec<T>` now implements `From<[T; N]>`.][68692] Where `N` is at most 32.
 - [`proc_macro::LexError` now implements `fmt::Display` and `Error`.][68899]
 - [`from_le_bytes`, `to_le_bytes`, `from_be_bytes`, `to_be_bytes`,
   `from_ne_bytes`, and `to_ne_bytes` methods are now `const` for all
