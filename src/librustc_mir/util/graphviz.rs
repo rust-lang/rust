@@ -1,3 +1,4 @@
+use rustc_graphviz as dot;
 use rustc_hir::def_id::DefId;
 use rustc_index::vec::Idx;
 use rustc_middle::mir::*;

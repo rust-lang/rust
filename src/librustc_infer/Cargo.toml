@@ -10,7 +10,7 @@ path = "lib.rs"
 doctest = false
 
 [dependencies]
-graphviz = { path = "../librustc_graphviz", package = "rustc_graphviz" }
+rustc_graphviz = { path = "../librustc_graphviz" }
 log = { version = "0.4", features = ["release_max_level_info", "std"] }
 rustc_middle = { path = "../librustc_middle" }
 rustc_data_structures = { path = "../librustc_data_structures" }

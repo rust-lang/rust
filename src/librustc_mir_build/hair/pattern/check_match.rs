@@ -3,7 +3,7 @@ use super::_match::WitnessPreference::*;
 use super::_match::{expand_pattern, is_useful, MatchCheckCtxt, Matrix, PatStack};
 use super::{PatCtxt, PatKind, PatternError};
 
-use arena::TypedArena;
+use rustc_arena::TypedArena;
 use rustc_ast::ast::Mutability;
 use rustc_errors::{error_code, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;

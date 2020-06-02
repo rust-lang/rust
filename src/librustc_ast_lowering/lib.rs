@@ -85,7 +85,7 @@ mod path;
 
 const HIR_ID_COUNTER_LOCKED: u32 = 0xFFFFFFFF;
 
-rustc_hir::arena_types!(::arena::declare_arena, [], 'tcx);
+rustc_hir::arena_types!(rustc_arena::declare_arena, [], 'tcx);
 
 struct LoweringContext<'a, 'hir: 'a> {
     crate_root: Option<Symbol>,

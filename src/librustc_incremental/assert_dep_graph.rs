@@ -33,10 +33,10 @@
 //! fn baz() { foo(); }
 //! ```
 
-use graphviz as dot;
 use rustc_ast::ast;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::implementation::{Direction, NodeIndex, INCOMING, OUTGOING};
+use rustc_graphviz as dot;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};

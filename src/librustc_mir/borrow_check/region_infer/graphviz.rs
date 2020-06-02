@@ -7,6 +7,7 @@ use std::io::{self, Write};
 
 use super::*;
 use crate::borrow_check::constraints::OutlivesConstraint;
+use rustc_graphviz as dot;
 
 impl<'tcx> RegionInferenceContext<'tcx> {
     /// Write out the region constraint graph.

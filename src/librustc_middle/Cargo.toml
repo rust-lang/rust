@@ -10,7 +10,7 @@ path = "lib.rs"
 doctest = false
 
 [dependencies]
-arena = { path = "../librustc_arena", package = "rustc_arena" }
+rustc_arena = { path = "../librustc_arena" }
 bitflags = "1.2.1"
 scoped-tls = "1.0"
 log = { version = "0.4", features = ["release_max_level_info", "std"] }

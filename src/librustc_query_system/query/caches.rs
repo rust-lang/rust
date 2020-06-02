@@ -2,7 +2,7 @@ use crate::dep_graph::DepNodeIndex;
 use crate::query::plumbing::{QueryLookup, QueryState};
 use crate::query::QueryContext;
 
-use arena::TypedArena;
+use rustc_arena::TypedArena;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::sync::WorkerLocal;

@@ -1,5 +1,3 @@
-use fmt_macros as parse;
-
 use rustc_ast::ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token;
@@ -8,6 +6,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_expand::base::{self, *};
 use rustc_parse::parser::Parser;
+use rustc_parse_format as parse;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{InnerSpan, Span};
 

@@ -1,8 +1,6 @@
 use ArgumentType::*;
 use Position::*;
 
-use fmt_macros as parse;
-
 use rustc_ast::ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token;
@@ -10,6 +8,7 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, Applicability, DiagnosticBuilder};
 use rustc_expand::base::{self, *};
+use rustc_parse_format as parse;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{MultiSpan, Span};
 
