@@ -11,7 +11,7 @@ test = false
 doctest = false
 
 [dependencies]
-arena = { path = "../libarena" }
+arena = { path = "../librustc_arena", package = "rustc_arena" }
 log = "0.4"
 rustc_middle = { path = "../librustc_middle" }
 rustc_attr = { path = "../librustc_attr" }

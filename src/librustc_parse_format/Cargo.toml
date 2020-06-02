@@ -1,11 +1,11 @@
 [package]
 authors = ["The Rust Project Developers"]
-name = "fmt_macros"
+name = "rustc_parse_format"
 version = "0.0.0"
 edition = "2018"
 
 [lib]
-name = "fmt_macros"
+name = "rustc_parse_format"
 path = "lib.rs"
 
 [dependencies]

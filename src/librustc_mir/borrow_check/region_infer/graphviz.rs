@@ -1,5 +1,5 @@
 //! This module provides linkage between RegionInferenceContext and
-//! libgraphviz traits, specialized to attaching borrowck analysis
+//! librustc_graphviz traits, specialized to attaching borrowck analysis
 //! data to rendered labels.
 
 use std::borrow::Cow;
