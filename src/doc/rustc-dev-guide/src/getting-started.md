@@ -69,14 +69,19 @@ recommend trying to build on a Raspberry Pi :P
 - x86 and ARM are both supported (TODO: confirm)
 - Recommended 30GB of free disk space; otherwise, you will have to keep
   clearing incremental caches.
-- Recommended >=8GB RAM
-- Recommended >=2 cores; more cores really helps
+- Recommended >=8GB RAM.
+- Recommended >=2 cores; more cores really helps.
 - You will need an internet connection to build; the bootstrapping process
   involves updating git submodules and downloading a beta compiler. It doesn't
   need to be super fast, but that can help.
 
 Building the compiler takes more than half an hour on my moderately powerful
-laptop (even longer if you build LLVM).
+laptop. The first time you build the compiler, LLVM will also be built unless
+you use system LLVM (see below).
+
+Like `cargo`, the build system will use as many cores as possible. Sometimes
+this can cause you to run low on memory. You can use `-j` to adjust the number
+concurrent jobs.
 
 ### Cloning
 
@@ -113,7 +118,7 @@ the following settings:
   This is turned off by default because it's technically unsound. Sometimes
   this will cause weird crashes, but it can really speed things up.
 - `llvm-config`: enable building with system LLVM. [See this chapter][sysllvm]
-  for more info. This avoids having to build LLVM, which takes forever.
+  for more info. This avoids building LLVM, which can take a while.
 
 [sysllvm]: ./building/suggested.html#building-with-system-llvm
 
