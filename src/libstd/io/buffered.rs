@@ -565,7 +565,7 @@ impl<W: Write> BufWriter<W> {
     /// data. Writes as much as possible without exceeding capacity. Returns
     /// the number of bytes written.
     #[inline]
-    fn write_to_buffer(&mut self, buf: &[u8]) -> usize {
+    fn write_to_buf(&mut self, buf: &[u8]) -> usize {
         let available = self.buf.capacity() - self.buf.len();
         let amt_to_buffer = available.min(buf.len());
         self.buf.extend_from_slice(&buf[..amt_to_buffer]);
@@ -689,7 +689,7 @@ impl<W: Write> Write for BufWriter<W> {
             self.panicked = false;
             r
         } else {
-            Ok(self.write_to_buffer(buf))
+            Ok(self.write_to_buf(buf))
         }
     }
 
@@ -703,7 +703,7 @@ impl<W: Write> Write for BufWriter<W> {
             self.panicked = false;
             r
         } else {
-            self.write_to_buffer(buf);
+            self.write_to_buf(buf);
             Ok(())
         }
     }
@@ -861,7 +861,7 @@ impl<W> fmt::Display for IntoInnerError<W> {
 /// Private helper struct for implementing the line-buffered writing logic.
 /// This shim temporarily wraps a BufWriter, and uses its internals to
 /// implement a line-buffered writer (specifically by using the internal
-/// methods like write_to_buffer and flush_buffer). In this way, a more
+/// methods like write_to_buf and flush_buf). In this way, a more
 /// efficient abstraction can be created than one that only had access to
 /// `write` and `flush`, without needlessly duplicating a lot of the
 /// implementation details of BufWriter. This also allows existing
@@ -925,7 +925,7 @@ impl<'a, W: Write> Write for LineWriterShim<'a, W> {
             }
             // Otherwise, arrange for the lines to be written directly to the
             // inner writer.
-            Some(newline_idx) => newline_idx,
+            Some(newline_idx) => newline_idx + 1,
         };
 
         // Flush existing content to prepare for our write
@@ -933,7 +933,7 @@ impl<'a, W: Write> Write for LineWriterShim<'a, W> {
 
         // This is what we're going to try to write directly to the inner
         // writer. The rest will be buffered, if nothing goes wrong.
-        let lines = &buf[..newline_idx + 1];
+        let lines = &buf[..newline_idx];
 
         // Write `lines` directly to the inner writer. In keeping with the
         // `write` convention, make at most one attempt to add new (unbuffered)
@@ -953,11 +953,10 @@ impl<'a, W: Write> Write for LineWriterShim<'a, W> {
         // the rest as possible). If there were any unwritten newlines, we
         // only buffer out to the last unwritten newline; this helps prevent
         // flushing partial lines on subsequent calls to LineWriterShim::write.
-        let tail = &buf[flushed..];
-        let buffered = match memchr::memrchr(b'\n', tail) {
-            None => self.buffer.write_to_buffer(tail),
-            Some(i) => self.buffer.write_to_buffer(&tail[..i + 1]),
-        };
+        let tail =
+            if flushed < newline_idx { &buf[flushed..newline_idx] } else { &buf[newline_idx..] };
+
+        let buffered = self.buffer.write_to_buf(tail);
         Ok(flushed + buffered)
     }
 
@@ -1056,7 +1055,7 @@ impl<'a, W: Write> Write for LineWriterShim<'a, W> {
         // Now that the write has succeeded, buffer the rest (or as much of the
         // rest as possible)
         let buffered: usize =
-            tail.iter().map(|buf| self.buffer.write_to_buffer(buf)).take_while(|&n| n > 0).sum();
+            tail.iter().map(|buf| self.buffer.write_to_buf(buf)).take_while(|&n| n > 0).sum();
 
         Ok(flushed + buffered)
     }
@@ -1076,6 +1075,9 @@ impl<'a, W: Write> Write for LineWriterShim<'a, W> {
     /// writer, it will also flush the existing buffer if it contains any
     /// newlines, even if the incoming data does not contain any newlines.
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        // The default `write_all` calls `write` in a loop; we can do better
+        // by simply calling self.inner().write_all directly. This avoids
+        // round trips to `self.buffer` in the event of partial writes.
         let newline_idx = match memchr::memrchr(b'\n', buf) {
             // If there are no new newlines (that is, if this write is less than
             // one line), just do a regular buffered write
