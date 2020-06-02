@@ -272,7 +272,8 @@ After that, the feature gate can be removed and the feature turned on for all us
 
 As mentioned above, Rust has strong backwards-compatibility guarantees. To this
 end, we are reluctant to make breaking changes. However, sometimes they are
-needed to correct compiler bugs (e.g. code that compiled but should not).
+needed to correct compiler bugs (e.g. code that compiled but should not) or
+make progress on some features.
 
 Depending on the scale of the breakage, there are a few different actions that
 can be taken.  If the reviewer believes the breakage is very minimal (i.e. very
