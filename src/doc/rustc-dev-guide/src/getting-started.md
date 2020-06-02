@@ -60,11 +60,11 @@ advice.**][suggested]
 ### System Requirements
 
 [**See this chapter for detailed software requirements.**](./building/prerequisites.md)
-Most notably, you will need python 2 to run `x.py`.
+Most notably, you will need Python 2 to run `x.py`.
 
 There are no hard hardware requirements, but building the compiler is
 computationally expensive, so a beefier machine will help, and I wouldn't
-recommend building try to build on a Raspberry Pi :P
+recommend trying to build on a Raspberry Pi :P
 
 - x86 and ARM are both supported (TODO: confirm)
 - Recommended 30GB of free disk space; otherwise, you will have to keep
@@ -75,7 +75,7 @@ recommend building try to build on a Raspberry Pi :P
   involves updating git submodules and downloading a beta compiler. It doesn't
   need to be super fast, but that can help.
 
-Building the compiler take more than half an hour on my moderately powerful
+Building the compiler takes more than half an hour on my moderately powerful
 laptop (even longer if you build LLVM).
 
 ### Cloning
@@ -120,7 +120,7 @@ the following settings:
 ### `./x.py` Intro
 
 `rustc` is a bootstrapping compiler because it is written in Rust. Where do you
-get do you get the original compiler from? We use the current `beta` compiler
+get the original compiler from? We use the current beta compiler
 to build the compiler. Then, we use that compiler to build itself. Thus,
 `rustc` has a 2-stage build.
 
