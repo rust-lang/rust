@@ -12,15 +12,19 @@
 
 #![deny(warnings)]
 
+#[cfg(not(windows))]
+use std::fs::Permissions;
+#[cfg(not(windows))]
+use std::os::unix::prelude::*;
+
 use std::cmp;
 use std::env;
-use std::fs::{self, File, Permissions};
+use std::fs::{self, File};
 use std::io::prelude::*;
 use std::io::{self, BufReader};
 use std::net::{TcpListener, TcpStream};
-use std::os::unix::prelude::*;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::{Command, ExitStatus, Stdio};
 use std::str;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
@@ -72,21 +76,23 @@ fn main() {
 
     let config = Config::parse_args();
 
-    let bind_addr = if cfg!(target_os = "android") || config.remote {
+    let bind_addr = if cfg!(target_os = "android") || cfg!(windows) || config.remote {
         "0.0.0.0:12345"
     } else {
         "10.0.2.15:12345"
     };
 
-    let (listener, work) = if cfg!(target_os = "android") {
-        (t!(TcpListener::bind(bind_addr)), "/data/tmp/work")
+    let listener = t!(TcpListener::bind(bind_addr));
+    let work: PathBuf = if cfg!(target_os = "android") {
+        "/data/tmp/work".into()
     } else {
-        (t!(TcpListener::bind(bind_addr)), "/tmp/work")
+        let mut temp_dir = env::temp_dir();
+        temp_dir.push("work");
+        temp_dir
     };
     println!("listening!");
 
-    let work = Path::new(work);
-    t!(fs::create_dir_all(work));
+    t!(fs::create_dir_all(&work));
 
     let lock = Arc::new(Mutex::new(()));
 
@@ -99,10 +105,11 @@ fn main() {
         if &buf[..] == b"ping" {
             t!(socket.write_all(b"pong"));
         } else if &buf[..] == b"push" {
-            handle_push(socket, work);
+            handle_push(socket, &work);
         } else if &buf[..] == b"run " {
             let lock = lock.clone();
-            thread::spawn(move || handle_run(socket, work, &lock));
+            let work = work.clone();
+            thread::spawn(move || handle_run(socket, &work, &lock));
         } else {
             panic!("unknown command {:?}", buf);
         }
@@ -196,17 +203,28 @@ fn handle_run(socket: TcpStream, work: &Path, lock: &Mutex<()>) {
     let exe = recv(&path, &mut reader);
 
     let mut cmd = Command::new(&exe);
-    for arg in args {
-        cmd.arg(arg);
-    }
-    for (k, v) in env {
-        cmd.env(k, v);
-    }
+    cmd.args(args);
+    cmd.envs(env);
 
     // Support libraries were uploaded to `work` earlier, so make sure that's
     // in `LD_LIBRARY_PATH`. Also include our own current dir which may have
     // had some libs uploaded.
-    cmd.env("LD_LIBRARY_PATH", format!("{}:{}", work.display(), path.display()));
+    if cfg!(windows) {
+        // On windows, libraries are just searched in the executable directory,
+        // system directories, PWD, and PATH, in that order. PATH is the only one
+        // we can change for this.
+        cmd.env(
+            "PATH",
+            env::join_paths(
+                std::iter::once(work.to_owned())
+                    .chain(std::iter::once(path.clone()))
+                    .chain(env::split_paths(&env::var_os("PATH").unwrap())),
+            )
+            .unwrap(),
+        );
+    } else {
+        cmd.env("LD_LIBRARY_PATH", format!("{}:{}", work.display(), path.display()));
+    }
 
     // Spawn the child and ferry over stdout/stderr to the socket in a framed
     // fashion (poor man's style)
@@ -223,10 +241,9 @@ fn handle_run(socket: TcpStream, work: &Path, lock: &Mutex<()>) {
 
     // Finally send over the exit status.
     let status = t!(child.wait());
-    let (which, code) = match status.code() {
-        Some(n) => (0, n),
-        None => (1, status.signal().unwrap()),
-    };
+
+    let (which, code) = get_status_code(&status);
+
     t!(socket.lock().unwrap().write_all(&[
         which,
         (code >> 24) as u8,
@@ -234,6 +251,19 @@ fn handle_run(socket: TcpStream, work: &Path, lock: &Mutex<()>) {
         (code >> 8) as u8,
         (code >> 0) as u8,
     ]));
+}
+
+#[cfg(not(windows))]
+fn get_status_code(status: &ExitStatus) -> (u8, i32) {
+    match status.code() {
+        Some(n) => (0, n),
+        None => (1, status.signal().unwrap()),
+    }
+}
+
+#[cfg(windows)]
+fn get_status_code(status: &ExitStatus) -> (u8, i32) {
+    (0, status.code().unwrap())
 }
 
 fn recv<B: BufRead>(dir: &Path, io: &mut B) -> PathBuf {
@@ -253,9 +283,16 @@ fn recv<B: BufRead>(dir: &Path, io: &mut B) -> PathBuf {
     let dst = dir.join(t!(str::from_utf8(&filename[..len])));
     let amt = read_u32(io) as u64;
     t!(io::copy(&mut io.take(amt), &mut t!(File::create(&dst))));
-    t!(fs::set_permissions(&dst, Permissions::from_mode(0o755)));
+    set_permissions(&dst);
     dst
 }
+
+#[cfg(not(windows))]
+fn set_permissions(path: &Path) {
+    t!(fs::set_permissions(&path, Permissions::from_mode(0o755)));
+}
+#[cfg(windows)]
+fn set_permissions(_path: &Path) {}
 
 fn my_copy(src: &mut dyn Read, which: u8, dst: &Mutex<dyn Write>) {
     let mut b = [0; 1024];

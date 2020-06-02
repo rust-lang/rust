@@ -1584,29 +1584,34 @@ impl<'test> TestCx<'test> {
             //
             // into
             //
-            //      remote-test-client run program:support-lib.so arg1 arg2
+            //      remote-test-client run program 2 support-lib.so support-lib2.so arg1 arg2
             //
             // The test-client program will upload `program` to the emulator
             // along with all other support libraries listed (in this case
-            // `support-lib.so`. It will then execute the program on the
-            // emulator with the arguments specified (in the environment we give
-            // the process) and then report back the same result.
+            // `support-lib.so` and `support-lib2.so`. It will then execute
+            // the program on the emulator with the arguments specified
+            // (in the environment we give the process) and then report back
+            // the same result.
             _ if self.config.remote_test_client.is_some() => {
                 let aux_dir = self.aux_output_dir_name();
-                let ProcArgs { mut prog, args } = self.make_run_args();
+                let ProcArgs { prog, args } = self.make_run_args();
+                let mut support_libs = Vec::new();
                 if let Ok(entries) = aux_dir.read_dir() {
                     for entry in entries {
                         let entry = entry.unwrap();
                         if !entry.path().is_file() {
                             continue;
                         }
-                        prog.push_str(":");
-                        prog.push_str(entry.path().to_str().unwrap());
+                        support_libs.push(entry.path());
                     }
                 }
                 let mut test_client =
                     Command::new(self.config.remote_test_client.as_ref().unwrap());
-                test_client.args(&["run", &prog]).args(args).envs(env.clone());
+                test_client
+                    .args(&["run", &support_libs.len().to_string(), &prog])
+                    .args(support_libs)
+                    .args(args)
+                    .envs(env.clone());
                 self.compose_and_run(
                     test_client,
                     self.config.run_lib_path.to_str().unwrap(),

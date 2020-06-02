@@ -1769,7 +1769,7 @@ impl Step for Crate {
         } else if builder.remote_tested(target) {
             cargo.env(
                 format!("CARGO_TARGET_{}_RUNNER", envify(&target)),
-                format!("{} run", builder.tool_exe(Tool::RemoteTestClient).display()),
+                format!("{} run 0", builder.tool_exe(Tool::RemoteTestClient).display()),
             );
         }
 

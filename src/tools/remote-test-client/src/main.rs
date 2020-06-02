@@ -44,7 +44,13 @@ fn main() {
             args.next().map(|s| s.into()),
         ),
         "push" => push(Path::new(&args.next().unwrap())),
-        "run" => run(args.next().unwrap(), args.collect()),
+        "run" => run(
+            args.next().and_then(|count| count.parse().ok()).unwrap(),
+            // the last required parameter must remain the executable
+            // path so that the client works as a cargo runner
+            args.next().unwrap(),
+            args.collect(),
+        ),
         "help" | "-h" | "--help" => help(),
         cmd => {
             println!("unknown command: {}", cmd);
@@ -197,11 +203,13 @@ fn push(path: &Path) {
     println!("done pushing {:?}", path);
 }
 
-fn run(files: String, args: Vec<String>) {
+fn run(support_lib_count: usize, exe: String, all_args: Vec<String>) {
     let device_address = env::var(REMOTE_ADDR_ENV).unwrap_or(DEFAULT_ADDR.to_string());
     let client = t!(TcpStream::connect(device_address));
     let mut client = BufWriter::new(client);
     t!(client.write_all(b"run "));
+
+    let (support_libs, args) = all_args.split_at(support_lib_count);
 
     // Send over the args
     for arg in args {
@@ -227,9 +235,7 @@ fn run(files: String, args: Vec<String>) {
     t!(client.write_all(&[0]));
 
     // Send over support libraries
-    let mut files = files.split(':');
-    let exe = files.next().unwrap();
-    for file in files.map(Path::new) {
+    for file in support_libs.iter().map(Path::new) {
         send(&file, &mut client);
     }
     t!(client.write_all(&[0]));
@@ -302,7 +308,8 @@ Usage: {0} <command> [<args>]
 Sub-commands:
     spawn-emulator <target> <server> <tmpdir> [rootfs]   See below
     push <path>                                          Copy <path> to emulator
-    run <files> [args...]                                Run program on emulator
+    run <support_lib_count> <file> [support_libs...] [args...]
+                                                         Run program on emulator
     help                                                 Display help message
 
 Spawning an emulator:
@@ -321,8 +328,8 @@ specified. The file at <path> is sent to this target.
 Executing commands on a running emulator:
 
 First the target emulator/adb session is connected to as for pushing files. Next
-the colon separated list of <files> is pushed to the target. Finally, the first
-file in <files> is executed in the emulator, preserving the current environment.
+the <file> and any specified support libs are pushed to the target. Finally, the
+<file> is executed in the emulator, preserving the current environment.
 That command's status code is returned.
 ",
         env::args().next().unwrap(),
