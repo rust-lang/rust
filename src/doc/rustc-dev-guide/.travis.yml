@@ -1,4 +1,5 @@
 language: rust
+dist: focal
 rust:
 - nightly
 cache:
