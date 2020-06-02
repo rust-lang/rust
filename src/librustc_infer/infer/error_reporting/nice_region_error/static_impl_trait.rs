@@ -77,18 +77,12 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                                 sup_origin.span(),
                                 "...is captured here, requiring it to live as long as `'static`",
                             );
-                        } else if sup_origin.span() <= return_sp {
+                        } else {
                             err.span_label(sup_origin.span(), "...is captured here...");
-                            err.span_label(
+                            err.span_note(
                                 return_sp,
                                 "...and is required to live as long as `'static` here",
                             );
-                        } else {
-                            err.span_label(
-                                return_sp,
-                                "...is required to live as long as `'static` here...",
-                            );
-                            err.span_label(sup_origin.span(), "...and is captured here");
                         }
                     } else {
                         err.span_label(

@@ -2,11 +2,15 @@ error[E0758]: cannot infer an appropriate lifetime
   --> $DIR/must_outlive_least_region_or_bound.rs:3:35
    |
 LL | fn elided(x: &i32) -> impl Copy { x }
-   |              ----     ---------   ^ ...and is captured here
-   |              |        |
-   |              |        ...is required to live as long as `'static` here...
+   |              ----                 ^ ...is captured here...
+   |              |
    |              this data with an anonymous lifetime `'_`...
    |
+note: ...and is required to live as long as `'static` here
+  --> $DIR/must_outlive_least_region_or_bound.rs:3:23
+   |
+LL | fn elided(x: &i32) -> impl Copy { x }
+   |                       ^^^^^^^^^
 help: to declare that the `impl Trait` captures data from argument `x`, you can add an explicit `'_` lifetime bound
    |
 LL | fn elided(x: &i32) -> impl Copy + '_ { x }
@@ -16,11 +20,15 @@ error[E0758]: cannot infer an appropriate lifetime
   --> $DIR/must_outlive_least_region_or_bound.rs:6:44
    |
 LL | fn explicit<'a>(x: &'a i32) -> impl Copy { x }
-   |                    -------     ---------   ^ ...and is captured here
-   |                    |           |
-   |                    |           ...is required to live as long as `'static` here...
+   |                    -------                 ^ ...is captured here...
+   |                    |
    |                    this data with lifetime `'a`...
    |
+note: ...and is required to live as long as `'static` here
+  --> $DIR/must_outlive_least_region_or_bound.rs:6:32
+   |
+LL | fn explicit<'a>(x: &'a i32) -> impl Copy { x }
+   |                                ^^^^^^^^^
 help: to declare that the `impl Trait` captures data from argument `x`, you can add an explicit `'a` lifetime bound
    |
 LL | fn explicit<'a>(x: &'a i32) -> impl Copy + 'a { x }
@@ -30,11 +38,15 @@ error[E0758]: cannot infer an appropriate lifetime
   --> $DIR/must_outlive_least_region_or_bound.rs:9:46
    |
 LL | fn elided2(x: &i32) -> impl Copy + 'static { x }
-   |               ----     -------------------   ^ ...and is captured here
-   |               |        |
-   |               |        ...is required to live as long as `'static` here...
+   |               ----                           ^ ...is captured here...
+   |               |
    |               this data with an anonymous lifetime `'_`...
    |
+note: ...and is required to live as long as `'static` here
+  --> $DIR/must_outlive_least_region_or_bound.rs:9:24
+   |
+LL | fn elided2(x: &i32) -> impl Copy + 'static { x }
+   |                        ^^^^^^^^^^^^^^^^^^^
 help: consider changing the `impl Trait`'s explicit `'static` bound to argument `x`
    |
 LL | fn elided2(x: &i32) -> impl Copy + '_ { x }
@@ -48,11 +60,15 @@ error[E0758]: cannot infer an appropriate lifetime
   --> $DIR/must_outlive_least_region_or_bound.rs:12:55
    |
 LL | fn explicit2<'a>(x: &'a i32) -> impl Copy + 'static { x }
-   |                     -------     -------------------   ^ ...and is captured here
-   |                     |           |
-   |                     |           ...is required to live as long as `'static` here...
+   |                     -------                           ^ ...is captured here...
+   |                     |
    |                     this data with lifetime `'a`...
    |
+note: ...and is required to live as long as `'static` here
+  --> $DIR/must_outlive_least_region_or_bound.rs:12:33
+   |
+LL | fn explicit2<'a>(x: &'a i32) -> impl Copy + 'static { x }
+   |                                 ^^^^^^^^^^^^^^^^^^^
 help: consider changing the `impl Trait`'s explicit `'static` bound to argument `x`
    |
 LL | fn explicit2<'a>(x: &'a i32) -> impl Copy + 'a { x }
@@ -74,11 +90,13 @@ error[E0758]: cannot infer an appropriate lifetime
   --> $DIR/must_outlive_least_region_or_bound.rs:33:69
    |
 LL | fn with_bound<'a>(x: &'a i32) -> impl LifetimeTrait<'a> + 'static { x }
-   |                      -------     --------------------------------   ^ ...and is captured here
-   |                      |           |
-   |                      |           ...is required to live as long as `'static` here...
-   |                      this data with lifetime `'a`...
+   |                      ------- this data with lifetime `'a`...        ^ ...is captured here...
    |
+note: ...and is required to live as long as `'static` here
+  --> $DIR/must_outlive_least_region_or_bound.rs:33:34
+   |
+LL | fn with_bound<'a>(x: &'a i32) -> impl LifetimeTrait<'a> + 'static { x }
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider changing the `impl Trait`'s explicit `'static` bound to argument `x`
    |
 LL | fn with_bound<'a>(x: &'a i32) -> impl LifetimeTrait<'a> + 'a { x }
