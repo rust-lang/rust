@@ -13,16 +13,9 @@ use crate::{
 
 use rustc_hash::FxHashSet;
 
-pub use hir_def::{
-    body::{
-        scope::{ExprScopes, ScopeEntry, ScopeId},
-        Body, BodySourceMap, ExprPtr, ExprSource, PatPtr, PatSource,
-    },
-    expr::{
-        ArithOp, Array, BinaryOp, BindingAnnotation, CmpOp, Expr, ExprId, Literal, LogicOp,
-        MatchArm, Ordering, Pat, PatId, RecordFieldPat, RecordLitField, Statement, UnaryOp,
-    },
-    LocalFieldId, VariantId,
+use hir_def::{
+    body::Body,
+    expr::{Expr, ExprId, UnaryOp},
 };
 
 pub struct UnsafeValidator<'a, 'b: 'a> {
@@ -119,16 +112,27 @@ pub fn unsafe_expressions(
         }
     }
 
-    'unsafe_exprs: for unsafe_expr in &mut unsafe_exprs {
-        let mut child = unsafe_expr.expr;
-        while let Some(parent) = body.parent_map.get(child) {
-            if unsafe_block_exprs.contains(parent) {
-                unsafe_expr.inside_unsafe_block = true;
-                continue 'unsafe_exprs;
-            }
-            child = *parent;
-        }
+    for unsafe_expr in &mut unsafe_exprs {
+        unsafe_expr.inside_unsafe_block =
+            is_in_unsafe(&body, body.body_expr, unsafe_expr.expr, false);
     }
 
     unsafe_exprs
+}
+
+fn is_in_unsafe(body: &Body, current: ExprId, needle: ExprId, within_unsafe: bool) -> bool {
+    if current == needle {
+        return within_unsafe;
+    }
+
+    let expr = &body.exprs[current];
+    if let &Expr::Unsafe { body: child } = expr {
+        return is_in_unsafe(body, child, needle, true);
+    }
+
+    let mut found = false;
+    expr.walk_child_exprs(|child| {
+        found = found || is_in_unsafe(body, child, needle, within_unsafe);
+    });
+    found
 }

@@ -184,7 +184,6 @@ pub struct Body {
     /// The `ExprId` of the actual body expression.
     pub body_expr: ExprId,
     pub item_scope: ItemScope,
-    pub parent_map: ArenaMap<ExprId, ExprId>,
 }
 
 pub type ExprPtr = AstPtr<ast::Expr>;
