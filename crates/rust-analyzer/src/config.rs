@@ -122,7 +122,7 @@ impl Default for Config {
             check: Some(FlycheckConfig::CargoCommand {
                 command: "check".to_string(),
                 all_targets: true,
-                all_features: true,
+                all_features: false,
                 extra_args: Vec::new(),
             }),
 
