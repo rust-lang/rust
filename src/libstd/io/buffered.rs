@@ -715,6 +715,7 @@ impl<W: Write> Write for BufWriter<W> {
         if self.buf.len() + buf.len() > self.buf.capacity() {
             self.flush_buf()?;
         }
+        // FIXME: Why no len > capacity? Why not buffer len == capacity?
         if buf.len() >= self.buf.capacity() {
             self.panicked = true;
             let r = self.get_mut().write(buf);
@@ -733,6 +734,7 @@ impl<W: Write> Write for BufWriter<W> {
         if self.buf.len() + buf.len() > self.buf.capacity() {
             self.flush_buf()?;
         }
+        // FIXME: Why no len > capacity? Why not buffer len == capacity?
         if buf.len() >= self.buf.capacity() {
             self.panicked = true;
             let r = self.get_mut().write_all(buf);
@@ -749,6 +751,7 @@ impl<W: Write> Write for BufWriter<W> {
         if self.buf.len() + total_len > self.buf.capacity() {
             self.flush_buf()?;
         }
+        // FIXME: Why no len > capacity? Why not buffer len == capacity?
         if total_len >= self.buf.capacity() {
             self.panicked = true;
             let r = self.get_mut().write_vectored(bufs);
@@ -1901,13 +1904,12 @@ mod tests {
                 IoSlice::new(b"a"),
             ])
             .unwrap(),
-            1,
+            2,
         );
         assert_eq!(a.get_ref(), b"\n");
 
         assert_eq!(
             a.write_vectored(&[
-                IoSlice::new(b"a"),
                 IoSlice::new(&[]),
                 IoSlice::new(b"b"),
                 IoSlice::new(&[]),
@@ -1916,7 +1918,7 @@ mod tests {
                 IoSlice::new(b"c"),
             ])
             .unwrap(),
-            4,
+            3,
         );
         assert_eq!(a.get_ref(), b"\n");
         a.flush().unwrap();
