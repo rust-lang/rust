@@ -23,7 +23,7 @@ or reading the [rustc dev guide][rustcguidebuild].
 
 [rustcguidebuild]: https://rustc-dev-guide.rust-lang.org/building/how-to-build-and-run.html
 
-### Building on *nix
+### Building on Unix-like system
 1. Make sure you have installed the dependencies:
 
    * `g++` 5.1 or later or `clang++` 3.5 or later
