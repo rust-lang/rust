@@ -722,7 +722,8 @@ impl<W: Write> Write for BufWriter<W> {
             self.panicked = false;
             r
         } else {
-            Ok(self.write_to_buf(buf))
+            self.buf.extend_from_slice(buf);
+            Ok(buf.len())
         }
     }
 
@@ -741,7 +742,7 @@ impl<W: Write> Write for BufWriter<W> {
             self.panicked = false;
             r
         } else {
-            self.write_to_buf(buf);
+            self.buf.extend_from_slice(buf);
             Ok(())
         }
     }
@@ -758,7 +759,8 @@ impl<W: Write> Write for BufWriter<W> {
             self.panicked = false;
             r
         } else {
-            self.buf.write_vectored(bufs)
+            bufs.iter().for_each(|b| self.buf.extend_from_slice(b));
+            Ok(total_len)
         }
     }
 
@@ -1403,7 +1405,11 @@ mod tests {
     // rustfmt-on-save.
     impl Read for ShortReader {
         fn read(&mut self, _: &mut [u8]) -> io::Result<usize> {
-            if self.lengths.is_empty() { Ok(0) } else { Ok(self.lengths.remove(0)) }
+            if self.lengths.is_empty() {
+                Ok(0)
+            } else {
+                Ok(self.lengths.remove(0))
+            }
         }
     }
 
