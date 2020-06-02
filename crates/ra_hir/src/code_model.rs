@@ -671,10 +671,6 @@ impl Function {
         db.function_data(self.id).params.clone()
     }
 
-    pub fn is_unsafe(self, db: &dyn HirDatabase) -> bool {
-        db.function_data(self.id).is_unsafe
-    }
-
     pub fn diagnostics(self, db: &dyn HirDatabase, sink: &mut DiagnosticSink) {
         let _p = profile("Function::diagnostics");
         let infer = db.infer(self.id.into());
