@@ -1,10 +1,10 @@
-error: symbol-name(_ZN5impl13foo3Foo3bar17h92cf46db76791039E)
+error: symbol-name(_ZN5impl13foo3Foo3bar17ha318160f105e638cE)
   --> $DIR/impl1.rs:16:9
    |
 LL |         #[rustc_symbol_name]
    |         ^^^^^^^^^^^^^^^^^^^^
 
-error: demangling(impl1::foo::Foo::bar::h92cf46db76791039)
+error: demangling(impl1::foo::Foo::bar::ha318160f105e638c)
   --> $DIR/impl1.rs:16:9
    |
 LL |         #[rustc_symbol_name]
@@ -22,13 +22,13 @@ error: def-path(foo::Foo::bar)
 LL |         #[rustc_def_path]
    |         ^^^^^^^^^^^^^^^^^
 
-error: symbol-name(_ZN5impl13bar33_$LT$impl$u20$impl1..foo..Foo$GT$3baz17h90c4a800b1aa0df0E)
+error: symbol-name(_ZN5impl13bar33_$LT$impl$u20$impl1..foo..Foo$GT$3baz17h6c2dbab6e66f9fa3E)
   --> $DIR/impl1.rs:34:9
    |
 LL |         #[rustc_symbol_name]
    |         ^^^^^^^^^^^^^^^^^^^^
 
-error: demangling(impl1::bar::<impl impl1::foo::Foo>::baz::h90c4a800b1aa0df0)
+error: demangling(impl1::bar::<impl impl1::foo::Foo>::baz::h6c2dbab6e66f9fa3)
   --> $DIR/impl1.rs:34:9
    |
 LL |         #[rustc_symbol_name]
