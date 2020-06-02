@@ -448,6 +448,9 @@ impl<R: Seek> Seek for BufReader<R> {
 /// [`flush`]: #method.flush
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct BufWriter<W: Write> {
+    // FIXME: Can this just be W, instead of Option<W>? I don't see any code
+    // paths that lead to this being None, or that ever check if it IS none,
+    // even in drop implementations.
     inner: Option<W>,
     // FIXME: Replace this with a VecDeque. Because VecDeque is a Ring buffer,
     // this would enable BufWriter to operate without any interior copies.
@@ -533,32 +536,62 @@ impl<W: Write> BufWriter<W> {
     /// `write`), any 0-length writes from `inner` must be reported as i/o
     /// errors from this method.
     fn flush_buf(&mut self) -> io::Result<()> {
-        let mut written = 0;
-        let len = self.buf.len();
-        let mut ret = Ok(());
-        while written < len {
+        /// Helper struct to ensure the buffer is updated after all the writes
+        /// are complete
+        struct BufGuard<'a> {
+            buffer: &'a mut Vec<u8>,
+            written: usize,
+        }
+
+        impl<'a> BufGuard<'a> {
+            fn new(buffer: &'a mut Vec<u8>) -> Self {
+                Self { buffer, written: 0 }
+            }
+
+            /// The unwritten part of the buffer
+            fn remaining(&self) -> &[u8] {
+                &self.buffer[self.written..]
+            }
+
+            /// Flag some bytes as removed from the front of the buffer
+            fn consume(&mut self, amt: usize) {
+                self.written += amt;
+            }
+
+            /// true if all of the bytes have been written
+            fn done(&self) -> bool {
+                self.written >= self.buffer.len()
+            }
+        }
+
+        impl Drop for BufGuard<'_> {
+            fn drop(&mut self) {
+                if self.written > 0 {
+                    self.buffer.drain(..self.written);
+                }
+            }
+        }
+
+        let mut guard = BufGuard::new(&mut self.buf);
+        let inner = self.inner.as_mut().unwrap();
+        while !guard.done() {
             self.panicked = true;
-            let r = self.inner.as_mut().unwrap().write(&self.buf[written..]);
+            let r = inner.write(guard.remaining());
             self.panicked = false;
 
             match r {
                 Ok(0) => {
-                    ret =
-                        Err(Error::new(ErrorKind::WriteZero, "failed to write the buffered data"));
-                    break;
+                    return Err(Error::new(
+                        ErrorKind::WriteZero,
+                        "failed to write the buffered data",
+                    ))
                 }
-                Ok(n) => written += n,
+                Ok(n) => guard.consume(n),
                 Err(ref e) if e.kind() == io::ErrorKind::Interrupted => {}
-                Err(e) => {
-                    ret = Err(e);
-                    break;
-                }
+                Err(e) => return Err(e),
             }
         }
-        if written > 0 {
-            self.buf.drain(..written);
-        }
-        ret
+        Ok(())
     }
 
     /// Buffer some data without flushing it, regardless of the size of the
