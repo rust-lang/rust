@@ -584,7 +584,7 @@ impl<W: Write> BufWriter<W> {
                     return Err(Error::new(
                         ErrorKind::WriteZero,
                         "failed to write the buffered data",
-                    ))
+                    ));
                 }
                 Ok(n) => guard.consume(n),
                 Err(ref e) if e.kind() == io::ErrorKind::Interrupted => {}
@@ -2018,8 +2018,11 @@ mod tests {
         let mut writer = LineWriter::new(writer);
 
         let content = [
+            IoSlice::new(&[]),
             IoSlice::new(b"Line 1\nLine"),
             IoSlice::new(b" 2\nLine 3\nL"),
+            IoSlice::new(&[]),
+            IoSlice::new(&[]),
             IoSlice::new(b"ine 4"),
             IoSlice::new(b"\nLine 5\n"),
         ];
@@ -2028,15 +2031,15 @@ mod tests {
         assert_eq!(count, 11);
         assert_eq!(&writer.get_ref().buffer, b"Line 1\n");
 
-        let count = writer.write_vectored(&content[1..]).unwrap();
+        let count = writer.write_vectored(&content[2..]).unwrap();
         assert_eq!(count, 11);
         assert_eq!(&writer.get_ref().buffer, b"Line 1\nLine 2\nLine 3\n");
 
-        let count = writer.write_vectored(&content[2..]).unwrap();
+        let count = writer.write_vectored(&content[5..]).unwrap();
         assert_eq!(count, 5);
         assert_eq!(&writer.get_ref().buffer, b"Line 1\nLine 2\nLine 3\n");
 
-        let count = writer.write_vectored(&content[3..]).unwrap();
+        let count = writer.write_vectored(&content[6..]).unwrap();
         assert_eq!(count, 8);
         assert_eq!(
             writer.get_ref().buffer.as_slice(),
