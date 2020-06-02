@@ -959,24 +959,58 @@ impl<'tcx> PolyExistentialTraitRef<'tcx> {
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct Binder<T>(T, u32);
 
-impl<T> Binder<T> {
+impl<'tcx, T> Binder<T>
+where
+    T: TypeFoldable<'tcx>,
+{
     /// Wraps `value` in a binder, asserting that `value` does not
     /// contain any bound vars that would be bound by the
     /// binder. This is commonly used to 'inject' a value T into a
     /// different binding level.
-    pub fn dummy<'tcx>(value: T) -> Binder<T>
-    where
-        T: TypeFoldable<'tcx>,
-    {
+    pub fn dummy(value: T) -> Binder<T> {
         debug_assert!(!value.has_escaping_bound_vars());
         Binder(value, 0)
     }
 
     /// Wraps `value` in a binder, binding higher-ranked vars (if any).
     pub fn bind(value: T) -> Binder<T> {
-        Binder(value, 0)
-    }
+        use crate::ty::fold::CountBoundVars;
+        use rustc_data_structures::fx::FxHashSet;
+        let mut counter = CountBoundVars {
+            outer_index: ty::INNERMOST,
+            bound_tys: FxHashSet::default(),
+            bound_regions: FxHashSet::default(),
+            bound_consts: FxHashSet::default(),
+        };
+        value.visit_with(&mut counter);
+        let bound_tys = counter.bound_tys.len();
+        let bound_regions = if !counter.bound_regions.is_empty() {
+            let mut env = false;
+            let mut anons = FxHashSet::default();
+            let mut named = FxHashSet::default();
+            for br in counter.bound_regions {
+                match br.kind {
+                    ty::BrAnon(idx) => {
+                        anons.insert(idx);
+                    }
+                    ty::BrNamed(def_id, _) => {
+                        named.insert(def_id);
+                    }
+                    ty::BrEnv => env = true,
+                }
+            }
+            (if env { 1 } else { 0 }) + anons.len() + named.len()
+        } else {
+            0
+        };
+        let bound_consts = counter.bound_consts.len();
 
+        let bound_vars = bound_tys + bound_regions + bound_consts;
+        Binder(value, bound_vars as u32)
+    }
+}
+
+impl<T> Binder<T> {
     /// Skips the binder and returns the "bound" value. This is a
     /// risky thing to do because it's easy to get confused about
     /// De Bruijn indices and the like. It is usually better to
@@ -995,6 +1029,10 @@ impl<T> Binder<T> {
     ///   a type parameter `X`, since the type `X` does not reference any regions
     pub fn skip_binder(self) -> T {
         self.0
+    }
+
+    pub fn bound_vars(&self) -> u32 {
+        self.1
     }
 
     pub fn as_ref(&self) -> Binder<&T> {
