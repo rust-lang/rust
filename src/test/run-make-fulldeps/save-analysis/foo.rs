@@ -27,7 +27,7 @@ use std::char::from_u32;
 static uni: &'static str = "Les Miséééééééérables";
 static yy: usize = 25;
 
-static bob: Option<graphviz::RenderOption> = None;
+static bob: Option<rustc_graphviz::RenderOption> = None;
 
 // buglink test - see issue #1337.
 
@@ -418,7 +418,7 @@ impl Error + 'static + Send {
         <Error + 'static>::is::<T>(self)
     }
 }
-extern crate serialize as rustc_serialize;
+extern crate rustc_serialize;
 #[derive(Clone, Copy, Hash, RustcEncodable, RustcDecodable,
          PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
 struct AllDerives(i32);

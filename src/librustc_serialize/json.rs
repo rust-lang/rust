@@ -68,7 +68,6 @@
 //!
 //! ```rust
 //! # #![feature(rustc_private)]
-//! extern crate serialize as rustc_serialize; // for the deriving below
 //! use rustc_serialize::json;
 //!
 //! // Automatically generate `Decodable` and `Encodable` trait implementations
@@ -103,7 +102,6 @@
 //!
 //! ```rust
 //! # #![feature(rustc_private)]
-//! extern crate serialize as rustc_serialize;
 //! use rustc_serialize::json::{self, ToJson, Json};
 //!
 //! // A custom data structure
@@ -143,7 +141,6 @@
 //!
 //! ```rust
 //! # #![feature(rustc_private)]
-//! extern crate serialize as rustc_serialize;
 //! use std::collections::BTreeMap;
 //! use rustc_serialize::json::{self, Json, ToJson};
 //!

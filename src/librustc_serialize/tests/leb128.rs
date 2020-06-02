@@ -1,4 +1,3 @@
-extern crate serialize as rustc_serialize;
 use rustc_serialize::leb128::*;
 
 macro_rules! impl_test_unsigned_leb128 {
