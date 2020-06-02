@@ -56,7 +56,7 @@ export interface Runnable {
         executableArgs: string[];
     };
 }
-export const runnables = new lc.RequestType<RunnablesParams, Runnable[], void>("rust-analyzer/runnables");
+export const runnables = new lc.RequestType<RunnablesParams, Runnable[], void>("experimental/runnables");
 
 export type InlayHint = InlayHint.TypeHint | InlayHint.ParamHint | InlayHint.ChainingHint;
 

@@ -87,6 +87,9 @@ pub fn server_capabilities(client_caps: &ClientCapabilities) -> ServerCapabiliti
             "ssr": true,
             "onEnter": true,
             "parentModule": true,
+            "runnables": {
+                "kinds": [ "cargo" ],
+            },
         })),
     }
 }

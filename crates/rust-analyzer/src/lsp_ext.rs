@@ -110,7 +110,7 @@ pub enum Runnables {}
 impl Request for Runnables {
     type Params = RunnablesParams;
     type Result = Vec<Runnable>;
-    const METHOD: &'static str = "rust-analyzer/runnables";
+    const METHOD: &'static str = "experimental/runnables";
 }
 
 #[derive(Serialize, Deserialize, Debug)]
