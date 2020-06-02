@@ -1883,6 +1883,10 @@ pub trait BufRead: Read {
     ///
     /// If successful, this function will return the total number of bytes read.
     ///
+    /// This function is blocking and should be used carefully: it is possible for
+    /// an attacker to continuously send bytes without ever sending the delimiter
+    /// or EOF.
+    ///
     /// # Errors
     ///
     /// This function will ignore all instances of [`ErrorKind::Interrupted`] and
@@ -1944,6 +1948,10 @@ pub trait BufRead: Read {
     /// If successful, this function will return the total number of bytes read.
     ///
     /// If this function returns `Ok(0)`, the stream has reached EOF.
+    ///
+    /// This function is blocking and should be used carefully: it is possible for
+    /// an attacker to continuously send bytes without ever sending a newline
+    /// or EOF.
     ///
     /// # Errors
     ///
