@@ -45,10 +45,13 @@ export interface RunnablesParams {
     textDocument: lc.TextDocumentIdentifier;
     position: lc.Position | null;
 }
+
+export type RunnableKind = "cargo" | "rustc" | "rustup";
+
 export interface Runnable {
     range: lc.Range;
     label: string;
-    bin: string;
+    kind: RunnableKind;
     args: string[];
     extraArgs: string[];
     env: { [key: string]: string };

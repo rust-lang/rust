@@ -1,9 +1,10 @@
 import * as cp from 'child_process';
 import * as os from 'os';
 import * as path from 'path';
+import * as fs from 'fs';
 import * as readline from 'readline';
 import { OutputChannel } from 'vscode';
-import { isValidExecutable } from './util';
+import { log, memoize } from './util';
 
 interface CompilationArtifact {
     fileName: string;
@@ -17,33 +18,34 @@ export interface ArtifactSpec {
     filter?: (artifacts: CompilationArtifact[]) => CompilationArtifact[];
 }
 
-export function artifactSpec(args: readonly string[]): ArtifactSpec {
-    const cargoArgs = [...args, "--message-format=json"];
-
-    // arguments for a runnable from the quick pick should be updated.
-    // see crates\rust-analyzer\src\main_loop\handlers.rs, handle_code_lens
-    switch (cargoArgs[0]) {
-        case "run": cargoArgs[0] = "build"; break;
-        case "test": {
-            if (!cargoArgs.includes("--no-run")) {
-                cargoArgs.push("--no-run");
-            }
-            break;
-        }
-    }
-
-    const result: ArtifactSpec = { cargoArgs: cargoArgs };
-    if (cargoArgs[0] === "test") {
-        // for instance, `crates\rust-analyzer\tests\heavy_tests\main.rs` tests
-        // produce 2 artifacts: {"kind": "bin"} and {"kind": "test"}
-        result.filter = (artifacts) => artifacts.filter(it => it.isTest);
-    }
-
-    return result;
-}
-
 export class Cargo {
     constructor(readonly rootFolder: string, readonly output: OutputChannel) { }
+
+    // Made public for testing purposes
+    static artifactSpec(args: readonly string[]): ArtifactSpec {
+        const cargoArgs = [...args, "--message-format=json"];
+
+        // arguments for a runnable from the quick pick should be updated.
+        // see crates\rust-analyzer\src\main_loop\handlers.rs, handle_code_lens
+        switch (cargoArgs[0]) {
+            case "run": cargoArgs[0] = "build"; break;
+            case "test": {
+                if (!cargoArgs.includes("--no-run")) {
+                    cargoArgs.push("--no-run");
+                }
+                break;
+            }
+        }
+
+        const result: ArtifactSpec = { cargoArgs: cargoArgs };
+        if (cargoArgs[0] === "test") {
+            // for instance, `crates\rust-analyzer\tests\heavy_tests\main.rs` tests
+            // produce 2 artifacts: {"kind": "bin"} and {"kind": "test"}
+            result.filter = (artifacts) => artifacts.filter(it => it.isTest);
+        }
+
+        return result;
+    }
 
     private async getArtifacts(spec: ArtifactSpec): Promise<CompilationArtifact[]> {
         const artifacts: CompilationArtifact[] = [];
@@ -77,7 +79,7 @@ export class Cargo {
     }
 
     async executableFromArgs(args: readonly string[]): Promise<string> {
-        const artifacts = await this.getArtifacts(artifactSpec(args));
+        const artifacts = await this.getArtifacts(Cargo.artifactSpec(args));
 
         if (artifacts.length === 0) {
             throw new Error('No compilation artifacts');
@@ -94,14 +96,7 @@ export class Cargo {
         onStderrString: (data: string) => void
     ): Promise<number> {
         return new Promise((resolve, reject) => {
-            let cargoPath;
-            try {
-                cargoPath = getCargoPathOrFail();
-            } catch (err) {
-                return reject(err);
-            }
-
-            const cargo = cp.spawn(cargoPath, cargoArgs, {
+            const cargo = cp.spawn(cargoPath(), cargoArgs, {
                 stdio: ['ignore', 'pipe', 'pipe'],
                 cwd: this.rootFolder
             });
@@ -126,26 +121,54 @@ export class Cargo {
     }
 }
 
-// Mirrors `ra_env::get_path_for_executable` implementation
-function getCargoPathOrFail(): string {
-    const envVar = process.env.CARGO;
-    const executableName = "cargo";
+/** Mirrors `ra_toolchain::cargo()` implementation */
+export function cargoPath(): string {
+    return getPathForExecutable("cargo");
+}
 
-    if (envVar) {
-        if (isValidExecutable(envVar)) return envVar;
+/** Mirrors `ra_toolchain::get_path_for_executable()` implementation */
+export const getPathForExecutable = memoize(
+    // We apply caching to decrease file-system interactions
+    (executableName: "cargo" | "rustc" | "rustup"): string => {
+        {
+            const envVar = process.env[executableName.toUpperCase()];
+            if (envVar) return envVar;
+        }
 
-        throw new Error(`\`${envVar}\` environment variable points to something that's not a valid executable`);
+        if (lookupInPath(executableName)) return executableName;
+
+        try {
+            // hmm, `os.homedir()` seems to be infallible
+            // it is not mentioned in docs and cannot be infered by the type signature...
+            const standardPath = path.join(os.homedir(), ".cargo", "bin", executableName);
+
+            if (isFile(standardPath)) return standardPath;
+        } catch (err) {
+            log.error("Failed to read the fs info", err);
+        }
+        return executableName;
     }
+);
 
-    if (isValidExecutable(executableName)) return executableName;
+function lookupInPath(exec: string): boolean {
+    const paths = process.env.PATH ?? "";;
 
-    const standardLocation = path.join(os.homedir(), '.cargo', 'bin', executableName);
+    const candidates = paths.split(path.delimiter).flatMap(dirInPath => {
+        const candidate = path.join(dirInPath, exec);
+        return os.type() === "Windows_NT"
+            ? [candidate, `${candidate}.exe`]
+            : [candidate];
+    });
 
-    if (isValidExecutable(standardLocation)) return standardLocation;
+    return candidates.some(isFile);
+}
 
-    throw new Error(
-        `Failed to find \`${executableName}\` executable. ` +
-        `Make sure \`${executableName}\` is in \`$PATH\`, ` +
-        `or set \`${envVar}\` to point to a valid executable.`
-    );
+function isFile(suspectPath: string): boolean {
+    // It is not mentionned in docs, but `statSync()` throws an error when
+    // the path doesn't exist
+    try {
+        return fs.statSync(suspectPath).isFile();
+    } catch {
+        return false;
+    }
 }

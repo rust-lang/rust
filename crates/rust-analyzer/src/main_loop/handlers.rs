@@ -426,7 +426,7 @@ pub fn handle_runnables(
                 res.push(lsp_ext::Runnable {
                     range: Default::default(),
                     label: format!("cargo {} -p {}", cmd, spec.package),
-                    bin: "cargo".to_string(),
+                    kind: lsp_ext::RunnableKind::Cargo,
                     args: vec![cmd.to_string(), "--package".to_string(), spec.package.clone()],
                     extra_args: Vec::new(),
                     env: FxHashMap::default(),
@@ -438,7 +438,7 @@ pub fn handle_runnables(
             res.push(lsp_ext::Runnable {
                 range: Default::default(),
                 label: "cargo check --workspace".to_string(),
-                bin: "cargo".to_string(),
+                kind: lsp_ext::RunnableKind::Cargo,
                 args: vec!["check".to_string(), "--workspace".to_string()],
                 extra_args: Vec::new(),
                 env: FxHashMap::default(),
@@ -982,10 +982,11 @@ fn to_lsp_runnable(
             target.map_or_else(|| "run binary".to_string(), |t| format!("run {}", t))
         }
     };
+
     Ok(lsp_ext::Runnable {
         range: to_proto::range(&line_index, runnable.range),
         label,
-        bin: "cargo".to_string(),
+        kind: lsp_ext::RunnableKind::Cargo,
         args,
         extra_args,
         env: {
