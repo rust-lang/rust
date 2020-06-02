@@ -34,6 +34,7 @@ pub struct FunctionData {
     /// True if the first param is `self`. This is relevant to decide whether this
     /// can be called as a method.
     pub has_self_param: bool,
+    pub is_unsafe: bool,
     pub visibility: RawVisibility,
 }
 
@@ -85,11 +86,14 @@ impl FunctionData {
             ret_type
         };
 
+        let is_unsafe = src.value.unsafe_token().is_some();
+
         let vis_default = RawVisibility::default_for_container(loc.container);
         let visibility =
             RawVisibility::from_ast_with_default(db, vis_default, src.map(|s| s.visibility()));
 
-        let sig = FunctionData { name, params, ret_type, has_self_param, visibility, attrs };
+        let sig =
+            FunctionData { name, params, ret_type, has_self_param, is_unsafe, visibility, attrs };
         Arc::new(sig)
     }
 }
