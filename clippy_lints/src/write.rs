@@ -23,7 +23,11 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
+    /// // Bad
     /// println!("");
+    ///
+    /// // Good
+    /// println!();
     /// ```
     pub PRINTLN_EMPTY_STRING,
     style,
@@ -32,8 +36,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// **What it does:** This lint warns when you use `print!()` with a format
-    /// string that
-    /// ends in a newline.
+    /// string that ends in a newline.
     ///
     /// **Why is this bad?** You should use `println!()` instead, which appends the
     /// newline.
@@ -125,7 +128,12 @@ declare_clippy_lint! {
     /// ```rust
     /// # use std::fmt::Write;
     /// # let mut buf = String::new();
+    ///
+    /// // Bad
     /// writeln!(buf, "");
+    ///
+    /// // Good
+    /// writeln!(buf);
     /// ```
     pub WRITELN_EMPTY_STRING,
     style,
@@ -147,7 +155,12 @@ declare_clippy_lint! {
     /// # use std::fmt::Write;
     /// # let mut buf = String::new();
     /// # let name = "World";
+    ///
+    /// // Bad
     /// write!(buf, "Hello {}!\n", name);
+    ///
+    /// // Good
+    /// writeln!(buf, "Hello {}!", name);
     /// ```
     pub WRITE_WITH_NEWLINE,
     style,
@@ -168,7 +181,12 @@ declare_clippy_lint! {
     /// ```rust
     /// # use std::fmt::Write;
     /// # let mut buf = String::new();
+    ///
+    /// // Bad
     /// writeln!(buf, "{}", "foo");
+    ///
+    /// // Good
+    /// writeln!(buf, "foo");
     /// ```
     pub WRITE_LITERAL,
     style,

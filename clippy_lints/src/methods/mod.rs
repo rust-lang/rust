@@ -218,7 +218,12 @@ declare_clippy_lint! {
     /// **Example:**
     /// ```rust
     /// # let x = Ok::<_, ()>(());
-    /// x.ok().expect("why did I do this again?")
+    ///
+    /// // Bad
+    /// x.ok().expect("why did I do this again?");
+    ///
+    /// // Good
+    /// x.expect("why did I do this again?");
     /// ```
     pub OK_EXPECT,
     style,
@@ -273,8 +278,12 @@ declare_clippy_lint! {
     /// **Example:**
     /// ```rust
     /// # let opt = Some(1);
-    /// opt.map_or(None, |a| Some(a + 1))
-    /// # ;
+    ///
+    /// // Bad
+    /// opt.map_or(None, |a| Some(a + 1));
+    ///
+    /// // Good
+    /// opt.and_then(|a| Some(a + 1));
     /// ```
     pub OPTION_MAP_OR_NONE,
     style,
@@ -390,14 +399,19 @@ declare_clippy_lint! {
     /// **What it does:** Checks for usage of `_.map(_).flatten(_)`,
     ///
     /// **Why is this bad?** Readability, this can be written more concisely as a
-    /// single method call.
+    /// single method call using `_.flat_map(_)`
     ///
     /// **Known problems:**
     ///
     /// **Example:**
     /// ```rust
     /// let vec = vec![vec![1]];
+    ///
+    /// // Bad
     /// vec.iter().map(|x| x.iter()).flatten();
+    ///
+    /// // Good
+    /// vec.iter().flat_map(|x| x.iter());
     /// ```
     pub MAP_FLATTEN,
     pedantic,
@@ -417,7 +431,16 @@ declare_clippy_lint! {
     /// **Example:**
     /// ```rust
     /// let vec = vec![1];
+    ///
+    /// // Bad
     /// vec.iter().filter(|x| **x == 0).map(|x| *x * 2);
+    ///
+    /// // Good
+    /// vec.iter().filter_map(|x| if *x == 0 {
+    ///     Some(*x * 2)
+    /// } else {
+    ///     None
+    /// });
     /// ```
     pub FILTER_MAP,
     pedantic,
@@ -634,7 +657,12 @@ declare_clippy_lint! {
     /// ```rust
     /// # use std::rc::Rc;
     /// let x = Rc::new(1);
+    ///
+    /// // Bad
     /// x.clone();
+    ///
+    /// // Good
+    /// Rc::clone(&x);
     /// ```
     pub CLONE_ON_REF_PTR,
     restriction,
@@ -741,7 +769,12 @@ declare_clippy_lint! {
     /// **Known problems:** Does not catch multi-byte unicode characters.
     ///
     /// **Example:**
-    /// `_.split("x")` could be `_.split('x')`
+    /// ```rust,ignore
+    /// // Bad
+    /// _.split("x");
+    ///
+    /// // Good
+    /// _.split('x');
     pub SINGLE_CHAR_PATTERN,
     perf,
     "using a single-character str where a char could be used, e.g., `_.split(\"x\")`"
@@ -964,8 +997,8 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usage of `.chars().last()` or
-    /// `.chars().next_back()` on a `str` to check if it ends with a given char.
+    /// **What it does:** Checks for usage of `_.chars().last()` or
+    /// `_.chars().next_back()` on a `str` to check if it ends with a given char.
     ///
     /// **Why is this bad?** Readability, this can be written more concisely as
     /// `_.ends_with(_)`.
@@ -975,8 +1008,12 @@ declare_clippy_lint! {
     /// **Example:**
     /// ```rust
     /// # let name = "_";
-    /// name.chars().last() == Some('_') || name.chars().next_back() == Some('-')
-    /// # ;
+    ///
+    /// // Bad
+    /// name.chars().last() == Some('_') || name.chars().next_back() == Some('-');
+    ///
+    /// // Good
+    /// name.ends_with('_') || name.ends_with('-');
     /// ```
     pub CHARS_LAST_CMP,
     style,
@@ -1044,17 +1081,15 @@ declare_clippy_lint! {
     /// **Example:**
     /// ```rust
     /// let _ = (0..3).filter_map(|x| if x > 2 { Some(x) } else { None });
-    /// ```
-    /// As there is no transformation of the argument this could be written as:
-    /// ```rust
+    ///
+    /// // As there is no transformation of the argument this could be written as:
     /// let _ = (0..3).filter(|&x| x > 2);
     /// ```
     ///
     /// ```rust
     /// let _ = (0..4).filter_map(|x| Some(x + 1));
-    /// ```
-    /// As there is no conditional check on the argument this could be written as:
-    /// ```rust
+    ///
+    /// // As there is no conditional check on the argument this could be written as:
     /// let _ = (0..4).map(|x| x + 1);
     /// ```
     pub UNNECESSARY_FILTER_MAP,
@@ -1075,7 +1110,11 @@ declare_clippy_lint! {
     /// **Example:**
     ///
     /// ```rust
+    /// // Bad
     /// let _ = (&vec![3, 4, 5]).into_iter();
+    ///
+    /// // Good
+    /// let _ = (&vec![3, 4, 5]).iter();
     /// ```
     pub INTO_ITER_ON_REF,
     style,

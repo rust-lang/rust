@@ -47,7 +47,11 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```ignore
+    /// // Bad
     /// fn foo(&Vec<u32>) { .. }
+    ///
+    /// // Good
+    /// fn foo(&[u32]) { .. }
     /// ```
     pub PTR_ARG,
     style,
@@ -65,7 +69,13 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```ignore
+    /// // Bad
     /// if x == ptr::null {
+    ///     ..
+    /// }
+    ///
+    /// // Good
+    /// if x.is_null() {
     ///     ..
     /// }
     /// ```
@@ -76,19 +86,16 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// **What it does:** This lint checks for functions that take immutable
-    /// references and return
-    /// mutable ones.
+    /// references and return mutable ones.
     ///
     /// **Why is this bad?** This is trivially unsound, as one can create two
-    /// mutable references
-    /// from the same (immutable!) source. This
-    /// [error](https://github.com/rust-lang/rust/issues/39465)
+    /// mutable references from the same (immutable!) source.
+    /// This [error](https://github.com/rust-lang/rust/issues/39465)
     /// actually lead to an interim Rust release 1.15.1.
     ///
     /// **Known problems:** To be on the conservative side, if there's at least one
-    /// mutable reference
-    /// with the output lifetime, this lint will not trigger. In practice, this
-    /// case is unlikely anyway.
+    /// mutable reference with the output lifetime, this lint will not trigger.
+    /// In practice, this case is unlikely anyway.
     ///
     /// **Example:**
     /// ```ignore

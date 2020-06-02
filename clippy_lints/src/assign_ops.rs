@@ -24,7 +24,11 @@ declare_clippy_lint! {
     /// let mut a = 5;
     /// let b = 0;
     /// // ...
+    /// // Bad
     /// a = a + b;
+    ///
+    /// // Good
+    /// a += b;
     /// ```
     pub ASSIGN_OP_PATTERN,
     style,
