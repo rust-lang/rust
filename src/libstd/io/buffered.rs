@@ -751,7 +751,8 @@ impl<W: Write + Seek> Seek for BufWriter<W> {
     ///
     /// Seeking always writes out the internal buffer before seeking.
     fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
-        self.flush_buf().and_then(|_| self.get_mut().seek(pos))
+        self.flush_buf()?;
+        self.get_mut().seek(pos)
     }
 }
 
@@ -1862,12 +1863,13 @@ mod tests {
                 IoSlice::new(b"a"),
             ])
             .unwrap(),
-            2,
+            1,
         );
         assert_eq!(a.get_ref(), b"\n");
 
         assert_eq!(
             a.write_vectored(&[
+                IoSlice::new(b"a"),
                 IoSlice::new(&[]),
                 IoSlice::new(b"b"),
                 IoSlice::new(&[]),
@@ -1876,7 +1878,7 @@ mod tests {
                 IoSlice::new(b"c"),
             ])
             .unwrap(),
-            3,
+            4,
         );
         assert_eq!(a.get_ref(), b"\n");
         a.flush().unwrap();
@@ -1893,17 +1895,21 @@ mod tests {
             0,
         );
         assert_eq!(a.write_vectored(&[IoSlice::new(b"a\nb"),]).unwrap(), 3);
-        assert_eq!(a.get_ref(), b"\nabaca\n");
+        assert_eq!(a.get_ref(), b"\nabaca\nb");
     }
 
     #[test]
     fn line_vectored_partial_and_errors() {
+        use crate::collections::VecDeque;
+
         enum Call {
             Write { inputs: Vec<&'static [u8]>, output: io::Result<usize> },
             Flush { output: io::Result<()> },
         }
+
+        #[derive(Default)]
         struct Writer {
-            calls: Vec<Call>,
+            calls: VecDeque<Call>,
         }
 
         impl Write for Writer {
@@ -1912,19 +1918,23 @@ mod tests {
             }
 
             fn write_vectored(&mut self, buf: &[IoSlice<'_>]) -> io::Result<usize> {
-                match self.calls.pop().unwrap() {
+                match self.calls.pop_front().expect("unexpected call to write") {
                     Call::Write { inputs, output } => {
                         assert_eq!(inputs, buf.iter().map(|b| &**b).collect::<Vec<_>>());
                         output
                     }
-                    _ => panic!("unexpected call to write"),
+                    Call::Flush { .. } => panic!("unexpected call to write; expected a flush"),
                 }
             }
 
+            fn is_write_vectored(&self) -> bool {
+                true
+            }
+
             fn flush(&mut self) -> io::Result<()> {
-                match self.calls.pop().unwrap() {
+                match self.calls.pop_front().expect("Unexpected call to flush") {
                     Call::Flush { output } => output,
-                    _ => panic!("unexpected call to flush"),
+                    Call::Write { .. } => panic!("unexpected call to flush; expected a write"),
                 }
             }
         }
@@ -1938,25 +1948,62 @@ mod tests {
         }
 
         // partial writes keep going
-        let mut a = LineWriter::new(Writer { calls: Vec::new() });
+        let mut a = LineWriter::new(Writer::default());
         a.write_vectored(&[IoSlice::new(&[]), IoSlice::new(b"abc")]).unwrap();
-        a.get_mut().calls.push(Call::Flush { output: Ok(()) });
-        a.get_mut().calls.push(Call::Write { inputs: vec![b"bcx\n"], output: Ok(4) });
-        a.get_mut().calls.push(Call::Write { inputs: vec![b"abcx\n"], output: Ok(1) });
+
+        a.get_mut().calls.push_back(Call::Write { inputs: vec![b"abc"], output: Ok(1) });
+        a.get_mut().calls.push_back(Call::Write { inputs: vec![b"bc"], output: Ok(2) });
+        a.get_mut().calls.push_back(Call::Write { inputs: vec![b"x", b"\n"], output: Ok(2) });
+
         a.write_vectored(&[IoSlice::new(b"x"), IoSlice::new(b"\n")]).unwrap();
-        a.get_mut().calls.push(Call::Flush { output: Ok(()) });
+
+        a.get_mut().calls.push_back(Call::Flush { output: Ok(()) });
         a.flush().unwrap();
 
         // erroneous writes stop and don't write more
-        a.get_mut().calls.push(Call::Write { inputs: vec![b"x\n"], output: Err(err()) });
-        assert_eq!(a.write_vectored(&[IoSlice::new(b"x"), IoSlice::new(b"\na")]).unwrap(), 2);
-        a.get_mut().calls.push(Call::Flush { output: Ok(()) });
-        a.get_mut().calls.push(Call::Write { inputs: vec![b"x\n"], output: Ok(2) });
+        a.get_mut().calls.push_back(Call::Write { inputs: vec![b"x", b"\na"], output: Err(err()) });
+        a.get_mut().calls.push_back(Call::Flush { output: Ok(()) });
+        assert!(a.write_vectored(&[IoSlice::new(b"x"), IoSlice::new(b"\na")]).is_err());
         a.flush().unwrap();
 
         fn err() -> io::Error {
             io::Error::new(io::ErrorKind::Other, "x")
         }
+    }
+
+    /// Test that, in cases where vectored writing is not enabled, the
+    /// LineWriter uses the normal `write` call, which more-corectly handles
+    /// partial lines
+    #[test]
+    fn line_vectored_ignored() {
+        let writer = ProgrammableSink::default();
+        let mut writer = LineWriter::new(writer);
+
+        let content = [
+            IoSlice::new(b"Line 1\nLine"),
+            IoSlice::new(b" 2\nLine 3\nL"),
+            IoSlice::new(b"ine 4"),
+            IoSlice::new(b"\nLine 5\n"),
+        ];
+
+        let count = writer.write_vectored(&content).unwrap();
+        assert_eq!(count, 11);
+        assert_eq!(&writer.get_ref().buffer, b"Line 1\n");
+
+        let count = writer.write_vectored(&content[1..]).unwrap();
+        assert_eq!(count, 11);
+        assert_eq!(&writer.get_ref().buffer, b"Line 1\nLine 2\nLine 3\n");
+
+        let count = writer.write_vectored(&content[2..]).unwrap();
+        assert_eq!(count, 5);
+        assert_eq!(&writer.get_ref().buffer, b"Line 1\nLine 2\nLine 3\n");
+
+        let count = writer.write_vectored(&content[3..]).unwrap();
+        assert_eq!(count, 8);
+        assert_eq!(
+            writer.get_ref().buffer.as_slice(),
+            b"Line 1\nLine 2\nLine 3\nLine 4\n Line 5".as_ref()
+        );
     }
 
     /// Test that, given this input:
@@ -1972,7 +2019,7 @@ mod tests {
     ///
     /// This behavior is desirable because it prevents flushing partial lines
     #[test]
-    fn test_partial_write_buffers_line() {
+    fn partial_write_buffers_line() {
         let writer = ProgrammableSink { accept_prefix: Some(13), ..Default::default() };
         let mut writer = LineWriter::new(writer);
 
@@ -1992,7 +2039,7 @@ mod tests {
     /// And given that the full write of lines 1 and 2 was successful
     /// That data up to Line 3 is buffered
     #[test]
-    fn test_partial_line_buffered_after_line_write() {
+    fn partial_line_buffered_after_line_write() {
         let writer = ProgrammableSink::default();
         let mut writer = LineWriter::new(writer);
 
@@ -2007,7 +2054,7 @@ mod tests {
     /// LineBuffer's buffer (that is, without a trailing newline), that that
     /// line is written to the inner writer
     #[test]
-    fn test_long_line_flushed() {
+    fn long_line_flushed() {
         let writer = ProgrammableSink::default();
         let mut writer = LineWriter::with_capacity(5, writer);
 
@@ -2020,7 +2067,7 @@ mod tests {
     /// and no additional writes take place. This assures the property that
     /// `write` should make at-most-one attempt to write new data.
     #[test]
-    fn test_long_tail_not_flushed() {
+    fn line_long_tail_not_flushed() {
         let writer = ProgrammableSink::default();
         let mut writer = LineWriter::with_capacity(5, writer);
 
@@ -2036,7 +2083,7 @@ mod tests {
     /// Test that, if an attempt to pre-flush buffered data returns Ok(0),
     /// this is propagated as an error.
     #[test]
-    fn test_line_buffer_write0_error() {
+    fn line_buffer_write0_error() {
         let writer = ProgrammableSink {
             // Accept one write, then return Ok(0) on subsequent ones
             max_writes: Some(1),
@@ -2060,7 +2107,7 @@ mod tests {
     /// Test that, if a write returns Ok(0) after a successful pre-flush, this
     /// is propogated as Ok(0)
     #[test]
-    fn test_line_buffer_write0_normal() {
+    fn line_buffer_write0_normal() {
         let writer = ProgrammableSink {
             // Accept two writes, then return Ok(0) on subsequent ones
             max_writes: Some(2),
@@ -2077,5 +2124,40 @@ mod tests {
         // when flushing " Line End\n"
         assert_eq!(writer.write(b" Line End\n").unwrap(), 0);
         assert_eq!(&writer.get_ref().buffer, b"Line 1\nPartial");
+    }
+
+    /// LineWriter has a custom `write_all`; make sure it works correctly
+    #[test]
+    fn line_write_all() {
+        let writer = ProgrammableSink {
+            // Only write 5 bytes at a time
+            accept_prefix: Some(5),
+            ..Default::default()
+        };
+        let mut writer = LineWriter::new(writer);
+
+        writer.write_all(b"Line 1\nLine 2\nLine 3\nLine 4\nPartial").unwrap();
+        assert_eq!(&writer.get_ref().buffer, b"Line 1\nLine 2\nLine 3\nLine 4\n");
+        writer.write_all(b" Line 5\n").unwrap();
+        assert_eq!(
+            writer.get_ref().buffer.as_slice(),
+            b"Line 1\nLine 2\nLine 3\nLine 4\nPartial Line 5\n".as_ref(),
+        );
+    }
+
+    #[test]
+    fn line_write_all_error() {
+        let writer = ProgrammableSink {
+            // Only accept up to 3 writes of up to 5 bytes each
+            accept_prefix: Some(5),
+            max_writes: Some(3),
+            ..Default::default()
+        };
+
+        let mut writer = LineWriter::new(writer);
+        let res = writer.write_all(b"Line 1\nLine 2\nLine 3\nLine 4\nPartial");
+        assert!(res.is_err());
+        // An error from write_all leaves everything in an indeterminate state,
+        // so there's nothing else to test here
     }
 }
