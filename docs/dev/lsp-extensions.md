@@ -311,6 +311,50 @@ Moreover, it would be cool if editors didn't need to implement even basic langua
   This is how `SelectionRange` request works.
 * Alternatively, should we perhaps flag certain `SelectionRange`s as being brace pairs?
 
+## Runnables
+
+**Issue:** https://github.com/microsoft/language-server-protocol/issues/944
+
+**Server Capability:** `{ "runnables": { "kinds": string[] } }`
+
+This request is send from client to server to get the list of things that can be run (tests, binaries, `cargo check -p`).
+
+**Method:** `experimental/runnables`
+
+**Request:**
+
+```typescript
+interface RunnablesParams {
+    textDocument: TextDocumentIdentifier;
+    /// If null, compute runnables for the whole file.
+    position?: Position;
+}
+```
+
+**Response:** `Runnable[]`
+
+```typescript
+interface Runnable {
+    label: string;
+    /// If this Runnable is associated with a specific function/module, etc, the location of this item
+    location?: LocationLink;
+    /// Running things is necessary technology specific, `kind` needs to be advertised via server capabilities,
+    // the type of `args` is specific to `kind`. The actual running is handled by the client.
+    kind: string;
+    args: any;
+}
+```
+
+rust-analyzer supports only one `kind`, `"cargo"`. The `args` for `"cargo"` look like this:
+
+```typescript
+{
+    workspaceRoot?: string;
+    cargoArgs: string[];
+    executableArgs: string[];
+}
+```
+
 ## Analyzer Status
 
 **Method:** `rust-analyzer/analyzerStatus`
@@ -397,41 +441,5 @@ interface InlayHint {
     kind: "TypeHint" | "ParameterHint" | "ChainingHint",
     range: Range,
     label: string,
-}
-```
-
-## Runnables
-
-**Method:** `rust-analyzer/runnables`
-
-This request is send from client to server to get the list of things that can be run (tests, binaries, `cargo check -p`).
-Note that we plan to move this request to `experimental/runnables`, as it is not really Rust-specific, but the current API is not necessary the right one.
-Upstream issue: https://github.com/microsoft/language-server-protocol/issues/944
-
-**Request:**
-
-```typescript
-interface RunnablesParams {
-    textDocument: TextDocumentIdentifier;
-    /// If null, compute runnables for the whole file.
-    position?: Position;
-}
-```
-
-**Response:** `Runnable[]`
-
-```typescript
-interface Runnable {
-    /// The range this runnable is applicable for.
-    range: lc.Range;
-    /// The label to show in the UI.
-    label: string;
-    /// The following fields describe a process to spawn.
-    kind: "cargo" | "rustc" | "rustup";
-    args: string[];
-    /// Args for cargo after `--`.
-    extraArgs: string[];
-    env: { [key: string]: string };
-    cwd: string | null;
 }
 ```

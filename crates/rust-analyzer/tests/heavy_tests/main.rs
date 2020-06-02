@@ -76,30 +76,33 @@ fn foo() {
     server.request::<Runnables>(
         RunnablesParams { text_document: server.doc_id("lib.rs"), position: None },
         json!([
-          {
-            "args": [ "test" ],
-            "extraArgs": [ "foo", "--nocapture" ],
-            "kind": "cargo",
-            "env": { "RUST_BACKTRACE": "short" },
-            "cwd": null,
-            "label": "test foo",
-            "range": {
-              "end": { "character": 1, "line": 2 },
-              "start": { "character": 0, "line": 0 }
+            {
+              "args": {
+                "cargoArgs": ["test"],
+                "executableArgs": ["foo", "--nocapture"],
+              },
+              "kind": "cargo",
+              "label": "test foo",
+              "location": {
+                "targetRange": {
+                  "end": { "character": 1, "line": 2 },
+                  "start": { "character": 0, "line": 0 }
+                },
+                "targetSelectionRange": {
+                  "end": { "character": 6, "line": 1 },
+                  "start": { "character": 3, "line": 1 }
+                },
+                "targetUri": "file:///[..]/lib.rs"
+              }
+            },
+            {
+              "args": {
+                "cargoArgs": ["check", "--workspace"],
+                "executableArgs": [],
+              },
+              "kind": "cargo",
+              "label": "cargo check --workspace"
             }
-          },
-          {
-            "args": ["check", "--workspace"],
-            "extraArgs": [],
-            "kind": "cargo",
-            "env": {},
-            "cwd": null,
-            "label": "cargo check --workspace",
-            "range": {
-              "end": { "character": 0, "line": 0 },
-              "start": { "character": 0, "line": 0 }
-            }
-          }
         ]),
     );
 }
@@ -138,42 +141,44 @@ fn main() {}
     server.request::<Runnables>(
         RunnablesParams { text_document: server.doc_id("foo/tests/spam.rs"), position: None },
         json!([
-            {
-              "args": [ "test", "--package", "foo", "--test", "spam" ],
-              "extraArgs": [ "test_eggs", "--exact", "--nocapture" ],
-              "kind": "cargo",
-              "env": { "RUST_BACKTRACE": "short" },
-              "label": "test test_eggs",
-              "range": {
+          {
+            "args": {
+              "cargoArgs": ["test", "--package", "foo", "--test", "spam"],
+              "executableArgs": ["test_eggs", "--exact", "--nocapture"],
+              "workspaceRoot": server.path().join("foo")
+            },
+            "kind": "cargo",
+            "label": "test test_eggs",
+            "location": {
+              "targetRange": {
                 "end": { "character": 17, "line": 1 },
                 "start": { "character": 0, "line": 0 }
               },
-              "cwd": server.path().join("foo")
-            },
-            {
-              "args": [ "check", "--package", "foo" ],
-              "extraArgs": [],
-              "kind": "cargo",
-              "env": {},
-              "label": "cargo check -p foo",
-              "range": {
-                "end": { "character": 0, "line": 0 },
-                "start": { "character": 0, "line": 0 }
+              "targetSelectionRange": {
+                "end": { "character": 12, "line": 1 },
+                "start": { "character": 3, "line": 1 }
               },
-              "cwd": server.path().join("foo")
-            },
-            {
-              "args": [ "test", "--package", "foo" ],
-              "extraArgs": [],
-              "kind": "cargo",
-              "env": {},
-              "label": "cargo test -p foo",
-              "range": {
-                "end": { "character": 0, "line": 0 },
-                "start": { "character": 0, "line": 0 }
-              },
-              "cwd": server.path().join("foo")
+              "targetUri": "file:///[..]/tests/spam.rs"
             }
+          },
+          {
+            "args": {
+              "cargoArgs": ["check", "--package", "foo"],
+              "executableArgs": [],
+              "workspaceRoot": server.path().join("foo")
+            },
+            "kind": "cargo",
+            "label": "cargo check -p foo"
+          },
+          {
+            "args": {
+              "cargoArgs": ["test", "--package", "foo"],
+              "executableArgs": [],
+              "workspaceRoot": server.path().join("foo")
+            },
+            "kind": "cargo",
+            "label": "cargo test -p foo"
+          }
         ]),
     );
 }

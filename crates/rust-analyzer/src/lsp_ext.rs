@@ -4,7 +4,6 @@ use std::{collections::HashMap, path::PathBuf};
 
 use lsp_types::request::Request;
 use lsp_types::{Position, Range, TextDocumentIdentifier};
-use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 
 pub enum AnalyzerStatus {}
@@ -128,7 +127,7 @@ pub enum Runnables {}
 impl Request for Runnables {
     type Params = RunnablesParams;
     type Result = Vec<Runnable>;
-    const METHOD: &'static str = "rust-analyzer/runnables";
+    const METHOD: &'static str = "experimental/runnables";
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -138,25 +137,31 @@ pub struct RunnablesParams {
     pub position: Option<Position>,
 }
 
-// Must strictly correspond to the executable name
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct Runnable {
+    pub label: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub location: Option<lsp_types::LocationLink>,
+    pub kind: RunnableKind,
+    pub args: CargoRunnable,
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "lowercase")]
 pub enum RunnableKind {
     Cargo,
-    Rustc,
-    Rustup,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct Runnable {
-    pub range: Range,
-    pub label: String,
-    pub kind: RunnableKind,
-    pub args: Vec<String>,
-    pub extra_args: Vec<String>,
-    pub env: FxHashMap<String, String>,
-    pub cwd: Option<PathBuf>,
+pub struct CargoRunnable {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub workspace_root: Option<PathBuf>,
+    // command, --package and --lib stuff
+    pub cargo_args: Vec<String>,
+    // stuff after --
+    pub executable_args: Vec<String>,
 }
 
 pub enum InlayHints {}

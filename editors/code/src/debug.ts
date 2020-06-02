@@ -114,8 +114,8 @@ async function getDebugConfiguration(ctx: Ctx, runnable: ra.Runnable): Promise<v
 }
 
 async function getDebugExecutable(runnable: ra.Runnable): Promise<string> {
-    const cargo = new Cargo(runnable.cwd || '.', debugOutput);
-    const executable = await cargo.executableFromArgs(runnable.args);
+    const cargo = new Cargo(runnable.args.workspaceRoot || '.', debugOutput);
+    const executable = await cargo.executableFromArgs(runnable.args.cargoArgs);
 
     // if we are here, there were no compilation errors.
     return executable;
@@ -127,8 +127,8 @@ function getLldbDebugConfig(runnable: ra.Runnable, executable: string, sourceFil
         request: "launch",
         name: runnable.label,
         program: executable,
-        args: runnable.extraArgs,
-        cwd: runnable.cwd,
+        args: runnable.args.executableArgs,
+        cwd: runnable.args.workspaceRoot,
         sourceMap: sourceFileMap,
         sourceLanguages: ["rust"]
     };
@@ -140,8 +140,8 @@ function getCppvsDebugConfig(runnable: ra.Runnable, executable: string, sourceFi
         request: "launch",
         name: runnable.label,
         program: executable,
-        args: runnable.extraArgs,
-        cwd: runnable.cwd,
+        args: runnable.args.executableArgs,
+        cwd: runnable.args.workspaceRoot,
         sourceFileMap: sourceFileMap,
     };
 }

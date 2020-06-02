@@ -4,12 +4,14 @@ use ra_ide::{
     Assist, CompletionItem, CompletionItemKind, Documentation, FileSystemEdit, Fold, FoldKind,
     FunctionSignature, Highlight, HighlightModifier, HighlightTag, HighlightedRange, Indel,
     InlayHint, InlayKind, InsertTextFormat, LineIndex, NavigationTarget, ReferenceAccess,
-    ResolvedAssist, Severity, SourceChange, SourceFileEdit, TextEdit,
+    ResolvedAssist, Runnable, RunnableKind, Severity, SourceChange, SourceFileEdit, TextEdit,
 };
 use ra_syntax::{SyntaxKind, TextRange, TextSize};
 use ra_vfs::LineEndings;
 
-use crate::{lsp_ext, semantic_tokens, world::WorldSnapshot, Result};
+use crate::{
+    cargo_target_spec::CargoTargetSpec, lsp_ext, semantic_tokens, world::WorldSnapshot, Result,
+};
 
 pub(crate) fn position(line_index: &LineIndex, offset: TextSize) -> lsp_types::Position {
     let line_col = line_index.line_col(offset);
@@ -657,4 +659,36 @@ pub(crate) fn resolved_code_action(
         command: None,
     };
     Ok(res)
+}
+
+pub(crate) fn runnable(
+    world: &WorldSnapshot,
+    file_id: FileId,
+    runnable: Runnable,
+) -> Result<lsp_ext::Runnable> {
+    let spec = CargoTargetSpec::for_file(world, file_id)?;
+    let target = spec.as_ref().map(|s| s.target.clone());
+    let (cargo_args, executable_args) =
+        CargoTargetSpec::runnable_args(spec, &runnable.kind, &runnable.cfg_exprs)?;
+    let label = match &runnable.kind {
+        RunnableKind::Test { test_id, .. } => format!("test {}", test_id),
+        RunnableKind::TestMod { path } => format!("test-mod {}", path),
+        RunnableKind::Bench { test_id } => format!("bench {}", test_id),
+        RunnableKind::DocTest { test_id, .. } => format!("doctest {}", test_id),
+        RunnableKind::Bin => {
+            target.map_or_else(|| "run binary".to_string(), |t| format!("run {}", t))
+        }
+    };
+    let location = location_link(world, None, runnable.nav)?;
+
+    Ok(lsp_ext::Runnable {
+        label,
+        location: Some(location),
+        kind: lsp_ext::RunnableKind::Cargo,
+        args: lsp_ext::CargoRunnable {
+            workspace_root: world.workspace_root_for(file_id).map(|root| root.to_owned()),
+            cargo_args,
+            executable_args,
+        },
+    })
 }
