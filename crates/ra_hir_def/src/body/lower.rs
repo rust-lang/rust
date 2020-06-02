@@ -318,16 +318,20 @@ impl ExprCollector<'_> {
             ast::Expr::BlockExpr(e) => self.collect_block(e),
             ast::Expr::LoopExpr(e) => {
                 let body = self.collect_block_opt(e.loop_body());
-                track_parent!(self, self.alloc_expr(Expr::Loop { body }, syntax_ptr), vec![body])
-                    Expr::Loop {
-                        body,
-                        label: e
-                            .label()
-                            .and_then(|l| l.lifetime_token())
-                            .map(|l| Name::new_lifetime(&l)),
-                    },
-                    syntax_ptr,
-                ), body)
+                track_parent!(
+                    self,
+                    self.alloc_expr(
+                        Expr::Loop {
+                            body,
+                            label: e
+                                .label()
+                                .and_then(|l| l.lifetime_token())
+                                .map(|l| Name::new_lifetime(&l)),
+                        },
+                        syntax_ptr,
+                    ),
+                    body
+                )
             }
             ast::Expr::WhileExpr(e) => {
                 let body = self.collect_block_opt(e.loop_body());
@@ -350,48 +354,62 @@ impl ExprCollector<'_> {
                             ];
                             let match_expr =
                                 self.alloc_expr_desugared(Expr::Match { expr: match_expr, arms });
-                            return track_parent!(self, self.alloc_expr(
-                                Expr::Loop {
-                                    body: match_expr,
-                                    label: e
-                                        .label()
-                                        .and_then(|l| l.lifetime_token())
-                                        .map(|l| Name::new_lifetime(&l)),
-                                },
-                                syntax_ptr,
-                            ), match_expr);
+                            return track_parent!(
+                                self,
+                                self.alloc_expr(
+                                    Expr::Loop {
+                                        body: match_expr,
+                                        label: e
+                                            .label()
+                                            .and_then(|l| l.lifetime_token())
+                                            .map(|l| Name::new_lifetime(&l)),
+                                    },
+                                    syntax_ptr,
+                                ),
+                                match_expr
+                            );
                         }
                     },
                 };
 
-                track_parent!(self, self.alloc_expr(
-                    Expr::While {
-                        condition,
-                        body,
-                        label: e
-                            .label()
-                            .and_then(|l| l.lifetime_token())
-                            .map(|l| Name::new_lifetime(&l)),
-                    },
-                    syntax_ptr,
-                ), body, condition)
+                track_parent!(
+                    self,
+                    self.alloc_expr(
+                        Expr::While {
+                            condition,
+                            body,
+                            label: e
+                                .label()
+                                .and_then(|l| l.lifetime_token())
+                                .map(|l| Name::new_lifetime(&l)),
+                        },
+                        syntax_ptr,
+                    ),
+                    body,
+                    condition
+                )
             }
             ast::Expr::ForExpr(e) => {
                 let iterable = self.collect_expr_opt(e.iterable());
                 let pat = self.collect_pat_opt(e.pat());
                 let body = self.collect_block_opt(e.loop_body());
-                track_parent!(self, self.alloc_expr(
-                    Expr::For {
-                        iterable,
-                        pat,
-                        body,
-                        label: e
-                            .label()
-                            .and_then(|l| l.lifetime_token())
-                            .map(|l| Name::new_lifetime(&l)),
-                    },
-                    syntax_ptr,
-                ), iterable, body)
+                track_parent!(
+                    self,
+                    self.alloc_expr(
+                        Expr::For {
+                            iterable,
+                            pat,
+                            body,
+                            label: e
+                                .label()
+                                .and_then(|l| l.lifetime_token())
+                                .map(|l| Name::new_lifetime(&l)),
+                        },
+                        syntax_ptr,
+                    ),
+                    iterable,
+                    body
+                )
             }
             ast::Expr::CallExpr(e) => {
                 let callee = self.collect_expr_opt(e.expr());
@@ -461,10 +479,10 @@ impl ExprCollector<'_> {
                     .unwrap_or(Expr::Missing);
                 self.alloc_expr(path, syntax_ptr)
             }
-            ast::Expr::ContinueExpr(e) => (self.alloc_expr(
+            ast::Expr::ContinueExpr(e) => self.alloc_expr(
                 Expr::Continue { label: e.lifetime_token().map(|l| Name::new_lifetime(&l)) },
                 syntax_ptr,
-            ), vec![]),
+            ),
             ast::Expr::BreakExpr(e) => {
                 let expr = e.expr().map(|e| self.collect_expr(e));
                 track_parent!(self, self.alloc_expr(
