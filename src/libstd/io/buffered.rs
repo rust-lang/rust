@@ -727,6 +727,10 @@ impl<W: Write> Write for BufWriter<W> {
     }
 
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        // Normally, `write_all` just calls `write` in a loop. We can do better
+        // by calling `self.get_mut().write_all()` directly, which avoids
+        // round trips through the buffer in the event of a series of partial
+        // writes.
         if self.buf.len() + buf.len() > self.buf.capacity() {
             self.flush_buf()?;
         }
