@@ -79,15 +79,22 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                             );
                         } else {
                             err.span_label(sup_origin.span(), "...is captured here...");
-                            err.span_note(
-                                return_sp,
-                                "...and is required to live as long as `'static` here",
-                            );
+                            if return_sp < sup_origin.span() {
+                                err.span_note(
+                                    return_sp,
+                                    "...and is required to live as long as `'static` here",
+                                );
+                            } else {
+                                err.span_label(
+                                    return_sp,
+                                    "...and is required to live as long as `'static` here",
+                                );
+                            }
                         }
                     } else {
                         err.span_label(
                             return_sp,
-                            "...is captured and required live as long as `'static` here",
+                            "...is captured and required to live as long as `'static` here",
                         );
                     }
 
@@ -104,7 +111,8 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                         };
                         let explicit =
                             format!("you can add an explicit `{}` lifetime bound", lifetime_name);
-                        let explicit_static = format!("explicit `'static` bound to {}", arg);
+                        let explicit_static =
+                            format!("explicit `'static` bound to the lifetime of {}", arg);
                         let captures = format!("captures data from {}", arg);
                         let add_static_bound =
                             "alternatively, add an explicit `'static` bound to this reference";

@@ -2,15 +2,10 @@ error[E0758]: cannot infer an appropriate lifetime
   --> $DIR/arbitrary_self_types_pin_lifetime_impl_trait-async.rs:8:16
    |
 LL |     async fn f(self: Pin<&Self>) -> impl Clone { self }
-   |                ^^^^  ---------- this data with an anonymous lifetime `'_`...
-   |                |
+   |                ^^^^  ----------     ---------- ...and is required to live as long as `'static` here
+   |                |     |
+   |                |     this data with an anonymous lifetime `'_`...
    |                ...is captured here...
-   |
-note: ...and is required to live as long as `'static` here
-  --> $DIR/arbitrary_self_types_pin_lifetime_impl_trait-async.rs:8:37
-   |
-LL |     async fn f(self: Pin<&Self>) -> impl Clone { self }
-   |                                     ^^^^^^^^^^
 
 error: aborting due to previous error
 
