@@ -291,7 +291,7 @@ impl<T: ?Sized> *const T {
         T: Sized,
     {
         let pointee_size = mem::size_of::<T>();
-        assert!(0 < pointee_size && pointee_size <= isize::max_value() as usize);
+        assert!(0 < pointee_size && pointee_size <= isize::MAX as usize);
         intrinsics::ptr_offset_from(self, origin)
     }
 
@@ -336,7 +336,7 @@ impl<T: ?Sized> *const T {
         T: Sized,
     {
         let pointee_size = mem::size_of::<T>();
-        assert!(0 < pointee_size && pointee_size <= isize::max_value() as usize);
+        assert!(0 < pointee_size && pointee_size <= isize::MAX as usize);
 
         let d = isize::wrapping_sub(self as _, origin as _);
         d.wrapping_div(pointee_size as _)

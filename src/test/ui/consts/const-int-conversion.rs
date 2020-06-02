@@ -11,6 +11,6 @@ fn main() {
         //~^ ERROR temporary value dropped while borrowed
     let c: &'static [u8] = &(0x12_34_56_78_i32.to_le_bytes());
         //~^ ERROR temporary value dropped while borrowed
-    let d: &'static [u8] = &(i32::min_value().to_be().to_ne_bytes());
+    let d: &'static [u8] = &(i32::MIN.to_be().to_ne_bytes());
         //~^ ERROR temporary value dropped while borrowed
 }

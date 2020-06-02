@@ -366,7 +366,7 @@ impl<R: Seek> Seek for BufReader<R> {
             // it should be safe to assume that remainder fits within an i64 as the alternative
             // means we managed to allocate 8 exbibytes and that's absurd.
             // But it's not out of the realm of possibility for some weird underlying reader to
-            // support seeking by i64::min_value() so we need to handle underflow when subtracting
+            // support seeking by i64::MIN so we need to handle underflow when subtracting
             // remainder.
             if let Some(offset) = n.checked_sub(remainder) {
                 result = self.inner.seek(SeekFrom::Current(offset))?;
@@ -1268,7 +1268,7 @@ mod tests {
                         self.pos = self.pos.wrapping_add(n as u64);
                     }
                     SeekFrom::End(n) => {
-                        self.pos = u64::max_value().wrapping_add(n as u64);
+                        self.pos = u64::MAX.wrapping_add(n as u64);
                     }
                 }
                 Ok(self.pos)
@@ -1277,11 +1277,11 @@ mod tests {
 
         let mut reader = BufReader::with_capacity(5, PositionReader { pos: 0 });
         assert_eq!(reader.fill_buf().ok(), Some(&[0, 1, 2, 3, 4][..]));
-        assert_eq!(reader.seek(SeekFrom::End(-5)).ok(), Some(u64::max_value() - 5));
+        assert_eq!(reader.seek(SeekFrom::End(-5)).ok(), Some(u64::MAX - 5));
         assert_eq!(reader.fill_buf().ok().map(|s| s.len()), Some(5));
         // the following seek will require two underlying seeks
         let expected = 9223372036854775802;
-        assert_eq!(reader.seek(SeekFrom::Current(i64::min_value())).ok(), Some(expected));
+        assert_eq!(reader.seek(SeekFrom::Current(i64::MIN)).ok(), Some(expected));
         assert_eq!(reader.fill_buf().ok().map(|s| s.len()), Some(5));
         // seeking to 0 should empty the buffer.
         assert_eq!(reader.seek(SeekFrom::Current(0)).ok(), Some(expected));
@@ -1319,7 +1319,7 @@ mod tests {
         // The following seek will require two underlying seeks.  The first will
         // succeed but the second will fail.  This should still invalidate the
         // buffer.
-        assert!(reader.seek(SeekFrom::Current(i64::min_value())).is_err());
+        assert!(reader.seek(SeekFrom::Current(i64::MIN)).is_err());
         assert_eq!(reader.buffer().len(), 0);
     }
 

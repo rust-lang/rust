@@ -67,8 +67,8 @@ LL | }
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/const-int-conversion.rs:14:29
    |
-LL |     let d: &'static [u8] = &(i32::min_value().to_be().to_ne_bytes());
-   |            -------------    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+LL |     let d: &'static [u8] = &(i32::MIN.to_be().to_ne_bytes());
+   |            -------------    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
    |            |
    |            type annotation requires that borrow lasts for `'static`
 LL |

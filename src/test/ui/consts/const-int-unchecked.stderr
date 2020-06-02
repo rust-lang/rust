@@ -355,8 +355,8 @@ LL | const _: i32 = unsafe { std::intrinsics::unchecked_div(1, 0) };
 error: any use of this value will cause an error
   --> $DIR/const-int-unchecked.rs:134:25
    |
-LL | const _: i32 = unsafe { std::intrinsics::unchecked_div(i32::min_value(), -1) };
-   | ------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
+LL | const _: i32 = unsafe { std::intrinsics::unchecked_div(i32::MIN, -1) };
+   | ------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                         |
    |                         overflow executing `unchecked_div`
 
@@ -371,8 +371,8 @@ LL | const _: i32 = unsafe { std::intrinsics::unchecked_rem(1, 0) };
 error: any use of this value will cause an error
   --> $DIR/const-int-unchecked.rs:139:25
    |
-LL | const _: i32 = unsafe { std::intrinsics::unchecked_rem(i32::min_value(), -1) };
-   | ------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
+LL | const _: i32 = unsafe { std::intrinsics::unchecked_rem(i32::MIN, -1) };
+   | ------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                         |
    |                         overflow executing `unchecked_rem`
 

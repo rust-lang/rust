@@ -1519,7 +1519,7 @@ fn all_constructors<'a, 'tcx>(
         }
         ty::Uint(uty) => {
             let size = Integer::from_attr(&cx.tcx, UnsignedInt(uty)).size();
-            let max = truncate(u128::max_value(), size);
+            let max = truncate(u128::MAX, size);
             vec![make_range(0, max)]
         }
         _ => {

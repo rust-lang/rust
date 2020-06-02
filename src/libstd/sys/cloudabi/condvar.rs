@@ -42,7 +42,7 @@ impl Condvar {
             let ret = abi::condvar_signal(
                 condvar as *mut abi::condvar,
                 abi::scope::PRIVATE,
-                abi::nthreads::max_value(),
+                abi::nthreads::MAX,
             );
             assert_eq!(ret, abi::errno::SUCCESS, "Failed to broadcast on condition variable");
         }

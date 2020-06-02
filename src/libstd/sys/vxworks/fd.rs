@@ -17,7 +17,7 @@ fn max_len() -> usize {
     // The maximum read limit on most posix-like systems is `SSIZE_MAX`,
     // with the man page quoting that if the count of bytes to read is
     // greater than `SSIZE_MAX` the result is "unspecified".
-    <ssize_t>::max_value() as usize
+    <ssize_t>::MAX as usize
 }
 
 impl FileDesc {
@@ -48,7 +48,7 @@ impl FileDesc {
             libc::readv(
                 self.fd,
                 bufs.as_ptr() as *const libc::iovec,
-                cmp::min(bufs.len(), c_int::max_value() as usize) as c_int,
+                cmp::min(bufs.len(), c_int::MAX as usize) as c_int,
             )
         })?;
         Ok(ret as usize)
@@ -98,7 +98,7 @@ impl FileDesc {
             libc::writev(
                 self.fd,
                 bufs.as_ptr() as *const libc::iovec,
-                cmp::min(bufs.len(), c_int::max_value() as usize) as c_int,
+                cmp::min(bufs.len(), c_int::MAX as usize) as c_int,
             )
         })?;
         Ok(ret as usize)
