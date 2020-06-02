@@ -103,18 +103,27 @@ interface CargoTaskDefinition extends vscode.TaskDefinition {
     env?: { [key: string]: string };
 }
 
-export function createTask(spec: ra.Runnable): vscode.Task {
+export function createTask(runnable: ra.Runnable): vscode.Task {
     const TASK_SOURCE = 'Rust';
+
+    let command;
+    switch (runnable.kind) {
+        case "cargo": command = toolchain.getPathForExecutable("cargo");
+    }
+    const args = runnable.args.cargoArgs;
+    if (runnable.args.executableArgs.length > 0) {
+        args.push('--', ...runnable.args.executableArgs);
+    }
     const definition: CargoTaskDefinition = {
         type: 'cargo',
-        label: spec.label,
-        command: toolchain.getPathForExecutable(spec.kind),
-        args: spec.extraArgs ? [...spec.args, '--', ...spec.extraArgs] : spec.args,
-        env: Object.assign({}, process.env, spec.env),
+        label: runnable.label,
+        command,
+        args,
+        env: Object.assign({}, process.env as { [key: string]: string }, { "RUST_BACKTRACE": "short" }),
     };
 
     const execOption: vscode.ShellExecutionOptions = {
-        cwd: spec.cwd || '.',
+        cwd: runnable.args.workspaceRoot || '.',
         env: definition.env,
     };
     const exec = new vscode.ShellExecution(
