@@ -3,13 +3,16 @@ use ra_db::{FileId, FileRange};
 use ra_ide::{
     Assist, CompletionItem, CompletionItemKind, Documentation, FileSystemEdit, Fold, FoldKind,
     FunctionSignature, Highlight, HighlightModifier, HighlightTag, HighlightedRange, Indel,
-    InlayHint, InlayKind, InsertTextFormat, LineIndex, NavigationTarget, ReferenceAccess, Severity,
-    SourceChange, SourceFileEdit, TextEdit,
+    InlayHint, InlayKind, InsertTextFormat, LineIndex, NavigationTarget, ReferenceAccess, Runnable,
+    RunnableKind, Severity, SourceChange, SourceFileEdit, TextEdit,
 };
 use ra_syntax::{SyntaxKind, TextRange, TextSize};
 use ra_vfs::LineEndings;
+use rustc_hash::FxHashMap;
 
-use crate::{lsp_ext, semantic_tokens, world::WorldSnapshot, Result};
+use crate::{
+    cargo_target_spec::CargoTargetSpec, lsp_ext, semantic_tokens, world::WorldSnapshot, Result,
+};
 
 pub(crate) fn position(line_index: &LineIndex, offset: TextSize) -> lsp_types::Position {
     let line_col = line_index.line_col(offset);
@@ -626,4 +629,39 @@ pub(crate) fn code_action(world: &WorldSnapshot, assist: Assist) -> Result<lsp_e
         command: None,
     };
     Ok(res)
+}
+
+pub(crate) fn runnable(
+    world: &WorldSnapshot,
+    file_id: FileId,
+    runnable: Runnable,
+) -> Result<lsp_ext::Runnable> {
+    let spec = CargoTargetSpec::for_file(world, file_id)?;
+    let target = spec.as_ref().map(|s| s.target.clone());
+    let (args, extra_args) =
+        CargoTargetSpec::runnable_args(spec, &runnable.kind, &runnable.cfg_exprs)?;
+    let line_index = world.analysis().file_line_index(file_id)?;
+    let label = match &runnable.kind {
+        RunnableKind::Test { test_id, .. } => format!("test {}", test_id),
+        RunnableKind::TestMod { path } => format!("test-mod {}", path),
+        RunnableKind::Bench { test_id } => format!("bench {}", test_id),
+        RunnableKind::DocTest { test_id, .. } => format!("doctest {}", test_id),
+        RunnableKind::Bin => {
+            target.map_or_else(|| "run binary".to_string(), |t| format!("run {}", t))
+        }
+    };
+
+    Ok(lsp_ext::Runnable {
+        range: range(&line_index, runnable.range),
+        label,
+        kind: lsp_ext::RunnableKind::Cargo,
+        args,
+        extra_args,
+        env: {
+            let mut m = FxHashMap::default();
+            m.insert("RUST_BACKTRACE".to_string(), "short".to_string());
+            m
+        },
+        cwd: world.workspace_root_for(file_id).map(|root| root.to_owned()),
+    })
 }
