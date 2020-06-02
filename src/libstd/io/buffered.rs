@@ -994,8 +994,26 @@ impl<'a, W: Write> Write for LineWriterShim<'a, W> {
         // the rest as possible). If there were any unwritten newlines, we
         // only buffer out to the last unwritten newline; this helps prevent
         // flushing partial lines on subsequent calls to LineWriterShim::write.
-        let tail =
-            if flushed < newline_idx { &buf[flushed..newline_idx] } else { &buf[newline_idx..] };
+
+        // Handle the cases in order of most-common to least-common, under
+        // the presumption that most writes succeed in totality, and that most
+        // writes are smaller than the buffer.
+        // - Is this a partial line (ie, no newlines left in the unwritten tail)
+        // - If not, does the data out to the last unwritten newline fit in
+        //   the buffer?
+        // - If not, scan for the last newline that *does* fit in the buffer
+        let tail = if flushed >= newline_idx {
+            &buf[flushed..]
+        } else if newline_idx - flushed <= self.buffer.capacity() {
+            &buf[flushed..newline_idx]
+        } else {
+            let scan_area = &buf[flushed..];
+            let scan_area = &scan_area[..self.buffer.capacity()];
+            match memchr::memrchr(b'\n', scan_area) {
+                Some(newline_idx) => &scan_area[..newline_idx + 1],
+                None => scan_area,
+            }
+        };
 
         let buffered = self.buffer.write_to_buf(tail);
         Ok(flushed + buffered)
@@ -1809,8 +1827,11 @@ mod tests {
         // Flush sets this flag
         pub flushed: bool,
 
-        // If true, writes & flushes will always be an error
-        pub always_error: bool,
+        // If true, writes will always be an error
+        pub always_write_error: bool,
+
+        // If true, flushes will always be an error
+        pub always_flush_error: bool,
 
         // If set, only up to this number of bytes will be written in a single
         // call to `write`
@@ -1827,8 +1848,8 @@ mod tests {
 
     impl Write for ProgrammableSink {
         fn write(&mut self, data: &[u8]) -> io::Result<usize> {
-            if self.always_error {
-                return Err(io::Error::new(io::ErrorKind::Other, "test - write always_error"));
+            if self.always_write_error {
+                return Err(io::Error::new(io::ErrorKind::Other, "test - always_write_error"));
             }
 
             match self.max_writes {
@@ -1852,8 +1873,8 @@ mod tests {
         }
 
         fn flush(&mut self) -> io::Result<()> {
-            if self.always_error {
-                Err(io::Error::new(io::ErrorKind::Other, "test - flush always_error"))
+            if self.always_flush_error {
+                Err(io::Error::new(io::ErrorKind::Other, "test - always_flush_error"))
             } else {
                 self.flushed = true;
                 Ok(())
@@ -2204,5 +2225,61 @@ mod tests {
         assert!(res.is_err());
         // An error from write_all leaves everything in an indeterminate state,
         // so there's nothing else to test here
+    }
+
+    /// Under certain circumstances, the old implementation of LineWriter
+    /// would try to buffer "to the last newline" but be forced to buffer
+    /// less than that, leading to inappropriate partial line writes.
+    /// Regression test for that issue.
+    #[test]
+    fn partial_multiline_buffering() {
+        let writer = ProgrammableSink {
+            // Write only up to 5 bytes at a time
+            accept_prefix: Some(5),
+            ..Default::default()
+        };
+
+        let mut writer = LineWriter::with_capacity(10, writer);
+
+        let content = b"AAAAABBBBB\nCCCCDDDDDD\nEEE";
+
+        // When content is written, LineWriter will try to write blocks A, B,
+        // C, and D. Only block A will succeed. Under the old behavior, LineWriter
+        // would then try to buffer B, C and D, but because its capacity is 10,
+        // it will only be able to buffer B and C. We don't want it to buffer
+        // partial lines if it can avoid it, so the correct behavior is to
+        // only buffer block B (with its newline).
+        assert_eq!(writer.write(content).unwrap(), 11);
+        assert_eq!(writer.get_ref().buffer, *b"AAAAA");
+
+        writer.flush().unwrap();
+        assert_eq!(writer.get_ref().buffer, *b"AAAAABBBBB\n");
+    }
+
+    /// Same as test_partial_multiline_buffering, but in the event NO full lines
+    /// fit in the buffer, just buffer as much as possible
+    #[test]
+    fn partial_multiline_buffering_without_full_line() {
+        let writer = ProgrammableSink {
+            // Write only up to 5 bytes at a time
+            accept_prefix: Some(5),
+            ..Default::default()
+        };
+
+        let mut writer = LineWriter::with_capacity(5, writer);
+
+        let content = b"AAAAABBBBBBBBBB\nCCCCC\nDDDDD";
+
+        // When content is written, LineWriter will try to write blocks A, B,
+        // and C. Only block A will succeed. Under the old behavior, LineWriter
+        // would then try to buffer B and C, but because its capacity is 5,
+        // it will only be able to buffer part of B. Because it's not possible
+        // for it to buffer any complete lines, it should buffer as much of B as
+        // possible
+        assert_eq!(writer.write(content).unwrap(), 10);
+        assert_eq!(writer.get_ref().buffer, *b"AAAAA");
+
+        writer.flush().unwrap();
+        assert_eq!(writer.get_ref().buffer, *b"AAAAABBBBB");
     }
 }
