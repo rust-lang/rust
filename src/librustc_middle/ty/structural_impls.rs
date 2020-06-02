@@ -1019,7 +1019,11 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::Const<'tcx> {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
         let ty = self.ty.fold_with(folder);
         let val = self.val.fold_with(folder);
-        folder.tcx().mk_const(ty::Const { ty, val })
+        if ty != self.ty || val != self.val {
+            folder.tcx().mk_const(ty::Const { ty, val })
+        } else {
+            *self
+        }
     }
 
     fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
