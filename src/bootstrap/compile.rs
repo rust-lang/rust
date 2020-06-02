@@ -74,6 +74,7 @@ impl Step for Std {
             // Even if we're not building std this stage, the new sysroot must
             // still contain the third party objects needed by various targets.
             copy_third_party_objects(builder, &compiler, target);
+            copy_self_contained_objects(builder, &compiler, target);
 
             builder.ensure(StdLink {
                 compiler: compiler_to_use,
@@ -84,6 +85,7 @@ impl Step for Std {
         }
 
         target_deps.extend(copy_third_party_objects(builder, &compiler, target).into_iter());
+        target_deps.extend(copy_self_contained_objects(builder, &compiler, target));
 
         let mut cargo = builder.cargo(compiler, Mode::Std, target, "build");
         std_cargo(builder, target, compiler.stage, &mut cargo);
@@ -109,6 +111,19 @@ impl Step for Std {
     }
 }
 
+fn copy_and_stamp(
+    builder: &Builder<'_>,
+    libdir: &Path,
+    sourcedir: &Path,
+    name: &str,
+    target_deps: &mut Vec<PathBuf>,
+) {
+    let target = libdir.join(name);
+    builder.copy(&sourcedir.join(name), &target);
+
+    target_deps.push((target, dependency_type));
+}
+
 /// Copies third party objects needed by various targets.
 fn copy_third_party_objects(
     builder: &Builder<'_>,
@@ -116,14 +131,43 @@ fn copy_third_party_objects(
     target: Interned<String>,
 ) -> Vec<PathBuf> {
     let libdir = builder.sysroot_libdir(*compiler, target);
-
     let mut target_deps = vec![];
 
-    let mut copy_and_stamp = |sourcedir: &Path, name: &str| {
-        let target = libdir.join(name);
-        builder.copy(&sourcedir.join(name), &target);
-        target_deps.push(target);
-    };
+    // Copies libunwind.a compiled to be linked with x86_64-fortanix-unknown-sgx.
+    //
+    // This target needs to be linked to Fortanix's port of llvm's libunwind.
+    // libunwind requires support for rwlock and printing to stderr,
+    // which is provided by std for this target.
+    if target == "x86_64-fortanix-unknown-sgx" {
+        let src_path_env = "X86_FORTANIX_SGX_LIBS";
+        let src =
+            env::var(src_path_env).unwrap_or_else(|_| panic!("{} not found in env", src_path_env));
+        copy_and_stamp(
+            builder,
+            &*libdir,
+            Path::new(&src),
+            "libunwind.a",
+            &mut target_deps,
+        );
+    }
+
+    if builder.config.sanitizers && compiler.stage != 0 {
+        // The sanitizers are only copied in stage1 or above,
+        // to avoid creating dependency on LLVM.
+        target_deps.extend(copy_sanitizers(builder, &compiler, target));
+    }
+
+    target_deps
+}
+
+/// Copies third party objects needed by various targets for self-contained linkage.
+fn copy_self_contained_objects(
+    builder: &Builder<'_>,
+    compiler: &Compiler,
+    target: Interned<String>,
+) -> Vec<PathBuf> {
+    let libdir = builder.sysroot_libdir(*compiler, target);
+    let mut target_deps = vec![];
 
     // Copies the CRT objects.
     //
@@ -135,29 +179,23 @@ fn copy_third_party_objects(
     if target.contains("musl") {
         let srcdir = builder.musl_root(target).unwrap().join("lib");
         for &obj in &["crt1.o", "Scrt1.o", "rcrt1.o", "crti.o", "crtn.o"] {
-            copy_and_stamp(&srcdir, obj);
+            copy_and_stamp(
+                builder,
+                &libdir_self_contained,
+                &srcdir,
+                obj,
+                &mut target_deps,
+            );
         }
     } else if target.ends_with("-wasi") {
         let srcdir = builder.wasi_root(target).unwrap().join("lib/wasm32-wasi");
-        copy_and_stamp(&srcdir, "crt1.o");
-    }
-
-    // Copies libunwind.a compiled to be linked with x86_64-fortanix-unknown-sgx.
-    //
-    // This target needs to be linked to Fortanix's port of llvm's libunwind.
-    // libunwind requires support for rwlock and printing to stderr,
-    // which is provided by std for this target.
-    if target == "x86_64-fortanix-unknown-sgx" {
-        let src_path_env = "X86_FORTANIX_SGX_LIBS";
-        let src =
-            env::var(src_path_env).unwrap_or_else(|_| panic!("{} not found in env", src_path_env));
-        copy_and_stamp(Path::new(&src), "libunwind.a");
-    }
-
-    if builder.config.sanitizers && compiler.stage != 0 {
-        // The sanitizers are only copied in stage1 or above,
-        // to avoid creating dependency on LLVM.
-        target_deps.extend(copy_sanitizers(builder, &compiler, target));
+        copy_and_stamp(
+            builder,
+            &libdir_self_contained,
+            &srcdir,
+            "crt1.o",
+            &mut target_deps,
+        );
     }
 
     target_deps
