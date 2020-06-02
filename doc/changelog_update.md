@@ -32,9 +32,10 @@ bullet points might be helpful:
   need to select the Rust release tag from the dropdown and then check the
   commit of the Clippy directory:
 
-To find the commit hash, click on "History" of the relevant branch in github
-and search for the latest "Merge commit '<hash>' into <branch>" commit.
-The <hash> part is then the most recent commit in the clippy repo.
+To find the commit hash, issue the following command when in a `rust-lang/rust` checkout:
+```
+git log --oneline -- src/tools/clippy/ | grep -o "Merge commit '[a-f0-9]*' into .*" | head -1 | sed -e "s/Merge commit '\([a-f0-9]*\)' into .*/\1/g"
+```
 
 ### 2. Fetching the PRs between those commits
 
