@@ -597,7 +597,6 @@ impl<W: Write> BufWriter<W> {
     /// Buffer some data without flushing it, regardless of the size of the
     /// data. Writes as much as possible without exceeding capacity. Returns
     /// the number of bytes written.
-    #[inline]
     fn write_to_buf(&mut self, buf: &[u8]) -> usize {
         let available = self.buf.capacity() - self.buf.len();
         let amt_to_buffer = available.min(buf.len());
