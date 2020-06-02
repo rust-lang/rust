@@ -1,0 +1,17 @@
+error[E0080]: could not evaluate static initializer
+  --> $DIR/tls.rs:12:25
+   |
+LL |     unsafe { let _val = A; }
+   |                         ^ cannot access thread local static (DefId(0:4 ~ tls[317d]::A[0]))
+
+warning: skipping const checks
+   |
+help: skipping check that does not even have a feature gate
+  --> $DIR/tls.rs:12:25
+   |
+LL |     unsafe { let _val = A; }
+   |                         ^
+
+error: aborting due to previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0080`.
