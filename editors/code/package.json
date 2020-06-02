@@ -238,7 +238,7 @@
                 },
                 "rust-analyzer.cargo.allFeatures": {
                     "type": "boolean",
-                    "default": true,
+                    "default": false,
                     "description": "Activate all available features"
                 },
                 "rust-analyzer.cargo.features": {
@@ -319,7 +319,7 @@
                 },
                 "rust-analyzer.checkOnSave.allFeatures": {
                     "type": "boolean",
-                    "default": true,
+                    "default": false,
                     "markdownDescription": "Check with all features (will be passed as `--all-features`)"
                 },
                 "rust-analyzer.inlayHints.enable": {
