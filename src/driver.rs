@@ -355,7 +355,6 @@ pub fn main() {
                 args.extend(vec!["--sysroot".into(), sys_root]);
             };
 
-            println!("args: {:?}", args);
             return rustc_driver::run_compiler(&args, &mut DefaultCallbacks, None, None);
         }
 
