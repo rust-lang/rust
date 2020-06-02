@@ -637,6 +637,10 @@ impl Function {
         db.function_data(self.id).params.clone()
     }
 
+    pub fn is_unsafe(self, db: &dyn HirDatabase) -> bool {
+        db.function_data(self.id).is_unsafe
+    }
+
     pub fn diagnostics(self, db: &dyn HirDatabase, sink: &mut DiagnosticSink) {
         let _p = profile("Function::diagnostics");
         let infer = db.infer(self.id.into());
@@ -1188,6 +1192,10 @@ impl Type {
             Ty::Apply(ApplicationTy { ctor: TypeCtor::FnDef(..), .. }) |
             Ty::Apply(ApplicationTy { ctor: TypeCtor::FnPtr { .. }, .. })
         )
+    }
+
+    pub fn is_raw_ptr(&self) -> bool {
+        matches!(&self.ty.value, Ty::Apply(ApplicationTy { ctor: TypeCtor::RawPtr(..), .. }))
     }
 
     pub fn contains_unknown(&self) -> bool {

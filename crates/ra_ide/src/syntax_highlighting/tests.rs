@@ -258,3 +258,34 @@ fn main() {
     fs::write(dst_file, &actual_html).unwrap();
     assert_eq_text!(expected_html, actual_html);
 }
+
+#[test]
+fn test_unsafe_highlighting() {
+    let (analysis, file_id) = single_file(
+        r#"
+unsafe fn unsafe_fn() {}
+
+struct HasUnsafeFn;
+
+impl HasUnsafeFn {
+    unsafe fn unsafe_method(&self) {}
+}
+
+fn main() {
+    let x = &5 as *const usize;
+    unsafe {
+        unsafe_fn();
+        HasUnsafeFn.unsafe_method();
+        let y = *x;
+        let z = -x;
+    }
+}
+"#
+        .trim(),
+    );
+    let dst_file = project_dir().join("crates/ra_ide/src/snapshots/highlight_unsafe.html");
+    let actual_html = &analysis.highlight_as_html(file_id, false).unwrap();
+    let expected_html = &read_text(&dst_file);
+    fs::write(dst_file, &actual_html).unwrap();
+    assert_eq_text!(expected_html, actual_html);
+}
