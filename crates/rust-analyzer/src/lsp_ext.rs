@@ -139,6 +139,7 @@ pub enum RunnableKind {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct CargoRunnable {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub workspace_root: Option<PathBuf>,
     // command, --package and --lib stuff
     pub cargo_args: Vec<String>,

@@ -228,12 +228,38 @@ mod tests {
         @r###"
         [
             Runnable {
-                range: 1..21,
+                nav: NavigationTarget {
+                    file_id: FileId(
+                        1,
+                    ),
+                    full_range: 1..21,
+                    name: "main",
+                    kind: FN_DEF,
+                    focus_range: Some(
+                        12..16,
+                    ),
+                    container_name: None,
+                    description: None,
+                    docs: None,
+                },
                 kind: Bin,
                 cfg_exprs: [],
             },
             Runnable {
-                range: 22..46,
+                nav: NavigationTarget {
+                    file_id: FileId(
+                        1,
+                    ),
+                    full_range: 22..46,
+                    name: "test_foo",
+                    kind: FN_DEF,
+                    focus_range: Some(
+                        33..41,
+                    ),
+                    container_name: None,
+                    description: None,
+                    docs: None,
+                },
                 kind: Test {
                     test_id: Path(
                         "test_foo",
@@ -245,7 +271,20 @@ mod tests {
                 cfg_exprs: [],
             },
             Runnable {
-                range: 47..81,
+                nav: NavigationTarget {
+                    file_id: FileId(
+                        1,
+                    ),
+                    full_range: 47..81,
+                    name: "test_foo",
+                    kind: FN_DEF,
+                    focus_range: Some(
+                        68..76,
+                    ),
+                    container_name: None,
+                    description: None,
+                    docs: None,
+                },
                 kind: Test {
                     test_id: Path(
                         "test_foo",
@@ -280,12 +319,38 @@ mod tests {
         @r###"
         [
             Runnable {
-                range: 1..21,
+                nav: NavigationTarget {
+                    file_id: FileId(
+                        1,
+                    ),
+                    full_range: 1..21,
+                    name: "main",
+                    kind: FN_DEF,
+                    focus_range: Some(
+                        12..16,
+                    ),
+                    container_name: None,
+                    description: None,
+                    docs: None,
+                },
                 kind: Bin,
                 cfg_exprs: [],
             },
             Runnable {
-                range: 22..64,
+                nav: NavigationTarget {
+                    file_id: FileId(
+                        1,
+                    ),
+                    full_range: 22..64,
+                    name: "foo",
+                    kind: FN_DEF,
+                    focus_range: Some(
+                        56..59,
+                    ),
+                    container_name: None,
+                    description: None,
+                    docs: None,
+                },
                 kind: DocTest {
                     test_id: Path(
                         "foo",
@@ -320,12 +385,38 @@ mod tests {
         @r###"
         [
             Runnable {
-                range: 1..21,
+                nav: NavigationTarget {
+                    file_id: FileId(
+                        1,
+                    ),
+                    full_range: 1..21,
+                    name: "main",
+                    kind: FN_DEF,
+                    focus_range: Some(
+                        12..16,
+                    ),
+                    container_name: None,
+                    description: None,
+                    docs: None,
+                },
                 kind: Bin,
                 cfg_exprs: [],
             },
             Runnable {
-                range: 51..105,
+                nav: NavigationTarget {
+                    file_id: FileId(
+                        1,
+                    ),
+                    full_range: 51..105,
+                    name: "foo",
+                    kind: FN_DEF,
+                    focus_range: Some(
+                        97..100,
+                    ),
+                    container_name: None,
+                    description: None,
+                    docs: None,
+                },
                 kind: DocTest {
                     test_id: Path(
                         "Data::foo",
@@ -355,14 +446,40 @@ mod tests {
         @r###"
         [
             Runnable {
-                range: 1..59,
+                nav: NavigationTarget {
+                    file_id: FileId(
+                        1,
+                    ),
+                    full_range: 1..59,
+                    name: "test_mod",
+                    kind: MODULE,
+                    focus_range: Some(
+                        13..21,
+                    ),
+                    container_name: None,
+                    description: None,
+                    docs: None,
+                },
                 kind: TestMod {
                     path: "test_mod",
                 },
                 cfg_exprs: [],
             },
             Runnable {
-                range: 28..57,
+                nav: NavigationTarget {
+                    file_id: FileId(
+                        1,
+                    ),
+                    full_range: 28..57,
+                    name: "test_foo1",
+                    kind: FN_DEF,
+                    focus_range: Some(
+                        43..52,
+                    ),
+                    container_name: None,
+                    description: None,
+                    docs: None,
+                },
                 kind: Test {
                     test_id: Path(
                         "test_mod::test_foo1",
@@ -397,14 +514,40 @@ mod tests {
         @r###"
         [
             Runnable {
-                range: 23..85,
+                nav: NavigationTarget {
+                    file_id: FileId(
+                        1,
+                    ),
+                    full_range: 23..85,
+                    name: "test_mod",
+                    kind: MODULE,
+                    focus_range: Some(
+                        27..35,
+                    ),
+                    container_name: None,
+                    description: None,
+                    docs: None,
+                },
                 kind: TestMod {
                     path: "foo::test_mod",
                 },
                 cfg_exprs: [],
             },
             Runnable {
-                range: 46..79,
+                nav: NavigationTarget {
+                    file_id: FileId(
+                        1,
+                    ),
+                    full_range: 46..79,
+                    name: "test_foo1",
+                    kind: FN_DEF,
+                    focus_range: Some(
+                        65..74,
+                    ),
+                    container_name: None,
+                    description: None,
+                    docs: None,
+                },
                 kind: Test {
                     test_id: Path(
                         "foo::test_mod::test_foo1",
@@ -441,14 +584,40 @@ mod tests {
         @r###"
         [
             Runnable {
-                range: 41..115,
+                nav: NavigationTarget {
+                    file_id: FileId(
+                        1,
+                    ),
+                    full_range: 41..115,
+                    name: "test_mod",
+                    kind: MODULE,
+                    focus_range: Some(
+                        45..53,
+                    ),
+                    container_name: None,
+                    description: None,
+                    docs: None,
+                },
                 kind: TestMod {
                     path: "foo::bar::test_mod",
                 },
                 cfg_exprs: [],
             },
             Runnable {
-                range: 68..105,
+                nav: NavigationTarget {
+                    file_id: FileId(
+                        1,
+                    ),
+                    full_range: 68..105,
+                    name: "test_foo1",
+                    kind: FN_DEF,
+                    focus_range: Some(
+                        91..100,
+                    ),
+                    container_name: None,
+                    description: None,
+                    docs: None,
+                },
                 kind: Test {
                     test_id: Path(
                         "foo::bar::test_mod::test_foo1",
@@ -480,7 +649,20 @@ mod tests {
         @r###"
         [
             Runnable {
-                range: 1..58,
+                nav: NavigationTarget {
+                    file_id: FileId(
+                        1,
+                    ),
+                    full_range: 1..58,
+                    name: "test_foo1",
+                    kind: FN_DEF,
+                    focus_range: Some(
+                        44..53,
+                    ),
+                    container_name: None,
+                    description: None,
+                    docs: None,
+                },
                 kind: Test {
                     test_id: Path(
                         "test_foo1",
@@ -517,7 +699,20 @@ mod tests {
         @r###"
         [
             Runnable {
-                range: 1..80,
+                nav: NavigationTarget {
+                    file_id: FileId(
+                        1,
+                    ),
+                    full_range: 1..80,
+                    name: "test_foo1",
+                    kind: FN_DEF,
+                    focus_range: Some(
+                        66..75,
+                    ),
+                    container_name: None,
+                    description: None,
+                    docs: None,
+                },
                 kind: Test {
                     test_id: Path(
                         "test_foo1",
