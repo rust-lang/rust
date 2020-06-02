@@ -693,6 +693,45 @@ pub fn handle_formatting(
     }]))
 }
 
+fn handle_fixes(
+    world: &WorldSnapshot,
+    params: &lsp_types::CodeActionParams,
+    res: &mut Vec<lsp_ext::CodeAction>,
+) -> Result<()> {
+    let file_id = from_proto::file_id(&world, &params.text_document.uri)?;
+    let line_index = world.analysis().file_line_index(file_id)?;
+    let range = from_proto::text_range(&line_index, params.range);
+
+    let diagnostics = world.analysis().diagnostics(file_id)?;
+
+    let fixes_from_diagnostics = diagnostics
+        .into_iter()
+        .filter_map(|d| Some((d.range, d.fix?)))
+        .filter(|(diag_range, _fix)| diag_range.intersect(range).is_some())
+        .map(|(_range, fix)| fix);
+    for fix in fixes_from_diagnostics {
+        let title = fix.label;
+        let edit = to_proto::snippet_workspace_edit(&world, fix.source_change)?;
+        let action = lsp_ext::CodeAction {
+            title,
+            id: None,
+            group: None,
+            kind: None,
+            edit: Some(edit),
+            command: None,
+        };
+        res.push(action);
+    }
+    for fix in world.check_fixes.get(&file_id).into_iter().flatten() {
+        let fix_range = from_proto::text_range(&line_index, fix.range);
+        if fix_range.intersect(range).is_none() {
+            continue;
+        }
+        res.push(fix.action.clone());
+    }
+    Ok(())
+}
+
 pub fn handle_code_action(
     world: WorldSnapshot,
     params: lsp_types::CodeActionParams,
@@ -709,36 +748,46 @@ pub fn handle_code_action(
     let line_index = world.analysis().file_line_index(file_id)?;
     let range = from_proto::text_range(&line_index, params.range);
     let frange = FileRange { file_id, range };
-
-    let diagnostics = world.analysis().diagnostics(file_id)?;
     let mut res: Vec<lsp_ext::CodeAction> = Vec::new();
 
-    let fixes_from_diagnostics = diagnostics
-        .into_iter()
-        .filter_map(|d| Some((d.range, d.fix?)))
-        .filter(|(diag_range, _fix)| diag_range.intersect(range).is_some())
-        .map(|(_range, fix)| fix);
+    handle_fixes(&world, &params, &mut res)?;
 
-    for fix in fixes_from_diagnostics {
-        let title = fix.label;
-        let edit = to_proto::snippet_workspace_edit(&world, fix.source_change)?;
-        let action =
-            lsp_ext::CodeAction { title, group: None, kind: None, edit: Some(edit), command: None };
-        res.push(action);
-    }
-
-    for fix in world.check_fixes.get(&file_id).into_iter().flatten() {
-        let fix_range = from_proto::text_range(&line_index, fix.range);
-        if fix_range.intersect(range).is_none() {
-            continue;
+    if world.config.client_caps.resolve_code_action {
+        for assist in world.analysis().unresolved_assists(&world.config.assist, frange)?.into_iter()
+        {
+            res.push(to_proto::unresolved_code_action(&world, assist)?.into());
         }
-        res.push(fix.action.clone());
+    } else {
+        for assist in world.analysis().resolved_assists(&world.config.assist, frange)?.into_iter() {
+            res.push(to_proto::resolved_code_action(&world, assist)?.into());
+        }
     }
 
-    for assist in world.analysis().assists(&world.config.assist, frange)?.into_iter() {
-        res.push(to_proto::code_action(&world, assist)?.into());
-    }
     Ok(Some(res))
+}
+
+pub fn handle_resolve_code_action(
+    world: WorldSnapshot,
+    params: lsp_ext::ResolveCodeActionParams,
+) -> Result<Option<lsp_ext::SnippetWorkspaceEdit>> {
+    if !world.config.client_caps.resolve_code_action {
+        return Ok(None);
+    }
+
+    let _p = profile("handle_resolve_code_action");
+    let file_id = from_proto::file_id(&world, &params.code_action_params.text_document.uri)?;
+    let line_index = world.analysis().file_line_index(file_id)?;
+    let range = from_proto::text_range(&line_index, params.code_action_params.range);
+    let frange = FileRange { file_id, range };
+    let mut res: Vec<lsp_ext::CodeAction> = Vec::new();
+
+    for assist in world.analysis().resolved_assists(&world.config.assist, frange)?.into_iter() {
+        res.push(to_proto::resolved_code_action(&world, assist)?.into());
+    }
+    Ok(res
+        .into_iter()
+        .find(|action| action.id.clone().unwrap() == params.id && action.title == params.label)
+        .and_then(|action| action.edit))
 }
 
 pub fn handle_code_lens(

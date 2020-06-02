@@ -103,6 +103,7 @@ pub struct ClientCapsConfig {
     pub code_action_literals: bool,
     pub work_done_progress: bool,
     pub code_action_group: bool,
+    pub resolve_code_action: bool,
 }
 
 impl Default for Config {
@@ -299,7 +300,11 @@ impl Config {
 
             let code_action_group =
                 experimental.get("codeActionGroup").and_then(|it| it.as_bool()) == Some(true);
-            self.client_caps.code_action_group = code_action_group
+            self.client_caps.code_action_group = code_action_group;
+
+            let resolve_code_action =
+                experimental.get("resolveCodeAction").and_then(|it| it.as_bool()) == Some(true);
+            self.client_caps.resolve_code_action = resolve_code_action;
         }
     }
 }

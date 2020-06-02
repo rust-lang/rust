@@ -3,8 +3,8 @@ use ra_db::{FileId, FileRange};
 use ra_ide::{
     Assist, CompletionItem, CompletionItemKind, Documentation, FileSystemEdit, Fold, FoldKind,
     FunctionSignature, Highlight, HighlightModifier, HighlightTag, HighlightedRange, Indel,
-    InlayHint, InlayKind, InsertTextFormat, LineIndex, NavigationTarget, ReferenceAccess, Severity,
-    SourceChange, SourceFileEdit, TextEdit,
+    InlayHint, InlayKind, InsertTextFormat, LineIndex, NavigationTarget, ReferenceAccess,
+    ResolvedAssist, Severity, SourceChange, SourceFileEdit, TextEdit,
 };
 use ra_syntax::{SyntaxKind, TextRange, TextSize};
 use ra_vfs::LineEndings;
@@ -617,10 +617,41 @@ fn main() <fold>{
     }
 }
 
-pub(crate) fn code_action(world: &WorldSnapshot, assist: Assist) -> Result<lsp_ext::CodeAction> {
+pub(crate) fn unresolved_code_action(
+    world: &WorldSnapshot,
+    assist: Assist,
+) -> Result<lsp_ext::CodeAction> {
     let res = lsp_ext::CodeAction {
         title: assist.label,
-        group: if world.config.client_caps.code_action_group { assist.group_label } else { None },
+        id: Some(assist.id.0.to_owned()),
+        group: assist.group.and_then(|it| {
+            if world.config.client_caps.code_action_group {
+                None
+            } else {
+                Some(it.0)
+            }
+        }),
+        kind: Some(String::new()),
+        edit: None,
+        command: None,
+    };
+    Ok(res)
+}
+
+pub(crate) fn resolved_code_action(
+    world: &WorldSnapshot,
+    assist: ResolvedAssist,
+) -> Result<lsp_ext::CodeAction> {
+    let res = lsp_ext::CodeAction {
+        title: assist.assist.label,
+        id: Some(assist.assist.id.0.to_owned()),
+        group: assist.assist.group.and_then(|it| {
+            if world.config.client_caps.code_action_group {
+                None
+            } else {
+                Some(it.0)
+            }
+        }),
         kind: Some(String::new()),
         edit: Some(snippet_workspace_edit(world, assist.source_change)?),
         command: None,
