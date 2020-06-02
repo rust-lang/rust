@@ -133,9 +133,9 @@ impl Neg for Round {
 pub type ExpInt = i16;
 
 // \c ilogb error results.
-pub const IEK_INF: ExpInt = ExpInt::max_value();
-pub const IEK_NAN: ExpInt = ExpInt::min_value();
-pub const IEK_ZERO: ExpInt = ExpInt::min_value() + 1;
+pub const IEK_INF: ExpInt = ExpInt::MAX;
+pub const IEK_NAN: ExpInt = ExpInt::MIN;
+pub const IEK_ZERO: ExpInt = ExpInt::MIN + 1;
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct ParseError(pub &'static str);

@@ -407,14 +407,14 @@ fn test_from_vec() {
 fn test_downcast() {
     use std::any::Any;
 
-    let r1: Rc<dyn Any> = Rc::new(i32::max_value());
+    let r1: Rc<dyn Any> = Rc::new(i32::MAX);
     let r2: Rc<dyn Any> = Rc::new("abc");
 
     assert!(r1.clone().downcast::<u32>().is_err());
 
     let r1i32 = r1.downcast::<i32>();
     assert!(r1i32.is_ok());
-    assert_eq!(r1i32.unwrap(), Rc::new(i32::max_value()));
+    assert_eq!(r1i32.unwrap(), Rc::new(i32::MAX));
 
     assert!(r2.clone().downcast::<i32>().is_err());
 

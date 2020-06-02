@@ -18,7 +18,7 @@ use crate::num::FpCategory;
 #[rustc_deprecated(
     since = "1.46.0",
     reason = "The associated constant `f32::RADIX` is now prefered",
-    suggestion = "f32::RADIX",
+    suggestion = "f32::RADIX"
 )]
 pub const RADIX: u32 = f32::RADIX;
 
@@ -26,7 +26,7 @@ pub const RADIX: u32 = f32::RADIX;
 #[rustc_deprecated(
     since = "1.46.0",
     reason = "The associated constant `f32::MANTISSA_DIGITS` is now prefered",
-    suggestion = "f32::MANTISSA_DIGITS",
+    suggestion = "f32::MANTISSA_DIGITS"
 )]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const MANTISSA_DIGITS: u32 = f32::MANTISSA_DIGITS;
@@ -36,7 +36,7 @@ pub const MANTISSA_DIGITS: u32 = f32::MANTISSA_DIGITS;
 #[rustc_deprecated(
     since = "1.46.0",
     reason = "The associated constant `f32::DIGITS` is now prefered",
-    suggestion = "f32::DIGITS",
+    suggestion = "f32::DIGITS"
 )]
 pub const DIGITS: u32 = f32::DIGITS;
 
@@ -47,7 +47,7 @@ pub const DIGITS: u32 = f32::DIGITS;
 #[rustc_deprecated(
     since = "1.46.0",
     reason = "The associated constant `f32::EPSILON` is now prefered",
-    suggestion = "f32::EPSILON",
+    suggestion = "f32::EPSILON"
 )]
 pub const EPSILON: f32 = f32::EPSILON;
 
@@ -56,7 +56,7 @@ pub const EPSILON: f32 = f32::EPSILON;
 #[rustc_deprecated(
     since = "1.46.0",
     reason = "The associated constant `f32::MIN` is now prefered",
-    suggestion = "f32::MIN",
+    suggestion = "f32::MIN"
 )]
 pub const MIN: f32 = f32::MIN;
 
@@ -65,7 +65,7 @@ pub const MIN: f32 = f32::MIN;
 #[rustc_deprecated(
     since = "1.46.0",
     reason = "The associated constant `f32::MIN_POSITIVE` is now prefered",
-    suggestion = "f32::MIN_POSITIVE",
+    suggestion = "f32::MIN_POSITIVE"
 )]
 pub const MIN_POSITIVE: f32 = f32::MIN_POSITIVE;
 
@@ -74,7 +74,7 @@ pub const MIN_POSITIVE: f32 = f32::MIN_POSITIVE;
 #[rustc_deprecated(
     since = "1.46.0",
     reason = "The associated constant `f32::MAX` is now prefered",
-    suggestion = "f32::MAX",
+    suggestion = "f32::MAX"
 )]
 pub const MAX: f32 = f32::MAX;
 
@@ -83,7 +83,7 @@ pub const MAX: f32 = f32::MAX;
 #[rustc_deprecated(
     since = "1.46.0",
     reason = "The associated constant `f32::MIN_EXP` is now prefered",
-    suggestion = "f32::MIN_EXP",
+    suggestion = "f32::MIN_EXP"
 )]
 pub const MIN_EXP: i32 = f32::MIN_EXP;
 
@@ -92,7 +92,7 @@ pub const MIN_EXP: i32 = f32::MIN_EXP;
 #[rustc_deprecated(
     since = "1.46.0",
     reason = "The associated constant `f32::MAX_EXP` is now prefered",
-    suggestion = "f32::MAX_EXP",
+    suggestion = "f32::MAX_EXP"
 )]
 pub const MAX_EXP: i32 = f32::MAX_EXP;
 
@@ -101,7 +101,7 @@ pub const MAX_EXP: i32 = f32::MAX_EXP;
 #[rustc_deprecated(
     since = "1.46.0",
     reason = "The associated constant `f32::MIN_10_EXP` is now prefered",
-    suggestion = "f32::MIN_10_EXP",
+    suggestion = "f32::MIN_10_EXP"
 )]
 pub const MIN_10_EXP: i32 = f32::MIN_10_EXP;
 
@@ -110,7 +110,7 @@ pub const MIN_10_EXP: i32 = f32::MIN_10_EXP;
 #[rustc_deprecated(
     since = "1.46.0",
     reason = "The associated constant `f32::MAX_10_EXP` is now prefered",
-    suggestion = "f32::MAX_10_EXP",
+    suggestion = "f32::MAX_10_EXP"
 )]
 pub const MAX_10_EXP: i32 = f32::MAX_10_EXP;
 
@@ -119,7 +119,7 @@ pub const MAX_10_EXP: i32 = f32::MAX_10_EXP;
 #[rustc_deprecated(
     since = "1.46.0",
     reason = "The associated constant `f32::NAN` is now prefered",
-    suggestion = "f32::NAN",
+    suggestion = "f32::NAN"
 )]
 pub const NAN: f32 = f32::NAN;
 
@@ -128,7 +128,7 @@ pub const NAN: f32 = f32::NAN;
 #[rustc_deprecated(
     since = "1.46.0",
     reason = "The associated constant `f32::INFINITY` is now prefered",
-    suggestion = "f32::INFINITY",
+    suggestion = "f32::INFINITY"
 )]
 pub const INFINITY: f32 = f32::INFINITY;
 
@@ -137,7 +137,7 @@ pub const INFINITY: f32 = f32::INFINITY;
 #[rustc_deprecated(
     since = "1.46.0",
     reason = "The associated constant `f32::NEG_INFINITY` is now prefered",
-    suggestion = "f32::NEG_INFINITY",
+    suggestion = "f32::NEG_INFINITY"
 )]
 pub const NEG_INFINITY: f32 = f32::NEG_INFINITY;
 

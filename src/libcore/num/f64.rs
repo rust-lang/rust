@@ -18,7 +18,7 @@ use crate::num::FpCategory;
 #[rustc_deprecated(
     since = "1.46.0",
     reason = "The associated constant `f64::RADIX` is now prefered",
-    suggestion = "f64::RADIX",
+    suggestion = "f64::RADIX"
 )]
 pub const RADIX: u32 = f64::RADIX;
 
@@ -27,7 +27,7 @@ pub const RADIX: u32 = f64::RADIX;
 #[rustc_deprecated(
     since = "1.46.0",
     reason = "The associated constant `f64::MANTISSA_DIGITS` is now prefered",
-    suggestion = "f64::MANTISSA_DIGITS",
+    suggestion = "f64::MANTISSA_DIGITS"
 )]
 pub const MANTISSA_DIGITS: u32 = f64::MANTISSA_DIGITS;
 
@@ -36,7 +36,7 @@ pub const MANTISSA_DIGITS: u32 = f64::MANTISSA_DIGITS;
 #[rustc_deprecated(
     since = "1.46.0",
     reason = "The associated constant `f64::DIGITS` is now prefered",
-    suggestion = "f64::DIGITS",
+    suggestion = "f64::DIGITS"
 )]
 pub const DIGITS: u32 = f64::DIGITS;
 
@@ -47,7 +47,7 @@ pub const DIGITS: u32 = f64::DIGITS;
 #[rustc_deprecated(
     since = "1.46.0",
     reason = "The associated constant `f64::EPSILON` is now prefered",
-    suggestion = "f64::EPSILON",
+    suggestion = "f64::EPSILON"
 )]
 pub const EPSILON: f64 = f64::EPSILON;
 
@@ -56,7 +56,7 @@ pub const EPSILON: f64 = f64::EPSILON;
 #[rustc_deprecated(
     since = "1.46.0",
     reason = "The associated constant `f64::MIN` is now prefered",
-    suggestion = "f64::MIN",
+    suggestion = "f64::MIN"
 )]
 pub const MIN: f64 = f64::MIN;
 
@@ -65,7 +65,7 @@ pub const MIN: f64 = f64::MIN;
 #[rustc_deprecated(
     since = "1.46.0",
     reason = "The associated constant `f64::MIN_POSITIVE` is now prefered",
-    suggestion = "f64::MIN_POSITIVE",
+    suggestion = "f64::MIN_POSITIVE"
 )]
 pub const MIN_POSITIVE: f64 = f64::MIN_POSITIVE;
 
@@ -74,7 +74,7 @@ pub const MIN_POSITIVE: f64 = f64::MIN_POSITIVE;
 #[rustc_deprecated(
     since = "1.46.0",
     reason = "The associated constant `f64::MAX` is now prefered",
-    suggestion = "f64::MAX",
+    suggestion = "f64::MAX"
 )]
 pub const MAX: f64 = f64::MAX;
 
@@ -83,7 +83,7 @@ pub const MAX: f64 = f64::MAX;
 #[rustc_deprecated(
     since = "1.46.0",
     reason = "The associated constant `f64::MIN_EXP` is now prefered",
-    suggestion = "f64::MIN_EXP",
+    suggestion = "f64::MIN_EXP"
 )]
 pub const MIN_EXP: i32 = f64::MIN_EXP;
 
@@ -92,7 +92,7 @@ pub const MIN_EXP: i32 = f64::MIN_EXP;
 #[rustc_deprecated(
     since = "1.46.0",
     reason = "The associated constant `f64::MAX_EXP` is now prefered",
-    suggestion = "f64::MAX_EXP",
+    suggestion = "f64::MAX_EXP"
 )]
 pub const MAX_EXP: i32 = f64::MAX_EXP;
 
@@ -101,7 +101,7 @@ pub const MAX_EXP: i32 = f64::MAX_EXP;
 #[rustc_deprecated(
     since = "1.46.0",
     reason = "The associated constant `f64::MIN_10_EXP` is now prefered",
-    suggestion = "f64::MIN_10_EXP",
+    suggestion = "f64::MIN_10_EXP"
 )]
 pub const MIN_10_EXP: i32 = f64::MIN_10_EXP;
 
@@ -110,7 +110,7 @@ pub const MIN_10_EXP: i32 = f64::MIN_10_EXP;
 #[rustc_deprecated(
     since = "1.46.0",
     reason = "The associated constant `f64::MAX_10_EXP` is now prefered",
-    suggestion = "f64::MAX_10_EXP",
+    suggestion = "f64::MAX_10_EXP"
 )]
 pub const MAX_10_EXP: i32 = f64::MAX_10_EXP;
 
@@ -119,7 +119,7 @@ pub const MAX_10_EXP: i32 = f64::MAX_10_EXP;
 #[rustc_deprecated(
     since = "1.46.0",
     reason = "The associated constant `f64::NAN` is now prefered",
-    suggestion = "f64::NAN",
+    suggestion = "f64::NAN"
 )]
 pub const NAN: f64 = f64::NAN;
 
@@ -128,7 +128,7 @@ pub const NAN: f64 = f64::NAN;
 #[rustc_deprecated(
     since = "1.46.0",
     reason = "The associated constant `f64::INFINITY` is now prefered",
-    suggestion = "f64::INFINITY",
+    suggestion = "f64::INFINITY"
 )]
 pub const INFINITY: f64 = f64::INFINITY;
 
@@ -137,7 +137,7 @@ pub const INFINITY: f64 = f64::INFINITY;
 #[rustc_deprecated(
     since = "1.46.0",
     reason = "The associated constant `f64::NEG_INFINITY` is now prefered",
-    suggestion = "f64::NEG_INFINITY",
+    suggestion = "f64::NEG_INFINITY"
 )]
 pub const NEG_INFINITY: f64 = f64::NEG_INFINITY;
 

@@ -2034,7 +2034,7 @@ trait RcBoxPtr<T: ?Sized> {
         // The reference count will never be zero when this is called;
         // nevertheless, we insert an abort here to hint LLVM at
         // an otherwise missed optimization.
-        if strong == 0 || strong == usize::max_value() {
+        if strong == 0 || strong == usize::MAX {
             // remove `unsafe` on bootstrap bump
             #[cfg_attr(not(bootstrap), allow(unused_unsafe))]
             unsafe {
@@ -2062,7 +2062,7 @@ trait RcBoxPtr<T: ?Sized> {
         // The reference count will never be zero when this is called;
         // nevertheless, we insert an abort here to hint LLVM at
         // an otherwise missed optimization.
-        if weak == 0 || weak == usize::max_value() {
+        if weak == 0 || weak == usize::MAX {
             // remove `unsafe` on bootstrap bump
             #[cfg_attr(not(bootstrap), allow(unused_unsafe))]
             unsafe {

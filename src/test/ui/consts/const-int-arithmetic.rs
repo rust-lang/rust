@@ -34,8 +34,8 @@ suite!(
         C6: 5i8.checked_mul(122), None;
         C7: (-127i8).checked_mul(-99), None;
 
-        C8: (i8::min_value() + 1).checked_div(-1), Some(127);
-        C9: i8::min_value().checked_div(-1), None;
+        C8: (i8::MIN + 1).checked_div(-1), Some(127);
+        C9: i8::MIN.checked_div(-1), None;
         C10: 1i8.checked_div(0), None;
 
         C11: 5i8.checked_rem(2), Some(1);
@@ -56,8 +56,8 @@ suite!(
         C21: i8::MIN.checked_abs(), None;
 
         // `const_euclidean_int_methods`
-        C22: (i8::min_value() + 1).checked_div_euclid(-1), Some(127);
-        C23: i8::min_value().checked_div_euclid(-1), None;
+        C22: (i8::MIN + 1).checked_div_euclid(-1), Some(127);
+        C23: i8::MIN.checked_div_euclid(-1), None;
         C24: (1i8).checked_div_euclid(0), None;
 
         C25: 5i8.checked_rem_euclid(2), Some(1);
@@ -72,12 +72,12 @@ suite!(
     saturating_and_wrapping -> i8 {
         // `const_saturating_int_methods`
         C28: 100i8.saturating_add(1), 101;
-        C29: i8::max_value().saturating_add(100), i8::max_value();
-        C30: i8::min_value().saturating_add(-1), i8::min_value();
+        C29: i8::MAX.saturating_add(100), i8::MAX;
+        C30: i8::MIN.saturating_add(-1), i8::MIN;
 
         C31: 100i8.saturating_sub(127), -27;
-        C32: i8::min_value().saturating_sub(100), i8::min_value();
-        C33: i8::max_value().saturating_sub(-1), i8::max_value();
+        C32: i8::MIN.saturating_sub(100), i8::MIN;
+        C33: i8::MAX.saturating_sub(-1), i8::MAX;
 
         C34: 10i8.saturating_mul(12), 120;
         C35: i8::MAX.saturating_mul(10), i8::MAX;
@@ -85,13 +85,13 @@ suite!(
 
         C37: 100i8.saturating_neg(), -100;
         C38: (-100i8).saturating_neg(), 100;
-        C39: i8::min_value().saturating_neg(), i8::max_value();
-        C40: i8::max_value().saturating_neg(), i8::min_value() + 1;
+        C39: i8::MIN.saturating_neg(), i8::MAX;
+        C40: i8::MAX.saturating_neg(), i8::MIN + 1;
 
         C57: 100i8.saturating_abs(), 100;
         C58: (-100i8).saturating_abs(), 100;
-        C59: i8::min_value().saturating_abs(), i8::max_value();
-        C60: (i8::min_value() + 1).saturating_abs(), i8::max_value();
+        C59: i8::MIN.saturating_abs(), i8::MAX;
+        C60: (i8::MIN + 1).saturating_abs(), i8::MAX;
 
         // `const_wrapping_int_methods`
         C41: 100i8.wrapping_div(10), 10;

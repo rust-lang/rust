@@ -228,7 +228,7 @@ impl Socket {
     fn recv_with_flags(&self, buf: &mut [u8], flags: c_int) -> io::Result<usize> {
         // On unix when a socket is shut down all further reads return 0, so we
         // do the same on windows to map a shut down socket to returning EOF.
-        let len = cmp::min(buf.len(), i32::max_value() as usize) as i32;
+        let len = cmp::min(buf.len(), i32::MAX as usize) as i32;
         unsafe {
             match c::recv(self.0, buf.as_mut_ptr() as *mut c_void, len, flags) {
                 -1 if c::WSAGetLastError() == c::WSAESHUTDOWN => Ok(0),
@@ -245,7 +245,7 @@ impl Socket {
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         // On unix when a socket is shut down all further reads return 0, so we
         // do the same on windows to map a shut down socket to returning EOF.
-        let len = cmp::min(bufs.len(), c::DWORD::max_value() as usize) as c::DWORD;
+        let len = cmp::min(bufs.len(), c::DWORD::MAX as usize) as c::DWORD;
         let mut nread = 0;
         let mut flags = 0;
         unsafe {
@@ -282,7 +282,7 @@ impl Socket {
     ) -> io::Result<(usize, SocketAddr)> {
         let mut storage: c::SOCKADDR_STORAGE_LH = unsafe { mem::zeroed() };
         let mut addrlen = mem::size_of_val(&storage) as c::socklen_t;
-        let len = cmp::min(buf.len(), <wrlen_t>::max_value() as usize) as wrlen_t;
+        let len = cmp::min(buf.len(), <wrlen_t>::MAX as usize) as wrlen_t;
 
         // On unix when a socket is shut down all further reads return 0, so we
         // do the same on windows to map a shut down socket to returning EOF.
@@ -313,7 +313,7 @@ impl Socket {
     }
 
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        let len = cmp::min(bufs.len(), c::DWORD::max_value() as usize) as c::DWORD;
+        let len = cmp::min(bufs.len(), c::DWORD::MAX as usize) as c::DWORD;
         let mut nwritten = 0;
         unsafe {
             cvt(c::WSASend(

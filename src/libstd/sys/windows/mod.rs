@@ -295,7 +295,7 @@ pub fn dur2timeout(dur: Duration) -> c::DWORD {
         .checked_mul(1000)
         .and_then(|ms| ms.checked_add((dur.subsec_nanos() as u64) / 1_000_000))
         .and_then(|ms| ms.checked_add(if dur.subsec_nanos() % 1_000_000 > 0 { 1 } else { 0 }))
-        .map(|ms| if ms > <c::DWORD>::max_value() as u64 { c::INFINITE } else { ms as c::DWORD })
+        .map(|ms| if ms > <c::DWORD>::MAX as u64 { c::INFINITE } else { ms as c::DWORD })
         .unwrap_or(c::INFINITE)
 }
 
