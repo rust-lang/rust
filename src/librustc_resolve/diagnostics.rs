@@ -1475,7 +1475,7 @@ crate fn show_candidates(
     // This is `None` if all placement locations are inside expansions
     use_placement_span: Option<Span>,
     candidates: &[ImportSuggestion],
-    better: bool,
+    instead: bool,
     found_use: bool,
 ) {
     if candidates.is_empty() {
@@ -1486,6 +1486,7 @@ crate fn show_candidates(
     // by iterating through a hash map, so make sure they are ordered:
     let mut path_strings: Vec<_> =
         candidates.iter().map(|c| path_names_to_string(&c.path)).collect();
+
     path_strings.sort();
     path_strings.dedup();
 
@@ -1494,8 +1495,9 @@ crate fn show_candidates(
     } else {
         ("one of these", "items")
     };
-    let instead = if better { " instead" } else { "" };
-    let msg = format!("consider importing {} {}{}", determiner, kind, instead);
+
+    let instead = if instead { " instead" } else { "" };
+    let mut msg = format!("consider importing {} {}{}", determiner, kind, instead);
 
     if let Some(span) = use_placement_span {
         for candidate in &mut path_strings {
@@ -1507,12 +1509,13 @@ crate fn show_candidates(
 
         err.span_suggestions(span, &msg, path_strings.into_iter(), Applicability::Unspecified);
     } else {
-        let mut msg = msg;
         msg.push(':');
+
         for candidate in path_strings {
             msg.push('\n');
             msg.push_str(&candidate);
         }
+
         err.note(&msg);
     }
 }
