@@ -9,7 +9,7 @@ use std::rc::Rc;
 impl<'tcx, N: fmt::Debug> fmt::Debug for traits::ImplSource<'tcx, N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            super::ImplSourceImpl(ref v) => write!(f, "{:?}", v),
+            super::ImplSourceUserDefined(ref v) => write!(f, "{:?}", v),
 
             super::ImplSourceAutoImpl(ref t) => write!(f, "{:?}", t),
 
@@ -32,11 +32,11 @@ impl<'tcx, N: fmt::Debug> fmt::Debug for traits::ImplSource<'tcx, N> {
     }
 }
 
-impl<'tcx, N: fmt::Debug> fmt::Debug for traits::ImplSourceImplData<'tcx, N> {
+impl<'tcx, N: fmt::Debug> fmt::Debug for traits::ImplSourceUserDefinedData<'tcx, N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "ImplSourceImplData(impl_def_id={:?}, substs={:?}, nested={:?})",
+            "ImplSourceUserDefinedData(impl_def_id={:?}, substs={:?}, nested={:?})",
             self.impl_def_id, self.substs, self.nested
         )
     }
@@ -245,15 +245,17 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ImplSource<'a, ()> {
     type Lifted = traits::ImplSource<'tcx, ()>;
     fn lift_to_tcx(&self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
         match self.clone() {
-            traits::ImplSourceImpl(traits::ImplSourceImplData { impl_def_id, substs, nested }) => {
-                tcx.lift(&substs).map(|substs| {
-                    traits::ImplSourceImpl(traits::ImplSourceImplData {
-                        impl_def_id,
-                        substs,
-                        nested,
-                    })
+            traits::ImplSourceUserDefined(traits::ImplSourceUserDefinedData {
+                impl_def_id,
+                substs,
+                nested,
+            }) => tcx.lift(&substs).map(|substs| {
+                traits::ImplSourceUserDefined(traits::ImplSourceUserDefinedData {
+                    impl_def_id,
+                    substs,
+                    nested,
                 })
-            }
+            }),
             traits::ImplSourceAutoImpl(t) => Some(traits::ImplSourceAutoImpl(t)),
             traits::ImplSourceGenerator(traits::ImplSourceGeneratorData {
                 generator_def_id,

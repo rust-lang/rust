@@ -84,9 +84,9 @@ fn resolve_associated_item<'tcx>(
     // Now that we know which impl is being used, we can dispatch to
     // the actual function:
     Ok(match vtbl {
-        traits::ImplSourceImpl(impl_data) => {
+        traits::ImplSourceUserDefined(impl_data) => {
             debug!(
-                "resolving ImplSourceImpl: {:?}, {:?}, {:?}, {:?}",
+                "resolving ImplSourceUserDefined: {:?}, {:?}, {:?}, {:?}",
                 param_env, trait_item, rcvr_substs, impl_data
             );
             assert!(!rcvr_substs.needs_infer());

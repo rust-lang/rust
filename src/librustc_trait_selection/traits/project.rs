@@ -13,7 +13,7 @@ use super::SelectionContext;
 use super::SelectionError;
 use super::{
     ImplSourceClosureData, ImplSourceDiscriminantKindData, ImplSourceFnPointerData,
-    ImplSourceGeneratorData, ImplSourceImplData,
+    ImplSourceGeneratorData, ImplSourceUserDefinedData,
 };
 use super::{Normalized, NormalizedTy, ProjectionCacheEntry, ProjectionCacheKey};
 
@@ -996,7 +996,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                 debug!("assemble_candidates_from_impls: impl_source={:?}", impl_source);
                 true
             }
-            super::ImplSourceImpl(impl_data) => {
+            super::ImplSourceUserDefined(impl_data) => {
                 // We have to be careful when projecting out of an
                 // impl because of specialization. If we are not in
                 // codegen (i.e., projection mode is not "any"), and the
@@ -1165,7 +1165,7 @@ fn confirm_select_candidate<'cx, 'tcx>(
     impl_source: Selection<'tcx>,
 ) -> Progress<'tcx> {
     match impl_source {
-        super::ImplSourceImpl(data) => confirm_impl_candidate(selcx, obligation, data),
+        super::ImplSourceUserDefined(data) => confirm_impl_candidate(selcx, obligation, data),
         super::ImplSourceGenerator(data) => confirm_generator_candidate(selcx, obligation, data),
         super::ImplSourceClosure(data) => confirm_closure_candidate(selcx, obligation, data),
         super::ImplSourceFnPointer(data) => confirm_fn_pointer_candidate(selcx, obligation, data),
@@ -1449,11 +1449,11 @@ fn confirm_param_env_candidate<'cx, 'tcx>(
 fn confirm_impl_candidate<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
-    impl_impl_source: ImplSourceImplData<'tcx, PredicateObligation<'tcx>>,
+    impl_impl_source: ImplSourceUserDefinedData<'tcx, PredicateObligation<'tcx>>,
 ) -> Progress<'tcx> {
     let tcx = selcx.tcx();
 
-    let ImplSourceImplData { impl_def_id, substs, nested } = impl_impl_source;
+    let ImplSourceUserDefinedData { impl_def_id, substs, nested } = impl_impl_source;
     let assoc_item_id = obligation.predicate.item_def_id;
     let trait_def_id = tcx.trait_id_of_impl(impl_def_id).unwrap();
 

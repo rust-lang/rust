@@ -26,13 +26,13 @@ use crate::traits::TraitNotObjectSafe;
 use crate::traits::{BuiltinDerivedObligation, ImplDerivedObligation};
 use crate::traits::{
     ImplSourceAutoImpl, ImplSourceBuiltin, ImplSourceClosure, ImplSourceDiscriminantKind,
-    ImplSourceFnPointer, ImplSourceGenerator, ImplSourceImpl, ImplSourceObject, ImplSourceParam,
-    ImplSourceTraitAlias,
+    ImplSourceFnPointer, ImplSourceGenerator, ImplSourceObject, ImplSourceParam,
+    ImplSourceTraitAlias, ImplSourceUserDefined,
 };
 use crate::traits::{
     ImplSourceAutoImplData, ImplSourceBuiltinData, ImplSourceClosureData,
     ImplSourceDiscriminantKindData, ImplSourceFnPointerData, ImplSourceGeneratorData,
-    ImplSourceImplData, ImplSourceObjectData, ImplSourceTraitAliasData,
+    ImplSourceObjectData, ImplSourceTraitAliasData, ImplSourceUserDefinedData,
 };
 use crate::traits::{ObjectCastObligation, PredicateObligation, TraitObligation};
 use crate::traits::{Obligation, ObligationCause};
@@ -64,7 +64,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             ImplCandidate(impl_def_id) => {
-                Ok(ImplSourceImpl(self.confirm_impl_candidate(obligation, impl_def_id)))
+                Ok(ImplSourceUserDefined(self.confirm_impl_candidate(obligation, impl_def_id)))
             }
 
             AutoImplCandidate(trait_def_id) => {
@@ -260,7 +260,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &TraitObligation<'tcx>,
         impl_def_id: DefId,
-    ) -> ImplSourceImplData<'tcx, PredicateObligation<'tcx>> {
+    ) -> ImplSourceUserDefinedData<'tcx, PredicateObligation<'tcx>> {
         debug!("confirm_impl_candidate({:?},{:?})", obligation, impl_def_id);
 
         // First, create the substitutions by matching the impl again,
@@ -288,7 +288,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         cause: ObligationCause<'tcx>,
         recursion_depth: usize,
         param_env: ty::ParamEnv<'tcx>,
-    ) -> ImplSourceImplData<'tcx, PredicateObligation<'tcx>> {
+    ) -> ImplSourceUserDefinedData<'tcx, PredicateObligation<'tcx>> {
         debug!(
             "vtable_impl(impl_def_id={:?}, substs={:?}, recursion_depth={})",
             impl_def_id, substs, recursion_depth,
@@ -314,7 +314,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // e.g., `impl<U: Tr, V: Iterator<Item=U>> Foo<<U as Tr>::T> for V`
         impl_obligations.append(&mut substs.obligations);
 
-        ImplSourceImplData { impl_def_id, substs: substs.value, nested: impl_obligations }
+        ImplSourceUserDefinedData { impl_def_id, substs: substs.value, nested: impl_obligations }
     }
 
     fn confirm_object_candidate(
