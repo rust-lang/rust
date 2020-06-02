@@ -165,8 +165,8 @@ pub fn match_trait_method(cx: &LateContext<'_, '_>, expr: &Expr<'_>, path: &[&st
 /// Checks if an expression references a variable of the given name.
 pub fn match_var(expr: &Expr<'_>, var: Name) -> bool {
     if let ExprKind::Path(QPath::Resolved(None, ref path)) = expr.kind {
-        if path.segments.len() == 1 && path.segments[0].ident.name == var {
-            return true;
+        if let [p] = path.segments {
+            return p.ident.name == var;
         }
     }
     false
@@ -181,8 +181,7 @@ pub fn last_path_segment<'tcx>(path: &QPath<'tcx>) -> &'tcx PathSegment<'tcx> {
 
 pub fn single_segment_path<'tcx>(path: &QPath<'tcx>) -> Option<&'tcx PathSegment<'tcx>> {
     match *path {
-        QPath::Resolved(_, ref path) if path.segments.len() == 1 => Some(&path.segments[0]),
-        QPath::Resolved(..) => None,
+        QPath::Resolved(_, ref path) => path.segments.get(0),
         QPath::TypeRelative(_, ref seg) => Some(seg),
     }
 }
@@ -201,9 +200,12 @@ pub fn match_qpath(path: &QPath<'_>, segments: &[&str]) -> bool {
         QPath::Resolved(_, ref path) => match_path(path, segments),
         QPath::TypeRelative(ref ty, ref segment) => match ty.kind {
             TyKind::Path(ref inner_path) => {
-                !segments.is_empty()
-                    && match_qpath(inner_path, &segments[..(segments.len() - 1)])
-                    && segment.ident.name.as_str() == segments[segments.len() - 1]
+                if let [prefix @ .., end] = segments {
+                    if match_qpath(inner_path, prefix) {
+                        return segment.ident.name.as_str() == *end;
+                    }
+                }
+                false
             },
             _ => false,
         },
