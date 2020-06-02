@@ -1,5 +1,5 @@
 language: rust
-dist: focal
+dist: bionic
 rust:
 - nightly
 cache:
