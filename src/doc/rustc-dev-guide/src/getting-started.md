@@ -67,8 +67,9 @@ computationally expensive, so a beefier machine will help, and I wouldn't
 recommend trying to build on a Raspberry Pi :P
 
 - x86 and ARM are both supported (TODO: confirm)
-- Recommended 30GB of free disk space; otherwise, you will have to keep
-  clearing incremental caches.
+- Recommended >=30GB of free disk space; otherwise, you will have to keep
+  clearing incremental caches. More space is better, the compiler is a bit of a
+  hog; it's a problem we are aware of.
 - Recommended >=8GB RAM.
 - Recommended >=2 cores; more cores really helps.
 - You will need an internet connection to build; the bootstrapping process
@@ -146,7 +147,7 @@ After updating `config.toml`, as mentioned above, you can use `./x.py`:
 This will take a while, especially the first time. Be wary of accidentally
 touching or formatting the compiler, as `./x.py` will try to recompile it.
 
-To run the compiler's UI test (the bulk of the test suite):
+To run the compiler's UI test suite (the bulk of the test suite):
 
 ```
 # UI tests
@@ -226,6 +227,13 @@ For most PRs, no special procedures are needed. You can just open a PR, and it
 will be reviewed, approved, and merged. This includes most bug fixes,
 refactorings, and other user-invisible changes. The next few sections talk
 about exceptions to this rule.
+
+Also, note that is perfectly acceptable to open WIP PRs or GitHub [Draft
+PRs][draft]. Some people prefer to do this so they can get feedback along the
+way or share their code with a collaborator. Others do this so they can utilize
+the CI to build and test their PR (e.g. if you are developing on a laptop).
+
+[draft]: https://github.blog/2019-02-14-introducing-draft-pull-requests/
 
 ### New Features
 
