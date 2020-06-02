@@ -1363,11 +1363,7 @@ mod tests {
     // rustfmt-on-save.
     impl Read for ShortReader {
         fn read(&mut self, _: &mut [u8]) -> io::Result<usize> {
-            if self.lengths.is_empty() {
-                Ok(0)
-            } else {
-                Ok(self.lengths.remove(0))
-            }
+            if self.lengths.is_empty() { Ok(0) } else { Ok(self.lengths.remove(0)) }
         }
     }
 
@@ -1795,7 +1791,7 @@ mod tests {
 
             match self.max_writes {
                 Some(0) if self.error_after_max_writes => {
-                    return Err(io::Error::new(io::ErrorKind::Other, "test - max_writes"))
+                    return Err(io::Error::new(io::ErrorKind::Other, "test - max_writes"));
                 }
                 Some(0) => return Ok(0),
                 Some(ref mut count) => *count -= 1,
