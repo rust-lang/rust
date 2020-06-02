@@ -23,7 +23,7 @@ use crate::builder::Cargo;
 use crate::dist;
 use crate::native;
 use crate::util::{exe, is_dylib, symlink_dir};
-use crate::{Compiler, GitRepo, Mode};
+use crate::{Compiler, DependencyType, GitRepo, Mode};
 
 use crate::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
 use crate::cache::{Interned, INTERNER};
@@ -84,7 +84,7 @@ impl Step for Std {
             return;
         }
 
-        target_deps.extend(copy_third_party_objects(builder, &compiler, target).into_iter());
+        target_deps.extend(copy_third_party_objects(builder, &compiler, target));
         target_deps.extend(copy_self_contained_objects(builder, &compiler, target));
 
         let mut cargo = builder.cargo(compiler, Mode::Std, target, "build");
@@ -116,7 +116,8 @@ fn copy_and_stamp(
     libdir: &Path,
     sourcedir: &Path,
     name: &str,
-    target_deps: &mut Vec<PathBuf>,
+    target_deps: &mut Vec<(PathBuf, DependencyType)>,
+    dependency_type: DependencyType,
 ) {
     let target = libdir.join(name);
     builder.copy(&sourcedir.join(name), &target);
@@ -129,7 +130,7 @@ fn copy_third_party_objects(
     builder: &Builder<'_>,
     compiler: &Compiler,
     target: Interned<String>,
-) -> Vec<PathBuf> {
+) -> Vec<(PathBuf, DependencyType)> {
     let libdir = builder.sysroot_libdir(*compiler, target);
     let mut target_deps = vec![];
 
@@ -148,13 +149,18 @@ fn copy_third_party_objects(
             Path::new(&src),
             "libunwind.a",
             &mut target_deps,
+            DependencyType::Target,
         );
     }
 
     if builder.config.sanitizers && compiler.stage != 0 {
         // The sanitizers are only copied in stage1 or above,
         // to avoid creating dependency on LLVM.
-        target_deps.extend(copy_sanitizers(builder, &compiler, target));
+        target_deps.extend(
+            copy_sanitizers(builder, &compiler, target)
+                .into_iter()
+                .map(|d| (d, DependencyType::Target)),
+        );
     }
 
     target_deps
@@ -165,7 +171,7 @@ fn copy_self_contained_objects(
     builder: &Builder<'_>,
     compiler: &Compiler,
     target: Interned<String>,
-) -> Vec<PathBuf> {
+) -> Vec<(PathBuf, DependencyType)> {
     let libdir = builder.sysroot_libdir(*compiler, target);
     let mut target_deps = vec![];
 
@@ -185,6 +191,7 @@ fn copy_self_contained_objects(
                 &srcdir,
                 obj,
                 &mut target_deps,
+                DependencyType::TargetSelfContained,
             );
         }
     } else if target.ends_with("-wasi") {
@@ -195,13 +202,14 @@ fn copy_self_contained_objects(
             &srcdir,
             "crt1.o",
             &mut target_deps,
+            DependencyType::TargetSelfContained,
         );
     } else if target.contains("windows-gnu") {
         for obj in ["crt2.o", "dllcrt2.o"].iter() {
             let src = compiler_file(builder, builder.cc(target), target, obj);
             let target = libdir.join(obj);
             builder.copy(&src, &target);
-            target_deps.push(target);
+            target_deps.push((target, DependencyType::TargetSelfContained));
         }
     }
 
@@ -370,7 +378,7 @@ pub struct StartupObjects {
 }
 
 impl Step for StartupObjects {
-    type Output = Vec<PathBuf>;
+    type Output = Vec<(PathBuf, DependencyType)>;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/rtstartup")
@@ -389,7 +397,7 @@ impl Step for StartupObjects {
     /// They don't require any library support as they're just plain old object
     /// files, so we just use the nightly snapshot compiler to always build them (as
     /// no other compilers are guaranteed to be available).
-    fn run(self, builder: &Builder<'_>) -> Vec<PathBuf> {
+    fn run(self, builder: &Builder<'_>) -> Vec<(PathBuf, DependencyType)> {
         let for_compiler = self.compiler;
         let target = self.target;
         if !target.contains("windows-gnu") {
@@ -423,7 +431,7 @@ impl Step for StartupObjects {
 
             let target = sysroot_dir.join((*file).to_string() + ".o");
             builder.copy(dst_file, &target);
-            target_deps.push(target);
+            target_deps.push((target, DependencyType::Target));
         }
 
         target_deps
@@ -838,8 +846,8 @@ pub fn add_to_sysroot(
 ) {
     t!(fs::create_dir_all(&sysroot_dst));
     t!(fs::create_dir_all(&sysroot_host_dst));
-    for (path, host) in builder.read_stamp_file(stamp) {
-        if host {
+    for (path, dependency_type) in builder.read_stamp_file(stamp) {
+        if dependency_type == DependencyType::Host {
             builder.copy(&path, &sysroot_host_dst.join(path.file_name().unwrap()));
         } else {
             builder.copy(&path, &sysroot_dst.join(path.file_name().unwrap()));
@@ -852,7 +860,7 @@ pub fn run_cargo(
     cargo: Cargo,
     tail_args: Vec<String>,
     stamp: &Path,
-    additional_target_deps: Vec<PathBuf>,
+    additional_target_deps: Vec<(PathBuf, DependencyType)>,
     is_check: bool,
 ) -> Vec<PathBuf> {
     if builder.config.dry_run {
@@ -903,7 +911,7 @@ pub fn run_cargo(
             if filename.starts_with(&host_root_dir) {
                 // Unless it's a proc macro used in the compiler
                 if crate_types.iter().any(|t| t == "proc-macro") {
-                    deps.push((filename.to_path_buf(), true));
+                    deps.push((filename.to_path_buf(), DependencyType::Host));
                 }
                 continue;
             }
@@ -911,7 +919,7 @@ pub fn run_cargo(
             // If this was output in the `deps` dir then this is a precise file
             // name (hash included) so we start tracking it.
             if filename.starts_with(&target_deps_dir) {
-                deps.push((filename.to_path_buf(), false));
+                deps.push((filename.to_path_buf(), DependencyType::Target));
                 continue;
             }
 
@@ -963,17 +971,21 @@ pub fn run_cargo(
             let candidate = format!("{}.lib", path_to_add);
             let candidate = PathBuf::from(candidate);
             if candidate.exists() {
-                deps.push((candidate, false));
+                deps.push((candidate, DependencyType::Target));
             }
         }
-        deps.push((path_to_add.into(), false));
+        deps.push((path_to_add.into(), DependencyType::Target));
     }
 
-    deps.extend(additional_target_deps.into_iter().map(|d| (d, false)));
+    deps.extend(additional_target_deps);
     deps.sort();
     let mut new_contents = Vec::new();
-    for (dep, proc_macro) in deps.iter() {
-        new_contents.extend(if *proc_macro { b"h" } else { b"t" });
+    for (dep, dependency_type) in deps.iter() {
+        new_contents.extend(match *dependency_type {
+            DependencyType::Host => b"h",
+            DependencyType::Target => b"t",
+            DependencyType::TargetSelfContained => b"s",
+        });
         new_contents.extend(dep.to_str().unwrap().as_bytes());
         new_contents.extend(b"\0");
     }

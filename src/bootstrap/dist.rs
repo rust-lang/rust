@@ -22,7 +22,7 @@ use crate::channel;
 use crate::compile;
 use crate::tool::{self, Tool};
 use crate::util::{exe, is_dylib, timeit};
-use crate::{Compiler, Mode, LLVM_TOOLS};
+use crate::{Compiler, DependencyType, Mode, LLVM_TOOLS};
 use time::{self, Timespec};
 
 pub fn pkgname(builder: &Builder<'_>, component: &str) -> String {
@@ -651,8 +651,8 @@ fn skip_host_target_lib(builder: &Builder<'_>, compiler: Compiler) -> bool {
 fn copy_target_libs(builder: &Builder<'_>, target: &str, image: &Path, stamp: &Path) {
     let dst = image.join("lib/rustlib").join(target).join("lib");
     t!(fs::create_dir_all(&dst));
-    for (path, host) in builder.read_stamp_file(stamp) {
-        if !host || builder.config.build == target {
+    for (path, dependency_type) in builder.read_stamp_file(stamp) {
+        if dependency_type != DependencyType::Host || builder.config.build == target {
             builder.copy(&path, &dst.join(path.file_name().unwrap()));
         }
     }
