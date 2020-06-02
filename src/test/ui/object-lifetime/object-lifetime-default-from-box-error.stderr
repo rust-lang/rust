@@ -23,4 +23,5 @@ LL |     ss.r = b;
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0621`.
+Some errors have detailed explanations: E0621, E0758.
+For more information about an error, try `rustc --explain E0621`.

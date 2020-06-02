@@ -183,5 +183,5 @@ LL | fn explicit4<'a>(x: &'static i32) -> Box<dyn Debug + 'static> { Box::new(x)
 
 error: aborting due to 12 previous errors
 
-Some errors have detailed explanations: E0310, E0621, E0623.
+Some errors have detailed explanations: E0310, E0621, E0623, E0758.
 For more information about an error, try `rustc --explain E0310`.

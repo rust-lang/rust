@@ -13,3 +13,4 @@ LL | fn foo<T: Any>(value: &T) -> Box<dyn Any + '_> {
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0758`.

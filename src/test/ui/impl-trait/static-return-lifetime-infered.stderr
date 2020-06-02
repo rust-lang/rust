@@ -40,3 +40,4 @@ LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> + 'a {
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0758`.
