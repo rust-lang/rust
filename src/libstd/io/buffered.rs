@@ -2246,9 +2246,9 @@ mod tests {
         // When content is written, LineWriter will try to write blocks A, B,
         // C, and D. Only block A will succeed. Under the old behavior, LineWriter
         // would then try to buffer B, C and D, but because its capacity is 10,
-        // it will only be able to buffer B and C. We don't want it to buffer
-        // partial lines if it can avoid it, so the correct behavior is to
-        // only buffer block B (with its newline).
+        // it will only be able to buffer B and C. We don't want to buffer
+        // partial lines concurrent with whole lines, so the correct behavior
+        // is to buffer only block B (out to the newline)
         assert_eq!(writer.write(content).unwrap(), 11);
         assert_eq!(writer.get_ref().buffer, *b"AAAAA");
 
