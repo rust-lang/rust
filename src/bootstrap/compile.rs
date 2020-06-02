@@ -196,6 +196,13 @@ fn copy_self_contained_objects(
             "crt1.o",
             &mut target_deps,
         );
+    } else if target.contains("windows-gnu") {
+        for obj in ["crt2.o", "dllcrt2.o"].iter() {
+            let src = compiler_file(builder, builder.cc(target), target, obj);
+            let target = libdir.join(obj);
+            builder.copy(&src, &target);
+            target_deps.push(target);
+        }
     }
 
     target_deps
@@ -416,13 +423,6 @@ impl Step for StartupObjects {
 
             let target = sysroot_dir.join((*file).to_string() + ".o");
             builder.copy(dst_file, &target);
-            target_deps.push(target);
-        }
-
-        for obj in ["crt2.o", "dllcrt2.o"].iter() {
-            let src = compiler_file(builder, builder.cc(target), target, obj);
-            let target = sysroot_dir.join(obj);
-            builder.copy(&src, &target);
             target_deps.push(target);
         }
 
