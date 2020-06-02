@@ -11,10 +11,10 @@ linkcheck = ["mdbook-linkcheck", "codespan-reporting", "codespan"]
 [dependencies]
 clap = "2.25.0"
 failure = "0.1"
-mdbook-linkcheck = { version = "0.5.0", optional = true }
+mdbook-linkcheck = { version = "=0.5.0", optional = true }
 # Keep in sync with mdbook-linkcheck.
-codespan = { version = "0.5", optional = true }
-codespan-reporting = { version = "0.5", optional = true }
+codespan = { version = "=0.5", optional = true }
+codespan-reporting = { version = "=0.5", optional = true }
 
 
 # A noop dependency that changes in the Rust repository, it's a bit of a hack.
