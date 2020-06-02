@@ -8,9 +8,9 @@ fn main() {
         let x = 1;
         let y: i32;
         asm!("" :: "r" (x));
-        //~^ ERROR legacy asm! syntax is no longer supported
+        //~^ ERROR the legacy LLVM-style asm! syntax is no longer supported
         asm!("" : "=r" (y));
-        //~^ ERROR legacy asm! syntax is no longer supported
+        //~^ ERROR the legacy LLVM-style asm! syntax is no longer supported
         let _ = y;
     }
 }

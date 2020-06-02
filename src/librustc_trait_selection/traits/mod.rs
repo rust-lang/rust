@@ -540,13 +540,6 @@ fn type_implements_trait<'tcx>(
         trait_def_id, ty, params, param_env
     );
 
-    // Do not check on infer_types to avoid panic in evaluate_obligation.
-    if ty.has_infer_types() {
-        return false;
-    }
-
-    let ty = tcx.erase_regions(&ty);
-
     let trait_ref = ty::TraitRef { def_id: trait_def_id, substs: tcx.mk_substs_trait(ty, params) };
 
     let obligation = Obligation {

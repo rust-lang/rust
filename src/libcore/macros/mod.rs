@@ -1315,7 +1315,7 @@ pub(crate) mod builtin {
     #[unstable(
         feature = "llvm_asm",
         issue = "70173",
-        reason = "LLVM-style inline assembly will never be stabilized, prefer using asm! instead"
+        reason = "prefer using the new asm! syntax instead"
     )]
     #[rustc_builtin_macro]
     #[macro_export]
