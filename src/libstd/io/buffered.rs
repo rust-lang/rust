@@ -730,7 +730,7 @@ impl<W: Write> Write for BufWriter<W> {
         // Normally, `write_all` just calls `write` in a loop. We can do better
         // by calling `self.get_mut().write_all()` directly, which avoids
         // round trips through the buffer in the event of a series of partial
-        // writes.
+        // writes in some circumstances.
         if self.buf.len() + buf.len() > self.buf.capacity() {
             self.flush_buf()?;
         }
@@ -1116,9 +1116,6 @@ impl<'a, W: Write> Write for LineWriterShim<'a, W> {
     /// writer, it will also flush the existing buffer if it contains any
     /// newlines, even if the incoming data does not contain any newlines.
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
-        // The default `write_all` calls `write` in a loop; we can do better
-        // by simply calling self.inner().write_all directly. This avoids
-        // round trips to `self.buffer` in the event of partial writes.
         let newline_idx = match memchr::memrchr(b'\n', buf) {
             // If there are no new newlines (that is, if this write is less than
             // one line), just do a regular buffered write
