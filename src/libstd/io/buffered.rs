@@ -1091,8 +1091,12 @@ impl<'a, W: Write> Write for LineWriterShim<'a, W> {
 
         // Now that the write has succeeded, buffer the rest (or as much of the
         // rest as possible)
-        let buffered: usize =
-            tail.iter().map(|buf| self.buffer.write_to_buf(buf)).take_while(|&n| n > 0).sum();
+        let buffered: usize = tail
+            .iter()
+            .filter(|buf| !buf.is_empty())
+            .map(|buf| self.buffer.write_to_buf(buf))
+            .take_while(|&n| n > 0)
+            .sum();
 
         Ok(flushed + buffered)
     }
