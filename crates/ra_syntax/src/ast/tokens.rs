@@ -418,12 +418,7 @@ pub trait HasFormatSpecifier: AstToken {
 
                     let mut cloned = chars.clone().take(2);
                     let first = cloned.next().and_then(|next| next.1.as_ref().ok()).copied();
-                    let second = cloned.next().and_then(|next| next.1.as_ref().ok()).copied();
                     if first != Some('}') {
-                        continue;
-                    }
-                    if second == Some('}') {
-                        // Escaped format end specifier, `}}`
                         continue;
                     }
                     skip_char_and_emit(&mut chars, FormatSpecifier::Close, &mut callback);

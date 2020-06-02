@@ -218,6 +218,7 @@ fn main() {
     println!("{argument}", argument = "test");   // => "test"
     println!("{name} {}", 1, name = 2);          // => "2 1"
     println!("{a} {c} {b}", a="a", b='b', c=3);  // => "a 3 b"
+    println!("{{{}}}", 2);                       // => "{2}"
     println!("Hello {:5}!", "x");
     println!("Hello {:1$}!", "x", 5);
     println!("Hello {1:0$}!", 5, "x");
