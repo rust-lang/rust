@@ -6,7 +6,7 @@ LL | fn i<'a, T, U>(v: Box<dyn A<U>+'a>) -> Box<dyn X + 'static> {
 LL |     box B(&*v) as Box<dyn X>
    |           ^^^ ...is captured here, requiring it to live as long as `'static`
    |
-help: consider changing the trait object's explicit `'static` bound to argument `v`
+help: consider changing the trait object's explicit `'static` bound to the lifetime of argument `v`
    |
 LL | fn i<'a, T, U>(v: Box<dyn A<U>+'a>) -> Box<dyn X + 'a> {
    |                                                    ^^

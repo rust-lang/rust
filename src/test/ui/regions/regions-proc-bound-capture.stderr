@@ -7,7 +7,7 @@ LL |     // This is illegal, because the region bound on `proc` is 'static.
 LL |     Box::new(move || { *x })
    |              ^^^^^^^^^^^^^^ ...is captured here, requiring it to live as long as `'static`
    |
-help: consider changing the trait object's explicit `'static` bound to argument `x`
+help: consider changing the trait object's explicit `'static` bound to the lifetime of argument `x`
    |
 LL | fn static_proc(x: &isize) -> Box<dyn FnMut() -> (isize) + '_> {
    |                                                           ^^

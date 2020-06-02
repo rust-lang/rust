@@ -6,7 +6,7 @@ LL | fn a(v: &[u8]) -> Box<dyn Foo + 'static> {
 LL |     let x: Box<dyn Foo + 'static> = Box::new(v);
    |                                              ^ ...is captured here, requiring it to live as long as `'static`
    |
-help: consider changing the trait object's explicit `'static` bound to argument `v`
+help: consider changing the trait object's explicit `'static` bound to the lifetime of argument `v`
    |
 LL | fn a(v: &[u8]) -> Box<dyn Foo + '_> {
    |                                 ^^
@@ -23,7 +23,7 @@ LL | fn b(v: &[u8]) -> Box<dyn Foo + 'static> {
 LL |     Box::new(v)
    |              ^ ...is captured here, requiring it to live as long as `'static`
    |
-help: consider changing the trait object's explicit `'static` bound to argument `v`
+help: consider changing the trait object's explicit `'static` bound to the lifetime of argument `v`
    |
 LL | fn b(v: &[u8]) -> Box<dyn Foo + '_> {
    |                                 ^^
