@@ -891,8 +891,5 @@ attributes #11 = { cold }
 
 ; CHECK: define internal void @diffefinal(double* %array, double* %"array'", i64 %finalsize)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   br label %invertentry
-
-; CHECK:      invertentry:
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

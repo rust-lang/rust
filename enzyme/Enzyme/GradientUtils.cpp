@@ -118,10 +118,10 @@ bool GradientUtils::legalRecompute(const Value* val, const ValueToValueMapTy& av
     if (auto dli = dyn_cast_or_null<LoadInst>(hasUninverted(val))) {
       return legalRecompute(dli, available); // TODO ADD && !TR.intType(getOriginal(dli), /*mustfind*/false).isPossibleFloat();
     }
-    if (SE.isSCEVable(phi->getType())) {
-      auto scev = const_cast<GradientUtils*>(this)->SE.getSCEV(const_cast<Value*>(val));
+    //if (SE.isSCEVable(phi->getType())) {
+      //auto scev = const_cast<GradientUtils*>(this)->SE.getSCEV(const_cast<Value*>(val));
       //llvm::errs() << "phi: " << *val << " scev: " << *scev << "\n";
-    }
+    //}
     //llvm::errs() << "illegal recompute: " << *val << "\n";
     return false;
   }
@@ -258,13 +258,13 @@ bool GradientUtils::shouldRecompute(const Value* val, const ValueToValueMapTy& a
   }
 
   if (auto op = dyn_cast<IntrinsicInst>(val)) {
+    if (!op->mayReadOrWriteMemory()) return true;
     switch(op->getIntrinsicID()) {
       case Intrinsic::sin:
       case Intrinsic::cos:
       case Intrinsic::exp:
       case Intrinsic::log:
       return true;
-      return shouldRecompute(op->getOperand(0), available);
       default:
       return false;
     }

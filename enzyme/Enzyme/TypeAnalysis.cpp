@@ -238,6 +238,10 @@ ValueData getConstantAnalysis(Constant* val) {
         return DataType(IntType::Pointer);
     }
 
+    if (isa<UndefValue>(val)) {
+        return ValueData(IntType::Anything);
+    }
+
     if (isa<ConstantData>(val)) {
         if (auto fp = dyn_cast<ConstantFP>(val)) {
             if (fp->isExactlyValue(0.0)) return DataType(IntType::Anything);
@@ -332,6 +336,8 @@ ValueData TypeAnalyzer::getAnalysis(Value* val) {
     }
 
     if (isa<Argument>(val) || isa<Instruction>(val) || isa<ConstantExpr>(val)) return analysis[val];
+
+    llvm::errs() << "ERROR UNKNOWN: " << *val << "\n";
     //TODO consider other things like globals perhaps?
     return ValueData();
 }
@@ -941,7 +947,8 @@ void TypeAnalyzer::visitPHINode(PHINode& phi) {
     ValueData vd;
     bool set = false;
 
-    auto consider = [&](ValueData&& newData) {
+    auto consider = [&](ValueData&& newData, Value* v) {
+        //llvm::errs() << " seen nd: " << newData.str() << " from: " << *v << "\n";
         if (set) {
             vd.andIn(newData, /*assertIfIllegal*/false);
         } else {
@@ -994,7 +1001,7 @@ void TypeAnalyzer::visitPHINode(PHINode& phi) {
         }
 
         //llvm::errs() << " + sub" << *todo << " ga: " << getAnalysis(todo).str() << "\n";
-        consider(getAnalysis(todo));
+        consider(getAnalysis(todo), todo);
     }
 
     assert(set);
