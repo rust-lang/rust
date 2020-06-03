@@ -18,9 +18,10 @@
 //! // fn foo() {}
 //! ```
 //!
-//! After adding a new inline-test, run `cargo collect-tests` to extract
-//! it as a standalone text-fixture into `tests/data/parser/inline`, and
-//! run `cargo test` once to create the "gold" value.
+//! After adding a new inline-test, run `cargo xtask codegen` to
+//! extract it as a standalone text-fixture into
+//! `crates/ra_syntax/test_data/parser/`, and run `cargo test` once to
+//! create the "gold" value.
 //!
 //! Coding convention: rules like `where_clause` always produce either a
 //! node or an error, rules like `opt_where_clause` may produce nothing.
