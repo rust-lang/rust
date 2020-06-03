@@ -26,7 +26,7 @@ mod main_loop;
 mod markdown;
 pub mod lsp_ext;
 pub mod config;
-mod world;
+mod global_state;
 mod diagnostics;
 mod semantic_tokens;
 

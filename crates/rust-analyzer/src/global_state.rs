@@ -50,13 +50,13 @@ fn create_flycheck(workspaces: &[ProjectWorkspace], config: &FlycheckConfig) -> 
         })
 }
 
-/// `WorldState` is the primary mutable state of the language server
+/// `GlobalState` is the primary mutable state of the language server
 ///
 /// The most interesting components are `vfs`, which stores a consistent
 /// snapshot of the file systems, and `analysis_host`, which stores our
 /// incremental salsa database.
 #[derive(Debug)]
-pub struct WorldState {
+pub struct GlobalState {
     pub config: Config,
     pub local_roots: Vec<PathBuf>,
     pub workspaces: Arc<Vec<ProjectWorkspace>>,
@@ -70,7 +70,7 @@ pub struct WorldState {
 }
 
 /// An immutable snapshot of the world's state at a point in time.
-pub struct WorldSnapshot {
+pub struct GlobalStateSnapshot {
     pub config: Config,
     pub workspaces: Arc<Vec<ProjectWorkspace>>,
     pub analysis: Analysis,
@@ -79,14 +79,14 @@ pub struct WorldSnapshot {
     vfs: Arc<RwLock<Vfs>>,
 }
 
-impl WorldState {
+impl GlobalState {
     pub fn new(
         workspaces: Vec<ProjectWorkspace>,
         lru_capacity: Option<usize>,
         exclude_globs: &[Glob],
         watch: Watch,
         config: Config,
-    ) -> WorldState {
+    ) -> GlobalState {
         let mut change = AnalysisChange::new();
 
         let extern_dirs: FxHashSet<_> =
@@ -180,7 +180,7 @@ impl WorldState {
 
         let mut analysis_host = AnalysisHost::new(lru_capacity);
         analysis_host.apply_change(change);
-        WorldState {
+        GlobalState {
             config,
             local_roots,
             workspaces: Arc::new(workspaces),
@@ -255,8 +255,8 @@ impl WorldState {
         self.analysis_host.apply_change(change);
     }
 
-    pub fn snapshot(&self) -> WorldSnapshot {
-        WorldSnapshot {
+    pub fn snapshot(&self) -> GlobalStateSnapshot {
+        GlobalStateSnapshot {
             config: self.config.clone(),
             workspaces: Arc::clone(&self.workspaces),
             analysis: self.analysis_host.analysis(),
@@ -279,7 +279,7 @@ impl WorldState {
     }
 }
 
-impl WorldSnapshot {
+impl GlobalStateSnapshot {
     pub fn analysis(&self) -> &Analysis {
         &self.analysis
     }
