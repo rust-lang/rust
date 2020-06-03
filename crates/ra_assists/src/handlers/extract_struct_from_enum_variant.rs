@@ -18,9 +18,9 @@ use ra_db::FileId;
 use ra_fmt::leading_indent;
 use rustc_hash::FxHashSet;
 
-// Assist extract_struct_from_enum
+// Assist: extract_struct_from_enum_variant
 //
-// Extracts a struct from enum variant
+// Extracts a struct from enum variant.
 //
 // ```
 // enum A { <|>One(u32, u32) }
@@ -29,9 +29,12 @@ use rustc_hash::FxHashSet;
 // ```
 // struct One(pub u32, pub u32);
 //
-// enum A { One(One) }"
+// enum A { One(One) }
 // ```
-pub(crate) fn extract_struct_from_enum(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn extract_struct_from_enum_variant(
+    acc: &mut Assists,
+    ctx: &AssistContext,
+) -> Option<()> {
     let variant = ctx.find_node_at_offset::<ast::EnumVariant>()?;
     let field_list = match variant.kind() {
         ast::StructKind::Tuple(field_list) => field_list,
@@ -221,7 +224,7 @@ mod tests {
     #[test]
     fn test_extract_struct_several_fields() {
         check_assist(
-            extract_struct_from_enum,
+            extract_struct_from_enum_variant,
             "enum A { <|>One(u32, u32) }",
             r#"struct One(pub u32, pub u32);
 
@@ -232,7 +235,7 @@ enum A { One(One) }"#,
     #[test]
     fn test_extract_struct_one_field() {
         check_assist(
-            extract_struct_from_enum,
+            extract_struct_from_enum_variant,
             "enum A { <|>One(u32) }",
             r#"struct One(pub u32);
 
@@ -243,7 +246,7 @@ enum A { One(One) }"#,
     #[test]
     fn test_extract_struct_pub_visibility() {
         check_assist(
-            extract_struct_from_enum,
+            extract_struct_from_enum_variant,
             "pub enum A { <|>One(u32, u32) }",
             r#"pub struct One(pub u32, pub u32);
 
@@ -254,7 +257,7 @@ pub enum A { One(One) }"#,
     #[test]
     fn test_extract_struct_with_complex_imports() {
         check_assist(
-            extract_struct_from_enum,
+            extract_struct_from_enum_variant,
             r#"mod my_mod {
     fn another_fn() {
         let m = my_other_mod::MyEnum::MyField(1, 1);
@@ -305,7 +308,7 @@ fn another_fn() {
     fn check_not_applicable(ra_fixture: &str) {
         let fixture =
             format!("//- main.rs crate:main deps:core\n{}\n{}", ra_fixture, FamousDefs::FIXTURE);
-        check_assist_not_applicable(extract_struct_from_enum, &fixture)
+        check_assist_not_applicable(extract_struct_from_enum_variant, &fixture)
     }
 
     #[test]

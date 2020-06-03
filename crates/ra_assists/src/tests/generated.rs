@@ -338,6 +338,21 @@ fn main() {
 }
 
 #[test]
+fn doctest_extract_struct_from_enum_variant() {
+    check_doc_test(
+        "extract_struct_from_enum_variant",
+        r#####"
+enum A { <|>One(u32, u32) }
+"#####,
+        r#####"
+struct One(pub u32, pub u32);
+
+enum A { One(One) }
+"#####,
+    )
+}
+
+#[test]
 fn doctest_fill_match_arms() {
     check_doc_test(
         "fill_match_arms",

@@ -156,7 +156,7 @@ mod handlers {
             change_return_type_to_result::change_return_type_to_result,
             change_visibility::change_visibility,
             early_return::convert_to_guarded_return,
-            extract_struct_from_enum_variant::extract_struct_from_enum,
+            extract_struct_from_enum_variant::extract_struct_from_enum_variant,
             fill_match_arms::fill_match_arms,
             fix_visibility::fix_visibility,
             flip_binexpr::flip_binexpr,
