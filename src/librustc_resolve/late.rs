@@ -1675,7 +1675,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             // latter one - for paths in expression-position.
             //
             // Thus (since we're in expression-position at this point), not to
-            // confuse the user, we want to keep the *message* from E04322 (so
+            // confuse the user, we want to keep the *message* from E0432 (so
             // `parent_err`), but we want *hints* from E0412 (so `err`).
             //
             // And that's what happens below - we're just mixing both messages
