@@ -692,23 +692,11 @@ mod impls {
     issue = "none",
     reason = "this trait is unlikely to ever be stabilized, use `mem::discriminant` instead"
 )]
-#[cfg_attr(not(bootstrap), lang = "discriminant_kind")]
+#[lang = "discriminant_kind"]
 pub trait DiscriminantKind {
     /// The type of the dicriminant, which must satisfy the trait
     /// bounds required by `mem::Discriminant`.
     type Discriminant: Clone + Copy + Debug + Eq + PartialEq + Hash + Send + Sync + Unpin;
-}
-
-// Manually implement `DiscriminantKind` for all types during bootstrap
-// to reduce the required amount of conditional compilation.
-#[unstable(
-    feature = "discriminant_kind",
-    issue = "none",
-    reason = "this trait is unlikely to ever be stabilized, use `mem::discriminant` instead"
-)]
-#[cfg(bootstrap)]
-impl<T: ?Sized> DiscriminantKind for T {
-    type Discriminant = u64;
 }
 
 /// Compiler-internal trait used to determine whether a type contains

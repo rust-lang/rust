@@ -279,13 +279,13 @@ impl EarlyLintPass for Write {
             if let (Some(fmt_str), expr) = self.check_tts(cx, &mac.args.inner_tokens(), true) {
                 if fmt_str.symbol == Symbol::intern("") {
                     let mut applicability = Applicability::MachineApplicable;
-                    let suggestion = expr.map_or_else(
-                        move || {
+                    let suggestion = match expr {
+                        Some(expr) => snippet_with_applicability(cx, expr.span, "v", &mut applicability),
+                        None => {
                             applicability = Applicability::HasPlaceholders;
                             Cow::Borrowed("v")
                         },
-                        move |expr| snippet_with_applicability(cx, expr.span, "v", &mut applicability),
-                    );
+                    };
 
                     span_lint_and_sugg(
                         cx,
