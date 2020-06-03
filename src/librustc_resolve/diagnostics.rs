@@ -680,7 +680,9 @@ impl<'a> Resolver<'a> {
                                 Res::Def(DefKind::Ctor(..), did) => this.parent(did),
                                 _ => res.opt_def_id(),
                             };
-                            candidates.push(ImportSuggestion { did, descr: res.descr(), path });
+                            if candidates.iter().all(|v: &ImportSuggestion| v.did != did) {
+                                candidates.push(ImportSuggestion { did, descr: res.descr(), path });
+                            }
                         }
                     }
                 }
