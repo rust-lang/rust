@@ -269,6 +269,57 @@ Gnome Builder currently has support for RLS, and there's no way to configure the
 1. Rename, symlink or copy the `rust-analyzer` binary to `rls` and place it somewhere Builder can find (in `PATH`, or under `~/.cargo/bin`).
 2. Enable the Rust Builder plugin.
 
+== Non-Cargo Based Projects
+
+rust-analyzer does not require Cargo.
+However, if you use some other build system, you'll have to describe the structure of your project for rust-analyzer in the `rust-project.json` format:
+
+[source,TypeScript]
+----
+interface JsonProject {
+   /// The set of paths containing the crates for this project.
+   /// Any `Crate` must be nested inside some `root`.
+   roots: string[];
+   /// The set of crates comprising the current project.
+   /// Must include all transitive dependencies as well as sysroot crate (libstd, libcore and such).
+   crates: Crate[];
+}
+
+interface Crate {
+    /// Path to the root module of the crate.
+    root_module: string;
+    /// Edition of the crate.
+    edition: "2015" | "2018";
+    /// Dependencies
+    deps: Dep[];
+    /// The set of cfgs activated for a given crate, like `["unix", "feature=foo", "feature=bar"]`.
+    cfg: string[];
+
+    /// value of the OUT_DIR env variable.
+    out_dir?: string;
+    /// For proc-macro crates, path to compiles proc-macro (.so file).
+    proc_macro_dylib_path?: string;
+}
+
+interface Dep {
+    /// Index of a crate in the `crates` array.
+    crate: number,
+    /// Name as should appear in the (implicit) `extern crate name` declaration.
+    name: string,
+}
+----
+
+This format is provisional and subject to change.
+Specifically, the `roots` setup will be different eventually.
+
+There are tree ways to feed `rust-project.json` to rust-analyzer:
+
+* Place `rust-project.json` file at the root of the project, and rust-anlayzer will discover it.
+* Specify `"rust-analyzer.linkedProjects": [ "path/to/rust-project.json" ]` in the settings (and make sure that your LSP client sends settings as a part of initialize request).
+* Specify `"rust-analyzer.linkedProjects": [ { "roots": [...], "crates": [...] }]` inline.
+
+See https://github.com/rust-analyzer/rust-project.json-example for a small example.
+
 == Features
 
 include::./generated_features.adoc[]

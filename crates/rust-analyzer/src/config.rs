@@ -261,6 +261,22 @@ impl Config {
             self.lens = LensConfig::NO_LENS;
         }
 
+        if let Some(linked_projects) = get::<Vec<ManifestOrJsonProject>>(value, "/linkedProjects") {
+            if !linked_projects.is_empty() {
+                self.linked_projects.clear();
+                for linked_project in linked_projects {
+                    let linked_project = match linked_project {
+                        ManifestOrJsonProject::Manifest(it) => match ProjectManifest::from_manifest_file(it) {
+                            Ok(it) => it.into(),
+                            Err(_) => continue,
+                        }
+                        ManifestOrJsonProject::JsonProject(it) => it.into(),
+                    };
+                    self.linked_projects.push(linked_project);
+                }
+            }
+        }
+
         log::info!("Config::update() = {:#?}", self);
 
         fn get<'a, T: Deserialize<'a>>(value: &'a serde_json::Value, pointer: &str) -> Option<T> {
@@ -323,4 +339,11 @@ impl Config {
             self.client_caps.code_action_group = code_action_group
         }
     }
+}
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum ManifestOrJsonProject {
+    Manifest(PathBuf),
+    JsonProject(JsonProject),
 }
