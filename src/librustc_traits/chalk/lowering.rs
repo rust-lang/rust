@@ -304,7 +304,8 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
         use TyKind::*;
 
         let empty = || chalk_ir::Substitution::empty(interner);
-        let struct_ty = |def_id| chalk_ir::TypeName::Adt(chalk_ir::AdtId(def_id));
+        let struct_ty =
+            |def_id| chalk_ir::TypeName::Adt(chalk_ir::AdtId(interner.tcx.adt_def(def_id)));
         let apply = |name, substitution| {
             TyData::Apply(chalk_ir::ApplicationTy { name, substitution }).intern(interner)
         };
