@@ -84,6 +84,11 @@ Like `cargo`, the build system will use as many cores as possible. Sometimes
 this can cause you to run low on memory. You can use `-j` to adjust the number
 concurrent jobs.
 
+Also, if you don't have too much free disk space, you may want to turn off
+incremental compilation (see the "Configuring" section below). This will make
+compilation take longer, but will save a ton of space from the incremental
+caches.
+
 ### Cloning
 
 You can just do a normal git clone:
