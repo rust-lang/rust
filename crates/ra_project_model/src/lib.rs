@@ -32,6 +32,12 @@ pub enum ProjectWorkspace {
     Json { project: JsonProject },
 }
 
+impl From<JsonProject> for ProjectWorkspace {
+    fn from(project: JsonProject) -> ProjectWorkspace {
+        ProjectWorkspace::Json { project }
+    }
+}
+
 /// `PackageRoot` describes a package root folder.
 /// Which may be an external dependency, or a member of
 /// the current workspace.
@@ -144,11 +150,11 @@ impl ProjectManifest {
 
 impl ProjectWorkspace {
     pub fn load(
-        root: ProjectManifest,
+        manifest: ProjectManifest,
         cargo_features: &CargoConfig,
         with_sysroot: bool,
     ) -> Result<ProjectWorkspace> {
-        let res = match root {
+        let res = match manifest {
             ProjectManifest::ProjectJson(project_json) => {
                 let file = File::open(&project_json).with_context(|| {
                     format!("Failed to open json file {}", project_json.display())

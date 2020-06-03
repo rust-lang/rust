@@ -105,24 +105,23 @@ pub fn main_loop(config: Config, connection: Connection) -> Result<()> {
                 .linked_projects
                 .iter()
                 .filter_map(|project| match project {
-                    LinkedProject::ProjectManifest(it) => Some(it),
-                    LinkedProject::JsonProject(_) => None,
-                })
-                .filter_map(|root| {
-                    ra_project_model::ProjectWorkspace::load(
-                        root.clone(),
-                        &config.cargo,
-                        config.with_sysroot,
-                    )
-                    .map_err(|err| {
-                        log::error!("failed to load workspace: {:#}", err);
-                        show_message(
-                            lsp_types::MessageType::Error,
-                            format!("rust-analyzer failed to load workspace: {:#}", err),
-                            &connection.sender,
-                        );
-                    })
-                    .ok()
+                    LinkedProject::ProjectManifest(manifest) => {
+                        ra_project_model::ProjectWorkspace::load(
+                            manifest.clone(),
+                            &config.cargo,
+                            config.with_sysroot,
+                        )
+                        .map_err(|err| {
+                            log::error!("failed to load workspace: {:#}", err);
+                            show_message(
+                                lsp_types::MessageType::Error,
+                                format!("rust-analyzer failed to load workspace: {:#}", err),
+                                &connection.sender,
+                            );
+                        })
+                        .ok()
+                    }
+                    LinkedProject::JsonProject(it) => Some(it.clone().into()),
                 })
                 .collect::<Vec<_>>()
         };
