@@ -547,15 +547,18 @@ pub fn handle_hover(
     };
     let line_index = snap.analysis.file_line_index(position.file_id)?;
     let range = to_proto::range(&line_index, info.range);
-    let res = lsp_ext::Hover {
-        contents: HoverContents::Markup(MarkupContent {
-            kind: MarkupKind::Markdown,
-            value: crate::markdown::format_docs(&info.info.to_markup()),
-        }),
-        range: Some(range),
+    let hover = lsp_ext::Hover {
+        hover: lsp_types::Hover {
+            contents: HoverContents::Markup(MarkupContent {
+                kind: MarkupKind::Markdown,
+                value: crate::markdown::format_docs(&info.info.to_markup()),
+            }),
+            range: Some(range),
+        },
         actions: Some(prepare_hover_actions(&snap, info.info.actions())),
     };
-    Ok(Some(res))
+
+    Ok(Some(hover))
 }
 
 pub fn handle_prepare_rename(
@@ -1169,9 +1172,7 @@ fn show_references_command(
 fn to_command_link(command: Command, tooltip: String) -> lsp_ext::CommandLink {
     lsp_ext::CommandLink {
         tooltip: Some(tooltip),
-        title: command.title,
-        command: command.command,
-        arguments: command.arguments,
+        command,
     }
 }
 

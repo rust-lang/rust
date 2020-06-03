@@ -271,26 +271,24 @@ impl Request for HoverRequest {
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 pub struct Hover {
-    pub contents: lsp_types::HoverContents,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub range: Option<Range>,
+    #[serde(flatten)]
+    pub hover: lsp_types::Hover,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub actions: Option<Vec<CommandLinkGroup>>,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Default, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Clone, Default, Deserialize, Serialize)]
 pub struct CommandLinkGroup {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
     pub commands: Vec<CommandLink>,
 }
 
 // LSP v3.15 Command does not have a `tooltip` field, vscode supports one.
-#[derive(Debug, PartialEq, Eq, Clone, Default, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Clone, Default, Deserialize, Serialize)]
 pub struct CommandLink {
-    pub title: String,
-    pub command: String,
+    #[serde(flatten)]
+    pub command: lsp_types::Command,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tooltip: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub arguments: Option<Vec<serde_json::Value>>,
 }
