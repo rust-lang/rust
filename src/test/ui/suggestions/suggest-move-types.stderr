@@ -124,7 +124,7 @@ error[E0747]: lifetime provided when a type was expected
 LL | struct Cl<'a, 'b, 'c, T, U, V, M: ThreeWithLifetime<T, 'a, A=(), B=(), C=(), U, 'b, V, 'c>> {
    |                                                        ^^
    |
-   = note: type arguments must be provided before lifetime arguments
+   = note: lifetime arguments must be provided before type arguments
 
 error[E0747]: lifetime provided when a type was expected
   --> $DIR/suggest-move-types.rs:82:56
@@ -132,7 +132,7 @@ error[E0747]: lifetime provided when a type was expected
 LL | struct Dl<'a, 'b, 'c, T, U, V, M: ThreeWithLifetime<T, 'a, A=(), B=(), U, 'b, C=(), V, 'c>> {
    |                                                        ^^
    |
-   = note: type arguments must be provided before lifetime arguments
+   = note: lifetime arguments must be provided before type arguments
 
 error: aborting due to 12 previous errors
 
