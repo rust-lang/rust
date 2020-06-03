@@ -184,7 +184,6 @@ impl<R> BufReader<R> {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(buffered_io_capacity)]
     /// use std::io::{BufReader, BufRead};
     /// use std::fs::File;
     ///
@@ -198,7 +197,7 @@ impl<R> BufReader<R> {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "buffered_io_capacity", issue = "68833")]
+    #[stable(feature = "buffered_io_capacity", since = "1.46.0")]
     pub fn capacity(&self) -> usize {
         self.buf.len()
     }
@@ -609,7 +608,6 @@ impl<W: Write> BufWriter<W> {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(buffered_io_capacity)]
     /// use std::io::BufWriter;
     /// use std::net::TcpStream;
     ///
@@ -620,7 +618,7 @@ impl<W: Write> BufWriter<W> {
     /// // Calculate how many bytes can be written without flushing
     /// let without_flush = capacity - buf_writer.buffer().len();
     /// ```
-    #[unstable(feature = "buffered_io_capacity", issue = "68833")]
+    #[stable(feature = "buffered_io_capacity", since = "1.46.0")]
     pub fn capacity(&self) -> usize {
         self.buf.capacity()
     }
