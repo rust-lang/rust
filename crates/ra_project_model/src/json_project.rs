@@ -5,6 +5,13 @@ use std::path::PathBuf;
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde::Deserialize;
 
+/// Roots and crates that compose this Rust project.
+#[derive(Clone, Debug, Deserialize)]
+pub struct JsonProject {
+    pub(crate) roots: Vec<Root>,
+    pub(crate) crates: Vec<Crate>,
+}
+
 /// A root points to the directory which contains Rust crates. rust-analyzer watches all files in
 /// all roots. Roots might be nested.
 #[derive(Clone, Debug, Deserialize)]
@@ -55,13 +62,6 @@ pub struct Dep {
     #[serde(rename = "crate")]
     pub(crate) krate: CrateId,
     pub(crate) name: String,
-}
-
-/// Roots and crates that compose this Rust project.
-#[derive(Clone, Debug, Deserialize)]
-pub struct JsonProject {
-    pub(crate) roots: Vec<Root>,
-    pub(crate) crates: Vec<Crate>,
 }
 
 #[cfg(test)]

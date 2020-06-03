@@ -59,55 +59,6 @@ use std::collections::Spam;
 }
 
 #[test]
-fn test_runnables_no_project() {
-    if skip_slow_tests() {
-        return;
-    }
-
-    let server = project(
-        r"
-//- lib.rs
-#[test]
-fn foo() {
-}
-",
-    );
-    server.wait_until_workspace_is_loaded();
-    server.request::<Runnables>(
-        RunnablesParams { text_document: server.doc_id("lib.rs"), position: None },
-        json!([
-            {
-              "args": {
-                "cargoArgs": ["test"],
-                "executableArgs": ["foo", "--nocapture"],
-              },
-              "kind": "cargo",
-              "label": "test foo",
-              "location": {
-                "targetRange": {
-                  "end": { "character": 1, "line": 2 },
-                  "start": { "character": 0, "line": 0 }
-                },
-                "targetSelectionRange": {
-                  "end": { "character": 6, "line": 1 },
-                  "start": { "character": 3, "line": 1 }
-                },
-                "targetUri": "file:///[..]/lib.rs"
-              }
-            },
-            {
-              "args": {
-                "cargoArgs": ["check", "--workspace"],
-                "executableArgs": [],
-              },
-              "kind": "cargo",
-              "label": "cargo check --workspace"
-            }
-        ]),
-    );
-}
-
-#[test]
 fn test_runnables_project() {
     if skip_slow_tests() {
         return;
