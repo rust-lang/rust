@@ -1,8 +1,8 @@
 use std::iter::once;
 
 use hir::{
-    Adt, AsAssocItem, AssocItemContainer, FieldSource, HasSource, HirDisplay, ModuleDef,
-    ModuleSource, Semantics,
+    Adt, AsAssocItem, AssocItemContainer, Documentation, FieldSource, HasSource, HirDisplay,
+    ModuleDef, ModuleSource, Semantics,
 };
 use itertools::Itertools;
 use ra_db::SourceDatabase;
@@ -10,12 +10,7 @@ use ra_ide_db::{
     defs::{classify_name, classify_name_ref, Definition},
     RootDatabase,
 };
-use ra_syntax::{
-    ast::{self, DocCommentsOwner},
-    match_ast, AstNode,
-    SyntaxKind::*,
-    SyntaxToken, TokenAtOffset,
-};
+use ra_syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, TokenAtOffset};
 
 use crate::{
     display::{macro_label, rust_code_markup, rust_code_markup_with_doc, ShortLabel},
@@ -169,18 +164,14 @@ fn hover_text_from_name_kind(db: &RootDatabase, def: Definition) -> Option<Strin
     return match def {
         Definition::Macro(it) => {
             let src = it.source(db);
-            let doc_comment_text = src.value.doc_comment_text();
-            let doc_attr_text = expand_doc_attrs(&src.value);
-            let docs = merge_doc_comments_and_attrs(doc_comment_text, doc_attr_text);
+            let docs = Documentation::from_ast(&src.value).map(Into::into);
             hover_text(docs, Some(macro_label(&src.value)), mod_path)
         }
         Definition::Field(it) => {
             let src = it.source(db);
             match src.value {
                 FieldSource::Named(it) => {
-                    let doc_comment_text = it.doc_comment_text();
-                    let doc_attr_text = expand_doc_attrs(&it);
-                    let docs = merge_doc_comments_and_attrs(doc_comment_text, doc_attr_text);
+                    let docs = Documentation::from_ast(&it).map(Into::into);
                     hover_text(docs, it.short_label(), mod_path)
                 }
                 _ => None,
@@ -189,9 +180,7 @@ fn hover_text_from_name_kind(db: &RootDatabase, def: Definition) -> Option<Strin
         Definition::ModuleDef(it) => match it {
             ModuleDef::Module(it) => match it.definition_source(db).value {
                 ModuleSource::Module(it) => {
-                    let doc_comment_text = it.doc_comment_text();
-                    let doc_attr_text = expand_doc_attrs(&it);
-                    let docs = merge_doc_comments_and_attrs(doc_comment_text, doc_attr_text);
+                    let docs = Documentation::from_ast(&it).map(Into::into);
                     hover_text(docs, it.short_label(), mod_path)
                 }
                 _ => None,
@@ -220,43 +209,8 @@ fn hover_text_from_name_kind(db: &RootDatabase, def: Definition) -> Option<Strin
         A: ast::DocCommentsOwner + ast::NameOwner + ShortLabel + ast::AttrsOwner,
     {
         let src = def.source(db);
-        let doc_comment_text = src.value.doc_comment_text();
-        let doc_attr_text = expand_doc_attrs(&src.value);
-        let docs = merge_doc_comments_and_attrs(doc_comment_text, doc_attr_text);
+        let docs = Documentation::from_ast(&src.value).map(Into::into);
         hover_text(docs, src.value.short_label(), mod_path)
-    }
-}
-
-fn merge_doc_comments_and_attrs(
-    doc_comment_text: Option<String>,
-    doc_attr_text: Option<String>,
-) -> Option<String> {
-    match (doc_comment_text, doc_attr_text) {
-        (Some(mut comment_text), Some(attr_text)) => {
-            comment_text.push_str("\n\n");
-            comment_text.push_str(&attr_text);
-            Some(comment_text)
-        }
-        (Some(comment_text), None) => Some(comment_text),
-        (None, Some(attr_text)) => Some(attr_text),
-        (None, None) => None,
-    }
-}
-
-fn expand_doc_attrs(owner: &dyn ast::AttrsOwner) -> Option<String> {
-    let mut docs = String::new();
-    for attr in owner.attrs() {
-        if let Some(("doc", value)) =
-            attr.as_simple_key_value().as_ref().map(|(k, v)| (k.as_str(), v.as_str()))
-        {
-            docs.push_str(value);
-            docs.push_str("\n\n");
-        }
-    }
-    if docs.is_empty() {
-        None
-    } else {
-        Some(docs.trim_end_matches("\n\n").to_owned())
     }
 }
 

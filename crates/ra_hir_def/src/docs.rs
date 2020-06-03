@@ -29,6 +29,13 @@ impl Documentation {
         Documentation(s.into())
     }
 
+    pub fn from_ast<N>(node: &N) -> Option<Documentation>
+    where
+        N: ast::DocCommentsOwner + ast::AttrsOwner,
+    {
+        docs_from_ast(node)
+    }
+
     pub fn as_str(&self) -> &str {
         &*self.0
     }
