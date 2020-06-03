@@ -25,7 +25,7 @@ use ra_project_model::TargetKind;
 use ra_syntax::{AstNode, SyntaxKind, TextRange, TextSize};
 use serde::{Deserialize, Serialize};
 use serde_json::to_value;
-use stdx::format_to;
+use stdx::{format_to, split1};
 
 use crate::{
     cargo_target_spec::CargoTargetSpec,
@@ -786,11 +786,10 @@ pub fn handle_resolve_code_action(
     let frange = FileRange { file_id, range };
 
     let assists = snap.analysis().resolved_assists(&snap.config.assist, frange)?;
-    let id_components = params.id.split(":").collect::<Vec<&str>>();
-    let index = id_components.last().unwrap().parse::<usize>().unwrap();
-    let id_string = id_components.first().unwrap();
+    let (id_string, index) = split1(&params.id, ':').unwrap();
+    let index = index.parse::<usize>().unwrap();
     let assist = &assists[index];
-    assert!(assist.assist.id.0 == *id_string);
+    assert!(assist.assist.id.0 == id_string);
     Ok(to_proto::resolved_code_action(&snap, assist.clone())?.edit)
 }
 
