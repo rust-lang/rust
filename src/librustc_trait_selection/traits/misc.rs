@@ -48,7 +48,7 @@ pub fn can_type_implement_copy(
                     continue;
                 }
                 let span = tcx.def_span(field.did);
-                let cause = ObligationCause { span, ..ObligationCause::dummy() };
+                let cause = ObligationCause::dummy_with_span(span);
                 let ctx = traits::FulfillmentContext::new();
                 match traits::fully_normalize(&infcx, ctx, cause, param_env, &ty) {
                     Ok(ty) => {
