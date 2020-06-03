@@ -1127,7 +1127,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
     }
 
     #[test]
-    fn test_hover_trait_hash_impl_action() {
+    fn test_hover_trait_has_impl_action() {
         let (_, actions) = check_hover_result(
             "
             //- /lib.rs
@@ -1139,7 +1139,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
     }
 
     #[test]
-    fn test_hover_struct_hash_impl_action() {
+    fn test_hover_struct_has_impl_action() {
         let (_, actions) = check_hover_result(
             "
             //- /lib.rs
@@ -1151,7 +1151,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
     }
 
     #[test]
-    fn test_hover_union_hash_impl_action() {
+    fn test_hover_union_has_impl_action() {
         let (_, actions) = check_hover_result(
             "
             //- /lib.rs

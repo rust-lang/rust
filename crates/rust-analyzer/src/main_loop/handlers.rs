@@ -553,7 +553,7 @@ pub fn handle_hover(
             value: crate::markdown::format_docs(&info.info.to_markup()),
         }),
         range: Some(range),
-        actions: Some(prepare_hover_actions(&world, info.info.actions())),
+        actions: Some(prepare_hover_actions(&snap, info.info.actions())),
     };
     Ok(Some(res))
 }
@@ -1176,18 +1176,18 @@ fn to_command_link(command: Command, tooltip: String) -> lsp_ext::CommandLink {
 }
 
 fn show_impl_command_link(
-    world: &WorldSnapshot,
+    snap: &GlobalStateSnapshot,
     position: &FilePosition,
 ) -> Option<lsp_ext::CommandLinkGroup> {
-    if world.config.hover.implementations {
-        if let Some(nav_data) = world.analysis().goto_implementation(*position).unwrap_or(None) {
-            let uri = to_proto::url(world, position.file_id).ok()?;
-            let line_index = world.analysis().file_line_index(position.file_id).ok()?;
+    if snap.config.hover.implementations {
+        if let Some(nav_data) = snap.analysis().goto_implementation(*position).unwrap_or(None) {
+            let uri = to_proto::url(snap, position.file_id).ok()?;
+            let line_index = snap.analysis().file_line_index(position.file_id).ok()?;
             let position = to_proto::position(&line_index, position.offset);
             let locations: Vec<_> = nav_data
                 .info
                 .iter()
-                .filter_map(|it| to_proto::location(world, it.file_range()).ok())
+                .filter_map(|it| to_proto::location(snap, it.file_range()).ok())
                 .collect();
             let title = implementation_title(locations.len());
             let command = show_references_command(title, &uri, position, locations);
@@ -1202,17 +1202,17 @@ fn show_impl_command_link(
 }
 
 fn prepare_hover_actions(
-    world: &WorldSnapshot,
+    snap: &GlobalStateSnapshot,
     actions: &[HoverAction],
 ) -> Vec<lsp_ext::CommandLinkGroup> {
-    if world.config.hover.none() || !world.config.client_caps.hover_actions {
+    if snap.config.hover.none() || !snap.config.client_caps.hover_actions {
         return Vec::new();
     }
 
     actions
         .iter()
         .filter_map(|it| match it {
-            HoverAction::Implementaion(position) => show_impl_command_link(world, position),
+            HoverAction::Implementaion(position) => show_impl_command_link(snap, position),
         })
         .collect()
 }
