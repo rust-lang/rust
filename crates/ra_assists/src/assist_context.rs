@@ -179,6 +179,7 @@ impl Assists {
         f: impl FnOnce(&mut AssistDirector),
     ) -> Option<()> {
         if !self.resolve {
+            self.buf.push((label, None));
             return None;
         }
         let mut director = AssistDirector::default();
