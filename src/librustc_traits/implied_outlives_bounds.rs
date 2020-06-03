@@ -47,14 +47,14 @@ fn compute_implied_outlives_bounds<'tcx>(
     // process it next. Currently (at least) these resulting
     // predicates are always guaranteed to be a subset of the original
     // type, so we need not fear non-termination.
-    let mut wf_types = vec![ty];
+    let mut wf_args = vec![ty.into()];
 
     let mut implied_bounds = vec![];
 
     let mut fulfill_cx = FulfillmentContext::new();
 
-    while let Some(ty) = wf_types.pop() {
-        // Compute the obligations for `ty` to be well-formed. If `ty` is
+    while let Some(arg) = wf_args.pop() {
+        // Compute the obligations for `arg` to be well-formed. If `arg` is
         // an unresolved inference variable, just substituted an empty set
         // -- because the return type here is going to be things we *add*
         // to the environment, it's always ok for this set to be smaller
@@ -62,7 +62,7 @@ fn compute_implied_outlives_bounds<'tcx>(
         // unresolved inference variables here anyway, but there might be
         // during typeck under some circumstances.)
         let obligations =
-            wf::obligations(infcx, param_env, hir::CRATE_HIR_ID, ty, DUMMY_SP).unwrap_or(vec![]);
+            wf::obligations(infcx, param_env, hir::CRATE_HIR_ID, arg, DUMMY_SP).unwrap_or(vec![]);
 
         // N.B., all of these predicates *ought* to be easily proven
         // true. In fact, their correctness is (mostly) implied by
@@ -103,8 +103,8 @@ fn compute_implied_outlives_bounds<'tcx>(
                 | ty::PredicateKind::ConstEvaluatable(..)
                 | ty::PredicateKind::ConstEquate(..) => vec![],
 
-                ty::PredicateKind::WellFormed(subty) => {
-                    wf_types.push(subty);
+                &ty::PredicateKind::WellFormed(arg) => {
+                    wf_args.push(arg);
                     vec![]
                 }
 

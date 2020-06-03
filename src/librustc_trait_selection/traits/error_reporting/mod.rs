@@ -19,6 +19,7 @@ use rustc_hir::Node;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::fold::TypeFolder;
+use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{
     self, fast_reject, AdtKind, SubtypePredicate, ToPolyTraitRef, ToPredicate, Ty, TyCtxt,
     TypeFoldable, WithConstness,
@@ -1531,13 +1532,24 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                 err
             }
 
-            ty::PredicateKind::WellFormed(ty) => {
+            ty::PredicateKind::WellFormed(arg) => {
                 // Same hacky approach as above to avoid deluging user
                 // with error messages.
-                if ty.references_error() || self.tcx.sess.has_errors() {
+                if arg.references_error() || self.tcx.sess.has_errors() {
                     return;
                 }
-                self.need_type_info_err(body_id, span, ty, ErrorCode::E0282)
+
+                match arg.unpack() {
+                    GenericArgKind::Lifetime(lt) => {
+                        span_bug!(span, "unexpected well formed predicate: {:?}", lt)
+                    }
+                    GenericArgKind::Type(ty) => {
+                        self.need_type_info_err(body_id, span, ty, ErrorCode::E0282)
+                    }
+                    GenericArgKind::Const(ct) => {
+                        self.need_type_info_err_const(body_id, span, ct, ErrorCode::E0282)
+                    }
+                }
             }
 
             ty::PredicateKind::Subtype(ref data) => {

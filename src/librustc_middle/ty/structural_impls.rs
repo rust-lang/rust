@@ -236,7 +236,7 @@ impl fmt::Debug for ty::PredicateKind<'tcx> {
             ty::PredicateKind::RegionOutlives(ref pair) => pair.fmt(f),
             ty::PredicateKind::TypeOutlives(ref pair) => pair.fmt(f),
             ty::PredicateKind::Projection(ref pair) => pair.fmt(f),
-            ty::PredicateKind::WellFormed(ty) => write!(f, "WellFormed({:?})", ty),
+            ty::PredicateKind::WellFormed(data) => write!(f, "WellFormed({:?})", data),
             ty::PredicateKind::ObjectSafe(trait_def_id) => {
                 write!(f, "ObjectSafe({:?})", trait_def_id)
             }

@@ -2031,7 +2031,7 @@ define_print_and_forward_display! {
             ty::PredicateKind::RegionOutlives(predicate) => p!(print(predicate)),
             ty::PredicateKind::TypeOutlives(predicate) => p!(print(predicate)),
             ty::PredicateKind::Projection(predicate) => p!(print(predicate)),
-            ty::PredicateKind::WellFormed(ty) => p!(print(ty), write(" well-formed")),
+            ty::PredicateKind::WellFormed(arg) => p!(print(arg), write(" well-formed")),
             &ty::PredicateKind::ObjectSafe(trait_def_id) => {
                 p!(write("the trait `"),
                    print_def_path(trait_def_id, &[]),

@@ -121,9 +121,8 @@ use rustc_middle::ty::adjustment::{
 };
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::subst::{
-    GenericArgKind, InternalSubsts, Subst, SubstsRef, UserSelfTy, UserSubsts,
-};
+use rustc_middle::ty::subst::{self, InternalSubsts, Subst, SubstsRef};
+use rustc_middle::ty::subst::{GenericArgKind, UserSelfTy, UserSubsts};
 use rustc_middle::ty::util::{Discr, IntTypeExt, Representability};
 use rustc_middle::ty::{
     self, AdtKind, CanonicalUserType, Const, GenericParamDefKind, RegionKind, ToPolyTraitRef,
@@ -3333,7 +3332,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn to_ty(&self, ast_t: &hir::Ty<'_>) -> Ty<'tcx> {
         let t = AstConv::ast_ty_to_ty(self, ast_t);
-        self.register_wf_obligation(t, ast_t.span, traits::MiscObligation);
+        self.register_wf_obligation(t.into(), ast_t.span, traits::MiscObligation);
         t
     }
 
@@ -3353,28 +3352,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn to_const(&self, ast_c: &hir::AnonConst) -> &'tcx ty::Const<'tcx> {
         let const_def_id = self.tcx.hir().local_def_id(ast_c.hir_id);
         let c = ty::Const::from_anon_const(self.tcx, const_def_id);
-
-        // HACK(eddyb) emulate what a `WellFormedConst` obligation would do.
-        // This code should be replaced with the proper WF handling ASAP.
-        if let ty::ConstKind::Unevaluated(def_id, substs, promoted) = c.val {
-            assert!(promoted.is_none());
-
-            // HACK(eddyb) let's hope these are always empty.
-            // let obligations = self.nominal_obligations(def_id, substs);
-            // self.out.extend(obligations);
-
-            let cause = traits::ObligationCause::new(
-                self.tcx.def_span(const_def_id.to_def_id()),
-                self.body_id,
-                traits::MiscObligation,
-            );
-            self.register_predicate(traits::Obligation::new(
-                cause,
-                self.param_env,
-                ty::PredicateKind::ConstEvaluatable(def_id, substs).to_predicate(self.tcx),
-            ));
-        }
-
+        self.register_wf_obligation(
+            c.into(),
+            self.tcx.hir().span(ast_c.hir_id),
+            ObligationCauseCode::MiscObligation,
+        );
         c
     }
 
@@ -3407,11 +3389,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    /// Registers an obligation for checking later, during regionck, that the type `ty` must
-    /// outlive the region `r`.
+    /// Registers an obligation for checking later, during regionck, that `arg` is well-formed.
     pub fn register_wf_obligation(
         &self,
-        ty: Ty<'tcx>,
+        arg: subst::GenericArg<'tcx>,
         span: Span,
         code: traits::ObligationCauseCode<'tcx>,
     ) {
@@ -3420,16 +3401,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.register_predicate(traits::Obligation::new(
             cause,
             self.param_env,
-            ty::PredicateKind::WellFormed(ty).to_predicate(self.tcx),
+            ty::PredicateKind::WellFormed(arg).to_predicate(self.tcx),
         ));
     }
 
-    /// Registers obligations that all types appearing in `substs` are well-formed.
+    /// Registers obligations that all `substs` are well-formed.
     pub fn add_wf_bounds(&self, substs: SubstsRef<'tcx>, expr: &hir::Expr<'_>) {
-        for ty in substs.types() {
-            if !ty.references_error() {
-                self.register_wf_obligation(ty, expr.span, traits::MiscObligation);
-            }
+        for arg in substs.iter().filter(|arg| {
+            matches!(arg.unpack(), GenericArgKind::Type(..) | GenericArgKind::Const(..))
+        }) {
+            self.register_wf_obligation(arg, expr.span, traits::MiscObligation);
         }
     }
 
@@ -3901,8 +3882,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // All the input types from the fn signature must outlive the call
         // so as to validate implied bounds.
-        for (fn_input_ty, arg_expr) in fn_inputs.iter().zip(args.iter()) {
-            self.register_wf_obligation(fn_input_ty, arg_expr.span, traits::MiscObligation);
+        for (&fn_input_ty, arg_expr) in fn_inputs.iter().zip(args.iter()) {
+            self.register_wf_obligation(fn_input_ty.into(), arg_expr.span, traits::MiscObligation);
         }
 
         let expected_arg_count = fn_inputs.len();

@@ -436,11 +436,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
-            &ty::PredicateKind::WellFormed(ty) => match wf::obligations(
+            &ty::PredicateKind::WellFormed(arg) => match wf::obligations(
                 self.infcx,
                 obligation.param_env,
                 obligation.cause.body_id,
-                ty,
+                arg,
                 obligation.cause.span,
             ) {
                 Some(mut obligations) => {
