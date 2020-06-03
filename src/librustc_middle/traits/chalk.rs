@@ -7,7 +7,7 @@
 
 use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
 
 use rustc_hir::def_id::DefId;
 
@@ -75,7 +75,7 @@ impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
     type InternedVariableKinds = Vec<chalk_ir::VariableKind<Self>>;
     type InternedCanonicalVarKinds = Vec<chalk_ir::CanonicalVarKind<Self>>;
     type DefId = DefId;
-    type InternedAdtId = DefId;
+    type InternedAdtId = &'tcx AdtDef;
     type Identifier = ();
 
     fn debug_program_clause_implication(
