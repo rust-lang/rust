@@ -11,7 +11,7 @@ use std::{ffi::OsString, path::PathBuf};
 
 use lsp_types::ClientCapabilities;
 use ra_flycheck::FlycheckConfig;
-use ra_ide::{AssistConfig, CompletionConfig, InlayHintsConfig};
+use ra_ide::{AssistConfig, CompletionConfig, InlayHintsConfig, HoverConfig};
 use ra_project_model::{CargoConfig, JsonProject, ProjectManifest};
 use serde::Deserialize;
 
@@ -34,6 +34,7 @@ pub struct Config {
     pub assist: AssistConfig,
     pub call_info_full: bool,
     pub lens: LensConfig,
+    pub hover: HoverConfig,
 
     pub with_sysroot: bool,
     pub linked_projects: Vec<LinkedProject>,
@@ -124,6 +125,7 @@ pub struct ClientCapsConfig {
     pub work_done_progress: bool,
     pub code_action_group: bool,
     pub resolve_code_action: bool,
+    pub hover_actions: bool,
 }
 
 impl Default for Config {
@@ -162,6 +164,7 @@ impl Default for Config {
             assist: AssistConfig::default(),
             call_info_full: true,
             lens: LensConfig::default(),
+            hover: HoverConfig::default(),
             linked_projects: Vec::new(),
         }
     }
@@ -278,6 +281,14 @@ impl Config {
             }
         }
 
+        let mut use_hover_actions = false;
+        set(value, "/hoverActions/enable", &mut use_hover_actions);
+        if use_hover_actions {
+            set(value, "/hoverActions/implementations", &mut self.hover.implementations);
+        } else {
+            self.hover = HoverConfig::NO_ACTIONS;
+        }
+
         log::info!("Config::update() = {:#?}", self);
 
         fn get<'a, T: Deserialize<'a>>(value: &'a serde_json::Value, pointer: &str) -> Option<T> {
@@ -331,17 +342,14 @@ impl Config {
 
         self.assist.allow_snippets(false);
         if let Some(experimental) = &caps.experimental {
-            let snippet_text_edit =
-                experimental.get("snippetTextEdit").and_then(|it| it.as_bool()) == Some(true);
+            let get_bool = |index: &str| experimental.get(index).and_then(|it| it.as_bool()) == Some(true);
+
+            let snippet_text_edit = get_bool("snippetTextEdit");
             self.assist.allow_snippets(snippet_text_edit);
 
-            let code_action_group =
-                experimental.get("codeActionGroup").and_then(|it| it.as_bool()) == Some(true);
-            self.client_caps.code_action_group = code_action_group;
-
-            let resolve_code_action =
-                experimental.get("resolveCodeAction").and_then(|it| it.as_bool()) == Some(true);
-            self.client_caps.resolve_code_action = resolve_code_action;
+            self.client_caps.code_action_group = get_bool("codeActionGroup");
+			self.client_caps.resolve_code_action = get_bool("resolveCodeAction");
+            self.client_caps.hover_actions = get_bool("hoverActions");
         }
     }
 }

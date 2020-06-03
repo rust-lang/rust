@@ -66,7 +66,7 @@ pub use crate::{
     display::{file_structure, FunctionSignature, NavigationTarget, StructureNode},
     expand_macro::ExpandedMacro,
     folding_ranges::{Fold, FoldKind},
-    hover::HoverResult,
+    hover::{HoverResult, HoverAction, HoverConfig},
     inlay_hints::{InlayHint, InlayHintsConfig, InlayKind},
     references::{Declaration, Reference, ReferenceAccess, ReferenceKind, ReferenceSearchResult},
     runnables::{Runnable, RunnableKind, TestId},

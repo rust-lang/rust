@@ -90,3 +90,15 @@ export interface SsrParams {
     parseOnly: boolean;
 }
 export const ssr = new lc.RequestType<SsrParams, lc.WorkspaceEdit, void>('experimental/ssr');
+
+export interface CommandLink extends lc.Command {
+    /**
+     * A tooltip for the command, when represented in the UI.
+     */
+    tooltip?: string;
+}
+
+export interface CommandLinkGroup {
+    title?: string;
+    commands: CommandLink[];
+}

@@ -18,7 +18,7 @@ use ra_syntax::{
 use crate::RootDatabase;
 
 // FIXME: a more precise name would probably be `Symbol`?
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum Definition {
     Macro(MacroDef),
     Field(Field),

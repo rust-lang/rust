@@ -510,6 +510,7 @@ fn on_request(
         .on::<lsp_ext::InlayHints>(handlers::handle_inlay_hints)?
         .on::<lsp_ext::CodeActionRequest>(handlers::handle_code_action)?
         .on::<lsp_ext::ResolveCodeActionRequest>(handlers::handle_resolve_code_action)?
+        .on::<lsp_ext::HoverRequest>(handlers::handle_hover)?
         .on::<lsp_types::request::OnTypeFormatting>(handlers::handle_on_type_formatting)?
         .on::<lsp_types::request::DocumentSymbolRequest>(handlers::handle_document_symbol)?
         .on::<lsp_types::request::WorkspaceSymbol>(handlers::handle_workspace_symbol)?
@@ -521,7 +522,6 @@ fn on_request(
         .on::<lsp_types::request::CodeLensResolve>(handlers::handle_code_lens_resolve)?
         .on::<lsp_types::request::FoldingRangeRequest>(handlers::handle_folding_range)?
         .on::<lsp_types::request::SignatureHelpRequest>(handlers::handle_signature_help)?
-        .on::<lsp_types::request::HoverRequest>(handlers::handle_hover)?
         .on::<lsp_types::request::PrepareRenameRequest>(handlers::handle_prepare_rename)?
         .on::<lsp_types::request::Rename>(handlers::handle_rename)?
         .on::<lsp_types::request::References>(handlers::handle_references)?
