@@ -90,6 +90,8 @@ mod llvm_libunwind {
             cfg.flag("-fstrict-aliasing");
             cfg.flag("-funwind-tables");
             cfg.flag("-fvisibility=hidden");
+            cfg.flag_if_supported("-fvisibility-global-new-delete-hidden");
+            cfg.define("_LIBUNWIND_DISABLE_VISIBILITY_ANNOTATIONS", None);
         }
 
         let mut unwind_sources = vec![
