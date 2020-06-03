@@ -170,7 +170,7 @@ https://www.tedinski.com/2018/02/06/system-boundaries.html
 
 We separate import groups with blank lines
 
-```
+```rust
 mod x;
 mod y;
 
@@ -195,7 +195,7 @@ Put `struct`s and `enum`s first, functions and impls last.
 
 Do
 
-```
+```rust
 // Good
 struct Foo {
   bars: Vec<Bar>
@@ -206,7 +206,7 @@ struct Bar;
 
 rather than
 
-```
+```rust
 // Not as good
 struct Bar;
 
