@@ -26,12 +26,17 @@
                                            // + span: $DIR/nrvo-simple.rs:3:20: 3:21
                                            // + literal: Const { ty: u8, val: Value(Scalar(0x00)) }
           StorageLive(_3);                 // scope 1 at $DIR/nrvo-simple.rs:4:5: 4:19
+          StorageLive(_5);                 // scope 1 at $DIR/nrvo-simple.rs:4:10: 4:18
+          StorageLive(_6);                 // scope 1 at $DIR/nrvo-simple.rs:4:10: 4:18
 -         _6 = &mut _2;                    // scope 1 at $DIR/nrvo-simple.rs:4:10: 4:18
 +         _6 = &mut _0;                    // scope 1 at $DIR/nrvo-simple.rs:4:10: 4:18
-          _3 = move _1(move _6) -> bb1;    // scope 1 at $DIR/nrvo-simple.rs:4:5: 4:19
+          _5 = &mut (*_6);                 // scope 1 at $DIR/nrvo-simple.rs:4:10: 4:18
+          _3 = move _1(move _5) -> bb1;    // scope 1 at $DIR/nrvo-simple.rs:4:5: 4:19
       }
   
       bb1: {
+          StorageDead(_5);                 // scope 1 at $DIR/nrvo-simple.rs:4:18: 4:19
+          StorageDead(_6);                 // scope 1 at $DIR/nrvo-simple.rs:4:19: 4:20
           StorageDead(_3);                 // scope 1 at $DIR/nrvo-simple.rs:4:19: 4:20
 -         _0 = _2;                         // scope 1 at $DIR/nrvo-simple.rs:5:5: 5:8
 -         StorageDead(_2);                 // scope 0 at $DIR/nrvo-simple.rs:6:1: 6:2
