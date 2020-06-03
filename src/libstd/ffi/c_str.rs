@@ -446,6 +446,11 @@ impl CString {
     ///
     /// Failure to call [`from_raw`] will lead to a memory leak.
     ///
+    /// The C side must **not** modify the length of the string (by writing a
+    /// `NULL` somewhere inside the string or removing the final one) before
+    /// it makes it back into Rust using [`from_raw`]. See the safety section
+    /// in [`from_raw`].
+    ///
     /// [`from_raw`]: #method.from_raw
     ///
     /// # Examples
