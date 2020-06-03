@@ -25,15 +25,8 @@ fn generated_tests_are_fresh() {
 
 #[test]
 fn generated_assists_are_fresh() {
-    if let Err(error) = codegen::generate_assists_docs(Mode::Verify) {
+    if let Err(error) = codegen::generate_assists_tests(Mode::Verify) {
         panic!("{}. Please update assists by running `cargo xtask codegen`", error);
-    }
-}
-
-#[test]
-fn generated_features_are_fresh() {
-    if let Err(error) = codegen::generate_feature_docs(Mode::Verify) {
-        panic!("{}. Please update features by running `cargo xtask codegen`", error);
     }
 }
 
