@@ -8,7 +8,7 @@
 
 use rustc_middle::traits::ChalkRustInterner as RustInterner;
 use rustc_middle::ty::subst::{InternalSubsts, Subst, SubstsRef};
-use rustc_middle::ty::{self, AssocItemContainer, AssocKind, TyCtxt};
+use rustc_middle::ty::{self, AssocItemContainer, AssocKind, Binder, TyCtxt};
 
 use rustc_hir::def_id::DefId;
 
@@ -177,10 +177,12 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
             .filter_map(|wc| LowerInto::<Option<chalk_ir::QuantifiedWhereClause<RustInterner<'tcx>>>>::lower_into(wc, &self.interner)).collect();
 
         let sig = self.tcx.fn_sig(def_id);
-        // FIXME(chalk): Why does this have a Binder
-        let argument_types = sig
-            .inputs()
-            .skip_binder()
+        // FIXME(chalk): collect into an intermediate SmallVec here since
+        // we need `TypeFoldable` for `no_bound_vars`
+        let argument_types: Binder<Vec<_>> = sig.map_bound(|i| i.inputs().iter().copied().collect());
+        let argument_types = argument_types
+            .no_bound_vars()
+            .expect("FIXME(chalk): late-bound fn parameters not supported in chalk")
             .iter()
             .map(|t| t.subst(self.tcx, &bound_vars).lower_into(&self.interner))
             .collect();
