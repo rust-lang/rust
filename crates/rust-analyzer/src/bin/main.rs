@@ -4,9 +4,14 @@
 mod args;
 
 use lsp_server::Connection;
-use rust_analyzer::{cli, config::Config, from_json, Result};
+use rust_analyzer::{
+    cli,
+    config::{Config, LinkedProject},
+    from_json, Result,
+};
 
 use crate::args::HelpPrinted;
+use ra_project_model::ProjectManifest;
 
 fn main() -> Result<()> {
     setup_logging()?;
@@ -97,17 +102,6 @@ fn run_server() -> Result<()> {
         log::info!("Client '{}' {}", client_info.name, client_info.version.unwrap_or_default());
     }
 
-    let cwd = std::env::current_dir()?;
-    let root = initialize_params.root_uri.and_then(|it| it.to_file_path().ok()).unwrap_or(cwd);
-
-    let workspace_roots = initialize_params
-        .workspace_folders
-        .map(|workspaces| {
-            workspaces.into_iter().filter_map(|it| it.uri.to_file_path().ok()).collect::<Vec<_>>()
-        })
-        .filter(|workspaces| !workspaces.is_empty())
-        .unwrap_or_else(|| vec![root]);
-
     let config = {
         let mut config = Config::default();
         if let Some(value) = &initialize_params.initialization_options {
@@ -115,10 +109,31 @@ fn run_server() -> Result<()> {
         }
         config.update_caps(&initialize_params.capabilities);
 
+        if config.linked_projects.is_empty() {
+            let cwd = std::env::current_dir()?;
+            let root =
+                initialize_params.root_uri.and_then(|it| it.to_file_path().ok()).unwrap_or(cwd);
+            let workspace_roots = initialize_params
+                .workspace_folders
+                .map(|workspaces| {
+                    workspaces
+                        .into_iter()
+                        .filter_map(|it| it.uri.to_file_path().ok())
+                        .collect::<Vec<_>>()
+                })
+                .filter(|workspaces| !workspaces.is_empty())
+                .unwrap_or_else(|| vec![root]);
+
+            config.linked_projects = ProjectManifest::discover_all(&workspace_roots)
+                .into_iter()
+                .map(LinkedProject::from)
+                .collect();
+        }
+
         config
     };
 
-    rust_analyzer::main_loop(workspace_roots, config, connection)?;
+    rust_analyzer::main_loop(config, connection)?;
 
     log::info!("shutting down IO...");
     io_threads.join()?;

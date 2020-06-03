@@ -12,13 +12,11 @@ use std::{
     fmt,
     ops::Range,
     panic,
-    path::PathBuf,
     sync::Arc,
     time::{Duration, Instant},
 };
 
 use crossbeam_channel::{never, select, unbounded, RecvError, Sender};
-use itertools::Itertools;
 use lsp_server::{Connection, ErrorCode, Message, Notification, Request, RequestId, Response};
 use lsp_types::{
     DidChangeTextDocumentParams, NumberOrString, TextDocumentContentChangeEvent, WorkDoneProgress,
@@ -36,7 +34,7 @@ use serde::{de::DeserializeOwned, Serialize};
 use threadpool::ThreadPool;
 
 use crate::{
-    config::{Config, FilesWatcher},
+    config::{Config, FilesWatcher, LinkedProject},
     diagnostics::{to_proto::url_from_path_with_drive_lowercasing, DiagnosticTask},
     from_proto,
     global_state::{GlobalState, GlobalStateSnapshot},
@@ -70,7 +68,7 @@ impl fmt::Display for LspError {
 
 impl Error for LspError {}
 
-pub fn main_loop(ws_roots: Vec<PathBuf>, config: Config, connection: Connection) -> Result<()> {
+pub fn main_loop(config: Config, connection: Connection) -> Result<()> {
     log::info!("initial config: {:#?}", config);
 
     // Windows scheduler implements priority boosts: if thread waits for an
@@ -95,29 +93,24 @@ pub fn main_loop(ws_roots: Vec<PathBuf>, config: Config, connection: Connection)
     let mut loop_state = LoopState::default();
     let mut global_state = {
         let workspaces = {
-            // FIXME: support dynamic workspace loading.
-            let project_roots: FxHashSet<_> = ws_roots
-                .iter()
-                .filter_map(|it| ra_project_model::ProjectRoot::discover(it).ok())
-                .flatten()
-                .collect();
-
-            if project_roots.is_empty() && config.notifications.cargo_toml_not_found {
+            if config.linked_projects.is_empty() && config.notifications.cargo_toml_not_found {
                 show_message(
                     lsp_types::MessageType::Error,
-                    format!(
-                        "rust-analyzer failed to discover workspace, no Cargo.toml found, dirs searched: {}",
-                        ws_roots.iter().format_with(", ", |it, f| f(&it.display()))
-                    ),
+                    "rust-analyzer failed to discover workspace".to_string(),
                     &connection.sender,
                 );
             };
 
-            project_roots
-                .into_iter()
+            config
+                .linked_projects
+                .iter()
+                .filter_map(|project| match project {
+                    LinkedProject::ProjectManifest(it) => Some(it),
+                    LinkedProject::JsonProject(_) => None,
+                })
                 .filter_map(|root| {
                     ra_project_model::ProjectWorkspace::load(
-                        root,
+                        root.clone(),
                         &config.cargo,
                         config.with_sysroot,
                     )
