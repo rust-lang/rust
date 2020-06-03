@@ -1806,10 +1806,6 @@ dependencies = [
 [[package]]
 name = "libc"
 version = "0.0.1"
-source = "git+https://github.com/ultimate-research/libc-nnsdk.git?rev=b18c1c7#b18c1c79a4230663b32693f66a301e877eb70c78"
-dependencies = [
- "rustc-std-workspace-core",
-]
 
 [[package]]
 name = "libc"
@@ -4720,7 +4716,7 @@ dependencies = [
  "fortanix-sgx-abi",
  "hashbrown 0.6.2",
  "hermit-abi",
- "libc 0.0.1 (git+https://github.com/ultimate-research/libc-nnsdk.git?rev=b18c1c7)",
+ "libc 0.0.1",
  "nnsdk",
  "panic_abort",
  "panic_unwind",

@@ -15,6 +15,7 @@
 //! guaranteed to be a runtime error!
 
 use crate::os::raw::c_char;
+use crate::io::ErrorKind;
 
 global_asm!("
 .section .nro_header
@@ -60,6 +61,8 @@ pub mod stdio;
 pub mod thread;
 pub mod thread_local;
 pub mod time;
+
+pub mod fd;
 
 pub use crate::sys_common::os_str_bytes as os_str;
 
@@ -115,7 +118,40 @@ pub unsafe fn abort_internal() -> ! {
 // generate these numbers.
 //
 // More seriously though this is just for DOS protection in hash maps. It's ok
-// if we don't do that on wasm just yet.
+// if we don't do that on switch just yet.
 pub fn hashmap_random_keys() -> (u64, u64) {
     (1, 2)
 }
+
+#[doc(hidden)]
+pub trait IsMinusOne {
+    fn is_minus_one(&self) -> bool;
+}
+
+macro_rules! impl_is_minus_one {
+    ($($t:ident)*) => ($(impl IsMinusOne for $t {
+        fn is_minus_one(&self) -> bool {
+            *self == -1
+        }
+    })*)
+}
+
+impl_is_minus_one! { i8 i16 i32 i64 isize }
+
+pub fn cvt<T: IsMinusOne>(t: T) -> crate::io::Result<T> {
+    if t.is_minus_one() { Err(crate::io::Error::last_os_error()) } else { Ok(t) }
+}
+
+pub fn cvt_r<T, F>(mut f: F) -> crate::io::Result<T>
+where
+    T: IsMinusOne,
+    F: FnMut() -> T,
+{
+    loop {
+        match cvt(f()) {
+            Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
+            other => return other,
+        }
+    }
+}
+

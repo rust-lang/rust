@@ -7,7 +7,9 @@ use crate::str;
 use crate::sys::{unsupported, Void};
 
 pub fn errno() -> i32 {
-    0
+    unsafe {
+        *libc::errno_loc() as i32
+    }
 }
 
 pub fn error_string(_errno: i32) -> String {
