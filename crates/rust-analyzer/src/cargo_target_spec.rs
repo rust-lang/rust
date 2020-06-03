@@ -4,7 +4,7 @@ use ra_cfg::CfgExpr;
 use ra_ide::{FileId, RunnableKind, TestId};
 use ra_project_model::{self, ProjectWorkspace, TargetKind};
 
-use crate::{world::WorldSnapshot, Result};
+use crate::{global_state::GlobalStateSnapshot, Result};
 
 /// Abstract representation of Cargo target.
 ///
@@ -89,7 +89,7 @@ impl CargoTargetSpec {
     }
 
     pub(crate) fn for_file(
-        world: &WorldSnapshot,
+        world: &GlobalStateSnapshot,
         file_id: FileId,
     ) -> Result<Option<CargoTargetSpec>> {
         let &crate_id = match world.analysis().crate_for(file_id)?.first() {

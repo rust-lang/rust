@@ -14,7 +14,7 @@ use std::{
 use anyhow::{bail, Context, Result};
 use ra_cfg::CfgOptions;
 use ra_db::{CrateGraph, CrateName, Edition, Env, ExternSource, ExternSourceId, FileId};
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use serde_json::from_reader;
 
 pub use crate::{
@@ -30,6 +30,12 @@ pub enum ProjectWorkspace {
     Cargo { cargo: CargoWorkspace, sysroot: Sysroot },
     /// Project workspace was manually specified using a `rust-project.json` file.
     Json { project: JsonProject },
+}
+
+impl From<JsonProject> for ProjectWorkspace {
+    fn from(project: JsonProject) -> ProjectWorkspace {
+        ProjectWorkspace::Json { project }
+    }
 }
 
 /// `PackageRoot` describes a package root folder.
@@ -57,25 +63,25 @@ impl PackageRoot {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum ProjectRoot {
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
+pub enum ProjectManifest {
     ProjectJson(PathBuf),
     CargoToml(PathBuf),
 }
 
-impl ProjectRoot {
-    pub fn from_manifest_file(path: PathBuf) -> Result<ProjectRoot> {
+impl ProjectManifest {
+    pub fn from_manifest_file(path: PathBuf) -> Result<ProjectManifest> {
         if path.ends_with("rust-project.json") {
-            return Ok(ProjectRoot::ProjectJson(path));
+            return Ok(ProjectManifest::ProjectJson(path));
         }
         if path.ends_with("Cargo.toml") {
-            return Ok(ProjectRoot::CargoToml(path));
+            return Ok(ProjectManifest::CargoToml(path));
         }
         bail!("project root must point to Cargo.toml or rust-project.json: {}", path.display())
     }
 
-    pub fn discover_single(path: &Path) -> Result<ProjectRoot> {
-        let mut candidates = ProjectRoot::discover(path)?;
+    pub fn discover_single(path: &Path) -> Result<ProjectManifest> {
+        let mut candidates = ProjectManifest::discover(path)?;
         let res = match candidates.pop() {
             None => bail!("no projects"),
             Some(it) => it,
@@ -87,12 +93,12 @@ impl ProjectRoot {
         Ok(res)
     }
 
-    pub fn discover(path: &Path) -> io::Result<Vec<ProjectRoot>> {
+    pub fn discover(path: &Path) -> io::Result<Vec<ProjectManifest>> {
         if let Some(project_json) = find_in_parent_dirs(path, "rust-project.json") {
-            return Ok(vec![ProjectRoot::ProjectJson(project_json)]);
+            return Ok(vec![ProjectManifest::ProjectJson(project_json)]);
         }
         return find_cargo_toml(path)
-            .map(|paths| paths.into_iter().map(ProjectRoot::CargoToml).collect());
+            .map(|paths| paths.into_iter().map(ProjectManifest::CargoToml).collect());
 
         fn find_cargo_toml(path: &Path) -> io::Result<Vec<PathBuf>> {
             match find_in_parent_dirs(path, "Cargo.toml") {
@@ -128,16 +134,28 @@ impl ProjectRoot {
                 .collect()
         }
     }
+
+    pub fn discover_all(paths: &[impl AsRef<Path>]) -> Vec<ProjectManifest> {
+        let mut res = paths
+            .iter()
+            .filter_map(|it| ProjectManifest::discover(it.as_ref()).ok())
+            .flatten()
+            .collect::<FxHashSet<_>>()
+            .into_iter()
+            .collect::<Vec<_>>();
+        res.sort();
+        res
+    }
 }
 
 impl ProjectWorkspace {
     pub fn load(
-        root: ProjectRoot,
+        manifest: ProjectManifest,
         cargo_features: &CargoConfig,
         with_sysroot: bool,
     ) -> Result<ProjectWorkspace> {
-        let res = match root {
-            ProjectRoot::ProjectJson(project_json) => {
+        let res = match manifest {
+            ProjectManifest::ProjectJson(project_json) => {
                 let file = File::open(&project_json).with_context(|| {
                     format!("Failed to open json file {}", project_json.display())
                 })?;
@@ -148,7 +166,7 @@ impl ProjectWorkspace {
                     })?,
                 }
             }
-            ProjectRoot::CargoToml(cargo_toml) => {
+            ProjectManifest::CargoToml(cargo_toml) => {
                 let cargo = CargoWorkspace::from_cargo_metadata(&cargo_toml, cargo_features)
                     .with_context(|| {
                         format!(
@@ -252,6 +270,16 @@ impl ProjectWorkspace {
                         };
                         let cfg_options = {
                             let mut opts = default_cfg_options.clone();
+                            for cfg in &krate.cfg {
+                                match cfg.find('=') {
+                                    None => opts.insert_atom(cfg.into()),
+                                    Some(pos) => {
+                                        let key = &cfg[..pos];
+                                        let value = cfg[pos + 1..].trim_matches('"');
+                                        opts.insert_key_value(key.into(), value.into());
+                                    }
+                                }
+                            }
                             for name in &krate.atom_cfgs {
                                 opts.insert_atom(name.into());
                             }

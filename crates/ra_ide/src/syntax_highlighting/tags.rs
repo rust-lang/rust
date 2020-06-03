@@ -24,12 +24,14 @@ pub enum HighlightTag {
     Enum,
     EnumVariant,
     Field,
+    FormatSpecifier,
     Function,
     Keyword,
     Lifetime,
     Macro,
     Module,
     NumericLiteral,
+    Operator,
     SelfKeyword,
     SelfType,
     Static,
@@ -41,8 +43,6 @@ pub enum HighlightTag {
     Union,
     Local,
     UnresolvedReference,
-    FormatSpecifier,
-    Operator,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -72,12 +72,14 @@ impl HighlightTag {
             HighlightTag::Enum => "enum",
             HighlightTag::EnumVariant => "enum_variant",
             HighlightTag::Field => "field",
+            HighlightTag::FormatSpecifier => "format_specifier",
             HighlightTag::Function => "function",
             HighlightTag::Keyword => "keyword",
             HighlightTag::Lifetime => "lifetime",
             HighlightTag::Macro => "macro",
             HighlightTag::Module => "module",
             HighlightTag::NumericLiteral => "numeric_literal",
+            HighlightTag::Operator => "operator",
             HighlightTag::SelfKeyword => "self_keyword",
             HighlightTag::SelfType => "self_type",
             HighlightTag::Static => "static",
@@ -89,8 +91,6 @@ impl HighlightTag {
             HighlightTag::Union => "union",
             HighlightTag::Local => "variable",
             HighlightTag::UnresolvedReference => "unresolved_reference",
-            HighlightTag::FormatSpecifier => "format_specifier",
-            HighlightTag::Operator => "operator",
         }
     }
 }

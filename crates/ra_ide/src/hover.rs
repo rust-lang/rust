@@ -1,8 +1,8 @@
 use std::iter::once;
 
 use hir::{
-    Adt, AsAssocItem, AssocItemContainer, FieldSource, HasSource, HirDisplay, ModuleDef,
-    ModuleSource, Semantics,
+    Adt, AsAssocItem, AssocItemContainer, Documentation, FieldSource, HasSource, HirDisplay,
+    ModuleDef, ModuleSource, Semantics,
 };
 use itertools::Itertools;
 use ra_db::SourceDatabase;
@@ -10,12 +10,7 @@ use ra_ide_db::{
     defs::{classify_name, classify_name_ref, Definition},
     RootDatabase,
 };
-use ra_syntax::{
-    ast::{self, DocCommentsOwner},
-    match_ast, AstNode,
-    SyntaxKind::*,
-    SyntaxToken, TokenAtOffset,
-};
+use ra_syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, TokenAtOffset};
 
 use crate::{
     display::{macro_label, rust_code_markup, rust_code_markup_with_doc, ShortLabel},
@@ -169,13 +164,15 @@ fn hover_text_from_name_kind(db: &RootDatabase, def: Definition) -> Option<Strin
     return match def {
         Definition::Macro(it) => {
             let src = it.source(db);
-            hover_text(src.value.doc_comment_text(), Some(macro_label(&src.value)), mod_path)
+            let docs = Documentation::from_ast(&src.value).map(Into::into);
+            hover_text(docs, Some(macro_label(&src.value)), mod_path)
         }
         Definition::Field(it) => {
             let src = it.source(db);
             match src.value {
                 FieldSource::Named(it) => {
-                    hover_text(it.doc_comment_text(), it.short_label(), mod_path)
+                    let docs = Documentation::from_ast(&it).map(Into::into);
+                    hover_text(docs, it.short_label(), mod_path)
                 }
                 _ => None,
             }
@@ -183,7 +180,8 @@ fn hover_text_from_name_kind(db: &RootDatabase, def: Definition) -> Option<Strin
         Definition::ModuleDef(it) => match it {
             ModuleDef::Module(it) => match it.definition_source(db).value {
                 ModuleSource::Module(it) => {
-                    hover_text(it.doc_comment_text(), it.short_label(), mod_path)
+                    let docs = Documentation::from_ast(&it).map(Into::into);
+                    hover_text(docs, it.short_label(), mod_path)
                 }
                 _ => None,
             },
@@ -208,10 +206,11 @@ fn hover_text_from_name_kind(db: &RootDatabase, def: Definition) -> Option<Strin
     fn from_def_source<A, D>(db: &RootDatabase, def: D, mod_path: Option<String>) -> Option<String>
     where
         D: HasSource<Ast = A>,
-        A: ast::DocCommentsOwner + ast::NameOwner + ShortLabel,
+        A: ast::DocCommentsOwner + ast::NameOwner + ShortLabel + ast::AttrsOwner,
     {
         let src = def.source(db);
-        hover_text(src.value.doc_comment_text(), src.value.short_label(), mod_path)
+        let docs = Documentation::from_ast(&src.value).map(Into::into);
+        hover_text(docs, src.value.short_label(), mod_path)
     }
 }
 
@@ -949,6 +948,108 @@ fn func(foo: i32) { if true { <|>foo; }; }
             fn my() {}
             ",
             &["mod my"],
+        );
+    }
+
+    #[test]
+    fn test_hover_struct_doc_comment() {
+        check_hover_result(
+            r#"
+            //- /lib.rs
+            /// bar docs
+            struct Bar;
+
+            fn foo() {
+                let bar = Ba<|>r;
+            }
+            "#,
+            &["struct Bar\n```\n___\n\nbar docs"],
+        );
+    }
+
+    #[test]
+    fn test_hover_struct_doc_attr() {
+        check_hover_result(
+            r#"
+            //- /lib.rs
+            #[doc = "bar docs"]
+            struct Bar;
+
+            fn foo() {
+                let bar = Ba<|>r;
+            }
+            "#,
+            &["struct Bar\n```\n___\n\nbar docs"],
+        );
+    }
+
+    #[test]
+    fn test_hover_struct_doc_attr_multiple_and_mixed() {
+        check_hover_result(
+            r#"
+            //- /lib.rs
+            /// bar docs 0
+            #[doc = "bar docs 1"]
+            #[doc = "bar docs 2"]
+            struct Bar;
+
+            fn foo() {
+                let bar = Ba<|>r;
+            }
+            "#,
+            &["struct Bar\n```\n___\n\nbar docs 0\n\nbar docs 1\n\nbar docs 2"],
+        );
+    }
+
+    #[test]
+    fn test_hover_macro_generated_struct_fn_doc_comment() {
+        check_hover_result(
+            r#"
+            //- /lib.rs
+            macro_rules! bar {
+                () => {
+                    struct Bar;
+                    impl Bar {
+                        /// Do the foo
+                        fn foo(&self) {}
+                    }
+                }
+            }
+
+            bar!();
+
+            fn foo() {
+                let bar = Bar;
+                bar.fo<|>o();
+            }
+            "#,
+            &["Bar\n```\n\n```rust\nfn foo(&self)\n```\n___\n\n Do the foo"],
+        );
+    }
+
+    #[test]
+    fn test_hover_macro_generated_struct_fn_doc_attr() {
+        check_hover_result(
+            r#"
+            //- /lib.rs
+            macro_rules! bar {
+                () => {
+                    struct Bar;
+                    impl Bar {
+                        #[doc = "Do the foo"]
+                        fn foo(&self) {}
+                    }
+                }
+            }
+
+            bar!();
+
+            fn foo() {
+                let bar = Bar;
+                bar.fo<|>o();
+            }
+            "#,
+            &["Bar\n```\n\n```rust\nfn foo(&self)\n```\n___\n\nDo the foo"],
         );
     }
 }

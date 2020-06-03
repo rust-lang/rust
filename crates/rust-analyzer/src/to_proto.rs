@@ -10,7 +10,8 @@ use ra_syntax::{SyntaxKind, TextRange, TextSize};
 use ra_vfs::LineEndings;
 
 use crate::{
-    cargo_target_spec::CargoTargetSpec, lsp_ext, semantic_tokens, world::WorldSnapshot, Result,
+    cargo_target_spec::CargoTargetSpec, global_state::GlobalStateSnapshot, lsp_ext,
+    semantic_tokens, Result,
 };
 
 pub(crate) fn position(line_index: &LineIndex, offset: TextSize) -> lsp_types::Position {
@@ -384,41 +385,44 @@ pub(crate) fn folding_range(
     }
 }
 
-pub(crate) fn url(world: &WorldSnapshot, file_id: FileId) -> Result<lsp_types::Url> {
-    world.file_id_to_uri(file_id)
+pub(crate) fn url(snap: &GlobalStateSnapshot, file_id: FileId) -> Result<lsp_types::Url> {
+    snap.file_id_to_uri(file_id)
 }
 
 pub(crate) fn versioned_text_document_identifier(
-    world: &WorldSnapshot,
+    snap: &GlobalStateSnapshot,
     file_id: FileId,
     version: Option<i64>,
 ) -> Result<lsp_types::VersionedTextDocumentIdentifier> {
-    let res = lsp_types::VersionedTextDocumentIdentifier { uri: url(world, file_id)?, version };
+    let res = lsp_types::VersionedTextDocumentIdentifier { uri: url(snap, file_id)?, version };
     Ok(res)
 }
 
-pub(crate) fn location(world: &WorldSnapshot, frange: FileRange) -> Result<lsp_types::Location> {
-    let url = url(world, frange.file_id)?;
-    let line_index = world.analysis().file_line_index(frange.file_id)?;
+pub(crate) fn location(
+    snap: &GlobalStateSnapshot,
+    frange: FileRange,
+) -> Result<lsp_types::Location> {
+    let url = url(snap, frange.file_id)?;
+    let line_index = snap.analysis().file_line_index(frange.file_id)?;
     let range = range(&line_index, frange.range);
     let loc = lsp_types::Location::new(url, range);
     Ok(loc)
 }
 
 pub(crate) fn location_link(
-    world: &WorldSnapshot,
+    snap: &GlobalStateSnapshot,
     src: Option<FileRange>,
     target: NavigationTarget,
 ) -> Result<lsp_types::LocationLink> {
     let origin_selection_range = match src {
         Some(src) => {
-            let line_index = world.analysis().file_line_index(src.file_id)?;
+            let line_index = snap.analysis().file_line_index(src.file_id)?;
             let range = range(&line_index, src.range);
             Some(range)
         }
         None => None,
     };
-    let (target_uri, target_range, target_selection_range) = location_info(world, target)?;
+    let (target_uri, target_range, target_selection_range) = location_info(snap, target)?;
     let res = lsp_types::LocationLink {
         origin_selection_range,
         target_uri,
@@ -429,12 +433,12 @@ pub(crate) fn location_link(
 }
 
 fn location_info(
-    world: &WorldSnapshot,
+    snap: &GlobalStateSnapshot,
     target: NavigationTarget,
 ) -> Result<(lsp_types::Url, lsp_types::Range, lsp_types::Range)> {
-    let line_index = world.analysis().file_line_index(target.file_id())?;
+    let line_index = snap.analysis().file_line_index(target.file_id())?;
 
-    let target_uri = url(world, target.file_id())?;
+    let target_uri = url(snap, target.file_id())?;
     let target_range = range(&line_index, target.full_range());
     let target_selection_range =
         target.focus_range().map(|it| range(&line_index, it)).unwrap_or(target_range);
@@ -442,14 +446,14 @@ fn location_info(
 }
 
 pub(crate) fn goto_definition_response(
-    world: &WorldSnapshot,
+    snap: &GlobalStateSnapshot,
     src: Option<FileRange>,
     targets: Vec<NavigationTarget>,
 ) -> Result<lsp_types::GotoDefinitionResponse> {
-    if world.config.client_caps.location_link {
+    if snap.config.client_caps.location_link {
         let links = targets
             .into_iter()
-            .map(|nav| location_link(world, src, nav))
+            .map(|nav| location_link(snap, src, nav))
             .collect::<Result<Vec<_>>>()?;
         Ok(links.into())
     } else {
@@ -457,7 +461,7 @@ pub(crate) fn goto_definition_response(
             .into_iter()
             .map(|nav| {
                 location(
-                    world,
+                    snap,
                     FileRange {
                         file_id: nav.file_id(),
                         range: nav.focus_range().unwrap_or(nav.range()),
@@ -470,13 +474,13 @@ pub(crate) fn goto_definition_response(
 }
 
 pub(crate) fn snippet_text_document_edit(
-    world: &WorldSnapshot,
+    snap: &GlobalStateSnapshot,
     is_snippet: bool,
     source_file_edit: SourceFileEdit,
 ) -> Result<lsp_ext::SnippetTextDocumentEdit> {
-    let text_document = versioned_text_document_identifier(world, source_file_edit.file_id, None)?;
-    let line_index = world.analysis().file_line_index(source_file_edit.file_id)?;
-    let line_endings = world.file_line_endings(source_file_edit.file_id);
+    let text_document = versioned_text_document_identifier(snap, source_file_edit.file_id, None)?;
+    let line_index = snap.analysis().file_line_index(source_file_edit.file_id)?;
+    let line_endings = snap.file_line_endings(source_file_edit.file_id);
     let edits = source_file_edit
         .edit
         .into_iter()
@@ -486,17 +490,17 @@ pub(crate) fn snippet_text_document_edit(
 }
 
 pub(crate) fn resource_op(
-    world: &WorldSnapshot,
+    snap: &GlobalStateSnapshot,
     file_system_edit: FileSystemEdit,
 ) -> Result<lsp_types::ResourceOp> {
     let res = match file_system_edit {
         FileSystemEdit::CreateFile { source_root, path } => {
-            let uri = world.path_to_uri(source_root, &path)?;
+            let uri = snap.path_to_uri(source_root, &path)?;
             lsp_types::ResourceOp::Create(lsp_types::CreateFile { uri, options: None })
         }
         FileSystemEdit::MoveFile { src, dst_source_root, dst_path } => {
-            let old_uri = world.file_id_to_uri(src)?;
-            let new_uri = world.path_to_uri(dst_source_root, &dst_path)?;
+            let old_uri = snap.file_id_to_uri(src)?;
+            let new_uri = snap.path_to_uri(dst_source_root, &dst_path)?;
             lsp_types::ResourceOp::Rename(lsp_types::RenameFile { old_uri, new_uri, options: None })
         }
     };
@@ -504,16 +508,16 @@ pub(crate) fn resource_op(
 }
 
 pub(crate) fn snippet_workspace_edit(
-    world: &WorldSnapshot,
+    snap: &GlobalStateSnapshot,
     source_change: SourceChange,
 ) -> Result<lsp_ext::SnippetWorkspaceEdit> {
     let mut document_changes: Vec<lsp_ext::SnippetDocumentChangeOperation> = Vec::new();
     for op in source_change.file_system_edits {
-        let op = resource_op(&world, op)?;
+        let op = resource_op(&snap, op)?;
         document_changes.push(lsp_ext::SnippetDocumentChangeOperation::Op(op));
     }
     for edit in source_change.source_file_edits {
-        let edit = snippet_text_document_edit(&world, source_change.is_snippet, edit)?;
+        let edit = snippet_text_document_edit(&snap, source_change.is_snippet, edit)?;
         document_changes.push(lsp_ext::SnippetDocumentChangeOperation::Edit(edit));
     }
     let workspace_edit =
@@ -522,11 +526,11 @@ pub(crate) fn snippet_workspace_edit(
 }
 
 pub(crate) fn workspace_edit(
-    world: &WorldSnapshot,
+    snap: &GlobalStateSnapshot,
     source_change: SourceChange,
 ) -> Result<lsp_types::WorkspaceEdit> {
     assert!(!source_change.is_snippet);
-    snippet_workspace_edit(world, source_change).map(|it| it.into())
+    snippet_workspace_edit(snap, source_change).map(|it| it.into())
 }
 
 impl From<lsp_ext::SnippetWorkspaceEdit> for lsp_types::WorkspaceEdit {
@@ -565,13 +569,13 @@ impl From<lsp_ext::SnippetWorkspaceEdit> for lsp_types::WorkspaceEdit {
 }
 
 pub fn call_hierarchy_item(
-    world: &WorldSnapshot,
+    snap: &GlobalStateSnapshot,
     target: NavigationTarget,
 ) -> Result<lsp_types::CallHierarchyItem> {
     let name = target.name().to_string();
     let detail = target.description().map(|it| it.to_string());
     let kind = symbol_kind(target.kind());
-    let (uri, range, selection_range) = location_info(world, target)?;
+    let (uri, range, selection_range) = location_info(snap, target)?;
     Ok(lsp_types::CallHierarchyItem { name, kind, tags: None, detail, uri, range, selection_range })
 }
 
@@ -620,14 +624,14 @@ fn main() <fold>{
 }
 
 pub(crate) fn unresolved_code_action(
-    world: &WorldSnapshot,
+    snap: &GlobalStateSnapshot,
     assist: Assist,
     index: usize,
 ) -> Result<lsp_ext::CodeAction> {
     let res = lsp_ext::CodeAction {
         title: assist.label,
         id: Some(format!("{}:{}", assist.id.0.to_owned(), index.to_string())),
-        group: assist.group.filter(|_| world.config.client_caps.code_action_group).map(|gr| gr.0),
+        group: assist.group.filter(|_| snap.config.client_caps.code_action_group).map(|gr| gr.0),
         kind: Some(String::new()),
         edit: None,
         command: None,
@@ -636,25 +640,25 @@ pub(crate) fn unresolved_code_action(
 }
 
 pub(crate) fn resolved_code_action(
-    world: &WorldSnapshot,
+    snap: &GlobalStateSnapshot,
     assist: ResolvedAssist,
 ) -> Result<lsp_ext::CodeAction> {
     let change = assist.source_change;
-    unresolved_code_action(world, assist.assist, 0).and_then(|it| {
+    unresolved_code_action(snap, assist.assist, 0).and_then(|it| {
         Ok(lsp_ext::CodeAction {
             id: None,
-            edit: Some(snippet_workspace_edit(world, change)?),
+            edit: Some(snippet_workspace_edit(snap, change)?),
             ..it
         })
     })
 }
 
 pub(crate) fn runnable(
-    world: &WorldSnapshot,
+    snap: &GlobalStateSnapshot,
     file_id: FileId,
     runnable: Runnable,
 ) -> Result<lsp_ext::Runnable> {
-    let spec = CargoTargetSpec::for_file(world, file_id)?;
+    let spec = CargoTargetSpec::for_file(snap, file_id)?;
     let target = spec.as_ref().map(|s| s.target.clone());
     let (cargo_args, executable_args) =
         CargoTargetSpec::runnable_args(spec, &runnable.kind, &runnable.cfg_exprs)?;
@@ -667,14 +671,14 @@ pub(crate) fn runnable(
             target.map_or_else(|| "run binary".to_string(), |t| format!("run {}", t))
         }
     };
-    let location = location_link(world, None, runnable.nav)?;
+    let location = location_link(snap, None, runnable.nav)?;
 
     Ok(lsp_ext::Runnable {
         label,
         location: Some(location),
         kind: lsp_ext::RunnableKind::Cargo,
         args: lsp_ext::CargoRunnable {
-            workspace_root: world.workspace_root_for(file_id).map(|root| root.to_owned()),
+            workspace_root: snap.workspace_root_for(file_id).map(|root| root.to_owned()),
             cargo_args,
             executable_args,
         },

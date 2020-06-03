@@ -406,6 +406,23 @@ fn highlight_element(
                 _ => h,
             }
         }
+        PREFIX_EXPR => {
+            let prefix_expr = element.into_node().and_then(ast::PrefixExpr::cast)?;
+            match prefix_expr.op_kind() {
+                Some(ast::PrefixOp::Deref) => {}
+                _ => return None,
+            }
+
+            let expr = prefix_expr.expr()?;
+            let ty = sema.type_of_expr(&expr)?;
+            if !ty.is_raw_ptr() {
+                return None;
+            }
+
+            let mut h = Highlight::new(HighlightTag::Operator);
+            h |= HighlightModifier::Unsafe;
+            h
+        }
 
         k if k.is_keyword() => {
             let h = Highlight::new(HighlightTag::Keyword);
@@ -458,7 +475,13 @@ fn highlight_name(db: &RootDatabase, def: Definition) -> Highlight {
         Definition::Field(_) => HighlightTag::Field,
         Definition::ModuleDef(def) => match def {
             hir::ModuleDef::Module(_) => HighlightTag::Module,
-            hir::ModuleDef::Function(_) => HighlightTag::Function,
+            hir::ModuleDef::Function(func) => {
+                let mut h = HighlightTag::Function.into();
+                if func.is_unsafe(db) {
+                    h |= HighlightModifier::Unsafe;
+                }
+                return h;
+            }
             hir::ModuleDef::Adt(hir::Adt::Struct(_)) => HighlightTag::Struct,
             hir::ModuleDef::Adt(hir::Adt::Enum(_)) => HighlightTag::Enum,
             hir::ModuleDef::Adt(hir::Adt::Union(_)) => HighlightTag::Union,

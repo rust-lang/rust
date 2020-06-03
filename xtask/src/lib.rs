@@ -160,6 +160,8 @@ pub fn run_release(dry_run: bool) -> Result<()> {
         run!("git reset --hard tags/nightly")?;
         run!("git push")?;
     }
+    codegen::generate_assists_docs(Mode::Overwrite)?;
+    codegen::generate_feature_docs(Mode::Overwrite)?;
 
     let website_root = project_root().join("../rust-analyzer.github.io");
     let changelog_dir = website_root.join("./thisweek/_posts");
