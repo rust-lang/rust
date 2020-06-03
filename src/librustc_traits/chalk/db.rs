@@ -187,8 +187,12 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
             .map(|t| t.subst(self.tcx, &bound_vars).lower_into(&self.interner))
             .collect();
 
-        let return_type =
-            sig.output().skip_binder().subst(self.tcx, &bound_vars).lower_into(&self.interner);
+        let return_type = sig
+            .output()
+            .no_bound_vars()
+            .expect("FIXME(chalk): late-bound fn parameters not supported in chalk")
+            .subst(self.tcx, &bound_vars)
+            .lower_into(&self.interner);
 
         let bound =
             chalk_solve::rust_ir::FnDefDatumBound { argument_types, where_clauses, return_type };
