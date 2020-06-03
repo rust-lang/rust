@@ -224,7 +224,7 @@ fn run(support_lib_count: usize, exe: String, all_args: Vec<String>) {
     // by the client.
     for (k, v) in env::vars() {
         match &k[..] {
-            "PATH" | "LD_LIBRARY_PATH" | "PWD" => continue,
+            "PATH" | "LD_LIBRARY_PATH" | "PWD" | "RUST_TEST_TMPDIR" => continue,
             _ => {}
         }
         t!(client.write_all(k.as_bytes()));

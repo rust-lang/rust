@@ -1,6 +1,7 @@
 // run-pass
 // Testing that a librustc_ast can parse modules with canonicalized base path
 // ignore-cross-compile
+// ignore-remote
 
 #![feature(rustc_private)]
 
