@@ -15,3 +15,4 @@ relative-path = "1.0.0"
 rustc-hash = "1.1.0"
 
 ra_cfg = { path = "../ra_cfg" }
+stdx = { path = "../stdx" }

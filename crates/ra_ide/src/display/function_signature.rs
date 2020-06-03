@@ -10,7 +10,7 @@ use std::{
 use hir::{Docs, Documentation, HasSource, HirDisplay};
 use ra_ide_db::RootDatabase;
 use ra_syntax::ast::{self, AstNode, NameOwner, VisibilityOwner};
-use stdx::SepBy;
+use stdx::{split1, SepBy};
 
 use crate::display::{generic_parameters, where_predicates};
 
@@ -210,10 +210,8 @@ impl From<&'_ ast::FnDef> for FunctionSignature {
                 // macro-generated functions are missing whitespace
                 fn fmt_param(param: ast::Param) -> String {
                     let text = param.syntax().text().to_string();
-                    match text.find(':') {
-                        Some(pos) if 1 + pos < text.len() => {
-                            format!("{} {}", &text[0..1 + pos].trim(), &text[1 + pos..].trim())
-                        }
+                    match split1(&text, ':') {
+                        Some((left, right)) => format!("{}: {}", left.trim(), right.trim()),
                         _ => text,
                     }
                 }

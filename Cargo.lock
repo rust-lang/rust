@@ -1639,6 +1639,7 @@ dependencies = [
  "relative-path",
  "rustc-hash",
  "serde_json",
+ "stdx",
  "text-size",
 ]
 
