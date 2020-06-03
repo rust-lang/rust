@@ -83,13 +83,22 @@ pub trait DocCommentsOwner: AstNode {
         CommentIter { iter: self.syntax().children_with_tokens() }
     }
 
+    fn doc_comment_text(&self) -> Option<String> {
+        self.doc_comments().doc_comment_text()
+    }
+}
+
+impl CommentIter {
+    pub fn from_syntax_node(syntax_node: &ast::SyntaxNode) -> CommentIter {
+        CommentIter { iter: syntax_node.children_with_tokens() }
+    }
+
     /// Returns the textual content of a doc comment block as a single string.
     /// That is, strips leading `///` (+ optional 1 character of whitespace),
     /// trailing `*/`, trailing whitespace and then joins the lines.
-    fn doc_comment_text(&self) -> Option<String> {
+    pub fn doc_comment_text(self) -> Option<String> {
         let mut has_comments = false;
         let docs = self
-            .doc_comments()
             .filter(|comment| comment.kind().doc.is_some())
             .map(|comment| {
                 has_comments = true;

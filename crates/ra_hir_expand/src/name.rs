@@ -153,6 +153,7 @@ pub mod known {
         str,
         // Special names
         macro_rules,
+        doc,
         // Components of known path (value or mod name)
         std,
         core,
