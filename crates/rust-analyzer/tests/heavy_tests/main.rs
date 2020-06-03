@@ -331,8 +331,6 @@ fn test_missing_module_code_action_in_json_project() {
             "deps": [],
             "edition": "2015",
             "cfg": [ "cfg_atom_1", "feature=cfg_1"],
-            "atom_cfgs": ["atom_2"],
-            "key_value_cfgs": { "feature": "key_value_feature", "other": "value"}
         } ]
     });
 
