@@ -1,4 +1,4 @@
-error[E0758]: cannot infer an appropriate lifetime
+error[E0759]: cannot infer an appropriate lifetime
   --> $DIR/region-object-lifetime-in-coercion.rs:8:46
    |
 LL | fn a(v: &[u8]) -> Box<dyn Foo + 'static> {
@@ -15,7 +15,7 @@ help: alternatively, add an explicit `'static` bound to this reference
 LL | fn a(v: &'static [u8]) -> Box<dyn Foo + 'static> {
    |         ^^^^^^^^^^^^^
 
-error[E0758]: cannot infer an appropriate lifetime
+error[E0759]: cannot infer an appropriate lifetime
   --> $DIR/region-object-lifetime-in-coercion.rs:13:14
    |
 LL | fn b(v: &[u8]) -> Box<dyn Foo + 'static> {
@@ -32,7 +32,7 @@ help: alternatively, add an explicit `'static` bound to this reference
 LL | fn b(v: &'static [u8]) -> Box<dyn Foo + 'static> {
    |         ^^^^^^^^^^^^^
 
-error[E0758]: cannot infer an appropriate lifetime
+error[E0759]: cannot infer an appropriate lifetime
   --> $DIR/region-object-lifetime-in-coercion.rs:19:14
    |
 LL | fn c(v: &[u8]) -> Box<dyn Foo> {
@@ -79,5 +79,5 @@ LL |     Box::new(v)
 
 error: aborting due to 4 previous errors
 
-Some errors have detailed explanations: E0495, E0758.
+Some errors have detailed explanations: E0495, E0759.
 For more information about an error, try `rustc --explain E0495`.
