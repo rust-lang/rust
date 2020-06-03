@@ -1,14 +1,39 @@
 # Suggested Workflows
 
-The full bootstrapping process takes quite a while. Here are three suggestions
+The full bootstrapping process takes quite a while. Here are five suggestions
 to make your life easier.
+
+## Configuring `rust-analyzer` for `rustc`
+
+`rust-analyzer` can help you check and format your code whenever you save
+a file. By default, `rust-analyzer` runs the `cargo check` and `rustfmt`
+commands, but you can override these commands to use more adapted versions
+of these tools when hacking on `rustc`. For example, for Visual Studio Code,
+you can write:
+
+```JSON
+{
+    "rust-analyzer.checkOnSave.overrideCommand": [
+        "./x.py",
+        "check",
+        "--json-output"
+    ],
+    "rust-analyzer.rustfmt.overrideCommand": [
+      "./build/TARGET_TRIPLE/stage0/bin/rustfmt"
+    ],
+    "editor.formatOnSave": true
+}
+```
+
+in your `.vscode/settings.json` file. This will ask `rust-analyzer` to use
+`x.py check` to check the sources, and the stage 0 rustfmt to format them.
 
 ## Check, check, and check again
 
-The first workflow, which is useful
-when doing simple refactorings, is to run `./x.py check`
-continuously. Here you are just checking that the compiler can
-**build**, but often that is all you need (e.g., when renaming a
+When doing simple refactorings, it can be useful to run `./x.py check`
+continuously. If you set up `rust-analyzer` as described above, this will
+be done for you every time you save a file. Here you are just checking that
+the compiler can **build**, but often that is all you need (e.g., when renaming a
 method). You can then run `./x.py build` when you actually need to
 run tests.
 
@@ -61,6 +86,40 @@ You can also use `--keep-stage 1` when running tests. Something like this:
 
 - Initial test run: `./x.py test -i --stage 1 src/test/ui`
 - Subsequent test run: `./x.py test -i --stage 1 src/test/ui --keep-stage 1`
+
+## Working on multiple branches at the same time
+
+Working on multiple branches in parallel can be a little annoying, since
+building the compiler on one branch will cause the old build and the
+incremental compilation cache to be overwritten. One solution would be
+to have multiple clones of the repository, but that would mean storing the
+Git metadata multiple times, and having to update each clone individually.
+
+Fortunately, Git has a better solution called [worktrees]. This lets you
+create multiple "working trees", which all share the same Git database.
+Moreover, because all of the worktrees share the same object database,
+if you update a branch (e.g. master) in any of them, you can use the new
+commits from any of the worktrees. One caveat, though, is that submodules
+do not get shared. They will still be cloned multiple times.
+
+[worktrees]: https://git-scm.com/docs/git-worktree
+
+Given you are inside the root directory for your rust repository, you can
+create a "linked working tree" in a new "rust2" directory by running
+the following command:
+
+```bash
+git worktree add ../rust2
+```
+
+Creating a new worktree for a new branch based on `master` looks like:
+
+```bash
+git worktree add -b my-feature ../rust2 master
+```
+
+You can then use that rust2 folder as a separate workspace for modifying
+and building `rustc`!
 
 ## Building with system LLVM
 
