@@ -871,8 +871,8 @@ public:
     const std::map<CallInst*, const std::map<Argument*, bool> > uncacheable_args_map, const SmallPtrSetImpl<Instruction*> *returnuses, AugmentedReturnType augmentedReturn,
     std::vector<Instruction*>* fakeTBAA, const std::map<ReturnInst*,StoreInst*>* replacedReturns,
     const SmallPtrSetImpl<const Value*> &unnecessaryValues,
-    const SmallPtrSetImpl<const Instruction*> &unnecessaryInstructions, 
-    const SmallPtrSetImpl<const Instruction*> &unnecessaryStores, 
+    const SmallPtrSetImpl<const Instruction*> &unnecessaryInstructions,
+    const SmallPtrSetImpl<const Instruction*> &unnecessaryStores,
     AllocaInst* dretAlloca
     ) : mode(mode), gutils(gutils), constant_args(constant_args), TR(TR),
         getIndex(getIndex), uncacheable_args_map(uncacheable_args_map),
@@ -1501,7 +1501,7 @@ public:
       erased.insert(&MS);
       gutils->erase(gutils->getNewFromOriginal(&MS));
     }
-    
+
     if (gutils->isConstantInstruction(&MS)) return;
 
     Value* orig_op0 = MS.getOperand(0);
@@ -1551,7 +1551,7 @@ public:
       eraseIfUnused(MTI);
       return;
     }
-    
+
     if (unnecessaryStores.count(&MTI)) {
       eraseIfUnused(MTI);
       return;
@@ -1580,7 +1580,7 @@ public:
 
     //llvm::errs() << *gutils->oldFunc << "\n";
     //TR.dump();
-    
+
     //llvm::errs() << "MIT: " << MTI << "|size: " << size << " dr: " << TR.query(orig_op0).str() << "\n";
     Type* secretty;
     if (looseTypeAnalysis) {
@@ -2911,11 +2911,10 @@ badfn:;
       }
       gutils->erase(op);
     } else {
+      eraseIfUnused(*orig, /*erase*/true, /*check*/false);
       if (augmentcall) {
         gutils->originalToNewFn[orig] = augmentcall;
       }
-      eraseIfUnused(*orig, /*erase*/false, /*check*/false);
-      gutils->erase(op);
     }
 
   } else {
@@ -4055,7 +4054,7 @@ Function* CreatePrimalAndGradient(Function* todiff, DIFFE_TYPE retType, const st
 
     return (topLevel && inst->mayWriteToMemory()) || is_value_needed_in_reverse(TR, gutils, inst, /*topLevel*/topLevel);
   });
-  
+
   SmallPtrSet<const Instruction*, 4> unnecessaryStores;
   calculateUnusedStores(*gutils->oldFunc, unnecessaryStores, [&](const Instruction* inst) {
 
