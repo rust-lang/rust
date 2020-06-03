@@ -467,3 +467,41 @@ interface InlayHint {
     label: string,
 }
 ```
+
+## Hover Actions
+
+**Client Capability:** `{ "hoverActions": boolean }`
+
+If this capability is set, `Hover` request returned from the server might contain an additional field, `actions`:
+
+```typescript
+interface Hover {
+    ...
+    actions?: CommandLinkGroup[];
+}
+
+interface CommandLink extends Command {
+    /**
+     * A tooltip for the command, when represented in the UI.
+     */
+    tooltip?: string;
+}
+
+interface CommandLinkGroup {
+    title?: string;
+    commands: CommandLink[];
+}
+```
+
+Such actions on the client side are appended to a hover bottom as command links:
+```
+  +-----------------------------+
+  | Hover content               |
+  |                             |
+  +-----------------------------+
+  | _Action1_ | _Action2_       |  <- first group, no TITLE
+  +-----------------------------+
+  | TITLE _Action1_ | _Action2_ |  <- second group
+  +-----------------------------+
+  ...
+```

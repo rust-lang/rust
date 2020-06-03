@@ -66,7 +66,7 @@ export function createClient(serverPath: string, cwd: string): lc.LanguageClient
                             // Workaround to support command links (trusted vscode.MarkdownString) in hovers
                             // https://github.com/microsoft/vscode/issues/33577
                             hover.contents = hover.contents.map(toTrusted);
-                            
+
                             const actions = (<any>result).actions;
                             if (actions) {
                                 hover.contents.push(renderHoverActions(actions));
