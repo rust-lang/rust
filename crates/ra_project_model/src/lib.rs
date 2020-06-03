@@ -252,6 +252,16 @@ impl ProjectWorkspace {
                         };
                         let cfg_options = {
                             let mut opts = default_cfg_options.clone();
+                            for cfg in &krate.cfg {
+                                match cfg.find('=') {
+                                    None => opts.insert_atom(cfg.into()),
+                                    Some(pos) => {
+                                        let key = &cfg[..pos];
+                                        let value = cfg[pos + 1..].trim_matches('"');
+                                        opts.insert_key_value(key.into(), value.into());
+                                    }
+                                }
+                            }
                             for name in &krate.atom_cfgs {
                                 opts.insert_atom(name.into());
                             }
