@@ -10,7 +10,7 @@ use crate::build::ForGuard::{self, OutsideGuard, RefWithinGuard};
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use crate::build::{GuardFrame, GuardFrameLocal, LocalsForNode};
 use crate::hair::{self, *};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::{fx::{FxHashMap, FxHashSet}, stack::ensure_sufficient_stack};
 use rustc_hir::HirId;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::middle::region;
@@ -909,30 +909,32 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             split_or_candidate |= self.simplify_candidate(candidate);
         }
 
-        if split_or_candidate {
-            // At least one of the candidates has been split into subcandidates.
-            // We need to change the candidate list to include those.
-            let mut new_candidates = Vec::new();
+        ensure_sufficient_stack(|| {
+            if split_or_candidate {
+                // At least one of the candidates has been split into subcandidates.
+                // We need to change the candidate list to include those.
+                let mut new_candidates = Vec::new();
 
-            for candidate in candidates {
-                candidate.visit_leaves(|leaf_candidate| new_candidates.push(leaf_candidate));
+                for candidate in candidates {
+                    candidate.visit_leaves(|leaf_candidate| new_candidates.push(leaf_candidate));
+                }
+                self.match_simplified_candidates(
+                    span,
+                    start_block,
+                    otherwise_block,
+                    &mut *new_candidates,
+                    fake_borrows,
+                );
+            } else {
+                self.match_simplified_candidates(
+                    span,
+                    start_block,
+                    otherwise_block,
+                    candidates,
+                    fake_borrows,
+                );
             }
-            self.match_simplified_candidates(
-                span,
-                start_block,
-                otherwise_block,
-                &mut *new_candidates,
-                fake_borrows,
-            );
-        } else {
-            self.match_simplified_candidates(
-                span,
-                start_block,
-                otherwise_block,
-                candidates,
-                fake_borrows,
-            );
-        };
+        });
     }
 
     fn match_simplified_candidates(
