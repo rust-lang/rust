@@ -25,7 +25,7 @@ impl ProcMacroExpander {
     }
 
     pub fn expand(
-        &self,
+        self,
         db: &dyn AstDatabase,
         _id: LazyMacroId,
         tt: &tt::Subtree,

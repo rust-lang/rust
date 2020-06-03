@@ -3,8 +3,7 @@
 use std::{collections::HashMap, path::PathBuf};
 
 use lsp_types::request::Request;
-use lsp_types::{Location, Position, Range, TextDocumentIdentifier};
-use rustc_hash::FxHashMap;
+use lsp_types::{Position, Range, TextDocumentIdentifier};
 use serde::{Deserialize, Serialize};
 
 pub enum AnalyzerStatus {}
@@ -38,13 +37,6 @@ pub struct SyntaxTreeParams {
     pub range: Option<Range>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct ExpandedMacro {
-    pub name: String,
-    pub expansion: String,
-}
-
 pub enum ExpandMacro {}
 
 impl Request for ExpandMacro {
@@ -57,30 +49,37 @@ impl Request for ExpandMacro {
 #[serde(rename_all = "camelCase")]
 pub struct ExpandMacroParams {
     pub text_document: TextDocumentIdentifier,
-    pub position: Option<Position>,
-}
-
-pub enum FindMatchingBrace {}
-
-impl Request for FindMatchingBrace {
-    type Params = FindMatchingBraceParams;
-    type Result = Vec<Position>;
-    const METHOD: &'static str = "rust-analyzer/findMatchingBrace";
+    pub position: Position,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct FindMatchingBraceParams {
+pub struct ExpandedMacro {
+    pub name: String,
+    pub expansion: String,
+}
+
+pub enum MatchingBrace {}
+
+impl Request for MatchingBrace {
+    type Params = MatchingBraceParams;
+    type Result = Vec<Position>;
+    const METHOD: &'static str = "experimental/matchingBrace";
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct MatchingBraceParams {
     pub text_document: TextDocumentIdentifier,
-    pub offsets: Vec<Position>,
+    pub positions: Vec<Position>,
 }
 
 pub enum ParentModule {}
 
 impl Request for ParentModule {
     type Params = lsp_types::TextDocumentPositionParams;
-    type Result = Vec<Location>;
-    const METHOD: &'static str = "rust-analyzer/parentModule";
+    type Result = Option<lsp_types::GotoDefinitionResponse>;
+    const METHOD: &'static str = "experimental/parentModule";
 }
 
 pub enum JoinLines {}
@@ -102,8 +101,8 @@ pub enum OnEnter {}
 
 impl Request for OnEnter {
     type Params = lsp_types::TextDocumentPositionParams;
-    type Result = Option<SnippetWorkspaceEdit>;
-    const METHOD: &'static str = "rust-analyzer/onEnter";
+    type Result = Option<Vec<SnippetTextEdit>>;
+    const METHOD: &'static str = "experimental/onEnter";
 }
 
 pub enum Runnables {}
@@ -111,7 +110,7 @@ pub enum Runnables {}
 impl Request for Runnables {
     type Params = RunnablesParams;
     type Result = Vec<Runnable>;
-    const METHOD: &'static str = "rust-analyzer/runnables";
+    const METHOD: &'static str = "experimental/runnables";
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -124,13 +123,28 @@ pub struct RunnablesParams {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Runnable {
-    pub range: Range,
     pub label: String,
-    pub bin: String,
-    pub args: Vec<String>,
-    pub extra_args: Vec<String>,
-    pub env: FxHashMap<String, String>,
-    pub cwd: Option<PathBuf>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub location: Option<lsp_types::LocationLink>,
+    pub kind: RunnableKind,
+    pub args: CargoRunnable,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "lowercase")]
+pub enum RunnableKind {
+    Cargo,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct CargoRunnable {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub workspace_root: Option<PathBuf>,
+    // command, --package and --lib stuff
+    pub cargo_args: Vec<String>,
+    // stuff after --
+    pub executable_args: Vec<String>,
 }
 
 pub enum InlayHints {}

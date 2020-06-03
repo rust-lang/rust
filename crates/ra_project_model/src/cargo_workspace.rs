@@ -64,7 +64,7 @@ impl Default for CargoConfig {
     fn default() -> Self {
         CargoConfig {
             no_default_features: false,
-            all_features: true,
+            all_features: false,
             features: Vec::new(),
             load_out_dirs_from_check: false,
             target: None,

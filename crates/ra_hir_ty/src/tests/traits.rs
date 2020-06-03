@@ -2644,6 +2644,79 @@ fn test() {
 }
 
 #[test]
+fn builtin_fn_def_copy() {
+    assert_snapshot!(
+        infer_with_mismatches(r#"
+#[lang = "copy"]
+trait Copy {}
+
+fn foo() {}
+fn bar<T: Copy>(T) -> T {}
+struct Struct(usize);
+enum Enum { Variant(usize) }
+
+trait Test { fn test(&self) -> bool; }
+impl<T: Copy> Test for T {}
+
+fn test() {
+    foo.test();
+    bar.test();
+    Struct.test();
+    Enum::Variant.test();
+}
+"#, true),
+        @r###"
+    42..44 '{}': ()
+    61..62 'T': {unknown}
+    69..71 '{}': ()
+    69..71: expected T, got ()
+    146..150 'self': &Self
+    202..282 '{     ...t(); }': ()
+    208..211 'foo': fn foo()
+    208..218 'foo.test()': bool
+    224..227 'bar': fn bar<{unknown}>({unknown}) -> {unknown}
+    224..234 'bar.test()': bool
+    240..246 'Struct': Struct(usize) -> Struct
+    240..253 'Struct.test()': bool
+    259..272 'Enum::Variant': Variant(usize) -> Enum
+    259..279 'Enum::...test()': bool
+    "###
+    );
+}
+
+#[test]
+fn builtin_fn_ptr_copy() {
+    assert_snapshot!(
+        infer_with_mismatches(r#"
+#[lang = "copy"]
+trait Copy {}
+
+trait Test { fn test(&self) -> bool; }
+impl<T: Copy> Test for T {}
+
+fn test(f1: fn(), f2: fn(usize) -> u8, f3: fn(u8, u8) -> &u8) {
+    f1.test();
+    f2.test();
+    f3.test();
+}
+"#, true),
+        @r###"
+    55..59 'self': &Self
+    109..111 'f1': fn()
+    119..121 'f2': fn(usize) -> u8
+    140..142 'f3': fn(u8, u8) -> &u8
+    163..211 '{     ...t(); }': ()
+    169..171 'f1': fn()
+    169..178 'f1.test()': bool
+    184..186 'f2': fn(usize) -> u8
+    184..193 'f2.test()': bool
+    199..201 'f3': fn(u8, u8) -> &u8
+    199..208 'f3.test()': bool
+    "###
+    );
+}
+
+#[test]
 fn builtin_sized() {
     assert_snapshot!(
         infer_with_mismatches(r#"
@@ -2679,4 +2752,49 @@ fn test() {
     200..205 '"foo"': &str
     "###
     );
+}
+
+#[test]
+fn integer_range_iterate() {
+    let t = type_at(
+        r#"
+//- /main.rs crate:main deps:std
+fn test() {
+    for x in 0..100 { x<|>; }
+}
+
+//- /std.rs crate:std
+pub mod ops {
+    pub struct Range<Idx> {
+        pub start: Idx,
+        pub end: Idx,
+    }
+}
+
+pub mod iter {
+    pub trait Iterator {
+        type Item;
+    }
+
+    pub trait IntoIterator {
+        type Item;
+        type IntoIter: Iterator<Item = Self::Item>;
+    }
+
+    impl<T> IntoIterator for T where T: Iterator {
+        type Item = <T as Iterator>::Item;
+        type IntoIter = Self;
+    }
+}
+
+trait Step {}
+impl Step for i32 {}
+impl Step for i64 {}
+
+impl<A: Step> iter::Iterator for ops::Range<A> {
+    type Item = A;
+}
+"#,
+    );
+    assert_eq!(t, "i32");
 }

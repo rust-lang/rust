@@ -27,9 +27,13 @@ If you want to **use** rust-analyzer's language server with your editor of
 choice, check [the manual](https://rust-analyzer.github.io/manual.html) folder. It also contains some tips & tricks to help
 you be more productive when using rust-analyzer.
 
-## Getting in touch
+## Communication
 
-We are on the rust-lang Zulip!
+For usage and troubleshooting requests, please use "IDEs and Editors" category of the Rust forum:
+
+https://users.rust-lang.org/c/ide/14
+
+For questions about development and implementation, join rls-2.0 working group on Zulip:
 
 https://rust-lang.zulipchat.com/#narrow/stream/185405-t-compiler.2Frls-2.2E0
 

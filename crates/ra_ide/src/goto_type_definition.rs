@@ -1,10 +1,17 @@
-//! FIXME: write short doc here
-
 use ra_ide_db::RootDatabase;
 use ra_syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, TokenAtOffset};
 
 use crate::{display::ToNav, FilePosition, NavigationTarget, RangeInfo};
 
+// Feature: Go to Type Definition
+//
+// Navigates to the type of an identifier.
+//
+// |===
+// | Editor  | Action Name
+//
+// | VS Code | **Go to Type Definition*
+// |===
 pub(crate) fn goto_type_definition(
     db: &RootDatabase,
     position: FilePosition,

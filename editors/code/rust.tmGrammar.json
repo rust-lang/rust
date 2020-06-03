@@ -75,8 +75,13 @@
 		{
 			"comment": "Attribute",
 			"name": "meta.attribute.rust",
-			"begin": "#\\!?\\[",
+			"begin": "#\\!?\\[(\\w*)",
 			"end": "\\]",
+			"captures": {
+				"1": {
+					"name": "entity.name.function.attribute.rust"
+				}
+			},
 			"patterns": [
 				{
 					"include": "#string_literal"
@@ -202,7 +207,7 @@
 		{
 			"comment": "Miscellaneous operator",
 			"name": "keyword.operator.misc.rust",
-			"match": "(=>|::)"
+			"match": "(=>|::|\\?)"
 		},
 		{
 			"comment": "Comparison operator",

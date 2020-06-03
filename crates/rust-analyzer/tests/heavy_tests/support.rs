@@ -19,8 +19,9 @@ use serde_json::{to_string_pretty, Value};
 use tempfile::TempDir;
 use test_utils::{find_mismatch, parse_fixture};
 
+use ra_project_model::ProjectManifest;
 use rust_analyzer::{
-    config::{ClientCapsConfig, Config},
+    config::{ClientCapsConfig, Config, LinkedProject},
     main_loop,
 };
 
@@ -42,7 +43,7 @@ impl<'a> Project<'a> {
         self
     }
 
-    pub fn root(mut self, path: &str) -> Project<'a> {
+    pub(crate) fn root(mut self, path: &str) -> Project<'a> {
         self.roots.push(path.into());
         self
     }
@@ -68,13 +69,22 @@ impl<'a> Project<'a> {
         let mut paths = vec![];
 
         for entry in parse_fixture(self.fixture) {
-            let path = tmp_dir.path().join(entry.meta);
+            let path = tmp_dir.path().join(entry.meta.path().as_str());
             fs::create_dir_all(path.parent().unwrap()).unwrap();
             fs::write(path.as_path(), entry.text.as_bytes()).unwrap();
             paths.push((path, entry.text));
         }
 
-        let roots = self.roots.into_iter().map(|root| tmp_dir.path().join(root)).collect();
+        let mut roots =
+            self.roots.into_iter().map(|root| tmp_dir.path().join(root)).collect::<Vec<_>>();
+        if roots.is_empty() {
+            roots.push(tmp_dir.path().to_path_buf());
+        }
+        let linked_projects = roots
+            .into_iter()
+            .map(|it| ProjectManifest::discover_single(&it).unwrap())
+            .map(LinkedProject::from)
+            .collect::<Vec<_>>();
 
         let mut config = Config {
             client_caps: ClientCapsConfig {
@@ -84,6 +94,7 @@ impl<'a> Project<'a> {
                 ..Default::default()
             },
             with_sysroot: self.with_sysroot,
+            linked_projects,
             ..Config::default()
         };
 
@@ -91,7 +102,7 @@ impl<'a> Project<'a> {
             f(&mut config)
         }
 
-        Server::new(tmp_dir, config, roots, paths)
+        Server::new(tmp_dir, config, paths)
     }
 }
 
@@ -109,20 +120,12 @@ pub struct Server {
 }
 
 impl Server {
-    fn new(
-        dir: TempDir,
-        config: Config,
-        roots: Vec<PathBuf>,
-        files: Vec<(PathBuf, String)>,
-    ) -> Server {
-        let path = dir.path().to_path_buf();
-
-        let roots = if roots.is_empty() { vec![path] } else { roots };
+    fn new(dir: TempDir, config: Config, files: Vec<(PathBuf, String)>) -> Server {
         let (connection, client) = Connection::memory();
 
         let _thread = jod_thread::Builder::new()
             .name("test server".to_string())
-            .spawn(move || main_loop(roots, config, connection).unwrap())
+            .spawn(move || main_loop(config, connection).unwrap())
             .expect("failed to spawn a thread");
 
         let res =

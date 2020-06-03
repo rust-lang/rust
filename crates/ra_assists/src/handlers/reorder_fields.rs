@@ -23,7 +23,7 @@ use crate::{AssistContext, AssistId, Assists};
 // ```
 //
 pub(crate) fn reorder_fields(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    reorder::<ast::RecordLit>(acc, ctx.clone()).or_else(|| reorder::<ast::RecordPat>(acc, ctx))
+    reorder::<ast::RecordLit>(acc, ctx).or_else(|| reorder::<ast::RecordPat>(acc, ctx))
 }
 
 fn reorder<R: AstNode>(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {

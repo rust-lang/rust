@@ -1,5 +1,5 @@
 **
-!out/main.js
+!out/src/main.js
 !package.json
 !package-lock.json
 !ra_syntax_tree.tmGrammar.json

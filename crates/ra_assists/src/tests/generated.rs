@@ -59,6 +59,25 @@ fn main() {
 }
 
 #[test]
+fn doctest_add_from_impl_for_enum() {
+    check_doc_test(
+        "add_from_impl_for_enum",
+        r#####"
+enum A { <|>One(u32) }
+"#####,
+        r#####"
+enum A { One(u32) }
+
+impl From<u32> for A {
+    fn from(v: u32) -> Self {
+        A::One(v)
+    }
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_add_function() {
     check_doc_test(
         "add_function",
@@ -427,6 +446,31 @@ fn main() {
         r#####"
 fn main() {
     (1 + 2) * 4;
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_introduce_named_lifetime() {
+    check_doc_test(
+        "introduce_named_lifetime",
+        r#####"
+impl Cursor<'_<|>> {
+    fn node(self) -> &SyntaxNode {
+        match self {
+            Cursor::Replace(node) | Cursor::Before(node) => node,
+        }
+    }
+}
+"#####,
+        r#####"
+impl<'a> Cursor<'a> {
+    fn node(self) -> &SyntaxNode {
+        match self {
+            Cursor::Replace(node) | Cursor::Before(node) => node,
+        }
+    }
 }
 "#####,
     )

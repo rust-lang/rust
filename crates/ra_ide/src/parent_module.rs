@@ -1,5 +1,3 @@
-//! FIXME: write short doc here
-
 use hir::Semantics;
 use ra_db::{CrateId, FileId, FilePosition};
 use ra_ide_db::RootDatabase;
@@ -10,6 +8,16 @@ use ra_syntax::{
 use test_utils::mark;
 
 use crate::NavigationTarget;
+
+// Feature: Parent Module
+//
+// Navigates to the parent module of the current module.
+//
+// |===
+// | Editor  | Action Name
+//
+// | VS Code | **Rust Analyzer: Locate parent module**
+// |===
 
 /// This returns `Vec` because a module may be included from several places. We
 /// don't handle this case yet though, so the Vec has length at most one.

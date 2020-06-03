@@ -160,6 +160,8 @@ pub fn run_release(dry_run: bool) -> Result<()> {
         run!("git reset --hard tags/nightly")?;
         run!("git push")?;
     }
+    codegen::generate_assists_docs(Mode::Overwrite)?;
+    codegen::generate_feature_docs(Mode::Overwrite)?;
 
     let website_root = project_root().join("../rust-analyzer.github.io");
     let changelog_dir = website_root.join("./thisweek/_posts");
@@ -191,7 +193,11 @@ Release: release:{}[]
     let path = changelog_dir.join(format!("{}-changelog-{}.adoc", today, changelog_n));
     fs2::write(&path, &contents)?;
 
-    fs2::copy(project_root().join("./docs/user/readme.adoc"), website_root.join("manual.adoc"))?;
+    for &adoc in ["manual.adoc", "generated_features.adoc", "generated_assists.adoc"].iter() {
+        let src = project_root().join("./docs/user/").join(adoc);
+        let dst = website_root.join(adoc);
+        fs2::copy(src, dst)?;
+    }
 
     let tags = run!("git tag --list"; echo = false)?;
     let prev_tag = tags.lines().filter(|line| is_release_tag(line)).last().unwrap();

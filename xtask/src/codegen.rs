@@ -8,13 +8,19 @@
 mod gen_syntax;
 mod gen_parser_tests;
 mod gen_assists_docs;
+mod gen_feature_docs;
 
-use std::{mem, path::Path};
+use std::{
+    fmt, mem,
+    path::{Path, PathBuf},
+};
 
-use crate::{not_bash::fs2, Result};
+use crate::{not_bash::fs2, project_root, Result};
 
 pub use self::{
-    gen_assists_docs::generate_assists_docs, gen_parser_tests::generate_parser_tests,
+    gen_assists_docs::{generate_assists_docs, generate_assists_tests},
+    gen_feature_docs::generate_feature_docs,
+    gen_parser_tests::generate_parser_tests,
     gen_syntax::generate_syntax,
 };
 
@@ -28,7 +34,6 @@ const AST_TOKENS: &str = "crates/ra_syntax/src/ast/generated/tokens.rs";
 
 const ASSISTS_DIR: &str = "crates/ra_assists/src/handlers";
 const ASSISTS_TESTS: &str = "crates/ra_assists/src/tests/generated.rs";
-const ASSISTS_DOCS: &str = "docs/user/assists.md";
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Mode {
@@ -40,7 +45,7 @@ pub enum Mode {
 /// With verify = false,
 fn update(path: &Path, contents: &str, mode: Mode) -> Result<()> {
     match fs2::read_to_string(path) {
-        Ok(ref old_contents) if normalize(old_contents) == normalize(contents) => {
+        Ok(old_contents) if normalize(&old_contents) == normalize(contents) => {
             return Ok(());
         }
         _ => (),
@@ -58,35 +63,85 @@ fn update(path: &Path, contents: &str, mode: Mode) -> Result<()> {
 }
 
 fn extract_comment_blocks(text: &str) -> Vec<Vec<String>> {
-    do_extract_comment_blocks(text, false)
+    do_extract_comment_blocks(text, false).into_iter().map(|(_line, block)| block).collect()
 }
 
-fn extract_comment_blocks_with_empty_lines(text: &str) -> Vec<Vec<String>> {
-    do_extract_comment_blocks(text, true)
+fn extract_comment_blocks_with_empty_lines(tag: &str, text: &str) -> Vec<CommentBlock> {
+    assert!(tag.starts_with(char::is_uppercase));
+    let tag = format!("{}:", tag);
+    let mut res = Vec::new();
+    for (line, mut block) in do_extract_comment_blocks(text, true) {
+        let first = block.remove(0);
+        if first.starts_with(&tag) {
+            let id = first[tag.len()..].trim().to_string();
+            let block = CommentBlock { id, line, contents: block };
+            res.push(block);
+        }
+    }
+    res
 }
 
-fn do_extract_comment_blocks(text: &str, allow_blocks_with_empty_lines: bool) -> Vec<Vec<String>> {
+struct CommentBlock {
+    id: String,
+    line: usize,
+    contents: Vec<String>,
+}
+
+fn do_extract_comment_blocks(
+    text: &str,
+    allow_blocks_with_empty_lines: bool,
+) -> Vec<(usize, Vec<String>)> {
     let mut res = Vec::new();
 
     let prefix = "// ";
     let lines = text.lines().map(str::trim_start);
 
-    let mut block = vec![];
-    for line in lines {
+    let mut block = (0, vec![]);
+    for (line_num, line) in lines.enumerate() {
         if line == "//" && allow_blocks_with_empty_lines {
-            block.push(String::new());
+            block.1.push(String::new());
             continue;
         }
 
         let is_comment = line.starts_with(prefix);
         if is_comment {
-            block.push(line[prefix.len()..].to_string());
-        } else if !block.is_empty() {
-            res.push(mem::replace(&mut block, Vec::new()));
+            block.1.push(line[prefix.len()..].to_string());
+        } else {
+            if !block.1.is_empty() {
+                res.push(mem::take(&mut block));
+            }
+            block.0 = line_num + 2;
         }
     }
-    if !block.is_empty() {
-        res.push(mem::replace(&mut block, Vec::new()))
+    if !block.1.is_empty() {
+        res.push(block)
     }
     res
+}
+
+#[derive(Debug)]
+struct Location {
+    file: PathBuf,
+    line: usize,
+}
+
+impl Location {
+    fn new(file: PathBuf, line: usize) -> Self {
+        Self { file, line }
+    }
+}
+
+impl fmt::Display for Location {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let path = self.file.strip_prefix(&project_root()).unwrap().display().to_string();
+        let path = path.replace('\\', "/");
+        let name = self.file.file_name().unwrap();
+        write!(
+            f,
+            "https://github.com/rust-analyzer/rust-analyzer/blob/master/{}#L{}[{}]",
+            path,
+            self.line,
+            name.to_str().unwrap()
+        )
+    }
 }

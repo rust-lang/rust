@@ -219,6 +219,17 @@ struct InferenceContext<'a> {
 struct BreakableContext {
     pub may_break: bool,
     pub break_ty: Ty,
+    pub label: Option<name::Name>,
+}
+
+fn find_breakable<'c>(
+    ctxs: &'c mut [BreakableContext],
+    label: Option<&name::Name>,
+) -> Option<&'c mut BreakableContext> {
+    match label {
+        Some(_) => ctxs.iter_mut().rev().find(|ctx| ctx.label.as_ref() == label),
+        None => ctxs.last_mut(),
+    }
 }
 
 impl<'a> InferenceContext<'a> {

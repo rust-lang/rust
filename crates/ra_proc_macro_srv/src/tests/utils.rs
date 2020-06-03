@@ -2,7 +2,6 @@
 
 use crate::dylib;
 use crate::ProcMacroSrv;
-pub use difference::Changeset as __Changeset;
 use ra_proc_macro::ListMacrosTask;
 use std::str::FromStr;
 use test_utils::assert_eq_text;
@@ -13,7 +12,7 @@ mod fixtures {
 
     // Use current project metadata to get the proc-macro dylib path
     pub fn dylib_path(crate_name: &str, version: &str) -> std::path::PathBuf {
-        let command = Command::new("cargo")
+        let command = Command::new(ra_toolchain::cargo())
             .args(&["check", "--message-format", "json"])
             .output()
             .unwrap()

@@ -17,13 +17,13 @@ use crate::{
     autoderef, method_resolution, op,
     traits::InEnvironment,
     utils::{generics, variant_data, Generics},
-    ApplicationTy, Binders, CallableDef, InferTy, IntTy, Mutability, Obligation, Substs, TraitRef,
-    Ty, TypeCtor, Uncertain,
+    ApplicationTy, Binders, CallableDef, InferTy, IntTy, Mutability, Obligation, Rawness, Substs,
+    TraitRef, Ty, TypeCtor, Uncertain,
 };
 
 use super::{
-    BindingMode, BreakableContext, Diverges, Expectation, InferenceContext, InferenceDiagnostic,
-    TypeMismatch,
+    find_breakable, BindingMode, BreakableContext, Diverges, Expectation, InferenceContext,
+    InferenceDiagnostic, TypeMismatch,
 };
 
 impl<'a> InferenceContext<'a> {
@@ -86,16 +86,20 @@ impl<'a> InferenceContext<'a> {
 
                 self.coerce_merge_branch(&then_ty, &else_ty)
             }
-            Expr::Block { statements, tail } => self.infer_block(statements, *tail, expected),
+            Expr::Block { statements, tail, .. } => {
+                // FIXME: Breakable block inference
+                self.infer_block(statements, *tail, expected)
+            }
             Expr::TryBlock { body } => {
                 let _inner = self.infer_expr(*body, expected);
                 // FIXME should be std::result::Result<{inner}, _>
                 Ty::Unknown
             }
-            Expr::Loop { body } => {
+            Expr::Loop { body, label } => {
                 self.breakables.push(BreakableContext {
                     may_break: false,
                     break_ty: self.table.new_type_var(),
+                    label: label.clone(),
                 });
                 self.infer_expr(*body, &Expectation::has_type(Ty::unit()));
 
@@ -110,8 +114,12 @@ impl<'a> InferenceContext<'a> {
                     Ty::simple(TypeCtor::Never)
                 }
             }
-            Expr::While { condition, body } => {
-                self.breakables.push(BreakableContext { may_break: false, break_ty: Ty::Unknown });
+            Expr::While { condition, body, label } => {
+                self.breakables.push(BreakableContext {
+                    may_break: false,
+                    break_ty: Ty::Unknown,
+                    label: label.clone(),
+                });
                 // while let is desugared to a match loop, so this is always simple while
                 self.infer_expr(*condition, &Expectation::has_type(Ty::simple(TypeCtor::Bool)));
                 self.infer_expr(*body, &Expectation::has_type(Ty::unit()));
@@ -120,10 +128,14 @@ impl<'a> InferenceContext<'a> {
                 self.diverges = Diverges::Maybe;
                 Ty::unit()
             }
-            Expr::For { iterable, body, pat } => {
+            Expr::For { iterable, body, pat, label } => {
                 let iterable_ty = self.infer_expr(*iterable, &Expectation::none());
 
-                self.breakables.push(BreakableContext { may_break: false, break_ty: Ty::Unknown });
+                self.breakables.push(BreakableContext {
+                    may_break: false,
+                    break_ty: Ty::Unknown,
+                    label: label.clone(),
+                });
                 let pat_ty =
                     self.resolve_associated_type(iterable_ty, self.resolve_into_iter_item());
 
@@ -140,13 +152,13 @@ impl<'a> InferenceContext<'a> {
 
                 let mut sig_tys = Vec::new();
 
-                for (arg_pat, arg_type) in args.iter().zip(arg_types.iter()) {
-                    let expected = if let Some(type_ref) = arg_type {
+                // collect explicitly written argument types
+                for arg_type in arg_types.iter() {
+                    let arg_ty = if let Some(type_ref) = arg_type {
                         self.make_ty(type_ref)
                     } else {
-                        Ty::Unknown
+                        self.table.new_type_var()
                     };
-                    let arg_ty = self.infer_pat(*arg_pat, &expected, BindingMode::default());
                     sig_tys.push(arg_ty);
                 }
 
@@ -158,7 +170,7 @@ impl<'a> InferenceContext<'a> {
                 sig_tys.push(ret_ty.clone());
                 let sig_ty = Ty::apply(
                     TypeCtor::FnPtr { num_args: sig_tys.len() as u16 - 1 },
-                    Substs(sig_tys.into()),
+                    Substs(sig_tys.clone().into()),
                 );
                 let closure_ty =
                     Ty::apply_one(TypeCtor::Closure { def: self.owner, expr: tgt_expr }, sig_ty);
@@ -167,6 +179,12 @@ impl<'a> InferenceContext<'a> {
                 // type, otherwise we often won't have enough information to
                 // infer the body.
                 self.coerce(&closure_ty, &expected.ty);
+
+                // Now go through the argument patterns
+                for (arg_pat, arg_ty) in args.iter().zip(sig_tys) {
+                    let resolved = self.resolve_ty_as_possible(arg_ty);
+                    self.infer_pat(*arg_pat, &resolved, BindingMode::default());
+                }
 
                 let prev_diverges = mem::replace(&mut self.diverges, Diverges::Maybe);
                 let prev_ret_ty = mem::replace(&mut self.return_ty, ret_ty.clone());
@@ -230,23 +248,24 @@ impl<'a> InferenceContext<'a> {
                 let resolver = resolver_for_expr(self.db.upcast(), self.owner, tgt_expr);
                 self.infer_path(&resolver, p, tgt_expr.into()).unwrap_or(Ty::Unknown)
             }
-            Expr::Continue => Ty::simple(TypeCtor::Never),
-            Expr::Break { expr } => {
+            Expr::Continue { .. } => Ty::simple(TypeCtor::Never),
+            Expr::Break { expr, label } => {
                 let val_ty = if let Some(expr) = expr {
                     self.infer_expr(*expr, &Expectation::none())
                 } else {
                     Ty::unit()
                 };
 
-                let last_ty = if let Some(ctxt) = self.breakables.last() {
-                    ctxt.break_ty.clone()
-                } else {
-                    Ty::Unknown
-                };
+                let last_ty =
+                    if let Some(ctxt) = find_breakable(&mut self.breakables, label.as_ref()) {
+                        ctxt.break_ty.clone()
+                    } else {
+                        Ty::Unknown
+                    };
 
                 let merged_type = self.coerce_merge_branch(&last_ty, &val_ty);
 
-                if let Some(ctxt) = self.breakables.last_mut() {
+                if let Some(ctxt) = find_breakable(&mut self.breakables, label.as_ref()) {
                     ctxt.break_ty = merged_type;
                     ctxt.may_break = true;
                 } else {
@@ -350,19 +369,28 @@ impl<'a> InferenceContext<'a> {
                 // FIXME check the cast...
                 cast_ty
             }
-            Expr::Ref { expr, mutability } => {
-                let expectation =
-                    if let Some((exp_inner, exp_mutability)) = &expected.ty.as_reference() {
-                        if *exp_mutability == Mutability::Mut && *mutability == Mutability::Shared {
-                            // FIXME: throw type error - expected mut reference but found shared ref,
-                            // which cannot be coerced
-                        }
-                        Expectation::rvalue_hint(Ty::clone(exp_inner))
-                    } else {
-                        Expectation::none()
-                    };
+            Expr::Ref { expr, rawness, mutability } => {
+                let expectation = if let Some((exp_inner, exp_rawness, exp_mutability)) =
+                    &expected.ty.as_reference_or_ptr()
+                {
+                    if *exp_mutability == Mutability::Mut && *mutability == Mutability::Shared {
+                        // FIXME: throw type error - expected mut reference but found shared ref,
+                        // which cannot be coerced
+                    }
+                    if *exp_rawness == Rawness::Ref && *rawness == Rawness::RawPtr {
+                        // FIXME: throw type error - expected reference but found ptr,
+                        // which cannot be coerced
+                    }
+                    Expectation::rvalue_hint(Ty::clone(exp_inner))
+                } else {
+                    Expectation::none()
+                };
                 let inner_ty = self.infer_expr_inner(*expr, &expectation);
-                Ty::apply_one(TypeCtor::Ref(*mutability), inner_ty)
+                let ty = match rawness {
+                    Rawness::RawPtr => TypeCtor::RawPtr(*mutability),
+                    Rawness::Ref => TypeCtor::Ref(*mutability),
+                };
+                Ty::apply_one(ty, inner_ty)
             }
             Expr::Box { expr } => {
                 let inner_ty = self.infer_expr_inner(*expr, &Expectation::none());

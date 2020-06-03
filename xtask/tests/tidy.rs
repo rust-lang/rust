@@ -25,7 +25,7 @@ fn generated_tests_are_fresh() {
 
 #[test]
 fn generated_assists_are_fresh() {
-    if let Err(error) = codegen::generate_assists_docs(Mode::Verify) {
+    if let Err(error) = codegen::generate_assists_tests(Mode::Verify) {
         panic!("{}. Please update assists by running `cargo xtask codegen`", error);
     }
 }
@@ -95,7 +95,7 @@ impl TidyDocs {
     fn visit(&mut self, path: &Path, text: &str) {
         // Test hopefully don't really need comments, and for assists we already
         // have special comments which are source of doc tests and user docs.
-        if is_exclude_dir(path, &["tests", "test_data", "handlers"]) {
+        if is_exclude_dir(path, &["tests", "test_data"]) {
             return;
         }
 
@@ -110,9 +110,12 @@ impl TidyDocs {
 
         if first_line.starts_with("//!") {
             if first_line.contains("FIXME") {
-                self.contains_fixme.push(path.to_path_buf())
+                self.contains_fixme.push(path.to_path_buf());
             }
         } else {
+            if text.contains("// Feature:") || text.contains("// Assist:") {
+                return;
+            }
             self.missing_docs.push(path.display().to_string());
         }
 
@@ -170,13 +173,11 @@ impl TidyDocs {
 }
 
 fn is_exclude_dir(p: &Path, dirs_to_exclude: &[&str]) -> bool {
-    let mut cur_path = p;
-    while let Some(path) = cur_path.parent() {
-        if dirs_to_exclude.iter().any(|dir| path.ends_with(dir)) {
-            return true;
-        }
-        cur_path = path;
-    }
-
-    false
+    p.strip_prefix(project_root())
+        .unwrap()
+        .components()
+        .rev()
+        .skip(1)
+        .filter_map(|it| it.as_os_str().to_str())
+        .any(|it| dirs_to_exclude.contains(&it))
 }

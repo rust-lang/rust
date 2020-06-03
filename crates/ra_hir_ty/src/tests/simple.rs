@@ -385,6 +385,26 @@ fn test(a: &u32, b: &mut u32, c: *const u32, d: *mut u32) {
 }
 
 #[test]
+fn infer_raw_ref() {
+    assert_snapshot!(
+        infer(r#"
+fn test(a: i32) {
+    &raw mut a;
+    &raw const a;
+}
+"#),
+        @r###"
+    9..10 'a': i32
+    17..54 '{     ...t a; }': ()
+    23..33 '&raw mut a': *mut i32
+    32..33 'a': i32
+    39..51 '&raw const a': *const i32
+    50..51 'a': i32
+    "###
+    );
+}
+
+#[test]
 fn infer_literals() {
     assert_snapshot!(
         infer(r##"
@@ -937,7 +957,7 @@ fn main(foo: Foo) {
     51..107 'if tru...     }': ()
     54..58 'true': bool
     59..67 '{      }': ()
-    73..107 'if fal...     }': ()
+    73..107 'if fal...     }': i32
     76..81 'false': bool
     82..107 '{     ...     }': i32
     92..95 'foo': Foo
@@ -1920,6 +1940,60 @@ fn test() {
     92..97 'false': bool
     98..128 '{     ...     }': ()
     112..117 'break': !
+    "###
+    );
+}
+
+#[test]
+fn infer_labelled_break_with_val() {
+    assert_snapshot!(
+        infer(r#"
+fn foo() {
+    let _x = || 'outer: loop {
+        let inner = 'inner: loop {
+            let i = Default::default();
+            if (break 'outer i) {
+                loop { break 'inner 5i8; };
+            } else if true {
+                break 'inner 6;
+            }
+            break 7;
+        };
+        break inner < 8;
+    };
+}
+"#),
+        @r###"
+    10..336 '{     ...  }; }': ()
+    20..22 '_x': || -> bool
+    25..333 '|| 'ou...     }': || -> bool
+    28..333 ''outer...     }': bool
+    41..333 '{     ...     }': ()
+    55..60 'inner': i8
+    63..301 ''inner...     }': i8
+    76..301 '{     ...     }': ()
+    94..95 'i': bool
+    98..114 'Defaul...efault': {unknown}
+    98..116 'Defaul...ault()': bool
+    130..270 'if (br...     }': ()
+    134..148 'break 'outer i': !
+    147..148 'i': bool
+    150..209 '{     ...     }': ()
+    168..194 'loop {...5i8; }': !
+    173..194 '{ brea...5i8; }': ()
+    175..191 'break ...er 5i8': !
+    188..191 '5i8': i8
+    215..270 'if tru...     }': ()
+    218..222 'true': bool
+    223..270 '{     ...     }': ()
+    241..255 'break 'inner 6': !
+    254..255 '6': i8
+    283..290 'break 7': !
+    289..290 '7': i8
+    311..326 'break inner < 8': !
+    317..322 'inner': i8
+    317..326 'inner < 8': bool
+    325..326 '8': i8
     "###
     );
 }

@@ -325,13 +325,27 @@ fn lhs(p: &mut Parser, r: Restrictions) -> Option<(CompletedMarker, BlockLike)> 
     let kind = match p.current() {
         // test ref_expr
         // fn foo() {
+        //     // reference operator
         //     let _ = &1;
         //     let _ = &mut &f();
+        //     let _ = &raw;
+        //     let _ = &raw.0;
+        //     // raw reference operator
+        //     let _ = &raw mut foo;
+        //     let _ = &raw const foo;
         // }
         T![&] => {
             m = p.start();
             p.bump(T![&]);
-            p.eat(T![mut]);
+            if p.at(IDENT)
+                && p.at_contextual_kw("raw")
+                && (p.nth_at(1, T![mut]) || p.nth_at(1, T![const]))
+            {
+                p.bump_remap(T![raw]);
+                p.bump_any();
+            } else {
+                p.eat(T![mut]);
+            }
             REF_EXPR
         }
         // test unary_expr

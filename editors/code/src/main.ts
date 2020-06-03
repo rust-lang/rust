@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from "path";
 import * as os from "os";
-import { promises as fs } from "fs";
+import { promises as fs, PathLike } from "fs";
 
 import * as commands from './commands';
 import { activateInlayHints } from './inlay_hints';
@@ -12,8 +12,12 @@ import { log, assert, isValidExecutable } from './util';
 import { PersistentState } from './persistent_state';
 import { fetchRelease, download } from './net';
 import { activateTaskProvider } from './tasks';
+import { setContextValue } from './util';
+import { exec } from 'child_process';
 
 let ctx: Ctx | undefined;
+
+const RUST_PROJECT_CONTEXT_NAME = "inRustProject";
 
 export async function activate(context: vscode.ExtensionContext) {
     // Register a "dumb" onEnter command for the case where server fails to
@@ -53,6 +57,8 @@ export async function activate(context: vscode.ExtensionContext) {
     // This a horribly, horribly wrong way to deal with this problem.
     ctx = await Ctx.create(config, context, serverPath, workspaceFolder.uri.fsPath);
 
+    setContextValue(RUST_PROJECT_CONTEXT_NAME, true);
+
     // Commands which invokes manually via command palette, shortcut, etc.
 
     // Reloading is inspired by @DanTup maneuver: https://github.com/microsoft/vscode/issues/45774#issuecomment-373423895
@@ -85,12 +91,12 @@ export async function activate(context: vscode.ExtensionContext) {
 
     ctx.registerCommand('ssr', commands.ssr);
     ctx.registerCommand('serverVersion', commands.serverVersion);
+    ctx.registerCommand('toggleInlayHints', commands.toggleInlayHints);
 
     // Internal commands which are invoked by the server.
     ctx.registerCommand('runSingle', commands.runSingle);
     ctx.registerCommand('debugSingle', commands.debugSingle);
     ctx.registerCommand('showReferences', commands.showReferences);
-    ctx.registerCommand('applySourceChange', commands.applySourceChange);
     ctx.registerCommand('applySnippetWorkspaceEdit', commands.applySnippetWorkspaceEditCommand);
     ctx.registerCommand('applyActionGroup', commands.applyActionGroup);
 
@@ -108,6 +114,7 @@ export async function activate(context: vscode.ExtensionContext) {
 }
 
 export async function deactivate() {
+    setContextValue(RUST_PROJECT_CONTEXT_NAME, undefined);
     await ctx?.client.stop();
     ctx = undefined;
 }
@@ -188,6 +195,46 @@ async function bootstrapServer(config: Config, state: PersistentState): Promise<
     return path;
 }
 
+async function patchelf(dest: PathLike): Promise<void> {
+    await vscode.window.withProgress(
+        {
+            location: vscode.ProgressLocation.Notification,
+            title: "Patching rust-analyzer for NixOS"
+        },
+        async (progress, _) => {
+            const expression = `
+            {src, pkgs ? import <nixpkgs> {}}:
+                pkgs.stdenv.mkDerivation {
+                    name = "rust-analyzer";
+                    inherit src;
+                    phases = [ "installPhase" "fixupPhase" ];
+                    installPhase = "cp $src $out";
+                    fixupPhase = ''
+                    chmod 755 $out
+                    patchelf --set-interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" $out
+                    '';
+                }
+            `;
+            const origFile = dest + "-orig";
+            await fs.rename(dest, origFile);
+            progress.report({ message: "Patching executable", increment: 20 });
+            await new Promise((resolve, reject) => {
+                const handle = exec(`nix-build -E - --arg src '${origFile}' -o ${dest}`,
+                    (err, stdout, stderr) => {
+                        if (err != null) {
+                            reject(Error(stderr));
+                        } else {
+                            resolve(stdout);
+                        }
+                    });
+                handle.stdin?.write(expression);
+                handle.stdin?.end();
+            });
+            await fs.unlink(origFile);
+        }
+    );
+}
+
 async function getServer(config: Config, state: PersistentState): Promise<string | undefined> {
     const explicitPath = process.env.__RA_LSP_SERVER_DEBUG ?? config.serverPath;
     if (explicitPath) {
@@ -237,6 +284,12 @@ async function getServer(config: Config, state: PersistentState): Promise<string
     assert(!!artifact, `Bad release: ${JSON.stringify(release)}`);
 
     await download(artifact.browser_download_url, dest, "Downloading rust-analyzer server", { mode: 0o755 });
+
+    // Patching executable if that's NixOS.
+    if (await fs.stat("/etc/nixos").then(_ => true).catch(_ => false)) {
+        await patchelf(dest);
+    }
+
     await state.updateServerVersion(config.package.version);
     return dest;
 }

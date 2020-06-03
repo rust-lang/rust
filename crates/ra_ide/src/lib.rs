@@ -23,6 +23,7 @@ mod completion;
 mod runnables;
 mod goto_definition;
 mod goto_type_definition;
+mod goto_implementation;
 mod extend_selection;
 mod hover;
 mod call_hierarchy;
@@ -30,7 +31,6 @@ mod call_info;
 mod syntax_highlighting;
 mod parent_module;
 mod references;
-mod impls;
 mod diagnostics;
 mod syntax_tree;
 mod folding_ranges;
@@ -309,7 +309,8 @@ impl Analysis {
 
     /// Returns an edit which should be applied when opening a new line, fixing
     /// up minor stuff like continuing the comment.
-    pub fn on_enter(&self, position: FilePosition) -> Cancelable<Option<SourceChange>> {
+    /// The edit will be a snippet (with `$0`).
+    pub fn on_enter(&self, position: FilePosition) -> Cancelable<Option<TextEdit>> {
         self.with_db(|db| typing::on_enter(&db, position))
     }
 
@@ -372,7 +373,7 @@ impl Analysis {
         &self,
         position: FilePosition,
     ) -> Cancelable<Option<RangeInfo<Vec<NavigationTarget>>>> {
-        self.with_db(|db| impls::goto_implementation(db, position))
+        self.with_db(|db| goto_implementation::goto_implementation(db, position))
     }
 
     /// Returns the type definitions for the symbol at `position`.

@@ -15,6 +15,7 @@ pub struct HighlightModifiers(u32);
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum HighlightTag {
     Attribute,
+    BoolLiteral,
     BuiltinType,
     ByteLiteral,
     CharLiteral,
@@ -23,12 +24,15 @@ pub enum HighlightTag {
     Enum,
     EnumVariant,
     Field,
+    FormatSpecifier,
     Function,
     Keyword,
     Lifetime,
     Macro,
     Module,
     NumericLiteral,
+    Operator,
+    SelfKeyword,
     SelfType,
     Static,
     StringLiteral,
@@ -39,14 +43,15 @@ pub enum HighlightTag {
     Union,
     Local,
     UnresolvedReference,
-    FormatSpecifier,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[repr(u8)]
 pub enum HighlightModifier {
+    /// Used to differentiate individual elements within attributes.
+    Attribute = 0,
     /// Used with keywords like `if` and `break`.
-    ControlFlow = 0,
+    ControlFlow,
     /// `foo` in `fn foo(x: i32)` is a definition, `foo` in `foo(90 + 2)` is
     /// not.
     Definition,
@@ -58,6 +63,7 @@ impl HighlightTag {
     fn as_str(self) -> &'static str {
         match self {
             HighlightTag::Attribute => "attribute",
+            HighlightTag::BoolLiteral => "bool_literal",
             HighlightTag::BuiltinType => "builtin_type",
             HighlightTag::ByteLiteral => "byte_literal",
             HighlightTag::CharLiteral => "char_literal",
@@ -66,12 +72,15 @@ impl HighlightTag {
             HighlightTag::Enum => "enum",
             HighlightTag::EnumVariant => "enum_variant",
             HighlightTag::Field => "field",
+            HighlightTag::FormatSpecifier => "format_specifier",
             HighlightTag::Function => "function",
             HighlightTag::Keyword => "keyword",
             HighlightTag::Lifetime => "lifetime",
             HighlightTag::Macro => "macro",
             HighlightTag::Module => "module",
             HighlightTag::NumericLiteral => "numeric_literal",
+            HighlightTag::Operator => "operator",
+            HighlightTag::SelfKeyword => "self_keyword",
             HighlightTag::SelfType => "self_type",
             HighlightTag::Static => "static",
             HighlightTag::StringLiteral => "string_literal",
@@ -82,7 +91,6 @@ impl HighlightTag {
             HighlightTag::Union => "union",
             HighlightTag::Local => "variable",
             HighlightTag::UnresolvedReference => "unresolved_reference",
-            HighlightTag::FormatSpecifier => "format_specifier",
         }
     }
 }
@@ -95,6 +103,7 @@ impl fmt::Display for HighlightTag {
 
 impl HighlightModifier {
     const ALL: &'static [HighlightModifier] = &[
+        HighlightModifier::Attribute,
         HighlightModifier::ControlFlow,
         HighlightModifier::Definition,
         HighlightModifier::Mutable,
@@ -103,6 +112,7 @@ impl HighlightModifier {
 
     fn as_str(self) -> &'static str {
         match self {
+            HighlightModifier::Attribute => "attribute",
             HighlightModifier::ControlFlow => "control",
             HighlightModifier::Definition => "declaration",
             HighlightModifier::Mutable => "mutable",

@@ -1,93 +1,15 @@
 import * as vscode from 'vscode';
-import * as ra from '../rust-analyzer-api';
 
-import { Ctx, Cmd, Disposable } from '../ctx';
-import { isRustDocument, RustEditor, isRustEditor, sleep } from '../util';
-
-const AST_FILE_SCHEME = "rust-analyzer";
-
-// Opens the virtual file that will show the syntax tree
-//
-// The contents of the file come from the `TextDocumentContentProvider`
-export function syntaxTree(ctx: Ctx): Cmd {
-    const tdcp = new TextDocumentContentProvider(ctx);
-
-    void new AstInspector(ctx);
-
-    ctx.pushCleanup(vscode.workspace.registerTextDocumentContentProvider(AST_FILE_SCHEME, tdcp));
-    ctx.pushCleanup(vscode.languages.setLanguageConfiguration("ra_syntax_tree", {
-        brackets: [["[", ")"]],
-    }));
-
-    return async () => {
-        const editor = vscode.window.activeTextEditor;
-        const rangeEnabled = !!editor && !editor.selection.isEmpty;
-
-        const uri = rangeEnabled
-            ? vscode.Uri.parse(`${tdcp.uri.toString()}?range=true`)
-            : tdcp.uri;
-
-        const document = await vscode.workspace.openTextDocument(uri);
-
-        tdcp.eventEmitter.fire(uri);
-
-        void await vscode.window.showTextDocument(document, {
-            viewColumn: vscode.ViewColumn.Two,
-            preserveFocus: true
-        });
-    };
-}
-
-class TextDocumentContentProvider implements vscode.TextDocumentContentProvider {
-    readonly uri = vscode.Uri.parse('rust-analyzer://syntaxtree/tree.rast');
-    readonly eventEmitter = new vscode.EventEmitter<vscode.Uri>();
-
-
-    constructor(private readonly ctx: Ctx) {
-        vscode.workspace.onDidChangeTextDocument(this.onDidChangeTextDocument, this, ctx.subscriptions);
-        vscode.window.onDidChangeActiveTextEditor(this.onDidChangeActiveTextEditor, this, ctx.subscriptions);
-    }
-
-    private onDidChangeTextDocument(event: vscode.TextDocumentChangeEvent) {
-        if (isRustDocument(event.document)) {
-            // We need to order this after language server updates, but there's no API for that.
-            // Hence, good old sleep().
-            void sleep(10).then(() => this.eventEmitter.fire(this.uri));
-        }
-    }
-    private onDidChangeActiveTextEditor(editor: vscode.TextEditor | undefined) {
-        if (editor && isRustEditor(editor)) {
-            this.eventEmitter.fire(this.uri);
-        }
-    }
-
-    provideTextDocumentContent(uri: vscode.Uri, ct: vscode.CancellationToken): vscode.ProviderResult<string> {
-        const rustEditor = this.ctx.activeRustEditor;
-        if (!rustEditor) return '';
-
-        // When the range based query is enabled we take the range of the selection
-        const range = uri.query === 'range=true' && !rustEditor.selection.isEmpty
-            ? this.ctx.client.code2ProtocolConverter.asRange(rustEditor.selection)
-            : null;
-
-        const params = { textDocument: { uri: rustEditor.document.uri.toString() }, range, };
-        return this.ctx.client.sendRequest(ra.syntaxTree, params, ct);
-    }
-
-    get onDidChange(): vscode.Event<vscode.Uri> {
-        return this.eventEmitter.event;
-    }
-}
-
+import { Ctx, Disposable } from './ctx';
+import { RustEditor, isRustEditor } from './util';
 
 // FIXME: consider implementing this via the Tree View API?
 // https://code.visualstudio.com/api/extension-guides/tree-view
-class AstInspector implements vscode.HoverProvider, vscode.DefinitionProvider, Disposable {
+export class AstInspector implements vscode.HoverProvider, vscode.DefinitionProvider, Disposable {
     private readonly astDecorationType = vscode.window.createTextEditorDecorationType({
         borderColor: new vscode.ThemeColor('rust_analyzer.syntaxTreeBorder'),
         borderStyle: "solid",
         borderWidth: "2px",
-
     });
     private rustEditor: undefined | RustEditor;
 
@@ -113,7 +35,7 @@ class AstInspector implements vscode.HoverProvider, vscode.DefinitionProvider, D
     });
 
     constructor(ctx: Ctx) {
-        ctx.pushCleanup(vscode.languages.registerHoverProvider({ scheme: AST_FILE_SCHEME }, this));
+        ctx.pushCleanup(vscode.languages.registerHoverProvider({ scheme: 'rust-analyzer' }, this));
         ctx.pushCleanup(vscode.languages.registerDefinitionProvider({ language: "rust" }, this));
         vscode.workspace.onDidCloseTextDocument(this.onDidCloseTextDocument, this, ctx.subscriptions);
         vscode.workspace.onDidChangeTextDocument(this.onDidChangeTextDocument, this, ctx.subscriptions);
@@ -146,7 +68,7 @@ class AstInspector implements vscode.HoverProvider, vscode.DefinitionProvider, D
     }
 
     private findAstTextEditor(): undefined | vscode.TextEditor {
-        return vscode.window.visibleTextEditors.find(it => it.document.uri.scheme === AST_FILE_SCHEME);
+        return vscode.window.visibleTextEditors.find(it => it.document.uri.scheme === 'rust-analyzer');
     }
 
     private setRustEditor(newRustEditor: undefined | RustEditor) {

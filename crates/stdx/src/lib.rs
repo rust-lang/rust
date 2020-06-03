@@ -124,3 +124,8 @@ pub fn replace(buf: &mut String, from: char, to: &str) {
     // FIXME: do this in place.
     *buf = buf.replace(from, to)
 }
+
+pub fn split1(haystack: &str, delim: char) -> Option<(&str, &str)> {
+    let idx = haystack.find(delim)?;
+    Some((&haystack[..idx], &haystack[idx + delim.len_utf8()..]))
+}

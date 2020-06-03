@@ -311,6 +311,21 @@ impl fmt::Display for Edition {
     }
 }
 
+impl<'a, T> From<T> for Env
+where
+    T: Iterator<Item = (&'a String, &'a String)>,
+{
+    fn from(iter: T) -> Self {
+        let mut result = Self::default();
+
+        for (k, v) in iter {
+            result.entries.insert(k.to_owned(), v.to_owned());
+        }
+
+        result
+    }
+}
+
 impl Env {
     pub fn set(&mut self, env: &str, value: String) {
         self.entries.insert(env.to_owned(), value);

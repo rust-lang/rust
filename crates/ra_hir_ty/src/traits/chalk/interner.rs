@@ -11,15 +11,17 @@ use std::{fmt, sync::Arc};
 pub struct Interner;
 
 pub type AssocTypeId = chalk_ir::AssocTypeId<Interner>;
-pub type AssociatedTyDatum = chalk_rust_ir::AssociatedTyDatum<Interner>;
+pub type AssociatedTyDatum = chalk_solve::rust_ir::AssociatedTyDatum<Interner>;
 pub type TraitId = chalk_ir::TraitId<Interner>;
-pub type TraitDatum = chalk_rust_ir::TraitDatum<Interner>;
+pub type TraitDatum = chalk_solve::rust_ir::TraitDatum<Interner>;
 pub type AdtId = chalk_ir::AdtId<Interner>;
-pub type StructDatum = chalk_rust_ir::AdtDatum<Interner>;
+pub type StructDatum = chalk_solve::rust_ir::AdtDatum<Interner>;
 pub type ImplId = chalk_ir::ImplId<Interner>;
-pub type ImplDatum = chalk_rust_ir::ImplDatum<Interner>;
-pub type AssociatedTyValueId = chalk_rust_ir::AssociatedTyValueId<Interner>;
-pub type AssociatedTyValue = chalk_rust_ir::AssociatedTyValue<Interner>;
+pub type ImplDatum = chalk_solve::rust_ir::ImplDatum<Interner>;
+pub type AssociatedTyValueId = chalk_solve::rust_ir::AssociatedTyValueId<Interner>;
+pub type AssociatedTyValue = chalk_solve::rust_ir::AssociatedTyValue<Interner>;
+pub type FnDefId = chalk_ir::FnDefId<Interner>;
+pub type FnDefDatum = chalk_solve::rust_ir::FnDefDatum<Interner>;
 
 impl chalk_ir::interner::Interner for Interner {
     type InternedType = Box<chalk_ir::TyData<Self>>; // FIXME use Arc?

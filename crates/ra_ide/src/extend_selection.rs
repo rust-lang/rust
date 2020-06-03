@@ -1,5 +1,3 @@
-//! FIXME: write short doc here
-
 use std::iter::successors;
 
 use hir::Semantics;
@@ -14,6 +12,16 @@ use ra_syntax::{
 
 use crate::FileRange;
 
+// Feature: Extend Selection
+//
+// Extends the current selection to the encompassing syntactic construct
+// (expression, statement, item, module, etc). It works with multiple cursors.
+//
+// |===
+// | Editor  | Shortcut
+//
+// | VS Code | kbd:[Ctrl+Shift+→]
+// |===
 pub(crate) fn extend_selection(db: &RootDatabase, frange: FileRange) -> TextRange {
     let sema = Semantics::new(db);
     let src = sema.parse(frange.file_id);

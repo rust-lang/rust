@@ -1081,6 +1081,7 @@ pub struct BlockExpr {
 impl ast::AttrsOwner for BlockExpr {}
 impl ast::ModuleItemOwner for BlockExpr {}
 impl BlockExpr {
+    pub fn label(&self) -> Option<Label> { support::child(&self.syntax) }
     pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
     pub fn statements(&self) -> AstChildren<Stmt> { support::children(&self.syntax) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
@@ -1235,6 +1236,8 @@ impl CastExpr {
 /// ```
 /// ❰ &foo ❱;
 /// ❰ &mut bar ❱;
+/// ❰ &raw const bar ❱;
+/// ❰ &raw mut bar ❱;
 /// ```
 ///
 /// [Reference](https://doc.rust-lang.org/reference/expressions/operator-expr.html#borrow-operators)
@@ -1247,6 +1250,7 @@ impl RefExpr {
     pub fn amp_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![&]) }
     pub fn raw_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![raw]) }
     pub fn mut_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![mut]) }
+    pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
 /// Prefix operator call. This is either `!` or `*` or `-`.

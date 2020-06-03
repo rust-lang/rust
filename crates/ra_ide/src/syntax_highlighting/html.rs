@@ -69,6 +69,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .string_literal     { color: #CC9393; }
 .field              { color: #94BFF3; }
 .function           { color: #93E0E3; }
+.operator.unsafe    { color: #E28C14; }
 .parameter          { color: #94BFF3; }
 .text               { color: #DCDCCC; }
 .type               { color: #7CB8BB; }
@@ -76,6 +77,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .type_param         { color: #DFAF8F; }
 .attribute          { color: #94BFF3; }
 .numeric_literal    { color: #BFEBBF; }
+.bool_literal       { color: #BFE6EB; }
 .macro              { color: #94BFF3; }
 .module             { color: #AFD8AF; }
 .variable           { color: #DCDCCC; }

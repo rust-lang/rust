@@ -12,14 +12,13 @@ use std::{ffi::OsString, path::PathBuf};
 use lsp_types::ClientCapabilities;
 use ra_flycheck::FlycheckConfig;
 use ra_ide::{AssistConfig, CompletionConfig, InlayHintsConfig};
-use ra_project_model::CargoConfig;
+use ra_project_model::{CargoConfig, JsonProject, ProjectManifest};
 use serde::Deserialize;
 
 #[derive(Debug, Clone)]
 pub struct Config {
     pub client_caps: ClientCapsConfig,
 
-    pub with_sysroot: bool,
     pub publish_diagnostics: bool,
     pub lru_capacity: Option<usize>,
     pub proc_macro_srv: Option<(PathBuf, Vec<OsString>)>,
@@ -35,6 +34,27 @@ pub struct Config {
     pub assist: AssistConfig,
     pub call_info_full: bool,
     pub lens: LensConfig,
+
+    pub with_sysroot: bool,
+    pub linked_projects: Vec<LinkedProject>,
+}
+
+#[derive(Debug, Clone)]
+pub enum LinkedProject {
+    ProjectManifest(ProjectManifest),
+    JsonProject(JsonProject),
+}
+
+impl From<ProjectManifest> for LinkedProject {
+    fn from(v: ProjectManifest) -> Self {
+        LinkedProject::ProjectManifest(v)
+    }
+}
+
+impl From<JsonProject> for LinkedProject {
+    fn from(v: JsonProject) -> Self {
+        LinkedProject::JsonProject(v)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -122,7 +142,7 @@ impl Default for Config {
             check: Some(FlycheckConfig::CargoCommand {
                 command: "check".to_string(),
                 all_targets: true,
-                all_features: true,
+                all_features: false,
                 extra_args: Vec::new(),
             }),
 
@@ -141,6 +161,7 @@ impl Default for Config {
             assist: AssistConfig::default(),
             call_info_full: true,
             lens: LensConfig::default(),
+            linked_projects: Vec::new(),
         }
     }
 }
@@ -240,6 +261,22 @@ impl Config {
             self.lens = LensConfig::NO_LENS;
         }
 
+        if let Some(linked_projects) = get::<Vec<ManifestOrJsonProject>>(value, "/linkedProjects") {
+            if !linked_projects.is_empty() {
+                self.linked_projects.clear();
+                for linked_project in linked_projects {
+                    let linked_project = match linked_project {
+                        ManifestOrJsonProject::Manifest(it) => match ProjectManifest::from_manifest_file(it) {
+                            Ok(it) => it.into(),
+                            Err(_) => continue,
+                        }
+                        ManifestOrJsonProject::JsonProject(it) => it.into(),
+                    };
+                    self.linked_projects.push(linked_project);
+                }
+            }
+        }
+
         log::info!("Config::update() = {:#?}", self);
 
         fn get<'a, T: Deserialize<'a>>(value: &'a serde_json::Value, pointer: &str) -> Option<T> {
@@ -269,10 +306,8 @@ impl Config {
             {
                 self.client_caps.hierarchical_symbols = value
             }
-            if let Some(value) = doc_caps
-                .code_action
-                .as_ref()
-                .and_then(|it| Some(it.code_action_literal_support.is_some()))
+            if let Some(value) =
+                doc_caps.code_action.as_ref().map(|it| it.code_action_literal_support.is_some())
             {
                 self.client_caps.code_action_literals = value;
             }
@@ -304,4 +339,11 @@ impl Config {
             self.client_caps.code_action_group = code_action_group
         }
     }
+}
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum ManifestOrJsonProject {
+    Manifest(PathBuf),
+    JsonProject(JsonProject),
 }

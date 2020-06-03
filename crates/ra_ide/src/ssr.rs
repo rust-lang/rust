@@ -1,5 +1,3 @@
-//!  structural search replace
-
 use std::{collections::HashMap, iter::once, str::FromStr};
 
 use ra_db::{SourceDatabase, SourceDatabaseExt};
@@ -25,6 +23,28 @@ impl std::fmt::Display for SsrError {
 
 impl std::error::Error for SsrError {}
 
+// Feature: Structural Seach and Replace
+//
+// Search and replace with named wildcards that will match any expression.
+// The syntax for a structural search replace command is `<search_pattern> ==>> <replace_pattern>`.
+// A `$<name>:expr` placeholder in the search pattern will match any expression and `$<name>` will reference it in the replacement.
+// Available via the command `rust-analyzer.ssr`.
+//
+// ```rust
+// // Using structural search replace command [foo($a:expr, $b:expr) ==>> ($a).foo($b)]
+//
+// // BEFORE
+// String::from(foo(y + 5, z))
+//
+// // AFTER
+// String::from((y + 5).foo(z))
+// ```
+//
+// |===
+// | Editor  | Action Name
+//
+// | VS Code | **Rust Analyzer: Structural Search Replace**
+// |===
 pub fn parse_search_replace(
     query: &str,
     parse_only: bool,
@@ -196,10 +216,10 @@ fn find(pattern: &SsrPattern, code: &SyntaxNode) -> SsrMatches {
     ) -> Option<Match> {
         let match_ = check_opt_nodes(pattern.path(), code.path(), placeholders, match_)?;
 
-        let mut pattern_fields =
-            pattern.record_field_list().map(|x| x.fields().collect()).unwrap_or(vec![]);
-        let mut code_fields =
-            code.record_field_list().map(|x| x.fields().collect()).unwrap_or(vec![]);
+        let mut pattern_fields: Vec<RecordField> =
+            pattern.record_field_list().map(|x| x.fields().collect()).unwrap_or_default();
+        let mut code_fields: Vec<RecordField> =
+            code.record_field_list().map(|x| x.fields().collect()).unwrap_or_default();
 
         if pattern_fields.len() != code_fields.len() {
             return None;

@@ -175,7 +175,7 @@ pub(super) enum DefKind {
 }
 
 impl DefKind {
-    pub fn ast_id(&self) -> FileAstId<ast::ModuleItem> {
+    pub fn ast_id(self) -> FileAstId<ast::ModuleItem> {
         match self {
             DefKind::Function(it) => it.upcast(),
             DefKind::Struct(it, _) => it.upcast(),

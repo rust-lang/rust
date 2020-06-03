@@ -7,6 +7,7 @@ use chalk_ir::{
     cast::Cast, fold::shift::Shift, interner::HasInterner, PlaceholderIndex, Scalar, TypeName,
     UniverseIndex,
 };
+use chalk_solve::rust_ir;
 
 use hir_def::{type_ref::Mutability, AssocContainerId, GenericDefId, Lookup, TypeAliasId};
 use ra_db::salsa::InternKey;
@@ -15,8 +16,8 @@ use crate::{
     db::HirDatabase,
     primitive::{FloatBitness, FloatTy, IntBitness, IntTy, Signedness, Uncertain},
     traits::{builtin, AssocTyValue, Canonical, Impl, Obligation},
-    ApplicationTy, GenericPredicate, InEnvironment, ProjectionPredicate, ProjectionTy, Substs,
-    TraitEnvironment, TraitRef, Ty, TypeCtor,
+    ApplicationTy, CallableDef, GenericPredicate, InEnvironment, ProjectionPredicate, ProjectionTy,
+    Substs, TraitEnvironment, TraitRef, Ty, TypeCtor,
 };
 
 use super::interner::*;
@@ -26,14 +27,19 @@ impl ToChalk for Ty {
     type Chalk = chalk_ir::Ty<Interner>;
     fn to_chalk(self, db: &dyn HirDatabase) -> chalk_ir::Ty<Interner> {
         match self {
-            Ty::Apply(apply_ty) => {
-                if let TypeCtor::Ref(m) = apply_ty.ctor {
-                    return ref_to_chalk(db, m, apply_ty.parameters);
+            Ty::Apply(apply_ty) => match apply_ty.ctor {
+                TypeCtor::Ref(m) => ref_to_chalk(db, m, apply_ty.parameters),
+                TypeCtor::FnPtr { num_args: _ } => {
+                    let substitution = apply_ty.parameters.to_chalk(db).shifted_in(&Interner);
+                    chalk_ir::TyData::Function(chalk_ir::Fn { num_binders: 0, substitution })
+                        .intern(&Interner)
                 }
-                let name = apply_ty.ctor.to_chalk(db);
-                let substitution = apply_ty.parameters.to_chalk(db);
-                chalk_ir::ApplicationTy { name, substitution }.cast(&Interner).intern(&Interner)
-            }
+                _ => {
+                    let name = apply_ty.ctor.to_chalk(db);
+                    let substitution = apply_ty.parameters.to_chalk(db);
+                    chalk_ir::ApplicationTy { name, substitution }.cast(&Interner).intern(&Interner)
+                }
+            },
             Ty::Projection(proj_ty) => {
                 let associated_ty_id = proj_ty.associated_ty.to_chalk(db);
                 let substitution = proj_ty.parameters.to_chalk(db);
@@ -93,9 +99,15 @@ impl ToChalk for Ty {
                 Ty::Projection(ProjectionTy { associated_ty, parameters })
             }
             chalk_ir::TyData::Alias(chalk_ir::AliasTy::Opaque(_)) => unimplemented!(),
-            chalk_ir::TyData::Function(_) => unimplemented!(),
+            chalk_ir::TyData::Function(chalk_ir::Fn { num_binders: _, substitution }) => {
+                let parameters: Substs = from_chalk(db, substitution);
+                Ty::Apply(ApplicationTy {
+                    ctor: TypeCtor::FnPtr { num_args: (parameters.len() - 1) as u16 },
+                    parameters,
+                })
+            }
             chalk_ir::TyData::BoundVar(idx) => Ty::Bound(idx),
-            chalk_ir::TyData::InferenceVar(_iv) => Ty::Unknown,
+            chalk_ir::TyData::InferenceVar(_iv, _kind) => Ty::Unknown,
             chalk_ir::TyData::Dyn(where_clauses) => {
                 assert_eq!(where_clauses.bounds.binders.len(&Interner), 1);
                 let predicates = where_clauses
@@ -217,13 +229,17 @@ impl ToChalk for TypeCtor {
             TypeCtor::Slice => TypeName::Slice,
             TypeCtor::Ref(mutability) => TypeName::Ref(mutability.to_chalk(db)),
             TypeCtor::Str => TypeName::Str,
+            TypeCtor::FnDef(callable_def) => {
+                let id = callable_def.to_chalk(db);
+                TypeName::FnDef(id)
+            }
+            TypeCtor::Never => TypeName::Never,
+
             TypeCtor::Int(Uncertain::Unknown)
             | TypeCtor::Float(Uncertain::Unknown)
             | TypeCtor::Adt(_)
             | TypeCtor::Array
-            | TypeCtor::FnDef(_)
             | TypeCtor::FnPtr { .. }
-            | TypeCtor::Never
             | TypeCtor::Closure { .. } => {
                 // other TypeCtors get interned and turned into a chalk StructId
                 let struct_id = db.intern_type_ctor(self).into();
@@ -259,10 +275,14 @@ impl ToChalk for TypeCtor {
             TypeName::Slice => TypeCtor::Slice,
             TypeName::Ref(mutability) => TypeCtor::Ref(from_chalk(db, mutability)),
             TypeName::Str => TypeCtor::Str,
+            TypeName::Never => TypeCtor::Never,
 
-            TypeName::FnDef(_) => unreachable!(),
+            TypeName::FnDef(fn_def_id) => {
+                let callable_def = from_chalk(db, fn_def_id);
+                TypeCtor::FnDef(callable_def)
+            }
 
-            TypeName::Error => {
+            TypeName::Array | TypeName::Error => {
                 // this should not be reached, since we don't represent TypeName::Error with TypeCtor
                 unreachable!()
             }
@@ -344,6 +364,18 @@ impl ToChalk for Impl {
 
     fn from_chalk(db: &dyn HirDatabase, impl_id: ImplId) -> Impl {
         db.lookup_intern_chalk_impl(impl_id.into())
+    }
+}
+
+impl ToChalk for CallableDef {
+    type Chalk = FnDefId;
+
+    fn to_chalk(self, db: &dyn HirDatabase) -> FnDefId {
+        db.intern_callable_def(self).into()
+    }
+
+    fn from_chalk(db: &dyn HirDatabase, fn_def_id: FnDefId) -> CallableDef {
+        db.lookup_intern_callable_def(fn_def_id.into())
     }
 }
 
@@ -479,7 +511,7 @@ where
 
     fn to_chalk(self, db: &dyn HirDatabase) -> chalk_ir::Canonical<T::Chalk> {
         let parameter = chalk_ir::CanonicalVarKind::new(
-            chalk_ir::VariableKind::Ty,
+            chalk_ir::VariableKind::Ty(chalk_ir::TyKind::General),
             chalk_ir::UniverseIndex::ROOT,
         );
         let value = self.value.to_chalk(db);
@@ -550,17 +582,17 @@ impl ToChalk for builtin::BuiltinImplData {
     type Chalk = ImplDatum;
 
     fn to_chalk(self, db: &dyn HirDatabase) -> ImplDatum {
-        let impl_type = chalk_rust_ir::ImplType::External;
+        let impl_type = rust_ir::ImplType::External;
         let where_clauses = self.where_clauses.into_iter().map(|w| w.to_chalk(db)).collect();
 
         let impl_datum_bound =
-            chalk_rust_ir::ImplDatumBound { trait_ref: self.trait_ref.to_chalk(db), where_clauses };
+            rust_ir::ImplDatumBound { trait_ref: self.trait_ref.to_chalk(db), where_clauses };
         let associated_ty_value_ids =
             self.assoc_ty_values.into_iter().map(|v| v.to_chalk(db)).collect();
-        chalk_rust_ir::ImplDatum {
+        rust_ir::ImplDatum {
             binders: make_binders(impl_datum_bound, self.num_vars),
             impl_type,
-            polarity: chalk_rust_ir::Polarity::Positive,
+            polarity: rust_ir::Polarity::Positive,
             associated_ty_value_ids,
         }
     }
@@ -575,9 +607,9 @@ impl ToChalk for builtin::BuiltinImplAssocTyValueData {
 
     fn to_chalk(self, db: &dyn HirDatabase) -> AssociatedTyValue {
         let ty = self.value.to_chalk(db);
-        let value_bound = chalk_rust_ir::AssociatedTyValueBound { ty };
+        let value_bound = rust_ir::AssociatedTyValueBound { ty };
 
-        chalk_rust_ir::AssociatedTyValue {
+        rust_ir::AssociatedTyValue {
             associated_ty_id: self.assoc_ty_id.to_chalk(db),
             impl_id: self.impl_.to_chalk(db),
             value: make_binders(value_bound, self.num_vars),
@@ -599,7 +631,7 @@ where
     chalk_ir::Binders::new(
         chalk_ir::VariableKinds::from(
             &Interner,
-            std::iter::repeat(chalk_ir::VariableKind::Ty).take(num_vars),
+            std::iter::repeat(chalk_ir::VariableKind::Ty(chalk_ir::TyKind::General)).take(num_vars),
         ),
         value,
     )
@@ -626,7 +658,7 @@ pub(super) fn generic_predicate_to_inline_bound(
     db: &dyn HirDatabase,
     pred: &GenericPredicate,
     self_ty: &Ty,
-) -> Option<chalk_rust_ir::InlineBound<Interner>> {
+) -> Option<rust_ir::InlineBound<Interner>> {
     // An InlineBound is like a GenericPredicate, except the self type is left out.
     // We don't have a special type for this, but Chalk does.
     match pred {
@@ -641,8 +673,8 @@ pub(super) fn generic_predicate_to_inline_bound(
                 .map(|ty| ty.clone().to_chalk(db).cast(&Interner))
                 .collect();
             let trait_bound =
-                chalk_rust_ir::TraitBound { trait_id: trait_ref.trait_.to_chalk(db), args_no_self };
-            Some(chalk_rust_ir::InlineBound::TraitBound(trait_bound))
+                rust_ir::TraitBound { trait_id: trait_ref.trait_.to_chalk(db), args_no_self };
+            Some(rust_ir::InlineBound::TraitBound(trait_bound))
         }
         GenericPredicate::Projection(proj) => {
             if &proj.projection_ty.parameters[0] != self_ty {
@@ -656,16 +688,13 @@ pub(super) fn generic_predicate_to_inline_bound(
                 .iter()
                 .map(|ty| ty.clone().to_chalk(db).cast(&Interner))
                 .collect();
-            let alias_eq_bound = chalk_rust_ir::AliasEqBound {
+            let alias_eq_bound = rust_ir::AliasEqBound {
                 value: proj.ty.clone().to_chalk(db),
-                trait_bound: chalk_rust_ir::TraitBound {
-                    trait_id: trait_.to_chalk(db),
-                    args_no_self,
-                },
+                trait_bound: rust_ir::TraitBound { trait_id: trait_.to_chalk(db), args_no_self },
                 associated_ty_id: proj.projection_ty.associated_ty.to_chalk(db),
                 parameters: Vec::new(), // FIXME we don't support generic associated types yet
             };
-            Some(chalk_rust_ir::InlineBound::AliasEqBound(alias_eq_bound))
+            Some(rust_ir::InlineBound::AliasEqBound(alias_eq_bound))
         }
         GenericPredicate::Error => None,
     }

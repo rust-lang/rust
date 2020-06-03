@@ -1,11 +1,18 @@
-//! FIXME: write short doc here
-
 use hir::{Crate, ImplDef, Semantics};
 use ra_ide_db::RootDatabase;
 use ra_syntax::{algo::find_node_at_offset, ast, AstNode};
 
 use crate::{display::ToNav, FilePosition, NavigationTarget, RangeInfo};
 
+// Feature: Go to Implementation
+//
+// Navigates to the impl block of structs, enums or traits. Also implemented as a code lens.
+//
+// |===
+// | Editor  | Shortcut
+//
+// | VS Code | kbd:[Ctrl+F12]
+// |===
 pub(crate) fn goto_implementation(
     db: &RootDatabase,
     position: FilePosition,

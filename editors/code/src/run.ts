@@ -1,13 +1,14 @@
 import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
-import * as ra from '../rust-analyzer-api';
+import * as ra from './lsp_ext';
+import * as toolchain from "./toolchain";
 
-import { Ctx, Cmd } from '../ctx';
-import { startDebugSession, getDebugConfiguration } from '../debug';
+import { Ctx } from './ctx';
+import { makeDebugConfig } from './debug';
 
 const quickPickButtons = [{ iconPath: new vscode.ThemeIcon("save"), tooltip: "Save as a launch.json configurtation." }];
 
-async function selectRunnable(ctx: Ctx, prevRunnable?: RunnableQuickPick, debuggeeOnly = false, showButtons: boolean = true): Promise<RunnableQuickPick | undefined> {
+export async function selectRunnable(ctx: Ctx, prevRunnable?: RunnableQuickPick, debuggeeOnly = false, showButtons: boolean = true): Promise<RunnableQuickPick | undefined> {
     const editor = ctx.activeRustEditor;
     const client = ctx.client;
     if (!editor || !client) return;
@@ -64,7 +65,7 @@ async function selectRunnable(ctx: Ctx, prevRunnable?: RunnableQuickPick, debugg
             quickPick.onDidHide(() => close()),
             quickPick.onDidAccept(() => close(quickPick.selectedItems[0])),
             quickPick.onDidTriggerButton((_button) => {
-                (async () => await makeDebugConfig(ctx, quickPick.activeItems[0]))();
+                (async () => await makeDebugConfig(ctx, quickPick.activeItems[0].runnable))();
                 close();
             }),
             quickPick.onDidChangeActive((active) => {
@@ -83,89 +84,7 @@ async function selectRunnable(ctx: Ctx, prevRunnable?: RunnableQuickPick, debugg
     });
 }
 
-export function run(ctx: Ctx): Cmd {
-    let prevRunnable: RunnableQuickPick | undefined;
-
-    return async () => {
-        const item = await selectRunnable(ctx, prevRunnable);
-        if (!item) return;
-
-        item.detail = 'rerun';
-        prevRunnable = item;
-        const task = createTask(item.runnable);
-        return await vscode.tasks.executeTask(task);
-    };
-}
-
-export function runSingle(ctx: Ctx): Cmd {
-    return async (runnable: ra.Runnable) => {
-        const editor = ctx.activeRustEditor;
-        if (!editor) return;
-
-        const task = createTask(runnable);
-        task.group = vscode.TaskGroup.Build;
-        task.presentationOptions = {
-            reveal: vscode.TaskRevealKind.Always,
-            panel: vscode.TaskPanelKind.Dedicated,
-            clear: true,
-        };
-
-        return vscode.tasks.executeTask(task);
-    };
-}
-
-export function debug(ctx: Ctx): Cmd {
-    let prevDebuggee: RunnableQuickPick | undefined;
-
-    return async () => {
-        const item = await selectRunnable(ctx, prevDebuggee, true);
-        if (!item) return;
-
-        item.detail = 'restart';
-        prevDebuggee = item;
-        return await startDebugSession(ctx, item.runnable);
-    };
-}
-
-export function debugSingle(ctx: Ctx): Cmd {
-    return async (config: ra.Runnable) => {
-        await startDebugSession(ctx, config);
-    };
-}
-
-async function makeDebugConfig(ctx: Ctx, item: RunnableQuickPick): Promise<void> {
-    const scope = ctx.activeRustEditor?.document.uri;
-    if (!scope) return;
-
-    const debugConfig = await getDebugConfiguration(ctx, item.runnable);
-    if (!debugConfig) return;
-
-    const wsLaunchSection = vscode.workspace.getConfiguration("launch", scope);
-    const configurations = wsLaunchSection.get<any[]>("configurations") || [];
-
-    const index = configurations.findIndex(c => c.name === debugConfig.name);
-    if (index !== -1) {
-        const answer = await vscode.window.showErrorMessage(`Launch configuration '${debugConfig.name}' already exists!`, 'Cancel', 'Update');
-        if (answer === "Cancel") return;
-
-        configurations[index] = debugConfig;
-    } else {
-        configurations.push(debugConfig);
-    }
-
-    await wsLaunchSection.update("configurations", configurations);
-}
-
-export function newDebugConfig(ctx: Ctx): Cmd {
-    return async () => {
-        const item = await selectRunnable(ctx, undefined, true, false);
-        if (!item) return;
-
-        await makeDebugConfig(ctx, item);
-    };
-}
-
-class RunnableQuickPick implements vscode.QuickPickItem {
+export class RunnableQuickPick implements vscode.QuickPickItem {
     public label: string;
     public description?: string | undefined;
     public detail?: string | undefined;
@@ -184,18 +103,27 @@ interface CargoTaskDefinition extends vscode.TaskDefinition {
     env?: { [key: string]: string };
 }
 
-function createTask(spec: ra.Runnable): vscode.Task {
+export function createTask(runnable: ra.Runnable): vscode.Task {
     const TASK_SOURCE = 'Rust';
+
+    let command;
+    switch (runnable.kind) {
+        case "cargo": command = toolchain.getPathForExecutable("cargo");
+    }
+    const args = runnable.args.cargoArgs;
+    if (runnable.args.executableArgs.length > 0) {
+        args.push('--', ...runnable.args.executableArgs);
+    }
     const definition: CargoTaskDefinition = {
         type: 'cargo',
-        label: spec.label,
-        command: spec.bin,
-        args: spec.extraArgs ? [...spec.args, '--', ...spec.extraArgs] : spec.args,
-        env: spec.env,
+        label: runnable.label,
+        command,
+        args,
+        env: Object.assign({}, process.env as { [key: string]: string }, { "RUST_BACKTRACE": "short" }),
     };
 
     const execOption: vscode.ShellExecutionOptions = {
-        cwd: spec.cwd || '.',
+        cwd: runnable.args.workspaceRoot || '.',
         env: definition.env,
     };
     const exec = new vscode.ShellExecution(

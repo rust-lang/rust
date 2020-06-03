@@ -1,28 +1,21 @@
-//! Logic for computing info that is displayed when the user hovers over any
-//! source code items (e.g. function call, struct field, variable symbol...)
+use std::iter::once;
 
 use hir::{
-    Adt, AsAssocItem, AssocItemContainer, FieldSource, HasSource, HirDisplay, ModuleDef,
-    ModuleSource, Semantics,
+    Adt, AsAssocItem, AssocItemContainer, Documentation, FieldSource, HasSource, HirDisplay,
+    ModuleDef, ModuleSource, Semantics,
 };
+use itertools::Itertools;
 use ra_db::SourceDatabase;
 use ra_ide_db::{
     defs::{classify_name, classify_name_ref, Definition},
     RootDatabase,
 };
-use ra_syntax::{
-    ast::{self, DocCommentsOwner},
-    match_ast, AstNode,
-    SyntaxKind::*,
-    SyntaxToken, TokenAtOffset,
-};
+use ra_syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, TokenAtOffset};
 
 use crate::{
     display::{macro_label, rust_code_markup, rust_code_markup_with_doc, ShortLabel},
     FilePosition, RangeInfo,
 };
-use itertools::Itertools;
-use std::iter::once;
 
 /// Contains the results when hovering over an item
 #[derive(Debug, Default)]
@@ -60,6 +53,63 @@ impl HoverResult {
     pub fn to_markup(&self) -> String {
         self.results.join("\n\n---\n")
     }
+}
+
+// Feature: Hover
+//
+// Shows additional information, like type of an expression or documentation for definition when "focusing" code.
+// Focusing is usually hovering with a mouse, but can also be triggered with a shortcut.
+pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeInfo<HoverResult>> {
+    let sema = Semantics::new(db);
+    let file = sema.parse(position.file_id).syntax().clone();
+    let token = pick_best(file.token_at_offset(position.offset))?;
+    let token = sema.descend_into_macros(token);
+
+    let mut res = HoverResult::new();
+
+    if let Some((node, name_kind)) = match_ast! {
+        match (token.parent()) {
+            ast::NameRef(name_ref) => {
+                classify_name_ref(&sema, &name_ref).map(|d| (name_ref.syntax().clone(), d.definition()))
+            },
+            ast::Name(name) => {
+                classify_name(&sema, &name).map(|d| (name.syntax().clone(), d.definition()))
+            },
+            _ => None,
+        }
+    } {
+        let range = sema.original_range(&node).range;
+        res.extend(hover_text_from_name_kind(db, name_kind));
+
+        if !res.is_empty() {
+            return Some(RangeInfo::new(range, res));
+        }
+    }
+
+    let node = token
+        .ancestors()
+        .find(|n| ast::Expr::cast(n.clone()).is_some() || ast::Pat::cast(n.clone()).is_some())?;
+
+    let ty = match_ast! {
+        match node {
+            ast::MacroCall(_it) => {
+                // If this node is a MACRO_CALL, it means that `descend_into_macros` failed to resolve.
+                // (e.g expanding a builtin macro). So we give up here.
+                return None;
+            },
+            ast::Expr(it) => {
+                sema.type_of_expr(&it)
+            },
+            ast::Pat(it) => {
+                sema.type_of_pat(&it)
+            },
+            _ => None,
+        }
+    }?;
+
+    res.extend(Some(rust_code_markup(&ty.display(db))));
+    let range = sema.original_range(&node).range;
+    Some(RangeInfo::new(range, res))
 }
 
 fn hover_text(
@@ -114,13 +164,15 @@ fn hover_text_from_name_kind(db: &RootDatabase, def: Definition) -> Option<Strin
     return match def {
         Definition::Macro(it) => {
             let src = it.source(db);
-            hover_text(src.value.doc_comment_text(), Some(macro_label(&src.value)), mod_path)
+            let docs = Documentation::from_ast(&src.value).map(Into::into);
+            hover_text(docs, Some(macro_label(&src.value)), mod_path)
         }
         Definition::Field(it) => {
             let src = it.source(db);
             match src.value {
                 FieldSource::Named(it) => {
-                    hover_text(it.doc_comment_text(), it.short_label(), mod_path)
+                    let docs = Documentation::from_ast(&it).map(Into::into);
+                    hover_text(docs, it.short_label(), mod_path)
                 }
                 _ => None,
             }
@@ -128,7 +180,8 @@ fn hover_text_from_name_kind(db: &RootDatabase, def: Definition) -> Option<Strin
         Definition::ModuleDef(it) => match it {
             ModuleDef::Module(it) => match it.definition_source(db).value {
                 ModuleSource::Module(it) => {
-                    hover_text(it.doc_comment_text(), it.short_label(), mod_path)
+                    let docs = Documentation::from_ast(&it).map(Into::into);
+                    hover_text(docs, it.short_label(), mod_path)
                 }
                 _ => None,
             },
@@ -153,64 +206,12 @@ fn hover_text_from_name_kind(db: &RootDatabase, def: Definition) -> Option<Strin
     fn from_def_source<A, D>(db: &RootDatabase, def: D, mod_path: Option<String>) -> Option<String>
     where
         D: HasSource<Ast = A>,
-        A: ast::DocCommentsOwner + ast::NameOwner + ShortLabel,
+        A: ast::DocCommentsOwner + ast::NameOwner + ShortLabel + ast::AttrsOwner,
     {
         let src = def.source(db);
-        hover_text(src.value.doc_comment_text(), src.value.short_label(), mod_path)
+        let docs = Documentation::from_ast(&src.value).map(Into::into);
+        hover_text(docs, src.value.short_label(), mod_path)
     }
-}
-
-pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeInfo<HoverResult>> {
-    let sema = Semantics::new(db);
-    let file = sema.parse(position.file_id).syntax().clone();
-    let token = pick_best(file.token_at_offset(position.offset))?;
-    let token = sema.descend_into_macros(token);
-
-    let mut res = HoverResult::new();
-
-    if let Some((node, name_kind)) = match_ast! {
-        match (token.parent()) {
-            ast::NameRef(name_ref) => {
-                classify_name_ref(&sema, &name_ref).map(|d| (name_ref.syntax().clone(), d.definition()))
-            },
-            ast::Name(name) => {
-                classify_name(&sema, &name).map(|d| (name.syntax().clone(), d.definition()))
-            },
-            _ => None,
-        }
-    } {
-        let range = sema.original_range(&node).range;
-        res.extend(hover_text_from_name_kind(db, name_kind));
-
-        if !res.is_empty() {
-            return Some(RangeInfo::new(range, res));
-        }
-    }
-
-    let node = token
-        .ancestors()
-        .find(|n| ast::Expr::cast(n.clone()).is_some() || ast::Pat::cast(n.clone()).is_some())?;
-
-    let ty = match_ast! {
-        match node {
-            ast::MacroCall(_it) => {
-                // If this node is a MACRO_CALL, it means that `descend_into_macros` failed to resolve.
-                // (e.g expanding a builtin macro). So we give up here.
-                return None;
-            },
-            ast::Expr(it) => {
-                sema.type_of_expr(&it)
-            },
-            ast::Pat(it) => {
-                sema.type_of_pat(&it)
-            },
-            _ => None,
-        }
-    }?;
-
-    res.extend(Some(rust_code_markup(&ty.display(db))));
-    let range = sema.original_range(&node).range;
-    Some(RangeInfo::new(range, res))
 }
 
 fn pick_best(tokens: TokenAtOffset<SyntaxToken>) -> Option<SyntaxToken> {
@@ -405,7 +406,7 @@ mod tests {
                 };
             }
         "#,
-            &["Foo\nfield_a: u32"],
+            &["Foo\n```\n\n```rust\nfield_a: u32"],
         );
 
         // Hovering over the field in the definition
@@ -422,7 +423,7 @@ mod tests {
                 };
             }
         "#,
-            &["Foo\nfield_a: u32"],
+            &["Foo\n```\n\n```rust\nfield_a: u32"],
         );
     }
 
@@ -475,7 +476,7 @@ fn main() {
             ",
         );
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(trim_markup_opt(hover.info.first()), Some("Option\nSome"));
+        assert_eq!(trim_markup_opt(hover.info.first()), Some("Option\n```\n\n```rust\nSome"));
 
         let (analysis, position) = single_file_with_position(
             "
@@ -503,8 +504,12 @@ fn main() {
         "#,
             &["
 Option
+```
+
+```rust
 None
 ```
+___
 
 The None variant
             "
@@ -524,8 +529,12 @@ The None variant
         "#,
             &["
 Option
+```
+
+```rust
 Some
 ```
+___
 
 The Some variant
             "
@@ -606,7 +615,10 @@ fn func(foo: i32) { if true { <|>foo; }; }
             ",
         );
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(trim_markup_opt(hover.info.first()), Some("wrapper::Thing\nfn new() -> Thing"));
+        assert_eq!(
+            trim_markup_opt(hover.info.first()),
+            Some("wrapper::Thing\n```\n\n```rust\nfn new() -> Thing")
+        );
     }
 
     #[test]
@@ -882,7 +894,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
                 fo<|>o();
             }
             ",
-            &["fn foo()\n```\n\n<- `\u{3000}` here"],
+            &["fn foo()\n```\n___\n\n<- `\u{3000}` here"],
         );
     }
 
@@ -936,6 +948,108 @@ fn func(foo: i32) { if true { <|>foo; }; }
             fn my() {}
             ",
             &["mod my"],
+        );
+    }
+
+    #[test]
+    fn test_hover_struct_doc_comment() {
+        check_hover_result(
+            r#"
+            //- /lib.rs
+            /// bar docs
+            struct Bar;
+
+            fn foo() {
+                let bar = Ba<|>r;
+            }
+            "#,
+            &["struct Bar\n```\n___\n\nbar docs"],
+        );
+    }
+
+    #[test]
+    fn test_hover_struct_doc_attr() {
+        check_hover_result(
+            r#"
+            //- /lib.rs
+            #[doc = "bar docs"]
+            struct Bar;
+
+            fn foo() {
+                let bar = Ba<|>r;
+            }
+            "#,
+            &["struct Bar\n```\n___\n\nbar docs"],
+        );
+    }
+
+    #[test]
+    fn test_hover_struct_doc_attr_multiple_and_mixed() {
+        check_hover_result(
+            r#"
+            //- /lib.rs
+            /// bar docs 0
+            #[doc = "bar docs 1"]
+            #[doc = "bar docs 2"]
+            struct Bar;
+
+            fn foo() {
+                let bar = Ba<|>r;
+            }
+            "#,
+            &["struct Bar\n```\n___\n\nbar docs 0\n\nbar docs 1\n\nbar docs 2"],
+        );
+    }
+
+    #[test]
+    fn test_hover_macro_generated_struct_fn_doc_comment() {
+        check_hover_result(
+            r#"
+            //- /lib.rs
+            macro_rules! bar {
+                () => {
+                    struct Bar;
+                    impl Bar {
+                        /// Do the foo
+                        fn foo(&self) {}
+                    }
+                }
+            }
+
+            bar!();
+
+            fn foo() {
+                let bar = Bar;
+                bar.fo<|>o();
+            }
+            "#,
+            &["Bar\n```\n\n```rust\nfn foo(&self)\n```\n___\n\n Do the foo"],
+        );
+    }
+
+    #[test]
+    fn test_hover_macro_generated_struct_fn_doc_attr() {
+        check_hover_result(
+            r#"
+            //- /lib.rs
+            macro_rules! bar {
+                () => {
+                    struct Bar;
+                    impl Bar {
+                        #[doc = "Do the foo"]
+                        fn foo(&self) {}
+                    }
+                }
+            }
+
+            bar!();
+
+            fn foo() {
+                let bar = Bar;
+                bar.fo<|>o();
+            }
+            "#,
+            &["Bar\n```\n\n```rust\nfn foo(&self)\n```\n___\n\nDo the foo"],
         );
     }
 }

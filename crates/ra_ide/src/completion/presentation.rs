@@ -211,7 +211,7 @@ impl Completions {
             .parameter_names
             .iter()
             .skip(if function_signature.has_self_param { 1 } else { 0 })
-            .cloned()
+            .map(|name| name.trim_start_matches('_').into())
             .collect();
 
         builder = builder.add_call_parens(ctx, name, Params::Named(params));
@@ -672,6 +672,37 @@ mod tests {
         assert_debug_snapshot!(
             do_reference_completion(
                 r"
+                fn with_ignored_args(_foo: i32, ___bar: bool, ho_ge_: String) {}
+                fn main() { with_<|> }
+                "
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "main()",
+                source_range: 110..115,
+                delete: 110..115,
+                insert: "main()$0",
+                kind: Function,
+                lookup: "main",
+                detail: "fn main()",
+            },
+            CompletionItem {
+                label: "with_ignored_args(…)",
+                source_range: 110..115,
+                delete: 110..115,
+                insert: "with_ignored_args(${1:foo}, ${2:bar}, ${3:ho_ge_})$0",
+                kind: Function,
+                lookup: "with_ignored_args",
+                detail: "fn with_ignored_args(_foo: i32, ___bar: bool, ho_ge_: String)",
+                trigger_call_info: true,
+            },
+        ]
+        "###
+        );
+        assert_debug_snapshot!(
+            do_reference_completion(
+                r"
                 struct S {}
                 impl S {
                     fn foo(&self) {}
@@ -691,6 +722,33 @@ mod tests {
                 kind: Method,
                 lookup: "foo",
                 detail: "fn foo(&self)",
+            },
+        ]
+        "###
+        );
+        assert_debug_snapshot!(
+            do_reference_completion(
+                r"
+                struct S {}
+                impl S {
+                    fn foo_ignored_args(&self, _a: bool, b: i32) {}
+                }
+                fn bar(s: &S) {
+                    s.f<|>
+                }
+                "
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "foo_ignored_args(…)",
+                source_range: 194..195,
+                delete: 194..195,
+                insert: "foo_ignored_args(${1:a}, ${2:b})$0",
+                kind: Method,
+                lookup: "foo_ignored_args",
+                detail: "fn foo_ignored_args(&self, _a: bool, b: i32)",
+                trigger_call_info: true,
             },
         ]
         "###

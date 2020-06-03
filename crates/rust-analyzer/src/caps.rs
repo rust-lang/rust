@@ -85,6 +85,11 @@ pub fn server_capabilities(client_caps: &ClientCapabilities) -> ServerCapabiliti
         experimental: Some(json!({
             "joinLines": true,
             "ssr": true,
+            "onEnter": true,
+            "parentModule": true,
+            "runnables": {
+                "kinds": [ "cargo" ],
+            },
         })),
     }
 }

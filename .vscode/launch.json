@@ -71,6 +71,28 @@
       }
     },
     {
+      // Used for testing the extension with a local build of the LSP server (in `target/release`)
+      // with all other extendions loaded.
+      "name": "Run With Extensions",
+      "type": "extensionHost",
+      "request": "launch",
+      "runtimeExecutable": "${execPath}",
+      "args": [
+        "--disable-extension", "matklad.rust-analyzer",
+        "--extensionDevelopmentPath=${workspaceFolder}/editors/code"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/editors/code/out/**/*.js"
+      ],
+      "preLaunchTask": "Build Server (Release) and Extension",
+      "skipFiles": [
+        "<node_internals>/**/*.js"
+      ],
+      "env": {
+        "__RA_LSP_SERVER_DEBUG": "${workspaceFolder}/target/release/rust-analyzer"
+      }
+    },
+    {
       // Used to attach LLDB to a running LSP server.
       // NOTE: Might require root permissions. For this run:
       //
@@ -87,5 +109,17 @@
         "rust"
       ]
     },
+    {
+      "name": "Run Unit Tests",
+      "type": "extensionHost",
+      "request": "launch",
+      "runtimeExecutable": "${execPath}",
+      "args": [
+          "--extensionDevelopmentPath=${workspaceFolder}/editors/code",
+          "--extensionTestsPath=${workspaceFolder}/editors/code/out/tests/unit" ],
+      "sourceMaps": true,
+      "outFiles": [ "${workspaceFolder}/editors/code/out/tests/unit/**/*.js" ],
+      "preLaunchTask": "Pretest"
+    }
   ]
 }

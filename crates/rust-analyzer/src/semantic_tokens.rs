@@ -36,9 +36,11 @@ macro_rules! define_semantic_token_types {
 
 define_semantic_token_types![
     (ATTRIBUTE, "attribute"),
+    (BOOLEAN, "boolean"),
     (BUILTIN_TYPE, "builtinType"),
     (ENUM_MEMBER, "enumMember"),
     (LIFETIME, "lifetime"),
+    (SELF_KEYWORD, "selfKeyword"),
     (TYPE_ALIAS, "typeAlias"),
     (UNION, "union"),
     (UNRESOLVED_REFERENCE, "unresolvedReference"),
@@ -67,6 +69,7 @@ define_semantic_token_modifiers![
     (CONTROL_FLOW, "controlFlow"),
     (MUTABLE, "mutable"),
     (UNSAFE, "unsafe"),
+    (ATTRIBUTE_MODIFIER, "attribute"),
 ];
 
 #[derive(Default)]

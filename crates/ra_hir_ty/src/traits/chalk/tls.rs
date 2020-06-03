@@ -247,10 +247,24 @@ impl DebugContext<'_> {
 
     pub fn debug_fn_def_id(
         &self,
-        _fn_def_id: chalk_ir::FnDefId<Interner>,
+        fn_def_id: chalk_ir::FnDefId<Interner>,
         fmt: &mut fmt::Formatter<'_>,
     ) -> Result<(), fmt::Error> {
-        write!(fmt, "fn")
+        let def: CallableDef = from_chalk(self.0, fn_def_id);
+        let name = match def {
+            CallableDef::FunctionId(ff) => self.0.function_data(ff).name.clone(),
+            CallableDef::StructId(s) => self.0.struct_data(s).name.clone(),
+            CallableDef::EnumVariantId(e) => {
+                let enum_data = self.0.enum_data(e.parent);
+                enum_data.variants[e.local_id].name.clone()
+            }
+        };
+        match def {
+            CallableDef::FunctionId(_) => write!(fmt, "{{fn {}}}", name),
+            CallableDef::StructId(_) | CallableDef::EnumVariantId(_) => {
+                write!(fmt, "{{ctor {}}}", name)
+            }
+        }
     }
 
     pub fn debug_const(

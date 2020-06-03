@@ -2,14 +2,9 @@
 :toc: preamble
 :sectanchors:
 :page-layout: post
-// https://gist.github.com/dcode/0cfbf2699a1fe9b46ff04c41721dda74#admonitions
-:tip-caption: :bulb:
-:note-caption: :information_source:
-:important-caption: :heavy_exclamation_mark:
-:caution-caption: :fire:
-:warning-caption: :warning:
-
-
+:icons: font
+:source-highlighter: rouge
+:experimental:
 
 // Master copy of this document lives in the https://github.com/rust-analyzer/rust-analyzer repository
 
@@ -19,7 +14,9 @@ https://microsoft.github.io/language-server-protocol/[Language Server Protocol] 
 The LSP allows various code editors, like VS Code, Emacs or Vim, to implement semantic features like completion or goto definition by talking to an external language server process.
 
 To improve this document, send a pull request against
-https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/user/readme.adoc[this file].
+https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/user/manual.adoc[this file].
+
+If you have questions about using rust-analyzer, please ask them in the https://users.rust-lang.org/c/ide/14["`IDEs and Editors`"] topic of Rust users forum.
 
 == Installation
 
@@ -112,10 +109,23 @@ Here are some useful self-diagnostic commands:
 * To log all LSP requests, add `"rust-analyzer.trace.server": "verbose"` to the settings and look for `Server Trace` in the panel.
 * To enable client-side logging, add `"rust-analyzer.trace.extension": true` to the settings and open the `Console` tab of VS Code developer tools.
 
+==== Special `when` clause context for keybindings.
+You may use `inRustProject` context to configure keybindings for rust projects only. For example:
+[source,json]
+----
+{
+  "key": "ctrl+i",
+  "command": "rust-analyzer.toggleInlayHints",
+  "when": "inRustProject"
+}
+----
+More about `when` clause contexts https://code.visualstudio.com/docs/getstarted/keybindings#_when-clause-contexts[here].
+
 === rust-analyzer Language Server Binary
 
 Other editors generally require the `rust-analyzer` binary to be in `$PATH`.
-You can download the pre-built binary from the https://github.com/rust-analyzer/rust-analyzer/releases[releases] page. Typically, you then need to rename the binary for your platform, e.g. `rust-analyzer-mac` if you're on Mac OS, to `rust-analyzer` and make it executable in addition to moving it into a directory in your `$PATH`.
+You can download the pre-built binary from the https://github.com/rust-analyzer/rust-analyzer/releases[releases] page.
+Typically, you then need to rename the binary for your platform, e.g. `rust-analyzer-mac` if you're on Mac OS, to `rust-analyzer` and make it executable in addition to moving it into a directory in your `$PATH`.
 
 On Linux to install the `rust-analyzer` binary into `~/.local/bin`, this commands could be used
 
@@ -135,7 +145,8 @@ $ git clone https://github.com/rust-analyzer/rust-analyzer.git && cd rust-analyz
 $ cargo xtask install --server
 ----
 
-If your editor can't find the binary even though the binary is on your `$PATH`, the likely explanation is that it doesn't see the same `$PATH` as the shell, see https://github.com/rust-analyzer/rust-analyzer/issues/1811[this issue]. On Unix, running the editor from a shell or changing the `.desktop` file to set the environment should help.
+If your editor can't find the binary even though the binary is on your `$PATH`, the likely explanation is that it doesn't see the same `$PATH` as the shell, see https://github.com/rust-analyzer/rust-analyzer/issues/1811[this issue].
+On Unix, running the editor from a shell or changing the `.desktop` file to set the environment should help.
 
 ==== Arch Linux
 
@@ -258,6 +269,65 @@ Gnome Builder currently has support for RLS, and there's no way to configure the
 1. Rename, symlink or copy the `rust-analyzer` binary to `rls` and place it somewhere Builder can find (in `PATH`, or under `~/.cargo/bin`).
 2. Enable the Rust Builder plugin.
 
-== Usage
+== Non-Cargo Based Projects
 
-See https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/user/features.md[features.md].
+rust-analyzer does not require Cargo.
+However, if you use some other build system, you'll have to describe the structure of your project for rust-analyzer in the `rust-project.json` format:
+
+[source,TypeScript]
+----
+interface JsonProject {
+   /// The set of paths containing the crates for this project.
+   /// Any `Crate` must be nested inside some `root`.
+   roots: string[];
+   /// The set of crates comprising the current project.
+   /// Must include all transitive dependencies as well as sysroot crate (libstd, libcore and such).
+   crates: Crate[];
+}
+
+interface Crate {
+    /// Path to the root module of the crate.
+    root_module: string;
+    /// Edition of the crate.
+    edition: "2015" | "2018";
+    /// Dependencies
+    deps: Dep[];
+    /// The set of cfgs activated for a given crate, like `["unix", "feature=foo", "feature=bar"]`.
+    cfg: string[];
+
+    /// value of the OUT_DIR env variable.
+    out_dir?: string;
+    /// For proc-macro crates, path to compiles proc-macro (.so file).
+    proc_macro_dylib_path?: string;
+}
+
+interface Dep {
+    /// Index of a crate in the `crates` array.
+    crate: number,
+    /// Name as should appear in the (implicit) `extern crate name` declaration.
+    name: string,
+}
+----
+
+This format is provisional and subject to change.
+Specifically, the `roots` setup will be different eventually.
+
+There are tree ways to feed `rust-project.json` to rust-analyzer:
+
+* Place `rust-project.json` file at the root of the project, and rust-anlayzer will discover it.
+* Specify `"rust-analyzer.linkedProjects": [ "path/to/rust-project.json" ]` in the settings (and make sure that your LSP client sends settings as a part of initialize request).
+* Specify `"rust-analyzer.linkedProjects": [ { "roots": [...], "crates": [...] }]` inline.
+
+See https://github.com/rust-analyzer/rust-project.json-example for a small example.
+
+== Features
+
+include::./generated_features.adoc[]
+
+== Assists (Code Actions)
+
+Assists, or code actions, are small local refactorings, available in a particular context.
+They are usually triggered by a shortcut or by clicking a light bulb icon in the editor.
+Cursor position or selection is signified by `┃` character.
+
+include::./generated_assists.adoc[]

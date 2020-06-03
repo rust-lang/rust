@@ -122,6 +122,7 @@ mod handlers {
     mod flip_comma;
     mod flip_trait_bound;
     mod inline_local_variable;
+    mod introduce_named_lifetime;
     mod introduce_variable;
     mod invert_if;
     mod merge_imports;
@@ -162,6 +163,7 @@ mod handlers {
             flip_comma::flip_comma,
             flip_trait_bound::flip_trait_bound,
             inline_local_variable::inline_local_variable,
+            introduce_named_lifetime::introduce_named_lifetime,
             introduce_variable::introduce_variable,
             invert_if::invert_if,
             merge_imports::merge_imports,

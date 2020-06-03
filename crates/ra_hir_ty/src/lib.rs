@@ -49,8 +49,10 @@ use std::sync::Arc;
 use std::{iter, mem};
 
 use hir_def::{
-    expr::ExprId, type_ref::Mutability, AdtId, AssocContainerId, DefWithBodyId, GenericDefId,
-    HasModule, Lookup, TraitId, TypeAliasId, TypeParamId,
+    expr::ExprId,
+    type_ref::{Mutability, Rawness},
+    AdtId, AssocContainerId, DefWithBodyId, GenericDefId, HasModule, Lookup, TraitId, TypeAliasId,
+    TypeParamId,
 };
 use ra_db::{impl_intern_key, salsa, CrateId};
 
@@ -158,6 +160,12 @@ pub enum TypeCtor {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub struct TypeCtorId(salsa::InternId);
 impl_intern_key!(TypeCtorId);
+
+/// This exists just for Chalk, because Chalk just has a single `FnDefId` where
+/// we have different IDs for struct and enum variant constructors.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
+pub struct CallableDefId(salsa::InternId);
+impl_intern_key!(CallableDefId);
 
 impl TypeCtor {
     pub fn num_ty_params(self, db: &dyn HirDatabase) -> usize {
@@ -698,6 +706,18 @@ impl Ty {
         match self {
             Ty::Apply(ApplicationTy { ctor: TypeCtor::Ref(mutability), parameters }) => {
                 Some((parameters.as_single(), *mutability))
+            }
+            _ => None,
+        }
+    }
+
+    pub fn as_reference_or_ptr(&self) -> Option<(&Ty, Rawness, Mutability)> {
+        match self {
+            Ty::Apply(ApplicationTy { ctor: TypeCtor::Ref(mutability), parameters }) => {
+                Some((parameters.as_single(), Rawness::Ref, *mutability))
+            }
+            Ty::Apply(ApplicationTy { ctor: TypeCtor::RawPtr(mutability), parameters }) => {
+                Some((parameters.as_single(), Rawness::RawPtr, *mutability))
             }
             _ => None,
         }

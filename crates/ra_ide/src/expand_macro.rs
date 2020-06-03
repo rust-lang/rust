@@ -1,5 +1,3 @@
-//! This modules implements "expand macro" functionality in the IDE
-
 use hir::Semantics;
 use ra_ide_db::RootDatabase;
 use ra_syntax::{
@@ -14,6 +12,15 @@ pub struct ExpandedMacro {
     pub expansion: String,
 }
 
+// Feature: Expand Macro Recursively
+//
+// Shows the full macro expansion of the macro at current cursor.
+//
+// |===
+// | Editor  | Action Name
+//
+// | VS Code | **Rust Analyzer: Expand macro recursively**
+// |===
 pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<ExpandedMacro> {
     let sema = Semantics::new(db);
     let file = sema.parse(position.file_id);

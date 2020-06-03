@@ -40,7 +40,7 @@ impl Diagnostic for MissingFields {
     fn message(&self) -> String {
         let mut buf = String::from("Missing structure fields:\n");
         for field in &self.missed_fields {
-            format_to!(buf, "- {}", field);
+            format_to!(buf, "- {}\n", field);
         }
         buf
     }
@@ -73,7 +73,7 @@ impl Diagnostic for MissingPatFields {
     fn message(&self) -> String {
         let mut buf = String::from("Missing structure fields:\n");
         for field in &self.missed_fields {
-            format_to!(buf, "- {}", field);
+            format_to!(buf, "- {}\n", field);
         }
         buf
     }

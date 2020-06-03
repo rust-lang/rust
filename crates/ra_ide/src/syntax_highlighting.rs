@@ -1,5 +1,3 @@
-//! Implements syntax highlighting.
-
 mod tags;
 mod html;
 #[cfg(test)]
@@ -32,81 +30,15 @@ pub struct HighlightedRange {
     pub binding_hash: Option<u64>,
 }
 
-#[derive(Debug)]
-struct HighlightedRangeStack {
-    stack: Vec<Vec<HighlightedRange>>,
-}
-
-/// We use a stack to implement the flattening logic for the highlighted
-/// syntax ranges.
-impl HighlightedRangeStack {
-    fn new() -> Self {
-        Self { stack: vec![Vec::new()] }
-    }
-
-    fn push(&mut self) {
-        self.stack.push(Vec::new());
-    }
-
-    /// Flattens the highlighted ranges.
-    ///
-    /// For example `#[cfg(feature = "foo")]` contains the nested ranges:
-    /// 1) parent-range: Attribute [0, 23)
-    /// 2) child-range: String [16, 21)
-    ///
-    /// The following code implements the flattening, for our example this results to:
-    /// `[Attribute [0, 16), String [16, 21), Attribute [21, 23)]`
-    fn pop(&mut self) {
-        let children = self.stack.pop().unwrap();
-        let prev = self.stack.last_mut().unwrap();
-        let needs_flattening = !children.is_empty()
-            && !prev.is_empty()
-            && prev.last().unwrap().range.contains_range(children.first().unwrap().range);
-        if !needs_flattening {
-            prev.extend(children);
-        } else {
-            let mut parent = prev.pop().unwrap();
-            for ele in children {
-                assert!(parent.range.contains_range(ele.range));
-                let mut cloned = parent.clone();
-                parent.range = TextRange::new(parent.range.start(), ele.range.start());
-                cloned.range = TextRange::new(ele.range.end(), cloned.range.end());
-                if !parent.range.is_empty() {
-                    prev.push(parent);
-                }
-                prev.push(ele);
-                parent = cloned;
-            }
-            if !parent.range.is_empty() {
-                prev.push(parent);
-            }
-        }
-    }
-
-    fn add(&mut self, range: HighlightedRange) {
-        self.stack
-            .last_mut()
-            .expect("during DFS traversal, the stack must not be empty")
-            .push(range)
-    }
-
-    fn flattened(mut self) -> Vec<HighlightedRange> {
-        assert_eq!(
-            self.stack.len(),
-            1,
-            "after DFS traversal, the stack should only contain a single element"
-        );
-        let mut res = self.stack.pop().unwrap();
-        res.sort_by_key(|range| range.range.start());
-        // Check that ranges are sorted and disjoint
-        assert!(res
-            .iter()
-            .zip(res.iter().skip(1))
-            .all(|(left, right)| left.range.end() <= right.range.start()));
-        res
-    }
-}
-
+// Feature: Semantic Syntax Highlighting
+//
+// rust-analyzer highlights the code semantically.
+// For example, `bar` in `foo::Bar` might be colored differently depending on whether `Bar` is an enum or a trait.
+// rust-analyzer does not specify colors directly, instead it assigns tag (like `struct`) and a set of modifiers (like `declaration`) to each token.
+// It's up to the client to map those to specific colors.
+//
+// The general rule is that a reference to an entity gets colored the same way as the entity itself.
+// We also give special modifier for `mut` and `&mut` local variables.
 pub(crate) fn highlight(
     db: &RootDatabase,
     file_id: FileId,
@@ -291,6 +223,81 @@ pub(crate) fn highlight(
     stack.flattened()
 }
 
+#[derive(Debug)]
+struct HighlightedRangeStack {
+    stack: Vec<Vec<HighlightedRange>>,
+}
+
+/// We use a stack to implement the flattening logic for the highlighted
+/// syntax ranges.
+impl HighlightedRangeStack {
+    fn new() -> Self {
+        Self { stack: vec![Vec::new()] }
+    }
+
+    fn push(&mut self) {
+        self.stack.push(Vec::new());
+    }
+
+    /// Flattens the highlighted ranges.
+    ///
+    /// For example `#[cfg(feature = "foo")]` contains the nested ranges:
+    /// 1) parent-range: Attribute [0, 23)
+    /// 2) child-range: String [16, 21)
+    ///
+    /// The following code implements the flattening, for our example this results to:
+    /// `[Attribute [0, 16), String [16, 21), Attribute [21, 23)]`
+    fn pop(&mut self) {
+        let children = self.stack.pop().unwrap();
+        let prev = self.stack.last_mut().unwrap();
+        let needs_flattening = !children.is_empty()
+            && !prev.is_empty()
+            && prev.last().unwrap().range.contains_range(children.first().unwrap().range);
+        if !needs_flattening {
+            prev.extend(children);
+        } else {
+            let mut parent = prev.pop().unwrap();
+            for ele in children {
+                assert!(parent.range.contains_range(ele.range));
+                let mut cloned = parent.clone();
+                parent.range = TextRange::new(parent.range.start(), ele.range.start());
+                cloned.range = TextRange::new(ele.range.end(), cloned.range.end());
+                if !parent.range.is_empty() {
+                    prev.push(parent);
+                }
+                prev.push(ele);
+                parent = cloned;
+            }
+            if !parent.range.is_empty() {
+                prev.push(parent);
+            }
+        }
+    }
+
+    fn add(&mut self, range: HighlightedRange) {
+        self.stack
+            .last_mut()
+            .expect("during DFS traversal, the stack must not be empty")
+            .push(range)
+    }
+
+    fn flattened(mut self) -> Vec<HighlightedRange> {
+        assert_eq!(
+            self.stack.len(),
+            1,
+            "after DFS traversal, the stack should only contain a single element"
+        );
+        let mut res = self.stack.pop().unwrap();
+        res.sort_by_key(|range| range.range.start());
+        // Check that ranges are sorted and disjoint
+        assert!(res
+            .iter()
+            .zip(res.iter().skip(1))
+            .all(|(left, right)| left.range.end() <= right.range.start()));
+        res
+    }
+}
+
 fn highlight_format_specifier(kind: FormatSpecifier) -> Option<HighlightTag> {
     Some(match kind {
         FormatSpecifier::Open
@@ -361,7 +368,9 @@ fn highlight_element(
         }
 
         // Highlight references like the definitions they resolve to
-        NAME_REF if element.ancestors().any(|it| it.kind() == ATTR) => return None,
+        NAME_REF if element.ancestors().any(|it| it.kind() == ATTR) => {
+            Highlight::from(HighlightTag::Function) | HighlightModifier::Attribute
+        }
         NAME_REF => {
             let name_ref = element.into_node().and_then(ast::NameRef::cast).unwrap();
             match classify_name_ref(sema, &name_ref) {
@@ -389,12 +398,30 @@ fn highlight_element(
         INT_NUMBER | FLOAT_NUMBER => HighlightTag::NumericLiteral.into(),
         BYTE => HighlightTag::ByteLiteral.into(),
         CHAR => HighlightTag::CharLiteral.into(),
+        QUESTION => Highlight::new(HighlightTag::Operator) | HighlightModifier::ControlFlow,
         LIFETIME => {
             let h = Highlight::new(HighlightTag::Lifetime);
             match element.parent().map(|it| it.kind()) {
                 Some(LIFETIME_PARAM) | Some(LABEL) => h | HighlightModifier::Definition,
                 _ => h,
             }
+        }
+        PREFIX_EXPR => {
+            let prefix_expr = element.into_node().and_then(ast::PrefixExpr::cast)?;
+            match prefix_expr.op_kind() {
+                Some(ast::PrefixOp::Deref) => {}
+                _ => return None,
+            }
+
+            let expr = prefix_expr.expr()?;
+            let ty = sema.type_of_expr(&expr)?;
+            if !ty.is_raw_ptr() {
+                return None;
+            }
+
+            let mut h = Highlight::new(HighlightTag::Operator);
+            h |= HighlightModifier::Unsafe;
+            h
         }
 
         k if k.is_keyword() => {
@@ -411,6 +438,8 @@ fn highlight_element(
                 | T![in] => h | HighlightModifier::ControlFlow,
                 T![for] if !is_child_of_impl(element) => h | HighlightModifier::ControlFlow,
                 T![unsafe] => h | HighlightModifier::Unsafe,
+                T![true] | T![false] => HighlightTag::BoolLiteral.into(),
+                T![self] => HighlightTag::SelfKeyword.into(),
                 _ => h,
             }
         }
@@ -446,7 +475,13 @@ fn highlight_name(db: &RootDatabase, def: Definition) -> Highlight {
         Definition::Field(_) => HighlightTag::Field,
         Definition::ModuleDef(def) => match def {
             hir::ModuleDef::Module(_) => HighlightTag::Module,
-            hir::ModuleDef::Function(_) => HighlightTag::Function,
+            hir::ModuleDef::Function(func) => {
+                let mut h = HighlightTag::Function.into();
+                if func.is_unsafe(db) {
+                    h |= HighlightModifier::Unsafe;
+                }
+                return h;
+            }
             hir::ModuleDef::Adt(hir::Adt::Struct(_)) => HighlightTag::Struct,
             hir::ModuleDef::Adt(hir::Adt::Enum(_)) => HighlightTag::Enum,
             hir::ModuleDef::Adt(hir::Adt::Union(_)) => HighlightTag::Union,
@@ -478,23 +513,31 @@ fn highlight_name(db: &RootDatabase, def: Definition) -> Highlight {
 }
 
 fn highlight_name_by_syntax(name: ast::Name) -> Highlight {
-    let default = HighlightTag::Function.into();
+    let default = HighlightTag::UnresolvedReference;
 
     let parent = match name.syntax().parent() {
         Some(it) => it,
-        _ => return default,
+        _ => return default.into(),
     };
 
-    match parent.kind() {
-        STRUCT_DEF => HighlightTag::Struct.into(),
-        ENUM_DEF => HighlightTag::Enum.into(),
-        UNION_DEF => HighlightTag::Union.into(),
-        TRAIT_DEF => HighlightTag::Trait.into(),
-        TYPE_ALIAS_DEF => HighlightTag::TypeAlias.into(),
-        TYPE_PARAM => HighlightTag::TypeParam.into(),
-        RECORD_FIELD_DEF => HighlightTag::Field.into(),
+    let tag = match parent.kind() {
+        STRUCT_DEF => HighlightTag::Struct,
+        ENUM_DEF => HighlightTag::Enum,
+        UNION_DEF => HighlightTag::Union,
+        TRAIT_DEF => HighlightTag::Trait,
+        TYPE_ALIAS_DEF => HighlightTag::TypeAlias,
+        TYPE_PARAM => HighlightTag::TypeParam,
+        RECORD_FIELD_DEF => HighlightTag::Field,
+        MODULE => HighlightTag::Module,
+        FN_DEF => HighlightTag::Function,
+        CONST_DEF => HighlightTag::Constant,
+        STATIC_DEF => HighlightTag::Static,
+        ENUM_VARIANT => HighlightTag::EnumVariant,
+        BIND_PAT => HighlightTag::Local,
         _ => default,
-    }
+    };
+
+    tag.into()
 }
 
 fn highlight_injection(

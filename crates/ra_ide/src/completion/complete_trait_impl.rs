@@ -49,56 +49,53 @@ use crate::{
 pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext) {
     if let Some((trigger, impl_def)) = completion_match(ctx) {
         match trigger.kind() {
-            SyntaxKind::NAME_REF => {
-                get_missing_assoc_items(&ctx.sema, &impl_def).iter().for_each(|item| match item {
+            SyntaxKind::NAME_REF => get_missing_assoc_items(&ctx.sema, &impl_def)
+                .into_iter()
+                .for_each(|item| match item {
                     hir::AssocItem::Function(fn_item) => {
-                        add_function_impl(&trigger, acc, ctx, &fn_item)
+                        add_function_impl(&trigger, acc, ctx, fn_item)
                     }
                     hir::AssocItem::TypeAlias(type_item) => {
-                        add_type_alias_impl(&trigger, acc, ctx, &type_item)
+                        add_type_alias_impl(&trigger, acc, ctx, type_item)
                     }
                     hir::AssocItem::Const(const_item) => {
-                        add_const_impl(&trigger, acc, ctx, &const_item)
+                        add_const_impl(&trigger, acc, ctx, const_item)
                     }
-                })
-            }
+                }),
 
             SyntaxKind::FN_DEF => {
-                for missing_fn in
-                    get_missing_assoc_items(&ctx.sema, &impl_def).iter().filter_map(|item| {
-                        match item {
-                            hir::AssocItem::Function(fn_item) => Some(fn_item),
-                            _ => None,
-                        }
+                for missing_fn in get_missing_assoc_items(&ctx.sema, &impl_def)
+                    .into_iter()
+                    .filter_map(|item| match item {
+                        hir::AssocItem::Function(fn_item) => Some(fn_item),
+                        _ => None,
                     })
                 {
-                    add_function_impl(&trigger, acc, ctx, &missing_fn);
+                    add_function_impl(&trigger, acc, ctx, missing_fn);
                 }
             }
 
             SyntaxKind::TYPE_ALIAS_DEF => {
-                for missing_fn in
-                    get_missing_assoc_items(&ctx.sema, &impl_def).iter().filter_map(|item| {
-                        match item {
-                            hir::AssocItem::TypeAlias(type_item) => Some(type_item),
-                            _ => None,
-                        }
+                for missing_fn in get_missing_assoc_items(&ctx.sema, &impl_def)
+                    .into_iter()
+                    .filter_map(|item| match item {
+                        hir::AssocItem::TypeAlias(type_item) => Some(type_item),
+                        _ => None,
                     })
                 {
-                    add_type_alias_impl(&trigger, acc, ctx, &missing_fn);
+                    add_type_alias_impl(&trigger, acc, ctx, missing_fn);
                 }
             }
 
             SyntaxKind::CONST_DEF => {
-                for missing_fn in
-                    get_missing_assoc_items(&ctx.sema, &impl_def).iter().filter_map(|item| {
-                        match item {
-                            hir::AssocItem::Const(const_item) => Some(const_item),
-                            _ => None,
-                        }
+                for missing_fn in get_missing_assoc_items(&ctx.sema, &impl_def)
+                    .into_iter()
+                    .filter_map(|item| match item {
+                        hir::AssocItem::Const(const_item) => Some(const_item),
+                        _ => None,
                     })
                 {
-                    add_const_impl(&trigger, acc, ctx, &missing_fn);
+                    add_const_impl(&trigger, acc, ctx, missing_fn);
                 }
             }
 
@@ -126,9 +123,9 @@ fn add_function_impl(
     fn_def_node: &SyntaxNode,
     acc: &mut Completions,
     ctx: &CompletionContext,
-    func: &hir::Function,
+    func: hir::Function,
 ) {
-    let signature = FunctionSignature::from_hir(ctx.db, *func);
+    let signature = FunctionSignature::from_hir(ctx.db, func);
 
     let fn_name = func.name(ctx.db).to_string();
 
@@ -167,7 +164,7 @@ fn add_type_alias_impl(
     type_def_node: &SyntaxNode,
     acc: &mut Completions,
     ctx: &CompletionContext,
-    type_alias: &hir::TypeAlias,
+    type_alias: hir::TypeAlias,
 ) {
     let alias_name = type_alias.name(ctx.db).to_string();
 
@@ -187,7 +184,7 @@ fn add_const_impl(
     const_def_node: &SyntaxNode,
     acc: &mut Completions,
     ctx: &CompletionContext,
-    const_: &hir::Const,
+    const_: hir::Const,
 ) {
     let const_name = const_.name(ctx.db).map(|n| n.to_string());
 

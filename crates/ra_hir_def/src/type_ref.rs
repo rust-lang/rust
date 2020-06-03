@@ -35,6 +35,22 @@ impl Mutability {
     }
 }
 
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub enum Rawness {
+    RawPtr,
+    Ref,
+}
+
+impl Rawness {
+    pub fn from_raw(is_raw: bool) -> Rawness {
+        if is_raw {
+            Rawness::RawPtr
+        } else {
+            Rawness::Ref
+        }
+    }
+}
+
 /// Compare ty::Ty
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum TypeRef {

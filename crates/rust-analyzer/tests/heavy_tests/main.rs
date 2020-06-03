@@ -59,52 +59,6 @@ use std::collections::Spam;
 }
 
 #[test]
-fn test_runnables_no_project() {
-    if skip_slow_tests() {
-        return;
-    }
-
-    let server = project(
-        r"
-//- lib.rs
-#[test]
-fn foo() {
-}
-",
-    );
-    server.wait_until_workspace_is_loaded();
-    server.request::<Runnables>(
-        RunnablesParams { text_document: server.doc_id("lib.rs"), position: None },
-        json!([
-          {
-            "args": [ "test" ],
-            "extraArgs": [ "foo", "--nocapture" ],
-            "bin": "cargo",
-            "env": { "RUST_BACKTRACE": "short" },
-            "cwd": null,
-            "label": "test foo",
-            "range": {
-              "end": { "character": 1, "line": 2 },
-              "start": { "character": 0, "line": 0 }
-            }
-          },
-          {
-            "args": ["check", "--workspace"],
-            "extraArgs": [],
-            "bin": "cargo",
-            "env": {},
-            "cwd": null,
-            "label": "cargo check --workspace",
-            "range": {
-              "end": { "character": 0, "line": 0 },
-              "start": { "character": 0, "line": 0 }
-            }
-          }
-        ]),
-    );
-}
-
-#[test]
 fn test_runnables_project() {
     if skip_slow_tests() {
         return;
@@ -138,42 +92,44 @@ fn main() {}
     server.request::<Runnables>(
         RunnablesParams { text_document: server.doc_id("foo/tests/spam.rs"), position: None },
         json!([
-            {
-              "args": [ "test", "--package", "foo", "--test", "spam" ],
-              "extraArgs": [ "test_eggs", "--exact", "--nocapture" ],
-              "bin": "cargo",
-              "env": { "RUST_BACKTRACE": "short" },
-              "label": "test test_eggs",
-              "range": {
+          {
+            "args": {
+              "cargoArgs": ["test", "--package", "foo", "--test", "spam"],
+              "executableArgs": ["test_eggs", "--exact", "--nocapture"],
+              "workspaceRoot": server.path().join("foo")
+            },
+            "kind": "cargo",
+            "label": "test test_eggs",
+            "location": {
+              "targetRange": {
                 "end": { "character": 17, "line": 1 },
                 "start": { "character": 0, "line": 0 }
               },
-              "cwd": server.path().join("foo")
-            },
-            {
-              "args": [ "check", "--package", "foo" ],
-              "extraArgs": [],
-              "bin": "cargo",
-              "env": {},
-              "label": "cargo check -p foo",
-              "range": {
-                "end": { "character": 0, "line": 0 },
-                "start": { "character": 0, "line": 0 }
+              "targetSelectionRange": {
+                "end": { "character": 12, "line": 1 },
+                "start": { "character": 3, "line": 1 }
               },
-              "cwd": server.path().join("foo")
-            },
-            {
-              "args": [ "test", "--package", "foo" ],
-              "extraArgs": [],
-              "bin": "cargo",
-              "env": {},
-              "label": "cargo test -p foo",
-              "range": {
-                "end": { "character": 0, "line": 0 },
-                "start": { "character": 0, "line": 0 }
-              },
-              "cwd": server.path().join("foo")
+              "targetUri": "file:///[..]/tests/spam.rs"
             }
+          },
+          {
+            "args": {
+              "cargoArgs": ["check", "--package", "foo"],
+              "executableArgs": [],
+              "workspaceRoot": server.path().join("foo")
+            },
+            "kind": "cargo",
+            "label": "cargo check -p foo"
+          },
+          {
+            "args": {
+              "cargoArgs": ["test", "--package", "foo"],
+              "executableArgs": [],
+              "workspaceRoot": server.path().join("foo")
+            },
+            "kind": "cargo",
+            "label": "cargo test -p foo"
+          }
         ]),
     );
 }
@@ -342,6 +298,7 @@ fn main() {}
                 }
               ]
             },
+            "kind": "quickfix",
             "title": "Create module"
         }]),
     );
@@ -374,8 +331,7 @@ fn test_missing_module_code_action_in_json_project() {
             "root_module": path.join("src/lib.rs"),
             "deps": [],
             "edition": "2015",
-            "atom_cfgs": [],
-            "key_value_cfgs": {}
+            "cfg": [ "cfg_atom_1", "feature=cfg_1"],
         } ]
     });
 
@@ -413,6 +369,7 @@ fn main() {{}}
                 }
               ]
             },
+            "kind": "quickfix",
             "title": "Create module"
         }]),
     );
@@ -473,23 +430,14 @@ fn main() {{}}
             text_document: server.doc_id("src/m0.rs"),
             position: Position { line: 0, character: 5 },
         },
-        json!({
-          "documentChanges": [
-            {
-              "edits": [
-                {
-                  "insertTextFormat": 2,
-                  "newText": "\n/// $0",
-                  "range": {
-                    "end": { "character": 5, "line": 0 },
-                    "start": { "character": 5, "line": 0 }
-                  }
-                }
-              ],
-              "textDocument": { "uri": "file:///[..]src/m0.rs", "version": null }
+        json!([{
+            "insertTextFormat": 2,
+            "newText": "\n/// $0",
+            "range": {
+            "end": { "character": 5, "line": 0 },
+            "start": { "character": 5, "line": 0 }
             }
-          ]
-        }),
+        }]),
     );
     let elapsed = start.elapsed();
     assert!(elapsed.as_millis() < 2000, "typing enter took {:?}", elapsed);
@@ -519,23 +467,14 @@ version = \"0.0.0\"
             text_document: server.doc_id("src/main.rs"),
             position: Position { line: 0, character: 8 },
         },
-        json!({
-          "documentChanges": [
-            {
-              "edits": [
-                {
-                  "insertTextFormat": 2,
-                  "newText": "\r\n/// $0",
-                  "range": {
-                    "end": { "line": 0, "character": 8 },
-                    "start": { "line": 0, "character": 8 }
-                  }
-                }
-              ],
-              "textDocument": { "uri": "file:///[..]src/main.rs", "version": null }
+        json!([{
+            "insertTextFormat": 2,
+            "newText": "\r\n/// $0",
+            "range": {
+            "end": { "line": 0, "character": 8 },
+            "start": { "line": 0, "character": 8 }
             }
-          ]
-        }),
+        }]),
     );
 }
 
@@ -774,5 +713,5 @@ pub fn foo(_input: TokenStream) -> TokenStream {
     });
 
     let value = res.get("contents").unwrap().get("value").unwrap().to_string();
-    assert_eq!(value, r#""```rust\nfoo::Bar\nfn bar()\n```""#)
+    assert_eq!(value, r#""```rust\nfoo::Bar\n```\n\n```rust\nfn bar()\n```""#)
 }
