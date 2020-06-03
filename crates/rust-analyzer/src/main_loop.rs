@@ -164,7 +164,6 @@ pub fn main_loop(ws_roots: Vec<PathBuf>, config: Config, connection: Connection)
         }
 
         WorldState::new(
-            ws_roots,
             workspaces,
             config.lru_capacity,
             &globs,
