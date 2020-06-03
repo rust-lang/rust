@@ -1161,4 +1161,19 @@ fn func(foo: i32) { if true { <|>foo; }; }
         );
         assert_impl_action(&actions[0], 6);
     }
+
+    #[test]
+    fn test_hover_enum_has_impl_action() {
+        let (_, actions) = check_hover_result(
+            "
+            //- /lib.rs
+            enum foo<|>() {
+                A,
+                B
+            }
+            ",
+            &["enum foo"],
+        );
+        assert_impl_action(&actions[0], 5);
+    }
 }
