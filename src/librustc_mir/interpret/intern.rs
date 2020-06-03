@@ -294,7 +294,6 @@ pub enum InternKind {
     Static(hir::Mutability),
     Constant,
     Promoted,
-    ConstProp,
 }
 
 /// Intern `ret` and everything it references.
@@ -315,9 +314,7 @@ pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
     let base_intern_mode = match intern_kind {
         InternKind::Static(mutbl) => InternMode::Static(mutbl),
         // FIXME: what about array lengths, array initializers?
-        InternKind::Constant | InternKind::ConstProp | InternKind::Promoted => {
-            InternMode::ConstBase
-        }
+        InternKind::Constant | InternKind::Promoted => InternMode::ConstBase,
     };
 
     // Type based interning.
@@ -359,7 +356,10 @@ pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
             Err(error) => {
                 ecx.tcx.sess.delay_span_bug(
                     ecx.tcx.span,
-                    "error during interning should later cause validation failure",
+                    &format!(
+                        "error during interning should later cause validation failure: {}",
+                        error
+                    ),
                 );
                 // Some errors shouldn't come up because creating them causes
                 // an allocation, which we should avoid. When that happens,
@@ -400,7 +400,7 @@ pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
                     // immutability is so important.
                     alloc.mutability = Mutability::Not;
                 }
-                InternKind::Constant | InternKind::ConstProp => {
+                InternKind::Constant => {
                     // If it's a constant, we should not have any "leftovers" as everything
                     // is tracked by const-checking.
                     // FIXME: downgrade this to a warning? It rejects some legitimate consts,
