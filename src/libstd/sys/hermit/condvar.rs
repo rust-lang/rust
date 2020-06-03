@@ -1,10 +1,10 @@
+use crate::ptr;
 use crate::cmp;
 use crate::ffi::c_void;
 use crate::mem;
 use crate::sync::atomic::{AtomicUsize, Ordering::SeqCst};
 use crate::sys::hermit::abi;
 use crate::sys::mutex::Mutex;
-use crate::ptr;
 use crate::time::Duration;
 
 // The implementation is inspired by Andrew D. Birrell's paper
@@ -21,11 +21,7 @@ unsafe impl Sync for Condvar {}
 
 impl Condvar {
     pub const fn new() -> Condvar {
-        Condvar {
-            counter: AtomicUsize::new(0),
-            sem1: ptr::null(),
-            sem2: ptr::null(),
-        }
+        Condvar { counter: AtomicUsize::new(0), sem1: ptr::null(), sem2: ptr::null() }
     }
 
     pub unsafe fn init(&mut self) {
