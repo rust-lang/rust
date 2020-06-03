@@ -273,8 +273,8 @@ impl Request for HoverRequest {
 pub struct Hover {
     #[serde(flatten)]
     pub hover: lsp_types::Hover,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub actions: Option<Vec<CommandLinkGroup>>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub actions: Vec<CommandLinkGroup>,
 }
 
 #[derive(Debug, PartialEq, Clone, Default, Deserialize, Serialize)]

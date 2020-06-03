@@ -555,7 +555,7 @@ pub fn handle_hover(
             }),
             range: Some(range),
         },
-        actions: Some(prepare_hover_actions(&snap, info.info.actions())),
+        actions: prepare_hover_actions(&snap, info.info.actions()),
     };
 
     Ok(Some(hover))
@@ -1170,10 +1170,7 @@ fn show_references_command(
 }
 
 fn to_command_link(command: Command, tooltip: String) -> lsp_ext::CommandLink {
-    lsp_ext::CommandLink {
-        tooltip: Some(tooltip),
-        command,
-    }
+    lsp_ext::CommandLink { tooltip: Some(tooltip), command }
 }
 
 fn show_impl_command_link(
