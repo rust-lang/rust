@@ -327,7 +327,7 @@ benchmarks on a compiler with your changes. The numbers are reported
 [here][perf], and you can see a comparison of your changes against the latest
 master.
 
-[perf]: https://perf.rust-lang.org/dashboard.html
+[perf]: https://perf.rust-lang.org
 
 ## Other Resources
 
