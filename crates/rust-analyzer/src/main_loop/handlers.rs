@@ -756,9 +756,13 @@ pub fn handle_code_action(
     handle_fixes(&world, &params, &mut res)?;
 
     if world.config.client_caps.resolve_code_action {
-        for assist in world.analysis().unresolved_assists(&world.config.assist, frange)?.into_iter()
+        for (index, assist) in world
+            .analysis()
+            .unresolved_assists(&world.config.assist, frange)?
+            .into_iter()
+            .enumerate()
         {
-            res.push(to_proto::unresolved_code_action(&world, assist)?);
+            res.push(to_proto::unresolved_code_action(&world, assist, index)?);
         }
     } else {
         for assist in world.analysis().resolved_assists(&world.config.assist, frange)?.into_iter() {
@@ -773,24 +777,19 @@ pub fn handle_resolve_code_action(
     world: WorldSnapshot,
     params: lsp_ext::ResolveCodeActionParams,
 ) -> Result<Option<lsp_ext::SnippetWorkspaceEdit>> {
-    if !world.config.client_caps.resolve_code_action {
-        return Ok(None);
-    }
-
     let _p = profile("handle_resolve_code_action");
     let file_id = from_proto::file_id(&world, &params.code_action_params.text_document.uri)?;
     let line_index = world.analysis().file_line_index(file_id)?;
     let range = from_proto::text_range(&line_index, params.code_action_params.range);
     let frange = FileRange { file_id, range };
-    let mut res: Vec<lsp_ext::CodeAction> = Vec::new();
 
-    for assist in world.analysis().resolved_assists(&world.config.assist, frange)?.into_iter() {
-        res.push(to_proto::resolved_code_action(&world, assist)?);
-    }
-    Ok(res
-        .into_iter()
-        .find(|action| action.id.clone().unwrap() == params.id && action.title == params.label)
-        .and_then(|action| action.edit))
+    let assists = world.analysis().resolved_assists(&world.config.assist, frange)?;
+    let id_components = params.id.split(":").collect::<Vec<&str>>();
+    let index = id_components.last().unwrap().parse::<usize>().unwrap();
+    let id_string = id_components.first().unwrap();
+    let assist = &assists[index];
+    assert!(assist.assist.id.0 == *id_string);
+    Ok(to_proto::resolved_code_action(&world, assist.clone())?.edit)
 }
 
 pub fn handle_code_lens(

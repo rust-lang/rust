@@ -622,17 +622,12 @@ fn main() <fold>{
 pub(crate) fn unresolved_code_action(
     world: &WorldSnapshot,
     assist: Assist,
+    index: usize,
 ) -> Result<lsp_ext::CodeAction> {
     let res = lsp_ext::CodeAction {
         title: assist.label,
-        id: Some(assist.id.0.to_owned()),
-        group: assist.group.and_then(|it| {
-            if world.config.client_caps.code_action_group {
-                None
-            } else {
-                Some(it.0)
-            }
-        }),
+        id: Some(format!("{}:{}", assist.id.0.to_owned(), index.to_string())),
+        group: assist.group.filter(|_| world.config.client_caps.code_action_group).map(|gr| gr.0),
         kind: Some(String::new()),
         edit: None,
         command: None,
@@ -644,21 +639,14 @@ pub(crate) fn resolved_code_action(
     world: &WorldSnapshot,
     assist: ResolvedAssist,
 ) -> Result<lsp_ext::CodeAction> {
-    let res = lsp_ext::CodeAction {
-        title: assist.assist.label,
-        id: Some(assist.assist.id.0.to_owned()),
-        group: assist.assist.group.and_then(|it| {
-            if world.config.client_caps.code_action_group {
-                None
-            } else {
-                Some(it.0)
-            }
-        }),
-        kind: Some(String::new()),
-        edit: Some(snippet_workspace_edit(world, assist.source_change)?),
-        command: None,
-    };
-    Ok(res)
+    let change = assist.source_change;
+    unresolved_code_action(world, assist.assist, 0).and_then(|it| {
+        Ok(lsp_ext::CodeAction {
+            id: None,
+            edit: Some(snippet_workspace_edit(world, change)?),
+            ..it
+        })
+    })
 }
 
 pub(crate) fn runnable(

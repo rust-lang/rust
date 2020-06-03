@@ -111,7 +111,6 @@ impl Request for ResolveCodeActionRequest {
 pub struct ResolveCodeActionParams {
     pub code_action_params: lsp_types::CodeActionParams,
     pub id: String,
-    pub label: String,
 }
 
 pub enum OnEnter {}

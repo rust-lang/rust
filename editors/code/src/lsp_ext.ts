@@ -35,7 +35,6 @@ export const parentModule = new lc.RequestType<lc.TextDocumentPositionParams, lc
 
 export interface ResolveCodeActionParams {
     id: string;
-    label: string;
     codeActionParams: lc.CodeActionParams;
 }
 export const resolveCodeAction = new lc.RequestType<ResolveCodeActionParams, lc.WorkspaceEdit, unknown>('experimental/resolveCodeAction');

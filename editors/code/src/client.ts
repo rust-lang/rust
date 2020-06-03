@@ -61,8 +61,6 @@ export function createClient(serverPath: string, cwd: string): lc.LanguageClient
                         const id = (item as any).id;
                         const resolveParams: ra.ResolveCodeActionParams = {
                             id: id,
-                            // TODO: delete after discussions if needed
-                            label: item.title,
                             codeActionParams: params
                         };
                         action.command = {
