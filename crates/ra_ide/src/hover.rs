@@ -14,7 +14,7 @@ use ra_syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, TokenAtOffs
 
 use crate::{
     display::{macro_label, rust_code_markup, rust_code_markup_with_doc, ShortLabel, ToNav},
-    FilePosition, RangeInfo, NavigationTarget,
+    FilePosition, NavigationTarget, RangeInfo,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -308,7 +308,7 @@ mod tests {
 
     fn assert_impl_action(action: &HoverAction, position: u32) {
         let offset = match action {
-            HoverAction::Implementaion(pos) => pos.offset
+            HoverAction::Implementaion(pos) => pos.offset,
         };
         assert_eq!(offset, position.into());
     }
@@ -1161,5 +1161,4 @@ fn func(foo: i32) { if true { <|>foo; }; }
         );
         assert_impl_action(&actions[0], 6);
     }
-
 }

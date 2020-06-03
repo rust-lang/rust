@@ -11,7 +11,7 @@ use std::{ffi::OsString, path::PathBuf};
 
 use lsp_types::ClientCapabilities;
 use ra_flycheck::FlycheckConfig;
-use ra_ide::{AssistConfig, CompletionConfig, InlayHintsConfig, HoverConfig};
+use ra_ide::{AssistConfig, CompletionConfig, HoverConfig, InlayHintsConfig};
 use ra_project_model::{CargoConfig, JsonProject, ProjectManifest};
 use serde::Deserialize;
 
@@ -342,7 +342,8 @@ impl Config {
 
         self.assist.allow_snippets(false);
         if let Some(experimental) = &caps.experimental {
-            let get_bool = |index: &str| experimental.get(index).and_then(|it| it.as_bool()) == Some(true);
+            let get_bool =
+                |index: &str| experimental.get(index).and_then(|it| it.as_bool()) == Some(true);
 
             let snippet_text_edit = get_bool("snippetTextEdit");
             self.assist.allow_snippets(snippet_text_edit);
