@@ -28,7 +28,7 @@ use lsp_types::{
 use ra_flycheck::{CheckTask, Status};
 use ra_ide::{Canceled, FileId, LibraryData, LineIndex, SourceRootId};
 use ra_prof::profile;
-use ra_project_model::{PackageRoot, ProjectWorkspace};
+use ra_project_model::{PackageRoot, ProjectRoot, ProjectWorkspace};
 use ra_vfs::{VfsFile, VfsTask, Watch};
 use relative_path::RelativePathBuf;
 use rustc_hash::FxHashSet;
@@ -96,11 +96,7 @@ pub fn main_loop(ws_roots: Vec<PathBuf>, config: Config, connection: Connection)
     let mut global_state = {
         let workspaces = {
             // FIXME: support dynamic workspace loading.
-            let project_roots: FxHashSet<_> = ws_roots
-                .iter()
-                .filter_map(|it| ra_project_model::ProjectRoot::discover(it).ok())
-                .flatten()
-                .collect();
+            let project_roots = ProjectRoot::discover_all(&ws_roots);
 
             if project_roots.is_empty() && config.notifications.cargo_toml_not_found {
                 show_message(

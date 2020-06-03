@@ -14,7 +14,7 @@ use std::{
 use anyhow::{bail, Context, Result};
 use ra_cfg::CfgOptions;
 use ra_db::{CrateGraph, CrateName, Edition, Env, ExternSource, ExternSourceId, FileId};
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use serde_json::from_reader;
 
 pub use crate::{
@@ -57,7 +57,7 @@ impl PackageRoot {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub enum ProjectRoot {
     ProjectJson(PathBuf),
     CargoToml(PathBuf),
@@ -127,6 +127,18 @@ impl ProjectRoot {
                 .filter(|it| it.exists())
                 .collect()
         }
+    }
+
+    pub fn discover_all(paths: &[impl AsRef<Path>]) -> Vec<ProjectRoot> {
+        let mut res = paths
+            .iter()
+            .filter_map(|it| ProjectRoot::discover(it.as_ref()).ok())
+            .flatten()
+            .collect::<FxHashSet<_>>()
+            .into_iter()
+            .collect::<Vec<_>>();
+        res.sort();
+        res
     }
 }
 
