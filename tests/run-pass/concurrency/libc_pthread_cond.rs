@@ -25,6 +25,8 @@ fn test_timed_wait_timeout(clock_id: i32) {
 
         let mut now: libc::timespec = mem::zeroed();
         assert_eq!(libc::clock_gettime(clock_id, &mut now), 0);
+        // Waiting for a second... mostly because waiting less requires mich more tricky arithmetic.
+        // FIXME: wait less.
         let timeout = libc::timespec { tv_sec: now.tv_sec + 1, tv_nsec: now.tv_nsec };
 
         assert_eq!(libc::pthread_mutex_lock(&mut mutex as *mut _), 0);
