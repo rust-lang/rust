@@ -348,9 +348,11 @@ impl<T> Vec<T> {
     /// for i in 0..10 {
     ///     vec.push(i);
     /// }
+    /// assert_eq!(vec.capacity(), 10);
     ///
     /// // ...but this may make the vector reallocate
     /// vec.push(11);
+    /// assert!(vec.capacity() >= 11);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
