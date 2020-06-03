@@ -315,6 +315,21 @@ impl<'a> Linker for GccLinker<'a> {
                 self.build_dylib(out_filename);
             }
         }
+        // VxWorks compiler driver introduced `--static-crt` flag specifically for rustc,
+        // it switches linking for libc and similar system libraries to static without using
+        // any `#[link]` attributes in the `libc` crate, see #72782 for details.
+        // FIXME: Switch to using `#[link]` attributes in the `libc` crate
+        // similarly to other targets.
+        if self.sess.target.target.target_os == "vxworks"
+            && matches!(
+                output_kind,
+                LinkOutputKind::StaticNoPicExe
+                    | LinkOutputKind::StaticPicExe
+                    | LinkOutputKind::StaticDylib
+            )
+        {
+            self.cmd.arg("--static-crt");
+        }
     }
 
     fn link_dylib(&mut self, lib: Symbol) {

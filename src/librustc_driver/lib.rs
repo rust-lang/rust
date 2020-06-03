@@ -346,12 +346,15 @@ pub fn run_compiler(
 
             queries.global_ctxt()?;
 
+            // Drop AST after creating GlobalCtxt to free memory
+            let _timer = sess.prof.generic_activity("drop_ast");
+            mem::drop(queries.expansion()?.take());
+
             if sess.opts.debugging_opts.no_analysis || sess.opts.debugging_opts.ast_json {
                 return early_exit();
             }
 
             if sess.opts.debugging_opts.save_analysis {
-                let expanded_crate = &queries.expansion()?.peek().0;
                 let crate_name = queries.crate_name()?.peek().clone();
                 queries.global_ctxt()?.peek_mut().enter(|tcx| {
                     let result = tcx.analysis(LOCAL_CRATE);
@@ -359,7 +362,6 @@ pub fn run_compiler(
                     sess.time("save_analysis", || {
                         save::process_crate(
                             tcx,
-                            &expanded_crate,
                             &crate_name,
                             &compiler.input(),
                             None,
@@ -371,23 +373,13 @@ pub fn run_compiler(
                     });
 
                     result
-                    // AST will be dropped *after* the `after_analysis` callback
-                    // (needed by the RLS)
                 })?;
-            } else {
-                // Drop AST after creating GlobalCtxt to free memory
-                let _timer = sess.prof.generic_activity("drop_ast");
-                mem::drop(queries.expansion()?.take());
             }
 
             queries.global_ctxt()?.peek_mut().enter(|tcx| tcx.analysis(LOCAL_CRATE))?;
 
             if callbacks.after_analysis(compiler, queries) == Compilation::Stop {
                 return early_exit();
-            }
-
-            if sess.opts.debugging_opts.save_analysis {
-                mem::drop(queries.expansion()?.take());
             }
 
             queries.ongoing_codegen()?;
