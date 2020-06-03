@@ -58,24 +58,24 @@ impl PackageRoot {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
-pub enum ProjectRoot {
+pub enum ProjectManifest {
     ProjectJson(PathBuf),
     CargoToml(PathBuf),
 }
 
-impl ProjectRoot {
-    pub fn from_manifest_file(path: PathBuf) -> Result<ProjectRoot> {
+impl ProjectManifest {
+    pub fn from_manifest_file(path: PathBuf) -> Result<ProjectManifest> {
         if path.ends_with("rust-project.json") {
-            return Ok(ProjectRoot::ProjectJson(path));
+            return Ok(ProjectManifest::ProjectJson(path));
         }
         if path.ends_with("Cargo.toml") {
-            return Ok(ProjectRoot::CargoToml(path));
+            return Ok(ProjectManifest::CargoToml(path));
         }
         bail!("project root must point to Cargo.toml or rust-project.json: {}", path.display())
     }
 
-    pub fn discover_single(path: &Path) -> Result<ProjectRoot> {
-        let mut candidates = ProjectRoot::discover(path)?;
+    pub fn discover_single(path: &Path) -> Result<ProjectManifest> {
+        let mut candidates = ProjectManifest::discover(path)?;
         let res = match candidates.pop() {
             None => bail!("no projects"),
             Some(it) => it,
@@ -87,12 +87,12 @@ impl ProjectRoot {
         Ok(res)
     }
 
-    pub fn discover(path: &Path) -> io::Result<Vec<ProjectRoot>> {
+    pub fn discover(path: &Path) -> io::Result<Vec<ProjectManifest>> {
         if let Some(project_json) = find_in_parent_dirs(path, "rust-project.json") {
-            return Ok(vec![ProjectRoot::ProjectJson(project_json)]);
+            return Ok(vec![ProjectManifest::ProjectJson(project_json)]);
         }
         return find_cargo_toml(path)
-            .map(|paths| paths.into_iter().map(ProjectRoot::CargoToml).collect());
+            .map(|paths| paths.into_iter().map(ProjectManifest::CargoToml).collect());
 
         fn find_cargo_toml(path: &Path) -> io::Result<Vec<PathBuf>> {
             match find_in_parent_dirs(path, "Cargo.toml") {
@@ -129,10 +129,10 @@ impl ProjectRoot {
         }
     }
 
-    pub fn discover_all(paths: &[impl AsRef<Path>]) -> Vec<ProjectRoot> {
+    pub fn discover_all(paths: &[impl AsRef<Path>]) -> Vec<ProjectManifest> {
         let mut res = paths
             .iter()
-            .filter_map(|it| ProjectRoot::discover(it.as_ref()).ok())
+            .filter_map(|it| ProjectManifest::discover(it.as_ref()).ok())
             .flatten()
             .collect::<FxHashSet<_>>()
             .into_iter()
@@ -144,12 +144,12 @@ impl ProjectRoot {
 
 impl ProjectWorkspace {
     pub fn load(
-        root: ProjectRoot,
+        root: ProjectManifest,
         cargo_features: &CargoConfig,
         with_sysroot: bool,
     ) -> Result<ProjectWorkspace> {
         let res = match root {
-            ProjectRoot::ProjectJson(project_json) => {
+            ProjectManifest::ProjectJson(project_json) => {
                 let file = File::open(&project_json).with_context(|| {
                     format!("Failed to open json file {}", project_json.display())
                 })?;
@@ -160,7 +160,7 @@ impl ProjectWorkspace {
                     })?,
                 }
             }
-            ProjectRoot::CargoToml(cargo_toml) => {
+            ProjectManifest::CargoToml(cargo_toml) => {
                 let cargo = CargoWorkspace::from_cargo_metadata(&cargo_toml, cargo_features)
                     .with_context(|| {
                         format!(
