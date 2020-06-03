@@ -29,7 +29,7 @@ expression: diag
                 },
             },
             severity: Some(
-                Warning,
+                Hint,
             ),
             code: Some(
                 String(
