@@ -50,6 +50,7 @@ expression: diag
         fixes: [
             CodeAction {
                 title: "consider prefixing with an underscore",
+                id: None,
                 group: None,
                 kind: Some(
                     "quickfix",

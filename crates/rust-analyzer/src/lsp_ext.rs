@@ -97,6 +97,22 @@ pub struct JoinLinesParams {
     pub ranges: Vec<Range>,
 }
 
+pub enum ResolveCodeActionRequest {}
+
+impl Request for ResolveCodeActionRequest {
+    type Params = ResolveCodeActionParams;
+    type Result = Option<SnippetWorkspaceEdit>;
+    const METHOD: &'static str = "experimental/resolveCodeAction";
+}
+
+/// Params for the ResolveCodeActionRequest
+#[derive(Debug, Eq, PartialEq, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ResolveCodeActionParams {
+    pub code_action_params: lsp_types::CodeActionParams,
+    pub id: String,
+}
+
 pub enum OnEnter {}
 
 impl Request for OnEnter {
@@ -201,6 +217,8 @@ impl Request for CodeActionRequest {
 #[derive(Debug, PartialEq, Clone, Default, Deserialize, Serialize)]
 pub struct CodeAction {
     pub title: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub group: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]

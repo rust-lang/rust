@@ -65,6 +65,7 @@ expression: diag
         fixes: [
             CodeAction {
                 title: "return the expression directly",
+                id: None,
                 group: None,
                 kind: Some(
                     "quickfix",

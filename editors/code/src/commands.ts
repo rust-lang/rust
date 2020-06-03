@@ -343,10 +343,25 @@ export function showReferences(ctx: Ctx): Cmd {
 }
 
 export function applyActionGroup(_ctx: Ctx): Cmd {
-    return async (actions: { label: string; edit: vscode.WorkspaceEdit }[]) => {
+    return async (actions: { label: string; arguments: ra.ResolveCodeActionParams }[]) => {
         const selectedAction = await vscode.window.showQuickPick(actions);
         if (!selectedAction) return;
-        await applySnippetWorkspaceEdit(selectedAction.edit);
+        vscode.commands.executeCommand(
+            'rust-analyzer.resolveCodeAction',
+            selectedAction.arguments,
+        );
+    };
+}
+
+export function resolveCodeAction(ctx: Ctx): Cmd {
+    const client = ctx.client;
+    return async (params: ra.ResolveCodeActionParams) => {
+        const item: lc.WorkspaceEdit = await client.sendRequest(ra.resolveCodeAction, params);
+        if (!item) {
+            return;
+        }
+        const edit = client.protocol2CodeConverter.asWorkspaceEdit(item);
+        await applySnippetWorkspaceEdit(edit);
     };
 }
 

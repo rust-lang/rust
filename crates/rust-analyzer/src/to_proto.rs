@@ -3,8 +3,8 @@ use ra_db::{FileId, FileRange};
 use ra_ide::{
     Assist, CompletionItem, CompletionItemKind, Documentation, FileSystemEdit, Fold, FoldKind,
     FunctionSignature, Highlight, HighlightModifier, HighlightTag, HighlightedRange, Indel,
-    InlayHint, InlayKind, InsertTextFormat, LineIndex, NavigationTarget, ReferenceAccess, Runnable,
-    RunnableKind, Severity, SourceChange, SourceFileEdit, TextEdit,
+    InlayHint, InlayKind, InsertTextFormat, LineIndex, NavigationTarget, ReferenceAccess,
+    ResolvedAssist, Runnable, RunnableKind, Severity, SourceChange, SourceFileEdit, TextEdit,
 };
 use ra_syntax::{SyntaxKind, TextRange, TextSize};
 use ra_vfs::LineEndings;
@@ -623,18 +623,34 @@ fn main() <fold>{
     }
 }
 
-pub(crate) fn code_action(
+pub(crate) fn unresolved_code_action(
     snap: &GlobalStateSnapshot,
     assist: Assist,
+    index: usize,
 ) -> Result<lsp_ext::CodeAction> {
     let res = lsp_ext::CodeAction {
         title: assist.label,
-        group: if snap.config.client_caps.code_action_group { assist.group_label } else { None },
+        id: Some(format!("{}:{}", assist.id.0.to_owned(), index.to_string())),
+        group: assist.group.filter(|_| snap.config.client_caps.code_action_group).map(|gr| gr.0),
         kind: Some(String::new()),
-        edit: Some(snippet_workspace_edit(snap, assist.source_change)?),
+        edit: None,
         command: None,
     };
     Ok(res)
+}
+
+pub(crate) fn resolved_code_action(
+    snap: &GlobalStateSnapshot,
+    assist: ResolvedAssist,
+) -> Result<lsp_ext::CodeAction> {
+    let change = assist.source_change;
+    unresolved_code_action(snap, assist.assist, 0).and_then(|it| {
+        Ok(lsp_ext::CodeAction {
+            id: None,
+            edit: Some(snippet_workspace_edit(snap, change)?),
+            ..it
+        })
+    })
 }
 
 pub(crate) fn runnable(

@@ -97,6 +97,30 @@ Invoking code action at this position will yield two code actions for importing 
 * Is a fixed two-level structure enough?
 * Should we devise a general way to encode custom interaction protocols for GUI refactorings?
 
+## Lazy assists with `ResolveCodeAction`
+
+**Issue:** https://github.com/microsoft/language-server-protocol/issues/787
+
+**Client Capability** `{ "resolveCodeAction": boolean }`
+
+If this capability is set, the assists will be computed lazily. Thus `CodeAction` returned from the server will only contain `id` but not `edit` or `command` fields. The only exclusion from the rule is the diagnostic edits.
+
+After the client got the id, it should then call `experimental/resolveCodeAction` command on the server and provide the following payload:
+
+```typescript
+interface ResolveCodeActionParams {
+    id: string;
+    codeActionParams: lc.CodeActionParams;
+}
+```
+
+As a result of the command call the client will get the respective workspace edit (`lc.WorkspaceEdit`).
+
+### Unresolved Questions
+
+* Apply smarter filtering for ids?
+* Upon `resolveCodeAction` command only call the assits which should be resolved and not all of them?
+
 ## Parent Module
 
 **Issue:** https://github.com/microsoft/language-server-protocol/issues/1002

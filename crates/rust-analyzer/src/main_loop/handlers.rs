@@ -25,7 +25,7 @@ use ra_project_model::TargetKind;
 use ra_syntax::{AstNode, SyntaxKind, TextRange, TextSize};
 use serde::{Deserialize, Serialize};
 use serde_json::to_value;
-use stdx::format_to;
+use stdx::{format_to, split1};
 
 use crate::{
     cargo_target_spec::CargoTargetSpec,
@@ -701,6 +701,45 @@ pub fn handle_formatting(
     }]))
 }
 
+fn handle_fixes(
+    snap: &GlobalStateSnapshot,
+    params: &lsp_types::CodeActionParams,
+    res: &mut Vec<lsp_ext::CodeAction>,
+) -> Result<()> {
+    let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
+    let line_index = snap.analysis().file_line_index(file_id)?;
+    let range = from_proto::text_range(&line_index, params.range);
+    let diagnostics = snap.analysis().diagnostics(file_id)?;
+
+    let fixes_from_diagnostics = diagnostics
+        .into_iter()
+        .filter_map(|d| Some((d.range, d.fix?)))
+        .filter(|(diag_range, _fix)| diag_range.intersect(range).is_some())
+        .map(|(_range, fix)| fix);
+    for fix in fixes_from_diagnostics {
+        let title = fix.label;
+        let edit = to_proto::snippet_workspace_edit(&snap, fix.source_change)?;
+        let action = lsp_ext::CodeAction {
+            title,
+            id: None,
+            group: None,
+            kind: Some(lsp_types::code_action_kind::QUICKFIX.into()),
+            edit: Some(edit),
+            command: None,
+        };
+        res.push(action);
+    }
+
+    for fix in snap.check_fixes.get(&file_id).into_iter().flatten() {
+        let fix_range = from_proto::text_range(&line_index, fix.range);
+        if fix_range.intersect(range).is_none() {
+            continue;
+        }
+        res.push(fix.action.clone());
+    }
+    Ok(())
+}
+
 pub fn handle_code_action(
     snap: GlobalStateSnapshot,
     params: lsp_types::CodeActionParams,
@@ -717,41 +756,41 @@ pub fn handle_code_action(
     let line_index = snap.analysis().file_line_index(file_id)?;
     let range = from_proto::text_range(&line_index, params.range);
     let frange = FileRange { file_id, range };
-
-    let diagnostics = snap.analysis().diagnostics(file_id)?;
     let mut res: Vec<lsp_ext::CodeAction> = Vec::new();
 
-    let fixes_from_diagnostics = diagnostics
-        .into_iter()
-        .filter_map(|d| Some((d.range, d.fix?)))
-        .filter(|(diag_range, _fix)| diag_range.intersect(range).is_some())
-        .map(|(_range, fix)| fix);
+    handle_fixes(&snap, &params, &mut res)?;
 
-    for fix in fixes_from_diagnostics {
-        let title = fix.label;
-        let edit = to_proto::snippet_workspace_edit(&snap, fix.source_change)?;
-        let action = lsp_ext::CodeAction {
-            title,
-            group: None,
-            kind: Some(lsp_types::code_action_kind::QUICKFIX.into()),
-            edit: Some(edit),
-            command: None,
-        };
-        res.push(action);
-    }
-
-    for fix in snap.check_fixes.get(&file_id).into_iter().flatten() {
-        let fix_range = from_proto::text_range(&line_index, fix.range);
-        if fix_range.intersect(range).is_none() {
-            continue;
+    if snap.config.client_caps.resolve_code_action {
+        for (index, assist) in
+            snap.analysis().unresolved_assists(&snap.config.assist, frange)?.into_iter().enumerate()
+        {
+            res.push(to_proto::unresolved_code_action(&snap, assist, index)?);
         }
-        res.push(fix.action.clone());
+    } else {
+        for assist in snap.analysis().resolved_assists(&snap.config.assist, frange)?.into_iter() {
+            res.push(to_proto::resolved_code_action(&snap, assist)?);
+        }
     }
 
-    for assist in snap.analysis().assists(&snap.config.assist, frange)?.into_iter() {
-        res.push(to_proto::code_action(&snap, assist)?.into());
-    }
     Ok(Some(res))
+}
+
+pub fn handle_resolve_code_action(
+    snap: GlobalStateSnapshot,
+    params: lsp_ext::ResolveCodeActionParams,
+) -> Result<Option<lsp_ext::SnippetWorkspaceEdit>> {
+    let _p = profile("handle_resolve_code_action");
+    let file_id = from_proto::file_id(&snap, &params.code_action_params.text_document.uri)?;
+    let line_index = snap.analysis().file_line_index(file_id)?;
+    let range = from_proto::text_range(&line_index, params.code_action_params.range);
+    let frange = FileRange { file_id, range };
+
+    let assists = snap.analysis().resolved_assists(&snap.config.assist, frange)?;
+    let (id_string, index) = split1(&params.id, ':').unwrap();
+    let index = index.parse::<usize>().unwrap();
+    let assist = &assists[index];
+    assert!(assist.assist.id.0 == id_string);
+    Ok(to_proto::resolved_code_action(&snap, assist.clone())?.edit)
 }
 
 pub fn handle_code_lens(
