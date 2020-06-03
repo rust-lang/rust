@@ -30,7 +30,7 @@ https://rust-lang.zulipchat.com/#narrow/stream/185405-t-compiler.2Fwg-rls-2.2E0
 
 * [good-first-issue](https://github.com/rust-analyzer/rust-analyzer/labels/good%20first%20issue)
   are good issues to get into the project.
-* [E-mentor](https://github.com/rust-analyzer/rust-analyzer/issues?q=is%3Aopen+is%3Aissue+label%3AE-mentor)
+* [E-has-instructions](https://github.com/rust-analyzer/rust-analyzer/issues?q=is%3Aopen+is%3Aissue+label%3AE-has-instructions)
   issues have links to the code in question and tests.
 * [E-easy](https://github.com/rust-analyzer/rust-analyzer/issues?q=is%3Aopen+is%3Aissue+label%3AE-easy),
   [E-medium](https://github.com/rust-analyzer/rust-analyzer/issues?q=is%3Aopen+is%3Aissue+label%3AE-medium),
@@ -116,6 +116,109 @@ feel even more sad. I don't have a specific workflow for this case.
 Additionally, I use `cargo run --release -p rust-analyzer -- analysis-stats
 path/to/some/rust/crate` to run a batch analysis. This is primarily useful for
 performance optimizations, or for bug minimization.
+
+# Code Style & Review Process
+
+Our approach to "clean code" is two fold:
+
+* We generally don't block PRs on style changes.
+* At the same time, all code in rust-analyzer is constantly refactored.
+
+It is explicitly OK for reviewer to flag only some nits in the PR, and than send a follow up cleanup PR for things which are easier to explain by example, cc-ing the original author.
+Sending small cleanup PRs (like rename a single local variable) is encouraged.
+
+## Scale of Changes
+
+Everyone knows that it's better to send small & focused pull requests.
+The problem is, sometimes you *have* to, eg, rewrite the whole compiler, and that just doesn't fit into a set of isolated PRs.
+
+The main thing too keep an eye on is the boundaries between various components.
+There are three kinds of changes:
+
+1. Internals of a single component are changed.
+   Specifically, you don't change any `pub` items.
+   A good example here would be an addition of a new assist.
+
+2. API of a component is expanded.
+   Specifically, you add a new `pub` function which wasn't there before.
+   A good example here would be expansion of assist API, for example, to implement lazy assists or assists groups.
+
+3. A new dependency between components is introduced.
+   Specifically, you add a `pub use` reexport from another crate or you add a new line to `[dependencies]` section of `Cargo.toml`.
+   A good example here would be adding reference search capability to the assists crates.
+
+For the first group, the change is generally merged as long as:
+
+* it works for the happy case,
+* it has tests,
+* it doesn't panic for unhappy case.
+
+For the second group, the change would be subjected to quite a bit of scrutiny and iteration.
+The new API needs to be right (or at least easy to change later).
+The actual implementation doesn't matter that much.
+It's very important to minimize the amount of changed lines of code for changes of the second kind.
+Often, you start doing change of the first kind, only to realise that you need to elevate to a change of the second kind.
+In this case, we'll probably ask you to split API changes into a separate PR.
+
+Changes of the third group should be pretty rare, so we don't specify any specific process for them.
+That said, adding an innocent-looking `pub use` is a very simple way to break encapsulation, keep an eye on it!
+
+Note: if you enjoyed this abstract hand-waving about boundaries, you might appreciate
+https://www.tedinski.com/2018/02/06/system-boundaries.html
+
+## Order of Imports
+
+We separate import groups with blank lines
+
+```
+mod x;
+mod y;
+
+use std::{ ... }
+
+use crate_foo::{ ... }
+use crate_bar::{ ... }
+
+use crate::{}
+
+use super::{} // but prefer `use crate::`
+```
+
+## Order of Items
+
+Optimize for the reader who sees the file for the first time, and wants to get the general idea about what's going on.
+People read things from top to bottom, so place most important things first.
+
+Specifically, if all items except one are private, always put the non-private item on top.
+
+Put `struct`s and `enum`s first, functions and impls last.
+
+Do
+
+```
+// Good
+struct Foo {
+  bars: Vec<Bar>
+}
+
+struct Bar;
+```
+
+rather than
+
+```
+// Not as good
+struct Bar;
+
+struct Foo {
+  bars: Vec<Bar>
+}
+```
+
+## Documentation
+
+For `.md` and `.adoc` files, prefer a sentence-per-line format, don't wrap lines.
+If the line is too long, you want to split the sentence in two :-)
 
 # Logging
 
