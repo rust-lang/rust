@@ -40,7 +40,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                     let mut err = struct_span_err!(
                         self.tcx().sess,
                         sp,
-                        E0758,
+                        E0759,
                         "cannot infer an appropriate lifetime"
                     );
                     err.span_label(

@@ -1,4 +1,4 @@
-error[E0758]: cannot infer an appropriate lifetime
+error[E0759]: cannot infer an appropriate lifetime
   --> $DIR/must_outlive_least_region_or_bound.rs:3:35
    |
 LL | fn elided(x: &i32) -> impl Copy { x }
@@ -16,7 +16,7 @@ help: to declare that the `impl Trait` captures data from argument `x`, you can 
 LL | fn elided(x: &i32) -> impl Copy + '_ { x }
    |                                 ^^^^
 
-error[E0758]: cannot infer an appropriate lifetime
+error[E0759]: cannot infer an appropriate lifetime
   --> $DIR/must_outlive_least_region_or_bound.rs:6:44
    |
 LL | fn explicit<'a>(x: &'a i32) -> impl Copy { x }
@@ -34,7 +34,7 @@ help: to declare that the `impl Trait` captures data from argument `x`, you can 
 LL | fn explicit<'a>(x: &'a i32) -> impl Copy + 'a { x }
    |                                          ^^^^
 
-error[E0758]: cannot infer an appropriate lifetime
+error[E0759]: cannot infer an appropriate lifetime
   --> $DIR/must_outlive_least_region_or_bound.rs:9:46
    |
 LL | fn elided2(x: &i32) -> impl Copy + 'static { x }
@@ -56,7 +56,7 @@ help: alternatively, add an explicit `'static` bound to this reference
 LL | fn elided2(x: &'static i32) -> impl Copy + 'static { x }
    |               ^^^^^^^^^^^^
 
-error[E0758]: cannot infer an appropriate lifetime
+error[E0759]: cannot infer an appropriate lifetime
   --> $DIR/must_outlive_least_region_or_bound.rs:12:55
    |
 LL | fn explicit2<'a>(x: &'a i32) -> impl Copy + 'static { x }
@@ -86,7 +86,7 @@ LL | fn foo<'a>(x: &i32) -> impl Copy + 'a { x }
    |               |
    |               help: add explicit lifetime `'a` to the type of `x`: `&'a i32`
 
-error[E0758]: cannot infer an appropriate lifetime
+error[E0759]: cannot infer an appropriate lifetime
   --> $DIR/must_outlive_least_region_or_bound.rs:33:69
    |
 LL | fn with_bound<'a>(x: &'a i32) -> impl LifetimeTrait<'a> + 'static { x }
@@ -123,7 +123,7 @@ LL | fn ty_param_wont_outlive_static<T:Debug>(x: T) -> impl Debug + 'static {
    |                                 |
    |                                 help: consider adding an explicit lifetime bound...: `T: 'static +`
 
-error[E0758]: cannot infer an appropriate lifetime
+error[E0759]: cannot infer an appropriate lifetime
   --> $DIR/must_outlive_least_region_or_bound.rs:18:50
    |
 LL | fn elided3(x: &i32) -> Box<dyn Debug> { Box::new(x) }
@@ -136,7 +136,7 @@ help: to declare that the trait object captures data from argument `x`, you can 
 LL | fn elided3(x: &i32) -> Box<dyn Debug + '_> { Box::new(x) }
    |                                      ^^^^
 
-error[E0758]: cannot infer an appropriate lifetime
+error[E0759]: cannot infer an appropriate lifetime
   --> $DIR/must_outlive_least_region_or_bound.rs:21:59
    |
 LL | fn explicit3<'a>(x: &'a i32) -> Box<dyn Debug> { Box::new(x) }
@@ -149,7 +149,7 @@ help: to declare that the trait object captures data from argument `x`, you can 
 LL | fn explicit3<'a>(x: &'a i32) -> Box<dyn Debug + 'a> { Box::new(x) }
    |                                               ^^^^
 
-error[E0758]: cannot infer an appropriate lifetime
+error[E0759]: cannot infer an appropriate lifetime
   --> $DIR/must_outlive_least_region_or_bound.rs:24:60
    |
 LL | fn elided4(x: &i32) -> Box<dyn Debug + 'static> { Box::new(x) }
@@ -166,7 +166,7 @@ help: alternatively, add an explicit `'static` bound to this reference
 LL | fn elided4(x: &'static i32) -> Box<dyn Debug + 'static> { Box::new(x) }
    |               ^^^^^^^^^^^^
 
-error[E0758]: cannot infer an appropriate lifetime
+error[E0759]: cannot infer an appropriate lifetime
   --> $DIR/must_outlive_least_region_or_bound.rs:27:69
    |
 LL | fn explicit4<'a>(x: &'a i32) -> Box<dyn Debug + 'static> { Box::new(x) }
@@ -183,5 +183,5 @@ LL | fn explicit4<'a>(x: &'static i32) -> Box<dyn Debug + 'static> { Box::new(x)
 
 error: aborting due to 12 previous errors
 
-Some errors have detailed explanations: E0310, E0621, E0623, E0758.
+Some errors have detailed explanations: E0310, E0621, E0623, E0759.
 For more information about an error, try `rustc --explain E0310`.

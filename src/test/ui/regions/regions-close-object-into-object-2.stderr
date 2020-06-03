@@ -1,4 +1,4 @@
-error[E0758]: cannot infer an appropriate lifetime
+error[E0759]: cannot infer an appropriate lifetime
   --> $DIR/regions-close-object-into-object-2.rs:10:11
    |
 LL | fn g<'a, T: 'static>(v: Box<dyn A<T> + 'a>) -> Box<dyn X + 'static> {
@@ -17,4 +17,4 @@ LL | fn g<'a, T: 'static>(v: std::boxed::Box<(dyn A<T> + 'static)>) -> Box<dyn X
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0758`.
+For more information about this error, try `rustc --explain E0759`.

@@ -1,4 +1,4 @@
-error[E0758]: cannot infer an appropriate lifetime
+error[E0759]: cannot infer an appropriate lifetime
   --> $DIR/object-lifetime-default-from-box-error.rs:18:5
    |
 LL | fn load(ss: &mut SomeStruct) -> Box<dyn SomeTrait> {
@@ -23,5 +23,5 @@ LL |     ss.r = b;
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0621, E0758.
+Some errors have detailed explanations: E0621, E0759.
 For more information about an error, try `rustc --explain E0621`.

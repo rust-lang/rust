@@ -438,6 +438,7 @@ E0752: include_str!("./error_codes/E0752.md"),
 E0753: include_str!("./error_codes/E0753.md"),
 E0754: include_str!("./error_codes/E0754.md"),
 E0758: include_str!("./error_codes/E0758.md"),
+E0759: include_str!("./error_codes/E0759.md"),
 E0760: include_str!("./error_codes/E0760.md"),
 ;
 //  E0006, // merged with E0005

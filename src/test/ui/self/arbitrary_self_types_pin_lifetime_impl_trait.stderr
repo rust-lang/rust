@@ -1,4 +1,4 @@
-error[E0758]: cannot infer an appropriate lifetime
+error[E0759]: cannot infer an appropriate lifetime
   --> $DIR/arbitrary_self_types_pin_lifetime_impl_trait.rs:6:44
    |
 LL |     fn f(self: Pin<&Self>) -> impl Clone { self }
@@ -18,4 +18,4 @@ LL |     fn f(self: Pin<&Self>) -> impl Clone + '_ { self }
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0758`.
+For more information about this error, try `rustc --explain E0759`.
