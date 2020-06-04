@@ -237,9 +237,6 @@ trait DropTreeBuilder<'tcx> {
 
 impl DropTree {
     fn new() -> Self {
-        // The root node of the tree doesn't represent a drop, but instead
-        // represents the block in the tree that should be jumped to once all
-        // of the required drops have been performed.
         let fake_source_info = SourceInfo::outermost(DUMMY_SP);
         let fake_data =
             DropData { source_info: fake_source_info, local: Local::MAX, kind: DropKind::Storage };
@@ -261,10 +258,6 @@ impl DropTree {
         self.entry_points.push((to, from));
     }
 
-    /// Builds the MIR for a given drop tree.
-    ///
-    /// `blocks` should have the same length as `self.drops`, and may have its
-    /// first value set to some already existing block.
     fn build_mir<'tcx, T: DropTreeBuilder<'tcx>>(
         &mut self,
         cfg: &mut CFG<'tcx>,
@@ -1351,16 +1344,10 @@ impl<'tcx> DropTreeBuilder<'tcx> for GeneratorDrop {
         cfg.start_new_block()
     }
     fn add_entry(cfg: &mut CFG<'tcx>, from: BasicBlock, to: BasicBlock) {
-        let term = cfg.block_data_mut(from).terminator_mut();
-        if let TerminatorKind::Yield { ref mut drop, .. } = term.kind {
+        let kind = &mut cfg.block_data_mut(from).terminator_mut().kind;
+        if let TerminatorKind::Yield { drop, .. } = kind {
             *drop = Some(to);
-        } else {
-            span_bug!(
-                term.source_info.span,
-                "cannot enter generator drop tree from {:?}",
-                term.kind
-            )
-        }
+        };
     }
 }
 
@@ -1371,8 +1358,8 @@ impl<'tcx> DropTreeBuilder<'tcx> for Unwind {
         cfg.start_new_cleanup_block()
     }
     fn add_entry(cfg: &mut CFG<'tcx>, from: BasicBlock, to: BasicBlock) {
-        let term = &mut cfg.block_data_mut(from).terminator_mut();
-        match &mut term.kind {
+        let term = &mut cfg.block_data_mut(from).terminator_mut().kind;
+        match term {
             TerminatorKind::Drop { unwind, .. }
             | TerminatorKind::DropAndReplace { unwind, .. }
             | TerminatorKind::FalseUnwind { unwind, .. }
