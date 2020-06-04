@@ -270,7 +270,6 @@ declare_clippy_lint! {
     /// ```rust
     /// # enum Foo { A, B, C }
     /// # let x = Foo::B;
-    ///
     /// // Bad
     /// match x {
     ///     Foo::A => {},
