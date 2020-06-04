@@ -203,6 +203,30 @@ pub fn visibility_qualified<S: Into<Cow<'static, str>>>(vis: &hir::Visibility<'_
     })
 }
 
+pub fn generic_params_to_string(generic_params: &[GenericParam<'_>]) -> String {
+    to_string(NO_ANN, |s| s.print_generic_params(generic_params))
+}
+
+pub fn bounds_to_string<'b>(bounds: impl IntoIterator<Item = &'b hir::GenericBound<'b>>) -> String {
+    to_string(NO_ANN, |s| s.print_bounds("", bounds))
+}
+
+pub fn param_to_string(arg: &hir::Param<'_>) -> String {
+    to_string(NO_ANN, |s| s.print_param(arg))
+}
+
+pub fn ty_to_string(ty: &hir::Ty<'_>) -> String {
+    to_string(NO_ANN, |s| s.print_type(ty))
+}
+
+pub fn path_segment_to_string(segment: &hir::PathSegment<'_>) -> String {
+    to_string(NO_ANN, |s| s.print_path_segment(segment))
+}
+
+pub fn path_to_string(segment: &hir::Path<'_>) -> String {
+    to_string(NO_ANN, |s| s.print_path(segment, false))
+}
+
 impl<'a> State<'a> {
     pub fn cbox(&mut self, u: usize) {
         self.s.cbox(u);

@@ -13,19 +13,19 @@
 //! DumpVisitor walks the AST and processes it, and Dumper is used for
 //! recording the output.
 
-use rustc_ast::ast::{self, Attribute, NodeId, PatKind};
-use rustc_ast::ptr::P;
-use rustc_ast::token;
-use rustc_ast::visit::{self, Visitor};
-use rustc_ast::walk_list;
-use rustc_ast_pretty::pprust::{bounds_to_string, generic_params_to_string, ty_to_string};
+use rustc_ast::ast::{self};
+use rustc_ast::{token, walk_list};
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir as hir;
 use rustc_hir::def::{DefKind as HirDefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::intravisit::{self, Visitor};
+use rustc_hir_pretty::{bounds_to_string, generic_params_to_string, ty_to_string};
+use rustc_middle::hir::map::Map;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, DefIdTree, TyCtxt};
 use rustc_session::config::Input;
-use rustc_span::source_map::{respan, DUMMY_SP};
+use rustc_span::source_map::respan;
 use rustc_span::symbol::Ident;
 use rustc_span::*;
 
@@ -36,7 +36,7 @@ use crate::dumper::{Access, Dumper};
 use crate::sig;
 use crate::span_utils::SpanUtils;
 use crate::{
-    escape, generated_code, id_from_def_id, id_from_node_id, lower_attributes, PathCollector,
+    escape, generated_code, id_from_def_id, id_from_hir_id, lower_attributes, PathCollector,
     SaveContext,
 };
 
@@ -124,11 +124,11 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         self.save_ctxt.span_from_span(span)
     }
 
-    fn lookup_def_id(&self, ref_id: NodeId) -> Option<DefId> {
+    fn lookup_def_id(&self, ref_id: hir::HirId) -> Option<DefId> {
         self.save_ctxt.lookup_def_id(ref_id)
     }
 
-    pub fn dump_crate_info(&mut self, name: &str, krate: &ast::Crate) {
+    pub fn dump_crate_info(&mut self, name: &str, krate: &hir::Crate<'_>) {
         let source_file = self.tcx.sess.local_crate_source_file.as_ref();
         let crate_root = source_file.map(|source_file| {
             let source_file = Path::new(source_file);
@@ -151,7 +151,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
             },
             crate_root: crate_root.unwrap_or_else(|| "<no source>".to_owned()),
             external_crates: self.save_ctxt.get_external_crates(),
-            span: self.span_from_span(krate.span),
+            span: self.span_from_span(krate.item.span),
         };
 
         self.dumper.crate_prelude(data);
@@ -199,8 +199,8 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         self.dumper.compilation_opts(data);
     }
 
-    fn write_sub_paths(&mut self, path: &ast::Path) {
-        for seg in &path.segments {
+    fn write_sub_paths(&mut self, path: &'tcx hir::Path<'tcx>) {
+        for seg in path.segments {
             if let Some(data) = self.save_ctxt.get_path_segment_data(seg) {
                 self.dumper.dump_ref(data);
             }
@@ -209,7 +209,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
 
     // As write_sub_paths, but does not process the last ident in the path (assuming it
     // will be processed elsewhere). See note on write_sub_paths about global.
-    fn write_sub_paths_truncated(&mut self, path: &ast::Path) {
+    fn write_sub_paths_truncated(&mut self, path: &'tcx hir::Path<'tcx>) {
         for seg in &path.segments[..path.segments.len() - 1] {
             if let Some(data) = self.save_ctxt.get_path_segment_data(seg) {
                 self.dumper.dump_ref(data);
@@ -217,23 +217,19 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         }
     }
 
-    fn process_formals(&mut self, formals: &'l [ast::Param], qualname: &str) {
+    fn process_formals(&mut self, formals: &'tcx [hir::Param<'tcx>], qualname: &str) {
         for arg in formals {
             self.visit_pat(&arg.pat);
-            let mut collector = PathCollector::new();
+            let mut collector = PathCollector::new(self.tcx);
             collector.visit_pat(&arg.pat);
 
-            for (id, ident, ..) in collector.collected_idents {
-                // FIXME(#71104) Should really be using just `node_id_to_hir_id` but
-                // some `NodeId` do not seem to have a corresponding HirId.
-                let hir_id = self.tcx.hir().opt_node_id_to_hir_id(id);
-                let typ =
-                    match hir_id.and_then(|hir_id| self.save_ctxt.tables.node_type_opt(hir_id)) {
-                        Some(s) => s.to_string(),
-                        None => continue,
-                    };
+            for (hir_id, ident, ..) in collector.collected_idents {
+                let typ = match self.save_ctxt.tables.node_type_opt(hir_id) {
+                    Some(s) => s.to_string(),
+                    None => continue,
+                };
                 if !self.span.filter_generated(ident.span) {
-                    let id = id_from_node_id(id, &self.save_ctxt);
+                    let id = id_from_hir_id(hir_id, &self.save_ctxt);
                     let span = self.span_from_span(ident.span);
 
                     self.dumper.dump_def(
@@ -260,75 +256,74 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
 
     fn process_method(
         &mut self,
-        sig: &'l ast::FnSig,
-        body: Option<&'l ast::Block>,
-        id: ast::NodeId,
+        sig: &'tcx hir::FnSig<'tcx>,
+        body: Option<hir::BodyId>,
+        hir_id: hir::HirId,
         ident: Ident,
-        generics: &'l ast::Generics,
-        vis: ast::Visibility,
+        generics: &'tcx hir::Generics<'tcx>,
+        vis: &hir::Visibility<'tcx>,
         span: Span,
     ) {
-        debug!("process_method: {}:{}", id, ident);
+        debug!("process_method: {}:{}", hir_id, ident);
 
         let map = &self.tcx.hir();
-        let hir_id = map.node_id_to_hir_id(id);
         self.nest_tables(map.local_def_id(hir_id), |v| {
-            if let Some(mut method_data) = v.save_ctxt.get_method_data(id, ident, span) {
-                v.process_formals(&sig.decl.inputs, &method_data.qualname);
-                v.process_generic_params(&generics, &method_data.qualname, id);
+            if let Some(mut method_data) = v.save_ctxt.get_method_data(hir_id, ident, span) {
+                if let Some(body) = body {
+                    v.process_formals(map.body(body).params, &method_data.qualname);
+                }
+                v.process_generic_params(&generics, &method_data.qualname, hir_id);
 
                 method_data.value = crate::make_signature(&sig.decl, &generics);
-                method_data.sig = sig::method_signature(id, ident, generics, sig, &v.save_ctxt);
+                method_data.sig = sig::method_signature(hir_id, ident, generics, sig, &v.save_ctxt);
 
                 v.dumper.dump_def(&access_from_vis!(v.save_ctxt, vis, hir_id), method_data);
             }
 
             // walk arg and return types
-            for arg in &sig.decl.inputs {
-                v.visit_ty(&arg.ty);
+            for arg in sig.decl.inputs {
+                v.visit_ty(arg);
             }
 
-            if let ast::FnRetTy::Ty(ref ret_ty) = sig.decl.output {
-                // In async functions, return types are desugared and redefined
-                // as an `impl Trait` existential type. Because of this, to match
-                // the definition paths when resolving nested types we need to
-                // start walking from the newly-created definition.
-                match sig.header.asyncness {
-                    ast::Async::Yes { return_impl_trait_id, .. } => {
-                        let hir_id = map.node_id_to_hir_id(return_impl_trait_id);
-                        v.nest_tables(map.local_def_id(hir_id), |v| v.visit_ty(ret_ty))
-                    }
-                    _ => v.visit_ty(ret_ty),
-                }
+            if let hir::FnRetTy::Return(ref ret_ty) = sig.decl.output {
+                v.visit_ty(ret_ty)
             }
 
             // walk the fn body
             if let Some(body) = body {
-                v.visit_block(body);
+                v.visit_expr(&map.body(body).value);
             }
         });
     }
 
-    fn process_struct_field_def(&mut self, field: &ast::StructField, parent_id: NodeId) {
+    fn process_struct_field_def(
+        &mut self,
+        field: &'tcx hir::StructField<'tcx>,
+        parent_id: hir::HirId,
+    ) {
         let field_data = self.save_ctxt.get_field_data(field, parent_id);
         if let Some(field_data) = field_data {
-            let hir_id = self.tcx.hir().node_id_to_hir_id(field.id);
-            self.dumper.dump_def(&access_from!(self.save_ctxt, field, hir_id), field_data);
+            self.dumper.dump_def(&access_from!(self.save_ctxt, field, field.hir_id), field_data);
         }
     }
 
     // Dump generic params bindings, then visit_generics
-    fn process_generic_params(&mut self, generics: &'l ast::Generics, prefix: &str, id: NodeId) {
-        for param in &generics.params {
+    fn process_generic_params(
+        &mut self,
+        generics: &'tcx hir::Generics<'tcx>,
+        prefix: &str,
+        id: hir::HirId,
+    ) {
+        for param in generics.params {
             match param.kind {
-                ast::GenericParamKind::Lifetime { .. } => {}
-                ast::GenericParamKind::Type { .. } => {
-                    let param_ss = param.ident.span;
+                hir::GenericParamKind::Lifetime { .. } => {}
+                hir::GenericParamKind::Type { .. } => {
+                    let param_ss = param.name.ident().span;
                     let name = escape(self.span.snippet(param_ss));
                     // Append $id to name to make sure each one is unique.
                     let qualname = format!("{}::{}${}", prefix, name, id);
                     if !self.span.filter_generated(param_ss) {
-                        let id = id_from_node_id(param.id, &self.save_ctxt);
+                        let id = id_from_hir_id(param.hir_id, &self.save_ctxt);
                         let span = self.span_from_span(param_ss);
 
                         self.dumper.dump_def(
@@ -350,7 +345,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                         );
                     }
                 }
-                ast::GenericParamKind::Const { .. } => {}
+                hir::GenericParamKind::Const { .. } => {}
             }
         }
         self.visit_generics(generics);
@@ -358,90 +353,73 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
 
     fn process_fn(
         &mut self,
-        item: &'l ast::Item,
-        decl: &'l ast::FnDecl,
-        header: &'l ast::FnHeader,
-        ty_params: &'l ast::Generics,
-        body: Option<&'l ast::Block>,
+        item: &'tcx hir::Item<'tcx>,
+        decl: &'tcx hir::FnDecl<'tcx>,
+        _header: &'tcx hir::FnHeader,
+        ty_params: &'tcx hir::Generics<'tcx>,
+        body: hir::BodyId,
     ) {
         let map = &self.tcx.hir();
-        let hir_id = map.node_id_to_hir_id(item.id);
-        self.nest_tables(map.local_def_id(hir_id), |v| {
+        self.nest_tables(map.local_def_id(item.hir_id), |v| {
+            let body = map.body(body);
             if let Some(fn_data) = v.save_ctxt.get_item_data(item) {
                 down_cast_data!(fn_data, DefData, item.span);
-                v.process_formals(&decl.inputs, &fn_data.qualname);
-                v.process_generic_params(ty_params, &fn_data.qualname, item.id);
+                v.process_formals(body.params, &fn_data.qualname);
+                v.process_generic_params(ty_params, &fn_data.qualname, item.hir_id);
 
-                v.dumper.dump_def(&access_from!(v.save_ctxt, item, hir_id), fn_data);
+                v.dumper.dump_def(&access_from!(v.save_ctxt, item, item.hir_id), fn_data);
             }
 
-            for arg in &decl.inputs {
-                v.visit_ty(&arg.ty)
+            for arg in decl.inputs {
+                v.visit_ty(arg)
             }
 
-            if let ast::FnRetTy::Ty(ref ret_ty) = decl.output {
-                if let ast::TyKind::ImplTrait(..) = ret_ty.kind {
-                    // FIXME: Opaque type desugaring prevents us from easily
-                    // processing trait bounds. See `visit_ty` for more details.
-                } else {
-                    // In async functions, return types are desugared and redefined
-                    // as an `impl Trait` existential type. Because of this, to match
-                    // the definition paths when resolving nested types we need to
-                    // start walking from the newly-created definition.
-                    match header.asyncness {
-                        ast::Async::Yes { return_impl_trait_id, .. } => {
-                            let hir_id = map.node_id_to_hir_id(return_impl_trait_id);
-                            v.nest_tables(map.local_def_id(hir_id), |v| v.visit_ty(ret_ty))
-                        }
-                        _ => v.visit_ty(ret_ty),
-                    }
-                }
+            if let hir::FnRetTy::Return(ref ret_ty) = decl.output {
+                v.visit_ty(ret_ty)
             }
 
-            walk_list!(v, visit_block, body);
+            v.visit_expr(&body.value);
         });
     }
 
     fn process_static_or_const_item(
         &mut self,
-        item: &'l ast::Item,
-        typ: &'l ast::Ty,
-        expr: Option<&'l ast::Expr>,
+        item: &'tcx hir::Item<'tcx>,
+        typ: &'tcx hir::Ty<'tcx>,
+        expr: &'tcx hir::Expr<'tcx>,
     ) {
-        let hir_id = self.tcx.hir().node_id_to_hir_id(item.id);
-        self.nest_tables(self.tcx.hir().local_def_id(hir_id), |v| {
+        self.nest_tables(self.tcx.hir().local_def_id(item.hir_id), |v| {
             if let Some(var_data) = v.save_ctxt.get_item_data(item) {
                 down_cast_data!(var_data, DefData, item.span);
-                v.dumper.dump_def(&access_from!(v.save_ctxt, item, hir_id), var_data);
+                v.dumper.dump_def(&access_from!(v.save_ctxt, item, item.hir_id), var_data);
             }
             v.visit_ty(&typ);
-            walk_list!(v, visit_expr, expr);
+            v.visit_expr(expr);
         });
     }
 
     fn process_assoc_const(
         &mut self,
-        id: ast::NodeId,
+        hir_id: hir::HirId,
         ident: Ident,
-        typ: &'l ast::Ty,
-        expr: Option<&'l ast::Expr>,
+        typ: &'tcx hir::Ty<'tcx>,
+        expr: Option<&'tcx hir::Expr<'tcx>>,
         parent_id: DefId,
-        vis: ast::Visibility,
-        attrs: &'l [Attribute],
+        vis: &hir::Visibility<'tcx>,
+        attrs: &'tcx [ast::Attribute],
     ) {
-        let hir_id = self.tcx.hir().node_id_to_hir_id(id);
         let qualname =
             format!("::{}", self.tcx.def_path_str(self.tcx.hir().local_def_id(hir_id).to_def_id()));
 
         if !self.span.filter_generated(ident.span) {
-            let sig = sig::assoc_const_signature(id, ident.name, typ, expr, &self.save_ctxt);
+            let sig = sig::assoc_const_signature(hir_id, ident.name, typ, expr, &self.save_ctxt);
             let span = self.span_from_span(ident.span);
 
             self.dumper.dump_def(
                 &access_from_vis!(self.save_ctxt, vis, hir_id),
                 Def {
                     kind: DefKind::Const,
-                    id: id_from_node_id(id, &self.save_ctxt),
+                    id: id_from_hir_id(hir_id, &self.save_ctxt),
                     span,
                     name: ident.name.to_string(),
                     qualname,
@@ -468,32 +446,32 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
     // FIXME tuple structs should generate tuple-specific data.
     fn process_struct(
         &mut self,
-        item: &'l ast::Item,
-        def: &'l ast::VariantData,
-        ty_params: &'l ast::Generics,
+        item: &'tcx hir::Item<'tcx>,
+        def: &'tcx hir::VariantData<'tcx>,
+        ty_params: &'tcx hir::Generics<'tcx>,
     ) {
         debug!("process_struct {:?} {:?}", item, item.span);
         let name = item.ident.to_string();
-        let hir_id = self.tcx.hir().node_id_to_hir_id(item.id);
-        let qualname =
-            format!("::{}", self.tcx.def_path_str(self.tcx.hir().local_def_id(hir_id).to_def_id()));
+        let qualname = format!(
+            "::{}",
+            self.tcx.def_path_str(self.tcx.hir().local_def_id(item.hir_id).to_def_id())
+        );
 
         let kind = match item.kind {
-            ast::ItemKind::Struct(_, _) => DefKind::Struct,
-            ast::ItemKind::Union(_, _) => DefKind::Union,
+            hir::ItemKind::Struct(_, _) => DefKind::Struct,
+            hir::ItemKind::Union(_, _) => DefKind::Union,
             _ => unreachable!(),
         };
 
         let (value, fields) = match item.kind {
-            ast::ItemKind::Struct(ast::VariantData::Struct(ref fields, ..), ..)
-            | ast::ItemKind::Union(ast::VariantData::Struct(ref fields, ..), ..) => {
+            hir::ItemKind::Struct(hir::VariantData::Struct(ref fields, ..), ..)
+            | hir::ItemKind::Union(hir::VariantData::Struct(ref fields, ..), ..) => {
                 let include_priv_fields = !self.save_ctxt.config.pub_only;
                 let fields_str = fields
                     .iter()
-                    .enumerate()
-                    .filter_map(|(i, f)| {
+                    .filter_map(|f| {
                         if include_priv_fields || f.vis.node.is_pub() {
-                            f.ident.map(|i| i.to_string()).or_else(|| Some(i.to_string()))
+                            Some(f.ident.to_string())
                         } else {
                             None
                         }
@@ -501,7 +479,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                     .collect::<Vec<_>>()
                     .join(", ");
                 let value = format!("{} {{ {} }}", name, fields_str);
-                (value, fields.iter().map(|f| id_from_node_id(f.id, &self.save_ctxt)).collect())
+                (value, fields.iter().map(|f| id_from_hir_id(f.hir_id, &self.save_ctxt)).collect())
             }
             _ => (String::new(), vec![]),
         };
@@ -509,10 +487,10 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         if !self.span.filter_generated(item.ident.span) {
             let span = self.span_from_span(item.ident.span);
             self.dumper.dump_def(
-                &access_from!(self.save_ctxt, item, hir_id),
+                &access_from!(self.save_ctxt, item, item.hir_id),
                 Def {
                     kind,
-                    id: id_from_node_id(item.id, &self.save_ctxt),
+                    id: id_from_hir_id(item.hir_id, &self.save_ctxt),
                     span,
                     name,
                     qualname: qualname.clone(),
@@ -522,26 +500,26 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                     decl_id: None,
                     docs: self.save_ctxt.docs_for_attrs(&item.attrs),
                     sig: sig::item_signature(item, &self.save_ctxt),
-                    attributes: lower_attributes(item.attrs.clone(), &self.save_ctxt),
+                    attributes: lower_attributes(item.attrs.to_vec(), &self.save_ctxt),
                 },
             );
         }
 
-        self.nest_tables(self.tcx.hir().local_def_id(hir_id), |v| {
+        self.nest_tables(self.tcx.hir().local_def_id(item.hir_id), |v| {
             for field in def.fields() {
-                v.process_struct_field_def(field, item.id);
+                v.process_struct_field_def(field, item.hir_id);
                 v.visit_ty(&field.ty);
             }
 
-            v.process_generic_params(ty_params, &qualname, item.id);
+            v.process_generic_params(ty_params, &qualname, item.hir_id);
         });
     }
 
     fn process_enum(
         &mut self,
-        item: &'l ast::Item,
-        enum_definition: &'l ast::EnumDef,
-        ty_params: &'l ast::Generics,
+        item: &'tcx hir::Item<'tcx>,
+        enum_definition: &'tcx hir::EnumDef<'tcx>,
+        ty_params: &'tcx hir::Generics<'tcx>,
     ) {
         let enum_data = self.save_ctxt.get_item_data(item);
         let enum_data = match enum_data {
@@ -550,29 +528,22 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         };
         down_cast_data!(enum_data, DefData, item.span);
 
-        let hir_id = self.tcx.hir().node_id_to_hir_id(item.id);
-        let access = access_from!(self.save_ctxt, item, hir_id);
+        let access = access_from!(self.save_ctxt, item, item.hir_id);
 
-        for variant in &enum_definition.variants {
+        for variant in enum_definition.variants {
             let name = variant.ident.name.to_string();
             let qualname = format!("{}::{}", enum_data.qualname, name);
             let name_span = variant.ident.span;
 
             match variant.data {
-                ast::VariantData::Struct(ref fields, ..) => {
-                    let fields_str = fields
-                        .iter()
-                        .enumerate()
-                        .map(|(i, f)| {
-                            f.ident.map(|i| i.to_string()).unwrap_or_else(|| i.to_string())
-                        })
-                        .collect::<Vec<_>>()
-                        .join(", ");
+                hir::VariantData::Struct(ref fields, ..) => {
+                    let fields_str =
+                        fields.iter().map(|f| f.ident.to_string()).collect::<Vec<_>>().join(", ");
                     let value = format!("{}::{} {{ {} }}", enum_data.name, name, fields_str);
                     if !self.span.filter_generated(name_span) {
                         let span = self.span_from_span(name_span);
-                        let id = id_from_node_id(variant.id, &self.save_ctxt);
-                        let parent = Some(id_from_node_id(item.id, &self.save_ctxt));
+                        let id = id_from_hir_id(variant.id, &self.save_ctxt);
+                        let parent = Some(id_from_hir_id(item.hir_id, &self.save_ctxt));
 
                         self.dumper.dump_def(
                             &access,
@@ -589,7 +560,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                                 docs: self.save_ctxt.docs_for_attrs(&variant.attrs),
                                 sig: sig::variant_signature(variant, &self.save_ctxt),
                                 attributes: lower_attributes(
-                                    variant.attrs.clone(),
+                                    variant.attrs.to_vec(),
                                     &self.save_ctxt,
                                 ),
                             },
@@ -598,7 +569,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                 }
                 ref v => {
                     let mut value = format!("{}::{}", enum_data.name, name);
-                    if let &ast::VariantData::Tuple(ref fields, _) = v {
+                    if let &hir::VariantData::Tuple(ref fields, _) = v {
                         value.push('(');
                         value.push_str(
                             &fields
@@ -611,8 +582,8 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                     }
                     if !self.span.filter_generated(name_span) {
                         let span = self.span_from_span(name_span);
-                        let id = id_from_node_id(variant.id, &self.save_ctxt);
-                        let parent = Some(id_from_node_id(item.id, &self.save_ctxt));
+                        let id = id_from_hir_id(variant.id, &self.save_ctxt);
+                        let parent = Some(id_from_hir_id(item.hir_id, &self.save_ctxt));
 
                         self.dumper.dump_def(
                             &access,
@@ -629,7 +600,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                                 docs: self.save_ctxt.docs_for_attrs(&variant.attrs),
                                 sig: sig::variant_signature(variant, &self.save_ctxt),
                                 attributes: lower_attributes(
-                                    variant.attrs.clone(),
+                                    variant.attrs.to_vec(),
                                     &self.save_ctxt,
                                 ),
                             },
@@ -640,20 +611,20 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
 
             for field in variant.data.fields() {
                 self.process_struct_field_def(field, variant.id);
-                self.visit_ty(&field.ty);
+                self.visit_ty(field.ty);
             }
         }
-        self.process_generic_params(ty_params, &enum_data.qualname, item.id);
+        self.process_generic_params(ty_params, &enum_data.qualname, item.hir_id);
         self.dumper.dump_def(&access, enum_data);
     }
 
     fn process_impl(
         &mut self,
-        item: &'l ast::Item,
-        generics: &'l ast::Generics,
-        trait_ref: &'l Option<ast::TraitRef>,
-        typ: &'l ast::Ty,
-        impl_items: &'l [P<ast::AssocItem>],
+        item: &'tcx hir::Item<'tcx>,
+        generics: &'tcx hir::Generics<'tcx>,
+        trait_ref: &'tcx Option<hir::TraitRef<'tcx>>,
+        typ: &'tcx hir::Ty<'tcx>,
+        impl_items: &'tcx [hir::ImplItemRef<'tcx>],
     ) {
         if let Some(impl_data) = self.save_ctxt.get_item_data(item) {
             if !self.span.filter_generated(item.span) {
@@ -667,46 +638,48 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         }
 
         let map = &self.tcx.hir();
-        let hir_id = map.node_id_to_hir_id(item.id);
-        self.nest_tables(map.local_def_id(hir_id), |v| {
+        self.nest_tables(map.local_def_id(item.hir_id), |v| {
             v.visit_ty(&typ);
             if let &Some(ref trait_ref) = trait_ref {
-                v.process_path(trait_ref.ref_id, &trait_ref.path);
+                v.process_path(trait_ref.hir_ref_id, &trait_ref.path);
             }
-            v.process_generic_params(generics, "", item.id);
+            v.process_generic_params(generics, "", item.hir_id);
             for impl_item in impl_items {
-                v.process_impl_item(impl_item, map.local_def_id(hir_id).to_def_id());
+                v.process_impl_item(
+                    map.impl_item(impl_item.id),
+                    map.local_def_id(item.hir_id).to_def_id(),
+                );
             }
         });
     }
 
     fn process_trait(
         &mut self,
-        item: &'l ast::Item,
-        generics: &'l ast::Generics,
-        trait_refs: &'l ast::GenericBounds,
-        methods: &'l [P<ast::AssocItem>],
+        item: &'tcx hir::Item<'tcx>,
+        generics: &'tcx hir::Generics<'tcx>,
+        trait_refs: hir::GenericBounds<'tcx>,
+        methods: &'tcx [hir::TraitItemRef],
     ) {
         let name = item.ident.to_string();
         let qualname = format!(
             "::{}",
-            self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(item.id).to_def_id())
+            self.tcx.def_path_str(self.tcx.hir().local_def_id(item.hir_id).to_def_id())
         );
         let mut val = name.clone();
         if !generics.params.is_empty() {
-            val.push_str(&generic_params_to_string(&generics.params));
+            val.push_str(&generic_params_to_string(generics.params));
         }
         if !trait_refs.is_empty() {
             val.push_str(": ");
             val.push_str(&bounds_to_string(trait_refs));
         }
         if !self.span.filter_generated(item.ident.span) {
-            let id = id_from_node_id(item.id, &self.save_ctxt);
+            let id = id_from_hir_id(item.hir_id, &self.save_ctxt);
             let span = self.span_from_span(item.ident.span);
-            let children = methods.iter().map(|i| id_from_node_id(i.id, &self.save_ctxt)).collect();
-            let hir_id = self.tcx.hir().node_id_to_hir_id(item.id);
+            let children =
+                methods.iter().map(|i| id_from_hir_id(i.id.hir_id, &self.save_ctxt)).collect();
             self.dumper.dump_def(
-                &access_from!(self.save_ctxt, item, hir_id),
+                &access_from!(self.save_ctxt, item, item.hir_id),
                 Def {
                     kind: DefKind::Trait,
                     id,
@@ -719,7 +692,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                     decl_id: None,
                     docs: self.save_ctxt.docs_for_attrs(&item.attrs),
                     sig: sig::item_signature(item, &self.save_ctxt),
-                    attributes: lower_attributes(item.attrs.clone(), &self.save_ctxt),
+                    attributes: lower_attributes(item.attrs.to_vec(), &self.save_ctxt),
                 },
             );
         }
@@ -727,12 +700,12 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         // super-traits
         for super_bound in trait_refs.iter() {
             let trait_ref = match *super_bound {
-                ast::GenericBound::Trait(ref trait_ref, _) => trait_ref,
-                ast::GenericBound::Outlives(..) => continue,
+                hir::GenericBound::Trait(ref trait_ref, _) => trait_ref,
+                hir::GenericBound::Outlives(..) => continue,
             };
 
             let trait_ref = &trait_ref.trait_ref;
-            if let Some(id) = self.lookup_def_id(trait_ref.ref_id) {
+            if let Some(id) = self.lookup_def_id(trait_ref.hir_ref_id) {
                 let sub_span = trait_ref.path.segments.last().unwrap().ident.span;
                 if !self.span.filter_generated(sub_span) {
                     let span = self.span_from_span(sub_span);
@@ -746,60 +719,57 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                         kind: RelationKind::SuperTrait,
                         span,
                         from: id_from_def_id(id),
-                        to: id_from_node_id(item.id, &self.save_ctxt),
+                        to: id_from_hir_id(item.hir_id, &self.save_ctxt),
                     });
                 }
             }
         }
 
         // walk generics and methods
-        self.process_generic_params(generics, &qualname, item.id);
+        self.process_generic_params(generics, &qualname, item.hir_id);
         for method in methods {
             let map = &self.tcx.hir();
-            self.process_trait_item(method, map.local_def_id_from_node_id(item.id).to_def_id())
+            self.process_trait_item(
+                map.trait_item(method.id),
+                map.local_def_id(item.hir_id).to_def_id(),
+            )
         }
     }
 
-    // `item` is the module in question, represented as an item.
-    fn process_mod(&mut self, item: &ast::Item) {
+    // `item` is the module in question, represented as an( item.
+    fn process_mod(&mut self, item: &'tcx hir::Item<'tcx>) {
         if let Some(mod_data) = self.save_ctxt.get_item_data(item) {
             down_cast_data!(mod_data, DefData, item.span);
-            let hir_id = self.tcx.hir().node_id_to_hir_id(item.id);
-            self.dumper.dump_def(&access_from!(self.save_ctxt, item, hir_id), mod_data);
+            self.dumper.dump_def(&access_from!(self.save_ctxt, item, item.hir_id), mod_data);
         }
     }
 
-    fn dump_path_ref(&mut self, id: NodeId, path: &ast::Path) {
+    fn dump_path_ref(&mut self, id: hir::HirId, path: &hir::Path<'tcx>) {
         let path_data = self.save_ctxt.get_path_data(id, path);
         if let Some(path_data) = path_data {
             self.dumper.dump_ref(path_data);
         }
     }
 
-    fn process_path(&mut self, id: NodeId, path: &'l ast::Path) {
+    fn dump_path_segment_ref(&mut self, id: hir::HirId, segment: &hir::PathSegment<'tcx>) {
+        let segment_data = self.save_ctxt.get_path_segment_data_with_id(segment, id);
+        if let Some(segment_data) = segment_data {
+            self.dumper.dump_ref(segment_data);
+        }
+    }
+
+    fn process_path(&mut self, id: hir::HirId, path: &'tcx hir::Path<'tcx>) {
         if self.span.filter_generated(path.span) {
             return;
         }
         self.dump_path_ref(id, path);
 
         // Type arguments
-        for seg in &path.segments {
+        for seg in path.segments {
             if let Some(ref generic_args) = seg.args {
-                match **generic_args {
-                    ast::GenericArgs::AngleBracketed(ref data) => {
-                        for arg in &data.args {
-                            if let ast::AngleBracketedArg::Arg(ast::GenericArg::Type(ty)) = arg {
-                                self.visit_ty(ty);
-                            }
-                        }
-                    }
-                    ast::GenericArgs::Parenthesized(ref data) => {
-                        for t in &data.inputs {
-                            self.visit_ty(t);
-                        }
-                        if let ast::FnRetTy::Ty(ty) = &data.output {
-                            self.visit_ty(ty);
-                        }
+                for arg in generic_args.args {
+                    if let hir::GenericArg::Type(ref ty) = arg {
+                        self.visit_ty(ty);
                     }
                 }
             }
@@ -810,14 +780,16 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
 
     fn process_struct_lit(
         &mut self,
-        ex: &'l ast::Expr,
-        path: &'l ast::Path,
-        fields: &'l [ast::Field],
-        variant: &'l ty::VariantDef,
-        base: &'l Option<P<ast::Expr>>,
+        ex: &'tcx hir::Expr<'tcx>,
+        path: &'tcx hir::QPath<'tcx>,
+        fields: &'tcx [hir::Field<'tcx>],
+        variant: &'tcx ty::VariantDef,
+        base: Option<&'tcx hir::Expr<'tcx>>,
     ) {
         if let Some(struct_lit_data) = self.save_ctxt.get_expr_data(ex) {
-            self.write_sub_paths_truncated(path);
+            if let hir::QPath::Resolved(_, path) = path {
+                self.write_sub_paths_truncated(path);
+            }
             down_cast_data!(struct_lit_data, RefData, ex.span);
             if !generated_code(ex.span) {
                 self.dumper.dump_ref(struct_lit_data);
@@ -837,9 +809,9 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
 
     fn process_method_call(
         &mut self,
-        ex: &'l ast::Expr,
-        seg: &'l ast::PathSegment,
-        args: &'l [P<ast::Expr>],
+        ex: &'tcx hir::Expr<'tcx>,
+        seg: &'tcx hir::PathSegment<'tcx>,
+        args: &'tcx [hir::Expr<'tcx>],
     ) {
         debug!("process_method_call {:?} {:?}", ex, ex.span);
         if let Some(mcd) = self.save_ctxt.get_expr_data(ex) {
@@ -850,13 +822,11 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         }
 
         // Explicit types in the turbo-fish.
-        if let Some(ref generic_args) = seg.args {
-            if let ast::GenericArgs::AngleBracketed(ref data) = **generic_args {
-                for arg in &data.args {
-                    if let ast::AngleBracketedArg::Arg(ast::GenericArg::Type(ty)) = arg {
-                        self.visit_ty(ty)
-                    };
-                }
+        if let Some(generic_args) = seg.args {
+            for arg in generic_args.args {
+                if let hir::GenericArg::Type(ty) = arg {
+                    self.visit_ty(&ty)
+                };
             }
         }
 
@@ -864,19 +834,18 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         walk_list!(self, visit_expr, args);
     }
 
-    fn process_pat(&mut self, p: &'l ast::Pat) {
+    fn process_pat(&mut self, p: &'tcx hir::Pat<'tcx>) {
         match p.kind {
-            PatKind::Struct(ref _path, ref fields, _) => {
+            hir::PatKind::Struct(ref _path, fields, _) => {
                 // FIXME do something with _path?
-                let hir_id = self.tcx.hir().node_id_to_hir_id(p.id);
-                let adt = match self.save_ctxt.tables.node_type_opt(hir_id) {
+                let adt = match self.save_ctxt.tables.node_type_opt(p.hir_id) {
                     Some(ty) if ty.ty_adt_def().is_some() => ty.ty_adt_def().unwrap(),
                     _ => {
-                        visit::walk_pat(self, p);
+                        intravisit::walk_pat(self, p);
                         return;
                     }
                 };
-                let variant = adt.variant_of_res(self.save_ctxt.get_path_res(p.id));
+                let variant = adt.variant_of_res(self.save_ctxt.get_path_res(p.hir_id));
 
                 for field in fields {
                     if let Some(index) = self.tcx.find_field_index(field.ident, variant) {
@@ -892,22 +861,22 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                     self.visit_pat(&field.pat);
                 }
             }
-            _ => visit::walk_pat(self, p),
+            _ => intravisit::walk_pat(self, p),
         }
     }
 
-    fn process_var_decl(&mut self, pat: &'l ast::Pat) {
+    fn process_var_decl(&mut self, pat: &'tcx hir::Pat<'tcx>) {
         // The pattern could declare multiple new vars,
         // we must walk the pattern and collect them all.
-        let mut collector = PathCollector::new();
+        let mut collector = PathCollector::new(self.tcx);
         collector.visit_pat(&pat);
         self.visit_pat(&pat);
 
         // Process collected paths.
         for (id, ident, _) in collector.collected_idents {
-            match self.save_ctxt.get_path_res(id) {
+            let res = self.save_ctxt.get_path_res(id);
+            match res {
                 Res::Local(hir_id) => {
-                    let id = self.tcx.hir().hir_id_to_node_id(hir_id);
                     let typ = self
                         .save_ctxt
                         .tables
@@ -917,8 +886,8 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
 
                     // Rust uses the id of the pattern for var lookups, so we'll use it too.
                     if !self.span.filter_generated(ident.span) {
-                        let qualname = format!("{}${}", ident.to_string(), id);
-                        let id = id_from_node_id(id, &self.save_ctxt);
+                        let qualname = format!("{}${}", ident.to_string(), hir_id);
+                        let id = id_from_hir_id(hir_id, &self.save_ctxt);
                         let span = self.span_from_span(ident.span);
 
                         self.dumper.dump_def(
@@ -951,7 +920,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                     _,
                 )
                 | Res::SelfTy(..) => {
-                    self.dump_path_ref(id, &ast::Path::from_ident(ident));
+                    self.dump_path_segment_ref(id, &hir::PathSegment::from_ident(ident));
                 }
                 def => {
                     error!("unexpected definition kind when processing collected idents: {:?}", def)
@@ -960,7 +929,9 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         }
 
         for (id, ref path) in collector.collected_paths {
-            self.process_path(id, path);
+            if let hir::QPath::Resolved(_, path) = path {
+                self.process_path(id, path);
+            }
         }
     }
 
@@ -1007,45 +978,49 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         // }
     }
 
-    fn process_trait_item(&mut self, trait_item: &'l ast::AssocItem, trait_id: DefId) {
+    fn process_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>, trait_id: DefId) {
         self.process_macro_use(trait_item.span);
         let vis_span = trait_item.span.shrink_to_lo();
         match trait_item.kind {
-            ast::AssocItemKind::Const(_, ref ty, ref expr) => {
+            hir::TraitItemKind::Const(ref ty, body) => {
+                let body = body.map(|b| &self.tcx.hir().body(b).value);
+                let respan = respan(vis_span, hir::VisibilityKind::Public);
                 self.process_assoc_const(
-                    trait_item.id,
+                    trait_item.hir_id,
                     trait_item.ident,
                     &ty,
-                    expr.as_ref().map(|e| &**e),
+                    body,
                     trait_id,
-                    respan(vis_span, ast::VisibilityKind::Public),
+                    &respan,
                     &trait_item.attrs,
                 );
             }
-            ast::AssocItemKind::Fn(_, ref sig, ref generics, ref body) => {
+            hir::TraitItemKind::Fn(ref sig, ref trait_fn) => {
+                let body =
+                    if let hir::TraitFn::Provided(body) = trait_fn { Some(*body) } else { None };
+                let respan = respan(vis_span, hir::VisibilityKind::Public);
                 self.process_method(
                     sig,
-                    body.as_ref().map(|x| &**x),
-                    trait_item.id,
+                    body,
+                    trait_item.hir_id,
                     trait_item.ident,
-                    generics,
-                    respan(vis_span, ast::VisibilityKind::Public),
+                    &trait_item.generics,
+                    &respan,
                     trait_item.span,
                 );
             }
-            ast::AssocItemKind::TyAlias(_, _, ref bounds, ref default_ty) => {
+            hir::TraitItemKind::Type(ref bounds, ref default_ty) => {
                 // FIXME do something with _bounds (for type refs)
                 let name = trait_item.ident.name.to_string();
                 let qualname = format!(
                     "::{}",
-                    self.tcx.def_path_str(
-                        self.tcx.hir().local_def_id_from_node_id(trait_item.id).to_def_id()
-                    )
+                    self.tcx
+                        .def_path_str(self.tcx.hir().local_def_id(trait_item.hir_id).to_def_id())
                 );
 
                 if !self.span.filter_generated(trait_item.ident.span) {
                     let span = self.span_from_span(trait_item.ident.span);
-                    let id = id_from_node_id(trait_item.id, &self.save_ctxt);
+                    let id = id_from_hir_id(trait_item.hir_id, &self.save_ctxt);
 
                     self.dumper.dump_def(
                         &Access { public: true, reachable: true },
@@ -1061,13 +1036,16 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                             decl_id: None,
                             docs: self.save_ctxt.docs_for_attrs(&trait_item.attrs),
                             sig: sig::assoc_type_signature(
-                                trait_item.id,
+                                trait_item.hir_id,
                                 trait_item.ident,
                                 Some(bounds),
                                 default_ty.as_ref().map(|ty| &**ty),
                                 &self.save_ctxt,
                             ),
-                            attributes: lower_attributes(trait_item.attrs.clone(), &self.save_ctxt),
+                            attributes: lower_attributes(
+                                trait_item.attrs.to_vec(),
+                                &self.save_ctxt,
+                            ),
                         },
                     );
                 }
@@ -1076,98 +1054,122 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                     self.visit_ty(default_ty)
                 }
             }
-            ast::AssocItemKind::MacCall(_) => {}
         }
     }
 
-    fn process_impl_item(&mut self, impl_item: &'l ast::AssocItem, impl_id: DefId) {
+    fn process_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>, impl_id: DefId) {
         self.process_macro_use(impl_item.span);
         match impl_item.kind {
-            ast::AssocItemKind::Const(_, ref ty, ref expr) => {
+            hir::ImplItemKind::Const(ref ty, body) => {
+                let body = self.tcx.hir().body(body);
                 self.process_assoc_const(
-                    impl_item.id,
+                    impl_item.hir_id,
                     impl_item.ident,
                     &ty,
-                    expr.as_deref(),
+                    Some(&body.value),
                     impl_id,
-                    impl_item.vis.clone(),
+                    &impl_item.vis,
                     &impl_item.attrs,
                 );
             }
-            ast::AssocItemKind::Fn(_, ref sig, ref generics, ref body) => {
+            hir::ImplItemKind::Fn(ref sig, body) => {
                 self.process_method(
                     sig,
-                    body.as_deref(),
-                    impl_item.id,
+                    Some(body),
+                    impl_item.hir_id,
                     impl_item.ident,
-                    generics,
-                    impl_item.vis.clone(),
+                    &impl_item.generics,
+                    &impl_item.vis,
                     impl_item.span,
                 );
             }
-            ast::AssocItemKind::TyAlias(_, _, _, None) => {}
-            ast::AssocItemKind::TyAlias(_, _, _, Some(ref ty)) => {
+            hir::ImplItemKind::OpaqueTy(..) => {}
+            hir::ImplItemKind::TyAlias(ref ty) => {
                 // FIXME: uses of the assoc type should ideally point to this
                 // 'def' and the name here should be a ref to the def in the
                 // trait.
                 self.visit_ty(ty)
             }
-            ast::AssocItemKind::MacCall(_) => {}
         }
     }
 
-    /// Dumps imports in a use tree recursively.
-    ///
-    /// A use tree is an import that may contain nested braces (RFC 2128). The `use_tree` parameter
-    /// is the current use tree under scrutiny, while `id` and `prefix` are its corresponding node
-    /// ID and path. `root_item` is the topmost use tree in the hierarchy.
-    ///
-    /// If `use_tree` is a simple or glob import, it is dumped into the analysis data. Otherwise,
-    /// each child use tree is dumped recursively.
-    fn process_use_tree(
-        &mut self,
-        use_tree: &'l ast::UseTree,
-        id: NodeId,
-        root_item: &'l ast::Item,
-        prefix: &ast::Path,
-    ) {
-        let path = &use_tree.prefix;
+    pub(crate) fn process_crate(&mut self, krate: &'tcx hir::Crate<'tcx>) {
+        let id = hir::CRATE_HIR_ID;
+        let qualname =
+            format!("::{}", self.tcx.def_path_str(self.tcx.hir().local_def_id(id).to_def_id()));
 
-        // The access is calculated using the current tree ID, but with the root tree's visibility
-        // (since nested trees don't have their own visibility).
-        let hir_id = self.tcx.hir().node_id_to_hir_id(id);
-        let access = access_from!(self.save_ctxt, root_item, hir_id);
+        let sm = self.tcx.sess.source_map();
+        let filename = sm.span_to_filename(krate.item.span);
+        let data_id = id_from_hir_id(id, &self.save_ctxt);
+        let children = krate
+            .item
+            .module
+            .item_ids
+            .iter()
+            .map(|i| id_from_hir_id(i.id, &self.save_ctxt))
+            .collect();
+        let span = self.span_from_span(krate.item.span);
 
-        // The parent `DefId` of a given use tree is always the enclosing item.
-        let parent = self
-            .save_ctxt
-            .tcx
-            .hir()
-            .opt_local_def_id_from_node_id(id)
-            .and_then(|id| self.save_ctxt.tcx.parent(id.to_def_id()))
-            .map(id_from_def_id);
+        self.dumper.dump_def(
+            &Access { public: true, reachable: true },
+            Def {
+                kind: DefKind::Mod,
+                id: data_id,
+                name: String::new(),
+                qualname,
+                span,
+                value: filename.to_string(),
+                children,
+                parent: None,
+                decl_id: None,
+                docs: self.save_ctxt.docs_for_attrs(krate.item.attrs),
+                sig: None,
+                attributes: lower_attributes(krate.item.attrs.to_owned(), &self.save_ctxt),
+            },
+        );
+        intravisit::walk_crate(self, krate);
+    }
 
-        match use_tree.kind {
-            ast::UseTreeKind::Simple(alias, ..) => {
-                let ident = use_tree.ident();
-                let path = ast::Path {
-                    segments: prefix.segments.iter().chain(path.segments.iter()).cloned().collect(),
-                    span: path.span,
-                };
+    fn process_bounds(&mut self, bounds: hir::GenericBounds<'tcx>) {
+        for bound in bounds {
+            if let hir::GenericBound::Trait(ref trait_ref, _) = *bound {
+                self.process_path(trait_ref.trait_ref.hir_ref_id, &trait_ref.trait_ref.path)
+            }
+        }
+    }
+}
 
+impl<'l, 'tcx> Visitor<'tcx> for DumpVisitor<'l, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
+        intravisit::NestedVisitorMap::All(self.tcx.hir())
+    }
+
+    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
+        self.process_macro_use(item.span);
+        match item.kind {
+            hir::ItemKind::Use(path, hir::UseKind::Single) => {
                 let sub_span = path.segments.last().unwrap().ident.span;
                 if !self.span.filter_generated(sub_span) {
-                    let ref_id = self.lookup_def_id(id).map(id_from_def_id);
-                    let alias_span = alias.map(|i| self.span_from_span(i.span));
+                    let access = access_from!(self.save_ctxt, item, item.hir_id);
+                    let ref_id = self.lookup_def_id(item.hir_id).map(id_from_def_id);
                     let span = self.span_from_span(sub_span);
+                    let parent = self
+                        .save_ctxt
+                        .tcx
+                        .hir()
+                        .opt_local_def_id(item.hir_id)
+                        .and_then(|id| self.save_ctxt.tcx.parent(id.to_def_id()))
+                        .map(id_from_def_id);
                     self.dumper.import(
                         &access,
                         Import {
                             kind: ImportKind::Use,
                             ref_id,
                             span,
-                            alias_span,
-                            name: ident.to_string(),
+                            alias_span: None,
+                            name: item.ident.to_string(),
                             value: String::new(),
                             parent,
                         },
@@ -1175,25 +1177,27 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                     self.write_sub_paths_truncated(&path);
                 }
             }
-            ast::UseTreeKind::Glob => {
-                let path = ast::Path {
-                    segments: prefix.segments.iter().chain(path.segments.iter()).cloned().collect(),
-                    span: path.span,
-                };
-
+            hir::ItemKind::Use(path, hir::UseKind::Glob) => {
                 // Make a comma-separated list of names of imported modules.
-                let def_id = self.tcx.hir().local_def_id_from_node_id(id);
+                let def_id = self.tcx.hir().local_def_id(item.hir_id);
                 let names = self.tcx.names_imported_by_glob_use(def_id);
                 let names: Vec<_> = names.iter().map(|n| n.to_string()).collect();
 
                 // Otherwise it's a span with wrong macro expansion info, which
                 // we don't want to track anyway, since it's probably macro-internal `use`
                 if let Some(sub_span) =
-                    self.span.sub_span_of_token(use_tree.span, token::BinOp(token::Star))
+                    self.span.sub_span_of_token(item.span, token::BinOp(token::Star))
                 {
-                    if !self.span.filter_generated(use_tree.span) {
+                    if !self.span.filter_generated(item.span) {
+                        let access = access_from!(self.save_ctxt, item, item.hir_id);
                         let span = self.span_from_span(sub_span);
-
+                        let parent = self
+                            .save_ctxt
+                            .tcx
+                            .hir()
+                            .opt_local_def_id(item.hir_id)
+                            .and_then(|id| self.save_ctxt.tcx.parent(id.to_def_id()))
+                            .map(id_from_def_id);
                         self.dumper.import(
                             &access,
                             Import {
@@ -1210,73 +1214,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                     }
                 }
             }
-            ast::UseTreeKind::Nested(ref nested_items) => {
-                let prefix = ast::Path {
-                    segments: prefix.segments.iter().chain(path.segments.iter()).cloned().collect(),
-                    span: path.span,
-                };
-                for &(ref tree, id) in nested_items {
-                    self.process_use_tree(tree, id, root_item, &prefix);
-                }
-            }
-        }
-    }
-
-    fn process_bounds(&mut self, bounds: &'l ast::GenericBounds) {
-        for bound in bounds {
-            if let ast::GenericBound::Trait(ref trait_ref, _) = *bound {
-                self.process_path(trait_ref.trait_ref.ref_id, &trait_ref.trait_ref.path)
-            }
-        }
-    }
-}
-
-impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
-    fn visit_mod(&mut self, m: &'l ast::Mod, span: Span, attrs: &[ast::Attribute], id: NodeId) {
-        // Since we handle explicit modules ourselves in visit_item, this should
-        // only get called for the root module of a crate.
-        assert_eq!(id, ast::CRATE_NODE_ID);
-
-        let qualname = format!(
-            "::{}",
-            self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(id).to_def_id())
-        );
-
-        let sm = self.tcx.sess.source_map();
-        let filename = sm.span_to_filename(span);
-        let data_id = id_from_node_id(id, &self.save_ctxt);
-        let children = m.items.iter().map(|i| id_from_node_id(i.id, &self.save_ctxt)).collect();
-        let span = self.span_from_span(span);
-
-        self.dumper.dump_def(
-            &Access { public: true, reachable: true },
-            Def {
-                kind: DefKind::Mod,
-                id: data_id,
-                name: String::new(),
-                qualname,
-                span,
-                value: filename.to_string(),
-                children,
-                parent: None,
-                decl_id: None,
-                docs: self.save_ctxt.docs_for_attrs(attrs),
-                sig: None,
-                attributes: lower_attributes(attrs.to_owned(), &self.save_ctxt),
-            },
-        );
-        visit::walk_mod(self, m);
-    }
-
-    fn visit_item(&mut self, item: &'l ast::Item) {
-        use rustc_ast::ast::ItemKind::*;
-        self.process_macro_use(item.span);
-        match item.kind {
-            Use(ref use_tree) => {
-                let prefix = ast::Path { segments: vec![], span: DUMMY_SP };
-                self.process_use_tree(use_tree, item.id, item, &prefix);
-            }
-            ExternCrate(_) => {
+            hir::ItemKind::ExternCrate(_) => {
                 let name_span = item.ident.span;
                 if !self.span.filter_generated(name_span) {
                     let span = self.span_from_span(name_span);
@@ -1284,7 +1222,7 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
                         .save_ctxt
                         .tcx
                         .hir()
-                        .opt_local_def_id_from_node_id(item.id)
+                        .opt_local_def_id(item.hir_id)
                         .and_then(|id| self.save_ctxt.tcx.parent(id.to_def_id()))
                         .map(id_from_def_id);
                     self.dumper.import(
@@ -1301,43 +1239,44 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
                     );
                 }
             }
-            Fn(_, ref sig, ref ty_params, ref body) => {
-                self.process_fn(item, &sig.decl, &sig.header, ty_params, body.as_deref())
+            hir::ItemKind::Fn(ref sig, ref ty_params, body) => {
+                self.process_fn(item, sig.decl, &sig.header, ty_params, body)
             }
-            Static(ref typ, _, ref e) => self.process_static_or_const_item(item, typ, e.as_deref()),
-            Const(_, ref typ, ref e) => self.process_static_or_const_item(item, typ, e.as_deref()),
-            Struct(ref def, ref ty_params) | Union(ref def, ref ty_params) => {
+            hir::ItemKind::Static(ref typ, _, body) => {
+                let body = self.tcx.hir().body(body);
+                self.process_static_or_const_item(item, typ, &body.value)
+            }
+            hir::ItemKind::Const(ref typ, body) => {
+                let body = self.tcx.hir().body(body);
+                self.process_static_or_const_item(item, typ, &body.value)
+            }
+            hir::ItemKind::Struct(ref def, ref ty_params)
+            | hir::ItemKind::Union(ref def, ref ty_params) => {
                 self.process_struct(item, def, ty_params)
             }
-            Enum(ref def, ref ty_params) => self.process_enum(item, def, ty_params),
-            Impl { ref generics, ref of_trait, ref self_ty, ref items, .. } => {
+            hir::ItemKind::Enum(ref def, ref ty_params) => self.process_enum(item, def, ty_params),
+            hir::ItemKind::Impl { ref generics, ref of_trait, ref self_ty, ref items, .. } => {
                 self.process_impl(item, generics, of_trait, &self_ty, items)
             }
-            Trait(_, _, ref generics, ref trait_refs, ref methods) => {
+            hir::ItemKind::Trait(_, _, ref generics, ref trait_refs, methods) => {
                 self.process_trait(item, generics, trait_refs, methods)
             }
-            Mod(ref m) => {
+            hir::ItemKind::Mod(ref m) => {
                 self.process_mod(item);
-                visit::walk_mod(self, m);
+                intravisit::walk_mod(self, m, item.hir_id);
             }
-            TyAlias(_, ref ty_params, _, ref ty) => {
+            hir::ItemKind::TyAlias(ty, ref generics) => {
                 let qualname = format!(
                     "::{}",
-                    self.tcx.def_path_str(
-                        self.tcx.hir().local_def_id_from_node_id(item.id).to_def_id()
-                    )
+                    self.tcx.def_path_str(self.tcx.hir().local_def_id(item.hir_id).to_def_id())
                 );
-                let value = match ty {
-                    Some(ty) => ty_to_string(&ty),
-                    None => "_".to_string(),
-                };
+                let value = ty_to_string(&ty);
                 if !self.span.filter_generated(item.ident.span) {
                     let span = self.span_from_span(item.ident.span);
-                    let id = id_from_node_id(item.id, &self.save_ctxt);
-                    let hir_id = self.tcx.hir().node_id_to_hir_id(item.id);
+                    let id = id_from_hir_id(item.hir_id, &self.save_ctxt);
 
                     self.dumper.dump_def(
-                        &access_from!(self.save_ctxt, item, hir_id),
+                        &access_from!(self.save_ctxt, item, item.hir_id),
                         Def {
                             kind: DefKind::Type,
                             id,
@@ -1350,52 +1289,51 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
                             decl_id: None,
                             docs: self.save_ctxt.docs_for_attrs(&item.attrs),
                             sig: sig::item_signature(item, &self.save_ctxt),
-                            attributes: lower_attributes(item.attrs.clone(), &self.save_ctxt),
+                            attributes: lower_attributes(item.attrs.to_vec(), &self.save_ctxt),
                         },
                     );
                 }
 
-                walk_list!(self, visit_ty, ty);
-                self.process_generic_params(ty_params, &qualname, item.id);
+                self.visit_ty(ty);
+                self.process_generic_params(generics, &qualname, item.hir_id);
             }
-            MacCall(_) => (),
-            _ => visit::walk_item(self, item),
+            _ => intravisit::walk_item(self, item),
         }
     }
 
-    fn visit_generics(&mut self, generics: &'l ast::Generics) {
-        for param in &generics.params {
+    fn visit_generics(&mut self, generics: &'tcx hir::Generics<'tcx>) {
+        for param in generics.params {
             match param.kind {
-                ast::GenericParamKind::Lifetime { .. } => {}
-                ast::GenericParamKind::Type { ref default, .. } => {
-                    self.process_bounds(&param.bounds);
+                hir::GenericParamKind::Lifetime { .. } => {}
+                hir::GenericParamKind::Type { ref default, .. } => {
+                    self.process_bounds(param.bounds);
                     if let Some(ref ty) = default {
-                        self.visit_ty(&ty);
+                        self.visit_ty(ty);
                     }
                 }
-                ast::GenericParamKind::Const { ref ty } => {
-                    self.process_bounds(&param.bounds);
-                    self.visit_ty(&ty);
+                hir::GenericParamKind::Const { ref ty } => {
+                    self.process_bounds(param.bounds);
+                    self.visit_ty(ty);
                 }
             }
         }
-        for pred in &generics.where_clause.predicates {
-            if let ast::WherePredicate::BoundPredicate(ref wbp) = *pred {
-                self.process_bounds(&wbp.bounds);
-                self.visit_ty(&wbp.bounded_ty);
+        for pred in generics.where_clause.predicates {
+            if let hir::WherePredicate::BoundPredicate(ref wbp) = *pred {
+                self.process_bounds(wbp.bounds);
+                self.visit_ty(wbp.bounded_ty);
             }
         }
     }
 
-    fn visit_ty(&mut self, t: &'l ast::Ty) {
+    fn visit_ty(&mut self, t: &'tcx hir::Ty<'tcx>) {
         self.process_macro_use(t.span);
         match t.kind {
-            ast::TyKind::Path(_, ref path) => {
+            hir::TyKind::Path(hir::QPath::Resolved(_, path)) => {
                 if generated_code(t.span) {
                     return;
                 }
 
-                if let Some(id) = self.lookup_def_id(t.id) {
+                if let Some(id) = self.lookup_def_id(t.hir_id) {
                     let sub_span = path.segments.last().unwrap().ident.span;
                     let span = self.span_from_span(sub_span);
                     self.dumper.dump_ref(Ref {
@@ -1406,57 +1344,37 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
                 }
 
                 self.write_sub_paths_truncated(path);
-                visit::walk_path(self, path);
+                intravisit::walk_path(self, path);
             }
-            ast::TyKind::Array(ref element, ref length) => {
-                self.visit_ty(element);
-                let hir_id = self.tcx.hir().node_id_to_hir_id(length.id);
-                self.nest_tables(self.tcx.hir().local_def_id(hir_id), |v| {
-                    v.visit_expr(&length.value)
+            hir::TyKind::Array(ref ty, ref anon_const) => {
+                self.visit_ty(ty);
+                let map = self.tcx.hir();
+                self.nest_tables(self.tcx.hir().local_def_id(anon_const.hir_id), |v| {
+                    v.visit_expr(&map.body(anon_const.body).value)
                 });
             }
-            ast::TyKind::ImplTrait(id, ref bounds) => {
-                // FIXME: As of writing, the opaque type lowering introduces
-                // another DefPath scope/segment (used to declare the resulting
-                // opaque type item).
-                // However, the synthetic scope does *not* have associated
-                // typeck tables, which means we can't nest it and we fire an
-                // assertion when resolving the qualified type paths in trait
-                // bounds...
-                // This will panic if called on return type `impl Trait`, which
-                // we guard against in `process_fn`.
-                // FIXME(#71104) Should really be using just `node_id_to_hir_id` but
-                // some `NodeId` do not seem to have a corresponding HirId.
-                if let Some(hir_id) = self.tcx.hir().opt_node_id_to_hir_id(id) {
-                    self.nest_tables(self.tcx.hir().local_def_id(hir_id), |v| {
-                        v.process_bounds(bounds)
-                    });
-                }
-            }
-            _ => visit::walk_ty(self, t),
+            _ => intravisit::walk_ty(self, t),
         }
     }
 
-    fn visit_expr(&mut self, ex: &'l ast::Expr) {
+    fn visit_expr(&mut self, ex: &'tcx hir::Expr<'tcx>) {
         debug!("visit_expr {:?}", ex.kind);
         self.process_macro_use(ex.span);
         match ex.kind {
-            ast::ExprKind::Struct(ref path, ref fields, ref base) => {
-                let expr_hir_id = self.save_ctxt.tcx.hir().node_id_to_hir_id(ex.id);
-                let hir_expr = self.save_ctxt.tcx.hir().expect_expr(expr_hir_id);
+            hir::ExprKind::Struct(ref path, ref fields, ref base) => {
+                let hir_expr = self.save_ctxt.tcx.hir().expect_expr(ex.hir_id);
                 let adt = match self.save_ctxt.tables.expr_ty_opt(&hir_expr) {
                     Some(ty) if ty.ty_adt_def().is_some() => ty.ty_adt_def().unwrap(),
                     _ => {
-                        visit::walk_expr(self, ex);
+                        intravisit::walk_expr(self, ex);
                         return;
                     }
                 };
-                let node_id = self.save_ctxt.tcx.hir().hir_id_to_node_id(hir_expr.hir_id);
-                let res = self.save_ctxt.get_path_res(node_id);
-                self.process_struct_lit(ex, path, fields, adt.variant_of_res(res), base)
+                let res = self.save_ctxt.get_path_res(hir_expr.hir_id);
+                self.process_struct_lit(ex, path, fields, adt.variant_of_res(res), *base)
             }
-            ast::ExprKind::MethodCall(ref seg, ref args) => self.process_method_call(ex, seg, args),
-            ast::ExprKind::Field(ref sub_ex, _) => {
+            hir::ExprKind::MethodCall(ref seg, _, args) => self.process_method_call(ex, seg, args),
+            hir::ExprKind::Field(ref sub_ex, _) => {
                 self.visit_expr(&sub_ex);
 
                 if let Some(field_data) = self.save_ctxt.get_expr_data(ex) {
@@ -1466,71 +1384,62 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
                     }
                 }
             }
-            ast::ExprKind::Closure(_, _, _, ref decl, ref body, _fn_decl_span) => {
-                let id = format!("${}", ex.id);
+            hir::ExprKind::Closure(_, ref decl, body, _fn_decl_span, _) => {
+                let id = format!("${}", ex.hir_id);
 
                 // walk arg and return types
-                for arg in &decl.inputs {
-                    self.visit_ty(&arg.ty);
+                for ty in decl.inputs {
+                    self.visit_ty(ty);
                 }
 
-                if let ast::FnRetTy::Ty(ref ret_ty) = decl.output {
-                    self.visit_ty(&ret_ty);
+                if let hir::FnRetTy::Return(ref ret_ty) = decl.output {
+                    self.visit_ty(ret_ty);
                 }
 
                 // walk the body
-                let hir_id = self.tcx.hir().node_id_to_hir_id(ex.id);
-                self.nest_tables(self.tcx.hir().local_def_id(hir_id), |v| {
-                    v.process_formals(&decl.inputs, &id);
-                    v.visit_expr(body)
+                let map = self.tcx.hir();
+                self.nest_tables(self.tcx.hir().local_def_id(ex.hir_id), |v| {
+                    let body = map.body(body);
+                    v.process_formals(body.params, &id);
+                    v.visit_expr(&body.value)
                 });
             }
-            ast::ExprKind::ForLoop(ref pattern, ref subexpression, ref block, _) => {
-                self.process_var_decl(pattern);
-                debug!("for loop, walk sub-expr: {:?}", subexpression.kind);
-                self.visit_expr(subexpression);
-                visit::walk_block(self, block);
-            }
-            ast::ExprKind::Let(ref pat, ref scrutinee) => {
-                self.process_var_decl(pat);
-                self.visit_expr(scrutinee);
-            }
-            ast::ExprKind::Repeat(ref element, ref count) => {
-                self.visit_expr(element);
-                let hir_id = self.tcx.hir().node_id_to_hir_id(count.id);
-                self.nest_tables(self.tcx.hir().local_def_id(hir_id), |v| {
-                    v.visit_expr(&count.value)
+            hir::ExprKind::Repeat(ref expr, ref anon_const) => {
+                self.visit_expr(expr);
+                let map = self.tcx.hir();
+                self.nest_tables(self.tcx.hir().local_def_id(anon_const.hir_id), |v| {
+                    v.visit_expr(&map.body(anon_const.body).value)
                 });
             }
             // In particular, we take this branch for call and path expressions,
             // where we'll index the idents involved just by continuing to walk.
-            _ => visit::walk_expr(self, ex),
+            _ => intravisit::walk_expr(self, ex),
         }
     }
 
-    fn visit_pat(&mut self, p: &'l ast::Pat) {
+    fn visit_pat(&mut self, p: &'tcx hir::Pat<'tcx>) {
         self.process_macro_use(p.span);
         self.process_pat(p);
     }
 
-    fn visit_arm(&mut self, arm: &'l ast::Arm) {
+    fn visit_arm(&mut self, arm: &'tcx hir::Arm<'tcx>) {
         self.process_var_decl(&arm.pat);
-        if let Some(expr) = &arm.guard {
+        if let Some(hir::Guard::If(expr)) = &arm.guard {
             self.visit_expr(expr);
         }
         self.visit_expr(&arm.body);
     }
 
-    fn visit_path(&mut self, p: &'l ast::Path, id: NodeId) {
+    fn visit_path(&mut self, p: &'tcx hir::Path<'tcx>, id: hir::HirId) {
         self.process_path(id, p);
     }
 
-    fn visit_stmt(&mut self, s: &'l ast::Stmt) {
+    fn visit_stmt(&mut self, s: &'tcx hir::Stmt<'tcx>) {
         self.process_macro_use(s.span);
-        visit::walk_stmt(self, s)
+        intravisit::walk_stmt(self, s)
     }
 
-    fn visit_local(&mut self, l: &'l ast::Local) {
+    fn visit_local(&mut self, l: &'tcx hir::Local<'tcx>) {
         self.process_macro_use(l.span);
         self.process_var_decl(&l.pat);
 
@@ -1539,29 +1448,27 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
         walk_list!(self, visit_expr, &l.init);
     }
 
-    fn visit_foreign_item(&mut self, item: &'l ast::ForeignItem) {
-        let hir_id = self.tcx.hir().node_id_to_hir_id(item.id);
-        let access = access_from!(self.save_ctxt, item, hir_id);
+    fn visit_foreign_item(&mut self, item: &'tcx hir::ForeignItem<'tcx>) {
+        let access = access_from!(self.save_ctxt, item, item.hir_id);
 
         match item.kind {
-            ast::ForeignItemKind::Fn(_, ref sig, ref generics, _) => {
-                let decl = &sig.decl;
+            hir::ForeignItemKind::Fn(decl, _, ref generics) => {
                 if let Some(fn_data) = self.save_ctxt.get_extern_item_data(item) {
                     down_cast_data!(fn_data, DefData, item.span);
 
-                    self.process_generic_params(generics, &fn_data.qualname, item.id);
+                    self.process_generic_params(generics, &fn_data.qualname, item.hir_id);
                     self.dumper.dump_def(&access, fn_data);
                 }
 
-                for arg in &decl.inputs {
-                    self.visit_ty(&arg.ty);
+                for ty in decl.inputs {
+                    self.visit_ty(ty);
                 }
 
-                if let ast::FnRetTy::Ty(ref ret_ty) = decl.output {
-                    self.visit_ty(&ret_ty);
+                if let hir::FnRetTy::Return(ref ret_ty) = decl.output {
+                    self.visit_ty(ret_ty);
                 }
             }
-            ast::ForeignItemKind::Static(ref ty, _, _) => {
+            hir::ForeignItemKind::Static(ref ty, _) => {
                 if let Some(var_data) = self.save_ctxt.get_extern_item_data(item) {
                     down_cast_data!(var_data, DefData, item.span);
                     self.dumper.dump_def(&access, var_data);
@@ -1569,13 +1476,12 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
 
                 self.visit_ty(ty);
             }
-            ast::ForeignItemKind::TyAlias(..) => {
+            hir::ForeignItemKind::Type => {
                 if let Some(var_data) = self.save_ctxt.get_extern_item_data(item) {
                     down_cast_data!(var_data, DefData, item.span);
                     self.dumper.dump_def(&access, var_data);
                 }
             }
-            ast::ForeignItemKind::MacCall(..) => {}
         }
     }
 }
