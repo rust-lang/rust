@@ -416,7 +416,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                 ref operands,
                 options: _,
                 line_spans: _,
-                destination: _
+                destination: _,
             } => {
                 for op in operands {
                     match *op {
