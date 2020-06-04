@@ -1,7 +1,5 @@
 //! An algorithm to find a path to refer to a certain item.
 
-use std::sync::Arc;
-
 use hir_expand::name::{known, AsName, Name};
 use ra_prof::profile;
 use test_utils::mark;
@@ -11,8 +9,9 @@ use crate::{
     item_scope::ItemInNs,
     path::{ModPath, PathKind},
     visibility::Visibility,
-    CrateId, ModuleDefId, ModuleId,
+    ModuleDefId, ModuleId,
 };
+use rustc_hash::FxHashSet;
 
 // FIXME: handle local items
 
@@ -20,7 +19,7 @@ use crate::{
 /// *from where* you're referring to the item, hence the `from` parameter.
 pub fn find_path(db: &dyn DefDatabase, item: ItemInNs, from: ModuleId) -> Option<ModPath> {
     let _p = profile("find_path");
-    db.find_path_inner(item, from, MAX_PATH_LEN)
+    find_path_inner(db, item, from, MAX_PATH_LEN)
 }
 
 const MAX_PATH_LEN: usize = 15;
@@ -38,7 +37,7 @@ impl ModPath {
     }
 }
 
-pub(crate) fn find_path_inner_query(
+pub(crate) fn find_path_inner(
     db: &dyn DefDatabase,
     item: ItemInNs,
     from: ModuleId,
@@ -122,31 +121,61 @@ pub(crate) fn find_path_inner_query(
     }
 
     // - otherwise, look for modules containing (reexporting) it and import it from one of those
+
     let crate_root = ModuleId { local_id: def_map.root, krate: from.krate };
     let crate_attrs = db.attrs(crate_root.into());
     let prefer_no_std = crate_attrs.by_key("no_std").exists();
-    let importable_locations = find_importable_locations(db, item, from);
     let mut best_path = None;
     let mut best_path_len = max_len;
-    for (module_id, name) in importable_locations {
-        let mut path = match db.find_path_inner(
-            ItemInNs::Types(ModuleDefId::ModuleId(module_id)),
-            from,
-            best_path_len - 1,
-        ) {
-            None => continue,
-            Some(path) => path,
-        };
-        path.segments.push(name);
 
-        let new_path = if let Some(best_path) = best_path {
-            select_best_path(best_path, path, prefer_no_std)
-        } else {
-            path
-        };
-        best_path_len = new_path.len();
-        best_path = Some(new_path);
+    if item.defining_crate(db) == Some(from.krate) {
+        // Item was defined in the same crate that wants to import it. It cannot be found in any
+        // dependency in this case.
+
+        let local_imports = find_local_import_locations(db, item, from);
+        for (module_id, name) in local_imports {
+            if let Some(mut path) = find_path_inner(
+                db,
+                ItemInNs::Types(ModuleDefId::ModuleId(module_id)),
+                from,
+                best_path_len - 1,
+            ) {
+                path.segments.push(name);
+
+                let new_path = if let Some(best_path) = best_path {
+                    select_best_path(best_path, path, prefer_no_std)
+                } else {
+                    path
+                };
+                best_path_len = new_path.len();
+                best_path = Some(new_path);
+            }
+        }
+    } else {
+        // Item was defined in some upstream crate. This means that it must be exported from one,
+        // too (unless we can't name it at all). It could *also* be (re)exported by the same crate
+        // that wants to import it here, but we always prefer to use the external path here.
+
+        let crate_graph = db.crate_graph();
+        let extern_paths = crate_graph[from.krate].dependencies.iter().filter_map(|dep| {
+            let import_map = db.import_map(dep.crate_id);
+            import_map.path_of(item).map(|modpath| {
+                let mut modpath = modpath.clone();
+                modpath.segments.insert(0, dep.as_name());
+                modpath
+            })
+        });
+
+        for path in extern_paths {
+            let new_path = if let Some(best_path) = best_path {
+                select_best_path(best_path, path, prefer_no_std)
+            } else {
+                path
+            };
+            best_path = Some(new_path);
+        }
     }
+
     best_path
 }
 
@@ -174,77 +203,86 @@ fn select_best_path(old_path: ModPath, new_path: ModPath, prefer_no_std: bool) -
     }
 }
 
-fn find_importable_locations(
+/// Finds locations in `from.krate` from which `item` can be imported by `from`.
+fn find_local_import_locations(
     db: &dyn DefDatabase,
     item: ItemInNs,
     from: ModuleId,
 ) -> Vec<(ModuleId, Name)> {
-    let crate_graph = db.crate_graph();
-    let mut result = Vec::new();
+    let _p = profile("find_local_import_locations");
 
-    // We only look in the crate from which we are importing, and the direct
-    // dependencies. We cannot refer to names from transitive dependencies
-    // directly (only through reexports in direct dependencies).
+    // `from` can import anything below `from` with visibility of at least `from`, and anything
+    // above `from` with any visibility. That means we do not need to descend into private siblings
+    // of `from` (and similar).
 
-    // For the crate from which we're importing, we have to check whether any
-    // module visible to `from` exports the item we're looking for.
-    // For dependencies of the crate only `pub` items reachable through `pub`
-    // modules from the crate root are relevant. For that we precompute an
-    // import map that tells us the shortest path to any importable item with a
-    // single lookup.
-    for krate in Some(from.krate)
-        .into_iter()
-        .chain(crate_graph[from.krate].dependencies.iter().map(|dep| dep.crate_id))
-    {
-        result.extend(
-            db.importable_locations_of(item, krate)
-                .iter()
-                .filter(|(_, _, vis)| vis.is_visible_from(db, from))
-                .map(|(m, n, _)| (*m, n.clone())),
-        );
+    let def_map = db.crate_def_map(from.krate);
+
+    // Compute the initial worklist. We start with all direct child modules of `from` as well as all
+    // of its (recursive) parent modules.
+    let data = &def_map.modules[from.local_id];
+    let mut worklist = data
+        .children
+        .values()
+        .map(|child| ModuleId { krate: from.krate, local_id: *child })
+        .collect::<Vec<_>>();
+    let mut parent = data.parent;
+    while let Some(p) = parent {
+        worklist.push(ModuleId { krate: from.krate, local_id: p });
+        parent = def_map.modules[p].parent;
     }
-    result
-}
 
-/// Collects all locations from which we might import the item in a particular
-/// crate. These include the original definition of the item, and any
-/// non-private `use`s.
-///
-/// Note that the crate doesn't need to be the one in which the item is defined;
-/// it might be re-exported in other crates.
-pub(crate) fn importable_locations_of_query(
-    db: &dyn DefDatabase,
-    item: ItemInNs,
-    krate: CrateId,
-) -> Arc<[(ModuleId, Name, Visibility)]> {
-    let _p = profile("importable_locations_of_query");
-    let def_map = db.crate_def_map(krate);
-    let mut result = Vec::new();
-    for (local_id, data) in def_map.modules.iter() {
+    let mut seen: FxHashSet<_> = FxHashSet::default();
+
+    let mut locations = Vec::new();
+    while let Some(module) = worklist.pop() {
+        if !seen.insert(module) {
+            continue; // already processed this module
+        }
+
+        let ext_def_map;
+        let data = if module.krate == from.krate {
+            &def_map[module.local_id]
+        } else {
+            // The crate might reexport a module defined in another crate.
+            ext_def_map = db.crate_def_map(module.krate);
+            &ext_def_map[module.local_id]
+        };
+
         if let Some((name, vis)) = data.scope.name_of(item) {
-            let is_private = if let Visibility::Module(private_to) = vis {
-                private_to.local_id == local_id
-            } else {
-                false
-            };
-            let is_original_def = if let Some(module_def_id) = item.as_module_def_id() {
-                data.scope.declarations().any(|it| it == module_def_id)
-            } else {
-                false
-            };
-            if is_private && !is_original_def {
+            if vis.is_visible_from(db, from) {
+                let is_private = if let Visibility::Module(private_to) = vis {
+                    private_to.local_id == module.local_id
+                } else {
+                    false
+                };
+                let is_original_def = if let Some(module_def_id) = item.as_module_def_id() {
+                    data.scope.declarations().any(|it| it == module_def_id)
+                } else {
+                    false
+                };
+
                 // Ignore private imports. these could be used if we are
                 // in a submodule of this module, but that's usually not
                 // what the user wants; and if this module can import
                 // the item and we're a submodule of it, so can we.
                 // Also this keeps the cached data smaller.
-                continue;
+                if !is_private || is_original_def {
+                    locations.push((module, name.clone()));
+                }
             }
-            result.push((ModuleId { krate, local_id }, name.clone(), vis));
+        }
+
+        // Descend into all modules visible from `from`.
+        for (_, per_ns) in data.scope.entries() {
+            if let Some((ModuleDefId::ModuleId(module), vis)) = per_ns.take_types_vis() {
+                if vis.is_visible_from(db, from) {
+                    worklist.push(module);
+                }
+            }
         }
     }
 
-    Arc::from(result)
+    locations
 }
 
 #[cfg(test)]
@@ -382,6 +420,7 @@ mod tests {
 
     #[test]
     fn different_crate_renamed() {
+        // Even if a local path exists, if the item is defined externally, prefer an external path.
         let code = r#"
             //- /main.rs crate:main deps:std
             extern crate std as std_renamed;
@@ -389,7 +428,7 @@ mod tests {
             //- /std.rs crate:std
             pub struct S;
         "#;
-        check_found_path(code, "std_renamed::S");
+        check_found_path(code, "std::S");
     }
 
     #[test]

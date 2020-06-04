@@ -1,7 +1,7 @@
 //! Defines database & queries for name resolution.
 use std::sync::Arc;
 
-use hir_expand::{db::AstDatabase, name::Name, HirFileId};
+use hir_expand::{db::AstDatabase, HirFileId};
 use ra_db::{salsa, CrateId, SourceDatabase, Upcast};
 use ra_prof::profile;
 use ra_syntax::SmolStr;
@@ -12,14 +12,10 @@ use crate::{
     body::{scope::ExprScopes, Body, BodySourceMap},
     data::{ConstData, FunctionData, ImplData, StaticData, TraitData, TypeAliasData},
     docs::Documentation,
-    find_path,
     generics::GenericParams,
     import_map::ImportMap,
-    item_scope::ItemInNs,
     lang_item::{LangItemTarget, LangItems},
     nameres::{raw::RawItems, CrateDefMap},
-    path::ModPath,
-    visibility::Visibility,
     AttrDefId, ConstId, ConstLoc, DefWithBodyId, EnumId, EnumLoc, FunctionId, FunctionLoc,
     GenericDefId, ImplId, ImplLoc, ModuleId, StaticId, StaticLoc, StructId, StructLoc, TraitId,
     TraitLoc, TypeAliasId, TypeAliasLoc, UnionId, UnionLoc,
@@ -113,16 +109,6 @@ pub trait DefDatabase: InternDatabase + AstDatabase + Upcast<dyn AstDatabase> {
     // Remove this query completely, in favor of `Attrs::docs` method
     #[salsa::invoke(Documentation::documentation_query)]
     fn documentation(&self, def: AttrDefId) -> Option<Documentation>;
-
-    #[salsa::invoke(find_path::importable_locations_of_query)]
-    fn importable_locations_of(
-        &self,
-        item: ItemInNs,
-        krate: CrateId,
-    ) -> Arc<[(ModuleId, Name, Visibility)]>;
-
-    #[salsa::invoke(find_path::find_path_inner_query)]
-    fn find_path_inner(&self, item: ItemInNs, from: ModuleId, max_len: usize) -> Option<ModPath>;
 
     #[salsa::invoke(ImportMap::import_map_query)]
     fn import_map(&self, krate: CrateId) -> Arc<ImportMap>;

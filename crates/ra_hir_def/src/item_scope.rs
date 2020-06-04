@@ -6,9 +6,10 @@ use once_cell::sync::Lazy;
 use rustc_hash::FxHashMap;
 
 use crate::{
-    per_ns::PerNs, visibility::Visibility, AdtId, BuiltinType, ImplId, MacroDefId, ModuleDefId,
-    TraitId,
+    db::DefDatabase, per_ns::PerNs, visibility::Visibility, AdtId, BuiltinType, HasModule, ImplId,
+    Lookup, MacroDefId, ModuleDefId, TraitId,
 };
+use ra_db::CrateId;
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct ItemScope {
@@ -202,5 +203,22 @@ impl ItemInNs {
             ItemInNs::Types(id) | ItemInNs::Values(id) => Some(id),
             ItemInNs::Macros(_) => None,
         }
+    }
+
+    pub fn defining_crate(&self, db: &dyn DefDatabase) -> Option<CrateId> {
+        Some(match self {
+            ItemInNs::Types(did) | ItemInNs::Values(did) => match did {
+                ModuleDefId::ModuleId(id) => id.krate,
+                ModuleDefId::FunctionId(id) => id.lookup(db).module(db).krate,
+                ModuleDefId::AdtId(id) => id.module(db).krate,
+                ModuleDefId::EnumVariantId(id) => id.parent.lookup(db).container.module(db).krate,
+                ModuleDefId::ConstId(id) => id.lookup(db).container.module(db).krate,
+                ModuleDefId::StaticId(id) => id.lookup(db).container.module(db).krate,
+                ModuleDefId::TraitId(id) => id.lookup(db).container.module(db).krate,
+                ModuleDefId::TypeAliasId(id) => id.lookup(db).module(db).krate,
+                ModuleDefId::BuiltinType(_) => return None,
+            },
+            ItemInNs::Macros(id) => return id.krate,
+        })
     }
 }
