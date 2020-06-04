@@ -57,6 +57,13 @@ pub mod arch {
 
     /// Platform-specific intrinsics for the `wasm32` platform.
     ///
+
+    /// # Availability
+    ///
+    /// Note that intrinsics gated by `target_feature = "atomics"` or `target_feature = "simd128"`
+    /// are only available **when the standard library itself is compiled with the the respective
+    /// target feature**. This version of the standard library is not obtainable via `rustup`,
+    /// but rather will require the standard library to be compiled from source.
     /// See the [module documentation](../index.html) for more details.
     #[cfg(any(target_arch = "wasm32", dox))]
     #[doc(cfg(target_arch = "wasm32"))]
