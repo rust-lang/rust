@@ -1,7 +1,7 @@
 use crate::utils::{
-    attr_by_name, attrs::is_proc_macro, is_must_use_ty, is_trait_impl_item, iter_input_pats, match_def_path,
-    must_use_attr, qpath_res, return_ty, snippet, snippet_opt, span_lint, span_lint_and_help, span_lint_and_then,
-    trait_ref_of_method, type_is_unsafe_function,
+    attr_by_name, attrs::is_proc_macro, is_must_use_ty, is_trait_impl_item, iter_input_pats,
+    match_def_path, must_use_attr, qpath_res, return_ty, snippet, snippet_opt, span_lint,
+    span_lint_and_help, span_lint_and_then, trait_ref_of_method, type_is_unsafe_function,
 };
 use rustc_ast::ast::Attribute;
 use rustc_data_structures::fx::FxHashSet;
@@ -212,17 +212,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
             match kind {
                 intravisit::FnKind::Method(
                     _,
-                    &hir::FnSig {
-                        header: hir::FnHeader { abi: Abi::Rust, .. },
-                        ..
-                    },
+                    &hir::FnSig { header: hir::FnHeader { abi: Abi::Rust, .. }, .. },
                     _,
                     _,
                 )
                 | intravisit::FnKind::ItemFn(_, _, hir::FnHeader { abi: Abi::Rust, .. }, _, _) => {
                     self.check_arg_number(cx, decl, span.with_hi(decl.output.span().hi()))
-                },
-                _ => {},
+                }
+                _ => {}
             }
         }
 
@@ -235,7 +232,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
         if let hir::ItemKind::Fn(ref sig, ref _generics, ref body_id) = item.kind {
             if let Some(attr) = attr {
                 let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
-                check_needless_must_use(cx, &sig.decl, item.hir_id, item.span, fn_header_span, attr);
+                check_needless_must_use(
+                    cx,
+                    &sig.decl,
+                    item.hir_id,
+                    item.span,
+                    fn_header_span,
+                    attr,
+                );
                 return;
             }
             if cx.access_levels.is_exported(item.hir_id)
@@ -260,7 +264,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
             let attr = must_use_attr(&item.attrs);
             if let Some(attr) = attr {
                 let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
-                check_needless_must_use(cx, &sig.decl, item.hir_id, item.span, fn_header_span, attr);
+                check_needless_must_use(
+                    cx,
+                    &sig.decl,
+                    item.hir_id,
+                    item.span,
+                    fn_header_span,
+                    attr,
+                );
             } else if cx.access_levels.is_exported(item.hir_id)
                 && !is_proc_macro(&item.attrs)
                 && trait_ref_of_method(cx, item.hir_id).is_none()
@@ -282,19 +293,33 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
         if let hir::TraitItemKind::Fn(ref sig, ref eid) = item.kind {
             // don't lint extern functions decls, it's not their fault
             if sig.header.abi == Abi::Rust {
-                self.check_arg_number(cx, &sig.decl, item.span.with_hi(sig.decl.output.span().hi()));
+                self.check_arg_number(
+                    cx,
+                    &sig.decl,
+                    item.span.with_hi(sig.decl.output.span().hi()),
+                );
             }
 
             let attr = must_use_attr(&item.attrs);
             if let Some(attr) = attr {
                 let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
-                check_needless_must_use(cx, &sig.decl, item.hir_id, item.span, fn_header_span, attr);
+                check_needless_must_use(
+                    cx,
+                    &sig.decl,
+                    item.hir_id,
+                    item.span,
+                    fn_header_span,
+                    attr,
+                );
             }
             if let hir::TraitFn::Provided(eid) = *eid {
                 let body = cx.tcx.hir().body(eid);
                 Self::check_raw_ptr(cx, sig.header.unsafety, &sig.decl, body, item.hir_id);
 
-                if attr.is_none() && cx.access_levels.is_exported(item.hir_id) && !is_proc_macro(&item.attrs) {
+                if attr.is_none()
+                    && cx.access_levels.is_exported(item.hir_id)
+                    && !is_proc_macro(&item.attrs)
+                {
                     check_must_use_candidate(
                         cx,
                         &sig.decl,
@@ -351,7 +376,7 @@ impl<'a, 'tcx> Functions {
                             line = &line[i + 2..];
                             in_comment = false;
                             continue;
-                        },
+                        }
                         None => break,
                     }
                 } else {
@@ -392,12 +417,8 @@ impl<'a, 'tcx> Functions {
                 .collect::<FxHashSet<_>>();
 
             if !raw_ptrs.is_empty() {
-                let tables = cx.tcx.body_tables(body.id());
-                let mut v = DerefVisitor {
-                    cx,
-                    ptrs: raw_ptrs,
-                    tables,
-                };
+                let tables = cx.tcx.typeck_body(body.id());
+                let mut v = DerefVisitor { cx, ptrs: raw_ptrs, tables };
 
                 intravisit::walk_expr(&mut v, expr);
             }
@@ -489,18 +510,17 @@ fn has_mutable_arg(cx: &LateContext<'_, '_>, body: &hir::Body<'_>) -> bool {
     body.params.iter().any(|param| is_mutable_pat(cx, &param.pat, &mut tys))
 }
 
-fn is_mutable_pat(cx: &LateContext<'_, '_>, pat: &hir::Pat<'_>, tys: &mut FxHashSet<DefId>) -> bool {
+fn is_mutable_pat(
+    cx: &LateContext<'_, '_>,
+    pat: &hir::Pat<'_>,
+    tys: &mut FxHashSet<DefId>,
+) -> bool {
     if let hir::PatKind::Wild = pat.kind {
         return false; // ignore `_` patterns
     }
     let def_id = pat.hir_id.owner.to_def_id();
-    if cx.tcx.has_typeck_tables(def_id) {
-        is_mutable_ty(
-            cx,
-            &cx.tcx.typeck_tables_of(def_id.expect_local()).pat_ty(pat),
-            pat.span,
-            tys,
-        )
+    if cx.tcx.has_typeck_results(def_id) {
+        is_mutable_ty(cx, &cx.tcx.typeck(def_id.expect_local()).pat_ty(pat), pat.span, tys)
     } else {
         false
     }
@@ -508,7 +528,12 @@ fn is_mutable_pat(cx: &LateContext<'_, '_>, pat: &hir::Pat<'_>, tys: &mut FxHash
 
 static KNOWN_WRAPPER_TYS: &[&[&str]] = &[&["alloc", "rc", "Rc"], &["std", "sync", "Arc"]];
 
-fn is_mutable_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>, span: Span, tys: &mut FxHashSet<DefId>) -> bool {
+fn is_mutable_ty<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    ty: Ty<'tcx>,
+    span: Span,
+    tys: &mut FxHashSet<DefId>,
+) -> bool {
     match ty.kind {
         // primitive types are never mutable
         ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Str => false,
@@ -516,12 +541,12 @@ fn is_mutable_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>, span: Span,
             tys.insert(adt.did) && !ty.is_freeze(cx.tcx.at(span), cx.param_env)
                 || KNOWN_WRAPPER_TYS.iter().any(|path| match_def_path(cx, adt.did, path))
                     && substs.types().any(|ty| is_mutable_ty(cx, ty, span, tys))
-        },
+        }
         ty::Tuple(ref substs) => substs.types().any(|ty| is_mutable_ty(cx, ty, span, tys)),
         ty::Array(ty, _) | ty::Slice(ty) => is_mutable_ty(cx, ty, span, tys),
         ty::RawPtr(ty::TypeAndMut { ty, mutbl }) | ty::Ref(_, ty, mutbl) => {
             mutbl == hir::Mutability::Mut || is_mutable_ty(cx, ty, span, tys)
-        },
+        }
         // calling something constitutes a side effect, so return true on all callables
         // also never calls need not be used, so return true for them, too
         _ => true,
@@ -539,7 +564,7 @@ fn raw_ptr_arg(arg: &hir::Param<'_>, ty: &hir::Ty<'_>) -> Option<hir::HirId> {
 struct DerefVisitor<'a, 'tcx> {
     cx: &'a LateContext<'a, 'tcx>,
     ptrs: FxHashSet<hir::HirId>,
-    tables: &'a ty::TypeckTables<'tcx>,
+    tables: &'a ty::TypeckResults<'tcx>,
 }
 
 impl<'a, 'tcx> intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
@@ -555,7 +580,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
                         self.check_arg(arg);
                     }
                 }
-            },
+            }
             hir::ExprKind::MethodCall(_, _, args, _) => {
                 let def_id = self.tables.type_dependent_def_id(expr.hir_id).unwrap();
                 let base_type = self.cx.tcx.type_of(def_id);
@@ -565,7 +590,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
                         self.check_arg(arg);
                     }
                 }
-            },
+            }
             hir::ExprKind::Unary(hir::UnOp::UnDeref, ref ptr) => self.check_arg(ptr),
             _ => (),
         }
@@ -614,10 +639,10 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for StaticMutVisitor<'a, 'tcx> {
                 let mut tys = FxHashSet::default();
                 for arg in args {
                     let def_id = arg.hir_id.owner.to_def_id();
-                    if self.cx.tcx.has_typeck_tables(def_id)
+                    if self.cx.tcx.has_typeck_results(def_id)
                         && is_mutable_ty(
                             self.cx,
-                            self.cx.tcx.typeck_tables_of(def_id.expect_local()).expr_ty(arg),
+                            self.cx.tcx.typeck(def_id.expect_local()).expr_ty(arg),
                             arg.span,
                             &mut tys,
                         )
@@ -628,11 +653,13 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for StaticMutVisitor<'a, 'tcx> {
                     }
                     tys.clear();
                 }
-            },
-            Assign(ref target, ..) | AssignOp(_, ref target, _) | AddrOf(_, hir::Mutability::Mut, ref target) => {
+            }
+            Assign(ref target, ..)
+            | AssignOp(_, ref target, _)
+            | AddrOf(_, hir::Mutability::Mut, ref target) => {
                 self.mutates_static |= is_mutated_static(self.cx, target)
-            },
-            _ => {},
+            }
+            _ => {}
         }
     }
 
@@ -651,17 +678,14 @@ fn is_mutated_static(cx: &LateContext<'_, '_>, e: &hir::Expr<'_>) -> bool {
             } else {
                 true
             }
-        },
+        }
         Field(ref inner, _) | Index(ref inner, _) => is_mutated_static(cx, inner),
         _ => false,
     }
 }
 
 fn mutates_static<'a, 'tcx>(cx: &'a LateContext<'a, 'tcx>, body: &'tcx hir::Body<'_>) -> bool {
-    let mut v = StaticMutVisitor {
-        cx,
-        mutates_static: false,
-    };
+    let mut v = StaticMutVisitor { cx, mutates_static: false };
     intravisit::walk_expr(&mut v, &body.value);
     v.mutates_static
 }

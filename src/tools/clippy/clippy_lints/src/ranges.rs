@@ -10,7 +10,9 @@ use rustc_span::source_map::Spanned;
 use std::cmp::Ordering;
 
 use crate::utils::sugg::Sugg;
-use crate::utils::{get_parent_expr, is_integer_const, snippet, snippet_opt, span_lint, span_lint_and_then};
+use crate::utils::{
+    get_parent_expr, is_integer_const, snippet, snippet_opt, span_lint, span_lint_and_then,
+};
 use crate::utils::{higher, SpanlessEq};
 
 declare_clippy_lint! {
@@ -242,13 +244,7 @@ fn check_inclusive_range_minus_one(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
 
 fn check_reversed_empty_range(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
     fn inside_indexing_expr(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
-        matches!(
-            get_parent_expr(cx, expr),
-            Some(Expr {
-                kind: ExprKind::Index(..),
-                ..
-            })
-        )
+        matches!(get_parent_expr(cx, expr), Some(Expr { kind: ExprKind::Index(..), .. }))
     }
 
     fn is_for_loop_arg(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
@@ -272,10 +268,10 @@ fn check_reversed_empty_range(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
 
     if_chain! {
         if let Some(higher::Range { start: Some(start), end: Some(end), limits }) = higher::range(cx, expr);
-        let ty = cx.tables().expr_ty(start);
+        let ty = cx.typeck_results().expr_ty(start);
         if let ty::Int(_) | ty::Uint(_) = ty.kind;
-        if let Some((start_idx, _)) = constant(cx, cx.tables(), start);
-        if let Some((end_idx, _)) = constant(cx, cx.tables(), end);
+        if let Some((start_idx, _)) = constant(cx, cx.typeck_results(), start);
+        if let Some((end_idx, _)) = constant(cx, cx.typeck_results(), end);
         if let Some(ordering) = Constant::partial_cmp(cx.tcx, ty, &start_idx, &end_idx);
         if is_empty_range(limits, ordering);
         then {
@@ -322,13 +318,7 @@ fn check_reversed_empty_range(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
 
 fn y_plus_one<'t>(cx: &LateContext<'_, '_>, expr: &'t Expr<'_>) -> Option<&'t Expr<'t>> {
     match expr.kind {
-        ExprKind::Binary(
-            Spanned {
-                node: BinOpKind::Add, ..
-            },
-            ref lhs,
-            ref rhs,
-        ) => {
+        ExprKind::Binary(Spanned { node: BinOpKind::Add, .. }, ref lhs, ref rhs) => {
             if is_integer_const(cx, lhs, 1) {
                 Some(rhs)
             } else if is_integer_const(cx, rhs, 1) {
@@ -336,20 +326,18 @@ fn y_plus_one<'t>(cx: &LateContext<'_, '_>, expr: &'t Expr<'_>) -> Option<&'t Ex
             } else {
                 None
             }
-        },
+        }
         _ => None,
     }
 }
 
 fn y_minus_one<'t>(cx: &LateContext<'_, '_>, expr: &'t Expr<'_>) -> Option<&'t Expr<'t>> {
     match expr.kind {
-        ExprKind::Binary(
-            Spanned {
-                node: BinOpKind::Sub, ..
-            },
-            ref lhs,
-            ref rhs,
-        ) if is_integer_const(cx, rhs, 1) => Some(lhs),
+        ExprKind::Binary(Spanned { node: BinOpKind::Sub, .. }, ref lhs, ref rhs)
+            if is_integer_const(cx, rhs, 1) =>
+        {
+            Some(lhs)
+        }
         _ => None,
     }
 }

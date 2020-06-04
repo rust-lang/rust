@@ -345,15 +345,15 @@ fn def_id_visibility<'tcx>(
     }
 }
 
-// Set the correct `TypeckTables` for the given `item_id` (or an empty table if
-// there is no `TypeckTables` for the item).
-fn item_tables<'a, 'tcx>(
+// Set the correct `TypeckResults` for the given `item_id` (or an empty table if
+// there is no `TypeckResults` for the item).
+fn item_typeck_results<'a, 'tcx>(
     tcx: TyCtxt<'tcx>,
     hir_id: hir::HirId,
-    empty_tables: &'a ty::TypeckTables<'tcx>,
-) -> &'a ty::TypeckTables<'tcx> {
+    empty_typeck_results: &'a ty::TypeckResults<'tcx>,
+) -> &'a ty::TypeckResults<'tcx> {
     let def_id = tcx.hir().local_def_id(hir_id);
-    if tcx.has_typeck_tables(def_id) { tcx.typeck_tables_of(def_id) } else { empty_tables }
+    if tcx.has_typeck_results(def_id) { tcx.typeck(def_id) } else { empty_typeck_results }
 }
 
 fn min(vis1: ty::Visibility, vis2: ty::Visibility, tcx: TyCtxt<'_>) -> ty::Visibility {
@@ -1031,9 +1031,9 @@ impl DefIdVisitor<'tcx> for ReachEverythingInTheInterfaceVisitor<'_, 'tcx> {
 
 struct NamePrivacyVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    tables: &'a ty::TypeckTables<'tcx>,
+    typeck_results: &'a ty::TypeckResults<'tcx>,
     current_item: Option<hir::HirId>,
-    empty_tables: &'a ty::TypeckTables<'tcx>,
+    empty_typeck_results: &'a ty::TypeckResults<'tcx>,
 }
 
 impl<'a, 'tcx> NamePrivacyVisitor<'a, 'tcx> {
@@ -1087,39 +1087,46 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
     }
 
     fn visit_nested_body(&mut self, body: hir::BodyId) {
-        let orig_tables = mem::replace(&mut self.tables, self.tcx.body_tables(body));
+        let orig_typeck_results =
+            mem::replace(&mut self.typeck_results, self.tcx.typeck_body(body));
         let body = self.tcx.hir().body(body);
         self.visit_body(body);
-        self.tables = orig_tables;
+        self.typeck_results = orig_typeck_results;
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         let orig_current_item = mem::replace(&mut self.current_item, Some(item.hir_id));
-        let orig_tables =
-            mem::replace(&mut self.tables, item_tables(self.tcx, item.hir_id, self.empty_tables));
+        let orig_typeck_results = mem::replace(
+            &mut self.typeck_results,
+            item_typeck_results(self.tcx, item.hir_id, self.empty_typeck_results),
+        );
         intravisit::walk_item(self, item);
         self.current_item = orig_current_item;
-        self.tables = orig_tables;
+        self.typeck_results = orig_typeck_results;
     }
 
     fn visit_trait_item(&mut self, ti: &'tcx hir::TraitItem<'tcx>) {
-        let orig_tables =
-            mem::replace(&mut self.tables, item_tables(self.tcx, ti.hir_id, self.empty_tables));
+        let orig_typeck_results = mem::replace(
+            &mut self.typeck_results,
+            item_typeck_results(self.tcx, ti.hir_id, self.empty_typeck_results),
+        );
         intravisit::walk_trait_item(self, ti);
-        self.tables = orig_tables;
+        self.typeck_results = orig_typeck_results;
     }
 
     fn visit_impl_item(&mut self, ii: &'tcx hir::ImplItem<'tcx>) {
-        let orig_tables =
-            mem::replace(&mut self.tables, item_tables(self.tcx, ii.hir_id, self.empty_tables));
+        let orig_typeck_results = mem::replace(
+            &mut self.typeck_results,
+            item_typeck_results(self.tcx, ii.hir_id, self.empty_typeck_results),
+        );
         intravisit::walk_impl_item(self, ii);
-        self.tables = orig_tables;
+        self.typeck_results = orig_typeck_results;
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         if let hir::ExprKind::Struct(ref qpath, fields, ref base) = expr.kind {
-            let res = self.tables.qpath_res(qpath, expr.hir_id);
-            let adt = self.tables.expr_ty(expr).ty_adt_def().unwrap();
+            let res = self.typeck_results.qpath_res(qpath, expr.hir_id);
+            let adt = self.typeck_results.expr_ty(expr).ty_adt_def().unwrap();
             let variant = adt.variant_of_res(res);
             if let Some(ref base) = *base {
                 // If the expression uses FRU we need to make sure all the unmentioned fields
@@ -1128,7 +1135,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
                 for (vf_index, variant_field) in variant.fields.iter().enumerate() {
                     let field = fields
                         .iter()
-                        .find(|f| self.tcx.field_index(f.hir_id, self.tables) == vf_index);
+                        .find(|f| self.tcx.field_index(f.hir_id, self.typeck_results) == vf_index);
                     let (use_ctxt, span) = match field {
                         Some(field) => (field.ident.span, field.span),
                         None => (base.span, base.span),
@@ -1138,7 +1145,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
             } else {
                 for field in fields {
                     let use_ctxt = field.ident.span;
-                    let index = self.tcx.field_index(field.hir_id, self.tables);
+                    let index = self.tcx.field_index(field.hir_id, self.typeck_results);
                     self.check_field(use_ctxt, field.span, adt, &variant.fields[index], false);
                 }
             }
@@ -1149,12 +1156,12 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
 
     fn visit_pat(&mut self, pat: &'tcx hir::Pat<'tcx>) {
         if let PatKind::Struct(ref qpath, fields, _) = pat.kind {
-            let res = self.tables.qpath_res(qpath, pat.hir_id);
-            let adt = self.tables.pat_ty(pat).ty_adt_def().unwrap();
+            let res = self.typeck_results.qpath_res(qpath, pat.hir_id);
+            let adt = self.typeck_results.pat_ty(pat).ty_adt_def().unwrap();
             let variant = adt.variant_of_res(res);
             for field in fields {
                 let use_ctxt = field.ident.span;
-                let index = self.tcx.field_index(field.hir_id, self.tables);
+                let index = self.tcx.field_index(field.hir_id, self.typeck_results);
                 self.check_field(use_ctxt, field.span, adt, &variant.fields[index], false);
             }
         }
@@ -1171,11 +1178,11 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
 
 struct TypePrivacyVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    tables: &'a ty::TypeckTables<'tcx>,
+    typeck_results: &'a ty::TypeckResults<'tcx>,
     current_item: LocalDefId,
     in_body: bool,
     span: Span,
-    empty_tables: &'a ty::TypeckTables<'tcx>,
+    empty_typeck_results: &'a ty::TypeckResults<'tcx>,
 }
 
 impl<'a, 'tcx> TypePrivacyVisitor<'a, 'tcx> {
@@ -1188,10 +1195,12 @@ impl<'a, 'tcx> TypePrivacyVisitor<'a, 'tcx> {
     // Take node-id of an expression or pattern and check its type for privacy.
     fn check_expr_pat_type(&mut self, id: hir::HirId, span: Span) -> bool {
         self.span = span;
-        if self.visit(self.tables.node_type(id)) || self.visit(self.tables.node_substs(id)) {
+        if self.visit(self.typeck_results.node_type(id))
+            || self.visit(self.typeck_results.node_substs(id))
+        {
             return true;
         }
-        if let Some(adjustments) = self.tables.adjustments().get(id) {
+        if let Some(adjustments) = self.typeck_results.adjustments().get(id) {
             for adjustment in adjustments {
                 if self.visit(adjustment.target) {
                     return true;
@@ -1229,11 +1238,12 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
     }
 
     fn visit_nested_body(&mut self, body: hir::BodyId) {
-        let orig_tables = mem::replace(&mut self.tables, self.tcx.body_tables(body));
+        let orig_typeck_results =
+            mem::replace(&mut self.typeck_results, self.tcx.typeck_body(body));
         let orig_in_body = mem::replace(&mut self.in_body, true);
         let body = self.tcx.hir().body(body);
         self.visit_body(body);
-        self.tables = orig_tables;
+        self.typeck_results = orig_typeck_results;
         self.in_body = orig_in_body;
     }
 
@@ -1241,7 +1251,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
         self.span = hir_ty.span;
         if self.in_body {
             // Types in bodies.
-            if self.visit(self.tables.node_type(hir_ty.hir_id)) {
+            if self.visit(self.typeck_results.node_type(hir_ty.hir_id)) {
                 return;
             }
         } else {
@@ -1304,7 +1314,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
             hir::ExprKind::MethodCall(_, span, _, _) => {
                 // Method calls have to be checked specially.
                 self.span = span;
-                if let Some(def_id) = self.tables.type_dependent_def_id(expr.hir_id) {
+                if let Some(def_id) = self.typeck_results.type_dependent_def_id(expr.hir_id) {
                     if self.visit(self.tcx.type_of(def_id)) {
                         return;
                     }
@@ -1327,7 +1337,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
     // more code internal visibility at link time. (Access to private functions
     // is already prohibited by type privacy for function types.)
     fn visit_qpath(&mut self, qpath: &'tcx hir::QPath<'tcx>, id: hir::HirId, span: Span) {
-        let def = match self.tables.qpath_res(qpath, id) {
+        let def = match self.typeck_results.qpath_res(qpath, id) {
             Res::Def(kind, def_id) => Some((kind, def_id)),
             _ => None,
         };
@@ -1386,26 +1396,32 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
         let orig_current_item =
             mem::replace(&mut self.current_item, self.tcx.hir().local_def_id(item.hir_id));
         let orig_in_body = mem::replace(&mut self.in_body, false);
-        let orig_tables =
-            mem::replace(&mut self.tables, item_tables(self.tcx, item.hir_id, self.empty_tables));
+        let orig_typeck_results = mem::replace(
+            &mut self.typeck_results,
+            item_typeck_results(self.tcx, item.hir_id, self.empty_typeck_results),
+        );
         intravisit::walk_item(self, item);
-        self.tables = orig_tables;
+        self.typeck_results = orig_typeck_results;
         self.in_body = orig_in_body;
         self.current_item = orig_current_item;
     }
 
     fn visit_trait_item(&mut self, ti: &'tcx hir::TraitItem<'tcx>) {
-        let orig_tables =
-            mem::replace(&mut self.tables, item_tables(self.tcx, ti.hir_id, self.empty_tables));
+        let orig_typeck_results = mem::replace(
+            &mut self.typeck_results,
+            item_typeck_results(self.tcx, ti.hir_id, self.empty_typeck_results),
+        );
         intravisit::walk_trait_item(self, ti);
-        self.tables = orig_tables;
+        self.typeck_results = orig_typeck_results;
     }
 
     fn visit_impl_item(&mut self, ii: &'tcx hir::ImplItem<'tcx>) {
-        let orig_tables =
-            mem::replace(&mut self.tables, item_tables(self.tcx, ii.hir_id, self.empty_tables));
+        let orig_typeck_results = mem::replace(
+            &mut self.typeck_results,
+            item_typeck_results(self.tcx, ii.hir_id, self.empty_typeck_results),
+        );
         intravisit::walk_impl_item(self, ii);
-        self.tables = orig_tables;
+        self.typeck_results = orig_typeck_results;
     }
 }
 
@@ -2066,14 +2082,14 @@ pub fn provide(providers: &mut Providers<'_>) {
 }
 
 fn check_mod_privacy(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
-    let empty_tables = ty::TypeckTables::empty(None);
+    let empty_typeck_results = ty::TypeckResults::empty(None);
 
     // Check privacy of names not checked in previous compilation stages.
     let mut visitor = NamePrivacyVisitor {
         tcx,
-        tables: &empty_tables,
+        typeck_results: &empty_typeck_results,
         current_item: None,
-        empty_tables: &empty_tables,
+        empty_typeck_results: &empty_typeck_results,
     };
     let (module, span, hir_id) = tcx.hir().get_module(module_def_id);
 
@@ -2083,11 +2099,11 @@ fn check_mod_privacy(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
     // inferred types of expressions and patterns.
     let mut visitor = TypePrivacyVisitor {
         tcx,
-        tables: &empty_tables,
+        typeck_results: &empty_typeck_results,
         current_item: module_def_id,
         in_body: false,
         span,
-        empty_tables: &empty_tables,
+        empty_typeck_results: &empty_typeck_results,
     };
     intravisit::walk_mod(&mut visitor, module, hir_id);
 }

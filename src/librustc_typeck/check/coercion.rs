@@ -1000,7 +1000,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // First try to coerce the new expression to the type of the previous ones,
         // but only if the new expression has no coercion already applied to it.
         let mut first_error = None;
-        if !self.tables.borrow().adjustments().contains_key(new.hir_id) {
+        if !self.typeck_results.borrow().adjustments().contains_key(new.hir_id) {
             let result = self.commit_if_ok(|_| coerce.coerce(new_ty, prev_ty));
             match result {
                 Ok(ok) => {
@@ -1021,7 +1021,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // previous expressions, other than noop reborrows (ignoring lifetimes).
         for expr in exprs {
             let expr = expr.as_coercion_site();
-            let noop = match self.tables.borrow().expr_adjustments(expr) {
+            let noop = match self.typeck_results.borrow().expr_adjustments(expr) {
                 &[Adjustment { kind: Adjust::Deref(_), .. }, Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(_, mutbl_adj)), .. }] =>
                 {
                     match self.node_ty(expr.hir_id).kind {

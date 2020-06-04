@@ -1,5 +1,6 @@
 use crate::utils::{
-    implements_trait, in_macro, is_copy, multispan_sugg, snippet, span_lint, span_lint_and_then, SpanlessEq,
+    implements_trait, in_macro, is_copy, multispan_sugg, snippet, span_lint, span_lint_and_then,
+    SpanlessEq,
 };
 use rustc_errors::Applicability;
 use rustc_hir::{BinOp, BinOpKind, BorrowKind, Expr, ExprKind};
@@ -94,21 +95,26 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                 BinOpKind::Ne | BinOpKind::Eq => (cx.tcx.lang_items().eq_trait(), true),
                 BinOpKind::Lt | BinOpKind::Le | BinOpKind::Ge | BinOpKind::Gt => {
                     (cx.tcx.lang_items().partial_ord_trait(), true)
-                },
+                }
             };
             if let Some(trait_id) = trait_id {
                 #[allow(clippy::match_same_arms)]
                 match (&left.kind, &right.kind) {
                     // do not suggest to dereference literals
-                    (&ExprKind::Lit(..), _) | (_, &ExprKind::Lit(..)) => {},
+                    (&ExprKind::Lit(..), _) | (_, &ExprKind::Lit(..)) => {}
                     // &foo == &bar
-                    (&ExprKind::AddrOf(BorrowKind::Ref, _, ref l), &ExprKind::AddrOf(BorrowKind::Ref, _, ref r)) => {
-                        let lty = cx.tables().expr_ty(l);
-                        let rty = cx.tables().expr_ty(r);
+                    (
+                        &ExprKind::AddrOf(BorrowKind::Ref, _, ref l),
+                        &ExprKind::AddrOf(BorrowKind::Ref, _, ref r),
+                    ) => {
+                        let lty = cx.typeck_results().expr_ty(l);
+                        let rty = cx.typeck_results().expr_ty(r);
                         let lcpy = is_copy(cx, lty);
                         let rcpy = is_copy(cx, rty);
                         // either operator autorefs or both args are copyable
-                        if (requires_ref || (lcpy && rcpy)) && implements_trait(cx, lty, trait_id, &[rty.into()]) {
+                        if (requires_ref || (lcpy && rcpy))
+                            && implements_trait(cx, lty, trait_id, &[rty.into()])
+                        {
                             span_lint_and_then(
                                 cx,
                                 OP_REF,
@@ -126,7 +132,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                             )
                         } else if lcpy
                             && !rcpy
-                            && implements_trait(cx, lty, trait_id, &[cx.tables().expr_ty(right).into()])
+                            && implements_trait(
+                                cx,
+                                lty,
+                                trait_id,
+                                &[cx.typeck_results().expr_ty(right).into()],
+                            )
                         {
                             span_lint_and_then(
                                 cx,
@@ -145,7 +156,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                             )
                         } else if !lcpy
                             && rcpy
-                            && implements_trait(cx, cx.tables().expr_ty(left), trait_id, &[rty.into()])
+                            && implements_trait(
+                                cx,
+                                cx.typeck_results().expr_ty(left),
+                                trait_id,
+                                &[rty.into()],
+                            )
                         {
                             span_lint_and_then(
                                 cx,
@@ -163,13 +179,18 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                                 },
                             )
                         }
-                    },
+                    }
                     // &foo == bar
                     (&ExprKind::AddrOf(BorrowKind::Ref, _, ref l), _) => {
-                        let lty = cx.tables().expr_ty(l);
+                        let lty = cx.typeck_results().expr_ty(l);
                         let lcpy = is_copy(cx, lty);
                         if (requires_ref || lcpy)
-                            && implements_trait(cx, lty, trait_id, &[cx.tables().expr_ty(right).into()])
+                            && implements_trait(
+                                cx,
+                                lty,
+                                trait_id,
+                                &[cx.typeck_results().expr_ty(right).into()],
+                            )
                         {
                             span_lint_and_then(
                                 cx,
@@ -187,26 +208,37 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                                 },
                             )
                         }
-                    },
+                    }
                     // foo == &bar
                     (_, &ExprKind::AddrOf(BorrowKind::Ref, _, ref r)) => {
-                        let rty = cx.tables().expr_ty(r);
+                        let rty = cx.typeck_results().expr_ty(r);
                         let rcpy = is_copy(cx, rty);
                         if (requires_ref || rcpy)
-                            && implements_trait(cx, cx.tables().expr_ty(left), trait_id, &[rty.into()])
+                            && implements_trait(
+                                cx,
+                                cx.typeck_results().expr_ty(left),
+                                trait_id,
+                                &[rty.into()],
+                            )
                         {
-                            span_lint_and_then(cx, OP_REF, e.span, "taken reference of right operand", |diag| {
-                                let rsnip = snippet(cx, r.span, "...").to_string();
-                                diag.span_suggestion(
-                                    right.span,
-                                    "use the right value directly",
-                                    rsnip,
-                                    Applicability::MaybeIncorrect, // FIXME #2597
-                                );
-                            })
+                            span_lint_and_then(
+                                cx,
+                                OP_REF,
+                                e.span,
+                                "taken reference of right operand",
+                                |diag| {
+                                    let rsnip = snippet(cx, r.span, "...").to_string();
+                                    diag.span_suggestion(
+                                        right.span,
+                                        "use the right value directly",
+                                        rsnip,
+                                        Applicability::MaybeIncorrect, // FIXME #2597
+                                    );
+                                },
+                            )
                         }
-                    },
-                    _ => {},
+                    }
+                    _ => {}
                 }
             }
         }

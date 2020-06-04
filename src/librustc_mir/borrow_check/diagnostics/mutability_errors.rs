@@ -507,7 +507,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 .map(|(pos, _)| pos)
                 .next();
             let def_id = hir.local_def_id(item_id);
-            let tables = self.infcx.tcx.typeck_tables_of(def_id);
+            let tables = self.infcx.tcx.typeck(def_id);
             if let Some(ty::FnDef(def_id, _)) =
                 tables.node_type_opt(func.hir_id).as_ref().map(|ty| &ty.kind)
             {

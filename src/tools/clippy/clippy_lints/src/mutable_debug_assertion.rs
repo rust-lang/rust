@@ -44,7 +44,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DebugAssertWithMutCall {
                         cx,
                         DEBUG_ASSERT_WITH_MUT_CALL,
                         span,
-                        &format!("do not call a function with mutable arguments inside of `{}!`", dmn),
+                        &format!(
+                            "do not call a function with mutable arguments inside of `{}!`",
+                            dmn
+                        ),
                     );
                 }
             }
@@ -109,19 +112,11 @@ struct MutArgVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx> MutArgVisitor<'a, 'tcx> {
     fn new(cx: &'a LateContext<'a, 'tcx>) -> Self {
-        Self {
-            cx,
-            expr_span: None,
-            found: false,
-        }
+        Self { cx, expr_span: None, found: false }
     }
 
     fn expr_span(&self) -> Option<Span> {
-        if self.found {
-            self.expr_span
-        } else {
-            None
-        }
+        if self.found { self.expr_span } else { None }
     }
 }
 
@@ -133,18 +128,15 @@ impl<'a, 'tcx> Visitor<'tcx> for MutArgVisitor<'a, 'tcx> {
             ExprKind::AddrOf(BorrowKind::Ref, Mutability::Mut, _) => {
                 self.found = true;
                 return;
-            },
+            }
             ExprKind::Path(_) => {
-                if let Some(adj) = self.cx.tables().adjustments().get(expr.hir_id) {
-                    if adj
-                        .iter()
-                        .any(|a| matches!(a.target.kind, ty::Ref(_, _, Mutability::Mut)))
-                    {
+                if let Some(adj) = self.cx.typeck_results().adjustments().get(expr.hir_id) {
+                    if adj.iter().any(|a| matches!(a.target.kind, ty::Ref(_, _, Mutability::Mut))) {
                         self.found = true;
                         return;
                     }
                 }
-            },
+            }
             // Don't check await desugars
             ExprKind::Match(_, _, MatchSource::AwaitDesugar) => return,
             _ if !self.found => self.expr_span = Some(expr.span),

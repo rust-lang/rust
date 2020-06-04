@@ -35,7 +35,7 @@ const TAG_INVALID_SPAN: u8 = 1;
 
 /// Provides an interface to incremental compilation data cached from the
 /// previous compilation session. This data will eventually include the results
-/// of a few selected queries (like `typeck_tables_of` and `mir_optimized`) and
+/// of a few selected queries (like `typeck` and `mir_optimized`) and
 /// any diagnostics that have been emitted during a query.
 pub struct OnDiskCache<'sess> {
     // The complete cache data in serialized form.

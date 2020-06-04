@@ -263,7 +263,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         self.body_owner = self.tcx.hir().body_owner_def_id(body_id);
 
         let fn_sig = {
-            match self.tables.borrow().liberated_fn_sigs().get(id) {
+            match self.typeck_results.borrow().liberated_fn_sigs().get(id) {
                 Some(f) => *f,
                 None => {
                     bug!("No fn-sig entry for id={:?}", id);
@@ -433,7 +433,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
             &self.infcx,
             self.outlives_environment.param_env,
             self.body_owner,
-            &self.tables.borrow(),
+            &self.typeck_results.borrow(),
         ))
     }
 
@@ -447,8 +447,8 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
 
         let mut place = self.with_mc(|mc| mc.cat_expr_unadjusted(expr))?;
 
-        let tables = self.tables.borrow();
-        let adjustments = tables.expr_adjustments(&expr);
+        let typeck_results = self.typeck_results.borrow();
+        let adjustments = typeck_results.expr_adjustments(&expr);
         if adjustments.is_empty() {
             return Ok(place);
         }
@@ -580,7 +580,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
                 // `ref x` pattern
                 if let PatKind::Binding(..) = kind {
                     if let Some(ty::BindByReference(mutbl)) =
-                        mc.tables.extract_binding_mode(self.tcx.sess, *hir_id, *span)
+                        mc.typeck_results.extract_binding_mode(self.tcx.sess, *hir_id, *span)
                     {
                         self.link_region_from_node_type(*span, *hir_id, mutbl, &sub_cmt);
                     }
@@ -773,7 +773,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         debug!("link_upvar_region(borrorw_region={:?}, upvar_id={:?}", borrow_region, upvar_id);
         // A by-reference upvar can't be borrowed for longer than the
         // upvar is borrowed from the environment.
-        match self.tables.borrow().upvar_capture(upvar_id) {
+        match self.typeck_results.borrow().upvar_capture(upvar_id) {
             ty::UpvarCapture::ByRef(upvar_borrow) => {
                 self.sub_regions(
                     infer::ReborrowUpvar(span, upvar_id),

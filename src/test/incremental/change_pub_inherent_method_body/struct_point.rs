@@ -42,7 +42,7 @@ pub mod point {
 pub mod fn_calls_changed_method {
     use point::Point;
 
-    #[rustc_clean(label="typeck_tables_of", cfg="cfail2")]
+    #[rustc_clean(label="typeck", cfg="cfail2")]
     pub fn check() {
         let p = Point { x: 2.0, y: 2.0 };
         p.distance_from_origin();
@@ -53,7 +53,7 @@ pub mod fn_calls_changed_method {
 pub mod fn_calls_another_method {
     use point::Point;
 
-    #[rustc_clean(label="typeck_tables_of", cfg="cfail2")]
+    #[rustc_clean(label="typeck", cfg="cfail2")]
     pub fn check() {
         let p = Point { x: 2.0, y: 2.0 };
         p.x();
@@ -64,7 +64,7 @@ pub mod fn_calls_another_method {
 pub mod fn_make_struct {
     use point::Point;
 
-    #[rustc_clean(label="typeck_tables_of", cfg="cfail2")]
+    #[rustc_clean(label="typeck", cfg="cfail2")]
     pub fn make_origin() -> Point {
         Point { x: 2.0, y: 2.0 }
     }
@@ -74,7 +74,7 @@ pub mod fn_make_struct {
 pub mod fn_read_field {
     use point::Point;
 
-    #[rustc_clean(label="typeck_tables_of", cfg="cfail2")]
+    #[rustc_clean(label="typeck", cfg="cfail2")]
     pub fn get_x(p: Point) -> f32 {
         p.x
     }
@@ -84,7 +84,7 @@ pub mod fn_read_field {
 pub mod fn_write_field {
     use point::Point;
 
-    #[rustc_clean(label="typeck_tables_of", cfg="cfail2")]
+    #[rustc_clean(label="typeck", cfg="cfail2")]
     pub fn inc_x(p: &mut Point) {
         p.x += 1.0;
     }
