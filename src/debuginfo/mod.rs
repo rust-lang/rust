@@ -4,8 +4,6 @@ mod unwind;
 
 use crate::prelude::*;
 
-use rustc_span::FileName;
-
 use cranelift_codegen::ir::{StackSlots, ValueLabel, ValueLoc};
 use cranelift_codegen::isa::TargetIsa;
 use cranelift_codegen::ValueLocRange;
@@ -66,12 +64,7 @@ impl<'tcx> DebugContext<'tcx> {
         let (name, file_info) = match tcx.sess.local_crate_source_file.clone() {
             Some(path) => {
                 let name = path.to_string_lossy().into_owned();
-                let info = tcx.sess
-                    .source_map()
-                    .get_source_file(&FileName::Real(path))
-                    .map(|f| f.src_hash)
-                    .and_then(line_info::make_file_info);
-                (name, info)
+                (name, None)
             },
             None => (tcx.crate_name(LOCAL_CRATE).to_string(), None),
         };

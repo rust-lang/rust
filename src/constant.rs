@@ -8,7 +8,7 @@ use rustc_middle::ty::{Const, ConstKind};
 use rustc_target::abi::Align;
 use rustc_data_structures::fx::FxHashSet;
 
-use cranelift_codegen::ir::GlobalValue;
+use cranelift_codegen::ir::GlobalValueData;
 use cranelift_module::*;
 
 use crate::prelude::*;
@@ -38,6 +38,20 @@ pub(crate) fn codegen_static(constants_cx: &mut ConstantCx, def_id: DefId) {
     constants_cx.todo.push(TodoItem::Static(def_id));
 }
 
+pub(crate) fn codegen_tls_ref<'tcx>(
+    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+    def_id: DefId,
+    layout: TyAndLayout<'tcx>,
+) -> CValue<'tcx> {
+    let linkage = crate::linkage::get_static_ref_linkage(fx.tcx, def_id);
+    let data_id = data_id_for_static(fx.tcx, fx.module, def_id, linkage);
+    let local_data_id = fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
+    #[cfg(debug_assertions)]
+    fx.add_comment(local_data_id, format!("tls {:?}", def_id));
+    let tls_ptr = fx.bcx.ins().tls_value(fx.pointer_type, local_data_id);
+    CValue::by_val(tls_ptr, layout)
+}
+
 fn codegen_static_ref<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     def_id: DefId,
@@ -48,7 +62,10 @@ fn codegen_static_ref<'tcx>(
     let local_data_id = fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
     #[cfg(debug_assertions)]
     fx.add_comment(local_data_id, format!("{:?}", def_id));
-    cplace_for_dataid(fx, layout, local_data_id)
+    let global_ptr = fx.bcx.ins().global_value(fx.pointer_type, local_data_id);
+    assert!(!layout.is_unsized(), "unsized statics aren't supported");
+    assert!(matches!(fx.bcx.func.global_values[local_data_id], GlobalValueData::Symbol { tls: false, ..}), "tls static referenced without Rvalue::ThreadLocalRef");
+    CPlace::for_ptr(crate::pointer::Pointer::new(global_ptr), layout)
 }
 
 pub(crate) fn trans_constant<'tcx>(
@@ -243,16 +260,6 @@ fn data_id_for_static(
     }
 
     data_id
-}
-
-fn cplace_for_dataid<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
-    layout: TyAndLayout<'tcx>,
-    local_data_id: GlobalValue,
-) -> CPlace<'tcx> {
-    let global_ptr = fx.bcx.ins().global_value(fx.pointer_type, local_data_id);
-    assert!(!layout.is_unsized(), "unsized statics aren't supported");
-    CPlace::for_ptr(crate::pointer::Pointer::new(global_ptr), layout)
 }
 
 fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut Module<impl Backend>, cx: &mut ConstantCx) {

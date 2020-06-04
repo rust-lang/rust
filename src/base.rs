@@ -309,6 +309,7 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
                 operands,
                 options: _,
                 destination,
+                line_spans: _,
             } => {
                 match template {
                     &[] => {
@@ -395,6 +396,10 @@ fn trans_stmt<'tcx>(
                 Rvalue::Ref(_, _, place) | Rvalue::AddressOf(_, place) => {
                     let place = trans_place(fx, *place);
                     place.write_place_ref(fx, lval);
+                }
+                Rvalue::ThreadLocalRef(def_id) => {
+                    let val = crate::constant::codegen_tls_ref(fx, *def_id, lval.layout());
+                    lval.write_cvalue(fx, val);
                 }
                 Rvalue::BinaryOp(bin_op, lhs, rhs) => {
                     let lhs = trans_operand(fx, lhs);
@@ -708,7 +713,7 @@ pub(crate) fn trans_place<'tcx>(
     let mut cplace = fx.get_local_place(place.local);
 
     for elem in place.projection {
-        match *elem {
+        match elem {
             PlaceElem::Deref => {
                 cplace = cplace.place_deref(fx);
             }

@@ -59,7 +59,7 @@ fn line_program_add_file(
 ) -> FileId {
     match &file.name {
         FileName::Real(path) => {
-            let (dir_path, file_name) = split_path_dir_and_file(path);
+            let (dir_path, file_name) = split_path_dir_and_file(path.stable_name());
             let dir_name = osstr_as_utf8_bytes(dir_path.as_os_str());
             let file_name = osstr_as_utf8_bytes(file_name);
 

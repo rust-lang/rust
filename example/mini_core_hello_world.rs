@@ -414,10 +414,10 @@ pub enum E2<X> {
 
 fn check_niche_behavior () {
     if let E1::V2 { .. } = (E1::V1 { f: true }) {
-        unsafe { intrinsics::abort(); }
+        intrinsics::abort();
     }
 
     if let E2::V1 { .. } = E2::V3::<Infallible> {
-        unsafe { intrinsics::abort(); }
+        intrinsics::abort();
     }
 }

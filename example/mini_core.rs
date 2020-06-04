@@ -401,7 +401,7 @@ pub trait FnMut<Args>: FnOnce<Args> {
 
 #[lang = "panic"]
 #[track_caller]
-pub fn panic(msg: &str) -> ! {
+pub fn panic(_msg: &str) -> ! {
     unsafe {
         libc::puts("Panicking\n\0" as *const str as *const u8);
         intrinsics::abort();
