@@ -566,7 +566,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // Handle intrinsics old codegen wants Expr's for, ourselves.
         let intrinsic = match def {
-            Some(ty::InstanceDef::Intrinsic(def_id)) => Some(bx.tcx().item_name(def_id).as_str()),
+            Some(ty::InstanceDef::Intrinsic(def_id))
+            | Some(ty::InstanceDef::InjectedCode(def_id)) => {
+                Some(bx.tcx().item_name(def_id).as_str())
+            }
             _ => None,
         };
         let intrinsic = intrinsic.as_ref().map(|s| &s[..]);
@@ -693,6 +696,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 &args,
                 dest,
                 terminator.source_info.span,
+                self.instance,
             );
 
             if let ReturnDest::IndirectOperand(dst, _) = ret_dest {

@@ -175,6 +175,12 @@ impl ModuleConfig {
                     if sess.opts.debugging_opts.profile && !is_compiler_builtins {
                         passes.push("insert-gcov-profiling".to_owned());
                     }
+
+                    // The rustc option `-Zinstrument_coverage` injects intrinsic calls to
+                    // `llvm.instrprof.increment()`, which requires the LLVM `instrprof` pass.
+                    if sess.opts.debugging_opts.instrument_coverage {
+                        passes.push("instrprof".to_owned());
+                    }
                     passes
                 },
                 vec![]

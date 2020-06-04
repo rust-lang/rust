@@ -714,7 +714,9 @@ fn visit_instance_use<'tcx>(
     }
 
     match instance.def {
-        ty::InstanceDef::Virtual(..) | ty::InstanceDef::Intrinsic(_) => {
+        ty::InstanceDef::Virtual(..)
+        | ty::InstanceDef::Intrinsic(_)
+        | ty::InstanceDef::InjectedCode(_) => {
             if !is_direct_call {
                 bug!("{:?} being reified", instance);
             }
@@ -751,6 +753,7 @@ fn should_monomorphize_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: &Instance<'tcx
         | ty::InstanceDef::FnPtrShim(..)
         | ty::InstanceDef::DropGlue(..)
         | ty::InstanceDef::Intrinsic(_)
+        | ty::InstanceDef::InjectedCode(_)
         | ty::InstanceDef::CloneShim(..) => return true,
     };
 

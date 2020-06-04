@@ -240,6 +240,7 @@ symbols! {
         copy_closures,
         core,
         core_intrinsics,
+        count_code_region,
         crate_id,
         crate_in_paths,
         crate_local,

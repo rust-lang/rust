@@ -674,6 +674,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::InstanceDef<'a> {
             ty::InstanceDef::VtableShim(def_id) => Some(ty::InstanceDef::VtableShim(def_id)),
             ty::InstanceDef::ReifyShim(def_id) => Some(ty::InstanceDef::ReifyShim(def_id)),
             ty::InstanceDef::Intrinsic(def_id) => Some(ty::InstanceDef::Intrinsic(def_id)),
+            ty::InstanceDef::InjectedCode(def_id) => Some(ty::InstanceDef::Intrinsic(def_id)),
             ty::InstanceDef::FnPtrShim(def_id, ref ty) => {
                 Some(ty::InstanceDef::FnPtrShim(def_id, tcx.lift(ty)?))
             }
@@ -846,6 +847,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::instance::Instance<'tcx> {
                 VtableShim(did) => VtableShim(did.fold_with(folder)),
                 ReifyShim(did) => ReifyShim(did.fold_with(folder)),
                 Intrinsic(did) => Intrinsic(did.fold_with(folder)),
+                InjectedCode(did) => InjectedCode(did.fold_with(folder)),
                 FnPtrShim(did, ty) => FnPtrShim(did.fold_with(folder), ty.fold_with(folder)),
                 Virtual(did, i) => Virtual(did.fold_with(folder), i),
                 ClosureOnceShim { call_once } => {
@@ -861,9 +863,12 @@ impl<'tcx> TypeFoldable<'tcx> for ty::instance::Instance<'tcx> {
         use crate::ty::InstanceDef::*;
         self.substs.visit_with(visitor)
             || match self.def {
-                Item(did) | VtableShim(did) | ReifyShim(did) | Intrinsic(did) | Virtual(did, _) => {
-                    did.visit_with(visitor)
-                }
+                Item(did)
+                | VtableShim(did)
+                | ReifyShim(did)
+                | Intrinsic(did)
+                | InjectedCode(did)
+                | Virtual(did, _) => did.visit_with(visitor),
                 FnPtrShim(did, ty) | CloneShim(did, ty) => {
                     did.visit_with(visitor) || ty.visit_with(visitor)
                 }

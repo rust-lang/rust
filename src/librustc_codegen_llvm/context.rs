@@ -749,6 +749,8 @@ impl CodegenCx<'b, 'tcx> {
         ifn!("llvm.lifetime.start.p0i8", fn(t_i64, i8p) -> void);
         ifn!("llvm.lifetime.end.p0i8", fn(t_i64, i8p) -> void);
 
+        ifn!("llvm.instrprof.increment", fn(i8p, t_i64, t_i32, t_i32) -> void);
+
         ifn!("llvm.expect.i1", fn(i1, i1) -> i1);
         ifn!("llvm.eh.typeid.for", fn(i8p) -> t_i32);
         ifn!("llvm.localescape", fn(...) -> void);
