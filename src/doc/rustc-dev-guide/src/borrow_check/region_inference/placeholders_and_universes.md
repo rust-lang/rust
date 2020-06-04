@@ -61,10 +61,9 @@ we swap the left and right here):
 ```
 
 According to the basic subtyping rules for a reference, this will be
-true if `'!1: 'static`. That is – if "some unknown region `!1`" lives
-outlives `'static`. Now, this *might* be true – after all, `'!1`
-could be `'static` – but we don't *know* that it's true. So this
-should yield up an error (eventually).
+true if `'!1: 'static`. That is – if "some unknown region `!1`" outlives `'static`.
+Now, this *might* be true – after all, `'!1` could be `'static` –
+but we don't *know* that it's true. So this should yield up an error (eventually).
 
 ## What is a universe?
 
