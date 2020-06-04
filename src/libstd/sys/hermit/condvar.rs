@@ -1,7 +1,7 @@
-use crate::ptr;
 use crate::cmp;
 use crate::ffi::c_void;
 use crate::mem;
+use crate::ptr;
 use crate::sync::atomic::{AtomicUsize, Ordering::SeqCst};
 use crate::sys::hermit::abi;
 use crate::sys::mutex::Mutex;
