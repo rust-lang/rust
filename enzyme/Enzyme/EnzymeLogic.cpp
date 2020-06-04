@@ -1066,7 +1066,10 @@ public:
 
     bool isfloat = type->isFPOrFPVectorTy();
     if (!isfloat && type->isIntOrIntVectorTy()) {
-        isfloat = TR.intType(&LI, /*errIfNotFound*/!looseTypeAnalysis).isFloat();
+      auto storeSize = gutils->newFunc->getParent()->getDataLayout().getTypeSizeInBits(type) / 8;
+      auto vd = TR.firstPointer(storeSize, LI.getPointerOperand(), /*errifnotfound*/false, /*pointerIntSame*/true);
+      if (vd.isKnown()) isfloat = vd.isFloat();
+      else isfloat = TR.intType(&LI, /*errIfNotFound*/!looseTypeAnalysis).isFloat();
     }
 
     if (isfloat) {
@@ -1114,9 +1117,11 @@ public:
         auto fp = TR.firstPointer(storeSize, orig_ptr, /*errifnotfound*/false, /*pointerIntSame*/true);
         if (fp.isKnown()) {
             FT = fp.isFloat();
-        } else if (isa<ConstantInt>(orig_val)) {
+        } else if (isa<ConstantInt>(orig_val) || valType->isIntOrIntVectorTy()) {
+            llvm::errs() << "assuming type as integral for store: " << SI << "\n";
             FT = nullptr;
         } else {
+            TR.firstPointer(storeSize, orig_ptr, /*errifnotfound*/true, /*pointerIntSame*/true);
             llvm::errs() << "cannot deduce type of store " << SI << "\n";
             assert(0 && "cannot deduce");
         }

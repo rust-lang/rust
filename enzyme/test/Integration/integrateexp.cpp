@@ -3,14 +3,13 @@
 
 // RUN: %clang++ -fno-use-cxa-atexit -ffast-math -mllvm -force-vector-width=1 -ffast-math -fno-unroll-loops -fno-vectorize -fno-slp-vectorize -fno-exceptions -O3 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_emptyfnconst=1 -S | %lli - 
 // RUN: %clang++ -fno-use-cxa-atexit -ffast-math -fno-unroll-loops -fno-vectorize -fno-slp-vectorize -fno-exceptions -O2 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_emptyfnconst=1 -S | %lli -
-// NOTE the following test does not run because it has a memcpy of two different types {int, double} in the same call
-// TODO: %clang++ -fno-use-cxa-atexit -ffast-math -fno-unroll-loops -fno-vectorize -fno-slp-vectorize -fno-exceptions -O1 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_emptyfnconst=1 -enzyme_nonmarkedglobals_inactive=1 -S | %lli - 
-// TODO: %clang++ -fno-use-cxa-atexit -ffast-math -fno-unroll-loops -fno-vectorize -fno-slp-vectorize -fno-exceptions -O0 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_emptyfnconst=1 -enzyme_nonmarkedglobals_inactive=1 -S | %lli - 
+// RUN: %clang++ -Xclang -new-struct-path-tbaa -fno-use-cxa-atexit -ffast-math -fno-unroll-loops -fno-vectorize -fno-slp-vectorize -fno-exceptions -O1 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_emptyfnconst=1 -enzyme_nonmarkedglobals_inactive=1 -S | %lli -
+// RUN: %clang++ -Xclang -new-struct-path-tbaa -fno-use-cxa-atexit -ffast-math -fno-unroll-loops -fno-vectorize -fno-slp-vectorize -fno-exceptions -O0 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_emptyfnconst=1 -enzyme_nonmarkedglobals_inactive=1 -enzyme_loosetypes -S | %lli - 
 // RUN: %clang++ -fno-use-cxa-atexit -ffast-math -fno-unroll-loops -fno-vectorize -fno-slp-vectorize -fno-exceptions -O3 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_emptyfnconst=1 -enzyme_inline=1 -S | %lli - 
 // RUN: %clang++ -fno-use-cxa-atexit -ffast-math -fno-unroll-loops -fno-vectorize -fno-slp-vectorize -fno-exceptions -O2 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_emptyfnconst=1 -enzyme_inline=1 -S | %lli -
 // Note the below ends up with a memcpy from undefined memory data
-// TODO: %clang++ -fno-use-cxa-atexit -ffast-math -fno-unroll-loops -fno-vectorize -fno-slp-vectorize -fno-exceptions -O1 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_emptyfnconst=1 -enzyme_inline=1 -S | %lli - 
-// TODO: %clang++ -fno-use-cxa-atexit -ffast-math -fno-unroll-loops -fno-vectorize -fno-slp-vectorize -fno-exceptions -O0 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_emptyfnconst=1 -enzyme_inline=1 -S | %lli - 
+// RUN: %clang++ -fno-use-cxa-atexit -ffast-math -fno-unroll-loops -fno-vectorize -fno-slp-vectorize -fno-exceptions -O1 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_emptyfnconst=1 -enzyme_inline=1 -S | %lli - 
+// RUN: %clang++ -fno-use-cxa-atexit -ffast-math -fno-unroll-loops -fno-vectorize -fno-slp-vectorize -fno-exceptions -O0 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_emptyfnconst=1 -enzyme_inline=1 -S | %lli - 
 
 #include "test_utils.h"
 
