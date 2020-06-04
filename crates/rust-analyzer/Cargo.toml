@@ -10,7 +10,7 @@ doctest = false
 
 [[bin]]
 name = "rust-analyzer"
-path = "./src/bin/main.rs"
+path = "src/bin/main.rs"
 
 [dependencies]
 anyhow = "1.0.26"
