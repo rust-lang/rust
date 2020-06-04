@@ -152,6 +152,35 @@ DataType getTypeFromTBAAString(std::string typeNameStringRef, Instruction* inst)
     }
 }
 
+static inline ValueData parseTBAA(TBAAStructTypeNode AccessType, Instruction* inst) {
+  //llvm::errs() << "AT: " << *AccessType.getNode() << "\n";
+
+  if(auto *Id = dyn_cast<MDString>(AccessType.getId())) {
+    //llvm::errs() << "cur access type: " << Id->getString() << "\n";
+    auto dt = getTypeFromTBAAString(Id->getString().str(), inst);
+    if (dt.isKnown()) {
+        return ValueData(dt).Only({0});
+    }
+  }
+
+
+  //llvm::errs() << "numfields: " << AccessType.getNumFields() << "\n";
+
+  // TODO make this more robust
+
+  ValueData dat(IntType::Pointer);
+  for(unsigned i=0; i<AccessType.getNumFields(); i++) {
+    auto at = AccessType.getFieldType(i);
+    auto start = AccessType.getFieldOffset(i);
+    //llvm::errs() << " f at i: " << i << " at: " << start << " fd: " << *at.getNode() << "\n";
+    auto vd = parseTBAA(at, inst);
+    //llvm::errs() << " _^ for f found " << vd.str() << "\n";
+    dat |= vd.MergeIndices({start});
+  }
+
+  return dat;
+}
+
 //Modified from MDNode::isTBAAVtableAccess()
 static inline ValueData parseTBAA(const MDNode* M, Instruction* inst) {
     if (!isStructPathTBAA(M)) {
@@ -164,34 +193,9 @@ static inline ValueData parseTBAA(const MDNode* M, Instruction* inst) {
     }
 
   // For struct-path aware TBAA, we use the access type of the tag.
-  //llvm::errs() << "M: " << *M << "\n";
   TBAAStructTagNode Tag(M);
-  //llvm::errs() << "AT: " << *Tag.getAccessType() << "\n";
   TBAAStructTypeNode AccessType(Tag.getAccessType());
-
-  //llvm::errs() << "numfields: " << AccessType.getNumFields() << "\n";
-
-  // TODO make this more robust
-
-  while (AccessType.getNumFields() > 0) {
-
-    if(auto *Id = dyn_cast<MDString>(AccessType.getId())) {
-      //llvm::errs() << "cur access type: " << Id->getString() << "\n";
-      auto dt = getTypeFromTBAAString(Id->getString().str(), inst);
-      if (dt.isKnown()) {
-        return ValueData(dt).Only({0});
-      }
-    }
-
-    AccessType = AccessType.getFieldType(0);
-    //llvm::errs() << "numfields: " << AccessType.getNumFields() << "\n";
-  }
-
-  if(auto *Id = dyn_cast<MDString>(AccessType.getId())) {
-    //llvm::errs() << "access type: " << Id->getString() << "\n";
-    return ValueData(getTypeFromTBAAString(Id->getString().str(), inst)).Only({0});
-  }
-  return ValueData();
+  return parseTBAA(AccessType, inst);
 }
 
 
@@ -203,6 +207,7 @@ static inline ValueData parseTBAA(Instruction* Inst) {
                 auto vd = parseTBAA(M2, Inst);
                 auto start = cast<ConstantInt>(cast<ConstantAsMetadata>(M->getOperand(i))->getValue())->getLimitedValue();
                 auto len = cast<ConstantInt>(cast<ConstantAsMetadata>(M->getOperand(i+1))->getValue())->getLimitedValue();
+                //llvm::errs() << "inst: " << *Inst << " vd " << vd.str() << " len: " << len << " start: " << start << "\n";
                 dat |= vd.AtMost(len).MergeIndices({start});
             }
         }
@@ -211,6 +216,7 @@ static inline ValueData parseTBAA(Instruction* Inst) {
         dat |= parseTBAA(M, Inst);
     }
     dat |= ValueData(IntType::Pointer);
+    //llvm::errs() << "overall parsed: " << *Inst << " " << dat.str() << "\n";
     return dat;
 }
 
@@ -496,10 +502,6 @@ void TypeAnalyzer::considerTBAA() {
 
             auto vdptr = parseTBAA(&inst);
 
-            if (fntypeinfo.function->getName() == ("preprocess__ZN5Eigen8internal37evaluateProductBlockingSizesHeuristicIddLi1ElEEvRT2_S3_S3_S2_"))
-                if (auto md = inst.getMetadata(LLVMContext::MD_tbaa))
-                    llvm::errs() << "found: " << inst << " tbaa: " << vdptr.str() << " md: " << *md << "\n";
-
             if (!vdptr.isKnownPastPointer()) continue;
 
             if (auto call = dyn_cast<CallInst>(&inst)) {
@@ -509,6 +511,16 @@ void TypeAnalyzer::considerTBAA() {
                         sz = max(sz, val);
                     }
                     auto update = vdptr.UnmergeIndices(0, sz);
+
+                    //llvm::errs() << "found: " << inst << " tbaa: " << vdptr.str() << " update: " << update.str() << "\n";
+                    //if (auto md = inst.getMetadata(LLVMContext::MD_tbaa)){
+                    //    llvm::errs() << " ++ tbaa md: " << *md << "\n";
+                    //    for(unsigned i=0; i<md->getNumOperands(); i++)
+                    //    llvm::errs() << "    ++ " << i << ": " << *md->getOperand(i) << "\n";
+                    //}
+                    //if (auto md = inst.getMetadata(LLVMContext::MD_tbaa_struct))
+                    //    llvm::errs() << " ++ tbaa.struct md: " << *md << "\n";
+
                     updateAnalysis(call->getOperand(0), update, call);
                     updateAnalysis(call->getOperand(1), update, call);
                     continue;

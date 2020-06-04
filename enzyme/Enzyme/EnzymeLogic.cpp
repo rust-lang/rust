@@ -1571,6 +1571,92 @@ public:
     }
   }
 
+  void subTransferHelper(Type* secretty, BasicBlock* parent, Intrinsic::ID intrinsic, unsigned dstalign, unsigned srcalign, unsigned offset, Value* orig_dst, Value* orig_src, Value* length, Value* isVolatile, llvm::MemTransferInst& MTI) {
+    // TODO offset
+
+    if (secretty) {
+      //no change to forward pass if represents floats
+      if (mode == DerivativeMode::Reverse || mode == DerivativeMode::Both) {
+        IRBuilder<> Builder2 = getReverseBuilder(parent);
+
+        // If the src is context simply zero d_dst and don't propagate to d_src (which thus == src and may be illegal)
+        if (gutils->isConstantValue(orig_src)) {
+          SmallVector<Value*, 4> args;
+          args.push_back(gutils->invertPointerM(orig_dst, Builder2));
+          args.push_back(ConstantInt::get(Type::getInt8Ty(parent->getContext()), 0));
+          args.push_back(lookup(length, Builder2));
+          args.push_back(ConstantInt::getFalse(parent->getContext()));
+
+          Type *tys[] = {args[0]->getType(), args[2]->getType()};
+          auto memsetIntr = Intrinsic::getDeclaration(parent->getParent()->getParent(), Intrinsic::memset, tys);
+          auto cal = Builder2.CreateCall(memsetIntr, args);
+          cal->setCallingConv(memsetIntr->getCallingConv());
+          if (dstalign != 0) {
+            cal->addParamAttr(0, Attribute::getWithAlignment(parent->getContext(), dstalign));
+          }
+
+        } else {
+          SmallVector<Value*, 4> args;
+          auto secretpt = PointerType::getUnqual(secretty);
+          auto dsto = gutils->invertPointerM(orig_dst, Builder2);
+          if (offset != 0) dsto = Builder2.CreateConstInBoundsGEP1_64(dsto, offset);
+          args.push_back(Builder2.CreatePointerCast(dsto, secretpt));
+          auto srco = gutils->invertPointerM(orig_src, Builder2);
+          if (offset != 0) srco = Builder2.CreateConstInBoundsGEP1_64(srco, offset);
+          args.push_back(Builder2.CreatePointerCast(srco, secretpt));
+          args.push_back(Builder2.CreateUDiv(lookup(length, Builder2),
+
+              ConstantInt::get(length->getType(), Builder2.GetInsertBlock()->getParent()->getParent()->getDataLayout().getTypeAllocSizeInBits(secretty)/8)
+          ));
+
+          auto dmemcpy = ( (intrinsic == Intrinsic::memcpy) ? getOrInsertDifferentialFloatMemcpy : getOrInsertDifferentialFloatMemmove)(*parent->getParent()->getParent(), secretpt, dstalign, srcalign);
+          Builder2.CreateCall(dmemcpy, args);
+        }
+      }
+    } else {
+
+      //if represents pointer or integer type then only need to modify forward pass with the copy
+      if (mode == DerivativeMode::Forward || mode == DerivativeMode::Both) {
+
+        //It is questionable how the following case would even occur, but if the dst is constant, we shouldn't do anything extra
+        if (gutils->isConstantValue(orig_dst)) {
+          return;
+        }
+
+        SmallVector<Value*, 4> args;
+        IRBuilder <>BuilderZ(gutils->getNewFromOriginal(&MTI));
+
+        //If src is inactive, then we should copy from the regular pointer (i.e. suppose we are copying constant memory representing dimensions into a tensor)
+        //  to ensure that the differential tensor is well formed for use OUTSIDE the derivative generation (as enzyme doesn't need this), we should also perform the copy
+        //  onto the differential. Future Optimization (not implemented): If dst can never escape Enzyme code, we may omit this copy.
+        //no need to update pointers, even if dst is active
+        auto dsto = gutils->invertPointerM(orig_dst, BuilderZ);
+        if (offset != 0) dsto = BuilderZ.CreateConstInBoundsGEP1_64(dsto, offset);
+        args.push_back(dsto);
+        auto srco = gutils->invertPointerM(orig_src, BuilderZ);
+        if (offset != 0) srco = BuilderZ.CreateConstInBoundsGEP1_64(srco, offset);
+        args.push_back(srco);
+
+        args.push_back(length);
+        args.push_back(isVolatile);
+
+        Type *tys[] = {args[0]->getType(), args[1]->getType(), args[2]->getType()};
+        auto memtransIntr = Intrinsic::getDeclaration(gutils->newFunc->getParent(), intrinsic, tys);
+        auto cal = BuilderZ.CreateCall(memtransIntr, args);
+        cal->setAttributes(MTI.getAttributes());
+        cal->setCallingConv(memtransIntr->getCallingConv());
+        cal->setTailCallKind(MTI.getTailCallKind());
+
+        if (dstalign != 0) {
+          cal->addParamAttr(0, Attribute::getWithAlignment(parent->getContext(), dstalign));
+        }
+        if (srcalign != 0) {
+          cal->addParamAttr(1, Attribute::getWithAlignment(parent->getContext(), srcalign));
+        }
+      }
+    }
+  }
+
   void visitMemTransferInst(llvm::MemTransferInst& MTI) {
     if (gutils->isConstantInstruction(&MTI)) {
       eraseIfUnused(MTI);
@@ -1584,14 +1670,12 @@ public:
 
 
     Value* orig_op0 = MTI.getOperand(0);
-    Value* op0 = gutils->getNewFromOriginal(orig_op0);
     Value* orig_op1 = MTI.getOperand(1);
-    Value* op1 = gutils->getNewFromOriginal(orig_op1);
     Value* op2 = gutils->getNewFromOriginal(MTI.getOperand(2));
     Value* op3 = gutils->getNewFromOriginal(MTI.getOperand(3));
 
     // copying into nullptr is invalid (not sure why it exists here), but we shouldn't do it in reverse pass or shadow
-    if (isa<ConstantPointerNull>(op0) || TR.query(orig_op0)[{}] == IntType::Anything) {
+    if (isa<ConstantPointerNull>(orig_op0) || TR.query(orig_op0)[{}] == IntType::Anything) {
       eraseIfUnused(MTI);
       return;
     }
@@ -1610,7 +1694,7 @@ public:
     auto vd = TR.query(orig_op0).AtMost(size);
     vd |= TR.query(orig_op1).AtMost(size);
 
-    llvm::errs() << "MIT: " << MTI << "|size: " << size << " vd: " << vd.str() << "\n";
+    //llvm::errs() << "MIT: " << MTI << "|size: " << size << " vd: " << vd.str() << "\n";
 
     if (!vd.isKnownPastPointer()) {
       if (looseTypeAnalysis) {
@@ -1625,86 +1709,62 @@ public:
     }
     known:;
 
-    auto dt = vd[{0}];
-    dt.mergeIn(vd[{-1}], /*pointerIntSame*/true);
-    for(size_t i=1; i<size; i++) {
-        dt.mergeIn(vd[{(int)i}], /*pointerIntSame*/true);
+
+    unsigned dstalign = 0;
+    if (MTI.paramHasAttr(0, Attribute::Alignment)) {
+        dstalign = MTI.getParamAttr(0, Attribute::Alignment).getValueAsInt();
     }
-    assert(dt.isKnown());
+    unsigned srcalign = 0;
+    if (MTI.paramHasAttr(1, Attribute::Alignment)) {
+        srcalign = MTI.getParamAttr(1, Attribute::Alignment).getValueAsInt();
+    }
 
-    if (Type* secretty = dt.isFloat()) {
-      //no change to forward pass if represents floats
-      if (mode == DerivativeMode::Reverse || mode == DerivativeMode::Both) {
-        IRBuilder<> Builder2 = getReverseBuilder(MTI.getParent());
+    unsigned start = 0;
 
-        // If the src is context simply zero d_dst and don't propagate to d_src (which thus == src and may be illegal)
-        if (gutils->isConstantValue(orig_op1)) {
-          SmallVector<Value*, 4> args;
-          args.push_back(gutils->invertPointerM(orig_op0, Builder2));
-          args.push_back(ConstantInt::get(Type::getInt8Ty(MTI.getContext()), 0));
-          args.push_back(lookup(op2, Builder2));
-          args.push_back(ConstantInt::getFalse(MTI.getContext()));
+    IRBuilder <>BuilderZ(gutils->getNewFromOriginal(&MTI));
 
-          Type *tys[] = {args[0]->getType(), args[2]->getType()};
-          auto memsetIntr = Intrinsic::getDeclaration(MTI.getParent()->getParent()->getParent(), Intrinsic::memset, tys);
-          auto cal = Builder2.CreateCall(memsetIntr, args);
-          cal->setCallingConv(memsetIntr->getCallingConv());
-        } else {
-          SmallVector<Value*, 4> args;
-          auto secretpt = PointerType::getUnqual(secretty);
-          args.push_back(Builder2.CreatePointerCast(gutils->invertPointerM(orig_op0, Builder2), secretpt));
-          args.push_back(Builder2.CreatePointerCast(gutils->invertPointerM(orig_op1, Builder2), secretpt));
-          args.push_back(Builder2.CreateUDiv(lookup(op2, Builder2),
+    while(1) {
+      unsigned nextStart = size;
 
-              ConstantInt::get(op2->getType(), Builder2.GetInsertBlock()->getParent()->getParent()->getDataLayout().getTypeAllocSizeInBits(secretty)/8)
-          ));
-          unsigned dstalign = 0;
-          if (MTI.paramHasAttr(0, Attribute::Alignment)) {
-              dstalign = MTI.getParamAttr(0, Attribute::Alignment).getValueAsInt();
+      auto dt = vd[{-1}];
+      for(size_t i=start; i<size; i++) {
+          bool legal = true;
+          dt.legalMergeIn(vd[{(int)i}], /*pointerIntSame*/true, legal);
+          if (!legal) {
+            nextStart = i;
+            break;
           }
-          unsigned srcalign = 0;
-          if (MTI.paramHasAttr(1, Attribute::Alignment)) {
-              srcalign = MTI.getParamAttr(1, Attribute::Alignment).getValueAsInt();
-          }
+      }
+      assert(dt.isKnown());
 
-          auto dmemcpy = ( (MTI.getIntrinsicID() == Intrinsic::memcpy) ? getOrInsertDifferentialFloatMemcpy : getOrInsertDifferentialFloatMemmove)(*MTI.getParent()->getParent()->getParent(), secretpt, dstalign, srcalign);
-          Builder2.CreateCall(dmemcpy, args);
+      Value* length = op2;
+      if (nextStart != size) {
+        length = ConstantInt::get(op2->getType(), nextStart);
+      }
+      if (start != 0)
+        length = BuilderZ.CreateSub(length, ConstantInt::get(op2->getType(), start));
+
+      unsigned subdstalign = dstalign;
+      // todo make better alignment calculation
+      if (dstalign != 0) {
+        if (start % dstalign != 0) {
+          dstalign = 1;
         }
       }
-    } else {
-
-      //if represents pointer or integer type then only need to modify forward pass with the copy
-      if (mode == DerivativeMode::Forward || mode == DerivativeMode::Both) {
-        //It is questionable how the following case would even occur, but if the dst is constant, we shouldn't do anything extra
-        if (gutils->isConstantValue(orig_op0)) {
-          eraseIfUnused(MTI);
-          return;
+      unsigned subsrcalign = srcalign;
+      // todo make better alignment calculation
+      if (srcalign != 0) {
+        if (start % srcalign != 0) {
+          srcalign = 1;
         }
-
-        SmallVector<Value*, 4> args;
-        IRBuilder <>BuilderZ(gutils->getNewFromOriginal(&MTI));
-
-        //If src is inactive, then we should copy from the regular pointer (i.e. suppose we are copying constant memory representing dimensions into a tensor)
-        //  to ensure that the differential tensor is well formed for use OUTSIDE the derivative generation (as enzyme doesn't need this), we should also perform the copy
-        //  onto the differential. Future Optimization (not implemented): If dst can never escape Enzyme code, we may omit this copy.
-        //no need to update pointers, even if dst is active
-        args.push_back(gutils->invertPointerM(orig_op0, BuilderZ));
-
-        if (!gutils->isConstantValue(orig_op1))
-            args.push_back(gutils->invertPointerM(orig_op1, BuilderZ));
-        else
-            args.push_back(op1);
-
-        args.push_back(op2);
-        args.push_back(op3);
-
-        Type *tys[] = {args[0]->getType(), args[1]->getType(), args[2]->getType()};
-        auto cal = BuilderZ.CreateCall(Intrinsic::getDeclaration(gutils->newFunc->getParent(), MTI.getIntrinsicID(), tys), args);
-        cal->setAttributes(MTI.getAttributes());
-        cal->setCallingConv(MTI.getCallingConv());
-        cal->setTailCallKind(MTI.getTailCallKind());
       }
+
+      subTransferHelper(dt.isFloat(), MTI.getParent(), MTI.getIntrinsicID(), subdstalign, subsrcalign, /*offset*/start, orig_op0, orig_op1, /*length*/length, /*volatile*/op3, MTI);
+
+      if (nextStart == size) break;
+      start = nextStart;
     }
+
     eraseIfUnused(MTI);
   }
 
@@ -3171,14 +3231,15 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, DIFFE_TYPE retTyp
       if (auto ai = dyn_cast<AllocaInst>(at)) {
           bool foundStore = false;
           allInstructionsBetween(gutils->OrigLI, ai, const_cast<MemTransferInst*>(mti), [&](Instruction* I) {
-            if (!I->mayWriteToMemory()) return;
-            if (unnecessaryInstructions.count(I)) return;
+            if (!I->mayWriteToMemory()) return /*earlyBreak*/false;
+            if (unnecessaryInstructions.count(I)) return /*earlyBreak*/false;
 
             //if (I == &MTI) return;
             if (writesToMemoryReadBy(gutils->AA, /*maybeReader*/const_cast<MemTransferInst*>(mti), /*maybeWriter*/I)) {
               foundStore = true;
-              return;
+              return /*earlyBreak*/true;
             }
+            return /*earlyBreak*/false;
           });
           if (!foundStore) {
             return false;
@@ -3212,14 +3273,15 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, DIFFE_TYPE retTyp
       if (auto ai = dyn_cast<AllocaInst>(at)) {
           bool foundStore = false;
           allInstructionsBetween(gutils->OrigLI, ai, const_cast<MemTransferInst*>(mti), [&](Instruction* I) {
-            if (!I->mayWriteToMemory()) return;
-            if (unnecessaryInstructions.count(I)) return;
+            if (!I->mayWriteToMemory()) return /*earlyBreak*/false;
+            if (unnecessaryInstructions.count(I)) return /*earlyBreak*/false;
 
             //if (I == &MTI) return;
             if (writesToMemoryReadBy(gutils->AA, /*maybeReader*/const_cast<MemTransferInst*>(mti), /*maybeWriter*/I)) {
               foundStore = true;
-              return;
+              return /*earlyBreak*/true;
             }
+            return /*earlyBreak*/false;
           });
           if (!foundStore) {
             return false;
@@ -4124,16 +4186,17 @@ Function* CreatePrimalAndGradient(Function* todiff, DIFFE_TYPE retType, const st
       //llvm::errs() << "origop for mti: " << *mti << " at:" << *at << "\n";
       if (auto ai = dyn_cast<AllocaInst>(at)) {
           bool foundStore = false;
-          allInstructionsBetween(gutils->OrigLI, ai, const_cast<MemTransferInst*>(mti), [&](Instruction* I) {
-            if (!I->mayWriteToMemory()) return;
-            if (unnecessaryInstructions.count(I)) return;
+          allInstructionsBetween(gutils->OrigLI, ai, const_cast<MemTransferInst*>(mti), [&](Instruction* I) -> bool {
+            if (!I->mayWriteToMemory()) return /*earlyBreak*/false;
+            if (unnecessaryInstructions.count(I)) return /*earlyBreak*/false;
 
             //if (I == &MTI) return;
             if (writesToMemoryReadBy(gutils->AA, /*maybeReader*/const_cast<MemTransferInst*>(mti), /*maybeWriter*/I)) {
               //llvm::errs() << " mti: - " << *mti << " stored into by " << *I << "\n";
               foundStore = true;
-              return;
+              return /*earlyBreak*/true;
             }
+            return /*earlyBreak*/false;
           });
           if (!foundStore) {
             //llvm::errs() << "warning - performing a memcpy out of unitialized memory: " << *mti << "\n";
@@ -4157,16 +4220,17 @@ Function* CreatePrimalAndGradient(Function* todiff, DIFFE_TYPE retType, const st
       //llvm::errs() << "origop for mti: " << *mti << " at:" << *at << "\n";
       if (auto ai = dyn_cast<AllocaInst>(at)) {
           bool foundStore = false;
-          allInstructionsBetween(gutils->OrigLI, ai, const_cast<MemTransferInst*>(mti), [&](Instruction* I) {
-            if (!I->mayWriteToMemory()) return;
-            if (unnecessaryInstructions.count(I)) return;
+          allInstructionsBetween(gutils->OrigLI, ai, const_cast<MemTransferInst*>(mti), [&](Instruction* I) -> bool {
+            if (!I->mayWriteToMemory()) return /*earlyBreak*/false;
+            if (unnecessaryInstructions.count(I)) return /*earlyBreak*/false;
 
             //if (I == &MTI) return;
             if (writesToMemoryReadBy(gutils->AA, /*maybeReader*/const_cast<MemTransferInst*>(mti), /*maybeWriter*/I)) {
               //llvm::errs() << " mti: - " << *mti << " stored into by " << *I << "\n";
               foundStore = true;
-              return;
+              return /*earlyBreak*/true;
             }
+            return /*earlyBreak*/false;
           });
           if (!foundStore) {
             //llvm::errs() << "warning - performing a memcpy out of unitialized memory: " << *mti << "\n";

@@ -151,7 +151,7 @@ public:
     }
 
     //returns whether changed
-    bool mergeIn(const DataType dt, bool pointerIntSame) {
+    bool legalMergeIn(const DataType dt, bool pointerIntSame, bool& legal) {
         if (typeEnum == IntType::Anything) {
             return false;
         }
@@ -171,14 +171,27 @@ public:
                     return false;
                 }
             }
-            llvm::errs() << "typeEnum: " << to_string(typeEnum) << " dt.typeEnum.str(): " << to_string(dt.typeEnum) << "\n";
+            legal = false;
+            return false;
         }
         assert(dt.typeEnum == typeEnum);
         if (dt.type != type) {
-            llvm::errs() << "type: " << *type << " dt.type: " << *dt.type << "\n";
+            legal = false;
+            return false;
         }
         assert(dt.type == type);
         return false;
+    }
+
+    //returns whether changed
+    bool mergeIn(const DataType dt, bool pointerIntSame) {
+        bool legal = true;
+        bool res = legalMergeIn(dt, pointerIntSame, legal);
+        if (!legal) {
+            llvm::errs() << "me: " << str() << " right: " << dt.str() << "\n";
+        }
+        assert(legal);
+        return res;
     }
 
     //returns whether changed
@@ -809,10 +822,10 @@ public:
             //llvm::errs() << "merging @ " << to_string(pair.first) << " old:" << dt.str() << " new:" << pair.second.str() << "\n";
             changed |= (dt.mergeIn(pair.second, pointerIntSame));
 
-
+            /*
             if (dt == IntType::Integer && pair.first.size() > 0 && pair.first.back() != -1) {
                 auto p2(pair.first);
-                for(unsigned i=max((int)pair.first.back()-4, 0); i<pair.first.back(); i++) {
+                for(unsigned i=max((int)pair.first.back()-4, 0); i<(unsigned)pair.first.back(); i++) {
                     p2[p2.size()-1] == i;
                     if (operator[](p2).typeEnum == IntType::Float) {
                         llvm::errs() << " illegal merge of " << v.str() << " into " << str() << "\n";
@@ -821,6 +834,20 @@ public:
                     }
                 }
             }
+
+            if (dt == IntType::Float && pair.first.size() > 0 && pair.first.back() != -1) {
+                auto p2(pair.first);
+                for(unsigned i=pair.first.back(); i<(unsigned)pair.first.back()+4; i++) {
+                    p2[p2.size()-1] == i;
+                    if (operator[](p2).typeEnum == IntType::Integer) {
+                        llvm::errs() << " illegal merge of " << v.str() << " into " << str() << "\n";
+                        assert(0 && "badmerg2");
+                        exit(1);
+                    }
+                }
+            }
+            */
+
 
             insert(pair.first, dt);
         }

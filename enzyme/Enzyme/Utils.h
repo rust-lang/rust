@@ -368,12 +368,12 @@ static inline void allFollowersOf(llvm::Instruction* inst, std::function<bool(ll
   }
 }
 
-static inline void allPredecessorsOf(llvm::Instruction* inst, std::function<void(llvm::Instruction*)> f) {
+static inline void allPredecessorsOf(llvm::Instruction* inst, std::function<bool(llvm::Instruction*)> f) {
 
   //llvm::errs() << "all followers of: " << *inst << "\n";
   for(auto uinst = inst->getPrevNode(); uinst != nullptr; uinst = uinst->getPrevNode()) {
     //llvm::errs() << " + bb1: " << *uinst << "\n";
-    f(uinst);
+    if (f(uinst)) return;
   }
 
   std::deque<llvm::BasicBlock*> todo;
@@ -389,7 +389,7 @@ static inline void allPredecessorsOf(llvm::Instruction* inst, std::function<void
 
     llvm::BasicBlock::reverse_iterator I = BB->rbegin(), E = BB->rend();
     for (; I != E; I++) {
-      f(&*I);
+      if (f(&*I)) return;
       if (&*I == inst) break;
     }
     for(auto suc : llvm::predecessors(BB)) {
@@ -399,10 +399,10 @@ static inline void allPredecessorsOf(llvm::Instruction* inst, std::function<void
 }
 
 #include "llvm/Analysis/LoopInfo.h"
-static inline void allInstructionsBetween(llvm::LoopInfo &LI, llvm::Instruction* inst1, llvm::Instruction* inst2, std::function<void(llvm::Instruction*)> f) {
+static inline void allInstructionsBetween(llvm::LoopInfo &LI, llvm::Instruction* inst1, llvm::Instruction* inst2, std::function<bool(llvm::Instruction*)> f) {
   for(auto uinst = inst1->getNextNode(); uinst != nullptr; uinst = uinst->getNextNode()) {
     //llvm::errs() << " + bb1: " << *uinst << "\n";
-    f(uinst);
+    if (f(uinst)) return;
     if (uinst == inst2) return;
   }
 
@@ -441,9 +441,9 @@ static inline void allInstructionsBetween(llvm::LoopInfo &LI, llvm::Instruction*
   }
   }
 
-  allPredecessorsOf(inst2, [&](llvm::Instruction* I) {
-    if (instructions.find(I) == instructions.end()) return;
-    f(I);
+  allPredecessorsOf(inst2, [&](llvm::Instruction* I) -> bool {
+    if (instructions.find(I) == instructions.end()) return /*earlyReturn*/false;
+    return f(I);
   });
 
 }

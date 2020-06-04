@@ -1605,12 +1605,14 @@ Value* GradientUtils::lookupM(Value* val, IRBuilder<>& BuilderM, const ValueToVa
             auto scev2 = SE.getSCEV(li2->getPointerOperand());
             llvm::errs() << " scev1: " << *scev1 << " scev2: " << *scev2 << "\n";
 
-            allInstructionsBetween(OrigLI, getOriginal(li2), origInst, [&](Instruction* I) {
+            allInstructionsBetween(OrigLI, getOriginal(li2), origInst, [&](Instruction* I) -> bool {
               //llvm::errs() << "examining instruction: " << *I << " between: " << *li2 << " and " << *li << "\n";
               if ( I->mayWriteToMemory() && writesToMemoryReadBy(AA, /*maybeReader*/origInst, /*maybeWriter*/I) ) {
                 failed = true;
                 llvm::errs() << "FAILED: " << *I << "\n";
+                return /*earlyBreak*/true;
               }
+              return /*earlyBreak*/false;
             });
             if (failed) continue;
 

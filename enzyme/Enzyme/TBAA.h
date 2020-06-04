@@ -162,6 +162,16 @@ using namespace llvm;
      return (getNode()->getNumOperands() - FirstFieldOpNo) / NumOpsPerField;
    }
 
+   uint64_t getFieldOffset(unsigned FieldIndex) const {
+     unsigned FirstFieldOpNo = isNewFormat() ? 3 : 1;
+     unsigned NumOpsPerField = isNewFormat() ? 3 : 2;
+     unsigned OpIndex = FirstFieldOpNo + FieldIndex * NumOpsPerField;
+
+       uint64_t Cur = mdconst::extract<ConstantInt>(Node->getOperand(OpIndex + 1))
+                          ->getZExtValue();
+     return Cur;
+   }
+
    TBAAStructTypeNode getFieldType(unsigned FieldIndex) const {
      unsigned FirstFieldOpNo = isNewFormat() ? 3 : 1;
      unsigned NumOpsPerField = isNewFormat() ? 3 : 2;
