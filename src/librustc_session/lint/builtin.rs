@@ -7,6 +7,7 @@
 use crate::lint::FutureIncompatibleInfo;
 use crate::{declare_lint, declare_lint_pass};
 use rustc_span::edition::Edition;
+use rustc_span::symbol::sym;
 
 declare_lint! {
     pub ILL_FORMED_ATTRIBUTE_INPUT,
@@ -530,6 +531,7 @@ declare_lint! {
     pub UNSAFE_OP_IN_UNSAFE_FN,
     Allow,
     "unsafe operations in unsafe functions without an explicit unsafe block are deprecated",
+    @feature_gate = sym::unsafe_block_in_unsafe_fn;
 }
 
 declare_lint_pass! {
