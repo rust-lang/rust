@@ -122,7 +122,7 @@ pub trait Error: Debug + Display {
     /// Note that not all errors contain a `Backtrace`. Also note that a
     /// `Backtrace` may actually be empty. For more information consult the
     /// `Backtrace` type itself.
-    #[unstable(feature = "backtrace", issue = "53487")]
+    #[stable(feature = "backtrace", since = "1.50.0")]
     fn backtrace(&self) -> Option<&Backtrace> {
         None
     }

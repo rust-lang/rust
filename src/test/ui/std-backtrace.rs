@@ -6,8 +6,6 @@
 // ignore-msvc see #62897 and `backtrace-debuginfo.rs` test
 // compile-flags:-g
 
-#![feature(backtrace)]
-
 use std::env;
 use std::process::Command;
 use std::str;
