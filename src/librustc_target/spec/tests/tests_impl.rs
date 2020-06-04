@@ -25,7 +25,6 @@ impl Target {
         );
         for args in &[
             &self.options.pre_link_args,
-            &self.options.pre_link_args_crt,
             &self.options.late_link_args,
             &self.options.late_link_args_dynamic,
             &self.options.late_link_args_static,

@@ -13,9 +13,15 @@ LL |     fn f() { ::bar::m!(); }
    |              ------------ in this macro invocation
 ...
 LL |         Vec::new();
-   |         ^^^ use of undeclared type or module `Vec`
+   |         ^^^ not found in this scope
    |
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider importing one of these items
+   |
+LL |     use std::prelude::v1::Vec;
+   |
+LL |     use std::vec::Vec;
+   |
 
 error[E0599]: no method named `clone` found for unit type `()` in the current scope
   --> $DIR/no_implicit_prelude.rs:12:12
