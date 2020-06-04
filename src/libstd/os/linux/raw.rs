@@ -170,7 +170,7 @@ mod arch {
 
 #[cfg(target_arch = "hexagon")]
 mod arch {
-    use crate::os::raw::{c_int, c_long, c_longlong, culonglong};
+    use crate::os::raw::{c_int, c_long, c_longlong, c_ulonglong};
 
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub type blkcnt_t = c_longlong;
