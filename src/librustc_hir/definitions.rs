@@ -364,6 +364,12 @@ impl Definitions {
         self.node_id_to_hir_id[node_id]
     }
 
+    #[inline]
+    pub fn opt_hir_id_to_local_def_id(&self, hir_id: hir::HirId) -> Option<LocalDefId> {
+        let node_id = self.hir_id_to_node_id(hir_id);
+        self.opt_local_def_id(node_id)
+    }
+
     /// Retrieves the span of the given `DefId` if `DefId` is in the local crate.
     #[inline]
     pub fn opt_span(&self, def_id: DefId) -> Option<Span> {
