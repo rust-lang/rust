@@ -1508,6 +1508,13 @@ public:
         }
         goto def;
       }
+      case Instruction::Add:{
+        if (looseTypeAnalysis) {
+          // if loose type analysis, assume this integer add is constant
+          return;
+        }
+        goto def;
+      }
       default:def:;
         llvm::errs() << *gutils->oldFunc << "\n";
         for(auto & pair : gutils->internal_isConstantInstruction) {
@@ -1704,7 +1711,7 @@ public:
     if (!vd.isKnownPastPointer()) {
       if (looseTypeAnalysis) {
         if (isa<CastInst>(orig_op0) && cast<CastInst>(orig_op0)->getSrcTy()->isPointerTy() && cast<PointerType>(cast<CastInst>(orig_op0)->getSrcTy())->getElementType()->isFPOrFPVectorTy()) {
-          vd = DataType(cast<PointerType>(cast<CastInst>(orig_op0)->getSrcTy())->getElementType()->getScalarType());
+          vd = ValueData(DataType(cast<PointerType>(cast<CastInst>(orig_op0)->getSrcTy())->getElementType()->getScalarType())).Only({0});
           goto known;
         }
       }
@@ -1739,6 +1746,10 @@ public:
             nextStart = i;
             break;
           }
+      }
+      if (!dt.isKnown()) {
+        TR.dump();
+        llvm::errs() << " vd:" << vd.str() << " start:" << start << " size: " << size << " dt:" << dt.str() << "\n";
       }
       assert(dt.isKnown());
 
