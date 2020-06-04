@@ -273,7 +273,7 @@ impl From<Name> for ModPath {
 impl Display for ModPath {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut first_segment = true;
-        let mut add_segment = |s| {
+        let mut add_segment = |s| -> fmt::Result {
             if !first_segment {
                 f.write_str("::")?;
             }
