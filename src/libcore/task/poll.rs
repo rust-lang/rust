@@ -48,6 +48,16 @@ impl<T> Poll<T> {
     pub fn is_pending(&self) -> bool {
         !self.is_ready()
     }
+
+    /// Returns `Some` if this is `Poll::Ready`, `None` otherwise
+    #[inline]
+    #[unstable(feature = "poll_ready", reason = "new API", issue = "72992")]
+    pub fn ready(self) -> Option<T> {
+        match self {
+            Poll::Ready(t) => Some(t),
+            Poll::Pending => None,
+        }
+    }
 }
 
 impl<T, E> Poll<Result<T, E>> {
