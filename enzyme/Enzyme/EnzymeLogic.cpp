@@ -3385,10 +3385,14 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, DIFFE_TYPE retTyp
         for(auto &I: oBB) { toerase.push_back(&I); }
         for(auto I : toerase) { maker.eraseIfUnused(*I, /*erase*/true, /*check*/true); }
         auto newBB = cast<BasicBlock>(gutils->getNewFromOriginal(&oBB));
-        if (newBB->getTerminator())
-          newBB->getTerminator()->eraseFromParent();
-        IRBuilder<> builder(newBB);
-        builder.CreateUnreachable();
+        if (!newBB->getTerminator()) {
+          for(auto next : successors(&oBB)) {
+            auto sucBB = cast<BasicBlock>(gutils->getNewFromOriginal(next));
+            sucBB->removePredecessor(newBB);
+          }
+          IRBuilder<> builder(newBB);
+          builder.CreateUnreachable();
+        }
         continue;
       }
 
@@ -4373,6 +4377,10 @@ Function* CreatePrimalAndGradient(Function* todiff, DIFFE_TYPE retType, const st
         for(auto &I: oBB) { toerase.push_back(&I); }
         for(auto I : toerase) { maker.eraseIfUnused(*I, /*erase*/true, /*check*/topLevel == true); }
         auto newBB = cast<BasicBlock>(gutils->getNewFromOriginal(&oBB));
+        for(auto next : successors(&oBB)) {
+          auto sucBB = cast<BasicBlock>(gutils->getNewFromOriginal(next));
+          sucBB->removePredecessor(newBB);
+        }
         if (newBB->getTerminator())
           newBB->getTerminator()->eraseFromParent();
         IRBuilder<> builder(newBB);
