@@ -1356,16 +1356,18 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     // Sanitizers can only be used on some tested platforms.
     if let Some(ref sanitizer) = sess.opts.debugging_opts.sanitizer {
         const ASAN_SUPPORTED_TARGETS: &[&str] = &[
-            "x86_64-unknown-linux-gnu",
+            "aarch64-fuchsia",
+            "aarch64-unknown-linux-gnu",
             "x86_64-apple-darwin",
             "x86_64-fuchsia",
-            "aarch64-fuchsia",
+            "x86_64-unknown-linux-gnu",
         ];
         const TSAN_SUPPORTED_TARGETS: &[&str] =
-            &["x86_64-unknown-linux-gnu", "x86_64-apple-darwin"];
+            &["aarch64-unknown-linux-gnu", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu"];
         const LSAN_SUPPORTED_TARGETS: &[&str] =
-            &["x86_64-unknown-linux-gnu", "x86_64-apple-darwin"];
-        const MSAN_SUPPORTED_TARGETS: &[&str] = &["x86_64-unknown-linux-gnu"];
+            &["aarch64-unknown-linux-gnu", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu"];
+        const MSAN_SUPPORTED_TARGETS: &[&str] =
+            &["aarch64-unknown-linux-gnu", "x86_64-unknown-linux-gnu"];
 
         let supported_targets = match *sanitizer {
             Sanitizer::Address => ASAN_SUPPORTED_TARGETS,
@@ -1376,9 +1378,9 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
 
         if !supported_targets.contains(&&*sess.opts.target_triple.triple()) {
             sess.err(&format!(
-                "{:?}Sanitizer only works with the `{}` target",
+                "{:?}Sanitizer only works with targets: {}",
                 sanitizer,
-                supported_targets.join("` or `")
+                supported_targets.join(", ")
             ));
         }
     }
