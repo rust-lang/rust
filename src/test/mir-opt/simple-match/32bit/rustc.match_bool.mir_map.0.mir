@@ -6,14 +6,18 @@ fn match_bool(_1: bool) -> usize {
 
     bb0: {
         FakeRead(ForMatchedPlace, _1);   // scope 0 at $DIR/simple-match.rs:6:11: 6:12
-        switchInt(_1) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/simple-match.rs:7:9: 7:13
+        switchInt(_1) -> [false: bb3, otherwise: bb2]; // scope 0 at $DIR/simple-match.rs:7:9: 7:13
     }
 
-    bb1: {
-        falseEdges -> [real: bb3, imaginary: bb2]; // scope 0 at $DIR/simple-match.rs:7:9: 7:13
+    bb1 (cleanup): {
+        resume;                          // scope 0 at $DIR/simple-match.rs:5:1: 10:2
     }
 
     bb2: {
+        falseEdges -> [real: bb4, imaginary: bb3]; // scope 0 at $DIR/simple-match.rs:7:9: 7:13
+    }
+
+    bb3: {
         _0 = const 20usize;              // scope 0 at $DIR/simple-match.rs:8:14: 8:16
                                          // ty::Const
                                          // + ty: usize
@@ -21,10 +25,10 @@ fn match_bool(_1: bool) -> usize {
                                          // mir::Constant
                                          // + span: $DIR/simple-match.rs:8:14: 8:16
                                          // + literal: Const { ty: usize, val: Value(Scalar(0x00000014)) }
-        goto -> bb4;                     // scope 0 at $DIR/simple-match.rs:6:5: 9:6
+        goto -> bb5;                     // scope 0 at $DIR/simple-match.rs:6:5: 9:6
     }
 
-    bb3: {
+    bb4: {
         _0 = const 10usize;              // scope 0 at $DIR/simple-match.rs:7:17: 7:19
                                          // ty::Const
                                          // + ty: usize
@@ -32,10 +36,14 @@ fn match_bool(_1: bool) -> usize {
                                          // mir::Constant
                                          // + span: $DIR/simple-match.rs:7:17: 7:19
                                          // + literal: Const { ty: usize, val: Value(Scalar(0x0000000a)) }
-        goto -> bb4;                     // scope 0 at $DIR/simple-match.rs:6:5: 9:6
+        goto -> bb5;                     // scope 0 at $DIR/simple-match.rs:6:5: 9:6
     }
 
-    bb4: {
+    bb5: {
+        goto -> bb6;                     // scope 0 at $DIR/simple-match.rs:10:2: 10:2
+    }
+
+    bb6: {
         return;                          // scope 0 at $DIR/simple-match.rs:10:2: 10:2
     }
 }
