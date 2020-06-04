@@ -758,7 +758,7 @@ public:
         return dat;
     }
 
-    ValueData AtMost(int max) const {
+    ValueData AtMost(size_t max) const {
         assert(max > 0);
         ValueData dat;
         for(const auto &pair : mapping) {
@@ -785,6 +785,10 @@ public:
         return true;
     }
 
+    int max(int a, int b) {
+        if (a>b) return a;
+        return b;
+    }
     bool mergeIn(const ValueData &v, bool pointerIntSame) {
         //! Todo detect recursive merge
 
@@ -804,6 +808,20 @@ public:
             DataType dt = operator[](pair.first);
             //llvm::errs() << "merging @ " << to_string(pair.first) << " old:" << dt.str() << " new:" << pair.second.str() << "\n";
             changed |= (dt.mergeIn(pair.second, pointerIntSame));
+
+
+            if (dt == IntType::Integer && pair.first.size() > 0 && pair.first.back() != -1) {
+                auto p2(pair.first);
+                for(unsigned i=max((int)pair.first.back()-4, 0); i<pair.first.back(); i++) {
+                    p2[p2.size()-1] == i;
+                    if (operator[](p2).typeEnum == IntType::Float) {
+                        llvm::errs() << " illegal merge of " << v.str() << " into " << str() << "\n";
+                        assert(0 && "badmerge");
+                        exit(1);
+                    }
+                }
+            }
+
             insert(pair.first, dt);
         }
         return changed;
@@ -950,15 +968,15 @@ public:
 
 
 class TypeAnalyzer : public llvm::InstVisitor<TypeAnalyzer> {
-private:
+public:
     //List of value's which should be re-analyzed now with new information
     std::deque<llvm::Value*> workList;
+private:
     void addToWorkList(llvm::Value* val);
     std::map<llvm::Value*, std::set<int64_t>> intseen;
 public:
     //Calling context
     const NewFnTypeInfo fntypeinfo;
-
 
 	TypeAnalysis &interprocedural;
 

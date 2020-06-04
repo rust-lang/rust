@@ -215,6 +215,7 @@ static inline ValueData parseTBAA(Instruction* Inst) {
 }
 
 TypeAnalyzer::TypeAnalyzer(const NewFnTypeInfo& fn, TypeAnalysis& TA) : intseen(), fntypeinfo(fn), interprocedural(TA), DT(*fn.function) {
+    //assert(fntypeinfo.knownValues.size() == fntypeinfo.function->getFunctionType()->getNumParams());
     for(BasicBlock &BB: *fntypeinfo.function) {
         for(auto &inst : BB) {
 	        workList.push_back(&inst);
@@ -229,9 +230,15 @@ TypeAnalyzer::TypeAnalyzer(const NewFnTypeInfo& fn, TypeAnalysis& TA) : intseen(
     }
 }
 
-ValueData getConstantAnalysis(Constant* val) {
+ValueData getConstantAnalysis(Constant* val, const NewFnTypeInfo& nfti, TypeAnalysis& TA) {
     if (auto ca = dyn_cast<ConstantAggregate>(val)) {
-        return getConstantAnalysis(ca->getOperand(0));
+        return getConstantAnalysis(ca->getOperand(0), nfti, TA);
+    }
+
+    if (isa<ConstantPointerNull>(val)) {
+        ValueData vd(IntType::Pointer);
+        vd |= ValueData(IntType::Anything).Only({-1});
+        return vd;
     }
 
     if (isa<Function>(val)) {
@@ -247,7 +254,10 @@ ValueData getConstantAnalysis(Constant* val) {
             if (fp->isExactlyValue(0.0)) return DataType(IntType::Anything);
             return DataType(fp->getType());
         }
-        if (isa<ConstantAggregateZero>(val)) return DataType(IntType::Anything);
+
+        if (isa<ConstantAggregateZero>(val)) {
+            return DataType(IntType::Anything);
+        }
 
         if (auto ci = dyn_cast<ConstantInt>(val)) {
             if (ci->getLimitedValue() >=1 && ci->getLimitedValue() <= 4096) {
@@ -260,15 +270,33 @@ ValueData getConstantAnalysis(Constant* val) {
             return DataType(IntType::Anything);
         }
         if (auto seq = dyn_cast<ConstantDataSequential>(val)) {
-            return getConstantAnalysis(seq->getElementAsConstant(0));
+            return getConstantAnalysis(seq->getElementAsConstant(0), nfti, TA);
         }
-        return ValueData(); //ValueData(DataType(IntType::Anything));
     }
+
+    if (auto ce = dyn_cast<ConstantExpr>(val)) {
+        ValueData vd;
+
+        auto ae = ce->getAsInstruction();
+        ae->insertBefore(nfti.function->getEntryBlock().getTerminator());
+
+        {
+            TypeAnalyzer tmp(nfti, TA);
+            tmp.workList.clear();
+            tmp.visit(*ae);
+            vd = tmp.getAnalysis(ae);
+        }
+
+        ae->eraseFromParent();
+        return vd;
+    }
+
+
 
     if (auto gv = dyn_cast<GlobalVariable>(val)) {
         if (gv->isConstant()) {
             ValueData vd = DataType(IntType::Pointer);
-            vd |= getConstantAnalysis(gv->getInitializer()).Only({0});
+            vd |= getConstantAnalysis(gv->getInitializer(), nfti, TA).Only({0});
             return vd;
         }
         auto globalSize = gv->getParent()->getDataLayout().getTypeSizeInBits(gv->getValueType()) / 8;
@@ -295,9 +323,7 @@ ValueData TypeAnalyzer::getAnalysis(Value* val) {
 	}
 
     if (auto con = dyn_cast<Constant>(val)) {
-        if (!isa<ConstantExpr>(val)) {
-            return getConstantAnalysis(con);
-        }
+        return getConstantAnalysis(con, fntypeinfo, interprocedural);
     }
 
     /*
@@ -335,7 +361,7 @@ ValueData TypeAnalyzer::getAnalysis(Value* val) {
         assert(arg->getParent() == fntypeinfo.function);
     }
 
-    if (isa<Argument>(val) || isa<Instruction>(val) || isa<ConstantExpr>(val)) return analysis[val];
+    if (isa<Argument>(val) || isa<Instruction>(val)) return analysis[val];
 
     llvm::errs() << "ERROR UNKNOWN: " << *val << "\n";
     //TODO consider other things like globals perhaps?
@@ -351,7 +377,7 @@ void TypeAnalyzer::updateAnalysis(Value* val, IntType data, Value* origin) {
 }
 
 void TypeAnalyzer::addToWorkList(Value* val) {
-	if (!isa<Instruction>(val) && !isa<Argument>(val) && !isa<ConstantExpr>(val)) return;
+	if (!isa<Instruction>(val) && !isa<Argument>(val)) return;
     //llvm::errs() << " - adding to work list: " << *val << "\n";
     if (std::find(workList.begin(), workList.end(), val) != workList.end()) return;
 
@@ -469,6 +495,11 @@ void TypeAnalyzer::considerTBAA() {
         for(auto &inst : BB) {
 
             auto vdptr = parseTBAA(&inst);
+
+            if (fntypeinfo.function->getName() == ("preprocess__ZN5Eigen8internal37evaluateProductBlockingSizesHeuristicIddLi1ElEEvRT2_S3_S3_S2_"))
+                if (auto md = inst.getMetadata(LLVMContext::MD_tbaa))
+                    llvm::errs() << "found: " << inst << " tbaa: " << vdptr.str() << " md: " << *md << "\n";
+
             if (!vdptr.isKnownPastPointer()) continue;
 
             if (auto call = dyn_cast<CallInst>(&inst)) {
@@ -489,8 +520,10 @@ void TypeAnalyzer::considerTBAA() {
                 }
             } else if (auto si = dyn_cast<StoreInst>(&inst)) {
                 updateAnalysis(si->getPointerOperand(), vdptr, si);
+                updateAnalysis(si->getValueOperand(), vdptr.Lookup({0}), si);
             } else if (auto li = dyn_cast<LoadInst>(&inst)) {
                 updateAnalysis(li->getPointerOperand(), vdptr, li);
+                updateAnalysis(li, vdptr.Lookup({0}), li);
             } else {
                 llvm::errs() << " inst: " << inst << " vdptr: " << vdptr.str() << "\n";
                 assert(0 && "unknown tbaa instruction user");
@@ -761,23 +794,7 @@ void TypeAnalyzer::run() {
 }
 
 void TypeAnalyzer::visitValue(Value& val) {
-    if (isa<ConstantData>(&val)) {
-        return;
-    }
-
-    if (auto ce = dyn_cast<ConstantExpr>(&val)) {
-        auto ae = ce->getAsInstruction();
-        ae->insertBefore(fntypeinfo.function->getEntryBlock().getTerminator());
-        analysis[ae] = getAnalysis(ce);
-        visit(*ae);
-        for(auto& a : workList) {
-            if (a == ae) {
-                a = ce;
-            }
-        }
-        updateAnalysis(ce, analysis[ae], ce);
-        analysis.erase(ae);
-        ae->eraseFromParent();
+    if (isa<Constant>(&val)) {
         return;
     }
 
@@ -807,11 +824,11 @@ void TypeAnalyzer::visitLoadInst(LoadInst &I) {
 }
 
 void TypeAnalyzer::visitStoreInst(StoreInst &I) {
-    auto purged = getAnalysis(I.getValueOperand()).PurgeAnything();
     auto ptr = ValueData(IntType::Pointer);
 
     auto storeSize = I.getParent()->getParent()->getParent()->getDataLayout().getTypeSizeInBits(I.getValueOperand()->getType()) / 8;
     storeSize = 1;
+    auto purged = getAnalysis(I.getValueOperand()).PurgeAnything();
     for(unsigned i=0; i<storeSize; i++) {
         ptr |= purged.Only({(int)i});
     }
@@ -1161,6 +1178,20 @@ void TypeAnalyzer::visitExtractValueInst(ExtractValueInst &I) {
             }
         }
     }
+
+    if (isa<UndefValue>(I.getOperand(0))) {
+        updateAnalysis(&I, ValueData(IntType::Anything), &I);
+    }
+
+    InsertValueInst* iv = dyn_cast<InsertValueInst>(I.getOperand(0));
+    if (I.getIndices().size() == 1)
+    while (iv) {
+      if (iv->getIndices().size() == 1 && iv->getIndices()[0] == I.getIndices()[0]) {
+        updateAnalysis(&I, getAnalysis(iv->getInsertedValueOperand()), &I);
+        break;
+      }
+      iv = dyn_cast<InsertValueInst>(iv->getAggregateOperand());
+    }
 }
 
 void TypeAnalyzer::visitInsertValueInst(InsertValueInst &I) {
@@ -1253,8 +1284,8 @@ void TypeAnalyzer::visitMemTransferInst(llvm::MemTransferInst& MTI) {
         sz = max(sz, val);
     }
 
-    ValueData res = getAnalysis(MTI.getArgOperand(0)).AtMost(sz);
-    ValueData res2 = getAnalysis(MTI.getArgOperand(1)).AtMost(sz);
+    ValueData res = getAnalysis(MTI.getArgOperand(0)).AtMost(sz).PurgeAnything();
+    ValueData res2 = getAnalysis(MTI.getArgOperand(1)).AtMost(sz).PurgeAnything();
     //llvm::errs() << " memcpy: " << MTI << " res1: " << res.str() << " res2: " << res2.str() << "\n";
     res |= res2;
 
@@ -1478,6 +1509,8 @@ void analyzeFuncTypes( RT(*fn)(Args...), CallInst& call, TypeAnalyzer& TA) {
 }
 
 void TypeAnalyzer::visitCallInst(CallInst &call) {
+    assert(fntypeinfo.knownValues.size() == fntypeinfo.function->getFunctionType()->getNumParams());
+
 	if (auto iasm = dyn_cast<InlineAsm>(call.getCalledValue())) {
 		if (iasm->getAsmString() == "cpuid") {
 			updateAnalysis(&call, ValueData(IntType::Integer), &call);
@@ -1706,6 +1739,8 @@ std::set<int64_t> NewFnTypeInfo::isConstantInt(llvm::Value* val, const Dominator
         return { constant->getSExtValue() };
     }
 
+    assert(knownValues.size() == function->getFunctionType()->getNumParams());
+
     if (auto arg = dyn_cast<llvm::Argument>(val)) {
         auto found = knownValues.find(arg);
         if (found == knownValues.end()) {
@@ -1828,6 +1863,8 @@ std::set<int64_t> NewFnTypeInfo::isConstantInt(llvm::Value* val, const Dominator
 }
 
 void TypeAnalyzer::visitIPOCall(CallInst& call, Function& fn) {
+    assert(fntypeinfo.knownValues.size() == fntypeinfo.function->getFunctionType()->getNumParams());
+
 	NewFnTypeInfo typeInfo(&fn);
 
     int argnum = 0;
@@ -1922,7 +1959,7 @@ ValueData TypeAnalysis::query(Value* val, const NewFnTypeInfo& fn) {
 
     //TODO more concrete constant that avoid global issues
 	if (auto con = dyn_cast<Constant>(val)) {
-        return getConstantAnalysis(con);
+        return getConstantAnalysis(con, fn, *this);
 	}
 
 	Function* func = nullptr;

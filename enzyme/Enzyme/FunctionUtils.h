@@ -264,7 +264,7 @@ static inline void calculateUnusedStores(const llvm::Function& oldFunc, llvm::Sm
     }
 
     if (needStore(inst)) continue;
-    
+
     unnecessaryStores.insert(inst);
   }
 

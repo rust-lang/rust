@@ -28,6 +28,7 @@ end
 euroad′(x) = autodiff(euroad, x)
 
 @test euroad(0.5) ≈ -log(0.5) # -log(1-x)
+@show euroad′(0.5)
 @test euroad′(0.5) ≈ 2.0 # d/dx -log(1-x) = 1/(1-x)
 
 end

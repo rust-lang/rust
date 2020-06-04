@@ -1340,20 +1340,45 @@ public:
     }
     if (!hasNonPointer) return;
 
+    bool floatingInsertion = false;
+    for(InsertValueInst* iv = &IVI; ;) {
+      auto it = TR.intType(iv->getInsertedValueOperand(), false);
+      if (it.isFloat() || !it.isKnown()) {
+        floatingInsertion = true;
+        break;
+      }
+      Value* val = iv->getAggregateOperand();
+      if (gutils->isConstantValue(val)) break;
+      if (auto dc = dyn_cast<InsertValueInst>(val)) {
+        iv = dc;
+      } else {
+        // unsure where this came from, conservatively assume contains float
+        floatingInsertion = true;
+        break;
+      }
+    }
+
+    if (!floatingInsertion) return;
+
+    // TODO handle pointers
+    // TODO type analysis handle structs
+
     IRBuilder<> Builder2 = getReverseBuilder(IVI.getParent());
 
     Value* orig_inserted = IVI.getInsertedValueOperand();
     Value* orig_agg = IVI.getAggregateOperand();
 
-    if (!gutils->isConstantValue(orig_inserted) && !orig_inserted->getType()->isPointerTy()) {
+    Type* flt = nullptr;
+    if (!gutils->isConstantValue(orig_inserted) && (flt = TR.intType(orig_inserted).isFloat())) {
       auto prediff = diffe(&IVI, Builder2);
       auto dindex = Builder2.CreateExtractValue(prediff, IVI.getIndices());
-      addToDiffe(orig_inserted, dindex, Builder2, TR.intType(orig_inserted, false).isFloat());
+      addToDiffe(orig_inserted, dindex, Builder2, flt);
     }
 
-    if (!gutils->isConstantValue(orig_agg) && !orig_agg->getType()->isPointerTy()) {
+    if (!gutils->isConstantValue(orig_agg)) {
       auto prediff = diffe(&IVI, Builder2);
-      auto dindex = Builder2.CreateInsertValue(prediff, Constant::getNullValue(orig_agg->getType()), IVI.getIndices());
+      auto dindex = Builder2.CreateInsertValue(prediff, Constant::getNullValue(orig_inserted->getType()), IVI.getIndices());
+      llvm::errs() << "orig:" << IVI << " query(orig_agg):" << TR.query(orig_agg).str() << "\n";
       addToDiffe(orig_agg, dindex, Builder2, TR.intType(orig_agg, false).isFloat());
     }
 
@@ -1581,47 +1606,70 @@ public:
     //llvm::errs() << *gutils->oldFunc << "\n";
     //TR.dump();
 
-    //llvm::errs() << "MIT: " << MTI << "|size: " << size << " dr: " << TR.query(orig_op0).str() << "\n";
-    Type* secretty;
-    if (looseTypeAnalysis) {
-        auto vd = TR.firstPointer(size, orig_op0, /*errifnotfound*/false, /*pointerIntSame*/true);
-        if (vd.isKnown()) {
-            secretty = vd.isFloat();
-        } else if (isa<CastInst>(orig_op0) && cast<CastInst>(orig_op0)->getSrcTy()->isPointerTy() && cast<PointerType>(cast<CastInst>(orig_op0)->getSrcTy())->getElementType()->isFPOrFPVectorTy()) {
-            secretty = cast<PointerType>(cast<CastInst>(orig_op0)->getSrcTy())->getElementType()->getScalarType();
-        } else {
-            llvm::errs() << "cannot deduce type for mti: " << MTI << " " << *orig_op0 << "\n";
-            TR.firstPointer(size, orig_op0, /*errifnotfound*/true, /*pointerIntSame*/true);
-            assert(0 && "bad mti");
-        }
-    } else {
-        secretty = TR.firstPointer(size, orig_op0, /*errifnotfound*/true, /*pointerIntSame*/true).isFloat();
-    }
 
-    if (secretty) {
+    auto vd = TR.query(orig_op0).AtMost(size);
+    vd |= TR.query(orig_op1).AtMost(size);
+
+    llvm::errs() << "MIT: " << MTI << "|size: " << size << " vd: " << vd.str() << "\n";
+
+    if (!vd.isKnownPastPointer()) {
+      if (looseTypeAnalysis) {
+        if (isa<CastInst>(orig_op0) && cast<CastInst>(orig_op0)->getSrcTy()->isPointerTy() && cast<PointerType>(cast<CastInst>(orig_op0)->getSrcTy())->getElementType()->isFPOrFPVectorTy()) {
+          vd = DataType(cast<PointerType>(cast<CastInst>(orig_op0)->getSrcTy())->getElementType()->getScalarType());
+          goto known;
+        }
+      }
+      llvm::errs() << "cannot deduce type for mti: " << MTI << " " << *orig_op0 << "\n";
+      TR.firstPointer(size, orig_op0, /*errifnotfound*/true, /*pointerIntSame*/true);
+      assert(0 && "bad mti");
+    }
+    known:;
+
+    auto dt = vd[{0}];
+    dt.mergeIn(vd[{-1}], /*pointerIntSame*/true);
+    for(size_t i=1; i<size; i++) {
+        dt.mergeIn(vd[{(int)i}], /*pointerIntSame*/true);
+    }
+    assert(dt.isKnown());
+
+    if (Type* secretty = dt.isFloat()) {
       //no change to forward pass if represents floats
       if (mode == DerivativeMode::Reverse || mode == DerivativeMode::Both) {
         IRBuilder<> Builder2 = getReverseBuilder(MTI.getParent());
-        SmallVector<Value*, 4> args;
-        auto secretpt = PointerType::getUnqual(secretty);
 
-        args.push_back(Builder2.CreatePointerCast(gutils->invertPointerM(orig_op0, Builder2), secretpt));
-        args.push_back(Builder2.CreatePointerCast(gutils->invertPointerM(orig_op1, Builder2), secretpt));
-        args.push_back(Builder2.CreateUDiv(lookup(op2, Builder2),
+        // If the src is context simply zero d_dst and don't propagate to d_src (which thus == src and may be illegal)
+        if (gutils->isConstantValue(orig_op1)) {
+          SmallVector<Value*, 4> args;
+          args.push_back(gutils->invertPointerM(orig_op0, Builder2));
+          args.push_back(ConstantInt::get(Type::getInt8Ty(MTI.getContext()), 0));
+          args.push_back(lookup(op2, Builder2));
+          args.push_back(ConstantInt::getFalse(MTI.getContext()));
 
-            ConstantInt::get(op2->getType(), Builder2.GetInsertBlock()->getParent()->getParent()->getDataLayout().getTypeAllocSizeInBits(secretty)/8)
-        ));
-        unsigned dstalign = 0;
-        if (MTI.paramHasAttr(0, Attribute::Alignment)) {
-            dstalign = MTI.getParamAttr(0, Attribute::Alignment).getValueAsInt();
+          Type *tys[] = {args[0]->getType(), args[2]->getType()};
+          auto memsetIntr = Intrinsic::getDeclaration(MTI.getParent()->getParent()->getParent(), Intrinsic::memset, tys);
+          auto cal = Builder2.CreateCall(memsetIntr, args);
+          cal->setCallingConv(memsetIntr->getCallingConv());
+        } else {
+          SmallVector<Value*, 4> args;
+          auto secretpt = PointerType::getUnqual(secretty);
+          args.push_back(Builder2.CreatePointerCast(gutils->invertPointerM(orig_op0, Builder2), secretpt));
+          args.push_back(Builder2.CreatePointerCast(gutils->invertPointerM(orig_op1, Builder2), secretpt));
+          args.push_back(Builder2.CreateUDiv(lookup(op2, Builder2),
+
+              ConstantInt::get(op2->getType(), Builder2.GetInsertBlock()->getParent()->getParent()->getDataLayout().getTypeAllocSizeInBits(secretty)/8)
+          ));
+          unsigned dstalign = 0;
+          if (MTI.paramHasAttr(0, Attribute::Alignment)) {
+              dstalign = MTI.getParamAttr(0, Attribute::Alignment).getValueAsInt();
+          }
+          unsigned srcalign = 0;
+          if (MTI.paramHasAttr(1, Attribute::Alignment)) {
+              srcalign = MTI.getParamAttr(1, Attribute::Alignment).getValueAsInt();
+          }
+
+          auto dmemcpy = ( (MTI.getIntrinsicID() == Intrinsic::memcpy) ? getOrInsertDifferentialFloatMemcpy : getOrInsertDifferentialFloatMemmove)(*MTI.getParent()->getParent()->getParent(), secretpt, dstalign, srcalign);
+          Builder2.CreateCall(dmemcpy, args);
         }
-        unsigned srcalign = 0;
-        if (MTI.paramHasAttr(1, Attribute::Alignment)) {
-            srcalign = MTI.getParamAttr(1, Attribute::Alignment).getValueAsInt();
-        }
-
-        auto dmemcpy = ( (MTI.getIntrinsicID() == Intrinsic::memcpy) ? getOrInsertDifferentialFloatMemcpy : getOrInsertDifferentialFloatMemmove)(*MTI.getParent()->getParent()->getParent(), secretpt, dstalign, srcalign);
-        Builder2.CreateCall(dmemcpy, args);
       }
     } else {
 
@@ -2928,10 +2976,31 @@ badfn:;
 
 //! return structtype if recursive function
 const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, DIFFE_TYPE retType, const std::vector<DIFFE_TYPE>& constant_args, TargetLibraryInfo &TLI, TypeAnalysis &TA, AAResults &global_AA,
-                                             bool returnUsed, const NewFnTypeInfo& oldTypeInfo,
+                                             bool returnUsed, const NewFnTypeInfo& oldTypeInfo_,
                                              const std::map<Argument*, bool> _uncacheable_args, bool forceAnonymousTape) {
   if (returnUsed) assert(!todiff->getReturnType()->isEmptyTy() && !todiff->getReturnType()->isVoidTy());
   if (retType != DIFFE_TYPE::CONSTANT) assert(!todiff->getReturnType()->isEmptyTy() && !todiff->getReturnType()->isVoidTy());
+
+  NewFnTypeInfo oldTypeInfo = oldTypeInfo_;
+  for(auto &pair : oldTypeInfo.knownValues) {
+    if (pair.second.size() != 0) {
+      bool recursiveUse = false;
+      for(auto user : pair.first->users()) {
+        if (auto bi = dyn_cast<BinaryOperator>(user)) {
+          for( auto biuser : bi->users()) {
+            if (auto ci = dyn_cast<CallInst>(biuser)) {
+              if (ci->getCalledFunction() == todiff && ci->getArgOperand(pair.first->getArgNo()) == bi) {
+                recursiveUse = true;
+                break;
+              }
+            }
+          }
+        }
+        if (recursiveUse) break;
+      }
+      if (recursiveUse) pair.second.clear();
+    }
+  }
 
   static std::map<std::tuple<Function*,DIFFE_TYPE/*retType*/,std::vector<DIFFE_TYPE>/*constant_args*/, std::map<Argument*, bool>/*uncacheable_args*/, bool/*returnUsed*/, const NewFnTypeInfo>, AugmentedReturn> cachedfunctions;
   static std::map<std::tuple<Function*,DIFFE_TYPE/*retType*/,std::vector<DIFFE_TYPE>/*constant_args*/, std::map<Argument*, bool>/*uncacheable_args*/, bool/*returnUsed*/, const NewFnTypeInfo>, bool> cachedfinished;
@@ -3093,7 +3162,7 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, DIFFE_TYPE retTyp
     }
 
     if (auto mti = dyn_cast<MemTransferInst>(inst)) {
-      auto at = GetUnderlyingObject(mti->getArgOperand(0), gutils->oldFunc->getParent()->getDataLayout(), 100);
+      auto at = GetUnderlyingObject(mti->getArgOperand(1), gutils->oldFunc->getParent()->getDataLayout(), 100);
       if (auto arg = dyn_cast<Argument>(at)) {
         if (constant_args[arg->getArgNo()] == DIFFE_TYPE::DUP_NONEED) {
           return false;
@@ -3134,7 +3203,7 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, DIFFE_TYPE retTyp
     }
 
     if (auto mti = dyn_cast<MemTransferInst>(inst)) {
-      auto at = GetUnderlyingObject(mti->getArgOperand(0), gutils->oldFunc->getParent()->getDataLayout(), 100);
+      auto at = GetUnderlyingObject(mti->getArgOperand(1), gutils->oldFunc->getParent()->getDataLayout(), 100);
       if (auto arg = dyn_cast<Argument>(at)) {
         if (constant_args[arg->getArgNo()] == DIFFE_TYPE::DUP_NONEED) {
           return false;
@@ -3774,8 +3843,29 @@ void createInvertedTerminator(TypeResults& TR, DiffeGradientUtils* gutils, const
 
 Function* CreatePrimalAndGradient(Function* todiff, DIFFE_TYPE retType, const std::vector<DIFFE_TYPE>& constant_args, TargetLibraryInfo &TLI,
                                   TypeAnalysis &TA, AAResults &global_AA, bool returnUsed, bool dretPtr, bool topLevel, llvm::Type* additionalArg,
-                                  const NewFnTypeInfo& oldTypeInfo, const std::map<Argument*, bool> _uncacheable_args,
+                                  const NewFnTypeInfo& oldTypeInfo_, const std::map<Argument*, bool> _uncacheable_args,
                                   const AugmentedReturn* augmenteddata) {
+
+  NewFnTypeInfo oldTypeInfo = oldTypeInfo_;
+  for(auto &pair : oldTypeInfo.knownValues) {
+    if (pair.second.size() != 0) {
+      bool recursiveUse = false;
+      for(auto user : pair.first->users()) {
+        if (auto bi = dyn_cast<BinaryOperator>(user)) {
+          for( auto biuser : bi->users()) {
+            if (auto ci = dyn_cast<CallInst>(biuser)) {
+              if (ci->getCalledFunction() == todiff && ci->getArgOperand(pair.first->getArgNo()) == bi) {
+                recursiveUse = true;
+                break;
+              }
+            }
+          }
+        }
+        if (recursiveUse) break;
+      }
+      if (recursiveUse) pair.second.clear();
+    }
+  }
   //if (additionalArg && !additionalArg->isStructTy()) {
   //    llvm::errs() << *todiff << "\n";
   //    llvm::errs() << "addl arg: " << *additionalArg << "\n";
@@ -4025,7 +4115,7 @@ Function* CreatePrimalAndGradient(Function* todiff, DIFFE_TYPE retType, const st
     }
 
     if (auto mti = dyn_cast<MemTransferInst>(inst)) {
-      auto at = GetUnderlyingObject(mti->getArgOperand(0), gutils->oldFunc->getParent()->getDataLayout(), 100);
+      auto at = GetUnderlyingObject(mti->getArgOperand(1), gutils->oldFunc->getParent()->getDataLayout(), 100);
       if (auto arg = dyn_cast<Argument>(at)) {
         if (constant_args[arg->getArgNo()] == DIFFE_TYPE::DUP_NONEED) {
           return false;
@@ -4063,7 +4153,7 @@ Function* CreatePrimalAndGradient(Function* todiff, DIFFE_TYPE retType, const st
     }
 
     if (auto mti = dyn_cast<MemTransferInst>(inst)) {
-      auto at = GetUnderlyingObject(mti->getArgOperand(0), gutils->oldFunc->getParent()->getDataLayout(), 100);
+      auto at = GetUnderlyingObject(mti->getArgOperand(1), gutils->oldFunc->getParent()->getDataLayout(), 100);
       //llvm::errs() << "origop for mti: " << *mti << " at:" << *at << "\n";
       if (auto ai = dyn_cast<AllocaInst>(at)) {
           bool foundStore = false;
