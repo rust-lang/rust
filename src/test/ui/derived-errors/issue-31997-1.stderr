@@ -2,7 +2,14 @@ error[E0433]: failed to resolve: use of undeclared type or module `HashMap`
   --> $DIR/issue-31997-1.rs:20:19
    |
 LL |     let mut map = HashMap::new();
-   |                   ^^^^^^^ use of undeclared type or module `HashMap`
+   |                   ^^^^^^^ not found in this scope
+   |
+help: consider importing one of these items
+   |
+LL | use std::collections::HashMap;
+   |
+LL | use std::collections::hash_map::HashMap;
+   |
 
 error: aborting due to previous error
 
