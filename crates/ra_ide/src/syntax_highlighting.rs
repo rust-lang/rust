@@ -565,6 +565,30 @@ fn highlight_element(
                 _ => h,
             }
         }
+        REF_EXPR => {
+            let ref_expr = element.into_node().and_then(ast::RefExpr::cast)?;
+            let expr = ref_expr.expr()?;
+            let field_expr = match expr {
+                ast::Expr::FieldExpr(fe) => fe,
+                _ => return None,
+            };
+
+            let expr = field_expr.expr()?;
+            let ty = match sema.type_of_expr(&expr) {
+                Some(ty) => ty,
+                None => {
+                    println!("No type :(");
+                    return None;
+                }
+            };
+            if !ty.is_packed(db) {
+                return None;
+            }
+
+            // FIXME account for alignment... somehow
+
+            Highlight::new(HighlightTag::Operator) | HighlightModifier::Unsafe
+        }
         p if p.is_punct() => match p {
             T![::] | T![->] | T![=>] | T![&] | T![..] | T![=] | T![@] => {
                 HighlightTag::Operator.into()

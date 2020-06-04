@@ -292,6 +292,13 @@ struct TypeForStaticMut {
 
 static mut global_mut: TypeForStaticMut = TypeForStaticMut { a: 0 };
 
+#[repr(packed)]
+struct Packed {
+    a: u16,
+    b: u8,
+    c: u32,
+}
+
 fn main() {
     let x = &5 as *const usize;
     let u = Union { b: 0 };
@@ -306,6 +313,10 @@ fn main() {
         let y = *(x);
         let z = -x;
         let a = global_mut.a;
+        let packed = Packed { a: 0, b: 0, c: 0 };
+        let a = &packed.a;
+        let b = &packed.b;
+        let c = &packed.c;
     }
 }
 "#

@@ -9,11 +9,13 @@ use hir_expand::{
 };
 use ra_arena::{map::ArenaMap, Arena};
 use ra_syntax::ast::{self, NameOwner, VisibilityOwner};
+use tt::{Delimiter, DelimiterKind, Leaf, Subtree, TokenTree};
 
 use crate::{
+    attr::AttrInput,
     body::{CfgExpander, LowerCtx},
     db::DefDatabase,
-    item_tree::{Field, Fields, ItemTree},
+    item_tree::{AttrOwner, Field, Fields, ItemTree, ModItem},
     src::HasChildSource,
     src::HasSource,
     trace::Trace,
@@ -29,6 +31,7 @@ use ra_cfg::CfgOptions;
 pub struct StructData {
     pub name: Name,
     pub variant_data: Arc<VariantData>,
+    pub repr: Option<ReprKind>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -58,26 +61,71 @@ pub struct FieldData {
     pub visibility: RawVisibility,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ReprKind {
+    Packed,
+    Other,
+}
+
+fn repr_from_value(item_tree: &ItemTree, of: AttrOwner) -> Option<ReprKind> {
+    item_tree.attrs(of).iter().find_map(|a| {
+        if a.path.segments[0].to_string() == "repr" {
+            if let Some(AttrInput::TokenTree(subtree)) = &a.input {
+                parse_repr_tt(subtree)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    })
+}
+
+fn parse_repr_tt(tt: &Subtree) -> Option<ReprKind> {
+    match tt.delimiter {
+        Some(Delimiter { kind: DelimiterKind::Parenthesis, .. }) => {}
+        _ => return None,
+    }
+
+    let mut it = tt.token_trees.iter();
+    match it.next() {
+        None => None,
+        Some(TokenTree::Leaf(Leaf::Ident(ident))) if ident.text == "packed" => {
+            Some(ReprKind::Packed)
+        }
+        _ => Some(ReprKind::Other),
+    }
+}
+
 impl StructData {
     pub(crate) fn struct_data_query(db: &dyn DefDatabase, id: StructId) -> Arc<StructData> {
         let loc = id.lookup(db);
         let item_tree = db.item_tree(loc.id.file_id);
+        let repr = repr_from_value(&item_tree, ModItem::from(loc.id.value).into());
         let cfg_options = db.crate_graph()[loc.container.module(db).krate].cfg_options.clone();
 
         let strukt = &item_tree[loc.id.value];
         let variant_data = lower_fields(&item_tree, &cfg_options, &strukt.fields);
-
-        Arc::new(StructData { name: strukt.name.clone(), variant_data: Arc::new(variant_data) })
+        Arc::new(StructData {
+            name: strukt.name.clone(),
+            variant_data: Arc::new(variant_data),
+            repr,
+        })
     }
     pub(crate) fn union_data_query(db: &dyn DefDatabase, id: UnionId) -> Arc<StructData> {
         let loc = id.lookup(db);
         let item_tree = db.item_tree(loc.id.file_id);
+        let repr = repr_from_value(&item_tree, ModItem::from(loc.id.value).into());
         let cfg_options = db.crate_graph()[loc.container.module(db).krate].cfg_options.clone();
 
         let union = &item_tree[loc.id.value];
         let variant_data = lower_fields(&item_tree, &cfg_options, &union.fields);
 
-        Arc::new(StructData { name: union.name.clone(), variant_data: Arc::new(variant_data) })
+        Arc::new(StructData {
+            name: union.name.clone(),
+            variant_data: Arc::new(variant_data),
+            repr,
+        })
     }
 }
 
