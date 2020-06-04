@@ -208,16 +208,6 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker, flavor: ItemFlavor) -> Resul
         //     default type T = Bar;
         //     default fn foo() {}
         // }
-
-        // test_err default_const
-        // trait T {
-        //   default const f: u8 = 0;
-        // }
-
-        // test default_const
-        // impl T for Foo {
-        //   default const f: u8 = 0;
-        // }
         T![const] => {
             consts::const_def(p, m);
         }
