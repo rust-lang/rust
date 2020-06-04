@@ -775,7 +775,7 @@ public:
         assert(max > 0);
         ValueData dat;
         for(const auto &pair : mapping) {
-            if (pair.first.size() == 0 || pair.first[0] == -1 || pair.first[0] < max) {
+            if (pair.first.size() == 0 || pair.first[0] == -1 || (size_t)pair.first[0] < max) {
                 dat.insert(pair.first, pair.second);
             }
         }

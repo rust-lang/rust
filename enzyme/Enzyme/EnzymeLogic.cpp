@@ -3627,7 +3627,7 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, DIFFE_TYPE retTyp
             assert(rv);
             Value* actualrv = nullptr;
             if (auto iv = dyn_cast<InsertValueInst>(rv)) {
-              if (iv->getNumIndices() == 1 && iv->getIndices()[0] == oldretIdx) {
+              if (iv->getNumIndices() == 1 && (int)iv->getIndices()[0] == oldretIdx) {
                 actualrv = iv->getInsertedValueOperand();
               }
             }

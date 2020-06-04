@@ -80,7 +80,7 @@ ValueData ValueData::KeepForCast(const llvm::DataLayout& dl, llvm::Type* from, l
         }
 
         // If the offset doesn't leak into a later element, we're fine to include
-        if (pair.first[0] != -1 && pair.first[0] < tosize) {
+        if (pair.first[0] != -1 && (uint64_t)pair.first[0] < tosize) {
             vd2.insert(pair.first, pair.second);
             goto add;
         }
@@ -175,7 +175,7 @@ static inline ValueData parseTBAA(TBAAStructTypeNode AccessType, Instruction* in
     //llvm::errs() << " f at i: " << i << " at: " << start << " fd: " << *at.getNode() << "\n";
     auto vd = parseTBAA(at, inst);
     //llvm::errs() << " _^ for f found " << vd.str() << "\n";
-    dat |= vd.MergeIndices({start});
+    dat |= vd.MergeIndices({(int)start});
   }
 
   return dat;
@@ -208,7 +208,7 @@ static inline ValueData parseTBAA(Instruction* Inst) {
                 auto start = cast<ConstantInt>(cast<ConstantAsMetadata>(M->getOperand(i))->getValue())->getLimitedValue();
                 auto len = cast<ConstantInt>(cast<ConstantAsMetadata>(M->getOperand(i+1))->getValue())->getLimitedValue();
                 //llvm::errs() << "inst: " << *Inst << " vd " << vd.str() << " len: " << len << " start: " << start << "\n";
-                dat |= vd.AtMost(len).MergeIndices({start});
+                dat |= vd.AtMost(len).MergeIndices({(int)start});
             }
         }
     }
@@ -310,7 +310,7 @@ ValueData getConstantAnalysis(Constant* val, const NewFnTypeInfo& nfti, TypeAnal
         if (globalSize == 1) {
             ValueData vd = ValueData(DataType(IntType::Integer)).Only({-1});
             for(unsigned i=0; i<globalSize; i++)
-                vd |= ValueData(DataType(IntType::Integer)).Only({i});
+                vd |= ValueData(DataType(IntType::Integer)).Only({(int)i});
             return vd;
         }
 

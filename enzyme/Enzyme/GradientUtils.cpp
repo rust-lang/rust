@@ -114,7 +114,7 @@ bool GradientUtils::legalRecompute(const Value* val, const ValueToValueMapTy& av
     return true;
   }
 
-  if (auto phi = dyn_cast<PHINode>(val)) {
+  if (isa<PHINode>(val)) {
     if (auto dli = dyn_cast_or_null<LoadInst>(hasUninverted(val))) {
       return legalRecompute(dli, available); // TODO ADD && !TR.intType(getOriginal(dli), /*mustfind*/false).isPossibleFloat();
     }
@@ -1157,14 +1157,12 @@ MyScalarEvolution::howManyLessThans(const SCEV *LHS, const SCEV *RHS,
   SmallPtrSet<const SCEVPredicate *, 4> Predicates;
 
   const SCEVAddRecExpr *IV = dyn_cast<SCEVAddRecExpr>(LHS);
-  bool PredicatedIV = false;
 
   if (!IV && AllowPredicates) {
     // Try to make this an AddRec using runtime tests, in the first X
     // iterations of this loop, where X is the SCEV expression found by the
     // algorithm below.
     IV = convertSCEVToAddRecWithPredicates(LHS, L, Predicates);
-    PredicatedIV = true;
   }
 
   // Avoid weird loops

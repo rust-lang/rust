@@ -271,6 +271,9 @@ static inline bool writesToMemoryReadBy(AAResults &AA, Instruction* maybeReader,
 	if (auto xch = dyn_cast<AtomicCmpXchgInst>(maybeReader)) {
 	  return isModSet(AA.getModRefInfo(maybeWriter, MemoryLocation::get(xch)));
 	}
+	if (auto mti = dyn_cast<MemTransferInst>(maybeReader)) {
+	  return isModSet(AA.getModRefInfo(maybeWriter, MemoryLocation::getForSource(mti)));
+	}
 
 	if (auto si = dyn_cast<StoreInst>(maybeWriter)) {
 	  return isRefSet(AA.getModRefInfo(maybeReader, MemoryLocation::get(si)));
@@ -280,6 +283,9 @@ static inline bool writesToMemoryReadBy(AAResults &AA, Instruction* maybeReader,
 	}
 	if (auto xch = dyn_cast<AtomicCmpXchgInst>(maybeWriter)) {
 	  return isRefSet(AA.getModRefInfo(maybeReader, MemoryLocation::get(xch)));
+	}
+	if (auto mti = dyn_cast<MemIntrinsic>(maybeWriter)) {
+	  return isRefSet(AA.getModRefInfo(maybeReader, MemoryLocation::getForDest(mti)));
 	}
 
 	if (auto cb = dyn_cast<CallInst>(maybeReader)) {
