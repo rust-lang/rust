@@ -25,6 +25,7 @@ use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 mod caching_source_map_view;
 pub mod source_map;
 pub use self::caching_source_map_view::CachingSourceMapView;
+use source_map::SourceMap;
 
 pub mod edition;
 use edition::Edition;
@@ -67,6 +68,7 @@ pub struct Globals {
     symbol_interner: Lock<symbol::Interner>,
     span_interner: Lock<span_encoding::SpanInterner>,
     hygiene_data: Lock<hygiene::HygieneData>,
+    source_map: Lock<Option<Lrc<SourceMap>>>,
 }
 
 impl Globals {
@@ -75,6 +77,7 @@ impl Globals {
             symbol_interner: Lock::new(symbol::Interner::fresh()),
             span_interner: Lock::new(span_encoding::SpanInterner::default()),
             hygiene_data: Lock::new(hygiene::HygieneData::new(edition)),
+            source_map: Lock::new(None),
         }
     }
 }
@@ -697,12 +700,44 @@ impl rustc_serialize::UseSpecializedDecodable for Span {
     }
 }
 
+/// Calls the provided closure, using the provided `SourceMap` to format
+/// any spans that are debug-printed during the closure'e exectuino.
+///
+/// Normally, the global `TyCtxt` is used to retrieve the `SourceMap`
+/// (see `rustc_interface::callbacks::span_debug1). However, some parts
+/// of the compiler (e.g. `rustc_parse`) may debug-print `Span`s before
+/// a `TyCtxt` is available. In this case, we fall back to
+/// the `SourceMap` provided to this function. If that is not available,
+/// we fall back to printing the raw `Span` field values
+pub fn with_source_map<T, F: FnOnce() -> T>(source_map: Lrc<SourceMap>, f: F) -> T {
+    GLOBALS.with(|globals| {
+        *globals.source_map.borrow_mut() = Some(source_map);
+    });
+    struct ClearSourceMap;
+    impl Drop for ClearSourceMap {
+        fn drop(&mut self) {
+            GLOBALS.with(|globals| {
+                globals.source_map.borrow_mut().take();
+            });
+        }
+    }
+
+    let _guard = ClearSourceMap;
+    f()
+}
+
 pub fn default_span_debug(span: Span, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    f.debug_struct("Span")
-        .field("lo", &span.lo())
-        .field("hi", &span.hi())
-        .field("ctxt", &span.ctxt())
-        .finish()
+    GLOBALS.with(|globals| {
+        if let Some(source_map) = &*globals.source_map.borrow() {
+            write!(f, "{}", source_map.span_to_string(span))
+        } else {
+            f.debug_struct("Span")
+                .field("lo", &span.lo())
+                .field("hi", &span.hi())
+                .field("ctxt", &span.ctxt())
+                .finish()
+        }
+    })
 }
 
 impl fmt::Debug for Span {
