@@ -23,7 +23,16 @@ pub(crate) fn insert_use_statement(
     ctx: &AssistContext,
     builder: &mut TextEditBuilder,
 ) {
-    let target = path_to_import.to_string().split("::").map(SmolStr::new).collect::<Vec<_>>();
+    insert_use_statement_with_string_path(position, &path_to_import.to_string(), ctx, builder);
+}
+
+pub(crate) fn insert_use_statement_with_string_path(
+    position: &SyntaxNode,
+    path_to_import: &str,
+    ctx: &AssistContext,
+    builder: &mut TextEditBuilder,
+) {
+    let target = path_to_import.split("::").map(SmolStr::new).collect::<Vec<_>>();
     let container = ctx.sema.ancestors_with_macros(position.clone()).find_map(|n| {
         if let Some(module) = ast::Module::cast(n.clone()) {
             return module.item_list().map(|it| it.syntax().clone());

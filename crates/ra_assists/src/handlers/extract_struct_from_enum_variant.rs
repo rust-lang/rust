@@ -9,11 +9,11 @@ use ra_syntax::{
 
 use crate::{
     assist_context::{AssistBuilder, AssistDirector},
-    utils::insert_use_statement,
+    utils::insert_use::insert_use_statement_with_string_path,
     AssistContext, AssistId, Assists,
 };
 use ast::{ArgListOwner, VisibilityOwner};
-use hir::{AsName, EnumVariant, Module, ModuleDef};
+use hir::{EnumVariant, Module, ModuleDef};
 use ra_db::FileId;
 use ra_fmt::leading_indent;
 use rustc_hash::FxHashSet;
@@ -109,8 +109,13 @@ fn insert_import(
     let mod_path = module.find_use_path(db, module_def.clone());
     if let Some(mut mod_path) = mod_path {
         mod_path.segments.pop();
-        mod_path.segments.push(path_segment.as_name());
-        insert_use_statement(path.syntax(), &mod_path, ctx, builder.text_edit_builder());
+        let use_path = format!("{}::{}", mod_path.to_string(), path_segment.to_string());
+        insert_use_statement_with_string_path(
+            path.syntax(),
+            &use_path,
+            ctx,
+            builder.text_edit_builder(),
+        );
     }
     Some(())
 }
