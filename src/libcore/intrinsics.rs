@@ -1943,6 +1943,15 @@ extern "rust-intrinsic" {
     pub fn miri_start_panic(payload: *mut u8) -> !;
 }
 
+#[cfg(not(bootstrap))]
+#[cfg_attr(not(bootstrap), lang = "count_code_region")]
+pub fn count_code_region(_index: u32) {
+    #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // remove `unsafe` on bootstrap bump
+    unsafe {
+        abort()
+    }
+}
+
 // Some functions are defined here because they accidentally got made
 // available in this module on stable. See <https://github.com/rust-lang/rust/issues/15702>.
 // (`transmute` also falls into this category, but it cannot be wrapped due to the

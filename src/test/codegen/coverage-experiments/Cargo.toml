@@ -1,0 +1,103 @@
+[workspace]
+
+[package]
+name = "coverage_experiments"
+version = "0.1.0"
+license = "BSD-3-Clause"
+authors = ["rust-fuchsia@fuchsia.com"]
+edition = "2018"
+
+[[bin]]
+
+name = "coverage_injection_test"
+path = "src/coverage_injection_test.rs"
+
+[[bin]]
+
+name = "coverage_injection_test2"
+path = "src/coverage_injection_test2.rs"
+
+[[bin]]
+
+name = "while"
+path = "src/while.rs"
+
+[[bin]]
+
+name = "while_clean"
+path = "src/while_clean.rs"
+
+[[bin]]
+
+name = "while_early_return"
+path = "src/while_early_return.rs"
+
+[[bin]]
+
+name = "if_with_comments"
+path = "src/if_with_comments.rs"
+
+[[bin]]
+
+name = "if"
+path = "src/if.rs"
+
+[[bin]]
+
+name = "increment_intrinsic"
+path = "src/increment_intrinsic.rs"
+
+[[bin]]
+
+name = "just_main"
+path = "src/just_main.rs"
+
+[[bin]]
+
+name = "lazy_boolean"
+path = "src/lazy_boolean.rs"
+
+[[bin]]
+
+name = "match"
+path = "src/match.rs"
+
+[[bin]]
+
+name = "match_without_increment"
+path = "src/match_without_increment.rs" # identical to -Zunpretty=hir output
+
+[[bin]]
+
+name = "match_with_increment"
+path = "src/match_with_increment.rs"
+
+[[bin]]
+
+name = "match_with_increment_alt"
+path = "src/match_with_increment_alt.rs"
+
+[[bin]]
+
+name = "loop_break_value"
+path = "src/loop_break_value.rs"
+
+[[bin]]
+
+name = "for_with_comments"
+path = "src/for_with_comments.rs"
+
+[[bin]]
+
+name = "for"
+path = "src/for.rs"
+
+[[bin]]
+
+name = "drop_trait"
+path = "src/drop_trait.rs"
+
+#[dependencies] # Should not need to manually add coverage dependencies
+#version = "0.1.0"
+#path = "../__builtin" # for mod __builtin::coverage
+

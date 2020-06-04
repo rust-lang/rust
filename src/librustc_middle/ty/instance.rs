@@ -21,6 +21,10 @@ pub enum InstanceDef<'tcx> {
     Item(DefId),
     Intrinsic(DefId),
 
+    /// Injected call to a placeholder function that is replaced with
+    /// For example: `core::intrinsic::count_code_region()` for code coverage.
+    InjectedCode(DefId),
+
     /// `<T as Trait>::method` where `method` receives unsizeable `self: Self`.
     VtableShim(DefId),
 
@@ -149,6 +153,7 @@ impl<'tcx> InstanceDef<'tcx> {
             | InstanceDef::FnPtrShim(def_id, _)
             | InstanceDef::Virtual(def_id, _)
             | InstanceDef::Intrinsic(def_id)
+            | InstanceDef::InjectedCode(def_id)
             | InstanceDef::ClosureOnceShim { call_once: def_id }
             | InstanceDef::DropGlue(def_id, _)
             | InstanceDef::CloneShim(def_id, _) => def_id,
@@ -236,6 +241,7 @@ impl<'tcx> fmt::Display for Instance<'tcx> {
             InstanceDef::VtableShim(_) => write!(f, " - shim(vtable)"),
             InstanceDef::ReifyShim(_) => write!(f, " - shim(reify)"),
             InstanceDef::Intrinsic(_) => write!(f, " - intrinsic"),
+            InstanceDef::InjectedCode(_) => write!(f, " - injected-code"),
             InstanceDef::Virtual(_, num) => write!(f, " - virtual#{}", num),
             InstanceDef::FnPtrShim(_, ty) => write!(f, " - shim({:?})", ty),
             InstanceDef::ClosureOnceShim { .. } => write!(f, " - shim"),
@@ -415,6 +421,7 @@ impl<'tcx> Instance<'tcx> {
             | InstanceDef::FnPtrShim(..)
             | InstanceDef::Item(_)
             | InstanceDef::Intrinsic(..)
+            | InstanceDef::InjectedCode(..)
             | InstanceDef::ReifyShim(..)
             | InstanceDef::Virtual(..)
             | InstanceDef::VtableShim(..) => Some(self.substs),

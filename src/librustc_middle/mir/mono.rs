@@ -352,6 +352,7 @@ impl<'tcx> CodegenUnit<'tcx> {
                             InstanceDef::VtableShim(..)
                             | InstanceDef::ReifyShim(..)
                             | InstanceDef::Intrinsic(..)
+                            | InstanceDef::InjectedCode(..)
                             | InstanceDef::FnPtrShim(..)
                             | InstanceDef::Virtual(..)
                             | InstanceDef::ClosureOnceShim { .. }
