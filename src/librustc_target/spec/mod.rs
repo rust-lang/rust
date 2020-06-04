@@ -733,8 +733,7 @@ pub struct TargetOptions {
     pub lld_flavor: LldFlavor,
 
     /// Linker arguments that are passed *before* any user-defined libraries.
-    pub pre_link_args: LinkArgs, // ... unconditionally
-    pub pre_link_args_crt: LinkArgs, // ... when linking with a bundled crt
+    pub pre_link_args: LinkArgs,
     /// Objects to link before and after all other object code.
     pub pre_link_objects: CrtObjects,
     pub post_link_objects: CrtObjects,
@@ -997,7 +996,6 @@ impl Default for TargetOptions {
             linker: option_env!("CFG_DEFAULT_LINKER").map(|s| s.to_string()),
             lld_flavor: LldFlavor::Ld,
             pre_link_args: LinkArgs::new(),
-            pre_link_args_crt: LinkArgs::new(),
             post_link_args: LinkArgs::new(),
             link_script: None,
             asm_args: Vec::new(),
@@ -1397,7 +1395,6 @@ impl Target {
         key!(post_link_objects_fallback, link_objects);
         key!(crt_objects_fallback, crt_objects_fallback)?;
         key!(pre_link_args, link_args);
-        key!(pre_link_args_crt, link_args);
         key!(late_link_args, link_args);
         key!(late_link_args_dynamic, link_args);
         key!(late_link_args_static, link_args);
@@ -1629,7 +1626,6 @@ impl ToJson for Target {
         target_option_val!(post_link_objects_fallback);
         target_option_val!(crt_objects_fallback);
         target_option_val!(link_args - pre_link_args);
-        target_option_val!(link_args - pre_link_args_crt);
         target_option_val!(link_args - late_link_args);
         target_option_val!(link_args - late_link_args_dynamic);
         target_option_val!(link_args - late_link_args_static);

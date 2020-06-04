@@ -1253,19 +1253,9 @@ fn add_post_link_objects(
 
 /// Add arbitrary "pre-link" args defined by the target spec or from command line.
 /// FIXME: Determine where exactly these args need to be inserted.
-fn add_pre_link_args(
-    cmd: &mut dyn Linker,
-    sess: &Session,
-    flavor: LinkerFlavor,
-    crate_type: CrateType,
-) {
+fn add_pre_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
     if let Some(args) = sess.target.target.options.pre_link_args.get(&flavor) {
         cmd.args(args);
-    }
-    if let Some(args) = sess.target.target.options.pre_link_args_crt.get(&flavor) {
-        if sess.crt_static(Some(crate_type)) {
-            cmd.args(args);
-        }
     }
     cmd.args(&sess.opts.debugging_opts.pre_link_args);
 }
@@ -1502,7 +1492,7 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     let crt_objects_fallback = crt_objects_fallback(sess, crate_type);
 
     // NO-OPT-OUT, OBJECT-FILES-MAYBE, CUSTOMIZATION-POINT
-    add_pre_link_args(cmd, sess, flavor, crate_type);
+    add_pre_link_args(cmd, sess, flavor);
 
     // NO-OPT-OUT
     add_link_script(cmd, sess, tmpdir, crate_type);
