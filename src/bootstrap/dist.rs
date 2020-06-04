@@ -30,6 +30,8 @@ pub fn pkgname(builder: &Builder<'_>, component: &str) -> String {
         format!("{}-{}", component, builder.cargo_package_vers())
     } else if component == "rls" {
         format!("{}-{}", component, builder.rls_package_vers())
+    } else if component == "rust-analyzer" {
+        format!("{}-{}", component, builder.rust_analyzer_package_vers())
     } else if component == "clippy" {
         format!("{}-{}", component, builder.clippy_package_vers())
     } else if component == "miri" {
@@ -1107,7 +1109,10 @@ impl Step for PlainSourceTarball {
         if builder.rust_info.is_git() {
             // Vendor all Cargo dependencies
             let mut cmd = Command::new(&builder.initial_cargo);
-            cmd.arg("vendor").current_dir(&plain_dst_src);
+            cmd.arg("vendor")
+                .arg("--sync")
+                .arg(builder.src.join("./src/tools/rust-analyzer/Cargo.toml"))
+                .current_dir(&plain_dst_src);
             builder.run(&mut cmd);
         }
 
@@ -1334,6 +1339,93 @@ impl Step for Rls {
         let _time = timeit(builder);
         builder.run(&mut cmd);
         Some(distdir(builder).join(format!("{}-{}.tar.gz", name, target)))
+    }
+}
+
+#[derive(Debug, PartialOrd, Ord, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct RustAnalyzer {
+    pub compiler: Compiler,
+    pub target: Interned<String>,
+}
+
+impl Step for RustAnalyzer {
+    type Output = PathBuf;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("rust-analyzer")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(RustAnalyzer {
+            compiler: run.builder.compiler_for(
+                run.builder.top_stage,
+                run.builder.config.build,
+                run.target,
+            ),
+            target: run.target,
+        });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> PathBuf {
+        let compiler = self.compiler;
+        let target = self.target;
+        assert!(builder.config.extended);
+
+        let src = builder.src.join("src/tools/rust-analyzer");
+        let release_num = builder.release_num("rust-analyzer/crates/rust-analyzer");
+        let name = pkgname(builder, "rust-analyzer");
+        let version = builder.rust_analyzer_info.version(builder, &release_num);
+
+        let tmp = tmpdir(builder);
+        let image = tmp.join("rust-analyzer-image");
+        drop(fs::remove_dir_all(&image));
+        builder.create_dir(&image);
+
+        // Prepare the image directory
+        // We expect rust-analyer to always build, as it doesn't depend on rustc internals
+        // and doesn't have associated toolstate.
+        let rust_analyzer = builder
+            .ensure(tool::RustAnalyzer { compiler, target, extra_features: Vec::new() })
+            .expect("rust-analyzer always builds");
+
+        builder.install(&rust_analyzer, &image.join("bin"), 0o755);
+        let doc = image.join("share/doc/rust-analyzer");
+        builder.install(&src.join("README.md"), &doc, 0o644);
+        builder.install(&src.join("LICENSE-APACHE"), &doc, 0o644);
+        builder.install(&src.join("LICENSE-MIT"), &doc, 0o644);
+
+        // Prepare the overlay
+        let overlay = tmp.join("rust-analyzer-overlay");
+        drop(fs::remove_dir_all(&overlay));
+        t!(fs::create_dir_all(&overlay));
+        builder.install(&src.join("README.md"), &overlay, 0o644);
+        builder.install(&src.join("LICENSE-APACHE"), &doc, 0o644);
+        builder.install(&src.join("LICENSE-MIT"), &doc, 0o644);
+        builder.create(&overlay.join("version"), &version);
+
+        // Generate the installer tarball
+        let mut cmd = rust_installer(builder);
+        cmd.arg("generate")
+            .arg("--product-name=Rust")
+            .arg("--rel-manifest-dir=rustlib")
+            .arg("--success-message=rust-analyzer-ready-to-serve.")
+            .arg("--image-dir")
+            .arg(&image)
+            .arg("--work-dir")
+            .arg(&tmpdir(builder))
+            .arg("--output-dir")
+            .arg(&distdir(builder))
+            .arg("--non-installed-overlay")
+            .arg(&overlay)
+            .arg(format!("--package-name={}-{}", name, target))
+            .arg("--legacy-manifest-dirs=rustlib,cargo")
+            .arg("--component-name=rust-analyzer-preview");
+
+        builder.info(&format!("Dist rust-analyzer stage{} ({})", compiler.stage, target));
+        let _time = timeit(builder);
+        builder.run(&mut cmd);
+        distdir(builder).join(format!("{}-{}.tar.gz", name, target))
     }
 }
 
@@ -1656,6 +1748,7 @@ impl Step for Extended {
         let cargo_installer = builder.ensure(Cargo { compiler, target });
         let rustfmt_installer = builder.ensure(Rustfmt { compiler, target });
         let rls_installer = builder.ensure(Rls { compiler, target });
+        let rust_analyzer_installer = builder.ensure(RustAnalyzer { compiler, target });
         let llvm_tools_installer = builder.ensure(LlvmTools { target });
         let clippy_installer = builder.ensure(Clippy { compiler, target });
         let miri_installer = builder.ensure(Miri { compiler, target });
@@ -1690,6 +1783,7 @@ impl Step for Extended {
         tarballs.push(rustc_installer);
         tarballs.push(cargo_installer);
         tarballs.extend(rls_installer.clone());
+        tarballs.push(rust_analyzer_installer.clone());
         tarballs.push(clippy_installer);
         tarballs.extend(miri_installer.clone());
         tarballs.extend(rustfmt_installer.clone());
@@ -1767,6 +1861,7 @@ impl Step for Extended {
             if rls_installer.is_none() {
                 contents = filter(&contents, "rls");
             }
+            contents = filter(&contents, "rust-analyzer");
             if miri_installer.is_none() {
                 contents = filter(&contents, "miri");
             }
@@ -1813,6 +1908,7 @@ impl Step for Extended {
             if rls_installer.is_some() {
                 prepare("rls");
             }
+            prepare("rust-analyzer");
             if miri_installer.is_some() {
                 prepare("miri");
             }
@@ -1846,6 +1942,8 @@ impl Step for Extended {
                     format!("{}-{}", name, target)
                 } else if name == "rls" {
                     "rls-preview".to_string()
+                } else if name == "rust-analyzer" {
+                    "rust-analyzer-preview".to_string()
                 } else if name == "clippy" {
                     "clippy-preview".to_string()
                 } else if name == "miri" {
@@ -1868,6 +1966,7 @@ impl Step for Extended {
             if rls_installer.is_some() {
                 prepare("rls");
             }
+            prepare("rust-analyzer");
             if miri_installer.is_some() {
                 prepare("miri");
             }
@@ -1971,6 +2070,23 @@ impl Step for Extended {
                 Command::new(&heat)
                     .current_dir(&exe)
                     .arg("dir")
+                    .arg("rust-analyzer")
+                    .args(&heat_flags)
+                    .arg("-cg")
+                    .arg("RustAnalyzerGroup")
+                    .arg("-dr")
+                    .arg("RustAnalyzer")
+                    .arg("-var")
+                    .arg("var.RustAnalyzerDir")
+                    .arg("-out")
+                    .arg(exe.join("RustAnalyzerGroup.wxs"))
+                    .arg("-t")
+                    .arg(etc.join("msi/remove-duplicates.xsl")),
+            );
+            builder.run(
+                Command::new(&heat)
+                    .current_dir(&exe)
+                    .arg("dir")
                     .arg("clippy")
                     .args(&heat_flags)
                     .arg("-cg")
@@ -2060,6 +2176,7 @@ impl Step for Extended {
                 if rls_installer.is_some() {
                     cmd.arg("-dRlsDir=rls");
                 }
+                cmd.arg("-dRustAnalyzerDir=rust-analyzer");
                 if miri_installer.is_some() {
                     cmd.arg("-dMiriDir=miri");
                 }
@@ -2079,6 +2196,7 @@ impl Step for Extended {
             if rls_installer.is_some() {
                 candle("RlsGroup.wxs".as_ref());
             }
+            candle("RustAnalyzerGroup.wxs".as_ref());
             if miri_installer.is_some() {
                 candle("MiriGroup.wxs".as_ref());
             }
@@ -2116,6 +2234,7 @@ impl Step for Extended {
             if rls_installer.is_some() {
                 cmd.arg("RlsGroup.wixobj");
             }
+            cmd.arg("RustAnalyzerGroup.wixobj");
             if miri_installer.is_some() {
                 cmd.arg("MiriGroup.wixobj");
             }
@@ -2209,6 +2328,7 @@ impl Step for HashSign {
         cmd.arg(addr);
         cmd.arg(builder.package_vers(&builder.release_num("cargo")));
         cmd.arg(builder.package_vers(&builder.release_num("rls")));
+        cmd.arg(builder.package_vers(&builder.release_num("rust-analyzer/crates/rust-analyzer")));
         cmd.arg(builder.package_vers(&builder.release_num("clippy")));
         cmd.arg(builder.package_vers(&builder.release_num("miri")));
         cmd.arg(builder.package_vers(&builder.release_num("rustfmt")));

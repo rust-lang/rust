@@ -41,3 +41,6 @@
 [submodule "src/doc/embedded-book"]
 	path = src/doc/embedded-book
 	url = https://github.com/rust-embedded/book.git
+[submodule "src/tools/rust-analyzer"]
+	path = src/tools/rust-analyzer
+	url = https://github.com/rust-analyzer/rust-analyzer.git
