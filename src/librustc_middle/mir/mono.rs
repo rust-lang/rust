@@ -95,6 +95,7 @@ impl<'tcx> MonoItem<'tcx> {
                 // linkage, then we'll be creating a globally shared version.
                 if self.explicit_linkage(tcx).is_some()
                     || !instance.def.generates_cgu_internal_copy(tcx)
+                    || tcx.inline_exportable(instance.def_id())
                     || Some(instance.def_id()) == entry_def_id.map(LocalDefId::to_def_id)
                 {
                     return InstantiationMode::GloballyShared { may_conflict: false };

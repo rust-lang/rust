@@ -89,10 +89,11 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, cnum: CrateNum) -> DefIdMap<
                 | Node::ImplItem(&hir::ImplItem { kind: hir::ImplItemKind::Fn(..), .. }) => {
                     let def_id = tcx.hir().local_def_id(hir_id);
                     let generics = tcx.generics_of(def_id);
-                    if !generics.requires_monomorphization(tcx) &&
-                        // Functions marked with #[inline] are only ever codegened
-                        // with "internal" linkage and are never exported.
-                        !Instance::mono(tcx, def_id.to_def_id()).def.generates_cgu_internal_copy(tcx)
+                    if !generics.requires_monomorphization(tcx)
+                        && (!Instance::mono(tcx, def_id.to_def_id())
+                            .def
+                            .generates_cgu_internal_copy(tcx)
+                            || tcx.inline_exportable(def_id.to_def_id()))
                     {
                         Some(def_id)
                     } else {
