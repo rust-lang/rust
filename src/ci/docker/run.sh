@@ -57,6 +57,10 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
       # Sort the file names and cat the content into the hash key
       sort $copied_files | xargs cat >> $hash_key
 
+      # Include the architecture in the hash key, since our Linux CI does not
+      # only run in x86_64 machines.
+      uname -m >> $hash_key
+
       docker --version >> $hash_key
       cksum=$(sha512sum $hash_key | \
         awk '{print $1}')
