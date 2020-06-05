@@ -74,7 +74,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(true)
     }
 
-    fn statement(&mut self, stmt: &mir::Statement<'tcx>) -> InterpResult<'tcx> {
+    crate fn statement(&mut self, stmt: &mir::Statement<'tcx>) -> InterpResult<'tcx> {
         info!("{:?}", stmt);
         self.set_span(stmt.source_info.span);
 

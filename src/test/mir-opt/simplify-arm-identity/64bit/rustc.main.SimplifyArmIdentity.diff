@@ -28,8 +28,14 @@
                                            // + literal: Const { ty: u8, val: Value(Scalar(0x00)) }
           discriminant(_1) = 0;            // scope 0 at $DIR/simplify-arm-identity.rs:18:18: 18:29
           StorageLive(_2);                 // scope 1 at $DIR/simplify-arm-identity.rs:19:18: 22:6
-          _3 = discriminant(_1);           // scope 1 at $DIR/simplify-arm-identity.rs:20:9: 20:20
-          switchInt(move _3) -> [0isize: bb3, 1isize: bb1, otherwise: bb2]; // scope 1 at $DIR/simplify-arm-identity.rs:20:9: 20:20
+          _3 = const 0isize;               // scope 1 at $DIR/simplify-arm-identity.rs:20:9: 20:20
+                                           // ty::Const
+                                           // + ty: isize
+                                           // + val: Value(Scalar(0x0000000000000000))
+                                           // mir::Constant
+                                           // + span: $DIR/simplify-arm-identity.rs:20:9: 20:20
+                                           // + literal: Const { ty: isize, val: Value(Scalar(0x0000000000000000)) }
+          goto -> bb3;                     // scope 1 at $DIR/simplify-arm-identity.rs:20:9: 20:20
       }
   
       bb1: {

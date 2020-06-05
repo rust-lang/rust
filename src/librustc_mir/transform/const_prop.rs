@@ -381,6 +381,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         match f(self) {
             Ok(val) => Some(val),
             Err(error) => {
+                trace!("InterpCx operation failed: {:?}", error);
                 // Some errors shouldn't come up because creating them causes
                 // an allocation, which we should avoid. When that happens,
                 // dedicated error variants should be introduced instead.
@@ -906,6 +907,9 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
             }
         } else {
             match statement.kind {
+                StatementKind::SetDiscriminant { .. } => {
+                    self.use_ecx(|this| this.ecx.statement(statement));
+                }
                 StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
                     let frame = self.ecx.frame_mut();
                     frame.locals[local].value =
