@@ -217,16 +217,12 @@ impl<'tcx> CValue<'tcx> {
                     .iconst(types::I64, (const_val >> 64) as u64 as i64);
                 fx.bcx.ins().iconcat(lsb, msb)
             }
-            ty::Bool | ty::Char | ty::Uint(_) | ty::Ref(..)
+            ty::Bool | ty::Char | ty::Uint(_) | ty::Int(_) | ty::Ref(..)
             | ty::RawPtr(..) => {
                 fx
                     .bcx
                     .ins()
                     .iconst(clif_ty, u64::try_from(const_val).expect("uint") as i64)
-            }
-            ty::Int(_) => {
-                let const_val = rustc_middle::mir::interpret::sign_extend(const_val, layout.size);
-                fx.bcx.ins().iconst(clif_ty, i64::try_from(const_val as i128).unwrap())
             }
             ty::Float(FloatTy::F32) => {
                 fx.bcx.ins().f32const(Ieee32::with_bits(u32::try_from(const_val).unwrap()))
