@@ -1,0 +1,80 @@
+error[E0412]: cannot find type `Dirbuilder` in this scope
+  --> $DIR/fs.rs:4:22
+   |
+LL | fn test_dirbuild(_x: Dirbuilder){}
+   |                      ^^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::fs::DirBuilder`?
+   |
+LL | fn test_dirbuild(_x: std::fs::DirBuilder){}
+   |                      ^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `Direntry` in this scope
+  --> $DIR/fs.rs:6:22
+   |
+LL | fn test_direntry(_x: Direntry){}
+   |                      ^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::fs::DirEntry`?
+   |
+LL | fn test_direntry(_x: std::fs::DirEntry){}
+   |                      ^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `Filetype` in this scope
+  --> $DIR/fs.rs:8:20
+   |
+LL | fn test_filety(_x: Filetype){}
+   |                    ^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::fs::FileType`?
+   |
+LL | fn test_filety(_x: std::fs::FileType){}
+   |                    ^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `MetaData` in this scope
+  --> $DIR/fs.rs:10:22
+   |
+LL | fn test_metadata(_x: MetaData){}
+   |                      ^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::fs::Metadata`?
+   |
+LL | fn test_metadata(_x: std::fs::Metadata){}
+   |                      ^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `Openoptions` in this scope
+  --> $DIR/fs.rs:12:18
+   |
+LL | fn test_opop(_x: Openoptions){}
+   |                  ^^^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::fs::OpenOptions`?
+   |
+LL | fn test_opop(_x: std::fs::OpenOptions){}
+   |                  ^^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `permissions` in this scope
+  --> $DIR/fs.rs:14:18
+   |
+LL | fn test_perm(_x: permissions){}
+   |                  ^^^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::fs::Permissions`?
+   |
+LL | fn test_perm(_x: std::fs::Permissions){}
+   |                  ^^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `Readdir` in this scope
+  --> $DIR/fs.rs:16:21
+   |
+LL | fn test_readdir(_x: Readdir){}
+   |                     ^^^^^^^ not found in this scope
+   |
+help: did you mean `std::fs::ReadDir`?
+   |
+LL | fn test_readdir(_x: std::fs::ReadDir){}
+   |                     ^^^^^^^^^^^^^^^^
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0412`.

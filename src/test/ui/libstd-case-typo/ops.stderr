@@ -1,0 +1,69 @@
+error[E0412]: cannot find type `range` in this scope
+  --> $DIR/ops.rs:4:19
+   |
+LL | fn test_range(_x: range<()>){}
+   |                   ^^^^^ not found in this scope
+   |
+help: did you mean `std::ops::Range`?
+   |
+LL | fn test_range(_x: std::ops::Range<()>){}
+   |                   ^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `Rangefrom` in this scope
+  --> $DIR/ops.rs:6:21
+   |
+LL | fn test_rangefr(_x: Rangefrom<()>){}
+   |                     ^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::ops::RangeFrom`?
+   |
+LL | fn test_rangefr(_x: std::ops::RangeFrom<()>){}
+   |                     ^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `Rangefull` in this scope
+  --> $DIR/ops.rs:8:21
+   |
+LL | fn test_rangefu(_x: Rangefull<()>){}
+   |                     ^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::ops::RangeFull`?
+   |
+LL | fn test_rangefu(_x: std::ops::RangeFull<()>){}
+   |                     ^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `Rangeinclusive` in this scope
+  --> $DIR/ops.rs:10:22
+   |
+LL | fn test_rangeinc(_x: Rangeinclusive<()>){}
+   |                      ^^^^^^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::ops::RangeInclusive`?
+   |
+LL | fn test_rangeinc(_x: std::ops::RangeInclusive<()>){}
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `Rangeto` in this scope
+  --> $DIR/ops.rs:12:21
+   |
+LL | fn test_rangeto(_x: Rangeto<()>){}
+   |                     ^^^^^^^ not found in this scope
+   |
+help: did you mean `std::ops::RangeTo`?
+   |
+LL | fn test_rangeto(_x: std::ops::RangeTo<()>){}
+   |                     ^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `RangetoInclusive` in this scope
+  --> $DIR/ops.rs:14:22
+   |
+LL | fn test_rangetoi(_x: RangetoInclusive<()>){}
+   |                      ^^^^^^^^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::ops::RangeToInclusive`?
+   |
+LL | fn test_rangetoi(_x: std::ops::RangeToInclusive<()>){}
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0412`.

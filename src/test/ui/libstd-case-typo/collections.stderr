@@ -1,0 +1,80 @@
+error[E0412]: cannot find type `BtreeMap` in this scope
+  --> $DIR/collections.rs:4:17
+   |
+LL | fn test_btm(_x: BtreeMap<(), ()>){}
+   |                 ^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::collections::BTreeMap`?
+   |
+LL | fn test_btm(_x: std::collections::BTreeMap<(), ()>){}
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `BtreeSet` in this scope
+  --> $DIR/collections.rs:6:17
+   |
+LL | fn test_bts(_x: BtreeSet<()>){}
+   |                 ^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::collections::BTreeSet`?
+   |
+LL | fn test_bts(_x: std::collections::BTreeSet<()>){}
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `Binaryheap` in this scope
+  --> $DIR/collections.rs:8:18
+   |
+LL | fn test_binh(_x: Binaryheap<()>){}
+   |                  ^^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::collections::BinaryHeap`?
+   |
+LL | fn test_binh(_x: std::collections::BinaryHeap<()>){}
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `Hashmap` in this scope
+  --> $DIR/collections.rs:10:19
+   |
+LL | fn test_hashm(_x: Hashmap<String, ()>){}
+   |                   ^^^^^^^ not found in this scope
+   |
+help: did you mean `std::collections::HashMap`?
+   |
+LL | fn test_hashm(_x: std::collections::HashMap<String, ()>){}
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `Hashset` in this scope
+  --> $DIR/collections.rs:12:19
+   |
+LL | fn test_hashs(_x: Hashset<()>){}
+   |                   ^^^^^^^ not found in this scope
+   |
+help: did you mean `std::collections::HashSet`?
+   |
+LL | fn test_hashs(_x: std::collections::HashSet<()>){}
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `Linkedlist` in this scope
+  --> $DIR/collections.rs:14:19
+   |
+LL | fn test_llist(_x: Linkedlist<()>){}
+   |                   ^^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::collections::LinkedList`?
+   |
+LL | fn test_llist(_x: std::collections::LinkedList<()>){}
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `Vecdeque` in this scope
+  --> $DIR/collections.rs:16:16
+   |
+LL | fn test_vd(_x: Vecdeque<()>){}
+   |                ^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::collections::VecDeque`?
+   |
+LL | fn test_vd(_x: std::collections::VecDeque<()>){}
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0412`.

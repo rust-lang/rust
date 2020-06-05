@@ -1,0 +1,14 @@
+error[E0412]: cannot find type `reverse` in this scope
+  --> $DIR/cmp.rs:4:17
+   |
+LL | fn test_rev(_x: reverse<()>){}
+   |                 ^^^^^^^ not found in this scope
+   |
+help: did you mean `std::cmp::Reverse`?
+   |
+LL | fn test_rev(_x: std::cmp::Reverse<()>){}
+   |                 ^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0412`.

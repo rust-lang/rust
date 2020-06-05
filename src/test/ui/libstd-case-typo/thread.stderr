@@ -1,0 +1,58 @@
+error[E0412]: cannot find type `builder` in this scope
+  --> $DIR/thread.rs:4:19
+   |
+LL | fn test_build(_x: builder){}
+   |                   ^^^^^^^ not found in this scope
+   |
+help: did you mean `std::thread::Builder`?
+   |
+LL | fn test_build(_x: std::thread::Builder){}
+   |                   ^^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `Joinhandle` in this scope
+  --> $DIR/thread.rs:6:19
+   |
+LL | fn test_jhand(_x: Joinhandle<()>){}
+   |                   ^^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::thread::JoinHandle`?
+   |
+LL | fn test_jhand(_x: std::thread::JoinHandle<()>){}
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `Localkey` in this scope
+  --> $DIR/thread.rs:8:18
+   |
+LL | fn test_lkey(_x: Localkey<()>){}
+   |                  ^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::thread::LocalKey`?
+   |
+LL | fn test_lkey(_x: std::thread::LocalKey<()>){}
+   |                  ^^^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `thread` in this scope
+  --> $DIR/thread.rs:10:20
+   |
+LL | fn test_thread(_x: thread){}
+   |                    ^^^^^^ not found in this scope
+   |
+help: did you mean `std::thread::Thread`?
+   |
+LL | fn test_thread(_x: std::thread::Thread){}
+   |                    ^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `ThreadID` in this scope
+  --> $DIR/thread.rs:12:22
+   |
+LL | fn test_threadid(_x: ThreadID){}
+   |                      ^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::thread::ThreadId`?
+   |
+LL | fn test_threadid(_x: std::thread::ThreadId){}
+   |                      ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0412`.

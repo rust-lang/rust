@@ -1,0 +1,208 @@
+error[E0412]: cannot find type `bytes` in this scope
+  --> $DIR/str.rs:4:19
+   |
+LL | fn test_bytes(_x: bytes){}
+   |                   ^^^^^ not found in this scope
+   |
+help: did you mean one of these?:
+   |
+LL | fn test_bytes(_x: std::io::Bytes){}
+   |                   ^^^^^^^^^^^^^^
+LL | fn test_bytes(_x: std::str::Bytes){}
+   |                   ^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `Charindices` in this scope
+  --> $DIR/str.rs:6:21
+   |
+LL | fn test_charind(_x: Charindices){}
+   |                     ^^^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::str::CharIndices`?
+   |
+LL | fn test_charind(_x: std::str::CharIndices){}
+   |                     ^^^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `chars` in this scope
+  --> $DIR/str.rs:8:19
+   |
+LL | fn test_chars(_x: chars){}
+   |                   ^^^^^ help: a builtin type with a similar name exists: `char`
+
+error[E0412]: cannot find type `EncodeUTF16` in this scope
+  --> $DIR/str.rs:10:22
+   |
+LL | fn test_encutf16(_x: EncodeUTF16){}
+   |                      ^^^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::str::EncodeUtf16`?
+   |
+LL | fn test_encutf16(_x: std::str::EncodeUtf16){}
+   |                      ^^^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `Escapedefault` in this scope
+  --> $DIR/str.rs:12:21
+   |
+LL | fn test_escdflt(_x: Escapedefault){}
+   |                     ^^^^^^^^^^^^^ not found in this scope
+   |
+help: did you mean one of these?:
+   |
+LL | fn test_escdflt(_x: std::ascii::EscapeDefault){}
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | fn test_escdflt(_x: std::char::EscapeDefault){}
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^
+LL | fn test_escdflt(_x: std::str::EscapeDefault){}
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `Escapeunicode` in this scope
+  --> $DIR/str.rs:14:20
+   |
+LL | fn test_escuni(_x: Escapeunicode){}
+   |                    ^^^^^^^^^^^^^ not found in this scope
+   |
+help: did you mean one of these?:
+   |
+LL | fn test_escuni(_x: std::char::EscapeUnicode){}
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^
+LL | fn test_escuni(_x: std::str::EscapeUnicode){}
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `lines` in this scope
+  --> $DIR/str.rs:16:19
+   |
+LL | fn test_lines(_x: lines){}
+   |                   ^^^^^ not found in this scope
+   |
+help: did you mean one of these?:
+   |
+LL | fn test_lines(_x: std::io::Lines){}
+   |                   ^^^^^^^^^^^^^^
+LL | fn test_lines(_x: std::str::Lines){}
+   |                   ^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `Matchindices` in this scope
+  --> $DIR/str.rs:18:22
+   |
+LL | fn test_matchind(_x: Matchindices){}
+   |                      ^^^^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::str::MatchIndices`?
+   |
+LL | fn test_matchind(_x: std::str::MatchIndices){}
+   |                      ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `RmatchIndices` in this scope
+  --> $DIR/str.rs:20:23
+   |
+LL | fn test_rmatchind(_x: RmatchIndices){}
+   |                       ^^^^^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::str::RMatchIndices`?
+   |
+LL | fn test_rmatchind(_x: std::str::RMatchIndices){}
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `Rmatches` in this scope
+  --> $DIR/str.rs:22:20
+   |
+LL | fn test_rmatch(_x: Rmatches){}
+   |                    ^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::str::RMatches`?
+   |
+LL | fn test_rmatch(_x: std::str::RMatches){}
+   |                    ^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `Rsplit` in this scope
+  --> $DIR/str.rs:24:20
+   |
+LL | fn test_rsplit(_x: Rsplit){}
+   |                    ^^^^^^ not found in this scope
+   |
+help: did you mean `std::str::RSplit`?
+   |
+LL | fn test_rsplit(_x: std::str::RSplit){}
+   |                    ^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `RSplitn` in this scope
+  --> $DIR/str.rs:26:21
+   |
+LL | fn test_rsplitn(_x: RSplitn){}
+   |                     ^^^^^^^ not found in this scope
+   |
+help: did you mean `std::str::RSplitN`?
+   |
+LL | fn test_rsplitn(_x: std::str::RSplitN){}
+   |                     ^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `RsplitTerminator` in this scope
+  --> $DIR/str.rs:28:24
+   |
+LL | fn test_rsplitterm(_x: RsplitTerminator){}
+   |                        ^^^^^^^^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::str::RSplitTerminator`?
+   |
+LL | fn test_rsplitterm(_x: std::str::RSplitTerminator){}
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `split` in this scope
+  --> $DIR/str.rs:30:19
+   |
+LL | fn test_split(_x: split){}
+   |                   ^^^^^ not found in this scope
+   |
+help: did you mean one of these?:
+   |
+LL | fn test_split(_x: std::io::Split){}
+   |                   ^^^^^^^^^^^^^^
+LL | fn test_split(_x: std::str::Split){}
+   |                   ^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `SplitASCIIWhitespace` in this scope
+  --> $DIR/str.rs:32:26
+   |
+LL | fn test_splitasciiws(_x: SplitASCIIWhitespace){}
+   |                          ^^^^^^^^^^^^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::str::SplitAsciiWhitespace`?
+   |
+LL | fn test_splitasciiws(_x: std::str::SplitAsciiWhitespace){}
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `Splitn` in this scope
+  --> $DIR/str.rs:34:20
+   |
+LL | fn test_splitn(_x: Splitn){}
+   |                    ^^^^^^ not found in this scope
+   |
+help: did you mean `std::str::SplitN`?
+   |
+LL | fn test_splitn(_x: std::str::SplitN){}
+   |                    ^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `Splitterminator` in this scope
+  --> $DIR/str.rs:36:23
+   |
+LL | fn test_splitterm(_x: Splitterminator){}
+   |                       ^^^^^^^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::str::SplitTerminator`?
+   |
+LL | fn test_splitterm(_x: std::str::SplitTerminator){}
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `Splitwhitespace` in this scope
+  --> $DIR/str.rs:38:21
+   |
+LL | fn test_splitws(_x: Splitwhitespace){}
+   |                     ^^^^^^^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::str::SplitWhitespace`?
+   |
+LL | fn test_splitws(_x: std::str::SplitWhitespace){}
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 18 previous errors
+
+For more information about this error, try `rustc --explain E0412`.

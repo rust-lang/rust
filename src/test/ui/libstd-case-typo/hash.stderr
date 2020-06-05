@@ -1,0 +1,14 @@
+error[E0412]: cannot find type `BuildhasherDefault` in this scope
+  --> $DIR/hash.rs:4:17
+   |
+LL | fn test_bhd(_x: BuildhasherDefault){}
+   |                 ^^^^^^^^^^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::hash::BuildHasherDefault`?
+   |
+LL | fn test_bhd(_x: std::hash::BuildHasherDefault){}
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0412`.

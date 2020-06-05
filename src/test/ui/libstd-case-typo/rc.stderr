@@ -1,0 +1,27 @@
+error[E0412]: cannot find type `rc` in this scope
+  --> $DIR/rc.rs:4:16
+   |
+LL | fn test_rc(_x: rc<()>){}
+   |                ^^ not found in this scope
+   |
+help: did you mean `std::rc::Rc`?
+   |
+LL | fn test_rc(_x: std::rc::Rc<()>){}
+   |                ^^^^^^^^^^^
+
+error[E0412]: cannot find type `weak` in this scope
+  --> $DIR/rc.rs:6:18
+   |
+LL | fn test_weak(_x: weak<()>){}
+   |                  ^^^^ not found in this scope
+   |
+help: did you mean one of these?:
+   |
+LL | fn test_weak(_x: std::rc::Weak<()>){}
+   |                  ^^^^^^^^^^^^^
+LL | fn test_weak(_x: std::sync::Weak<()>){}
+   |                  ^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0412`.

@@ -1,0 +1,25 @@
+error[E0412]: cannot find type `discriminant` in this scope
+  --> $DIR/mem.rs:4:18
+   |
+LL | fn test_disc(_x: discriminant<()>){}
+   |                  ^^^^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::mem::Discriminant`?
+   |
+LL | fn test_disc(_x: std::mem::Discriminant<()>){}
+   |                  ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `Manuallydrop` in this scope
+  --> $DIR/mem.rs:6:21
+   |
+LL | fn test_mandrop(_x: Manuallydrop<()>){}
+   |                     ^^^^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::mem::ManuallyDrop`?
+   |
+LL | fn test_mandrop(_x: std::mem::ManuallyDrop<()>){}
+   |                     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0412`.

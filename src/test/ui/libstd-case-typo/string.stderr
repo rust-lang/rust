@@ -1,0 +1,14 @@
+error[E0412]: cannot find type `drain` in this scope
+  --> $DIR/string.rs:4:19
+   |
+LL | fn test_drain(_x: drain){}
+   |                   ^^^^^ not found in this scope
+   |
+help: did you mean `std::string::Drain`?
+   |
+LL | fn test_drain(_x: std::string::Drain){}
+   |                   ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0412`.

@@ -1,0 +1,64 @@
+error[E0412]: cannot find type `DecodeUTF16` in this scope
+  --> $DIR/char.rs:4:18
+   |
+LL | fn test_du16(_x: DecodeUTF16<()>){}
+   |                  ^^^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::char::DecodeUtf16`?
+   |
+LL | fn test_du16(_x: std::char::DecodeUtf16<()>){}
+   |                  ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `Escapedefault` in this scope
+  --> $DIR/char.rs:7:19
+   |
+LL | fn test_edflt(_x: Escapedefault){}
+   |                   ^^^^^^^^^^^^^ not found in this scope
+   |
+help: did you mean one of these?:
+   |
+LL | fn test_edflt(_x: std::ascii::EscapeDefault){}
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | fn test_edflt(_x: std::char::EscapeDefault){}
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^
+LL | fn test_edflt(_x: std::str::EscapeDefault){}
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `Escapeunicode` in this scope
+  --> $DIR/char.rs:10:18
+   |
+LL | fn test_euni(_x: Escapeunicode){}
+   |                  ^^^^^^^^^^^^^ not found in this scope
+   |
+help: did you mean one of these?:
+   |
+LL | fn test_euni(_x: std::char::EscapeUnicode){}
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^
+LL | fn test_euni(_x: std::str::EscapeUnicode){}
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `Tolowercase` in this scope
+  --> $DIR/char.rs:13:19
+   |
+LL | fn test_tolow(_x: Tolowercase){}
+   |                   ^^^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::char::ToLowercase`?
+   |
+LL | fn test_tolow(_x: std::char::ToLowercase){}
+   |                   ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `Touppercase` in this scope
+  --> $DIR/char.rs:16:21
+   |
+LL | fn test_toupper(_x: Touppercase){}
+   |                     ^^^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::char::ToUppercase`?
+   |
+LL | fn test_toupper(_x: std::char::ToUppercase){}
+   |                     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0412`.

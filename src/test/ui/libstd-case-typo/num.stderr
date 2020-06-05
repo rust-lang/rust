@@ -1,0 +1,135 @@
+error[E0412]: cannot find type `NonZeroi8` in this scope
+  --> $DIR/num.rs:4:18
+   |
+LL | fn test_nzi8(_x: NonZeroi8){}
+   |                  ^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::num::NonZeroI8`?
+   |
+LL | fn test_nzi8(_x: std::num::NonZeroI8){}
+   |                  ^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `NonZeroi16` in this scope
+  --> $DIR/num.rs:6:19
+   |
+LL | fn test_nzi16(_x: NonZeroi16){}
+   |                   ^^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::num::NonZeroI16`?
+   |
+LL | fn test_nzi16(_x: std::num::NonZeroI16){}
+   |                   ^^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `NonZeroi32` in this scope
+  --> $DIR/num.rs:8:19
+   |
+LL | fn test_nzi32(_x: NonZeroi32){}
+   |                   ^^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::num::NonZeroI32`?
+   |
+LL | fn test_nzi32(_x: std::num::NonZeroI32){}
+   |                   ^^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `NonZeroi64` in this scope
+  --> $DIR/num.rs:10:19
+   |
+LL | fn test_nzi64(_x: NonZeroi64){}
+   |                   ^^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::num::NonZeroI64`?
+   |
+LL | fn test_nzi64(_x: std::num::NonZeroI64){}
+   |                   ^^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `NonZeroi128` in this scope
+  --> $DIR/num.rs:12:20
+   |
+LL | fn test_nzi128(_x: NonZeroi128){}
+   |                    ^^^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::num::NonZeroI128`?
+   |
+LL | fn test_nzi128(_x: std::num::NonZeroI128){}
+   |                    ^^^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `NonZerou8` in this scope
+  --> $DIR/num.rs:14:18
+   |
+LL | fn test_nzu8(_x: NonZerou8){}
+   |                  ^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::num::NonZeroU8`?
+   |
+LL | fn test_nzu8(_x: std::num::NonZeroU8){}
+   |                  ^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `NonZerou16` in this scope
+  --> $DIR/num.rs:16:19
+   |
+LL | fn test_nzu16(_x: NonZerou16){}
+   |                   ^^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::num::NonZeroU16`?
+   |
+LL | fn test_nzu16(_x: std::num::NonZeroU16){}
+   |                   ^^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `NonZerou32` in this scope
+  --> $DIR/num.rs:18:19
+   |
+LL | fn test_nzu32(_x: NonZerou32){}
+   |                   ^^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::num::NonZeroU32`?
+   |
+LL | fn test_nzu32(_x: std::num::NonZeroU32){}
+   |                   ^^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `NonZerou64` in this scope
+  --> $DIR/num.rs:20:19
+   |
+LL | fn test_nzu64(_x: NonZerou64){}
+   |                   ^^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::num::NonZeroU64`?
+   |
+LL | fn test_nzu64(_x: std::num::NonZeroU64){}
+   |                   ^^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `NonZerou128` in this scope
+  --> $DIR/num.rs:22:20
+   |
+LL | fn test_nzu128(_x: NonZerou128){}
+   |                    ^^^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::num::NonZeroU128`?
+   |
+LL | fn test_nzu128(_x: std::num::NonZeroU128){}
+   |                    ^^^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `NonzeroUsize` in this scope
+  --> $DIR/num.rs:24:18
+   |
+LL | fn test_nzus(_x: NonzeroUsize){}
+   |                  ^^^^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::num::NonZeroUsize`?
+   |
+LL | fn test_nzus(_x: std::num::NonZeroUsize){}
+   |                  ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `wrapping` in this scope
+  --> $DIR/num.rs:26:18
+   |
+LL | fn test_wrap(_x: wrapping){}
+   |                  ^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::num::Wrapping`?
+   |
+LL | fn test_wrap(_x: std::num::Wrapping){}
+   |                  ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 12 previous errors
+
+For more information about this error, try `rustc --explain E0412`.

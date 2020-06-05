@@ -1,0 +1,18 @@
+error[E0412]: cannot find type `Escapedefault` in this scope
+  --> $DIR/ascii.rs:4:20
+   |
+LL | fn test_escdef(_x: Escapedefault){}
+   |                    ^^^^^^^^^^^^^ not found in this scope
+   |
+help: did you mean one of these?:
+   |
+LL | fn test_escdef(_x: std::ascii::EscapeDefault){}
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | fn test_escdef(_x: std::char::EscapeDefault){}
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^
+LL | fn test_escdef(_x: std::str::EscapeDefault){}
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0412`.

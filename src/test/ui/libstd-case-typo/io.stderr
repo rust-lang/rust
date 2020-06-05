@@ -1,0 +1,237 @@
+error[E0412]: cannot find type `Bufreader` in this scope
+  --> $DIR/io.rs:4:19
+   |
+LL | fn test_bufrd(_x: Bufreader<()>){}
+   |                   ^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::io::BufReader`?
+   |
+LL | fn test_bufrd(_x: std::io::BufReader<()>){}
+   |                   ^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `Bufwriter` in this scope
+  --> $DIR/io.rs:6:19
+   |
+LL | fn test_bufwr(_x: Bufwriter<()>){}
+   |                   ^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::io::BufWriter`?
+   |
+LL | fn test_bufwr(_x: std::io::BufWriter<()>){}
+   |                   ^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `bytes` in this scope
+  --> $DIR/io.rs:8:19
+   |
+LL | fn test_bytes(_x: bytes<()>){}
+   |                   ^^^^^ not found in this scope
+   |
+help: did you mean one of these?:
+   |
+LL | fn test_bytes(_x: std::io::Bytes<()>){}
+   |                   ^^^^^^^^^^^^^^
+LL | fn test_bytes(_x: std::str::Bytes<()>){}
+   |                   ^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `chain` in this scope
+  --> $DIR/io.rs:10:19
+   |
+LL | fn test_chain(_x: chain<(), ()>){}
+   |                   ^^^^^ not found in this scope
+   |
+help: did you mean one of these?:
+   |
+LL | fn test_chain(_x: std::io::Chain<(), ()>){}
+   |                   ^^^^^^^^^^^^^^
+LL | fn test_chain(_x: std::iter::Chain<(), ()>){}
+   |                   ^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `cursor` in this scope
+  --> $DIR/io.rs:12:20
+   |
+LL | fn test_cursor(_x: cursor<()>){}
+   |                    ^^^^^^ not found in this scope
+   |
+help: did you mean `std::io::Cursor`?
+   |
+LL | fn test_cursor(_x: std::io::Cursor<()>){}
+   |                    ^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `empty` in this scope
+  --> $DIR/io.rs:14:19
+   |
+LL | fn test_empty(_x: empty){}
+   |                   ^^^^^ not found in this scope
+   |
+help: did you mean one of these?:
+   |
+LL | fn test_empty(_x: std::io::Empty){}
+   |                   ^^^^^^^^^^^^^^
+LL | fn test_empty(_x: std::iter::Empty){}
+   |                   ^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `Ioslice` in this scope
+  --> $DIR/io.rs:16:17
+   |
+LL | fn test_ios(_x: Ioslice){}
+   |                 ^^^^^^^ not found in this scope
+   |
+help: did you mean `std::io::IoSlice`?
+   |
+LL | fn test_ios(_x: std::io::IoSlice){}
+   |                 ^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `IosliceMut` in this scope
+  --> $DIR/io.rs:18:18
+   |
+LL | fn test_iosm(_x: IosliceMut){}
+   |                  ^^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::io::IoSliceMut`?
+   |
+LL | fn test_iosm(_x: std::io::IoSliceMut){}
+   |                  ^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `Linewriter` in this scope
+  --> $DIR/io.rs:20:20
+   |
+LL | fn test_linewr(_x: Linewriter<()>){}
+   |                    ^^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::io::LineWriter`?
+   |
+LL | fn test_linewr(_x: std::io::LineWriter<()>){}
+   |                    ^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `lines` in this scope
+  --> $DIR/io.rs:22:19
+   |
+LL | fn test_lines(_x: lines<()>){}
+   |                   ^^^^^ not found in this scope
+   |
+help: did you mean one of these?:
+   |
+LL | fn test_lines(_x: std::io::Lines<()>){}
+   |                   ^^^^^^^^^^^^^^
+LL | fn test_lines(_x: std::str::Lines<()>){}
+   |                   ^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `repeat` in this scope
+  --> $DIR/io.rs:24:20
+   |
+LL | fn test_repeat(_x: repeat){}
+   |                    ^^^^^^ not found in this scope
+   |
+help: did you mean one of these?:
+   |
+LL | fn test_repeat(_x: std::io::Repeat){}
+   |                    ^^^^^^^^^^^^^^^
+LL | fn test_repeat(_x: std::iter::Repeat){}
+   |                    ^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `sink` in this scope
+  --> $DIR/io.rs:26:18
+   |
+LL | fn test_sink(_x: sink){}
+   |                  ^^^^ not found in this scope
+   |
+help: did you mean `std::io::Sink`?
+   |
+LL | fn test_sink(_x: std::io::Sink){}
+   |                  ^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `split` in this scope
+  --> $DIR/io.rs:28:19
+   |
+LL | fn test_split(_x: split<()>){}
+   |                   ^^^^^ not found in this scope
+   |
+help: did you mean one of these?:
+   |
+LL | fn test_split(_x: std::io::Split<()>){}
+   |                   ^^^^^^^^^^^^^^
+LL | fn test_split(_x: std::str::Split<()>){}
+   |                   ^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `StdErr` in this scope
+  --> $DIR/io.rs:30:20
+   |
+LL | fn test_stderr(_x: StdErr){}
+   |                    ^^^^^^ not found in this scope
+   |
+help: did you mean `std::io::Stderr`?
+   |
+LL | fn test_stderr(_x: std::io::Stderr){}
+   |                    ^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `StdErrLock` in this scope
+  --> $DIR/io.rs:32:22
+   |
+LL | fn test_stderr_l(_x: StdErrLock){}
+   |                      ^^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::io::StderrLock`?
+   |
+LL | fn test_stderr_l(_x: std::io::StderrLock){}
+   |                      ^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `StdIn` in this scope
+  --> $DIR/io.rs:34:20
+   |
+LL | fn test_stdind(_x: StdIn){}
+   |                    ^^^^^ not found in this scope
+   |
+help: did you mean `std::io::Stdin`?
+   |
+LL | fn test_stdind(_x: std::io::Stdin){}
+   |                    ^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `StdInLock` in this scope
+  --> $DIR/io.rs:36:21
+   |
+LL | fn test_stdin_l(_x: StdInLock){}
+   |                     ^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::io::StdinLock`?
+   |
+LL | fn test_stdin_l(_x: std::io::StdinLock){}
+   |                     ^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `StdOut` in this scope
+  --> $DIR/io.rs:38:20
+   |
+LL | fn test_stdout(_x: StdOut){}
+   |                    ^^^^^^ not found in this scope
+   |
+help: did you mean `std::io::Stdout`?
+   |
+LL | fn test_stdout(_x: std::io::Stdout){}
+   |                    ^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `StdOutLock` in this scope
+  --> $DIR/io.rs:40:22
+   |
+LL | fn test_stdout_l(_x: StdOutLock){}
+   |                      ^^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::io::StdoutLock`?
+   |
+LL | fn test_stdout_l(_x: std::io::StdoutLock){}
+   |                      ^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `take` in this scope
+  --> $DIR/io.rs:42:18
+   |
+LL | fn test_take(_x: take){}
+   |                  ^^^^ not found in this scope
+   |
+help: did you mean one of these?:
+   |
+LL | fn test_take(_x: std::io::Take){}
+   |                  ^^^^^^^^^^^^^
+LL | fn test_take(_x: std::iter::Take){}
+   |                  ^^^^^^^^^^^^^^^
+
+error: aborting due to 20 previous errors
+
+For more information about this error, try `rustc --explain E0412`.

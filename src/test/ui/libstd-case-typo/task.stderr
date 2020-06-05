@@ -1,0 +1,47 @@
+error[E0412]: cannot find type `context` in this scope
+  --> $DIR/task.rs:4:21
+   |
+LL | fn test_context(_x: context){}
+   |                     ^^^^^^^ not found in this scope
+   |
+help: did you mean `std::task::Context`?
+   |
+LL | fn test_context(_x: std::task::Context){}
+   |                     ^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `Rawwaker` in this scope
+  --> $DIR/task.rs:6:19
+   |
+LL | fn test_rwake(_x: Rawwaker){}
+   |                   ^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::task::RawWaker`?
+   |
+LL | fn test_rwake(_x: std::task::RawWaker){}
+   |                   ^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `RawwakerVTable` in this scope
+  --> $DIR/task.rs:8:21
+   |
+LL | fn test_rwakevt(_x: RawwakerVTable){}
+   |                     ^^^^^^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::task::RawWakerVTable`?
+   |
+LL | fn test_rwakevt(_x: std::task::RawWakerVTable){}
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `waker` in this scope
+  --> $DIR/task.rs:10:19
+   |
+LL | fn test_waker(_x: waker){}
+   |                   ^^^^^ not found in this scope
+   |
+help: did you mean `std::task::Waker`?
+   |
+LL | fn test_waker(_x: std::task::Waker){}
+   |                   ^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0412`.

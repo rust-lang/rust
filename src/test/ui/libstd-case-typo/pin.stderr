@@ -1,0 +1,14 @@
+error[E0412]: cannot find type `pin` in this scope
+  --> $DIR/pin.rs:4:17
+   |
+LL | fn test_pin(_x: pin<()>){}
+   |                 ^^^ not found in this scope
+   |
+help: did you mean `std::pin::Pin`?
+   |
+LL | fn test_pin(_x: std::pin::Pin<()>){}
+   |                 ^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0412`.

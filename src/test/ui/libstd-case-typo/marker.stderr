@@ -1,0 +1,25 @@
+error[E0412]: cannot find type `Phantomdata` in this scope
+  --> $DIR/marker.rs:4:21
+   |
+LL | fn test_phandat(_x: Phantomdata){}
+   |                     ^^^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::marker::PhantomData`?
+   |
+LL | fn test_phandat(_x: std::marker::PhantomData){}
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `Phantompinned` in this scope
+  --> $DIR/marker.rs:6:21
+   |
+LL | fn test_phanpin(_x: Phantompinned){}
+   |                     ^^^^^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::marker::PhantomPinned`?
+   |
+LL | fn test_phanpin(_x: std::marker::PhantomPinned){}
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0412`.

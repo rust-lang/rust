@@ -353,8 +353,250 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                 }
                 _ => {}
             }
+            if ns == TypeNS && path.len() == 1 {
+                // Case-insensitive test against most libstd struct names
+                // as another fallback
+                match res {
+                    Some(Res::ToolMod) => {}
+                    _ => {
+                        let structs = self.get_case_insensitive_libstd_structs_matches(
+                            &ident.name.to_ident_string(),
+                        );
+                        if structs.len() == 1 {
+                            err.span_suggestion_verbose(
+                                ident_span,
+                                &format!("did you mean `{}`?", structs[0]),
+                                format!("{}", structs[0]),
+                                Applicability::MaybeIncorrect,
+                            );
+                        } else if structs.len() > 1 {
+                            let mut struct_suggestions = Vec::new();
+                            let message = "did you mean one of these?:";
+                            for a_struct in structs.iter() {
+                                struct_suggestions.push(format!("{}", a_struct));
+                            }
+                            err.span_suggestions(
+                                ident_span,
+                                message,
+                                struct_suggestions.into_iter(),
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                    }
+                }
+            }
         }
+
         (err, candidates)
+    }
+
+    /// Get a case-insensitive match with standard library
+    /// structs that are *not imported* in the prelude.
+    /// This is used for type checking diagnostics in cases when
+    /// the type is not in scope and the name includes case
+    /// misspelling (e.g., `Hashmap`, not `HashMap`).
+    fn get_case_insensitive_libstd_structs_matches(&self, needle: &str) -> Vec<String> {
+        // Excludes error types
+        // Excludes nightly only types
+        // Excludes types with case-sensitive macro names (e.g., `File` -> `file`)
+        // Excludes deprecated types (e.g., `std::str::LinesAny`)
+        let libstd_structs = [
+            "std::alloc::Layout",
+            "std::alloc::System",
+            "std::any::TypeId",
+            "std::ascii::EscapeDefault",
+            "std::cell::Cell",
+            "std::char::DecodeUtf16",
+            "std::char::EscapeDefault",
+            "std::char::EscapeUnicode",
+            "std::char::ToLowercase",
+            "std::char::ToUppercase",
+            "std::cmp::Reverse",
+            "std::collections::BTreeMap",
+            "std::collections::BTreeSet",
+            "std::collections::BinaryHeap",
+            "std::collections::HashMap",
+            "std::collections::HashSet",
+            "std::collections::LinkedList",
+            "std::collections::VecDeque",
+            "std::env::Args",
+            "std::env::ArgsOs",
+            "std::env::SplitPaths",
+            "std::env::Vars",
+            "std::env::VarsOs",
+            "std::ffi::CStr",
+            "std::ffi::CString",
+            "std::ffi::OsStr",
+            "std::ffi::OsString",
+            "std::fmt::DebugList",
+            "std::fmt::DebugMap",
+            "std::fmt::DebugSet",
+            "std::fmt::DebugStruct",
+            "std::fmt::DebugTuple",
+            "std::fmt::Formatter",
+            "std::fs::DirBuilder",
+            "std::fs::DirEntry",
+            "std::fs::FileType",
+            "std::fs::Metadata",
+            "std::fs::OpenOptions",
+            "std::fs::Permissions",
+            "std::fs::ReadDir",
+            "std::hash::BuildHasherDefault",
+            "std::io::BufReader",
+            "std::io::BufWriter",
+            "std::io::Bytes",
+            "std::io::Chain",
+            "std::io::Cursor",
+            "std::io::Empty",
+            "std::io::IoSlice",
+            "std::io::IoSliceMut",
+            "std::io::LineWriter",
+            "std::io::Lines",
+            "std::io::Repeat",
+            "std::io::Sink",
+            "std::io::Split",
+            "std::io::Stderr",
+            "std::io::StderrLock",
+            "std::io::Stdin",
+            "std::io::StdinLock",
+            "std::io::Stdout",
+            "std::io::StdoutLock",
+            "std::io::Take",
+            "std::iter::Chain",
+            "std::iter::Cloned",
+            "std::iter::Copied",
+            "std::iter::Cycle",
+            "std::iter::Empty",
+            "std::iter::Enumerate",
+            "std::iter::Filter",
+            "std::iter::FilterMap",
+            "std::iter::Flatten",
+            "std::iter::FromFn",
+            "std::iter::Fuse",
+            "std::iter::Inspect",
+            "std::iter::Map",
+            "std::iter::Once",
+            "std::iter::OnceWith",
+            "std::iter::Peekable",
+            "std::iter::Repeat",
+            "std::iter::RepeatWith",
+            "std::iter::Rev",
+            "std::iter::Scan",
+            "std::iter::Skip",
+            "std::iter::SkipWhile",
+            "std::iter::StepBy",
+            "std::iter::Successors",
+            "std::iter::Take",
+            "std::iter::TakeWhile",
+            "std::iter::Zip",
+            "std::marker::PhantomData",
+            "std::marker::PhantomPinned",
+            "std::mem::Discriminant",
+            "std::mem::ManuallyDrop",
+            "std::net::Incoming",
+            "std::net::Ipv4Addr",
+            "std::net::Ipv6Addr",
+            "std::net::SocketAddrV4",
+            "std::net::SocketAddrV6",
+            "std::net::TcpListener",
+            "std::net::TcpStream",
+            "std::net::UdpSocket",
+            "std::num::NonZeroI8",
+            "std::num::NonZeroI16",
+            "std::num::NonZeroI32",
+            "std::num::NonZeroI64",
+            "std::num::NonZeroI128",
+            "std::num::NonZeroU8",
+            "std::num::NonZeroU16",
+            "std::num::NonZeroU32",
+            "std::num::NonZeroU64",
+            "std::num::NonZeroU128",
+            "std::num::NonZeroUsize",
+            "std::num::Wrapping",
+            "std::ops::Range",
+            "std::ops::RangeFrom",
+            "std::ops::RangeFull",
+            "std::ops::RangeInclusive",
+            "std::ops::RangeTo",
+            "std::ops::RangeToInclusive",
+            "std::panic::AssertUnwindSafe",
+            "std::panic::Location",
+            "std::panic::PanicInfo",
+            "std::path::Ancestors",
+            "std::path::Components",
+            "std::path::PathBuf",
+            "std::path::PrefixComponent",
+            "std::pin::Pin",
+            "std::process::Child",
+            "std::process::ChildStderr",
+            "std::process::ChildStdin",
+            "std::process::ChildStdout",
+            "std::process::Command",
+            "std::process::ExitStatus",
+            "std::process::Output",
+            "std::process::Stdio",
+            "std::ptr::NonNull",
+            "std::rc::Rc",
+            "std::rc::Weak",
+            "std::str::Bytes",
+            "std::str::CharIndices",
+            "std::str::Chars",
+            "std::str::EncodeUtf16",
+            "std::str::EscapeDefault",
+            "std::str::EscapeUnicode",
+            "std::str::Lines",
+            "std::str::MatchIndices",
+            "std::str::RMatchIndices",
+            "std::str::RMatches",
+            "std::str::RSplit",
+            "std::str::RSplitN",
+            "std::str::RSplitTerminator",
+            "std::str::Split",
+            "std::str::SplitAsciiWhitespace",
+            "std::str::SplitN",
+            "std::str::SplitTerminator",
+            "std::str::SplitWhitespace",
+            "std::string::Drain",
+            "std::sync::Arc",
+            "std::sync::Barrier",
+            "std::sync::BarrierWaitResult",
+            "std::sync::Condvar",
+            "std::sync::Mutex",
+            "std::sync::MutexGuard",
+            "std::sync::Once",
+            "std::sync::RwLock",
+            "std::sync::RwLockReadGuard",
+            "std::sync::RwLockWriteGuard",
+            "std::sync::WaitTimeoutResult",
+            "std::sync::Weak",
+            "std::task::Context",
+            "std::task::RawWaker",
+            "std::task::RawWakerVTable",
+            "std::task::Waker",
+            "std::thread::Builder",
+            "std::thread::JoinHandle",
+            "std::thread::LocalKey",
+            "std::thread::Thread",
+            "std::thread::ThreadId",
+            "std::time::Duration",
+            "std::time::Instant",
+            "std::time::SystemTime",
+        ];
+
+        let mut structs = Vec::new();
+        // abort for single character type names
+        if needle.len() < 2 {
+            return structs;
+        }
+        for item in libstd_structs.iter() {
+            // check the struct name in the module path
+            let struct_path: Vec<&str> = item.split("::").collect();
+            // case-insensitive comparison of names
+            if needle.to_lowercase() == struct_path.last().unwrap().to_lowercase() {
+                structs.push(item.to_string());
+            }
+        }
+        structs
     }
 
     /// Check if the source is call expression and the first argument is `self`. If true,

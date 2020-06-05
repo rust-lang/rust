@@ -1,0 +1,139 @@
+error[E0412]: cannot find type `arc` in this scope
+  --> $DIR/sync.rs:4:17
+   |
+LL | fn test_arc(_x: arc<()>){}
+   |                 ^^^ not found in this scope
+   |
+help: did you mean `std::sync::Arc`?
+   |
+LL | fn test_arc(_x: std::sync::Arc<()>){}
+   |                 ^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `barrier` in this scope
+  --> $DIR/sync.rs:6:21
+   |
+LL | fn test_barrier(_x: barrier<()>){}
+   |                     ^^^^^^^ not found in this scope
+   |
+help: did you mean `std::sync::Barrier`?
+   |
+LL | fn test_barrier(_x: std::sync::Barrier<()>){}
+   |                     ^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `BarrierwaitResult` in this scope
+  --> $DIR/sync.rs:8:17
+   |
+LL | fn test_bwr(_x: BarrierwaitResult<()>){}
+   |                 ^^^^^^^^^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::sync::BarrierWaitResult`?
+   |
+LL | fn test_bwr(_x: std::sync::BarrierWaitResult<()>){}
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `CondVar` in this scope
+  --> $DIR/sync.rs:10:18
+   |
+LL | fn test_cvar(_x: CondVar<()>){}
+   |                  ^^^^^^^ not found in this scope
+   |
+help: did you mean `std::sync::Condvar`?
+   |
+LL | fn test_cvar(_x: std::sync::Condvar<()>){}
+   |                  ^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `mutex` in this scope
+  --> $DIR/sync.rs:12:19
+   |
+LL | fn test_mutex(_x: mutex<()>){}
+   |                   ^^^^^ not found in this scope
+   |
+help: did you mean `std::sync::Mutex`?
+   |
+LL | fn test_mutex(_x: std::sync::Mutex<()>){}
+   |                   ^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `Mutexguard` in this scope
+  --> $DIR/sync.rs:14:24
+   |
+LL | fn test_mutexguard(_x: Mutexguard<()>){}
+   |                        ^^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::sync::MutexGuard`?
+   |
+LL | fn test_mutexguard(_x: std::sync::MutexGuard<()>){}
+   |                        ^^^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `once` in this scope
+  --> $DIR/sync.rs:16:18
+   |
+LL | fn test_once(_x: once<()>){}
+   |                  ^^^^ not found in this scope
+   |
+help: did you mean one of these?:
+   |
+LL | fn test_once(_x: std::iter::Once<()>){}
+   |                  ^^^^^^^^^^^^^^^
+LL | fn test_once(_x: std::sync::Once<()>){}
+   |                  ^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `RWlock` in this scope
+  --> $DIR/sync.rs:18:17
+   |
+LL | fn test_rwl(_x: RWlock<()>){}
+   |                 ^^^^^^ not found in this scope
+   |
+help: did you mean `std::sync::RwLock`?
+   |
+LL | fn test_rwl(_x: std::sync::RwLock<()>){}
+   |                 ^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `RWlockReadGuard` in this scope
+  --> $DIR/sync.rs:20:19
+   |
+LL | fn test_rwlrg(_x: RWlockReadGuard<()>){}
+   |                   ^^^^^^^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::sync::RwLockReadGuard`?
+   |
+LL | fn test_rwlrg(_x: std::sync::RwLockReadGuard<()>){}
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `RWlockWriteGuard` in this scope
+  --> $DIR/sync.rs:22:19
+   |
+LL | fn test_rwlwg(_x: RWlockWriteGuard<()>){}
+   |                   ^^^^^^^^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::sync::RwLockWriteGuard`?
+   |
+LL | fn test_rwlwg(_x: std::sync::RwLockWriteGuard<()>){}
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `WaittimeoutResult` in this scope
+  --> $DIR/sync.rs:24:17
+   |
+LL | fn test_wtr(_x: WaittimeoutResult<()>){}
+   |                 ^^^^^^^^^^^^^^^^^ not found in this scope
+   |
+help: did you mean `std::sync::WaitTimeoutResult`?
+   |
+LL | fn test_wtr(_x: std::sync::WaitTimeoutResult<()>){}
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `weak` in this scope
+  --> $DIR/sync.rs:26:18
+   |
+LL | fn test_weak(_x: weak<()>){}
+   |                  ^^^^ not found in this scope
+   |
+help: did you mean one of these?:
+   |
+LL | fn test_weak(_x: std::rc::Weak<()>){}
+   |                  ^^^^^^^^^^^^^
+LL | fn test_weak(_x: std::sync::Weak<()>){}
+   |                  ^^^^^^^^^^^^^^^
+
+error: aborting due to 12 previous errors
+
+For more information about this error, try `rustc --explain E0412`.
