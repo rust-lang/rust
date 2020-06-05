@@ -569,6 +569,67 @@ impl<T> Option<T> {
         }
     }
 
+    /// Transforms the `Option<T>` into a [`Result<O, T>`], mapping [`Some(v)`] to
+    /// [`Err(v)`] and [`None`] to [`Ok(ok)`].
+    ///
+    /// Arguments passed to `err_or` are eagerly evaluated; if you are passing the
+    /// result of a function call, it is recommended to use [`err_or_else`], which is
+    /// lazily evaluated.
+    ///
+    /// [`Result<O, T>`]: ../../std/result/enum.Result.html
+    /// [`Err(v)`]: ../../std/result/enum.Result.html#variant.Err
+    /// [`Ok(ok)`]: ../../std/result/enum.Result.html#variant.Ok
+    /// [`None`]: #variant.None
+    /// [`Some(v)`]: #variant.Some
+    /// [`err_or_else`]: #method.err_or_else
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(option_err_or)]
+    /// let x = Some("foo");
+    /// assert_eq!(x.err_or(0), Err("foo"));
+    ///
+    /// let x: Option<&str> = None;
+    /// assert_eq!(x.err_or(0), Ok(0));
+    /// ```
+    #[inline]
+    #[unstable(feature = "option_err_or", issue = "none")]
+    pub fn err_or<O>(self, ok: O) -> Result<O, T> {
+        match self {
+            Some(v) => Err(v),
+            None => Ok(ok),
+        }
+    }
+
+    /// Transforms the `Option<T>` into a [`Result<O, T>`], mapping [`Some(v)`] to
+    /// [`Err(v)`] and [`None`] to [`Ok(ok())`].
+    ///
+    /// [`Result<O, T>`]: ../../std/result/enum.Result.html
+    /// [`Err(v)`]: ../../std/result/enum.Result.html#variant.Err
+    /// [`Ok(ok())`]: ../../std/result/enum.Result.html#variant.Ok
+    /// [`None`]: #variant.None
+    /// [`Some(v)`]: #variant.Some
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(option_err_or)]
+    /// let x = Some("foo");
+    /// assert_eq!(x.err_or_else(|| 0), Err("foo"));
+    ///
+    /// let x: Option<&str> = None;
+    /// assert_eq!(x.err_or_else(|| 0), Ok(0));
+    /// ```
+    #[inline]
+    #[unstable(feature = "option_err_or", issue = "none")]
+    pub fn err_or_else<O, F: FnOnce() -> O>(self, ok: F) -> Result<O, T> {
+        match self {
+            Some(v) => Err(v),
+            None => Ok(ok()),
+        }
+    }
+
     /////////////////////////////////////////////////////////////////////////
     // Iterator constructors
     /////////////////////////////////////////////////////////////////////////
