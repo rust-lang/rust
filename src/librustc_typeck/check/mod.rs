@@ -3813,7 +3813,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         trait_ref: ty::PolyTraitRef<'tcx>,
         expected_vid: ty::TyVid,
     ) -> bool {
-        let self_ty = self.shallow_resolve(trait_ref.self_ty());
+        let self_ty = self.shallow_resolve(trait_ref.skip_binder().self_ty());
         debug!(
             "self_type_matches_expected_vid(trait_ref={:?}, self_ty={:?}, expected_vid={:?})",
             trait_ref, self_ty, expected_vid
