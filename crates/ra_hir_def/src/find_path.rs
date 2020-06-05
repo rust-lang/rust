@@ -37,7 +37,7 @@ impl ModPath {
     }
 }
 
-pub(crate) fn find_path_inner(
+fn find_path_inner(
     db: &dyn DefDatabase,
     item: ItemInNs,
     from: ModuleId,
