@@ -14,6 +14,7 @@ pub fn target() -> TargetResult {
         linker_flavor: LinkerFlavor::Gcc,
 
         options: TargetOptions {
+            executables: true,
             cpu: "esp8266".to_string(),
             linker: Some("xtensa-lx106-elf-gcc".to_string()),
 
