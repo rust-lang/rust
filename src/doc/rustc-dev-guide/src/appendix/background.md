@@ -79,15 +79,157 @@ cycle.
 [*Static Program Analysis*](https://cs.au.dk/~amoeller/spa/) by Anders Møller
 and Michael I. Schwartzbach is an incredible resource!
 
-*to be written*
+_Dataflow analysis_ is a type of static analysis that is common in many
+compilers. It describes a general technique, rather than a particular analysis.
+
+The basic idea is that we can walk over a [CFG](#cfg) and keep track of what
+some value could be. At the end of the walk, we might have shown that some
+claim is true or not necessarily true (e.g. "this variable must be
+initialized"). `rustc` tends to do dataflow analyses over the MIR, since that
+is already a CFG.
+
+For example, suppose we want to check that `x` is initialized before it is used
+in this snippet:
+
+```rust,ignore
+fn foo() {
+    let mut x;
+
+    if some_cond {
+        x = 1;
+    }
+
+    dbg!(x);
+}
+```
+
+A CFG for this code might look like this:
+
+```txt
+ +------+
+ | Init | (A)
+ +------+
+    |   \
+    |   if some_cond
+  else    \ +-------+
+    |      \| x = 1 | (B)
+    |       +-------+
+    |      /
+ +---------+
+ | dbg!(x) | (C)
+ +---------+
+```
+
+We can do the dataflow analysis as follows: we will start off with a flag `init`
+which indicates if we know `x` is initialized. As we walk the CFG, we will
+update the flag. At the end, we can check its value.
+
+So first, in block (A), the variable `x` is declared but not initialized, so
+`init = false`. In block (B), we initialize the value, so we know that `x` is
+initialized. So at the end of (B), `init = true`.
+
+Block (C) is where things get interesting. Notice that there are two incoming
+edges, one from (A) and one from (B), corresponding to whether `some_cond` is true or not.
+But we cannot know that! It could be the case the `some_cond` is always true,
+so that `x` is actually always initialized. It could also be the case that
+`some_cond` depends on something random (e.g. the time), so `x` may not be
+initialized. In general, we cannot know statically (due to [Rice's
+Theorem][rice]).  So what should the value of `init` be in block (C)?
+
+[rice]: https://en.wikipedia.org/wiki/Rice%27s_theorem
+
+Generally, in dataflow analyses, if a block has multiple parents (like (C) in
+our example), its dataflow value will be some function of all its parents (and
+of course, what happens in (C)).  Which function we use depends on the analysis
+we are doing.
+
+In this case, we want to be able to prove definitively that `x` must be
+initialized before use. This forces us to be conservative and assume that
+`some_cond` might be false sometimes. So our "merging function" is "and". That
+is, `init = true` in (C) if `init = true` in (A) _and_ in (B) (or if `x` is
+initialized in (C)). But this is not the case; in particular, `init = false` in
+(A), and `x` is not initialized in (C).  Thus, `init = false` in (C); we can
+report an error that "`x` may not be initialized before use".
+
+There is definitely a lot more that can be said about dataflow analyses. There is an
+extensive body of research literature on the topic, including a lot of theory.
+We only discussed a forwards analysis, but backwards dataflow analysis is also
+useful. For example, rather than starting from block (A) and moving forwards,
+we might have started with the usage of `x` and moved backwards to try to find
+its initialization.
 
 <a name="quantified"></a>
 
 ## What is "universally quantified"? What about "existentially quantified"?
 
-*to be written*
+In math, a predicate may be _universally quantified_ or _existentially
+quantified_:
+
+- _Universal_ quantification:
+  - the predicate holds if it is true for all possible inputs.
+  - Traditional notation: ∀x: P(x). Read as "for all x, P(x) holds".
+- _Existential_ quantification:
+  - the predicate holds if there is any input where it is true, i.e., there
+    only has to be a single input.
+  - Traditional notation: ∃x: P(x). Read as "there exists x such that P(x) holds".
+
+In Rust, they come up in type checking and trait solving. For example,
+
+```rust,ignore
+fn foo<T>()
+```
+This function claims that the function is well-typed for all types `T`: `∀ T: well_typed(foo)`.
+
+Another example:
+
+```rust,ignore
+fn foo<'a>(_: &'a usize)
+```
+This function claims that for any lifetime `'a` (determined by the
+caller), it is well-typed: `∀ 'a: well_typed(foo)`.
+
+Another example:
+
+```rust,ignore
+fn foo<F>()
+where for<'a> F: Fn(&'a u8)
+```
+This function claims that it is well-typed for all types `F` such that for all
+lifetimes `'a`, `F: Fn(&'a u8)`: `∀ F: ∀ 'a: (F: Fn(&'a u8)) => well_typed(foo)`.
+
+One more example:
+
+```rust,ignore
+fn foo(_: dyn Debug)
+```
+This function claims that there exists some type `T` that implements `Debug`
+such that the function is well-typed: `∃ T:  (T: Debug) and well_typed(foo)`.
 
 <a name="variance"></a>
+
+## What is a DeBruijn Index?
+
+DeBruijn indices are a way of representing which variables are bound in
+which binders using only integers. They were [originally invented][wikideb] for
+use in lambda calculus evaluation. In `rustc`, we use a similar idea for the
+[representation of generic types][sub].
+
+[wikideb]: https://en.wikipedia.org/wiki/De_Bruijn_index
+[sub]: ../generics.md
+
+Here is a basic example of how DeBruijn indices might be used for closures (we
+don't actually do this in `rustc` though):
+
+```rust,ignore
+|x| {
+    f(x) // de Bruijn index of `x` is 1 because `x` is bound 1 level up
+
+    |y| {
+        g(x, y) // index of `x` is 2 because it is bound 2 levels up
+                // index of `y` is 1 because it is bound 1 level up
+    }
+}
+```
 
 ## What is co- and contra-variance?
 

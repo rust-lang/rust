@@ -76,6 +76,7 @@
         - [Generic arguments](./generic_arguments.md)
     - [Type inference](./type-inference.md)
     - [Trait solving](./traits/resolution.md)
+        - [Early and Late Bound Parameters](./early-late-bound.md)
         - [Higher-ranked trait bounds](./traits/hrtb.md)
         - [Caching subtleties](./traits/caching.md)
         - [Specialization](./traits/specialization.md)

@@ -15,6 +15,7 @@ CTFE <div id="ctfe"/>                    |  Short for Compile-Time Function Eval
 cx <div id="cx"/>                        |  We tend to use "cx" as an abbreviation for context. See also `tcx`, `infcx`, etc.
 DAG <div id="dag"/>                      |  A directed acyclic graph is used during compilation to keep track of dependencies between queries. ([see more](../queries/incremental-compilation.html))
 data-flow analysis <div id="data-flow"/> |  A static analysis that figures out what properties are true at each point in the control-flow of a program; see [the background chapter for more](./background.html#dataflow).
+DeBruijn Index <div id="debruijn">       |  A technique for describing which binder a variable is bound by using only integers. It has the benefit that it is invariant under variable renaming. ([see more](./background.md#debruijn))
 DefId <div id="def-id"/>                 |  An index identifying a definition (see `librustc_middle/hir/def_id.rs`). Uniquely identifies a `DefPath`. See [the HIR chapter for more](../hir.html#identifiers-in-the-hir).
 Double pointer <div id="double-ptr"/>    |  A pointer with additional metadata. See "fat pointer" for more.
 drop glue <div id="drop-glue"/>          |  (internal) compiler-generated instructions that handle calling the destructors (`Drop`) for data types.
