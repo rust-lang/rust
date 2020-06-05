@@ -579,7 +579,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                     ref_id: def_id.or(decl_id).map(id_from_def_id).unwrap_or_else(null_id),
                 }))
             }
-            hir::ExprKind::Path(hir::QPath::Resolved(_, path)) => {
+            hir::ExprKind::Path(ref path) => {
                 self.get_path_data(expr.hir_id, path).map(Data::RefData)
             }
             _ => {
@@ -631,8 +631,12 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
         }
     }
 
-    pub fn get_path_data(&self, id: hir::HirId, path: &hir::Path<'_>) -> Option<Ref> {
-        path.segments.last().and_then(|seg| {
+    pub fn get_path_data(&self, id: hir::HirId, path: &hir::QPath<'_>) -> Option<Ref> {
+        let segment = match path {
+            hir::QPath::Resolved(_, path) => path.segments.last(),
+            hir::QPath::TypeRelative(_, segment) => Some(*segment),
+        };
+        segment.and_then(|seg| {
             self.get_path_segment_data(seg).or_else(|| self.get_path_segment_data_with_id(seg, id))
         })
     }

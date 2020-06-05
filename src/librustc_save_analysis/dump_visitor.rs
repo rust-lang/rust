@@ -199,23 +199,23 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         self.dumper.compilation_opts(data);
     }
 
-    fn write_sub_paths(&mut self, path: &'tcx hir::Path<'tcx>) {
-        for seg in path.segments {
+    fn write_segments(&mut self, segments: impl IntoIterator<Item = &'tcx hir::PathSegment<'tcx>>) {
+        for seg in segments {
             if let Some(data) = self.save_ctxt.get_path_segment_data(seg) {
                 self.dumper.dump_ref(data);
             }
         }
     }
 
+    fn write_sub_paths(&mut self, path: &'tcx hir::Path<'tcx>) {
+        self.write_segments(path.segments)
+    }
+
     // As write_sub_paths, but does not process the last ident in the path (assuming it
     // will be processed elsewhere). See note on write_sub_paths about global.
     fn write_sub_paths_truncated(&mut self, path: &'tcx hir::Path<'tcx>) {
         if let [segments @ .., _] = path.segments {
-            for seg in segments {
-                if let Some(data) = self.save_ctxt.get_path_segment_data(seg) {
-                    self.dumper.dump_ref(data);
-                }
-            }
+            self.write_segments(segments)
         }
     }
 
@@ -643,7 +643,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         self.nest_tables(map.local_def_id(item.hir_id), |v| {
             v.visit_ty(&typ);
             if let &Some(ref trait_ref) = trait_ref {
-                v.process_path(trait_ref.hir_ref_id, &trait_ref.path);
+                v.process_path(trait_ref.hir_ref_id, &hir::QPath::Resolved(None, &trait_ref.path));
             }
             v.process_generic_params(generics, "", item.hir_id);
             for impl_item in impl_items {
@@ -746,7 +746,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         }
     }
 
-    fn dump_path_ref(&mut self, id: hir::HirId, path: &hir::Path<'tcx>) {
+    fn dump_path_ref(&mut self, id: hir::HirId, path: &hir::QPath<'tcx>) {
         let path_data = self.save_ctxt.get_path_data(id, path);
         if let Some(path_data) = path_data {
             self.dumper.dump_ref(path_data);
@@ -760,14 +760,30 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         }
     }
 
-    fn process_path(&mut self, id: hir::HirId, path: &'tcx hir::Path<'tcx>) {
-        if self.span.filter_generated(path.span) {
+    fn process_path(&mut self, id: hir::HirId, path: &hir::QPath<'tcx>) {
+        let span = match path {
+            hir::QPath::Resolved(_, path) => path.span,
+            hir::QPath::TypeRelative(_, segment) => segment.ident.span,
+        };
+        if self.span.filter_generated(span) {
             return;
         }
         self.dump_path_ref(id, path);
 
         // Type arguments
-        for seg in path.segments {
+        let segments = match path {
+            hir::QPath::Resolved(ty, path) => {
+                if let Some(ty) = ty {
+                    self.visit_ty(ty);
+                }
+                path.segments
+            }
+            hir::QPath::TypeRelative(ty, segment) => {
+                self.visit_ty(ty);
+                std::slice::from_ref(*segment)
+            }
+        };
+        for seg in segments {
             if let Some(ref generic_args) = seg.args {
                 for arg in generic_args.args {
                     if let hir::GenericArg::Type(ref ty) = arg {
@@ -777,7 +793,9 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
             }
         }
 
-        self.write_sub_paths_truncated(path);
+        if let hir::QPath::Resolved(_, path) = path {
+            self.write_sub_paths_truncated(path);
+        }
     }
 
     fn process_struct_lit(
@@ -931,9 +949,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         }
 
         for (id, ref path) in collector.collected_paths {
-            if let hir::QPath::Resolved(_, path) = path {
-                self.process_path(id, path);
-            }
+            self.process_path(id, path);
         }
     }
 
@@ -1135,7 +1151,10 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
     fn process_bounds(&mut self, bounds: hir::GenericBounds<'tcx>) {
         for bound in bounds {
             if let hir::GenericBound::Trait(ref trait_ref, _) = *bound {
-                self.process_path(trait_ref.trait_ref.hir_ref_id, &trait_ref.trait_ref.path)
+                self.process_path(
+                    trait_ref.trait_ref.hir_ref_id,
+                    &hir::QPath::Resolved(None, &trait_ref.trait_ref.path),
+                )
             }
         }
     }
@@ -1330,13 +1349,16 @@ impl<'l, 'tcx> Visitor<'tcx> for DumpVisitor<'l, 'tcx> {
     fn visit_ty(&mut self, t: &'tcx hir::Ty<'tcx>) {
         self.process_macro_use(t.span);
         match t.kind {
-            hir::TyKind::Path(hir::QPath::Resolved(_, path)) => {
+            hir::TyKind::Path(ref path) => {
                 if generated_code(t.span) {
                     return;
                 }
 
                 if let Some(id) = self.lookup_def_id(t.hir_id) {
-                    let sub_span = path.segments.last().unwrap().ident.span;
+                    let sub_span = match path {
+                        hir::QPath::Resolved(_, path) => path.segments.last().unwrap().ident.span,
+                        hir::QPath::TypeRelative(_, segment) => segment.ident.span,
+                    };
                     let span = self.span_from_span(sub_span);
                     self.dumper.dump_ref(Ref {
                         kind: RefKind::Type,
@@ -1345,8 +1367,10 @@ impl<'l, 'tcx> Visitor<'tcx> for DumpVisitor<'l, 'tcx> {
                     });
                 }
 
-                self.write_sub_paths_truncated(path);
-                intravisit::walk_path(self, path);
+                if let hir::QPath::Resolved(_, path) = path {
+                    self.write_sub_paths_truncated(path);
+                }
+                intravisit::walk_qpath(self, path, t.hir_id, t.span);
             }
             hir::TyKind::Array(ref ty, ref anon_const) => {
                 self.visit_ty(ty);
@@ -1354,6 +1378,10 @@ impl<'l, 'tcx> Visitor<'tcx> for DumpVisitor<'l, 'tcx> {
                 self.nest_tables(self.tcx.hir().local_def_id(anon_const.hir_id), |v| {
                     v.visit_expr(&map.body(anon_const.body).value)
                 });
+            }
+            hir::TyKind::Def(item_id, _) => {
+                let item = self.tcx.hir().item(item_id.id);
+                self.nest_tables(self.tcx.hir().local_def_id(item_id.id), |v| v.visit_item(item));
             }
             _ => intravisit::walk_ty(self, t),
         }
@@ -1432,8 +1460,8 @@ impl<'l, 'tcx> Visitor<'tcx> for DumpVisitor<'l, 'tcx> {
         self.visit_expr(&arm.body);
     }
 
-    fn visit_path(&mut self, p: &'tcx hir::Path<'tcx>, id: hir::HirId) {
-        self.process_path(id, p);
+    fn visit_qpath(&mut self, path: &'tcx hir::QPath<'tcx>, id: hir::HirId, _: Span) {
+        self.process_path(id, path);
     }
 
     fn visit_stmt(&mut self, s: &'tcx hir::Stmt<'tcx>) {
