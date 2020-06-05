@@ -697,6 +697,10 @@ rustc_queries! {
             storage(ArenaCacheSelector<'tcx>)
             cache_on_disk_if { true }
         }
+
+        query inline_exportable(def_id: DefId) -> bool {
+            desc { |tcx| "computing whether `{}` should be explicitly exported", tcx.def_path_str(def_id) }
+        }
     }
 
     Other {
