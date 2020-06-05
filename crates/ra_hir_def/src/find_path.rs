@@ -2,6 +2,7 @@
 
 use hir_expand::name::{known, AsName, Name};
 use ra_prof::profile;
+use rustc_hash::FxHashSet;
 use test_utils::mark;
 
 use crate::{
@@ -11,7 +12,6 @@ use crate::{
     visibility::Visibility,
     ModuleDefId, ModuleId,
 };
-use rustc_hash::FxHashSet;
 
 // FIXME: handle local items
 

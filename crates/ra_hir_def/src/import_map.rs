@@ -1,5 +1,10 @@
 //! A map of all publicly exported items in a crate.
 
+use std::{collections::hash_map::Entry, sync::Arc};
+
+use ra_db::CrateId;
+use rustc_hash::FxHashMap;
+
 use crate::{
     db::DefDatabase,
     item_scope::ItemInNs,
@@ -7,9 +12,6 @@ use crate::{
     visibility::Visibility,
     ModuleDefId, ModuleId,
 };
-use ra_db::CrateId;
-use rustc_hash::FxHashMap;
-use std::{collections::hash_map::Entry, sync::Arc};
 
 /// A map from publicly exported items to the path needed to import/name them from a downstream
 /// crate.

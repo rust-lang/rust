@@ -3,13 +3,13 @@
 
 use hir_expand::name::Name;
 use once_cell::sync::Lazy;
+use ra_db::CrateId;
 use rustc_hash::FxHashMap;
 
 use crate::{
     db::DefDatabase, per_ns::PerNs, visibility::Visibility, AdtId, BuiltinType, HasModule, ImplId,
     Lookup, MacroDefId, ModuleDefId, TraitId,
 };
-use ra_db::CrateId;
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct ItemScope {
