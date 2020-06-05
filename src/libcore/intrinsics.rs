@@ -1946,7 +1946,7 @@ extern "rust-intrinsic" {
     /// option is enabled. The placeholder is replaced with `llvm.instrprof.increment` during code
     /// generation.
     #[cfg(not(bootstrap))]
-    #[cfg_attr(not(bootstrap), lang = "count_code_region")]
+    #[lang = "count_code_region"]
     pub fn count_code_region(_index: u32);
 }
 
