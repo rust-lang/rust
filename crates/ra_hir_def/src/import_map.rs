@@ -78,7 +78,9 @@ impl ImportMap {
                         }
                     }
 
-                    // If we've just added a path to a module, descend into it.
+                    // If we've just added a path to a module, descend into it. We might traverse
+                    // modules multiple times, but only if the new path to it is shorter than the
+                    // first (else we `continue` above).
                     if let Some(ModuleDefId::ModuleId(mod_id)) = item.as_module_def_id() {
                         worklist.push((mod_id, mk_path()));
                     }
