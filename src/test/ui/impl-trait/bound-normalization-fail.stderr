@@ -21,7 +21,7 @@ help: consider constraining the associated type `<T as impl_trait::Trait>::Assoc
 LL |     fn foo_fail<T: Trait<Assoc = ()>>() -> impl FooLike<Output=T::Assoc> {
    |                         ^^^^^^^^^^^^
 
-error: `impl Trait` return type cannot contain a projection or `Self` that references lifetimes from a parent scope
+error[E0760]: `impl Trait` return type cannot contain a projection or `Self` that references lifetimes from a parent scope
   --> $DIR/bound-normalization-fail.rs:43:41
    |
 LL |     fn foo2_fail<'a, T: Trait<'a>>() -> impl FooLike<Output=T::Assoc> {
@@ -43,4 +43,5 @@ LL |     fn foo2_fail<'a, T: Trait<'a, Assoc = ()>>() -> impl FooLike<Output=T::
 
 error: aborting due to 3 previous errors; 1 warning emitted
 
-For more information about this error, try `rustc --explain E0271`.
+Some errors have detailed explanations: E0271, E0760.
+For more information about an error, try `rustc --explain E0271`.
