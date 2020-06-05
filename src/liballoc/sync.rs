@@ -1093,11 +1093,7 @@ impl<T: ?Sized> Clone for Arc<T> {
         // We abort because such a program is incredibly degenerate, and we
         // don't care to support it.
         if old_size > MAX_REFCOUNT {
-            // remove `unsafe` on bootstrap bump
-            #[cfg_attr(not(bootstrap), allow(unused_unsafe))]
-            unsafe {
-                abort();
-            }
+            abort();
         }
 
         Self::from_inner(self.ptr)
@@ -1616,11 +1612,7 @@ impl<T: ?Sized> Weak<T> {
 
             // See comments in `Arc::clone` for why we do this (for `mem::forget`).
             if n > MAX_REFCOUNT {
-                // remove `unsafe` on bootstrap bump
-                #[cfg_attr(not(bootstrap), allow(unused_unsafe))]
-                unsafe {
-                    abort();
-                }
+                abort();
             }
 
             // Relaxed is valid for the same reason it is on Arc's Clone impl
@@ -1767,10 +1759,7 @@ impl<T: ?Sized> Clone for Weak<T> {
 
         // See comments in Arc::clone() for why we do this (for mem::forget).
         if old_size > MAX_REFCOUNT {
-            #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // remove `unsafe` on bootstrap bump
-            unsafe {
-                abort();
-            }
+            abort();
         }
 
         Weak { ptr: self.ptr }

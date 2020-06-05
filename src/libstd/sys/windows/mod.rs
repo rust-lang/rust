@@ -314,8 +314,5 @@ pub fn abort_internal() -> ! {
         llvm_asm!("int $$0x29" :: "{ecx}"(7) ::: volatile); // 7 is FAST_FAIL_FATAL_APP_EXIT
         crate::intrinsics::unreachable();
     }
-    #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // remove `unsafe` on bootstrap bump
-    unsafe {
-        crate::intrinsics::abort();
-    }
+    crate::intrinsics::abort();
 }
