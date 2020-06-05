@@ -1,4 +1,16 @@
-// Example of coherence impls that we accept
+// Test that our leak-check is not smart enough to take implied bounds
+// into account (yet). Here we have two types that look like they
+// should not be equivalent, but because of the rules on implied
+// bounds we ought to know that, in fact, `'a = 'b` must always hold,
+// and hence they are.
+//
+// Rustc can't figure this out and hence it accepts the impls but
+// gives a future-compatibility warning (because we'd like to make
+// this an error someday).
+//
+// Note that while we would like to make this a hard error, we also
+// give the same warning for `coherence-wasm-bindgen.rs`, which ought
+// to be accepted.
 
 #![deny(coherence_leak_check)]
 

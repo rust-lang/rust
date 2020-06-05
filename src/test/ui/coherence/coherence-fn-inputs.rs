@@ -10,8 +10,6 @@
 // * `'c` can be the intersection of `'a` and `'b` (and there is always an intersection)
 // * `'a` and `'b` can both be equal to `'c`
 
-#![deny(coherence_leak_check)]
-
 trait Trait {}
 impl Trait for for<'a, 'b> fn(&'a u32, &'b u32) {}
 impl Trait for for<'c> fn(&'c u32, &'c u32) {
