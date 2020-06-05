@@ -523,8 +523,6 @@ fn main() {
     let vb = B;
     message();
 }
-
-fn main() { message(); }
 "###,
     )
     .with_config(|config| {
@@ -552,34 +550,16 @@ fn main() { message(); }
         },
         json!([{
             "originSelectionRange": {
-                "end": {
-                    "character": 10,
-                    "line": 12
-                },
-                "start": {
-                    "character": 8,
-                    "line": 12
-                }
+                "end": { "character": 10, "line": 12 },
+                "start": { "character": 8, "line": 12 }
             },
             "targetRange": {
-                "end": {
-                    "character": 9,
-                    "line": 3
-                },
-                "start": {
-                    "character": 0,
-                    "line": 2
-                }
+                "end": { "character": 9, "line": 3 },
+                "start": { "character": 0, "line": 2 }
             },
             "targetSelectionRange": {
-                "end": {
-                    "character": 8,
-                    "line": 3
-                },
-                "start": {
-                    "character": 7,
-                    "line": 3
-                }
+                "end": { "character": 8, "line": 3 },
+                "start": { "character": 7, "line": 3 }
             },
             "targetUri": "file:///[..]src/main.rs"
         }]),
@@ -595,34 +575,16 @@ fn main() { message(); }
         },
         json!([{
             "originSelectionRange": {
-                "end": {
-                    "character": 10,
-                    "line": 13
-                },
-                "start": {
-                    "character": 8,
-                    "line":13
-                }
+                "end": { "character": 10, "line": 13 },
+                "start": { "character": 8, "line":13 }
             },
             "targetRange": {
-                "end": {
-                    "character": 9,
-                    "line": 7
-                },
-                "start": {
-                    "character": 0,
-                    "line":6
-                }
+                "end": { "character": 9, "line": 7 },
+                "start": { "character": 0, "line":6 }
             },
             "targetSelectionRange": {
-                "end": {
-                    "character": 8,
-                    "line": 7
-                },
-                "start": {
-                    "character": 7,
-                    "line": 7
-                }
+                "end": { "character": 8, "line": 7 },
+                "start": { "character": 7, "line": 7 }
             },
             "targetUri": "file:///[..]src/main.rs"
         }]),
