@@ -149,11 +149,10 @@ fn get_param_name_hints(
         ast::Expr::MethodCallExpr(expr) => expr.arg_list()?.args(),
         _ => return None,
     };
-    let args_count = args.clone().count();
 
     let fn_signature = get_fn_signature(sema, &expr)?;
     let n_params_to_skip =
-        if fn_signature.has_self_param && fn_signature.parameter_names.len() > args_count {
+        if fn_signature.has_self_param && matches!(&expr, ast::Expr::MethodCallExpr(_)) {
             1
         } else {
             0
