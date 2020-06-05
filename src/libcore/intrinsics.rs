@@ -1943,6 +1943,12 @@ extern "rust-intrinsic" {
     pub fn miri_start_panic(payload: *mut u8) -> !;
 }
 
+// Since `count_code_region` is lang_item, it must have a function body that the compiler can use
+// to register its DefId with the lang_item entry. This function body is never actually called
+// (and is therefore implemented as an aborting stub) because it is replaced with the
+// LLVM intrinsic `llvm.instrprof.increment` by
+// `rustc_codegen_llvm::intrinsic::IntrinsicCallMethods::codegen_intrinsic_call()`.
+#[doc(hidden)]
 #[cfg(not(bootstrap))]
 #[cfg_attr(not(bootstrap), lang = "count_code_region")]
 pub fn count_code_region(_index: u32) {
