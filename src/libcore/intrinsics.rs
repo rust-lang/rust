@@ -1943,16 +1943,17 @@ extern "rust-intrinsic" {
     pub fn miri_start_panic(payload: *mut u8) -> !;
 }
 
-// Since `count_code_region` is lang_item, it must have a function body that the compiler can use
-// to register its DefId with the lang_item entry. This function body is never actually called
-// (and is therefore implemented as an aborting stub) because it is replaced with the
-// LLVM intrinsic `llvm.instrprof.increment` by
-// `rustc_codegen_llvm::intrinsic::IntrinsicCallMethods::codegen_intrinsic_call()`.
-#[doc(hidden)]
+/// Defines the `count_code_region` intrinsic as a `LangItem`. `LangItem`s require a function body
+/// to register its DefId with the LangItem entry. The function body is never actually called (and
+/// is therefore implemented as an aborting stub) because it is replaced with the LLVM intrinsic
+/// `llvm.instrprof.increment` by
+/// `rustc_codegen_llvm::intrinsic::IntrinsicCallMethods::codegen_intrinsic_call()`.
 #[cfg(not(bootstrap))]
 #[cfg_attr(not(bootstrap), lang = "count_code_region")]
-pub fn count_code_region(_index: u32) {
-    #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // remove `unsafe` on bootstrap bump
+fn count_code_region(_index: u32) {
+    // remove `unsafe` (and safety comment) on bootstrap bump
+    #[cfg_attr(not(bootstrap), allow(unused_unsafe))]
+    // SAFETY: the `abort` intrinsic has no requirements to be called.
     unsafe {
         abort()
     }
