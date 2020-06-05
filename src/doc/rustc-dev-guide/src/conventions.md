@@ -7,14 +7,18 @@ chapter covers [formatting](#formatting), [coding for correctness](#cc),
 
 # Formatting and the tidy script
 
-rustc is slowly moving towards the [Rust standard coding style][fmt];
-at the moment, however, it follows a rather more *chaotic* style.  We
-do have some mandatory formatting conventions, which are automatically
-enforced by a script we affectionately call the "tidy" script.  The
-tidy script runs automatically when you do `./x.py test` and can be run
+rustc is moving towards the [Rust standard coding style][fmt].
+This is enforced by the "tidy" script and can be mostly
+automated using `./x.py fmt`.
+
+As the output of [rustfmt] is not completely stable,
+formatting this repository using `cargo fmt` is not recommended.
+
+The tidy script runs automatically when you do `./x.py test` and can be run
 in isolation with `./x.py test tidy`.
 
 [fmt]: https://github.com/rust-dev-tools/fmt-rfcs
+[rustfmt]:https://github.com/rust-lang/rustfmt
 
 <a name="copyright"></a>
 
@@ -114,12 +118,9 @@ you introduce some code following one strategy, then change it
 dramatically (versus adding to it) in a later commit, that
 'back-and-forth' can be confusing.
 
-**Only run rustfmt on new content.** One day, we might enforce formatting
-for the rust-lang/rust repo. Meanwhile, we prefer that rustfmt not be run
-on existing code as that will generate large diffs and will make git blame
-harder to sift through. However, running `rustfmt` on new content, e.g. a
-new file or a largely new part of a file is ok. Small formatting adjustments
-nearby code you are already changing for other purposes are also ok.
+**Format liberally.** While only the final commit of a PR must be correctly
+formatted, it is both easier to review and less noisy to format each commit
+individually using `./x.py fmt`.
 
 **No merges.** We do not allow merge commits into our history, other
 than those by bors. If you get a merge conflict, rebase instead via a
