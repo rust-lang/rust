@@ -13,14 +13,43 @@ use ra_ide_db::{
 use ra_syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, TokenAtOffset};
 
 use crate::{
-    display::{macro_label, rust_code_markup, rust_code_markup_with_doc, ShortLabel},
-    FilePosition, RangeInfo,
+    display::{macro_label, rust_code_markup, rust_code_markup_with_doc, ShortLabel, ToNav},
+    FilePosition, NavigationTarget, RangeInfo,
 };
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct HoverConfig {
+    pub implementations: bool,
+}
+
+impl Default for HoverConfig {
+    fn default() -> Self {
+        Self { implementations: true }
+    }
+}
+
+impl HoverConfig {
+    pub const NO_ACTIONS: Self = Self { implementations: false };
+
+    pub fn any(&self) -> bool {
+        self.implementations
+    }
+
+    pub fn none(&self) -> bool {
+        !self.any()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum HoverAction {
+    Implementaion(FilePosition),
+}
 
 /// Contains the results when hovering over an item
 #[derive(Debug, Default)]
 pub struct HoverResult {
     results: Vec<String>,
+    actions: Vec<HoverAction>,
 }
 
 impl HoverResult {
@@ -48,10 +77,20 @@ impl HoverResult {
         &self.results
     }
 
+    pub fn actions(&self) -> &[HoverAction] {
+        &self.actions
+    }
+
+    pub fn push_action(&mut self, action: HoverAction) {
+        self.actions.push(action);
+    }
+
     /// Returns the results converted into markup
     /// for displaying in a UI
+    ///
+    /// Does not process actions!
     pub fn to_markup(&self) -> String {
-        self.results.join("\n\n---\n")
+        self.results.join("\n\n___\n")
     }
 }
 
@@ -82,6 +121,10 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
         res.extend(hover_text_from_name_kind(db, name_kind));
 
         if !res.is_empty() {
+            if let Some(action) = show_implementations_action(db, name_kind) {
+                res.push_action(action);
+            }
+
             return Some(RangeInfo::new(range, res));
         }
     }
@@ -110,6 +153,26 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
     res.extend(Some(rust_code_markup(&ty.display(db))));
     let range = sema.original_range(&node).range;
     Some(RangeInfo::new(range, res))
+}
+
+fn show_implementations_action(db: &RootDatabase, def: Definition) -> Option<HoverAction> {
+    fn to_action(nav_target: NavigationTarget) -> HoverAction {
+        HoverAction::Implementaion(FilePosition {
+            file_id: nav_target.file_id(),
+            offset: nav_target.range().start(),
+        })
+    }
+
+    match def {
+        Definition::ModuleDef(it) => match it {
+            ModuleDef::Adt(Adt::Struct(it)) => Some(to_action(it.to_nav(db))),
+            ModuleDef::Adt(Adt::Union(it)) => Some(to_action(it.to_nav(db))),
+            ModuleDef::Adt(Adt::Enum(it)) => Some(to_action(it.to_nav(db))),
+            ModuleDef::Trait(it) => Some(to_action(it.to_nav(db))),
+            _ => None,
+        },
+        _ => None,
+    }
 }
 
 fn hover_text(
@@ -228,6 +291,8 @@ fn pick_best(tokens: TokenAtOffset<SyntaxToken>) -> Option<SyntaxToken> {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     use ra_db::FileLoader;
     use ra_syntax::TextRange;
 
@@ -241,7 +306,14 @@ mod tests {
         s.map(trim_markup)
     }
 
-    fn check_hover_result(fixture: &str, expected: &[&str]) -> String {
+    fn assert_impl_action(action: &HoverAction, position: u32) {
+        let offset = match action {
+            HoverAction::Implementaion(pos) => pos.offset,
+        };
+        assert_eq!(offset, position.into());
+    }
+
+    fn check_hover_result(fixture: &str, expected: &[&str]) -> (String, Vec<HoverAction>) {
         let (analysis, position) = analysis_and_position(fixture);
         let hover = analysis.hover(position).unwrap().unwrap();
         let mut results = Vec::from(hover.info.results());
@@ -256,7 +328,7 @@ mod tests {
         assert_eq!(hover.info.len(), expected.len());
 
         let content = analysis.db.file_text(position.file_id);
-        content[hover.range].to_string()
+        (content[hover.range].to_string(), hover.info.actions().to_vec())
     }
 
     fn check_hover_no_result(fixture: &str) {
@@ -746,7 +818,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
 
     #[test]
     fn test_hover_through_macro() {
-        let hover_on = check_hover_result(
+        let (hover_on, _) = check_hover_result(
             "
             //- /lib.rs
             macro_rules! id {
@@ -767,7 +839,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
 
     #[test]
     fn test_hover_through_expr_in_macro() {
-        let hover_on = check_hover_result(
+        let (hover_on, _) = check_hover_result(
             "
             //- /lib.rs
             macro_rules! id {
@@ -785,7 +857,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
 
     #[test]
     fn test_hover_through_expr_in_macro_recursive() {
-        let hover_on = check_hover_result(
+        let (hover_on, _) = check_hover_result(
             "
             //- /lib.rs
             macro_rules! id_deep {
@@ -806,7 +878,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
 
     #[test]
     fn test_hover_through_func_in_macro_recursive() {
-        let hover_on = check_hover_result(
+        let (hover_on, _) = check_hover_result(
             "
             //- /lib.rs
             macro_rules! id_deep {
@@ -830,7 +902,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
 
     #[test]
     fn test_hover_through_literal_string_in_macro() {
-        let hover_on = check_hover_result(
+        let (hover_on, _) = check_hover_result(
             r#"
             //- /lib.rs
             macro_rules! arr {
@@ -849,7 +921,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
 
     #[test]
     fn test_hover_through_assert_macro() {
-        let hover_on = check_hover_result(
+        let (hover_on, _) = check_hover_result(
             r#"
             //- /lib.rs
             #[rustc_builtin_macro]
@@ -925,13 +997,14 @@ fn func(foo: i32) { if true { <|>foo; }; }
 
     #[test]
     fn test_hover_trait_show_qualifiers() {
-        check_hover_result(
+        let (_, actions) = check_hover_result(
             "
             //- /lib.rs
             unsafe trait foo<|>() {}
             ",
             &["unsafe trait foo"],
         );
+        assert_impl_action(&actions[0], 13);
     }
 
     #[test]
@@ -1051,5 +1124,56 @@ fn func(foo: i32) { if true { <|>foo; }; }
             "#,
             &["Bar\n```\n\n```rust\nfn foo(&self)\n```\n___\n\nDo the foo"],
         );
+    }
+
+    #[test]
+    fn test_hover_trait_has_impl_action() {
+        let (_, actions) = check_hover_result(
+            "
+            //- /lib.rs
+            trait foo<|>() {}
+            ",
+            &["trait foo"],
+        );
+        assert_impl_action(&actions[0], 6);
+    }
+
+    #[test]
+    fn test_hover_struct_has_impl_action() {
+        let (_, actions) = check_hover_result(
+            "
+            //- /lib.rs
+            struct foo<|>() {}
+            ",
+            &["struct foo"],
+        );
+        assert_impl_action(&actions[0], 7);
+    }
+
+    #[test]
+    fn test_hover_union_has_impl_action() {
+        let (_, actions) = check_hover_result(
+            "
+            //- /lib.rs
+            union foo<|>() {}
+            ",
+            &["union foo"],
+        );
+        assert_impl_action(&actions[0], 6);
+    }
+
+    #[test]
+    fn test_hover_enum_has_impl_action() {
+        let (_, actions) = check_hover_result(
+            "
+            //- /lib.rs
+            enum foo<|>() {
+                A,
+                B
+            }
+            ",
+            &["enum foo"],
+        );
+        assert_impl_action(&actions[0], 5);
     }
 }

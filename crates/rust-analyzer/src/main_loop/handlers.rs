@@ -12,13 +12,14 @@ use lsp_types::{
     CallHierarchyIncomingCall, CallHierarchyIncomingCallsParams, CallHierarchyItem,
     CallHierarchyOutgoingCall, CallHierarchyOutgoingCallsParams, CallHierarchyPrepareParams,
     CodeLens, Command, CompletionItem, Diagnostic, DocumentFormattingParams, DocumentHighlight,
-    DocumentSymbol, FoldingRange, FoldingRangeParams, Hover, HoverContents, Location,
-    MarkupContent, MarkupKind, Position, PrepareRenameResponse, Range, RenameParams,
-    SemanticTokensParams, SemanticTokensRangeParams, SemanticTokensRangeResult,
-    SemanticTokensResult, SymbolInformation, TextDocumentIdentifier, Url, WorkspaceEdit,
+    DocumentSymbol, FoldingRange, FoldingRangeParams, HoverContents, Location, MarkupContent,
+    MarkupKind, Position, PrepareRenameResponse, Range, RenameParams, SemanticTokensParams,
+    SemanticTokensRangeParams, SemanticTokensRangeResult, SemanticTokensResult, SymbolInformation,
+    TextDocumentIdentifier, Url, WorkspaceEdit,
 };
 use ra_ide::{
-    FileId, FilePosition, FileRange, Query, RangeInfo, RunnableKind, SearchScope, TextEdit,
+    FileId, FilePosition, FileRange, HoverAction, Query, RangeInfo, RunnableKind, SearchScope,
+    TextEdit,
 };
 use ra_prof::profile;
 use ra_project_model::TargetKind;
@@ -537,7 +538,7 @@ pub fn handle_signature_help(
 pub fn handle_hover(
     snap: GlobalStateSnapshot,
     params: lsp_types::HoverParams,
-) -> Result<Option<Hover>> {
+) -> Result<Option<lsp_ext::Hover>> {
     let _p = profile("handle_hover");
     let position = from_proto::file_position(&snap, params.text_document_position_params)?;
     let info = match snap.analysis().hover(position)? {
@@ -546,14 +547,18 @@ pub fn handle_hover(
     };
     let line_index = snap.analysis.file_line_index(position.file_id)?;
     let range = to_proto::range(&line_index, info.range);
-    let res = Hover {
-        contents: HoverContents::Markup(MarkupContent {
-            kind: MarkupKind::Markdown,
-            value: crate::markdown::format_docs(&info.info.to_markup()),
-        }),
-        range: Some(range),
+    let hover = lsp_ext::Hover {
+        hover: lsp_types::Hover {
+            contents: HoverContents::Markup(MarkupContent {
+                kind: MarkupKind::Markdown,
+                value: crate::markdown::format_docs(&info.info.to_markup()),
+            }),
+            range: Some(range),
+        },
+        actions: prepare_hover_actions(&snap, info.info.actions()),
     };
-    Ok(Some(res))
+
+    Ok(Some(hover))
 }
 
 pub fn handle_prepare_rename(
@@ -924,24 +929,13 @@ pub fn handle_code_lens_resolve(
                     _ => vec![],
                 };
 
-            let title = if locations.len() == 1 {
-                "1 implementation".into()
-            } else {
-                format!("{} implementations", locations.len())
-            };
-
-            // We cannot use the 'editor.action.showReferences' command directly
-            // because that command requires vscode types which we convert in the handler
-            // on the client side.
-            let cmd = Command {
+            let title = implementation_title(locations.len());
+            let cmd = show_references_command(
                 title,
-                command: "rust-analyzer.showReferences".into(),
-                arguments: Some(vec![
-                    to_value(&lens_params.text_document_position_params.text_document.uri).unwrap(),
-                    to_value(code_lens.range.start).unwrap(),
-                    to_value(locations).unwrap(),
-                ]),
-            };
+                &lens_params.text_document_position_params.text_document.uri,
+                code_lens.range.start,
+                locations,
+            );
             Ok(CodeLens { range: code_lens.range, command: Some(cmd), data: None })
         }
         None => Ok(CodeLens {
@@ -1144,4 +1138,79 @@ pub fn handle_semantic_tokens_range(
     let highlights = snap.analysis().highlight_range(frange)?;
     let semantic_tokens = to_proto::semantic_tokens(&text, &line_index, highlights);
     Ok(Some(semantic_tokens.into()))
+}
+
+fn implementation_title(count: usize) -> String {
+    if count == 1 {
+        "1 implementation".into()
+    } else {
+        format!("{} implementations", count)
+    }
+}
+
+fn show_references_command(
+    title: String,
+    uri: &lsp_types::Url,
+    position: lsp_types::Position,
+    locations: Vec<lsp_types::Location>,
+) -> Command {
+    // We cannot use the 'editor.action.showReferences' command directly
+    // because that command requires vscode types which we convert in the handler
+    // on the client side.
+
+    Command {
+        title,
+        command: "rust-analyzer.showReferences".into(),
+        arguments: Some(vec![
+            to_value(uri).unwrap(),
+            to_value(position).unwrap(),
+            to_value(locations).unwrap(),
+        ]),
+    }
+}
+
+fn to_command_link(command: Command, tooltip: String) -> lsp_ext::CommandLink {
+    lsp_ext::CommandLink { tooltip: Some(tooltip), command }
+}
+
+fn show_impl_command_link(
+    snap: &GlobalStateSnapshot,
+    position: &FilePosition,
+) -> Option<lsp_ext::CommandLinkGroup> {
+    if snap.config.hover.implementations {
+        if let Some(nav_data) = snap.analysis().goto_implementation(*position).unwrap_or(None) {
+            let uri = to_proto::url(snap, position.file_id).ok()?;
+            let line_index = snap.analysis().file_line_index(position.file_id).ok()?;
+            let position = to_proto::position(&line_index, position.offset);
+            let locations: Vec<_> = nav_data
+                .info
+                .iter()
+                .filter_map(|it| to_proto::location(snap, it.file_range()).ok())
+                .collect();
+            let title = implementation_title(locations.len());
+            let command = show_references_command(title, &uri, position, locations);
+
+            return Some(lsp_ext::CommandLinkGroup {
+                commands: vec![to_command_link(command, "Go to implementations".into())],
+                ..Default::default()
+            });
+        }
+    }
+    None
+}
+
+fn prepare_hover_actions(
+    snap: &GlobalStateSnapshot,
+    actions: &[HoverAction],
+) -> Vec<lsp_ext::CommandLinkGroup> {
+    if snap.config.hover.none() || !snap.config.client_caps.hover_actions {
+        return Vec::new();
+    }
+
+    actions
+        .iter()
+        .filter_map(|it| match it {
+            HoverAction::Implementaion(position) => show_impl_command_link(snap, position),
+        })
+        .collect()
 }

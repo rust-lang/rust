@@ -7,6 +7,20 @@ import { CallHierarchyFeature } from 'vscode-languageclient/lib/callHierarchy.pr
 import { SemanticTokensFeature, DocumentSemanticsTokensSignature } from 'vscode-languageclient/lib/semanticTokens.proposed';
 import { assert } from './util';
 
+function renderCommand(cmd: ra.CommandLink) {
+    return `[${cmd.title}](command:${cmd.command}?${encodeURIComponent(JSON.stringify(cmd.arguments))} '${cmd.tooltip!}')`;
+}
+
+function renderHoverActions(actions: ra.CommandLinkGroup[]): vscode.MarkdownString {
+    const text = actions.map(group =>
+        (group.title ? (group.title + " ") : "") + group.commands.map(renderCommand).join(' | ')
+    ).join('___');
+
+    const result = new vscode.MarkdownString(text);
+    result.isTrusted = true;
+    return result;
+}
+
 export function createClient(serverPath: string, cwd: string): lc.LanguageClient {
     // '.' Is the fallback if no folder is open
     // TODO?: Workspace folders support Uri's (eg: file://test.txt).
@@ -34,6 +48,23 @@ export function createClient(serverPath: string, cwd: string): lc.LanguageClient
                 const res = await next(document, token);
                 if (res === undefined) throw new Error('busy');
                 return res;
+            },
+            async provideHover(document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken, _next: lc.ProvideHoverSignature) {
+                return client.sendRequest(lc.HoverRequest.type, client.code2ProtocolConverter.asTextDocumentPositionParams(document, position), token).then(
+                    (result) => {
+                        const hover = client.protocol2CodeConverter.asHover(result);
+                        if (hover) {
+                            const actions = (<any>result).actions;
+                            if (actions) {
+                                hover.contents.push(renderHoverActions(actions));
+                            }
+                        }
+                        return hover;
+                    },
+                    (error) => {
+                        client.logFailedRequest(lc.HoverRequest.type, error);
+                        return Promise.resolve(null);
+                    });
             },
             // Using custom handling of CodeActions where each code action is resloved lazily
             // That's why we are not waiting for any command or edits
@@ -129,6 +160,7 @@ class ExperimentalFeatures implements lc.StaticFeature {
         caps.snippetTextEdit = true;
         caps.codeActionGroup = true;
         caps.resolveCodeAction = true;
+        caps.hoverActions = true;
         capabilities.experimental = caps;
     }
     initialize(_capabilities: lc.ServerCapabilities<any>, _documentSelector: lc.DocumentSelector | undefined): void {

@@ -334,6 +334,7 @@ impl RootDatabase {
             hir::db::CrateLangItemsQuery
             hir::db::LangItemQuery
             hir::db::DocumentationQuery
+            hir::db::ImportMapQuery
 
             // InternDatabase
             hir::db::InternFunctionQuery
