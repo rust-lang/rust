@@ -89,8 +89,7 @@ pub const DEFAULT_LRU_CAP: usize = 128;
 pub trait FileLoader {
     /// Text of the file.
     fn file_text(&self, file_id: FileId) -> Arc<String>;
-    fn resolve_relative_path(&self, anchor: FileId, relative_path: &RelativePath)
-        -> Option<FileId>;
+    fn resolve_path(&self, anchor: FileId, relative_path: &RelativePath) -> Option<FileId>;
     fn relevant_crates(&self, file_id: FileId) -> Arc<Vec<CrateId>>;
 
     fn resolve_extern_path(
@@ -155,11 +154,7 @@ impl<T: SourceDatabaseExt> FileLoader for FileLoaderDelegate<&'_ T> {
     fn file_text(&self, file_id: FileId) -> Arc<String> {
         SourceDatabaseExt::file_text(self.0, file_id)
     }
-    fn resolve_relative_path(
-        &self,
-        anchor: FileId,
-        relative_path: &RelativePath,
-    ) -> Option<FileId> {
+    fn resolve_path(&self, anchor: FileId, relative_path: &RelativePath) -> Option<FileId> {
         let path = {
             let mut path = self.0.file_relative_path(anchor);
             assert!(path.pop());

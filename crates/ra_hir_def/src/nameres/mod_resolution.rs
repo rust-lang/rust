@@ -61,7 +61,7 @@ impl ModDir {
         };
 
         for candidate in candidate_files.iter() {
-            if let Some(file_id) = db.resolve_relative_path(file_id, candidate) {
+            if let Some(file_id) = db.resolve_path(file_id, candidate) {
                 let mut root_non_dir_owner = false;
                 let mut mod_path = RelativePathBuf::new();
                 if !(candidate.ends_with("mod.rs") || attr_path.is_some()) {
