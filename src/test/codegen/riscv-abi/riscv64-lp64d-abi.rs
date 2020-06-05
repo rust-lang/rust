@@ -4,7 +4,7 @@
 // only-linux
 #![crate_type = "lib"]
 
-// CHECK: define void @f_fpr_tracking(double, double, double, double, double, double, double, double, i8 zeroext %i)
+// CHECK: define void @f_fpr_tracking(double %0, double %1, double %2, double %3, double %4, double %5, double %6, double %7, i8 zeroext %i)
 #[no_mangle]
 pub extern "C" fn f_fpr_tracking(
     a: f64,
@@ -36,7 +36,7 @@ pub struct DoubleFloat {
     g: f32,
 }
 
-// CHECK: define void @f_double_s_arg(double)
+// CHECK: define void @f_double_s_arg(double %0)
 #[no_mangle]
 pub extern "C" fn f_double_s_arg(a: Double) {}
 
@@ -46,7 +46,7 @@ pub extern "C" fn f_ret_double_s() -> Double {
     Double { f: 1. }
 }
 
-// CHECK: define void @f_double_double_s_arg({ double, double })
+// CHECK: define void @f_double_double_s_arg({ double, double } %0)
 #[no_mangle]
 pub extern "C" fn f_double_double_s_arg(a: DoubleDouble) {}
 
@@ -56,7 +56,7 @@ pub extern "C" fn f_ret_double_double_s() -> DoubleDouble {
     DoubleDouble { f: 1., g: 2. }
 }
 
-// CHECK: define void @f_double_float_s_arg({ double, float })
+// CHECK: define void @f_double_float_s_arg({ double, float } %0)
 #[no_mangle]
 pub extern "C" fn f_double_float_s_arg(a: DoubleFloat) {}
 
@@ -66,7 +66,7 @@ pub extern "C" fn f_ret_double_float_s() -> DoubleFloat {
     DoubleFloat { f: 1., g: 2. }
 }
 
-// CHECK: define void @f_double_double_s_arg_insufficient_fprs(double, double, double, double, double, double, double, [2 x i64])
+// CHECK: define void @f_double_double_s_arg_insufficient_fprs(double %0, double %1, double %2, double %3, double %4, double %5, double %6, [2 x i64] %7)
 #[no_mangle]
 pub extern "C" fn f_double_double_s_arg_insufficient_fprs(
     a: f64,
@@ -104,7 +104,7 @@ pub struct DoubleInt64 {
     i: i64,
 }
 
-// CHECK: define void @f_double_int8_s_arg({ double, i8 })
+// CHECK: define void @f_double_int8_s_arg({ double, i8 } %0)
 #[no_mangle]
 pub extern "C" fn f_double_int8_s_arg(a: DoubleInt8) {}
 
@@ -114,7 +114,7 @@ pub extern "C" fn f_ret_double_int8_s() -> DoubleInt8 {
     DoubleInt8 { f: 1., i: 2 }
 }
 
-// CHECK: define void @f_double_int32_s_arg({ double, i32 })
+// CHECK: define void @f_double_int32_s_arg({ double, i32 } %0)
 #[no_mangle]
 pub extern "C" fn f_double_int32_s_arg(a: DoubleInt32) {}
 
@@ -124,7 +124,7 @@ pub extern "C" fn f_ret_double_int32_s() -> DoubleInt32 {
     DoubleInt32 { f: 1., i: 2 }
 }
 
-// CHECK: define void @f_double_uint8_s_arg({ double, i8 })
+// CHECK: define void @f_double_uint8_s_arg({ double, i8 } %0)
 #[no_mangle]
 pub extern "C" fn f_double_uint8_s_arg(a: DoubleUInt8) {}
 
@@ -134,7 +134,7 @@ pub extern "C" fn f_ret_double_uint8_s() -> DoubleUInt8 {
     DoubleUInt8 { f: 1., i: 2 }
 }
 
-// CHECK: define void @f_double_int64_s_arg({ double, i64 })
+// CHECK: define void @f_double_int64_s_arg({ double, i64 } %0)
 #[no_mangle]
 pub extern "C" fn f_double_int64_s_arg(a: DoubleInt64) {}
 
@@ -144,7 +144,7 @@ pub extern "C" fn f_ret_double_int64_s() -> DoubleInt64 {
     DoubleInt64 { f: 1., i: 2 }
 }
 
-// CHECK: define void @f_double_int8_s_arg_insufficient_gprs(i32 signext %a, i32 signext %b, i32 signext %c, i32 signext %d, i32 signext %e, i32 signext %f, i32 signext %g, i32 signext %h, [2 x i64])
+// CHECK: define void @f_double_int8_s_arg_insufficient_gprs(i32 signext %a, i32 signext %b, i32 signext %c, i32 signext %d, i32 signext %e, i32 signext %f, i32 signext %g, i32 signext %h, [2 x i64] %0)
 #[no_mangle]
 pub extern "C" fn f_double_int8_s_arg_insufficient_gprs(
     a: i32,
@@ -159,7 +159,7 @@ pub extern "C" fn f_double_int8_s_arg_insufficient_gprs(
 ) {
 }
 
-// CHECK: define void @f_struct_double_int8_insufficient_fprs(float, double, double, double, double, double, double, double, [2 x i64])
+// CHECK: define void @f_struct_double_int8_insufficient_fprs(float %0, double %1, double %2, double %3, double %4, double %5, double %6, double %7, [2 x i64] %8)
 #[no_mangle]
 pub extern "C" fn f_struct_double_int8_insufficient_fprs(
     a: f32,
@@ -179,7 +179,7 @@ pub struct DoubleArr1 {
     a: [f64; 1],
 }
 
-// CHECK: define void @f_doublearr1_s_arg(double)
+// CHECK: define void @f_doublearr1_s_arg(double %0)
 #[no_mangle]
 pub extern "C" fn f_doublearr1_s_arg(a: DoubleArr1) {}
 
@@ -194,7 +194,7 @@ pub struct DoubleArr2 {
     a: [f64; 2],
 }
 
-// CHECK: define void @f_doublearr2_s_arg({ double, double })
+// CHECK: define void @f_doublearr2_s_arg({ double, double } %0)
 #[no_mangle]
 pub extern "C" fn f_doublearr2_s_arg(a: DoubleArr2) {}
 
@@ -214,7 +214,7 @@ pub struct DoubleArr2Tricky1 {
     g: [Tricky1; 2],
 }
 
-// CHECK: define void @f_doublearr2_tricky1_s_arg({ double, double })
+// CHECK: define void @f_doublearr2_tricky1_s_arg({ double, double } %0)
 #[no_mangle]
 pub extern "C" fn f_doublearr2_tricky1_s_arg(a: DoubleArr2Tricky1) {}
 
@@ -233,7 +233,7 @@ pub struct DoubleArr2Tricky2 {
     g: [Tricky1; 2],
 }
 
-// CHECK: define void @f_doublearr2_tricky2_s_arg({ double, double })
+// CHECK: define void @f_doublearr2_tricky2_s_arg({ double, double } %0)
 #[no_mangle]
 pub extern "C" fn f_doublearr2_tricky2_s_arg(a: DoubleArr2Tricky2) {}
 
@@ -267,7 +267,7 @@ pub struct CharCharDouble {
     c: f64,
 }
 
-// CHECK: define void @f_char_char_double_s_arg([2 x i64])
+// CHECK: define void @f_char_char_double_s_arg([2 x i64] %0)
 #[no_mangle]
 pub extern "C" fn f_char_char_double_s_arg(a: CharCharDouble) {}
 
@@ -282,7 +282,7 @@ pub union DoubleU {
     a: f64,
 }
 
-// CHECK: define void @f_double_u_arg(i64)
+// CHECK: define void @f_double_u_arg(i64 %0)
 #[no_mangle]
 pub extern "C" fn f_double_u_arg(a: DoubleU) {}
 
