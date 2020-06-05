@@ -1,6 +1,4 @@
-use ra_ide_db::{
-    defs::Definition, imports_locator::ImportsLocator, search::Reference, RootDatabase,
-};
+use ra_ide_db::{defs::Definition, search::Reference, RootDatabase};
 use ra_syntax::{
     algo::find_node_at_offset,
     ast::{self, AstNode, NameOwner},
@@ -9,11 +7,11 @@ use ra_syntax::{
 
 use crate::{
     assist_context::{AssistBuilder, AssistDirector},
-    utils::insert_use::insert_use_statement_with_string_path,
+    utils::insert_use_statement,
     AssistContext, AssistId, Assists,
 };
 use ast::{ArgListOwner, VisibilityOwner};
-use hir::{EnumVariant, Module, ModuleDef};
+use hir::{EnumVariant, Module, ModuleDef, Name};
 use ra_db::FileId;
 use ra_fmt::leading_indent;
 use rustc_hash::FxHashSet;
@@ -46,11 +44,11 @@ pub(crate) fn extract_struct_from_enum_variant(
         return None;
     }
     let enum_ast = variant.parent_enum();
-    let enum_name = enum_ast.name()?.to_string();
     let visibility = enum_ast.visibility();
-    let current_module_def =
-        ImportsLocator::new(ctx.db).find_imports(&enum_name).first()?.left()?;
-    let current_module = current_module_def.module(ctx.db)?;
+    let enum_hir = ctx.sema.to_def(&enum_ast)?;
+    let variant_hir_name = variant_hir.name(ctx.db);
+    let enum_module_def = ModuleDef::from(enum_hir);
+    let current_module = enum_hir.module(ctx.db);
     let target = variant.syntax().text_range();
     acc.add_in_multiple_files(
         AssistId("extract_struct_from_enum_variant"),
@@ -69,7 +67,8 @@ pub(crate) fn extract_struct_from_enum_variant(
                     edit,
                     reference,
                     &source_file,
-                    &current_module_def,
+                    &enum_module_def,
+                    &variant_hir_name,
                     &mut visited_modules_set,
                 );
             }
@@ -102,20 +101,15 @@ fn insert_import(
     builder: &mut AssistBuilder,
     path: &ast::PathExpr,
     module: &Module,
-    module_def: &ModuleDef,
-    path_segment: ast::NameRef,
+    enum_module_def: &ModuleDef,
+    variant_hir_name: &Name,
 ) -> Option<()> {
     let db = ctx.db;
-    let mod_path = module.find_use_path(db, module_def.clone());
+    let mod_path = module.find_use_path(db, enum_module_def.clone());
     if let Some(mut mod_path) = mod_path {
         mod_path.segments.pop();
-        let use_path = format!("{}::{}", mod_path.to_string(), path_segment.to_string());
-        insert_use_statement_with_string_path(
-            path.syntax(),
-            &use_path,
-            ctx,
-            builder.text_edit_builder(),
-        );
+        mod_path.segments.push(variant_hir_name.clone());
+        insert_use_statement(path.syntax(), &mod_path, ctx, builder.text_edit_builder());
     }
     Some(())
 }
@@ -175,7 +169,8 @@ fn update_reference(
     edit: &mut AssistDirector,
     reference: Reference,
     source_file: &SourceFile,
-    module_def: &ModuleDef,
+    enum_module_def: &ModuleDef,
+    variant_hir_name: &Name,
     visited_modules_set: &mut FxHashSet<Module>,
 ) -> Option<()> {
     let path_expr: ast::PathExpr = find_node_at_offset::<ast::PathExpr>(
@@ -185,7 +180,6 @@ fn update_reference(
     let call = path_expr.syntax().parent().and_then(ast::CallExpr::cast)?;
     let list = call.arg_list()?;
     let segment = path_expr.path()?.segment()?;
-    let segment_name = segment.name_ref()?;
     let module = ctx.sema.scope(&path_expr.syntax()).module()?;
     let list_range = list.syntax().text_range();
     let inside_list_range = TextRange::new(
@@ -194,7 +188,8 @@ fn update_reference(
     );
     edit.perform(reference.file_range.file_id, |builder| {
         if !visited_modules_set.contains(&module) {
-            if insert_import(ctx, builder, &path_expr, &module, module_def, segment_name).is_some()
+            if insert_import(ctx, builder, &path_expr, &module, enum_module_def, variant_hir_name)
+                .is_some()
             {
                 visited_modules_set.insert(module);
             }
