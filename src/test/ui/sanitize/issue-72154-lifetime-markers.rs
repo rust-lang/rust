@@ -4,7 +4,7 @@
 // miscompilation which was subsequently detected by AddressSanitizer as UB.
 //
 // needs-sanitizer-support
-// only-x86_64
+// needs-sanitizer-address
 //
 // compile-flags: -Copt-level=0 -Zsanitizer=address
 // run-pass

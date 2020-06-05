@@ -1,9 +1,8 @@
 // Verifies that AddressSanitizer and MemorySanitizer
 // recovery mode can be enabled with -Zsanitizer-recover.
 //
-// needs-sanitizer-support
-// only-linux
-// only-x86_64
+// needs-sanitizer-address
+// needs-sanitizer-memory
 // revisions:ASAN ASAN-RECOVER MSAN MSAN-RECOVER MSAN-RECOVER-LTO
 // no-prefer-dynamic
 //

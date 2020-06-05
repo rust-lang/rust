@@ -1,6 +1,5 @@
 # needs-sanitizer-support
-# only-x86_64
-# only-linux
+# needs-sanitizer-address
 
 -include ../tools.mk
 
