@@ -153,7 +153,8 @@ pub fn spin_loop_hint() {
 ///
 /// This type has the same in-memory representation as a [`bool`].
 ///
-/// **Note**: This type may not be available on some platforms.
+/// **Note**: This type is only available on platforms that support atomic
+/// loads and stores of booleans (as `u8`).
 ///
 /// [`bool`]: ../../../std/primitive.bool.html
 #[cfg(target_has_atomic_load_store = "8")]
@@ -181,8 +182,8 @@ unsafe impl Sync for AtomicBool {}
 ///
 /// This type has the same in-memory representation as a `*mut T`.
 ///
-/// **Note**: This type may not be available on some platforms. Its size depends
-/// on the target pointer's size.
+/// **Note**: This type is only available on platforms that support atomic
+/// loads and stores of pointers. Its size depends on the target pointer's size.
 #[cfg(target_has_atomic_load_store = "ptr")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(target_pointer_width = "16", repr(C, align(2)))]
@@ -452,6 +453,9 @@ impl AtomicBool {
     /// [`Acquire`] makes the store part of this operation [`Relaxed`], and
     /// using [`Release`] makes the load part [`Relaxed`].
     ///
+    /// **Note:** This method is only available on platforms that support atomic
+    /// operations on `u8`.
+    ///
     /// [`Ordering`]: enum.Ordering.html
     /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
     /// [`Release`]: enum.Ordering.html#variant.Release
@@ -467,8 +471,6 @@ impl AtomicBool {
     /// assert_eq!(some_bool.swap(false, Ordering::Relaxed), true);
     /// assert_eq!(some_bool.load(Ordering::Relaxed), false);
     /// ```
-    ///
-    /// **Note**: This method may not be available on some platforms.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg(target_has_atomic = "8")]
@@ -487,6 +489,9 @@ impl AtomicBool {
     /// might fail and hence just perform an `Acquire` load, but not have `Release` semantics.
     /// Using [`Acquire`] makes the store part of this operation [`Relaxed`] if it
     /// happens, and using [`Release`] makes the load part [`Relaxed`].
+    ///
+    /// **Note:** This method is only available on platforms that support atomic
+    /// operations on `u8`.
     ///
     /// [`Ordering`]: enum.Ordering.html
     /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
@@ -508,8 +513,6 @@ impl AtomicBool {
     /// assert_eq!(some_bool.compare_and_swap(true, true, Ordering::Relaxed), false);
     /// assert_eq!(some_bool.load(Ordering::Relaxed), false);
     /// ```
-    ///
-    /// **Note**: This method may not be available on some platforms.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg(target_has_atomic = "8")]
@@ -533,6 +536,8 @@ impl AtomicBool {
     /// [`Relaxed`]. The failure ordering can only be [`SeqCst`], [`Acquire`] or [`Relaxed`]
     /// and must be equivalent to or weaker than the success ordering.
     ///
+    /// **Note:** This method is only available on platforms that support atomic
+    /// operations on `u8`.
     ///
     /// [`bool`]: ../../../std/primitive.bool.html
     /// [`Ordering`]: enum.Ordering.html
@@ -561,8 +566,6 @@ impl AtomicBool {
     ///            Err(false));
     /// assert_eq!(some_bool.load(Ordering::Relaxed), false);
     /// ```
-    ///
-    /// **Note**: This method may not be available on some platforms.
     #[inline]
     #[stable(feature = "extended_compare_and_swap", since = "1.10.0")]
     #[cfg(target_has_atomic = "8")]
@@ -597,6 +600,9 @@ impl AtomicBool {
     /// [`Relaxed`]. The failure ordering can only be [`SeqCst`], [`Acquire`] or [`Relaxed`]
     /// and must be equivalent to or weaker than the success ordering.
     ///
+    /// **Note:** This method is only available on platforms that support atomic
+    /// operations on `u8`.
+    ///
     /// [`bool`]: ../../../std/primitive.bool.html
     /// [`compare_exchange`]: #method.compare_exchange
     /// [`Ordering`]: enum.Ordering.html
@@ -621,8 +627,6 @@ impl AtomicBool {
     ///     }
     /// }
     /// ```
-    ///
-    /// **Note**: This method may not be available on some platforms.
     #[inline]
     #[stable(feature = "extended_compare_and_swap", since = "1.10.0")]
     #[cfg(target_has_atomic = "8")]
@@ -659,6 +663,9 @@ impl AtomicBool {
     /// [`Release`]: enum.Ordering.html#variant.Release
     /// [`Acquire`]: enum.Ordering.html#variant.Acquire
     ///
+    /// **Note:** This method is only available on platforms that support atomic
+    /// operations on `u8`.
+    ///
     /// # Examples
     ///
     /// ```
@@ -676,8 +683,6 @@ impl AtomicBool {
     /// assert_eq!(foo.fetch_and(false, Ordering::SeqCst), false);
     /// assert_eq!(foo.load(Ordering::SeqCst), false);
     /// ```
-    ///
-    /// **Note**: This method may not be available on some platforms.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg(target_has_atomic = "8")]
@@ -697,6 +702,9 @@ impl AtomicBool {
     /// of this operation. All ordering modes are possible. Note that using
     /// [`Acquire`] makes the store part of this operation [`Relaxed`], and
     /// using [`Release`] makes the load part [`Relaxed`].
+    ///
+    /// **Note:** This method is only available on platforms that support atomic
+    /// operations on `u8`.
     ///
     /// [`Ordering`]: enum.Ordering.html
     /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
@@ -721,8 +729,6 @@ impl AtomicBool {
     /// assert_eq!(foo.fetch_nand(false, Ordering::SeqCst), false);
     /// assert_eq!(foo.load(Ordering::SeqCst), true);
     /// ```
-    ///
-    /// **Note**: This method may not be available on some platforms.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg(target_has_atomic = "8")]
@@ -754,6 +760,9 @@ impl AtomicBool {
     /// [`Acquire`] makes the store part of this operation [`Relaxed`], and
     /// using [`Release`] makes the load part [`Relaxed`].
     ///
+    /// **Note:** This method is only available on platforms that support atomic
+    /// operations on `u8`.
+    ///
     /// [`Ordering`]: enum.Ordering.html
     /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
     /// [`Release`]: enum.Ordering.html#variant.Release
@@ -776,8 +785,6 @@ impl AtomicBool {
     /// assert_eq!(foo.fetch_or(false, Ordering::SeqCst), false);
     /// assert_eq!(foo.load(Ordering::SeqCst), false);
     /// ```
-    ///
-    /// **Note**: This method may not be available on some platforms.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg(target_has_atomic = "8")]
@@ -797,6 +804,9 @@ impl AtomicBool {
     /// of this operation. All ordering modes are possible. Note that using
     /// [`Acquire`] makes the store part of this operation [`Relaxed`], and
     /// using [`Release`] makes the load part [`Relaxed`].
+    ///
+    /// **Note:** This method is only available on platforms that support atomic
+    /// operations on `u8`.
     ///
     /// [`Ordering`]: enum.Ordering.html
     /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
@@ -820,8 +830,6 @@ impl AtomicBool {
     /// assert_eq!(foo.fetch_xor(false, Ordering::SeqCst), false);
     /// assert_eq!(foo.load(Ordering::SeqCst), false);
     /// ```
-    ///
-    /// **Note**: This method may not be available on some platforms.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg(target_has_atomic = "8")]
@@ -1002,6 +1010,9 @@ impl<T> AtomicPtr<T> {
     /// [`Acquire`] makes the store part of this operation [`Relaxed`], and
     /// using [`Release`] makes the load part [`Relaxed`].
     ///
+    /// **Note:** This method is only available on platforms that support atomic
+    /// operations on pointers.
+    ///
     /// [`Ordering`]: enum.Ordering.html
     /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
     /// [`Release`]: enum.Ordering.html#variant.Release
@@ -1019,8 +1030,6 @@ impl<T> AtomicPtr<T> {
     ///
     /// let value = some_ptr.swap(other_ptr, Ordering::Relaxed);
     /// ```
-    ///
-    /// **Note**: This method may not be available on some platforms.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg(target_has_atomic = "ptr")]
@@ -1040,6 +1049,9 @@ impl<T> AtomicPtr<T> {
     /// Using [`Acquire`] makes the store part of this operation [`Relaxed`] if it
     /// happens, and using [`Release`] makes the load part [`Relaxed`].
     ///
+    /// **Note:** This method is only available on platforms that support atomic
+    /// operations on pointers.
+    ///
     /// [`Ordering`]: enum.Ordering.html
     /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
     /// [`Release`]: enum.Ordering.html#variant.Release
@@ -1058,8 +1070,6 @@ impl<T> AtomicPtr<T> {
     ///
     /// let value = some_ptr.compare_and_swap(ptr, other_ptr, Ordering::Relaxed);
     /// ```
-    ///
-    /// **Note**: This method may not be available on some platforms.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg(target_has_atomic = "ptr")]
@@ -1083,6 +1093,9 @@ impl<T> AtomicPtr<T> {
     /// [`Relaxed`]. The failure ordering can only be [`SeqCst`], [`Acquire`] or [`Relaxed`]
     /// and must be equivalent to or weaker than the success ordering.
     ///
+    /// **Note:** This method is only available on platforms that support atomic
+    /// operations on pointers.
+    ///
     /// [`Ordering`]: enum.Ordering.html
     /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
     /// [`Release`]: enum.Ordering.html#variant.Release
@@ -1102,8 +1115,6 @@ impl<T> AtomicPtr<T> {
     /// let value = some_ptr.compare_exchange(ptr, other_ptr,
     ///                                       Ordering::SeqCst, Ordering::Relaxed);
     /// ```
-    ///
-    /// **Note**: This method may not be available on some platforms.
     #[inline]
     #[stable(feature = "extended_compare_and_swap", since = "1.10.0")]
     #[cfg(target_has_atomic = "ptr")]
@@ -1145,6 +1156,9 @@ impl<T> AtomicPtr<T> {
     /// [`Relaxed`]. The failure ordering can only be [`SeqCst`], [`Acquire`] or [`Relaxed`]
     /// and must be equivalent to or weaker than the success ordering.
     ///
+    /// **Note:** This method is only available on platforms that support atomic
+    /// operations on pointers.
+    ///
     /// [`compare_exchange`]: #method.compare_exchange
     /// [`Ordering`]: enum.Ordering.html
     /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
@@ -1168,8 +1182,6 @@ impl<T> AtomicPtr<T> {
     ///     }
     /// }
     /// ```
-    ///
-    /// **Note**: This method may not be available on some platforms.
     #[inline]
     #[stable(feature = "extended_compare_and_swap", since = "1.10.0")]
     #[cfg(target_has_atomic = "ptr")]
@@ -1252,7 +1264,12 @@ macro_rules! atomic_int {
         /// non-atomic types as well as information about the portability of
         /// this type, please see the [module-level documentation].
         ///
-        /// **Note**: This type may not be available on some platforms.
+        /// **Note:** This type is only available on platforms that support
+        /// atomic loads and stores of [`
+        #[doc = $s_int_type]
+        /// `](
+        #[doc = $int_ref]
+        /// ).
         ///
         /// [module-level documentation]: index.html
         #[$stable]
@@ -1439,6 +1456,9 @@ of this operation. All ordering modes are possible. Note that using
 [`Acquire`] makes the store part of this operation [`Relaxed`], and
 using [`Release`] makes the load part [`Relaxed`].
 
+**Note**: This method is only available on platforms that support atomic
+operations on [`", $s_int_type, "`](", $int_ref, ").
+
 [`Ordering`]: enum.Ordering.html
 [`Relaxed`]: enum.Ordering.html#variant.Relaxed
 [`Release`]: enum.Ordering.html#variant.Release
@@ -1452,9 +1472,7 @@ using [`Release`] makes the load part [`Relaxed`].
 let some_var = ", stringify!($atomic_type), "::new(5);
 
 assert_eq!(some_var.swap(10, Ordering::Relaxed), 5);
-```
-
-**Note**: This method may not be available on some platforms."),
+```"),
                 #[inline]
                 #[$stable]
                 #[$cfg_cas]
@@ -1477,6 +1495,9 @@ might fail and hence just perform an `Acquire` load, but not have `Release` sema
 Using [`Acquire`] makes the store part of this operation [`Relaxed`] if it
 happens, and using [`Release`] makes the load part [`Relaxed`].
 
+**Note**: This method is only available on platforms that support atomic
+operations on [`", $s_int_type, "`](", $int_ref, ").
+
 [`Ordering`]: enum.Ordering.html
 [`Relaxed`]: enum.Ordering.html#variant.Relaxed
 [`Release`]: enum.Ordering.html#variant.Release
@@ -1495,9 +1516,7 @@ assert_eq!(some_var.load(Ordering::Relaxed), 10);
 
 assert_eq!(some_var.compare_and_swap(6, 12, Ordering::Relaxed), 10);
 assert_eq!(some_var.load(Ordering::Relaxed), 10);
-```
-
-**Note**: This method may not be available on some platforms."),
+```"),
                 #[inline]
                 #[$stable]
                 #[$cfg_cas]
@@ -1531,6 +1550,9 @@ of this operation [`Relaxed`], and using [`Release`] makes the successful load
 [`Relaxed`]. The failure ordering can only be [`SeqCst`], [`Acquire`] or [`Relaxed`]
 and must be equivalent to or weaker than the success ordering.
 
+**Note**: This method is only available on platforms that support atomic
+operations on [`", $s_int_type, "`](", $int_ref, ").
+
 [`Ordering`]: enum.Ordering.html
 [`Relaxed`]: enum.Ordering.html#variant.Relaxed
 [`Release`]: enum.Ordering.html#variant.Release
@@ -1555,9 +1577,7 @@ assert_eq!(some_var.compare_exchange(6, 12,
                                      Ordering::Acquire),
            Err(10));
 assert_eq!(some_var.load(Ordering::Relaxed), 10);
-```
-
-**Note**: This method may not be available on some platforms."),
+```"),
                 #[inline]
                 #[$stable_cxchg]
                 #[$cfg_cas]
@@ -1595,6 +1615,9 @@ and must be equivalent to or weaker than the success ordering.
 [`Acquire`]: enum.Ordering.html#variant.Acquire
 [`SeqCst`]: enum.Ordering.html#variant.SeqCst
 
+**Note**: This method is only available on platforms that support atomic
+operations on [`", $s_int_type, "`](", $int_ref, ").
+
 # Examples
 
 ```
@@ -1610,9 +1633,7 @@ loop {
         Err(x) => old = x,
     }
 }
-```
-
-**Note**: This method may not be available on some platforms."),
+```"),
                 #[inline]
                 #[$stable_cxchg]
                 #[$cfg_cas]
@@ -1638,6 +1659,9 @@ of this operation. All ordering modes are possible. Note that using
 [`Acquire`] makes the store part of this operation [`Relaxed`], and
 using [`Release`] makes the load part [`Relaxed`].
 
+**Note**: This method is only available on platforms that support atomic
+operations on [`", $s_int_type, "`](", $int_ref, ").
+
 [`Ordering`]: enum.Ordering.html
 [`Relaxed`]: enum.Ordering.html#variant.Relaxed
 [`Release`]: enum.Ordering.html#variant.Release
@@ -1651,9 +1675,7 @@ using [`Release`] makes the load part [`Relaxed`].
 let foo = ", stringify!($atomic_type), "::new(0);
 assert_eq!(foo.fetch_add(10, Ordering::SeqCst), 0);
 assert_eq!(foo.load(Ordering::SeqCst), 10);
-```
-
-**Note**: This method may not be available on some platforms."),
+```"),
                 #[inline]
                 #[$stable]
                 #[$cfg_cas]
@@ -1673,6 +1695,9 @@ of this operation. All ordering modes are possible. Note that using
 [`Acquire`] makes the store part of this operation [`Relaxed`], and
 using [`Release`] makes the load part [`Relaxed`].
 
+**Note**: This method is only available on platforms that support atomic
+operations on [`", $s_int_type, "`](", $int_ref, ").
+
 [`Ordering`]: enum.Ordering.html
 [`Relaxed`]: enum.Ordering.html#variant.Relaxed
 [`Release`]: enum.Ordering.html#variant.Release
@@ -1686,9 +1711,7 @@ using [`Release`] makes the load part [`Relaxed`].
 let foo = ", stringify!($atomic_type), "::new(20);
 assert_eq!(foo.fetch_sub(10, Ordering::SeqCst), 20);
 assert_eq!(foo.load(Ordering::SeqCst), 10);
-```
-
-**Note**: This method may not be available on some platforms."),
+```"),
                 #[inline]
                 #[$stable]
                 #[$cfg_cas]
@@ -1711,6 +1734,9 @@ of this operation. All ordering modes are possible. Note that using
 [`Acquire`] makes the store part of this operation [`Relaxed`], and
 using [`Release`] makes the load part [`Relaxed`].
 
+**Note**: This method is only available on platforms that support atomic
+operations on [`", $s_int_type, "`](", $int_ref, ").
+
 [`Ordering`]: enum.Ordering.html
 [`Relaxed`]: enum.Ordering.html#variant.Relaxed
 [`Release`]: enum.Ordering.html#variant.Release
@@ -1724,9 +1750,7 @@ using [`Release`] makes the load part [`Relaxed`].
 let foo = ", stringify!($atomic_type), "::new(0b101101);
 assert_eq!(foo.fetch_and(0b110011, Ordering::SeqCst), 0b101101);
 assert_eq!(foo.load(Ordering::SeqCst), 0b100001);
-```
-
-**Note**: This method may not be available on some platforms."),
+```"),
                 #[inline]
                 #[$stable]
                 #[$cfg_cas]
@@ -1749,6 +1773,9 @@ of this operation. All ordering modes are possible. Note that using
 [`Acquire`] makes the store part of this operation [`Relaxed`], and
 using [`Release`] makes the load part [`Relaxed`].
 
+**Note**: This method is only available on platforms that support atomic
+operations on [`", $s_int_type, "`](", $int_ref, ").
+
 [`Ordering`]: enum.Ordering.html
 [`Relaxed`]: enum.Ordering.html#variant.Relaxed
 [`Release`]: enum.Ordering.html#variant.Release
@@ -1763,9 +1790,7 @@ use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};
 let foo = ", stringify!($atomic_type), "::new(0x13);
 assert_eq!(foo.fetch_nand(0x31, Ordering::SeqCst), 0x13);
 assert_eq!(foo.load(Ordering::SeqCst), !(0x13 & 0x31));
-```
-
-**Note**: This method may not be available on some platforms."),
+```"),
                 #[inline]
                 #[$stable_nand]
                 #[$cfg_cas]
@@ -1788,6 +1813,9 @@ of this operation. All ordering modes are possible. Note that using
 [`Acquire`] makes the store part of this operation [`Relaxed`], and
 using [`Release`] makes the load part [`Relaxed`].
 
+**Note**: This method is only available on platforms that support atomic
+operations on [`", $s_int_type, "`](", $int_ref, ").
+
 [`Ordering`]: enum.Ordering.html
 [`Relaxed`]: enum.Ordering.html#variant.Relaxed
 [`Release`]: enum.Ordering.html#variant.Release
@@ -1801,9 +1829,7 @@ using [`Release`] makes the load part [`Relaxed`].
 let foo = ", stringify!($atomic_type), "::new(0b101101);
 assert_eq!(foo.fetch_or(0b110011, Ordering::SeqCst), 0b101101);
 assert_eq!(foo.load(Ordering::SeqCst), 0b111111);
-```
-
-**Note**: This method may not be available on some platforms."),
+```"),
                 #[inline]
                 #[$stable]
                 #[$cfg_cas]
@@ -1826,6 +1852,9 @@ of this operation. All ordering modes are possible. Note that using
 [`Acquire`] makes the store part of this operation [`Relaxed`], and
 using [`Release`] makes the load part [`Relaxed`].
 
+**Note**: This method is only available on platforms that support atomic
+operations on [`", $s_int_type, "`](", $int_ref, ").
+
 [`Ordering`]: enum.Ordering.html
 [`Relaxed`]: enum.Ordering.html#variant.Relaxed
 [`Release`]: enum.Ordering.html#variant.Release
@@ -1839,9 +1868,7 @@ using [`Release`] makes the load part [`Relaxed`].
 let foo = ", stringify!($atomic_type), "::new(0b101101);
 assert_eq!(foo.fetch_xor(0b110011, Ordering::SeqCst), 0b101101);
 assert_eq!(foo.load(Ordering::SeqCst), 0b011110);
-```
-
-**Note**: This method may not be available on some platforms."),
+```"),
                 #[inline]
                 #[$stable]
                 #[$cfg_cas]
@@ -1870,6 +1897,9 @@ of this operation [`Relaxed`], and using [`Release`] makes the final successful 
 [`Relaxed`]. The (failed) load ordering can only be [`SeqCst`], [`Acquire`] or [`Relaxed`]
 and must be equivalent to or weaker than the success ordering.
 
+**Note**: This method is only available on platforms that support atomic
+operations on [`", $s_int_type, "`](", $int_ref, ").
+
 [`bool`]: ../../../std/primitive.bool.html
 [`compare_exchange`]: #method.compare_exchange
 [`Ordering`]: enum.Ordering.html
@@ -1888,9 +1918,7 @@ assert_eq!(x.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| None), Err(7))
 assert_eq!(x.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |x| Some(x + 1)), Ok(7));
 assert_eq!(x.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |x| Some(x + 1)), Ok(8));
 assert_eq!(x.load(Ordering::SeqCst), 9);
-```
-
-**Note**: This method may not be available on some platforms."),
+```"),
                 #[inline]
                 #[stable(feature = "no_more_cas", since = "1.45.0")]
                 #[$cfg_cas]
@@ -1923,6 +1951,9 @@ of this operation. All ordering modes are possible. Note that using
 [`Acquire`] makes the store part of this operation [`Relaxed`], and
 using [`Release`] makes the load part [`Relaxed`].
 
+**Note**: This method is only available on platforms that support atomic
+operations on [`", $s_int_type, "`](", $int_ref, ").
+
 [`Ordering`]: enum.Ordering.html
 [`Relaxed`]: enum.Ordering.html#variant.Relaxed
 [`Release`]: enum.Ordering.html#variant.Release
@@ -1947,9 +1978,7 @@ let foo = ", stringify!($atomic_type), "::new(23);
 let bar = 42;
 let max_foo = foo.fetch_max(bar, Ordering::SeqCst).max(bar);
 assert!(max_foo == 42);
-```
-
-**Note**: This method may not be available on some platforms."),
+```"),
                 #[inline]
                 #[stable(feature = "atomic_min_max", since = "1.45.0")]
                 #[$cfg_cas]
@@ -1971,6 +2000,9 @@ Returns the previous value.
 of this operation. All ordering modes are possible. Note that using
 [`Acquire`] makes the store part of this operation [`Relaxed`], and
 using [`Release`] makes the load part [`Relaxed`].
+
+**Note**: This method is only available on platforms that support atomic
+operations on [`", $s_int_type, "`](", $int_ref, ").
 
 [`Ordering`]: enum.Ordering.html
 [`Relaxed`]: enum.Ordering.html#variant.Relaxed
@@ -1998,9 +2030,7 @@ let foo = ", stringify!($atomic_type), "::new(23);
 let bar = 12;
 let min_foo = foo.fetch_min(bar, Ordering::SeqCst).min(bar);
 assert_eq!(min_foo, 12);
-```
-
-**Note**: This method may not be available on some platforms."),
+```"),
                 #[inline]
                 #[stable(feature = "atomic_min_max", since = "1.45.0")]
                 #[$cfg_cas]
