@@ -1623,12 +1623,17 @@ fn check_opaque_for_inheriting_lifetimes(tcx: TyCtxt<'tcx>, def_id: LocalDefId, 
     struct ProhibitOpaqueVisitor<'tcx> {
         opaque_identity_ty: Ty<'tcx>,
         generics: &'tcx ty::Generics,
+        ty: Option<Ty<'tcx>>,
     };
 
     impl<'tcx> ty::fold::TypeVisitor<'tcx> for ProhibitOpaqueVisitor<'tcx> {
         fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
             debug!("check_opaque_for_inheriting_lifetimes: (visit_ty) t={:?}", t);
-            if t == self.opaque_identity_ty { false } else { t.super_visit_with(self) }
+            if t != self.opaque_identity_ty && t.super_visit_with(self) {
+                self.ty = Some(t);
+                return true;
+            }
+            false
         }
 
         fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {
@@ -1651,46 +1656,61 @@ fn check_opaque_for_inheriting_lifetimes(tcx: TyCtxt<'tcx>, def_id: LocalDefId, 
         }
     }
 
-    let prohibit_opaque = match item.kind {
-        ItemKind::OpaqueTy(hir::OpaqueTy {
-            origin: hir::OpaqueTyOrigin::AsyncFn | hir::OpaqueTyOrigin::FnReturn,
-            ..
-        }) => {
-            let mut visitor = ProhibitOpaqueVisitor {
-                opaque_identity_ty: tcx.mk_opaque(
-                    def_id.to_def_id(),
-                    InternalSubsts::identity_for_item(tcx, def_id.to_def_id()),
-                ),
-                generics: tcx.generics_of(def_id),
-            };
-            debug!("check_opaque_for_inheriting_lifetimes: visitor={:?}", visitor);
-
-            tcx.predicates_of(def_id)
-                .predicates
-                .iter()
-                .any(|(predicate, _)| predicate.visit_with(&mut visitor))
-        }
-        _ => false,
-    };
-
-    debug!("check_opaque_for_inheriting_lifetimes: prohibit_opaque={:?}", prohibit_opaque);
-    if prohibit_opaque {
-        let is_async = match item.kind {
-            ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) => match origin {
-                hir::OpaqueTyOrigin::AsyncFn => true,
-                _ => false,
-            },
-            _ => unreachable!(),
+    if let ItemKind::OpaqueTy(hir::OpaqueTy {
+        origin: hir::OpaqueTyOrigin::AsyncFn | hir::OpaqueTyOrigin::FnReturn,
+        ..
+    }) = item.kind
+    {
+        let mut visitor = ProhibitOpaqueVisitor {
+            opaque_identity_ty: tcx.mk_opaque(
+                def_id.to_def_id(),
+                InternalSubsts::identity_for_item(tcx, def_id.to_def_id()),
+            ),
+            generics: tcx.generics_of(def_id),
+            ty: None,
         };
-
-        tcx.sess.span_err(
-            span,
-            &format!(
-            "`{}` return type cannot contain a projection or `Self` that references lifetimes from \
-             a parent scope",
-            if is_async { "async fn" } else { "impl Trait" },
-        ),
+        let prohibit_opaque = tcx
+            .predicates_of(def_id)
+            .predicates
+            .iter()
+            .any(|(predicate, _)| predicate.visit_with(&mut visitor));
+        debug!(
+            "check_opaque_for_inheriting_lifetimes: prohibit_opaque={:?}, visitor={:?}",
+            prohibit_opaque, visitor
         );
+
+        if prohibit_opaque {
+            let is_async = match item.kind {
+                ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) => match origin {
+                    hir::OpaqueTyOrigin::AsyncFn => true,
+                    _ => false,
+                },
+                _ => unreachable!(),
+            };
+
+            let mut err = struct_span_err!(
+                tcx.sess,
+                span,
+                E0760,
+                "`{}` return type cannot contain a projection or `Self` that references lifetimes from \
+             a parent scope",
+                if is_async { "async fn" } else { "impl Trait" },
+            );
+
+            if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(span) {
+                if snippet == "Self" {
+                    if let Some(ty) = visitor.ty {
+                        err.span_suggestion(
+                            span,
+                            "consider spelling out the type instead",
+                            format!("{:?}", ty),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                }
+            }
+            err.emit();
+        }
     }
 }
 
