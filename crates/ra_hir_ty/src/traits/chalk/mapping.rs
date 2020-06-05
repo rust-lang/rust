@@ -482,6 +482,11 @@ impl ToChalk for GenericPredicate {
                 let ty = from_chalk(db, projection_eq.ty);
                 GenericPredicate::Projection(ProjectionPredicate { projection_ty, ty })
             }
+
+            chalk_ir::WhereClause::LifetimeOutlives(_) => {
+                // we shouldn't get these from Chalk
+                panic!("encountered LifetimeOutlives from Chalk")
+            }
         }
     }
 }
