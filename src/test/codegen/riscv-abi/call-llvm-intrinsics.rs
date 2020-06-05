@@ -1,6 +1,6 @@
 // compile-flags: -C no-prepopulate-passes
 
-// ignore-riscv64
+// only-riscv64
 
 #![feature(link_llvm_intrinsics)]
 #![crate_type = "lib"]
@@ -23,7 +23,8 @@ pub fn do_call() {
 
     unsafe {
         // Ensure that we `call` LLVM intrinsics instead of trying to `invoke` them
-        // CHECK: call float @llvm.sqrt.f32(float 4.000000e+00
+        // CHECK: store float 4.000000e+00, float* %{{.}}, align 4
+        // CHECK: call float @llvm.sqrt.f32(float %{{.}}
         sqrt(4.0);
     }
 }

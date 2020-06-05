@@ -39,12 +39,12 @@ pub extern "C" fn f_scalar_4(x: i64) -> i64 {
     x
 }
 
-// CHECK: define float @f_fp_scalar_1(float)
+// CHECK: define float @f_fp_scalar_1(float %0)
 #[no_mangle]
 pub extern "C" fn f_fp_scalar_1(x: f32) -> f32 {
     x
 }
-// CHECK: define double @f_fp_scalar_2(double)
+// CHECK: define double @f_fp_scalar_2(double %0)
 #[no_mangle]
 pub extern "C" fn f_fp_scalar_2(x: f64) -> f64 {
     x
@@ -67,7 +67,7 @@ pub struct Tiny {
     d: u16,
 }
 
-// CHECK: define void @f_agg_tiny(i64)
+// CHECK: define void @f_agg_tiny(i64 %0)
 #[no_mangle]
 pub extern "C" fn f_agg_tiny(mut e: Tiny) {
     e.a += e.b;
@@ -86,7 +86,7 @@ pub struct Small {
     b: *mut i64,
 }
 
-// CHECK: define void @f_agg_small([2 x i64])
+// CHECK: define void @f_agg_small([2 x i64] %0)
 #[no_mangle]
 pub extern "C" fn f_agg_small(mut x: Small) {
     x.a += unsafe { *x.b };
@@ -104,7 +104,7 @@ pub struct SmallAligned {
     a: i128,
 }
 
-// CHECK: define void @f_agg_small_aligned(i128)
+// CHECK: define void @f_agg_small_aligned(i128 %0)
 #[no_mangle]
 pub extern "C" fn f_agg_small_aligned(mut x: SmallAligned) {
     x.a += x.a;
@@ -130,7 +130,7 @@ pub extern "C" fn f_agg_large_ret(i: i32, j: i8) -> Large {
     Large { a: 1, b: 2, c: 3, d: 4 }
 }
 
-// CHECK: define void @f_scalar_stack_1(i64, [2 x i64], i128, %Large* {{.*}}%d, i8 zeroext %e, i8 signext %f, i8 %g, i8 %h)
+// CHECK: define void @f_scalar_stack_1(i64 %0, [2 x i64] %1, i128 %2, %Large* {{.*}}%d, i8 zeroext %e, i8 signext %f, i8 %g, i8 %h)
 #[no_mangle]
 pub extern "C" fn f_scalar_stack_1(
     a: Tiny,
@@ -144,7 +144,7 @@ pub extern "C" fn f_scalar_stack_1(
 ) {
 }
 
-// CHECK: define void @f_scalar_stack_2(%Large* {{.*}}sret{{.*}}, i64 %a, i128, i128, i64 %d, i8 zeroext %e, i8 %f, i8 %g)
+// CHECK: define void @f_scalar_stack_2(%Large* {{.*}}sret{{.*}} %0, i64 %a, i128 %1, i128 %2, i64 %d, i8 zeroext %e, i8 %f, i8 %g)
 #[no_mangle]
 pub extern "C" fn f_scalar_stack_2(
     a: u64,
