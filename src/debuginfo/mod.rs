@@ -9,8 +9,8 @@ use cranelift_codegen::isa::TargetIsa;
 use cranelift_codegen::ValueLocRange;
 
 use gimli::write::{
-    self, Address, AttributeValue, DwarfUnit, Expression, LineProgram,
-    LineString, Location, LocationList, Range, RangeList, UnitEntryId, Writer,
+    Address, AttributeValue, DwarfUnit, Expression, LineProgram,
+    LineString, Location, LocationList, Range, RangeList, UnitEntryId,
 };
 use gimli::{Encoding, Format, LineEncoding, RunTimeEndian, X86_64};
 
@@ -187,7 +187,7 @@ impl<'tcx> DebugContext<'tcx> {
                 let type_entry = self.dwarf.unit.get_mut(type_id);
 
                 //type_entry.set(gimli::DW_AT_mutable, AttributeValue::Flag(mutbl == rustc_hir::Mutability::Mut));
-                type_entry.set(gimli::DW_AT_type, AttributeValue::ThisUnitEntryRef(pointee));
+                type_entry.set(gimli::DW_AT_type, AttributeValue::UnitRef(pointee));
 
                 type_id
             }
@@ -213,7 +213,7 @@ impl<'tcx> DebugContext<'tcx> {
 
                     field_entry.set(gimli::DW_AT_name, AttributeValue::String(field_def.ident.as_str().to_string().into_bytes()));
                     field_entry.set(gimli::DW_AT_data_member_location, AttributeValue::Udata(field_offset.bytes()));
-                    field_entry.set(gimli::DW_AT_type, AttributeValue::ThisUnitEntryRef(field_type));
+                    field_entry.set(gimli::DW_AT_type, AttributeValue::UnitRef(field_type));
                 }
 
                 type_id
@@ -291,7 +291,7 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
         let var_entry = self.debug_context.dwarf.unit.get_mut(var_id);
 
         var_entry.set(gimli::DW_AT_name, AttributeValue::String(name.into_bytes()));
-        var_entry.set(gimli::DW_AT_type, AttributeValue::ThisUnitEntryRef(dw_ty));
+        var_entry.set(gimli::DW_AT_type, AttributeValue::UnitRef(dw_ty));
 
         var_id
     }
@@ -341,15 +341,13 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
             let name = format!("{}{}", base_name, i);
 
             let dw_ty = self.debug_context.dwarf_ty_for_clif_ty(param.value_type);
-            let loc = Expression(
-                translate_loc(isa, context.func.locations[val], &context.func.stack_slots).unwrap(),
-            );
+            let loc = translate_loc(isa, context.func.locations[val], &context.func.stack_slots).unwrap();
 
             let arg_id = self.debug_context.dwarf.unit.add(self.entry_id, gimli::DW_TAG_formal_parameter);
             let var_entry = self.debug_context.dwarf.unit.get_mut(arg_id);
 
             var_entry.set(gimli::DW_AT_name, AttributeValue::String(name.into_bytes()));
-            var_entry.set(gimli::DW_AT_type, AttributeValue::ThisUnitEntryRef(dw_ty));
+            var_entry.set(gimli::DW_AT_type, AttributeValue::UnitRef(dw_ty));
             var_entry.set(gimli::DW_AT_location, AttributeValue::Exprloc(loc));
         }
 
@@ -413,9 +411,7 @@ fn place_location<'a, 'tcx>(
                                 symbol: func_debug_ctx.symbol,
                                 addend: i64::from(value_loc_range.end),
                             },
-                            data: Expression(
-                                translate_loc(isa, value_loc_range.loc, &context.func.stack_slots).unwrap(),
-                            ),
+                            data: translate_loc(isa, value_loc_range.loc, &context.func.stack_slots).unwrap(),
                         })
                         .collect(),
                 );
@@ -425,40 +421,37 @@ fn place_location<'a, 'tcx>(
             } else {
                 // FIXME set value labels for unused locals
 
-                AttributeValue::Exprloc(Expression(vec![]))
+                AttributeValue::Exprloc(Expression::new())
             }
         }
         CPlaceInner::Addr(_, _) => {
             // FIXME implement this (used by arguments and returns)
 
-            AttributeValue::Exprloc(Expression(vec![]))
+            AttributeValue::Exprloc(Expression::new())
 
             // For PointerBase::Stack:
-            //AttributeValue::Exprloc(Expression(translate_loc(ValueLoc::Stack(*stack_slot), &context.func.stack_slots).unwrap()))
+            //AttributeValue::Exprloc(translate_loc(ValueLoc::Stack(*stack_slot), &context.func.stack_slots).unwrap())
         }
     }
 }
 
 // Adapted from https://github.com/CraneStation/wasmtime/blob/5a1845b4caf7a5dba8eda1fef05213a532ed4259/crates/debug/src/transform/expression.rs#L59-L137
-fn translate_loc(isa: &dyn TargetIsa, loc: ValueLoc, stack_slots: &StackSlots) -> Option<Vec<u8>> {
+fn translate_loc(isa: &dyn TargetIsa, loc: ValueLoc, stack_slots: &StackSlots) -> Option<Expression> {
     match loc {
         ValueLoc::Reg(reg) => {
             let machine_reg = isa.map_dwarf_register(reg).unwrap();
-            assert!(machine_reg <= 32); // FIXME
-            Some(vec![gimli::constants::DW_OP_reg0.0 + machine_reg as u8])
+            let mut expr = Expression::new();
+            expr.op_reg(gimli::Register(machine_reg));
+            Some(expr)
         }
         ValueLoc::Stack(ss) => {
             if let Some(ss_offset) = stack_slots[ss].offset {
-                let endian = gimli::RunTimeEndian::Little;
-                let mut writer = write::EndianVec::new(endian);
-                writer
-                    .write_u8(gimli::constants::DW_OP_breg0.0 + X86_64::RBP.0 as u8)
-                    .expect("bp wr");
-                writer.write_sleb128(ss_offset as i64 + 16).expect("ss wr");
-                let buf = writer.into_vec();
-                return Some(buf);
+                let mut expr = Expression::new();
+                expr.op_breg(X86_64::RBP, ss_offset as i64 + 16);
+                Some(expr)
+            } else {
+                None
             }
-            None
         }
         _ => None,
     }
