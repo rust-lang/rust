@@ -18,7 +18,7 @@ been very rare that Clippy changes were included in a patch release.
 
 ### 1. Finding the relevant Clippy commits
 
-Each Rust release ships with its own version of Clippy. The Clippy submodule can
+Each Rust release ships with its own version of Clippy. The Clippy subtree can
 be found in the `tools` directory of the Rust repository.
 
 Depending on the current time and what exactly you want to update, the following
