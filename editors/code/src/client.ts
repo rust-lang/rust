@@ -7,20 +7,11 @@ import { CallHierarchyFeature } from 'vscode-languageclient/lib/callHierarchy.pr
 import { SemanticTokensFeature, DocumentSemanticsTokensSignature } from 'vscode-languageclient/lib/semanticTokens.proposed';
 import { assert } from './util';
 
-function toTrusted(obj: vscode.MarkedString): vscode.MarkedString {
-    const md = <vscode.MarkdownString>obj;
-    if (md && md.value.includes("```rust")) {
-        md.isTrusted = true;
-        return md;
-    }
-    return obj;
-}
-
-function renderCommand(cmd: CommandLink) {
+function renderCommand(cmd: ra.CommandLink) {
     return `[${cmd.title}](command:${cmd.command}?${encodeURIComponent(JSON.stringify(cmd.arguments))} '${cmd.tooltip!}')`;
 }
 
-function renderHoverActions(actions: CommandLinkGroup[]): vscode.MarkdownString {
+function renderHoverActions(actions: ra.CommandLinkGroup[]): vscode.MarkdownString {
     const text = actions.map(group =>
         (group.title ? (group.title + " ") : "") + group.commands.map(renderCommand).join(' | ')
     ).join('___');
@@ -63,10 +54,6 @@ export function createClient(serverPath: string, cwd: string): lc.LanguageClient
                     (result) => {
                         const hover = client.protocol2CodeConverter.asHover(result);
                         if (hover) {
-                            // Workaround to support command links (trusted vscode.MarkdownString) in hovers
-                            // https://github.com/microsoft/vscode/issues/33577
-                            hover.contents = hover.contents.map(toTrusted);
-
                             const actions = (<any>result).actions;
                             if (actions) {
                                 hover.contents.push(renderHoverActions(actions));

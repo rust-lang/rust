@@ -349,7 +349,7 @@ impl Config {
             self.assist.allow_snippets(snippet_text_edit);
 
             self.client_caps.code_action_group = get_bool("codeActionGroup");
-			self.client_caps.resolve_code_action = get_bool("resolveCodeAction");
+            self.client_caps.resolve_code_action = get_bool("resolveCodeAction");
             self.client_caps.hover_actions = get_bool("hoverActions");
         }
     }
