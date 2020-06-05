@@ -281,7 +281,7 @@ mod tests {
 
     #[test]
     fn cyclic_module_reexport() {
-        // Reexporting modules from a dependency adds all contents to the import map.
+        // A cyclic reexport does not hang.
         let map = import_map(
             r"
             //- /lib.rs crate:lib
