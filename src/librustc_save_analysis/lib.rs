@@ -534,10 +534,14 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                     }
                 }
             }
-            hir::ExprKind::Struct(hir::QPath::Resolved(_, path), ..) => {
+            hir::ExprKind::Struct(qpath, ..) => {
+                let segment = match qpath {
+                    hir::QPath::Resolved(_, path) => path.segments.last().unwrap(),
+                    hir::QPath::TypeRelative(_, segment) => segment,
+                };
                 match self.tables.expr_ty_adjusted(&hir_node).kind {
                     ty::Adt(def, _) if !def.is_enum() => {
-                        let sub_span = path.segments.last().unwrap().ident.span;
+                        let sub_span = segment.ident.span;
                         filter!(self.span_utils, sub_span);
                         let span = self.span_from_span(sub_span);
                         Some(Data::RefData(Ref {
@@ -580,7 +584,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
             }
             _ => {
                 // FIXME
-                bug!();
+                bug!("invalid expression: {:?}", expr);
             }
         }
     }
