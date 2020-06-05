@@ -133,7 +133,7 @@ does not.
 > recommendations, and to `tinaun` for posting a link to a [twitter thread from
 > Graydon Hoare](https://twitter.com/graydon_pub/status/1039615569132118016)
 > which had some more recommendations!
-> 
+>
 > Other sources: https://gcc.gnu.org/wiki/ListOfCompilerBooks
 >
 > If you have other suggestions, please feel free to open an issue or PR.
@@ -142,7 +142,7 @@ does not.
 - [Types and Programming Languages](https://www.cis.upenn.edu/~bcpierce/tapl/)
 - [Programming Language Pragmatics](https://www.cs.rochester.edu/~scott/pragmatics/)
 - [Practical Foundations for Programming Languages](https://www.cs.cmu.edu/~rwh/pfpl/2nded.pdf)
-- [Compilers: Principles, Techniques, and Tools, 2nd Edition](https://www.amazon.com/dp/9332518661/ref=cm_sw_r_other_apa_1tUSBb5VHAVA1)
+- [Compilers: Principles, Techniques, and Tools, 2nd Edition](https://www.pearson.com/us/higher-education/program/Aho-Compilers-Principles-Techniques-and-Tools-2nd-Edition/PGM167067.html)
 - [Garbage Collection: Algorithms for Automatic Dynamic Memory Management](https://www.cs.kent.ac.uk/people/staff/rej/gcbook/)
 - [Linkers and Loaders](https://linker.iecc.com/)
 - [Advanced Compiler Design and Implementation](https://www.goodreads.com/book/show/887908.Advanced_Compiler_Design_and_Implementation)
@@ -160,4 +160,4 @@ does not.
 
 ## Misc Papers and Blog Posts
 - [Programming in Martin-Löf's Type Theory](http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.118.6683&rep=rep1&type=pdf)
-- [Polymorphism, Subtyping, and Type Inference in MLsub](https://www.cl.cam.ac.uk/~sd601/papers/mlsub-preprint.pdf)
+- [Polymorphism, Subtyping, and Type Inference in MLsub](https://dl.acm.org/doi/10.1145/3093333.3009882)
