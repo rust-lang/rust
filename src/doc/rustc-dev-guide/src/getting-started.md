@@ -97,7 +97,16 @@ You can just do a normal git clone:
 git clone https://github.com/rust-lang/rust.git
 ```
 
-You don't need to clone the submodules at this time.
+You don't need to clone the submodules at this time. But if you want to, you
+can do the following:
+
+```sh
+# first time
+git submodule update --init --recursive
+
+# subsequent times (to pull new commits)
+git submodule update
+```
 
 **Pro tip**: if you contribute often, you may want to look at the git worktrees
 tip in [this chapter][suggested].
