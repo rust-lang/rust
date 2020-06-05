@@ -59,8 +59,7 @@ determined.
 ```bash
 # Assuming the current directory corresponds to the Rust repository
 $ git checkout beta
-$ git submodule update
-$ BETA_SHA=$(git submodule status src/tools/clippy | awk '{print $1}')
+$ BETA_SHA=$(git log --oneline -- src/tools/clippy/ | grep -o "Merge commit '[a-f0-9]*' into .*" | head -1 | sed -e "s/Merge commit '\([a-f0-9]*\)' into .*/\1/g")
 ```
 
 After finding the Clippy commit, the `beta` branch in the Clippy repository can
@@ -83,8 +82,7 @@ release. This commit can be found in the Rust repository.
 # Assuming the current directory corresponds to the Rust repository
 $ git fetch upstream    # `upstream` is the `rust-lang/rust` remote
 $ git checkout 1.XX.0   # XX should be exchanged with the corresponding version
-$ git submodule update
-$ SHA=$(git submodule status src/tools/clippy | awk '{print $1}')
+$ SHA=$(git log --oneline -- src/tools/clippy/ | grep -o "Merge commit '[a-f0-9]*' into .*" | head -1 | sed -e "s/Merge commit '\([a-f0-9]*\)' into .*/\1/g")
 ```
 
 
