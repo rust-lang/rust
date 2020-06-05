@@ -1110,7 +1110,6 @@ fn test() {
 }
 
 #[test]
-#[ignore]
 fn impl_trait() {
     assert_snapshot!(
         infer(r#"
@@ -1156,6 +1155,95 @@ fn test(x: impl Trait<u64>, y: &impl Trait<u64>) {
     244..252 'y.foo2()': i64
     258..259 'z': impl Trait<u64>
     258..266 'z.foo2()': i64
+    "###
+    );
+}
+
+#[test]
+fn simple_return_pos_impl_trait() {
+    mark::check!(lower_rpit);
+    assert_snapshot!(
+        infer(r#"
+trait Trait<T> {
+    fn foo(&self) -> T;
+}
+fn bar() -> impl Trait<u64> { loop {} }
+
+fn test() {
+    let a = bar();
+    a.foo();
+}
+"#),
+        @r###"
+    30..34 'self': &Self
+    72..83 '{ loop {} }': !
+    74..81 'loop {}': !
+    79..81 '{}': ()
+    95..130 '{     ...o(); }': ()
+    105..106 'a': impl Trait<u64>
+    109..112 'bar': fn bar() -> impl Trait<u64>
+    109..114 'bar()': impl Trait<u64>
+    120..121 'a': impl Trait<u64>
+    120..127 'a.foo()': u64
+    "###
+    );
+}
+
+#[test]
+fn more_return_pos_impl_trait() {
+    assert_snapshot!(
+        infer(r#"
+trait Iterator {
+    type Item;
+    fn next(&mut self) -> Self::Item;
+}
+trait Trait<T> {
+    fn foo(&self) -> T;
+}
+fn bar() -> (impl Iterator<Item = impl Trait<u32>>, impl Trait<u64>) { loop {} }
+fn baz<T>(t: T) -> (impl Iterator<Item = impl Trait<T>>, impl Trait<T>) { loop {} }
+
+fn test() {
+    let (a, b) = bar();
+    a.next().foo();
+    b.foo();
+    let (c, d) = baz(1u128);
+    c.next().foo();
+    d.foo();
+}
+"#),
+        @r###"
+    50..54 'self': &mut Self
+    102..106 'self': &Self
+    185..196 '{ loop {} }': ({unknown}, {unknown})
+    187..194 'loop {}': !
+    192..194 '{}': ()
+    207..208 't': T
+    269..280 '{ loop {} }': ({unknown}, {unknown})
+    271..278 'loop {}': !
+    276..278 '{}': ()
+    292..414 '{     ...o(); }': ()
+    302..308 '(a, b)': (impl Iterator<Item = impl Trait<u32>>, impl Trait<u64>)
+    303..304 'a': impl Iterator<Item = impl Trait<u32>>
+    306..307 'b': impl Trait<u64>
+    311..314 'bar': fn bar() -> (impl Iterator<Item = impl Trait<u32>>, impl Trait<u64>)
+    311..316 'bar()': (impl Iterator<Item = impl Trait<u32>>, impl Trait<u64>)
+    322..323 'a': impl Iterator<Item = impl Trait<u32>>
+    322..330 'a.next()': impl Trait<u32>
+    322..336 'a.next().foo()': u32
+    342..343 'b': impl Trait<u64>
+    342..349 'b.foo()': u64
+    359..365 '(c, d)': (impl Iterator<Item = impl Trait<u128>>, impl Trait<u128>)
+    360..361 'c': impl Iterator<Item = impl Trait<u128>>
+    363..364 'd': impl Trait<u128>
+    368..371 'baz': fn baz<u128>(u128) -> (impl Iterator<Item = impl Trait<u128>>, impl Trait<u128>)
+    368..378 'baz(1u128)': (impl Iterator<Item = impl Trait<u128>>, impl Trait<u128>)
+    372..377 '1u128': u128
+    384..385 'c': impl Iterator<Item = impl Trait<u128>>
+    384..392 'c.next()': impl Trait<u128>
+    384..398 'c.next().foo()': u128
+    404..405 'd': impl Trait<u128>
+    404..411 'd.foo()': u128
     "###
     );
 }

@@ -22,6 +22,8 @@ pub type AssociatedTyValueId = chalk_solve::rust_ir::AssociatedTyValueId<Interne
 pub type AssociatedTyValue = chalk_solve::rust_ir::AssociatedTyValue<Interner>;
 pub type FnDefId = chalk_ir::FnDefId<Interner>;
 pub type FnDefDatum = chalk_solve::rust_ir::FnDefDatum<Interner>;
+pub type OpaqueTyId = chalk_ir::OpaqueTyId<Interner>;
+pub type OpaqueTyDatum = chalk_solve::rust_ir::OpaqueTyDatum<Interner>;
 
 impl chalk_ir::interner::Interner for Interner {
     type InternedType = Box<chalk_ir::TyData<Self>>; // FIXME use Arc?

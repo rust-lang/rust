@@ -370,6 +370,7 @@ impl RootDatabase {
             hir::db::ImplDatumQuery
             hir::db::AssociatedTyValueQuery
             hir::db::TraitSolveQuery
+            hir::db::ReturnTypeImplTraitsQuery
 
             // SymbolsDatabase
             crate::symbol_index::FileSymbolsQuery

@@ -4,7 +4,7 @@ use std::sync::Arc;
 use log::debug;
 
 use chalk_ir::{fold::shift::Shift, GenericArg, TypeName};
-use chalk_solve::rust_ir::{self, WellKnownTrait};
+use chalk_solve::rust_ir::{self, OpaqueTyDatumBound, WellKnownTrait};
 
 use hir_def::{
     lang_item::{lang_attr, LangItemTarget},
@@ -100,6 +100,7 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
     fn associated_ty_value(&self, id: AssociatedTyValueId) -> Arc<AssociatedTyValue> {
         self.db.associated_ty_value(self.krate, id)
     }
+
     fn custom_clauses(&self) -> Vec<chalk_ir::ProgramClause<Interner>> {
         vec![]
     }
@@ -130,11 +131,34 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
         self.db.program_clauses_for_chalk_env(self.krate, environment.clone())
     }
 
-    fn opaque_ty_data(
-        &self,
-        _id: chalk_ir::OpaqueTyId<Interner>,
-    ) -> Arc<rust_ir::OpaqueTyDatum<Interner>> {
-        unimplemented!()
+    fn opaque_ty_data(&self, id: chalk_ir::OpaqueTyId<Interner>) -> Arc<OpaqueTyDatum> {
+        let interned_id = crate::db::InternedOpaqueTyId::from(id);
+        let full_id = self.db.lookup_intern_impl_trait_id(interned_id);
+        let (func, idx) = match full_id {
+            crate::OpaqueTyId::ReturnTypeImplTrait(func, idx) => (func, idx),
+        };
+        let datas =
+            self.db.return_type_impl_traits(func).expect("impl trait id without impl traits");
+        let data = &datas.value.impl_traits[idx as usize];
+        let bound = OpaqueTyDatumBound {
+            bounds: make_binders(
+                data.bounds
+                    .value
+                    .iter()
+                    .cloned()
+                    .filter(|b| !b.is_error())
+                    .map(|b| b.to_chalk(self.db))
+                    .collect(),
+                1,
+            ),
+        };
+        let num_vars = datas.num_binders;
+        Arc::new(OpaqueTyDatum { opaque_ty_id: id, bound: make_binders(bound, num_vars) })
+    }
+
+    fn hidden_opaque_type(&self, _id: chalk_ir::OpaqueTyId<Interner>) -> chalk_ir::Ty<Interner> {
+        // FIXME: actually provide the hidden type; it is relevant for auto traits
+        Ty::Unknown.to_chalk(self.db)
     }
 
     fn force_impl_for(
@@ -149,10 +173,6 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
     fn is_object_safe(&self, _trait_id: chalk_ir::TraitId<Interner>) -> bool {
         // FIXME: implement actual object safety
         true
-    }
-
-    fn hidden_opaque_type(&self, _id: chalk_ir::OpaqueTyId<Interner>) -> chalk_ir::Ty<Interner> {
-        Ty::Unknown.to_chalk(self.db)
     }
 }
 
@@ -457,6 +477,18 @@ impl From<ImplId> for crate::traits::GlobalImplId {
 impl From<crate::traits::GlobalImplId> for ImplId {
     fn from(impl_id: crate::traits::GlobalImplId) -> Self {
         chalk_ir::ImplId(impl_id.as_intern_id())
+    }
+}
+
+impl From<OpaqueTyId> for crate::db::InternedOpaqueTyId {
+    fn from(id: OpaqueTyId) -> Self {
+        InternKey::from_intern_id(id.0)
+    }
+}
+
+impl From<crate::db::InternedOpaqueTyId> for OpaqueTyId {
+    fn from(id: crate::db::InternedOpaqueTyId) -> Self {
+        chalk_ir::OpaqueTyId(id.as_intern_id())
     }
 }
 
