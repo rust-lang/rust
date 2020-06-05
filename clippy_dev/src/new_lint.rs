@@ -147,6 +147,8 @@ fn get_manifest_contents(lint_name: &str, hint: &str) -> String {
 name = "{}"
 version = "0.1.0"
 publish = false
+
+[workspace]
 "#,
         hint, lint_name
     )
