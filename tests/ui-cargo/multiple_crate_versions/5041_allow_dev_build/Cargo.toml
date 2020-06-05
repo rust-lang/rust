@@ -5,6 +5,8 @@ name = "multiple_crate_versions"
 version = "0.1.0"
 publish = false
 
+[workspace]
+
 # One of the versions of winapi is only a dev dependency: allowed
 [dependencies]
 ctrlc = "=3.1.0"

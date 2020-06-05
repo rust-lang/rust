@@ -34,12 +34,7 @@ impl LateLintPass<'_, '_> for WildcardDependencies {
             return;
         }
 
-        let metadata = if let Ok(metadata) = cargo_metadata::MetadataCommand::new().no_deps().exec() {
-            metadata
-        } else {
-            span_lint(cx, WILDCARD_DEPENDENCIES, DUMMY_SP, "could not read cargo metadata");
-            return;
-        };
+        let metadata = unwrap_cargo_metadata!(cx, WILDCARD_DEPENDENCIES, false);
 
         for dep in &metadata.packages[0].dependencies {
             // VersionReq::any() does not work
