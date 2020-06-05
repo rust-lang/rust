@@ -132,7 +132,7 @@ the following settings:
 - `incremental = true`: enables incremental compilation of the compiler itself.
   This is turned off by default because it's technically unsound. Sometimes
   this will cause weird crashes, but it can really speed things up.
-- `llvm-config`: enable building with system LLVM. [See this chapter][sysllvm]
+- `llvm-config`: enables building with system LLVM. [See this chapter][sysllvm]
   for more info. This avoids building LLVM, which can take a while.
 
 [sysllvm]: ./building/suggested.html#building-with-system-llvm
@@ -274,7 +274,7 @@ highlights, but there are a lot more details, which we will link to below.
 
 ### Code Review
 
-When you open a PR on the `rust-lang/rust` repo, a bot called `@highfive` will
+When you open a PR on the `rust-lang/rust` repo, a bot called `@rust-highfive` will
 automatically assign a reviewer to the PR. The reviewer is the person that will
 approve the PR to be tested and merged. If you want a specific reviewer (e.g. a
 team member you've been working with), you can specifically request them by
@@ -334,7 +334,7 @@ The feature then needs to be implemented behind a feature gate, which prevents
 it from being accidentally used.
 
 Finally, somebody may propose stabilizing the feature in an upcoming version of
-Rust. This requires an FCP (see below) to get the approval of the relevant teams.
+Rust. This requires a Final Comment Period (see below) to get the approval of the relevant teams.
 
 After that, the feature gate can be removed and the feature turned on for all users.
 
@@ -400,6 +400,6 @@ master.
 
 - This guide: talks about how `rustc` works
 - [The t-compiler zulip][z]
-- [The compiler's documentation (rustdocs)](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/)
+- [The compiler's documentation (rustdocs)](https://doc.rust-lang.org/nightly/nightly-rustc/)
 
 TODO: am I missing any?
