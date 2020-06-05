@@ -29,7 +29,7 @@ In contrast, `ty::Ty` represents the semantics of a type, that is, the *meaning*
 wrote. For example, `rustc_hir::Ty` would record the fact that a user used the name `u32` twice
 in their program, but the `ty::Ty` would record the fact that both usages refer to the same type.
 
-**Example: `fn foo(x: u32) → u32 { }`** In this function we see that `u32` appears twice. We know
+**Example: `fn foo(x: u32) → u32 { x }`** In this function we see that `u32` appears twice. We know
 that that is the same type, i.e. the function takes an argument and returns an argument of the same
 type, but from the point of view of the HIR there would be two distinct type instances because these
 are occurring in two different places in the program. That is, they have two
@@ -37,10 +37,10 @@ different [`Span`s][span] (locations).
 
 [span]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/struct.Span.html
 
-**Example: `fn foo(x: &u32) -> &u32)`** In addition, HIR might have information left out. This type
+**Example: `fn foo(x: &u32) -> &u32`** In addition, HIR might have information left out. This type
 `&u32` is incomplete, since in the full rust type there is actually a lifetime, but we didn’t need
 to write those lifetimes. There are also some elision rules that insert information. The result may
-look like  `fn foo<'a>(x: &'a u32) -> &'a u32)`.
+look like  `fn foo<'a>(x: &'a u32) -> &'a u32`.
 
 In the HIR level, these things are not spelled out and you can say the picture is rather incomplete.
 However, at the `ty::Ty` level, these details are added and it is complete. Moreover, we will have
