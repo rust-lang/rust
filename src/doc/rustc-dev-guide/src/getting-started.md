@@ -401,5 +401,6 @@ master.
 - This guide: talks about how `rustc` works
 - [The t-compiler zulip][z]
 - [The compiler's documentation (rustdocs)](https://doc.rust-lang.org/nightly/nightly-rustc/)
+- [The Forge](https://forge.rust-lang.org/) has more documentation about various procedures.
 
 TODO: am I missing any?
