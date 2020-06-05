@@ -35,10 +35,6 @@ fn resolve_instance<'tcx>(
                 debug!(" => intrinsic");
                 ty::InstanceDef::Intrinsic(def_id)
             }
-            ty::FnDef(def_id, _) if Some(def_id) == tcx.lang_items().count_code_region_fn() => {
-                debug!(" => injected placeholder function to be replaced");
-                ty::InstanceDef::InjectedCode(def_id)
-            }
             ty::FnDef(def_id, substs) if Some(def_id) == tcx.lang_items().drop_in_place_fn() => {
                 let ty = substs.type_at(0);
 

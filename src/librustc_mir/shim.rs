@@ -109,9 +109,6 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
         ty::InstanceDef::Intrinsic(_) => {
             bug!("creating shims from intrinsics ({:?}) is unsupported", instance)
         }
-        ty::InstanceDef::InjectedCode(_) => {
-            bug!("creating shims from injected code ({:?}) is unsupported", instance)
-        }
     };
     debug!("make_shim({:?}) = untransformed {:?}", instance, result);
 
