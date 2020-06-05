@@ -147,16 +147,24 @@ After updating `config.toml`, as mentioned above, you can use `./x.py`:
 ```shell
 # Build the compiler (stage 1)
 ./x.py build --stage 1
+
+# Subsequent builds
+./x.py build --stage 1 --keep-stage 1
 ```
 
 This will take a while, especially the first time. Be wary of accidentally
 touching or formatting the compiler, as `./x.py` will try to recompile it.
 
+**NOTE**: The `--keep-stage 1` will _assume_ that the stage 0 standard library
+does not need to be rebuilt, which is usually true, which will save some time.
+However, if you are changing certain parts of the compiler, this may lead to
+weird errors. Feel free to ask on [zulip][z] if you are running into issues.
+
 To run the compiler's UI test suite (the bulk of the test suite):
 
 ```
 # UI tests
-./x.py test --stage 1 src/test/ui
+./x.py test --stage 1 src/test/ui [--keep-stage 1]
 ```
 
 This will build the compiler first, if needed.
@@ -190,15 +198,65 @@ You can use `RUSTC_LOG=XXX` to get debug logging. [Read more here][logging].
 
 ### Building and Testing `std`/`core`/`alloc`/`test`/`proc_macro`/etc.
 
-TODO
+To contribute to `libstd`, you don't need to build the compiler unless you are
+planning to use a recently added nightly feature. Instead, you can just build
+stage 0.
+
+```sh
+./x.py build --stage 0 src/libstd
+```
+
+TODO: how to test?
 
 ### Building and Testing `rustdoc`
 
-TODO
+`rustdoc` uses `rustc` internals (and, of course, the standard library), so you
+will have to build the compiler and `std` once before you can build `rustdoc`.
+
+The following command will build all of them. Stage 1 should be sufficient,
+even though the release version will use the full 2-stage build.
+
+```sh
+# First build
+./x.py build --stage 1 src/tools/rustdoc
+
+# Subsequent builds
+./x.py build --stage 1 --keep-stage 1 src/tools/rustdoc
+```
+
+You can also use `./x.py check` here to do a fast check build.
+
+TODO: how to test?
 
 ### Contributing code to other Rust projects
 
-TODO: talk about things like miri, clippy, chalk, etc
+There are a bunch of other projects that one can contribute too outside of the
+`rust-lang/rust` repo, including `clippy`, `miri`, `chalk`, and many others.
+
+These repos might have their own contributing guidelines and procedures. Many
+of them are owned by working groups (e.g. `chalk` is largely owned by
+WG-traits). For more info, see the documentation in those repos' READMEs.
+
+### Other ways to contribute
+
+There are a bunch of other ways you can contribute, especially if you don't
+feel comfortable jumping straight into the large `rust-lang/rust` codebase.
+
+The following tasks are doable without much background knowledge but are
+incredibly helpful:
+
+- [ICE-breakers Cleanup crew][iceb]: find minimal reproductions of ICEs, bisect
+  regressions, etc. This is a way of helping that saves a ton of time for
+  others to fix an error later.
+- Writing documentation: if you are feeling a bit more intrepid, you could try
+  to read a part of the code and write doc comments for it. This will help you
+  to learn some part of the compiler while also producing a useful artifact!
+- [Working groups][wg]: there are a bunch of working groups on a wide variety
+  of rust-related things.
+
+[iceb]: ./ice-breaker/cleanup-crew.md
+[wg]: https://rust-lang.github.io/compiler-team/working-groups/
+
 
 ## Contributor Procedures
 
