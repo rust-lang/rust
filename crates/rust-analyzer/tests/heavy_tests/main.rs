@@ -4,9 +4,7 @@ use std::{collections::HashMap, path::PathBuf, time::Instant};
 
 use lsp_types::{
     notification::DidOpenTextDocument,
-    request::{
-        CodeActionRequest, Completion, Formatting, GotoDefinition, GotoTypeDefinition, HoverRequest,
-    },
+    request::{CodeActionRequest, Completion, Formatting, GotoTypeDefinition, HoverRequest},
     CodeActionContext, CodeActionParams, CompletionParams, DidOpenTextDocumentParams,
     DocumentFormattingParams, FormattingOptions, GotoDefinitionParams, HoverParams,
     PartialResultParams, Position, Range, TextDocumentItem, TextDocumentPositionParams,
@@ -507,6 +505,10 @@ fn main() {
     println!("cargo:rerun-if-changed=build.rs");
 }
 //- src/main.rs
+#[rustc_builtin_macro] macro_rules! include {}
+#[rustc_builtin_macro] macro_rules! concat {}
+#[rustc_builtin_macro] macro_rules! env {}
+
 include!(concat!(env!("OUT_DIR"), "/hello.rs"));
 
 #[cfg(atom_cfg)]
@@ -521,7 +523,7 @@ struct B;
 fn main() {
     let va = A;
     let vb = B;
-    message();
+    let should_be_str = message();
 }
 "###,
     )
@@ -530,36 +532,35 @@ fn main() {
     })
     .server();
     server.wait_until_workspace_is_loaded();
-    let res = server.send_request::<GotoDefinition>(GotoDefinitionParams {
+    let res = server.send_request::<HoverRequest>(HoverParams {
         text_document_position_params: TextDocumentPositionParams::new(
             server.doc_id("src/main.rs"),
-            Position::new(14, 8),
+            Position::new(18, 10),
         ),
         work_done_progress_params: Default::default(),
-        partial_result_params: Default::default(),
     });
-    assert!(format!("{}", res).contains("hello.rs"));
+    assert!(res.to_string().contains("&str"));
     server.request::<GotoTypeDefinition>(
         GotoDefinitionParams {
             text_document_position_params: TextDocumentPositionParams::new(
                 server.doc_id("src/main.rs"),
-                Position::new(12, 9),
+                Position::new(16, 9),
             ),
             work_done_progress_params: Default::default(),
             partial_result_params: Default::default(),
         },
         json!([{
             "originSelectionRange": {
-                "end": { "character": 10, "line": 12 },
-                "start": { "character": 8, "line": 12 }
+                "end": { "character": 10, "line": 16 },
+                "start": { "character": 8, "line": 16 }
             },
             "targetRange": {
-                "end": { "character": 9, "line": 3 },
-                "start": { "character": 0, "line": 2 }
+                "end": { "character": 9, "line": 7 },
+                "start": { "character": 0, "line": 6 }
             },
             "targetSelectionRange": {
-                "end": { "character": 8, "line": 3 },
-                "start": { "character": 7, "line": 3 }
+                "end": { "character": 8, "line": 7 },
+                "start": { "character": 7, "line": 7 }
             },
             "targetUri": "file:///[..]src/main.rs"
         }]),
@@ -568,23 +569,23 @@ fn main() {
         GotoDefinitionParams {
             text_document_position_params: TextDocumentPositionParams::new(
                 server.doc_id("src/main.rs"),
-                Position::new(13, 9),
+                Position::new(17, 9),
             ),
             work_done_progress_params: Default::default(),
             partial_result_params: Default::default(),
         },
         json!([{
             "originSelectionRange": {
-                "end": { "character": 10, "line": 13 },
-                "start": { "character": 8, "line":13 }
+                "end": { "character": 10, "line": 17 },
+                "start": { "character": 8, "line": 17 }
             },
             "targetRange": {
-                "end": { "character": 9, "line": 7 },
-                "start": { "character": 0, "line":6 }
+                "end": { "character": 9, "line": 11 },
+                "start": { "character": 0, "line":10 }
             },
             "targetSelectionRange": {
-                "end": { "character": 8, "line": 7 },
-                "start": { "character": 7, "line": 7 }
+                "end": { "character": 8, "line": 11 },
+                "start": { "character": 7, "line": 11 }
             },
             "targetUri": "file:///[..]src/main.rs"
         }]),
