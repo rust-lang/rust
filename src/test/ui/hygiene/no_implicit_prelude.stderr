@@ -16,9 +16,7 @@ LL |         Vec::new();
    |         ^^^ not found in this scope
    |
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
-help: consider importing one of these items
-   |
-LL |     use std::prelude::v1::Vec;
+help: consider importing this struct
    |
 LL |     use std::vec::Vec;
    |
