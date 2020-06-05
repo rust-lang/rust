@@ -3,7 +3,7 @@ use self::collector::NodeCollector;
 use crate::hir::{Owner, OwnerNodes};
 use crate::ty::query::Providers;
 use crate::ty::TyCtxt;
-use rustc_ast::ast::{self, NodeId};
+use rustc_ast::ast::{self};
 use rustc_data_structures::svh::Svh;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
@@ -158,18 +158,6 @@ impl<'hir> Map<'hir> {
     }
 
     #[inline]
-    pub fn local_def_id_from_node_id(&self, node: NodeId) -> LocalDefId {
-        self.opt_local_def_id_from_node_id(node).unwrap_or_else(|| {
-            let hir_id = self.node_id_to_hir_id(node);
-            bug!(
-                "local_def_id_from_node_id: no entry for `{}`, which has a map of `{:?}`",
-                node,
-                self.find_entry(hir_id)
-            )
-        })
-    }
-
-    #[inline]
     pub fn local_def_id(&self, hir_id: HirId) -> LocalDefId {
         self.opt_local_def_id(hir_id).unwrap_or_else(|| {
             bug!(
@@ -182,33 +170,12 @@ impl<'hir> Map<'hir> {
 
     #[inline]
     pub fn opt_local_def_id(&self, hir_id: HirId) -> Option<LocalDefId> {
-        let node_id = self.hir_id_to_node_id(hir_id);
-        self.opt_local_def_id_from_node_id(node_id)
-    }
-
-    #[inline]
-    pub fn opt_local_def_id_from_node_id(&self, node: NodeId) -> Option<LocalDefId> {
-        self.tcx.definitions.opt_local_def_id(node)
+        self.tcx.definitions.opt_hir_id_to_local_def_id(hir_id)
     }
 
     #[inline]
     pub fn as_local_hir_id(&self, def_id: LocalDefId) -> HirId {
         self.tcx.definitions.as_local_hir_id(def_id)
-    }
-
-    #[inline]
-    pub fn hir_id_to_node_id(&self, hir_id: HirId) -> NodeId {
-        self.tcx.definitions.hir_id_to_node_id(hir_id)
-    }
-
-    #[inline]
-    pub fn node_id_to_hir_id(&self, node_id: NodeId) -> HirId {
-        self.tcx.definitions.node_id_to_hir_id(node_id)
-    }
-
-    #[inline]
-    pub fn opt_node_id_to_hir_id(&self, node_id: NodeId) -> Option<HirId> {
-        self.tcx.definitions.opt_node_id_to_hir_id(node_id)
     }
 
     #[inline]
