@@ -6,9 +6,7 @@ use std::{
 };
 
 use hir_expand::db::AstDatabase;
-use ra_db::{
-    salsa, CrateId, ExternSourceId, FileId, FileLoader, FileLoaderDelegate, RelativePath, Upcast,
-};
+use ra_db::{salsa, CrateId, FileId, FileLoader, FileLoaderDelegate, Upcast};
 
 use crate::db::DefDatabase;
 
@@ -63,14 +61,6 @@ impl FileLoader for TestDB {
     }
     fn relevant_crates(&self, file_id: FileId) -> Arc<Vec<CrateId>> {
         FileLoaderDelegate(self).relevant_crates(file_id)
-    }
-
-    fn resolve_extern_path(
-        &self,
-        extern_id: ExternSourceId,
-        relative_path: &RelativePath,
-    ) -> Option<FileId> {
-        FileLoaderDelegate(self).resolve_extern_path(extern_id, relative_path)
     }
 }
 

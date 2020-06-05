@@ -295,19 +295,13 @@ fn concat_expand(
 
 fn relative_file(db: &dyn AstDatabase, call_id: MacroCallId, path: &str) -> Option<FileId> {
     let call_site = call_id.as_file().original_file(db);
-
-    // Handle trivial case
-    if let Some(res) = db.resolve_path(call_site, path) {
-        // Prevent include itself
-        return if res == call_site { None } else { Some(res) };
+    let res = db.resolve_path(call_site, path)?;
+    // Prevent include itself
+    if res == call_site {
+        None
+    } else {
+        Some(res)
     }
-
-    // Extern paths ?
-    let krate = *db.relevant_crates(call_site).get(0)?;
-    let (extern_source_id, relative_file) =
-        db.crate_graph()[krate].extern_source.extern_path(path)?;
-
-    db.resolve_extern_path(extern_source_id, &relative_file)
 }
 
 fn parse_string(tt: &tt::Subtree) -> Result<String, mbe::ExpandError> {
