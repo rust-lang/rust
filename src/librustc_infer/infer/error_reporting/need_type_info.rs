@@ -88,7 +88,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindHirNodeVisitor<'a, 'tcx> {
         if let (None, Some(ty)) =
             (self.found_local_pattern, self.node_ty_contains_target(local.hir_id))
         {
-            // There's a trade-off here - we can either check that our target span
+            // FIXME: There's a trade-off here - we can either check that our target span
             // is contained in `local.span` or not. If we choose to check containment
             // we can avoid some spurious suggestions (see #72690), but we lose
             // the ability to report on things like:
