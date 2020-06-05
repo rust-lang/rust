@@ -1,6 +1,6 @@
 //! A map of all publicly exported items in a crate.
 
-use std::{collections::hash_map::Entry, sync::Arc};
+use std::{collections::hash_map::Entry, fmt, sync::Arc};
 
 use ra_db::CrateId;
 use rustc_hash::FxHashMap;
@@ -21,7 +21,7 @@ use crate::{
 ///
 /// Note that all paths are relative to the containing crate's root, so the crate name still needs
 /// to be prepended to the `ModPath` before the path is valid.
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Eq, PartialEq)]
 pub struct ImportMap {
     map: FxHashMap<ItemInNs, ModPath>,
 }
@@ -95,6 +95,26 @@ impl ImportMap {
     }
 }
 
+impl fmt::Debug for ImportMap {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut importable_paths: Vec<_> = self
+            .map
+            .iter()
+            .map(|(item, modpath)| {
+                let ns = match item {
+                    ItemInNs::Types(_) => "t",
+                    ItemInNs::Values(_) => "v",
+                    ItemInNs::Macros(_) => "m",
+                };
+                format!("- {} ({})", modpath, ns)
+            })
+            .collect();
+
+        importable_paths.sort();
+        f.write_str(&importable_paths.join("\n"))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -115,23 +135,7 @@ mod tests {
 
                 let map = db.import_map(krate);
 
-                let mut importable_paths: Vec<_> = map
-                    .map
-                    .iter()
-                    .map(|(item, modpath)| {
-                        let ns = match item {
-                            ItemInNs::Types(_) => "t",
-                            ItemInNs::Values(_) => "v",
-                            ItemInNs::Macros(_) => "m",
-                        };
-                        format!("- {} ({})", modpath, ns)
-                    })
-                    .collect();
-
-                importable_paths.sort();
-                let importable_paths = importable_paths.join("\n");
-
-                Some(format!("{}:\n{}", name, importable_paths))
+                Some(format!("{}:\n{:?}", name, map))
             })
             .collect();
 
