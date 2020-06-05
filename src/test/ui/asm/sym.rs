@@ -1,8 +1,9 @@
 // no-system-llvm
 // only-x86_64
+// only-linux
 // run-pass
 
-#![feature(asm, track_caller)]
+#![feature(asm, track_caller, thread_local)]
 
 extern "C" fn f1() -> i32 {
     111
@@ -15,9 +16,9 @@ fn f2() -> i32 {
 }
 
 macro_rules! call {
-    ($func:path) => {{
-        let result: i32;
+    ($func:path) => {
         unsafe {
+            let result: i32;
             asm!("call {}", sym $func,
                 out("rax") result,
                 out("rcx") _, out("rdx") _, out("rdi") _, out("rsi") _,
@@ -27,12 +28,53 @@ macro_rules! call {
                 out("xmm8") _, out("xmm9") _, out("xmm10") _, out("xmm11") _,
                 out("xmm12") _, out("xmm13") _, out("xmm14") _, out("xmm15") _,
             );
+            result
         }
-        result
-    }}
+    }
 }
+
+macro_rules! static_addr {
+    ($s:expr) => {
+        unsafe {
+            let result: *const u32;
+            // LEA performs a RIP-relative address calculation and returns the address
+            asm!("lea {}, [rip + {}]", out(reg) result, sym $s);
+            result
+        }
+    }
+}
+macro_rules! static_tls_addr {
+    ($s:expr) => {
+        unsafe {
+            let result: *const u32;
+            asm!(
+                "
+                    # Load TLS base address
+                    mov {out}, qword ptr fs:[0]
+                    # Calculate the address of sym in the TLS block. The @tpoff
+                    # relocation gives the offset of the symbol from the start
+                    # of the TLS block.
+                    lea {out}, [{out} + {sym}@tpoff]
+                ",
+                out = out(reg) result,
+                sym = sym $s
+            );
+            result
+        }
+    }
+}
+
+static S1: u32 = 111;
+#[thread_local]
+static S2: u32 = 222;
 
 fn main() {
     assert_eq!(call!(f1), 111);
     assert_eq!(call!(f2), 222);
+    assert_eq!(static_addr!(S1), &S1 as *const u32);
+    assert_eq!(static_tls_addr!(S2), &S2 as *const u32);
+    std::thread::spawn(|| {
+        assert_eq!(static_addr!(S1), &S1 as *const u32);
+        assert_eq!(static_tls_addr!(S2), &S2 as *const u32);
+    });
 }

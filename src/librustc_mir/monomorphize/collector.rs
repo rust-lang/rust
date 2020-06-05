@@ -634,9 +634,19 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
             }
             mir::TerminatorKind::InlineAsm { ref operands, .. } => {
                 for op in operands {
-                    if let mir::InlineAsmOperand::SymFn { value } = op {
-                        let fn_ty = self.monomorphize(value.literal.ty);
-                        visit_fn_use(self.tcx, fn_ty, false, &mut self.output);
+                    match *op {
+                        mir::InlineAsmOperand::SymFn { ref value } => {
+                            let fn_ty = self.monomorphize(value.literal.ty);
+                            visit_fn_use(self.tcx, fn_ty, false, &mut self.output);
+                        }
+                        mir::InlineAsmOperand::SymStatic { def_id } => {
+                            let instance = Instance::mono(self.tcx, def_id);
+                            if should_monomorphize_locally(self.tcx, &instance) {
+                                trace!("collecting asm sym static {:?}", def_id);
+                                self.output.push(MonoItem::Static(def_id));
+                            }
+                        }
+                        _ => {}
                     }
                 }
             }
