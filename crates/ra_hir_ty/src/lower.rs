@@ -21,8 +21,10 @@ use hir_def::{
     HasModule, ImplId, LocalFieldId, Lookup, StaticId, StructId, TraitId, TypeAliasId, TypeParamId,
     UnionId, VariantId,
 };
+use hir_expand::name::Name;
 use ra_arena::map::ArenaMap;
 use ra_db::CrateId;
+use test_utils::mark;
 
 use crate::{
     db::HirDatabase,
@@ -35,7 +37,6 @@ use crate::{
     ProjectionPredicate, ProjectionTy, ReturnTypeImplTrait, ReturnTypeImplTraits, Substs,
     TraitEnvironment, TraitRef, Ty, TypeCtor, TypeWalk,
 };
-use hir_expand::name::Name;
 
 #[derive(Debug)]
 pub struct TyLoweringContext<'a> {
@@ -220,10 +221,7 @@ impl Ty {
 
                         let func = match ctx.resolver.generic_def() {
                             Some(GenericDefId::FunctionId(f)) => f,
-                            _ => {
-                                // this shouldn't happen
-                                return (Ty::Unknown, None);
-                            }
+                            _ => panic!("opaque impl trait lowering in non-function"),
                         };
                         let impl_trait_id = OpaqueTyId::ReturnTypeImplTrait(func, idx);
                         let generics = generics(ctx.db.upcast(), func.into());
@@ -719,6 +717,7 @@ fn assoc_type_bindings_from_type_bound<'a>(
 
 impl ReturnTypeImplTrait {
     fn from_hir(ctx: &TyLoweringContext, bounds: &[TypeBound]) -> Self {
+        mark::hit!(lower_rpit);
         let self_ty = Ty::Bound(BoundVar::new(DebruijnIndex::INNERMOST, 0));
         let predicates = ctx.with_shifted_in(DebruijnIndex::ONE, |ctx| {
             bounds

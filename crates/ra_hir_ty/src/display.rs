@@ -4,7 +4,7 @@ use std::fmt;
 
 use crate::{
     db::HirDatabase, utils::generics, ApplicationTy, CallableDef, FnSig, GenericPredicate,
-    Obligation, ProjectionTy, Substs, TraitRef, Ty, TypeCtor,
+    Obligation, OpaqueTyId, ProjectionTy, Substs, TraitRef, Ty, TypeCtor,
 };
 use hir_def::{
     find_path, generics::TypeParamProvenance, item_scope::ItemInNs, AdtId, AssocContainerId,
@@ -361,7 +361,7 @@ impl HirDisplay for ApplicationTy {
             }
             TypeCtor::OpaqueType(opaque_ty_id) => {
                 let bounds = match opaque_ty_id {
-                    crate::OpaqueTyId::ReturnTypeImplTrait(func, idx) => {
+                    OpaqueTyId::ReturnTypeImplTrait(func, idx) => {
                         let datas =
                             f.db.return_type_impl_traits(func).expect("impl trait id without data");
                         let data = (*datas)
@@ -448,7 +448,7 @@ impl HirDisplay for Ty {
             }
             Ty::Opaque(opaque_ty) => {
                 let bounds = match opaque_ty.opaque_ty_id {
-                    crate::OpaqueTyId::ReturnTypeImplTrait(func, idx) => {
+                    OpaqueTyId::ReturnTypeImplTrait(func, idx) => {
                         let datas =
                             f.db.return_type_impl_traits(func).expect("impl trait id without data");
                         let data = (*datas)
