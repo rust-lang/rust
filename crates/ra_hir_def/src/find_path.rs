@@ -128,7 +128,7 @@ pub(crate) fn find_path_inner(
     let mut best_path = None;
     let mut best_path_len = max_len;
 
-    if item.defining_crate(db) == Some(from.krate) {
+    if item.krate(db) == Some(from.krate) {
         // Item was defined in the same crate that wants to import it. It cannot be found in any
         // dependency in this case.
 

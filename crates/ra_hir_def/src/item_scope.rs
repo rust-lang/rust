@@ -205,7 +205,8 @@ impl ItemInNs {
         }
     }
 
-    pub fn defining_crate(&self, db: &dyn DefDatabase) -> Option<CrateId> {
+    /// Returns the crate defining this item (or `None` if `self` is built-in).
+    pub fn krate(&self, db: &dyn DefDatabase) -> Option<CrateId> {
         Some(match self {
             ItemInNs::Types(did) | ItemInNs::Values(did) => match did {
                 ModuleDefId::ModuleId(id) => id.krate,
