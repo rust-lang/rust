@@ -335,7 +335,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // so creating `ImplCandidates` isn't useful. However, we might
         // end up finding a candidate elsewhere (e.g. a `BuiltinCandidate` for `Sized)
         // This helps us avoid overflow: see issue #72839
-        // Since compilation is already guarnateed to fail, this is just
+        // Since compilation is already guaranteed to fail, this is just
         // to try to show the 'nicest' possible errors to the user.
         if obligation.references_error() {
             return Ok(());
