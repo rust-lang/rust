@@ -257,9 +257,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 assert!(caller_abi == Abi::RustIntrinsic || caller_abi == Abi::PlatformIntrinsic);
                 M::call_intrinsic(self, instance, args, ret, unwind)
             }
-            ty::InstanceDef::InjectedCode(..) => {
-                M::call_intrinsic(self, instance, args, ret, unwind)
-            }
             ty::InstanceDef::VtableShim(..)
             | ty::InstanceDef::ReifyShim(..)
             | ty::InstanceDef::ClosureOnceShim { .. }
