@@ -52,7 +52,7 @@ pub(crate) fn extract_struct_from_enum_variant(
         ImportsLocator::new(ctx.db).find_imports(&enum_name).first()?.left()?;
     let current_module = current_module_def.module(ctx.db)?;
     let target = variant.syntax().text_range();
-    return acc.add_in_multiple_files(
+    acc.add_in_multiple_files(
         AssistId("extract_struct_from_enum_variant"),
         "Extract struct from enum variant",
         target,
@@ -85,7 +85,7 @@ pub(crate) fn extract_struct_from_enum_variant(
             let list_range = field_list.syntax().text_range();
             update_variant(edit, &variant_name, ctx.frange.file_id, list_range);
         },
-    );
+    )
 }
 
 fn existing_struct_def(db: &RootDatabase, variant_name: &str, variant: &EnumVariant) -> bool {
