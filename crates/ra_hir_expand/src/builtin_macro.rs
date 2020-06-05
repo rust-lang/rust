@@ -8,7 +8,7 @@ use crate::{
 use crate::{quote, EagerMacroId, LazyMacroId, MacroCallId};
 use either::Either;
 use mbe::parse_to_token_tree;
-use ra_db::{FileId, RelativePath};
+use ra_db::FileId;
 use ra_parser::FragmentKind;
 
 macro_rules! register_builtin {
@@ -297,7 +297,7 @@ fn relative_file(db: &dyn AstDatabase, call_id: MacroCallId, path: &str) -> Opti
     let call_site = call_id.as_file().original_file(db);
 
     // Handle trivial case
-    if let Some(res) = db.resolve_path(call_site, &RelativePath::new(&path)) {
+    if let Some(res) = db.resolve_path(call_site, path) {
         // Prevent include itself
         return if res == call_site { None } else { Some(res) };
     }
