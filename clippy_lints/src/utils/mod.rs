@@ -1405,6 +1405,24 @@ pub fn run_lints(cx: &LateContext<'_, '_>, lints: &[&'static Lint], id: HirId) -
     })
 }
 
+#[macro_export]
+macro_rules! unwrap_cargo_metadata {
+    ($cx: ident, $lint: ident, $deps: expr) => {{
+        let mut command = cargo_metadata::MetadataCommand::new();
+        if !$deps {
+            command.no_deps();
+        }
+
+        match command.exec() {
+            Ok(metadata) => metadata,
+            Err(err) => {
+                span_lint($cx, $lint, DUMMY_SP, &format!("could not read cargo metadata: {}", err));
+                return;
+            },
+        }
+    }};
+}
+
 #[cfg(test)]
 mod test {
     use super::{trim_multiline, without_block_comments};
