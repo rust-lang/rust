@@ -107,8 +107,8 @@ Compatibility Notes
   previously a warning.
 - [In 1.45.0 (the next release) converting a `f64` to `u32` using the `as`
   operator has been defined as a saturating operation.][71269] This was previously
-  undefined behaviour, you can use the `{f64, f32}::to_int_unchecked` methods to
-  continue using the current behaviour which may desirable in rare performance
+  undefined behaviour, but you can use the `{f64, f32}::to_int_unchecked` methods to
+  continue using the current behaviour, which may be desirable in rare performance
   sensitive situations.
 
 Internal Only
