@@ -1576,7 +1576,7 @@ pub type PlaceholderConst = Placeholder<BoundVar>;
 /// Luckily we only need to deal with const arguments once we
 /// know their corresponding parameters. We (ab)use this by
 /// calling `type_of(param_did)` for these arguments.
-#[derive(Copy, Clone, Debug, Hash, HashStable, TypeFoldable, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct WithOptParam<T> {
     pub did: T,
     /// The `DefId` of the corresponding generic paramter in case `did` is
@@ -1586,10 +1586,24 @@ pub struct WithOptParam<T> {
     pub param_did: Option<DefId>,
 }
 
-// We manually implement comparisions as the `param_did` can be ignored.
+// We manually implement most traits for `WithOptParam`
+// as the `param_did` is redundant.
+
 impl<T: PartialEq> PartialEq for WithOptParam<T> {
     fn eq(&self, other: &Self) -> bool {
         self.did == other.did
+    }
+}
+
+impl<T: Hash> Hash for WithOptParam<T> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.did.hash(state);
+    }
+}
+
+impl<CTX, T: HashStable<CTX>> HashStable<CTX> for WithOptParam<T> {
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+        self.did.hash_stable(hcx, hasher);
     }
 }
 
