@@ -1,6 +1,7 @@
 // run-pass
 // ignore-arm
 // ignore-aarch64
+// ignore-riscv64 fastcall isn't supported
 
 trait A {
     extern "fastcall" fn test1(i: i32);

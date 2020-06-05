@@ -1331,7 +1331,8 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
         // 3) Report all missing variables we found.
         let mut missing_vars = missing_vars.iter_mut().collect::<Vec<_>>();
-        missing_vars.sort();
+        missing_vars.sort_by_key(|(sym, _err)| sym.as_str());
+
         for (name, mut v) in missing_vars {
             if inconsistent_vars.contains_key(name) {
                 v.could_be_path = false;
