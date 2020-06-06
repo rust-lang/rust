@@ -227,6 +227,18 @@ pub fn path_to_string(segment: &hir::Path<'_>) -> String {
     to_string(NO_ANN, |s| s.print_path(segment, false))
 }
 
+pub fn fn_to_string(
+    decl: &hir::FnDecl<'_>,
+    header: hir::FnHeader,
+    name: Option<Symbol>,
+    generics: &hir::Generics<'_>,
+    vis: &hir::Visibility<'_>,
+    arg_names: &[Ident],
+    body_id: Option<hir::BodyId>,
+) -> String {
+    to_string(NO_ANN, |s| s.print_fn(decl, header, name, generics, vis, arg_names, body_id))
+}
+
 impl<'a> State<'a> {
     pub fn cbox(&mut self, u: usize) {
         self.s.cbox(u);
@@ -385,7 +397,7 @@ impl<'a> State<'a> {
                     &f.param_names[..],
                 );
             }
-            hir::TyKind::Def(..) => {}
+            hir::TyKind::Def(item, _) => self.ann.nested(self, Nested::Item(item)),
             hir::TyKind::Path(ref qpath) => self.print_qpath(qpath, false),
             hir::TyKind::TraitObject(bounds, ref lifetime) => {
                 let mut first = true;

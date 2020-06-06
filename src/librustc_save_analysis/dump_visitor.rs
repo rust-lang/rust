@@ -20,7 +20,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind as HirDefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir_pretty::{bounds_to_string, generic_params_to_string, ty_to_string};
+use rustc_hir_pretty::{bounds_to_string, fn_to_string, generic_params_to_string, ty_to_string};
 use rustc_middle::hir::map::Map;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, DefIdTree, TyCtxt};
@@ -276,7 +276,8 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                 }
                 v.process_generic_params(&generics, &method_data.qualname, hir_id);
 
-                method_data.value = crate::make_signature(&sig.decl, &generics);
+                method_data.value =
+                    fn_to_string(sig.decl, sig.header, Some(ident.name), generics, vis, &[], None);
                 method_data.sig = sig::method_signature(hir_id, ident, generics, sig, &v.save_ctxt);
 
                 v.dumper.dump_def(&access_from_vis!(v.save_ctxt, vis, hir_id), method_data);
