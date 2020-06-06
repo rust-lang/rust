@@ -154,7 +154,7 @@ pub fn spin_loop_hint() {
 /// This type has the same in-memory representation as a [`bool`].
 ///
 /// **Note**: This type is only available on platforms that support atomic
-/// loads and stores of booleans (as `u8`).
+/// loads and stores of `u8`.
 ///
 /// [`bool`]: ../../../std/primitive.bool.html
 #[cfg(target_has_atomic_load_store = "8")]
