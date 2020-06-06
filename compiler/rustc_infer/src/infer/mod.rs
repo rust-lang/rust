@@ -1614,28 +1614,22 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn drain_modifications(
-        &self,
-        offset: &WatcherOffset,
-        mut f: impl FnMut(TyOrConstInferVar),
-    ) {
+    pub fn notify_watcher(&self, offset: &WatcherOffset, mut f: impl FnMut(TyOrConstInferVar)) {
         let mut inner = self.inner.borrow_mut();
 
-        inner
-            .type_variables()
-            .drain_modified_set(&offset.ty_offset, |v| f(TyOrConstInferVar::Ty(v)));
+        inner.type_variables().notify_watcher(&offset.ty_offset, |v| f(TyOrConstInferVar::Ty(v)));
 
         inner
             .int_unification_table()
-            .drain_modified_set(&offset.int_offset, |vid| f(TyOrConstInferVar::TyInt(vid)));
+            .notify_watcher(&offset.int_offset, |vid| f(TyOrConstInferVar::TyInt(vid)));
 
         inner
             .float_unification_table()
-            .drain_modified_set(&offset.float_offset, |vid| f(TyOrConstInferVar::TyFloat(vid)));
+            .notify_watcher(&offset.float_offset, |vid| f(TyOrConstInferVar::TyFloat(vid)));
 
         inner
             .const_unification_table()
-            .drain_modified_set(&offset.const_offset, |vid| f(TyOrConstInferVar::Const(vid)));
+            .notify_watcher(&offset.const_offset, |vid| f(TyOrConstInferVar::Const(vid)));
     }
 
     pub fn register_unify_watcher(&self) -> WatcherOffset {

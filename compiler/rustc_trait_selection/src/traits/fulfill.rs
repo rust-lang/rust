@@ -230,7 +230,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
 
             if errors.is_empty() { Ok(()) } else { Err(errors) }
         })();
-        if let Some(offset) = self.predicates.take_offset() {
+        if let Some(offset) = self.predicates.take_watcher_offset() {
             infcx.deregister_unify_watcher(offset);
         }
         result
@@ -245,7 +245,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
     }
 
     fn deregister(&mut self, infcx: &InferCtxt<'_, 'tcx>) {
-        if let Some(offset) = self.predicates.take_offset() {
+        if let Some(offset) = self.predicates.take_watcher_offset() {
             infcx.deregister_unify_watcher(offset);
         }
     }
@@ -570,13 +570,13 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
         }
     }
 
-    fn unblocked(
+    fn notify_unblocked(
         &self,
         offset: &WatcherOffset,
         f: impl FnMut(<Self::Obligation as ForestObligation>::Variable),
     ) {
         let infcx = self.selcx.infcx();
-        infcx.drain_modifications(offset, f);
+        infcx.notify_watcher(offset, f);
     }
 
     fn register_variable_watcher(&self) -> WatcherOffset {

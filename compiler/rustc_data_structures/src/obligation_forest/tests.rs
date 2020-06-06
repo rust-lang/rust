@@ -93,7 +93,7 @@ where
     {
     }
 
-    fn unblocked(
+    fn notify_unblocked(
         &self,
         _offset: &<Self::Obligation as ForestObligation>::WatcherOffset,
         _f: impl FnMut(<Self::Obligation as ForestObligation>::Variable),

@@ -10,7 +10,11 @@ pub enum Undo<T> {
 
 /// Tracks which variables (represented by indices) that has been unified with eachother.
 /// Since there is often only a few variables that are interesting one must call `watch_variable`
-/// before this records any variables unified with that variable.
+/// on any variable record unifications with. Used in conjuction with a `ModifiedSet` to accurately
+/// track which variables has been instantiated.
+///
+/// NOTE: The methods on this expect and only work correctly if a root variable from
+/// an `UnificationTable` is provided.
 pub struct UnifyLog<T: Idx> {
     unified_vars: IndexVec<T, usize>,
     groups: Vec<Vec<T>>,
@@ -31,6 +35,7 @@ fn pick2_mut<T, I: Idx>(self_: &mut [T], a: I, b: I) -> (&mut T, &mut T) {
 }
 
 impl<T: Idx> UnifyLog<T> {
+    /// Returns a new `UnifyLog`
     pub fn new() -> Self {
         UnifyLog {
             unified_vars: IndexVec::new(),
@@ -39,6 +44,8 @@ impl<T: Idx> UnifyLog<T> {
         }
     }
 
+    /// Logs that `root` were unified with `other`. Allowing all variables that were unified with
+    /// root to be returned by `get` (if those variables are watched)
     pub fn unify(&mut self, undo_log: &mut impl UndoLogs<Undo<T>>, root: T, other: T) {
         if !self.needs_log(other) {
             return;
@@ -84,6 +91,8 @@ impl<T: Idx> UnifyLog<T> {
         }
     }
 
+    /// Returns the variables that `root` were unified with. The returned list may or may not
+    /// contain `root` itself.
     pub fn get(&self, root: T) -> &[T] {
         match self.unified_vars.get(root) {
             Some(group) => match self.groups.get(*group) {
@@ -94,15 +103,19 @@ impl<T: Idx> UnifyLog<T> {
         }
     }
 
+    /// Returns true if `vid` is something that needs to be logged to a watcher
     pub fn needs_log(&self, vid: T) -> bool {
         !self.get(vid).is_empty() || self.reference_counts.get(vid).map_or(false, |c| *c != 0)
     }
 
+    /// Starts a watch on `index`. Any calls to `watch_variable` should be matched by call to
+    /// `unwatch_variable` when the watch is no longer needed
     pub fn watch_variable(&mut self, index: T) {
         self.reference_counts.ensure_contains_elem(index, || 0);
         self.reference_counts[index] += 1;
     }
 
+    /// Removes a watch on `index`
     pub fn unwatch_variable(&mut self, index: T) {
         self.reference_counts[index] -= 1;
     }

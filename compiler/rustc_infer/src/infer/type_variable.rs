@@ -437,8 +437,8 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
         self.eq_relations().clear_modified_set();
     }
 
-    pub fn drain_modified_set(&mut self, offset: &ms::Offset<ty::TyVid>, f: impl FnMut(ty::TyVid)) {
-        self.eq_relations().drain_modified_set(offset, f)
+    pub fn notify_watcher(&mut self, offset: &ms::Offset<ty::TyVid>, f: impl FnMut(ty::TyVid)) {
+        self.eq_relations().notify_watcher(offset, f)
     }
 
     pub fn register_unify_watcher(&mut self) -> ms::Offset<ty::TyVid> {

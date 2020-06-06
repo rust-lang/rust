@@ -48,7 +48,7 @@ pub struct LoggedUnificationTableStorage<K: ut::UnifyKey, I: Idx = K> {
     modified_set: ms::ModifiedSet<I>,
 }
 
-/// UnificationTableStorage which logs which variables has been unfified with a value, allowing watchers
+/// UnificationTableStorage which logs which variables has been unified with a value, allowing watchers
 /// to only iterate over the changed variables instead of all variables
 pub struct LoggedUnificationTable<'a, K: ut::UnifyKey, I: Idx, L> {
     storage: &'a mut LoggedUnificationTableStorage<K, I>,
@@ -200,11 +200,11 @@ where
         self.storage.unify_log.unwatch_variable(index)
     }
 
-    /// Iterates through all unified variables since the last call to `drain_modified_set`
+    /// Iterates through all unified variables since the last call to `notify_watcher`
     /// passing the unified variable to `f`
-    pub fn drain_modified_set(&mut self, offset: &ms::Offset<I>, mut f: impl FnMut(I)) {
+    pub fn notify_watcher(&mut self, offset: &ms::Offset<I>, mut f: impl FnMut(I)) {
         let unify_log = &self.storage.unify_log;
-        self.storage.modified_set.drain(&mut self.undo_log, offset, |vid| {
+        self.storage.modified_set.notify_watcher(&mut self.undo_log, offset, |vid| {
             for &unified_vid in unify_log.get(vid) {
                 f(unified_vid);
             }
