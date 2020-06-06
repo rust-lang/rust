@@ -14,7 +14,7 @@ use ra_db::salsa::InternKey;
 
 use crate::{
     db::HirDatabase,
-    primitive::{FloatBitness, FloatTy, IntBitness, IntTy, Signedness, Uncertain},
+    primitive::{FloatBitness, FloatTy, IntBitness, IntTy, Signedness},
     traits::{builtin, AssocTyValue, Canonical, Impl, Obligation},
     ApplicationTy, CallableDef, GenericPredicate, InEnvironment, OpaqueTy, OpaqueTyId,
     ProjectionPredicate, ProjectionTy, Substs, TraitEnvironment, TraitRef, Ty, TypeCtor,
@@ -249,11 +249,11 @@ impl ToChalk for TypeCtor {
 
             TypeCtor::Bool => TypeName::Scalar(Scalar::Bool),
             TypeCtor::Char => TypeName::Scalar(Scalar::Char),
-            TypeCtor::Int(Uncertain::Known(int_ty)) => TypeName::Scalar(int_ty_to_chalk(int_ty)),
-            TypeCtor::Float(Uncertain::Known(FloatTy { bitness: FloatBitness::X32 })) => {
+            TypeCtor::Int(int_ty) => TypeName::Scalar(int_ty_to_chalk(int_ty)),
+            TypeCtor::Float(FloatTy { bitness: FloatBitness::X32 }) => {
                 TypeName::Scalar(Scalar::Float(chalk_ir::FloatTy::F32))
             }
-            TypeCtor::Float(Uncertain::Known(FloatTy { bitness: FloatBitness::X64 })) => {
+            TypeCtor::Float(FloatTy { bitness: FloatBitness::X64 }) => {
                 TypeName::Scalar(Scalar::Float(chalk_ir::FloatTy::F64))
             }
 
@@ -268,9 +268,7 @@ impl ToChalk for TypeCtor {
             }
             TypeCtor::Never => TypeName::Never,
 
-            TypeCtor::Int(Uncertain::Unknown)
-            | TypeCtor::Float(Uncertain::Unknown)
-            | TypeCtor::Adt(_)
+            TypeCtor::Adt(_)
             | TypeCtor::Array
             | TypeCtor::FnPtr { .. }
             | TypeCtor::Closure { .. } => {
@@ -291,19 +289,19 @@ impl ToChalk for TypeCtor {
 
             TypeName::Scalar(Scalar::Bool) => TypeCtor::Bool,
             TypeName::Scalar(Scalar::Char) => TypeCtor::Char,
-            TypeName::Scalar(Scalar::Int(int_ty)) => TypeCtor::Int(Uncertain::Known(IntTy {
+            TypeName::Scalar(Scalar::Int(int_ty)) => TypeCtor::Int(IntTy {
                 signedness: Signedness::Signed,
                 bitness: bitness_from_chalk_int(int_ty),
-            })),
-            TypeName::Scalar(Scalar::Uint(uint_ty)) => TypeCtor::Int(Uncertain::Known(IntTy {
+            }),
+            TypeName::Scalar(Scalar::Uint(uint_ty)) => TypeCtor::Int(IntTy {
                 signedness: Signedness::Unsigned,
                 bitness: bitness_from_chalk_uint(uint_ty),
-            })),
+            }),
             TypeName::Scalar(Scalar::Float(chalk_ir::FloatTy::F32)) => {
-                TypeCtor::Float(Uncertain::Known(FloatTy { bitness: FloatBitness::X32 }))
+                TypeCtor::Float(FloatTy { bitness: FloatBitness::X32 })
             }
             TypeName::Scalar(Scalar::Float(chalk_ir::FloatTy::F64)) => {
-                TypeCtor::Float(Uncertain::Known(FloatTy { bitness: FloatBitness::X64 }))
+                TypeCtor::Float(FloatTy { bitness: FloatBitness::X64 })
             }
             TypeName::Tuple(cardinality) => TypeCtor::Tuple { cardinality: cardinality as u16 },
             TypeName::Raw(mutability) => TypeCtor::RawPtr(from_chalk(db, mutability)),

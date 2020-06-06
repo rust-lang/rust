@@ -7,42 +7,6 @@ use std::fmt;
 
 pub use hir_def::builtin_type::{BuiltinFloat, BuiltinInt, FloatBitness, IntBitness, Signedness};
 
-#[derive(Clone, Copy, Eq, PartialEq, Hash, Debug)]
-pub enum Uncertain<T> {
-    Unknown,
-    Known(T),
-}
-
-impl From<IntTy> for Uncertain<IntTy> {
-    fn from(ty: IntTy) -> Self {
-        Uncertain::Known(ty)
-    }
-}
-
-impl fmt::Display for Uncertain<IntTy> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Uncertain::Unknown => write!(f, "{{integer}}"),
-            Uncertain::Known(ty) => write!(f, "{}", ty),
-        }
-    }
-}
-
-impl From<FloatTy> for Uncertain<FloatTy> {
-    fn from(ty: FloatTy) -> Self {
-        Uncertain::Known(ty)
-    }
-}
-
-impl fmt::Display for Uncertain<FloatTy> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Uncertain::Unknown => write!(f, "{{float}}"),
-            Uncertain::Known(ty) => write!(f, "{}", ty),
-        }
-    }
-}
-
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub struct IntTy {
     pub signedness: Signedness,
@@ -171,23 +135,5 @@ impl From<BuiltinInt> for IntTy {
 impl From<BuiltinFloat> for FloatTy {
     fn from(t: BuiltinFloat) -> Self {
         FloatTy { bitness: t.bitness }
-    }
-}
-
-impl From<Option<BuiltinInt>> for Uncertain<IntTy> {
-    fn from(t: Option<BuiltinInt>) -> Self {
-        match t {
-            None => Uncertain::Unknown,
-            Some(t) => Uncertain::Known(t.into()),
-        }
-    }
-}
-
-impl From<Option<BuiltinFloat>> for Uncertain<FloatTy> {
-    fn from(t: Option<BuiltinFloat>) -> Self {
-        match t {
-            None => Uncertain::Unknown,
-            Some(t) => Uncertain::Known(t.into()),
-        }
     }
 }

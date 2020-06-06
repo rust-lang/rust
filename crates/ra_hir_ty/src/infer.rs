@@ -39,8 +39,7 @@ use ra_syntax::SmolStr;
 use super::{
     primitive::{FloatTy, IntTy},
     traits::{Guidance, Obligation, ProjectionPredicate, Solution},
-    ApplicationTy, InEnvironment, ProjectionTy, Substs, TraitEnvironment, TraitRef, Ty, TypeCtor,
-    TypeWalk, Uncertain,
+    InEnvironment, ProjectionTy, Substs, TraitEnvironment, TraitRef, Ty, TypeCtor, TypeWalk,
 };
 use crate::{
     db::HirDatabase, infer::diagnostics::InferenceDiagnostic, lower::ImplTraitLoweringMode,
@@ -312,12 +311,6 @@ impl<'a> InferenceContext<'a> {
     fn insert_type_vars_shallow(&mut self, ty: Ty) -> Ty {
         match ty {
             Ty::Unknown => self.table.new_type_var(),
-            Ty::Apply(ApplicationTy { ctor: TypeCtor::Int(Uncertain::Unknown), .. }) => {
-                self.table.new_integer_var()
-            }
-            Ty::Apply(ApplicationTy { ctor: TypeCtor::Float(Uncertain::Unknown), .. }) => {
-                self.table.new_float_var()
-            }
             _ => ty,
         }
     }
@@ -664,8 +657,8 @@ impl InferTy {
     fn fallback_value(self) -> Ty {
         match self {
             InferTy::TypeVar(..) => Ty::Unknown,
-            InferTy::IntVar(..) => Ty::simple(TypeCtor::Int(Uncertain::Known(IntTy::i32()))),
-            InferTy::FloatVar(..) => Ty::simple(TypeCtor::Float(Uncertain::Known(FloatTy::f64()))),
+            InferTy::IntVar(..) => Ty::simple(TypeCtor::Int(IntTy::i32())),
+            InferTy::FloatVar(..) => Ty::simple(TypeCtor::Float(FloatTy::f64())),
             InferTy::MaybeNeverTypeVar(..) => Ty::simple(TypeCtor::Never),
         }
     }
