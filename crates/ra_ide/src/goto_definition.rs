@@ -886,4 +886,23 @@ mod tests {
             "x",
         )
     }
+
+    #[test]
+    fn goto_def_for_enum_variant_field() {
+        check_goto(
+            "
+            //- /lib.rs
+            enum Foo {
+                Bar { x: i32 }
+            }
+            fn baz(foo: Foo) {
+                match foo {
+                    Foo::Bar { x<|> } => x
+                };
+            }
+            ",
+            "x RECORD_FIELD_DEF FileId(1) 21..27 21..22",
+            "x: i32|x",
+        );
+    }
 }

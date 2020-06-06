@@ -126,6 +126,12 @@ fn classify_name_inner(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Opti
                 Some(name_ref_class.definition())
             },
             ast::BindPat(it) => {
+                if let Some(record_field_pat) = it.syntax().parent().and_then(ast::RecordFieldPat::cast) {
+                    return Some(Definition::Field(
+                        sema.resolve_record_field_pat(&record_field_pat)?
+                    ));
+                }
+
                 let local = sema.to_def(&it)?;
                 Some(Definition::Local(local))
             },
