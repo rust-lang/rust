@@ -90,8 +90,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             return true;
         }
         // Normalize projections and things like that.
-        let src = self.tcx.normalize_erasing_regions(self.param_env, src);
-        let dest = self.tcx.normalize_erasing_regions(self.param_env, dest);
+        // FIXME: We need to reveal_all, as some optimizations change types in ways
+        // that requires unfolding opaque types.
+        let param_env = self.param_env.with_reveal_all();
+        let src = self.tcx.normalize_erasing_regions(param_env, src);
+        let dest = self.tcx.normalize_erasing_regions(param_env, dest);
         // It's worth checking equality again.
         if src == dest {
             return true;
@@ -119,7 +122,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // lead to wrong errors.
                 lt_op: |_| self.tcx.lifetimes.re_erased,
                 // Evaluate consts.
-                ct_op: |ct| ct.eval(self.tcx, self.param_env),
+                ct_op: |ct| ct.eval(self.tcx, param_env),
             })
         };
         normalize(src) == normalize(dest)
