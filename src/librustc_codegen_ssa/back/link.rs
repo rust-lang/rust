@@ -12,7 +12,7 @@ use rustc_session::utils::NativeLibKind;
 /// need out of the shared crate context before we get rid of it.
 use rustc_session::{filesearch, Session};
 use rustc_span::symbol::Symbol;
-use rustc_target::spec::crt_objects::CrtObjectsFallback;
+use rustc_target::spec::crt_objects::{CrtObjects, CrtObjectsFallback};
 use rustc_target::spec::{LinkOutputKind, LinkerFlavor, LldFlavor};
 use rustc_target::spec::{PanicStrategy, RelocModel, RelroLevel};
 
@@ -25,16 +25,10 @@ use crate::{looks_like_rust_object_file, CodegenResults, CrateInfo, METADATA_FIL
 use cc::windows_registry;
 use tempfile::{Builder as TempFileBuilder, TempDir};
 
-use std::ascii;
-use std::char;
-use std::env;
 use std::ffi::OsString;
-use std::fmt;
-use std::fs;
-use std::io;
 use std::path::{Path, PathBuf};
 use std::process::{ExitStatus, Output, Stdio};
-use std::str;
+use std::{ascii, char, env, fmt, fs, io, mem, str};
 
 pub fn remove(sess: &Session, path: &Path) {
     if let Err(e) = fs::remove_file(path) {
@@ -536,6 +530,61 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
             warn!("Linker does not support -no-pie command line option. Retrying without.");
             for arg in cmd.take_args() {
                 if arg.to_string_lossy() != "-no-pie" {
+                    cmd.arg(arg);
+                }
+            }
+            info!("{:?}", &cmd);
+            continue;
+        }
+
+        // Detect '-static-pie' used with an older version of gcc or clang not supporting it.
+        // Fallback from '-static-pie' to '-static' in that case.
+        if sess.target.target.options.linker_is_gnu
+            && flavor != LinkerFlavor::Ld
+            && (out.contains("unrecognized command line option")
+                || out.contains("unknown argument"))
+            && (out.contains("-static-pie") || out.contains("--no-dynamic-linker"))
+            && cmd.get_args().iter().any(|e| e.to_string_lossy() == "-static-pie")
+        {
+            info!("linker output: {:?}", out);
+            warn!(
+                "Linker does not support -static-pie command line option. Retrying with -static instead."
+            );
+            // Mirror `add_(pre,post)_link_objects` to replace CRT objects.
+            let fallback = crt_objects_fallback(sess, crate_type);
+            let opts = &sess.target.target.options;
+            let pre_objects =
+                if fallback { &opts.pre_link_objects_fallback } else { &opts.pre_link_objects };
+            let post_objects =
+                if fallback { &opts.post_link_objects_fallback } else { &opts.post_link_objects };
+            let get_objects = |objects: &CrtObjects, kind| {
+                objects
+                    .get(&kind)
+                    .iter()
+                    .copied()
+                    .flatten()
+                    .map(|obj| get_object_file_path(sess, obj).into_os_string())
+                    .collect::<Vec<_>>()
+            };
+            let pre_objects_static_pie = get_objects(pre_objects, LinkOutputKind::StaticPicExe);
+            let post_objects_static_pie = get_objects(post_objects, LinkOutputKind::StaticPicExe);
+            let mut pre_objects_static = get_objects(pre_objects, LinkOutputKind::StaticNoPicExe);
+            let mut post_objects_static = get_objects(post_objects, LinkOutputKind::StaticNoPicExe);
+            // Assume that we know insertion positions for the replacement arguments from replaced
+            // arguments, which is true for all supported targets.
+            assert!(pre_objects_static.is_empty() || !pre_objects_static_pie.is_empty());
+            assert!(post_objects_static.is_empty() || !post_objects_static_pie.is_empty());
+            for arg in cmd.take_args() {
+                if arg.to_string_lossy() == "-static-pie" {
+                    // Replace the output kind.
+                    cmd.arg("-static");
+                } else if pre_objects_static_pie.contains(&arg) {
+                    // Replace the pre-link objects (replace the first and remove the rest).
+                    cmd.args(mem::take(&mut pre_objects_static));
+                } else if post_objects_static_pie.contains(&arg) {
+                    // Replace the post-link objects (replace the first and remove the rest).
+                    cmd.args(mem::take(&mut post_objects_static));
+                } else {
                     cmd.arg(arg);
                 }
             }
