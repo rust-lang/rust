@@ -241,6 +241,33 @@ struct Foo {
 For `.md` and `.adoc` files, prefer a sentence-per-line format, don't wrap lines.
 If the line is too long, you want to split the sentence in two :-)
 
+# Architecture Invariants
+
+This section tries to document high-level design constraints, which are not
+always obvious from the low-level code.
+
+## Incomplete syntax trees
+
+Syntax trees are by design incomplete and do not enforce well-formedness.
+If ast method returns an `Option`, it *can* be `None` at runtime, even if this is forbidden by the grammar.
+
+## LSP indenpendence
+
+rust-analyzer is independent from LSP.
+It provides features for a hypothetical perfect Rust-specific IDE client.
+Internal representations are lowered to LSP in the `rust-analyzer` crate (the only crate which is allowed to use LSP types).
+
+## IDE/Compiler split
+
+There's a semi-hard split between "compiler" and "IDE", at the `ra_hir` crate.
+Compiler derives new facts about source code.
+It explicitly acknowledges that not all info is available (ie, you can't look at types during name resolution).
+
+IDE assumes that all information is available at all times.
+
+IDE should use only types from `ra_hir`, and should not depend on the underling compiler types.
+`ra_hir` is a facade.
+
 # Logging
 
 Logging is done by both rust-analyzer and VS Code, so it might be tricky to
