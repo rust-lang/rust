@@ -318,7 +318,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         trait_ref: ty::PolyTraitRef<'tcx>,
         body_id: hir::HirId,
     ) {
-        let self_ty = trait_ref.self_ty();
+        let self_ty = trait_ref.skip_binder().self_ty();
         let (param_ty, projection) = match &self_ty.kind {
             ty::Param(_) => (true, None),
             ty::Projection(projection) => (false, Some(projection)),
@@ -524,7 +524,11 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         trait_ref: &ty::Binder<ty::TraitRef<'tcx>>,
         points_at_arg: bool,
     ) {
-        let self_ty = trait_ref.self_ty();
+        let self_ty = match trait_ref.self_ty().no_bound_vars() {
+            None => return,
+            Some(ty) => ty,
+        };
+
         let (def_id, output_ty, callable) = match self_ty.kind {
             ty::Closure(def_id, substs) => (def_id, substs.as_closure().sig().output(), "closure"),
             ty::FnDef(def_id, _) => (def_id, self_ty.fn_sig(self.tcx).output(), "function"),
@@ -707,7 +711,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 return;
             }
 
-            let mut suggested_ty = trait_ref.self_ty();
+            let mut suggested_ty = match trait_ref.self_ty().no_bound_vars() {
+                Some(ty) => ty,
+                None => return,
+            };
 
             for refs_remaining in 0..refs_number {
                 if let ty::Ref(_, inner_ty, _) = suggested_ty.kind {
@@ -829,6 +836,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         span: Span,
         trait_ref: &ty::Binder<ty::TraitRef<'tcx>>,
     ) {
+        let is_empty_tuple =
+            |ty: ty::Binder<Ty<'_>>| ty.skip_binder().kind == ty::Tuple(ty::List::empty());
+
         let hir = self.tcx.hir();
         let parent_node = hir.get_parent_node(obligation.cause.body_id);
         let node = hir.find(parent_node);
@@ -840,7 +850,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             if let hir::ExprKind::Block(blk, _) = &body.value.kind {
                 if sig.decl.output.span().overlaps(span)
                     && blk.expr.is_none()
-                    && "()" == &trait_ref.self_ty().to_string()
+                    && is_empty_tuple(trait_ref.self_ty())
                 {
                     // FIXME(estebank): When encountering a method with a trait
                     // bound not satisfied in the return type with a body that has
@@ -1271,7 +1281,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 ObligationCauseCode::DerivedObligation(derived_obligation)
                 | ObligationCauseCode::BuiltinDerivedObligation(derived_obligation)
                 | ObligationCauseCode::ImplDerivedObligation(derived_obligation) => {
-                    let ty = derived_obligation.parent_trait_ref.self_ty();
+                    let ty = derived_obligation.parent_trait_ref.skip_binder().self_ty();
                     debug!(
                         "maybe_note_obligation_cause_for_async_await: \
                             parent_trait_ref={:?} self_ty.kind={:?}",
@@ -1917,7 +1927,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
                 let impls_future = self.tcx.type_implements_trait((
                     future_trait,
-                    self_ty,
+                    self_ty.skip_binder(),
                     ty::List::empty(),
                     obligation.param_env,
                 ));
@@ -1933,7 +1943,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 let projection_ty = ty::ProjectionTy {
                     // `T`
                     substs: self.tcx.mk_substs_trait(
-                        trait_ref.self_ty(),
+                        trait_ref.self_ty().skip_binder(),
                         self.fresh_substs_for_item(span, item_def_id),
                     ),
                     // `Future::Output`
