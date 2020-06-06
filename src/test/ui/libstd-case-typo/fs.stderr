@@ -5,7 +5,7 @@ LL | fn test_dirbuild(_x: Dirbuilder){}
    |                      ^^^^^^^^^^
    |                      |
    |                      not found in this scope
-   |                      help: found a libstd struct with a similar name: `std::fs::DirBuilder`
+   |                      help: found a std struct with a similar name: `std::fs::DirBuilder`
 
 error[E0412]: cannot find type `Direntry` in this scope
   --> $DIR/fs.rs:6:22
@@ -14,7 +14,7 @@ LL | fn test_direntry(_x: Direntry){}
    |                      ^^^^^^^^
    |                      |
    |                      not found in this scope
-   |                      help: found a libstd struct with a similar name: `std::fs::DirEntry`
+   |                      help: found a std struct with a similar name: `std::fs::DirEntry`
 
 error[E0412]: cannot find type `Filetype` in this scope
   --> $DIR/fs.rs:8:20
@@ -23,7 +23,7 @@ LL | fn test_filety(_x: Filetype){}
    |                    ^^^^^^^^
    |                    |
    |                    not found in this scope
-   |                    help: found a libstd struct with a similar name: `std::fs::FileType`
+   |                    help: found a std struct with a similar name: `std::fs::FileType`
 
 error[E0412]: cannot find type `MetaData` in this scope
   --> $DIR/fs.rs:10:22
@@ -32,7 +32,7 @@ LL | fn test_metadata(_x: MetaData){}
    |                      ^^^^^^^^
    |                      |
    |                      not found in this scope
-   |                      help: found a libstd struct with a similar name: `std::fs::Metadata`
+   |                      help: found a std struct with a similar name: `std::fs::Metadata`
 
 error[E0412]: cannot find type `Openoptions` in this scope
   --> $DIR/fs.rs:12:18
@@ -41,7 +41,7 @@ LL | fn test_opop(_x: Openoptions){}
    |                  ^^^^^^^^^^^
    |                  |
    |                  not found in this scope
-   |                  help: found a libstd struct with a similar name: `std::fs::OpenOptions`
+   |                  help: found a std struct with a similar name: `std::fs::OpenOptions`
 
 error[E0412]: cannot find type `permissions` in this scope
   --> $DIR/fs.rs:14:18
@@ -50,7 +50,7 @@ LL | fn test_perm(_x: permissions){}
    |                  ^^^^^^^^^^^
    |                  |
    |                  not found in this scope
-   |                  help: found a libstd struct with a similar name: `std::fs::Permissions`
+   |                  help: found a std struct with a similar name: `std::fs::Permissions`
 
 error[E0412]: cannot find type `Readdir` in this scope
   --> $DIR/fs.rs:16:21
@@ -59,7 +59,7 @@ LL | fn test_readdir(_x: Readdir){}
    |                     ^^^^^^^
    |                     |
    |                     not found in this scope
-   |                     help: found a libstd struct with a similar name: `std::fs::ReadDir`
+   |                     help: found a std struct with a similar name: `std::fs::ReadDir`
 
 error: aborting due to 7 previous errors
 

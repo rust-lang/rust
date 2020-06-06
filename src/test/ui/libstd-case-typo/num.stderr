@@ -5,7 +5,7 @@ LL | fn test_nzi8(_x: NonZeroi8){}
    |                  ^^^^^^^^^
    |                  |
    |                  not found in this scope
-   |                  help: found a libstd struct with a similar name: `std::num::NonZeroI8`
+   |                  help: found a std struct with a similar name: `std::num::NonZeroI8`
 
 error[E0412]: cannot find type `NonZeroi16` in this scope
   --> $DIR/num.rs:6:19
@@ -14,7 +14,7 @@ LL | fn test_nzi16(_x: NonZeroi16){}
    |                   ^^^^^^^^^^
    |                   |
    |                   not found in this scope
-   |                   help: found a libstd struct with a similar name: `std::num::NonZeroI16`
+   |                   help: found a std struct with a similar name: `std::num::NonZeroI16`
 
 error[E0412]: cannot find type `NonZeroi32` in this scope
   --> $DIR/num.rs:8:19
@@ -23,7 +23,7 @@ LL | fn test_nzi32(_x: NonZeroi32){}
    |                   ^^^^^^^^^^
    |                   |
    |                   not found in this scope
-   |                   help: found a libstd struct with a similar name: `std::num::NonZeroI32`
+   |                   help: found a std struct with a similar name: `std::num::NonZeroI32`
 
 error[E0412]: cannot find type `NonZeroi64` in this scope
   --> $DIR/num.rs:10:19
@@ -32,7 +32,7 @@ LL | fn test_nzi64(_x: NonZeroi64){}
    |                   ^^^^^^^^^^
    |                   |
    |                   not found in this scope
-   |                   help: found a libstd struct with a similar name: `std::num::NonZeroI64`
+   |                   help: found a std struct with a similar name: `std::num::NonZeroI64`
 
 error[E0412]: cannot find type `NonZeroi128` in this scope
   --> $DIR/num.rs:12:20
@@ -41,7 +41,7 @@ LL | fn test_nzi128(_x: NonZeroi128){}
    |                    ^^^^^^^^^^^
    |                    |
    |                    not found in this scope
-   |                    help: found a libstd struct with a similar name: `std::num::NonZeroI128`
+   |                    help: found a std struct with a similar name: `std::num::NonZeroI128`
 
 error[E0412]: cannot find type `NonZerou8` in this scope
   --> $DIR/num.rs:14:18
@@ -50,7 +50,7 @@ LL | fn test_nzu8(_x: NonZerou8){}
    |                  ^^^^^^^^^
    |                  |
    |                  not found in this scope
-   |                  help: found a libstd struct with a similar name: `std::num::NonZeroU8`
+   |                  help: found a std struct with a similar name: `std::num::NonZeroU8`
 
 error[E0412]: cannot find type `NonZerou16` in this scope
   --> $DIR/num.rs:16:19
@@ -59,7 +59,7 @@ LL | fn test_nzu16(_x: NonZerou16){}
    |                   ^^^^^^^^^^
    |                   |
    |                   not found in this scope
-   |                   help: found a libstd struct with a similar name: `std::num::NonZeroU16`
+   |                   help: found a std struct with a similar name: `std::num::NonZeroU16`
 
 error[E0412]: cannot find type `NonZerou32` in this scope
   --> $DIR/num.rs:18:19
@@ -68,7 +68,7 @@ LL | fn test_nzu32(_x: NonZerou32){}
    |                   ^^^^^^^^^^
    |                   |
    |                   not found in this scope
-   |                   help: found a libstd struct with a similar name: `std::num::NonZeroU32`
+   |                   help: found a std struct with a similar name: `std::num::NonZeroU32`
 
 error[E0412]: cannot find type `NonZerou64` in this scope
   --> $DIR/num.rs:20:19
@@ -77,7 +77,7 @@ LL | fn test_nzu64(_x: NonZerou64){}
    |                   ^^^^^^^^^^
    |                   |
    |                   not found in this scope
-   |                   help: found a libstd struct with a similar name: `std::num::NonZeroU64`
+   |                   help: found a std struct with a similar name: `std::num::NonZeroU64`
 
 error[E0412]: cannot find type `NonZerou128` in this scope
   --> $DIR/num.rs:22:20
@@ -86,7 +86,7 @@ LL | fn test_nzu128(_x: NonZerou128){}
    |                    ^^^^^^^^^^^
    |                    |
    |                    not found in this scope
-   |                    help: found a libstd struct with a similar name: `std::num::NonZeroU128`
+   |                    help: found a std struct with a similar name: `std::num::NonZeroU128`
 
 error[E0412]: cannot find type `NonzeroUsize` in this scope
   --> $DIR/num.rs:24:18
@@ -95,7 +95,7 @@ LL | fn test_nzus(_x: NonzeroUsize){}
    |                  ^^^^^^^^^^^^
    |                  |
    |                  not found in this scope
-   |                  help: found a libstd struct with a similar name: `std::num::NonZeroUsize`
+   |                  help: found a std struct with a similar name: `std::num::NonZeroUsize`
 
 error[E0412]: cannot find type `wrapping` in this scope
   --> $DIR/num.rs:26:18
@@ -104,7 +104,7 @@ LL | fn test_wrap(_x: wrapping){}
    |                  ^^^^^^^^
    |                  |
    |                  not found in this scope
-   |                  help: found a libstd struct with a similar name: `std::num::Wrapping`
+   |                  help: found a std struct with a similar name: `std::num::Wrapping`
 
 error: aborting due to 12 previous errors
 

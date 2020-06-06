@@ -5,7 +5,7 @@ LL | fn test_pin(_x: pin<()>){}
    |                 ^^^
    |                 |
    |                 not found in this scope
-   |                 help: found a libstd struct with a similar name: `std::pin::Pin`
+   |                 help: found a std struct with a similar name: `std::pin::Pin`
 
 error: aborting due to previous error
 

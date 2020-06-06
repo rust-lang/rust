@@ -5,7 +5,7 @@ LL | fn test_inc(_x: incoming){}
    |                 ^^^^^^^^
    |                 |
    |                 not found in this scope
-   |                 help: found a libstd struct with a similar name: `std::net::Incoming`
+   |                 help: found a std struct with a similar name: `std::net::Incoming`
 
 error[E0412]: cannot find type `IPv4Addr` in this scope
   --> $DIR/net.rs:6:18
@@ -14,7 +14,7 @@ LL | fn test_ipv4(_x: IPv4Addr){}
    |                  ^^^^^^^^
    |                  |
    |                  not found in this scope
-   |                  help: found a libstd struct with a similar name: `std::net::Ipv4Addr`
+   |                  help: found a std struct with a similar name: `std::net::Ipv4Addr`
 
 error[E0412]: cannot find type `IPv6Addr` in this scope
   --> $DIR/net.rs:8:18
@@ -23,7 +23,7 @@ LL | fn test_ipv6(_x: IPv6Addr){}
    |                  ^^^^^^^^
    |                  |
    |                  not found in this scope
-   |                  help: found a libstd struct with a similar name: `std::net::Ipv6Addr`
+   |                  help: found a std struct with a similar name: `std::net::Ipv6Addr`
 
 error[E0412]: cannot find type `SocketAddrv4` in this scope
   --> $DIR/net.rs:10:19
@@ -32,7 +32,7 @@ LL | fn test_socv4(_x: SocketAddrv4){}
    |                   ^^^^^^^^^^^^
    |                   |
    |                   not found in this scope
-   |                   help: found a libstd struct with a similar name: `std::net::SocketAddrV4`
+   |                   help: found a std struct with a similar name: `std::net::SocketAddrV4`
 
 error[E0412]: cannot find type `SocketAddrv6` in this scope
   --> $DIR/net.rs:12:19
@@ -41,7 +41,7 @@ LL | fn test_socv6(_x: SocketAddrv6){}
    |                   ^^^^^^^^^^^^
    |                   |
    |                   not found in this scope
-   |                   help: found a libstd struct with a similar name: `std::net::SocketAddrV6`
+   |                   help: found a std struct with a similar name: `std::net::SocketAddrV6`
 
 error[E0412]: cannot find type `TCPListener` in this scope
   --> $DIR/net.rs:14:21
@@ -50,7 +50,7 @@ LL | fn test_tcplist(_x: TCPListener){}
    |                     ^^^^^^^^^^^
    |                     |
    |                     not found in this scope
-   |                     help: found a libstd struct with a similar name: `std::net::TcpListener`
+   |                     help: found a std struct with a similar name: `std::net::TcpListener`
 
 error[E0412]: cannot find type `TCPStream` in this scope
   --> $DIR/net.rs:16:20
@@ -59,7 +59,7 @@ LL | fn test_tcpstr(_x: TCPStream){}
    |                    ^^^^^^^^^
    |                    |
    |                    not found in this scope
-   |                    help: found a libstd struct with a similar name: `std::net::TcpStream`
+   |                    help: found a std struct with a similar name: `std::net::TcpStream`
 
 error[E0412]: cannot find type `UDPSocket` in this scope
   --> $DIR/net.rs:18:20
@@ -68,7 +68,7 @@ LL | fn test_udpsoc(_x: UDPSocket){}
    |                    ^^^^^^^^^
    |                    |
    |                    not found in this scope
-   |                    help: found a libstd struct with a similar name: `std::net::UdpSocket`
+   |                    help: found a std struct with a similar name: `std::net::UdpSocket`
 
 error: aborting due to 8 previous errors
 

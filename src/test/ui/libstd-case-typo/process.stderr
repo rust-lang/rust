@@ -5,7 +5,7 @@ LL | fn test_child(_x: child){}
    |                   ^^^^^
    |                   |
    |                   not found in this scope
-   |                   help: found a libstd struct with a similar name: `std::process::Child`
+   |                   help: found a std struct with a similar name: `std::process::Child`
 
 error[E0412]: cannot find type `ChildStdErr` in this scope
   --> $DIR/process.rs:6:21
@@ -14,7 +14,7 @@ LL | fn test_childse(_x: ChildStdErr){}
    |                     ^^^^^^^^^^^
    |                     |
    |                     not found in this scope
-   |                     help: found a libstd struct with a similar name: `std::process::ChildStderr`
+   |                     help: found a std struct with a similar name: `std::process::ChildStderr`
 
 error[E0412]: cannot find type `ChildStdIn` in this scope
   --> $DIR/process.rs:8:21
@@ -23,7 +23,7 @@ LL | fn test_childsi(_x: ChildStdIn){}
    |                     ^^^^^^^^^^
    |                     |
    |                     not found in this scope
-   |                     help: found a libstd struct with a similar name: `std::process::ChildStdin`
+   |                     help: found a std struct with a similar name: `std::process::ChildStdin`
 
 error[E0412]: cannot find type `ChildStdOut` in this scope
   --> $DIR/process.rs:10:21
@@ -32,7 +32,7 @@ LL | fn test_childso(_x: ChildStdOut){}
    |                     ^^^^^^^^^^^
    |                     |
    |                     not found in this scope
-   |                     help: found a libstd struct with a similar name: `std::process::ChildStdout`
+   |                     help: found a std struct with a similar name: `std::process::ChildStdout`
 
 error[E0412]: cannot find type `command` in this scope
   --> $DIR/process.rs:12:21
@@ -41,7 +41,7 @@ LL | fn test_command(_x: command){}
    |                     ^^^^^^^
    |                     |
    |                     not found in this scope
-   |                     help: found a libstd struct with a similar name: `std::process::Command`
+   |                     help: found a std struct with a similar name: `std::process::Command`
 
 error[E0412]: cannot find type `Exitstatus` in this scope
   --> $DIR/process.rs:14:19
@@ -50,7 +50,7 @@ LL | fn test_exits(_x: Exitstatus){}
    |                   ^^^^^^^^^^
    |                   |
    |                   not found in this scope
-   |                   help: found a libstd struct with a similar name: `std::process::ExitStatus`
+   |                   help: found a std struct with a similar name: `std::process::ExitStatus`
 
 error[E0412]: cannot find type `output` in this scope
   --> $DIR/process.rs:16:20
@@ -59,7 +59,7 @@ LL | fn test_output(_x: output){}
    |                    ^^^^^^
    |                    |
    |                    not found in this scope
-   |                    help: found a libstd struct with a similar name: `std::process::Output`
+   |                    help: found a std struct with a similar name: `std::process::Output`
 
 error[E0412]: cannot find type `StdIo` in this scope
   --> $DIR/process.rs:18:19
@@ -68,7 +68,7 @@ LL | fn test_stdio(_x: StdIo){}
    |                   ^^^^^
    |                   |
    |                   not found in this scope
-   |                   help: found a libstd struct with a similar name: `std::process::Stdio`
+   |                   help: found a std struct with a similar name: `std::process::Stdio`
 
 error: aborting due to 8 previous errors
 

@@ -5,7 +5,7 @@ LL | fn test_arc(_x: arc<()>){}
    |                 ^^^
    |                 |
    |                 not found in this scope
-   |                 help: found a libstd struct with a similar name: `std::sync::Arc`
+   |                 help: found a std struct with a similar name: `std::sync::Arc`
 
 error[E0412]: cannot find type `barrier` in this scope
   --> $DIR/sync.rs:6:21
@@ -14,7 +14,7 @@ LL | fn test_barrier(_x: barrier<()>){}
    |                     ^^^^^^^
    |                     |
    |                     not found in this scope
-   |                     help: found a libstd struct with a similar name: `std::sync::Barrier`
+   |                     help: found a std struct with a similar name: `std::sync::Barrier`
 
 error[E0412]: cannot find type `BarrierwaitResult` in this scope
   --> $DIR/sync.rs:8:17
@@ -23,7 +23,7 @@ LL | fn test_bwr(_x: BarrierwaitResult<()>){}
    |                 ^^^^^^^^^^^^^^^^^
    |                 |
    |                 not found in this scope
-   |                 help: found a libstd struct with a similar name: `std::sync::BarrierWaitResult`
+   |                 help: found a std struct with a similar name: `std::sync::BarrierWaitResult`
 
 error[E0412]: cannot find type `CondVar` in this scope
   --> $DIR/sync.rs:10:18
@@ -32,7 +32,7 @@ LL | fn test_cvar(_x: CondVar<()>){}
    |                  ^^^^^^^
    |                  |
    |                  not found in this scope
-   |                  help: found a libstd struct with a similar name: `std::sync::Condvar`
+   |                  help: found a std struct with a similar name: `std::sync::Condvar`
 
 error[E0412]: cannot find type `mutex` in this scope
   --> $DIR/sync.rs:12:19
@@ -41,7 +41,7 @@ LL | fn test_mutex(_x: mutex<()>){}
    |                   ^^^^^
    |                   |
    |                   not found in this scope
-   |                   help: found a libstd struct with a similar name: `std::sync::Mutex`
+   |                   help: found a std struct with a similar name: `std::sync::Mutex`
 
 error[E0412]: cannot find type `Mutexguard` in this scope
   --> $DIR/sync.rs:14:24
@@ -50,7 +50,7 @@ LL | fn test_mutexguard(_x: Mutexguard<()>){}
    |                        ^^^^^^^^^^
    |                        |
    |                        not found in this scope
-   |                        help: found a libstd struct with a similar name: `std::sync::MutexGuard`
+   |                        help: found a std struct with a similar name: `std::sync::MutexGuard`
 
 error[E0412]: cannot find type `once` in this scope
   --> $DIR/sync.rs:16:18
@@ -58,7 +58,7 @@ error[E0412]: cannot find type `once` in this scope
 LL | fn test_once(_x: once<()>){}
    |                  ^^^^ not found in this scope
    |
-help: found libstd structs with a similar name:
+help: found std structs with similar names:
    |
 LL | fn test_once(_x: std::iter::Once<()>){}
    |                  ^^^^^^^^^^^^^^^
@@ -72,7 +72,7 @@ LL | fn test_rwl(_x: RWlock<()>){}
    |                 ^^^^^^
    |                 |
    |                 not found in this scope
-   |                 help: found a libstd struct with a similar name: `std::sync::RwLock`
+   |                 help: found a std struct with a similar name: `std::sync::RwLock`
 
 error[E0412]: cannot find type `RWlockReadGuard` in this scope
   --> $DIR/sync.rs:20:19
@@ -81,7 +81,7 @@ LL | fn test_rwlrg(_x: RWlockReadGuard<()>){}
    |                   ^^^^^^^^^^^^^^^
    |                   |
    |                   not found in this scope
-   |                   help: found a libstd struct with a similar name: `std::sync::RwLockReadGuard`
+   |                   help: found a std struct with a similar name: `std::sync::RwLockReadGuard`
 
 error[E0412]: cannot find type `RWlockWriteGuard` in this scope
   --> $DIR/sync.rs:22:19
@@ -90,7 +90,7 @@ LL | fn test_rwlwg(_x: RWlockWriteGuard<()>){}
    |                   ^^^^^^^^^^^^^^^^
    |                   |
    |                   not found in this scope
-   |                   help: found a libstd struct with a similar name: `std::sync::RwLockWriteGuard`
+   |                   help: found a std struct with a similar name: `std::sync::RwLockWriteGuard`
 
 error[E0412]: cannot find type `WaittimeoutResult` in this scope
   --> $DIR/sync.rs:24:17
@@ -99,7 +99,7 @@ LL | fn test_wtr(_x: WaittimeoutResult<()>){}
    |                 ^^^^^^^^^^^^^^^^^
    |                 |
    |                 not found in this scope
-   |                 help: found a libstd struct with a similar name: `std::sync::WaitTimeoutResult`
+   |                 help: found a std struct with a similar name: `std::sync::WaitTimeoutResult`
 
 error[E0412]: cannot find type `weak` in this scope
   --> $DIR/sync.rs:26:18
@@ -107,7 +107,7 @@ error[E0412]: cannot find type `weak` in this scope
 LL | fn test_weak(_x: weak<()>){}
    |                  ^^^^ not found in this scope
    |
-help: found libstd structs with a similar name:
+help: found std structs with similar names:
    |
 LL | fn test_weak(_x: std::rc::Weak<()>){}
    |                  ^^^^^^^^^^^^^

@@ -5,7 +5,7 @@ LL | fn test_cstr(_x: cStr){}
    |                  ^^^^
    |                  |
    |                  not found in this scope
-   |                  help: found a libstd struct with a similar name: `std::ffi::CStr`
+   |                  help: found a std struct with a similar name: `std::ffi::CStr`
 
 error[E0412]: cannot find type `Osstr` in this scope
   --> $DIR/ffi.rs:6:19
@@ -14,7 +14,7 @@ LL | fn test_osstr(_x: Osstr){}
    |                   ^^^^^
    |                   |
    |                   not found in this scope
-   |                   help: found a libstd struct with a similar name: `std::ffi::OsStr`
+   |                   help: found a std struct with a similar name: `std::ffi::OsStr`
 
 error[E0412]: cannot find type `Osstring` in this scope
   --> $DIR/ffi.rs:8:22
@@ -23,7 +23,7 @@ LL | fn test_osstring(_x: Osstring){}
    |                      ^^^^^^^^
    |                      |
    |                      not found in this scope
-   |                      help: found a libstd struct with a similar name: `std::ffi::OsString`
+   |                      help: found a std struct with a similar name: `std::ffi::OsString`
 
 error: aborting due to 3 previous errors
 

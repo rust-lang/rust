@@ -5,7 +5,7 @@ LL | fn test_build(_x: builder){}
    |                   ^^^^^^^
    |                   |
    |                   not found in this scope
-   |                   help: found a libstd struct with a similar name: `std::thread::Builder`
+   |                   help: found a std struct with a similar name: `std::thread::Builder`
 
 error[E0412]: cannot find type `Joinhandle` in this scope
   --> $DIR/thread.rs:6:19
@@ -14,7 +14,7 @@ LL | fn test_jhand(_x: Joinhandle<()>){}
    |                   ^^^^^^^^^^
    |                   |
    |                   not found in this scope
-   |                   help: found a libstd struct with a similar name: `std::thread::JoinHandle`
+   |                   help: found a std struct with a similar name: `std::thread::JoinHandle`
 
 error[E0412]: cannot find type `Localkey` in this scope
   --> $DIR/thread.rs:8:18
@@ -23,7 +23,7 @@ LL | fn test_lkey(_x: Localkey<()>){}
    |                  ^^^^^^^^
    |                  |
    |                  not found in this scope
-   |                  help: found a libstd struct with a similar name: `std::thread::LocalKey`
+   |                  help: found a std struct with a similar name: `std::thread::LocalKey`
 
 error[E0412]: cannot find type `thread` in this scope
   --> $DIR/thread.rs:10:20
@@ -32,7 +32,7 @@ LL | fn test_thread(_x: thread){}
    |                    ^^^^^^
    |                    |
    |                    not found in this scope
-   |                    help: found a libstd struct with a similar name: `std::thread::Thread`
+   |                    help: found a std struct with a similar name: `std::thread::Thread`
 
 error[E0412]: cannot find type `ThreadID` in this scope
   --> $DIR/thread.rs:12:22
@@ -41,7 +41,7 @@ LL | fn test_threadid(_x: ThreadID){}
    |                      ^^^^^^^^
    |                      |
    |                      not found in this scope
-   |                      help: found a libstd struct with a similar name: `std::thread::ThreadId`
+   |                      help: found a std struct with a similar name: `std::thread::ThreadId`
 
 error: aborting due to 5 previous errors
 

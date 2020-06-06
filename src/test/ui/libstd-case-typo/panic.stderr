@@ -5,7 +5,7 @@ LL | fn test_assertus(_x: AssertUnwindsafe<()>){}
    |                      ^^^^^^^^^^^^^^^^
    |                      |
    |                      not found in this scope
-   |                      help: found a libstd struct with a similar name: `std::panic::AssertUnwindSafe`
+   |                      help: found a std struct with a similar name: `std::panic::AssertUnwindSafe`
 
 error[E0412]: cannot find type `location` in this scope
   --> $DIR/panic.rs:6:17
@@ -14,7 +14,7 @@ LL | fn test_loc(_x: location<()>){}
    |                 ^^^^^^^^
    |                 |
    |                 not found in this scope
-   |                 help: found a libstd struct with a similar name: `std::panic::Location`
+   |                 help: found a std struct with a similar name: `std::panic::Location`
 
 error[E0412]: cannot find type `Panicinfo` in this scope
   --> $DIR/panic.rs:8:19
@@ -23,7 +23,7 @@ LL | fn test_pinfo(_x: Panicinfo<()>){}
    |                   ^^^^^^^^^
    |                   |
    |                   not found in this scope
-   |                   help: found a libstd struct with a similar name: `std::panic::PanicInfo`
+   |                   help: found a std struct with a similar name: `std::panic::PanicInfo`
 
 error: aborting due to 3 previous errors
 

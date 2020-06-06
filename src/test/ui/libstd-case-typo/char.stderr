@@ -5,7 +5,7 @@ LL | fn test_du16(_x: DecodeUTF16<()>){}
    |                  ^^^^^^^^^^^
    |                  |
    |                  not found in this scope
-   |                  help: found a libstd struct with a similar name: `std::char::DecodeUtf16`
+   |                  help: found a std struct with a similar name: `std::char::DecodeUtf16`
 
 error[E0412]: cannot find type `Escapedefault` in this scope
   --> $DIR/char.rs:7:19
@@ -13,7 +13,7 @@ error[E0412]: cannot find type `Escapedefault` in this scope
 LL | fn test_edflt(_x: Escapedefault){}
    |                   ^^^^^^^^^^^^^ not found in this scope
    |
-help: found libstd structs with a similar name:
+help: found std structs with similar names:
    |
 LL | fn test_edflt(_x: std::ascii::EscapeDefault){}
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -28,7 +28,7 @@ error[E0412]: cannot find type `Escapeunicode` in this scope
 LL | fn test_euni(_x: Escapeunicode){}
    |                  ^^^^^^^^^^^^^ not found in this scope
    |
-help: found libstd structs with a similar name:
+help: found std structs with similar names:
    |
 LL | fn test_euni(_x: std::char::EscapeUnicode){}
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -42,7 +42,7 @@ LL | fn test_tolow(_x: Tolowercase){}
    |                   ^^^^^^^^^^^
    |                   |
    |                   not found in this scope
-   |                   help: found a libstd struct with a similar name: `std::char::ToLowercase`
+   |                   help: found a std struct with a similar name: `std::char::ToLowercase`
 
 error[E0412]: cannot find type `Touppercase` in this scope
   --> $DIR/char.rs:16:21
@@ -51,7 +51,7 @@ LL | fn test_toupper(_x: Touppercase){}
    |                     ^^^^^^^^^^^
    |                     |
    |                     not found in this scope
-   |                     help: found a libstd struct with a similar name: `std::char::ToUppercase`
+   |                     help: found a std struct with a similar name: `std::char::ToUppercase`
 
 error: aborting due to 5 previous errors
 

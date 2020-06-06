@@ -5,7 +5,7 @@ LL | fn test_dur(_x: duration){}
    |                 ^^^^^^^^
    |                 |
    |                 not found in this scope
-   |                 help: found a libstd struct with a similar name: `std::time::Duration`
+   |                 help: found a std struct with a similar name: `std::time::Duration`
 
 error[E0412]: cannot find type `instant` in this scope
   --> $DIR/time.rs:6:17
@@ -14,7 +14,7 @@ LL | fn test_ins(_x: instant){}
    |                 ^^^^^^^
    |                 |
    |                 not found in this scope
-   |                 help: found a libstd struct with a similar name: `std::time::Instant`
+   |                 help: found a std struct with a similar name: `std::time::Instant`
 
 error[E0412]: cannot find type `Systemtime` in this scope
   --> $DIR/time.rs:8:21
@@ -23,7 +23,7 @@ LL | fn test_systime(_x: Systemtime){}
    |                     ^^^^^^^^^^
    |                     |
    |                     not found in this scope
-   |                     help: found a libstd struct with a similar name: `std::time::SystemTime`
+   |                     help: found a std struct with a similar name: `std::time::SystemTime`
 
 error: aborting due to 3 previous errors
 

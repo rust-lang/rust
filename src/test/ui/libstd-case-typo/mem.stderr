@@ -5,7 +5,7 @@ LL | fn test_disc(_x: discriminant<()>){}
    |                  ^^^^^^^^^^^^
    |                  |
    |                  not found in this scope
-   |                  help: found a libstd struct with a similar name: `std::mem::Discriminant`
+   |                  help: found a std struct with a similar name: `std::mem::Discriminant`
 
 error[E0412]: cannot find type `Manuallydrop` in this scope
   --> $DIR/mem.rs:6:21
@@ -14,7 +14,7 @@ LL | fn test_mandrop(_x: Manuallydrop<()>){}
    |                     ^^^^^^^^^^^^
    |                     |
    |                     not found in this scope
-   |                     help: found a libstd struct with a similar name: `std::mem::ManuallyDrop`
+   |                     help: found a std struct with a similar name: `std::mem::ManuallyDrop`
 
 error: aborting due to 2 previous errors
 

@@ -365,13 +365,13 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                         if structs.len() == 1 {
                             err.span_suggestion(
                                 ident_span,
-                                &format!("found a libstd struct with a similar name"),
+                                &format!("found a std struct with a similar name"),
                                 format!("{}", structs[0]),
                                 Applicability::MaybeIncorrect,
                             );
                         } else if structs.len() > 1 {
                             let mut struct_suggestions = Vec::new();
-                            let message = "found libstd structs with a similar name:";
+                            let message = "found std structs with similar names:";
                             for a_struct in structs.iter() {
                                 struct_suggestions.push(format!("{}", a_struct));
                             }

@@ -5,7 +5,7 @@ LL | fn test_range(_x: range<()>){}
    |                   ^^^^^
    |                   |
    |                   not found in this scope
-   |                   help: found a libstd struct with a similar name: `std::ops::Range`
+   |                   help: found a std struct with a similar name: `std::ops::Range`
 
 error[E0412]: cannot find type `Rangefrom` in this scope
   --> $DIR/ops.rs:6:21
@@ -14,7 +14,7 @@ LL | fn test_rangefr(_x: Rangefrom<()>){}
    |                     ^^^^^^^^^
    |                     |
    |                     not found in this scope
-   |                     help: found a libstd struct with a similar name: `std::ops::RangeFrom`
+   |                     help: found a std struct with a similar name: `std::ops::RangeFrom`
 
 error[E0412]: cannot find type `Rangefull` in this scope
   --> $DIR/ops.rs:8:21
@@ -23,7 +23,7 @@ LL | fn test_rangefu(_x: Rangefull<()>){}
    |                     ^^^^^^^^^
    |                     |
    |                     not found in this scope
-   |                     help: found a libstd struct with a similar name: `std::ops::RangeFull`
+   |                     help: found a std struct with a similar name: `std::ops::RangeFull`
 
 error[E0412]: cannot find type `Rangeinclusive` in this scope
   --> $DIR/ops.rs:10:22
@@ -32,7 +32,7 @@ LL | fn test_rangeinc(_x: Rangeinclusive<()>){}
    |                      ^^^^^^^^^^^^^^
    |                      |
    |                      not found in this scope
-   |                      help: found a libstd struct with a similar name: `std::ops::RangeInclusive`
+   |                      help: found a std struct with a similar name: `std::ops::RangeInclusive`
 
 error[E0412]: cannot find type `Rangeto` in this scope
   --> $DIR/ops.rs:12:21
@@ -41,7 +41,7 @@ LL | fn test_rangeto(_x: Rangeto<()>){}
    |                     ^^^^^^^
    |                     |
    |                     not found in this scope
-   |                     help: found a libstd struct with a similar name: `std::ops::RangeTo`
+   |                     help: found a std struct with a similar name: `std::ops::RangeTo`
 
 error[E0412]: cannot find type `RangetoInclusive` in this scope
   --> $DIR/ops.rs:14:22
@@ -50,7 +50,7 @@ LL | fn test_rangetoi(_x: RangetoInclusive<()>){}
    |                      ^^^^^^^^^^^^^^^^
    |                      |
    |                      not found in this scope
-   |                      help: found a libstd struct with a similar name: `std::ops::RangeToInclusive`
+   |                      help: found a std struct with a similar name: `std::ops::RangeToInclusive`
 
 error: aborting due to 6 previous errors
 

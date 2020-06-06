@@ -5,7 +5,7 @@ LL | fn test_rc(_x: rc<()>){}
    |                ^^
    |                |
    |                not found in this scope
-   |                help: found a libstd struct with a similar name: `std::rc::Rc`
+   |                help: found a std struct with a similar name: `std::rc::Rc`
 
 error[E0412]: cannot find type `weak` in this scope
   --> $DIR/rc.rs:6:18
@@ -13,7 +13,7 @@ error[E0412]: cannot find type `weak` in this scope
 LL | fn test_weak(_x: weak<()>){}
    |                  ^^^^ not found in this scope
    |
-help: found libstd structs with a similar name:
+help: found std structs with similar names:
    |
 LL | fn test_weak(_x: std::rc::Weak<()>){}
    |                  ^^^^^^^^^^^^^

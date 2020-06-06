@@ -5,7 +5,7 @@ LL | fn test_dbglist(_x: Debuglist){}
    |                     ^^^^^^^^^
    |                     |
    |                     not found in this scope
-   |                     help: found a libstd struct with a similar name: `std::fmt::DebugList`
+   |                     help: found a std struct with a similar name: `std::fmt::DebugList`
 
 error[E0412]: cannot find type `Debugmap` in this scope
   --> $DIR/fmt.rs:6:20
@@ -14,7 +14,7 @@ LL | fn test_dbgmap(_x: Debugmap){}
    |                    ^^^^^^^^
    |                    |
    |                    not found in this scope
-   |                    help: found a libstd struct with a similar name: `std::fmt::DebugMap`
+   |                    help: found a std struct with a similar name: `std::fmt::DebugMap`
 
 error[E0412]: cannot find type `Debugset` in this scope
   --> $DIR/fmt.rs:8:20
@@ -23,7 +23,7 @@ LL | fn test_dbgset(_x: Debugset){}
    |                    ^^^^^^^^
    |                    |
    |                    not found in this scope
-   |                    help: found a libstd struct with a similar name: `std::fmt::DebugSet`
+   |                    help: found a std struct with a similar name: `std::fmt::DebugSet`
 
 error[E0412]: cannot find type `Debugstruct` in this scope
   --> $DIR/fmt.rs:10:23
@@ -32,7 +32,7 @@ LL | fn test_dbgstruct(_x: Debugstruct){}
    |                       ^^^^^^^^^^^
    |                       |
    |                       not found in this scope
-   |                       help: found a libstd struct with a similar name: `std::fmt::DebugStruct`
+   |                       help: found a std struct with a similar name: `std::fmt::DebugStruct`
 
 error[E0412]: cannot find type `Debugtuple` in this scope
   --> $DIR/fmt.rs:12:22
@@ -41,7 +41,7 @@ LL | fn test_dbgtuple(_x: Debugtuple){}
    |                      ^^^^^^^^^^
    |                      |
    |                      not found in this scope
-   |                      help: found a libstd struct with a similar name: `std::fmt::DebugTuple`
+   |                      help: found a std struct with a similar name: `std::fmt::DebugTuple`
 
 error[E0412]: cannot find type `formatter` in this scope
   --> $DIR/fmt.rs:14:23
@@ -50,7 +50,7 @@ LL | fn test_fmter(mut _x: formatter){}
    |                       ^^^^^^^^^
    |                       |
    |                       not found in this scope
-   |                       help: found a libstd struct with a similar name: `std::fmt::Formatter`
+   |                       help: found a std struct with a similar name: `std::fmt::Formatter`
 
 error: aborting due to 6 previous errors
 

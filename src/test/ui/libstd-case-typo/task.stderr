@@ -5,7 +5,7 @@ LL | fn test_context(_x: context){}
    |                     ^^^^^^^
    |                     |
    |                     not found in this scope
-   |                     help: found a libstd struct with a similar name: `std::task::Context`
+   |                     help: found a std struct with a similar name: `std::task::Context`
 
 error[E0412]: cannot find type `Rawwaker` in this scope
   --> $DIR/task.rs:6:19
@@ -14,7 +14,7 @@ LL | fn test_rwake(_x: Rawwaker){}
    |                   ^^^^^^^^
    |                   |
    |                   not found in this scope
-   |                   help: found a libstd struct with a similar name: `std::task::RawWaker`
+   |                   help: found a std struct with a similar name: `std::task::RawWaker`
 
 error[E0412]: cannot find type `RawwakerVTable` in this scope
   --> $DIR/task.rs:8:21
@@ -23,7 +23,7 @@ LL | fn test_rwakevt(_x: RawwakerVTable){}
    |                     ^^^^^^^^^^^^^^
    |                     |
    |                     not found in this scope
-   |                     help: found a libstd struct with a similar name: `std::task::RawWakerVTable`
+   |                     help: found a std struct with a similar name: `std::task::RawWakerVTable`
 
 error[E0412]: cannot find type `waker` in this scope
   --> $DIR/task.rs:10:19
@@ -32,7 +32,7 @@ LL | fn test_waker(_x: waker){}
    |                   ^^^^^
    |                   |
    |                   not found in this scope
-   |                   help: found a libstd struct with a similar name: `std::task::Waker`
+   |                   help: found a std struct with a similar name: `std::task::Waker`
 
 error: aborting due to 4 previous errors
 

@@ -5,7 +5,7 @@ LL | fn test_typeid(_x: Typeid){}
    |                    ^^^^^^
    |                    |
    |                    not found in this scope
-   |                    help: found a libstd struct with a similar name: `std::any::TypeId`
+   |                    help: found a std struct with a similar name: `std::any::TypeId`
 
 error: aborting due to previous error
 

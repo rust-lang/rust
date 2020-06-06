@@ -4,7 +4,7 @@ error[E0412]: cannot find type `bytes` in this scope
 LL | fn test_bytes(_x: bytes){}
    |                   ^^^^^ not found in this scope
    |
-help: found libstd structs with a similar name:
+help: found std structs with similar names:
    |
 LL | fn test_bytes(_x: std::io::Bytes){}
    |                   ^^^^^^^^^^^^^^
@@ -18,7 +18,7 @@ LL | fn test_charind(_x: Charindices){}
    |                     ^^^^^^^^^^^
    |                     |
    |                     not found in this scope
-   |                     help: found a libstd struct with a similar name: `std::str::CharIndices`
+   |                     help: found a std struct with a similar name: `std::str::CharIndices`
 
 error[E0412]: cannot find type `chars` in this scope
   --> $DIR/str.rs:8:19
@@ -33,7 +33,7 @@ LL | fn test_encutf16(_x: EncodeUTF16){}
    |                      ^^^^^^^^^^^
    |                      |
    |                      not found in this scope
-   |                      help: found a libstd struct with a similar name: `std::str::EncodeUtf16`
+   |                      help: found a std struct with a similar name: `std::str::EncodeUtf16`
 
 error[E0412]: cannot find type `Escapedefault` in this scope
   --> $DIR/str.rs:12:21
@@ -41,7 +41,7 @@ error[E0412]: cannot find type `Escapedefault` in this scope
 LL | fn test_escdflt(_x: Escapedefault){}
    |                     ^^^^^^^^^^^^^ not found in this scope
    |
-help: found libstd structs with a similar name:
+help: found std structs with similar names:
    |
 LL | fn test_escdflt(_x: std::ascii::EscapeDefault){}
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -56,7 +56,7 @@ error[E0412]: cannot find type `Escapeunicode` in this scope
 LL | fn test_escuni(_x: Escapeunicode){}
    |                    ^^^^^^^^^^^^^ not found in this scope
    |
-help: found libstd structs with a similar name:
+help: found std structs with similar names:
    |
 LL | fn test_escuni(_x: std::char::EscapeUnicode){}
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -69,7 +69,7 @@ error[E0412]: cannot find type `lines` in this scope
 LL | fn test_lines(_x: lines){}
    |                   ^^^^^ not found in this scope
    |
-help: found libstd structs with a similar name:
+help: found std structs with similar names:
    |
 LL | fn test_lines(_x: std::io::Lines){}
    |                   ^^^^^^^^^^^^^^
@@ -83,7 +83,7 @@ LL | fn test_matchind(_x: Matchindices){}
    |                      ^^^^^^^^^^^^
    |                      |
    |                      not found in this scope
-   |                      help: found a libstd struct with a similar name: `std::str::MatchIndices`
+   |                      help: found a std struct with a similar name: `std::str::MatchIndices`
 
 error[E0412]: cannot find type `RmatchIndices` in this scope
   --> $DIR/str.rs:20:23
@@ -92,7 +92,7 @@ LL | fn test_rmatchind(_x: RmatchIndices){}
    |                       ^^^^^^^^^^^^^
    |                       |
    |                       not found in this scope
-   |                       help: found a libstd struct with a similar name: `std::str::RMatchIndices`
+   |                       help: found a std struct with a similar name: `std::str::RMatchIndices`
 
 error[E0412]: cannot find type `Rmatches` in this scope
   --> $DIR/str.rs:22:20
@@ -101,7 +101,7 @@ LL | fn test_rmatch(_x: Rmatches){}
    |                    ^^^^^^^^
    |                    |
    |                    not found in this scope
-   |                    help: found a libstd struct with a similar name: `std::str::RMatches`
+   |                    help: found a std struct with a similar name: `std::str::RMatches`
 
 error[E0412]: cannot find type `Rsplit` in this scope
   --> $DIR/str.rs:24:20
@@ -110,7 +110,7 @@ LL | fn test_rsplit(_x: Rsplit){}
    |                    ^^^^^^
    |                    |
    |                    not found in this scope
-   |                    help: found a libstd struct with a similar name: `std::str::RSplit`
+   |                    help: found a std struct with a similar name: `std::str::RSplit`
 
 error[E0412]: cannot find type `RSplitn` in this scope
   --> $DIR/str.rs:26:21
@@ -119,7 +119,7 @@ LL | fn test_rsplitn(_x: RSplitn){}
    |                     ^^^^^^^
    |                     |
    |                     not found in this scope
-   |                     help: found a libstd struct with a similar name: `std::str::RSplitN`
+   |                     help: found a std struct with a similar name: `std::str::RSplitN`
 
 error[E0412]: cannot find type `RsplitTerminator` in this scope
   --> $DIR/str.rs:28:24
@@ -128,7 +128,7 @@ LL | fn test_rsplitterm(_x: RsplitTerminator){}
    |                        ^^^^^^^^^^^^^^^^
    |                        |
    |                        not found in this scope
-   |                        help: found a libstd struct with a similar name: `std::str::RSplitTerminator`
+   |                        help: found a std struct with a similar name: `std::str::RSplitTerminator`
 
 error[E0412]: cannot find type `split` in this scope
   --> $DIR/str.rs:30:19
@@ -136,7 +136,7 @@ error[E0412]: cannot find type `split` in this scope
 LL | fn test_split(_x: split){}
    |                   ^^^^^ not found in this scope
    |
-help: found libstd structs with a similar name:
+help: found std structs with similar names:
    |
 LL | fn test_split(_x: std::io::Split){}
    |                   ^^^^^^^^^^^^^^
@@ -150,7 +150,7 @@ LL | fn test_splitasciiws(_x: SplitASCIIWhitespace){}
    |                          ^^^^^^^^^^^^^^^^^^^^
    |                          |
    |                          not found in this scope
-   |                          help: found a libstd struct with a similar name: `std::str::SplitAsciiWhitespace`
+   |                          help: found a std struct with a similar name: `std::str::SplitAsciiWhitespace`
 
 error[E0412]: cannot find type `Splitn` in this scope
   --> $DIR/str.rs:34:20
@@ -159,7 +159,7 @@ LL | fn test_splitn(_x: Splitn){}
    |                    ^^^^^^
    |                    |
    |                    not found in this scope
-   |                    help: found a libstd struct with a similar name: `std::str::SplitN`
+   |                    help: found a std struct with a similar name: `std::str::SplitN`
 
 error[E0412]: cannot find type `Splitterminator` in this scope
   --> $DIR/str.rs:36:23
@@ -168,7 +168,7 @@ LL | fn test_splitterm(_x: Splitterminator){}
    |                       ^^^^^^^^^^^^^^^
    |                       |
    |                       not found in this scope
-   |                       help: found a libstd struct with a similar name: `std::str::SplitTerminator`
+   |                       help: found a std struct with a similar name: `std::str::SplitTerminator`
 
 error[E0412]: cannot find type `Splitwhitespace` in this scope
   --> $DIR/str.rs:38:21
@@ -177,7 +177,7 @@ LL | fn test_splitws(_x: Splitwhitespace){}
    |                     ^^^^^^^^^^^^^^^
    |                     |
    |                     not found in this scope
-   |                     help: found a libstd struct with a similar name: `std::str::SplitWhitespace`
+   |                     help: found a std struct with a similar name: `std::str::SplitWhitespace`
 
 error: aborting due to 18 previous errors
 

@@ -5,7 +5,7 @@ LL | fn test_bufrd(_x: Bufreader<()>){}
    |                   ^^^^^^^^^
    |                   |
    |                   not found in this scope
-   |                   help: found a libstd struct with a similar name: `std::io::BufReader`
+   |                   help: found a std struct with a similar name: `std::io::BufReader`
 
 error[E0412]: cannot find type `Bufwriter` in this scope
   --> $DIR/io.rs:6:19
@@ -14,7 +14,7 @@ LL | fn test_bufwr(_x: Bufwriter<()>){}
    |                   ^^^^^^^^^
    |                   |
    |                   not found in this scope
-   |                   help: found a libstd struct with a similar name: `std::io::BufWriter`
+   |                   help: found a std struct with a similar name: `std::io::BufWriter`
 
 error[E0412]: cannot find type `bytes` in this scope
   --> $DIR/io.rs:8:19
@@ -22,7 +22,7 @@ error[E0412]: cannot find type `bytes` in this scope
 LL | fn test_bytes(_x: bytes<()>){}
    |                   ^^^^^ not found in this scope
    |
-help: found libstd structs with a similar name:
+help: found std structs with similar names:
    |
 LL | fn test_bytes(_x: std::io::Bytes<()>){}
    |                   ^^^^^^^^^^^^^^
@@ -35,7 +35,7 @@ error[E0412]: cannot find type `chain` in this scope
 LL | fn test_chain(_x: chain<(), ()>){}
    |                   ^^^^^ not found in this scope
    |
-help: found libstd structs with a similar name:
+help: found std structs with similar names:
    |
 LL | fn test_chain(_x: std::io::Chain<(), ()>){}
    |                   ^^^^^^^^^^^^^^
@@ -49,7 +49,7 @@ LL | fn test_cursor(_x: cursor<()>){}
    |                    ^^^^^^
    |                    |
    |                    not found in this scope
-   |                    help: found a libstd struct with a similar name: `std::io::Cursor`
+   |                    help: found a std struct with a similar name: `std::io::Cursor`
 
 error[E0412]: cannot find type `empty` in this scope
   --> $DIR/io.rs:14:19
@@ -57,7 +57,7 @@ error[E0412]: cannot find type `empty` in this scope
 LL | fn test_empty(_x: empty){}
    |                   ^^^^^ not found in this scope
    |
-help: found libstd structs with a similar name:
+help: found std structs with similar names:
    |
 LL | fn test_empty(_x: std::io::Empty){}
    |                   ^^^^^^^^^^^^^^
@@ -71,7 +71,7 @@ LL | fn test_ios(_x: Ioslice){}
    |                 ^^^^^^^
    |                 |
    |                 not found in this scope
-   |                 help: found a libstd struct with a similar name: `std::io::IoSlice`
+   |                 help: found a std struct with a similar name: `std::io::IoSlice`
 
 error[E0412]: cannot find type `IosliceMut` in this scope
   --> $DIR/io.rs:18:18
@@ -80,7 +80,7 @@ LL | fn test_iosm(_x: IosliceMut){}
    |                  ^^^^^^^^^^
    |                  |
    |                  not found in this scope
-   |                  help: found a libstd struct with a similar name: `std::io::IoSliceMut`
+   |                  help: found a std struct with a similar name: `std::io::IoSliceMut`
 
 error[E0412]: cannot find type `Linewriter` in this scope
   --> $DIR/io.rs:20:20
@@ -89,7 +89,7 @@ LL | fn test_linewr(_x: Linewriter<()>){}
    |                    ^^^^^^^^^^
    |                    |
    |                    not found in this scope
-   |                    help: found a libstd struct with a similar name: `std::io::LineWriter`
+   |                    help: found a std struct with a similar name: `std::io::LineWriter`
 
 error[E0412]: cannot find type `lines` in this scope
   --> $DIR/io.rs:22:19
@@ -97,7 +97,7 @@ error[E0412]: cannot find type `lines` in this scope
 LL | fn test_lines(_x: lines<()>){}
    |                   ^^^^^ not found in this scope
    |
-help: found libstd structs with a similar name:
+help: found std structs with similar names:
    |
 LL | fn test_lines(_x: std::io::Lines<()>){}
    |                   ^^^^^^^^^^^^^^
@@ -110,7 +110,7 @@ error[E0412]: cannot find type `repeat` in this scope
 LL | fn test_repeat(_x: repeat){}
    |                    ^^^^^^ not found in this scope
    |
-help: found libstd structs with a similar name:
+help: found std structs with similar names:
    |
 LL | fn test_repeat(_x: std::io::Repeat){}
    |                    ^^^^^^^^^^^^^^^
@@ -124,7 +124,7 @@ LL | fn test_sink(_x: sink){}
    |                  ^^^^
    |                  |
    |                  not found in this scope
-   |                  help: found a libstd struct with a similar name: `std::io::Sink`
+   |                  help: found a std struct with a similar name: `std::io::Sink`
 
 error[E0412]: cannot find type `split` in this scope
   --> $DIR/io.rs:28:19
@@ -132,7 +132,7 @@ error[E0412]: cannot find type `split` in this scope
 LL | fn test_split(_x: split<()>){}
    |                   ^^^^^ not found in this scope
    |
-help: found libstd structs with a similar name:
+help: found std structs with similar names:
    |
 LL | fn test_split(_x: std::io::Split<()>){}
    |                   ^^^^^^^^^^^^^^
@@ -146,7 +146,7 @@ LL | fn test_stderr(_x: StdErr){}
    |                    ^^^^^^
    |                    |
    |                    not found in this scope
-   |                    help: found a libstd struct with a similar name: `std::io::Stderr`
+   |                    help: found a std struct with a similar name: `std::io::Stderr`
 
 error[E0412]: cannot find type `StdErrLock` in this scope
   --> $DIR/io.rs:32:22
@@ -155,7 +155,7 @@ LL | fn test_stderr_l(_x: StdErrLock){}
    |                      ^^^^^^^^^^
    |                      |
    |                      not found in this scope
-   |                      help: found a libstd struct with a similar name: `std::io::StderrLock`
+   |                      help: found a std struct with a similar name: `std::io::StderrLock`
 
 error[E0412]: cannot find type `StdIn` in this scope
   --> $DIR/io.rs:34:20
@@ -164,7 +164,7 @@ LL | fn test_stdind(_x: StdIn){}
    |                    ^^^^^
    |                    |
    |                    not found in this scope
-   |                    help: found a libstd struct with a similar name: `std::io::Stdin`
+   |                    help: found a std struct with a similar name: `std::io::Stdin`
 
 error[E0412]: cannot find type `StdInLock` in this scope
   --> $DIR/io.rs:36:21
@@ -173,7 +173,7 @@ LL | fn test_stdin_l(_x: StdInLock){}
    |                     ^^^^^^^^^
    |                     |
    |                     not found in this scope
-   |                     help: found a libstd struct with a similar name: `std::io::StdinLock`
+   |                     help: found a std struct with a similar name: `std::io::StdinLock`
 
 error[E0412]: cannot find type `StdOut` in this scope
   --> $DIR/io.rs:38:20
@@ -182,7 +182,7 @@ LL | fn test_stdout(_x: StdOut){}
    |                    ^^^^^^
    |                    |
    |                    not found in this scope
-   |                    help: found a libstd struct with a similar name: `std::io::Stdout`
+   |                    help: found a std struct with a similar name: `std::io::Stdout`
 
 error[E0412]: cannot find type `StdOutLock` in this scope
   --> $DIR/io.rs:40:22
@@ -191,7 +191,7 @@ LL | fn test_stdout_l(_x: StdOutLock){}
    |                      ^^^^^^^^^^
    |                      |
    |                      not found in this scope
-   |                      help: found a libstd struct with a similar name: `std::io::StdoutLock`
+   |                      help: found a std struct with a similar name: `std::io::StdoutLock`
 
 error[E0412]: cannot find type `take` in this scope
   --> $DIR/io.rs:42:18
@@ -199,7 +199,7 @@ error[E0412]: cannot find type `take` in this scope
 LL | fn test_take(_x: take){}
    |                  ^^^^ not found in this scope
    |
-help: found libstd structs with a similar name:
+help: found std structs with similar names:
    |
 LL | fn test_take(_x: std::io::Take){}
    |                  ^^^^^^^^^^^^^

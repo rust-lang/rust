@@ -5,7 +5,7 @@ LL | fn test_rev(_x: reverse<()>){}
    |                 ^^^^^^^
    |                 |
    |                 not found in this scope
-   |                 help: found a libstd struct with a similar name: `std::cmp::Reverse`
+   |                 help: found a std struct with a similar name: `std::cmp::Reverse`
 
 error: aborting due to previous error
 
