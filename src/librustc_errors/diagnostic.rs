@@ -296,6 +296,29 @@ impl Diagnostic {
         self
     }
 
+    pub fn multipart_suggestions(
+        &mut self,
+        msg: &str,
+        suggestions: Vec<Vec<(Span, String)>>,
+        applicability: Applicability,
+    ) -> &mut Self {
+        self.suggestions.push(CodeSuggestion {
+            substitutions: suggestions
+                .into_iter()
+                .map(|suggestion| Substitution {
+                    parts: suggestion
+                        .into_iter()
+                        .map(|(span, snippet)| SubstitutionPart { snippet, span })
+                        .collect(),
+                })
+                .collect(),
+            msg: msg.to_owned(),
+            style: SuggestionStyle::ShowCode,
+            applicability,
+        });
+        self
+    }
+
     /// Prints out a message with for a multipart suggestion without showing the suggested code.
     ///
     /// This is intended to be used for suggestions that are obvious in what the changes need to
