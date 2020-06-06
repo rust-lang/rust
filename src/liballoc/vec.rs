@@ -984,7 +984,7 @@ impl<T> Vec<T> {
             // bounds check above succeeds there must be a last element (which
             // can be self[index] itself).
             let last = ptr::read(self.as_ptr().add(len - 1));
-            let hole: *mut T = self.as_mut_ptr().add(index);
+            let hole = self.as_mut_ptr().add(index);
             self.set_len(len - 1);
             ptr::replace(hole, last)
         }
