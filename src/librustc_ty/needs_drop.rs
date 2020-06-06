@@ -99,7 +99,7 @@ where
                         }
                     }
 
-                    ty::Generator(_, substs, _) => {
+                    ty::Generator(def_id, substs, _) => {
                         let substs = substs.as_generator();
                         for upvar_ty in substs.upvar_tys() {
                             queue_type(self, upvar_ty);
@@ -108,7 +108,13 @@ where
                         let witness = substs.witness();
                         let interior_tys = match &witness.kind {
                             ty::GeneratorWitness(tys) => tcx.erase_late_bound_regions(tys),
-                            _ => bug!(),
+                            _ => {
+                                tcx.sess.delay_span_bug(
+                                    tcx.hir().span_if_local(def_id).unwrap_or(DUMMY_SP),
+                                    &format!("unexpected generator witness type {:?}", witness),
+                                );
+                                return Some(Err(AlwaysRequiresDrop));
+                            }
                         };
 
                         for interior_ty in interior_tys {
