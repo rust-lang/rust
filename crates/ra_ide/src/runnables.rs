@@ -11,14 +11,14 @@ use ra_syntax::{
 
 use crate::{display::ToNav, FileId, NavigationTarget};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Runnable {
     pub nav: NavigationTarget,
     pub kind: RunnableKind,
     pub cfg_exprs: Vec<CfgExpr>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum TestId {
     Name(String),
     Path(String),
@@ -33,7 +33,7 @@ impl fmt::Display for TestId {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum RunnableKind {
     Test { test_id: TestId, attr: TestAttr },
     TestMod { path: String },
@@ -95,7 +95,11 @@ pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
     source_file.syntax().descendants().filter_map(|i| runnable(&sema, i, file_id)).collect()
 }
 
-fn runnable(sema: &Semantics<RootDatabase>, item: SyntaxNode, file_id: FileId) -> Option<Runnable> {
+pub(crate) fn runnable(
+    sema: &Semantics<RootDatabase>,
+    item: SyntaxNode,
+    file_id: FileId,
+) -> Option<Runnable> {
     match_ast! {
         match item {
             ast::FnDef(it) => runnable_fn(sema, it, file_id),
@@ -171,7 +175,7 @@ fn runnable_fn(
     Some(Runnable { nav, kind, cfg_exprs })
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct TestAttr {
     pub ignore: bool,
 }

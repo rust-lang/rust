@@ -18,8 +18,8 @@ use lsp_types::{
     TextDocumentIdentifier, Url, WorkspaceEdit,
 };
 use ra_ide::{
-    FileId, FilePosition, FileRange, HoverAction, Query, RangeInfo, Runnable, RunnableKind, SearchScope,
-    TextEdit,
+    FileId, FilePosition, FileRange, HoverAction, Query, RangeInfo, Runnable, RunnableKind,
+    SearchScope, TextEdit,
 };
 use ra_prof::profile;
 use ra_project_model::TargetKind;
@@ -403,12 +403,12 @@ pub fn handle_runnables(
             if !runnable.nav.full_range().contains_inclusive(offset) {
                 continue;
             }
-        }        
+        }
         if is_lib_target(&runnable, cargo_spec.as_ref()) {
             continue;
         }
 
-        res.push(to_proto::runnable(&snap, file_id, runnable)?);
+        res.push(to_proto::runnable(&snap, file_id, &runnable)?);
     }
 
     // Add `cargo check` and `cargo test` for the whole package
@@ -550,7 +550,7 @@ pub fn handle_hover(
             }),
             range: Some(range),
         },
-        actions: prepare_hover_actions(&snap, info.info.actions()),
+        actions: prepare_hover_actions(&snap, position.file_id, info.info.actions()),
     };
 
     Ok(Some(hover))
@@ -818,7 +818,7 @@ pub fn handle_code_lens(
 
             let action = runnable.action();
             let range = to_proto::range(&line_index, runnable.nav.range());
-            let r = to_proto::runnable(&snap, file_id, runnable)?;
+            let r = to_proto::runnable(&snap, file_id, &runnable)?;
             if snap.config.lens.run {
                 let lens = CodeLens {
                     range,
@@ -829,11 +829,8 @@ pub fn handle_code_lens(
             }
 
             if action.debugee && snap.config.lens.debug {
-                let debug_lens = CodeLens {
-                    range,
-                    command: Some(debug_single_command(r)),
-                    data: None,
-                };
+                let debug_lens =
+                    CodeLens { range, command: Some(debug_single_command(r)), data: None };
                 lenses.push(debug_lens);
             }
         }
@@ -1183,8 +1180,33 @@ fn show_impl_command_link(
     None
 }
 
+fn to_runnable_action(
+    snap: &GlobalStateSnapshot,
+    file_id: FileId,
+    runnable: &Runnable,
+) -> Option<lsp_ext::CommandLinkGroup> {
+    to_proto::runnable(snap, file_id, runnable).ok().map(|r| {
+        let mut group = lsp_ext::CommandLinkGroup::default();
+
+        let action = runnable.action();
+        if snap.config.hover.run {
+            let run_command = run_single_command(&r, action.run_title);
+            group.commands.push(to_command_link(run_command, r.label.clone()));
+        }
+
+        if snap.config.hover.debug {
+            let hint = r.label.clone();
+            let dbg_command = debug_single_command(r);
+            group.commands.push(to_command_link(dbg_command, hint));
+        }
+
+        group
+    })
+}
+
 fn prepare_hover_actions(
     snap: &GlobalStateSnapshot,
+    file_id: FileId,
     actions: &[HoverAction],
 ) -> Vec<lsp_ext::CommandLinkGroup> {
     if snap.config.hover.none() || !snap.config.client_caps.hover_actions {
@@ -1195,6 +1217,7 @@ fn prepare_hover_actions(
         .iter()
         .filter_map(|it| match it {
             HoverAction::Implementaion(position) => show_impl_command_link(snap, position),
+            HoverAction::Runnable(r) => to_runnable_action(snap, file_id, r),
         })
         .collect()
 }
@@ -1205,7 +1228,7 @@ fn is_lib_target(runnable: &Runnable, cargo_spec: Option<&CargoTargetSpec>) -> b
         if let Some(spec) = cargo_spec {
             match spec.target_kind {
                 TargetKind::Bin => return true,
-                _ => ()
+                _ => (),
             }
         }
     }

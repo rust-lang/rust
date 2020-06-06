@@ -486,6 +486,16 @@
                     "type": "boolean",
                     "default": true
                 },
+                "rust-analyzer.hoverActions.run": {
+                    "markdownDescription": "Whether to show `Run` action. Only applies when `#rust-analyzer.hoverActions.enable#` is set.",
+                    "type": "boolean",
+                    "default": true
+                },
+                "rust-analyzer.hoverActions.debug": {
+                    "markdownDescription": "Whether to show `Debug` action. Only applies when `#rust-analyzer.hoverActions.enable#` is set.",
+                    "type": "boolean",
+                    "default": true
+                },
                 "rust-analyzer.linkedProjects": {
                     "markdownDescription": [
                         "Disable project auto-discovery in favor of explicitly specified set of projects.",

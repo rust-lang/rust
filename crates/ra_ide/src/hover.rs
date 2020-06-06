@@ -14,34 +14,42 @@ use ra_syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, TokenAtOffs
 
 use crate::{
     display::{macro_label, rust_code_markup, rust_code_markup_with_doc, ShortLabel, ToNav},
-    FilePosition, NavigationTarget, RangeInfo,
+    runnables::runnable,
+    FileId, FilePosition, NavigationTarget, RangeInfo, Runnable,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HoverConfig {
     pub implementations: bool,
+    pub run: bool,
+    pub debug: bool,
 }
 
 impl Default for HoverConfig {
     fn default() -> Self {
-        Self { implementations: true }
+        Self { implementations: true, run: true, debug: true }
     }
 }
 
 impl HoverConfig {
-    pub const NO_ACTIONS: Self = Self { implementations: false };
+    pub const NO_ACTIONS: Self = Self { implementations: false, run: false, debug: false };
 
     pub fn any(&self) -> bool {
-        self.implementations
+        self.implementations || self.runnable()
     }
 
     pub fn none(&self) -> bool {
         !self.any()
     }
+
+    pub fn runnable(&self) -> bool {
+        self.run || self.debug
+    }
 }
 
 #[derive(Debug, Clone)]
 pub enum HoverAction {
+    Runnable(Runnable),
     Implementaion(FilePosition),
 }
 
@@ -125,6 +133,10 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
                 res.push_action(action);
             }
 
+            if let Some(action) = runnable_action(&sema, name_kind, position.file_id) {
+                res.push_action(action);
+            }
+
             return Some(RangeInfo::new(range, res));
         }
     }
@@ -169,6 +181,28 @@ fn show_implementations_action(db: &RootDatabase, def: Definition) -> Option<Hov
             ModuleDef::Adt(Adt::Union(it)) => Some(to_action(it.to_nav(db))),
             ModuleDef::Adt(Adt::Enum(it)) => Some(to_action(it.to_nav(db))),
             ModuleDef::Trait(it) => Some(to_action(it.to_nav(db))),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+fn runnable_action(
+    sema: &Semantics<RootDatabase>,
+    def: Definition,
+    file_id: FileId,
+) -> Option<HoverAction> {
+    match def {
+        Definition::ModuleDef(it) => match it {
+            ModuleDef::Module(it) => match it.definition_source(sema.db).value {
+                ModuleSource::Module(it) => runnable(&sema, it.syntax().clone(), file_id)
+                    .map(|it| HoverAction::Runnable(it)),
+                _ => None,
+            },
+            ModuleDef::Function(it) => {
+                runnable(&sema, it.source(sema.db).value.syntax().clone(), file_id)
+                    .map(|it| HoverAction::Runnable(it))
+            }
             _ => None,
         },
         _ => None,
@@ -292,6 +326,7 @@ fn pick_best(tokens: TokenAtOffset<SyntaxToken>) -> Option<SyntaxToken> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use insta::assert_debug_snapshot;
 
     use ra_db::FileLoader;
     use ra_syntax::TextRange;
@@ -309,6 +344,7 @@ mod tests {
     fn assert_impl_action(action: &HoverAction, position: u32) {
         let offset = match action {
             HoverAction::Implementaion(pos) => pos.offset,
+            it => panic!("Unexpected hover action: {:#?}", it),
         };
         assert_eq!(offset, position.into());
     }
@@ -1175,5 +1211,90 @@ fn func(foo: i32) { if true { <|>foo; }; }
             &["enum foo"],
         );
         assert_impl_action(&actions[0], 5);
+    }
+
+    #[test]
+    fn test_hover_test_has_action() {
+        let (_, actions) = check_hover_result(
+            "
+            //- /lib.rs
+            #[test]
+            fn foo_<|>test() {}
+            ",
+            &["fn foo_test()"],
+        );
+        assert_debug_snapshot!(actions,
+            @r###"
+            [
+                Runnable(
+                    Runnable {
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 0..24,
+                            name: "foo_test",
+                            kind: FN_DEF,
+                            focus_range: Some(
+                                11..19,
+                            ),
+                            container_name: None,
+                            description: None,
+                            docs: None,
+                        },
+                        kind: Test {
+                            test_id: Path(
+                                "foo_test",
+                            ),
+                            attr: TestAttr {
+                                ignore: false,
+                            },
+                        },
+                        cfg_exprs: [],
+                    },
+                ),
+            ]
+            "###);
+    }
+
+    #[test]
+    fn test_hover_test_mod_has_action() {
+        let (_, actions) = check_hover_result(
+            "
+            //- /lib.rs
+            mod tests<|> {
+                #[test]
+                fn foo_test() {}
+            }
+            ",
+            &["mod tests"],
+        );
+        assert_debug_snapshot!(actions,
+            @r###"
+            [
+                Runnable(
+                    Runnable {
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 0..46,
+                            name: "tests",
+                            kind: MODULE,
+                            focus_range: Some(
+                                4..9,
+                            ),
+                            container_name: None,
+                            description: None,
+                            docs: None,
+                        },
+                        kind: TestMod {
+                            path: "tests",
+                        },
+                        cfg_exprs: [],
+                    },
+                ),
+            ]
+            "###);
     }
 }
