@@ -18,7 +18,7 @@ use rustc_lint::{LateContext, LateLintPass, Lint, LintContext};
 use rustc_middle::hir::map::Map;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::subst::GenericArgKind;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, Ty, TyS};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{sym, SymbolStr};
@@ -29,9 +29,9 @@ use crate::utils::{
     get_arg_name, get_parent_expr, get_trait_def_id, has_iter_method, higher, implements_trait, in_macro, is_copy,
     is_ctor_or_promotable_const_function, is_expn_of, is_type_diagnostic_item, iter_input_pats, last_path_segment,
     match_def_path, match_qpath, match_trait_method, match_type, match_var, method_calls, method_chain_args, paths,
-    remove_blocks, return_ty, same_tys, single_segment_path, snippet, snippet_with_applicability,
-    snippet_with_macro_callsite, span_lint, span_lint_and_help, span_lint_and_note, span_lint_and_sugg,
-    span_lint_and_then, sugg, walk_ptrs_ty, walk_ptrs_ty_depth, SpanlessEq,
+    remove_blocks, return_ty, single_segment_path, snippet, snippet_with_applicability, snippet_with_macro_callsite,
+    span_lint, span_lint_and_help, span_lint_and_note, span_lint_and_sugg, span_lint_and_then, sugg, walk_ptrs_ty,
+    walk_ptrs_ty_depth, SpanlessEq,
 };
 
 declare_clippy_lint! {
@@ -1548,7 +1548,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
 
             let contains_self_ty = |ty: Ty<'tcx>| {
                 ty.walk().any(|inner| match inner.unpack() {
-                    GenericArgKind::Type(inner_ty) => same_tys(cx, self_ty, inner_ty),
+                    GenericArgKind::Type(inner_ty) => TyS::same_type(self_ty, inner_ty),
 
                     GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
                 })
@@ -1575,7 +1575,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
                 }
             }
 
-            if name == "new" && !same_tys(cx, ret_ty, self_ty) {
+            if name == "new" && !TyS::same_type(ret_ty, self_ty) {
                 span_lint(
                     cx,
                     NEW_RET_NO_SELF,
