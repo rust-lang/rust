@@ -40,7 +40,7 @@ use rustc_hir::{
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::map::Map;
-use rustc_middle::ty::{self, layout::IntegerExt, subst::GenericArg, Binder, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, layout::IntegerExt, subst::GenericArg, Ty, TyCtxt, TypeFoldable};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::original_sp;
 use rustc_span::symbol::{self, kw, Symbol};
@@ -877,20 +877,6 @@ pub fn return_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, fn_item: hir::HirId) -> T
     let fn_def_id = cx.tcx.hir().local_def_id(fn_item);
     let ret_ty = cx.tcx.fn_sig(fn_def_id).output();
     cx.tcx.erase_late_bound_regions(&ret_ty)
-}
-
-/// Checks if two types are the same.
-///
-/// This discards any lifetime annotations, too.
-//
-// FIXME: this works correctly for lifetimes bounds (`for <'a> Foo<'a>` ==
-// `for <'b> Foo<'b>`, but not for type parameters).
-pub fn same_tys<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
-    let a = cx.tcx.erase_late_bound_regions(&Binder::bind(a));
-    let b = cx.tcx.erase_late_bound_regions(&Binder::bind(b));
-    cx.tcx
-        .infer_ctxt()
-        .enter(|infcx| infcx.can_eq(cx.param_env, a, b).is_ok())
 }
 
 /// Returns `true` if the given type is an `unsafe` function.

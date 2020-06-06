@@ -17,7 +17,7 @@ use rustc_hir::{
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::map::Map;
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::{self, InferTy, Ty, TyCtxt, TypeckTables};
+use rustc_middle::ty::{self, InferTy, Ty, TyCtxt, TyS, TypeckTables};
 use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::Span;
@@ -31,7 +31,7 @@ use crate::utils::paths;
 use crate::utils::{
     clip, comparisons, differing_macro_contexts, higher, in_constant, indent_of, int_bits, is_type_diagnostic_item,
     last_path_segment, match_def_path, match_path, method_chain_args, multispan_sugg, numeric_literal::NumericLiteral,
-    qpath_res, same_tys, sext, snippet, snippet_block_with_applicability, snippet_opt, snippet_with_applicability,
+    qpath_res, sext, snippet, snippet_block_with_applicability, snippet_opt, snippet_with_applicability,
     snippet_with_macro_callsite, span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then, unsext,
 };
 
@@ -2556,7 +2556,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'a, 'b, 't
             if let ExprKind::Path(QPath::TypeRelative(ref ty, ref method)) = fun.kind;
             if let TyKind::Path(QPath::Resolved(None, ty_path)) = ty.kind;
             then {
-                if !same_tys(self.cx, self.target.ty(), self.body.expr_ty(e)) {
+                if !TyS::same_type(self.target.ty(), self.body.expr_ty(e)) {
                     return;
                 }
 
