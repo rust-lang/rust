@@ -4,7 +4,7 @@ use ra_ide::{
     Assist, CompletionItem, CompletionItemKind, Documentation, FileSystemEdit, Fold, FoldKind,
     FunctionSignature, Highlight, HighlightModifier, HighlightTag, HighlightedRange, Indel,
     InlayHint, InlayKind, InsertTextFormat, LineIndex, NavigationTarget, ReferenceAccess,
-    ResolvedAssist, Runnable, RunnableKind, Severity, SourceChange, SourceFileEdit, TextEdit,
+    ResolvedAssist, Runnable, Severity, SourceChange, SourceFileEdit, TextEdit,
 };
 use ra_syntax::{SyntaxKind, TextRange, TextSize};
 use ra_vfs::LineEndings;
@@ -662,15 +662,7 @@ pub(crate) fn runnable(
     let target = spec.as_ref().map(|s| s.target.clone());
     let (cargo_args, executable_args) =
         CargoTargetSpec::runnable_args(spec, &runnable.kind, &runnable.cfg_exprs)?;
-    let label = match &runnable.kind {
-        RunnableKind::Test { test_id, .. } => format!("test {}", test_id),
-        RunnableKind::TestMod { path } => format!("test-mod {}", path),
-        RunnableKind::Bench { test_id } => format!("bench {}", test_id),
-        RunnableKind::DocTest { test_id, .. } => format!("doctest {}", test_id),
-        RunnableKind::Bin => {
-            target.map_or_else(|| "run binary".to_string(), |t| format!("run {}", t))
-        }
-    };
+    let label = runnable.label(target);
     let location = location_link(snap, None, runnable.nav)?;
 
     Ok(lsp_ext::Runnable {

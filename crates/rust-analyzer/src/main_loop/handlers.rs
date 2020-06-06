@@ -18,7 +18,7 @@ use lsp_types::{
     TextDocumentIdentifier, Url, WorkspaceEdit,
 };
 use ra_ide::{
-    FileId, FilePosition, FileRange, HoverAction, Query, RangeInfo, RunnableKind, SearchScope,
+    FileId, FilePosition, FileRange, HoverAction, Query, RangeInfo, Runnable, RunnableKind, SearchScope,
     TextEdit,
 };
 use ra_prof::profile;
@@ -403,16 +403,11 @@ pub fn handle_runnables(
             if !runnable.nav.full_range().contains_inclusive(offset) {
                 continue;
             }
+        }        
+        if is_lib_target(&runnable, cargo_spec.as_ref()) {
+            continue;
         }
-        // Do not suggest binary run on other target than binary
-        if let RunnableKind::Bin = runnable.kind {
-            if let Some(spec) = &cargo_spec {
-                match spec.target_kind {
-                    TargetKind::Bin => {}
-                    _ => continue,
-                }
-            }
-        }
+
         res.push(to_proto::runnable(&snap, file_id, runnable)?);
     }
 
@@ -817,53 +812,26 @@ pub fn handle_code_lens(
     if snap.config.lens.runnable() {
         // Gather runnables
         for runnable in snap.analysis().runnables(file_id)? {
-            let (run_title, debugee) = match &runnable.kind {
-                RunnableKind::Test { .. } | RunnableKind::TestMod { .. } => {
-                    ("▶\u{fe0e} Run Test", true)
-                }
-                RunnableKind::DocTest { .. } => {
-                    // cargo does not support -no-run for doctests
-                    ("▶\u{fe0e} Run Doctest", false)
-                }
-                RunnableKind::Bench { .. } => {
-                    // Nothing wrong with bench debugging
-                    ("Run Bench", true)
-                }
-                RunnableKind::Bin => {
-                    // Do not suggest binary run on other target than binary
-                    match &cargo_spec {
-                        Some(spec) => match spec.target_kind {
-                            TargetKind::Bin => ("Run", true),
-                            _ => continue,
-                        },
-                        None => continue,
-                    }
-                }
-            };
+            if is_lib_target(&runnable, cargo_spec.as_ref()) {
+                continue;
+            }
 
+            let action = runnable.action();
             let range = to_proto::range(&line_index, runnable.nav.range());
             let r = to_proto::runnable(&snap, file_id, runnable)?;
             if snap.config.lens.run {
                 let lens = CodeLens {
                     range,
-                    command: Some(Command {
-                        title: run_title.to_string(),
-                        command: "rust-analyzer.runSingle".into(),
-                        arguments: Some(vec![to_value(&r).unwrap()]),
-                    }),
+                    command: Some(run_single_command(&r, action.run_title)),
                     data: None,
                 };
                 lenses.push(lens);
             }
 
-            if debugee && snap.config.lens.debug {
+            if action.debugee && snap.config.lens.debug {
                 let debug_lens = CodeLens {
                     range,
-                    command: Some(Command {
-                        title: "Debug".into(),
-                        command: "rust-analyzer.debugSingle".into(),
-                        arguments: Some(vec![to_value(r).unwrap()]),
-                    }),
+                    command: Some(debug_single_command(r)),
                     data: None,
                 };
                 lenses.push(debug_lens);
@@ -1169,6 +1137,22 @@ fn show_references_command(
     }
 }
 
+fn run_single_command(runnable: &lsp_ext::Runnable, title: &str) -> Command {
+    Command {
+        title: title.to_string(),
+        command: "rust-analyzer.runSingle".into(),
+        arguments: Some(vec![to_value(runnable).unwrap()]),
+    }
+}
+
+fn debug_single_command(runnable: lsp_ext::Runnable) -> Command {
+    Command {
+        title: "Debug".into(),
+        command: "rust-analyzer.debugSingle".into(),
+        arguments: Some(vec![to_value(runnable).unwrap()]),
+    }
+}
+
 fn to_command_link(command: Command, tooltip: String) -> lsp_ext::CommandLink {
     lsp_ext::CommandLink { tooltip: Some(tooltip), command }
 }
@@ -1213,4 +1197,18 @@ fn prepare_hover_actions(
             HoverAction::Implementaion(position) => show_impl_command_link(snap, position),
         })
         .collect()
+}
+
+fn is_lib_target(runnable: &Runnable, cargo_spec: Option<&CargoTargetSpec>) -> bool {
+    // Do not suggest binary run on other target than binary
+    if let RunnableKind::Bin = runnable.kind {
+        if let Some(spec) = cargo_spec {
+            match spec.target_kind {
+                TargetKind::Bin => return true,
+                _ => ()
+            }
+        }
+    }
+
+    false
 }
