@@ -231,6 +231,12 @@ impl LocalDefId {
     }
 }
 
+impl From<LocalDefId> for DefId {
+    fn from(local: LocalDefId) -> Self {
+        local.to_def_id()
+    }
+}
+
 impl fmt::Debug for LocalDefId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.to_def_id().fmt(f)
