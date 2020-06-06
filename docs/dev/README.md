@@ -184,6 +184,27 @@ use crate::{}
 use super::{} // but prefer `use crate::`
 ```
 
+## Import Style
+
+Items from `hir` and `ast` should be used qualified:
+
+```rust
+// Good
+use ra_syntax::ast;
+
+fn frobnicate(func: hir::Function, strukt: ast::StructDef) {}
+
+// Not as good
+use hir::Function;
+use ra_syntax::ast::StructDef;
+
+fn frobnicate(func: Function, strukt: StructDef) {}
+```
+
+Avoid local `use MyEnum::*` imports.
+
+Prefer `use crate::foo::bar` to `use super::bar`.
+
 ## Order of Items
 
 Optimize for the reader who sees the file for the first time, and wants to get the general idea about what's going on.
