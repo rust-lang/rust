@@ -4,6 +4,7 @@
 
 // ignore-arm
 // ignore-aarch64
+// ignore-riscv64 x86-interrupt is not supported
 
 // compile-flags: -C no-prepopulate-passes
 

@@ -1,5 +1,8 @@
 // compile-flags: -C no-prepopulate-passes
 
+// ignore-riscv64 riscv64 has an i128 type used with test_Vector
+// see codegen/riscv-abi for riscv functiona call tests
+
 #![crate_type="lib"]
 #![feature(repr_simd, transparent_unions)]
 
