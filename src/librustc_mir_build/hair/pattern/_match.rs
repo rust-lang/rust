@@ -280,6 +280,7 @@ use rustc_index::vec::Idx;
 use super::{compare_const_vals, PatternFoldable, PatternFolder};
 use super::{FieldPat, Pat, PatKind, PatRange};
 
+use rustc_arena::TypedArena;
 use rustc_attr::{SignedInt, UnsignedInt};
 use rustc_errors::ErrorReported;
 use rustc_hir::def_id::DefId;
@@ -291,8 +292,6 @@ use rustc_middle::ty::{self, Const, Ty, TyCtxt};
 use rustc_session::lint;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{Integer, Size, VariantIdx};
-
-use arena::TypedArena;
 
 use smallvec::{smallvec, SmallVec};
 use std::borrow::Cow;

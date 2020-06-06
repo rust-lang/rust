@@ -19,7 +19,7 @@ libc = "0.2.50"
 jobserver = "0.1.11"
 tempfile = "3.1"
 
-rustc_serialize = { path = "../libserialize", package = "serialize" }
+rustc_serialize = { path = "../librustc_serialize" }
 rustc_ast = { path = "../librustc_ast" }
 rustc_span = { path = "../librustc_span" }
 rustc_middle = { path = "../librustc_middle" }

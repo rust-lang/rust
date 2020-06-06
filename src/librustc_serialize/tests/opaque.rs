@@ -1,7 +1,5 @@
 #![allow(rustc::internal)]
 
-extern crate serialize as rustc_serialize;
-
 use rustc_serialize::opaque::{Decoder, Encoder};
 use rustc_serialize::{Decodable, Encodable};
 use std::fmt::Debug;

@@ -10,11 +10,11 @@ path = "lib.rs"
 doctest = false
 
 [dependencies]
-rustc_serialize = { path = "../libserialize", package = "serialize" }
+rustc_serialize = { path = "../librustc_serialize" }
 rustc_macros = { path = "../librustc_macros" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_index = { path = "../librustc_index" }
-arena = { path = "../libarena" }
+rustc_arena = { path = "../librustc_arena" }
 scoped-tls = "1.0"
 unicode-width = "0.1.4"
 cfg-if = "0.1.2"

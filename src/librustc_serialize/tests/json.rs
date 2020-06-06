@@ -1,7 +1,5 @@
 #![allow(rustc::internal)]
 
-extern crate serialize as rustc_serialize;
-
 use json::DecoderError::*;
 use json::ErrorCode::*;
 use json::Json::*;

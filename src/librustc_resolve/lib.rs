@@ -19,6 +19,7 @@ pub use rustc_hir::def::{Namespace, PerNS};
 
 use Determinacy::*;
 
+use rustc_arena::TypedArena;
 use rustc_ast::ast::{self, FloatTy, IntTy, NodeId, UintTy};
 use rustc_ast::ast::{Crate, CRATE_NODE_ID};
 use rustc_ast::ast::{ItemKind, Path};
@@ -981,13 +982,13 @@ pub struct Resolver<'a> {
 /// Nothing really interesting here; it just provides memory for the rest of the crate.
 #[derive(Default)]
 pub struct ResolverArenas<'a> {
-    modules: arena::TypedArena<ModuleData<'a>>,
+    modules: TypedArena<ModuleData<'a>>,
     local_modules: RefCell<Vec<Module<'a>>>,
-    name_bindings: arena::TypedArena<NameBinding<'a>>,
-    imports: arena::TypedArena<Import<'a>>,
-    name_resolutions: arena::TypedArena<RefCell<NameResolution<'a>>>,
-    macro_rules_bindings: arena::TypedArena<MacroRulesBinding<'a>>,
-    ast_paths: arena::TypedArena<ast::Path>,
+    name_bindings: TypedArena<NameBinding<'a>>,
+    imports: TypedArena<Import<'a>>,
+    name_resolutions: TypedArena<RefCell<NameResolution<'a>>>,
+    macro_rules_bindings: TypedArena<MacroRulesBinding<'a>>,
+    ast_paths: TypedArena<ast::Path>,
 }
 
 impl<'a> ResolverArenas<'a> {

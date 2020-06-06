@@ -4,7 +4,7 @@
 
 #[allow(dead_code)]
 
-extern crate serialize as rustc_serialize;
+extern crate rustc_serialize;
 
 #[derive(RustcDecodable, RustcEncodable,Debug)]
 struct A {

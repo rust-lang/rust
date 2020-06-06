@@ -16,8 +16,8 @@ log = "0.4"
 jobserver_crate = { version = "0.1.13", package = "jobserver" }
 lazy_static = "1"
 once_cell = { version = "1", features = ["parking_lot"] }
-rustc_serialize = { path = "../libserialize", package = "serialize" }
-graphviz = { path = "../libgraphviz" }
+rustc_serialize = { path = "../librustc_serialize" }
+rustc_graphviz = { path = "../librustc_graphviz" }
 cfg-if = "0.1.2"
 crossbeam-utils = { version = "0.7", features = ["nightly"] }
 stable_deref_trait = "1.0.0"

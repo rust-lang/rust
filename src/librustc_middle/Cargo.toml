@@ -10,7 +10,7 @@ path = "lib.rs"
 doctest = false
 
 [dependencies]
-arena = { path = "../libarena" }
+rustc_arena = { path = "../librustc_arena" }
 bitflags = "1.2.1"
 scoped-tls = "1.0"
 log = { version = "0.4", features = ["release_max_level_info", "std"] }
@@ -26,7 +26,7 @@ rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_query_system = { path = "../librustc_query_system" }
 rustc_errors = { path = "../librustc_errors" }
 rustc_index = { path = "../librustc_index" }
-rustc_serialize = { path = "../libserialize", package = "serialize" }
+rustc_serialize = { path = "../librustc_serialize" }
 rustc_ast = { path = "../librustc_ast" }
 rustc_span = { path = "../librustc_span" }
 byteorder = { version = "1.3" }

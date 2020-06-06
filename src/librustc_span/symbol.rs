@@ -2,7 +2,7 @@
 //! allows bidirectional lookup; i.e., given a value, one can easily find the
 //! type, and vice versa.
 
-use arena::DroplessArena;
+use rustc_arena::DroplessArena;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_macros::{symbols, HashStable_Generic};

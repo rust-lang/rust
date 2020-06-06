@@ -88,4 +88,4 @@ macro_rules! arena_types {
     )
 }
 
-arena_types!(arena::declare_arena, [], 'tcx);
+arena_types!(rustc_arena::declare_arena, [], 'tcx);

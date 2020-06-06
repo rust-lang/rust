@@ -1,13 +1,13 @@
 [package]
 authors = ["The Rust Project Developers"]
-name = "arena"
+name = "rustc_serialize"
 version = "0.0.0"
 edition = "2018"
 
 [lib]
-name = "arena"
+name = "rustc_serialize"
 path = "lib.rs"
 
 [dependencies]
-rustc_data_structures = { path = "../librustc_data_structures" }
+indexmap = "1"
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }

@@ -352,7 +352,7 @@ impl Write {
         tts: &TokenStream,
         is_write: bool,
     ) -> (Option<StrLit>, Option<Expr>) {
-        use fmt_macros::{
+        use rustc_parse_format::{
             AlignUnknown, ArgumentImplicitlyIs, ArgumentIs, ArgumentNamed, CountImplied, FormatSpec, ParseMode, Parser,
             Piece,
         };
