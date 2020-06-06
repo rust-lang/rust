@@ -751,7 +751,7 @@ impl Step for RustdocGUI {
             );
             // Second step: install npm dependencies.
             let mut cmd = Command::new("npm");
-            cmd.arg("install").current_dir(builder.out.join("browser-UI-test").to_str().unwrap());
+            cmd.arg("install").current_dir(builder.out.join("browser-UI-test"));
             try_run(builder, &mut cmd);
 
             // Third step: building documentation with lastest rustdoc version.

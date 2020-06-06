@@ -19,7 +19,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   libexpat1-dev \
   gnupg \
   apt-utils \
-  wget
+  wget \
+  fonts-ipafont-gothic \
+  fonts-wqy-zenhei \
+  fonts-thai-tlwg \
+  fonts-kacst \
+  fonts-freefont-ttf \
 
 RUN curl -sL https://deb.nodesource.com/setup_12.x | sudo -E bash -
 RUN apt install -y nodejs
@@ -43,11 +48,6 @@ RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
   google-chrome-unstable \
-  fonts-ipafont-gothic \
-  fonts-wqy-zenhei \
-  fonts-thai-tlwg \
-  fonts-kacst \
-  fonts-freefont-ttf \
   && rm -rf /var/lib/apt/lists/*
 
 COPY scripts/sccache.sh /scripts/
