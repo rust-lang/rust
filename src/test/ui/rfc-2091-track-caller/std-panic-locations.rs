@@ -1,7 +1,6 @@
 // run-pass
 // ignore-wasm32-bare compiled with panic=abort by default
 
-#![feature(option_expect_none, option_unwrap_none)]
 #![allow(unconditional_panic)]
 
 //! Test that panic locations for `#[track_caller]` functions in std have the correct
