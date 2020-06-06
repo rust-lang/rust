@@ -110,7 +110,7 @@ export function createTask(runnable: ra.Runnable): vscode.Task {
     switch (runnable.kind) {
         case "cargo": command = toolchain.getPathForExecutable("cargo");
     }
-    const args = runnable.args.cargoArgs;
+    const args = [...runnable.args.cargoArgs]; // should be a copy!
     if (runnable.args.executableArgs.length > 0) {
         args.push('--', ...runnable.args.executableArgs);
     }
