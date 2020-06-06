@@ -415,7 +415,7 @@ struct Test<K, T = u8> {
 }
 
 fn main() {
-    let zz = Test { t: 23, k: 33 };
+    let zz = Test { t: 23u8, k: 33 };
     let zz_ref = &zz;
 }"#,
         );
@@ -428,7 +428,7 @@ fn main() {
                 label: "Test<i32>",
             },
             InlayHint {
-                range: 105..111,
+                range: 107..113,
                 kind: TypeHint,
                 label: "&Test<i32>",
             },

@@ -439,13 +439,13 @@ impl<'a> InferenceContext<'a> {
             };
         return match resolution {
             TypeNs::AdtId(AdtId::StructId(strukt)) => {
-                let substs = Ty::substs_from_path(&ctx, path, strukt.into());
+                let substs = Ty::substs_from_path(&ctx, path, strukt.into(), true);
                 let ty = self.db.ty(strukt.into());
                 let ty = self.insert_type_vars(ty.subst(&substs));
                 forbid_unresolved_segments((ty, Some(strukt.into())), unresolved)
             }
             TypeNs::EnumVariantId(var) => {
-                let substs = Ty::substs_from_path(&ctx, path, var.into());
+                let substs = Ty::substs_from_path(&ctx, path, var.into(), true);
                 let ty = self.db.ty(var.parent.into());
                 let ty = self.insert_type_vars(ty.subst(&substs));
                 forbid_unresolved_segments((ty, Some(var.into())), unresolved)

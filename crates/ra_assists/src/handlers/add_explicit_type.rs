@@ -195,7 +195,7 @@ struct Test<K, T = u8> {
 }
 
 fn main() {
-    let test<|> = Test { t: 23, k: 33 };
+    let test<|> = Test { t: 23u8, k: 33 };
 }"#,
             r#"
 struct Test<K, T = u8> {
@@ -204,7 +204,7 @@ struct Test<K, T = u8> {
 }
 
 fn main() {
-    let test: Test<i32> = Test { t: 23, k: 33 };
+    let test: Test<i32> = Test { t: 23u8, k: 33 };
 }"#,
         );
     }

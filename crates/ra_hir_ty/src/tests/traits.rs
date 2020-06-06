@@ -1806,33 +1806,33 @@ fn test() {
 }
 "#),
         @r###"
-65..69 'self': &Self
-166..170 'self': Self
-172..176 'args': Args
-240..244 'self': &Foo
-255..257 '{}': ()
-335..336 'f': F
-355..357 '{}': ()
-444..690 '{     ...o(); }': ()
-454..459 'lazy1': Lazy<Foo, fn() -> T>
-476..485 'Lazy::new': fn new<Foo, fn() -> T>(fn() -> T) -> Lazy<Foo, fn() -> T>
-476..493 'Lazy::...| Foo)': Lazy<Foo, fn() -> T>
-486..492 '|| Foo': || -> T
-489..492 'Foo': Foo
-503..505 'r1': {unknown}
-508..513 'lazy1': Lazy<Foo, fn() -> T>
-508..519 'lazy1.foo()': {unknown}
-561..576 'make_foo_fn_ptr': fn() -> Foo
-592..603 'make_foo_fn': fn make_foo_fn() -> Foo
-613..618 'lazy2': Lazy<Foo, fn() -> T>
-635..644 'Lazy::new': fn new<Foo, fn() -> T>(fn() -> T) -> Lazy<Foo, fn() -> T>
-635..661 'Lazy::...n_ptr)': Lazy<Foo, fn() -> T>
-645..660 'make_foo_fn_ptr': fn() -> Foo
-671..673 'r2': {unknown}
-676..681 'lazy2': Lazy<Foo, fn() -> T>
-676..687 'lazy2.foo()': {unknown}
-550..552 '{}': ()
-"###
+    65..69 'self': &Self
+    166..170 'self': Self
+    172..176 'args': Args
+    240..244 'self': &Foo
+    255..257 '{}': ()
+    335..336 'f': F
+    355..357 '{}': ()
+    444..690 '{     ...o(); }': ()
+    454..459 'lazy1': Lazy<Foo, || -> Foo>
+    476..485 'Lazy::new': fn new<Foo, || -> Foo>(|| -> Foo) -> Lazy<Foo, || -> Foo>
+    476..493 'Lazy::...| Foo)': Lazy<Foo, || -> Foo>
+    486..492 '|| Foo': || -> Foo
+    489..492 'Foo': Foo
+    503..505 'r1': usize
+    508..513 'lazy1': Lazy<Foo, || -> Foo>
+    508..519 'lazy1.foo()': usize
+    561..576 'make_foo_fn_ptr': fn() -> Foo
+    592..603 'make_foo_fn': fn make_foo_fn() -> Foo
+    613..618 'lazy2': Lazy<Foo, fn() -> Foo>
+    635..644 'Lazy::new': fn new<Foo, fn() -> Foo>(fn() -> Foo) -> Lazy<Foo, fn() -> Foo>
+    635..661 'Lazy::...n_ptr)': Lazy<Foo, fn() -> Foo>
+    645..660 'make_foo_fn_ptr': fn() -> Foo
+    671..673 'r2': {unknown}
+    676..681 'lazy2': Lazy<Foo, fn() -> Foo>
+    676..687 'lazy2.foo()': {unknown}
+    550..552 '{}': ()
+    "###
     );
 }
 

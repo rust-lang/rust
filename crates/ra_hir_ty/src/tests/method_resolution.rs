@@ -184,60 +184,6 @@ fn test() {
 }
 
 #[test]
-fn infer_associated_method_generics_with_default_param() {
-    assert_snapshot!(
-        infer(r#"
-struct Gen<T=u32> {
-    val: T
-}
-
-impl<T> Gen<T> {
-    pub fn make() -> Gen<T> {
-        loop { }
-    }
-}
-
-fn test() {
-    let a = Gen::make();
-}
-"#),
-        @r###"
-    80..104 '{     ...     }': Gen<T>
-    90..98 'loop { }': !
-    95..98 '{ }': ()
-    118..146 '{     ...e(); }': ()
-    128..129 'a': Gen<u32>
-    132..141 'Gen::make': fn make<u32>() -> Gen<u32>
-    132..143 'Gen::make()': Gen<u32>
-    "###
-    );
-}
-
-#[test]
-fn infer_associated_method_generics_with_default_tuple_param() {
-    let t = type_at(
-        r#"
-//- /main.rs
-struct Gen<T=()> {
-    val: T
-}
-
-impl<T> Gen<T> {
-    pub fn make() -> Gen<T> {
-        loop { }
-    }
-}
-
-fn test() {
-    let a = Gen::make();
-    a.val<|>;
-}
-"#,
-    );
-    assert_eq!(t, "()");
-}
-
-#[test]
 fn infer_associated_method_generics_without_args() {
     assert_snapshot!(
         infer(r#"
