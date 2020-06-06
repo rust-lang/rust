@@ -324,10 +324,11 @@ impl<'hir> Sig for hir::Ty<'hir> {
                 let text = format!("[{}; {}]", nested_ty.text, expr);
                 Ok(replace_text(nested_ty, text))
             }
-            hir::TyKind::Typeof(_)
-            | hir::TyKind::Infer
-            | hir::TyKind::Def(..)
-            | hir::TyKind::Err => Err("Ty"),
+            hir::TyKind::Def(item_id, _) => {
+                let item = scx.tcx.hir().item(item_id.id);
+                item.make(offset, Some(item_id.id), scx)
+            }
+            hir::TyKind::Typeof(_) | hir::TyKind::Infer | hir::TyKind::Err => Err("Ty"),
         }
     }
 }

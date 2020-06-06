@@ -17,7 +17,7 @@ use rustc_hir::def::{CtorOf, DefKind as HirDefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::Node;
-use rustc_hir_pretty::ty_to_string;
+use rustc_hir_pretty::{fn_to_string, ty_to_string};
 use rustc_middle::hir::map::Map;
 use rustc_middle::middle::cstore::ExternCrate;
 use rustc_middle::middle::privacy::AccessLevels;
@@ -135,7 +135,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
         let def_id = self.tcx.hir().local_def_id(item.hir_id).to_def_id();
         let qualname = format!("::{}", self.tcx.def_path_str(def_id));
         match item.kind {
-            hir::ForeignItemKind::Fn(ref decl, _, ref generics) => {
+            hir::ForeignItemKind::Fn(ref decl, arg_names, ref generics) => {
                 filter!(self.span_utils, item.ident.span);
 
                 Some(Data::DefData(Def {
@@ -144,7 +144,23 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                     span: self.span_from_span(item.ident.span),
                     name: item.ident.to_string(),
                     qualname,
-                    value: make_signature(decl, generics),
+                    value: fn_to_string(
+                        decl,
+                        hir::FnHeader {
+                            // functions in extern block are implicitly unsafe
+                            unsafety: hir::Unsafety::Unsafe,
+                            // functions in extern block cannot be const
+                            constness: hir::Constness::NotConst,
+                            abi: self.tcx.hir().get_foreign_abi(item.hir_id),
+                            // functions in extern block cannot be async
+                            asyncness: hir::IsAsync::NotAsync,
+                        },
+                        Some(item.ident.name),
+                        generics,
+                        &item.vis,
+                        arg_names,
+                        None,
+                    ),
                     parent: None,
                     children: vec![],
                     decl_id: None,
@@ -191,7 +207,15 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                     span: self.span_from_span(item.ident.span),
                     name: item.ident.to_string(),
                     qualname,
-                    value: make_signature(&sig.decl, generics),
+                    value: fn_to_string(
+                        sig.decl,
+                        sig.header,
+                        Some(item.ident.name),
+                        generics,
+                        &item.vis,
+                        &[],
+                        None,
+                    ),
                     parent: None,
                     children: vec![],
                     decl_id: None,
@@ -846,31 +870,6 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
         self.impl_counter.set(next + 1);
         next
     }
-}
-
-fn make_signature(decl: &hir::FnDecl<'_>, generics: &hir::Generics<'_>) -> String {
-    let mut sig = "fn ".to_owned();
-    if !generics.params.is_empty() {
-        sig.push('<');
-        sig.push_str(
-            &generics
-                .params
-                .iter()
-                .map(|param| param.name.ident().to_string())
-                .collect::<Vec<_>>()
-                .join(", "),
-        );
-        sig.push_str("> ");
-    }
-    sig.push('(');
-    sig.push_str(&decl.inputs.iter().map(ty_to_string).collect::<Vec<_>>().join(", "));
-    sig.push(')');
-    match decl.output {
-        hir::FnRetTy::DefaultReturn(_) => sig.push_str(" -> ()"),
-        hir::FnRetTy::Return(ref t) => sig.push_str(&format!(" -> {}", ty_to_string(t))),
-    }
-
-    sig
 }
 
 // An AST visitor for collecting paths (e.g., the names of structs) and formal
