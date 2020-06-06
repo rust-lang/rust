@@ -200,7 +200,16 @@ fn runnable_action(
                 _ => None,
             },
             ModuleDef::Function(it) => {
-                runnable(&sema, it.source(sema.db).value.syntax().clone(), file_id)
+                let src = it.source(sema.db);
+                if src.file_id != file_id.into() {
+                    // Don't try to find runnables in a macro generated code.
+                    // See tests below:
+                    //   test_hover_macro_generated_struct_fn_doc_comment
+                    //   test_hover_macro_generated_struct_fn_doc_attr
+                    return None;
+                }
+
+                runnable(&sema, src.value.syntax().clone(), file_id)
                     .map(|it| HoverAction::Runnable(it))
             }
             _ => None,
