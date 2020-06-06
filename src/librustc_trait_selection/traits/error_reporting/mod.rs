@@ -290,7 +290,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             (
                                 Some(format!(
                                     "`?` couldn't convert the error to `{}`",
-                                    trait_ref.self_ty(),
+                                    trait_ref.skip_binder().self_ty(),
                                 )),
                                 Some(
                                     "the question mark operation (`?`) implicitly performs a \
@@ -340,7 +340,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             if let Some(ret_span) = self.return_type_span(obligation) {
                                 err.span_label(
                                     ret_span,
-                                    &format!("expected `{}` because of this", trait_ref.self_ty()),
+                                    &format!(
+                                        "expected `{}` because of this",
+                                        trait_ref.skip_binder().self_ty()
+                                    ),
                                 );
                             }
                         }
@@ -353,7 +356,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                     "{}the trait `{}` is not implemented for `{}`",
                                     pre_message,
                                     trait_ref.print_only_trait_path(),
-                                    trait_ref.self_ty(),
+                                    trait_ref.skip_binder().self_ty(),
                                 )
                             };
 
@@ -643,7 +646,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     return;
                 }
 
-                let found_trait_ty = found_trait_ref.self_ty();
+                let found_trait_ty = match found_trait_ref.self_ty().no_bound_vars() {
+                    Some(ty) => ty,
+                    None => return,
+                };
 
                 let found_did = match found_trait_ty.kind {
                     ty::Closure(did, _) | ty::Foreign(did) | ty::FnDef(did, _) => Some(did),
@@ -1360,11 +1366,15 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
     ) {
         let get_trait_impl = |trait_def_id| {
             let mut trait_impl = None;
-            self.tcx.for_each_relevant_impl(trait_def_id, trait_ref.self_ty(), |impl_def_id| {
-                if trait_impl.is_none() {
-                    trait_impl = Some(impl_def_id);
-                }
-            });
+            self.tcx.for_each_relevant_impl(
+                trait_def_id,
+                trait_ref.skip_binder().self_ty(),
+                |impl_def_id| {
+                    if trait_impl.is_none() {
+                        trait_impl = Some(impl_def_id);
+                    }
+                },
+            );
             trait_impl
         };
         let required_trait_path = self.tcx.def_path_str(trait_ref.def_id());
@@ -1435,7 +1445,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
         let mut err = match predicate.kind() {
             ty::PredicateKind::Trait(ref data, _) => {
                 let trait_ref = data.to_poly_trait_ref();
-                let self_ty = trait_ref.self_ty();
+                let self_ty = trait_ref.skip_binder().self_ty();
                 debug!("self_ty {:?} {:?} trait_ref {:?}", self_ty, self_ty.kind, trait_ref);
 
                 if predicate.references_error() {
@@ -1564,7 +1574,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
             ty::PredicateKind::Projection(ref data) => {
                 let trait_ref = data.to_poly_trait_ref(self.tcx);
-                let self_ty = trait_ref.self_ty();
+                let self_ty = trait_ref.skip_binder().self_ty();
                 let ty = data.skip_binder().ty;
                 if predicate.references_error() {
                     return;
