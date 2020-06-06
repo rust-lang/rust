@@ -67,4 +67,72 @@ macro_rules! tuple_encode {
 
 tuple_encode!(T0, T1, T2, T3, T4, T5, T6, T7);
 
+mod no_lint_if_stmt_borrows {
+    mod issue_3792 {
+        use std::io::{self, BufRead, Stdin};
+
+        fn read_line() -> String {
+            let stdin = io::stdin();
+            let line = stdin.lock().lines().next().unwrap().unwrap();
+            line
+        }
+    }
+
+    mod issue_3324 {
+        use std::cell::RefCell;
+        use std::rc::{Rc, Weak};
+
+        fn test(value: Weak<RefCell<Bar>>) -> u32 {
+            let value = value.upgrade().unwrap();
+            let ret = value.borrow().baz();
+            ret
+        }
+
+        struct Bar {}
+
+        impl Bar {
+            fn new() -> Self {
+                Bar {}
+            }
+            fn baz(&self) -> u32 {
+                0
+            }
+        }
+
+        fn main() {
+            let a = Rc::new(RefCell::new(Bar::new()));
+            let b = Rc::downgrade(&a);
+            test(b);
+        }
+    }
+
+    mod free_function {
+        struct Inner;
+
+        struct Foo<'a> {
+            inner: &'a Inner,
+        }
+
+        impl Drop for Foo<'_> {
+            fn drop(&mut self) {}
+        }
+
+        impl Foo<'_> {
+            fn value(&self) -> i32 {
+                42
+            }
+        }
+
+        fn some_foo(inner: &Inner) -> Foo<'_> {
+            Foo { inner }
+        }
+
+        fn test() -> i32 {
+            let x = Inner {};
+            let value = some_foo(&x).value();
+            value
+        }
+    }
+}
+
 fn main() {}
