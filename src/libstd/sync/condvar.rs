@@ -60,6 +60,10 @@ impl WaitTimeoutResult {
     ///         break
     ///     }
     /// }
+    /// // Leaving a condition variable's mutex held after we're no longer
+    /// // watching it will block and possibly deadlock notifier threads, so
+    /// // we explicitely drop it.
+    /// std::mem::drop(started);
     /// ```
     #[stable(feature = "wait_timeout", since = "1.5.0")]
     pub fn timed_out(&self) -> bool {
@@ -107,6 +111,10 @@ impl WaitTimeoutResult {
 /// while !*started {
 ///     started = cvar.wait(started).unwrap();
 /// }
+/// // Leaving a condition variable's mutex held after we're no longer
+/// // watching it will block and possibly deadlock notifier threads, so
+/// // we explicitely drop it.
+/// std::mem::drop(started);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Condvar {
@@ -191,6 +199,10 @@ impl Condvar {
     /// while !*started {
     ///     started = cvar.wait(started).unwrap();
     /// }
+    /// // Leaving a condition variable's mutex held after we're no longer
+    /// // watching it will block and possibly deadlock notifier threads, so
+    /// // we explicitely drop it.
+    /// std::mem::drop(started);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn wait<'a, T>(&self, guard: MutexGuard<'a, T>) -> LockResult<MutexGuard<'a, T>> {
@@ -312,6 +324,10 @@ impl Condvar {
     ///         break
     ///     }
     /// }
+    /// // Leaving a condition variable's mutex held after we're no longer
+    /// // watching it will block and possibly deadlock notifier threads, so
+    /// // we explicitely drop it.
+    /// std::mem::drop(started);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_deprecated(since = "1.6.0", reason = "replaced by `std::sync::Condvar::wait_timeout`")]
@@ -385,6 +401,10 @@ impl Condvar {
     ///         break
     ///     }
     /// }
+    /// // Leaving a condition variable's mutex held after we're no longer
+    /// // watching it will block and possibly deadlock notifier threads, so
+    /// // we explicitely drop it.
+    /// std::mem::drop(started);
     /// ```
     #[stable(feature = "wait_timeout", since = "1.5.0")]
     pub fn wait_timeout<'a, T>(
@@ -513,6 +533,10 @@ impl Condvar {
     /// while !*started {
     ///     started = cvar.wait(started).unwrap();
     /// }
+    /// // Leaving a condition variable's mutex held after we're no longer
+    /// // watching it will block and possibly deadlock notifier threads, so
+    /// // we explicitely drop it.
+    /// std::mem::drop(started);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn notify_one(&self) {
@@ -553,6 +577,10 @@ impl Condvar {
     /// while !*started {
     ///     started = cvar.wait(started).unwrap();
     /// }
+    /// // Leaving a condition variable's mutex held after we're no longer
+    /// // watching it will block and possibly deadlock notifier threads, so
+    /// // we explicitely drop it.
+    /// std::mem::drop(started);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn notify_all(&self) {
