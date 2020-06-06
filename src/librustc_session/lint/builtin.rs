@@ -532,6 +532,12 @@ declare_lint! {
     "unsafe operations in unsafe functions without an explicit unsafe block are deprecated",
 }
 
+declare_lint! {
+    pub UNUSED_ASM_ARGUMENTS,
+    Warn,
+    "inline asm arguments not used in the template string",
+}
+
 declare_lint_pass! {
     /// Does nothing as a lint pass, but registers some `Lint`s
     /// that are used by other parts of the compiler.

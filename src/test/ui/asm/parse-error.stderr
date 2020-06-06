@@ -122,12 +122,6 @@ LL |         asm!("{a}", a = const foo, a = const bar);
    |                     |
    |                     previously here
 
-error: argument never used
-  --> $DIR/parse-error.rs:44:36
-   |
-LL |         asm!("{a}", a = const foo, a = const bar);
-   |                                    ^^^^^^^^^^^^^ argument never used
-
 error: explicit register arguments cannot have names
   --> $DIR/parse-error.rs:47:18
    |
@@ -158,5 +152,13 @@ LL |         asm!("{1}", in("eax") foo, const bar);
    |                     |
    |                     explicit register argument
 
-error: aborting due to 24 previous errors
+warning: asm argument not used in template
+  --> $DIR/parse-error.rs:44:36
+   |
+LL |         asm!("{a}", a = const foo, a = const bar);
+   |                                    ^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_asm_arguments)]` on by default
+
+error: aborting due to 23 previous errors; 1 warning emitted
 

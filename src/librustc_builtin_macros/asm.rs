@@ -3,10 +3,11 @@ use rustc_ast::ptr::P;
 use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_errors::{pluralize, Applicability, DiagnosticBuilder};
 use rustc_expand::base::{self, *};
 use rustc_parse::parser::Parser;
 use rustc_parse_format as parse;
+use rustc_session::lint::builtin::UNUSED_ASM_ARGUMENTS;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{InnerSpan, Span};
 
@@ -485,34 +486,11 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, sp: Span, args: AsmArgs) -> P<ast
         .into_iter()
         .enumerate()
         .filter(|&(_, used)| !used)
-        .map(|(idx, _)| {
-            if named_pos.contains(&idx) {
-                // named argument
-                (operands[idx].1, "named argument never used")
-            } else {
-                // positional argument
-                (operands[idx].1, "argument never used")
-            }
-        })
+        .map(|(idx, _)| operands[idx].1)
         .collect();
-    match unused_operands.len() {
-        0 => {}
-        1 => {
-            let (sp, msg) = unused_operands.into_iter().next().unwrap();
-            let mut err = ecx.struct_span_err(sp, msg);
-            err.span_label(sp, msg);
-            err.emit();
-        }
-        _ => {
-            let mut err = ecx.struct_span_err(
-                unused_operands.iter().map(|&(sp, _)| sp).collect::<Vec<Span>>(),
-                "multiple unused asm arguments",
-            );
-            for (sp, msg) in unused_operands {
-                err.span_label(sp, msg);
-            }
-            err.emit();
-        }
+    if !unused_operands.is_empty() {
+        let msg = format!("asm argument{} not used in template", pluralize!(unused_operands.len()));
+        ecx.parse_sess.buffer_lint(UNUSED_ASM_ARGUMENTS, unused_operands, ast::CRATE_NODE_ID, &msg);
     }
 
     let line_spans = if parser.line_spans.is_empty() {

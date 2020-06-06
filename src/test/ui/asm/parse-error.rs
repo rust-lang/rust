@@ -43,7 +43,7 @@ fn main() {
         //~^ ERROR arguments are not allowed after options
         asm!("{a}", a = const foo, a = const bar);
         //~^ ERROR duplicate argument named `a`
-        //~^^ ERROR argument never used
+        //~^^ WARN asm argument not used in template
         asm!("", a = in("eax") foo);
         //~^ ERROR explicit register arguments cannot have names
         asm!("{a}", in("eax") foo, a = const bar);

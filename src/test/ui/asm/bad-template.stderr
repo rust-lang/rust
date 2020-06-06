@@ -14,12 +14,6 @@ LL |         asm!("{1}", in(reg) foo);
    |
    = note: there is 1 argument
 
-error: argument never used
-  --> $DIR/bad-template.rs:10:21
-   |
-LL |         asm!("{1}", in(reg) foo);
-   |                     ^^^^^^^^^^^ argument never used
-
 error: there is no argument named `a`
   --> $DIR/bad-template.rs:13:15
    |
@@ -41,12 +35,6 @@ note: named arguments cannot be referenced by position
 LL |         asm!("{}", a = in(reg) foo);
    |                    ^^^^^^^^^^^^^^^
 
-error: named argument never used
-  --> $DIR/bad-template.rs:15:20
-   |
-LL |         asm!("{}", a = in(reg) foo);
-   |                    ^^^^^^^^^^^^^^^ named argument never used
-
 error: invalid reference to argument at index 1
   --> $DIR/bad-template.rs:18:15
    |
@@ -54,12 +42,6 @@ LL |         asm!("{1}", a = in(reg) foo);
    |               ^^^ from here
    |
    = note: no positional arguments were given
-
-error: named argument never used
-  --> $DIR/bad-template.rs:18:21
-   |
-LL |         asm!("{1}", a = in(reg) foo);
-   |                     ^^^^^^^^^^^^^^^ named argument never used
 
 error: invalid reference to argument at index 0
   --> $DIR/bad-template.rs:21:15
@@ -82,5 +64,31 @@ error: asm template modifier must be a single character
 LL |         asm!("{:foo}", in(reg) foo);
    |                 ^^^
 
-error: aborting due to 10 previous errors
+warning: asm argument not used in template
+  --> $DIR/bad-template.rs:10:21
+   |
+LL |         asm!("{1}", in(reg) foo);
+   |                     ^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_asm_arguments)]` on by default
+
+warning: asm argument not used in template
+  --> $DIR/bad-template.rs:15:20
+   |
+LL |         asm!("{}", a = in(reg) foo);
+   |                    ^^^^^^^^^^^^^^^
+
+warning: asm argument not used in template
+  --> $DIR/bad-template.rs:18:21
+   |
+LL |         asm!("{1}", a = in(reg) foo);
+   |                     ^^^^^^^^^^^^^^^
+
+warning: asm arguments not used in template
+  --> $DIR/bad-template.rs:25:18
+   |
+LL |         asm!("", in(reg) 0, in(reg) 1);
+   |                  ^^^^^^^^^  ^^^^^^^^^
+
+error: aborting due to 7 previous errors; 4 warnings emitted
 
