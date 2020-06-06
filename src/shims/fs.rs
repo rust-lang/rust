@@ -379,9 +379,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             && cmd == this.eval_libc_i32("F_FULLFSYNC")?
         {
             let &[_, _] = check_arg_count(args)?;
-            if let Some(FileHandle { file, writable: _ }) = this.machine.file_handler.handles.get_mut(&fd) {
-                let result = file.sync_all();
-                this.try_unwrap_io_result(result.map(|_| 0i32))
+            if let Some(FileHandle { file, writable }) = this.machine.file_handler.handles.get_mut(&fd) {
+                if !*writable && cfg!(windows) {
+                    // sync_all() will return an error on Windows hosts if the file is not opened
+                    // for writing. (FlushFileBuffers requires that the file handle have the
+                    // GENERIC_WRITE right)
+                    Ok(0i32)
+                } else {
+                    let result = file.sync_all();
+                    this.try_unwrap_io_result(result.map(|_| 0i32))
+                }
             } else {
                 this.handle_not_found()
             }
@@ -1128,6 +1135,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         if let Some(FileHandle { file, writable }) = this.machine.file_handler.handles.get_mut(&fd) {
             if !*writable && cfg!(windows) {
                 // sync_all() will return an error on Windows hosts if the file is not opened for writing.
+                // (FlushFileBuffers requires that the file handle have the GENERIC_WRITE right)
                 Ok(0i32)
             } else {
                 let result = file.sync_all();
@@ -1147,6 +1155,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         if let Some(FileHandle { file, writable }) = this.machine.file_handler.handles.get_mut(&fd) {
             if !*writable && cfg!(windows) {
                 // sync_data() will return an error on Windows hosts if the file is not opened for writing.
+                // (FlushFileBuffers requires that the file handle have the GENERIC_WRITE right)
                 Ok(0i32)
             } else {
                 let result = file.sync_data();
@@ -1187,11 +1196,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             return Ok(-1);
         }
 
-        if let Some(FileHandle { file, writable: _ }) = this.machine.file_handler.handles.get_mut(&fd) {
-            // In the interest of host compatibility, we conservatively ignore
-            // offset, nbytes, and flags, and sync the entire file.
-            let result = file.sync_data();
-            this.try_unwrap_io_result(result.map(|_| 0i32))
+        if let Some(FileHandle { file, writable }) = this.machine.file_handler.handles.get_mut(&fd) {
+            if !*writable && cfg!(windows) {
+                // sync_data() will return an error on Windows hosts if the file is not opened for
+                // writing. (FlushFileBuffers requires that the file handle have the GENERIC_WRITE
+                // right)
+                Ok(0i32)
+            } else {
+                // In the interest of host compatibility, we conservatively ignore
+                // offset, nbytes, and flags, and sync the entire file.
+                let result = file.sync_data();
+                this.try_unwrap_io_result(result.map(|_| 0i32))
+            }
         } else {
             this.handle_not_found()
         }

@@ -55,8 +55,8 @@ fn test_sync_file_range() {
     let bytes = b"Hello, World!\n";
     file.write(bytes).unwrap();
 
-    // Test calling sync_file_range on a file.
-    let result = unsafe {
+    // Test calling sync_file_range on the file.
+    let result_1 = unsafe {
         libc::sync_file_range(
             file.as_raw_fd(),
             0,
@@ -67,8 +67,24 @@ fn test_sync_file_range() {
         )
     };
     drop(file);
+
+    // Test calling sync_file_range on a file opened for reading.
+    let file = File::open(&path).unwrap();
+    let result_2 = unsafe {
+        libc::sync_file_range(
+            file.as_raw_fd(),
+            0,
+            0,
+            libc::SYNC_FILE_RANGE_WAIT_BEFORE
+                | libc::SYNC_FILE_RANGE_WRITE
+                | libc::SYNC_FILE_RANGE_WAIT_AFTER,
+        )
+    };
+    drop(file);
+
     remove_file(&path).unwrap();
-    assert_eq!(result, 0);
+    assert_eq!(result_1, 0);
+    assert_eq!(result_2, 0);
 }
 
 fn test_mutex_libc_init_recursive() {
