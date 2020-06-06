@@ -620,6 +620,29 @@ impl<O: ForestObligation> ObligationForest<O> {
                 continue;
             }
 
+            // One of the variables we stalled on unblocked us. If the node were blocked on other
+            // variables as well then remove those stalls. If the node is still stalled on one of
+            // those variables after `process_obligation` it will simply be added back to
+            // `self.stalled_on`
+            let stalled_on = node.obligation.stalled_on();
+            if stalled_on.len() > 1 {
+                for var in stalled_on {
+                    match self.stalled_on.entry(var.clone()) {
+                        Entry::Vacant(_) => (),
+                        Entry::Occupied(mut entry) => {
+                            let nodes = entry.get_mut();
+                            if let Some(i) = nodes.iter().position(|x| *x == index) {
+                                nodes.swap_remove(i);
+                            }
+                            if nodes.is_empty() {
+                                processor.unwatch_variable(var.clone());
+                                entry.remove();
+                            }
+                        }
+                    }
+                }
+            }
+
             // `processor.process_obligation` can modify the predicate within
             // `node.obligation`, and that predicate is the key used for
             // `self.active_cache`. This means that `self.active_cache` can get
