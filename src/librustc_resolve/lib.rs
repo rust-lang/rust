@@ -2998,7 +2998,7 @@ impl<'a> Resolver<'a> {
                     .collect(),
             }
         };
-        let module = self.module_map.get(&module_id).copied().unwrap_or(self.graph_root);
+        let module = self.get_module(module_id.to_def_id());
         let parent_scope = &ParentScope::module(module);
         let res = self.resolve_ast_path(&path, ns, parent_scope).map_err(|_| ())?;
         Ok((path, res))
