@@ -8,7 +8,7 @@ Most Rust programmers don't invoke `rustc` directly, but instead do it through
 [Cargo](../cargo/index.html). It's all in service of `rustc` though! If you
 want to see how Cargo calls `rustc`, you can
 
-```bash
+```sh
 $ cargo build --verbose
 ```
 
@@ -30,9 +30,9 @@ fn main() {
 
 To turn this source code into an executable, you can use `rustc`:
 
-```bash
+```sh
 $ rustc hello.rs
-$ ./hello # on a *NIX
+$ ./hello # on a Unix-like system
 $ .\hello.exe # on Windows
 ```
 
@@ -57,7 +57,7 @@ pub fn hello() {
 
 To compile this, we'd run this command:
 
-```bash
+```sh
 $ rustc main.rs
 ```
 
