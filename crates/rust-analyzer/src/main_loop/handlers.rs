@@ -404,7 +404,7 @@ pub fn handle_runnables(
                 continue;
             }
         }
-        if is_lib_target(&runnable, cargo_spec.as_ref()) {
+        if should_skip_target(&runnable, cargo_spec.as_ref()) {
             continue;
         }
 
@@ -812,7 +812,7 @@ pub fn handle_code_lens(
     if snap.config.lens.runnable() {
         // Gather runnables
         for runnable in snap.analysis().runnables(file_id)? {
-            if is_lib_target(&runnable, cargo_spec.as_ref()) {
+            if should_skip_target(&runnable, cargo_spec.as_ref()) {
                 continue;
             }
 
@@ -1185,6 +1185,11 @@ fn to_runnable_action(
     file_id: FileId,
     runnable: &Runnable,
 ) -> Option<lsp_ext::CommandLinkGroup> {
+    let cargo_spec = CargoTargetSpec::for_file(&snap, file_id).ok()?;
+    if should_skip_target(runnable, cargo_spec.as_ref()) {
+        return None;
+    }
+
     to_proto::runnable(snap, file_id, runnable).ok().map(|r| {
         let mut group = lsp_ext::CommandLinkGroup::default();
 
@@ -1222,16 +1227,18 @@ fn prepare_hover_actions(
         .collect()
 }
 
-fn is_lib_target(runnable: &Runnable, cargo_spec: Option<&CargoTargetSpec>) -> bool {
-    // Do not suggest binary run on other target than binary
-    if let RunnableKind::Bin = runnable.kind {
-        if let Some(spec) = cargo_spec {
-            match spec.target_kind {
-                TargetKind::Bin => return true,
-                _ => (),
+fn should_skip_target(runnable: &Runnable, cargo_spec: Option<&CargoTargetSpec>) -> bool {
+    match runnable.kind {
+        RunnableKind::Bin => {
+            // Do not suggest binary run on other target than binary
+            match &cargo_spec {
+                Some(spec) => match spec.target_kind {
+                    TargetKind::Bin => false,
+                    _ => true,
+                },
+                None => true,
             }
         }
+        _ => false,
     }
-
-    false
 }
