@@ -225,11 +225,6 @@ where
 {
     let warnings_lint_name = lint::builtin::WARNINGS.name;
 
-    // Whitelist feature-gated lints to avoid feature errors when trying to
-    // allow all lints.
-    // FIXME(#72694): handle feature-gated lints properly.
-    let unsafe_op_in_unsafe_fn_name = rustc_lint::builtin::UNSAFE_OP_IN_UNSAFE_FN.name;
-
     whitelisted_lints.push(warnings_lint_name.to_owned());
     whitelisted_lints.extend(lint_opts.iter().map(|(lint, _)| lint).cloned());
 
@@ -241,7 +236,9 @@ where
 
     let lint_opts = lints()
         .filter_map(|lint| {
-            if lint.name == warnings_lint_name || lint.name == unsafe_op_in_unsafe_fn_name {
+            // Whitelist feature-gated lints to avoid feature errors when trying to
+            // allow all lints.
+            if lint.name == warnings_lint_name || lint.feature_gate.is_some() {
                 None
             } else {
                 filter_call(lint)

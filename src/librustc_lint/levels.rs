@@ -214,9 +214,9 @@ impl<'s> LintLevelsBuilder<'s> {
                 match store.check_lint_name(&name.as_str(), tool_name) {
                     CheckLintNameResult::Ok(ids) => {
                         let src = LintSource::Node(name, li.span(), reason);
-                        for id in ids {
-                            self.check_gated_lint(*id, attr.span);
-                            specs.insert(*id, (level, src));
+                        for &id in ids {
+                            self.check_gated_lint(id, attr.span);
+                            specs.insert(id, (level, src));
                         }
                     }
 
@@ -386,17 +386,18 @@ impl<'s> LintLevelsBuilder<'s> {
         BuilderPush { prev, changed: prev != self.cur }
     }
 
-    fn check_gated_lint(&self, id: LintId, span: Span) {
-        if id == LintId::of(builtin::UNSAFE_OP_IN_UNSAFE_FN)
-            && !self.sess.features_untracked().unsafe_block_in_unsafe_fn
-        {
-            feature_err(
-                &self.sess.parse_sess,
-                sym::unsafe_block_in_unsafe_fn,
-                span,
-                "the `unsafe_op_in_unsafe_fn` lint is unstable",
-            )
-            .emit();
+    /// Checks if the lint is gated on a feature that is not enabled.
+    fn check_gated_lint(&self, lint_id: LintId, span: Span) {
+        if let Some(feature) = lint_id.lint.feature_gate {
+            if !self.sess.features_untracked().enabled(feature) {
+                feature_err(
+                    &self.sess.parse_sess,
+                    feature,
+                    span,
+                    &format!("the `{}` lint is unstable", lint_id.lint.name_lower()),
+                )
+                .emit();
+            }
         }
     }
 
