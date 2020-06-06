@@ -701,6 +701,15 @@ fn supported_sanitizers(
                 });
             }
         }
+        "aarch64-unknown-linux-gnu" => {
+            for s in &["asan", "lsan", "msan", "tsan"] {
+                result.push(SanitizerRuntime {
+                    cmake_target: format!("clang_rt.{}-aarch64", s),
+                    path: out_dir.join(&format!("build/lib/linux/libclang_rt.{}-aarch64.a", s)),
+                    name: format!("librustc-{}_rt.{}.a", channel, s),
+                });
+            }
+        }
         "x86_64-unknown-linux-gnu" => {
             for s in &["asan", "lsan", "msan", "tsan"] {
                 result.push(SanitizerRuntime {
