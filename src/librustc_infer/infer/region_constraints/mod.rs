@@ -290,7 +290,7 @@ pub(crate) enum UndoLog<'tcx> {
     /// We added a GLB/LUB "combination variable".
     AddCombination(CombineMapType, TwoRegions<'tcx>),
 
-    /// During skolemization, we sometimes purge entries from the undo
+    /// During freshening, we sometimes purge entries from the undo
     /// log in a kind of minisnapshot (unlike other snapshots, this
     /// purging actually takes place *on success*). In that case, we
     /// replace the corresponding entry with `Noop` so as to avoid the
@@ -489,7 +489,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     }
 
     /// Removes all the edges to/from the placeholder regions that are
-    /// in `skols`. This is used after a higher-ranked operation
+    /// in `placeholders`. This is used after a higher-ranked operation
     /// completes to remove all trace of the placeholder regions
     /// created in that time.
     pub fn pop_placeholders(&mut self, placeholders: &FxHashSet<ty::Region<'tcx>>) {

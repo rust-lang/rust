@@ -130,7 +130,7 @@ pub(super) fn specializes(tcx: TyCtxt<'_>, (impl1_def_id, impl2_def_id): (DefId,
 
     // We determine whether there's a subset relationship by:
     //
-    // - skolemizing impl1,
+    // - replacing bound vars with placeholders in impl1,
     // - assuming the where clauses for impl1,
     // - instantiating impl2 with fresh inference variables,
     // - unifying,

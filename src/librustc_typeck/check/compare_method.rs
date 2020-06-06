@@ -91,14 +91,14 @@ fn compare_predicate_entailment<'tcx>(
 
     // This code is best explained by example. Consider a trait:
     //
-    //     trait Trait<'t,T> {
-    //          fn method<'a,M>(t: &'t T, m: &'a M) -> Self;
+    //     trait Trait<'t, T> {
+    //         fn method<'a, M>(t: &'t T, m: &'a M) -> Self;
     //     }
     //
     // And an impl:
     //
     //     impl<'i, 'j, U> Trait<'j, &'i U> for Foo {
-    //          fn method<'b,N>(t: &'j &'i U, m: &'b N) -> Foo;
+    //          fn method<'b, N>(t: &'j &'i U, m: &'b N) -> Foo;
     //     }
     //
     // We wish to decide if those two method types are compatible.
@@ -116,9 +116,9 @@ fn compare_predicate_entailment<'tcx>(
     // regions (Note: but only early-bound regions, i.e., those
     // declared on the impl or used in type parameter bounds).
     //
-    //     impl_to_skol_substs = {'i => 'i0, U => U0, N => N0 }
+    //     impl_to_placeholder_substs = {'i => 'i0, U => U0, N => N0 }
     //
-    // Now we can apply skol_substs to the type of the impl method
+    // Now we can apply placeholder_substs to the type of the impl method
     // to yield a new function type in terms of our fresh, placeholder
     // types:
     //
@@ -127,11 +127,11 @@ fn compare_predicate_entailment<'tcx>(
     // We now want to extract and substitute the type of the *trait*
     // method and compare it. To do so, we must create a compound
     // substitution by combining trait_to_impl_substs and
-    // impl_to_skol_substs, and also adding a mapping for the method
+    // impl_to_placeholder_substs, and also adding a mapping for the method
     // type parameters. We extend the mapping to also include
     // the method parameters.
     //
-    //     trait_to_skol_substs = { T => &'i0 U0, Self => Foo, M => N0 }
+    //     trait_to_placeholder_substs = { T => &'i0 U0, Self => Foo, M => N0 }
     //
     // Applying this to the trait method type yields:
     //
@@ -145,20 +145,20 @@ fn compare_predicate_entailment<'tcx>(
     // satisfied by the implementation's method.
     //
     // We do this by creating a parameter environment which contains a
-    // substitution corresponding to impl_to_skol_substs. We then build
-    // trait_to_skol_substs and use it to convert the predicates contained
+    // substitution corresponding to impl_to_placeholder_substs. We then build
+    // trait_to_placeholder_substs and use it to convert the predicates contained
     // in the trait_m.generics to the placeholder form.
     //
     // Finally we register each of these predicates as an obligation in
     // a fresh FulfillmentCtxt, and invoke select_all_or_error.
 
     // Create mapping from impl to placeholder.
-    let impl_to_skol_substs = InternalSubsts::identity_for_item(tcx, impl_m.def_id);
+    let impl_to_placeholder_substs = InternalSubsts::identity_for_item(tcx, impl_m.def_id);
 
     // Create mapping from trait to placeholder.
-    let trait_to_skol_substs =
-        impl_to_skol_substs.rebase_onto(tcx, impl_m.container.id(), trait_to_impl_substs);
-    debug!("compare_impl_method: trait_to_skol_substs={:?}", trait_to_skol_substs);
+    let trait_to_placeholder_substs =
+        impl_to_placeholder_substs.rebase_onto(tcx, impl_m.container.id(), trait_to_impl_substs);
+    debug!("compare_impl_method: trait_to_placeholder_substs={:?}", trait_to_placeholder_substs);
 
     let impl_m_generics = tcx.generics_of(impl_m.def_id);
     let trait_m_generics = tcx.generics_of(trait_m.def_id);
@@ -194,7 +194,7 @@ fn compare_predicate_entailment<'tcx>(
     // if all constraints hold.
     hybrid_preds
         .predicates
-        .extend(trait_m_predicates.instantiate_own(tcx, trait_to_skol_substs).predicates);
+        .extend(trait_m_predicates.instantiate_own(tcx, trait_to_placeholder_substs).predicates);
 
     // Construct trait parameter environment and then shift it into the placeholder viewpoint.
     // The key step here is to update the caller_bounds's predicates to be
@@ -220,7 +220,7 @@ fn compare_predicate_entailment<'tcx>(
 
         let mut selcx = traits::SelectionContext::new(&infcx);
 
-        let impl_m_own_bounds = impl_m_predicates.instantiate_own(tcx, impl_to_skol_substs);
+        let impl_m_own_bounds = impl_m_predicates.instantiate_own(tcx, impl_to_placeholder_substs);
         let (impl_m_own_bounds, _) = infcx.replace_bound_vars_with_fresh_vars(
             impl_m_span,
             infer::HigherRankedType,
@@ -261,7 +261,7 @@ fn compare_predicate_entailment<'tcx>(
         debug!("compare_impl_method: impl_fty={:?}", impl_fty);
 
         let trait_sig = tcx.liberate_late_bound_regions(impl_m.def_id, &tcx.fn_sig(trait_m.def_id));
-        let trait_sig = trait_sig.subst(tcx, trait_to_skol_substs);
+        let trait_sig = trait_sig.subst(tcx, trait_to_placeholder_substs);
         let trait_sig =
             inh.normalize_associated_types_in(impl_m_span, impl_m_hir_id, param_env, &trait_sig);
         let trait_fty = tcx.mk_fn_ptr(ty::Binder::bind(trait_sig));
