@@ -2,89 +2,73 @@ error[E0412]: cannot find type `child` in this scope
   --> $DIR/process.rs:4:19
    |
 LL | fn test_child(_x: child){}
-   |                   ^^^^^ not found in this scope
-   |
-help: did you mean `std::process::Child`?
-   |
-LL | fn test_child(_x: std::process::Child){}
-   |                   ^^^^^^^^^^^^^^^^^^^
+   |                   ^^^^^
+   |                   |
+   |                   not found in this scope
+   |                   help: found a libstd struct with a similar name: `std::process::Child`
 
 error[E0412]: cannot find type `ChildStdErr` in this scope
   --> $DIR/process.rs:6:21
    |
 LL | fn test_childse(_x: ChildStdErr){}
-   |                     ^^^^^^^^^^^ not found in this scope
-   |
-help: did you mean `std::process::ChildStderr`?
-   |
-LL | fn test_childse(_x: std::process::ChildStderr){}
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                     ^^^^^^^^^^^
+   |                     |
+   |                     not found in this scope
+   |                     help: found a libstd struct with a similar name: `std::process::ChildStderr`
 
 error[E0412]: cannot find type `ChildStdIn` in this scope
   --> $DIR/process.rs:8:21
    |
 LL | fn test_childsi(_x: ChildStdIn){}
-   |                     ^^^^^^^^^^ not found in this scope
-   |
-help: did you mean `std::process::ChildStdin`?
-   |
-LL | fn test_childsi(_x: std::process::ChildStdin){}
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |                     ^^^^^^^^^^
+   |                     |
+   |                     not found in this scope
+   |                     help: found a libstd struct with a similar name: `std::process::ChildStdin`
 
 error[E0412]: cannot find type `ChildStdOut` in this scope
   --> $DIR/process.rs:10:21
    |
 LL | fn test_childso(_x: ChildStdOut){}
-   |                     ^^^^^^^^^^^ not found in this scope
-   |
-help: did you mean `std::process::ChildStdout`?
-   |
-LL | fn test_childso(_x: std::process::ChildStdout){}
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                     ^^^^^^^^^^^
+   |                     |
+   |                     not found in this scope
+   |                     help: found a libstd struct with a similar name: `std::process::ChildStdout`
 
 error[E0412]: cannot find type `command` in this scope
   --> $DIR/process.rs:12:21
    |
 LL | fn test_command(_x: command){}
-   |                     ^^^^^^^ not found in this scope
-   |
-help: did you mean `std::process::Command`?
-   |
-LL | fn test_command(_x: std::process::Command){}
-   |                     ^^^^^^^^^^^^^^^^^^^^^
+   |                     ^^^^^^^
+   |                     |
+   |                     not found in this scope
+   |                     help: found a libstd struct with a similar name: `std::process::Command`
 
 error[E0412]: cannot find type `Exitstatus` in this scope
   --> $DIR/process.rs:14:19
    |
 LL | fn test_exits(_x: Exitstatus){}
-   |                   ^^^^^^^^^^ not found in this scope
-   |
-help: did you mean `std::process::ExitStatus`?
-   |
-LL | fn test_exits(_x: std::process::ExitStatus){}
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^^
+   |                   ^^^^^^^^^^
+   |                   |
+   |                   not found in this scope
+   |                   help: found a libstd struct with a similar name: `std::process::ExitStatus`
 
 error[E0412]: cannot find type `output` in this scope
   --> $DIR/process.rs:16:20
    |
 LL | fn test_output(_x: output){}
-   |                    ^^^^^^ not found in this scope
-   |
-help: did you mean `std::process::Output`?
-   |
-LL | fn test_output(_x: std::process::Output){}
-   |                    ^^^^^^^^^^^^^^^^^^^^
+   |                    ^^^^^^
+   |                    |
+   |                    not found in this scope
+   |                    help: found a libstd struct with a similar name: `std::process::Output`
 
 error[E0412]: cannot find type `StdIo` in this scope
   --> $DIR/process.rs:18:19
    |
 LL | fn test_stdio(_x: StdIo){}
-   |                   ^^^^^ not found in this scope
-   |
-help: did you mean `std::process::Stdio`?
-   |
-LL | fn test_stdio(_x: std::process::Stdio){}
-   |                   ^^^^^^^^^^^^^^^^^^^
+   |                   ^^^^^
+   |                   |
+   |                   not found in this scope
+   |                   help: found a libstd struct with a similar name: `std::process::Stdio`
 
 error: aborting due to 8 previous errors
 

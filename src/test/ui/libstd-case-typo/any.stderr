@@ -2,12 +2,10 @@ error[E0412]: cannot find type `Typeid` in this scope
   --> $DIR/any.rs:4:20
    |
 LL | fn test_typeid(_x: Typeid){}
-   |                    ^^^^^^ not found in this scope
-   |
-help: did you mean `std::any::TypeId`?
-   |
-LL | fn test_typeid(_x: std::any::TypeId){}
-   |                    ^^^^^^^^^^^^^^^^
+   |                    ^^^^^^
+   |                    |
+   |                    not found in this scope
+   |                    help: found a libstd struct with a similar name: `std::any::TypeId`
 
 error: aborting due to previous error
 

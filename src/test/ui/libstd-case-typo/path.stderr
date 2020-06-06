@@ -2,45 +2,37 @@ error[E0412]: cannot find type `ancestors` in this scope
   --> $DIR/path.rs:4:19
    |
 LL | fn test_ances(_x: ancestors){}
-   |                   ^^^^^^^^^ not found in this scope
-   |
-help: did you mean `std::path::Ancestors`?
-   |
-LL | fn test_ances(_x: std::path::Ancestors){}
-   |                   ^^^^^^^^^^^^^^^^^^^^
+   |                   ^^^^^^^^^
+   |                   |
+   |                   not found in this scope
+   |                   help: found a libstd struct with a similar name: `std::path::Ancestors`
 
 error[E0412]: cannot find type `components` in this scope
   --> $DIR/path.rs:6:18
    |
 LL | fn test_comp(_x: components){}
-   |                  ^^^^^^^^^^ not found in this scope
-   |
-help: did you mean `std::path::Components`?
-   |
-LL | fn test_comp(_x: std::path::Components){}
-   |                  ^^^^^^^^^^^^^^^^^^^^^
+   |                  ^^^^^^^^^^
+   |                  |
+   |                  not found in this scope
+   |                  help: found a libstd struct with a similar name: `std::path::Components`
 
 error[E0412]: cannot find type `Pathbuf` in this scope
   --> $DIR/path.rs:8:21
    |
 LL | fn test_pathbuf(_x: Pathbuf){}
-   |                     ^^^^^^^ not found in this scope
-   |
-help: did you mean `std::path::PathBuf`?
-   |
-LL | fn test_pathbuf(_x: std::path::PathBuf){}
-   |                     ^^^^^^^^^^^^^^^^^^
+   |                     ^^^^^^^
+   |                     |
+   |                     not found in this scope
+   |                     help: found a libstd struct with a similar name: `std::path::PathBuf`
 
 error[E0412]: cannot find type `Prefixcomponent` in this scope
   --> $DIR/path.rs:10:19
    |
 LL | fn test_pcomp(_x: Prefixcomponent){}
-   |                   ^^^^^^^^^^^^^^^ not found in this scope
-   |
-help: did you mean `std::path::PrefixComponent`?
-   |
-LL | fn test_pcomp(_x: std::path::PrefixComponent){}
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                   ^^^^^^^^^^^^^^^
+   |                   |
+   |                   not found in this scope
+   |                   help: found a libstd struct with a similar name: `std::path::PrefixComponent`
 
 error: aborting due to 4 previous errors
 

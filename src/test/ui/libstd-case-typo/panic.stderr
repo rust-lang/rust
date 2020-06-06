@@ -2,34 +2,28 @@ error[E0412]: cannot find type `AssertUnwindsafe` in this scope
   --> $DIR/panic.rs:4:22
    |
 LL | fn test_assertus(_x: AssertUnwindsafe<()>){}
-   |                      ^^^^^^^^^^^^^^^^ not found in this scope
-   |
-help: did you mean `std::panic::AssertUnwindSafe`?
-   |
-LL | fn test_assertus(_x: std::panic::AssertUnwindSafe<()>){}
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                      ^^^^^^^^^^^^^^^^
+   |                      |
+   |                      not found in this scope
+   |                      help: found a libstd struct with a similar name: `std::panic::AssertUnwindSafe`
 
 error[E0412]: cannot find type `location` in this scope
   --> $DIR/panic.rs:6:17
    |
 LL | fn test_loc(_x: location<()>){}
-   |                 ^^^^^^^^ not found in this scope
-   |
-help: did you mean `std::panic::Location`?
-   |
-LL | fn test_loc(_x: std::panic::Location<()>){}
-   |                 ^^^^^^^^^^^^^^^^^^^^
+   |                 ^^^^^^^^
+   |                 |
+   |                 not found in this scope
+   |                 help: found a libstd struct with a similar name: `std::panic::Location`
 
 error[E0412]: cannot find type `Panicinfo` in this scope
   --> $DIR/panic.rs:8:19
    |
 LL | fn test_pinfo(_x: Panicinfo<()>){}
-   |                   ^^^^^^^^^ not found in this scope
-   |
-help: did you mean `std::panic::PanicInfo`?
-   |
-LL | fn test_pinfo(_x: std::panic::PanicInfo<()>){}
-   |                   ^^^^^^^^^^^^^^^^^^^^^
+   |                   ^^^^^^^^^
+   |                   |
+   |                   not found in this scope
+   |                   help: found a libstd struct with a similar name: `std::panic::PanicInfo`
 
 error: aborting due to 3 previous errors
 

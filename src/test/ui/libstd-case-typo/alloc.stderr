@@ -2,23 +2,19 @@ error[E0412]: cannot find type `LayOut` in this scope
   --> $DIR/alloc.rs:4:20
    |
 LL | fn test_layout(_x: LayOut){}
-   |                    ^^^^^^ not found in this scope
-   |
-help: did you mean `std::alloc::Layout`?
-   |
-LL | fn test_layout(_x: std::alloc::Layout){}
-   |                    ^^^^^^^^^^^^^^^^^^
+   |                    ^^^^^^
+   |                    |
+   |                    not found in this scope
+   |                    help: found a libstd struct with a similar name: `std::alloc::Layout`
 
 error[E0412]: cannot find type `system` in this scope
   --> $DIR/alloc.rs:6:20
    |
 LL | fn test_system(_x: system){}
-   |                    ^^^^^^ not found in this scope
-   |
-help: did you mean `std::alloc::System`?
-   |
-LL | fn test_system(_x: std::alloc::System){}
-   |                    ^^^^^^^^^^^^^^^^^^
+   |                    ^^^^^^
+   |                    |
+   |                    not found in this scope
+   |                    help: found a libstd struct with a similar name: `std::alloc::System`
 
 error: aborting due to 2 previous errors
 

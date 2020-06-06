@@ -2,12 +2,10 @@ error[E0412]: cannot find type `Nonnull` in this scope
   --> $DIR/ptr.rs:4:21
    |
 LL | fn test_nonnull(_x: Nonnull<()>){}
-   |                     ^^^^^^^ not found in this scope
-   |
-help: did you mean `std::ptr::NonNull`?
-   |
-LL | fn test_nonnull(_x: std::ptr::NonNull<()>){}
-   |                     ^^^^^^^^^^^^^^^^^
+   |                     ^^^^^^^
+   |                     |
+   |                     not found in this scope
+   |                     help: found a libstd struct with a similar name: `std::ptr::NonNull`
 
 error: aborting due to previous error
 

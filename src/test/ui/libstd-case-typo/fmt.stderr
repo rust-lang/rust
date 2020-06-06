@@ -2,67 +2,55 @@ error[E0412]: cannot find type `Debuglist` in this scope
   --> $DIR/fmt.rs:4:21
    |
 LL | fn test_dbglist(_x: Debuglist){}
-   |                     ^^^^^^^^^ not found in this scope
-   |
-help: did you mean `std::fmt::DebugList`?
-   |
-LL | fn test_dbglist(_x: std::fmt::DebugList){}
-   |                     ^^^^^^^^^^^^^^^^^^^
+   |                     ^^^^^^^^^
+   |                     |
+   |                     not found in this scope
+   |                     help: found a libstd struct with a similar name: `std::fmt::DebugList`
 
 error[E0412]: cannot find type `Debugmap` in this scope
   --> $DIR/fmt.rs:6:20
    |
 LL | fn test_dbgmap(_x: Debugmap){}
-   |                    ^^^^^^^^ not found in this scope
-   |
-help: did you mean `std::fmt::DebugMap`?
-   |
-LL | fn test_dbgmap(_x: std::fmt::DebugMap){}
-   |                    ^^^^^^^^^^^^^^^^^^
+   |                    ^^^^^^^^
+   |                    |
+   |                    not found in this scope
+   |                    help: found a libstd struct with a similar name: `std::fmt::DebugMap`
 
 error[E0412]: cannot find type `Debugset` in this scope
   --> $DIR/fmt.rs:8:20
    |
 LL | fn test_dbgset(_x: Debugset){}
-   |                    ^^^^^^^^ not found in this scope
-   |
-help: did you mean `std::fmt::DebugSet`?
-   |
-LL | fn test_dbgset(_x: std::fmt::DebugSet){}
-   |                    ^^^^^^^^^^^^^^^^^^
+   |                    ^^^^^^^^
+   |                    |
+   |                    not found in this scope
+   |                    help: found a libstd struct with a similar name: `std::fmt::DebugSet`
 
 error[E0412]: cannot find type `Debugstruct` in this scope
   --> $DIR/fmt.rs:10:23
    |
 LL | fn test_dbgstruct(_x: Debugstruct){}
-   |                       ^^^^^^^^^^^ not found in this scope
-   |
-help: did you mean `std::fmt::DebugStruct`?
-   |
-LL | fn test_dbgstruct(_x: std::fmt::DebugStruct){}
-   |                       ^^^^^^^^^^^^^^^^^^^^^
+   |                       ^^^^^^^^^^^
+   |                       |
+   |                       not found in this scope
+   |                       help: found a libstd struct with a similar name: `std::fmt::DebugStruct`
 
 error[E0412]: cannot find type `Debugtuple` in this scope
   --> $DIR/fmt.rs:12:22
    |
 LL | fn test_dbgtuple(_x: Debugtuple){}
-   |                      ^^^^^^^^^^ not found in this scope
-   |
-help: did you mean `std::fmt::DebugTuple`?
-   |
-LL | fn test_dbgtuple(_x: std::fmt::DebugTuple){}
-   |                      ^^^^^^^^^^^^^^^^^^^^
+   |                      ^^^^^^^^^^
+   |                      |
+   |                      not found in this scope
+   |                      help: found a libstd struct with a similar name: `std::fmt::DebugTuple`
 
 error[E0412]: cannot find type `formatter` in this scope
   --> $DIR/fmt.rs:14:23
    |
 LL | fn test_fmter(mut _x: formatter){}
-   |                       ^^^^^^^^^ not found in this scope
-   |
-help: did you mean `std::fmt::Formatter`?
-   |
-LL | fn test_fmter(mut _x: std::fmt::Formatter){}
-   |                       ^^^^^^^^^^^^^^^^^^^
+   |                       ^^^^^^^^^
+   |                       |
+   |                       not found in this scope
+   |                       help: found a libstd struct with a similar name: `std::fmt::Formatter`
 
 error: aborting due to 6 previous errors
 

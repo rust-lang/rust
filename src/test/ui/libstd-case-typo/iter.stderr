@@ -4,7 +4,7 @@ error[E0412]: cannot find type `chain` in this scope
 LL | fn test_chain(_x: chain<(), ()>){}
    |                   ^^^^^ not found in this scope
    |
-help: did you mean one of these?:
+help: found libstd structs with a similar name:
    |
 LL | fn test_chain(_x: std::io::Chain<(), ()>){}
    |                   ^^^^^^^^^^^^^^
@@ -26,23 +26,19 @@ error[E0412]: cannot find type `copied` in this scope
   --> $DIR/iter.rs:8:20
    |
 LL | fn test_copied(_x: copied<(), ()>){}
-   |                    ^^^^^^ not found in this scope
-   |
-help: did you mean `std::iter::Copied`?
-   |
-LL | fn test_copied(_x: std::iter::Copied<(), ()>){}
-   |                    ^^^^^^^^^^^^^^^^^
+   |                    ^^^^^^
+   |                    |
+   |                    not found in this scope
+   |                    help: found a libstd struct with a similar name: `std::iter::Copied`
 
 error[E0412]: cannot find type `cycle` in this scope
   --> $DIR/iter.rs:10:19
    |
 LL | fn test_cycle(_x: cycle<(), ()>){}
-   |                   ^^^^^ not found in this scope
-   |
-help: did you mean `std::iter::Cycle`?
-   |
-LL | fn test_cycle(_x: std::iter::Cycle<(), ()>){}
-   |                   ^^^^^^^^^^^^^^^^
+   |                   ^^^^^
+   |                   |
+   |                   not found in this scope
+   |                   help: found a libstd struct with a similar name: `std::iter::Cycle`
 
 error[E0412]: cannot find type `empty` in this scope
   --> $DIR/iter.rs:12:19
@@ -50,7 +46,7 @@ error[E0412]: cannot find type `empty` in this scope
 LL | fn test_empty(_x: empty){}
    |                   ^^^^^ not found in this scope
    |
-help: did you mean one of these?:
+help: found libstd structs with a similar name:
    |
 LL | fn test_empty(_x: std::io::Empty){}
    |                   ^^^^^^^^^^^^^^
@@ -61,45 +57,37 @@ error[E0412]: cannot find type `enumerate` in this scope
   --> $DIR/iter.rs:14:20
    |
 LL | fn test_enumer(_x: enumerate<(), ()>){}
-   |                    ^^^^^^^^^ not found in this scope
-   |
-help: did you mean `std::iter::Enumerate`?
-   |
-LL | fn test_enumer(_x: std::iter::Enumerate<(), ()>){}
-   |                    ^^^^^^^^^^^^^^^^^^^^
+   |                    ^^^^^^^^^
+   |                    |
+   |                    not found in this scope
+   |                    help: found a libstd struct with a similar name: `std::iter::Enumerate`
 
 error[E0412]: cannot find type `filter` in this scope
   --> $DIR/iter.rs:16:20
    |
 LL | fn test_filter(_x: filter<(), ()>){}
-   |                    ^^^^^^ not found in this scope
-   |
-help: did you mean `std::iter::Filter`?
-   |
-LL | fn test_filter(_x: std::iter::Filter<(), ()>){}
-   |                    ^^^^^^^^^^^^^^^^^
+   |                    ^^^^^^
+   |                    |
+   |                    not found in this scope
+   |                    help: found a libstd struct with a similar name: `std::iter::Filter`
 
 error[E0412]: cannot find type `Filtermap` in this scope
   --> $DIR/iter.rs:18:23
    |
 LL | fn test_filtermap(_x: Filtermap<(), ()>){}
-   |                       ^^^^^^^^^ not found in this scope
-   |
-help: did you mean `std::iter::FilterMap`?
-   |
-LL | fn test_filtermap(_x: std::iter::FilterMap<(), ()>){}
-   |                       ^^^^^^^^^^^^^^^^^^^^
+   |                       ^^^^^^^^^
+   |                       |
+   |                       not found in this scope
+   |                       help: found a libstd struct with a similar name: `std::iter::FilterMap`
 
 error[E0412]: cannot find type `flatten` in this scope
   --> $DIR/iter.rs:20:21
    |
 LL | fn test_flatten(_x: flatten<()>){}
-   |                     ^^^^^^^ not found in this scope
-   |
-help: did you mean `std::iter::Flatten`?
-   |
-LL | fn test_flatten(_x: std::iter::Flatten<()>){}
-   |                     ^^^^^^^^^^^^^^^^^^
+   |                     ^^^^^^^
+   |                     |
+   |                     not found in this scope
+   |                     help: found a libstd struct with a similar name: `std::iter::Flatten`
 
 error[E0412]: cannot find type `Fromfn` in this scope
   --> $DIR/iter.rs:22:20
@@ -116,34 +104,28 @@ error[E0412]: cannot find type `fuse` in this scope
   --> $DIR/iter.rs:24:18
    |
 LL | fn test_fuse(_x: fuse<()>){}
-   |                  ^^^^ not found in this scope
-   |
-help: did you mean `std::iter::Fuse`?
-   |
-LL | fn test_fuse(_x: std::iter::Fuse<()>){}
-   |                  ^^^^^^^^^^^^^^^
+   |                  ^^^^
+   |                  |
+   |                  not found in this scope
+   |                  help: found a libstd struct with a similar name: `std::iter::Fuse`
 
 error[E0412]: cannot find type `inspect` in this scope
   --> $DIR/iter.rs:26:21
    |
 LL | fn test_inspect(_x: inspect<(), ()>){}
-   |                     ^^^^^^^ not found in this scope
-   |
-help: did you mean `std::iter::Inspect`?
-   |
-LL | fn test_inspect(_x: std::iter::Inspect<(), ()>){}
-   |                     ^^^^^^^^^^^^^^^^^^
+   |                     ^^^^^^^
+   |                     |
+   |                     not found in this scope
+   |                     help: found a libstd struct with a similar name: `std::iter::Inspect`
 
 error[E0412]: cannot find type `map` in this scope
   --> $DIR/iter.rs:28:17
    |
 LL | fn test_map(_x: map<(), ()>){}
-   |                 ^^^ not found in this scope
-   |
-help: did you mean `std::iter::Map`?
-   |
-LL | fn test_map(_x: std::iter::Map<(), ()>){}
-   |                 ^^^^^^^^^^^^^^
+   |                 ^^^
+   |                 |
+   |                 not found in this scope
+   |                 help: found a libstd struct with a similar name: `std::iter::Map`
 
 error[E0412]: cannot find type `once` in this scope
   --> $DIR/iter.rs:30:18
@@ -151,7 +133,7 @@ error[E0412]: cannot find type `once` in this scope
 LL | fn test_once(_x: once<()>){}
    |                  ^^^^ not found in this scope
    |
-help: did you mean one of these?:
+help: found libstd structs with a similar name:
    |
 LL | fn test_once(_x: std::iter::Once<()>){}
    |                  ^^^^^^^^^^^^^^^
@@ -162,23 +144,19 @@ error[E0412]: cannot find type `Oncewith` in this scope
   --> $DIR/iter.rs:32:22
    |
 LL | fn test_oncewith(_x: Oncewith<()>){}
-   |                      ^^^^^^^^ not found in this scope
-   |
-help: did you mean `std::iter::OnceWith`?
-   |
-LL | fn test_oncewith(_x: std::iter::OnceWith<()>){}
-   |                      ^^^^^^^^^^^^^^^^^^^
+   |                      ^^^^^^^^
+   |                      |
+   |                      not found in this scope
+   |                      help: found a libstd struct with a similar name: `std::iter::OnceWith`
 
 error[E0412]: cannot find type `peekable` in this scope
   --> $DIR/iter.rs:34:18
    |
 LL | fn test_peek(_x: peekable<()>){}
-   |                  ^^^^^^^^ not found in this scope
-   |
-help: did you mean `std::iter::Peekable`?
-   |
-LL | fn test_peek(_x: std::iter::Peekable<()>){}
-   |                  ^^^^^^^^^^^^^^^^^^^
+   |                  ^^^^^^^^
+   |                  |
+   |                  not found in this scope
+   |                  help: found a libstd struct with a similar name: `std::iter::Peekable`
 
 error[E0412]: cannot find type `repeat` in this scope
   --> $DIR/iter.rs:36:20
@@ -186,7 +164,7 @@ error[E0412]: cannot find type `repeat` in this scope
 LL | fn test_repeat(_x: repeat<()>){}
    |                    ^^^^^^ not found in this scope
    |
-help: did you mean one of these?:
+help: found libstd structs with a similar name:
    |
 LL | fn test_repeat(_x: std::io::Repeat<()>){}
    |                    ^^^^^^^^^^^^^^^
@@ -197,78 +175,64 @@ error[E0412]: cannot find type `Repeatwith` in this scope
   --> $DIR/iter.rs:38:21
    |
 LL | fn test_repeatw(_x: Repeatwith<()>){}
-   |                     ^^^^^^^^^^ not found in this scope
-   |
-help: did you mean `std::iter::RepeatWith`?
-   |
-LL | fn test_repeatw(_x: std::iter::RepeatWith<()>){}
-   |                     ^^^^^^^^^^^^^^^^^^^^^
+   |                     ^^^^^^^^^^
+   |                     |
+   |                     not found in this scope
+   |                     help: found a libstd struct with a similar name: `std::iter::RepeatWith`
 
 error[E0412]: cannot find type `rev` in this scope
   --> $DIR/iter.rs:40:17
    |
 LL | fn test_rev(_x: rev<()>){}
-   |                 ^^^ not found in this scope
-   |
-help: did you mean `std::iter::Rev`?
-   |
-LL | fn test_rev(_x: std::iter::Rev<()>){}
-   |                 ^^^^^^^^^^^^^^
+   |                 ^^^
+   |                 |
+   |                 not found in this scope
+   |                 help: found a libstd struct with a similar name: `std::iter::Rev`
 
 error[E0412]: cannot find type `scan` in this scope
   --> $DIR/iter.rs:42:18
    |
 LL | fn test_scan(_x: scan<(), (), ()>){}
-   |                  ^^^^ not found in this scope
-   |
-help: did you mean `std::iter::Scan`?
-   |
-LL | fn test_scan(_x: std::iter::Scan<(), (), ()>){}
-   |                  ^^^^^^^^^^^^^^^
+   |                  ^^^^
+   |                  |
+   |                  not found in this scope
+   |                  help: found a libstd struct with a similar name: `std::iter::Scan`
 
 error[E0412]: cannot find type `skip` in this scope
   --> $DIR/iter.rs:44:18
    |
 LL | fn test_skip(_x: skip<()>){}
-   |                  ^^^^ not found in this scope
-   |
-help: did you mean `std::iter::Skip`?
-   |
-LL | fn test_skip(_x: std::iter::Skip<()>){}
-   |                  ^^^^^^^^^^^^^^^
+   |                  ^^^^
+   |                  |
+   |                  not found in this scope
+   |                  help: found a libstd struct with a similar name: `std::iter::Skip`
 
 error[E0412]: cannot find type `Skipwhile` in this scope
   --> $DIR/iter.rs:46:19
    |
 LL | fn test_skipw(_x: Skipwhile<(), ()>){}
-   |                   ^^^^^^^^^ not found in this scope
-   |
-help: did you mean `std::iter::SkipWhile`?
-   |
-LL | fn test_skipw(_x: std::iter::SkipWhile<(), ()>){}
-   |                   ^^^^^^^^^^^^^^^^^^^^
+   |                   ^^^^^^^^^
+   |                   |
+   |                   not found in this scope
+   |                   help: found a libstd struct with a similar name: `std::iter::SkipWhile`
 
 error[E0412]: cannot find type `Stepby` in this scope
   --> $DIR/iter.rs:48:20
    |
 LL | fn test_stepby(_x: Stepby<()>){}
-   |                    ^^^^^^ not found in this scope
-   |
-help: did you mean `std::iter::StepBy`?
-   |
-LL | fn test_stepby(_x: std::iter::StepBy<()>){}
-   |                    ^^^^^^^^^^^^^^^^^
+   |                    ^^^^^^
+   |                    |
+   |                    not found in this scope
+   |                    help: found a libstd struct with a similar name: `std::iter::StepBy`
 
 error[E0412]: cannot find type `successors` in this scope
   --> $DIR/iter.rs:50:24
    |
 LL | fn test_successors(_x: successors<()>){}
-   |                        ^^^^^^^^^^ not found in this scope
-   |
-help: did you mean `std::iter::Successors`?
-   |
-LL | fn test_successors(_x: std::iter::Successors<()>){}
-   |                        ^^^^^^^^^^^^^^^^^^^^^
+   |                        ^^^^^^^^^^
+   |                        |
+   |                        not found in this scope
+   |                        help: found a libstd struct with a similar name: `std::iter::Successors`
 
 error[E0412]: cannot find type `take` in this scope
   --> $DIR/iter.rs:52:18
@@ -276,7 +240,7 @@ error[E0412]: cannot find type `take` in this scope
 LL | fn test_take(_x: take<()>){}
    |                  ^^^^ not found in this scope
    |
-help: did you mean one of these?:
+help: found libstd structs with a similar name:
    |
 LL | fn test_take(_x: std::io::Take<()>){}
    |                  ^^^^^^^^^^^^^
@@ -287,23 +251,19 @@ error[E0412]: cannot find type `Takewhile` in this scope
   --> $DIR/iter.rs:54:19
    |
 LL | fn test_takew(_x: Takewhile<(), ()>){}
-   |                   ^^^^^^^^^ not found in this scope
-   |
-help: did you mean `std::iter::TakeWhile`?
-   |
-LL | fn test_takew(_x: std::iter::TakeWhile<(), ()>){}
-   |                   ^^^^^^^^^^^^^^^^^^^^
+   |                   ^^^^^^^^^
+   |                   |
+   |                   not found in this scope
+   |                   help: found a libstd struct with a similar name: `std::iter::TakeWhile`
 
 error[E0412]: cannot find type `zip` in this scope
   --> $DIR/iter.rs:56:17
    |
 LL | fn test_zip(_x: zip<(), ()>){}
-   |                 ^^^ not found in this scope
-   |
-help: did you mean `std::iter::Zip`?
-   |
-LL | fn test_zip(_x: std::iter::Zip<(), ()>){}
-   |                 ^^^^^^^^^^^^^^
+   |                 ^^^
+   |                 |
+   |                 not found in this scope
+   |                 help: found a libstd struct with a similar name: `std::iter::Zip`
 
 error: aborting due to 27 previous errors
 

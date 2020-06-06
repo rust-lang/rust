@@ -2,12 +2,10 @@ error[E0412]: cannot find type `cell` in this scope
   --> $DIR/cell.rs:4:18
    |
 LL | fn test_cell(_x: cell<()>){}
-   |                  ^^^^ not found in this scope
-   |
-help: did you mean `std::cell::Cell`?
-   |
-LL | fn test_cell(_x: std::cell::Cell<()>){}
-   |                  ^^^^^^^^^^^^^^^
+   |                  ^^^^
+   |                  |
+   |                  not found in this scope
+   |                  help: found a libstd struct with a similar name: `std::cell::Cell`
 
 error: aborting due to previous error
 
