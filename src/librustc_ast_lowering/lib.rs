@@ -624,6 +624,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         let hir_id = if let Some(existing_hir_id) = self.node_id_to_hir_id[ast_node_id] {
             if span != DUMMY_SP {
+                // Some HIR owners are lowered before the traversal of the AST.
+                // They use DUMMY_SP as a placeholder, to be overwritten here.
                 debug_assert!(
                     self.spans[existing_hir_id] == DUMMY_SP || self.spans[existing_hir_id] == span
                 );
