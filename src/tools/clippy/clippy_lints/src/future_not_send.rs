@@ -95,7 +95,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for FutureNotSend {
                                         let trait_ref = trait_pred.to_poly_trait_ref();
                                         db.note(&*format!(
                                             "`{}` doesn't implement `{}`",
-                                            trait_ref.self_ty(),
+                                            trait_ref.skip_binder().self_ty(),
                                             trait_ref.print_only_trait_path(),
                                         ));
                                     }
