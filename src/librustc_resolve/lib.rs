@@ -2978,7 +2978,7 @@ impl<'a> Resolver<'a> {
         span: Span,
         path_str: &str,
         ns: Namespace,
-        module_id: LocalDefId,
+        module_id: DefId,
     ) -> Result<(ast::Path, Res), ()> {
         let path = if path_str.starts_with("::") {
             ast::Path {
@@ -2998,7 +2998,7 @@ impl<'a> Resolver<'a> {
                     .collect(),
             }
         };
-        let module = self.get_module(module_id.to_def_id());
+        let module = self.get_module(module_id);
         let parent_scope = &ParentScope::module(module);
         let res = self.resolve_ast_path(&path, ns, parent_scope).map_err(|_| ())?;
         Ok((path, res))
