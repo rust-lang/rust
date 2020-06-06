@@ -1762,7 +1762,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // The strategy is to:
         //
         // 1. Instantiate those regions to placeholder regions (e.g.,
-        //    `for<'a> &'a int` becomes `&0 i32`.
+        //    `for<'a> &'a i32` becomes `&0 i32`.
         // 2. Produce something like `&'0 i32 : Copy`
         // 3. Re-bind the regions back to `for<'a> &'a i32 : Copy`
 

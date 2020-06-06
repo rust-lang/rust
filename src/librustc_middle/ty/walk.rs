@@ -22,13 +22,13 @@ impl<'tcx> TypeWalker<'tcx> {
     /// Skips the subtree corresponding to the last type
     /// returned by `next()`.
     ///
-    /// Example: Imagine you are walking `Foo<Bar<int>, usize>`.
+    /// Example: Imagine you are walking `Foo<Bar<i32>, usize>`.
     ///
     /// ```
     /// let mut iter: TypeWalker = ...;
     /// iter.next(); // yields Foo
-    /// iter.next(); // yields Bar<int>
-    /// iter.skip_current_subtree(); // skips int
+    /// iter.next(); // yields Bar<i32>
+    /// iter.skip_current_subtree(); // skips i32
     /// iter.next(); // yields usize
     /// ```
     pub fn skip_current_subtree(&mut self) {

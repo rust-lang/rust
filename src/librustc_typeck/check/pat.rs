@@ -212,7 +212,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // errors in some cases, such as this one:
         //
         // ```
-        // fn foo<'x>(x: &'x int) {
+        // fn foo<'x>(x: &'x i32) {
         //    let a = 1;
         //    let mut z = x;
         //    z = &a;
@@ -220,7 +220,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // ```
         //
         // The reason we might get an error is that `z` might be
-        // assigned a type like `&'x int`, and then we would have
+        // assigned a type like `&'x i32`, and then we would have
         // a problem when we try to assign `&a` to `z`, because
         // the lifetime of `&a` (i.e., the enclosing block) is
         // shorter than `'x`.
@@ -229,11 +229,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // expected type here is whatever type the user wrote, not
         // the initializer's type. In this case the user wrote
         // nothing, so we are going to create a type variable `Z`.
-        // Then we will assign the type of the initializer (`&'x
-        // int`) as a subtype of `Z`: `&'x int <: Z`. And hence we
-        // will instantiate `Z` as a type `&'0 int` where `'0` is
-        // a fresh region variable, with the constraint that `'x :
-        // '0`.  So basically we're all set.
+        // Then we will assign the type of the initializer (`&'x i32`)
+        // as a subtype of `Z`: `&'x i32 <: Z`. And hence we
+        // will instantiate `Z` as a type `&'0 i32` where `'0` is
+        // a fresh region variable, with the constraint that `'x : '0`.
+        // So basically we're all set.
         //
         // Note that there are two tests to check that this remains true
         // (`regions-reassign-{match,let}-bound-pointer.rs`).

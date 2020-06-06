@@ -1394,13 +1394,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             // That is, consider this case:
             //
             // ```
-            // trait SubTrait: SuperTrait<int> { }
+            // trait SubTrait: SuperTrait<i32> { }
             // trait SuperTrait<A> { type T; }
             //
             // ... B: SubTrait<T = foo> ...
             // ```
             //
-            // We want to produce `<B as SuperTrait<int>>::T == foo`.
+            // We want to produce `<B as SuperTrait<i32>>::T == foo`.
 
             // Find any late-bound regions declared in `ty` that are not
             // declared in the trait-ref. These are not well-formed.
