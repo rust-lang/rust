@@ -335,16 +335,26 @@ pub trait HasFormatSpecifier: AstToken {
                             }
                             c if c == '_' || c.is_alphabetic() => {
                                 read_identifier(&mut chars, &mut callback);
-                                if chars.peek().and_then(|next| next.1.as_ref().ok()).copied()
-                                    != Some('$')
-                                {
-                                    continue;
-                                }
-                                skip_char_and_emit(
-                                    &mut chars,
-                                    FormatSpecifier::DollarSign,
-                                    &mut callback,
-                                );
+                                // can be either width (indicated by dollar sign, or type in which case
+                                // the next sign has to be `}`)
+                                let next =
+                                    chars.peek().and_then(|next| next.1.as_ref().ok()).copied();
+                                match next {
+                                    Some('$') => skip_char_and_emit(
+                                        &mut chars,
+                                        FormatSpecifier::DollarSign,
+                                        &mut callback,
+                                    ),
+                                    Some('}') => {
+                                        skip_char_and_emit(
+                                            &mut chars,
+                                            FormatSpecifier::Close,
+                                            &mut callback,
+                                        );
+                                        continue;
+                                    }
+                                    _ => continue,
+                                };
                             }
                             _ => {}
                         }
@@ -416,12 +426,11 @@ pub trait HasFormatSpecifier: AstToken {
                         }
                     }
 
-                    let mut cloned = chars.clone().take(2);
-                    let first = cloned.next().and_then(|next| next.1.as_ref().ok()).copied();
-                    if first != Some('}') {
+                    if let Some((_, Ok('}'))) = chars.peek() {
+                        skip_char_and_emit(&mut chars, FormatSpecifier::Close, &mut callback);
+                    } else {
                         continue;
                     }
-                    skip_char_and_emit(&mut chars, FormatSpecifier::Close, &mut callback);
                 }
                 _ => {
                     while let Some((_, Ok(next_char))) = chars.peek() {
