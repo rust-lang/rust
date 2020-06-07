@@ -1400,7 +1400,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 lctx.generate_opaque_type(opaque_ty_node_id, opaque_ty_item, span, opaque_ty_span);
 
             // `impl Trait` now just becomes `Foo<'a, 'b, ..>`.
-            hir::TyKind::Def(hir::ItemId { id: opaque_ty_id }, lifetimes)
+            hir::TyKind::OpaqueDef(hir::ItemId { id: opaque_ty_id }, lifetimes)
         })
     }
 

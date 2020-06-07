@@ -1494,7 +1494,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         let mut is_object_safe = false;
         if let hir::FnRetTy::Return(ty) = fn_output {
             // Get the return type.
-            if let hir::TyKind::Def(..) = ty.kind {
+            if let hir::TyKind::OpaqueDef(..) = ty.kind {
                 let ty = AstConv::ast_ty_to_ty(fcx, ty);
                 // Get the `impl Trait`'s `DefId`.
                 if let ty::Opaque(def_id, _) = ty.kind {

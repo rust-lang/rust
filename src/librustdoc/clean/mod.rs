@@ -1351,7 +1351,7 @@ impl Clean<Type> for hir::Ty<'_> {
                 Array(box ty.clean(cx), length)
             }
             TyKind::Tup(ref tys) => Tuple(tys.clean(cx)),
-            TyKind::Def(item_id, _) => {
+            TyKind::OpaqueDef(item_id, _) => {
                 let item = cx.tcx.hir().expect_item(item_id.id);
                 if let hir::ItemKind::OpaqueTy(ref ty) = item.kind {
                     ImplTrait(ty.bounds.clean(cx))

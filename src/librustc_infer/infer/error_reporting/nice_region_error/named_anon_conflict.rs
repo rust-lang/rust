@@ -84,7 +84,8 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 rustc_hir::intravisit::walk_ty(&mut v, ty);
 
                 debug!("try_report_named_anon_conflict: ret ty {:?}", ty);
-                if sub == &ty::ReStatic && (matches!(ty.kind, TyKind::Def(_, _)) || v.0.len() == 1)
+                if sub == &ty::ReStatic
+                    && (matches!(ty.kind, TyKind::OpaqueDef(_, _)) || v.0.len() == 1)
                 {
                     debug!("try_report_named_anon_conflict: impl Trait + 'static");
                     // This is an `impl Trait` or `dyn Trait` return that evaluates de need of
