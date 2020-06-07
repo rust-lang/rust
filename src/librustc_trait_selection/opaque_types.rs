@@ -407,12 +407,20 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         let first_own_region = match opaque_defn.origin {
             hir::OpaqueTyOrigin::FnReturn | hir::OpaqueTyOrigin::AsyncFn => {
-                // For these opaque types, only the item's own lifetime
-                // parameters are considered.
+                // We lower
+                //
+                // fn foo<'l0..'ln>() -> impl Trait<'l0..'lm>
+                //
+                // into
+                //
+                // type foo::<'p0..'pn>::Foo<'q0..'qm>
+                // fn foo<l0..'ln>() -> foo::<'static..'static>::Foo<'l0..'lm>.
+                //
+                // For these types we onlt iterate over `'l0..lm` below.
                 tcx.generics_of(def_id).parent_count
             }
             // These opaque type inherit all lifetime parameters from their
-            // parent.
+            // parent, so we have to check them all.
             hir::OpaqueTyOrigin::Binding | hir::OpaqueTyOrigin::Misc => 0,
         };
 
