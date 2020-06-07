@@ -6,6 +6,7 @@
 // ignore-powerpc
 // ignore-powerpc64
 // ignore-powerpc64le
+// ignore-riscv64
 // ignore-sparc
 // ignore-sparc64
 // ignore-s390x
