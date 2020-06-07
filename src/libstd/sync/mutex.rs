@@ -107,6 +107,67 @@ use crate::sys_common::poison::{self, LockResult, TryLockError, TryLockResult};
 ///
 /// *guard += 1;
 /// ```
+///
+/// It is sometimes a good idea (or even necessary) to manually drop the mutex
+/// to unlock it as soon as possible. If you need the resource until the end of
+/// the scope, this is not needed.
+///
+/// ```
+/// use std::sync::{Arc, Mutex};
+/// use std::thread;
+///
+/// const N: usize = 3;
+///
+/// // Some data to work with in multiple threads.
+/// let data_mutex = Arc::new(Mutex::new([1, 2, 3, 4]));
+/// // The result of all the work across all threads.
+/// let res_mutex = Arc::new(Mutex::new(0));
+///
+/// // Threads other than the main thread.
+/// let mut threads = Vec::with_capacity(N);
+/// (0..N).for_each(|_| {
+///     // Getting clones for the mutexes.
+///     let data_mutex_clone = Arc::clone(&data_mutex);
+///     let res_mutex_clone = Arc::clone(&res_mutex);
+///
+///     threads.push(thread::spawn(move || {
+///         let data = *data_mutex_clone.lock().unwrap();
+///         // This is the result of some important and long-ish work.
+///         let result = data.iter().fold(0, |acc, x| acc + x * 2);
+///         // We drop the `data` explicitely because it's not necessary anymore
+///         // and the thread still has work to do. This allow other threads to
+///         // start working on the data immediately, without waiting
+///         // for the rest of the unrelated work to be done here.
+///         std::mem::drop(data);
+///         *res_mutex_clone.lock().unwrap() += result;
+///     }));
+/// });
+///
+/// let data = *data_mutex.lock().unwrap();
+/// // This is the result of some important and long-ish work.
+/// let result = data.iter().fold(0, |acc, x| acc + x * 2);
+/// // We drop the `data` explicitely because it's not necessary anymore
+/// // and the thread still has work to do. This allow other threads to
+/// // start working on the data immediately, without waiting
+/// // for the rest of the unrelated work to be done here.
+/// //
+/// // It's even more important here because we `.join` the threads after that.
+/// // If we had not dropped the lock, a thread could be waiting forever for
+/// // it, causing a deadlock.
+/// std::mem::drop(data);
+/// // Here the lock is not assigned to a variable and so, even if the scope
+/// // does not end after this line, the mutex is still released:
+/// // there is no deadlock.
+/// *res_mutex.lock().unwrap() += result;
+///
+/// threads.into_iter().for_each(|thread| {
+///     thread
+///         .join()
+///         .expect("The thread creating or execution failed !")
+/// });
+///
+/// assert_eq!(*res_mutex.lock().unwrap(), 80);
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "mutex_type")]
 pub struct Mutex<T: ?Sized> {
