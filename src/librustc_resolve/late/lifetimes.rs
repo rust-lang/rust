@@ -258,8 +258,8 @@ enum Elide {
     Exact(Region),
     /// Less or more than one lifetime were found, error on unspecified.
     Error(Vec<ElisionFailureInfo>),
-    /// Forbid lifetime elision inside of a larger scope that does. For
-    /// example, in let position impl trait.
+    /// Forbid lifetime elision inside of a larger scope where it would be
+    /// permitted. For example, in let position impl trait.
     Forbid,
 }
 

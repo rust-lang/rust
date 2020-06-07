@@ -573,6 +573,16 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
     }
 }
 
+/// Retrieve the inferred concrete type for let position impl trait.
+///
+/// This is different to other kinds of impl trait because:
+///
+/// 1. We know which function contains the defining use (the function that
+///    contains the let statement)
+/// 2. We do not currently allow (free) lifetimes in the return type. `let`
+///    statements in some statically unreachable code are removed from the MIR
+///    by the time we borrow check, and it's not clear how we should handle
+///    those.
 fn let_position_impl_trait_type(tcx: TyCtxt<'_>, opaque_ty_id: LocalDefId) -> Ty<'_> {
     let scope = tcx.hir().get_defining_scope(tcx.hir().as_local_hir_id(opaque_ty_id));
     let scope_def_id = tcx.hir().local_def_id(scope);
