@@ -31,4 +31,9 @@ diff normalized.stderr tests/ui/cstring.stderr
 SYSROOT=`rustc --print sysroot`
 diff <(LD_LIBRARY_PATH=${SYSROOT}/lib ./target/debug/clippy-driver --rustc --version --verbose) <(rustc --version --verbose)
 
+# we can't run 2 rustcs on the same file at the same time
+CLIPPY=`LD_LIBRARY_PATH=${SYSROOT}/lib ./target/debug/clippy-driver tests/driver/main.rs`
+RUSTC=`rustc tests/driver/main.rs`
+diff <($CLIPPY) <($RUSTC)
+
 # TODO: CLIPPY_CONF_DIR / CARGO_MANIFEST_DIR
