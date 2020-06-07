@@ -466,7 +466,19 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
             // FIXME: is this correct?
             None
         } else {
-            self.cx.tcx.parent(item.def_id)
+            let mut current = item.def_id;
+            // The immediate parent might not always be a module.
+            // Find the first parent which is.
+            loop {
+                if let Some(parent) = self.cx.tcx.parent(current) {
+                    if self.cx.tcx.def_kind(parent) == DefKind::Mod {
+                        break Some(parent);
+                    }
+                    current = parent;
+                } else {
+                    break None;
+                }
+            }
         };
 
         if parent_node.is_some() {
