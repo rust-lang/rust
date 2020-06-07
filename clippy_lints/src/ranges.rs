@@ -241,7 +241,7 @@ fn check_inclusive_range_minus_one(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
 }
 
 fn check_reversed_empty_range(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
-    fn inside_indexing_expr<'a>(cx: &'a LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
+    fn inside_indexing_expr(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
         matches!(
             get_parent_expr(cx, expr),
             Some(Expr {
