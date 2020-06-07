@@ -41,7 +41,7 @@ fn main() -> () {
     }
 
     bb4: {
-        falseEdges -> [real: bb6, imaginary: bb5]; // scope 1 at $DIR/issue-38669.rs:7:9: 9:10
+        falseEdge -> [real: bb6, imaginary: bb5]; // scope 1 at $DIR/issue-38669.rs:7:9: 9:10
     }
 
     bb5: {

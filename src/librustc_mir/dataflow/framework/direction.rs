@@ -453,7 +453,7 @@ impl Direction for Forward {
                 propagate(target, exit_state);
             }
 
-            FalseEdges { real_target, imaginary_target } => {
+            FalseEdge { real_target, imaginary_target } => {
                 propagate(real_target, exit_state);
                 propagate(imaginary_target, exit_state);
             }

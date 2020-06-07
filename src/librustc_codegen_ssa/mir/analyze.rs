@@ -357,7 +357,7 @@ pub fn cleanup_kinds(mir: &mir::Body<'_>) -> IndexVec<mir::BasicBlock, CleanupKi
                 | TerminatorKind::Unreachable
                 | TerminatorKind::SwitchInt { .. }
                 | TerminatorKind::Yield { .. }
-                | TerminatorKind::FalseEdges { .. }
+                | TerminatorKind::FalseEdge { .. }
                 | TerminatorKind::FalseUnwind { .. }
                 | TerminatorKind::InlineAsm { .. } => { /* nothing to do */ }
                 TerminatorKind::Call { cleanup: unwind, .. }
