@@ -232,7 +232,8 @@ jobs:
       matrix:
         integration:
         - 'rust-lang/cargo'
-        - 'rust-lang/rls'
+        # FIXME: re-enable once fmt_macros is renamed in RLS
+        # - 'rust-lang/rls'
         - 'rust-lang/chalk'
         - 'rust-lang/rustfmt'
         - 'Marwes/combine'
