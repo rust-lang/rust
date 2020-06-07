@@ -878,7 +878,7 @@ pub struct Resolver<'a> {
 
     /// `CrateNum` resolutions of `extern crate` items.
     extern_crate_map: FxHashMap<LocalDefId, CrateNum>,
-    export_map: ExportMap<NodeId>,
+    export_map: ExportMap<LocalDefId>,
     trait_map: TraitMap<NodeId>,
 
     /// A map from nodes to anonymous modules.
@@ -1281,18 +1281,7 @@ impl<'a> Resolver<'a> {
     pub fn into_outputs(self) -> ResolverOutputs {
         let definitions = self.definitions;
         let extern_crate_map = self.extern_crate_map;
-        let export_map = self
-            .export_map
-            .into_iter()
-            .map(|(k, v)| {
-                (
-                    k,
-                    v.into_iter()
-                        .map(|e| e.map_id(|id| definitions.node_id_to_hir_id(id)))
-                        .collect(),
-                )
-            })
-            .collect();
+        let export_map = self.export_map;
         let trait_map = self
             .trait_map
             .into_iter()
@@ -1330,18 +1319,7 @@ impl<'a> Resolver<'a> {
             definitions: self.definitions.clone(),
             cstore: Box::new(self.cstore().clone()),
             extern_crate_map: self.extern_crate_map.clone(),
-            export_map: self
-                .export_map
-                .iter()
-                .map(|(&k, v)| {
-                    (
-                        k,
-                        v.iter()
-                            .map(|e| e.map_id(|id| self.definitions.node_id_to_hir_id(id)))
-                            .collect(),
-                    )
-                })
-                .collect(),
+            export_map: self.export_map.clone(),
             trait_map: self
                 .trait_map
                 .iter()

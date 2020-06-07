@@ -865,8 +865,8 @@ rustc_queries! {
     }
 
     Other {
-        query module_exports(def_id: DefId) -> Option<&'tcx [Export<hir::HirId>]> {
-            desc { |tcx| "looking up items exported by `{}`", tcx.def_path_str(def_id) }
+        query module_exports(def_id: LocalDefId) -> Option<&'tcx [Export<LocalDefId>]> {
+            desc { |tcx| "looking up items exported by `{}`", tcx.def_path_str(def_id.to_def_id()) }
             eval_always
         }
     }
