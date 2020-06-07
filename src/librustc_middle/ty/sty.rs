@@ -724,10 +724,6 @@ impl<'tcx> Binder<&'tcx List<ExistentialPredicate<'tcx>>> {
 ///
 /// Trait references also appear in object types like `Foo<U>`, but in
 /// that case the `Self` parameter is absent from the substitutions.
-///
-/// Note that a `TraitRef` introduces a level of region binding, to
-/// account for higher-ranked trait bounds like `T: for<'a> Foo<&'a U>`
-/// or higher-ranked object types.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 #[derive(HashStable, TypeFoldable)]
 pub struct TraitRef<'tcx> {
