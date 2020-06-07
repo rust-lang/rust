@@ -164,34 +164,37 @@ impl<'l, 'txc> LateLintPass<'l, 'txc> for MacroUseImports {
                 let seg = import.split("::").collect::<Vec<_>>();
 
                 match seg.as_slice() {
-                    [] => unreachable!("this should never be empty"),
-                    [_] => unreachable!("path must have two segments ?"),
+                    // an empty path is impossible
+                    // a path should always consist of 2 or more segments
+                    [] | [_] => return,
                     [root, item] => {
                         if !check_dup.contains(&(*item).to_string()) {
-                            used.entry((root.to_string(), span))
-                                .or_insert_with(|| vec![])
-                                .push(item.to_string());
-                            check_dup.push(item.to_string());
+                            used.entry(((*root).to_string(), span))
+                                .or_insert_with(Vec::new)
+                                .push((*item).to_string());
+                            check_dup.push((*item).to_string());
                         }
                     },
                     [root, rest @ ..] => {
                         if rest.iter().all(|item| !check_dup.contains(&(*item).to_string())) {
                             let filtered = rest
                                 .iter()
-                                .filter_map(|item| if check_dup.contains(&(*item).to_string()) {
-                                    None
-                                } else {
-                                    Some(item.to_string())
+                                .filter_map(|item| {
+                                    if check_dup.contains(&(*item).to_string()) {
+                                        None
+                                    } else {
+                                        Some((*item).to_string())
+                                    }
                                 })
                                 .collect::<Vec<_>>();
                             used.entry(((*root).to_string(), span))
-                                .or_insert_with(|| vec![])
+                                .or_insert_with(Vec::new)
                                 .push(filtered.join("::"));
                             check_dup.extend(filtered);
                         } else {
                             let rest = rest.to_vec();
-                            used.entry((root.to_string(), span))
-                                .or_insert_with(|| vec![])
+                            used.entry(((*root).to_string(), span))
+                                .or_insert_with(Vec::new)
                                 .push(rest.join("::"));
                             check_dup.extend(rest.iter().map(ToString::to_string));
                         }

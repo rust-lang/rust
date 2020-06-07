@@ -2,7 +2,9 @@
 // aux-build:macro_rules.rs
 // aux-build:macro_use_helper.rs
 // run-rustfix
+// ignore-32bit
 
+#![allow(unused_imports, unreachable_code, unused_variables, dead_code)]
 #![allow(clippy::single_component_path_imports)]
 #![warn(clippy::macro_use_imports)]
 
