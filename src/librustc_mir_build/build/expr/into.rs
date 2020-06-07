@@ -135,19 +135,23 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // body, even when the exact code in the body cannot unwind
 
                 let loop_block = this.cfg.start_new_block();
+                let exit_block = this.cfg.start_new_block();
 
                 // Start the loop.
                 this.cfg.goto(block, source_info, loop_block);
 
-                this.in_breakable_scope(Some(loop_block), destination, expr_span, move |this| {
+                this.in_breakable_scope(Some(loop_block), exit_block, destination, move |this| {
                     // conduct the test, if necessary
                     let body_block = this.cfg.start_new_block();
+                    let diverge_cleanup = this.diverge_cleanup();
                     this.cfg.terminate(
                         loop_block,
                         source_info,
-                        TerminatorKind::FalseUnwind { real_target: body_block, unwind: None },
+                        TerminatorKind::FalseUnwind {
+                            real_target: body_block,
+                            unwind: Some(diverge_cleanup),
+                        },
                     );
-                    this.diverge_from(loop_block);
 
                     // The “return” value of the loop body must always be an unit. We therefore
                     // introduce a unit temporary as the destination for the loop body.
@@ -155,10 +159,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // Execute the body, branching back to the test.
                     let body_block_end = unpack!(this.into(tmp, body_block, body));
                     this.cfg.goto(body_block_end, source_info, loop_block);
-
-                    // Loops are only exited by `break` expressions.
-                    None
-                })
+                });
+                exit_block.unit()
             }
             ExprKind::Call { ty, fun, args, from_hir_call } => {
                 let intrinsic = match ty.kind {
@@ -200,6 +202,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         .collect();
 
                     let success = this.cfg.start_new_block();
+                    let cleanup = this.diverge_cleanup();
 
                     this.record_operands_moved(&args);
 
@@ -209,7 +212,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         TerminatorKind::Call {
                             func: fun,
                             args,
-                            cleanup: None,
+                            cleanup: Some(cleanup),
                             // FIXME(varkor): replace this with an uninhabitedness-based check.
                             // This requires getting access to the current module to call
                             // `tcx.is_ty_uninhabited_from`, which is currently tricky to do.
@@ -221,7 +224,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             from_hir_call,
                         },
                     );
-                    this.diverge_from(block);
                     success.unit()
                 }
             }
@@ -425,12 +427,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let scope = this.local_scope();
                 let value = unpack!(block = this.as_operand(block, scope, value));
                 let resume = this.cfg.start_new_block();
+                let cleanup = this.generator_drop_cleanup();
                 this.cfg.terminate(
                     block,
                     source_info,
-                    TerminatorKind::Yield { value, resume, resume_arg: destination, drop: None },
+                    TerminatorKind::Yield { value, resume, resume_arg: destination, drop: cleanup },
                 );
-                this.generator_drop_cleanup(block);
                 resume.unit()
             }
 
