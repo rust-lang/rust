@@ -25,6 +25,7 @@ pub use UnsafeSource::*;
 use crate::ptr::P;
 use crate::token::{self, DelimToken};
 use crate::tokenstream::{DelimSpan, TokenStream, TokenTree};
+use crate::visit::{walk_ty, Visitor};
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
@@ -1782,6 +1783,26 @@ pub struct Ty {
     pub id: NodeId,
     pub kind: TyKind,
     pub span: Span,
+}
+
+impl Ty {
+    /// Returns `true` if the kind of this type or any types contained within are `impl Trait`.
+    pub fn contains_impl_trait(&self) -> bool {
+        struct ContainsImplTrait(bool);
+
+        impl<'ast> Visitor<'ast> for ContainsImplTrait {
+            fn visit_ty(&mut self, t: &'ast Ty) {
+                self.0 |= matches!(t.kind, TyKind::ImplTrait(..));
+                if !self.0 {
+                    walk_ty(self, t);
+                }
+            }
+        }
+
+        let mut vis = ContainsImplTrait(false);
+        vis.visit_ty(self);
+        vis.0
+    }
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
