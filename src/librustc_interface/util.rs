@@ -592,97 +592,48 @@ pub fn build_output_filenames(
 //
 // [#34511]: https://github.com/rust-lang/rust/issues/34511#issuecomment-322340401
 pub struct ReplaceBodyWithLoop<'a, 'b> {
-    within_static_or_const: bool,
+    ignore_item: bool,
     nested_blocks: Option<Vec<ast::Block>>,
     resolver: &'a mut Resolver<'b>,
 }
 
 impl<'a, 'b> ReplaceBodyWithLoop<'a, 'b> {
     pub fn new(resolver: &'a mut Resolver<'b>) -> ReplaceBodyWithLoop<'a, 'b> {
-        ReplaceBodyWithLoop { within_static_or_const: false, nested_blocks: None, resolver }
+        ReplaceBodyWithLoop { ignore_item: false, nested_blocks: None, resolver }
     }
 
-    fn run<R, F: FnOnce(&mut Self) -> R>(&mut self, is_const: bool, action: F) -> R {
-        let old_const = mem::replace(&mut self.within_static_or_const, is_const);
+    fn run<R, F: FnOnce(&mut Self) -> R>(&mut self, ignore_item: bool, action: F) -> R {
+        let old_ignore_item = mem::replace(&mut self.ignore_item, ignore_item);
         let old_blocks = self.nested_blocks.take();
         let ret = action(self);
-        self.within_static_or_const = old_const;
+        self.ignore_item = old_ignore_item;
         self.nested_blocks = old_blocks;
         ret
     }
 
-    fn should_ignore_fn(ret_ty: &ast::FnRetTy) -> bool {
-        if let ast::FnRetTy::Ty(ref ty) = ret_ty {
-            fn involves_impl_trait(ty: &ast::Ty) -> bool {
-                match ty.kind {
-                    ast::TyKind::ImplTrait(..) => true,
-                    ast::TyKind::Slice(ref subty)
-                    | ast::TyKind::Array(ref subty, _)
-                    | ast::TyKind::Ptr(ast::MutTy { ty: ref subty, .. })
-                    | ast::TyKind::Rptr(_, ast::MutTy { ty: ref subty, .. })
-                    | ast::TyKind::Paren(ref subty) => involves_impl_trait(subty),
-                    ast::TyKind::Tup(ref tys) => any_involves_impl_trait(tys.iter()),
-                    ast::TyKind::Path(_, ref path) => {
-                        path.segments.iter().any(|seg| match seg.args.as_deref() {
-                            None => false,
-                            Some(&ast::GenericArgs::AngleBracketed(ref data)) => {
-                                data.args.iter().any(|arg| match arg {
-                                    ast::AngleBracketedArg::Arg(arg) => match arg {
-                                        ast::GenericArg::Type(ty) => involves_impl_trait(ty),
-                                        ast::GenericArg::Lifetime(_)
-                                        | ast::GenericArg::Const(_) => false,
-                                    },
-                                    ast::AngleBracketedArg::Constraint(c) => match c.kind {
-                                        ast::AssocTyConstraintKind::Bound { .. } => true,
-                                        ast::AssocTyConstraintKind::Equality { ref ty } => {
-                                            involves_impl_trait(ty)
-                                        }
-                                    },
-                                })
-                            }
-                            Some(&ast::GenericArgs::Parenthesized(ref data)) => {
-                                any_involves_impl_trait(data.inputs.iter())
-                                    || ReplaceBodyWithLoop::should_ignore_fn(&data.output)
-                            }
-                        })
-                    }
-                    _ => false,
-                }
-            }
-
-            fn any_involves_impl_trait<'a, I: Iterator<Item = &'a P<ast::Ty>>>(mut it: I) -> bool {
-                it.any(|subty| involves_impl_trait(subty))
-            }
-
-            involves_impl_trait(ty)
-        } else {
-            false
-        }
-    }
-
-    fn is_sig_const(sig: &ast::FnSig) -> bool {
+    fn should_ignore_fn(sig: &ast::FnSig) -> bool {
         matches!(sig.header.constness, ast::Const::Yes(_))
-            || ReplaceBodyWithLoop::should_ignore_fn(&sig.decl.output)
+            || matches!(&sig.decl.output, ast::FnRetTy::Ty(ty) if ty.contains_impl_trait())
     }
 }
 
 impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
     fn visit_item_kind(&mut self, i: &mut ast::ItemKind) {
-        let is_const = match i {
+        let ignore_item = match i {
             ast::ItemKind::Static(..) | ast::ItemKind::Const(..) => true,
-            ast::ItemKind::Fn(_, ref sig, _, _) => Self::is_sig_const(sig),
+            ast::ItemKind::Fn(_, ref sig, _, _) => Self::should_ignore_fn(sig),
             _ => false,
         };
-        self.run(is_const, |s| noop_visit_item_kind(i, s))
+        self.run(ignore_item, |s| noop_visit_item_kind(i, s))
     }
 
     fn flat_map_trait_item(&mut self, i: P<ast::AssocItem>) -> SmallVec<[P<ast::AssocItem>; 1]> {
-        let is_const = match i.kind {
+        let ignore_item = match i.kind {
             ast::AssocItemKind::Const(..) => true,
-            ast::AssocItemKind::Fn(_, ref sig, _, _) => Self::is_sig_const(sig),
+            ast::AssocItemKind::Fn(_, ref sig, _, _) => Self::should_ignore_fn(sig),
             _ => false,
         };
-        self.run(is_const, |s| noop_flat_map_assoc_item(i, s))
+        self.run(ignore_item, |s| noop_flat_map_assoc_item(i, s))
     }
 
     fn flat_map_impl_item(&mut self, i: P<ast::AssocItem>) -> SmallVec<[P<ast::AssocItem>; 1]> {
@@ -723,6 +674,11 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
             }
         }
 
+        if self.ignore_item {
+            noop_visit_block(b, self);
+            return;
+        }
+
         let empty_block = stmt_to_block(BlockCheckMode::Default, None, self.resolver);
         let loop_expr = P(ast::Expr {
             kind: ast::ExprKind::Loop(P(empty_block), None),
@@ -738,39 +694,35 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
             kind: ast::StmtKind::Expr(loop_expr),
         };
 
-        if self.within_static_or_const {
-            noop_visit_block(b, self)
-        } else {
-            visit_clobber(b.deref_mut(), |b| {
-                let mut stmts = vec![];
-                for s in b.stmts {
-                    let old_blocks = self.nested_blocks.replace(vec![]);
+        visit_clobber(b.deref_mut(), |b| {
+            let mut stmts = vec![];
+            for s in b.stmts {
+                let old_blocks = self.nested_blocks.replace(vec![]);
 
-                    stmts.extend(self.flat_map_stmt(s).into_iter().filter(|s| s.is_item()));
+                stmts.extend(self.flat_map_stmt(s).into_iter().filter(|s| s.is_item()));
 
-                    // we put a Some in there earlier with that replace(), so this is valid
-                    let new_blocks = self.nested_blocks.take().unwrap();
-                    self.nested_blocks = old_blocks;
-                    stmts.extend(new_blocks.into_iter().map(|b| block_to_stmt(b, self.resolver)));
+                // we put a Some in there earlier with that replace(), so this is valid
+                let new_blocks = self.nested_blocks.take().unwrap();
+                self.nested_blocks = old_blocks;
+                stmts.extend(new_blocks.into_iter().map(|b| block_to_stmt(b, self.resolver)));
+            }
+
+            let mut new_block = ast::Block { stmts, ..b };
+
+            if let Some(old_blocks) = self.nested_blocks.as_mut() {
+                //push our fresh block onto the cache and yield an empty block with `loop {}`
+                if !new_block.stmts.is_empty() {
+                    old_blocks.push(new_block);
                 }
 
-                let mut new_block = ast::Block { stmts, ..b };
+                stmt_to_block(b.rules, Some(loop_stmt), &mut self.resolver)
+            } else {
+                //push `loop {}` onto the end of our fresh block and yield that
+                new_block.stmts.push(loop_stmt);
 
-                if let Some(old_blocks) = self.nested_blocks.as_mut() {
-                    //push our fresh block onto the cache and yield an empty block with `loop {}`
-                    if !new_block.stmts.is_empty() {
-                        old_blocks.push(new_block);
-                    }
-
-                    stmt_to_block(b.rules, Some(loop_stmt), &mut self.resolver)
-                } else {
-                    //push `loop {}` onto the end of our fresh block and yield that
-                    new_block.stmts.push(loop_stmt);
-
-                    new_block
-                }
-            })
-        }
+                new_block
+            }
+        })
     }
 
     // in general the pretty printer processes unexpanded code, so
