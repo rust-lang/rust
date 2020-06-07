@@ -268,7 +268,6 @@ macro_rules! define_queries_inner {
             rustc_data_structures::stable_hasher::StableHasher,
             ich::StableHashingContext
         };
-        use rustc_data_structures::profiling::ProfileCategory;
 
         define_queries_struct! {
             tcx: $tcx,
@@ -362,7 +361,6 @@ macro_rules! define_queries_inner {
                 as QueryStorage
             >::Stored;
             const NAME: &'static str = stringify!($name);
-            const CATEGORY: ProfileCategory = $category;
         }
 
         impl<$tcx> QueryAccessors<TyCtxt<$tcx>> for queries::$name<$tcx> {
