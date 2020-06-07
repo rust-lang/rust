@@ -182,6 +182,15 @@ fn ident_can_begin_type(name: Symbol, span: Span, is_raw: bool) -> bool {
             .contains(&name)
 }
 
+/// A hack used to pass AST fragments to attribute and derive macros
+/// as a single nonterminal token instead of a token stream.
+/// FIXME: It needs to be removed, but there are some compatibility issues (see #73345).
+#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+pub enum FlattenGroup {
+    Yes,
+    No,
+}
+
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub enum TokenKind {
     /* Expression-operator symbols. */
@@ -236,7 +245,7 @@ pub enum TokenKind {
     /// treat regular and interpolated lifetime identifiers in the same way.
     Lifetime(Symbol),
 
-    Interpolated(Lrc<Nonterminal>),
+    Interpolated(Lrc<Nonterminal>, FlattenGroup),
 
     // Can be expanded into several tokens.
     /// A doc comment.
@@ -343,7 +352,7 @@ impl Token {
     /// if they keep spans or perform edition checks.
     pub fn uninterpolated_span(&self) -> Span {
         match &self.kind {
-            Interpolated(nt) => nt.span(),
+            Interpolated(nt, _) => nt.span(),
             _ => self.span,
         }
     }
@@ -382,7 +391,7 @@ impl Token {
             ModSep                            | // global path
             Lifetime(..)                      | // labeled loop
             Pound                             => true, // expression attributes
-            Interpolated(ref nt) => match **nt {
+            Interpolated(ref nt, _) => match **nt {
                 NtLiteral(..) |
                 NtExpr(..)    |
                 NtBlock(..)   |
@@ -408,7 +417,7 @@ impl Token {
             Lifetime(..)                | // lifetime bound in trait object
             Lt | BinOp(Shl)             | // associated path
             ModSep                      => true, // global path
-            Interpolated(ref nt) => match **nt {
+            Interpolated(ref nt, _) => match **nt {
                 NtTy(..) | NtPath(..) => true,
                 _ => false,
             },
@@ -420,7 +429,7 @@ impl Token {
     pub fn can_begin_const_arg(&self) -> bool {
         match self.kind {
             OpenDelim(Brace) => true,
-            Interpolated(ref nt) => match **nt {
+            Interpolated(ref nt, _) => match **nt {
                 NtExpr(..) | NtBlock(..) | NtLiteral(..) => true,
                 _ => false,
             },
@@ -455,7 +464,7 @@ impl Token {
         match self.uninterpolate().kind {
             Literal(..) | BinOp(Minus) => true,
             Ident(name, false) if name.is_bool_lit() => true,
-            Interpolated(ref nt) => match &**nt {
+            Interpolated(ref nt, _) => match &**nt {
                 NtLiteral(_) => true,
                 NtExpr(e) => match &e.kind {
                     ast::ExprKind::Lit(_) => true,
@@ -476,7 +485,7 @@ impl Token {
     // otherwise returns the original token.
     pub fn uninterpolate(&self) -> Cow<'_, Token> {
         match &self.kind {
-            Interpolated(nt) => match **nt {
+            Interpolated(nt, _) => match **nt {
                 NtIdent(ident, is_raw) => {
                     Cow::Owned(Token::new(Ident(ident.name, is_raw), ident.span))
                 }
@@ -523,7 +532,7 @@ impl Token {
 
     /// Returns `true` if the token is an interpolated path.
     fn is_path(&self) -> bool {
-        if let Interpolated(ref nt) = self.kind {
+        if let Interpolated(ref nt, _) = self.kind {
             if let NtPath(..) = **nt {
                 return true;
             }
@@ -535,7 +544,7 @@ impl Token {
     /// That is, is this a pre-parsed expression dropped into the token stream
     /// (which happens while parsing the result of macro expansion)?
     pub fn is_whole_expr(&self) -> bool {
-        if let Interpolated(ref nt) = self.kind {
+        if let Interpolated(ref nt, _) = self.kind {
             if let NtExpr(_) | NtLiteral(_) | NtPath(_) | NtIdent(..) | NtBlock(_) = **nt {
                 return true;
             }
@@ -546,7 +555,7 @@ impl Token {
 
     // Is the token an interpolated block (`$b:block`)?
     pub fn is_whole_block(&self) -> bool {
-        if let Interpolated(ref nt) = self.kind {
+        if let Interpolated(ref nt, _) = self.kind {
             if let NtBlock(..) = **nt {
                 return true;
             }
@@ -724,7 +733,7 @@ impl Token {
                 b == d && (a == c || a == kw::DollarCrate || c == kw::DollarCrate)
             }
 
-            (&Interpolated(_), &Interpolated(_)) => false,
+            (&Interpolated(..), &Interpolated(..)) => false,
 
             _ => panic!("forgot to add a token?"),
         }
