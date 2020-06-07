@@ -349,11 +349,7 @@ impl ProjectWorkspace {
                         let file_id = load(&sysroot[krate].root)?;
 
                         // Crates from sysroot have `cfg(test)` disabled
-                        let cfg_options = {
-                            let mut opts = default_cfg_options.clone();
-                            opts.remove_atom("test");
-                            opts
-                        };
+                        let cfg_options = default_cfg_options.clone();
 
                         let env = Env::default();
                         let extern_source = ExternSource::default();
@@ -404,7 +400,12 @@ impl ProjectWorkspace {
                         if let Some(file_id) = load(root) {
                             let edition = cargo[pkg].edition;
                             let cfg_options = {
-                                let mut opts = default_cfg_options.clone();
+                                let mut opts = {
+                                    let mut opts = default_cfg_options.clone();
+                                    opts.insert_atom("test".into());
+                                    opts
+                                };
+
                                 for feature in cargo[pkg].features.iter() {
                                     opts.insert_key_value("feature".into(), feature.into());
                                 }

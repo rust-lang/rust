@@ -151,7 +151,6 @@ pub(crate) fn load(
     // FIXME: cfg options?
     let default_cfg_options = {
         let mut opts = get_rustc_cfg_options(None);
-        opts.insert_atom("test".into());
         opts.insert_atom("debug_assertion".into());
         opts
     };
