@@ -2843,19 +2843,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let def_id = tcx.hir().local_def_id(item_id.id).to_def_id();
 
                 match opaque_ty.kind {
-                    // RPIT (return position impl trait)
-                    // Only lifetimes mentioned in the impl Trait predicate are
-                    // captured by the opaque type, so the lifetime parameters
-                    // from the parent item need to be replaced with `'static`.
-                    hir::ItemKind::OpaqueTy(hir::OpaqueTy { impl_trait_fn: Some(_), .. }) => {
-                        self.impl_trait_ty_to_ty(def_id, lifetimes)
-                    }
-                    // This arm is for `impl Trait` in the types of statics,
-                    // constants, locals and type aliases. These capture all
-                    // parent lifetimes, so they can use their identity subst.
-                    hir::ItemKind::OpaqueTy(hir::OpaqueTy { impl_trait_fn: None, .. }) => {
-                        let substs = InternalSubsts::identity_for_item(tcx, def_id);
-                        tcx.mk_opaque(def_id, substs)
+                    hir::ItemKind::OpaqueTy(hir::OpaqueTy { impl_trait_fn, .. }) => {
+                        self.impl_trait_ty_to_ty(def_id, lifetimes, impl_trait_fn.is_some())
                     }
                     ref i => bug!("`impl Trait` pointed to non-opaque type?? {:#?}", i),
                 }
@@ -2911,6 +2900,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         &self,
         def_id: DefId,
         lifetimes: &[hir::GenericArg<'_>],
+        replace_parent_lifetimes: bool,
     ) -> Ty<'tcx> {
         debug!("impl_trait_ty_to_ty(def_id={:?}, lifetimes={:?})", def_id, lifetimes);
         let tcx = self.tcx();
@@ -2932,9 +2922,18 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     _ => bug!(),
                 }
             } else {
-                // Replace all parent lifetimes with `'static`.
                 match param.kind {
-                    GenericParamDefKind::Lifetime => tcx.lifetimes.re_static.into(),
+                    // For RPIT (return position impl trait), only lifetimes
+                    // mentioned in the impl Trait predicate are captured by
+                    // the opaque type, so the lifetime parameters from the
+                    // parent item need to be replaced with `'static`.
+                    //
+                    // For `impl Trait` in the types of statics, constants,
+                    // locals and type aliases. These capture all parent
+                    // lifetimes, so they can use their identity subst.
+                    GenericParamDefKind::Lifetime if replace_parent_lifetimes => {
+                        tcx.lifetimes.re_static.into()
+                    }
                     _ => tcx.mk_param_from_def(param),
                 }
             }
