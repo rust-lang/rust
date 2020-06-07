@@ -205,6 +205,12 @@ impl NonConstOp for CellBorrow {
 #[derive(Debug)]
 pub struct MutBorrow;
 impl NonConstOp for MutBorrow {
+    fn is_allowed_in_item(&self, ccx: &ConstCx<'_, '_>) -> bool {
+        // Forbid everywhere except in const fn
+        ccx.const_kind() == hir::ConstContext::ConstFn
+            && ccx.tcx.features().enabled(Self::feature_gate().unwrap())
+    }
+
     fn feature_gate() -> Option<Symbol> {
         Some(sym::const_mut_refs)
     }
