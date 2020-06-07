@@ -307,8 +307,13 @@ impl<'tcx> SaveContext<'tcx> {
                 let name = item.ident.to_string();
                 let qualname = format!("::{}", self.tcx.def_path_str(def_id));
                 filter!(self.span_utils, item.ident.span);
-                let value =
-                    enum_def_to_string(def, generics, item.ident.name, item.span, &item.vis);
+                let value = enum_def_to_string(
+                    def,
+                    generics,
+                    item.ident.name,
+                    self.tcx.hir().span(item.hir_id()),
+                    &item.vis,
+                );
                 Some(Data::DefData(Def {
                     kind: DefKind::Enum,
                     id: id_from_def_id(def_id),
@@ -899,7 +904,9 @@ impl<'l> Visitor<'l> for PathCollector<'l> {
             hir::PatKind::Binding(bm, _, ident, _) => {
                 debug!(
                     "PathCollector, visit ident in pat {}: {:?} {:?}",
-                    ident, p.span, ident.span
+                    ident,
+                    self.tcx.hir().span(p.hir_id),
+                    ident.span
                 );
                 let immut = match bm {
                     // Even if the ref is mut, you can't change the ref, only

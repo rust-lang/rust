@@ -128,7 +128,7 @@ impl<'tcx> DumpVisitor<'tcx> {
         self.save_ctxt.lookup_def_id(ref_id)
     }
 
-    pub fn dump_crate_info(&mut self, name: &str, krate: &hir::Crate<'_>) {
+    pub fn dump_crate_info(&mut self, name: &str, _krate: &hir::Crate<'_>) {
         let source_file = self.tcx.sess.local_crate_source_file.as_ref();
         let crate_root = source_file.map(|source_file| {
             let source_file = Path::new(source_file);
@@ -151,7 +151,7 @@ impl<'tcx> DumpVisitor<'tcx> {
             },
             crate_root: crate_root.unwrap_or_else(|| "<no source>".to_owned()),
             external_crates: self.save_ctxt.get_external_crates(),
-            span: self.span_from_span(krate.item.span),
+            span: self.span_from_span(self.tcx.hir().span(hir::CRATE_HIR_ID)),
         };
 
         self.dumper.crate_prelude(data);
@@ -376,7 +376,7 @@ impl<'tcx> DumpVisitor<'tcx> {
         self.nest_typeck_results(item.def_id, |v| {
             let body = map.body(body);
             if let Some(fn_data) = v.save_ctxt.get_item_data(item) {
-                down_cast_data!(fn_data, DefData, item.span);
+                down_cast_data!(fn_data, DefData, v.tcx.hir().span(item.hir_id()));
                 v.process_formals(body.params, &fn_data.qualname);
                 v.process_generic_params(ty_params, &fn_data.qualname, item.hir_id());
 
@@ -403,7 +403,7 @@ impl<'tcx> DumpVisitor<'tcx> {
     ) {
         self.nest_typeck_results(item.def_id, |v| {
             if let Some(var_data) = v.save_ctxt.get_item_data(item) {
-                down_cast_data!(var_data, DefData, item.span);
+                down_cast_data!(var_data, DefData, v.tcx.hir().span(item.hir_id()));
                 v.dumper.dump_def(&access_from!(v.save_ctxt, item, item.hir_id()), var_data);
             }
             v.visit_ty(&typ);
@@ -463,7 +463,7 @@ impl<'tcx> DumpVisitor<'tcx> {
         def: &'tcx hir::VariantData<'tcx>,
         ty_params: &'tcx hir::Generics<'tcx>,
     ) {
-        debug!("process_struct {:?} {:?}", item, item.span);
+        debug!("process_struct {:?} {:?}", item, self.tcx.hir().span(item.hir_id()));
         let name = item.ident.to_string();
         let qualname = format!("::{}", self.tcx.def_path_str(item.def_id.to_def_id()));
 
@@ -537,7 +537,7 @@ impl<'tcx> DumpVisitor<'tcx> {
             None => return,
             Some(data) => data,
         };
-        down_cast_data!(enum_data, DefData, item.span);
+        down_cast_data!(enum_data, DefData, self.tcx.hir().span(item.hir_id()));
 
         let access = access_from!(self.save_ctxt, item, item.hir_id());
 
@@ -627,12 +627,13 @@ impl<'tcx> DumpVisitor<'tcx> {
 
     fn process_impl(&mut self, item: &'tcx hir::Item<'tcx>, impl_: &'tcx hir::Impl<'tcx>) {
         if let Some(impl_data) = self.save_ctxt.get_item_data(item) {
-            if !self.span.filter_generated(item.span) {
+            let item_span = self.tcx.hir().span(item.hir_id());
+            if !self.span.filter_generated(item_span) {
                 if let super::Data::RelationData(rel, imp) = impl_data {
                     self.dumper.dump_relation(rel);
                     self.dumper.dump_impl(imp);
                 } else {
-                    span_bug!(item.span, "unexpected data kind: {:?}", impl_data);
+                    span_bug!(item_span, "unexpected data kind: {:?}", impl_data);
                 }
             }
         }
@@ -735,7 +736,7 @@ impl<'tcx> DumpVisitor<'tcx> {
     // `item` is the module in question, represented as an( item.
     fn process_mod(&mut self, item: &'tcx hir::Item<'tcx>) {
         if let Some(mod_data) = self.save_ctxt.get_item_data(item) {
-            down_cast_data!(mod_data, DefData, item.span);
+            down_cast_data!(mod_data, DefData, self.tcx.hir().span(item.hir_id()));
             self.dumper.dump_def(&access_from!(self.save_ctxt, item, item.hir_id()), mod_data);
         }
     }
@@ -801,8 +802,8 @@ impl<'tcx> DumpVisitor<'tcx> {
             if let hir::QPath::Resolved(_, path) = path {
                 self.write_sub_paths_truncated(path);
             }
-            down_cast_data!(struct_lit_data, RefData, ex.span);
-            if !generated_code(ex.span) {
+            down_cast_data!(struct_lit_data, RefData, self.tcx.hir().span(ex.hir_id));
+            if !generated_code(self.tcx.hir().span(ex.hir_id)) {
                 self.dumper.dump_ref(struct_lit_data);
             }
 
@@ -826,10 +827,11 @@ impl<'tcx> DumpVisitor<'tcx> {
         seg: &'tcx hir::PathSegment<'tcx>,
         args: &'tcx [hir::Expr<'tcx>],
     ) {
-        debug!("process_method_call {:?} {:?}", ex, ex.span);
+        let ex_span = self.tcx.hir().span(ex.hir_id);
+        debug!("process_method_call {:?} {:?}", ex, ex_span);
         if let Some(mcd) = self.save_ctxt.get_expr_data(ex) {
-            down_cast_data!(mcd, RefData, ex.span);
-            if !generated_code(ex.span) {
+            down_cast_data!(mcd, RefData, ex_span);
+            if !generated_code(ex_span) {
                 self.dumper.dump_ref(mcd);
             }
         }
@@ -953,7 +955,9 @@ impl<'tcx> DumpVisitor<'tcx> {
     /// If the span is not macro-generated, do nothing, else use callee and
     /// callsite spans to record macro definition and use data, using the
     /// mac_uses and mac_defs sets to prevent multiples.
-    fn process_macro_use(&mut self, _span: Span) {
+    fn process_macro_use(&mut self, _hir_id: hir::HirId) {
+        //let span = self.tcx.hir().span(_hir_id);
+        //
         // FIXME if we're not dumping the defs (see below), there is no point
         // dumping refs either.
         // let source_span = span.source_callsite();
@@ -990,8 +994,9 @@ impl<'tcx> DumpVisitor<'tcx> {
     }
 
     fn process_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>, trait_id: DefId) {
-        self.process_macro_use(trait_item.span);
-        let vis_span = trait_item.span.shrink_to_lo();
+        self.process_macro_use(trait_item.hir_id());
+        let trait_item_span = self.tcx.hir().span(trait_item.hir_id());
+        let vis_span = trait_item_span.shrink_to_lo();
         match trait_item.kind {
             hir::TraitItemKind::Const(ref ty, body) => {
                 let body = body.map(|b| &self.tcx.hir().body(b).value);
@@ -1018,7 +1023,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                     trait_item.ident,
                     &trait_item.generics,
                     &respan,
-                    trait_item.span,
+                    trait_item_span,
                 );
             }
             hir::TraitItemKind::Type(ref bounds, ref default_ty) => {
@@ -1040,7 +1045,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                             span,
                             name,
                             qualname,
-                            value: self.span.snippet(trait_item.span),
+                            value: self.span.snippet(self.tcx.hir().span(trait_item.hir_id())),
                             parent: Some(id_from_def_id(trait_id)),
                             children: vec![],
                             decl_id: None,
@@ -1065,7 +1070,7 @@ impl<'tcx> DumpVisitor<'tcx> {
     }
 
     fn process_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>, impl_id: DefId) {
-        self.process_macro_use(impl_item.span);
+        self.process_macro_use(impl_item.hir_id());
         match impl_item.kind {
             hir::ImplItemKind::Const(ref ty, body) => {
                 let body = self.tcx.hir().body(body);
@@ -1088,7 +1093,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                     impl_item.ident,
                     &impl_item.generics,
                     &impl_item.vis,
-                    impl_item.span,
+                    self.tcx.hir().span(impl_item.hir_id()),
                 );
             }
             hir::ImplItemKind::TyAlias(ref ty) => {
@@ -1106,7 +1111,9 @@ impl<'tcx> DumpVisitor<'tcx> {
             format!("::{}", self.tcx.def_path_str(self.tcx.hir().local_def_id(id).to_def_id()));
 
         let sm = self.tcx.sess.source_map();
-        let filename = sm.span_to_filename(krate.item.span);
+        let span = self.tcx.hir().span(hir::CRATE_HIR_ID);
+        let filename = sm.span_to_filename(span);
+        let span = self.span_from_span(span);
         let data_id = id_from_hir_id(id, &self.save_ctxt);
         let children = krate
             .item
@@ -1115,7 +1122,6 @@ impl<'tcx> DumpVisitor<'tcx> {
             .iter()
             .map(|i| id_from_def_id(i.def_id.to_def_id()))
             .collect();
-        let span = self.span_from_span(krate.item.span);
         let attrs = self.tcx.hir().attrs(id);
 
         self.dumper.dump_def(
@@ -1158,7 +1164,7 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
-        self.process_macro_use(item.span);
+        self.process_macro_use(item.hir_id());
         match item.kind {
             hir::ItemKind::Use(path, hir::UseKind::Single) => {
                 let sub_span = path.segments.last().unwrap().ident.span;
@@ -1190,8 +1196,9 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
 
                 // Otherwise it's a span with wrong macro expansion info, which
                 // we don't want to track anyway, since it's probably macro-internal `use`
-                if let Some(sub_span) = self.span.sub_span_of_star(item.span) {
-                    if !self.span.filter_generated(item.span) {
+                let item_span = self.tcx.hir().span(item.hir_id());
+                if let Some(sub_span) = self.span.sub_span_of_star(item_span) {
+                    if !self.span.filter_generated(item_span) {
                         let access = access_from!(self.save_ctxt, item, item.hir_id());
                         let span = self.span_from_span(sub_span);
                         let parent =
@@ -1318,10 +1325,10 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
     }
 
     fn visit_ty(&mut self, t: &'tcx hir::Ty<'tcx>) {
-        self.process_macro_use(t.span);
+        self.process_macro_use(t.hir_id);
         match t.kind {
             hir::TyKind::Path(ref path) => {
-                if generated_code(t.span) {
+                if generated_code(self.tcx.hir().span(t.hir_id)) {
                     return;
                 }
 
@@ -1357,7 +1364,7 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
 
     fn visit_expr(&mut self, ex: &'tcx hir::Expr<'tcx>) {
         debug!("visit_expr {:?}", ex.kind);
-        self.process_macro_use(ex.span);
+        self.process_macro_use(ex.hir_id);
         match ex.kind {
             hir::ExprKind::Struct(ref path, ref fields, ref rest) => {
                 let hir_expr = self.save_ctxt.tcx.hir().expect_expr(ex.hir_id);
@@ -1378,8 +1385,9 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
                 self.visit_expr(&sub_ex);
 
                 if let Some(field_data) = self.save_ctxt.get_expr_data(ex) {
-                    down_cast_data!(field_data, RefData, ex.span);
-                    if !generated_code(ex.span) {
+                    let ex_span = self.tcx.hir().span(ex.hir_id);
+                    down_cast_data!(field_data, RefData, ex_span);
+                    if !generated_code(ex_span) {
                         self.dumper.dump_ref(field_data);
                     }
                 }
@@ -1418,7 +1426,7 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
     }
 
     fn visit_pat(&mut self, p: &'tcx hir::Pat<'tcx>) {
-        self.process_macro_use(p.span);
+        self.process_macro_use(p.hir_id);
         self.process_pat(p);
     }
 
@@ -1435,12 +1443,12 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
     }
 
     fn visit_stmt(&mut self, s: &'tcx hir::Stmt<'tcx>) {
-        self.process_macro_use(s.span);
+        self.process_macro_use(s.hir_id);
         intravisit::walk_stmt(self, s)
     }
 
     fn visit_local(&mut self, l: &'tcx hir::Local<'tcx>) {
-        self.process_macro_use(l.span);
+        self.process_macro_use(l.hir_id);
         self.process_var_decl(&l.pat);
 
         // Just walk the initialiser and type (don't want to walk the pattern again).
@@ -1454,7 +1462,7 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
         match item.kind {
             hir::ForeignItemKind::Fn(decl, _, ref generics) => {
                 if let Some(fn_data) = self.save_ctxt.get_extern_item_data(item) {
-                    down_cast_data!(fn_data, DefData, item.span);
+                    down_cast_data!(fn_data, DefData, self.tcx.hir().span(item.hir_id()));
 
                     self.process_generic_params(generics, &fn_data.qualname, item.hir_id());
                     self.dumper.dump_def(&access, fn_data);
@@ -1470,7 +1478,7 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
             }
             hir::ForeignItemKind::Static(ref ty, _) => {
                 if let Some(var_data) = self.save_ctxt.get_extern_item_data(item) {
-                    down_cast_data!(var_data, DefData, item.span);
+                    down_cast_data!(var_data, DefData, self.tcx.hir().span(item.hir_id()));
                     self.dumper.dump_def(&access, var_data);
                 }
 
@@ -1478,7 +1486,7 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
             }
             hir::ForeignItemKind::Type => {
                 if let Some(var_data) = self.save_ctxt.get_extern_item_data(item) {
-                    down_cast_data!(var_data, DefData, item.span);
+                    down_cast_data!(var_data, DefData, self.tcx.hir().span(item.hir_id()));
                     self.dumper.dump_def(&access, var_data);
                 }
             }
