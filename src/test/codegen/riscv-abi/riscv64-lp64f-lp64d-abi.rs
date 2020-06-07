@@ -4,7 +4,7 @@
 // only-linux
 #![crate_type = "lib"]
 
-// CHECK: define void @f_fpr_tracking(float, float, float, float, float, float, float, float, i8 zeroext %i)
+// CHECK: define void @f_fpr_tracking(float %0, float %1, float %2, float %3, float %4, float %5, float %6, float %7, i8 zeroext %i)
 #[no_mangle]
 pub extern "C" fn f_fpr_tracking(
     a: f32,
@@ -30,7 +30,7 @@ pub struct FloatFloat {
     g: f32,
 }
 
-// CHECK: define void @f_float_s_arg(float)
+// CHECK: define void @f_float_s_arg(float %0)
 #[no_mangle]
 pub extern "C" fn f_float_s_arg(a: Float) {}
 
@@ -40,7 +40,7 @@ pub extern "C" fn f_ret_float_s() -> Float {
     Float { f: 1. }
 }
 
-// CHECK: define void @f_float_float_s_arg({ float, float })
+// CHECK: define void @f_float_float_s_arg({ float, float } %0)
 #[no_mangle]
 pub extern "C" fn f_float_float_s_arg(a: FloatFloat) {}
 
@@ -50,7 +50,7 @@ pub extern "C" fn f_ret_float_float_s() -> FloatFloat {
     FloatFloat { f: 1., g: 2. }
 }
 
-// CHECK: define void @f_float_float_s_arg_insufficient_fprs(float, float, float, float, float, float, float, i64)
+// CHECK: define void @f_float_float_s_arg_insufficient_fprs(float %0, float %1, float %2, float %3, float %4, float %5, float %6, i64 %7)
 #[no_mangle]
 pub extern "C" fn f_float_float_s_arg_insufficient_fprs(
     a: f32,
@@ -88,7 +88,7 @@ pub struct FloatInt64 {
     i: i64,
 }
 
-// CHECK: define void @f_float_int8_s_arg({ float, i8 })
+// CHECK: define void @f_float_int8_s_arg({ float, i8 } %0)
 #[no_mangle]
 pub extern "C" fn f_float_int8_s_arg(a: FloatInt8) {}
 
@@ -98,7 +98,7 @@ pub extern "C" fn f_ret_float_int8_s() -> FloatInt8 {
     FloatInt8 { f: 1., i: 2 }
 }
 
-// CHECK: define void @f_float_int32_s_arg({ float, i32 })
+// CHECK: define void @f_float_int32_s_arg({ float, i32 } %0)
 #[no_mangle]
 pub extern "C" fn f_float_int32_s_arg(a: FloatInt32) {}
 
@@ -108,7 +108,7 @@ pub extern "C" fn f_ret_float_int32_s() -> FloatInt32 {
     FloatInt32 { f: 1., i: 2 }
 }
 
-// CHECK: define void @f_float_uint8_s_arg({ float, i8 })
+// CHECK: define void @f_float_uint8_s_arg({ float, i8 } %0)
 #[no_mangle]
 pub extern "C" fn f_float_uint8_s_arg(a: FloatUInt8) {}
 
@@ -118,7 +118,7 @@ pub extern "C" fn f_ret_float_uint8_s() -> FloatUInt8 {
     FloatUInt8 { f: 1., i: 2 }
 }
 
-// CHECK: define void @f_float_int64_s_arg({ float, i64 })
+// CHECK: define void @f_float_int64_s_arg({ float, i64 } %0)
 #[no_mangle]
 pub extern "C" fn f_float_int64_s_arg(a: FloatInt64) {}
 
@@ -128,7 +128,7 @@ pub extern "C" fn f_ret_float_int64_s() -> FloatInt64 {
     FloatInt64 { f: 1., i: 2 }
 }
 
-// CHECK: define void @f_float_int8_s_arg_insufficient_gprs(i32 signext %a, i32 signext %b, i32 signext %c, i32 signext %d, i32 signext %e, i32 signext %f, i32 signext %g, i32 signext %h, i64)
+// CHECK: define void @f_float_int8_s_arg_insufficient_gprs(i32 signext %a, i32 signext %b, i32 signext %c, i32 signext %d, i32 signext %e, i32 signext %f, i32 signext %g, i32 signext %h, i64 %0)
 #[no_mangle]
 pub extern "C" fn f_float_int8_s_arg_insufficient_gprs(
     a: i32,
@@ -143,7 +143,7 @@ pub extern "C" fn f_float_int8_s_arg_insufficient_gprs(
 ) {
 }
 
-// CHECK: define void @f_struct_float_int8_insufficient_fprs(float, float, float, float, float, float, float, float, i64)
+// CHECK: define void @f_struct_float_int8_insufficient_fprs(float %0, float %1, float %2,  float %3, float %4, float %5, float %6, float %7, i64 %8)
 #[no_mangle]
 pub extern "C" fn f_struct_float_int8_insufficient_fprs(
     a: f32,
@@ -163,7 +163,7 @@ pub struct FloatArr1 {
     a: [f32; 1],
 }
 
-// CHECK: define void @f_floatarr1_s_arg(float)
+// CHECK: define void @f_floatarr1_s_arg(float %0)
 #[no_mangle]
 pub extern "C" fn f_floatarr1_s_arg(a: FloatArr1) {}
 
@@ -178,7 +178,7 @@ pub struct FloatArr2 {
     a: [f32; 2],
 }
 
-// CHECK: define void @f_floatarr2_s_arg({ float, float })
+// CHECK: define void @f_floatarr2_s_arg({ float, float } %0)
 #[no_mangle]
 pub extern "C" fn f_floatarr2_s_arg(a: FloatArr2) {}
 
@@ -198,7 +198,7 @@ pub struct FloatArr2Tricky1 {
     g: [Tricky1; 2],
 }
 
-// CHECK: define void @f_floatarr2_tricky1_s_arg({ float, float })
+// CHECK: define void @f_floatarr2_tricky1_s_arg({ float, float } %0)
 #[no_mangle]
 pub extern "C" fn f_floatarr2_tricky1_s_arg(a: FloatArr2Tricky1) {}
 
@@ -217,7 +217,7 @@ pub struct FloatArr2Tricky2 {
     g: [Tricky1; 2],
 }
 
-// CHECK: define void @f_floatarr2_tricky2_s_arg({ float, float })
+// CHECK: define void @f_floatarr2_tricky2_s_arg({ float, float } %0)
 #[no_mangle]
 pub extern "C" fn f_floatarr2_tricky2_s_arg(a: FloatArr2Tricky2) {}
 
@@ -234,7 +234,7 @@ pub struct IntFloatInt {
     c: i32,
 }
 
-// CHECK: define void @f_int_float_int_s_arg([2 x i64])
+// CHECK: define void @f_int_float_int_s_arg([2 x i64] %0)
 #[no_mangle]
 pub extern "C" fn f_int_float_int_s_arg(a: IntFloatInt) {}
 
@@ -251,7 +251,7 @@ pub struct CharCharFloat {
     c: f32,
 }
 
-// CHECK: define void @f_char_char_float_s_arg(i64)
+// CHECK: define void @f_char_char_float_s_arg(i64 %0)
 #[no_mangle]
 pub extern "C" fn f_char_char_float_s_arg(a: CharCharFloat) {}
 
@@ -266,7 +266,7 @@ pub union FloatU {
     a: f32,
 }
 
-// CHECK: define void @f_float_u_arg(i64)
+// CHECK: define void @f_float_u_arg(i64 %0)
 #[no_mangle]
 pub extern "C" fn f_float_u_arg(a: FloatU) {}
 
