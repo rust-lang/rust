@@ -167,32 +167,33 @@ impl<'l, 'txc> LateLintPass<'l, 'txc> for MacroUseImports {
                     [] => unreachable!("this should never be empty"),
                     [_] => unreachable!("path must have two segments ?"),
                     [root, item] => {
-                        if !check_dup.contains(&item.to_string()) {
+                        if !check_dup.contains(&(*item).to_string()) {
                             used.entry((root.to_string(), span))
-                                .or_insert(vec![])
+                                .or_insert_with(|| vec![])
                                 .push(item.to_string());
                             check_dup.push(item.to_string());
                         }
                     },
                     [root, rest @ ..] => {
-                        if !rest.iter().all(|item| !check_dup.contains(&item.to_string())) {
-                            let mut rest = rest.to_vec();
-                            rest.sort();
-                            used.entry((root.to_string(), span))
-                                .or_insert(vec![])
-                                .push(rest.join("::"));
-                            check_dup.extend(rest.iter().map(ToString::to_string));
-                        } else {
-                            let mut filtered = rest
+                        if rest.iter().all(|item| !check_dup.contains(&(*item).to_string())) {
+                            let filtered = rest
                                 .iter()
-                                .filter(|item| !check_dup.contains(&item.to_string()))
-                                .map(ToString::to_string)
+                                .filter_map(|item| if check_dup.contains(&(*item).to_string()) {
+                                    None
+                                } else {
+                                    Some(item.to_string())
+                                })
                                 .collect::<Vec<_>>();
-                            filtered.sort();
-                            used.entry((root.to_string(), span))
-                                .or_insert(vec![])
+                            used.entry(((*root).to_string(), span))
+                                .or_insert_with(|| vec![])
                                 .push(filtered.join("::"));
                             check_dup.extend(filtered);
+                        } else {
+                            let rest = rest.to_vec();
+                            used.entry((root.to_string(), span))
+                                .or_insert_with(|| vec![])
+                                .push(rest.join("::"));
+                            check_dup.extend(rest.iter().map(ToString::to_string));
                         }
                     },
                 }
@@ -212,7 +213,7 @@ impl<'l, 'txc> LateLintPass<'l, 'txc> for MacroUseImports {
         // such as `std::prelude::v1::foo` or some other macro that expands to an import.
         if self.mac_refs.is_empty() {
             for (span, import) in suggestions {
-                let help = format!("use {}", import);
+                let help = format!("use {};", import);
                 span_lint_and_sugg(
                     cx,
                     MACRO_USE_IMPORTS,
