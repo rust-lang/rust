@@ -11,6 +11,15 @@ pub enum Abi {
     // N.B., this ordering MUST match the AbiDatas array below.
     // (This is ensured by the test indices_are_correct().)
 
+    // Multiplatform / generic ABIs
+    //
+    // These ABIs come first because every time we add a new ABI, we
+    // have to re-bless all the hashing tests. These are used in many
+    // places, so giving them stable values reduces test churn. The
+    // specific values are meaningless.
+    Rust = 0,
+    C = 1,
+
     // Single platform ABIs
     Cdecl,
     Stdcall,
@@ -27,8 +36,6 @@ pub enum Abi {
     EfiApi,
 
     // Multiplatform / generic ABIs
-    Rust,
-    C,
     System,
     RustIntrinsic,
     RustCall,
@@ -49,6 +56,9 @@ pub struct AbiData {
 
 #[allow(non_upper_case_globals)]
 const AbiDatas: &[AbiData] = &[
+    // Cross-platform ABIs
+    AbiData { abi: Abi::Rust, name: "Rust", generic: true },
+    AbiData { abi: Abi::C, name: "C", generic: true },
     // Platform-specific ABIs
     AbiData { abi: Abi::Cdecl, name: "cdecl", generic: false },
     AbiData { abi: Abi::Stdcall, name: "stdcall", generic: false },
@@ -64,8 +74,6 @@ const AbiDatas: &[AbiData] = &[
     AbiData { abi: Abi::AmdGpuKernel, name: "amdgpu-kernel", generic: false },
     AbiData { abi: Abi::EfiApi, name: "efiapi", generic: false },
     // Cross-platform ABIs
-    AbiData { abi: Abi::Rust, name: "Rust", generic: true },
-    AbiData { abi: Abi::C, name: "C", generic: true },
     AbiData { abi: Abi::System, name: "system", generic: true },
     AbiData { abi: Abi::RustIntrinsic, name: "rust-intrinsic", generic: true },
     AbiData { abi: Abi::RustCall, name: "rust-call", generic: true },
