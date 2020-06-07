@@ -119,7 +119,7 @@ use crate::sys_common::poison::{self, LockResult, TryLockError, TryLockResult};
 /// const N: usize = 3;
 ///
 /// // Some data to work with in multiple threads.
-/// let data_mutex = Arc::new(Mutex::new([1, 2, 3, 4]));
+/// let data_mutex = Arc::new(Mutex::new(vec![1, 2, 3, 4]));
 /// // The result of all the work across all threads.
 /// let res_mutex = Arc::new(Mutex::new(0));
 ///
@@ -131,9 +131,10 @@ use crate::sys_common::poison::{self, LockResult, TryLockError, TryLockResult};
 ///     let res_mutex_clone = Arc::clone(&res_mutex);
 ///
 ///     threads.push(thread::spawn(move || {
-///         let data = *data_mutex_clone.lock().unwrap();
+///         let mut data = data_mutex_clone.lock().unwrap();
 ///         // This is the result of some important and long-ish work.
 ///         let result = data.iter().fold(0, |acc, x| acc + x * 2);
+///         data.push(result);
 ///         // We drop the `data` explicitely because it's not necessary anymore
 ///         // and the thread still has work to do. This allow other threads to
 ///         // start working on the data immediately, without waiting
@@ -143,9 +144,10 @@ use crate::sys_common::poison::{self, LockResult, TryLockError, TryLockResult};
 ///     }));
 /// });
 ///
-/// let data = *data_mutex.lock().unwrap();
+/// let mut data = data_mutex.lock().unwrap();
 /// // This is the result of some important and long-ish work.
 /// let result = data.iter().fold(0, |acc, x| acc + x * 2);
+/// data.push(result);
 /// // We drop the `data` explicitely because it's not necessary anymore
 /// // and the thread still has work to do. This allow other threads to
 /// // start working on the data immediately, without waiting
@@ -166,7 +168,7 @@ use crate::sys_common::poison::{self, LockResult, TryLockError, TryLockResult};
 ///         .expect("The thread creating or execution failed !")
 /// });
 ///
-/// assert_eq!(*res_mutex.lock().unwrap(), 80);
+/// assert_eq!(*res_mutex.lock().unwrap(), 800);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "mutex_type")]
