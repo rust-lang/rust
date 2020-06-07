@@ -310,7 +310,7 @@ impl<'hir> Sig for hir::Ty<'hir> {
             }
             hir::TyKind::Typeof(_)
             | hir::TyKind::Infer
-            | hir::TyKind::Def(..)
+            | hir::TyKind::OpaqueDef(..)
             | hir::TyKind::Path(..)
             | hir::TyKind::Err => Err("Ty"),
         }
