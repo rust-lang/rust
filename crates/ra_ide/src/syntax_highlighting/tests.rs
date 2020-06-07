@@ -7,9 +7,21 @@ use crate::{
     FileRange, TextRange,
 };
 
+/// Highlights the code given by the `ra_fixture` argument, renders the
+/// result as HTML, and compares it with the HTML file given as `snapshot`.
+/// Note that the `snapshot` file is overwritten by the rendered HTML.
+fn check_highlighting(ra_fixture: &str, snapshot: &str, rainbow: bool) {
+    let (analysis, file_id) = single_file(ra_fixture);
+    let dst_file = project_dir().join(snapshot);
+    let actual_html = &analysis.highlight_as_html(file_id, rainbow).unwrap();
+    let expected_html = &read_text(&dst_file);
+    fs::write(dst_file, &actual_html).unwrap();
+    assert_eq_text!(expected_html, actual_html);
+}
+
 #[test]
 fn test_highlighting() {
-    let (analysis, file_id) = single_file(
+    check_highlighting(
         r#"
 #[derive(Clone, Debug)]
 struct Foo {
@@ -84,17 +96,14 @@ impl<T> Option<T> {
 }
 "#
         .trim(),
+        "crates/ra_ide/src/snapshots/highlighting.html",
+        false,
     );
-    let dst_file = project_dir().join("crates/ra_ide/src/snapshots/highlighting.html");
-    let actual_html = &analysis.highlight_as_html(file_id, false).unwrap();
-    let expected_html = &read_text(&dst_file);
-    fs::write(dst_file, &actual_html).unwrap();
-    assert_eq_text!(expected_html, actual_html);
 }
 
 #[test]
 fn test_rainbow_highlighting() {
-    let (analysis, file_id) = single_file(
+    check_highlighting(
         r#"
 fn main() {
     let hello = "hello";
@@ -110,12 +119,9 @@ fn bar() {
 }
 "#
         .trim(),
+        "crates/ra_ide/src/snapshots/rainbow_highlighting.html",
+        true,
     );
-    let dst_file = project_dir().join("crates/ra_ide/src/snapshots/rainbow_highlighting.html");
-    let actual_html = &analysis.highlight_as_html(file_id, true).unwrap();
-    let expected_html = &read_text(&dst_file);
-    fs::write(dst_file, &actual_html).unwrap();
-    assert_eq_text!(expected_html, actual_html);
 }
 
 #[test]
@@ -153,7 +159,7 @@ fn test_ranges() {
 
 #[test]
 fn test_flattening() {
-    let (analysis, file_id) = single_file(
+    check_highlighting(
         r##"
 fn fixture(ra_fixture: &str) {}
 
@@ -167,13 +173,9 @@ fn main() {
     );
 }"##
         .trim(),
+        "crates/ra_ide/src/snapshots/highlight_injection.html",
+        false,
     );
-
-    let dst_file = project_dir().join("crates/ra_ide/src/snapshots/highlight_injection.html");
-    let actual_html = &analysis.highlight_as_html(file_id, false).unwrap();
-    let expected_html = &read_text(&dst_file);
-    fs::write(dst_file, &actual_html).unwrap();
-    assert_eq_text!(expected_html, actual_html);
 }
 
 #[test]
@@ -192,7 +194,7 @@ macro_rules! test {}
 fn test_string_highlighting() {
     // The format string detection is based on macro-expansion,
     // thus, we have to copy the macro definition from `std`
-    let (analysis, file_id) = single_file(
+    check_highlighting(
         r#"
 macro_rules! println {
     ($($arg:tt)*) => ({
@@ -250,18 +252,14 @@ fn main() {
     println!("{ничоси}", ничоси = 92);
 }"#
         .trim(),
+        "crates/ra_ide/src/snapshots/highlight_strings.html",
+        false,
     );
-
-    let dst_file = project_dir().join("crates/ra_ide/src/snapshots/highlight_strings.html");
-    let actual_html = &analysis.highlight_as_html(file_id, false).unwrap();
-    let expected_html = &read_text(&dst_file);
-    fs::write(dst_file, &actual_html).unwrap();
-    assert_eq_text!(expected_html, actual_html);
 }
 
 #[test]
 fn test_unsafe_highlighting() {
-    let (analysis, file_id) = single_file(
+    check_highlighting(
         r#"
 unsafe fn unsafe_fn() {}
 
@@ -282,10 +280,7 @@ fn main() {
 }
 "#
         .trim(),
+        "crates/ra_ide/src/snapshots/highlight_unsafe.html",
+        false,
     );
-    let dst_file = project_dir().join("crates/ra_ide/src/snapshots/highlight_unsafe.html");
-    let actual_html = &analysis.highlight_as_html(file_id, false).unwrap();
-    let expected_html = &read_text(&dst_file);
-    fs::write(dst_file, &actual_html).unwrap();
-    assert_eq_text!(expected_html, actual_html);
 }
