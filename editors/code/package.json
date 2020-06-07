@@ -487,10 +487,7 @@
                     "default": true
                 },
                 "rust-analyzer.linkedProjects": {
-                    "markdownDescription": [
-                        "Disable project auto-discovery in favor of explicitly specified set of projects.",
-                        "Elements must be paths pointing to Cargo.toml, rust-project.json, or JSON objects in rust-project.json format"
-                    ],
+                    "markdownDescription": "Disable project auto-discovery in favor of explicitly specified set of projects.  \nElements must be paths pointing to Cargo.toml, rust-project.json, or JSON objects in rust-project.json format",
                     "type": "array",
                     "items": {
                         "type": [
