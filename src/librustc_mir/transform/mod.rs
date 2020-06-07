@@ -193,10 +193,10 @@ pub fn run_passes(
 
     body.phase = mir_phase;
 
-    if mir_phase == MirPhase::Optimized {
+    /*if mir_phase == MirPhase::Optimized {
         validate::Validator { when: format!("end of phase {:?}", mir_phase) }
             .run_pass(tcx, source, body);
-    }
+    }*/
 }
 
 fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> ConstQualifs {
