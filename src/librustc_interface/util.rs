@@ -615,6 +615,12 @@ impl<'a, 'b> ReplaceBodyWithLoop<'a, 'b> {
         matches!(sig.header.constness, ast::Const::Yes(_))
             || matches!(&sig.decl.output, ast::FnRetTy::Ty(ty) if ty.contains_impl_trait())
     }
+
+    /// Keep some `Expr`s that are ultimately assigned `DefId`s. This keeps the `HirId` parent
+    /// mappings correct even after this pass runs.
+    fn should_preserve_expr(e: &ast::Expr) -> bool {
+        matches!(&e.kind, ast::ExprKind::Closure(..) | ast::ExprKind::Async(..))
+    }
 }
 
 impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
@@ -642,6 +648,75 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
 
     fn visit_anon_const(&mut self, c: &mut ast::AnonConst) {
         self.run(true, |s| noop_visit_anon_const(c, s))
+    }
+
+    fn filter_map_expr(&mut self, mut e: P<ast::Expr>) -> Option<P<ast::Expr>> {
+        if self.ignore_item {
+            return noop_filter_map_expr(e, self);
+        }
+
+        if let ast::ExprKind::Closure(.., decl, expr, _) = &mut e.kind {
+            // Replacing a closure body and removing its callsites will break inference. Give
+            // all closures the signature `|| -> !` to work around this.
+            decl.inputs = vec![];
+            if let ast::FnRetTy::Default(_) = decl.output {
+                decl.output = ast::FnRetTy::Ty(P(ast::Ty {
+                    id: self.resolver.next_node_id(),
+                    span: rustc_span::DUMMY_SP,
+                    kind: ast::TyKind::Never,
+                }));
+            }
+
+            // Replace `|| expr` with `|| { expr }` so that `visit_block` gets called on the
+            // closure body.
+            if !matches!(expr.kind, ast::ExprKind::Block(..)) {
+                let new_stmt = ast::Stmt {
+                    kind: ast::StmtKind::Expr(expr.clone()),
+                    id: self.resolver.next_node_id(),
+                    span: expr.span,
+                };
+
+                let new_block = ast::Block {
+                    stmts: vec![new_stmt],
+                    rules: BlockCheckMode::Default,
+                    id: self.resolver.next_node_id(),
+                    span: expr.span,
+                };
+
+                expr.kind = ast::ExprKind::Block(P(new_block), None);
+            }
+        }
+
+        if Self::should_preserve_expr(&e) {
+            self.run(false, |s| noop_filter_map_expr(e, s))
+        } else {
+            noop_filter_map_expr(e, self)
+        }
+    }
+
+    fn flat_map_stmt(&mut self, s: ast::Stmt) -> SmallVec<[ast::Stmt; 1]> {
+        if self.ignore_item {
+            return noop_flat_map_stmt(s, self);
+        }
+
+        let ast::Stmt { id, span, .. } = s;
+        match s.kind {
+            // Replace `let x = || {};` with `|| {};`
+            ast::StmtKind::Local(mut local) if local.init.is_some() => self
+                .filter_map_expr(local.init.take().unwrap())
+                .into_iter()
+                .map(|e| ast::Stmt { kind: ast::StmtKind::Semi(e), id, span })
+                .collect(),
+
+            // Replace `|| {}` with `|| {};`
+            ast::StmtKind::Expr(expr) => self
+                .filter_map_expr(expr)
+                .into_iter()
+                .map(|e| ast::Stmt { kind: ast::StmtKind::Semi(e), id, span })
+                .collect(),
+
+            _ => noop_flat_map_stmt(s, self),
+        }
     }
 
     fn visit_block(&mut self, b: &mut P<ast::Block>) {
@@ -699,7 +774,13 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
             for s in b.stmts {
                 let old_blocks = self.nested_blocks.replace(vec![]);
 
-                stmts.extend(self.flat_map_stmt(s).into_iter().filter(|s| s.is_item()));
+                stmts.extend(self.flat_map_stmt(s).into_iter().filter(|s| {
+                    s.is_item()
+                        || matches!(
+                            &s.kind,
+                            ast::StmtKind::Semi(expr) if Self::should_preserve_expr(expr)
+                        )
+                }));
 
                 // we put a Some in there earlier with that replace(), so this is valid
                 let new_blocks = self.nested_blocks.take().unwrap();
