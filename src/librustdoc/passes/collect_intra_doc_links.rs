@@ -167,7 +167,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         disambiguator: Option<&str>,
         ns: Namespace,
         current_item: &Option<String>,
-        mut parent_id: Option<hir::HirId>,
+        mut parent_id: Option<DefId>,
         extra_fragment: &Option<String>,
         item_opt: Option<&Item>,
     ) -> Result<(Res, Option<String>), ErrorKind> {
@@ -178,8 +178,10 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         // In case this is a re-export, try to resolve the docs relative to the original module.
         // Since we don't document `use` statements,
         // we don't have to consider the case where an item is documented in both the original module and the current module.
+        /*
         let mut module_id = None;
         if let Some(item) = item_opt {
+            debug!("resolving {:?} with item kind {:?}", path_str, item.inner);
             if let ItemEnum::ImportItem(import) = &item.inner {
                 if let Import::Simple(_, source) = import {
                     if let Some(def_id) = source.did {
@@ -214,6 +216,8 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 } else {
                     debug!("glob imports not handled for intra-doc links");
                 }
+            } else {
+                //debug!("item.inner not an import ({:?})", item.inner);
             }
             /*
             if let Some(reexport) = item.reexport {
@@ -257,13 +261,14 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             }
             */
         }
+        */
 
         // In case we're in a module, try to resolve the relative path.
-        if module_id.is_none() {
-            let id = parent_id.or(self.mod_ids.last().cloned());
-            module_id = id.map(|id| cx.tcx.hir().local_def_id(id).to_def_id());
+        if parent_id.is_none() {
+            let id = self.mod_ids.last().cloned();
+            parent_id = id.map(|id| cx.tcx.hir().local_def_id(id).to_def_id());
         }
-        if let Some(module_id) = module_id {
+        if let Some(module_id) = parent_id {
             let result = cx.enter_resolver(|resolver| {
                 resolver.resolve_str_path_error(DUMMY_SP, &path_str, ns, module_id)
             });
@@ -545,6 +550,9 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
         };
 
         // FIXME: get the resolver to work with non-local resolve scopes.
+        use rustc_middle::ty::DefIdTree;
+        let parent_node = self.cx.tcx.parent(item.def_id);
+        /*
         let parent_node = self.cx.as_local_hir_id(item.def_id).and_then(|hir_id| {
             // FIXME: this fails hard for impls in non-module scope, but is necessary for the
             // current `resolve()` implementation.
@@ -553,6 +561,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                 _ => None,
             }
         });
+        */
 
         if parent_node.is_some() {
             debug!("got parent node for {:?} {:?}, id {:?}", item.type_(), item.name, item.def_id);
@@ -563,10 +572,10 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                 if item.attrs.inner_docs {
                     if item_hir_id.unwrap() != hir::CRATE_HIR_ID { item.name.clone() } else { None }
                 } else {
-                    match parent_node.or(self.mod_ids.last().cloned()) {
-                        Some(parent) if parent != hir::CRATE_HIR_ID => {
+                    match parent_node.or(self.mod_ids.last().map(|&local| self.cx.tcx.hir().local_def_id(local).to_def_id())) {
+                        Some(parent) if !parent.is_top_level_module() => {
                             // FIXME: can we pull the parent module's name from elsewhere?
-                            Some(self.cx.tcx.hir().name(parent).to_string())
+                            Some(self.cx.tcx.item_name(parent).to_string())
                         }
                         _ => None,
                     }
