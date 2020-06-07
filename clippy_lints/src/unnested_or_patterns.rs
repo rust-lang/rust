@@ -214,21 +214,21 @@ fn transform_with_focus_on_idx(alternatives: &mut Vec<P<Pat>>, focus_idx: usize)
     let changed = match &mut focus_kind {
         // These pattern forms are "leafs" and do not have sub-patterns.
         // Therefore they are not some form of constructor `C`,
-        // with which a pattern `C(P0)` may be formed,
-        // which we would want to join with other `C(Pj)`s.
+        // with which a pattern `C(p_0)` may be formed,
+        // which we would want to join with other `C(p_j)`s.
         Ident(.., None) | Lit(_) | Wild | Path(..) | Range(..) | Rest | MacCall(_)
         // Dealt with elsewhere.
         | Or(_) | Paren(_) => false,
         // Transform `box x | ... | box y` into `box (x | y)`.
         //
-        // The cases below until `Slice(...)` deal *singleton* products.
+        // The cases below until `Slice(...)` deal with *singleton* products.
         // These patterns have the shape `C(p)`, and not e.g., `C(p0, ..., pn)`.
         Box(target) => extend_with_matching(
             target, start, alternatives,
             |k| matches!(k, Box(_)),
             |k| always_pat!(k, Box(p) => p),
         ),
-        // Transform `&m x | ... | &m y` into `&m (x, y)`.
+        // Transform `&m x | ... | &m y` into `&m (x | y)`.
         Ref(target, m1) => extend_with_matching(
             target, start, alternatives,
             |k| matches!(k, Ref(_, m2) if m1 == m2), // Mutabilities must match.
@@ -247,13 +247,13 @@ fn transform_with_focus_on_idx(alternatives: &mut Vec<P<Pat>>, focus_idx: usize)
             |k, ps1, idx| matches!(k, Slice(ps2) if eq_pre_post(ps1, ps2, idx)),
             |k| always_pat!(k, Slice(ps) => ps),
         ),
-        // Transform `(pre, x, post) | ... | (pre, y, post)` into `(pre, x | y, post]`.
+        // Transform `(pre, x, post) | ... | (pre, y, post)` into `(pre, x | y, post)`.
         Tuple(ps1) => extend_with_matching_product(
             ps1, start, alternatives,
             |k, ps1, idx| matches!(k, Tuple(ps2) if eq_pre_post(ps1, ps2, idx)),
             |k| always_pat!(k, Tuple(ps) => ps),
         ),
-        // Transform `S(pre, x, post) | ... | S(pre, y, post)` into `S(pre, x | y, post]`.
+        // Transform `S(pre, x, post) | ... | S(pre, y, post)` into `S(pre, x | y, post)`.
         TupleStruct(path1, ps1) => extend_with_matching_product(
             ps1, start, alternatives,
             |k, ps1, idx| matches!(
