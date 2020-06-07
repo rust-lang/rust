@@ -233,6 +233,8 @@ where
                     .patch_terminator(bb, TerminatorKind::Goto { target: self.succ });
             }
             DropStyle::Static => {
+                let loc = self.terminator_loc(bb);
+                self.elaborator.clear_drop_flag(loc, self.path, DropFlagMode::Deep);
                 self.elaborator.patch().patch_terminator(
                     bb,
                     TerminatorKind::Drop {
@@ -243,7 +245,9 @@ where
                 );
             }
             DropStyle::Conditional => {
-                let drop_bb = self.complete_drop(self.succ, self.unwind);
+                let unwind = self.unwind; // FIXME(#43234)
+                let succ = self.succ;
+                let drop_bb = self.complete_drop(Some(DropFlagMode::Deep), succ, unwind);
                 self.elaborator
                     .patch()
                     .patch_terminator(bb, TerminatorKind::Goto { target: drop_bb });
@@ -315,7 +319,7 @@ where
                 // our own drop flag.
                 path: self.path,
             }
-            .complete_drop(succ, unwind)
+            .complete_drop(None, succ, unwind)
         }
     }
 
@@ -344,7 +348,13 @@ where
         // Clear the "master" drop flag at the end. This is needed
         // because the "master" drop protects the ADT's discriminant,
         // which is invalidated after the ADT is dropped.
-        (self.drop_flag_reset_block(DropFlagMode::Shallow, self.succ, self.unwind), self.unwind)
+        let (succ, unwind) = (self.succ, self.unwind); // FIXME(#43234)
+        (
+            self.drop_flag_reset_block(DropFlagMode::Shallow, succ, unwind),
+            unwind.map(|unwind| {
+                self.drop_flag_reset_block(DropFlagMode::Shallow, unwind, Unwind::InCleanup)
+            }),
+        )
     }
 
     /// Creates a full drop ladder, consisting of 2 connected half-drop-ladders
@@ -878,7 +888,11 @@ where
                     self.open_drop_for_adt(def, substs)
                 }
             }
-            ty::Dynamic(..) => self.complete_drop(self.succ, self.unwind),
+            ty::Dynamic(..) => {
+                let unwind = self.unwind; // FIXME(#43234)
+                let succ = self.succ;
+                self.complete_drop(Some(DropFlagMode::Deep), succ, unwind)
+            }
             ty::Array(ety, size) => {
                 let size = size.try_eval_usize(self.tcx(), self.elaborator.param_env());
                 self.open_drop_for_array(ety, size)
@@ -889,10 +903,20 @@ where
         }
     }
 
-    fn complete_drop(&mut self, succ: BasicBlock, unwind: Unwind) -> BasicBlock {
-        debug!("complete_drop(succ={:?}, unwind={:?})", succ, unwind);
+    fn complete_drop(
+        &mut self,
+        drop_mode: Option<DropFlagMode>,
+        succ: BasicBlock,
+        unwind: Unwind,
+    ) -> BasicBlock {
+        debug!("complete_drop({:?},{:?})", self, drop_mode);
 
         let drop_block = self.drop_block(succ, unwind);
+        let drop_block = if let Some(mode) = drop_mode {
+            self.drop_flag_reset_block(mode, drop_block, unwind)
+        } else {
+            drop_block
+        };
 
         self.drop_flag_test_block(drop_block, succ, unwind)
     }
@@ -907,11 +931,6 @@ where
     ) -> BasicBlock {
         debug!("drop_flag_reset_block({:?},{:?})", self, mode);
 
-        if unwind.is_cleanup() {
-            // The drop flag isn't read again on the unwind path, so don't
-            // bother setting it.
-            return succ;
-        }
         let block = self.new_block(unwind, TerminatorKind::Goto { target: succ });
         let block_start = Location { block, statement_index: 0 };
         self.elaborator.clear_drop_flag(block_start, self.path, mode);
@@ -1026,6 +1045,11 @@ where
 
     fn new_temp(&mut self, ty: Ty<'tcx>) -> Local {
         self.elaborator.patch().new_temp(ty, self.source_info.span)
+    }
+
+    fn terminator_loc(&mut self, bb: BasicBlock) -> Location {
+        let body = self.elaborator.body();
+        self.elaborator.patch().terminator_loc(body, bb)
     }
 
     fn constant_usize(&self, val: u16) -> Operand<'tcx> {
