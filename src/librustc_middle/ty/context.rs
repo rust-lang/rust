@@ -2,7 +2,7 @@
 
 use crate::arena::Arena;
 use crate::dep_graph::{self, DepConstructor, DepGraph};
-use crate::hir::exports::Export;
+use crate::hir::exports::ExportMap;
 use crate::ich::{NodeIdHashingMode, StableHashingContext};
 use crate::infer::canonical::{Canonical, CanonicalVarInfo, CanonicalVarInfos};
 use crate::lint::{struct_lint_level, LintDiagnosticBuilder, LintSource};
@@ -919,7 +919,7 @@ pub struct GlobalCtxt<'tcx> {
     trait_map: FxHashMap<LocalDefId, FxHashMap<ItemLocalId, StableVec<TraitCandidate>>>,
 
     /// Export map produced by name resolution.
-    export_map: FxHashMap<DefId, Vec<Export<hir::HirId>>>,
+    export_map: ExportMap<LocalDefId>,
 
     pub(crate) untracked_crate: &'tcx hir::Crate<'tcx>,
     pub(crate) definitions: &'tcx Definitions,
