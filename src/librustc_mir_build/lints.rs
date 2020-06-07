@@ -128,7 +128,7 @@ impl<'mir, 'tcx> TriColorVisitor<&'mir Body<'tcx>> for Search<'mir, 'tcx> {
             | TerminatorKind::Call { .. }
             | TerminatorKind::Drop { .. }
             | TerminatorKind::DropAndReplace { .. }
-            | TerminatorKind::FalseEdges { .. }
+            | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. }
             | TerminatorKind::Goto { .. }
             | TerminatorKind::SwitchInt { .. } => ControlFlow::Continue,
@@ -153,7 +153,7 @@ impl<'mir, 'tcx> TriColorVisitor<&'mir Body<'tcx>> for Search<'mir, 'tcx> {
             TerminatorKind::Call { ref func, .. } => self.is_recursive_call(func),
 
             TerminatorKind::FalseUnwind { unwind: Some(imaginary_target), .. }
-            | TerminatorKind::FalseEdges { imaginary_target, .. } => imaginary_target == target,
+            | TerminatorKind::FalseEdge { imaginary_target, .. } => imaginary_target == target,
 
             _ => false,
         }

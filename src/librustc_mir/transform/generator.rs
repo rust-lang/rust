@@ -669,6 +669,51 @@ fn compute_storage_conflicts(
     storage_conflicts
 }
 
+/// Validates the typeck view of the generator against the actual set of types retained between
+/// yield points.
+fn sanitize_witness<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &Body<'tcx>,
+    did: DefId,
+    witness: Ty<'tcx>,
+    upvars: &Vec<Ty<'tcx>>,
+    retained: &BitSet<Local>,
+) {
+    let allowed_upvars = tcx.erase_regions(upvars);
+    let allowed = match witness.kind {
+        ty::GeneratorWitness(s) => tcx.erase_late_bound_regions(&s),
+        _ => {
+            tcx.sess.delay_span_bug(
+                body.span,
+                &format!("unexpected generator witness type {:?}", witness.kind),
+            );
+            return;
+        }
+    };
+
+    let param_env = tcx.param_env(did);
+
+    for (local, decl) in body.local_decls.iter_enumerated() {
+        // Ignore locals which are internal or not retained between yields.
+        if !retained.contains(local) || decl.internal {
+            continue;
+        }
+        let decl_ty = tcx.normalize_erasing_regions(param_env, decl.ty);
+
+        // Sanity check that typeck knows about the type of locals which are
+        // live across a suspension point
+        if !allowed.contains(&decl_ty) && !allowed_upvars.contains(&decl_ty) {
+            span_bug!(
+                body.span,
+                "Broken MIR: generator contains type {} in MIR, \
+                       but typeck only knows about {}",
+                decl.ty,
+                witness,
+            );
+        }
+    }
+}
+
 fn compute_layout<'tcx>(
     tcx: TyCtxt<'tcx>,
     source: MirSource<'tcx>,
@@ -690,35 +735,7 @@ fn compute_layout<'tcx>(
         storage_liveness,
     } = locals_live_across_suspend_points(tcx, body, source, always_live_locals, movable);
 
-    // Erase regions from the types passed in from typeck so we can compare them with
-    // MIR types
-    let allowed_upvars = tcx.erase_regions(upvars);
-    let allowed = match interior.kind {
-        ty::GeneratorWitness(s) => tcx.erase_late_bound_regions(&s),
-        _ => bug!(),
-    };
-
-    let param_env = tcx.param_env(source.def_id());
-
-    for (local, decl) in body.local_decls.iter_enumerated() {
-        // Ignore locals which are internal or not live
-        if !live_locals.contains(local) || decl.internal {
-            continue;
-        }
-        let decl_ty = tcx.normalize_erasing_regions(param_env, decl.ty);
-
-        // Sanity check that typeck knows about the type of locals which are
-        // live across a suspension point
-        if !allowed.contains(&decl_ty) && !allowed_upvars.contains(&decl_ty) {
-            span_bug!(
-                body.span,
-                "Broken MIR: generator contains type {} in MIR, \
-                       but typeck only knows about {}",
-                decl.ty,
-                interior
-            );
-        }
-    }
+    sanitize_witness(tcx, body, source.def_id(), interior, upvars, &live_locals);
 
     // Gather live local types and their indices.
     let mut locals = IndexVec::<GeneratorSavedLocal, _>::new();
@@ -971,7 +988,7 @@ fn can_unwind<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> bool {
             | TerminatorKind::Return
             | TerminatorKind::Unreachable
             | TerminatorKind::GeneratorDrop
-            | TerminatorKind::FalseEdges { .. }
+            | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. }
             | TerminatorKind::InlineAsm { .. } => {}
 

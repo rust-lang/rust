@@ -53,11 +53,11 @@ fn main() -> () {
     }
 
     bb2: {
-        falseEdges -> [real: bb10, imaginary: bb5]; // scope 0 at $DIR/match_false_edges.rs:37:9: 37:11
+        falseEdge -> [real: bb10, imaginary: bb5]; // scope 0 at $DIR/match_false_edges.rs:37:9: 37:11
     }
 
     bb3: {
-        falseEdges -> [real: bb6, imaginary: bb2]; // scope 0 at $DIR/match_false_edges.rs:36:9: 36:17
+        falseEdge -> [real: bb6, imaginary: bb2]; // scope 0 at $DIR/match_false_edges.rs:36:9: 36:17
     }
 
     bb4: {
@@ -75,7 +75,7 @@ fn main() -> () {
     }
 
     bb5: {
-        falseEdges -> [real: bb11, imaginary: bb4]; // scope 0 at $DIR/match_false_edges.rs:38:9: 38:16
+        falseEdge -> [real: bb11, imaginary: bb4]; // scope 0 at $DIR/match_false_edges.rs:38:9: 38:16
     }
 
     bb6: {
@@ -117,7 +117,7 @@ fn main() -> () {
     bb9: {
         StorageDead(_8);                 // scope 0 at $DIR/match_false_edges.rs:36:33: 36:34
         StorageDead(_7);                 // scope 0 at $DIR/match_false_edges.rs:36:33: 36:34
-        falseEdges -> [real: bb2, imaginary: bb2]; // scope 0 at $DIR/match_false_edges.rs:36:21: 36:28
+        falseEdge -> [real: bb2, imaginary: bb2]; // scope 0 at $DIR/match_false_edges.rs:36:21: 36:28
     }
 
     bb10: {
@@ -176,7 +176,7 @@ fn main() -> () {
     bb14: {
         StorageDead(_12);                // scope 0 at $DIR/match_false_edges.rs:38:34: 38:35
         StorageDead(_11);                // scope 0 at $DIR/match_false_edges.rs:38:34: 38:35
-        falseEdges -> [real: bb4, imaginary: bb4]; // scope 0 at $DIR/match_false_edges.rs:38:20: 38:29
+        falseEdge -> [real: bb4, imaginary: bb4]; // scope 0 at $DIR/match_false_edges.rs:38:20: 38:29
     }
 
     bb15: {

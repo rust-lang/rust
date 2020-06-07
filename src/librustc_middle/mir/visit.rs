@@ -429,7 +429,7 @@ macro_rules! make_mir_visitor {
                     TerminatorKind::Abort |
                     TerminatorKind::GeneratorDrop |
                     TerminatorKind::Unreachable |
-                    TerminatorKind::FalseEdges { .. } |
+                    TerminatorKind::FalseEdge { .. } |
                     TerminatorKind::FalseUnwind { .. } => {
                     }
 

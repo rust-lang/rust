@@ -31,7 +31,7 @@ fn main() -> () {
     }
 
     bb2: {
-        falseEdges -> [real: bb4, imaginary: bb3]; // scope 0 at $DIR/loop_test.rs:10:5: 12:6
+        falseEdge -> [real: bb4, imaginary: bb3]; // scope 0 at $DIR/loop_test.rs:10:5: 12:6
     }
 
     bb3: {

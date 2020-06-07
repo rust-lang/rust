@@ -45,9 +45,9 @@
       }
   
 -     bb6: {
--         falseEdges -> [real: bb8, imaginary: bb7]; // scope 0 at $DIR/simplify_cfg.rs:7:9: 9:10
+-         falseEdge -> [real: bb8, imaginary: bb7]; // scope 0 at $DIR/simplify_cfg.rs:7:9: 9:10
 +     bb4: {
-+         falseEdges -> [real: bb6, imaginary: bb5]; // scope 0 at $DIR/simplify_cfg.rs:7:9: 9:10
++         falseEdge -> [real: bb6, imaginary: bb5]; // scope 0 at $DIR/simplify_cfg.rs:7:9: 9:10
       }
   
 -     bb7: {

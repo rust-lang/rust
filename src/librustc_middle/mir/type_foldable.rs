@@ -74,8 +74,8 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
             Abort => Abort,
             Return => Return,
             Unreachable => Unreachable,
-            FalseEdges { real_target, imaginary_target } => {
-                FalseEdges { real_target, imaginary_target }
+            FalseEdge { real_target, imaginary_target } => {
+                FalseEdge { real_target, imaginary_target }
             }
             FalseUnwind { real_target, unwind } => FalseUnwind { real_target, unwind },
             InlineAsm { template, ref operands, options, line_spans, destination } => InlineAsm {
@@ -134,7 +134,7 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
             | Return
             | GeneratorDrop
             | Unreachable
-            | FalseEdges { .. }
+            | FalseEdge { .. }
             | FalseUnwind { .. } => false,
         }
     }

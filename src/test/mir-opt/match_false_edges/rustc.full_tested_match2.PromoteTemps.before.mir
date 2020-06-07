@@ -42,11 +42,11 @@ fn full_tested_match2() -> () {
     }
 
     bb2: {
-        falseEdges -> [real: bb10, imaginary: bb4]; // scope 0 at $DIR/match_false_edges.rs:28:9: 28:13
+        falseEdge -> [real: bb10, imaginary: bb4]; // scope 0 at $DIR/match_false_edges.rs:28:9: 28:13
     }
 
     bb3: {
-        falseEdges -> [real: bb6, imaginary: bb2]; // scope 0 at $DIR/match_false_edges.rs:27:9: 27:16
+        falseEdge -> [real: bb6, imaginary: bb2]; // scope 0 at $DIR/match_false_edges.rs:27:9: 27:16
     }
 
     bb4: {
@@ -112,7 +112,7 @@ fn full_tested_match2() -> () {
     bb9: {
         StorageDead(_7);                 // scope 0 at $DIR/match_false_edges.rs:27:37: 27:38
         StorageDead(_6);                 // scope 0 at $DIR/match_false_edges.rs:27:37: 27:38
-        falseEdges -> [real: bb4, imaginary: bb2]; // scope 0 at $DIR/match_false_edges.rs:27:20: 27:27
+        falseEdge -> [real: bb4, imaginary: bb2]; // scope 0 at $DIR/match_false_edges.rs:27:20: 27:27
     }
 
     bb10: {

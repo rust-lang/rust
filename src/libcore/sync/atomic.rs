@@ -153,6 +153,9 @@ pub fn spin_loop_hint() {
 ///
 /// This type has the same in-memory representation as a [`bool`].
 ///
+/// **Note**: This type is only available on platforms that support atomic
+/// loads and stores of `u8`.
+///
 /// [`bool`]: ../../../std/primitive.bool.html
 #[cfg(target_has_atomic_load_store = "8")]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -178,6 +181,9 @@ unsafe impl Sync for AtomicBool {}
 /// A raw pointer type which can be safely shared between threads.
 ///
 /// This type has the same in-memory representation as a `*mut T`.
+///
+/// **Note**: This type is only available on platforms that support atomic
+/// loads and stores of pointers. Its size depends on the target pointer's size.
 #[cfg(target_has_atomic_load_store = "ptr")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(target_pointer_width = "16", repr(C, align(2)))]
@@ -447,6 +453,9 @@ impl AtomicBool {
     /// [`Acquire`] makes the store part of this operation [`Relaxed`], and
     /// using [`Release`] makes the load part [`Relaxed`].
     ///
+    /// **Note:** This method is only available on platforms that support atomic
+    /// operations on `u8`.
+    ///
     /// [`Ordering`]: enum.Ordering.html
     /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
     /// [`Release`]: enum.Ordering.html#variant.Release
@@ -480,6 +489,9 @@ impl AtomicBool {
     /// might fail and hence just perform an `Acquire` load, but not have `Release` semantics.
     /// Using [`Acquire`] makes the store part of this operation [`Relaxed`] if it
     /// happens, and using [`Release`] makes the load part [`Relaxed`].
+    ///
+    /// **Note:** This method is only available on platforms that support atomic
+    /// operations on `u8`.
     ///
     /// [`Ordering`]: enum.Ordering.html
     /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
@@ -524,6 +536,8 @@ impl AtomicBool {
     /// [`Relaxed`]. The failure ordering can only be [`SeqCst`], [`Acquire`] or [`Relaxed`]
     /// and must be equivalent to or weaker than the success ordering.
     ///
+    /// **Note:** This method is only available on platforms that support atomic
+    /// operations on `u8`.
     ///
     /// [`bool`]: ../../../std/primitive.bool.html
     /// [`Ordering`]: enum.Ordering.html
@@ -586,6 +600,9 @@ impl AtomicBool {
     /// [`Relaxed`]. The failure ordering can only be [`SeqCst`], [`Acquire`] or [`Relaxed`]
     /// and must be equivalent to or weaker than the success ordering.
     ///
+    /// **Note:** This method is only available on platforms that support atomic
+    /// operations on `u8`.
+    ///
     /// [`bool`]: ../../../std/primitive.bool.html
     /// [`compare_exchange`]: #method.compare_exchange
     /// [`Ordering`]: enum.Ordering.html
@@ -646,6 +663,9 @@ impl AtomicBool {
     /// [`Release`]: enum.Ordering.html#variant.Release
     /// [`Acquire`]: enum.Ordering.html#variant.Acquire
     ///
+    /// **Note:** This method is only available on platforms that support atomic
+    /// operations on `u8`.
+    ///
     /// # Examples
     ///
     /// ```
@@ -682,6 +702,9 @@ impl AtomicBool {
     /// of this operation. All ordering modes are possible. Note that using
     /// [`Acquire`] makes the store part of this operation [`Relaxed`], and
     /// using [`Release`] makes the load part [`Relaxed`].
+    ///
+    /// **Note:** This method is only available on platforms that support atomic
+    /// operations on `u8`.
     ///
     /// [`Ordering`]: enum.Ordering.html
     /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
@@ -737,6 +760,9 @@ impl AtomicBool {
     /// [`Acquire`] makes the store part of this operation [`Relaxed`], and
     /// using [`Release`] makes the load part [`Relaxed`].
     ///
+    /// **Note:** This method is only available on platforms that support atomic
+    /// operations on `u8`.
+    ///
     /// [`Ordering`]: enum.Ordering.html
     /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
     /// [`Release`]: enum.Ordering.html#variant.Release
@@ -778,6 +804,9 @@ impl AtomicBool {
     /// of this operation. All ordering modes are possible. Note that using
     /// [`Acquire`] makes the store part of this operation [`Relaxed`], and
     /// using [`Release`] makes the load part [`Relaxed`].
+    ///
+    /// **Note:** This method is only available on platforms that support atomic
+    /// operations on `u8`.
     ///
     /// [`Ordering`]: enum.Ordering.html
     /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
@@ -981,6 +1010,9 @@ impl<T> AtomicPtr<T> {
     /// [`Acquire`] makes the store part of this operation [`Relaxed`], and
     /// using [`Release`] makes the load part [`Relaxed`].
     ///
+    /// **Note:** This method is only available on platforms that support atomic
+    /// operations on pointers.
+    ///
     /// [`Ordering`]: enum.Ordering.html
     /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
     /// [`Release`]: enum.Ordering.html#variant.Release
@@ -1016,6 +1048,9 @@ impl<T> AtomicPtr<T> {
     /// might fail and hence just perform an `Acquire` load, but not have `Release` semantics.
     /// Using [`Acquire`] makes the store part of this operation [`Relaxed`] if it
     /// happens, and using [`Release`] makes the load part [`Relaxed`].
+    ///
+    /// **Note:** This method is only available on platforms that support atomic
+    /// operations on pointers.
     ///
     /// [`Ordering`]: enum.Ordering.html
     /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
@@ -1057,6 +1092,9 @@ impl<T> AtomicPtr<T> {
     /// of this operation [`Relaxed`], and using [`Release`] makes the successful load
     /// [`Relaxed`]. The failure ordering can only be [`SeqCst`], [`Acquire`] or [`Relaxed`]
     /// and must be equivalent to or weaker than the success ordering.
+    ///
+    /// **Note:** This method is only available on platforms that support atomic
+    /// operations on pointers.
     ///
     /// [`Ordering`]: enum.Ordering.html
     /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
@@ -1117,6 +1155,9 @@ impl<T> AtomicPtr<T> {
     /// of this operation [`Relaxed`], and using [`Release`] makes the successful load
     /// [`Relaxed`]. The failure ordering can only be [`SeqCst`], [`Acquire`] or [`Relaxed`]
     /// and must be equivalent to or weaker than the success ordering.
+    ///
+    /// **Note:** This method is only available on platforms that support atomic
+    /// operations on pointers.
     ///
     /// [`compare_exchange`]: #method.compare_exchange
     /// [`Ordering`]: enum.Ordering.html
@@ -1222,6 +1263,13 @@ macro_rules! atomic_int {
         /// ). For more about the differences between atomic types and
         /// non-atomic types as well as information about the portability of
         /// this type, please see the [module-level documentation].
+        ///
+        /// **Note:** This type is only available on platforms that support
+        /// atomic loads and stores of [`
+        #[doc = $s_int_type]
+        /// `](
+        #[doc = $int_ref]
+        /// ).
         ///
         /// [module-level documentation]: index.html
         #[$stable]
@@ -1408,6 +1456,9 @@ of this operation. All ordering modes are possible. Note that using
 [`Acquire`] makes the store part of this operation [`Relaxed`], and
 using [`Release`] makes the load part [`Relaxed`].
 
+**Note**: This method is only available on platforms that support atomic
+operations on [`", $s_int_type, "`](", $int_ref, ").
+
 [`Ordering`]: enum.Ordering.html
 [`Relaxed`]: enum.Ordering.html#variant.Relaxed
 [`Release`]: enum.Ordering.html#variant.Release
@@ -1443,6 +1494,9 @@ ordering of this operation. Notice that even when using [`AcqRel`], the operatio
 might fail and hence just perform an `Acquire` load, but not have `Release` semantics.
 Using [`Acquire`] makes the store part of this operation [`Relaxed`] if it
 happens, and using [`Release`] makes the load part [`Relaxed`].
+
+**Note**: This method is only available on platforms that support atomic
+operations on [`", $s_int_type, "`](", $int_ref, ").
 
 [`Ordering`]: enum.Ordering.html
 [`Relaxed`]: enum.Ordering.html#variant.Relaxed
@@ -1495,6 +1549,9 @@ operation fails. Using [`Acquire`] as success ordering makes the store part
 of this operation [`Relaxed`], and using [`Release`] makes the successful load
 [`Relaxed`]. The failure ordering can only be [`SeqCst`], [`Acquire`] or [`Relaxed`]
 and must be equivalent to or weaker than the success ordering.
+
+**Note**: This method is only available on platforms that support atomic
+operations on [`", $s_int_type, "`](", $int_ref, ").
 
 [`Ordering`]: enum.Ordering.html
 [`Relaxed`]: enum.Ordering.html#variant.Relaxed
@@ -1558,6 +1615,9 @@ and must be equivalent to or weaker than the success ordering.
 [`Acquire`]: enum.Ordering.html#variant.Acquire
 [`SeqCst`]: enum.Ordering.html#variant.SeqCst
 
+**Note**: This method is only available on platforms that support atomic
+operations on [`", $s_int_type, "`](", $int_ref, ").
+
 # Examples
 
 ```
@@ -1599,6 +1659,9 @@ of this operation. All ordering modes are possible. Note that using
 [`Acquire`] makes the store part of this operation [`Relaxed`], and
 using [`Release`] makes the load part [`Relaxed`].
 
+**Note**: This method is only available on platforms that support atomic
+operations on [`", $s_int_type, "`](", $int_ref, ").
+
 [`Ordering`]: enum.Ordering.html
 [`Relaxed`]: enum.Ordering.html#variant.Relaxed
 [`Release`]: enum.Ordering.html#variant.Release
@@ -1631,6 +1694,9 @@ This operation wraps around on overflow.
 of this operation. All ordering modes are possible. Note that using
 [`Acquire`] makes the store part of this operation [`Relaxed`], and
 using [`Release`] makes the load part [`Relaxed`].
+
+**Note**: This method is only available on platforms that support atomic
+operations on [`", $s_int_type, "`](", $int_ref, ").
 
 [`Ordering`]: enum.Ordering.html
 [`Relaxed`]: enum.Ordering.html#variant.Relaxed
@@ -1668,6 +1734,9 @@ of this operation. All ordering modes are possible. Note that using
 [`Acquire`] makes the store part of this operation [`Relaxed`], and
 using [`Release`] makes the load part [`Relaxed`].
 
+**Note**: This method is only available on platforms that support atomic
+operations on [`", $s_int_type, "`](", $int_ref, ").
+
 [`Ordering`]: enum.Ordering.html
 [`Relaxed`]: enum.Ordering.html#variant.Relaxed
 [`Release`]: enum.Ordering.html#variant.Release
@@ -1703,6 +1772,9 @@ Returns the previous value.
 of this operation. All ordering modes are possible. Note that using
 [`Acquire`] makes the store part of this operation [`Relaxed`], and
 using [`Release`] makes the load part [`Relaxed`].
+
+**Note**: This method is only available on platforms that support atomic
+operations on [`", $s_int_type, "`](", $int_ref, ").
 
 [`Ordering`]: enum.Ordering.html
 [`Relaxed`]: enum.Ordering.html#variant.Relaxed
@@ -1741,6 +1813,9 @@ of this operation. All ordering modes are possible. Note that using
 [`Acquire`] makes the store part of this operation [`Relaxed`], and
 using [`Release`] makes the load part [`Relaxed`].
 
+**Note**: This method is only available on platforms that support atomic
+operations on [`", $s_int_type, "`](", $int_ref, ").
+
 [`Ordering`]: enum.Ordering.html
 [`Relaxed`]: enum.Ordering.html#variant.Relaxed
 [`Release`]: enum.Ordering.html#variant.Release
@@ -1776,6 +1851,9 @@ Returns the previous value.
 of this operation. All ordering modes are possible. Note that using
 [`Acquire`] makes the store part of this operation [`Relaxed`], and
 using [`Release`] makes the load part [`Relaxed`].
+
+**Note**: This method is only available on platforms that support atomic
+operations on [`", $s_int_type, "`](", $int_ref, ").
 
 [`Ordering`]: enum.Ordering.html
 [`Relaxed`]: enum.Ordering.html#variant.Relaxed
@@ -1818,6 +1896,9 @@ Using [`Acquire`] as success ordering makes the store part
 of this operation [`Relaxed`], and using [`Release`] makes the final successful load
 [`Relaxed`]. The (failed) load ordering can only be [`SeqCst`], [`Acquire`] or [`Relaxed`]
 and must be equivalent to or weaker than the success ordering.
+
+**Note**: This method is only available on platforms that support atomic
+operations on [`", $s_int_type, "`](", $int_ref, ").
 
 [`bool`]: ../../../std/primitive.bool.html
 [`compare_exchange`]: #method.compare_exchange
@@ -1870,6 +1951,9 @@ of this operation. All ordering modes are possible. Note that using
 [`Acquire`] makes the store part of this operation [`Relaxed`], and
 using [`Release`] makes the load part [`Relaxed`].
 
+**Note**: This method is only available on platforms that support atomic
+operations on [`", $s_int_type, "`](", $int_ref, ").
+
 [`Ordering`]: enum.Ordering.html
 [`Relaxed`]: enum.Ordering.html#variant.Relaxed
 [`Release`]: enum.Ordering.html#variant.Release
@@ -1916,6 +2000,9 @@ Returns the previous value.
 of this operation. All ordering modes are possible. Note that using
 [`Acquire`] makes the store part of this operation [`Relaxed`], and
 using [`Release`] makes the load part [`Relaxed`].
+
+**Note**: This method is only available on platforms that support atomic
+operations on [`", $s_int_type, "`](", $int_ref, ").
 
 [`Ordering`]: enum.Ordering.html
 [`Relaxed`]: enum.Ordering.html#variant.Relaxed
