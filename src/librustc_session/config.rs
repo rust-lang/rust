@@ -1954,9 +1954,11 @@ impl PpMode {
         use PpMode::*;
         use PpSourceMode::*;
         match *self {
-            PpmSource(PpmNormal | PpmEveryBodyLoops | PpmIdentified) => false,
+            PpmSource(PpmNormal | PpmIdentified) => false,
 
-            PpmSource(PpmExpanded | PpmExpandedIdentified | PpmExpandedHygiene)
+            PpmSource(
+                PpmExpanded | PpmEveryBodyLoops | PpmExpandedIdentified | PpmExpandedHygiene,
+            )
             | PpmHir(_)
             | PpmHirTree(_)
             | PpmMir
