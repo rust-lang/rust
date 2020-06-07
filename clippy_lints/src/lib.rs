@@ -16,8 +16,6 @@
 // FIXME: switch to something more ergonomic here, once available.
 // (Currently there is no way to opt into sysroot crates without `extern crate`.)
 #[allow(unused_extern_crates)]
-extern crate fmt_macros;
-#[allow(unused_extern_crates)]
 extern crate rustc_ast;
 #[allow(unused_extern_crates)]
 extern crate rustc_ast_pretty;
@@ -47,6 +45,8 @@ extern crate rustc_middle;
 extern crate rustc_mir;
 #[allow(unused_extern_crates)]
 extern crate rustc_parse;
+#[allow(unused_extern_crates)]
+extern crate rustc_parse_format;
 #[allow(unused_extern_crates)]
 extern crate rustc_session;
 #[allow(unused_extern_crates)]

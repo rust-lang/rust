@@ -1,10 +1,16 @@
 error: use of `unwrap_or` followed by a function call
+  --> $DIR/or_fun_call.rs:32:19
+   |
+LL |     with_const_fn.unwrap_or(Duration::from_secs(5));
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| Duration::from_secs(5))`
+   |
+   = note: `-D clippy::or-fun-call` implied by `-D warnings`
+
+error: use of `unwrap_or` followed by a function call
   --> $DIR/or_fun_call.rs:35:22
    |
 LL |     with_constructor.unwrap_or(make());
    |                      ^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(make)`
-   |
-   = note: `-D clippy::or-fun-call` implied by `-D warnings`
 
 error: use of `unwrap_or` followed by a call to `new`
   --> $DIR/or_fun_call.rs:38:5
@@ -78,5 +84,11 @@ error: use of `or` followed by a function call
 LL |     let _ = Some("a".to_string()).or(Some("b".to_string()));
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `or_else(|| Some("b".to_string()))`
 
-error: aborting due to 13 previous errors
+error: use of `or` followed by a function call
+  --> $DIR/or_fun_call.rs:97:10
+   |
+LL |         .or(Some(Bar(b, Duration::from_secs(2))));
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `or_else(|| Some(Bar(b, Duration::from_secs(2))))`
+
+error: aborting due to 15 previous errors
 
