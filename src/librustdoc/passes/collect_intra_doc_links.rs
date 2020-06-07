@@ -175,94 +175,6 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
 
         let cx = self.cx;
 
-        // In case this is a re-export, try to resolve the docs relative to the original module.
-        // Since we don't document `use` statements,
-        // we don't have to consider the case where an item is documented in both the original module and the current module.
-        /*
-        let mut module_id = None;
-        if let Some(item) = item_opt {
-            debug!("resolving {:?} with item kind {:?}", path_str, item.inner);
-            if let ItemEnum::ImportItem(import) = &item.inner {
-                if let Import::Simple(_, source) = import {
-                    if let Some(def_id) = source.did {
-                        use crate::rustc_middle::ty::DefIdTree;
-
-                        //let mut current_id = def_id;
-                        if cx.tcx.def_kind(def_id) == DefKind::Mod {
-                            module_id = Some(def_id);
-                            debug!("found parent module {:?} for use statement", def_id);
-                        //break;
-                        } else {
-                            debug!(
-                                "not a module: {:?} (maybe an associated item?)",
-                                cx.tcx.def_kind(def_id)
-                            );
-                        }
-
-                    /*
-                    // For associated items, the parent module might be multiple nodes above
-                    while let Some(parent) = cx.tcx.parent(current_id) {
-                        if cx.tcx.def_kind(parent) == DefKind::Mod {
-                            parent_id = Some(parent);
-                            debug!("found parent module {:?} for use statement", parent);
-                            break;
-                        }
-                        current_id = parent;
-                    }
-                    */
-                    } else {
-                        debug!("no def id found");
-                    }
-                } else {
-                    debug!("glob imports not handled for intra-doc links");
-                }
-            } else {
-                //debug!("item.inner not an import ({:?})", item.inner);
-            }
-            /*
-            if let Some(reexport) = item.reexport {
-                use crate::rustc_middle::ty::DefIdTree;
-
-                let mut current_id = reexport;
-                // For associated items, the parent module might be multiple nodes above
-                while let Some(parent) = cx.tcx.parent(current_id) {
-                    if cx.tcx.def_kind(parent) == DefKind::Mod {
-                        parent_id = Some(parent);
-                        debug!("found parent module {:?} for use statement", parent);
-                        break;
-                    }
-                    current_id = parent;
-                }
-            }
-            */
-            /*
-            if let ItemKind::Use(path, use_kind) = item.kind {
-                if use_kind == UseKind::Single {
-                    match path.res {
-                        Res::Def(def_kind, def_id) => {
-                            use crate::rustc_middle::ty::DefIdTree;
-
-                            let mut current_id = def_id;
-                            // For associated items, the parent module might be multiple nodes above
-                            while let Some(parent) = cx.tcx.parent(current_id) {
-                                if cx.tcx.def_kind(parent) == DefKind::Mod {
-                                    parent_id = Some(parent);
-                                    debug!("found parent module {:?} for use statement", parent);
-                                    break;
-                                }
-                                current_id = parent;
-                            }
-                        }
-                        _ => debug!("use {:?} was not a definition, not treating as cross-crate", item.name),
-                    }
-                } else {
-                    debug!("don't know how to resolve multiple imports for {:?}, not treating as cross-crate", path);
-                }
-            }
-            */
-        }
-        */
-
         // In case we're in a module, try to resolve the relative path.
         if parent_id.is_none() {
             let id = self.mod_ids.last().cloned();
@@ -549,19 +461,13 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
             None
         };
 
-        // FIXME: get the resolver to work with non-local resolve scopes.
         use rustc_middle::ty::DefIdTree;
-        let parent_node = self.cx.tcx.parent(item.def_id);
-        /*
-        let parent_node = self.cx.as_local_hir_id(item.def_id).and_then(|hir_id| {
-            // FIXME: this fails hard for impls in non-module scope, but is necessary for the
-            // current `resolve()` implementation.
-            match self.cx.as_local_hir_id(self.cx.tcx.parent_module(hir_id).to_def_id()).unwrap() {
-                id if id != hir_id => Some(id),
-                _ => None,
-            }
-        });
-        */
+        let parent_node = if item.is_fake() {
+            // FIXME: is this correct?
+            None
+        } else {
+            self.cx.tcx.parent(item.def_id)
+        };
 
         if parent_node.is_some() {
             debug!("got parent node for {:?} {:?}, id {:?}", item.type_(), item.name, item.def_id);
@@ -572,7 +478,11 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                 if item.attrs.inner_docs {
                     if item_hir_id.unwrap() != hir::CRATE_HIR_ID { item.name.clone() } else { None }
                 } else {
-                    match parent_node.or(self.mod_ids.last().map(|&local| self.cx.tcx.hir().local_def_id(local).to_def_id())) {
+                    match parent_node.or(self
+                        .mod_ids
+                        .last()
+                        .map(|&local| self.cx.tcx.hir().local_def_id(local).to_def_id()))
+                    {
                         Some(parent) if !parent.is_top_level_module() => {
                             // FIXME: can we pull the parent module's name from elsewhere?
                             Some(self.cx.tcx.item_name(parent).to_string())
