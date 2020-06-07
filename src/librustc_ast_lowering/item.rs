@@ -7,6 +7,7 @@ use rustc_ast::attr;
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -286,8 +287,21 @@ impl<'hir> LoweringContext<'_, 'hir> {
             ItemKind::ForeignMod(ref nm) => hir::ItemKind::ForeignMod(self.lower_foreign_mod(nm)),
             ItemKind::GlobalAsm(ref ga) => hir::ItemKind::GlobalAsm(self.lower_global_asm(ga)),
             ItemKind::TyAlias(_, ref gen, _, Some(ref ty)) => {
-                let ty =
-                    self.lower_ty(ty, ImplTraitContext::OpaqueTy(None, hir::OpaqueTyOrigin::Misc));
+                // We lower
+                //
+                // type Foo = impl Trait
+                //
+                // to
+                //
+                // type Foo = Foo1
+                // opaque type Foo1: Trait
+                let ty = self.lower_ty(
+                    ty,
+                    ImplTraitContext::OtherOpaqueTy {
+                        capturable_lifetimes: &mut FxHashSet::default(),
+                        origin: hir::OpaqueTyOrigin::Misc,
+                    },
+                );
                 let generics = self.lower_generics(gen, ImplTraitContext::disallowed());
                 hir::ItemKind::TyAlias(ty, generics)
             }
@@ -420,8 +434,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         span: Span,
         body: Option<&Expr>,
     ) -> (&'hir hir::Ty<'hir>, hir::BodyId) {
+        let mut capturable_lifetimes;
         let itctx = if self.sess.features_untracked().impl_trait_in_bindings {
-            ImplTraitContext::OpaqueTy(None, hir::OpaqueTyOrigin::Misc)
+            capturable_lifetimes = FxHashSet::default();
+            ImplTraitContext::OtherOpaqueTy {
+                capturable_lifetimes: &mut capturable_lifetimes,
+                origin: hir::OpaqueTyOrigin::Misc,
+            }
         } else {
             ImplTraitContext::Disallowed(ImplTraitPosition::Binding)
         };
@@ -829,7 +848,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     Some(ty) => {
                         let ty = self.lower_ty(
                             ty,
-                            ImplTraitContext::OpaqueTy(None, hir::OpaqueTyOrigin::Misc),
+                            ImplTraitContext::OtherOpaqueTy {
+                                capturable_lifetimes: &mut FxHashSet::default(),
+                                origin: hir::OpaqueTyOrigin::Misc,
+                            },
                         );
                         hir::ImplItemKind::TyAlias(ty)
                     }
