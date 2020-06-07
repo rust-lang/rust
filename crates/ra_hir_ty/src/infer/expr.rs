@@ -15,15 +15,15 @@ use ra_syntax::ast::RangeOp;
 
 use crate::{
     autoderef, method_resolution, op,
-    traits::InEnvironment,
+    traits::{builtin::get_fn_trait, FnTrait, InEnvironment, SolutionVariables},
     utils::{generics, variant_data, Generics},
-    ApplicationTy, Binders, CallableDef, InferTy, IntTy, Mutability, Obligation, Rawness, Substs,
-    TraitRef, Ty, TypeCtor,
+    ApplicationTy, Binders, CallableDef, FnSig, InferTy, IntTy, Mutability, Obligation, Rawness,
+    Substs, TraitRef, Ty, TypeCtor,
 };
 
 use super::{
     find_breakable, BindingMode, BreakableContext, Diverges, Expectation, InferenceContext,
-    InferenceDiagnostic, TypeMismatch,
+    InferenceDiagnostic, Solution, TypeMismatch,
 };
 
 impl<'a> InferenceContext<'a> {
@@ -61,6 +61,75 @@ impl<'a> InferenceContext<'a> {
         };
 
         self.resolve_ty_as_possible(ty)
+    }
+
+    fn callable_sig_from_fn_trait(&mut self, ty: &Ty) -> Option<FnSig> {
+        if let Some(krate) = self.resolver.krate() {
+            let fn_traits: Vec<crate::TraitId> = [FnTrait::FnOnce, FnTrait::FnMut, FnTrait::Fn]
+                .iter()
+                .filter_map(|f| get_fn_trait(self.db, krate, *f))
+                .collect();
+            for fn_trait in fn_traits {
+                let fn_trait_data = self.db.trait_data(fn_trait);
+                let generic_params = generics(self.db.upcast(), fn_trait.into());
+                if generic_params.len() != 2 {
+                    continue;
+                }
+
+                let arg_ty = self.table.new_type_var();
+                let substs = Substs::build_for_generics(&generic_params)
+                    .push(ty.clone())
+                    .push(arg_ty.clone())
+                    .build();
+
+                let trait_ref = TraitRef { trait_: fn_trait, substs: substs.clone() };
+                let trait_env = Arc::clone(&self.trait_env);
+                let implements_fn_goal =
+                    self.canonicalizer().canonicalize_obligation(InEnvironment {
+                        value: Obligation::Trait(trait_ref),
+                        environment: trait_env,
+                    });
+                if let Some(Solution::Unique(SolutionVariables(solution))) =
+                    self.db.trait_solve(krate, implements_fn_goal.value.clone())
+                {
+                    match solution.value.as_slice() {
+                        [Ty::Apply(ApplicationTy {
+                            ctor: TypeCtor::Tuple { cardinality: _ },
+                            parameters,
+                        })] => {
+                            let output_assoc_type = match fn_trait_data
+                                .associated_types()
+                                .collect::<Vec<hir_def::TypeAliasId>>()
+                                .as_slice()
+                            {
+                                [output] => *output,
+                                _ => {
+                                    continue;
+                                }
+                            };
+                            let output_proj_ty = crate::ProjectionTy {
+                                associated_ty: output_assoc_type,
+                                parameters: substs,
+                            };
+                            let return_ty = self.normalize_projection_ty(output_proj_ty);
+                            return Some(FnSig::from_params_and_return(
+                                parameters.into_iter().map(|ty| ty.clone()).collect(),
+                                return_ty,
+                            ));
+                        }
+                        _ => (),
+                    }
+                }
+            }
+        };
+        None
+    }
+
+    pub fn callable_sig(&mut self, ty: &Ty) -> Option<FnSig> {
+        match ty.callable_sig(self.db) {
+            result @ Some(_) => result,
+            None => self.callable_sig_from_fn_trait(ty),
+        }
     }
 
     fn infer_expr_inner(&mut self, tgt_expr: ExprId, expected: &Expectation) -> Ty {
@@ -198,14 +267,21 @@ impl<'a> InferenceContext<'a> {
             }
             Expr::Call { callee, args } => {
                 let callee_ty = self.infer_expr(*callee, &Expectation::none());
-                let (param_tys, ret_ty) = match callee_ty.callable_sig(self.db) {
-                    Some(sig) => (sig.params().to_vec(), sig.ret().clone()),
-                    None => {
-                        // Not callable
-                        // FIXME: report an error
-                        (Vec::new(), Ty::Unknown)
-                    }
-                };
+                let canonicalized = self.canonicalizer().canonicalize_ty(callee_ty.clone());
+                let mut derefs = autoderef(
+                    self.db,
+                    self.resolver.krate(),
+                    InEnvironment {
+                        value: canonicalized.value.clone(),
+                        environment: self.trait_env.clone(),
+                    },
+                );
+                let (param_tys, ret_ty): (Vec<Ty>, Ty) = derefs
+                    .find_map(|callee_deref_ty| {
+                        self.callable_sig(&canonicalized.decanonicalize_ty(callee_deref_ty.value))
+                            .map(|sig| (sig.params().to_vec(), sig.ret().clone()))
+                    })
+                    .unwrap_or((Vec::new(), Ty::Unknown));
                 self.register_obligations_for_call(&callee_ty);
                 self.check_call_arguments(args, &param_tys);
                 self.normalize_associated_types_in(ret_ty)
@@ -692,7 +768,7 @@ impl<'a> InferenceContext<'a> {
         let method_ty = method_ty.subst(&substs);
         let method_ty = self.insert_type_vars(method_ty);
         self.register_obligations_for_call(&method_ty);
-        let (expected_receiver_ty, param_tys, ret_ty) = match method_ty.callable_sig(self.db) {
+        let (expected_receiver_ty, param_tys, ret_ty) = match self.callable_sig(&method_ty) {
             Some(sig) => {
                 if !sig.params().is_empty() {
                     (sig.params()[0].clone(), sig.params()[1..].to_vec(), sig.ret().clone())

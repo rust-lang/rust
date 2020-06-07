@@ -2410,4 +2410,103 @@ fn func(foo: i32) { if true { <|>foo; }; }
             ]
             "###);
     }
+
+    #[test]
+    fn infer_closure_arg() {
+        check_hover_result(
+            r#"
+            //- /lib.rs
+
+            enum Option<T> {
+                None,
+                Some(T)
+            }
+
+            fn foo() {
+                let s<|> = Option::None;
+                let f = |x: Option<i32>| {};
+                (&f)(s)
+            }
+        "#,
+            &["Option<i32>"],
+        );
+    }
+
+    #[test]
+    fn infer_fn_trait_arg() {
+        check_hover_result(
+            r#"
+            //- /lib.rs deps:std
+
+            #[lang = "fn"]
+            pub trait Fn<Args> {
+                type Output;
+
+                extern "rust-call" fn call(&self, args: Args) -> Self::Output;
+            }
+
+            enum Option<T> {
+                None,
+                Some(T)
+            }
+
+            fn foo<F, T>(f: F) -> T
+            where
+                F: Fn(Option<i32>) -> T,
+            {
+                let s<|> = None;
+                f(s)
+            }
+            "#,
+            &["Option<i32>"],
+        );
+    }
+
+    #[test]
+    fn infer_box_fn_arg() {
+        check_hover_result(
+            r#"
+            //- /lib.rs deps:std
+
+            #[lang = "fn_once"]
+            pub trait FnOnce<Args> {
+                type Output;
+
+                extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
+            }
+
+            #[lang = "deref"]
+            pub trait Deref {
+                type Target: ?Sized;
+
+                fn deref(&self) -> &Self::Target;
+            }
+
+            #[lang = "owned_box"]
+            pub struct Box<T: ?Sized> {
+                inner: *mut T,
+            }
+
+            impl<T: ?Sized> Deref for Box<T> {
+                type Target = T;
+
+                fn deref(&self) -> &T {
+                    &self.inner
+                }
+            }
+
+            enum Option<T> {
+                None,
+                Some(T)
+            }
+
+            fn foo() {
+                let s<|> = Option::None;
+                let f: Box<dyn FnOnce(&Option<i32>)> = box (|ps| {});
+                f(&s)
+            }
+        "#,
+            &["Option<i32>"],
+        );
+    }
 }

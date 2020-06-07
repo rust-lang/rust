@@ -360,7 +360,11 @@ fn super_trait_object_unsize_impl_datum(
     BuiltinImplData { num_vars, trait_ref, where_clauses: Vec::new(), assoc_ty_values: Vec::new() }
 }
 
-fn get_fn_trait(db: &dyn HirDatabase, krate: CrateId, fn_trait: super::FnTrait) -> Option<TraitId> {
+pub fn get_fn_trait(
+    db: &dyn HirDatabase,
+    krate: CrateId,
+    fn_trait: super::FnTrait,
+) -> Option<TraitId> {
     let target = db.lang_item(krate, fn_trait.lang_item_name().into())?;
     match target {
         LangItemTarget::TraitId(t) => Some(t),

@@ -38,8 +38,8 @@ impl<'a> InferenceContext<'a> {
                 // Special case: two function types. Try to coerce both to
                 // pointers to have a chance at getting a match. See
                 // https://github.com/rust-lang/rust/blob/7b805396bf46dce972692a6846ce2ad8481c5f85/src/librustc_typeck/check/coercion.rs#L877-L916
-                let sig1 = ty1.callable_sig(self.db).expect("FnDef without callable sig");
-                let sig2 = ty2.callable_sig(self.db).expect("FnDef without callable sig");
+                let sig1 = self.callable_sig(ty1).expect("FnDef without callable sig");
+                let sig2 = self.callable_sig(ty2).expect("FnDef without callable sig");
                 let ptr_ty1 = Ty::fn_ptr(sig1);
                 let ptr_ty2 = Ty::fn_ptr(sig2);
                 self.coerce_merge_branch(&ptr_ty1, &ptr_ty2)
@@ -93,7 +93,7 @@ impl<'a> InferenceContext<'a> {
 
             // `{function_type}` -> `fn()`
             (ty_app!(TypeCtor::FnDef(_)), ty_app!(TypeCtor::FnPtr { .. })) => {
-                match from_ty.callable_sig(self.db) {
+                match self.callable_sig(&from_ty) {
                     None => return false,
                     Some(sig) => {
                         from_ty = Ty::fn_ptr(sig);

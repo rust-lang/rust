@@ -14,7 +14,7 @@ use super::{Canonical, GenericPredicate, HirDisplay, ProjectionTy, TraitRef, Ty,
 use self::chalk::{from_chalk, Interner, ToChalk};
 
 pub(crate) mod chalk;
-mod builtin;
+pub(crate) mod builtin;
 
 // This controls the maximum size of types Chalk considers. If we set this too
 // high, we can run into slow edge cases; if we set it too low, Chalk won't
