@@ -49,11 +49,11 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ``` rust
+    /// ```rust
     /// fn im_too_long() {
-    /// println!("");
-    /// // ... 100 more LoC
-    /// println!("");
+    ///     println!("");
+    ///     // ... 100 more LoC
+    ///     println!("");
     /// }
     /// ```
     pub TOO_MANY_LINES,
@@ -79,8 +79,14 @@ declare_clippy_lint! {
     /// `some_argument.get_raw_ptr()`).
     ///
     /// **Example:**
-    /// ```rust
+    /// ```rust,ignore
+    /// // Bad
     /// pub fn foo(x: *const u8) {
+    ///     println!("{}", unsafe { *x });
+    /// }
+    ///
+    /// // Good
+    /// pub unsafe fn foo(x: *const u8) {
     ///     println!("{}", unsafe { *x });
     /// }
     /// ```

@@ -39,7 +39,11 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```ignore
+    /// // Bad
     /// &x == y
+    ///
+    /// // Good
+    /// x == *y
     /// ```
     pub OP_REF,
     style,

@@ -28,7 +28,6 @@ declare_clippy_lint! {
     /// **Example:**
     ///
     /// ```rust
-    ///
     /// let a = 3f32;
     /// let _ = a.powf(1.0 / 3.0);
     /// let _ = (1.0 + a).ln();
@@ -38,7 +37,6 @@ declare_clippy_lint! {
     /// is better expressed as
     ///
     /// ```rust
-    ///
     /// let a = 3f32;
     /// let _ = a.cbrt();
     /// let _ = a.ln_1p();

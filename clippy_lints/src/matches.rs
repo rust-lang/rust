@@ -36,9 +36,16 @@ declare_clippy_lint! {
     /// ```rust
     /// # fn bar(stool: &str) {}
     /// # let x = Some("abc");
+    ///
+    /// // Bad
     /// match x {
     ///     Some(ref foo) => bar(foo),
     ///     _ => (),
+    /// }
+    ///
+    /// // Good
+    /// if let Some(ref foo) = x {
+    ///     bar(foo);
     /// }
     /// ```
     pub SINGLE_MATCH,
@@ -97,10 +104,18 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust,ignore
+    /// // Bad
     /// match x {
     ///     &A(ref y) => foo(y),
     ///     &B => bar(),
     ///     _ => frob(&x),
+    /// }
+    ///
+    /// // Good
+    /// match *x {
+    ///     A(ref y) => foo(y),
+    ///     B => bar(),
+    ///     _ => frob(x),
     /// }
     /// ```
     pub MATCH_REF_PATS,
@@ -197,10 +212,15 @@ declare_clippy_lint! {
     /// **Example:**
     /// ```rust
     /// let x: Option<()> = None;
+    ///
+    /// // Bad
     /// let r: Option<&()> = match x {
     ///     None => None,
     ///     Some(ref v) => Some(v),
     /// };
+    ///
+    /// // Good
+    /// let r: Option<&()> = x.as_ref();
     /// ```
     pub MATCH_AS_REF,
     complexity,
@@ -219,9 +239,17 @@ declare_clippy_lint! {
     /// ```rust
     /// # enum Foo { A(usize), B(usize) }
     /// # let x = Foo::B(1);
+    ///
+    /// // Bad
     /// match x {
     ///     Foo::A(_) => {},
     ///     _ => {},
+    /// }
+    ///
+    /// // Good
+    /// match x {
+    ///     Foo::A(_) => {},
+    ///     Foo::B(_) => {},
     /// }
     /// ```
     pub WILDCARD_ENUM_MATCH_ARM,
@@ -242,16 +270,14 @@ declare_clippy_lint! {
     /// ```rust
     /// # enum Foo { A, B, C }
     /// # let x = Foo::B;
+    /// // Bad
     /// match x {
     ///     Foo::A => {},
     ///     Foo::B => {},
     ///     _ => {},
     /// }
-    /// ```
-    /// Use instead:
-    /// ```rust
-    /// # enum Foo { A, B, C }
-    /// # let x = Foo::B;
+    ///
+    /// // Good
     /// match x {
     ///     Foo::A => {},
     ///     Foo::B => {},
@@ -273,9 +299,16 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
+    /// // Bad
     /// match "foo" {
     ///     "a" => {},
     ///     "bar" | _ => {},
+    /// }
+    ///
+    /// // Good
+    /// match "foo" {
+    ///     "a" => {},
+    ///     _ => {},
     /// }
     /// ```
     pub WILDCARD_IN_OR_PATTERNS,

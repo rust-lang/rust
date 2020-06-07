@@ -14,7 +14,11 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// 0.0f32 / 0.0;
+    /// // Bad
+    /// let nan = 0.0f32 / 0.0;
+    ///
+    /// // Good
+    /// let nan = f32::NAN;
     /// ```
     pub ZERO_DIVIDED_BY_ZERO,
     complexity,

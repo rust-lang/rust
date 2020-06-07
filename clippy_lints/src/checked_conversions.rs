@@ -58,24 +58,18 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CheckedConversions {
             }
         };
 
-        if_chain! {
-            if let Some(cv) = result;
-            if let Some(to_type) = cv.to_type;
-
-            then {
+        if let Some(cv) = result {
+            if let Some(to_type) = cv.to_type {
                 let mut applicability = Applicability::MachineApplicable;
-                let snippet = snippet_with_applicability(cx, cv.expr_to_cast.span, "_", &mut
-                                applicability);
+                let snippet = snippet_with_applicability(cx, cv.expr_to_cast.span, "_", &mut applicability);
                 span_lint_and_sugg(
                     cx,
                     CHECKED_CONVERSIONS,
                     item.span,
                     "Checked cast can be simplified.",
                     "try",
-                    format!("{}::try_from({}).is_ok()",
-                            to_type,
-                            snippet),
-                    applicability
+                    format!("{}::try_from({}).is_ok()", to_type, snippet),
+                    applicability,
                 );
             }
         }
@@ -184,7 +178,7 @@ fn check_upper_bound<'tcx>(expr: &'tcx Expr<'tcx>) -> Option<Conversion<'tcx>> {
     if_chain! {
          if let ExprKind::Binary(ref op, ref left, ref right) = &expr.kind;
          if let Some((candidate, check)) = normalize_le_ge(op, left, right);
-         if let Some((from, to)) = get_types_from_cast(check, MAX_VALUE, INTS);
+         if let Some((from, to)) = get_types_from_cast(check, INTS, "max_value", "MAX");
 
          then {
              Conversion::try_new(candidate, from, to)
@@ -224,7 +218,7 @@ fn check_lower_bound_zero<'a>(candidate: &'a Expr<'_>, check: &'a Expr<'_>) -> O
 
 /// Check for `expr >= (to_type::MIN as from_type)`
 fn check_lower_bound_min<'a>(candidate: &'a Expr<'_>, check: &'a Expr<'_>) -> Option<Conversion<'a>> {
-    if let Some((from, to)) = get_types_from_cast(check, MIN_VALUE, SINTS) {
+    if let Some((from, to)) = get_types_from_cast(check, SINTS, "min_value", "MIN") {
         Conversion::try_new(candidate, from, to)
     } else {
         None
@@ -232,10 +226,16 @@ fn check_lower_bound_min<'a>(candidate: &'a Expr<'_>, check: &'a Expr<'_>) -> Op
 }
 
 /// Tries to extract the from- and to-type from a cast expression
-fn get_types_from_cast<'a>(expr: &'a Expr<'_>, func: &'a str, types: &'a [&str]) -> Option<(&'a str, &'a str)> {
-    // `to_type::maxmin_value() as from_type`
+fn get_types_from_cast<'a>(
+    expr: &'a Expr<'_>,
+    types: &'a [&str],
+    func: &'a str,
+    assoc_const: &'a str,
+) -> Option<(&'a str, &'a str)> {
+    // `to_type::max_value() as from_type`
+    // or `to_type::MAX as from_type`
     let call_from_cast: Option<(&Expr<'_>, &str)> = if_chain! {
-        // to_type::maxmin_value(), from_type
+        // to_type::max_value(), from_type
         if let ExprKind::Cast(ref limit, ref from_type) = &expr.kind;
         if let TyKind::Path(ref from_type_path) = &from_type.kind;
         if let Some(from_sym) = int_ty_to_sym(from_type_path);
@@ -247,17 +247,17 @@ fn get_types_from_cast<'a>(expr: &'a Expr<'_>, func: &'a str, types: &'a [&str])
         }
     };
 
-    // `from_type::from(to_type::maxmin_value())`
+    // `from_type::from(to_type::max_value())`
     let limit_from: Option<(&Expr<'_>, &str)> = call_from_cast.or_else(|| {
         if_chain! {
-            // `from_type::from, to_type::maxmin_value()`
+            // `from_type::from, to_type::max_value()`
             if let ExprKind::Call(ref from_func, ref args) = &expr.kind;
-            // `to_type::maxmin_value()`
+            // `to_type::max_value()`
             if args.len() == 1;
             if let limit = &args[0];
             // `from_type::from`
             if let ExprKind::Path(ref path) = &from_func.kind;
-            if let Some(from_sym) = get_implementing_type(path, INTS, FROM);
+            if let Some(from_sym) = get_implementing_type(path, INTS, "from");
 
             then {
                 Some((limit, from_sym))
@@ -268,22 +268,26 @@ fn get_types_from_cast<'a>(expr: &'a Expr<'_>, func: &'a str, types: &'a [&str])
     });
 
     if let Some((limit, from_type)) = limit_from {
-        if_chain! {
-            if let ExprKind::Call(ref fun_name, _) = &limit.kind;
-            // `to_type, maxmin_value`
-            if let ExprKind::Path(ref path) = &fun_name.kind;
-            // `to_type`
-            if let Some(to_type) = get_implementing_type(path, types, func);
-
-            then {
-                Some((from_type, to_type))
-            } else {
-                None
-            }
+        match limit.kind {
+            // `from_type::from(_)`
+            ExprKind::Call(path, _) => {
+                if let ExprKind::Path(ref path) = path.kind {
+                    // `to_type`
+                    if let Some(to_type) = get_implementing_type(path, types, func) {
+                        return Some((from_type, to_type));
+                    }
+                }
+            },
+            // `to_type::MAX`
+            ExprKind::Path(ref path) => {
+                if let Some(to_type) = get_implementing_type(path, types, assoc_const) {
+                    return Some((from_type, to_type));
+                }
+            },
+            _ => {},
         }
-    } else {
-        None
-    }
+    };
+    None
 }
 
 /// Gets the type which implements the called function
@@ -336,10 +340,6 @@ fn normalize_le_ge<'a>(op: &BinOp, left: &'a Expr<'a>, right: &'a Expr<'a>) -> O
 }
 
 // Constants
-const FROM: &str = "from";
-const MAX_VALUE: &str = "max_value";
-const MIN_VALUE: &str = "min_value";
-
 const UINTS: &[&str] = &["u8", "u16", "u32", "u64", "usize"];
 const SINTS: &[&str] = &["i8", "i16", "i32", "i64", "isize"];
 const INTS: &[&str] = &["u8", "u16", "u32", "u64", "usize", "i8", "i16", "i32", "i64", "isize"];

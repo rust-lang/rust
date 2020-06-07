@@ -22,9 +22,15 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
+    /// # let y = true;
+    ///
+    /// // Bad
     /// # use std::sync::Mutex;
-    /// # let y = 1;
     /// let x = Mutex::new(&y);
+    ///
+    /// // Good
+    /// # use std::sync::atomic::AtomicBool;
+    /// let x = AtomicBool::new(y);
     /// ```
     pub MUTEX_ATOMIC,
     perf,
@@ -46,6 +52,10 @@ declare_clippy_lint! {
     /// ```rust
     /// # use std::sync::Mutex;
     /// let x = Mutex::new(0usize);
+    ///
+    /// // Good
+    /// # use std::sync::atomic::AtomicUsize;
+    /// let x = AtomicUsize::new(0usize);
     /// ```
     pub MUTEX_INTEGER,
     nursery,

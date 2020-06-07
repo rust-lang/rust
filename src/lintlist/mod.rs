@@ -166,7 +166,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "cast_ptr_alignment",
-        group: "correctness",
+        group: "pedantic",
         desc: "cast from a pointer to a more-strictly-aligned pointer",
         deprecation: None,
         module: "types",
@@ -933,6 +933,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         desc: "for-looping over `_.next()` which is probably not intended",
         deprecation: None,
         module: "loops",
+    },
+    Lint {
+        name: "iter_next_slice",
+        group: "style",
+        desc: "using `.iter().next()` on a sliced array, which can be shortened to just `.get()`",
+        deprecation: None,
+        module: "methods",
     },
     Lint {
         name: "iter_nth",
@@ -1735,7 +1742,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     Lint {
         name: "pub_enum_variant_names",
         group: "pedantic",
-        desc: "enums where all variants share a prefix/postfix",
+        desc: "public enums where all variants share a prefix/postfix",
         deprecation: None,
         module: "enum_variants",
     },
@@ -2293,6 +2300,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "no_effect",
     },
     Lint {
+        name: "unnecessary_sort_by",
+        group: "complexity",
+        desc: "Use of `Vec::sort_by` when `Vec::sort_by_key` or `Vec::sort` would be clearer",
+        deprecation: None,
+        module: "unnecessary_sort_by",
+    },
+    Lint {
         name: "unnecessary_unwrap",
         group: "complexity",
         desc: "checks for calls of `unwrap[_err]()` that cannot fail",
@@ -2459,6 +2473,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         desc: "usage of `Vec<Box<T>>` where T: Sized, vector elements are already on the heap",
         deprecation: None,
         module: "types",
+    },
+    Lint {
+        name: "vec_resize_to_zero",
+        group: "correctness",
+        desc: "emptying a vector with `resize(0, an_int)` instead of `clear()` is probably an argument inversion mistake",
+        deprecation: None,
+        module: "vec_resize_to_zero",
     },
     Lint {
         name: "verbose_bit_mask",

@@ -15,10 +15,13 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// fn main() {
-    ///     let x = 3 / 2;
-    ///     println!("{}", x);
-    /// }
+    /// // Bad
+    /// let x = 3 / 2;
+    /// println!("{}", x);
+    ///
+    /// // Good
+    /// let x = 3f32 / 2f32;
+    /// println!("{}", x);
     /// ```
     pub INTEGER_DIVISION,
     restriction,

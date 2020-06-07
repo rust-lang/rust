@@ -1,9 +1,9 @@
-use crate::utils::{get_parent_expr, higher, if_sequence, same_tys, snippet, span_lint_and_note, span_lint_and_then};
+use crate::utils::{get_parent_expr, higher, if_sequence, snippet, span_lint_and_note, span_lint_and_then};
 use crate::utils::{SpanlessEq, SpanlessHash};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::{Arm, Block, Expr, ExprKind, MatchSource, Pat, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::Ty;
+use rustc_middle::ty::{Ty, TyS};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::Symbol;
 use std::collections::hash_map::Entry;
@@ -242,15 +242,11 @@ fn lint_same_fns_in_if_cond(cx: &LateContext<'_, '_>, conds: &[&Expr<'_>]) {
 
 /// Implementation of `MATCH_SAME_ARMS`.
 fn lint_match_arms<'tcx>(cx: &LateContext<'_, 'tcx>, expr: &Expr<'_>) {
-    fn same_bindings<'tcx>(
-        cx: &LateContext<'_, 'tcx>,
-        lhs: &FxHashMap<Symbol, Ty<'tcx>>,
-        rhs: &FxHashMap<Symbol, Ty<'tcx>>,
-    ) -> bool {
+    fn same_bindings<'tcx>(lhs: &FxHashMap<Symbol, Ty<'tcx>>, rhs: &FxHashMap<Symbol, Ty<'tcx>>) -> bool {
         lhs.len() == rhs.len()
             && lhs
                 .iter()
-                .all(|(name, l_ty)| rhs.get(name).map_or(false, |r_ty| same_tys(cx, l_ty, r_ty)))
+                .all(|(name, l_ty)| rhs.get(name).map_or(false, |r_ty| TyS::same_type(l_ty, r_ty)))
     }
 
     if let ExprKind::Match(_, ref arms, MatchSource::Normal) = expr.kind {
@@ -269,7 +265,7 @@ fn lint_match_arms<'tcx>(cx: &LateContext<'_, 'tcx>, expr: &Expr<'_>) {
             (min_index..=max_index).all(|index| arms[index].guard.is_none()) &&
                 SpanlessEq::new(cx).eq_expr(&lhs.body, &rhs.body) &&
                 // all patterns should have the same bindings
-                same_bindings(cx, &bindings(cx, &lhs.pat), &bindings(cx, &rhs.pat))
+                same_bindings(&bindings(cx, &lhs.pat), &bindings(cx, &rhs.pat))
         };
 
         let indexed_arms: Vec<(usize, &Arm<'_>)> = arms.iter().enumerate().collect();

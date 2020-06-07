@@ -8,7 +8,7 @@ use crate::utils::{
     multispan_sugg, snippet, snippet_opt, snippet_with_applicability, span_lint, span_lint_and_help,
     span_lint_and_sugg, span_lint_and_then, SpanlessEq,
 };
-use crate::utils::{is_type_diagnostic_item, qpath_res, same_tys, sugg};
+use crate::utils::{is_type_diagnostic_item, qpath_res, sugg};
 use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -24,10 +24,10 @@ use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::map::Map;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::middle::region;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, Ty, TyS};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
-use rustc_span::BytePos;
+use rustc_span::symbol::Symbol;
 use rustc_typeck::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, Place, PlaceBase};
 use std::iter::{once, Iterator};
 use std::mem;
@@ -1256,7 +1256,7 @@ fn check_for_loop_arg(cx: &LateContext<'_, '_>, pat: &Pat<'_>, arg: &Expr<'_>, e
             } else if method_name == "into_iter" && match_trait_method(cx, arg, &paths::INTO_ITERATOR) {
                 let receiver_ty = cx.tables.expr_ty(&args[0]);
                 let receiver_ty_adjusted = cx.tables.expr_ty_adjusted(&args[0]);
-                if same_tys(cx, receiver_ty, receiver_ty_adjusted) {
+                if TyS::same_type(receiver_ty, receiver_ty_adjusted) {
                     let mut applicability = Applicability::MachineApplicable;
                     let object = snippet_with_applicability(cx, args[0].span, "_", &mut applicability);
                     span_lint_and_sugg(
@@ -1277,7 +1277,7 @@ fn check_for_loop_arg(cx: &LateContext<'_, '_>, pat: &Pat<'_>, arg: &Expr<'_>, e
                             mutbl: Mutability::Not,
                         },
                     );
-                    if same_tys(cx, receiver_ty_adjusted, ref_receiver_ty) {
+                    if TyS::same_type(receiver_ty_adjusted, ref_receiver_ty) {
                         lint_iter_method(cx, args, arg, method_name)
                     }
                 }
@@ -2381,32 +2381,32 @@ fn check_needless_collect<'a, 'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'a, '
                 match_type(cx, ty, &paths::BTREEMAP) ||
                 is_type_diagnostic_item(cx, ty, sym!(hashmap_type)) {
                 if method.ident.name == sym!(len) {
-                    let span = shorten_needless_collect_span(expr);
+                    let span = shorten_span(expr, sym!(collect));
                     span_lint_and_sugg(
                         cx,
                         NEEDLESS_COLLECT,
                         span,
                         NEEDLESS_COLLECT_MSG,
                         "replace with",
-                        ".count()".to_string(),
+                        "count()".to_string(),
                         Applicability::MachineApplicable,
                     );
                 }
                 if method.ident.name == sym!(is_empty) {
-                    let span = shorten_needless_collect_span(expr);
+                    let span = shorten_span(expr, sym!(iter));
                     span_lint_and_sugg(
                         cx,
                         NEEDLESS_COLLECT,
                         span,
                         NEEDLESS_COLLECT_MSG,
                         "replace with",
-                        ".next().is_none()".to_string(),
+                        "get(0).is_none()".to_string(),
                         Applicability::MachineApplicable,
                     );
                 }
                 if method.ident.name == sym!(contains) {
                     let contains_arg = snippet(cx, args[1].span, "??");
-                    let span = shorten_needless_collect_span(expr);
+                    let span = shorten_span(expr, sym!(collect));
                     span_lint_and_then(
                         cx,
                         NEEDLESS_COLLECT,
@@ -2422,7 +2422,7 @@ fn check_needless_collect<'a, 'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'a, '
                                 span,
                                 "replace with",
                                 format!(
-                                    ".any(|{}| x == {})",
+                                    "any(|{}| x == {})",
                                     arg, pred
                                 ),
                                 Applicability::MachineApplicable,
@@ -2435,13 +2435,13 @@ fn check_needless_collect<'a, 'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'a, '
     }
 }
 
-fn shorten_needless_collect_span(expr: &Expr<'_>) -> Span {
-    if_chain! {
-        if let ExprKind::MethodCall(_, _, ref args) = expr.kind;
-        if let ExprKind::MethodCall(_, ref span, _) = args[0].kind;
-        then {
-            return expr.span.with_lo(span.lo() - BytePos(1));
+fn shorten_span(expr: &Expr<'_>, target_fn_name: Symbol) -> Span {
+    let mut current_expr = expr;
+    while let ExprKind::MethodCall(ref path, ref span, ref args) = current_expr.kind {
+        if path.ident.name == target_fn_name {
+            return expr.span.with_lo(span.lo());
         }
+        current_expr = &args[0];
     }
     unreachable!()
 }
