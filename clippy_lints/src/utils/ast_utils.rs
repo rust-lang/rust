@@ -7,6 +7,7 @@
 use crate::utils::{both, over};
 use rustc_ast::ast::{self, *};
 use rustc_ast::ptr::P;
+use rustc_span::symbol::Ident;
 use std::mem;
 
 /// Checks if each element in the first slice is contained within the latter as per `eq_fn`.

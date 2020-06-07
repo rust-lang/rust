@@ -54,18 +54,13 @@ declare_lint_pass!(AwaitHoldingLock => [AWAIT_HOLDING_LOCK]);
 impl LateLintPass<'_, '_> for AwaitHoldingLock {
     fn check_body(&mut self, cx: &LateContext<'_, '_>, body: &'_ Body<'_>) {
         use AsyncGeneratorKind::{Block, Closure, Fn};
-        match body.generator_kind {
-            Some(GeneratorKind::Async(Block))
-            | Some(GeneratorKind::Async(Closure))
-            | Some(GeneratorKind::Async(Fn)) => {
-                let body_id = BodyId {
-                    hir_id: body.value.hir_id,
-                };
-                let def_id = cx.tcx.hir().body_owner_def_id(body_id);
-                let tables = cx.tcx.typeck_tables_of(def_id);
-                check_interior_types(cx, &tables.generator_interior_types, body.value.span);
-            },
-            _ => {},
+        if let Some(GeneratorKind::Async(Block | Closure | Fn)) = body.generator_kind {
+            let body_id = BodyId {
+                hir_id: body.value.hir_id,
+            };
+            let def_id = cx.tcx.hir().body_owner_def_id(body_id);
+            let tables = cx.tcx.typeck_tables_of(def_id);
+            check_interior_types(cx, &tables.generator_interior_types, body.value.span);
         }
     }
 }
