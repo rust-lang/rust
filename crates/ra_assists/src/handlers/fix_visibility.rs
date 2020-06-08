@@ -63,7 +63,7 @@ fn add_vis_to_referenced_module_def(acc: &mut Assists, ctx: &AssistContext) -> O
     };
 
     acc.add(AssistId("fix_visibility"), assist_label, target, |builder| {
-        builder.set_file(target_file);
+        builder.edit_file(target_file);
         match ctx.config.snippet_cap {
             Some(cap) => builder.insert_snippet(cap, offset, format!("$0{} ", missing_visibility)),
             None => builder.insert(offset, format!("{} ", missing_visibility)),
@@ -106,7 +106,7 @@ fn add_vis_to_referenced_record_field(acc: &mut Assists, ctx: &AssistContext) ->
         format!("Change visibility of {}.{} to {}", parent_name, target_name, missing_visibility);
 
     acc.add(AssistId("fix_visibility"), assist_label, target, |builder| {
-        builder.set_file(target_file);
+        builder.edit_file(target_file);
         match ctx.config.snippet_cap {
             Some(cap) => builder.insert_snippet(cap, offset, format!("$0{} ", missing_visibility)),
             None => builder.insert(offset, format!("{} ", missing_visibility)),

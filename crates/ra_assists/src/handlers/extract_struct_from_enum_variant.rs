@@ -1,20 +1,17 @@
-use ra_ide_db::{defs::Definition, search::Reference, RootDatabase};
-use ra_syntax::{
-    algo::find_node_at_offset,
-    ast::{self, AstNode, NameOwner},
-    SourceFile, SyntaxNode, TextRange, TextSize,
-};
-
-use crate::{
-    assist_context::{AssistBuilder, AssistDirector},
-    utils::insert_use_statement,
-    AssistContext, AssistId, Assists,
-};
-use ast::{ArgListOwner, VisibilityOwner};
 use hir::{EnumVariant, Module, ModuleDef, Name};
 use ra_db::FileId;
 use ra_fmt::leading_indent;
+use ra_ide_db::{defs::Definition, search::Reference, RootDatabase};
+use ra_syntax::{
+    algo::find_node_at_offset,
+    ast::{self, ArgListOwner, AstNode, NameOwner, VisibilityOwner},
+    SourceFile, SyntaxNode, TextRange, TextSize,
+};
 use rustc_hash::FxHashSet;
+
+use crate::{
+    assist_context::AssistBuilder, utils::insert_use_statement, AssistContext, AssistId, Assists,
+};
 
 // Assist: extract_struct_from_enum_variant
 //
@@ -50,11 +47,11 @@ pub(crate) fn extract_struct_from_enum_variant(
     let enum_module_def = ModuleDef::from(enum_hir);
     let current_module = enum_hir.module(ctx.db);
     let target = variant.syntax().text_range();
-    acc.add_in_multiple_files(
+    acc.add(
         AssistId("extract_struct_from_enum_variant"),
         "Extract struct from enum variant",
         target,
-        |edit| {
+        |builder| {
             let definition = Definition::ModuleDef(ModuleDef::EnumVariant(variant_hir));
             let res = definition.find_usages(&ctx.db, None);
             let start_offset = variant.parent_enum().syntax().text_range().start();
@@ -64,7 +61,7 @@ pub(crate) fn extract_struct_from_enum_variant(
                 let source_file = ctx.sema.parse(reference.file_range.file_id);
                 update_reference(
                     ctx,
-                    edit,
+                    builder,
                     reference,
                     &source_file,
                     &enum_module_def,
@@ -73,7 +70,7 @@ pub(crate) fn extract_struct_from_enum_variant(
                 );
             }
             extract_struct_def(
-                edit,
+                builder,
                 enum_ast.syntax(),
                 &variant_name,
                 &field_list.to_string(),
@@ -82,7 +79,7 @@ pub(crate) fn extract_struct_from_enum_variant(
                 &visibility,
             );
             let list_range = field_list.syntax().text_range();
-            update_variant(edit, &variant_name, ctx.frange.file_id, list_range);
+            update_variant(builder, &variant_name, ctx.frange.file_id, list_range);
         },
     )
 }
@@ -115,7 +112,7 @@ fn insert_import(
 }
 
 fn extract_struct_def(
-    edit: &mut AssistDirector,
+    builder: &mut AssistBuilder,
     enum_ast: &SyntaxNode,
     variant_name: &str,
     variant_list: &str,
@@ -142,14 +139,13 @@ fn extract_struct_def(
         list_with_visibility(variant_list),
         indent
     );
-    edit.perform(file_id, |builder| {
-        builder.insert(start_offset, struct_def);
-    });
+    builder.edit_file(file_id);
+    builder.insert(start_offset, struct_def);
     Some(())
 }
 
 fn update_variant(
-    edit: &mut AssistDirector,
+    builder: &mut AssistBuilder,
     variant_name: &str,
     file_id: FileId,
     list_range: TextRange,
@@ -158,15 +154,14 @@ fn update_variant(
         list_range.start().checked_add(TextSize::from(1))?,
         list_range.end().checked_sub(TextSize::from(1))?,
     );
-    edit.perform(file_id, |builder| {
-        builder.replace(inside_variant_range, variant_name);
-    });
+    builder.edit_file(file_id);
+    builder.replace(inside_variant_range, variant_name);
     Some(())
 }
 
 fn update_reference(
     ctx: &AssistContext,
-    edit: &mut AssistDirector,
+    builder: &mut AssistBuilder,
     reference: Reference,
     source_file: &SourceFile,
     enum_module_def: &ModuleDef,
@@ -186,16 +181,15 @@ fn update_reference(
         list_range.start().checked_add(TextSize::from(1))?,
         list_range.end().checked_sub(TextSize::from(1))?,
     );
-    edit.perform(reference.file_range.file_id, |builder| {
-        if !visited_modules_set.contains(&module) {
-            if insert_import(ctx, builder, &path_expr, &module, enum_module_def, variant_hir_name)
-                .is_some()
-            {
-                visited_modules_set.insert(module);
-            }
+    builder.edit_file(reference.file_range.file_id);
+    if !visited_modules_set.contains(&module) {
+        if insert_import(ctx, builder, &path_expr, &module, enum_module_def, variant_hir_name)
+            .is_some()
+        {
+            visited_modules_set.insert(module);
         }
-        builder.replace(inside_list_range, format!("{}{}", segment, list));
-    });
+    }
+    builder.replace(inside_list_range, format!("{}{}", segment, list));
     Some(())
 }
 
