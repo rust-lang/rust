@@ -2628,6 +2628,13 @@ impl<T> IntoIter<T> {
     }
 }
 
+#[stable(feature = "vec_intoiter_as_ref", since = "1.46.0")]
+impl<T> AsRef<[T]> for IntoIter<T> {
+    fn as_ref(&self) -> &[T] {
+        self.as_slice()
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: Send> Send for IntoIter<T> {}
 #[stable(feature = "rust1", since = "1.0.0")]
