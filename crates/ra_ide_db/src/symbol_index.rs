@@ -300,9 +300,6 @@ impl Query {
         let mut stream = op.union();
         let mut res = Vec::new();
         while let Some((_, indexed_values)) = stream.next() {
-            if res.len() >= self.limit {
-                break;
-            }
             for indexed_value in indexed_values {
                 let symbol_index = &indices[indexed_value.index];
                 let (start, end) = SymbolIndex::map_value_to_range(indexed_value.value);
@@ -313,6 +310,10 @@ impl Query {
                     }
                     if self.exact && symbol.name != self.query {
                         continue;
+                    }
+
+                    if res.len() >= self.limit {
+                        return res;
                     }
                     res.push(symbol.clone());
                 }
