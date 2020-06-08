@@ -62,8 +62,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 (false, false, EdgeKind::Other)
                 // Non-cleanup blocks can jump to cleanup blocks along unwind edges
                 | (false, true, EdgeKind::Unwind)
-                // Cleanup blocks can jump to cleanup blocks along unwind edges
-                | (true, true, EdgeKind::Unwind) => {}
+                // Cleanup blocks can jump to cleanup blocks along any edges
+                | (true, true, _) => {}
                 // All other jumps are invalid
                 _ => {
                     self.fail(
