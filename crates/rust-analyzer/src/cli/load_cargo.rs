@@ -8,8 +8,7 @@ use crossbeam_channel::{unbounded, Receiver};
 use ra_db::{ExternSourceId, FileId, SourceRootId};
 use ra_ide::{AnalysisChange, AnalysisHost};
 use ra_project_model::{
-    get_rustc_cfg_options, CargoConfig, PackageRoot, ProcMacroClient, ProjectManifest,
-    ProjectWorkspace,
+    CargoConfig, PackageRoot, ProcMacroClient, ProjectManifest, ProjectWorkspace,
 };
 use ra_vfs::{RootEntry, Vfs, VfsChange, VfsTask, Watch};
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -148,26 +147,14 @@ pub(crate) fn load(
         }
     }
 
-    // FIXME: cfg options?
-    let default_cfg_options = {
-        let mut opts = get_rustc_cfg_options(None);
-        opts.insert_atom("test".into());
-        opts.insert_atom("debug_assertion".into());
-        opts
-    };
-
-    let crate_graph = ws.to_crate_graph(
-        &default_cfg_options,
-        &extern_source_roots,
-        proc_macro_client,
-        &mut |path: &Path| {
+    let crate_graph =
+        ws.to_crate_graph(None, &extern_source_roots, proc_macro_client, &mut |path: &Path| {
             // Some path from metadata will be non canonicalized, e.g. /foo/../bar/lib.rs
             let path = path.canonicalize().ok()?;
             let vfs_file = vfs.load(&path);
             log::debug!("vfs file {:?} -> {:?}", path, vfs_file);
             vfs_file.map(vfs_file_to_id)
-        },
-    );
+        });
     log::debug!("crate graph: {:?}", crate_graph);
     analysis_change.set_crate_graph(crate_graph);
 
