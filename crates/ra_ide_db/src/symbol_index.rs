@@ -132,6 +132,8 @@ fn file_symbols(db: &impl SymbolsDatabase, file_id: FileId) -> Arc<SymbolIndex> 
 // | VS Code | kbd:[Ctrl+T]
 // |===
 pub fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol> {
+    let _p = ra_prof::profile("world_symbols").detail(|| query.query.clone());
+
     /// Need to wrap Snapshot to provide `Clone` impl for `map_with`
     struct Snap(salsa::Snapshot<RootDatabase>);
     impl Clone for Snap {
