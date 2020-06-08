@@ -185,6 +185,13 @@ source.
   errors when usage of a gated feature is attempted without the proper
   `#![feature(X)]` tag.  Each unstable lang feature is required to
   have a gate test.
+* `needs-profiler-support` - a profiler runtime is required, i.e.,
+  `profiler = true` in rustc's `config.toml`.
+* `needs-sanitizer-support` - a sanitizer runtime is required, i.e.,
+  `sanitizers = true` in rustc's `config.toml`.
+* `needs-sanitizer-{address,leak,memory,thread}` - indicates that test
+  requires a target with a support for AddressSanitizer, LeakSanitizer,
+  MemorySanitizer or ThreadSanitizer respectively.
 
 [`header.rs`]: https://github.com/rust-lang/rust/tree/master/src/tools/compiletest/src/header.rs
 [bless]: ./running.md#editing-and-updating-the-reference-files
