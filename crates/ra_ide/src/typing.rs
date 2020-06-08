@@ -17,7 +17,7 @@ mod on_enter;
 
 use ra_db::{FilePosition, SourceDatabase};
 use ra_fmt::leading_indent;
-use ra_ide_db::RootDatabase;
+use ra_ide_db::{source_change::SourceFileEdit, RootDatabase};
 use ra_syntax::{
     algo::find_node_at_offset,
     ast::{self, AstToken},
@@ -47,8 +47,8 @@ pub(crate) fn on_char_typed(
     assert!(TRIGGER_CHARS.contains(char_typed));
     let file = &db.parse(position.file_id).tree();
     assert_eq!(file.syntax().text().char_at(position.offset), Some(char_typed));
-    let text_edit = on_char_typed_inner(file, position.offset, char_typed)?;
-    Some(SourceChange::source_file_edit_from(position.file_id, text_edit))
+    let edit = on_char_typed_inner(file, position.offset, char_typed)?;
+    Some(SourceFileEdit { file_id: position.file_id, edit }.into())
 }
 
 fn on_char_typed_inner(file: &SourceFile, offset: TextSize, char_typed: char) -> Option<TextEdit> {

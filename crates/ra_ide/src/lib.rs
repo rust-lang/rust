@@ -503,7 +503,7 @@ impl Analysis {
     ) -> Cancelable<Result<SourceChange, SsrError>> {
         self.with_db(|db| {
             let edits = ssr::parse_search_replace(query, parse_only, db)?;
-            Ok(SourceChange::source_file_edits(edits))
+            Ok(SourceChange::from(edits))
         })
     }
 
