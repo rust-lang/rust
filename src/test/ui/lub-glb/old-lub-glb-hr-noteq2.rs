@@ -2,12 +2,12 @@
 // one is more general than the other. Test the case where the more general type
 // (`x`) is the second match arm specifically.
 //
-// Skip for compare-mode because the pure NLL checker accepts this test. (Note
-// that it still errors in old-lub-glb-hr-noteq1.rs). What happens is that, due
-// to the ordering of the match arms, we pick the correct "more general" fn
-// type, and we ignore the errors from the non-NLL type checker that requires
-// equality. The NLL type checker only requires a subtyping relationship, and
-// that holds.
+// FIXME(#73154) Skip for compare-mode because the pure NLL checker accepts this
+// test. (Note that it still errors in old-lub-glb-hr-noteq1.rs). What happens
+// is that, due to the ordering of the match arms, we pick the correct "more
+// general" fn type, and we ignore the errors from the non-NLL type checker that
+// requires equality. The NLL type checker only requires a subtyping
+// relationship, and that holds.
 //
 // ignore-compare-mode-nll
 
