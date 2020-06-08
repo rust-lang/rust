@@ -139,7 +139,7 @@ use crate::sys_common::poison::{self, LockResult, TryLockError, TryLockResult};
 ///         // and the thread still has work to do. This allow other threads to
 ///         // start working on the data immediately, without waiting
 ///         // for the rest of the unrelated work to be done here.
-///         std::mem::drop(data);
+///         drop(data);
 ///         *res_mutex_clone.lock().unwrap() += result;
 ///     }));
 /// });
@@ -156,7 +156,7 @@ use crate::sys_common::poison::{self, LockResult, TryLockError, TryLockResult};
 /// // It's even more important here because we `.join` the threads after that.
 /// // If we had not dropped the lock, a thread could be waiting forever for
 /// // it, causing a deadlock.
-/// std::mem::drop(data);
+/// drop(data);
 /// // Here the lock is not assigned to a variable and so, even if the scope
 /// // does not end after this line, the mutex is still released:
 /// // there is no deadlock.
