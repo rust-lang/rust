@@ -1,7 +1,8 @@
 use crate::ty;
 
+use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::Res;
-use rustc_hir::def_id::DefIdMap;
+use rustc_hir::def_id::LocalDefId;
 use rustc_macros::HashStable;
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
@@ -10,7 +11,7 @@ use std::fmt::Debug;
 
 /// This is the replacement export map. It maps a module to all of the exports
 /// within.
-pub type ExportMap<Id> = DefIdMap<Vec<Export<Id>>>;
+pub type ExportMap<Id> = FxHashMap<LocalDefId, Vec<Export<Id>>>;
 
 #[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
 pub struct Export<Id> {

@@ -693,15 +693,24 @@ impl EncodeContext<'tcx> {
         vis: &hir::Visibility<'_>,
     ) {
         let tcx = self.tcx;
-        let def_id = tcx.hir().local_def_id(id).to_def_id();
+        let def_id = tcx.hir().local_def_id(id);
         debug!("EncodeContext::encode_info_for_mod({:?})", def_id);
 
         let data = ModData {
             reexports: match tcx.module_exports(def_id) {
-                Some(exports) => self.lazy(exports),
+                Some(exports) => {
+                    let hir_map = self.tcx.hir();
+                    self.lazy(
+                        exports
+                            .iter()
+                            .map(|export| export.map_id(|id| hir_map.as_local_hir_id(id))),
+                    )
+                }
                 _ => Lazy::empty(),
             },
         };
+
+        let def_id = def_id.to_def_id();
 
         record!(self.tables.kind[def_id] <- EntryKind::Mod(self.lazy(data)));
         record!(self.tables.visibility[def_id] <- ty::Visibility::from_hir(vis, id, self.tcx));

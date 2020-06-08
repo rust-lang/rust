@@ -25,7 +25,7 @@ Compiler
 --------
 - [Rustc now respects the `-C codegen-units` flag in incremental mode.][70156]
   Additionally when in incremental mode rustc defaults to 256 codegen units.
-- [Refactored `catch_unwind`, to have zero-cost unless unwinding is enabled and
+- [Refactored `catch_unwind` to have zero-cost, unless unwinding is enabled and
   a panic is thrown.][67502]
 - [Added tier 3\* support for the `aarch64-unknown-none` and
   `aarch64-unknown-none-softfloat` targets.][68334]
