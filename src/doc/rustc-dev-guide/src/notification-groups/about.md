@@ -1,40 +1,40 @@
-# ICE-breakers
+# Notification groups
 
-The **ICE-breaker groups** are an easy way to help out with rustc in a
+The **notification groups** are an easy way to help out with rustc in a
 "piece-meal" fashion, without committing to a larger project.
-ICE-breaker groups are **[easy to join](#join)** (just submit a PR!)
+Notification groups are **[easy to join](#join)** (just submit a PR!)
 and joining does not entail any particular commitment.
 
-Once you [join an ICE-breaker group](#join), you will be added to
+Once you [join a notification group](#join), you will be added to
 a list that receives pings on github whenever a new issue is found
-that fits the ICE-breaker group's criteria. If you are interested, you
+that fits the notification group's criteria. If you are interested, you
 can then [claim the issue] and start working on it.
 
 Of course, you don't have to wait for new issues to be tagged! If you
-prefer, you can use the Github label for an ICE-breaker group to
+prefer, you can use the Github label for a notification group to
 search for existing issues that haven't been claimed yet.
 
 [claim the issue]: https://github.com/rust-lang/triagebot/wiki/Assignment
 
-## What issues are a good fit for ICE-breaker groups?
+## What issues are a good fit for notification groups?
 
-"ICE-breaker issues" are intended to be **isolated** bugs of **middle
-priority**:
+Notification groups tend to get pinged on **isolated** bugs,
+particularly those of **middle priority**:
 
 - By **isolated**, we mean that we do not expect large-scale refactoring
   to be required to fix the bug.
 - By **middle priority**, we mean that we'd like to see the bug fixed,
   but it's not such a burning problem that we are dropping everything
   else to fix it. The danger with such bugs, of course, is that they
-  can accumulate over time, and the role of the ICE-breaker groups is
+  can accumulate over time, and the role of the notification group is
   to try and stop that from happening!
 
 <a name="join"></a>
 
-## Joining an ICE-breaker group
+## Joining a notification group
 
-To join an ICE-breaker group, you just have to open a PR adding your
-Github username to the appropriate file in the Rust team  repository.
+To join an notification group, you just have to open a PR adding your
+Github username to the appropriate file in the Rust team repository.
 See the "example PRs" below to get a precise idea and to identify the
 file to edit.
 
@@ -48,18 +48,20 @@ cargo run add-person $your_user_name
 
 Example PRs:
 
-* [Example of adding yourself to the LLVM ICE-breakers.](https://github.com/rust-lang/team/pull/140)
-* [Example of adding yourself to the Cleanup Crew ICE-breakers.](https://github.com/rust-lang/team/pull/221)
+* [Example of adding yourself to the Cleanup Crew.](https://github.com/rust-lang/team/pull/221)
+* [Example of adding yourself to the LLVM group.](https://github.com/rust-lang/team/pull/140)
+* [Example of adding yourself to the Windows group.](https://github.com/rust-lang/team/pull/348)
+* [Example of adding yourself to the ARM group.](https://github.com/rust-lang/team/pull/358)
 
-## Tagging an issue for an ICE-breaker group
+## Tagging an issue for a notification group
 
-To tag an issue as appropriate for an ICE-breaker group, you give
-[rustbot] a [`ping`] command with the name of the ICE-breakers
-team. For example:
+To tag an issue as appropriate for a notification group, you give
+[rustbot] a [`ping`] command with the name of the notification
+group. For example:
 
 ```text
-@rustbot ping icebreakers-llvm
-@rustbot ping icebreakers-cleanup-crew
+@rustbot ping llvm
+@rustbot ping cleanup-crew
 ```
 
 To make these commands shorter and easier to remember, there are aliases,
