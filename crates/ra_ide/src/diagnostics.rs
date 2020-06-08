@@ -21,7 +21,7 @@ use ra_syntax::{
 };
 use ra_text_edit::{TextEdit, TextEditBuilder};
 
-use crate::{Diagnostic, FileId, FileSystemEdit, Fix, SourceChange, SourceFileEdit};
+use crate::{Diagnostic, FileId, FileSystemEdit, Fix, SourceFileEdit};
 
 #[derive(Debug, Copy, Clone)]
 pub enum Severity {
@@ -115,7 +115,7 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
         let node = d.ast(db);
         let replacement = format!("Ok({})", node.syntax());
         let edit = TextEdit::replace(node.syntax().text_range(), replacement);
-        let source_change = SourceChange::source_file_edit_from(file_id, edit);
+        let source_change = SourceFileEdit { file_id, edit }.into();
         let fix = Fix::new("Wrap with ok", source_change);
         res.borrow_mut().push(Diagnostic {
             range: sema.diagnostics_range(d).range,

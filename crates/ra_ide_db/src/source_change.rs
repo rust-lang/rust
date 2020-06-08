@@ -22,17 +22,6 @@ impl SourceChange {
     ) -> Self {
         SourceChange { source_file_edits, file_system_edits, is_snippet: false }
     }
-
-    /// Creates a new SourceChange with the given label,
-    /// containing only the given `SourceFileEdits`.
-    pub fn source_file_edits(edits: Vec<SourceFileEdit>) -> Self {
-        SourceChange { source_file_edits: edits, file_system_edits: vec![], is_snippet: false }
-    }
-    /// Creates a new SourceChange with the given label
-    /// from the given `FileId` and `TextEdit`
-    pub fn source_file_edit_from(file_id: FileId, edit: TextEdit) -> Self {
-        SourceFileEdit { file_id, edit }.into()
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -43,11 +32,13 @@ pub struct SourceFileEdit {
 
 impl From<SourceFileEdit> for SourceChange {
     fn from(edit: SourceFileEdit) -> SourceChange {
-        SourceChange {
-            source_file_edits: vec![edit],
-            file_system_edits: Vec::new(),
-            is_snippet: false,
-        }
+        vec![edit].into()
+    }
+}
+
+impl From<Vec<SourceFileEdit>> for SourceChange {
+    fn from(source_file_edits: Vec<SourceFileEdit>) -> SourceChange {
+        SourceChange { source_file_edits, file_system_edits: Vec::new(), is_snippet: false }
     }
 }
 

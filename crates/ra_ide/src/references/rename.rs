@@ -171,7 +171,7 @@ fn rename_to_self(db: &RootDatabase, position: FilePosition) -> Option<RangeInfo
         ),
     });
 
-    Some(RangeInfo::new(range, SourceChange::source_file_edits(edits)))
+    Some(RangeInfo::new(range, SourceChange::from(edits)))
 }
 
 fn text_edit_from_self_param(
@@ -234,7 +234,7 @@ fn rename_self_to_param(
     let range = ast::SelfParam::cast(self_token.parent())
         .map_or(self_token.text_range(), |p| p.syntax().text_range());
 
-    Some(RangeInfo::new(range, SourceChange::source_file_edits(edits)))
+    Some(RangeInfo::new(range, SourceChange::from(edits)))
 }
 
 fn rename_reference(
@@ -253,7 +253,7 @@ fn rename_reference(
         return None;
     }
 
-    Some(RangeInfo::new(range, SourceChange::source_file_edits(edit)))
+    Some(RangeInfo::new(range, SourceChange::from(edit)))
 }
 
 #[cfg(test)]
