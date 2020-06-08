@@ -481,10 +481,12 @@ impl<'a> Linker for GccLinker<'a> {
         match strip {
             Strip::None => {}
             Strip::Debuginfo => {
-                self.linker_arg("--strip-debug");
+                // MacOS linker does not support longhand argument --strip-debug
+                self.linker_arg("-S");
             }
             Strip::Symbols => {
-                self.linker_arg("--strip-all");
+                // MacOS linker does not support longhand argument --strip-all
+                self.linker_arg("-s");
             }
         }
     }
