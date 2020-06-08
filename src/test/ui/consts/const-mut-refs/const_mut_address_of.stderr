@@ -1,0 +1,21 @@
+error[E0658]: references in constants may only refer to immutable values
+  --> $DIR/const_mut_address_of.rs:24:5
+   |
+LL |     foo().bar();
+   |     ^^^^^ constants require immutable values
+   |
+   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
+   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
+
+error[E0658]: references in constants may only refer to immutable values
+  --> $DIR/const_mut_address_of.rs:26:9
+   |
+LL |     baz(&mut foo());
+   |         ^^^^^^^^^^ constants require immutable values
+   |
+   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
+   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.
