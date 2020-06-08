@@ -234,15 +234,18 @@ pub struct NulError(usize, Vec<u8>);
 
 /// An error indicating that a nul byte was not in the expected position.
 ///
-/// The slice used to create a [`CStr`] must have one and only one nul
-/// byte at the end of the slice.
+/// The slice used to create a [`CStr`] or the vector used to create a
+/// [`CString`] must have one and only one nul byte, positioned at the end.
 ///
 /// This error is created by the
 /// [`from_bytes_with_nul`][`CStr::from_bytes_with_nul`] method on
-/// [`CStr`]. See its documentation for more.
+/// [`CStr`] or the [`from_vec_with_nul`][`CString::from_vec_with_nul`] method
+/// on [`CString`]. See their documentation for more.
 ///
 /// [`CStr`]: struct.CStr.html
 /// [`CStr::from_bytes_with_nul`]: struct.CStr.html#method.from_bytes_with_nul
+/// [`CString`]: struct.CString.html
+/// [`CString::from_vec_with_nul`]: struct.CString.html#method.from_vec_with_nul
 ///
 /// # Examples
 ///
@@ -631,6 +634,77 @@ impl CString {
         // See https://github.com/rust-lang/rust/issues/62553.
         let this = mem::ManuallyDrop::new(self);
         unsafe { ptr::read(&this.inner) }
+    }
+
+    /// Converts a `Vec` of `u8` to a `CString` without checking the invariants
+    /// on the given `Vec`.
+    ///
+    /// # Safety
+    ///
+    /// The given `Vec` **must** have one nul byte as its last element.
+    /// This means it cannot be empty nor have any other nul byte anywhere else.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::ffi::CString;
+    /// assert_eq!(
+    ///     unsafe { CString::from_vec_with_nul_unchecked(b"abc\0".to_vec()) },
+    ///     unsafe { CString::from_vec_unchecked(b"abc".to_vec()) }
+    /// );
+    /// ```
+    #[stable(feature = "cstring_from_vec_with_nul", since = "1.46.0")]
+    pub unsafe fn from_vec_with_nul_unchecked(v: Vec<u8>) -> Self {
+        Self { inner: v.into_boxed_slice() }
+    }
+
+    /// Attempts to converts a `Vec` of `u8` to a `CString`.
+    ///
+    /// Runtime checks are present to ensure there is only one nul byte in the
+    /// `Vec`, its last element.
+    ///
+    /// # Errors
+    ///
+    /// If a nul byte is present and not the last element or no nul bytes
+    /// is present, an error will be returned.
+    ///
+    /// # Examples
+    ///
+    /// A successful conversion will produce the same result as [`new`] when
+    /// called without the ending nul byte.
+    ///
+    /// ```
+    /// use std::ffi::CString;
+    /// assert_eq!(
+    ///     CString::from_vec_with_nul(b"abc\0".to_vec())
+    ///         .expect("CString::from_vec_with_nul failed"),
+    ///     CString::new(b"abc".to_vec())
+    /// );
+    /// ```
+    ///
+    /// A incorrectly formatted vector will produce an error.
+    ///
+    /// ```
+    /// use std::ffi::{CString, FromBytesWithNulError};
+    /// // Interior nul byte
+    /// let _: FromBytesWithNulError = CString::from_vec_with_nul(b"a\0bc".to_vec()).unwrap_err();
+    /// // No nul byte
+    /// let _: FromBytesWithNulError = CString::from_vec_with_nul(b"abc".to_vec()).unwrap_err();
+    /// ```
+    ///
+    /// [`new`]: #method.new
+    #[stable(feature = "cstring_from_vec_with_nul", since = "1.46.0")]
+    pub fn from_vec_with_nul(v: Vec<u8>) -> Result<Self, FromBytesWithNulError> {
+        let nul_pos = memchr::memchr(0, &v);
+        match nul_pos {
+            Some(nul_pos) if nul_pos + 1 == v.len() => {
+                // SAFETY: We know there is only one nul byte, at the end
+                // of the vec.
+                Ok(unsafe { Self::from_vec_with_nul_unchecked(v) })
+            }
+            Some(nul_pos) => Err(FromBytesWithNulError::interior_nul(nul_pos)),
+            None => Err(FromBytesWithNulError::not_nul_terminated()),
+        }
     }
 }
 
