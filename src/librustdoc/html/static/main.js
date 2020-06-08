@@ -2374,7 +2374,9 @@ function defocusSearchBar() {
             if (!next) {
                 return;
             }
-            if (next.getElementsByClassName("method").length > 0 && hasClass(e, "impl")) {
+            if (hasClass(e, "impl") &&
+                (next.getElementsByClassName("method").length > 0 ||
+                 next.getElementsByClassName("associatedconstant").length > 0)) {
                 insertAfter(toggle.cloneNode(true), e.childNodes[e.childNodes.length - 1]);
             }
         };
