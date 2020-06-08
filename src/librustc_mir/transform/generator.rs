@@ -50,7 +50,7 @@
 //! Otherwise it drops all the values in scope at the last suspension point.
 
 use crate::dataflow::impls::{
-    MaybeBorrowedLocals, MaybeInitializedLocals, MaybeLiveLocals, MaybeStorageLive,
+    MaybeBorrowedLocals, MaybeLiveLocals, MaybeRequiresStorage, MaybeStorageLive,
 };
 use crate::dataflow::{self, Analysis};
 use crate::transform::no_landing_pads::no_landing_pads;
@@ -444,80 +444,86 @@ fn locals_live_across_suspend_points(
     movable: bool,
 ) -> LivenessInfo {
     let def_id = source.def_id();
+    let body_ref: &Body<'_> = &body;
 
     // Calculate when MIR locals have live storage. This gives us an upper bound of their
     // lifetimes.
     let mut storage_live = MaybeStorageLive::new(always_live_locals.clone())
-        .into_engine(tcx, body, def_id)
+        .into_engine(tcx, body_ref, def_id)
         .iterate_to_fixpoint()
-        .into_results_cursor(body);
+        .into_results_cursor(body_ref);
 
-    let mut init = MaybeInitializedLocals
-        .into_engine(tcx, body, def_id)
+    // Calculate the MIR locals which have been previously
+    // borrowed (even if they are still active).
+    let borrowed_locals_results =
+        MaybeBorrowedLocals::all_borrows().into_engine(tcx, body_ref, def_id).iterate_to_fixpoint();
+
+    let mut borrowed_locals_cursor =
+        dataflow::ResultsCursor::new(body_ref, &borrowed_locals_results);
+
+    // Calculate the MIR locals that we actually need to keep storage around
+    // for.
+    let requires_storage_results = MaybeRequiresStorage::new(body, &borrowed_locals_results)
+        .into_engine(tcx, body_ref, def_id)
+        .iterate_to_fixpoint();
+    let mut requires_storage_cursor =
+        dataflow::ResultsCursor::new(body_ref, &requires_storage_results);
+
+    // Calculate the liveness of MIR locals ignoring borrows.
+    let mut liveness = MaybeLiveLocals
+        .into_engine(tcx, body_ref, def_id)
         .iterate_to_fixpoint()
-        .into_results_cursor(body);
-
-    let mut live = MaybeLiveLocals
-        .into_engine(tcx, body, def_id)
-        .iterate_to_fixpoint()
-        .into_results_cursor(body);
-
-    let mut borrowed = MaybeBorrowedLocals::all_borrows()
-        .into_engine(tcx, body, def_id)
-        .iterate_to_fixpoint()
-        .into_results_cursor(body);
-
-    // Liveness across yield points is determined by the following boolean equation, where `live`,
-    // `init` and `borrowed` come from dataflow and `movable` is a property of the generator.
-    // Movable generators do not allow borrows to live across yield points, so they don't need to
-    // store a local simply because it is borrowed.
-    //
-    //    live_across_yield := (live & init) | (!movable & borrowed)
-    //
-    let mut locals_live_across_yield_point = |block| {
-        live.seek_to_block_end(block);
-        let mut live_locals = live.get().clone();
-
-        init.seek_to_block_end(block);
-        live_locals.intersect(init.get());
-
-        if !movable {
-            borrowed.seek_to_block_end(block);
-            live_locals.union(borrowed.get());
-        }
-
-        live_locals
-    };
+        .into_results_cursor(body_ref);
 
     let mut storage_liveness_map = IndexVec::from_elem(None, body.basic_blocks());
     let mut live_locals_at_suspension_points = Vec::new();
     let mut live_locals_at_any_suspension_point = BitSet::new_empty(body.local_decls.len());
 
     for (block, data) in body.basic_blocks().iter_enumerated() {
-        if !matches!(data.terminator().kind, TerminatorKind::Yield { ..  }) {
-            continue;
+        if let TerminatorKind::Yield { .. } = data.terminator().kind {
+            let loc = Location { block, statement_index: data.statements.len() };
+
+            liveness.seek_to_block_end(block);
+            let mut live_locals = liveness.get().clone();
+
+            if !movable {
+                // The `liveness` variable contains the liveness of MIR locals ignoring borrows.
+                // This is correct for movable generators since borrows cannot live across
+                // suspension points. However for immovable generators we need to account for
+                // borrows, so we conseratively assume that all borrowed locals are live until
+                // we find a StorageDead statement referencing the locals.
+                // To do this we just union our `liveness` result with `borrowed_locals`, which
+                // contains all the locals which has been borrowed before this suspension point.
+                // If a borrow is converted to a raw reference, we must also assume that it lives
+                // forever. Note that the final liveness is still bounded by the storage liveness
+                // of the local, which happens using the `intersect` operation below.
+                borrowed_locals_cursor.seek_before_primary_effect(loc);
+                live_locals.union(borrowed_locals_cursor.get());
+            }
+
+            // Store the storage liveness for later use so we can restore the state
+            // after a suspension point
+            storage_live.seek_before_primary_effect(loc);
+            storage_liveness_map[block] = Some(storage_live.get().clone());
+
+            // Locals live are live at this point only if they are used across
+            // suspension points (the `liveness` variable)
+            // and their storage is required (the `storage_required` variable)
+            requires_storage_cursor.seek_before_primary_effect(loc);
+            live_locals.intersect(requires_storage_cursor.get());
+
+            // The generator argument is ignored.
+            live_locals.remove(SELF_ARG);
+
+            debug!("loc = {:?}, live_locals = {:?}", loc, live_locals);
+
+            // Add the locals live at this suspension point to the set of locals which live across
+            // any suspension points
+            live_locals_at_any_suspension_point.union(&live_locals);
+
+            live_locals_at_suspension_points.push(live_locals);
         }
-
-        // Store the storage liveness for later use so we can restore the state
-        // after a suspension point
-        storage_live.seek_to_block_end(block);
-        storage_liveness_map[block] = Some(storage_live.get().clone());
-
-        let mut live_locals = locals_live_across_yield_point(block);
-
-        // The combination of `MaybeInitializedLocals` and `MaybeBorrowedLocals` should be strictly
-        // more precise than `MaybeStorageLive` because they handle `StorageDead` themselves. This
-        // assumes that the MIR forbids locals from being initialized/borrowed before reaching
-        // `StorageLive`.
-        debug_assert!(storage_live.get().superset(&live_locals));
-
-        // Ignore the generator's `self` argument since it is handled seperately.
-        live_locals.remove(SELF_ARG);
-        debug!("block = {:?}, live_locals = {:?}", block, live_locals);
-        live_locals_at_any_suspension_point.union(&live_locals);
-        live_locals_at_suspension_points.push(live_locals);
     }
-
     debug!("live_locals_anywhere = {:?}", live_locals_at_any_suspension_point);
 
     // Renumber our liveness_map bitsets to include only the locals we are
@@ -528,11 +534,10 @@ fn locals_live_across_suspend_points(
         .collect();
 
     let storage_conflicts = compute_storage_conflicts(
-        body,
+        body_ref,
         &live_locals_at_any_suspension_point,
         always_live_locals.clone(),
-        init,
-        borrowed,
+        requires_storage_results,
     );
 
     LivenessInfo {
@@ -564,37 +569,6 @@ fn renumber_bitset(
     out
 }
 
-/// Record conflicts between locals at the current dataflow cursor positions.
-///
-/// You need to seek the cursors before calling this function.
-fn record_conflicts_at_curr_loc(
-    local_conflicts: &mut BitMatrix<Local, Local>,
-    init: &dataflow::ResultsCursor<'mir, 'tcx, MaybeInitializedLocals>,
-    borrowed: &dataflow::ResultsCursor<'mir, 'tcx, MaybeBorrowedLocals>,
-) {
-    // A local requires storage if it is initialized or borrowed. For now, a local
-    // becomes uninitialized if it is moved from, but is still considered "borrowed".
-    //
-    //     requires_storage := init | borrowed
-    //
-    // Just like when determining what locals are live at yield points, there is no need
-    // to look at storage liveness here, since `init | borrowed` is strictly more precise.
-    //
-    // FIXME: This function is called in a loop, so it might be better to pass in a temporary
-    // bitset rather than cloning here.
-    let mut requires_storage = init.get().clone();
-    requires_storage.union(borrowed.get());
-
-    for local in requires_storage.iter() {
-        local_conflicts.union_row_with(&requires_storage, local);
-    }
-
-    // `>1` because the `self` argument always requires storage.
-    if requires_storage.count() > 1 {
-        trace!("requires_storage={:?}", requires_storage);
-    }
-}
-
 /// For every saved local, looks for which locals are StorageLive at the same
 /// time. Generates a bitset for every local of all the other locals that may be
 /// StorageLive simultaneously with that local. This is used in the layout
@@ -603,45 +577,30 @@ fn compute_storage_conflicts(
     body: &'mir Body<'tcx>,
     stored_locals: &BitSet<Local>,
     always_live_locals: storage::AlwaysLiveLocals,
-    mut init: dataflow::ResultsCursor<'mir, 'tcx, MaybeInitializedLocals>,
-    mut borrowed: dataflow::ResultsCursor<'mir, 'tcx, MaybeBorrowedLocals>,
+    requires_storage: dataflow::Results<'tcx, MaybeRequiresStorage<'mir, 'tcx>>,
 ) -> BitMatrix<GeneratorSavedLocal, GeneratorSavedLocal> {
-    debug!("compute_storage_conflicts({:?})", body.span);
     assert_eq!(body.local_decls.len(), stored_locals.domain_size());
 
-    // Locals that are always live conflict with all other locals.
-    //
-    // FIXME: Why do we need to handle locals without `Storage{Live,Dead}` specially here?
-    // Shouldn't it be enough to know whether they are initialized?
-    let always_live_locals = always_live_locals.into_inner();
-    let mut local_conflicts = BitMatrix::from_row_n(&always_live_locals, body.local_decls.len());
+    debug!("compute_storage_conflicts({:?})", body.span);
+    debug!("always_live = {:?}", always_live_locals);
 
-    // Visit every reachable statement and terminator. The exact order does not matter. When two
-    // locals are live at the same point in time, add an entry in the conflict matrix.
-    for (block, data) in traversal::preorder(body) {
-        // Ignore unreachable blocks.
-        if data.terminator().kind == TerminatorKind::Unreachable {
-            continue;
-        }
+    // Locals that are always live or ones that need to be stored across
+    // suspension points are not eligible for overlap.
+    let mut ineligible_locals = always_live_locals.into_inner();
+    ineligible_locals.intersect(stored_locals);
 
-        // Observe the dataflow state *before* all possible locations (statement or terminator) in
-        // each basic block...
-        for statement_index in 0..=data.statements.len() {
-            let loc = Location { block, statement_index };
-            trace!("record conflicts at {:?}", loc);
-            init.seek_before_primary_effect(loc);
-            borrowed.seek_before_primary_effect(loc);
-            record_conflicts_at_curr_loc(&mut local_conflicts, &init, &borrowed);
-        }
+    // Compute the storage conflicts for all eligible locals.
+    let mut visitor = StorageConflictVisitor {
+        body,
+        stored_locals: &stored_locals,
+        local_conflicts: BitMatrix::from_row_n(&ineligible_locals, body.local_decls.len()),
+    };
 
-        // ...and then observe the state *after* the terminator effect is applied. As long as
-        // neither `init` nor `borrowed` has a "before" effect, we will observe all possible
-        // dataflow states here or in the loop above.
-        trace!("record conflicts at end of {:?}", block);
-        init.seek_to_block_end(block);
-        borrowed.seek_to_block_end(block);
-        record_conflicts_at_curr_loc(&mut local_conflicts, &init, &borrowed);
-    }
+    // Visit only reachable basic blocks. The exact order is not important.
+    let reachable_blocks = traversal::preorder(body).map(|(bb, _)| bb);
+    requires_storage.visit_with(body, reachable_blocks, &mut visitor);
+
+    let local_conflicts = visitor.local_conflicts;
 
     // Compress the matrix using only stored locals (Local -> GeneratorSavedLocal).
     //
@@ -653,7 +612,7 @@ fn compute_storage_conflicts(
     let mut storage_conflicts = BitMatrix::new(stored_locals.count(), stored_locals.count());
     for (idx_a, local_a) in stored_locals.iter().enumerate() {
         let saved_local_a = GeneratorSavedLocal::new(idx_a);
-        if always_live_locals.contains(local_a) {
+        if ineligible_locals.contains(local_a) {
             // Conflicts with everything.
             storage_conflicts.insert_all_into_row(saved_local_a);
         } else {
@@ -667,6 +626,56 @@ fn compute_storage_conflicts(
         }
     }
     storage_conflicts
+}
+
+struct StorageConflictVisitor<'mir, 'tcx, 's> {
+    body: &'mir Body<'tcx>,
+    stored_locals: &'s BitSet<Local>,
+    // FIXME(tmandry): Consider using sparse bitsets here once we have good
+    // benchmarks for generators.
+    local_conflicts: BitMatrix<Local, Local>,
+}
+
+impl dataflow::ResultsVisitor<'mir, 'tcx> for StorageConflictVisitor<'mir, 'tcx, '_> {
+    type FlowState = BitSet<Local>;
+
+    fn visit_statement_before_primary_effect(
+        &mut self,
+        state: &Self::FlowState,
+        _statement: &'mir Statement<'tcx>,
+        loc: Location,
+    ) {
+        self.apply_state(state, loc);
+    }
+
+    fn visit_terminator_before_primary_effect(
+        &mut self,
+        state: &Self::FlowState,
+        _terminator: &'mir Terminator<'tcx>,
+        loc: Location,
+    ) {
+        self.apply_state(state, loc);
+    }
+}
+
+impl<'body, 'tcx, 's> StorageConflictVisitor<'body, 'tcx, 's> {
+    fn apply_state(&mut self, flow_state: &BitSet<Local>, loc: Location) {
+        // Ignore unreachable blocks.
+        if self.body.basic_blocks()[loc.block].terminator().kind == TerminatorKind::Unreachable {
+            return;
+        }
+
+        let mut eligible_storage_live = flow_state.clone();
+        eligible_storage_live.intersect(&self.stored_locals);
+
+        for local in eligible_storage_live.iter() {
+            self.local_conflicts.union_row_with(&eligible_storage_live, local);
+        }
+
+        if eligible_storage_live.count() > 1 {
+            trace!("at {:?}, eligible_storage_live={:?}", loc, eligible_storage_live);
+        }
+    }
 }
 
 /// Validates the typeck view of the generator against the actual set of types retained between

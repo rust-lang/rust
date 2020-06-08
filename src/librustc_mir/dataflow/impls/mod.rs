@@ -30,7 +30,7 @@ pub use self::borrowed_locals::{MaybeBorrowedLocals, MaybeMutBorrowedLocals};
 pub use self::borrows::Borrows;
 pub use self::init_locals::MaybeInitializedLocals;
 pub use self::liveness::MaybeLiveLocals;
-pub use self::storage_liveness::MaybeStorageLive;
+pub use self::storage_liveness::{MaybeRequiresStorage, MaybeStorageLive};
 
 /// `MaybeInitializedPlaces` tracks all places that might be
 /// initialized upon reaching a particular point in the control flow
