@@ -232,6 +232,18 @@ impl Default for DirHandler {
     }
 }
 
+fn maybe_sync_file(file: &File, writable: bool, operation: fn(&File) -> std::io::Result<()>) -> std::io::Result<i32> {
+    if !writable && cfg!(windows) {
+        // sync_all() and sync_data() will return an error on Windows hosts if the file is not opened
+        // for writing. (FlushFileBuffers requires that the file handle have the
+        // GENERIC_WRITE right)
+        Ok(0i32)
+    } else {
+        let result = operation(file);
+        result.map(|_| 0i32)
+    }
+}
+
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
     fn open(
@@ -379,16 +391,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             && cmd == this.eval_libc_i32("F_FULLFSYNC")?
         {
             let &[_, _] = check_arg_count(args)?;
-            if let Some(FileHandle { file, writable }) = this.machine.file_handler.handles.get_mut(&fd) {
-                if !*writable && cfg!(windows) {
-                    // sync_all() will return an error on Windows hosts if the file is not opened
-                    // for writing. (FlushFileBuffers requires that the file handle have the
-                    // GENERIC_WRITE right)
-                    Ok(0i32)
-                } else {
-                    let result = file.sync_all();
-                    this.try_unwrap_io_result(result.map(|_| 0i32))
-                }
+            if let Some(FileHandle { file, writable }) = this.machine.file_handler.handles.get(&fd) {
+                let io_result = maybe_sync_file(file, *writable, File::sync_all);
+                this.try_unwrap_io_result(io_result)
             } else {
                 this.handle_not_found()
             }
@@ -1132,15 +1137,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.check_no_isolation("fsync")?;
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
-        if let Some(FileHandle { file, writable }) = this.machine.file_handler.handles.get_mut(&fd) {
-            if !*writable && cfg!(windows) {
-                // sync_all() will return an error on Windows hosts if the file is not opened for writing.
-                // (FlushFileBuffers requires that the file handle have the GENERIC_WRITE right)
-                Ok(0i32)
-            } else {
-                let result = file.sync_all();
-                this.try_unwrap_io_result(result.map(|_| 0i32))
-            }
+        if let Some(FileHandle { file, writable }) = this.machine.file_handler.handles.get(&fd) {
+            let io_result = maybe_sync_file(file, *writable, File::sync_all);
+            this.try_unwrap_io_result(io_result)
         } else {
             this.handle_not_found()
         }
@@ -1152,15 +1151,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.check_no_isolation("fdatasync")?;
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
-        if let Some(FileHandle { file, writable }) = this.machine.file_handler.handles.get_mut(&fd) {
-            if !*writable && cfg!(windows) {
-                // sync_data() will return an error on Windows hosts if the file is not opened for writing.
-                // (FlushFileBuffers requires that the file handle have the GENERIC_WRITE right)
-                Ok(0i32)
-            } else {
-                let result = file.sync_data();
-                this.try_unwrap_io_result(result.map(|_| 0i32))
-            }
+        if let Some(FileHandle { file, writable }) = this.machine.file_handler.handles.get(&fd) {
+            let io_result = maybe_sync_file(file, *writable, File::sync_data);
+            this.try_unwrap_io_result(io_result)
         } else {
             this.handle_not_found()
         }
@@ -1196,18 +1189,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             return Ok(-1);
         }
 
-        if let Some(FileHandle { file, writable }) = this.machine.file_handler.handles.get_mut(&fd) {
-            if !*writable && cfg!(windows) {
-                // sync_data() will return an error on Windows hosts if the file is not opened for
-                // writing. (FlushFileBuffers requires that the file handle have the GENERIC_WRITE
-                // right)
-                Ok(0i32)
-            } else {
-                // In the interest of host compatibility, we conservatively ignore
-                // offset, nbytes, and flags, and sync the entire file.
-                let result = file.sync_data();
-                this.try_unwrap_io_result(result.map(|_| 0i32))
-            }
+        if let Some(FileHandle { file, writable }) = this.machine.file_handler.handles.get(&fd) {
+            let io_result = maybe_sync_file(file, *writable, File::sync_data);
+            this.try_unwrap_io_result(io_result)
         } else {
             this.handle_not_found()
         }
