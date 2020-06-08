@@ -1145,6 +1145,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "methods",
     },
     Lint {
+        name: "map_identity",
+        group: "complexity",
+        desc: "using iterator.map(|x| x)",
+        deprecation: None,
+        module: "map_identity",
+    },
+    Lint {
         name: "map_unwrap_or",
         group: "pedantic",
         desc: "using `.map(f).unwrap_or(a)` or `.map(f).unwrap_or_else(func)`, which are more succinctly expressed as `map_or(a, f)` or `map_or_else(a, f)`",
