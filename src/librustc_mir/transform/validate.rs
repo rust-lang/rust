@@ -11,6 +11,11 @@ use rustc_middle::{
 };
 use rustc_span::def_id::DefId;
 
+enum EdgeKind {
+    Unwind,
+    Other,
+}
+
 pub struct Validator {
     /// Describes at which point in the pipeline this validation is happening.
     pub when: String,
@@ -49,8 +54,25 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         );
     }
 
-    fn check_bb(&self, location: Location, bb: BasicBlock) {
-        if self.body.basic_blocks().get(bb).is_none() {
+    fn check_bb(&self, location: Location, bb: BasicBlock, edge_kind: EdgeKind) {
+        if let Some(bb) = self.body.basic_blocks().get(bb) {
+            let src = self.body.basic_blocks().get(location.block).unwrap();
+            match (src.is_cleanup, bb.is_cleanup, edge_kind) {
+                // Non-cleanup blocks can jump to non-cleanup blocks along non-unwind edges
+                (false, false, EdgeKind::Other)
+                // Non-cleanup blocks can jump to cleanup blocks along unwind edges
+                | (false, true, EdgeKind::Unwind)
+                // Cleanup blocks can jump to cleanup blocks along unwind edges
+                | (true, true, EdgeKind::Unwind) => {}
+                // All other jumps are invalid
+                _ => {
+                    self.fail(
+                        location,
+                        format!("encountered jump that does not respect unwind invariants {:?}", bb)
+                    )
+                }
+            }
+        } else {
             self.fail(location, format!("encountered jump to invalid basic block {:?}", bb))
         }
     }
@@ -92,7 +114,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
     fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
         match &terminator.kind {
             TerminatorKind::Goto { target } => {
-                self.check_bb(location, *target);
+                self.check_bb(location, *target, EdgeKind::Other);
             }
             TerminatorKind::SwitchInt { targets, values, .. } => {
                 if targets.len() != values.len() + 1 {
@@ -106,19 +128,19 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     );
                 }
                 for target in targets {
-                    self.check_bb(location, *target);
+                    self.check_bb(location, *target, EdgeKind::Other);
                 }
             }
             TerminatorKind::Drop { target, unwind, .. } => {
-                self.check_bb(location, *target);
+                self.check_bb(location, *target, EdgeKind::Other);
                 if let Some(unwind) = unwind {
-                    self.check_bb(location, *unwind);
+                    self.check_bb(location, *unwind, EdgeKind::Unwind);
                 }
             }
             TerminatorKind::DropAndReplace { target, unwind, .. } => {
-                self.check_bb(location, *target);
+                self.check_bb(location, *target, EdgeKind::Other);
                 if let Some(unwind) = unwind {
-                    self.check_bb(location, *unwind);
+                    self.check_bb(location, *unwind, EdgeKind::Unwind);
                 }
             }
             TerminatorKind::Call { func, destination, cleanup, .. } => {
@@ -131,10 +153,10 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     ),
                 }
                 if let Some((_, target)) = destination {
-                    self.check_bb(location, *target);
+                    self.check_bb(location, *target, EdgeKind::Other);
                 }
                 if let Some(cleanup) = cleanup {
-                    self.check_bb(location, *cleanup);
+                    self.check_bb(location, *cleanup, EdgeKind::Unwind);
                 }
             }
             TerminatorKind::Assert { cond, target, cleanup, .. } => {
@@ -148,30 +170,30 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         ),
                     );
                 }
-                self.check_bb(location, *target);
+                self.check_bb(location, *target, EdgeKind::Other);
                 if let Some(cleanup) = cleanup {
-                    self.check_bb(location, *cleanup);
+                    self.check_bb(location, *cleanup, EdgeKind::Unwind);
                 }
             }
             TerminatorKind::Yield { resume, drop, .. } => {
-                self.check_bb(location, *resume);
+                self.check_bb(location, *resume, EdgeKind::Other);
                 if let Some(drop) = drop {
-                    self.check_bb(location, *drop);
+                    self.check_bb(location, *drop, EdgeKind::Other);
                 }
             }
             TerminatorKind::FalseEdge { real_target, imaginary_target } => {
-                self.check_bb(location, *real_target);
-                self.check_bb(location, *imaginary_target);
+                self.check_bb(location, *real_target, EdgeKind::Other);
+                self.check_bb(location, *imaginary_target, EdgeKind::Other);
             }
             TerminatorKind::FalseUnwind { real_target, unwind } => {
-                self.check_bb(location, *real_target);
+                self.check_bb(location, *real_target, EdgeKind::Other);
                 if let Some(unwind) = unwind {
-                    self.check_bb(location, *unwind);
+                    self.check_bb(location, *unwind, EdgeKind::Unwind);
                 }
             }
             TerminatorKind::InlineAsm { destination, .. } => {
                 if let Some(destination) = destination {
-                    self.check_bb(location, *destination);
+                    self.check_bb(location, *destination, EdgeKind::Other);
                 }
             }
             // Nothing to validate for these.
