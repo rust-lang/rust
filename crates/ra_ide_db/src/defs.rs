@@ -93,14 +93,14 @@ impl NameClass {
         match self {
             NameClass::Definition(it) => Some(it),
             NameClass::ConstReference(_) => None,
-            NameClass::FieldShorthand { local: _, field } => Some(field),
+            NameClass::FieldShorthand { local, field: _ } => Some(Definition::Local(local)),
         }
     }
 
     pub fn definition(self) -> Definition {
         match self {
             NameClass::Definition(it) | NameClass::ConstReference(it) => it,
-            NameClass::FieldShorthand { local, field: _ } => Definition::Local(local),
+            NameClass::FieldShorthand { local: _, field } => field,
         }
     }
 }
