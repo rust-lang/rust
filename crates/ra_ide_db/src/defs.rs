@@ -82,6 +82,10 @@ pub enum NameClass {
     Definition(Definition),
     /// `None` in `if let None = Some(82) {}`
     ConstReference(Definition),
+    FieldShorthand {
+        local: Local,
+        field: Definition,
+    },
 }
 
 impl NameClass {
@@ -89,12 +93,14 @@ impl NameClass {
         match self {
             NameClass::Definition(it) => Some(it),
             NameClass::ConstReference(_) => None,
+            NameClass::FieldShorthand { local, field: _ } => Some(Definition::Local(local)),
         }
     }
 
     pub fn definition(self) -> Definition {
         match self {
             NameClass::Definition(it) | NameClass::ConstReference(it) => it,
+            NameClass::FieldShorthand { local: _, field } => field,
         }
     }
 }
@@ -102,17 +108,13 @@ impl NameClass {
 pub fn classify_name(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Option<NameClass> {
     let _p = profile("classify_name");
 
-    if let Some(bind_pat) = name.syntax().parent().and_then(ast::BindPat::cast) {
+    let parent = name.syntax().parent()?;
+
+    if let Some(bind_pat) = ast::BindPat::cast(parent.clone()) {
         if let Some(def) = sema.resolve_bind_pat_to_const(&bind_pat) {
             return Some(NameClass::ConstReference(Definition::ModuleDef(def)));
         }
     }
-
-    classify_name_inner(sema, name).map(NameClass::Definition)
-}
-
-fn classify_name_inner(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Option<Definition> {
-    let parent = name.syntax().parent()?;
 
     match_ast! {
         match parent {
@@ -123,63 +125,71 @@ fn classify_name_inner(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Opti
                 let name_ref = path_segment.name_ref()?;
                 let name_ref_class = classify_name_ref(sema, &name_ref)?;
 
-                Some(name_ref_class.definition())
+                Some(NameClass::Definition(name_ref_class.definition()))
             },
             ast::BindPat(it) => {
                 let local = sema.to_def(&it)?;
-                Some(Definition::Local(local))
+
+                if let Some(record_field_pat) = it.syntax().parent().and_then(ast::RecordFieldPat::cast) {
+                    if let Some(field) = sema.resolve_record_field_pat(&record_field_pat) {
+                        let field = Definition::Field(field);
+                        return Some(NameClass::FieldShorthand { local, field });
+                    }
+                }
+
+                Some(NameClass::Definition(Definition::Local(local)))
             },
             ast::RecordFieldDef(it) => {
                 let field: hir::Field = sema.to_def(&it)?;
-                Some(Definition::Field(field))
+                Some(NameClass::Definition(Definition::Field(field)))
             },
             ast::Module(it) => {
                 let def = sema.to_def(&it)?;
-                Some(Definition::ModuleDef(def.into()))
+                Some(NameClass::Definition(Definition::ModuleDef(def.into())))
             },
             ast::StructDef(it) => {
                 let def: hir::Struct = sema.to_def(&it)?;
-                Some(Definition::ModuleDef(def.into()))
+                Some(NameClass::Definition(Definition::ModuleDef(def.into())))
             },
             ast::UnionDef(it) => {
                 let def: hir::Union = sema.to_def(&it)?;
-                Some(Definition::ModuleDef(def.into()))
+                Some(NameClass::Definition(Definition::ModuleDef(def.into())))
             },
             ast::EnumDef(it) => {
                 let def: hir::Enum = sema.to_def(&it)?;
-                Some(Definition::ModuleDef(def.into()))
+                Some(NameClass::Definition(Definition::ModuleDef(def.into())))
             },
             ast::TraitDef(it) => {
                 let def: hir::Trait = sema.to_def(&it)?;
-                Some(Definition::ModuleDef(def.into()))
+                Some(NameClass::Definition(Definition::ModuleDef(def.into())))
             },
             ast::StaticDef(it) => {
                 let def: hir::Static = sema.to_def(&it)?;
-                Some(Definition::ModuleDef(def.into()))
+                Some(NameClass::Definition(Definition::ModuleDef(def.into())))
             },
             ast::EnumVariant(it) => {
                 let def: hir::EnumVariant = sema.to_def(&it)?;
-                Some(Definition::ModuleDef(def.into()))
+                Some(NameClass::Definition(Definition::ModuleDef(def.into())))
             },
             ast::FnDef(it) => {
                 let def: hir::Function = sema.to_def(&it)?;
-                Some(Definition::ModuleDef(def.into()))
+                Some(NameClass::Definition(Definition::ModuleDef(def.into())))
             },
             ast::ConstDef(it) => {
                 let def: hir::Const = sema.to_def(&it)?;
-                Some(Definition::ModuleDef(def.into()))
+                Some(NameClass::Definition(Definition::ModuleDef(def.into())))
             },
             ast::TypeAliasDef(it) => {
                 let def: hir::TypeAlias = sema.to_def(&it)?;
-                Some(Definition::ModuleDef(def.into()))
+                Some(NameClass::Definition(Definition::ModuleDef(def.into())))
             },
             ast::MacroCall(it) => {
                 let def = sema.to_def(&it)?;
-                Some(Definition::Macro(def))
+                Some(NameClass::Definition(Definition::Macro(def)))
             },
             ast::TypeParam(it) => {
                 let def = sema.to_def(&it)?;
-                Some(Definition::TypeParam(def))
+                Some(NameClass::Definition(Definition::TypeParam(def)))
             },
             _ => None,
         }
