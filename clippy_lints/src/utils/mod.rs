@@ -1,6 +1,8 @@
 #[macro_use]
 pub mod sym;
 
+#[allow(clippy::module_name_repetitions)]
+pub mod ast_utils;
 pub mod attrs;
 pub mod author;
 pub mod camel_case;
@@ -19,7 +21,7 @@ pub mod sugg;
 pub mod usage;
 pub use self::attrs::*;
 pub use self::diagnostics::*;
-pub use self::hir_utils::{SpanlessEq, SpanlessHash};
+pub use self::hir_utils::{both, over, SpanlessEq, SpanlessHash};
 
 use std::borrow::Cow;
 use std::mem;
@@ -72,7 +74,7 @@ pub fn in_constant(cx: &LateContext<'_, '_>, id: HirId) -> bool {
     let parent_id = cx.tcx.hir().get_parent_item(id);
     match cx.tcx.hir().get(parent_id) {
         Node::Item(&Item {
-            kind: ItemKind::Const(..),
+            kind: ItemKind::Const(..) | ItemKind::Static(..),
             ..
         })
         | Node::TraitItem(&TraitItem {
@@ -83,11 +85,7 @@ pub fn in_constant(cx: &LateContext<'_, '_>, id: HirId) -> bool {
             kind: ImplItemKind::Const(..),
             ..
         })
-        | Node::AnonConst(_)
-        | Node::Item(&Item {
-            kind: ItemKind::Static(..),
-            ..
-        }) => true,
+        | Node::AnonConst(_) => true,
         Node::Item(&Item {
             kind: ItemKind::Fn(ref sig, ..),
             ..
