@@ -352,6 +352,7 @@ pub(crate) struct Rustc<'a> {
     def_site: Span,
     call_site: Span,
     mixed_site: Span,
+    span_debug: bool,
 }
 
 impl<'a> Rustc<'a> {
@@ -362,6 +363,7 @@ impl<'a> Rustc<'a> {
             def_site: cx.with_def_site_ctxt(expn_data.def_site),
             call_site: cx.with_call_site_ctxt(expn_data.call_site),
             mixed_site: cx.with_mixed_site_ctxt(expn_data.call_site),
+            span_debug: cx.ecfg.span_debug,
         }
     }
 
@@ -646,7 +648,11 @@ impl server::Diagnostic for Rustc<'_> {
 
 impl server::Span for Rustc<'_> {
     fn debug(&mut self, span: Self::Span) -> String {
-        format!("{:?} bytes({}..{})", span.ctxt(), span.lo().0, span.hi().0)
+        if self.span_debug {
+            format!("{:?}", span)
+        } else {
+            format!("{:?} bytes({}..{})", span.ctxt(), span.lo().0, span.hi().0)
+        }
     }
     fn def_site(&mut self) -> Self::Span {
         self.def_site

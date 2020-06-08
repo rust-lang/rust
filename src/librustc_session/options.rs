@@ -996,6 +996,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "make the current crate share its generic instantiations"),
     show_span: Option<String> = (None, parse_opt_string, [TRACKED],
         "show spans for compiler debugging (expr|pat|ty)"),
+    span_debug: bool = (false, parse_bool, [UNTRACKED],
+        "forward proc_macro::Span's `Debug` impl to `Span`"),
     // o/w tests have closure@path
     span_free_formats: bool = (false, parse_bool, [UNTRACKED],
         "exclude spans when debug-printing compiler state (default: no)"),

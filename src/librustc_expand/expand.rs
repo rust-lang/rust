@@ -1789,6 +1789,7 @@ pub struct ExpansionConfig<'feat> {
     pub trace_mac: bool,
     pub should_test: bool, // If false, strip `#[test]` nodes
     pub keep_macs: bool,
+    pub span_debug: bool, // If true, use verbose debugging for `proc_macro::Span`
 }
 
 impl<'feat> ExpansionConfig<'feat> {
@@ -1800,6 +1801,7 @@ impl<'feat> ExpansionConfig<'feat> {
             trace_mac: false,
             should_test: false,
             keep_macs: false,
+            span_debug: false,
         }
     }
 

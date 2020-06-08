@@ -14,7 +14,16 @@ error[E0425]: cannot find function `default` in this scope
   --> $DIR/issue-2356.rs:31:5
    |
 LL |     default();
-   |     ^^^^^^^ help: try: `Self::default`
+   |     ^^^^^^^
+   |
+help: try
+   |
+LL |     Self::default();
+   |     ^^^^^^^^^^^^^
+help: consider importing this function
+   |
+LL | use std::default::default;
+   |
 
 error[E0425]: cannot find value `whiskers` in this scope
   --> $DIR/issue-2356.rs:39:5

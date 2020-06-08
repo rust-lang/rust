@@ -17,7 +17,7 @@ rustc_data_structures = { path = "../librustc_data_structures" }
 unicode-width = "0.1.4"
 atty = "0.2"
 termcolor = "1.0"
-annotate-snippets = "0.6.1"
+annotate-snippets = "0.8.0"
 termize = "0.1.1"
 
 [target.'cfg(windows)'.dependencies]
