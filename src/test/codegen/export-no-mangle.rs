@@ -18,7 +18,7 @@ mod private {
     // CHECK: void @bar()
     #[export_name = "bar"]
     extern fn bar() {}
-    
+
     // CHECK: void @baz()
     #[export_name = "baz"]
     #[inline]
