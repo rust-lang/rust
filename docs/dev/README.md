@@ -261,6 +261,14 @@ fn frobnicate(walrus: Option<Walrus>) {
 }
 ```
 
+## Commit Style
+
+We don't have specific rules around git history hygiene.
+Maintaining clean git history is encouraged, but not enforced.
+We use rebase workflow, it's OK to rewrite history during PR review process.
+
+Avoid @mentioning people in commit messages, as such messages create a lot of duplicate notification traffic during rebases.
+
 # Architecture Invariants
 
 This section tries to document high-level design constraints, which are not
