@@ -409,7 +409,7 @@ impl<T> [T] {
     /// The returned range is half-open, which means that the end pointer
     /// points *one past* the last element of the slice. This way, an empty
     /// slice is represented by two equal pointers, and the difference between
-    /// the two pointers represents the size of the size.
+    /// the two pointers represents the size of the slice.
     ///
     /// See [`as_ptr`] for warnings on using these pointers. The end pointer
     /// requires extra caution, as it does not point to a valid element in the
@@ -464,7 +464,7 @@ impl<T> [T] {
     /// The returned range is half-open, which means that the end pointer
     /// points *one past* the last element of the slice. This way, an empty
     /// slice is represented by two equal pointers, and the difference between
-    /// the two pointers represents the size of the size.
+    /// the two pointers represents the size of the slice.
     ///
     /// See [`as_mut_ptr`] for warnings on using these pointers. The end
     /// pointer requires extra caution, as it does not point to a valid element
