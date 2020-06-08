@@ -480,12 +480,8 @@ fn highlight_element(
                 _ => h,
             }
         }
-        PREFIX_EXPR => {
-            let prefix_expr = element.into_node().and_then(ast::PrefixExpr::cast)?;
-            match prefix_expr.op_kind() {
-                Some(ast::PrefixOp::Deref) => {}
-                _ => return None,
-            }
+        T![*] => {
+            let prefix_expr = element.parent().and_then(ast::PrefixExpr::cast)?;
 
             let expr = prefix_expr.expr()?;
             let ty = sema.type_of_expr(&expr)?;

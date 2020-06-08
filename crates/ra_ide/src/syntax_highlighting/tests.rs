@@ -274,7 +274,7 @@ fn main() {
     unsafe {
         unsafe_fn();
         HasUnsafeFn.unsafe_method();
-        let y = *x;
+        let y = *(x);
         let z = -x;
     }
 }
