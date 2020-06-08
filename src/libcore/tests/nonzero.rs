@@ -1,4 +1,5 @@
-use core::num::{TryFromIntError, IntErrorKind, NonZeroI32, NonZeroI8, NonZeroU32, NonZeroU8};
+use core::convert::TryFrom;
+use core::num::{IntErrorKind, NonZeroI32, NonZeroI8, NonZeroU32, NonZeroU8, TryFromIntError};
 use core::option::Option::{self, None, Some};
 use std::mem::size_of;
 
