@@ -401,7 +401,8 @@ impl<'a> FmtVisitor<'a> {
         generics: &ast::Generics,
         span: Span,
     ) {
-        let enum_header = format_header(&self.get_context(), "enum ", ident, vis);
+        let enum_header =
+            format_header(&self.get_context(), "enum ", ident, vis, self.block_indent);
         self.push_str(&enum_header);
 
         let enum_snippet = self.snippet(span);
@@ -952,8 +953,8 @@ pub(crate) struct StructParts<'a> {
 }
 
 impl<'a> StructParts<'a> {
-    fn format_header(&self, context: &RewriteContext<'_>) -> String {
-        format_header(context, self.prefix, self.ident, self.vis)
+    fn format_header(&self, context: &RewriteContext<'_>, offset: Indent) -> String {
+        format_header(context, self.prefix, self.ident, self.vis, offset)
     }
 
     fn from_variant(variant: &'a ast::Variant) -> Self {
@@ -1236,7 +1237,7 @@ fn format_unit_struct(
     p: &StructParts<'_>,
     offset: Indent,
 ) -> Option<String> {
-    let header_str = format_header(context, p.prefix, p.ident, p.vis);
+    let header_str = format_header(context, p.prefix, p.ident, p.vis, offset);
     let generics_str = if let Some(generics) = p.generics {
         let hi = context.snippet_provider.span_before(p.span, ";");
         format_generics(
@@ -1265,7 +1266,7 @@ pub(crate) fn format_struct_struct(
     let mut result = String::with_capacity(1024);
     let span = struct_parts.span;
 
-    let header_str = struct_parts.format_header(context);
+    let header_str = struct_parts.format_header(context, offset);
     result.push_str(&header_str);
 
     let header_hi = struct_parts.ident.span.hi();
@@ -1401,7 +1402,7 @@ fn format_tuple_struct(
     let mut result = String::with_capacity(1024);
     let span = struct_parts.span;
 
-    let header_str = struct_parts.format_header(context);
+    let header_str = struct_parts.format_header(context, offset);
     result.push_str(&header_str);
 
     let body_lo = if fields.is_empty() {
@@ -2920,13 +2921,35 @@ fn format_header(
     item_name: &str,
     ident: symbol::Ident,
     vis: &ast::Visibility,
+    offset: Indent,
 ) -> String {
-    format!(
-        "{}{}{}",
-        format_visibility(context, vis),
-        item_name,
-        rewrite_ident(context, ident)
-    )
+    let mut result = String::with_capacity(128);
+    let shape = Shape::indented(offset, context.config);
+
+    result.push_str(&format_visibility(context, vis).trim());
+
+    // Check for a missing comment between the visibility and the item name.
+    let after_vis = vis.span.hi();
+    if let Some(before_item_name) = context
+        .snippet_provider
+        .opt_span_before(mk_sp(vis.span().lo(), ident.span.hi()), item_name.trim())
+    {
+        let missing_span = mk_sp(after_vis, before_item_name);
+        if let Some(result_with_comment) = combine_strs_with_missing_comments(
+            context,
+            &result,
+            item_name,
+            missing_span,
+            shape,
+            /* allow_extend */ true,
+        ) {
+            result = result_with_comment;
+        }
+    }
+
+    result.push_str(&rewrite_ident(context, ident));
+
+    result
 }
 
 #[derive(PartialEq, Eq, Clone, Copy)]
