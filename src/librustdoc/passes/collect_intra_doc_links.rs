@@ -8,7 +8,7 @@ use rustc_hir::def::{
     Namespace::{self, *},
     PerNS, Res,
 };
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::DefId;
 use rustc_middle::ty;
 use rustc_resolve::ParentScope;
 use rustc_session::lint;
@@ -171,8 +171,6 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         extra_fragment: &Option<String>,
         item_opt: Option<&Item>,
     ) -> Result<(Res, Option<String>), ErrorKind> {
-        use rustc_hir::{ItemKind, UseKind};
-
         let cx = self.cx;
 
         // In case we're in a module, try to resolve the relative path.
