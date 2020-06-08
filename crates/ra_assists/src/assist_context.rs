@@ -19,6 +19,7 @@ use crate::{
     assist_config::{AssistConfig, SnippetCap},
     Assist, AssistId, GroupLabel, ResolvedAssist,
 };
+use rustc_hash::FxHashMap;
 
 /// `AssistContext` allows to apply an assist or check if it could be applied.
 ///
@@ -138,6 +139,16 @@ impl Assists {
         let label = Assist::new(id, label.into(), None, target);
         self.add_impl(label, f)
     }
+    pub(crate) fn add_in_multiple_files(
+        &mut self,
+        id: AssistId,
+        label: impl Into<String>,
+        target: TextRange,
+        f: impl FnOnce(&mut AssistDirector),
+    ) -> Option<()> {
+        let label = Assist::new(id, label.into(), None, target);
+        self.add_impl_multiple_files(label, f)
+    }
     pub(crate) fn add_group(
         &mut self,
         group: &GroupLabel,
@@ -159,6 +170,31 @@ impl Assists {
         };
 
         self.buf.push((label, source_change));
+        Some(())
+    }
+
+    fn add_impl_multiple_files(
+        &mut self,
+        label: Assist,
+        f: impl FnOnce(&mut AssistDirector),
+    ) -> Option<()> {
+        if !self.resolve {
+            self.buf.push((label, None));
+            return None;
+        }
+        let mut director = AssistDirector::default();
+        f(&mut director);
+        let changes = director.finish();
+        let file_edits: Vec<SourceFileEdit> =
+            changes.into_iter().map(|mut change| change.source_file_edits.pop().unwrap()).collect();
+
+        let source_change = SourceChange {
+            source_file_edits: file_edits,
+            file_system_edits: vec![],
+            is_snippet: false,
+        };
+
+        self.buf.push((label, Some(source_change)));
         Some(())
     }
 
@@ -253,5 +289,29 @@ impl AssistBuilder {
             res.is_snippet = true;
         }
         res
+    }
+}
+
+pub(crate) struct AssistDirector {
+    builders: FxHashMap<FileId, AssistBuilder>,
+}
+
+impl AssistDirector {
+    pub(crate) fn perform(&mut self, file_id: FileId, f: impl FnOnce(&mut AssistBuilder)) {
+        let mut builder = self.builders.entry(file_id).or_insert(AssistBuilder::new(file_id));
+        f(&mut builder);
+    }
+
+    fn finish(self) -> Vec<SourceChange> {
+        self.builders
+            .into_iter()
+            .map(|(_, builder)| builder.finish())
+            .collect::<Vec<SourceChange>>()
+    }
+}
+
+impl Default for AssistDirector {
+    fn default() -> Self {
+        AssistDirector { builders: FxHashMap::default() }
     }
 }
