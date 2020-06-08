@@ -53,3 +53,13 @@ fn x() {
         core::ptr::read_volatile(&42);
     }
 }
+
+// CHECK: define void @i()
+#[no_mangle]
+#[inline]
+fn i() {}
+
+// CHECK: define void @j()
+#[no_mangle]
+#[inline]
+pub fn j() {}

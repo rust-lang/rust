@@ -90,10 +90,11 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, cnum: CrateNum) -> DefIdMap<
                     let def_id = tcx.hir().local_def_id(hir_id);
                     let generics = tcx.generics_of(def_id);
                     if !generics.requires_monomorphization(tcx)
-                        && (!Instance::mono(tcx, def_id.to_def_id())
-                            .def
-                            .generates_cgu_internal_copy(tcx)
-                            || tcx.inline_exportable(def_id.to_def_id()))
+                        // Functions marked with #[inline] are codegened with "internal"
+                        // linkage and are not exported unless marked with an extern
+                        // inidicator
+                        && (!Instance::mono(tcx, def_id.to_def_id()).def.generates_cgu_internal_copy(tcx)
+                            || tcx.codegen_fn_attrs(def_id.to_def_id()).contains_extern_indicator())
                     {
                         Some(def_id)
                     } else {

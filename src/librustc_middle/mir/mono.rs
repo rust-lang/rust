@@ -92,10 +92,10 @@ impl<'tcx> MonoItem<'tcx> {
             MonoItem::Fn(ref instance) => {
                 let entry_def_id = tcx.entry_fn(LOCAL_CRATE).map(|(id, _)| id);
                 // If this function isn't inlined or otherwise has explicit
-                // linkage, then we'll be creating a globally shared version.
+                // linkage or an extern indicator, then we'll be creating a
+                // globally shared version.
                 if self.explicit_linkage(tcx).is_some()
                     || !instance.def.generates_cgu_internal_copy(tcx)
-                    || tcx.inline_exportable(instance.def_id())
                     || Some(instance.def_id()) == entry_def_id.map(LocalDefId::to_def_id)
                 {
                     return InstantiationMode::GloballyShared { may_conflict: false };
@@ -103,8 +103,12 @@ impl<'tcx> MonoItem<'tcx> {
 
                 // At this point we don't have explicit linkage and we're an
                 // inlined function. If we're inlining into all CGUs then we'll
-                // be creating a local copy per CGU
-                if generate_cgu_internal_copies {
+                // be creating a local copy per CGU. We need to watch out here
+                // for an extern indicator as we don't want to optimise away
+                // inlined functions that should be exported.
+                if generate_cgu_internal_copies
+                    && !tcx.codegen_fn_attrs(instance.def_id()).contains_extern_indicator()
+                {
                     return InstantiationMode::LocalCopy;
                 }
 

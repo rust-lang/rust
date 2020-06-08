@@ -40,7 +40,6 @@ use rustc_middle::ty::util::Discr;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, AdtKind, Const, ToPolyTraitRef, Ty, TyCtxt};
 use rustc_middle::ty::{ReprOptions, ToPredicate, WithConstness};
-use rustc_session::config::CrateType;
 use rustc_session::lint;
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -80,7 +79,6 @@ pub fn provide(providers: &mut Providers<'_>) {
         static_mutability,
         generator_kind,
         codegen_fn_attrs,
-        inline_exportable,
         collect_mod_item_types,
         ..*providers
     };
@@ -2599,16 +2597,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
     }
 
     codegen_fn_attrs
-}
-
-fn inline_exportable(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    // Functions marked with #[inline] are only ever codegened
-    // with "internal" linkage and are never exported unless we're
-    // building a `staticlib` or `cdylib` and they are marked
-    // `#[no_mangle]`.
-    tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::NO_MANGLE)
-        && (tcx.sess.crate_types().contains(&CrateType::Cdylib)
-            || tcx.sess.crate_types().contains(&CrateType::Staticlib))
 }
 
 /// Checks if the provided DefId is a method in a trait impl for a trait which has track_caller
