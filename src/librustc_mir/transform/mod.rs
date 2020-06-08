@@ -289,6 +289,10 @@ fn mir_validated(
             // What we need to run borrowck etc.
             &promote_pass,
             &simplify::SimplifyCfg::new("qualify-consts"),
+            // If the `instrument-coverage` option is enabled, analyze the CFG, identify each
+            // conditional branch, construct a coverage map to be passed to LLVM, and inject counters
+            // where needed.
+            &instrument_coverage::InstrumentCoverage,
         ]],
     );
 
@@ -338,10 +342,6 @@ fn run_post_borrowck_cleanup_passes<'tcx>(
         // `AddRetag` needs to run after `ElaborateDrops`. Otherwise it should run fairly late,
         // but before optimizations begin.
         &add_retag::AddRetag,
-        // If the `instrument-coverage` option is enabled, analyze the CFG, identify each
-        // conditional branch, construct a coverage map to be passed to LLVM, and inject counters
-        // where needed.
-        &instrument_coverage::InstrumentCoverage,
         &simplify::SimplifyCfg::new("elaborate-drops"),
     ];
 
