@@ -1,0 +1,8 @@
+error: higher-ranked subtype error
+  --> $DIR/issue-46989.rs:38:5
+   |
+LL |     assert_foo::<fn(&i32)>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

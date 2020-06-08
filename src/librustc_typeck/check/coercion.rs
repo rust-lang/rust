@@ -895,7 +895,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     {
         let prev_ty = self.resolve_vars_with_obligations(prev_ty);
         let new_ty = self.resolve_vars_with_obligations(new_ty);
-        debug!("coercion::try_find_coercion_lub({:?}, {:?})", prev_ty, new_ty);
+        debug!(
+            "coercion::try_find_coercion_lub({:?}, {:?}, exprs={:?} exprs)",
+            prev_ty,
+            new_ty,
+            exprs.len()
+        );
 
         // Special-case that coercion alone cannot handle:
         // Function items or non-capturing closures of differing IDs or InternalSubsts.
@@ -1001,6 +1006,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Ok(ok) => {
                     let (adjustments, target) = self.register_infer_ok_obligations(ok);
                     self.apply_adjustments(new, adjustments);
+                    debug!(
+                        "coercion::try_find_coercion_lub: was able to coerce from previous type {:?} to new type {:?}",
+                        prev_ty, new_ty,
+                    );
                     return Ok(target);
                 }
                 Err(e) => first_error = Some(e),
@@ -1031,6 +1040,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
 
             if !noop {
+                debug!(
+                    "coercion::try_find_coercion_lub: older expression {:?} had adjustments, requiring LUB",
+                    expr,
+                );
+
                 return self
                     .commit_if_ok(|_| self.at(cause, self.param_env).lub(prev_ty, new_ty))
                     .map(|ok| self.register_infer_ok_obligations(ok));
@@ -1048,6 +1062,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             Ok(ok) => {
+                debug!(
+                    "coercion::try_find_coercion_lub: was able to coerce previous type {:?} to new type {:?}",
+                    prev_ty, new_ty,
+                );
                 let (adjustments, target) = self.register_infer_ok_obligations(ok);
                 for expr in exprs {
                     let expr = expr.as_coercion_site();

@@ -1,0 +1,8 @@
+error: higher-ranked subtype error
+  --> $DIR/where-for-self-2.rs:23:5
+   |
+LL |     foo(&X);
+   |     ^^^^^^^
+
+error: aborting due to previous error
+

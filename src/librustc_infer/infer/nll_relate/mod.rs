@@ -522,7 +522,13 @@ where
         }
 
         if a == b {
-            return Ok(a);
+            // Subtle: if a or b has a bound variable that we are lazilly
+            // substituting, then even if a == b, it could be that the values we
+            // will substitute for those bound variables are *not* the same, and
+            // hence returning `Ok(a)` is incorrect.
+            if !a.has_escaping_bound_vars() && !b.has_escaping_bound_vars() {
+                return Ok(a);
+            }
         }
 
         match (&a.kind, &b.kind) {
