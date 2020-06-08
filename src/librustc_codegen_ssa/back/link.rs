@@ -1075,7 +1075,7 @@ fn get_object_file_path(sess: &Session, name: &str) -> PathBuf {
     if file_path.exists() {
         return file_path;
     }
-    let file_path = fs.get_lib_path().join("self-contained").join(name);
+    let file_path = fs.get_selfcontained_lib_path().join(name);
     if file_path.exists() {
         return file_path;
     }
@@ -1475,7 +1475,7 @@ fn add_library_search_dirs(cmd: &mut dyn Linker, sess: &Session) {
     let lib_path = sess.target_filesearch(PathKind::All).get_lib_path();
     cmd.include_path(&fix_windows_verbatim_for_gcc(&lib_path));
 
-    let lib_path = sess.target_filesearch(PathKind::All).get_lib_path().join("self-contained");
+    let lib_path = sess.target_filesearch(PathKind::All).get_selfcontained_lib_path();
     cmd.include_path(&fix_windows_verbatim_for_gcc(&lib_path));
 }
 
