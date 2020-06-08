@@ -7,6 +7,30 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ...
 
+## [v0.2.1] - 2019-11-22
+
+### Fixed
+- sincosf
+
+## [v0.2.0] - 2019-10-18
+
+### Added
+- Benchmarks
+- signum
+- remainder
+- remainderf
+- nextafter
+- nextafterf
+
+### Fixed
+- Rounding to negative zero
+- Overflows in rem_pio2 and remquo
+- Overflows in fma
+- sincosf
+
+### Removed
+- F32Ext and F64Ext traits
+
 ## [v0.1.4] - 2019-06-12
 
 ### Fixed
@@ -90,7 +114,9 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 - Initial release
 
-[Unreleased]: https://github.com/japaric/libm/compare/v0.1.4...HEAD
+[Unreleased]: https://github.com/japaric/libm/compare/v0.2.1...HEAD
+[v0.2.1]: https://github.com/japaric/libm/compare/0.2.0...v0.2.1
+[v0.2.0]: https://github.com/japaric/libm/compare/0.1.4...v0.2.0
 [v0.1.4]: https://github.com/japaric/libm/compare/0.1.3...v0.1.4
 [v0.1.3]: https://github.com/japaric/libm/compare/v0.1.2...0.1.3
 [v0.1.2]: https://github.com/japaric/libm/compare/v0.1.1...v0.1.2
