@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use rustc_ast::ast;
 use rustc_ast::token::{DelimToken, TokenKind};
-use rustc_errors::{Diagnostic, PResult};
+use rustc_errors::Diagnostic;
 use rustc_parse::{new_parser_from_file, parser::Parser as RawParser};
 use rustc_span::{symbol::kw, Span};
 
@@ -102,90 +102,17 @@ impl<'a> Parser<'a> {
         rustc_expand::module::submod_path_from_attr(attrs, path)
     }
 
-    // FIXME(topecongiro) Use the method from libsyntax[1] once it become public.
-    //
-    // [1] https://github.com/rust-lang/rust/blob/master/src/libsyntax/parse/attr.rs
-    fn parse_inner_attrs(parser: &mut RawParser<'a>) -> PResult<'a, Vec<ast::Attribute>> {
-        let mut attrs: Vec<ast::Attribute> = vec![];
-        loop {
-            match parser.token.kind {
-                TokenKind::Pound => {
-                    // Don't even try to parse if it's not an inner attribute.
-                    if !parser.look_ahead(1, |t| t == &TokenKind::Not) {
-                        break;
-                    }
-
-                    let attr = parser.parse_attribute(true)?;
-                    assert_eq!(attr.style, ast::AttrStyle::Inner);
-                    attrs.push(attr);
-                }
-                TokenKind::DocComment(s) => {
-                    // we need to get the position of this token before we bump.
-                    let attr = rustc_ast::attr::mk_doc_comment(
-                        rustc_ast::util::comments::doc_comment_style(&s.as_str()),
-                        s,
-                        parser.token.span,
-                    );
-                    if attr.style == ast::AttrStyle::Inner {
-                        attrs.push(attr);
-                        parser.bump();
-                    } else {
-                        break;
-                    }
-                }
-                _ => break,
-            }
-        }
-        Ok(attrs)
-    }
-
-    fn parse_mod_items(parser: &mut RawParser<'a>, span: Span) -> PResult<'a, ast::Mod> {
-        let mut items = vec![];
-        while let Some(item) = parser.parse_item()? {
-            items.push(item);
-        }
-
-        // Handle extern mods that are empty files/files with only comments.
-        if items.is_empty() {
-            parser.parse_mod(&TokenKind::Eof)?;
-        }
-
-        let hi = if parser.token.span.is_dummy() {
-            span
-        } else {
-            parser.prev_token.span
-        };
-
-        Ok(ast::Mod {
-            inner: span.to(hi),
-            items,
-            inline: false,
-        })
-    }
-
     pub(crate) fn parse_file_as_module(
         sess: &'a ParseSess,
         path: &Path,
         span: Span,
-    ) -> Option<ast::Mod> {
+    ) -> Option<(ast::Mod, Vec<ast::Attribute>)> {
         let result = catch_unwind(AssertUnwindSafe(|| {
             let mut parser = new_parser_from_file(sess.inner(), &path, Some(span));
-
-            let lo = parser.token.span;
-            // FIXME(topecongiro) Format inner attributes (#3606).
-            match Parser::parse_inner_attrs(&mut parser) {
-                Ok(_attrs) => (),
+            match parser.parse_mod(&TokenKind::Eof) {
+                Ok(result) => Some(result),
                 Err(mut e) => {
                     e.cancel();
-                    sess.reset_errors();
-                    return None;
-                }
-            }
-
-            match Parser::parse_mod_items(&mut parser, lo) {
-                Ok(m) => Some(m),
-                Err(mut db) => {
-                    db.cancel();
                     sess.reset_errors();
                     None
                 }

@@ -252,7 +252,8 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
                 return Ok(None);
             }
             return match Parser::parse_file_as_module(self.parse_sess, &path, sub_mod.inner) {
-                Some(m) => Ok(Some(SubModKind::External(
+                Some((_, ref attrs)) if contains_skip(attrs) => Ok(None),
+                Some((m, _)) => Ok(Some(SubModKind::External(
                     path,
                     DirectoryOwnership::Owned { relative: None },
                     Cow::Owned(m),
@@ -290,10 +291,11 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
                     }
                 }
                 match Parser::parse_file_as_module(self.parse_sess, &path, sub_mod.inner) {
-                    Some(m) if outside_mods_empty => {
+                    Some((_, ref attrs)) if contains_skip(attrs) => Ok(None),
+                    Some((m, _)) if outside_mods_empty => {
                         Ok(Some(SubModKind::External(path, ownership, Cow::Owned(m))))
                     }
-                    Some(m) => {
+                    Some((m, _)) => {
                         mods_outside_ast.push((path.clone(), ownership, Cow::Owned(m)));
                         if should_insert {
                             mods_outside_ast.push((path, ownership, sub_mod.clone()));
@@ -377,7 +379,8 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
             }
             let m = match Parser::parse_file_as_module(self.parse_sess, &actual_path, sub_mod.inner)
             {
-                Some(m) => m,
+                Some((_, ref attrs)) if contains_skip(attrs) => continue,
+                Some((m, _)) => m,
                 None => continue,
             };
 
