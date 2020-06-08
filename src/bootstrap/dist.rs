@@ -306,7 +306,12 @@ fn make_win_dist(
     }
 
     //Copy platform tools to platform-specific bin directory
-    let target_bin_dir = plat_root.join("lib").join("rustlib").join(target_triple).join("bin");
+    let target_bin_dir = plat_root
+        .join("lib")
+        .join("rustlib")
+        .join(target_triple)
+        .join("bin")
+        .join("self-contained");
     fs::create_dir_all(&target_bin_dir).expect("creating target_bin_dir failed");
     for src in target_tools {
         builder.copy_to_folder(&src, &target_bin_dir);
