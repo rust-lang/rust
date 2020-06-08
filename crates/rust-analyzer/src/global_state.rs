@@ -160,7 +160,7 @@ impl GlobalState {
         };
         for ws in workspaces.iter() {
             crate_graph.extend(ws.to_crate_graph(
-                config.cargo.target.as_ref(),
+                config.cargo.target.as_deref(),
                 &extern_source_roots,
                 &proc_macro_client,
                 &mut load,

@@ -250,7 +250,7 @@ impl ProjectWorkspace {
 
     pub fn to_crate_graph(
         &self,
-        target: Option<&String>,
+        target: Option<&str>,
         extern_source_roots: &FxHashMap<PathBuf, ExternSourceId>,
         proc_macro_client: &ProcMacroClient,
         load: &mut dyn FnMut(&Path) -> Option<FileId>,
@@ -560,7 +560,7 @@ impl ProjectWorkspace {
     }
 }
 
-fn get_rustc_cfg_options(target: Option<&String>) -> CfgOptions {
+fn get_rustc_cfg_options(target: Option<&str>) -> CfgOptions {
     let mut cfg_options = CfgOptions::default();
 
     // Some nightly-only cfgs, which are required for stdlib
@@ -578,7 +578,7 @@ fn get_rustc_cfg_options(target: Option<&String>) -> CfgOptions {
         let mut cmd = Command::new(ra_toolchain::rustc());
         cmd.args(&["--print", "cfg", "-O"]);
         if let Some(target) = target {
-            cmd.args(&["--target", target.as_str()]);
+            cmd.args(&["--target", target]);
         }
         let output = output(cmd)?;
         Ok(String::from_utf8(output.stdout)?)
