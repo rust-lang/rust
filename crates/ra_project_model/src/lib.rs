@@ -250,7 +250,7 @@ impl ProjectWorkspace {
 
     pub fn to_crate_graph(
         &self,
-        default_cfg_options: &CfgOptions,
+        target: Option<&String>,
         extern_source_roots: &FxHashMap<PathBuf, ExternSourceId>,
         proc_macro_client: &ProcMacroClient,
         load: &mut dyn FnMut(&Path) -> Option<FileId>,
@@ -269,7 +269,7 @@ impl ProjectWorkspace {
                             json_project::Edition::Edition2018 => Edition::Edition2018,
                         };
                         let cfg_options = {
-                            let mut opts = default_cfg_options.clone();
+                            let mut opts = CfgOptions::default();
                             for cfg in &krate.cfg {
                                 match cfg.find('=') {
                                     None => opts.insert_atom(cfg.into()),
@@ -343,13 +343,12 @@ impl ProjectWorkspace {
                 }
             }
             ProjectWorkspace::Cargo { cargo, sysroot } => {
+                let mut cfg_options = get_rustc_cfg_options(target);
+
                 let sysroot_crates: FxHashMap<_, _> = sysroot
                     .crates()
                     .filter_map(|krate| {
                         let file_id = load(&sysroot[krate].root)?;
-
-                        // Crates from sysroot have `cfg(test)` disabled
-                        let cfg_options = default_cfg_options.clone();
 
                         let env = Env::default();
                         let extern_source = ExternSource::default();
@@ -361,7 +360,7 @@ impl ProjectWorkspace {
                             file_id,
                             Edition::Edition2018,
                             Some(crate_name),
-                            cfg_options,
+                            cfg_options.clone(),
                             env,
                             extern_source,
                             proc_macro,
@@ -392,6 +391,10 @@ impl ProjectWorkspace {
 
                 let mut pkg_to_lib_crate = FxHashMap::default();
                 let mut pkg_crates = FxHashMap::default();
+
+                // Add test cfg for non-sysroot crates
+                cfg_options.insert_atom("test".into());
+
                 // Next, create crates for each package, target pair
                 for pkg in cargo.packages() {
                     let mut lib_tgt = None;
@@ -400,12 +403,7 @@ impl ProjectWorkspace {
                         if let Some(file_id) = load(root) {
                             let edition = cargo[pkg].edition;
                             let cfg_options = {
-                                let mut opts = {
-                                    let mut opts = default_cfg_options.clone();
-                                    opts.insert_atom("test".into());
-                                    opts
-                                };
-
+                                let mut opts = cfg_options.clone();
                                 for feature in cargo[pkg].features.iter() {
                                     opts.insert_key_value("feature".into(), feature.into());
                                 }
@@ -562,7 +560,7 @@ impl ProjectWorkspace {
     }
 }
 
-pub fn get_rustc_cfg_options(target: Option<&String>) -> CfgOptions {
+fn get_rustc_cfg_options(target: Option<&String>) -> CfgOptions {
     let mut cfg_options = CfgOptions::default();
 
     // Some nightly-only cfgs, which are required for stdlib
@@ -601,6 +599,8 @@ pub fn get_rustc_cfg_options(target: Option<&String>) -> CfgOptions {
         }
         Err(e) => log::error!("failed to get rustc cfgs: {:#}", e),
     }
+
+    cfg_options.insert_atom("debug_assertion".into());
 
     cfg_options
 }

@@ -15,7 +15,7 @@ use ra_flycheck::{Flycheck, FlycheckConfig};
 use ra_ide::{
     Analysis, AnalysisChange, AnalysisHost, CrateGraph, FileId, LibraryData, SourceRootId,
 };
-use ra_project_model::{get_rustc_cfg_options, ProcMacroClient, ProjectWorkspace};
+use ra_project_model::{ProcMacroClient, ProjectWorkspace};
 use ra_vfs::{LineEndings, RootEntry, Vfs, VfsChange, VfsFile, VfsRoot, VfsTask, Watch};
 use relative_path::RelativePathBuf;
 use stdx::format_to;
@@ -135,13 +135,6 @@ impl GlobalState {
             }
         }
 
-        // FIXME: Read default cfgs from config
-        let default_cfg_options = {
-            let mut opts = get_rustc_cfg_options(config.cargo.target.as_ref());
-            opts.insert_atom("debug_assertion".into());
-            opts
-        };
-
         let proc_macro_client = match &config.proc_macro_srv {
             None => ProcMacroClient::dummy(),
             Some((path, args)) => match ProcMacroClient::extern_process(path.into(), args) {
@@ -167,7 +160,7 @@ impl GlobalState {
         };
         for ws in workspaces.iter() {
             crate_graph.extend(ws.to_crate_graph(
-                &default_cfg_options,
+                config.cargo.target.as_ref(),
                 &extern_source_roots,
                 &proc_macro_client,
                 &mut load,
