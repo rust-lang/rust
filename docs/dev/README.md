@@ -241,6 +241,26 @@ struct Foo {
 For `.md` and `.adoc` files, prefer a sentence-per-line format, don't wrap lines.
 If the line is too long, you want to split the sentence in two :-)
 
+## Preconditions
+
+Function preconditions should generally be expressed in types and provided by the caller (rather than checked by callee):
+
+```rust
+// Good
+fn frbonicate(walrus: Walrus) {
+  ...
+}
+
+// Not as good
+fn frobnicate(walrus: Option<Walrus>) {
+  let walrus = match walrus {
+    Some(it) => it,
+    None => return,
+  };
+  ...
+}
+```
+
 # Architecture Invariants
 
 This section tries to document high-level design constraints, which are not
