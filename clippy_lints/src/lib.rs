@@ -268,7 +268,7 @@ mod overflow_check_conditional;
 mod panic_unimplemented;
 mod partialeq_ne_impl;
 mod path_buf_push_overwrite;
-pub mod pattern_type_mismatch;
+mod pattern_type_mismatch;
 mod precedence;
 mod ptr;
 mod ptr_offset_with_cast;

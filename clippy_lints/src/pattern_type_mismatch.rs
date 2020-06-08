@@ -1,12 +1,12 @@
 use crate::utils::{last_path_segment, span_lint_and_help};
-use rustc::lint::in_external_macro;
-use rustc::ty::subst::SubstsRef;
-use rustc::ty::{AdtDef, FieldDef, Ty, TyKind, VariantDef};
 use rustc_hir::{
     intravisit, Body, Expr, ExprKind, FieldPat, FnDecl, HirId, LocalSource, MatchSource, Mutability, Pat, PatKind,
     QPath, Stmt, StmtKind,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_middle::lint::in_external_macro;
+use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::ty::{AdtDef, FieldDef, Ty, TyKind, VariantDef};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 
@@ -120,6 +120,7 @@ fn apply_lint<'a, 'tcx>(
             PATTERN_TYPE_MISMATCH,
             span,
             "type of pattern does not match the expression type",
+            None,
             &format!(
                 "{}explicitly match against a `{}` pattern and adjust the enclosed variable bindings",
                 match (deref_possible, level) {
