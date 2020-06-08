@@ -1,5 +1,6 @@
 mod tags;
 mod html;
+mod injection;
 #[cfg(test)]
 mod tests;
 
@@ -10,14 +11,14 @@ use ra_ide_db::{
 };
 use ra_prof::profile;
 use ra_syntax::{
-    ast::{self, HasFormatSpecifier, HasQuotes, HasStringValue},
+    ast::{self, HasFormatSpecifier},
     AstNode, AstToken, Direction, NodeOrToken, SyntaxElement,
     SyntaxKind::*,
-    SyntaxToken, TextRange, WalkEvent, T,
+    TextRange, WalkEvent, T,
 };
 use rustc_hash::FxHashMap;
 
-use crate::{call_info::ActiveParameter, Analysis, FileId};
+use crate::FileId;
 
 use ast::FormatSpecifier;
 pub(crate) use html::highlight_as_html;
@@ -123,6 +124,23 @@ pub(crate) fn highlight(
             _ => (),
         }
 
+        // Check for Rust code in documentation
+        match &event {
+            WalkEvent::Leave(NodeOrToken::Node(node)) => {
+                if let Some((doctest, range_mapping, new_comments)) =
+                    injection::extract_doc_comments(node)
+                {
+                    injection::highlight_doc_comment(
+                        doctest,
+                        range_mapping,
+                        new_comments,
+                        &mut stack,
+                    );
+                }
+            }
+            _ => (),
+        }
+
         let element = match event {
             WalkEvent::Enter(it) => it,
             WalkEvent::Leave(_) => continue,
@@ -173,7 +191,7 @@ pub(crate) fn highlight(
 
         if let Some(token) = element.as_token().cloned().and_then(ast::RawString::cast) {
             let expanded = element_to_highlight.as_token().unwrap().clone();
-            if highlight_injection(&mut stack, &sema, token, expanded).is_some() {
+            if injection::highlight_injection(&mut stack, &sema, token, expanded).is_some() {
                 continue;
             }
         }
@@ -259,9 +277,8 @@ impl HighlightedRangeStack {
             let mut parent = prev.pop().unwrap();
             for ele in children {
                 assert!(parent.range.contains_range(ele.range));
-                let mut cloned = parent.clone();
-                parent.range = TextRange::new(parent.range.start(), ele.range.start());
-                cloned.range = TextRange::new(ele.range.end(), cloned.range.end());
+
+                let cloned = Self::intersect(&mut parent, &ele);
                 if !parent.range.is_empty() {
                     prev.push(parent);
                 }
@@ -270,6 +287,62 @@ impl HighlightedRangeStack {
             }
             if !parent.range.is_empty() {
                 prev.push(parent);
+            }
+        }
+    }
+
+    /// Intersects the `HighlightedRange` `parent` with `child`.
+    /// `parent` is mutated in place, becoming the range before `child`.
+    /// Returns the range (of the same type as `parent`) *after* `child`.
+    fn intersect(parent: &mut HighlightedRange, child: &HighlightedRange) -> HighlightedRange {
+        assert!(parent.range.contains_range(child.range));
+
+        let mut cloned = parent.clone();
+        parent.range = TextRange::new(parent.range.start(), child.range.start());
+        cloned.range = TextRange::new(child.range.end(), cloned.range.end());
+
+        cloned
+    }
+
+    /// Similar to `pop`, but can modify arbitrary prior ranges (where `pop`)
+    /// can only modify the last range currently on the stack.
+    /// Can be used to do injections that span multiple ranges, like the
+    /// doctest injection below.
+    /// If `delete` is set to true, the parent range is deleted instead of
+    /// intersected.
+    ///
+    /// Note that `pop` can be simulated by `pop_and_inject(false)` but the
+    /// latter is computationally more expensive.
+    fn pop_and_inject(&mut self, delete: bool) {
+        let mut children = self.stack.pop().unwrap();
+        let prev = self.stack.last_mut().unwrap();
+        children.sort_by_key(|range| range.range.start());
+        prev.sort_by_key(|range| range.range.start());
+
+        for child in children {
+            if let Some(idx) =
+                prev.iter().position(|parent| parent.range.contains_range(child.range))
+            {
+                let cloned = Self::intersect(&mut prev[idx], &child);
+                let insert_idx = if delete || prev[idx].range.is_empty() {
+                    prev.remove(idx);
+                    idx
+                } else {
+                    idx + 1
+                };
+                prev.insert(insert_idx, child);
+                if !delete && !cloned.range.is_empty() {
+                    prev.insert(insert_idx + 1, cloned);
+                }
+            } else if let Some(_idx) =
+                prev.iter().position(|parent| parent.range.contains(child.range.start()))
+            {
+                unreachable!("child range should be completely contained in parent range");
+            } else {
+                let idx = prev
+                    .binary_search_by_key(&child.range.start(), |range| range.range.start())
+                    .unwrap_or_else(|x| x);
+                prev.insert(idx, child);
             }
         }
     }
@@ -538,43 +611,4 @@ fn highlight_name_by_syntax(name: ast::Name) -> Highlight {
     };
 
     tag.into()
-}
-
-fn highlight_injection(
-    acc: &mut HighlightedRangeStack,
-    sema: &Semantics<RootDatabase>,
-    literal: ast::RawString,
-    expanded: SyntaxToken,
-) -> Option<()> {
-    let active_parameter = ActiveParameter::at_token(&sema, expanded)?;
-    if !active_parameter.name.starts_with("ra_fixture") {
-        return None;
-    }
-    let value = literal.value()?;
-    let (analysis, tmp_file_id) = Analysis::from_single_file(value);
-
-    if let Some(range) = literal.open_quote_text_range() {
-        acc.add(HighlightedRange {
-            range,
-            highlight: HighlightTag::StringLiteral.into(),
-            binding_hash: None,
-        })
-    }
-
-    for mut h in analysis.highlight(tmp_file_id).unwrap() {
-        if let Some(r) = literal.map_range_up(h.range) {
-            h.range = r;
-            acc.add(h)
-        }
-    }
-
-    if let Some(range) = literal.close_quote_text_range() {
-        acc.add(HighlightedRange {
-            range,
-            highlight: HighlightTag::StringLiteral.into(),
-            binding_hash: None,
-        })
-    }
-
-    Some(())
 }

@@ -284,3 +284,53 @@ fn main() {
         false,
     );
 }
+
+#[test]
+fn test_highlight_doctest() {
+    check_highlighting(
+        r#"
+impl Foo {
+    /// Constructs a new `Foo`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![allow(unused_mut)]
+    /// let mut foo: Foo = Foo::new();
+    /// ```
+    pub const fn new() -> Foo {
+        Foo { }
+    }
+
+    /// `bar` method on `Foo`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let foo = Foo::new();
+    ///
+    /// // calls bar on foo
+    /// assert!(foo.bar());
+    ///
+    /// /* multi-line
+    ///        comment */
+    ///
+    /// let multi_line_string = "Foo
+    ///   bar
+    ///          ";
+    ///
+    /// ```
+    ///
+    /// ```
+    /// let foobar = Foo::new().bar();
+    /// ```
+    pub fn foo(&self) -> bool {
+        true
+    }
+}
+"#
+        .trim(),
+        "crates/ra_ide/src/snapshots/highlight_doctest.html",
+        false,
+    )
+}
