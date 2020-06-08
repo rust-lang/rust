@@ -125,6 +125,20 @@ fn main() {
         } else {
             cmd.arg("-C").arg(format!("debug-assertions={}", debug_assertions));
         }
+
+        // For compiler-builtins we always use a high number of codegen units.
+        // The goal here is to place every single intrinsic into its own object
+        // file to avoid symbol clashes with the system libgcc if possible. Note
+        // that this number doesn't actually produce this many object files, we
+        // just don't create more than this number of object files.
+        //
+        // It's a bit of a bummer that we have to pass this here, unfortunately.
+        // Ideally this would be specified through an env var to Cargo so Cargo
+        // knows how many CGUs are for this specific crate, but for now
+        // per-crate configuration isn't specifiable in the environment.
+        if crate_name == Some("compiler_builtins") {
+            cmd.arg("-Ccodegen-units=10000");
+        }
     } else {
         // FIXME(rust-lang/cargo#5754) we shouldn't be using special env vars
         // here, but rather Cargo should know what flags to pass rustc itself.
