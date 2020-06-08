@@ -877,8 +877,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         (such as entering an empty infinite loop) by inserting llvm.sideeffect \
         (default: no)"),
     instrument_coverage: bool = (false, parse_bool, [TRACKED],
-        "instrument the generated code with LLVM code region counters for \
-        generating coverage reports (default: no)"),
+        "instrument the generated code with LLVM code region counters to \
+        (in the future) generate coverage reports (experimental; default: no)"),
     instrument_mcount: bool = (false, parse_bool, [TRACKED],
         "insert function instrument code for mcount-based tracing (default: no)"),
     keep_hygiene_data: bool = (false, parse_bool, [UNTRACKED],

@@ -389,6 +389,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 );
                 self.copy_op(self.operand_index(args[0], index)?, dest)?;
             }
+            sym::count_code_region => (),
             _ => return Ok(false),
         }
 
