@@ -16,8 +16,9 @@ use xtask::{
     dist::run_dist,
     install::{ClientOpt, InstallCmd, ServerOpt},
     not_bash::pushd,
-    pre_commit, project_root, run_clippy, run_fuzzer, run_pre_cache, run_release, run_rustfmt,
-    Result,
+    pre_commit, project_root,
+    release::run_release,
+    run_clippy, run_fuzzer, run_pre_cache, run_rustfmt, Result,
 };
 
 fn main() -> Result<()> {
