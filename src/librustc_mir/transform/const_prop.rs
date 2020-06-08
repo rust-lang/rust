@@ -707,7 +707,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 ScalarMaybeUninit::Scalar(l),
                 ScalarMaybeUninit::Scalar(r),
             )) => l.is_bits() && r.is_bits(),
-            interpret::Operand::Indirect(_) if mir_opt_level >= 2 => true,
             _ => false,
         }
     }
