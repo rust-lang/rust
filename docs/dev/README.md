@@ -241,6 +241,26 @@ struct Foo {
 For `.md` and `.adoc` files, prefer a sentence-per-line format, don't wrap lines.
 If the line is too long, you want to split the sentence in two :-)
 
+## Preconditions
+
+Function preconditions should generally be expressed in types and provided by the caller (rather than checked by callee):
+
+```rust
+// Good
+fn frbonicate(walrus: Walrus) {
+  ...
+}
+
+// Not as good
+fn frobnicate(walrus: Option<Walrus>) {
+  let walrus = match walrus {
+    Some(it) => it,
+    None => return,
+  };
+  ...
+}
+```
+
 # Architecture Invariants
 
 This section tries to document high-level design constraints, which are not
@@ -267,6 +287,13 @@ IDE assumes that all information is available at all times.
 
 IDE should use only types from `ra_hir`, and should not depend on the underling compiler types.
 `ra_hir` is a facade.
+
+## IDE API
+
+The main IDE crate (`ra_ide`) uses "Plain Old Data" for the API.
+Rather than talking in definitions and references, it talks in Strings and textual offsets.
+In general, API is centered around UI concerns -- the result of the call is what the user sees in the editor, and not what the compiler sees underneath.
+The results are 100% Rust specific though.
 
 # Logging
 
