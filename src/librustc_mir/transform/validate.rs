@@ -13,7 +13,7 @@ use rustc_span::def_id::DefId;
 
 enum EdgeKind {
     Unwind,
-    Other,
+    Normal,
 }
 
 pub struct Validator {
@@ -59,11 +59,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             let src = self.body.basic_blocks().get(location.block).unwrap();
             match (src.is_cleanup, bb.is_cleanup, edge_kind) {
                 // Non-cleanup blocks can jump to non-cleanup blocks along non-unwind edges
-                (false, false, EdgeKind::Other)
+                (false, false, EdgeKind::Normal)
                 // Non-cleanup blocks can jump to cleanup blocks along unwind edges
                 | (false, true, EdgeKind::Unwind)
-                // Cleanup blocks can jump to cleanup blocks along any edges
-                | (true, true, _) => {}
+                // Cleanup blocks can jump to cleanup blocks along non-unwind edges
+                | (true, true, EdgeKind::Normal) => {}
                 // All other jumps are invalid
                 _ => {
                     self.fail(
@@ -114,7 +114,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
     fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
         match &terminator.kind {
             TerminatorKind::Goto { target } => {
-                self.check_bb(location, *target, EdgeKind::Other);
+                self.check_bb(location, *target, EdgeKind::Normal);
             }
             TerminatorKind::SwitchInt { targets, values, .. } => {
                 if targets.len() != values.len() + 1 {
@@ -128,17 +128,17 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     );
                 }
                 for target in targets {
-                    self.check_bb(location, *target, EdgeKind::Other);
+                    self.check_bb(location, *target, EdgeKind::Normal);
                 }
             }
             TerminatorKind::Drop { target, unwind, .. } => {
-                self.check_bb(location, *target, EdgeKind::Other);
+                self.check_bb(location, *target, EdgeKind::Normal);
                 if let Some(unwind) = unwind {
                     self.check_bb(location, *unwind, EdgeKind::Unwind);
                 }
             }
             TerminatorKind::DropAndReplace { target, unwind, .. } => {
-                self.check_bb(location, *target, EdgeKind::Other);
+                self.check_bb(location, *target, EdgeKind::Normal);
                 if let Some(unwind) = unwind {
                     self.check_bb(location, *unwind, EdgeKind::Unwind);
                 }
@@ -153,7 +153,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     ),
                 }
                 if let Some((_, target)) = destination {
-                    self.check_bb(location, *target, EdgeKind::Other);
+                    self.check_bb(location, *target, EdgeKind::Normal);
                 }
                 if let Some(cleanup) = cleanup {
                     self.check_bb(location, *cleanup, EdgeKind::Unwind);
@@ -170,30 +170,30 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         ),
                     );
                 }
-                self.check_bb(location, *target, EdgeKind::Other);
+                self.check_bb(location, *target, EdgeKind::Normal);
                 if let Some(cleanup) = cleanup {
                     self.check_bb(location, *cleanup, EdgeKind::Unwind);
                 }
             }
             TerminatorKind::Yield { resume, drop, .. } => {
-                self.check_bb(location, *resume, EdgeKind::Other);
+                self.check_bb(location, *resume, EdgeKind::Normal);
                 if let Some(drop) = drop {
-                    self.check_bb(location, *drop, EdgeKind::Other);
+                    self.check_bb(location, *drop, EdgeKind::Normal);
                 }
             }
             TerminatorKind::FalseEdge { real_target, imaginary_target } => {
-                self.check_bb(location, *real_target, EdgeKind::Other);
-                self.check_bb(location, *imaginary_target, EdgeKind::Other);
+                self.check_bb(location, *real_target, EdgeKind::Normal);
+                self.check_bb(location, *imaginary_target, EdgeKind::Normal);
             }
             TerminatorKind::FalseUnwind { real_target, unwind } => {
-                self.check_bb(location, *real_target, EdgeKind::Other);
+                self.check_bb(location, *real_target, EdgeKind::Normal);
                 if let Some(unwind) = unwind {
                     self.check_bb(location, *unwind, EdgeKind::Unwind);
                 }
             }
             TerminatorKind::InlineAsm { destination, .. } => {
                 if let Some(destination) = destination {
-                    self.check_bb(location, *destination, EdgeKind::Other);
+                    self.check_bb(location, *destination, EdgeKind::Normal);
                 }
             }
             // Nothing to validate for these.
