@@ -1,5 +1,5 @@
 ; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -sroa -simplifycfg -instcombine -gvn -adce -S | FileCheck %s
-source_filename = "/home/wmoses/Enzyme/enzyme/test/Integration/simpleeigenstatic-made.cpp"
+source_filename = "/home/enzyme/Enzyme/enzyme/test/Integration/simpleeigenstatic-made.cpp"
 target datalayout = "e-m:e-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-unknown-linux-gnu"
 
@@ -23,7 +23,7 @@ target triple = "x86_64-unknown-linux-gnu"
 @.str.3 = private unnamed_addr constant [68 x i8] c"Assertion Failed: fabs( [%s = %g] - [%s = %g] ) > %g at %s:%d (%s)\0A\00", align 1
 @.str.4 = private unnamed_addr constant [9 x i8] c"Wp(i, o)\00", align 1
 @.str.5 = private unnamed_addr constant [18 x i8] c"M(o) * Op_orig(i)\00", align 1
-@.str.6 = private unnamed_addr constant [71 x i8] c"/home/wmoses/Enzyme/enzyme/test/Integration/simpleeigenstatic-made.cpp\00", align 1
+@.str.6 = private unnamed_addr constant [71 x i8] c"/home/enzyme/Enzyme/enzyme/test/Integration/simpleeigenstatic-made.cpp\00", align 1
 @__PRETTY_FUNCTION__.main = private unnamed_addr constant [23 x i8] c"int main(int, char **)\00", align 1
 @.str.7 = private unnamed_addr constant [19 x i8] c"Wp(o=%d, i=%d)=%f\0A\00", align 1
 @.str.8 = private unnamed_addr constant [6 x i8] c"Mp(o)\00", align 1

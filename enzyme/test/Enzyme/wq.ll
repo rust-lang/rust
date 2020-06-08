@@ -3,8 +3,8 @@
 ; the modref_map is wrong and overly conservative, upon fixing that this test should pass
 ; XFAIL: *
 
-; ModuleID = '/home/wmoses/Enzyme/enzyme/test/Integration/simpleeigenstatic-sumsq.cpp'
-source_filename = "/home/wmoses/Enzyme/enzyme/test/Integration/simpleeigenstatic-sumsq.cpp"
+; ModuleID = '/home/enzyme/Enzyme/enzyme/test/Integration/simpleeigenstatic-sumsq.cpp'
+source_filename = "/home/enzyme/Enzyme/enzyme/test/Integration/simpleeigenstatic-sumsq.cpp"
 target datalayout = "e-m:e-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-unknown-linux-gnu"
 
@@ -223,7 +223,7 @@ $_ZN5Eigen15DenseCoeffsBaseINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEELi1EE8coeffRefEll 
 @.str.1 = private unnamed_addr constant [68 x i8] c"Assertion Failed: fabs( [%s = %g] - [%s = %g] ) > %g at %s:%d (%s)\0A\00", align 1
 @.str.2 = private unnamed_addr constant [9 x i8] c"Wp(i, o)\00", align 1
 @.str.3 = private unnamed_addr constant [4 x i8] c"1.0\00", align 1
-@.str.4 = private unnamed_addr constant [72 x i8] c"/home/wmoses/Enzyme/enzyme/test/Integration/simpleeigenstatic-sumsq.cpp\00", align 1
+@.str.4 = private unnamed_addr constant [72 x i8] c"/home/enzyme/Enzyme/enzyme/test/Integration/simpleeigenstatic-sumsq.cpp\00", align 1
 @__PRETTY_FUNCTION__.main = private unnamed_addr constant [23 x i8] c"int main(int, char **)\00", align 1
 @.str.5 = private unnamed_addr constant [19 x i8] c"Wp(o=%d, i=%d)=%f\0A\00", align 1
 @.str.6 = private unnamed_addr constant [68 x i8] c"this->rows()>0 && this->cols()>0 && \22you are using an empty matrix\22\00", align 1

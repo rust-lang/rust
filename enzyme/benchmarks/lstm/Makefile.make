@@ -13,11 +13,10 @@ clean:
 	opt $^ $(LOAD) -enzyme -o $@ -S
 
 %-opt.ll: %-raw.ll
-	#opt $^ -O2 -o $@ -S
 	opt $^ -o $@ -S
+	#opt $^ -O2 -o $@ -S
 
 lstm.o: lstm-opt.ll
-	#clang++ $^ -o $@ -lblas $(BENCHLINK)
 	clang++ -O2 $^ -o $@ -lblas $(BENCHLINK)
 
 results.txt: lstm.o

@@ -14,10 +14,9 @@ clean:
 
 %-opt.ll: %-raw.ll
 	opt $^ -o $@ -S
-	#opt-8 $^ -O2 -o $@ -S
+	#opt $^ -O2 -o $@ -S
 
 fft.o: fft-opt.ll
-	#clang++ $^ -o $@ -lblas $(BENCHLINK)
 	clang++ -O2 $^ -o $@ -lblas $(BENCHLINK)
 
 results.txt: fft.o

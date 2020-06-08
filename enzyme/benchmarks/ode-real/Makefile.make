@@ -13,12 +13,20 @@ clean:
 	opt $^ $(LOAD) -enzyme -o $@ -S
 
 %-opt.ll: %-raw.ll
-	#opt $^ -O2 -o $@ -S
 	opt $^ -o $@ -S
+	#opt $^ -O2 -o $@ -S
 
 ode.o: ode-opt.ll
-	#clang++ $^ -o $@ -lblas $(BENCHLINK)
 	clang++ -O2 $^ -o $@ -lblas $(BENCHLINK)
 
 results.txt: ode.o
 	./$^ 1000 | tee $@
+	./$^ 1000 >> $@
+	./$^ 1000 >> $@
+	./$^ 1000 >> $@
+	./$^ 1000 >> $@
+	./$^ 1000 >> $@
+	./$^ 1000 >> $@
+	./$^ 1000 >> $@
+	./$^ 1000 >> $@
+	./$^ 1000 >> $@

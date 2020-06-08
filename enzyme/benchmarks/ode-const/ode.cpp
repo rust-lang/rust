@@ -89,9 +89,12 @@ int main(int argc, char** argv) {
   int max_iters = atoi(argv[1]) ;
   double inp = 2.1;
 
+  unsigned i=0;
   for(int iters=max_iters/20; iters<=max_iters; iters+=max_iters/20) {
     printf("iters=%d\n", iters);
     adept_sincos(inp, iters);
     enzyme_sincos(inp, iters);
+    i++;
+    if (i == 10) break;
   }
 }

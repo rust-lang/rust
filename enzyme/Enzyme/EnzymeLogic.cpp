@@ -1,18 +1,9 @@
 /*
  * EnzymeLogic.cpp
  *
- * Copyright (C) 2019 William S. Moses (enzyme@wsmoses.com) - All Rights Reserved
+ * Copyright (C) 2020 Anonymous Author(s) - All Rights Reserved
  *
  * For commercial use of this code please contact the author(s) above.
- *
- * For research use of the code please use the following citation.
- *
- * \misc{mosesenzyme,
-    author = {William S. Moses, Tim Kaler},
-    title = {Enzyme: LLVM Automatic Differentiation},
-    year = {2019},
-    howpublished = {\url{https://github.com/wsmoses/Enzyme/}},
-    note = {commit xxxxxxx}
  */
 
 #include "EnzymeLogic.h"

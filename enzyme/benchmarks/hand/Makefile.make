@@ -13,7 +13,7 @@ clean:
 
 %-opt.ll: %-raw.ll
 	opt $^ -o $@ -S
-	#opt $^ -O2 -early-cse-memssa -instcombine -indvars -o $@ -S
+	#opt $^ -O2 -o $@ -S
 
 hand.o: hand-opt.ll
 	clang++ $^ -o $@ -lblas $(BENCHLINK)

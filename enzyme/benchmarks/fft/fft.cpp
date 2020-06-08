@@ -225,7 +225,7 @@ int main(int argc, char** argv) {
   }
   double inp = -2.1;
 
-  for(unsigned iters=max(1, N>>20); iters <= N; iters*=2) {
+  for(unsigned iters=max(1, N>>5); iters <= N; iters*=2) {
     printf("iters=%d\n", iters);
     adept_sincos(inp, iters);
     //tapenade_sincos(inp, N);
