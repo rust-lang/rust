@@ -363,6 +363,7 @@ fn highlight_element(
                     highlight_name(db, def) | HighlightModifier::Definition
                 }
                 Some(NameClass::ConstReference(def)) => highlight_name(db, def),
+                Some(NameClass::FieldShorthand { .. }) => HighlightTag::Field.into(),
                 None => highlight_name_by_syntax(name) | HighlightModifier::Definition,
             }
         }

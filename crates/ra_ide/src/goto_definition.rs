@@ -39,7 +39,7 @@ pub(crate) fn goto_definition(
                 reference_definition(&sema, &name_ref).to_vec()
             },
             ast::Name(name) => {
-                let def = classify_name(&sema, &name)?.definition();
+                let def = classify_name(&sema, &name)?.into_definition()?;
                 let nav = def.try_to_nav(sema.db)?;
                 vec![nav]
             },
