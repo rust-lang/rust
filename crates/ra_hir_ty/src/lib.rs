@@ -58,7 +58,7 @@ use ra_db::{impl_intern_key, salsa, CrateId};
 
 use crate::{
     db::HirDatabase,
-    primitive::{FloatTy, IntTy, Uncertain},
+    primitive::{FloatTy, IntTy},
     utils::{generics, make_mut_slice, Generics},
 };
 use display::HirDisplay;
@@ -87,10 +87,10 @@ pub enum TypeCtor {
     Char,
 
     /// A primitive integer type. For example, `i32`.
-    Int(Uncertain<IntTy>),
+    Int(IntTy),
 
     /// A primitive floating-point type. For example, `f64`.
-    Float(Uncertain<FloatTy>),
+    Float(FloatTy),
 
     /// Structures, enumerations and unions.
     Adt(AdtId),
