@@ -148,6 +148,11 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                         caller_fn_path
                     );
 
+                    // FIXME(richkadel): (1) Replace raw function name with mangled function name;
+                    // (2) Replace hardcoded `1234` in `hash` with a computed hash (as discussed in)
+                    // the MCP (compiler-team/issues/278); and replace the hardcoded `1` for
+                    // `num_counters` with the actual number of counters per function (when the
+                    // changes are made to inject more than one counter per function).
                     let (fn_name, _len_val) = self.const_str(Symbol::intern(&caller_fn_path));
                     let index = args[0].immediate();
                     let hash = self.const_u64(1234);

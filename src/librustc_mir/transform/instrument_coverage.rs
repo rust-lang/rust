@@ -7,6 +7,7 @@ use rustc_middle::ty::Ty;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::DefId;
 use rustc_span::Span;
+use rustc_target::abi;
 
 pub struct InstrumentCoverage;
 
@@ -25,7 +26,7 @@ impl<'tcx> MirPass<'tcx> for InstrumentCoverage {
 }
 
 // The first counter (start of the function) is index zero.
-const INIT_FUNCTION_COUNTER: u128 = 0;
+const INIT_FUNCTION_COUNTER: u32 = 0;
 
 /// Injects calls to placeholder function `count_code_region()`.
 // FIXME(richkadel): As a first step, counters are only injected at the top of each function.
@@ -35,7 +36,8 @@ pub fn instrument_coverage<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 
     let count_code_region_fn =
         function_handle(tcx, span, tcx.lang_items().count_code_region_fn().unwrap());
-    let counter_index = const_int_operand(tcx, span, tcx.types.u32, INIT_FUNCTION_COUNTER);
+    let counter_index =
+        const_int_operand(tcx, span, tcx.types.u32, Scalar::from_u32(INIT_FUNCTION_COUNTER));
 
     let mut patch = MirPatch::new(body);
 
@@ -77,17 +79,24 @@ fn const_int_operand<'tcx>(
     tcx: TyCtxt<'tcx>,
     span: Span,
     ty: Ty<'tcx>,
-    val: u128,
+    val: Scalar,
 ) -> Operand<'tcx> {
-    let param_env_and_ty = ty::ParamEnv::empty().and(ty);
-    let size = tcx
-        .layout_of(param_env_and_ty)
-        .unwrap_or_else(|e| panic!("could not compute layout for {:?}: {:?}", ty, e))
-        .size;
+    debug_assert!({
+        let param_env_and_ty = ty::ParamEnv::empty().and(ty);
+        let type_size = tcx
+            .layout_of(param_env_and_ty)
+            .unwrap_or_else(|e| panic!("could not compute layout for {:?}: {:?}", ty, e))
+            .size;
+        let scalar_size = abi::Size::from_bytes(match val {
+            Scalar::Raw { size, .. } => size,
+            _ => panic!("Invalid scalar type {:?}", val),
+        });
+        scalar_size == type_size
+    });
     Operand::Constant(box Constant {
         span,
         user_ty: None,
-        literal: ty::Const::from_scalar(tcx, Scalar::from_uint(val, size), ty),
+        literal: ty::Const::from_scalar(tcx, val, ty),
     })
 }
 
