@@ -656,14 +656,14 @@ pub(crate) fn resolved_code_action(
 pub(crate) fn runnable(
     snap: &GlobalStateSnapshot,
     file_id: FileId,
-    runnable: &Runnable,
+    runnable: Runnable,
 ) -> Result<lsp_ext::Runnable> {
     let spec = CargoTargetSpec::for_file(snap, file_id)?;
     let target = spec.as_ref().map(|s| s.target.clone());
     let (cargo_args, executable_args) =
         CargoTargetSpec::runnable_args(spec, &runnable.kind, &runnable.cfg_exprs)?;
     let label = runnable.label(target);
-    let location = location_link(snap, None, runnable.nav.clone())?;
+    let location = location_link(snap, None, runnable.nav)?;
 
     Ok(lsp_ext::Runnable {
         label,

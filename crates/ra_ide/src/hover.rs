@@ -17,6 +17,7 @@ use crate::{
     runnables::runnable,
     FileId, FilePosition, NavigationTarget, RangeInfo, Runnable,
 };
+use test_utils::mark;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HoverConfig {
@@ -202,10 +203,9 @@ fn runnable_action(
             ModuleDef::Function(it) => {
                 let src = it.source(sema.db);
                 if src.file_id != file_id.into() {
-                    // Don't try to find runnables in a macro generated code.
-                    // See tests below:
-                    //   test_hover_macro_generated_struct_fn_doc_comment
-                    //   test_hover_macro_generated_struct_fn_doc_attr
+                    mark::hit!(hover_macro_generated_struct_fn_doc_comment);
+                    mark::hit!(hover_macro_generated_struct_fn_doc_attr);
+
                     return None;
                 }
 
@@ -1121,6 +1121,8 @@ fn func(foo: i32) { if true { <|>foo; }; }
 
     #[test]
     fn test_hover_macro_generated_struct_fn_doc_comment() {
+        mark::check!(hover_macro_generated_struct_fn_doc_comment);
+
         check_hover_result(
             r#"
             //- /lib.rs
@@ -1147,6 +1149,8 @@ fn func(foo: i32) { if true { <|>foo; }; }
 
     #[test]
     fn test_hover_macro_generated_struct_fn_doc_attr() {
+        mark::check!(hover_macro_generated_struct_fn_doc_attr);
+
         check_hover_result(
             r#"
             //- /lib.rs

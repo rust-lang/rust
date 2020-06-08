@@ -408,7 +408,7 @@ pub fn handle_runnables(
             continue;
         }
 
-        res.push(to_proto::runnable(&snap, file_id, &runnable)?);
+        res.push(to_proto::runnable(&snap, file_id, runnable)?);
     }
 
     // Add `cargo check` and `cargo test` for the whole package
@@ -818,7 +818,7 @@ pub fn handle_code_lens(
 
             let action = runnable.action();
             let range = to_proto::range(&line_index, runnable.nav.range());
-            let r = to_proto::runnable(&snap, file_id, &runnable)?;
+            let r = to_proto::runnable(&snap, file_id, runnable)?;
             if snap.config.lens.run {
                 let lens = CodeLens {
                     range,
@@ -830,7 +830,7 @@ pub fn handle_code_lens(
 
             if action.debugee && snap.config.lens.debug {
                 let debug_lens =
-                    CodeLens { range, command: Some(debug_single_command(r)), data: None };
+                    CodeLens { range, command: Some(debug_single_command(&r)), data: None };
                 lenses.push(debug_lens);
             }
         }
@@ -1142,7 +1142,7 @@ fn run_single_command(runnable: &lsp_ext::Runnable, title: &str) -> Command {
     }
 }
 
-fn debug_single_command(runnable: lsp_ext::Runnable) -> Command {
+fn debug_single_command(runnable: &lsp_ext::Runnable) -> Command {
     Command {
         title: "Debug".into(),
         command: "rust-analyzer.debugSingle".into(),
@@ -1183,26 +1183,25 @@ fn show_impl_command_link(
 fn to_runnable_action(
     snap: &GlobalStateSnapshot,
     file_id: FileId,
-    runnable: &Runnable,
+    runnable: Runnable,
 ) -> Option<lsp_ext::CommandLinkGroup> {
     let cargo_spec = CargoTargetSpec::for_file(&snap, file_id).ok()?;
-    if should_skip_target(runnable, cargo_spec.as_ref()) {
+    if should_skip_target(&runnable, cargo_spec.as_ref()) {
         return None;
     }
 
+    let action: &'static _ = runnable.action();
     to_proto::runnable(snap, file_id, runnable).ok().map(|r| {
         let mut group = lsp_ext::CommandLinkGroup::default();
 
-        let action = runnable.action();
         if snap.config.hover.run {
             let run_command = run_single_command(&r, action.run_title);
             group.commands.push(to_command_link(run_command, r.label.clone()));
         }
 
         if snap.config.hover.debug {
-            let hint = r.label.clone();
-            let dbg_command = debug_single_command(r);
-            group.commands.push(to_command_link(dbg_command, hint));
+            let dbg_command = debug_single_command(&r);
+            group.commands.push(to_command_link(dbg_command, r.label));
         }
 
         group
@@ -1222,7 +1221,7 @@ fn prepare_hover_actions(
         .iter()
         .filter_map(|it| match it {
             HoverAction::Implementaion(position) => show_impl_command_link(snap, position),
-            HoverAction::Runnable(r) => to_runnable_action(snap, file_id, r),
+            HoverAction::Runnable(r) => to_runnable_action(snap, file_id, r.clone()),
         })
         .collect()
 }
@@ -1232,10 +1231,7 @@ fn should_skip_target(runnable: &Runnable, cargo_spec: Option<&CargoTargetSpec>)
         RunnableKind::Bin => {
             // Do not suggest binary run on other target than binary
             match &cargo_spec {
-                Some(spec) => match spec.target_kind {
-                    TargetKind::Bin => false,
-                    _ => true,
-                },
+                Some(spec) => spec.target_kind != TargetKind::Bin,
                 None => true,
             }
         }
