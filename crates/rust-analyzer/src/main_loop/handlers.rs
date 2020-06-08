@@ -18,8 +18,8 @@ use lsp_types::{
     TextDocumentIdentifier, Url, WorkspaceEdit,
 };
 use ra_ide::{
-    FileId, FilePosition, FileRange, HoverAction, Query, RangeInfo, RunnableKind, SearchScope,
-    TextEdit,
+    FileId, FilePosition, FileRange, HoverAction, Query, RangeInfo, Runnable, RunnableKind,
+    SearchScope, TextEdit,
 };
 use ra_prof::profile;
 use ra_project_model::TargetKind;
@@ -404,15 +404,10 @@ pub fn handle_runnables(
                 continue;
             }
         }
-        // Do not suggest binary run on other target than binary
-        if let RunnableKind::Bin = runnable.kind {
-            if let Some(spec) = &cargo_spec {
-                match spec.target_kind {
-                    TargetKind::Bin => {}
-                    _ => continue,
-                }
-            }
+        if should_skip_target(&runnable, cargo_spec.as_ref()) {
+            continue;
         }
+
         res.push(to_proto::runnable(&snap, file_id, runnable)?);
     }
 
@@ -555,7 +550,7 @@ pub fn handle_hover(
             }),
             range: Some(range),
         },
-        actions: prepare_hover_actions(&snap, info.info.actions()),
+        actions: prepare_hover_actions(&snap, position.file_id, info.info.actions()),
     };
 
     Ok(Some(hover))
@@ -817,55 +812,25 @@ pub fn handle_code_lens(
     if snap.config.lens.runnable() {
         // Gather runnables
         for runnable in snap.analysis().runnables(file_id)? {
-            let (run_title, debugee) = match &runnable.kind {
-                RunnableKind::Test { .. } | RunnableKind::TestMod { .. } => {
-                    ("▶\u{fe0e} Run Test", true)
-                }
-                RunnableKind::DocTest { .. } => {
-                    // cargo does not support -no-run for doctests
-                    ("▶\u{fe0e} Run Doctest", false)
-                }
-                RunnableKind::Bench { .. } => {
-                    // Nothing wrong with bench debugging
-                    ("Run Bench", true)
-                }
-                RunnableKind::Bin => {
-                    // Do not suggest binary run on other target than binary
-                    match &cargo_spec {
-                        Some(spec) => match spec.target_kind {
-                            TargetKind::Bin => ("Run", true),
-                            _ => continue,
-                        },
-                        None => continue,
-                    }
-                }
-            };
+            if should_skip_target(&runnable, cargo_spec.as_ref()) {
+                continue;
+            }
 
+            let action = runnable.action();
             let range = to_proto::range(&line_index, runnable.nav.range());
             let r = to_proto::runnable(&snap, file_id, runnable)?;
             if snap.config.lens.run {
                 let lens = CodeLens {
                     range,
-                    command: Some(Command {
-                        title: run_title.to_string(),
-                        command: "rust-analyzer.runSingle".into(),
-                        arguments: Some(vec![to_value(&r).unwrap()]),
-                    }),
+                    command: Some(run_single_command(&r, action.run_title)),
                     data: None,
                 };
                 lenses.push(lens);
             }
 
-            if debugee && snap.config.lens.debug {
-                let debug_lens = CodeLens {
-                    range,
-                    command: Some(Command {
-                        title: "Debug".into(),
-                        command: "rust-analyzer.debugSingle".into(),
-                        arguments: Some(vec![to_value(r).unwrap()]),
-                    }),
-                    data: None,
-                };
+            if action.debugee && snap.config.lens.debug {
+                let debug_lens =
+                    CodeLens { range, command: Some(debug_single_command(&r)), data: None };
                 lenses.push(debug_lens);
             }
         }
@@ -1169,6 +1134,22 @@ fn show_references_command(
     }
 }
 
+fn run_single_command(runnable: &lsp_ext::Runnable, title: &str) -> Command {
+    Command {
+        title: title.to_string(),
+        command: "rust-analyzer.runSingle".into(),
+        arguments: Some(vec![to_value(runnable).unwrap()]),
+    }
+}
+
+fn debug_single_command(runnable: &lsp_ext::Runnable) -> Command {
+    Command {
+        title: "Debug".into(),
+        command: "rust-analyzer.debugSingle".into(),
+        arguments: Some(vec![to_value(runnable).unwrap()]),
+    }
+}
+
 fn to_command_link(command: Command, tooltip: String) -> lsp_ext::CommandLink {
     lsp_ext::CommandLink { tooltip: Some(tooltip), command }
 }
@@ -1199,8 +1180,37 @@ fn show_impl_command_link(
     None
 }
 
+fn to_runnable_action(
+    snap: &GlobalStateSnapshot,
+    file_id: FileId,
+    runnable: Runnable,
+) -> Option<lsp_ext::CommandLinkGroup> {
+    let cargo_spec = CargoTargetSpec::for_file(&snap, file_id).ok()?;
+    if should_skip_target(&runnable, cargo_spec.as_ref()) {
+        return None;
+    }
+
+    let action: &'static _ = runnable.action();
+    to_proto::runnable(snap, file_id, runnable).ok().map(|r| {
+        let mut group = lsp_ext::CommandLinkGroup::default();
+
+        if snap.config.hover.run {
+            let run_command = run_single_command(&r, action.run_title);
+            group.commands.push(to_command_link(run_command, r.label.clone()));
+        }
+
+        if snap.config.hover.debug {
+            let dbg_command = debug_single_command(&r);
+            group.commands.push(to_command_link(dbg_command, r.label));
+        }
+
+        group
+    })
+}
+
 fn prepare_hover_actions(
     snap: &GlobalStateSnapshot,
+    file_id: FileId,
     actions: &[HoverAction],
 ) -> Vec<lsp_ext::CommandLinkGroup> {
     if snap.config.hover.none() || !snap.config.client_caps.hover_actions {
@@ -1211,6 +1221,20 @@ fn prepare_hover_actions(
         .iter()
         .filter_map(|it| match it {
             HoverAction::Implementaion(position) => show_impl_command_link(snap, position),
+            HoverAction::Runnable(r) => to_runnable_action(snap, file_id, r.clone()),
         })
         .collect()
+}
+
+fn should_skip_target(runnable: &Runnable, cargo_spec: Option<&CargoTargetSpec>) -> bool {
+    match runnable.kind {
+        RunnableKind::Bin => {
+            // Do not suggest binary run on other target than binary
+            match &cargo_spec {
+                Some(spec) => spec.target_kind != TargetKind::Bin,
+                None => true,
+            }
+        }
+        _ => false,
+    }
 }

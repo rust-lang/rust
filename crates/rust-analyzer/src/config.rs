@@ -285,6 +285,8 @@ impl Config {
         set(value, "/hoverActions/enable", &mut use_hover_actions);
         if use_hover_actions {
             set(value, "/hoverActions/implementations", &mut self.hover.implementations);
+            set(value, "/hoverActions/run", &mut self.hover.run);
+            set(value, "/hoverActions/debug", &mut self.hover.debug);
         } else {
             self.hover = HoverConfig::NO_ACTIONS;
         }

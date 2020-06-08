@@ -11,14 +11,14 @@ use ra_syntax::{
 
 use crate::{display::ToNav, FileId, NavigationTarget};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Runnable {
     pub nav: NavigationTarget,
     pub kind: RunnableKind,
     pub cfg_exprs: Vec<CfgExpr>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum TestId {
     Name(String),
     Path(String),
@@ -33,13 +33,49 @@ impl fmt::Display for TestId {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum RunnableKind {
     Test { test_id: TestId, attr: TestAttr },
     TestMod { path: String },
     Bench { test_id: TestId },
     DocTest { test_id: TestId },
     Bin,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct RunnableAction {
+    pub run_title: &'static str,
+    pub debugee: bool,
+}
+
+const TEST: RunnableAction = RunnableAction { run_title: "▶\u{fe0e} Run Test", debugee: true };
+const DOCTEST: RunnableAction =
+    RunnableAction { run_title: "▶\u{fe0e} Run Doctest", debugee: false };
+const BENCH: RunnableAction = RunnableAction { run_title: "▶\u{fe0e} Run Bench", debugee: true };
+const BIN: RunnableAction = RunnableAction { run_title: "▶\u{fe0e} Run", debugee: true };
+
+impl Runnable {
+    // test package::module::testname
+    pub fn label(&self, target: Option<String>) -> String {
+        match &self.kind {
+            RunnableKind::Test { test_id, .. } => format!("test {}", test_id),
+            RunnableKind::TestMod { path } => format!("test-mod {}", path),
+            RunnableKind::Bench { test_id } => format!("bench {}", test_id),
+            RunnableKind::DocTest { test_id, .. } => format!("doctest {}", test_id),
+            RunnableKind::Bin => {
+                target.map_or_else(|| "run binary".to_string(), |t| format!("run {}", t))
+            }
+        }
+    }
+
+    pub fn action(&self) -> &'static RunnableAction {
+        match &self.kind {
+            RunnableKind::Test { .. } | RunnableKind::TestMod { .. } => &TEST,
+            RunnableKind::DocTest { .. } => &DOCTEST,
+            RunnableKind::Bench { .. } => &BENCH,
+            RunnableKind::Bin => &BIN,
+        }
+    }
 }
 
 // Feature: Run
@@ -59,7 +95,11 @@ pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
     source_file.syntax().descendants().filter_map(|i| runnable(&sema, i, file_id)).collect()
 }
 
-fn runnable(sema: &Semantics<RootDatabase>, item: SyntaxNode, file_id: FileId) -> Option<Runnable> {
+pub(crate) fn runnable(
+    sema: &Semantics<RootDatabase>,
+    item: SyntaxNode,
+    file_id: FileId,
+) -> Option<Runnable> {
     match_ast! {
         match item {
             ast::FnDef(it) => runnable_fn(sema, it, file_id),
@@ -135,7 +175,7 @@ fn runnable_fn(
     Some(Runnable { nav, kind, cfg_exprs })
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct TestAttr {
     pub ignore: bool,
 }
@@ -207,6 +247,15 @@ mod tests {
 
     use crate::mock_analysis::analysis_and_position;
 
+    use super::{Runnable, RunnableAction, BENCH, BIN, DOCTEST, TEST};
+
+    fn assert_actions(runnables: &[Runnable], actions: &[&RunnableAction]) {
+        assert_eq!(
+            actions,
+            runnables.into_iter().map(|it| it.action()).collect::<Vec<_>>().as_slice()
+        );
+    }
+
     #[test]
     fn test_runnables() {
         let (analysis, pos) = analysis_and_position(
@@ -221,6 +270,9 @@ mod tests {
         #[test]
         #[ignore]
         fn test_foo() {}
+
+        #[bench]
+        fn bench() {}
         "#,
         );
         let runnables = analysis.runnables(pos.file_id).unwrap();
@@ -295,9 +347,32 @@ mod tests {
                 },
                 cfg_exprs: [],
             },
+            Runnable {
+                nav: NavigationTarget {
+                    file_id: FileId(
+                        1,
+                    ),
+                    full_range: 82..104,
+                    name: "bench",
+                    kind: FN_DEF,
+                    focus_range: Some(
+                        94..99,
+                    ),
+                    container_name: None,
+                    description: None,
+                    docs: None,
+                },
+                kind: Bench {
+                    test_id: Path(
+                        "bench",
+                    ),
+                },
+                cfg_exprs: [],
+            },
         ]
         "###
                 );
+        assert_actions(&runnables, &[&BIN, &TEST, &TEST, &BENCH]);
     }
 
     #[test]
@@ -361,6 +436,7 @@ mod tests {
         ]
         "###
                 );
+        assert_actions(&runnables, &[&BIN, &DOCTEST]);
     }
 
     #[test]
@@ -427,6 +503,7 @@ mod tests {
         ]
         "###
                 );
+        assert_actions(&runnables, &[&BIN, &DOCTEST]);
     }
 
     #[test]
@@ -493,6 +570,7 @@ mod tests {
         ]
         "###
                 );
+        assert_actions(&runnables, &[&TEST, &TEST]);
     }
 
     #[test]
@@ -561,6 +639,7 @@ mod tests {
         ]
         "###
                 );
+        assert_actions(&runnables, &[&TEST, &TEST]);
     }
 
     #[test]
@@ -631,6 +710,7 @@ mod tests {
         ]
         "###
                 );
+        assert_actions(&runnables, &[&TEST, &TEST]);
     }
 
     #[test]
@@ -681,6 +761,7 @@ mod tests {
         ]
         "###
                 );
+        assert_actions(&runnables, &[&TEST]);
     }
 
     #[test]
@@ -739,6 +820,7 @@ mod tests {
         ]
         "###
                 );
+        assert_actions(&runnables, &[&TEST]);
     }
 
     #[test]
