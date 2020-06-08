@@ -95,24 +95,30 @@ impl<'a> Resolver<'a> {
     }
 
     crate fn get_module(&mut self, def_id: DefId) -> Module<'a> {
+        // If this is a local module, it will be in `module_map`, no need to recalculate it.
         if let Some(def_id) = def_id.as_local() {
             return self.module_map[&def_id];
         }
 
+        // Cache module resolution
         if let Some(&module) = self.extern_module_map.get(&def_id) {
             return module;
         }
 
         let (name, parent) = if def_id.index == CRATE_DEF_INDEX {
+            // This is the crate root
             (self.cstore().crate_name_untracked(def_id.krate), None)
         } else {
             let def_key = self.cstore().def_key(def_id);
             (
+                // This unwrap is safe: crates must always have a name
                 def_key.disambiguated_data.data.get_opt_name().unwrap(),
+                // This unwrap is safe since we know this isn't the root
                 Some(self.get_module(DefId { index: def_key.parent.unwrap(), ..def_id })),
             )
         };
 
+        // Allocate and return a new module with the information we found
         let kind = ModuleKind::Def(DefKind::Mod, def_id, name);
         let module = self.arenas.alloc_module(ModuleData::new(
             parent,
