@@ -55,7 +55,7 @@ You can run `cargo xtask install-pre-commit-hook` to install git-hook to run rus
 All Rust code lives in the `crates` top-level directory, and is organized as a
 single Cargo workspace. The `editors` top-level directory contains code for
 integrating with editors. Currently, it contains the plugin for VS Code (in
-typescript). The `docs` top-level directory contains both developer and user
+TypeScript). The `docs` top-level directory contains both developer and user
 documentation.
 
 We have some automation infra in Rust in the `xtask` package. It contains
@@ -79,8 +79,8 @@ possible. There's **"Run Extension (Debug Build)"** launch configuration for thi
 In general, I use one of the following workflows for fixing bugs and
 implementing features.
 
-If the problem concerns only internal parts of rust-analyzer (ie, I don't need
-to touch `rust-analyzer` crate or typescript code), there is a unit-test for it.
+If the problem concerns only internal parts of rust-analyzer (i.e. I don't need
+to touch `rust-analyzer` crate or TypeScript code), there is a unit-test for it.
 So, I use **Rust Analyzer: Run** action in VS Code to run this single test, and
 then just do printf-driven development/debugging. As a sanity check after I'm
 done, I use `cargo xtask install --server` and **Reload Window** action in VS
@@ -279,7 +279,7 @@ always obvious from the low-level code.
 Syntax trees are by design incomplete and do not enforce well-formedness.
 If ast method returns an `Option`, it *can* be `None` at runtime, even if this is forbidden by the grammar.
 
-## LSP indenpendence
+## LSP independence
 
 rust-analyzer is independent from LSP.
 It provides features for a hypothetical perfect Rust-specific IDE client.
@@ -289,7 +289,7 @@ Internal representations are lowered to LSP in the `rust-analyzer` crate (the on
 
 There's a semi-hard split between "compiler" and "IDE", at the `ra_hir` crate.
 Compiler derives new facts about source code.
-It explicitly acknowledges that not all info is available (ie, you can't look at types during name resolution).
+It explicitly acknowledges that not all info is available (i.e. you can't look at types during name resolution).
 
 IDE assumes that all information is available at all times.
 
@@ -345,8 +345,8 @@ There's also two VS Code commands which might be of interest:
   rust code that it refers to and the rust editor will also highlight the proper
   text range.
 
-  If you press <kbd>Ctrl</kbd> (i.e. trigger goto definition) in the inspected
-  Rust source file the syntax tree read-only editor should scroll to and select the
+  If you trigger Go to Definition in the inspected Rust source file,
+  the syntax tree read-only editor should scroll to and select the
   appropriate syntax node token.
 
   ![demo](https://user-images.githubusercontent.com/36276403/78225773-6636a480-74d3-11ea-9d9f-1c9d42da03b0.png)
