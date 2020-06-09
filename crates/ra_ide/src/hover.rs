@@ -1,8 +1,10 @@
 use std::iter::once;
+use std::path::PathBuf;
+use std::sync::Arc;
 
 use hir::{
     Adt, AsAssocItem, AssocItemContainer, FieldSource, HasSource, HirDisplay, ModuleDef,
-    ModuleSource, Semantics, Module, Documentation, AttrDef, Crate
+    ModuleSource, Semantics, Documentation, AttrDef, Crate
 };
 use itertools::Itertools;
 use ra_db::SourceDatabase;
@@ -12,8 +14,12 @@ use ra_ide_db::{
 };
 use ra_syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, TokenAtOffset};
 use ra_project_model::ProjectWorkspace;
-use ra_hir_def::{item_scope::ItemInNs, db::DefDatabase, ModuleDefId};
-use ra_tt::{Literal, Ident, Punct, TokenTree, Leaf, Subtree, SmolStr};
+use ra_hir_def::{item_scope::ItemInNs, db::DefDatabase};
+use ra_tt::{Literal, Ident, Punct, TokenTree, Leaf};
+
+use comrak::{parse_document,format_commonmark, ComrakOptions, Arena};
+use comrak::nodes::NodeValue;
+use url::Url;
 
 use crate::{
     display::{
@@ -67,13 +73,6 @@ pub struct HoverGotoTypeData {
     pub mod_path: String,
     pub nav: NavigationTarget,
 }
-
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
-use comrak::{parse_document,format_commonmark, ComrakOptions, Arena};
-use comrak::nodes::NodeValue;
-use url::Url;
-use ra_ide_db::imports_locator::ImportsLocator;
 
 /// Contains the results when hovering over an item
 #[derive(Debug, Default)]
@@ -392,50 +391,42 @@ fn hover_text_from_name_kind(db: &RootDatabase, def: Definition) -> Option<Strin
 
 /// Rewrite documentation links in markdown to point to local documentation/docs.rs
 fn rewrite_links(db: &RootDatabase, markdown: &str, definition: &Definition, workspaces: Arc<Vec<ProjectWorkspace>>) -> Option<String> {
-    // FIXME: Fail early
-    if let (Some(name), Some(module)) = (definition.name(db), definition.module(db)) {
-        let krate_name = module.krate().display_name(db)?;
-        let arena = Arena::new();
-        let doc = parse_document(&arena, markdown, &ComrakOptions::default());
-        let path = module.path_to_root(db);
-        let mut doc_target_dirs = workspaces
-            .iter()
-            .filter_map(|workspace| if let ProjectWorkspace::Cargo{cargo: cargo_workspace, ..} = workspace {Some(cargo_workspace)} else {None})
-            .map(|workspace| workspace.workspace_root())
-            // TODO: `target` is configurable in cargo config, we should respect it
-            .map(|root| root.join("target/doc"));
+    let arena = Arena::new();
+    let doc = parse_document(&arena, markdown, &ComrakOptions::default());
+    let doc_target_dirs = workspaces
+        .iter()
+        .filter_map(|workspace| if let ProjectWorkspace::Cargo{cargo: cargo_workspace, ..} = workspace {Some(cargo_workspace)} else {None})
+        .map(|workspace| workspace.workspace_root())
+        // TODO: `target` is configurable in cargo config, we should respect it
+        .map(|root| root.join("target/doc"));
 
-        iter_nodes(doc, &|node| {
-            match &mut node.data.borrow_mut().value {
-                &mut NodeValue::Link(ref mut link) => {
-                    match Url::parse(&String::from_utf8(link.url.clone()).unwrap()) {
-                        // If this is a valid absolute URL don't touch it
-                        Ok(_) => (),
-                        // If contains .html            file-based link to new page
-                        // If starts with #fragment     file-based link to fragment on current page
-                        // If contains ::               module-based link
-                        Err(_) => {
-                            let link_str = String::from_utf8(link.url.clone()).unwrap();
-                            let resolved = try_resolve_path(db, &mut doc_target_dirs.clone(), definition, &link_str, UrlMode::Url)
-                                .or_else(|| try_resolve_intra(db, &mut doc_target_dirs.clone(), definition, &link_str));
+    iter_nodes(doc, &|node| {
+        match &mut node.data.borrow_mut().value {
+            &mut NodeValue::Link(ref mut link) => {
+                match Url::parse(&String::from_utf8(link.url.clone()).unwrap()) {
+                    // If this is a valid absolute URL don't touch it
+                    Ok(_) => (),
+                    // If contains .html            file-based link to new page
+                    // If starts with #fragment     file-based link to fragment on current page
+                    // If contains ::               module-based link
+                    Err(_) => {
+                        let link_str = String::from_utf8(link.url.clone()).unwrap();
+                        let resolved = try_resolve_path(db, &mut doc_target_dirs.clone(), definition, &link_str, UrlMode::Url)
+                            .or_else(|| try_resolve_intra(db, &mut doc_target_dirs.clone(), definition, &link_str));
 
-                            if let Some(resolved) = resolved {
-                                link.url = resolved.as_bytes().to_vec();
-                            }
-
+                        if let Some(resolved) = resolved {
+                            link.url = resolved.as_bytes().to_vec();
                         }
+
                     }
-                },
-                _ => ()
-            }
-        });
-        let mut out = Vec::new();
-        format_commonmark(doc, &ComrakOptions::default(), &mut out);
-        Some(String::from_utf8(out).unwrap())
-    } else {
-        // eprintln!("WARN: Unable to determine name or module for hover; link rewriting disabled.");
-        None
-    }
+                }
+            },
+            _ => ()
+        }
+    });
+    let mut out = Vec::new();
+    format_commonmark(doc, &ComrakOptions::default(), &mut out).ok()?;
+    Some(String::from_utf8(out).unwrap())
 }
 
 /// Try to resolve path to local documentation via intra-doc-links (i.e. `super::gateway::Shard`)
@@ -467,13 +458,10 @@ fn try_resolve_path(db: &RootDatabase, doc_target_dirs: impl Iterator<Item = Pat
         UrlMode::Url => {
             let root = get_doc_url(db, &krate);
             let mut base = base.join("/");
-            if let Some(url) = root {
-                eprintln!("root: {:?} base: {:?} link: {} root&base: {} root&base&link: {}", url, &base, link, url.join(&base).unwrap(), url.join(&base).unwrap().join(link).unwrap());
-                if link.starts_with("#") {
-                    base = base + "/"
-                };
-                Some(url.join(&base)?.join(link)?.into_string())
-            } else {None}
+            if link.starts_with("#") {
+                base = base + "/"
+            };
+            root.and_then(|url| url.join(&base).ok()).and_then(|url| url.join(link).ok()).map(|url| url.into_string())
         },
         UrlMode::File => {
             let base = base.collect::<PathBuf>();
@@ -491,7 +479,7 @@ fn try_resolve_path(db: &RootDatabase, doc_target_dirs: impl Iterator<Item = Pat
 
 /// Try to get the root URL of the documentation of a crate.
 fn get_doc_url(db: &RootDatabase, krate: &Crate) -> Option<Url> {
-    // Look for #![doc(html_root_url = "https://docs.rs/...")]
+    // Look for #![doc(html_root_url = "...")]
     let attrs = db.attrs(AttrDef::from(krate.root_module(db)?).into());
     let doc_attr_q = attrs.by_key("doc");
     let doc_url = if doc_attr_q.exists() {
@@ -500,20 +488,18 @@ fn get_doc_url(db: &RootDatabase, krate: &Crate) -> Option<Url> {
                 TokenTree::Leaf(Leaf::Ident(Ident{text: ref ident_text, ..})),
                 TokenTree::Leaf(Leaf::Punct(Punct{r#char: '=', ..})),
                 TokenTree::Leaf(Leaf::Literal(Literal{ref text, ..}))
-            ] if ident_text == "html_root_url" => Some(text),
+            ] if ident_text == "html_root_url" => Some(text.to_string()),
             _ => {
                 None
             }
         }).next()
     } else {
-        None
+        // Fallback to docs.rs
+        // TODO: Specify an exact version here (from Cargo.lock)
+        Some(format!("https://docs.rs/{}/*", krate.display_name(db)?))
     };
-    eprintln!("url {:?}", doc_url);
 
-    // TODO: It should be possible to fallback to `format!("https://docs.rs/{}/*", crate_name, *)`
-    let url = doc_url.map(|s| s.trim_matches('"').to_owned() + "/").and_then(|s| Url::parse(&s).ok());
-    eprintln!("url {:?}", url);
-    url
+    doc_url.map(|s| s.trim_matches('"').to_owned() + "/").and_then(|s| Url::parse(&s).ok())
 }
 
 fn iter_nodes<'a, F>(node: &'a comrak::nodes::AstNode<'a>, f: &F)
