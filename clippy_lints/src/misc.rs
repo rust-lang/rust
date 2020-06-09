@@ -38,8 +38,14 @@ declare_clippy_lint! {
     /// dereferences, e.g., changing `*x` to `x` within the function.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```rust,ignore
+    /// // Bad
     /// fn foo(ref x: u8) -> bool {
+    ///     true
+    /// }
+    ///
+    /// // Good
+    /// fn foo(x: &u8) -> bool {
     ///     true
     /// }
     /// ```
@@ -60,7 +66,11 @@ declare_clippy_lint! {
     /// ```rust
     /// # let x = 1.0;
     ///
+    /// // Bad
     /// if x == f32::NAN { }
+    ///
+    /// // Good
+    /// if x.is_nan() { }
     /// ```
     pub CMP_NAN,
     correctness,
@@ -83,8 +93,15 @@ declare_clippy_lint! {
     /// ```rust
     /// let x = 1.2331f64;
     /// let y = 1.2332f64;
+    ///
+    /// // Bad
     /// if y == 1.23f64 { }
     /// if y != x {} // where both are floats
+    ///
+    /// // Good
+    /// let error = 0.01f64; // Use an epsilon for comparison
+    /// if (y - 1.23f64).abs() < error { }
+    /// if (y - x).abs() > error { }
     /// ```
     pub FLOAT_CMP,
     correctness,
@@ -191,7 +208,11 @@ declare_clippy_lint! {
     /// **Example:**
     ///
     /// ```rust
+    /// // Bad
     /// let a = 0 as *const u32;
+    ///
+    /// // Good
+    /// let a = std::ptr::null::<u32>();
     /// ```
     pub ZERO_PTR,
     style,
@@ -214,7 +235,13 @@ declare_clippy_lint! {
     /// ```rust
     /// let x: f64 = 1.0;
     /// const ONE: f64 = 1.00;
-    /// x == ONE;  // where both are floats
+    ///
+    /// // Bad
+    /// if x == ONE { }  // where both are floats
+    ///
+    /// // Good
+    /// let error = 0.1f64; // Use an epsilon for comparison
+    /// if (x - ONE).abs() < error { }
     /// ```
     pub FLOAT_CMP_CONST,
     restriction,
@@ -248,17 +275,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MiscLints {
             return;
         }
         for arg in iter_input_pats(decl, body) {
-            match arg.pat.kind {
-                PatKind::Binding(BindingAnnotation::Ref, ..) | PatKind::Binding(BindingAnnotation::RefMut, ..) => {
-                    span_lint(
-                        cx,
-                        TOPLEVEL_REF_ARG,
-                        arg.pat.span,
-                        "`ref` directly on a function argument is ignored. Consider using a reference type \
-                         instead.",
-                    );
-                },
-                _ => {},
+            if let PatKind::Binding(BindingAnnotation::Ref | BindingAnnotation::RefMut, ..) = arg.pat.kind {
+                span_lint(
+                    cx,
+                    TOPLEVEL_REF_ARG,
+                    arg.pat.span,
+                    "`ref` directly on a function argument is ignored. \
+                    Consider using a reference type instead.",
+                );
             }
         }
     }

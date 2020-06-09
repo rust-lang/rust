@@ -18,7 +18,7 @@ use rustc_lint::{LateContext, LateLintPass, Lint, LintContext};
 use rustc_middle::hir::map::Map;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::subst::GenericArgKind;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, Ty, TyS};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{sym, SymbolStr};
@@ -26,12 +26,12 @@ use rustc_span::symbol::{sym, SymbolStr};
 use crate::consts::{constant, Constant};
 use crate::utils::usage::mutated_variables;
 use crate::utils::{
-    get_arg_name, get_parent_expr, get_trait_def_id, has_iter_method, implements_trait, in_macro, is_copy,
+    get_arg_name, get_parent_expr, get_trait_def_id, has_iter_method, higher, implements_trait, in_macro, is_copy,
     is_ctor_or_promotable_const_function, is_expn_of, is_type_diagnostic_item, iter_input_pats, last_path_segment,
     match_def_path, match_qpath, match_trait_method, match_type, match_var, method_calls, method_chain_args, paths,
-    remove_blocks, return_ty, same_tys, single_segment_path, snippet, snippet_with_applicability,
-    snippet_with_macro_callsite, span_lint, span_lint_and_help, span_lint_and_note, span_lint_and_sugg,
-    span_lint_and_then, sugg, walk_ptrs_ty, walk_ptrs_ty_depth, SpanlessEq,
+    remove_blocks, return_ty, single_segment_path, snippet, snippet_with_applicability, snippet_with_macro_callsite,
+    span_lint, span_lint_and_help, span_lint_and_note, span_lint_and_sugg, span_lint_and_then, sugg, walk_ptrs_ty,
+    walk_ptrs_ty_depth, SpanlessEq,
 };
 
 declare_clippy_lint! {
@@ -218,7 +218,12 @@ declare_clippy_lint! {
     /// **Example:**
     /// ```rust
     /// # let x = Ok::<_, ()>(());
-    /// x.ok().expect("why did I do this again?")
+    ///
+    /// // Bad
+    /// x.ok().expect("why did I do this again?");
+    ///
+    /// // Good
+    /// x.expect("why did I do this again?");
     /// ```
     pub OK_EXPECT,
     style,
@@ -273,8 +278,12 @@ declare_clippy_lint! {
     /// **Example:**
     /// ```rust
     /// # let opt = Some(1);
-    /// opt.map_or(None, |a| Some(a + 1))
-    /// # ;
+    ///
+    /// // Bad
+    /// opt.map_or(None, |a| Some(a + 1));
+    ///
+    /// // Good
+    /// opt.and_then(|a| Some(a + 1));
     /// ```
     pub OPTION_MAP_OR_NONE,
     style,
@@ -390,14 +399,19 @@ declare_clippy_lint! {
     /// **What it does:** Checks for usage of `_.map(_).flatten(_)`,
     ///
     /// **Why is this bad?** Readability, this can be written more concisely as a
-    /// single method call.
+    /// single method call using `_.flat_map(_)`
     ///
     /// **Known problems:**
     ///
     /// **Example:**
     /// ```rust
     /// let vec = vec![vec![1]];
+    ///
+    /// // Bad
     /// vec.iter().map(|x| x.iter()).flatten();
+    ///
+    /// // Good
+    /// vec.iter().flat_map(|x| x.iter());
     /// ```
     pub MAP_FLATTEN,
     pedantic,
@@ -417,7 +431,16 @@ declare_clippy_lint! {
     /// **Example:**
     /// ```rust
     /// let vec = vec![1];
+    ///
+    /// // Bad
     /// vec.iter().filter(|x| **x == 0).map(|x| *x * 2);
+    ///
+    /// // Good
+    /// vec.iter().filter_map(|x| if *x == 0 {
+    ///     Some(*x * 2)
+    /// } else {
+    ///     None
+    /// });
     /// ```
     pub FILTER_MAP,
     pedantic,
@@ -634,7 +657,12 @@ declare_clippy_lint! {
     /// ```rust
     /// # use std::rc::Rc;
     /// let x = Rc::new(1);
+    ///
+    /// // Bad
     /// x.clone();
+    ///
+    /// // Good
+    /// Rc::clone(&x);
     /// ```
     pub CLONE_ON_REF_PTR,
     restriction,
@@ -741,7 +769,12 @@ declare_clippy_lint! {
     /// **Known problems:** Does not catch multi-byte unicode characters.
     ///
     /// **Example:**
-    /// `_.split("x")` could be `_.split('x')`
+    /// ```rust,ignore
+    /// // Bad
+    /// _.split("x");
+    ///
+    /// // Good
+    /// _.split('x');
     pub SINGLE_CHAR_PATTERN,
     perf,
     "using a single-character str where a char could be used, e.g., `_.split(\"x\")`"
@@ -964,8 +997,8 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usage of `.chars().last()` or
-    /// `.chars().next_back()` on a `str` to check if it ends with a given char.
+    /// **What it does:** Checks for usage of `_.chars().last()` or
+    /// `_.chars().next_back()` on a `str` to check if it ends with a given char.
     ///
     /// **Why is this bad?** Readability, this can be written more concisely as
     /// `_.ends_with(_)`.
@@ -975,8 +1008,12 @@ declare_clippy_lint! {
     /// **Example:**
     /// ```rust
     /// # let name = "_";
-    /// name.chars().last() == Some('_') || name.chars().next_back() == Some('-')
-    /// # ;
+    ///
+    /// // Bad
+    /// name.chars().last() == Some('_') || name.chars().next_back() == Some('-');
+    ///
+    /// // Good
+    /// name.ends_with('_') || name.ends_with('-');
     /// ```
     pub CHARS_LAST_CMP,
     style,
@@ -1044,17 +1081,15 @@ declare_clippy_lint! {
     /// **Example:**
     /// ```rust
     /// let _ = (0..3).filter_map(|x| if x > 2 { Some(x) } else { None });
-    /// ```
-    /// As there is no transformation of the argument this could be written as:
-    /// ```rust
+    ///
+    /// // As there is no transformation of the argument this could be written as:
     /// let _ = (0..3).filter(|&x| x > 2);
     /// ```
     ///
     /// ```rust
     /// let _ = (0..4).filter_map(|x| Some(x + 1));
-    /// ```
-    /// As there is no conditional check on the argument this could be written as:
-    /// ```rust
+    ///
+    /// // As there is no conditional check on the argument this could be written as:
     /// let _ = (0..4).map(|x| x + 1);
     /// ```
     pub UNNECESSARY_FILTER_MAP,
@@ -1075,7 +1110,11 @@ declare_clippy_lint! {
     /// **Example:**
     ///
     /// ```rust
+    /// // Bad
     /// let _ = (&vec![3, 4, 5]).into_iter();
+    ///
+    /// // Good
+    /// let _ = (&vec![3, 4, 5]).iter();
     /// ```
     pub INTO_ITER_ON_REF,
     style,
@@ -1242,6 +1281,32 @@ declare_clippy_lint! {
     "using `as_ref().map(Deref::deref)`, which is more succinctly expressed as `as_deref()`"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Checks for usage of `iter().next()` on a Slice or an Array
+    ///
+    /// **Why is this bad?** These can be shortened into `.get()`
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// # let a = [1, 2, 3];
+    /// # let b = vec![1, 2, 3];
+    /// a[2..].iter().next();
+    /// b.iter().next();
+    /// ```
+    /// should be written as:
+    /// ```rust
+    /// # let a = [1, 2, 3];
+    /// # let b = vec![1, 2, 3];
+    /// a.get(2);
+    /// b.get(0);
+    /// ```
+    pub ITER_NEXT_SLICE,
+    style,
+    "using `.iter().next()` on a sliced array, which can be shortened to just `.get()`"
+}
+
 declare_lint_pass!(Methods => [
     UNWRAP_USED,
     EXPECT_USED,
@@ -1273,6 +1338,7 @@ declare_lint_pass!(Methods => [
     FIND_MAP,
     MAP_FLATTEN,
     ITERATOR_STEP_BY_ZERO,
+    ITER_NEXT_SLICE,
     ITER_NTH,
     ITER_NTH_ZERO,
     ITER_SKIP_NEXT,
@@ -1320,6 +1386,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
             },
             ["next", "filter"] => lint_filter_next(cx, expr, arg_lists[1]),
             ["next", "skip_while"] => lint_skip_while_next(cx, expr, arg_lists[1]),
+            ["next", "iter"] => lint_iter_next(cx, expr, arg_lists[1]),
             ["map", "filter"] => lint_filter_map(cx, expr, arg_lists[1], arg_lists[0]),
             ["map", "filter_map"] => lint_filter_map_map(cx, expr, arg_lists[1], arg_lists[0]),
             ["next", "filter_map"] => lint_filter_map_next(cx, expr, arg_lists[1]),
@@ -1336,9 +1403,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
                 lint_search_is_some(cx, expr, "rposition", arg_lists[1], arg_lists[0], method_spans[1])
             },
             ["extend", ..] => lint_extend(cx, expr, arg_lists[0]),
-            ["as_ptr", "unwrap"] | ["as_ptr", "expect"] => {
-                lint_cstring_as_ptr(cx, expr, &arg_lists[1][0], &arg_lists[0][0])
-            },
+            ["as_ptr", "unwrap" | "expect"] => lint_cstring_as_ptr(cx, expr, &arg_lists[1][0], &arg_lists[0][0]),
             ["nth", "iter"] => lint_iter_nth(cx, expr, &arg_lists, false),
             ["nth", "iter_mut"] => lint_iter_nth(cx, expr, &arg_lists, true),
             ["nth", ..] => lint_iter_nth_zero(cx, expr, arg_lists[0]),
@@ -1351,12 +1416,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
             ["filter_map", ..] => unnecessary_filter_map::lint(cx, expr, arg_lists[0]),
             ["count", "map"] => lint_suspicious_map(cx, expr),
             ["assume_init"] => lint_maybe_uninit(cx, &arg_lists[0][0], expr),
-            ["unwrap_or", arith @ "checked_add"]
-            | ["unwrap_or", arith @ "checked_sub"]
-            | ["unwrap_or", arith @ "checked_mul"] => {
+            ["unwrap_or", arith @ ("checked_add" | "checked_sub" | "checked_mul")] => {
                 manual_saturating_arithmetic::lint(cx, expr, &arg_lists, &arith["checked_".len()..])
             },
-            ["add"] | ["offset"] | ["sub"] | ["wrapping_offset"] | ["wrapping_add"] | ["wrapping_sub"] => {
+            ["add" | "offset" | "sub" | "wrapping_offset" | "wrapping_add" | "wrapping_sub"] => {
                 check_pointer_offset(cx, expr, arg_lists[0])
             },
             ["is_file", ..] => lint_filetype_is_file(cx, expr, arg_lists[0]),
@@ -1481,7 +1544,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
 
             let contains_self_ty = |ty: Ty<'tcx>| {
                 ty.walk().any(|inner| match inner.unpack() {
-                    GenericArgKind::Type(inner_ty) => same_tys(cx, self_ty, inner_ty),
+                    GenericArgKind::Type(inner_ty) => TyS::same_type(self_ty, inner_ty),
 
                     GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
                 })
@@ -1508,7 +1571,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
                 }
             }
 
-            if name == "new" && !same_tys(cx, ret_ty, self_ty) {
+            if name == "new" && !TyS::same_type(ret_ty, self_ty) {
                 span_lint(
                     cx,
                     NEW_RET_NO_SELF,
@@ -1762,8 +1825,7 @@ fn lint_expect_fun_call(
             hir::ExprKind::Call(fun, _) => {
                 if let hir::ExprKind::Path(ref p) = fun.kind {
                     match cx.tables.qpath_res(p, fun.hir_id) {
-                        hir::def::Res::Def(hir::def::DefKind::Fn, def_id)
-                        | hir::def::Res::Def(hir::def::DefKind::AssocFn, def_id) => matches!(
+                        hir::def::Res::Def(hir::def::DefKind::Fn | hir::def::DefKind::AssocFn, def_id) => matches!(
                             cx.tcx.fn_sig(def_id).output().skip_binder().kind,
                             ty::Ref(ty::ReStatic, ..)
                         ),
@@ -2196,6 +2258,60 @@ fn lint_step_by<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &hir::Expr<'_>, args
                 "Iterator::step_by(0) will panic at runtime",
             );
         }
+    }
+}
+
+fn lint_iter_next<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr<'_>, iter_args: &'tcx [hir::Expr<'_>]) {
+    let caller_expr = &iter_args[0];
+
+    // Skip lint if the `iter().next()` expression is a for loop argument,
+    // since it is already covered by `&loops::ITER_NEXT_LOOP`
+    let mut parent_expr_opt = get_parent_expr(cx, expr);
+    while let Some(parent_expr) = parent_expr_opt {
+        if higher::for_loop(parent_expr).is_some() {
+            return;
+        }
+        parent_expr_opt = get_parent_expr(cx, parent_expr);
+    }
+
+    if derefs_to_slice(cx, caller_expr, cx.tables.expr_ty(caller_expr)).is_some() {
+        // caller is a Slice
+        if_chain! {
+            if let hir::ExprKind::Index(ref caller_var, ref index_expr) = &caller_expr.kind;
+            if let Some(higher::Range { start: Some(start_expr), end: None, limits: ast::RangeLimits::HalfOpen })
+                = higher::range(cx, index_expr);
+            if let hir::ExprKind::Lit(ref start_lit) = &start_expr.kind;
+            if let ast::LitKind::Int(start_idx, _) = start_lit.node;
+            then {
+                let mut applicability = Applicability::MachineApplicable;
+                span_lint_and_sugg(
+                    cx,
+                    ITER_NEXT_SLICE,
+                    expr.span,
+                    "Using `.iter().next()` on a Slice without end index.",
+                    "try calling",
+                    format!("{}.get({})", snippet_with_applicability(cx, caller_var.span, "..", &mut applicability), start_idx),
+                    applicability,
+                );
+            }
+        }
+    } else if is_type_diagnostic_item(cx, cx.tables.expr_ty(caller_expr), sym!(vec_type))
+        || matches!(&walk_ptrs_ty(cx.tables.expr_ty(caller_expr)).kind, ty::Array(_, _))
+    {
+        // caller is a Vec or an Array
+        let mut applicability = Applicability::MachineApplicable;
+        span_lint_and_sugg(
+            cx,
+            ITER_NEXT_SLICE,
+            expr.span,
+            "Using `.iter().next()` on an array",
+            "try calling",
+            format!(
+                "{}.get(0)",
+                snippet_with_applicability(cx, caller_expr.span, "..", &mut applicability)
+            ),
+            applicability,
+        );
     }
 }
 

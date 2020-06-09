@@ -71,8 +71,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SuspiciousImpl {
                 if let hir::Node::Expr(e) = cx.tcx.hir().get(parent_expr) {
                     match e.kind {
                         hir::ExprKind::Binary(..)
-                        | hir::ExprKind::Unary(hir::UnOp::UnNot, _)
-                        | hir::ExprKind::Unary(hir::UnOp::UnNeg, _)
+                        | hir::ExprKind::Unary(hir::UnOp::UnNot | hir::UnOp::UnNeg, _)
                         | hir::ExprKind::AssignOp(..) => return,
                         _ => {},
                     }
@@ -191,8 +190,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BinaryExprVisitor {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
         match expr.kind {
             hir::ExprKind::Binary(..)
-            | hir::ExprKind::Unary(hir::UnOp::UnNot, _)
-            | hir::ExprKind::Unary(hir::UnOp::UnNeg, _)
+            | hir::ExprKind::Unary(hir::UnOp::UnNot | hir::UnOp::UnNeg, _)
             | hir::ExprKind::AssignOp(..) => self.in_binary_expr = true,
             _ => {},
         }

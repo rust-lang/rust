@@ -1,5 +1,5 @@
 error: returning the result of a `let` binding from a block
-  --> $DIR/let_return.rs:7:5
+  --> $DIR/let_and_return.rs:7:5
    |
 LL |     let x = 5;
    |     ---------- unnecessary `let` binding
@@ -14,7 +14,7 @@ LL |     5
    |
 
 error: returning the result of a `let` binding from a block
-  --> $DIR/let_return.rs:13:9
+  --> $DIR/let_and_return.rs:13:9
    |
 LL |         let x = 5;
    |         ---------- unnecessary `let` binding

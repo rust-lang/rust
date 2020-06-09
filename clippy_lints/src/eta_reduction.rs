@@ -26,7 +26,11 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust,ignore
+    /// // Bad
     /// xs.map(|x| foo(x))
+    ///
+    /// // Good
+    /// xs.map(foo)
     /// ```
     /// where `foo(_)` is a plain function that takes the exact argument type of
     /// `x`.

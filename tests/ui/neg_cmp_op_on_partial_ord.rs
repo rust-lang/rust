@@ -4,6 +4,7 @@
 
 use std::cmp::Ordering;
 
+#[allow(clippy::unnested_or_patterns)]
 #[warn(clippy::neg_cmp_op_on_partial_ord)]
 fn main() {
     let a_value = 1.0;

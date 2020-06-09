@@ -14,6 +14,8 @@ fn str_lit_as_bytes() {
 
     let strify = stringify!(foobar).as_bytes();
 
+    let current_version = env!("CARGO_PKG_VERSION").as_bytes();
+
     let includestr = include_str!("entry_unfixable.rs").as_bytes();
 
     let _ = "string with newline\t\n".as_bytes();

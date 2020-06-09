@@ -29,7 +29,7 @@ fn or_fun_call() {
     with_enum.unwrap_or(Enum::A(5));
 
     let with_const_fn = Some(Duration::from_secs(1));
-    with_const_fn.unwrap_or(Duration::from_secs(5));
+    with_const_fn.unwrap_or_else(|| Duration::from_secs(5));
 
     let with_constructor = Some(vec![1]);
     with_constructor.unwrap_or_else(make);
@@ -94,7 +94,7 @@ fn test_or_with_ctors() {
 
     let b = "b".to_string();
     let _ = Some(Bar("a".to_string(), Duration::from_secs(1)))
-        .or(Some(Bar(b, Duration::from_secs(2))));
+        .or_else(|| Some(Bar(b, Duration::from_secs(2))));
 
     let vec = vec!["foo"];
     let _ = opt.ok_or(vec.len());

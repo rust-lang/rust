@@ -20,9 +20,28 @@ declare_clippy_lint! {
     /// **Example:**
     /// ```rust
     /// struct Foo(i32);
+    ///
+    /// // Bad
     /// impl From<String> for Foo {
     ///     fn from(s: String) -> Self {
     ///         Foo(s.parse().unwrap())
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// ```rust
+    /// // Good
+    /// struct Foo(i32);
+    ///
+    /// use std::convert::TryFrom;
+    /// impl TryFrom<String> for Foo {
+    ///     type Error = ();
+    ///     fn try_from(s: String) -> Result<Self, Self::Error> {
+    ///         if let Ok(parsed) = s.parse() {
+    ///             Ok(Foo(parsed))
+    ///         } else {
+    ///             Err(())
+    ///         }
     ///     }
     /// }
     /// ```
@@ -120,7 +139,7 @@ fn lint_impl_body<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, impl_span: Span, impl_it
                         move |diag| {
                             diag.help(
                                 "`From` is intended for infallible conversions only. \
-                                 Use `TryFrom` if there's a possibility for the conversion to fail.");
+                                Use `TryFrom` if there's a possibility for the conversion to fail.");
                             diag.span_note(fpu.result, "potential failure(s)");
                         });
                 }

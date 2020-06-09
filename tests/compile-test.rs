@@ -184,8 +184,15 @@ fn run_ui_cargo(config: &mut compiletest::Config) {
                 }
 
                 let src_path = case.path().join("src");
-                env::set_current_dir(&src_path)?;
 
+                // When switching between branches, if the previous branch had a test
+                // that the current branch does not have, the directory is not removed
+                // because an ignored Cargo.lock file exists.
+                if !src_path.exists() {
+                    continue;
+                }
+
+                env::set_current_dir(&src_path)?;
                 for file in fs::read_dir(&src_path)? {
                     let file = file?;
                     if file.file_type()?.is_dir() {

@@ -2,3 +2,5 @@
 name = "cargo_common_metadata"
 version = "0.1.0"
 publish = false
+
+[workspace]

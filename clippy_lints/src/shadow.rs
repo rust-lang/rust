@@ -25,7 +25,12 @@ declare_clippy_lint! {
     /// **Example:**
     /// ```rust
     /// # let x = 1;
+    ///
+    /// // Bad
     /// let x = &x;
+    ///
+    /// // Good
+    /// let y = &x; // use different variable name
     /// ```
     pub SHADOW_SAME,
     restriction,
@@ -77,7 +82,12 @@ declare_clippy_lint! {
     /// # let y = 1;
     /// # let z = 2;
     /// let x = y;
+    ///
+    /// // Bad
     /// let x = z; // shadows the earlier binding
+    ///
+    /// // Good
+    /// let w = z; // use different variable name
     /// ```
     pub SHADOW_UNRELATED,
     pedantic,

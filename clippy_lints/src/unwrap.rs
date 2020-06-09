@@ -101,7 +101,7 @@ fn collect_unwrap_info<'a, 'tcx>(
 
     if let ExprKind::Binary(op, left, right) = &expr.kind {
         match (invert, op.node) {
-            (false, BinOpKind::And) | (false, BinOpKind::BitAnd) | (true, BinOpKind::Or) | (true, BinOpKind::BitOr) => {
+            (false, BinOpKind::And | BinOpKind::BitAnd) | (true, BinOpKind::Or | BinOpKind::BitOr) => {
                 let mut unwrap_info = collect_unwrap_info(cx, left, branch, invert);
                 unwrap_info.append(&mut collect_unwrap_info(cx, right, branch, invert));
                 return unwrap_info;
