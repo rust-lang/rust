@@ -778,7 +778,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitArg {
         }
 
         match expr.kind {
-            ExprKind::Call(_, args) | ExprKind::MethodCall(_, _, args) => {
+            ExprKind::Call(_, args) | ExprKind::MethodCall(_, _, args, _) => {
                 let args_to_recover = args
                     .iter()
                     .filter(|arg| {
@@ -1262,14 +1262,14 @@ fn check_loss_of_sign(cx: &LateContext<'_, '_>, expr: &Expr<'_>, op: &Expr<'_>, 
     }
 
     // don't lint for the result of methods that always return non-negative values
-    if let ExprKind::MethodCall(ref path, _, _) = op.kind {
+    if let ExprKind::MethodCall(ref path, _, _, _) = op.kind {
         let mut method_name = path.ident.name.as_str();
         let whitelisted_methods = ["abs", "checked_abs", "rem_euclid", "checked_rem_euclid"];
 
         if_chain! {
             if method_name == "unwrap";
             if let Some(arglist) = method_chain_args(op, &["unwrap"]);
-            if let ExprKind::MethodCall(ref inner_path, _, _) = &arglist[0][0].kind;
+            if let ExprKind::MethodCall(ref inner_path, _, _, _) = &arglist[0][0].kind;
             then {
                 method_name = inner_path.ident.name.as_str();
             }

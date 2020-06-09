@@ -59,7 +59,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VerboseFileReads {
 
 fn is_file_read_to_end<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
     if_chain! {
-        if let ExprKind::MethodCall(method_name, _, exprs) = expr.kind;
+        if let ExprKind::MethodCall(method_name, _, exprs, _) = expr.kind;
         if method_name.ident.as_str() == "read_to_end";
         if let ExprKind::Path(QPath::Resolved(None, _)) = &exprs[0].kind;
         let ty = cx.tables.expr_ty(&exprs[0]);
@@ -73,7 +73,7 @@ fn is_file_read_to_end<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'t
 
 fn is_file_read_to_string<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
     if_chain! {
-        if let ExprKind::MethodCall(method_name, _, exprs) = expr.kind;
+        if let ExprKind::MethodCall(method_name, _, exprs, _) = expr.kind;
         if method_name.ident.as_str() == "read_to_string";
         if let ExprKind::Path(QPath::Resolved(None, _)) = &exprs[0].kind;
         let ty = cx.tables.expr_ty(&exprs[0]);

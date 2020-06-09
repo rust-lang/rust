@@ -545,7 +545,7 @@ fn is_signum(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
     }
 
     if_chain! {
-        if let ExprKind::MethodCall(ref method_name, _, ref expressions) = expr.kind;
+        if let ExprKind::MethodCall(ref method_name, _, ref expressions, _) = expr.kind;
         if sym!(signum) == method_name.ident.name;
         // Check that the receiver of the signum() is a float (expressions[0] is the receiver of
         // the method call)
@@ -572,7 +572,7 @@ fn is_array(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
 
 fn check_to_owned(cx: &LateContext<'_, '_>, expr: &Expr<'_>, other: &Expr<'_>) {
     let (arg_ty, snip) = match expr.kind {
-        ExprKind::MethodCall(.., ref args) if args.len() == 1 => {
+        ExprKind::MethodCall(.., ref args, _) if args.len() == 1 => {
             if match_trait_method(cx, expr, &paths::TO_STRING) || match_trait_method(cx, expr, &paths::TO_OWNED) {
                 (cx.tables.expr_ty_adjusted(&args[0]), snippet(cx, args[0].span, ".."))
             } else {

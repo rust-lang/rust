@@ -301,7 +301,7 @@ fn check_expm1(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
         if cx.tables.expr_ty(lhs).is_floating_point();
         if let Some((value, _)) = constant(cx, cx.tables, rhs);
         if F32(1.0) == value || F64(1.0) == value;
-        if let ExprKind::MethodCall(ref path, _, ref method_args) = lhs.kind;
+        if let ExprKind::MethodCall(ref path, _, ref method_args, _) = lhs.kind;
         if cx.tables.expr_ty(&method_args[0]).is_floating_point();
         if path.ident.name.as_str() == "exp";
         then {
@@ -481,7 +481,7 @@ fn check_custom_abs(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for FloatingPointArithmetic {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
-        if let ExprKind::MethodCall(ref path, _, args) = &expr.kind {
+        if let ExprKind::MethodCall(ref path, _, args, _) = &expr.kind {
             let recv_ty = cx.tables.expr_ty(&args[0]);
 
             if recv_ty.is_floating_point() {
