@@ -146,18 +146,18 @@ impl<T> TypedArena<T> {
     }
 
     #[inline]
-    fn can_allocate(&self, len: usize) -> bool {
-        let available_capacity_bytes = self.end.get() as usize - self.ptr.get() as usize;
-        let at_least_bytes = len.checked_mul(mem::size_of::<T>()).unwrap();
-        available_capacity_bytes >= at_least_bytes
+    fn can_allocate(&self, additional: usize) -> bool {
+        let available_bytes = self.end.get() as usize - self.ptr.get() as usize;
+        let additional_bytes = additional.checked_mul(mem::size_of::<T>()).unwrap();
+        available_bytes >= additional_bytes
     }
 
     /// Ensures there's enough space in the current chunk to fit `len` objects.
     #[inline]
-    fn ensure_capacity(&self, len: usize) {
-        if !self.can_allocate(len) {
-            self.grow(len);
-            debug_assert!(self.can_allocate(len));
+    fn ensure_capacity(&self, additional: usize) {
+        if !self.can_allocate(additional) {
+            self.grow(additional);
+            debug_assert!(self.can_allocate(additional));
         }
     }
 
@@ -214,36 +214,31 @@ impl<T> TypedArena<T> {
     /// Grows the arena.
     #[inline(never)]
     #[cold]
-    fn grow(&self, n: usize) {
+    fn grow(&self, additional: usize) {
         unsafe {
-            // We need the element size in to convert chunk sizes (ranging from
+            // We need the element size to convert chunk sizes (ranging from
             // PAGE to HUGE_PAGE bytes) to element counts.
             let elem_size = cmp::max(1, mem::size_of::<T>());
             let mut chunks = self.chunks.borrow_mut();
-            let (chunk, mut new_capacity);
+            let mut new_cap;
             if let Some(last_chunk) = chunks.last_mut() {
                 let used_bytes = self.ptr.get() as usize - last_chunk.start() as usize;
-                let currently_used_cap = used_bytes / mem::size_of::<T>();
-                last_chunk.entries = currently_used_cap;
-                if last_chunk.storage.reserve_in_place(currently_used_cap, n) {
-                    self.end.set(last_chunk.end());
-                    return;
-                } else {
-                    // If the previous chunk's capacity is less than HUGE_PAGE
-                    // bytes, then this chunk will be least double the previous
-                    // chunk's size.
-                    new_capacity = last_chunk.storage.capacity();
-                    if new_capacity < HUGE_PAGE / elem_size {
-                        new_capacity = new_capacity.checked_mul(2).unwrap();
-                    }
+                last_chunk.entries = used_bytes / mem::size_of::<T>();
+
+                // If the previous chunk's capacity is less than HUGE_PAGE
+                // bytes, then this chunk will be least double the previous
+                // chunk's size.
+                new_cap = last_chunk.storage.capacity();
+                if new_cap < HUGE_PAGE / elem_size {
+                    new_cap = new_cap.checked_mul(2).unwrap();
                 }
             } else {
-                new_capacity = PAGE / elem_size;
+                new_cap = PAGE / elem_size;
             }
-            // Also ensure that this chunk can fit `n`.
-            new_capacity = cmp::max(n, new_capacity);
+            // Also ensure that this chunk can fit `additional`.
+            new_cap = cmp::max(additional, new_cap);
 
-            chunk = TypedArenaChunk::<T>::new(new_capacity);
+            let chunk = TypedArenaChunk::<T>::new(new_cap);
             self.ptr.set(chunk.start());
             self.end.set(chunk.end());
             chunks.push(chunk);
@@ -347,31 +342,28 @@ impl DroplessArena {
 
     #[inline(never)]
     #[cold]
-    fn grow(&self, needed_bytes: usize) {
+    fn grow(&self, additional: usize) {
         unsafe {
             let mut chunks = self.chunks.borrow_mut();
-            let (chunk, mut new_capacity);
+            let mut new_cap;
             if let Some(last_chunk) = chunks.last_mut() {
-                let used_bytes = self.ptr.get() as usize - last_chunk.start() as usize;
-                if last_chunk.storage.reserve_in_place(used_bytes, needed_bytes) {
-                    self.end.set(last_chunk.end());
-                    return;
-                } else {
-                    // If the previous chunk's capacity is less than HUGE_PAGE
-                    // bytes, then this chunk will be least double the previous
-                    // chunk's size.
-                    new_capacity = last_chunk.storage.capacity();
-                    if new_capacity < HUGE_PAGE {
-                        new_capacity = new_capacity.checked_mul(2).unwrap();
-                    }
+                // There is no need to update `last_chunk.entries` because that
+                // field isn't used by `DroplessArena`.
+
+                // If the previous chunk's capacity is less than HUGE_PAGE
+                // bytes, then this chunk will be least double the previous
+                // chunk's size.
+                new_cap = last_chunk.storage.capacity();
+                if new_cap < HUGE_PAGE {
+                    new_cap = new_cap.checked_mul(2).unwrap();
                 }
             } else {
-                new_capacity = PAGE;
+                new_cap = PAGE;
             }
-            // Also ensure that this chunk can fit `needed_bytes`.
-            new_capacity = cmp::max(needed_bytes, new_capacity);
+            // Also ensure that this chunk can fit `additional`.
+            new_cap = cmp::max(additional, new_cap);
 
-            chunk = TypedArenaChunk::<u8>::new(new_capacity);
+            let chunk = TypedArenaChunk::<u8>::new(new_cap);
             self.ptr.set(chunk.start());
             self.end.set(chunk.end());
             chunks.push(chunk);
@@ -386,7 +378,7 @@ impl DroplessArena {
             self.align(align);
 
             let future_end = intrinsics::arith_offset(self.ptr.get(), bytes as isize);
-            if (future_end as *mut u8) >= self.end.get() {
+            if (future_end as *mut u8) > self.end.get() {
                 self.grow(bytes);
             }
 
