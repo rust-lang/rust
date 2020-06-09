@@ -13,7 +13,7 @@ use rustc_ast::ast::{self};
 use rustc_ast::util::comments::strip_doc_comment_decoration;
 use rustc_ast_pretty::pprust::attribute_to_string;
 use rustc_hir as hir;
-use rustc_hir::def::{CtorOf, DefKind as HirDefKind, Res};
+use rustc_hir::def::{DefKind as HirDefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::Node;
@@ -708,20 +708,16 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
             Res::Def(HirDefKind::ConstParam, def_id) => {
                 Some(Ref { kind: RefKind::Variable, span, ref_id: id_from_def_id(def_id) })
             }
-            Res::Def(HirDefKind::Ctor(CtorOf::Struct, ..), def_id) => {
-                // This is a reference to a tuple struct where the def_id points
+            Res::Def(HirDefKind::Ctor(_, ..), def_id) => {
+                // This is a reference to a tuple struct or an enum variant where the def_id points
                 // to an invisible constructor function. That is not a very useful
-                // def, so adjust to point to the tuple struct itself.
+                // def, so adjust to point to the tuple struct or enum variant itself.
                 let parent_def_id = self.tcx.parent(def_id).unwrap();
                 Some(Ref { kind: RefKind::Type, span, ref_id: id_from_def_id(parent_def_id) })
             }
-            Res::Def(
-                HirDefKind::Static
-                | HirDefKind::Const
-                | HirDefKind::AssocConst
-                | HirDefKind::Ctor(..),
-                _,
-            ) => Some(Ref { kind: RefKind::Variable, span, ref_id: id_from_def_id(res.def_id()) }),
+            Res::Def(HirDefKind::Static | HirDefKind::Const | HirDefKind::AssocConst, _) => {
+                Some(Ref { kind: RefKind::Variable, span, ref_id: id_from_def_id(res.def_id()) })
+            }
             Res::Def(HirDefKind::AssocFn, decl_id) => {
                 let def_id = if decl_id.is_local() {
                     let ti = self.tcx.associated_item(decl_id);
