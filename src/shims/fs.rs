@@ -234,6 +234,18 @@ impl Default for DirHandler {
     }
 }
 
+fn maybe_sync_file(file: &File, writable: bool, operation: fn(&File) -> std::io::Result<()>) -> std::io::Result<i32> {
+    if !writable && cfg!(windows) {
+        // sync_all() and sync_data() will return an error on Windows hosts if the file is not opened
+        // for writing. (FlushFileBuffers requires that the file handle have the
+        // GENERIC_WRITE right)
+        Ok(0i32)
+    } else {
+        let result = operation(file);
+        result.map(|_| 0i32)
+    }
+}
+
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
     fn open(
@@ -377,6 +389,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 fh.insert_fd_with_min_fd(FileHandle { file: duplicated, writable }, start)
             });
             this.try_unwrap_io_result(fd_result)
+        } else if this.tcx.sess.target.target.target_os == "macos"
+            && cmd == this.eval_libc_i32("F_FULLFSYNC")?
+        {
+            let &[_, _] = check_arg_count(args)?;
+            if let Some(FileHandle { file, writable }) = this.machine.file_handler.handles.get(&fd) {
+                let io_result = maybe_sync_file(file, *writable, File::sync_all);
+                this.try_unwrap_io_result(io_result)
+            } else {
+                this.handle_not_found()
+            }
         } else {
             throw_unsup_format!("the {:#x} command is not supported for `fcntl`)", cmd);
         }
@@ -1099,6 +1121,77 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.set_last_error(einval)?;
                 Ok(-1)
             }
+        } else {
+            this.handle_not_found()
+        }
+    }
+
+    fn fsync(&mut self, fd_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
+        // On macOS, `fsync` (unlike `fcntl(F_FULLFSYNC)`) does not wait for the
+        // underlying disk to finish writing. In the interest of host compatibility,
+        // we conservatively implement this with `sync_all`, which
+        // *does* wait for the disk.
+
+        let this = self.eval_context_mut();
+
+        this.check_no_isolation("fsync")?;
+
+        let fd = this.read_scalar(fd_op)?.to_i32()?;
+        if let Some(FileHandle { file, writable }) = this.machine.file_handler.handles.get(&fd) {
+            let io_result = maybe_sync_file(file, *writable, File::sync_all);
+            this.try_unwrap_io_result(io_result)
+        } else {
+            this.handle_not_found()
+        }
+    }
+
+    fn fdatasync(&mut self, fd_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
+        let this = self.eval_context_mut();
+
+        this.check_no_isolation("fdatasync")?;
+
+        let fd = this.read_scalar(fd_op)?.to_i32()?;
+        if let Some(FileHandle { file, writable }) = this.machine.file_handler.handles.get(&fd) {
+            let io_result = maybe_sync_file(file, *writable, File::sync_data);
+            this.try_unwrap_io_result(io_result)
+        } else {
+            this.handle_not_found()
+        }
+    }
+
+    fn sync_file_range(
+        &mut self,
+        fd_op: OpTy<'tcx, Tag>,
+        offset_op: OpTy<'tcx, Tag>,
+        nbytes_op: OpTy<'tcx, Tag>,
+        flags_op: OpTy<'tcx, Tag>,
+    ) -> InterpResult<'tcx, i32> {
+        let this = self.eval_context_mut();
+
+        this.check_no_isolation("sync_file_range")?;
+
+        let fd = this.read_scalar(fd_op)?.to_i32()?;
+        let offset = this.read_scalar(offset_op)?.to_i64()?;
+        let nbytes = this.read_scalar(nbytes_op)?.to_i64()?;
+        let flags = this.read_scalar(flags_op)?.to_i32()?;
+
+        if offset < 0 || nbytes < 0 {
+            let einval = this.eval_libc("EINVAL")?;
+            this.set_last_error(einval)?;
+            return Ok(-1);
+        }
+        let allowed_flags = this.eval_libc_i32("SYNC_FILE_RANGE_WAIT_BEFORE")?
+            | this.eval_libc_i32("SYNC_FILE_RANGE_WRITE")?
+            | this.eval_libc_i32("SYNC_FILE_RANGE_WAIT_AFTER")?;
+        if flags & allowed_flags != flags {
+            let einval = this.eval_libc("EINVAL")?;
+            this.set_last_error(einval)?;
+            return Ok(-1);
+        }
+
+        if let Some(FileHandle { file, writable }) = this.machine.file_handler.handles.get(&fd) {
+            let io_result = maybe_sync_file(file, *writable, File::sync_data);
+            this.try_unwrap_io_result(io_result)
         } else {
             this.handle_not_found()
         }
