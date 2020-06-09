@@ -17,6 +17,8 @@ itertools = "0.9.0"
 log = "0.4.8"
 rustc-hash = "1.1.0"
 rand = { version = "0.7.3", features = ["small_rng"] }
+comrak = "0.7.0"
+url = "*"
 
 stdx = { path = "../stdx" }
 
@@ -30,6 +32,8 @@ ra_prof = { path = "../ra_prof" }
 test_utils = { path = "../test_utils" }
 ra_assists = { path = "../ra_assists" }
 ra_ssr = { path = "../ra_ssr" }
+ra_project_model = { path = "../ra_project_model" }
+ra_hir_def = { path = "../ra_hir_def" }
 
 # ra_ide should depend only on the top-level `hir` package. if you need
 # something from some `hir_xxx` subpackage, reexport the API via `hir`.

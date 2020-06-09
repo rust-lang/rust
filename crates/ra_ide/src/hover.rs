@@ -1,8 +1,8 @@
 use std::iter::once;
 
 use hir::{
-    Adt, AsAssocItem, AssocItemContainer, Documentation, FieldSource, HasSource, HirDisplay,
-    Module, ModuleDef, ModuleSource, Semantics,
+    Adt, AsAssocItem, AssocItemContainer, FieldSource, HasSource, HirDisplay, ModuleDef,
+    ModuleSource, Semantics, Module, Documentation
 };
 use itertools::Itertools;
 use ra_db::SourceDatabase;
@@ -11,6 +11,8 @@ use ra_ide_db::{
     RootDatabase,
 };
 use ra_syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, TokenAtOffset};
+use ra_project_model::ProjectWorkspace;
+use ra_hir_def::{item_scope::ItemInNs, db::DefDatabase, ModuleDefId};
 
 use crate::{
     display::{
@@ -65,6 +67,13 @@ pub struct HoverGotoTypeData {
     pub nav: NavigationTarget,
 }
 
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use comrak::{parse_document,format_commonmark, ComrakOptions, Arena};
+use comrak::nodes::NodeValue;
+use url::Url;
+use ra_ide_db::imports_locator::ImportsLocator;
+
 /// Contains the results when hovering over an item
 #[derive(Debug, Default)]
 pub struct HoverResult {
@@ -118,7 +127,7 @@ impl HoverResult {
 //
 // Shows additional information, like type of an expression or documentation for definition when "focusing" code.
 // Focusing is usually hovering with a mouse, but can also be triggered with a shortcut.
-pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeInfo<HoverResult>> {
+pub(crate) fn hover(db: &RootDatabase, position: FilePosition, workspaces: Arc<Vec<ProjectWorkspace>>) -> Option<RangeInfo<HoverResult>> {
     let sema = Semantics::new(db);
     let file = sema.parse(position.file_id).syntax().clone();
     let token = pick_best(file.token_at_offset(position.offset))?;
@@ -138,7 +147,8 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
         }
     } {
         let range = sema.original_range(&node).range;
-        res.extend(hover_text_from_name_kind(db, name_kind));
+        let text = hover_text_from_name_kind(db, name_kind.clone()).map(|text| rewrite_links(db, &text, &name_kind, workspaces).unwrap_or(text));
+        res.extend(text);
 
         if !res.is_empty() {
             if let Some(action) = show_implementations_action(db, name_kind) {
@@ -376,6 +386,90 @@ fn hover_text_from_name_kind(db: &RootDatabase, def: Definition) -> Option<Strin
         let src = def.source(db);
         let docs = Documentation::from_ast(&src.value).map(Into::into);
         hover_text(docs, src.value.short_label(), mod_path)
+    }
+}
+
+/// Rewrite documentation links in markdown to point to local documentation/docs.rs
+fn rewrite_links(db: &RootDatabase, markdown: &str, definition: &Definition, workspaces: Arc<Vec<ProjectWorkspace>>) -> Option<String> {
+    // FIXME: Fail early
+    if let (Some(name), Some(module)) = (definition.name(db), definition.module(db)) {
+        let krate_name = module.krate().display_name(db)?;
+        let arena = Arena::new();
+        let doc = parse_document(&arena, markdown, &ComrakOptions::default());
+        let path = module.path_to_root(db);
+        let mut doc_target_dirs = workspaces
+            .iter()
+            .filter_map(|workspace| if let ProjectWorkspace::Cargo{cargo: cargo_workspace, ..} = workspace {Some(cargo_workspace)} else {None})
+            .map(|workspace| workspace.workspace_root())
+            // TODO: `target` is configurable in cargo config, we should respect it
+            .map(|root| root.join("target/doc"));
+
+        iter_nodes(doc, &|node| {
+            match &mut node.data.borrow_mut().value {
+                &mut NodeValue::Link(ref mut link) => {
+                    match Url::parse(&String::from_utf8(link.url.clone()).unwrap()) {
+                        // If this is a valid absolute URL don't touch it
+                        Ok(_) => (),
+                        // If contains .html            file-based link to new page
+                        // If starts with #fragment     file-based link to fragment on current page
+                        // If contains ::               module-based link
+                        Err(_) => {
+                            let link_str = String::from_utf8(link.url.clone()).unwrap();
+                            let resolved = try_resolve_path(db, &mut doc_target_dirs.clone(), definition, &link_str)
+                                .or_else(|| try_resolve_intra(db, &mut doc_target_dirs.clone(), definition, &link_str));
+
+                            if let Some(resolved) = resolved {
+                                link.url = resolved.as_bytes().to_vec();
+                            }
+
+                        }
+                    }
+                },
+                _ => ()
+            }
+        });
+        let mut out = Vec::new();
+        format_commonmark(doc, &ComrakOptions::default(), &mut out);
+        Some(String::from_utf8(out).unwrap())
+    } else {
+        // eprintln!("WARN: Unable to determine name or module for hover; link rewriting disabled.");
+        None
+    }
+}
+
+/// Try to resolve path to local documentation via intra-doc-links (i.e. `super::gateway::Shard`)
+fn try_resolve_intra(db: &RootDatabase, doc_target_dirs: impl Iterator<Item = PathBuf>, definition: &Definition, link: &str) -> Option<String> {
+    None
+}
+
+/// Try to resolve path to local documentation via path-based links (i.e. `../gateway/struct.Shard.html`)
+fn try_resolve_path(db: &RootDatabase, doc_target_dirs: impl Iterator<Item = PathBuf>, definition: &Definition, link: &str) -> Option<String> {
+    let ns = if let Definition::ModuleDef(moddef) = definition {
+        ItemInNs::Types(moddef.clone().into())
+    } else {
+        return None;
+    };
+    let krate = definition.module(db)?.krate();
+    let import_map = db.import_map(krate.into());
+    let base = import_map.path_of(ns).unwrap();
+    let base = base.segments.iter().map(|name| format!("{}", name)).collect::<PathBuf>();
+
+    doc_target_dirs
+        .map(|dir| dir.join(format!("{}", krate.display_name(db).unwrap())).join(base.join("..").join(link)))
+        .inspect(|path| eprintln!("candidate {}", path.display()))
+        .filter(|path| path.exists())
+        // slice out the UNC '\?\' added by canonicalize
+        .map(|path| format!("file:///{}", path.display()))
+        // \. is treated as an escape in vscode's markdown hover rendering
+        .map(|path_str| path_str.replace("\\", "/"))
+        .next()
+}
+
+fn iter_nodes<'a, F>(node: &'a comrak::nodes::AstNode<'a>, f: &F)
+    where F : Fn(&'a comrak::nodes::AstNode<'a>) {
+    f(node);
+    for c in node.children() {
+        iter_nodes(c, f);
     }
 }
 

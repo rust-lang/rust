@@ -5,6 +5,7 @@
 use std::{
     io::Write as _,
     process::{self, Stdio},
+    sync::Arc
 };
 
 use lsp_server::ErrorCode;
