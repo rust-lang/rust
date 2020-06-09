@@ -1090,7 +1090,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
             visitor.visit_expr(callee_expression);
             walk_list!(visitor, visit_expr, arguments);
         }
-        ExprKind::MethodCall(ref segment, _, arguments) => {
+        ExprKind::MethodCall(ref segment, _, arguments, _) => {
             visitor.visit_path_segment(expression.span, segment);
             walk_list!(visitor, visit_expr, arguments);
         }

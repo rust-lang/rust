@@ -530,6 +530,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         args: &Vec<mir::Operand<'tcx>>,
         destination: &Option<(mir::Place<'tcx>, mir::BasicBlock)>,
         cleanup: Option<mir::BasicBlock>,
+        fn_span: Span,
     ) {
         let span = terminator.source_info.span;
         // Create the callee. This is a fn ptr or zero-sized and hence a kind of scalar.
@@ -634,7 +635,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         if intrinsic == Some("caller_location") {
             if let Some((_, target)) = destination.as_ref() {
-                let location = self.get_caller_location(&mut bx, span);
+                let location = self.get_caller_location(&mut bx, fn_span);
 
                 if let ReturnDest::IndirectOperand(tmp, _) = ret_dest {
                     location.val.store(&mut bx, tmp);
@@ -798,7 +799,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 args.len() + 1,
                 "#[track_caller] fn's must have 1 more argument in their ABI than in their MIR",
             );
-            let location = self.get_caller_location(&mut bx, span);
+            let location = self.get_caller_location(&mut bx, fn_span);
+            debug!(
+                "codegen_call_terminator({:?}): location={:?} (fn_span {:?})",
+                terminator, location, fn_span
+            );
+
             let last_arg = fn_abi.args.last().unwrap();
             self.codegen_argument(&mut bx, location, &mut llargs, last_arg);
         }
@@ -1016,6 +1022,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 ref destination,
                 cleanup,
                 from_hir_call: _,
+                fn_span,
             } => {
                 self.codegen_call_terminator(
                     helper,
@@ -1025,6 +1032,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     args,
                     destination,
                     cleanup,
+                    fn_span,
                 );
             }
             mir::TerminatorKind::GeneratorDrop | mir::TerminatorKind::Yield { .. } => {

@@ -3912,7 +3912,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                  sugg_unit: bool| {
             let (span, start_span, args) = match &expr.kind {
                 hir::ExprKind::Call(hir::Expr { span, .. }, args) => (*span, *span, &args[..]),
-                hir::ExprKind::MethodCall(path_segment, span, args) => (
+                hir::ExprKind::MethodCall(path_segment, span, args, _) => (
                     *span,
                     // `sp` doesn't point at the whole `foo.bar()`, only at `bar`.
                     path_segment

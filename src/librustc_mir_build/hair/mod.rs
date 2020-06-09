@@ -146,6 +146,7 @@ crate enum ExprKind<'tcx> {
         // Whether this is from a call in HIR, rather than from an overloaded
         // operator. True for overloaded function call.
         from_hir_call: bool,
+        fn_span: Span,
     },
     Deref {
         arg: ExprRef<'tcx>,

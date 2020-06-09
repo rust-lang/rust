@@ -1131,6 +1131,7 @@ pub enum TerminatorKind<'tcx> {
         /// `true` if this is from a call in HIR rather than from an overloaded
         /// operator. True for overloaded function call.
         from_hir_call: bool,
+        fn_span: Span,
     },
 
     /// Jump to the target if the condition has the expected value,

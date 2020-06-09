@@ -1111,11 +1111,12 @@ pub fn noop_visit_expr<T: MutVisitor>(
             vis.visit_expr(f);
             visit_exprs(args, vis);
         }
-        ExprKind::MethodCall(PathSegment { ident, id, args }, exprs) => {
+        ExprKind::MethodCall(PathSegment { ident, id, args }, exprs, span) => {
             vis.visit_ident(ident);
             vis.visit_id(id);
             visit_opt(args, |args| vis.visit_generic_args(args));
             visit_exprs(exprs, vis);
+            vis.visit_span(span);
         }
         ExprKind::Binary(_binop, lhs, rhs) => {
             vis.visit_expr(lhs);

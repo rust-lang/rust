@@ -56,6 +56,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 destination,
                 ref cleanup,
                 from_hir_call: _from_hir_call,
+                fn_span: _,
             } => {
                 let old_stack = self.frame_idx();
                 let old_loc = self.frame().loc;

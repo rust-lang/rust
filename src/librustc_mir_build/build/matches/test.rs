@@ -443,6 +443,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 destination: Some((eq_result, eq_block)),
                 cleanup: Some(cleanup),
                 from_hir_call: false,
+                fn_span: source_info.span
             },
         );
 
