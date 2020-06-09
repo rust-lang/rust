@@ -9,6 +9,7 @@ use hir_def::{
     builtin_type::BuiltinType,
     docs::Documentation,
     expr::{BindingAnnotation, Pat, PatId},
+    import_map,
     per_ns::PerNs,
     resolver::{HasResolver, Resolver},
     type_ref::{Mutability, TypeRef},
@@ -96,6 +97,19 @@ impl Crate {
 
     pub fn display_name(self, db: &dyn HirDatabase) -> Option<CrateName> {
         db.crate_graph()[self.id].display_name.as_ref().cloned()
+    }
+
+    pub fn query_external_importables(
+        self,
+        db: &dyn DefDatabase,
+        query: &str,
+    ) -> impl Iterator<Item = Either<ModuleDef, MacroDef>> {
+        import_map::search_dependencies(db, self.into(), import_map::Query::new(query).anchor_end())
+            .into_iter()
+            .map(|item| match item {
+                ItemInNs::Types(mod_id) | ItemInNs::Values(mod_id) => Either::Left(mod_id.into()),
+                ItemInNs::Macros(mac_id) => Either::Right(mac_id.into()),
+            })
     }
 
     pub fn all(db: &dyn HirDatabase) -> Vec<Crate> {
