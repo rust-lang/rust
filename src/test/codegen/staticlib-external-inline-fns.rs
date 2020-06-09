@@ -21,3 +21,23 @@ extern "C" fn c() {}
 #[export_name = "d"]
 #[inline]
 extern "C" fn d() {}
+
+// CHECK: define void @e()
+#[no_mangle]
+#[inline(always)]
+pub extern "C" fn e() {}
+
+// CHECK: define void @f()
+#[export_name = "f"]
+#[inline(always)]
+pub extern "C" fn f() {}
+
+// CHECK: define void @g()
+#[no_mangle]
+#[inline(always)]
+extern "C" fn g() {}
+
+// CHECK: define void @h()
+#[export_name = "h"]
+#[inline(always)]
+extern "C" fn h() {}
