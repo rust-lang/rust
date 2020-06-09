@@ -653,7 +653,7 @@ impl CString {
     ///     unsafe { CString::from_vec_unchecked(b"abc".to_vec()) }
     /// );
     /// ```
-    #[stable(feature = "cstring_from_vec_with_nul", since = "1.46.0")]
+    #[unstable(feature = "cstring_from_vec_with_nul", issue = "73179")]
     pub unsafe fn from_vec_with_nul_unchecked(v: Vec<u8>) -> Self {
         Self { inner: v.into_boxed_slice() }
     }
@@ -693,7 +693,7 @@ impl CString {
     /// ```
     ///
     /// [`new`]: #method.new
-    #[stable(feature = "cstring_from_vec_with_nul", since = "1.46.0")]
+    #[unstable(feature = "cstring_from_vec_with_nul", issue = "73179")]
     pub fn from_vec_with_nul(v: Vec<u8>) -> Result<Self, FromBytesWithNulError> {
         let nul_pos = memchr::memchr(0, &v);
         match nul_pos {
