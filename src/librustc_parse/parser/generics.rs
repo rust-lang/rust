@@ -157,6 +157,7 @@ impl<'a> Parser<'a> {
         Ok(ast::Generics {
             params,
             where_clause: WhereClause {
+                has_where_token: false,
                 predicates: Vec::new(),
                 span: self.prev_token.span.shrink_to_hi(),
             },
@@ -170,12 +171,16 @@ impl<'a> Parser<'a> {
     /// where T : Trait<U, V> + 'b, 'a : 'b
     /// ```
     pub(super) fn parse_where_clause(&mut self) -> PResult<'a, WhereClause> {
-        let mut where_clause =
-            WhereClause { predicates: Vec::new(), span: self.prev_token.span.shrink_to_hi() };
+        let mut where_clause = WhereClause {
+            has_where_token: false,
+            predicates: Vec::new(),
+            span: self.prev_token.span.shrink_to_hi(),
+        };
 
         if !self.eat_keyword(kw::Where) {
             return Ok(where_clause);
         }
+        where_clause.has_where_token = true;
         let lo = self.prev_token.span;
 
         // We are considering adding generics to the `where` keyword as an alternative higher-rank
