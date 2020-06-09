@@ -316,7 +316,7 @@ fn swap_binop<'a>(
         BinOpKind::Le => Some((BinOpKind::Ge, rhs, lhs)),
         BinOpKind::Ge => Some((BinOpKind::Le, rhs, lhs)),
         BinOpKind::Gt => Some((BinOpKind::Lt, rhs, lhs)),
-        BinOpKind::Mul
+        BinOpKind::Mul // Not always commutative, e.g. with matrices. See issue #5698
         | BinOpKind::Shl
         | BinOpKind::Shr
         | BinOpKind::Rem
