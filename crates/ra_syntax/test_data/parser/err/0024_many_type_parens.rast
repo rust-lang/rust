@@ -180,44 +180,45 @@ SOURCE_FILE@0..240
       EXPR_STMT@150..180
         TUPLE_EXPR@150..180
           L_PAREN@150..151 "("
-          BIN_EXPR@151..180
-            BIN_EXPR@151..178
-              BIN_EXPR@151..169
-                BIN_EXPR@151..167
-                  BIN_EXPR@151..164
-                    FOR_EXPR@151..157
-                      FOR_KW@151..154 "for"
-                      ERROR@154..155
-                        L_ANGLE@154..155 "<"
-                      ERROR@155..157
-                        LIFETIME@155..157 "\'a"
-                    R_ANGLE@157..158 ">"
-                    WHITESPACE@158..159 " "
+          FOR_EXPR@151..180
+            FOR_KW@151..154 "for"
+            PATH_PAT@154..158
+              PATH@154..158
+                PATH_SEGMENT@154..158
+                  L_ANGLE@154..155 "<"
+                  ERROR@155..157
+                    LIFETIME@155..157 "\'a"
+                  R_ANGLE@157..158 ">"
+            WHITESPACE@158..159 " "
+            BIN_EXPR@159..180
+              BIN_EXPR@159..178
+                BIN_EXPR@159..169
+                  BIN_EXPR@159..167
                     PATH_EXPR@159..164
                       PATH@159..164
                         PATH_SEGMENT@159..164
                           NAME_REF@159..164
                             IDENT@159..164 "Trait"
-                  L_ANGLE@164..165 "<"
-                  ERROR@165..167
-                    LIFETIME@165..167 "\'a"
-                R_ANGLE@167..168 ">"
-                ERROR@168..169
-                  R_PAREN@168..169 ")"
-              WHITESPACE@169..170 " "
-              PLUS@170..171 "+"
-              WHITESPACE@171..172 " "
-              PAREN_EXPR@172..178
-                L_PAREN@172..173 "("
-                PATH_EXPR@173..177
-                  PATH@173..177
-                    PATH_SEGMENT@173..177
-                      NAME_REF@173..177
-                        IDENT@173..177 "Copy"
-                R_PAREN@177..178 ")"
-            R_ANGLE@178..179 ">"
-            ERROR@179..180
-              SEMICOLON@179..180 ";"
+                    L_ANGLE@164..165 "<"
+                    ERROR@165..167
+                      LIFETIME@165..167 "\'a"
+                  R_ANGLE@167..168 ">"
+                  ERROR@168..169
+                    R_PAREN@168..169 ")"
+                WHITESPACE@169..170 " "
+                PLUS@170..171 "+"
+                WHITESPACE@171..172 " "
+                PAREN_EXPR@172..178
+                  L_PAREN@172..173 "("
+                  PATH_EXPR@173..177
+                    PATH@173..177
+                      PATH_SEGMENT@173..177
+                        NAME_REF@173..177
+                          IDENT@173..177 "Copy"
+                  R_PAREN@177..178 ")"
+              R_ANGLE@178..179 ">"
+              ERROR@179..180
+                SEMICOLON@179..180 ";"
       WHITESPACE@180..185 "\n    "
       LET_STMT@185..235
         LET_KW@185..188 "let"
@@ -302,13 +303,12 @@ error 146..146: expected expression
 error 147..147: expected SEMICOLON
 error 148..148: expected expression
 error 149..149: expected SEMICOLON
-error 154..154: expected pattern
-error 155..155: expected IN_KW
-error 155..155: expected expression
-error 157..157: expected a block
+error 155..155: expected type
+error 158..158: expected IN_KW
 error 165..165: expected expression
 error 168..168: expected expression
 error 179..179: expected expression
+error 180..180: expected a block
 error 180..180: expected COMMA
 error 180..180: expected expression
 error 180..180: expected R_PAREN
