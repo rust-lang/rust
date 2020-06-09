@@ -118,15 +118,11 @@ use crate::sys_common::poison::{self, LockResult, TryLockError, TryLockResult};
 ///
 /// const N: usize = 3;
 ///
-/// // Some data to work with in multiple threads.
 /// let data_mutex = Arc::new(Mutex::new(vec![1, 2, 3, 4]));
-/// // The result of all the work across all threads.
 /// let res_mutex = Arc::new(Mutex::new(0));
 ///
-/// // Threads other than the main thread.
 /// let mut threads = Vec::with_capacity(N);
 /// (0..N).for_each(|_| {
-///     // Getting clones for the mutexes.
 ///     let data_mutex_clone = Arc::clone(&data_mutex);
 ///     let res_mutex_clone = Arc::clone(&res_mutex);
 ///
@@ -135,10 +131,6 @@ use crate::sys_common::poison::{self, LockResult, TryLockError, TryLockResult};
 ///         // This is the result of some important and long-ish work.
 ///         let result = data.iter().fold(0, |acc, x| acc + x * 2);
 ///         data.push(result);
-///         // We drop the `data` explicitely because it's not necessary anymore
-///         // and the thread still has work to do. This allow other threads to
-///         // start working on the data immediately, without waiting
-///         // for the rest of the unrelated work to be done here.
 ///         drop(data);
 ///         *res_mutex_clone.lock().unwrap() += result;
 ///     }));
@@ -153,9 +145,9 @@ use crate::sys_common::poison::{self, LockResult, TryLockError, TryLockResult};
 /// // start working on the data immediately, without waiting
 /// // for the rest of the unrelated work to be done here.
 /// //
-/// // It's even more important here because we `.join` the threads after that.
-/// // If we had not dropped the lock, a thread could be waiting forever for
-/// // it, causing a deadlock.
+/// // It's even more important here than in the threads because we `.join` the
+/// // threads after that. If we had not dropped the lock, a thread could be
+/// // waiting forever for it, causing a deadlock.
 /// drop(data);
 /// // Here the lock is not assigned to a variable and so, even if the scope
 /// // does not end after this line, the mutex is still released:
