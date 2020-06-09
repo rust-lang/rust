@@ -1,0 +1,40 @@
+SOURCE_FILE@0..50
+  IMPL_DEF@0..49
+    IMPL_KW@0..4 "impl"
+    WHITESPACE@4..5 " "
+    PATH_TYPE@5..6
+      PATH@5..6
+        PATH_SEGMENT@5..6
+          NAME_REF@5..6
+            IDENT@5..6 "T"
+    WHITESPACE@6..7 " "
+    FOR_KW@7..10 "for"
+    WHITESPACE@10..11 " "
+    PATH_TYPE@11..14
+      PATH@11..14
+        PATH_SEGMENT@11..14
+          NAME_REF@11..14
+            IDENT@11..14 "Foo"
+    WHITESPACE@14..15 " "
+    ITEM_LIST@15..49
+      L_CURLY@15..16 "{"
+      WHITESPACE@16..21 "\n    "
+      FN_DEF@21..47
+        DEFAULT_KW@21..28 "default"
+        WHITESPACE@28..29 " "
+        UNSAFE_KW@29..35 "unsafe"
+        WHITESPACE@35..36 " "
+        FN_KW@36..38 "fn"
+        WHITESPACE@38..39 " "
+        NAME@39..42
+          IDENT@39..42 "foo"
+        PARAM_LIST@42..44
+          L_PAREN@42..43 "("
+          R_PAREN@43..44 ")"
+        WHITESPACE@44..45 " "
+        BLOCK_EXPR@45..47
+          L_CURLY@45..46 "{"
+          R_CURLY@46..47 "}"
+      WHITESPACE@47..48 "\n"
+      R_CURLY@48..49 "}"
+  WHITESPACE@49..50 "\n"
