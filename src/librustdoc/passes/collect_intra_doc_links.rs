@@ -122,6 +122,42 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         }
     }
 
+    /// Resolves a string as a macro.
+    fn macro_resolve(&self, path_str: &str, parent_id: Option<hir::HirId>) -> Option<Res> {
+        let cx = self.cx;
+        let path = ast::Path::from_ident(Ident::from_str(path_str));
+        cx.enter_resolver(|resolver| {
+            if let Ok((Some(ext), res)) = resolver.resolve_macro_path(
+                &path,
+                None,
+                &ParentScope::module(resolver.graph_root()),
+                false,
+                false,
+            ) {
+                if let SyntaxExtensionKind::LegacyBang { .. } = ext.kind {
+                    return Some(res.map_id(|_| panic!("unexpected id")));
+                }
+            }
+            if let Some(res) = resolver.all_macros().get(&Symbol::intern(path_str)) {
+                return Some(res.map_id(|_| panic!("unexpected id")));
+            }
+            if let Some(module_id) = parent_id.or(self.mod_ids.last().cloned()) {
+                let module_id = cx.tcx.hir().local_def_id(module_id);
+                if let Ok((_, res)) =
+                    resolver.resolve_str_path_error(DUMMY_SP, path_str, MacroNS, module_id)
+                {
+                    // don't resolve builtins like `#[derive]`
+                    if let Res::Def(..) = res {
+                        let res = res.map_id(|_| panic!("unexpected node_id"));
+                        return Some(res);
+                    }
+                }
+            } else {
+                debug!("attempting to resolve item without parent module: {}", path_str);
+            }
+            None
+        })
+    }
     /// Resolves a string as a path within a particular namespace. Also returns an optional
     /// URL fragment in the case of variants and methods.
     fn resolve(
@@ -615,7 +651,8 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                     None => {
                         // Try everything!
                         let candidates = PerNS {
-                            macro_ns: macro_resolve(cx, path_str)
+                            macro_ns: self
+                                .macro_resolve(path_str, base_node)
                                 .map(|res| (res, extra_fragment.clone())),
                             type_ns: match self.resolve(
                                 path_str,
@@ -684,7 +721,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                         }
                     }
                     Some(MacroNS) => {
-                        if let Some(res) = macro_resolve(cx, path_str) {
+                        if let Some(res) = self.macro_resolve(path_str, base_node) {
                             (res, extra_fragment)
                         } else {
                             resolution_failure(cx, &item, path_str, &dox, link_range);
@@ -725,28 +762,6 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
 
         c
     }
-}
-
-/// Resolves a string as a macro.
-fn macro_resolve(cx: &DocContext<'_>, path_str: &str) -> Option<Res> {
-    let path = ast::Path::from_ident(Ident::from_str(path_str));
-    cx.enter_resolver(|resolver| {
-        if let Ok((Some(ext), res)) = resolver.resolve_macro_path(
-            &path,
-            None,
-            &ParentScope::module(resolver.graph_root()),
-            false,
-            false,
-        ) {
-            if let SyntaxExtensionKind::LegacyBang { .. } = ext.kind {
-                return Some(res.map_id(|_| panic!("unexpected id")));
-            }
-        }
-        if let Some(res) = resolver.all_macros().get(&Symbol::intern(path_str)) {
-            return Some(res.map_id(|_| panic!("unexpected id")));
-        }
-        None
-    })
 }
 
 fn build_diagnostic(
