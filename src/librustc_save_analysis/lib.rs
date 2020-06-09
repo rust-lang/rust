@@ -17,7 +17,7 @@ use rustc_hir::def::{CtorOf, DefKind as HirDefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::Node;
-use rustc_hir_pretty::{fn_to_string, ty_to_string};
+use rustc_hir_pretty::{enum_def_to_string, fn_to_string, ty_to_string};
 use rustc_middle::hir::map::Map;
 use rustc_middle::middle::cstore::ExternCrate;
 use rustc_middle::middle::privacy::AccessLevels;
@@ -292,13 +292,12 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                     attributes: lower_attributes(item.attrs.to_vec(), self),
                 }))
             }
-            hir::ItemKind::Enum(ref def, _) => {
+            hir::ItemKind::Enum(ref def, ref generics) => {
                 let name = item.ident.to_string();
                 let qualname = format!("::{}", self.tcx.def_path_str(def_id));
                 filter!(self.span_utils, item.ident.span);
-                let variants_str =
-                    def.variants.iter().map(|v| v.ident.to_string()).collect::<Vec<_>>().join(", ");
-                let value = format!("{}::{{{}}}", name, variants_str);
+                let value =
+                    enum_def_to_string(def, generics, item.ident.name, item.span, &item.vis);
                 Some(Data::DefData(Def {
                     kind: DefKind::Enum,
                     id: id_from_def_id(def_id),

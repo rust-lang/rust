@@ -239,6 +239,16 @@ pub fn fn_to_string(
     to_string(NO_ANN, |s| s.print_fn(decl, header, name, generics, vis, arg_names, body_id))
 }
 
+pub fn enum_def_to_string(
+    enum_definition: &hir::EnumDef<'_>,
+    generics: &hir::Generics<'_>,
+    name: Symbol,
+    span: rustc_span::Span,
+    visibility: &hir::Visibility<'_>,
+) -> String {
+    to_string(NO_ANN, |s| s.print_enum_def(enum_definition, generics, name, span, visibility))
+}
+
 impl<'a> State<'a> {
     pub fn cbox(&mut self, u: usize) {
         self.s.cbox(u);
