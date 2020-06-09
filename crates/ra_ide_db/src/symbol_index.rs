@@ -29,9 +29,10 @@ use std::{
 };
 
 use fst::{self, Streamer};
+use hir::db::DefDatabase;
 use ra_db::{
     salsa::{self, ParallelDatabase},
-    FileId, SourceDatabaseExt, SourceRootId,
+    CrateId, FileId, SourceDatabaseExt, SourceRootId,
 };
 use ra_syntax::{
     ast::{self, NameOwner},
@@ -110,6 +111,14 @@ fn file_symbols(db: &impl SymbolsDatabase, file_id: FileId) -> Arc<SymbolIndex> 
     Arc::new(SymbolIndex::new(symbols))
 }
 
+/// Need to wrap Snapshot to provide `Clone` impl for `map_with`
+struct Snap(salsa::Snapshot<RootDatabase>);
+impl Clone for Snap {
+    fn clone(&self) -> Snap {
+        Snap(self.0.snapshot())
+    }
+}
+
 // Feature: Workspace Symbol
 //
 // Uses fuzzy-search to find types, modules and functions by name across your
@@ -133,14 +142,6 @@ fn file_symbols(db: &impl SymbolsDatabase, file_id: FileId) -> Arc<SymbolIndex> 
 // |===
 pub fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol> {
     let _p = ra_prof::profile("world_symbols").detail(|| query.query.clone());
-
-    /// Need to wrap Snapshot to provide `Clone` impl for `map_with`
-    struct Snap(salsa::Snapshot<RootDatabase>);
-    impl Clone for Snap {
-        fn clone(&self) -> Snap {
-            Snap(self.0.snapshot())
-        }
-    }
 
     let buf: Vec<Arc<SymbolIndex>> = if query.libs {
         let snap = Snap(db.snapshot());
@@ -172,6 +173,30 @@ pub fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol> {
 
         buf
     };
+    query.search(&buf)
+}
+
+pub fn crate_symbols(db: &RootDatabase, krate: CrateId, query: Query) -> Vec<FileSymbol> {
+    let def_map = db.crate_def_map(krate);
+    let mut files = Vec::new();
+    let mut modules = vec![def_map.root];
+    while let Some(module) = modules.pop() {
+        let data = &def_map[module];
+        files.extend(data.origin.file_id());
+        modules.extend(data.children.values());
+    }
+
+    let snap = Snap(db.snapshot());
+
+    #[cfg(not(feature = "wasm"))]
+    let buf = files
+        .par_iter()
+        .map_with(snap, |db, &file_id| db.0.file_symbols(file_id))
+        .collect::<Vec<_>>();
+
+    #[cfg(feature = "wasm")]
+    let buf = files.iter().map(|&file_id| snap.0.file_symbols(file_id)).collect::<Vec<_>>();
+
     query.search(&buf)
 }
 
