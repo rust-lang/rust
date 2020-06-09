@@ -1,15 +1,20 @@
 //! Validates the MIR to ensure that invariants are upheld.
 
 use super::{MirPass, MirSource};
+use rustc_hir::Constness;
+use rustc_hir::lang_items::FnOnceTrait;
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::{
     mir::{
         BasicBlock, Body, Location, Operand, Rvalue, Statement, StatementKind, Terminator,
         TerminatorKind,
     },
-    ty::{self, ParamEnv, TyCtxt},
+    ty::{self, ParamEnv, ToPredicate, Ty, TyCtxt},
 };
 use rustc_span::def_id::DefId;
+use rustc_trait_selection::traits;
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 
 #[derive(Copy, Clone, Debug)]
 enum EdgeKind {
@@ -83,6 +88,48 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             self.fail(location, format!("encountered jump to invalid basic block {:?}", bb))
         }
     }
+
+    fn check_ty_callable(&self, location: Location, ty: Ty<'tcx>) {
+        if let ty::FnPtr(..) | ty::FnDef(..) = ty.kind {
+            // We have a `FnPtr` or `FnDef` which is trivially safe to call.
+        } else {
+            let fn_once_trait = self.tcx.require_lang_item(FnOnceTrait, None);
+            // We haven't got a `FnPtr` or `FnDef` but we are still safe to call it if it
+            // implements `FnOnce` (as `Fn: FnMut` and `FnMut: FnOnce`).
+            let item_def_id = self
+                .tcx
+                .associated_items(fn_once_trait)
+                .in_definition_order()
+                .next()
+                .unwrap()
+                .def_id;
+            self.tcx.infer_ctxt().enter(|infcx| {
+                let trait_ref = ty::TraitRef {
+                    def_id: fn_once_trait,
+                    substs: self.tcx.mk_substs_trait(
+                        ty,
+                        infcx.fresh_substs_for_item(self.body.span, item_def_id),
+                    ),
+                };
+                let predicate = ty::PredicateKind::Trait(
+                    ty::Binder::bind(ty::TraitPredicate { trait_ref }),
+                    Constness::NotConst,
+                )
+                .to_predicate(self.tcx);
+                let obligation = traits::Obligation::new(
+                    traits::ObligationCause::dummy(),
+                    self.param_env,
+                    predicate,
+                );
+                if !infcx.predicate_may_hold(&obligation) {
+                    self.fail(
+                        location,
+                        format!("encountered non-callable type {} in `Call` terminator", ty),
+                    );
+                }
+            });
+        }
+    }
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
@@ -151,14 +198,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
             }
             TerminatorKind::Call { func, destination, cleanup, .. } => {
-                let func_ty = func.ty(&self.body.local_decls, self.tcx);
-                match func_ty.kind {
-                    ty::FnPtr(..) | ty::FnDef(..) => {}
-                    _ => self.fail(
-                        location,
-                        format!("encountered non-callable type {} in `Call` terminator", func_ty),
-                    ),
-                }
+                self.check_ty_callable(location, &func.ty(&self.body.local_decls, self.tcx));
                 if let Some((_, target)) = destination {
                     self.check_edge(location, *target, EdgeKind::Normal);
                 }
