@@ -93,9 +93,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         if let ty::FnPtr(..) | ty::FnDef(..) = ty.kind {
             // We have a `FnPtr` or `FnDef` which is trivially safe to call.
         } else {
-            let fn_once_trait = self.tcx.require_lang_item(FnOnceTrait, None);
+            // FIXME(doctorn): call shims shouldn't reference unnormalized types, so
+            // this case should be removed.
             // We haven't got a `FnPtr` or `FnDef` but we are still safe to call it if it
             // implements `FnOnce` (as `Fn: FnMut` and `FnMut: FnOnce`).
+            let fn_once_trait = self.tcx.require_lang_item(FnOnceTrait, None);
             let item_def_id = self
                 .tcx
                 .associated_items(fn_once_trait)
