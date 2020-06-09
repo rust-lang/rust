@@ -72,6 +72,6 @@ fn overlap_x_and_y() -> impl Generator<Yield = (), Return = ()> {
 fn main() {
     assert_eq!(1025, std::mem::size_of_val(&move_before_yield()));
     assert_eq!(1026, std::mem::size_of_val(&move_before_yield_with_noop()));
-    assert_eq!(1027, std::mem::size_of_val(&overlap_move_points()));
+    assert_eq!(2051, std::mem::size_of_val(&overlap_move_points()));
     assert_eq!(1026, std::mem::size_of_val(&overlap_x_and_y()));
 }
