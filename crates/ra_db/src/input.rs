@@ -337,15 +337,11 @@ impl Env {
 }
 
 impl ExternSource {
-    pub fn extern_path(&self, path: impl AsRef<Path>) -> Option<(ExternSourceId, RelativePathBuf)> {
-        let path = path.as_ref();
+    pub fn extern_path(&self, path: &Path) -> Option<(ExternSourceId, RelativePathBuf)> {
         self.extern_paths.iter().find_map(|(root_path, id)| {
-            if let Ok(rel_path) = path.strip_prefix(root_path) {
-                let rel_path = RelativePathBuf::from_path(rel_path).ok()?;
-                Some((*id, rel_path))
-            } else {
-                None
-            }
+            let rel_path = path.strip_prefix(root_path).ok()?;
+            let rel_path = RelativePathBuf::from_path(rel_path).ok()?;
+            Some((*id, rel_path))
         })
     }
 
