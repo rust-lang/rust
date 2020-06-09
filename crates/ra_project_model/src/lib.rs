@@ -280,12 +280,6 @@ impl ProjectWorkspace {
                                     }
                                 }
                             }
-                            for name in &krate.atom_cfgs {
-                                opts.insert_atom(name.into());
-                            }
-                            for (key, value) in &krate.key_value_cfgs {
-                                opts.insert_key_value(key.into(), value.into());
-                            }
                             opts
                         };
 
