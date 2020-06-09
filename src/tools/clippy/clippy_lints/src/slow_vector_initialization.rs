@@ -22,11 +22,17 @@ declare_clippy_lint! {
     /// ```rust
     /// # use core::iter::repeat;
     /// # let len = 4;
+    ///
+    /// // Bad
     /// let mut vec1 = Vec::with_capacity(len);
     /// vec1.resize(len, 0);
     ///
     /// let mut vec2 = Vec::with_capacity(len);
-    /// vec2.extend(repeat(0).take(len))
+    /// vec2.extend(repeat(0).take(len));
+    ///
+    /// // Good
+    /// let mut vec1 = vec![0; len];
+    /// let mut vec2 = vec![0; len];
     /// ```
     pub SLOW_VECTOR_INITIALIZATION,
     perf,

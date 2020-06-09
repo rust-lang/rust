@@ -18,7 +18,7 @@ been very rare that Clippy changes were included in a patch release.
 
 ### 1. Finding the relevant Clippy commits
 
-Each Rust release ships with its own version of Clippy. The Clippy submodule can
+Each Rust release ships with its own version of Clippy. The Clippy subtree can
 be found in the `tools` directory of the Rust repository.
 
 Depending on the current time and what exactly you want to update, the following
@@ -32,8 +32,10 @@ bullet points might be helpful:
   need to select the Rust release tag from the dropdown and then check the
   commit of the Clippy directory:
 
-  ![Explanation of how to find the commit hash](https://user-images.githubusercontent.com/2042399/62846160-1f8b0480-bcce-11e9-9da8-7964ca034e7a.png)
-
+To find the commit hash, issue the following command when in a `rust-lang/rust` checkout:
+```
+git log --oneline -- src/tools/clippy/ | grep -o "Merge commit '[a-f0-9]*' into .*" | head -1 | sed -e "s/Merge commit '\([a-f0-9]*\)' into .*/\1/g"
+```
 
 ### 2. Fetching the PRs between those commits
 
@@ -74,5 +76,5 @@ relevant commit ranges.
 
 [changelog]: https://github.com/rust-lang/rust-clippy/blob/master/CHANGELOG.md
 [forge]: https://forge.rust-lang.org/
-[rust_master_tools]: https://github.com/rust-lang/rust/tree/master/src/tools
-[rust_beta_tools]: https://github.com/rust-lang/rust/tree/beta/src/tools
+[rust_master_tools]: https://github.com/rust-lang/rust/tree/master/src/tools/clippy
+[rust_beta_tools]: https://github.com/rust-lang/rust/tree/beta/src/tools/clippy

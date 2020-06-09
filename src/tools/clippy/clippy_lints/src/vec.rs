@@ -17,8 +17,14 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust,ignore
-    /// foo(&vec![1, 2])
+    /// ```rust
+    /// # fn foo(my_vec: &[u8]) {}
+    ///
+    /// // Bad
+    /// foo(&vec![1, 2]);
+    ///
+    /// // Good
+    /// foo(&[1, 2]);
     /// ```
     pub USELESS_VEC,
     perf,

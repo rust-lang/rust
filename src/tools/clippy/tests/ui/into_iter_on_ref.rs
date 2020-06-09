@@ -40,4 +40,6 @@ fn main() {
     let _ = (&HashSet::<i32>::new()).into_iter(); //~ WARN equivalent to .iter()
     let _ = std::path::Path::new("12/34").into_iter(); //~ WARN equivalent to .iter()
     let _ = std::path::PathBuf::from("12/34").into_iter(); //~ ERROR equivalent to .iter()
+
+    let _ = (&[1, 2, 3]).into_iter().next(); //~ WARN equivalent to .iter()
 }

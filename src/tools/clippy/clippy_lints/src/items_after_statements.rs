@@ -16,6 +16,7 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
+    /// // Bad
     /// fn foo() {
     ///     println!("cake");
     /// }
@@ -25,6 +26,21 @@ declare_clippy_lint! {
     ///     fn foo() {
     ///         println!("foo");
     ///     }
+    ///     foo(); // prints "foo"
+    /// }
+    /// ```
+    ///
+    /// ```rust
+    /// // Good
+    /// fn foo() {
+    ///     println!("cake");
+    /// }
+    ///
+    /// fn main() {
+    ///     fn foo() {
+    ///         println!("foo");
+    ///     }
+    ///     foo(); // prints "foo"
     ///     foo(); // prints "foo"
     /// }
     /// ```

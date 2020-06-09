@@ -24,6 +24,10 @@ declare_clippy_lint! {
     /// ```rust
     /// let mut x = "Hello".to_owned();
     /// x = x + ", World";
+    ///
+    /// // More readable
+    /// x += ", World";
+    /// x.push_str(", World");
     /// ```
     pub STRING_ADD_ASSIGN,
     pedantic,
@@ -69,7 +73,11 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
+    /// // Bad
     /// let bs = "a byte string".as_bytes();
+    ///
+    /// // Good
+    /// let bs = b"a byte string";
     /// ```
     pub STRING_LIT_AS_BYTES,
     style,

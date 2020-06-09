@@ -10,7 +10,6 @@ use crate::utils::{snippet_opt, span_lint_and_sugg};
 declare_clippy_lint! {
     /// **What it does:** Checks for usage of `x >= y + 1` or `x - 1 >= y` (and `<=`) in a block
     ///
-    ///
     /// **Why is this bad?** Readability -- better to use `> y` instead of `>= y + 1`.
     ///
     /// **Known problems:** None.

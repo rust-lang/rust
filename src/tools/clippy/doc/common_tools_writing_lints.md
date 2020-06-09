@@ -4,7 +4,9 @@ You may need following tooltips to catch up with common operations.
 
 - [Common tools for writing lints](#common-tools-for-writing-lints)
   - [Retrieving the type of an expression](#retrieving-the-type-of-an-expression)
+  - [Checking if an expression is calling a specific method](#checking-if-an-expr-is-calling-a-specific-method)
   - [Checking if a type implements a specific trait](#checking-if-a-type-implements-a-specific-trait)
+  - [Checking if a type defines a method](#checking-if-a-type-defines-a-method)
   - [Dealing with macros](#dealing-with-macros)
 
 Useful Rustc dev guide links:
@@ -49,6 +51,26 @@ Two noticeable items here:
 - `tables` is [`TypeckTables`][TypeckTables] and is created by type checking step, 
   it includes useful information such as types of expressions, ways to resolve methods and so on.
 
+# Checking if an expr is calling a specific method
+
+Starting with an `expr`, you can check whether it is calling a specific method `some_method`:
+
+```rust
+impl LateLintPass<'_, '_> for MyStructLint {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr<'_>) {
+        if_chain! {
+            // Check our expr is calling a method
+            if let hir::ExprKind::MethodCall(path, _, _args) = &expr.kind;
+            // Check the name of this method is `some_method`
+            if path.ident.name == sym!(some_method);
+            then {
+                // ...
+            }
+        }
+    }
+}
+```
+
 # Checking if a type implements a specific trait
 
 There are two ways to do this, depending if the target trait is part of lang items.
@@ -82,6 +104,32 @@ impl LateLintPass<'_, '_> for MyStructLint {
 A list of defined paths for Clippy can be found in [paths.rs][paths]
 
 We access lang items through the type context `tcx`. `tcx` is of type [`TyCtxt`][TyCtxt] and is defined in the `rustc_middle` crate.
+
+# Checking if a type defines a specific method
+
+To check if our type defines a method called `some_method`:
+
+```rust
+use crate::utils::{is_type_diagnostic_item, return_ty};
+
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MyTypeImpl {
+    fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, impl_item: &'tcx ImplItem<'_>) {
+        if_chain! {
+            // Check if item is a method/function
+            if let ImplItemKind::Fn(ref signature, _) = impl_item.kind;
+            // Check the method is named `some_method`
+            if impl_item.ident.name == sym!(some_method);
+            // We can also check it has a parameter `self`
+            if signature.decl.implicit_self.has_implicit_self();
+            // We can go further and even check if its return type is `String`
+            if is_type_diagnostic_item(cx, return_ty(cx, impl_item.hir_id), sym!(string_type));
+            then {
+                // ...
+            }
+        }
+    }
+}
+```
 
 # Dealing with macros
 
