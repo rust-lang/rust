@@ -36,12 +36,6 @@ fn main() {
         println!("cargo:rustc-link-lib=gcc_pic");
     } else if target.contains("pc-windows-gnu") {
         // This is handled in the target spec with late_link_args_[static|dynamic]
-
-        // cfg!(bootstrap) doesn't work in build scripts
-        if env::var("RUSTC_STAGE").ok() == Some("0".to_string()) {
-            println!("cargo:rustc-link-lib=static-nobundle=gcc_eh");
-            println!("cargo:rustc-link-lib=static-nobundle=pthread");
-        }
     } else if target.contains("uwp-windows-gnu") {
         println!("cargo:rustc-link-lib=unwind");
     } else if target.contains("fuchsia") {
