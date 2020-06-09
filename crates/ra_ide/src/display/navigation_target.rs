@@ -4,6 +4,7 @@ use either::Either;
 use hir::{original_range, AssocItem, FieldSource, HasSource, InFile, ModuleSource};
 use ra_db::{FileId, SourceDatabase};
 use ra_ide_db::{defs::Definition, RootDatabase};
+use ra_syntax::ast::AstToken;
 use ra_syntax::{
     ast::{self, DocCommentsOwner, NameOwner},
     match_ast, AstNode, SmolStr,
@@ -135,10 +136,30 @@ impl NavigationTarget {
         db: &RootDatabase,
         node: InFile<&dyn ast::NameOwner>,
     ) -> NavigationTarget {
-        //FIXME: use `_` instead of empty string
-        let name = node.value.name().map(|it| it.text().clone()).unwrap_or_default();
+        let name =
+            node.value.name().map(|it| it.text().clone()).unwrap_or_else(|| SmolStr::new("_"));
         let focus_range =
             node.value.name().map(|it| original_range(db, node.with_value(it.syntax())).range);
+        let frange = original_range(db, node.map(|it| it.syntax()));
+
+        NavigationTarget::from_syntax(
+            frange.file_id,
+            name,
+            focus_range,
+            frange.range,
+            node.value.syntax().kind(),
+        )
+    }
+
+    /// Allows `NavigationTarget` to be created from a `DocCommentsOwner` and a `NameOwner`
+    pub(crate) fn from_doc_commented(
+        db: &RootDatabase,
+        named: InFile<&dyn ast::NameOwner>,
+        node: InFile<&dyn ast::DocCommentsOwner>,
+    ) -> NavigationTarget {
+        let name =
+            named.value.name().map(|it| it.text().clone()).unwrap_or_else(|| SmolStr::new("_"));
+        let focus_range = node.value.doc_comments().next().map(|it| it.syntax().text_range());
         let frange = original_range(db, node.map(|it| it.syntax()));
 
         NavigationTarget::from_syntax(

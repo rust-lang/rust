@@ -171,7 +171,15 @@ fn runnable_fn(
     let cfg_exprs =
         attrs.by_key("cfg").tt_values().map(|subtree| ra_cfg::parse_cfg(subtree)).collect();
 
-    let nav = NavigationTarget::from_named(sema.db, InFile::new(file_id.into(), &fn_def));
+    let nav = if let RunnableKind::DocTest { .. } = kind {
+        NavigationTarget::from_doc_commented(
+            sema.db,
+            InFile::new(file_id.into(), &fn_def),
+            InFile::new(file_id.into(), &fn_def),
+        )
+    } else {
+        NavigationTarget::from_named(sema.db, InFile::new(file_id.into(), &fn_def))
+    };
     Some(Runnable { nav, kind, cfg_exprs })
 }
 
