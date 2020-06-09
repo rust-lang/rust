@@ -158,7 +158,7 @@ impl<T: SourceDatabaseExt> FileLoader for FileLoaderDelegate<&'_ T> {
         if std::path::Path::new(path).is_absolute() {
             let krate = *self.relevant_crates(anchor).get(0)?;
             let (extern_source_id, relative_file) =
-                self.0.crate_graph()[krate].extern_source.extern_path(path)?;
+                self.0.crate_graph()[krate].extern_source.extern_path(path.as_ref())?;
 
             let source_root = self.0.source_root(SourceRootId(extern_source_id.0));
             source_root.file_by_relative_path(&relative_file)
