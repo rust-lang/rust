@@ -1,0 +1,38 @@
+SOURCE_FILE@0..33
+  FN_DEF@0..32
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..7
+      IDENT@3..7 "main"
+    PARAM_LIST@7..9
+      L_PAREN@7..8 "("
+      R_PAREN@8..9 ")"
+    WHITESPACE@9..10 " "
+    BLOCK_EXPR@10..32
+      L_CURLY@10..11 "{"
+      WHITESPACE@11..12 " "
+      LET_STMT@12..30
+        LET_KW@12..15 "let"
+        WHITESPACE@15..16 " "
+        PATH_PAT@16..24
+          PATH@16..24
+            PATH@16..19
+              PATH_SEGMENT@16..19
+                L_ANGLE@16..17 "<"
+                PLACEHOLDER_TYPE@17..18
+                  UNDERSCORE@17..18 "_"
+                R_ANGLE@18..19 ">"
+            COLON2@19..21 "::"
+            PATH_SEGMENT@21..24
+              NAME_REF@21..24
+                IDENT@21..24 "Foo"
+        WHITESPACE@24..25 " "
+        EQ@25..26 "="
+        WHITESPACE@26..27 " "
+        TUPLE_EXPR@27..29
+          L_PAREN@27..28 "("
+          R_PAREN@28..29 ")"
+        SEMICOLON@29..30 ";"
+      WHITESPACE@30..31 " "
+      R_CURLY@31..32 "}"
+  WHITESPACE@32..33 "\n"
