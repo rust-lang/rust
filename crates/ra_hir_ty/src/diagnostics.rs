@@ -6,7 +6,7 @@ use hir_expand::{db::AstDatabase, name::Name, HirFileId, InFile};
 use ra_syntax::{ast, AstNode, AstPtr, SyntaxNodePtr};
 use stdx::format_to;
 
-pub use hir_def::{diagnostics::UnresolvedModule, expr::MatchArm};
+pub use hir_def::{diagnostics::UnresolvedModule, expr::MatchArm, path::Path};
 pub use hir_expand::diagnostics::{AstDiagnostic, Diagnostic, DiagnosticSink};
 
 #[derive(Debug)]
@@ -26,6 +26,16 @@ impl Diagnostic for NoSuchField {
 
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
         self
+    }
+}
+
+impl AstDiagnostic for NoSuchField {
+    type AST = ast::RecordField;
+
+    fn ast(&self, db: &impl AstDatabase) -> Self::AST {
+        let root = db.parse_or_expand(self.source().file_id).unwrap();
+        let node = self.source().value.to_node(&root);
+        ast::RecordField::cast(node).unwrap()
     }
 }
 

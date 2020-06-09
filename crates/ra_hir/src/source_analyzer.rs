@@ -313,6 +313,16 @@ impl SourceAnalyzer {
         })?;
         Some(macro_call_id.as_file())
     }
+
+    pub(crate) fn resolve_variant(
+        &self,
+        db: &dyn HirDatabase,
+        record_lit: ast::RecordLit,
+    ) -> Option<VariantId> {
+        let infer = self.infer.as_ref()?;
+        let expr_id = self.expr_id(db, &record_lit.into())?;
+        infer.variant_resolution_for_expr(expr_id)
+    }
 }
 
 fn scope_for(

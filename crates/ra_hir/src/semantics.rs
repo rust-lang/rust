@@ -6,9 +6,9 @@ use std::{cell::RefCell, fmt, iter::successors};
 
 use hir_def::{
     resolver::{self, HasResolver, Resolver},
-    AsMacroCall, TraitId,
+    AsMacroCall, TraitId, VariantId,
 };
-use hir_expand::{hygiene::Hygiene, ExpansionInfo};
+use hir_expand::{diagnostics::AstDiagnostic, hygiene::Hygiene, ExpansionInfo};
 use hir_ty::associated_type_shorthand_candidates;
 use itertools::Itertools;
 use ra_db::{FileId, FileRange};
@@ -102,6 +102,13 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         let tree = self.db.parse(file_id).tree();
         self.cache(tree.syntax().clone(), file_id.into());
         tree
+    }
+
+    pub fn ast<T: AstDiagnostic + Diagnostic>(&self, d: &T) -> <T as AstDiagnostic>::AST {
+        let file_id = d.source().file_id;
+        let root = self.db.parse_or_expand(file_id).unwrap();
+        self.cache(root, file_id);
+        d.ast(self.db)
     }
 
     pub fn expand(&self, macro_call: &ast::MacroCall) -> Option<SyntaxNode> {
@@ -245,6 +252,10 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
 
     pub fn resolve_path(&self, path: &ast::Path) -> Option<PathResolution> {
         self.analyze(path.syntax()).resolve_path(self.db, path)
+    }
+
+    pub fn resolve_variant(&self, record_lit: ast::RecordLit) -> Option<VariantId> {
+        self.analyze(record_lit.syntax()).resolve_variant(self.db, record_lit)
     }
 
     pub fn lower_path(&self, path: &ast::Path) -> Option<Path> {
