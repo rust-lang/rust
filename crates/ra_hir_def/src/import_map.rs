@@ -1,7 +1,10 @@
 //! A map of all publicly exported items in a crate.
 
+use std::cmp::Ordering;
 use std::{collections::hash_map::Entry, fmt, sync::Arc};
 
+use fst::{self, Streamer};
+use itertools::Itertools;
 use ra_db::CrateId;
 use rustc_hash::FxHashMap;
 
@@ -21,9 +24,17 @@ use crate::{
 ///
 /// Note that all paths are relative to the containing crate's root, so the crate name still needs
 /// to be prepended to the `ModPath` before the path is valid.
-#[derive(Eq, PartialEq)]
 pub struct ImportMap {
     map: FxHashMap<ItemInNs, ModPath>,
+
+    /// List of keys stored in `map`, sorted lexicographically by their `ModPath`. Indexed by the
+    /// values returned by running `fst`.
+    ///
+    /// Since a path can refer to multiple items due to namespacing, we store all items with the
+    /// same path right after each other. This allows us to find all items after the FST gives us
+    /// the index of the first one.
+    importables: Vec<ItemInNs>,
+    fst: fst::Map<Vec<u8>>,
 }
 
 impl ImportMap {
@@ -88,7 +99,34 @@ impl ImportMap {
             }
         }
 
-        Arc::new(Self { map: import_map })
+        let mut importables = import_map.iter().collect::<Vec<_>>();
+
+        importables.sort_by(cmp);
+
+        // Build the FST, taking care not to insert duplicate values.
+
+        let mut builder = fst::MapBuilder::memory();
+        let mut last_batch_start = 0;
+
+        for idx in 0..importables.len() {
+            if let Some(next_item) = importables.get(idx + 1) {
+                if cmp(&importables[last_batch_start], next_item) == Ordering::Equal {
+                    continue;
+                }
+            }
+
+            let start = last_batch_start;
+            last_batch_start = idx + 1;
+
+            let key: String = fst_path(&importables[start].1).collect();
+
+            builder.insert(key, start as u64).unwrap();
+        }
+
+        let fst = fst::Map::new(builder.into_inner().unwrap()).unwrap();
+        let importables = importables.iter().map(|(item, _)| **item).collect();
+
+        Arc::new(Self { map: import_map, fst, importables })
     }
 
     /// Returns the `ModPath` needed to import/mention `item`, relative to this crate's root.
@@ -96,6 +134,14 @@ impl ImportMap {
         self.map.get(&item)
     }
 }
+
+impl PartialEq for ImportMap {
+    fn eq(&self, other: &Self) -> bool {
+        self.importables == other.importables
+    }
+}
+
+impl Eq for ImportMap {}
 
 impl fmt::Debug for ImportMap {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -117,13 +163,97 @@ impl fmt::Debug for ImportMap {
     }
 }
 
+fn fst_path(path: &ModPath) -> impl Iterator<Item = char> + '_ {
+    path.segments
+        .iter()
+        .map(|name| name.as_text().unwrap())
+        .intersperse("::")
+        .flat_map(|s| s.chars().map(|c| c.to_ascii_lowercase()))
+}
+
+fn cmp((_, lhs): &(&ItemInNs, &ModPath), (_, rhs): &(&ItemInNs, &ModPath)) -> Ordering {
+    let lhs_chars = fst_path(lhs);
+    let rhs_chars = fst_path(rhs);
+    lhs_chars.cmp(rhs_chars)
+}
+
+#[derive(Debug)]
+pub struct Query {
+    query: String,
+    anchor_end: bool,
+}
+
+impl Query {
+    pub fn new(query: impl AsRef<str>) -> Self {
+        Self { query: query.as_ref().to_lowercase(), anchor_end: false }
+    }
+
+    /// Only returns items whose paths end with the (case-insensitive) query string as their last
+    /// segment.
+    pub fn anchor_end(self) -> Self {
+        Self { anchor_end: true, ..self }
+    }
+}
+
+/// Searches dependencies of `krate` for an importable path matching `query`.
+///
+/// This returns all items that could be imported from within `krate`, excluding paths inside
+/// `krate` itself.
+pub fn search_dependencies<'a>(
+    db: &'a dyn DefDatabase,
+    krate: CrateId,
+    query: Query,
+) -> Vec<ItemInNs> {
+    let _p = ra_prof::profile("import_map::global_search").detail(|| format!("{:?}", query));
+
+    let graph = db.crate_graph();
+    let import_maps: Vec<_> =
+        graph[krate].dependencies.iter().map(|dep| db.import_map(dep.crate_id)).collect();
+
+    let automaton = fst::automaton::Subsequence::new(&query.query);
+
+    let mut op = fst::map::OpBuilder::new();
+    for map in &import_maps {
+        op = op.add(map.fst.search(&automaton));
+    }
+
+    let mut stream = op.union();
+    let mut res = Vec::new();
+    while let Some((_, indexed_values)) = stream.next() {
+        for indexed_value in indexed_values {
+            let import_map = &import_maps[indexed_value.index];
+            let importables = &import_map.importables[indexed_value.value as usize..];
+
+            // Path shared by the importable items in this group.
+            let path = &import_map.map[&importables[0]];
+
+            if query.anchor_end {
+                // Last segment must match query.
+                let last = path.segments.last().unwrap().to_string();
+                if last.to_lowercase() != query.query {
+                    continue;
+                }
+            }
+
+            // Add the items from this `ModPath` group. Those are all subsequent items in
+            // `importables` whose paths match `path`.
+            res.extend(importables.iter().copied().take_while(|item| {
+                let item_path = &import_map.map[item];
+                fst_path(item_path).eq(fst_path(path))
+            }));
+        }
+    }
+
+    res
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::test_db::TestDB;
     use insta::assert_snapshot;
     use ra_db::fixture::WithFixture;
-    use ra_db::SourceDatabase;
+    use ra_db::{SourceDatabase, Upcast};
 
     fn import_map(ra_fixture: &str) -> String {
         let db = TestDB::with_files(ra_fixture);
@@ -142,6 +272,40 @@ mod tests {
             .collect();
 
         import_maps.join("\n")
+    }
+
+    fn search_dependencies_of(ra_fixture: &str, krate_name: &str, query: Query) -> String {
+        let db = TestDB::with_files(ra_fixture);
+        let crate_graph = db.crate_graph();
+        let krate = crate_graph
+            .iter()
+            .find(|krate| {
+                crate_graph[*krate].display_name.as_ref().map(|n| n.to_string())
+                    == Some(krate_name.to_string())
+            })
+            .unwrap();
+
+        search_dependencies(db.upcast(), krate, query)
+            .into_iter()
+            .filter_map(|item| {
+                let mark = match item {
+                    ItemInNs::Types(_) => "t",
+                    ItemInNs::Values(_) => "v",
+                    ItemInNs::Macros(_) => "m",
+                };
+                item.krate(db.upcast()).map(|krate| {
+                    let map = db.import_map(krate);
+                    let path = map.path_of(item).unwrap();
+                    format!(
+                        "{}::{} ({})",
+                        crate_graph[krate].display_name.as_ref().unwrap(),
+                        path,
+                        mark
+                    )
+                })
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
     }
 
     #[test]
@@ -326,6 +490,89 @@ mod tests {
 
         assert_snapshot!(map, @r###"
         lib:
+        "###);
+    }
+
+    #[test]
+    fn namespacing() {
+        let map = import_map(
+            r"
+            //- /lib.rs crate:lib
+            pub struct Thing;     // t + v
+            #[macro_export]
+            macro_rules! Thing {  // m
+                () => {};
+            }
+        ",
+        );
+
+        assert_snapshot!(map, @r###"
+        lib:
+        - Thing (m)
+        - Thing (t)
+        - Thing (v)
+        "###);
+
+        let map = import_map(
+            r"
+            //- /lib.rs crate:lib
+            pub mod Thing {}      // t
+            #[macro_export]
+            macro_rules! Thing {  // m
+                () => {};
+            }
+        ",
+        );
+
+        assert_snapshot!(map, @r###"
+        lib:
+        - Thing (m)
+        - Thing (t)
+        "###);
+    }
+
+    #[test]
+    fn search() {
+        let ra_fixture = r#"
+            //- /main.rs crate:main deps:dep
+            //- /dep.rs crate:dep deps:tdep
+            use tdep::fmt as fmt_dep;
+            pub mod fmt {
+                pub trait Display {
+                    fn fmt();
+                }
+            }
+            #[macro_export]
+            macro_rules! Fmt {
+                () => {};
+            }
+            pub struct Fmt;
+
+            pub fn format() {}
+            pub fn no() {}
+
+            //- /tdep.rs crate:tdep
+            pub mod fmt {
+                pub struct NotImportableFromMain;
+            }
+        "#;
+
+        let res = search_dependencies_of(ra_fixture, "main", Query::new("fmt"));
+        assert_snapshot!(res, @r###"
+        dep::Fmt (v)
+        dep::fmt (t)
+        dep::Fmt (t)
+        dep::Fmt (m)
+        dep::fmt::Display (t)
+        dep::format (v)
+        "###);
+
+        let res = search_dependencies_of(ra_fixture, "main", Query::new("fmt").anchor_end());
+        assert_snapshot!(res, @r###"
+        dep::Fmt (v)
+        dep::fmt (t)
+        dep::Fmt (t)
+        dep::Fmt (m)
         "###);
     }
 }
