@@ -2,7 +2,7 @@ use std::iter::once;
 
 use hir::{
     Adt, AsAssocItem, AssocItemContainer, FieldSource, HasSource, HirDisplay, ModuleDef,
-    ModuleSource, Semantics, Module, Documentation
+    ModuleSource, Semantics, Module, Documentation, AttrDef, Crate
 };
 use itertools::Itertools;
 use ra_db::SourceDatabase;
@@ -13,6 +13,7 @@ use ra_ide_db::{
 use ra_syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, TokenAtOffset};
 use ra_project_model::ProjectWorkspace;
 use ra_hir_def::{item_scope::ItemInNs, db::DefDatabase, ModuleDefId};
+use ra_tt::{Literal, Ident, Punct, TokenTree, Leaf, Subtree, SmolStr};
 
 use crate::{
     display::{
@@ -415,7 +416,7 @@ fn rewrite_links(db: &RootDatabase, markdown: &str, definition: &Definition, wor
                         // If contains ::               module-based link
                         Err(_) => {
                             let link_str = String::from_utf8(link.url.clone()).unwrap();
-                            let resolved = try_resolve_path(db, &mut doc_target_dirs.clone(), definition, &link_str)
+                            let resolved = try_resolve_path(db, &mut doc_target_dirs.clone(), definition, &link_str, UrlMode::Url)
                                 .or_else(|| try_resolve_intra(db, &mut doc_target_dirs.clone(), definition, &link_str));
 
                             if let Some(resolved) = resolved {
@@ -442,27 +443,77 @@ fn try_resolve_intra(db: &RootDatabase, doc_target_dirs: impl Iterator<Item = Pa
     None
 }
 
+enum UrlMode {
+    Url,
+    File
+}
+
 /// Try to resolve path to local documentation via path-based links (i.e. `../gateway/struct.Shard.html`)
-fn try_resolve_path(db: &RootDatabase, doc_target_dirs: impl Iterator<Item = PathBuf>, definition: &Definition, link: &str) -> Option<String> {
+fn try_resolve_path(db: &RootDatabase, doc_target_dirs: impl Iterator<Item = PathBuf>, definition: &Definition, link: &str, mode: UrlMode) -> Option<String> {
     let ns = if let Definition::ModuleDef(moddef) = definition {
         ItemInNs::Types(moddef.clone().into())
     } else {
         return None;
     };
-    let krate = definition.module(db)?.krate();
+    let module = definition.module(db)?;
+    let krate = module.krate();
     let import_map = db.import_map(krate.into());
-    let base = import_map.path_of(ns).unwrap();
-    let base = base.segments.iter().map(|name| format!("{}", name)).collect::<PathBuf>();
+    // TODO: It should be possible to fall back to not-necessarilly-public paths if we can't find a public one,
+    // then hope rustdoc was run locally with `--document-private-items`
+    let base = import_map.path_of(ns)?;
+    let mut base = once(format!("{}", krate.display_name(db)?)).chain(base.segments.iter().map(|name| format!("{}", name)));
 
-    doc_target_dirs
-        .map(|dir| dir.join(format!("{}", krate.display_name(db).unwrap())).join(base.join("..").join(link)))
-        .inspect(|path| eprintln!("candidate {}", path.display()))
-        .filter(|path| path.exists())
-        // slice out the UNC '\?\' added by canonicalize
-        .map(|path| format!("file:///{}", path.display()))
-        // \. is treated as an escape in vscode's markdown hover rendering
-        .map(|path_str| path_str.replace("\\", "/"))
-        .next()
+    match mode {
+        UrlMode::Url => {
+            let root = get_doc_url(db, &krate);
+            let mut base = base.join("/");
+            if let Some(url) = root {
+                eprintln!("root: {:?} base: {:?} link: {} root&base: {} root&base&link: {}", url, &base, link, url.join(&base).unwrap(), url.join(&base).unwrap().join(link).unwrap());
+                if link.starts_with("#") {
+                    base = base + "/"
+                };
+                Some(url.join(&base)?.join(link)?.into_string())
+            } else {None}
+        },
+        UrlMode::File => {
+            let base = base.collect::<PathBuf>();
+            doc_target_dirs
+                .map(|dir| dir.join(format!("{}", krate.display_name(db).unwrap())).join(base.join("..").join(link)))
+                .inspect(|path| eprintln!("candidate {}", path.display()))
+                .filter(|path| path.exists())
+                .map(|path| format!("file:///{}", path.display()))
+                // \. is treated as an escape in vscode's markdown hover rendering
+                .map(|path_str| path_str.replace("\\", "/"))
+                .next()
+        }
+    }
+}
+
+/// Try to get the root URL of the documentation of a crate.
+fn get_doc_url(db: &RootDatabase, krate: &Crate) -> Option<Url> {
+    // Look for #![doc(html_root_url = "https://docs.rs/...")]
+    let attrs = db.attrs(AttrDef::from(krate.root_module(db)?).into());
+    let doc_attr_q = attrs.by_key("doc");
+    let doc_url = if doc_attr_q.exists() {
+        doc_attr_q.tt_values().filter_map(|tt| match tt.token_trees.as_slice() {
+            &[
+                TokenTree::Leaf(Leaf::Ident(Ident{text: ref ident_text, ..})),
+                TokenTree::Leaf(Leaf::Punct(Punct{r#char: '=', ..})),
+                TokenTree::Leaf(Leaf::Literal(Literal{ref text, ..}))
+            ] if ident_text == "html_root_url" => Some(text),
+            _ => {
+                None
+            }
+        }).next()
+    } else {
+        None
+    };
+    eprintln!("url {:?}", doc_url);
+
+    // TODO: It should be possible to fallback to `format!("https://docs.rs/{}/*", crate_name, *)`
+    let url = doc_url.map(|s| s.trim_matches('"').to_owned() + "/").and_then(|s| Url::parse(&s).ok());
+    eprintln!("url {:?}", url);
+    url
 }
 
 fn iter_nodes<'a, F>(node: &'a comrak::nodes::AstNode<'a>, f: &F)
