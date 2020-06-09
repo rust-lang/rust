@@ -1,10 +1,10 @@
-# LLVM ICE-breakers
+# LLVM Notification group
 
-**Github Label:** [ICEBreaker-LLVM]
+**Github Label:** [A-LLVM]
 
-[ICEBreaker-LLVM]: https://github.com/rust-lang/rust/labels/ICEBreaker-LLVM
+[A-LLVM]: https://github.com/rust-lang/rust/labels/A-LLVM
 
-The "LLVM ICE-breakers" are focused on bugs that center around LLVM.
+The "LLVM Notification Group" are focused on bugs that center around LLVM.
 These bugs often arise because of LLVM optimizations gone awry, or as
 the result of an LLVM upgrade. The goal here is:
 
@@ -12,6 +12,9 @@ the result of an LLVM upgrade. The goal here is:
   or LLVM misoptimizing;
 - if the former, to fix our IR;
 - if the latter, to try and file a bug on LLVM (or identify an existing bug).
+
+The group may also be asked to weigh in on other sorts of LLVM-focused
+questions.
 
 ## Helpful tips and options
 
