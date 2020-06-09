@@ -207,6 +207,7 @@ Usage:
 
 Common options:
     -h, --help               Print this message
+        --rustc              Pass all args to rustc
     -V, --version            Print version info and exit
 
 Other options are the same as `cargo check`.
