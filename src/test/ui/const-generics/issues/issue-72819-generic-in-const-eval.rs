@@ -1,3 +1,6 @@
+// Regression test for #72819: ICE due to failure in resolving the const generic in `Arr`'s type
+// bounds.
+
 #![feature(const_generics)]
 #![allow(incomplete_features)]
 struct Arr<const N: usize>
