@@ -3,11 +3,11 @@ use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
-    def, BinOpKind, BindingAnnotation, Body, Expr, ExprKind, FnDecl, HirId, Mutability, PatKind, Stmt, StmtKind, Ty,
-    TyKind, UnOp,
+    self as hir, def, BinOpKind, BindingAnnotation, Body, Expr, ExprKind, FnDecl, HirId, Mutability, PatKind, Stmt,
+    StmtKind, TyKind, UnOp,
 };
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty;
+use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::{ExpnKind, Span};
@@ -571,6 +571,15 @@ fn is_array(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
 }
 
 fn check_to_owned(cx: &LateContext<'_, '_>, expr: &Expr<'_>, other: &Expr<'_>) {
+    fn symmetric_partial_eq<'tcx>(cx: &LateContext<'_, 'tcx>, lhs: Ty<'tcx>, rhs: Ty<'tcx>) -> bool {
+        if let Some(trait_def_id) = cx.tcx.lang_items().eq_trait() {
+            return implements_trait(cx, lhs, trait_def_id, &[rhs.into()])
+                && implements_trait(cx, rhs, trait_def_id, &[lhs.into()]);
+        }
+
+        false
+    }
+
     let (arg_ty, snip) = match expr.kind {
         ExprKind::MethodCall(.., ref args, _) if args.len() == 1 => {
             if match_trait_method(cx, expr, &paths::TO_STRING) || match_trait_method(cx, expr, &paths::TO_OWNED) {
@@ -594,18 +603,14 @@ fn check_to_owned(cx: &LateContext<'_, '_>, expr: &Expr<'_>, other: &Expr<'_>) {
     };
 
     let other_ty = cx.tables.expr_ty_adjusted(other);
-    let partial_eq_trait_id = match cx.tcx.lang_items().eq_trait() {
-        Some(id) => id,
-        None => return,
-    };
 
-    let deref_arg_impl_partial_eq_other = arg_ty.builtin_deref(true).map_or(false, |tam| {
-        implements_trait(cx, tam.ty, partial_eq_trait_id, &[other_ty.into()])
-    });
-    let arg_impl_partial_eq_deref_other = other_ty.builtin_deref(true).map_or(false, |tam| {
-        implements_trait(cx, arg_ty, partial_eq_trait_id, &[tam.ty.into()])
-    });
-    let arg_impl_partial_eq_other = implements_trait(cx, arg_ty, partial_eq_trait_id, &[other_ty.into()]);
+    let deref_arg_impl_partial_eq_other = arg_ty
+        .builtin_deref(true)
+        .map_or(false, |tam| symmetric_partial_eq(cx, tam.ty, other_ty));
+    let arg_impl_partial_eq_deref_other = other_ty
+        .builtin_deref(true)
+        .map_or(false, |tam| symmetric_partial_eq(cx, arg_ty, tam.ty));
+    let arg_impl_partial_eq_other = symmetric_partial_eq(cx, arg_ty, other_ty);
 
     if !deref_arg_impl_partial_eq_other && !arg_impl_partial_eq_deref_other && !arg_impl_partial_eq_other {
         return;
@@ -694,7 +699,7 @@ fn non_macro_local(cx: &LateContext<'_, '_>, res: def::Res) -> bool {
     }
 }
 
-fn check_cast(cx: &LateContext<'_, '_>, span: Span, e: &Expr<'_>, ty: &Ty<'_>) {
+fn check_cast(cx: &LateContext<'_, '_>, span: Span, e: &Expr<'_>, ty: &hir::Ty<'_>) {
     if_chain! {
         if let TyKind::Ptr(ref mut_ty) = ty.kind;
         if let ExprKind::Lit(ref lit) = e.kind;
