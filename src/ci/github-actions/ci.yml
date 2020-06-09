@@ -147,10 +147,6 @@ x--expand-yaml-anchors--remove:
         run: src/ci/scripts/install-msys2.sh
         <<: *step
 
-      - name: install MSYS2 packages
-        run: src/ci/scripts/install-msys2-packages.sh
-        <<: *step
-
       - name: install MinGW
         run: src/ci/scripts/install-mingw.sh
         <<: *step
