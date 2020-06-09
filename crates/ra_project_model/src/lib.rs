@@ -29,13 +29,7 @@ pub enum ProjectWorkspace {
     /// Project workspace was discovered by running `cargo metadata` and `rustc --print sysroot`.
     Cargo { cargo: CargoWorkspace, sysroot: Sysroot },
     /// Project workspace was manually specified using a `rust-project.json` file.
-    Json { project: JsonProject },
-}
-
-impl From<JsonProject> for ProjectWorkspace {
-    fn from(project: JsonProject) -> ProjectWorkspace {
-        ProjectWorkspace::Json { project }
-    }
+    Json { project: JsonProject, project_location: PathBuf },
 }
 
 /// `PackageRoot` describes a package root folder.
@@ -164,10 +158,15 @@ impl ProjectWorkspace {
                     format!("Failed to open json file {}", project_json.display())
                 })?;
                 let reader = BufReader::new(file);
+                let project_location = match project_json.parent() {
+                    Some(parent) => PathBuf::from(parent),
+                    None => PathBuf::new(),
+                };
                 ProjectWorkspace::Json {
                     project: from_reader(reader).with_context(|| {
                         format!("Failed to deserialize json file {}", project_json.display())
                     })?,
+                    project_location: project_location,
                 }
             }
             ProjectManifest::CargoToml(cargo_toml) => {
@@ -200,9 +199,11 @@ impl ProjectWorkspace {
     /// the root is a member of the current workspace
     pub fn to_roots(&self) -> Vec<PackageRoot> {
         match self {
-            ProjectWorkspace::Json { project } => {
-                project.roots.iter().map(|r| PackageRoot::new_member(r.path.clone())).collect()
-            }
+            ProjectWorkspace::Json { project, project_location } => project
+                .roots
+                .iter()
+                .map(|r| PackageRoot::new_member(project_location.join(&r.path)))
+                .collect(),
             ProjectWorkspace::Cargo { cargo, sysroot } => cargo
                 .packages()
                 .map(|pkg| PackageRoot {
@@ -219,7 +220,7 @@ impl ProjectWorkspace {
 
     pub fn proc_macro_dylib_paths(&self) -> Vec<PathBuf> {
         match self {
-            ProjectWorkspace::Json { project } => project
+            ProjectWorkspace::Json { project, .. } => project
                 .crates
                 .iter()
                 .filter_map(|krate| krate.proc_macro_dylib_path.as_ref())
@@ -235,7 +236,7 @@ impl ProjectWorkspace {
 
     pub fn n_packages(&self) -> usize {
         match self {
-            ProjectWorkspace::Json { project } => project.crates.len(),
+            ProjectWorkspace::Json { project, .. } => project.crates.len(),
             ProjectWorkspace::Cargo { cargo, sysroot } => {
                 cargo.packages().len() + sysroot.crates().len()
             }
@@ -251,13 +252,14 @@ impl ProjectWorkspace {
     ) -> CrateGraph {
         let mut crate_graph = CrateGraph::default();
         match self {
-            ProjectWorkspace::Json { project } => {
+            ProjectWorkspace::Json { project, project_location } => {
                 let crates: FxHashMap<_, _> = project
                     .crates
                     .iter()
                     .enumerate()
                     .filter_map(|(seq_index, krate)| {
-                        let file_id = load(&krate.root_module)?;
+                        let file_path = project_location.join(&krate.root_module);
+                        let file_id = load(&file_path)?;
                         let edition = match krate.edition {
                             json_project::Edition::Edition2015 => Edition::Edition2015,
                             json_project::Edition::Edition2018 => Edition::Edition2018,
@@ -540,7 +542,7 @@ impl ProjectWorkspace {
             ProjectWorkspace::Cargo { cargo, .. } => {
                 Some(cargo.workspace_root()).filter(|root| path.starts_with(root))
             }
-            ProjectWorkspace::Json { project: JsonProject { roots, .. } } => roots
+            ProjectWorkspace::Json { project: JsonProject { roots, .. }, .. } => roots
                 .iter()
                 .find(|root| path.starts_with(&root.path))
                 .map(|root| root.path.as_ref()),

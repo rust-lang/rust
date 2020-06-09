@@ -38,12 +38,13 @@ pub struct Config {
 
     pub with_sysroot: bool,
     pub linked_projects: Vec<LinkedProject>,
+    pub root_path: PathBuf,
 }
 
 #[derive(Debug, Clone)]
 pub enum LinkedProject {
     ProjectManifest(ProjectManifest),
-    JsonProject(JsonProject),
+    InlineJsonProject(JsonProject),
 }
 
 impl From<ProjectManifest> for LinkedProject {
@@ -54,7 +55,7 @@ impl From<ProjectManifest> for LinkedProject {
 
 impl From<JsonProject> for LinkedProject {
     fn from(v: JsonProject) -> Self {
-        LinkedProject::JsonProject(v)
+        LinkedProject::InlineJsonProject(v)
     }
 }
 
@@ -167,6 +168,7 @@ impl Default for Config {
             lens: LensConfig::default(),
             hover: HoverConfig::default(),
             linked_projects: Vec::new(),
+            root_path: PathBuf::new(),
         }
     }
 }
