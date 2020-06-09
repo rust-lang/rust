@@ -50,7 +50,7 @@ impl QuestionMark {
     fn check_is_none_and_early_return_none(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
         if_chain! {
             if let Some((if_expr, body, else_)) = higher::if_block(&expr);
-            if let ExprKind::MethodCall(segment, _, args) = &if_expr.kind;
+            if let ExprKind::MethodCall(segment, _, args, _) = &if_expr.kind;
             if segment.ident.name == sym!(is_none);
             if Self::expression_returns_none(cx, body);
             if let Some(subject) = args.get(0);

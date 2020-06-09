@@ -42,7 +42,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for OkIfLet {
         if_chain! { //begin checking variables
             if let ExprKind::Match(ref op, ref body, source) = expr.kind; //test if expr is a match
             if let MatchSource::IfLetDesugar { .. } = source; //test if it is an If Let
-            if let ExprKind::MethodCall(_, ok_span, ref result_types) = op.kind; //check is expr.ok() has type Result<T,E>.ok()
+            if let ExprKind::MethodCall(_, ok_span, ref result_types, _) = op.kind; //check is expr.ok() has type Result<T,E>.ok(, _)
             if let PatKind::TupleStruct(QPath::Resolved(_, ref x), ref y, _)  = body[0].pat.kind; //get operation
             if method_chain_args(op, &["ok"]).is_some(); //test to see if using ok() methoduse std::marker::Sized;
             if is_type_diagnostic_item(cx, cx.tables.expr_ty(&result_types[0]), sym!(result_type));

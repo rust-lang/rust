@@ -103,7 +103,7 @@ impl EarlyLintPass for Precedence {
         }
 
         if let ExprKind::Unary(UnOp::Neg, ref rhs) = expr.kind {
-            if let ExprKind::MethodCall(ref path_segment, ref args) = rhs.kind {
+            if let ExprKind::MethodCall(ref path_segment, ref args, _) = rhs.kind {
                 let path_segment_str = path_segment.ident.name.as_str();
                 if let Some(slf) = args.first() {
                     if let ExprKind::Lit(ref lit) = slf.kind {
