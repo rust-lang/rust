@@ -5,14 +5,14 @@
 
 use crate::infer::{InferCtxt, TyCtxtInferExt};
 use crate::traits::{
-    FulfillmentContext, Obligation, ObligationCause, SelectionContext, TraitEngine, Vtable,
+    FulfillmentContext, ImplSource, Obligation, ObligationCause, SelectionContext, TraitEngine,
 };
 use rustc_errors::ErrorReported;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, TyCtxt};
 
-/// Attempts to resolve an obligation to a vtable. The result is
-/// a shallow vtable resolution, meaning that we do not
+/// Attempts to resolve an obligation to a `ImplSource`. The result is
+/// a shallow `ImplSource` resolution, meaning that we do not
 /// (necessarily) resolve all nested obligations on the impl. Note
 /// that type check should guarantee to us that all nested
 /// obligations *could be* resolved if we wanted to.
@@ -20,7 +20,7 @@ use rustc_middle::ty::{self, TyCtxt};
 pub fn codegen_fulfill_obligation<'tcx>(
     ty: TyCtxt<'tcx>,
     (param_env, trait_ref): (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>),
-) -> Result<Vtable<'tcx, ()>, ErrorReported> {
+) -> Result<ImplSource<'tcx, ()>, ErrorReported> {
     // Remove any references to regions; this helps improve caching.
     let trait_ref = ty.erase_regions(&trait_ref);
 
@@ -69,14 +69,14 @@ pub fn codegen_fulfill_obligation<'tcx>(
         // all nested obligations. This is because they can inform the
         // inference of the impl's type parameters.
         let mut fulfill_cx = FulfillmentContext::new();
-        let vtable = selection.map(|predicate| {
+        let impl_source = selection.map(|predicate| {
             debug!("fulfill_obligation: register_predicate_obligation {:?}", predicate);
             fulfill_cx.register_predicate_obligation(&infcx, predicate);
         });
-        let vtable = drain_fulfillment_cx_or_panic(&infcx, &mut fulfill_cx, &vtable);
+        let impl_source = drain_fulfillment_cx_or_panic(&infcx, &mut fulfill_cx, &impl_source);
 
-        info!("Cache miss: {:?} => {:?}", trait_ref, vtable);
-        Ok(vtable)
+        info!("Cache miss: {:?} => {:?}", trait_ref, impl_source);
+        Ok(impl_source)
     })
 }
 

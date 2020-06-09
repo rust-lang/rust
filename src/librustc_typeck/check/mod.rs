@@ -31,9 +31,6 @@ can be broken down into several distinct phases:
   final assignments of the various region variables if there is some
   flexibility.
 
-- vtable: find and records the impls to use for each trait bound that
-  appears on a type parameter.
-
 - writeback: writes the final types within a function body, replacing
   type variables with their final inferred types.  These final types
   are written into the `tcx.node_types` table, which should *never* contain
@@ -4070,7 +4067,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             debug!("check_closures={}", check_closures);
 
             // More awful hacks: before we check argument types, try to do
-            // an "opportunistic" vtable resolution of any trait bounds on
+            // an "opportunistic" trait resolution of any trait bounds on
             // the call. This helps coercions.
             if check_closures {
                 self.select_obligations_where_possible(false, |errors| {

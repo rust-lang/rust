@@ -11,11 +11,11 @@ use super::PredicateObligation;
 use super::Selection;
 use super::SelectionContext;
 use super::SelectionError;
-use super::{Normalized, NormalizedTy, ProjectionCacheEntry, ProjectionCacheKey};
 use super::{
-    VtableClosureData, VtableDiscriminantKindData, VtableFnPointerData, VtableGeneratorData,
-    VtableImplData,
+    ImplSourceClosureData, ImplSourceDiscriminantKindData, ImplSourceFnPointerData,
+    ImplSourceGeneratorData, ImplSourceUserDefinedData,
 };
+use super::{Normalized, NormalizedTy, ProjectionCacheEntry, ProjectionCacheKey};
 
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
@@ -974,8 +974,8 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
     let poly_trait_ref = obligation_trait_ref.to_poly_trait_ref();
     let trait_obligation = obligation.with(poly_trait_ref.to_poly_trait_predicate());
     let _ = selcx.infcx().commit_if_ok(|_| {
-        let vtable = match selcx.select(&trait_obligation) {
-            Ok(Some(vtable)) => vtable,
+        let impl_source = match selcx.select(&trait_obligation) {
+            Ok(Some(impl_source)) => impl_source,
             Ok(None) => {
                 candidate_set.mark_ambiguous();
                 return Err(());
@@ -987,16 +987,16 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
             }
         };
 
-        let eligible = match &vtable {
-            super::VtableClosure(_)
-            | super::VtableGenerator(_)
-            | super::VtableFnPointer(_)
-            | super::VtableObject(_)
-            | super::VtableTraitAlias(_) => {
-                debug!("assemble_candidates_from_impls: vtable={:?}", vtable);
+        let eligible = match &impl_source {
+            super::ImplSourceClosure(_)
+            | super::ImplSourceGenerator(_)
+            | super::ImplSourceFnPointer(_)
+            | super::ImplSourceObject(_)
+            | super::ImplSourceTraitAlias(_) => {
+                debug!("assemble_candidates_from_impls: impl_source={:?}", impl_source);
                 true
             }
-            super::VtableImpl(impl_data) => {
+            super::ImplSourceUserDefined(impl_data) => {
                 // We have to be careful when projecting out of an
                 // impl because of specialization. If we are not in
                 // codegen (i.e., projection mode is not "any"), and the
@@ -1048,7 +1048,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                     }
                 }
             }
-            super::VtableDiscriminantKind(..) => {
+            super::ImplSourceDiscriminantKind(..) => {
                 // While `DiscriminantKind` is automatically implemented for every type,
                 // the concrete discriminant may not be known yet.
                 //
@@ -1088,7 +1088,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                     | ty::Error => false,
                 }
             }
-            super::VtableParam(..) => {
+            super::ImplSourceParam(..) => {
                 // This case tell us nothing about the value of an
                 // associated type. Consider:
                 //
@@ -1116,18 +1116,18 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                 // in `assemble_candidates_from_param_env`.
                 false
             }
-            super::VtableAutoImpl(..) | super::VtableBuiltin(..) => {
+            super::ImplSourceAutoImpl(..) | super::ImplSourceBuiltin(..) => {
                 // These traits have no associated types.
                 span_bug!(
                     obligation.cause.span,
                     "Cannot project an associated type from `{:?}`",
-                    vtable
+                    impl_source
                 );
             }
         };
 
         if eligible {
-            if candidate_set.push_candidate(ProjectionTyCandidate::Select(vtable)) {
+            if candidate_set.push_candidate(ProjectionTyCandidate::Select(impl_source)) {
                 Ok(())
             } else {
                 Err(())
@@ -1152,8 +1152,8 @@ fn confirm_candidate<'cx, 'tcx>(
             confirm_param_env_candidate(selcx, obligation, poly_projection)
         }
 
-        ProjectionTyCandidate::Select(vtable) => {
-            confirm_select_candidate(selcx, obligation, obligation_trait_ref, vtable)
+        ProjectionTyCandidate::Select(impl_source) => {
+            confirm_select_candidate(selcx, obligation, obligation_trait_ref, impl_source)
         }
     }
 }
@@ -1162,26 +1162,29 @@ fn confirm_select_candidate<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
     obligation_trait_ref: &ty::TraitRef<'tcx>,
-    vtable: Selection<'tcx>,
+    impl_source: Selection<'tcx>,
 ) -> Progress<'tcx> {
-    match vtable {
-        super::VtableImpl(data) => confirm_impl_candidate(selcx, obligation, data),
-        super::VtableGenerator(data) => confirm_generator_candidate(selcx, obligation, data),
-        super::VtableClosure(data) => confirm_closure_candidate(selcx, obligation, data),
-        super::VtableFnPointer(data) => confirm_fn_pointer_candidate(selcx, obligation, data),
-        super::VtableDiscriminantKind(data) => {
+    match impl_source {
+        super::ImplSourceUserDefined(data) => confirm_impl_candidate(selcx, obligation, data),
+        super::ImplSourceGenerator(data) => confirm_generator_candidate(selcx, obligation, data),
+        super::ImplSourceClosure(data) => confirm_closure_candidate(selcx, obligation, data),
+        super::ImplSourceFnPointer(data) => confirm_fn_pointer_candidate(selcx, obligation, data),
+        super::ImplSourceDiscriminantKind(data) => {
             confirm_discriminant_kind_candidate(selcx, obligation, data)
         }
-        super::VtableObject(_) => confirm_object_candidate(selcx, obligation, obligation_trait_ref),
-        super::VtableAutoImpl(..)
-        | super::VtableParam(..)
-        | super::VtableBuiltin(..)
-        | super::VtableTraitAlias(..) => {
-            // we don't create Select candidates with this kind of resolution
+        super::ImplSourceObject(_) => {
+            confirm_object_candidate(selcx, obligation, obligation_trait_ref)
+        }
+        super::ImplSourceAutoImpl(..)
+        | super::ImplSourceParam(..)
+        | super::ImplSourceBuiltin(..)
+        | super::ImplSourceTraitAlias(..) =>
+        // we don't create Select candidates with this kind of resolution
+        {
             span_bug!(
                 obligation.cause.span,
                 "Cannot project an associated type from `{:?}`",
-                vtable
+                impl_source
             )
         }
     }
@@ -1255,9 +1258,9 @@ fn confirm_object_candidate<'cx, 'tcx>(
 fn confirm_generator_candidate<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
-    vtable: VtableGeneratorData<'tcx, PredicateObligation<'tcx>>,
+    impl_source: ImplSourceGeneratorData<'tcx, PredicateObligation<'tcx>>,
 ) -> Progress<'tcx> {
-    let gen_sig = vtable.substs.as_generator().poly_sig();
+    let gen_sig = impl_source.substs.as_generator().poly_sig();
     let Normalized { value: gen_sig, obligations } = normalize_with_depth(
         selcx,
         obligation.param_env,
@@ -1301,14 +1304,14 @@ fn confirm_generator_candidate<'cx, 'tcx>(
     });
 
     confirm_param_env_candidate(selcx, obligation, predicate)
-        .with_addl_obligations(vtable.nested)
+        .with_addl_obligations(impl_source.nested)
         .with_addl_obligations(obligations)
 }
 
 fn confirm_discriminant_kind_candidate<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
-    _: VtableDiscriminantKindData,
+    _: ImplSourceDiscriminantKindData,
 ) -> Progress<'tcx> {
     let tcx = selcx.tcx();
 
@@ -1339,9 +1342,9 @@ fn confirm_discriminant_kind_candidate<'cx, 'tcx>(
 fn confirm_fn_pointer_candidate<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
-    fn_pointer_vtable: VtableFnPointerData<'tcx, PredicateObligation<'tcx>>,
+    fn_pointer_impl_source: ImplSourceFnPointerData<'tcx, PredicateObligation<'tcx>>,
 ) -> Progress<'tcx> {
-    let fn_type = selcx.infcx().shallow_resolve(fn_pointer_vtable.fn_ty);
+    let fn_type = selcx.infcx().shallow_resolve(fn_pointer_impl_source.fn_ty);
     let sig = fn_type.fn_sig(selcx.tcx());
     let Normalized { value: sig, obligations } = normalize_with_depth(
         selcx,
@@ -1352,16 +1355,16 @@ fn confirm_fn_pointer_candidate<'cx, 'tcx>(
     );
 
     confirm_callable_candidate(selcx, obligation, sig, util::TupleArgumentsFlag::Yes)
-        .with_addl_obligations(fn_pointer_vtable.nested)
+        .with_addl_obligations(fn_pointer_impl_source.nested)
         .with_addl_obligations(obligations)
 }
 
 fn confirm_closure_candidate<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
-    vtable: VtableClosureData<'tcx, PredicateObligation<'tcx>>,
+    impl_source: ImplSourceClosureData<'tcx, PredicateObligation<'tcx>>,
 ) -> Progress<'tcx> {
-    let closure_sig = vtable.substs.as_closure().sig();
+    let closure_sig = impl_source.substs.as_closure().sig();
     let Normalized { value: closure_sig, obligations } = normalize_with_depth(
         selcx,
         obligation.param_env,
@@ -1376,7 +1379,7 @@ fn confirm_closure_candidate<'cx, 'tcx>(
     );
 
     confirm_callable_candidate(selcx, obligation, closure_sig, util::TupleArgumentsFlag::No)
-        .with_addl_obligations(vtable.nested)
+        .with_addl_obligations(impl_source.nested)
         .with_addl_obligations(obligations)
 }
 
@@ -1446,11 +1449,11 @@ fn confirm_param_env_candidate<'cx, 'tcx>(
 fn confirm_impl_candidate<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
-    impl_vtable: VtableImplData<'tcx, PredicateObligation<'tcx>>,
+    impl_impl_source: ImplSourceUserDefinedData<'tcx, PredicateObligation<'tcx>>,
 ) -> Progress<'tcx> {
     let tcx = selcx.tcx();
 
-    let VtableImplData { impl_def_id, substs, nested } = impl_vtable;
+    let ImplSourceUserDefinedData { impl_def_id, substs, nested } = impl_impl_source;
     let assoc_item_id = obligation.predicate.item_def_id;
     let trait_def_id = tcx.trait_id_of_impl(impl_def_id).unwrap();
 

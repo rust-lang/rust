@@ -334,12 +334,12 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                 }
 
                 match self.selcx.select(&trait_obligation) {
-                    Ok(Some(vtable)) => {
+                    Ok(Some(impl_source)) => {
                         debug!(
                             "selecting trait `{:?}` at depth {} yielded Ok(Some)",
                             data, obligation.recursion_depth
                         );
-                        ProcessResult::Changed(mk_pending(vtable.nested_obligations()))
+                        ProcessResult::Changed(mk_pending(impl_source.nested_obligations()))
                     }
                     Ok(None) => {
                         debug!(

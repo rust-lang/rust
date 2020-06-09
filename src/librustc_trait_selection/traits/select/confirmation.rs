@@ -24,18 +24,19 @@ use crate::traits::OutputTypeParameterMismatch;
 use crate::traits::Selection;
 use crate::traits::TraitNotObjectSafe;
 use crate::traits::{BuiltinDerivedObligation, ImplDerivedObligation};
+use crate::traits::{
+    ImplSourceAutoImpl, ImplSourceBuiltin, ImplSourceClosure, ImplSourceDiscriminantKind,
+    ImplSourceFnPointer, ImplSourceGenerator, ImplSourceObject, ImplSourceParam,
+    ImplSourceTraitAlias, ImplSourceUserDefined,
+};
+use crate::traits::{
+    ImplSourceAutoImplData, ImplSourceBuiltinData, ImplSourceClosureData,
+    ImplSourceDiscriminantKindData, ImplSourceFnPointerData, ImplSourceGeneratorData,
+    ImplSourceObjectData, ImplSourceTraitAliasData, ImplSourceUserDefinedData,
+};
 use crate::traits::{ObjectCastObligation, PredicateObligation, TraitObligation};
 use crate::traits::{Obligation, ObligationCause};
 use crate::traits::{SelectionError, Unimplemented};
-use crate::traits::{
-    VtableAutoImpl, VtableBuiltin, VtableClosure, VtableDiscriminantKind, VtableFnPointer,
-    VtableGenerator, VtableImpl, VtableObject, VtableParam, VtableTraitAlias,
-};
-use crate::traits::{
-    VtableAutoImplData, VtableBuiltinData, VtableClosureData, VtableDiscriminantKindData,
-    VtableFnPointerData, VtableGeneratorData, VtableImplData, VtableObjectData,
-    VtableTraitAliasData,
-};
 
 use super::BuiltinImplConditions;
 use super::SelectionCandidate::{self, *};
@@ -54,65 +55,67 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         match candidate {
             BuiltinCandidate { has_nested } => {
                 let data = self.confirm_builtin_candidate(obligation, has_nested);
-                Ok(VtableBuiltin(data))
+                Ok(ImplSourceBuiltin(data))
             }
 
             ParamCandidate(param) => {
                 let obligations = self.confirm_param_candidate(obligation, param);
-                Ok(VtableParam(obligations))
+                Ok(ImplSourceParam(obligations))
             }
 
             ImplCandidate(impl_def_id) => {
-                Ok(VtableImpl(self.confirm_impl_candidate(obligation, impl_def_id)))
+                Ok(ImplSourceUserDefined(self.confirm_impl_candidate(obligation, impl_def_id)))
             }
 
             AutoImplCandidate(trait_def_id) => {
                 let data = self.confirm_auto_impl_candidate(obligation, trait_def_id);
-                Ok(VtableAutoImpl(data))
+                Ok(ImplSourceAutoImpl(data))
             }
 
             ProjectionCandidate => {
                 self.confirm_projection_candidate(obligation);
-                Ok(VtableParam(Vec::new()))
+                Ok(ImplSourceParam(Vec::new()))
             }
 
             ClosureCandidate => {
                 let vtable_closure = self.confirm_closure_candidate(obligation)?;
-                Ok(VtableClosure(vtable_closure))
+                Ok(ImplSourceClosure(vtable_closure))
             }
 
             GeneratorCandidate => {
                 let vtable_generator = self.confirm_generator_candidate(obligation)?;
-                Ok(VtableGenerator(vtable_generator))
+                Ok(ImplSourceGenerator(vtable_generator))
             }
 
             FnPointerCandidate => {
                 let data = self.confirm_fn_pointer_candidate(obligation)?;
-                Ok(VtableFnPointer(data))
+                Ok(ImplSourceFnPointer(data))
             }
 
-            DiscriminantKindCandidate => Ok(VtableDiscriminantKind(VtableDiscriminantKindData)),
+            DiscriminantKindCandidate => {
+                Ok(ImplSourceDiscriminantKind(ImplSourceDiscriminantKindData))
+            }
 
             TraitAliasCandidate(alias_def_id) => {
                 let data = self.confirm_trait_alias_candidate(obligation, alias_def_id);
-                Ok(VtableTraitAlias(data))
+                Ok(ImplSourceTraitAlias(data))
             }
 
             ObjectCandidate => {
                 let data = self.confirm_object_candidate(obligation);
-                Ok(VtableObject(data))
+                Ok(ImplSourceObject(data))
             }
 
             BuiltinObjectCandidate => {
                 // This indicates something like `Trait + Send: Send`. In this case, we know that
                 // this holds because that's what the object type is telling us, and there's really
                 // no additional obligations to prove and no types in particular to unify, etc.
-                Ok(VtableParam(Vec::new()))
+                Ok(ImplSourceParam(Vec::new()))
             }
 
             BuiltinUnsizeCandidate => {
                 let data = self.confirm_builtin_unsize_candidate(obligation)?;
-                Ok(VtableBuiltin(data))
+                Ok(ImplSourceBuiltin(data))
             }
         }
     }
@@ -152,7 +155,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &TraitObligation<'tcx>,
         has_nested: bool,
-    ) -> VtableBuiltinData<PredicateObligation<'tcx>> {
+    ) -> ImplSourceBuiltinData<PredicateObligation<'tcx>> {
         debug!("confirm_builtin_candidate({:?}, {:?})", obligation, has_nested);
 
         let lang_items = self.tcx().lang_items();
@@ -188,7 +191,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         debug!("confirm_builtin_candidate: obligations={:?}", obligations);
 
-        VtableBuiltinData { nested: obligations }
+        ImplSourceBuiltinData { nested: obligations }
     }
 
     /// This handles the case where a `auto trait Foo` impl is being used.
@@ -200,7 +203,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &TraitObligation<'tcx>,
         trait_def_id: DefId,
-    ) -> VtableAutoImplData<PredicateObligation<'tcx>> {
+    ) -> ImplSourceAutoImplData<PredicateObligation<'tcx>> {
         debug!("confirm_auto_impl_candidate({:?}, {:?})", obligation, trait_def_id);
 
         let types = obligation.predicate.map_bound(|inner| {
@@ -216,7 +219,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &TraitObligation<'tcx>,
         trait_def_id: DefId,
         nested: ty::Binder<Vec<Ty<'tcx>>>,
-    ) -> VtableAutoImplData<PredicateObligation<'tcx>> {
+    ) -> ImplSourceAutoImplData<PredicateObligation<'tcx>> {
         debug!("vtable_auto_impl: nested={:?}", nested);
         ensure_sufficient_stack(|| {
             let cause = obligation.derived_cause(BuiltinDerivedObligation);
@@ -249,7 +252,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             debug!("vtable_auto_impl: obligations={:?}", obligations);
 
-            VtableAutoImplData { trait_def_id, nested: obligations }
+            ImplSourceAutoImplData { trait_def_id, nested: obligations }
         })
     }
 
@@ -257,7 +260,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &TraitObligation<'tcx>,
         impl_def_id: DefId,
-    ) -> VtableImplData<'tcx, PredicateObligation<'tcx>> {
+    ) -> ImplSourceUserDefinedData<'tcx, PredicateObligation<'tcx>> {
         debug!("confirm_impl_candidate({:?},{:?})", obligation, impl_def_id);
 
         // First, create the substitutions by matching the impl again,
@@ -285,7 +288,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         cause: ObligationCause<'tcx>,
         recursion_depth: usize,
         param_env: ty::ParamEnv<'tcx>,
-    ) -> VtableImplData<'tcx, PredicateObligation<'tcx>> {
+    ) -> ImplSourceUserDefinedData<'tcx, PredicateObligation<'tcx>> {
         debug!(
             "vtable_impl(impl_def_id={:?}, substs={:?}, recursion_depth={})",
             impl_def_id, substs, recursion_depth,
@@ -311,13 +314,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // e.g., `impl<U: Tr, V: Iterator<Item=U>> Foo<<U as Tr>::T> for V`
         impl_obligations.append(&mut substs.obligations);
 
-        VtableImplData { impl_def_id, substs: substs.value, nested: impl_obligations }
+        ImplSourceUserDefinedData { impl_def_id, substs: substs.value, nested: impl_obligations }
     }
 
     fn confirm_object_candidate(
         &mut self,
         obligation: &TraitObligation<'tcx>,
-    ) -> VtableObjectData<'tcx, PredicateObligation<'tcx>> {
+    ) -> ImplSourceObjectData<'tcx, PredicateObligation<'tcx>> {
         debug!("confirm_object_candidate({:?})", obligation);
 
         // FIXME(nmatsakis) skipping binder here seems wrong -- we should
@@ -366,13 +369,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             vtable_base = nonmatching.map(|t| super::util::count_own_vtable_entries(tcx, t)).sum();
         }
 
-        VtableObjectData { upcast_trait_ref: upcast_trait_ref.unwrap(), vtable_base, nested }
+        ImplSourceObjectData { upcast_trait_ref: upcast_trait_ref.unwrap(), vtable_base, nested }
     }
 
     fn confirm_fn_pointer_candidate(
         &mut self,
         obligation: &TraitObligation<'tcx>,
-    ) -> Result<VtableFnPointerData<'tcx, PredicateObligation<'tcx>>, SelectionError<'tcx>> {
+    ) -> Result<ImplSourceFnPointerData<'tcx, PredicateObligation<'tcx>>, SelectionError<'tcx>>
+    {
         debug!("confirm_fn_pointer_candidate({:?})", obligation);
 
         // Okay to skip binder; it is reintroduced below.
@@ -403,14 +407,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             obligation.predicate.to_poly_trait_ref(),
             trait_ref,
         )?;
-        Ok(VtableFnPointerData { fn_ty: self_ty, nested: obligations })
+        Ok(ImplSourceFnPointerData { fn_ty: self_ty, nested: obligations })
     }
 
     fn confirm_trait_alias_candidate(
         &mut self,
         obligation: &TraitObligation<'tcx>,
         alias_def_id: DefId,
-    ) -> VtableTraitAliasData<'tcx, PredicateObligation<'tcx>> {
+    ) -> ImplSourceTraitAliasData<'tcx, PredicateObligation<'tcx>> {
         debug!("confirm_trait_alias_candidate({:?}, {:?})", obligation, alias_def_id);
 
         self.infcx.commit_unconditionally(|_| {
@@ -433,14 +437,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 trait_def_id, trait_obligations
             );
 
-            VtableTraitAliasData { alias_def_id, substs, nested: trait_obligations }
+            ImplSourceTraitAliasData { alias_def_id, substs, nested: trait_obligations }
         })
     }
 
     fn confirm_generator_candidate(
         &mut self,
         obligation: &TraitObligation<'tcx>,
-    ) -> Result<VtableGeneratorData<'tcx, PredicateObligation<'tcx>>, SelectionError<'tcx>> {
+    ) -> Result<ImplSourceGeneratorData<'tcx, PredicateObligation<'tcx>>, SelectionError<'tcx>>
+    {
         // Okay to skip binder because the substs on generator types never
         // touch bound regions, they just capture the in-scope
         // type/region parameters.
@@ -476,13 +481,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             trait_ref,
         )?);
 
-        Ok(VtableGeneratorData { generator_def_id, substs, nested: obligations })
+        Ok(ImplSourceGeneratorData { generator_def_id, substs, nested: obligations })
     }
 
     fn confirm_closure_candidate(
         &mut self,
         obligation: &TraitObligation<'tcx>,
-    ) -> Result<VtableClosureData<'tcx, PredicateObligation<'tcx>>, SelectionError<'tcx>> {
+    ) -> Result<ImplSourceClosureData<'tcx, PredicateObligation<'tcx>>, SelectionError<'tcx>> {
         debug!("confirm_closure_candidate({:?})", obligation);
 
         let kind = self
@@ -533,7 +538,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ));
         }
 
-        Ok(VtableClosureData { closure_def_id, substs, nested: obligations })
+        Ok(ImplSourceClosureData { closure_def_id, substs, nested: obligations })
     }
 
     /// In the case of closure types and fn pointers,
@@ -578,7 +583,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn confirm_builtin_unsize_candidate(
         &mut self,
         obligation: &TraitObligation<'tcx>,
-    ) -> Result<VtableBuiltinData<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
+    ) -> Result<ImplSourceBuiltinData<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
         let tcx = self.tcx();
 
         // `assemble_candidates_for_unsizing` should ensure there are no late-bound
@@ -815,6 +820,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             _ => bug!(),
         };
 
-        Ok(VtableBuiltinData { nested })
+        Ok(ImplSourceBuiltinData { nested })
     }
 }

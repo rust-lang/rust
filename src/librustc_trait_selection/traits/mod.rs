@@ -38,9 +38,9 @@ use rustc_span::Span;
 use std::fmt::Debug;
 
 pub use self::FulfillmentErrorCode::*;
+pub use self::ImplSource::*;
 pub use self::ObligationCauseCode::*;
 pub use self::SelectionError::*;
-pub use self::Vtable::*;
 
 pub use self::coherence::{add_placeholder_note, orphan_check, overlapping_impls};
 pub use self::coherence::{OrphanCheckErr, OverlapResult};

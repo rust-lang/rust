@@ -14,9 +14,9 @@ use rustc_middle::ty::{self, Const, Ty};
 use rustc_span::Span;
 
 pub use self::FulfillmentErrorCode::*;
+pub use self::ImplSource::*;
 pub use self::ObligationCauseCode::*;
 pub use self::SelectionError::*;
-pub use self::Vtable::*;
 
 pub use self::engine::{TraitEngine, TraitEngineExt};
 pub use self::project::MismatchedProjectionTypes;
@@ -30,10 +30,10 @@ crate use self::util::elaborate_predicates;
 pub use rustc_middle::traits::*;
 
 /// An `Obligation` represents some trait reference (e.g., `int: Eq`) for
-/// which the vtable must be found. The process of finding a vtable is
+/// which the "impl_source" must be found. The process of finding a "impl_source" is
 /// called "resolving" the `Obligation`. This process consists of
 /// either identifying an `impl` (e.g., `impl Eq for int`) that
-/// provides the required vtable, or else finding a bound that is in
+/// satisfies the obligation, or else finding a bound that is in
 /// scope. The eventual result is usually a `Selection` (defined below).
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Obligation<'tcx, T> {
@@ -65,7 +65,7 @@ pub type Obligations<'tcx, O> = Vec<Obligation<'tcx, O>>;
 pub type PredicateObligations<'tcx> = Vec<PredicateObligation<'tcx>>;
 pub type TraitObligations<'tcx> = Vec<TraitObligation<'tcx>>;
 
-pub type Selection<'tcx> = Vtable<'tcx, PredicateObligation<'tcx>>;
+pub type Selection<'tcx> = ImplSource<'tcx, PredicateObligation<'tcx>>;
 
 pub struct FulfillmentError<'tcx> {
     pub obligation: PredicateObligation<'tcx>,

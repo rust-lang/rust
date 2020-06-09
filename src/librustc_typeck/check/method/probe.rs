@@ -1303,7 +1303,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     .at(&ObligationCause::dummy(), self.param_env)
                     .sup(candidate.xform_self_ty, self_ty);
                 match self.select_trait_candidate(trait_ref) {
-                    Ok(Some(traits::Vtable::VtableImpl(ref impl_data))) => {
+                    Ok(Some(traits::ImplSource::ImplSourceUserDefined(ref impl_data))) => {
                         // If only a single impl matches, make the error message point
                         // to that impl.
                         ImplSource(impl_data.impl_def_id)
@@ -1384,10 +1384,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         if self.probe(|_| {
                             match self.select_trait_candidate(trait_ref) {
                                 Err(_) => return true,
-                                Ok(Some(vtable))
-                                    if !vtable.borrow_nested_obligations().is_empty() =>
+                                Ok(Some(impl_source))
+                                    if !impl_source.borrow_nested_obligations().is_empty() =>
                                 {
-                                    for obligation in vtable.borrow_nested_obligations() {
+                                    for obligation in impl_source.borrow_nested_obligations() {
                                         // Determine exactly which obligation wasn't met, so
                                         // that we can give more context in the error.
                                         if !self.predicate_may_hold(&obligation) {

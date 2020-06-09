@@ -297,7 +297,7 @@ pub fn count_own_vtable_entries(tcx: TyCtxt<'tcx>, trait_ref: ty::PolyTraitRef<'
 /// `object.upcast_trait_ref`) within the vtable for `object`.
 pub fn get_vtable_index_of_object_method<N>(
     tcx: TyCtxt<'tcx>,
-    object: &super::VtableObjectData<'tcx, N>,
+    object: &super::ImplSourceObjectData<'tcx, N>,
     method_def_id: DefId,
 ) -> usize {
     // Count number of methods preceding the one we are selecting and

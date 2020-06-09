@@ -96,7 +96,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             ));
 
             match result {
-                Ok(Some(Vtable::VtableImpl(_))) => {
+                Ok(Some(ImplSource::ImplSourceUserDefined(_))) => {
                     debug!(
                         "find_auto_trait_generics({:?}): \
                          manual impl found, bailing out",
@@ -304,11 +304,15 @@ impl AutoTraitFinder<'tcx> {
             let result = select.select(&obligation);
 
             match &result {
-                &Ok(Some(ref vtable)) => {
+                &Ok(Some(ref impl_source)) => {
                     // If we see an explicit negative impl (e.g., `impl !Send for MyStruct`),
                     // we immediately bail out, since it's impossible for us to continue.
 
-                    if let Vtable::VtableImpl(VtableImplData { impl_def_id, .. }) = vtable {
+                    if let ImplSource::ImplSourceUserDefined(ImplSourceUserDefinedData {
+                        impl_def_id,
+                        ..
+                    }) = impl_source
+                    {
                         // Blame 'tidy' for the weird bracket placement.
                         if infcx.tcx.impl_polarity(*impl_def_id) == ty::ImplPolarity::Negative {
                             debug!(
@@ -320,7 +324,7 @@ impl AutoTraitFinder<'tcx> {
                         }
                     }
 
-                    let obligations = vtable.clone().nested_obligations().into_iter();
+                    let obligations = impl_source.clone().nested_obligations().into_iter();
 
                     if !self.evaluate_nested_obligations(
                         ty,
