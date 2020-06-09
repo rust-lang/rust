@@ -88,7 +88,7 @@ impl QuestionMark {
                         replacement_str,
                         applicability,
                     )
-               }
+                }
             }
         }
     }

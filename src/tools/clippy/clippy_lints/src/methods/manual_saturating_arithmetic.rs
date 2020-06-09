@@ -57,7 +57,7 @@ pub fn lint(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, args: &[&[hir::Expr<
         );
     } else {
         match (mm, arith) {
-            (MinMax::Max, "add") | (MinMax::Max, "mul") | (MinMax::Min, "sub") => (),
+            (MinMax::Max, "add" | "mul") | (MinMax::Min, "sub") => (),
             _ => return,
         }
 

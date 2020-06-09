@@ -1,6 +1,8 @@
 #[macro_use]
 pub mod sym;
 
+#[allow(clippy::module_name_repetitions)]
+pub mod ast_utils;
 pub mod attrs;
 pub mod author;
 pub mod camel_case;
@@ -19,7 +21,7 @@ pub mod sugg;
 pub mod usage;
 pub use self::attrs::*;
 pub use self::diagnostics::*;
-pub use self::hir_utils::{SpanlessEq, SpanlessHash};
+pub use self::hir_utils::{both, over, SpanlessEq, SpanlessHash};
 
 use std::borrow::Cow;
 use std::mem;
@@ -40,7 +42,7 @@ use rustc_hir::{
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::map::Map;
-use rustc_middle::ty::{self, layout::IntegerExt, subst::GenericArg, Binder, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, layout::IntegerExt, subst::GenericArg, Ty, TyCtxt, TypeFoldable};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::original_sp;
 use rustc_span::symbol::{self, kw, Symbol};
@@ -72,7 +74,7 @@ pub fn in_constant(cx: &LateContext<'_, '_>, id: HirId) -> bool {
     let parent_id = cx.tcx.hir().get_parent_item(id);
     match cx.tcx.hir().get(parent_id) {
         Node::Item(&Item {
-            kind: ItemKind::Const(..),
+            kind: ItemKind::Const(..) | ItemKind::Static(..),
             ..
         })
         | Node::TraitItem(&TraitItem {
@@ -83,11 +85,7 @@ pub fn in_constant(cx: &LateContext<'_, '_>, id: HirId) -> bool {
             kind: ImplItemKind::Const(..),
             ..
         })
-        | Node::AnonConst(_)
-        | Node::Item(&Item {
-            kind: ItemKind::Static(..),
-            ..
-        }) => true,
+        | Node::AnonConst(_) => true,
         Node::Item(&Item {
             kind: ItemKind::Fn(ref sig, ..),
             ..
@@ -165,8 +163,8 @@ pub fn match_trait_method(cx: &LateContext<'_, '_>, expr: &Expr<'_>, path: &[&st
 /// Checks if an expression references a variable of the given name.
 pub fn match_var(expr: &Expr<'_>, var: Name) -> bool {
     if let ExprKind::Path(QPath::Resolved(None, ref path)) = expr.kind {
-        if path.segments.len() == 1 && path.segments[0].ident.name == var {
-            return true;
+        if let [p] = path.segments {
+            return p.ident.name == var;
         }
     }
     false
@@ -181,8 +179,7 @@ pub fn last_path_segment<'tcx>(path: &QPath<'tcx>) -> &'tcx PathSegment<'tcx> {
 
 pub fn single_segment_path<'tcx>(path: &QPath<'tcx>) -> Option<&'tcx PathSegment<'tcx>> {
     match *path {
-        QPath::Resolved(_, ref path) if path.segments.len() == 1 => Some(&path.segments[0]),
-        QPath::Resolved(..) => None,
+        QPath::Resolved(_, ref path) => path.segments.get(0),
         QPath::TypeRelative(_, ref seg) => Some(seg),
     }
 }
@@ -201,9 +198,12 @@ pub fn match_qpath(path: &QPath<'_>, segments: &[&str]) -> bool {
         QPath::Resolved(_, ref path) => match_path(path, segments),
         QPath::TypeRelative(ref ty, ref segment) => match ty.kind {
             TyKind::Path(ref inner_path) => {
-                !segments.is_empty()
-                    && match_qpath(inner_path, &segments[..(segments.len() - 1)])
-                    && segment.ident.name.as_str() == segments[segments.len() - 1]
+                if let [prefix @ .., end] = segments {
+                    if match_qpath(inner_path, prefix) {
+                        return segment.ident.name.as_str() == *end;
+                    }
+                }
+                false
             },
             _ => false,
         },
@@ -398,7 +398,7 @@ pub fn method_calls<'tcx>(
 /// Matches an `Expr` against a chain of methods, and return the matched `Expr`s.
 ///
 /// For example, if `expr` represents the `.baz()` in `foo.bar().baz()`,
-/// `matched_method_chain(expr, &["bar", "baz"])` will return a `Vec`
+/// `method_chain_args(expr, &["bar", "baz"])` will return a `Vec`
 /// containing the `Expr`s for
 /// `.bar()` and `.baz()`
 pub fn method_chain_args<'a>(expr: &'a Expr<'_>, methods: &[&str]) -> Option<Vec<&'a [Expr<'a>]>> {
@@ -880,20 +880,6 @@ pub fn return_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, fn_item: hir::HirId) -> T
     let fn_def_id = cx.tcx.hir().local_def_id(fn_item);
     let ret_ty = cx.tcx.fn_sig(fn_def_id).output();
     cx.tcx.erase_late_bound_regions(&ret_ty)
-}
-
-/// Checks if two types are the same.
-///
-/// This discards any lifetime annotations, too.
-//
-// FIXME: this works correctly for lifetimes bounds (`for <'a> Foo<'a>` ==
-// `for <'b> Foo<'b>`, but not for type parameters).
-pub fn same_tys<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
-    let a = cx.tcx.erase_late_bound_regions(&Binder::bind(a));
-    let b = cx.tcx.erase_late_bound_regions(&Binder::bind(b));
-    cx.tcx
-        .infer_ctxt()
-        .enter(|infcx| infcx.can_eq(cx.param_env, a, b).is_ok())
 }
 
 /// Returns `true` if the given type is an `unsafe` function.
@@ -1406,6 +1392,24 @@ pub fn run_lints(cx: &LateContext<'_, '_>, lints: &[&'static Lint], id: HirId) -
             (Level::Forbid | Level::Deny | Level::Warn, _)
         )
     })
+}
+
+#[macro_export]
+macro_rules! unwrap_cargo_metadata {
+    ($cx: ident, $lint: ident, $deps: expr) => {{
+        let mut command = cargo_metadata::MetadataCommand::new();
+        if !$deps {
+            command.no_deps();
+        }
+
+        match command.exec() {
+            Ok(metadata) => metadata,
+            Err(err) => {
+                span_lint($cx, $lint, DUMMY_SP, &format!("could not read cargo metadata: {}", err));
+                return;
+            },
+        }
+    }};
 }
 
 #[cfg(test)]

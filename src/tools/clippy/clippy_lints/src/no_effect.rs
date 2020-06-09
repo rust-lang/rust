@@ -147,7 +147,7 @@ fn reduce_expression<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr<'a>) -> Option
             if let ExprKind::Path(ref qpath) = callee.kind {
                 let res = qpath_res(cx, qpath, callee.hir_id);
                 match res {
-                    Res::Def(DefKind::Struct, ..) | Res::Def(DefKind::Variant, ..) | Res::Def(DefKind::Ctor(..), _)
+                    Res::Def(DefKind::Struct | DefKind::Variant | DefKind::Ctor(..), ..)
                         if !has_drop(cx, cx.tables.expr_ty(expr)) =>
                     {
                         Some(args.iter().collect())

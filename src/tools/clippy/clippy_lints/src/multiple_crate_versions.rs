@@ -7,7 +7,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::DUMMY_SP;
 
-use cargo_metadata::{DependencyKind, MetadataCommand, Node, Package, PackageId};
+use cargo_metadata::{DependencyKind, Node, Package, PackageId};
 use if_chain::if_chain;
 use itertools::Itertools;
 
@@ -42,13 +42,7 @@ impl LateLintPass<'_, '_> for MultipleCrateVersions {
             return;
         }
 
-        let metadata = if let Ok(metadata) = MetadataCommand::new().exec() {
-            metadata
-        } else {
-            span_lint(cx, MULTIPLE_CRATE_VERSIONS, DUMMY_SP, "could not read cargo metadata");
-            return;
-        };
-
+        let metadata = unwrap_cargo_metadata!(cx, MULTIPLE_CRATE_VERSIONS, true);
         let local_name = cx.tcx.crate_name(LOCAL_CRATE).as_str();
         let mut packages = metadata.packages;
         packages.sort_by(|a, b| a.name.cmp(&b.name));

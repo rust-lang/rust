@@ -22,8 +22,14 @@ declare_clippy_lint! {
     /// ```rust
     /// # use std::time::Duration;
     /// let dur = Duration::new(5, 0);
+    ///
+    /// // Bad
     /// let _micros = dur.subsec_nanos() / 1_000;
     /// let _millis = dur.subsec_nanos() / 1_000_000;
+    ///
+    /// // Good
+    /// let _micros = dur.subsec_micros();
+    /// let _millis = dur.subsec_millis();
     /// ```
     pub DURATION_SUBSEC,
     complexity,
