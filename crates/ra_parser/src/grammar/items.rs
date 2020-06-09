@@ -126,8 +126,7 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker, flavor: ItemFlavor) -> Resul
                 // impl T for Foo {
                 //     default unsafe fn foo() {}
                 // }
-                let sk = p.nth(2);
-                if sk == T![impl] || sk == T![fn] {
+                if p.nth(2) == T![impl] || p.nth(2) == T![fn] {
                     p.bump_remap(T![default]);
                     p.bump(T![unsafe]);
                     has_mods = true;
