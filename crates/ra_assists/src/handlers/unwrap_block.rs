@@ -1,5 +1,11 @@
 use ra_fmt::unwrap_trivial_block;
-use ra_syntax::{ast, AstNode, TextRange, T};
+use ra_syntax::{
+    ast::{
+        self,
+        edit::{AstNodeEdit, IndentLevel},
+    },
+    AstNode, TextRange, T,
+};
 
 use crate::{AssistContext, AssistId, Assists};
 
@@ -21,15 +27,21 @@ use crate::{AssistContext, AssistId, Assists};
 // }
 // ```
 pub(crate) fn unwrap_block(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let l_curly_token = ctx.find_token_at_offset(T!['{'])?;
-    let block = ast::BlockExpr::cast(l_curly_token.parent())?;
-    let parent = block.syntax().parent()?;
     let assist_id = AssistId("unwrap_block");
     let assist_label = "Unwrap block";
+
+    let l_curly_token = ctx.find_token_at_offset(T!['{'])?;
+    let mut block = ast::BlockExpr::cast(l_curly_token.parent())?;
+    let mut parent = block.syntax().parent()?;
+    if ast::MatchArm::can_cast(parent.kind()) {
+        parent = parent.ancestors().find(|it| ast::MatchExpr::can_cast(it.kind()))?
+    }
+
     let parent = ast::Expr::cast(parent)?;
 
     match parent.clone() {
         ast::Expr::ForExpr(_) | ast::Expr::WhileExpr(_) | ast::Expr::LoopExpr(_) => (),
+        ast::Expr::MatchExpr(_) => block = block.dedent(IndentLevel(1)),
         ast::Expr::IfExpr(if_expr) => {
             let then_branch = if_expr.then_branch()?;
             if then_branch == block {
@@ -456,6 +468,30 @@ mod tests {
                 }
             }
             "#,
+        );
+    }
+
+    #[test]
+    fn unwrap_match_arm() {
+        check_assist(
+            unwrap_block,
+            r#"
+fn main() {
+    match rel_path {
+        Ok(rel_path) => {<|>
+            let rel_path = RelativePathBuf::from_path(rel_path).ok()?;
+            Some((*id, rel_path))
+        }
+        Err(_) => None,
+    }
+}
+"#,
+            r#"
+fn main() {
+    let rel_path = RelativePathBuf::from_path(rel_path).ok()?;
+    Some((*id, rel_path))
+}
+"#,
         );
     }
 
