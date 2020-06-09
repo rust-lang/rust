@@ -579,12 +579,17 @@ pub trait AstNodeEdit: AstNode + Clone + Sized {
         rewriter.rewrite_ast(self)
     }
     #[must_use]
-    fn indent(&self, indent: IndentLevel) -> Self {
-        Self::cast(indent.increase_indent(self.syntax().clone())).unwrap()
+    fn indent(&self, level: IndentLevel) -> Self {
+        Self::cast(level.increase_indent(self.syntax().clone())).unwrap()
     }
     #[must_use]
-    fn dedent(&self, indent: IndentLevel) -> Self {
-        Self::cast(indent.decrease_indent(self.syntax().clone())).unwrap()
+    fn dedent(&self, level: IndentLevel) -> Self {
+        Self::cast(level.decrease_indent(self.syntax().clone())).unwrap()
+    }
+    #[must_use]
+    fn reset_indent(&self) -> Self {
+        let level = IndentLevel::from_node(self.syntax());
+        self.dedent(level)
     }
 }
 
