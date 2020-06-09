@@ -915,6 +915,9 @@ pub trait Resolver {
 
     fn check_unused_macros(&mut self);
 
+    /// Some parent node that is close enough to the given macro call.
+    fn lint_node_id(&mut self, expn_id: ExpnId) -> NodeId;
+
     fn has_derive_copy(&self, expn_id: ExpnId) -> bool;
     fn add_derive_copy(&mut self, expn_id: ExpnId);
     fn cfg_accessible(&mut self, expn_id: ExpnId, path: &ast::Path) -> Result<bool, Indeterminate>;
