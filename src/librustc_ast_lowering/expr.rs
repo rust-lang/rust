@@ -1237,10 +1237,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                                             ) => {
                                                 assert!(!*late);
                                                 let out_op_sp = if input { op_sp2 } else { op_sp };
-                                                let msg = &format!(
-                                                    "use `lateout` instead of \
-                                                     `out` to avoid conflict"
-                                                );
+                                                let msg = "use `lateout` instead of \
+                                                     `out` to avoid conflict";
                                                 err.span_help(out_op_sp, msg);
                                             }
                                             _ => {}

@@ -187,9 +187,9 @@ pub fn strip_shebang(input: &str) -> Option<usize> {
             // Ok, this is a shebang but if the next non-whitespace token is `[` or maybe
             // a doc comment (due to `TokenKind::(Line,Block)Comment` ambiguity at lexer level),
             // then it may be valid Rust code, so consider it Rust code.
-            let next_non_whitespace_token = tokenize(input_tail).map(|tok| tok.kind).filter(|tok|
+            let next_non_whitespace_token = tokenize(input_tail).map(|tok| tok.kind).find(|tok|
                 !matches!(tok, TokenKind::Whitespace | TokenKind::LineComment | TokenKind::BlockComment { .. })
-            ).next();
+            );
             if next_non_whitespace_token != Some(TokenKind::OpenBracket) {
                 // No other choice than to consider this a shebang.
                 return Some(2 + first_line_tail.len());

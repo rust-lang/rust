@@ -99,7 +99,7 @@ fn get_arm_identity_info<'a, 'tcx>(stmts: &'a [Statement<'tcx>]) -> Option<ArmId
     fn try_eat<'a, 'tcx>(
         stmt_iter: &mut StmtIter<'a, 'tcx>,
         test: impl Fn(&'a Statement<'tcx>) -> bool,
-        mut action: impl FnMut(usize, &'a Statement<'tcx>) -> (),
+        mut action: impl FnMut(usize, &'a Statement<'tcx>),
     ) {
         while stmt_iter.peek().map(|(_, stmt)| test(stmt)).unwrap_or(false) {
             let (idx, stmt) = stmt_iter.next().unwrap();
@@ -271,7 +271,7 @@ fn optimization_applies<'tcx>(
     }
 
     // Verify the assigment chain consists of the form b = a; c = b; d = c; etc...
-    if opt_info.field_tmp_assignments.len() == 0 {
+    if opt_info.field_tmp_assignments.is_empty() {
         trace!("NO: no assignments found");
     }
     let mut last_assigned_to = opt_info.field_tmp_assignments[0].1;

@@ -309,9 +309,7 @@ pub fn const_eval_raw_provider<'tcx>(
 
     let res = ecx.load_mir(cid.instance.def, cid.promoted);
     res.and_then(|body| eval_body_using_ecx(&mut ecx, cid, &body))
-        .and_then(|place| {
-            Ok(RawConst { alloc_id: place.ptr.assert_ptr().alloc_id, ty: place.layout.ty })
-        })
+        .map(|place| RawConst { alloc_id: place.ptr.assert_ptr().alloc_id, ty: place.layout.ty })
         .map_err(|error| {
             let err = error_to_const_error(&ecx, error);
             // errors in statics are always emitted as fatal errors

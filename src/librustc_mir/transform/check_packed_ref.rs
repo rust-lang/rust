@@ -51,7 +51,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PackedRefChecker<'a, 'tcx> {
                     lint_root,
                     source_info.span,
                     |lint| {
-                        lint.build(&format!("reference to packed field is unaligned",))
+                        lint.build("reference to packed field is unaligned")
                             .note(
                                 "fields of packed structs are not properly aligned, and creating \
                                 a misaligned reference is undefined behavior (even if that \

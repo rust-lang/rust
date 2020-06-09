@@ -550,7 +550,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let error_code = error_code.into();
         let mut err = self.tcx.sess.struct_span_err_with_code(
             local_visitor.target_span,
-            &format!("type annotations needed"),
+            "type annotations needed",
             error_code,
         );
 
