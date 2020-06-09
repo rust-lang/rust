@@ -33,6 +33,7 @@
         - ["Cleanup Crew"](notification-groups/cleanup-crew.md)
         - [LLVM](notification-groups/llvm.md)
         - [Windows](notification-groups/windows.md)
+        - [ARM](notification-groups/arm.md)
     - [Licenses](./licenses.md)
 - [Part 2: High-level Compiler Architecture](./part-2-intro.md)
     - [Overview of the Compiler](./overview.md)
