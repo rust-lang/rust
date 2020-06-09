@@ -1375,7 +1375,7 @@ pub unsafe fn _mm_packus_epi16(a: __m128i, b: __m128i) -> __m128i {
 #[rustc_args_required_const(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_extract_epi16(a: __m128i, imm8: i32) -> i32 {
-    simd_extract::<_, i16>(a.as_i16x8(), (imm8 & 7) as u32) as i32
+    simd_extract::<_, u16>(a.as_u16x8(), (imm8 & 7) as u32) as i32
 }
 
 /// Returns a new vector where the `imm8` element of `a` is replaced with `i`.
@@ -4132,7 +4132,7 @@ mod tests {
         let a = _mm_setr_epi16(-1, 1, 2, 3, 4, 5, 6, 7);
         let r1 = _mm_extract_epi16(a, 0);
         let r2 = _mm_extract_epi16(a, 11);
-        assert_eq!(r1, -1);
+        assert_eq!(r1, 0xFFFF);
         assert_eq!(r2, 3);
     }
 

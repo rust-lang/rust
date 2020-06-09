@@ -95,7 +95,8 @@ struct Data {
 
 #[derive(Deserialize)]
 struct Intrinsic {
-    rettype: String,
+    #[serde(rename = "return")]
+    return_: Return,
     name: String,
     #[serde(rename = "CPUID", default)]
     cpuid: Vec<String>,
@@ -107,6 +108,12 @@ struct Intrinsic {
 
 #[derive(Deserialize)]
 struct Parameter {
+    #[serde(rename = "type")]
+    type_: String,
+}
+
+#[derive(Deserialize)]
+struct Return {
     #[serde(rename = "type")]
     type_: String,
 }
@@ -503,12 +510,12 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
 
     // Make sure we've got the right return type.
     if let Some(t) = rust.ret {
-        equate(t, &intel.rettype, rust.name, false)?;
-    } else if intel.rettype != "" && intel.rettype != "void" {
+        equate(t, &intel.return_.type_, rust.name, false)?;
+    } else if intel.return_.type_ != "" && intel.return_.type_ != "void" {
         bail!(
             "{} returns `{}` with intel, void in rust",
             rust.name,
-            intel.rettype
+            intel.return_.type_
         )
     }
 
