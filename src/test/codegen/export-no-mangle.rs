@@ -23,7 +23,7 @@ mod private {
     #[export_name = "c"]
     #[inline]
     extern fn c() {}
-    
+
     // CHECK: void @d()
     #[export_name = "d"]
     #[inline(always)]

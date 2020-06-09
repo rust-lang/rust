@@ -102,7 +102,7 @@ impl<'tcx> MonoItem<'tcx> {
 
                 // At this point we don't have explicit linkage and we're an
                 // inlined function. If we're inlining into all CGUs then we'll
-                // be creating a local copy per CGU. 
+                // be creating a local copy per CGU.
                 if generate_cgu_internal_copies {
                     return InstantiationMode::LocalCopy;
                 }
