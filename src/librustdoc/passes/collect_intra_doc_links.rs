@@ -585,6 +585,9 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                 } else if link.starts_with("macro@") {
                     kind = Some(MacroNS);
                     link.trim_start_matches("macro@")
+                } else if link.starts_with("derive@") {
+                    kind = Some(MacroNS);
+                    link.trim_start_matches("derive@")
                 } else if link.ends_with('!') {
                     kind = Some(MacroNS);
                     link.trim_end_matches('!')
@@ -954,7 +957,7 @@ fn ambiguity_error(
                             Res::Def(DefKind::AssocFn | DefKind::Fn, _) => {
                                 ("add parentheses", format!("{}()", path_str))
                             }
-                            Res::Def(DefKind::Macro(..), _) => {
+                            Res::Def(DefKind::Macro(MacroKind::Bang), _) => {
                                 ("add an exclamation mark", format!("{}!", path_str))
                             }
                             _ => {
@@ -968,6 +971,9 @@ fn ambiguity_error(
                                     (Res::Def(DefKind::Mod, _), _) => "module",
                                     (_, TypeNS) => "type",
                                     (_, ValueNS) => "value",
+                                    (Res::Def(DefKind::Macro(MacroKind::Derive), _), MacroNS) => {
+                                        "derive"
+                                    }
                                     (_, MacroNS) => "macro",
                                 };
 
