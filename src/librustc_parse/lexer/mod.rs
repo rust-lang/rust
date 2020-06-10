@@ -325,7 +325,15 @@ impl<'a> StringReader<'a> {
         let (lit_kind, mode, prefix_len, postfix_len) = match kind {
             rustc_lexer::LiteralKind::Char { terminated } => {
                 if !terminated {
-                    self.fatal_span_(start, suffix_start, "unterminated character literal").raise()
+                    self.sess
+                        .span_diagnostic
+                        .struct_span_fatal_with_code(
+                            self.mk_sp(start, suffix_start),
+                            "unterminated character literal",
+                            error_code!(E0762),
+                        )
+                        .emit();
+                    FatalError.raise();
                 }
                 (token::Char, Mode::Char, 1, 1) // ' '
             }
