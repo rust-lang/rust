@@ -27,7 +27,7 @@ use hir_ty::{
     display::{HirDisplayError, HirFormatter},
     expr::ExprValidator,
     method_resolution, ApplicationTy, Canonical, GenericPredicate, InEnvironment, OpaqueTyId,
-    Substs, TraitEnvironment, Ty, TyDefId, TypeCtor, TypeWalk,
+    Substs, TraitEnvironment, Ty, TyDefId, TypeCtor,
 };
 use ra_db::{CrateId, CrateName, Edition, FileId};
 use ra_prof::profile;
@@ -1381,7 +1381,7 @@ impl Type {
         }
     }
 
-    /// Returns a flattened list of all the ADTs and Traits mentioned in the type
+    /// Returns a flattened list of all ADTs and Traits mentioned in the type
     pub fn flattened_type_items(&self, db: &dyn HirDatabase) -> Vec<AdtOrTrait> {
         fn push_new_item(item: AdtOrTrait, acc: &mut Vec<AdtOrTrait>) {
             if !acc.contains(&item) {
@@ -1398,7 +1398,7 @@ impl Type {
                 match p {
                     GenericPredicate::Implemented(trait_ref) => {
                         push_new_item(Trait::from(trait_ref.trait_).into(), acc);
-                        walk_types(db, &trait_ref.substs, acc);
+                        walk_substs(db, &trait_ref.substs, acc);
                     }
                     GenericPredicate::Projection(_) => {}
                     GenericPredicate::Error => (),
@@ -1406,8 +1406,11 @@ impl Type {
             }
         }
 
-        fn walk_types<T: TypeWalk>(db: &dyn HirDatabase, tw: &T, acc: &mut Vec<AdtOrTrait>) {
-            tw.walk(&mut |ty| walk_type(db, ty, acc));
+        // TypeWalk::walk does not preserve items order!
+        fn walk_substs(db: &dyn HirDatabase, substs: &Substs, acc: &mut Vec<AdtOrTrait>) {
+            for ty in substs.iter() {
+                walk_type(db, ty, acc);
+            }
         }
 
         fn walk_type(db: &dyn HirDatabase, ty: &Ty, acc: &mut Vec<AdtOrTrait>) {
@@ -1415,10 +1418,18 @@ impl Type {
                 Ty::Apply(ApplicationTy { ctor, parameters, .. }) => {
                     match ctor {
                         TypeCtor::Adt(adt_id) => push_new_item(Adt::from(*adt_id).into(), acc),
+                        TypeCtor::AssociatedType(type_alias_id) => {
+                            let trait_id = match type_alias_id.lookup(db.upcast()).container {
+                                AssocContainerId::TraitId(it) => it,
+                                _ => panic!("not an associated type"),
+                            };
+
+                            push_new_item(Trait::from(trait_id).into(), acc);
+                        }
                         _ => (),
                     }
                     // adt params, tuples, etc...
-                    walk_types(db, parameters, acc);
+                    walk_substs(db, parameters, acc);
                 }
                 Ty::Dyn(predicates) => {
                     push_bounds(db, predicates, acc);
@@ -1451,7 +1462,7 @@ impl Type {
                         }
                     };
                     push_bounds(db, &bounds.value, acc);
-                    walk_types(db, &opaque_ty.parameters, acc);
+                    walk_substs(db, &opaque_ty.parameters, acc);
                 }
                 _ => (),
             }

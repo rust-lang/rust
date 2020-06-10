@@ -234,9 +234,10 @@ fn runnable_action(
 fn goto_type_action(db: &RootDatabase, def: Definition) -> Option<HoverAction> {
     match def {
         Definition::Local(it) => {
-            let ty = it.ty(db);
-            let v = ty.flattened_type_items(db);
-            let targets = v.into_iter()
+            let targets = it
+                .ty(db)
+                .flattened_type_items(db)
+                .into_iter()
                 .map(|it| HoverGotoTypeData {
                     mod_path: adt_or_trait_mod_path(db, &it),
                     nav: it.to_nav(db),
@@ -1980,7 +1981,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
     }
 
     #[test]
-    fn test_hover_arg_goto_type_action() {
+    fn test_hover_goto_type_action_links_order() {
         let (_, actions) = check_hover_result(
             "
             //- /lib.rs
@@ -1988,10 +1989,10 @@ fn func(foo: i32) { if true { <|>foo; }; }
             trait DynTrait<T> {}
             struct B<T> {}
             struct S {}
-        
-            fn foo(a<|>rg: &impl ImplTrait<B<dyn DynTrait<S>>>) {}
+
+            fn foo(a<|>rg: &impl ImplTrait<B<dyn DynTrait<B<S>>>>) {}
             ",
-            &["&impl ImplTrait<B<dyn DynTrait<S>>>"],
+            &["&impl ImplTrait<B<dyn DynTrait<B<S>>>>"],
         );
         assert_debug_snapshot!(actions,
             @r###"
@@ -2018,20 +2019,20 @@ fn func(foo: i32) { if true { <|>foo; }; }
                             },
                         },
                         HoverGotoTypeData {
-                            mod_path: "S",
+                            mod_path: "B",
                             nav: NavigationTarget {
                                 file_id: FileId(
                                     1,
                                 ),
-                                full_range: 58..69,
-                                name: "S",
+                                full_range: 43..57,
+                                name: "B",
                                 kind: STRUCT_DEF,
                                 focus_range: Some(
-                                    65..66,
+                                    50..51,
                                 ),
                                 container_name: None,
                                 description: Some(
-                                    "struct S",
+                                    "struct B",
                                 ),
                                 docs: None,
                             },
@@ -2056,20 +2057,20 @@ fn func(foo: i32) { if true { <|>foo; }; }
                             },
                         },
                         HoverGotoTypeData {
-                            mod_path: "B",
+                            mod_path: "S",
                             nav: NavigationTarget {
                                 file_id: FileId(
                                     1,
                                 ),
-                                full_range: 43..57,
-                                name: "B",
+                                full_range: 58..69,
+                                name: "S",
                                 kind: STRUCT_DEF,
                                 focus_range: Some(
-                                    50..51,
+                                    65..66,
                                 ),
                                 container_name: None,
                                 description: Some(
-                                    "struct B",
+                                    "struct S",
                                 ),
                                 docs: None,
                             },
