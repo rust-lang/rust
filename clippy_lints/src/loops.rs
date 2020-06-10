@@ -820,9 +820,9 @@ impl Offset {
     }
 }
 
-struct FixedOffsetVar<'hir> {
-    var: &'hir Expr<'hir>,
-    offset: Offset,
+struct IndexExpr<'hir> {
+    base: &'hir Expr<'hir>,
+    idx_offset: Offset,
 }
 
 fn is_slice_like<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'_>) -> bool {
@@ -845,14 +845,14 @@ fn fetch_cloned_expr<'tcx>(expr: &'tcx Expr<'tcx>) -> &'tcx Expr<'tcx> {
     }
 }
 
-fn get_offset<'tcx>(cx: &LateContext<'tcx>, idx: &Expr<'_>, var: HirId) -> Option<Offset> {
-    fn extract_offset<'tcx>(cx: &LateContext<'tcx>, e: &Expr<'_>, var: HirId) -> Option<String> {
+fn get_offset<'tcx>(cx: &LateContext<'tcx>, idx: &Expr<'_>, start: HirId) -> Option<Offset> {
+    fn extract_offset<'tcx>(cx: &LateContext<'tcx>, e: &Expr<'_>, start: HirId) -> Option<String> {
         match &e.kind {
             ExprKind::Lit(l) => match l.node {
                 ast::LitKind::Int(x, _ty) => Some(x.to_string()),
                 _ => None,
             },
-            ExprKind::Path(..) if !same_var(cx, e, var) => Some(snippet_opt(cx, e.span).unwrap_or_else(|| "??".into())),
+            ExprKind::Path(..) if !same_var(cx, e, start) => Some(snippet_opt(cx, e.span).unwrap_or_else(|| "??".into())),
             _ => None,
         }
     }
@@ -860,20 +860,20 @@ fn get_offset<'tcx>(cx: &LateContext<'tcx>, idx: &Expr<'_>, var: HirId) -> Optio
     match idx.kind {
         ExprKind::Binary(op, lhs, rhs) => match op.node {
             BinOpKind::Add => {
-                let offset_opt = if same_var(cx, lhs, var) {
-                    extract_offset(cx, rhs, var)
-                } else if same_var(cx, rhs, var) {
-                    extract_offset(cx, lhs, var)
+                let offset_opt = if same_var(cx, lhs, start) {
+                    extract_offset(cx, rhs, start)
+                } else if same_var(cx, rhs, start) {
+                    extract_offset(cx, lhs, start)
                 } else {
                     None
                 };
 
                 offset_opt.map(Offset::positive)
             },
-            BinOpKind::Sub if same_var(cx, lhs, var) => extract_offset(cx, rhs, var).map(Offset::negative),
+            BinOpKind::Sub if same_var(cx, lhs, start) => extract_offset(cx, rhs, start).map(Offset::negative),
             _ => None,
         },
-        ExprKind::Path(..) if same_var(cx, idx, var) => Some(Offset::positive("0".into())),
+        ExprKind::Path(..) if same_var(cx, idx, start) => Some(Offset::positive("0".into())),
         _ => None,
     }
 }
@@ -916,8 +916,8 @@ fn build_manual_memcpy_suggestion<'tcx>(
     start: &Expr<'_>,
     end: &Expr<'_>,
     limits: ast::RangeLimits,
-    dst_var: FixedOffsetVar<'_>,
-    src_var: FixedOffsetVar<'_>,
+    dst: IndexExpr<'_>,
+    src: IndexExpr<'_>,
 ) -> String {
     fn print_sum(arg1: &str, arg2: &Offset) -> String {
         match (arg1, &arg2.value[..], arg2.sign) {
@@ -944,13 +944,13 @@ fn build_manual_memcpy_suggestion<'tcx>(
         }
     }
 
-    let print_limit = |end: &Expr<'_>, offset: Offset, var: &Expr<'_>| {
+    let print_limit = |end: &Expr<'_>, offset: Offset, base: &Expr<'_>| {
         if_chain! {
             if let ExprKind::MethodCall(method, _, len_args, _) = end.kind;
             if method.ident.name == sym!(len);
             if len_args.len() == 1;
             if let Some(arg) = len_args.get(0);
-            if var_def_id(cx, arg) == var_def_id(cx, var);
+            if var_def_id(cx, arg) == var_def_id(cx, base);
             then {
                 match offset.sign {
                     OffsetSign::Negative => format!("({} - {})", snippet(cx, end.span, "<src>.len()"), offset.value),
@@ -971,25 +971,26 @@ fn build_manual_memcpy_suggestion<'tcx>(
     };
 
     let start_str = snippet(cx, start.span, "").to_string();
-    let dst_offset = print_offset(&start_str, &dst_var.offset);
-    let dst_limit = print_limit(end, dst_var.offset, dst_var.var);
-    let src_offset = print_offset(&start_str, &src_var.offset);
-    let src_limit = print_limit(end, src_var.offset, src_var.var);
+    let dst_offset = print_offset(&start_str, &dst.idx_offset);
+    let dst_limit = print_limit(end, dst.idx_offset, dst.base);
+    let src_offset = print_offset(&start_str, &src.idx_offset);
+    let src_limit = print_limit(end, src.idx_offset, src.base);
 
-    let dst_var_name = snippet_opt(cx, dst_var.var.span).unwrap_or_else(|| "???".into());
-    let src_var_name = snippet_opt(cx, src_var.var.span).unwrap_or_else(|| "???".into());
+    let dst_base_str = snippet_opt(cx, dst.base.span).unwrap_or_else(|| "???".into());
+    let src_base_str = snippet_opt(cx, src.base.span).unwrap_or_else(|| "???".into());
 
     let dst = if dst_offset == "" && dst_limit == "" {
-        dst_var_name
+        dst_base_str
     } else {
-        format!("{}[{}..{}]", dst_var_name, dst_offset, dst_limit)
+        format!("{}[{}..{}]", dst_base_str, dst_offset, dst_limit)
     };
 
     format!(
         "{}.clone_from_slice(&{}[{}..{}])",
-        dst, src_var_name, src_offset, src_limit
+        dst, src_base_str, src_offset, src_limit
     )
 }
+
 /// Checks for for loops that sequentially copy items from one slice-like
 /// object to another.
 fn detect_manual_memcpy<'tcx>(
@@ -1014,18 +1015,18 @@ fn detect_manual_memcpy<'tcx>(
                     o.and_then(|(lhs, rhs)| {
                         let rhs = fetch_cloned_expr(rhs);
                         if_chain! {
-                            if let ExprKind::Index(seqexpr_left, idx_left) = lhs.kind;
-                            if let ExprKind::Index(seqexpr_right, idx_right) = rhs.kind;
-                            if is_slice_like(cx, cx.typeck_results().expr_ty(seqexpr_left))
-                                && is_slice_like(cx, cx.typeck_results().expr_ty(seqexpr_right));
+                            if let ExprKind::Index(base_left, idx_left) = lhs.kind;
+                            if let ExprKind::Index(base_right, idx_right) = rhs.kind;
+                            if is_slice_like(cx, cx.typeck_results().expr_ty(base_left))
+                                && is_slice_like(cx, cx.typeck_results().expr_ty(base_right));
                             if let Some(offset_left) = get_offset(cx, &idx_left, canonical_id);
                             if let Some(offset_right) = get_offset(cx, &idx_right, canonical_id);
 
                             // Source and destination must be different
-                            if var_def_id(cx, seqexpr_left) != var_def_id(cx, seqexpr_right);
+                            if var_def_id(cx, base_left) != var_def_id(cx, base_right);
                             then {
-                                Some((FixedOffsetVar { var: seqexpr_left, offset: offset_left },
-                                    FixedOffsetVar { var: seqexpr_right, offset: offset_right }))
+                                Some((IndexExpr { base: base_left, idx_offset: offset_left },
+                                    IndexExpr { base: base_right, idx_offset: offset_right }))
                             } else {
                                 None
                             }
