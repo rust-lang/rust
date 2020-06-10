@@ -31,6 +31,7 @@
 //! These methods return true to indicate that the visitor has found what it is
 //! looking for, and does not need to visit anything else.
 
+use crate::ty::structural_impls::PredicateVisitor;
 use crate::ty::{self, flags::FlagComputation, Binder, Ty, TyCtxt, TypeFlags};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -908,6 +909,12 @@ impl<'tcx> TypeVisitor<'tcx> for HasEscapingVarsVisitor {
     }
 }
 
+impl<'tcx> PredicateVisitor<'tcx> for HasEscapingVarsVisitor {
+    fn visit_predicate(&mut self, predicate: ty::Predicate<'tcx>) -> bool {
+        predicate.inner.outer_exclusive_binder > self.outer_index
+    }
+}
+
 // FIXME: Optimize for checking for infer flags
 struct HasTypeFlagsVisitor {
     flags: ty::TypeFlags,
@@ -932,6 +939,15 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
     }
 }
 
+impl<'tcx> PredicateVisitor<'tcx> for HasTypeFlagsVisitor {
+    fn visit_predicate(&mut self, predicate: ty::Predicate<'tcx>) -> bool {
+        debug!(
+            "HasTypeFlagsVisitor: predicate={:?} predicate.flags={:?} self.flags={:?}",
+            predicate, predicate.inner.flags, self.flags
+        );
+        predicate.inner.flags.intersects(self.flags)
+    }
+}
 /// Collects all the late-bound regions at the innermost binding level
 /// into a hash set.
 struct LateBoundRegionsCollector {

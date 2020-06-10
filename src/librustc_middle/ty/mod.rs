@@ -627,7 +627,7 @@ impl<'tcx> Hash for TyS<'tcx> {
     }
 }
 
-impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ty::TyS<'tcx> {
+impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TyS<'tcx> {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let ty::TyS {
             ref kind,
@@ -1001,16 +1001,35 @@ impl<'tcx> GenericPredicates<'tcx> {
     }
 }
 
-#[derive(Clone, Copy, Hash, RustcEncodable, RustcDecodable, Lift)]
-#[derive(HashStable)]
-pub struct Predicate<'tcx> {
-    kind: &'tcx PredicateKind<'tcx>,
+#[derive(Debug)]
+crate struct PredicateInner<'tcx> {
+    kind: PredicateKind<'tcx>,
+    flags: TypeFlags,
+    /// See the comment for the corresponding field of [TyS].
+    outer_exclusive_binder: ty::DebruijnIndex,
 }
+
+#[cfg(target_arch = "x86_64")]
+static_assert_size!(PredicateInner<'_>, 40);
+
+#[derive(Clone, Copy, Lift)]
+pub struct Predicate<'tcx> {
+    inner: &'tcx PredicateInner<'tcx>,
+}
+
+impl rustc_serialize::UseSpecializedEncodable for Predicate<'_> {}
+impl rustc_serialize::UseSpecializedDecodable for Predicate<'_> {}
 
 impl<'tcx> PartialEq for Predicate<'tcx> {
     fn eq(&self, other: &Self) -> bool {
         // `self.kind` is always interned.
-        ptr::eq(self.kind, other.kind)
+        ptr::eq(self.inner, other.inner)
+    }
+}
+
+impl Hash for Predicate<'_> {
+    fn hash<H: Hasher>(&self, s: &mut H) {
+        (self.inner as *const PredicateInner<'_>).hash(s)
     }
 }
 
@@ -1019,7 +1038,22 @@ impl<'tcx> Eq for Predicate<'tcx> {}
 impl<'tcx> Predicate<'tcx> {
     #[inline(always)]
     pub fn kind(self) -> &'tcx PredicateKind<'tcx> {
-        self.kind
+        &self.inner.kind
+    }
+}
+
+impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Predicate<'tcx> {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+        let PredicateInner {
+            ref kind,
+
+            // The other fields just provide fast access to information that is
+            // also contained in `kind`, so no need to hash them.
+            flags: _,
+            outer_exclusive_binder: _,
+        } = self.inner;
+
+        kind.hash_stable(hcx, hasher);
     }
 }
 
