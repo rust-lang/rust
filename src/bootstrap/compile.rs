@@ -983,7 +983,13 @@ pub fn stream_cargo(
     for line in stdout.lines() {
         let line = t!(line);
         match serde_json::from_str::<CargoMessage<'_>>(&line) {
-            Ok(msg) => cb(msg),
+            Ok(msg) => {
+                if builder.config.json_output {
+                    // Forward JSON to stdout.
+                    println!("{}", line);
+                }
+                cb(msg)
+            }
             // If this was informational, just print it out and continue
             Err(_) => println!("{}", line),
         }
