@@ -39,7 +39,7 @@ use crate::hash::Hash;
 /// [`Iterator`]: ../iter/trait.IntoIterator.html
 /// [slicing index]: ../slice/trait.SliceIndex.html
 #[doc(alias = "..")]
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Default, PartialEq, Eq, Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RangeFull;
 
@@ -71,7 +71,7 @@ impl fmt::Debug for RangeFull {
 /// assert_eq!(arr[1..=3], [  1,2,3  ]);
 /// ```
 #[doc(alias = "..")]
-#[derive(Clone, PartialEq, Eq, Hash)] // not Copy -- see #27186
+#[derive(Clone, Default, PartialEq, Eq, Hash)] // not Copy -- see #27186
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Range<Idx> {
     /// The lower bound of the range (inclusive).
@@ -179,7 +179,7 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
 ///
 /// [`Iterator`]: ../iter/trait.IntoIterator.html
 #[doc(alias = "..")]
-#[derive(Clone, PartialEq, Eq, Hash)] // not Copy -- see #27186
+#[derive(Clone, Default, PartialEq, Eq, Hash)] // not Copy -- see #27186
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RangeFrom<Idx> {
     /// The lower bound of the range (inclusive).
@@ -261,7 +261,7 @@ impl<Idx: PartialOrd<Idx>> RangeFrom<Idx> {
 /// [`Iterator`]: ../iter/trait.IntoIterator.html
 /// [slicing index]: ../slice/trait.SliceIndex.html
 #[doc(alias = "..")]
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Default, PartialEq, Eq, Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RangeTo<Idx> {
     /// The upper bound of the range (exclusive).
@@ -329,7 +329,7 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
 /// assert_eq!(arr[1..=3], [  1,2,3  ]);  // RangeInclusive
 /// ```
 #[doc(alias = "..=")]
-#[derive(Clone, PartialEq, Eq, Hash)] // not Copy -- see #27186
+#[derive(Clone, Default, PartialEq, Eq, Hash)] // not Copy -- see #27186
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 pub struct RangeInclusive<Idx> {
     // Note that the fields here are not public to allow changing the
@@ -556,7 +556,7 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
 /// [`Iterator`]: ../iter/trait.IntoIterator.html
 /// [slicing index]: ../slice/trait.SliceIndex.html
 #[doc(alias = "..=")]
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Default, PartialEq, Eq, Hash)]
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 pub struct RangeToInclusive<Idx> {
     /// The upper bound of the range (inclusive)
