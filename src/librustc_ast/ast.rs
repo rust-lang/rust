@@ -1165,7 +1165,7 @@ pub enum ExprKind {
     /// and the remaining elements are the rest of the arguments.
     /// Thus, `x.foo::<Bar, Baz>(a, b, c, d)` is represented as
     /// `ExprKind::MethodCall(PathSegment { foo, [Bar, Baz] }, [x, a, b, c, d])`.
-    /// The `Span` is the span of the function, without the dot and receiver
+    /// This `Span` is the span of the function, without the dot and receiver
     /// (e.g. `foo(a, b)` in `x.foo(a, b)`
     MethodCall(PathSegment, Vec<P<Expr>>, Span),
     /// A tuple (e.g., `(a, b, c, d)`).
