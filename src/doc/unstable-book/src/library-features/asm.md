@@ -384,7 +384,7 @@ The assembler template uses the same syntax as [format strings][format-syntax] (
 
 As with format strings, named arguments must appear after positional arguments. Explicit register operands must appear at the end of the operand list, after named arguments if any.
 
-Explicit register operands cannot be used by placeholders in the template string. All other named and positional operands must appear at least once in the template string, otherwise a compiler error is generated.
+Explicit register operands cannot be used by placeholders in the template string. All other named and positional operands must appear at least once in the template string, otherwise the compiler will emit a warning.
 
 The exact assembly code syntax is target-specific and opaque to the compiler except for the way operands are substituted into the template string to form the code passed to the assembler.
 
