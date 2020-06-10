@@ -2181,16 +2181,17 @@ impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
                     _ => (),
                 }
             }
+
+            walk_expr(self, expr);
         } else if is_loop(expr) || is_conditional(expr) {
             self.depth += 1;
             walk_expr(self, expr);
             self.depth -= 1;
-            return;
         } else if let ExprKind::Continue(_) = expr.kind {
             self.done = true;
-            return;
+        } else {
+            walk_expr(self, expr);
         }
-        walk_expr(self, expr);
     }
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None
@@ -2272,16 +2273,16 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
                 self.state = VarState::DontWarn;
                 return;
             }
+            walk_expr(self, expr);
         } else if !self.past_loop && is_loop(expr) {
             self.state = VarState::DontWarn;
-            return;
         } else if is_conditional(expr) {
             self.depth += 1;
             walk_expr(self, expr);
             self.depth -= 1;
-            return;
+        } else {
+            walk_expr(self, expr);
         }
-        walk_expr(self, expr);
     }
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
