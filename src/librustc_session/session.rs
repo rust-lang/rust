@@ -1360,6 +1360,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
             "aarch64-unknown-linux-gnu",
             "x86_64-apple-darwin",
             "x86_64-fuchsia",
+            "x86_64-pc-windows-msvc",
             "x86_64-unknown-linux-gnu",
         ];
         const TSAN_SUPPORTED_TARGETS: &[&str] =

@@ -760,6 +760,11 @@ fn link_sanitizer_runtime(sess: &Session, crate_type: CrateType, linker: &mut dy
             let path = default_tlib.join(&filename);
             linker.link_whole_rlib(&path);
         }
+        "x86_64-pc-windows-msvc" => {
+            let filename = format!("rustc{}_rt.{}.lib", channel, name);
+            let path = default_tlib.join(&filename);
+            linker.link_whole_rlib(&path);
+        }
         _ => {}
     }
 }

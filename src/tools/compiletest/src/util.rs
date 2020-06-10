@@ -86,6 +86,7 @@ pub const ASAN_SUPPORTED_TARGETS: &'static [&'static str] = &[
     "aarch64-unknown-linux-gnu",
     "x86_64-apple-darwin",
     "x86_64-fuchsia",
+    "x86_64-pc-windows-msvc",
     "x86_64-unknown-linux-gnu",
 ];
 
