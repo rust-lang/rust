@@ -308,7 +308,7 @@ The results are 100% Rust specific though.
 Test for parser (`ra_parser`) live in `ra_syntax` crate (see `test_data` direcotory).
 There are two kinds of tests:
 
-* Manually written test cases in `parser/ok` and `parser/error`
+* Manually written test cases in `parser/ok` and `parser/err`
 * "Inline" tests in `parser/inline` (these are generated) from comments in `ra_parser` crate.
 
 The purpose of inline tests is not to achieve full coverage by test cases, but to explain to the reader of the code what each particular `if` and `match` is responsible for.
