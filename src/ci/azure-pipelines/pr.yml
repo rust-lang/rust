@@ -21,15 +21,17 @@ variables:
 - group: public-credentials
 
 jobs:
-- job: Linux
+- job: Windows
   timeoutInMinutes: 600
   pool:
-    vmImage: ubuntu-16.04
+    vmImage: 'vs2017-win2016'
   steps:
-    - template: steps/run.yml
+  - template: steps/run.yml
   strategy:
     matrix:
-      x86_64-gnu-llvm-8: {}
-      mingw-check: {}
-      x86_64-gnu-tools:
-        CI_ONLY_WHEN_SUBMODULES_CHANGED: 1
+      # 32/64 bit MSVC tests
+      x86_64-msvc-2:
+        INITIAL_RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler --enable-sanitizers
+        SCRIPT: make ci-subset-2
+        NO_DEBUG_ASSERTIONS: 1
+        NO_LLVM_ASSERTIONS: 1
