@@ -242,7 +242,10 @@ impl Config {
                         set(value, "/checkOnSave/command", command);
                         set(value, "/checkOnSave/allTargets", all_targets);
                         set(value, "/checkOnSave/allFeatures", all_features);
-                        *features = self.cargo.features.clone();
+                        set(value, "/checkOnSave/features", features);
+                        if features.is_empty() && !self.cargo.features.is_empty() {
+                            *features = self.cargo.features.clone();
+                        }
                     }
                 }
             };

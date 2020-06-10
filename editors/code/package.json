@@ -322,6 +322,14 @@
                     "default": false,
                     "markdownDescription": "Check with all features (will be passed as `--all-features`)"
                 },
+                "rust-analyzer.checkOnSave.features": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "default": [],
+                    "description": "List of features to activate. Set to `rust-analyzer.cargo.features` if empty."
+                },
                 "rust-analyzer.inlayHints.enable": {
                     "type": "boolean",
                     "default": true,
