@@ -1528,6 +1528,9 @@ fn check_arg_type(cx: &LateContext<'_>, pat: &Pat<'_>, arg: &Expr<'_>) {
     }
 }
 
+// To trigger the EXPLICIT_COUNTER_LOOP lint, a variable must be
+// incremented exactly once in the loop body, and initialized to zero
+// at the start of the loop.
 fn check_for_loop_explicit_counter<'tcx>(
     cx: &LateContext<'tcx>,
     pat: &'tcx Pat<'_>,
@@ -1546,7 +1549,10 @@ fn check_for_loop_explicit_counter<'tcx>(
             let mut visitor2 = InitializeVisitor::new(cx, expr, id);
             walk_block(&mut visitor2, block);
 
-            if let Some(name) = visitor2.get_result() {
+            if_chain! {
+                if let Some((name, initializer)) = visitor2.get_result();
+                if is_integer_const(cx, initializer, 0);
+                then {
                     let mut applicability = Applicability::MachineApplicable;
 
                     // for some reason this is the only way to get the `Span`
@@ -1571,6 +1577,7 @@ fn check_for_loop_explicit_counter<'tcx>(
                         ),
                         applicability,
                     );
+                }
             }
         }
     }
@@ -2198,20 +2205,20 @@ impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
     }
 }
 
-enum InitializeVisitorState {
+enum InitializeVisitorState<'hir> {
     Initial,          // Not examined yet
     Declared(Symbol), // Declared but not (yet) initialized
-    Initialized { name: Symbol },
+    Initialized { name: Symbol, initializer: &'hir Expr<'hir> },
     DontWarn,
 }
 
-/// Checks whether a variable is initialized to zero at the start of a loop and not modified
+/// Checks whether a variable is initialized at the start of a loop and not modified
 /// and used after the loop.
 struct InitializeVisitor<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,  // context reference
     end_expr: &'tcx Expr<'tcx>, // the for loop. Stop scanning here.
     var_id: HirId,
-    state: InitializeVisitorState,
+    state: InitializeVisitorState<'tcx>,
     depth: u32, // depth of conditional expressions
     past_loop: bool,
 }
@@ -2228,9 +2235,9 @@ impl<'a, 'tcx> InitializeVisitor<'a, 'tcx> {
         }
     }
 
-    fn get_result(&self) -> Option<Name> {
-        if let InitializeVisitorState::Initialized { name } = self.state {
-            Some(name)
+    fn get_result(&self) -> Option<(Name, &'tcx Expr<'tcx>)> {
+        if let InitializeVisitorState::Initialized { name, initializer } = self.state {
+            Some((name, initializer))
         } else {
             None
         }
@@ -2247,18 +2254,15 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
             if local.pat.hir_id == self.var_id;
             if let PatKind::Binding(.., ident, _) = local.pat.kind;
             then {
-                self.state = if_chain! {
-                    if let Some(ref init) = local.init;
-                    if is_integer_const(&self.cx, init, 0);
-                    then {
+                self.state = if let Some(ref init) = local.init {
                     InitializeVisitorState::Initialized {
-                        name: ident.name
+                        initializer: init,
+                        name: ident.name,
                     }
                 } else {
                     InitializeVisitorState::Declared(ident.name)
                 }
             }
-        }
         }
         walk_stmt(self, stmt);
     }
@@ -2291,11 +2295,11 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
                     },
                     ExprKind::Assign(ref lhs, ref rhs, _) if lhs.hir_id == expr.hir_id => {
                         self.state = if_chain! {
-                            if is_integer_const(&self.cx, rhs, 0) && self.depth == 0;
+                            if self.depth == 0;
                             if let InitializeVisitorState::Declared(name)
                                 | InitializeVisitorState::Initialized { name, ..} = self.state;
                             then {
-                                InitializeVisitorState::Initialized { name }
+                                InitializeVisitorState::Initialized { initializer: rhs, name }
                             } else {
                                 InitializeVisitorState::DontWarn
                             }
