@@ -36,28 +36,28 @@ pub fn load_cargo(
     )?;
 
     let mut extern_dirs = FxHashSet::default();
-    extern_dirs.extend(ws.out_dirs());
-
-    let mut project_roots = ws.to_roots();
-    project_roots.extend(extern_dirs.iter().cloned().map(PackageRoot::new_non_member));
 
     let (sender, receiver) = unbounded();
     let sender = Box::new(move |t| sender.send(t).unwrap());
-    let (mut vfs, roots) = Vfs::new(
-        project_roots
-            .iter()
-            .map(|pkg_root| {
-                RootEntry::new(
-                    pkg_root.path().to_owned(),
-                    RustPackageFilterBuilder::default()
-                        .set_member(pkg_root.is_member())
-                        .into_vfs_filter(),
-                )
-            })
-            .collect(),
-        sender,
-        Watch(false),
-    );
+
+    let mut roots = Vec::new();
+    let project_roots = ws.to_roots();
+    for root in &project_roots {
+        roots.push(RootEntry::new(
+            root.path().to_owned(),
+            RustPackageFilterBuilder::default().set_member(root.is_member()).into_vfs_filter(),
+        ));
+
+        if let Some(out_dir) = root.out_dir() {
+            extern_dirs.insert(out_dir.to_path_buf());
+            roots.push(RootEntry::new(
+                out_dir.to_owned(),
+                RustPackageFilterBuilder::default().set_member(root.is_member()).into_vfs_filter(),
+            ))
+        }
+    }
+
+    let (mut vfs, roots) = Vfs::new(roots, sender, Watch(false));
 
     let source_roots = roots
         .into_iter()
