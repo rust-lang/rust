@@ -89,8 +89,7 @@ impl GlobalState {
     ) -> GlobalState {
         let mut change = AnalysisChange::new();
 
-        let extern_dirs: FxHashSet<_> =
-            workspaces.iter().flat_map(ProjectWorkspace::out_dirs).collect();
+        let mut extern_dirs: FxHashSet<PathBuf> = FxHashSet::default();
 
         let mut local_roots = Vec::new();
         let roots: Vec<_> = {
@@ -100,22 +99,22 @@ impl GlobalState {
                     .exclude(exclude_globs.iter().cloned())
                     .into_vfs_filter()
             };
-            workspaces
-                .iter()
-                .flat_map(ProjectWorkspace::to_roots)
-                .map(|pkg_root| {
-                    let path = pkg_root.path().to_owned();
-                    if pkg_root.is_member() {
-                        local_roots.push(path.clone());
-                    }
-                    RootEntry::new(path, create_filter(pkg_root.is_member()))
-                })
-                .chain(
-                    extern_dirs
-                        .iter()
-                        .map(|path| RootEntry::new(path.to_owned(), create_filter(false))),
-                )
-                .collect()
+            let mut roots = Vec::new();
+            for root in workspaces.iter().flat_map(ProjectWorkspace::to_roots) {
+                let path = root.path().to_owned();
+                if root.is_member() {
+                    local_roots.push(path.clone());
+                }
+                roots.push(RootEntry::new(path, create_filter(root.is_member())));
+                if let Some(out_dir) = root.out_dir() {
+                    extern_dirs.insert(out_dir.to_path_buf());
+                    roots.push(RootEntry::new(
+                        out_dir.to_path_buf(),
+                        create_filter(root.is_member()),
+                    ))
+                }
+            }
+            roots
         };
 
         let (task_sender, task_receiver) = unbounded();

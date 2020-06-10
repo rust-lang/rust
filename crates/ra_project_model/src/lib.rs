@@ -47,16 +47,20 @@ pub struct PackageRoot {
     path: PathBuf,
     /// Is a member of the current workspace
     is_member: bool,
+    out_dir: Option<PathBuf>,
 }
 impl PackageRoot {
     pub fn new_member(path: PathBuf) -> PackageRoot {
-        Self { path, is_member: true }
+        Self { path, is_member: true, out_dir: None }
     }
     pub fn new_non_member(path: PathBuf) -> PackageRoot {
-        Self { path, is_member: false }
+        Self { path, is_member: false, out_dir: None }
     }
     pub fn path(&self) -> &Path {
         &self.path
+    }
+    pub fn out_dir(&self) -> Option<&Path> {
+        self.out_dir.as_deref()
     }
     pub fn is_member(&self) -> bool {
         self.is_member
@@ -204,22 +208,12 @@ impl ProjectWorkspace {
                 .map(|pkg| PackageRoot {
                     path: cargo[pkg].root().to_path_buf(),
                     is_member: cargo[pkg].is_member,
+                    out_dir: cargo[pkg].out_dir.clone(),
                 })
                 .chain(sysroot.crates().map(|krate| {
                     PackageRoot::new_non_member(sysroot[krate].root_dir().to_path_buf())
                 }))
                 .collect(),
-        }
-    }
-
-    pub fn out_dirs(&self) -> Vec<PathBuf> {
-        match self {
-            ProjectWorkspace::Json { project } => {
-                project.crates.iter().filter_map(|krate| krate.out_dir.as_ref()).cloned().collect()
-            }
-            ProjectWorkspace::Cargo { cargo, sysroot: _ } => {
-                cargo.packages().filter_map(|pkg| cargo[pkg].out_dir.as_ref()).cloned().collect()
-            }
         }
     }
 
