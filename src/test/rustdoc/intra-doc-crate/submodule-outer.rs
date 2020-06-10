@@ -1,4 +1,4 @@
-// aux-build:submodule.rs
+// aux-build:submodule-outer.rs
 // edition:2018
 extern crate bar as bar_;
 
@@ -9,6 +9,6 @@ pub mod bar {
 
 // NOTE: we re-exported both `Foo` and `Bar` here,
 // NOTE: so they are inlined and therefore we link to the current module.
-// @has 'submodule/trait.Foo.html' '//a[@href="../submodule/bar/trait.Bar.html"]' 'Bar'
-// @has 'submodule/trait.Foo.html' '//a[@href="../submodule/trait.Baz.html"]' 'Baz'
+// @has 'submodule_outer/trait.Foo.html' '//a[@href="../submodule_outer/bar/trait.Bar.html"]' 'Bar'
+// @has 'submodule_outer/trait.Foo.html' '//a[@href="../submodule_outer/trait.Baz.html"]' 'Baz'
 pub use ::bar_::{Foo, Baz};
