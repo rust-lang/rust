@@ -291,7 +291,7 @@ pub fn default_submod_path<'a>(
             let mut err = struct_span_err!(
                 sess.span_diagnostic,
                 span,
-                E0584,
+                E0761,
                 "file for module `{}` found at both {} and {}",
                 mod_name,
                 default_path_str,

@@ -85,9 +85,7 @@ pub struct Item {
 
 impl fmt::Debug for Item {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let fake = MAX_DEF_ID.with(|m| {
-            m.borrow().get(&self.def_id.krate).map(|id| self.def_id >= *id).unwrap_or(false)
-        });
+        let fake = self.is_fake();
         let def_id: &dyn fmt::Debug = if fake { &"**FAKE**" } else { &self.def_id };
 
         fmt.debug_struct("Item")
@@ -237,6 +235,13 @@ impl Item {
             }
             _ => false,
         }
+    }
+
+    /// See comments on next_def_id
+    pub fn is_fake(&self) -> bool {
+        MAX_DEF_ID.with(|m| {
+            m.borrow().get(&self.def_id.krate).map(|id| self.def_id >= *id).unwrap_or(false)
+        })
     }
 }
 
