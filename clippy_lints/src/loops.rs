@@ -800,19 +800,19 @@ enum OffsetSign {
 }
 
 struct Offset {
-    value: String,
+    value: MinifyingSugg<'static>,
     sign: OffsetSign,
 }
 
 impl Offset {
-    fn negative(value: String) -> Self {
+    fn negative(value: MinifyingSugg<'static>) -> Self {
         Self {
             value,
             sign: OffsetSign::Negative,
         }
     }
 
-    fn positive(value: String) -> Self {
+    fn positive(value: MinifyingSugg<'static>) -> Self {
         Self {
             value,
             sign: OffsetSign::Positive,
@@ -820,7 +820,88 @@ impl Offset {
     }
 
     fn empty() -> Self {
-        Self::positive("0".into())
+        Self::positive(MinifyingSugg::non_paren("0"))
+    }
+}
+
+fn apply_offset(lhs: &MinifyingSugg<'static>, rhs: &Offset) -> MinifyingSugg<'static> {
+    match rhs.sign {
+        OffsetSign::Positive => lhs + &rhs.value,
+        OffsetSign::Negative => lhs - &rhs.value,
+    }
+}
+
+#[derive(Clone)]
+struct MinifyingSugg<'a>(sugg::Sugg<'a>);
+
+impl std::fmt::Display for MinifyingSugg<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        std::fmt::Display::fmt(&self.0, f)
+    }
+}
+
+impl<'a> MinifyingSugg<'a> {
+    fn as_str(&self) -> &str {
+        let sugg::Sugg::NonParen(s) | sugg::Sugg::MaybeParen(s) | sugg::Sugg::BinOp(_, s) = &self.0;
+        s.as_ref()
+    }
+
+    fn hir(cx: &LateContext<'_, '_>, expr: &Expr<'_>, default: &'a str) -> Self {
+        Self(sugg::Sugg::hir(cx, expr, default))
+    }
+
+    fn maybe_par(self) -> Self {
+        Self(self.0.maybe_par())
+    }
+
+    fn non_paren(str: impl Into<std::borrow::Cow<'a, str>>) -> Self {
+        Self(sugg::Sugg::NonParen(str.into()))
+    }
+}
+
+impl std::ops::Add for &MinifyingSugg<'static> {
+    type Output = MinifyingSugg<'static>;
+    fn add(self, rhs: &MinifyingSugg<'static>) -> MinifyingSugg<'static> {
+        match (self.as_str(), rhs.as_str()) {
+            ("0", _) => rhs.clone(),
+            (_, "0") => self.clone(),
+            (_, _) => MinifyingSugg(&self.0 + &rhs.0),
+        }
+    }
+}
+
+impl std::ops::Sub for &MinifyingSugg<'static> {
+    type Output = MinifyingSugg<'static>;
+    fn sub(self, rhs: &MinifyingSugg<'static>) -> MinifyingSugg<'static> {
+        match (self.as_str(), rhs.as_str()) {
+            (_, "0") => self.clone(),
+            ("0", _) => MinifyingSugg(sugg::make_unop("-", rhs.0.clone())),
+            (x, y) if x == y => MinifyingSugg::non_paren("0"),
+            (_, _) => MinifyingSugg(&self.0 - &rhs.0),
+        }
+    }
+}
+
+impl std::ops::Add<&MinifyingSugg<'static>> for MinifyingSugg<'static> {
+    type Output = MinifyingSugg<'static>;
+    fn add(self, rhs: &MinifyingSugg<'static>) -> MinifyingSugg<'static> {
+        match (self.as_str(), rhs.as_str()) {
+            ("0", _) => rhs.clone(),
+            (_, "0") => self,
+            (_, _) => MinifyingSugg(self.0 + &rhs.0),
+        }
+    }
+}
+
+impl std::ops::Sub<&MinifyingSugg<'static>> for MinifyingSugg<'static> {
+    type Output = MinifyingSugg<'static>;
+    fn sub(self, rhs: &MinifyingSugg<'static>) -> MinifyingSugg<'static> {
+        match (self.as_str(), rhs.as_str()) {
+            (_, "0") => self,
+            ("0", _) => MinifyingSugg(sugg::make_unop("-", rhs.0.clone())),
+            (x, y) if x == y => MinifyingSugg::non_paren("0"),
+            (_, _) => MinifyingSugg(self.0 - &rhs.0),
+        }
     }
 }
 
@@ -878,14 +959,15 @@ fn get_offset<'tcx>(
         cx: &LateContext<'tcx>,
         e: &Expr<'_>,
         starts: &[Start<'tcx>],
-    ) -> Option<String> {
+    ) -> Option<MinifyingSugg<'static>> {
         match &e.kind {
             ExprKind::Lit(l) => match l.node {
-                ast::LitKind::Int(x, _ty) => Some(x.to_string()),
+                ast::LitKind::Int(x, _ty) => Some(MinifyingSugg::non_paren(x.to_string())),
                 _ => None,
             },
             ExprKind::Path(..) if extract_start(cx, e, starts).is_none() => {
-                Some(snippet_opt(cx, e.span).unwrap_or_else(|| "??".into()))
+                // `e` is always non paren as it's a `Path`
+                Some(MinifyingSugg::non_paren(snippet(cx, e.span, "???")))
             },
             _ => None,
         }
@@ -979,32 +1061,15 @@ fn build_manual_memcpy_suggestion<'tcx>(
     dst: IndexExpr<'_>,
     src: IndexExpr<'_>,
 ) -> String {
-    fn print_sum(arg1: &str, arg2: &Offset) -> String {
-        match (arg1, &arg2.value[..], arg2.sign) {
-            ("0", "0", _) => "0".into(),
-            ("0", x, OffsetSign::Positive) | (x, "0", _) => x.into(),
-            ("0", x, OffsetSign::Negative) => format!("-{}", x),
-            (x, y, OffsetSign::Positive) => format!("({} + {})", x, y),
-            (x, y, OffsetSign::Negative) => {
-                if x == y {
-                    "0".into()
-                } else {
-                    format!("({} - {})", x, y)
-                }
-            },
-        }
-    }
-
-    fn print_offset(start_str: &str, inline_offset: &Offset) -> String {
-        let offset = print_sum(start_str, inline_offset);
+    fn print_offset(offset: MinifyingSugg<'static>) -> MinifyingSugg<'static> {
         if offset.as_str() == "0" {
-            "".into()
+            MinifyingSugg::non_paren("")
         } else {
             offset
         }
     }
 
-    let print_limit = |end: &Expr<'_>, offset: Offset, base: &Expr<'_>| {
+    let print_limit = |end: &Expr<'_>, end_str: &str, base: &Expr<'_>, sugg: MinifyingSugg<'static>| -> MinifyingSugg<'static> {
         if_chain! {
             if let ExprKind::MethodCall(method, _, len_args, _) = end.kind;
             if method.ident.name == sym!(len);
@@ -1012,42 +1077,72 @@ fn build_manual_memcpy_suggestion<'tcx>(
             if let Some(arg) = len_args.get(0);
             if var_def_id(cx, arg) == var_def_id(cx, base);
             then {
-                match offset.sign {
-                    OffsetSign::Negative => format!("({} - {})", snippet(cx, end.span, "<src>.len()"), offset.value),
-                    OffsetSign::Positive => "".into(),
+                if sugg.as_str() == end_str {
+                    MinifyingSugg::non_paren("")
+                } else {
+                    sugg
                 }
             } else {
-                let end_str = match limits {
+                match limits {
                     ast::RangeLimits::Closed => {
-                        let end = sugg::Sugg::hir(cx, end, "<count>");
-                        format!("{}", end + sugg::ONE)
+                        sugg + &MinifyingSugg::non_paren("1")
                     },
-                    ast::RangeLimits::HalfOpen => format!("{}", snippet(cx, end.span, "..")),
-                };
-
-                print_sum(&end_str, &offset)
+                    ast::RangeLimits::HalfOpen => sugg,
+                }
             }
         }
     };
 
-    let start_str = snippet(cx, start.span, "").to_string();
-    let dst_offset = print_offset(&start_str, &dst.idx_offset);
-    let dst_limit = print_limit(end, dst.idx_offset, dst.base);
-    let src_offset = print_offset(&start_str, &src.idx_offset);
-    let src_limit = print_limit(end, src.idx_offset, src.base);
+    let start_str = MinifyingSugg::hir(cx, start, "");
+    let end_str = MinifyingSugg::hir(cx, end, "");
+
+    let print_offset_and_limit = |idx_expr: &IndexExpr<'_>| match idx_expr.idx {
+        StartKind::Range => (
+            print_offset(apply_offset(&start_str, &idx_expr.idx_offset)),
+            print_limit(
+                end,
+                end_str.as_str(),
+                idx_expr.base,
+                apply_offset(&end_str, &idx_expr.idx_offset),
+            ),
+        ),
+        StartKind::Counter { initializer } => {
+            let counter_start = MinifyingSugg::hir(cx, initializer, "");
+            (
+                print_offset(apply_offset(&counter_start, &idx_expr.idx_offset)),
+                print_limit(
+                    end,
+                    end_str.as_str(),
+                    idx_expr.base,
+                    apply_offset(&end_str, &idx_expr.idx_offset) + &counter_start - &start_str,
+                ),
+            )
+        },
+    };
+
+    let (dst_offset, dst_limit) = print_offset_and_limit(&dst);
+    let (src_offset, src_limit) = print_offset_and_limit(&src);
 
     let dst_base_str = snippet_opt(cx, dst.base.span).unwrap_or_else(|| "???".into());
     let src_base_str = snippet_opt(cx, src.base.span).unwrap_or_else(|| "???".into());
 
-    let dst = if dst_offset == "" && dst_limit == "" {
+    let dst = if dst_offset.as_str() == "" && dst_limit.as_str() == "" {
         dst_base_str
     } else {
-        format!("{}[{}..{}]", dst_base_str, dst_offset, dst_limit)
+        format!(
+            "{}[{}..{}]",
+            dst_base_str,
+            dst_offset.maybe_par(),
+            dst_limit.maybe_par()
+        )
     };
 
     format!(
         "{}.clone_from_slice(&{}[{}..{}])",
-        dst, src_base_str, src_offset, src_limit
+        dst,
+        src_base_str,
+        src_offset.maybe_par(),
+        src_limit.maybe_par()
     )
 }
 

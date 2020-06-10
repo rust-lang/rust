@@ -36,6 +36,46 @@ impl Display for Sugg<'_> {
     }
 }
 
+// It's impossible to derive Clone due to the lack of the impl Clone for AssocOp
+impl Clone for Sugg<'_> {
+    fn clone(&self) -> Self {
+        /// manually cloning AssocOp
+        fn clone_assoc_op(this: &AssocOp) -> AssocOp {
+            match this {
+                AssocOp::Add => AssocOp::Add,
+                AssocOp::Subtract => AssocOp::Subtract,
+                AssocOp::Multiply => AssocOp::Multiply,
+                AssocOp::Divide => AssocOp::Divide,
+                AssocOp::Modulus => AssocOp::Modulus,
+                AssocOp::LAnd => AssocOp::LAnd,
+                AssocOp::LOr => AssocOp::LOr,
+                AssocOp::BitXor => AssocOp::BitXor,
+                AssocOp::BitAnd => AssocOp::BitAnd,
+                AssocOp::BitOr => AssocOp::BitOr,
+                AssocOp::ShiftLeft => AssocOp::ShiftLeft,
+                AssocOp::ShiftRight => AssocOp::ShiftRight,
+                AssocOp::Equal => AssocOp::Equal,
+                AssocOp::Less => AssocOp::Less,
+                AssocOp::LessEqual => AssocOp::LessEqual,
+                AssocOp::NotEqual => AssocOp::NotEqual,
+                AssocOp::Greater => AssocOp::Greater,
+                AssocOp::GreaterEqual => AssocOp::GreaterEqual,
+                AssocOp::Assign => AssocOp::Assign,
+                AssocOp::AssignOp(t) => AssocOp::AssignOp(*t),
+                AssocOp::As => AssocOp::As,
+                AssocOp::DotDot => AssocOp::DotDot,
+                AssocOp::DotDotEq => AssocOp::DotDotEq,
+                AssocOp::Colon => AssocOp::Colon,
+            }
+        }
+        match self {
+            Sugg::NonParen(x) => Sugg::NonParen(x.clone()),
+            Sugg::MaybeParen(x) => Sugg::MaybeParen(x.clone()),
+            Sugg::BinOp(op, x) => Sugg::BinOp(clone_assoc_op(op), x.clone()),
+        }
+    }
+}
+
 #[allow(clippy::wrong_self_convention)] // ok, because of the function `as_ty` method
 impl<'a> Sugg<'a> {
     /// Prepare a suggestion from an expression.
@@ -267,21 +307,49 @@ impl<'a> Sugg<'a> {
     }
 }
 
-impl<'a, 'b> std::ops::Add<Sugg<'b>> for Sugg<'a> {
+impl std::ops::Add for Sugg<'_> {
     type Output = Sugg<'static>;
-    fn add(self, rhs: Sugg<'b>) -> Sugg<'static> {
+    fn add(self, rhs: Sugg<'_>) -> Sugg<'static> {
         make_binop(ast::BinOpKind::Add, &self, &rhs)
     }
 }
 
-impl<'a, 'b> std::ops::Sub<Sugg<'b>> for Sugg<'a> {
+impl std::ops::Sub for Sugg<'_> {
     type Output = Sugg<'static>;
-    fn sub(self, rhs: Sugg<'b>) -> Sugg<'static> {
+    fn sub(self, rhs: Sugg<'_>) -> Sugg<'static> {
         make_binop(ast::BinOpKind::Sub, &self, &rhs)
     }
 }
 
-impl<'a> std::ops::Not for Sugg<'a> {
+impl std::ops::Add<&Sugg<'_>> for Sugg<'_> {
+    type Output = Sugg<'static>;
+    fn add(self, rhs: &Sugg<'_>) -> Sugg<'static> {
+        make_binop(ast::BinOpKind::Add, &self, rhs)
+    }
+}
+
+impl std::ops::Sub<&Sugg<'_>> for Sugg<'_> {
+    type Output = Sugg<'static>;
+    fn sub(self, rhs: &Sugg<'_>) -> Sugg<'static> {
+        make_binop(ast::BinOpKind::Sub, &self, rhs)
+    }
+}
+
+impl std::ops::Add for &Sugg<'_> {
+    type Output = Sugg<'static>;
+    fn add(self, rhs: &Sugg<'_>) -> Sugg<'static> {
+        make_binop(ast::BinOpKind::Add, self, rhs)
+    }
+}
+
+impl std::ops::Sub for &Sugg<'_> {
+    type Output = Sugg<'static>;
+    fn sub(self, rhs: &Sugg<'_>) -> Sugg<'static> {
+        make_binop(ast::BinOpKind::Sub, self, rhs)
+    }
+}
+
+impl std::ops::Not for Sugg<'_> {
     type Output = Sugg<'static>;
     fn not(self) -> Sugg<'static> {
         make_unop("!", self)
