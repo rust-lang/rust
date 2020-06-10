@@ -1,5 +1,7 @@
 // aux-build:submodule-outer.rs
 // edition:2018
+#![deny(intra_doc_resolution_failure)]
+
 extern crate bar as bar_;
 
 // from https://github.com/rust-lang/rust/issues/60883
