@@ -362,7 +362,11 @@ impl Default for Generics {
     fn default() -> Generics {
         Generics {
             params: Vec::new(),
-            where_clause: WhereClause { predicates: Vec::new(), span: DUMMY_SP },
+            where_clause: WhereClause {
+                has_where_token: false,
+                predicates: Vec::new(),
+                span: DUMMY_SP,
+            },
             span: DUMMY_SP,
         }
     }
@@ -371,6 +375,11 @@ impl Default for Generics {
 /// A where-clause in a definition.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct WhereClause {
+    /// `true` if we ate a `where` token: this can happen
+    /// if we parsed no predicates (e.g. `struct Foo where {}
+    /// This allows us to accurately pretty-print
+    /// in `nt_to_tokenstream`
+    pub has_where_token: bool,
     pub predicates: Vec<WherePredicate>,
     pub span: Span,
 }
