@@ -64,7 +64,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::{GeneratorStateLangItem, PinTypeLangItem};
 use rustc_index::bit_set::{BitMatrix, BitSet};
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_middle::mir::visit::{MutVisitor, PlaceContext};
+use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::GeneratorSubsts;
@@ -744,27 +744,19 @@ fn sanitize_witness<'tcx>(
 }
 
 fn compute_layout<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    source: MirSource<'tcx>,
-    upvars: &Vec<Ty<'tcx>>,
-    interior: Ty<'tcx>,
-    always_live_locals: &storage::AlwaysLiveLocals,
-    movable: bool,
+    liveness: LivenessInfo,
     body: &mut Body<'tcx>,
 ) -> (
     FxHashMap<Local, (Ty<'tcx>, VariantIdx, usize)>,
     GeneratorLayout<'tcx>,
     IndexVec<BasicBlock, Option<BitSet<Local>>>,
 ) {
-    // Use a liveness analysis to compute locals which are live across a suspension point
     let LivenessInfo {
         saved_locals,
         live_locals_at_suspension_points,
         storage_conflicts,
         storage_liveness,
-    } = locals_live_across_suspend_points(tcx, body, source, always_live_locals, movable);
-
-    sanitize_witness(tcx, body, source.def_id(), interior, upvars, &saved_locals);
+    } = liveness;
 
     // Gather live local types and their indices.
     let mut locals = IndexVec::<GeneratorSavedLocal, _>::new();
@@ -1280,11 +1272,25 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
 
         let always_live_locals = storage::AlwaysLiveLocals::new(&body);
 
+        let liveness_info =
+            locals_live_across_suspend_points(tcx, body, source, &always_live_locals, movable);
+
+        sanitize_witness(tcx, body, def_id, interior, &upvars, &liveness_info.saved_locals);
+
+        if tcx.sess.opts.debugging_opts.validate_mir {
+            let mut vis = EnsureGeneratorFieldAssignmentsNeverAlias {
+                assigned_local: None,
+                saved_locals: &liveness_info.saved_locals,
+                storage_conflicts: &liveness_info.storage_conflicts,
+            };
+
+            vis.visit_body(body);
+        }
+
         // Extract locals which are live across suspension point into `layout`
         // `remap` gives a mapping from local indices onto generator struct indices
         // `storage_liveness` tells us which locals have live storage at suspension points
-        let (remap, layout, storage_liveness) =
-            compute_layout(tcx, source, &upvars, interior, &always_live_locals, movable, body);
+        let (remap, layout, storage_liveness) = compute_layout(liveness_info, body);
 
         let can_return = can_return(tcx, body);
 
@@ -1333,5 +1339,133 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
 
         // Create the Generator::resume function
         create_generator_resume_function(tcx, transform, source, body, can_return);
+    }
+}
+
+/// Looks for any assignments between locals (e.g., `_4 = _5`) that will both be converted to fields
+/// in the generator state machine but whose storage does not conflict.
+///
+/// Validation needs to happen immediately *before* `TransformVisitor` is invoked, not after.
+///
+/// This condition would arise when the assignment is the last use of `_5` but the initial
+/// definition of `_4` if we weren't extra careful to mark all locals used inside a statement as
+/// conflicting. Non-conflicting generator saved locals may be stored at the same location within
+/// the generator state machine, which would result in ill-formed MIR: the left-hand and right-hand
+/// sides of an assignment may not alias. This caused a miscompilation in [#73137].
+///
+/// [#73137]: https://github.com/rust-lang/rust/issues/73137
+struct EnsureGeneratorFieldAssignmentsNeverAlias<'a> {
+    saved_locals: &'a GeneratorSavedLocals,
+    storage_conflicts: &'a BitMatrix<GeneratorSavedLocal, GeneratorSavedLocal>,
+    assigned_local: Option<GeneratorSavedLocal>,
+}
+
+impl EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
+    fn saved_local_for_direct_place(&self, place: Place<'_>) -> Option<GeneratorSavedLocal> {
+        if place.is_indirect() {
+            return None;
+        }
+
+        self.saved_locals.get(place.local)
+    }
+
+    fn check_assigned_place(&mut self, place: Place<'tcx>, f: impl FnOnce(&mut Self)) {
+        if let Some(assigned_local) = self.saved_local_for_direct_place(place) {
+            assert!(self.assigned_local.is_none(), "`check_assigned_local` must not recurse");
+
+            self.assigned_local = Some(assigned_local);
+            f(self);
+            self.assigned_local = None;
+        }
+    }
+}
+
+impl Visitor<'tcx> for EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
+    fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, location: Location) {
+        let lhs = match self.assigned_local {
+            Some(l) => l,
+            None => {
+                // We should be visiting all places used in the MIR.
+                assert!(!context.is_use());
+                return;
+            }
+        };
+
+        let rhs = match self.saved_local_for_direct_place(*place) {
+            Some(l) => l,
+            None => return,
+        };
+
+        if !self.storage_conflicts.contains(lhs, rhs) {
+            bug!(
+                "Assignment between generator saved locals whose storage does not conflict: \
+                    {:?}: {:?} = {:?}",
+                location,
+                lhs,
+                rhs,
+            );
+        }
+    }
+
+    fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
+        match &statement.kind {
+            StatementKind::Assign(box (lhs, rhs)) => {
+                self.check_assigned_place(*lhs, |this| this.visit_rvalue(rhs, location));
+            }
+
+            // FIXME: Does `llvm_asm!` have any aliasing requirements?
+            StatementKind::LlvmInlineAsm(_) => {}
+
+            StatementKind::FakeRead(..)
+            | StatementKind::SetDiscriminant { .. }
+            | StatementKind::StorageLive(_)
+            | StatementKind::StorageDead(_)
+            | StatementKind::Retag(..)
+            | StatementKind::AscribeUserType(..)
+            | StatementKind::Nop => {}
+        }
+    }
+
+    fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
+        // Checking for aliasing in terminators is probably overkill, but until we have actual
+        // semantics, we should be conservative here.
+        match &terminator.kind {
+            TerminatorKind::Call {
+                func,
+                args,
+                destination: Some((dest, _)),
+                cleanup: _,
+                from_hir_call: _,
+                fn_span: _,
+            } => {
+                self.check_assigned_place(*dest, |this| {
+                    this.visit_operand(func, location);
+                    for arg in args {
+                        this.visit_operand(arg, location);
+                    }
+                });
+            }
+
+            TerminatorKind::Yield { value, resume: _, resume_arg, drop: _ } => {
+                self.check_assigned_place(*resume_arg, |this| this.visit_operand(value, location));
+            }
+
+            // FIXME: Does `asm!` have any aliasing requirements?
+            TerminatorKind::InlineAsm { .. } => {}
+
+            TerminatorKind::Call { .. }
+            | TerminatorKind::Goto { .. }
+            | TerminatorKind::SwitchInt { .. }
+            | TerminatorKind::Resume
+            | TerminatorKind::Abort
+            | TerminatorKind::Return
+            | TerminatorKind::Unreachable
+            | TerminatorKind::Drop { .. }
+            | TerminatorKind::DropAndReplace { .. }
+            | TerminatorKind::Assert { .. }
+            | TerminatorKind::GeneratorDrop
+            | TerminatorKind::FalseEdge { .. }
+            | TerminatorKind::FalseUnwind { .. } => {}
+        }
     }
 }
