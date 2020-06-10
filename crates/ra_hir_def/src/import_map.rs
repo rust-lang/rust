@@ -177,13 +177,21 @@ fn cmp((_, lhs): &(&ItemInNs, &ModPath), (_, rhs): &(&ItemInNs, &ModPath)) -> Or
 #[derive(Debug)]
 pub struct Query {
     query: String,
+    lowercased: String,
     anchor_end: bool,
+    case_sensitive: bool,
     limit: usize,
 }
 
 impl Query {
     pub fn new(query: &str) -> Self {
-        Self { query: query.to_lowercase(), anchor_end: false, limit: usize::max_value() }
+        Self {
+            lowercased: query.to_lowercase(),
+            query: query.to_string(),
+            anchor_end: false,
+            case_sensitive: false,
+            limit: usize::max_value(),
+        }
     }
 
     /// Only returns items whose paths end with the (case-insensitive) query string as their last
@@ -195,6 +203,11 @@ impl Query {
     /// Limits the returned number of items to `limit`.
     pub fn limit(self, limit: usize) -> Self {
         Self { limit, ..self }
+    }
+
+    /// Respect casing of the query string when matching.
+    pub fn case_sensitive(self) -> Self {
+        Self { case_sensitive: true, ..self }
     }
 }
 
@@ -212,7 +225,7 @@ pub fn search_dependencies<'a>(
     let import_maps: Vec<_> =
         graph[krate].dependencies.iter().map(|dep| db.import_map(dep.crate_id)).collect();
 
-    let automaton = fst::automaton::Subsequence::new(&query.query);
+    let automaton = fst::automaton::Subsequence::new(&query.lowercased);
 
     let mut op = fst::map::OpBuilder::new();
     for map in &import_maps {
@@ -232,17 +245,27 @@ pub fn search_dependencies<'a>(
             if query.anchor_end {
                 // Last segment must match query.
                 let last = path.segments.last().unwrap().to_string();
-                if last.to_lowercase() != query.query {
+                if last.to_lowercase() != query.lowercased {
                     continue;
                 }
             }
 
             // Add the items from this `ModPath` group. Those are all subsequent items in
             // `importables` whose paths match `path`.
-            res.extend(importables.iter().copied().take_while(|item| {
+            let iter = importables.iter().copied().take_while(|item| {
                 let item_path = &import_map.map[item];
                 fst_path(item_path) == fst_path(path)
-            }));
+            });
+
+            if query.case_sensitive {
+                // FIXME: This does not do a subsequence match.
+                res.extend(iter.filter(|item| {
+                    let item_path = &import_map.map[item];
+                    item_path.to_string().contains(&query.query)
+                }));
+            } else {
+                res.extend(iter);
+            }
 
             if res.len() >= query.limit {
                 res.truncate(query.limit);
@@ -579,6 +602,33 @@ mod tests {
         dep::fmt (t)
         dep::Fmt (t)
         dep::Fmt (m)
+        "###);
+    }
+
+    #[test]
+    fn search_casing() {
+        let ra_fixture = r#"
+            //- /main.rs crate:main deps:dep
+            //- /dep.rs crate:dep
+
+            pub struct fmt;
+            pub struct FMT;
+        "#;
+
+        let res = search_dependencies_of(ra_fixture, "main", Query::new("FMT"));
+
+        assert_snapshot!(res, @r###"
+        dep::FMT (v)
+        dep::FMT (t)
+        dep::fmt (t)
+        dep::fmt (v)
+        "###);
+
+        let res = search_dependencies_of(ra_fixture, "main", Query::new("FMT").case_sensitive());
+
+        assert_snapshot!(res, @r###"
+        dep::FMT (v)
+        dep::FMT (t)
         "###);
     }
 

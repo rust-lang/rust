@@ -107,7 +107,7 @@ impl Crate {
         import_map::search_dependencies(
             db,
             self.into(),
-            import_map::Query::new(query).anchor_end().limit(40),
+            import_map::Query::new(query).anchor_end().case_sensitive().limit(40),
         )
         .into_iter()
         .map(|item| match item {

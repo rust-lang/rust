@@ -917,4 +917,29 @@ fn main() {
 ",
         );
     }
+
+    #[test]
+    fn casing() {
+        // Tests that differently cased names don't interfere and we only suggest the matching one.
+        check_assist(
+            auto_import,
+            r"
+                    //- /lib.rs crate:dep
+
+                    pub struct FMT;
+                    pub struct fmt;
+
+                    //- /main.rs crate:main deps:dep
+
+                    fn main() {
+                        FMT<|>;
+                    }",
+            r"use dep::FMT;
+
+fn main() {
+    FMT;
+}
+",
+        );
+    }
 }
