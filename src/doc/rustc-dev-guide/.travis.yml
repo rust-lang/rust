@@ -30,3 +30,8 @@ deploy:
   fqdn: rustc-dev-guide.rust-lang.org
   on:
     branch: master
+    
+# Only build master branch on push
+branches:
+  only:
+  - master
