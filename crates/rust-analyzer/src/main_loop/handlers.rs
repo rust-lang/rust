@@ -1186,7 +1186,7 @@ fn to_runnable_action(
     runnable: Runnable,
 ) -> Option<lsp_ext::CommandLinkGroup> {
     let cargo_spec = CargoTargetSpec::for_file(&snap, file_id).ok()?;
-    if should_skip_target(&runnable, cargo_spec.as_ref()) {
+    if !snap.config.hover.runnable() || should_skip_target(&runnable, cargo_spec.as_ref()) {
         return None;
     }
 
