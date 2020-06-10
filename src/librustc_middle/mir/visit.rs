@@ -407,7 +407,7 @@ macro_rules! make_mir_visitor {
 
             fn super_terminator(&mut self,
                                 terminator: &$($mutability)? Terminator<'tcx>,
-                                source_location: Location) {
+                                location: Location) {
                 let Terminator { source_info, kind } = terminator;
 
                 self.visit_source_info(source_info);
@@ -428,7 +428,7 @@ macro_rules! make_mir_visitor {
                         self.visit_local(
                             & $($mutability)? local,
                             PlaceContext::NonMutatingUse(NonMutatingUseContext::Move),
-                            source_location,
+                            location,
                         );
 
                         assert_eq!(
@@ -444,8 +444,8 @@ macro_rules! make_mir_visitor {
                         values: _,
                         targets: _
                     } => {
-                        self.visit_operand(discr, source_location);
-                        self.visit_ty(switch_ty, TyContext::Location(source_location));
+                        self.visit_operand(discr, location);
+                        self.visit_ty(switch_ty, TyContext::Location(location));
                     }
 
                     TerminatorKind::Drop {
@@ -456,7 +456,7 @@ macro_rules! make_mir_visitor {
                         self.visit_place(
                             place,
                             PlaceContext::MutatingUse(MutatingUseContext::Drop),
-                            source_location
+                            location
                         );
                     }
 
@@ -469,9 +469,9 @@ macro_rules! make_mir_visitor {
                         self.visit_place(
                             place,
                             PlaceContext::MutatingUse(MutatingUseContext::Drop),
-                            source_location
+                            location
                         );
-                        self.visit_operand(value, source_location);
+                        self.visit_operand(value, location);
                     }
 
                     TerminatorKind::Call {
@@ -482,15 +482,15 @@ macro_rules! make_mir_visitor {
                         from_hir_call: _,
                         fn_span: _
                     } => {
-                        self.visit_operand(func, source_location);
+                        self.visit_operand(func, location);
                         for arg in args {
-                            self.visit_operand(arg, source_location);
+                            self.visit_operand(arg, location);
                         }
                         if let Some((destination, _)) = destination {
                             self.visit_place(
                                 destination,
                                 PlaceContext::MutatingUse(MutatingUseContext::Call),
-                                source_location
+                                location
                             );
                         }
                     }
@@ -502,8 +502,8 @@ macro_rules! make_mir_visitor {
                         target: _,
                         cleanup: _,
                     } => {
-                        self.visit_operand(cond, source_location);
-                        self.visit_assert_message(msg, source_location);
+                        self.visit_operand(cond, location);
+                        self.visit_assert_message(msg, location);
                     }
 
                     TerminatorKind::Yield {
@@ -512,11 +512,11 @@ macro_rules! make_mir_visitor {
                         resume_arg,
                         drop: _,
                     } => {
-                        self.visit_operand(value, source_location);
+                        self.visit_operand(value, location);
                         self.visit_place(
                             resume_arg,
                             PlaceContext::MutatingUse(MutatingUseContext::Yield),
-                            source_location,
+                            location,
                         );
                     }
 
@@ -531,29 +531,29 @@ macro_rules! make_mir_visitor {
                             match op {
                                 InlineAsmOperand::In { value, .. }
                                 | InlineAsmOperand::Const { value } => {
-                                    self.visit_operand(value, source_location);
+                                    self.visit_operand(value, location);
                                 }
                                 InlineAsmOperand::Out { place, .. } => {
                                     if let Some(place) = place {
                                         self.visit_place(
                                             place,
                                             PlaceContext::MutatingUse(MutatingUseContext::Store),
-                                            source_location,
+                                            location,
                                         );
                                     }
                                 }
                                 InlineAsmOperand::InOut { in_value, out_place, .. } => {
-                                    self.visit_operand(in_value, source_location);
+                                    self.visit_operand(in_value, location);
                                     if let Some(out_place) = out_place {
                                         self.visit_place(
                                             out_place,
                                             PlaceContext::MutatingUse(MutatingUseContext::Store),
-                                            source_location,
+                                            location,
                                         );
                                     }
                                 }
                                 InlineAsmOperand::SymFn { value } => {
-                                    self.visit_constant(value, source_location);
+                                    self.visit_constant(value, location);
                                 }
                                 InlineAsmOperand::SymStatic { def_id: _ } => {}
                             }
