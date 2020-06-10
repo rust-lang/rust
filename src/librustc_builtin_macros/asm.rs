@@ -3,11 +3,10 @@ use rustc_ast::ptr::P;
 use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::{pluralize, Applicability, DiagnosticBuilder};
+use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_expand::base::{self, *};
 use rustc_parse::parser::Parser;
 use rustc_parse_format as parse;
-use rustc_session::lint::builtin::UNUSED_ASM_ARGUMENTS;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{InnerSpan, Span};
 
@@ -385,13 +384,6 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, sp: Span, args: AsmArgs) -> P<ast
         return DummyResult::raw_expr(sp, true);
     }
 
-    // Register operands are implicitly used since they are not allowed to be
-    // referenced in the template string.
-    let mut used = vec![false; args.operands.len()];
-    for pos in &args.reg_args {
-        used[*pos] = true;
-    }
-
     let named_pos: FxHashSet<usize> = args.named_args.values().cloned().collect();
     let mut arg_spans = parser.arg_places.iter().map(|span| template_span.from_inner(*span));
     let mut template = vec![];
@@ -470,7 +462,6 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, sp: Span, args: AsmArgs) -> P<ast
                 }
 
                 if let Some(operand_idx) = operand_idx {
-                    used[operand_idx] = true;
                     template.push(ast::InlineAsmTemplatePiece::Placeholder {
                         operand_idx,
                         modifier,
@@ -481,25 +472,14 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, sp: Span, args: AsmArgs) -> P<ast
         }
     }
 
-    let operands = args.operands;
-    let unused_operands: Vec<_> = used
-        .into_iter()
-        .enumerate()
-        .filter(|&(_, used)| !used)
-        .map(|(idx, _)| operands[idx].1)
-        .collect();
-    if !unused_operands.is_empty() {
-        let msg = format!("asm argument{} not used in template", pluralize!(unused_operands.len()));
-        ecx.parse_sess.buffer_lint(UNUSED_ASM_ARGUMENTS, unused_operands, ast::CRATE_NODE_ID, &msg);
-    }
-
     let line_spans = if parser.line_spans.is_empty() {
         vec![template_sp]
     } else {
         parser.line_spans.iter().map(|span| template_span.from_inner(*span)).collect()
     };
 
-    let inline_asm = ast::InlineAsm { template, operands, options: args.options, line_spans };
+    let inline_asm =
+        ast::InlineAsm { template, operands: args.operands, options: args.options, line_spans };
     P(ast::Expr {
         id: ast::DUMMY_NODE_ID,
         kind: ast::ExprKind::InlineAsm(P(inline_asm)),

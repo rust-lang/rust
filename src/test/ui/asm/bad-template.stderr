@@ -90,5 +90,11 @@ warning: asm arguments not used in template
 LL |         asm!("", in(reg) 0, in(reg) 1);
    |                  ^^^^^^^^^  ^^^^^^^^^
 
-error: aborting due to 7 previous errors; 4 warnings emitted
+warning: asm arguments not used in template
+  --> $DIR/bad-template.rs:28:18
+   |
+LL |         asm!("", in(reg) 0, in(reg) 1);
+   |                  ^^^^^^^^^  ^^^^^^^^^
+
+error: aborting due to 7 previous errors; 5 warnings emitted
 

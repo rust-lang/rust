@@ -6,9 +6,10 @@ use rustc_ast::ptr::P as AstP;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::thin_vec::ThinVec;
-use rustc_errors::struct_span_err;
+use rustc_errors::{pluralize, struct_span_err};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
+use rustc_session::lint::builtin::UNUSED_ASM_ARGUMENTS;
 use rustc_span::source_map::{respan, DesugaringKind, Span, Spanned};
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_target::asm;
@@ -179,7 +180,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let e = e.as_ref().map(|x| self.lower_expr(x));
                     hir::ExprKind::Ret(e)
                 }
-                ExprKind::InlineAsm(ref asm) => self.lower_expr_asm(e.span, asm),
+                ExprKind::InlineAsm(ref asm) => self.lower_expr_asm(e.span, e.id, asm),
                 ExprKind::LlvmInlineAsm(ref asm) => self.lower_expr_llvm_asm(asm),
                 ExprKind::Struct(ref path, ref fields, ref maybe_expr) => {
                     let maybe_expr = maybe_expr.as_ref().map(|x| self.lower_expr(x));
@@ -973,7 +974,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         result
     }
 
-    fn lower_expr_asm(&mut self, sp: Span, asm: &InlineAsm) -> hir::ExprKind<'hir> {
+    fn lower_expr_asm(&mut self, sp: Span, id: NodeId, asm: &InlineAsm) -> hir::ExprKind<'hir> {
         if self.sess.asm_arch.is_none() {
             struct_span_err!(self.sess, sp, E0472, "asm! is unsupported on this target").emit();
         }
@@ -1263,6 +1264,34 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     });
                 }
             }
+        }
+
+        // Warn about operands that are not referenced in the template string.
+        let mut used = vec![false; operands.len()];
+        for p in &asm.template {
+            if let InlineAsmTemplatePiece::Placeholder { operand_idx, modifier: _, span: _ } = *p {
+                used[operand_idx] = true;
+            }
+        }
+        let unused_operands: Vec<_> = used
+            .into_iter()
+            .enumerate()
+            .filter(|&(idx, used)| {
+                // Register operands are implicitly used since they are not allowed to be
+                // referenced in the template string.
+                !used && !matches!(operands[idx].reg(), Some(asm::InlineAsmRegOrRegClass::Reg(_)))
+            })
+            .map(|(idx, _)| asm.operands[idx].1)
+            .collect();
+        if !unused_operands.is_empty() {
+            let msg =
+                format!("asm argument{} not used in template", pluralize!(unused_operands.len()));
+            self.resolver.lint_buffer().buffer_lint(
+                UNUSED_ASM_ARGUMENTS,
+                id,
+                unused_operands,
+                &msg,
+            );
         }
 
         let operands = self.arena.alloc_from_iter(operands);

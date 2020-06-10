@@ -24,5 +24,7 @@ fn main() {
         //~^ ERROR asm template modifier must be a single character
         asm!("", in(reg) 0, in(reg) 1);
         //~^ WARN asm arguments not used in template
+        #[allow(unused_asm_arguments)]
+        asm!("", in(reg) 0, in(reg) 1);
     }
 }
