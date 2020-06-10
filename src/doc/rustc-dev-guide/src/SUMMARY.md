@@ -26,7 +26,7 @@
         - [with the linux perf tool](./profiling/with_perf.md)
     - [Coding conventions](./conventions.md)
     - [crates.io Dependencies](./crates-io.md)
-    - [Emitting Errors and other Diagnostics](diagnostics.md)
+    - [Errors and Lints](diagnostics.md)
         - [`LintStore`](./diagnostics/lintstore.md)
         - [Diagnostic Codes](./diagnostics/diagnostic-codes.md)
     - [Notification groups](notification-groups/about.md)
