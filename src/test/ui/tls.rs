@@ -1,4 +1,5 @@
 // run-pass
+// compile-flags: -O
 
 #![feature(thread_local)]
 
