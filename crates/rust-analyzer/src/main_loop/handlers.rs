@@ -18,8 +18,8 @@ use lsp_types::{
     TextDocumentIdentifier, Url, WorkspaceEdit,
 };
 use ra_ide::{
-    FileId, FilePosition, FileRange, HoverAction, Query, RangeInfo, Runnable, RunnableKind,
-    SearchScope, TextEdit,
+    FileId, FilePosition, FileRange, HoverAction, HoverGotoTypeData, NavigationTarget, Query,
+    RangeInfo, Runnable, RunnableKind, SearchScope, TextEdit,
 };
 use ra_prof::profile;
 use ra_project_model::TargetKind;
@@ -1150,6 +1150,23 @@ fn debug_single_command(runnable: &lsp_ext::Runnable) -> Command {
     }
 }
 
+fn goto_location_command(snap: &GlobalStateSnapshot, nav: &NavigationTarget) -> Option<Command> {
+    let value = if snap.config.client_caps.location_link {
+        let link = to_proto::location_link(snap, None, nav.clone()).ok()?;
+        to_value(link).ok()?
+    } else {
+        let range = FileRange { file_id: nav.file_id(), range: nav.range() };
+        let location = to_proto::location(snap, range).ok()?;
+        to_value(location).ok()?
+    };
+
+    Some(Command {
+        title: nav.name().to_string(),
+        command: "rust-analyzer.gotoLocation".into(),
+        arguments: Some(vec![value]),
+    })
+}
+
 fn to_command_link(command: Command, tooltip: String) -> lsp_ext::CommandLink {
     lsp_ext::CommandLink { tooltip: Some(tooltip), command }
 }
@@ -1180,7 +1197,7 @@ fn show_impl_command_link(
     None
 }
 
-fn to_runnable_action(
+fn runnable_action_links(
     snap: &GlobalStateSnapshot,
     file_id: FileId,
     runnable: Runnable,
@@ -1208,6 +1225,26 @@ fn to_runnable_action(
     })
 }
 
+fn goto_type_action_links(
+    snap: &GlobalStateSnapshot,
+    nav_targets: &[HoverGotoTypeData],
+) -> Option<lsp_ext::CommandLinkGroup> {
+    if !snap.config.hover.goto_type_def || nav_targets.is_empty() {
+        return None;
+    }
+
+    Some(lsp_ext::CommandLinkGroup {
+        title: Some("Go to ".into()),
+        commands: nav_targets
+            .iter()
+            .filter_map(|it| {
+                goto_location_command(snap, &it.nav)
+                    .map(|cmd| to_command_link(cmd, it.mod_path.clone()))
+            })
+            .collect(),
+    })
+}
+
 fn prepare_hover_actions(
     snap: &GlobalStateSnapshot,
     file_id: FileId,
@@ -1221,7 +1258,8 @@ fn prepare_hover_actions(
         .iter()
         .filter_map(|it| match it {
             HoverAction::Implementaion(position) => show_impl_command_link(snap, position),
-            HoverAction::Runnable(r) => to_runnable_action(snap, file_id, r.clone()),
+            HoverAction::Runnable(r) => runnable_action_links(snap, file_id, r.clone()),
+            HoverAction::GoToType(targets) => goto_type_action_links(snap, targets),
         })
         .collect()
 }

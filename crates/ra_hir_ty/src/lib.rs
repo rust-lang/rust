@@ -1052,10 +1052,10 @@ pub enum OpaqueTyId {
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct ReturnTypeImplTraits {
-    pub(crate) impl_traits: Vec<ReturnTypeImplTrait>,
+    pub impl_traits: Vec<ReturnTypeImplTrait>,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
-pub(crate) struct ReturnTypeImplTrait {
-    pub(crate) bounds: Binders<Vec<GenericPredicate>>,
+pub struct ReturnTypeImplTrait {
+    pub bounds: Binders<Vec<GenericPredicate>>,
 }

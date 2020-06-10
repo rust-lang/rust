@@ -321,6 +321,15 @@ impl ToNav for hir::Adt {
     }
 }
 
+impl ToNav for hir::AdtOrTrait {
+    fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
+        match self {
+            hir::AdtOrTrait::Adt(adt) => adt.to_nav(db),
+            hir::AdtOrTrait::Trait(trait_) => trait_.to_nav(db),
+        }
+    }
+}
+
 impl ToNav for hir::AssocItem {
     fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
         match self {

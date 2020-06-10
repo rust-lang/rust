@@ -26,8 +26,8 @@ use hir_ty::{
     autoderef,
     display::{HirDisplayError, HirFormatter},
     expr::ExprValidator,
-    method_resolution, ApplicationTy, Canonical, InEnvironment, Substs, TraitEnvironment, Ty,
-    TyDefId, TypeCtor,
+    method_resolution, ApplicationTy, Canonical, GenericPredicate, InEnvironment, OpaqueTyId,
+    Substs, TraitEnvironment, Ty, TyDefId, TypeCtor, TypeWalk,
 };
 use ra_db::{CrateId, CrateName, Edition, FileId};
 use ra_prof::profile;
@@ -1380,6 +1380,87 @@ impl Type {
             ty: InEnvironment { value: ty, environment: self.ty.environment.clone() },
         }
     }
+
+    /// Returns a flattened list of all the ADTs and Traits mentioned in the type
+    pub fn flattened_type_items(&self, db: &dyn HirDatabase) -> Vec<AdtOrTrait> {
+        fn push_new_item(item: AdtOrTrait, acc: &mut Vec<AdtOrTrait>) {
+            if !acc.contains(&item) {
+                acc.push(item);
+            }
+        }
+
+        fn push_bounds(
+            db: &dyn HirDatabase,
+            predicates: &[GenericPredicate],
+            acc: &mut Vec<AdtOrTrait>,
+        ) {
+            for p in predicates.iter() {
+                match p {
+                    GenericPredicate::Implemented(trait_ref) => {
+                        push_new_item(Trait::from(trait_ref.trait_).into(), acc);
+                        walk_types(db, &trait_ref.substs, acc);
+                    }
+                    GenericPredicate::Projection(_) => {}
+                    GenericPredicate::Error => (),
+                }
+            }
+        }
+
+        fn walk_types<T: TypeWalk>(db: &dyn HirDatabase, tw: &T, acc: &mut Vec<AdtOrTrait>) {
+            tw.walk(&mut |ty| walk_type(db, ty, acc));
+        }
+
+        fn walk_type(db: &dyn HirDatabase, ty: &Ty, acc: &mut Vec<AdtOrTrait>) {
+            match ty.strip_references() {
+                Ty::Apply(ApplicationTy { ctor, parameters, .. }) => {
+                    match ctor {
+                        TypeCtor::Adt(adt_id) => push_new_item(Adt::from(*adt_id).into(), acc),
+                        _ => (),
+                    }
+                    // adt params, tuples, etc...
+                    walk_types(db, parameters, acc);
+                }
+                Ty::Dyn(predicates) => {
+                    push_bounds(db, predicates, acc);
+                }
+                Ty::Placeholder(id) => {
+                    let generic_params = db.generic_params(id.parent);
+                    let param_data = &generic_params.types[id.local_id];
+                    match param_data.provenance {
+                        hir_def::generics::TypeParamProvenance::ArgumentImplTrait => {
+                            let predicates: Vec<_> = db
+                                .generic_predicates_for_param(*id)
+                                .into_iter()
+                                .map(|pred| pred.value.clone())
+                                .collect();
+                            push_bounds(db, &predicates, acc);
+                        }
+                        _ => (),
+                    }
+                }
+                Ty::Opaque(opaque_ty) => {
+                    let bounds = match opaque_ty.opaque_ty_id {
+                        OpaqueTyId::ReturnTypeImplTrait(func, idx) => {
+                            let datas = db
+                                .return_type_impl_traits(func)
+                                .expect("impl trait id without data");
+                            let data = (*datas)
+                                .as_ref()
+                                .map(|rpit| rpit.impl_traits[idx as usize].bounds.clone());
+                            data.clone().subst(&opaque_ty.parameters)
+                        }
+                    };
+                    push_bounds(db, &bounds.value, acc);
+                    walk_types(db, &opaque_ty.parameters, acc);
+                }
+                _ => (),
+            }
+        }
+
+        let mut res: Vec<AdtOrTrait> = Vec::new(); // not a Set to preserve the order
+        walk_type(db, &self.ty.value, &mut res);
+        res
+    }
 }
 
 impl HirDisplay for Type {
@@ -1486,5 +1567,28 @@ pub trait HasVisibility {
     fn is_visible_from(&self, db: &dyn HirDatabase, module: Module) -> bool {
         let vis = self.visibility(db);
         vis.is_visible_from(db.upcast(), module.id)
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum AdtOrTrait {
+    Adt(Adt),
+    Trait(Trait),
+}
+impl_froms!(AdtOrTrait: Adt, Trait);
+
+impl AdtOrTrait {
+    pub fn module(self, db: &dyn HirDatabase) -> Module {
+        match self {
+            AdtOrTrait::Adt(adt) => adt.module(db),
+            AdtOrTrait::Trait(trait_) => trait_.module(db),
+        }
+    }
+
+    pub fn name(self, db: &dyn HirDatabase) -> Name {
+        match self {
+            AdtOrTrait::Adt(adt) => adt.name(db),
+            AdtOrTrait::Trait(trait_) => trait_.name(db),
+        }
     }
 }
