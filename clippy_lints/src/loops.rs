@@ -818,11 +818,27 @@ impl Offset {
             sign: OffsetSign::Positive,
         }
     }
+
+    fn empty() -> Self {
+        Self::positive("0".into())
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+enum StartKind<'hir> {
+    Range,
+    Counter { initializer: &'hir Expr<'hir> },
 }
 
 struct IndexExpr<'hir> {
     base: &'hir Expr<'hir>,
+    idx: StartKind<'hir>,
     idx_offset: Offset,
+}
+
+struct Start<'hir> {
+    id: HirId,
+    kind: StartKind<'hir>,
 }
 
 fn is_slice_like<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'_>) -> bool {
@@ -845,14 +861,32 @@ fn fetch_cloned_expr<'tcx>(expr: &'tcx Expr<'tcx>) -> &'tcx Expr<'tcx> {
     }
 }
 
-fn get_offset<'tcx>(cx: &LateContext<'tcx>, idx: &Expr<'_>, start: HirId) -> Option<Offset> {
-    fn extract_offset<'tcx>(cx: &LateContext<'tcx>, e: &Expr<'_>, start: HirId) -> Option<String> {
+fn get_offset<'tcx>(
+    cx: &LateContext<'tcx>,
+    idx: &Expr<'_>,
+    starts: &[Start<'tcx>],
+) -> Option<(StartKind<'tcx>, Offset)> {
+    fn extract_start<'tcx>(
+        cx: &LateContext<'tcx>,
+        expr: &Expr<'_>,
+        starts: &[Start<'tcx>],
+    ) -> Option<StartKind<'tcx>> {
+        starts.iter().find(|var| same_var(cx, expr, var.id)).map(|v| v.kind)
+    }
+
+    fn extract_offset<'tcx>(
+        cx: &LateContext<'tcx>,
+        e: &Expr<'_>,
+        starts: &[Start<'tcx>],
+    ) -> Option<String> {
         match &e.kind {
             ExprKind::Lit(l) => match l.node {
                 ast::LitKind::Int(x, _ty) => Some(x.to_string()),
                 _ => None,
             },
-            ExprKind::Path(..) if !same_var(cx, e, start) => Some(snippet_opt(cx, e.span).unwrap_or_else(|| "??".into())),
+            ExprKind::Path(..) if extract_start(cx, e, starts).is_none() => {
+                Some(snippet_opt(cx, e.span).unwrap_or_else(|| "??".into()))
+            },
             _ => None,
         }
     }
@@ -860,20 +894,21 @@ fn get_offset<'tcx>(cx: &LateContext<'tcx>, idx: &Expr<'_>, start: HirId) -> Opt
     match idx.kind {
         ExprKind::Binary(op, lhs, rhs) => match op.node {
             BinOpKind::Add => {
-                let offset_opt = if same_var(cx, lhs, start) {
-                    extract_offset(cx, rhs, start)
-                } else if same_var(cx, rhs, start) {
-                    extract_offset(cx, lhs, start)
+                let offset_opt = if let Some(s) = extract_start(cx, lhs, starts) {
+                    extract_offset(cx, rhs, starts).map(|o| (s, o))
+                } else if let Some(s) = extract_start(cx, rhs, starts) {
+                    extract_offset(cx, lhs, starts).map(|o| (s, o))
                 } else {
                     None
                 };
 
-                offset_opt.map(Offset::positive)
+                offset_opt.map(|(s, o)| (s, Offset::positive(o)))
             },
-            BinOpKind::Sub if same_var(cx, lhs, start) => extract_offset(cx, rhs, start).map(Offset::negative),
+            BinOpKind::Sub => extract_start(cx, lhs, starts)
+                .and_then(|s| extract_offset(cx, rhs, starts).map(|o| (s, Offset::negative(o)))),
             _ => None,
         },
-        ExprKind::Path(..) if same_var(cx, idx, start) => Some(Offset::positive("0".into())),
+        ExprKind::Path(..) => extract_start(cx, idx, starts).map(|s| (s, Offset::empty())),
         _ => None,
     }
 }
@@ -1008,6 +1043,10 @@ fn detect_manual_memcpy<'tcx>(
     {
         // the var must be a single name
         if let PatKind::Binding(_, canonical_id, _, _) = pat.kind {
+            let mut starts = vec![Start {
+                id: canonical_id,
+                kind: StartKind::Range,
+            }];
             // The only statements in the for loops can be indexed assignments from
             // indexed retrievals.
             let big_sugg = get_assignments(body)
@@ -1019,14 +1058,14 @@ fn detect_manual_memcpy<'tcx>(
                             if let ExprKind::Index(base_right, idx_right) = rhs.kind;
                             if is_slice_like(cx, cx.typeck_results().expr_ty(base_left))
                                 && is_slice_like(cx, cx.typeck_results().expr_ty(base_right));
-                            if let Some(offset_left) = get_offset(cx, &idx_left, canonical_id);
-                            if let Some(offset_right) = get_offset(cx, &idx_right, canonical_id);
+                            if let Some((start_left, offset_left)) = get_offset(cx, &idx_left, &starts);
+                            if let Some((start_right, offset_right)) = get_offset(cx, &idx_right, &starts);
 
                             // Source and destination must be different
                             if var_def_id(cx, base_left) != var_def_id(cx, base_right);
                             then {
-                                Some((IndexExpr { base: base_left, idx_offset: offset_left },
-                                    IndexExpr { base: base_right, idx_offset: offset_right }))
+                                Some((IndexExpr { base: base_left, idx: start_left, idx_offset: offset_left },
+                                    IndexExpr { base: base_right, idx: start_right, idx_offset: offset_right }))
                             } else {
                                 None
                             }
