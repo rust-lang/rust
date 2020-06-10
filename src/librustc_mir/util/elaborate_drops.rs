@@ -238,7 +238,7 @@ where
                 self.elaborator.patch().patch_terminator(
                     bb,
                     TerminatorKind::Drop {
-                        location: self.place,
+                        place: self.place,
                         target: self.succ,
                         unwind: self.unwind.into_option(),
                     },
@@ -723,7 +723,7 @@ where
         self.elaborator.patch().patch_terminator(
             drop_block,
             TerminatorKind::Drop {
-                location: tcx.mk_place_deref(ptr),
+                place: tcx.mk_place_deref(ptr),
                 target: loop_block,
                 unwind: unwind.into_option(),
             },
@@ -1000,7 +1000,7 @@ where
 
     fn drop_block(&mut self, target: BasicBlock, unwind: Unwind) -> BasicBlock {
         let block =
-            TerminatorKind::Drop { location: self.place, target, unwind: unwind.into_option() };
+            TerminatorKind::Drop { place: self.place, target, unwind: unwind.into_option() };
         self.new_block(unwind, block)
     }
 

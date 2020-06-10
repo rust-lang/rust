@@ -70,8 +70,8 @@ impl<'visit, 'cx, 'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'visit, 'cx, 'tc
             TerminatorKind::Call { destination: Some((into, _)), .. } => {
                 self.remove_never_initialized_mut_locals(*into);
             }
-            TerminatorKind::DropAndReplace { location, .. } => {
-                self.remove_never_initialized_mut_locals(*location);
+            TerminatorKind::DropAndReplace { place, .. } => {
+                self.remove_never_initialized_mut_locals(*place);
             }
             _ => {}
         }

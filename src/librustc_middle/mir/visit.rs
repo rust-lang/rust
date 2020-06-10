@@ -449,25 +449,25 @@ macro_rules! make_mir_visitor {
                     }
 
                     TerminatorKind::Drop {
-                        location,
+                        place,
                         target: _,
                         unwind: _,
                     } => {
                         self.visit_place(
-                            location,
+                            place,
                             PlaceContext::MutatingUse(MutatingUseContext::Drop),
                             source_location
                         );
                     }
 
                     TerminatorKind::DropAndReplace {
-                        location,
+                        place,
                         value,
                         target: _,
                         unwind: _,
                     } => {
                         self.visit_place(
-                            location,
+                            place,
                             PlaceContext::MutatingUse(MutatingUseContext::Drop),
                             source_location
                         );

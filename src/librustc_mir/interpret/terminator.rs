@@ -91,10 +91,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
             }
 
-            Drop { location, target, unwind } => {
-                let place = self.eval_place(location)?;
+            Drop { place, target, unwind } => {
+                let place = self.eval_place(place)?;
                 let ty = place.layout.ty;
-                trace!("TerminatorKind::drop: {:?}, type {}", location, ty);
+                trace!("TerminatorKind::drop: {:?}, type {}", place, ty);
 
                 let instance = Instance::resolve_drop_in_place(*self.tcx, ty);
                 self.drop_in_place(place, instance, target, unwind)?;

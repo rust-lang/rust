@@ -189,8 +189,8 @@ where
         self.super_terminator(terminator, location);
 
         match terminator.kind {
-            mir::TerminatorKind::Drop { location: dropped_place, .. }
-            | mir::TerminatorKind::DropAndReplace { location: dropped_place, .. } => {
+            mir::TerminatorKind::Drop { place: dropped_place, .. }
+            | mir::TerminatorKind::DropAndReplace { place: dropped_place, .. } => {
                 // See documentation for `unsound_ignore_borrow_on_drop` for an explanation.
                 if !self.ignore_borrow_on_drop {
                     self.trans.gen(dropped_place.local);
