@@ -2162,15 +2162,16 @@ impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
                 match parent.kind {
                     ExprKind::AssignOp(op, ref lhs, ref rhs) => {
                         if lhs.hir_id == expr.hir_id {
-                            if op.node == BinOpKind::Add && is_integer_const(self.cx, rhs, 1) {
-                                *state = match *state {
-                                    VarState::Initial if self.depth == 0 => VarState::IncrOnce,
-                                    _ => VarState::DontWarn,
-                                };
+                            *state = if op.node == BinOpKind::Add
+                                && is_integer_const(self.cx, rhs, 1)
+                                && *state == VarState::Initial
+                                && self.depth == 0
+                            {
+                                VarState::IncrOnce
                             } else {
-                                // Assigned some other value
-                                *state = VarState::DontWarn;
-                            }
+                                // Assigned some other value or assigned multiple times
+                                VarState::DontWarn
+                            };
                         }
                     },
                     ExprKind::Assign(ref lhs, _, _) if lhs.hir_id == expr.hir_id => *state = VarState::DontWarn,
@@ -2212,18 +2213,20 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
 
     fn visit_stmt(&mut self, stmt: &'tcx Stmt<'_>) {
         // Look for declarations of the variable
-        if let StmtKind::Local(ref local) = stmt.kind {
-            if local.pat.hir_id == self.var_id {
-                if let PatKind::Binding(.., ident, _) = local.pat.kind {
-                    self.name = Some(ident.name);
-
-                    self.state = local.init.as_ref().map_or(VarState::Declared, |init| {
-                        if is_integer_const(&self.cx, init, 0) {
-                            VarState::Warn
-                        } else {
-                            VarState::Declared
-                        }
-                    })
+        if_chain! {
+            if let StmtKind::Local(ref local) = stmt.kind;
+            if local.pat.hir_id == self.var_id;
+            if let PatKind::Binding(.., ident, _) = local.pat.kind;
+            then {
+                self.name = Some(ident.name);
+                self.state = if_chain! {
+                    if let Some(ref init) = local.init;
+                    if is_integer_const(&self.cx, init, 0);
+                    then {
+                        VarState::Warn
+                    } else {
+                        VarState::Declared
+                    }
                 }
             }
         }
