@@ -1536,31 +1536,17 @@ fn check_for_loop_explicit_counter<'tcx>(
     expr: &'tcx Expr<'_>,
 ) {
     // Look for variables that are incremented once per loop iteration.
-    let mut visitor = IncrementVisitor {
-        cx,
-        states: FxHashMap::default(),
-        depth: 0,
-        done: false,
-    };
+    let mut visitor = IncrementVisitor::new(cx);
     walk_expr(&mut visitor, body);
 
     // For each candidate, check the parent block to see if
     // it's initialized to zero at the start of the loop.
     if let Some(block) = get_enclosing_block(&cx, expr.hir_id) {
-        for (id, _) in visitor.states.iter().filter(|&(_, v)| *v == VarState::IncrOnce) {
-            let mut visitor2 = InitializeVisitor {
-                cx,
-                end_expr: expr,
-                var_id: *id,
-                state: VarState::IncrOnce,
-                name: None,
-                depth: 0,
-                past_loop: false,
-            };
+        for id in visitor.into_results() {
+            let mut visitor2 = InitializeVisitor::new(cx, expr, id);
             walk_block(&mut visitor2, block);
 
-            if visitor2.state == VarState::Warn {
-                if let Some(name) = visitor2.name {
+            if let Some(name) = visitor2.get_result() {
                     let mut applicability = Applicability::MachineApplicable;
 
                     // for some reason this is the only way to get the `Span`
@@ -1585,7 +1571,6 @@ fn check_for_loop_explicit_counter<'tcx>(
                         ),
                         applicability,
                     );
-                }
             }
         }
     }
@@ -2142,6 +2127,24 @@ struct IncrementVisitor<'a, 'tcx> {
     done: bool,
 }
 
+impl<'a, 'tcx> IncrementVisitor<'a, 'tcx> {
+    fn new(cx: &'a LateContext<'a, 'tcx>) -> Self {
+        Self {
+            cx,
+            states: FxHashMap::default(),
+            depth: 0,
+            done: false,
+        }
+    }
+
+    fn into_results(self) -> impl Iterator<Item = HirId> {
+        self.states
+            .into_iter()
+            .filter(|(_, state)| *state == VarState::IncrOnce)
+            .map(|(id, _)| id)
+    }
+}
+
 impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
     type Map = Map<'tcx>;
 
@@ -2207,6 +2210,28 @@ struct InitializeVisitor<'a, 'tcx> {
     name: Option<Symbol>,
     depth: u32, // depth of conditional expressions
     past_loop: bool,
+}
+
+impl<'a, 'tcx> InitializeVisitor<'a, 'tcx> {
+    fn new(cx: &'a LateContext<'a, 'tcx>, end_expr: &'tcx Expr<'tcx>, var_id: HirId) -> Self {
+        Self {
+            cx,
+            end_expr,
+            var_id,
+            state: VarState::IncrOnce,
+            name: None,
+            depth: 0,
+            past_loop: false,
+        }
+    }
+
+    fn get_result(&self) -> Option<Name> {
+        if self.state == VarState::Warn {
+            self.name
+        } else {
+            None
+        }
+    }
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
