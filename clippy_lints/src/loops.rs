@@ -1539,18 +1539,18 @@ fn check_for_loop_explicit_counter<'tcx>(
     expr: &'tcx Expr<'_>,
 ) {
     // Look for variables that are incremented once per loop iteration.
-    let mut visitor = IncrementVisitor::new(cx);
-    walk_expr(&mut visitor, body);
+    let mut increment_visitor = IncrementVisitor::new(cx);
+    walk_expr(&mut increment_visitor, body);
 
     // For each candidate, check the parent block to see if
     // it's initialized to zero at the start of the loop.
     if let Some(block) = get_enclosing_block(&cx, expr.hir_id) {
-        for id in visitor.into_results() {
-            let mut visitor2 = InitializeVisitor::new(cx, expr, id);
-            walk_block(&mut visitor2, block);
+        for id in increment_visitor.into_results() {
+            let mut initialize_visitor = InitializeVisitor::new(cx, expr, id);
+            walk_block(&mut initialize_visitor, block);
 
             if_chain! {
-                if let Some((name, initializer)) = visitor2.get_result();
+                if let Some((name, initializer)) = initialize_visitor.get_result();
                 if is_integer_const(cx, initializer, 0);
                 then {
                     let mut applicability = Applicability::MachineApplicable;
