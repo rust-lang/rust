@@ -39,7 +39,7 @@ const EXCEPTIONS: &[(&str, &str)] = &[
     ("ryu", "Apache-2.0 OR BSL-1.0"),       // rls/cargo/... (because of serde)
     ("bytesize", "Apache-2.0"),             // cargo
     ("im-rc", "MPL-2.0+"),                  // cargo
-    ("adler32", "BSD-3-Clause AND Zlib"),   // cargo dep that isn't used
+    ("adler32", "Zlib"),                    // rust-installer + cargo dep that isn't used
     ("constant_time_eq", "CC0-1.0"),        // rustfmt
     ("sized-chunks", "MPL-2.0+"),           // cargo via im-rc
     ("bitmaps", "MPL-2.0+"),                // cargo via im-rc
